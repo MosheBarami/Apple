@@ -150,7 +150,10 @@ const { request, moments, landed, ran, defects, dateLabel, sources } = RECORDED_
           defects.items.map((item) => (
             <li>
               <p class="defect-title">{item.title.text}</p>
-              <p class="defect-detail">{item.detail.text}</p>
+              {/* The last two words are bound with a no-break space at render time, so a verbatim
+                  quote cannot end on one stranded word at a phone width; the quote itself, in
+                  data/recorded-run.ts, is untouched and still matches its evidence file. */}
+              <p class="defect-detail">{item.detail.text.replace(/ (\S+)$/, '\u00a0$1')}</p>
             </li>
           ))
         }
@@ -281,7 +284,7 @@ const { request, moments, landed, ran, defects, dateLabel, sources } = RECORDED_
   .run-frame {
     min-width: 0;
     border: 1px solid var(--line);
-    border-radius: var(--r-card);
+    border-radius: var(--r-lg);
     background: var(--surface);
     padding: 1.1rem 1.2rem 1.2rem;
   }
@@ -378,7 +381,7 @@ const { request, moments, landed, ran, defects, dateLabel, sources } = RECORDED_
     margin: 0;
     padding: 0.85rem 0.95rem;
     border: 1px solid var(--line);
-    border-radius: var(--r-card);
+    border-radius: var(--r-lg);
     background: var(--surface);
     list-style: none;
     font-family: var(--font-mono);

@@ -131,9 +131,18 @@ export const BUILT_SCREEN = {
    */
   hidden: { value: 0, label: 'objects hidden', from: 'asScripted.hidden' } as ScreenFigure,
 
-  /** What the picture is, and what it is not — the manifest's own words for its renderer. */
+  /**
+   * What the picture is, and what it is not — the manifest's own words for its renderer.
+   *
+   * THE CLAUSE A READER NEEDS, NOT THE FILE PATH IN FRONT OF IT (2026-09-22). The field reads
+   * "packages/training/src/render-ui-tree.mjs over resolveLayout — geometry, not a Studio
+   * screenshot", and the whole string was printed on the front page: a repository path and a
+   * function name set as marketing copy. The caveat itself is the second half, and it is still
+   * quoted verbatim — tests/built-screen-is-evidence.test.mjs checks it is a substring of the field —
+   * so the page keeps saying exactly what the record says the picture is not.
+   */
   renderer: {
-    text: 'packages/training/src/render-ui-tree.mjs over resolveLayout — geometry, not a Studio screenshot',
+    text: 'geometry, not a Studio screenshot',
     from: 'renderer',
   } as ScreenCaveat,
 

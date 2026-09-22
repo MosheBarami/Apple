@@ -91,6 +91,18 @@ test('every published issue carries the four things a reader needs', () => {
   }
 });
 
+//[[ RESTATED 2026-09-22, WHEN THE FLAG FLIPPED AND THIS WENT RED FOR THE RIGHT REASON.
+//
+//   It pinned the literal `STUDIO_PLUGIN_STORE_LIVE: boolean = false;` while the plugin entry was
+//   open. The listing came back, packages/shared flipped the flag to `true`, and this fired with
+//   exactly its own message: "the store listing is live — mark plugin-not-in-creator-store
+//   resolved". The entry is now resolved (2026-09-22) rather than deleted.
+//
+//   The property was only ever half-stated. It asked "is an OPEN entry still true?" and never "is a
+//   RESOLVED entry actually resolved?", so an entry closed while the flag still said `false` would
+//   have passed. It now checks both directions against the flag's VALUE (read, not pinned to one
+//   spelling), and insists the entry exists in one state or the other — a deleted entry would
+//   otherwise leave both branches vacuous. ]]
 test('an issue listed as OPEN is still true of the code that would close it', () => {
   // The failure mode of a checked-in incident list is that it becomes a museum: an entry stays
   // "open" months after the thing was fixed, and a visitor reads a current-sounding page describing
@@ -98,12 +110,22 @@ test('an issue listed as OPEN is still true of the code that would close it', ()
   // that constant here, so closing the defect makes this red and forces the entry to be resolved.
   const shared = readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
   const open = new Set(K.openIssues().map((i) => i.id));
+  const resolved = new Set(K.KNOWN_ISSUES.filter((i) => i.resolvedAt !== null).map((i) => i.id));
+
+  const flag = /export const STUDIO_PLUGIN_STORE_LIVE(?::\s*boolean)?\s*=\s*(true|false)\s*;/.exec(shared);
+  assert.ok(flag, 'STUDIO_PLUGIN_STORE_LIVE is no longer readable from packages/shared — this check has gone blind');
+  const storeLive = flag[1] === 'true';
+
+  assert.ok(
+    open.has('plugin-not-in-creator-store') || resolved.has('plugin-not-in-creator-store'),
+    'plugin-not-in-creator-store is gone from the list — close an entry with resolvedAt, never delete it',
+  );
   if (open.has('plugin-not-in-creator-store')) {
-    assert.match(
-      shared,
-      /export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;/,
-      'the store listing is live — mark plugin-not-in-creator-store resolved',
-    );
+    assert.equal(storeLive, false, 'the store listing is live — mark plugin-not-in-creator-store resolved');
+  }
+  if (resolved.has('plugin-not-in-creator-store')) {
+    assert.equal(storeLive, true,
+      'plugin-not-in-creator-store is marked resolved while STUDIO_PLUGIN_STORE_LIVE is false — reopen it');
   }
   if (open.has('plugin-presence-not-detectable')) {
     const model = readFileSync(join(ROOT, 'apps', 'web', 'src', 'components', 'empty-state-model.ts'), 'utf8');

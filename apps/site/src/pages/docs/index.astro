@@ -1,13 +1,9 @@
 ---
-import { PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
+import { MODE_INFO, PRODUCT_MODES } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
-// The modes a person may choose, named from the product rather than from memory. This page said
-// "Plan, Agent and Super Agent" in its description and again in its own index of pages, and
-// `super` is not in PRODUCT_MODES_OFFERED — so the first page of the manual pointed at a mode the
-// manual's own modes page could no longer explain. A list of what exists is not a list of what is
-// offered, and a reader cannot tell the two apart from here.
+// The two ProductMode values are named from the shared contract rather than repeated here.
 /*
  * THE BODY WAS GATED AND THE METADATA WAS NOT, WHICH IS THE HALF PEOPLE ACTUALLY SHARE.
  *
@@ -18,7 +14,7 @@ import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
  * clicked. Same constant, same answer, one sentence earlier.
  */
 const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
-  PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m].name),
+  PRODUCT_MODES.map((m) => MODE_INFO[m].name),
 );
 ---
 
@@ -26,16 +22,16 @@ const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
   title="Documentation — Apple"
   description={STUDIO_PLUGIN_STORE_LIVE
     ? `Everything you need to build with Apple: getting started, installing and connecting the Studio plugin, ${modeNames}, Credits, and how your data is handled.`
-    : `Everything you need to build with Apple: getting started, ${modeNames}, Credits, and how your data is handled. Public Studio plugin installation is currently unavailable.`}
+    : `Everything you need to build with Apple: getting started, ${modeNames}, Credits, and how your data is handled. Public Studio installation is unavailable right now.`}
   heading="Apple documentation"
 >
   <p>
     Apple turns plain-language descriptions into real changes inside Roblox Studio. These docs cover
-    the whole journey: installing the plugin, connecting it to a project, choosing a model,
+    the whole journey: installing the plugin, connecting it to a project, choosing a mode,
     understanding Credits, and knowing exactly what happens to your data.
   </p>
 
-  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable.</strong> You can create an account and chat now. Building inside Studio requires an existing working plugin; new users should check <a href="/docs/plugin">installation status</a> before following the setup guides.</p></div>}
+  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable right now.</strong> You can create an account and chat; building inside Studio needs the plugin. <a href="/docs/plugin">Plugin availability</a>.</p></div>}
 
   <h2>Start here</h2>
   <ul>
@@ -45,7 +41,7 @@ const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
     </li>
     <li>
       <strong><a href="/docs/plugin">{STUDIO_PLUGIN_STORE_LIVE ? 'Install the plugin' : 'Plugin availability'}</a></strong> —
-      {STUDIO_PLUGIN_STORE_LIVE ? ' get Apple for Studio from the Creator Store.' : ' public installation is currently unavailable.'}
+      {STUDIO_PLUGIN_STORE_LIVE ? ' get Apple Studio from the Creator Store and open it in Studio.' : ' public Studio installation is unavailable right now.'}
     </li>
     <li>
       <strong><a href="/docs/connect">Connect a project</a></strong> — link the plugin to one Apple
@@ -56,8 +52,8 @@ const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
   <h2>Using Apple</h2>
   <ul>
     <li>
-      <strong><a href="/docs/modes">Models</a></strong> — {modeNames}: what each is for,
-      what each costs, and how to pick.
+      <strong><a href="/docs/modes">Modes</a></strong> — {modeNames}, plus when to turn on
+      Autonomous for Agent.
     </li>
     <li>
       <strong><a href="/docs/credits-and-limits">Credits &amp; limits</a></strong> — how the daily
@@ -90,7 +86,7 @@ const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
 
   <div class="callout">
     <p>
-      {STUDIO_PLUGIN_STORE_LIVE ? <>Install the <a href="/docs/plugin">plugin</a>, open your place in Studio, <a href="/docs/connect">connect</a> it to a project, and describe your idea.</> : <>Start with <a href="/app/signup">a free account</a> and a conversation. If you already have a working plugin, <a href="/docs/connect">connect your place</a>. Otherwise, wait for an approved public installation path.</>}
+      {STUDIO_PLUGIN_STORE_LIVE ? <>Install the <a href="/docs/plugin">plugin</a>, open your place in Studio, <a href="/docs/connect">connect</a> it to a project, and describe your idea.</> : <>Start with <a href="/app/signup">a free account</a> and a conversation. If you already have a working plugin, <a href="/docs/connect">connect your place</a>. Otherwise, check <a href="/docs/plugin">plugin availability</a>.</>}
     </p>
   </div>
 

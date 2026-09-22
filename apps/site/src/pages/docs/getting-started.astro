@@ -1,14 +1,12 @@
 ---
-import { PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
+import { MODE_INFO, PLAN_LIMITS, PRODUCT_MODES } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
-// "when to use Plan, Agent or Super Agent" — the third is in PRODUCT_MODES, which is every mode
-// the system can produce, and not in PRODUCT_MODES_OFFERED, which is what a person may pick. The
-// free allowance beside it was equally stale: it read 60 Credits against a free tier repriced to
-// PLAN_LIMITS.free.creditsPerDay. Both are read now, so neither can be left behind again.
+// Mode names and the free allowance are read from the shared product contract so this guide cannot
+// outlive a mode or quota change independently.
 const modeNames = new Intl.ListFormat('en', { type: 'disjunction' }).format(
-  PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m].name),
+  PRODUCT_MODES.map((m) => MODE_INFO[m].name),
 );
 /*
  * THE BODY WAS GATED AND THE METADATA WAS NOT, WHICH IS THE HALF PEOPLE ACTUALLY SHARE.
@@ -26,14 +24,16 @@ const free = PLAN_LIMITS.free;
   title="Getting started — Apple Docs"
   description={STUDIO_PLUGIN_STORE_LIVE
     ? 'From signup to your first AI-built feature in Roblox Studio: create an account, make a project, install the plugin, pair, and chat your first build.'
-    : 'From signup to your first conversation with Apple: create an account, make a project and start chatting. Public Studio installation is unavailable, so the Studio steps apply only to an existing working plugin.'}
+    : 'From signup to your first conversation with Apple: create an account, make a project and start chatting. Public Studio installation is unavailable right now, so the Studio steps apply only to an existing working plugin.'}
   heading="Getting started"
 >
   <p>
-    Create your workspace, start a conversation, and check Studio availability before building.
+    {STUDIO_PLUGIN_STORE_LIVE
+      ? 'Create an account, install the Apple Studio plugin, pair it with a project, and ask for your first change.'
+      : 'Create your workspace, start a conversation, and check Studio availability before building.'}
   </p>
 
-  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable.</strong> Steps 1–2 work now. Continue to the Studio steps only if you already have a working plugin. New users can chat, but must wait for an approved public plugin before Apple can change their place. <a href="/docs/plugin">See installation status</a>.</p></div>}
+  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable right now.</strong> Steps 1–2 work now. Continue to the Studio steps only if you already have a working plugin. <a href="/docs/plugin">Plugin availability</a>.</p></div>}
 
   <h2>1. Create an account</h2>
   <p>
@@ -56,26 +56,32 @@ const free = PLAN_LIMITS.free;
 
   <h2>3. {STUDIO_PLUGIN_STORE_LIVE ? 'Install the Studio plugin' : 'Check Studio availability'}</h2>
   <p>
-    {STUDIO_PLUGIN_STORE_LIVE ? <>Apple changes your place through the <strong>Apple for Studio</strong> plugin. Follow <a href="/docs/plugin">the Creator Store installation steps</a> before continuing.</> : <>There is no working public Creator Store installation path right now. If you do not already have the plugin, stop here and use the chat workspace. Check <a href="/docs/plugin">plugin status</a> for availability; the remaining steps describe connecting an existing working installation.</>}
+    {STUDIO_PLUGIN_STORE_LIVE ? <>Apple changes your place through the <strong>Apple Studio</strong> plugin. It is free on the Roblox Creator Store — follow <a href="/docs/plugin">Install the plugin</a> before continuing.</> : <>There is no working public Creator Store installation path right now. If you do not already have the plugin, stop here and use the chat workspace. Check <a href="/docs/plugin">plugin status</a> for availability; the remaining steps describe connecting an existing working installation.</>}
   </p>
 
   <h2>4. Connect it to your project</h2>
   <ol>
-    <li>Open your place in Roblox Studio and click <strong>Apple</strong> in the Plugins tab.</li>
+    <li>Open your place in Roblox Studio and click <strong>Apple</strong> in the Plugins tab. The <strong>Apple Studio</strong> panel docks.</li>
     <li>
       In the Apple web workspace, open the project and press <strong>Enter pairing code</strong> in
       the <strong>Connect Roblox Studio</strong> block. You get a six-character code like
       <code>K7M3QP</code>.
     </li>
-    <li>Type the code into the Apple panel in Studio and press <strong>Connect</strong>.</li>
+    <li>Type the code into the panel in Studio and press <strong>Connect to Apple</strong>.</li>
   </ol>
   <p>
-    The workspace shows your place name and the panel turns green. Codes expire after 10 minutes; if
-    yours does, generate another. More detail on <a href="/docs/connect">Connect a project</a>.
+    The panel reads <strong>Connected</strong> followed by the project name, and the workspace shows
+    your place. Codes expire after 10 minutes; if yours does, generate another. Edits stay off until
+    you allow them for that connection — see <a href="/docs/connect">Connect a project</a>.
   </p>
 
-  <h2>5. Ask for your first build</h2>
-  <p>Choose <strong>Apple</strong> for limited free use, or <strong>Apple MAX</strong> with an eligible paid subscription, and describe what you want:</p>
+  <h2>5. Choose a mode and ask for your first build</h2>
+  <p>
+    Choose <strong>Plan</strong> when you want Apple to inspect and design the work without changing
+    the place, or <strong>Agent</strong> when you want it to build. Agent also has an optional
+    <strong>Autonomous</strong> toggle when you want it to keep taking its own next step until the
+    task is finished or a real stop condition is reached. Then describe what you want:
+  </p>
   <ul>
     <li>“make a lobby with a spinning obby door”</li>
     <li>“add a coin leaderboard that saves between sessions”</li>
@@ -104,7 +110,7 @@ const free = PLAN_LIMITS.free;
 
   <h2>Where next</h2>
   <ul>
-    <li><a href="/docs/modes">Models</a> — when to use {modeNames}.</li>
+    <li><a href="/docs/modes">Modes</a> — when to use {modeNames}, and what Autonomous changes.</li>
     <li><a href="/docs/credits-and-limits">Credits &amp; limits</a> — how far {free.creditsPerDay} Credits goes.</li>
     <li><a href="/docs/updating">Updating the plugin</a> — Roblox will not do it for you.</li>
     <li><a href="/docs/troubleshooting">Troubleshooting</a> — when the panel says something you didn't expect.</li>

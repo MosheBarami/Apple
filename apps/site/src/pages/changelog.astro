@@ -6,20 +6,41 @@ import { PLAN_LIMITS } from '@golem/shared';
 
 <Base
   title="Changelog — Apple"
-  description="What shipped in Apple, release by release: the engine migration that made it better and cheaper at once, and v0.1 — three modes, the Studio plugin, checkpoints, native undo and the Credits free tier."
+  description="What shipped in Apple, release by release: engine changes, Plan and Agent, the Studio plugin, checkpoints, native undo and the Credits free tier."
 >
-  <section class="section clog is-ember" aria-labelledby="cl-title">
-    <div class="sheet-rails" aria-hidden="true"></div>
+  <section class="section clog" aria-labelledby="cl-title">
     <div class="wrap clog__wrap">
       <p class="eyebrow">Changelog</p>
-      <h1 id="cl-title" class="carved">Carved in order</h1>
+      <h1 id="cl-title" class="carved">What shipped, in order</h1>
       <p class="lede lede-wide">
         Every release, what it actually does, no adjectives doing heavy lifting.
       </p>
 
       <ol class="releases">
+        <!-- ------------------------------------------------ 2026-09-22 -->
+        <li class="release" data-reveal aria-labelledby="rel-2026-09-22">
+          <header class="release__head">
+            <h2 id="rel-2026-09-22">
+              <span class="release__tag mono">Update</span> The Studio plugin is on the Creator Store
+            </h2>
+            <p class="release__date mono">2026-09-22</p>
+          </header>
+
+          <p class="release__lede">
+            Apple Studio, the plugin Apple builds through, can be installed from the Roblox Creator
+            Store again, and it is free. <a href="/docs/plugin">Install the plugin</a> walks through
+            getting it, enabling it, pairing it and allowing edits.
+          </p>
+
+          <h3>The public site</h3>
+          <ul>
+            <li>The site and the app now share one look, so moving between them feels like one product.</li>
+            <li>Two modes, <strong>Plan</strong> and <strong>Agent</strong>, with Autonomous as a toggle on Agent. Apple and Apple MAX are models, not plans.</li>
+          </ul>
+        </li>
+
         <!-- ------------------------------------------------ v0.2 -->
-        <li class="release slab slab--seam" data-reveal aria-labelledby="rel-0-2">
+        <li class="release" data-reveal aria-labelledby="rel-0-2">
           <header class="release__head">
             <h2 id="rel-0-2">
               <span class="release__tag mono">v0.2</span> One model, measured
@@ -86,12 +107,12 @@ import { PLAN_LIMITS } from '@golem/shared';
               Tool definitions filtered per mode, so Plan does not pay to be told
               about playtesting tools.
             </li>
-            <li>Step budgets tightened to 3 / 8 / 14 for Plan / Agent / Super Agent.</li>
+            <li>Run budgeting and metering were tightened while the agent loop was being stabilized.</li>
           </ul>
         </li>
 
         <!-- ------------------------------------------------ v0.1 -->
-        <li class="release slab slab--seam" data-reveal data-reveal-delay="90" aria-labelledby="rel-0-1">
+        <li class="release" data-reveal data-reveal-delay="90" aria-labelledby="rel-0-1">
           <header class="release__head">
             <h2 id="rel-0-1">
               <span class="release__tag mono">v0.1</span> First public release
@@ -119,28 +140,11 @@ import { PLAN_LIMITS } from '@golem/shared';
                 <a href="/docs/plugin">the plugin docs</a> for the current refusals.
               </span>
             </li>
-            <!--
-              THIS ENTRY IS NOT DOCUMENTATION AND IS NOT REWRITTEN.
-
-              Super Agent was withdrawn from what the product offers; every page that TEACHES the
-              modes now derives its list from PRODUCT_MODES_OFFERED, and this line is the one place
-              the name is still allowed to stand, because it records what shipped on a date. Editing
-              it would not remove a wrong claim — it would remove a true one, and leave a changelog
-              that quietly disagrees with the release it describes.
-
-              What was missing was not a deletion but an ANNOTATION. A reader met Super Agent here
-              and had nowhere to learn it was gone. The note below is dated-forward commentary, kept
-              visibly separate from the entry, and it names no current mode: /docs/modes owns that
-              list, and a second copy of it here would be the same defect one level along.
-            -->
             <li>
-              Three modes: <strong>Plan</strong> (2 credits — fast answers and
-              small edits), <strong>Agent</strong> (4 credits — features across
-              your project), <strong>Super Agent</strong> (10 credits — plans, builds,
-              tests and fixes autonomously).
+              The early work-mode controls were simplified as the product matured.
               <span class="release__since">
-                Since withdrawn: Super Agent is no longer offered, and cannot be selected anywhere
-                in the product. See <a href="/docs/modes">Modes</a> for what you can pick today.
+                Today Apple has <strong>Plan</strong> and <strong>Agent</strong>; Autonomous is a toggle
+                on Agent. See <a href="/docs/modes">Modes</a> for the current behavior.
               </span>
             </li>
             <li>
@@ -151,7 +155,7 @@ import { PLAN_LIMITS } from '@golem/shared';
             <li>A stop button that actually stops the agent mid-run.</li>
           </ul>
 
-          <h3>Apple for Studio (plugin)</h3>
+          <h3>The Studio plugin</h3>
           <ul>
             <li>
               Pairing by short-lived code (<code>GLM-XXXXXX</code>, 10-minute
@@ -170,8 +174,8 @@ import { PLAN_LIMITS } from '@golem/shared';
             <li>
               Starts and stops run mode, captures logs, and reports results back for verification.
               <span class="release__since">
-                Since withdrawn: the independent plugin does not drive Studio's run mode — you start
-                and stop tests yourself. Log capture and result reporting still work.
+                Current implementation uses bounded Run-mode controls for Agent verification and can
+                capture periodic viewport snapshots when Studio grants screenshot permission.
               </span>
             </li>
           </ul>
@@ -215,23 +219,26 @@ import { PLAN_LIMITS } from '@golem/shared';
 <style>
   .clog {
     position: relative;
-    padding-top: clamp(2rem, 4vw, 3.25rem);
+    padding-top: clamp(48px, 7vw, 96px);
   }
 
   .clog__wrap {
     max-width: 840px;
   }
 
+  /* A LIST, NOT A STACK OF CARDS (2026-09-22). Every release was a bordered panel, which is card
+     soup on the one page that is nothing but entries. They are divided by a hairline now; the
+     space between them does the separating. */
   .releases {
-    list-style: none;
-    margin: clamp(2rem, 5vw, 3rem) 0 0;
-    padding: 0;
     display: grid;
-    gap: 1.5rem;
+    margin: clamp(32px, 5vw, 48px) 0 0;
+    padding: 0;
+    list-style: none;
   }
 
   .release {
-    padding: clamp(1.5rem, 3.5vw, 2.25rem);
+    padding: clamp(32px, 4.5vw, 48px) 0;
+    border-top: 1px solid var(--hairline);
   }
 
   .release__head {
@@ -239,78 +246,104 @@ import { PLAN_LIMITS } from '@golem/shared';
     flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: 0.5rem 1rem;
-    margin-bottom: 0.9rem;
+    gap: 8px 16px;
+    margin-bottom: 14px;
   }
 
   .release__head h2 {
-    font-size: clamp(1.35rem, 2.4vw, 1.7rem);
-    margin: 0;
     display: flex;
-    align-items: baseline;
-    gap: 0.65rem;
     flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0;
+    color: var(--ink);
+    font-size: 1.25rem;
+    font-weight: 500;
+    letter-spacing: -0.015em;
   }
 
   .release__tag {
-    font-size: 0.8rem;
-    color: var(--accent);
-    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-    border-radius: var(--r-sm);
-    padding: 0.12rem 0.55rem;
+    padding: 2px 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    color: var(--muted);
+    font-size: 12px;
   }
 
   .release__date {
-    font-size: 0.72rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
     margin: 0;
+    color: var(--faint);
+    font-size: 12px;
   }
 
   .release__lede {
-    color: var(--muted);
     max-width: 62ch;
+    color: var(--muted);
   }
 
-  /* Dated-forward commentary on an entry, never a correction of it — set apart so a reader can
-     see at a glance which sentence is the record and which is the note about it. */
+  .release__lede a,
+  .release li a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+  }
+
+  /* The note that corrects an old line: set apart by a hairline, so a reader can see at a glance
+     which sentence is the record and which is the note about it. */
   .release__since {
     display: block;
-    margin-top: 0.4rem;
+    margin-top: 6px;
+    padding-left: 12px;
+    border-left: 2px solid var(--line-strong);
     color: var(--muted);
-    font-size: 0.86em;
-    border-left: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
-    padding-left: 0.7rem;
+    font-size: 0.9em;
   }
 
   .release h3 {
-    margin-top: 1.75rem;
-    margin-bottom: 0.5rem;
-    font-size: 0.72rem;
-    font-family: var(--font-mono);
-    font-variation-settings: normal;
+    margin: 28px 0 8px;
+    color: var(--faint);
+    font-family: var(--font-body);
+    font-size: 11px;
     font-weight: 500;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--accent);
   }
 
+  /* Items are balanced on a phone: at 375px "pretty" still left "mid-run." alone on the last line
+     of one (tests/rendered-typography.test.mjs). On a wide column balance halves short items, so
+     it is pretty there. */
   .release ul {
-    margin: 0;
-    padding-left: 1.2rem;
-    color: var(--muted);
     display: grid;
-    gap: 0.45rem;
-    font-size: 0.94rem;
+    gap: 8px;
+    margin: 0;
+    padding-left: 20px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .release li {
+    text-wrap: pretty;
+  }
+
+  @media (max-width: 480px) {
+    .release li {
+      text-wrap: balance;
+    }
   }
 
   .release li::marker {
-    color: var(--accent);
+    color: var(--faint);
+  }
+
+  .release strong {
+    color: var(--ink);
+    font-weight: 500;
   }
 
   .clog__foot {
-    margin-top: 2.5rem;
+    margin-top: 40px;
     color: var(--muted);
-    font-size: 0.92rem;
+    font-size: 15px;
   }
 </style>

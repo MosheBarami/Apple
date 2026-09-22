@@ -1,58 +1,67 @@
 ---
-import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, PLAN_LIMITS } from '@golem/shared';
+import { MODE_INFO, PLAN_COPY, PLAN_IDS, PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODES, canUseProductModel, type ProductMode } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
+
 const free = PLAN_LIMITS.free;
+const list = new Intl.ListFormat('en', { type: 'conjunction' });
+// Plans and which of them include the stronger model, asked of the same function the worker enforces.
+const planNames = list.format(PLAN_IDS.map((id) => PLAN_COPY[id].name));
+const strongPlans = list.format(
+  PLAN_IDS.filter((id) => canUseProductModel(PRODUCT_MODELS[1], id)).map((id) => PLAN_COPY[id].name),
+);
+const MODE_DETAIL: Record<ProductMode, string> = {
+  plan: 'Use Plan when you want Apple to inspect the project, reason about the change and give you a concrete approach without modifying the place.',
+  agent: 'Use Agent when you want Apple to carry the work through in Studio: read the project, make permitted edits, verify what changed and repair problems it finds.',
+};
 ---
+
 <DocsLayout
-  title="Apple and Apple MAX — Apple Docs"
-  description="Choose Apple for limited free use or Apple MAX with an eligible paid subscription. Model choice is separate from permission to change your Studio place."
-  heading="Apple and Apple MAX"
+  title="Plan and Agent — Apple Docs"
+  description="Plan and Agent are Apple's two product modes. Autonomous is an Agent toggle that changes continuation behavior; it is not a third mode."
+  heading="Plan and Agent"
 >
-  <p>The selector beside the message box chooses a product model, not a planning mode.</p>
-  {PRODUCT_MODELS.map(model => <section>
-    <h2>{PRODUCT_MODEL_INFO[model].name}</h2>
-    {/*
-      THE STEP CEILING WAS NOWHERE A READER COULD FIND IT BEFORE SIGNING UP.
-      A run on the free Apple lane is clamped to three steps — `maxStepsFor` in the worker takes the
-      minimum of the mode's limit and Clay's — and /pricing sells the allowance in "quality-gated
-      builds", a unit its own FAQ defines as read the tree, edit scripts, create instances, render,
-      critique. That is five steps before the fix. The compute the page counts is genuinely
-      delivered and the build genuinely completes, but it completes across several messages, and the
-      only place that shape was ever stated was a "Step 2 of 3" counter during the run itself.
-      Stated here and on the Free card; apps/site/tests/free-lane-steps.test.mjs reads the worker's
-      own constant and fails when the two disagree.
-    */}
-    {model === 'apple'
-      ? <p>Apple is the limited free model. It can answer questions and use building tools when Studio is connected and changes are allowed. It is not a read-only Plan mode. The Free plan includes {free.creditsPerDay} Credits per day, subject to its monthly allowance. A request has no artificial step or wall-clock ceiling: Apple keeps scheduling its own next step until the task is done, you stop it, access changes, or the account reaches its Credits/capacity limit.</p>
-      : <p>Apple MAX is available to eligible paid subscribers. It uses the same measured strong foundation as Apple today, with paid entitlement, higher reasoning policy and MAX-only media/3D capabilities. It also runs without an artificial step or wall-clock ceiling. Choosing it on a free account shows an availability notice and keeps your draft; it does not switch your model or charge you. See <a href="/app/usage">Usage and plan availability</a>.</p>}
-  </section>)}
-  <h2>Availability</h2>
-  <p>Paid checkout is not open in the current preview. Check <a href="/app/usage">Usage and plan availability</a> before expecting access to MAX. Extra purchased Credits do not by themselves grant a paid subscription.</p>
+  <p>
+    Apple has two product modes: <strong>Plan</strong> and <strong>Agent</strong>. The mode chooses
+    what kind of work the request may do. It is separate from the Apple / Apple MAX model selector,
+    Studio edit permission and your subscription allowance.
+  </p>
+
+  {PRODUCT_MODES.map((mode) => (
+    <section>
+      <h2>{MODE_INFO[mode].name}</h2>
+      <p>{MODE_DETAIL[mode]}</p>
+      <p>
+        <strong>Published typical usage:</strong> {MODE_INFO[mode].typicalCredits} Credits. That is
+        a measured guide, not a guaranteed fixed charge; the request settles against the compute it
+        actually uses. {mode === 'plan' && <>Plan itself does not change your Studio place.</>}
+      </p>
+    </section>
+  ))}
+
+  <h2>Autonomous</h2>
+  <p>
+    <strong>Autonomous is a toggle on Agent, not another mode.</strong> With it off, Agent responds
+    normally to the request you sent. With it on, Agent can keep scheduling its own next step until
+    the task is finished, you stop it, access is revoked, the account reaches its Credits or service
+    capacity limit, an unrecoverable infrastructure failure ends the run, or that message reaches
+    the hard 1000 steps ceiling. There is no wall-clock cutoff.
+  </p>
+
   <h2>What changes in Studio</h2>
-  <p>Model access and edit permission are separate. Neither choice bypasses Studio pairing, change approval, quota, or tool safety checks. Without a connected plugin, a chat response is not a change to your place. {!STUDIO_PLUGIN_STORE_LIVE && <>Public plugin installation is currently unavailable. </>}See <a href="/docs/plugin">installation status</a>.</p>
-  <h2>How Credits work</h2>
-  <p>There is no guaranteed fixed charge per message. Actual usage and the plan limits determine the charge. See <a href="/docs/credits-and-limits">Credits and limits</a>; review the result in Studio before treating a build as complete.</p>
-  {/*
-    THIS SENTENCE HAS NOW BEEN WRONG IN BOTH DIRECTIONS, so the history stays here.
+  <p>
+    Mode and edit permission are separate. Agent cannot bypass Studio pairing, the edit-consent
+    gate, quota or tool safety checks. Without a connected plugin, a chat response is not a change
+    to your place. {STUDIO_PLUGIN_STORE_LIVE
+      ? <>The plugin is free on the Creator Store: see <a href="/docs/plugin">Install the plugin</a>.</>
+      : <>Public Studio installation is unavailable right now. See <a href="/docs/plugin">plugin availability</a>.</>}
+  </p>
 
-      2026-08  "They currently share a foundation model."   true, then not.
-      2026-09  "they run on different third-party foundation models"   true, then not.
-      2026-09-21  same model again, and asked of the deployed Worker rather than read off a table:
-                  one call per gateway key through /api/admin/model-test at buildSha 3236f91-dirty
-                  returned @cf/zai-org/glm-5.3-flash for BOTH `stone` (every Apple request) and
-                  `rune` (Apple MAX in Super Agent). Commit 8b61c91 then gave the two keys the same
-                  6500 ceiling as well, so per single call the lanes are now identical.
-
-    The guard beside this page was supposed to stop the second one going stale and did not, because
-    it compared gateway key `clay` against `stone` — Plan against Agent — while calling that
-    comparison Apple against Apple MAX. Apple is `stone` in every mode. It is re-aimed now and
-    refuses whichever of the two sentences the gateway contradicts, rather than defending one.
-
-    What the sentence is FOR has not changed through any of this: deny that either lane is a model
-    we trained, and do not let a reader believe a paid lane buys a better brain per request. What it
-    buys is steps and allowance, and that is what it now says.
-  */}
-  <h2>Training status</h2>
-  <p>Apple and Apple MAX are separate product choices with different access and working limits. They currently run on the same third-party foundation model — neither is a model we trained — so what Apple MAX buys is a longer chain of steps in one request and a larger allowance, not a different or larger model. Custom Roblox training is in development; a completed independently trained frontier model is not available.</p>
+  <h2>Models and plans are separate</h2>
+  <p>
+    Apple and Apple MAX are model choices; {planNames} are account plans. Neither adds another work
+    mode. Apple MAX is the stronger model, included with {strongPlans}. The Free plan uses Apple and
+    includes {free.creditsPerDay} Credits per day subject to its monthly ceiling. See <a href="/docs/credits-and-limits">Credits and limits</a> for the current
+    allowance and metering rules.
+  </p>
 </DocsLayout>

@@ -32,20 +32,55 @@ test('recovery guard rejects the previous inert-text failure', () => {
   assert.throws(() => assertRecoveryLinks(broken), /recovery destination is not a link/);
 });
 
-test('connection instructions disclose installation availability before the steps', () => {
-  const html = page('docs/connect');
+//[[ RESTATED 2026-09-22, WHEN THE FLAG FLIPPED. It asserted the not-live sentence ("Public plugin
+//   installation is currently unavailable") UNCONDITIONALLY, so the day the listing came back and
+//   packages/shared set STUDIO_PLUGIN_STORE_LIVE to true, this demanded that the page keep telling
+//   readers they could not install a plugin they could. The property was always "availability is
+//   disclosed BEFORE the steps, and it is the true availability" — so the expected disclosure is now
+//   read off the flag: live, the page links the store listing (derived from the asset id) ahead of
+//   step one; not live, it says installation is unavailable ahead of step one. ]]
+const SHARED = readFileSync(new URL('../../../packages/shared/src/index.ts', import.meta.url), 'utf8');
+const FLAG = /export const STUDIO_PLUGIN_STORE_LIVE(?::\s*boolean)?\s*=\s*(true|false)\s*;/.exec(SHARED);
+const ASSET = /export const STUDIO_PLUGIN_ASSET_ID\s*=\s*'(\d+)'/.exec(SHARED);
+
+function assertDisclosure(html, storeLive, assetId) {
   const content = text(html);
-  assert.match(content, /Public plugin installation is currently unavailable/);
-  assert.ok(content.indexOf('Public plugin installation is currently unavailable') < content.indexOf('Open the place you want'));
+  const steps = content.indexOf('Open the place you want');
+  assert.ok(steps > 0, 'the connection steps were not found — this check would compare nothing');
+  if (storeLive) {
+    const href = `href="https://create.roblox.com/store/asset/${assetId}"`;
+    const at = html.indexOf(href);
+    assert.ok(at > 0, 'the plugin is installable, but the connect page does not link the store listing');
+    assert.ok(text(html.slice(0, at)).length < steps, 'the store link comes after the steps, not before them');
+  } else {
+    const at = content.search(/Public (?:Studio |plugin )?installation is (?:currently )?unavailable/);
+    assert.ok(at >= 0, 'the plugin cannot be installed, and the connect page does not say so');
+    assert.ok(at < steps, 'the unavailability notice comes after the steps, not before them');
+  }
   assert.match(content, /temporary credential/);
   assert.doesNotMatch(content, /nothing sensitive ever/);
+}
+
+test('connection instructions disclose installation availability before the steps', () => {
+  assert.ok(FLAG && ASSET, 'the plugin flag or asset id is no longer readable from packages/shared');
+  assertDisclosure(page('docs/connect'), FLAG[1] === 'true', ASSET[1]);
 });
 
-test('MAX describes a notice, not an automatic navigation or model switch', () => {
+test('the disclosure guard rejects a connect page that hides availability', () => {
+  const html = page('docs/connect');
+  const live = FLAG[1] === 'true';
+  const stripped = live
+    ? html.replaceAll(`https://create.roblox.com/store/asset/${ASSET[1]}`, '/nowhere')
+    : html.replace(/Public (?:Studio |plugin )?installation is (?:currently )?unavailable/g, 'Welcome');
+  assert.notEqual(stripped, html, 'the mutation did not land — re-aim it before trusting this test');
+  assert.throws(() => assertDisclosure(stripped, live, ASSET[1]));
+});
+
+test('the modes guide keeps product models separate from ProductMode', () => {
   const content = text(page('docs/modes'));
-  assert.match(content, /availability notice/);
-  assert.match(content, /keeps your draft/);
-  assert.doesNotMatch(content, /opens plan availability/);
+  assert.match(content, /Apple and Apple MAX are model choices/i);
+  assert.match(content, /Plan and Agent/i);
+  assert.match(content, /Autonomous is a toggle on Agent, not another mode/i);
 });
 
 /*

@@ -1,9 +1,8 @@
 ---
+// apple-minimal.css FIRST: it is the token source and the shared base, and landing.css adds the
+// front page's structure on top of it. The reverse order is what forced 117 `!important`s.
+import '../styles/apple-minimal.css';
 import '../styles/landing.css';
-import '../styles/relaunch.css';
-import InterfaceSound from './InterfaceSound.astro';
-import Cursor from '../components/Cursor.astro';
-import SoundDock from './SoundDock.astro';
 
 interface Props {
   title: string;
@@ -62,7 +61,7 @@ const ogImage = new URL('/og.png', site);
         derived: the script below reads `--theme-color` off :root and writes it here on load and on
         every toggle, so the band cannot disagree with the palette again. The server-rendered value
         is the dark ground, which is what the default `data-theme="dark"` renders. */}
-    <meta name="theme-color" id="theme-color" content="#141312" />
+    <meta name="theme-color" id="theme-color" content="#000000" />
 
     <script is:inline>
       // Runs before first paint, exactly as Base.astro's does: no flash of the wrong theme, and the
@@ -82,26 +81,6 @@ const ogImage = new URL('/og.png', site);
   <body>
     <slot />
 
-    {/*
-      THE FRONT PAGE WAS THE ONLY SILENT ROUTE, AND IT HAD NO CONTROL EITHER.
-
-      The chrome routes carried a sound system inside Base.astro's script and a toggle inside
-      Nav.astro; this page — the one the owner actually looks at — had neither, so the thing he
-      singled out on rosebud.ai (pressing a button makes a mechanical keyboard click) could not
-      happen here at all. Both layouts now render the SAME component, so there is one synth, one
-      stored preference and one listener for the whole site rather than two copies that drift.
-
-      The dock is the control and InterfaceSound is the engine. Only this route renders the dock,
-      because Nav.astro already carries a toggle on every Base route and two toggles on one page is
-      worse than none — and because the dock's stylesheet has no business on a page with no dock.
-    */}
-    <SoundDock />
-    <InterfaceSound />
-    {/* LAST IN THE BODY ON PURPOSE. It is a fixed overlay at the top of the stacking order and it
-        must be painted over everything, including the dock above it. It renders nothing a reader
-        can reach — aria-hidden, pointer-events: none — and it hides the native pointer only from
-        inside its own running loop, never from a stylesheet. See the note in the component. */}
-    <Cursor />
 
     <script is:inline>
       // The landing's own theme wiring. It is inline and tiny rather than a module because this

@@ -123,9 +123,16 @@ test('where two sheets declare the same token, they declare the same value', () 
       seen.get(name).push({ file: relative(SITE, file), value });
     }
   }
+  //[[ RESTATED 2026-09-22. The vacuity floor was "at least three type tokens are declared in more
+  //   than one sheet", written when global.css and landing.css each carried their own copy of the
+  //   stack. The redesign gave the site ONE token source, apple-minimal.css, so no type token is
+  //   declared twice any more — which is the defect this file exists for, fixed at the root rather
+  //   than kept in agreement. The denominator is now the tokens themselves: all four faces must be
+  //   declared somewhere, and a token declared in two sheets must still agree, as before. ]]
   const shared = [...seen.entries()].filter(([, rows]) => new Set(rows.map((r) => r.file)).size > 1);
-  assert.ok(shared.length >= 3,
-    `only ${shared.length} token(s) are declared in more than one sheet; this check would compare almost nothing`);
+  for (const want of ['--font-display', '--font-body', '--font-sans', '--font-mono']) {
+    assert.ok(seen.has(want), `${want} is declared by no sheet — this comparison would cover nothing`);
+  }
 
   const bad = [];
   for (const [name, rows] of shared) {

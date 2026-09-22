@@ -102,7 +102,11 @@ import { CONSENT_PROOF } from '../data/consent-proof';
       <a href="/proof">The whole log of one run, and the five defects it left behind &rarr;</a>
     </p>
 
-    <p class="micro proof-source">{CONSENT_PROOF.limit.text} Record: {CONSENT_PROOF.record}</p>
+    {/* The limit is the record's own sentence and stays on the page. The record's repository path
+        does not: a file path set as marketing copy tells a reader nothing they can open, and the
+        whole run it comes from is one link above, on /proof. The path still lives in
+        data/consent-proof.ts, where tests/proof-is-evidence.test.mjs re-reads every quote from it. */}
+    <p class="micro proof-source">{CONSENT_PROOF.limit.text}</p>
   </div>
 </section>
 

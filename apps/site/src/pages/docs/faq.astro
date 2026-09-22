@@ -1,11 +1,17 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import FAQ from '../../components/FAQ.astro';
+import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
 const general = [
   {
     q: 'Where do I get the Apple plugin?',
-    a: `<p>From the Roblox Creator Store, and only from there — see <a href="/docs/plugin">Install the plugin</a>, which also states plainly whether it is published yet. Roblox splits this into two steps: you acquire the plugin on the web, then install it from inside Studio's Toolbox. There is no one-click install from a web page; Roblox provides no such hand-off.</p>`,
+    a: STUDIO_PLUGIN_STORE_LIVE
+      ? `<p>From the Roblox Creator Store, and only from there. The plugin is called <strong>Apple Studio</strong> and it is free — see <a href="/docs/plugin">Install the plugin</a>. Roblox splits this into two steps: you get the plugin on the web, then install it from inside Studio's Toolbox. There is no one-click install from a web page; Roblox provides no such hand-off.</p>`
+      // The closed-store answer takes its link from the shared href. That derivation also keeps it
+      // out of the docs search index (src/data/docs-index.ts skips templates), so a search made
+      // while the store is open cannot surface the sentence that says it is shut.
+      : `<p>From the Roblox Creator Store, and only from there. Public Studio installation is unavailable right now — <a href="${STUDIO_PLUGIN_INSTALL_HREF}">Plugin availability</a> says what that means. Roblox splits installation into two steps: you get the plugin on the web, then install it from inside Studio's Toolbox.</p>`,
   },
   {
     q: 'There used to be a .rbxm download. Where did it go?',

@@ -44,17 +44,20 @@ test('THE PLUGIN VERSION THE DOCS NAME IS THE ONE THE PLUGIN PRINTS', () => {
   }
 });
 
-test('NO PAGE NAMES A MODE THE PRODUCT REFUSES BY NAME', () => {
-  // modes.astro states "It is not a read-only Plan mode" — so any page offering one contradicts the
-  // page whose whole subject is what the modes are.
+test('THE MODES GUIDE NAMES THE ProductMode CONTRACT DIRECTLY', () => {
+  const shared = readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
+  const type = /export type ProductMode\s*=\s*([^;]+);/.exec(shared);
+  assert.ok(type, 'ProductMode moved — re-aim this test');
+  const productModes = [...type[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  assert.deepEqual(productModes, ['plan', 'agent']);
+
   const modes = text('modes.astro');
-  assert.match(modes, /not a read-only Plan mode/,
-    'modes.astro no longer denies Plan mode — check what the product does now before trusting this');
-  for (const f of pages) {
-    if (f === 'modes.astro') continue;
-    assert.doesNotMatch(text(f), /\bin Plan mode\b/,
-      `${f} tells a customer to use Plan mode, which modes.astro says does not exist`);
+  for (const mode of productModes) {
+    const display = mode[0].toUpperCase() + mode.slice(1);
+    assert.match(modes, new RegExp(`\\b${display}\\b`), `modes.astro does not name ${display}`);
   }
+  assert.match(modes, /Autonomous is a toggle on Agent, not another mode/i,
+    'modes.astro no longer explains that Autonomous is an Agent option');
 });
 
 test('NO PAGE INVENTS A PLAN, and the three that exist are the three that are named', () => {

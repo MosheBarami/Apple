@@ -1,21 +1,17 @@
 /**
- * THE CURSOR RULE HAS TO SURVIVE THE BUILD, NOT JUST THE SOURCE FILE.
+ * EVERY CONTROL KEEPS THE OPERATING SYSTEM'S POINTER — IN WHAT WAS BUILT, NOT ONLY IN THE SOURCE.
  *
- * Cursor.astro writes `:root.has-cursor * { cursor: none !important; }`, which is the whole point:
- * a custom cursor is only custom if the real one is hidden EVERYWHERE, not just over the component
- * that declares it.
+ * RESTATED 2026-09-22, WHEN THE CUSTOM CURSOR WAS REMOVED.
  *
- * Astro scopes component styles. It rewrote that universal selector into
- * `:root.has-cursor [data-astro-cid-msvfyisy]`, an attribute only elements of that one component
- * carry. Measured on the deployed origin 2026-09-21: `has-cursor` present, `body` computing
- * `cursor: none`, and **44 of 44 controls still computing a native cursor**. The feature was
- * reported CLOSED and a person moving the mouse over any button saw the operating system's arrow.
+ * This file existed because the source and the build disagreed. Cursor.astro wrote
+ * `:root.has-cursor * { cursor: none !important; }`, Astro's scoping rewrote the universal selector,
+ * and 44 of 44 controls on the deployed origin still showed the native arrow while the source read
+ * correctly. Its lesson — read the BUILT bytes, because that is the only artifact a browser
+ * receives — is exactly as true now that the custom cursor is gone.
  *
- * `cursor-never-blinds.test.mjs` could not catch it and still cannot: it reads the component
- * SOURCE, where the selector is correct. The transform happens afterwards. So this reads what was
- * BUILT, which is the only artifact a browser ever receives.
- *
- * Run from apps/site, after `npx astro build`.
+ * So the property is the new one, checked at the same boundary: nothing the build emits hides the
+ * pointer or carries the retired cursor's machinery, and the site's controls still ask for a
+ * pointer (`cursor: pointer`) in the built CSS. Run from apps/site, after `npx astro build`.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,60 +20,38 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
-const INDEX = join(SITE, 'dist', 'index.html');
+const DIST = join(SITE, 'dist');
 
-function built() {
-  //[[ A MISSING dist IS NOT A PASS AND NOT A SKIP.
-  //   A test that quietly skips when the artifact is absent reports the same green as one that
-  //   examined it, which is the exact shape of defect this file exists to catch. ]]
-  assert.ok(existsSync(INDEX),
+function builtFiles() {
+  assert.ok(existsSync(join(DIST, 'index.html')),
     'apps/site/dist/index.html is missing — run `npx astro build` in apps/site first. This test is '
     + 'about what the BUILD produced, so without a build it has verified nothing.');
-  const html = readFileSync(INDEX, 'utf8');
-  const assets = join(SITE, 'dist', '_astro');
-  const css = existsSync(assets)
-    ? readdirSync(assets)
-        .filter((name) => name.endsWith('.css'))
-        .map((name) => readFileSync(join(assets, name), 'utf8'))
-        .join('\n')
-    : '';
-  // Astro may inline a component stylesheet or extract it once the aggregate CSS crosses its
-  // bundling threshold. Both are bytes the built page serves; the property is the emitted rule,
-  // not which physical file happens to hold it.
-  return `${html}\n${css}`;
+  const out = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/\.(html|css|js)$/.test(e.name)) out.push([p.slice(DIST.length + 1), readFileSync(p, 'utf8')]);
+    }
+  };
+  walk(DIST);
+  return out;
 }
 
-test('the hide-the-native-cursor rule still applies to every element after the build', () => {
-  const css = built();
-  const rules = [...css.matchAll(/([^{}]*has-cursor[^{}]*)\{([^}]*cursor\s*:\s*none[^}]*)\}/g)];
-  assert.ok(rules.length > 0,
-    'no `has-cursor` rule setting `cursor: none` survived into dist/index.html. Either the custom '
-    + 'cursor stopped hiding the real one, or the component stopped being inlined — both are the '
-    + 'feature being absent for a visitor.');
-
-  for (const [, selector] of rules) {
-    assert.match(selector, /\*/,
-      `the built rule \`${selector.trim()}\` hides the native cursor without a universal selector. `
-      + 'Astro scoped it — almost certainly to a [data-astro-cid-…] attribute — so it now applies '
-      + 'only to elements of the component that declared it, and every control elsewhere on the '
-      + 'page keeps the operating system arrow. Use `:global(*)` in the component.');
-    assert.doesNotMatch(selector, /\[data-astro-cid-/,
-      `the built rule \`${selector.trim()}\` is scoped to a component-id attribute. That is the `
-      + 'exact rewrite that made 44 of 44 controls show a native cursor on 2026-09-21.');
-  }
+test('nothing the build emits hides the pointer or carries the retired cursor machinery', () => {
+  const files = builtFiles();
+  assert.ok(files.filter(([f]) => f.endsWith('.html')).length >= 10, 'too few built pages to mean anything');
+  assert.ok(files.some(([f]) => f.endsWith('.css')), 'no built stylesheet found — the walk has drifted');
+  const bad = files
+    .filter(([, body]) => /cursor\s*:\s*none\b|has-cursor|data-cursor/.test(body))
+    .map(([f]) => f);
+  assert.deepEqual(bad, [], `the build still hides the pointer or wires a custom cursor in: ${bad.join(', ')}`);
 });
 
-test('the source says :global, which is what makes the built rule survive', () => {
-  // The pair matters: the test above proves the OUTCOME, this one names the CAUSE, so a future
-  // reader who breaks it is told what to type rather than only that something is wrong.
-  const src = readFileSync(join(SITE, 'src', 'components', 'Cursor.astro'), 'utf8');
-  const universal = [...src.matchAll(/:root\.has-cursor\s+([^,{]+)\{/g)].map((m) => m[1].trim());
-  assert.ok(universal.length > 0, 'Cursor.astro no longer has a `:root.has-cursor` descendant rule');
-  for (const sel of universal) {
-    if (sel.includes('*')) {
-      assert.match(sel, /:global\(\s*\*\s*\)/,
-        `Cursor.astro writes \`${sel}\`. A bare \`*\` inside a component's <style> is scoped by `
-        + 'Astro and stops applying to the rest of the page. Write `:global(*)`.');
-    }
-  }
+test('the built controls still ask for a pointer', () => {
+  const css = builtFiles().filter(([f]) => f.endsWith('.css')).map(([, b]) => b).join('\n');
+  // The shared button primitive and the landing's composer submit are the two controls every route
+  // and the front page render; both must keep the pointer that says "this can be pressed".
+  assert.match(css, /\.btn\{[^}]*cursor:pointer/, 'the shared .btn lost its pointer in the build');
+  assert.match(css, /\.composer-send\{[^}]*cursor:pointer/, 'the landing composer submit lost its pointer in the build');
 });

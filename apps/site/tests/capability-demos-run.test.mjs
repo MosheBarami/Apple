@@ -20,8 +20,11 @@
  *   - the gate opens on the third read and not before
  *   - selecting a defect turns exactly one marker on
  *   - the third ask produces the refusal, marked as refused
- *   - the mesh strokes lines into a real 2D context
- *   - the still frame is removed only AFTER a frame has been drawn
+ *   - exactly one stage is shown at a time, and a tab click or an arrow key moves it
+ *   - the Autonomous toggle's state is its own aria-pressed, off at rest
+ *   - nothing on the front page runs an animation-frame loop (RESTATED 2026-09-22: the spinning
+ *     wireframe mesh, and the two tests that proved it drew, went with the calm redesign; the
+ *     property that replaces them is that no stage draws on a loop at all)
  *
  * It pins no call spelling and no argument list. §2 of the working rules: eight guards in one
  * session went red because the code under them improved, every one of them pinned to an
@@ -60,7 +63,7 @@ function clientScript() {
   const blocks = [...BODY.matchAll(/<script(?![^>]*\bis:inline\b)[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
   const hit = blocks.find((b) => /data-demo/.test(b));
   assert.ok(hit, 'index.astro has no client <script> that reaches the capability stages');
-  assert.ok(hit.trim().length > 400, 'the extracted script is too small to be the four stages');
+  assert.ok(hit.trim().length > 400, 'the extracted script is too small to be the three stages and their tabs');
   return hit;
 }
 
@@ -101,6 +104,10 @@ class El {
   }
 
   getAttribute(name) { return this.attrs.has(name) ? this.attrs.get(name) : null; }
+  get id() { return this.getAttribute('id') ?? ''; }
+  removeAttribute(name) { this.attrs.delete(name); }
+  hasAttribute(name) { return this.attrs.has(name); }
+  focus() { this.focused = true; }
   setAttribute(name, value) { this.attrs.set(name, String(value)); if (name === 'class') { this._classes.clear(); for (const c of String(value).split(/\s+/).filter(Boolean)) this._classes.add(c); } }
   addEventListener(type, fn) { if (!this.listeners.has(type)) this.listeners.set(type, []); this.listeners.get(type).push(fn); }
   dispatch(type, event = {}) { for (const fn of this.listeners.get(type) ?? []) fn(event); }
@@ -138,31 +145,18 @@ class El {
   querySelector(selector) { return this.querySelectorAll(selector)[0] ?? null; }
 }
 
-class HTMLCanvasElement extends El {
-  constructor(attrs = {}) {
-    super('canvas', attrs);
-    this.width = 0;
-    this.height = 0;
-    this.strokes = 0;
-    this.contextRefused = false;
-  }
+/** The page's three stages, their tabs and the Autonomous toggle, as the harness serves them. Kept
+    honest by the last test in this file. */
+function page() {
+  const node = (path, kids) => new El('button', { class: 'rd-node', 'data-path': path, 'data-kids': String(kids), 'aria-pressed': 'false' });
+  const stage = (demo) => new El('div', { class: 'demo-stage', role: 'tabpanel', id: `stage-${demo}`, 'data-demo': demo });
+  const tab = (demo, on) => new El('button', {
+    class: 'stage-tab', role: 'tab', id: `tab-${demo}`, 'aria-controls': `stage-${demo}`,
+    'aria-selected': on ? 'true' : 'false', tabindex: on ? '0' : '-1', 'data-tab': demo,
+  });
+  const tabs = new El('div', { class: 'stage-tabs', role: 'tablist' }).append(tab('tree', true), tab('eye', false), tab('code', false));
 
-  getContext(kind) {
-    if (this.contextRefused || kind !== '2d') return null;
-    const canvas = this;
-    return {
-      canvas,
-      globalAlpha: 1, lineWidth: 1, strokeStyle: '', lineCap: '', lineJoin: '',
-      setTransform() {}, clearRect() {}, beginPath() {}, moveTo() {}, lineTo() {},
-      stroke() { canvas.strokes += 1; },
-    };
-  }
-}
-
-/** The page's four stages, as the harness serves them. Kept honest by the last test in this file. */
-function page({ refuseContext = false, reduced = false, small = false } = {}) {
-  const node = (path, kids, depth) => new El('button', { class: 'rd-node', 'data-path': path, 'data-kids': String(kids), 'aria-pressed': 'false' });
-  const tree = new El('article', { class: 'demo', 'data-demo': 'tree' }).append(
+  const tree = stage('tree').append(
     new El('ul', { class: 'rd-tree' }).append(
       node('Workspace', 2), node('Baseplate', 0), node('SpawnLocation', 1),
       node('ServerScriptService', 1), node('Main', 0), node('ReplicatedStorage', 0),
@@ -173,7 +167,7 @@ function page({ refuseContext = false, reduced = false, small = false } = {}) {
 
   const mark = (id) => new El('button', { class: 'cw-mark', 'data-defect': id });
   const item = (id) => new El('button', { class: 'cw-defect', 'data-defect': id, 'aria-pressed': 'false' });
-  const eye = new El('article', { class: 'demo', 'data-demo': 'eye' }).append(
+  const eye = stage('eye').append(
     new El('div', { class: 'cw-render' }).append(mark('d1'), mark('d2'), mark('d3')),
     new El('ul', { class: 'cw-defects' }).append(item('d1'), item('d2'), item('d3')),
   );
@@ -186,7 +180,7 @@ function page({ refuseContext = false, reduced = false, small = false } = {}) {
   const code = new El('code');
   code.textContent = 'local Players = game:GetService("Players")';
   out.append(code);
-  const lu = new El('article', { class: 'demo', 'data-demo': 'code' }).append(
+  const lu = stage('code').append(
     new El('div', { class: 'lu-asks' }).append(
       ask(0, 'local Players = game:GetService("Players")', false),
       ask(1, 'local store = DataStoreService:GetDataStore("Purchases")', false),
@@ -195,13 +189,10 @@ function page({ refuseContext = false, reduced = false, small = false } = {}) {
     out,
   );
 
-  const canvas = new HTMLCanvasElement({ class: 'gm-canvas' });
-  canvas.contextRefused = refuseContext;
-  const fallback = new El('svg', { class: 'gm-still' });
-  const gm = new El('article', { class: 'demo', 'data-demo': 'cube' }).append(canvas, fallback);
+  const auto = new El('button', { class: 'auto-toggle', 'data-mode': 'autonomous', 'aria-pressed': 'false' });
 
   const root = new El('html');
-  const body = new El('body').append(tree, eye, lu, gm);
+  const body = new El('body').append(new El('div', { class: 'demos' }).append(tabs, tree, eye, lu), auto);
   root.append(body);
 
   const frames = [];
@@ -211,19 +202,20 @@ function page({ refuseContext = false, reduced = false, small = false } = {}) {
     listeners: new Map(),
     querySelector: (s) => root.querySelector(s),
     querySelectorAll: (s) => root.querySelectorAll(s),
+    getElementById: (id) => root.descendants.find((n) => n.getAttribute('id') === id) ?? null,
     addEventListener(type, fn) { if (!this.listeners.has(type)) this.listeners.set(type, []); this.listeners.get(type).push(fn); },
   };
   const errors = [];
   const window = {
     devicePixelRatio: 2,
-    matchMedia: (q) => ({ matches: /reduced-motion/.test(q) ? reduced : small, media: q, addEventListener() {} }),
+    matchMedia: (q) => ({ matches: false, media: q, addEventListener() {} }),
     requestAnimationFrame: (fn) => { frames.push(fn); return frames.length; },
     cancelAnimationFrame: () => {},
     addEventListener() {},
-    getComputedStyle: () => ({ getPropertyValue: () => '#00d492' }),
+    getComputedStyle: () => ({ getPropertyValue: () => '' }),
   };
 
-  return { root, body, tree, eye, lu, gm, canvas, fallback, out, code, document, window, frames, errors, HTMLCanvasElement };
+  return { root, body, tabs, tree, eye, lu, auto, out, code, document, window, frames, errors };
 }
 
 /** Run the real client script against a freshly built page. */
@@ -232,7 +224,7 @@ function run(opts = {}) {
   const sandbox = {
     document: p.document,
     window: p.window,
-    HTMLCanvasElement: p.HTMLCanvasElement,
+    requestAnimationFrame: p.window.requestAnimationFrame,
     getComputedStyle: p.window.getComputedStyle,
     console: { error: (...a) => p.errors.push(a.map(String).join(' ')) },
   };
@@ -247,7 +239,7 @@ function run(opts = {}) {
 test('the harness runs the real script and every stage is wired, so nothing below is vacuous', () => {
   const p = run();
   assert.deepEqual(p.errors, [], 'a stage threw during set-up');
-  for (const hook of ['.rd-node', '.cw-mark', '.cw-defect', '.lu-ask']) {
+  for (const hook of ['.stage-tab', '.rd-node', '.cw-mark', '.cw-defect', '.lu-ask']) {
     const found = p.root.querySelectorAll(hook);
     assert.ok(found.length >= 3, `${hook}: the harness served ${found.length} — there is nothing to press`);
     assert.ok(found.some((el) => el.listeners.size > 0), `${hook} got no listener — the script never reached it`);
@@ -313,69 +305,82 @@ test('the third ask produces the refusal, and it is marked as one', () => {
   assert.equal(p.out.classList.contains('refused'), false);
 });
 
-test('the mesh strokes real lines, and the still frame goes only after one is drawn', () => {
+test('exactly one stage is shown at a time, and a tab click or an arrow key moves it', () => {
   const p = run();
-  assert.ok(p.canvas.strokes >= 12, `the mesh drew ${p.canvas.strokes} lines; a cube with a roof is sixteen edges`);
-  assert.ok(p.canvas.width > 0 && p.canvas.height > 0, 'the canvas was never given a backing size');
-  assert.equal(p.fallback.parent, null, 'the still frame is still in the page after a frame was drawn');
+  const tabs = p.root.querySelectorAll('.stage-tab');
+  const shown = () => ['tree', 'eye', 'code'].filter((d) => !p.root.querySelector(`[data-demo="${d}"]`).hasAttribute('hidden'));
+
+  // The script hides the others on start. Without it all three are visible (the no-JS state).
+  assert.deepEqual(shown(), ['tree'], 'on start, not exactly the selected stage is shown');
+
+  tabs[2].dispatch('click');
+  assert.deepEqual(shown(), ['code'], 'clicking a tab did not show its stage alone');
+  assert.deepEqual(tabs.map((t) => t.getAttribute('aria-selected')), ['false', 'false', 'true']);
+  assert.deepEqual(tabs.map((t) => t.getAttribute('tabindex')), ['-1', '-1', '0'],
+    'the roving tabindex did not follow the selection, so Tab lands on the wrong tab');
+
+  // ArrowRight from the last tab wraps to the first, and focus goes with it.
+  let prevented = false;
+  tabs[2].dispatch('keydown', { key: 'ArrowRight', preventDefault: () => { prevented = true; } });
+  assert.deepEqual(shown(), ['tree'], 'ArrowRight from the last tab did not wrap to the first');
+  assert.ok(prevented, 'the arrow key was not consumed, so the page would also scroll');
+  assert.ok(tabs[0].focused, 'focus did not move with the selection');
+
+  tabs[0].dispatch('keydown', { key: 'ArrowLeft', preventDefault() {} });
+  assert.deepEqual(shown(), ['code'], 'ArrowLeft from the first tab did not wrap to the last');
+
+  // Any other key is left alone.
+  tabs[2].dispatch('keydown', { key: 'a', preventDefault() { throw new Error('consumed an ordinary key'); } });
+  assert.deepEqual(shown(), ['code']);
 });
 
-test('a refused 2D context leaves the still frame in place rather than an empty panel', () => {
-  const p = run({ refuseContext: true });
-  assert.deepEqual(p.errors, [], 'a refused context should be handled, not thrown over');
-  assert.equal(p.canvas.strokes, 0);
-  assert.ok(p.fallback.parent, 'the still frame was removed although nothing was ever drawn');
-});
-
-test('reduced motion and a phone both stop the spin and neither stops the drag', () => {
-  for (const [label, opts] of [['reduced motion', { reduced: true }], ['a phone', { small: true }]]) {
-    const p = run(opts);
-    assert.ok(p.canvas.strokes >= 12, `${label}: the mesh was not drawn at all`);
-    assert.equal(p.frames.length, 0, `${label}: the loop started anyway`);
-
-    // The drag still turns it: a pointerdown then a move repaints, with no loop running.
-    const before = p.canvas.strokes;
-    p.canvas.dispatch('pointerdown', { clientX: 10, clientY: 10, pointerId: 1 });
-    p.canvas.dispatch('pointermove', { clientX: 40, clientY: 18, pointerId: 1 });
-    assert.ok(p.canvas.strokes > before, `${label}: dragging the mesh redrew nothing`);
-  }
-
-  // And with neither, it does run. Without this the two assertions above are satisfied by a mesh
-  // that never spins under any condition, which is a different bug wearing the same green.
+test('the Autonomous toggle is off at rest and its state is its own aria-pressed', () => {
   const p = run();
-  assert.ok(p.frames.length > 0, 'the loop never started on a desktop with motion allowed');
+  assert.equal(p.auto.getAttribute('aria-pressed'), 'false', 'the toggle starts on, so the page is violet at rest');
+  p.auto.dispatch('click');
+  assert.equal(p.auto.getAttribute('aria-pressed'), 'true', 'a press did not turn it on');
+  p.auto.dispatch('click');
+  assert.equal(p.auto.getAttribute('aria-pressed'), 'false', 'a second press did not turn it off again');
 });
 
-test('one stage cannot take the other three down with it', () => {
-  /* ONE STAGE IS MADE TO THROW, NOT MADE TO GIVE UP. The first draft of this test removed the
-     tree's `.rd-log` and asserted the other three still worked — and it passed with the try/catch
-     DELETED, because a missing log is exactly the case the tree's own `if (!log ...) return;`
-     already handles. It was green for a reason that had nothing to do with the property. A stage
-     that declines is not a stage that crashes, and only the second one can take its neighbours
-     with it. So one node's addEventListener throws: a real TypeError, raised inside the first
-     set-up, with the remaining three still to be built. */
+test('nothing on the front page draws on an animation-frame loop, and it ships no canvas', () => {
+  const p = run();
+  assert.equal(p.frames.length, 0, `the page script requested ${p.frames.length} animation frame(s) at start`);
+  for (const t of p.root.querySelectorAll('.stage-tab')) t.dispatch('click');
+  assert.equal(p.frames.length, 0, 'switching stages started an animation-frame loop');
+  assert.doesNotMatch(MARKUP, /<canvas\b/i, 'the landing renders a <canvas> again — the wireframe mesh was removed on purpose');
+  assert.doesNotMatch(clientScript(), /requestAnimationFrame|getContext\(/,
+    'the landing script draws again — the calm redesign has no drawing loop on the front page');
+});
+
+test('one stage cannot take the others down with it', () => {
+  /* ONE STAGE IS MADE TO THROW, NOT MADE TO GIVE UP. A missing element is the case each stage's own
+     `if (!x) return;` already handles, so a test built on one would pass with the try/catch
+     deleted. So one node's addEventListener throws: a real TypeError, raised inside the tree's
+     set-up, with the stages after it still to be built. */
   const p = page();
   const hostile = p.root.querySelector('.rd-node');
   hostile.addEventListener = () => { throw new TypeError('hostile node'); };
   const sandbox = {
-    document: p.document, window: p.window, HTMLCanvasElement: p.HTMLCanvasElement,
+    document: p.document, window: p.window, requestAnimationFrame: p.window.requestAnimationFrame,
     getComputedStyle: p.window.getComputedStyle,
     console: { error: (...a) => p.errors.push(a.map(String).join(' ')) },
   };
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
-  // The throw must not escape the module. Asserted rather than merely performed, so that the red
-  // says what went wrong instead of printing a bare TypeError from inside a vm.
   assert.doesNotThrow(
     () => vm.runInContext(clientScript(), sandbox, { filename: 'index.astro:client' }),
-    'a throw inside one stage escaped the whole script, so the other three were never built',
+    'a throw inside one stage escaped the whole script, so the others were never built',
   );
 
   assert.equal(p.errors.length, 1, 'the throw was not caught and reported');
   const asks = p.root.querySelectorAll('.lu-ask');
   asks[2].dispatch('click');
   assert.equal(p.out.classList.contains('refused'), true, 'the Luau stage died with the tree stage');
-  assert.ok(p.canvas.strokes >= 12, 'the mesh died with the tree stage');
+  p.auto.dispatch('click');
+  assert.equal(p.auto.getAttribute('aria-pressed'), 'true', 'the Autonomous toggle died with the tree stage');
+  p.root.querySelectorAll('.stage-tab')[1].dispatch('click');
+  assert.equal(p.root.querySelector('[data-demo="eye"]').hasAttribute('hidden'), false, 'the tabs died with the tree stage');
 });
 
 test('every hook this harness serves is a hook the page actually renders', () => {
@@ -385,7 +390,7 @@ test('every hook this harness serves is a hook the page actually renders', () =>
     'rd-node', 'rd-log', 'rd-gate', 'rd-tree',
     'cw-mark', 'cw-defect', 'cw-render', 'cw-defects',
     'lu-ask', 'lu-asks', 'lu-out',
-    'gm-canvas', 'gm-still',
+    'stage-tab', 'stage-tabs', 'demo-stage', 'auto-toggle',
   ];
   for (const hook of hooks) {
     assert.ok(
@@ -393,11 +398,13 @@ test('every hook this harness serves is a hook the page actually renders', () =>
       `the harness serves .${hook} and index.astro renders no such element — this file is checking a page that does not exist`,
     );
   }
-  for (const demo of ['tree', 'eye', 'code', 'cube']) {
-    assert.ok(MARKUP.includes(`c.demo === '${demo}'`), `the page renders no stage for data-demo="${demo}"`);
+  for (const demo of ['tree', 'eye', 'code']) {
+    assert.ok(MARKUP.includes(`s.demo === '${demo}'`) && SOURCE.includes(`demo: '${demo}'`),
+      `the page renders no stage for data-demo="${demo}"`);
   }
+  assert.match(MARKUP, /data-mode="autonomous"/, 'the page renders no Autonomous toggle for the script to find');
   // The attributes the script reads off the markup rather than off its own constants.
-  for (const attr of ['data-path', 'data-kids', 'data-defect', 'data-lines', 'data-refused']) {
+  for (const attr of ['data-path', 'data-kids', 'data-defect', 'data-lines', 'data-refused', 'aria-controls', 'aria-selected']) {
     assert.ok(MARKUP.includes(attr), `the page writes no ${attr}, so the script reads nothing`);
   }
 });

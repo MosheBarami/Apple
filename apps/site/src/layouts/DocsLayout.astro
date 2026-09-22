@@ -1,6 +1,7 @@
 ---
-import { PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
+import { MODE_INFO, PRODUCT_MODES } from '@golem/shared';
 import Base from './Base.astro';
+import { STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 
 interface Props {
   title: string;
@@ -15,7 +16,7 @@ const { title, description, heading } = Astro.props;
 // not adding it here ships an orphan — which is what happened to /docs/connect,
 // /docs/updating, /docs/troubleshooting and /docs/build-from-source.
 const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
-  PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m].name),
+  PRODUCT_MODES.map((m) => MODE_INFO[m].name),
 );
 
 const sections = [
@@ -24,14 +25,14 @@ const sections = [
     links: [
       { href: '/docs', label: 'Overview' },
       { href: '/docs/getting-started', label: 'Getting started' },
-      { href: '/docs/plugin', label: 'Install the plugin' },
+      { href: '/docs/plugin', label: STUDIO_PLUGIN_STORE_LIVE ? 'Install the plugin' : 'Plugin availability' },
       { href: '/docs/connect', label: 'Connect a project' },
     ],
   },
   {
     label: 'Using Apple',
     links: [
-      { href: '/docs/modes', label: `Models: ${modeNames}` },
+      { href: '/docs/modes', label: `Modes: ${modeNames}` },
       { href: '/docs/credits-and-limits', label: 'Credits & limits' },
       { href: '/docs/billing', label: 'Billing & payments' },
     ],
@@ -153,18 +154,23 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
 
   .docs__search input {
     width: 100%;
-    padding: 0.5rem 0.7rem;
+    min-height: 36px;
+    padding: 0 12px;
     font: inherit;
-    font-size: 0.88rem;
+    font-size: 14px;
     color: var(--ink);
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: var(--r-md);
+    border-radius: var(--r-sm);
+    transition: border-color var(--t-fast) var(--ease-out);
   }
 
-  .docs__search input:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
+  .docs__search input::placeholder {
+    color: var(--faint);
+  }
+
+  .docs__search input:hover {
+    border-color: var(--line-strong);
   }
 
   .docs__searchcount {
@@ -201,7 +207,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
   }
 
   .docs__results :global(a:hover) {
-    border-color: var(--accent);
+    border-color: var(--line-strong);
     text-decoration: none;
   }
 
@@ -228,10 +234,13 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
   }
 
   .docs__grouplabel {
-    font-size: 0.63rem;
-    letter-spacing: 0.16em;
+    margin: 0 0 8px;
+    color: var(--faint);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    margin: 0 0 0.55rem;
   }
 
   .docs__group ul {
@@ -240,30 +249,32 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     padding: 0;
     display: grid;
     gap: 0.1rem;
-    border-left: 1px solid var(--line);
+    border-left: 0;
   }
 
   .docs__group a {
     display: block;
     color: var(--muted);
-    font-size: 0.9rem;
-    padding: 0.35rem 0.85rem;
-    border-left: 2px solid transparent;
-    margin-left: -1px;
+    font-size: 14px;
+    padding: 6px 10px;
+    border-radius: var(--r-xs);
+    margin-left: 0;
     text-decoration: none;
-    transition: color var(--dur-fast) var(--ease-out),
-      border-color var(--dur-fast) var(--ease-out);
+    transition:
+      color var(--t-fast) var(--ease-out),
+      background-color var(--t-fast) var(--ease-out);
   }
 
   .docs__group a:hover {
     color: var(--ink);
+    background: var(--control-fill);
     text-decoration: none;
   }
 
+  /* The current page is an ordinary active state: the restrained blue. */
   .docs__group a[aria-current='page'] {
-    color: var(--accent);
-    border-left-color: var(--accent);
-    font-weight: 550;
+    color: var(--ink);
+    background: var(--accent-soft);
   }
 
   .docs__main {
@@ -271,17 +282,17 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     min-width: 0;
   }
 
+  /* The title is `.carved`, at the size every document route shares. */
   .docs__main h1 {
-    font-size: clamp(2.1rem, 5vw, 3.2rem);
-    margin-bottom: 1.5rem;
+    margin-bottom: 28px;
   }
 
   /* ---- prose ---- */
   .prose :global(h2) {
-    font-size: clamp(1.35rem, 2.4vw, 1.7rem);
-    margin-top: 2.75rem;
-    padding-top: 1.6rem;
-    border-top: 1px solid var(--line);
+    font-size: 1.375rem;
+    margin-top: 48px;
+    padding-top: 28px;
+    border-top: 1px solid var(--hairline);
   }
 
   .prose :global(h2:first-child) {
@@ -320,38 +331,37 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
   }
 
   .prose :global(li::marker) {
-    color: var(--accent);
+    color: var(--faint);
   }
 
-  .prose :global(a) {
+  .prose :global(a:not(.btn)) {
     text-decoration: underline;
-    text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    text-decoration-color: var(--faint);
+    text-underline-offset: 0.17em;
   }
 
   .prose :global(.callout) {
     background: var(--surface);
     border: 1px solid var(--line);
-    border-left: 2px solid var(--accent);
-    border-radius: 0 var(--r-md) var(--r-md) 0;
-    padding: 1rem 1.25rem;
-    margin: 1.5rem 0;
-    box-shadow: var(--lift-1);
+    border-radius: var(--r-lg);
+    padding: 16px 20px;
+    margin: 24px 0;
   }
 
   .prose :global(.callout p) {
     margin: 0;
-    color: var(--ink);
-    font-size: 0.94rem;
+    color: var(--ink-2);
+    font-size: 15px;
   }
 
   .prose :global(.callout--violet) {
-    border-left-color: var(--acc-rune);
+    border-color: var(--line);
   }
 
   .docs__foot {
-    margin-top: 4rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--hairline);
     color: var(--faint);
     font-size: 0.88rem;
   }
@@ -370,8 +380,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     .docs__nav {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: var(--r-md);
-      box-shadow: var(--lift-1);
+      border-radius: var(--r-lg);
       overflow: hidden;
     }
 
@@ -381,8 +390,8 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
       justify-content: space-between;
       gap: 1rem;
       cursor: pointer;
-      font-weight: 570;
-      font-size: 0.94rem;
+      font-weight: 500;
+      font-size: 15px;
       padding: 0.85rem 1.1rem;
       list-style: none;
       color: var(--ink);
@@ -395,10 +404,10 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     .docs__chev {
       width: 9px;
       height: 9px;
-      border-right: 1.5px solid var(--accent);
-      border-bottom: 1.5px solid var(--accent);
+      border-right: 1.5px solid var(--muted);
+      border-bottom: 1.5px solid var(--muted);
       transform: rotate(45deg) translateY(-2px);
-      transition: transform var(--dur) var(--ease-out);
+      transition: transform var(--t-base) var(--ease-out);
       flex: none;
     }
 

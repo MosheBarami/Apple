@@ -1,0 +1,373 @@
+/*
+ * APPLE — THE ONE VISUAL SYSTEM FOR THE PUBLIC SITE.
+ *
+ * This is the site's single token source and its shared base. Both layouts import it FIRST;
+ * landing.css (the front page) and global.css (every other route) come after it and add
+ * structure only. No other sheet declares a colour, type, radius or motion token, which is what
+ * lets this file stay free of `!important`: nothing downstream fights it, so nothing here has to
+ * shout. The one exception is the reduced-motion block at the end, which must beat any
+ * component's own transition regardless of where that component's styles land in the bundle.
+ *
+ * THE VALUES ARE THE AUTHENTICATED APP'S. apps/web/src/design/apple-minimal.css is the reference:
+ * paper #000, surfaces #0a0a0a / #111217 / #181a22, ink #fafafa, muted #a6a6a6, line #2e2e2e,
+ * blue #5b7cfa for ordinary active state, violet #8b5cf6 for Autonomous and nothing else, radii
+ * 8 / 10 / 12 / 16 / 24. A visitor who signs up should not be able to tell where the marketing
+ * site ends and the product begins.
+ *
+ * ONE DELIBERATE DIFFERENCE: --faint. The app's #70737d (dark) and #818791 (light) measure below
+ * 4.5:1 on its own raised surfaces, and on this site --faint carries real text — eyebrows,
+ * captions, metadata. It is raised here to the lowest value that clears 4.5:1 on EVERY surface
+ * in its theme while staying below --muted, so the three-step ink ramp still descends.
+ * apps/site/tests/contrast.test.mjs derives every text-token x surface pair from this file, in
+ * both themes, and fails below 4.5:1.
+ */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  /* The browser's address-bar band. The layouts read it off :root and write it into
+     <meta name="theme-color">, so it is always the page's own ground. */
+  --theme-color: #000000;
+
+  --paper: #000000;
+  --paper-2: #05070b;
+  --surface: #0a0a0a;
+  --surface-2: #111217;
+  --surface-3: #181a22;
+
+  --ink: #fafafa;
+  --ink-2: #d4d4d8;
+  --muted: #a6a6a6;
+  --faint: #8a8d96;
+
+  --line: #2e2e2e;
+  --line-strong: #3b3d46;
+  --hairline: #1a1b1f;
+  --control-fill: rgba(255, 255, 255, 0.035);
+  --control-line: rgba(255, 255, 255, 0.11);
+
+  /* Blue: the ordinary active state — focus, the current page, a selected control. */
+  --accent: #5b7cfa;
+  --accent-ink: #8ca4ff;
+  --accent-soft: rgba(91, 124, 250, 0.1);
+  --accent-ring: rgba(91, 124, 250, 0.32);
+
+  /* Violet: Autonomous, when it is ON. Nothing else on the site may spend these. */
+  --autonomous: #8b5cf6;
+  --autonomous-ink: #b49aff;
+  --autonomous-soft: rgba(139, 92, 246, 0.13);
+  --autonomous-ring: rgba(139, 92, 246, 0.38);
+
+  /* Status, for a state a reader must act on. Never decoration. */
+  --good: #7cc49a;
+  --warn: #e6a95a;
+  --bad: #e98b83;
+
+  /* The primary action is ink on paper, like the app's send button. */
+  --primary: #fafafa;
+  --primary-hover: #d4d4d8;
+  --on-primary: #000000;
+
+  --shadow-pop: 0 18px 52px rgba(0, 0, 0, 0.34);
+  --shadow-modal: 0 28px 88px rgba(0, 0, 0, 0.48);
+  --glass: rgba(0, 0, 0, 0.72);
+  --composer-fill: rgba(10, 10, 10, 0.82);
+  --composer-line: rgba(46, 46, 46, 0.6);
+  --composer-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --theme-color: #f6f7fa;
+
+  --paper: #f6f7fa;
+  --paper-2: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #f5f6f9;
+  --surface-3: #eceff4;
+
+  --ink: #101217;
+  --ink-2: #33363d;
+  --muted: #5d626d;
+  --faint: #646973;
+
+  --line: #d9dce3;
+  --line-strong: #c7cbd4;
+  --hairline: #e4e7ed;
+  --control-fill: rgba(16, 18, 23, 0.035);
+  --control-line: rgba(16, 18, 23, 0.1);
+
+  --accent: #4568e8;
+  --accent-ink: #3155d4;
+  --accent-soft: rgba(69, 104, 232, 0.09);
+  --accent-ring: rgba(69, 104, 232, 0.25);
+
+  --autonomous: #7550de;
+  --autonomous-ink: #6845ce;
+  --autonomous-soft: rgba(117, 80, 222, 0.1);
+  --autonomous-ring: rgba(117, 80, 222, 0.26);
+
+  --good: #23724a;
+  --warn: #8a5a13;
+  --bad: #b3372d;
+
+  --primary: #101217;
+  --primary-hover: #33363d;
+  --on-primary: #ffffff;
+
+  --shadow-pop: 0 16px 44px rgba(31, 41, 55, 0.11);
+  --shadow-modal: 0 28px 70px rgba(31, 41, 55, 0.16);
+  --glass: rgba(246, 247, 250, 0.78);
+  --composer-fill: rgba(255, 255, 255, 0.88);
+  --composer-line: rgba(190, 194, 203, 0.7);
+  --composer-shadow: 0 25px 50px -12px rgba(31, 41, 55, 0.18), 0 0 0 1px rgba(16, 18, 23, 0.02);
+}
+
+/* Theme-independent tokens. */
+:root {
+  --font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  --font-sans: var(--font-body);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --r-xs: 8px;
+  --r-sm: 10px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  --t-fast: 120ms;
+  --t-base: 200ms;
+  --t-slow: 420ms;
+  --ease-out: cubic-bezier(0.22, 0.68, 0.24, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --content: 1120px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --nav-h: 64px;
+  --reveal-delay: 0ms;
+}
+
+/* ------------------------------------------------------------------ base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--paper);
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--nav-h) + 16px);
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+p,
+li,
+dd,
+dt,
+figcaption,
+blockquote {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+::selection {
+  background: var(--accent-ring);
+  color: var(--ink);
+}
+
+/* ONE FOCUS RING, EVERYWHERE: 2px of the accent at a 4px offset (docs/DESIGN-LOCK.md, rule 6).
+   `:where()` keeps it at zero specificity so a component can move the ring to a better box — the
+   landing composer does — without having to out-shout it. Nothing may remove it. */
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* ------------------------------------------------------------------ primitives shared by both layouts */
+
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 12px;
+  left: 12px;
+  padding: 8px 12px;
+  border-radius: var(--r-xs);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 13px;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wrap,
+.shell {
+  width: min(var(--content), calc(100% - var(--gutter) * 2));
+  margin-inline: auto;
+}
+
+.eyebrow,
+.micro {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+/* Buttons: small and precise. 36px tall, one radius, one hairline. The primary is ink-filled
+   like the app's send control; the accent never fills a button — it marks state. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out);
+}
+
+.btn:hover {
+  border-color: var(--line-strong);
+  background: var(--control-fill);
+}
+
+.btn:active {
+  background: var(--surface-2);
+}
+
+.btn-primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.btn-primary:hover {
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
+}
+
+.btn-primary:active {
+  background: var(--primary-hover);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.btn-ghost:hover {
+  border-color: transparent;
+  color: var(--ink);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  border-color: var(--line);
+  background: transparent;
+}
+
+/* ------------------------------------------------------------------ Autonomous */
+
+/* The single place violet is spent: an Autonomous control while it is ON. Off, it is an ordinary
+   quiet control. */
+[data-mode='autonomous'][aria-pressed='true'] {
+  border-color: var(--autonomous-ring);
+  background: var(--autonomous-soft);
+  color: var(--autonomous-ink);
+}
+
+/* ------------------------------------------------------------------ reduced motion */
+
+/* OFF, not reduced (DESIGN-LOCK, Motion). `!important` is required here and only here: this rule
+   must win over every component's own transition and animation, and a component's scoped style
+   can land after this sheet in the bundle. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

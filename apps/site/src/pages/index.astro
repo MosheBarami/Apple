@@ -1,162 +1,57 @@
 ---
 import Landing from '../layouts/Landing.astro';
-import AppleMark from '../components/AppleMark.astro';
-import { PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
-import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_STORE_REFUSAL } from '../lib/studio-plugin';
-import Horizon from '../components/Horizon.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
 import ConsentProof from '../components/ConsentProof.astro';
-/* The one piece of MODEL OUTPUT on this page. Everything in "What it is good at" above it is drawn
-   by this site; this band is a screen the deployed model built, shipped byte-identical from
-   docs/evidence, and the door to the other fifteen and the six maps at /showcase. Its own header
-   carries the reasons. */
+/* The one piece of MODEL OUTPUT on this page: a screen the deployed model built, shipped
+   byte-identical from docs/evidence. Its own header carries the reasons. */
 import BuiltScreen from '../components/BuiltScreen.astro';
+import {
+  PLAN_COPY,
+  PLAN_IDS,
+  PRODUCT_MODELS,
+  PRODUCT_MODEL_INFO,
+  PRODUCT_MODES,
+  PRODUCT_MODE_INFO,
+  canUseProductModel,
+} from '@golem/shared';
+import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
+import { paidPlansOnSale } from '../lib/billing-probe';
 
 /*
- * RESTRUCTURED 2026-09-20 AGAINST THE ROSEBUD MEASUREMENT.
+ * THE FRONT PAGE, REBUILT TO THE FINAL DIRECTION (2026-09-22).
  *
- * The owner named rosebud.ai as the bar and said to follow it closely in our own green, keeping our
- * typeface, and to replace the current visual language wherever the two disagree without asking.
- * The measurement is not a memory of the page: packages/corpus/data/ui-references/web-landing.json
- * carries sixteen claims under the id "rosebud-ai-design-language", taken by walking the live DOM
- * with getComputedStyle, and nineteen rules derived from those and the four earlier references.
- * Every structural decision below cites one of them.
+ * Near-black and matte, one type family, hairlines instead of shadows, blue only for an ordinary
+ * active state and violet only while Autonomous is on. Every section is the same three things in
+ * the same order: a title, one muted line, then the thing itself. The header and footer are the
+ * shared components every other route renders, so the site has one header design.
  *
- * WHAT THIS FILE OWNS AND WHAT IT DOES NOT. It owns markup, classes and the geometry of the hero's
- * line art. It defines no CSS: the ramp, the radii, the four control heights, the two transition
- * bands and the accent family all live in landing.css, and this page spends the tokens rather than
- * re-declaring them. Where a new object needs a rule — the model chip, the attachment control, the
- * eyebrow — the class is written as a MODIFIER on a class that already exists (`chip chip-model`,
- * `micro hero-eyebrow`), so the object is styled by the base rule on the day it lands and merely
- * gets better when the sheet names the modifier. An unstyled new class is an invisible object, and
- * this page has shipped one of those before.
+ * WHAT WENT, AND WHY. The glowing custom cursor, the floating sound dock and the spinning
+ * wireframe mesh were decoration: none of them told a reader anything about the product. The
+ * interactive stages that DO say something — the read order, the critique, the Luau refusal —
+ * stay, as one quiet tabbed panel rather than four boxed cards.
  *
- * THE SHAPE, from claims 3, 7, 9, 10, 13 and 14 of that reference:
- *   - a 1024px container behind 32px of gutter, and a short page
- *   - ONE atmosphere layer, fixed, behind everything, at z-index -1 (the sheet makes it fixed; the
- *     container lives inside the hero because that is where its content is authored)
- *   - a hero that is eyebrow, heading, ONE muted line, then the product's own composer as the
- *     focal object — not a picture of a product, the product's own control
- *   - a composer panel at the 8px radius carrying the field, a model chip that names the model
- *     which will answer, an attachment control, and the primary action on the right
- *   - below the fold, every section is a title, one muted line, and then the thing itself
- *
- * WHAT WAS DELIBERATELY NOT TAKEN, which is the harder half and is unchanged from the first pass.
- * Most of the reference's page area is social proof: play counts, hearts, a populated gallery of
- * other people's games. We have none of those. Reproducing the shells with placeholder numbers or
- * stock imagery would make this page a lie in exactly the shape the rest of this repository exists
- * to prevent, so those sections are absent rather than empty. Their typeface is not taken either —
- * the whole interface is monospace, and the owner asked for ours to be kept — and the caution in
- * the reference says why their 32px hero cannot simply be copied into a proportional face.
- *
- * Every claim below is one this repository has evidence for on 2026-09-20 — the consent gate, the
- * refusals, the visual critique, the plan limits — and the install line asks the shared constant
- * rather than asserting anything. The copy is unchanged by this pass. Structure and classes moved;
- * not one sentence did.
+ * Every claim below is one this repository has evidence for; every number is an expression, never
+ * typed (scripts/check-proof-figures.mjs); and the install line asks the shared constant.
  */
 
-const free = PLAN_LIMITS.free;
-
-/* THE MODEL THE COMPOSER NAMES, ASKED RATHER THAN TYPED.
- * Reference claim 13: the most copyable object on the bar is a chip inside the composer that names
- * the model which will answer. Ours already has that object in the product — apps/web's composer
- * renders exactly this chip from PRODUCT_MODEL_INFO — so the landing reads the same constant
- * instead of repeating the word. A chip that names a model by hand is a chip that can disagree
- * with the picker it depicts. */
+/* The composer's chips name the mode and the model that would answer, read from the same
+   constants the app's own composer reads, so the picture cannot disagree with the product. */
+const composerMode = PRODUCT_MODE_INFO.agent.name;
 const composerModel = PRODUCT_MODEL_INFO[PRODUCT_MODELS[0]].name;
 
-/* THE THREE SENTENCES THE HERO'S FIELD SHOWS.
- * They are examples of what a reader would TYPE, which is the only kind of content that can go in
- * that box without becoming a claim. Each one names only capabilities this repository has evidence
- * for on 2026-09-20 — instancing, scripts, checkpoints, the plugin's own write path — so a reader
- * who types the sentence back gets the thing the sentence describes. No counts, no timings, and no
- * "connected": those are assertions about state, and the picture of a product is read as its
- * behaviour.
- * THEY CYCLE, AND THE CYCLE IS THREE STACKED SPANS AND ONE @keyframes — NO SCRIPT HERE.
- * SHORT ON PURPOSE, AND THE LENGTHS ARE MEASURED. Each span is `white-space: nowrap`, because a
- * cross-fading line that rewraps halfway through the fade puts two different wraps on screen at
- * once. So every sentence must hold ONE line inside the width the field has at 375px. Rendered in
- * Chromium at 14/21 with this stack's own metrics, these three measure 166px, 208px and 199px.
- * The first draft of this list was sixty characters a line and was CLIPPED at 285px on every one —
- * the array had not been swapped when the comment above it already claimed it had, and the only
- * reason that is not live right now is that the number came off the rendered page rather than off
- * the source. Re-measure before editing a word of these. */
+/* THE THREE SENTENCES THE EMPTY FIELD CYCLES THROUGH. Examples of what a reader would TYPE — the
+   only content that can sit in that box without becoming a claim. Each is `white-space: nowrap`
+   and must hold ONE line at 320px; re-measure before editing a word. */
 const composerExamples = [
   'Make a twelve-stage obby',
   'Add a shop that saves what I buy',
   'Build a lobby with a round timer',
 ];
 
-/* ---------------------------------------------------------------------------
- * THE SKY STRATA — COMPUTED HERE, ANIMATED IN THE SHEET, DRAWN OVER BY THE CANVAS.
- *
- * The owner's standing instruction is the most keyframes and the most running animations this page
- * has ever carried. The reference he named has ZERO of both, he was shown that measurement, and he
- * decided anyway — so this is not a contradiction to resolve, it is the brief. The way it stays
- * honest against the reference's own rule 17 ("buy the atmosphere with one piece of art direction,
- * not with a stack of layers") is that there is still ONE image here. It simply has a great many
- * moving parts inside it instead of being five mechanisms piled on each other.
- *
- * THAT ONE IMAGE IS A LANDSCAPE, AND THIS FILE DRAWS ONLY THE PART OF IT THE CANVAS DOES NOT.
- * <Horizon /> puts its horizon line at 0.74 of the viewport, paints the glow band on it, the
- * perspective grid below it and a sky of ninety drifting particles above it. So the division is:
- *
- *   the canvas  — the horizon, the floor, the glow, the particles
- *   this file   — the strata (long, near-flat haze bands in the sky) and the ridge on the horizon
- *
- * TWENTY EMBERS WERE WRITTEN HERE AND DELETED BEFORE THEY SHIPPED. They were small drifting dots
- * scattered above and below the fold — which is exactly the canvas's ninety sky particles, drawn a
- * second time in a second technology. Two mechanisms doing one job is the failure rule 17 names,
- * and adding them would have raised the element count while making the picture worse. The strata
- * stayed because the canvas draws no such thing; the embers went because it already does.
- *
- * DENSITY YIELDS TO THE COMPOSER, AND IT YIELDS IN THE DATA RATHER THAN IN A HOPE.
- * apps/web/tests/decoration-yields-to-the-composer.test.mjs records this the hard way: a mesh that
- * was densest directly behind the composer read, correctly, as broken. The hero's content column is
- * about 475px tall and centres in a 900px viewport, so it occupies roughly 24% to 76% of the field
- * and the composer itself sits at 51% to 65%. The strata are therefore NOT evenly spaced: their
- * position is y(t) = 0.38·t + 0.62·t^2.8 across the sky band, which packs them at the top of the
- * frame and opens them out as they descend, and their weight falls as (1 − t)^1.4 on top of that.
- *
- * Measured off the numbers this generator actually emits, as ink per 100px of band:
- *
- *   free sky, above the headline      3.07      adjacent gaps: 12px at the top of the frame
- *   the headline and its one line     0.57
- *   THE COMPOSER                      0.31      adjacent gaps: 66px at the bottom of the band
- *   the foot, down to the horizon     0.41
- *
- * The composer's band is the thinnest of the four and a tenth of the free sky's. That is a property
- * of the curve rather than of an eye, which is the only kind of yielding that survives an edit.
- * --------------------------------------------------------------------------- */
-const STRATA_COUNT = 26;
-const SKY_TOP = -150; // above the top of the frame: a stratum must enter from off-screen
-const SKY_DEPTH = 805; // down to 655, which is just clear of the canvas's horizon at 0.74 × 900
-const round = (n: number) => Math.round(n);
-const strata = Array.from({ length: STRATA_COUNT }, (_, i) => {
-  const t = i / (STRATA_COUNT - 1);
-  const y = SKY_TOP + SKY_DEPTH * (0.38 * t + 0.62 * t ** 2.8);
-  const weight = Number((0.16 + 0.84 * (1 - t) ** 1.4).toFixed(3));
-  const amp = 30 + 90 * (1 - t); // the bow flattens as the band nears the horizon, as haze does
-  const phase = ((i % 5) - 2) * 16;
-  return {
-    i,
-    t: Number(t.toFixed(3)),
-    weight,
-    d: `M-140 ${round(y)} C 300 ${round(y - amp)}, 720 ${round(y + amp * 0.62 + phase)}, 1140 ${round(y - amp * 0.34)} S 1560 ${round(y + amp * 0.26 - phase)}, 1780 ${round(y - amp * 0.12)}`,
-  };
-});
-
-// The activity figure is data, not a pasted blob: the refused line is the point of the whole
-// figure and needs its own element to carry colour, and a string with markup spliced into it is
-// how that ends up unparseable.
-//[[ THE SCORE HAD TWO HOMES AND ONE OF THEM WAS TYPED INTO THE MARKUP.
-//
-//   `6` and `/10` were written directly into the panel as two <span>s, while the activity
-//   transcript below carried "inspect_visually score 6/10 · 3 defects" as its own literal. Two
-//   copies of one number, free to disagree the moment either was edited — and check-proof-figures
-//   caught the markup one, correctly, as a digit a visitor reads that comes from nothing.
-//
-//   It now has one home. The transcript line is composed from it, so the panel and the log cannot
-//   drift, and `defects.length` is the array itself rather than a third copy of "3". ]]
+/* THE CRITIQUE HAS ONE HOME. The score and the defect count are read by the activity figure and by
+   the critique stage from here, so the two cannot drift. `at` is the marker's position on the
+   render as a percentage; one array drives both the marker and the list item. */
 const defects = [
   { id: 'd1', at: [22, 68], text: 'Floor is one flat slab — no material break' },
   { id: 'd2', at: [58, 34], text: 'Two towers share an edge and read as one' },
@@ -165,20 +60,9 @@ const defects = [
 
 const critique = { score: 6, outOf: 10 };
 
+/* The activity figure. Every tool named here is one apps/worker/src/tools.ts registers
+   (tests/site-names-real-tools.test.mjs); the refused line is the point of the figure. */
 const activity = [
-  //[[ `get_project_tree`, NOT `get_tree`. THIS LINE NAMED A TOOL THAT DOES NOT EXIST.
-  //
-  //   `get_tree` is the plugin's wire op — what apps/worker/src/tools.ts sends down the socket for
-  //   the tool called `get_project_tree` (`studioOps: ['get_tree']`). No tool is registered under
-  //   it, the workspace activity log cannot print it, and no user has ever seen it. The other six
-  //   lines of this figure name real tools, which is precisely why it survived: five correct names
-  //   and one internal protocol verb look identical to anyone not holding the registry open.
-  //
-  //   The column is unchanged. `get_tree` was padded to seventeen characters and
-  //   `get_project_tree` is sixteen plus its single space, so the second column does not move.
-  //
-  //   tests/site-names-real-tools.test.mjs now compares every tool-shaped word on every built page
-  //   against the names the worker advertises, so the next one is caught the day it is written.
   { text: 'get_project_tree game.Workspace           ok' },
   { text: 'create_instances 4 parts                  refused', refused: true },
   { text: '  writes require explicit edit consent', refused: true },
@@ -188,52 +72,31 @@ const activity = [
   { text: `inspect_visually score ${critique.score}/${critique.outOf} · ${defects.length} defects   ok` },
 ];
 
-/* ---------------------------------------------------------------------------
- * THE FOUR CAPABILITIES, EACH WITH A SMALL WORKING THING RATHER THAN A PARAGRAPH.
- *
- * WHAT WAS HERE AND WHY IT WENT. Four `.card`s: a 16:9 tile holding one 40px line drawing at
- * --faint, then a title, then a muted sentence. Every claim on the page's most product-specific
- * section was a sentence asking to be believed, and the tile above it was an empty grey rectangle
- * with an icon in the middle of it. The owner's instruction is quoted in the ledger and is not
- * ambiguous: "Stop presenting major capabilities as plain text cards. Every important feature
- * should receive a small interactive experience of its own."
- *
- * SO EACH ONE IS NOW AN OBJECT YOU OPERATE, and `glyph` is gone because there is no glyph left.
- * The titles and the bodies below are UNCHANGED, to the character. Only what sits above them
- * moved. The copy on this page has been fought over and passed scripts/check-copy.mjs; a
- * restructure that also rewrites the sentences is two changes wearing one commit message.
- *
- * WHAT EACH STAGE IS ALLOWED TO CLAIM. This is the whole difficulty of the section and it is why
- * the heads exist. A widget on a marketing page is read as the product's behaviour — the status
- * dot that used to sit in the composer is the precedent, and it was removed for exactly that. So:
- *
- *   tree  — the ORDER OF OPERATIONS, driven by the reader. Reading a node prints the read; the
- *           write gate stays shut until three are read. That order is real: apps/worker walks the
- *           tree and takes a checkpoint before a write, and the gate here is that rule, not a
- *           connection to anybody's Studio.
- *   eye   — the SHAPE OF THE CRITIQUE. A score out of ten and named defects, which is what
- *           inspect_visually returns. The scene is drawn here and the three defects are written
- *           here; neither is a live render, and the head says the stage is a sample.
- *   code  — the SHAPE OF THE OUTPUT AND OF THE REFUSAL. Two asks produce Luau, the third produces
- *           the refusal by name. The refusal is the point of the stage and is the one thing on it
- *           that is quoted from the plugin rather than composed for the page.
- *   cube  — A MESH YOU CAN TURN. It is authored here. It does not claim to have been generated,
- *           and the head calls it a sample so that nothing else has to.
- *
- * `demo` is the hook the script in this file switches on. `stage` is the label above each one.
- * --------------------------------------------------------------------------- */
+/* The four capabilities. The titles and bodies are the page's long-standing copy. */
 const capabilities = [
-  { title: 'Reads before it writes', body: 'It walks your instance tree and scripts first, then proposes the change — and takes a checkpoint before touching anything.', demo: 'tree', stage: 'Try it · read order' },
-  { title: 'Checks its own work', body: 'It renders the scene from inside Studio and scores the picture against a visual gate, with named defects rather than a verdict.', demo: 'eye', stage: 'Sample critique' },
-  { title: 'Builds in Luau, not pseudocode', body: 'Scripts land in your place through Studio’s own editor APIs, and it refuses to write code that loads assets or calls the network.', demo: 'code', stage: 'Try it · ask for three things' },
-  { title: 'Generates real geometry', body: 'Text-to-3D runs through Roblox’s own generation service, and a descendant scan refuses anything that arrives carrying code.', demo: 'cube', stage: 'Sample mesh · drag to turn' },
+  { title: 'Reads before it writes', body: 'It walks your instance tree and scripts first, then proposes the change — and takes a checkpoint before touching anything.' },
+  { title: 'Checks its own work', body: 'It renders the scene from inside Studio and scores the picture against a visual gate, with named defects rather than a verdict.' },
+  { title: 'Builds in Luau, not pseudocode', body: 'Scripts land in your place through Studio’s own editor APIs, and it refuses to write code that loads assets or calls the network.' },
+  { title: 'Generates real geometry', body: 'Text-to-3D runs through Roblox’s own generation service, and a descendant scan refuses anything that arrives carrying code.' },
 ];
 
-/* THE INSTANCE TREE THE FIRST STAGE READS.
- * Four services and the children that make the read meaningful, in the order Studio's own Explorer
- * shows them. `kids` is what the read reports back, so the log line has a fact in it rather than a
- * tick. Nothing here is anybody's place: it is the empty-baseplate shape every new Studio file
- * opens with, which is the one tree a reader of this page can check against their own screen. */
+/* THE THREE STAGES A READER CAN OPERATE, one panel at a time. `demo` is the hook the page script
+   switches on. Each stage is finished in the markup before any script runs, and without scripting
+   all three are shown stacked (the tabs are hidden under .no-js). What each is allowed to claim:
+     tree — the ORDER OF OPERATIONS, driven by the reader: the write gate stays shut until three
+            nodes are read. It is that rule, not a connection to anybody's Studio.
+     eye  — the SHAPE of a critique: a score out of ten and named defects. The scene and the three
+            defects are drawn here, and the head says it is a sample.
+     code — the SHAPE of the output and of the refusal: two asks produce Luau, the third the
+            refusal by name. */
+const stages = [
+  { demo: 'tree', tab: 'Read order', head: 'Try it · read order' },
+  { demo: 'eye', tab: 'Critique', head: 'Sample critique' },
+  { demo: 'code', tab: 'Luau', head: 'Try it · ask for three things' },
+];
+
+/* The instance tree the first stage reads: the empty-baseplate shape every new Studio file opens
+   with, which is the one tree a reader can check against their own screen. */
 const readTree = [
   { path: 'Workspace', kids: 2, depth: 0 },
   { path: 'Baseplate', kids: 0, depth: 1 },
@@ -243,14 +106,7 @@ const readTree = [
   { path: 'ReplicatedStorage', kids: 0, depth: 0 },
 ];
 
-/* THE THREE DEFECTS THE SECOND STAGE NAMES.
- * `at` is the marker's position on the 220x124 render as a percentage, so the marker and the list
- * item cannot drift apart: one array drives both. The wording is the visual gate's own register —
- * a defect names a thing that is wrong, not a grade. */
-
-/* THE THREE ASKS AND WHAT COMES BACK.
- * The first two are Luau. The third is the refusal, and its wording is the plugin's: writes that
- * fetch across the network are refused by name and with a reason. `refused` is what colours it. */
+/* The three asks and what comes back. The first two are Luau; the third is the refusal. */
 const asks = [
   {
     label: 'A leaderstat',
@@ -296,6 +152,27 @@ const asks = [
     ],
   },
 ];
+
+/* MODELS ARE NOT PLANS. Apple and Apple MAX are model choices; Free, Builder, Studio and Enterprise
+   are plans. Which plans include a model is ASKED of canUseProductModel, the function the worker
+   enforces, so this sentence cannot promise a model to a plan that does not get it. */
+const plansFor = (model: (typeof PRODUCT_MODELS)[number]) => {
+  const names = PLAN_IDS.filter((id) => canUseProductModel(model, id)).map((id) => PLAN_COPY[id].name);
+  if (names.length === PLAN_IDS.length) return 'Included with every plan, Free too';
+  if (names.length < 2) return `Included with ${names.join('')}`;
+  return `Included with ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+};
+
+/* WHETHER ANY PAID PLAN CAN BE BOUGHT IS ASKED, NOT TYPED — the same build-time probe, and the
+   same safe fallback, as pages/pricing.astro (read the long note there). The models list says
+   which plans include Apple MAX; without this line a reader concludes they can have it today,
+   while /pricing says no paid plan is on sale. An unreachable probe means "not on sale". */
+const paidOnSale = await paidPlansOnSale();
+const paidOnly = (model: (typeof PRODUCT_MODELS)[number]) => !canUseProductModel(model, 'free');
+
+/* The install line. When the listing is live the shared href IS the store URL, and it leaves the
+   site, so it opens in a new tab without handing Roblox a window reference. */
+const installExternal = STUDIO_PLUGIN_STORE_LIVE;
 ---
 
 <Landing
@@ -304,235 +181,66 @@ const asks = [
 >
   <a href="#main" class="skip-link">Skip to content</a>
 
-  <header class="site-header">
-    <div class="shell">
-      <a href="/" class="wordmark" aria-label="Apple — home"><AppleMark size={22} /><span>Apple</span></a>
-      <nav class="site-nav" aria-label="Primary">
-        <a href="/docs">Docs</a>
-        <a href="/showcase">Showcase</a>
-        <a href="/pricing">Pricing</a>
-      </nav>
-      {/* THE ONE CONTROL THIS PAGE WAS MISSING. Every other route carries a theme toggle in Nav.astro;
-          the landing has its own header and had none, so a reader who chose light elsewhere on the
-          site could not see or change that choice on the front page. It lands on one of the four
-          control heights the reference quantises to (claim 10), like everything beside it. */}
-      <div class="header-actions">
-      {/* SIGN IN WAS NOWHERE ON THIS PAGE, at any width. "Open Apple" does land on the sign-in
-          screen, but nothing said so — a returning customer had to guess. Every other page on
-          this site carries a Sign in; the front door did not.
-          IT SAT IN THE DESTINATIONS ROW UNTIL IT WAS MEASURED ON A PHONE, and there it was not
-          merely cramped, it was unreachable: at 375px `nav.site-nav` ran scrollWidth 395 against
-          clientWidth 343, and this link's own box was x 340->411 — 36px past the right edge, with
-          `scrollbar-width: none` above removing the only hint that the row scrolls at all. The
-          block at the 640px breakpoint predicted "310px ... fits with room to spare"; the
-          measurement says 395, so that arithmetic was wrong rather than outgrown.
-          It moves here because that is what it IS. Docs, Pricing, Changelog and Status are
-          destinations; signing in is an account action, and it belongs beside the other one
-          rather than at the end of a list of pages. Removing it returns 75px (71px box + the 4px
-          gap) to a row that overflowed by 52, which is what makes the four that remain fit. */}
-      <a class="header-signin" href="/app/login">Sign in</a>
-      <button class="pill pill-quiet pill-icon" type="button" data-theme-toggle aria-pressed="true" aria-label="Switch to light theme">
-        <svg class="icon-sun" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
-          <circle cx="12" cy="12" r="4.2" fill="currentColor"></circle>
-          <g stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
-            <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"></path>
-          </g>
-        </svg>
-        <svg class="icon-moon" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
-          <path d="M20 14.4A8.4 8.4 0 0 1 9.6 4a8.4 8.4 0 1 0 10.4 10.4Z" fill="currentColor"></path>
-        </svg>
-      </button>
-      {/* IT SAID "Open Apple" AND POINTED AT /app, WHICH SENDS A STRANGER TO A SIGN-IN FORM.
-          Measured on the deployed landing: the header offered Sign in -> /app/login and
-          Open Apple -> /app, and /app redirects a logged-out browser straight to /app/login. So
-          the green primary button in the first 40px of the front page — the one a first-time
-          visitor is most likely to press — asked them to sign in to an account they do not have,
-          and the words "create an account" appeared nowhere on the page.
-          Every OTHER page on this site already gets this right: Nav.astro carries a ghost Sign in
-          beside a primary "Create an account" -> /app/signup. The landing now matches it. A
-          returning customer is served by the Sign in beside it, which is what that link is for. */}
-      <a class="pill" href="/app/signup">Create an account</a>
-      </div>
-    </div>
-  </header>
+  <Nav />
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
-      {/* THE ATMOSPHERE IS ONE CONTAINER AND IT HOLDS EVERYTHING THAT MOVES ON ITS OWN.
-          Reference claim 3: the bar's entire atmosphere is a single fixed layer at z-index -1,
-          100lvw by 100lvh, with all content above it. Ours is authored here because this is where
-          its geometry is computed, and landing.css is what makes it fixed — a fixed child of the
-          hero covers the viewport for the whole page, which is the shape the claim describes.
-          It is `aria-hidden` because it is decoration: nothing in it is content, and a screen
-          reader that announced twenty-six streamlines would be reading scenery aloud. */}
-      <div class="atmosphere" aria-hidden="true">
-        <div class="light-column"></div>
-        {/* <Horizon /> replaces the flow field that used to sit here. The canvas is ADDITIVE and
-            everything under it is a finished composition without it — the light column and the
-            line art below are what a visitor sees if the script is blocked, throws, or never
-            reaches its element, which is not hypothetical: exactly that shipped to production on
-            this page and every reading of the served HTML said the effect was there. */}
-        <Horizon />
-        <svg class="sky" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
-          {/* Each band carries `--i` (its ordinal) and `--t` (how far down the sky it sits), so the
-              sheet can phase ONE keyframe across all twenty-six with calc() rather than authoring
-              twenty-six rules. The `opacity` attribute is the computed weight and is a presentation
-              attribute on purpose: it is the lowest-priority way to say it, so any rule the sheet
-              writes for `.stratum` wins over it, and the field is still correctly graded on the day
-              before that rule exists. */}
-          <g class="strata">
-            {strata.map((band) => (
-              <path class="stratum" style={`--i:${band.i};--t:${band.t}`} opacity={band.weight} d={band.d} />
-            ))}
-          </g>
-          {/* THE RIDGE, ON THE HORIZON AND NEVER BELOW IT. Every vertex here is between y=578 and
-              y=666, and 666 is 0.74 × 900 — the exact line the canvas draws its glow band on. A
-              ridge whose feet fell below that would be a mountain standing on a perspective floor,
-              which is two incompatible readings of the same ground plane. `.ridge` is the hook
-              landing.css already animates by name; renaming it would leave a live rule pointing at
-              nothing, which is how a stylesheet fills up with rules nobody can delete. */}
-          <path class="ridge" style="--i:0;--t:0.94" d="M-40 666 L180 622 L330 654 L520 616 L700 660 L900 620 L1120 656 L1340 612 L1560 658 L1840 630" />
-          <path class="ridge" style="--i:1;--t:0.97" d="M-40 664 L240 592 L430 648 L640 578 L860 646 L1090 590 L1330 650 L1600 584 L1840 640" />
-        </svg>
-      </div>
-
       <div class="shell hero-inner">
-        {/* THE EYEBROW. Claim 11: labels on the bar are uppercase with positive tracking against a
-            body that is neither, and that is how a page gets a third level of hierarchy without a
-            second typeface — which matters more for us than for them, because we are keeping a
-            proportional face where they have a monospace one. `.micro` is already that object. */}
-        <p class="micro hero-eyebrow">Inside Roblox Studio</p>
+        <p class="eyebrow hero-eyebrow">Inside Roblox Studio</p>
         <h1 id="hero-title" class="display">Build it in the place you already have open.</h1>
         <p class="lead">Describe the game you want. Apple builds it inside your own Roblox Studio place, names every step while it happens, and changes nothing until you say so.</p>
 
-        {/* THE COMPOSER AND THE ROW UNDER IT ARE ONE BLOCK, and the composer is the focal object of
-            the hero rather than a screenshot of one. Splitting the group into siblings with their
-            own margins is how the gaps between the three drifted apart the first time. */}
-        <div class="composer-group">
-          {/*[[ THE COMPOSER IS THE PRODUCT'S OWN CONTROL NOW, NOT A PICTURE OF IT.
-            *
-            *   It carried `aria-hidden="true"` and held three <span>s. The largest object above
-            *   the fold on the front page was a photograph of a text field: a keyboard user could
-            *   not reach it, a screen reader was told nothing was there, and a reader who clicked
-            *   into it to type their idea — which is the single most likely thing anyone does with
-            *   a box that looks like that — got nothing at all.
-            *
-            *   It is a real <form> with a real <textarea> and a real submit, and the submit goes
-            *   where the page's own primary action already goes: /app/signup. What was typed
-            *   travels with it as `?start=`, so the reader's sentence is not thrown away between
-            *   the front door and the first screen inside.
-            *
-            *   NOTHING IN THE APP READS `start` YET, and that is written here rather than left to
-            *   be discovered, because this repository has exactly that scar: `data-cursor` sat on
-            *   three elements for weeks with no renderer, and every reader of those files
-            *   reasonably concluded a cursor system existed. docs/backlog/HANDOFF-HERO-START.md
-            *   names the hop and who has to build it. The page claims nothing about a prefill; it
-            *   says "Create a free account", which is what happens.
-            *
-            *   THE THREE EXAMPLES SURVIVE, as the empty state. They are the same three sentences
-            *   on the same one keyframe with no script; they are now a ghost behind a real field
-            *   and CSS hides them the moment it is focused or holds a character. Deleting them
-            *   would have removed the only moving thing in the foreground of this page. ]]*/}
-          <form class="composer" action="/app/signup" method="get">
-            {/* All three sentences are in the markup, stacked, and the stylesheet fades between
-                them. With motion turned off the cycle does not stop on whichever one happened to
-                be painted — a cancelled animation returns to the declared value, so the stylesheet
-                declares the first line visible and that is the still state. Every line is a
-                finished sentence either way; none of them is a fragment. */}
-            <div class="composer-field">
-              <label class="visually-hidden" for="hero-start">What do you want built in your Roblox Studio place?</label>
-              {/* `placeholder=" "` is a single space and is deliberate: it makes `:placeholder-shown`
-                  true while the field is empty, which is what lets the ghost below be hidden by CSS
-                  alone with no script. A visible placeholder would be a second empty-state message
-                  competing with the three sentences. */}
-              <textarea
-                id="hero-start"
-                name="start"
-                class="composer-input"
-                rows="1"
-                maxlength="280"
-                placeholder=" "
-                autocomplete="off"
-                spellcheck="false"
-              ></textarea>
-              {/* The ghost. aria-hidden because the field above it is the real object and a screen
-                  reader reading three cycling example sentences into a text field is noise. */}
-              <span class="composer-typed" aria-hidden="true">
-                {composerExamples.map((example, i) => (
-                  <span class="composer-line" style={`--turn:${i}`}>{example}</span>
-                ))}
-              </span>
-            </div>
-            <div class="composer-bar">
-              {/* THE MODEL CHIP, WHICH IS THE ONE OBJECT THE REFERENCE SAYS TO COPY OUTRIGHT.
-                  Claim 13: a 32px, 6px-radius chip filled at 12% of the accent, bordered at 38% of
-                  the lighter tint and glowing at 14% — sitting in the composer beside the
-                  attachment control, naming the model that will answer. Ours names it from the
-                  shared constant, so it is the same word the product's own picker shows.
-
-                  THERE IS NO STATUS DOT, AND THAT IS DELIBERATE. What used to sit here was a green
-                  dot and the word "connected", on a page selling a product whose plugin Roblox has
-                  not approved for distribution — the largest, most tappable-looking thing above the
-                  fold on a phone told a reader the product was attached to their Studio before they
-                  had one, and the sub-line two blocks down said the opposite. A reader believes the
-                  picture. The accent is spent on the model's NAME, which is a fact about the
-                  product, and on nothing that could be read as a state. */}
-              <div class="composer-chips">
-                {/* THE ATTACHMENT CONTROL COMES FIRST AND THE MODEL CHIP IS LAST, AND THAT ORDER IS
-                    LOAD-BEARING. landing.css spends the whole accent family on this row through
-                    `.composer-chips .chip:last-child` — the accent fill, the 38% rim, the 14% halo
-                    and the pulse ring are all attached to the LAST chip rather than to a class.
-                    This was written the other way round first, and the measured result was the
-                    accent and its pulse sitting on a paperclip while the model's name stayed grey:
-                    the single most copyable object on the reference, pointed at the wrong control.
-                    The classes below say which is which for the day that selector is re-aimed at
-                    them; until then, do not reorder these two.
-
-                    The attachment control depicts something that exists — apps/web's composer
-                    uploads files onto a message — rather than a control the reference had and we
-                    do not. */}
-                <span class="chip chip-attach">
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="m14.6 8.4-5.1 5.1a1.75 1.75 0 0 0 2.5 2.5l5.2-5.2a3.5 3.5 0 0 0-5-5L6.8 11.2a5.25 5.25 0 0 0 7.4 7.4l4.3-4.3" />
-                  </svg>
-                </span>
-                <span class="chip chip-model">{composerModel}</span>
-              </div>
-              {/* A real submit. It was a <span>, so the most prominent control above the fold was
-                  not a control: not focusable, not pressable by keyboard, and announced as text. */}
-              <button class="composer-send" type="submit">Build</button>
-            </div>
-          </form>
-
-          <div class="hero-foot">
-            <p class="availability">
-              {STUDIO_PLUGIN_STORE_LIVE ? (
-                <>Free to start, no card. <a href={STUDIO_PLUGIN_INSTALL_HREF}>Get the Studio plugin ↗</a></>
-              ) : (
-                <>
-                  Free to start, no card. Chat works now; building inside Studio needs the plugin, and
-                  {STUDIO_PLUGIN_STORE_REFUSAL ? ' Roblox has not approved it for distribution.' : ' public installation is not open yet.'}
-                  {' '}<a href={STUDIO_PLUGIN_INSTALL_HREF}>See the status ↗</a>
-                </>
-              )}
-            </p>
-
-            <div class="hero-actions">
-              <a class="pill" href="/app/signup">Create a free account</a>
-              <a class="pill pill-quiet" href="/docs">Read the docs</a>
-            </div>
+        {/* THE COMPOSER IS THE PRODUCT'S OWN CONTROL, NOT A PICTURE OF ONE: a real <form> with a
+            real <textarea> and a real submit, going where the page's primary action goes. What was
+            typed travels as `?start=`. Nothing in the app reads it yet — docs/backlog/
+            HANDOFF-HERO-START.md names that hop — so the page promises no prefill. The three
+            example sentences are the empty state, a ghost CSS hides the moment the field is
+            focused or holds a character. */}
+        <form class="composer" action="/app/signup" method="get">
+          <div class="composer-field">
+            <label class="visually-hidden" for="hero-start">What do you want built in your Roblox Studio place?</label>
+            {/* `placeholder=" "` makes `:placeholder-shown` true while the field is empty, which is
+                what lets CSS alone hide the ghost below. */}
+            <textarea
+              id="hero-start"
+              name="start"
+              class="composer-input"
+              rows="2"
+              maxlength="280"
+              placeholder=" "
+              autocomplete="off"
+              spellcheck="false"
+            ></textarea>
+            <span class="composer-typed" aria-hidden="true">
+              {/* The first sentence is its own element: it is the one the single pass ends on. */}
+              <span class="composer-line composer-home" style="--turn:0">{composerExamples[0]}</span>
+              {composerExamples.slice(1).map((example, i) => (
+                <span class="composer-line" style={`--turn:${i + 1}`}>{example}</span>
+              ))}
+            </span>
           </div>
-        </div>
+          <div class="composer-bar">
+            <div class="composer-chips">
+              <span class="chip">{composerMode}</span>
+              <span class="chip chip-model">{composerModel}</span>
+            </div>
+            <button class="composer-send" type="submit">Build</button>
+          </div>
+        </form>
+
+        <p class="availability">
+          Free to start, no card.{' '}
+          {installExternal ? (
+            <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">Get Apple Studio from the Creator Store <span aria-hidden="true">↗</span></a>
+          ) : (
+            <a href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</a>
+          )}
+        </p>
       </div>
     </section>
 
-    {/* Every section below the fold is the same three things in the same order — a title, one muted
-        line, then the thing itself — which is the rule the reference repeats without variation at
-        every section of its own page. The consistency is the effect. */}
-
-    {/* PROOF, BEFORE ANY OF THE CLAIMS BELOW IT. Its reasons and every one of its quotes live in
-        components/ConsentProof.astro and data/consent-proof.ts; it is a component rather than markup
-        here because it was written while another lane held this file. */}
+    {/* PROOF, BEFORE ANY OF THE CLAIMS BELOW IT. Its reasons and every quote live in
+        components/ConsentProof.astro and data/consent-proof.ts. */}
     <ConsentProof />
 
     <section class="band" id="inside" aria-labelledby="sequence-title">
@@ -550,20 +258,16 @@ const asks = [
               ))}
             </div>
           </figure>
-          {/* NO [data-reveal] ON `.step`, ON PURPOSE. Each step already carries a native
-              scroll-driven animation — `animation: step-focus; animation-timeline: view()` — and
-              two mechanisms driving one element's opacity is how a section ends up half-lit. The
-              reveal pass that covers the rest of this page deliberately skips these. */}
           <div class="steps">
-            <article class="step">
+            <article class="step" data-reveal>
               <h3>Pair one place</h3>
               <p>A six-character code links Apple to the Studio place you have open. Nothing else in your account is in scope, and the pairing ends when you disconnect.</p>
             </article>
-            <article class="step">
+            <article class="step" data-reveal data-reveal-delay="60">
               <h3>Say what you want</h3>
               <p>Plain language. Apple reads the tree, plans the change, and takes a checkpoint before it writes. Individual writes stay in Studio&rsquo;s own Ctrl+Z history; restoring the checkpoint is the whole-run exit.</p>
             </article>
-            <article class="step">
+            <article class="step" data-reveal data-reveal-delay="120">
               <h3>Look at what it did</h3>
               <p>Every operation is named as it happens, including the ones that were refused. The result is in your place, in Studio, where you can run it.</p>
             </article>
@@ -572,157 +276,163 @@ const asks = [
       </div>
     </section>
 
-    <section class="band" aria-labelledby="cap-title">
+    <section class="band" id="capabilities" aria-labelledby="cap-title">
       <div class="shell">
         <div class="band-head" data-reveal>
           <h2 id="cap-title" class="section-title">What it is good at</h2>
           <p class="section-sub">Four things it does end to end today.</p>
         </div>
-        {/* FOUR OPERABLE OBJECTS, NOT FOUR TILES. The frontmatter above says what each stage is
-            allowed to claim and why the heads exist; this is only the markup.
 
-            THE STAGE IS FINISHED BEFORE THE SCRIPT ARRIVES, in all four cases, and that is the
-            same requirement the reveal pass is held to on this page. With scripting blocked the
-            tree is a tree, the critique shows its score and its three named defects, the code
-            panel shows the first ask's Luau, and the mesh shows the still frame its <noscript>
-            fallback draws. Nothing here starts empty waiting to be filled in — a front page that
-            renders four blank rectangles to a reader whose bundle failed is worse than a front
-            page with no demos at all, and this page has shipped exactly that failure once.
-
-            EVERY CONTROL IS A <button>. Keyboard reaches all of them in source order, the state
-            lives in aria-pressed rather than in a class, and each stage's readout is a live region
-            so the change is announced rather than only drawn. */}
-        <div class="demos">
+        <ul class="capabilities" role="list">
           {capabilities.map((c, i) => (
-            <article class="demo" data-demo={c.demo} data-reveal data-reveal-delay={String(i * 70)}>
-              <div class="demo-stage">
-                <p class="micro demo-head">{c.stage}</p>
+            <li class="capability" data-reveal data-reveal-delay={String(i * 60)}>
+              <h3>{c.title}</h3>
+              <p>{c.body}</p>
+            </li>
+          ))}
+        </ul>
 
-                {c.demo === 'tree' && (
-                  <div class="rd">
-                    <ul class="rd-tree" role="list">
-                      {readTree.map((n) => (
-                        <li class="rd-row" style={`--depth:${n.depth}`}>
-                          <button type="button" class="rd-node" data-path={n.path} data-kids={String(n.kids)} aria-pressed="false">
-                            <span class="rd-dot" aria-hidden="true"></span>{n.path}
-                          </button>
+        {/* ONE PANEL, THREE STAGES. Every control is a <button>; the state lives in aria-pressed or
+            aria-selected rather than a class, and each readout is a live region so a change is
+            announced rather than only drawn. */}
+        <div class="demos" data-reveal>
+          <div class="stage-tabs" role="tablist" aria-label="Three of them, to try">
+            {stages.map((s, i) => (
+              <button
+                type="button"
+                class="stage-tab"
+                role="tab"
+                id={`tab-${s.demo}`}
+                aria-controls={`stage-${s.demo}`}
+                aria-selected={i === 0 ? 'true' : 'false'}
+                tabindex={i === 0 ? '0' : '-1'}
+                data-tab={s.demo}
+              >{s.tab}</button>
+            ))}
+          </div>
+
+          {stages.map((s) => (
+            <div class="demo-stage" role="tabpanel" id={`stage-${s.demo}`} aria-labelledby={`tab-${s.demo}`} data-demo={s.demo}>
+              <p class="micro demo-head">{s.head}</p>
+
+              {s.demo === 'tree' && (
+                <div class="rd">
+                  <ul class="rd-tree" role="list">
+                    {readTree.map((n) => (
+                      <li class="rd-row" style={`--depth:${n.depth}`}>
+                        <button type="button" class="rd-node" data-path={n.path} data-kids={String(n.kids)} aria-pressed="false">
+                          <span class="rd-dot" aria-hidden="true"></span>{n.path}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div class="rd-side">
+                    <p class="rd-log" role="status" aria-live="polite">Read a node. That is the first thing it does.</p>
+                    <p class="rd-gate" data-read="0">0 of 3 read · writes still shut</p>
+                  </div>
+                </div>
+              )}
+
+              {s.demo === 'eye' && (
+                <div class="cw">
+                  <div class="cw-render">
+                    <svg class="cw-scene" viewBox="0 0 220 124" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                      <rect class="cw-floor" x="0" y="74" width="220" height="50" />
+                      <rect class="cw-block" x="36" y="40" width="34" height="34" />
+                      <rect class="cw-block" x="112" y="26" width="26" height="48" />
+                      <rect class="cw-block" x="138" y="34" width="26" height="40" />
+                      <rect class="cw-block" x="176" y="56" width="20" height="18" />
+                      <path class="cw-edge" d="M0 74 H220" />
+                    </svg>
+                    {defects.map((d) => (
+                      <button type="button" class="cw-mark" data-defect={d.id} style={`left:${d.at[0]}%;top:${d.at[1]}%`} aria-label={d.text}></button>
+                    ))}
+                  </div>
+                  <div class="cw-side">
+                    <p class="cw-score"><span class="cw-score-n">{critique.score}</span><span class="cw-score-d">/{critique.outOf}</span></p>
+                    <ul class="cw-defects" role="list">
+                      {defects.map((d) => (
+                        <li>
+                          <button type="button" class="cw-defect" data-defect={d.id} aria-pressed="false">{d.text}</button>
                         </li>
                       ))}
                     </ul>
-                    <div class="rd-side">
-                      <p class="rd-log" role="status" aria-live="polite">Read a node. That is the first thing it does.</p>
-                      <p class="rd-gate" data-read="0">0 of 3 read · writes still shut</p>
-                    </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {c.demo === 'eye' && (
-                  <div class="cw">
-                    <div class="cw-render">
-                      {/* The scene. Flat shapes in the page's own ink at low alpha — a render is
-                          not being imitated, a subject is being given to the three defects so they
-                          have somewhere to point. */}
-                      <svg class="cw-scene" viewBox="0 0 220 124" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-                        <rect class="cw-floor" x="0" y="74" width="220" height="50" />
-                        <rect class="cw-block" x="36" y="40" width="34" height="34" />
-                        <rect class="cw-block" x="112" y="26" width="26" height="48" />
-                        <rect class="cw-block" x="138" y="34" width="26" height="40" />
-                        <rect class="cw-block" x="176" y="56" width="20" height="18" />
-                        <path class="cw-edge" d="M0 74 H220" />
-                      </svg>
-                      {defects.map((d) => (
-                        <button type="button" class="cw-mark" data-defect={d.id} style={`left:${d.at[0]}%;top:${d.at[1]}%`} aria-label={d.text}></button>
-                      ))}
-                    </div>
-                    <div class="cw-side">
-                      <p class="cw-score"><span class="cw-score-n">{critique.score}</span><span class="cw-score-d">/{critique.outOf}</span></p>
-                      <ul class="cw-defects" role="list">
-                        {defects.map((d) => (
-                          <li>
-                            <button type="button" class="cw-defect" data-defect={d.id} aria-pressed="false">{d.text}</button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+              {s.demo === 'code' && (
+                <div class="lu">
+                  <div class="lu-asks" role="group" aria-label="Ask for one of three things">
+                    {asks.map((a, n) => (
+                      <button
+                        type="button"
+                        class="lu-ask"
+                        data-ask={String(n)}
+                        data-lines={a.lines.join('\n')}
+                        data-refused={a.refused ? 'true' : 'false'}
+                        aria-pressed={n === 0 ? 'true' : 'false'}
+                      >{a.label}</button>
+                    ))}
                   </div>
-                )}
-
-                {c.demo === 'code' && (
-                  <div class="lu">
-                    <div class="lu-asks" role="group" aria-label="Ask for one of three things">
-                      {/* THE ANSWER TRAVELS ON THE BUTTON THAT ASKS FOR IT. Both come off one
-                          array in the frontmatter, so the code shown cannot disagree with the
-                          label pressed, and the script holds no copy of either. A newline is legal
-                          inside an HTML attribute value, so the lines need no separator of their
-                          own and nothing has to be un-escaped on the way out. */}
-                      {asks.map((a, n) => (
-                        <button
-                          type="button"
-                          class="lu-ask"
-                          data-ask={String(n)}
-                          data-lines={a.lines.join('\n')}
-                          data-refused={a.refused ? 'true' : 'false'}
-                          aria-pressed={n === 0 ? 'true' : 'false'}
-                        >{a.label}</button>
-                      ))}
-                    </div>
-                    {/* The first ask's answer is in the markup, so the panel is never an empty
-                        box. The script replaces the lines; it does not create them. */}
-                    <pre class="lu-out" role="status" aria-live="polite"><code>{asks[0].lines.join('\n')}</code></pre>
-                  </div>
-                )}
-
-                {c.demo === 'cube' && (
-                  <div class="gm">
-                    {/* `data-cursor` is the one case the tag cannot express: a <canvas> is not a
-                        control, and components/Cursor.astro would otherwise read it as page. The
-                        label is what the cursor says while it is over this. */}
-                    <canvas class="gm-canvas" role="img" data-cursor="drag" data-cursor-label="turn" aria-label="A low-polygon mesh drawn as a wireframe, turning slowly."></canvas>
-                    {/* The still frame. It is real markup rather than a <noscript>, because the
-                        failure this covers is a bundle that loads and throws, which <noscript>
-                        does not cover. The script hides it once the canvas has drawn a frame. */}
-                    <svg class="gm-still" viewBox="-60 -60 120 120" aria-hidden="true">
-                      <g fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round">
-                        <path d="M-34 14 L0 -6 L34 14 L0 34 Z" />
-                        <path d="M-34 -14 L0 -34 L34 -14 L0 6 Z" />
-                        <path d="M-34 -14 V14 M34 -14 V14 M0 6 V34" />
-                      </g>
-                    </svg>
-                  </div>
-                )}
-              </div>
-
-              <div class="demo-body">
-                <h3>{c.title}</h3>
-                <p>{c.body}</p>
-              </div>
-            </article>
+                  <pre class="lu-out" role="status" aria-live="polite"><code>{asks[0].lines.join('\n')}</code></pre>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
     </section>
 
-    {/* AFTER the four demos, not before them: the demos say what it does, and this says what came
-        out. See components/BuiltScreen.astro for why it is a component and why the picture is the
-        evidence file rather than a prettier crop of it. */}
+    {/* AFTER the stages: they say what it does, and this says what came out. */}
     <BuiltScreen />
 
     <section class="band" id="models" aria-labelledby="plans-title">
       <div class="shell">
         <div class="band-head" data-reveal>
-          <h2 id="plans-title" class="section-title">Two ways to work</h2>
-          <p class="section-sub">Apple is free to use today. Paid checkout is not open yet, and the pricing page says so too.</p>
+          <h2 id="plans-title" class="section-title">Two modes, two models</h2>
+          <p class="section-sub">The mode decides what a request may do to your place. The model decides who answers it. Plans and Credits are on the <a href="/pricing">pricing page</a>.</p>
         </div>
-        <div class="model-grid">
-          {PRODUCT_MODELS.map((model, i) => (
-            <article class="model-card" data-reveal data-reveal-delay={String(i * 70)}>
-              <h3>{model === 'apple-max' ? <>Apple <span class="max-name">MAX</span></> : PRODUCT_MODEL_INFO[model].name}</h3>
-              <p>{model === 'apple'
-                ? `The free tier. ${free.creditsPerDay.toLocaleString()} Credits a day, up to ${free.creditsPerMonth.toLocaleString()} a month — you have whichever is lower at the time.`
-                : PRODUCT_MODEL_INFO[model].blurb}</p>
-              <p class="micro">{model === 'apple' ? 'Free · no card' : 'Planned · not purchasable'}</p>
-            </article>
-          ))}
+
+        <div class="choices">
+          <div class="choice-group" data-reveal>
+            <h3 class="micro choice-label">Modes</h3>
+            <ul class="mode-list" role="list">
+              {PRODUCT_MODES.map((mode) => (
+                <li class="mode-row">
+                  <p class="mode-name">{PRODUCT_MODE_INFO[mode].name}</p>
+                  <p class="mode-blurb">{PRODUCT_MODE_INFO[mode].blurb}</p>
+                </li>
+              ))}
+            </ul>
+            {/* AUTONOMOUS IS A TOGGLE ON AGENT, NOT A THIRD MODE, and this is the one place the
+                site shows it. It is a real control with a real state: violet only while it is on,
+                exactly as the app draws it. It changes nothing but its own picture — the sentence
+                beside it says what the real one does. */}
+            <div class="auto-row">
+              <button type="button" class="auto-toggle" data-mode="autonomous" aria-pressed="false">
+                <span class="auto-switch" aria-hidden="true"></span>
+                <span>Autonomous</span>
+              </button>
+              <p class="auto-note">A toggle on {PRODUCT_MODE_INFO.agent.name}, not a third mode. While it is on, {PRODUCT_MODE_INFO.agent.name} keeps choosing its own next step until the task is done or you stop it.</p>
+            </div>
+          </div>
+
+          <div class="choice-group" data-reveal data-reveal-delay="80">
+            <h3 class="micro choice-label">Models</h3>
+            <ul class="model-grid" role="list">
+              {PRODUCT_MODELS.map((model) => (
+                <li class="model-card">
+                  <p class="model-name">{model === 'apple-max' ? <>Apple <span class="max-name">MAX</span></> : PRODUCT_MODEL_INFO[model].name}</p>
+                  <p class="model-blurb">{PRODUCT_MODEL_INFO[model].blurb}</p>
+                  <p class="micro model-plans">{plansFor(model)}</p>
+                  {paidOnly(model) && !paidOnSale && (
+                    <p class="model-sale">No paid plan is on sale yet; see <a href="/pricing">pricing</a>.</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </section>
@@ -730,108 +440,78 @@ const asks = [
     <section class="closing" data-reveal>
       <div class="shell">
         <h2 class="statement">Start with one place and one idea.</h2>
-        <a class="pill" href="/app/signup">Create a free account</a>
+        <a class="btn btn-primary btn-closing" href="/app/signup">Create a free account</a>
       </div>
     </section>
   </main>
 
-  <footer class="site-footer">
-    <div class="shell">
-      <div class="footer-grid">
-        <div class="footer-col">
-          <a class="wordmark" href="/"><AppleMark size={20} /><span>Apple</span></a>
-          <p class="footer-note">Independent from Roblox Corporation. Apple can get things wrong — review and test what it changed before you publish.</p>
-        </div>
-        <div class="footer-col">
-          <h3>Product</h3>
-          {/*[[ THE SHOWCASE IS LINKED HERE AND NOT IN THE HEADER, AND THE REASON IS A MEASUREMENT
-            *   IN landing.css RATHER THAN A PREFERENCE.
-            *
-            *   `/showcase` is sixteen Roblox screens and six playable maps the deployed model built
-            *   out of the product's own library. Every other page on this site reaches it from the
-            *   shared Nav.astro; this page has its own header, so without a link here the front
-            *   door — the one place a fifteen-year-old actually arrives — offered no way to it.
-            *
-            *   It is NOT in `.site-nav` because that row is already full. landing.css records the
-            *   arithmetic: at 375px the four links run 56 + 76 + 105 + 71 = 308 and three gaps take
-            *   it to 320 against 343 available, and at 360px the same row is 282 against 288 with
-            *   the padding already halved to 4px. "SHOWCASE" is eight characters at 12px/700/+1.2px
-            *   uppercase — about 82px with its padding — so adding it there does not shave the
-            *   margin, it overruns the row on every phone, and the row hides its own scrollbar.
-            *   That is the exact failure the header comment above describes happening to "Sign in",
-            *   which landed at x 340->411 and was unreachable. Not worth repeating for a link.
-            *
-            *   The footer column is a stacked list at every width and has no such ceiling. It is
-            *   first in the column because it is the most interesting thing behind any of them.
-            *
-            *   tests/links-resolve.test.mjs asserts EVERY built page carries this href, landing
-            *   included, so this is not an optional courtesy link. ]]*/}
-          <a href="/showcase">Showcase</a>
-          <a href="/pricing">Pricing</a>
-          <a href="/changelog">Changelog</a>
-          <a href="/status">Status</a>
-        </div>
-        <div class="footer-col">
-          <h3>Docs</h3>
-          <a href="/docs">Getting started</a>
-          <a href="/docs/plugin">Install the plugin</a>
-          <a href="/docs/credits-and-limits">Credits &amp; limits</a>
-        </div>
-        <div class="footer-col">
-          {/* THE LANDING WAS THE ONLY PAGE ON THE SITE WITH NO WAY TO REACH A PERSON.
-              Measured across the deployed pages: /pricing carries one mailto, /docs two, /privacy
-              its own — and / carried zero. The front page is where somebody who cannot make the
-              product work arrives first, and it was the one page that offered them nowhere to go.
-              It goes in the footer column rather than the header for the reason recorded above the
-              Showcase link: that row already overruns 343px of phone at 375px wide. */}
-          <h3>Contact</h3>
-          <a href="mailto:apple.labs.app@gmail.com">Email us</a>
-        </div>
-        <div class="footer-col">
-          <h3>Legal</h3>
-          <a href="/terms">Terms</a>
-          <a href="/privacy">Privacy</a>
-          <a href="/docs/privacy-and-data">Your data</a>
-        </div>
-      </div>
-    </div>
-  </footer>
+  <Footer />
 
 <script>
   /*
-   * THE FOUR CAPABILITY STAGES. One script, four independent set-ups, no dependencies.
+   * THE STAGES, THE TABS THAT HOLD THEM, AND THE AUTONOMOUS TOGGLE. One script, independent set-ups.
    *
-   * `document.querySelector`, NEVER `document.currentScript`. Astro bundles a page's <script> as a
-   * module and `currentScript` is null in every module script by specification. That exact spelling
-   * shipped a completely dead hero effect on this page, with the element, the class and the bundle
-   * all present in the served HTML and not one pixel moving. tests/capability-demos-run.test.mjs
-   * runs this file's script against a recording DOM for the same reason horizon-runs.test.mjs does:
-   * reading the markup cannot tell a live widget from a dead one.
+   * `document.querySelector`, NEVER `document.currentScript`: Astro bundles this as a module and
+   * `currentScript` is null in every module script by specification — that spelling once shipped a
+   * dead hero effect with every element present. tests/capability-demos-run.test.mjs executes this
+   * script against a recording DOM, because reading markup cannot tell a live control from a dead one.
    *
-   * ONE STAGE CANNOT TAKE THE OTHER THREE DOWN WITH IT. Four set-ups in one module means one
-   * `TypeError` in the first leaves the remaining three unbuilt while every reading of the page
-   * still shows four stages. `safely` is three lines and buys independence, which is the only
-   * reason it is here — there is no other try/catch in this file.
+   * `safely` keeps one failing set-up from taking the others down with it. Every stage is already
+   * finished in the markup when this runs; nothing below creates content, it only responds.
    *
-   * EVERY STAGE IS ALREADY FINISHED WHEN THIS RUNS. Nothing below creates content; it only
-   * responds. See the note above the markup.
+   * Parameter defaults are for `astro check` (strict mode, no implicit any) while the file stays
+   * plain JavaScript the test's `vm` can run.
    */
-  /* THE PARAMETER DEFAULTS THROUGHOUT THIS SCRIPT ARE FOR `astro check`, NOT FOR CALLERS.
-     `astro check` runs over a page's client script under `strict`, so an untyped parameter is
-     ts(7006) and a build error — and a hero effect held all of CI red on this exact file earlier
-     today for precisely that. A default gives the checker a type to infer while the file stays
-     plain JavaScript, which matters because tests/capability-demos-run.test.mjs executes this text
-     directly in a `vm` and TypeScript annotations would not parse there. Horizon.astro takes the
-     same approach for the same two reasons. */
   const safely = (name = '', fn = () => {}) => {
-    try { fn(); } catch (err) { console.error('capability stage failed: ' + name, err); }
+    try { fn(); } catch (err) { console.error('landing stage failed: ' + name, err); }
   };
+
+  /* --------------------------------------------------------------------------- the tabs --- */
+
+  /* Without scripting every panel is visible and the tab row is hidden (.no-js). With it, exactly
+     one panel shows and the row is a real tablist: click, or Left/Right/Home/End. */
+  safely('tabs', () => {
+    const tabs = [...document.querySelectorAll('.stage-tab')];
+    if (!tabs.length) return;
+
+    const select = (tab = tabs[0], focus = false) => {
+      for (const t of tabs) {
+        const on = t === tab;
+        t.setAttribute('aria-selected', String(on));
+        t.setAttribute('tabindex', on ? '0' : '-1');
+        const panel = document.getElementById(t.getAttribute('aria-controls') || '');
+        if (panel) {
+          if (on) panel.removeAttribute('hidden');
+          else panel.setAttribute('hidden', '');
+        }
+      }
+      if (focus) document.getElementById(tab.id)?.focus();
+    };
+
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => select(tab));
+      tab.addEventListener('keydown', (e) => {
+        /* `Element`'s event map types this as a plain Event, so the key is read defensively. */
+        const key = 'key' in e ? String(e.key) : '';
+        const i = tabs.indexOf(tab);
+        const next = key === 'ArrowRight' ? tabs[(i + 1) % tabs.length]
+          : key === 'ArrowLeft' ? tabs[(i - 1 + tabs.length) % tabs.length]
+          : key === 'Home' ? tabs[0]
+          : key === 'End' ? tabs[tabs.length - 1]
+          : null;
+        if (!next) return;
+        e.preventDefault();
+        select(next, true);
+      });
+    }
+
+    select(tabs.find((t) => t.getAttribute('aria-selected') === 'true') || tabs[0]);
+  });
 
   /* --------------------------------------------------------------- reads before it writes --- */
 
-  /* THE GATE IS THE CLAIM. Three reads open it, and until they land the readout says writes are
-     shut. That order is the product's — apps/worker walks the tree and takes a checkpoint before a
-     write — and this stage is that order, driven by the reader, not a connection to any Studio. */
+  /* THE GATE IS THE CLAIM. Three reads open it; until they land the readout says writes are shut.
+     That order is the product's — apps/worker walks the tree and checkpoints before a write. */
   safely('tree', () => {
     const root = document.querySelector('[data-demo="tree"]');
     if (!root) return;
@@ -850,32 +530,20 @@ const asks = [
         read.add(path);
         node.setAttribute('aria-pressed', 'true');
 
-        // `game.` is prepended here rather than stored six times in the markup: one spelling.
-        //
-        // `get_project_tree`, AND THE SECOND HALF OF THE SAME DEFECT. The activity figure above
-        // this page's frontmatter printed `get_tree` \u2014 the plugin's wire op, not a registered tool
-        // \u2014 and so did this line, which is the string a visitor sees when they click a node in the
-        // read-the-tree demo. Fixing the figure and leaving this was possible because
-        // tests/site-names-real-tools.test.mjs strips <script> before it scans, exactly as the
-        // site's other copy guards do, and a name a page WRITES at runtime is as visible as one it
-        // ships in its markup. The guard now reads the string literals inside inline scripts too.
-        log.textContent = 'get_project_tree  game.' + path + '  ok \u00b7 ' + kids + ' ' + (kids === '1' ? 'child' : 'children');
+        log.textContent = 'get_project_tree  game.' + path + '  ok · ' + kids + ' ' + (kids === '1' ? 'child' : 'children');
 
         const n = read.size;
         gate.setAttribute('data-read', String(Math.min(n, NEEDED)));
         gate.textContent = n >= NEEDED
-          ? 'checkpoint taken \u00b7 a write may now be proposed'
-          : n + ' of ' + NEEDED + ' read \u00b7 writes still shut';
+          ? 'checkpoint taken · a write may now be proposed'
+          : n + ' of ' + NEEDED + ' read · writes still shut';
       });
     }
   });
 
   /* ------------------------------------------------------------------- checks its own work --- */
 
-  /* A DEFECT AND ITS MARKER ARE ONE THING SELECTED TWO WAYS. Both carry the same data-defect, so
-     the list and the render cannot point at different problems — there is no index arithmetic here
-     to get wrong, and adding a fourth defect to the frontmatter array needs no change in this
-     block. Hovering is a convenience; clicking and focusing are the ones that must work. */
+  /* A defect and its marker are one thing selected two ways: both carry the same data-defect. */
   safely('eye', () => {
     const root = document.querySelector('[data-demo="eye"]');
     if (!root) return;
@@ -889,9 +557,6 @@ const asks = [
     };
 
     for (const el of [...marks, ...items]) {
-      // `?? ''` rather than a cast: getAttribute returns `string | null`, and an element that
-      // somehow lost the attribute should select NOTHING rather than match every other element
-      // whose attribute is also missing. It fails closed and it satisfies the checker.
       const id = el.getAttribute('data-defect') ?? '';
       el.addEventListener('click', () => select(id));
       el.addEventListener('mouseenter', () => select(id));
@@ -901,10 +566,8 @@ const asks = [
 
   /* ----------------------------------------------------------- builds in Luau, not pseudocode --- */
 
-  /* THE THIRD ASK IS THE POINT OF THE STAGE. Two produce Luau; the third produces the refusal, by
-     name and with its reason, which is what the plugin does. The answers are read out of the
-     markup rather than duplicated here — `data-lines` is written by the page from the same array
-     that rendered the buttons, so the code shown can never disagree with the label pressed. */
+  /* The answer travels on the button that asks for it (`data-lines`), written by the page from the
+     same array that rendered the buttons, so the code shown cannot disagree with the label pressed. */
   safely('code', () => {
     const root = document.querySelector('[data-demo="code"]');
     if (!root) return;
@@ -922,169 +585,15 @@ const asks = [
     }
   });
 
-  /* ------------------------------------------------------------------ generates real geometry --- */
+  /* ------------------------------------------------------------------------- Autonomous --- */
 
-  /* A WIREFRAME YOU TURN. Eighteen edges over nine vertices, projected by hand: a dependency for
-     this would be a 3D library on a page whose whole point is that it ships almost nothing, and
-     scripts/check-landing-budget.mjs has a tripwire for exactly that import.
-     THE STILL FRAME IS REMOVED ONLY AFTER A FRAME IS DRAWN. If the context is refused, or this
-     block throws before its first paint, the SVG behind the canvas is what a reader sees and the
-     stage is still a picture of a mesh rather than an empty rectangle.
-     REDUCED MOTION STOPS THE SPIN AND KEEPS THE DRAG. "Fewer effects" is not "fewer controls": the
-     object is still there and still turns under a finger, it simply does not turn on its own. */
-  safely('cube', () => {
-    const root = document.querySelector('[data-demo="cube"]');
-    if (!root) return;
-    const canvas = root.querySelector('canvas.gm-canvas');
-    if (!(canvas instanceof HTMLCanvasElement)) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const fallback = root.querySelector('.gm-still');
-
-    // A cube with a pyramid on it. It is a house, which is the first thing anybody builds in
-    // Studio, and it is legible at 120px in a way an abstract solid is not.
-    const V = [
-      [-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1],
-      [-1, 1, -1], [1, 1, -1], [1, 1, 1], [-1, 1, 1],
-      [0, 2.15, 0],
-    ];
-    const E = [
-      [0, 1], [1, 2], [2, 3], [3, 0],
-      [4, 5], [5, 6], [6, 7], [7, 4],
-      [0, 4], [1, 5], [2, 6], [3, 7],
-      [4, 8], [5, 8], [6, 8], [7, 8],
-    ];
-
-    /* TWO REASONS NOT TO SPIN, AND THE SECOND ONE IS THE PHONE.
-       `reduced` is the reader's own setting. `small` is the 767px breakpoint landing.css uses for
-       the whole phone layout, quoted here so the "fewer effects on a phone" rule is decided by ONE
-       number rather than by a stylesheet and a script that can drift apart. A rAF loop redrawing
-       sixteen stroked lines behind a scrolling finger is the most expensive thing on this page.
-       BOTH STOP THE SPIN AND NEITHER STOPS THE DRAG. Fewer effects is not fewer controls: the mesh
-       is still there and still turns under a finger. `still()` is what both are asked. */
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const small = window.matchMedia('(max-width: 767px)');
-    const still = () => reduced.matches || small.matches;
-    let w = 0;
-    let h = 0;
-    let ry = 0.6;
-    let rx = -0.22;
-    let spin = 0;
-    let painted = false;
-    let raf = 0;
-
-    const size = () => {
-      const box = canvas.getBoundingClientRect();
-      // 2 is the cap. A 3x phone otherwise pays nine times the pixels to draw a 1px line.
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = Math.max(1, Math.round(box.width));
-      h = Math.max(1, Math.round(box.height));
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-
-    const ink = () => {
-      const v = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-      return v || '#00d492';
-    };
-
-    const draw = () => {
-      ctx.clearRect(0, 0, w, h);
-      const cx = w / 2;
-      // THE MODEL IS CENTRED ON ITS OWN CENTROID, NOT ON ITS ORIGIN. Its y runs -1 to 2.15, so the
-      // origin sits well below the middle of the shape and centring on it parked the roof 8px from
-      // the top edge of the panel while leaving 60px of empty floor underneath.
-      const S = Math.min(w, h) * 0.215;
-      const cy = h / 2 + 0.575 * S;
-      const cy1 = Math.cos(ry + spin);
-      const sy1 = Math.sin(ry + spin);
-      const cx1 = Math.cos(rx);
-      const sx1 = Math.sin(rx);
-
-      const at = (p = [0, 0, 0]) => {
-        const x = p[0] * cy1 + p[2] * sy1;
-        const z0 = -p[0] * sy1 + p[2] * cy1;
-        const y = p[1] * cx1 - z0 * sx1;
-        const z = p[1] * sx1 + z0 * cx1;
-        const k = 5.2 / (5.2 + z);
-        return [cx + x * S * k, cy - y * S * k, k];
-      };
-
-      const pts = V.map(at);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      for (const [a, b] of E) {
-        const p = pts[a];
-        const q = pts[b];
-        // Depth is spent on alpha and width, so the far edges read as far rather than as the same
-        // wire drawn twice. It is the only shading a wireframe gets.
-        const k = (p[2] + q[2]) / 2;
-        ctx.globalAlpha = Math.max(0.16, Math.min(1, (k - 0.72) * 3.1));
-        ctx.lineWidth = 0.7 + k * 0.85;
-        ctx.strokeStyle = ink();
-        ctx.beginPath();
-        ctx.moveTo(p[0], p[1]);
-        ctx.lineTo(q[0], q[1]);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-
-      if (!painted) {
-        painted = true;
-        if (fallback) fallback.remove();
-      }
-    };
-
-    const frame = () => {
-      spin += 0.0052;
-      draw();
-      raf = window.requestAnimationFrame(frame);
-    };
-
-    const start = () => { if (!raf) raf = window.requestAnimationFrame(frame); };
-    const stop = () => { if (raf) { window.cancelAnimationFrame(raf); raf = 0; } };
-
-    // A pointer drag turns it. `setPointerCapture` keeps the drag alive past the edge of the
-    // canvas, which is where a 120px object is otherwise lost on the first gesture.
-    let dragging = false;
-    let lastX = 0;
-    let lastY = 0;
-    canvas.addEventListener('pointerdown', (e) => {
-      dragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      canvas.setPointerCapture(e.pointerId);
+  /* The picture of the toggle. Violet is drawn by apple-minimal.css from aria-pressed alone. */
+  safely('autonomous', () => {
+    const toggle = document.querySelector('[data-mode="autonomous"]');
+    if (!toggle) return;
+    toggle.addEventListener('click', () => {
+      toggle.setAttribute('aria-pressed', String(toggle.getAttribute('aria-pressed') !== 'true'));
     });
-    canvas.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      ry += (e.clientX - lastX) * 0.009;
-      rx += (e.clientY - lastY) * 0.007;
-      rx = Math.max(-1.1, Math.min(1.1, rx));
-      lastX = e.clientX;
-      lastY = e.clientY;
-      // The drag must move the object even when the loop is stopped — which is the usual case
-      // on a phone, and the only case for a reader who has asked for less motion.
-      if (!raf) draw();
-    });
-    const release = () => { dragging = false; };
-    canvas.addEventListener('pointerup', release);
-    canvas.addEventListener('pointercancel', release);
-
-    // A background tab burning a core is the usual price of a loop like this and is avoidable.
-    // Rotating a phone crosses the breakpoint, so whether the mesh spins has to be re-decided
-    // rather than fixed at load. This is the one place that decides it.
-    const sync = () => { if (still()) stop(); else start(); };
-
-    // A background tab burning a core is the usual price of a loop like this and is avoidable.
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) stop(); else sync();
-    });
-    window.addEventListener('resize', () => { size(); draw(); sync(); });
-
-    size();
-    draw();
-    sync();
   });
 </script>
 

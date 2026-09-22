@@ -6,6 +6,7 @@ import {
   type PlanId,
   PLAN_LIMITS,
   PLAN_SUPPORT,
+  SUPPORT_EMAIL,
   PRICE_CURRENCY,
   buildsPerMonth,
   buildsPerDay,
@@ -15,11 +16,14 @@ import {
   BUILD_NEURONS,
   fullRateDays,
   monthlyCeilingBitesFirst,
-  PRODUCT_MODES_OFFERED,
+  PRODUCT_MODES,
   PRODUCT_MODE_INFO,
+  PRODUCT_MODELS,
+  PRODUCT_MODEL_INFO,
+  canUseProductModel,
   MODE_INFO,
-  PRODUCT_MODE_TO_SPECIALIST, CREDIT_PURCHASE_LIVE as SHARED_CREDIT_PURCHASE_LIVE } from '@golem/shared';
-import { STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_STORE_REFUSAL } from '../lib/studio-plugin';
+  CREDIT_PURCHASE_LIVE as SHARED_CREDIT_PURCHASE_LIVE } from '@golem/shared';
+import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 import { DAILY_NEURON_CEILING } from '../../../worker/src/pricing';
 
 /*
@@ -39,25 +43,14 @@ import { DAILY_NEURON_CEILING } from '../../../worker/src/pricing';
 const serviceCreditsPerDay = Math.floor(DAILY_NEURON_CEILING / NEURONS_PER_CREDIT);
 
 /*
- * "STUDIO INTEGRATION · PUBLIC INSTALLATION PENDING" WAS TYPED, AND IT WAS THE SOFTEST WORD ON THE
- * SITE, ON THE ONLY PLAN ANYBODY CAN TAKE TODAY.
+ * THE STUDIO LINE ON EVERY CARD IS ASKED, NOT TYPED.
  *
- * "Pending" reads as a queue somebody is working through. The real state is a moderation decision:
- * Roblox removed the listing, the "Distribute on Creator Store" setting is locked rather than
- * switched off, an appeal is filed and no date can be promised. This page's own comparison table
- * says "public installation is currently unavailable" eight hundred pixels further down, so the
- * page disagreed with itself — and the bullet was a hardcoded string while the closing note was
- * already derived, which is exactly how one of them got left behind.
- *
- * It is now asked, like every other availability claim on this page: STUDIO_PLUGIN_STORE_LIVE says
- * whether the install path works, and STUDIO_PLUGIN_STORE_REFUSAL says whether it is refused rather
- * than merely unbuilt. The day the appeal succeeds, this line changes with the constant.
+ * STUDIO_PLUGIN_STORE_LIVE says whether the Creator Store install path works. While it does, the
+ * shared plugin row is `true` for every plan and prints once, as a universal bullet (see
+ * cardLabel below) — so there is no second Studio line to disagree with it. While it does not,
+ * this bullet says so on every card, in the one sentence the rest of the site uses.
  */
-const studioBullet = STUDIO_PLUGIN_STORE_LIVE
-  ? 'Studio integration · install from the Creator Store'
-  : STUDIO_PLUGIN_STORE_REFUSAL
-    ? 'Studio integration · public installation removed by Roblox moderation, appeal filed'
-    : 'Studio integration · public installation unavailable';
+const studioBullet = STUDIO_PLUGIN_STORE_LIVE ? null : 'Roblox Studio plugin · public installation unavailable';
 
 // THE NUMBERS ON THIS PAGE ARE READ, NOT WRITTEN. They used to be typed in prose and in the plan
 // cards, so the marketing site and the thing enforcing the quota could drift apart — and they had:
@@ -117,9 +110,34 @@ const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMont
  * made. The void closes because the cards now say what they actually include, not because
  * something was padded.
  */
-const UNIVERSAL_BULLETS = PLAN_FEATURES.filter((f) => PLAN_IDS.every((id) => f.values[id] === true)).map(
-  (f) => f.label,
+/* A universal row's label as a card bullet. The comparison table keeps the shared label; on a card
+   the modes read better by their names (derived, so a third mode could not hide). */
+const cardLabel = (f: (typeof PLAN_FEATURES)[number]) =>
+  f.id === 'modes' ? `${PRODUCT_MODES.map((m) => PRODUCT_MODE_INFO[m].name).join(' and ')} modes` : f.label;
+
+/* THE SUPPORT LINE ON A CARD NAMES THE KIND OF SUPPORT, NOT THE MAILBOX (2026-09-22). Each card used
+   to end on "Email <address>", which is a contact detail set as a plan feature. The address is
+   printed once, in the support note under the cards, beside what PLAN_SUPPORT promises. */
+const supportBullet = (id: PlanId) =>
+  id === 'free' ? 'Email support, read by a person' : 'Email support, answered before Free';
+
+/* Autonomous is a toggle on Agent on every plan, with the same step ceiling; it is one bullet on
+   every card rather than a Free-only line that made the paid cards look as if they lacked it. */
+const autonomousBullet = `Autonomous on ${PRODUCT_MODE_INFO.agent.name} · up to 1000 steps a message`;
+const UNIVERSAL_BULLETS = PLAN_FEATURES.filter((f) => PLAN_IDS.every((id) => f.values[id] === true)).map(cardLabel);
+
+/* MODELS ARE NOT PLANS. Apple and Apple MAX are model choices; Free, Builder, Studio and Enterprise
+   are plans. Which plans include which model is asked of canUseProductModel — the function the
+   worker enforces — so the page cannot promise Apple MAX to a plan that does not get it. */
+const [baseModel, strongModel] = PRODUCT_MODELS;
+const listNames = (names: string[]) =>
+  names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+const strongPlans = listNames(
+  PLAN_IDS.filter((id) => canUseProductModel(strongModel, id)).map((id) => PLAN_COPY[id].name),
 );
+const planNames = listNames(PLAN_IDS.map((id) => PLAN_COPY[id].name));
+const baseName = PRODUCT_MODEL_INFO[baseModel].name;
+const strongName = PRODUCT_MODEL_INFO[strongModel].name;
 
 /*
  * ONE CARD IS RANKED, AND WHICH ONE IS ASKED RATHER THAN TYPED.
@@ -164,10 +182,14 @@ const promoted: PlanId = paid.find((id) => canBuy(id)) ?? 'free';
 // which went on offering "Add credits" at the moment a customer's allowance ran out. One fact, one
 // home: packages/shared/src/index.ts.
 const CREDIT_PURCHASE_LIVE = SHARED_CREDIT_PURCHASE_LIVE;
-const planFeatures = PLAN_FEATURES.map((f) =>
+/* The shared `modes` label reads "All two build modes"; on this page the row names them, the same
+   words the cards use (cardLabel). */
+const planFeatures = PLAN_FEATURES.map((f) => (f.id === 'modes' ? { ...f, label: cardLabel(f) } : f)).map((f) =>
   f.id === 'credits' && !CREDIT_PURCHASE_LIVE
     ? {
         ...f,
+        /* The shared label says "credits" in lower case; the unit is a proper noun on this site. */
+        label: f.label.replace(/\bcredits\b/g, 'Credits'),
         note: 'Apple cannot sell Credits in this preview — there is no checkout for them on any plan.',
         values: Object.fromEntries(PLAN_IDS.map((id) => [id, 'Unavailable'])) as Record<string, string>,
       }
@@ -180,19 +202,11 @@ import FAQ from '../components/FAQ.astro';
 // `creditsForNeurons(n) = max(1, ceil(n / 30))`, and are not invented here:
 // Allowances themselves are read from PLAN_LIMITS above, never restated here.
 //
-//   Plan         37-43 neurons -> ceil(43/30)  =  2 credits
-//   Agent        111 neurons   -> ceil(111/30) =  4 credits  (targeted edit + read-back verify)
-//   Super Agent  297 neurons   -> ceil(297/30) = 10 credits  (withdrawn; kept for the arithmetic)
+//   Plan   37-43 neurons -> ceil(43/30)  = 2 credits
+//   Agent  111 neurons   -> ceil(111/30) = 4 credits  (targeted edit + read-back verify)
 //
-// COST-MODEL.md names these by their INTERNAL specialist identities — Clay, Stone, Rune
-// — which is correct there and wrong here: packages/shared says those "are internal
-// specialist identities, not user-facing brands: nothing in normal product UI should
-// name them", and §15.3 gave the public modes as Plan / Agent / Super Agent. Super Agent has
-// since been withdrawn from PRODUCT_MODES_OFFERED, which is what this page now reads.
-//
-// Plan was published as 1 credit and a request count computed from it. It is 2. Agent and
-// Super Agent were both right, which is what makes the Plan figure an arithmetic slip
-// rather than a different model of pricing: whoever wrote them divided correctly.
+// Plan was once published as 1 credit and a request count computed from it. It is 2. The
+// request counts below are now derived so a later repricing cannot leave the table behind.
 // "≈ requests / free day" is the free daily allowance divided by cost, and it is now
 // COMPUTED rather than typed. It was typed — 30 / 15 / up to 6 — against a free tier that
 // granted 60 Credits a day. The repricing took free to 231 and those three numbers stayed
@@ -212,32 +226,20 @@ const perFreeDay = (cost: string, prefix = ''): string => {
 /*
  * THE TABLE READS THE PRODUCT, NOT A LIST TYPED BESIDE IT.
  *
- * These three rows were hardcoded — Plan, Agent, Super Agent — and Super Agent was withdrawn from
- * what the product offers. The pricing page went on quoting it a price. A page that prices a mode
- * nobody can select is a promise the product cannot keep, and it is the first thing a buyer finds
- * when they sign up and cannot find the third option.
- *
- * PRODUCT_MODES_OFFERED is the list every surface a person chooses from already reads;
- * PRODUCT_MODES still carries 'super' because rows written while it existed must stay readable.
- * Reading the first is what makes this page incapable of advertising a fourth mode, or a withdrawn
- * one, without somebody deciding to.
+ * ProductMode is the contract. PRODUCT_MODES is exactly Plan and Agent, and MODE_INFO is keyed by
+ * that same type. There is no translation layer here and no third pricing row for Autonomous:
+ * Autonomous is an Agent continuation toggle, not another mode.
  */
-const CLS = { plan: 'is-clay', agent: 'is-stone', super: 'is-rune' } as const;
-const EXTRA = { plan: '', agent: '', super: '+1 per extra step' } as const;
-const PREFIX = { plan: '', agent: '', super: 'up to ' } as const;
-
-const modeRows = PRODUCT_MODES_OFFERED.map((m) => {
-  const info = PRODUCT_MODE_INFO[m];
-  const credits = MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].typicalCredits;
+const modeRows = PRODUCT_MODES.map((mode) => {
+  const info = MODE_INFO[mode];
+  const credits = info.typicalCredits;
   // "2" and "4-18" both arrive here; the table quotes the entry price, which is what the row is
   // comparing. A range's own upper bound is explained by the footnote under the table.
-  const cost = `${String(credits).split('-')[0]} credits`;
+  const cost = `${String(credits).split('-')[0]} Credits`;
   return {
     mode: info.name,
-    cls: CLS[m],
     cost,
-    extra: EXTRA[m],
-    does: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].blurb,
+    does: info.blurb,
     /*
      * WHAT THAT PRICE BOUGHT, beside the price.
      *
@@ -247,10 +249,9 @@ const modeRows = PRODUCT_MODES_OFFERED.map((m) => {
      * and three a free day. The blurb describes the MODE; this describes the REQUEST that was
      * measured. See MODE_INFO.entryUnit in packages/shared.
      */
-    unit: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].entryUnit,
-    perDayPrefix: PREFIX[m],
+    unit: info.entryUnit,
   };
-}).map((r) => ({ ...r, perDay: perFreeDay(r.cost, r.perDayPrefix) }));
+}).map((r) => ({ ...r, perDay: perFreeDay(r.cost) }));
 
 const limitFaq = [
   {
@@ -306,16 +307,21 @@ const limitFaq = [
 
 <Base
   title="Pricing — Apple"
-  description={`Start with Apple and ${free.creditsPerDay} daily Credits. Apple MAX is the subscription tier. Paid checkout and public Studio installation are not yet open in this preview.`}
+  description={`Plans and Credits for Apple. Free includes ${free.creditsPerDay} Credits a day and the ${baseName} model; ${strongName}, the stronger model, is included with ${strongPlans}.${billing.checkout ? '' : ' Paid checkout is not open yet.'}`}
 >
   <!-- ==================================================== head -->
-  <section class="section phead is-ember" aria-labelledby="pricing-title">
-    <div class="sheet-rails" aria-hidden="true"></div>
+  <section class="section phead" aria-labelledby="pricing-title">
     <div class="wrap">
       <p class="eyebrow">Pricing</p>
-      <h1 id="pricing-title" class="carved">Start with Apple.</h1>
+      {/* THE HEADLINE AGREES WITH THE BUTTONS UNDER IT. It read "Pay when you build every day" over
+          two cards whose only control is a disabled "Checkout not open". Asked of the same probe as
+          everything else on this page. */}
+      <h1 id="pricing-title" class="carved">
+        {canBuy('builder') || canBuy('studio') ? 'Start free. Pay when you build every day.' : 'Start free. Paid plans are not on sale yet.'}
+      </h1>
       <p class="lede lede-wide">
-        Apple is the limited free tier. Apple MAX is for paid subscribers.
+        {planNames} are plans. {baseName} and {strongName} are models: every plan gets {baseName}, and
+        {strongName}, the stronger model, is included with {strongPlans}.
         {billing.checkout
           ? 'Every paid plan below can be bought now. Cancel from your own account page at any time.'
           : 'Paid checkout is not open yet; the paid plans below describe the planned offering.'}
@@ -336,13 +342,13 @@ const limitFaq = [
           <ul class="plan__list">
             <li><strong>{free.creditsPerDay.toLocaleString()} Credits</strong> per day · {free.creditsPerMonth.toLocaleString()} a month</li>
             <li>About {buildsPerMonth('free')} quality-gated builds a month</li>
-            <li>Apple · limited free access</li>
-            <li>Autonomous runs keep working until the task is done, stopped, or the account reaches its Credits/capacity limit</li>
+            <li>{baseName} model</li>
+            <li>{autonomousBullet}</li>
             {UNIVERSAL_BULLETS.map((b) => <li>{b}</li>)}
-            <li>{studioBullet}</li>
+            {studioBullet && <li>{studioBullet}</li>}
             {/* Published for every plan, including this one. Three of the four tiers said nothing
                 about support anywhere, and a buyer cannot tell silence from "there is none". */}
-            <li>{PLAN_SUPPORT.free.channel}</li>
+            <li>{supportBullet('free')}</li>
           </ul>
           {/*[[ EVERY CARD ENDS ON THE SAME ROW, AND THE ROW IS ANCHORED TO THE BOTTOM EDGE.
                Only this card had a button. `margin-top: auto` on a CTA that two of three cards did
@@ -351,19 +357,22 @@ const limitFaq = [
                ends on a control at the same y as the one that can, and the caption that explains
                why sits under it instead of floating in the middle of the void. ]]*/}
           <footer class="plan__foot">
-            <a href="/app/signup" class="btn btn-primary plan__cta">Start building — free</a>
-            <p class="plan__note plan__note--foot">No card required. Free chat works now.</p>
+            {/* The same words the landing uses for the same door. "Start building" promised a
+                build to a reader whose card, a few lines up, could say Studio installation was
+                unavailable; the note under the button is asked of the same flag. */}
+            <a href="/app/signup" class="btn btn-primary plan__cta">Create a free account</a>
+            <p class="plan__note plan__note--foot">
+              {STUDIO_PLUGIN_STORE_LIVE
+                ? 'No card required. Chat and building in Studio both work on Free.'
+                : 'No card required. Free chat works now.'}
+            </p>
           </footer>
         </article>
 
         {
           paid.map((id, i) => (
-            /* NO HUE ON THE RECOMMENDED CARD FOR ITS OWN SAKE. This carried `is-rune`, which
-               repoints the whole subtree's `--accent` at a violet — so the one plan the page wanted
-               read was the only violet object on an otherwise unhued site, and it was violet
-               because of a class named after a colour. It then carried `is-featured`, which was
-               styled nowhere at all. What ranks a card here is `is-promoted`, and it is only ever
-               on a plan somebody can actually take. */
+            /* What ranks a card here is `is-promoted`, and it is only ever on a plan somebody can
+               actually take. The presentation does not depend on a work-mode identity. */
             <article
               class={`plan slab slab--seam${promoted === id ? ' is-promoted' : ' is-planned'}`}
               aria-labelledby={`plan-${id}`}
@@ -383,7 +392,8 @@ const limitFaq = [
                   {PLAN_LIMITS[id].creditsPerMonth.toLocaleString()} a month
                 </li>
                 <li>About {buildsPerMonth(id)} quality-gated builds a month</li>
-                <li>Apple MAX access</li>
+                <li>{strongName}, the stronger model</li>
+                <li>{autonomousBullet}</li>
                 {/* The same gap as the `credits` row below, one surface earlier. Builder's
                     highlights include "Buy credits when you need more", and leaving it beside a
                     comparison row that now reads "Unavailable" would make the page disagree with
@@ -404,8 +414,8 @@ const limitFaq = [
                 {UNIVERSAL_BULLETS.map((b) => (
                   <li>{b}</li>
                 ))}
-                <li>{studioBullet}</li>
-                <li>{PLAN_SUPPORT[id].channel}</li>
+                {studioBullet && <li>{studioBullet}</li>}
+                <li>{supportBullet(id)}</li>
               </ul>
               <footer class="plan__foot">
                 {canBuy(id) ? (
@@ -438,9 +448,19 @@ const limitFaq = [
         }
         </div>
 
+        <p class="plan-enterprise">
+          <strong>{PLAN_COPY.enterprise.name}</strong>
+          <span>{PLAN_COPY.enterprise.blurb}</span>
+          <a href={`mailto:${SUPPORT_EMAIL}`}>Email us</a>
+        </p>
+
+        {/* FOUR NOTES, EACH WITH ITS OWN TITLE (2026-09-22). They were four dense paragraphs in a row
+            directly under the cards, which read as a wall of fine print. Nothing in them is cut; each
+            is now a titled item in a quiet two-column list, so a reader can find the one they want. */}
         <div class="plan-notes">
         <p class="plan__note">
-          <strong>There is a second limit, and it is not yours.</strong> Every plan above draws on one
+          <strong class="note-title">A second, shared limit</strong>
+          Every plan above draws on one
           shared pool of about {serviceCreditsPerDay.toLocaleString()} Credits of building a day
           across the whole service, which is roughly{' '}
           {Math.floor(serviceCreditsPerDay / free.creditsPerDay)} accounts building flat out. When
@@ -451,6 +471,7 @@ const limitFaq = [
         </p>
 
         <p class="plan__note">
+          <strong class="note-title">Credits and builds</strong>
           One build costs about {CREDITS_PER_BUILD} Credits, so every figure above is also a number of
           estimated builds. Free limits apply now.{' '}
           {canBuy('builder') || canBuy('studio')
@@ -466,13 +487,15 @@ const limitFaq = [
           quoting a bare currency symbol, which this page already stopped doing.
         */}
         <p class="plan__note">
+          <strong class="note-title">Tax</strong>
           Prices are in {PRICE_CURRENCY} and exclude tax. Any VAT or sales tax that applies where you
           are is calculated at checkout, and businesses can enter a VAT or GST number there so the
           invoice carries it.
         </p>
 
         <p class="plan__note">
-          <strong>What support means on every plan above:</strong> {PLAN_SUPPORT.free.promise} Paid
+          <strong class="note-title">Support</strong>
+          Write to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. {PLAN_SUPPORT.free.promise} Paid
           accounts are answered first. Enterprise is different — {PLAN_SUPPORT.enterprise.promise.toLowerCase()}
         </p>
         </div>
@@ -494,7 +517,7 @@ const limitFaq = [
         </p>
       </header>
 
-      <div class="table-scroll" data-reveal>
+      <div class="table-scroll stack-sm" data-reveal>
         <table class="compare">
           <caption class="visually-hidden">
             Every capability by plan. Rows are capabilities; columns are plans.
@@ -529,7 +552,7 @@ const limitFaq = [
                     const value = feature.values[id];
                     if (value === true) {
                       return (
-                        <td class="compare__yes">
+                        <td class="compare__yes" data-label={PLAN_COPY[id].name}>
                           {/* The glyph is decoration; the word is the answer. A table whose
                               cells are bare ticks and blanks is unreadable aloud, and "blank"
                               is exactly the ambiguity this table exists to remove. */}
@@ -540,13 +563,13 @@ const limitFaq = [
                     }
                     if (value === false) {
                       return (
-                        <td class="compare__no">
+                        <td class="compare__no" data-label={PLAN_COPY[id].name}>
                           <span aria-hidden="true">&#8212;</span>
                           <span class="visually-hidden">Not included</span>
                         </td>
                       );
                     }
-                    return <td>{value}</td>;
+                    return <td data-label={PLAN_COPY[id].name}>{value}</td>;
                   })}
                 </tr>
               ))
@@ -555,12 +578,16 @@ const limitFaq = [
         </table>
       </div>
 
-      <p class="plan__note" style="max-width:62ch">
+      <p class="plan__note compare-note">
         Figures come from the shared plan configuration. Free access is available now.{' '}
         {canBuy('builder') || canBuy('studio')
-          ? 'Paid tiers can be purchased below.'
-          : 'Paid tiers and Apple MAX subscriptions are not yet available to purchase.'}{' '}
-        Studio access also requires a connected plugin; public installation is currently unavailable.
+          ? 'Paid plans can be purchased above.'
+          : `Paid plans, and with them ${strongName}, are not yet available to purchase.`}{' '}
+        {STUDIO_PLUGIN_STORE_LIVE ? (
+          <>Building in Studio also needs the Apple Studio plugin, which is free: <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">get it from the Creator Store</a>.</>
+        ) : (
+          <>Building in Studio also needs the Apple Studio plugin; public installation is unavailable. <a href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</a>.</>
+        )}
       </p>
     </div>
   </section>
@@ -573,13 +600,13 @@ const limitFaq = [
         <p class="eyebrow" data-reveal>Per request</p>
         <h2 id="credits-title" data-reveal class="carved">What a Credit buys</h2>
         <p class="lede lede-wide" data-reveal>
-          These are internal work-mode estimates, not the Apple and Apple MAX model selector.
-          Final usage depends on the work performed.
+          Plan and Agent are the two product modes. Autonomous is an Agent toggle, not another
+          mode or another price. Final usage depends on the work performed.
         </p>
       </header>
 
-      <div class="table-scroll" data-reveal>
-        <table>
+      <div class="table-scroll stack-sm" data-reveal>
+        <table class="modes-table">
           <caption class="visually-hidden">Credit cost per request by mode</caption>
           <thead>
             <tr>
@@ -592,17 +619,16 @@ const limitFaq = [
           <tbody>
             {
               modeRows.map((r) => (
-                <tr class={r.cls}>
-                  <td>
+                <tr>
+                  <td class="mode-cell">
                     {r.mode}
                   </td>
-                  <td>
+                  <td data-label="Cost per request">
                     <code>{r.cost}</code>
                     <span class="tx">for {r.unit}</span>
-                    {r.extra && <span class="tx">{r.extra}</span>}
                   </td>
-                  <td>{r.does}</td>
-                  <td class="num">{r.perDay}</td>
+                  <td data-label="What it does">{r.does}</td>
+                  <td class="num" data-label="≈ requests / free day">{r.perDay}</td>
                 </tr>
               ))
             }
@@ -612,8 +638,14 @@ const limitFaq = [
 
       <p class="tfoot" data-reveal>
         An Agent request settles against the work it actually did, so a long build costs more than
-        the entry price above — metered live, so you always see where you stand. Apple&rsquo;s own
+        the entry price above — the workspace counts what the run has spent while it runs. Apple&rsquo;s own
         housekeeping does not count against your quota.
+      </p>
+      <p class="tfoot" data-reveal>
+        <strong>Autonomous does not add a mode.</strong> Turn it on while using Agent when you want
+        Agent to keep scheduling its own next step until the task is finished, you stop it, access
+        changes, the account reaches a Credits or service-capacity limit, or that message reaches
+        the 1000 steps ceiling.
       </p>
 
       {/*[[ THE TWO UNITS, RECONCILED WHERE THE READER MEETS THEM.
@@ -650,320 +682,279 @@ const limitFaq = [
 </Base>
 
 <style>
+  /* Structure only; every value is a token from apple-minimal.css. The cards are the page's one
+     grid of panels: a surface step and a hairline each, no shadow, the Free card ranked by its
+     filled button rather than by colour. */
   .phead {
-    position: relative;
-    padding-top: clamp(2rem, 4vw, 3.25rem);
-    padding-bottom: clamp(3rem, 7vw, 5rem);
+    padding-top: clamp(48px, 7vw, 96px);
+    padding-bottom: clamp(56px, 8vw, 96px);
   }
 
-  .phead::before {
-    content: '';
-    position: absolute;
-    top: -10%;
-    left: -8%;
-    width: min(60vw, 700px);
-    aspect-ratio: 1;
-    background: radial-gradient(
-      circle at 50% 50%,
-      var(--accent-soft),
-      transparent 65%
-    );
-    pointer-events: none;
-    z-index: 0;
+  .phead > .wrap > .eyebrow,
+  .sechead .eyebrow {
+    justify-content: center;
   }
 
-  .phead > .wrap {
-    position: relative;
-    z-index: 1;
+  .phead > .wrap > h1,
+  .phead > .wrap > .lede,
+  .sechead,
+  .sechead .lede {
+    margin-inline: auto;
+    text-align: center;
   }
 
-  /* `margin-inline: auto`, not just a max-width. The wrap is 1200px and centred; a 900px grid
-     inside it with no auto margin sits against the LEFT edge, so the two cards were centred on 563
-     while the heading above them was centred on 713 — the same 150px disagreement the landing
-     page had, on a page nobody had measured. */
+  .sechead {
+    max-width: 62ch;
+    margin-bottom: clamp(28px, 4vw, 44px);
+  }
+
+  .sechead h2 {
+    margin-bottom: 8px;
+  }
+
+  /* THE GRID THAT BROKE. `.plans` is the block; `.plan-rail` holds the three cards and
+     `.plan-notes` the notes under them. These rules used to live in relaunch.css, which was
+     deleted, and the three cards stacked into one 364px column at 1440 with the notes beside them. */
   .plans {
+    max-width: 1120px;
+    margin: clamp(40px, 6vw, 64px) auto 0;
+  }
+
+  .plan-rail {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.5rem;
-    margin: clamp(2.25rem, 5vw, 3.5rem) auto 0;
-    max-width: 1120px;
+    gap: 16px;
+    align-items: stretch;
   }
 
   .plan {
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: clamp(1.5rem, 3vw, 2.1rem);
-    padding-top: clamp(2.4rem, 4vw, 3rem);
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    box-shadow: none;
-    transition: border-color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+    padding: 28px;
   }
 
-  /*[[ THE ONE SATURATED THING ON THE PAGE, AND IT IS THE PLAN YOU CAN ACTUALLY HAVE.
-   *
-   *   Measured before this: every colour on /pricing was achromatic — a scan of all 419 elements'
-   *   colour, background and border returned zero values with more than 18 points of channel
-   *   spread. Three identical charcoal cards, one white pill below the fold, nothing ranked.
-   *
-   *   The hue is `--good`, which this site already defines in both themes (#27634c light,
-   *   #9cc8a8 dark) and already means "this is the state you want". Nothing new is invented and
-   *   nothing is imported from anybody else's palette: a green seam, a green badge, a green button
-   *   and a four-percent wash on one card of three. The bullet glyphs stay neutral: nine green
-   *   diamonds would spend the hue on decoration instead of on the one thing to press. The other two stay exactly as grey as they
-   *   were, which is what makes the green mean something. ]]*/
-  .plan.is-promoted {
-    --seam: var(--good);
-    border-color: color-mix(in srgb, var(--good) 30%, var(--line));
-    background: color-mix(in srgb, var(--good) 4%, var(--surface));
-  }
-
-  .plan.is-promoted .plan__list strong {
-    color: var(--good);
-  }
-
-  .plan.is-promoted .plan__cta {
-    border-color: var(--good);
-    background: var(--good);
-    color: var(--accent-on);
-  }
-
-  .plan.is-promoted .plan__cta:hover {
-    border-color: color-mix(in srgb, var(--good) 78%, var(--ink));
-    background: color-mix(in srgb, var(--good) 78%, var(--ink));
-    color: var(--accent-on);
-  }
-
-  /* A planned tier is quieter than the live one on purpose: same grid, less light. */
   .plan.is-planned {
-    background: color-mix(in srgb, var(--paper) 42%, var(--surface));
+    background: var(--paper-2);
   }
 
-  /* Styled and, for the first time, actually rendered. `.plan__flag` existed in this block with no
-     markup anywhere that used it, which is why the "featured" card carried no badge. */
   .plan__flag {
-    position: absolute;
-    top: 1.15rem;
-    left: clamp(1.5rem, 3vw, 2.1rem);
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: 0.62rem;
-    line-height: 1;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--good);
-    background: color-mix(in srgb, var(--good) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--good) 40%, transparent);
+    align-self: flex-start;
+    margin: 0 0 20px;
+    padding: 3px 8px;
+    border: 1px solid var(--line);
     border-radius: var(--r-pill);
-    padding: 0.32rem 0.62rem;
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .plan__flag--quiet {
     color: var(--faint);
-    background: transparent;
-    border-color: var(--line-strong);
   }
 
   .plan__head {
-    margin-bottom: 1.4rem;
+    margin-bottom: 22px;
   }
 
   .plan h2 {
-    font-size: 1.7rem;
-    margin: 0 0 0.3rem;
+    margin: 0 0 6px;
+    color: var(--ink);
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
   }
 
   .plan__price {
     margin: 0;
     color: var(--muted);
-    font-size: 0.85rem;
+    font-size: 14px;
   }
 
   .plan__price span {
-    font-family: var(--font-body);
-    font-variation-settings: normal;
-    font-variant-numeric: tabular-nums;
-    font-weight: 620;
-    font-size: 1.65rem;
+    margin-right: 6px;
     color: var(--ink);
-    margin-right: 0.4rem;
-    letter-spacing: -0.04em;
-  }
-
-  /* "Waitlist" is a state, not a price — it should not shout like one */
-  .plan__price--soft span {
-    font-family: var(--font-body);
-    font-weight: 600;
-    font-size: 1.1rem;
-    letter-spacing: 0;
-    color: var(--accent);
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
   }
 
   .plan__list {
-    list-style: none;
-    margin: 0 0 1.75rem;
-    padding: 0;
     display: grid;
-    gap: 0.65rem;
+    gap: 10px;
+    margin: 0 0 28px;
+    padding: 0;
     color: var(--muted);
-    font-size: 0.94rem;
+    font-size: 14px;
+    line-height: 1.5;
+    list-style: none;
   }
 
   .plan__list strong {
-    color: var(--accent);
+    color: var(--ink);
+    font-weight: 500;
   }
 
   .plan__list li {
-    padding-left: 1.5rem;
     position: relative;
+    padding-left: 18px;
   }
 
   .plan__list li::before {
     content: '';
     position: absolute;
-    left: 0;
-    top: 0.55em;
-    width: 8px;
-    height: 8px;
-    background: var(--accent);
-    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    left: 2px;
+    top: 0.62em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--line-strong);
   }
 
-  /*[[ THE FOOTER IS WHAT IS ANCHORED, NOT THE BUTTON.
-   *   `margin-top: auto` on `.plan__cta` only reaches the bottom of a card that HAS a cta, and two
-   *   of three did not — which is the whole 235px hole. Anchoring the footer instead puts a control
-   *   at the same distance from every card's bottom edge whatever that card can offer, and pins the
-   *   caption directly under it rather than leaving it floating mid-void. ]]*/
   .plan__foot {
-    margin-top: auto;
-    padding-top: 1.25rem;
     display: grid;
-    gap: 0.55rem;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 20px;
     border-top: 1px solid var(--hairline);
   }
 
   .plan__cta {
-    justify-content: center;
     width: 100%;
+    min-height: 40px;
   }
 
-  /* Off, and visibly so, without pretending to be absent. */
-  .plan__cta:disabled,
-  .plan__cta:disabled:hover {
-    border-color: var(--line-strong);
-    background: transparent;
+  .plan__note {
+    margin: 12px 0 0;
     color: var(--faint);
-    cursor: not-allowed;
-    transform: none;
+    font-size: 13px;
+    line-height: 1.55;
   }
 
   .plan__note--foot {
-    margin: 0;
-    /* Two lines' worth, so three footers of unequal copy still land their buttons on one baseline. */
     min-height: 3em;
-  }
-
-  .plan__note {
-    margin: 0.9rem 0 0;
-    font-size: 0.78rem;
-    color: var(--faint);
-    line-height: 1.5;
-  }
-
-  .calcsec {
-    background: var(--paper-2);
-    border-block: 1px solid var(--line);
-  }
-
-  /*[[ ONE AXIS, the same one the landing page settled on. Measured on the deployed page at
-   *   1425px: the plan grid is centred at 713 and every section head was centred at 355 — one page
-   *   drawn on two centre lines, which is the exact thing that made the landing look unfinished.
-   *   Scoped to this page style block rather than to the shared class, because /changelog uses the
-   *   same class and a dated log is a document, not a poster. ]]*/
-  .sechead {
-    max-width: 60ch;
-    margin: 0 auto clamp(1.75rem, 4vw, 2.75rem);
+    margin: 0;
     text-align: center;
   }
 
-  .phead > .wrap > .eyebrow,
-  .phead > .wrap > h1,
-  .phead > .wrap > .lede,
-  .sechead .lede {
-    margin-inline: auto;
-    text-align: center;
-  }
-
-  /* THE EYEBROW IS `inline-flex`, which is why neither `margin-inline: auto` nor its own
-     `text-align` moved it: an inline box is placed by its PARENT alignment, and the wrap is
-     `text-align: start`. Measured: width 87, left 113, while the headline beside it was centred at
-     713. Making it block-level is what lets `justify-content` mean anything here. */
-  .phead > .wrap > .eyebrow,
-  .sechead .eyebrow {
+  .plan-enterprise {
     display: flex;
-    justify-content: center;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 14px;
+    margin: 16px 0 0;
+    padding: 18px 28px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    color: var(--muted);
+    font-size: 14px;
   }
 
-  .plan__note {
-    margin-inline: auto;
-    text-align: center;
+  .plan-enterprise strong {
+    color: var(--ink);
+    font-weight: 500;
   }
 
-  .sechead h2 {
-    margin-bottom: 0.5rem;
+  .plan-enterprise a {
+    margin-left: auto;
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
   }
 
-  /* table extras */
-  .dot {
-    display: inline-block;
-    width: 9px;
-    height: 9px;
-    border-radius: 2px;
-    background: var(--accent);
-    margin-right: 0.5rem;
+  .plan-notes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 40px;
+    margin-top: 40px;
   }
 
-  /* The compare table's row-header caption. It is NOT `.tx`: `.tx` is an inline tail on a value
-     cell ("+1 per extra step") where not wrapping is correct, and reusing it inside a 148px sticky
-     header is what put a 712px sentence across three columns. This one wraps, drops the uppercase
-     mono it was inheriting from `th`, and is capped at a comfortable measure. */
-  .rownote {
+  .plan-notes {
+    gap: 28px 48px;
+    margin-top: 56px;
+  }
+
+  .plan-notes .plan__note {
+    margin: 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--hairline);
+    color: var(--muted);
+  }
+
+  .note-title {
     display: block;
-    margin-top: 0.35rem;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-transform: none;
-    font-family: var(--font-body);
-    font-size: 0.76rem;
-    font-weight: 400;
-    letter-spacing: 0;
-    line-height: 1.45;
-    color: var(--faint);
-    max-width: 34ch;
+    margin-bottom: 6px;
+    color: var(--ink);
+    font-size: 14px;
   }
 
-  /* The 148px cap in global.css exists so two plan columns stay visible beside the sticky row
-     header at 375px. It is a phone constraint and it was silently a desktop one: at 1280 the
-     capability column was 170px of a 1120px table. Lifted only where there is room. */
-  @media (min-width: 760px) {
-    .compare th[scope='row'] {
-      max-width: 34ch;
-      width: 30%;
-    }
-  }
-
-  .num {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
+  .plan__note a,
+  .tfoot a,
+  .plan__note strong {
     color: var(--ink);
   }
 
-  .tfoot {
-    margin-top: 1.1rem;
-    color: var(--muted);
-    font-size: 0.87rem;
+  .plan__note a,
+  .tfoot a {
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+  }
+
+  .plan__note strong,
+  .tfoot strong {
+    font-weight: 500;
+  }
+
+  .compare-note {
     max-width: 62ch;
+    margin: 16px auto 0;
+    text-align: center;
+  }
+
+  /* A caption under a capability name in the table. It wraps (the sticky header is narrow on a
+     phone) and drops the header's weight. */
+  .rownote {
+    display: block;
+    max-width: 34ch;
+    margin-top: 5px;
+    color: var(--faint);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.45;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  @media (min-width: 760px) {
+    .compare th[scope='row'] {
+      width: 30%;
+      max-width: 34ch;
+    }
+  }
+
+  .compare__yes {
+    color: var(--ink);
+  }
+
+  .compare__no {
+    color: var(--faint);
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tfoot {
+    max-width: 62ch;
+    margin: 16px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
   }
 
   .limitsec .wrap-narrow-ish {
@@ -971,9 +962,114 @@ const limitFaq = [
     margin-inline: auto;
   }
 
-  @media (max-width: 900px) {
-    .plans {
-      grid-template-columns: 1fr;
+  /* THE TWO TABLES STACK ON A PHONE (2026-09-22). Both are 620px wide, and inside a 356px scroll
+     box they cut words mid-word at the right edge ("Inspects the pro") and hid the Studio and
+     Enterprise columns with no sign they existed. Below 640px each row becomes a block: the row's
+     name on top, then every value under the label its column header gave it (`data-label`), so
+     nothing is off-screen and nothing needs a sideways scroll. */
+  @media (max-width: 640px) {
+    .stack-sm {
+      overflow: visible;
+    }
+
+    .stack-sm table {
+      min-width: 0;
+    }
+
+    .stack-sm thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+
+    .stack-sm tr {
+      display: grid;
+      gap: 12px 16px;
+      padding: 18px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .stack-sm tbody tr:last-child {
+      border-bottom: 0;
+    }
+
+    .stack-sm th,
+    .stack-sm td {
+      display: block;
+      padding: 0;
+      border: 0;
+    }
+
+    .table-scroll.stack-sm table :global(th[scope='row']) {
+      position: static;
+      max-width: none;
+      background: transparent;
+    }
+
+    .table-scroll.stack-sm table :global(th[scope='row'])::after {
+      content: none;
+    }
+
+    .stack-sm td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      font-family: var(--font-body);
+      margin-bottom: 3px;
+      color: var(--faint);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* The comparison: capability on top, the four plans as a two-by-two grid under it. */
+    .compare tr {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .compare :global(th[scope='row']) {
+      grid-column: 1 / -1;
+    }
+
+    .mode-cell {
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 500;
+    }
+  }
+
+  @media (max-width: 960px) {
+    .plan-rail {
+      grid-template-columns: minmax(0, 1fr);
+      max-width: 520px;
+      margin-inline: auto;
+    }
+
+    .plan-enterprise,
+    .plan-notes {
+      max-width: 520px;
+      margin-inline: auto;
+    }
+
+    .plan-notes {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .plan {
+      padding: 22px;
+    }
+
+    .plan-enterprise {
+      padding: 16px 22px;
+    }
+
+    .plan-enterprise a {
+      margin-left: 0;
     }
   }
 </style>

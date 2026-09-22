@@ -37,17 +37,22 @@ export interface KnownIssue {
 
 export const KNOWN_ISSUES: KnownIssue[] = [
   {
+    // CLOSED 2026-09-22, NOT DELETED. The listing (asset 107230158271368, "Apple Studio") resolves
+    // publicly again — toolbox details, Creator Store search and the rendered store page all show it
+    // free to get — and packages/shared flipped STUDIO_PLUGIN_STORE_LIVE to true. The entry stays so
+    // the page shows the list is maintained; tests/known-issues.test.mjs holds it to the flag in
+    // both directions.
     id: 'plugin-not-in-creator-store',
-    title: 'Public Studio plugin installation is unavailable',
+    title: 'Studio plugin installation was unavailable',
     impact:
-      'The previous Creator Store listing was removed. New customers can use chat, but cannot '
-      + 'build inside Studio without an existing working plugin connection.',
+      'Between 1 and 22 September 2026 the Studio plugin could not be installed from the Roblox '
+      + 'Creator Store, so new customers could chat but could not build inside Studio.',
     workaround:
-      'There is no public installation workaround '
-      + 'or confirmed release date. A replacement is being tested locally; it is not a released plugin.',
-    links: [{ label: 'Plugin availability', href: '/docs/plugin' }],
+      'Resolved: Apple Studio is on the Creator Store again. Get it from the store page, install it '
+      + 'from the Studio Toolbox, then pair it with your project.',
+    links: [{ label: 'Install the plugin', href: '/docs/plugin' }],
     openedAt: '2026-09-01',
-    resolvedAt: null,
+    resolvedAt: '2026-09-22',
   },
   {
     id: 'plugin-presence-not-detectable',
@@ -56,11 +61,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Apple reports a live connection when a paired plugin communicates with it. Without that '
       + 'connection, the browser cannot distinguish an uninstalled plugin from a closed or disconnected Studio.',
     workaround:
-      'If you already have a working plugin, open Studio and its Apple panel, then connect it to '
-      + 'your project. New installations remain unavailable; check plugin availability before trying to pair.',
+      'Open Studio and its Apple panel, then connect it to your project. If there is no Apple button '
+      + 'in the Plugins tab, the plugin is not installed yet — get Apple Studio from the Creator Store first.',
     links: [
       { label: 'Troubleshoot a missing panel', href: '/docs/troubleshooting' },
-      { label: 'Plugin availability', href: '/docs/plugin' },
+      { label: 'Install the plugin', href: '/docs/plugin' },
     ],
     openedAt: '2026-09-01',
     resolvedAt: null,

@@ -4,7 +4,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
 <DocsLayout
   title="Build the plugin from source — Apple Docs"
-  description="Developer and debug path: build Apple for Studio from the repo with Rojo and load it as a local plugin. Not the way to install Apple."
+  description="Developer and debug path: build Apple Studio from the repo with Rojo and load it as a local plugin. Not the way to install Apple."
   heading="Build the plugin from source"
 >
   {/*
@@ -31,13 +31,13 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <p>
       <strong>This is not how you install Apple.</strong> It is the development and debugging path,
       for people changing the plugin's code. If you want to <em>use</em> Apple, go to
-      <a href="/docs/plugin">Install Apple for Studio</a> — the Creator Store is the only supported
+      <a href="/docs/plugin">Install Apple Studio</a> — the Creator Store is the only supported
       install path, and a hand-built plugin is unsupported, unsigned and updated by nobody but you.
     </p>
     <p>
       <strong>Build <code>apps/apple-plugin</code> and nothing else.</strong> There is a second
-      Studio plugin in the repository, <code>apps/plugin</code>. It is the legacy source the removed
-      Creator Store asset was built from, it executes Luau it receives over the wire, and it must not
+      Studio plugin in the repository, <code>apps/plugin</code>. It is the legacy source of an older, retired
+      Creator Store listing, it executes Luau it receives over the wire, and it must not
       be loaded into a Studio you care about. Its own README says so in its first line.
     </p>
   </div>

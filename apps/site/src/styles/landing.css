@@ -1,1947 +1,1143 @@
 /*
- * THE LANDING PAGE'S OWN SYSTEM.
+ * THE FRONT PAGE — structure only.
  *
- * Rebuilt 2026-09-19 against a measured bar. The owner named tesana.ai; it was opened in Chrome and
- * read with getComputedStyle rather than looked at, and every number below comes from that reading.
- * The measurements, the rules derived from them and the things deliberately NOT taken are recorded
- * in packages/corpus/data/ui-references/web-landing.json.
+ * Every colour, type, radius and motion value is a token from apple-minimal.css, which
+ * Landing.astro imports before this file. Nothing here redeclares a token and nothing here needs
+ * `!important`: the two sheets no longer fight, so the cascade settles on source order alone.
  *
- * RE-MEASURED 2026-09-20 FOR THE HERO AND THE NAV. The owner rejected the first pass and set the
- * bar again: the geometry is to be the reference's geometry exactly, in our own black and green.
- * https://tesana.ai/en was re-read with getComputedStyle at 1568x900 and again at 390x844, and the
- * hero numbers below are that second reading rather than the first. What was NOT taken is unchanged
- * and is the harder half: no markup, no stylesheet, no image, no icon, no font file, no wordmark and
- * not one sentence of its copy. A measurement is a fact about a page; its words are not.
+ * THE DIRECTION: near-black and matte, calm, a lot of room. Hierarchy is size, weight and space —
+ * not colour, not glow. Panels are a surface step and a hairline; nothing casts a shadow except the
+ * composer, which floats. Blue marks an ordinary active state (focus, a selected tab, a pressed
+ * control). Violet is spent only by an Autonomous control while it is on.
  *
- * The three decisions that matter, and why each is a number rather than a taste:
- *
- *   ONE WEIGHT. Every text node on the reference is font-weight 400, including its 96px statement.
- *   Hierarchy is carried by size, colour and space. Reaching for 600 on a heading is the reflex that
- *   makes a dark page look like a template, and it is the first thing this file gives up.
- *
- *   WARM NEUTRALS. #141312 against #f4f3f2 — red highest, blue lowest, by a point or two at every
- *   step of the ramp. Imperceptible per colour, unmistakable across a page. The old palette was
- *   #080808/#f5f5f5, which is the same idea with the warmth taken out.
- *
- *   A HAIRLINE, NOT A SHADOW. One 1px rgba(244,243,242,.08) border does all the separation; the
- *   reference uses effectively no shadows. Elevation is a surface step, not a blur.
+ * MOTION is two small things: the composer's example sentences cross-fading ONCE in an empty field
+ * and then resting on the first, and a short fade as a section scrolls in. Nothing loops. Both are
+ * off under prefers-reduced-motion.
  */
 
-:root {
-  color-scheme: dark;
-
-  /*
-   * THE ADDRESS BAR IS PART OF THE PAGE, AND IT WAS A DIFFERENT COLOUR FROM IT.
-   *
-   * Both layouts shipped `<meta name="theme-color" content="#080808">` — the retired pre-warm-ramp
-   * black — so on a phone the browser band above this page was a cooler, darker black than the
-   * #141312 below it and left a visible seam at the top of every route. `--theme-color` is that
-   * value derived from the palette instead of typed beside it: the layouts' inline script reads
-   * this property off :root and writes it into the meta, so the band can never disagree with the
-   * page again, in either theme.
-   */
-  --theme-color: #050807;
-
-  /* The ramp. Four steps and an inverted one, which is all the reference uses. */
-  --ground: #050807;
-  --raised: #0a0f0c;
-  /* `--surface` and `--surface-2` are the names every other stylesheet in this repo uses for these
-     two steps. Two names for one colour is how a palette drifts, so these are the tokens and the
-     older local names alias them rather than the other way round. A third alias, --control, was
-     declared and read by nothing; the unused-token guard caught it and it is gone. */
-  --surface: #101814;
-  --surface-2: #18231d;
-  --inverted: #f4f3f2;
-
-  --ink: #ffffff;
-  --ink-secondary: #c9d0cb;
-  --muted: #8b938e;
-  --faint: #69716c;
-
-  --line: rgba(255, 255, 255, 0.08);
-  /* The reference fills a quiet control — a nav link on hover, a secondary button, a chip — with
-     its own ink at 6%, and nothing else. Naming it stops the next person reaching for a fifth
-     surface step when what they want is the one tint the whole bar already uses. */
-  --control-fill: rgba(255, 255, 255, 0.06);
-
-  /* ONE SATURATED COLOUR, SPENT ONCE. #00d492 is the owner's green and the only hue on the page.
-     It is never a solid fill: the reference's green is light standing on a surface, so the accent
-     appears as a 10% tint carrying text at 90% — which is why the two derived tokens exist and the
-     raw hex appears exactly once, here. A second green thing on a screen means neither is the
-     answer, so this pays for the composer's primary control and the focus ring, and nothing else. */
-  --accent: #00d492;
-  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
-  --accent-ink: color-mix(in srgb, var(--accent) 90%, transparent);
-
-  /*[[ THE ACCENT IS A FAMILY OF THREE, WHICH IS THE SINGLE BIGGEST THING TAKEN FROM THE BAR.
-   *
-   *   Measured on rosebud.ai: rgb(203,82,251) fills and focuses, rgb(236,146,251) — a LIGHTER tint
-   *   — borders every accented control, and rgb(143,0,200) — a DARKER shade — is the primary
-   *   button's fill. One accent doing all three jobs is exactly why our accented button read flat:
-   *   a green button with a green border in the same green has no edge.
-   *
-   *   Re-derived rather than hue-rotated, because rotating rgb(143,0,200) to green lands on a
-   *   colour no dark interface should carry. --accent-deep is chosen for CONTRAST: white on
-   *   #00794f measures 5.46:1, which clears 4.5:1 for the button label at any size.
-   *
-   *   The three alpha tokens carry the bar's own numbers — 12% fill, 38% border, 14% glow — so the
-   *   chip that names the model looks like the object it was learned from. ]]*/
-  --accent-light: #66efc2;
-  --accent-deep: #00794f;
-  --accent-ring: color-mix(in srgb, var(--accent-light) 38%, transparent);
-  --accent-glow: color-mix(in srgb, var(--accent) 14%, transparent);
-
-  /* The composer is the hero's focal object. On the bar it is a solid white slab on a black page —
-     the brightest thing above the fold. Translated into black and green it keeps that job by
-     inverting: a dark translucent fill with a near-white 1px rim, so the edge is what carries the
-     brightness. Without the rim the composer stops being an object sitting on the page and becomes
-     a rectangle drawn on it. */
-  --composer-fill: rgba(16, 24, 20, 0.78);
-  --composer-rim: rgba(255, 255, 255, 0.14);
-
-  /* THE SECOND SURFACE. A blind critic compared this page against a competitor's with the labels
-     stripped and chose the competitor's, and the first reason it gave was that ours is "one flat
-     near-black value across the entire page, no second surface tone, no containment, so it reads
-     as text on a background rather than a designed screen." That is a true reading of what was
-     here: below the fold every block sat directly on --ground.
-     #1c1b19 against #141312 is eight points of lift — enough for an edge to exist at a glance and
-     far short of the #232221 control tint, which belongs to things you press. The gradient is the
-     same idea the composer's rim carries: light arrives from above, so the top of a raised surface
-     is fractionally brighter than its bottom. background-color carries the value and the image
-     carries the fall, so the surface is still a measurable colour and not a transparent box with a
-     gradient painted on it. */
-  --pillar: #0d1410;
-  --pillar-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 62%);
-  --pillar-line: rgba(255, 255, 255, 0.09);
-  --pillar-hi: #121a15;
-  --line-strong: #2c3a33;
-
-  /*[[ THE TYPE SYSTEM, AS TOKENS, BECAUSE HALF THE SITE ALREADY HAD ONE AND THIS FILE DID NOT.
-   *
-   *   global.css — which dresses /docs, /pricing, /changelog, /status and the legal routes — has
-   *   declared --font-display, --font-body, --font-sans and --font-mono since the warm-dark pass.
-   *   This file does not import it (see the note at line 174) and had therefore SPELLED THE SAME
-   *   TWO STACKS OUT NINE TIMES: the sans once on `body`, the mono eight times, on the activity
-   *   log, the step figures and the four capability stages. Nine literals is not a typography
-   *   system; it is a typography system on one half of a site and nine chances to drift on the
-   *   other. The values below are character-identical to global.css's, so nothing renders
-   *   differently — this is where the stacks are named, not a new decision about which they are.
-   *
-   *   THE STACK ITSELF IS THE DECISION AND IT IS FINAL. It is recorded in docs/DESIGN-TYPE.md with
-   *   the arithmetic: a self-hosted variable display face is one more request and a flash of
-   *   unstyled text on a page whose payload budget is already exceeded, to replace a stack that
-   *   resolves to SF on the owner's own machine. The owner's one standing instruction about type
-   *   is to KEEP OURS, in the same sentence as the instruction to delete everything else.
-   *
-   *   --font-display and --font-body are the same stack today, exactly as they are in global.css.
-   *   Both names exist so that the day they differ, every heading moves and no body text does. ]]*/
-  --font-display: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-body: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-
-  --shell: 1024px;
-  --gutter: 32px;
-  /* The hero is full-bleed with its own gutter: the bar's nav sits in a 1280px container with 32px
-     padding, while its hero content is centred in the viewport behind 24px. Two different gutters
-     is the measurement, not an oversight, and one variable for each keeps them from drifting. */
-  --hero-gutter: 24px;
-  --nav-h: 60px;
-  --r: 8px;
-  --r-sm: 6px;
-  /* THE THIRD RADIUS IS NOW THE FIRST ONE, and the paragraph that used to sit here argued for 22px
-     on the strength of a different page. Measured on rosebud.ai there are exactly two radii on the
-     whole site — "8px on 23 elements (cards, panels), 6px on 11 (every control). Nothing is a pill."
-     A composer is a panel, so it takes the panel radius. The token survives because the composer
-     reads it and "the big surface" is worth a name; its VALUE is no longer a third step. */
-  --r-lg: 8px;
-  /*[[ --control-h IS GONE, AND DELETING IT IS WHAT MAKES THE FOUR HEIGHTS BELOW REAL.
-   *
-   *   It said 36px, and every control in this sheet named it, on the reading that the old bar has
-   *   ONE control height. Re-measured on rosebud.ai that is false — "CONTROLS COME IN FOUR HEIGHTS
-   *   AND NO MORE: 28px for a bare text button, 32px for a chip or nav item, 36px for a chrome
-   *   button and the primary action, 50px for a large step CTA" — and an alias meaning 36 sitting
-   *   beside --h-md meaning 36 is two names for one number, which is precisely how the surface ramp
-   *   above drifted the last time somebody kept a friendly old name. So it is deleted rather than
-   *   re-pointed, and every control below names the step it actually lands on. The token is not
-   *   merely unread: apps/web/tests/contrast.test.mjs fails a landing token nothing references, and
-   *   that guard is right — a token nobody reads is a decision nobody made. ]]*/
-  /* FOUR CONTROL HEIGHTS AND NO MORE, quantised from the bar: 28 for a bare text button, 32 for a
-     chip or nav item, 36 for a chrome button and the primary action, 50 for a large step CTA.
-     Every control on that page lands on one of these four, and a fifth height is how a control bar
-     stops looking machined. */
-  --h-xs: 28px;
-  --h-sm: 32px;
-  --h-md: 36px;
-  --h-lg: 50px;
-
-  --ease: cubic-bezier(0.22, 0.68, 0.24, 1);
-  /* THE BAR'S SIGNATURE CURVE. Colour-only changes there run 0.26s on cubic-bezier(0.32,0.72,0,1)
-     — a hard ease-out that leaves immediately and settles late — while background, border and
-     transform run 0.15s ease-out, and only the largest controls get 0.2s. NOTHING on that page
-     takes longer than 0.26s, and that ceiling is the reason it feels crisp rather than smooth. */
-  --ease-hard: cubic-bezier(0.32, 0.72, 0, 1);
-  --t-color: 0.26s;
-  --t-fast: 0.15s;
-  --t-base: 0.2s;
-
-  /* The warm glow behind the composer, tokenised so the light theme can carry its own strength.
-     A terracotta at 16% is a visible lift on #141312 and invisible on #f4f3f2. */
-  --glow-strong: rgba(217, 149, 118, 0.16);
-  --glow-soft: rgba(217, 149, 118, 0.05);
-}
-
-/*
- * THE LANDING PAGE WAS THE ONE ROUTE WITH NO LIGHT THEME AND NO TOGGLE.
- *
- * Every other page imports global.css, which defines :root[data-theme='light']; this file defined
- * one ramp and Landing.astro shipped no theme script, so switching to light on /pricing and
- * clicking the wordmark landed a reader on a dark homepage with no control to change it — the
- * site's one visible preference, silently dropped on its front page.
- *
- * This is the same ramp inverted rather than a second design: every step keeps its ROLE (ground is
- * the page, raised is one step off it, inverted is the opposite end) and its warmth (red highest,
- * blue lowest, at every step), so nothing in the rules below this block had to change. Two things
- * could not simply invert and are named:
- *
- *   THE ACCENT. #00d492 measures 1.75:1 on #f4f3f2 — unreadable. The hue is kept and the value
- *   dropped to #00694a (6.07:1 on the page, 5.5:1 on its own 12% tint), so the one saturated colour
- *   is still the one saturated colour and is still legible. The tint itself stays mixed from the
- *   bright green, because a tint's job is to be a tint.
- *
- *   THE COMPOSER. On dark it is a dark translucent fill with a near-white rim, because the rim is
- *   what carries brightness there. On light the page is already the bright thing, so the composer
- *   becomes the solid white slab the reference actually uses, with a dark hairline.
- */
-:root[data-theme='light'] {
-  color-scheme: light;
-
-  --theme-color: #f2f5f3;
-
-  --ground: #f2f5f3;
-  --raised: #ffffff;
-  --surface: #e8ede9;
-  --surface-2: #d9e2dc;
-  --inverted: #050807;
-
-  --ink: #061009;
-  --ink-secondary: #23302a;
-  --muted: #55635b;
-  --faint: #6b7872;
-
-  --line: rgba(6, 16, 9, 0.10);
-  --control-fill: rgba(6, 16, 9, 0.05);
-
-  --accent: #00694a;
-  --accent-soft: color-mix(in srgb, #00d492 12%, transparent);
-  --accent-ink: #00583e;
-  /* The family inverts on paper. On the dark ramp --accent-light is a LIGHTER tint because it
-     borders against black; here it must be DARKER than the fill or an accented control loses its
-     edge against #f2f5f3. --accent-deep keeps the same job — the primary button's fill — and is
-     chosen the same way, for contrast with its white label. */
-  --accent-light: #00553c;
-  --accent-deep: #00563d;
-  --accent-ring: color-mix(in srgb, var(--accent) 45%, transparent);
-  --accent-glow: color-mix(in srgb, var(--accent) 12%, transparent);
-
-  --composer-fill: #ffffff;
-  --composer-rim: rgba(6, 16, 9, 0.16);
-
-  /* On light the page is the bright thing, so a raised surface goes UP to white rather than down
-     to grey — the same relationship inverted, which is how every other pair in this ramp works. */
-  --pillar: #ffffff;
-  --pillar-sheen: linear-gradient(180deg, rgba(6, 16, 9, 0.02), rgba(6, 16, 9, 0) 62%);
-  --pillar-line: rgba(6, 16, 9, 0.10);
-  --pillar-hi: #ffffff;
-  --line-strong: rgba(6, 16, 9, 0.18);
-
-  --glow-strong: rgba(0, 105, 74, 0.20);
-  --glow-soft: rgba(0, 105, 74, 0.07);
-}
-
-* { box-sizing: border-box; }
-/* smooth scrolling, and a landing zone that clears the bar that is stuck over it.
-   The header is `position: sticky` and 60px tall — 96px once it wraps to two rows at 640px — so an
-   in-page jump to #inside parked that section's first line UNDER the header, and the reader met a
-   heading with its top half missing. scroll-padding-top is the one property that tells the
-   scrolling box where the visible top actually is, and --nav-h already carries both heights, so
-   this cannot disagree with the bar it is compensating for. */
-html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 16px); }
-
+/* The mono token reaches every technical surface; the body face comes from apple-minimal.css. */
 body {
-  margin: 0;
-  background: var(--ground);
-  color: var(--ink);
   font-family: var(--font-body);
-  font-weight: 400;
-  font-size: 14px;
-  /* 1.5, NOT 20px. The bar's body is "14px/400/normal body at a 1.5 line height" and ours was
-     14/20, which is 1.429 — close enough to look deliberate and far enough to make every stacked
-     paragraph on the page fractionally tighter than the thing it was measured from. A ratio also
-     survives the two places below where the body size changes; 20px did not. */
-  line-height: 1.5;
-  letter-spacing: -0.01em;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-a { color: inherit; text-decoration: none; }
-button, input { font: inherit; color: inherit; }
-img { display: block; max-width: 100%; }
-/* The focus ring is the accent at full strength, 2px at a 4px offset, and it is never restyled per
-   component. A keyboard user gets the same product, and an ink-coloured ring on a page that now has
-   an accent would make the focused element look like every other light thing on it. */
-/* FOCUS IS A RING AND A HALO, WHICH IS HOW THE BAR DRAWS IT. Measured: focus is `accent 0 0 0 1px`
-   plus a wider low-alpha halo — never a drop shadow, because "ELEVATION IS A GLOW, NOT A DROP
-   SHADOW" is the rule the whole sheet now follows. The offset comes in from 4px to 2px so the ring
-   reads as part of the control rather than as a second rectangle around it, and the radius is the
-   control radius rather than a fourth number typed here. */
-a:focus-visible, button:focus-visible {
-  outline: 2px solid var(--accent); outline-offset: 2px;
-  border-radius: var(--r-sm);
-  box-shadow: 0 0 0 4px var(--accent-glow);
+a {
+  text-decoration: none;
 }
-::selection { background: var(--ink); color: var(--ground); }
 
-/* The skip link is a control like any other, so it lands on a control height instead of inventing
-   one out of 12px of padding: 36px, the chrome step, with the primary action's 16px of side room. */
-/* The same utility global.css carries, restated here for the same reason the orphan rule below is:
-   this page does not import that sheet. The landing's first real form label is the first thing on
-   this route that needs it. */
-.visually-hidden {
-  position: absolute; width: 1px; height: 1px;
-  margin: -1px; padding: 0; border: 0;
-  clip-path: inset(50%); overflow: hidden; white-space: nowrap;
-}
-.skip-link { position: fixed; z-index: 30; top: -80px; left: 20px; display: inline-flex; align-items: center; height: var(--h-md); padding: 0 16px; border-radius: var(--r-sm); background: var(--inverted); color: var(--ground); }
-.skip-link:focus { top: 12px; }
+/* ------------------------------------------------------------------ hero */
 
-/* ---------------------------------------------------------------- shell */
-
-.shell { width: 100%; max-width: var(--shell); margin: 0 auto; padding: 0 var(--gutter); }
-
-/* THE TYPE SCALE, measured. 56 / 32 / 20 / 16 / 14 / 10, tracking tightening as size grows and
-   turning positive at the micro label. Nothing here is bold. */
-/* 56px, which is the bar's H1 exactly, and 40px at 390px wide, which is the bar's H1 there.
-   THE LINE BOX IS `font-size + 8px`, NOT A RATIO. The reference sets 56/64 at desktop and 40/48 on a
-   phone; 64/56 is 1.143 and 48/40 is 1.2, so no single ratio reproduces both and a ratio picked from
-   one end silently misses the other by four pixels. calc(1em + 8px) lands on both measurements.
-   THIS EXCEEDS scripts/check-copy.mjs's 3.4rem (54.4px) display cap by 1.6px, deliberately and with
-   the owner's instruction behind it: the bar for this page is now the reference's own measurements,
-   and the cap was set from a different set of competitors. Raising MAX_DISPLAY_REM to 3.5 belongs to
-   whoever owns that guard; this file does not route around it by hiding the size behind a variable,
-   because a guard you can no longer read is worse than a guard you disagree with. */
-.display { margin: 0; font-size: clamp(40px, 5vw, 56px); font-weight: 400; line-height: calc(1em + 8px); letter-spacing: -0.02em; text-wrap: balance; }
-/* THE STATEMENT IS THE BAR'S 56px STEP, AT THE BAR'S 56px.
-   Read off the live DOM: 56px on a 64px line box with -1.12px of tracking, centred in a 750px
-   measure, and 32px on a 40px line box with -0.48px below the 768px breakpoint. Both line boxes are
-   the font size plus eight — 1.143 at one end and 1.25 at the other — so calc(1em + 8px) lands on
-   both measurements where any single ratio misses one of them by four pixels. This is the same
-   construction .display above uses, for the same reason, and it exceeds scripts/check-copy.mjs's
-   3.4rem (54.4px) cap by the same 1.6px and with the same answer: raising MAX_DISPLAY_REM belongs
-   to whoever owns that guard, and this file does not route around it by hiding the size behind a
-   variable, because a guard you can no longer read is worse than a guard you disagree with.
-   The 750px measure is not decoration. Without it the statement runs the full 1216px container,
-   which is about 150 characters to a line, and that is why large centred type usually looks rented
-   rather than composed. */
-.statement { margin: 0 auto; max-width: 750px; font-size: clamp(32px, 3.8vw, 56px); font-weight: 400; line-height: calc(1em + 8px); letter-spacing: -0.02em; text-wrap: balance; }
-.section-title { margin: 0; font-size: clamp(28px, 2.4vw, 32px); font-weight: 400; line-height: 1.3125; letter-spacing: -0.013em; text-wrap: balance; }
-
-/* The same orphan rule global.css carries, restated here because this page does not import it.
-   The landing was the mildest offender — one stranded word at 375px, in the paragraph under "It
-   works in the place you already have open" — but a phone-width line ending on "games." is the
-   same defect the docs had eighty-five more times, and the guard counts this page with the rest. */
-h1, h2, h3, h4, h5, h6 { text-wrap: balance; }
-p, li, dd, dt, figcaption, blockquote { text-wrap: pretty; }
-/* THE SUB-LINE IS 16px, NOT BODY SIZE. Every section on the bar is the same three objects at the
-   same three sizes: a 32px title, eight pixels, a 16px/24px muted line, and then the thing itself.
-   Ours set that line at 14px, which is the size of the text inside the cards below it, so a head
-   read as a title with a caption attached instead of as a section opening. The consistency is the
-   whole effect, and it only works if the number never varies. */
-.section-sub { margin: 8px 0 0; color: var(--muted); font-size: 16px; line-height: 24px; letter-spacing: -0.01em; }
-/* The sub-headline is 20/30 at desktop and 16/24 on a phone — both 1.5, which is the one ratio the
-   reference does hold at both ends. It is NOT muted: the bar sets it in its ink at 90%, which over
-   our page composites to exactly --ink-secondary (#dedcda). A sub-line at --muted is the reflex that
-   makes the second sentence look like a caption, and it is what the first pass got wrong here. */
-.lead { margin: 0; color: var(--ink-secondary); font-size: 20px; line-height: 1.5; letter-spacing: -0.012em; }
-/* THE MICRO LABEL IS THE BAR'S LABEL: 12px, 700, +1.2px, uppercase.
-   Measured on rosebud.ai: "NAV AND LABELS ARE UPPERCASE WITH POSITIVE TRACKING, body is not: 12px/
-   700/1.2px on nav items, 12px/700 with 1.2px on labels, against 14px/400/normal body at a 1.5 line
-   height." Ours was 10px/400/+0.018em, which is the same gesture two steps quieter — and 0.018em at
-   10px is 0.18px, a tracking nobody can see. This is the ONE place the sheet spends weight 700; the
-   headings stay at 400, because hierarchy there is carried by size and colour.
-   THE COLOUR MOVES UP A TIER WITH THE SIZE. --faint on --ground measures 4.00:1, which is under the
-   4.5:1 small text needs, and it was carrying every label on the page. --muted is 6.42:1. --faint
-   now pays for the one thing on this page that is not text — see .card-media. */
-.micro { margin: 0; color: var(--muted); font-size: 12px; font-weight: 700; line-height: 18px; letter-spacing: 1.2px; text-transform: uppercase; }
-
-/* THE EYEBROW sits 16px above the headline, which is the gap the bar puts between a micro label and
-   the line it introduces. It is `.micro` with a margin and nothing else — a modifier that restated
-   the label's type would be the second place this page declares that object, and that label already
-   drifted to body size once because two rules claimed it. */
-.hero-eyebrow { margin-bottom: 16px; }
-
-/* ------------------------------------------------------------------ nav */
-
-.site-header {
-  position: fixed; z-index: 20; top: 0; left: 0; right: 0;
-  height: var(--nav-h);
-  display: flex; align-items: center;
-  /* NO VISIBLE FILL AND NO HAIRLINE — the owner's ruling, kept. What changed is the reasoning
-     underneath it, which was wrong.
-
-     The rule used to read `background: transparent` and justify it like this: "the hero is a
-     viewport tall, so the first thing that scrolls under the nav is a section boundary rather than
-     a paragraph." Measured at 375px, 650px and 1280px, that is false. `.hero` is
-     `display:flex; align-items:center`, so its copy sits at the MIDDLE of the viewport, and the
-     first thing to cross the bar is the hero's own lead paragraph. At scrollY 218 on the live site
-     the <p> "Describe the game you want. Apple builds it inside your own place." measured
-     top:-38 bottom:52 against a header band of 0..60 — printed straight through the wordmark and
-     the link row, two lines of light text over each other.
-
-     The fix does not bring back the scrim that was rejected. `.hero` has no background of its own
-     and `body` is a flat `var(--ground)` with no image, so the surface behind this bar is that one
-     colour at EVERY scroll position. Painting the bar in the same colour is therefore invisible —
-     identical pixels at rest, identical pixels scrolled — and its only effect is that prose passing
-     underneath is occluded instead of showing through. There is still no blur and still no
-     hairline; nothing a person can see has been added. */
-  background: var(--ground);
-}
-/* `position: relative` is load-bearing: the link row below is taken out of flow and centred against
-   this container, which is the shell and therefore already centred in the viewport. */
-.site-header > .shell { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.wordmark { display: inline-flex; align-items: center; gap: 12px; font-size: 16px; letter-spacing: -0.014em; }
-
-/* THE LINKS ARE CENTRED ON THE VIEWPORT, NOT SPACED BETWEEN THE ENDS. On the bar the link cluster is
-   its own centred layer, so it stays put when the wordmark or the buttons change width — which is
-   what makes the nav read as symmetrical rather than as three groups that happen to fit. Laying it
-   out with `space-between` instead makes the centre move every time a word is translated. */
-.site-nav {
-  position: absolute; left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 6px;
-}
-/* NAV ITEMS ARE 32px UPPERCASE OBJECTS, WHICH IS THE ONE PLACE THE FOUR HEIGHTS ARE MOST VISIBLE.
-   Measured on the bar: "32px for a chip or nav item" and "12px/700/1.2px on nav items". Ours were
-   36px sentence-case links at body size with an 8px radius — a nav row built out of the same object
-   as the button beside it, which is why the row read as five buttons and one button rather than as
-   a set of destinations next to an action.
-   The radius drops to the control radius (6px) with everything else on this page that is pressed;
-   8px now belongs to panels alone. The resting colour is --ink-secondary and hover takes it to full
-   ink, so the hover is a colour change with a surface step under it rather than only a fill. */
-.site-nav a {
-  display: inline-flex; align-items: center;
-  height: var(--h-sm); padding: 0 12px;
-  border-radius: var(--r-sm);
-  color: var(--ink-secondary);
-  font-size: 12px; font-weight: 700; line-height: 18px; letter-spacing: 1.2px; text-transform: uppercase;
-  /* "SIGN IN" IS TWO WORDS, AND AT 12px/700/+1.2px IT IS WIDE ENOUGH TO BREAK. Measured in Chromium
-     at 748px: it wrapped inside its own 32px box and printed two half-height lines over the row.
-     nowrap was already set in the phone block, which is the one width where the row scrolls and the
-     one width where it was least likely to matter. It belongs on the object, not on a breakpoint. */
-  white-space: nowrap;
-  /* Colour on the bar's signature curve, everything else on the fast band. */
-  transition: color var(--t-color) var(--ease-hard), background-color var(--t-fast) ease-out;
-}
-.site-nav a:hover { background: var(--control-fill); color: var(--ink); }
-
-/*[[ THE PRIMARY BUTTON, REBUILT ON THE MEASURED ACCENT FAMILY.
- *
- *   `.pill` IS NOW A NAME, NOT A SHAPE. It carried a 999px-adjacent idea in its class name and an
- *   8px radius in its rule; the bar has nothing rounder than 8 anywhere — "RADII ARE TIGHT AND
- *   THERE ARE TWO: 8px on 23 elements (cards, panels), 6px on 11 (every control). Nothing is a
- *   pill." The class name belongs to index.astro, which is another surface's file, so what changes
- *   here is the geometry: 6px, the control radius, like every other pressable thing on the page.
- *
- *   IT WAS A WHITE SLAB, AND THAT IS THE ONE THING THE BAR DOES NOT DO. `background: var(--ink)`
- *   with `color: var(--raised)` is an inverted chip: correct against a page with no accent, and
- *   wrong the moment there is one, because the loudest object above the fold then has nothing to do
- *   with the product's colour. The measured primary is "rgb(143,0,200) — a DARKER shade — is the
- *   primary button's fill", bordered in the LIGHTER tint, with the page's only conventional shadow:
- *   "`rgba(0,0,0,0.18) 0 0 0 1px inset, rgba(0,0,0,0.22) 0 2px`". White on --accent-deep measures
- *   5.46:1, which is why that token was chosen for contrast rather than for hue.
- *
- *   HOVER RAISES THE GLOW, NOT THE FILL. Lightening #00794f toward #00d492 would take the white
- *   label from 5.46:1 to about 1.9:1 — a hover state that fails contrast is a hover state that
- *   fails. So hover adds the 12px halo the bar puts on its accented chip and brightens the rim to
- *   --accent-light, which is "ELEVATION IS A GLOW, NOT A DROP SHADOW" applied to a press target. ]]*/
-.pill {
-  display: inline-flex; align-items: center; gap: 8px;
-  height: var(--h-md); padding: 0 16px;
-  border: 1px solid var(--accent-ring); border-radius: var(--r-sm);
-  background: var(--accent-deep); color: #ffffff;
-  font-size: 14px; line-height: 20px; letter-spacing: -0.01em; white-space: nowrap;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 2px rgba(0, 0, 0, 0.22);
-  transition:
-    color var(--t-color) var(--ease-hard),
-    border-color var(--t-fast) ease-out,
-    box-shadow var(--t-fast) ease-out;
-}
-.pill:hover {
-  border-color: var(--accent-light);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 2px rgba(0, 0, 0, 0.22), 0 0 12px var(--accent-glow);
-}
-/* THE CHROME BUTTON IS THE 36px STEP WITH 8px OF SIDE ROOM, which is the measurement: "0 8px at 36
-   chrome, 0 16px at 36 primary". Half the padding of the primary beside it is what says which of
-   the two is the action — on the bar the secondary is visibly the narrower object, not merely the
-   paler one. It keeps the 6% fill and takes a hairline, because separation on this page is a
-   hairline and a borderless quiet button against a bordered primary reads as two systems. */
-.pill-quiet {
-  background: var(--control-fill); color: var(--ink);
-  border: 1px solid var(--line);
-  padding: 0 8px;
-  box-shadow: none;
-}
-.pill-quiet:hover { background: var(--surface-2); border-color: var(--line-strong); box-shadow: none; }
-/* The right-hand group. The link row is absolutely centred, so the header's flow children are the
-   wordmark and this — two items, which is what `space-between` on the shell expects. Adding the
-   toggle as a third flow child instead pushed it into the centre, under the nav. */
-.header-actions { display: flex; align-items: center; gap: 6px; }
-/* SIGN IN, IN THE ACCOUNT CLUSTER RATHER THAN THE DESTINATIONS ROW. It keeps the nav item's exact
-   spec — 32px box, 6px radius, 12px/700/+1.2px uppercase, --ink-secondary to --ink on hover — so
-   moving it changed where it sits and not what it looks like. Reference claim 16: variants differ
-   by border and text colour, not fill, and this is the quietest of them: no fill, no border, the
-   same --control-fill on hover the nav links use. It stands immediately left of the one accented
-   control on the page, which is the quiet-to-loud ordering claim 19 records. */
-.header-signin {
-  display: inline-flex; align-items: center;
-  height: var(--h-sm); padding: 0 10px;
-  border-radius: var(--r-sm);
-  color: var(--ink-secondary);
-  font-size: 12px; font-weight: 700; line-height: 18px; letter-spacing: 1.2px; text-transform: uppercase;
-  white-space: nowrap;
-  transition: color var(--t-color) var(--ease-hard), background-color var(--t-fast) ease-out;
-}
-.header-signin:hover { background: var(--control-fill); color: var(--ink); }
-/* A square instance of the same 36px control, so the icon is optically centred rather than sitting
-   in a button padded for a word. `currentColor` inherits --ink from .pill-quiet, which is how one
-   pair of glyphs works in both themes. */
-.pill-icon { width: var(--h-md); padding: 0; justify-content: center; cursor: pointer; }
-.pill-icon .icon-moon { display: none; }
-.pill-icon[aria-pressed='true'] .icon-sun { display: none; }
-.pill-icon[aria-pressed='true'] .icon-moon { display: block; }
-
-/* ----------------------------------------------------------------- hero */
-
-/* THE HERO IS A VIEWPORT, AND THE CONTENT IS CENTRED IN IT. The bar's hero section is exactly 100vh
-   and its content block is centred inside that, which is why its headline sits 241px down on a
-   900px screen rather than at a fixed distance from the nav. A top padding measured off one screen
-   height puts the headline in the wrong place on every other one. The symmetric `--nav-h` padding
-   does not move the centre — it guarantees the content cannot reach the transparent nav on a short
-   window, which is the one case centring alone gets wrong. */
 .hero {
-  position: relative; isolation: isolate;
-  min-height: 100vh;
-  display: flex; align-items: center;
-  padding: var(--nav-h) 0;
-  overflow: hidden;
+  padding: clamp(88px, 13vh, 144px) 0 clamp(72px, 10vh, 112px);
+  text-align: center;
 }
-/*[[ THE CONTENT SITS AT OPTICAL CENTRE, BECAUSE GEOMETRIC CENTRE PUT IT ON THE HORIZON.
- *
- *   MEASURED IN CHROMIUM, THREE VIEWPORTS, BEFORE THIS RULE. Horizon.astro draws its glow band —
- *   the brightest object in the whole composition — on a line at 0.74 of the viewport. The hero's
- *   content block is centred, which lands the button row at roughly 0.745 to 0.787 of the viewport.
- *   So at 1280x860 the band ran at y=636 and the row occupied 641 to 677, and at 1440x900 the band
- *   ran at 666 against a row at 661 to 697. The brightest line of the decoration passed through the
- *   top edge of "Create a free account" at every desktop height, because both numbers are fractions
- *   of the same viewport and they were within five pixels of each other by arithmetic rather than
- *   by luck.
- *
- *   That is the defect apps/web/tests/decoration-yields-to-the-composer.test.mjs exists for, in a
- *   different file: "the decoration must never be densest behind the one control the screen exists
- *   to serve". The owner's own words about the last one were that the whole thing looked broken,
- *   and a bright horizontal seam across two buttons is the same reading.
- *
- *   IT IS FIXED FROM THIS SIDE RATHER THAN FROM THE CANVAS'S. The 0.74 constant is Horizon.astro's
- *   and belongs to whoever owns that file; the hero's vertical rhythm is this one's. Adding to the
- *   BOTTOM padding raises the centred block by half of what is added, and the shift is written as a
- *   fraction of the viewport plus a constant — 10vh + 48px — because the thing being cleared is
- *   itself a fraction of the viewport. A fixed pixel shift would clear the band at one screen
- *   height and re-create the collision at another.
- *
- *   IT ALSO READS BETTER, WHICH IS THE PART THAT IS NOT ARITHMETIC. The backdrop is a landscape:
- *   sky above the horizon, floor below it. Copy floating across the horizon line belongs to neither.
- *   With the block lifted, the whole hero stands in the sky and the floor is open foreground.
- *
- *   DESKTOP ONLY. At 390x844 the phone's taller header and three-line headline already put the row
- *   at 689-725 against a band at 625 — clear by 64px, and on the floor rather than across the line.
- *   Applying the lift there would drag it back up INTO the band, which is the collision this rule
- *   exists to prevent. Measured, not assumed. ]]*/
-@media (min-width: 860px) {
-  .hero { padding-bottom: calc(var(--nav-h) + 10vh + 48px); }
-}
-/* The hero is full-bleed behind a 24px gutter, not shell-width: the bar constrains its headline by
-   a measure (840px) rather than by a container, so the composer can be wider than the text above it
-   without either one moving off centre. */
-.hero-inner { width: 100%; max-width: none; padding: 0 var(--hero-gutter); display: flex; flex-direction: column; align-items: center; text-align: center; }
-.hero .display { max-width: 840px; }
-.hero .lead { margin-top: 24px; max-width: 840px; text-wrap: pretty; }
 
-/*[[ ONE FIXED LAYER, WHICH IS THE REFERENCE'S WHOLE ATMOSPHERE.
- *
- *   Measured on rosebud.ai: "The entire atmosphere is ONE fixed image: a div at position:fixed,
- *   100lvw by 100lvh, z-index -1 ... No gradient stack, no layers, no parallax." Ours was
- *   `position: absolute` inside the hero, which is a different object with the same inset — it ends
- *   where the hero ends, so everything below the fold sat on flat --ground and the page had
- *   scenery for one screen and none for the other eleven. index.astro computes this layer's
- *   geometry and says in as many words that landing.css is what makes it fixed; this is that.
- *
- *   `lvw`/`lvh` rather than `vw`/`vh`: on a phone the dynamic viewport shrinks as the browser
- *   chrome slides in, and a 100vh backdrop that resizes on scroll repaints the whole field for a
- *   change nobody asked for. The large viewport unit is the stable one. */
-.atmosphere { position: fixed; inset: 0; width: 100lvw; height: 100lvh; z-index: -1; pointer-events: none; overflow: hidden; }
-/* THE SKY. It was a 1760px-wide band centred with translateX(-50%) over a 1600x760 viewBox; the
-   layer it lives in is now the viewport, and index.astro's svg is `xMidYMid slice` over 1600x900,
-   which covers a box rather than being centred in one. So the centring comes out — a translateX
-   that is load-bearing for POSITION cannot also be the thing an ambient keyframe moves, which is
-   what the old `drift` frame had to work around by re-declaring -50% in both of its frames.
-   THE TOP IS MASKED to the same 24% the canvas beneath it masks, so the nav row sits on the page's
-   own colour rather than on drifting haze, and the two layers of one picture agree about where the
-   picture starts. */
-.atmosphere svg {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  fill: none; stroke: var(--ink); stroke-width: 0.5; opacity: 0.34;
-  mask-image: linear-gradient(180deg, transparent 0%, #000 24%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 24%);
+.hero-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-/* The haze bands are thinner than the ridge that stands on the horizon: a stratum is vapour and a
-   ridge is a silhouette, and drawing both at one weight is what makes a line-art sky read as a
-   diagram. Their opacity is a presentation attribute in the markup, graded by depth, and nothing
-   here overrides it — a CSS opacity would win over that attribute and flatten the grade. */
-.stratum { stroke-width: 0.45; }
-.atmosphere .ridge { opacity: 0.55; stroke-width: 0.9; }
-/* The warm column. The reference's hero is lit from behind by a terracotta glow; this is that idea
-   in our own colour, sitting behind the composer so the focal object is the lit thing. */
-.light-column {
-  position: absolute; left: 50%; top: -18%;
-  width: min(760px, 78vw); height: 92%;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse at 50% 40%, var(--glow-strong), var(--glow-soft) 42%, transparent 68%);
-  filter: blur(26px);
-  animation: column-breathe 14s ease-in-out infinite alternate;
-}
-@keyframes column-breathe { from { opacity: 0.72; transform: translateX(-50%) scale(1); } to { opacity: 1; transform: translateX(-50%) scale(1.06); } }
-/* Two moving layers, slowly. The reference's hero is still art, but a hero that never moves reads
-   as a screenshot of a page rather than a page. Both are decorative, both stop under
-   prefers-reduced-motion, and neither is a script. */
-.atmosphere svg { animation: drift 38s ease-in-out infinite alternate; }
-.atmosphere .ridge { animation: settle 26s ease-in-out infinite alternate; }
-/* THE GROUP SWAYS, THE BANDS INSIDE IT DRIFT, AND THEY ARE DIFFERENT ELEMENTS ON PURPOSE. One
-   property owned by one mechanism is the rule this repository learned from .step, where a
-   scroll-driven opacity and a reveal's opacity fought and the animation silently won. Here the
-   <g> owns the group's transform and each <path> owns its own. */
-.strata { animation: ambient-sway 31s ease-in-out infinite alternate; }
-/* The -50% is gone from both frames with the centring it was compensating for. What is left is the
-   movement itself, which is what a keyframe should contain. */
-@keyframes drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-26px, -14px, 0); } }
-@keyframes settle { from { opacity: 0.4; } to { opacity: 0.68; } }
-/*[[ THE GROUND WASH IS GONE, AND IT HAD TO GO THE MOMENT THE FLOOR WAS DRAWN.
- *
- *   It read `linear-gradient(180deg, transparent 30%, var(--ground) 92%)` and its job was to fade a
- *   hero-height band of line art into the page beneath it. The layer it sits in is now fixed and
- *   viewport-tall, and the canvas inside it draws a horizon at 0.74 with a perspective floor under
- *   that — so a wash running to solid --ground by 92% would paint over the bottom quarter of the
- *   composition at every scroll position. The picture's own bottom edge IS the floor; covering it
- *   would leave the page with a horizon and nothing standing on it.
- *
- *   The one edge it was still doing real work on is managed closer to where it matters now: the
- *   canvas masks its own top 24% and the sky above masks the same 24%, so the two layers of one
- *   picture agree about where the picture starts. ]]*/
 
-/* The focal object is the product's own composer, not a screenshot of it.
-   THE GROUP, NOT JUST THE BOX. On the bar the composer and the row beneath it are one block: 40px
-   below the sub-headline, then the box, then a 24px gap, then a label and a row of controls 12px
-   apart. Hanging the row off the box with its own margin is how those three gaps drift apart the
-   next time one of them is edited. */
-.composer-group { width: 100%; max-width: 838px; margin: 40px auto 0; display: flex; flex-direction: column; gap: 24px; }
-/* 838 WIDE, AND AS TALL AS WHAT IS IN IT. It was 838x140, and 140 was a sum — 1px rim + an 82px
-   field + a 56px bar + 1px rim — taken from a reference whose field holds a real textarea. Ours
-   holds one line. MEASURED, 2026-09-20, before this change: from the bottom of the placeholder's
-   only text line to the top of the control bar was 44px of nothing, which a blind critic read back
-   as "an outline-only rounded rectangle whose middle third is dead air." It was right. A box sized
-   for content it does not have is an empty box, whatever the reference measured.
-   The height is now the content's: 1 + (20 top + one 22px line + 18 bottom) + 56 + 1 = 118px, and
-   the field carries a min-height so the box cannot flinch while the line below types itself.
-   NO SHADOW. Separation here is the rim and the fill, which is the rule for the whole page — a
-   drop shadow under the one object that is supposed to be sitting in light reads as a sticker. */
+.hero-eyebrow {
+  margin: 0 0 20px;
+}
+
+/* Calm, not loud: the room around the headline carries it, not the size of its glyphs.
+   scripts/check-copy.mjs caps display type at 56px; this tops out at 52. */
+.display {
+  max-width: 17ch;
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 4.6vw, 3.25rem);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+}
+
+.lead {
+  max-width: 640px;
+  margin: 22px 0 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.4vw, 1.125rem);
+  line-height: 1.6;
+}
+
+/* THE COMPOSER — the one object on the page that floats, so it is the one that casts. Its values
+   are the app's composer (apps/web/src/design/apple-minimal.css `.gx-composer__inner`). */
 .composer {
-  display: flex; flex-direction: column;
-  border: 1px solid var(--composer-rim); border-radius: var(--r-lg);
+  width: min(100%, 680px);
+  margin-top: 44px;
+  border: 1px solid var(--composer-line);
+  border-radius: var(--r-xl);
   background: var(--composer-fill);
-  /* Glass is reserved for the composer and the top bar — surfaces that sit over moving content.
-     The hero's line-art drifts behind this one, and 8px is the blur the bar itself uses. */
-  backdrop-filter: blur(8px);
-  box-shadow: none;
+  box-shadow: var(--composer-shadow);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   text-align: left;
-  overflow: hidden;
-}
-/* THE FIELD SHOWS A REQUEST, NOT A PROMPT FOR ONE. "Ask Apple to build…" in placeholder grey is
-   the emptiest a text field can look, and it was the largest object above the fold. What replaces
-   it is a sentence a person would actually type, set in ink rather than in placeholder grey,
-   because that is what typed text looks like. It is an example of an INPUT — it asserts nothing
-   about what the product did, which is the line the connected-dot mock crossed and this must not.
-   min-height, not height: the line types and deletes itself, and a field that sizes to its current
-   character count would make the whole hero jump once per keystroke.
-   THE FLOOR IS A TOTAL, NOT A CONTENT HEIGHT, and the first version of this rule got that wrong.
-   `* { box-sizing: border-box }` at the top of this file makes min-height include the 38px of
-   padding, so `min-height: 22px` — one line of content — was a floor of 22 against a box that is
-   never smaller than 59, which is to say no floor at all. MEASURED at 375px before the correction:
-   the composer stepped between 138px and 117px as the line crossed its wrap, on the screen where
-   it is most of the fold. 60 = one 22px line + 20 + 18, and 80 at 375 = two 21px lines + 38. */
-.composer-field {
-  /* `position: relative` is new and is what the ghost is positioned against. The field now holds
-     two things in the same box — the real <textarea> and the three example sentences behind it —
-     and they must share one origin or the caret and the example start at different pixels. */
-  position: relative;
-  flex: 1; padding: 20px 20px 18px; min-height: 60px;
-  color: var(--ink-secondary); font-size: 15px; line-height: 22px; letter-spacing: -0.01em;
+  transition: border-color var(--t-base) var(--ease-out);
 }
 
-/*[[ THE REAL FIELD. Everything here is either a browser default being undone or a value inherited
- *   from .composer-field so the two cannot drift.
- *
- *   IT INHERITS ITS TYPE RATHER THAN RESTATING IT. A <textarea> does not inherit font by default —
- *   it takes the UA's monospace-ish form font — so an unstyled one would set the reader's own
- *   sentence in a different face and size from the example it replaces, and the box would jump the
- *   moment the first character landed.
- *
- *   `resize: none` and `overflow: hidden` together: a drag handle in the corner of the hero's focal
- *   object is a browser default nobody chose, and a scrollbar appearing at 281 characters would
- *   move the composer's rim. The 280-character ceiling is on the element.
- *
- *   NO HEIGHT, ONLY A LINE COUNT. `rows="1"` plus the parent's min-height is what keeps the box
- *   still; the field grows no taller than its one row and long text scrolls inside it. A field that
- *   sized to its content would make the whole hero jump once per keystroke, which is the same
- *   reason .composer-field carries a min-height rather than a height. */
+/* THE FOCUS RING MOVES TO THE COMPOSER. The field inside it is a borderless textarea; a ring drawn
+   round the textarea alone would sit inside the composer's own rim. So the textarea drops its ring
+   and the composer — the object the reader sees as "the field" — takes the site's one ring:
+   2px of the accent at a 4px offset.
+
+   ONE RING, NOT TWO (2026-09-22). This was `:focus-within` plus a blue border: a focused field drew
+   two concentric rings, and tabbing on to Build kept the composer's ring lit around the button's
+   own, so two nested blue rings. The composer now rings only while the TEXT FIELD has focus, and
+   its rim stays the resting hairline; the Build button draws its own ring and nothing else does. */
+.composer:has(.composer-input:focus) {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.composer-field {
+  position: relative;
+  min-height: 92px;
+}
+
 .composer-input {
   display: block;
   width: 100%;
+  min-height: 92px;
   margin: 0;
-  padding: 0;
+  padding: 18px 20px 8px;
   border: 0;
-  background: none;
-  resize: none;
-  overflow: hidden;
+  background: transparent;
   color: var(--ink);
-  caret-color: var(--accent);
   font: inherit;
-  letter-spacing: inherit;
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  resize: none;
 }
-.composer-input:focus { outline: none; }
-/* THE RIM IS THE FOCUS RING. The field fills the whole panel, so a ring drawn on the field itself
-   would sit inside a border 20px away from it and read as a box inside a box. The composer is the
-   focused object as far as a reader is concerned, so the composer is what changes. */
-.composer:focus-within { border-color: var(--accent-ring); }
 
-/* THE GHOST GOES THE MOMENT THERE IS A REAL CARET OR A REAL CHARACTER.
-   `:placeholder-shown` is true only while the field is empty — which is why the markup carries a
-   single-space placeholder — so these two selectors between them cover "being typed into" and
-   "already has something in it", with no script. `visibility` as well as `opacity`, or the hidden
-   example still takes the pointer and a click lands on a span instead of the field. */
+.composer-input:focus-visible {
+  outline: none;
+}
+
+/* The ghost: three example sentences, stacked, shown once each while the field is empty, ending on
+   the first. Hidden by CSS the moment the field is focused or holds a character (`placeholder=" "`
+   makes that detectable).
+
+   IT PLAYS ONCE AND STOPS (2026-09-22). It used to cycle forever, with a blinking fake caret, which
+   is decorative motion on a page whose direction is calm. Each later sentence now fades in and out
+   a single time on its own turn, and the first comes back at the end and stays. No caret: a caret
+   in a field nobody is typing in is a picture of a control, not the control. */
+.composer-typed {
+  position: absolute;
+  inset: 18px 20px auto;
+  height: 24px;
+  pointer-events: none;
+}
+
 .composer-input:focus ~ .composer-typed,
 .composer-input:not(:placeholder-shown) ~ .composer-typed {
   opacity: 0;
-  visibility: hidden;
 }
-/* THE ONLY THING IN THE FOREGROUND OF THIS PAGE THAT MOVES.
-   Four animations already run above the fold and every one of them is in the background haze:
-   measured over three frames 1.5s apart, 2.19% of sampled pixels changed by more than 6/765, all
-   of it a blurred bloom and a set of near-black hairlines. Type, composer and buttons were still,
-   and a screen whose only motion is behind the headline photographs as a screenshot.
-   Three sentences are stacked here and faded between on an 18s cycle, six seconds each. The stack
-   is absolute because three spans in flow would be three lines; the parent carries the height, so
-   the composer's box cannot move when the visible sentence changes.
-   nowrap, and the sentences are short enough for it — measured, not assumed: 166px, 208px and
-   199px against the 285px the field has at 375px. A line that rewraps halfway through a cross-fade
-   tears, because two different wraps are on screen at once, and one that overruns is cut off by
-   the `overflow: hidden` that keeps the caret tight to its text. `max-width: 100%` is the guard
-   that makes an overrun clip inside the box rather than spill past the composer's rim; it is not
-   permission to write a longer sentence.
-   THE CARET IS THE SPAN'S OWN RIGHT BORDER, which is the whole reason this works without script. A
-   separately positioned caret would have to be told where each sentence ends — in a typeface that
-   is SF here, Segoe on Windows and Roboto on Android — and would be wrong on two of the three. A
-   border on a fit-content box is at the end of its own text by construction, on every platform. */
-/* ABSOLUTE OVER THE FIELD, not in flow. It used to BE the field's content; now it sits behind the
-   real one and must start at exactly the same pixel, so it takes the field's own padding as its
-   inset. `pointer-events: none` so a click anywhere in the box reaches the textarea. */
-.composer-typed {
-  position: absolute; left: 20px; top: 20px; right: 20px;
-  display: block; height: 22px;
-  pointer-events: none;
-  transition: opacity var(--t-fast) ease-out;
-}
+
 .composer-line {
-  position: absolute; left: 0; top: 0;
-  width: max-content; max-width: 100%;
-  white-space: nowrap; overflow: hidden;
-  /* 0 is the OFF state and the fallback for a cancelled animation; the first line overrides it so
-     that a reader with motion turned off gets a sentence rather than an empty box. See the note
-     under the keyframes — this is the whole reason that line exists. */
+  position: absolute;
+  inset: 0 auto auto 0;
+  color: var(--faint);
+  font-size: 16px;
+  line-height: 24px;
+  white-space: nowrap;
   opacity: 0;
-  padding-right: 3px;
-  border-right: 1.5px solid var(--ink);
-  animation:
-    example-turn 18s var(--ease) infinite,
-    caret-blink 1.06s steps(1, end) infinite;
-  animation-delay: calc(var(--turn) * 6s), 0s;
+  animation: example-turn 4s var(--ease-in-out) 1 both;
+  animation-delay: calc(var(--turn) * 4s);
 }
-/* Six seconds of an eighteen-second cycle, with the fade in and out inside that share rather than
-   bleeding past it: 2.2% of 18s is 400ms, so a sentence is fully opaque from 0.4s to 5.6s of its
-   own turn and the two neighbours are at zero for all of it. Anything wider overlaps the next
-   sentence and puts two of them on the screen together. */
-.composer-line:first-child { opacity: 1; }
+
+/* The still state, which is also what reduced motion shows and where the one pass ends: the first
+   sentence, fully visible. Its pass is the whole sequence long, so it returns after the last one. */
+.composer-home {
+  opacity: 1;
+  animation: example-home 12.6s var(--ease-in-out) 1 both;
+  animation-delay: 0s;
+}
+
 @keyframes example-turn {
-  0% { opacity: 0; }
-  2.2% { opacity: 1; }
-  31.1% { opacity: 1; }
-  33.3%, 100% { opacity: 0; }
-}
-/* The caret blinks at the platform rate, and stops solid under prefers-reduced-motion.
-   THE STILL STATE IS DECLARED, NOT INHERITED, and the first version of this got it backwards. The
-   comment here used to say that stopping the animation "leaves one sentence painted". It does not:
-   `animation: none` at the end of this file cancels the animated opacity and every line falls back
-   to the DECLARED opacity, which is 0 for all three — measured with reducedMotion: 'reduce', the
-   composer rendered with an empty field and a caret on nothing. A stopped animation returns to the
-   base value, so the base value has to be the still state you want. The first line declares
-   opacity 1 above for that reason; while the cycle runs, its own 0% keyframe overrides that. */
-@keyframes caret-blink { 0%, 50% { border-right-color: var(--ink); } 50.01%, 100% { border-right-color: transparent; } }
-/* The bar is 56px tall with its padding all on the bottom, which leaves a 40px row the 36px
-   controls centre inside. A border across the top would cut the composer into two boxes; the bar
-   on the reference is the bottom of one field, not a second panel. */
-.composer-bar { height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px 16px; }
-.composer-chips { display: flex; align-items: center; gap: 8px; min-width: 0; }
-/* A CHIP IS THE 32px STEP, AND ITS PADDING IS THE MEASURED ONE: "7.2px 16px at 32". The vertical
-   figure and the height are the same statement twice — border-box pins the box at 32 — and both are
-   written because the horizontal 16px is the part that carries, and a padding shorthand that only
-   said `0 16px` would lose the reading it came from. */
-.chip {
-  position: relative;
-  display: inline-flex; align-items: center; gap: 6px;
-  height: var(--h-sm); padding: 7.2px 16px;
-  border: 1px solid transparent; border-radius: var(--r-sm);
-  background: var(--control-fill); color: var(--muted);
-  font-size: 13px; line-height: 18px; letter-spacing: -0.01em; white-space: nowrap;
-  transition: color var(--t-color) var(--ease-hard), border-color var(--t-fast) ease-out;
-}
-/*[[ THE MODEL CHIP, WHICH THE REFERENCE CALLS THE MOST COPYABLE OBJECT ON ITS PAGE.
- *
- *   Measured: a 32px, 6px-radius chip naming the model, filled at 12% of the accent, bordered at
- *   38% of the LIGHTER tint and glowing at 14% — it "sits inside the composer next to the
- *   attachment control and names the model that will answer, which is exactly what our own composer
- *   already does and does not look like". The three alphas are the three accent tokens, so this is
- *   the measurement rather than a resemblance to it.
- *
- *   IT IS A NAME, NOT A STATE, and that is why the accent is allowed here at all. A green dot and
- *   the word "connected" shipped in this same bar once and was removed, because a picture of a
- *   product is read as its behaviour and the plugin is not attached to anybody's Studio. The
- *   model's name is a fact about the product; a status light would be a claim about a connection.
- *   The pulse ring further down rides this chip's own rim for the same reason.
- *
- *   SELECTED BY ITS OWN CLASS, NOT BY :last-child. The first pass reached it positionally, and that
- *   was true of the markup for about an hour: an attachment control now sits after it, so
- *   :last-child had quietly moved the whole accent family onto a paperclip. index.astro writes
- *   `chip chip-model` as a modifier on the base class precisely so this rule can be wrong about
- *   position and still right about identity. ]]*/
-.chip-model {
-  background: var(--accent-soft);
-  border-color: var(--accent-ring);
-  color: var(--accent-ink);
-  box-shadow: 0 0 12px var(--accent-glow);
-}
-/* The attachment control is a chip holding a 15px glyph instead of a word, so it is square at the
-   same 32px step and its 16px of side room comes off. Padding measured for text, wrapped around an
-   icon, is what makes an icon button look off-centre in a row of word-shaped ones. */
-.chip-attach { width: var(--h-sm); padding: 0; justify-content: center; }
-/* THE PRIMARY ACTION INSIDE THE COMPOSER, drawn as the primary action everywhere else on the page:
-   the 36px step, 16px of side room, --accent-deep under a white label at 5.46:1, the lighter tint on
-   the rim, and the bar's one real shadow — an inset hairline plus a 2px lift. It was a 12% tint
-   carrying accent-coloured text, which is the ACCENTED CHIP recipe rather than the PRIMARY BUTTON
-   one, and using the chip recipe for the button is exactly the flatness the accent family exists to
-   fix: a green control with a green border in the same green has no edge. */
-.composer-send {
-  /* It is a <button type="submit"> now and was a <span>. These three are the UA defaults a button
-     brings and a span does not: its own form font, its own baseline alignment, and the arrow
-     pointer. Without them the label lands off its measured baseline, in the form font, and the
-     panel's most prominent control looks subtly unlike the pills beside it. */
-  font-family: inherit;
-  vertical-align: middle;
-  cursor: pointer;
-  display: inline-flex; align-items: center;
-  height: var(--h-md); padding: 0 16px;
-  border: 1px solid var(--accent-ring); border-radius: var(--r-sm);
-  background: var(--accent-deep); color: #ffffff;
-  font-size: 14px; line-height: 20px; letter-spacing: -0.01em; white-space: nowrap;
-  /* The still state is DECLARED, so that cancelling glow-breathe under reduced motion leaves the
-     measured resting shadow rather than no shadow at all. Same lesson as the caret above. */
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 2px rgba(0, 0, 0, 0.22), 0 0 12px var(--accent-glow);
+  0% { opacity: 0; transform: translateY(4px); }
+  10%, 85% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-4px); }
 }
 
-/* The qualifier sits ABOVE the buttons, 12px from them, the way the bar sets the small line above
-   its own row of controls. A reader meets the condition before the thing it conditions, instead of
-   pressing a button and finding the caveat underneath it. */
-.hero-foot { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.hero-actions { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; flex-wrap: wrap; }
-.availability { margin: 0; color: var(--muted); font-size: 12px; line-height: 18px; letter-spacing: -0.01em; }
-.availability a { color: var(--ink-secondary); text-decoration: underline; text-underline-offset: 3px; }
-
-/* -------------------------------------------------------------- section */
-
-/* SECTIONS ARE SEPARATED BY SPACE, NOT BY A LINE.
-   Every element below the fold on the bar was enumerated for a border: on 6,347px of page there is
-   exactly one, a 1px frame around a single 16:9 figure, and there are no shadows at all. Ours drew
-   a hairline across the full width at every section — six horizontal rules a reader has to look
-   past — and that is what made 128px of air read as a stack of panels rather than as the page's own
-   rhythm. The measured rhythm is 64px above and below at six of the bar's eight sections, and 80px
-   at the one that carries nothing but a statement — which is the only variation, and it is a
-   variation of sixteen pixels, not of a rule.
-   :has() carries the statement variant because the markup gives every section the same class and
-   the markup is another surface's file. A browser without :has() falls back to 64px, which is a
-   slightly tighter band, not a broken one. */
-.band { padding: 64px 0; }
-.band:has(> .shell > .statement) { padding: 80px 0; }
-/* The head sits 24px above its content on the bar, not 40, and it is not narrowed — its sub-lines
-   run the full container width. 62ch clamped ours to 547px, so the head ended up visibly narrower
-   than the grid it was introducing, which reads as a mistake rather than as a measure. */
-.band-head { margin-bottom: 24px; }
-
-/* --------------------------------------------------------------- truths */
-
-/* FOUR CARDS. The earlier version of this block was four columns of text sitting directly on the
-   page, and the comment here argued for it: the reference has no filled cell below its fold, and a
-   bordered grid reads as a table inviting a reader across rows these four independent statements
-   do not have. That argument was about the reference. It was not about what the block looked like.
-   MEASURED, 2026-09-20, 1280x800, before this change: the four <article>s were each 161px tall —
-   grid stretch had already equalised the BOXES — while their text ran 3, 3, 3 and 5 lines, so the
-   ragged edge a blind critic named was a rag of INK inside four invisible boxes of equal height.
-   With nothing drawn around that ink there was no edge to be ragged against, which is the whole
-   defect: forty-odd pixels of unexplained black under three of the four columns, and 128px of band
-   rhythm under all of them, reading as one ~170px hole rather than as a closed block.
-   A surface fixes the rag without touching a single word, because the card's bottom edge is the
-   grid row's and the grid row is already equal. It also gives the page the second surface tone it
-   did not have anywhere below the fold.
-   THE TABLE WORRY IS PAID OFF BY THE GAP, NOT BY THE ABSENCE OF A BORDER. 20px between cards
-   against 24px of padding inside one means the inside of a card is a wider space than the space
-   between two, so each card groups with itself first. A 1px-gap grid inside one frame — which is
-   what this block genuinely was two revisions ago — is the table. Four separated objects are not.
-   THE LABEL WAS RENDERING AT 14px. `.truth p` is one class and one type, `.micro` is one class, so
-   `.truth p` won and every one of these uppercase labels came out at body size with positive
-   tracking: a caption set as loudly as the heading under it. The 10px step is restored here, at a
-   specificity that can actually reach it. */
-.truths { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; align-items: stretch; }
-.truth {
-  /* 26/24/28: a fraction more air under the paragraph than over the label, because the label is a
-     10px cap-height line and sits optically lower in its own box than the paragraph's last
-     descender sits in its. Equal numbers here measure equal and look top-heavy. */
-  padding: 26px 24px 28px;
-  border: 1px solid var(--pillar-line);
-  border-radius: var(--r);
-  background-color: var(--pillar);
-  background-image: var(--pillar-sheen);
-  /* The cards are the row's height, not their own. This is what removes the rag: every card's
-     bottom edge is the same line whatever its paragraph does. */
-  height: 100%;
+@keyframes example-home {
+  0%, 27% { opacity: 1; transform: none; }
+  31%, 95% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: none; }
 }
-/* The block answers a cursor. Four rectangles that do not react to being pointed at are four
-   rectangles, and this is the cheapest possible acknowledgement: the rim comes up to the strength
-   the composer's rim carries and the surface lifts by the smallest step in the ramp. No transform,
-   no shadow — a card that jumps under the pointer is a card that was not sitting still. */
-/* THE TWO BANDS, NAMED. Colour-only changes run on the bar's signature curve at 0.26s; everything
-   else runs 0.15s ease-out. 200ms on a custom curve was a third band between the two, which is the
-   thing rule 9 in the reference file forbids: "Two bands only: 0.1-0.16s for anything under the
-   finger, 0.2-0.3s for anything that moves on its own. Nothing in between." */
-.truth { transition: border-color var(--t-fast) ease-out, background-color var(--t-color) var(--ease-hard); }
-.truth:hover { border-color: var(--line-strong); background-color: var(--pillar-hi); }
-.truth h3 { margin: 10px 0 0; font-size: 19px; font-weight: 400; letter-spacing: -0.012em; line-height: 27px; text-wrap: balance; }
-.truth p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 21px; }
-/* The specificity fix stays — `.truth p` is one class and one type and would otherwise win over
-   `.micro` — but it no longer restates a size. Two places declaring the label's type is how the
-   label drifted to body size in the first place. */
-.truth .micro { margin: 0; }
 
-/* ------------------------------------------------------------- sequence */
-
-/* THE ONE FRAME THE BAR ACTUALLY DRAWS.
-   Its figure-and-list section is a two-column grid at a 48px gap — 729.6px of figure against
-   438.4px of text, which is 1.664 to 1 — with the two columns centred against each other rather
-   than top-aligned, and the figure is the single bordered object below the fold: a 1px hairline, a
-   10px radius, and the page itself showing through it. Ours used 72px of gutter, a 1.25 ratio, a
-   top alignment and a filled panel, so the figure read as a card parked beside the text instead of
-   as the thing the text is describing.
-   The sticky position goes with it. The bar does not pin this figure, and pinning an element inside
-   a grid that centres its two columns is two alignment rules fighting over the same box: the
-   figure creeps away from the sentence that explains it as soon as the reader scrolls. */
-.sequence { display: grid; grid-template-columns: minmax(0, 1.664fr) minmax(0, 1fr); gap: 48px; align-items: center; }
-.sequence-figure { position: relative; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.sequence-figure .figure-head { position: relative; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-/* One element per line rather than a <pre> with newline expressions spliced into it: the refused
-   line needs its own element to carry colour, and Astro will not parse `{'\n'}` inside a <pre>. */
-/* The log sits one surface step off the page. --raised is three points above --ground: enough for
-   the panel to be an object and far short of the control tint, which belongs to things you press.
-   It was the last token in the ramp with no reader, having lost its only one when the primary
-   button stopped being a white slab with --raised ink on it. */
-.activity { padding: 20px 24px; overflow-x: auto; background: var(--raised); }
-.activity-line { color: var(--muted); font-family: var(--font-mono); font-size: 13px; line-height: 26px; white-space: pre; }
-/* THE REFUSAL IS THE BRIGHTEST LINE, NOT A DIFFERENT HUE.
-   Every element below the fold on the bar was tested for a saturated colour and not one was found:
-   hierarchy there is carried entirely by how light a thing is against the page. This line was
-   #e0a08a, which made it the only coloured thing below the fold on a page whose whole instruction
-   is one ground and one accent — and a warm orange is the colour a reader has learned means a
-   warning they caused, when what this line reports is the product protecting them.
-   Ink against muted says "this is the line to read" with the contrast the bar uses, and it leaves
-   the single accent unspent for the one primary action the lock allows it on. */
-.activity-line.refused { color: var(--ink); }
-/* A STEP IS A SECTION TITLE, NOT A SIZE OF ITS OWN.
-   On the bar each item in this list is set at the same 32px/42px/-0.416px as every section heading,
-   eight pixels above a 16px/24px muted line, and the list runs at a 32px gap. Ours invented a 30px
-   step between the section title and the body — a fourth size in a scale that has three — and
-   spaced the list at 40px, so the three items drifted apart from the figure they are meant to run
-   alongside. */
-.steps { display: grid; gap: 32px; padding: 0; }
-.step h3 { margin: 0 0 8px; font-size: clamp(20px, 2.4vw, 32px); font-weight: 400; letter-spacing: -0.013em; line-height: 1.3125; }
-.step p { margin: 0; color: var(--muted); font-size: 16px; line-height: 24px; letter-spacing: -0.01em; }
-/* The bar dims an inactive step by colour rather than by opacity: its title drops to the muted grey
-   at 50% and its body to 40%. A single block opacity cannot carry two alphas, so it takes the
-   title's — 0.5, not the 0.32 that was here, which dimmed a step further than the bar ever dims
-   anything and left two of the three steps unreadable rather than secondary. Scroll-driven, and it
-   degrades to "all readable" rather than "all invisible" where the feature is unsupported or motion
-   is reduced. */
-/* 300ms, the top of the measured ambient band, not 320. "Two bands only: 0.1-0.16s for anything
-   under the finger, 0.2-0.3s for anything that moves on its own. Nothing in between." A step
-   brightening as it is scrolled to moves on its own, so it takes the slow band's ceiling. */
-.step { opacity: 1; transition: opacity 300ms var(--ease); }
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .step { animation: step-focus linear both; animation-timeline: view(); animation-range: entry 10% cover 46%; }
-  }
-}
-@keyframes step-focus { from { opacity: 0.5; } to { opacity: 1; } }
-
-/* ---------------------------------------------------------- capabilities */
-
-/*[[ THE CAPABILITY TILES ARE NOW STAGES, AND THE TILE RULE IS GONE.
- *
- *   WHAT THE OLD RULE SAID, AND WHY IT STOPPED BEING THE ANSWER. It was measured off the reference
- *   bar: a 16:9 panel with one 40px line drawing at --faint, then a 20/30 title, then a 14/20 muted
- *   line, at a 32px gap. It was a correct reading of a page that has SCREENSHOTS OF GAMES in those
- *   tiles. Ours had a 40px icon in an otherwise empty rectangle, which is the same composition with
- *   the content removed — and it made the page's most product-specific section four sentences
- *   asking to be believed. The owner's standing instruction is quoted in index.astro above the
- *   array: every important capability gets a small interactive experience of its own.
- *
- *   SO THE GRID IS TWO-UP, NOT FOUR-UP, and that follows from what is inside rather than from a
- *   different reading of the bar. A four-up at a 1024px shell gives each object 232px, and none of
- *   these four is operable at 232px: the tree loses its indent, the critique's render drops under
- *   130px wide, the code panel wraps every Luau line, and the mesh is a smudge. Two-up gives 496px,
- *   which is where all four were measured.
- *
- *   THE OBJECT IS A PANEL AGAIN, WHICH THE OLD RULE DELIBERATELY REMOVED. The note it replaced said
- *   four hairlines in a row is a fence. That is true of four short descriptions and false of four
- *   things you press: a control surface with no edge has no boundary to be inside, and the four
- *   stages would read as one unbroken field of widgets. It takes the SAME panel recipe as .truth —
- *   --pillar, --pillar-line, --pillar-sheen, var(--r) — rather than inventing a fifth surface.
- *
- *   THE TITLE AND THE LINE UNDER IT ARE UNCHANGED at 20/30 and 14/20. Only what sits above them
- *   moved, and .demo-body keeps the exact type the old .card-body carried. ]]*/
-.demos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
-.demo { display: flex; flex-direction: column; }
-
-/* THE STAGE. `overflow: hidden` is load-bearing twice over: it clips the two ambient bands that
-   used to be clipped by .card-media, and it is what stops a dragged mesh or a long Luau line
-   escaping the panel. The height is a floor rather than a fixed value — the four stages are
-   within 20px of each other at 496px, and pinning them to one number would crop whichever one a
-   translation makes taller. */
-.demo-stage {
-  position: relative;
-  overflow: hidden;
-  /* THE STAGE IS THE ROW'S HEIGHT, NOT ITS OWN — the same rule .truth carries and for the same
-     reason, one step further along. `flex: 1` inside a stretched grid item is what makes it: the
-     row is as tall as its tallest stage, and every .demo-body in the row therefore starts on one
-     line. Without it the Luau panel (ten lines of code) stood 58px taller than the mesh beside it
-     and the two titles under them sat at different heights, which is the rag the four-up tiles
-     were built to avoid and the two-up reintroduced. 316 is the measured floor: the leaderstat
-     snippet is the tallest content any stage holds, at 10 lines x 19px inside 12px of padding
-     under a 42px head and 32px of stage padding. */
-  min-height: 316px;
-  flex: 1;
+.composer-bar {
   display: flex;
-  flex-direction: column;
-  border: 1px solid var(--pillar-line);
-  border-radius: var(--r);
-  background-color: var(--pillar);
-  background-image: var(--pillar-sheen);
-  transition: border-color var(--t-fast) ease-out;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 10px 14px;
 }
-/* The same acknowledgement .truth gives a cursor, and no more: the rim comes up to the composer's
-   strength. No transform and no shadow — a panel that jumps under the pointer is a panel that was
-   not sitting still, and these ones have things inside them that the reader is aiming at. */
-.demo:hover .demo-stage { border-color: var(--line-strong); }
 
-/* The head names what the stage IS. It is the only thing standing between a widget on a marketing
-   page and a reader taking it for the product's live state — which is exactly how the composer's
-   old "connected" dot came to be telling people their Studio was attached before they had one. It
-   takes .sequence-figure .figure-head's construction, because it is the same object. */
-.demo-head { position: relative; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.composer-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
 
-.demo-body { padding: 0; }
-.demo-body h3 { margin: 16px 0 0; font-size: 20px; font-weight: 400; letter-spacing: -0.012em; line-height: 30px; }
-.demo-body p { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+/* LABELS, NOT CONTROLS (2026-09-22). These name the mode and the model a request would get. They
+   were drawn as pills — the model one with a rim and a fill, exactly like the app's picker — and
+   clicking either did nothing, so the hero invited a dead click. On this page they are text: no
+   rim, no fill, no pointer, a dot between them. The one control in the composer is Build. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 4px;
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: default;
+}
 
-/* ---- stage one: the read order -------------------------------------------------------------- */
+.chip + .chip::before {
+  content: '·';
+  margin-right: 12px;
+  color: var(--faint);
+}
 
-/* Two columns because the log has to be BESIDE the thing it is logging. Stacked, the reader clicks
-   a node at the top and the line about it appears below the fold of the panel. */
-/* The side column is the wider of the two: the tree's longest row is `ServerScriptService` at
-   132px in this monospace, and the log's longest line is the read of that same node at 244px. */
-.rd { flex: 1; display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 16px; padding: 16px; align-items: start; }
-.rd-tree { list-style: none; margin: 0; padding: 0; }
-/* The indent is data, not markup: --depth comes off the row and one rule covers every level. */
-.rd-row { margin-left: calc(var(--depth, 0) * 14px); }
-.rd-node {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; height: 26px; padding: 0 8px;
-  border: 0; border-radius: var(--r-sm);
-  background: none; color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 12px; line-height: 26px; text-align: left; white-space: nowrap;
+.chip-model {
+  color: var(--muted);
+}
+
+.composer-send {
+  flex: none;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--t-fast) ease-out, color var(--t-fast) ease-out;
+  transition: background-color var(--t-fast) var(--ease-out);
 }
-.rd-node:hover { background: var(--control-fill); color: var(--ink-secondary); }
-/* A READ NODE IS BRIGHTER, NOT COLOURED. Hierarchy below the fold on this page is carried by how
-   light a thing is; the single accent is spent on the dot, which is a 5px non-text graphic and so
-   is not being asked to carry a contrast ratio it cannot meet. */
-.rd-node[aria-pressed='true'] { color: var(--ink); }
-.rd-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.4; flex: none; }
-.rd-node[aria-pressed='true'] .rd-dot { background: var(--accent); opacity: 1; }
 
-.rd-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.rd-log {
-  margin: 0; padding: 10px 12px;
-  border-radius: var(--r-sm); background: var(--raised);
+.composer-send:hover {
+  background: var(--primary-hover);
+}
+
+.availability {
+  margin: 22px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+  text-wrap: balance;
+}
+
+.availability a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--t-fast) var(--ease-out);
+}
+
+.availability a:hover {
+  text-decoration-color: var(--accent);
+}
+
+/* ------------------------------------------------------------------ bands */
+
+.band {
+  padding: clamp(80px, 10vw, 128px) 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.band-head {
+  max-width: 640px;
+  margin-bottom: 44px;
+}
+
+.section-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.028em;
+}
+
+.section-sub {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.section-sub a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+
+.section-sub a:hover {
+  text-decoration-color: var(--accent);
+}
+
+/* ------------------------------------------------------------------ proof (components/ConsentProof.astro) */
+
+.proof {
+  display: grid;
+  grid-template-columns: 318px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+
+.proof-shot {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.proof-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.proof-caption {
+  padding: 10px 14px;
+  border-top: 1px solid var(--hairline);
+}
+
+.proof-pair {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+/* FEWER BOXES (2026-09-22). The request and the two runs were three more bordered panels beside a
+   framed screenshot. They are now text on the page, divided by hairlines: the picture is the one
+   framed object in this band. */
+.proof-ask {
+  margin: 0;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.proof-ask-label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.proof-runs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+  align-items: start;
+}
+
+.proof-run {
+  padding: 2px 0 0;
+}
+
+.proof-run + .proof-run {
+  padding-left: 32px;
+  border-left: 1px solid var(--hairline);
+}
+
+.proof-state {
+  margin: 0;
+  text-wrap: balance;
+}
+
+.proof-answer {
+  margin: 10px 0 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.proof-log,
+.proof-outcome {
+  margin: 10px 0 0;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 11.5px; line-height: 18px;
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.proof-tree {
+  margin: 10px 0 0;
+  overflow-x: auto;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 22px;
+  white-space: pre;
+}
+
+.proof-disclosure {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.proof-source {
+  margin: 24px 0 0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 19px;
+  letter-spacing: 0.02em;
+  text-transform: none;
   overflow-wrap: anywhere;
 }
-.rd-gate { margin: 0; color: var(--faint); font-family: var(--font-mono); font-size: 11.5px; line-height: 18px; }
-/* The gate open is the one state on this stage worth the accent: it is the moment the claim in the
-   title becomes true, and it is a short line rather than a paragraph, so --accent-ink carries it. */
-.rd-gate[data-read='3'] { color: var(--accent-ink); }
 
-/* ---- stage two: the critique ----------------------------------------------------------------- */
+/* ------------------------------------------------------------------ how a run goes */
 
-.cw { flex: 1; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start; }
-.cw-render { position: relative; border-radius: var(--r-sm); overflow: hidden; background: var(--raised); aspect-ratio: 220 / 124; }
-.cw-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
-/* The subject is drawn in the page's own ink at low alpha rather than in colour. A render that
-   looks like a photograph would be claiming to be one. */
-.cw-floor { fill: color-mix(in srgb, var(--ink) 5%, transparent); }
-.cw-block { fill: color-mix(in srgb, var(--ink) 10%, transparent); stroke: color-mix(in srgb, var(--ink) 15%, transparent); stroke-width: 1; }
-.cw-edge { stroke: color-mix(in srgb, var(--accent) 30%, transparent); stroke-width: 1; fill: none; }
-/* A MARKER IS A TAP TARGET AS WELL AS A DOT. The visible ring is 14px; the button is 26px and
-   centred on it through the negative margin, so a finger has something to hit. */
-.cw-mark {
-  position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px;
-  padding: 0; border: 0; background: none; cursor: pointer;
+.sequence {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 56px;
+  align-items: start;
 }
-.cw-mark::after {
-  content: ''; position: absolute; inset: 6px;
-  border-radius: 50%;
-  border: 1px solid var(--accent-ring);
-  background: var(--accent-glow);
-  transition: transform var(--t-fast) ease-out, background-color var(--t-fast) ease-out;
-}
-.cw-mark.is-on::after { transform: scale(1.7); background: color-mix(in srgb, var(--accent) 34%, transparent); }
 
-.cw-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-/* The score is the only large number below the fold, and it is the figure the gate returns. */
-.cw-score { margin: 0; font-size: 28px; line-height: 32px; letter-spacing: -0.02em; color: var(--ink); }
-.cw-score-d { color: var(--faint); font-size: 16px; letter-spacing: -0.01em; }
-.cw-defects { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.cw-defect {
-  display: block; width: 100%; padding: 5px 8px 5px 10px;
-  border: 0; border-left: 1px solid var(--line); border-radius: 0 var(--r-sm) var(--r-sm) 0;
-  background: none; color: var(--muted);
-  font-size: 12px; line-height: 17px; text-align: left;
-  cursor: pointer;
-  transition: color var(--t-fast) ease-out, border-color var(--t-fast) ease-out, background-color var(--t-fast) ease-out;
+.sequence-figure {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
 }
-.cw-defect:hover { color: var(--ink-secondary); }
-.cw-defect[aria-pressed='true'] { color: var(--ink); border-left-color: var(--accent); background: var(--control-fill); }
 
-/* ---- stage three: the Luau and the refusal --------------------------------------------------- */
+.figure-head {
+  margin: 0;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--hairline);
+}
 
-.lu { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 16px; min-width: 0; }
-.lu-asks { display: flex; flex-wrap: wrap; gap: 6px; }
-/* --h-xs, the smallest of the four measured control heights, because three of these sit on one row
-   inside a 496px panel. */
-.lu-ask {
-  height: var(--h-xs); padding: 0 10px;
-  border: 1px solid var(--line); border-radius: var(--r-sm);
-  background: none; color: var(--muted);
-  font-size: 12px; line-height: 1; cursor: pointer;
-  transition: color var(--t-fast) ease-out, border-color var(--t-fast) ease-out, background-color var(--t-fast) ease-out;
+.activity {
+  padding: 18px;
+  overflow-x: auto;
 }
-.lu-ask:hover { color: var(--ink-secondary); border-color: var(--line-strong); }
-/* The pressed chip takes the composer model chip's own family — the accent at 12%, the lighter tint
-   at 38% for the rim — because it is the same object doing the same job: naming the thing that is
-   currently selected. */
-.lu-ask[aria-pressed='true'] { color: var(--ink); background: var(--accent-soft); border-color: var(--accent-ring); }
-.lu-out {
-  flex: 1; margin: 0; padding: 12px 14px;
-  border-radius: var(--r-sm); background: var(--raised);
-  overflow: auto;
-}
-.lu-out code {
-  display: block;
+
+.activity-line {
+  color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 11.5px; line-height: 19px;
-  color: var(--muted); white-space: pre;
-}
-/* THE REFUSAL IS THE BRIGHTEST THING IN THE PANEL AND NOT A DIFFERENT HUE, which is the rule
-   .activity-line.refused already sets on this page and for the reason recorded there: a warm
-   warning colour is what a reader has learned means a mistake they made, and what this reports is
-   the product protecting them. */
-.lu-out.refused code { color: var(--ink); }
-
-/* ---- stage four: the mesh -------------------------------------------------------------------- */
-
-.gm { flex: 1; position: relative; display: grid; place-items: center; padding: 16px; }
-/* `touch-action: none` or the first drag on a phone scrolls the page instead of turning the mesh. */
-.gm-canvas { display: block; width: 100%; height: 190px; touch-action: none; cursor: grab; }
-.gm-canvas:active { cursor: grabbing; }
-/* The still frame sits exactly where the canvas draws and is removed by the script after its first
-   painted frame — so a bundle that loads and throws leaves a drawn mesh rather than a blank panel.
-   It is not a <noscript>, because <noscript> does not cover a script that runs and fails. */
-.gm-still { position: absolute; width: 150px; height: 150px; color: var(--accent); opacity: 0.66; pointer-events: none; }
-/* NO SECOND LABEL. A `DRAG TO TURN IT` line inside the panel said what the head above it already
-   says, in the same type at the same size, 220px lower down. One of the two had to go and the head
-   is the one every other stage has. */
-
-/* --------------------------------------------------------------- plans */
-
-/* THE TWO PLANS ARE TWO COLUMNS OF TEXT.
-   Same construction as the capability tiles, for the same measured reason: there is no bordered,
-   filled, padded card anywhere below the fold on the bar. A plan in a box reads as a thing to buy.
-   These two are a description of what the product costs today, and one of them cannot be bought at
-   all — so the box was making an offer that the line underneath it then withdrew. 32px of gap
-   groups them, 8px separates a title from its line, and the words carry the rest. */
-.model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; max-width: 840px; }
-.model-card { display: flex; flex-direction: column; gap: 8px; padding: 0; background: none; }
-.model-card h3 { margin: 0; font-size: 20px; font-weight: 400; letter-spacing: -0.012em; line-height: 30px; }
-.model-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; }
-.model-card .micro { margin-top: auto; padding-top: 12px; }
-.max-name { color: var(--ink); }
-
-/* -------------------------------------------------------------- closing */
-
-/* THE CLOSING BLOCK, MEASURED.
-   112px above and below on the bar, a statement in a 900px measure rather than the 750px the
-   mid-page one gets, and a button 32px beneath it. Ours was 128px of padding under a hairline the
-   bar does not draw, with the statement and the button 28px apart.
-   THE BUTTON IS 44px AND SQUARE-CORNERED, WHICH THE SHARED .pill IS NOT. The bar's nav pill is 36px
-   and its closing call to action is 44px with 16px text — two sizes for two jobs, measured on the same
-   page, not a drift. The radius, the fill and the ink are already the shared control's and are not
-   restated; only the two numbers that differ are. `.pill` belongs to the header, the hero and the
-   composer, so the closing button takes its size here instead of moving a control three other
-   places depend on. */
-.closing { padding: 112px 0; text-align: center; }
-.closing .statement { max-width: 900px; margin-bottom: 0; }
-/* THE LARGE STEP CTA IS 50px WITH 12px/24px OF PADDING, which is the fourth measured height and the
-   only place on this page that reaches it: "50px for a large step CTA ... 12px 24px at 50". It was
-   44px with the primary's own 16px of side room — a fifth height, and "a fifth height is how a
-   control bar stops looking machined". The largest control gets the slower of the two interaction
-   bands, which is what --t-base is for. */
-.closing .pill { height: var(--h-lg); margin-top: 32px; padding: 12px 24px; font-size: 16px; line-height: 24px; transition-duration: var(--t-base); }
-
-/* --------------------------------------------------------------- footer */
-
-/* THE FOOTER SEPARATES ITSELF WITH A SURFACE STEP, NOT A LINE.
-   The bar's footer is rgb(35,34,33) against a rgb(23,22,21) page — our --surface against our
-   --ground, the same twelve points of lift — with no border anywhere inside it, 64px of padding top
-   and bottom, equal columns at a 32px gutter and 40px between rows, and every column a stack at a
-   12px gap. Ours used --raised, which is three points off the page and therefore invisible, so a
-   hairline was doing the work a step should do; and the links carried 5px of their own padding,
-   which is a second spacing system arguing with the gap over the same rhythm.
-   ONE TEXT SIZE. Every word in the bar's footer is 14px on 20px: the column headings, the links and
-   the legal line alike. Ours set the note at 12px, which made the one paragraph a customer might
-   genuinely need to read the smallest text on the page. The heading takes the muted grey and the
-   links sit brighter than it, so a column reads as a label above its contents rather than as five
-   items of equal weight. */
-.site-footer { padding: 64px 0; background: var(--surface); }
-.footer-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 32px; row-gap: 40px; }
-/* THE FOOTER LINK IS THE 28px STEP — "28px for a bare text button" — and the column's rhythm is
-   preserved rather than changed by it: 20px of text on a 12px gap was 32px from one link's baseline
-   to the next, and a 28px object on a 4px gap is the same 32px with a tap target inside it. On a
-   phone these were 20px-tall words in a column of links, which is the smallest thing on the site a
-   thumb has to hit. */
-.footer-col { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-/* A column heading is a LABEL, so it is set as one: 12/700/+1.2px uppercase, the same object as the
-   nav item and the micro line. It was 14/400 in muted grey, which is the links' own size — a
-   heading indistinguishable from its contents except by colour. */
-.footer-col h3 { margin: 0 0 8px; color: var(--muted); font-size: 12px; font-weight: 700; line-height: 18px; letter-spacing: 1.2px; text-transform: uppercase; }
-.footer-col a { display: inline-flex; align-items: center; height: var(--h-xs); padding: 0; color: var(--ink-secondary); font-size: 14px; line-height: 20px; transition: color var(--t-color) var(--ease-hard); }
-.footer-col a:hover { color: var(--ink); }
-/* The first column is a wordmark over a paragraph rather than a heading over links, so it restores
-   the 8px the tightened gap took off it. */
-.footer-col .footer-note { margin-top: 8px; }
-.footer-note { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; max-width: 70ch; }
-
-
-/* ==============================================================================================
-   THE KEYFRAME LIBRARY.
-
-   WHY IT EXISTS, AND WHY IT SITS ON A REFERENCE THAT HAS NONE.
-
-   The owner's instruction is two instructions, and they pull against each other on purpose:
-   follow rosebud.ai closely in our own green, AND "you have to build the most keyframes, running
-   animations, canvas ever". The reference has ZERO @keyframes, ZERO running animations and ZERO
-   canvases — that is the measurement, he was shown it, and he decided anyway. So what is taken from
-   the bar is its STRUCTURE (surfaces, radii, the accent family, four control heights, two
-   transition bands) and what is added on top is a motion layer it does not have. This block is that
-   layer. It is not a contradiction to resolve; it is the brief.
-
-   THE RULES IT STILL OBEYS, because they are not about how much motion there is:
-
-     1. NOTHING OVER 0.26s IS AN INTERACTION. Every entrance, press and hover animation below is
-        0.3s or shorter, and the ones a finger triggers are 0.16-0.24s. The long durations belong to
-        AMBIENT motion — scenery that moves on its own — which the reference's transition-band rule
-        explicitly exempts ("2s on 26 elements, which is a different job entirely: ambient drift,
-        not response").
-
-     2. NOTHING HERE HIDES CONTENT. This is the hard one, and the repository has the scar. A hero
-        effect shipped on 2026-09-20 that never ran, because Astro hoists a component <script> into
-        a module script where document.currentScript is always null — so "the effect did not run" is
-        the assumed case here, not the unlucky one. Every rule below is plain CSS with no class and
-        no script behind it, and the STILL STATE OF EACH ONE IS THE DECLARED STATE. Under
-        prefers-reduced-motion the block at the foot of this file cancels every animation with
-        `animation: none !important`, and a cancelled animation returns to the declared value, NOT
-        to the frame it was painting. So anything that carries copy declares itself visible and
-        animates toward visible; anything that starts at zero opacity is decoration a reader loses
-        nothing by never seeing.
-
-     3. AMBIENT MOTION IS COMPOSITOR-ONLY, and one thing it cannot promise is said plainly. Every
-        infinite animation below moves `transform` or `opacity` and nothing else, so a backgrounded
-        tab does no layout or paint work for it. CSS has no page-visibility query, so the stop on
-        `visibilitychange` cannot live in a stylesheet — that guarantee is the canvas layer's, in
-        components/FlowField.astro, which this file does not own. Saying the stylesheet stops on
-        visibilitychange would be a claim about a mechanism that does not exist here.
-
-     4. DECORATION YIELDS TO THE CONTROL. Nothing new is painted behind the composer. The drifting
-        haze added below is two blobs at 18% and 82% of the hero's width with a gap between them,
-        because the composer is centred and "the decoration must never be densest behind the one
-        control the screen exists to serve" is a rule this repository already has a guard for.
-
-   HOW TO USE IT. Every effect is one rule listing a `.u-` utility class FIRST and the components
-   that currently reach it after. The utility is the name to reuse; the component selectors are what
-   makes the keyframe live rather than declared. A keyframe nothing references is dead code, and
-   this sheet is already held to that standard for its colour tokens.
-   ============================================================================================== */
-
-/* ---------------------------------------------------------------------------- entrance frames */
-/* Each ends at the element's own resting state — `transform: none`, `opacity: 1` — so cancelling
-   one lands exactly where the page would have been without it. */
-@keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-@keyframes scale-in { from { opacity: 0; transform: scale(0.985) translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes slide-in-left { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
-@keyframes slide-in-right { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
-@keyframes slide-in-down { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
-/* NO `to` BLOCK ON PURPOSE. An implicit 100% frame takes the element's own computed value, so this
-   fades a layer up to whatever opacity it DECLARES rather than forcing it to 1 — which is the whole
-   reason it can be pointed at a graded layer at all: `.sky` rests at 0.34, and a `to { opacity: 1 }`
-   would have ended every page load with the haze at three times its intended strength and then left
-   it there. */
-@keyframes fade-in-soft { from { opacity: 0; } }
-/* The stagger frame has a VISIBLE FLOOR. 0.32, not 0: these drive log lines, and a line that starts
-   invisible is a line that stays invisible if its timeline never advances. */
-@keyframes stagger-in { from { opacity: 0.32; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
-
-/* --------------------------------------------------------------------------- attention frames */
-/* Both return to where they started, so neither can leave a control displaced. */
-@keyframes press-in { from { transform: scale(1); } 55% { transform: scale(0.972); } to { transform: scale(1); } }
-@keyframes nudge { 0%, 100% { transform: rotate(0deg); } 45% { transform: rotate(-14deg); } }
-
-/* ------------------------------------------------------------------------------ ambient frames */
-@keyframes ambient-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(34px, -20px, 0); } }
-@keyframes ambient-sway { from { transform: translateY(0); } to { transform: translateY(9px); } }
-@keyframes pulse { 0%, 100% { opacity: 0.18; transform: scale(0.96); } 50% { opacity: 0.7; transform: scale(1.05); } }
-
-/* THE GLOW CARRIES THE WHOLE SHADOW STACK, not just its last layer. box-shadow interpolates as a
-   list, so a frame naming only the halo would drop the inset hairline and the 2px lift for the
-   duration of the animation and the primary button would lose its edge every 4.4 seconds. */
-@keyframes glow-breathe {
-  0%, 100% { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 2px rgba(0, 0, 0, 0.22), 0 0 12px var(--accent-glow); }
-  50% { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 2px rgba(0, 0, 0, 0.22), 0 0 22px var(--accent-glow); }
+  font-size: 12.5px;
+  line-height: 24px;
+  white-space: pre;
 }
 
-/* ------------------------------------------------------------------------------ surface frames */
-@keyframes shimmer { from { transform: translateX(-160%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }
-/* PERCENTAGES IN A TRANSLATE ARE PERCENTAGES OF THE ELEMENT, NOT OF ITS PARENT, and the first
-   version of this frame got that wrong in a way that would have looked like a bug rather than read
-   as one: a 3px-tall bar at translateY(1400%) has moved fourteen of its own heights, which is 42px
-   down a panel about 250px tall. The sweeping layer is now the full height of the panel with the
-   band painted INSIDE it as a gradient, so -100% is entirely above the panel and 100% entirely
-   below it, at any panel height. */
-@keyframes scan-line { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
-@keyframes border-travel { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
-/* A value filling from nothing to its full reading, which is what a count-up looks like when the
-   number itself is not ours to invent. This repository refuses placeholder figures, so the thing
-   that counts is a rule under a label rather than a fabricated statistic. */
-@keyframes count-up { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-
-/* ============================================================== the rules that reach the frames */
-
-/* ENTRANCE — the fold, in the order a reader meets it. Delays are 20/90/160/230ms: the whole
-   sequence is done inside a quarter of a second, which is the longest any copy on this page is
-   allowed to be in motion. `both` holds the first frame during the delay; cancelling the animation
-   under reduced motion returns every one of these to its declared, visible state. */
-.u-rise, .hero .display, .hero .lead, .hero-foot { animation: rise-in 0.3s var(--ease-hard) both; }
-.u-scale-in, .composer { animation: scale-in 0.3s var(--ease-hard) both; }
-.u-slide-left, .site-header .wordmark { animation: slide-in-left 0.3s var(--ease-hard) both; }
-.u-slide-right, .header-actions { animation: slide-in-right 0.3s var(--ease-hard) both; }
-.u-slide-down, .site-nav a { animation: slide-in-down 0.3s var(--ease-hard) both; }
-/* AFTER the shorthands above, because `animation:` resets delay to 0 and a delay written before its
-   shorthand is a delay that does not exist. */
-.hero .display { animation-delay: 20ms; }
-.hero .lead { animation-delay: 90ms; }
-.composer { animation-delay: 160ms; }
-.hero-foot { animation-delay: 230ms; }
-
-/* STAGGER — one delay ladder, shared. The nav's five links and the utility's children read the same
-   six rungs, so a collection anywhere on this page arrives in the same rhythm. */
-.u-stagger > * { animation: stagger-in 0.3s var(--ease-hard) both; }
-.u-stagger > :nth-child(1), .site-nav a:nth-child(1) { animation-delay: 40ms; }
-.u-stagger > :nth-child(2), .site-nav a:nth-child(2) { animation-delay: 80ms; }
-.u-stagger > :nth-child(3), .site-nav a:nth-child(3) { animation-delay: 120ms; }
-.u-stagger > :nth-child(4), .site-nav a:nth-child(4) { animation-delay: 160ms; }
-.u-stagger > :nth-child(5), .site-nav a:nth-child(5) { animation-delay: 200ms; }
-.u-stagger > :nth-child(6) { animation-delay: 240ms; }
-
-/* THE EXPENSIVE LAYER IS FADED IN RATHER THAN CUT IN. Cloudflare declares a `canvas-fade-in`
-   keyframe for exactly this and the reference file records why: "the expensive layer is never what
-   the first frame depends on". What this can and cannot say is worth being exact about — CSS cannot
-   know when the field is READY, so this is a fade over the layer's first second, not a readiness
-   signal.
-   IT WAS AIMED AT `.sky` AND LOST THE CASCADE, WHICH IS WHY THIS RULE READS THE WAY IT DOES NOW.
-   The previous spelling was `.u-fade, .sky { animation: fade-in-soft 0.9s ease-out; }` with a
-   comment directly above it asserting "IT IS AIMED AT `.sky`, WHICH IS ON THE PAGE" — and the
-   assertion was false at runtime. `.sky` is the `<svg class="sky">` inside `<div class="atmosphere">`,
-   and `.atmosphere svg` (specificity 0,1,1) five hundred lines up beats `.sky` (0,1,0) on a
-   SHORTHAND, which replaces the whole declaration. `getComputedStyle('.sky').animationName` in a
-   real browser returned `drift`. Zero elements on the built page carried fade-in-soft, and `.u-fade`
-   matched nothing in any .astro file either, so the keyframe was dead twice over while a comment
-   swore it was live.
-
-   That was found by loading the BUILT page in a headless browser and reading computed styles. It
-   was NOT found by listing every `animation:` value against every `@keyframes` name — that check
-   passes, because the rule exists; it simply never wins. A forward-only reachability check cannot
-   see shadowing, which is the same shape as every other defect this repository has filed: present
-   in the source, never reached at runtime.
-
-   The fix is not to delete the entrance — it is wanted — but to say both animations on the element
-   that actually matches, at a specificity that wins. `drift` is restated here because a shorthand
-   replaces rather than merges, so omitting it would trade a dead fade for a dead drift. Both are
-   stopped by the universal reduced-motion block at the foot of this file. */
-.atmosphere svg.sky { animation: drift 38s ease-in-out infinite alternate, fade-in-soft 0.9s ease-out; }
-
-/* ATTENTION — the two things a finger causes. Both well inside the 0.26s ceiling. */
-.u-press:active, .pill:active, .pill-icon:active, .site-nav a:active { animation: press-in 0.16s var(--ease-hard); }
-.u-nudge:hover, .pill-icon:hover .icon-sun, .pill-icon:hover .icon-moon { animation: nudge 0.24s ease-out; }
-
-/* GLOW-BREATHE — the primary action in the composer, and only that one. The page has one accent and
-   spends it once; a second breathing green object would mean neither is the answer. */
-.u-glow-breathe, .composer-send { animation: glow-breathe 4.4s ease-in-out infinite; }
-
-/* PULSE — a ring on the model chip's own rim. It rests at opacity 0, so with motion off the chip is
-   exactly the measured object: a 12% fill, a 38% rim and a 12px halo, and nothing moving. */
-.chip-model::after {
-  content: ''; position: absolute; inset: -3px;
-  border: 1px solid var(--accent-ring); border-radius: calc(var(--r-sm) + 3px);
-  opacity: 0; pointer-events: none;
+/* A refusal is a state the reader should notice, so it is the status tone — nothing louder. */
+.activity-line.refused {
+  color: var(--warn);
 }
-.u-pulse, .chip-model::after { animation: pulse 3.4s ease-in-out infinite; }
 
-/* AMBIENT DRIFT — two soft accent hazes, at 18% and 82% of the hero. The gap between them is the
-   point: the composer is centred, and decoration is never densest behind the control the screen
-   exists to serve. It sits under .atmosphere's own ::after fade and over nothing. */
-.atmosphere::before {
-  content: ''; position: absolute; inset: -12% -8%;
-  background:
-    radial-gradient(38% 42% at 18% 34%, var(--accent-glow), transparent 70%),
-    radial-gradient(34% 38% at 82% 58%, var(--accent-glow), transparent 72%);
-  filter: blur(42px);
-  pointer-events: none;
+.steps {
+  display: grid;
 }
-.u-drift, .atmosphere::before { animation: ambient-drift 44s ease-in-out infinite alternate; }
-/* AMBIENT SWAY rides alongside the ridge's existing opacity settle: two properties, one element,
-   no contention — settle owns opacity and this owns transform. */
-.u-sway { animation: ambient-sway 31s ease-in-out infinite alternate; }
 
-/* THE STRATA — ONE KEYFRAME, TWENTY-SIX PHASES, WHICH IS WHAT index.astro ASKED FOR.
-   Each band carries `--i` (its ordinal) and `--t` (how far down the sky it sits). A NEGATIVE DELAY
-   scaled by --i starts every band at a different point of the same cycle, so twenty-six paths drift
-   out of step without twenty-six rules — and one shared duration is what keeps the group readable
-   as weather rather than as twenty-six independent objects.
-   --t DOES THE PARALLAX, INSIDE THE FRAME rather than in the rule: a band high in the sky sweeps
-   64px and one lying on the horizon sweeps 16, because distance is what makes haze near a horizon
-   look still. A custom property resolves per element inside a keyframe, so one frame here is
-   genuinely twenty-six different movements.
-   THE DURATION IS A LITERAL, AND THAT IS NOT AN AESTHETIC CHOICE. `animation: name calc(38s + ...)`
-   would phase the durations too and is the obvious way to write this; tests/living-background.test.mjs
-   reads the first time out of every animation shorthand to prove it is finite and positive, and a
-   calc() defeats that read. A guard that cannot see a duration is a guard that has gone blind while
-   still reporting green, so the phase lives in the delay where it costs the guard nothing. */
-@keyframes stratum-drift {
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(calc(-64px + var(--t, 0) * 48px), calc(-10px + var(--t, 0) * 8px), 0); }
+.step {
+  padding: 22px 0;
+  border-top: 1px solid var(--hairline);
 }
-.u-stratum, .stratum { animation: stratum-drift 46s ease-in-out infinite alternate; }
-.stratum { animation-delay: calc(var(--i, 0) * -1.7s); }
 
-/*[[ SHIMMER and BORDER-TRAVEL — RE-AIMED FROM .card-media ONTO .demo-stage, NOT DELETED.
- *
- *   These two were the capability tiles' ambient layer. The tile is gone; the panel it was inside
- *   is still there, is still the same object in the same place on the page, and still clips its own
- *   children — so the two bands move across the stage instead of across the icon box. Deleting them
- *   would have been the easy way to keep the sheet consistent and would have quietly removed two of
- *   the running animations this page is explicitly briefed to carry.
- *
- *   BOTH REST OFF THE EDGE rather than at zero opacity, which is unchanged and is the point: a
- *   cancelled animation returns to the declared value, so a band declared at opacity 0 in the
- *   middle of the panel would be sitting there invisible under reduced motion, waiting for one
- *   `opacity` rule elsewhere to expose it. Off the edge, `overflow: hidden` on .demo-stage is what
- *   makes the still state clean.
- *
- *   THE BAND STAYS ABOVE THE CONTROLS AND OUT OF THEIR WAY. `pointer-events: none` was already on
- *   both and now matters for a second reason: the panel underneath is full of buttons. ]]*/
-.demo-stage::before {
-  content: ''; position: absolute; top: 0; left: 0;
-  width: 30%; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
-  transform: translateX(-100%);
-  opacity: 0.55; pointer-events: none;
+.step:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
-.demo-stage::after {
-  content: ''; position: absolute; top: -20%; left: 0;
-  width: 42%; height: 140%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
-  transform: translateX(-160%) skewX(-18deg);
-  pointer-events: none;
-}
-.u-border-travel, .demo-stage::before { animation: border-travel 7.2s ease-in-out infinite; }
-.u-shimmer, .demo-stage::after { animation: shimmer 6.4s ease-in-out infinite; }
-/* Four panels moving in lockstep is one panel moving four times, so the ladder offsets them. */
-.demos .demo:nth-child(2) .demo-stage::before, .demos .demo:nth-child(2) .demo-stage::after { animation-delay: 1.6s; }
-.demos .demo:nth-child(3) .demo-stage::before, .demos .demo:nth-child(3) .demo-stage::after { animation-delay: 3.2s; }
-.demos .demo:nth-child(4) .demo-stage::before, .demos .demo:nth-child(4) .demo-stage::after { animation-delay: 4.8s; }
 
-/* SCAN-LINE — a single soft band travelling down the activity log, which is the one figure on this
-   page that depicts something happening over time. It rests above the panel's top edge and is
-   clipped by the figure's own `overflow: hidden`. */
-.sequence-figure::after {
-  content: ''; position: absolute; left: 0; right: 0; top: 0;
+.step h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.step p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ------------------------------------------------------------------ capabilities */
+
+.capabilities {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 32px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.capability {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.capability h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.capability p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* THE STAGE PANEL: one surface, one row of small tabs, one stage at a time. */
+.demos {
+  margin-top: 56px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.stage-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid var(--hairline);
+  overflow-x: auto;
+}
+
+.no-js .stage-tabs {
+  display: none;
+}
+
+.stage-tab {
+  flex: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out);
+}
+
+.stage-tab:hover {
+  color: var(--ink);
+  background: var(--control-fill);
+}
+
+.stage-tab[aria-selected='true'] {
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.demo-stage {
+  padding: 24px;
+}
+
+.demo-stage[hidden] {
+  display: none;
+}
+
+.no-js .demo-stage + .demo-stage {
+  border-top: 1px solid var(--hairline);
+}
+
+.demo-head {
+  margin: 0 0 18px;
+}
+
+/* Read order. */
+.rd {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.rd-tree {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rd-row {
+  padding-left: calc(var(--depth) * 18px);
+}
+
+.rd-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out);
+}
+
+.rd-node:hover {
+  color: var(--ink);
+  background: var(--control-fill);
+}
+
+.rd-node[aria-pressed='true'] {
+  color: var(--ink);
+}
+
+.rd-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+}
+
+.rd-node[aria-pressed='true'] .rd-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.rd-side {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--paper-2);
+}
+
+.rd-log {
+  margin: 0;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 21px;
+  overflow-wrap: anywhere;
+}
+
+.rd-gate {
+  margin: 0;
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.rd-gate[data-read='3'] {
+  color: var(--ink);
+}
+
+/* Critique. */
+.cw {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.cw-render {
+  position: relative;
+  aspect-ratio: 220 / 124;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--paper-2);
+}
+
+.cw-scene {
+  display: block;
+  width: 100%;
   height: 100%;
-  background: linear-gradient(180deg, transparent 42%, var(--accent-glow) 47%, var(--accent-light) 50%, var(--accent-glow) 53%, transparent 58%);
-  opacity: 0.3;
-  transform: translateY(-100%);
-  pointer-events: none;
-}
-.u-scan, .sequence-figure::after { animation: scan-line 9s linear infinite; }
-
-/* COUNT-UP — a rule filling left to right under the figure's own label, sitting on the hairline
-   that is already there. Its resting state is scaleX(1): with motion off it is simply an accent
-   underline, which is a finished thing rather than a bar caught at zero. */
-.sequence-figure .figure-head::after {
-  content: ''; position: absolute; left: 0; bottom: -1px;
-  width: 100%; height: 1px;
-  background: var(--accent-light);
-  opacity: 0.5;
-  transform: scaleX(1); transform-origin: left center;
-  pointer-events: none;
-}
-.u-count-up, .sequence-figure .figure-head::after { animation: count-up 4.8s var(--ease-hard) infinite; }
-
-/* STAGGER, IN SCROLL SPACE. The log's seven lines brighten one after another as the figure is read,
-   rather than at page load where they are 2,000px below the fold and nobody is looking.
-   TWO THINGS MAKE THIS SAFE. The floor is 0.32 opacity, not 0, so a browser that supports view()
-   and never advances the timeline still shows every line; and `.activity-line` carries no
-   [data-reveal], so the reveal transition and this animation can never fight over one opacity —
-   which is the exact defect tests/reveal-cannot-hide-content.test.mjs was written for after .step
-   was found sitting live at half opacity. */
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .activity-line { animation: stagger-in linear both; animation-timeline: view(); animation-range: entry 6% cover 30%; }
-    .activity-line:nth-child(2) { animation-range: entry 10% cover 34%; }
-    .activity-line:nth-child(3) { animation-range: entry 14% cover 38%; }
-    .activity-line:nth-child(4) { animation-range: entry 18% cover 42%; }
-    .activity-line:nth-child(5) { animation-range: entry 22% cover 46%; }
-    .activity-line:nth-child(6) { animation-range: entry 26% cover 50%; }
-    .activity-line:nth-child(7) { animation-range: entry 30% cover 54%; }
-  }
 }
 
-/* ------------------------------------------------------------ responsive */
-
-/* 1023, NOT 1000. The bar holds its four-up and three-up grids to 1024 and its two-up to 768. A
-   breakpoint set twenty-four pixels early is twenty-four pixels of a layout nobody designed, and it
-   is the kind of number that gets copied into the next stylesheet because it was already there.
-   The stacked figure-and-list takes a 16px gap, which is the bar's, not the 40px that was here:
-   once the figure is directly above the sentence describing it, 40px reads as a gap between two
-   sections rather than as a caption relationship. */
-@media (max-width: 1023px) {
-  .truths { grid-template-columns: repeat(2, 1fr); }
-  /* .demos is ALREADY two-up at every width above the phone block; there is nothing for this
-     breakpoint to do to it. A `repeat(2, 1fr)` here would be a rule restating what it inherits,
-     which is how two numbers that had no reason to differ end up disagreeing. */
-  .sequence { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cw-floor {
+  fill: var(--surface-3);
 }
 
-/*[[ THE HEADER GOES TO TWO ROWS AT 859, NOT AT 640, AND 640 WAS MEASURABLY TOO LATE.
- *
- *   The link row is absolutely centred on the viewport — which is the measurement and is what keeps
- *   the nav symmetrical when a word is translated — and an out-of-flow row cannot be pushed by the
- *   things beside it. So the moment the three groups stop fitting, the centred one simply prints
- *   over the right-hand one, silently.
- *
- *   MEASURED IN CHROMIUM, after the nav items were reset to the bar's 12px/700/+1.2px uppercase:
- *   the row is 444px wide, and its right edge crosses the actions group's left edge at 641px (532
- *   against 484), at 700px (562 against 543) and at 768px (596 against 595). It clears at 860. The
- *   old breakpoint was 640, so every width from 641 to 859 — which is most tablets in portrait —
- *   rendered "SIGN IN" underneath the theme toggle.
- *
- *   THIS BLOCK CARRIES THE HEADER ONLY, and the phone block below carries the phone. They were one
- *   block before, and that is exactly why the header's breakpoint was a phone's: the two numbers
- *   had no reason to be the same and no way to differ. Everything measured off the header's height
- *   moves with --nav-h, so the hero's padding and the in-page scroll offset follow on their own. ]]*/
-@media (max-width: 859px) {
-  /* THE NAVIGATION WAS DELETED ON A PHONE AND NOTHING REPLACED IT.
-     `display: none` with no hamburger, no drawer, nothing — so at 375px the header was a wordmark
-     and one pill, the word "Pricing" existed only in the footer 6,534px down, and a returning
-     customer had no Sign in at any width. On the device most of this product's buyers use, the
-     front door hid the price and the door.
-     A SECOND ROW RATHER THAN A MENU. Five short links fit across 343px on one line; a hamburger
-     would be a button, a drawer, a focus trap and an escape key for five links that already fit.
-     The row scrolls horizontally only if a translation makes it longer, and it never wraps into a
-     ragged block. */
-  .site-header > .shell { flex-wrap: wrap; row-gap: 10px; }
-  /* The centred layer becomes a row again here. Leaving it absolutely positioned would park five
-     links on top of the wordmark, because a second line cannot exist for something out of flow. */
-  .site-nav {
-    position: static; transform: none;
-    order: 3; width: 100%;
-    gap: 4px;
-    overflow-x: auto; scrollbar-width: none;
-    padding-block-end: 2px;
-  }
-  .site-nav::-webkit-scrollbar { display: none; }
-  /* The header is two rows now, so everything measured from its height moves with it. */
-  :root { --nav-h: 96px; }
+.cw-block {
+  fill: var(--surface-2);
+  stroke: var(--line-strong);
+  stroke-width: 0.8;
 }
 
-@media (max-width: 640px) {
-  /* 8px of side padding rather than 12, so every link stays a tap target rather than a word.
-     THE NUMBER THAT USED TO BE HERE WAS WRONG. It read "five 32px link objects with 12px each side
-     come to 310px before the gaps ... fits with room to spare", and the row was measured in
-     Chromium at 375px instead: scrollWidth 395 against clientWidth 343, overflowing by 52. The five
-     boxes were 56 + 76 + 105 + 71 + 71 = 379, plus four 4px gaps = 395. "Sign in" was the fifth and
-     it landed at x 340->411, entirely past the edge, hidden behind a scrollbar this block removes.
-     Four links now: 56 + 76 + 105 + 71 = 308, plus three gaps = 320, against 343. That fits, and it
-     fits because the row is shorter rather than because the padding is smaller. */
-  .site-nav a { padding: 0 8px; }
-  /* The CONTAINER gutter halves on a phone and the HERO gutter does not. Measured at 390px: the
-     bar's nav row is padded 16px and its hero content 24px — the two numbers that are 32 and 24 at
-     1568px do not converge, they stay apart. Setting `--hero-gutter: 16px` here would look like
-     tidiness and would be a third measurement nobody took. `--gutter` is restated rather than left
-     to the block below because the header is this surface's and must not depend on another
-     surface's rule for whether it has a gutter at 375px. */
-  :root { --gutter: 16px; }
-  /* THE PHONE END OF THE SAME MEASUREMENTS. At 390px the bar sets its H1 to 40/48/-0.8px behind a
-     300px measure and its sub-line to 16/24/-0.16px behind 240px. Those are two more readings, not
-     a scaled-down guess: the display clamp already lands on 40px here, so only the measures and the
-     sub-line's size need saying. Without the measure the headline runs the full gutter-to-gutter
-     width and loses the ragged shape the centring depends on. */
-  .hero .display { max-width: 300px; }
-  .hero .lead { font-size: 16px; letter-spacing: -0.01em; max-width: 240px; }
-  /* The bar does NOT wrap. At 375px the two chips and the send control measure 189px inside a
-     325px row, and `overflow: hidden` on the composer catches a translation that does not fit
-     rather than letting it spill past the rim.
-     ONE LINE HERE TOO, WHICH IS WHY THE SENTENCES ARE MEASURED. 59 = a 21px line + 20 + 18, and it
-     is a total rather than a content height because `box-sizing: border-box` is set at the top of
-     this file — a floor written as the content height alone is 21px against a box that is never
-     smaller than 59, which is no floor at all. This reserved two lines while a script typed a
-     sixty-character sentence into it; the sentences are short now and the second line was 21px of
-     measured dead air on the screen where the composer is most of the fold. */
-  .composer-field { min-height: 59px; font-size: 14px; line-height: 21px; }
-  .composer-typed { height: 21px; }
+.cw-edge {
+  stroke: var(--line-strong);
+  stroke-width: 0.8;
 }
 
-/* THE SMALLEST PHONE THIS SITE CLAIMS TO SUPPORT, WHICH IS 320 AND NOT 375.
-   `never scrolls horizontally at any supported size` has listed 320x568 for as long as it has
-   existed, so 320 is a promise the suite already makes. The row still did not fit there after
-   "Sign in" moved out of it: measured in Chromium at 320x568, the four remaining links came to
-   56 + 76 + 105 + 71 = 308 with three 4px gaps = 320, against the 288 a 320px viewport leaves
-   inside a 16px gutter — 32px over, with "Status" 16px past the right edge.
-   32px is exactly what four links give back when their side padding goes 8 -> 4, and the gap
-   closing to 2 buys the margin that stops the last link ending flush on the edge: 48 + 68 + 97 +
-   63 = 276, plus three 2px gaps = 282 against 288. The HEIGHT does not move — the 32px box is what
-   makes these tap targets, and it is untouched here; only the space either side of the words is. */
-@media (max-width: 360px) {
-  .site-nav { gap: 2px; }
-  .site-nav a { padding: 0 4px; }
+.cw-mark {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
 }
 
-/* THE BAR'S OWN PHONE BREAKPOINT IS 768, AND EVERYTHING THAT MOVES, MOVES THERE.
-   Measured at 390px against 1568px: section padding drops from 64 to 40, the container gutter from
-   32 to 16, the statement from 56/64 to 32/40, a section title from 32/42 to 28/36, a step title
-   from 32/42 to 20/30 with its body down to 14/20, and the step list closes from 32 to 16.
-   This block is 767 rather than 640 because 768 is where the bar changes, and it sits AFTER the 640
-   block rather than before it so that the two can never disagree about a number if that block —
-   which carries the header, the nav, the hero and the composer, and belongs to another surface —
-   grows a rule for something down here again. Everything in this block is this surface's. */
-@media (max-width: 767px) {
-  :root { --gutter: 16px; }
-  .band, .band:has(> .shell > .statement) { padding: 40px 0; }
-  .closing { padding: 80px 0; }
-  .statement { letter-spacing: -0.015em; }
-  /* 28/36 and -0.336px on a phone against 32/42 and -0.416px at desktop: the bar tightens tracking
-     as the size grows, so a single em figure is right at one end and wrong at the other. */
-  .section-title { line-height: 1.2857; letter-spacing: -0.012em; }
-  .steps { gap: 16px; }
-  .step h3 { line-height: 1.5; letter-spacing: -0.012em; }
-  .step p { font-size: 14px; line-height: 20px; }
-  .truths { grid-template-columns: 1fr; }
-  /*[[ `minmax(0, 1fr)` AND NOT `1fr`, AND THE DIFFERENCE WAS 17px OFF THE SCREEN.
-   *
-   *   A bare `1fr` is `minmax(auto, 1fr)`, and `auto` as a track MINIMUM is min-content. Three of
-   *   these four stages hold something that refuses to wrap — `.rd-node` is `white-space: nowrap`
-   *   and `.lu-out code` is `white-space: pre` — so the track floored at their min-content instead
-   *   of at the 343px the gutter leaves. Measured in Chromium at 375px before this line was
-   *   corrected: `.demos` 343px wide at x16, and every `.demo-stage` inside it 360px wide running
-   *   to x376, one pixel past the viewport's own edge.
-   *
-   *   The e2e guard did not catch it and was right not to: it allows 1px of document overflow, and
-   *   this was exactly 1px at the document level while being 17px at the panel's right edge. The
-   *   desktop rule above has always said `minmax(0, 1fr)`; this one was written `1fr` and lost it.
-   *   tests/demo-stages-fit.test.mjs measures the containment itself now. ]]*/
-  .demos { grid-template-columns: minmax(0, 1fr); gap: 28px; }
-  .model-grid { grid-template-columns: 1fr; }
-  /*[[ FEWER EFFECTS ON A PHONE, NOT THE SAME EFFECTS MADE CHEAP — the owner's words, and this is
-   *   the block that has to mean them for the four stages.
-   *
-   *   MEASURED AT 375px INSIDE A 16px GUTTER: the panel is 343px wide. Every one of the four stages
-   *   is a two-column grid at desktop and not one of them survives being halved:
-   *     the tree's side column lands at 155px, and `get_tree  game.ServerScriptService  ok` is
-   *       244px in this monospace at 11.5px, so the log wraps to four lines or clips;
-   *     the critique's render lands at 178x100, at which the three markers are 26px targets sitting
-   *       14px apart and cannot be hit separately;
-   *   so both stack, and the two that were already single-column keep their shape.
-   *
-   *   THE MESH LOSES ITS SPIN AND KEEPS ITS DRAG. A requestAnimationFrame loop redrawing sixteen
-   *   stroked lines is the most expensive thing on this page, and on a phone it is running behind a
-   *   finger that is scrolling. Dropping the loop is fewer effects; dropping the object would be
-   *   less product. The script reads this same media query through matchMedia, so the still frame
-   *   and the drag are decided in ONE place rather than here and there.
-   *
-   *   THE TWO AMBIENT BANDS STAY. They are two compositing layers with no script behind them and
-   *   they are what keeps four stacked panels from reading as a list of forms. ]]*/
-  .rd, .cw { grid-template-columns: minmax(0, 1fr); }
-  .cw-render { aspect-ratio: 220 / 110; }
-  .gm-canvas { height: 168px; }
-
-  /*[[ THE SKY MOVES AS ONE OBJECT ON A PHONE INSTEAD OF AS TWENTY-SEVEN.
-   *
-   *   MEASURED ON THE LIVE ORIGIN, 2026-09-21, with `document.getAnimations()`: 375x812 ran 56
-   *   animations and 1440x900 ran 72, and TWENTY-SIX of the phone's were `stratum-drift` — the
-   *   identical count the desktop runs. The block above this one has said "fewer effects on a
-   *   phone, not the same effects made cheap" since it was written, and it meant it for the four
-   *   capability stages; the atmosphere behind them was never looked at. Twenty-six independently
-   *   phased transforms is twenty-six composited layers, and at 375px the bands they move are
-   *   0.45px strokes at 0.34 opacity behind a headline.
-   *
-   *   WHAT STAYS, WHICH IS THE POINT. `.atmosphere svg` keeps `drift` and `.light-column` keeps
-   *   `column-breathe`, so the sky still moves and the composer is still lit — one moving layer
-   *   each, which is what "fewer" means as against "none". The bands themselves are still PAINTED
-   *   at full grade: this removes a motion, not a picture, and a phone that rotates past 768px
-   *   gets all twenty-seven back with no script involved.
-   *
-   *   `animation: none` rather than a paused state or a zero duration, for the reason the
-   *   reduced-motion block at the foot of this file gives: a near-zero animation still RUNS and
-   *   jumps to its end transform, which would leave every band 64px off where the still art puts
-   *   it. Both rules live INSIDE this @media, so living-background.test.mjs — which reads
-   *   top-level rules only, to prove the page has live animations at all — is untouched by them. ]]*/
-  .strata, .stratum { animation: none; }
+.cw-mark::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  transition: border-color var(--t-fast) var(--ease-out);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  /* `animation: none` rather than a near-zero duration. A 0.001ms animation still RUNS — it jumps
-     to its end state — and for a layer whose keyframes end at a different opacity that is a
-     content change, not a stopped animation. None is the only spelling that cannot do that. */
-  *, *::before, *::after { animation: none !important; transition: none !important; }
+.cw-mark.is-on::after {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
-/* ------------------------------------------------------------ the flow field --- */
-/*[[ THE COMPONENT THESE RULES DRESS IS NOT ON ANY PAGE TODAY, and that is written here rather than
- *   left to be discovered. components/Horizon.astro replaced FlowField.astro in the hero on
- *   2026-09-20 and brought its own <style> with it, which is the pattern to follow; FlowField.astro
- *   has no <style> at all, so the four rules below are the only layout it has anywhere.
- *
- *   THEY ARE KEPT RATHER THAN DELETED FOR ONE REASON, AND IT IS NOT SENTIMENT. Deleting them would
- *   not remove dead weight from the page — the selectors already match nothing — it would remove
- *   the only thing that makes a live component in this repository renderable, and tests/
- *   flow-field-runs.test.mjs still executes that component and passes. Whoever retires
- *   FlowField.astro should take this block with it in the same change; whoever remounts it finds
- *   its geometry here. What must not happen is the third option: this block quietly disappearing
- *   and the component being remounted later as an unmasked, full-strength rectangle.
- *
- *   Its original note, still true of the component: it sits inside .atmosphere, above the drifting
- *   SVG and under the light column's glow, so the layers read as one weather system rather than as
- *   three effects, and it is masked away from the edges because a field that runs to the edge of
- *   its section announces itself as a rectangle. ]]*/
-.flow {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  display: block; pointer-events: none;
-  opacity: 0.72;
-  mask-image: radial-gradient(ellipse 125% 90% at 50% 45%, #000 46%, transparent 84%);
-  -webkit-mask-image: radial-gradient(ellipse 125% 90% at 50% 45%, #000 46%, transparent 84%);
+.cw-side {
+  display: grid;
+  gap: 12px;
 }
-/* The canvas draws a still composition under reduced motion rather than nothing — see FlowField.astro.
-   What changes here is only how loud it is, because a still field at full strength reads as a
-   texture somebody forgot to finish. */
-@media (prefers-reduced-motion: reduce) { .flow { opacity: 0.32; } }
 
-/* ---------------------------------------------------------------------------
-   SCROLL REVEAL.
+.cw-score {
+  margin: 0;
+  color: var(--ink);
+}
 
-   WHY THIS EXISTS. Four sites were measured on 2026-09-20 — chatgpt.com,
-   cloudflare.com, grok.com and deepmind.google — and recorded in
-   packages/corpus/data/ui-references/web-landing.json. The finding that mattered was NOT that this
-   page has too few transitions: at 27 of 241 elements it already carries a higher per-element ratio
-   than any of them. It was that below the hero, nothing on this page responds to being READ. Every
-   one of the four moves as you scroll it; this one was a fixed image under a moving hero.
+.cw-score-n {
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
 
-   THE ONE FAILURE THIS MUST NOT HAVE is invisible content. A reveal that starts at opacity 0 and
-   waits for a class is a front page that shows nothing if the class never arrives — and today a
-   hero effect shipped that never ran at all, so "the script did not run" is not hypothetical here.
-   Four independent things therefore guarantee the final frame:
-     1. `.no-js` — the class is on <html> in the markup and removed by an inline script before
-        paint, so if scripting is off it is still there and everything is simply visible.
-     2. prefers-reduced-motion — neutralised below, after the general rule, so it wins on order.
-     3. no IntersectionObserver — the script reveals everything at once.
-     4. a failsafe timer in the script reveals everything regardless after a beat.
-   Any ONE of those is enough on its own.
+.cw-score-d {
+  margin-left: 2px;
+  color: var(--faint);
+  font-size: 15px;
+}
 
-   The timings come from the measurements rather than from taste: 0.2-0.3s is the band all four
-   references use for something that moves on its own (Cloudflare 0.2s on 147 elements, Gemini 0.2s
-   on 74 and 0.3s on 54), and the fast 0.1-0.16s band is reserved for things under the finger.
+.cw-defects {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 
-   RE-AIMED 2026-09-20 TO 0.3s, AND THE SENTENCE THAT USED TO END THIS PARAGRAPH IS WHY. It read
-   "this sits at the slow end of the ambient band because it travels a distance", above a rule that
-   ran for 0.58s — which is not the slow end of a 0.2-0.3s band, it is roughly twice its ceiling. A
-   justification that names a band and then leaves it is the most expensive kind of comment, because
-   the next reader trusts the sentence instead of the number. 0.3s IS the slow end of the band, and
-   it is the same figure every entrance animation in the keyframe library above uses, so the whole
-   page now moves at one of three speeds: 0.15s under a finger, 0.26s for a colour, 0.3s for
-   anything that moves on its own.
---------------------------------------------------------------------------- */
-.no-js [data-reveal] { opacity: 1; transform: none; }
+.cw-defect {
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  line-height: 19px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out);
+}
+
+.cw-defect:hover {
+  color: var(--ink);
+  background: var(--control-fill);
+}
+
+.cw-defect[aria-pressed='true'] {
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+/* Luau. */
+.lu {
+  display: grid;
+  gap: 16px;
+}
+
+.lu-asks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lu-ask {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+
+.lu-ask:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.lu-ask[aria-pressed='true'] {
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.lu-out {
+  min-height: 250px;
+  margin: 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--paper-2);
+}
+
+.lu-out code {
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 20px;
+}
+
+.lu-out.refused {
+  box-shadow: inset 2px 0 0 var(--warn);
+}
+
+/* ------------------------------------------------------------------ modes and models */
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 56px;
+}
+
+.choice-label {
+  margin: 0 0 4px;
+}
+
+.mode-list,
+.model-grid {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mode-row,
+.model-card {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.mode-name,
+.model-name {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* The Apple MAX wordmark is the one brand exception to the type weights. */
+.max-name {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.mode-blurb,
+.model-blurb {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.model-plans {
+  margin: 10px 0 0;
+}
+
+.model-sale {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.model-sale a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+
+.auto-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 0 0;
+}
+
+.auto-toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+
+.auto-toggle:hover {
+  color: var(--ink);
+}
+
+.auto-switch {
+  position: relative;
+  width: 24px;
+  height: 14px;
+  flex: none;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+
+.auto-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+}
+
+/* Violet only while Autonomous is on — the same selector apple-minimal.css owns. */
+[data-mode='autonomous'][aria-pressed='true'] .auto-switch {
+  background: var(--autonomous);
+  box-shadow: none;
+}
+
+[data-mode='autonomous'][aria-pressed='true'] .auto-switch::after {
+  background: var(--on-primary);
+  transform: translateX(10px);
+}
+
+:root[data-theme='dark'] [data-mode='autonomous'][aria-pressed='true'] .auto-switch::after {
+  background: var(--ink);
+}
+
+.auto-note {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ------------------------------------------------------------------ closing */
+
+.closing {
+  padding: clamp(96px, 12vw, 152px) 0;
+  border-top: 1px solid var(--hairline);
+  text-align: center;
+}
+
+.statement {
+  margin: 0 auto;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.btn-closing {
+  min-height: 40px;
+  margin-top: 28px;
+  padding-inline: 18px;
+}
+
+/* ------------------------------------------------------------------ reveal */
+
+/* EVERY BRANCH ENDS WITH THE CONTENT VISIBLE (apps/site/tests/reveal-cannot-hide-content.test.mjs):
+   without scripting (.no-js, removed by an inline script before first paint), with no
+   IntersectionObserver and through the layout's failsafe (Landing.astro), and under reduced
+   motion — declared AFTER the hidden state so it wins on cascade order. */
+.no-js [data-reveal] {
+  opacity: 1;
+  transform: none;
+}
 
 html:not(.no-js) [data-reveal] {
   opacity: 0;
-  transform: translateY(14px);
+  transform: translateY(8px);
   transition:
-    opacity 0.3s var(--ease-hard),
-    transform 0.3s var(--ease-hard);
+    opacity var(--t-slow) var(--ease-out),
+    transform var(--t-slow) var(--ease-out);
   transition-delay: var(--reveal-delay, 0ms);
-  will-change: opacity, transform;
 }
 
 html:not(.no-js) [data-reveal].is-in {
   opacity: 1;
   transform: none;
-  will-change: auto;
 }
 
-/* AFTER the general rule on purpose: this must win on cascade order. The landing's universal
-   reduced-motion stop sets `transition: none`, and a stopped transition on an element left at
-   opacity 0 is not a calmer page, it is a blank one. */
 @media (prefers-reduced-motion: reduce) {
-  html:not(.no-js) [data-reveal],
-  html:not(.no-js) [data-reveal].is-in {
+  html:not(.no-js) [data-reveal] {
     opacity: 1;
     transform: none;
-    transition-duration: 1ms;
+  }
+
+  .composer-line {
+    animation: none;
   }
 }
 
-/* ============================================================================================
-   THE PROOF BAND — components/ConsentProof.astro.
-   The page's first image and its first quoted transcript. Its reasons are in that component and in
-   data/consent-proof.ts; what is here is only how it sits.
-
-   NO ACCENT IS SPENT IN THIS BLOCK, and that is deliberate rather than an omission. The rule the
-   rest of this sheet is written to — see the note on `.activity-line.refused` — is that hierarchy
-   below the fold is carried by how light a thing is against the page, with the single accent left
-   for the one primary action. A refusal painted in a warning hue would read as a failure the reader
-   caused, when what the line reports is the product protecting them, and a success painted green
-   would make the band an advertisement for itself. So the two runs share one card treatment and are
-   told apart by what is inside them: one ends in a log line and "Nothing was created", the other in
-   the tree Studio showed afterwards. The content is the difference; the paint is not.
-   ============================================================================================ */
-
-.proof { display: grid; grid-template-columns: 318px minmax(0, 1fr); gap: 32px; align-items: start; }
-
-/* The capture. `overflow: hidden` clips the screenshot's own square corners to the sheet's radius,
-   so the panel reads as an object on this page rather than a rectangle dropped onto it. */
-.proof-shot { margin: 0; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--raised); }
-/* `display: block` kills the inline baseline gap under the image, which otherwise leaves a 4px
-   stripe of --raised between the screenshot and its caption rule. */
-.proof-shot img { display: block; width: 100%; height: auto; }
-.proof-caption { padding: 10px 14px; border-top: 1px solid var(--line); color: var(--faint); }
-
-.proof-pair { display: grid; gap: 16px; align-content: start; }
-
-/* The request, once, above both runs — because "the same request" is the whole claim of the section
-   and printing it twice would quietly weaken it into "two similar requests". */
-.proof-ask {
-  margin: 0; padding: 14px 16px;
-  border: 1px solid var(--line); border-radius: var(--r); background: var(--raised);
-  color: var(--ink); font-family: var(--font-mono);
-  font-size: 13px; line-height: 22px;
+/* A printed page, or anything that captures the document without scrolling it, gets every section
+   rather than the bands the observer has not reached yet. */
+@media print {
+  html:not(.no-js) [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
-.proof-ask-label { display: block; margin-bottom: 6px; color: var(--faint); }
 
-.proof-runs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
-.proof-run { padding: 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--raised); }
-/* `balance` because this label is the widest short string in the band and the narrowest column on
-   the page. At 1280px the run card's text box is about 265px, and "Access: edits allowed for this
-   connection" — uppercase at 12px with 1.2px of tracking — wraps just past it and leaves CONNECTION
-   alone on a second line. tests/rendered-typography.test.mjs measured exactly that and budgets zero
-   stranded words; it also names this property as the rule that holds them down. */
-.proof-state { color: var(--faint); text-wrap: balance; }
-.proof-answer { margin: 10px 0 0; color: var(--ink); font-size: 14px; line-height: 21px; }
-.proof-log,
-.proof-outcome { margin: 10px 0 0; color: var(--muted); font-family: var(--font-mono); font-size: 13px; line-height: 22px; }
-/* The Explorer read-back. `white-space: pre` keeps the box-drawing aligned, and the scroll is on
-   the block rather than the page so a narrow screen never gives the whole document a sideways
-   shove. */
-.proof-tree {
-  margin: 10px 0 0; overflow-x: auto;
-  color: var(--muted); font-family: var(--font-mono);
-  font-size: 13px; line-height: 22px; white-space: pre;
-}
-.proof-disclosure { margin: 0; color: var(--muted); font-size: 13px; line-height: 20px; }
-/* The record's own limitation, and where to read it. Set at the page's quietest level because it is
-   a footnote in weight — and present at all because it is not a footnote in kind. `overflow-wrap`
-   so the file path breaks rather than widening the page on a phone. */
-.proof-source { margin: 24px 0 0; color: var(--faint); letter-spacing: 0.6px; text-transform: none; font-weight: 400; font-size: 12px; line-height: 19px; overflow-wrap: anywhere; }
+/* ------------------------------------------------------------------ narrower */
 
-/* The capture column is a fixed 318px, so it stops being a column before anything else on this page
-   needs to: below 1024 the two would be 318 + a remainder too narrow for two run cards. */
 @media (max-width: 1023px) {
-  .proof { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .proof-shot { max-width: 318px; }
+  .proof {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .proof-shot {
+    max-width: 318px;
+  }
+
+  .sequence {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
+  }
+
+  .capabilities {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .rd,
+  .cw,
+  .choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .choices {
+    gap: 40px;
+  }
+
+  .demo-stage {
+    padding: 18px;
+  }
 }
 
 @media (max-width: 640px) {
-  .proof-runs { grid-template-columns: minmax(0, 1fr); }
+  .hero {
+    padding: 64px 0 72px;
+  }
+
+  .lead {
+    max-width: 34ch;
+  }
+
+  .composer {
+    margin-top: 32px;
+  }
+
+  .proof-runs,
+  .capabilities {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .proof-runs {
+    gap: 20px;
+  }
+
+  .proof-run + .proof-run {
+    padding: 20px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+
+  /* The activity log is fixed-width columns; on a phone it is set a step smaller so a line of it
+     fits the panel instead of scrolling out of sight. */
+  .activity {
+    padding: 14px;
+  }
+
+  .activity-line {
+    font-size: 10.5px;
+    line-height: 21px;
+  }
+
+  .capabilities {
+    gap: 24px;
+  }
+
+  .auto-row {
+    flex-direction: column;
+    gap: 10px;
+  }
 }

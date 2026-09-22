@@ -98,12 +98,25 @@ test('the page publishes the shipped plugin and the command that builds it', () 
 
   // The dead CI artifact must not come back: ci.yml builds the LEGACY plugin and publishes it as
   // apple-plugin-pr-unverified, so neither that name nor the old one belongs on this page.
+  //[[ RESTATED 2026-09-22, WHEN THIS TRIPWIRE FIRED ON AN IMPROVEMENT.
+  //
+  //   It pinned `rojo build apps/plugin/default.project.json` in ci.yml, with the message "THIS GUARD
+  //   IS STALE ... Go and look." A peer moved the CI plugin job onto the shipped plugin —
+  //   `node apps/apple-plugin/scripts/build.mjs`, which also verifies the built bytes — and it fired,
+  //   which is its job. Looking: the reason this page may not send readers to the CI artifact did not
+  //   go away with the legacy build. That artifact is built from whatever a pull request contains,
+  //   including a fork's, and ci.yml still names it `…-pr-unverified` so nobody installs it.
+  //
+  //   So the property is restated in its own terms: CI's plugin artifact is still marked unverified,
+  //   its name is read from ci.yml (not typed here), and the page never names or offers it. ]]
   const ci = readFileSync(join(ROOT, '.github', 'workflows', 'ci.yml'), 'utf8');
-  assert.match(ci, /rojo build apps\/plugin\/default\.project\.json/,
-    'THIS GUARD IS STALE: the CI plugin job no longer builds apps/plugin, so the reason this page ' +
-      'may not send readers to its artifact has changed. Go and look.');
-  assert.doesNotMatch(hay, /\bartifact\b[^.<]{0,60}\bapple-plugin\b/i,
-    'the page offers a CI artifact again — CI still builds the legacy source');
+  const artifact = /\bname:\s*([\w-]*-pr-unverified)\b/.exec(ci);
+  assert.ok(artifact,
+    'THIS GUARD IS STALE: the CI plugin artifact is no longer named *-pr-unverified, so the reason this ' +
+      'page may not send readers to it has changed. Go and look.');
+  assert.ok(!hay.includes(artifact[1]), `the page names the unverified CI artifact ${artifact[1]}`);
+  assert.doesNotMatch(hay, /\bartifact\b[^.<]{0,60}\bapple-(?:plugin|studio)\b/i,
+    'the page offers a CI artifact again — it is built from pull requests and is not an install path');
 });
 
 test('the guard has teeth: it fails on the instruction that shipped', () => {

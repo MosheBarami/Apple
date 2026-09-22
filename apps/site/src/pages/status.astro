@@ -30,13 +30,13 @@ const shortDate = (iso: string) =>
           without the class an <h1> falls back to the browser's own 2em bold. So the page a reader
           opens when they think the product is down was the one page whose title looked like an
           unstyled document — and the only bold heading on the site. */}
-      <h1 id="status-title" class="carved">Is the apple awake?</h1>
+      <h1 id="status-title" class="carved">Service status</h1>
       <p class="lede">
         This page checks the live API from your own browser — the same endpoint the app uses — and
         refreshes every 30 seconds.
       </p>
 
-      <div class="status-card card card--seam" id="status-card" data-state="checking" aria-live="polite">
+      <div class="status-card card" id="status-card" data-state="checking" aria-live="polite">
         <div class="status-row">
           <span class="status-orb" id="status-orb" aria-hidden="true"></span>
           <div>
@@ -64,7 +64,7 @@ const shortDate = (iso: string) =>
           </div>
         </dl>
 
-        <button class="btn btn-ghost status-refresh" id="status-refresh" type="button">
+        <button class="btn status-refresh" id="status-refresh" type="button">
           Check now
         </button>
       </div>
@@ -118,7 +118,7 @@ const shortDate = (iso: string) =>
         <ul>
           <li><span class="legend-orb legend-ok" aria-hidden="true"></span> <strong>Operational</strong> — the API answered and reported healthy.</li>
           <li><span class="legend-orb legend-degraded" aria-hidden="true"></span> <strong>Degraded</strong> — the API answered, but slowly or with an unexpected response. Builds may be slower than usual.</li>
-          <li><span class="legend-orb legend-down" aria-hidden="true"></span> <strong>Unreachable</strong> — the API did not answer from your browser. That can mean an outage on our side or a network problem on yours.</li>
+          <li><span class="legend-orb legend-down" aria-hidden="true"></span> <strong>Unreachable or unknown</strong> — the API did not answer from your browser, or nothing at this address answers for it. That can mean an outage on our side or a network problem on yours.</li>
         </ul>
         <p>
           Something look wrong for more than a few minutes?
@@ -130,69 +130,53 @@ const shortDate = (iso: string) =>
 </Base>
 
 <style>
+  /* Status is the one page whose colour means something, so the colour is spent on one small dot
+     and on nothing else: no glow, no tinted headline. Tokens from apple-minimal.css; --good,
+     --warn and --bad are the status tones. */
   .status-wrap {
     max-width: 720px;
   }
 
   .status-card {
-    margin-top: 2.6rem;
-    padding: 2rem;
-    transition: border-color 300ms ease;
-  }
-
-  .status-card[data-state='ok'] {
-    border-color: rgba(52, 211, 153, 0.5);
-    --seam: var(--success);
-  }
-
-  .status-card[data-state='degraded'] {
-    border-color: rgba(255, 180, 84, 0.55);
-    --seam: var(--amber);
-  }
-
-  .status-card[data-state='down'] {
-    border-color: rgba(248, 113, 113, 0.55);
-    --seam: var(--danger);
+    margin-top: 40px;
+    padding: 28px;
   }
 
   .status-row {
     display: flex;
     align-items: center;
-    gap: 1.1rem;
+    gap: 14px;
   }
 
   .status-orb {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--muted);
+    width: 10px;
+    height: 10px;
     flex-shrink: 0;
-    transition: background 300ms ease, box-shadow 300ms ease;
+    border-radius: 50%;
+    background: var(--faint);
+    transition: background-color var(--t-base) var(--ease-out);
   }
 
   [data-state='checking'] .status-orb {
-    animation: orb-checking 1.2s ease-in-out infinite;
+    animation: orb-checking 1.2s var(--ease-in-out) infinite;
   }
 
   [data-state='ok'] .status-orb {
-    background: var(--success);
-    box-shadow: 0 0 16px rgba(52, 211, 153, 0.7);
+    background: var(--good);
   }
 
   [data-state='degraded'] .status-orb {
-    background: var(--amber);
-    box-shadow: 0 0 16px rgba(255, 180, 84, 0.7);
+    background: var(--warn);
   }
 
   [data-state='down'] .status-orb {
-    background: var(--danger);
-    box-shadow: 0 0 16px rgba(248, 113, 113, 0.7);
+    background: var(--bad);
   }
 
   @keyframes orb-checking {
     0%,
     100% {
-      opacity: 0.4;
+      opacity: 0.35;
     }
     50% {
       opacity: 1;
@@ -206,124 +190,143 @@ const shortDate = (iso: string) =>
   }
 
   .status-headline {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.3rem;
     margin: 0;
-  }
-
-  [data-state='ok'] .status-headline {
-    color: var(--success);
-  }
-
-  [data-state='degraded'] .status-headline {
-    color: var(--amber);
-  }
-
-  [data-state='down'] .status-headline {
-    color: var(--danger);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
   }
 
   .status-sub {
-    margin: 0.15rem 0 0;
+    margin: 2px 0 0;
     color: var(--muted);
-    font-size: 0.92rem;
+    font-size: 14px;
   }
 
   .status-meta {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1rem;
-    margin: 1.8rem 0 0;
-    border-top: 1px solid var(--line);
-    padding-top: 1.4rem;
+    gap: 16px;
+    margin: 24px 0 0;
+    padding-top: 20px;
+    border-top: 1px solid var(--hairline);
   }
 
   .status-meta dt {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
+    color: var(--faint);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted);
   }
 
   .status-meta dd {
-    margin: 0.25rem 0 0;
-    font-size: 0.92rem;
+    margin: 4px 0 0;
+    color: var(--ink-2);
+    font-size: 14px;
+  }
+
+  .status-meta code {
+    font-family: var(--font-mono);
+    font-size: 13px;
   }
 
   .status-refresh {
-    margin-top: 1.6rem;
+    margin-top: 20px;
   }
 
   .known {
-    margin-top: 3rem;
-    padding-top: 1.6rem;
-    border-top: 1px solid var(--line);
+    margin-top: 48px;
+    padding-top: 28px;
+    border-top: 1px solid var(--hairline);
   }
 
-  .known h2 {
-    font-size: 1.05rem;
-    margin: 0 0 1rem;
+  .known h2,
+  .status-legend h2 {
+    margin: 0 0 16px;
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
   }
 
   .known__none,
   .known p {
+    margin: 0 0 8px;
     color: var(--muted);
-    font-size: 0.94rem;
+    font-size: 15px;
     line-height: 1.6;
-    margin: 0 0 0.5rem;
   }
 
   .known__list {
-    list-style: none;
+    display: grid;
+    gap: 16px;
     margin: 0;
     padding: 0;
-    display: grid;
-    gap: 1.4rem;
+    list-style: none;
   }
 
   .known__item {
-    border-inline-start: 2px solid var(--amber);
-    padding-inline-start: 1rem;
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
   }
 
   .known__head {
-    font-size: 1rem;
-    margin: 0 0 0.2rem;
-    color: var(--text);
+    margin: 0 0 4px;
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 500;
   }
 
-  .known__meta {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
+  .known .known__meta {
+    margin: 0 0 10px;
     color: var(--faint);
-    margin: 0 0 0.5rem;
+    font-size: 12px;
   }
 
   .known__fix strong {
-    color: var(--text);
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .known__item ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 14px;
+  }
+
+  .known a,
+  .status-legend a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
   }
 
   .known__done {
-    margin-top: 2rem;
-    padding-top: 1.2rem;
-    border-top: 1px solid var(--hairline);
+    margin-top: 28px;
   }
 
   .known__done h3 {
-    font-size: 0.9rem;
-    margin: 0 0 0.6rem;
-    color: var(--text);
+    margin: 0 0 10px;
+    color: var(--ink-2);
+    font-size: 14px;
+    font-weight: 500;
   }
 
   .known__done ul {
-    list-style: none;
+    display: grid;
+    gap: 8px;
     margin: 0;
     padding: 0;
-    display: grid;
-    gap: 0.45rem;
+    list-style: none;
   }
 
   .known__done li {
@@ -331,56 +334,56 @@ const shortDate = (iso: string) =>
     flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: 0.4rem 1rem;
+    gap: 4px 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--hairline);
     color: var(--muted);
-    font-size: 0.9rem;
+    font-size: 14px;
   }
 
   .known__done .known__meta {
     margin: 0;
+    white-space: nowrap;
   }
 
   .status-legend {
-    margin-top: 3rem;
+    margin-top: 48px;
     color: var(--muted);
-    font-size: 0.94rem;
-  }
-
-  .status-legend h2 {
-    font-size: 1.05rem;
-    color: var(--text);
+    font-size: 15px;
   }
 
   .status-legend ul {
-    list-style: none;
-    padding: 0;
     display: grid;
-    gap: 0.6rem;
-    margin: 1rem 0 1.2rem;
+    gap: 10px;
+    margin: 0 0 20px;
+    padding: 0;
+    list-style: none;
   }
 
   .status-legend strong {
-    color: var(--text);
+    color: var(--ink);
+    font-weight: 500;
   }
 
   .legend-orb {
     display: inline-block;
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
+    margin-right: 8px;
     border-radius: 50%;
-    margin-right: 0.5rem;
+    vertical-align: 1px;
   }
 
   .legend-ok {
-    background: var(--success);
+    background: var(--good);
   }
 
   .legend-degraded {
-    background: var(--amber);
+    background: var(--warn);
   }
 
   .legend-down {
-    background: var(--danger);
+    background: var(--bad);
   }
 </style>
 
@@ -439,6 +442,12 @@ const shortDate = (iso: string) =>
         } else {
           setState('ok', 'API operational', `The API answered in ${elapsed}ms. This does not verify Studio, builds, or billing; see known issues below.`);
         }
+      } else if (res.status === 404 || (res.ok && body === null)) {
+        /* NOTHING ANSWERED FOR THE API, SO NOTHING WAS OBSERVED ABOUT IT. A 404, or a 200 that is
+           not the health JSON at all, means this address has no health endpoint behind it — a
+           preview, a mirror, a misrouted origin. Reporting that as "Degraded" states a measurement
+           of the API that was never taken; it is the same as not reaching it. */
+        setState('down', 'Status unknown', `No health check answered at this address (HTTP ${res.status}), so the API's state could not be measured from here.`);
       } else {
         setState('degraded', 'Degraded', `The API responded with an unexpected status (${res.status}). Some features may not work.`);
       }

@@ -1,11 +1,11 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 
-// The canonical Creator Store identity for "Apple for Studio". The asset id has exactly ONE
+// The canonical Creator Store identity for the plugin, "Apple Studio". The asset id has exactly ONE
 // definition in this repository — packages/shared/src/index.ts — and everything, including this
-// page, derives from it. Do not restate the number here; a second copy is a second thing to
-// forget to change. (Why create.roblox.com/store/asset: roblox.com/library/<id> 307-redirects
-// there, so Roblox itself names that the canonical URL.)
+// page, derives from it. Do not restate the number here; a second copy is a second thing to forget
+// to change. (Why create.roblox.com/store/asset: roblox.com/library/<id> redirects there, so Roblox
+// itself names that the canonical URL.)
 import {
   STUDIO_PLUGIN_ASSET_ID as ASSET_ID,
   STUDIO_PLUGIN_URL as STORE_URL,
@@ -13,58 +13,46 @@ import {
   STUDIO_PLUGIN_STORE_REFUSAL as refusal,
 } from '../../lib/studio-plugin';
 
-// This page used to read "Roblox removed the previous plugin listing (<ASSET_ID>)", which was two
-// wrong things in one sentence. ASSET_ID is the CURRENT listing, not a previous one — the previous
-// one was a different id on a different account and is not named here. And "removed" was written
-// before anyone had seen a removal notice; what had been seen was a dashboard banner saying the
-// asset "may be in violation". It has since become literally true, which is luck, not rigour.
-//
-// So the wording now derives from what Roblox actually says about THIS id on its appeals page,
-// through one shared constant. If the appeal succeeds, `refusal` goes null and this paragraph
-// disappears on its own rather than needing a reader to notice it is stale.
 /*
- * THE BODY WAS GATED AND THE METADATA WAS NOT, WHICH IS THE HALF PEOPLE ACTUALLY SHARE.
+ * AN INSTALL GUIDE, ASKED OF THE FLAG.
  *
- * A <meta name="description"> and its og:description twin are what a search result and a pasted
- * link show. This page's body has asked STUDIO_PLUGIN_STORE_LIVE since the listing was removed,
- * while its description went on promising a Creator Store install path in every snippet — so the
- * promise reached the reader BEFORE the correction did, and the correction only arrived if they
- * clicked. Same constant, same answer, one sentence earlier.
+ * `storeLive` decides whether this page is an install guide or an availability notice, and it
+ * decides the metadata too: a description is what a search result and a pasted link show, so it
+ * must never promise an install path the body denies (apps/site/tests/
+ * plugin-availability-metadata.test.mjs).
+ *
+ * `refusal` is kept for the day a listing is refused again: while one is recorded, the page states
+ * Roblox's own reason rather than only the outcome (apps/site/tests/plugin-listing-identity.test.mjs).
+ * It is null from 2026-09-22, when the listing was distributed again.
+ *
+ * The labels quoted in the steps — Apple, Apple Studio, Not connected, Connect to Apple, Enable
+ * edits…, Allow edits for this connection, Turn edits off — are the plugin's own strings in
+ * apps/apple-plugin/src/init.server.luau.
  */
 const decided = refusal
   ? new Date(refusal.decidedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
   : null;
-
-// `storeLive` — whether the asset is actually distributable — is imported above rather than
-// declared here. It used to be a local `const storeLive = false`, which made this page the only
-// surface that knew the plugin was unpublished while the landing, dashboard and pairing dialog
-// all linked straight to the store regardless. One definition, in packages/shared, now gates all
-// of them; re-probe and flip it there. Rationale and the probe command live with the constant.
 ---
 
 <DocsLayout
   title="Install the plugin — Apple Docs"
   description={storeLive
-    ? 'How to install Apple for Studio from the Roblox Creator Store, and what Studio asks for the first time it runs.'
-    : 'Public installation of Apple for Studio is unavailable: Roblox removed the Creator Store listing and an appeal is pending. What the decision means, and what the install steps will be once a listing exists.'}
-  heading="Install Apple for Studio"
+    ? 'How to install Apple Studio from the Roblox Creator Store, enable it, open the Apple panel, pair it with your project and allow edits.'
+    : 'Public Studio installation is unavailable right now. What that means, and what the install steps will be once the listing is available again.'}
+  heading="Install Apple Studio"
 >
   <p>
-    Apple builds inside Roblox Studio through a plugin. The plugin is the product's hands: it
-    reads and edits scripts, creates instances, sets properties, reads the
-    output — always inside the one place you connect it to, and always wrapped in a Studio undo
-    waypoint.
-  </p>
-
-  <p>
-    There is one supported way to get it: <strong>the Roblox Creator Store</strong>.
+    Apple builds inside Roblox Studio through a free plugin, <strong>Apple Studio</strong>. The
+    plugin is the product's hands: it reads and edits scripts, creates instances, sets properties
+    and reads the output — always inside the one place you connect it to, and always as Studio
+    undo steps.
   </p>
 
   {
     storeLive ? (
       <p class="cta-row">
         <a href={STORE_URL} class="btn btn-primary" rel="noopener noreferrer" target="_blank">
-          Get Apple on the Creator Store
+          Get Apple Studio on the Creator Store <span aria-hidden="true">↗</span>
         </a>
         <span>Free. Opens Roblox's site in a new tab.</span>
       </p>
@@ -75,19 +63,16 @@ const decided = refusal
             <p>
               <strong>Public installation is unavailable, and it is a moderation decision.</strong>{' '}
               Roblox removed this plugin's Creator Store listing (<code>{ASSET_ID}</code>) on {decided},
-              giving the reason <strong>“{refusal.reason}”</strong>. The store URL is not a working
-              install path, and the “Distribute on Creator Store” setting is locked rather than merely
-              switched off — so this is not a step waiting to be taken.
+              giving the reason <strong>“{refusal.reason}”</strong>, so the store URL is not a working
+              install path.
               {refusal.appealId ? ' An appeal has been sent and is awaiting a decision.' : ' An appeal has not been sent.'}
-              {' '}The instructions below apply only if and when an approved listing exists. No release
-              date is confirmed, and none can be promised while the decision stands.
+              {' '}The steps below apply once the listing is available again.
             </p>
           ) : (
             <p>
-              <strong>Public installation is unavailable.</strong> The plugin
-              (<code>{ASSET_ID}</code>) is not distributable on the Creator Store today, so its store
-              URL is not a working install path. The instructions below apply only once an approved
-              listing exists. No release date is confirmed.
+              <strong>Public installation is unavailable right now.</strong> The plugin
+              (<code>{ASSET_ID}</code>) cannot be installed from the Creator Store today. The steps
+              below apply once the listing is available again.
             </p>
           )
         }
@@ -95,52 +80,55 @@ const decided = refusal
     )
   }
 
-  <h2>{storeLive ? 'Installing' : 'After public installation opens'}</h2>
+  <h2>{storeLive ? 'Install it in five steps' : 'After public installation opens'}</h2>
   <p>
-    Roblox splits plugin installation into two halves, and the second half happens inside Studio.
-    A web page cannot install a plugin into Studio — there is no one-click hand-off, no matter
-    what the button on the store page looks like.
+    Roblox splits installation into two halves, and the second half happens inside Studio: a web
+    page cannot install a plugin into Studio, whatever the button on the store page looks like.
   </p>
 
-  <ol>
+  <ol class="steps">
     <li>
-      <strong>Acquire it on the web.</strong> Open the Creator Store page for Apple and click the
-      blue button at the top right — for a free plugin it reads <strong>Get Plugin</strong>. Per
-      Roblox's own documentation this only "add[s] it to your inventory". Nothing has reached
-      Studio yet.
+      <strong>Get it from the Creator Store.</strong>{' '}
+      {storeLive
+        ? <>Open <a href={STORE_URL} rel="noopener noreferrer" target="_blank">Apple Studio on the Creator Store</a>, sign in to Roblox and press <strong>Get Plugin</strong>.</>
+        : <>Open the Creator Store page for Apple Studio, sign in to Roblox and press <strong>Get Plugin</strong>.</>}
+      {' '}That only adds it to your Roblox inventory; nothing has reached Studio yet.
     </li>
     <li>
-      <strong>Install it in Studio.</strong> Open Roblox Studio, open the <strong>Toolbox</strong>
-      (Studio's <strong>View</strong> menu, or the <strong>Home</strong> tab), and find Apple —
-      under <strong>Inventory</strong> after step 1, or by searching the
-      <strong>Creator Store</strong> tab. Click it, then press <strong>Install</strong>. Roblox's
-      documentation is explicit that this is the step that adds a plugin "to the mezzanine's
-      <strong>Plugins</strong> tab".
+      <strong>Install it in Studio.</strong> Open Roblox Studio, open the <strong>Toolbox</strong>,
+      and find Apple Studio under <strong>Inventory</strong> (or search the
+      <strong>Creator Store</strong> tab). Click it, then press <strong>Install</strong>.
     </li>
     <li>
-      <strong>Check it landed.</strong> A <strong>Apple</strong> button appears in Studio's
-      <strong>Plugins</strong> tab. Clicking it docks the Apple panel.
+      <strong>Check it is enabled.</strong> An <strong>Apple</strong> button appears in Studio's
+      <strong>Plugins</strong> tab. If it does not, open <strong>Manage Plugins</strong> from the same
+      tab and switch Apple Studio on.
+    </li>
+    <li>
+      <strong>Open the Apple panel.</strong> Click <strong>Apple</strong> in the Plugins tab. The
+      <strong>Apple Studio</strong> panel docks and reads <strong>Not connected</strong>. Apple can see
+      nothing until you pair it.
+    </li>
+    <li>
+      <strong>Pair it, then allow edits.</strong> In the Apple web app, open your project and press
+      <strong>Enter pairing code</strong> to get a six-character code. Type it into the panel and press
+      <strong>Connect to Apple</strong>. The connection starts read-only; press
+      <strong>Enable edits…</strong> and then <strong>Allow edits for this connection</strong> when you
+      want Apple to build. Every new connection starts with edits off again. The details are in
+      <a href="/docs/connect">Connect a project</a>.
     </li>
   </ol>
 
   <div class="callout">
     <p>
       <strong>Studio will ask permission to reach the network.</strong> Apple talks to its server
-      over HTTPS. Roblox documents that "the first time a plugin attempts to use the service, the
-      user might be prompted to give the plugin permission to communicate with the particular web
-      address", and that these permissions can be accepted, denied and revoked at any time in the
-      <strong>Plugin Management</strong> window. Apple does nothing until you allow it. This is
-      not the same setting as <em>Game Settings → Security → Allow HTTP Requests</em>, which
-      governs your game's own code, not plugins.
+      over HTTPS. The first time a plugin uses the network, Studio can prompt you to allow that web
+      address, and you can accept, deny or revoke it at any time in the
+      <strong>Plugin Management</strong> window. Apple does nothing until you allow it. This is not
+      the same setting as <em>Game Settings → Security → Allow HTTP Requests</em>, which governs your
+      game's own code, not plugins.
     </p>
   </div>
-
-  <h2>Next: connect it to a project</h2>
-  <p>
-    Installing the plugin does not link it to anything. A freshly installed Apple panel says
-    <strong>Not connected</strong> and will not touch your place until you pair it with one Apple
-    project — see <a href="/docs/connect">Connect a project</a>.
-  </p>
 
   <h2>What it can and cannot do</h2>
   <ul>
@@ -155,19 +143,20 @@ const decided = refusal
       with your own Roblox account.
     </li>
     <li>
-      <strong>Refuses by name:</strong> it will not start or stop play mode — you run and stop
-      tests yourself — and it will not execute code it was sent, load a remote asset you do not
-      own, or insert an asset carrying a script. Each refusal comes back with its reason rather
-      than failing quietly, and each one costs the assistant tools it would otherwise offer.
+      <strong>Bounded test control:</strong> Apple can start, pause, resume, restart and stop Studio
+      Run mode so Agent can verify its own work, capture output and take periodic viewport snapshots.
+      It does not publish your game or bypass Studio/Roblox account permissions. Arbitrary code
+      execution remains separately permissioned, and unsafe asset ingress is refused by name with
+      an explicit reason rather than failing quietly.
     </li>
   </ul>
 
   <h2>Removing it</h2>
   <p>
-    Uninstall Apple from Studio's plugin management window, the same place you manage every other
-    plugin. You can also stop Apple acting on a place at any moment without uninstalling anything
-    — press <strong>Disconnect</strong> in the panel, or disconnect from the web workspace. See
-    <a href="/docs/troubleshooting">Troubleshooting</a>.
+    Uninstall Apple Studio from Studio's plugin management window, the same place you manage every
+    other plugin. You can also stop Apple acting on a place at any moment without uninstalling
+    anything — press <strong>Disconnect</strong> in the panel, or disconnect from the web workspace.
+    See <a href="/docs/troubleshooting">Troubleshooting</a>.
   </p>
 
   <div class="callout callout--violet">
@@ -183,14 +172,68 @@ const decided = refusal
 <style>
   .cta-row {
     display: flex;
-    align-items: center;
-    gap: 0.9rem;
     flex-wrap: wrap;
-    margin: 1.5rem 0 1.75rem;
+    align-items: center;
+    gap: 12px 16px;
+    margin: 28px 0 32px;
   }
 
-  .cta-row span {
+  /* The label may wrap: at 320px it is wider than the column, and `nowrap` (the site-wide button
+     rule) pushed it 12px past the right gutter. */
+  .cta-row .btn {
+    display: inline-block;
+    min-height: 40px;
+    max-width: 100%;
+    padding: 10px 16px;
+    line-height: 1.3;
+    text-align: center;
+    white-space: normal;
+  }
+
+  /* `>` so this reaches the note beside the button and not the arrow inside it: the arrow inherited
+     --muted against the ink-filled button and measured 2.33:1. Inside the button it takes the
+     button's own colour. */
+  .cta-row > span {
     color: var(--muted);
-    font-size: 0.92rem;
+    font-size: 14px;
+  }
+
+  /* `:global(.prose)` in front because DocsLayout styles `.prose ol` and `.prose li` at a higher
+     specificity than a page's own scoped rule would have. */
+  :global(.prose) .steps {
+    counter-reset: step;
+    display: grid;
+    gap: 0;
+    margin: 20px 0 28px;
+    padding: 0;
+    list-style: none;
+  }
+
+  :global(.prose) .steps li {
+    position: relative;
+    padding: 16px 0 16px 44px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  :global(.prose) .steps li:last-child {
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  :global(.prose) .steps li::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    top: 16px;
+    left: 0;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
   }
 </style>

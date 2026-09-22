@@ -45,13 +45,47 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
 ---
 
 <section class="band" id="built" aria-labelledby="built-title">
-  <div class="shell">
-    <div class="band-head" data-reveal>
-      <h2 id="built-title" class="section-title">One screen, as the model wrote it</h2>
-      <p class="section-sub">
-        Not a mock-up of the product and not a drawing by this page: the model was given the
-        construction library the product ships, asked for a tycoon inventory screen, and this is
-        what its Luau put on the screen when it was run.
+  {/* SMALLER, AND BESIDE ITS OWN FACTS (2026-09-22). This band used to be the largest thing on the
+      landing: a 1120px frame round a saturated game screen whose cash figure clips and whose item
+      description is cut off. Those flaws are the evidence and they stay — nothing is cropped or
+      cleaned — but a screen the model got partly wrong is not the page's hero. It now sits at about
+      half the width, next to the numbers that describe it, and the full-size render is one click
+      away. The figures are a quiet two-by-two list rather than four boxed tiles. */}
+  <div class="shell built">
+    <div class="built-text">
+      <div class="band-head" data-reveal>
+        <h2 id="built-title" class="section-title">One screen, as the model wrote it</h2>
+        <p class="section-sub">
+          The model was asked for a tycoon inventory screen. This is what its Luau drew when it ran,
+          unretouched, including the parts it got wrong.
+        </p>
+      </div>
+
+      <ul class="built-figures" role="list" data-reveal>
+        {BUILT_SCREEN.figures.map((f) => (
+          <li class="built-figure">
+            <span class="built-n">{f.value.toLocaleString('en-GB')}</span>
+            <span class="built-label">{f.label}</span>
+          </li>
+        ))}
+      </ul>
+
+      <p class="built-note" data-reveal>
+        {seconds} seconds of model time, once. The picture is {BUILT_SCREEN.renderer.text}.
+        {' '}{BUILT_SCREEN.library.text}
+      </p>
+
+      {/* The route is printed as text rather than linked; the long note that used to sit here, and
+          docs/backlog/landing-showcase-door.md, say why. */}
+      <p class="built-note" data-reveal>
+        The same run built {BUILT_SCREEN.galleryScreens.value} {BUILT_SCREEN.galleryScreens.label} and
+        {BUILT_SCREEN.galleryMaps.value} {BUILT_SCREEN.galleryMaps.label} in all, published at
+        <span class="built-route">{BUILT_SCREEN.gallery}</span>, where the failures are shown at the
+        same size as the successes.
+      </p>
+
+      <p class="built-more">
+        <a href={BUILT_SCREEN.capture.src}>See this render at full size &rarr;</a>
       </p>
     </div>
 
@@ -60,99 +94,55 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
           who scrolls to it and meets an empty box because a class never arrived has met the exact
           failure the reveal guard was written for. `width`/`height` are the render's own viewport,
           so the row reserves its box before the file lands. */}
-      <img
-        src={BUILT_SCREEN.capture.src}
-        alt={BUILT_SCREEN.capture.alt}
-        width={BUILT_SCREEN.capture.width}
-        height={BUILT_SCREEN.capture.height}
-        decoding="async"
-      />
-      <figcaption class="micro built-caption">
+      <a class="built-open" href={BUILT_SCREEN.capture.src} aria-label="Open this render at full size">
+        <img
+          src={BUILT_SCREEN.capture.src}
+          alt={BUILT_SCREEN.capture.alt}
+          width={BUILT_SCREEN.capture.width}
+          height={BUILT_SCREEN.capture.height}
+          decoding="async"
+        />
+      </a>
+      <figcaption class="built-caption">
         <span>{BUILT_SCREEN.screenId} · {BUILT_SCREEN.capturedLabel}</span>
-        <span>{BUILT_SCREEN.hidden.value} {BUILT_SCREEN.hidden.label} — this is the screen the script leaves behind</span>
+        <span>{BUILT_SCREEN.hidden.value} {BUILT_SCREEN.hidden.label} — the screen the script leaves behind</span>
       </figcaption>
     </figure>
-
-    <ul class="built-figures" role="list" data-reveal>
-      {BUILT_SCREEN.figures.map((f) => (
-        <li class="built-figure">
-          <span class="built-n">{f.value.toLocaleString('en-GB')}</span>
-          <span class="micro built-label">{f.label}</span>
-        </li>
-      ))}
-    </ul>
-
-    {/* THE DOOR POINTS AT THE RENDER, NOT AT THE GALLERY, AND THAT IS A REPAIR RATHER THAN A CHOICE.
-        It linked to {BUILT_SCREEN.gallery} first. That route is real and live — it is an object in
-        the worker's D1 static store, published by infra/deploy-showcase.mjs — but it is not an
-        Astro page, so tests/links-resolve.test.mjs reports it as a link to a route nothing serves.
-        The committed copy of that test does not know about /showcase; a peer's WORKING COPY does,
-        with a WORKER_SERVED map and a second test that makes the exemption earn itself, and it was
-        uncommitted when this shipped. Editing a file another lane is holding in a shared checkout
-        is how one lane's commit swallows another's, so the link came out instead of the guard being
-        edited around. docs/backlog/landing-showcase-door.md is the handoff and names the exact two
-        lines to put back the moment that exemption is committed.
-
-        The paragraph below still states the counts, because the numbers are the evidence and they
-        are resolved from the two manifests either way — what is missing is one anchor, not the
-        fact. `scripts/check-site-links.mjs` already carries the same exemption, in a file this lane
-        owns, so the route is declared once already. */}
-    <p class="built-more" data-reveal>
-      <span class="built-took">{seconds} seconds of model time, once.</span>
-      <a href={BUILT_SCREEN.capture.src}>This render at full size &rarr;</a>
-    </p>
-
-    <p class="built-rest" data-reveal>
-      The same run built {BUILT_SCREEN.galleryScreens.value} {BUILT_SCREEN.galleryScreens.label} and
-      {BUILT_SCREEN.galleryMaps.value} {BUILT_SCREEN.galleryMaps.label} in all, published at
-      <span class="built-route">{BUILT_SCREEN.gallery}</span>, where the failures are shown at the
-      same size as the successes.
-    </p>
-
-    <p class="micro built-source">
-      {BUILT_SCREEN.renderer.text}. {BUILT_SCREEN.library.text} Record: {BUILT_SCREEN.manifest}
-    </p>
   </div>
 </section>
 
 <style>
-  /* This band's own rules live here rather than in landing.css for the reason ConsentProof.astro
-     gives: that file has been carrying another lane's in-flight work for most of a night, and a
-     section is not worth committing somebody else's half-finished stylesheet to ship. Every colour,
-     radius and border below is an existing custom property from landing.css — nothing new is
-     invented, so the band inherits both themes for free. */
+  /* Every colour, radius and border below is a token from apple-minimal.css, so the band follows
+     both themes. */
 
-  /* THE BACKGROUND WAS PAINTING OVER THE EVIDENCE, MEASURED IN A BROWSER AT THE LIVE ORIGIN.
-     <Horizon />'s canvas is `position: fixed; z-index: -1`, which ought to put it behind every
-     in-flow background on the page. It does not: on the deployed landing its perspective grid and
-     its glow band were drawn ACROSS the lower third of this screenshot and across the caption bar
-     under it, in both themes — clearest on the light one, where green grid lines ran over a white
-     bar. Sampled before and after, a point that is flat #101014 in the source SVG came back with a
-     green cast.
+  .built {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 56px;
+    align-items: center;
+  }
 
-     Every other band on this page can live with that; this one cannot. A green grid drawn over a
-     screenshot does not read as the page's atmosphere, it reads as the picture being corrupted, and
-     this band's entire claim is that the file a reader receives is the file the renderer wrote.
-     `position: relative` with `z-index: 0` gives the figure its own stacking context, which puts it
-     unambiguously above a negative-z-index canvas without touching <Horizon /> or landing.css —
-     both of which another lane rewrote hours ago.
+  .built .band-head {
+    margin-bottom: 32px;
+  }
 
-     tests/built-screen-pixels.test.mjs is the guard: it renders the built page and samples four
-     points that are flat background in the SVG. Take these two declarations out and it goes red. */
+  /* `position: relative` with `z-index: 0` gives the figure its own stacking context, so nothing
+     positioned behind the page can paint across the evidence. tests/built-screen-pixels.test.mjs
+     samples four flat points of the render in the built page and goes red if anything does. */
   .built-shot {
     position: relative;
     z-index: 0;
     margin: 0;
     border: 1px solid var(--line);
-    border-radius: var(--r);
+    border-radius: var(--r-lg);
     overflow: hidden;
-    background: var(--raised);
+    background: var(--surface);
   }
 
-  /* The render's own background is a near-black; on the light theme it would otherwise sit on the
-     page as an unexplained dark rectangle with a hairline round it. It is a screenshot of a game
-     interface, so it is allowed to be dark — the inset shadow is what makes it read as a screen
-     rather than as a hole. */
+  .built-open {
+    display: block;
+  }
+
   .built-shot img {
     display: block;
     width: 100%;
@@ -162,79 +152,75 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
   .built-caption {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 18px;
+    gap: 2px 16px;
     justify-content: space-between;
     padding: 10px 14px;
     border-top: 1px solid var(--line);
     color: var(--faint);
+    font-size: 12px;
+    line-height: 18px;
   }
 
   .built-figures {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
-    margin: 24px 0 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 32px;
+    margin: 0;
     padding: 0;
     list-style: none;
   }
 
   .built-figure {
-    padding: 16px;
-    border: 1px solid var(--line);
-    border-radius: var(--r);
-    background: var(--raised);
+    padding-top: 14px;
+    border-top: 1px solid var(--hairline);
   }
 
   .built-n {
     display: block;
-    font-size: 26px;
-    line-height: 32px;
-    letter-spacing: -0.02em;
     color: var(--ink);
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 28px;
+    letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
   }
 
   .built-label {
     display: block;
-    margin-top: 6px;
-    color: var(--faint);
-    text-transform: none;
-    letter-spacing: 0;
-    font-weight: 400;
-    text-wrap: pretty;
-  }
-
-  .built-more {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 18px;
-    align-items: baseline;
-    justify-content: space-between;
-    margin: 18px 0 0;
-    font-size: 13.5px;
-    line-height: 21px;
-  }
-
-  .built-took { color: var(--muted); }
-
-  .built-rest {
-    margin: 10px 0 0;
+    margin-top: 4px;
     color: var(--muted);
-    font-size: 13.5px;
-    line-height: 21px;
+    font-size: 13px;
+    line-height: 19px;
     text-wrap: pretty;
   }
 
-  /* The route is printed as text rather than linked, for the reason written above it. Monospace so
-     a reader can tell it is a path to type and not a phrase. */
+  .built-note {
+    margin: 24px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+
+  .built-note + .built-note {
+    margin-top: 10px;
+  }
+
+  /* Monospace so a reader can tell it is a path to type and not a phrase. */
   .built-route {
     font-family: var(--font-mono);
-    font-size: 12.5px;
+    font-size: 13px;
     color: var(--ink);
   }
 
-  /* `a` is `color: inherit; text-decoration: none` site-wide on the landing, so an unstyled anchor
-     here would be invisible as a link. Same four declarations ConsentProof.astro needs. */
+  .built-more {
+    margin: 20px 0 0;
+    font-size: 14px;
+    line-height: 21px;
+  }
+
+  /* `a` is `text-decoration: none` on the landing, so an unstyled anchor here would not read as a
+     link. */
   .built-more a {
     color: var(--ink);
     text-decoration: underline;
@@ -242,24 +228,20 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
     text-underline-offset: 3px;
   }
 
-  .built-more a:hover { text-decoration-color: var(--ink); }
-
-  .built-source {
-    margin: 24px 0 0;
-    color: var(--faint);
-    letter-spacing: 0.6px;
-    text-transform: none;
-    font-weight: 400;
-    font-size: 12px;
-    line-height: 19px;
-    overflow-wrap: anywhere;
+  .built-more a:hover {
+    text-decoration-color: var(--ink);
   }
 
-  /* 760px is where .proof drops to one column in landing.css; the two bands sit next to each other
-     on the page and changing shape at different widths would read as a mistake. Two columns rather
-     than one below it, because a single column of four tiles is a column of numbers nobody scans. */
-  @media (max-width: 760px) {
-    .built-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .built-more { justify-content: flex-start; }
+  /* Below the three-column breakpoint the picture goes under the text, still capped so it never
+     becomes the widest thing on the page again. */
+  @media (max-width: 1023px) {
+    .built {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 40px;
+    }
+
+    .built-shot {
+      max-width: 640px;
+    }
   }
 </style>

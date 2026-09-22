@@ -272,8 +272,16 @@ test('nothing carries both a reveal and a scroll-driven animation over the same 
     .filter((s) => /^\.[-\w]+$/.test(s))
     .map((s) => s.slice(1));
 
-  assert.ok(timeline.length > 0,
-    'no scroll-driven animation was found in landing.css — this check would be vacuous');
+  //[[ RESTATED 2026-09-22. This required a scroll-driven animation to exist, as its vacuity guard.
+  //   The calm redesign removed the only one (`step-focus` on `.step`), so the clash this test looks
+  //   for is now impossible by construction rather than by care — and that is asserted directly:
+  //   with no timeline rule in the sheet there must be no `animation-timeline` anywhere in it, so a
+  //   rule the class-extraction above cannot parse cannot slip one back in unchecked. ]]
+  if (timeline.length === 0) {
+    assert.doesNotMatch(CSS.replace(/\/\*[\s\S]*?\*\//g, ' '), /animation-timeline\s*:/,
+      'landing.css has an animation-timeline this check could not attribute to a class — re-aim the extraction');
+    return;
+  }
 
   const clash = [];
   for (const cls of timeline) {

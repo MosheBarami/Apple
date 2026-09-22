@@ -95,14 +95,10 @@ function stripExpressions(src: string): string {
  * Long quoted strings only, and never from an `import` line: a path like '../../layouts/Base.astro'
  * is short and has no business in a haystack, while an answer is a sentence.
  *
- * AND NEVER FROM A COMMENT. Comments are the one part of a page written FOR the person editing it
- * and never for the person reading it, and this indexed them: a page whose frontmatter explained
- * why Super Agent had been withdrawn put the words "Plan, Agent and Super Agent" — the old copy,
- * QUOTED so a maintainer could see what had changed — straight into the customer-facing search
- * index, along with the `//` that opened the line. The result is worse than noise: the search box
- * answers a question about the product with the commentary on its own source, and a mode a reader
- * cannot select was findable in the docs search of a site whose pages no longer mention it.
- * apps/site/tests/withdrawn-modes.test.mjs is what caught it, in dist/docs-index.json.
+ * AND NEVER FROM A COMMENT. Comments are written for maintainers, not readers. Indexing them can
+ * surface stale implementation history as customer-facing search copy, including names and claims
+ * that the rendered documentation has deliberately replaced. The product-mode guard and docs search
+ * tests both depend on comments staying out of this haystack.
  */
 function frontmatterProse(front: string): string {
   const lines = stripComments(front)

@@ -3,9 +3,9 @@
 interface Props { size?: number; class?: string; alive?: boolean; }
 const { size = 32, class: className = '' } = Astro.props;
 ---
-<svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class={`gm ${className}`}>
+<svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class={`apple-mark ${className}`}>
   <path d="M5 24 12 5 19 14 27 8 21 27 13 18Z" fill="currentColor" fill-opacity=".1"></path>
   <path d="m5 24 7-19 7 9 8-6-6 19-8-9-8 6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path>
   <path d="m12 5 1 13 6-4 2 13" stroke="currentColor" stroke-width="1.2"></path>
 </svg>
-<style>.gm { flex: none; }</style>
+<style>.apple-mark { flex: none; display: block; }</style>

@@ -21,6 +21,10 @@ const landing = read('../src/layouts/Landing.astro');
 const base = read('../src/layouts/Base.astro');
 const landingCss = read('../src/styles/landing.css');
 const globalCss = read('../src/styles/global.css');
+// THE ONE TOKEN SOURCE. Since the 2026-09-22 redesign every colour token lives in apple-minimal.css,
+// which both layouts import first; landing.css and global.css are structure only.
+const tokenCss = read('../src/styles/apple-minimal.css');
+const noComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
 const manifest = JSON.parse(read('../public/site.webmanifest'));
 
 const LAYOUTS = { 'Landing.astro': landing, 'Base.astro': base };
@@ -46,10 +50,18 @@ test('Landing applies a stored theme before first paint, like Base does', () => 
   assert.match(landing, /setAttribute\('data-theme'/);
 });
 
+//[[ RESTATED 2026-09-22. The landing no longer carries its own header; it renders the shared
+//   <Nav />, which is where every route's toggle button lives. The property is unchanged — the front
+//   page has a working toggle — so it is asserted where the button now is: index.astro renders Nav
+//   (or a button of its own), and Nav carries the button the layout's handler listens for. ]]
 test('Landing ships a toggle handler, and index.astro ships a button for it', () => {
   assert.match(landing, /\[data-theme-toggle\]/);
   assert.match(landing, /localStorage\.setItem\('apple-theme'/);
-  assert.match(read('../src/pages/index.astro'), /data-theme-toggle/);
+  const index = read('../src/pages/index.astro');
+  const nav = read('../src/components/Nav.astro');
+  const rendersNav = /import Nav from '\.\.\/components\/Nav\.astro'/.test(index) && /<Nav\s*\/>/.test(index);
+  assert.ok(/data-theme-toggle/.test(index) || (rendersNav && /<button[^>]*data-theme-toggle/.test(nav)),
+    'the landing renders no theme toggle — neither its own button nor the shared Nav with one');
 });
 
 test('an Astro expression never sits between <!doctype> and <html>', () => {
@@ -62,16 +74,23 @@ test('an Astro expression never sits between <!doctype> and <html>', () => {
   }
 });
 
+//[[ RESTATED 2026-09-22. The property is "the front page has a light ramp, not one ramp". The
+//   ramp moved out of landing.css into apple-minimal.css — the one token source both layouts load —
+//   so it is checked there, and landing.css is now held to declaring no colour token at all, which
+//   is the stronger half: a second ramp in a structure sheet is how the site ended up with 117
+//   `!important`s fighting over whose value wins. ]]
 test('landing.css has a light ramp, not one ramp', () => {
-  assert.match(landingCss, /:root\[data-theme='light'\]\s*\{/);
-  // the three tokens whose light values were measured for contrast, not guessed
-  // Match the RULE, not the prose above it: the comment explaining this block names the selector
-  // too, and slicing from the first mention read the comment instead of the declarations.
-  const at = landingCss.search(/:root\[data-theme='light'\]\s*\{/);
+  const css = noComments(tokenCss);
+  assert.match(css, /:root\[data-theme='light'\]\s*\{/);
+  const at = css.search(/:root\[data-theme='light'\]\s*\{/);
   assert.notEqual(at, -1);
-  const light = landingCss.slice(at, landingCss.indexOf('\n}', at));
-  for (const token of ['--ground', '--ink', '--muted', '--accent', '--composer-fill', '--theme-color']) {
+  const light = css.slice(at, css.indexOf('}', at));
+  for (const token of ['--paper', '--ink', '--muted', '--accent', '--composer-fill', '--theme-color']) {
     assert.match(light, new RegExp(`${token}:`), `light ramp is missing ${token}`);
+  }
+  for (const [name, sheet] of [['landing.css', landingCss], ['global.css', globalCss]]) {
+    const declared = [...noComments(sheet).matchAll(/(--[a-z0-9-]+)\s*:\s*(#[0-9a-f]{3,8}\b|rgba?\()/gi)].map((m) => m[1]);
+    assert.deepEqual(declared, [], `${name} declares colour tokens of its own — the ramp has two homes again`);
   }
 });
 
@@ -88,11 +107,11 @@ test('landing.css has a light ramp, not one ramp', () => {
 //   and --ground resolve to the same colour. That is strictly stronger than the old rule — it
 //   caught nothing about agreement before, only about identity with a remembered constant — and it
 //   survives any future repaint, which the old one provably did not.
+// Aimed at the one token source since 2026-09-22 (see above). The dark block is the combined
+// `:root, :root[data-theme='dark']` selector; the light block is `:root[data-theme='light']`.
 const THEME_BLOCKS = [
-  { name: 'landing.css :root', css: () => landingCss, selector: /:root\s*\{/ },
-  { name: "landing.css :root[data-theme='light']", css: () => landingCss, selector: /:root\[data-theme='light'\]\s*\{/ },
-  { name: 'global.css :root', css: () => globalCss, selector: /:root\s*\{/ },
-  { name: "global.css dark", css: () => globalCss, selector: /:root\[data-theme='dark'\]\s*\{/ },
+  { name: "apple-minimal.css :root, [data-theme='dark']", css: () => noComments(tokenCss), selector: /:root,\s*:root\[data-theme='dark'\]\s*\{/ },
+  { name: "apple-minimal.css :root[data-theme='light']", css: () => noComments(tokenCss), selector: /:root\[data-theme='light'\]\s*\{/ },
 ];
 
 /** The declaration block that starts at `selector`, brace-balanced. */
@@ -131,14 +150,22 @@ test('the address bar cannot disagree with the page, in any theme of either styl
       `${name}: the address bar is ${band} over a ${ground} page — a visible seam across the top of every route`);
     checked += 1;
   }
-  assert.ok(checked >= 3,
+  assert.ok(checked >= 2,
     `only ${checked} theme block(s) were checked; the selectors have drifted from the stylesheets and `
     + 'this guard would pass over a mismatch it can no longer see');
 });
 
+//[[ RESTATED 2026-09-22 FROM A LITERAL TO THE RELATION. It pinned #141312, the retired warm
+//   ground, so the redesign to #000 turned it red for the one reason that is never interesting. The
+//   property is in its own name: the manifest carries the page's ground, not a third black nobody
+//   maintains. So it is compared with the default (dark) --paper read from the token sheet. ]]
 test('the manifest no longer carries a third black nobody maintains', () => {
-  assert.equal(manifest.theme_color, '#141312');
-  assert.equal(manifest.background_color, '#141312');
+  const dark = blockFor(noComments(tokenCss), /:root,\s*:root\[data-theme='dark'\]\s*\{/);
+  assert.ok(dark, 'the default theme block was not found in apple-minimal.css');
+  const paper = declared(dark, '--paper');
+  assert.ok(paper, 'the default theme declares no --paper to compare the manifest with');
+  assert.equal(manifest.theme_color.toLowerCase(), paper.toLowerCase());
+  assert.equal(manifest.background_color.toLowerCase(), paper.toLowerCase());
 });
 
 // ---------------------------------------------------------------------------

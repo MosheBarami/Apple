@@ -22,60 +22,46 @@ const { items } = Astro.props;
 </div>
 
 <style>
+  /* A quiet list: one hairline per question, no shadow, the open one marked by its ink rather than
+     by colour. Tokens from apple-minimal.css. */
   .faq {
     display: grid;
-    gap: 0.6rem;
+    border-top: 1px solid var(--hairline);
   }
 
   .faq__item {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-    overflow: hidden;
-    box-shadow: var(--lift-1);
-    transition: border-color var(--dur) var(--ease-out),
-      box-shadow var(--dur) var(--ease-out);
-  }
-
-  .faq__item:hover {
-    border-color: var(--line-strong);
-  }
-
-  .faq__item[open] {
-    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-    box-shadow: var(--lift-2);
+    border-bottom: 1px solid var(--hairline);
   }
 
   summary {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    cursor: pointer;
-    padding: 1.05rem 1.25rem;
-    list-style: none;
+    gap: 16px;
+    min-height: 56px;
+    padding: 14px 4px;
+    color: var(--ink-2);
     font-family: var(--font-body);
-    font-weight: 570;
-    font-size: 1rem;
-    color: var(--ink);
+    font-size: 15px;
+    font-weight: 500;
+    list-style: none;
+    cursor: pointer;
+    transition: color var(--t-fast) var(--ease-out);
   }
 
   summary::-webkit-details-marker {
     display: none;
   }
 
-  summary:hover .faq__q {
-    color: var(--accent);
-  }
-
-  .faq__q {
-    transition: color var(--dur-fast) var(--ease-out);
+  summary:hover,
+  .faq__item[open] summary {
+    color: var(--ink);
   }
 
   .faq__mark {
     position: relative;
-    width: 13px;
-    height: 13px;
+    width: 12px;
+    height: 12px;
     flex: none;
   }
 
@@ -85,19 +71,19 @@ const { items } = Astro.props;
     position: absolute;
     inset: 0;
     margin: auto;
-    background: var(--accent);
     border-radius: 1px;
-    transition: transform var(--dur) var(--ease-out);
+    background: var(--muted);
+    transition: transform var(--t-base) var(--ease-out);
   }
 
   .faq__mark::before {
-    width: 13px;
+    width: 12px;
     height: 1.5px;
   }
 
   .faq__mark::after {
     width: 1.5px;
-    height: 13px;
+    height: 12px;
   }
 
   .faq__item[open] .faq__mark::after {
@@ -105,14 +91,15 @@ const { items } = Astro.props;
   }
 
   .faq__a {
-    padding: 0 1.25rem 1.2rem;
-    color: var(--muted);
-    font-size: 0.95rem;
     max-width: 68ch;
+    padding: 0 4px 20px;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.65;
   }
 
   .faq__a :global(p) {
-    margin: 0 0 0.65em;
+    margin: 0 0 0.7em;
   }
 
   .faq__a :global(p:last-child) {
@@ -121,5 +108,13 @@ const { items } = Astro.props;
 
   .faq__a :global(strong) {
     color: var(--ink);
+    font-weight: 500;
+  }
+
+  .faq__a :global(a) {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
   }
 </style>

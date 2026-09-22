@@ -1,7 +1,7 @@
 /**
  * THE FOUR CAPABILITY STAGES FIT WHERE THEY ARE PUT, AND STAY OPERABLE ON A PHONE.
  *
- * WHY THIS IS RENDERED AND NOT READ. `tests/capability-demos-run.test.mjs` proves the four stages
+ * WHY THIS IS RENDERED AND NOT READ. `tests/capability-demos-run.test.mjs` proves the three stages
  * RESPOND — it executes the real script and presses the controls. It cannot see where anything is.
  * A stage whose right edge is 17px off the screen responds perfectly.
  *
@@ -87,26 +87,51 @@ function loadChromium() {
   }
 }
 
-/** One pass: every measurement this file makes, at one width. */
+/**
+ * One pass: every measurement this file makes, at one width.
+ *
+ * RESTATED 2026-09-22: the stages are one tabbed panel now, and a hidden stage has no box to
+ * measure. So the pass presses each tab in turn — the way a reader reaches each stage — and
+ * measures the stage that tab shows. A stage that no tab can show is not measured, and the count
+ * assertion below turns that into a failure rather than a smaller sweep.
+ */
 function measure() {
   const box = (el) => {
     const r = el.getBoundingClientRect();
     return { l: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width), h: Math.round(r.height) };
   };
   const demos = document.querySelector('.demos');
-  return {
+  const out = {
     grid: demos ? box(demos) : null,
     gridClientWidth: demos?.clientWidth ?? 0,
     gridScrollWidth: demos?.scrollWidth ?? 0,
     gridOverflowX: demos ? getComputedStyle(demos).overflowX : '',
-    stages: [...document.querySelectorAll('.demo-stage')].map(box),
-    marks: [...document.querySelectorAll('.cw-mark')].map(box),
-    render: [...document.querySelectorAll('.cw-render')].map(box),
-    asks: [...document.querySelectorAll('.lu-ask')].map(box),
-    luPanel: [...document.querySelectorAll('.lu')].map(box),
+    stages: [],
+    tabs: [...document.querySelectorAll('.stage-tab')].map(box),
+    marks: [],
+    render: [],
+    asks: [],
+    luPanel: [],
     viewport: document.documentElement.clientWidth,
     documentWidth: document.documentElement.scrollWidth,
   };
+  for (const tab of document.querySelectorAll('.stage-tab')) {
+    tab.click();
+    const shown = [...document.querySelectorAll('.demo-stage')].filter((s) => !s.hidden && s.getBoundingClientRect().width > 0);
+    for (const stage of shown) {
+      out.stages.push(box(stage));
+      if (stage.querySelector('.cw-mark')) {
+        out.marks = [...stage.querySelectorAll('.cw-mark')].map(box);
+        out.render = [...stage.querySelectorAll('.cw-render')].map(box);
+      }
+      if (stage.querySelector('.lu-ask')) {
+        out.asks = [...stage.querySelectorAll('.lu-ask')].map(box);
+        out.luPanel = [...stage.querySelectorAll('.lu')].map(box);
+      }
+    }
+    out.documentWidth = Math.max(out.documentWidth, document.documentElement.scrollWidth);
+  }
+  return out;
 }
 
 async function sweep(fn) {
@@ -144,7 +169,10 @@ test('no capability stage is wider than the grid that holds it, at any supported
   let seen = 0;
   await sweep((width, m) => {
     assert.ok(m.grid, `${width}px: .demos was not found, so nothing was measured here`);
-    assert.equal(m.stages.length, 4, `${width}px: ${m.stages.length} stages found, not four`);
+    assert.equal(m.stages.length, 3, `${width}px: ${m.stages.length} stages were shown by the tabs, not three`);
+    for (const [i, t] of m.tabs.entries()) {
+      if (t.r > m.grid.r + 1 && !(m.gridOverflowX === 'auto')) bad.push(`${width}px tab ${i + 1}: x${t.l}->${t.r} past the panel x${m.grid.r}`);
+    }
     const rail = ['auto', 'scroll'].includes(m.gridOverflowX) && m.gridScrollWidth > m.gridClientWidth + 1;
     if (m.documentWidth > m.viewport + 1) {
       bad.push(`${width}px: document is ${m.documentWidth}px wide inside a ${m.viewport}px viewport`);
@@ -162,7 +190,7 @@ test('no capability stage is wider than the grid that holds it, at any supported
       }
     }
   });
-  assert.equal(seen, WIDTHS.length * 4, `only ${seen} stage boxes were measured; the sweep did not run`);
+  assert.equal(seen, WIDTHS.length * 3, `only ${seen} stage boxes were measured; the sweep did not run`);
   assert.deepEqual(bad, [], `a capability stage does not fit where it is put:\n  ${bad.join('\n  ')}`);
 });
 

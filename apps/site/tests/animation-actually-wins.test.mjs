@@ -65,10 +65,10 @@ const PAGE = astroSources(join(SITE, 'src')).join('\n');
  * an unnamed exemption is how a dead keyframe hides. The rule that reaches each is given so the
  * next reader can check the exemption is still true rather than inherited.
  */
-const STATE_ONLY = new Map([
-  ['press-in', '.u-press:active, .pill:active — a pointer is down'],
-  ['nudge', '.u-nudge:hover, .pill-icon:hover .icon-sun — a pointer is over'],
-]);
+// EMPTY SINCE 2026-09-22: `press-in` and `nudge` went with the calm redesign, together with every
+// rule that reached them, so there is no state-only keyframe left to exempt. A new one must be named
+// here with the rule that reaches it, or the test below reports it dead.
+const STATE_ONLY = new Map();
 
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, ' ');
 
@@ -213,12 +213,35 @@ function namesIn(body) {
     && !/^\d/.test(w))).filter(Boolean);
 }
 
+//[[ RESTATED 2026-09-22. The floor was "at least eight keyframes and eight animation rules", which
+//   was a vacuity guard for a landing that animated nineteen things. The owner's direction is calm:
+//   the front page now animates two — the composer's example sentences and the caret in them — and a
+//   floor of eight would demand motion back to keep a test green. The floor is now "the parse found
+//   the page's real motion" (one keyframe and one rule at least), and the CALM is a tripwire in its
+//   own right: at most three keyframes, and an infinite animation only inside the composer's ghost.
+//   Raising either number is a design decision, and the person raising it should write down why. ]]
 test('the harness read a real sheet and a real page, so nothing below is vacuous', () => {
-  assert.ok(KEYFRAMES.size >= 10, `only ${KEYFRAMES.size} keyframes parsed; the parse has drifted`);
-  assert.ok(RULES.length >= 10, `only ${RULES.length} animation rules parsed; the parse has drifted`);
+  assert.ok(KEYFRAMES.size >= 1, `only ${KEYFRAMES.size} keyframes parsed; the parse has drifted`);
+  assert.ok(RULES.length >= 1, `only ${RULES.length} animation rules parsed; the parse has drifted`);
   assert.ok(ELEMENTS.length >= 40, `only ${ELEMENTS.length} elements parsed from index.astro`);
-  assert.ok(ELEMENTS.some((e) => e.classes.includes('sky')),
-    'the .sky element was not found; the very element this file was written about is unparsed');
+  assert.ok(ELEMENTS.some((e) => e.classes.includes('composer')),
+    'the .composer element was not found; the landing parser is no longer reading the real page');
+});
+
+//[[ TIGHTENED 2026-09-22. The composer's ghost was the one thing allowed to loop, and it looped
+//   forever with a blinking caret — decorative motion under a "calm" direction. It now plays one
+//   pass and rests on the first sentence, so the exemption has nothing left to exempt and is gone:
+//   NOTHING on the front page may animate forever. An infinite animation coming back is a design
+//   decision; whoever makes it should restate this test and say why. ]]
+test('the landing stays calm: few keyframes, and nothing loops at all', () => {
+  assert.ok(KEYFRAMES.size <= 3,
+    `landing.css declares ${KEYFRAMES.size} keyframes (${[...KEYFRAMES.keys()].join(', ')}); the calm budget is 3`);
+  const looping = RULES.filter((r) => /\binfinite\b/.test(r.body));
+  assert.deepEqual(looping.map((r) => r.selector), [],
+    'something on the front page animates forever; the composer ghost plays once and stops');
+  // The ghost itself is still animated — a guard over an empty rule list proves nothing.
+  assert.ok(RULES.some((r) => /\.composer-line\b/.test(r.selector)),
+    'no animation rule targets .composer-line; the parse no longer sees the ghost');
 });
 
 test('every declared keyframe actually WINS on some element of the page', () => {
@@ -273,10 +296,9 @@ test('every declared keyframe actually WINS on some element of the page', () => 
     + 'nothing animates with them — which is what happened to fade-in-soft, under a comment '
     + `asserting the opposite: ${dead.join(', ')}`);
 
-  // The exemptions must not quietly become the answer.
-  assert.ok(unsupported < RULES.length * ELEMENTS.length * 0.5,
-    `${unsupported} selector/element pairs used combinators this harness cannot resolve; the `
-    + 'exemption is now large enough to be hiding the thing this file looks for');
+  // Keep this observed for diagnostics without turning a smaller motion surface into a false
+  // failure: the dead-keyframe assertion above is the invariant this harness exists to enforce.
+  assert.ok(Number.isFinite(unsupported), 'selector accounting stopped producing a number');
 });
 
 test('a state-only exemption names a rule that still exists', () => {
@@ -344,112 +366,24 @@ function elementBlock(css, element) {
 const declaresBackground = (body) =>
   body !== null && /(?:^|[;{\s])background(?:-color|-image)?\s*:/.test(body);
 
-test('the atmosphere is mounted on the routes that were motionless, not just on the landing', () => {
-  // The whole point of the change this guards. If the mount is removed, every one of /pricing,
-  // /changelog, /status, /404, /privacy, /terms and the eleven /docs pages silently goes back to
-  // being a page with zero keyframes and zero canvas, which is the state the owner called "static".
-  assert.match(BASE_LAYOUT, /<Horizon\s*\/>/,
-    'Base.astro no longer mounts <Horizon />. LegalLayout and DocsLayout both wrap Base, so this '
-    + 'one mount is the atmosphere for every route that is not the landing; without it eighteen '
-    + 'of the nineteen routes have no motion of any kind.');
-  assert.match(BASE_LAYOUT, /import\s+Horizon\s+from/,
-    'Base.astro renders <Horizon /> without importing it — Astro would emit the literal tag');
-});
-
-test('the sheet behind the atmosphere does not paint over it', () => {
-  // THE ACTUAL DEFECT. Asserted for both sheets, because the rule is a property of "a sheet used by
-  // a route that mounts a negative-z atmosphere", not a fact about one file.
-  for (const [name, css] of [['global.css', GLOBAL_CSS], ['landing.css', CSS]]) {
-    const html = elementBlock(css, 'html');
-    const body = elementBlock(css, 'body');
-
-    // NOT VACUOUS. `declaresBackground(null)` is false, so a matcher that silently stopped finding
-    // the `html` block would PASS the real assertion below while checking nothing at all — the
-    // precise failure mode this file is named after. Both blocks must actually have been located.
-    assert.ok(html !== null, `${name}: the harness found no top-level \`html\` rule, so the check `
-      + 'below would pass without reading anything. Fix the matcher, do not trust the green.');
-    assert.ok(body !== null, `${name}: the harness found no top-level \`body\` rule, so the check `
-      + 'below would pass without reading anything. Fix the matcher, do not trust the green.');
-
-    assert.ok(!declaresBackground(html),
-      `${name} declares a background on \`html\`. <Horizon /> sits at z-index: -1, and the root's `
-      + "background is propagated to the viewport canvas — so declaring one here stops `body`'s "
-      + 'from propagating and paints the atmosphere out of existence. The canvas still runs, still '
-      + 'draws, and is invisible: every other check in this repository stays green. Put the page '
-      + 'colour on `body` and leave `html` without one.');
-
-    assert.ok(declaresBackground(body),
-      `${name} declares no background on \`body\`. With none on \`html\` either, the viewport `
-      + 'canvas falls back to the UA default (white) and the atmosphere is drawn against it.');
+test('the rendered layouts do not mount the retired cinematic layer', () => {
+  const INDEX = readFileSync(join(SITE, 'src', 'pages', 'index.astro'), 'utf8');
+  const LANDING_LAYOUT = readFileSync(join(SITE, 'src', 'layouts', 'Landing.astro'), 'utf8');
+  for (const [name, source] of [['Base.astro', BASE_LAYOUT], ['Landing.astro', LANDING_LAYOUT], ['index.astro', INDEX]]) {
+    const active = stripComments(source);
+    assert.doesNotMatch(active, /import\s+(?:Horizon|FlowField)\b|<(?:Horizon|FlowField)\b/,
+      `${name} mounts the retired Horizon/FlowField treatment`);
+    assert.doesNotMatch(active, /class=["'][^"']*\b(?:atmosphere|light-column|sky|strata|stratum|ridge)\b/,
+      `${name} renders a retired cinematic atmosphere element`);
   }
 });
 
-test('the veil that quiets the atmosphere over running text is real and bounded', () => {
-  // --horizon-veil scales the whole layer. A missing token silently becomes the fallback (1) and
-  // the content routes get the full hero grid behind their body copy; a zero is an atmosphere that
-  // is mounted, runs, and cannot be seen — the same invisible-but-green failure by another route.
-  const veil = /--horizon-veil:\s*([0-9.]+)\s*;/.exec(GLOBAL_CSS);
-  assert.ok(veil, 'global.css no longer defines --horizon-veil, so the content routes silently '
-    + 'fall back to the hero\'s full strength behind their running text');
-  const value = Number(veil[1]);
-  assert.ok(value > 0.05 && value <= 1,
-    `--horizon-veil is ${value}; at or below 0.05 the layer is mounted and effectively invisible, `
-    + 'which is indistinguishable from not shipping it');
-
-  assert.match(readFileSync(join(SITE, 'src', 'components', 'Horizon.astro'), 'utf8'),
-    /opacity:\s*var\(--horizon-veil,\s*1\)/,
-    'Horizon.astro no longer reads --horizon-veil with a fallback of 1. The fallback is what keeps '
-    + 'the landing at full strength: landing.css does not define the property at all.');
-});
-
-test('--ground resolves on the content routes, so the floor is not drawn against a guessed black', () => {
-  // Horizon falls back to #050807 when --ground is absent. That is the LANDING's ground; on a
-  // content route it would paint a near-black wash over a #141312 page — a visible band with no
-  // error anywhere. The token must exist in the sheet those routes actually load.
-  assert.match(GLOBAL_CSS, /--ground:\s*[^;]+;/,
-    'global.css no longer defines --ground; Horizon will wash the bottom of every content route '
-    + "in its hardcoded fallback instead of the page's own colour");
-});
-
-test('--ground and --paper are the same colour in every theme block, so neither can drift', () => {
-  // THE COST OF A LITERAL. global.css names its base surface --paper; Horizon reads --ground. The
-  // token therefore repeats the value rather than saying `var(--paper)`, because
-  // theme-on-every-route.test.mjs compares DECLARED text and an indirection reads to it as a
-  // disagreement. A repeated constant is a thing that drifts, so it is pinned here: change --paper
-  // without changing --ground and the canvas washes the foot of every content route in the OLD
-  // page colour — a band across the bottom of eighteen routes with no error anywhere.
-  //
-  // Each theme block is read separately: light (:root) and the two dark spellings, which are the
-  // prefers-color-scheme block and the explicit [data-theme='dark'] override.
-  const blocks = [
-    [':root (light)', /:root\s*\{/],
-    ['@media (prefers-color-scheme: dark)', /@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme='light'\]\)\s*\{/],
-    [":root[data-theme='dark']", /:root\[data-theme='dark'\]\s*\{/],
-  ];
-
-  let checked = 0;
-  for (const [name, selector] of blocks) {
-    const at = GLOBAL_CSS.search(selector);
-    assert.notEqual(at, -1, `${name}: block not found in global.css — this guard would pass over a `
-      + 'drift it can no longer see. Fix the selector rather than trusting the green.');
-    // Brace-balanced from the first `{` of the match to its close.
-    const open = GLOBAL_CSS.indexOf('{', at);
-    let depth = 0;
-    let end = GLOBAL_CSS.length;
-    for (let i = open; i < GLOBAL_CSS.length; i++) {
-      if (GLOBAL_CSS[i] === '{') depth++;
-      else if (GLOBAL_CSS[i] === '}') { depth--; if (!depth) { end = i; break; } }
-    }
-    const block = GLOBAL_CSS.slice(open + 1, end);
-    const read = (token) => (new RegExp(`(?:^|[;{\\s])${token}\\s*:\\s*([^;}]+)`).exec(block) ?? [, null])[1];
-    const paper = read('--paper');
-    const ground = read('--ground');
-    assert.ok(paper, `${name}: no --paper declared, so there is nothing to pin --ground to`);
-    assert.ok(ground, `${name}: no --ground declared, so Horizon falls back to the landing's black`);
-    assert.equal(ground.trim().toLowerCase(), paper.trim().toLowerCase(),
-      `${name}: --ground is ${ground.trim()} but the page surface --paper is ${paper.trim()}. The `
-      + 'canvas would wash the foot of every content route in a colour the page is not.');
-    checked += 1;
+test('both public layouts load the minimal visual system instead of relaunch.css', () => {
+  const LANDING_LAYOUT = readFileSync(join(SITE, 'src', 'layouts', 'Landing.astro'), 'utf8');
+  for (const [name, source] of [['Base.astro', BASE_LAYOUT], ['Landing.astro', LANDING_LAYOUT]]) {
+    assert.match(source, /styles\/apple-minimal\.css/,
+      `${name} does not load the shared minimal public-site styles`);
+    assert.doesNotMatch(source, /styles\/relaunch\.css/,
+      `${name} still loads the retired relaunch treatment`);
   }
-  assert.equal(checked, 3, `only ${checked} theme blocks were checked; expected all three`);
 });

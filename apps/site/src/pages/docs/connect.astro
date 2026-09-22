@@ -1,6 +1,6 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
-import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
+import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 ---
 
 <DocsLayout
@@ -8,9 +8,17 @@ import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
   description="Pair the Apple Studio plugin with one Apple project using a short-lived code, and understand what the connection covers and how long it lasts."
   heading="Connect a project"
 >
-  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout">
-    <p><strong>Public plugin installation is currently unavailable.</strong> These steps are for people who already have a working Apple plugin. New customers can use chat, but cannot build inside Studio yet. See <a href="/docs/plugin">plugin availability</a>; there is no confirmed release date.</p>
-  </div>}
+  {/* Availability comes BEFORE the steps, asked of the shared flag, so nobody follows five steps
+      for a plugin they cannot get (apps/site/tests/onboarding-recovery.test.mjs). */}
+  {STUDIO_PLUGIN_STORE_LIVE ? (
+    <div class="callout">
+      <p><strong>No plugin yet?</strong> Apple Studio is free on the Roblox Creator Store. <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">Get Apple Studio</a>, then follow <a href="/docs/plugin">Install the plugin</a> and come back here.</p>
+    </div>
+  ) : (
+    <div class="callout">
+      <p><strong>Public Studio installation is unavailable right now.</strong> These steps are for people who already have a working Apple plugin. New customers can use chat, but cannot build inside Studio yet. <a href="/docs/plugin">Plugin availability</a>.</p>
+    </div>
+  )}
   <p>
     Connecting links the Apple panel in <em>this</em> Studio window to <em>one</em> Apple project.
     Until you do it, the plugin is inert: the panel reads <strong>Not connected</strong> and Apple
@@ -25,8 +33,8 @@ import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
   <ol>
     <li>Open the place you want Apple to work on in Roblox Studio.</li>
     <li>
-      In Studio's <strong>Plugins</strong> tab, click <strong>Apple</strong>. The panel docks and
-      shows <strong>Not connected</strong>.
+      In Studio's <strong>Plugins</strong> tab, click <strong>Apple</strong>. The
+      <strong>Apple Studio</strong> panel docks and shows <strong>Not connected</strong>.
     </li>
     <li>
       In the Apple web workspace, open the project. Until Studio is linked, the conversation ends
@@ -36,14 +44,23 @@ import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
       — with a countdown.
     </li>
     <li>
-      Type that code into the plugin panel and press <strong>Connect</strong>.
+      Type that code into the plugin panel and press <strong>Connect to Apple</strong>.
     </li>
   </ol>
   <p>
-    The panel turns green and reads <strong>Connected</strong> followed by the project name; the
-    button becomes <strong>Disconnect</strong>. The web workspace stops saying it is waiting for
-    Studio and shows the place you have open. Apple can now act on this place when this project's
-    chat asks it to.
+    The panel reads <strong>Connected</strong> followed by the project name, and the button becomes
+    <strong>Disconnect</strong>. The web workspace stops saying it is waiting for Studio and shows the
+    place you have open. The access line reads <strong>Access: inspect only</strong>: Apple can now
+    read this place, and it cannot change anything yet.
+  </p>
+
+  <h2>Allowing edits</h2>
+  <p>
+    Edits are allowed per connection, and every new connection starts with them off. In the panel,
+    press <strong>Enable edits…</strong> and confirm with <strong>Allow edits for this
+    connection</strong>. The access line changes to <strong>Access: edits allowed for this
+    connection</strong>, and Apple can build when this project's chat asks it to. Press
+    <strong>Turn edits off</strong> at any time to go back to inspect only.
   </p>
 
   <h2>About the code</h2>

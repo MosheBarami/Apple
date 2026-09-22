@@ -1,26 +1,26 @@
 ---
 import Base from '../layouts/Base.astro';
-import AppleMark from '../components/AppleMark.astro';
+
+/* PLAIN, LIKE THE REST OF THE SITE (2026-09-22). This page kept the stone direction's voice after
+   the site left it: "a path that was never carved", "Back to solid ground", "The apple wandered off
+   the map", and a large mark set between two digits. It now says what happened and where to go. */
 ---
 
 <Base
-  title="404 — Lost apple"
-  description="This page does not exist. The apple wandered off the map."
+  title="Page not found — Apple"
+  description="This page does not exist."
   noindex
 >
-  <section class="lost is-ember" aria-labelledby="lost-title">
+  <section class="lost" aria-labelledby="lost-title">
     <div class="wrap lost__inner">
-      <p class="lost__code carved" aria-hidden="true">
-        4<span class="lost__mark"><AppleMark size={118} /></span>4
-      </p>
       <p class="eyebrow">Error 404</p>
       <h1 id="lost-title" class="carved">That page is not here</h1>
       <p class="lede">
-        It followed a path that was never carved. Whatever used to be here — a
-        page, a doc, a typo — it is not here now.
+        The address may be mistyped, or the page may have moved. The home page and the docs are
+        both one click away.
       </p>
       <div class="lost__ctas">
-        <a href="/" class="btn btn-primary btn-lg">Back to solid ground</a>
+        <a href="/" class="btn btn-primary btn-lg">Go to the home page</a>
         <a href="/docs" class="btn btn-ghost btn-lg">Browse the docs</a>
       </div>
     </div>
@@ -35,56 +35,11 @@ import AppleMark from '../components/AppleMark.astro';
     text-align: center;
     padding-block: clamp(3rem, 8vw, 6rem);
     position: relative;
-    background: radial-gradient(
-        ellipse 55% 60% at 50% 30%,
-        var(--accent-soft),
-        transparent 70%
-      ),
-      var(--paper);
+    background: var(--paper);
   }
 
   .lost__inner {
     max-width: 640px;
-  }
-
-  .lost__code {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.15em;
-    font-family: var(--font-body);
-    font-variation-settings: normal;
-    font-weight: 620;
-    font-size: clamp(2.6rem, 9vw, 3.4rem);
-    line-height: 0.9;
-    letter-spacing: -0.05em;
-    color: var(--ink);
-    opacity: 0.9;
-    margin: 0 0 1.5rem;
-  }
-
-  .lost__mark {
-    display: inline-flex;
-    align-self: center;
-    margin-inline: -0.02em;
-    transform: translateY(6%) rotate(-5deg);
-    animation: lost-bob 4.5s var(--ease-in-out) infinite;
-  }
-
-  @keyframes lost-bob {
-    0%,
-    100% {
-      transform: translateY(6%) rotate(-5deg);
-    }
-    50% {
-      transform: translateY(-2%) rotate(4deg);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .lost__mark {
-      animation: none;
-    }
   }
 
   /* THE ONE THING ON THIS PAGE THAT WAS VISIBLY OFF-AXIS. `.eyebrow` is `display: flex` in
@@ -104,9 +59,9 @@ import AppleMark from '../components/AppleMark.astro';
 
   .lost__ctas {
     display: flex;
-    gap: 0.8rem;
+    gap: 12px;
     justify-content: center;
     flex-wrap: wrap;
-    margin-top: 2rem;
+    margin-top: 32px;
   }
 </style>
