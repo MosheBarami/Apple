@@ -96,7 +96,7 @@ test('the edited text is capped like any other prompt', () => {
 // ----------------------------------------------------------------- the protocol ---
 
 test('both messages are in the shared protocol', () => {
-  assert.match(SHARED, /\| \{ type: 'edit_resend'; messageId: string; text: string; mode: GolemMode; productModel\?: ProductModel \}/);
+  assert.match(SHARED, /\| \{ type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; autonomous\?: boolean; productModel\?: ProductModel \}/);
   assert.match(SHARED, /\| \{ type: 'history_truncated'; fromMessageId: string; removed: number \}/);
 });
 

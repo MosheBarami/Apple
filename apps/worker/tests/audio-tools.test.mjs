@@ -76,7 +76,7 @@ function ctxWith(opts = {}) {
     },
     projectId,
     studioConnected: () => studio,
-    async execStudioOp(op) { ops.push(op); return opResult; },
+    async execStudioOp(op) { ops.push(op); return typeof opResult === 'function' ? opResult(op) : opResult; },
     async createCheckpoint() { return { error: 'not in this test' }; },
     async addMemoryFact() {},
   };
@@ -238,15 +238,19 @@ test('the waveform in the panel is drawn from THIS clip, not from a fixed image'
 
 /* ================================================================== design_sound === */
 
-test('design_sound sends a run_code op carrying the generated chunk', async () => {
-  const { ctx, ops } = ctxWith();
+test('design_sound configures SoundService and buses through typed operations', async () => {
+  const { ctx, ops } = ctxWith({ opResult: (op) => op.op === 'get_tree'
+    ? { ok: true, data: { root: { path: 'game.SoundService', children: [] } } }
+    : { ok: true, data: { ok: true } } });
   const r = await call(ctx, 'design_sound', { environment: 'cave' });
   assert.equal(r.ok, true, r.resultForLlm);
-  assert.equal(ops.length, 1);
-  assert.equal(ops[0].op, 'run_code');
-  assert.match(ops[0].code, /Enum\.ReverbType\.Cave/);
-  assert.match(ops[0].code, /SoundGroup/);
-  assert.ok(!/rbxassetid/i.test(ops[0].code), 'the chunk references an asset');
+  assert.equal(ops[0].op, 'get_tree');
+  assert.equal(ops[1].op, 'set_props');
+  assert.equal(ops[1].path, 'game.SoundService');
+  assert.deepEqual(ops[1].props.AmbientReverb, { t: 'EnumItem', v: 'Enum.ReverbType.Cave' });
+  assert.equal(ops.filter((op) => op.op === 'create_instances').length, SD.BUS_NAMES.length);
+  assert.equal(ops.some((op) => op.op === 'run_code'), false);
+  assert.equal(JSON.stringify(ops).includes('rbxassetid'), false, 'typed configuration references an asset');
   assert.deepEqual(r.parsed.buses, [...SD.BUS_NAMES]);
 });
 
@@ -267,8 +271,15 @@ test('a Studio failure is passed through rather than reported as success', async
 
 /* ================================================================== assign_sounds === */
 
-test('assign_sounds passes the chunk through and never writes an asset id', async () => {
-  const { ctx, ops } = ctxWith({ opResult: { ok: true, data: { assigned: 2, missing: [] } } });
+test('assign_sounds uses typed reads/writes and never writes an asset id', async () => {
+  const { ctx, ops } = ctxWith({ opResult: (op) => {
+    if (op.op === 'get_tree') return { ok: true, data: { root: { path: 'game.SoundService', children: [
+      { path: 'game.SoundService.SFX', name: 'SFX', class: 'SoundGroup' },
+      { path: 'game.SoundService.Ambience', name: 'Ambience', class: 'SoundGroup' },
+    ] } } };
+    if (op.op === 'get_instance') return { ok: true, data: { class: 'Sound', props: { Volume: { t: 'number', v: 0.8 } }, attributes: {} } };
+    return { ok: true, data: { ok: true } };
+  } });
   const r = await call(ctx, 'assign_sounds', {
     assignments: [
       { path: 'game.Workspace.Forge.Crackle', bus: 'SFX', volumeDb: -3 },
@@ -277,7 +288,12 @@ test('assign_sounds passes the chunk through and never writes an asset id', asyn
   });
   assert.equal(r.ok, true, r.resultForLlm);
   assert.equal(r.parsed.assigned, 2);
-  assert.ok(!/SoundId\s*=/.test(ops[0].code), 'the chunk assigns a SoundId');
+  assert.equal(ops.some((op) => op.op === 'run_code'), false);
+  assert.equal(JSON.stringify(ops).includes('SoundId'), false, 'typed writes assign a SoundId');
+  const writes = ops.filter((op) => op.op === 'set_props');
+  assert.equal(writes.length, 2);
+  assert.deepEqual(writes[0].props.SoundGroup, { t: 'Instance', v: 'game.SoundService.SFX' });
+  assert.equal(writes[0].attributes.GolemBaseVolume.v, 0.8);
 });
 
 test('a bad path or bus is refused before any code runs in the place', async () => {
@@ -294,7 +310,9 @@ test('a bad path or bus is refused before any code runs in the place', async () 
 });
 
 test('the missing list survives the dispatcher, so a partial assignment reads as partial', async () => {
-  const { ctx } = ctxWith({ opResult: { ok: true, data: { assigned: 1, missing: ['game.Workspace.Gone'] } } });
+  const { ctx } = ctxWith({ opResult: (op) => op.op === 'get_tree'
+    ? { ok: true, data: { root: { path: 'game.SoundService', children: [] } } }
+    : { ok: false, error: 'not found' } });
   const r = await call(ctx, 'assign_sounds', { assignments: [{ path: 'game.Workspace.Gone', bus: 'SFX' }] });
   assert.equal(r.ok, true);
   assert.deepEqual(r.parsed.missing, ['game.Workspace.Gone']);

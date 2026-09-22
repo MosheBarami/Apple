@@ -151,6 +151,7 @@ export function decodeOpenAiChat(
     text,
     toolCalls,
     usage,
+    truncated: finish === 'length',
     finishReason: toolCalls.length
       ? 'tool_calls'
       : finish === 'length'

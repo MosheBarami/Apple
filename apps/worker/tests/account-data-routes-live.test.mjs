@@ -80,8 +80,8 @@ function seedPostgres() {
       last_activity_at: null, archived_at: null, pinned_at: null, tags: [] },
   ]);
   ROWS.set('messages', [
-    { id: 'm1', project_id: PROJECT, owner_id: ALICE, role: 'user', mode: 'clay', content: 'build a lobby', tool_trace: null, created_at: '2026-01-05T00:00:00Z' },
-    { id: 'm2', project_id: BOBS_PROJECT, owner_id: BOB, role: 'user', mode: 'clay', content: "bob's private message", tool_trace: null, created_at: '2026-01-05T00:00:00Z' },
+    { id: 'm1', project_id: PROJECT, owner_id: ALICE, role: 'user', mode: 'plan', content: 'build a lobby', tool_trace: null, created_at: '2026-01-05T00:00:00Z' },
+    { id: 'm2', project_id: BOBS_PROJECT, owner_id: BOB, role: 'user', mode: 'plan', content: "bob's private message", tool_trace: null, created_at: '2026-01-05T00:00:00Z' },
   ]);
   ROWS.set('checkpoints', [
     { id: 'c1', project_id: PROJECT, owner_id: ALICE, label: 'before', kind: 'auto', r2_key: 'internal/path/secret', script_count: 3, instance_count: 9, size_bytes: 12, created_at: '2026-01-06T00:00:00Z' },
@@ -135,7 +135,7 @@ function seedD1() {
   x(`insert into memory_org_members values (?,?,?,?)`, 'org1', ALICE, 'member', 'x');
   x(`insert into notifications values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 'n1', ALICE, 'mention', 'info', 'hi', null, PROJECT, 'Tower Defence', null, '/x', 'd', 'g', 1, 1, 1, null, 1);
   x(`insert into notifications values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 'n2', BOB, 'mention', 'info', 'hi bob', null, BOBS_PROJECT, "Bob's place", null, '/x', 'd', 'g', 1, 1, 1, null, 1);
-  x(`insert into automations values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 'au1', ALICE, PROJECT, 'nightly', null, 'do the thing', 'clay', 'schedule', null, 'UTC', null, 1, 'skip', 'skip', 0, 10, 5, 1, 1, null, null);
+  x(`insert into automations values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 'au1', ALICE, PROJECT, 'nightly', null, 'do the thing', 'plan', 'schedule', null, 'UTC', null, 1, 'skip', 'skip', 0, 10, 5, 1, 1, null, null);
   x(`insert into automation_runs values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 'r1', 'au1', ALICE, PROJECT, 'fk1', 'schedule', 1, 1, 2, 'ok', 1, null, 3, null, null);
   x(`insert into user_credentials values (?,?,?,?,?,?,?,?,?,?,?)`, ALICE, 'roblox', 'SEALED-CREDENTIAL', '123', 'user', '[]', 'fp', '…1234', 'x', null, null);
   x(`insert into creator_write_log (user_id, at, action, roblox_creator_id, creator_type, target, ok, http_status, request, response) values (?,?,?,?,?,?,?,?,?,?)`, ALICE, 'x', 'upload', '123', 'user', 't', 1, 200, null, null);

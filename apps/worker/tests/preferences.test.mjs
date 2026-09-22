@@ -210,7 +210,7 @@ test('an unknown model key gets the MOST demanding requirement, never the least'
   //   the one answer that lets a preferred model be chosen for a step it cannot serve. ]]
   const unknown = needsForModelKey('a-key-nobody-defined');
   assert.deepEqual(unknown, { tools: true, vision: true });
-  for (const known of ['clay', 'stone', 'rune', 'memory', 'vision']) {
+  for (const known of ['plan', 'agent', 'agent', 'memory', 'vision']) {
     const n = needsForModelKey(known);
     assert.ok(!n.tools || unknown.tools, `${known}: unknown must require at least what ${known} requires`);
     assert.ok(!n.vision || unknown.vision, known);
@@ -221,12 +221,12 @@ test('an unknown model key gets the MOST demanding requirement, never the least'
 const cap = (id, over = {}) => ({ id, available: true, supportsTools: true, supportsVision: false, ...over });
 
 test('a preferred model that can serve the step is honoured', () => {
-  const r = routePreferredModel(MODELS[0], 'stone', [cap(MODELS[0]), cap(MODELS[1])], MODELS[1]);
+  const r = routePreferredModel(MODELS[0], 'agent', [cap(MODELS[0]), cap(MODELS[1])], MODELS[1]);
   assert.deepEqual(r, { modelId: MODELS[0], honoured: true, reason: 'preferred' });
 });
 
 test('a preferred model that cannot call tools does not get a tool-calling step', () => {
-  const r = routePreferredModel(MODELS[0], 'stone', [cap(MODELS[0], { supportsTools: false }), cap(MODELS[1])], MODELS[1]);
+  const r = routePreferredModel(MODELS[0], 'agent', [cap(MODELS[0], { supportsTools: false }), cap(MODELS[1])], MODELS[1]);
   assert.equal(r.honoured, false);
   assert.equal(r.reason, 'missing_capability');
   assert.equal(r.modelId, MODELS[1], 'and the fallback actually runs');
@@ -245,12 +245,12 @@ test('a vision step refuses a model with no vision', () => {
 });
 
 test('an unavailable or unknown model falls back with a reason the UI can show', () => {
-  assert.equal(routePreferredModel(MODELS[0], 'stone', [cap(MODELS[0], { available: false })], MODELS[1]).reason, 'unavailable');
-  assert.equal(routePreferredModel('nope', 'stone', [cap(MODELS[0])], MODELS[1]).reason, 'unknown_model');
-  assert.equal(routePreferredModel(undefined, 'stone', [cap(MODELS[0])], MODELS[1]).reason, 'no_preference');
+  assert.equal(routePreferredModel(MODELS[0], 'agent', [cap(MODELS[0], { available: false })], MODELS[1]).reason, 'unavailable');
+  assert.equal(routePreferredModel('nope', 'agent', [cap(MODELS[0])], MODELS[1]).reason, 'unknown_model');
+  assert.equal(routePreferredModel(undefined, 'agent', [cap(MODELS[0])], MODELS[1]).reason, 'no_preference');
   for (const r of [
-    routePreferredModel(MODELS[0], 'stone', [cap(MODELS[0], { available: false })], MODELS[1]),
-    routePreferredModel('nope', 'stone', [cap(MODELS[0])], MODELS[1]),
+    routePreferredModel(MODELS[0], 'agent', [cap(MODELS[0], { available: false })], MODELS[1]),
+    routePreferredModel('nope', 'agent', [cap(MODELS[0])], MODELS[1]),
   ]) {
     assert.equal(r.honoured, false);
     assert.equal(r.modelId, MODELS[1]);

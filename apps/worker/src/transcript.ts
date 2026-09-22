@@ -5,7 +5,7 @@
 // is oldest after the system prompt, so once the run's carried-over history had been evicted the
 // next thing removed was THE USER'S OWN REQUEST. With the world-building brief in the system prompt
 // (15,048 chars against a 24,000-char cap) and a single step able to append 12,368 chars of tool
-// results, a visual Stone build reached `[system, tool, tool, tool]` from step 2 onward: the model
+// results, a visual Agent build reached `[system, tool, tool, tool]` from step 2 onward: the model
 // was still being asked to work, with no record of what it had been asked to do.
 //
 // The same line had a second failure, reachable rather than constant. The old loop stopped at
@@ -126,15 +126,129 @@ export function trimTranscriptReport(llm: GatewayMessage[], maxChars: number): T
   let first = 0; // oldest group still kept
   const size = () => transcriptChars(head) + groups.slice(first).reduce((n, g) => n + transcriptChars(g), 0);
 
+  const dropped: GatewayMessage[][] = [];
   while (size() > maxChars && first < groups.length - KEEP_RECENT_GROUPS) {
     // A pinned message inside a later group is unexpected, but honouring it is cheap and the whole
     // point of this function is that nothing pinned is ever lost.
     if (groups[first]!.some((m) => m.pinned)) head.push(...groups[first]!);
+    else dropped.push(groups[first]!);
     first++;
   }
-  const trimmed = [...head, ...groups.slice(first).flat()];
+  const withLedger = recordDropped(head, dropped);
+  const trimmed = [...withLedger, ...groups.slice(first).flat()];
   const after = transcriptChars(trimmed);
   return { llm: trimmed, before, after, maxChars, droppedGroups: first, droppedChars: before - after };
+}
+
+/**
+ * A DROPPED TURN MUST LEAVE A RECORD, or the agent repeats it.
+ *
+ * Measured 2026-09-22 (coin game, run 76b59615): the system prompt takes ~15k of the 24k budget, so
+ * from the fourth step on only the last two turn groups survived. The run built eight coins and both
+ * scripts in its first eight steps, then — holding no record that it had — tried to create the coins
+ * again ("game.Workspace already contains a child named Coin1") and spent 40 more paid steps
+ * re-reading the tree and its own scripts until the duplicate guard ended it. The playtest step it
+ * had planned never ran. 55 groups dropped, 195 Credits.
+ *
+ * So each dropped group is written down as one line — the tool, what it was aimed at, and whether it
+ * succeeded — in a single pinned message after the head. The record accumulates across steps (a turn
+ * dropped on step four is still done on step forty) and is bounded, keeping the newest lines, so it
+ * cannot become the thing that overflows the budget.
+ *
+ * IT CARRIES NO TOOL OUTPUT, AND IT IS THE MODEL'S OWN VOICE. Every tool result reaches the transcript
+ * inside fenceToolOutput's <untrusted-tool-output> tag (packages/evals security.test.mjs, A5). The
+ * first version of this record quoted the first words of each result into a USER-role message — Studio
+ * content re-entering the transcript unfenced, as the user. So the record is an ASSISTANT turn (it
+ * reports what "you" did, which is what an assistant turn is), a result is reduced to done/failed by
+ * reading only whether its JSON carries `error`, and a target keeps only path-like characters.
+ */
+export const LEDGER_MAX_CHARS = 3_000;
+const LEDGER_HEADER =
+  'Run record: earlier steps of this run were shortened to save space. They already happened and their '
+  + 'effects are in the place. Build on them; do not repeat them:';
+
+function recordDropped(head: GatewayMessage[], dropped: GatewayMessage[][]): GatewayMessage[] {
+  const lines = dropped.flatMap(groupLines);
+  if (lines.length === 0) return head;
+  const at = head.findIndex((m) => m.ledger);
+  const previous = at >= 0 ? ledgerLines(head[at]!) : [];
+  const all = [...previous, ...lines];
+  // Keep the newest lines; say how many older ones were folded away rather than dropping them silently.
+  let kept = all;
+  let omitted = 0;
+  const render = () => [LEDGER_HEADER, ...(omitted ? [`- (${omitted} older steps not listed)`] : []), ...kept].join('\n');
+  while (kept.length > 1 && render().length > LEDGER_MAX_CHARS) {
+    const olderLine = kept[0]!;
+    kept = kept.slice(1);
+    omitted += /^- \(\d+ older steps not listed\)$/.test(olderLine) ? Number(/\d+/.exec(olderLine)![0]) : 1;
+  }
+  const ledger: GatewayMessage = { role: 'assistant', content: render(), pinned: true, ledger: true };
+  const out = head.filter((m) => !m.ledger);
+  out.push(ledger);
+  return out;
+}
+
+function ledgerLines(m: GatewayMessage): string[] {
+  const text = typeof m.content === 'string' ? m.content : '';
+  return text.split('\n').slice(1).filter((l) => l.startsWith('- '));
+}
+
+const squash = (s: string, n: number): string => {
+  const one = s.replace(/\s+/g, ' ').trim();
+  return one.length > n ? `${one.slice(0, n - 1)}…` : one;
+};
+
+const textOf = (m: GatewayMessage): string =>
+  typeof m.content === 'string' ? m.content : m.content.map((p) => ('text' in p ? p.text : '')).join(' ');
+
+/** Only characters an instance path, a script name or a search term needs — never markup or quotes. */
+const plain = (s: string): string => s.replace(/[^\w .:\-\[\]]/g, '');
+
+/** done or failed, read from whether the fenced JSON result carries `error`. Never its content. */
+function outcome(reply: GatewayMessage | undefined): string {
+  if (!reply) return 'no result recorded';
+  const text = textOf(reply);
+  const open = text.indexOf('>\n');
+  const close = text.lastIndexOf('\n</untrusted-tool-output>');
+  const body = open >= 0 && close > open ? text.slice(open + 2, close) : text;
+  try {
+    const v = JSON.parse(body) as unknown;
+    return v && typeof v === 'object' && 'error' in (v as object) ? 'failed' : 'done';
+  } catch {
+    return 'done';
+  }
+}
+
+/** What a call was aimed at, from the argument fields that name a target. Empty when none parse. */
+function aim(args: string | undefined): string {
+  let a: unknown;
+  try { a = JSON.parse(args || '{}'); } catch { return ''; }
+  if (!a || typeof a !== 'object') return '';
+  const o = a as Record<string, unknown>;
+  if (Array.isArray(o.items)) {
+    const names = o.items.map((i) => (i && typeof i === 'object' ? (i as Record<string, unknown>).name : undefined))
+      .filter((n): n is string => typeof n === 'string').map(plain);
+    return `${o.items.length} item(s)${names.length ? `: ${names.slice(0, 8).join(', ')}` : ''}`;
+  }
+  for (const k of ['path', 'target', 'root', 'parent', 'name', 'query', 'title']) {
+    if (typeof o[k] === 'string' && o[k]) return plain(String(o[k]));
+  }
+  return '';
+}
+
+function groupLines(g: GatewayMessage[]): string[] {
+  const [lead, ...replies] = g;
+  if (!lead) return [];
+  // An earlier user turn is dropped without being quoted: echoing a person's words into an
+  // assistant turn would put them in the model's mouth. Only this run's own tool calls are listed.
+  if (lead.role !== 'assistant') return [];
+  const calls = lead.toolCalls ?? [];
+  if (calls.length === 0) return [];
+  return calls.map((c) => {
+    const reply = replies.find((r) => r.toolCallId === c.id);
+    const target = squash(aim(c.arguments), 100);
+    return `- ${plain(c.name)}${target ? ` (${target})` : ''} → ${outcome(reply)}`;
+  });
 }
 
 /**

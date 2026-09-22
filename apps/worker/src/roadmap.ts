@@ -9,8 +9,8 @@
 //
 // §39 ORDER OF OPERATIONS, which is also why this file has no model call in it. Whether a project
 // has a DataStore, a currency, a shop UI, a wave spawner or a second zone is a FACT about the
-// place, and facts are read, not guessed. One `run_code` op brings back the evidence; regex and
-// class counts turn it into features; the catalogue turns features into milestones. A model may
+// place, and facts are read, not guessed. Bounded typed Studio reads bring back the evidence; regex
+// and class counts turn it into features; the catalogue turns features into milestones. A model may
 // afterwards reorder the handful of suggestions and rewrite a sentence — `polishRoadmap` takes an
 // injected chat function and can only permute and rephrase ids the deterministic pass already
 // produced. It cannot add a milestone, cannot mark one done, and its failure is not an error: the
@@ -20,120 +20,27 @@
 // project; `unknown` is the answer when the scan hit a cap and genuinely could not see (a code-only
 // signal in a project whose scripts were truncated). An `unknown` milestone is never presented as
 // the confident next step — it is offered with `verify` telling the user Golem could not tell.
-import type { StudioOp, OpResult, GolemMode } from '@golem/shared';
+import type { StudioOp, OpResult, ProductMode } from '@golem/shared';
 import { creditRangeForRuns } from '@golem/shared';
 import { APPLE_UI_SOURCE } from './ui-kit';
+import { parseCensus } from './playtest';
 
 // -----------------------------------------------------------------------------------------------
-// The scan. ONE Studio round trip.
+// The scan. Typed, read-only Studio operations only.
 //
-// The alternative — get_tree, then list_scripts, then a read_script per script — is fifteen-plus
-// long-poll round trips through a plugin that answers one op at a time, which is seconds of wall
-// clock before a single milestone can be computed. `run_code` is understood by every installed
-// plugin (see composition.ts LAYOUT_LUAU for the same reasoning) and returns the whole evidence
-// bundle at once.
+// The plugin exposes bounded readers for the facts the roadmap needs. project_census owns exact
+// totals and per-service counts; get_tree owns instance/class/name evidence; dump_scripts owns
+// source; get_instance("game") owns the place name. No received code is evaluated in Studio.
 //
-// It returns RAW EVIDENCE, never verdicts. No lexicon lives in this string: names, class counts and
-// capped script sources come back and every judgement is made in TypeScript, where it is testable
-// without a Studio in the loop.
+// Each reader has a cap. Positive evidence from a partial read is still evidence; a missing match
+// is not evidence of absence. scanProject records every incomplete dimension in ProjectScan's
+// existing truncation flags, and the detectors below turn those negatives into `unknown`.
 // -----------------------------------------------------------------------------------------------
-export const ROADMAP_SCAN_LUAU = `
-local HttpService = game:GetService("HttpService")
-local okSES, SES = pcall(function() return game:GetService("ScriptEditorService") end)
-
-local SERVICES = {"Workspace","ReplicatedStorage","ReplicatedFirst","ServerScriptService","ServerStorage",
-  "StarterGui","StarterPack","StarterPlayer","Lighting","SoundService","Teams"}
-local SCRIPT_ROOTS = {"ServerScriptService","ReplicatedStorage","ServerStorage","StarterPlayer","StarterGui",
-  "Workspace","ReplicatedFirst","StarterPack"}
-local CLASSES = {"SpawnLocation","Humanoid","RemoteEvent","RemoteFunction","BindableEvent","ProximityPrompt",
-  "ClickDetector","VehicleSeat","Seat","Sound","Tool","ScreenGui","SurfaceGui","BillboardGui","TextButton",
-  "Team","PointLight","SpotLight","SurfaceLight","ParticleEmitter","Beam","Model","Folder",
-  "Script","LocalScript","ModuleScript"}
-
-local classes = {}
-for _, c in ipairs(CLASSES) do classes[c] = 0 end
-local counts = {instances = 0, parts = 0, scripts = 0}
-local services, named, lighting, guis = {}, {}, {}, {}
-local scanned, namedFull = 0, false
-local SCAN_CAP = 40000
-
-for _, svcName in ipairs(SERVICES) do
-  local ok, svc = pcall(function() return game:GetService(svcName) end)
-  if ok and svc then
-    local n = 0
-    for _, d in ipairs(svc:GetDescendants()) do
-      scanned += 1
-      if scanned > SCAN_CAP then break end
-      n += 1
-      counts.instances += 1
-      if d:IsA("BasePart") then counts.parts += 1 end
-      if d:IsA("LuaSourceContainer") then counts.scripts += 1 end
-      local cn = d.ClassName
-      if classes[cn] ~= nil then classes[cn] += 1 end
-      if cn == "Model" or cn == "Folder" then
-        if #named < 250 then
-          named[#named + 1] = {path = "game." .. d:GetFullName(), class = cn, name = d.Name}
-        else
-          namedFull = true
-        end
-      end
-    end
-    services[svcName] = n
-  end
-end
-
-local okL, L = pcall(function() return game:GetService("Lighting") end)
-if okL and L then
-  for _, c in ipairs(L:GetChildren()) do lighting[#lighting + 1] = c.ClassName end
-end
-local okG, G = pcall(function() return game:GetService("StarterGui") end)
-if okG and G then
-  for _, c in ipairs(G:GetChildren()) do guis[#guis + 1] = c.Name end
-end
-local top = {}
-for _, c in ipairs(workspace:GetChildren()) do top[#top + 1] = c.Name end
--- The place's own name. This is where a Roblox game most often SAYS what it is, and the scan
--- did not capture it at all -- so a place called "Coin Simulator" was invisible to a detector
--- whose strongest signals are all "the place calls itself X".
-local placeName = ""
-pcall(function() placeName = game.Name end)
-
-local scripts, budget, scriptsFull, srcCut = {}, 60000, false, false
-for _, svcName in ipairs(SCRIPT_ROOTS) do
-  local ok, svc = pcall(function() return game:GetService(svcName) end)
-  if ok and svc then
-    for _, d in ipairs(svc:GetDescendants()) do
-      if d:IsA("LuaSourceContainer") then
-        if #scripts >= 40 then scriptsFull = true; break end
-        local src = ""
-        if okSES then
-          local okSrc, res = pcall(function() return SES:GetEditorSource(d) end)
-          if okSrc and typeof(res) == "string" then src = res end
-        end
-        if src == "" then
-          local ok2, res2 = pcall(function() return d.Source end)
-          if ok2 and typeof(res2) == "string" then src = res2 end
-        end
-        local take = math.min(#src, 6000, math.max(0, budget))
-        if take < #src then srcCut = true end
-        budget -= take
-        scripts[#scripts + 1] = {
-          path = "game." .. d:GetFullName(),
-          class = d.ClassName,
-          lines = select(2, string.gsub(src, "\\n", "\\n")) + 1,
-          src = string.sub(src, 1, take),
-        }
-      end
-    end
-  end
-end
-
-return HttpService:JSONEncode({
-  counts = counts, services = services, classes = classes, named = named,
-  lighting = lighting, guis = guis, topLevel = top, scripts = scripts, place = placeName,
-  truncated = {scan = scanned > SCAN_CAP, named = namedFull, scripts = scriptsFull, source = srcCut},
-})
-`;
+const TREE_DEPTH = 12;
+const TREE_NODES_PER_SERVICE = 1200;
+const NAMED_LIMIT = 250;
+const SCRIPT_LIMIT = 40;
+const SCRIPT_CHAR_LIMIT = 60_000;
 
 /** One script the scan read, with its source capped. */
 export interface ScannedScript {
@@ -166,14 +73,8 @@ export interface ProjectScan {
   truncated: { scan: boolean; named: boolean; scripts: boolean; source: boolean };
 }
 
-/**
- * Read a scan back out of whatever wrapper run_code returned it in.
- *
- * The unwrapping loop is copied deliberately from parseCensus in playtest.ts: the live shape is
- * {"result":{"t":"string","v":"{...}"}} and assuming a fixed nesting order got that file wrong
- * twice against real Studio. Peel any recognised wrapper until nothing changes.
- */
-export function parseScan(raw: unknown): ProjectScan | null {
+/** Peel the transport wrappers used by Studio values without assuming a fixed nesting order. */
+function unwrapTransport(raw: unknown): unknown {
   let value: unknown = raw;
   for (let i = 0; i < 6; i += 1) {
     if (!value || typeof value !== 'object') break;
@@ -183,6 +84,12 @@ export function parseScan(raw: unknown): ProjectScan | null {
     if ('data' in o) { value = o.data; continue; }
     break;
   }
+  return value;
+}
+
+/** Read a persisted/fixture scan payload. Kept for recorded evidence and deterministic evals. */
+export function parseScan(raw: unknown): ProjectScan | null {
+  let value = unwrapTransport(raw);
   if (typeof value === 'string') {
     try { value = JSON.parse(value); } catch { return null; }
   }
@@ -229,13 +136,195 @@ export function parseScan(raw: unknown): ProjectScan | null {
 /** How the roadmap reaches Studio. Injected so every test runs without a plugin or a network. */
 export type StudioProbe = (op: StudioOp, timeoutMs?: number) => Promise<OpResult>;
 
-/** Run the scan against a live project. Returns null when Studio could not answer. */
+type TreeNode = {
+  path?: unknown;
+  name?: unknown;
+  class?: unknown;
+  childCount?: unknown;
+  moreChildren?: unknown;
+  children?: unknown;
+};
+
+function objectValue(raw: unknown): Record<string, unknown> | null {
+  const value = unwrapTransport(raw);
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function treeChildren(node: TreeNode): TreeNode[] {
+  return Array.isArray(node.children)
+    ? node.children.filter((child): child is TreeNode => !!child && typeof child === 'object' && !Array.isArray(child))
+    : [];
+}
+
+function treeWasDepthCapped(node: TreeNode): boolean {
+  if (typeof node.moreChildren === 'number' && node.moreChildren > 0) return true;
+  return treeChildren(node).some(treeWasDepthCapped);
+}
+
+function scriptLines(source: string): number {
+  return source.length === 0 ? 1 : source.split('\n').length;
+}
+
+/**
+ * Run the bounded typed scan against a live project.
+ *
+ * The census is the one indispensable read because it owns exact totals. Supplemental readers are
+ * best-effort: when one fails or hits its cap, the scan remains useful but its corresponding
+ * truncation flag is set. That distinction is what lets a roadmap say "unknown" instead of
+ * silently turning an unavailable read into "absent".
+ */
 export async function scanProject(probe: StudioProbe): Promise<{ scan: ProjectScan | null; error: string | null }> {
-  const res = await probe({ op: 'run_code', code: ROADMAP_SCAN_LUAU, timeoutMs: 20_000 }, 30_000);
-  if (!res.ok) return { scan: null, error: res.error ?? 'Studio did not answer the project scan' };
-  const scan = parseScan(res.data);
-  if (!scan) return { scan: null, error: 'the project scan came back in a shape this build does not understand' };
-  return { scan, error: null };
+  const censusResult = await probe({ op: 'project_census' }, 30_000);
+  if (!censusResult.ok) {
+    return { scan: null, error: censusResult.error ?? 'Studio did not answer the project census' };
+  }
+  const census = parseCensus(censusResult.data);
+  if (!census) {
+    return { scan: null, error: 'the project census came back in a shape this build does not understand' };
+  }
+
+  const classes: Record<string, number> = {};
+  const named: NamedInstance[] = [];
+  const lighting: string[] = [];
+  const guis: string[] = [];
+  let topLevel = census.topLevel;
+  let structuralIncomplete = false;
+  let namedIncomplete = false;
+  const serviceCounts = Object.values(census.services);
+  if (
+    serviceCounts.some((count) => !Number.isFinite(count) || count < 0) ||
+    serviceCounts.reduce((sum, count) => sum + (Number.isFinite(count) ? count : 0), 0) !== census.instances
+  ) {
+    structuralIncomplete = true;
+  }
+
+  const countNode = (node: TreeNode): number => {
+    const className = typeof node.class === 'string' ? node.class : '';
+    const name = typeof node.name === 'string' ? node.name : '';
+    const path = typeof node.path === 'string' ? node.path : '';
+    if (className) classes[className] = (classes[className] ?? 0) + 1;
+    if ((className === 'Model' || className === 'Folder') && name) {
+      if (named.length < NAMED_LIMIT) named.push({ path, className, name });
+      else namedIncomplete = true;
+    }
+    let seen = 1;
+    for (const child of treeChildren(node)) seen += countNode(child);
+    return seen;
+  };
+
+  for (const [serviceName, expected] of Object.entries(census.services)) {
+    if (!Number.isFinite(expected) || expected < 0) {
+      structuralIncomplete = true;
+      continue;
+    }
+    if (expected === 0) continue;
+    const result = await probe({
+      op: 'get_tree',
+      root: `game.${serviceName}`,
+      maxDepth: TREE_DEPTH,
+      maxNodes: TREE_NODES_PER_SERVICE,
+    }, 30_000);
+    if (!result.ok) {
+      structuralIncomplete = true;
+      continue;
+    }
+    const payload = objectValue(result.data);
+    const root = payload?.root;
+    if (!root || typeof root !== 'object' || Array.isArray(root)) {
+      structuralIncomplete = true;
+      continue;
+    }
+    const rootNode = root as TreeNode;
+    const direct = treeChildren(rootNode);
+    let observed = 0;
+    for (const child of direct) observed += countNode(child);
+    if (
+      payload?.truncated === true ||
+      treeWasDepthCapped(rootNode) ||
+      observed !== expected
+    ) structuralIncomplete = true;
+    if (serviceName === 'Lighting') {
+      for (const child of direct) if (typeof child.class === 'string') lighting.push(child.class);
+    }
+    if (serviceName === 'StarterGui') {
+      for (const child of direct) if (typeof child.name === 'string') guis.push(child.name);
+    }
+    if (serviceName === 'Workspace') {
+      topLevel = direct.flatMap((child) => (typeof child.name === 'string' ? [child.name] : []));
+      if (typeof rootNode.childCount === 'number' && rootNode.childCount !== direct.length) structuralIncomplete = true;
+    }
+  }
+
+  let place = '';
+  const placeResult = await probe({ op: 'get_instance', path: 'game' }, 15_000);
+  if (placeResult.ok) {
+    const payload = objectValue(placeResult.data);
+    if (typeof payload?.name === 'string') place = payload.name;
+    else structuralIncomplete = true;
+  } else {
+    structuralIncomplete = true;
+  }
+
+  const scripts: ScannedScript[] = [];
+  let scriptsIncomplete = false;
+  if (census.scripts > 0) {
+    const scriptResult = await probe({
+      op: 'dump_scripts',
+      maxScripts: SCRIPT_LIMIT,
+      maxChars: SCRIPT_CHAR_LIMIT,
+    }, 45_000);
+    if (!scriptResult.ok) {
+      scriptsIncomplete = true;
+    } else {
+      const payload = objectValue(scriptResult.data);
+      const rows = Array.isArray(payload?.scripts) ? payload.scripts : null;
+      if (!rows) {
+        scriptsIncomplete = true;
+      } else {
+        for (const raw of rows) {
+          if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+            scriptsIncomplete = true;
+            continue;
+          }
+          const row = raw as Record<string, unknown>;
+          if (typeof row.path !== 'string' || typeof row.source !== 'string') {
+            scriptsIncomplete = true;
+            continue;
+          }
+          scripts.push({
+            path: row.path,
+            className: typeof row.class === 'string' ? row.class : 'Script',
+            lines: scriptLines(row.source),
+            source: row.source,
+          });
+        }
+        if (payload?.truncated === true || scripts.length !== census.scripts) scriptsIncomplete = true;
+      }
+    }
+  }
+
+  return {
+    scan: {
+      counts: { instances: census.instances, parts: census.parts, scripts: census.scripts },
+      services: census.services,
+      classes,
+      named,
+      lighting,
+      guis,
+      topLevel,
+      place,
+      scripts,
+      truncated: {
+        scan: structuralIncomplete,
+        named: namedIncomplete,
+        scripts: scriptsIncomplete,
+        source: false,
+      },
+    },
+    error: null,
+  };
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -436,6 +525,9 @@ function detect(ix: ScanIndex, d: Detector): { state: Detected; evidence: string
   if (d.id === 'lighting_mood') {
     const found = ix.scan.lighting.filter((c) => MOOD_CLASSES.has(c));
     if (found.length) return { state: 'present', evidence: `Lighting carries ${found.join(', ')}` };
+    if (ix.scan.truncated.scan) {
+      return { state: 'unknown', evidence: 'the structural scan could not read all of Lighting' };
+    }
     return { state: 'absent', evidence: 'Lighting has no Atmosphere, Sky or post-effect' };
   }
   if (d.klass && (ix.classes[d.klass[0]] ?? 0) >= d.klass[1]) {
@@ -449,10 +541,20 @@ function detect(ix: ScanIndex, d: Detector): { state: Detected; evidence: string
     const m = d.code.exec(ix.code);
     if (m) return { state: 'present', evidence: `code mentions ${m[0].trim()}` };
   }
-  // A negative is only a negative if the scan actually saw the whole project. When scripts or
-  // sources were truncated, a code-only signal that did not match is UNKNOWN, not missing.
+  // A negative is only a negative if every channel this detector depends on was observed.
+  // Structural trees are independently bounded from script source, so either can be incomplete
+  // while the other remains trustworthy.
+  if (
+    (d.klass && ix.scan.truncated.scan) ||
+    (d.labels && (ix.scan.truncated.scan || ix.scan.truncated.named))
+  ) {
+    return { state: 'unknown', evidence: 'not all instance names and classes were read' };
+  }
   const codeOnly = !!d.code && !d.labels && !d.klass;
   if ((codeOnly || (ix.presentationSourceIncomplete && !!d.code)) && (ix.scan.truncated.scripts || ix.scan.truncated.source)) {
+    return { state: 'unknown', evidence: 'not all script source was read' };
+  }
+  if (d.code && (d.labels || d.klass) && (ix.scan.truncated.scripts || ix.scan.truncated.source)) {
     return { state: 'unknown', evidence: 'not all script source was read' };
   }
   if (!d.code && !d.labels && !d.klass) return { state: 'unknown', evidence: 'no detector' };
@@ -665,7 +767,7 @@ export function analyzeProject(scan: ProjectScan): ProjectShape {
 
   const zones = scan.named.filter((n) => ZONE_NAME.test(n.name)).slice(0, 12);
   const limits: string[] = [];
-  if (scan.truncated.scan) limits.push('the place is large enough that the scan stopped early — some of it was not read');
+  if (scan.truncated.scan) limits.push('the structural scan could not read every instance — some class/name evidence is unknown');
   if (scan.truncated.scripts) limits.push(`only ${scan.scripts.length} of ${scan.counts.scripts} scripts were read`);
   if (scan.truncated.source) limits.push('some script sources were read only in part');
   if (scan.truncated.named) limits.push('only the first 250 models and folders were named');
@@ -717,7 +819,7 @@ interface MilestoneSpec {
   impact: string;
   complexity: Complexity;
   /** Golem effort, in the units the product actually bills in */
-  mode: GolemMode;
+  mode: ProductMode;
   runs: number;
   dependsOn: readonly string[];
   genres: readonly (Genre | 'any')[];
@@ -738,7 +840,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A deliberate spawn and first view',
     why: 'A player who lands facing a grey void decides in three seconds that there is nothing here.',
     impact: 'Every session starts pointed at the thing the game is about.',
-    complexity: 'small', mode: 'stone', runs: 1, priority: 10,
+    complexity: 'small', mode: 'agent', runs: 1, priority: 10,
     dependsOn: [], genres: ['any'], satisfiedBy: ['spawn'],
     build: [
       'Place a SpawnLocation on solid ground at the entrance to the main play area.',
@@ -752,7 +854,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A client/server backbone',
     why: 'Anything the player triggers has to be decided by the server, or it is not really happening.',
     impact: 'Actions are consistent for everyone in the server instead of local illusions.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 30,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 30,
     dependsOn: ['playable_spawn'], genres: ['any'], satisfiedBy: ['remotes'],
     build: [
       'Create a RemoteEvent folder in ReplicatedStorage for the actions the player can take.',
@@ -770,7 +872,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A HUD that shows the state the player cares about',
     why: 'Progress the player cannot see is progress they do not feel.',
     impact: 'The player can tell at a glance what they have and what they are working towards.',
-    complexity: 'small', mode: 'stone', runs: 1, priority: 40,
+    complexity: 'small', mode: 'agent', runs: 1, priority: 40,
     dependsOn: [], genres: ['any'], satisfiedBy: ['client_ui'],
     build: [
       'install_module("ui_kit") — the first-party AppleUI HUD and shop presentation module in ReplicatedStorage.',
@@ -785,7 +887,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A lighting mood',
     why: 'Default Roblox lighting is the single loudest signal that a place is unfinished.',
     impact: 'The place reads as somewhere, instead of as a build in an editor.',
-    complexity: 'small', mode: 'stone', runs: 1, priority: 45,
+    complexity: 'small', mode: 'agent', runs: 1, priority: 45,
     dependsOn: [], genres: ['any'], satisfiedBy: ['lighting_mood'],
     build: [
       'Set a time of day, Atmosphere and colour treatment that match what the place is meant to feel like.',
@@ -798,7 +900,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Sound where the player is',
     why: 'Silence makes a place feel empty even when it looks full.',
     impact: 'The world sounds inhabited and actions have weight.',
-    complexity: 'small', mode: 'clay', runs: 1, priority: 55,
+    complexity: 'small', mode: 'plan', runs: 1, priority: 55,
     dependsOn: ['mood_pass'], genres: ['any'], satisfiedBy: ['sound'],
     build: [
       'Add ambient sound to the main area and a short sound to the core action.',
@@ -811,7 +913,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Progress that survives leaving',
     why: 'Anything a player earns and then loses on rejoin teaches them not to earn it again.',
     impact: 'Sessions add up, so coming back is worth something.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 60,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 60,
     dependsOn: ['economy'], genres: ['any'], satisfiedBy: ['persistence'],
     build: [
       'Install the reviewed module first: install_module("profile_store"). It already does everything below, and the rules below are then what to check rather than what to write.',
@@ -834,7 +936,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Server-side validation of every request',
     why: 'One exploiter with unlimited currency ends the economy for everyone in the server.',
     impact: 'What the leaderboard says stays true.',
-    complexity: 'medium', mode: 'rune', runs: 1, priority: 70,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 70,
     dependsOn: ['client_server_backbone', 'save_progress'], genres: ['any'], satisfiedBy: ['anticheat'],
     build: [
       'Install the reviewed module first: install_module("remote_guard"). It already does everything below, and the rules below are then what to check rather than what to write.',
@@ -854,7 +956,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'The first minute teaches the loop',
     why: 'Most players who leave never understood what they were supposed to do.',
     impact: 'More of the players who arrive stay long enough to reach the fun.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 80,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 80,
     dependsOn: ['readable_hud'], genres: ['any'], satisfiedBy: ['tutorial'],
     build: [
       'Guide the first action with a prompt at the spawn rather than a wall of text.',
@@ -867,7 +969,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A leaderboard worth chasing',
     why: 'A public number turns a solo grind into a comparison.',
     impact: 'Players come back to defend a position.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 85,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 85,
     dependsOn: ['save_progress'], genres: ['any'], satisfiedBy: ['leaderboard_global'],
     build: [
       'Install the reviewed module first: install_module("leaderboard"). It already does everything below, and the rules below are then what to check rather than what to write.',
@@ -887,7 +989,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Somewhere to spend what is earned',
     why: 'Currency with nothing to buy is a number that stops mattering by the second session.',
     impact: 'Earning has a destination, so the loop closes.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 90,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 90,
     dependsOn: ['economy', 'readable_hud'], genres: ['any'], satisfiedBy: ['shop'],
     build: [
       'install_module("ui_kit") — reuse AppleUI for the responsive shop instead of recreating button and pending-state logic.',
@@ -902,7 +1004,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A reason to come back tomorrow',
     why: 'A returning player is worth more than a new one and costs nothing to reach.',
     impact: 'Day-two returns rise without any new content.',
-    complexity: 'small', mode: 'stone', runs: 1, priority: 95,
+    complexity: 'small', mode: 'agent', runs: 1, priority: 95,
     dependsOn: ['save_progress'], genres: ['any'], satisfiedBy: ['daily_reward'],
     build: [
       'install_module("daily_reward") — the day arithmetic, the streak and the one-write claim.',
@@ -922,7 +1024,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'One honest thing to buy',
     why: 'Players will pay for convenience and cosmetics once the loop is worth being in.',
     impact: 'The game earns without taking anything away from players who do not pay.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 100,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 100,
     dependsOn: ['shopfront'], genres: ['any'], satisfiedBy: ['monetization'],
     build: [
       'Install the reviewed module first: install_module("receipts"). It already does everything below, and the rules below are then what to check rather than what to write.',
@@ -946,7 +1048,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A currency the loop runs on',
     why: 'The player needs one number that goes up when they do the thing the game is about.',
     impact: 'Every action gets a visible consequence.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 20,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 20,
     dependsOn: ['client_server_backbone'],
     genres: ['simulator', 'tycoon', 'tower_defence', 'adventure', 'roleplay', 'combat'],
     satisfiedBy: ['currency'],
@@ -968,7 +1070,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Stages with checkpoints',
     why: 'Without checkpoints, one mistake sends the player back to the start and they quit instead.',
     impact: 'Players push further because losing costs a stage, not the run.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 22,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 22,
     dependsOn: ['playable_spawn'], genres: ['obby'], satisfiedBy: ['checkpoints'],
     build: [
       'Install the reviewed module first: install_module("checkpoints"). It already does everything below, and the rules below are then what to check rather than what to write.',
@@ -987,7 +1089,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Hazards with a readable tell',
     why: 'A hazard the player could not have seen coming reads as the game cheating.',
     impact: 'Deaths feel earned, so players try again instead of leaving.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 26,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 26,
     dependsOn: ['obby_stages'], genres: ['obby'], satisfiedBy: ['killbricks'],
     build: [
       'Give every killing surface an unmistakable colour and material.',
@@ -1000,7 +1102,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A difficulty curve across the stages',
     why: 'Stage 2 being harder than stage 7 makes the course feel random rather than designed.',
     impact: 'Players feel themselves getting better.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 36,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 36,
     dependsOn: ['obby_hazards'], genres: ['obby'], satisfiedBy: [],
     build: [
       'Order the stages so each one adds exactly one new demand.',
@@ -1015,7 +1117,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A plot the player owns',
     why: 'A tycoon is only satisfying when the thing being built is unmistakably yours.',
     impact: 'Two players in a server never fight over the same base.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 22,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 22,
     dependsOn: ['playable_spawn'], genres: ['tycoon'], satisfiedBy: ['plots'],
     build: [
       'Lay out identical plots and assign one to each joining player on the server.',
@@ -1028,7 +1130,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'An income chain that runs while you watch',
     why: 'Watching money arrive on its own is the whole appeal of the genre.',
     impact: 'Idle time still produces progress, so players stay in the server.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 28,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 28,
     dependsOn: ['tycoon_plot', 'economy'], genres: ['tycoon'], satisfiedBy: ['dropper'],
     build: [
       'Install the reviewed module first: install_module("income"). It already does everything below, and the rules below are then what to check rather than what to write.',
@@ -1049,7 +1151,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Buy buttons that expand the base',
     why: 'The base growing in front of the player is the reward, not the number.',
     impact: 'Each purchase visibly changes the world.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 34,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 34,
     dependsOn: ['tycoon_income'], genres: ['tycoon'], satisfiedBy: ['upgrades'],
     build: [
       'install_module("buy_buttons") — the pad, the deduction and the unlock in one write.',
@@ -1071,7 +1173,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'One action worth repeating',
     why: 'A simulator lives or dies on whether the first ten seconds of the core action feel good.',
     impact: 'The loop is fun before any content is added on top.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 22,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 22,
     dependsOn: ['economy'], genres: ['simulator'], satisfiedBy: [],
     build: [
       'Make the core action a single input with immediate feedback: sound, a number popping, an animation.',
@@ -1084,7 +1186,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Upgrades that change the pace',
     why: 'The player needs to feel the loop speed up, not just see a bigger number.',
     impact: 'Each purchase is felt in the next ten seconds of play.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 30,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 30,
     dependsOn: ['sim_core_action', 'shopfront'], genres: ['simulator'], satisfiedBy: ['upgrades'],
     build: ['Add tiers that multiply the award or the capacity, priced on a curve that keeps buying frequent early.'],
     acceptance: ['An upgrade measurably changes the rate of the core action.'],
@@ -1094,7 +1196,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A second zone to unlock',
     why: 'A new place to stand is the cheapest progression a player can feel.',
     impact: 'Players have somewhere to be going, not just a number to raise.',
-    complexity: 'medium', mode: 'stone', runs: 2, priority: 38,
+    complexity: 'medium', mode: 'agent', runs: 2, priority: 38,
     dependsOn: ['sim_upgrades'], genres: ['simulator'], satisfiedBy: ['zones'],
     build: [
       'Gate the next zone behind a currency threshold with a visible barrier.',
@@ -1107,7 +1209,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Pets that multiply the loop',
     why: 'A collection the player can show off carries a simulator far longer than the numbers do.',
     impact: 'Players chase rarity as well as totals.',
-    complexity: 'large', mode: 'rune', runs: 2, priority: 44,
+    complexity: 'large', mode: 'agent', runs: 2, priority: 44,
     dependsOn: ['sim_zones', 'save_progress'], genres: ['simulator'], satisfiedBy: ['pets'],
     build: [
       'Add eggs with a server-side rarity roll and a pet that follows the player.',
@@ -1120,7 +1222,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Rebirth: trade everything for a permanent multiplier',
     why: 'It gives players who have finished the content a reason to do it all again faster.',
     impact: 'The end of the content stops being the end of the game.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 50,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 50,
     dependsOn: ['sim_zones', 'save_progress'],
     // Deliberately simulator and tycoon ONLY. This is the milestone §31 names: it is a genre
     // convention, not a universal feature, and offering it to a tower-defence or obby project is
@@ -1139,7 +1241,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A path enemies actually walk',
     why: 'The player has to be able to read where the danger will come from before they spend anything.',
     impact: 'Placement becomes a decision rather than a guess.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 22,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 22,
     dependsOn: ['playable_spawn'], genres: ['tower_defence'], satisfiedBy: ['path_waypoints'],
     build: [
       'Lay a waypoint folder from the spawn to the base and make the route legible in the geometry.',
@@ -1152,7 +1254,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Waves that arrive on a rhythm',
     why: 'The gap between waves is when the player gets to make decisions — without it there is no game.',
     impact: 'Tension rises and releases instead of running flat.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 28,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 28,
     dependsOn: ['td_path', 'economy'], genres: ['tower_defence'], satisfiedBy: ['waves'],
     build: [
       'Drive waves from a server table: count, type and delay per wave.',
@@ -1165,7 +1267,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Towers the player places and pays for',
     why: 'Choosing what to build and where is the entire decision the genre is made of.',
     impact: 'Two players make different boards out of the same map.',
-    complexity: 'large', mode: 'rune', runs: 2, priority: 34,
+    complexity: 'large', mode: 'agent', runs: 2, priority: 34,
     dependsOn: ['td_waves'], genres: ['tower_defence'], satisfiedBy: ['towers'],
     build: [
       'Add a placement mode with a valid/invalid preview and a server-side placement check.',
@@ -1178,7 +1280,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Upgrade paths for placed towers',
     why: 'Deciding whether to place another tower or improve this one is the mid-game decision.',
     impact: 'Later waves are beaten by planning, not by spam.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 40,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 40,
     dependsOn: ['td_towers'], genres: ['tower_defence'], satisfiedBy: ['upgrades'],
     build: ['Add per-tower upgrade tiers with a visible model change and a server-side cost check.'],
     acceptance: ['An upgraded tower looks different and performs differently.'],
@@ -1188,7 +1290,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Difficulty that scales past the first ten waves',
     why: 'A run that becomes unloseable is as boring as one that is impossible.',
     impact: 'The session has an ending worth reaching.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 46,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 46,
     dependsOn: ['td_tower_upgrades'], genres: ['tower_defence'], satisfiedBy: [],
     build: [
       'Scale enemy health and count per wave, and introduce one new enemy behaviour every few waves.',
@@ -1201,7 +1303,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A second map with a different shape',
     why: 'One layout is solved after three runs; a second route makes the towers interesting again.',
     impact: 'Replay value without any new systems.',
-    complexity: 'medium', mode: 'stone', runs: 2, priority: 52,
+    complexity: 'medium', mode: 'agent', runs: 2, priority: 52,
     dependsOn: ['td_difficulty_scaling'], genres: ['tower_defence'], satisfiedBy: ['zones'],
     build: [
       'Build a second map with a different path length and number of junctions.',
@@ -1216,7 +1318,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Weapons that feel different from each other',
     why: 'If two weapons play the same, the choice between them is not a choice.',
     impact: 'Players find a favourite and come back for it.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 22,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 22,
     dependsOn: ['client_server_backbone'], genres: ['combat'], satisfiedBy: ['weapons'],
     build: [
       'Give each weapon distinct range, rate and damage, applied on the server.',
@@ -1229,7 +1331,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Rounds with a lobby and a result',
     why: 'Endless free-for-all has no stakes; a round has a beginning, a middle and a winner.',
     impact: 'Players stay for one more round.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 30,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 30,
     dependsOn: ['combat_weapons'], genres: ['combat'], satisfiedBy: ['round_system'],
     build: [
       'Install the reviewed module first: install_module("rounds"). It already does everything below, and the rules below are then what to check rather than what to write.',
@@ -1250,7 +1352,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Teams and spawn protection',
     why: 'Being killed at the spawn point is the fastest way to lose a player for good.',
     impact: 'Fights happen where they were designed to happen.',
-    complexity: 'small', mode: 'stone', runs: 1, priority: 36,
+    complexity: 'small', mode: 'agent', runs: 1, priority: 36,
     dependsOn: ['combat_rounds'], genres: ['combat'], satisfiedBy: ['teams'],
     build: ['Add teams with their own spawn areas and a brief post-spawn invulnerability.'],
     acceptance: ['A freshly spawned player cannot be killed instantly.'],
@@ -1262,7 +1364,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A track with checkpoints and a finish',
     why: 'A race without checkpoints is a race that can be cut.',
     impact: 'Results are trustworthy, so competing is worth it.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 22,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 22,
     dependsOn: ['playable_spawn'], genres: ['racing'], satisfiedBy: ['racing_track'],
     build: ['Lay out the circuit with ordered checkpoints and validate lap completion on the server.'],
     acceptance: ['Skipping a checkpoint does not complete a lap.'],
@@ -1272,7 +1374,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A vehicle that is fun to steer',
     why: 'Handling is the whole game; a car that fights the player ends the session.',
     impact: 'Players race again to beat their own time.',
-    complexity: 'large', mode: 'rune', runs: 2, priority: 30,
+    complexity: 'large', mode: 'agent', runs: 2, priority: 30,
     dependsOn: ['race_track'], genres: ['racing'], satisfiedBy: ['vehicles'],
     build: ['Tune the vehicle for grip, acceleration and recovery after a mistake, and respawn it on demand.'],
     acceptance: ['A player who spins out can recover without rejoining.'],
@@ -1282,7 +1384,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Times, positions and a result screen',
     why: 'A race with no recorded time is a lap.',
     impact: 'Players chase a personal best.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 38,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 38,
     dependsOn: ['race_vehicles'], genres: ['racing'], satisfiedBy: [],
     build: ['Time each lap on the server, show position live, and end the race with a standings screen.'],
     acceptance: ['Lap times are recorded server-side and shown at the end.'],
@@ -1294,7 +1396,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Darkness the player has to work with',
     why: 'Horror is what the player cannot see; full brightness removes the game.',
     impact: 'Tension exists before anything has happened.',
-    complexity: 'small', mode: 'stone', runs: 1, priority: 22,
+    complexity: 'small', mode: 'agent', runs: 1, priority: 22,
     dependsOn: [], genres: ['horror'], satisfiedBy: ['lighting_mood'],
     build: ['Drop ambient light, add fog and give the player one weak light source they must aim.'],
     acceptance: ['The player cannot see the whole room at once.'],
@@ -1304,7 +1406,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A threat that hunts',
     why: 'A monster that stands still is scenery.',
     impact: 'The player is being chased, not visiting.',
-    complexity: 'large', mode: 'rune', runs: 2, priority: 30,
+    complexity: 'large', mode: 'agent', runs: 2, priority: 30,
     dependsOn: ['horror_atmosphere'], genres: ['horror'], satisfiedBy: ['enemies'],
     build: ['Give the threat a patrol, a detection range and a chase, all decided on the server.'],
     acceptance: ['The threat changes behaviour when it detects a player.'],
@@ -1314,7 +1416,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Something to do while being hunted',
     why: 'Running with no goal becomes tedious in about ninety seconds.',
     impact: 'Fear has a purpose and the session has an end.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 38,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 38,
     dependsOn: ['horror_threat'], genres: ['horror'], satisfiedBy: ['quests'],
     build: ['Scatter objectives that must be collected or completed to escape, tracked on the server.'],
     acceptance: ['Completing the objectives ends the round.'],
@@ -1326,7 +1428,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Roles players can pick',
     why: 'Roleplay needs a reason for two players to behave differently.',
     impact: 'Players have something to be, not just somewhere to stand.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 22,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 22,
     dependsOn: ['client_server_backbone'], genres: ['roleplay'], satisfiedBy: ['teams'],
     build: ['Add teams for the roles with a picker, and give each role one thing only it can do.'],
     acceptance: ['A role grants an ability the others do not have.'],
@@ -1336,7 +1438,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Rooms built for the things players do',
     why: 'People roleplay where the furniture suggests a scene.',
     impact: 'Groups gather instead of scattering.',
-    complexity: 'medium', mode: 'stone', runs: 2, priority: 30,
+    complexity: 'medium', mode: 'agent', runs: 2, priority: 30,
     dependsOn: ['rp_roles'], genres: ['roleplay'], satisfiedBy: [],
     build: ['Build the two or three spaces the roles need, with seating, props and clear entrances.'],
     acceptance: ['Each space seats a group and is reachable without climbing.'],
@@ -1346,7 +1448,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Something the player can make theirs',
     why: 'Identity is the currency of a roleplay game.',
     impact: 'Players return to a character rather than to a place.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 40,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 40,
     dependsOn: ['rp_spaces', 'save_progress'], genres: ['roleplay'], satisfiedBy: ['customization'],
     build: ['Add outfits or accessories chosen in a menu, applied on the server and saved.'],
     acceptance: ['The choice survives a rejoin.'],
@@ -1358,7 +1460,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A first quest chain',
     why: 'An open world with nothing asked of the player is a walking simulator.',
     impact: 'Players have a thread to follow through the world.',
-    complexity: 'large', mode: 'rune', runs: 2, priority: 22,
+    complexity: 'large', mode: 'agent', runs: 2, priority: 22,
     dependsOn: ['economy'], genres: ['adventure'], satisfiedBy: ['quests'],
     build: ['Add a quest with a giver, a tracked objective and a reward, with state kept per player.'],
     acceptance: ['Quest state is server-side and survives a rejoin.'],
@@ -1368,7 +1470,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'NPCs worth walking up to',
     why: 'The world needs to answer when a player interacts with it.',
     impact: 'The place feels populated rather than staged.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 30,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 30,
     dependsOn: ['adv_quests'], genres: ['adventure'], satisfiedBy: ['dialogue'],
     build: ['Give the quest giver and one or two others a ProximityPrompt and short branching dialogue.'],
     acceptance: ['Talking to an NPC advances or explains a quest.'],
@@ -1378,7 +1480,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A second region gated behind the first',
     why: 'Progress in an adventure game is measured in places reached.',
     impact: 'Players can see where they are going before they can get there.',
-    complexity: 'medium', mode: 'stone', runs: 2, priority: 40,
+    complexity: 'medium', mode: 'agent', runs: 2, priority: 40,
     dependsOn: ['adv_npcs'], genres: ['adventure'], satisfiedBy: ['zones'],
     build: ['Build the next region with its own look and threat level, gated on quest progress.'],
     acceptance: ['The gate checks quest state on the server.'],
@@ -1390,7 +1492,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'A route through the build',
     why: 'A visitor who does not know where to walk sees a third of what was made.',
     impact: 'Every visitor sees the parts worth seeing.',
-    complexity: 'small', mode: 'stone', runs: 1, priority: 22,
+    complexity: 'small', mode: 'agent', runs: 1, priority: 22,
     dependsOn: ['playable_spawn'], genres: ['showcase'], satisfiedBy: [],
     build: ['Lay a walkable route from the spawn past each set piece, with sightlines that reveal the next one.'],
     acceptance: ['A player walking forward from the spawn passes every set piece.'],
@@ -1400,7 +1502,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Things that respond to being touched',
     why: 'A build the player cannot affect is a photograph.',
     impact: 'Visitors stay long enough to look properly.',
-    complexity: 'medium', mode: 'stone', runs: 1, priority: 30,
+    complexity: 'medium', mode: 'agent', runs: 1, priority: 30,
     dependsOn: ['showcase_route'], genres: ['showcase'], satisfiedBy: ['dialogue'],
     build: ['Add ProximityPrompts on the details: doors that open, lights that switch, notes that read.'],
     acceptance: ['At least three details respond to interaction.'],
@@ -1466,7 +1568,7 @@ export interface Milestone {
    */
   creditsLow: number | null;
   creditsHigh: number | null;
-  mode: GolemMode;
+  mode: ProductMode;
   category: MilestoneCategory;
   /** the concrete things that exist once it lands — the same list the execution brief builds from */
   deliverables: string[];
@@ -1496,16 +1598,13 @@ export interface Roadmap {
 export const MAX_SUGGESTIONS = 3;
 
 /**
- * The effort line is USER-VISIBLE, so it names the PRODUCT mode, not the internal
- * specialist. clay/stone/rune are engine-side identities that §1 keeps off
- * non-admin surfaces and that @golem/shared is explicit are not user-facing
- * brands — "about two Stone runs" leaks one into a milestone card.
+ * The effort line is user-visible, so it names the product mode directly.
  *
  * Mapped here rather than in the client because the string is composed here: a
  * client-side scrub can only repair what the worker already got wrong.
  */
 function effortLine(spec: MilestoneSpec): string {
-  const mode = spec.mode === 'clay' ? 'Plan' : spec.mode === 'stone' ? 'Agent' : 'Super Agent';
+  const mode = spec.mode === 'plan' ? 'Plan' : 'Agent';
   return spec.runs === 1 ? `about one ${mode} run` : `about ${spec.runs} ${mode} runs`;
 }
 
@@ -1642,7 +1741,7 @@ export interface MilestoneBrief {
   title: string;
   /** hand this to the agent verbatim */
   request: string;
-  mode: GolemMode;
+  mode: ProductMode;
   context: string[];
   steps: string[];
   acceptance: string[];

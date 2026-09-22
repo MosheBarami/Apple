@@ -103,7 +103,7 @@ end
 snapshot("healthy", "cp-healthy")
 
 do
-    local unsupported = Instance.new("ObjectValue"); unsupported.Name = "Unsupported"; unsupported.Parent = workspace
+    local unsupported = Instance.new("MeshPart"); unsupported.Name = "Unsupported"; unsupported.Parent = workspace
     snapshot("unsupported", "cp-unsupported")
     unsupported:Destroy()
 end
@@ -219,7 +219,7 @@ test('a checkpoint the plugin refused names the cause the plugin actually hit', 
   const unsupported = refusal('unsupported', 'cp-unsupported');
   assert.equal(unsupported.payload.truncated, false);
   assert.equal(unsupported.payload.restorable, false);
-  assert.match(unsupported.error, /ObjectValue x1/);
+  assert.match(unsupported.error, /MeshPart x1/);
 
   // CAUSE 2 — the walk stopped because the place is NESTED too deeply, which is a different place and
   // a different remedy from a place that is too big. The plugin stops at MAX_SNAPSHOT_DEPTH after

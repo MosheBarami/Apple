@@ -26,8 +26,8 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
-import { STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
-import { systemPrompt } from '../src/prompts.ts';
+import { STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_URL } from '@golem/shared';
+import { systemPrompt, pluginInstallGuidance } from '../src/prompts.ts';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(mkdtempSync(join(tmpdir(), 'ptn-')), 't.mjs');
@@ -42,7 +42,7 @@ const BASE = {
   // being unguessable. rbxai-1d hardened that after I reported the assert.ok(X || true) beside it;
   // supplying an id here is the right response to the guard, not relaxing it.
   fenceId: 'f3c0d91a',
-  mode: 'stone',
+  mode: 'agent',
   studioConnected: true,
   placeName: 'Test Place',
   projectName: 'Test',
@@ -55,8 +55,8 @@ function everyPrompt() {
   return [
     systemPrompt(BASE),
     systemPrompt({ ...BASE, studioConnected: false }),
-    systemPrompt({ ...BASE, mode: 'clay' }),
-    systemPrompt({ ...BASE, mode: 'rune' }),
+    systemPrompt({ ...BASE, mode: 'plan' }),
+    systemPrompt({ ...BASE, mode: 'agent' }),
     systemPrompt({ ...BASE, sceneKind: 'plaza' }),
     systemPrompt({ ...BASE, uiBrief: 'RULE ONE' }),
     systemPrompt({ ...BASE, memorySummary: 'a summary', memoryFacts: ['a fact'] }),
@@ -79,7 +79,12 @@ test('EVERY TOOL THE PROMPT NAMES IS A REGISTERED TOOL', () => {
   // Snake_case words that are not tools and legitimately appear as prose or as engine vocabulary.
   // Each is listed individually rather than pattern-matched, so adding one is a decision.
   const NOT_TOOLS = new Set([
-    'run_code', // a Studio op the prompt may describe, never a tool the model calls
+    // A defensive allowlist, not a claim about today's prompt: `run_code` is not in it. This exists
+    // so that if an edit ever names it — the way `run_luau` is named in the asset-refusal sentence —
+    // the question is answered by the guard that owns it (the instruction test below), instead of
+    // this generic token check reporting prose as an unregistered tool. Two guards contradicting
+    // each other is how both get deleted.
+    'run_code',
   ]);
 
   for (const prompt of everyPrompt()) {
@@ -106,10 +111,100 @@ test('the guard reads the BUILT prompt, not the source — comments are not inst
 
 test('the tools the prompt leans on hardest are all present', () => {
   // A spot check with real names, so a regex that silently matched nothing could not pass this.
+  //
+  // RE-AIMED 2026-09-22, and the direction is the point. This list used to name `run_luau`, because
+  // the prompt used to tell the model to reach for it. The plugin now reports `run_code` as
+  // unsupported — Commands.luau refuses it outright, since Roblox exposes no constrained plugin
+  // evaluator and the legacy ModuleScript path runs received text with full plugin authority — so
+  // the prompt was rewritten to build with typed operations instead. The guard fired on the
+  // IMPROVEMENT: it was pinning the prompt to a capability the product deliberately retired.
+  // Restated as the property it was always for: the tools the prompt leans on must be callable.
   const prompt = systemPrompt(BASE);
-  for (const tool of ['get_instance', 'run_luau', 'check_composition', 'set_mood', 'audit_build']) {
+  for (const tool of [
+    'get_instance',
+    'get_project_tree',
+    'create_instances',
+    'edit_terrain',
+    'check_composition',
+    'set_mood',
+    'audit_build',
+    'propose_plan',
+  ]) {
     assert.match(prompt, new RegExp(`\\b${tool}\\b`), `the prompt should still name ${tool}`);
     assert.ok(T.toolNames().includes(tool), `${tool} must be registered`);
+  }
+});
+
+test('the prompt STATES the asset refusal, and never instructs the model to build with arbitrary code', () => {
+  // The same defect this file exists for, one level down — and the first draft of this test got it
+  // wrong in the way that gets guards deleted.
+  //
+  // `run_luau` is a registered tool, and a legacy plugin with no capability report still gets it, so
+  // it stays in the registry. The shipped plugin answers `run_code` with an explicit refusal
+  // (Commands.luau: Roblox exposes no constrained plugin evaluator, and the legacy ModuleScript path
+  // runs received text with full plugin authority), and the asset ingress filter in tools.ts refuses
+  // GetObjects / InsertService / rbxassetid:// / Content.fromAssetId / loadstring / require-of-an-
+  // asset-id. Those are FACTS THE MODEL MUST HOLD, and the prompt is the only place it is told them.
+  //
+  // I first wrote this as "the prompt must not name run_luau at all". That fires on the correct
+  // prompt: naming a refusal is the security statement, and it is what the eval suite asserts
+  // (`asset-safety.test.mjs` — "the prompt must state the run_luau rule the tool enforces"). The
+  // sentences that were ACTUALLY the defect were the ones telling the model to reach for it, so
+  // those are what the patterns below pin. The distinction is the one this file already settled for
+  // unpaired prompts: naming a tool while stating its limits is context; implying it is callable is
+  // the defect.
+  const REFUSAL = /run_luau refuses/;
+  const USAGE = [
+    /\breach for run_luau\b/i, // the removed build instruction, near-verbatim
+    /\buse run_luau\b/i,
+    /\bcall run_luau\b/i,
+    /\brun_luau script\b/i, // the removed "keep each run_luau script under roughly 3,000 characters"
+    /\brun_luau returning\b/i, // the removed read-back instruction
+    /\brun_code\b/i, // the capability the shipped plugin retired; nothing needs to name it
+  ];
+
+  for (const [i, prompt] of everyPrompt().entries()) {
+    assert.match(
+      prompt,
+      REFUSAL,
+      `variant ${i} never states the asset refusal run_luau enforces. The model then meets the gate `
+        + 'by hitting it, and the prompt is the only surface that tells it the rule exists.',
+    );
+    for (const pattern of USAGE) {
+      assert.doesNotMatch(
+        prompt,
+        pattern,
+        `variant ${i} instructs the model to build with arbitrary code (${pattern}); the shipped `
+          + 'plugin refuses run_code, so this is an instruction the model cannot follow',
+      );
+    }
+  }
+
+  // THE CONTROL, without which the loop above could be passing on patterns that match nothing.
+  // This is the sentence that was removed from prompts.ts on 2026-09-22, and it must still trip.
+  const planted = `${systemPrompt(BASE)}\nReach for run_luau when a build is repetitive or math-heavy.`;
+  assert.match(planted, USAGE[0], 'the usage patterns must still match the instruction that was removed');
+  assert.doesNotMatch(systemPrompt(BASE), USAGE[0], 'and the shipped prompt must not contain it');
+});
+
+test('an unknown mode is REFUSED, not silently stripped of its rules', () => {
+  // `MODE_RULES[opts.mode]` is indexed by mode and the assembled array ends in `.filter(Boolean)`,
+  // so a retired or misspelled name did not throw — it dropped the persona, the build procedure and
+  // the whole verification policy, and shipped a prompt that read as valid. The run still started
+  // and still spent tokens. `ProductMode` is a compile-time type over a `JSON.parse(...) as` wire,
+  // so nothing but a runtime check can catch it.
+  for (const retired of ['stone', 'clay', 'rune', 'super-agent']) {
+    assert.throws(
+      () => systemPrompt({ ...BASE, mode: retired }),
+      /unknown mode/,
+      `"${retired}" is retired and the composer must refuse it rather than build a rules-less prompt`,
+    );
+  }
+  // And the refusal must name the real set, so the message is actionable rather than merely loud.
+  assert.throws(() => systemPrompt({ ...BASE, mode: 'stone' }), /plan \/ agent/);
+  // Non-vacuity: the two live modes still build.
+  for (const mode of ['plan', 'agent']) {
+    assert.ok(systemPrompt({ ...BASE, mode }).length > 500, `${mode} must still compose`);
   }
 });
 
@@ -134,32 +229,54 @@ test('an unpaired prompt SAYS the building tools are unavailable', () => {
 
 test('AN UNPAIRED PROMPT DOES NOT SEND THE USER AFTER A PLUGIN THEY CANNOT GET', () => {
   // The prompt tells a disconnected user to open the Apple plugin in Studio. That instruction is
-  // fine for someone who has it and dead for everyone else: public installation is closed
-  // (STUDIO_PLUGIN_STORE_LIVE === false, a moderation removal, not a queue). Every human-written
-  // surface says so — /docs/plugin, /status, the dashboard, the pairing dialog — and the prompt was
-  // the one place it never reached, so the model had no first-party fact to answer "where do I get
-  // it?" with and would answer from pretraining: Creator Store, Toolbox, Get Plugin. What the model
-  // is told becomes what the customer is told, which is why this is a guard and not a comment.
+  // fine for someone who has it and dead for everyone else while public installation is closed.
+  // Every human-written surface says which state it is in — /docs/plugin, /status, the dashboard,
+  // the pairing dialog — and the prompt was the one place it never reached, so the model had no
+  // first-party fact to answer "where do I get it?" with and would answer from pretraining. What
+  // the model is told becomes what the customer is told, which is why this is a guard.
   //
-  // THE CONDITION IS THE CONSTANT, NOT TODAY'S VALUE. When the appeal succeeds and the flag flips,
-  // the caveat must vanish with it rather than becoming the new stale sentence — so the branch is
-  // asserted both ways round and the source is checked for the import that makes that possible.
-  const unpaired = systemPrompt({ ...BASE, studioConnected: false });
+  // THE CONDITION IS THE CONSTANT, NOT TODAY'S VALUE.
+  //
+  //   RE-AIMED 2026-09-22, and the direction is the point. This asserted the closed branch in full
+  //   and, for the live branch, only that the "closed" caveat was absent — so when the listing came
+  //   back and STUDIO_PLUGIN_STORE_LIVE flipped to true, the prompt told a user without the plugin
+  //   nothing at all about where to get it, and the model went back to guessing. The guard was
+  //   green through that. The property was always "the install guidance matches the listing", so
+  //   both branches are now asserted through the exported composer, whichever way the flag points
+  //   today, and the built prompt is checked against the branch the flag selects.
   const source = readFileSync(join(WORKER, 'src', 'prompts.ts'), 'utf8');
-
-  assert.match(source, /import \{ STUDIO_PLUGIN_STORE_LIVE \} from '@golem\/shared'/,
+  const importLine = source.match(/import \{([^}]*)\} from '@golem\/shared'/g) ?? [];
+  const imported = importLine.join(' ');
+  assert.match(imported, /\bSTUDIO_PLUGIN_STORE_LIVE\b/,
     'the availability fact must be imported, so it cannot drift from the UI that shows it');
+  assert.match(imported, /\bSTUDIO_PLUGIN_URL\b/,
+    'and so must the link, so the prompt can never name a listing the UI does not');
 
-  if (STUDIO_PLUGIN_STORE_LIVE) {
-    assert.doesNotMatch(unpaired, /installation of the plugin is closed/i,
-      'the store is live again and the prompt still says it is closed');
-    return;
-  }
-  assert.match(unpaired, /installation of the plugin is closed/i,
+  const live = pluginInstallGuidance(true, STUDIO_PLUGIN_URL);
+  const closed = pluginInstallGuidance(false, STUDIO_PLUGIN_URL);
+  assert.ok(STUDIO_PLUGIN_URL.length > 20, 'the store URL is empty — every assertion below would be about nothing');
+
+  // Live: the canonical link, and nothing that says the store is closed.
+  assert.ok(live.includes(STUDIO_PLUGIN_URL), 'a live listing must be named by its canonical link');
+  assert.match(live, /\/docs\/plugin/, 'and the steps must point at the page that owns them');
+  assert.doesNotMatch(live, /installation of the plugin is closed/i, 'a live listing is described as closed');
+
+  // Closed: the caveat, the refused install paths, somewhere honest to go — and never the link.
+  assert.match(closed, /installation of the plugin is closed/i,
     'the model is told to send users after a plugin, and never told they cannot obtain one');
-  assert.match(unpaired, /Creator Store, Toolbox or "Get Plugin"/,
+  assert.match(closed, /Creator Store, Toolbox or "Get Plugin"/,
     'and the install paths it would otherwise invent from pretraining must be named and refused');
-  assert.match(unpaired, /\/docs\/plugin/, 'and it must have somewhere honest to send them instead');
+  assert.match(closed, /\/docs\/plugin/, 'and it must have somewhere honest to send them instead');
+  assert.ok(!closed.includes(STUDIO_PLUGIN_URL), 'a closed listing must not be handed out as an install link');
+
+  // The built prompt carries exactly the branch the constant selects, and only when unpaired.
+  const unpaired = systemPrompt({ ...BASE, studioConnected: false });
+  const paired = systemPrompt({ ...BASE, studioConnected: true });
+  const expected = STUDIO_PLUGIN_STORE_LIVE ? live : closed;
+  const other = STUDIO_PLUGIN_STORE_LIVE ? closed : live;
+  assert.ok(unpaired.includes(expected.trim()), 'the unpaired prompt does not carry the guidance its flag selects');
+  assert.ok(!unpaired.includes(other.trim()), 'the unpaired prompt carries the guidance for the OTHER state');
+  assert.ok(!paired.includes(expected.trim()), 'a paired session does not need install guidance');
 });
 
 /**
@@ -178,11 +295,10 @@ test('AN UNPAIRED PROMPT DOES NOT SEND THE USER AFTER A PLUGIN THEY CANNOT GET',
  */
 test('the base prompt names all three knowledge libraries, in every mode and both Studio states', () => {
   const variants = [
-    ['stone, paired', systemPrompt(BASE)],
-    ['stone, unpaired', systemPrompt({ ...BASE, studioConnected: false })],
-    ['clay, paired', systemPrompt({ ...BASE, mode: 'clay' })],
-    ['clay, unpaired', systemPrompt({ ...BASE, mode: 'clay', studioConnected: false })],
-    ['rune, unpaired', systemPrompt({ ...BASE, mode: 'rune', studioConnected: false })],
+    ['agent, paired', systemPrompt(BASE)],
+    ['agent, unpaired', systemPrompt({ ...BASE, studioConnected: false })],
+    ['plan, paired', systemPrompt({ ...BASE, mode: 'plan' })],
+    ['plan, unpaired', systemPrompt({ ...BASE, mode: 'plan', studioConnected: false })],
   ];
   const registered = new Set(T.toolNames());
   for (const tool of ['get_verified_module', 'get_ui_construction', 'install_module']) {

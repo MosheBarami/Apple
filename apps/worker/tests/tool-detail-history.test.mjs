@@ -59,7 +59,7 @@ test('history rehydration puts the persisted detail back on each web tool row', 
 
   const detail = { v: 1, blocks: [{ type: 'image', src: '/generated/p1/i1', alt: 'result' }] };
   const mapped = chatItemFromMessageDto({
-    id: 'm1', role: 'assistant', mode: 'stone', content: 'done', createdAt: new Date(0).toISOString(),
+    id: 'm1', role: 'assistant', mode: 'agent', content: 'done', createdAt: new Date(0).toISOString(),
     toolTrace: [{ tool: 'generate_image', summary: 'generated', ok: true, durationMs: 25, detail }],
   });
   assert.deepEqual(mapped.tools[0].detail, detail, 'a refreshed image panel needs its persisted structured detail');

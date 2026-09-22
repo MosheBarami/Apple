@@ -37,6 +37,8 @@ const agent = (over = {}) => ({
   llm: [sys, pinnedUser, ...chatter(20)],
   trace: Array.from({ length: 40 }, (_, i) => ({ tool: 'create_instances', step: i })),
   seenCalls: ['create_instances:abc'],
+  // Raw call signatures too (the duplicate guard's retry allowance), so shed with seenCalls.
+  retryableCalls: [{ sig: 'get_project_tree:{}', retries: 1 }],
   lastCalls: [{ id: 'c1', name: 'edit_script', arguments: '{}' }],
   finalText: '',
   ...over,
@@ -90,6 +92,7 @@ test('an oversized state sheds the transcript but keeps what a run cannot contin
   assert.deepEqual(shed.llm, [sys, pinnedUser], 'system prompt and pinned turns survive');
   assert.equal(shed.trace.length, SHED_TRACE_KEEP, 'trace is trimmed, not emptied');
   assert.deepEqual(shed.seenCalls, [], 'seenCalls is dropped');
+  assert.deepEqual(shed.retryableCalls, [], 'retryableCalls holds the same raw signatures and is dropped with them');
   assert.deepEqual(shed.lastCalls, [], 'lastCalls is dropped');
   assert.equal(shed.status, 'running', 'a shed run is still running — it lost history, not life');
 });

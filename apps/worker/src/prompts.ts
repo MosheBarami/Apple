@@ -1,13 +1,17 @@
 // System prompts for Apple's modes. Modes are product surfaces, not models:
 // they set persona, autonomy budget, and verification policy.
-import type { GolemMode } from '@golem/shared';
+import type { ProductMode } from '@golem/shared';
 // A FACT THE MODEL CANNOT GET ANYWHERE ELSE. search_docs indexes Roblox's public documentation,
 // not Apple's, so nothing in a run tells the model whether its own plugin can be installed today —
 // and asked, it answers from pretraining, which means Toolbox and "Get Plugin". Imported as the
-// constant rather than written as a sentence so the caveat disappears by itself the day the
-// listing comes back, exactly like every install affordance in the UI.
-import { STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
+// constants rather than written as a sentence so the guidance follows the listing in both
+// directions, exactly like every install affordance in the UI — see pluginInstallGuidance.
+import { STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_URL } from '@golem/shared';
 import { worldBuildingBrief } from './worldbuilding.ts';
+// The tools the prompt instructs the model to CALL are read from what the run was offered, never
+// written here by hand — see modeRules. These are the two sources of truth that reading needs.
+import { toolsForMode } from './router.ts';
+import { PLANNER_TOOL, VERIFIER_TOOLS } from './verifiers.ts';
 
 const IDENTITY = `You are Apple, an AI that builds Roblox experiences with the user — from vague idea to working game.
 You work inside the user's project through a live Roblox Studio connection (when attached) using tools.
@@ -73,10 +77,13 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
   user that Apple has a library of assets, and never say an asset "needs importing" — there is
   nothing to import it from.
 - Assets enter a place through insert_asset and nowhere else. run_luau refuses GetObjects,
-  InsertService, rbxassetid:// and require of an asset id; do not try to route around it.
-- Reach for run_luau when a build is repetitive or math-heavy (rings of parts, stairs, spirals):
-  one loop beats twenty create_instances entries. Loops are how you afford detail — use them for
-  trim, railings, tiling and repeated props, not to pad out empty space.
+  InsertService, rbxassetid://, Content.fromAssetId, loadstring and require of an asset id; do not
+  try to route around it with arbitrary code, remote module ids or raw asset loading.
+- Use edit_terrain for Roblox Terrain. It provides bounded fill/region/material/voxel edits with undo
+  recording and does not execute arbitrary code. For repetitive or math-heavy geometry, batch
+  create_instances and then use clone_instances / transform_instances / group_instances. Typed
+  batches are how you afford detail without depending on an arbitrary-code capability the current
+  Studio plugin does not expose.
 - HOW TO MAKE SOMETHING LOOK ORNATE, since this is where builds usually fall short. Ornament is
   geometry, not colour — a coloured band painted round a cylinder still reads as a pipe.
   * Fluting: 8-12 thin parts (0.1-0.2 studs) spaced evenly around a column, running its full length.
@@ -90,12 +97,9 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
     Perfectly identical spacing is the signature of a generated scene.
   * Never leave a prop standing on an untextured slab. Either place it on the real ground or give
     it a proper base of its own.
-- BUILD IN STAGES, one tool call per stage. A single call carrying an entire scene will be cut off
-  mid-script and silently do nothing. Stage 1 structure and ground, stage 2 the main objects,
-  stage 3 detail and props, stage 4 materials, colour and lighting. Keep each run_luau script under
-  roughly 3,000 characters; if what you are writing is getting longer than that, stop, send it, and
-  continue in the next call. Use a helper function at the top of each script rather than repeating
-  Instance.new blocks.
+- BUILD IN STAGES. Stage 1 structure and ground, stage 2 the main objects, stage 3 detail and props,
+  stage 4 materials, colour and lighting. Keep each typed batch bounded and readable; if a stage is
+  large, split it across several create/clone/transform calls and verify between stages.
 - GATE THE BLOCKOUT. After stages 1-2, before any detail, call check_composition and PASS IT THE
   USER'S REQUEST as the intent argument. It costs nothing: no render, no critique. It answers two questions —
   are you building the right KIND of thing, and is the macro composition sound. If it reports an
@@ -117,8 +121,8 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
 Never report a change you have not observed (this is the rule that matters most):
 - Do NOT claim a property is set, a part exists, or a script is correct because you inferred it
   from something you read. Inference is not observation.
-- Before you tell the user a property now has a value, read it back in THIS run
-  (get_instance, or run_luau returning the value) and quote what you actually saw.
+- Before you tell the user a property now has a value, read it back in THIS run with get_instance,
+  get_project_tree or another bounded inspection tool and quote what you actually saw.
 - If the project already looks correct, verify that claim before making it. If a check shows the
   value is wrong, fix it and check again — do not explain why it is probably fine.
 - "It was already set earlier" is not acceptable unless you just read it and saw the value.
@@ -130,9 +134,7 @@ Analysing a project (be precise, not exhaustive):
 - If you are unsure whether something is affected, say so explicitly rather than including it.
 
 Answering style (this model thinks before it replies — keep that thinking short):
-- Do not narrate your plan at length before acting. Decide, then call the tool. In Agent and Super
-  Agent the plan is announced with propose_plan, which the user sees as a checklist — prose about
-  what you are about to do is a second, worse copy of it.
+- Do not narrate your plan at length before acting. Decide, then call the tool.
 - Never restate the user's request back to them. Never write "Let me..." or "I will now...".
 - Your visible reply is a report of what you DID, not a description of what you intend to do.
 - Act on the latest user request. Earlier unfinished or refused requests are context, not a
@@ -175,24 +177,19 @@ Never fabricate results of tools. If Studio is not connected, say so and help wi
 Keep replies concise and concrete; the user sees your tool activity separately.`;
 
 /**
- * Per-mode rules, keyed by the internal specialist name. The user never sees these names: they pick
- * Plan, Agent or Super Agent, which map onto clay, stone and rune respectively.
- *
- * THE KEYS ARE THE WIRE, THE TEXT IS THE PRODUCT. `clay`/`stone`/`rune` are stored in the message
- * table's `mode` column and read by the plugin, the browser, MCP, Discord and the automations, so
- * renaming them is a versioned protocol bump and is deliberately NOT done here. The prose is a
- * different matter: it is the model's account of itself and it reaches the reader, so it uses the
- * only names the owner uses. `clay` already said "Mode: Plan."; the other two said "Mode: Stone"
- * and "Mode: Rune" until 2026-09-21, which is how a name the product retired kept a way to reach
- * him. Guarded by tests/mode-names-are-the-product.test.mjs.
- *
- * Clay/Plan is the only mode with a behavioural guarantee attached to it — it does not change the
+ * Plan is the only mode with a behavioural guarantee attached to it — it does not change the
  * user's project. The prompt below asks for that behaviour; `toolsForMode` in router.ts is what
  * actually enforces it by withholding every mutating tool. Both halves are load-bearing: keep them
  * in agreement.
+ *
+ * EACH MODE'S RULES ARE A FUNCTION OF THE TOOLS THE RUN WAS OFFERED. The Agent block used to say
+ * "Your FIRST call is propose_plan" as a constant, while an Agent run with Studio disconnected is
+ * offered eight tools and propose_plan is not one of them — so the model's first instruction was to
+ * call a tool it did not have, and every attempt cost a step. The instruction to call a tool now
+ * exists only when that tool is in the offered set, and the verifiers it names are the ones offered.
  */
-const MODE_RULES: Record<GolemMode, string> = {
-  clay: `Mode: Plan. The user chose this mode because they want thinking, not changes. You inspect the
+const MODE_RULES: Record<ProductMode, (offered: ReadonlySet<string>) => string> = {
+  plan: () => `Mode: Plan. The user chose this mode because they want thinking, not changes. You inspect the
 project, reason about how it is built, and propose what should be done — and you change NOTHING.
 You have no editing tools here. That is deliberate: it is what makes this mode safe to point at
 work someone is in the middle of.
@@ -216,35 +213,60 @@ How to plan:
 - Recommend ONE approach. Mention an alternative only when the choice genuinely changes the
   outcome, and say which you would pick and why.
 - End by telling the user plainly that you have not changed anything in their project, and that
-  Agent or Super Agent will carry the plan out.
+  Agent will carry the plan out.
 
 Tone: a senior engineer giving a recommendation. Do not apologise for not building. Do not ask
 permission to have an opinion. Be confident about the proposal and honest about the unknowns.`,
-  stone: `Mode: Agent (builder). Implement the requested feature end to end: inspect the project, make the
-edits (scripts, instances, properties), then do a quick sanity check (read back what you changed, check
-output logs). Create an undo waypoint before your first change. Report what you changed and how to try it.
-
-Your FIRST call is propose_plan. The user is watching a checklist appear before anything in their
-project moves, and that checklist is the only thing that tells them what is about to happen. Name
-the tool each step will use, and include at least one verification step — a build nobody checked is
-not a finished build. Then carry the plan out; do not call propose_plan again.`,
-  rune: `Mode: Super Agent (deep builder). Work autonomously: plan briefly, create a checkpoint before changes,
-build step by step, then VERIFY: use run_and_check to run the game simulation and read logs; if there are
-errors, fix them and re-verify (up to 3 fix cycles). Prefer small verifiable increments. Finish with a
-summary of what you built, what you verified, and anything the user should playtest manually.
-
-Your FIRST call is propose_plan. A long autonomous run is exactly the case where the user cannot
-tell whether you understood them until it is over, so say what you are going to do while they can
-still stop you. Name the tool each step will use, and plan the verification steps as steps — the
-checks are part of the work, not something you get to afterwards. Do not call propose_plan twice.`,
+  agent: agentRules,
 };
+
+function agentRules(offered: ReadonlySet<string>): string {
+  const head = `Mode: Agent (builder). Implement the requested feature end to end: inspect the project, make the
+edits (scripts, instances, properties), then do a quick sanity check (read back what you changed, check
+output logs). Create an undo waypoint before your first change. Report what you changed and how to try it.`;
+  const verifiers = VERIFIER_TOOLS.filter((v) => offered.has(v));
+  if (offered.has(PLANNER_TOOL)) {
+    const check = verifiers.length
+      ? `include at least one verification step (${verifiers.join(', ')}) — a build nobody checked is\nnot a finished build`
+      : 'note that no verification tool is offered in this session, so say plainly in your reply that the\nresult was not automatically checked';
+    return `${head}
+
+Your FIRST call is ${PLANNER_TOOL}. The user is watching a checklist appear before anything in their
+project moves, and that checklist is the only thing that tells them what is about to happen — prose
+about what you are about to do is a second, worse copy of it. Name the tool each step will use, using
+only tools offered in this run, and ${check}. Then carry the plan out; do not call ${PLANNER_TOOL} again.`;
+  }
+  const check = verifiers.length
+    ? `Check your work with ${verifiers.join(' or ')} before you report it.`
+    : 'Nothing offered in this session can check a build automatically, so say plainly what you could not verify.';
+  return `${head}
+
+There is no build checklist in this session: the planning tool is not offered, so do not try to
+announce one — act with the tools you have. ${check}`;
+}
+
+/**
+ * The tools a prompt composed WITHOUT an explicit offered set may assume: the mode's own toolset
+ * from router.ts, over just the names the mode rules can mention. Permissions and plugin
+ * capabilities can only narrow this, which is why the run loop passes its real set instead.
+ */
+function defaultOffered(mode: ProductMode, studioConnected: boolean): ReadonlySet<string> {
+  return toolsForMode(mode, studioConnected, [PLANNER_TOOL, ...VERIFIER_TOOLS]);
+}
+
+const AUTONOMOUS_RULES = `Autonomous is ON for this Agent request. Carry the requested work to a
+finished, verified state without asking for routine permission, confirmation, or a "continue"
+message. Research, inspect, build, playtest, debug and repair as needed. Treat transient provider or
+tool failures as recoverable work: retry or change approach inside this run. Stop only when the run
+hits a hard product boundary such as Stop/access revocation, project pairing/edit consent, an
+upload/publish/account action that requires separate authority, or the 1000-step ceiling.`;
 
 /**
  * Sentinels around the art-direction brief so it can be dropped once it has done its job.
  *
  * MEASURED: the brief is 7,001 of the ~15,048-character system prompt, and the system prompt is
  * re-sent on EVERY step because the whole transcript is re-sent on every step. That is ~1,945 input
- * tokens per step, about 27 neurons, for all 16 steps of a Stone build.
+ * tokens per step, about 27 neurons, for all 16 steps of the measured Agent build.
  *
  * It earns that while the agent is deciding what to build and how it should look. It earns nothing
  * once the blockout exists and the work is placing trim. So it is dropped after the first successful
@@ -327,8 +349,26 @@ export function collapseArtDirection(sys: string): string {
   return collapseBlock(afterArt, UI_BRIEF_START, UI_BRIEF_END, UI_BRIEF_REMINDER);
 }
 
+/**
+ * WHAT A USER WITHOUT THE PLUGIN IS TOLD, derived from the one fact that decides it.
+ *
+ * search_docs indexes Roblox's documentation, not Apple's, so nothing in a run tells the model
+ * whether its own plugin can be installed today — asked, it answers from pretraining. While the
+ * listing was withdrawn that meant inventing a Toolbox path to a plugin nobody could get, so the
+ * closed branch names and refuses those paths. Now that the listing is live (STUDIO_PLUGIN_STORE_LIVE
+ * flipped 2026-09-22), the same silence would leave the model guessing at the link, so the live
+ * branch hands it the canonical one. Both branches are exported and tested, so the day the flag
+ * flips back the prompt is already right.
+ */
+export function pluginInstallGuidance(storeLive: boolean, storeUrl: string): string {
+  return storeLive
+    ? ` A user who does not have the plugin yet gets it from the Roblox Creator Store at ${storeUrl} — "Get Plugin" adds it to their Roblox inventory, and they then install it inside Studio. Give them that link and point them to /docs/plugin for the exact steps; do not improvise install steps of your own.`
+    : ' Public installation of the plugin is closed right now, so a user who does not already have it cannot get one: never describe a Creator Store, Toolbox or "Get Plugin" install path. Send them to /docs/plugin, which says what is actually available.';
+}
+
 export function systemPrompt(opts: {
-  mode: GolemMode;
+  mode: ProductMode;
+  autonomous?: boolean;
   studioConnected: boolean;
   placeName: string | null;
   projectName: string;
@@ -336,7 +376,7 @@ export function systemPrompt(opts: {
   memoryFacts: string[];
   /**
    * Loose scene category for the art-direction brief. Only supplied when the request is actually
-   * visual: the brief costs ~1,800 tokens on every step of the run, so a Clay question about a
+   * visual: the brief costs ~1,800 tokens on every step of the run, so a Plan question about a
    * script must not pay for it.
    */
   sceneKind?: string;
@@ -357,6 +397,13 @@ export function systemPrompt(opts: {
   /** Worker-authored capability note only. Never pass plugin-authored refusal text here. */
   studioCapabilityNote?: string | null;
   /**
+   * The tools this run was offered — after mode, permission and plugin-capability narrowing — at
+   * the moment the prompt is composed. The mode rules name a tool to CALL only when it is in here.
+   * Optional so a caller with no run can still compose a prompt; absent means the mode's own
+   * toolset from router.ts, never the whole registry.
+   */
+  offeredTools?: ReadonlySet<string>;
+  /**
    * The user's own settings, profile and project/team instructions, already layered and already
    * fenced by `preferencesPrompt`. Optional and empty by default: a deployment with no scoped
    * memory spends no tokens saying so.
@@ -369,11 +416,10 @@ export function systemPrompt(opts: {
 }): string {
   const studio = opts.studioConnected
     ? `Roblox Studio is CONNECTED (place: ${opts.placeName ?? 'unsaved place'}). Use tools to act on the real project.`
-    : `Roblox Studio is NOT connected. You can still discuss, plan, write code for the user to paste, and search docs. Building tools are unavailable; tell the user to open the Apple plugin in Studio and connect (Dashboard → project → "Connect Studio").${
-        STUDIO_PLUGIN_STORE_LIVE
-          ? ''
-          : ' Public installation of the plugin is closed right now, so a user who does not already have it cannot get one: never describe a Creator Store, Toolbox or "Get Plugin" install path. Send them to /docs/plugin, which says what is actually available.'
-      }`;
+    : `Roblox Studio is NOT connected. You can still discuss, plan, write code for the user to paste, and search docs. Building tools are unavailable; tell the user to open the Apple plugin in Studio and connect (Dashboard → project → "Connect Studio").${pluginInstallGuidance(
+        STUDIO_PLUGIN_STORE_LIVE,
+        STUDIO_PLUGIN_URL,
+      )}`;
   //[[ MEMORY IS DERIVED FROM UNTRUSTED OUTPUT, so it is capped and fenced like it.
   //
   //   `remember` takes a model-supplied string and this renders it into the SYSTEM prompt,
@@ -390,6 +436,27 @@ export function systemPrompt(opts: {
   //   optionality unrepresentable rather than merely discouraged. ]]
   if (!opts.fenceId) throw new Error('systemPrompt: fenceId is required — an empty fence id is a constant one');
 
+  //[[ AN UNKNOWN MODE MUST NOT DEGRADE INTO A PROMPT WITH NO MODE BLOCK.
+  //
+  //   `MODE_RULES[opts.mode]` is indexed by the mode and the assembled array ends with
+  //   `.filter(Boolean)`, so a retired or misspelled name — `stone`, `clay`, `rune` — did not throw
+  //   and did not warn. It silently dropped the persona, the build procedure and the entire
+  //   verification policy, then shipped a prompt that read as valid. The run still started and
+  //   still spent tokens; it was an Agent-shaped run with none of Agent's rules, and the only way
+  //   to notice was to diff fifteen kilobytes of prompt.
+  //
+  //   `ProductMode` is a COMPILE-TIME type and the wire is `JSON.parse(...) as ClientMsg` — an
+  //   assertion, not a check — so the runtime caller is the only place this can be caught. Every
+  //   production path already refuses an unknown mode before it reaches here (`asProductMode` in
+  //   do/session.ts, then a `bad_mode` error), which is what makes refusing here a backstop rather
+  //   than a new failure mode. Same doctrine as the fence id above: refusing is what makes the
+  //   wrong value unrepresentable instead of merely discouraged. ]]
+  if (!Object.prototype.hasOwnProperty.call(MODE_RULES, opts.mode)) {
+    throw new Error(
+      `systemPrompt: unknown mode "${String(opts.mode)}" — the product has ${Object.keys(MODE_RULES).join(' / ')}`,
+    );
+  }
+
   const facts = opts.memoryFacts.slice(-20).map((f) => f.slice(0, MEMORY_FACT_MAX_CHARS));
   const memory = [
     opts.memorySummary
@@ -402,7 +469,8 @@ export function systemPrompt(opts: {
   return [
     IDENTITY,
     untrustedContentRule(opts.fenceId),
-    MODE_RULES[opts.mode],
+    MODE_RULES[opts.mode](opts.offeredTools ?? defaultOffered(opts.mode, opts.studioConnected)),
+    opts.mode === 'agent' && opts.autonomous ? AUTONOMOUS_RULES : '',
     opts.sceneKind ? BRIEF_START + worldBuildingBrief(opts.sceneKind) + BRIEF_END : '',
     opts.uiBrief ? UI_BRIEF_START + '\n' + opts.uiBrief + UI_BRIEF_END : '',
     `Project: "${opts.projectName}". ${studio}`,

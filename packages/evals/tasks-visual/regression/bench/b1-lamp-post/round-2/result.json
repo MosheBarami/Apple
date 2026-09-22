@@ -1,79 +1,43 @@
 {
  "task": "b1-lamp-post",
  "round": 2,
- "runMs": 220103,
- "metrics": {
-  "parts": 119,
-  "small": 117,
-  "unanchored": 0,
-  "scripts": 0,
-  "materials": [
-   {
-    "material": "Slate",
-    "parts": 5
-   },
-   {
-    "material": "Neon",
-    "parts": 5
-   },
-   {
-    "material": "Metal",
-    "parts": 109
-   }
-  ],
-  "colours": 7,
-  "lights": 2,
-  "heightSpan": 22.4,
-  "brightness": 2.4,
-  "clockTime": 17.4,
-  "effects": [
-   "Sky",
-   "SunRaysEffect",
-   "Atmosphere",
-   "BloomEffect",
-   "DepthOfFieldEffect",
-   "ColorCorrectionEffect"
-  ]
- },
+ "runMs": 129588,
+ "metrics": {},
  "boundsSize": [
-  10.8,
-  22.4,
-  10.8
+  12,
+  1,
+  12
  ],
- "score": 6,
+ "score": 1,
  "passed": false,
  "unavailable": false,
- "summary": "A coherent, correctly-assembled Victorian lamp with a good silhouette (stepped finial, cross-mullioned lantern, brass collar accents, believable dark-iron-plus-brass palette) — clearly above programmer art. But it sits at 'competent', not 'good': the column is a smooth spindly pole with no visible fluting, the base is a flat placeholder-style slab instead of a moulded plinth, and the lantern glaz",
- "hardFails": [],
+ "summary": "The requested object is not in any of the three renders. All views show a flat grey slab on a green baseplate with a bare blue sky — 1 part in frame, 2 off-camera, per the capture stats. I cannot assess the lamp's silhouette, proportion, or ornament because none of it is visible; what IS visible is programmer-art ground. Until the camera actually frames the lamp, this is unscoreable above the slab",
+ "hardFails": [
+  "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+  "over 90% of parts are default Plastic — no material pass was done"
+ ],
  "defects": [
   {
-   "dimension": "proportion",
-   "fix": "Thicken the column from its current ~0.6-stud pole profile to ~1.2 studs at the base tapering to ~0.9 under the collar, and shorten it by ~2-3 studs so the lantern sits closer to the classic 1:1 ratio with the shaft. Right now it reads as a",
-   "observed": "The column is a long thin smooth pole carrying an oversized lantern. In all three views the shaft reads as spindly relative to the lantern head and the wide base plate — real Victorian lamp columns are chunkier, roughly a third of the head",
+   "dimension": "composition",
+   "fix": "Re-aim the diagnostic cameras so the lamp is actually in frame: place the hero camera at roughly (lamp position + Vector3.new(14, 8, 14)) looking at the lantern head, with FOV 50, so the full 12-stud-tall lamp fills 60-70% of frame height. ",
+   "observed": "There is no lamp post visible in ANY of the three renders. In hero, front and side I see only a flat grey slab (the 12x1x12 base) sitting on green ground against a flat blue sky. The stats confirm it: 1 part in frame, 2 off-camera, in every",
    "severity": "major",
-   "view": "hero / front / side"
+   "view": "hero, front, side"
   },
   {
    "dimension": "detail",
-   "fix": "Replace the flat plate with a 3-tier moulded plinth: a 6.5-stud square step ~0.4 studs tall, a 5-stud step ~0.6 studs tall, then a chamfered 3.5-stud cap block ~1.2 studs tall before the column starts. Add a 0.3-stud torus-style ring where列",
-   "observed": "The base is a single wide flat slab — a beveled square plate sitting directly on the ground with a small gold fitting at its centre. It reads as a placeholder pad, not a cast-iron plinth. A Victorian base needs stepped/moulded tiers",
+   "fix": "If the lamp parts exist, verify they are anchored and positioned at the origin (e.g. set PrimaryPart CFrame to CFrame.new(0, 6, 0) for a ~12-stud lamp) before capture; a lamp assembled but left at an offset Y or unanchored and fallen out of",
+   "observed": "Edge density is 0.041-0.042 and interior detail 0.029-0.042 across all views — essentially zero. A fluted column, decorative collar and glazed lantern would produce strong vertical edge rhythm; none is present. The visible object is a plain",
    "severity": "major",
-   "view": "hero / front"
-  },
-  {
-   "dimension": "detail",
-   "fix": "Add 6-8 shallow vertical fluting strips (0.15-stud half-round cylinders) around the lower two-thirds of the shaft, and give the existing collar a second, wider ring 0.5 studs below it so the transition has a moulded profile instead of one",
-   "observed": "The brief asked for a fluted column. At this camera distance the shaft reads as a smooth untextured cylinder — no flutes, no taper steps, no ring detail along its length. The single gold collar band is the only ornament on ~12 studs of",
-   "severity": "major",
-   "view": "front / side"
+   "view": "hero, front, side"
   },
   {
    "dimension": "materials",
-   "fix": "Inset the glass panes 0.2 studs behind the mullion frame and add a 0.15-stud inner sill at the bottom of each face so the glazing has visible depth from oblique angles",
-   "observed": "The lantern glass is a flat glowing plane flush with the mullion frame — there is no visible recess or pane depth, so the housing reads as a decal on a box rather than a glazed lantern",
-   "severity": "minor",
-   "view": "hero"
+   "fix": "Once the lamp is actually captured, assign MeshParts or textured Parts: cast iron as Metal/DiamondPlate-dark with a near-black rgb(25,25,28) tint, glass panes as Glass with rgb(255,235,180) tint, brass collar as SmoothPlastic rgb(180,140,60",
+   "observed": "One material (Plastic), one colour family. The slab is uniform mid-grey with no material variation. Nothing about the visible geometry reads as cast iron, glass, or brass.",
+   "severity": "major",
+   "view": "hero, front, side"
   }
  ],
- "neurons": 75
+ "neurons": 60
 }

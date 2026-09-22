@@ -54,7 +54,7 @@ function fakeEnv(raw) {
 }
 
 const request = {
-  model: 'stone',
+  model: 'agent',
   messages: [{ role: 'user', content: 'Return a complete Luau module.' }],
   maxTokens: 2400,
 };
@@ -86,6 +86,53 @@ test('gateway still reports an ordinary complete response as stop', async () => 
   const response = await G.chat(env, request, { kind: 'apple-max-base-test' });
   assert.equal(response.finishReason, 'stop');
   assert.equal(response.text, 'complete');
+});
+
+// The production failure of 2026-09-22 (runs 0afe6149, 23b20096): the model's create_instances call
+// hit the 6,500-token ceiling mid-JSON. The adapter reported `tool_calls` because a call was present,
+// the partial call ran, and its arguments were echoed back to the provider, which rejected the next
+// request. The provider's own word — finish_reason `length` — is what says the call is incomplete.
+const partialCall = '{"instances":[{"ClassName":"Model","Name":"StreetLamp","Children":[{"ClassName":"Part","Name":"Plin';
+
+test('a truncated response that ends inside a tool call reports length and runs NOTHING', async () => {
+  G.resetModelCache();
+  const { env, seen } = fakeEnv({
+    choices: [{ finish_reason: 'length', message: { content: '', tool_calls: [
+      { id: 'call-1', type: 'function', function: { name: 'create_instances', arguments: partialCall } },
+    ] } }],
+    usage: { prompt_tokens: 21370, completion_tokens: 6500 },
+  });
+  const response = await G.chat(env, request, { kind: 'apple-max-base-test' });
+  assert.equal(seen.settled.length, 1, 'the truncated response still consumed usage and must settle');
+  assert.deepEqual(response.toolCalls, [], 'the first half of a tool call is not a tool call');
+  assert.equal(response.finishReason, 'length', 'nothing complete survived, so the run must see the ceiling');
+});
+
+test('a truncated response keeps the COMPLETE calls it finished before the ceiling', async () => {
+  G.resetModelCache();
+  const { env } = fakeEnv({
+    choices: [{ finish_reason: 'length', message: { content: '', tool_calls: [
+      { id: 'call-1', type: 'function', function: { name: 'get_selection', arguments: '{}' } },
+      { id: 'call-2', type: 'function', function: { name: 'create_instances', arguments: partialCall } },
+    ] } }],
+    usage: { prompt_tokens: 100, completion_tokens: 6500 },
+  });
+  const response = await G.chat(env, request, { kind: 'apple-max-base-test' });
+  assert.deepEqual(response.toolCalls.map((c) => c.id), ['call-1']);
+  assert.equal(response.finishReason, 'tool_calls');
+});
+
+test('control: a NON-truncated malformed call is left for runTool to report, not silently dropped', async () => {
+  G.resetModelCache();
+  const { env } = fakeEnv({
+    choices: [{ finish_reason: 'tool_calls', message: { content: '', tool_calls: [
+      { id: 'call-1', type: 'function', function: { name: 'create_instances', arguments: '{not json' } },
+    ] } }],
+    usage: { prompt_tokens: 100, completion_tokens: 20 },
+  });
+  const response = await G.chat(env, request, { kind: 'apple-max-base-test' });
+  assert.deepEqual(response.toolCalls.map((c) => c.id), ['call-1']);
+  assert.equal(response.finishReason, 'tool_calls');
 });
 
 test.after(() => rmSync(temporary, { recursive: true, force: true }));

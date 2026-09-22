@@ -175,7 +175,7 @@ test('SessionDO refuses MAX for a free plan before quota spend', async () => {
   const h = makeSession({ plan: 'free' });
   const res = await h.session.fetch(new Request('https://do/agent-run', {
     method: 'POST',
-    body: JSON.stringify({ text: 'build a tower', mode: 'stone', productModel: 'apple-max' }),
+    body: JSON.stringify({ text: 'build a tower', mode: 'agent', productModel: 'apple-max' }),
   }));
   const body = await res.json();
   assert.equal(res.status, 403);
@@ -188,7 +188,7 @@ test('SessionDO fails closed when the authoritative quota read itself fails', as
   const h = makeSession({ plan: 'builder', quotaStatus: 503 });
   const res = await h.session.fetch(new Request('https://do/agent-run', {
     method: 'POST',
-    body: JSON.stringify({ text: 'build a tower', mode: 'stone', productModel: 'apple-max' }),
+    body: JSON.stringify({ text: 'build a tower', mode: 'agent', productModel: 'apple-max' }),
   }));
   assert.equal(res.status, 403);
   assert.equal(h.store.has('agent'), false);
@@ -198,7 +198,7 @@ test('SessionDO fails closed when the authoritative quota read itself fails', as
 test('WS edit checks MAX entitlement before irreversible history truncation', async () => {
   const h = makeSession({ plan: 'free' });
   await h.session.webSocketMessage(h.ws, JSON.stringify({
-    type: 'edit_resend', messageId: 'old-message', text: 'build a tower', mode: 'stone', productModel: 'apple-max',
+    type: 'edit_resend', messageId: 'old-message', text: 'build a tower', mode: 'agent', productModel: 'apple-max',
   }));
   assert.deepEqual(h.sent.filter((m) => m.type === 'error').map((m) => m.code), ['product_model_unavailable']);
   assert.equal(h.sent.find((m) => m.type === 'error')?.terminal, true, 'a refusal is terminal for this request');
@@ -206,15 +206,15 @@ test('WS edit checks MAX entitlement before irreversible history truncation', as
   assert.equal(h.calls.some((c) => c.name === 'QUOTA_DO' && c.path === '/spend'), false);
 });
 
-test('free Apple can ride Stone tools while its identity is persisted and returned in history', async () => {
+test('free Apple can use Agent tools while its identity is persisted and returned in history', async () => {
   const h = makeSession({ plan: 'free' });
   await h.session.webSocketMessage(h.ws, JSON.stringify({
-    type: 'chat', text: 'build a small tower', mode: 'stone', productModel: 'apple',
+    type: 'chat', text: 'build a small tower', mode: 'agent', productModel: 'apple',
   }));
   const agent = h.store.get('agent');
   assert.equal(agent.productModel, 'apple');
-  assert.equal(agent.mode, 'stone');
-  assert.equal(agent.maxSteps, undefined, 'free Apple is not artificially stopped after a fixed number of work steps');
+  assert.equal(agent.mode, 'agent');
+  assert.equal(agent.maxSteps, 1000, 'every message uses the current hard work-step ceiling');
   const start = h.sent.find((m) => m.type === 'msg_start');
   assert.equal(start.productModel, 'apple');
   const res = await h.session.fetch(new Request('https://do/messages'));
@@ -226,24 +226,14 @@ test('free Apple can ride Stone tools while its identity is persisted and return
 
 test('the two product tiers intentionally share the measured foundation, independent of autonomy mode', async () => {
   const cases = [
-    // The free lane moved from clay to stone on 2026-09-20. Measured on the deployed gateway, the
-    // same twelve prompts at each lane's own production budget: stone 11/12 for 125 neurons, clay
-    // 1/12 for 718 — ten of clay's twelve returned no code at all, because a reasoning model spends
-    // its output budget thinking. The cheaper-looking lane was five and a half times the spend for
-    // an eleventh of the result. The honest product decision is therefore to share the stronger
-    // foundation. What differentiates the tiers is entitlement, maxSteps/effort and MAX-only
-    // media/3D capability — not an inferior free model hidden behind a different id.
-    { plan: 'free', mode: 'clay', productModel: 'apple', expected: DEFAULT_MODELS.stone.id },
-    { plan: 'free', mode: 'stone', productModel: 'apple', expected: DEFAULT_MODELS.stone.id },
-    { plan: 'builder', mode: 'clay', productModel: 'apple-max', expected: DEFAULT_MODELS.stone.id },
-    { plan: 'builder', mode: 'stone', productModel: 'apple-max', expected: DEFAULT_MODELS.stone.id },
+    { plan: 'free', mode: 'plan', productModel: 'apple', expected: DEFAULT_MODELS.plan.id },
+    { plan: 'free', mode: 'agent', productModel: 'apple', expected: DEFAULT_MODELS.agent.id },
+    { plan: 'builder', mode: 'plan', productModel: 'apple-max', expected: DEFAULT_MODELS.plan.id },
+    { plan: 'builder', mode: 'agent', productModel: 'apple-max', expected: DEFAULT_MODELS.agent.id },
   ];
 
-  // Clay still exists as a genuinely different gateway configuration, so this test would catch a
-  // regression that silently routed one product tier back to Qwen. Its existence is not presented
-  // as a product-tier distinction.
-  assert.notEqual(DEFAULT_MODELS.clay.id, DEFAULT_MODELS.stone.id,
-    'the control gateway must stay different or this routing assertion becomes vacuous');
+  assert.equal(DEFAULT_MODELS.plan.id, DEFAULT_MODELS.agent.id,
+    'Plan and Agent should share the measured product foundation; mode controls behavior and tools');
 
   for (const c of cases) {
     const h = makeSession({
@@ -267,7 +257,7 @@ test('the two product tiers intentionally share the measured foundation, indepen
 });
 
 test('a free account cannot reach the MAX foundation through either Plan or Agent', async () => {
-  for (const mode of ['clay', 'stone']) {
+  for (const mode of ['plan', 'agent']) {
     const h = makeSession({ plan: 'free' });
     const res = await h.session.fetch(new Request('https://do/agent-run', {
       method: 'POST',

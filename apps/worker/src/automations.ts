@@ -79,7 +79,7 @@ export const MISSED_RUN_POLICIES = ['skip', 'catch_up'] as const;
 export type MissedRunPolicy = (typeof MISSED_RUN_POLICIES)[number];
 
 /** Build modes an automation may ask for, as the wire spells them. */
-export const AUTOMATION_MODES = ['clay', 'stone', 'rune'] as const;
+export const AUTOMATION_MODES = ['plan', 'agent', 'agent'] as const;
 export type AutomationMode = (typeof AUTOMATION_MODES)[number];
 
 const inList = <T extends readonly string[]>(list: T, v: unknown): v is T[number] =>
@@ -264,7 +264,7 @@ export function normaliseAutomation(
   const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
   if (prompt.length === 0 || prompt.length > PROMPT_MAX) return { ok: false, reason: 'bad_prompt' };
 
-  const mode = input.mode === undefined ? 'stone' : input.mode;
+  const mode = input.mode === undefined ? 'agent' : input.mode;
   if (!isAutomationMode(mode)) return { ok: false, reason: 'bad_mode' };
 
   const trigger = input.trigger === undefined ? 'manual' : input.trigger;

@@ -26,9 +26,9 @@
 // asked Golem to "check my game runs" could lose a build to it and never be told.
 //
 // THE RULE THIS FILE ENFORCES: a playtest either preserves the project, or restores it and says so.
-// It is built from ops the ALREADY-INSTALLED plugin understands — `run_code`, `snapshot`, `restore`
-// — because the plugin is installed by hand, and a new op would fail everywhere until every user
-// reinstalled it.
+// Current Apple uses the typed `project_census` read op around `run_mode`, plus snapshot/restore for
+// the safety net. The legacy CENSUS_LUAU string remains exported for compatibility tests and older
+// clients, but the current worker no longer needs arbitrary plugin-context code to count the place.
 
 /**
  * Census of what exists, cheap enough to run either side of a playtest. Counts rather than a full

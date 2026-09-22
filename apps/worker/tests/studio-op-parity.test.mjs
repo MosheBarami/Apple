@@ -34,12 +34,28 @@ function wireOps() {
   return new Set([...union.matchAll(/\bop:\s*'([a-z_]+)'/g)].map((m) => m[1]));
 }
 
-/** The functions hung off the `Ops` table in the plugin. */
+/** The operations accounted for by the current Apple plugin command engine. */
 function pluginHandlers() {
-  const src = readFileSync(join(ROOT, 'apps/plugin/src/Ops.luau'), 'utf8');
-  const named = [...src.matchAll(/function\s+\w+\.(\w+)\s*\(/g)].map((m) => m[1]);
-  const assigned = [...src.matchAll(/^\s*\w+\.(\w+)\s*=\s*function/gm)].map((m) => m[1]);
-  return new Set([...named, ...assigned].filter((n) => n !== 'execute'));
+  const src = readFileSync(join(ROOT, 'apps/apple-plugin/src/Commands.luau'), 'utf8');
+  // Declared in place (`local X = {`) or assigned to a local declared earlier (`X = {`, the form
+  // Commands.luau uses inside its handler-region `do` block to stay under Luau's 200-local limit at
+  // Studio's -O0). Either way it must be a LOCAL: an assignment with none in scope is a global.
+  const tableKeys = (name) => {
+    const match = new RegExp(`(local )?(?<![.\\w])${name} = \\{([\\s\\S]*?)\\n\\}`).exec(src);
+    assert.ok(match, `${name} table was not found in Apple Commands.luau`);
+    if (!match[1]) {
+      assert.ok(new RegExp(`^local [^=\\n]*\\b${name}\\b[^=\\n]*$`, 'm').test(src.slice(0, match.index)),
+        `${name} is assigned without a local declared before it — that would be a global`);
+    }
+    return [...match[2].matchAll(/^\s*([a-z_]+)\s*=/gm)].map((entry) => entry[1]);
+  };
+  return new Set([
+    ...tableKeys('HANDLERS'),
+    ...tableKeys('UNSUPPORTED'),
+    ...tableKeys('DEFERRED_MUTATING'),
+    'restore',
+    'undo_waypoint',
+  ]);
 }
 
 test('both sides parsed, so the comparison is not vacuous', () => {

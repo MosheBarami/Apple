@@ -154,7 +154,7 @@ const good = (over = {}) => ({
   name: 'Nightly polish',
   description: 'Tidy the lighting before I get up.',
   prompt: 'Tidy the lighting in the main map.',
-  mode: 'stone',
+  mode: 'agent',
   trigger: 'schedule',
   timezone: 'America/New_York',
   schedule: { every: 'day', hour: 9, minute: 0 },
@@ -317,7 +317,7 @@ test('run now claims the fire, starts the run in the project session, and record
   await settle();
   assert.equal(SESSION.runs.length, 1, 'the automation prompt must reach the same run path a chat frame takes');
   assert.equal(SESSION.runs[0].text, 'Tidy the lighting in the main map.');
-  assert.equal(SESSION.runs[0].mode, 'stone');
+  assert.equal(SESSION.runs[0].mode, 'agent');
 
   const runs = await hit(`https://x/api/automations/${id}/runs`, as(ALICE), env);
   assert.equal(runs.status, 200);

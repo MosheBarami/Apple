@@ -1,15 +1,14 @@
 /**
  * Plan mode's promise, which is enforced in one function and was tested by nothing.
  *
- * The user does not pick clay/stone/rune — they pick Plan, Agent or Super Agent, and
- * Plan maps onto clay. Plan's promise is that it looks and thinks and does NOT touch
+ * The user picks Plan or Agent. Plan's promise is that it looks and thinks and does NOT touch
  * their project: they can point it at work in progress, ask "what would you do here",
  * and get an answer without risking an instance. It is the only mode that offers that,
  * and it is the reason Plan is safe to run on something you care about.
  *
  * router.ts says it plainly: "the system prompt asks the model to behave like a
  * planner, but a prompt is a request; the toolset is what makes it true." So the
- * toolset IS the guarantee — and the guarantee had no test. A tool added to clay's
+ * toolset IS the guarantee — and the guarantee had no test. A tool added to Plan's
  * list turns a mode that CANNOT damage a project into one that promises not to, and
  * nothing anywhere would go red.
  */
@@ -41,14 +40,16 @@ const ALL = (() => {
 
 /** Every tool in the WORKER's table that can change a user's project.
  *
- *  These are worker tool names, which are not the same as the plugin's StudioOp names —
- *  the plugin has `move_instances` and `restore`, the worker does not expose them as
- *  tools. Listing a name that does not exist would make the assertions below pass by
+ *  These are worker tool names, which are not the same as the plugin's StudioOp names.
+ *  Listing a name that does not exist would make the assertions below pass by
  *  checking for nothing, which is why the first test asserts every one of these is
  *  really in the table. */
 const MUTATING = [
-  'edit_script', 'create_instances', 'set_properties', 'delete_instances',
-  'run_luau', 'insert_asset', 'generate_model',
+  'edit_script', 'format_script', 'install_module', 'create_instances', 'set_properties',
+  'edit_terrain', 'delete_instances', 'move_instances', 'transform_instances', 'clone_instances',
+  'group_instances', 'ungroup_instances', 'rename_instance', 'set_locked', 'set_visible',
+  'run_luau', 'insert_asset', 'generate_model', 'set_mood', 'add_effect', 'remove_effect',
+  'design_sound', 'assign_sounds',
 ];
 
 test('every tool this file calls mutating is really in the table', () => {
@@ -61,7 +62,7 @@ test('every tool this file calls mutating is really in the table', () => {
 });
 
 test('PLAN can reach nothing that changes a project', () => {
-  const allowed = toolsForMode('clay', true, ALL);
+  const allowed = toolsForMode('plan', true, ALL);
   const leaked = [...allowed].filter((n) => MUTATING.includes(n));
   assert.deepEqual(leaked, [],
     `Plan mode can reach ${leaked.join(', ')}. Plan's promise to the user is that it `
@@ -71,7 +72,7 @@ test('PLAN can reach nothing that changes a project', () => {
 test('PLAN can still do the thing it exists to do', () => {
   // A read-only mode that cannot read is not safe, it is useless — and a caller who
   // finds Plan unhelpful reaches for Agent on a project they were being careful with.
-  const allowed = toolsForMode('clay', true, ALL);
+  const allowed = toolsForMode('plan', true, ALL);
   for (const needed of [
     'get_project_tree', 'list_scripts', 'read_script', 'search_scripts',
     'search_creation_skills', 'read_creation_skill',
@@ -81,37 +82,32 @@ test('PLAN can still do the thing it exists to do', () => {
 });
 
 test('`remember` is the one write Plan is allowed, and it writes to Golem not the place', () => {
-  const allowed = toolsForMode('clay', true, ALL);
+  const allowed = toolsForMode('plan', true, ALL);
   assert.ok(allowed.has('remember'),
     'Plan cannot record what it learned, so planning twice costs twice');
   assert.ok(!MUTATING.includes('remember'), 'remember must never become a project write');
 });
 
-test('AGENT and SUPER get the full toolset', () => {
-  for (const mode of ['stone', 'rune']) {
-    const allowed = toolsForMode(mode, true, ALL);
-    assert.equal(allowed.size, ALL.length, `${mode} is missing tools`);
-    for (const n of MUTATING) {
-      assert.ok(allowed.has(n), `${mode} cannot ${n}`);
-    }
+test('Agent gets the full connected toolset', () => {
+  const allowed = toolsForMode('agent', true, ALL);
+  assert.equal(allowed.size, ALL.length, 'Agent is missing tools');
+  for (const n of MUTATING) {
+    assert.ok(allowed.has(n), `Agent cannot ${n}`);
   }
 });
 
 test('without Studio, builders retain image generation but Plan stays read-only', () => {
   // Image generation is worker-side and stores a project-scoped preview; it never edits the
-  // Roblox place. It must remain discoverable for Agent/Super Agent while Studio is offline.
+  // Roblox place. It must remain discoverable for Agent while Studio is offline.
   // Explicit capability tripwire: get_genre_references was reviewed as static, bounded retrieval
   // with no project access, network request or mutation (genre-reference-tools.test.mjs).
   // `get_verified_module` and `get_ui_construction` are here for the reason `get_genre_references`
   // is: studio:false, answered from a table compiled into this bundle, no project access, no
-  // network call, no inference. They were reachable ONLY from stone/rune with a live Studio, which
-  // made the two libraries the product says the model "holds in its head" unreachable in Plan mode
-  // and unreachable in every mode while Studio was offline.
+  // network call, no inference.
   const KNOWLEDGE = ['get_verified_module', 'get_ui_construction'];
   const expected = {
-    clay: ['get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
-    stone: ['generate_image', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
-    rune: ['generate_image', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
+    plan: ['get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
+    agent: ['generate_image', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
   };
   for (const [mode, names] of Object.entries(expected)) {
     const allowed = toolsForMode(mode, false, ALL);
@@ -123,13 +119,13 @@ test('without Studio, builders retain image generation but Plan stays read-only'
 test('offline image generation is not a Studio mutation or a model-generation escape hatch', () => {
   assert.ok(ALL.includes('generate_image'), 'generate_image must remain registered');
   assert.ok(ALL.includes('generate_model'), 'generate_model must remain registered');
-  for (const mode of ['stone', 'rune']) {
+  for (const mode of ['agent']) {
     const allowed = toolsForMode(mode, false, ALL);
     assert.equal(allowed.has('generate_image'), true, `${mode} cannot generate an image offline`);
     assert.equal(allowed.has('generate_model'), false, `${mode} can invoke Studio model generation offline`);
     for (const m of MUTATING) assert.equal(allowed.has(m), false, `${mode} leaked ${m} while offline`);
   }
-  for (const mode of ['clay', 'memory', undefined]) {
+  for (const mode of ['plan', 'memory', undefined]) {
     assert.equal(toolsForMode(mode, false, ALL).has('generate_image'), false,
       `${String(mode)} must not gain image generation outside a real builder mode`);
   }
@@ -164,16 +160,16 @@ test('generate_model stays Studio-backed and reports an unavailable GenerationSe
     'a missing beta service must be surfaced as an explicit refusal');
 });
 
-test('disconnected beats mode: even Super Agent cannot mutate', () => {
-  const allowed = toolsForMode('rune', false, ALL);
+test('disconnected Agent cannot mutate Studio', () => {
+  const allowed = toolsForMode('agent', false, ALL);
   const leaked = [...allowed].filter((n) => MUTATING.includes(n));
-  assert.deepEqual(leaked, [], `Super Agent can reach ${leaked.join(', ')} with no Studio`);
+  assert.deepEqual(leaked, [], `Agent can reach ${leaked.join(', ')} with no Studio`);
 });
 
 test('the returned set never invents a tool that is not in the table', () => {
   // Every mode filters ALL rather than listing names, so a typo in a mode's list drops
   // a tool rather than conjuring one. This asserts that property directly.
-  for (const mode of ['clay', 'stone', 'rune']) {
+  for (const mode of ['plan', 'agent']) {
     for (const connected of [true, false]) {
       for (const n of toolsForMode(mode, connected, ALL)) {
         assert.ok(ALL.includes(n), `${mode} offered ${n}, which is not a real tool`);
@@ -183,7 +179,7 @@ test('the returned set never invents a tool that is not in the table', () => {
 });
 
 test('an empty tool table yields empty sets rather than throwing', () => {
-  for (const mode of ['clay', 'stone', 'rune']) {
+  for (const mode of ['plan', 'agent']) {
     assert.equal(toolsForMode(mode, true, []).size, 0);
     assert.equal(toolsForMode(mode, false, []).size, 0);
   }
@@ -194,10 +190,10 @@ test('an empty tool table yields empty sets rather than throwing', () => {
 /**
  * AN UNRECOGNISED MODE MUST NOT RECEIVE MORE THAN PLAN DOES.
  *
- * `toolsForMode` branched `if (mode === 'clay')` and fell through to `new Set(allNames)` for
+ * `toolsForMode` branched `if (mode === 'plan')` and fell through to `new Set(allNames)` for
  * everything else — so a mode nobody defined got the FULL write toolset, including edit_script,
  * delete_instances and run_luau. The same shape as the step-ceiling defect in session.ts: a
- * `Record<GolemMode, T>` world where the union is a compile-time promise and the runtime hands an
+ * `Record<ProductMode, T>` world where the union is a compile-time promise and the runtime hands an
  * unknown key the most permissive answer it has.
  *
  * session.ts now validates `mode` at all three ingresses, so in the assembled product nothing
@@ -218,7 +214,7 @@ for (const mode of UNDEFINED_MODES) {
 }
 
 test('an unrecognised mode gets no more than Plan does', () => {
-  const plan = toolsForMode('clay', true, ALL);
+  const plan = toolsForMode('plan', true, ALL);
   for (const mode of UNDEFINED_MODES) {
     const got = toolsForMode(mode, true, ALL);
     for (const name of got) {
@@ -230,14 +226,12 @@ test('an unrecognised mode gets no more than Plan does', () => {
 
 test('CONTROL: the real modes are unaffected by the unknown-mode rule', () => {
   // A function that returned the read-only set for EVERYTHING would pass every case above while
-  // breaking the product. Stone and Rune must still get the full toolset, and Plan must still get
+  // breaking the product. Agent must still get the full toolset, and Plan must still get
   // the inspection tools it needs to be useful.
-  for (const mode of ['stone', 'rune']) {
-    const got = toolsForMode(mode, true, ALL);
-    assert.equal(got.size, ALL.length, `${mode} must still get every tool`);
-    for (const m of MUTATING) assert.equal(got.has(m), true, `${mode} must still get "${m}"`);
-  }
-  const plan = toolsForMode('clay', true, ALL);
+  const agent = toolsForMode('agent', true, ALL);
+  assert.equal(agent.size, ALL.length, 'Agent must still get every tool');
+  for (const m of MUTATING) assert.equal(agent.has(m), true, `Agent must still get "${m}"`);
+  const plan = toolsForMode('plan', true, ALL);
   assert.equal(plan.has('read_script'), true, 'Plan must still be able to read');
   assert.equal(plan.has('get_project_tree'), true, 'Plan must still be able to look');
 });
@@ -267,7 +261,7 @@ test('the knowledge libraries are really registered tools', () => {
 });
 
 test('PLAN can reach the proven modules and the construction library', () => {
-  const allowed = toolsForMode('clay', true, ALL);
+  const allowed = toolsForMode('plan', true, ALL);
   for (const n of KNOWLEDGE_TOOLS) {
     assert.ok(allowed.has(n),
       `Plan cannot call ${n}, so "what would you do here" is answered from pretraining `
@@ -276,7 +270,7 @@ test('PLAN can reach the proven modules and the construction library', () => {
 });
 
 test('EVERY mode keeps the knowledge libraries while Studio is disconnected', () => {
-  for (const mode of ['clay', 'stone', 'rune']) {
+  for (const mode of ['plan', 'agent']) {
     const allowed = toolsForMode(mode, false, ALL);
     for (const n of KNOWLEDGE_TOOLS) {
       assert.ok(allowed.has(n),
@@ -291,6 +285,6 @@ test('and they are not a way to change a project', () => {
   for (const n of KNOWLEDGE_TOOLS) {
     assert.equal(MUTATING.includes(n), false, `${n} became a mutating tool`);
   }
-  const plan = toolsForMode('clay', true, ALL);
+  const plan = toolsForMode('plan', true, ALL);
   assert.deepEqual([...plan].filter((n) => MUTATING.includes(n)), []);
 });

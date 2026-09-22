@@ -389,6 +389,22 @@ export interface SoundDesignOptions {
   masterTrimDb?: number;
 }
 
+export function validateSoundDesign(environment: string, opts: SoundDesignOptions = {}): SoundDesignRefusal | null {
+  if (!Object.prototype.hasOwnProperty.call(SOUND_ENVIRONMENTS, environment)) {
+    return {
+      refused: true,
+      reason: 'unknown_environment',
+      offending: String(environment).slice(0, 60),
+      message: `"${String(environment).slice(0, 60)}" is not an environment. Choose one of: ${ENVIRONMENT_NAMES.join(', ')}.`,
+    };
+  }
+  const masterTrimDb = typeof opts.masterTrimDb === 'number' && Number.isFinite(opts.masterTrimDb) ? opts.masterTrimDb : 0;
+  if (masterTrimDb > 12 || masterTrimDb < -60) {
+    return { refused: true, reason: 'bad_parameter', message: `a master trim of ${masterTrimDb} dB is outside the usable -60..+12 range` };
+  }
+  return null;
+}
+
 /**
  * Emit the Luau that configures SoundService and the bus mixer.
  *
@@ -402,19 +418,10 @@ export interface SoundDesignOptions {
  * place, to make room for ours is not a trade this pass gets to make on its own.
  */
 export function soundDesignLuau(environment: string, opts: SoundDesignOptions = {}): string | SoundDesignRefusal {
-  if (!Object.prototype.hasOwnProperty.call(SOUND_ENVIRONMENTS, environment)) {
-    return {
-      refused: true,
-      reason: 'unknown_environment',
-      offending: String(environment).slice(0, 60),
-      message: `"${String(environment).slice(0, 60)}" is not an environment. Choose one of: ${ENVIRONMENT_NAMES.join(', ')}.`,
-    };
-  }
+  const refusal = validateSoundDesign(environment, opts);
+  if (refusal) return refusal;
   const env = SOUND_ENVIRONMENTS[environment]!;
   const masterTrimDb = typeof opts.masterTrimDb === 'number' && Number.isFinite(opts.masterTrimDb) ? opts.masterTrimDb : 0;
-  if (masterTrimDb > 12 || masterTrimDb < -60) {
-    return { refused: true, reason: 'bad_parameter', message: `a master trim of ${masterTrimDb} dB is outside the usable -60..+12 range` };
-  }
 
   const lines: string[] = [
     `-- Apple sound design: ${environment}. Configuration only; no asset is referenced.`,
@@ -484,6 +491,47 @@ export interface SoundAssignment {
   /** Studs at which it becomes inaudible. Must be greater than `minDistance`. */
   maxDistance?: number;
   looped?: boolean;
+}
+
+export function validateSoundAssignments(assignments: SoundAssignment[]): SoundDesignRefusal | null {
+  if (!Array.isArray(assignments) || assignments.length === 0) {
+    return { refused: true, reason: 'bad_parameter', message: 'no sounds were given to assign' };
+  }
+  if (assignments.length > 200) {
+    return { refused: true, reason: 'bad_parameter', message: `${assignments.length} assignments is more than one request should carry` };
+  }
+  for (const a of assignments) {
+    const assetRefusal = refuseSoundId(a.path);
+    if (assetRefusal) return assetRefusal;
+    if (!parseInstancePath(String(a.path ?? ''))) {
+      return {
+        refused: true,
+        reason: 'bad_path',
+        offending: String(a.path ?? '').slice(0, 80),
+        message: `"${String(a.path ?? '').slice(0, 80)}" is not an instance path. Use the form other tools return, such as game.Workspace.Forge.Crackle or game.Workspace["Camp Fire"].Crackle.`,
+      };
+    }
+    if (!(BUS_NAMES as readonly string[]).includes(a.bus)) {
+      return { refused: true, reason: 'unknown_bus', offending: String(a.bus), message: `"${String(a.bus)}" is not a bus. Choose one of: ${BUS_NAMES.join(', ')}.` };
+    }
+    const minDistance = a.minDistance ?? 10;
+    const maxDistance = a.maxDistance ?? 120;
+    if (!Number.isFinite(minDistance) || !Number.isFinite(maxDistance) || minDistance < 0 || maxDistance <= minDistance) {
+      return {
+        refused: true,
+        reason: 'bad_parameter',
+        message: `${a.path}: a falloff from ${minDistance} to ${maxDistance} studs is not a range — the maximum must be greater than the minimum, and neither may be negative or NaN`,
+      };
+    }
+    const volumeDb = a.volumeDb ?? 0;
+    if (!Number.isFinite(volumeDb) || volumeDb > 12 || volumeDb < -60) {
+      return { refused: true, reason: 'bad_parameter', message: `${a.path}: a trim of ${volumeDb} dB is outside the usable -60..+12 range` };
+    }
+    if (a.rollOffMode !== undefined && !(ROLLOFF_MODES as readonly string[]).includes(a.rollOffMode)) {
+      return { refused: true, reason: 'bad_parameter', offending: String(a.rollOffMode), message: `"${String(a.rollOffMode)}" is not a RollOffMode. Choose one of: ${ROLLOFF_MODES.join(', ')}.` };
+    }
+  }
+  return null;
 }
 
 /**

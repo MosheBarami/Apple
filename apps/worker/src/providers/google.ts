@@ -262,6 +262,7 @@ export function decodeGemini(raw: unknown, promptChars: number, modelId: string)
     text,
     toolCalls,
     usage,
+    truncated: finish === 'MAX_TOKENS',
     finishReason: toolCalls.length
       ? 'tool_calls'
       : finish === 'MAX_TOKENS'

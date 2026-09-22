@@ -44,6 +44,13 @@ function assertToolPermissionNarrowing(src) {
       .map((m) => m[1]),
   );
   assert.ok(modeBases.size > 0, 'no mode-derived toolset was found');
+  // A binding that only FILTERS a mode-derived set is still inside the mode boundary — a subset
+  // cannot add a tool. Added 2026-09-22 for the read-only run ("do not change anything"), whose base
+  // is the mode's set minus every project writer. Anything else — a union, a fresh Set of names — is
+  // still refused, so the falsification below keeps its teeth.
+  for (const m of src.matchAll(/const\s+([A-Za-z_$][\w$]*)\s*=\s*[\w.$]+\s*\?\s*new Set\(\[\.\.\.([A-Za-z_$][\w$]*)\]\.filter\([^;]*\)\)\s*:\s*([A-Za-z_$][\w$]*);/g)) {
+    if (modeBases.has(m[2]) && m[2] === m[3]) modeBases.add(m[1]);
+  }
 
   const permissionBases = [...src.matchAll(/applyToolPermissions\(\s*([A-Za-z_$][\w$]*)\s*,/g)].map((m) => m[1]);
   assert.ok(permissionBases.length > 0, 'the run loop no longer applies tool permissions at all');

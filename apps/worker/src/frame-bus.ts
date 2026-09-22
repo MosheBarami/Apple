@@ -208,6 +208,8 @@ export function packFrame(rgb: Uint8Array): { base64: string; encoding: FrameEnc
 /** What the plugin hands over, before anything has been checked. */
 export interface RawFrame {
   rgbBase64: string;
+  encoding?: FrameEncoding;
+  source?: StudioFrame['source'];
   width: number;
   height: number;
   view: string;
@@ -243,6 +245,32 @@ export function admitFrame(input: RawFrame, opts: { recompress?: boolean } = {})
   const bytes = decodeBase64(rgbBase64);
   if (!bytes) return { ok: false, reason: 'empty', detail: 'payload is not valid base64' };
 
+  if (input.encoding === 'png') {
+    if (
+      bytes.length < 24 ||
+      bytes[0] !== 0x89 || bytes[1] !== 0x50 || bytes[2] !== 0x4e || bytes[3] !== 0x47 ||
+      bytes[4] !== 0x0d || bytes[5] !== 0x0a || bytes[6] !== 0x1a || bytes[7] !== 0x0a ||
+      bytes[12] !== 0x49 || bytes[13] !== 0x48 || bytes[14] !== 0x44 || bytes[15] !== 0x52
+    ) {
+      return { ok: false, reason: 'payload-mismatch', detail: 'png payload has no valid PNG/IHDR header' };
+    }
+    const pngWidth = ((bytes[16]! << 24) | (bytes[17]! << 16) | (bytes[18]! << 8) | bytes[19]!) >>> 0;
+    const pngHeight = ((bytes[20]! << 24) | (bytes[21]! << 16) | (bytes[22]! << 8) | bytes[23]!) >>> 0;
+    if (pngWidth !== width || pngHeight !== height) {
+      return {
+        ok: false,
+        reason: 'payload-mismatch',
+        detail: `png header is ${pngWidth}x${pngHeight}, frame declares ${width}x${height}`,
+      };
+    }
+    return {
+      ok: true,
+      compressed: true,
+      wireBytes: rgbBase64.length,
+      frame: { ...input, encoding: 'png', source: input.source ?? 'studio_viewport' },
+    };
+  }
+
   // THE CHECK THAT MATTERS MOST. Dimensions and payload arrive as independent
   // claims; only agreement between them makes either trustworthy. The
   // rasteriser's base64 encoder pads to a 3-pixel group boundary, so a payload
@@ -260,7 +288,7 @@ export function admitFrame(input: RawFrame, opts: { recompress?: boolean } = {})
       ok: true,
       compressed: false,
       wireBytes: rgbBase64.length,
-      frame: { ...input, encoding: 'rgb24' },
+      frame: { ...input, encoding: 'rgb24', source: input.source ?? 'software_render' },
     };
   }
 
@@ -270,7 +298,7 @@ export function admitFrame(input: RawFrame, opts: { recompress?: boolean } = {})
     ok: true,
     compressed: encoding === 'rle24',
     wireBytes: base64.length,
-    frame: { ...input, rgbBase64: base64, encoding },
+    frame: { ...input, rgbBase64: base64, encoding, source: input.source ?? 'software_render' },
   };
 }
 

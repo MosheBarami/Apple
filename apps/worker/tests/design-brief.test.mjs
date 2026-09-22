@@ -129,7 +129,7 @@ test('no concrete value from a reference-only rule can reach a prompt', () => {
 // ------------------------------------------------------------------ prompt wiring
 test('systemPrompt includes the UI block only when a brief is supplied', () => {
   const base = {
-    mode: 'stone',
+    mode: 'agent',
     studioConnected: true,
     placeName: 'p',
     projectName: 'proj',

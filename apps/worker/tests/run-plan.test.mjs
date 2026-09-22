@@ -91,6 +91,46 @@ test('a tool that ran BEFORE the plan was announced ticks nothing', async () => 
   assert.deepEqual(settled.steps.map((s) => s.status), ['pending', 'done', 'pending', 'pending']);
 });
 
+test('A REFUSED propose_plan DOES NOT START THE CLOCK — the plan was announced by the one that succeeded', async () => {
+  // propose_plan now refuses once and then repairs, so "refused, looked around, then planned" is a
+  // designed path rather than an accident. Anchoring on the first propose_plan of ANY outcome let
+  // the look-around taken between the refusal and the real plan tick a step it never promised.
+  const plan = planFromDetail('t', await realDetail(STEPS));
+  const settled = settlePlan(plan, trace(['propose_plan', false], ['get_project_tree'], ['propose_plan'], ['create_instances']));
+  assert.deepEqual(settled.steps.map((s) => s.status), ['pending', 'done', 'pending', 'pending'],
+    'a read taken before the accepted plan was counted as carrying it out');
+});
+
+test('AN ok propose_plan THAT DREW NO CHECKLIST DOES NOT START THE CLOCK EITHER', async () => {
+  // propose_plan answers ok without drawing a plan when it can neither refuse again nor repair
+  // (no usable `steps` after a refusal). Measured 2026-09-22: that ok answer became the anchor, and
+  // the read taken before the real plan was ticked as carrying it out. Every entry below is the
+  // REAL tool's output, carried the way SessionDO carries it (tool, ok, detail).
+  const ctx = { studioConnected: () => true, planState: { refusals: 0, kinds: [], announced: false } };
+  const entries = [];
+  const call = async (args) => {
+    const out = await T.runTool(ctx, 'propose_plan', JSON.stringify(args));
+    entries.push({ tool: 'propose_plan', ok: out.ok, detail: out.detail });
+    return out;
+  };
+  assert.equal((await call({})).ok, false, 'control: the first shapeless plan is refused');
+  const skipped = await call({ steps: [] });
+  assert.equal(skipped.ok, true, 'control: the second is answered, not refused — the path under test');
+  assert.equal(planFromDetail('x', skipped.detail), undefined, 'control: and it drew no checklist');
+  entries.push({ tool: 'get_project_tree', ok: true });
+  const drawn = await call({ steps: STEPS });
+  assert.equal(drawn.ok, true, drawn.resultForLlm);
+  entries.push({ tool: 'create_instances', ok: true });
+
+  const plan = planFromDetail('t', drawn.detail);
+  assert.ok(plan, 'the accepted plan was not readable');
+  const settled = settlePlan(plan, entries);
+  assert.equal(settled.steps.find((s) => s.tool === 'get_project_tree').status, 'pending',
+    'a read taken before the checklist existed was counted as carrying it out');
+  assert.equal(settled.steps.find((s) => s.tool === 'create_instances').status, 'done',
+    'control: work done after the checklist was drawn still ticks');
+});
+
 test('two steps with the same tool are ticked in order, one call each', async () => {
   const steps = [
     { title: 'Build the floor', tool: 'create_instances' },

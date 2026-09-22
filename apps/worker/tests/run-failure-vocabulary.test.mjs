@@ -41,7 +41,10 @@ test('the closed vocabulary exists and is shared, not retyped on each side', () 
 
 test('no finishRun error argument is a free variable — the upstream string never crosses the wire', () => {
   const args = errorCallArgs();
-  assert.ok(args.length >= 3, `expected the error call sites to still be here, found ${args.length}`);
+  // Transient provider failures intentionally no longer terminate the run, so the old requirement
+  // for three error exits would re-introduce the behavior autonomy removed. Keep the guard
+  // non-vacuous while asserting the property over every terminal error path that remains.
+  assert.ok(args.length >= 1, `expected at least one terminal error call site, found ${args.length}`);
   for (const a of args) {
     assert.equal(
       /^msg$|^e\.message$|^String\(/.test(a),

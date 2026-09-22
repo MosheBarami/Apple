@@ -39,6 +39,8 @@ export interface Sheddable {
   llm: GatewayMessage[];
   trace: unknown[];
   seenCalls?: string[];
+  /** Holds the same raw call signatures as seenCalls, so it is shed with it. */
+  retryableCalls?: unknown[];
   lastCalls?: unknown[];
   status: 'idle' | 'running' | 'stopping';
   finalText: string;
@@ -77,6 +79,7 @@ export async function persistWithShedding<T extends Sheddable>(
       ...state,
       llm: head,
       seenCalls: [],
+      retryableCalls: [],
       lastCalls: [],
       trace: state.trace.slice(-SHED_TRACE_KEEP),
     };

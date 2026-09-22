@@ -5,6 +5,9 @@
 // into the system prompt for a build request.
 //
 // Source of truth: docs/research/roblox-art-direction.md (verified against live Studio).
+// Every fixed mood/palette below is also tied to >=5 real visual examples in
+// packages/corpus/data/style-visual-evidence.json. Those sources are reference-only evidence,
+// never copied assets or training rows.
 // Token budget is a hard product constraint — worldBuildingBrief() must stay ~1.5k tokens.
 
 export type RGB = readonly [number, number, number];
@@ -284,7 +287,8 @@ DETAIL PASS — the step that separates a scene from a greybox. Never skip it.
   well-placed parts" — that framing is what produces the stacked-cylinder trophy. Real counts:
   simple prop 3-6 · good prop (lamp, bench, sign) 8-20 · hero prop (trophy, statue, fountain)
   25-60 · dressed room 150-400 · dressed plaza 600-1500. A trophy is a plinth, a stem, a bowl,
-  a rim, two handles and a cap. At 40 parts you have a blockout; use run_luau loops to hit count.
+  a rim, two handles and a cap. At 40 parts you have a blockout; reach the count with repeated
+  create_instances batches, then clone_instances and transform_instances for the repetition.
 
 LIGHTING — every scene gets a lighting pass. Apply one named mood: set Lighting.Ambient,
 OutdoorAmbient, Brightness, ClockTime, ColorShift_Top, ColorShift_Bottom, ShadowSoftness and

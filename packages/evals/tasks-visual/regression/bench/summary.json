@@ -1333,5 +1333,101 @@
     "passed": false
    }
   ]
+ },
+ {
+  "results": [
+   {
+    "task": "b1-lamp-post",
+    "difficulty": 1,
+    "rounds": [
+     {
+      "round": 1,
+      "runMs": 214516,
+      "metrics": {},
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 1,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The requested object is not in any of the three renders. All views show a flat grey slab on a green baseplate with a bare blue sky — 1 part in frame, 2 off-camera, per the capture stats. I cannot assess the lamp's silhouette, proportion, or ornament because none of it is visible; what IS visible is programmer-art ground. Until the camera actually frames the lamp, this is unscoreable above the slab",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Re-aim the diagnostic cameras so the lamp is actually in frame: place the hero camera at roughly (lamp position + Vector3.new(14, 8, 14)) looking at the lantern head, with FOV 50, so the full 12-stud-tall lamp fills 60-70% of frame height. ",
+        "observed": "There is no lamp post visible in ANY of the three renders. In hero, front and side I see only a flat grey slab (the 12x1x12 base) sitting on green ground against a flat blue sky. The stats confirm it: 1 part in frame, 2 off-camera, in every",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "If the lamp parts exist, verify they are anchored and positioned at the origin (e.g. set PrimaryPart CFrame to CFrame.new(0, 6, 0) for a ~12-stud lamp) before capture; a lamp assembled but left at an offset Y or unanchored and fallen out of",
+        "observed": "Edge density is 0.041-0.042 and interior detail 0.029-0.042 across all views — essentially zero. A fluted column, decorative collar and glazed lantern would produce strong vertical edge rhythm; none is present. The visible object is a plain",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "materials",
+        "fix": "Once the lamp is actually captured, assign MeshParts or textured Parts: cast iron as Metal/DiamondPlate-dark with a near-black rgb(25,25,28) tint, glass panes as Glass with rgb(255,235,180) tint, brass collar as SmoothPlastic rgb(180,140,60",
+        "observed": "One material (Plastic), one colour family. The slab is uniform mid-grey with no material variation. Nothing about the visible geometry reads as cast iron, glass, or brass.",
+        "severity": "major",
+        "view": "hero, front, side"
+       }
+      ],
+      "neurons": 60
+     },
+     {
+      "round": 2,
+      "runMs": 129588,
+      "metrics": {},
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 1,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The requested object is not in any of the three renders. All views show a flat grey slab on a green baseplate with a bare blue sky — 1 part in frame, 2 off-camera, per the capture stats. I cannot assess the lamp's silhouette, proportion, or ornament because none of it is visible; what IS visible is programmer-art ground. Until the camera actually frames the lamp, this is unscoreable above the slab",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Re-aim the diagnostic cameras so the lamp is actually in frame: place the hero camera at roughly (lamp position + Vector3.new(14, 8, 14)) looking at the lantern head, with FOV 50, so the full 12-stud-tall lamp fills 60-70% of frame height. ",
+        "observed": "There is no lamp post visible in ANY of the three renders. In hero, front and side I see only a flat grey slab (the 12x1x12 base) sitting on green ground against a flat blue sky. The stats confirm it: 1 part in frame, 2 off-camera, in every",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "If the lamp parts exist, verify they are anchored and positioned at the origin (e.g. set PrimaryPart CFrame to CFrame.new(0, 6, 0) for a ~12-stud lamp) before capture; a lamp assembled but left at an offset Y or unanchored and fallen out of",
+        "observed": "Edge density is 0.041-0.042 and interior detail 0.029-0.042 across all views — essentially zero. A fluted column, decorative collar and glazed lantern would produce strong vertical edge rhythm; none is present. The visible object is a plain",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "materials",
+        "fix": "Once the lamp is actually captured, assign MeshParts or textured Parts: cast iron as Metal/DiamondPlate-dark with a near-black rgb(25,25,28) tint, glass panes as Glass with rgb(255,235,180) tint, brass collar as SmoothPlastic rgb(180,140,60",
+        "observed": "One material (Plastic), one colour family. The slab is uniform mid-grey with no material variation. Nothing about the visible geometry reads as cast iron, glass, or brass.",
+        "severity": "major",
+        "view": "hero, front, side"
+       }
+      ],
+      "neurons": 60
+     }
+    ],
+    "best": 1,
+    "passed": false
+   }
+  ]
  }
 ]

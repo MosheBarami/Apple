@@ -164,7 +164,7 @@ test('a row that IS in one of those tables is still this person’s, and still l
   // account-export.ts — so a row left by a previous version of this product is possible. An export
   // that dropped it to make a point about emptiness would lose data to prove honesty.
   rows.set('messages', [{
-    id: 'm1', project_id: 'p1', owner_id: 'alice', role: 'user', mode: 'clay',
+    id: 'm1', project_id: 'p1', owner_id: 'alice', role: 'user', mode: 'plan',
     content: 'a message that really is in Postgres', tool_trace: null, created_at: '2026-01-05T00:00:00Z',
   }]);
   const doc = await exportNow();

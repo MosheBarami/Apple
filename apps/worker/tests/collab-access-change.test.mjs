@@ -156,7 +156,7 @@ function session(sockets, options = {}) {
     },
     async chat(from, text = 'build a house') {
       try {
-        await s.webSocketMessage(from.ws, JSON.stringify({ type: 'chat', text, mode: 'clay' }));
+        await s.webSocketMessage(from.ws, JSON.stringify({ type: 'chat', text, mode: 'plan' }));
       } catch {
         /* downstream stubs */
       }

@@ -96,12 +96,10 @@ test('get_instance reads the ENCODED property table, not a bare one', async () =
   assertNoLeakedWrapper(res, 'get_instance');
 });
 
-test('remove_effect reads an encoded count, so "nothing was there" can actually be reported', async () => {
-  // Number({t:"number",v:0}) is NaN, so a bare read made this branch unreachable: the tool could
-  // only ever claim a removal, including when there had been nothing to remove.
-  const { ctx } = stubCtx({
-    result: tag('table', undefined) && { removed: tag('number', 0), effects: tag('string', ''), from: tag('string', 'game.Workspace.Torch') },
-  });
+test('remove_effect reports nothing when the encoded typed tree contains no Apple effect marker', async () => {
+  const { ctx } = stubCtx((op) => op.op === 'get_tree'
+    ? { root: { path: 'game.Workspace.Torch', children: [] } }
+    : { ok: true });
   const res = await T.TOOLS.remove_effect.run(ctx, { path: 'game.Workspace.Torch' });
   assert.equal(res.error, undefined, JSON.stringify(res));
   assertSummarised(res, 'remove_effect');
@@ -110,16 +108,19 @@ test('remove_effect reads an encoded count, so "nothing was there" can actually 
 });
 
 test('a real removal is still reported as one', async () => {
-  const { ctx } = stubCtx({
-    result: { removed: tag('number', 2), effects: tag('string', 'fire'), from: tag('string', 'game.Workspace.Torch') },
-  });
+  const { ctx } = stubCtx((op) => op.op === 'get_tree'
+    ? { root: { path: 'game.Workspace.Torch', children: [
+      { path: 'game.Workspace.Torch.Fire', class: 'ParticleEmitter', attributes: { AppleEffect: tag('string', 'fire') } },
+      { path: 'game.Workspace.Torch.FireLight', class: 'PointLight', attributes: { AppleEffect: tag('string', 'fire') } },
+    ] } }
+    : { ok: true });
   const res = await T.TOOLS.remove_effect.run(ctx, { path: 'game.Workspace.Torch' });
   assertSummarised(res, 'remove_effect');
   assert.equal(res.removed, 2, 'the count must survive decoding as a number');
   assert.deepEqual(res.effects, ['fire'], 'and the tool must say WHAT it removed');
 });
 
-test('EVERY tool that reads a run_code result survives the encoded shape', async () => {
+test('the remaining deterministic run_code result consumer survives the encoded shape', async () => {
   // The class guard. A tool added later that reads `result` bare fails here without anyone having
   // to remember this file exists.
   const reply = (o) => {
@@ -127,11 +128,7 @@ test('EVERY tool that reads a run_code result survives the encoded shape', async
     // run_code's result is encoded whole: a returned string arrives as {t:"string",v:"..."}.
     return { result: tag('string', '{}'), prints: [] };
   };
-  const cases = [
-    ['audit_build', {}],
-    ['set_mood', { mood: 'overcast' }],
-    ['add_effect', { effect: 'fire', path: 'game.Workspace.Torch' }],
-  ];
+  const cases = [['run_spec', { cases: [{ name: 'one', code: 'return' }] }]];
   let ran = 0;
   for (const [name, args] of cases) {
     const tool = T.TOOLS[name];

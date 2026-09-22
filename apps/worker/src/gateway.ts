@@ -15,6 +15,7 @@
 // same options. Nothing else is credentialed, and the layer reports that honestly.
 import type { Env } from './env';
 import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@golem/shared';
+import { isCompleteToolCall } from './tool-call-integrity';
 import { estimateNeurons, neuronsFor, MAX_NEURONS_PER_REQUEST } from './pricing';
 import { recordEvent } from './analytics';
 import {
@@ -25,6 +26,7 @@ import {
   gatewayOpts,
   modelById,
   neuronsForModelTokens,
+  ProviderError,
   recordProviderCall,
   workersAiAdapter,
 } from './providers';
@@ -77,42 +79,14 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // neuron caps, not by this number, and settlement is on ACTUAL usage, so a short step still
   // costs a short step.
   // -------------------------------------------------------------------------
-  // PRODUCT MODEL ROUTING.
-  //
-  // Apple and Apple MAX currently share the measured `stone` foundation: GLM-5.3 Flash. That is
-  // deliberate, not a missing switch. The previous free Qwen route lost the same twelve executable
-  // prompts 1/12 to 11/12 while costing more, so making the paid badge select a different weight just
-  // to make the ids differ would ship a weaker product. The tiers are distinct by entitlement,
-  // step/effort budget and MAX-only media/3D capabilities. `clay` remains a gateway configuration
-  // for experiments/legacy callers; it is not the current free product foundation.
-  // -------------------------------------------------------------------------
-
-  //[[ CLAY USED TO BE THE FREE PRODUCT LANE. IT IS NOT ANY MORE.
-  //
-  //   `gatewayModelFor` used to send every `productModel: 'apple'` run here, whatever mode it was
-  //   in — while `toolsForMode` handed a free Agent run STONE'S COMPLETE TOOLSET. At
-  //   maxTokens 2000 this ceiling was the binding clamp on that lane: the free user was offered
-  //   run_luau and given a third of the room the paid lane gets to write the call, so the answer
-  //   was guillotined at finish_reason "length", nothing was built, and the Credits were spent
-  //   anyway. That is the same failure the paragraph above records being measured on stone, on the
-  //   lane that has no way to pay its way out of it.
-  //
-  //   6500 matches `rune`, the largest base budget any offered toolset is sized for, so this
-  //   ceiling can no longer be the thing that truncates a tool call. It raises no REQUEST on its
-  //   own: `maxTokens` below is `min(what the caller asked for, this)`, and Plan mode still asks
-  //   for 2,000 (MODE_BASE_TOKENS.clay × high). The bill stays bounded by the neuron reservation
-  //   and BudgetDO, and qwen3's output rate is the cheapest row in pricing.ts — a full 6,500-token
-  //   answer here reserves ~198 neurons against MAX_NEURONS_PER_REQUEST of 1,200. ]]
-  clay: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: true, maxTokens: 6500, ctx: 32_768, temperature: 0.3 },
-
-  // Agent and Super Agent need enough output room for a complete Luau tool call. The global
-  // neuron reservation remains the hard spend gate, so these ceilings do not create an unbounded
-  // bill; actual usage is settled after the provider responds.
+  // PRODUCT RUN ROUTING. Plan and Agent share the measured GLM-5.3 Flash foundation. Product-model
+  // entitlement still controls paid capabilities and reasoning policy; the run mode controls tools.
+  // Both keys exist because callers name the product mode directly.
   //[[ APPLE MAX RUNS ON GLM-5.3 FLASH. Owner decision, 2026-09-19, and the evidence agrees with it.
   //
   //   The lane was on glm-4.7-flash, and a fresh-context reviewer found the problem with that:
   //   `docs/evals/RESULTS.md` has NO glm-4.7 row at all. The only MAX model ever measured on this
-  //   product's eval suite is glm-5.3-flash (`glm-final | stone | 98.9`), and it had been demoted to
+  //   product's eval suite is glm-5.3-flash, and it had been demoted to
   //   the vision lane — so the mode a customer pays for was the unevaluated one.
   //
   //   Read honestly, that is an argument for 5.3 and NOT a claim that 5.3 is 2.1 points better:
@@ -129,17 +103,8 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   //   COST: 5.3 Flash is dearer per token than 4.7 Flash and Cloudflare requires a paid plan or
   //   prepaid AI Gateway credits for it. The daily and monthly neuron caps remain the spend gate;
   //   this raises the price of a MAX step, not the ceiling on the bill. ]]
-  //[[ 5600 -> 6500: THE SAME MODEL WAS GIVEN TWO DIFFERENT CEILINGS.
-  //   `stone` and `rune` below are both @cf/zai-org/glm-5.3-flash. rune is sized at 6500 and stone
-  //   was sized at 5600, and nothing in this file explains the difference. Observed in production
-  //   on 2026-09-20: a 16-step Agent build on stone at high effort died on step 1 with "the model
-  //   reached its output limit", having spent 30 Credits. This is not claimed to be the whole cure
-  //   — it is 900 tokens, about 18% — but a lane serving the identical model with less room than
-  //   its sibling is a difference with no reason behind it. The paragraph above already states the
-  //   principle: these ceilings are not the spend gate, the neuron reservation is, and a 6500-token
-  //   reply reserves roughly 400 neurons against MAX_NEURONS_PER_REQUEST of 1,200. ]]
-  stone: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
-  rune: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
+  plan: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
+  agent: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
 
   memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 800, ctx: 32_768, temperature: 0.2 },
 
@@ -210,14 +175,12 @@ export async function getModels(env: Env): Promise<Record<string, ModelCfg>> {
  * WILL A REASONING EFFORT SENT TO THIS MODEL KEY ACTUALLY REACH THE MODEL?
  *
  * The adaptive policy decides an effort for every step and SessionDO renders it to the user. On the
- * free lane that render was a claim about a request that was never made: `gatewayModelFor` routes
- * `productModel: 'apple'` to `clay`, which is a Qwen3 route, and the Workers AI adapter drops
- * `reasoning_effort` for anything that is not a GLM route because Qwen's binding schema does not
- * document the knob. So the thinking card said the model was thinking hard and it was not.
+ * The adaptive policy decides an effort before the call and this helper verifies that the selected
+ * provider route can actually receive that control.
  *
  * This answers the question the UI needs BEFORE the call, from the same rule the adapter applies
  * inside it, so the two cannot drift. It resolves the model key through `getModels` — a KV override
- * can repoint `clay` at a GLM route, and the answer has to follow the config that is live rather
+ * can repoint a product mode, and the answer has to follow the config that is live rather
  * than the one in DEFAULT_MODELS.
  *
  * A model served by any adapter other than Workers AI answers FALSE. That is deliberate and it is
@@ -493,6 +456,7 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     if (lastErr) {
       await release(env, reserved);
       const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+      const classified = adapter.classifyError(lastErr);
       //[[ `neurons` ON ITS OWN MATCHED ANY MESSAGE CONTAINING THE WORD.
       //   Workers AI writes "neurons" in messages that are not the daily cap, and this branch tells
       //   the customer their allowance is spent and that waiting will not help. A transient
@@ -509,7 +473,18 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
           'Apple is handling a burst of requests right now. Nothing was charged — try that again in a moment.',
         );
       }
-      throw new Error(`inference failed (${cfg.id}): ${msg}`);
+      // Preserve the provider's structured failure kind across the gateway boundary. SessionDO
+      // can safely keep a run asleep through a transport outage without pattern-matching provider
+      // prose, while auth/context/content-filter/unknown failures remain terminal because repeating
+      // them has no evidence of becoming valid.
+      if (lastErr instanceof ProviderError) throw lastErr;
+      throw new ProviderError(
+        classified.kind,
+        adapter.id,
+        `inference failed (${cfg.id}): ${msg}`,
+        undefined,
+        classified.retryable,
+      );
     }
   }
 
@@ -521,6 +496,12 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     toolCalls = parsed.calls;
     text = parsed.cleaned;
   }
+  // A response cut at the output ceiling can end INSIDE a tool call. Such a call is not a request the
+  // model made; it is the first half of one. Drop it here, for every adapter, so it is never executed
+  // and never echoed back to the provider (tool-call-integrity.ts has the production failure). If
+  // nothing complete survives, the response is reported as `length` below, which is the finish the
+  // run loop already recovers from by asking for the same work in smaller calls.
+  if (decoded.truncated) toolCalls = toolCalls.filter(isCompleteToolCall);
   // NOTE: no fence-parsing fallback in native mode — tool results contain untrusted content and
   // parsing quoted fences would turn that content into executed tool calls. But a fence the model
   // emits as prose must not reach the user either: strip it from the visible reply.
@@ -558,7 +539,13 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     // a complete answer to every caller, including the eval harness. A surviving native/prompted
     // tool call takes precedence. A provider `tool_calls` marker with no retained structured call is
     // not compatible with GatewayResponse and keeps the established `stop` fallback.
-    finishReason: toolCalls.length ? 'tool_calls' : decoded.finishReason === 'tool_calls' ? 'stop' : decoded.finishReason,
+    finishReason: toolCalls.length
+      ? 'tool_calls'
+      : decoded.truncated
+        ? 'length'
+        : decoded.finishReason === 'tool_calls'
+          ? 'stop'
+          : decoded.finishReason,
   };
 }
 

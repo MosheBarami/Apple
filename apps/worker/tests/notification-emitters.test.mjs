@@ -57,7 +57,9 @@ test('a finished run still tells the person who started it, and a failed one say
   const body = code(session);
   const emit = /notify\(this\.env, \{\s*kind: failed \? 'run_failed' : 'run_complete',([\s\S]{0,600}?)\}\)/.exec(body);
   assert.ok(emit, 'finishRun no longer emits run_complete / run_failed');
-  assert.match(emit[1], /recipientId: agent\.userId/, 'the run outcome must go to the person who started it');
+  assert.match(emit[1], /recipientId: runRecipientId/, 'the run outcome must use the resolved starter identity');
+  assert.match(body, /const runRecipientId = agent\.initiatedBy \?\? agent\.userId/,
+    'new collaborator-started runs must notify the verified starter; legacy runs may fall back to the owner');
   // The run id as the dedupe subject is what makes two failures of ONE run one line with a count,
   // and two different runs two rows. notification-store.test.mjs:143 pins the store side of that;
   // this pins that the emitter supplies the key which makes it true.

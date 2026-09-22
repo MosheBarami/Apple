@@ -1,12 +1,11 @@
 /**
  * AMBIENT EFFECTS — the Luau has to compile, and it has to reference nothing.
  *
- * `add_effect` generates Luau and sends it to a user's open place through `run_code`. Two things
- * can go wrong there and neither of them raises anything the user would ever see:
+ * `add_effect` now sends typed create/delete operations to Studio. The legacy Luau generator stays
+ * covered here because it remains an exported compatibility helper, while the tool assertions below
+ * prove the shipping path never executes it.
  *
- *   1. The chunk does not parse. `handlers.run_code` errors, the effect never attaches, and the
- *      scene is simply inert — the same "nothing errored, it is just wrong" failure moodLuau's
- *      header describes. So every preset is compiled here with luau-analyze.
+ *   1. The compatibility chunk must still parse, so every preset is compiled with luau-analyze.
  *   2. A preset quietly references an asset. The whole claim of effects.ts is that these cost
  *      nothing and cannot fail a licence or safety gate, which is only true while no preset names
  *      an asset id. That claim is asserted directly rather than trusted.
@@ -18,7 +17,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -51,9 +50,12 @@ function syntaxErrors(source, tag) {
   return output.split('\n').filter((l) => l.includes('SyntaxError'));
 }
 
-function stubCtx(answer = { ok: true, data: { attached: 1 } }) {
+function stubCtx(answer) {
   const ops = [];
-  return { ops, ctx: { env: {}, studioConnected: () => true, execStudioOp: async (o) => { ops.push(o); return answer; }, addMemoryFact: async () => {} } };
+  const reply = answer ?? ((op) => op.op === 'get_tree'
+    ? { ok: true, data: { root: { path: op.root, children: [] } } }
+    : { ok: true, data: { ok: true } });
+  return { ops, ctx: { env: {}, studioConnected: () => true, execStudioOp: async (o) => { ops.push(o); return typeof reply === 'function' ? reply(o) : reply; }, addMemoryFact: async () => {} } };
 }
 
 test('the catalogue is real and not empty', () => {
@@ -62,6 +64,28 @@ test('the catalogue is real and not empty', () => {
     const p = FX.EFFECTS[n];
     assert.ok(p.summary && p.use, `${n} must tell the model when to use it`);
     assert.ok(p.parts.length > 0, `${n} creates nothing`);
+  }
+});
+
+test('every preset is representable by the current typed Apple plugin contract', () => {
+  const commands = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+  const tableKeys = (name) => {
+    const block = new RegExp(`local ${name} = \\{([\\s\\S]*?)\\n\\}`, 'm').exec(commands);
+    assert.ok(block, `${name} missing from current plugin`);
+    return new Set([...block[1].matchAll(/^\s*([A-Za-z0-9_]+)\s*=\s*true/gm)].map((m) => m[1]));
+  };
+  const classes = tableKeys('CREATE_CLASSES');
+  const props = tableKeys('PROPERTY_ALLOW');
+  for (const name of FX.EFFECT_NAMES) {
+    const specs = FX.effectInstanceSpecs(name, 'game.Workspace.Thing');
+    assert.ok(specs?.length, `${name} cannot be encoded as typed instance specs`);
+    for (const spec of specs) {
+      assert.equal(classes.has(spec.className), true, `${name} uses plugin-blocked class ${spec.className}`);
+      for (const prop of Object.keys(spec.props ?? {})) {
+        assert.equal(props.has(prop), true, `${name}.${spec.className} uses plugin-blocked property ${prop}`);
+      }
+      assert.equal(spec.attributes.AppleEffect.v, name);
+    }
   }
 });
 
@@ -168,14 +192,9 @@ test('A BRACKETED NAME — the form every other tool returns — is accepted and
   const { ctx, ops } = stubCtx();
   const res = await T.TOOLS.add_effect.run(ctx, { effect: 'fire', path: 'game.Workspace["Camp Fire"].Logs' });
   assert.equal(res.error, undefined, JSON.stringify(res));
-  assert.equal(ops.length, 1, 'it must reach Studio');
-
-  const code = ops[0].code;
-  assert.match(code, /"Camp Fire"/, 'the bracketed name must survive as a segment');
-  assert.match(code, /"Logs"/, 'and so must the segment after it');
-  assert.doesNotMatch(code, /Workspace\["Camp Fire"\]/,
-    'the bracket form must be SPLIT, not handed to FindFirstChild whole');
-  assert.match(code, /FindFirstChild\(seg\)/, 'and walked segment by segment');
+  assert.deepEqual(ops.map((op) => op.op), ['get_tree', 'create_instances']);
+  assert.equal(ops[0].root, 'game.Workspace["Camp Fire"].Logs', 'the canonical path stays data on the typed op');
+  assert.ok(ops[1].items.every((item) => item.parent === 'game.Workspace["Camp Fire"].Logs'));
 });
 
 test('names with spaces, hyphens and leading digits all work, in both tools', async () => {
@@ -192,7 +211,9 @@ test('names with spaces, hyphens and leading digits all work, in both tools', as
       const args = tool === 'add_effect' ? { effect: 'fire', path } : { path };
       const res = await T.TOOLS[tool].run(ctx, args);
       assert.equal(res.error, undefined, `${tool} refused ${path}: ${JSON.stringify(res)}`);
-      assert.equal(ops.length, 1, `${tool} sent nothing for ${path}`);
+      assert.ok(ops.length >= 1, `${tool} sent nothing for ${path}`);
+      assert.equal(ops[0].op, 'get_tree');
+      assert.equal(ops[0].root, path);
     }
   }
 });
@@ -203,56 +224,30 @@ test('a name containing a quote is reachable when it is bracketed properly', asy
   const { ctx, ops } = stubCtx();
   const res = await T.TOOLS.add_effect.run(ctx, { effect: 'fire', path: 'game.Workspace["Bob\\"s Hut"]' });
   assert.equal(res.error, undefined, JSON.stringify(res));
-  assert.match(ops[0].code, /Bob\\"s Hut/, 'the unescaped name must be what is searched for');
+  assert.equal(ops[0].root, 'game.Workspace["Bob\\"s Hut"]');
 });
 
 test('THE PATH NEVER REACHES CODE POSITION, however it is spelled', async () => {
-  // Accepting the bracketed form means accepting quotes inside a name, so the escaping is now
-  // load-bearing in a way it was not when every quote was refused outright.
-  //
-  // Grepping the emitted source for the payload proves nothing — it is SUPPOSED to appear there,
-  // inside a string literal. The question is whether it ever executes. So this runs the chunk with
-  // a game stub that records what was asked of it, and asserts the payload only ever arrived as a
-  // child name. My first version of this test asserted the text was absent and failed on its own
-  // premise.
   const sneaky = 'game.Workspace["a\\" ]] .. tostring(game:GetService(\'Players\')) .. [[ "].B';
   const { ctx, ops } = stubCtx();
   const res = await T.TOOLS.add_effect.run(ctx, { effect: 'fire', path: sneaky });
   assert.equal(res.error, undefined, 'a legal if absurd name should be accepted');
-  assert.equal(ops.length, 1);
-  const code = ops[0].code;
-  assert.equal(syntaxErrors(code, 'fx-sneaky').length, 0, 'the emitted chunk must still parse');
-
-  const harness = [
-    'local asked = {}',
-    'local services = 0',
-    'local node = {}',
-    'node.FindFirstChild = function(_, name) table.insert(asked, name); return nil end',
-    'game = {',
-    '\tFindFirstChild = node.FindFirstChild,',
-    '\tGetService = function() services = services + 1; return node end,',
-    '}',
-    'Instance = { new = function() error("must not get this far") end }',
-    `local ok, err = pcall(function()\n${code}\nend)`,
-    'print("SERVICES " .. tostring(services))',
-    'print("ASKED " .. tostring(#asked))',
-    'for _, name in ipairs(asked) do print("NAME " .. name) end',
-  ].join('\n');
-  const file = join(TMP, 'fx-sneaky-run.luau');
-  writeFileSync(file, harness);
-  const out = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
-
-  assert.match(out, /SERVICES 0/, 'the payload must never have called GetService');
-  assert.match(out, /ASKED 1/, 'and resolution must stop at the first missing child');
-  assert.match(out, /NAME Workspace/, 'which is the first real segment');
+  assert.equal(ops.some((op) => op.op === 'run_code'), false);
+  assert.equal(ops[0].root, sneaky, 'the path is passed only as a typed path field');
+  assert.ok(ops.filter((op) => op.op === 'create_instances').every((op) => op.items.every((item) => item.parent === sneaky)));
 });
 
-test('a real call sends exactly one run_code op and reports what it attached', async () => {
+test('a real call uses typed create_instances and reports what it attached', async () => {
   const { ctx, ops } = stubCtx();
   const res = await T.TOOLS.add_effect.run(ctx, { effect: 'fire', path: 'game.Workspace.Torch' });
-  assert.equal(ops.length, 1);
-  assert.equal(ops[0].op, 'run_code');
-  assert.match(ops[0].code, /ParticleEmitter/);
+  assert.deepEqual(ops.map((op) => op.op), ['get_tree', 'create_instances']);
+  const items = ops[1].items;
+  assert.deepEqual(items.map((item) => item.className), ['ParticleEmitter', 'PointLight']);
+  const emitter = items.find((item) => item.className === 'ParticleEmitter');
+  assert.equal(emitter.props.Size.t, 'NumberSequence');
+  assert.equal(emitter.props.Color.t, 'ColorSequence');
+  assert.equal(emitter.attributes.AppleEffect.v, 'fire');
+  assert.equal(ops.some((op) => op.op === 'run_code'), false);
   assert.equal(res.attached, 'fire');
   assert.deepEqual(res.parts, ['ParticleEmitter', 'PointLight']);
 });
@@ -326,15 +321,17 @@ test('an unknown effect and a hostile path are refused with nothing sent', async
   }
 });
 
-test('a real removal sends one run_code op', async () => {
-  // Paths.encode wraps every field, so this is what the plugin actually sends back.
-  const { ctx, ops } = stubCtx({ ok: true, data: { result: {
-    removed: { t: 'number', v: 2 }, effects: { t: 'string', v: 'fire' }, from: { t: 'string', v: 'game.Workspace.Torch' },
-  } } });
-  await T.TOOLS.remove_effect.run(ctx, { path: 'game.Workspace.Torch', effect: 'fire' });
-  assert.equal(ops.length, 1);
-  assert.equal(ops[0].op, 'run_code');
-  assert.match(ops[0].code, /AppleEffect/);
+test('a real removal deletes only typed-tree children marked with AppleEffect', async () => {
+  const { ctx, ops } = stubCtx((op) => op.op === 'get_tree' ? { ok: true, data: { root: { path: op.root, children: [
+    { path: 'game.Workspace.Torch.Fire', class: 'ParticleEmitter', attributes: { AppleEffect: { t: 'string', v: 'fire' } } },
+    { path: 'game.Workspace.Torch.FireLight', class: 'PointLight', attributes: { AppleEffect: { t: 'string', v: 'fire' } } },
+    { path: 'game.Workspace.Torch.UserSmoke', class: 'ParticleEmitter', attributes: {} },
+  ] } } } : { ok: true, data: { ok: true } });
+  const res = await T.TOOLS.remove_effect.run(ctx, { path: 'game.Workspace.Torch', effect: 'fire' });
+  assert.deepEqual(ops.map((op) => op.op), ['get_tree', 'delete_instances']);
+  assert.deepEqual(ops[1].paths.sort(), ['game.Workspace.Torch.Fire', 'game.Workspace.Torch.FireLight']);
+  assert.equal(res.removed, 2);
+  assert.equal(ops.some((op) => op.op === 'run_code'), false);
 });
 
 test('NOTHING THERE is reported as nothing there, not as a removal', async () => {
@@ -345,9 +342,7 @@ test('NOTHING THERE is reported as nothing there, not as a removal', async () =>
   // `removed: {t:"number",v:0}`, and `Number({t,v})` is NaN, so `Number.isFinite(removed)` was
   // false and this branch never ran in production. The stub agreed with the code and both
   // disagreed with the plugin.
-  const { ctx } = stubCtx({ ok: true, data: { result: {
-    removed: { t: 'number', v: 0 }, effects: { t: 'string', v: '' }, from: { t: 'string', v: 'game.Workspace.Torch' },
-  } } });
+  const { ctx } = stubCtx();
   const res = await T.TOOLS.remove_effect.run(ctx, { path: 'game.Workspace.Torch', effect: 'fire' });
   assert.equal(res.removed, 0);
   assert.match(res.note, /no fire on/);

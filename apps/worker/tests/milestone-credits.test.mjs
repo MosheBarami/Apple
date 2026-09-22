@@ -7,7 +7,7 @@
  * sitting in front of the user, unperformed.
  *
  * The derivation is `runs × MODE_INFO[mode].typicalCredits`, and the multiplication is the point:
- * with `runs` varying between 1 and 2 across the catalogue, a two-run Super Agent milestone is
+ * with `runs` varying between 1 and 2 across the catalogue, a two-run Agent milestone is
  * 20-60 Credits where the mode's own line says 10-30. Reprinting the mode range on the card would
  * have understated half the catalogue by exactly a factor of two.
  *
@@ -79,22 +79,20 @@ test('CONTROL: the chain is live and the catalogue really does vary `runs`', () 
 test('a mode with a single published figure yields a range of one number', () => {
   // Plan is published as "2", not "2-2". Fabricating a spread would be as dishonest as
   // collapsing one.
-  assert.deepEqual(S.creditRangeForRuns('clay', 1), { low: 2, high: 2 });
+  assert.deepEqual(S.creditRangeForRuns('plan', 1), { low: 2, high: 2 });
 });
 
 test('a mode with a published spread keeps both ends', () => {
-  assert.deepEqual(S.creditRangeForRuns('stone', 1), { low: 4, high: 18 });
-  assert.deepEqual(S.creditRangeForRuns('rune', 1), { low: 10, high: 30 });
+  assert.deepEqual(S.creditRangeForRuns('agent', 1), { low: 4, high: 18 });
 });
 
 test('TWO RUNS COST TWICE, which is the entire reason this is computed', () => {
-  assert.deepEqual(S.creditRangeForRuns('rune', 2), { low: 20, high: 60 });
-  assert.deepEqual(S.creditRangeForRuns('stone', 2), { low: 8, high: 36 });
+  assert.deepEqual(S.creditRangeForRuns('agent', 2), { low: 8, high: 36 });
 });
 
 test('a nonsense run count produces no figure rather than a wrong one', () => {
   for (const bad of [0, -1, 1.5, NaN, Infinity]) {
-    assert.equal(S.creditRangeForRuns('stone', bad), null, `${bad} produced a credit figure`);
+    assert.equal(S.creditRangeForRuns('agent', bad), null, `${bad} produced a credit figure`);
   }
 });
 

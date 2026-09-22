@@ -1,30 +1,17 @@
 /**
  * The mode a client sends, at the boundary where it becomes a table key.
  *
- * `GolemMode` is `'clay' | 'stone' | 'rune'` — a COMPILE-TIME type. session.ts does
+ * The run mode is a compile-time union, while the socket payload is untrusted JSON. session.ts does
  * `JSON.parse(raw) as ClientMsg`, which is an assertion and not a check, so whatever the client put
- * in `mode` was used as a key directly. Two `Record<GolemMode, T>` tables have three keys
- * (STEP_LIMITS, MODE_BASE_TOKENS) while gateway.ts's DEFAULT_MODELS has five, and gateway's
- * `if (!cfg) throw` was the only thing anywhere that rejected a bad mode.
+ * in `mode` must be validated before it becomes a routing key.
  *
  * MEASURED by driving webSocketMessage before the fix — an ordinary authenticated project owner
  * sending {"type":"chat","text":"...","mode":"memory"}:
  *
- *   mode=stone      maxSteps=16         the ceiling stops the loop
- *   mode=memory     maxSteps=undefined  `9999 > undefined` is false — NO CEILING, EVER
- *   mode=vision     maxSteps=undefined  same
- *   mode=nonsense   maxSteps=undefined  same
- *   mode=__proto__  maxSteps={}         Object.prototype, and `9999 > {}` is false too
+ * An agent run used to be created for arbitrary strings. `memory` and `vision` are sharp cases
+ * because they are real provider-model keys, so the gateway cannot be the run-mode validator.
  *
- * An agent run was created every time. `memory` and `vision` are the sharp cases because they ARE
- * real DEFAULT_MODELS keys, so the gateway guard does not fire for them either and the token
- * arithmetic goes NaN through a chain of `>` comparisons that all fail open. But the step ceiling
- * is set in session.ts BEFORE the gateway is consulted, so any unrecognised mode removes it — and
- * an unbounded agent loop is a larger exposure than any single under-reserved call.
- *
- * Found by rbxai-a3's reachability trace; the facts were re-verified here against the source and
- * then executed rather than taken on report. The control fixture uses an explicitly paid plan
- * because legacy stone/rune requests are now the MAX-equivalent lane and are entitlement-gated.
+ * The control fixture executes the real boundary so a dead harness cannot pass as a guard.
  *
  * Run with:  node --test           (from apps/worker)
  */
@@ -86,9 +73,6 @@ function session() {
   const doStub = (body) => ({ idFromName: () => 'id', get: () => ({ fetch: async () => Response.json(body) }) });
   const env = {
     AI: { run: async () => ({ response: 'ok' }) },
-    // Stone and rune are the legacy MAX-equivalent modes. This control account is explicitly
-    // paid so the test continues exercising their mode allowlist and step ceilings; free-account
-    // denial is covered by the product-model entitlement tests.
     QUOTA_DO: doStub({ ok: true, allowed: true, remaining: 100, credits: 100, plan: 'builder' }),
     BUDGET_DO: doStub({ ok: true, reserved: 10, state: { killed: false } }),
     ADMIN_DO: doStub({ ok: true }),
@@ -96,8 +80,8 @@ function session() {
   const s = new SessionDO(ctx, env);
   return {
     store, sent,
-    async chat(mode, text = 'build a house') {
-      try { await s.webSocketMessage(ws, JSON.stringify({ type: 'chat', text, mode })); } catch { /* downstream stubs */ }
+    async chat(mode, text = 'build a house', autonomous = false) {
+      try { await s.webSocketMessage(ws, JSON.stringify({ type: 'chat', text, mode, autonomous })); } catch { /* downstream stubs */ }
       return {
         agent: store.get('agent'),
         errors: sent.filter((m) => m.type === 'error').map((m) => m.code),
@@ -107,7 +91,7 @@ function session() {
   };
 }
 
-const VALID = ['clay', 'stone', 'rune'];
+const VALID = ['plan', 'agent'];
 
 /** Anything a client can put in a JSON string field that is not a mode. */
 const HOSTILE = [
@@ -119,16 +103,23 @@ const HOSTILE = [
   ['the empty string', ''],
   ['a number', 7],
   ['null', null],
-  ['an object', { toString: () => 'stone' }],
+  ['an object', { toString: () => 'agent' }],
 ];
 
-test('CONTROL: every valid mode starts an autonomous run with no step ceiling', async () => {
+test('CONTROL: every valid mode starts a run with the 1000-step ceiling', async () => {
   for (const mode of VALID) {
     const { agent, errors } = await session().chat(mode);
     assert.ok(agent, `mode "${mode}" must start a run`);
     assert.deepEqual(errors, [], `mode "${mode}" must not be refused`);
-    assert.equal(agent.maxSteps, undefined, `mode "${mode}" must not receive a customer-visible step ceiling`);
+    assert.equal(agent.maxSteps, 1000, `mode "${mode}" must receive the message ceiling`);
   }
+});
+
+test('Autonomous is a per-message Agent flag, never a third mode', async () => {
+  const on = await session().chat('agent', 'build a house', true);
+  assert.equal(on.agent?.autonomous, true);
+  const plan = await session().chat('plan', 'inspect this project', true);
+  assert.notEqual(plan.agent?.autonomous, true, 'Plan must ignore the Agent-only autonomy switch');
 });
 
 for (const [label, mode] of HOSTILE) {
@@ -140,7 +131,29 @@ for (const [label, mode] of HOSTILE) {
   });
 }
 
-test('UNBOUNDED RUNS DO NOT MEAN UNBOUNDED MODE INGRESS', async () => {
+test('THE REFUSAL TELLS THE PERSON WHAT TO DO, because the common cause is a stale tab', async () => {
+  //[[ ADDED 2026-09-22, ON THE DAY THE RUN MODES WERE RENAMED.
+  //
+  //   The wire carried `clay`/`stone`/`rune` and carries `plan`/`agent` now. A browser tab keeps the
+  //   bundle it loaded until it reloads, and a web SPA cannot be updated atomically — so during any
+  //   such rename there is a window where a live tab asks for a mode the server has never heard of,
+  //   and the person is told "Unknown mode for this request". That is true and useless: they did
+  //   nothing wrong and have no way to learn that a reload fixes it.
+  //
+  //   The property is that the refusal is ACTIONABLE. It is asserted rather than left to prose
+  //   because it is the kind of sentence a refactor tidies into a shorter, deader one, and nothing
+  //   else in this file would notice. The code and the terminal flag are asserted above and are
+  //   unchanged: this adds a requirement, it does not relax one.
+  const { refusalFrames } = await session().chat('stone');
+  const message = refusalFrames.at(-1)?.message ?? '';
+  assert.match(message, /reload the page/i, `a refused mode must tell the user how to recover, got: ${message}`);
+  // And it must stay free of internals: no mode name the product retired, no provider key.
+  for (const leak of ['clay', 'stone', 'rune', 'memory', 'vision']) {
+    assert.equal(message.includes(leak), false, `the refusal leaks the internal name "${leak}"`);
+  }
+});
+
+test('the 1000-step ceiling does not widen mode ingress', async () => {
   for (const [, mode] of [...HOSTILE, ...VALID.map((m) => [m, m])]) {
     const { agent } = await session().chat(mode);
     if (VALID.includes(mode)) assert.ok(agent, `valid mode ${mode} was refused`);
@@ -152,8 +165,8 @@ test('a refused mode does not consume the run slot', async () => {
   // A refusal that left the session marked busy would be a denial of service dressed as a guard.
   const s = session();
   await s.chat('memory');
-  const { agent, errors } = await s.chat('stone');
+  const { agent, errors } = await s.chat('agent');
   assert.ok(agent, 'a valid mode must still start after a refused one');
   assert.ok(errors.includes('bad_mode'), 'the earlier refusal is still reported');
-  assert.equal(agent.maxSteps, undefined);
+  assert.equal(agent.maxSteps, 1000);
 });

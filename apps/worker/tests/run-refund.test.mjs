@@ -46,7 +46,7 @@ const { refundVerdict, refundSentence, runDeliveredSomething } = await import(pa
 /** A builder run that burned two Credits and has nothing to show for it. */
 const barren = (over = {}) => ({
   reason: 'error',
-  mode: 'stone',
+  mode: 'agent',
   opsApplied: 0,
   mutated: false,
   artifactRequested: false,
@@ -95,13 +95,13 @@ test('WORK THE USER CAN KEEP IS CHARGED FOR, whatever went wrong afterwards', ()
 });
 
 test('prose is the deliverable in a conversational mode and is NOT one in a builder mode', () => {
-  assert.equal(refundVerdict(barren({ mode: 'clay', textDelivered: true })).why, 'delivered');
+  assert.equal(refundVerdict(barren({ mode: 'plan', textDelivered: true })).why, 'delivered');
   assert.equal(
-    refundVerdict(barren({ mode: 'stone', textDelivered: true })).refund,
+    refundVerdict(barren({ mode: 'agent', textDelivered: true })).refund,
     true,
     'do/session.ts: "a build request that ends with prose and no change has failed, whatever the prose says"',
   );
-  assert.equal(refundVerdict(barren({ mode: 'clay', textDelivered: false })).refund, true);
+  assert.equal(refundVerdict(barren({ mode: 'plan', textDelivered: false })).refund, true);
 });
 
 test('pressing stop is not a refund, and neither is a run nobody was charged for', () => {
@@ -456,7 +456,7 @@ function makeSession({ responses = [], book = ledger() } = {}) {
   return { session: new SessionDO(ctx, env), store, sql, sent, book, ws };
 }
 
-const start = async (h, text = 'build a small tower', mode = 'stone') => {
+const start = async (h, text = 'build a small tower', mode = 'agent') => {
   const res = await h.session.fetch(new Request('https://do/agent-run', { method: 'POST', body: JSON.stringify({ text, mode, productModel: 'apple' }) }));
   assert.equal(res.status, 200, await res.text());
   return h.store.get('agent');
@@ -516,7 +516,7 @@ test('THE CONTROL: a terminal failure after a real mutation keeps its Credits', 
 test('THE OTHER CONTROL: an ordinary successful run is untouched by any of this', async () => {
   const book = ledger(100);
   const h = makeSession({ book, responses: [gatewayResponse({ finishReason: 'stop', text: 'Complete answer.', neurons: 30 })] });
-  await start(h, 'explain what this project does', 'clay');
+  await start(h, 'explain what this project does', 'plan');
   await h.session.alarm();
 
   assert.equal(lastEnd(h).stopReason, 'done');

@@ -114,13 +114,63 @@ export function normaliseProps(props: unknown): PropNormalisation {
  * `path` is how a refusal says WHICH one — "items[2].children[0].props.Size" rather than "Size",
  * because an item list of twenty has twenty Sizes in it.
  */
+/**
+ * Keys a model writes in Roblox's own spelling for the wire's field. Each is UNAMBIGUOUS — `ClassName`
+ * can only mean `className` — so it is renamed, not refused. Measured 2026-09-22 (vis-01 street lamp,
+ * run after D-RUN-1): the plugin refused two create_instances calls in a row, "className must be a
+ * string" and then "path must be a string", because the item schema was an untyped object and the
+ * model wrote Roblox's property names. The schema now names the fields; this catches the rest.
+ */
+const ITEM_KEY_ALIASES: Record<string, string> = {
+  ClassName: 'className', Class: 'className', class: 'className', classname: 'className',
+  Name: 'name', Parent: 'parent',
+  Props: 'props', Properties: 'props', properties: 'props',
+  Attributes: 'attributes', Children: 'children',
+};
+
+/**
+ * A parent given as a tagged Instance or a `{path}` object means its path; anything else is left for the plugin to refuse.
+ *
+ * The plugin resolves only paths rooted at `game` ('path must start with "game"'). Measured 2026-09-22
+ * (coin game, run 76b59615): the first create_instances was refused for exactly that, because this
+ * file's own default was the bare 'Workspace' and the model wrote 'Workspace' too. A path whose first
+ * segment is not `game` can only mean a child of `game`, so it is rooted there; `workspace` is the
+ * Luau global for the Workspace service.
+ */
+function parentPath(value: unknown): unknown {
+  let path: unknown = value;
+  if (value && typeof value === 'object') {
+    const v = value as { t?: unknown; v?: unknown; path?: unknown };
+    if (v.t === 'Instance' && typeof v.v === 'string') path = v.v;
+    else if (typeof v.path === 'string') path = v.path;
+  }
+  if (typeof path !== 'string' || path.length === 0) return path;
+  if (path === 'game' || path.startsWith('game.') || path.startsWith('game[')) return path;
+  return `game.${path.replace(/^workspace(?=$|[.[])/, 'Workspace')}`;
+}
+
 export function normaliseItems(items: unknown, path = 'items'): PropNormalisation {
   const out: PropNormalisation = { props: {}, normalised: [], refusals: [] };
   if (!Array.isArray(items)) return out;
+  const topLevel = path === 'items';
   const cleaned = items.map((raw, index) => {
     if (typeof raw !== 'object' || raw === null) return raw;
     const item = { ...(raw as Record<string, unknown>) };
     const where = `${path}[${index}]`;
+    for (const [alias, key] of Object.entries(ITEM_KEY_ALIASES)) {
+      if (alias in item && !(key in item)) {
+        item[key] = item[alias];
+        delete item[alias];
+      }
+    }
+    if (typeof item.className !== 'string' || item.className.length === 0) {
+      out.refusals.push({ name: `${where}.className`, message: `${where} has no className — say which Roblox class to create, e.g. "Part", "Model" or "PointLight".` });
+    }
+    if (topLevel) {
+      // The one default the wire takes without asking: an item with no parent is built in Workspace,
+      // which is where a creator looks for what was just built. Children never carry a parent.
+      item.parent = item.parent === undefined ? 'game.Workspace' : parentPath(item.parent);
+    }
     if (item.props !== undefined) {
       const pass = normaliseProps(item.props);
       item.props = pass.props;

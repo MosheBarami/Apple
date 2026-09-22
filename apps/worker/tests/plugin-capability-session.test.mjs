@@ -72,6 +72,7 @@ test('real SessionDO persists capabilities per pairing, survives offline restart
   assert.equal(filter.allowed.has('run_luau'), false);
   assert.equal(filter.allowed.has('get_project_tree'), true);
   assert.equal(first.store.get(`pluginCapabilities:${hash1}`).schema, 'golem.studio-ops.v1');
+  assert.deepEqual(first.store.get(`pluginCapabilitiesClient:${hash1}`), { version: '1.0.0', protocol: 1 });
 
   // Bridge omits the report after its first acknowledged poll. Omission must preserve the current
   // pairing's validated report instead of silently reverting to legacy behavior.
@@ -87,11 +88,30 @@ test('real SessionDO persists capabilities per pairing, survives offline restart
   assert.equal(await restarted.session.pluginConnected(), false);
   assert.equal(effective(restarted).allowed.has('run_luau'), false, 'same pairing keeps its report across restart/offline');
 
+  // The token/pairing can stay the same while a newer plugin build begins polling. Until that build
+  // supplies its own report, carrying the old build's refusal forward would be a stale feature gate.
+  await restarted.session.handlePluginPoll(
+    { state },
+    { version: '1.1.0', protocol: 1 },
+    hash1,
+  );
+  assert.equal(effective(restarted).allowed.has('run_luau'), true, 'changed plugin identity falls back to compatibility, not stale refusal');
+  assert.equal(restarted.store.has(`pluginCapabilities:${hash1}`), false);
+  assert.equal(restarted.store.has(`pluginCapabilitiesClient:${hash1}`), false);
+  await restarted.session.handlePluginPoll(
+    { state, capabilities: capabilityReport('fresh build refusal') },
+    { version: '1.1.0', protocol: 1 },
+    hash1,
+  );
+  assert.equal(effective(restarted).allowed.has('run_luau'), false, 'fresh report from the changed build becomes authoritative');
+  assert.deepEqual(restarted.store.get(`pluginCapabilitiesClient:${hash1}`), { version: '1.1.0', protocol: 1 });
+
   const token2 = 'pairing-two-secret';
   const hash2 = await register(restarted, token2);
   assert.notEqual(hash1, hash2);
   assert.equal(effective(restarted).allowed.has('run_luau'), true, 'new pairing starts unknown/legacy until it reports');
   assert.equal(restarted.store.has(`pluginCapabilities:${hash1}`), false, 'new pairing clears the previous durable report');
+  assert.equal(restarted.store.has(`pluginCapabilitiesClient:${hash1}`), false);
 
   // A poll that authenticated the old token before the replacement can finish late. The explicit
   // pairing hash fence must make that report a no-op for the new pairing.
@@ -102,6 +122,7 @@ test('real SessionDO persists capabilities per pairing, survives offline restart
   );
   assert.equal(effective(restarted).allowed.has('run_luau'), true);
   assert.equal(restarted.store.has(`pluginCapabilities:${hash1}`), false, 'late old poll cannot recreate an active capability record');
+  assert.equal(restarted.store.has(`pluginCapabilitiesClient:${hash1}`), false);
 
   await poll(restarted, token2, { capabilities: capabilityReport('new pairing refusal') });
   assert.equal(effective(restarted).allowed.has('run_luau'), false);
@@ -114,6 +135,7 @@ test('real SessionDO persists capabilities per pairing, survives offline restart
   });
   assert.equal(effective(restarted).allowed.has('run_luau'), true);
   assert.equal(restarted.store.has(`pluginCapabilities:${hash2}`), false);
+  assert.equal(restarted.store.has(`pluginCapabilitiesClient:${hash2}`), false);
 
   // Unpairing removes current capability state as part of revoking the token.
   await poll(restarted, token2, { capabilities: capabilityReport('before revoke') });
@@ -121,6 +143,24 @@ test('real SessionDO persists capabilities per pairing, survives offline restart
   assert.equal(revoked.status, 200);
   assert.equal(effective(restarted).allowed.has('run_luau'), true);
   assert.equal(restarted.store.has(`pluginCapabilities:${hash2}`), false);
+  assert.equal(restarted.store.has(`pluginCapabilitiesClient:${hash2}`), false);
+});
+
+test('pre-client-binding persisted reports are discarded instead of becoming stale feature gates', async () => {
+  const token = 'legacy-persisted-capability-secret';
+  const tokenHash = hash(token);
+  const h = sessionHarness({
+    store: [
+      ['pluginTokenHash', tokenHash],
+      ['pluginTokenIssuedAt', Date.now()],
+      ['pluginClient', { version: '1.1.0', protocol: 1, firstSeenAt: Date.now(), lastSeenAt: Date.now() }],
+      ['pluginCapabilities:' + tokenHash, capabilityReport('old unbound refusal')],
+    ],
+  });
+  await settleBoot();
+  assert.equal(effective(h).allowed.has('run_luau'), true, 'an unbound old report cannot hide tools from the current plugin build');
+  assert.equal(h.store.has(`pluginCapabilities:${tokenHash}`), false);
+  assert.equal(h.store.has(`pluginCapabilitiesClient:${tokenHash}`), false);
 });
 
 test('real SessionDO never executes a model-returned run_luau that the connected plugin explicitly withholds', async () => {
@@ -160,7 +200,7 @@ test('real SessionDO never executes a model-returned run_luau that the connected
   const now = Date.now();
   const agent = {
     status: 'running',
-    mode: 'stone',
+    mode: 'agent',
     productModel: 'apple-max',
     msgId: 'cap-run-1',
     fenceId: 'capability-fence-123',
@@ -184,6 +224,8 @@ test('real SessionDO never executes a model-returned run_luau that the connected
 
   assert.equal(modelCalls, 1, 'the test reached a real model step with a local AI stub');
   assert.equal(offered.includes('run_luau'), false, 'run_luau is absent from the actual model tool definitions');
+  assert.equal(offered.includes('run_and_check'), true, 'typed playtest verification must stay offered when only run_code is withheld');
+  assert.equal(offered.includes('inspect_model'), true, 'typed structural model inspection must stay offered when only run_code is withheld');
   assert.equal(studioCalls, 0, 'stale/model-forced forbidden call never reaches Studio');
   assert.equal(h.session.opQueue.length, 0);
   const refusal = agent.trace.find((entry) => entry.tool === 'run_luau');
@@ -229,7 +271,7 @@ test('visual auto-inspection stays off when render_view is explicitly unsupporte
 
   const now = Date.now();
   const agent = {
-    status: 'running', mode: 'stone', productModel: 'apple-max', msgId: 'visual-run-1',
+    status: 'running', mode: 'agent', productModel: 'apple-max', msgId: 'visual-run-1',
     fenceId: 'visual-fence-123',
     llm: [{ role: 'system', content: 'system' }, { role: 'user', content: 'Make the lobby beautiful', pinned: true }],
     step: 0, maxSteps: 4, creditsSpent: 1, trace: [], finalText: '', startedAt: now, lastStepAt: now,
@@ -291,7 +333,7 @@ test('a capability-blocked generate_model remains a failed artifact attempt and 
 
   const now = Date.now();
   const agent = {
-    status: 'running', mode: 'stone', productModel: 'apple-max', msgId: 'artifact-run-1',
+    status: 'running', mode: 'agent', productModel: 'apple-max', msgId: 'artifact-run-1',
     fenceId: 'artifact-fence-123',
     llm: [{ role: 'system', content: 'system' }, { role: 'user', content: 'Generate a 3D model: a crate.', pinned: true }],
     step: 0, maxSteps: 4, creditsSpent: 1, trace: [], finalText: '', startedAt: now, lastStepAt: now,
@@ -333,7 +375,7 @@ test('real SessionDO startRun wires the safe capability note into SYSTEM without
   await h.session.startRunInner(
     { projectId: 'p1', projectName: 'Harness Place', ownerId: 'u-owner' },
     'Build a small lobby',
-    'stone',
+    'agent',
     undefined,
     undefined,
     undefined,

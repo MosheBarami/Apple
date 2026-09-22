@@ -101,14 +101,14 @@ function session(sockets) {
     store,
     async chat(from, text = 'build a house') {
       try {
-        await s.webSocketMessage(from.ws, JSON.stringify({ type: 'chat', text, mode: 'clay' }));
+        await s.webSocketMessage(from.ws, JSON.stringify({ type: 'chat', text, mode: 'plan' }));
       } catch {
         /* downstream stubs */
       }
     },
     async edit(from, messageId, text = 'actually, a tower') {
       try {
-        await s.webSocketMessage(from.ws, JSON.stringify({ type: 'edit_resend', messageId, text, mode: 'clay' }));
+        await s.webSocketMessage(from.ws, JSON.stringify({ type: 'edit_resend', messageId, text, mode: 'plan' }));
       } catch {
         /* downstream stubs */
       }

@@ -138,7 +138,14 @@ async function playtest({ before, after, verify, ...rest } = {}) {
         const r = await rest.op(op, ops);
         if (r !== undefined) return r;
       }
-      if (op.op === 'run_code' && op.code === PT.CENSUS_LUAU) {
+      // THE OP IS TYPED NOW. This stub used to key on `run_code` + the CENSUS_LUAU snippet, which is
+      // how the census was read when the plugin still executed code. The product moved the read to
+      // the typed `project_census` op (tools.ts, `run_and_check`), so a stub still waiting on
+      // `run_code` never matched: every census came back as the harness default, `parseCensus`
+      // refused it, and `needsProtection(null) === true` quietly took a checkpoint anyway. The
+      // protection chain below was therefore passing for a reason that had nothing to do with the
+      // fixture — a broken stub is exactly the kind of thing that makes a tripwire lie.
+      if (op.op === 'project_census') {
         const c = seqCensus[censusCall++];
         if (c === 'unreadable') return { id: 'x', ok: true, data: { junk: true } };
         if (c === 'failed') return { id: 'x', ok: false, error: 'Studio busy' };
@@ -171,9 +178,9 @@ test('B1 a project worth protecting gets a pre-run checkpoint before Run mode ev
   assert.deepEqual(state.checkpoints, [{ label: 'before playtest', kind: 'auto' }], 'a protective checkpoint must be taken');
   assert.equal(result.protectedByCheckpoint, 'cp-protective', 'the tool must report which checkpoint is protecting the run');
   // ORDER IS THE POINT: the checkpoint must exist before the simulation can destroy anything.
-  const kinds = ops.map((o) => (o.op === 'run_code' ? 'census' : o.op === 'run_mode' ? `run_mode:${o.action}` : o.op));
-  assert.ok(kinds.indexOf('census') < kinds.indexOf('run_mode:start'), 'the pre-census must precede Run mode');
-  assert.deepEqual(kinds, ['census', 'run_mode:start', 'get_logs', 'run_mode:stop', 'census'], 'the playtest sequence changed');
+  const kinds = ops.map((o) => (o.op === 'run_mode' ? `run_mode:${o.action}` : o.op));
+  assert.ok(kinds.indexOf('project_census') < kinds.indexOf('run_mode:start'), 'the pre-census must precede Run mode');
+  assert.deepEqual(kinds, ['project_census', 'run_mode:start', 'get_logs', 'run_mode:stop', 'project_census'], 'the playtest sequence changed');
 });
 
 test('B1 an unprotectable playtest is REFUSED — Run mode is never started', async () => {
@@ -304,21 +311,37 @@ test('B3 truncation eats the logs and leaves the safety fields intact', async ()
 });
 
 // ===========================================================================
-// B4 — GEOMETRY VIA run_code, NOT VIA render
+// B4 — GEOMETRY FROM THE RENDERER'S TYPED LAYOUT, NOT FROM EXECUTED CODE
 // ===========================================================================
-// MEASURED: the plugin installed in the owner's Studio returns render_view WITHOUT a `layout`
-// field, so reading geometry from the render made this whole gate inert in production — it
-// answered "no geometry to judge" against a place full of geometry.
+// MEASURED (the original repair): the plugin installed in the owner's Studio returns render_view
+// WITHOUT a `layout` field, so reading geometry from the render made this whole gate inert in
+// production — it answered "no geometry to judge" against a place full of geometry.
+//
+// RE-AIMED 2026-09-22, AND THE DIRECTION REVERSED. The first repair read the layout by executing a
+// Luau snippet (`run_code` + LAYOUT_LUAU). The product then retired `run_code`: Commands.luau
+// refuses it outright, because Roblox exposes no constrained plugin evaluator and the legacy
+// ModuleScript path runs received text with full plugin authority. `check_composition` now asks the
+// renderer for its typed layout directly — `render_view` at 48x32, the minimum bounded frame —
+// and consumes only the arithmetic rows, never the pixels. So the property is unchanged ("read the
+// geometry without paying for an image") while the mechanism inverted, and the assertions below
+// follow the mechanism rather than the old spelling of it.
 
-test('B4 check_composition reads geometry with run_code and never rasterises a frame', async () => {
+test('B4 check_composition reads the renderer’s typed layout at minimum size and executes no code', async () => {
   const h = studioHarness({
-    op: async (op) => (op.op === 'run_code' ? { id: 'x', ok: true, data: wireLayout(TAVERN_INTERIOR) } : undefined),
+    op: async (op) =>
+      op.op === 'render_view'
+        ? { id: 'x', ok: true, data: { layout: { format: 'x,y,z,sx,sy,sz,yawDeg', parts: TAVERN_INTERIOR, skipped: 0 } } }
+        : undefined,
   });
   const out = await T.runTool(h.ctx, 'check_composition', JSON.stringify({ intent: 'a cosy tavern interior' }));
   assert.equal(out.ok, true, `check_composition failed: ${out.resultForLlm}`);
-  assert.deepEqual(h.ops.map((o) => o.op), ['run_code'], 'the composition gate must cost exactly one run_code round-trip');
-  assert.equal(h.ops[0].code, C.LAYOUT_LUAU, 'the gate must send the LAYOUT_LUAU snippet');
-  assert.equal(h.ops.some((o) => o.op === 'render_view'), false, 'the gate must never pay for a render');
+  assert.deepEqual(h.ops.map((o) => o.op), ['render_view'], 'the composition gate must cost exactly one round-trip');
+  // THE FRAME IS A MINIMUM-SIZE ONE, and that is the load-bearing half of the repair: only the
+  // layout rows are consumed and the pixels never reach a model, so a full-size frame here would be
+  // paying for an image nobody reads. A 48x32 frame is the cheapest read that still carries the
+  // layout, and pinning the numbers is what stops a future edit from quietly making it a hero shot.
+  assert.deepEqual([h.ops[0].width, h.ops[0].height], [48, 32], 'the gate must not pay for a real render');
+  assert.equal(h.ops.some((o) => o.op === 'run_code'), false, 'the gate must never execute code to read geometry');
   // It really judged the geometry — the inert version answered "no geometry to judge".
   const res = JSON.parse(out.resultForLlm);
   assert.match(res.structure, /\d+ parts in \d+ vertical elements/, 'the gate must report measured structure');
@@ -326,7 +349,16 @@ test('B4 check_composition reads geometry with run_code and never rasterises a f
 });
 
 test('B4 the gate says so plainly when there really is no geometry', async () => {
-  const h = studioHarness({ op: async (op) => (op.op === 'run_code' ? { id: 'x', ok: true, data: wireLayout([]) } : undefined) });
+  // The empty layout is RETURNED, not missing. The earlier form of this test stubbed nothing at all,
+  // so the harness default produced no `layout` field and the test passed on the missing-field path
+  // — it never exercised the empty-scene path it names. Both must answer the same way; this one
+  // proves the one it claims to.
+  const h = studioHarness({
+    op: async (op) =>
+      op.op === 'render_view'
+        ? { id: 'x', ok: true, data: { layout: { format: 'x,y,z,sx,sy,sz,yawDeg', parts: [], skipped: 0 } } }
+        : undefined,
+  });
   const out = await T.runTool(h.ctx, 'check_composition', JSON.stringify({ intent: 'a plaza' }));
   assert.match(out.resultForLlm, /no geometry to judge/);
 });
@@ -355,8 +387,14 @@ test('B5 the named regression: a tavern INTERIOR brief built as a cottage EXTERI
 });
 
 test('B5 the gate fires at the BLOCKOUT, through check_composition, before any detail is paid for', async () => {
+  // The geometry arrives through the renderer's typed layout — see the B4 note above for why this
+  // is no longer a `run_code` round-trip. The subject of this test is unchanged: the WRONG KIND of
+  // thing must be rejected at the blockout.
   const h = studioHarness({
-    op: async (op) => (op.op === 'run_code' ? { id: 'x', ok: true, data: wireLayout(COTTAGE_EXTERIOR) } : undefined),
+    op: async (op) =>
+      op.op === 'render_view'
+        ? { id: 'x', ok: true, data: { layout: { format: 'x,y,z,sx,sy,sz,yawDeg', parts: COTTAGE_EXTERIOR, skipped: 0 } } }
+        : undefined,
   });
   const out = await T.runTool(h.ctx, 'check_composition', JSON.stringify({ intent: 'build me a cosy tavern interior' }));
   const res = JSON.parse(out.resultForLlm);
@@ -365,8 +403,9 @@ test('B5 the gate fires at the BLOCKOUT, through check_composition, before any d
   assert.match(res.guidance, /STOP\. You are not building the thing that was requested/, 'the guidance must order a re-layout, not a patch');
   assert.match(res.guidance, /do not correct this in place/i);
   // No render, no critique, no image tokens: rejecting the blockout has to stay cheap or it will
-  // not be done early, and early is the only point at which it is cheap.
-  assert.deepEqual(h.ops.map((o) => o.op), ['run_code']);
+  // not be done early, and early is the only point at which it is cheap. One minimum-size frame is
+  // the whole cost, and no model is called on it.
+  assert.deepEqual(h.ops.map((o) => o.op), ['render_view']);
 });
 
 test('B5 the gate is not a blanket "fail" — an unstated brief is measured but never gated', () => {
@@ -422,7 +461,12 @@ test('B5 STATIC CHECK — the run loop wires the gate and the rebuild order into
   assert.match(block, /Do not start over/, 'the patch branch must remain the non-rebuild path');
   // The gate is charged once per run. Autonomous runs deliberately have no finite step denominator;
   // `autoCritiqued` is the loop guard and quota/BudgetDO remains the spend boundary.
-  const guard = session.slice(session.indexOf('if (\n        agent.mode !== \'clay\''), session.indexOf('agent.autoCritiqued = true'));
+  //[[ THE GUARD READS `=== 'agent'`, NOT `!== 'clay'`, AND THAT IS A STRONGER FORM.
+  //   It used to exclude one mode by name, which meant a THIRD mode added later would silently be
+  //   admitted to the visual gate. The allowlist form admits exactly Agent and nothing else, so the
+  //   property this slice exists to check — "the gate is charged once per run, guarded by
+  //   autoCritiqued" — is now checked against a guard that cannot be widened by accident. ]]
+  const guard = session.slice(session.indexOf("if (\n        agent.mode === 'agent'"), session.indexOf('agent.autoCritiqued = true'));
   assert.match(guard, /!agent\.autoCritiqued/);
   assert.doesNotMatch(guard, /maxSteps/, 'the visual gate must not re-introduce an artificial run ceiling');
 });
@@ -442,11 +486,33 @@ test("B6 STATIC CHECK — a run that owes work finishes as 'incomplete', and the
   // three, so a greeting was nudged twice and then reported as an incomplete build. Each clause is
   // asserted separately so deleting any one of them fails loudly rather than silently widening or
   // narrowing the guard.
-  const owes = session.slice(session.indexOf('const owesWork ='), session.indexOf('if (owesWork &&'));
-  assert.match(owes, /agent\.mode !== 'clay'/, 'Plan mode cannot owe work — it cannot mutate');
+  //
+  // RE-AIMED 2026-09-22, and the direction is the point. The four clauses moved into
+  // `askedForWork`, and `owesWork` gained a FIFTH: the run must be able to build at all
+  // (`canBuild`, from the registry's own mutation metadata over the tools this step was offered).
+  // A paired Agent run whose permissions or plugin withhold every project-changing tool could never
+  // satisfy the nudge, so it was nudged on every prose reply until the step ceiling or its Credits
+  // ran out. The slice used to end at 'if (owesWork &&', which no longer exists — indexOf returned
+  // -1 and the "definition" ran to the end of the file, so any later mention would have satisfied
+  // it. Both ends are now asserted to be found.
+  const askedAt = session.indexOf('const askedForWork =');
+  const owesAt = session.indexOf('const owesWork =');
+  assert.ok(askedAt >= 0 && owesAt > askedAt && owesAt - askedAt < 400,
+    `the owes-work definition was not found where the nudge reads it (${askedAt}, ${owesAt})`);
+  const owes = session.slice(askedAt, owesAt);
+  assert.match(owes, /agent\.mode === 'agent'/, 'Plan mode cannot owe work — it cannot mutate');
   assert.match(owes, /!agent\.mutated/, 'a run that mutated something does not owe work');
   assert.match(owes, /studioConnected/, 'without Studio there is nothing to mutate');
   assert.match(owes, /!agent\.traits\?\.conversational/, 'a greeting never owes a mutation');
+  const owesStatement = session.slice(owesAt, session.indexOf(';', owesAt));
+  assert.match(owesStatement, /\baskedForWork\b/, 'owing work still requires that the user asked for it');
+  assert.match(owesStatement, /\bcanBuild\b/, 'a run offered nothing that changes the project cannot owe a change');
+  assert.doesNotMatch(owesStatement, /\|\|/, 'owing work is a conjunction; an `||` would widen it');
+  const canBuildAt = session.indexOf('const canBuild =');
+  assert.ok(canBuildAt >= 0 && canBuildAt < askedAt, 'canBuild must be computed before the nudge reads it');
+  const canBuildStatement = session.slice(canBuildAt, session.indexOf(';', canBuildAt));
+  assert.match(canBuildStatement, /projectMutatingToolNames\(\)/, 'canBuild must come from the registry metadata, not a list kept here');
+  assert.match(canBuildStatement, /\ballowed\b/, 'and from the tools this step was actually offered');
   assert.match(session, /await this\.finishRun\(agent, owesWork \? 'incomplete' : 'done'\);/, 'falling through the nudges must NOT report success');
   // 'incomplete' OVERRIDES the model's own prose rather than appending to it — on the run this was
   // written for, that prose was the single word "Done."
@@ -476,9 +542,41 @@ test('B6 STATIC CHECK — nudge escalation is bounded metadata, not a hidden run
   assert.match(session, /agent\.nudges = Math\.min\(MAX_NUDGE_LEVEL, \(agent\.nudges \?\? 0\) \+ 1\);/,
     'nudge metadata must saturate even though the run itself remains unbounded');
   assert.doesNotMatch(session, /owesWork[^\n]*maxSteps/);
-  // A mutating tool is what clears the debt, and the list of them is explicit.
-  assert.match(session, /const MUTATING_TOOLS = new Set\(\[\s*\n\s*'edit_script', 'create_instances', 'set_properties', 'delete_instances', 'run_luau', 'insert_asset',\s*\n\]\);/);
-  assert.match(session, /if \(out\.ok && MUTATING_TOOLS\.has\(call\.name\)\) agent\.mutated = true;/);
+
+  // A mutating tool is what clears the debt — and mutation truth is DERIVED FROM THE REGISTRY, not
+  // from a hand-kept list in the run loop.
+  //
+  // RE-AIMED 2026-09-22. This asserted `const MUTATING_TOOLS = new Set([...])` inside session.ts: a
+  // second, hand-maintained copy of which tools change the project, living in a different file from
+  // the registry that actually knows. It drifted, as that shape does — it had no entry for
+  // edit_terrain, generate_model or any of the other writers added since — and it was removed in
+  // favour of each tool declaring its own rule: `TOOLS[name].mutatesProject`. The property is
+  // unchanged, and it is now read from the source that cannot disagree with the tools.
+  //
+  // NOTE THE `!out.ok` GONE. The old line was `if (out.ok && MUTATING_TOOLS.has(call.name))`, so a
+  // composite tool that changed Studio and THEN failed left `agent.mutated` false — the run would
+  // report it owed nothing while the user's project had moved. That is the failure §F names, and
+  // `mutatedProject` carries the partial case itself (see the assertion below).
+  // Restated 2026-09-22: the line became a block that also marks the step as mutating (run-idle.ts).
+  assert.match(session, /if \(out\.mutatedProject === true\)\s*\{?\s*agent\.mutated = true;/,
+    'the run loop must take the mutation verdict from the tool result, not from a local list');
+
+  const tools = read('tools.ts');
+  assert.match(tools, /const rule = TOOLS\[name\]\?\.mutatesProject;/,
+    'mutation truth must be read off the registry entry, so a new tool declares it exactly once');
+  assert.match(tools, /const partialMutation = failed && \(result as Record<string, unknown>\)\.projectMutated === true;/,
+    'a composite tool that mutated and then failed still changed the project — no refund, no "nothing changed"');
+  assert.match(tools, /const mutatedProject = partialMutation \|\| \(!failed && toolMutatesProject\(name, result\)\);/);
+
+  // Non-vacuity, both directions: the writers declare the rule and the readers do not. A registry
+  // where every tool claimed to mutate would satisfy the three assertions above and be useless.
+  assert.equal(T.TOOLS.create_instances.mutatesProject, true, 'a writer must declare itself a writer');
+  assert.equal(T.TOOLS.delete_instances.mutatesProject, true);
+  assert.equal(T.TOOLS.run_luau.mutatesProject, true, 'arbitrary code is the widest writer of all');
+  assert.equal(T.TOOLS.get_project_tree.mutatesProject, undefined, 'a reader must not claim to mutate');
+  assert.equal(T.TOOLS.read_script.mutatesProject, undefined);
+  const writers = T.toolNames().filter((n) => T.TOOLS[n].mutatesProject !== undefined);
+  assert.ok(writers.length >= 15, `only ${writers.length} tools declare a mutation rule; the registry lost its writers`);
 });
 
 // ===========================================================================
@@ -785,11 +883,23 @@ test('B9 the provider abstraction did not change which model actually serves a r
   // The whole product still resolves every model key to the one Workers AI model. If a refactor
   // ever repoints a key at a credential-less provider, production breaks silently — this catches it.
   const gw = read('gateway.ts');
-  const keys = ['clay', 'stone', 'rune', 'memory', 'vision'];
-  for (const k of keys) {
-    const line = new RegExp(`^\\s*${k}: \\{ id: '(@cf/[^']+)'`, 'm').exec(gw);
-    assert.ok(line, `model key ${k} is missing from DEFAULT_MODELS`);
-    assert.match(line[1], /^@cf\//, `${k} must still resolve to a Workers AI model id`);
+  //[[ THE KEYS ARE READ OUT OF THE WORKER, NOT RETYPED HERE.
+  //   This was a hand-written `['clay', 'stone', 'rune', 'memory', 'vision']` — rule 7 of the
+  //   working rules. It went stale the moment the mode keys were renamed to plan/agent, and the
+  //   failure it produced ("model key clay is missing from DEFAULT_MODELS") read as a broken
+  //   gateway rather than as a stale list inside a test, which is the worst way for a guard to be
+  //   wrong. Slicing the declaration means the list cannot drift from the product again.
+  //
+  //   The exact key set is still asserted, as a TRIPWIRE rather than a pin: adding or removing a
+  //   catalogue row is a product decision, and this should force somebody to read it. ]]
+  const block = /export const DEFAULT_MODELS: Record<string, ModelCfg> = \{([\s\S]*?)\n\};/.exec(gw);
+  assert.ok(block, 'DEFAULT_MODELS is no longer declared the way this guard reads it');
+  const entries = [...block[1].matchAll(/^\s*(\w+): \{ id: '([^']+)'/gm)].map(([, k, id]) => [k, id]);
+  assert.ok(entries.length >= 4, `parsed ${entries.length} model keys; the parse is broken, not the gateway`);
+  assert.deepEqual(entries.map(([k]) => k).sort(), ['agent', 'memory', 'plan', 'vision'],
+    'the model catalogue changed shape — that is a product decision, so it needs reading');
+  for (const [k, id] of entries) {
+    assert.match(id, /^@cf\//, `${k} must still resolve to a Workers AI model id`);
   }
   assert.match(gw, /const adapter = adapterForModelId\(cfg\.id\);/, 'the adapter must be chosen from the resolved model id');
   // …and an unknown id still falls back to the only transport this worker has.
@@ -911,7 +1021,7 @@ test('B10 the fixture account is actually admitted — every session test below 
   //   not one of those failures named admission. This test names it. When it is the only red in
   //   this file, the fixture stopped being entitled to run — fix the fixture, not the twenty-one. ]]
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   assert.deepEqual(
     h.sent.filter((m) => m.type === 'error').map((m) => m.code),
     [],
@@ -922,7 +1032,7 @@ test('B10 the fixture account is actually admitted — every session test below 
 
 test('B10 run_intent is emitted exactly once per run, and only after msg_start', async () => {
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   const order = h.sent.map((m) => m.type);
   assert.equal(intentsIn(h.sent).length, 1, 'the Intent row is announced once per run, never repeatedly');
   assert.ok(
@@ -934,7 +1044,7 @@ test('B10 run_intent is emitted exactly once per run, and only after msg_start',
   // A second run emits its own single intent, not a second copy of the first.
   const first = intentsIn(h.sent)[0].msgId;
   h.store.set('agent', { ...h.store.get('agent'), status: 'idle' });
-  await h.session.startRun(h.bind, 'Add a chimney to the tavern roof.', 'stone');
+  await h.session.startRun(h.bind, 'Add a chimney to the tavern roof.', 'agent');
   const all = intentsIn(h.sent);
   assert.equal(all.length, 2);
   assert.notEqual(all[1].msgId, first, 'each run gets its own Intent row');
@@ -942,7 +1052,7 @@ test('B10 run_intent is emitted exactly once per run, and only after msg_start',
 
 test('B10 the Intent row is the user\'s own words and the Plan row is exactly what they named', async () => {
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   const { summary, checklist, questions } = intentsIn(h.sent)[0].intent;
 
   // THE HONESTY PROOF. The summary is not a paraphrase and cannot become one: strip the ellipsis
@@ -971,7 +1081,7 @@ test('B10 the Intent row is the user\'s own words and the Plan row is exactly wh
 test('B10 a trivial request produces an EMPTY checklist rather than an invented one', async () => {
   for (const text of ['what does this script do?', 'thanks!', 'can you explain the last change']) {
     const h = sessionHarness();
-    await h.session.startRun(h.bind, text, 'clay');
+    await h.session.startRun(h.bind, text, 'plan');
     const intent = intentsIn(h.sent)[0]?.intent;
     assert.ok(intent, `"${text}" should still restate itself`);
     assert.deepEqual(intent.checklist, [], `"${text}" names nothing to build — the Plan row must stay empty`);
@@ -980,14 +1090,14 @@ test('B10 a trivial request produces an EMPTY checklist rather than an invented 
   }
   // …and a request with no words at all produces no row at all, rather than a blank one.
   const empty = sessionHarness();
-  await empty.session.startRun(empty.bind, '   \n  ', 'clay');
+  await empty.session.startRun(empty.bind, '   \n  ', 'plan');
   assert.equal(intentsIn(empty.sent).length, 0, 'an empty request must emit nothing, not an empty Intent card');
 });
 
 test('B10 the Intent and Plan rows survive a reconnect — replayed from storage, not from memory', async () => {
   const store = new Map();
   const a = sessionHarness(store);
-  await a.session.startRun(a.bind, TAVERN_BRIEF, 'stone');
+  await a.session.startRun(a.bind, TAVERN_BRIEF, 'agent');
   const broadcast = intentsIn(a.sent)[0].intent;
 
   // The browser refreshes and the DO is evicted: a brand-new instance over the same storage, with
@@ -1002,7 +1112,7 @@ test('B10 the Intent and Plan rows survive a reconnect — replayed from storage
 
   // An older run persisted before this feature existed must still replay — just without the rows.
   const legacy = sessionHarness(new Map());
-  await legacy.session.startRun(legacy.bind, TAVERN_BRIEF, 'stone');
+  await legacy.session.startRun(legacy.bind, TAVERN_BRIEF, 'agent');
   const { intent: _dropped, ...older } = legacy.store.get('agent');
   legacy.store.set('agent', older);
   legacy.sent.length = 0;
@@ -1021,7 +1131,7 @@ test('B10 producing the Intent and Plan rows costs ZERO model calls', async () =
   };
   try {
     const h = sessionHarness(); // its env.AI.run throws if touched
-    await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+    await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
     assert.equal(intentsIn(h.sent).length, 1, 'the rows were produced…');
     assert.deepEqual(calls, [], '…and not one network call was made to produce them');
   } finally {
@@ -1080,7 +1190,7 @@ test('B10 a long request is truncated at a word boundary and stays verbatim', as
     'a stone well in the middle, hanging banners, wooden carts, crates and barrels stacked by the walls, ' +
     'and a clock tower overlooking the whole square from the north side of the plaza.';
   const h = sessionHarness();
-  await h.session.startRun(h.bind, long, 'stone');
+  await h.session.startRun(h.bind, long, 'agent');
   const { summary, checklist } = intentsIn(h.sent)[0].intent;
   assert.ok(summary.endsWith('…'), 'an over-long request must be visibly cut, not silently shortened');
   assert.ok(summary.length <= 161);
@@ -1112,14 +1222,14 @@ test('B10 an opening greeting never becomes a Plan row item', async () => {
   ];
   for (const [text, expected] of cases) {
     const h = sessionHarness();
-    await h.session.startRun(h.bind, text, 'stone');
+    await h.session.startRun(h.bind, text, 'agent');
     const { checklist } = intentsIn(h.sent)[0].intent;
     assert.deepEqual(checklist, expected, `"${text}" — the greeting must not be enumerated as a thing to build`);
   }
 
   // …and the fix must not have eaten real nouns that merely start with a pleasant-sounding word.
   const keep = sessionHarness();
-  await keep.session.startRun(keep.bind, 'Build a castle with a great hall, good lighting and a nice old-fashioned street lamp.', 'stone');
+  await keep.session.startRun(keep.bind, 'Build a castle with a great hall, good lighting and a nice old-fashioned street lamp.', 'agent');
   const kept = intentsIn(keep.sent)[0].intent.checklist;
   for (const item of ['great hall', 'good lighting', 'nice old-fashioned street lamp']) {
     assert.ok(kept.includes(item), `"${item}" is a real thing the user named — the greeting filter must not drop it`);
@@ -1146,7 +1256,7 @@ test('B10 the summary is always a verbatim substring of the request, whatever sh
   ];
   for (const text of shapes) {
     const h = sessionHarness();
-    await h.session.startRun(h.bind, text, 'stone');
+    await h.session.startRun(h.bind, text, 'agent');
     const intent = intentsIn(h.sent)[0]?.intent;
     assert.ok(intent, `"${text.slice(0, 40)}…" should produce an Intent row`);
     const flat = text.replace(/\s+/g, ' ').trim();
@@ -1174,8 +1284,8 @@ test('A3 two runs started together produce ONE run, not two', async () => {
   const h = sessionHarness();
 
   // Started together and NOT awaited in between: this is how two websocket frames arrive.
-  const first = h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
-  const second = h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  const first = h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
+  const second = h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   await Promise.all([first, second]);
 
   assert.equal(
@@ -1190,10 +1300,10 @@ test('A3 two runs started together produce ONE run, not two', async () => {
 test('A3 the gate reopens, so the next message still works', async () => {
   // A guard that stayed shut after the first run would be a worse bug than the one it fixes.
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   h.store.set('agent', { ...h.store.get('agent'), status: 'idle' });
 
-  await h.session.startRun(h.bind, 'Add a chimney.', 'stone');
+  await h.session.startRun(h.bind, 'Add a chimney.', 'agent');
   assert.equal(h.sent.filter((m) => m.type === 'msg_start').length, 2, 'the second run must open its own message');
 });
 
@@ -1201,7 +1311,7 @@ test('A2 a stop is recorded without touching the run state', async () => {
   // The fix's whole basis: two writers on one blob is the bug, so the stop path writes a key
   // of its own and the run's blob is left exactly as the run left it.
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   const before = h.store.get('agent');
 
   await h.session.webSocketMessage(h.ws, JSON.stringify({ type: 'stop' }));
@@ -1214,7 +1324,7 @@ test('A2 a stop survives the run writing its state afterwards', async () => {
   // The losing interleaving: the stop arrives mid-step and the run persists at the tail.
   // Under the old design that tail write carried status 'running' and erased the stop.
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   await h.session.webSocketMessage(h.ws, JSON.stringify({ type: 'stop' }));
 
   const agent = h.store.get('agent');
@@ -1227,12 +1337,12 @@ test('A2 a stop does not travel into the next run', async () => {
   // startRun clears as well as finishRun, because a stop landing as a run ends would
   // otherwise kill the user's next message before its first step.
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   await h.session.webSocketMessage(h.ws, JSON.stringify({ type: 'stop' }));
   assert.ok(h.store.get('stopRequested'));
 
   h.store.set('agent', { ...h.store.get('agent'), status: 'idle' });
-  await h.session.startRun(h.bind, 'A completely new request.', 'stone');
+  await h.session.startRun(h.bind, 'A completely new request.', 'agent');
 
   assert.equal(h.store.get('stopRequested'), undefined, 'the new run must start un-stopped');
 });
@@ -1253,7 +1363,7 @@ test('A4 a checkpoint that throws does not wedge the run', async () => {
     throw new Error('checkpoint exploded');
   };
 
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
 
   assert.equal(h.alarms.length, 1, 'the run must still be scheduled to advance');
   assert.equal(h.store.get('agent').status, 'running', 'and must still be a live run');
@@ -1267,7 +1377,7 @@ test('A4 a checkpoint that RETURNS an error is reported too', async () => {
   h.store.set('pluginLastSeen', Date.now());
   h.session.createCheckpoint = async () => ({ error: 'studio said no' });
 
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
 
   assert.equal(h.alarms.length, 1);
   const reported = errorsIn(h.sent, 'checkpoint');
@@ -1284,7 +1394,7 @@ test('A4 a healthy checkpoint reports nothing and still schedules the run', asyn
     return { id: 'cp1', label: 'before Golem changes', kind: 'pre_agent', createdAt: Date.now() };
   };
 
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
 
   assert.equal(called, 1, 'the checkpoint is still taken');
   assert.equal(errorsIn(h.sent, 'checkpoint').length, 0, 'and nothing is reported when it works');
@@ -1309,7 +1419,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 test('A5 an op is tagged with the run that queued it', async () => {
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   h.store.set('pluginLastSeen', Date.now());
 
   // Not awaited: execStudioOp resolves only when the plugin answers, which never happens here.
@@ -1323,7 +1433,7 @@ test('A5 an op is tagged with the run that queued it', async () => {
 
 test('A5 finishing a run discards the ops it left behind', async () => {
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   h.store.set('pluginLastSeen', Date.now());
   void h.session.execStudioOp({ op: 'create_instances', payload: {} }, 50);
   await tick();
@@ -1338,7 +1448,7 @@ test('A5 the caller is told, rather than left to time out', async () => {
   // Dropping the op quietly would leave execStudioOp holding for its full 30s to learn the
   // same thing, and the run would look hung to anyone watching.
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   h.store.set('pluginLastSeen', Date.now());
 
   const pending = h.session.execStudioOp({ op: 'create_instances', payload: {} }, 30_000);
@@ -1354,7 +1464,7 @@ test('A5 an unlabelled op is kept, not discarded', async () => {
   // An op persisted by a deploy that predates runId has none. Dropping work because it is
   // unlabelled would be a worse failure than the one this prevents.
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   queueOf(h.session).push({ id: 'legacy_1', seq: 999, studioOp: { op: 'create_instances', payload: {} } });
 
   await h.session.finishRun(h.store.get('agent'), 'done');
@@ -1367,7 +1477,7 @@ test('A5 an unlabelled op is kept, not discarded', async () => {
 test('A5 a live run keeps its own ops', async () => {
   // The obvious way to get this wrong: purge on every poll and starve the run that is running.
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   h.store.set('pluginLastSeen', Date.now());
   void h.session.execStudioOp({ op: 'create_instances', payload: {} }, 50);
   await tick();
@@ -1385,7 +1495,7 @@ test('A5 an op queued after a Durable Object eviction is still tagged', async ()
   // deliberately keeps, treating it as work from an older deploy. A5's protection would switch
   // itself off after the first eviction and nothing would report it.
   const h = sessionHarness();
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
   const agent = h.store.get('agent');
 
   // A fresh instance over the SAME storage is exactly what an eviction leaves behind.

@@ -77,6 +77,7 @@ const MODULES = {
   erasure: W_SRC('erasure.ts'),
   vision: W_SRC('vision.ts'),
   spec: W_SRC('spec-runner.ts'),
+  gateway: W_SRC('gateway.ts'),
   single: W_SRC('single-flight.ts'),
   notifications: W_SRC('notifications.ts'),
   analytics: W_SRC('analytics.ts'),
@@ -399,7 +400,7 @@ export const SCENARIOS = [
       'that the prompt reaches the provider unchanged — the send lives in the session Durable Object and needs the Cloudflare runtime',
     async run() {
       const base = {
-        mode: 'stone',
+        mode: 'agent',
         studioConnected: true,
         placeName: 'Crystal Canyon',
         projectName: 'Acceptance Place',
@@ -437,7 +438,18 @@ export const SCENARIOS = [
       must(Array.isArray(intent.checklist) && intent.checklist.length > 0, 'the plan has no checklist — there is nothing actionable in it');
       must(W.intent.runIntentFor('') === null, 'an empty request now produces a plan row with nothing in it');
 
-      const neurons = W.pricing.estimateNeurons('stone', request.length, 800);
+      // THE MODEL ID, NOT THE MODE NAME. This read `estimateNeurons('stone', …)` — a MODE name
+      // handed to a function whose first parameter is a MODEL id. It produced a number anyway,
+      // because `neuronsFor` falls back to the WORST price in the table for a key it does not
+      // recognise, so the scenario measured the most expensive model in the catalogue while reading
+      // as though it measured Agent. Agent's real gateway model is the only honest input, and the
+      // price row is asserted first so the fallback cannot hide a missing model again.
+      const agentModel = W.gateway.DEFAULT_MODELS.agent.id;
+      must(
+        Object.prototype.hasOwnProperty.call(W.pricing.MODEL_PRICES, agentModel),
+        `Agent runs on ${agentModel}, which has no price row — the estimate would silently fall back to the most expensive model`,
+      );
+      const neurons = W.pricing.estimateNeurons(agentModel, request.length, 800);
       must(neurons > 0, 'a run is estimated at zero neurons');
       const credits = W.pricing.creditsForNeurons(neurons);
       must(Number.isInteger(credits) && credits > 0, `a run costs a number the user cannot be shown: ${credits}`);

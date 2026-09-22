@@ -62,7 +62,7 @@ const QUOTA = {
 
 const RUN = {
   msgId: 'm1',
-  mode: 'stone',
+  mode: 'agent',
   phase: 'writing_luau',
   step: 4,
   totalSteps: 12,

@@ -6,7 +6,7 @@
  * the run was charged 30 Credits for nothing the customer could use.
  *
  * The cause was `tokensForEffort`: `high` scaled the base by 1.25 while `medium` scaled it by 2.5.
- * On mode `stone` that asked for 5,500 tokens of a model configured to give 6,500 — the effort tier
+ * On Agent that asked for 5,500 tokens of a model configured to give 6,500 — the effort tier
  * chosen for the hardest steps left a thousand tokens of its own model unasked for, and a reasoning
  * model spends its budget on thinking FIRST.
  *
@@ -38,7 +38,7 @@ function modeBases() {
   assert.ok(m, 'MODE_BASE_TOKENS could not be read out of session.ts — this test knows no budgets, '
     + 'so it has verified nothing. Do not read a pass here as a pass.');
   const bases = [...m[1].matchAll(/(\w+)\s*:\s*([0-9_]+)/g)].map(([, k, v]) => [k, Number(v.replace(/_/g, ''))]);
-  assert.ok(bases.length >= 3, `only ${bases.length} mode budget(s) parsed`);
+  assert.equal(bases.length, 2, `expected exactly Plan and Agent budgets, parsed ${bases.length}`);
   return bases;
 }
 

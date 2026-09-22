@@ -240,7 +240,7 @@ function makeSession({ responses = [], chat } = {}) {
 async function start(h, text = 'build a small tower') {
   const res = await h.session.fetch(new Request('https://do/agent-run', {
     method: 'POST',
-    body: JSON.stringify({ text, mode: 'stone', productModel: 'apple' }),
+    body: JSON.stringify({ text, mode: 'agent', productModel: 'apple' }),
   }));
   assert.equal(res.status, 200, await res.text());
   return h.store.get('agent');
@@ -300,7 +300,7 @@ test('terminal outcome, settled cost, context budget and denied-tool facts survi
 test('old assistant rows with no terminal metadata stay unknown after reload rather than becoming done', async () => {
   const h = makeSession();
   h.sql.messages.push({
-    id: 'old-assistant', role: 'assistant', mode: 'stone', content: 'An old reply', tool_trace: null, created_at: 1,
+    id: 'old-assistant', role: 'assistant', mode: 'agent', content: 'An old reply', tool_trace: null, created_at: 1,
   });
   const rows = await history(h);
   const old = rows.find((m) => m.id === 'old-assistant');
@@ -332,6 +332,39 @@ test('ordinary provider stop remains the successful control', async () => {
   assert.equal(lastEnd(h).stopReason, 'done');
   assert.equal(assistantRow(h).content, 'Complete answer.');
   assert.deepEqual(h.spends, [1], 'a one-Credit response is not charged twice');
+});
+
+//[[ RE-TITLED 2026-09-22: this said transient outages NEVER end a run, and since PROVIDER_OUTAGE_MAX_MS
+//   an outage that lasts five minutes does end it — honestly, with the refund (run-loop-traps.test.mjs).
+//   What this test measures is unchanged and still right: twelve failures in quick succession, well
+//   inside the bound, are a pause and not a terminal state. ]]
+test('classified transient provider outages inside the outage bound never become an artificial terminal run', async () => {
+  let attempts = 0;
+  const h = makeSession({
+    chat: async () => {
+      attempts += 1;
+      const error = new Error('workers-ai 503 temporarily unavailable');
+      error.name = 'ProviderError';
+      error.kind = 'transient';
+      throw error;
+    },
+  });
+  await start(h);
+
+  for (let i = 0; i < 12; i += 1) {
+    await h.session.alarm();
+    const waiting = h.store.get('agent');
+    assert.equal(waiting.status, 'running');
+    assert.equal(lastEnd(h), undefined, `transient failure ${i + 1} incorrectly ended the run`);
+    assert.equal(typeof waiting.resumeAt, 'number');
+    assert.ok(waiting.resumeAt > Date.now());
+    h.store.set('agent', structuredClone({ ...waiting, resumeAt: Date.now() - 1 }));
+  }
+
+  assert.equal(attempts, 12, 'the fixture did not cross the former eight-failure cutoff');
+  assert.equal(h.store.get('agent').transientFailures, 12);
+  assert.equal(h.store.get('agent').step, 0, 'a provider outage must not consume a work step');
+  assert.deepEqual(h.spends, [1], 'failed transport attempts do not consume customer Credits in SessionDO');
 });
 
 test('explicit provider error persists useful partial text and an actionable failed terminal state', async () => {
@@ -394,6 +427,68 @@ test('genuine tool_calls still execute and keep the run live for the next model 
   assert.equal(mid.trace.some((entry) => entry.tool === 'search_creation_skills' && entry.ok), true);
 
   await h.session.alarm();
+  assert.equal(lastEnd(h).stopReason, 'done');
+});
+
+test('a tool call whose arguments are not JSON is never echoed back to the provider', async () => {
+  // Production, 2026-09-22: the unparseable arguments of a cut-off create_instances call were written
+  // into history and sent back as a structured tool_call; the provider rejected the next request in
+  // ~300 ms and the build ended with nothing built. The call still runs (and fails, telling the model
+  // why) — only the unreadable bytes are kept out of the transcript the provider must read.
+  const h = makeSession({ responses: [
+    gatewayResponse({
+      finishReason: 'tool_calls', text: '', neurons: 30,
+      toolCalls: [{ id: 'bad-1', name: 'search_creation_skills', arguments: '{"query":"street lamp' }],
+    }),
+    gatewayResponse({ finishReason: 'stop', text: 'Continuing in smaller steps.', neurons: 30 }),
+  ] });
+  await start(h, 'make me a street lamp');
+  await h.session.alarm();
+  await h.session.alarm();
+
+  assert.equal(h.chatCalls.length, 2, 'the run must reach a second model step');
+  const second = h.chatCalls[1].req.messages;
+  const echoed = second.filter((m) => m.role === 'assistant' && (m.toolCalls ?? []).some((c) => c.id === 'bad-1'));
+  assert.equal(echoed.length, 1, 'the call must still be in history so its result pairs with it');
+  const call = echoed[0].toolCalls.find((c) => c.id === 'bad-1');
+  assert.doesNotThrow(() => JSON.parse(call.arguments), 'history must hold arguments the provider can read');
+  assert.equal(call.arguments, '{}');
+  const result = second.find((m) => m.role === 'tool' && (m.toolCallId === 'bad-1' || m.tool_call_id === 'bad-1'));
+  assert.ok(result && /not valid JSON/.test(typeof result.content === 'string' ? result.content : JSON.stringify(result.content)),
+    'the model is still told its arguments were not valid JSON');
+  assert.notEqual(lastEnd(h)?.stopReason, 'error');
+});
+
+test('three steps of nothing but refused duplicates end the run instead of paying for a loop', async () => {
+  // Production, 2026-09-22 (run 1870ecfe): after building a lamp the model repeated identical calls,
+  // each answered "already done" and none executed or traced — 53 paid steps, most of 205 Credits.
+  const call = { name: 'search_creation_skills', arguments: JSON.stringify({ query: 'street lamp' }) };
+  const step = (id) => gatewayResponse({ finishReason: 'tool_calls', text: '', neurons: 30, toolCalls: [{ id, ...call }] });
+  const h = makeSession({ responses: [step('c1'), step('c2'), step('c3'), step('c4'),
+    gatewayResponse({ finishReason: 'stop', text: 'never reached', neurons: 30 })] });
+  await start(h, 'make me a street lamp');
+  for (let i = 0; i < 6 && !lastEnd(h); i++) await h.session.alarm();
+
+  assert.equal(h.chatCalls.length, 4, 'one real call then three all-duplicate steps — the fifth step must never be paid for');
+  const end = lastEnd(h);
+  assert.ok(end, 'the run must end');
+  assert.notEqual(end.stopReason, 'error');
+  const said = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+  assert.match(said, /kept repeating a step it had already done/);
+  assert.match(said, /nothing in your place was changed/, 'nothing was built, and the note must say so');
+});
+
+test('control: one refused duplicate followed by real work is not a loop', async () => {
+  const call = { name: 'search_creation_skills', arguments: JSON.stringify({ query: 'street lamp' }) };
+  const h = makeSession({ responses: [
+    gatewayResponse({ finishReason: 'tool_calls', text: '', neurons: 30, toolCalls: [{ id: 'c1', ...call }] }),
+    gatewayResponse({ finishReason: 'tool_calls', text: '', neurons: 30, toolCalls: [{ id: 'c2', ...call }] }),
+    gatewayResponse({ finishReason: 'tool_calls', text: '', neurons: 30, toolCalls: [{ id: 'c3', name: 'search_creation_skills', arguments: JSON.stringify({ query: 'lantern' }) }] }),
+    gatewayResponse({ finishReason: 'stop', text: 'Done.', neurons: 30 }),
+  ] });
+  await start(h, 'make me a street lamp');
+  for (let i = 0; i < 6 && !lastEnd(h); i++) await h.session.alarm();
+  assert.equal(h.chatCalls.length, 4);
   assert.equal(lastEnd(h).stopReason, 'done');
 });
 

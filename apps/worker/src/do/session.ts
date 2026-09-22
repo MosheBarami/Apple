@@ -16,7 +16,7 @@ import type {
   StudioEventSelection,
   CheckpointMeta,
   RestoreFidelity,
-  GolemMode,
+  ProductMode,
   GatewayRequest,
   ToolTraceEntry,
   QuotaState,
@@ -64,7 +64,8 @@ import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, reasoningEffortApplies, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
-import { TOOLS, toolDefs, toolNames, targetOf, runTool, type AgentCtx, type PlaytestBus } from '../tools';
+import { TOOLS, toolDefs, toolNames, targetOf, runTool, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
+import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { refundSentence, refundVerdict } from '../run-refund';
@@ -74,10 +75,12 @@ import { recoverToolCall } from '../tool-recovery';
 import { notify } from '../notify';
 import { usageBand } from '../notifications';
 import { dayKey } from '../quota-math';
-import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
+import { chooseEffort, classifyRequest, forbidsChanges, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
 import type { RunFailure } from '@golem/shared';
 import { trimTranscriptReport } from '../transcript';
+import { VERIFIER_TOOLS } from '../verifiers';
+import { afterStep } from '../run-idle';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested } from '../stop-signal';
 import { singleFlight } from '../single-flight';
@@ -160,6 +163,15 @@ const STUDIO_TOOL_REQUIREMENTS: ToolStudioRequirements = Object.fromEntries(
 ) as ToolStudioRequirements;
 
 const pluginCapabilitiesKey = (tokenHash: string): string => `pluginCapabilities:${tokenHash}`;
+const pluginCapabilitiesClientKey = (tokenHash: string): string => `pluginCapabilitiesClient:${tokenHash}`;
+type PluginCapabilityClientIdentity = { version: string | null; protocol: number | null };
+
+function samePluginCapabilityClient(
+  a: PluginCapabilityClientIdentity | null | undefined,
+  b: PluginCapabilityClientIdentity | null | undefined,
+): boolean {
+  return !!a && !!b && a.version === b.version && a.protocol === b.protocol;
+}
 
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
@@ -182,13 +194,15 @@ interface AgentState {
   refusalRemedy?: RefusalRemedyCode;
   /** the run's unforgeable fence id; optional so a run persisted by an older deploy still loads */
   fenceId?: string;
-  mode: GolemMode;
-  /** The user's model entitlement, independent of the legacy specialist/autonomy mode. */
+  mode: ProductMode;
+  /** Per-message autonomy switch. It is meaningful only when mode === 'agent'. */
+  autonomous?: boolean;
+  /** The user's model entitlement, independent of Plan/Agent and the Autonomous toggle. */
   productModel?: ProductModel;
   msgId: string;
   llm: GatewayRequest['messages'];
   step: number;
-  /** Legacy field from pre-autonomous runs. New runs do not have a step-count ceiling. */
+  /** Hard per-message work-step ceiling. Optional only for blobs persisted by an older deploy. */
   maxSteps?: number;
   creditsSpent: number;
   /**
@@ -209,6 +223,46 @@ interface AgentState {
   neuronsUsed?: number;
   trace: ToolTraceEntry[];
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
+  /**
+   * Identical calls whose last attempt failed in a way op-failure.ts classified as SAFE TO REPEAT
+   * (it never reached Studio, or a read timed out), and how many identical repeats each has had.
+   * The duplicate guard lets such a call through up to MAX_IDENTICAL_RETRIES times instead of
+   * answering "you already made this exact call" to the very retry the tool result invited.
+   * Bounded like seenCalls, for the same storage reason. Optional for runs persisted earlier.
+   */
+  retryableCalls?: { sig: string; retries: number }[];
+  /**
+   * Consecutive steps in which EVERY tool call was refused as a duplicate. Measured 2026-09-22 (run
+   * 1870ecfe, the vis-01 street lamp): after the lamp was built the model re-read the place, the guard
+   * answered "you already have the result" to each identical read, and it asked again — 53 paid
+   * steps, most of the run's 205 Credits, with nothing executed and nothing traced. Bounded at
+   * MAX_DUPLICATE_STREAK; the run then ends on what it built.
+   */
+  duplicateStreak?: number;
+  /** A verifier passed after the latest change to the place. Cleared by the next change. */
+  verifiedAfterMutation?: boolean;
+  /**
+   * Consecutive steps that only READ, after the run changed the place and a verifier passed. Measured
+   * 2026-09-22 on every mission run (76b59615, fad0ab1b, a95f86fa): build, check, then 20–40 paid
+   * search_scripts / get_project_tree steps with different arguments — invisible to the duplicate
+   * guard — until it ended the run. Nudged and ended per run-idle.ts.
+   */
+  idleAfterVerify?: number;
+  /**
+   * propose_plan's consecutive refusals and the kinds of the last one, carried across steps so the
+   * tool can keep its promise that no run is refused more than twice in a row. See PlanState.
+   */
+  planRefusals?: { count: number; kinds: PlanDefectKind[] };
+  /**
+   * When the current unbroken stretch of provider refusals and transport failures began. Cleared
+   * the moment a model call returns. See PROVIDER_OUTAGE_MAX_MS.
+   */
+  providerWaitSince?: number;
+  /**
+   * Consecutive steps whose whole reply was a tool payload written as text and not executed. The
+   * steer that answers it is given its turn at most MAX_TEXT_CALL_STEERS times in a row.
+   */
+  textCallSteers?: number;
   lastCalls?: { id: string; name: string; arguments: string }[];
   finalText: string;
   streamedText?: string;
@@ -268,6 +322,12 @@ interface AgentState {
    */
   toolPermissions?: Record<string, 'allow' | 'ask' | 'deny'>;
   /**
+   * The request forbade changing the place ("do not change anything"). Pinned at the start of the run,
+   * like the permissions: every project-writing tool is withheld and the run owes no mutation. See
+   * forbidsChanges in reasoning.ts.
+   */
+  readOnly?: boolean;
+  /**
    * Which tools the permissions above actually REMOVED from this run, computed once at the first
    * step and kept so the announcement is made once and survives a reload.
    *
@@ -298,8 +358,8 @@ interface AgentState {
   rebuildOrdered?: boolean;
   /**
    * Provider rate-limit waits already spent on the CURRENT step, and the earliest moment that step
-   * may be attempted again. Reset once the step's model call gets through. The run itself has no
-   * wall-clock or step-count ceiling; quota, Stop, access and operation timeouts are the bounds.
+   * may be attempted again. Reset once the step's model call gets through. These waits do not
+   * consume the 1000 work steps because the provider never accepted the attempted step.
    *
    * `resumeAt` exists because the alarm is shared. `armStudioWatchdog` legitimately pulls the alarm
    * earlier, and every alarm during a run takes a step — without a "not before" mark the watchdog's
@@ -367,75 +427,64 @@ function accessCursorEvent(value: string | undefined): { access: AccessChange; r
 const accessClearPendingKey = (userId: string): string => `accessClearPending:${userId}`;
 
 // step limits are a direct cost multiplier: every step is a full priced inference call
-// Step limits are a direct cost multiplier: every step is a full priced inference call. They were
-// 3/8/14, which was sized for build-only runs. The visual loop costs steps by construction —
-// build (2-3) + render + critique + fix (2) + re-render is eight on its own — and a Stone lamp-post
-// build was measured hitting the ceiling mid-work, leaving scaffolding behind and never finishing
-// the detail pass. These are sized so the loop can actually close.
-const VALID_MODES = new Set<GolemMode>(['clay', 'stone', 'rune']);
+// The hard step ceiling is a direct cost multiplier: every accepted step is a full priced inference
+// call. The previous small mode-specific ceilings cut visual loops off mid-work; the current product
+// contract gives every message one explicit long-horizon ceiling instead.
+const VALID_MODES = new Set<ProductMode>(['plan', 'agent']);
+/** Latest product contract: one message may execute at most 1000 accepted work steps. */
+export const MAX_RUN_STEPS = 1000;
 
-/** Tools that change the project. A run that ends without one of these has not done its job. */
-const MUTATING_TOOLS = new Set([
-  'edit_script', 'create_instances', 'set_properties', 'delete_instances', 'run_luau', 'insert_asset',
-]);
 /** How many times one run may be steered back to work after replying without acting. */
 const MAX_NUDGE_LEVEL = 6;
-//[[ THE FREE LANE'S BUDGET WAS BELOW THE FLOOR ITS OWN MODEL NEEDS TO ANSWER AT ALL.
-//
-//   `clay` routes to @cf/qwen/qwen3-30b-a3b-fp8, a REASONING model: it spends output budget
-//   thinking before it writes. At 1600 it does not return a short answer — it returns NOTHING.
-//   Measured against the deployed gateway on 2026-09-20, same prompt, same system message:
-//
-//     maxTokens 1600 -> finishReason "length", 0 characters, 50 neurons
-//     maxTokens 2000 -> 1 of 3 prompts answered
-//     maxTokens 3200 -> 2 of 3 answered
-//     maxTokens 3000 -> a complete, correctly fenced module, 79 neurons
-//
-//   So every free-tier request needing real output burned neurons on reasoning and returned an
-//   empty answer, and the customer was charged for compute that produced nothing. That is the
-//   owner's "runs fail constantly and still take credits", and its cause was this number.
-//
-//   The gateway already sizes clay at 6500 and says so: "Plan mode still asks for 2,000
-//   (MODE_BASE_TOKENS.clay × high)". The ceiling was right and the REQUEST was the problem — the
-//   assumption that 2,000 was enough was never measured against the model that receives it.
-//
-//   5200 × the 1.25 high multiplier lands exactly on the gateway's 6500 ceiling, so high effort
-//   asks for precisely what the model is configured to give and cannot be truncated by our own
-//   arithmetic. The cost of answering is measured rather than feared: 79 neurons for a real answer
-//   against 50 for an empty one, and the gateway's own note puts a full 6,500-token reply at ~198
-//   neurons against a 1,200 ceiling per request.
-//
-//   stone and rune are unchanged. They route to glm-5.3-flash, which is not a reasoning model,
-//   answered 4 of 4 at the old budget, and did it for 65 neurons where clay spent 200 for none. ]]
-//   4400, not 5200: `clay` is a MODE and can reach two different models. On the free and paid lanes
-//   it now routes to stone, whose gateway ceiling is 5600, so 5200 x 1.25 = 6500 would be silently
-//   clamped and our own arithmetic would be the thing shortening the reply. 4400 x 1.25 = 5500 fits
-//   stone's ceiling, sits under clay's own 6500, and is well clear of the 3200 that qwen was
-//   measured needing before it will emit anything at all.
-const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 4400, stone: 4400, rune: 5200 };
+/**
+ * How many IDENTICAL repeats a call may have when its last failure was classified safe to repeat
+ * (op-failure.ts: it never reached Studio, or a read timed out). Two, so a dropped connection or a
+ * slow read can recover without the model inventing different arguments to get past the duplicate
+ * guard — and no more, because a failure that survives two clean retries is not transient.
+ */
+const MAX_IDENTICAL_RETRIES = 2;
+/** Consecutive all-duplicate steps after which a run ends on what it built (see AgentState.duplicateStreak). */
+const MAX_DUPLICATE_STREAK = 3;
+const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
+/** What a run that was told not to change anything is never offered. */
+const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
+/** Consecutive steps a tool-call-written-as-text steer may be given before the ordinary ending decides. */
+const MAX_TEXT_CALL_STEERS = 2;
+const MODE_BASE_TOKENS: Record<ProductMode, number> = { plan: 4400, agent: 4400 };
 
 /**
- * The runtime mode allowlist. `GolemMode` is a COMPILE-TIME type and `JSON.parse(raw) as ClientMsg`
+ * The runtime mode allowlist. `ProductMode` is a COMPILE-TIME type and `JSON.parse(raw) as ClientMsg`
  * is an assertion, not a check — so before this, whatever the client put in `mode` was used as a
  * key directly.
  *
- * WHAT THAT COST, measured by driving webSocketMessage:
- *
- *   mode=stone      maxSteps=16         the ceiling stops the loop
- *   mode=memory     maxSteps=undefined  `9999 > undefined` is false — NO CEILING, EVER
- *   mode=vision     maxSteps=undefined  same
- *   mode=nonsense   maxSteps=undefined  same
- *   mode=__proto__  maxSteps={}         Object.prototype, and `9999 > {}` is false too
- *
- * Accepted modes are intentionally step-unbounded. That makes this ingress check more important,
- * not less: `memory`, `vision`, `__proto__` and arbitrary strings must never become autonomy modes
- * merely because another gateway table happens to contain the same key.
+ * Only Plan and Agent are valid run modes. Autonomous is a separate boolean on Agent.
  */
-function asGolemMode(x: unknown): GolemMode | null {
+function asProductMode(x: unknown): ProductMode | null {
   if (typeof x !== 'string') return null;
-  const mode = x as GolemMode;
+  const mode = x as ProductMode;
   return VALID_MODES.has(mode) && Object.prototype.hasOwnProperty.call(MODE_BASE_TOKENS, x) ? mode : null;
 }
+
+/**
+ * The refusal a chat frame gets when its `mode` is not one this build knows.
+ *
+ * MEASURED 2026-09-22. The product renamed its run modes — the wire carried `clay`/`stone`/`rune`
+ * and carries `plan`/`agent` now — and a browser tab keeps the bundle it loaded until it reloads.
+ * There is no way to update a web SPA atomically, so during any such rename there is a window in
+ * which a live tab asks for a mode this build has never heard of. The old message ("Unknown mode
+ * for this request") was true and useless: the person reading it had done nothing wrong and had no
+ * way to know that a reload fixes it, so the product read as broken rather than as stale.
+ *
+ * The wording is the one this file already uses for a stale socket — `me === null`, a client from
+ * before the socket carried an identity. Same cause, same remedy, so the same sentence.
+ *
+ * THE CODE STAYS `bad_mode`, and that is load-bearing in two places. The browser maps the code to a
+ * field-level error on the composer (`refusalFor('bad_mode').field === 'mode'`), and
+ * tests/mode-ingress.test.mjs asserts on the code and on `terminal: true`. Changing the prose
+ * therefore cannot loosen the security property: an unrecognised mode still creates no run, and a
+ * hostile one still gets a terminal refusal.
+ */
+const MODE_SKEW_REFUSAL = 'This connection is out of date — reload the page to keep building.';
 
 /** Runtime validation for the additive product-model field on newer clients. */
 function asProductModel(x: unknown): ProductModel | undefined | null {
@@ -443,53 +492,32 @@ function asProductModel(x: unknown): ProductModel | undefined | null {
   return x === 'apple' || x === 'apple-max' ? x : null;
 }
 
-/** Legacy specialist requests keep their old meaning; new requests carry this model explicitly. */
-function effectiveProductModel(mode: GolemMode, requested?: ProductModel): ProductModel {
-  return requested ?? (mode === 'clay' ? 'apple' : 'apple-max');
+/** Model entitlement is independent of Plan/Agent. Older clients default to the free Apple lane. */
+function effectiveProductModel(mode: ProductMode, requested?: ProductModel): ProductModel {
+  void mode;
+  return requested ?? 'apple';
 }
 
-//[[ THE FREE LANE'S MODEL WAS WORSE AND FIVE TIMES DEARER, MEASURED.
-//
-//   This routed every free-tier mode to the clay gateway — @cf/qwen/qwen3-30b-a3b-fp8 — on the
-//   reasoning that a free tier should use "the existing limited configuration". It is not the
-//   cheaper configuration. Same twelve prompts, both lanes, each at its own production budget,
-//   scored by executing the module against its own checks:
-//
-//     stone  glm-5.3-flash    11/12    125 neurons
-//     clay   qwen3-30b-a3b     1/12    718 neurons
-//
-//   Five and a half times the spend for a eleventh of the result, because a reasoning model burns
-//   its output budget thinking and returns nothing: ten of those twelve came back with no code at
-//   all. A free tier that cannot answer is not cheap for us and is worthless to the person using it.
-//
-//   The first fix here made the free lane mode-dependent — clay for Plan, stone for builds — and
-//   product-model-entitlement.test.mjs refused it, correctly. Its principle is that the foundation
-//   is chosen by WHAT A PERSON PAYS FOR and never by which autonomy mode they clicked, which is the
-//   version a customer can actually be told. Honouring it and the measurement at once means the free
-//   lane simply gets the better model everywhere, because the better model is also the cheaper one.
-//
-//   The tiers still differ by entitlement, allowance, effort policy and MAX-only capabilities.
-//   They do not differ by an artificial run-length ceiling that leaves a build half-finished. ]]
-export function gatewayModelFor(mode: GolemMode, productModel?: ProductModel): string {
-  if (productModel === 'apple') return 'stone';
-  if (productModel === 'apple-max') return mode === 'clay' ? 'stone' : mode;
+// Product-model entitlement and Plan/Agent are separate axes. Both modes currently use the same
+// measured foundation; entitlement still controls paid capabilities and effort policy.
+export function gatewayModelFor(mode: ProductMode, productModel?: ProductModel): string {
+  void productModel;
   return mode;
 }
 
 /**
  * THE OUTPUT BUDGET FOLLOWS THE TOOLSET, AND THE TOOLSET IS KEYED ON `mode`.
  *
- * This used to read `productModel === 'apple' ? MODE_BASE_TOKENS.clay : MODE_BASE_TOKENS[mode]`,
- * which sized the free lane's answer as though it were a Plan-mode answer. It is not: the tools a
+ * The budget follows the offered toolset. It must not size an Agent answer as though it were Plan:
+ * the tools a
  * run is offered come from `toolsForMode(agent.mode, …)` — see runStep — and that function does
  * not look at the product model at all, so a free Agent run is handed run_luau, edit_script and
- * delete_instances and then given 2,000 output tokens (MODE_BASE_TOKENS.clay × high) to express
- * one. The paid lane gets 5,500 for the identical toolset.
+ * delete_instances and needs enough output room to express a complete tool call.
  *
- * The measurement that sized MODE_BASE_TOKENS.stone is in gateway.ts: a market-stall build script
+ * The measurement that sized the Agent budget is in gateway.ts: a market-stall build script
  * is ~5,300 characters, and at 2,400 output tokens it came back `finish_reason: "length"` — an
  * unparseable tool call, nothing built, and the Credits spent. Asking the free lane to do the
- * Stone job on a Clay budget is that failure made structural.
+ * Giving an Agent job a Plan-sized budget is that failure made structural.
  *
  * So: the budget is whatever the offered toolset is sized for. Free-vs-paid bounds live in
  * allowance/entitlement and capability policy, not a hidden maximum number of work steps.
@@ -498,15 +526,13 @@ export function gatewayModelFor(mode: GolemMode, productModel?: ProductModel): s
  * of the two — llmChat clamps with `Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)` — so
  * a guard that reads only this half would have stayed green through the whole defect.
  */
-export function baseTokensFor(mode: GolemMode): number {
+export function baseTokensFor(mode: ProductMode): number {
   return MODE_BASE_TOKENS[mode];
 }
-const STEP_STALE_MS = 180_000;
-
 /**
  * HOW LONG A RUN WAITS OUT A PROVIDER BURST, AND WHY IT WAITS AT ALL.
  *
- * Measured 2026-09-20 against the deployed worker (free Apple lane, mode stone, GLM-5.3-flash,
+ * Measured 2026-09-20 against the deployed worker (free Apple Agent lane, GLM-5.3-flash,
  * Studio disconnected): of the seven runs that reached a knowledge tool, five died with `busy` — a
  * Workers AI rate-limit refusal. The refusal was NOT provoked by the knowledge call. 389 of 600
  * model calls that day were refused and every one of them falls inside a single 17-minute window;
@@ -520,14 +546,37 @@ const STEP_STALE_MS = 180_000;
  * the same refusal class cleared at 1.9, 5.0, 6.2, 6.3, 12.1 and 60.6 s — so the ladder lands in the
  * MIDDLE of the recovery distribution, and whether a customer's run survived was decided by which
  * side of 7.6 s the provider happened to fall on. These waits sit outside the call and resume the
- * SAME step, which reaches ~80 s including the gateway's own ladders: past the whole observed
- * distribution, and still inside STEP_STALE_MS so the interrupted-run watchdog above stays the
- * outer bound rather than being defeated by this.
+ * SAME durable step. There is still no run-age watchdog: a run's age is not evidence of anything.
  *
  * The retry is free in the only sense that matters here — the request never reached the model,
  * nothing was billed, and gateway.ts has already handed the reservation back before it throws.
  */
 const RATE_LIMIT_WAIT_MS = [5_000, 15_000, 30_000] as const;
+const TRANSIENT_PROVIDER_WAIT_MAX_MS = 60_000;
+
+/**
+ * HOW LONG A PROVIDER MAY STAY UNAVAILABLE BEFORE THE RUN SAYS SO AND ENDS.
+ *
+ * The waits above used to repeat forever and silently: every rate-limit refusal slept 30 s and
+ * every transport failure up to 60 s, with nothing sent to the browser, so a provider that was down
+ * for an hour showed an hour of a frozen Thinking card and could only be ended by Stop. That is not
+ * "keep working until a real boundary" — a model provider that has not answered for minutes IS the
+ * boundary, and the product was the only party that knew it.
+ *
+ * So this bounds CONTINUOUS unavailability, not run age: the clock starts at the first refusal or
+ * transport failure of a stretch and is cleared the moment any model call returns. The burst this
+ * code was written for cleared within 60.6 s (see RATE_LIMIT_WAIT_MS); five minutes is five times
+ * the slowest recovery ever measured, and every wait inside it is announced to the client. At the
+ * bound the run ends as an error with the shared `busy` / `dropped_step` code, and finishRun's
+ * ordinary refund rules apply — a run that delivered nothing gets its Credits back.
+ */
+export const PROVIDER_OUTAGE_MAX_MS = 5 * 60_000;
+
+function isTransientProviderFailure(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { name?: unknown; kind?: unknown };
+  return e.name === 'ProviderError' && e.kind === 'transient';
+}
 
 /**
  * A rate-limit refusal that landed on the STEP'S OWN model call, before any of the step's work ran.
@@ -622,6 +671,8 @@ export class SessionDO extends DurableObject<Env> {
   /** Current pairing identity and its validated capability report. Never shared across tokens. */
   private activePluginTokenHash: string | null = null;
   private pluginCapabilityReport: PluginCapabilityReportV1 | null = null;
+  /** Which reported plugin build supplied `pluginCapabilityReport`. Null means no fresh authority. */
+  private pluginCapabilityClient: PluginCapabilityClientIdentity | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -739,9 +790,20 @@ export class SessionDO extends DurableObject<Env> {
       this.activePluginTokenHash = tokenHash;
       if (tokenHash) {
         const stored = await this.ctx.storage.get<unknown>(pluginCapabilitiesKey(tokenHash));
-        this.pluginCapabilityReport = normalisePluginCapabilities(stored);
-        if (stored !== undefined && this.pluginCapabilityReport === null) {
-          await this.ctx.storage.delete(pluginCapabilitiesKey(tokenHash));
+        const storedClient = await this.ctx.storage.get<PluginCapabilityClientIdentity>(pluginCapabilitiesClientKey(tokenHash));
+        const currentClient = await this.ctx.storage.get<PluginClientInfo>('pluginClient');
+        const currentIdentity = currentClient
+          ? { version: currentClient.version, protocol: currentClient.protocol }
+          : null;
+        const report = normalisePluginCapabilities(stored);
+        if (report && samePluginCapabilityClient(storedClient, currentIdentity)) {
+          this.pluginCapabilityReport = report;
+          this.pluginCapabilityClient = storedClient ?? null;
+        } else if (stored !== undefined || storedClient !== undefined) {
+          // Reports written before client-binding existed, or by a different plugin build, are not
+          // evidence about the build that will execute the next op. Compatibility is safer than a
+          // stale refusal that hides a capability the current plugin may now implement.
+          await this.ctx.storage.delete([pluginCapabilitiesKey(tokenHash), pluginCapabilitiesClientKey(tokenHash)]);
         }
       }
       const lastSeen = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
@@ -979,7 +1041,7 @@ export class SessionDO extends DurableObject<Env> {
   /** MAX admission is checked against the QuotaDO's plan, never against a client claim. */
   private async productModelVerdict(
     bind: { ownerId: string },
-    mode: GolemMode,
+    mode: ProductMode,
     requested?: ProductModel,
   ): Promise<{ ok: true; model: ProductModel } | { ok: false; model: ProductModel; message: string }> {
     const model = effectiveProductModel(mode, requested);
@@ -1737,6 +1799,7 @@ export class SessionDO extends DurableObject<Env> {
       if (priorActiveTokenHash !== body.tokenHash) {
         this.activePluginTokenHash = body.tokenHash;
         this.pluginCapabilityReport = null;
+        this.pluginCapabilityClient = null;
       }
       //[[ SUPERSESSION IS RECORDED, NOT ONLY PERFORMED.
       //
@@ -1750,8 +1813,10 @@ export class SessionDO extends DurableObject<Env> {
         await this.ctx.storage.put('pluginSuperseded', { hash: previous, at: Date.now() });
       }
       if (previous !== body.tokenHash) {
-        if (previous) await this.ctx.storage.delete(pluginCapabilitiesKey(previous));
-        await this.ctx.storage.delete(pluginCapabilitiesKey(body.tokenHash));
+        if (previous) {
+          await this.ctx.storage.delete([pluginCapabilitiesKey(previous), pluginCapabilitiesClientKey(previous)]);
+        }
+        await this.ctx.storage.delete([pluginCapabilitiesKey(body.tokenHash), pluginCapabilitiesClientKey(body.tokenHash)]);
       }
       // a fresh pairing supersedes any previous plugin token for this project
       await this.ctx.storage.put({ pluginTokenHash: body.tokenHash, pluginTokenIssuedAt: Date.now() });
@@ -1791,7 +1856,8 @@ export class SessionDO extends DurableObject<Env> {
         if (staleHash && this.activePluginTokenHash === staleHash) {
           this.activePluginTokenHash = null;
           this.pluginCapabilityReport = null;
-          await this.ctx.storage.delete(pluginCapabilitiesKey(staleHash));
+          this.pluginCapabilityClient = null;
+          await this.ctx.storage.delete([pluginCapabilitiesKey(staleHash), pluginCapabilitiesClientKey(staleHash)]);
         }
         return json({ error: 'token expired', message: 'This pairing has expired. Pair again from the Apple web app.' }, 401);
       }
@@ -2200,11 +2266,12 @@ export class SessionDO extends DurableObject<Env> {
     // regression run. It takes exactly the path a chat message takes — same startRun, same tools,
     // same quota, same budget — so what it measures is the real agent, not a test harness.
     if (path === '/agent-run' && req.method === 'POST') {
-      const { text, mode, effort, productModel } = (await req.json()) as {
+      const { text, mode, effort, productModel, autonomous } = (await req.json()) as {
         text: string;
-        mode?: GolemMode;
+        mode?: ProductMode;
         effort?: Effort;
         productModel?: unknown;
+        autonomous?: unknown;
       };
       if (!text?.trim()) return json({ ok: false, error: 'text required' }, 400);
       const agent = await this.ctx.storage.get<AgentState>('agent');
@@ -2212,16 +2279,15 @@ export class SessionDO extends DurableObject<Env> {
       // `effort` pins the reasoning tier for the whole run, overriding the adaptive policy. It
       // exists so the policy itself can be A/B tested against real builds rather than against
       // text-only probes — the measurement that missed the tool-calling regression.
-      // `mode ?? 'stone'` defended undefined and null only — never a hostile string, and this path
-      // sets the same step ceiling the socket path does.
-      const runMode = mode === undefined || mode === null ? 'stone' : asGolemMode(mode);
+      const runMode = mode === undefined || mode === null ? 'agent' : asProductMode(mode);
       if (!runMode) return json({ ok: false, error: `unknown mode` }, 400);
+      const runAutonomous = runMode === 'agent' && autonomous === true;
       const selectedModel = asProductModel(productModel);
       if (selectedModel === null) return json({ ok: false, error: 'unknown product model' }, 400);
       const modelVerdict = await this.productModelVerdict(bind, runMode, selectedModel);
       if (!modelVerdict.ok) return json({ ok: false, error: modelVerdict.message, code: 'product_model_unavailable' }, 403);
-      await this.startRun(bind, text.slice(0, MESSAGE_MAX_CHARS), runMode, effort, undefined, undefined, selectedModel, bind.ownerId);
-      return json({ ok: true, started: true, mode: runMode, ...(selectedModel ? { productModel: selectedModel } : {}), effort: effort ?? 'adaptive' });
+      await this.startRun(bind, text.slice(0, MESSAGE_MAX_CHARS), runMode, effort, undefined, undefined, selectedModel, runAutonomous, bind.ownerId);
+      return json({ ok: true, started: true, mode: runMode, autonomous: runAutonomous, ...(selectedModel ? { productModel: selectedModel } : {}), effort: effort ?? 'adaptive' });
     }
 
     // Run one Studio op directly, with no agent loop and no inference. The visual eval harness
@@ -2404,9 +2470,10 @@ export class SessionDO extends DurableObject<Env> {
       const had = !!tokenHash;
       this.activePluginTokenHash = null;
       this.pluginCapabilityReport = null;
+      this.pluginCapabilityClient = null;
       await this.ctx.storage.delete([
         'pluginTokenHash', 'pluginTokenIssuedAt', 'pluginLastSeen', 'pluginPlace', 'pluginSuperseded',
-        ...(tokenHash ? [pluginCapabilitiesKey(tokenHash)] : []),
+        ...(tokenHash ? [pluginCapabilitiesKey(tokenHash), pluginCapabilitiesClientKey(tokenHash)] : []),
       ]);
       this.lastSeenWrittenAt = 0;
       this.pollDueBy = 0;
@@ -2524,9 +2591,11 @@ export class SessionDO extends DurableObject<Env> {
     return {
       msgId: agent.msgId,
       mode: agent.mode,
+      ...(agent.autonomous ? { autonomous: true } : {}),
       ...(agent.productModel ? { productModel: agent.productModel } : {}),
       phase: agent.phase ?? 'planning',
       step: agent.step,
+      totalSteps: MAX_RUN_STEPS,
       text: agent.streamedText ?? '',
       tools: agent.uiTools ?? [],
       startedAt: agent.startedAt,
@@ -2634,13 +2703,12 @@ export class SessionDO extends DurableObject<Env> {
             );
             return;
           }
-          const mode = asGolemMode(msg.mode);
+          const mode = asProductMode(msg.mode);
           if (!mode) {
-            // Refused by name. A `?? 'clay'` default here would accept a hostile value and run it
-            // quietly as something else, which is the same failure wearing a helpful face.
-            this.refuseOne(ws, { type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
+            this.refuseOne(ws, { type: 'error', code: 'bad_mode', message: MODE_SKEW_REFUSAL });
             return;
           }
+          const autonomous = mode === 'agent' && msg.autonomous === true;
           const productModel = asProductModel(msg.productModel);
           if (productModel === null) {
             this.refuseOne(ws, { type: 'error', code: 'bad_product_model', message: 'Unknown product model for this request.' });
@@ -2685,6 +2753,7 @@ export class SessionDO extends DurableObject<Env> {
             ws,
             undefined,
             productModel,
+            autonomous,
             me?.userId,
             me?.grantExpiresAt ?? undefined,
           );
@@ -2715,11 +2784,12 @@ export class SessionDO extends DurableObject<Env> {
           );
           return;
         }
-        const mode = asGolemMode(msg.mode);
+        const mode = asProductMode(msg.mode);
         if (!mode) {
-          this.refuseOne(ws, { type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
+          this.refuseOne(ws, { type: 'error', code: 'bad_mode', message: MODE_SKEW_REFUSAL });
           return;
         }
+        const autonomous = mode === 'agent' && msg.autonomous === true;
         const productModel = asProductModel(msg.productModel);
         if (productModel === null) {
           this.refuseOne(ws, { type: 'error', code: 'bad_product_model', message: 'Unknown product model for this request.' });
@@ -2797,6 +2867,7 @@ export class SessionDO extends DurableObject<Env> {
               at: row.created_at,
             },
             productModel,
+            autonomous,
             me?.userId,
             me?.grantExpiresAt ?? undefined,
           );
@@ -2874,17 +2945,18 @@ export class SessionDO extends DurableObject<Env> {
   private async startRun(
     bind: { projectId: string; projectName: string; ownerId: string },
     text: string,
-    mode: GolemMode,
+    mode: ProductMode,
     forcedEffort?: Effort,
     /** The socket that asked, so the refusal reaches that person and not the room. */
     origin?: WebSocket,
     carryRevisionsFrom?: CarriedRevisions,
     productModel?: ProductModel,
+    autonomous = false,
     initiatedBy?: string,
     initiatorExpiresAt?: string | number,
   ) {
     const attempt = await this.startGate(() =>
-      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, initiatedBy, initiatorExpiresAt),
+      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, autonomous, initiatedBy, initiatorExpiresAt),
     );
     if (!attempt.ran) {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
@@ -2894,16 +2966,17 @@ export class SessionDO extends DurableObject<Env> {
   private async startRunInner(
     bind: { projectId: string; projectName: string; ownerId: string },
     text: string,
-    mode: GolemMode,
+    mode: ProductMode,
     forcedEffort?: Effort,
     origin?: WebSocket,
     carryRevisionsFrom?: CarriedRevisions,
     productModel?: ProductModel,
+    autonomous = false,
     initiatedBy?: string,
     initiatorExpiresAt?: string | number,
   ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
-    if (existing && existing.status !== 'idle' && Date.now() - existing.lastStepAt < STEP_STALE_MS) {
+    if (existing && existing.status !== 'idle') {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
       return;
     }
@@ -3015,10 +3088,14 @@ export class SessionDO extends DurableObject<Env> {
     this.pinnedPrefs = personalisation.prefs;
     const promptMemory = memoryForPrompt(memory, personalisation.memoryMode);
     const promptBaseTools = toolsForMode(mode, studioConnected, toolNames());
-    const promptUserTools = applyToolPermissions(promptBaseTools, personalisation.prefs.tool_permissions);
+    const runAutonomous = mode === 'agent' && autonomous;
+    const promptUserTools = runAutonomous
+      ? promptBaseTools
+      : applyToolPermissions(promptBaseTools, personalisation.prefs.tool_permissions);
     const promptCapabilityFilter = this.pluginToolFilter(promptUserTools);
     const sys = systemPrompt({
       mode,
+      autonomous: runAutonomous,
       studioConnected,
       placeName: pluginState?.placeName ?? null,
       projectName: bind.projectName,
@@ -3036,14 +3113,17 @@ export class SessionDO extends DurableObject<Env> {
       memoryFacts: promptMemory.facts,
       // The art-direction brief is ~1,800 tokens on every step, so only visual requests pay for
       // it. The request text doubles as the scene-kind hint — resolveKind matches on substrings.
-      sceneKind: traits.visualDesignTask && mode !== 'clay' ? text : undefined,
+      sceneKind: traits.visualDesignTask && mode === 'agent' ? text : undefined,
       //[[ Same gate as sceneKind, on the trait that means INTERFACE rather than place.
       //   `designBrief` returns null when the library has nothing useful for this
       //   request, and null is a real answer: the library covers a fraction of the
       //   style families §L asks for, and padding a thin match into a prompt would
       //   spend tokens on every step to tell the model what it did not need. ]]
-      uiBrief: traits.uiDesignTask && mode !== 'clay' ? (designBrief(text)?.text ?? null) : null,
+      uiBrief: traits.uiDesignTask && mode === 'agent' ? (designBrief(text)?.text ?? null) : null,
       studioCapabilityNote: pluginCapabilityPromptNote(promptCapabilityFilter),
+      // The same narrowed set the first step will offer, so the prompt never instructs a call to a
+      // tool the run was not given (propose_plan with Studio disconnected was the shipped case).
+      offeredTools: promptCapabilityFilter.allowed,
       personalisation: personalisation.promptBlock,
       fenceId,
     });
@@ -3059,13 +3139,16 @@ export class SessionDO extends DurableObject<Env> {
     const agent: AgentState = {
       status: 'running',
       mode,
+      autonomous: runAutonomous,
       productModel: selectedProductModel,
       msgId,
       fenceId,
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
       // trimTranscript documents — the agent kept working with no record of the task.
       llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text, pinned: true }],
+      ...(mode === 'agent' && forbidsChanges(text) ? { readOnly: true } : {}),
       step: 0,
+      maxSteps: MAX_RUN_STEPS,
       creditsSpent: 1,
       // The admission charge above, apportioned exactly as QuotaDO took it. Spread rather than
       // assigned so an older QuotaDO that reports no split leaves both fields ABSENT — which is the
@@ -3099,11 +3182,11 @@ export class SessionDO extends DurableObject<Env> {
     // server had never heard of, and Edit / Try again / Regenerate — all of which resolve that id
     // against the messages table — answered "That message is no longer in the conversation" until
     // the page was reloaded. See web/src/lib/message-identity.ts.
-    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, productModel: selectedProductModel, userMsgId });
+    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, ...(runAutonomous ? { autonomous: true } : {}), productModel: selectedProductModel, userMsgId });
     // Exactly once per run, and only after msg_start so the client has a message to attach it to.
     if (intent) this.broadcast({ type: 'run_intent', msgId, intent });
     this.currentMsgId = agent.msgId;
-    agent.phase = mode === 'clay' ? 'understanding' : 'planning';
+    agent.phase = mode === 'plan' ? 'understanding' : 'planning';
     this.broadcast({ type: 'agent_status', phase: agent.phase });
 
     // Auto-checkpoint before builder modes touch the project.
@@ -3117,7 +3200,7 @@ export class SessionDO extends DurableObject<Env> {
     // The returned error was also being discarded. A checkpoint is the user's undo point, so
     // failing to take one is worth saying out loud — but it is not a reason to refuse to work,
     // and silently pressing on is the thing this codebase keeps getting wrong.
-    if (studioConnected && mode !== 'clay') {
+    if (studioConnected && mode === 'agent') {
       try {
         //[[ SAY WHAT THE RUN WAS ABOUT TO DO.
         //
@@ -3210,10 +3293,7 @@ export class SessionDO extends DurableObject<Env> {
           : undefined;
         if (waitMs !== undefined) {
           agent.rateLimitWaits = Math.min(waited + 1, RATE_LIMIT_WAIT_MS.length - 1);
-          agent.step = Math.max(0, agent.step - 1);
-          agent.resumeAt = Date.now() + waitMs;
-          await this.persistAgent(agent);
-          await this.ctx.storage.setAlarm(agent.resumeAt);
+          await this.waitOnProvider(agent, 'rate_limited', waitMs);
           return;
         }
         agent.finalText =
@@ -3224,24 +3304,21 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
       const msg = e instanceof Error ? e.message : String(e);
-      // Provider transport hiccups are recovered inside this run. This branch is before a usable
-      // provider response/tool result exists, so it never replays a mutating tool.
-      if (/inference failed/i.test(msg) && agent.step > 1) {
+      // A classified provider transport outage is a pause in this run, not yet a terminal state.
+      // There is no usable provider response and no tool from this step to replay. Keep retrying
+      // across Durable Object alarms with a capped backoff, announced to the client each time, until
+      // the provider has been unavailable for PROVIDER_OUTAGE_MAX_MS — the run's real boundary for
+      // an outage, beside Credits/allowance, Stop and access revocation. Unknown/auth/context/safety
+      // failures do not enter this branch because repeating those has no evidence of becoming valid.
+      if (isTransientProviderFailure(e)) {
         const failures = (agent.transientFailures ?? 0) + 1;
         agent.transientFailures = failures;
-        if (failures <= 8) {
-          agent.step = Math.max(0, agent.step - 1);
-          agent.resumeAt = Date.now() + Math.min(30_000, 1_000 * 2 ** Math.min(failures, 5));
-          console.warn('[session] transient model step failed; retrying in-run:', msg);
-          await this.persistAgent(agent);
-          await this.ctx.storage.setAlarm(agent.resumeAt);
-          return;
-        }
-        agent.finalText =
-          (agent.finalText ? agent.finalText + '\n\n' : '') +
-          'The model service kept failing before it could return a usable step. Work already applied to Studio is saved.';
-        console.warn('[session] repeated model step failure:', msg);
-        await this.finishRun(agent, 'error', 'dropped_step');
+        console.warn('[session] transient provider failure; keeping run alive:', msg);
+        await this.waitOnProvider(
+          agent,
+          'unavailable',
+          Math.min(TRANSIENT_PROVIDER_WAIT_MAX_MS, 1_000 * 2 ** Math.min(failures, 6)),
+        );
         return;
       }
       if (msg === 'CAPACITY_EXHAUSTED') {
@@ -3267,6 +3344,63 @@ export class SessionDO extends DurableObject<Env> {
     }
   }
 
+  /**
+   * Retry the current step after a provider refusal or transport failure — or, once the provider
+   * has been unavailable for PROVIDER_OUTAGE_MAX_MS without one answer, end the run and say why.
+   *
+   * EVERY WAIT IS ANNOUNCED. `agent_status` keeps the card current and a `notice` says, in words,
+   * that the run is waiting on the model provider and when it will try again. Before this the wait
+   * sent nothing at all, and a run waiting out an outage was indistinguishable from a dead one.
+   *
+   * The step is handed back either way: the provider never ran it. At the bound the run ends as an
+   * `error`, which is a refundable ending, so a run that delivered nothing is refunded by finishRun
+   * under the same rules as every other failure.
+   */
+  private async waitOnProvider(agent: AgentState, cause: 'rate_limited' | 'unavailable', waitMs: number): Promise<void> {
+    const now = Date.now();
+    const recorded = agent.providerWaitSince;
+    // An unreadable or future start is treated as "starting now" — never as an outage that has
+    // already lasted forever, which would end a healthy run on its first refusal.
+    const since = typeof recorded === 'number' && Number.isFinite(recorded) && recorded <= now ? recorded : now;
+    agent.providerWaitSince = since;
+    agent.step = Math.max(0, agent.step - 1);
+    const outageMs = now - since;
+    if (outageMs >= PROVIDER_OUTAGE_MAX_MS) {
+      const minutes = Math.max(1, Math.round(outageMs / 60_000));
+      delete agent.resumeAt;
+      delete agent.providerWaitSince;
+      agent.finalText =
+        (agent.finalText ? agent.finalText + '\n\n' : '') +
+        `The model provider has not answered for ${minutes} minute${minutes === 1 ? '' : 's'} — every attempt was ` +
+        `${cause === 'rate_limited' ? 'refused as too busy' : 'lost before a response came back'} — so I stopped this run ` +
+        'here instead of waiting indefinitely.' +
+        (agent.mutated === true ? ' Everything already applied to your project is saved.' : '') +
+        ' Send the message again once the provider is back.';
+      this.broadcast({
+        type: 'error',
+        code: 'busy',
+        message: `The model provider has been unavailable for ${minutes} minute${minutes === 1 ? '' : 's'}, so this run was ended.`,
+      });
+      // Two literal calls rather than a ternary: the code is part of a closed vocabulary and
+      // run-failure-vocabulary.test.mjs reads each call site to prove it.
+      if (cause === 'rate_limited') await this.finishRun(agent, 'error', 'busy');
+      else await this.finishRun(agent, 'error', 'dropped_step');
+      return;
+    }
+    agent.resumeAt = now + waitMs;
+    await this.persistAgent(agent);
+    this.broadcast({ type: 'agent_status', phase: agent.phase ?? 'planning', step: agent.step, creditsSpent: agent.creditsSpent });
+    this.broadcast({
+      type: 'notice',
+      code: 'provider_wait',
+      message:
+        `Waiting on the model provider (${cause === 'rate_limited' ? 'it is too busy right now' : 'it did not answer'}) — ` +
+        `retrying in ${Math.max(1, Math.round(waitMs / 1000))} s. The run is still going; it ends if the provider ` +
+        `stays unavailable for ${Math.round(PROVIDER_OUTAGE_MAX_MS / 60_000)} minutes.`,
+    });
+    await this.ctx.storage.setAlarm(agent.resumeAt);
+  }
+
   private async runStep(agent: AgentState) {
     // The RESULT is unused; the call is kept because reading the binding refreshes
     // `boundProjectId` on an instance revived mid-run. The constructor restores it too,
@@ -3287,15 +3421,18 @@ export class SessionDO extends DurableObject<Env> {
     //
     //   The run's own state carries the id across the eviction, so it is taken from there. ]]
     this.currentMsgId = agent.msgId;
+    if (agent.step >= MAX_RUN_STEPS) {
+      agent.finalText = agent.finalText || `I reached the ${MAX_RUN_STEPS}-step ceiling for this message. Work already applied to the project is saved.`;
+      await this.finishRun(agent, 'incomplete', undefined, undefined, 'step_limit');
+      return;
+    }
     agent.step += 1;
     agent.lastStepAt = Date.now();
     this.lastActivity = agent.lastStepAt;
 
-    // TIME before STEPS: a run that has been going too long should be told so, not told it ran out
-    // of steps. What stopped it has to be what it is told, or the next attempt repeats it.
     if (agent.step > 1) {
       const state = await this.quotaState(agent.userId);
-      if (state.creditsRemaining <= 0) {
+      if (state.unmetered !== true && state.creditsRemaining <= 0) {
         agent.finalText = agent.finalText || 'I paused because your daily Credits ran out. Progress is saved.';
         await this.finishRun(agent, 'quota');
         return;
@@ -3349,7 +3486,7 @@ export class SessionDO extends DurableObject<Env> {
     // The opening phase of a step is 'understanding' on the first step and
     // otherwise carries whatever the previous tool left us in, until the next
     // tool call renames it. Never invent a stage the agent has not entered.
-    agent.phase = agent.step === 1 ? (agent.mode === 'clay' ? 'understanding' : 'planning') : (agent.phase ?? 'building');
+    agent.phase = agent.step === 1 ? (agent.mode === 'plan' ? 'understanding' : 'planning') : (agent.phase ?? 'building');
     this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, creditsSpent: agent.creditsSpent });
 
     const studioConnected = await this.pluginConnected();
@@ -3359,8 +3496,16 @@ export class SessionDO extends DurableObject<Env> {
     //   guarantee, not a token optimisation. Preferences are applied ON TOP of it and can only
     //   remove, so a preference cannot hand run_luau to the one mode whose entire purpose is that
     //   it cannot touch the project. See applyToolPermissions. ]]
-    const base = toolsForMode(agent.mode, studioConnected, toolNames());
-    const userAllowed = applyToolPermissions(base, agent.toolPermissions);
+    const modeBase = toolsForMode(agent.mode, studioConnected, toolNames());
+    // A request that forbade changes gets no tool that can make one — narrowing only, like the
+    // permissions below. The playtest stays: it restores anything it disturbs, and it is often
+    // exactly what such a request asks for.
+    const base = agent.readOnly
+      ? new Set([...modeBase].filter((name) => !READ_ONLY_WITHHELD.has(name)))
+      : modeBase;
+    const userAllowed = agent.mode === 'agent' && agent.autonomous
+      ? base
+      : applyToolPermissions(base, agent.toolPermissions);
     const offeredCapabilityFilter = this.pluginToolFilter(userAllowed);
     const offeredAllowed = offeredCapabilityFilter.allowed;
     const knownTools = new Set(toolNames());
@@ -3381,7 +3526,7 @@ export class SessionDO extends DurableObject<Env> {
     //   The audit event is per TOOL rather than per run: `subject` is one name in analytics.ts, and
     //   a comma-joined list in that field would be a record nothing can query by tool. ]]
     if (agent.deniedTools === undefined) {
-      const denied = deniedTools(base, agent.toolPermissions);
+      const denied = agent.mode === 'agent' && agent.autonomous ? [] : deniedTools(base, agent.toolPermissions);
       agent.deniedTools = denied;
       if (denied.length) {
         for (const tool of denied) {
@@ -3395,9 +3540,11 @@ export class SessionDO extends DurableObject<Env> {
     // outcome — visual design, recovery from failure, anything irreversible.
     const choice = chooseEffort({
       mode: agent.mode,
-      // The entitlement travels WITH the mode. gatewayModelFor/maxStepsFor/baseTokensFor below
-      // already branch on it; the thinking policy did not, which is how Apple MAX in Plan mode
-      // came to think at `low`.
+      // The entitlement travels WITH the mode. `chooseEffort` is the ONLY thing that reads it now:
+      // `gatewayModelFor` voids its productModel argument and `baseTokensFor` is keyed on the mode
+      // alone, so the entitlement reaches the request as an EFFORT FLOOR and nothing else. The
+      // thinking policy used to ignore it entirely, which is how Apple MAX in Plan mode came to
+      // think at `low`.
       productModel: agent.productModel,
       step: agent.step,
       highEffortUsed: agent.highEffortUsed ?? 0,
@@ -3414,12 +3561,8 @@ export class SessionDO extends DurableObject<Env> {
     //[[ REPORT THE SETTING THAT WAS APPLIED, NOT THE ONE THAT WAS CHOSEN.
     //
     //   The policy decides an effort for every step whatever the lane. Whether that effort reaches
-    //   the model is a different question, and on the free lane the answer was no: `gatewayModelFor`
-    //   routes `productModel: 'apple'` to `clay`, which is a Qwen3 route, and the Workers AI adapter
-    //   drops `reasoning_effort` for anything that is not a GLM route — correctly, because sending
-    //   an undocumented field to Qwen would be the wrong fix. So the tier was computed, rendered in
-    //   the thinking card, written into the run's replayable history, and then dropped before the
-    //   request left the building. The thinking card said the model was thinking hard. It was not.
+    //   the model is a different question. The adapter is authoritative for whether the selected
+    //   route accepts an explicit reasoning effort.
     //
     //   OMITTED rather than downgraded to 'low'. "Low" would be a second false claim — the provider
     //   was told nothing at all, which is not the same as being told to think cheaply — and the
@@ -3468,7 +3611,10 @@ export class SessionDO extends DurableObject<Env> {
         sessionId: this.ctx.id.toString(),
         // Attribution for the model trace. Null when the run predates a bind rather than a
         // placeholder — `breakdownBy` counts unattributed calls instead of inventing a tenant.
-        actorId: agent.userId,
+        // Human attribution follows the verified run starter. `userId` remains the project owner
+        // because quota/refund billing is intentionally owner-scoped. Older persisted runs do not
+        // have initiatedBy, so fall back to their historical owner identity rather than inventing one.
+        actorId: agent.initiatedBy ?? agent.userId,
         ...(this.boundProjectId ? { projectId: this.boundProjectId } : {}),
         runId: agent.msgId,
       },
@@ -3482,15 +3628,21 @@ export class SessionDO extends DurableObject<Env> {
       throw e;
     });
     // The burst this step was waiting on has cleared, so the next one starts from a full set of
-    // waits. Per STEP, not per run: the run's wall clock is what bounds the total.
+    // waits. Per STEP, not per run: what bounds the total is PROVIDER_OUTAGE_MAX_MS of continuous
+    // unavailability (there is no run wall clock).
     agent.rateLimitWaits = 0;
     agent.transientFailures = 0;
     delete agent.resumeAt;
+    // And the outage clock: an answer ends the stretch of unavailability PROVIDER_OUTAGE_MAX_MS bounds.
+    delete agent.providerWaitSince;
     // Pairing can change while the model is in flight. Re-read the current capability report before
     // interpreting or executing its response, and intersect it with what THIS call was offered.
     // A reconnect may narrow a step immediately; it may never widen the step after inference.
     const capabilityFilter = this.pluginToolFilter(userAllowed);
     const allowed = new Set([...offeredAllowed].filter((name) => capabilityFilter.allowed.has(name)));
+    // Whether this run can change the project at all. The steers that say "make the change" are
+    // only true for a run that was offered something that makes one.
+    const canBuild = projectMutatingToolNames().some((name) => allowed.has(name));
     //[[ THE MODEL SOMETIMES WRITES THE CALL INSTEAD OF MAKING IT, and until this ran the payload
     //   was printed at the user as the answer. Observed in production: a request for a clicker
     //   loop came back as eighty lines of `propose_plan` arguments in the chat window, nothing
@@ -3499,23 +3651,18 @@ export class SessionDO extends DurableObject<Env> {
     //
     //   Done BEFORE `lastCalls` is taken and before `res.text` is read, so the recovered call is
     //   indistinguishable downstream from one the model actually made. ]]
+    let rescued: ReturnType<typeof recoverToolCall> | null = null;
     if (!res.toolCalls.length && res.text) {
-      const rescued = recoverToolCall(res.text, allowed, knownTools);
+      rescued = recoverToolCall(res.text, allowed, knownTools);
       if (rescued.call) {
         res.toolCalls = [{ id: `rescued_${agent.step}`, name: rescued.call.name, arguments: rescued.call.arguments }];
         res.text = rescued.text;
       } else if (rescued.refused) {
         // Not executed — but not shown either. A wall of JSON is never the answer to anything, and
         // the model needs to be told what went wrong rather than the user being handed the
-        // evidence. The nudge path below turns this into another step.
+        // evidence. The steer is pushed below, AFTER the assistant turn it answers, and is given
+        // a step of its own there.
         res.text = '';
-        agent.priorStepFailed = true;
-        agent.llm.push({
-          role: 'user',
-          content:
-            `Your last message was the ARGUMENTS for \`${rescued.refused}\` written as text, not a tool call. ` +
-            'It was not run and the user did not see it. Call the tool.',
-        });
       }
     }
 
@@ -3526,10 +3673,13 @@ export class SessionDO extends DurableObject<Env> {
     // the problem it was bought for is resolved.
     agent.priorStepFailed = false;
     agent.visualDefectsFound = false;
+    // A tool call written as text and not run IS something that went wrong this step. This used to
+    // be set before the reset above, which erased it on the same line it was meant to survive.
+    if (rescued?.refused) agent.priorStepFailed = true;
 
     // A generated-image/model claim needs evidence from THIS run, not an invented ID
     // copied into prose. Hold replies until the requested artifact tool succeeds.
-    const artifact = artifactCompletion(agent.mode === 'clay' ? undefined : agent.request, agent.trace);
+    const artifact = artifactCompletion(agent.mode === 'plan' ? undefined : agent.request, agent.trace);
     if (artifact.missing) {
       res.text = '';
       agent.finalText = '';
@@ -3679,6 +3829,32 @@ export class SessionDO extends DurableObject<Env> {
 
     if (!res.toolCalls.length) {
       agent.llm.push({ role: 'assistant', content: res.text });
+      //[[ THE STEER GETS ITS TURN — BOUNDED.
+      //
+      //   It used to be pushed and then ignored: with nothing else owed (Studio offline, or the run
+      //   already mutated) control fell straight through to finishRun('done'), so a model that wrote
+      //   its call as text ended the run with "Done." and the correction it was handed never reached
+      //   it. Now the next step answers it, at most MAX_TEXT_CALL_STEERS times in a row, after which
+      //   the ordinary ending below decides as it always did. And a tool this run was not offered is
+      //   not one to be told to call — that instruction could only end in "unavailable". ]]
+      if (rescued?.refused) {
+        const steers = (agent.textCallSteers ?? 0) + 1;
+        agent.textCallSteers = steers;
+        agent.llm.push({
+          role: 'user',
+          content:
+            `Your last message was the ARGUMENTS for \`${rescued.refused}\` written as text, not a tool call. ` +
+            'It was not run and the user did not see it. ' +
+            (allowed.has(rescued.refused)
+              ? 'Call the tool.'
+              : 'That tool is not offered in this run, so do not try it again: carry on with the tools you were given.'),
+        });
+        if (steers <= MAX_TEXT_CALL_STEERS) {
+          await this.persistAgent(agent);
+          await this.ctx.storage.setAlarm(Date.now() + 10);
+          return;
+        }
+      }
       if (artifact.missing) {
         const available = toolDefs(studioConnected, allowed)
           .some((tool) => tool.name === artifact.tool);
@@ -3695,14 +3871,16 @@ export class SessionDO extends DurableObject<Env> {
       // A build request that ends with prose and no change has failed, whatever the prose says.
       // Measured: the model replied "One part is still Plastic - finding and fixing it, then a
       // visual inspection:" and stopped, announcing work it never did. Steer it back rather than
-      // reporting success. Bounded by MAX_NUDGES so this can never loop.
+      // reporting success — that is the `owesWork` nudge below. It is NOT bounded by a nudge count
+      // any more (commit 384a4be removed MAX_NUDGES; MAX_NUDGE_LEVEL only clamps the counter): it
+      // repeats on every step the model answers in prose without changing the project, and what
+      // ends that is MAX_RUN_STEPS, Credits on a metered account, Stop or access revocation.
       // VISUAL SELF-CORRECTION, as a production behaviour rather than a benchmark feature.
       // If the run changed the world for a visual request and never looked at the result, look
       // now. A failing gate is handed back as work to do, exactly as a user would hand it back.
-      // Charged once per run, and only with steps left, so it can neither loop nor surprise the
-      // budget.
+      // Charged once per run (`autoCritiqued`), so it can neither loop nor surprise the budget.
       if (
-        agent.mode !== 'clay' &&
+        agent.mode === 'agent' &&
         agent.mutated &&
         studioConnected &&
         agent.traits?.visualDesignTask &&
@@ -3765,8 +3943,14 @@ export class SessionDO extends DurableObject<Env> {
       // finished as `incomplete`, printing "I did not change anything in your project... which is
       // a fault on my side". The guard itself is right and stays; it simply must not be applied to
       // a message that never requested a change. See classifyRequest in reasoning.ts.
-      const owesWork =
-        agent.mode !== 'clay' && !agent.mutated && studioConnected && !agent.traits?.conversational;
+      //
+      // And only a run that CAN build owes a build — the same reason `studioConnected` is in the
+      // test. A paired run whose permissions or plugin withhold every tool that changes the project
+      // could never satisfy the nudge, so it was told "do it now" on every prose reply until the
+      // step ceiling or its Credits ran out: a loop with no possible progress, a paid step each time.
+      const askedForWork =
+        agent.mode === 'agent' && !agent.mutated && studioConnected && !agent.traits?.conversational && !agent.readOnly;
+      const owesWork = askedForWork && canBuild;
       if (owesWork) {
         agent.nudges = Math.min(MAX_NUDGE_LEVEL, (agent.nudges ?? 0) + 1);
         agent.llm.push({
@@ -3784,38 +3968,94 @@ export class SessionDO extends DurableObject<Env> {
       // MEASURED, 2026-08-31: asked to build a town plaza, the agent called a tool that does not
       // exist, ran a playtest against an empty Workspace, then spent the rest of its steps on asset
       // searches — ten tool calls, not one of them mutating — and the user was told "Done."
-      // The nudge above had already fired MAX_NUDGES times; when it gives up, control fell straight
-      // through to finishRun(agent, 'done'), which prints the model's own optimistic prose.
+      // Then, the nudge above fired at most MAX_NUDGES times and control fell through to
+      // finishRun(agent, 'done'), which printed the model's own optimistic prose.
+      //
+      // NOW the nudge never gives up, so this line is reached only by a run that does not owe
+      // work and `owesWork` is always false here. A run that owes work and never delivers it ends
+      // through a run boundary instead: MAX_RUN_STEPS (`incomplete`, step_limit), Credits (`quota`),
+      // Stop or access revocation — each with its own honest reply.
       //
       // Nothing about that is recoverable by a user, because the reply says the work happened.
+      //
+      // A run that was asked for work and cannot build ends here too, like an offline Agent run, on
+      // the model's own reply — with the one fact that reply must not contradict said by the product,
+      // since the model's prose is not evidence of what changed (agent.mutated is).
+      if (askedForWork) {
+        const note =
+          'Nothing in the project was changed: this run was not offered any tool that edits the project ' +
+          '(the tool permissions or the connected Studio withhold them).';
+        const prior = agent.streamedText ?? '';
+        agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
+        agent.streamedText = prior ? `${prior}\n\n${note}` : note;
+        this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
+      }
       await this.finishRun(agent, owesWork ? 'incomplete' : 'done');
       return;
     }
 
     // record the assistant turn with STRUCTURED tool calls; the gateway renders them in whatever
-    // form the target model expects
-    agent.llm.push({ role: 'assistant', content: res.text ?? '', toolCalls: res.toolCalls });
+    // form the target model expects. Only arguments the provider can read back go into history: a
+    // call whose arguments are not JSON is still run (and runTool tells the model so), but its bytes
+    // are replaced by `{}` here, because echoing them made the provider reject the next request.
+    agent.llm.push({ role: 'assistant', content: res.text ?? '', toolCalls: historySafeToolCalls(res.toolCalls) });
+    // A real call was made, so the text-payload steer's run of consecutive uses is over.
+    agent.textCallSteers = 0;
 
     const ctx = this.agentCtx(agent);
+    // What propose_plan validates against: exactly the set this step will execute, so a plan can
+    // never promise a tool the run was not given. And the plan tool's own run-level memory, so it
+    // can keep its promise never to refuse more than twice in a row. See PlanState in tools.ts.
+    ctx.offeredTools = allowed;
+    ctx.planState = {
+      refusals: agent.planRefusals?.count ?? 0,
+      kinds: agent.planRefusals?.kinds ?? [],
+      announced: agent.plan !== undefined,
+    };
     agent.seenCalls = agent.seenCalls ?? [];
+    let executedThisStep = 0;
+    let duplicatesThisStep = 0;
+    let mutatedThisStep = false;
+    let verifiedThisStep = false;
     for (const call of res.toolCalls.slice(0, 4)) {
       if (await this.stopForAccess(agent)) return;
       const t0 = Date.now();
       const toolId = call.id;
       const sig = `${call.name}:${call.arguments}`;
-      if (agent.seenCalls.includes(sig)) {
-        // the model is looping — refuse the duplicate and steer it back to building
+      //[[ THE DUPLICATE GUARD, AND ITS TWO EXCEPTIONS.
+      //
+      //   An identical call is refused as "already done" — unless (a) its last attempt failed in a
+      //   way op-failure.ts classified as safe to repeat, which the tool result had just TOLD the
+      //   model ("This can be retried: it never reached Studio"); refusing that retry cost a step
+      //   and forced the model to invent different arguments to get past the guard. Such a call
+      //   gets MAX_IDENTICAL_RETRIES identical repeats. Or (b) it is propose_plan, which is free and
+      //   whose answer to a repeat depends on the run's state: the tool repairs a plan it already
+      //   refused rather than being refused again here, which is what keeps consecutive
+      //   propose_plan refusals at two or fewer whatever the model sends. ]]
+      const retry = agent.retryableCalls?.find((r) => r.sig === sig);
+      const repeated = call.name !== 'propose_plan' && agent.seenCalls.includes(sig);
+      if (repeated && !(retry && retry.retries < MAX_IDENTICAL_RETRIES)) {
+        // the model is looping — refuse the duplicate and steer it back to the work
+        duplicatesThisStep += 1;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `↺ ${call.name} (already done)` });
         agent.llm.push({
           role: 'tool',
-          content: `[${call.name}] You already made this exact call earlier in this run and have the result above. Do not repeat it. Use what you know now and make the actual change to the project.`,
+          content:
+            `[${call.name}] ` +
+            (retry
+              ? 'You have already retried this exact call and it failed every time, so it was not run again. Do not repeat it; change your approach.'
+              : 'You already made this exact call earlier in this run and have the result above. Do not repeat it.') +
+            (canBuild
+              ? ' Use what you know now and make the actual change to the project.'
+              : ' Use what you already know to answer.'),
           toolCallId: call.id,
           name: call.name,
         });
         continue;
       }
-      agent.seenCalls.push(sig);
+      if (repeated && retry) retry.retries += 1;
+      else if (call.name !== 'propose_plan') agent.seenCalls.push(sig);
       //[[ BOUNDED, like uiTools two lines below. `sig` is `name:arguments`, and arguments is
       //   the raw JSON — a full script body for edit_script. Unbounded, this array alone can
       //   carry the persisted AgentState past the Durable Object's 128 KiB value limit, and
@@ -3862,15 +4102,47 @@ export class SessionDO extends DurableObject<Env> {
         detail: out.detail,
       };
       agent.trace.push(entry);
+      executedThisStep += 1;
       // Feed the outcome back to the reasoning policy: a failed tool or a failed visual gate
       // means the next step should think harder rather than repeat the same cheap attempt.
       if (!out.ok) agent.priorStepFailed = true;
-      if (out.ok && MUTATING_TOOLS.has(call.name)) agent.mutated = true;
+      // A composite tool can fail after an earlier sub-operation already changed Studio. runTool
+      // reports that residual mutation explicitly even when `ok` is false; losing it here would
+      // make refund/delivery bookkeeping claim nothing changed when the place did.
+      if (out.mutatedProject === true) {
+        agent.mutated = true;
+        mutatedThisStep = true;
+      }
+      if (out.ok && VERIFIERS.has(call.name) && agent.mutated) verifiedThisStep = true;
+      // A read made BEFORE the place changed is not the same read after it. Refusing an identical
+      // get_project_tree as "you already have the result above" after a create_instances hands the
+      // model a result that is now false — and it asks again (run 1870ecfe). So a change forgets the
+      // remembered READ signatures; identical MUTATING calls stay refused.
+      if (out.mutatedProject === true) {
+        const writers = new Set(projectMutatingToolNames());
+        agent.seenCalls = agent.seenCalls.filter((seen) => writers.has(seen.slice(0, seen.indexOf(':'))));
+      }
       // The plan is read back out of the panel the tool emitted rather than handed over through a
       // second channel: one mechanism, and the thing settled at the end is by construction the
       // thing the user was shown. A second propose_plan is ignored — the prompt says call it once,
       // and letting a later plan replace the one the user already read would rewrite history.
       if (call.name === 'propose_plan' && out.ok && !agent.plan) agent.plan = planFromDetail(toolId, out.detail);
+      // The plan tool's refusal count survives the step. ctx.planState is shared by every call of
+      // this step, so two plans in one step already see each other; this carries it to the next.
+      if (call.name === 'propose_plan' && ctx.planState) {
+        agent.planRefusals = { count: ctx.planState.refusals, kinds: [...ctx.planState.kinds] };
+        if (agent.plan) ctx.planState.announced = true;
+      }
+      // Remember whether an identical repeat of THIS call would be safe. Only the classifier's own
+      // verdict counts (runTool drops it when a composite already changed Studio); anything else —
+      // success, or a failure not known to be repeatable — makes an identical repeat a duplicate.
+      if (!out.ok && out.retryable === true) {
+        if (!retry) {
+          agent.retryableCalls = [...(agent.retryableCalls ?? []), { sig, retries: 0 }].slice(-4);
+        }
+      } else if (retry) {
+        agent.retryableCalls = (agent.retryableCalls ?? []).filter((r) => r.sig !== sig);
+      }
       if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
       // Keep the live trace the reconnect snapshot replays from.
@@ -3926,10 +4198,56 @@ export class SessionDO extends DurableObject<Env> {
       await this.finishRun(agent, 'stopped');
       return;
     }
-    // if the model has spent several steps without changing anything, steer it
-    const BUILD_TOOLS = ['create_instances', 'edit_script', 'set_properties', 'delete_instances', 'run_luau', 'move_instances'];
-    const built = agent.trace.some((t) => BUILD_TOOLS.includes(t.tool) && t.ok);
-    if (!built && agent.step >= 2) {
+    // A step whose every call was refused as a duplicate made no progress and was still paid for.
+    // Three in a row is a loop, not deliberation: end on what the run has, and say so.
+    agent.duplicateStreak = executedThisStep === 0 && duplicatesThisStep > 0 ? (agent.duplicateStreak ?? 0) + 1 : 0;
+    if (agent.duplicateStreak >= MAX_DUPLICATE_STREAK) {
+      const note = agent.mutated
+        ? 'Apple stopped because it kept repeating a step it had already done. Everything it built is in your place.'
+        : 'Apple stopped because it kept repeating a step it had already done, and nothing in your place was changed.';
+      const prior = agent.streamedText ?? '';
+      agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
+      agent.streamedText = prior ? `${prior}\n\n${note}` : note;
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
+      await this.finishRun(agent, agent.mutated ? 'done' : 'incomplete');
+      return;
+    }
+    // Built and checked, then only reading: tell it to answer, and if it still does not, end on the
+    // work it did. A new change clears the check, so a run that is still fixing things is untouched.
+    const idle = afterStep(agent, {
+      mutated: mutatedThisStep,
+      verified: verifiedThisStep,
+      calls: executedThisStep + duplicatesThisStep,
+    });
+    agent.verifiedAfterMutation = idle.verifiedAfterMutation;
+    agent.idleAfterVerify = idle.idleAfterVerify;
+    if (idle.action === 'finish') {
+      const note = 'Apple stopped here: the change was made and checked, and further steps were only re-reading the place.';
+      const prior = agent.streamedText ?? '';
+      agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
+      agent.streamedText = prior ? `${prior}\n\n${note}` : note;
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
+      await this.finishRun(agent, 'done');
+      return;
+    }
+    if (idle.action === 'nudge') {
+      agent.llm.push({
+        role: 'user',
+        content:
+          'The change is made and your check has run. Stop reading and reply to the user now: what you changed, ' +
+          'what the check showed, and anything that is still wrong or unverified. Only call another tool if you are ' +
+          'about to change something.',
+      });
+    }
+    // If the model has spent several steps without changing anything, steer it. Mutation truth
+    // comes from the tool implementation's co-located metadata through runTool, rather than a
+    // second list of names here that can drift when a composite or direct authoring tool is added.
+    // ONLY for a run that CAN build (`canBuild`, from the same metadata). Plan mode and an Agent run
+    // with Studio disconnected are offered nothing that changes the project, so telling them to
+    // "create the instances" could only invite a call to a tool they do not have — refused as
+    // unavailable, a paid step each time.
+    const built = agent.mutated === true;
+    if (!built && agent.step >= 2 && canBuild) {
       agent.llm.push({
         role: 'user',
         content:
@@ -4106,7 +4424,7 @@ export class SessionDO extends DurableObject<Env> {
      */
     buildOutcome?: BuildOutcome,
   ) {
-    const artifact = artifactCompletion(agent.mode === 'clay' ? undefined : agent.request, agent.trace);
+    const artifact = artifactCompletion(agent.mode === 'plan' ? undefined : agent.request, agent.trace);
     if (reason === 'done' && artifact.missing) reason = 'incomplete';
     agent.status = 'idle';
     // Clear the run attribution before the first await: any later out-of-run Studio op must not
@@ -4215,9 +4533,15 @@ export class SessionDO extends DurableObject<Env> {
           ? (artifact.tool === 'generate_image'
             ? 'No image was generated in this run. There is no new image to view or download.'
             : 'No 3D model was generated in this run. Check the Studio connection and generation availability before retrying.')
-          : 'I did not change anything in your project. I looked around but never made the edit you ' +
-          'asked for, which is a fault on my side rather than a result. Nothing was modified, so ' +
-          'there is nothing to undo — ask me again and I will build it.'
+          : agent.readOnly
+            // You asked for no changes, so "never made the edit you asked for" would be false twice
+            // over. Measured 2026-09-22 (run 3bcf3f57): a diagnosis request got exactly that sentence.
+            ? 'I looked through your place but did not reach an answer before I stopped, and I kept ' +
+              're-reading the same things. Nothing was changed, as you asked. Ask again and name the ' +
+              'script or object to start from, and I will look there first.'
+            : 'I did not change anything in your project. I looked around but never made the edit you ' +
+              'asked for, which is a fault on my side rather than a result. Nothing was modified, so ' +
+              'there is nothing to undo — ask me again and I will build it.'
         : agent.finalText || (reason === 'stopped' ? 'Stopped.' : 'Done.')
     );
 
@@ -4371,7 +4695,7 @@ export class SessionDO extends DurableObject<Env> {
       opsFailed: agent.trace.filter((t) => !t.ok).length,
       durationMs: Date.now() - agent.startedAt,
       neurons: agent.neuronsUsed ?? null,
-      actorId: agent.userId,
+      actorId: agent.initiatedBy ?? agent.userId,
       projectId: this.boundProjectId,
       runId: agent.msgId,
     });
@@ -4389,13 +4713,14 @@ export class SessionDO extends DurableObject<Env> {
     //   Best-effort and off the critical path. `notify` never throws; this is additionally on
     //   waitUntil so a slow D1 write cannot hold the isolate open at the moment it is most likely
     //   to be evicted. ]]
-    if (agent.userId && this.boundProjectId) {
+    const runRecipientId = agent.initiatedBy ?? agent.userId;
+    if (runRecipientId && this.boundProjectId) {
       // 'stopped' is the user pressing stop, which is not a failure and does not need reporting
       // back to the person who pressed it. 'quota' is: the run ended without doing the work.
       const failed = reason === 'error' || reason === 'incomplete' || reason === 'quota';
       const outcome = notify(this.env, {
         kind: failed ? 'run_failed' : 'run_complete',
-        recipientId: agent.userId,
+        recipientId: runRecipientId,
         projectId: this.boundProjectId,
         projectName: bindName,
         // The run id, so two failures of the SAME run coalesce into one line and two different
@@ -4741,23 +5066,29 @@ export class SessionDO extends DurableObject<Env> {
           agentRun,
         );
         const data = res.ok ? (res.data as RenderViewResult & { error?: string }) : null;
+        const direct = data?.studioViewport;
         const view = data?.views?.[0];
-        if (!view?.rgbBase64) {
+        if (!direct?.rgbBase64 && !view?.rgbBase64) {
           this.playtestRun = advance(run, { droppedFrame: true });
           this.emitPlaytest();
           return false;
         }
-        const delivered = this.publishFrame(
-          {
-            rgbBase64: view.rgbBase64,
-            width: view.meta.width,
-            height: view.meta.height,
-            view: view.name,
-            subject: data?.subject ?? 'game.Workspace',
-            capturedAt: Date.now(),
-          },
-          { recompress: true, playtestRunId: run.id },
-        );
+        const raw = direct?.rgbBase64
+          ? direct
+          : {
+              rgbBase64: view!.rgbBase64,
+              encoding: 'rgb24' as const,
+              source: 'software_render' as const,
+              width: view!.meta.width,
+              height: view!.meta.height,
+              view: view!.name,
+              subject: data?.subject ?? 'game.Workspace',
+              capturedAt: Date.now(),
+            };
+        const delivered = this.publishFrame(raw, {
+          recompress: raw.encoding !== 'png',
+          playtestRunId: run.id,
+        });
         this.playtestRun = advance(this.playtestRun ?? run, {
           ...(delivered ? { deliveredFrame: true, lastFrameAt: Date.now() } : { droppedFrame: true }),
         });
@@ -4927,16 +5258,27 @@ export class SessionDO extends DurableObject<Env> {
    * own dead key; it can never replace the report a newer pairing reads. The in-memory report has
    * the same fence and therefore cannot be poisoned by that late poll either.
    */
-  private async recordPluginCapabilities(raw: unknown, pairingHash: string): Promise<void> {
+  private async recordPluginCapabilities(
+    raw: unknown,
+    pairingHash: string,
+    reported: PluginCapabilityClientIdentity,
+  ): Promise<void> {
     if (this.activePluginTokenHash !== pairingHash) return;
     const report = normalisePluginCapabilities(raw);
     if (report === null) {
       this.pluginCapabilityReport = null;
-      await this.ctx.storage.delete(pluginCapabilitiesKey(pairingHash));
+      this.pluginCapabilityClient = null;
+      await this.ctx.storage.delete([pluginCapabilitiesKey(pairingHash), pluginCapabilitiesClientKey(pairingHash)]);
       return;
     }
-    await this.ctx.storage.put(pluginCapabilitiesKey(pairingHash), report);
-    if (this.activePluginTokenHash === pairingHash) this.pluginCapabilityReport = report;
+    await this.ctx.storage.put({
+      [pluginCapabilitiesKey(pairingHash)]: report,
+      [pluginCapabilitiesClientKey(pairingHash)]: reported,
+    });
+    if (this.activePluginTokenHash === pairingHash) {
+      this.pluginCapabilityReport = report;
+      this.pluginCapabilityClient = reported;
+    }
   }
 
   /**
@@ -5048,11 +5390,24 @@ export class SessionDO extends DurableObject<Env> {
     reported: { version: string | null; protocol: number | null } = { version: null, protocol: null },
     pairingHash: string | null = null,
   ): Promise<Response> {
-    // Omission means "already acknowledged" for the new Bridge and "legacy client" for old ones;
-    // neither may erase a report. A PRESENT malformed report, however, is explicitly unknown and
-    // falls back to legacy compatibility exactly like parsePluginCapabilities does.
+    // Capability silence only preserves a report while the same reported plugin build keeps
+    // polling. A version/protocol change means a different executable is on the other end; carrying
+    // the previous build's refusals forward would turn an advisory negotiation into a stale feature
+    // gate. Unknown then means compatibility until the new build supplies its own report.
+    if (
+      pairingHash !== null &&
+      this.activePluginTokenHash === pairingHash &&
+      this.pluginCapabilityClient !== null &&
+      !samePluginCapabilityClient(this.pluginCapabilityClient, reported)
+    ) {
+      this.pluginCapabilityReport = null;
+      this.pluginCapabilityClient = null;
+      await this.ctx.storage.delete([pluginCapabilitiesKey(pairingHash), pluginCapabilitiesClientKey(pairingHash)]);
+    }
+    // Omission from the SAME build means "already acknowledged" for the Bridge. A PRESENT malformed
+    // report is explicitly unknown and falls back to legacy compatibility exactly like the parser.
     if (body.capabilities !== undefined && pairingHash !== null) {
-      await this.recordPluginCapabilities(body.capabilities, pairingHash);
+      await this.recordPluginCapabilities(body.capabilities, pairingHash, reported);
     }
     const wasConnected = await this.pluginConnected();
     // the plugin polls every ~0.4-2.5s; persisting the heartbeat every time is pure write

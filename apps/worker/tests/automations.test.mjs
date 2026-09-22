@@ -48,7 +48,7 @@ const good = (over = {}) => ({
   name: 'Nightly polish',
   description: 'Tidy the lighting before I get up.',
   prompt: 'Tidy the lighting in the main map.',
-  mode: 'stone',
+  mode: 'agent',
   trigger: 'schedule',
   timezone: 'America/New_York',
   schedule: { every: 'day', hour: 9, minute: 0 },
@@ -350,7 +350,7 @@ test('the defaults are the ones that do not spend money, and an automation arriv
   assert.equal(a.missedRuns, 'skip');
   assert.equal(a.maxRetries, 0);
   assert.deepEqual(a.budget, A.DEFAULT_BUDGET);
-  assert.equal(a.mode, 'stone');
+  assert.equal(a.mode, 'agent');
   // Switched on, because an automation you have to go and enable afterwards is a two-step creation
   // dressed as a safety feature - and every OTHER default here is already the cautious one.
   assert.equal(a.enabled, true);

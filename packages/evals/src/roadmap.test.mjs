@@ -187,7 +187,7 @@ const SHOWCASE = scan({
 
 const shapeOf = (s) => R.analyzeProject(s);
 
-/** A fixture in the shape the Luau scan actually puts on the wire. */
+/** A recorded legacy scan payload, kept to prove old evidence still parses. */
 function wire(s) {
   return JSON.stringify({
     ...s,
@@ -400,7 +400,7 @@ test('an unknown milestone id yields no brief rather than an empty one', () => {
 // The scan wire format
 // ---------------------------------------------------------------------------------------------
 
-test('a scan is read back out of the live run_code wrapper', () => {
+test('a recorded tagged scan payload still parses for historical evidence', () => {
   const payload = JSON.stringify({
     counts: { instances: 3, parts: 2, scripts: 1 },
     services: { Workspace: 3 },
@@ -424,16 +424,173 @@ test('a scan that is not a scan is refused rather than half-read', () => {
   assert.equal(R.parseScan({ result: { t: 'string', v: '{"nope":1}' } }), null);
 });
 
-test('the roadmap is produced from one injected Studio call, with no network', async () => {
+test('the roadmap is produced from typed read-only Studio operations, with no received code execution', async () => {
   const calls = [];
   const probe = async (op) => {
     calls.push(op.op);
-    return { id: '1', ok: true, data: { result: { t: 'string', v: wire(TOWER_DEFENCE) } } };
+    if (op.op === 'project_census') {
+      return {
+        id: 'census', ok: true, data: {
+          instances: 7, parts: 2, scripts: 1,
+          services: {
+            Workspace: 4,
+            ServerScriptService: 1,
+            ReplicatedStorage: 2,
+            StarterGui: 0,
+            Lighting: 0,
+          },
+          topLevel: ['Towers', 'Waypoints', 'Enemies', 'Spawn'],
+        },
+      };
+    }
+    if (op.op === 'get_tree' && op.root === 'game.Workspace') {
+      return {
+        id: 'tree-workspace', ok: true, data: {
+          root: {
+            path: 'game.Workspace', name: 'Workspace', class: 'Workspace',
+            children: [
+              { path: 'game.Workspace.Towers', name: 'Towers', class: 'Folder' },
+              { path: 'game.Workspace.Waypoints', name: 'Waypoints', class: 'Folder' },
+              { path: 'game.Workspace.Enemies', name: 'Enemies', class: 'Model' },
+              { path: 'game.Workspace.Spawn', name: 'Spawn', class: 'SpawnLocation' },
+            ],
+          },
+          nodeCount: 5,
+          truncated: false,
+        },
+      };
+    }
+    if (op.op === 'get_tree' && op.root === 'game.ServerScriptService') {
+      return {
+        id: 'tree-server', ok: true, data: {
+          root: {
+            path: 'game.ServerScriptService', name: 'ServerScriptService', class: 'ServerScriptService',
+            children: [{ path: 'game.ServerScriptService.WaveManager', name: 'WaveManager', class: 'Script' }],
+          },
+          nodeCount: 2,
+          truncated: false,
+        },
+      };
+    }
+    if (op.op === 'get_tree' && op.root === 'game.ReplicatedStorage') {
+      return {
+        id: 'tree-replicated', ok: true, data: {
+          root: {
+            path: 'game.ReplicatedStorage', name: 'ReplicatedStorage', class: 'ReplicatedStorage',
+            children: [{
+              path: 'game.ReplicatedStorage.Remotes', name: 'Remotes', class: 'Folder',
+              children: [{ path: 'game.ReplicatedStorage.Remotes.PlaceTower', name: 'PlaceTower', class: 'RemoteEvent' }],
+            }],
+          },
+          nodeCount: 3,
+          truncated: false,
+        },
+      };
+    }
+    if (op.op === 'get_instance' && op.path === 'game') {
+      return { id: 'place', ok: true, data: { path: 'game', name: 'Tower Defence', class: 'DataModel' } };
+    }
+    if (op.op === 'dump_scripts') {
+      return {
+        id: 'scripts', ok: true, data: {
+          scripts: [{
+            path: 'game.ServerScriptService.WaveManager',
+            class: 'Script',
+            source:
+              'local waveNumber = 0\nlocal waypoints = workspace.Waypoints\n' +
+              'local function spawnWave() waveNumber += 1 end\nlocal placeTower = game.ReplicatedStorage.Remotes.PlaceTower',
+          }],
+          chars: 180,
+          truncated: false,
+        },
+      };
+    }
+    throw new Error(`unexpected typed roadmap op: ${JSON.stringify(op)}`);
   };
   const out = await R.roadmapForProject(probe);
   assert.equal(out.ok, true);
-  assert.deepEqual(calls, ['run_code'], 'one round trip to Studio, not fifteen');
+  assert.equal(calls.includes('project_census'), true);
+  assert.equal(calls.includes('get_tree'), true);
+  assert.equal(calls.includes('get_instance'), true);
+  assert.equal(calls.includes('dump_scripts'), true);
+  assert.equal(calls.includes('run_code'), false, 'roadmap must use the current typed plugin surface');
   assert.equal(out.roadmap.genre, 'tower_defence');
+});
+
+test('a truncated structural read makes missing class evidence unknown rather than absent', async () => {
+  const probe = async (op) => {
+    if (op.op === 'project_census') {
+      return {
+        id: 'census', ok: true, data: {
+          instances: 2, parts: 1, scripts: 0,
+          services: { Workspace: 2, StarterGui: 0, Lighting: 0 },
+          topLevel: ['Map'],
+        },
+      };
+    }
+    if (op.op === 'get_tree') {
+      return {
+        id: 'tree', ok: true, data: {
+          root: {
+            path: 'game.Workspace', name: 'Workspace', class: 'Workspace',
+            children: [{ path: 'game.Workspace.Map', name: 'Map', class: 'Model' }],
+          },
+          nodeCount: 2,
+          truncated: true,
+        },
+      };
+    }
+    if (op.op === 'get_instance') {
+      return { id: 'place', ok: true, data: { path: 'game', name: 'Untitled Place', class: 'DataModel' } };
+    }
+    throw new Error(`unexpected op: ${op.op}`);
+  };
+  const scanned = await R.scanProject(probe);
+  assert.ok(scanned.scan);
+  assert.equal(scanned.scan.truncated.scan, true);
+  const shape = R.analyzeProject(scanned.scan);
+  assert.equal(shape.features.spawn.state, 'unknown');
+  assert.match(shape.features.spawn.evidence, /not all instance/i);
+});
+
+test('an unavailable script dump makes code-only features unknown while keeping measured structure', async () => {
+  const probe = async (op) => {
+    if (op.op === 'project_census') {
+      return {
+        id: 'census', ok: true, data: {
+          instances: 1, parts: 0, scripts: 1,
+          services: { ServerScriptService: 1, Workspace: 0, StarterGui: 0, Lighting: 0 },
+          topLevel: [],
+        },
+      };
+    }
+    if (op.op === 'get_tree') {
+      return {
+        id: 'tree', ok: true, data: {
+          root: {
+            path: 'game.ServerScriptService', name: 'ServerScriptService', class: 'ServerScriptService',
+            children: [{ path: 'game.ServerScriptService.Main', name: 'Main', class: 'Script' }],
+          },
+          nodeCount: 2,
+          truncated: false,
+        },
+      };
+    }
+    if (op.op === 'get_instance') {
+      return { id: 'place', ok: true, data: { path: 'game', name: 'Untitled Place', class: 'DataModel' } };
+    }
+    if (op.op === 'dump_scripts') {
+      return { id: 'scripts', ok: false, error: 'script reader unavailable' };
+    }
+    throw new Error(`unexpected op: ${op.op}`);
+  };
+  const scanned = await R.scanProject(probe);
+  assert.ok(scanned.scan);
+  assert.equal(scanned.scan.truncated.scripts, true);
+  const shape = R.analyzeProject(scanned.scan);
+  assert.equal(shape.features.persistence.state, 'unknown');
+  assert.match(shape.features.persistence.evidence, /script source/i);
+  assert.equal(shape.scale.scripts, 1, 'the exact census count remains measured');
 });
 
 test('a project Studio will not answer for produces an honest failure, not an empty roadmap', async () => {
@@ -486,7 +643,7 @@ test('a model that fails or replies with junk leaves the deterministic roadmap i
 // ---------------------------------------------------------------------------------------------
 // FOUND BY RUNNING THE SCANNER AGAINST A REAL PLACE, 2026-09-01.
 //
-// ROADMAP_SCAN_LUAU had never executed against a real place file; the mission ledger rated the
+// The original scanner had never executed against a real place file; the mission ledger rated the
 // gate PROVEN on the payload's existence. Running it on Crystal Canyon — a shard-collecting
 // simulator — produced `genre: racing, confidence: 0` and a roadmap containing `race_track`,
 // `race_vehicles` and `race_results`. Three separate defects, one execution.

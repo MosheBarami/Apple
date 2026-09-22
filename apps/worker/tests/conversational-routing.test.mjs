@@ -84,7 +84,7 @@ test('real build requests are NOT conversational, and terse ones stay ambiguous'
 });
 
 test('a greeting never escalates effort, in any mode', () => {
-  for (const mode of ['clay', 'stone', 'rune']) {
+  for (const mode of ['plan', 'agent', 'agent']) {
     const choice = R.chooseEffort({
       mode,
       step: 1,
@@ -98,7 +98,7 @@ test('a greeting never escalates effort, in any mode', () => {
 
 test('a real build request still escalates — the fix must not blunt the policy', () => {
   const choice = R.chooseEffort({
-    mode: 'stone',
+    mode: 'agent',
     step: 1,
     highEffortUsed: 0,
     ...R.classifyRequest('build and light a market plaza'),
@@ -110,11 +110,10 @@ test('a failed prior step still escalates even on a conversational turn', () => 
   // The conversational short-circuit must not swallow recovery: if the previous step errored,
   // something IS wrong and cheap thinking will not fix it.
   //
-  // Asserted in `clay`, whose baseline is `low`, so the escalation is actually observable. In
-  // `stone`/`rune` the baseline is already `high`, `raise()` is a no-op, and the reason string
-  // stays "stone baseline" — correct effort, but it proves nothing about recovery.
+  // Asserted in Plan, whose baseline is `low`, so the escalation is actually observable. Agent's
+  // baseline is already `high`, where `raise()` is a no-op and would prove nothing about recovery.
   const choice = R.chooseEffort({
-    mode: 'clay',
+    mode: 'plan',
     step: 3,
     highEffortUsed: 0,
     priorStepFailed: true,
@@ -124,6 +123,6 @@ test('a failed prior step still escalates even on a conversational turn', () => 
   assert.match(choice.reason, /failed step/);
 
   // And without a failure, the same message in the same mode stays cheap.
-  const calm = R.chooseEffort({ mode: 'clay', step: 3, highEffortUsed: 0, ...R.classifyRequest('ok') });
+  const calm = R.chooseEffort({ mode: 'plan', step: 3, highEffortUsed: 0, ...R.classifyRequest('ok') });
   assert.equal(calm.effort, 'low');
 });

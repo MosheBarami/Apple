@@ -1,7 +1,7 @@
 /**
  * REACHED AND FINISHED, ASSERTED TOGETHER — BECAUSE EITHER HALF ALONE READS AS SUCCESS.
  *
- * Measured 2026-09-20 against the deployed worker (free Apple lane, mode stone, GLM-5.3-flash,
+ * Measured 2026-09-20 against the deployed worker (free Apple Agent lane, GLM-5.3-flash,
  * Studio disconnected, so the agent is offered the 8-tool offline set of which two are the
  * knowledge tools). Of 10 measurable runs, 7 reached a real knowledge tool and 3 finished cleanly —
  * and the two sets did not intersect. Every run that called get_ui_construction or
@@ -206,7 +206,7 @@ const CALLS_UI_CONSTRUCTION = answer({
 
 async function start(h, text = 'build me a shop screen') {
   const res = await h.session.fetch(new Request('https://do/agent-run', {
-    method: 'POST', body: JSON.stringify({ text, mode: 'stone', productModel: 'apple' }),
+    method: 'POST', body: JSON.stringify({ text, mode: 'agent', productModel: 'apple' }),
   }));
   assert.equal(res.status, 200, await res.text());
 }
@@ -279,7 +279,10 @@ test('A RUN THAT USES THE KNOWLEDGE LIBRARY FINISHES, THROUGH THE BURST THAT USE
   assert.equal(lastEnd(h).error, undefined, 'a run that rode out a burst reports no failure');
 });
 
-test('a burst that never clears sleeps and keeps the same run alive instead of handing it back to the user', async () => {
+// RE-TITLED 2026-09-22: it said a burst that NEVER clears keeps the run alive, and since
+// PROVIDER_OUTAGE_MAX_MS one that lasts five minutes ends the run honestly (run-loop-traps.test.mjs).
+// The measurement is unchanged: four quick refusals, well inside the bound, are a pause.
+test('a burst that outlasts several retries sleeps and keeps the same run alive instead of handing it back to the user', async () => {
   const h = makeSession({ responses: [CALLS_UI_CONSTRUCTION, REFUSED, REFUSED, REFUSED, REFUSED] });
   await start(h);
   await h.session.alarm();

@@ -143,7 +143,7 @@ export const MAX_NEURONS_PER_REQUEST = 1_200;
 
 /**
  * Credits are the user-facing unit. Recalibrated for GLM-5.3-flash when it replaced gpt-oss-120b
- * on 2026-08-30: a measured Stone build runs far cheaper on it than on gpt-oss-120b, so a Credit
+ * on 2026-08-30: a measured Agent build runs far cheaper on it than on gpt-oss-120b, so a Credit
  * is worth fewer neurons. gpt-oss-120b is NAMED rather than called "the previous model", because
  * the paid lane has changed models twice since and the phrase silently came to mean glm-4.7-flash
  * — against which this recalibration is not a saving at all (see BILLABLE_NEURONS_PER_DAY above).

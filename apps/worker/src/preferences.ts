@@ -734,9 +734,8 @@ export function needsForModelKey(key: unknown): { tools: boolean; vision: boolea
       return { tools: false, vision: false };
     case 'vision':
       return { tools: false, vision: true };
-    case 'clay':
-    case 'stone':
-    case 'rune':
+    case 'plan':
+    case 'agent':
       return { tools: true, vision: false };
     default:
       return { tools: true, vision: true };

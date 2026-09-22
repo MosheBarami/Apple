@@ -1,10 +1,4 @@
-/** Regression contract for autonomous long-horizon runs.
- *
- * Apple used to stop a healthy build after 5/20/45 minutes or 3/16/24 model steps and tell the
- * customer to send another message. Those are product-imposed boundaries, not Cloudflare limits.
- * Runs now continue across Durable Object alarms; the real terminal fences remain Stop/access,
- * Credits/BudgetDO and bounded individual provider/tool operations.
- */
+/** Regression contract for long-horizon runs and the one explicit per-message work bound. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -14,19 +8,22 @@ import { fileURLToPath } from 'node:url';
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const source = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
 
-test('a run has no wall-clock or step-count terminal branch', () => {
+test('a run has no wall-clock cutoff and has exactly the 1000-step message ceiling', () => {
   assert.doesNotMatch(source, /RUN_WALL_MS/);
   assert.doesNotMatch(source, /runDurationVerdict/);
-  assert.doesNotMatch(source, /agent\.step\s*>\s*agent\.maxSteps/);
-  assert.doesNotMatch(source, /reached the step limit for this run/i);
+  assert.doesNotMatch(source, /STEP_STALE_MS/,
+    'run age must not make a live durable run replaceable by a newer message');
+  assert.match(source, /export const MAX_RUN_STEPS = 1000/);
+  assert.match(source, /if \(agent\.step >= MAX_RUN_STEPS\)/);
+  assert.match(source, /finishRun\(agent, 'incomplete', undefined, undefined, 'step_limit'\)/);
   assert.doesNotMatch(source, /minute time limit/i);
 });
 
 test('long-horizon autonomy keeps the real safety and spend fences', () => {
   assert.match(source, /if \(await this\.stopForAccess\(agent\)\) return/,
     'access revocation must still stop a run between durable steps');
-  assert.match(source, /if \(state\.creditsRemaining <= 0\)/,
-    'unbounded steps must still stop when the account has no Credits');
+  assert.match(source, /state\.unmetered !== true && state\.creditsRemaining <= 0/,
+    'ordinary accounts must still stop when they have no Credits, while authoritative unmetered accounts bypass that fence');
   assert.match(source, /BudgetError/,
     'BudgetDO failures remain a hard run boundary');
   assert.match(source, /stopRequested/,

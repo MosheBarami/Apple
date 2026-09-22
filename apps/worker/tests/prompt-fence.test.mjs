@@ -34,7 +34,7 @@ import {
 } from '../src/prompts.ts';
 
 const base = {
-  mode: 'stone',
+  mode: 'agent',
   studioConnected: true,
   placeName: 'place',
   projectName: 'proj',

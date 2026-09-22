@@ -22,19 +22,20 @@
 //                                   moderation gate and cannot reference something that is not there.
 //   generate_sound / speak_line   — make audio. It reaches the USER, not the place.
 import type { AgentCtx } from './tools';
-import type { GatewayToolDef, StudioOp } from '@golem/shared';
+import type { GatewayToolDef, StudioOp, InstanceSpec, PropValue } from '@golem/shared';
 import { encodePng, bytesToBase64 } from './png';
 import { encodeWav, isAudioFault, waveformPeaks, waveformPixels, type PcmAudio } from './audio';
 import { SFX, SFX_NAMES, renderSfx, sfxCatalogue } from './sfx';
 import {
   ENVIRONMENT_NAMES,
   BUS_NAMES,
+  SOUND_BUSES,
+  SOUND_ENVIRONMENTS,
   ROLLOFF_MODES,
-  assignSoundsLuau,
   environmentCatalogue,
-  isRefusal,
   refuseSoundId,
-  soundDesignLuau,
+  validateSoundAssignments,
+  validateSoundDesign,
   type BusName,
   type RollOffMode,
   type SoundAssignment,
@@ -69,6 +70,31 @@ async function studioOp(ctx: AgentCtx, op: StudioOp, timeoutMs = 30_000): Promis
 
 const failed = (result: unknown): boolean =>
   typeof result === 'object' && result !== null && 'error' in (result as Record<string, unknown>);
+
+/** Preserve residual Studio mutation truth when a later sub-operation fails. */
+const afterMutation = (result: unknown, mutated: boolean): unknown =>
+  mutated && failed(result)
+    ? { ...(result as Record<string, unknown>), projectMutated: true }
+    : result;
+
+const decoded = (value: unknown): unknown => {
+  if (!value || typeof value !== 'object') return value;
+  const o = value as Record<string, unknown>;
+  return typeof o.t === 'string' && 'v' in o ? o.v : value;
+};
+
+type TreeNode = { path?: string; name?: string; class?: string; children?: TreeNode[] };
+const treeRoot = (value: unknown): TreeNode | null => {
+  if (!value || typeof value !== 'object') return null;
+  const root = (value as { root?: unknown }).root;
+  return root && typeof root === 'object' ? root as TreeNode : null;
+};
+
+const dbScale = (db: number): number => Math.pow(10, db / 20);
+const numericProps = (props: Record<string, string>, enabled = false): Record<string, PropValue> => ({
+  ...Object.fromEntries(Object.entries(props).map(([name, value]) => [name, { t: 'number', v: Number(value) } as PropValue])),
+  ...(enabled ? { Enabled: { t: 'bool', v: true } as PropValue } : {}),
+});
 
 /** A number that came out of a tool call, or the fallback. JSON gives us strings and nulls. */
 function numArg(value: unknown, fallback: number): number {
@@ -159,15 +185,91 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
     },
     studio: true,
     run: async (ctx, a) => {
-      const chunk = soundDesignLuau(String(a.environment ?? ''), {
-        effects: a.effects === undefined ? true : a.effects !== false,
-        masterTrimDb: numArg(a.masterTrimDb, 0),
+      let projectMutated = false;
+      const environment = String(a.environment ?? '');
+      const effects = a.effects === undefined ? true : a.effects !== false;
+      const masterTrimDb = numArg(a.masterTrimDb, 0);
+      const validation = validateSoundDesign(environment, {
+        effects,
+        masterTrimDb,
       });
-      if (isRefusal(chunk)) return { error: chunk.message, reason: chunk.reason, offending: chunk.offending };
-      const res = await studioOp(ctx, { op: 'run_code', code: chunk, timeoutMs: 10_000 }, 25_000);
-      if (failed(res)) return res;
+      if (validation) return { error: validation.message, reason: validation.reason, offending: validation.offending };
+      const env = SOUND_ENVIRONMENTS[environment]!;
+      const tree = await studioOp(ctx, { op: 'get_tree', root: 'game.SoundService', maxDepth: 2, maxNodes: 200 });
+      if (failed(tree)) return tree;
+      const root = treeRoot(tree);
+      if (!root) return { error: 'Studio returned no SoundService tree' };
+
+      const existingByName = new Map((root.children ?? []).map((child) => [child.name, child]));
+      for (const bus of SOUND_BUSES) {
+        const existing = existingByName.get(bus.name);
+        if (existing && existing.class !== 'SoundGroup') {
+          return { error: `${existing.path ?? `game.SoundService.${bus.name}`} already exists and is a ${existing.class}, not a SoundGroup` };
+        }
+        if (existing && effects) {
+          const fxByName = new Map((existing.children ?? []).map((child) => [child.name, child]));
+          for (const fx of bus.effects) {
+            const old = fxByName.get(fx.name);
+            if (old && old.class !== fx.className) {
+              return { error: `${old.path ?? `${existing.path}.${fx.name}`} already exists and is a ${old.class}, not a ${fx.className}` };
+            }
+          }
+        }
+      }
+
+      const service = await studioOp(ctx, {
+        op: 'set_props',
+        path: 'game.SoundService',
+        props: {
+          AmbientReverb: { t: 'EnumItem', v: `Enum.ReverbType.${env.reverb}` },
+          RolloffScale: { t: 'number', v: env.rolloffScale },
+          DistanceFactor: { t: 'number', v: env.distanceFactor },
+          DopplerScale: { t: 'number', v: env.dopplerScale },
+        },
+      });
+      if (failed(service)) return service;
+      projectMutated = true;
+
+      for (const bus of SOUND_BUSES) {
+        const trimDb = (env.busTrimDb?.[bus.name] ?? 0) + masterTrimDb;
+        const volume = Math.max(0, Math.min(2, bus.volume * dbScale(trimDb)));
+        const existing = existingByName.get(bus.name);
+        if (!existing) {
+          const children: Omit<InstanceSpec, 'parent'>[] = effects
+            ? bus.effects.map((fx) => ({ className: fx.className, name: fx.name, props: numericProps(fx.props, true) }))
+            : [];
+          const made = await studioOp(ctx, {
+            op: 'create_instances',
+            items: [{ className: 'SoundGroup', name: bus.name, parent: 'game.SoundService', props: { Volume: { t: 'number', v: volume } }, children }],
+          });
+          if (failed(made)) return afterMutation(made, projectMutated);
+          projectMutated = true;
+          continue;
+        }
+        const tuned = await studioOp(ctx, { op: 'set_props', path: existing.path!, props: { Volume: { t: 'number', v: volume } } });
+        if (failed(tuned)) return afterMutation(tuned, projectMutated);
+        projectMutated = true;
+        if (effects) {
+          const fxByName = new Map((existing.children ?? []).map((child) => [child.name, child]));
+          for (const fx of bus.effects) {
+            const old = fxByName.get(fx.name);
+            if (old?.path) {
+              const changed = await studioOp(ctx, { op: 'set_props', path: old.path, props: numericProps(fx.props, true) });
+              if (failed(changed)) return afterMutation(changed, projectMutated);
+              projectMutated = true;
+            } else {
+              const made = await studioOp(ctx, {
+                op: 'create_instances',
+                items: [{ className: fx.className, name: fx.name, parent: existing.path!, props: numericProps(fx.props, true) }],
+              });
+              if (failed(made)) return afterMutation(made, projectMutated);
+              projectMutated = true;
+            }
+          }
+        }
+      }
       return {
-        environment: a.environment,
+        environment,
         buses: BUS_NAMES,
         note: 'Reverb, falloff and the bus mixer are set. No audio was added — assign existing Sounds to the buses with assign_sounds, and remember that nothing here uploads audio to Roblox.',
       };
@@ -205,7 +307,7 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
     studio: true,
     run: async (ctx, a) => {
       const raw = Array.isArray(a.assignments) ? a.assignments : [];
-      const assignments: SoundAssignment[] = raw.slice(0, 200).map((entry) => {
+      const assignments: SoundAssignment[] = raw.map((entry) => {
         const e = (entry ?? {}) as Record<string, unknown>;
         return {
           path: String(e.path ?? ''),
@@ -217,13 +319,56 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
           ...(e.looped !== undefined ? { looped: e.looped === true } : {}),
         };
       });
-      const chunk = assignSoundsLuau(assignments);
-      if (isRefusal(chunk)) return { error: chunk.message, reason: chunk.reason, offending: chunk.offending };
-      const res = await studioOp(ctx, { op: 'run_code', code: chunk, timeoutMs: 15_000 }, 30_000);
-      if (failed(res)) return res;
-      // The count AND the misses are passed straight through. A pass that routed three of eight
-      // Sounds and reported success is the substitution this repository exists to refuse.
-      return res;
+      const validation = validateSoundAssignments(assignments);
+      if (validation) return { error: validation.message, reason: validation.reason, offending: validation.offending };
+      const busesRaw = await studioOp(ctx, { op: 'get_tree', root: 'game.SoundService', maxDepth: 1, maxNodes: 100 });
+      if (failed(busesRaw)) return busesRaw;
+      const soundService = treeRoot(busesRaw);
+      if (!soundService) return { error: 'Studio returned no SoundService tree' };
+      const busPaths = new Map<string, string>();
+      for (const child of soundService.children ?? []) {
+        if (child.class === 'SoundGroup' && child.name && child.path) busPaths.set(child.name, child.path);
+      }
+
+      let assigned = 0;
+      const missing: string[] = [];
+      for (const assignment of assignments) {
+        const read = await ctx.execStudioOp({ op: 'get_instance', path: assignment.path }, 15_000);
+        if (!read.ok || !read.data || typeof read.data !== 'object' || (read.data as Record<string, unknown>).class !== 'Sound') {
+          missing.push(assignment.path);
+          continue;
+        }
+        const detail = read.data as Record<string, unknown>;
+        const props = detail.props && typeof detail.props === 'object' ? detail.props as Record<string, unknown> : {};
+        const attributes = detail.attributes && typeof detail.attributes === 'object' ? detail.attributes as Record<string, unknown> : {};
+        const currentVolume = Number(decoded(props.Volume));
+        const remembered = decoded(attributes.GolemBaseVolume);
+        const baseVolume = typeof remembered === 'number' && Number.isFinite(remembered) ? remembered : currentVolume;
+        if (!Number.isFinite(baseVolume)) return assigned > 0
+          ? { error: `${assignment.path}: Studio did not return a readable Volume`, projectMutated: true }
+          : { error: `${assignment.path}: Studio did not return a readable Volume` };
+        const minDistance = assignment.minDistance ?? 10;
+        const maxDistance = assignment.maxDistance ?? 120;
+        const volumeDb = assignment.volumeDb ?? 0;
+        const outProps: Record<string, PropValue> = {
+          RollOffMode: { t: 'EnumItem', v: `Enum.RollOffMode.${assignment.rollOffMode ?? 'InverseTapered'}` },
+          RollOffMinDistance: { t: 'number', v: minDistance },
+          RollOffMaxDistance: { t: 'number', v: maxDistance },
+          Volume: { t: 'number', v: baseVolume * dbScale(volumeDb) },
+        };
+        const busPath = busPaths.get(assignment.bus);
+        if (busPath) outProps.SoundGroup = { t: 'Instance', v: busPath };
+        if (assignment.looped !== undefined) outProps.Looped = { t: 'bool', v: assignment.looped };
+        const changed = await studioOp(ctx, {
+          op: 'set_props',
+          path: assignment.path,
+          props: outProps,
+          ...(remembered === undefined || remembered === null ? { attributes: { GolemBaseVolume: { t: 'number', v: baseVolume } } } : {}),
+        });
+        if (failed(changed)) return afterMutation(changed, assigned > 0);
+        assigned += 1;
+      }
+      return { assigned, missing };
     },
   },
 

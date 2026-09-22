@@ -54,7 +54,9 @@ function runFor(steps) {
 
 test('the user request survives a full 16-step Stone run — the bug that shipped', () => {
   const llm = runFor(16);
-  const user = llm.filter((m) => m.role === 'user');
+  // The trim's run record (`ledger`) is also user-role and pinned, but it is Apple's note, not the
+  // user's request; the property is that the REQUEST is present exactly once.
+  const user = llm.filter((m) => m.role === 'user' && !m.ledger);
   assert.equal(user.length, 1, 'the pinned request must still be present exactly once');
   assert.equal(user[0].content, request.content);
   assert.equal(llm[0].role, 'system', 'the system prompt is never moved');
@@ -125,7 +127,7 @@ test('carried-over history is droppable but the pinned request is not', () => {
   // A run starts as [system, ...up to 14 history messages, request]. History is what SHOULD go.
   const history = Array.from({ length: 14 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: 'H'.repeat(4000) }));
   const llm = T.trimTranscript([sys, ...history, request, ...step(0, 2)], MAX);
-  assert.equal(llm.filter((m) => m.pinned).length, 1);
+  assert.equal(llm.filter((m) => m.pinned && !m.ledger).length, 1);
   assert.ok(llm.filter((m) => m.content.startsWith('H')).length < history.length, 'history should have been evicted');
 });
 

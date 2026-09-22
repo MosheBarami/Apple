@@ -14,6 +14,8 @@ export type PropValue =
   | { t: 'Vector3'; v: [number, number, number] }
   | { t: 'Vector2'; v: [number, number] }
   | { t: 'NumberRange'; v: [number, number] }
+  | { t: 'NumberSequence'; v: [number, number, number][] } // time, value, envelope
+  | { t: 'ColorSequence'; v: [number, [number, number, number]][] } // time, RGB 0..1
   | { t: 'Rect'; v: [number, number, number, number] }
   | { t: 'CFrame'; v: number[] } // 12 components
   | { t: 'Color3'; v: [number, number, number] } // 0..1
@@ -68,16 +70,31 @@ export type StudioOp =
   | { op: 'search_scripts'; query: string; root?: string; maxResults?: number }
   | { op: 'create_instances'; items: InstanceSpec[] }
   | { op: 'set_props'; path: string; props?: Record<string, PropValue>; attributes?: Record<string, PropValue> }
+  | {
+      op: 'terrain_edit';
+      action: 'fill_block' | 'fill_ball' | 'fill_region' | 'replace_material' | 'write_voxels';
+      center?: [number, number, number];
+      size?: [number, number, number];
+      radius?: number;
+      min?: [number, number, number];
+      max?: [number, number, number];
+      material?: string;
+      sourceMaterial?: string;
+      targetMaterial?: string;
+      origin?: [number, number, number];
+      dimensions?: [number, number, number];
+      voxels?: { material: string; occupancy: number }[];
+    }
   | { op: 'delete_instances'; paths: string[] }
   | { op: 'move_instances'; moves: { path: string; newParent: string }[] }
   | { op: 'run_code'; code: string; timeoutMs?: number } // plugin-context Luau via ModuleScript require
   | { op: 'get_logs'; sinceClock?: number; maxEntries?: number }
+  | { op: 'project_census' }
   /**
-   * The Studio test controls, which are exactly `RunService:Run()`, `:Pause()` and `:Stop()`.
-   * That is the whole simulation surface a plugin has: there is no plugin API for Play Solo,
-   * for Run Client, or for starting extra clients, so this union does not pretend to offer them.
-   * `start` is a kept alias for `run` — the playtest tool has sent it since before the companion
-   * panel existed. An unknown action is REFUSED by the plugin, never silently treated as stop.
+   * The bounded Run-mode controls used by Apple's live verification loop: RunService Run/Pause/Stop.
+   * Current Studio also exposes asynchronous Play/Multiplayer automation through StudioTestService;
+   * those are a different test-session lifecycle and are not represented by this Run-mode union.
+   * `start` is a kept alias for `run`. Unknown actions are refused, never treated as stop.
    */
   | { op: 'run_mode'; action: 'start' | 'run' | 'pause' | 'resume' | 'stop' | 'restart' }
   // Companion direct manipulation: what a person clicks in the panel, with no model in the loop.
@@ -229,6 +246,8 @@ export interface RenderViewResult {
   views: RenderedView[];
   lighting?: SceneLighting;
   layout?: SceneLayout;
+  /** Active Studio 3D viewport capture when the user granted screenshot permission. */
+  studioViewport?: Omit<StudioFrame, 'msgId' | 'playtestRunId' | 'seq'>;
 }
 
 export interface PendingOp {
@@ -545,12 +564,12 @@ export interface PluginPollResponse {
 // Agent + chat protocol (web <-> DO over WebSocket)
 // ---------------------------------------------------------------------------
 
-export type GolemMode = 'clay' | 'stone' | 'rune';
+/** The only run modes on the wire. Autonomy is a per-message Agent option, not a third mode. */
+export type ProductMode = 'plan' | 'agent';
 
 /**
- * The user-facing model selector. This is deliberately separate from `GolemMode`: the latter is
- * an old specialist/autonomy axis persisted in messages and runs, while this value is the model
- * entitlement the account selected for a new request.
+ * The user-facing model selector. This is deliberately separate from `ProductMode`: one chooses
+ * Plan or Agent behavior, while this value is the model entitlement selected for a new request.
  */
 export type ProductModel = 'apple' | 'apple-max';
 
@@ -614,7 +633,7 @@ export interface ChatAttachment {
 }
 
 export type ClientMsg =
-  | { type: 'chat'; text: string; mode: GolemMode; productModel?: ProductModel; attachments?: ChatAttachment[] }
+  | { type: 'chat'; text: string; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel; attachments?: ChatAttachment[] }
   /**
    * Correct an earlier prompt and run again from there.
    *
@@ -626,7 +645,7 @@ export type ClientMsg =
    * work is not. Checkpoints are the tool for that, and the two are deliberately separate — a
    * wording fix should not silently revert a working door.
    */
-  | { type: 'edit_resend'; messageId: string; text: string; mode: GolemMode; productModel?: ProductModel }
+  | { type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel }
   | { type: 'stop' } // interrupt agent
   | { type: 'resume' }
   /**
@@ -763,7 +782,18 @@ export function phaseForTool(tool: string): AgentPhase {
       return 'writing_luau';
     case 'create_instances':
     case 'set_properties':
+    case 'edit_terrain':
     case 'delete_instances':
+    // Direct bounded authoring ops. These all mutate the open place through typed plugin commands;
+    // they are distinct tools so Agent can express the edit without arbitrary Luau.
+    case 'move_instances':
+    case 'transform_instances':
+    case 'clone_instances':
+    case 'group_instances':
+    case 'ungroup_instances':
+    case 'rename_instance':
+    case 'set_locked':
+    case 'set_visible':
     case 'insert_asset':
     case 'generate_model':
     case 'generate_image':
@@ -885,12 +915,14 @@ export interface RunIntent {
  */
 export interface RunSnapshot {
   msgId: string;
-  mode: GolemMode;
+  mode: ProductMode;
+  /** True only for an Agent request whose per-message Autonomous toggle was enabled. */
+  autonomous?: boolean;
   /** The selected model, when the run came from a model-aware client. */
   productModel?: ProductModel;
   phase: AgentPhase;
   step: number;
-  /** Present only when replaying a legacy run created before autonomous unbounded runs. */
+  /** Hard work-step ceiling for this message. */
   totalSteps?: number;
   /** Text the assistant has produced so far this run. */
   text: string;
@@ -912,24 +944,7 @@ export interface RunSnapshot {
   deniedTools?: string[];
 }
 
-/**
- * One frame rasterised by the Studio plugin and forwarded to the browser.
- *
- * WHAT THIS IS, EXACTLY. Roblox gives plugins no viewport readback, so there
- * is no screenshot of what the user is looking at and no video to stream. The
- * plugin instead runs its own depth-buffered triangle rasteriser in Luau and
- * returns pixels it computed itself: flat Lambert shading, one fixed sun, no
- * shadows, no PointLights, no post-effects, no characters and no particles.
- *
- * It is therefore a DIAGNOSTIC RENDER of scene geometry, and the UI is
- * required to say so. Presenting it as a live view of the game would be a
- * lie, and a convincing one.
- *
- * Cost is why these are occasional rather than continuous: rasterising runs
- * synchronously on Studio's main thread, so every frame briefly freezes the
- * user's editor, and each one crosses the wire as uncompressed base64 RGB
- * (~207KB at the default 288x180).
- */
+/** One real or software-rendered Studio frame forwarded to the browser. */
 export interface StudioFrame {
   /**
    * The pixels, base64. The byte stream underneath depends on `encoding`:
@@ -949,6 +964,8 @@ export interface StudioFrame {
    * the smaller of the two. See frame-bus.ts.
    */
   encoding?: FrameEncoding;
+  /** Capture source. Absent means a legacy software-render frame. */
+  source?: 'studio_viewport' | 'software_render';
   width: number;
   height: number;
   /** Which camera preset produced it. */
@@ -968,7 +985,7 @@ export interface StudioFrame {
   seq?: number;
 }
 
-export type FrameEncoding = 'rgb24' | 'rle24';
+export type FrameEncoding = 'rgb24' | 'rle24' | 'png';
 
 /**
  * A playtest, as the browser is entitled to describe it.
@@ -1104,7 +1121,7 @@ export type ServerMsg =
   //   run, after the user row is inserted, and already carries the run's other id. OPTIONAL
   //   because the worker and the web app deploy separately: a client that required it would be
   //   describing a worker that may not be live yet. See web/src/lib/message-identity.ts. ]]
-  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode; productModel?: ProductModel; userMsgId?: string }
+  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel; userMsgId?: string }
   | { type: 'delta'; msgId: string; text: string }
   //[[ `target` is WHICH THING this step is about — the script path, the instance paths, the URL —
   //   read from the call's arguments BEFORE it runs. `summary` at this point is only the tool's
@@ -1145,7 +1162,7 @@ export type ServerMsg =
        */
       creditsSpent?: number;
     }
-  // `effortReason` is the reasoning POLICY's own summary (e.g. "stone baseline;
+  // `effortReason` is the reasoning POLICY's own summary (e.g. "Agent baseline;
   // visual design task"). It is a classification of the request, not the
   // model's hidden reasoning, and never contains prompt or transcript content.
   | {
@@ -1223,8 +1240,7 @@ export type ServerMsg =
   | { type: 'studio_log'; entries: StudioEventLog[] }
   // Sent in reply to `resume`, and unprompted on connect when a run is live.
   | { type: 'run_state'; run: RunSnapshot | null }
-  // A real frame rasterised inside Studio and forwarded to the browser.
-  // See StudioFrame — this is a diagnostic render, NOT a viewport capture.
+  // A bounded frame captured or rendered inside Studio and forwarded to the browser.
   | { type: 'studio_frame'; frame: StudioFrame }
   // The live playtest, or null once there is none. Emitted on every phase
   // change and on every capture tick, so the card's elapsed time and console
@@ -1304,6 +1320,8 @@ export interface QuotaState {
   allowanceRemaining: number;
   /** Purchased, non-expiring balance. Spent only after the allowance for the period is gone. */
   credits: number;
+  /** Authoritative owner/operator bypass. When true, user Credits do not gate or decrement runs. */
+  unmetered?: boolean;
 }
 
 export interface CheckpointMeta {
@@ -1372,7 +1390,9 @@ export interface ProjectDto {
 export interface MessageDto {
   id: string;
   role: 'user' | 'assistant' | 'system';
-  mode: GolemMode | null;
+  mode: ProductMode | null;
+  /** Whether this Agent turn ran with the Autonomous capability policy. */
+  autonomous?: boolean;
   /** The selected model, when this message was created by a model-aware client. */
   productModel?: ProductModel;
   content: string;
@@ -1462,6 +1482,11 @@ export interface GatewayMessage {
    * do/session.ts. Never serialised: the gateway builds the wire payload by explicit field pick.
    */
   pinned?: boolean;
+  /**
+   * The run record the transcript trim writes in place of the turns it drops (see `trimTranscriptReport`
+   * in apps/worker/src/transcript.ts). Always also `pinned`. Never serialised, like `pinned`.
+   */
+  ledger?: boolean;
 }
 
 export interface GatewayRequest {
@@ -1500,17 +1525,13 @@ export interface GatewayResponse {
   finishReason: 'stop' | 'tool_calls' | 'length' | 'error';
 }
 
-/**
- * Credits are billed from the neurons a run actually consumes (1 Credit = 90 neurons), so these
- * are *typical measured* costs shown in the UI, not fixed prices. Measured 2026-08-30:
- * Clay ~29 neurons, Stone answer-only ~139, Stone full build+verify in Studio ~1,266.
- */
+/** Credits are billed from measured neuron usage, so these are typical costs rather than fixed prices. */
 /**
  * `creditsPerRequest` is GONE, deliberately.
  *
  * It used to be the upfront charge — `quotaSpend(owner, MODE_INFO[mode].creditsPerRequest)`
- * — and the site's published "Clay 1 · Stone 4 · Rune 10" came from exactly those
- * numbers. The charging model then changed: session.ts now takes ONE credit upfront
+ * — and old published fixed figures came from exactly those numbers. The charging model then changed:
+ * session.ts now takes ONE credit upfront
  * whatever the mode, and settles the difference from measured neurons
  * (`creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent`). Nothing has read
  * `creditsPerRequest` since, while the comment below PRODUCT_MODE_INFO still called it
@@ -1524,19 +1545,12 @@ export interface GatewayResponse {
  * measurements.
  */
 /*
- * THE NAMES A CUSTOMER READS. `clay`, `stone` and `rune` are the ids on the wire and in D1 rows
- * already written, so they stay; what changes is what is printed beside them. Clay and Stone were
- * quarried-stone names from the Golem identity, and a customer picking a model was being asked to
- * learn a vocabulary that means nothing about what they get. Apple and Apple Max say which is
- * bigger, which is the only thing the picker has to communicate.
- */
-/*
  * AND `entryUnit`, WHICH IS THE PIECE OF WORK THE LOW END OF `typicalCredits` WAS MEASURED ON.
  *
  * The pricing page published `Apple Max · 4 credits · "Builds features across your project" ·
  * ~57 requests a free day` about a hundred lines under `One build costs about 77 Credits`, which
  * the plan cards turn into three builds a free day. Both numbers are right and they are not about
- * the same work: the 4 is `ceil(111 / 30)` from COST-MODEL's *Stone, targeted edit + read-back
+ * the same work: the 4 is `ceil(111 / 30)` from COST-MODEL's targeted edit + read-back
  * verify in Studio*, and the 77 is `ceil(2300 / 30)` from BUILD_NEURONS.qualityGated. A reader who
  * takes the blurb at face value divides and finds the page 19x apart with itself on the one
  * question the owner actually asked — what will this cost me in a month.
@@ -1548,32 +1562,23 @@ export interface GatewayResponse {
  * The words come from the COST-MODEL row each figure is derived from, so there is one measurement
  * and one sentence about it. `check-credit-figures.mjs` fails when an offered mode's entryUnit
  * claims a build at a price that is not CREDITS_PER_BUILD — which is the drift above, stated as an
- * assertion. `rune` says build at 10 Credits on purpose and is not checked, because it is withdrawn
- * from PRODUCT_MODES_OFFERED: COST-MODEL measures its build at 297 neurons and BUILD_NEURONS
- * measures the quality-gated one at 2,300, and re-offering the mode has to reconcile those two
- * before it can publish either. The guard firing on that day is the point of writing it this way.
+ * assertion. The guard firing when the published cost drifts is the point of writing it this way.
  */
 export const MODE_INFO: Record<
-  GolemMode,
+  ProductMode,
   { name: string; blurb: string; typicalCredits: string; entryUnit: string }
 > = {
-  clay: {
-    name: 'Apple',
-    blurb: 'Fast answers and small edits',
+  plan: {
+    name: 'Plan',
+    blurb: 'Inspects the project and designs the work without changing it',
     typicalCredits: '2',
     entryUnit: 'one question, with Studio attached',
   },
-  stone: {
-    name: 'Apple Max',
+  agent: {
+    name: 'Agent',
     blurb: 'Builds features across your project',
     typicalCredits: '4-18',
     entryUnit: 'one targeted edit, read back and verified',
-  },
-  rune: {
-    name: 'Apple Max Auto',
-    blurb: 'Plans, builds, tests and fixes autonomously',
-    typicalCredits: '10-30',
-    entryUnit: 'one build, verified and playtested',
   },
 };
 
@@ -1584,9 +1589,8 @@ export const MODE_INFO: Record<
  * runs" — so the card said how much work it was in a unit nobody is billed in, while the number
  * that would answer "what will this cost me" sat two clicks away in the composer, unmultiplied.
  *
- * The multiplication is the whole value. With `runs` varying across the catalogue, a two-run
- * Super Agent milestone is 20-60 Credits where the mode's own line reads 10-30; reprinting the
- * mode range on the card would have understated half the catalogue by a factor of two.
+ * The multiplication is the whole value. With `runs` varying across the catalogue, reprinting one
+ * run's range on a multi-run card would understate the work by that factor.
  *
  * It PARSES `typicalCredits` rather than keeping its own table, so there is exactly one place a
  * price is written down. A second copy of a price is a second copy free to drift, which is the
@@ -1600,7 +1604,7 @@ export const MODE_INFO: Record<
  * `null` for a run count that is not a positive whole number — an unreadable input produces no
  * figure rather than a wrong one, because a wrong price is worse than a missing one.
  */
-export function creditRangeForRuns(mode: GolemMode, runs: number): { low: number; high: number } | null {
+export function creditRangeForRuns(mode: ProductMode, runs: number): { low: number; high: number } | null {
   if (!Number.isInteger(runs) || runs < 1) return null;
   const published = MODE_INFO[mode]?.typicalCredits;
   if (!published) return null;
@@ -1613,99 +1617,17 @@ export function creditRangeForRuns(mode: GolemMode, runs: number): { low: number
 }
 
 // ---------------------------------------------------------------------------
-// Product modes — the only mode concept the product surfaces
-//
-// Users pick Plan / Agent / Super Agent. They never pick a specialist, and they
-// never pick a provider or a foundation model: which engine answers is an
-// implementation detail of the routing layer, visible only in admin and
-// diagnostics surfaces.
-//
-// The internal specialist axis (GolemMode: clay/stone/rune) is deliberately
-// preserved exactly as it is, on the wire and in storage. `ClientMsg.chat`
-// still carries `mode: GolemMode`, the session DO still persists it, and the
-// Credits ledger still accounts against it — so sessions written before this
-// mapping existed keep replaying correctly and no budget record changes meaning.
-// Clay, Stone and Rune are internal specialist identities, not user-facing
-// brands: nothing in normal product UI should name them.
-//
-// The name AppleMode DOES NOT EXIST, and this comment used to say it twice. That is worse
-// than a stale name: the sentence exists to tell the next person WHICH DECLARATION
-// is load-bearing, and it named one they could not find, so the warning could not be
-// acted on. The declaration is `GolemMode` at the top of this file.
-//
-// WHY THE TYPE STILL CARRIES THE OLD NAME, measured 2026-09-20 rather than assumed:
-//   WIRE     — `ClientMsg.chat` and `edit_resend` carry `mode` over the live session
-//              socket, and the browser and the installed Studio plugin both send it.
-//   PERSISTED— apps/worker/src/do/session.ts declares `create table if not exists
-//              messages(... mode text ...)` in the Durable Object's own SQLite and
-//              `insert into messages(id, role, mode, content, created_at)` writes the raw
-//              value. Deliberately cited by CONTENT: that file is edited often enough that a
-//              line number in this comment would be wrong within the week, and a citation that
-//              cannot be checked is the failure this whole note is about. Every stored
-//              transcript holds 'clay' / 'stone' / 'rune' today.
-//   NOT      — infra/supabase/migrations/0001_init.sql also carries
-//   THE PG     `mode text check (mode in ('clay','stone','rune'))` on public.messages, and
-//   CONSTRAINT that one is DEAD: no `from('messages')` and no `rest/v1/messages` exists in
-//              apps/worker or apps/web, so nothing writes the table the constraint guards. It
-//              is cited in the backlog as the blocker for this rename and it is not one.
-// So the rename is a MIGRATION, not an edit: widen what the DO accepts on read, write
-// the new spelling, backfill, then narrow. Renaming this type on its own would compile,
-// pass, and silently stop matching the strings already in storage.
-//
-// Translate at the edge (product mode in, specialist out) and nothing below the
-// edge has to know the product ever gained a new vocabulary.
+// Product modes — the only mode concept the product uses. Autonomous is an Agent run flag.
 // ---------------------------------------------------------------------------
-
-/** What the user picks. This is the only mode concept the product surfaces. */
-export type ProductMode = 'plan' | 'agent' | 'super';
-
-//[[ WHAT EXISTS AND WHAT IS OFFERED ARE TWO DIFFERENT LISTS, AND CONFLATING THEM IS WHY
-//   "Super Agent" SURVIVED BEING REMOVED.
-//
-//   The owner said he does not want Super Agent. The composer dropped it and the sign-in page
-//   dropped it — and the usage page and the pricing calculator went on advertising it and pricing
-//   it, because both read PRODUCT_MODES, which is the list of modes that EXIST. A person could
-//   read what a Super Agent run costs on a page and find no way to start one anywhere.
-//
-//   `super` stays in the type and in the engine: `rune` is a real specialist the worker runs, and
-//   an automation or an API caller can still name it. What changed is that nothing OFFERS it.
-//   Every surface a person chooses from reads PRODUCT_MODES_OFFERED; anything that must handle
-//   every mode the system can produce — a stored run, a bill, a migration — reads PRODUCT_MODES.
-export const PRODUCT_MODES: readonly ProductMode[] = ['plan', 'agent', 'super'];
-
-/** The modes a person may choose, in the order they are shown. */
-export const PRODUCT_MODES_OFFERED: readonly ProductMode[] = ['plan', 'agent'];
-
-/**
- * Product mode -> internal specialist. Plan is inspection and design, and is
- * the cheapest work we do, so it maps to Clay. Agent is the normal bounded
- * builder, which is Stone. Super Agent is long-horizon autonomy, which is Rune.
- *
- * Do not "improve" this mapping: it is what keeps a stored session's
- * `mode: GolemMode` meaning the same thing it meant when it was written. (The type
- * is `GolemMode`, declared above; this comment named a non-existent AppleMode.)
- */
-export const PRODUCT_MODE_TO_SPECIALIST: Record<ProductMode, GolemMode> = {
-  plan: 'clay',
-  agent: 'stone',
-  super: 'rune',
-};
-
-/** Internal specialist -> the product mode that selects it. The exact inverse. */
-export const SPECIALIST_TO_PRODUCT_MODE: Record<GolemMode, ProductMode> = {
-  clay: 'plan',
-  stone: 'agent',
-  rune: 'super',
-};
+export const PRODUCT_MODES: readonly ProductMode[] = ['plan', 'agent'];
 
 /**
  * User-facing copy and cost for each product mode.
  *
- * The Credit figure is NOT restated here — it is read out of MODE_INFO through the
- * mapping above, so a product-mode number cannot drift from its specialist's. What it
- * is has changed: it is `typicalCredits`, a range measured in docs/COST-MODEL.md, and
- * not a price the client enforces. The worker takes one credit upfront whatever the mode
- * and settles the rest from the neurons actually used.
+ * The Credit figure is NOT restated here — it is read directly from MODE_INFO, so the
+ * product-mode number cannot drift. It is `typicalCredits`, a range measured in
+ * docs/COST-MODEL.md, not a price the client enforces. The worker takes one credit upfront
+ * whatever the mode and settles the rest from the neurons actually used.
  */
 export const PRODUCT_MODE_INFO: Record<
   ProductMode,
@@ -1714,18 +1636,12 @@ export const PRODUCT_MODE_INFO: Record<
   plan: {
     name: 'Plan',
     blurb: 'Inspects your project and designs the work. Proposes; does not change anything.',
-    typicalCredits: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.plan].typicalCredits,
+    typicalCredits: MODE_INFO.plan.typicalCredits,
   },
   agent: {
     name: 'Agent',
     blurb: 'Builds, tests and repairs. The normal way to work.',
-    typicalCredits: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.agent].typicalCredits,
-  },
-  super: {
-    name: 'Super Agent',
-    blurb:
-      'Long-horizon autonomous creation. Decomposes, builds, playtests, critiques and iterates through many stages without asking routine questions.',
-    typicalCredits: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.super].typicalCredits,
+    typicalCredits: MODE_INFO.agent.typicalCredits,
   },
 };
 
@@ -1777,8 +1693,11 @@ export const PROTOCOL_VERSION = 1;
  * toggle left for anyone to flip. An appeal was sent (3JYeMPD1jVZIh8wYJV521ooFrHw, 2026-09-19
  * 22:04, decision estimated within five business days).
  *
- * So this constant names an asset that EXISTS and is NOT DISTRIBUTABLE. Nothing may present it as
- * an install path, and nothing may describe it as "the previous listing" — it is the current one.
+ * RESTORED by 2026-09-22. The same asset now resolves through toolbox-service exactly as a listed
+ * plugin does (see STUDIO_PLUGIN_STORE_LIVE below for the measurement and its controls), the store
+ * page renders a "Get Plugin" button signed out, and the owner reports the plugin approved. So this
+ * constant names the CURRENT, DISTRIBUTED listing. Nothing may describe it as "the previous
+ * listing", and the 09-19 removal above is history, not the state of the asset.
  */
 /**
  * WHERE THIS PRODUCT LIVES. One definition.
@@ -1802,9 +1721,9 @@ export const LEGACY_PRODUCT_HOST = 'golem.moshe-barami111.workers.dev';
 export const STUDIO_PLUGIN_ASSET_ID = '107230158271368';
 
 /**
- * The plugin's canonical Creator Store page. This page loads; whether it offers
- * a working "Get Plugin" button depends on the distribution toggle above, so
- * link to it without promising the install will succeed.
+ * The plugin's canonical Creator Store page, and the install path while
+ * STUDIO_PLUGIN_STORE_LIVE is true. The page shell loads for every id, so the
+ * probe below — not this URL answering 200 — is what says the listing is live.
  */
 export const STUDIO_PLUGIN_URL = `https://create.roblox.com/store/asset/${STUDIO_PLUGIN_ASSET_ID}`;
 
@@ -1853,15 +1772,33 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  * Re-probe, then flip this one constant — nothing else needs to change:
  *   curl -s -o /dev/null -w '%{http_code}\n' "$STUDIO_PLUGIN_LIVENESS_PROBE_URL"
  * 200 = listed, 404 = not, and ALWAYS beside a control (see the probe above).
+ *
  * Last checked 2026-09-19: 404 for this asset, against 200 for two known-listed
- * plugins (Rojo 7 6415005344, Moon Animator 2 4725618216). The 404 is currently a
- * removal under "Misusing Roblox Systems", not a pending listing, so flipping this
- * waits on the appeal succeeding rather than on a probe changing its mind.
+ * plugins (Rojo 7 6415005344, Moon Animator 2 4725618216). The 404 was a removal
+ * under "Misusing Roblox Systems", not a pending listing, so flipping this waits on
+ * the appeal succeeding rather than on a probe changing its mind.
+ *
+ * RE-PROBED 2026-09-22 AND IT NOW ANSWERS 200, so the sentence above is a record of
+ * 2026-09-19 and not of today. The controls held still in the same run — Rojo 7 and
+ * Moon Animator 2 both 200, an id that cannot exist 404 — so the endpoint still
+ * discriminates and the change is in the asset, not the instrument. The constant is
+ * deliberately NOT flipped on that measurement alone — "a probe reports distribution,
+ * not cause" cuts both ways. The measurement, with its controls, is in
+ * docs/evidence/2026-09-22-plugin-store-listing-flipped.md.
+ *
+ * FLIPPED 2026-09-22 ~21:03 IDT, on three facts rather than the probe alone:
+ *   1. re-probed at 18:02:59Z — ours 200 with the same shape as Rojo 7 (visibilityStatus 1,
+ *      isAssetHashApproved, fiatProduct published + free), Moon Animator 2 200, the retired
+ *      Golem id 404, an id that cannot exist 404;
+ *   2. the store page, rendered signed out, shows "Apple Studio - Creator Store" with a
+ *      "Get Plugin" button, and Creator Store search for "Apple Studio" returns exactly this id;
+ *   3. the owner reports the new plugin approved.
+ * If the probe returns 404 again, flip this back — every install affordance follows it.
  *
  * Typed `boolean` rather than the literal `false` on purpose: consumers branch
  * on it, and a literal type would make the live branch look unreachable.
  */
-export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;
+export const STUDIO_PLUGIN_STORE_LIVE: boolean = true;
 
 /**
  * Can a customer buy Credits today? No, and three surfaces used to say otherwise.
@@ -1894,6 +1831,10 @@ export const CREDIT_PURCHASE_LIVE: boolean = false;
  *
  * `null` would mean "not refused". A non-null value is a recorded moderation decision, sourced from
  * roblox.com/report-appeals for this asset id — not from the dashboard banner, which names no rule.
+ *
+ * It is `null` from 2026-09-22 because the listing is distributed again (STUDIO_PLUGIN_STORE_LIVE).
+ * The decision it used to carry is kept here as history, not as state: 'Misusing Roblox Systems',
+ * decided 2026-09-19T21:26+03:00, appeal 3JYeMPD1jVZIh8wYJV521ooFrHw sent 2026-09-19T22:04+03:00.
  */
 export interface StudioPluginStoreRefusal {
   /** Roblox's own words for the rule, verbatim. */
@@ -1907,13 +1848,7 @@ export interface StudioPluginStoreRefusal {
   readonly appealedAt: string | null;
 }
 
-export const STUDIO_PLUGIN_STORE_REFUSAL: StudioPluginStoreRefusal | null = {
-  reason: 'Misusing Roblox Systems',
-  decidedAt: '2026-09-19T21:26:00+03:00',
-  appealableUntil: '2026-10-19T21:26:00+03:00',
-  appealId: '3JYeMPD1jVZIh8wYJV521ooFrHw',
-  appealedAt: '2026-09-19T22:04:00+03:00',
-};
+export const STUDIO_PLUGIN_STORE_REFUSAL: StudioPluginStoreRefusal | null = null;
 
 /**
  * Where an "install" affordance may actually send someone TODAY.
@@ -2303,16 +2238,14 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
   },
   {
     /*
-     * COUNTED AND NAMED FROM PRODUCT_MODES_OFFERED, not typed here.
+     * COUNTED AND NAMED FROM PRODUCT_MODES, not typed here.
      *
-     * It read "All three build modes — Plan, Agent and Super Agent" after Super Agent was withdrawn
-     * from what the product offers, so the comparison table on the pricing page promised a mode
-     * nobody can pick, in the row whose whole point is that nothing is held back. A sentence naming
-     * a list is a claim about that list; deriving it is the only way the two cannot disagree.
+     * This sentence is derived from PRODUCT_MODES so the pricing page and runtime cannot
+     * drift to different mode counts.
      */
     id: 'modes',
-    label: `All ${PRODUCT_MODES_OFFERED.length === 2 ? 'two' : String(PRODUCT_MODES_OFFERED.length)} build modes`,
-    note: `${PRODUCT_MODES_OFFERED.map((m) => PRODUCT_MODE_INFO[m].name).join(' and ')}. Neither is held back for a paid tier.`,
+    label: `All ${PRODUCT_MODES.length === 2 ? 'two' : String(PRODUCT_MODES.length)} build modes`,
+    note: `${PRODUCT_MODES.map((m) => PRODUCT_MODE_INFO[m].name).join(' and ')}. Neither is held back for a paid tier.`,
     values: everyPlan(() => true),
   },
   { id: 'projects', label: 'Unlimited projects', values: everyPlan(() => true) },
@@ -2503,8 +2436,15 @@ export interface GovernedTool {
  * and breaks the agent, and apps/web/tests/tool-permissions.test.mjs holds that line against Plan
  * mode's toolset.
  *
- * Every member of the run loop's own MUTATING_TOOLS set appears here. A safety control with a hole
- * in it is worse than none, because it reads as complete.
+ * Every tool that DECLARES ITSELF A WRITER in the registry — `TOOLS[name].mutatesProject` in
+ * apps/worker/src/tools.ts — appears here, plus the tools that spend Credits without writing
+ * (generate_image, generate_sound, speak_line, run_and_check, workspace_write). Measured
+ * 2026-09-22: 23 writers declared, 28 governed, and the writers are a strict subset. A safety
+ * control with a hole in it is worse than none, because it reads as complete.
+ *
+ * This used to say "every member of the run loop's own MUTATING_TOOLS set appears here". That set
+ * was deleted when mutation truth moved onto the tool entries, and a comment naming a constant
+ * that no longer exists is worse than no comment: it reads as a checked invariant.
  */
 export const GOVERNED_TOOLS: readonly GovernedTool[] = [
   // --- changes the project ---------------------------------------------------------------
@@ -2545,6 +2485,78 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
+    name: 'edit_terrain',
+    label: 'Edit terrain',
+    why: 'Changes Roblox Terrain voxels and materials in the open place.',
+    group: 'changes',
+  },
+  {
+    name: 'move_instances',
+    label: 'Reparent objects',
+    why: 'Moves existing objects to different parents in the project hierarchy.',
+    group: 'changes',
+  },
+  {
+    name: 'transform_instances',
+    label: 'Transform objects',
+    why: 'Moves, rotates, or scales existing spatial objects in the place.',
+    group: 'changes',
+  },
+  {
+    name: 'clone_instances',
+    label: 'Clone objects',
+    why: 'Duplicates existing project objects and may place the copies under another parent.',
+    group: 'changes',
+  },
+  {
+    name: 'group_instances',
+    label: 'Group objects',
+    why: 'Creates a Model and reparents selected project objects into it.',
+    group: 'changes',
+  },
+  {
+    name: 'ungroup_instances',
+    label: 'Ungroup objects',
+    why: 'Moves children out of a Model or Folder and removes the emptied container.',
+    group: 'changes',
+  },
+  {
+    name: 'rename_instance',
+    label: 'Rename objects',
+    why: 'Changes the name and therefore the project path of an existing object.',
+    group: 'changes',
+  },
+  {
+    name: 'set_locked',
+    label: 'Lock or unlock objects',
+    why: 'Changes Studio lock state on BaseParts under the selected objects.',
+    group: 'changes',
+  },
+  {
+    name: 'set_visible',
+    label: 'Show or hide objects',
+    why: 'Changes visibility on spatial instances or GUI objects in the project.',
+    group: 'changes',
+  },
+  {
+    name: 'set_mood',
+    label: 'Change scene lighting',
+    why: 'Rewrites Lighting properties and Apple-owned atmosphere and post-processing effects.',
+    group: 'changes',
+  },
+  {
+    name: 'add_effect',
+    label: 'Add scene effects',
+    why: 'Adds particle, light, or related presentation instances to project objects.',
+    group: 'changes',
+  },
+  {
+    name: 'remove_effect',
+    label: 'Remove Apple effects',
+    why: 'Deletes presentation effects that Apple previously attached to project objects.',
+    group: 'changes',
+  },
+  {
     name: 'insert_asset',
     label: 'Insert assets from the Creator Store',
     why: 'Brings third-party models into your place.',
@@ -2566,6 +2578,18 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'workspace_write',
     label: 'Write files in the workspace',
     why: 'Writes to the file workspace beside your project. It cannot reach the place itself.',
+    group: 'changes',
+  },
+  {
+    name: 'design_sound',
+    label: 'Design project sound',
+    why: 'Creates or updates Sound instances and related project configuration while designing audio.',
+    group: 'changes',
+  },
+  {
+    name: 'assign_sounds',
+    label: 'Assign sounds to objects',
+    why: 'Writes Sound configuration onto project objects using generated or selected audio.',
     group: 'changes',
   },
 

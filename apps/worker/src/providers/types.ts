@@ -55,9 +55,8 @@ export interface ProviderModel {
  * Used to answer "can this provider serve this key at all?" without running anything.
  */
 export const MODEL_KEY_NEEDS: Record<string, { tools: boolean; vision: boolean }> = {
-  clay: { tools: true, vision: false },
-  stone: { tools: true, vision: false },
-  rune: { tools: true, vision: false },
+  plan: { tools: true, vision: false },
+  agent: { tools: true, vision: false },
   memory: { tools: false, vision: false },
   vision: { tools: false, vision: true },
 };
@@ -167,6 +166,15 @@ export interface NormalizedResponse {
   toolCalls: GatewayToolCall[];
   usage: NormalizedUsage;
   finishReason: 'stop' | 'tool_calls' | 'length' | 'error';
+  /**
+   * The provider said the response was CUT at its output ceiling (finish_reason `length`,
+   * `MAX_TOKENS`), whatever `finishReason` reports. `finishReason` answers "is there a tool call to
+   * run", so it says `tool_calls` for a response that ends mid-way through one — and on 2026-09-22 a
+   * create_instances call guillotined at 6,500 tokens was executed, failed, and its unparseable
+   * arguments were sent back to the provider, which rejected the next request and ended two real
+   * builds with nothing built. The gateway reads this to drop incomplete calls.
+   */
+  truncated?: boolean;
   provider: ProviderId;
   model: string;
 }

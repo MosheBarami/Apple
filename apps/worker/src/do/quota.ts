@@ -155,6 +155,11 @@ export class QuotaDO extends DurableObject<Env> {
     return (await this.ctx.storage.get<number>('credits')) ?? 0;
   }
 
+  /** Owner/operator-only bypass set through an internal DO route. It is never accepted from chat. */
+  private async unmetered(): Promise<boolean> {
+    return (await this.ctx.storage.get<boolean>('unmetered')) === true;
+  }
+
   /** The full Stripe subscription as last seen, or null for an account that never bought one. */
   private async subscription(): Promise<Subscription | null> {
     return (await this.ctx.storage.get<Subscription>('subscription')) ?? null;
@@ -398,13 +403,16 @@ export class QuotaDO extends DurableObject<Env> {
     const monthRow = this.sql
       .exec(`select coalesce(sum(credits),0) as s from ledger where day like ?`, `${this.thisMonth()}%`)
       .one() as { s: number };
-    return quotaState({
+    return {
+      ...quotaState({
       plan: await this.plan(),
       spentToday: dayRow.s,
       spentThisMonth: monthRow.s,
       credits: await this.credits(),
       now: Date.now(),
-    });
+      }),
+      ...((await this.unmetered()) ? { unmetered: true } : {}),
+    };
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -448,9 +456,18 @@ export class QuotaDO extends DurableObject<Env> {
         }
       });
     }
+    if (url.pathname === '/set-unmetered' && req.method === 'POST') {
+      const body = await req.json().catch(() => null) as { enabled?: unknown } | null;
+      const enabled = body?.enabled === true;
+      await this.ctx.storage.put('unmetered', enabled);
+      return Response.json({ ok: true, state: await this.state() });
+    }
     if (url.pathname === '/spend' && req.method === 'POST') {
       const { credits, kind } = (await req.json()) as { credits: number; kind: string };
       const st = await this.state();
+      if (st.unmetered === true) {
+        return Response.json({ ok: true, state: st, fromAllowance: 0, fromCredits: 0 });
+      }
       // Allowance first, credits only for the remainder. Spending a purchased balance while a free
       // allowance is still available would quietly charge the user for something they already had.
       const split = splitSpend(credits, st.allowanceRemaining, st.credits);

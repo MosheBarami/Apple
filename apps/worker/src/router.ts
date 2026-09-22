@@ -1,7 +1,6 @@
-// Per-mode capability, and the model routing it grew out of. What this file decides TODAY is which
+// Per-mode capability. What this file decides TODAY is which
 // tools each mode may call — which makes it the place that ENFORCES Plan mode's read-only promise
-// to the user, not merely a token optimisation. Read the note on toolsForMode before you change
-// clay's list.
+// to the user, not merely a token optimisation. Read the note on toolsForMode before changing it.
 //
 // The routing history below is kept because it explains why the toolsets are all that is left.
 //
@@ -16,7 +15,7 @@
 //                  and ui-implementation (66.7 vs 100).
 // So: inspection/orchestration steps route cheap with no measured quality loss; steps that
 // actually author Luau or build UI stay on the flagship, where the gap is real.
-import type { GolemMode } from '@golem/shared';
+import type { ProductMode } from '@golem/shared';
 
 /**
  * NOTE — model routing was removed in the GLM-5.3-flash migration.
@@ -33,10 +32,9 @@ import type { GolemMode } from '@golem/shared';
  */
 
 /**
- * WHY CLAY'S TOOLSET IS READ-ONLY — read this before you add a tool to it.
+ * WHY PLAN'S TOOLSET IS READ-ONLY — read this before you add a tool to it.
  *
- * The user does not pick clay/stone/rune. They pick Plan, Agent or Super Agent, and Plan maps onto
- * the clay specialist. Plan's promise to the user is that it looks and thinks and does NOT touch
+ * Plan's promise to the user is that it looks and thinks and does NOT touch
  * their project: they can point it at a place they care about, ask "what would you do here", and
  * get an answer without risking a single instance. That promise is what makes Plan safe to run on
  * work in progress, and it is the only mode that offers it.
@@ -100,8 +98,8 @@ const PLAN_TOOLS = [
  * Worker-side capabilities that remain useful without a live Studio bridge.
  *
  * `generate_image` is deliberately separate from the Studio toolset: it creates a preview in
- * Apple's project-scoped storage and never edits the place. Stone and Rune should therefore be
- * able to answer an image request while Studio is disconnected, while Clay and unknown modes
+ * Apple's project-scoped storage and never edits the place. Agent should therefore be
+ * able to answer an image request while Studio is disconnected, while Plan and unknown modes
  * keep their read-only contract. Do not add a Studio-backed generator here — an offline mode must
  * never suggest a call that can only end in a connection refusal.
  */
@@ -114,7 +112,7 @@ const PLAN_TOOLS = [
  * shipped. Both are `studio: false`, both answer from a table compiled into this bundle, neither
  * can touch the place, spend a credit or make an outbound request.
  *
- * They were nonetheless reachable only from stone/rune WITH a live Studio, because they were in
+ * They were nonetheless reachable only from Agent WITH a live Studio, because they were in
  * neither list here — so Plan mode could never cite a proven module in a roadmap, and a
  * disconnected session had to answer construction questions from pretraining. That is the precise
  * failure the modules exist to stop: measured, the model writes the right shape with the wrong
@@ -127,19 +125,17 @@ const KNOWLEDGE_TOOLS = ['get_verified_module', 'get_ui_construction'];
 const OFFLINE_TOOLS = ['search_docs', 'search_creation_skills', 'read_creation_skill', 'get_genre_references', ...KNOWLEDGE_TOOLS, 'remember'];
 const OFFLINE_IMAGE_TOOLS = [...OFFLINE_TOOLS, 'generate_image'];
 
-export function toolsForMode(mode: GolemMode, studioConnected: boolean, allNames: string[]): Set<string> {
+export function toolsForMode(mode: ProductMode, studioConnected: boolean, allNames: string[]): Set<string> {
   if (!studioConnected) {
-    const allowed = mode === 'stone' || mode === 'rune' ? OFFLINE_IMAGE_TOOLS : OFFLINE_TOOLS;
+    const allowed = mode === 'agent' ? OFFLINE_IMAGE_TOOLS : OFFLINE_TOOLS;
     return new Set(allNames.filter((n) => allowed.includes(n)));
   }
   switch (mode) {
-    case 'clay':
+    case 'plan':
       return new Set(allNames.filter((n) => PLAN_TOOLS.includes(n)));
-    // Stone is the default builder, so it gets everything including the visual inspection tools:
-    // this is the mode that produces scenes, and therefore the mode that must look at them. Rune
-    // is long-horizon autonomy and gets the same.
-    case 'stone':
-    case 'rune':
+    // Agent is the builder, so it gets every registered tool; downstream project/account gates
+    // remain authoritative for operations that require pairing, consent or separate approval.
+    case 'agent':
       return new Set(allNames);
     default:
       // A MODE NOBODY DEFINED GETS PLAN'S SET, NOT EVERYTHING.
@@ -147,7 +143,7 @@ export function toolsForMode(mode: GolemMode, studioConnected: boolean, allNames
       // This used to fall through to `new Set(allNames)`, so an unrecognised mode was handed
       // edit_script, delete_instances and run_luau — the most permissive answer available, for the
       // one input the function did not understand. Same shape as the step ceiling in session.ts:
-      // `Record<GolemMode, T>` is a compile-time promise and the runtime kept none of it.
+      // The mode union is a compile-time promise and the runtime must still fail closed.
       //
       // session.ts now validates `mode` at all three ingresses, so nothing unrecognised should
       // arrive here in the assembled product. This is the second line, and a second line that

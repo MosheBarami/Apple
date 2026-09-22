@@ -21,9 +21,11 @@
 // a sound library on paths nobody here has verified would be a table of silent failures, so there
 // is no sound library. Sounds arrive when a path can be confirmed in a live place, not before.
 //
-// These emit Luau rather than `create_instances` items because the properties that carry a look are
-// ColorSequence and NumberSequence — the ramps — and `PropValue` in packages/shared supports
-// neither. An emitter without its ramps is the default white square this module exists to replace.
+// The current Studio protocol carries ColorSequence and NumberSequence directly, so these presets
+// can be materialised with bounded create_instances operations. The Luau emitters remain below for
+// compatibility tests and old clients, but current authoring does not need code execution.
+
+import type { InstanceSpec, PropValue } from '@golem/shared';
 
 /** One instance the preset creates under the target, as a class plus already-rendered Luau props. */
 interface EffectPart {
@@ -317,6 +319,86 @@ export function effectCatalogue(): { name: string; summary: string; use: string 
     summary: EFFECTS[name]!.summary,
     use: EFFECTS[name]!.use,
   }));
+}
+
+const nums = (text: string): number[] => text.split(',').map((part) => Number(part.trim()));
+const finite = (values: number[]): boolean => values.every(Number.isFinite);
+
+/** Decode the fixed preset vocabulary into the typed Studio wire format. */
+function typedEffectValue(source: string): PropValue | null {
+  if (source === 'true' || source === 'false') return { t: 'bool', v: source === 'true' };
+  if (/^-?\d+(?:\.\d+)?$/.test(source)) return { t: 'number', v: Number(source) };
+  if (/^"(?:[^"\\]|\\.)*"$/.test(source)) {
+    try { return { t: 'string', v: JSON.parse(source) as string }; } catch { return null; }
+  }
+  let m = /^Color3\.fromRGB\(([^)]+)\)$/.exec(source);
+  if (m) {
+    const v = nums(m[1]!);
+    return v.length === 3 && finite(v) ? { t: 'Color3', v: [v[0]! / 255, v[1]! / 255, v[2]! / 255] } : null;
+  }
+  m = /^NumberRange\.new\(([^)]+)\)$/.exec(source);
+  if (m) {
+    const v = nums(m[1]!);
+    return v.length === 2 && finite(v) ? { t: 'NumberRange', v: [v[0]!, v[1]!] } : null;
+  }
+  m = /^Vector2\.new\(([^)]+)\)$/.exec(source);
+  if (m) {
+    const v = nums(m[1]!);
+    return v.length === 2 && finite(v) ? { t: 'Vector2', v: [v[0]!, v[1]!] } : null;
+  }
+  m = /^Vector3\.new\(([^)]+)\)$/.exec(source);
+  if (m) {
+    const v = nums(m[1]!);
+    return v.length === 3 && finite(v) ? { t: 'Vector3', v: [v[0]!, v[1]!, v[2]!] } : null;
+  }
+  if (source.startsWith('NumberSequence.new({') && source.endsWith('})')) {
+    const out: [number, number, number][] = [];
+    for (const hit of source.matchAll(/NumberSequenceKeypoint\.new\((-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\)/g)) {
+      const time = Number(hit[1]); const value = Number(hit[2]);
+      if (!Number.isFinite(time) || !Number.isFinite(value)) return null;
+      out.push([time, value, 0]);
+    }
+    return out.length >= 2 ? { t: 'NumberSequence', v: out } : null;
+  }
+  if (source.startsWith('ColorSequence.new({') && source.endsWith('})')) {
+    const out: [number, [number, number, number]][] = [];
+    for (const hit of source.matchAll(/ColorSequenceKeypoint\.new\((-?\d+(?:\.\d+)?),\s*Color3\.fromRGB\(([^)]+)\)\)/g)) {
+      const time = Number(hit[1]); const rgb = nums(hit[2]!);
+      if (!Number.isFinite(time) || rgb.length !== 3 || !finite(rgb)) return null;
+      out.push([time, [rgb[0]! / 255, rgb[1]! / 255, rgb[2]! / 255]]);
+    }
+    return out.length >= 2 ? { t: 'ColorSequence', v: out } : null;
+  }
+  return null;
+}
+
+/** The exact instances for a preset, encoded for create_instances rather than executable Luau. */
+export function effectInstanceSpecs(effect: string, parent: string): InstanceSpec[] | null {
+  const preset = EFFECTS[effect];
+  if (!preset) return null;
+  const specs: InstanceSpec[] = [];
+  for (const part of preset.parts) {
+    const props: Record<string, PropValue> = {};
+    let name = part.className;
+    for (const [key, source] of Object.entries(part.props)) {
+      const value = typedEffectValue(source);
+      if (!value) return null;
+      if (key === 'Name') {
+        if (value.t !== 'string') return null;
+        name = value.v;
+      } else {
+        props[key] = value;
+      }
+    }
+    specs.push({
+      className: part.className,
+      name,
+      parent,
+      props,
+      attributes: { AppleEffect: { t: 'string', v: effect } },
+    });
+  }
+  return specs;
 }
 
 /**

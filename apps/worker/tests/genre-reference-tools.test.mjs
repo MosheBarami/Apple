@@ -22,10 +22,10 @@ const { toolsForMode } = await bundle('router');
 test('genre references are available in Plan and all disconnected modes with no project access', async () => {
   const name = 'get_genre_references';
   assert.equal(TOOLS[name].studio, false);
-  for (const mode of ['clay', 'stone', 'rune']) {
+  for (const mode of ['plan', 'agent', 'agent']) {
     assert.ok(toolsForMode(mode, false, toolNames()).has(name));
   }
-  assert.ok(toolsForMode('clay', true, toolNames()).has(name));
+  assert.ok(toolsForMode('plan', true, toolNames()).has(name));
   const oldFetch = globalThis.fetch;
   globalThis.fetch = () => { throw new Error('reference retrieval must be offline'); };
   try {

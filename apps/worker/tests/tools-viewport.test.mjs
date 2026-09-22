@@ -1,5 +1,5 @@
 /**
- * THE LAST TWO ORPHANED OPS — and the two that are still deliberately orphaned.
+ * The viewport/selection helpers and the direct manipulation surface.
  *
  * `select` and `viewport_info` have had plugin handlers and StudioOp members since they were
  * written, reachable only behind ADMIN_STUDIO_OPS. Both are non-destructive: one replaces the
@@ -8,11 +8,8 @@
  * over the selection so the user's next drag lands on it — and lets it place geometry relative to
  * what exists rather than guessing at coordinates.
  *
- * `move_instances` and `undo_waypoint` are NOT registered here and that is the test's other
- * subject. move_instances mutates the place; undo_waypoint drives ChangeHistoryService, which is
- * the restore path a separate agent owns. An op being implemented is not a reason to expose it,
- * and the assertion below makes leaving them out a decision rather than an oversight — so if a
- * later pass registers one it has to delete a test that says why it didn't.
+ * Direct manipulation is now deliberately exposed through bounded typed tools; undo_waypoint stays
+ * internal to the checkpoint/history surface rather than becoming a model-facing escape hatch.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -76,12 +73,10 @@ test('viewport_info takes no arguments and asks for the viewport', async () => {
   assert.equal(res.camera.fov, 70);
 });
 
-test('the two mutating orphans stay unregistered, deliberately', () => {
-  // move_instances mutates the place; undo_waypoint drives ChangeHistoryService, the restore path.
-  // Registering either is a decision to be argued for, not a gap to be quietly filled.
+test('direct reparenting is registered while undo_waypoint stays internal', () => {
   const names = T.toolNames();
-  assert.equal(names.includes('move_instances'), false,
-    'move_instances mutates the place — register it deliberately, with a checkpoint story');
+  assert.equal(names.includes('move_instances'), true,
+    'the typed reparenting op must be reachable by Agent');
   assert.equal(names.includes('undo_waypoint'), false,
     'undo_waypoint drives ChangeHistoryService, which is the restore surface');
 });

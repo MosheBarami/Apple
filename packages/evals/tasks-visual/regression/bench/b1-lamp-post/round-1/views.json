@@ -2,54 +2,41 @@
  "subject": "game.Workspace",
  "boundsSize": [
   12,
-  20.9,
+  1,
   12
  ],
  "lighting": {
-  "clockTime": 17.4,
+  "clockTime": 14.5,
   "fogEnd": 100000,
   "effects": [
    "Sky",
    "SunRaysEffect",
    "Atmosphere",
    "BloomEffect",
-   "DepthOfFieldEffect",
-   "ColorCorrectionEffect"
+   "DepthOfFieldEffect"
   ],
   "geographicLatitude": 0,
   "ambient": [
    70,
    70,
-   80
+   70
   ],
   "outdoorAmbient": [
-   128,
-   124,
-   118
+   70,
+   70,
+   70
   ],
-  "brightness": 2.4,
-  "lightInstances": 1,
+  "brightness": 3,
+  "lightInstances": 0,
   "exposureCompensation": 0
  },
  "views": [
   {
    "name": "hero",
    "meta": {
-    "partsConsidered": 71,
-    "distinctColours": 7,
+    "partsConsidered": 3,
+    "distinctColours": 1,
     "materials": [
-     {
-      "parts": 58,
-      "material": "Metal"
-     },
-     {
-      "parts": 5,
-      "material": "Neon"
-     },
-     {
-      "parts": 5,
-      "material": "Slate"
-     },
      {
       "parts": 1,
       "material": "Plastic"
@@ -57,29 +44,17 @@
     ],
     "partsOffCamera": 2,
     "height": 180,
-    "subjectCoverage": 0.16,
-    "partsVisible": 69,
+    "subjectCoverage": 0.35,
+    "partsVisible": 1,
     "width": 288
    }
   },
   {
    "name": "front",
    "meta": {
-    "partsConsidered": 71,
-    "distinctColours": 7,
+    "partsConsidered": 3,
+    "distinctColours": 1,
     "materials": [
-     {
-      "parts": 58,
-      "material": "Metal"
-     },
-     {
-      "parts": 5,
-      "material": "Neon"
-     },
-     {
-      "parts": 5,
-      "material": "Slate"
-     },
      {
       "parts": 1,
       "material": "Plastic"
@@ -87,29 +62,17 @@
     ],
     "partsOffCamera": 2,
     "height": 180,
-    "subjectCoverage": 0.14,
-    "partsVisible": 69,
+    "subjectCoverage": 0.4,
+    "partsVisible": 1,
     "width": 288
    }
   },
   {
    "name": "side",
    "meta": {
-    "partsConsidered": 71,
-    "distinctColours": 7,
+    "partsConsidered": 3,
+    "distinctColours": 1,
     "materials": [
-     {
-      "parts": 58,
-      "material": "Metal"
-     },
-     {
-      "parts": 5,
-      "material": "Neon"
-     },
-     {
-      "parts": 5,
-      "material": "Slate"
-     },
      {
       "parts": 1,
       "material": "Plastic"
@@ -117,29 +80,17 @@
     ],
     "partsOffCamera": 2,
     "height": 180,
-    "subjectCoverage": 0.14,
-    "partsVisible": 69,
+    "subjectCoverage": 0.4,
+    "partsVisible": 1,
     "width": 288
    }
   },
   {
    "name": "top",
    "meta": {
-    "partsConsidered": 71,
-    "distinctColours": 8,
+    "partsConsidered": 3,
+    "distinctColours": 2,
     "materials": [
-     {
-      "parts": 58,
-      "material": "Metal"
-     },
-     {
-      "parts": 5,
-      "material": "Neon"
-     },
-     {
-      "parts": 5,
-      "material": "Slate"
-     },
      {
       "parts": 2,
       "material": "Plastic"
@@ -148,28 +99,16 @@
     "partsOffCamera": 1,
     "height": 180,
     "subjectCoverage": 1,
-    "partsVisible": 70,
+    "partsVisible": 2,
     "width": 288
    }
   },
   {
    "name": "eye",
    "meta": {
-    "partsConsidered": 71,
-    "distinctColours": 7,
+    "partsConsidered": 3,
+    "distinctColours": 1,
     "materials": [
-     {
-      "parts": 58,
-      "material": "Metal"
-     },
-     {
-      "parts": 5,
-      "material": "Neon"
-     },
-     {
-      "parts": 5,
-      "material": "Slate"
-     },
      {
       "parts": 1,
       "material": "Plastic"
@@ -177,8 +116,8 @@
     ],
     "partsOffCamera": 2,
     "height": 180,
-    "subjectCoverage": 0.11,
-    "partsVisible": 69,
+    "subjectCoverage": 0.24,
+    "partsVisible": 1,
     "width": 288
    }
   }

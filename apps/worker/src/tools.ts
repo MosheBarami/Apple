@@ -3,9 +3,10 @@
 import type { Env } from './env';
 import { generatedImageCapacity, saveGeneratedImage } from './generated-images';
 import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
-import { retryHint, remedyHint } from './op-failure';
+import { retryHint, remedyHint, retryEligibility } from './op-failure';
+import { VERIFIER_TOOLS, APPENDED_VERIFIER_PREFERENCE, PLANNER_TOOL } from './verifiers';
 import { normaliseItems, normaliseProps } from './studio-props';
-import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy } from '@golem/shared';
+import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocsDetailed } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
@@ -43,10 +44,10 @@ import {
   type ScriptFile,
 } from './luau-review';
 import { propertyChangeGroups } from './property-diff';
-import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
+import { parseCensus, destructiveDelta, needsProtection } from './playtest';
 import { countConsole, parseLogEntries } from './playtest-stream';
 import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
-import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout, compositionMetrics } from './composition';
+import { compositionHardFails, structureFromLayout, structureLine, compositionMetrics } from './composition';
 import {
   ROBLOX_IMAGE_SPECS,
   THUMBNAIL_UPLOAD,
@@ -62,9 +63,9 @@ import {
 import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, imagePanel, imagePathFor, type ImageRequest, type PaletteRole } from './imagegen';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
-import { MOODS, PALETTES, moodLuau } from './worldbuilding';
-import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau, removeEffectLuau, parseInstancePath } from './effects';
-import { AUDIT_LUAU, parseAudit, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
+import { MOODS, PALETTES, type RGB } from './worldbuilding';
+import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
+import { auditCaptureFromTree, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
 import { formatPanelReport, runCriticPanel } from './critic';
 import { criticInputFromRender } from './critic-input';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
@@ -194,7 +195,48 @@ export interface AgentCtx {
    * Injectable for the same reason, and because the eval harness has no KV.
    */
   workspace?: WorkspaceStore;
+  /**
+   * The tools THIS run was offered for the current step, after mode, permission and plugin
+   * capability narrowing — the set the run loop will actually execute.
+   *
+   * It exists because `propose_plan` validated steps against the whole registry. A plan naming
+   * `run_spec` against a plugin that reports `run_code` unsupported passed, and the appended
+   * `inspect_visually` was announced to a Studio that cannot render; each step then came back
+   * "unavailable" at the cost of a paid step and stayed pending forever. Optional because the eval
+   * harness and the admin `/run-tool` route have no run: absent means the registry, which is the
+   * honest answer when nothing narrowed anything.
+   */
+  offeredTools?: ReadonlySet<string>;
+  /**
+   * How `propose_plan` has fared so far in this run. The run loop carries it across steps (it
+   * rebuilds this context every step) and reads it back after each call. See PlanState.
+   */
+  planState?: PlanState;
 }
+
+/**
+ * The run-level memory `propose_plan` needs so that it can never trap a run in refusals.
+ *
+ * `refusals` counts consecutive refusals; `kinds` is what the last one refused for. The tool
+ * refuses at most twice in a row and never twice for the same kind — see planVerdict. `announced`
+ * is true once a plan is on the user's screen, after which a second plan is answered without a
+ * second checklist.
+ */
+export interface PlanState {
+  refusals: number;
+  kinds: PlanDefectKind[];
+  announced: boolean;
+}
+
+/**
+ * What can be wrong with a proposed plan, grouped by what a repair can do about it.
+ *
+ *   shape            no usable `steps` array at all — nothing to repair from
+ *   too_long         more steps than the checklist cap
+ *   bad_step         a step that is not an object, has no title, names no tool, or names propose_plan
+ *   unavailable_tool a step naming a tool that does not exist, or one this run was not offered
+ */
+export type PlanDefectKind = 'shape' | 'too_long' | 'bad_step' | 'unavailable_tool';
 
 /**
  * What run_and_check needs in order to be watchable, and nothing more.
@@ -233,7 +275,78 @@ interface ToolImpl {
   studio: boolean; // requires studio connection
   /** Studio operations this tool may require. Every `studio: true` registry entry must name them. */
   studioOps?: readonly StudioOp['op'][];
+  /**
+   * Whether a successful call means the user's Roblox place changed.
+   *
+   * A function is used for tools that can succeed as a no-op (format/install/remove/assign). This
+   * is the run loop's source of truth for "did I actually build anything?"; keeping it beside the
+   * implementation prevents SessionDO from accumulating another hand-maintained tool-name list.
+   */
+  mutatesProject?: boolean | ((result: unknown) => boolean);
   run(ctx: AgentCtx, args: Record<string, unknown>): Promise<unknown>;
+}
+
+const DIRECT_EDIT_LIMITS = Object.freeze({
+  items: 120,
+  pathChars: 320,
+  nameChars: 96,
+  translation: 1_000_000,
+  rotationDegrees: 36_000,
+  minScale: 0.001,
+  maxScale: 1000,
+});
+
+function boundedPath(value: unknown, label: string): string | { error: string } {
+  if (typeof value !== 'string') return { error: `${label} must be a string` };
+  const path = value.trim();
+  if (!path || path.length > DIRECT_EDIT_LIMITS.pathChars) {
+    return { error: `${label} must be 1-${DIRECT_EDIT_LIMITS.pathChars} characters` };
+  }
+  return path;
+}
+
+function directName(value: unknown, label: string): string | { error: string } {
+  if (typeof value !== 'string') return { error: `${label} must be a string` };
+  const name = value.trim();
+  if (!name || name.length > DIRECT_EDIT_LIMITS.nameChars) {
+    return { error: `${label} must be 1-${DIRECT_EDIT_LIMITS.nameChars} characters` };
+  }
+  return name;
+}
+
+function boundedPaths(value: unknown, label = 'paths'): string[] | { error: string } {
+  if (!Array.isArray(value) || value.length === 0 || value.length > DIRECT_EDIT_LIMITS.items) {
+    return { error: `${label} must contain 1-${DIRECT_EDIT_LIMITS.items} instance paths` };
+  }
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (let index = 0; index < value.length; index++) {
+    const path = boundedPath(value[index], `${label}[${index}]`);
+    if (typeof path !== 'string') return path;
+    if (seen.has(path)) return { error: `${label} contains the same path more than once: ${path}` };
+    seen.add(path);
+    out.push(path);
+  }
+  return out;
+}
+
+function boundedTriple(value: unknown, label: string, limit: number): [number, number, number] | { error: string } {
+  if (!Array.isArray(value) || value.length !== 3) return { error: `${label} must contain exactly 3 numbers` };
+  const triple = value.map(Number);
+  if (triple.some((n) => !Number.isFinite(n) || Math.abs(n) > limit)) {
+    return { error: `${label} entries must be finite and within ±${limit}` };
+  }
+  return triple as [number, number, number];
+}
+
+function changedField(result: unknown, field: string): boolean {
+  return !!result && typeof result === 'object' && (result as Record<string, unknown>)[field] === true;
+}
+
+function positiveCount(result: unknown, field: string): boolean {
+  if (!result || typeof result !== 'object') return false;
+  const value = (result as Record<string, unknown>)[field];
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
 
 /* ------------------------------------------------------------- propose_plan --- */
@@ -256,72 +369,225 @@ export interface ProposedPlan {
   steps: ProposedStep[];
   /** Set when this module appended the verification step the model left out. See readProposedPlan. */
   verifierAdded?: string;
+  /**
+   * Set when the plan names no verifier and this run was offered none to append. The plan still
+   * runs — refusing it would trap the run for want of a capability the model cannot conjure — and
+   * the checklist and the tool result both say that nothing will check the result automatically.
+   */
+  noVerifierOffered?: true;
+  /** What the product changed in a plan it repaired rather than refused again, one sentence each. */
+  repairs?: string[];
 }
 
 /**
  * Twelve, not forty.
  *
  * The browser's validator accepts 40 steps per build_plan. That is the shape limit, not the useful
- * one: a plan nobody reads to the end is the same as no plan, and the step ceiling for a Stone run
- * (session.ts) is in this neighbourhood anyway — a 30-step plan is a promise the run cannot keep.
+ * one: a plan nobody reads to the end is the same as no plan. Twelve keeps the visible plan
+ * scannable while the run itself may carry out far more internal work.
  */
 const MAX_PLAN_STEPS = 12;
 
-/**
- * The five tools that answer "is this any good", pinned by verification-tools.test.mjs.
- *
- * Kept as a list here rather than a substring test so that renaming a verifier breaks a plan's
- * verification requirement loudly instead of quietly accepting a plan with no check in it.
- */
-export const VERIFIER_TOOLS = ['run_and_check', 'run_spec', 'audit_build', 'check_composition', 'inspect_visually'] as const;
+// Re-exported so every reader that imported the list from the registry keeps doing so. The one
+// definition is in verifiers.ts, which the system prompt imports too.
+export { VERIFIER_TOOLS, APPENDED_VERIFIER_PREFERENCE };
 
 const clip = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
+/** The title the checklist shows for the verifier the product appended, per verifier. */
+const APPENDED_VERIFIER_TITLE: Record<(typeof VERIFIER_TOOLS)[number], string> = {
+  inspect_visually: 'Check the result looks right',
+  check_composition: 'Check the result looks right',
+  audit_build: 'Check the build for defects',
+  run_and_check: 'Playtest the result',
+  run_spec: 'Run the behaviour checks',
+};
+
 /**
- * Read the model's plan, or say exactly why it is not one.
+ * What the refusal names instead of a tool the run cannot use.
  *
- * Every `error` return is phrased as an instruction the model can act on in the next step, because
- * that is the only channel a refusal has. "steps must be an array" teaches nothing; naming the tool
- * that does not exist, or the five that would satisfy the verification rule, does.
+ * "Use an exact name from the tools you were given" left the model to guess again, and a guess is
+ * what got it refused. Tools OFFERED to this run that share a word with the one it asked for come
+ * first; a verifier it asked for is answered with the verifiers it can have. Never propose_plan,
+ * and never a tool outside `offered`, because a suggestion the run cannot call is the same defect
+ * one sentence later.
  */
-function readProposedPlan(a: Record<string, unknown>): ProposedPlan | { error: string } {
+function offeredAlternatives(tool: string, offered: ReadonlySet<string>): string[] {
+  const words = new Set(tool.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3));
+  const candidates = [...offered].filter((n) => n !== PLANNER_TOOL);
+  const verifierLike = (VERIFIER_TOOLS as readonly string[]).includes(tool) || /check|verif|inspect|audit|test|spec/.test(tool);
+  const out: string[] = [];
+  if (verifierLike) {
+    for (const v of APPENDED_VERIFIER_PREFERENCE) if (offered.has(v)) out.push(v);
+  }
+  // Ranked by how many words they share, so the near-miss the model meant (`edit_scripts` →
+  // `edit_script`) comes first rather than wherever the registry happens to list it.
+  const scored = candidates
+    .filter((name) => !out.includes(name))
+    .map((name, order) => ({
+      name,
+      order,
+      shared: name.split('_').filter((w) => words.has(w) || [...words].some((x) => x.startsWith(w) || w.startsWith(x))).length,
+    }))
+    .filter((c) => c.shared > 0)
+    .sort((a, b) => b.shared - a.shared || a.order - b.order);
+  for (const c of scored) out.push(c.name);
+  return out.slice(0, 6);
+}
+
+function alternativesSentence(tool: string, offered: ReadonlySet<string>): string {
+  const alt = offeredAlternatives(tool, offered);
+  return alt.length
+    ? `Offered in this run instead: ${alt.join(', ')}.`
+    : 'Use an exact name from the tools offered in this run.';
+}
+
+interface PlanDefect {
+  kind: PlanDefectKind;
+  /** Addressed to the model, which reads it as the refusal. */
+  sentence: string;
+  /** Addressed to the model too, but describing what the product did in a repair. */
+  repair?: string;
+}
+
+type PlanVerdict =
+  | { kind: 'plan'; plan: ProposedPlan }
+  | { kind: 'refused'; error: string; kinds: PlanDefectKind[] }
+  | { kind: 'skipped'; note: string };
+
+/**
+ * May this call be refused, or must the product repair it?
+ *
+ * THE PROPERTY: consecutive propose_plan refusals never exceed two in a run, whatever the model
+ * sends. A refusal only works if the model acts on it, and measured against the deployed product it
+ * does not (the three identical refusals recorded at readProposedPlan). So a refusal is spent once
+ * per kind of defect — the second time the same thing is wrong, the product fixes it — and never a
+ * third time in a row for any reason.
+ */
+function mayRefuse(kinds: readonly PlanDefectKind[], state: PlanState): boolean {
+  if (state.refusals <= 0) return true;
+  if (state.refusals === 1) return !kinds.some((k) => state.kinds.includes(k));
+  return false;
+}
+
+/**
+ * Read the model's plan: accept it, refuse it once with a reason it can act on, or repair it.
+ *
+ * Every refusal is phrased as an instruction the model can act on in the next step, because that is
+ * the only channel a refusal has. "steps must be an array" teaches nothing; naming the tool that
+ * does not exist, and the offered tools it could use instead, does.
+ *
+ * `offered` is the set THIS run may execute. A registered tool the run was not offered is as
+ * uncallable as one that does not exist, and passing it would only move the failure to the moment
+ * the step is attempted — a paid step, an "unavailable" error, and a checklist row pending forever.
+ */
+function readProposedPlan(a: Record<string, unknown>, offered: ReadonlySet<string>, state: PlanState): PlanVerdict {
   const raw = a.steps;
   if (!Array.isArray(raw) || raw.length === 0) {
-    return { error: 'propose_plan needs a non-empty `steps` array; each step is { title, detail?, tool }.' };
-  }
-  if (raw.length > MAX_PLAN_STEPS) {
+    const kinds: PlanDefectKind[] = ['shape'];
+    if (mayRefuse(kinds, state)) {
+      return { kind: 'refused', kinds, error: 'propose_plan needs a non-empty `steps` array; each step is { title, detail?, tool }.' };
+    }
     return {
-      error:
-        `that plan has ${raw.length} steps and the limit is ${MAX_PLAN_STEPS}. It was refused rather than ` +
-        'truncated, because a clipped plan reads as the whole commitment. Group the small steps together.',
+      kind: 'skipped',
+      note:
+        'propose_plan was sent without a usable `steps` array after earlier refusals, so no checklist is shown for this run. ' +
+        'Do not call propose_plan again; carry on with the work and report what you did in your reply.',
     };
   }
 
   const registered = new Set(toolNames());
-  const steps: ProposedStep[] = [];
+  const defects: PlanDefect[] = [];
+  if (raw.length > MAX_PLAN_STEPS) {
+    defects.push({
+      kind: 'too_long',
+      sentence:
+        `that plan has ${raw.length} steps and the limit is ${MAX_PLAN_STEPS}. It was refused rather than ` +
+        'truncated, because a clipped plan reads as the whole commitment. Group the small steps together.',
+    });
+  }
+
+  const kept: ProposedStep[] = [];
   for (let i = 0; i < raw.length; i++) {
     const entry = raw[i];
-    if (typeof entry !== 'object' || entry === null) return { error: `step ${i + 1} is not an object.` };
+    if (typeof entry !== 'object' || entry === null) {
+      defects.push({ kind: 'bad_step', sentence: `step ${i + 1} is not an object.`, repair: `step ${i + 1} was not a step and was dropped` });
+      continue;
+    }
     const step = entry as Record<string, unknown>;
     const title = clip(step.title, 200);
-    if (!title) return { error: `step ${i + 1} has no title. Say what the step delivers.` };
+    if (!title) {
+      defects.push({ kind: 'bad_step', sentence: `step ${i + 1} has no title. Say what the step delivers.`, repair: `step ${i + 1} had no title and was dropped` });
+      continue;
+    }
     const tool = clip(step.tool, 64);
     if (!tool) {
-      return {
-        error: `step ${i + 1} ("${title}") names no tool. Every step must say which tool will carry it out — a step with no tool is a wish, not a plan.`,
-      };
+      defects.push({
+        kind: 'bad_step',
+        sentence: `step ${i + 1} ("${title}") names no tool. Every step must say which tool will carry it out — a step with no tool is a wish, not a plan.`,
+        repair: `step ${i + 1} ("${title}") named no tool and was dropped`,
+      });
+      continue;
     }
-    if (tool === 'propose_plan') {
-      return { error: `step ${i + 1} names propose_plan. The plan does not contain itself; list the work.` };
+    if (tool === PLANNER_TOOL) {
+      defects.push({
+        kind: 'bad_step',
+        sentence: `step ${i + 1} names propose_plan. The plan does not contain itself; list the work.`,
+        repair: `step ${i + 1} named propose_plan itself and was dropped`,
+      });
+      continue;
     }
     if (!registered.has(tool)) {
-      return {
-        error:
+      defects.push({
+        kind: 'unavailable_tool',
+        sentence:
           `step ${i + 1} names the tool "${tool}", which does not exist. The user reads a plan as a commitment, ` +
-          'so a step that cannot be carried out is refused. Use an exact name from the tools you were given.',
+          `so a step that cannot be carried out is refused. ${alternativesSentence(tool, offered)}`,
+        repair: `step ${i + 1} ("${title}") named "${tool}", which does not exist, and was dropped`,
+      });
+      continue;
+    }
+    if (!offered.has(tool)) {
+      defects.push({
+        kind: 'unavailable_tool',
+        sentence:
+          `step ${i + 1} names "${tool}", which is not available in this run — the mode, the permissions or ` +
+          `the connected Studio withhold it — so the step could never be carried out. ${alternativesSentence(tool, offered)}`,
+        repair: `step ${i + 1} ("${title}") named "${tool}", which this run was not offered, and was dropped`,
+      });
+      continue;
+    }
+    kept.push({ title, ...(clip(step.detail, 800) ? { detail: clip(step.detail, 800) } : {}), tool });
+  }
+
+  const repairs: string[] = [];
+  let steps = kept;
+  let truncatedFrom: number | undefined;
+  if (defects.length) {
+    const kinds = [...new Set(defects.map((d) => d.kind))];
+    if (mayRefuse(kinds, state)) {
+      // The first few problems in full, then a count: a refusal the model can act on, not a wall.
+      const shown = defects.slice(0, 6).map((d) => d.sentence).join(' ');
+      const more = defects.length > 6 ? ` …and ${defects.length - 6} more problems of the same kinds.` : '';
+      return { kind: 'refused', kinds, error: shown + more };
+    }
+    //[[ REPAIRED, NOT REFUSED AGAIN. Every change is named to the model in the tool result, and a
+    //   truncation is named on the checklist the user reads, because a plan the product edited and
+    //   presented as the model's would be the failure-to-observe defect wearing a plan's clothes. ]]
+    for (const d of defects) if (d.repair) repairs.push(d.repair);
+    if (steps.length > MAX_PLAN_STEPS) {
+      truncatedFrom = steps.length;
+      steps = steps.slice(0, MAX_PLAN_STEPS);
+      repairs.push(`only the first ${MAX_PLAN_STEPS} of ${truncatedFrom} steps are on the checklist`);
+    }
+    if (!steps.length) {
+      return {
+        kind: 'skipped',
+        note:
+          `No step of that plan can be carried out in this run (${repairs.join('; ')}), so no checklist is shown. ` +
+          'Do not call propose_plan again; carry on with the tools you were offered and report what you did.',
       };
     }
-    steps.push({ title, ...(clip(step.detail, 800) ? { detail: clip(step.detail, 800) } : {}), tool });
   }
 
   //[[ RE-AIMED 2026-09-21, AT THE PROPERTY RATHER THAN AT THE MODEL. History, because the
@@ -350,22 +616,52 @@ function readProposedPlan(a: Record<string, unknown>): ProposedPlan | { error: s
   //   because a step the product added and presented as the model's would be this house's own
   //   failure-to-observe defect wearing a plan's clothes.
   //
-  //   `inspect_visually` is the appended verifier because it is the only one of the five that
-  //   needs no argument and no prior artifact: it looks at what is there. ]]
+  //   RE-AIMED AGAIN 2026-09-22: THE APPENDED CHECK MUST BE ONE THIS RUN CAN RUN. It was always
+  //   `inspect_visually`, including against a Studio whose plugin reports `render_view`
+  //   unsupported — so the product announced a check it had already withheld, and the step stayed
+  //   pending forever. The pick is now the first OFFERED verifier in APPENDED_VERIFIER_PREFERENCE,
+  //   and when none is offered nothing is appended and the plan says so instead of pretending. ]]
   let verifierAdded: string | undefined;
+  let noVerifierOffered = false;
   if (!steps.some((s) => (VERIFIER_TOOLS as readonly string[]).includes(s.tool))) {
-    verifierAdded = 'inspect_visually';
-    steps.push({
-      title: 'Check the result looks right',
-      detail: 'Added automatically: a plan with no check proves nothing, so this run verifies what it built.',
-      tool: verifierAdded,
-    });
+    const pick = APPENDED_VERIFIER_PREFERENCE.find((v) => offered.has(v));
+    if (pick) {
+      verifierAdded = pick;
+      steps = [
+        ...steps,
+        {
+          title: APPENDED_VERIFIER_TITLE[pick],
+          detail: 'Added automatically: a plan with no check proves nothing, so this run verifies what it built.',
+          tool: pick,
+        },
+      ];
+    } else {
+      noVerifierOffered = true;
+    }
   }
 
+  // Said on the checklist itself, because the checklist is what the person reads.
+  const titleNotes = [
+    ...(truncatedFrom !== undefined ? [`first ${MAX_PLAN_STEPS} of ${truncatedFrom} steps`] : []),
+    ...(noVerifierOffered ? ['no automatic check is available in this session'] : []),
+  ];
+  const suffix = titleNotes.join('; ');
+  const baseTitle = clip(a.title, 200);
+  const title = suffix
+    ? baseTitle
+      ? `${baseTitle.slice(0, Math.max(0, 200 - suffix.length - 3)).trim()} (${suffix})`
+      : suffix.charAt(0).toUpperCase() + suffix.slice(1)
+    : baseTitle;
+
   return {
-    ...(clip(a.title, 200) ? { title: clip(a.title, 200) } : {}),
-    steps,
-    ...(verifierAdded ? { verifierAdded } : {}),
+    kind: 'plan',
+    plan: {
+      ...(title ? { title } : {}),
+      steps,
+      ...(verifierAdded ? { verifierAdded } : {}),
+      ...(noVerifierOffered ? { noVerifierOffered: true as const } : {}),
+      ...(repairs.length ? { repairs } : {}),
+    },
   };
 }
 
@@ -393,6 +689,59 @@ function decodeTagged(value: unknown): unknown {
     return o.t === 'nil' ? null : o.v;
   }
   return value;
+}
+
+type StudioTreeNode = {
+  path?: string;
+  name?: string;
+  class?: string;
+  props?: Record<string, unknown>;
+  attributes?: Record<string, unknown>;
+  children?: StudioTreeNode[];
+};
+
+function treeRoot(value: unknown): StudioTreeNode | null {
+  if (!value || typeof value !== 'object') return null;
+  const root = (value as { root?: unknown }).root;
+  return root && typeof root === 'object' ? root as StudioTreeNode : null;
+}
+
+function toolError(value: unknown): value is { error: unknown } {
+  return !!value && typeof value === 'object' && 'error' in (value as Record<string, unknown>);
+}
+
+function typedPresetValue(value: number | boolean | RGB): PropValue {
+  if (typeof value === 'number') return { t: 'number', v: value };
+  if (typeof value === 'boolean') return { t: 'bool', v: value };
+  return { t: 'Color3', v: [value[0] / 255, value[1] / 255, value[2] / 255] };
+}
+
+function typedPresetProps(values: Record<string, number | boolean | RGB>): Record<string, PropValue> {
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, typedPresetValue(value)]));
+}
+
+const LIGHTING_EFFECT_CLASSES = new Set([
+  'Atmosphere', 'BloomEffect', 'BlurEffect', 'ColorCorrectionEffect', 'ColorGradingEffect',
+  'DepthOfFieldEffect', 'SunRaysEffect',
+]);
+
+function moodInstances(mood: string): InstanceSpec[] {
+  const preset = MOODS[mood]!;
+  const one = (className: string, props: Record<string, number | boolean | RGB>): InstanceSpec => ({
+    className,
+    name: className,
+    parent: 'game.Lighting',
+    props: typedPresetProps(props),
+    attributes: { AppleMood: { t: 'string', v: mood } },
+  });
+  const out = [
+    one('Atmosphere', preset.atmosphere as unknown as Record<string, number | boolean | RGB>),
+    one('BloomEffect', preset.bloom as unknown as Record<string, number | boolean | RGB>),
+    one('ColorCorrectionEffect', preset.colorCorrection as unknown as Record<string, number | boolean | RGB>),
+  ];
+  if (preset.sunRays) out.push(one('SunRaysEffect', preset.sunRays as unknown as Record<string, number | boolean | RGB>));
+  if (preset.depthOfField) out.push(one('DepthOfFieldEffect', preset.depthOfField as unknown as Record<string, number | boolean | RGB>));
+  return out;
 }
 
 /** A tagged value rendered for a person: "0, 5, 0" rather than "[object Object]" or a JSON blob. */
@@ -484,6 +833,10 @@ async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promis
       error: res.error ?? 'operation failed',
       ...(hint ? { retry: hint } : {}),
       ...(fix ? { fix } : {}),
+      // The same verdict as `retry`, as a field the run loop can read without parsing prose: the
+      // duplicate-call guard lets an identical call be repeated only when THIS says it is safe.
+      // Bookkeeping, like `projectMutated`; runTool strips it before the model sees the result.
+      ...(retryEligibility(studioOp, res).retryable ? { retryable: true } : {}),
     };
   }
   return res.data ?? { ok: true };
@@ -559,16 +912,22 @@ async function renderViews(
   // Push the pixels to the browser as they arrive. This is the only path by
   // which a frame reaches the user; the tool result below still strips them.
   if (ctx.emitFrame) {
-    for (const v of data.views) {
-      if (!v.rgbBase64) continue;
-      ctx.emitFrame({
-        rgbBase64: v.rgbBase64,
-        width: v.meta.width,
-        height: v.meta.height,
-        view: v.name,
-        subject: data.subject,
-        capturedAt: Date.now(),
-      });
+    if (data.studioViewport?.rgbBase64) {
+      ctx.emitFrame(data.studioViewport);
+    } else {
+      for (const v of data.views) {
+        if (!v.rgbBase64) continue;
+        ctx.emitFrame({
+          rgbBase64: v.rgbBase64,
+          encoding: 'rgb24',
+          source: 'software_render',
+          width: v.meta.width,
+          height: v.meta.height,
+          view: v.name,
+          subject: data.subject,
+          capturedAt: Date.now(),
+        });
+      }
     }
   }
   return data;
@@ -689,7 +1048,7 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
       error: `asset ${assetId} was inserted, refused and removed: ${why}`,
       ...(del.ok
         ? { removedWholeAsset: paths }
-        : { removeFailed: del.error ?? 'delete failed', manualCleanupRequired: paths }),
+        : { removeFailed: del.error ?? 'delete failed', manualCleanupRequired: paths, projectMutated: true }),
     };
   };
 
@@ -1022,7 +1381,7 @@ export function refuseLuauIngress(code: string): { error: string; blocked: strin
       `this Luau was refused because it reaches for an asset-ingress primitive: ${findings.map((f) => f.why).join('; ')}. ` +
       'Luau is not how assets enter a place. Find an id with find_verified_asset and insert it with insert_asset, ' +
       'which verifies the id and then reads the place back to prove nothing executable arrived with it. ' +
-      'Everything else run_luau does — loops, terrain, bulk property edits, measurement — is unaffected.',
+      'Everything else run_luau does — loops, bulk property edits and measurement — is unaffected; Terrain uses edit_terrain.',
     blocked: findings.map((f) => f.code),
   };
 }
@@ -1255,6 +1614,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['read_script', 'edit_script'],
+    mutatesProject: true,
     run: async (ctx, a) => {
       const path = String(a.path ?? '');
       const hasSourceArg = Object.prototype.hasOwnProperty.call(a, 'source');
@@ -1549,6 +1909,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['read_script', 'edit_script'],
+    mutatesProject: (result) => changedField(result, 'changed'),
     run: async (ctx, a) => {
       const path = String(a.path ?? '').trim();
       if (!path) return { error: 'pass `path`' };
@@ -1578,10 +1939,28 @@ export const TOOLS: Record<string, ToolImpl> = {
       name: 'create_instances',
       description:
         'Create instances (parts, models, UI, folders...). Each item: {className, name, parent, props?, children?}. Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Anchored":{"t":"bool","v":true}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}, "Size":{"t":"UDim2","v":[0.5,0,0.1,0]}, "AnchorPoint":{"t":"Vector2","v":[0.5,0.5]}}. Supported prop types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,Rect,Instance,nil. If the result reports propIssues, the instances WERE created — fix the listed properties with set_properties.',
-      parameters: S({ items: { type: 'array', items: { type: 'object' } } }, ['items']),
+      parameters: S({
+        items: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              className: { type: 'string', description: 'Roblox class to create, e.g. "Part", "Model", "PointLight", "ScreenGui"' },
+              name: { type: 'string' },
+              parent: { type: 'string', description: 'Path of an EXISTING instance, e.g. "Workspace" or "Workspace.StreetLamp". Defaults to "Workspace".' },
+              props: { type: 'object', description: 'Typed properties, e.g. {"Size":{"t":"Vector3","v":[1,4,1]}}' },
+              attributes: { type: 'object' },
+              children: { type: 'array', description: 'Nested items with the same fields (no parent)', items: { type: 'object' } },
+            },
+            required: ['className', 'name'],
+          },
+        },
+      }, ['items']),
     },
     studio: true,
     studioOps: ['create_instances'],
+    mutatesProject: true,
     //[[ THE PROPS ARE READ BEFORE THEY LEAVE, and the reason is in the operation log of the
     //   owner's own project. The one time this product tried to build in it, `create_instances`
     //   came back `instance props.Position must be a typed property value` — the model had written
@@ -1629,6 +2008,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['get_instance', 'set_props'],
+    mutatesProject: true,
     run: async (ctx, a) => {
       const path = String(a.path ?? '');
       const props = (a.props ?? undefined) as Record<string, unknown> | undefined;
@@ -1667,11 +2047,235 @@ export const TOOLS: Record<string, ToolImpl> = {
       return { ...(res as Record<string, unknown>), priorValuesRead: prior !== null };
     },
   },
+  edit_terrain: {
+    def: {
+      name: 'edit_terrain',
+      description:
+        'Create or edit Roblox smooth Terrain through bounded typed operations, without running arbitrary Luau. ' +
+        'Actions: fill_block (center,size,material), fill_ball (center,radius,material), fill_region (min,max,material), ' +
+        'replace_material (min,max,sourceMaterial,targetMaterial), or write_voxels (4-stud-grid origin, integer dimensions, flat voxels [{material,occupancy}]). ' +
+        'Materials are Enum.Material names such as Enum.Material.Grass. At most 65,536 voxels are touched per call. ' +
+        'Requires Studio edit consent and is one undo-recorded change. Checkpoint restore preserves Terrain identity but does not serialize voxel contents, so use Studio Undo for terrain rollback.',
+      parameters: S(
+        {
+          action: { type: 'string', enum: ['fill_block', 'fill_ball', 'fill_region', 'replace_material', 'write_voxels'] },
+          center: { type: 'array', items: { type: 'number' } },
+          size: { type: 'array', items: { type: 'number' } },
+          radius: { type: 'number' },
+          min: { type: 'array', items: { type: 'number' } },
+          max: { type: 'array', items: { type: 'number' } },
+          material: { type: 'string' },
+          sourceMaterial: { type: 'string' },
+          targetMaterial: { type: 'string' },
+          origin: { type: 'array', items: { type: 'number' } },
+          dimensions: { type: 'array', items: { type: 'number' } },
+          voxels: { type: 'array', items: { type: 'object' } },
+        },
+        ['action'],
+      ),
+    },
+    studio: true,
+    studioOps: ['terrain_edit'],
+    mutatesProject: true,
+    run: (ctx, a) => op(ctx, { ...(a as Record<string, unknown>), op: 'terrain_edit' } as StudioOp),
+  },
   delete_instances: {
     def: { name: 'delete_instances', description: 'Delete instances by path.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
     studio: true,
     studioOps: ['delete_instances'],
+    mutatesProject: true,
     run: (ctx, a) => op(ctx, { op: 'delete_instances', paths: (a.paths as string[]) ?? [] }),
+  },
+  move_instances: {
+    def: {
+      name: 'move_instances',
+      description: 'Reparent existing instances without recreating them. Each move is { path, newParent }. Paths stay inside Apple\'s writable place scope and Studio refuses cycles, duplicate targets and sibling-name collisions.',
+      parameters: S({
+        moves: {
+          type: 'array',
+          minItems: 1,
+          maxItems: DIRECT_EDIT_LIMITS.items,
+          items: S({
+            path: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars },
+            newParent: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars },
+          }, ['path', 'newParent']),
+        },
+      }, ['moves']),
+    },
+    studio: true,
+    studioOps: ['move_instances'],
+    mutatesProject: true,
+    run: (ctx, a) => {
+      if (!Array.isArray(a.moves) || a.moves.length === 0 || a.moves.length > DIRECT_EDIT_LIMITS.items) {
+        return Promise.resolve({ error: `moves must contain 1-${DIRECT_EDIT_LIMITS.items} entries` });
+      }
+      const moves: { path: string; newParent: string }[] = [];
+      const seen = new Set<string>();
+      for (let index = 0; index < a.moves.length; index++) {
+        const raw = a.moves[index];
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return Promise.resolve({ error: `moves[${index}] must be an object` });
+        const entry = raw as Record<string, unknown>;
+        const path = boundedPath(entry.path, `moves[${index}].path`);
+        if (typeof path !== 'string') return Promise.resolve(path);
+        const newParent = boundedPath(entry.newParent, `moves[${index}].newParent`);
+        if (typeof newParent !== 'string') return Promise.resolve(newParent);
+        if (seen.has(path)) return Promise.resolve({ error: `moves repeats target ${path}` });
+        seen.add(path);
+        moves.push({ path, newParent });
+      }
+      return op(ctx, { op: 'move_instances', moves });
+    },
+  },
+  transform_instances: {
+    def: {
+      name: 'transform_instances',
+      description: 'Move, rotate and/or uniformly scale existing spatial instances as one bounded typed Studio edit. move is studs, rotate is degrees, scale is a positive multiplier.',
+      parameters: S({
+        paths: { type: 'array', minItems: 1, maxItems: DIRECT_EDIT_LIMITS.items, items: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars } },
+        move: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' } },
+        rotate: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' } },
+        scale: { type: 'number', minimum: DIRECT_EDIT_LIMITS.minScale, maximum: DIRECT_EDIT_LIMITS.maxScale },
+      }, ['paths']),
+    },
+    studio: true,
+    studioOps: ['transform_instances'],
+    mutatesProject: true,
+    run: (ctx, a) => {
+      const paths = boundedPaths(a.paths);
+      if (!Array.isArray(paths)) return Promise.resolve(paths);
+      if (a.move === undefined && a.rotate === undefined && a.scale === undefined) return Promise.resolve({ error: 'pass move, rotate or scale' });
+      let move: [number, number, number] | undefined;
+      let rotate: [number, number, number] | undefined;
+      if (a.move !== undefined) {
+        const parsed = boundedTriple(a.move, 'move', DIRECT_EDIT_LIMITS.translation);
+        if (!Array.isArray(parsed)) return Promise.resolve(parsed);
+        move = parsed;
+      }
+      if (a.rotate !== undefined) {
+        const parsed = boundedTriple(a.rotate, 'rotate', DIRECT_EDIT_LIMITS.rotationDegrees);
+        if (!Array.isArray(parsed)) return Promise.resolve(parsed);
+        rotate = parsed;
+      }
+      let scale: number | undefined;
+      if (a.scale !== undefined) {
+        scale = Number(a.scale);
+        if (!Number.isFinite(scale) || scale < DIRECT_EDIT_LIMITS.minScale || scale > DIRECT_EDIT_LIMITS.maxScale) {
+          return Promise.resolve({ error: `scale must be finite and between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}` });
+        }
+      }
+      return op(ctx, { op: 'transform_instances', paths, ...(move ? { move } : {}), ...(rotate ? { rotate } : {}), ...(scale !== undefined ? { scale } : {}) });
+    },
+  },
+  clone_instances: {
+    def: {
+      name: 'clone_instances',
+      description: 'Clone existing instances through Studio. Clones receive collision-free names and may optionally be placed under a specific writable parent.',
+      parameters: S({
+        paths: { type: 'array', minItems: 1, maxItems: DIRECT_EDIT_LIMITS.items, items: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars } },
+        parent: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars },
+      }, ['paths']),
+    },
+    studio: true,
+    studioOps: ['clone_instances'],
+    mutatesProject: true,
+    run: (ctx, a) => {
+      const paths = boundedPaths(a.paths);
+      if (!Array.isArray(paths)) return Promise.resolve(paths);
+      let parent: string | undefined;
+      if (a.parent !== undefined) {
+        const parsed = boundedPath(a.parent, 'parent');
+        if (typeof parsed !== 'string') return Promise.resolve(parsed);
+        parent = parsed;
+      }
+      return op(ctx, { op: 'clone_instances', paths, ...(parent ? { parent } : {}) });
+    },
+  },
+  group_instances: {
+    def: {
+      name: 'group_instances',
+      description: 'Group existing instances into a new Model. The plugin checks nesting, destination scope and path-name collisions before mutating.',
+      parameters: S({
+        paths: { type: 'array', minItems: 1, maxItems: DIRECT_EDIT_LIMITS.items, items: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars } },
+        name: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.nameChars },
+      }, ['paths']),
+    },
+    studio: true,
+    studioOps: ['group_instances'],
+    mutatesProject: true,
+    run: (ctx, a) => {
+      const paths = boundedPaths(a.paths);
+      if (!Array.isArray(paths)) return Promise.resolve(paths);
+      let name: string | undefined;
+      if (a.name !== undefined) {
+        const parsed = directName(a.name, 'name');
+        if (typeof parsed !== 'string') return Promise.resolve(parsed);
+        name = parsed;
+      }
+      return op(ctx, { op: 'group_instances', paths, ...(name ? { name } : {}) });
+    },
+  },
+  ungroup_instances: {
+    def: {
+      name: 'ungroup_instances',
+      description: 'Ungroup Models or Folders, moving their children to the parent and removing the empty group after collision checks.',
+      parameters: S({ paths: { type: 'array', minItems: 1, maxItems: DIRECT_EDIT_LIMITS.items, items: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars } } }, ['paths']),
+    },
+    studio: true,
+    studioOps: ['ungroup_instances'],
+    mutatesProject: true,
+    run: (ctx, a) => {
+      const paths = boundedPaths(a.paths);
+      return Array.isArray(paths) ? op(ctx, { op: 'ungroup_instances', paths }) : Promise.resolve(paths);
+    },
+  },
+  rename_instance: {
+    def: {
+      name: 'rename_instance',
+      description: 'Rename one existing instance without recreating it. Studio refuses protected structures and sibling-name collisions.',
+      parameters: S({ path: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars }, name: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.nameChars } }, ['path', 'name']),
+    },
+    studio: true,
+    studioOps: ['rename_instance'],
+    mutatesProject: true,
+    run: (ctx, a) => {
+      const path = boundedPath(a.path, 'path');
+      if (typeof path !== 'string') return Promise.resolve(path);
+      const name = directName(a.name, 'name');
+      if (typeof name !== 'string') return Promise.resolve(name);
+      return op(ctx, { op: 'rename_instance', path, name });
+    },
+  },
+  set_locked: {
+    def: {
+      name: 'set_locked',
+      description: 'Set the Studio Locked property on all BaseParts under the named instances. Bounded to the plugin\'s affected-part ceiling.',
+      parameters: S({ paths: { type: 'array', minItems: 1, maxItems: DIRECT_EDIT_LIMITS.items, items: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars } }, locked: { type: 'boolean' } }, ['paths', 'locked']),
+    },
+    studio: true,
+    studioOps: ['set_locked'],
+    mutatesProject: true,
+    run: (ctx, a) => {
+      const paths = boundedPaths(a.paths);
+      if (!Array.isArray(paths)) return Promise.resolve(paths);
+      if (typeof a.locked !== 'boolean') return Promise.resolve({ error: 'locked must be true or false' });
+      return op(ctx, { op: 'set_locked', paths, locked: a.locked });
+    },
+  },
+  set_visible: {
+    def: {
+      name: 'set_visible',
+      description: 'Show or hide spatial instances or GUI objects through the plugin\'s reversible typed visibility operation.',
+      parameters: S({ paths: { type: 'array', minItems: 1, maxItems: DIRECT_EDIT_LIMITS.items, items: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars } }, visible: { type: 'boolean' } }, ['paths', 'visible']),
+    },
+    studio: true,
+    studioOps: ['set_visible'],
+    mutatesProject: true,
+    run: (ctx, a) => {
+      const paths = boundedPaths(a.paths);
+      if (!Array.isArray(paths)) return Promise.resolve(paths);
+      if (typeof a.visible !== 'boolean') return Promise.resolve({ error: 'visible must be true or false' });
+      return op(ctx, { op: 'set_visible', paths, visible: a.visible });
+    },
   },
   /**
    * READ-BACK — the tool the system prompt has always told the model to call.
@@ -1827,11 +2431,12 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'run_luau',
       description:
-        'Run a Luau snippet in Studio (edit-time, plugin context) for inspection, terrain, bulk edits, math. print() output and the returned value come back. No game scripts run. Use for anything the other tools cannot do. It may NOT be used to bring assets into the place: GetObjects, InsertService, rbxassetid://, Content.fromAssetId, loadstring and require of an asset id are refused here — use insert_asset, which verifies the id and scans the place afterwards.',
+        'Run a Luau snippet in Studio (edit-time, plugin context) for inspection, bulk edits and math when a typed tool does not cover the job. Use edit_terrain for Terrain. print() output and the returned value come back. No game scripts run. It may NOT be used to bring assets into the place: GetObjects, InsertService, rbxassetid://, Content.fromAssetId, loadstring and require of an asset id are refused here — use insert_asset, which verifies the id and scans the place afterwards.',
       parameters: S({ code: { type: 'string' } }, ['code']),
     },
     studio: true,
     studioOps: ['run_code'],
+    mutatesProject: true,
     run: async (ctx, a) => {
       // Admitted BEFORE the op is queued. By the time an asset reaches the place its scripts have
       // already had their chance to run, so there is no useful check on the far side of this.
@@ -1856,14 +2461,14 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ seconds: { type: 'number', description: '2-15, default 5' } }),
     },
     studio: true,
-    studioOps: ['run_code', 'snapshot', 'run_mode', 'get_logs', 'restore'],
+    studioOps: ['project_census', 'snapshot', 'run_mode', 'get_logs', 'restore'],
     run: async (ctx, a) => {
       const secs = Math.min(15, Math.max(2, Number(a.seconds) || 5));
 
       // Census BEFORE. RunService:Run() executes server scripts against the EDIT DataModel and Stop
       // does not revert them, so anything a startup script destroys is destroyed for real.
       // Reproduced in live Studio — the transcript is in apps/worker/src/playtest.ts.
-      const beforeRaw = await ctx.execStudioOp({ op: 'run_code', code: CENSUS_LUAU }, 30_000);
+      const beforeRaw = await ctx.execStudioOp({ op: 'project_census' }, 30_000);
       const before = beforeRaw.ok ? parseCensus(beforeRaw.data) : null;
 
       // The playtest becomes watchable from here. `begin` is deliberately AFTER the
@@ -1949,7 +2554,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const stop = await ctx.execStudioOp({ op: 'run_mode', action: 'stop' }, 20_000);
 
       // Census AFTER, and restore if the playtest ate anything.
-      const afterRaw = await ctx.execStudioOp({ op: 'run_code', code: CENSUS_LUAU }, 30_000);
+      const afterRaw = await ctx.execStudioOp({ op: 'project_census' }, 30_000);
       const after = afterRaw.ok ? parseCensus(afterRaw.data) : null;
       const lost = before && after ? destructiveDelta(before, after) : [];
 
@@ -1957,7 +2562,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (lost.length && checkpointId && ctx.restoreCheckpoint) {
         const res = await ctx.restoreCheckpoint(checkpointId);
         // The restore is VERIFIED, never assumed: re-census and confirm the losses are actually back.
-        const checkRaw = res.ok ? await ctx.execStudioOp({ op: 'run_code', code: CENSUS_LUAU }, 30_000) : null;
+        const checkRaw = res.ok ? await ctx.execStudioOp({ op: 'project_census' }, 30_000) : null;
         const check = checkRaw?.ok ? parseCensus(checkRaw.data) : null;
         const stillLost = before && check ? destructiveDelta(before, check) : ['the restore could not be verified'];
         restored =
@@ -1979,7 +2584,21 @@ export const TOOLS: Record<string, ToolImpl> = {
       // Safety fields come FIRST. Tool results are truncated at MAX_RESULT_CHARS and the console log
       // is easily thousands of characters, so putting the destruction warning after it means the
       // agent never sees the one thing it must not miss.
+      // A STOP THAT FAILED IS THE HEADLINE. Measured 2026-09-22 (run fad0ab1b): the plugin refused its
+      // own stop, this returned `stopped: false` beside a green ✓, the agent never noticed, and every
+      // edit after it was refused because Studio was still in a test. Safety fields come first below.
+      if (!stop.ok) {
+        ctx.playtest?.phase('failed', 'Run mode is still running in Studio', stop.error);
+      }
       return {
+        ...(!stop.ok
+          ? {
+              error: `the playtest could not stop Run mode: ${stop.error}`,
+              stillRunning:
+                `Run mode is STILL RUNNING in Studio — the stop was refused: ${stop.error}. Nothing in the place can ` +
+                'be edited until it stops. Tell the user to press Stop in Studio; do not report this playtest as a pass.',
+            }
+          : {}),
         ...(lost.length
           ? {
               destroyedByPlaytest: lost,
@@ -2151,22 +2770,12 @@ export const TOOLS: Record<string, ToolImpl> = {
   /**
    * ART DIRECTION — the lighting half of "does this read as a place, or as a grey blockout".
    *
-   * worldbuilding.ts has carried eight named lighting moods and a `moodLuau` that materialises one
-   * since it was written, and `worldBuildingBrief` has been describing them to the model in the
-   * system prompt on EVERY build request (prompts.ts:302). Nothing ever let the model apply one:
-   * `moodLuau` had no caller anywhere in the repository, so the table was described to the model
-   * and withheld from it, and every scene rendered in Studio's default lighting no matter what the
-   * plan said. That is precisely the "nothing errors, the scene is simply ugly" failure the
-   * module's own header says the moods exist to prevent.
+   * worldbuilding.ts carries eight named lighting moods and `worldBuildingBrief` describes them to
+   * the model on build requests. This tool materialises those presets through bounded typed Studio
+   * properties; the older `moodLuau` export remains only as compatibility/test surface.
    *
-   * This rides `run_code` rather than a new Studio op, deliberately. `moodLuau` emits only Lighting
-   * writes, `Instance.new` and `Color3.fromRGB` — no asset ingress — and its two `for` loops are
-   * generic and therefore terminating, so the plugin's non-yielding-loop refusal (which only fires
-   * on `while true` / `while 1` / `repeat ... until false`) does not reject it. No plugin change is
-   * required and none is made.
-   *
-   * The model's argument never reaches Luau as text. It selects a ROW of MOODS; the source that
-   * runs is always generated from our own table. An unknown mood is refused by name rather than
+   * The model's argument selects a ROW of MOODS and every value is sent through typed Studio
+   * properties. An unknown mood is refused by name rather than
    * silently resolved to `day`, because a mood that quietly did not apply is the same invisible
    * failure as no mood at all.
    */
@@ -2187,25 +2796,47 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
-    studioOps: ['run_code'],
+    studioOps: ['get_tree', 'delete_instances', 'set_props', 'create_instances'],
+    mutatesProject: true,
     run: async (ctx, a) => {
+      let projectMutated = false;
       const mood = String(a.mood ?? '');
       if (!Object.prototype.hasOwnProperty.call(MOODS, mood)) {
         return {
           error: `unknown mood "${mood}". Choose one of: ${Object.keys(MOODS).join(', ')}.`,
         };
       }
-      const res = await op(ctx, { op: 'run_code', code: moodLuau(mood), timeoutMs: 10_000 }, 25_000);
-      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
-
-      // WHAT WAS LEFT IN PLACE, reported. The mood only removes lighting instances it marked as its
-      // own, so anything the user hand-tuned is still there and is now stacking with the preset.
-      // That is the right default — deleting their work would be worse — but it changes what they
-      // see, so it has to be said rather than left for them to discover.
-      const result = (res as { result?: Record<string, unknown> })?.result;
-      const keptRaw = decodeTagged(result?.kept);
-      const kept = Array.isArray(keptRaw) ? keptRaw.map((k) => String(decodeTagged(k))) : [];
-      const replaced = Number(decodeTagged(result?.replaced) ?? NaN);
+      const tree = await op(ctx, { op: 'get_tree', root: 'game.Lighting', maxDepth: 1, maxNodes: 200 });
+      if (toolError(tree)) return tree;
+      const root = treeRoot(tree);
+      if (!root) return { error: 'Studio returned no Lighting tree' };
+      const owned: string[] = [];
+      const kept: string[] = [];
+      for (const child of root.children ?? []) {
+        if (!child.class || !LIGHTING_EFFECT_CLASSES.has(child.class)) continue;
+        if (decodeTagged(child.attributes?.AppleMood) !== null && decodeTagged(child.attributes?.AppleMood) !== undefined) {
+          if (child.path) owned.push(child.path);
+        } else {
+          kept.push(child.class);
+        }
+      }
+      if (owned.length) {
+        const removed = await op(ctx, { op: 'delete_instances', paths: owned });
+        if (toolError(removed)) return removed;
+        projectMutated = true;
+      }
+      const preset = MOODS[mood]!;
+      const lighting = await op(ctx, {
+        op: 'set_props',
+        path: 'game.Lighting',
+        props: typedPresetProps(preset.scriptable as unknown as Record<string, number | boolean | RGB>),
+      });
+      if (toolError(lighting)) return projectMutated
+        ? { ...(lighting as Record<string, unknown>), projectMutated: true }
+        : lighting;
+      projectMutated = true;
+      const created = await op(ctx, { op: 'create_instances', items: moodInstances(mood) });
+      if (toolError(created)) return { ...(created as Record<string, unknown>), projectMutated: true };
 
       // Hand back the palettes this mood was art-directed alongside. The lighting is half of a
       // look; the materials and colours are the other half, and the model has no other way to
@@ -2219,7 +2850,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       return {
         applied: mood,
         // Only ever this mood's own previous instances; the user's are counted in `kept`.
-        replacedOwn: Number.isFinite(replaced) && replaced > 0 ? replaced : undefined,
+        replacedOwn: owned.length || undefined,
         keptUserEffects: kept.length ? kept : undefined,
         note: keptNote,
         palettes: palettes.length ? palettes : undefined,
@@ -2251,8 +2882,10 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
-    studioOps: ['run_code'],
+    studioOps: ['get_tree', 'delete_instances', 'create_instances'],
+    mutatesProject: true,
     run: async (ctx, a) => {
+      let projectMutated = false;
       const effect = String(a.effect ?? '');
       const path = String(a.path ?? '');
       if (!Object.prototype.hasOwnProperty.call(EFFECTS, effect)) {
@@ -2267,8 +2900,24 @@ export const TOOLS: Record<string, ToolImpl> = {
         return { error: `"${path}" is not an instance path. Use the form returned by other tools, such as game.Workspace.Lobby.Floor or game.Workspace["Camp Fire"].Logs.` };
       }
 
-      const res = await op(ctx, { op: 'run_code', code: effectLuau(effect, path), timeoutMs: 10_000 }, 25_000);
-      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
+      const tree = await op(ctx, { op: 'get_tree', root: path, maxDepth: 1, maxNodes: 200 });
+      if (toolError(tree)) return tree;
+      const root = treeRoot(tree);
+      if (!root) return { error: `Studio returned no tree for ${path}` };
+      const previous = (root.children ?? [])
+        .filter((child) => decodeTagged(child.attributes?.AppleEffect) === effect && typeof child.path === 'string')
+        .map((child) => child.path as string);
+      if (previous.length) {
+        const removed = await op(ctx, { op: 'delete_instances', paths: previous });
+        if (toolError(removed)) return removed;
+        projectMutated = true;
+      }
+      const items = effectInstanceSpecs(effect, path);
+      if (!items) return { error: `effect preset "${effect}" cannot be represented by the typed Studio protocol` };
+      const created = await op(ctx, { op: 'create_instances', items });
+      if (toolError(created)) return projectMutated
+        ? { ...(created as Record<string, unknown>), projectMutated: true }
+        : created;
       return { attached: effect, to: path, parts: EFFECTS[effect]!.parts.map((x) => x.className) };
     },
   },
@@ -2297,12 +2946,14 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({}),
     },
     studio: true,
-    studioOps: ['run_code'],
+    studioOps: ['get_tree'],
     run: async (ctx, a) => {
-      const raw = await op(ctx, { op: 'run_code', code: AUDIT_LUAU, timeoutMs: 15_000 }, 30_000);
-      if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
-      const capture = parseAudit(raw);
-      if (!capture) return { error: 'the audit pass returned something this worker could not read' };
+      const workspace = await op(ctx, { op: 'get_tree', root: 'game.Workspace', maxDepth: 12, maxNodes: 1200 }, 30_000);
+      if (toolError(workspace)) return workspace;
+      const lighting = await op(ctx, { op: 'get_tree', root: 'game.Lighting', maxDepth: 1, maxNodes: 200 });
+      if (toolError(lighting)) return lighting;
+      const capture = auditCaptureFromTree(workspace, lighting);
+      if (!capture) return { error: 'the typed Studio tree returned something this worker could not read' };
       if (capture.parts.length === 0) {
         return { error: 'there is no geometry in Workspace to audit yet — build something first' };
       }
@@ -2430,7 +3081,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'run_spec',
       description:
-        'Run assertions against the modules this project actually contains, and get a per-case pass/fail report. Each case is { name, code }; the code runs as a function body, and a case PASSES by returning and FAILS by erroring — use assert(condition, message). Require project modules by path, e.g. require(game.ServerScriptService.Shop). Use this after building a system that has rules — economy, saving, cooldowns, access — because run_and_check only proves nothing errored, not that anything is correct. A case that ERRORS is caught on its own, so one failing assertion does not hide the rest — but every case is compiled together, so a case that does not PARSE takes the whole run with it and you get a compile error instead of a report. Costs nothing: no model calls, no images. LIMIT: a plugin cannot start Play Solo, so there is no LocalPlayer and no client here; assert against server and shared modules.',
+        'Run assertions against the modules this project actually contains, and get a per-case pass/fail report. Each case is { name, code }; the code runs as a function body, and a case PASSES by returning and FAILS by erroring — use assert(condition, message). Require project modules by path, e.g. require(game.ServerScriptService.Shop). Use this after building a system that has rules — economy, saving, cooldowns, access — because run_and_check only proves nothing errored, not that anything is correct. A case that ERRORS is caught on its own, so one failing assertion does not hide the rest — but every case is compiled together, so a case that does not PARSE takes the whole run with it and you get a compile error instead of a report. Costs nothing: no model calls, no images. LIMIT: this assertion harness runs in plugin/edit context rather than a Play Solo client, so there is no LocalPlayer here; assert against server and shared modules.',
       parameters: S(
         {
           cases: {
@@ -2552,6 +3203,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['read_script', 'edit_script'],
+    mutatesProject: (result) => !!result && typeof result === 'object' && typeof (result as Record<string, unknown>).installed === 'string',
     run: async (ctx, a) => {
       const id = String(a.module ?? '');
       const prefab = PREFABS[id];
@@ -2713,7 +3365,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
-    studioOps: ['run_code'],
+    studioOps: ['get_tree', 'delete_instances'],
+    mutatesProject: (result) => positiveCount(result, 'removed'),
     run: async (ctx, a) => {
       const path = String(a.path ?? '');
       if (!path) return { error: 'path is required' };
@@ -2730,39 +3383,28 @@ export const TOOLS: Record<string, ToolImpl> = {
         return { error: `unknown effect "${effect}". Choose one of: ${EFFECT_NAMES.join(', ')}, or omit it to remove all.` };
       }
 
-      const res = await op(ctx, { op: 'run_code', code: removeEffectLuau(effect, path), timeoutMs: 10_000 }, 25_000);
-      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
-
-      // "Nothing was there" is a different answer from "I removed it", and the model should not
-      // report a removal it did not make.
-      // `result.removed` arrives as {t:"number",v:0}. Reading it raw gives NaN, which silently
-      // disabled the branch below — the tool could never report that nothing was there.
-      const result = (res as { result?: Record<string, unknown> })?.result;
-      const removed = Number(decodeTagged(result?.removed) ?? NaN);
-      if (Number.isFinite(removed) && removed === 0) {
+      const tree = await op(ctx, { op: 'get_tree', root: path, maxDepth: 1, maxNodes: 200 });
+      if (toolError(tree)) return tree;
+      const root = treeRoot(tree);
+      if (!root) return { error: `Studio returned no tree for ${path}` };
+      const matched = (root.children ?? []).filter((child) => {
+        const mark = decodeTagged(child.attributes?.AppleEffect);
+        return typeof child.path === 'string' && typeof mark === 'string' && (effect === null || mark === effect);
+      });
+      const names = [...new Set(matched.map((child) => String(decodeTagged(child.attributes?.AppleEffect))))];
+      if (matched.length === 0) {
         return { removed: 0, note: effect ? `there was no ${effect} on ${path}` : `there were no effects on ${path}` };
       }
-      if (Number.isFinite(removed)) {
-        // The success path used to return the plugin's payload verbatim, so a real removal came
-        // back as {"result":{"removed":{"t":"number","v":2},...}} while the nothing-there path
-        // returned a clean sentence. The tool stated its failure clearly and left its success for
-        // the model to decode — which is the wrong way round, and made the count easy to misread.
-        const names = String(decodeTagged(result?.effects) ?? '');
-        return {
-          removed,
-          from: path,
-          effects: names ? names.split(',').map((n) => n.trim()).filter(Boolean) : undefined,
-        };
-      }
-      // The count was unreadable. Say so rather than claim a removal that cannot be substantiated.
-      return { removed: null, from: path, note: 'the removal ran but Studio did not report how many effects it took off' };
+      const removed = await op(ctx, { op: 'delete_instances', paths: matched.map((child) => child.path as string) });
+      if (toolError(removed)) return removed;
+      return { removed: matched.length, from: path, effects: names };
     },
   },
   check_composition: {
     def: {
       name: 'check_composition',
       description:
-        'Check your BLOCKOUT before adding any detail: whether you are building the thing that was actually requested, and whether the macro composition works. Costs nothing — no images, no critique. If it fails, adding parts cannot fix it; change the layout and check again.',
+        'Check your BLOCKOUT before adding any detail: whether you are building the thing that was actually requested, and whether the macro composition works. Costs no model call: it reads the renderer\'s typed layout summary and performs arithmetic only. If it fails, adding parts cannot fix it; change the layout and check again.',
       parameters: S({
         target: { type: 'string', description: 'instance path to check, e.g. game.Workspace.Plaza. Omit for the whole workspace.' },
         subject: { type: 'string', enum: ['scene', 'prop'], description: 'a prop has no landmark tier; defaults to scene' },
@@ -2770,20 +3412,19 @@ export const TOOLS: Record<string, ToolImpl> = {
       }),
     },
     studio: true,
-    studioOps: ['run_code'],
+    studioOps: ['render_view'],
     run: async (ctx, a) => {
-      // Deliberately the cheapest check in the product: one Studio round-trip for geometry, then
-      // arithmetic. No vision model call and no image tokens, where inspect_visually costs a full
-      // critique. That difference is what makes "reject the blockout and rebuild it" affordable
-      // enough to do early, which is the only point at which rejecting it is cheap.
-      // Geometry comes from run_code, not from a render. MEASURED: the plugin installed in the
-      // owner's Studio returns render_view WITHOUT a `layout` field, so reading it there made this
-      // whole gate inert in production — it answered "no geometry to judge" against a place full of
-      // geometry. run_code is understood by every installed plugin, and it is cheaper than the
-      // render it replaces: no rasterisation and no image payload.
-      const raw = await ctx.execStudioOp({ op: 'run_code', code: LAYOUT_LUAU }, 30_000);
-      if (!raw.ok) return { error: `could not read the scene: ${raw.error}` };
-      const parts = parseLayout(raw.data);
+      // One minimum-size bounded software frame carries the typed layout summary. The pixels are not
+      // sent to a model; only the arithmetic layout rows below are consumed.
+      const raw = await op(ctx, {
+        op: 'render_view',
+        target: a.target ? String(a.target) : undefined,
+        view: 'hero',
+        width: 48,
+        height: 32,
+      }, 30_000);
+      if (toolError(raw)) return { error: `could not read the scene: ${String(raw.error)}` };
+      const parts = (raw as RenderViewResult).layout?.parts;
       const structure = structureFromLayout(parts ?? undefined);
       if (!structure) return { error: 'no geometry to judge — build the blockout first' };
       const subject = a.subject === 'prop' ? 'prop' : 'scene';
@@ -3202,6 +3843,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances'],
+    mutatesProject: true,
     run: async (ctx, a) => {
       const assetId = Number(a.assetId);
       if (!Number.isInteger(assetId) || assetId <= 0) return { error: `${String(a.assetId)} is not a valid asset id` };
@@ -3309,6 +3951,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['generate_model'],
+    mutatesProject: true,
     run: (ctx, a) =>
       op(
         ctx,
@@ -3327,7 +3970,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'inspect_model',
       description:
-        'Measure an inserted or generated model against the QC gate: triangle count, bounding box, scale plausibility for its intent, pivot offset from its base, orientation, texturing, collision, anchoring, and whether it contains scripts. Returns per-check pass/fail plus concrete fixes.',
+        'Run bounded structural QC on an inserted or generated Model/BasePart: descendant/part/script counts, bounding box, anchoring, collision flags, MeshPart/texturing presence and pivot-to-base offset where Studio exposes it. Triangle count is reported as unmeasured because current MeshPart exposes no triangle-count property; visual quality remains a separate render/vision check.',
       parameters: S({ path: { type: 'string' }, intent: { type: 'string' } }, ['path']),
     },
     studio: true,
@@ -3350,7 +3993,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'generate_image',
       description:
-        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study. Defaults are outlined, chunky game art. Preserve the user's exact subject and background colors in subject; those override default palettes, including requests for neutral or dark colors. Use structured fields for other style choices. Embedded text and brand marks are refused: use editable TextLabels or official brand assets instead. The flatness heuristic does NOT verify appearance, color or subject fidelity; inspect the image before claiming a match. Results appear under View results with Save image and stay with the project until it is deleted. Nothing is uploaded to Roblox or applied to the user's place.",
+        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study. Defaults are outlined, chunky game art. Preserve the user's exact subject and background colors in subject; those override default palettes, including requests for neutral or dark colors. Use structured fields for other style choices. Embedded text and brand marks are refused: use editable TextLabels or official brand assets instead. The flatness heuristic does NOT verify appearance, color or subject fidelity; inspect the image before claiming a match. Results appear inline with Save image and stay with the project until it is deleted. Nothing is uploaded to Roblox or applied to the user's place.",
       parameters: S(
         {
           subject: { type: 'string', description: 'What to draw, as a plain noun phrase. No words to render, no brand names.' },
@@ -3489,17 +4132,23 @@ export const TOOLS: Record<string, ToolImpl> = {
    *
    * It is deliberately NOT in PLAN_TOOLS (router.ts). Plan mode's whole deliverable is a prose
    * roadmap; a second, structured plan on top of that is two answers to one question. This is for
-   * Agent and Super Agent, which otherwise start building with nothing announced.
+   * Agent, which otherwise starts building with nothing announced.
    *
-   * THREE REFUSALS, and each one is a defect this codebase has shipped in another form:
+   * WHAT IT REFUSES, AND WHY IT CAN NEVER REFUSE FOR LONG. Each rule is a defect this codebase has
+   * shipped in another form:
    *
-   *   - a step whose `tool` is not a registered tool. The user reads a plan as a commitment, and
-   *     `edit_scripts` is a commitment the run cannot keep. Same class as the system prompt naming
-   *     `get_instance` while it was not a tool (see prompt-tool-names.test.mjs).
-   *   - a plan with no verification step. Announcing the build and not the check is how a run ends
-   *     with "Done." and nothing proven — the thing the five verifiers exist to prevent.
-   *   - a plan longer than the cap. Truncating would show a card the user reads as the whole
-   *     commitment while the tail was silently dropped.
+   *   - a step whose `tool` is not a registered tool, or is one THIS run was not offered. The user
+   *     reads a plan as a commitment, and `edit_scripts` — or `run_spec` against a plugin that
+   *     cannot run code — is a commitment the run cannot keep. Same class as the system prompt
+   *     naming `get_instance` while it was not a tool (see prompt-tool-names.test.mjs).
+   *   - a plan longer than the cap. Truncating silently would show a card the user reads as the
+   *     whole commitment while the tail was dropped.
+   *   - a malformed step: no title, no tool, or propose_plan itself.
+   *
+   * A plan with no verification step is not refused: an offered verifier is appended and announced
+   * (see readProposedPlan). And no refusal is repeated: the same defect twice in a row is repaired
+   * by the product, and two refusals in a row are the most any run can receive (see mayRefuse),
+   * because the production failure this replaces was a run that spent its budget being refused.
    *
    * Titles are CLIPPED rather than refused, because the browser's validator drops a whole document
    * whose label exceeds LIMITS.maxLabelLength — a plan that vanishes is worse than a clipped one.
@@ -3508,12 +4157,12 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'propose_plan',
       description:
-        'Announce the ordered plan for this request BEFORE you start building it. Call this once, as your first step, then carry it out. Each step is { title, detail?, tool } — `tool` must be the exact name of a tool you will actually call for that step, and at least one step must be a verification step (run_and_check, run_spec, audit_build, check_composition or inspect_visually), because a build with no planned check proves nothing. The plan is shown to the user as a checklist while the run happens, so write each title as the thing they will get ("A platform players spawn onto"), not as an internal action. Costs nothing: no model calls, no images, no change to the project. Do not call it twice — if the work turns out differently, say so in your reply rather than re-planning.',
+        'Announce the ordered plan for this request BEFORE you start building it. Call this once, as your first step, then carry it out. Each step is { title, detail?, tool } — `tool` must be the exact name of a tool offered to you in this run that you will actually call for that step. Include a verification step (run_and_check, run_spec, audit_build, check_composition or inspect_visually — whichever you were offered), because a build with no planned check proves nothing; if you leave it out, an offered one is appended for you. The plan is shown to the user as a checklist while the run happens, so write each title as the thing they will get ("A platform players spawn onto"), not as an internal action. Costs nothing: no model calls, no images, no change to the project. Do not call it twice — if the work turns out differently, say so in your reply rather than re-planning.',
       parameters: S(
         {
           steps: {
             type: 'array',
-            description: `The ordered steps, up to ${MAX_PLAN_STEPS}. At least one must use a verification tool.`,
+            description: `The ordered steps, up to ${MAX_PLAN_STEPS}. Include one that uses an offered verification tool.`,
             items: {
               type: 'object',
               properties: {
@@ -3531,8 +4180,31 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
-      const plan = readProposedPlan(a);
-      if ('error' in plan) return plan;
+      const state: PlanState = ctx.planState ?? { refusals: 0, kinds: [], announced: false };
+      //[[ ONE PLAN PER RUN, ANSWERED RATHER THAN REFUSED. A second plan used to be accepted and
+      //   drawn as a second checklist, while the run loop kept and settled only the first — so the
+      //   browser was left with a card whose steps stayed pending forever. Refusing it instead
+      //   would put the run back on the refusal path this tool exists to keep it off. ]]
+      if (state.announced) {
+        return {
+          planned: false,
+          note:
+            'A plan is already on the user\'s screen for this run and it was not replaced — a second checklist ' +
+            'would rewrite what they already read. Carry out the plan you announced, and say in your reply if the ' +
+            'work turned out differently.',
+        };
+      }
+      const verdict = readProposedPlan(a, ctx.offeredTools ?? new Set(toolNames()), state);
+      if (verdict.kind === 'refused') {
+        ctx.planState = { refusals: state.refusals + 1, kinds: verdict.kinds, announced: false };
+        return { error: verdict.error };
+      }
+      if (verdict.kind === 'skipped') {
+        ctx.planState = { ...state };
+        return { planned: false, note: verdict.note };
+      }
+      ctx.planState = { refusals: 0, kinds: [], announced: true };
+      const plan = verdict.plan;
 
       ctx.uiDetail = {
         v: 1,
@@ -3556,13 +4228,26 @@ export const TOOLS: Record<string, ToolImpl> = {
         plan: plan.steps.map((s, i) => `${i + 1}. ${s.title} — ${s.tool}`),
         // Said out loud. The model is now committed to a step it did not write, and it has to be
         // told, or it will reach the end of its own list and stop one step early.
-        ...(plan.verifierAdded
-          ? {
-              note:
-                `Your plan had no verification step, so ${plan.verifierAdded} was added as the last step and is ` +
-                'part of the plan the user can see. Carry it out with the rest.',
-            }
-          : {}),
+        ...(() => {
+          const notes = [
+            ...(plan.repairs?.length
+              ? [`This plan was repaired rather than refused again: ${plan.repairs.join('; ')}. The checklist the user sees is the repaired plan.`]
+              : []),
+            ...(plan.verifierAdded
+              ? [
+                  `Your plan had no verification step, so ${plan.verifierAdded} was added as the last step and is ` +
+                    'part of the plan the user can see. Carry it out with the rest.',
+                ]
+              : []),
+            ...(plan.noVerifierOffered
+              ? [
+                  'No verification tool is offered in this session, so nothing will check this result automatically ' +
+                    'and the checklist says so. Say plainly in your reply that the result was not automatically checked.',
+                ]
+              : []),
+          ];
+          return notes.length ? { note: notes.join(' ') } : {};
+        })(),
       };
     },
   },
@@ -3652,13 +4337,15 @@ export const TOOLS: Record<string, ToolImpl> = {
   design_sound: {
     def: AUDIO_TOOLS.design_sound!.def,
     studio: AUDIO_TOOLS.design_sound!.studio,
-    studioOps: ['run_code'],
+    studioOps: ['get_tree', 'set_props', 'create_instances'],
+    mutatesProject: true,
     run: (ctx, a) => AUDIO_TOOLS.design_sound!.run(ctx, a),
   },
   assign_sounds: {
     def: AUDIO_TOOLS.assign_sounds!.def,
     studio: AUDIO_TOOLS.assign_sounds!.studio,
-    studioOps: ['run_code'],
+    studioOps: ['get_tree', 'get_instance', 'set_props'],
+    mutatesProject: (result) => positiveCount(result, 'assigned'),
     run: (ctx, a) => AUDIO_TOOLS.assign_sounds!.run(ctx, a),
   },
   generate_sound: {
@@ -3677,6 +4364,24 @@ export function toolNames(): string[] {
   return Object.keys(TOOLS);
 }
 
+/**
+ * Tools that can change the user's Roblox place.
+ *
+ * This is derived from the same metadata `runTool` uses to decide whether a successful call
+ * actually delivered project work. Consumers that need to cover the complete mutation surface
+ * (permissions, audits, release guards) must not maintain a second hand-written name list.
+ */
+export function projectMutatingToolNames(): string[] {
+  return Object.entries(TOOLS)
+    .filter(([, tool]) => tool.mutatesProject !== undefined)
+    .map(([name]) => name);
+}
+
+export function toolMutatesProject(name: string, result: unknown): boolean {
+  const rule = TOOLS[name]?.mutatesProject;
+  return typeof rule === 'function' ? rule(result) : rule === true;
+}
+
 /* ------------------------------------------------------------ which thing, though --- */
 
 /** One line beside an activity label, not a paragraph. Long enough for a real Roblox path. */
@@ -3687,13 +4392,22 @@ const TARGET_MAX = 120;
  * worth naming, and gets none — a guess is worse than silence here, because this string is what a
  * person reads to decide whether the step about to run is the one they meant.
  */
-const TARGET_ARG: Readonly<Record<string, { key: string; kind: 'string' | 'list' | 'number' | 'items' }>> = {
+const TARGET_ARG: Readonly<Record<string, { key: string; kind: 'string' | 'list' | 'number' | 'items' | 'moves' }>> = {
   read_script: { key: 'path', kind: 'string' },
   edit_script: { key: 'path', kind: 'string' },
   format_script: { key: 'path', kind: 'string' },
   set_properties: { key: 'path', kind: 'string' },
+  edit_terrain: { key: 'action', kind: 'string' },
   get_instance: { key: 'path', kind: 'string' },
   delete_instances: { key: 'paths', kind: 'list' },
+  move_instances: { key: 'moves', kind: 'moves' },
+  transform_instances: { key: 'paths', kind: 'list' },
+  clone_instances: { key: 'paths', kind: 'list' },
+  group_instances: { key: 'paths', kind: 'list' },
+  ungroup_instances: { key: 'paths', kind: 'list' },
+  rename_instance: { key: 'path', kind: 'string' },
+  set_locked: { key: 'paths', kind: 'list' },
+  set_visible: { key: 'paths', kind: 'list' },
   select_instances: { key: 'paths', kind: 'list' },
   create_instances: { key: 'items', kind: 'items' },
   install_module: { key: 'name', kind: 'string' },
@@ -3747,9 +4461,13 @@ export function targetOf(tool: string, argsJson: unknown): string | undefined {
   const names: string[] =
     spec.kind === 'list'
       ? (Array.isArray(raw) ? raw : []).filter((v): v is string => typeof v === 'string')
-      : (Array.isArray(raw) ? raw : [])
-          .map((it) => (it && typeof it === 'object' ? (it as { name?: unknown }).name : null))
-          .filter((v): v is string => typeof v === 'string');
+      : spec.kind === 'moves'
+        ? (Array.isArray(raw) ? raw : [])
+            .map((it) => (it && typeof it === 'object' ? (it as { path?: unknown }).path : null))
+            .filter((v): v is string => typeof v === 'string')
+        : (Array.isArray(raw) ? raw : [])
+            .map((it) => (it && typeof it === 'object' ? (it as { name?: unknown }).name : null))
+            .filter((v): v is string => typeof v === 'string');
 
   const cleaned = names.map((n) => n.replace(/\s+/g, ' ').trim()).filter(Boolean);
   if (!cleaned.length) return undefined;
@@ -3832,7 +4550,7 @@ export async function runTool(
   ctx: AgentCtx,
   name: string,
   argsJson: string,
-): Promise<{ summary: string; resultForLlm: string; ok: boolean; detail?: unknown }> {
+): Promise<{ summary: string; resultForLlm: string; ok: boolean; detail?: unknown; mutatedProject?: boolean; retryable?: boolean }> {
   const impl = TOOLS[name];
   if (!impl) return { summary: `unknown tool ${name}`, resultForLlm: JSON.stringify({ error: `unknown tool: ${name}` }), ok: false };
   if (impl.studio && !ctx.studioConnected()) {
@@ -3874,15 +4592,35 @@ export async function runTool(
   try {
     ctx.uiDetail = undefined; // never let one tool's panel leak into the next tool's row
     const result = await impl.run(ctx, args);
-    let str = typeof result === 'string' ? result : JSON.stringify(result);
-    if (str.length > MAX_RESULT_CHARS) str = str.slice(0, MAX_RESULT_CHARS) + `\n...[truncated ${str.length - MAX_RESULT_CHARS} chars]`;
     const failed = typeof result === 'object' && result !== null && 'error' in (result as Record<string, unknown>);
+    const partialMutation = failed && (result as Record<string, unknown>).projectMutated === true;
+    //[[ RETRYABLE ONLY WHEN NOTHING WAS APPLIED. `retryable` comes from op-failure.ts's verdict on
+    //   the LAST op a tool ran. A composite that already changed Studio before that op failed is
+    //   not safe to repeat whole, whatever its last op says, so the mark is dropped there. ]]
+    const retryable = failed && !partialMutation && (result as Record<string, unknown>).retryable === true;
+    // Composite tools can fail after an earlier sub-operation already changed Studio. That marker
+    // is bookkeeping for SessionDO, not model-visible payload, so strip it before serialisation —
+    // and `retryable` with it, which the model already reads in words as `retry`.
+    const visibleResult = failed && typeof result === 'object' && result !== null &&
+      ('projectMutated' in (result as Record<string, unknown>) || 'retryable' in (result as Record<string, unknown>))
+      ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== 'projectMutated' && key !== 'retryable'))
+      : result;
+    let str = typeof visibleResult === 'string' ? visibleResult : JSON.stringify(visibleResult);
+    if (str.length > MAX_RESULT_CHARS) str = str.slice(0, MAX_RESULT_CHARS) + `\n...[truncated ${str.length - MAX_RESULT_CHARS} chars]`;
+    const mutatedProject = partialMutation || (!failed && toolMutatesProject(name, result));
     // An explicit UI payload wins. It is capped separately and more generously than the derived
     // one: this socket already carries 200KB playtest frames, so a single ~25KB evidence panel per
     // build is not what needs protecting — a 24KB cap sized for re-sent tool results is.
-    const detail = ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(result);
+    const detail = ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(visibleResult);
     ctx.uiDetail = undefined;
-    return { summary: summarize(name, args, failed, failed ? (result as Record<string, unknown>).error : undefined), resultForLlm: str, ok: !failed, detail };
+    return {
+      summary: summarize(name, args, failed, failed ? (visibleResult as Record<string, unknown>).error : undefined),
+      resultForLlm: str,
+      ok: !failed,
+      detail,
+      ...(mutatedProject ? { mutatedProject: true } : {}),
+      ...(retryable ? { retryable: true } : {}),
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     /* §1: provider and model identity are implementation details and must not

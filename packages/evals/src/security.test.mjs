@@ -566,7 +566,9 @@ test('A1 ProviderAvailability carries only a boolean and a reason string', () =>
 });
 
 test('A1 selectProvider reasoning names providers and prices, never credentials', () => {
-  for (const key of ['clay', 'stone', 'rune', 'memory', 'vision']) {
+  // The gateway's key set, which is now the product's own vocabulary: two run modes and the two
+  // lanes that are not run modes. RE-AIMED 2026-09-22 from ['clay','stone','rune','memory','vision'].
+  for (const key of ['plan', 'agent', 'memory', 'vision']) {
     const sel = P.selectProvider(makeEnv(), { modelKey: key });
     assertNoSecret(sel, `selectProvider(${key})`);
     assert.equal(JWT_RE.test(JSON.stringify(sel)), false);
@@ -834,6 +836,32 @@ const TOOL_ARGS = {
   create_instances: { items: [{ className: 'Part', name: 'A', parent: 'game.Workspace' }] },
   set_properties: { path: 'game.Workspace.A', props: {} },
   delete_instances: { paths: ['game.Workspace.A'] },
+
+  //[[ THE TYPED DIRECT-EDIT FAMILY, ADDED 2026-09-22 BECAUSE THE GUARD ABOVE CAUGHT IT.
+  //
+  //   Nine tools were registered and had no fixture here, so `Object.keys(T.TOOLS)` and
+  //   `Object.keys(TOOL_ARGS)` diverged and this test went red — which is the test working. Each
+  //   one is a NEW EGRESS PATH: every tool on this list is driven through the real `runTool` and its
+  //   summary, `resultForLlm` and `detail` are scanned for a JWT, a pairing token and an
+  //   Authorization header. A tool with no fixture is a channel nothing scanned, wearing a green
+  //   tick. The fixtures are chosen to reach each BODY rather than an argument-validation early
+  //   return, for the same reason the code-intelligence three are: `set_locked` without a boolean,
+  //   or `move_instances` with an empty list, returns a validation error and scans nothing.
+  //
+  //   `edit_terrain` is the one worth reading twice. Its `action` selects between five operations
+  //   and the whole point of the tool is that it does NOT run arbitrary Luau — so the fixture names
+  //   a real action with the coordinates that action requires, and the sweep then scans the terrain
+  //   op's own payload.
+  clone_instances: { paths: ['game.Workspace.A'] },
+  group_instances: { paths: ['game.Workspace.A'] },
+  ungroup_instances: { paths: ['game.Workspace.A'] },
+  move_instances: { moves: [{ path: 'game.Workspace.A', newParent: 'game.Workspace' }] },
+  transform_instances: { paths: ['game.Workspace.A'], move: [0, 1, 0] },
+  rename_instance: { path: 'game.Workspace.A', name: 'B' },
+  set_locked: { paths: ['game.Workspace.A'], locked: true },
+  set_visible: { paths: ['game.Workspace.A'], visible: false },
+  edit_terrain: { action: 'fill_block', center: [0, 0, 0], size: [4, 4, 4], material: 'Grass' },
+
   run_luau: { code: 'return 1' },
   run_and_check: { seconds: 2 },
   get_output_logs: {},
@@ -1263,9 +1291,38 @@ test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fie
       // `base` being the run's own registry tool-name set. So every element is a registry name by
       // construction, never a key the user invented in their preferences and never model output.
       'deniedTools',
+
+      //[[ `autonomous` AND `totalSteps` REVIEWED 2026-09-22, and this tripwire caught both.
+      //
+      //   The guard went red the day they were added, which is the whole design — a field cannot
+      //   reach the browser without somebody writing down why it is safe.
+      //
+      //   `autonomous` IS THE NARROWEST FIELD ON THIS LIST. The snapshot spreads it as
+      //   `...(agent.autonomous ? { autonomous: true } : {})`, so the only value that can ever
+      //   appear is the literal `true`, and the key is absent when it is false. There is no string
+      //   to smuggle anything in. What it tells the browser is which of two buttons the user
+      //   pressed — the same fact as `mode`, and the run already replays `mode`.
+      //
+      //   `totalSteps` IS A COMPILE-TIME CONSTANT. The snapshot writes `totalSteps: MAX_RUN_STEPS`
+      //   and nothing else, so the value is the run ceiling (1000) on every snapshot of every run.
+      //   It exists because the reconnect replay had a `step` numerator with no denominator: a
+      //   refreshed tab could say "step 12" and never say out of how many. It carries no run state
+      //   at all — `step` is the per-run number and is reviewed separately above.
+      //
+      //   The two assertions below hold each argument to the code rather than to this paragraph,
+      //   because a name whitelisted once can have its VALUE's source swapped underneath it — the
+      //   hole the A5 recovery steer shipped with.
+      'autonomous',
+      'totalSteps',
     ]),
     'runSnapshot changed shape — re-review what the reconnect replay hands the browser',
   );
+  assert.match(snapshot, /\.\.\.\(agent\.autonomous \? \{ autonomous: true \} : \{\}\)/,
+    'autonomous is no longer the boolean literal true — re-review what now feeds it');
+  assert.match(snapshot, /totalSteps: MAX_RUN_STEPS,/,
+    'totalSteps is no longer the run ceiling constant — re-review what now feeds it');
+  assert.match(readCode('do/session.ts'), /export const MAX_RUN_STEPS = 1000;/,
+    'MAX_RUN_STEPS moved; the browser is now told a different ceiling than the loop enforces');
   //[[ THE TWO REVIEWS ABOVE, HELD TO THE CODE.
   //
   //   Each says "this field can only be a value from a fixed vocabulary". Whitelisting the NAME
@@ -2403,7 +2460,12 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   // SIX SINCE autonomous output-limit recovery. The sixth never reflects model/user/tool content:
   // it tells the same run that the provider cut its output and chooses one of three fixed batch
   // hints from a local numeric recovery counter.
-  assert.equal(userPushes.length, 6, 'a user-role transcript injection was added or removed — review it for injection risk');
+  // SEVEN SINCE 2026-09-22 — the post-verification steer ("The change is made and your check has run.
+  // Stop reading and reply to the user now…"). Reviewed: a fixed string with no interpolation, pushed
+  // only when run-idle.ts's counter reaches its nudge step; nothing the model, the user or a tool wrote
+  // reaches it. Reviewed in the same pass and deliberately NOT a user push: transcript.ts's run record,
+  // which is an ASSISTANT turn carrying no tool output (apps/worker/tests/transcript-ledger.test.mjs).
+  assert.equal(userPushes.length, 7, 'a user-role transcript injection was added or removed — review it for injection risk');
   const dynamic = userPushes.filter((p) => /\$\{/.test(p));
   assert.equal(dynamic.length, 3, 'exactly three user-role injections should carry interpolated content');
   assert.ok(
@@ -2469,7 +2531,7 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
 test('A6 reserve precedes the model call and settle follows it, through the provider adapter', async () => {
   reset();
   const env = makeEnv();
-  const res = await G.chat(env, { model: 'stone', messages: [{ role: 'user', content: 'hello' }], maxTokens: 64 });
+  const res = await G.chat(env, { model: 'agent', messages: [{ role: 'user', content: 'hello' }], maxTokens: 64 });
   assert.ok(res.neurons >= 1);
   const budget = trace.order.filter((o) => o.startsWith('BUDGET_DO') || o === 'AI.run');
   assert.deepEqual(budget, ['BUDGET_DO/reserve', 'AI.run', 'BUDGET_DO/settle'],
@@ -2481,7 +2543,7 @@ test('A6 a refused reservation stops the call before a single token is spent', a
     reset();
     const env = makeEnv({ budget: { reserve: { ok: false, reason } } });
     await assert.rejects(
-      () => G.chat(env, { model: 'stone', messages: [{ role: 'user', content: 'hi' }], maxTokens: 64 }),
+      () => G.chat(env, { model: 'agent', messages: [{ role: 'user', content: 'hi' }], maxTokens: 64 }),
       (e) => {
         assert.equal(e.name, 'BudgetError');
         assert.equal(e.reason, reason);
@@ -2497,7 +2559,7 @@ test('A6 a refused reservation stops the call before a single token is spent', a
 test('A6 a failed call releases the reservation and never settles it', async () => {
   reset();
   const env = makeEnv({ aiThrows: new Error('inference exploded') });
-  await assert.rejects(() => G.chat(env, { model: 'stone', messages: [{ role: 'user', content: 'hi' }], maxTokens: 64 }));
+  await assert.rejects(() => G.chat(env, { model: 'agent', messages: [{ role: 'user', content: 'hi' }], maxTokens: 64 }));
   assert.deepEqual(
     trace.order.filter((o) => o.startsWith('BUDGET_DO')),
     ['BUDGET_DO/reserve', 'BUDGET_DO/release'],
@@ -2509,7 +2571,7 @@ test('A6 an oversized request is refused before the reservation is even taken', 
   reset();
   const env = makeEnv();
   await assert.rejects(
-    () => G.chat(env, { model: 'stone', messages: [{ role: 'user', content: 'x'.repeat(4_000_000) }], maxTokens: 5600 }),
+    () => G.chat(env, { model: 'agent', messages: [{ role: 'user', content: 'x'.repeat(4_000_000) }], maxTokens: 5600 }),
     (e) => e.name === 'BudgetError' && e.reason === 'request_too_large',
   );
   assert.deepEqual(trace.order.filter((o) => o.startsWith('BUDGET_DO')), [], 'request_too_large must short-circuit before reserve');

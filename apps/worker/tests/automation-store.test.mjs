@@ -78,7 +78,7 @@ async function save(db, over = {}, ownerId = ALICE) {
       name: 'Nightly polish',
       description: 'Tidy the lighting before I get up.',
       prompt: 'Tidy the lighting in the main map.',
-      mode: 'stone',
+      mode: 'agent',
       trigger: 'schedule',
       timezone: 'America/New_York',
       schedule: { every: 'day', hour: 9, minute: 0 },
@@ -303,7 +303,7 @@ test('the per-owner cap is checked on create and not on edit', async () => {
   for (let i = 1; i < S.AUTOMATIONS_PER_OWNER_MAX; i += 1) await save(db, { name: `Polish ${i}` });
 
   const over = A.normaliseAutomation(
-    { name: 'One too many', prompt: 'x', mode: 'stone', trigger: 'manual', timezone: 'UTC' },
+    { name: 'One too many', prompt: 'x', mode: 'agent', trigger: 'manual', timezone: 'UTC' },
     { ownerId: ALICE, projectId: PROJECT, now: NOW },
   );
   const refused = await S.saveAutomation(env(db), over.automation, null);

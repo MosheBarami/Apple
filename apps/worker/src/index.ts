@@ -2202,7 +2202,7 @@ app.get('/api/projects/:id/roadmap', async (c) => {
   const chat: RoadmapChat = async ({ system, user: prompt }) => {
     const res = await llmChat(
       c.env,
-      { model: 'clay', messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], maxTokens: 700 },
+      { model: 'plan', messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], maxTokens: 700 },
       { kind: 'roadmap:rank', cacheTtl: 300 },
     );
     return res.text;
@@ -2963,7 +2963,7 @@ function discordPorts(env: Env, origin: string): DiscordPorts {
       const body = await okJson<{ ok?: boolean; error?: string }>(
         sessionStub(env, projectId).fetch('https://do/agent-run', {
           method: 'POST',
-          body: JSON.stringify({ text: prompt, mode: 'stone' }),
+          body: JSON.stringify({ text: prompt, mode: 'agent' }),
         }),
       );
       return body?.ok ? { ok: true } : { ok: false, error: body?.error ?? 'the project would not start a run' };
@@ -4254,13 +4254,13 @@ app.post('/api/admin/quota-reset', async (c) => {
   return c.json(await res.json());
 });
 
-/** Owner-only temporary balance switch. Identity comes from the verified session, never input. */
+/** Owner-only unmetered Credit switch. Identity comes from the verified session, never input. */
 app.post('/api/me/owner-credits', async (c) => {
   const user = c.get('user');
   if (user.email?.toLowerCase() !== 'moshe.barami111@gmail.com') return c.json({ error: 'forbidden' }, 403);
-  const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/grant-credits', {
+  const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/set-unmetered', {
     method: 'POST',
-    body: JSON.stringify({ credits: 1_000_000_000, eventId: 'owner-temporary-unlimited-2026-09-17' }),
+    body: JSON.stringify({ enabled: true }),
   });
   return c.json(await res.json(), res.status as 200);
 });
@@ -5225,10 +5225,10 @@ app.get('/v1/projects/:id/messages', async (c) => {
   return c.json({ object: 'list', data: out.messages ?? [] });
 });
 
-/** Public run modes. Internal specialist names are never on the wire — see router.ts. */
-const PUBLIC_RUN_MODES: Record<string, 'clay' | 'stone' | 'rune'> = { plan: 'clay', agent: 'stone', super: 'rune' };
+/** Public run modes. Plan and Agent are the complete run-mode vocabulary. */
+const PUBLIC_RUN_MODES: Record<string, 'plan' | 'agent'> = { plan: 'plan', agent: 'agent' };
 
-/** Additive model selector for API runs; legacy mode remains the specialist/autonomy axis. */
+/** Additive model selector for API runs; autonomy is a separate per-run boolean. */
 function asProductModel(value: unknown): ProductModel | undefined | null {
   if (value === undefined || value === null) return undefined;
   return value === 'apple' || value === 'apple-max' ? value : null;
@@ -5244,7 +5244,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
   // sent — re-serialising a parsed object would make two byte-different requests with the same
   // meaning share a key, which is the opposite of the guarantee.
   const bodyText = await c.req.text();
-  type RunBody = { input?: unknown; mode?: unknown; productModel?: unknown };
+  type RunBody = { input?: unknown; mode?: unknown; productModel?: unknown; autonomous?: unknown };
   let body: RunBody | null;
   try {
     body = JSON.parse(bodyText || 'null') as RunBody | null;
@@ -5264,6 +5264,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
     );
   }
   const mode = PUBLIC_RUN_MODES[wanted]!;
+  const autonomous = mode === 'agent' && body?.autonomous === true;
   const productModel = asProductModel(body?.productModel);
   if (productModel === null) {
     return c.json(errorBody(400, 'invalid_request_error', "'productModel' must be 'apple' or 'apple-max'.", requestId, 'productModel'), 400);
@@ -5348,6 +5349,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
       sandbox: true,
       project: id,
       mode: wanted,
+      autonomous,
       ...(productModel ? { productModel } : {}),
       note: 'Test-mode key: no run was started and nothing in the place was touched.',
     };
@@ -5357,7 +5359,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
 
   const res = await stub.fetch('https://do/agent-run', traced(c, {
     method: 'POST',
-    body: JSON.stringify({ text: input.slice(0, 8000), mode, ...(productModel ? { productModel } : {}) }),
+    body: JSON.stringify({ text: input.slice(0, 8000), mode, autonomous, ...(productModel ? { productModel } : {}) }),
   }));
   const out = (await res.json()) as { ok?: boolean; error?: string; code?: string };
   if (!res.ok || out.ok === false) {
@@ -5368,7 +5370,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
     return c.json(errorBody(status, 'run_not_started', out.error ?? 'The run could not be started.', requestId), status as 409);
   }
   void count(c.env, 'api_run_started');
-  const started = { id: `run_${id}`, object: 'run', status: 'running', project: id, mode: wanted, ...(productModel ? { productModel } : {}) };
+  const started = { id: `run_${id}`, object: 'run', status: 'running', project: id, mode: wanted, autonomous, ...(productModel ? { productModel } : {}) };
   await remember(started);
   return c.json(started, 202);
 });

@@ -1,6 +1,6 @@
 // The art-direction brief's lifecycle, and the arithmetic that justifies dropping it.
 //
-// The brief is 7,000+ characters of the ~15,600-character Stone system prompt, and the whole
+// The brief is 7,000+ characters of the ~15,600-character Agent system prompt, and the whole
 // transcript — system prompt included — is re-sent on every step. Carrying it through all 16 steps
 // of a build is the single largest avoidable input cost in the product.
 //
@@ -39,7 +39,7 @@ const MODEL = '@cf/zai-org/glm-5.3-flash';
 const tokens = (chars) => Math.round(chars / 3.6);
 
 const visual = P.systemPrompt({
-  mode: 'stone',
+  mode: 'agent',
   projectName: 'Test',
   studioConnected: true,
   memoryFacts: [],
@@ -47,13 +47,13 @@ const visual = P.systemPrompt({
   fenceId: 'ev4lf3nc',
 });
 
-test('a visual Stone run carries the art-direction brief', () => {
+test('a visual Agent run carries the art-direction brief', () => {
   assert.ok(visual.includes(P.BRIEF_START) && visual.includes(P.BRIEF_END));
   assert.ok(visual.length > 14_000, `expected a large prompt, got ${visual.length} chars`);
 });
 
 test('a non-visual run never pays for the brief', () => {
-  const plain = P.systemPrompt({ mode: 'stone', projectName: 'Test', studioConnected: true, memoryFacts: [], fenceId: 'ev4lf3nc' });
+  const plain = P.systemPrompt({ mode: 'agent', projectName: 'Test', studioConnected: true, memoryFacts: [], fenceId: 'ev4lf3nc' });
   assert.ok(!plain.includes(P.BRIEF_START));
   assert.ok(plain.length < visual.length - 6_000, 'the brief should be most of the difference');
 });
@@ -73,7 +73,7 @@ test('collapsing removes the brief, keeps the instruction, and leaves no sentine
 test('collapsing twice is a no-op, so calling it every step is safe', () => {
   const once = P.collapseArtDirection(visual);
   assert.equal(P.collapseArtDirection(once), once);
-  const plain = P.systemPrompt({ mode: 'clay', projectName: 'T', studioConnected: false, memoryFacts: [], fenceId: 'ev4lf3nc' });
+  const plain = P.systemPrompt({ mode: 'plan', projectName: 'T', studioConnected: false, memoryFacts: [], fenceId: 'ev4lf3nc' });
   assert.equal(P.collapseArtDirection(plain), plain);
 });
 

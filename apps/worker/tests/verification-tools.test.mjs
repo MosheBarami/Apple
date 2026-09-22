@@ -42,6 +42,33 @@ test('all five verifiers exist and are offered, so nothing below is vacuous', ()
   for (const v of VERIFIERS) assert.ok(offered.includes(v), `${v} missing`);
 });
 
+test('check_composition consumes render_view layout data without run_code', async () => {
+  const ops = [];
+  const ctx = {
+    env: {}, studioConnected: () => true, addMemoryFact: async () => {},
+    execStudioOp: async (op) => {
+      ops.push(op);
+      return { ok: true, data: {
+        layout: {
+          format: 'x,y,z,sx,sy,sz,yawDeg', skipped: 0,
+          parts: [
+            [0, 5, 0, 10, 10, 10, 0],
+            [24, 3, 0, 6, 6, 6, 0],
+            [-24, 2, 0, 4, 4, 4, 0],
+          ],
+        },
+      } };
+    },
+  };
+  const res = await T.TOOLS.check_composition.run(ctx, { subject: 'scene' });
+  assert.equal(res.error, undefined, JSON.stringify(res));
+  assert.deepEqual(ops.map((op) => op.op), ['render_view']);
+  assert.equal(ops[0].width, 48);
+  assert.equal(ops[0].height, 32);
+  assert.equal(ops.some((op) => op.op === 'run_code'), false);
+  assert.equal(typeof res.structure, 'string');
+});
+
 test('THE PAID ONES SAY THEY COST, and name the free one to try first', () => {
   // The whole point. A model that does not know inspect_visually costs Credits will reach for it
   // when audit_build would have found the defect for nothing.
@@ -115,4 +142,45 @@ test('no two verifiers claim the same job in the same words', () => {
     assert.equal(seen.get(first), undefined, `${v} and ${seen.get(first)} open identically: "${first}"`);
     seen.set(first, v);
   }
+});
+
+// Measured 2026-09-22 (run fad0ab1b): the plugin refused its own stop, run_and_check returned
+// `stopped: false` beside a green ✓, the agent never noticed, and every edit after it was refused
+// because Studio was still in a test. A playtest that could not stop is a failure, and says so first.
+test('a playtest whose stop is refused is reported as a failure, headline first', async () => {
+  const ops = [];
+  const ctx = {
+    env: {}, studioConnected: () => true, addMemoryFact: async () => {},
+    createCheckpoint: async () => ({ id: 'cp1' }),
+    execStudioOp: async (op) => {
+      ops.push(`${op.op}${op.action ? `:${op.action}` : ''}`);
+      if (op.op === 'run_mode' && op.action === 'stop') {
+        return { ok: false, error: 'Studio is running a non-Run test; Apple will not take over a test it did not start' };
+      }
+      if (op.op === 'project_census') return { ok: true, data: { parts: 3, scripts: 1, services: {}, topLevel: [] } };
+      if (op.op === 'get_logs') return { ok: true, data: { entries: [] } };
+      return { ok: true, data: {} };
+    },
+  };
+  const res = await T.TOOLS.run_and_check.run(ctx, { seconds: 2 });
+  assert.ok(ops.includes('run_mode:stop'), `the tool never tried to stop: ${ops.join(', ')}`);
+  assert.match(String(res.error), /could not stop Run mode/, 'a refused stop must fail the tool');
+  assert.match(String(res.stillRunning), /STILL RUNNING/);
+  assert.equal(Object.keys(res)[0], 'error', 'the failure must lead the result, before any logs');
+});
+
+test('control: a playtest that stops cleanly carries no failure', async () => {
+  const ctx = {
+    env: {}, studioConnected: () => true, addMemoryFact: async () => {},
+    createCheckpoint: async () => ({ id: 'cp1' }),
+    execStudioOp: async (op) => {
+      if (op.op === 'project_census') return { ok: true, data: { parts: 3, scripts: 1, services: {}, topLevel: [] } };
+      if (op.op === 'get_logs') return { ok: true, data: { entries: [] } };
+      return { ok: true, data: {} };
+    },
+  };
+  const res = await T.TOOLS.run_and_check.run(ctx, { seconds: 2 });
+  assert.equal(res.error, undefined, JSON.stringify(res));
+  assert.equal(res.stillRunning, undefined);
+  assert.equal(res.stopped, true);
 });

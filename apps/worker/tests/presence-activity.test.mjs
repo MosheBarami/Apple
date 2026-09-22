@@ -165,7 +165,7 @@ test('an activity nobody defined reads as `viewing`, never as the strongest one'
 test('STARTING A RUN SETS `building` — the claim this is all about', async () => {
   const me = socket(MEMBER, 'editor');
   const s = session([me]);
-  await s.say(me, { type: 'chat', text: 'build a lobby', mode: 'clay' });
+  await s.say(me, { type: 'chat', text: 'build a lobby', mode: 'plan' });
   assert.equal(me.activity, 'building', 'the run must actually set it, or the withdrawal below is about nothing');
   assert.ok(s.store.get('agent'), 'and a run is genuinely in flight');
 

@@ -65,8 +65,33 @@ const FIXTURE = fixtureRows();
 
 function stubCtx(payload) {
   const ops = [];
+  const workspace = {
+    root: {
+      path: 'game.Workspace', class: 'Workspace', children: (payload.parts ?? []).map((row, index) => ({
+        path: `game.Workspace.Part${index}`, class: 'Part', children: [], attributes: {}, props: {
+          Position: { t: 'Vector3', v: row.slice(0, 3) },
+          Size: { t: 'Vector3', v: row.slice(3, 6) },
+          Material: { t: 'EnumItem', v: `Enum.Material.${payload.mats?.[row[6] - 1] ?? 'Plastic'}` },
+          Color: { t: 'Color3', v: [row[7] / 255, row[8] / 255, row[9] / 255] },
+          Anchored: { t: 'bool', v: row[10] === 1 },
+          Transparency: { t: 'number', v: row[11] ?? 0 },
+        },
+      })),
+    },
+  };
+  const lighting = {
+    root: {
+      path: 'game.Lighting', class: 'Lighting', attributes: {},
+      props: {
+        Brightness: { t: 'number', v: payload.lighting?.brightness ?? 2 },
+        ClockTime: { t: 'number', v: payload.lighting?.clockTime ?? 14.5 },
+        Ambient: { t: 'Color3', v: (payload.lighting?.ambient ?? [0, 0, 0]).map((v) => v / 255) },
+      },
+      children: (payload.lighting?.effects ?? []).map((className, index) => ({ path: `game.Lighting.Fx${index}`, class: className, props: {}, attributes: {}, children: [] })),
+    },
+  };
   return { ops, ctx: { env: {}, studioConnected: () => true,
-    execStudioOp: async (o) => { ops.push(o); return { ok: true, data: { result: JSON.stringify(payload) } }; },
+    execStudioOp: async (o) => { ops.push(o); return { ok: true, data: o.root === 'game.Lighting' ? lighting : workspace }; },
     addMemoryFact: async () => {} } };
 }
 
@@ -218,8 +243,8 @@ test('a place WITH a lighting pass does not get the untouched-Lighting defect', 
 test('the audit finds the planted defects and costs ZERO model calls', async () => {
   const { ctx, ops } = stubCtx(FIXTURE);
   const res = await T.TOOLS.audit_build.run(ctx, {});
-  assert.equal(ops.length, 1);
-  assert.equal(ops[0].op, 'run_code');
+  assert.deepEqual(ops.map((op) => op.op), ['get_tree', 'get_tree']);
+  assert.equal(ops.some((op) => op.op === 'run_code'), false);
 
   const subjects = (ctx.uiDetail.blocks.find((b) => b.type === 'table')?.rows ?? []).map((r) => r[1]);
   assert.ok(subjects.includes('unanchored-geometry'), `expected unanchored, got ${JSON.stringify(subjects)}`);

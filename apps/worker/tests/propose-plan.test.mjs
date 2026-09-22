@@ -234,35 +234,31 @@ const BASE = {
   memoryFacts: [],
 };
 
-test('THE BUILD MODES ARE TOLD TO CALL IT FIRST', () => {
+test('Agent is told to call it first', () => {
   // A tool nothing instructs the model to reach for is a tool nothing calls, and a build_plan
   // renderer with no producer is precisely the dead branch this work exists to close. The prompt
   // is the only channel that can ask.
-  for (const mode of ['stone', 'rune']) {
-    const prompt = systemPrompt({ ...BASE, mode });
-    assert.match(prompt, /propose_plan/, `${mode} is never told the tool exists`);
-    assert.match(prompt, /FIRST call is propose_plan/, `${mode} is not told when to call it`);
-  }
+  const prompt = systemPrompt({ ...BASE, mode: 'agent' });
+  assert.match(prompt, /propose_plan/, 'Agent is never told the tool exists');
+  assert.match(prompt, /FIRST call is propose_plan/, 'Agent is not told when to call it');
 });
 
 test('the plan prompt asks for the two things the tool refuses without', () => {
-  for (const mode of ['stone', 'rune']) {
-    const prompt = systemPrompt({ ...BASE, mode });
-    // Whitespace-tolerant: the prompt is hard-wrapped prose, so the phrase legitimately carries a
-    // newline in the middle of it. A regex that did not allow for that would be asserting about
-    // the line width, not about what the model is told.
-    assert.match(prompt, /Name\s+the\s+tool\s+each\s+step\s+will\s+use/,
-      `${mode} would be refused for a step with no tool and not know why`);
-    assert.match(prompt, /verification\s+steps?/,
-      `${mode} would be refused for a plan with no check and not know why`);
-  }
+  const prompt = systemPrompt({ ...BASE, mode: 'agent' });
+  // Whitespace-tolerant: the prompt is hard-wrapped prose, so the phrase legitimately carries a
+  // newline in the middle of it. A regex that did not allow for that would be asserting about
+  // the line width, not about what the model is told.
+  assert.match(prompt, /Name\s+the\s+tool\s+each\s+step\s+will\s+use/,
+    'Agent would be refused for a step with no tool and not know why');
+  assert.match(prompt, /verification\s+steps?/,
+    'Agent would be refused for a plan with no check and not know why');
 });
 
 test('PLAN MODE IS NOT TOLD TO PROPOSE A STRUCTURED PLAN, because it cannot call the tool', () => {
   // propose_plan is deliberately absent from PLAN_TOOLS in router.ts: Plan mode's whole deliverable
   // is a prose roadmap. Instructing it to call a tool it will never be offered is the exact defect
   // prompt-tool-names.test.mjs was written for, one level up.
-  assert.doesNotMatch(systemPrompt({ ...BASE, mode: 'clay' }), /FIRST call is propose_plan/,
+  assert.doesNotMatch(systemPrompt({ ...BASE, mode: 'plan' }), /FIRST call is propose_plan/,
     'Plan mode is told to call a tool its toolset withholds');
 });
 

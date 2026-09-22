@@ -138,26 +138,61 @@ test('readPluginHeaders degrades to unknown rather than throwing', () => {
 });
 
 // ------------------------------------------------- the two files must not drift
+//
+// THE PLUGIN THESE READ IS apps/apple-plugin, the one the Creator Store serves (asset
+// 107230158271368). Until 2026-09-22 they read apps/plugin/src/Version.luau — the legacy build,
+// whose asset was removed — so the worker's idea of "latest" was pinned to a plugin nobody can
+// install and this suite stayed green about it.
+const PLUGIN_SRC = join(REPO, 'apps', 'apple-plugin', 'src');
+// Luau comments stripped first: Bridge.luau explains its version in prose, and a scanner that read
+// the explanation would find the constant in a sentence about it.
+const luauCode = (file) => readFileSync(join(PLUGIN_SRC, file), 'utf8')
+  .replace(/--\[(=*)\[[\s\S]*?\]\1\]/g, '')
+  .replace(/--[^\n]*/g, '');
+const BRIDGE = luauCode('Bridge.luau');
+const DECLARED_VERSION = BRIDGE.match(/local PLUGIN_VERSION\s*=\s*"([^"]+)"/)?.[1];
+const DECLARED_PROTOCOL = BRIDGE.match(/local PLUGIN_PROTOCOL\s*=\s*"(\d+)"/)?.[1];
+
 test('the plugin and the worker agree on the protocol number', () => {
-  // Nothing else enforces this. If Version.luau says protocol 2 and the worker still
-  // thinks 1 is current, the mismatch is invisible until users are refused.
-  const luau = readFileSync(join(REPO, 'apps', 'plugin', 'src', 'Version.luau'), 'utf8');
-  const version = luau.match(/VERSION\s*=\s*"([^"]+)"/);
-  const protocol = luau.match(/PROTOCOL\s*=\s*(\d+)/);
-  assert.ok(version, 'Version.luau must declare VERSION on one line, quoted');
-  assert.ok(protocol, 'Version.luau must declare PROTOCOL as a bare integer');
-  assert.equal(Number(protocol[1]), V.CURRENT_PLUGIN_PROTOCOL, 'plugin PROTOCOL vs worker CURRENT_PLUGIN_PROTOCOL');
-  assert.equal(version[1], V.LATEST_PLUGIN_VERSION, 'plugin VERSION vs worker LATEST_PLUGIN_VERSION');
+  // Nothing else enforces this. If the plugin says protocol 2 and the worker still thinks 1 is
+  // current, the mismatch is invisible until users are refused.
+  assert.ok(DECLARED_PROTOCOL, 'Bridge.luau must declare PLUGIN_PROTOCOL as a quoted integer');
+  assert.equal(Number(DECLARED_PROTOCOL), V.CURRENT_PLUGIN_PROTOCOL, 'plugin PLUGIN_PROTOCOL vs worker CURRENT_PLUGIN_PROTOCOL');
 });
 
-test('the plugin reports its version on every request, not just periodically', () => {
-  // The periodic `state` event carries pluginVersion too, but it is sent on roughly
-  // every twelfth poll. Pairing and the first polls would otherwise be anonymous.
-  const init = readFileSync(join(REPO, 'apps', 'plugin', 'src', 'init.server.luau'), 'utf8');
-  assert.match(init, /\["X-Golem-Plugin-Version"\]\s*=\s*VERSION/);
-  assert.match(init, /\["X-Golem-Plugin-Protocol"\]\s*=\s*tostring\(PROTOCOL\)/);
-  assert.match(init, /require\(script\.Version\)/, 'the constant must come from the single source of truth');
-  assert.match(init, /versionLabel/, 'the version must be visible in the plugin UI');
+test('the worker never announces a plugin version the shipped source does not have', () => {
+  // LATEST_PLUGIN_VERSION is what the Creator Store serves; the source may be AHEAD of it while a
+  // build is unpublished (clientNotice then reads the newer client as newer, and says nothing),
+  // but never behind it — an update notice for a version the source does not contain would send a
+  // user to Manage Plugins for nothing. Equality is not required: publishing is a human step in
+  // Studio, and a test that forced the two equal would force someone to announce an unpublished
+  // build or to under-report the one they are running.
+  assert.ok(DECLARED_VERSION, 'Bridge.luau must declare PLUGIN_VERSION on one line, quoted');
+  const order = V.compareVersions(V.LATEST_PLUGIN_VERSION, DECLARED_VERSION);
+  assert.notEqual(order, null, `cannot order LATEST_PLUGIN_VERSION ${V.LATEST_PLUGIN_VERSION} against PLUGIN_VERSION ${DECLARED_VERSION}`);
+  assert.ok(order <= 0, `the worker announces ${V.LATEST_PLUGIN_VERSION} but the shipped plugin's source is ${DECLARED_VERSION}`);
+  // And a client exactly at the source version is never told to update.
+  assert.equal(V.clientNotice({ version: DECLARED_VERSION, protocol: V.CURRENT_PLUGIN_PROTOCOL }), null);
+});
+
+test('the plugin reports its version on every request, and every copy of it agrees', () => {
+  // The periodic `state` event carries pluginVersion too, but pairing and the first polls would
+  // otherwise be anonymous, so the headers must carry it on every request.
+  assert.match(BRIDGE, /\["X-Golem-Plugin-Version"\]\s*=\s*PLUGIN_VERSION\b/);
+  assert.match(BRIDGE, /\["X-Golem-Plugin-Protocol"\]\s*=\s*PLUGIN_PROTOCOL\b/);
+  // There is no Version module in this plugin: the entry script repeats the literal in its state
+  // event and in the label a user reads in the dock. The property is that every copy agrees with
+  // the one the headers send, so a bump that misses one is a failure rather than a plugin that
+  // tells the worker one version and the user another.
+  const init = luauCode('init.server.luau');
+  const stated = init.match(/pluginVersion\s*=\s*"([^"]+)"/)?.[1];
+  const shown = init.match(/"Apple Studio · (\d+\.\d+\.\d+)\b/)?.[1];
+  assert.ok(stated, 'init.server.luau no longer puts pluginVersion in its state event');
+  assert.ok(shown, 'the version must be visible in the plugin UI');
+  assert.equal(stated, DECLARED_VERSION, 'the state event reports a different version from the headers');
+  assert.equal(shown, DECLARED_VERSION, 'the dock shows a different version from the one the worker is told');
+  const pkg = JSON.parse(readFileSync(join(REPO, 'apps', 'apple-plugin', 'package.json'), 'utf8'));
+  assert.equal(pkg.version, DECLARED_VERSION, 'apps/apple-plugin/package.json names a different version');
 });
 
 test('an incompatible client is handed no ops', () => {

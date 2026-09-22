@@ -95,6 +95,15 @@ function frameOf(px, w, h, extra = {}) {
   };
 }
 
+function pngStub(w, h) {
+  const b = new Uint8Array(24);
+  b.set([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a], 0);
+  b.set([0,0,0,13,0x49,0x48,0x44,0x52], 8);
+  b[16]=(w>>>24)&255; b[17]=(w>>>16)&255; b[18]=(w>>>8)&255; b[19]=w&255;
+  b[20]=(h>>>24)&255; b[21]=(h>>>16)&255; b[22]=(h>>>8)&255; b[23]=h&255;
+  return b;
+}
+
 // ---------------------------------------------------------------- size cap
 
 test('a frame larger than the base64 ceiling is refused, not truncated', () => {
@@ -170,6 +179,27 @@ test('an empty payload is refused', () => {
   const v = admitFrame({ ...frameOf(new Uint8Array(3), 1, 1), rgbBase64: '' });
   assert.equal(v.ok, false);
   assert.equal(v.reason, 'empty');
+});
+
+test('a bounded Studio viewport PNG is admitted with its source intact', () => {
+  const v = admitFrame({
+    ...frameOf(pngStub(160, 100), 160, 100),
+    encoding: 'png',
+    source: 'studio_viewport',
+  });
+  assert.equal(v.ok, true);
+  assert.equal(v.frame.encoding, 'png');
+  assert.equal(v.frame.source, 'studio_viewport');
+});
+
+test('PNG dimensions must agree with the capture metadata', () => {
+  const v = admitFrame({
+    ...frameOf(pngStub(160, 100), 200, 100),
+    encoding: 'png',
+    source: 'studio_viewport',
+  });
+  assert.equal(v.ok, false);
+  assert.equal(v.reason, 'payload-mismatch');
 });
 
 // ---------------------------------------------------------------- RLE codec

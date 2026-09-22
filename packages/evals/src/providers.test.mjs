@@ -160,8 +160,24 @@ function stable(value) {
 const REQUESTS = [
   {
     name: 'native tools + system + user',
+    //[[ THE RENAME IS STATED, NOT HIDDEN.
+    //
+    //   This proof drives ONE request through two revisions: `BASELINE`, reconstructed from a git
+    //   revision that predates the provider layer, and the live gateway. The baseline's
+    //   DEFAULT_MODELS is frozen in the vocabulary that shipped then — `clay`/`stone`/`rune` — while
+    //   the live catalogue is keyed by the product's own modes. So no single model key is valid on
+    //   both sides, and `baselineModel` names the equivalent: `agent` IS what `stone` became.
+    //
+    //   It does not weaken the comparison. The key selects CONFIGURATION and nothing else, and the
+    //   assertions below already exclude model-dependent configuration (id, max_tokens, neurons) for
+    //   exactly that reason. What must match — the number of calls, the messages, the tools, the AI
+    //   Gateway options — is untouched by which key was used to look up a ceiling.
+    //
+    //   RE-AIMED 2026-09-22: these fixtures named `stone`/`rune` outright, so `G.chat` threw
+    //   `unknown model key: stone` and the whole refactor proof failed before it compared anything. ]]
+    baselineModel: 'stone',
     req: {
-      model: 'stone',
+      model: 'agent',
       messages: [
         { role: 'system', content: 'You are Golem.' },
         { role: 'user', content: 'Build a market stall.' },
@@ -173,8 +189,9 @@ const REQUESTS = [
   },
   {
     name: 'native tools with a prior assistant tool call and a tool result',
+    baselineModel: 'rune',
     req: {
-      model: 'rune',
+      model: 'plan',
       messages: [
         { role: 'system', content: 'You are Golem.' },
         { role: 'user', content: 'Fix the door.', pinned: true },
@@ -227,10 +244,12 @@ test('REFACTOR PROOF: provider refactor preserves transport outside model-specif
     return;
   }
   t.diagnostic(`baseline: ${BASELINE_REV}`);
-  for (const { name, req } of REQUESTS) {
+  for (const { name, req, baselineModel } of REQUESTS) {
     const a = fakeEnv();
     const b = fakeEnv();
-    const before = await BASELINE.chat(b.env, structuredClone(req), { kind: 'probe', sessionId: 'sess-1' });
+    // The baseline speaks the vocabulary that shipped with it; the live gateway speaks the product
+    // modes. `baselineModel` bridges the two — see the note on the first fixture.
+    const before = await BASELINE.chat(b.env, structuredClone({ ...req, model: baselineModel ?? req.model }), { kind: 'probe', sessionId: 'sess-1' });
     const after = await G.chat(a.env, structuredClone(req), { kind: 'probe', sessionId: 'sess-1' });
 
     assert.deepEqual(a.seen.runs.length, 1, `${name}: exactly one inference call`);
@@ -295,20 +314,30 @@ test('every Apple product route still uses the Workers AI adapter', () => {
   assert.equal(P.adapterForModelId('@cf/some/future-model').id, 'workers-ai');
 });
 
-test('gateway defaults implement the product-model split while vision stays independent', () => {
-  assert.equal(G.DEFAULT_MODELS.clay.id, P.APPLE_MODEL_ID, 'the Apple lane must resolve to Qwen3');
-  assert.equal(G.DEFAULT_MODELS.memory.id, P.APPLE_MODEL_ID, 'Apple housekeeping must stay on the Apple foundation');
-  assert.equal(G.DEFAULT_MODELS.stone.id, P.APPLE_MAX_MODEL_ID, 'the Apple MAX builder lane must resolve to GLM-4.7 Flash');
-  assert.equal(G.DEFAULT_MODELS.rune.id, P.APPLE_MAX_MODEL_ID, 'the Apple MAX autonomous lane must resolve to GLM-4.7 Flash');
+test('gateway defaults: the run modes share one foundation, and memory and vision stay independent', () => {
+  // RE-AIMED 2026-09-22. This asserted a "product-model SPLIT" — clay on Qwen3, stone and rune on
+  // GLM — where the ENTITLEMENT picked the foundation model. That split was retired deliberately:
+  // entitlement now controls paid capabilities and the reasoning policy, the run mode controls the
+  // toolset, and `gatewayModelFor(mode, productModel)` voids its second argument and returns the
+  // mode. The old assertions therefore named a mechanism that no longer exists, and the property
+  // is restated as what replaced it. The two lanes that genuinely ARE independent — housekeeping
+  // and vision — are still pinned, on their own terms.
+  for (const mode of ['plan', 'agent']) {
+    assert.equal(G.DEFAULT_MODELS[mode].id, P.APPLE_MAX_MODEL_ID, `${mode} runs on the measured GLM-5.3 Flash foundation`);
+    assert.equal(G.DEFAULT_MODELS[mode].ctx, P.APPLE_MAX_CONTEXT_WINDOW, `${mode} gets the full context window`);
+    assert.equal(G.DEFAULT_MODELS[mode].nativeTools, true, `${mode} must be able to call tools natively`);
+  }
+  // The lane that is NOT a run mode, and stays on the cheap foundation for housekeeping.
+  assert.equal(G.DEFAULT_MODELS.memory.id, P.APPLE_MODEL_ID, 'housekeeping stays on the cheap Qwen3 foundation');
+  assert.equal(G.DEFAULT_MODELS.memory.ctx, P.APPLE_CONTEXT_WINDOW);
+  assert.equal(G.DEFAULT_MODELS.memory.nativeTools, false, 'housekeeping is not given a toolset');
+  // Vision shares the MAX model id and is still a separate lane: smaller ceiling, no tools.
   assert.equal(G.DEFAULT_MODELS.vision.id, P.VISION_MODEL_ID, 'vision remains the separate multimodal specialist');
-
-  assert.equal(G.DEFAULT_MODELS.clay.ctx, P.APPLE_CONTEXT_WINDOW);
-  assert.equal(G.DEFAULT_MODELS.stone.ctx, P.APPLE_MAX_CONTEXT_WINDOW);
-  assert.equal(G.DEFAULT_MODELS.rune.ctx, P.APPLE_MAX_CONTEXT_WINDOW);
   assert.equal(G.DEFAULT_MODELS.vision.ctx, P.VISION_CONTEXT_WINDOW);
-  assert.equal(G.DEFAULT_MODELS.clay.nativeTools, true);
-  assert.equal(G.DEFAULT_MODELS.stone.nativeTools, true);
-  assert.equal(G.DEFAULT_MODELS.rune.nativeTools, true);
+  assert.equal(G.DEFAULT_MODELS.vision.nativeTools, false);
+  // THE KEY SET IS THE CONTRACT, so it is asserted rather than assumed: two run modes and the two
+  // lanes that are not run modes. A third run-mode key would mean Autonomous crept back in as a mode.
+  assert.deepEqual(Object.keys(G.DEFAULT_MODELS).sort(), ['agent', 'memory', 'plan', 'vision']);
 });
 
 test('the chosen Apple, Apple MAX and vision catalogue rows carry the verified facts', () => {
@@ -333,8 +362,9 @@ test('the chosen Apple, Apple MAX and vision catalogue rows carry the verified f
   // The MAX lane became MULTIMODAL as a side effect of the move — nobody asked for that, it simply
   // follows from the weights, and a reader of this file should learn it here rather than from a
   // support ticket. The lanes stay separate in DEFAULT_MODELS; only the model behind them merged.
-  assert.equal(G.DEFAULT_MODELS.stone.id, G.DEFAULT_MODELS.vision.id);
-  assert.notEqual(G.DEFAULT_MODELS.stone.maxTokens, G.DEFAULT_MODELS.vision.maxTokens);
+  // (`stone` here until 2026-09-22; the gateway key is now the product mode, `agent`.)
+  assert.equal(G.DEFAULT_MODELS.agent.id, G.DEFAULT_MODELS.vision.id);
+  assert.notEqual(G.DEFAULT_MODELS.agent.maxTokens, G.DEFAULT_MODELS.vision.maxTokens);
 
   // Exactly one catalogue row for that id. Two rows would make `modelById` answer with whichever
   // came first and hide the other's prices — which is how a billing figure goes wrong silently.
@@ -343,6 +373,11 @@ test('the chosen Apple, Apple MAX and vision catalogue rows carry the verified f
 
 test('a stale free-tier KV map cannot restore legacy models for user-facing keys', async () => {
   G.resetModelCache();
+  // THE STALE MAP KEEPS ITS LEGACY KEYS ON PURPOSE. This is not a list of today's modes — it is a
+  // fixture standing in for a `config:models` row an older deployment actually wrote, and the whole
+  // point is that such a row must not be able to resurrect a retired model. Renaming its keys to
+  // plan/agent would delete the scenario the test exists for. The live keys the product reads are
+  // asserted below against the CURRENT catalogue.
   const stale = {
     clay: { id: '@cf/openai/gpt-oss-20b', nativeTools: true, maxTokens: 2000, ctx: 128_000, temperature: 0.3 },
     stone: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 5600, ctx: 128_000, temperature: 0.25 },
@@ -353,11 +388,14 @@ test('a stale free-tier KV map cannot restore legacy models for user-facing keys
   };
   const { env } = fakeEnv({ KV: { get: async () => JSON.stringify(stale) } });
   const models = await G.getModels(env);
-  assert.equal(models.clay.id, P.APPLE_MODEL_ID);
-  assert.equal(models.memory.id, P.APPLE_MODEL_ID);
-  assert.equal(models.stone.id, P.APPLE_MAX_MODEL_ID);
-  assert.equal(models.rune.id, P.APPLE_MAX_MODEL_ID);
-  assert.equal(models.vision.id, P.VISION_MODEL_ID);
+  // The two run modes: absent from the stale row, so the compiled defaults hold.
+  assert.equal(models.plan.id, P.APPLE_MAX_MODEL_ID, 'Plan must not be routed by a stale KV row');
+  assert.equal(models.agent.id, P.APPLE_MAX_MODEL_ID, 'Agent must not be routed by a stale KV row');
+  // Present in the stale row with a RETIRED model id — the override must be refused, not applied.
+  assert.equal(models.memory.id, P.APPLE_MODEL_ID, 'a stale row must not put housekeeping back on gpt-oss');
+  assert.equal(models.vision.id, P.VISION_MODEL_ID, 'a stale row must not put vision back on llama-3.2-11b');
+  // …while a custom diagnostic key is still the operator's to configure. The refusal is scoped to
+  // the user-facing keys, not to the KV override itself.
   assert.equal(models.probe.id, '@cf/qwen/qwen3-30b-a3b-fp8', 'custom diagnostic keys remain configurable');
   G.resetModelCache();
 });
@@ -404,10 +442,10 @@ test('the response still reports provider "workers-ai" and settles on reported n
   const { env, seen } = fakeEnv();
   const res = await G.chat(env, REQUESTS[0].req, { kind: 'probe' });
   assert.equal(res.provider, 'workers-ai');
-  // The configured model for `stone`, not a literal: which model serves a mode is configuration
+  // The configured model for `agent`, not a literal: which model serves a mode is configuration
   // and is allowed to change. What must hold is that the response reports the model that actually
   // ran, so a usage record can be traced back to it.
-  assert.equal(res.model, G.DEFAULT_MODELS.stone.id);
+  assert.equal(res.model, G.DEFAULT_MODELS.agent.id);
   assert.equal(res.finishReason, 'tool_calls');
   assert.equal(res.text, 'Placing the counter now.');
   assert.ok(!res.text.includes('scratchpad'), 'reasoning_content must never surface');
@@ -419,8 +457,8 @@ test('the response still reports provider "workers-ai" and settles on reported n
   // $0.15/M fresh) and the gpt-oss models publish none, so cached tokens now settle at the full
   // input rate. On an agent workload, where most input is a re-sent prefix, that is the single
   // largest cost consequence of moving off GLM.
-  const row = P.allModels().find((m) => m.id === G.DEFAULT_MODELS.stone.id);
-  assert.ok(row, 'the configured stone model is catalogued');
+  const row = P.allModels().find((m) => m.id === G.DEFAULT_MODELS.agent.id);
+  assert.ok(row, 'the configured agent model is catalogued');
   const computed = P.neuronsForModelTokens(row, 5200, 180, 4800);
   assert.equal(seen.settled[0].actual, Math.ceil(Math.max(42, computed)));
 });
@@ -802,14 +840,14 @@ test('a failing provider records the error kind in health and never retries a bi
 test('AUTO: with only Workers AI credentialed the choice is deterministic and it says why', () => {
   const { env } = fakeEnv();
   const picks = [];
-  for (let i = 0; i < 5; i++) picks.push(P.selectProvider(env, { modelKey: 'stone' }));
+  for (let i = 0; i < 5; i++) picks.push(P.selectProvider(env, { modelKey: 'agent' }));
   for (const p of picks) {
     assert.equal(p.ok, true);
     assert.equal(p.provider, 'workers-ai');
     // The rule, not a frozen id: with one provider credentialed the pick is the cheapest model
     // there that can serve the task. Naming a model here would re-break on every catalogue change.
     assert.equal(p.model.provider, 'workers-ai');
-    assert.ok(p.model.supportsTools, 'stone needs tool calling');
+    assert.ok(p.model.supportsTools, 'the agent lane needs tool calling');
   }
   assert.equal(new Set(picks.map((p) => p.reasoning)).size, 1, 'the same question must give the same answer');
   const r = picks[0].reasoning;
@@ -846,7 +884,7 @@ test('AUTO: a vision task rules DeepSeek out on capability, not on credentials',
 test('AUTO: ranking is by cost and is stable when GLM is out of the picture', () => {
   const { env } = fakeEnv();
   const noBinding = { ...env, AI: undefined, OPENAI_API_KEY: 'k', GOOGLE_API_KEY: 'k', DEEPSEEK_API_KEY: 'k' };
-  const pick = P.selectProvider(noBinding, { modelKey: 'stone' });
+  const pick = P.selectProvider(noBinding, { modelKey: 'agent' });
   assert.equal(pick.ok, true);
   assert.equal(pick.provider, 'openai', 'Luna at $0.20/$1.20 is cheaper than DeepSeek $0.44/$1.32 and Gemini $0.75/$3.75');
   assert.match(pick.reasoning, /cheapest/);

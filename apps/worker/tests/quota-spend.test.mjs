@@ -158,3 +158,18 @@ test('credits are spent only after the allowance is gone', async () => {
   await q.spend(10);
   assert.equal((await q.state()).credits, 90, 'only now do credits pay');
 });
+
+test('an authoritative unmetered account is never refused or depleted by Credit spend', async () => {
+  const q = quota();
+  const enabled = await q.call('/set-unmetered', { enabled: true });
+  assert.equal(enabled.ok, true);
+  assert.equal(enabled.state.unmetered, true);
+
+  const before = await q.state();
+  const spend = await q.spend(before.creditsRemaining + 1_000_000);
+  assert.equal(spend.ok, true, 'unmetered Credit admission must not become a quota terminal');
+  assert.equal(spend.fromAllowance, 0);
+  assert.equal(spend.fromCredits, 0);
+  assert.equal(q.recorded(), 0, 'unmetered work must not consume the renewable ledger');
+  assert.equal((await q.state()).creditsRemaining, before.creditsRemaining, 'the displayed balance must not be depleted');
+});

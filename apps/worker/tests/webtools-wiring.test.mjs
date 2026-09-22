@@ -186,7 +186,7 @@ test('a captured screenshot reaches the BROWSER and never the transcript', async
 /* ------------------------------------------------------------------- modes --- */
 
 test('Plan mode gets the read-only web tools and never the one that writes', () => {
-  const plan = R.toolsForMode('clay', true, T.toolNames());
+  const plan = R.toolsForMode('plan', true, T.toolNames());
   for (const name of W.READ_ONLY_WEB_TOOLS) {
     assert.ok(plan.has(name), `Plan cannot ${name}, which reads and changes nothing`);
   }
@@ -200,11 +200,9 @@ test('an unrecognised mode still gets no more than Plan does, web tools included
   }
 });
 
-test('the builder modes get all ten', () => {
-  for (const mode of ['stone', 'rune']) {
-    const all = R.toolsForMode(mode, true, T.toolNames());
-    for (const name of WEB) assert.ok(all.has(name), `${mode} is missing ${name}`);
-  }
+test('Agent gets all ten', () => {
+  const all = R.toolsForMode('agent', true, T.toolNames());
+  for (const name of WEB) assert.ok(all.has(name), `Agent is missing ${name}`);
 });
 
 /* ------------------------------------------------------------------ phases --- */

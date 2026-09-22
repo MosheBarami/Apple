@@ -3,11 +3,8 @@
  *
  * Defect Dcbbb62. The adaptive policy decides a reasoning tier for every step, and SessionDO
  * rendered it: on screen in the thinking card, and into `run_state` so it survives a refresh.
- * Whether the tier reached the model is a different question. `gatewayModelFor` routes
- * `productModel: 'apple'` — the free lane, and the default — to `clay`, which is a Qwen3 route, and
- * the Workers AI adapter drops `reasoning_effort` for anything that is not a GLM route, because
- * Qwen's binding schema does not document the knob. Sending it anyway would be the wrong fix. So
- * the setting was computed, shown, stored, and then discarded before the request left the building.
+ * Whether the tier reached the model is a different question. The run-mode route and the Workers
+ * AI adapter must agree about whether the selected model accepts `reasoning_effort`.
  *
  * WHAT IS ASSERTED HERE is the adapter's real payload on one side and the predicate the UI path
  * consults on the other — from the same rule, so the two cannot answer differently. A test that
@@ -73,7 +70,7 @@ test('BOTH lanes are now told how hard to think — the defect this file documen
   //   Re-aimed rather than deleted, because the property worth guarding did not disappear, it
   //   inverted: every lane a person can reach must receive the effort the policy chose for it.
   for (const productModel of ['apple', 'apple-max']) {
-    const cfg = G.DEFAULT_MODELS[S.gatewayModelFor('stone', productModel)];
+    const cfg = G.DEFAULT_MODELS[S.gatewayModelFor('agent', productModel)];
     assert.equal(
       'reasoning_effort' in payloadFor(cfg.id),
       true,
@@ -84,7 +81,7 @@ test('BOTH lanes are now told how hard to think — the defect this file documen
 
 test('the predicate the UI path consults agrees with what the adapter actually sends', async () => {
   G.resetModelCache();
-  for (const [mode, productModel] of [['stone', 'apple'], ['clay', 'apple'], ['stone', 'apple-max'], ['rune', 'apple-max'], ['clay', 'apple-max']]) {
+  for (const [mode, productModel] of [['agent', 'apple'], ['plan', 'apple'], ['agent', 'apple-max'], ['agent', 'apple-max'], ['plan', 'apple-max']]) {
     const key = S.gatewayModelFor(mode, productModel);
     const sent = 'reasoning_effort' in payloadFor(G.DEFAULT_MODELS[key].id);
     assert.equal(
@@ -108,12 +105,12 @@ test('a KV override that repoints the free lane at a GLM route changes the answe
     KV: {
       async get() {
         return JSON.stringify({
-          clay: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 2000, ctx: 1000, temperature: 0.3 },
+          plan: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 2000, ctx: 1000, temperature: 0.3 },
         });
       },
     },
   };
-  assert.equal(await G.reasoningEffortApplies(overridden, 'clay'), true);
+  assert.equal(await G.reasoningEffortApplies(overridden, 'plan'), true);
   G.resetModelCache();
 });
 
@@ -208,7 +205,7 @@ async function stepWith({ effortApplies }) {
   const session = new RunnableSessionDO(ctx, env);
   await new Promise((r) => setTimeout(r, 0));
   const agent = {
-    status: 'running', mode: 'stone', productModel: effortApplies ? 'apple-max' : 'apple',
+    status: 'running', mode: 'agent', productModel: effortApplies ? 'apple-max' : 'apple',
     msgId: 'm1', llm: [{ role: 'system', content: 'sys' }, { role: 'user', content: 'restyle the shop panel', pinned: true }],
     step: 0, maxSteps: 16, creditsSpent: 1, trace: [], finalText: '',
     startedAt: Date.now(), lastStepAt: Date.now(), userId: 'u1',

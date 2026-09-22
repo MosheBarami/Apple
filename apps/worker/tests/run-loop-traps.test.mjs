@@ -1,0 +1,577 @@
+/**
+ * THE RUN LOOP CANNOT BE TRAPPED BY ITS OWN REFUSALS, RETRIES OR WAITS.
+ *
+ * Driven through the real SessionDO with only the gateway replaced by a scripted seam, so every
+ * guard below is the production code path: the alarm handler, runStep's narrowing, the duplicate
+ * guard, finishRun's refund. No provider is called and nothing leaves the process.
+ *
+ * What each test pins, as a property rather than a spelling:
+ *
+ *   - PROVIDER WAITS ARE VISIBLE AND BOUNDED. Every wait on a refusing or unreachable provider is
+ *     announced to the client, and a provider that has not answered for PROVIDER_OUTAGE_MAX_MS
+ *     ends the run honestly, with the no-delivery refund. They used to repeat forever in silence.
+ *   - A RETRY THE TOOL SAID WAS SAFE IS NOT REFUSED AS A DUPLICATE — up to a bound — while an
+ *     identical repeat of a failure that is not safe to repeat still is.
+ *   - propose_plan IS VALIDATED AGAINST WHAT THIS RUN WAS OFFERED, and consecutive refusals never
+ *     exceed two whatever the model sends — including byte-identical resubmissions, which the
+ *     duplicate guard used to refuse forever on the plan tool's behalf.
+ *   - THE PROMPT AND THE OFFERED TOOLS AGREE in the request the provider actually receives.
+ *   - A RUN THAT CANNOT BUILD IS NOT TOLD TO BUILD, and a tool call written as text is answered
+ *     rather than silently ending the run as "Done.".
+ *
+ * Run with:  node --test tests/run-loop-traps.test.mjs      (from apps/worker)
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as esbuild from 'esbuild';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const WORKER = join(HERE, '..');
+const TMP = mkdtempSync(join(tmpdir(), 'run-loop-traps-'));
+const OUT = join(TMP, 'session.mjs');
+
+await esbuild.build({
+  entryPoints: [join(WORKER, 'src', 'do', 'session.ts')],
+  bundle: true,
+  format: 'esm',
+  target: 'es2022',
+  outfile: OUT,
+  logLevel: 'silent',
+  alias: { 'cloudflare:workers': join(WORKER, 'tests', 'stubs', 'cloudflare-workers.mjs') },
+  plugins: [{
+    name: 'scripted-gateway',
+    setup(build) {
+      build.onResolve({ filter: /^\.\.\/gateway$/ }, () => ({ path: 'scripted-gateway', namespace: 'scripted' }));
+      build.onLoad({ filter: /.*/, namespace: 'scripted' }, () => ({
+        loader: 'js',
+        contents: `
+          export class BudgetError extends Error {
+            constructor(reason, message) { super(message); this.reason = reason; }
+          }
+          export class RateLimitedError extends Error {
+            constructor(message) { super(message); this.name = 'RateLimitedError'; }
+          }
+          // Sentinels become the REAL failure classes at the provider boundary, so the alarm
+          // handler's own classification is what is exercised.
+          export async function chat(env, req, opts) {
+            const next = await env.__testChat(req, opts);
+            if (next && next.__refuse) throw new RateLimitedError('Apple is handling a burst of requests right now.');
+            if (next && next.__transient) {
+              const e = new Error('workers-ai 503 temporarily unavailable');
+              e.name = 'ProviderError';
+              e.kind = 'transient';
+              throw e;
+            }
+            return next;
+          }
+          export async function reasoningEffortApplies() { return true; }
+        `,
+      }));
+    },
+  }],
+});
+
+const { SessionDO, PROVIDER_OUTAGE_MAX_MS } = await import(pathToFileURL(OUT).href);
+// The registry, for the lists a fixture must DERIVE rather than write by hand: which tools change
+// the project, and which Studio operations each one needs.
+const REGISTRY_OUT = join(TMP, 'tools.mjs');
+await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: REGISTRY_OUT, logLevel: 'silent' });
+const W = await import(pathToFileURL(REGISTRY_OUT).href);
+test.after(() => rmSync(TMP, { recursive: true, force: true }));
+
+// ------------------------------------------------------------------------------------ harness ---
+
+const result = (rows = [], one = null) => ({ toArray: () => rows, one: () => one });
+
+class SqlMemory {
+  constructor() { this.messages = []; this.oplog = []; }
+  exec(statement, ...args) {
+    const q = statement.replace(/\s+/g, ' ').trim();
+    if (/pragma_table_info\('checkpoints'\)/.test(q)) return result([]);
+    if (q.startsWith('insert into messages(')) {
+      const [id, role, mode, content, maybeTrace, maybeCreated] = args;
+      const withTrace = args.length === 6;
+      this.messages.push({ id, role, mode, content, tool_trace: withTrace ? maybeTrace : null, created_at: withTrace ? maybeCreated : maybeTrace });
+      return result();
+    }
+    if (q.startsWith('insert into oplog(')) { this.oplog.push({ op_id: args[0], kind: args[1], ok: args[2], summary: args[3] }); return result(); }
+    if (q.startsWith('select count(*) as c from messages')) return result([], { c: this.messages.length });
+    return result();
+  }
+}
+
+const settleBoot = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+/**
+ * @param responses what the provider does, one entry per model call
+ * @param connected whether a Studio plugin is polling
+ * @param capabilities the plugin's capability report, when it sent one
+ * @param answerOp how the "plugin" answers each Studio op it is handed
+ */
+async function makeSession({ responses = [], connected = false, capabilities = null, answerOp } = {}) {
+  const store = new Map([['bind', { projectId: 'project-1', projectName: 'Trap Place', ownerId: 'owner-1' }]]);
+  if (connected) store.set('pluginLastSeen', Date.now());
+  const sql = new SqlMemory();
+  const sent = [];
+  const spends = [];
+  const refunds = [];
+  const chatCalls = [];
+  const alarms = [];
+  const ops = [];
+  let attachment = { userId: 'owner-1', role: 'owner', connectionId: 'connection-1', activity: 'viewing', lastSeenMs: Date.now() };
+  const ws = {
+    readyState: 1,
+    send: (raw) => sent.push(JSON.parse(raw)),
+    close: () => {},
+    deserializeAttachment: () => attachment,
+    serializeAttachment: (next) => { attachment = next; },
+  };
+  const quotaState = () => {
+    const spent = spends.reduce((n, v) => n + v, 0) - refunds.reduce((n, v) => n + v, 0);
+    return { plan: 'free', creditsRemaining: 100 - spent, creditsDaily: 100, allowanceRemaining: 100 - spent, credits: 0, resetsAtIso: '2026-09-23T00:00:00.000Z' };
+  };
+  const namespace = (name) => ({
+    idFromName: (id) => ({ __name: id, toString: () => `${name}:${id}` }),
+    get: (id) => ({
+      fetch: async (input, init) => {
+        const path = new URL(typeof input === 'string' ? input : input.url).pathname;
+        const body = init?.body ? JSON.parse(init.body) : {};
+        if (name === 'QUOTA_DO' && path === '/state') return Response.json(quotaState());
+        if (name === 'QUOTA_DO' && path === '/spend') {
+          spends.push(Number(body.credits ?? 0));
+          return Response.json({ ok: true, state: quotaState(), fromAllowance: Number(body.credits ?? 0), fromCredits: 0 });
+        }
+        if (name === 'QUOTA_DO' && path === '/refund') {
+          const returned = Number(body.fromAllowance ?? 0) + Number(body.fromCredits ?? 0);
+          refunds.push(returned);
+          return Response.json({ ok: true, returned, state: quotaState() });
+        }
+        return Response.json({ ok: true, id: id.__name, state: { killed: false }, reserved: 1 });
+      },
+    }),
+  });
+  const ctx = {
+    id: { toString: () => 'session-1' },
+    storage: {
+      async get(key) { return store.get(key); },
+      async put(key, value) {
+        if (key && typeof key === 'object') for (const [k, v] of Object.entries(key)) store.set(k, structuredClone(v));
+        else store.set(key, structuredClone(value));
+      },
+      async delete(key) { for (const k of Array.isArray(key) ? key : [key]) store.delete(k); return true; },
+      async deleteAlarm() {},
+      async deleteAll() { store.clear(); },
+      async list() { return new Map(); },
+      async setAlarm(at) { alarms.push(at); },
+      async getAlarm() { return alarms.length ? alarms[alarms.length - 1] : null; },
+      sql,
+    },
+    blockConcurrencyWhile: (fn) => fn(),
+    getWebSockets: () => [ws],
+    acceptWebSocket: () => {},
+  };
+  const queue = [...responses];
+  const env = {
+    QUOTA_DO: namespace('QUOTA_DO'),
+    BUDGET_DO: namespace('BUDGET_DO'),
+    ADMIN_DO: namespace('ADMIN_DO'),
+    CORPUS: {
+      async exec() {},
+      prepare() {
+        return { bind() { return this; }, async first() { return null; }, async all() { return { results: [] }; }, async run() { return { success: true, meta: { changes: 0 } }; } };
+      },
+    },
+    __testChat: async (req, opts) => {
+      chatCalls.push({ req, opts });
+      assert.ok(queue.length > 0, 'the scripted provider was called more times than the fixture supplied');
+      return structuredClone(queue.shift());
+    },
+  };
+  const session = new SessionDO(ctx, env);
+  await settleBoot();
+  if (connected) session.pluginLastSeenMs = Date.now();
+  if (capabilities) session.pluginCapabilityReport = capabilities;
+
+  // The plugin's half: answer every op the session queues, the way a poll would find it.
+  const answered = new Set();
+  const answerer = setInterval(() => {
+    for (const op of session.opQueue ?? []) {
+      if (answered.has(op.id)) continue;
+      const waiter = session.opWaiters?.get(op.id);
+      if (!waiter) continue;
+      answered.add(op.id);
+      ops.push(op.studioOp);
+      const reply = answerOp ? answerOp(op.studioOp) : { ok: false, error: 'this test does not answer Studio ops', failure: 'refused' };
+      waiter({ id: op.id, ...reply });
+    }
+  }, 1);
+  const stop = () => clearInterval(answerer);
+  return { session, store, sql, sent, spends, refunds, chatCalls, alarms, ops, stop };
+}
+
+const answer = ({ finishReason = 'stop', text = '', toolCalls = [], neurons = 40 } = {}) => ({
+  text, toolCalls,
+  usage: { inputTokens: 900, outputTokens: Math.max(1, Math.ceil(text.length / 4)) },
+  neurons, provider: 'workers-ai', model: '@cf/zai-org/glm-5.3-flash', finishReason,
+});
+const calls = (...list) => answer({
+  finishReason: 'tool_calls',
+  toolCalls: list.map(([name, args], i) => ({ id: `c${Math.random().toString(36).slice(2)}-${i}`, name, arguments: JSON.stringify(args) })),
+});
+const REFUSED = { __refuse: true };
+const TRANSIENT = { __transient: true };
+
+async function start(h, { text = 'build me a spawn platform', mode = 'agent', autonomous } = {}) {
+  const res = await h.session.fetch(new Request('https://do/agent-run', {
+    method: 'POST', body: JSON.stringify({ text, mode, productModel: 'apple', ...(autonomous ? { autonomous: true } : {}) }),
+  }));
+  assert.equal(res.status, 200, await res.text());
+}
+
+const lastEnd = (h) => [...h.sent].reverse().find((m) => m.type === 'msg_end');
+const assistantRow = (h) => [...h.sql.messages].reverse().find((m) => m.role === 'assistant');
+const notices = (h) => h.sent.filter((m) => m.type === 'notice' && m.code === 'provider_wait');
+
+/** Deliver the alarm the run scheduled for its retry, as if its moment had come. */
+async function fireRetry(h) {
+  const agent = h.store.get('agent');
+  assert.equal(typeof agent.resumeAt, 'number', 'a wait must name the moment the step is retried');
+  h.store.set('agent', structuredClone({ ...agent, resumeAt: Date.now() - 1 }));
+  await h.session.alarm();
+}
+
+/** The provider has been unavailable since `ms` ago: the recorded start of the outage is moved back. */
+function outageFor(h, ms) {
+  const agent = h.store.get('agent');
+  assert.equal(typeof agent.providerWaitSince, 'number', 'the run never recorded when the outage began');
+  h.store.set('agent', structuredClone({ ...agent, providerWaitSince: Date.now() - ms, resumeAt: Date.now() - 1 }));
+}
+
+// ============================================================ 1. provider waits: visible, bounded ===
+
+test('EVERY PROVIDER WAIT IS ANNOUNCED TO THE CLIENT, and the run stays alive while it lasts', async () => {
+  const h = await makeSession({ responses: [REFUSED, REFUSED, TRANSIENT] });
+  try {
+    await start(h);
+    await h.session.alarm();
+    assert.equal(h.store.get('agent').status, 'running', 'one refusal must not end the run');
+    assert.equal(notices(h).length, 1, 'the wait sent nothing to the client — a waiting run looks exactly like a dead one');
+    assert.match(notices(h)[0].message, /Waiting on the model provider/);
+    assert.match(notices(h)[0].message, /retrying in \d+ s/);
+    const statusAfter = h.sent.slice(h.sent.indexOf(notices(h)[0]) - 1).find((m) => m.type === 'agent_status');
+    assert.ok(statusAfter, 'the Thinking card must be told the run is still going');
+
+    await fireRetry(h);
+    await fireRetry(h);
+    assert.equal(notices(h).length, 3, 'every wait — rate limit AND transport failure — must be announced');
+    assert.match(notices(h)[2].message, /did not answer/, 'a transport failure is described as one');
+    assert.equal(lastEnd(h), undefined, 'a short outage must not end the run');
+  } finally { h.stop(); }
+});
+
+test('A PROVIDER THAT REFUSES FOR FIVE MINUTES ENDS THE RUN HONESTLY, AND THE CREDITS COME BACK', async () => {
+  assert.equal(PROVIDER_OUTAGE_MAX_MS, 5 * 60_000, 'the bound is the product decision recorded on the constant');
+  const h = await makeSession({ responses: [REFUSED, REFUSED, REFUSED] });
+  try {
+    await start(h);
+    await h.session.alarm();
+    assert.equal(h.store.get('agent').status, 'running');
+
+    // Just under the bound: still waiting.
+    outageFor(h, PROVIDER_OUTAGE_MAX_MS - 5_000);
+    await h.session.alarm();
+    assert.equal(h.store.get('agent').status, 'running', 'the run ended before the bound');
+    assert.equal(lastEnd(h), undefined);
+
+    outageFor(h, PROVIDER_OUTAGE_MAX_MS + 1_000);
+    await h.session.alarm();
+    const end = lastEnd(h);
+    assert.ok(end, 'a provider unavailable past the bound still has the run waiting forever');
+    assert.equal(end.stopReason, 'error');
+    assert.equal(end.error, 'busy', 'the ending must carry a code from the shared vocabulary');
+    assert.match(assistantRow(h).content, /model provider has not answered for \d+ minutes?/,
+      'the reply must say what actually happened');
+    // Nothing was built, so the admission Credit is handed back under the ordinary refund rules.
+    assert.deepEqual(h.refunds, [1], 'a run that delivered nothing was not refunded');
+    assert.equal(end.creditsSpent, 0);
+    assert.match(assistantRow(h).content, /Credit/, 'and the reply says so');
+  } finally { h.stop(); }
+});
+
+test('a transport outage past the bound ends with the dropped-step code', async () => {
+  const h = await makeSession({ responses: [TRANSIENT, TRANSIENT] });
+  try {
+    await start(h);
+    await h.session.alarm();
+    outageFor(h, PROVIDER_OUTAGE_MAX_MS + 1_000);
+    await h.session.alarm();
+    assert.equal(lastEnd(h)?.stopReason, 'error');
+    assert.equal(lastEnd(h).error, 'dropped_step');
+    assert.match(assistantRow(h).content, /lost before a response came back/);
+  } finally { h.stop(); }
+});
+
+test('the outage clock bounds CONTINUOUS unavailability: an answer resets it', async () => {
+  // Otherwise a long run with a refusal an hour ago and one now would be ended as a five-minute outage.
+  const h = await makeSession({
+    responses: [REFUSED, calls(['get_ui_construction', { id: 'screen-shop' }]), REFUSED],
+  });
+  try {
+    await start(h);
+    await h.session.alarm();
+    outageFor(h, PROVIDER_OUTAGE_MAX_MS - 10_000); // nearly five minutes of refusals...
+    await h.session.alarm(); // ...then the provider answers
+    assert.equal(h.store.get('agent').providerWaitSince, undefined, 'an answer did not end the outage');
+    await h.session.alarm(); // and refuses again
+    const agent = h.store.get('agent');
+    assert.equal(agent.status, 'running', 'a fresh refusal after an answer was treated as the old outage');
+    assert.ok(Date.now() - agent.providerWaitSince < 5_000, 'the new outage must be timed from its own start');
+  } finally { h.stop(); }
+});
+
+// ================================================== 2. the duplicate guard and retryable failures ===
+
+test('AN IDENTICAL RETRY THE TOOL SAID WAS SAFE IS RUN — TWICE — AND ONLY THEN REFUSED', async () => {
+  const tree = ['get_project_tree', {}];
+  const h = await makeSession({
+    connected: true,
+    // The plugin never got the op: `transport`, which op-failure.ts classifies as safe to repeat.
+    answerOp: (op) => (op.op === 'get_tree' ? { ok: false, error: 'the connection dropped', failure: 'transport' } : { ok: false, error: 'not in this test', failure: 'refused' }),
+    responses: [calls(tree), calls(tree), calls(tree), calls(tree)],
+  });
+  try {
+    await start(h);
+    for (let i = 0; i < 4; i++) await h.session.alarm();
+    const treeOps = h.ops.filter((o) => o.op === 'get_tree').length;
+    assert.equal(treeOps, 3, `the retry the tool invited was ${treeOps < 3 ? 'refused as a duplicate' : 'allowed without bound'} (${treeOps} ops)`);
+    const ends = h.sent.filter((m) => m.type === 'tool_end' && m.summary?.includes('get_project_tree'));
+    assert.match(ends.at(-1).summary, /already done/, 'the fourth identical call must be refused');
+    const last = h.store.get('agent').llm.filter((m) => m.role === 'tool').at(-1).content;
+    assert.match(last, /already retried this exact call/, 'and it must say it was retried, not that it succeeded');
+  } finally { h.stop(); }
+});
+
+test('CONTROL: an identical repeat of a failure that is NOT safe to repeat is still refused at once', async () => {
+  const tree = ['get_project_tree', {}];
+  const h = await makeSession({
+    connected: true,
+    answerOp: () => ({ ok: false, error: 'Studio declined', failure: 'refused' }),
+    responses: [calls(tree), calls(tree)],
+  });
+  try {
+    await start(h);
+    await h.session.alarm();
+    await h.session.alarm();
+    assert.equal(h.ops.filter((o) => o.op === 'get_tree').length, 1, 'a refused op was repeated verbatim');
+  } finally { h.stop(); }
+});
+
+// ================================================ 3. propose_plan inside the real run loop ===
+
+const NO_RENDER = {
+  schema: 'golem.studio-ops.v1',
+  operations: [
+    { op: 'render_view', status: 'unsupported', reason: 'this plugin cannot render' },
+    { op: 'run_code', status: 'unsupported', reason: 'no constrained plugin evaluator' },
+  ],
+};
+
+test('THE RUN LOOP HANDS propose_plan ITS OFFERED SET: no renderer means no inspect_visually', async () => {
+  const h = await makeSession({
+    connected: true,
+    capabilities: NO_RENDER,
+    responses: [calls(['propose_plan', { steps: [{ title: 'A platform', tool: 'create_instances' }] }])],
+  });
+  try {
+    await start(h);
+    await h.session.alarm();
+    const planEnd = h.sent.find((m) => m.type === 'tool_end' && m.detail?.blocks?.[0]?.type === 'build_plan');
+    assert.ok(planEnd, 'no plan was accepted');
+    const tools = planEnd.detail.blocks[0].steps.map((s) => s.tool);
+    assert.ok(!tools.includes('inspect_visually'), 'the product appended a check the connected Studio cannot perform');
+    assert.equal(tools.at(-1), 'audit_build', 'the best OFFERED check must be appended instead');
+  } finally { h.stop(); }
+});
+
+test('CONSECUTIVE propose_plan REFUSALS NEVER EXCEED TWO IN A REAL RUN — identical resubmissions included', async () => {
+  const unavailable = { steps: [{ title: 'Test it', tool: 'run_spec' }, { title: 'Build it', tool: 'create_instances' }] };
+  const tooLong = { steps: Array.from({ length: 15 }, (_, i) => ({ title: `Part ${i}`, tool: 'create_instances' })) };
+  const h = await makeSession({
+    connected: true,
+    capabilities: NO_RENDER,
+    // The production shape: the SAME plan sent again and again, then a different defect.
+    responses: [
+      calls(['propose_plan', unavailable]),
+      calls(['propose_plan', unavailable]),
+      calls(['propose_plan', unavailable]),
+      calls(['propose_plan', tooLong]),
+      calls(['propose_plan', {}]),
+      calls(['propose_plan', unavailable], ['propose_plan', tooLong]),
+    ],
+  });
+  try {
+    await start(h);
+    for (let i = 0; i < 6; i++) await h.session.alarm();
+    const planEnds = h.sent.filter((m) => m.type === 'tool_end' && h.sent.some((s) => s.type === 'tool_start' && s.toolId === m.toolId && s.tool === 'propose_plan'));
+    assert.ok(planEnds.length >= 7, `only ${planEnds.length} propose_plan results were observed`);
+    let streak = 0;
+    let worst = 0;
+    for (const e of planEnds) {
+      streak = e.ok ? 0 : streak + 1;
+      worst = Math.max(worst, streak);
+    }
+    assert.ok(worst <= 2, `${worst} consecutive propose_plan refusals — the run is being refused instead of worked`);
+    const agent = h.store.get('agent');
+    assert.ok(agent.plan, 'no plan was ever recorded, so the refusals did not end in a plan');
+    for (const s of agent.plan.steps) {
+      assert.notEqual(s.tool, 'run_spec', 'the recorded plan still promises a tool the run cannot call');
+    }
+  } finally { h.stop(); }
+});
+
+// ========================================================= 4. prompt and offered tools agree ===
+
+/** The snake_case words in the part of the prompt that tells the model which tools to CALL. */
+function modeBlockTools(system) {
+  const from = system.indexOf('Mode: ');
+  assert.ok(from >= 0, 'the prompt has no mode block');
+  const ends = ['\n\nAutonomous is ON', '<<<ART_DIRECTION>>>', '<<<UI_GRAMMAR>>>', '\n\nProject: "']
+    .map((m) => system.indexOf(m, from)).filter((i) => i > from);
+  const block = system.slice(from, Math.min(...ends));
+  return [...new Set([...block.matchAll(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g)].map((m) => m[0]))];
+}
+
+test('OFFLINE AGENT: the prompt the provider receives does not order a call to a tool it was not sent', async () => {
+  const h = await makeSession({ responses: [answer({ text: 'Here is how you would do it.' })] });
+  try {
+    await start(h);
+    await h.session.alarm();
+    const req = h.chatCalls[0].req;
+    const sentTools = new Set(req.tools.map((t) => t.name));
+    const system = req.messages[0].content;
+    assert.ok(sentTools.size > 0 && !sentTools.has('propose_plan'), 'control: offline Agent is not offered propose_plan');
+    assert.doesNotMatch(system, /FIRST call is propose_plan/, 'offline Agent was told to call a tool it was not given');
+    assert.doesNotMatch(system, /\bpropose_plan\b/, 'and the prompt should not name it at all');
+    for (const tool of modeBlockTools(system)) {
+      assert.ok(sentTools.has(tool), `the mode rules name ${tool}, which this request does not offer`);
+    }
+  } finally { h.stop(); }
+});
+
+test('PAIRED AGENT WITH A NARROWED PLUGIN: the verifiers the prompt names are the ones actually sent', async () => {
+  const h = await makeSession({ connected: true, capabilities: NO_RENDER, responses: [answer({ text: 'ok' })] });
+  try {
+    await start(h);
+    await h.session.alarm();
+    const req = h.chatCalls[0].req;
+    const sentTools = new Set(req.tools.map((t) => t.name));
+    const system = req.messages[0].content;
+    assert.match(system, /FIRST call is propose_plan/, 'control: a paired Agent run is still told to plan');
+    const named = modeBlockTools(system);
+    assert.ok(named.includes('audit_build'), 'the offered verifier is not named, so the check below would be vacuous');
+    for (const tool of named) {
+      assert.ok(sentTools.has(tool), `the mode rules name ${tool}, which the connected Studio withholds`);
+    }
+  } finally { h.stop(); }
+});
+
+// ==================================================== 5. a run that cannot build, and text calls ===
+
+const RESEARCH_NUDGE = /spent several steps researching without changing the project/;
+
+test('A RUN THAT CANNOT BUILD IS NOT TOLD TO BUILD', async () => {
+  const offline = await makeSession({
+    responses: [
+      calls(['get_ui_construction', { id: 'screen-shop' }]),
+      calls(['get_ui_construction', { id: 'screen-inventory' }]),
+      calls(['get_verified_module', { id: 'cooldown-clock' }]),
+    ],
+  });
+  const paired = await makeSession({
+    connected: true,
+    responses: [
+      calls(['get_ui_construction', { id: 'screen-shop' }]),
+      calls(['get_ui_construction', { id: 'screen-inventory' }]),
+    ],
+  });
+  try {
+    await start(offline);
+    for (let i = 0; i < 3; i++) await offline.session.alarm();
+    assert.equal(offline.store.get('agent').llm.some((m) => m.role === 'user' && RESEARCH_NUDGE.test(m.content)), false,
+      'an Agent run with Studio disconnected was told to create instances it has no tool for');
+
+    // CONTROL: the same research on a run that CAN build is still steered, so the check above can see the nudge.
+    await start(paired);
+    for (let i = 0; i < 2; i++) await paired.session.alarm();
+    assert.equal(paired.store.get('agent').llm.some((m) => m.role === 'user' && RESEARCH_NUDGE.test(m.content)), true,
+      'the control failed: a run that can build is no longer steered, so the assertion above proves nothing');
+  } finally { offline.stop(); paired.stop(); }
+});
+
+const OWES_WORK_NUDGE = /You have not changed the project yet/;
+
+test('A PAIRED RUN OFFERED NOTHING THAT CHANGES THE PROJECT IS NOT NUDGED TO CHANGE IT — it ends, and says why', async () => {
+  // The "you have not changed the project" nudge repeats on every prose reply (384a4be: it is
+  // bounded only by the step ceiling, Credits and Stop). That is a decision about runs that CAN
+  // build. A paired Agent run whose permissions or plugin withhold every tool that changes the
+  // project can never satisfy it, so it was a guaranteed loop of paid steps with no possible
+  // progress. The plugin here reports every operation any project-changing tool needs unsupported.
+  const mutating = W.projectMutatingToolNames();
+  const ops = [...new Set(mutating.flatMap((name) => W.TOOLS[name].studioOps ?? []))];
+  assert.ok(mutating.length > 10 && ops.length > 5, `the derived lists are too small to mean anything (${mutating.length} tools, ${ops.length} ops)`);
+  const readOnly = {
+    schema: 'golem.studio-ops.v1',
+    operations: ops.map((op) => ({ op, status: 'unsupported', reason: `${op} is not available in this plugin` })),
+  };
+  const h = await makeSession({
+    connected: true,
+    capabilities: readOnly,
+    responses: [answer({ text: 'I cannot place parts from here.' }), answer({ text: 'Still cannot.' })],
+  });
+  const paired = await makeSession({ connected: true, responses: [answer({ text: 'I will build the platform now.' })] });
+  try {
+    await start(h);
+    await h.session.alarm();
+    const offered = new Set(h.chatCalls[0].req.tools.map((t) => t.name));
+    assert.ok(offered.size > 0 && mutating.every((name) => !offered.has(name)),
+      'control: the fixture must leave this run with no tool that changes the project');
+    assert.equal(h.store.get('agent').llm.some((m) => m.role === 'user' && OWES_WORK_NUDGE.test(m.content)), false,
+      'a run with no tool that changes the project was told to change it');
+    assert.ok(lastEnd(h), 'the run kept going after a reply it can never improve on');
+    assert.match(assistantRow(h).content, /Nothing in the project was changed/,
+      'the reply must say nothing changed, whatever the model wrote');
+    assert.match(h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join(''), /Nothing in the project was changed/,
+      'and the person watching must be told, not only the stored row');
+
+    // CONTROL: the same prose on a run that CAN build is still steered back to the work.
+    await start(paired);
+    await paired.session.alarm();
+    assert.equal(paired.store.get('agent').llm.some((m) => m.role === 'user' && OWES_WORK_NUDGE.test(m.content)), true,
+      'the control failed: a run that can build is no longer nudged, so the assertion above proves nothing');
+    assert.equal(lastEnd(paired), undefined, 'control: a run that can build does not end on prose');
+  } finally { h.stop(); paired.stop(); }
+});
+
+test('A TOOL CALL WRITTEN AS TEXT IS ANSWERED, NOT TURNED INTO "Done." — and the answer is bounded', async () => {
+  const asText = answer({ text: JSON.stringify({ name: 'create_instances', arguments: { items: [{ class: 'Part', parent: 'game.Workspace' }] } }) });
+  const h = await makeSession({ responses: [asText, asText, asText] });
+  try {
+    await start(h);
+    await h.session.alarm();
+    assert.equal(lastEnd(h), undefined, 'the run ended as soon as the model wrote its call as text; the steer never got a turn');
+    const steer = h.store.get('agent').llm.at(-1);
+    assert.equal(steer.role, 'user');
+    assert.match(steer.content, /not offered in this run/, 'an offline run was told to call a tool it does not have');
+    assert.doesNotMatch(h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join(''), /create_instances/,
+      'the payload was shown to the user');
+
+    await h.session.alarm();
+    assert.equal(lastEnd(h), undefined, 'the second steer must also get its turn');
+    await h.session.alarm();
+    assert.ok(lastEnd(h), 'the steer is bounded: the third text payload must reach the ordinary ending');
+  } finally { h.stop(); }
+});

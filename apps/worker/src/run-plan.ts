@@ -23,7 +23,7 @@
 export interface RunPlanStep {
   title: string;
   detail?: string;
-  /** The exact registered tool name. `propose_plan` validated it against the real registry. */
+  /** The exact registered tool name. `propose_plan` validated it against the tools this run was offered. */
   tool: string;
   status: 'pending' | 'done';
 }
@@ -39,6 +39,8 @@ export interface RunPlan {
 export interface PlanTraceEntry {
   tool: string;
   ok: boolean;
+  /** The row's panel, when the trace kept it. Read only to find which propose_plan drew the plan. */
+  detail?: unknown;
 }
 
 /** The tool whose call announces a plan; it can never be one of the plan's own steps. */
@@ -92,7 +94,14 @@ export function planFromDetail(toolId: string, detail: unknown): RunPlan | undef
  */
 export function settlePlan(plan: RunPlan, trace: readonly PlanTraceEntry[]): RunPlan {
   const steps = plan.steps.map((s) => ({ ...s }));
-  const announced = trace.findIndex((e) => e.tool === PLANNER);
+  // The plan was announced by the propose_plan that DREW it — the one the run loop keeps.
+  // Anchoring on the first propose_plan of any outcome let a refused attempt start the clock early,
+  // so a look-around made between the refusal and the real plan ticked a step it never promised.
+  // "The first that succeeded" is not that either: propose_plan also answers ok WITHOUT drawing a
+  // checklist (a plan it could not repair, or a second plan), so the anchor is the first ok call
+  // whose own panel is a plan. A trace that kept no panels falls back to the first ok call.
+  const drew = trace.findIndex((e) => e.tool === PLANNER && e.ok && planFromDetail('', e.detail) !== undefined);
+  const announced = drew !== -1 ? drew : trace.findIndex((e) => e.tool === PLANNER && e.ok);
   const from = announced === -1 ? 0 : announced + 1;
   for (let i = from; i < trace.length; i++) {
     const entry = trace[i];

@@ -142,10 +142,10 @@ test('get_genre_kit exposes task ids and low-poly quality limits before runTool 
 
 test('Plan and every offline mode retain both read-only skill tools', () => {
   const allNames = Object.keys(T.TOOLS);
-  const plan = R.toolsForMode('clay', true, allNames);
+  const plan = R.toolsForMode('plan', true, allNames);
   for (const name of TOOL_NAMES) assert.ok(plan.has(name), `Plan cannot use ${name}`);
 
-  for (const mode of ['clay', 'stone', 'rune']) {
+  for (const mode of ['plan', 'agent', 'agent']) {
     const offline = R.toolsForMode(mode, false, allNames);
     for (const name of TOOL_NAMES) {
       assert.ok(offline.has(name), `${mode} loses ${name} without Studio`);

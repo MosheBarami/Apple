@@ -2014,8 +2014,8 @@ export function styleToText(score: StyleScore): string {
 // TWO OUTCOMES, NOT ONE. The owner said "rejected OR transformed". A grey fence in a saturated
 // meadow is not a bad asset, it is an untinted one, and throwing it away costs a search. So the
 // verdict carries a TRANSFORM when a single change would fix it — retint, rescale, drop texture —
-// and refuses only when no single change would. `buildTransformLuau()` turns that suggestion into
-// the code that applies it, so a transform is a thing that happens rather than a thing suggested.
+// and refuses only when no single change would. The broker applies that suggestion through bounded
+// typed Studio ops, so a transform is a thing that happens rather than a thing suggested.
 //
 // AND IT CULLS. "Do not interpret 26 assets acquired as 26 assets must remain. A smaller coherent
 // palette is better than a larger incoherent one." `cullPalette()` is that sentence as a function.
@@ -2694,49 +2694,69 @@ export function cullPalette(
   return { keep, transform, drop, context };
 }
 
-/**
- * Emit the Luau that APPLIES a transform. Same fail-closed discipline as `buildNormaliseLuau`: an
- * unsafe path or an out-of-range number yields null, never best-effort code.
- */
-export function buildTransformLuau(path: string, transform: AssetTransform): string | null {
-  if (!isSafeLuauPath(path)) return null;
-  const head = `
-local ok, target = pcall(function() return ${path} end)
-if not ok or typeof(target) ~= "Instance" then return '{"error":"target not found"}' end
-local touched = 0
-`;
+/** The bounded typed mutations used to apply a coherence transform. */
+interface TransformTargets {
+  primary: string;
+  parts: string[];
+  meshParts: string[];
+  textures: string[];
+}
+
+/** A set_props reply can be `ok: true` and still report property-level failures. */
+function propIssues(raw: unknown): string[] {
+  const issues = obj(raw).propIssues;
+  return Array.isArray(issues) ? issues.filter((v): v is string => typeof v === 'string') : [];
+}
+
+async function applyCoherenceTransform(
+  bridge: StudioBridge,
+  targets: TransformTargets,
+  transform: AssetTransform,
+): Promise<{ ok: boolean; error?: string }> {
+  if (transform.kind === 'rescale') {
+    const scale = transform.scale;
+    if (typeof scale !== 'number' || !Number.isFinite(scale) || scale < 0.1 || scale > 10) {
+      return { ok: false, error: 'the rescale factor is outside the accepted 0.1x-10x range' };
+    }
+    const ran = await bridge.execStudioOp({ op: 'transform_instances', paths: [targets.primary], scale }, 20_000);
+    return ran.ok ? { ok: true } : { ok: false, error: ran.error ?? 'transform_instances failed' };
+  }
+
   if (transform.kind === 'retint') {
     const c = transform.colour;
-    if (!c || !c.every((n) => Number.isFinite(n) && n >= 0 && n <= 1)) return null;
-    return `${head}
-local tint = Color3.new(${c[0].toFixed(4)}, ${c[1].toFixed(4)}, ${c[2].toFixed(4)})
-local function paint(p)
-  if p:IsA("BasePart") then p.Color = tint touched += 1 end
-end
-paint(target)
-for _, d in ipairs(target:GetDescendants()) do paint(d) end
-return string.format('{"kind":"retint","touched":%d}', touched)
-`;
+    if (!c || !c.every((n) => Number.isFinite(n) && n >= 0 && n <= 1)) {
+      return { ok: false, error: 'the retint colour is not a finite Color3 triple' };
+    }
+    for (const path of targets.parts) {
+      const ran = await bridge.execStudioOp({
+        op: 'set_props',
+        path,
+        props: { Color: { t: 'Color3', v: [c[0], c[1], c[2]] } },
+      }, 20_000);
+      const issues = ran.ok ? propIssues(ran.data) : [];
+      if (!ran.ok || issues.length) {
+        return { ok: false, error: ran.error ?? issues[0] ?? `set_props failed for ${path}` };
+      }
+    }
+    return { ok: true };
   }
-  if (transform.kind === 'drop_texture') {
-    return `${head}
-local function strip(p)
-  if p:IsA("MeshPart") then pcall(function() p.TextureID = "" end) touched += 1
-  elseif p:IsA("Decal") or p:IsA("Texture") then p:Destroy() touched += 1 end
-end
-strip(target)
-for _, d in ipairs(target:GetDescendants()) do strip(d) end
-return string.format('{"kind":"drop_texture","touched":%d}', touched)
-`;
+
+  for (const path of targets.meshParts) {
+    const ran = await bridge.execStudioOp({
+      op: 'set_props',
+      path,
+      props: { TextureID: { t: 'Content', v: '' } },
+    }, 20_000);
+    const issues = ran.ok ? propIssues(ran.data) : [];
+    if (!ran.ok || issues.length) {
+      return { ok: false, error: ran.error ?? issues[0] ?? `set_props failed for ${path}` };
+    }
   }
-  const s = transform.scale;
-  if (typeof s !== 'number' || !Number.isFinite(s) || s < 0.1 || s > 10) return null;
-  return `${head}
-if target:IsA("Model") then
-  if pcall(function() target:ScaleTo(${s.toFixed(4)}) end) then touched = 1 end
-end
-return string.format('{"kind":"rescale","touched":%d}', touched)
-`;
+  if (targets.textures.length) {
+    const deleted = await bridge.execStudioOp({ op: 'delete_instances', paths: targets.textures }, 20_000);
+    if (!deleted.ok) return { ok: false, error: deleted.error ?? 'delete_instances failed while removing textures' };
+  }
+  return { ok: true };
 }
 
 /** One-screen rendering of a coherence verdict, for a log line or a tool result. */
@@ -2947,21 +2967,6 @@ export function describeAssetRequest(req: AssetRequest): AssetDescription {
 
 // --- normalisation -----------------------------------------------------------------------------
 
-/**
- * Paths safe to interpolate into Luau source.
- *
- * The path comes from the plugin's own `Paths.fullPath()`, not from a model — but it travels
- * through a model's transcript on the way here, and this string is pasted into code that runs in
- * the user's Studio. So it is validated against a shape that cannot escape an expression: bare
- * identifiers, or bracketed names with no quote, backslash, bracket or newline in them. Anything
- * else fails closed and normalisation is reported as not applied.
- */
-const SAFE_LUAU_PATH = /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*|\["[A-Za-z0-9 _'()-]+"\])*$/;
-
-export function isSafeLuauPath(path: string): boolean {
-  return path.length > 0 && path.length <= 400 && SAFE_LUAU_PATH.test(path);
-}
-
 export interface NormalisePlan {
   path: string;
   /** Uniform scale to apply. 1 when the asset is already the right size. */
@@ -2970,65 +2975,6 @@ export interface NormalisePlan {
   position: readonly [number, number, number] | null;
   /** Why the scale is what it is — the scale-envelope reasons, so the number is never bare. */
   reasons: string[];
-}
-
-/**
- * Emit the Luau that normalises one inserted asset: anchor every part, apply a uniform scale, pivot
- * it into place, and report the resulting bounding box. One `run_code` round trip rather than a
- * `set_props` per part, matching how `LAYOUT_LUAU` and `CENSUS_LUAU` already talk to the plugin.
- *
- * Returns null when the path is not safe to interpolate — fail closed, never "best effort".
- */
-export function buildNormaliseLuau(plan: NormalisePlan): string | null {
-  if (!isSafeLuauPath(plan.path)) return null;
-  if (!Number.isFinite(plan.scale) || plan.scale <= 0 || plan.scale > 100) return null;
-  const pos = plan.position;
-  if (pos && !pos.every((n) => Number.isFinite(n) && Math.abs(n) < 1e6)) return null;
-  const scale = plan.scale.toFixed(4);
-  const pivot = pos
-    ? `if target:IsA("PVInstance") then pcall(function() target:PivotTo(CFrame.new(${pos[0].toFixed(3)}, ${pos[1].toFixed(3)}, ${pos[2].toFixed(3)})) end) end`
-    : '';
-  return `
-local ok, target = pcall(function() return ${plan.path} end)
-if not ok or typeof(target) ~= "Instance" then return '{"error":"target not found"}' end
-local anchored = 0
--- Colour is sampled here, in the pass that is already walking every part, because the coherence
--- gate downstream is worthless without it: unmeasured colour scores 0.5 and can never refuse the
--- grey unstyled prop it exists to catch. Weighted by volume so a big painted body outranks a bolt.
-local swatch = {}
-local swatchOrder = {}
-local function fix(p)
-  if p:IsA("BasePart") then
-    p.Anchored = true
-    anchored += 1
-    local c = p.Color
-    local key = string.format("%.3f,%.3f,%.3f", c.R, c.G, c.B)
-    if swatch[key] == nil then swatch[key] = 0 table.insert(swatchOrder, key) end
-    swatch[key] = swatch[key] + math.max(p.Size.X * p.Size.Y * p.Size.Z, 0.001)
-  end
-end
-fix(target)
-for _, d in ipairs(target:GetDescendants()) do fix(d) end
-table.sort(swatchOrder, function(a, b) return swatch[a] > swatch[b] end)
-local swatches = {}
-for i = 1, math.min(3, #swatchOrder) do table.insert(swatches, "[" .. swatchOrder[i] .. "]") end
-local colours = "[" .. table.concat(swatches, ",") .. "]"
-local scaled = 0
-if target:IsA("Model") and ${scale} ~= 1 then
-  if pcall(function() target:ScaleTo(${scale}) end) then scaled = ${scale} end
-end
-${pivot}
-local cf, size
-if target:IsA("Model") then
-  cf, size = target:GetBoundingBox()
-elseif target:IsA("BasePart") then
-  cf, size = target.CFrame, target.Size
-else
-  return '{"error":"target is not spatial"}'
-end
-return string.format('{"anchored":%d,"scaled":%.4f,"size":[%.3f,%.3f,%.3f],"pos":[%.3f,%.3f,%.3f],"colours":%s}',
-  anchored, scaled, size.X, size.Y, size.Z, cf.Position.X, cf.Position.Y, cf.Position.Z, colours)
-`;
 }
 
 export interface NormaliseOutcome {
@@ -3043,38 +2989,47 @@ export interface NormaliseOutcome {
   note: string;
 }
 
-/** Read the normalisation report back out of whatever wrapper `run_code` returned it in. */
-export function parseNormaliseResult(raw: unknown): { anchored: number; scaled: number; size: [number, number, number] | null; position: [number, number, number] | null; colours: RGB[] } | null {
-  let value: unknown = raw;
-  for (let i = 0; i < 6; i++) {
-    if (!value || typeof value !== 'object') break;
-    const o = value as Record<string, unknown>;
-    if ('result' in o) { value = o.result; continue; }
-    if ('t' in o && 'v' in o) { value = o.v; continue; }
-    if ('data' in o) { value = o.data; continue; }
-    break;
-  }
-  if (typeof value === 'string') {
-    try { value = JSON.parse(value); } catch { return null; }
-  }
-  const o = obj(value);
-  if (typeof o.error === 'string') return null;
-  const triple = (v: unknown): [number, number, number] | null =>
-    Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === 'number') ? [v[0] as number, v[1] as number, v[2] as number] : null;
-  const anchored = num(o.anchored);
-  if (anchored === null) return null;
-  const colours = (Array.isArray(o.colours) ? o.colours : []).map(triple).filter((c): c is [number, number, number] => c !== null);
-  return { anchored, scaled: num(o.scaled) ?? 0, size: triple(o.size), position: triple(o.pos), colours };
-}
-
 // --- hierarchy reading -------------------------------------------------------------------------
 
 interface TreeSummary {
   classes: string[];
   /** Bounding box across every BasePart the tree reported, or null when none carried geometry. */
   bounds: [number, number, number] | null;
+  /** Centre of that same box. Needed to turn an absolute placement request into a typed move delta. */
+  center: [number, number, number] | null;
+  /** Every spatial node and the path by which a typed op can address it. */
+  spatial: { path: string | null; className: string; size: [number, number, number]; position: [number, number, number] }[];
+  /** Decal/Texture descendants removable by the typed delete op. */
+  textures: (string | null)[];
   nodeCount: number;
   truncated: boolean;
+}
+
+const MAX_TYPED_ASSET_PARTS = 200;
+
+function appendStudioPath(parent: string, name: string): string | null {
+  if (!name || /["\\\r\n]/.test(name)) return null;
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? `${parent}.${name}` : `${parent}["${name}"]`;
+}
+
+function taggedTriple(raw: unknown, expected: string): [number, number, number] | null {
+  const value = obj(raw);
+  const v = value.t === expected ? value.v : raw;
+  return Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === 'number' && Number.isFinite(n))
+    ? [v[0] as number, v[1] as number, v[2] as number]
+    : null;
+}
+
+function dominantColours(samples: readonly { colour: RGB; size: readonly [number, number, number] }[]): RGB[] {
+  const weighted = new Map<string, { colour: RGB; weight: number }>();
+  for (const sample of samples) {
+    const key = sample.colour.map((n) => n.toFixed(3)).join(',');
+    const weight = Math.max(sample.size[0] * sample.size[1] * sample.size[2], 0.001);
+    const row = weighted.get(key);
+    if (row) row.weight += weight;
+    else weighted.set(key, { colour: sample.colour, weight });
+  }
+  return [...weighted.values()].sort((a, b) => b.weight - a.weight).slice(0, 3).map((v) => v.colour);
 }
 
 /**
@@ -3082,41 +3037,59 @@ interface TreeSummary {
  * name present, and the overall bounding box. `truncated` matters — a tree that hit its node cap is
  * a tree whose remaining contents are unknown, and unknown contents are never scored as clean.
  */
-export function summariseTree(data: unknown): TreeSummary {
+export function summariseTree(data: unknown, rootPath?: string): TreeSummary {
   const classes: string[] = [];
+  const spatial: TreeSummary['spatial'] = [];
+  const textures: TreeSummary['textures'] = [];
   let truncated = false;
   let nodeCount = 0;
   let minX = Infinity, minY = Infinity, minZ = Infinity;
   let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
-  const visit = (node: unknown, depth: number): void => {
+  const visit = (node: unknown, depth: number, path: string | null): void => {
     if (depth > 32) { truncated = true; return; }
     const n = obj(node);
     const cls = str(n.class);
     if (cls) classes.push(cls);
     nodeCount += 1;
     if (n.truncated === true || num(n.moreChildren) !== null) truncated = true;
-    const pos = Array.isArray(n.pos) ? (n.pos as unknown[]) : null;
-    const size = Array.isArray(n.size) ? (n.size as unknown[]) : null;
-    if (pos && size && pos.length === 3 && size.length === 3) {
-      const p = pos.map((v) => (typeof v === 'number' ? v : 0));
-      const s = size.map((v) => (typeof v === 'number' ? v : 0));
-      minX = Math.min(minX, p[0]! - s[0]! / 2); maxX = Math.max(maxX, p[0]! + s[0]! / 2);
-      minY = Math.min(minY, p[1]! - s[1]! / 2); maxY = Math.max(maxY, p[1]! + s[1]! / 2);
-      minZ = Math.min(minZ, p[2]! - s[2]! / 2); maxZ = Math.max(maxZ, p[2]! + s[2]! / 2);
+	const props = obj(n.props);
+	// Current Apple `get_tree` nodes carry typed Position/Size values in `props`. Keep the old
+	// top-level fields only as a compatibility fallback for historical fixtures/older companions.
+	const pos = taggedTriple(props.Position ?? n.pos, 'Vector3');
+	const size = taggedTriple(props.Size ?? n.size, 'Vector3');
+    if (pos && size) {
+      spatial.push({ path, className: cls ?? 'BasePart', size, position: pos });
+      minX = Math.min(minX, pos[0] - size[0] / 2); maxX = Math.max(maxX, pos[0] + size[0] / 2);
+      minY = Math.min(minY, pos[1] - size[1] / 2); maxY = Math.max(maxY, pos[1] + size[1] / 2);
+      minZ = Math.min(minZ, pos[2] - size[2] / 2); maxZ = Math.max(maxZ, pos[2] + size[2] / 2);
     }
+    if (cls === 'Decal' || cls === 'Texture') textures.push(path);
     const kids = n.children;
-    if (Array.isArray(kids)) for (const k of kids) visit(k, depth + 1);
+    if (Array.isArray(kids)) {
+      const counts = new Map<string, number>();
+      for (const k of kids) {
+        const name = str(obj(k).name);
+        if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+      for (const k of kids) {
+        const name = str(obj(k).name);
+        const child = path && name && counts.get(name) === 1 ? appendStudioPath(path, name) : null;
+        visit(k, depth + 1, child);
+      }
+    }
   };
 
   const root = obj(data);
-  if (root.root !== undefined) visit(root.root, 0);
-  else if (Array.isArray(root.services)) for (const s of root.services) visit(s, 0);
-  else visit(data, 0);
+  if (root.root !== undefined) visit(root.root, 0, rootPath ?? null);
+  else if (Array.isArray(root.services)) for (const s of root.services) visit(s, 0, null);
+  else visit(data, 0, rootPath ?? null);
 
   const bounds: [number, number, number] | null =
     Number.isFinite(minX) && Number.isFinite(maxX) ? [Math.max(0, maxX - minX), Math.max(0, maxY - minY), Math.max(0, maxZ - minZ)] : null;
-  return { classes, bounds, nodeCount, truncated };
+  const center: [number, number, number] | null =
+    Number.isFinite(minX) && Number.isFinite(maxX) ? [(minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2] : null;
+  return { classes, bounds, center, spatial, textures, nodeCount, truncated };
 }
 
 /** Pull `{ scripts: [{ path, class }] }` out of a `list_scripts` result, defensively. */
@@ -3130,6 +3103,142 @@ function scriptsFrom(data: unknown): { path: string; className: string }[] {
     if (path) out.push({ path, className: str(o.class) ?? 'Script' });
   }
   return out;
+}
+
+function transformTargets(primary: string, tree: TreeSummary): { targets: TransformTargets | null; error?: string } {
+  if (tree.spatial.length > MAX_TYPED_ASSET_PARTS) {
+    return { targets: null, error: `the asset has ${tree.spatial.length} parts; typed normalisation is bounded at ${MAX_TYPED_ASSET_PARTS}` };
+  }
+  const missing = tree.spatial.filter((n) => !n.path).length + tree.textures.filter((p) => !p).length;
+  if (missing) {
+    return { targets: null, error: `${missing} descendant path(s) are ambiguous or cannot be addressed safely by typed Studio ops` };
+  }
+  return {
+    targets: {
+      primary,
+      parts: tree.spatial.map((n) => n.path as string),
+      meshParts: tree.spatial.filter((n) => n.className === 'MeshPart').map((n) => n.path as string),
+      textures: tree.textures as string[],
+    },
+  };
+}
+
+async function applyNormalisation(
+  bridge: StudioBridge,
+  plan: NormalisePlan,
+  tree: TreeSummary,
+): Promise<NormaliseOutcome> {
+  const reject = (note: string, colours: RGB[] = []): NormaliseOutcome => ({
+    applied: false,
+    anchored: 0,
+    scaled: 0,
+    size: tree.bounds,
+    position: tree.center,
+    colours,
+    plan,
+    note,
+  });
+  if (!Number.isFinite(plan.scale) || plan.scale <= 0 || plan.scale > 100) {
+    return reject(`the requested scale ${plan.scale} is outside the accepted 0-100 range`);
+  }
+  if (plan.position && !plan.position.every((n) => Number.isFinite(n) && Math.abs(n) < 1e6)) {
+    return reject('the requested position contains a non-finite or out-of-range coordinate');
+  }
+  const targetPlan = transformTargets(plan.path, tree);
+  if (!targetPlan.targets) return reject(targetPlan.error ?? 'the inserted hierarchy cannot be addressed by typed Studio ops');
+  if (!targetPlan.targets.parts.length) return reject('the inserted hierarchy contains no spatial parts to normalise');
+
+  // Read every part BEFORE the first write. Besides producing the volume-weighted colour sample,
+  // this proves every derived path resolves to the part the bounded tree said was there. A path
+  // failure therefore cannot leave the first half of an asset anchored and the second half unknown.
+  const colourSamples: { colour: RGB; size: readonly [number, number, number] }[] = [];
+  for (const part of tree.spatial) {
+    const path = part.path as string;
+    const read = await bridge.execStudioOp({ op: 'get_instance', path }, 20_000);
+    if (!read.ok) return reject(`could not read ${path} before normalising it (${read.error ?? 'get_instance failed'})`);
+    const props = obj(obj(read.data).props);
+    const colour = taggedTriple(props.Color, 'Color3');
+    if (colour) colourSamples.push({ colour, size: part.size });
+  }
+  const colours = dominantColours(colourSamples);
+
+  let anchored = 0;
+  for (const path of targetPlan.targets.parts) {
+    const set = await bridge.execStudioOp({
+      op: 'set_props',
+      path,
+      props: { Anchored: { t: 'bool', v: true } },
+    }, 20_000);
+    const issues = set.ok ? propIssues(set.data) : [];
+    if (!set.ok || issues.length) {
+      return {
+        ...reject(`could not anchor ${path} (${set.error ?? issues[0] ?? 'set_props failed'})`, colours),
+        anchored,
+      };
+    }
+    anchored += 1;
+  }
+
+  if (plan.position && !tree.center) {
+    return { ...reject('the hierarchy had no measured centre, so its absolute placement could not be computed', colours), anchored };
+  }
+  const move: [number, number, number] | undefined = plan.position && tree.center
+    ? [plan.position[0] - tree.center[0], plan.position[1] - tree.center[1], plan.position[2] - tree.center[2]]
+    : undefined;
+  const needsMove = move ? move.some((n) => Math.abs(n) > 1e-9) : false;
+  const needsScale = Math.abs(plan.scale - 1) > 1e-9;
+  if (needsMove || needsScale) {
+    const transformed = await bridge.execStudioOp({
+      op: 'transform_instances',
+      paths: [plan.path],
+      ...(needsMove ? { move } : {}),
+      ...(needsScale ? { scale: plan.scale } : {}),
+    }, 20_000);
+    if (!transformed.ok) {
+      return {
+        ...reject(`anchoring succeeded, but transform_instances failed (${transformed.error ?? 'unknown transform failure'})`, colours),
+        anchored,
+      };
+    }
+  }
+
+  // Read the place back. The final size/position are observations, not arithmetic predictions.
+  const reread = await bridge.execStudioOp({ op: 'get_tree', root: plan.path, maxDepth: 12, maxNodes: 400 }, 20_000);
+  if (!reread.ok) {
+    return {
+      applied: false,
+      anchored,
+      scaled: needsScale ? plan.scale : 0,
+      size: null,
+      position: null,
+      colours,
+      plan,
+      note: `normalisation was sent, but its final geometry could not be read back (${reread.error ?? 'get_tree failed'})`,
+    };
+  }
+  const after = summariseTree(reread.data, plan.path);
+  if (after.truncated || !after.bounds || !after.center) {
+    return {
+      applied: false,
+      anchored,
+      scaled: needsScale ? plan.scale : 0,
+      size: after.bounds,
+      position: after.center,
+      colours,
+      plan,
+      note: after.truncated ? 'normalisation changed the asset, but the verification tree was truncated' : 'normalisation changed the asset, but its final bounds were not measurable',
+    };
+  }
+  return {
+    applied: true,
+    anchored,
+    scaled: needsScale ? plan.scale : 0,
+    size: after.bounds,
+    position: after.center,
+    colours,
+    plan,
+    note: plan.reasons.join('; '),
+  };
 }
 
 // --- the pipeline ------------------------------------------------------------------------------
@@ -3272,13 +3381,15 @@ export async function brokerAsset(env: AssetEnv, request: AssetRequest, bridge: 
   // --- inspect the inserted hierarchy ----------------------------------------------------------
   const classes: string[] = [];
   let treeBounds: [number, number, number] | null = null;
+  let primaryTree: TreeSummary | null = null;
   let enumerationFailed = false;
   for (const p of paths) {
     const tree = await bridge.execStudioOp({ op: 'get_tree', root: p, maxDepth: 12, maxNodes: 400 }, 20_000);
     if (!tree.ok) { enumerationFailed = true; continue; }
-    const sum = summariseTree(tree.data);
+    const sum = summariseTree(tree.data, p);
     classes.push(...sum.classes);
     if (sum.truncated) enumerationFailed = true;
+    if (p === paths[0]) primaryTree = sum;
     if (sum.bounds && !treeBounds) treeBounds = sum.bounds;
   }
   step('inspect_hierarchy', !enumerationFailed, enumerationFailed ? 'the subtree could not be fully enumerated — its contents are unknown' : `${classes.length} instance(s), classes: ${[...new Set(classes)].slice(0, 12).join(', ')}`);
@@ -3322,16 +3433,11 @@ export async function brokerAsset(env: AssetEnv, request: AssetRequest, bridge: 
     position: request.position ?? null,
     reasons: scaleCheck?.reasons ?? ['no bounding box was measured, so the asset is left at its authored scale'],
   };
-  const luau = buildNormaliseLuau(plan);
-  if (!luau) {
-    result.normalisation = { applied: false, anchored: 0, scaled: 0, size: treeBounds, position: null, colours: [], plan, note: `the inserted path is not safe to interpolate into Luau (${primary}), so normalisation was not applied` };
+  if (!primaryTree) {
+    result.normalisation = { applied: false, anchored: 0, scaled: 0, size: treeBounds, position: null, colours: [], plan, note: 'the inserted hierarchy was not readable, so typed normalisation was not applied' };
     step('normalise', false, result.normalisation.note);
   } else {
-    const ran = await bridge.execStudioOp({ op: 'run_code', code: luau }, 20_000);
-    const parsed = ran.ok ? parseNormaliseResult(ran.data) : null;
-    result.normalisation = parsed
-      ? { applied: true, anchored: parsed.anchored, scaled: parsed.scaled, size: parsed.size, position: parsed.position, colours: parsed.colours, plan, note: plan.reasons.join('; ') }
-      : { applied: false, anchored: 0, scaled: 0, size: treeBounds, position: null, colours: [], plan, note: ran.error ?? 'the normalisation snippet returned nothing readable' };
+    result.normalisation = await applyNormalisation(bridge, plan, primaryTree);
     step('normalise', result.normalisation.applied, result.normalisation.applied ? `anchored ${result.normalisation.anchored} part(s), scale ${plan.scale.toFixed(2)}` : result.normalisation.note);
   }
 
@@ -3360,12 +3466,14 @@ export async function brokerAsset(env: AssetEnv, request: AssetRequest, bridge: 
       return discard(`the coherence gate refused it: ${coherence.blockers[0] ?? coherence.reasons[0] ?? 'it does not belong with the assets already accepted'}`, 'coherence');
     }
     if (coherence.verdict === 'transform' && coherence.transform && opts.applyTransform) {
-      const code = buildTransformLuau(primary, coherence.transform);
-      const ran = code ? await bridge.execStudioOp({ op: 'run_code', code }, 20_000) : { ok: false, error: 'the transform could not be expressed as safe Luau' };
+      const targetPlan = primaryTree ? transformTargets(primary, primaryTree) : { targets: null, error: 'the inserted hierarchy was not readable' };
+      const ran = targetPlan.targets
+        ? await applyCoherenceTransform(bridge, targetPlan.targets, coherence.transform)
+        : { ok: false, error: targetPlan.error ?? 'the typed transform could not address the inserted hierarchy' };
       if (ran.ok) result.transformApplied = coherence.transform;
       step('coherence', ran.ok, ran.ok
         ? `${coherence.total.toFixed(0)}/100 — applied ${coherence.transform.kind}: ${coherence.transform.instruction} (projected ${coherence.transform.projectedTotal.toFixed(0)}/100)`
-        : `${coherence.total.toFixed(0)}/100 — the ${coherence.transform.kind} was NOT applied (${ran.error ?? 'run_code failed'}); the asset stands as inserted`);
+        : `${coherence.total.toFixed(0)}/100 — the ${coherence.transform.kind} was NOT applied (${ran.error ?? 'typed transform failed'}); the asset stands as inserted`);
     } else {
       step('coherence', true, coherence.verdict === 'transform' && coherence.transform
         ? `${coherence.total.toFixed(0)}/100 — needs a ${coherence.transform.kind}: ${coherence.transform.instruction}`

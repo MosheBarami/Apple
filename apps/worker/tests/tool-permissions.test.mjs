@@ -54,6 +54,16 @@ test('every tool the settings panel can govern is a tool the registry has', () =
   assert.ok(S.GOVERNED_TOOLS.length >= 10, 'suspiciously few tools are governable');
 });
 
+test('every tool that can mutate the Roblox place is governable', () => {
+  const governed = new Set(S.GOVERNED_TOOL_NAMES);
+  const missing = T.projectMutatingToolNames().filter((name) => !governed.has(name)).sort();
+  assert.deepEqual(
+    missing,
+    [],
+    `project-mutating tools are missing from the user's tool-permission surface: ${missing.join(', ')}`,
+  );
+});
+
 test('and the worker would ACCEPT every one of them — not just recognise the string', () => {
   // The end-to-end version of the claim above. normalisePreferences is what the PUT route runs;
   // a name that survives `toolNames()` and is still rejected here would be refused on save.
@@ -94,8 +104,8 @@ test('DENYING A GOVERNED TOOL ACTUALLY REMOVES IT FROM THE RUN', () => {
   // The claim that makes the panel worth building. Asserted against the toolset the run loop
   // assembles, not against the merged preferences: a permission that merges and never narrows is
   // a control that moves.
-  const base = R.toolsForMode('stone', true, T.toolNames());
-  // Not vacuous: `stone` is the default builder and has every tool, so every governed name must
+  const base = R.toolsForMode('agent', true, T.toolNames());
+  // Not vacuous: Agent is the builder and has every tool, so every governed name must
   // actually be in the set being narrowed. An earlier draft of this test named a mode that does
   // not exist ('agent'), fell through to the read-only default, and skipped ten of the twelve
   // while reporting green.
@@ -107,8 +117,21 @@ test('DENYING A GOVERNED TOOL ACTUALLY REMOVES IT FROM THE RUN', () => {
   }
 });
 
+test('Autonomous Agent bypasses user tool-preference narrowing for that run only', () => {
+  const base = R.toolsForMode('agent', true, T.toolNames());
+  const denied = { run_luau: 'deny', delete_instances: 'deny' };
+  const normal = P.applyToolPermissions(base, denied);
+  assert.equal(normal.has('run_luau'), false, 'normal Agent must still honour the stored preference');
+  assert.equal(base.has('run_luau'), true, 'the full Agent toolset must contain run_luau');
+  assert.match(
+    SESSION,
+    /agent\.mode === 'agent' && agent\.autonomous\s*\?\s*base\s*:\s*applyToolPermissions\(base, agent\.toolPermissions\)/,
+    'SessionDO is not using the full Agent toolset when the per-message Autonomous flag is on',
+  );
+});
+
 test('and denying one leaves the read-only tools alone', () => {
-  const base = R.toolsForMode('stone', true, T.toolNames());
+  const base = R.toolsForMode('agent', true, T.toolNames());
   const narrowed = P.applyToolPermissions(base, { delete_instances: 'deny' });
   for (const readOnly of ['read_script', 'get_project_tree', 'search_scripts']) {
     if (base.has(readOnly)) assert.equal(narrowed.has(readOnly), true, readOnly);
@@ -121,7 +144,7 @@ test('WHAT WAS TAKEN AWAY IS NAMEABLE, not just absent', () => {
   // "Why did Apple not use run_luau on that run" had no answer anywhere: the tool was removed from
   // the set and nothing was logged, broadcast, or told to anyone. A capability that is silently
   // not there is indistinguishable, from inside, from a product that is broken.
-  const base = R.toolsForMode('stone', true, T.toolNames());
+  const base = R.toolsForMode('agent', true, T.toolNames());
   assert.deepEqual(P.deniedTools(base, { run_luau: 'deny', delete_instances: 'ask' }).sort(), ['delete_instances', 'run_luau']);
   assert.deepEqual(P.deniedTools(base, { run_luau: 'allow' }), [], 'allow removes nothing');
   assert.deepEqual(P.deniedTools(base, undefined), []);
@@ -132,11 +155,11 @@ test('and it names only what was ACTUALLY there to take', () => {
   // A permission naming a tool this mode never had changes nothing, so reporting it would tell the
   // user a capability was withheld when it was never offered. Plan mode is the case: denying
   // delete_instances there is a no-op, and announcing it invents a restriction.
-  const plan = R.toolsForMode('clay', true, T.toolNames());
-  assert.equal(plan.has('delete_instances'), false, 'clay is supposed to be the read-only mode');
+  const plan = R.toolsForMode('plan', true, T.toolNames());
+  assert.equal(plan.has('delete_instances'), false, 'Plan is supposed to be the read-only mode');
   assert.deepEqual(P.deniedTools(plan, { delete_instances: 'deny', run_luau: 'deny' }), [],
-    'reported a restriction on tools clay never had');
-  const base = R.toolsForMode('stone', true, T.toolNames());
+    'reported a restriction on tools Plan never had');
+  const base = R.toolsForMode('agent', true, T.toolNames());
   const perms = { run_luau: 'deny', not_a_tool_at_all: 'deny' };
   assert.deepEqual(P.deniedTools(base, perms), ['run_luau']);
   assert.equal(P.applyToolPermissions(base, perms).size, base.size - 1);

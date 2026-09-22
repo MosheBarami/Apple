@@ -19,8 +19,8 @@
 // task) that consumes the whole output budget before it writes a word. `high` reasons briefly and
 // decisively — 161 characters — and costs 2.8% more than `low` while returning a better answer.
 // So escalating to `high` is nearly free, and `medium` is a trap.
-import { PRODUCT_MODE_INFO, SPECIALIST_TO_PRODUCT_MODE } from '@golem/shared';
-import type { GolemMode, ProductModel } from '@golem/shared';
+import { PRODUCT_MODE_INFO } from '@golem/shared';
+import type { ProductMode, ProductModel } from '@golem/shared';
 
 /** `medium` exists in the provider's API but is never selected — see the table above. */
 export type Effort = 'low' | 'medium' | 'high';
@@ -36,7 +36,7 @@ const BY_RANK: Effort[] = ['low', 'medium', 'high'];
 export const MAX_HIGH_EFFORT_STEPS = 8;
 
 export interface ReasoningSignals {
-  mode: GolemMode;
+  mode: ProductMode;
   /**
    * The model entitlement the account SELECTED for this request, which is a different axis from
    * `mode` and was missing here entirely.
@@ -44,7 +44,7 @@ export interface ReasoningSignals {
    * `gatewayModelFor`, `maxStepsFor` and `baseTokensFor` in do/session.ts all branch on it; this
    * policy did not, so the one thing a person buys when they choose Apple MAX — a better answer —
    * was the one thing it could not affect. Picking MAX and Plan together produced `low`, because
-   * Plan maps to `clay` and `clay` baselines to `low` no matter who is asking.
+   * Plan baselines to `low` no matter who is asking.
    */
   productModel?: ProductModel;
   /** 1-based step index within the current run */
@@ -136,6 +136,22 @@ const CONVERSATIONAL_RE =
 const META_QUESTION_RE =
   /\b(?:who are you|what are you|what can you do|what do you do|how do you work|which model|what model|are you (?:an? )?(?:ai|bot|human)|help me understand you|what is apple|what's apple)\b/i;
 
+/**
+ * The person said not to change anything. Measured 2026-09-22 (run 5316f52b): "Playtest the game for 5
+ * seconds and tell me what the output log shows. Do not change anything in the place." — and Agent mode
+ * created a RemoteEvent anyway ("the only change made"). An explicit prohibition is not a preference.
+ *
+ * Deliberately narrow: the object has to be the whole thing (anything, the place, my game…), so "don't
+ * change the colours", "without changing anything ELSE" and "don't touch my game's scripts" — all
+ * requests FOR a change with a limit on it — never match.
+ */
+const FORBIDS_CHANGES_RE =
+  /\b(?:do not|don['’]t|dont|never)\s+(?:change|modify|touch|edit|alter)\s+(?:anything|a thing|the place|my place|the game|my game)(?!\s+else)(?!['’]s)\b|\bwithout\s+(?:changing|modifying|touching|editing|altering)\s+(?:anything|the place|my place|the game|my game)(?!\s+else)(?!['’]s)\b|\bread[- ]only\b/i;
+
+export function forbidsChanges(text: string): boolean {
+  return FORBIDS_CHANGES_RE.test(text);
+}
+
 /** Cheap request classification, so the policy gets signals without paying a model for them. */
 export function classifyRequest(
   text: string,
@@ -154,9 +170,8 @@ export function classifyRequest(
 }
 
 /**
- * Baseline effort per mode, before escalation. (Clay is what the user picks as Plan, stone as
- * Agent, rune as Super Agent.)
- *   Clay  — Plan: inspection, architecture reasoning and proposals, with no mutating tools. Low is
+ * Baseline effort per mode, before escalation.
+ *   Plan  — inspection, architecture reasoning and proposals, with no mutating tools. Low is
  *           the BASELINE, not the ceiling: a planning request that needs real judgement —
  *           architecture, layout, an under-specified ask — escalates to `high` through the signals
  *           below, and those signals fire on exactly the language such requests use. What the
@@ -166,21 +181,17 @@ export function classifyRequest(
  *           the table above: on the trivial probe `high` was FASTER (1.3s against 17.6s). Latency
  *           is not the argument; having nothing to deliberate about is.
  *           `irreversibleChange` never fires in this mode, because the mode cannot make one.
- *   Stone — the default builder. High: this is where design judgement happens, and on the design
+ *   Agent — the builder. High: this is where design judgement happens, and on the design
  *           probe `high` cost 40.8 neurons against `low`'s 39.7 for a better answer. That is the
  *           whole argument — good judgement here is essentially free.
- *   Rune  — the deliberate mode the user opted into. High.
  */
-const BASELINE: Record<GolemMode, Effort> = { clay: 'low', stone: 'high', rune: 'high' };
+const BASELINE: Record<ProductMode, Effort> = { plan: 'low', agent: 'high' };
 
 /**
  * THE FLOOR APPLE MAX BUYS, AND WHY IT IS A FLOOR RATHER THAN A BASELINE.
  *
- * `BASELINE` is keyed on the SPECIALIST (clay/stone/rune). The entitlement a person selects is a
- * different axis, and until this it reached `gatewayModelFor`, `maxStepsFor` and `baseTokensFor`
- * and stopped there. So the combination a paying customer is most likely to try first —
- * Apple MAX in Plan mode — asked the bigger gateway model to think at `low`, because Plan is
- * `clay` and `clay` baselines to `low`.
+ * The entitlement a person selects is a different axis from Plan/Agent. Apple MAX keeps a high
+ * floor even when the request is in Plan mode.
  *
  * The cost argument in the table at the top of this file is what makes a floor safe: on the design
  * probe `high` cost 40.8 neurons against `low`'s 39.7, about 3%. Buying the better answer for
@@ -219,10 +230,7 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   }
 
   let effort = BASELINE[s.mode];
-  // Product language, not the internal specialist. This string is rendered to the person in the
-  // Thinking card, and it used to read "clay baseline" — the Golem-era vocabulary, in the UI of a
-  // product whose modes are called Plan and Agent.
-  const spoken = PRODUCT_MODE_INFO[SPECIALIST_TO_PRODUCT_MODE[s.mode]].name;
+  const spoken = PRODUCT_MODE_INFO[s.mode].name;
   const reasons: string[] = [`${spoken} baseline`];
 
   // The entitlement floor, applied before the signals so a signal can still raise it further.
@@ -287,7 +295,7 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
 export function tokensForEffort(base: number, effort: Effort): number {
   //[[ `high` USED TO GET LESS ROOM THAN `medium`, AND IT KILLED REAL RUNS.
   //
-  //   The scale was `high ? 1.25 : medium ? 2.5 : 1`. On mode `stone` that is 4400 x 1.25 = 5500
+  //   The scale was `high ? 1.25 : medium ? 2.5 : 1`. On Agent that is 4400 x 1.25 = 5500
   //   against a gateway ceiling of 6500 — a thousand tokens of the model's own configured output
   //   left unasked for, on the effort tier chosen for the HARDEST steps. Observed in production on
   //   2026-09-20: a 16-step tower-defence build, "Reasoning effort: high", died on step 1 of 16

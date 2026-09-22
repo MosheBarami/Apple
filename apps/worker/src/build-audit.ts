@@ -48,6 +48,8 @@ export interface AuditCapture {
   truncated: boolean;
   /** How many parts the place actually has. Larger than `parts.length` when truncated. */
   total: number;
+  /** False when a bounded typed tree hit its node ceiling before the true total was known. */
+  totalKnown?: boolean;
   lighting?: CriticInput['lighting'];
 }
 
@@ -156,6 +158,85 @@ export function parseAudit(raw: unknown): AuditCapture | null {
   return { parts, truncated: n > parts.length, total: Number.isFinite(n) ? n : parts.length, lighting };
 }
 
+function tagged(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+  const o = value as Record<string, unknown>;
+  return typeof o.t === 'string' && 'v' in o ? o.v : value;
+}
+
+const triple = (value: unknown): [number, number, number] | null => {
+  const v = tagged(value);
+  if (!Array.isArray(v) || v.length < 3 || !v.slice(0, 3).every((n) => typeof n === 'number' && Number.isFinite(n))) return null;
+  return [v[0] as number, v[1] as number, v[2] as number];
+};
+
+/** Build the same deterministic audit input from the bounded typed get_tree/render_view protocol. */
+export function auditCaptureFromTree(treeRaw: unknown, lightingRaw?: unknown): AuditCapture | null {
+  if (!treeRaw || typeof treeRaw !== 'object') return null;
+  const tree = treeRaw as Record<string, unknown>;
+  const root = tree.root;
+  if (!root || typeof root !== 'object') return null;
+  const parts: AuditPart[] = [];
+  let lightInstances = 0;
+  const walk = (nodeRaw: unknown): void => {
+    if (!nodeRaw || typeof nodeRaw !== 'object') return;
+    const node = nodeRaw as Record<string, unknown>;
+    const props = node.props && typeof node.props === 'object' ? node.props as Record<string, unknown> : {};
+    const className = typeof node.class === 'string' ? node.class : '';
+    if (className === 'PointLight' || className === 'SpotLight' || className === 'SurfaceLight') lightInstances += 1;
+    const pos = triple(props.Position) ?? triple(props.CFrame);
+    const size = triple(props.Size);
+    const materialRaw = tagged(props.Material);
+    const colorRaw = triple(props.Color);
+    const anchoredRaw = tagged(props.Anchored);
+    const transparencyRaw = tagged(props.Transparency);
+    if (pos && size && typeof materialRaw === 'string' && colorRaw && typeof anchoredRaw === 'boolean') {
+      const transparency = typeof transparencyRaw === 'number' && Number.isFinite(transparencyRaw) ? transparencyRaw : 0;
+      if (transparency < 0.95) {
+        parts.push({
+          pos,
+          size,
+          material: materialRaw.replace(/^Enum\.Material\./, ''),
+          color: colorRaw.map((c) => Math.round(Math.max(0, Math.min(1, c)) * 255)) as [number, number, number],
+          anchored: anchoredRaw,
+          transparency,
+        });
+      }
+    }
+    if (Array.isArray(node.children)) for (const child of node.children) walk(child);
+  };
+  walk(root);
+
+  let lighting: CriticInput['lighting'];
+  if (lightingRaw && typeof lightingRaw === 'object') {
+    const incoming = lightingRaw as Record<string, unknown>;
+    const lightingTreeRoot = incoming.root && typeof incoming.root === 'object' ? incoming.root as Record<string, unknown> : null;
+    const lr = lightingTreeRoot
+      ? (lightingTreeRoot.props && typeof lightingTreeRoot.props === 'object' ? lightingTreeRoot.props as Record<string, unknown> : {})
+      : incoming;
+    const ambientTagged = lightingTreeRoot ? tagged(lr.Ambient) : lr.ambient;
+    const ambient = Array.isArray(ambientTagged) ? ambientTagged : [0, 0, 0];
+    const effects = lightingTreeRoot
+      ? (Array.isArray(lightingTreeRoot.children)
+          ? lightingTreeRoot.children
+              .map((child) => child && typeof child === 'object' ? String((child as Record<string, unknown>).class ?? '') : '')
+              .filter((name) => name === 'Atmosphere' || name.endsWith('Effect') || name === 'Sky')
+          : [])
+      : (Array.isArray(lr.effects) ? lr.effects.map(String) : []);
+    const authoredEffects = effects.filter((name) => name === 'Atmosphere' || name.endsWith('Effect'));
+    lighting = {
+      brightness: Number(lightingTreeRoot ? tagged(lr.Brightness) : lr.brightness ?? 0),
+      clockTime: Number(lightingTreeRoot ? tagged(lr.ClockTime) : lr.clockTime ?? 0),
+      ambient: [Number(ambient[0] ?? 0) * (lightingTreeRoot ? 255 : 1), Number(ambient[1] ?? 0) * (lightingTreeRoot ? 255 : 1), Number(ambient[2] ?? 0) * (lightingTreeRoot ? 255 : 1)],
+      lightInstances: lightingTreeRoot ? lightInstances : Number(lr.lightInstances ?? lightInstances),
+      effects,
+      isDefault: authoredEffects.length === 0,
+    };
+  }
+  const truncated = tree.truncated === true;
+  return { parts, truncated, total: parts.length, totalKnown: !truncated, lighting };
+}
+
 // --- metrics -------------------------------------------------------------------------------------
 
 /** Roblox's factory part: Plastic, and the grey every new Part is born with. */
@@ -218,7 +299,7 @@ export function auditMetrics(cap: AuditCapture): Record<string, number> {
 
   // THE TRUE TOTAL, not the sample size. The pass walks every part to count them and only emits
   // the first 1500; reporting the sample as the part count understates a big place by any amount.
-  m.partCount = cap.total > 0 ? cap.total : parts.length;
+  if (cap.totalKnown !== false) m.partCount = cap.total > 0 ? cap.total : parts.length;
 
   // A COUNT OVER A SAMPLE CANNOT PROVE AN ABSENCE. `unanchoredParts` feeds a blocking rule that
   // fires when it is above zero, and a zero drawn from the first 1500 parts of a 4000-part place

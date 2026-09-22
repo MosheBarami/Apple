@@ -57,12 +57,12 @@ export interface RefundVerdict {
 /**
  * Modes whose OUTPUT IS PROSE.
  *
- * `clay` is the planning/conversation lane: an answer is the deliverable, so an answer is worth
+ * `plan` is the planning/conversation lane: an answer is the deliverable, so an answer is worth
  * paying for. Every other mode is a builder, and do/session.ts already states the rule this
  * mirrors — "a build request that ends with prose and no change has failed, whatever the prose
  * says". A builder run that only talked delivered nothing, so it refunds.
  */
-const PROSE_MODES: ReadonlySet<string> = new Set(['clay']);
+const PROSE_MODES: ReadonlySet<string> = new Set(['plan']);
 
 /**
  * Endings that CAN refund.
@@ -99,17 +99,12 @@ export function runDeliveredSomething(i: RefundInputs): boolean {
   //   place — 30 Credits charged and no refund sentence. On a 231-Credit day that is seven failures
   //   to an exhausted account, which is exactly the "annoying credits block" that was reported.
   //
-  //   `mutated` below is the signal that was always meant to carry this: session.ts sets it only
-  //   when `out.ok && MUTATING_TOOLS.has(call.name)`. Dropping the read count leaves delivery
-  //   defined as it reads in English — the place changed, an artifact was produced, or prose was
-  //   delivered in a prose mode.
-  //
-  //   THE RESIDUE, STATED RATHER THAN HIDDEN. MUTATING_TOOLS lists six tools and does not include
-  //   `format_script`, which rewrites a script's source. A run that only reformatted a script and
-  //   then failed will now refund, where before the read count happened to catch it. That is a
-  //   narrow over-refund against charging for every failed run, and it is the better error of the
-  //   two. Closing it properly means widening MUTATING_TOOLS in session.ts, which another lane has
-  //   uncommitted work in tonight; it is not fixed here and is not claimed to be. ]]
+  //   `mutated` below is the signal that was always meant to carry this. `runTool` derives it from
+  //   the `mutatesProject` metadata beside each implementation, including conditional no-op tools
+  //   such as format_script/install_module/remove_effect/assign_sounds, and SessionDO records it
+  //   only after a successful call. Dropping the read count therefore leaves delivery defined as
+  //   it reads in English — the place changed, an artifact was produced, or prose was delivered in
+  //   a prose mode — without maintaining a second list of mutation names here. ]]
   if (i.mutated) return true;
   // An artifact that was asked for AND produced is output whatever else went wrong.
   if (i.artifactRequested && !i.artifactMissing) return true;

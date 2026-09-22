@@ -887,7 +887,7 @@ test('a paid account may use Apple MAX while the request remains model-labelled'
   });
   assert.equal(r.status, 202, r.text.slice(0, 300));
   assert.equal(r.json.productModel, 'apple-max');
-  assert.deepEqual(seen, [{ text: 'build a tower', mode: 'stone', productModel: 'apple-max' }]);
+  assert.deepEqual(seen, [{ text: 'build a tower', mode: 'agent', autonomous: false, productModel: 'apple-max' }]);
 });
 
 test('the public parser maps each public model to its independent product selector', () => {
@@ -1008,7 +1008,7 @@ test('a granted project is readable, and the transcript comes from that project\
   );
 });
 
-test('starting a run maps the public mode onto the internal specialist, and refuses anything else', async () => {
+test('starting a run forwards Plan/Agent directly and refuses anything else', async () => {
   const bundle = makeEnv({ session: async ({ path }) => (path === '/agent-run' ? { ok: true, started: true } : { ok: true }) });
   const key = await seedKey(bundle, { scopes: [...K.API_SCOPES], projects: GRANTED });
 
@@ -1018,10 +1018,10 @@ test('starting a run maps the public mode onto the internal specialist, and refu
   assert.equal(r.status, 202, r.text.slice(0, 200));
   const started = bundle.trace.calls.find((c) => c.path === '/agent-run');
   assert.ok(started, 'no run was started');
-  assert.equal(started.body.mode, 'clay', 'the public mode did not map onto the internal specialist');
+  assert.equal(started.body.mode, 'plan', 'the public mode changed before reaching SessionDO');
   assert.equal(started.body.text, 'build a market stall');
-  // Internal specialist names must not be accepted on the wire, and neither must a prototype key.
-  for (const mode of ['clay', 'stone', 'constructor', '__proto__', 'toString', 7, {}]) {
+  // Prototype keys and arbitrary values must not be accepted as run modes.
+  for (const mode of ['constructor', '__proto__', 'toString', 'memory', 'vision', 'nonsense', 7, {}]) {
     const bad = await call(`/v1/projects/${PROJECT_ID}/runs`, {
       method: 'POST', key: key.key, env: bundle.env, body: { input: 'x', mode },
     });

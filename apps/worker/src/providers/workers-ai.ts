@@ -38,9 +38,9 @@ export const APPLE_MODEL_ID = '@cf/qwen/qwen3-30b-a3b-fp8';
  * demoted to vision. So the mode a customer pays for was the unevaluated one, and the owner's call
  * on 2026-09-19 put it back.
  *
- * They remain two LANES, not one: `stone`/`rune` and `vision` keep their own maxTokens, temperature
- * and tool settings in DEFAULT_MODELS. They merely resolve to the same weights now, which is what
- * makes the MAX lane multimodal as a side effect.
+ * The product run route and `vision` keep their own maxTokens, temperature and tool settings in
+ * DEFAULT_MODELS. They merely resolve to the same weights now, which makes the MAX lane multimodal
+ * as a side effect.
  */
 export const APPLE_MAX_MODEL_ID = '@cf/zai-org/glm-5.3-flash';
 export const VISION_MODEL_ID = '@cf/zai-org/glm-5.3-flash';
@@ -60,7 +60,7 @@ export const VISION_CONTEXT_WINDOW = 1_310_720;
  */
 export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
   {
-    // Authoring flagship for Agent and Super Agent. 97.6 overall on the repo's own 56-task Roblox
+    // Authoring flagship for Agent. 97.6 overall on the repo's own 56-task Roblox
     // eval, 100.0 on api-knowledge and ui-implementation (docs/evals/FINDINGS.md).
     id: '@cf/openai/gpt-oss-120b',
     displayName: 'GPT-OSS 120B',
@@ -347,6 +347,7 @@ export const workersAiAdapter: ProviderAdapter = {
       toolCalls,
       usage: extractUsage(raw, promptChars, text),
       finishReason: toolCalls.length ? 'tool_calls' : finish === 'length' ? 'length' : 'stop',
+      truncated: finish === 'length',
       provider: 'workers-ai',
       model: modelId,
     };
@@ -368,7 +369,7 @@ export const workersAiAdapter: ProviderAdapter = {
       return { kind: 'context_length', retryable: false };
     }
     if (/content filter|safety|flagged|blocked by/i.test(msg)) return { kind: 'content_filter', retryable: false };
-    if (/\b5\d\d\b|timed? ?out|network|temporarily unavailable/i.test(msg)) {
+    if (/\b5\d\d\b|\b5000\b|internal error while running inference|timed? ?out|network|temporarily unavailable/i.test(msg)) {
       return { kind: 'transient', retryable: false };
     }
     return { kind: 'unknown', retryable: false };

@@ -43,6 +43,7 @@ const P = await import(pathToFileURL(promptsBundlePath).href);
 rmSync(temp, { recursive: true, force: true });
 
 const sharedSource = readFileSync(join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts'), 'utf8');
+const commandsSource = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
 const studioOpUnion = /export type StudioOp =([\s\S]*?);\n\n\/\*\*/m.exec(sharedSource);
 assert.ok(studioOpUnion, 'StudioOp union must be readable');
 const liveStudioOps = new Set([...studioOpUnion[1].matchAll(/op:\s*'([a-z_]+)'/g)].map((match) => match[1]));
@@ -50,22 +51,31 @@ const studioEntries = Object.entries(T.TOOLS).filter(([, tool]) => tool.studio =
 const requirements = Object.fromEntries(studioEntries.map(([name, tool]) => [name, tool.studioOps ?? []]));
 const candidates = studioEntries.map(([name]) => name);
 
+// Declared in place or assigned to an earlier-declared local (Commands.luau's handler-region `do`
+// block, which keeps it under Luau's 200-local limit at Studio's -O0). Never an accidental global.
+function luauTableKeys(name) {
+  const match = new RegExp(`(local )?(?<![.\\w])${name} = \\{([\\s\\S]*?)\\n\\}`).exec(commandsSource);
+  assert.ok(match, `${name} table was not found in current Apple Commands`);
+  if (!match[1]) {
+    assert.ok(new RegExp(`^local [^=\\n]*\\b${name}\\b[^=\\n]*$`, 'm').test(commandsSource.slice(0, match.index)),
+      `${name} is assigned without a local declared before it — that would be a global`);
+  }
+  return new Set([...match[2].matchAll(/^\s*([a-z_]+)\s*=/gm)].map((entry) => entry[1]));
+}
+
 const reasons = {
-  run_code: 'received text is never loaded, required or executed inside Studio',
-  run_mode: 'automatic run mode is unavailable; start and stop tests in Studio',
-  render_view: 'this build has no verified bounded software renderer',
-  screenshot: 'Studio plugins have no direct viewport readback and no verified renderer is present',
-  insert_asset: 'no remote asset loader is exposed through the command bridge',
-  inspect_model: 'the verified model-quality gate is not present',
+  run_code: 'Roblox exposes no constrained plugin evaluator for arbitrary received Luau',
 };
 
-function independentReport() {
+function currentAuthoringReport() {
   const supported = [
+    'ping', 'render_view', 'screenshot',
     'get_tree', 'get_instance', 'list_scripts', 'read_script', 'dump_scripts', 'search_scripts',
     'get_logs', 'get_selection', 'viewport_info', 'select', 'camera_focus', 'create_instances',
     'set_props', 'delete_instances', 'move_instances', 'transform_instances', 'clone_instances',
     'group_instances', 'ungroup_instances', 'rename_instance', 'set_locked', 'set_visible',
-    'edit_script', 'snapshot', 'restore', 'generate_model',
+    'edit_script', 'terrain_edit', 'snapshot', 'restore', 'undo_waypoint', 'insert_asset', 'generate_model',
+    'run_mode', 'inspect_model', 'project_census',
   ];
   return {
     schema: C.PLUGIN_CAPABILITY_SCHEMA,
@@ -75,6 +85,18 @@ function independentReport() {
     ],
   };
 }
+
+test('the current-authoring fixture follows the live plugin surface instead of preserving old refusals', () => {
+  const handlers = luauTableKeys('HANDLERS');
+  const unsupported = luauTableKeys('UNSUPPORTED');
+  for (const operation of ['render_view', 'screenshot', 'insert_asset', 'create_instances', 'edit_script', 'run_mode', 'inspect_model', 'project_census']) {
+    assert.equal(handlers.has(operation), true, `${operation} moved out of the current plugin handler surface`);
+    assert.equal(unsupported.has(operation), false, `${operation} is now refused by the current plugin; update the worker fixture`);
+  }
+  for (const operation of ['run_code']) {
+    assert.equal(unsupported.has(operation), true, `${operation} changed support status; update the worker fixture and expectations`);
+  }
+});
 
 test('every Studio tool carries non-empty co-located StudioOp metadata and every named op is live', () => {
   assert.ok(studioEntries.length >= 30, `only found ${studioEntries.length} Studio tools`);
@@ -89,11 +111,16 @@ test('every Studio tool carries non-empty co-located StudioOp metadata and every
 
 test('composite tools declare the operations their safety behavior actually depends on', () => {
   assert.deepEqual(T.TOOLS.edit_script.studioOps, ['read_script', 'edit_script']);
-  assert.deepEqual(T.TOOLS.run_and_check.studioOps, ['run_code', 'snapshot', 'run_mode', 'get_logs', 'restore']);
+  assert.deepEqual(T.TOOLS.run_and_check.studioOps, ['project_census', 'snapshot', 'run_mode', 'get_logs', 'restore']);
   assert.deepEqual(T.TOOLS.insert_asset.studioOps, ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances']);
   assert.deepEqual(T.TOOLS.create_checkpoint.studioOps, ['snapshot']);
-  assert.deepEqual(T.TOOLS.design_sound.studioOps, ['run_code']);
-  assert.deepEqual(T.TOOLS.assign_sounds.studioOps, ['run_code']);
+  assert.deepEqual(T.TOOLS.set_mood.studioOps, ['get_tree', 'delete_instances', 'set_props', 'create_instances']);
+  assert.deepEqual(T.TOOLS.add_effect.studioOps, ['get_tree', 'delete_instances', 'create_instances']);
+  assert.deepEqual(T.TOOLS.remove_effect.studioOps, ['get_tree', 'delete_instances']);
+  assert.deepEqual(T.TOOLS.audit_build.studioOps, ['get_tree']);
+  assert.deepEqual(T.TOOLS.check_composition.studioOps, ['render_view']);
+  assert.deepEqual(T.TOOLS.design_sound.studioOps, ['get_tree', 'set_props', 'create_instances']);
+  assert.deepEqual(T.TOOLS.assign_sounds.studioOps, ['get_tree', 'get_instance', 'set_props']);
 });
 
 test('legacy, missing, malformed and unknown-schema clients preserve the existing tool set', () => {
@@ -114,23 +141,20 @@ test('legacy, missing, malformed and unknown-schema clients preserve the existin
 });
 
 test('only explicitly unsupported operations withhold their dependent tools', () => {
-  const report = independentReport();
+  const report = currentAuthoringReport();
   const filtered = C.filterToolsForPlugin(candidates, requirements, report);
   assert.equal(filtered.capabilitiesKnown, true);
   assert.deepEqual(C.pluginOperationVerdict(C.parsePluginCapabilities(report), 'restore'), { status: 'supported' });
 
   for (const tool of [
     'get_project_tree', 'get_instance', 'read_script', 'edit_script', 'create_instances',
-    'set_properties', 'create_checkpoint', 'get_output_logs',
+    'set_properties', 'create_checkpoint', 'get_output_logs', 'insert_asset', 'render_view',
+    'compose_thumbnail', 'inspect_visually', 'generate_model', 'run_and_check', 'inspect_model',
   ]) {
     assert.equal(filtered.allowed.has(tool), true, `${tool} should remain executable through typed Studio operations`);
   }
 
-  const expectedWithheld = [
-    'run_luau', 'run_and_check', 'render_view', 'compose_thumbnail', 'inspect_visually',
-    'set_mood', 'add_effect', 'audit_build', 'run_spec', 'remove_effect', 'check_composition',
-    'insert_asset', 'inspect_model', 'design_sound', 'assign_sounds',
-  ];
+  const expectedWithheld = ['run_luau', 'run_spec'];
   for (const tool of expectedWithheld) {
     assert.equal(filtered.allowed.has(tool), false, `${tool} must not be offered to this plugin`);
     assert.ok(filtered.withheld.includes(tool), `${tool} must be named as withheld`);
@@ -138,18 +162,41 @@ test('only explicitly unsupported operations withhold their dependent tools', ()
   assert.equal(filtered.withheld.length, expectedWithheld.length, `unexpected capability-withheld tools: ${filtered.withheld.join(', ')}`);
 
   assert.deepEqual(new Set(filtered.limitations.find((item) => item.operation === 'run_code')?.tools), new Set([
-    'run_luau', 'run_and_check', 'set_mood', 'add_effect', 'audit_build', 'run_spec',
-    'remove_effect', 'check_composition', 'design_sound', 'assign_sounds',
+    'run_luau', 'run_spec',
   ]));
-  assert.equal(
-    filtered.limitations.find((item) => item.operation === 'render_view')?.reason,
-    reasons.render_view,
-  );
+  assert.equal(filtered.limitations.some((item) => item.operation === 'render_view'), false);
+  assert.equal(filtered.limitations.some((item) => item.operation === 'insert_asset'), false);
   assert.equal(filtered.limitations.some((item) => item.operation === 'restore'), false);
 });
 
+test('current ordinary authoring stays available even when arbitrary plugin-context code is refused', () => {
+  const filtered = C.filterToolsForPlugin(candidates, requirements, currentAuthoringReport());
+  for (const tool of [
+    'create_instances',
+    'set_properties',
+    'delete_instances',
+    'edit_script',
+    'format_script',
+    'install_module',
+    'insert_asset',
+    'render_view',
+    'inspect_visually',
+    'create_checkpoint',
+    'generate_model',
+    'set_mood',
+    'add_effect',
+    'remove_effect',
+    'audit_build',
+    'check_composition',
+    'design_sound',
+    'assign_sounds',
+  ]) {
+    assert.equal(filtered.allowed.has(tool), true, `${tool} is ordinary authoring and must not be hidden by run_code refusal`);
+  }
+});
+
 test('an operation omitted from a valid report stays compatible instead of being guessed unsupported', () => {
-  const report = independentReport();
+  const report = currentAuthoringReport();
   report.operations = report.operations.filter((item) => item.op !== 'run_mode');
   const filtered = C.filterToolsForPlugin(['future_playtest'], { future_playtest: ['run_mode'] }, report);
   assert.equal(filtered.capabilitiesKnown, true);
@@ -182,7 +229,7 @@ test('malformed or contradictory explicit reports fail back to compatibility mod
 });
 
 test('precise refusal reasons remain structured while the model note contains only worker-owned names', () => {
-  const filtered = C.filterToolsForPlugin(candidates, requirements, independentReport());
+  const filtered = C.filterToolsForPlugin(candidates, requirements, currentAuthoringReport());
   assert.equal(
     filtered.limitations.find((item) => item.operation === 'run_code')?.reason,
     reasons.run_code,
@@ -190,10 +237,12 @@ test('precise refusal reasons remain structured while the model note contains on
   const note = C.pluginCapabilityPromptNote(filtered);
   assert.ok(note);
   assert.doesNotMatch(note, new RegExp(reasons.run_code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.doesNotMatch(note, new RegExp(reasons.render_view.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(note, /run_code is unavailable/);
-  assert.match(note, /render_view is unavailable/);
-  assert.match(note, /Withheld tools: run_luau, run_and_check/);
+  assert.doesNotMatch(note, /render_view is unavailable/);
+  assert.doesNotMatch(note, /insert_asset is unavailable/);
+  assert.match(note, /Withheld tools: run_luau, run_spec/);
+  assert.doesNotMatch(note, /Withheld tools:[^\n]*(set_mood|add_effect|remove_effect|audit_build|check_composition|design_sound|assign_sounds)/);
+  assert.doesNotMatch(note, /Withheld tools:[^\n]*run_and_check/);
   assert.doesNotMatch(note, /version|semver|mock|fake screenshot/i);
   assert.equal(C.pluginCapabilityPromptNote({ limitations: [] }), null);
 });
@@ -212,7 +261,7 @@ test('plugin-authored refusal text cannot be promoted into the model/system capa
   assert.match(note, /run_code is unavailable/);
 
   const prompt = P.systemPrompt({
-    mode: 'stone',
+    mode: 'agent',
     studioConnected: true,
     placeName: 'Test Place',
     projectName: 'Test Project',

@@ -38,8 +38,9 @@
  */
 
 /**
- * The wire contract this worker speaks. Must match Version.PROTOCOL in the plugin;
- * plugin-version.test.mjs reads both files and fails if they drift.
+ * The wire contract this worker speaks. Must match PLUGIN_PROTOCOL in the shipped
+ * plugin, apps/apple-plugin/src/Bridge.luau; plugin-version.test.mjs reads both
+ * files and fails if they drift.
  *
  * Deliberately NOT an alias of `PROTOCOL_VERSION` in packages/shared. That constant
  * is exported, referenced by nothing anywhere in the repo, and carries no comment
@@ -60,12 +61,27 @@ export const MIN_PLUGIN_PROTOCOL = 1;
 
 /**
  * The newest plugin build published to the Creator Store, for advisory
- * "an update exists" notices. Bump alongside Version.VERSION in the plugin, at
- * the moment the human actually republishes the Store asset — not when the
- * source changes. Announcing a version nobody can install yet is worse than
- * saying nothing.
+ * "an update exists" notices. Its one consumer is `clientNotice`, which tells a
+ * polling plugin that reports an OLDER version "Apple <this> is available. Update
+ * it in Studio → Plugins → Manage Plugins → Update" — so this must name a build a
+ * user can actually get from that button today. Bump it at the moment the human
+ * republishes the Store asset, not when the source changes. Announcing a version
+ * nobody can install yet is worse than saying nothing.
+ *
+ * '1.0.0' since 2026-09-22: the build of apps/apple-plugin published as asset
+ * 107230158271368 on 2026-09-19 (toolbox-service: 5 scripts, createdUtc =
+ * updatedUtc = 2026-09-19T18:13Z), distributed again as of 2026-09-22. That
+ * build's version is inferred, not read: every commit of Bridge.luau declares
+ * 1.0.0 and the source then had those five scripts, but nobody has inspected the
+ * published bytes. It was '0.2.0' — the legacy apps/plugin, whose asset
+ * (132128477945417) is removed.
+ *
+ * The source (`PLUGIN_VERSION` in apps/apple-plugin/src/Bridge.luau) may be AHEAD
+ * of this — it is 1.1.0 while those changes are unpublished — and never behind it.
+ * A newer client reads as newer and gets silence; packages/evals/src/plugin-version.test.mjs
+ * enforces the ordering.
  */
-export const LATEST_PLUGIN_VERSION = '0.2.0';
+export const LATEST_PLUGIN_VERSION = '1.0.0';
 
 /**
  * How a user actually applies an update. Named concretely, because "please

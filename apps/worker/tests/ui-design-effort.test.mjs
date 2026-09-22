@@ -37,7 +37,7 @@ const R = await import(pathToFileURL(OUT).href);
 /** One step of a real run, in the one lane where the baseline is not already `high`. */
 const planStep = (text, over = {}) =>
   R.chooseEffort({
-    mode: 'clay',
+    mode: 'plan',
     productModel: 'apple',
     step: 1,
     highEffortUsed: 0,
@@ -95,7 +95,7 @@ test('the signal survives the type contract as well as the storage round trip', 
   // And the round trip itself: a persisted traits object spread back into the signals still raises.
   const restored = JSON.parse(JSON.stringify(R.classifyRequest('restyle the shop panel')));
   assert.equal(
-    R.chooseEffort({ mode: 'clay', productModel: 'apple', step: 1, highEffortUsed: 0, ...restored }).effort,
+    R.chooseEffort({ mode: 'plan', productModel: 'apple', step: 1, highEffortUsed: 0, ...restored }).effort,
     'high',
   );
 });

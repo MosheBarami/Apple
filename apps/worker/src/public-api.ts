@@ -193,9 +193,9 @@ export function matchRoute(method: string, pathname: string): RouteMatch | undef
  * nothing. If a key is ever minted before this ships, add the aliases.
  */
 export const PUBLIC_MODELS: Record<string, { internal: string; description: string; productModel?: ProductModel }> = {
-  'apple-chat': { internal: 'clay', productModel: 'apple', description: 'Apple. Fast answers and smaller edits.' },
-  'apple-max': { internal: 'stone', productModel: 'apple-max', description: 'Apple MAX. Larger multi-file builds for paid subscribers.' },
-  'apple-plan': { internal: 'clay', description: 'The planner. Reasons about a place without proposing edits to it.' },
+  'apple-chat': { internal: 'plan', productModel: 'apple', description: 'Apple. Fast answers and smaller edits.' },
+  'apple-max': { internal: 'agent', productModel: 'apple-max', description: 'Apple MAX. Larger multi-file builds for paid subscribers.' },
+  'apple-plan': { internal: 'plan', description: 'The planner. Reasons about a place without proposing edits to it.' },
 };
 
 export function publicModelList(createdAt: number): Record<string, unknown> {

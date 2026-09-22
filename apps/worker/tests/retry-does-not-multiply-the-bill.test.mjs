@@ -123,7 +123,7 @@ const ok = (text, outputTokens) => ({
 });
 
 const request = {
-  model: 'stone',
+  model: 'agent',
   messages: [{ role: 'user', content: 'Build the thing.' }],
   maxTokens: 512,
 };
@@ -222,7 +222,13 @@ test('THE CONTROL: a failure that DID reach the model is not retried at all', ()
     const { waited } = await withoutSleeping(async () => {
       await assert.rejects(
         () => G.chat(env, request, { kind: 'retry-bill-test' }),
-        /inference failed/,
+        (error) => {
+          assert.equal(error?.name, 'ProviderError');
+          assert.equal(error?.kind, 'transient',
+            'a transport/provider outage must keep its structured classification for SessionDO');
+          assert.match(error?.message ?? '', /inference failed/);
+          return true;
+        },
         'a non-retryable provider failure must surface as itself',
       );
     });

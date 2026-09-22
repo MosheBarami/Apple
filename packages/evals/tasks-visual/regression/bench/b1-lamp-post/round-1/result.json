@@ -1,90 +1,43 @@
 {
  "task": "b1-lamp-post",
  "round": 1,
- "runMs": 336233,
- "metrics": {
-  "parts": 69,
-  "small": 66,
-  "unanchored": 0,
-  "scripts": 0,
-  "materials": [
-   {
-    "material": "Slate",
-    "parts": 5
-   },
-   {
-    "material": "Plastic",
-    "parts": 1
-   },
-   {
-    "material": "Neon",
-    "parts": 5
-   },
-   {
-    "material": "Metal",
-    "parts": 58
-   }
-  ],
-  "colours": 7,
-  "lights": 1,
-  "heightSpan": 20.9,
-  "brightness": 2.4,
-  "clockTime": 17.4,
-  "effects": [
-   "Sky",
-   "SunRaysEffect",
-   "Atmosphere",
-   "BloomEffect",
-   "DepthOfFieldEffect",
-   "ColorCorrectionEffect"
-  ]
- },
+ "runMs": 214516,
+ "metrics": {},
  "boundsSize": [
   12,
-  20.9,
+  1,
   12
  ],
- "score": 5,
+ "score": 1,
  "passed": false,
  "unavailable": false,
- "summary": "All the requested components are present and the palette (dark iron, cream glass, warm neon) is coherent, so it is unmistakably a street lamp rather than a box on a stick. But the fluting is absent, the base has no cast-iron massing, the lantern is proportionally too wide for the spindly column, and the finial is an afterthought. It is a competent assembly of the right parts, not an ornate fixture",
- "hardFails": [],
+ "summary": "The requested object is not in any of the three renders. All views show a flat grey slab on a green baseplate with a bare blue sky — 1 part in frame, 2 off-camera, per the capture stats. I cannot assess the lamp's silhouette, proportion, or ornament because none of it is visible; what IS visible is programmer-art ground. Until the camera actually frames the lamp, this is unscoreable above the slab",
+ "hardFails": [
+  "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+  "over 90% of parts are default Plastic — no material pass was done"
+ ],
  "defects": [
   {
-   "dimension": "proportion",
-   "fix": "Re-mass the column: make it 1.6 studs diameter at the base tapering to 0.9 studs under the collar, and shrink the lantern housing to 3.5 x 3.5 x 4.5 studs so the post reads as one continuous tapering form.",
-   "observed": "The lantern housing is a wide, nearly square box sitting on a visibly thinner column, giving a lollipop silhouette. In the hero and front views the lantern reads wider than the column is at any point, whereas a real Victorian lamp has a hea",
-   "severity": "major",
-   "view": "hero, front"
-  },
-  {
-   "dimension": "detail",
-   "fix": "Add 6-8 thin vertical rib parts (0.15 x 0.15 x column-height wedges) spaced evenly around the lower two-thirds of the column, and add two torus-style collar rings (2.0 and 1.4 studs diameter) at the base and under the lantern.",
-   "observed": "The brief explicitly asked for a fluted column. At all three views the column reads as a smooth dark cylinder with no visible flutes, rings, or moulding along its length. There is at most a slight bulge under the lantern.",
+   "dimension": "composition",
+   "fix": "Re-aim the diagnostic cameras so the lamp is actually in frame: place the hero camera at roughly (lamp position + Vector3.new(14, 8, 14)) looking at the lantern head, with FOV 50, so the full 12-stud-tall lamp fills 60-70% of frame height. ",
+   "observed": "There is no lamp post visible in ANY of the three renders. In hero, front and side I see only a flat grey slab (the 12x1x12 base) sitting on green ground against a flat blue sky. The stats confirm it: 1 part in frame, 2 off-camera, in every",
    "severity": "major",
    "view": "hero, front, side"
   },
   {
    "dimension": "detail",
-   "fix": "Replace with a 3-tier cast base: a 3-stud square plinth 0.8 tall, a 2.2-stud chamfered mid-block 1.0 tall, and a 1.6-stud neck with a bead ring, all in the same dark iron colour.",
-   "observed": "The lamp's own foot is a small dark lump that disappears into the grey pad. In the front view there is no readable stepped plinth, no bolt-detail ring, nothing that says 'cast iron base'.",
+   "fix": "If the lamp parts exist, verify they are anchored and positioned at the origin (e.g. set PrimaryPart CFrame to CFrame.new(0, 6, 0) for a ~12-stud lamp) before capture; a lamp assembled but left at an offset Y or unanchored and fallen out of",
+   "observed": "Edge density is 0.041-0.042 and interior detail 0.029-0.042 across all views — essentially zero. A fluted column, decorative collar and glazed lantern would produce strong vertical edge rhythm; none is present. The visible object is a plain",
    "severity": "major",
-   "view": "front, side"
-  },
-  {
-   "dimension": "detail",
-   "fix": "Build a 3-part finial: a 0.8-stud cap plate, a 1.2-stud acorn (ball + tapered tip), total ~2 studs tall, slightly wider than the lantern roof plate so it silhouettes clearly.",
-   "observed": "The finial is a tiny nub on a flat cap plate. In the hero view it reads as a small dark blob and does not terminate the silhouette; the lantern roof is a flat slab with no pitch or overhang.",
-   "severity": "minor",
-   "view": "hero"
+   "view": "hero, front, side"
   },
   {
    "dimension": "materials",
-   "fix": "Give the lantern roof a 4-sided pyramidal cap in a slightly lighter iron tone, and add a thin bright trim bar (0.1 stud) around the top and bottom of the glass so the panes read as glazed units rather than stickers.",
-   "observed": "The glass panes are flat uniform cream rectangles with no frame depth, no sill, no transom bar. The whole lantern reads as one flat colour block from any angle.",
-   "severity": "minor",
-   "view": "front, side"
+   "fix": "Once the lamp is actually captured, assign MeshParts or textured Parts: cast iron as Metal/DiamondPlate-dark with a near-black rgb(25,25,28) tint, glass panes as Glass with rgb(255,235,180) tint, brass collar as SmoothPlastic rgb(180,140,60",
+   "observed": "One material (Plastic), one colour family. The slab is uniform mid-grey with no material variation. Nothing about the visible geometry reads as cast iron, glass, or brass.",
+   "severity": "major",
+   "view": "hero, front, side"
   }
  ],
- "neurons": 81
+ "neurons": 60
 }

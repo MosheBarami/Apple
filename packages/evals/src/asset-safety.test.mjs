@@ -68,9 +68,6 @@ const {
   BRIGHT_SIMULATOR,
   describeAssetRequest,
   inspectCreator,
-  isSafeLuauPath,
-  buildNormaliseLuau,
-  parseNormaliseResult,
   summariseTree,
   brokerAsset,
   BROKER_STEPS,
@@ -600,17 +597,15 @@ test('CULL AGGRESSIVELY: cullPalette sorts a mixed set into keep / transform / d
   assert.equal(keep.length + transform.length + drop.length, mixed.length, 'every member is accounted for exactly once');
 });
 
-test('a transform is EXPRESSIBLE as safe Luau, and fails closed on a hostile path', () => {
-  const retint = { kind: 'retint', instruction: 'x', colour: [0.3, 0.7, 0.35], repairs: ['palette'], projectedTotal: 80 };
-  const code = A.buildTransformLuau('game.Workspace.Fence', retint);
-  assert.match(code, /Color3\.new\(0\.3000, 0\.7000, 0\.3500\)/);
-  assert.match(code, /p\.Color = tint/);
-  assert.equal(A.buildTransformLuau('game.Workspace["a"] end; loadstring("x")() --', retint), null);
-  assert.equal(A.buildTransformLuau('game.Workspace.Fence', { ...retint, colour: [0.3, NaN, 0.35] }), null);
-  const rescale = { kind: 'rescale', instruction: 'x', scale: 4.5, repairs: ['scale_tier'], projectedTotal: 80 };
-  assert.match(A.buildTransformLuau('game.Workspace.Tree', rescale), /ScaleTo\(4\.5000\)/);
-  assert.equal(A.buildTransformLuau('game.Workspace.Tree', { ...rescale, scale: 500 }), null, 'an absurd scale yields no code at all');
-  assert.match(A.buildTransformLuau('game.Workspace.Bush', { kind: 'drop_texture', instruction: 'x', repairs: ['texture'], projectedTotal: 80 }), /TextureID = ""/);
+test('coherence transformations are data, not executable source', () => {
+  const retint = A.scoreAssetCoherence(
+    { name: 'Fence', intent: 'fence', triangles: 240, hasTexture: false, dominantColours: [[0.58, 0.58, 0.59]], boundsStuds: [8, 6, 1] },
+    meadow(),
+  ).transform;
+  assert.equal(retint.kind, 'retint');
+  assert.deepEqual(retint.colour.length, 3);
+  assert.equal(JSON.stringify(retint).includes('loadstring'), false);
+  assert.equal(JSON.stringify(retint).includes('Color3.new'), false);
 });
 
 test('every coherence axis carries a weight, the weights sum to 1, and every axis states a reason', () => {
@@ -653,43 +648,6 @@ test('an untrusted creator is not acceptable, and Roblox itself is trusted by co
   assert.equal(inspectCreator({ ...base, creator: { id: 1, name: 'Roblox', isVerifiedCreator: false } }).trust, 'roblox');
   assert.equal(inspectCreator({ ...base, creator: { ...base.creator, isVerifiedCreator: true } }).trust, 'verified');
   assert.equal(inspectCreator({ ...base, isEndorsed: true }).trust, 'endorsed');
-});
-
-test('LUAU PATH INJECTION IS FAILED CLOSED — a hostile path yields no code at all', () => {
-  assert.equal(isSafeLuauPath('game.Workspace.Tree'), true);
-  assert.equal(isSafeLuauPath('game.Workspace["Oak Tree"]'), true);
-  for (const evil of [
-    'game.Workspace["a"] end; loadstring("x")() --',
-    'game.Workspace["a\\"]"]',
-    'game.Workspace\nprint(1)',
-    'game.Workspace["a`b"]',
-    '',
-  ]) {
-    assert.equal(isSafeLuauPath(evil), false, `should have been refused: ${JSON.stringify(evil)}`);
-    assert.equal(buildNormaliseLuau({ path: evil, scale: 1, position: null, reasons: [] }), null);
-  }
-});
-
-test('normalisation refuses absurd scales and non-finite positions rather than emitting them', () => {
-  const p = { path: 'game.Workspace.T', reasons: [] };
-  assert.equal(buildNormaliseLuau({ ...p, scale: 0, position: null }), null);
-  assert.equal(buildNormaliseLuau({ ...p, scale: 1e9, position: null }), null);
-  assert.equal(buildNormaliseLuau({ ...p, scale: 1, position: [0, NaN, 0] }), null);
-  const good = buildNormaliseLuau({ ...p, scale: 2.5, position: [10, 0, -4] });
-  assert.match(good, /ScaleTo\(2\.5000\)/);
-  assert.match(good, /PivotTo\(CFrame\.new\(10\.000, 0\.000, -4\.000\)\)/);
-  assert.match(good, /Anchored = true/);
-});
-
-test('the normalisation report survives the wrappers run_code puts around it', () => {
-  const payload = '{"anchored":7,"scaled":2.0,"size":[3,4,3],"pos":[0,2,0]}';
-  for (const wrapped of [payload, { result: payload }, { result: { t: 'string', v: payload } }, { data: { result: payload } }]) {
-    const parsed = parseNormaliseResult(wrapped);
-    assert.equal(parsed.anchored, 7);
-    assert.deepEqual(parsed.size, [3, 4, 3]);
-  }
-  assert.equal(parseNormaliseResult('{"error":"target not found"}'), null);
-  assert.equal(parseNormaliseResult('not json'), null);
 });
 
 test('summariseTree measures the bounding box and notices a truncated walk', () => {
@@ -739,16 +697,51 @@ function fakeStore(details = DETAILS(101, 'Low Poly Crate')) {
  * metadata gate could not see. Deletions actually mutate it, so `verify` is a real re-read.
  */
 function fakeStudio({ scripts = [], classes = ['Model', 'MeshPart'], failOn = null, size = [4, 4, 4], colours = [] } = {}) {
-  const state = { scripts: scripts.slice(), deleted: [], calls: [] };
+  const state = { scripts: scripts.slice(), deleted: [], calls: [], ops: [], size: size.slice(), center: [0, size[1] / 2, 0] };
   const bridge = {
     async execStudioOp(op) {
       state.calls.push(op.op);
+      state.ops.push(structuredClone(op));
       if (failOn === op.op) return { ok: false, error: `fake failure on ${op.op}` };
       switch (op.op) {
         case 'insert_asset':
           return { ok: true, data: { inserted: ['game.Workspace.Crate'] } };
-        case 'get_tree':
-          return { ok: true, data: { root: { name: 'Crate', class: classes[0], pos: [0, size[1] / 2, 0], size, children: classes.slice(1).map((c, i) => ({ name: `C${i}`, class: c })) } } };
+        case 'get_tree': {
+          const children = classes.slice(1).map((c, i) => {
+            const node = { name: `C${i}`, class: c };
+            if (['Part', 'MeshPart', 'WedgePart', 'CornerWedgePart', 'TrussPart', 'SpawnLocation', 'Seat', 'VehicleSeat', 'UnionOperation'].includes(c)) {
+              node.pos = state.center.slice();
+              node.size = state.size.slice();
+            }
+            return node;
+          });
+          return { ok: true, data: { root: { name: 'Crate', class: classes[0], children } } };
+        }
+        case 'get_instance': {
+          const match = /\.C(\d+)$/.exec(op.path);
+          const index = match ? Number(match[1]) : 0;
+          const colour = colours[index] ?? colours[0] ?? null;
+          return {
+            ok: true,
+            data: {
+              path: op.path,
+              class: classes[index + 1] ?? classes[0],
+              props: {
+                ...(colour ? { Color: { t: 'Color3', v: colour } } : {}),
+                Anchored: { t: 'bool', v: false },
+                Size: { t: 'Vector3', v: state.size.slice() },
+              },
+            },
+          };
+        }
+        case 'set_props':
+          return { ok: true, data: { path: op.path, set: Object.keys(op.props ?? {}) } };
+        case 'transform_instances': {
+          const scale = typeof op.scale === 'number' ? op.scale : 1;
+          state.size = state.size.map((n) => n * scale);
+          if (Array.isArray(op.move)) state.center = state.center.map((n, i) => n + op.move[i]);
+          return { ok: true, data: { transformed: op.paths.length, parts: 1, moved: !!op.move, scaled: op.scale !== undefined } };
+        }
         case 'list_scripts':
           return { ok: true, data: { scripts: state.scripts.map((s) => ({ path: s.path, class: s.className })) } };
         case 'read_script': {
@@ -759,10 +752,6 @@ function fakeStudio({ scripts = [], classes = ['Model', 'MeshPart'], failOn = nu
           state.deleted.push(...op.paths);
           state.scripts = state.scripts.filter((s) => !op.paths.includes(s.path) && !op.paths.some((p) => s.path.startsWith(p + '.')));
           return { ok: true, data: { deleted: op.paths } };
-        case 'run_code':
-          // The normalisation snippet now reports the colours it measured while anchoring, because
-          // the coherence gate cannot refuse a grey prop it was never told the colour of.
-          return { ok: true, data: { result: `{"anchored":3,"scaled":0,"size":[${size.join(',')}],"pos":[0,${size[1] / 2},0],"colours":${JSON.stringify(colours)}}` } };
         default:
           return { ok: true, data: {} };
       }
@@ -782,6 +771,26 @@ test('THE HAPPY PATH: a clean asset walks the whole pipeline in order and ends v
   assert.equal(r.chosen.assetId, 101);
   // The order that matters: the hierarchy is never read before it exists, and never after it is used.
   assert.ok(studio.state.calls.indexOf('insert_asset') < studio.state.calls.indexOf('list_scripts'));
+  assert.equal(studio.state.calls.includes('run_code'), false, 'asset normalisation must stay on typed Studio ops');
+  assert.ok(studio.state.calls.includes('set_props'), 'the inserted BasePart should be anchored through set_props');
+});
+
+test('normalisation uses transform_instances for scale and placement, then reads the final geometry back', async () => {
+  const store = fakeStore();
+  const studio = fakeStudio({ size: [20, 20, 20], colours: [[0.79, 0.55, 0.30]] });
+  const r = await brokerAsset(
+    {},
+    { description: 'a low poly crate', intent: 'crate', position: [10, 4, -4] },
+    studio.bridge,
+    { fetchImpl: store.fetchImpl },
+  );
+  assert.equal(r.ok, true, r.summary);
+  const transform = studio.state.ops.find((op) => op.op === 'transform_instances');
+  assert.ok(transform, 'an oversized/misplaced inserted asset must use the typed transform op');
+  assert.ok(transform.scale > 0 && transform.scale < 1, `expected a downscale, got ${transform.scale}`);
+  assert.deepEqual(transform.move, [10, -6, -4]);
+  assert.deepEqual(r.normalisation.position, [10, 4, -4], 'the final centre must come from the verification get_tree');
+  assert.equal(studio.state.calls.includes('run_code'), false);
 });
 
 test('A BACKDOORED MODEL THAT PASSED THE METADATA GATE IS DELETED, WHOLE, AFTER INSERTION', async () => {
@@ -920,8 +929,10 @@ test('a TRANSFORMABLE asset is kept and the fix is applied in the place, not jus
   assert.equal(r.coherence.verdict, 'transform');
   assert.equal(r.transformApplied.kind, 'retint');
   assert.deepEqual(studio.state.deleted, [], 'a fixable asset is fixed, not culled');
-  // Two run_code calls: the normalisation pass, then the retint. The second one is the fix landing.
-  assert.equal(studio.state.calls.filter((c) => c === 'run_code').length, 2);
+  assert.equal(studio.state.calls.includes('run_code'), false);
+  const retint = studio.state.ops.find((op) => op.op === 'set_props' && op.props?.Color);
+  assert.ok(retint, 'the coherence retint must land as a typed Color property write');
+  assert.equal(retint.props.Color.t, 'Color3');
 });
 
 test('without applyTransform the fix is REPORTED and not silently performed', async () => {
@@ -932,7 +943,8 @@ test('without applyTransform the fix is REPORTED and not silently performed', as
   assert.equal(r.ok, true, r.summary);
   assert.equal(r.transformApplied, null);
   assert.match(r.steps.find((st) => st.step === 'coherence').detail, /needs a retint/);
-  assert.equal(studio.state.calls.filter((c) => c === 'run_code').length, 1);
+  assert.equal(studio.state.calls.includes('run_code'), false);
+  assert.equal(studio.state.ops.some((op) => op.op === 'set_props' && op.props?.Color), false, 'report-only mode must not retint the asset');
 });
 
 test('the broker never throws — a Studio that fails every op is a refusal with an audit trail', async () => {
@@ -1708,7 +1720,7 @@ test('THE SYSTEM PROMPT NO LONGER CONTRADICTS THE TOOLS it is describing', () =>
   //   The invariant is unchanged and is now stated once, plus the stronger half the removal makes
   //   available: the prompt must not merely omit the catalogue, it must SAY there is none, because
   //   a model told nothing will offer to search one. ]]
-  const base = { mode: 'stone', studioConnected: true, placeName: 'Test', projectName: 'Test', memorySummary: null, memoryFacts: [], fenceId: 'ev4lf3nc' };
+  const base = { mode: 'agent', studioConnected: true, placeName: 'Test', projectName: 'Test', memorySummary: null, memoryFacts: [], fenceId: 'ev4lf3nc' };
   const sys = P.systemPrompt(base);
   const offered = T.toolDefs(true).map((d) => d.name);
 
