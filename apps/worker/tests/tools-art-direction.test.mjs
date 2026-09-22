@@ -239,3 +239,22 @@ test('focus_camera frames a path, and refuses an empty one', async () => {
   assert.match(String(res.error), /path is required/);
   assert.equal(empty.ops.length, 0);
 });
+
+// 2026-09-22, run 1fe40a80: the Baseplate template ships an Atmosphere, set_mood created a second one,
+// failed on the name ("game.Lighting already contains a child named Atmosphere") after Lighting had
+// already changed, and left the mood half applied. A place renders one Atmosphere, so theirs is retuned.
+test("set_mood retunes the place's own Atmosphere instead of colliding with it", async () => {
+  const { ctx, ops } = moodBridge([
+    { path: 'game.Lighting.Atmosphere', class: 'Atmosphere', attributes: {} },
+    { path: 'game.Lighting.Bloom', class: 'BloomEffect', attributes: {} },
+  ]);
+  const res = await T.TOOLS.set_mood.run(ctx, { mood: 'golden' });
+  assert.equal(res.error, undefined, JSON.stringify(res));
+  assert.deepEqual(ops.map((op) => op.op), ['get_tree', 'set_props', 'set_props', 'create_instances']);
+  assert.equal(ops[2].path, 'game.Lighting.Atmosphere');
+  assert.equal(ops[2].props.Density.t, 'number', 'the mood\'s atmosphere values, typed');
+  assert.equal(ops[3].items.some((item) => item.className === 'Atmosphere'), false, 'no second Atmosphere');
+  assert.ok(ops[3].items.some((item) => item.className === 'BloomEffect'), 'the other effects are still created');
+  assert.equal(res.updatedAtmosphere, 'game.Lighting.Atmosphere');
+  assert.deepEqual(res.keptUserEffects, ['BloomEffect'], 'their Atmosphere is retuned, not listed as left alone');
+});

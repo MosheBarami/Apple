@@ -2850,10 +2850,18 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (!root) return { error: 'Studio returned no Lighting tree' };
       const owned: string[] = [];
       const kept: string[] = [];
+      // ONE ATMOSPHERE PER PLACE. The user's other effects are kept and stacked with the mood's, but a
+      // place renders a single Atmosphere, and creating a second beside theirs collides on the name.
+      // Measured 2026-09-22 (run 1fe40a80): "game.Lighting already contains a child named Atmosphere"
+      // — the Baseplate template ships one — after Lighting had already been changed, so the mood was
+      // left half applied. The mood's values now go onto the Atmosphere the place already has.
+      let userAtmosphere: string | null = null;
       for (const child of root.children ?? []) {
         if (!child.class || !LIGHTING_EFFECT_CLASSES.has(child.class)) continue;
         if (decodeTagged(child.attributes?.AppleMood) !== null && decodeTagged(child.attributes?.AppleMood) !== undefined) {
           if (child.path) owned.push(child.path);
+        } else if (child.class === 'Atmosphere' && child.path && !userAtmosphere) {
+          userAtmosphere = child.path;
         } else {
           kept.push(child.class);
         }
@@ -2873,7 +2881,16 @@ export const TOOLS: Record<string, ToolImpl> = {
         ? { ...(lighting as Record<string, unknown>), projectMutated: true }
         : lighting;
       projectMutated = true;
-      const created = await op(ctx, { op: 'create_instances', items: moodInstances(mood) });
+      if (userAtmosphere) {
+        const atmosphere = await op(ctx, {
+          op: 'set_props',
+          path: userAtmosphere,
+          props: typedPresetProps(preset.atmosphere as unknown as Record<string, number | boolean | RGB>),
+        });
+        if (toolError(atmosphere)) return { ...(atmosphere as Record<string, unknown>), projectMutated: true };
+      }
+      const items = moodInstances(mood).filter((item) => !(userAtmosphere && item.className === 'Atmosphere'));
+      const created = await op(ctx, { op: 'create_instances', items });
       if (toolError(created)) return { ...(created as Record<string, unknown>), projectMutated: true };
 
       // Hand back the palettes this mood was art-directed alongside. The lighting is half of a
@@ -2889,6 +2906,8 @@ export const TOOLS: Record<string, ToolImpl> = {
         applied: mood,
         // Only ever this mood's own previous instances; the user's are counted in `kept`.
         replacedOwn: owned.length || undefined,
+        // Their Atmosphere was retuned rather than duplicated; say so, because its old values are gone.
+        updatedAtmosphere: userAtmosphere ?? undefined,
         keptUserEffects: kept.length ? kept : undefined,
         note: keptNote,
         palettes: palettes.length ? palettes : undefined,
