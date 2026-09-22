@@ -84,3 +84,29 @@
   (F-030) → post-verification idle bound, worker 3f353ba2.
 - **Instrument that worked:** saving the disposable place and reading it with lune (`roblox.deserializePlace`)
   gives the true tree and every script source without trusting any product claim.
+
+## E-8 — Mission 4 terrain + lighting (2026-09-22 23:38 IDT)
+
+- **Run d1a97c0d (worker 3f353ba2):** `done`, 152 steps, 450 s, 450 Credits; 149 edit_terrain (fill_ball) calls, one
+  op each. Studio stalled once (30 s timeout); Studio tools were then withdrawn and the reply mis-stated both the
+  tool availability and the number of edits. A hill-like dome exists; the pond and the sunset do not.
+- **Fixed:** edit_terrain takes `operations` (≤32, in order, stops at first failure and reports the partial
+  mutation); the description tells the model to build a whole feature in one call. Worker 5a617e92.
+
+## E-9 — Mission 4 re-run after batched terrain and the replay fix (2026-09-22 23:54 IDT)
+
+- **Setup:** worker 5a617e92; plugin build 1e04e884… (Studio restarted, re-paired).
+- **Measured:** run 1fe40a80, `done`, 30 steps, 122 s, 105 Credits (was 152 steps, 450 s, 450 Credits): one
+  batched edit_terrain call made the hill and pond (five ops). set_mood failed on an existing Atmosphere
+  after changing Lighting → F-035, fixed. The automatic visual review failed the result; the model then only
+  re-read until the duplicate guard. The viewport is a grey haze.
+
+## E-10 — "List the parts inside the StreetLamp model" (2026-09-23 00:29–01:21 IDT)
+
+- Three failed attempts before the fixes: runs 5034f8f2 (read loop, incomplete), 6133d093 (answered but "the
+  earlier reads came back summarized"), 867aff43 and 2d3d2ea9 (re-reads refused as duplicates, incomplete).
+- Root causes (measured): get_project_tree handed the model JSON cut at 3,000 chars mid-object; a read trimmed out
+  of the transcript stayed in the duplicate guard, so it could never be read again.
+- After the tree outline and the trimmed-read fix: run 20cc1671, `done`, 2 steps, 10 Credits — "26 parts:
+  Plinth1–3, BaseCap, Column1–5, Ring1–4, TopCollar, LanternBase, Glass, Glow, PostN/S/W/E, CapSlab1–3, Finial.
+  Nothing was changed." — correct against the lamp built in E-3.

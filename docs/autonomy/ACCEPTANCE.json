@@ -1,30 +1,66 @@
 {
   "schema": 1,
   "deterministic_gates_green": false,
-  "production_deployed": false,
-  "production_bytes_verified": false,
-  "signed_in_browser_qa": false,
+  "production_deployed": true,
+  "production_bytes_verified": true,
+  "signed_in_browser_qa": true,
   "mobile_qa": false,
-  "real_studio_end_to_end": false,
-  "studio_readback_verified": false,
-  "follow_up_edit_verified": false,
-  "failure_recovery_verified": false,
-  "database_security_verified": false,
-  "production_error_reviewed": false,
+  "real_studio_end_to_end": true,
+  "studio_readback_verified": true,
+  "follow_up_edit_verified": true,
+  "failure_recovery_verified": true,
+  "database_security_verified": true,
+  "production_error_reviewed": true,
   "fresh_reviews_without_material_blocker": 0,
   "required_fresh_reviews_without_material_blocker": 3,
-  "open_critical_findings": 0,
-  "open_high_findings": 0,
+  "open_critical_findings": 2,
+  "open_high_findings": 10,
   "candidate_complete": false,
   "missions": {
     "gameplay_loop_from_baseplate": false,
     "visually_ambitious_environment": false,
     "scripts_networking_ui": false,
-    "modify_existing_project": false,
+    "modify_existing_project": true,
     "debug_broken_experience": false,
-    "follow_up_change": false,
+    "follow_up_change": true,
     "playtest_inspect_repair": false
   },
-  "evidence": {},
-  "_notes": "Every true flag and every true mission must have at least one existing path under evidence[<key>]; scripts/autonomy-review-gate.py refuses a true without evidence. fresh_reviews_without_material_blocker counts CONSECUTIVE fresh-context reviews that returned PASS; any MATERIAL_FINDINGS resets it to 0. open_*_findings are counted from CUSTOMER_FINDINGS.md open items, not typed by hand."
+  "evidence": {
+    "production_deployed": [
+      "docs/autonomy/evidence/20260923T0010Z-missions/README.md"
+    ],
+    "production_bytes_verified": [
+      "docs/autonomy/evidence/20260923T0010Z-missions/README.md"
+    ],
+    "signed_in_browser_qa": [
+      "docs/autonomy/evidence/20260923T0010Z-missions/README.md"
+    ],
+    "real_studio_end_to_end": [
+      "docs/autonomy/evidence/20260923T0010Z-missions/README.md",
+      "docs/autonomy/EXPERIMENTS.md"
+    ],
+    "studio_readback_verified": [
+      "docs/autonomy/evidence/20260923T0010Z-missions/README.md"
+    ],
+    "follow_up_edit_verified": [
+      "docs/autonomy/evidence/20260923T0010Z-missions/README.md"
+    ],
+    "failure_recovery_verified": [
+      "docs/autonomy/EXPERIMENTS.md"
+    ],
+    "database_security_verified": [
+      "docs/autonomy/evidence/20260922T184444Z-harness-setup/rls-isolation.txt"
+    ],
+    "production_error_reviewed": [
+      "docs/autonomy/evidence/20260923T0010Z-missions/README.md"
+    ],
+    "mission:modify_existing_project": [
+      "docs/autonomy/evidence/20260923T0010Z-missions/README.md"
+    ],
+    "mission:follow_up_change": [
+      "docs/autonomy/evidence/20260923T0010Z-missions/README.md"
+    ]
+  },
+  "_notes": "Every true flag and every true mission must have at least one existing path under evidence[<key>]; scripts/autonomy-review-gate.py refuses a true without evidence. fresh_reviews_without_material_blocker counts CONSECUTIVE fresh-context reviews that returned PASS; any MATERIAL_FINDINGS resets it to 0. open_*_findings are counted from CUSTOMER_FINDINGS.md open items, not typed by hand.",
+  "_status_2026_09_23": "NOT candidate-complete. Open: 2 critical (F-020, F-034 \u2014 fixed in the local plugin build, reach customers only after the owner publishes it to the Creator Store), 10 high (web F-002/F-003 await the web deploy; cost/wander F-019/F-023/F-030/F-033/F-036; model quality F-025/F-028/F-029). Missions not passed: gameplay loop and debug (the coin game still cannot score), visually ambitious, scripts/networking/UI, playtest-inspect-repair (playtest works, repair did not). Deterministic gates: CI cannot run (GitHub billing); local gate suite pending the web lane."
 }

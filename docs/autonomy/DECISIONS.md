@@ -45,3 +45,25 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   smaller batches.
 - **Evidence:** F-001 (two identical production failures).
 - **Falsified if:** the same lamp prompt, re-run after the fix, still ends in `error` or builds nothing.
+
+## 2026-09-23 — owner direction (message during the run)
+
+- **D-UX-2 — Outputs are short; detail is hidden.** The product is for young, non-technical creators. Plan
+  checklists, property tables, instance cards and long tool detail are not shown in the conversation. The
+  reply says what changed in plain words; detail stays reachable only behind the Thinking disclosure.
+- **D-REASONING-2 — The Thinking shimmer opens onto the model's own reasoning, live.** Overrides the earlier
+  rule "never render hidden chain of thought". Only text the provider itself returns as reasoning is shown,
+  as plain text, never interpreted as markup; providers that return none show only the shimmer.
+- **D-BYOK-1 — Bring your own key.** Customers may add keys (OpenRouter, OpenAI, Anthropic, Google, DeepSeek)
+  and pick the latest models (GPT-6 Astra/Sol/Luna, Claude Fable 5.1, Claude Opus 5.5, Gemini 3.8 Flash,
+  DeepSeek V4.1 Flash, …), shown with their official icons. Keys are encrypted at rest with a worker secret,
+  never returned to the browser beyond their last four characters, never logged, never put in a transcript.
+  A run on the customer's own key does not spend Apple Credits.
+- **D-FREE-1 — Free models are the ones OpenRouter prices at zero today, read live.** Free promotions are
+  time-limited, so the list is derived from OpenRouter's catalogue (prompt and completion price 0, tool calling
+  supported) and cached briefly, never hard-coded. They need an OpenRouter key; a keyless free tier switches on
+  only if the owner adds a platform OpenRouter key (OPENROUTER_API_KEY) — creating that account is the owner's.
+- **D-BYOK-2 — The encryption key.** `BYOK_ENCRYPTION_KEY` (32 random bytes, base64) was generated in memory and
+  piped straight into `wrangler secret put` on 2026-09-23; it was never printed or written to disk. Rotating it
+  makes every stored customer key unreadable — customers would have to add their keys again. Do not rotate it
+  without a re-encryption step.
