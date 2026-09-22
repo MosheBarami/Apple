@@ -4076,16 +4076,25 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
       const capabilityBlocked = capabilityFilter.withheld.includes(call.name);
       const safeToolName = knownTools.has(call.name) ? call.name : 'requested tool';
+      // A Studio tool withheld because the link is DOWN is not "unavailable in this mode". Measured
+      // 2026-09-22 (run d1a97c0d): the plugin ended its session mid-run, the Studio tools dropped out,
+      // and the model — told only "not available … for the current mode" — told the customer the
+      // terrain and lighting tools "aren't offered in this mode". Say what actually happened.
+      const studioDown = !studioConnected && TOOLS[call.name]?.studio === true;
       const out = allowed.has(call.name)
         ? await runTool(ctx, call.name, call.arguments)
         : {
-            summary: capabilityBlocked
-              ? `${safeToolName}: unavailable in connected Studio`
-              : `${safeToolName}: unavailable in this run`,
+            summary: studioDown
+              ? `${safeToolName}: Studio is not connected`
+              : capabilityBlocked
+                ? `${safeToolName}: unavailable in connected Studio`
+                : `${safeToolName}: unavailable in this run`,
             resultForLlm: JSON.stringify({
-              error: capabilityBlocked
-                ? `${safeToolName} is unavailable because the connected Studio explicitly reports a required operation unsupported. It was not executed. Use the Studio tools still offered for this run.`
-                : `${safeToolName} is not available in this run and was not executed. Use only the tools offered for the current mode and permissions.`,
+              error: studioDown
+                ? `${safeToolName} did not run because Roblox Studio is not connected right now — the Apple plugin stopped answering. It is not a limit of this mode. Tell the user to reconnect Studio from the Apple panel, and do not claim any Studio change you did not see succeed.`
+                : capabilityBlocked
+                  ? `${safeToolName} is unavailable because the connected Studio explicitly reports a required operation unsupported. It was not executed. Use the Studio tools still offered for this run.`
+                  : `${safeToolName} is not available in this run and was not executed. Use only the tools offered for the current mode and permissions.`,
               executed: false,
             }),
             ok: false,

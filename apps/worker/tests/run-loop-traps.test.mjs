@@ -575,3 +575,29 @@ test('A TOOL CALL WRITTEN AS TEXT IS ANSWERED, NOT TURNED INTO "Done." — and t
     assert.ok(lastEnd(h), 'the steer is bounded: the third text payload must reach the ordinary ending');
   } finally { h.stop(); }
 });
+
+// 2026-09-22, run d1a97c0d: the plugin ended its session mid-run, the Studio tools dropped out, and the
+// model, told only "not available … for the current mode", told the customer the terrain and lighting
+// tools "aren't offered in this mode". A Studio tool refused because the link is down says so.
+test('a Studio tool called while Studio is disconnected is refused as "not connected", not as "not in this mode"', async () => {
+  const h = await makeSession({
+    connected: false,
+    responses: [
+      calls(['edit_terrain', { action: 'fill_ball', center: [0, 5, 0], radius: 8, material: 'Enum.Material.Grass' }]),
+      answer({ text: 'Studio is not connected; reconnect it and I will build the hill.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'add a grassy hill' });
+    for (let i = 0; i < 4 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(h.chatCalls.length >= 2, 'the refusal must reach a second model step');
+    const second = h.chatCalls[1].req.messages;
+    const reply = second.filter((m) => m.role === 'tool').map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))).join('\n');
+    assert.match(reply, /Roblox Studio is not connected right now/);
+    assert.match(reply, /not a limit of this mode/);
+    assert.doesNotMatch(reply, /Use only the tools offered for the current mode/);
+    assert.equal(h.ops.length, 0, 'nothing may be sent to a Studio that is not there');
+  } finally {
+    h.stop();
+  }
+});
