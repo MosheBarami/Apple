@@ -287,6 +287,30 @@ do
     assert(tick(), "retired retry generation should finish cooperatively")
 end
 
+-- A long session is not a leak. 2026-09-22: the replay memory kept every op id and ended the session
+-- at 256, disconnecting a customer mid-run after four ordinary builds. 300 acknowledged ops must not.
+do
+    local bridge, statuses, _, executed = makeBridge()
+    queueResponse({ token = "long.secret", projectId = "long-project", projectName = "Long" })
+    assert(bridge:connect("LONG01"))
+    for n = 1, 30 do
+        local batch = {}
+        for k = 1, 10 do table.insert(batch, pending(("long-%d-%d"):format(n, k), "get_tree")) end
+        queueResponse({ ops = batch, waitMs = 1 })
+        assert(tick())
+        assert(bridge:isConnected(), ("the session ended after %d operations"):format(#executed))
+    end
+    assert(#executed == 300, "every operation ran exactly once")
+    -- The recent window still dedupes: the last op, delivered again, is answered from memory.
+    queueResponse({ ops = { pending("long-30-10", "get_tree") }, waitMs = 1 })
+    assert(tick())
+    assert(#executed == 300, "a redelivered recent op id must not run twice")
+    assert(bridge:isConnected())
+    for _, s in statuses do assert(not string.find(s, "too many operations", 1, true), s) end
+    bridge:disconnect()
+    assert(tick())
+end
+
 -- Terminal server decisions retire the generation before looking at ops.
 for _, terminal in {
     { body = { detach = true, ops = { pending("detach-op") } }, needle = "ended" },

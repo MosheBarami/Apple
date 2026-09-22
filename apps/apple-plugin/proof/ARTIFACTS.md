@@ -111,3 +111,6 @@ the first 1.1.0 candidate (`7e8d692e…`): Commands.luau compiled over Luau's 20
 for a `Run()` simulation and `IsEdit()` stays true under it (F-020). Measured in real Studio on the
 Apple-Acceptance place: run 5316f52b started and stopped two playtests, 0 failed ops. Publishing it to the
 Creator Store (asset 107230158271368) is the owner's action.
+
+Superseded the same evening by sha256 `1e04e884de46143248116b8396cbf35db313676d05da1e71151eb36b2fedaa99`, which also stops
+ending a Studio session after 256 operations (F-034): acknowledged replay entries are evicted oldest-first.

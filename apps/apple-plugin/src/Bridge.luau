@@ -326,6 +326,23 @@ local function remember(session: Session, id: string, result: any)
 	table.insert(session.replayOrder, id)
 end
 
+-- THE REPLAY MEMORY IS A WINDOW, NOT A LOG. It exists so an op id delivered twice runs once — which only
+-- matters while its result is unacknowledged: once the server has taken the result it drops the op. It
+-- used to keep every id for the whole session and END the session at MAX_REPLAY, so a customer doing
+-- real work was disconnected mid-run — measured 2026-09-22 at 20:45 UTC, after four runs (~240 ops, one
+-- of them a 149-op terrain build) on one pairing: "Apple sent too many operations to this Studio
+-- session". Oldest acknowledged entries now make room; only a window of still-pending results can fill.
+local function evictAcknowledged(session: Session, room: number)
+	while #session.replayOrder > 0 and #session.replayOrder + room > MAX_REPLAY do
+		local oldest = session.replayOrder[1]
+		if hasResult(session, oldest) then
+			break
+		end
+		table.remove(session.replayOrder, 1)
+		session.replay[oldest] = nil
+	end
+end
+
 local function pendingAdds(session: Session, ops: { [number]: any }): (boolean, number, number)
 	if #ops > MAX_BATCH then
 		return false, 0, 0
@@ -349,6 +366,7 @@ local function pendingAdds(session: Session, ops: { [number]: any }): (boolean, 
 			end
 		end
 	end
+	evictAcknowledged(session, newReplay)
 	if #session.replayOrder + newReplay > MAX_REPLAY then
 		return false, 0, 0
 	end
