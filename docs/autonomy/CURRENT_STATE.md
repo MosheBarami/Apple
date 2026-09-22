@@ -2,43 +2,36 @@
 
 Directly measured facts only. Re-measure at the start of every session; this file is a snapshot.
 
-**Measured:** 2026-09-22 ~21:45 IDT (18:45 UTC).
+**Measured:** 2026-09-23 ~02:00 IDT (23:00 UTC 2026-09-22).
 
 ## Repository
 
-- HEAD `bd6ab348930453fac72ccd92e721f964420cad4b`; origin/main `33d2f377a3f94a3224129aea21d5d2accfdb3c41`
-  (local is 13 commits ahead, 0 behind); nothing pushed.
-- Working tree very dirty (~390 porcelain entries) — the authoritative product state is the working
-  tree, most of it uncommitted work of earlier sessions plus four implementation tracks running now.
-- Recovery baseline: `.autonomy/backups/pre-autonomy-20260922T183608Z.patch` (+ untracked tar).
-- Baseline matrix before today's tracks (17:44–17:54 UTC): gate suite SUITE GREEN 9,059 / 0; only
-  `gate-check --lint` red (12 ledger-shape problems, identical at HEAD).
+- HEAD = origin/main `fd3edc0`; pushed. 157 porcelain entries — the BYOK/model-catalogue track of
+  workflow `wf_46d0bb34-725` (apps/worker, packages/shared, apps/web, apps/site) is in flight and
+  uncommitted, together with the wiring of the F-039 read-stall bound and the larger transcript budget in
+  apps/worker/src/do/session.ts (worker 3814/0, evals 1354/0 with both in the tree).
+- CI has not run since 2026-09-21 (GitHub billing, OWNER_QUEUE Q-001); local suites are the gate.
 
 ## Production (https://apple.moshe-barami111.workers.dev)
 
-- `/api/health` → `{"ok":true,"buildSha":"bd6ab34-dirty"}` (worker version b477cd57…, deployed
-  2026-09-22T16:57:50Z by an earlier session). SPA bundle `index-BSdMW2lW.js`.
-- The public site in production is an OLDER build (green horizon) — not redeployed since the rewrite.
-- Creator Store: "Apple Studio" 107230158271368 listed, free, visible (probe 200 with controls,
-  18:02:59Z); the store build is 1.0.0 from 2026-09-19.
-- Supabase npqvyijsvzkuwddyhtpm: RLS on for all 15 public tables; rls-isolation 43/43.
-- Sentry moshe-s6: 9 unresolved issues in 7 days (see CUSTOMER_FINDINGS F-016).
+- `/api/health` → buildSha `09229aa-dirty` (worker 5790b892, deployed 2026-09-23 ~01:35 IDT). It does
+  NOT carry the F-039 fix yet.
+- Web app and site redeployed ~01:40 IDT with STUDIO_PLUGIN_STORE_LIVE = false; both say public
+  installation is unavailable (verified in the served bytes).
+- Creator Store: Apple Studio 107230158271368 removed — "Misusing Roblox Systems", violation
+  3JhaXRZAqvmSw5iIhea5QZgT67R, appealable until 2026-10-23 01:23 IDT (F-038, D-STORE-2: appeal with the
+  final build). toolbox details 404 beside healthy controls.
+- Claude CLI logged in (Q-004 done).
 
 ## Studio
 
-- Roblox Studio (no-update copy) open on /Users/moshe/Documents/Place1.rbxl, Apple Studio 1.0.0
-  plugin loaded, paired to project 81b7c2f8-cb7d-45e6-875a-b4cfa883182d, edits allowed.
-- StudioMCP hub reachable from a local stdio client (scratch `smcp.mjs`).
+- One Studio instance (no-update copy) on /Users/moshe/Documents/Place1.rbxl, relaunched 01:44 IDT;
+  plugin panel reads 1.1.0 (local build sha256 1e04e884…). Paired to project "Coin Rush 23 Sep"
+  (8baee89b-de6e-4857-b000-c0636475a3e5), edits allowed. The place holds the Collectibles module from the
+  stopped F-039 run and no coins.
 
-## Work in flight (this session)
+## Work in flight
 
-- Implementation workflow `wf_c5472c17-bf0`, four disjoint tracks: A AI Elements chat migration
-  (apps/web), B public site redesign (apps/site), C worker run-loop fixes (apps/worker, packages/evals),
-  D plugin canonicalisation + store copy. Not yet finished; nothing from it is deployed.
-- packages/shared STUDIO_PLUGIN_STORE_LIVE flipped to true (uncommitted, not deployed).
-
-## Autonomy harness
-
-- Installed and verified: see docs/autonomy/evidence/20260922T184444Z-harness-setup/README.md.
-- Driver: this interactive session (D-AUT-1); Product-Owner lock held by pid 97997.
-- Supervisor branch blocked on one human step: `claude auth login` (CLI logged out).
+- `wf_46d0bb34-725` — BYOK keys, OpenRouter provider, model catalogue (worker done; web + site running;
+  then review and fix).
+- `wf_5391a084-5f4` — component gallery for the owner (7 libraries), output in the session scratchpad.

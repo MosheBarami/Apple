@@ -1,9 +1,10 @@
 # NEXT ACTION
 
-**Fix F-001 (critical): a tool call truncated at the provider output ceiling must never end a
-customer run.** Then deploy and re-run the vis-01 lamp prompt in the paired Studio place, and read the
-place back to prove the lamp exists.
+**Ship the F-039 fix and re-run mission 1 (gameplay loop from a baseplate).** When workflow
+`wf_46d0bb34-725` returns (review + fix of the BYOK track), run every suite, deploy the worker, web and
+site together, verify `/api/health` serves the new build, then send "make a coin game!" again in the
+paired Place1.rbxl (project Coin Rush 23 Sep) and read the place back: coins exist, touching one scores,
+it respawns, the counter shows. Falsified if the run again reads more than 20 steps without a change, or
+ends without coins.
 
-Owner of the change: the worker run-loop (apps/worker/src/providers/workers-ai.ts decode +
-apps/worker/src/do/session.ts history hygiene), after Track C of workflow wf_c5472c17-bf0 releases
-those files. Falsification condition: the same prompt still ends `error` or builds nothing.
+Then: publish the component gallery for the owner; mobile QA; missions 2–5.
