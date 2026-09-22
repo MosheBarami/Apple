@@ -10,6 +10,13 @@
 
 export const IDLE_AFTER_VERIFY_NUDGE = 4;
 export const IDLE_AFTER_VERIFY_LIMIT = 8;
+/**
+ * A run that was told not to change anything has no change for a check to follow, so the bound above
+ * never starts. Measured 2026-09-22 (run 5034f8f2): "What parts make up the StreetLamp model? Just tell
+ * me, don't change anything." — it read the model and the tree, then kept reading until the duplicate
+ * guard ended it without an answer. Such a run is told to answer after this many read-only steps.
+ */
+export const ANSWER_ONLY_NUDGE = 5;
 
 export interface IdleState {
   /** A verifier passed after the latest change to the place. */
@@ -25,17 +32,21 @@ export interface StepFacts {
   verified: boolean;
   /** Tool calls the step made, executed or refused as duplicates. Zero is a prose step. */
   calls: number;
+  /** The run owes no change (the person forbade one), so reading is idle from the first step. */
+  answerOnly?: boolean;
 }
 
-export type IdleAction = 'none' | 'nudge' | 'finish';
+export type IdleAction = 'none' | 'nudge' | 'finish' | 'answer';
 
 export function afterStep(state: IdleState, step: StepFacts): IdleState & { action: IdleAction } {
   let verifiedAfterMutation = state.verifiedAfterMutation === true;
   if (step.mutated) verifiedAfterMutation = false;
   if (step.verified && !step.mutated) verifiedAfterMutation = true;
   const onlyRead = !step.mutated && !step.verified && step.calls > 0;
-  const idleAfterVerify = verifiedAfterMutation && onlyRead ? (state.idleAfterVerify ?? 0) + 1 : 0;
-  const action: IdleAction =
-    idleAfterVerify >= IDLE_AFTER_VERIFY_LIMIT ? 'finish' : idleAfterVerify === IDLE_AFTER_VERIFY_NUDGE ? 'nudge' : 'none';
+  const counting = step.answerOnly ? onlyRead : verifiedAfterMutation && onlyRead;
+  const idleAfterVerify = counting ? (state.idleAfterVerify ?? 0) + 1 : 0;
+  const action: IdleAction = step.answerOnly
+    ? idleAfterVerify === ANSWER_ONLY_NUDGE ? 'answer' : 'none'
+    : idleAfterVerify >= IDLE_AFTER_VERIFY_LIMIT ? 'finish' : idleAfterVerify === IDLE_AFTER_VERIFY_NUDGE ? 'nudge' : 'none';
   return { verifiedAfterMutation, idleAfterVerify, action };
 }

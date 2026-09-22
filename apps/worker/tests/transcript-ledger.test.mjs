@@ -44,7 +44,8 @@ test('dropping turns leaves one pinned record naming what they did', () => {
   assert.equal(ledger.pinned, true, 'the record itself must survive the next trim');
   assert.match(ledger.content, /create_instances \(2 item\(s\): Coin1, Coin2\) → done/);
   assert.equal(ledger.role, 'assistant', 'the record is the model\'s own account, never a user turn');
-  assert.match(ledger.content, /do not repeat them/);
+  assert.match(ledger.content, /do not redo those changes/);
+  assert.match(ledger.content, /read it again with a narrow target/, 'a dropped read can be re-read — its result is not in the record');
   // The most recent groups are still whole, and the user's request is still there.
   assert.ok(r.llm.includes(user));
   assert.equal(r.llm.filter((m) => m.role === 'assistant' && !m.ledger).length, KEEP_RECENT_GROUPS);

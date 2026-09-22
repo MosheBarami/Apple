@@ -4227,6 +4227,7 @@ export class SessionDO extends DurableObject<Env> {
       mutated: mutatedThisStep,
       verified: verifiedThisStep,
       calls: executedThisStep + duplicatesThisStep,
+      answerOnly: agent.readOnly === true,
     });
     agent.verifiedAfterMutation = idle.verifiedAfterMutation;
     agent.idleAfterVerify = idle.idleAfterVerify;
@@ -4238,6 +4239,14 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
       await this.finishRun(agent, 'done');
       return;
+    }
+    if (idle.action === 'answer') {
+      agent.llm.push({
+        role: 'user',
+        content:
+          'You have read enough to answer. Reply to the user now with what you found, in plain words. ' +
+          'Only call another tool if one specific fact you need is still missing.',
+      });
     }
     if (idle.action === 'nudge') {
       agent.llm.push({

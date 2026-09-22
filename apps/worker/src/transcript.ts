@@ -163,9 +163,13 @@ export function trimTranscriptReport(llm: GatewayMessage[], maxChars: number): T
  * reading only whether its JSON carries `error`, and a target keeps only path-like characters.
  */
 export const LEDGER_MAX_CHARS = 3_000;
+// "Do not repeat them" is about CHANGES. A read whose result was dropped is not remembered here — only
+// that it ran — and run 6133d093 (2026-09-23) answered "the earlier reads came back summarized, so I
+// can't quote the part names" instead of reading the one model again. Say that a detail can be re-read.
 const LEDGER_HEADER =
   'Run record: earlier steps of this run were shortened to save space. They already happened and their '
-  + 'effects are in the place. Build on them; do not repeat them:';
+  + 'effects are in the place — do not redo those changes. Their results are no longer shown; if you need a '
+  + 'detail from one, read it again with a narrow target:';
 
 function recordDropped(head: GatewayMessage[], dropped: GatewayMessage[][]): GatewayMessage[] {
   const lines = dropped.flatMap(groupLines);

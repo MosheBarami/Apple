@@ -2465,7 +2465,10 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   // only when run-idle.ts's counter reaches its nudge step; nothing the model, the user or a tool wrote
   // reaches it. Reviewed in the same pass and deliberately NOT a user push: transcript.ts's run record,
   // which is an ASSISTANT turn carrying no tool output (apps/worker/tests/transcript-ledger.test.mjs).
-  assert.equal(userPushes.length, 7, 'a user-role transcript injection was added or removed — review it for injection risk');
+  // EIGHT SINCE 2026-09-23 — the read-only answer steer ("You have read enough to answer…"). Reviewed:
+  // a fixed string, no interpolation, pushed once when run-idle.ts counts ANSWER_ONLY_NUDGE read-only
+  // steps in a run the person told not to change anything.
+  assert.equal(userPushes.length, 8, 'a user-role transcript injection was added or removed — review it for injection risk');
   const dynamic = userPushes.filter((p) => /\$\{/.test(p));
   assert.equal(dynamic.length, 3, 'exactly three user-role injections should carry interpolated content');
   assert.ok(

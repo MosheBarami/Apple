@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterStep, IDLE_AFTER_VERIFY_NUDGE, IDLE_AFTER_VERIFY_LIMIT } from '../src/run-idle.ts';
+import { afterStep, IDLE_AFTER_VERIFY_NUDGE, IDLE_AFTER_VERIFY_LIMIT, ANSWER_ONLY_NUDGE } from '../src/run-idle.ts';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SESSION = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
@@ -55,7 +55,8 @@ test('a prose step resets the count; a check and a change in one step does not c
 });
 
 test('the run loop feeds every step through afterStep and acts on its answer', () => {
-  assert.match(SESSION, /const idle = afterStep\(agent, \{\s*mutated: mutatedThisStep,\s*verified: verifiedThisStep,\s*calls: executedThisStep \+ duplicatesThisStep,\s*\}\);/);
+  assert.match(SESSION, /const idle = afterStep\(agent, \{\s*mutated: mutatedThisStep,\s*verified: verifiedThisStep,\s*calls: executedThisStep \+ duplicatesThisStep,\s*answerOnly: agent\.readOnly === true,\s*\}\);/);
+  assert.match(SESSION, /if \(idle\.action === 'answer'\) \{\s*agent\.llm\.push\(/);
   assert.match(SESSION, /if \(idle\.action === 'finish'\) \{[\s\S]{0,700}await this\.finishRun\(agent, 'done'\);/);
   assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(/);
   // Both facts come from the tool loop itself, not from a name list kept beside it.
@@ -72,4 +73,19 @@ test('a change after the check needs a new check before reads count again', () =
     ...Array.from({ length: 12 }, () => READ),
   ]);
   assert.ok(actions.every((a) => a === 'none'), 'the earlier check does not cover the later change');
+});
+
+// 2026-09-22, run 5034f8f2: "What parts make up the StreetLamp model? Just tell me, don't change
+// anything." read the model and the tree, then kept reading until the duplicate guard ended it.
+test('a run told not to change anything is told to answer after a few reads, once, and never ended by it', () => {
+  const RO = { mutated: false, verified: false, calls: 1, answerOnly: true };
+  const { actions } = run(Array.from({ length: 20 }, () => RO));
+  assert.equal(actions.indexOf('answer'), ANSWER_ONLY_NUDGE - 1);
+  assert.equal(actions.filter((a) => a === 'answer').length, 1, 'told once, not every step');
+  assert.ok(!actions.includes('finish'), 'a read-only run is never ended by this bound — it has nothing built to end on');
+});
+
+test('control: an ordinary run reading before any change is still not idle', () => {
+  const { actions } = run(Array.from({ length: 20 }, () => ({ mutated: false, verified: false, calls: 1 })));
+  assert.ok(actions.every((a) => a === 'none'));
 });
