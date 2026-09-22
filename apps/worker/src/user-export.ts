@@ -302,7 +302,7 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   { store: 'd1', binding: 'CORPUS', name: 'notifications', personal: true, holds: 'one person\'s inbox: mentions, security events, run outcomes' },
   { store: 'd1', binding: 'CORPUS', name: 'automations', personal: true, holds: 'standing instructions a person set up, including the prompt they wrote' },
   { store: 'd1', binding: 'CORPUS', name: 'automation_runs', personal: true, holds: 'every time one of those ran, what it cost and whether it failed' },
-  { store: 'd1', binding: 'CORPUS', name: 'user_credentials', personal: true, holds: 'the sealed Roblox Open Cloud key, its fingerprint and when it was last used' },
+  { store: 'd1', binding: 'CORPUS', name: 'user_credentials', personal: true, holds: 'the sealed Roblox Open Cloud key and your sealed OpenRouter model key, each with its fingerprint, last four characters and when it was saved or last used' },
   { store: 'd1', binding: 'CORPUS', name: 'creator_write_log', personal: true, holds: 'every write this product made to a person\'s own Roblox account on their behalf' },
   { store: 'd1', binding: 'CORPUS', name: 'project_asset_use', personal: true, holds: 'which library assets a project placed — tied to a person through the project' },
   { store: 'd1', binding: 'CORPUS', name: 'account_deletions', personal: true, holds: 'that this account asked to be deleted, when, and what the erasure could not reach' },
@@ -334,7 +334,7 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
 
   // ---------------------------------------------------------- Durable Object storage
   { store: 'do', binding: 'SESSION_DO', name: 'messages', personal: true, holds: 'THE CONVERSATION — every message, in full, with its tool trace' },
-  { store: 'do', binding: 'SESSION_DO', name: 'message_models', personal: true, holds: 'which Apple product model each conversation message selected' },
+  { store: 'do', binding: 'SESSION_DO', name: 'message_models', personal: true, holds: 'which model each conversation message ran on: an Apple product model, or the catalogue id of a run on the customer\u2019s own key' },
   { store: 'do', binding: 'SESSION_DO', name: 'message_revisions', personal: true, holds: 'earlier versions of a message the person edited and re-sent' },
   { store: 'do', binding: 'SESSION_DO', name: 'checkpoints', personal: true, holds: 'snapshots of the place, with who took them' },
   { store: 'do', binding: 'SESSION_DO', name: 'checkpoint_chunks', personal: true, holds: 'the bytes of those snapshots' },

@@ -27,3 +27,15 @@ export {
 export { openaiAdapter, OPENAI_MODELS, classifyHttpError, encodeOpenAiChat, decodeOpenAiChat } from './openai';
 export { googleAdapter, GOOGLE_MODELS, encodeGemini, decodeGemini, toGeminiTools, toGeminiContents, fromGeminiFunctionCall, dataUrlToInlineData } from './google';
 export { deepseekAdapter, DEEPSEEK_MODELS, deepseekUnsupportedKeys } from './deepseek';
+export {
+  openrouterAdapter,
+  encodeOpenRouterChat,
+  postOpenRouterChat,
+  checkOpenRouterKey,
+  openRouterFailure,
+  scrubKey,
+  CustomerKeyError,
+  isCustomerKeyError,
+  OPENROUTER_BASE_URL,
+  type FetchLike,
+} from './openrouter';

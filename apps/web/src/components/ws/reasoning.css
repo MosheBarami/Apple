@@ -192,11 +192,26 @@
 .apple-reasoning__target { font-family:var(--font-mono); color:var(--muted); }
 .apple-reasoning__detail { color:var(--muted); }
 
-/* -------------------------------------------------------------- next steps --- */
+/* ------------------------------------------------------------ next, details --- */
 
-.apple-reasoning__next-trigger { width:auto; }
-.apple-reasoning__next .ai-task__list { margin-block-start:6px; margin-inline-start:7px; padding-inline-start:16px; gap:4px; }
-.apple-reasoning__next .ai-task__item { font-size:12px; line-height:18px; }
+/* The one next step is a pending row of the chain, quieter than the work already done. */
+.apple-step--next .ai-chain-of-thought__label { color:var(--faint); }
+
+/* Details: a plain disclosure under the steps, closed. What it opens onto is the component
+   registry's own markup (lib/generative-ui/render.css). */
+.apple-reasoning__more { display:grid; gap:8px; }
+.apple-reasoning__more-trigger {
+  display:inline-flex; align-items:center; gap:6px; width:fit-content; min-height:24px; padding:0;
+  border:0; background:transparent; color:var(--muted); font:inherit; font-size:12px; cursor:pointer;
+}
+.apple-reasoning__more-trigger:hover { color:var(--ink); }
+.apple-reasoning__more-trigger:focus-visible { outline:2px solid var(--accent-ring); outline-offset:2px; border-radius:var(--r-xs); }
+.apple-reasoning__more-chevron { width:12px; height:12px; transition:transform var(--t-fast) var(--ease-out); }
+.apple-reasoning__more-trigger[aria-expanded='true'] .apple-reasoning__more-chevron { transform:rotate(180deg); }
+.apple-reasoning__more-body { display:grid; gap:10px; }
+@media (prefers-reduced-motion: reduce) {
+  .apple-reasoning__more-chevron { transition:none; }
+}
 
 /* ---------------------------------------------------------------- playtest --- */
 

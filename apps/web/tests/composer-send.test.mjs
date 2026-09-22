@@ -228,7 +228,10 @@ test('and the vendored PromptInput keeps everything when the send is refused', (
 
 test('the workspace returns false when the socket refused the message', () => {
   const fn = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
-  assert.match(fn, /if \(!sendChat\(text, mode, attachments, productModel, autonomous\)\) \{/);
+  // RESTATED 2026-09-23: the call gained a sixth argument, the model on the customer's own key
+  // (D-BYOK-1). The property is that the attachments, mode, model and autonomy all still ride on it,
+  // not that it ends after `autonomous`.
+  assert.match(fn, /if \(!sendChat\(text, mode, attachments, productModel, autonomous(?:, \w+)?\)\) \{/);
   assert.match(fn, /return false;/);
   assert.match(fn, /return true;/);
 });

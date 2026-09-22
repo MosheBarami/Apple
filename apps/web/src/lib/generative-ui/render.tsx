@@ -43,6 +43,7 @@ import type {
 } from './schema';
 import { validateDocument, type ValidateOptions } from './validate';
 import { StatusIcon, type StatusName } from '../../components/status-icon';
+import { labelForTool } from '../../components/ws/tool-vocabulary';
 import {
   CodeBlock,
   CodeBlockActions,
@@ -981,7 +982,8 @@ function BuildPlanView({ block }: { block: BuildPlanBlock }) {
               <span className="gu-step-title">{step.title}</span>
               {step.detail && <span className="gu-step-detail">{step.detail}</span>}
               <span className="gu-step-meta">
-                {step.tool && <span className="gu-mono">{step.tool}</span>}
+                {/* The step's tool in words ("Editing a script"), never its wire name (D-UX-2). */}
+                {step.tool && <span className="gu-step-tool">{labelForTool(step.tool)}</span>}
                 {step.durationMs !== undefined && (
                   <span className="gu-step-time">
                     <Millis value={step.durationMs} />

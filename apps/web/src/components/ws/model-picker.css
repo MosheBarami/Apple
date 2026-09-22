@@ -1,0 +1,27 @@
+/* The model picker's rows, in the dialog AI Elements' ModelSelector opens (portalled to <body>, so
+   nothing here hangs off .gx-composer). One accent is not spent here at all: a chosen row gets a check
+   in ink, a locked row goes quiet, and "Free" is an outline badge, never green. */
+.gx-model-picker .ai-command__group [cmdk-group-heading] { padding:10px 10px 4px; color:var(--muted); font-size:12px; font-weight:600; letter-spacing:0; }
+.gx-model-picker .ai-command__item.gx-model-row { align-items:center; gap:12px; min-height:44px; padding:6px 10px; }
+.gx-model-row .model-signature,
+.gx-model-row .ai-model-selector__logo { width:16px; height:16px; color:var(--muted); }
+.gx-model-row .ai-model-selector__logo svg { width:16px; height:16px; }
+.gx-model-row[data-selected='true'] .model-signature,
+.gx-model-row[data-selected='true'] .ai-model-selector__logo { color:var(--ink); }
+.gx-model-row__main { display:grid; flex:1; min-width:0; gap:1px; }
+.gx-model-row__name { color:var(--ink); font-size:14px; line-height:18px; }
+.gx-model-row__note { overflow:hidden; color:var(--muted); font-size:12px; line-height:16px; text-overflow:ellipsis; white-space:nowrap; }
+.gx-model-row__free { color:var(--muted); font-size:11px; }
+.gx-model-row__check { display:inline-flex; flex:none; color:var(--ink); }
+.gx-model-row.is-unavailable .gx-model-row__name { color:var(--muted); }
+.gx-model-row.is-unavailable .model-signature,
+.gx-model-row.is-unavailable .ai-model-selector__logo { color:var(--faint); }
+.gx-model-picker__foot { padding:8px 10px 10px; border-top:1px solid var(--line); }
+.gx-model-picker__settings {
+  min-height:var(--h-sm); padding:0 10px; border:1px solid var(--line); border-radius:var(--r-sm);
+  background:transparent; color:var(--ink); font-size:13px; cursor:pointer;
+}
+.gx-model-picker__settings:hover { background:var(--control-fill); }
+.gx-model-picker__settings:focus-visible { outline:2px solid var(--accent-ring); outline-offset:2px; }
+.gx-chip__logo-slot { display:inline-block; flex:none; width:14px; height:14px; }
+.gx-chip .ai-model-selector__logo { width:14px; height:14px; }

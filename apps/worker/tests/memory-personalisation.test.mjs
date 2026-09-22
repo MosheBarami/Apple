@@ -40,7 +40,7 @@ function route(src, signature) {
 
 function assertToolPermissionNarrowing(src) {
   const modeBases = new Set(
-    [...src.matchAll(/const\s+([A-Za-z_$][\w$]*)\s*=\s*toolsForMode\(\s*(?:mode|agent\.mode)\s*,\s*studioConnected\s*,\s*toolNames\(\)\s*\);/g)]
+    [...src.matchAll(/const\s+([A-Za-z_$][\w$]*)\s*=\s*toolsForMode\(\s*(?:mode|agent\.mode)\s*,\s*(?:studioConnected|offerStudio)\s*,\s*toolNames\(\)\s*\);/g)]
       .map((m) => m[1]),
   );
   assert.ok(modeBases.size > 0, 'no mode-derived toolset was found');
@@ -66,7 +66,9 @@ function assertToolPermissionNarrowing(src) {
   // with the asset catalogue on 2026-09-20. What this assertion is for is that the tools OFFERED
   // to the model come from `offeredAllowed`, the fully narrowed set, so the boundary is matched
   // rather than the argument list.
-  assert.match(src, /tools:\s*toolDefs\(studioConnected, offeredAllowed\)/);
+  // Whether Studio's tools are in the set is `offerStudio` since 2026-09-23 (F-033: Studio seen earlier in
+  // the run keeps them offered, and a call is refused as a disconnect) — the boundary is unchanged.
+  assert.match(src, /tools:\s*(?:talkOnly \? \[\] : )?toolDefs\((?:studioConnected|offerStudio), offeredAllowed\)/);
   assert.match(src, /const allowed = new Set\(\[\.\.\.offeredAllowed\]\.filter\(\(name\) => capabilityFilter\.allowed\.has\(name\)\)\);/);
 }
 
@@ -239,9 +241,10 @@ test('the permissions are pinned to the run, so a mid-build edit cannot change w
 // ------------------------------------------------------------------ reaching the person ---
 
 test('the panel is mounted next to the memory panel and unmounted with the drawer', () => {
-  assert.match(WS, /\{drawer === 'memory' && <InstructionsPanel projectId=\{projectId\} \/>\}/);
+  // Restated 2026-09-22: both panels are lazy-loaded inside <Suspense>; the mount condition is the property.
+  assert.match(WS, new RegExp(`\\{drawer === 'memory' && \\(?\\s*(?:<Suspense[\\s\\S]{0,160}?)?<InstructionsPanel projectId=\\{projectId\\} \\/>`));
   // The original panel is still there — this one is the other half, not a replacement.
-  assert.match(WS, /\{drawer === 'memory' && <MemoryPanel projectId=\{projectId\} \/>\}/);
+  assert.match(WS, new RegExp(`\\{drawer === 'memory' && \\(?\\s*(?:<Suspense[\\s\\S]{0,160}?)?<MemoryPanel projectId=\\{projectId\\} \\/>`));
 });
 
 test('the panel says which layer is answering, and what it is overriding', () => {

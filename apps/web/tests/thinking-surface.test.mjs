@@ -241,36 +241,74 @@ test('earlier steps sit behind a ChainOfThought disclosure whose header names co
   assert.equal(count(html, 'ai-tool__header'), 6, 'every observed step is reachable');
 });
 
-test('the planned next steps are a Task with a real button, and only the validated steps', () => {
+test('a plan is never a checklist in the conversation: one next step, in its own words', () => {
+  //[[ RESTATED 2026-09-23 for the owner's D-UX-2: plan checklists are not shown in the conversation.
+  //   This used to hold a Task listing every planned step behind a real button. The honesty half is
+  //   unchanged — only validated plan steps, never inferred ones, and nothing at all without a plan —
+  //   and the checklist is now ONE pending row: the next step. The whole plan is under Details. ]]
   clock = T0;
   const html = renderBody(run([tool('read_script')], { stopReason: 'done' }), {
     plannedSteps: [{ key: 'p1', title: 'Lay out a seating cluster' }, { key: 'p2', title: 'Re-run the visual gate' }],
   });
-  const task = element(html, /<div[^>]*aria-label="Planned next actions"/);
-  assert.ok(task, 'no Task for the planned steps');
-  const trigger = element(task, /<button\b/);
-  assert.ok(trigger, 'the Task trigger must be a <button>, which a keyboard can reach and press');
-  assert.match(trigger, /type="button"/);
-  assert.match(trigger, /aria-expanded="(?:true|false)"/, 'and it must carry the disclosure state');
-  assert.equal(count(task, 'ai-task__item'), 2);
-  assert.deepEqual([...task.matchAll(/ai-task__item[^>]*>([^<]*)</g)].map((m) => m[1]), ['Lay out a seating cluster', 'Re-run the visual gate']);
+  assert.equal(count(html, 'ai-task__item'), 0, 'the planned-steps checklist is back');
+  assert.doesNotMatch(html, /Planned next actions|planned steps?/i);
+  assert.equal(count(html, 'Next: '), 1, 'exactly one next step');
+  assert.match(html, /Next: Lay out a seating cluster/);
+  assert.doesNotMatch(html, /Re-run the visual gate/, 'only the next step, not the rest of the plan');
+  const next = element(html, /<div[^>]*class="[^"]*\bapple-step--next\b/);
+  assert.ok(next, 'the next step is a step of the chain');
 
   const none = renderBody(run([tool('read_script')], { stopReason: 'done' }));
-  assert.doesNotMatch(none, /Planned next actions/, 'no validated plan means no Task, not an empty one');
+  assert.doesNotMatch(none, /Next: /, 'no validated plan means no next step, not an empty one');
 });
 
-test('verified checks are passed gates only', () => {
+test('a passed check is one plain step; a failed check is never painted as one', () => {
+  //[[ RESTATED 2026-09-23 (D-UX-2). The step used to list each passed gate by name ("Visual quality
+  //   gate", "Playtest"), which is detail. It is one step now, "Checked it works". What it has always
+  //   guarded is kept: it is drawn from PASSED gates only. ]]
   clock = T0;
   // Through Thinking, on a live run (open), so it is Thinking's own filter being tested — the body
   // helper filters for the caller, and a test through it would pass whatever Thinking did.
-  const html = render({
+  const mixed = render({
     activity: run([tool('run_and_check')], { streaming: true }),
     streaming: true,
     gates: [{ key: 'a', label: 'Playtest', passed: true }, { key: 'b', label: 'Visual quality gate', passed: false }],
   });
-  const verified = element(html, /<div[^>]*aria-label="Verified checks"/);
-  assert.ok(verified);
-  assert.equal(text(verified), 'Playtest', 'a failed gate was painted as a verified milestone');
+  assert.equal(count(mixed, 'Checked it works'), 1);
+  assert.doesNotMatch(text(mixed), /Visual quality gate|Verified/, 'a gate name is detail, and a failed one is not a success');
+
+  clock = T0;
+  const failedOnly = render({
+    activity: run([tool('run_and_check')], { streaming: true }),
+    streaming: true,
+    gates: [{ key: 'b', label: 'Visual quality gate', passed: false }],
+  });
+  assert.doesNotMatch(failedOnly, /Checked it works/, 'a failed gate was painted as a verified milestone');
+});
+
+test('tool facts stay closed, even on the step that is running (D-UX-2)', () => {
+  clock = T0;
+  const tools = [tool('read_script'), { toolId: 'live', tool: 'edit_script', summary: 'edit_script', target: 'ServerScriptService.Main', startedAt: clock, done: false, startObserved: true }];
+  const html = render({ activity: run(tools, { streaming: true, now: clock + 4000 }), streaming: true });
+  const contents = [...html.matchAll(/<div[^>]*class="[^"]*\bai-tool__content\b[^"]*"[^>]*>/g)].map((m) => m[0]);
+  assert.ok(contents.length >= 1, 'no ToolContent rendered — this would check nothing');
+  for (const c of contents) assert.match(c, /\bhidden=""/, 'a step opened itself; its facts are one click away, not in the way');
+});
+
+test('documents the reply no longer draws sit under a closed Details, rendered only when opened', () => {
+  clock = T0;
+  const doc = { v: 1, blocks: [{ type: 'property_inspector', path: 'game.Lighting', className: 'Lighting', groups: [] }] };
+  const html = renderWith(ui.renderToStaticMarkup, ui.h(ui.ExecutionSurface, {
+    view: model.executionView(run([tool('read_script')], { stopReason: 'done' })), plannedSteps: [], passedGates: [], denied: null, studioConnected: false,
+    details: [doc],
+  }));
+  const trigger = element(html, /<button[^>]*class="[^"]*\bapple-reasoning__more-trigger\b/);
+  assert.ok(trigger, 'no Details disclosure');
+  assert.equal(text(trigger), 'Details');
+  assert.match(trigger, /aria-expanded="false"/, 'Details starts closed');
+  assert.doesNotMatch(html, /game\.Lighting|gu-panel/, 'a closed Details rendered its contents');
+  const none = renderBody(run([tool('read_script')], { stopReason: 'done' }));
+  assert.doesNotMatch(none, /apple-reasoning__more/, 'nothing to hold, no Details');
 });
 
 test('the one PlaytestCard renders inside the surface; a stale frame is dimmed with its real age; never "video"', () => {

@@ -382,11 +382,12 @@ body {
 }
 .gx-prose :is(p,ul,ol,blockquote) { max-width:74ch; }
 .gx-stamp { color:var(--faint); font-size:10px; }
-.gx-inline-results {
+.gx-reply-media {
   display:grid;
   gap:10px;
   margin-top:14px;
 }
+.gx-reply-media__wait { margin:0; color:var(--faint); font-size:12px; }
 /* ------------------------------------------------------------- composer */
 .gx-compose-region {
   z-index:20;

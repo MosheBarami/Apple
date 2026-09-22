@@ -2468,7 +2468,14 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   // EIGHT SINCE 2026-09-23 — the read-only answer steer ("You have read enough to answer…"). Reviewed:
   // a fixed string, no interpolation, pushed once when run-idle.ts counts ANSWER_ONLY_NUDGE read-only
   // steps in a run the person told not to change anything.
-  assert.equal(userPushes.length, 8, 'a user-role transcript injection was added or removed — review it for injection risk');
+  // NINE SINCE 2026-09-23 — the read-stall steer ("You have read the place enough. Stop reading and make the
+  // next change…", F-039). Reviewed: a fixed string, no interpolation, pushed once when run-idle.ts counts
+  // READ_STALL_NUDGE read-only steps in a run that can build; nothing the model, the user or a tool wrote
+  // reaches it. Its partner at READ_STALL_LIMIT ends the run and pushes nothing into the transcript.
+  // TEN SINCE 2026-09-23 — the retune steer ("You have changed the same thing several times in a row. Stop
+  // tuning it…", F-036). Reviewed: a fixed string with no interpolation — the target it counted is never
+  // quoted back to the model — pushed once when run-idle.ts afterChange reaches RETUNE_NUDGE for one target.
+  assert.equal(userPushes.length, 10, 'a user-role transcript injection was added or removed — review it for injection risk');
   const dynamic = userPushes.filter((p) => /\$\{/.test(p));
   assert.equal(dynamic.length, 3, 'exactly three user-role injections should carry interpolated content');
   assert.ok(
@@ -2585,8 +2592,14 @@ test('A6 STATIC CHECK — the gateway has exactly one adapter invocation and it 
   const gw = read('gateway.ts');
   const invokes = [...gw.matchAll(/adapter\.invoke\(/g)];
   assert.equal(invokes.length, 1, 'a second adapter.invoke call site would be a way to spend without reserving');
-  const reserveAt = gw.indexOf('const reserved = await reserve(env, cfg.id, estimate)');
+  const reserveAt = gw.indexOf('reserved = await reserve(env, cfg.id, estimate)');
   assert.ok(reserveAt > 0 && reserveAt < invokes[0].index, 'the reservation must be taken before the adapter is invoked');
+  // The ONE path past the reservation is a call on the customer's own key (D-BYOK-1): Apple spends
+  // nothing on it, so there is nothing to reserve, and the kill switch is consulted in its place.
+  // It must be exactly that branch — any other condition skipping reserve() is spend without a gate.
+  assert.match(gw, /if \(customer\) await assertNotKilled\(env\);\s*\n\s*else reserved = await reserve\(env, cfg\.id, estimate\);/,
+    'the reservation is skipped by something other than the customer-key lane');
+  assert.ok(gw.indexOf('await assertNotKilled(env)') < invokes[0].index, 'the kill switch must be read before the adapter is invoked');
   assert.ok(gw.indexOf('await settle(env, reserved,') > invokes[0].index, 'settlement must follow the invocation');
   // The only other transport in the file is embed(), which reserves/settles/releases on its own.
   const embed = gw.slice(gw.indexOf('export async function embed'));

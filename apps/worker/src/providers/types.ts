@@ -15,13 +15,26 @@ export type { GatewayContentPart, GatewayMessage, GatewayToolCall, GatewayToolDe
 // identity
 // ---------------------------------------------------------------------------
 
-export type ProviderId = 'workers-ai' | 'openai' | 'google' | 'deepseek';
+/** Providers credentialed by THIS worker's own secrets: the registry's domain. */
+export type PlatformProviderId = 'workers-ai' | 'openai' | 'google' | 'deepseek';
+
+/**
+ * Providers reached ONLY with a customer's own key, supplied per call (InvokeContext.customerApiKey).
+ *
+ * Kept out of PROVIDER_ORDER on purpose. Auto-selection, the capability table and availability all
+ * answer "can THIS WORKER call it", and for a customer-key provider the answer depends on who is
+ * asking — putting it in the registry would either report it available to everyone or unavailable
+ * to the customers who hold a key. See openrouter.ts.
+ */
+export type CustomerKeyProviderId = 'openrouter';
+
+export type ProviderId = PlatformProviderId | CustomerKeyProviderId;
 
 /**
  * Fixed iteration order. Auto-selection sorts on cost and breaks ties with this list, so the
  * choice is deterministic rather than dependent on object key order.
  */
-export const PROVIDER_ORDER: readonly ProviderId[] = ['workers-ai', 'openai', 'google', 'deepseek'];
+export const PROVIDER_ORDER: readonly PlatformProviderId[] = ['workers-ai', 'openai', 'google', 'deepseek'];
 
 // ---------------------------------------------------------------------------
 // capability metadata
@@ -185,6 +198,11 @@ export interface InvokeContext {
   kind: string;
   cacheTtl: number;
   sessionId?: string;
+  /**
+   * The customer's own provider key, for THIS call only. Only customer-key adapters read it. It is
+   * never logged, never put in an error message, never persisted with the run.
+   */
+  customerApiKey?: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -70,7 +70,10 @@ test('NEITHER ENTRY IS GATED — the defect the MAX row still has, not repeated'
 test('the choice reaches the workspace state that is already on the wire', () => {
   assert.match(WORKSPACE, /mode=\{mode\}/);
   assert.match(WORKSPACE, /onModeChange=\{\(next\) => \{/);
-  assert.match(WORKSPACE, /sendChat\(text, mode, attachments, productModel, autonomous\)/);
+  // RESTATED 2026-09-23: the call gained a sixth argument, the model on the customer's own key
+  // (D-BYOK-1). The property is that the attachments, mode, model and autonomy all still ride on it,
+  // not that it ends after `autonomous`.
+  assert.match(WORKSPACE, /sendChat\(text, mode, attachments, productModel, autonomous\b/);
   assert.match(WORKSPACE, /autonomous=\{autonomous\}/);
 });
 

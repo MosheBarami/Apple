@@ -179,12 +179,40 @@ test('the paperclip is off, with the reason, where there is no project to upload
 
 // ------------------------------------------------------------------ menus ---
 
-test('Mode, Model and Create are menu triggers named by what they hold', () => {
+test('Mode, Model and Create are named by what they hold', () => {
+  //[[ RESTATED 2026-09-23. Model is no longer a menu: it is AI Elements' ModelSelector, a DIALOG with
+  //   a searchable list (components/ws/model-picker.tsx, rendered by tests/model-picker.test.mjs, whose
+  //   trigger is aria-haspopup="dialog"). Its code loads after the composer, and until it lands the
+  //   chip is the same face and cannot be pressed — which is what server rendering sees here. The
+  //   property is unchanged: each of the three controls says what it currently holds. ]]
   const html = composer({ mode: 'plan' });
   const triggers = tags(html, 'button').filter((t) => attr(t, 'aria-haspopup') === 'menu');
   const names = triggers.map((t) => attr(t, 'aria-label'));
-  assert.deepEqual(names, ['Mode: Plan', 'Model: Apple', 'Create']);
+  assert.deepEqual(names, ['Mode: Plan', 'Create']);
   for (const t of triggers) assert.equal(attr(t, 'aria-expanded'), 'false');
+  const model = tags(html, 'button').filter((t) => attr(t, 'aria-label')?.startsWith('Model: '));
+  assert.equal(model.length, 1, 'exactly one model chip');
+  assert.equal(attr(model[0], 'aria-label'), 'Model: Apple');
+  // Which of the two it is depends on whether an earlier render in this process already fetched the
+  // picker's chunk; either way it is one of exactly these two, never a pressable chip that opens nothing.
+  assert.ok(
+    has(model[0], 'disabled') || attr(model[0], 'aria-haspopup') === 'dialog',
+    'the model chip is neither the inert placeholder nor the ModelSelector trigger',
+  );
+  // WHICHEVER ONE THIS RUN SAW, the other is held too: which chip the server render shows depends on
+  // test order, so the placeholder's own promise — drawn, named, and not pressable — is read from
+  // the Suspense fallback itself. (Found by falsification: removing its `disabled` stayed green.)
+  const src = readFileSync(join(WEB, 'src', 'components', 'ws', 'composer.tsx'), 'utf8');
+  const fallback = src.slice(src.indexOf('fallback={'), src.indexOf('<ModelPicker'));
+  assert.ok(fallback.length > 20, 'the model picker has lost its Suspense fallback');
+  assert.match(fallback, /<button type="button" className="gx-chip gx-chip--model" disabled aria-label=\{`Model: \$\{modelLabel\}`\}>/);
+  // And a model on a key is named by its own label, read from the catalogue it came from.
+  const keyed = composer({
+    customerModel: 'openai/gpt-6-sol',
+    catalogue: { models: [{ id: 'openai/gpt-6-sol', label: 'GPT-6 Sol', vendor: 'OpenAI', requiresKey: true, free: false, supportsTools: true, builtIn: false }], free: { readAt: '2026-09-23T00:00:00.000Z', source: 'live', keyless: false } },
+    modelKeys: [{ provider: 'openrouter', last4: 'abcd', addedAt: '2026-09-23T00:00:00.000Z' }],
+  });
+  assert.ok(tags(keyed, 'button').some((t) => attr(t, 'aria-label') === 'Model: GPT-6 Sol'));
 });
 
 test('an open menu: radio rows checked from the group value, and a row can be aria-disabled yet reachable', () => {

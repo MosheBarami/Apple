@@ -73,3 +73,29 @@ export function afterStep(state: IdleState, step: StepFacts): IdleState & { acti
   }
   return { verifiedAfterMutation, idleAfterVerify, readsSinceChange, action };
 }
+
+/**
+ * Changing the same thing over and over. Measured 2026-09-22 (F-036, "too foggy … a clear, warm
+ * golden-hour sunset"): set_mood succeeded, then the run looped render_view → set_props on one Lighting
+ * value → render_view for five minutes, 101 steps, ~262 Credits. Every step changed something, so no
+ * read bound could see it. This counts successful changes per target (tool + what it was aimed at):
+ * at RETUNE_NUDGE the model is told to stop tuning, and at RETUNE_LIMIT the run ends on what it built.
+ */
+export const RETUNE_NUDGE = 6;
+export const RETUNE_LIMIT = 12;
+/** Targets remembered per run; the oldest is forgotten past this, so the state stays small. */
+export const RETUNE_KEYS = 24;
+
+export type RetuneAction = 'none' | 'nudge' | 'finish';
+
+export function afterChange(counts: Record<string, number> | undefined, key: string): { counts: Record<string, number>; action: RetuneAction } {
+  const next: Record<string, number> = { ...(counts ?? {}) };
+  const n = (next[key] ?? 0) + 1;
+  delete next[key];
+  next[key] = n; // re-inserted, so insertion order is recency and the oldest key is first
+  const keys = Object.keys(next);
+  for (const k of keys.slice(0, Math.max(0, keys.length - RETUNE_KEYS))) delete next[k];
+  const action: RetuneAction = n >= RETUNE_LIMIT ? 'finish' : n === RETUNE_NUDGE ? 'nudge' : 'none';
+  return { counts: next, action };
+}
+

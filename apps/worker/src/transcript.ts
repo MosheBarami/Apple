@@ -232,7 +232,7 @@ function outcome(reply: GatewayMessage | undefined): string {
 }
 
 /** What a call was aimed at, from the argument fields that name a target. Empty when none parse. */
-function aim(args: string | undefined): string {
+export function aim(args: string | undefined): string {
   let a: unknown;
   try { a = JSON.parse(args || '{}'); } catch { return ''; }
   if (!a || typeof a !== 'object') return '';

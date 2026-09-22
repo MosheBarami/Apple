@@ -35,6 +35,8 @@ import {
   fetchMe,
   fetchBillingConfig,
   fetchMembers,
+  fetchModelCatalogue,
+  fetchModelKeys,
   fetchPersonalisation,
   fetchProjectAccess,
   fetchScopeMemory,
@@ -199,10 +201,22 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   // cost 105-450 Credits against a 100-Credit free day. Nobody should start that without choosing to.
   const [autonomous, setAutonomous] = useState(false);
   const [productModel, setProductModel] = useState<ProductModel>('apple');
+  //[[ A MODEL ON THE PERSON'S OWN KEY (owner decision D-BYOK-1), or null for Apple's lane.
+  //   Kept beside `productModel` rather than replacing it: an Apple run sends exactly the frame it
+  //   always has, and only a run on a key carries `model`. Per page, like Autonomous — a choice that
+  //   bills to somebody's own account is made again each visit, not remembered for them. ]]
+  const [customerModel, setCustomerModel] = useState<string | null>(null);
   const account = useQuery({ queryKey: ['me'], queryFn: fetchMe, staleTime: 60_000, retry: 1 });
   const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, staleTime: 60_000, retry: false });
+  // The picker's catalogue and the saved keys. A failed read offers Apple's models only (the picker
+  // hides what it could not confirm), so neither retries into the person's face.
+  const modelCatalogue = useQuery({ queryKey: ['model-catalogue'], queryFn: fetchModelCatalogue, staleTime: 5 * 60_000, retry: false });
+  const modelKeys = useQuery({ queryKey: ['model-keys'], queryFn: fetchModelKeys, staleTime: 60_000, retry: false });
   const modelPlan = account.data?.quota.plan;
-  const modelAllowed = canUseProductModel(productModel, modelPlan);
+  // A run on the person's own key is not an Apple MAX request, so the subscription rule does not
+  // apply to it; whether the key is there is the composer's check and, finally, the worker's.
+  const modelAllowed = customerModel !== null || canUseProductModel(productModel, modelPlan);
+  const runModel = customerModel ?? undefined;
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
   // Kept beside the label rather than inside the form element so clearing both after a save is one
@@ -507,8 +521,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     if (running || !modelAllowed || !chatAllowed) return;
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
     if (!lastUser) return;
-    editAndResend(lastUser.id, lastUser.content, mode, productModel, autonomous);
-  }, [messages, running, editAndResend, mode, productModel, autonomous, modelAllowed, chatAllowed]);
+    editAndResend(lastUser.id, lastUser.content, mode, productModel, autonomous, runModel);
+  }, [messages, running, editAndResend, mode, productModel, autonomous, runModel, modelAllowed, chatAllowed]);
 
   // Which of my own messages is being edited, if any.
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
@@ -836,7 +850,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     // Sending re-arms following: you have just added to the conversation, so you want to watch it.
     void conversation.current?.scrollToBottom();
     setSeed(undefined);
-    if (!sendChat(text, mode, attachments, productModel, autonomous)) {
+    if (!sendChat(text, mode, attachments, productModel, autonomous, runModel)) {
       toast('Not connected yet — hang on a moment. Your message is still in the box.', 'error');
       return false;
     }
@@ -1250,6 +1264,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           modelPlan={modelPlan}
           maxUpgradeAvailable={maxUpgradeAvailable(billing.data)}
           onModelChange={setProductModel}
+          customerModel={customerModel}
+          onCustomerModelChange={setCustomerModel}
+          catalogue={modelCatalogue.data ?? null}
+          modelKeys={modelKeys.data?.keys ?? null}
+          onOpenSettings={() => navigate('/settings#models')}
           mode={mode}
           onModeChange={(next) => {
             setMode(next);
@@ -1404,7 +1423,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               toast('Choose Apple or subscribe to use Apple MAX. Your edit is kept.', 'error');
               return;
             }
-            editAndResend(editing.id, text, mode, productModel, autonomous);
+            editAndResend(editing.id, text, mode, productModel, autonomous, runModel);
             setEditing(null);
           }}
         />

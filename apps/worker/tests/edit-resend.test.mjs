@@ -96,7 +96,9 @@ test('the edited text is capped like any other prompt', () => {
 // ----------------------------------------------------------------- the protocol ---
 
 test('both messages are in the shared protocol', () => {
-  assert.match(SHARED, /\| \{ type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; autonomous\?: boolean; productModel\?: ProductModel \}/);
+  // The fields an edit needs, in order; further OPTIONAL fields may follow (the picker's `model`
+  // was added 2026-09-23) without this reading as the message having changed shape.
+  assert.match(SHARED, /\| \{ type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; autonomous\?: boolean; productModel\?: ProductModel(?:; \w+\?: [^;}]+)* \}/);
   assert.match(SHARED, /\| \{ type: 'history_truncated'; fromMessageId: string; removed: number \}/);
 });
 

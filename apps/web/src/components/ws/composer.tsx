@@ -9,17 +9,18 @@
 // this product decides: which key sends (the person's preference), what a file is allowed to be and
 // where it goes (uploaded to the project as it is staged), when a send is refused and that the
 // refusal keeps the draft, the @-mention picker, Plan or Agent, the Autonomous switch and the model.
-import { useEffect, useReducer, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useReducer, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import {
   ATTACHMENT_ACCEPT,
   MESSAGE_MAX_CHARS,
   MESSAGE_WARN_CHARS,
-  PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
   PRODUCT_MODES,
   PRODUCT_MODE_INFO,
   canUseProductModel,
   type ChatAttachment,
+  type ModelCatalogue,
+  type ModelKeySummary,
   type ProductMode,
   type ProductModel,
   type StudioEventSelection,
@@ -76,8 +77,15 @@ import {
 } from '../../lib/presence-signal';
 import { usePrefs } from '../../lib/theme';
 import { CREATION_INTENTS, creationMessage, maxAccessNotice, type CreationIntent } from '../../lib/creation-intent';
-import { ModelMark } from './model-mark';
+import { ModelChipFace } from './model-chip';
+import { findRow, pickerGroups, type PickerRow } from './model-picker-model';
 import './composer.css';
+
+//[[ THE PICKER'S CODE ARRIVES AFTER THE COMPOSER. The vendor marks and the searchable list are only
+//   needed once somebody opens the chip, and this is the page everybody loads first. Until the
+//   chunk lands the chip is drawn with the same face and cannot be pressed — a chip that looked
+//   pressable and did nothing would be the defect the MAX row once had. ]]
+const ModelPicker = lazy(() => import('./model-picker'));
 
 // WHAT THIS BOX IS FOR, IN THE WORDS OF THE JOB. "Ask anything about your project…" is the line
 // every chat product ships with, and it describes a question-answering service: this one builds,
@@ -109,6 +117,19 @@ interface Props {
   productModel: ProductModel;
   modelPlan?: string;
   onModelChange: (model: ProductModel) => void;
+  /**
+   * A MODEL ON THE CUSTOMER'S OWN KEY, when one is chosen (owner decision D-BYOK-1): a catalogue id
+   * from GET /api/models. Null while an Apple model is chosen, which is the lane `productModel`
+   * names. Absent props mean the picker offers Apple's own models only.
+   */
+  customerModel?: string | null;
+  onCustomerModelChange?: (model: string | null) => void;
+  /** GET /api/models. Absent or null when it has not been read, and then only Apple is offered. */
+  catalogue?: ModelCatalogue | null;
+  /** GET /api/me/model-keys — which providers this person has saved a key for. */
+  modelKeys?: readonly ModelKeySummary[] | null;
+  /** Where "add your key" goes. Absent means the picker draws no link. */
+  onOpenSettings?: () => void;
   /**
    * PLAN OR AGENT — the choice between looking and building, made by the person sending the
    * message.
@@ -191,6 +212,11 @@ export function Composer({
   productModel,
   modelPlan,
   onModelChange,
+  customerModel = null,
+  onCustomerModelChange,
+  catalogue,
+  modelKeys,
+  onOpenSettings,
   mode,
   onModeChange,
   autonomous,
@@ -583,7 +609,15 @@ export function Composer({
 
   const blocked = blockingReason(staged);
   const creationUnavailable = creation === 'model' && !studioConnected;
-  const modelUnavailable = !canUseProductModel(productModel, modelPlan);
+  const modelGroups = useMemo(
+    () => pickerGroups({ catalogue, keys: modelKeys, modelPlan, maxUpgradeAvailable }),
+    [catalogue, modelKeys, modelPlan, maxUpgradeAvailable],
+  );
+  // A model on a key is judged by its own row (is the key there?), never by the Apple entitlement:
+  // a free account on its own OpenRouter key is not asking for Apple MAX.
+  const customerRow = customerModel ? findRow(modelGroups, customerModel) : null;
+  const customerLocked = customerRow !== null && !customerRow.available;
+  const modelUnavailable = !customerModel && !canUseProductModel(productModel, modelPlan);
   const maxAvailable = canUseProductModel('apple-max', modelPlan);
   const requestMaxAccess = () => {
     if (maxUpgradeAvailable === true) onUpgrade?.();
@@ -593,6 +627,8 @@ export function Composer({
     if (!maxAvailable) { requestMaxAccess(); return; }
     setCreation(creation === next ? 'build' : next);
     onModelChange('apple-max');
+    // Images and 3D are Apple MAX's, so choosing one puts the run back on Apple.
+    onCustomerModelChange?.(null);
     // After the menu has handed focus back to its trigger, so the box is where the typing goes.
     requestAnimationFrame(() => box.current?.focus());
   };
@@ -600,10 +636,24 @@ export function Composer({
    * A MODEL ROW THAT CANNOT BE HAD SAYS SO, and choosing it raises the sentence that explains why
    * rather than moving the chip. The row stays reachable and clickable for exactly that reason.
    */
-  const chooseModel = (id: ProductModel) => {
-    if (!canUseProductModel(id, modelPlan)) { requestMaxAccess(); return; }
+  const chooseModel = (id: ProductModel): boolean => {
+    if (!canUseProductModel(id, modelPlan)) { requestMaxAccess(); return false; }
     onModelChange(id);
+    onCustomerModelChange?.(null);
     if (id !== 'apple-max') setCreation('build');
+    return true;
+  };
+  /**
+   * ONE PICKER, TWO LANES. An Apple row goes through the entitlement rule above; any other row runs
+   * on the person's own key, and a row whose key is missing raises its own reason instead of moving
+   * the chip. Images and 3D are Apple MAX's, so a model on a key clears that choice.
+   */
+  const chooseRow = (row: PickerRow): boolean => {
+    if (row.group === 'apple') return chooseModel(row.id as ProductModel);
+    if (!row.available) { onNotice?.(row.note); return false; }
+    onCustomerModelChange?.(row.id);
+    setCreation('build');
+    return true;
   };
 
   /**
@@ -616,6 +666,10 @@ export function Composer({
     if (!value || running || disabled) return false;
     if (modelUnavailable) {
       onNotice?.('Apple MAX requires a paid subscription. Choose Apple to continue free. Your draft is kept.');
+      return false;
+    }
+    if (customerLocked) {
+      onNotice?.(`${customerRow?.note ?? ''} Your draft is kept.`);
       return false;
     }
     if (creationUnavailable) {
@@ -690,7 +744,10 @@ export function Composer({
   };
 
   const showCount = text.length >= MESSAGE_WARN_CHARS;
-  const activeModel = PRODUCT_MODEL_INFO[productModel];
+  // The id a send would use and the name the chip shows. A model on a key that the catalogue no
+  // longer lists keeps its own id as its name rather than borrowing Apple's.
+  const modelId = customerModel ?? productModel;
+  const modelLabel = customerModel ? (customerRow?.label ?? customerModel) : PRODUCT_MODEL_INFO[productModel].name;
   const autonomousOn = autonomous && mode === 'agent';
 
   return (
@@ -905,49 +962,26 @@ export function Composer({
               <span className="gx-autonomous__label">Autonomous</span>
             </PromptInputButton>
 
-            {/* -------------------------------------------------- model ---- */}
-            <PromptInputActionMenu>
-              <PromptInputActionMenuTrigger className="gx-chip gx-chip--model" size="sm" aria-label={`Model: ${activeModel.name}`}>
-                <ModelMark variant={productModel === 'apple' ? 'apple' : 'max'} />
-                <span className="gx-chip__label">{productModel === 'apple-max' ? <>Apple <span className="apple-max-name">MAX</span></> : activeModel.name}</span>
-                <span className="gx-chip__caret" aria-hidden="true">
-                  <Icon d={PATH.chevronDown} size={11} />
-                </span>
-              </PromptInputActionMenuTrigger>
-              <PromptInputActionMenuContent aria-label="Model" side="top" className="gx-menu">
-                <DropdownMenuRadioGroup value={productModel} onValueChange={(id) => chooseModel(id as ProductModel)}>
-                  {PRODUCT_MODELS.map((id) => {
-                    const info = PRODUCT_MODEL_INFO[id];
-                    const available = canUseProductModel(id, modelPlan);
-                    return (
-                      <DropdownMenuRadioItem
-                        key={id}
-                        value={id}
-                        //[[ A ROW THAT CANNOT BE CHOSEN SAYS SO.
-                        //
-                        //   MAX needs a paid subscription. The row carried no disabled and no
-                        //   aria-disabled once, so it read as selectable to everyone and to a screen
-                        //   reader, and a click left the chip unchanged with a notice elsewhere.
-                        //   `aria-disabled` rather than `disabled`: the row must stay focusable and
-                        //   choosable, because the sentence it raises — what MAX is and that it is not
-                        //   purchasable yet — is the only place that is said. A `disabled` row is
-                        //   skipped by the keyboard and says nothing at all. ]]
-                        aria-disabled={available ? undefined : true}
-                        className={`gx-menu__item${available ? '' : ' is-unavailable'}`}
-                      >
-                        <ModelMark variant={id === 'apple' ? 'apple' : 'max'} />
-                        <span className="gx-menu__main">
-                          <span className="gx-menu__name">{id === 'apple-max' ? <>Apple <span className="apple-max-name">MAX</span></> : info.name}</span>
-                          <span className="gx-menu__sub">
-                            {id === 'apple' ? 'Free · limited daily usage' : available ? 'Subscribers · extended capabilities' : maxUpgradeAvailable === false ? 'Subscribers · not available yet' : 'Subscribers · check availability'}
-                          </span>
-                        </span>
-                      </DropdownMenuRadioItem>
-                    );
-                  })}
-                </DropdownMenuRadioGroup>
-              </PromptInputActionMenuContent>
-            </PromptInputActionMenu>
+            {/*[[ -------------------------------------------------- model ----
+                AI Elements' ModelSelector, in model-picker.tsx: Apple's own models, the models the
+                person's own OpenRouter key unlocks, and the ones OpenRouter prices at zero today.
+                Which rows exist and which can be chosen is model-picker-model.ts; what choosing one
+                does is `chooseRow` above. ]]*/}
+            <Suspense
+              fallback={
+                <button type="button" className="gx-chip gx-chip--model" disabled aria-label={`Model: ${modelLabel}`}>
+                  <ModelChipFace id={modelId} label={modelLabel} />
+                </button>
+              }
+            >
+              <ModelPicker
+                groups={modelGroups}
+                selected={modelId}
+                fallbackLabel={modelLabel}
+                onChoose={chooseRow}
+                onOpenSettings={onOpenSettings}
+              />
+            </Suspense>
 
             {/* THE ASSET BROWSER IS GONE, on the owner's instruction of 2026-09-19, and what it means
                 is a change of who does the looking. The customer describes what the place needs and
@@ -1038,7 +1072,7 @@ export function Composer({
               <PromptInputSubmit
                 className="gx-send"
                 status="ready"
-                disabled={!text.trim() || disabled || blocked !== null || creationUnavailable || modelUnavailable}
+                disabled={!text.trim() || disabled || blocked !== null || creationUnavailable || modelUnavailable || customerLocked}
                 title={creationUnavailable ? 'Connect Roblox Studio to generate this 3D model' : (blocked ?? undefined)}
                 aria-label="Send"
               >
@@ -1050,6 +1084,7 @@ export function Composer({
       </PromptInput>
 
       {modelUnavailable && <p className="gx-creation-note" role="status">Apple MAX requires a subscription. Choose Apple to continue free. Your draft is kept.</p>}
+      {customerLocked && <p className="gx-creation-note" role="status">{customerRow?.note} Your draft is kept.</p>}
       {creation !== 'build' && <p className="gx-creation-note" role="status">{creationUnavailable ? 'Studio disconnected. Reconnect using Studio above, or switch to Images or chat. Your draft is kept.' : CREATION_INTENTS[creation].note}</p>}
       {/* TWO FACTS, AND THEY WERE RUNNING INTO EACH OTHER. JSX collapses the line break into a
           single space, so this line rendered "⇧↵ for a new line Apple can get things wrong" — one

@@ -522,3 +522,155 @@ FILE ui/dialog.tsx
     styles -> ./ui.css (`ai-dialog…`)
     Present because ./command.tsx's CommandDialog is built on it; nothing in the app opens one.
 END
+
+FILE model-selector.tsx
+  upstream: packages/elements/src/model-selector.tsx
+  copy: upstream/model-selector.tsx.txt
+  sha256: a4d51f76ddf5197cb86b7f70ba62bd62327468a9acae1351a0b1adcb3710ec0a
+  substitutions:
+    @repo/shadcn-ui/components/ui/command -> ./ui/command (over ./lib/cmdk)
+    @repo/shadcn-ui/components/ui/dialog -> ./ui/dialog
+    @repo/shadcn-ui/lib/utils -> ./lib/utils
+    styles -> ./model-selector.css (`ai-model-selector…` beside each upstream class string)
+    LOGO: upstream's ModelSelectorLogo is an <img> whose src is `https://models.dev/logos/<provider>.svg`,
+      fetched from a third party on every render. This app loads no third-party image at run time, so
+      ModelSelectorLogo draws a vendored lobehub mark (./logos, the ASSET rows below) as a React <svg>
+      in currentColor, from ./logos/marks.ts, and a provider with no vendored mark gets its initial in
+      a neutral disc. Its props are therefore a <span>'s, not an <img>'s: `provider` names a mark in
+      LOGO_MARKS instead of a models.dev slug, and an optional `label` is the provider's name (the
+      accessible name, and the disc's initial). The element carries role="img" and "<name> logo".
+    Every other export, prop and default ("Model Selector" title, aria-describedby={undefined}) is
+      upstream's.
+END
+
+
+VENDOR MARKS (components/ai-elements/logos)
+-------------------------------------------
+
+The model picker's vendor marks are lobehub's monochrome icons, vendored byte for byte:
+
+  package: @lobehub/icons-static-svg 1.95.1 (npm), fetched from cdn.jsdelivr.net
+  project: https://github.com/lobehub/lobe-icons
+  licence: MIT, Copyright (c) 2023 LobeHub. The npm package ships no licence file, so logos/LICENSE
+           is the repository's own, from
+           https://raw.githubusercontent.com/lobehub/lobe-icons/2e76c48721e91b9aaa40803a0fa2eb8aca7399c4/LICENSE
+           sha256: add9d7531d1b21646317a8958e38fc727506fa39d24bdecb44154d943c82753a
+
+Each file is one <path> on a 24x24 viewBox in currentColor, with no script, no link and no event
+attribute. logos/marks.ts is GENERATED from them (title, viewBox, path data) so nothing is ever set as
+HTML; tests/model-logos.test.mjs re-derives it from the files and checks every hash below.
+
+The marks are trademarks of their owners. The licence covers the drawings, not the marks; each one is
+shown only beside that owner's own model, to say whose model it is.
+
+Deliberately not vendored: poolside.svg (its mark is a gradient drawn with masks and ids, which breaks
+the one-colour rule and could collide with ids elsewhere on the page); Nex AGI and Thinking Machines
+have no mark in the set. Those three get their initial in a disc — nobody's logo is drawn for them.
+
+ASSET logos/claude.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/claude.svg
+  sha256: 365a70a7eb3956d9b9a96086058ebe04e1dbd8e291a756ad964e8a283fbd6d38
+END
+
+ASSET logos/deepseek.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/deepseek.svg
+  sha256: 8f9443e351b6dacce71871790201b799d92e8bf96a45ef79aeb5e9bf4db423e2
+END
+
+ASSET logos/dotsstudio.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/dotsstudio.svg
+  sha256: ed4e9c618a27ac16f2e1e8c16e6d217f3f7c01665afb068fe2f12164298b2310
+END
+
+ASSET logos/gemini.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/gemini.svg
+  sha256: 87d5b3c4be75a66f54c1936482a263df68185545b741129badd1b7c2449c18d3
+END
+
+ASSET logos/gemma.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/gemma.svg
+  sha256: 8f9b74f6bbbf17203da8d81c3a4bb8750dbf13afe3ab4c1d482e84be62cd03a6
+END
+
+ASSET logos/grok.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/grok.svg
+  sha256: 9175fc90c22655160231976c849f25a03b888d7cc0e04c5f1b987b659bb07c95
+END
+
+ASSET logos/meta.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/meta.svg
+  sha256: 805ef9a35305393eb5a89be46b0708c9b119b3308ca44aaedd1457ff04857060
+END
+
+ASSET logos/nvidia.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/nvidia.svg
+  sha256: 5a419b99e0ffdbfbe8caa7ec25581054eae03024da59cb860c54ea55ac8e7e73
+END
+
+ASSET logos/openai.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/openai.svg
+  sha256: a595df6b423920c67a7f8f73c063e4bfb72d415948097b6cac063a2366bb5186
+END
+
+ASSET logos/openrouter.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/openrouter.svg
+  sha256: ae671cc83de9bd45db97a47ed5e38a4e1bd9f93a12be495ba4b4f8b284026bca
+END
+
+ASSET logos/qwen.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/qwen.svg
+  sha256: dcb3ba2f2b55ccbacbade0ca0bf98921fbaf8a07848972974b4a9bf8077376cf
+END
+
+ASSET logos/xiaomimimo.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/xiaomimimo.svg
+  sha256: b04ad7dad52af2212c4567daf0ee6856f2c4625c92c680a27f9880295d558b71
+END
+
+ASSET logos/zai.svg
+  source: https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/zai.svg
+  sha256: e748cb5108ce37b116d7a5ba97d37e0ae97eadf6849b0de11afb248e244a01e1
+END
+
+
+NOT VENDORED, AND WHY (upstream packages/elements/src at the same commit)
+------------------------------------------------------------------------
+
+Checked against the product's real surfaces on 2026-09-23. Each is one line: what it is, why not now.
+
+  plan               A Plan-mode card with its step list. The owner's D-UX-2 keeps plan checklists
+                     out of the conversation; the next step is one row inside Thinking and the plan
+                     itself is under Details. Needs ui/card, which is not vendored.
+  checkpoint         "Saved point · Restore" after a turn. The workspace's restore lives in the
+                     checkpoints drawer and lib/undo.ts; a second restore control per turn is a new
+                     feature, not a swap of a lookalike.
+  context            A usage ring over tokens (tokenlens). Credits are settled by the worker per run
+                     and shown from its own figure; a client-side token estimate would be a second,
+                     disagreeing number.
+  environment-variables
+                     Built to reveal and copy secret values (EyeIcon, CopyButton, ui/switch). The
+                     browser never has a model key — only its last four characters — so a component
+                     whose purpose is showing the value has nothing to show. Settings › Models & keys
+                     is a plain list instead.
+  confirmation, question, queue
+                     Each needs a worker round-trip that does not exist yet (tool approval, ask_user,
+                     a queued-message store).
+  image, artifact, audio-player
+                     Generated images and sounds already render through lib/generative-ui (SafeImage,
+                     SafeAudio: fetched with the person's token, with loading and gone states). A swap
+                     is only safe with those states kept, and is left for its own change.
+  speech-input, mic-selector, transcription, voice-selector
+                     No voice input or spoken reply exists in the product.
+  file-tree, snippet, inline-citation, test-results, stack-trace
+                     Their surfaces (files panel, pairing code, Plan-mode citations, playtest checks,
+                     Luau errors) work today as they are; each swap is its own reviewable change.
+  agent, commit, sandbox, terminal, schema-display, package-info, jsx-preview, open-in-chat,
+  web-preview, persona, canvas, node, edge, connection, controls, panel, toolbar
+                     Developer surfaces (tool schemas, git, terminals, npm), model-written JSX run in
+                     our origin (jsx-preview), handing the prompt to another product (open-in-chat),
+                     an iframe previewer for URLs (a Roblox place is not one), a Rive mascot (the
+                     mascot is cancelled), and @xyflow/react graphs (not installable here).
+
+  Vendored and now unused: task.tsx. Its one surface was the planned-steps checklist inside Thinking,
+  which D-UX-2 removed. It is kept, with its row above, so the row and the copy stay checkable if it
+  returns.

@@ -116,7 +116,9 @@ test('a KV override that repoints the free lane at a GLM route changes the answe
 
 test('SessionDO omits the claim instead of downgrading it, and clears the replayed copy too', () => {
   const src = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  assert.match(src, /const effortApplied = await reasoningEffortApplies\(this\.env, gatewayModel\);/);
+  // The claim is the adapter's answer. It may be NARROWED to false (a customer-key step sends no
+  // effort at all, see gateway.ts) but never forced true by anything else.
+  assert.match(src, /const effortApplied = (?:[\w.]+ \? false : )?await reasoningEffortApplies\(this\.env, gatewayModel\);/);
   // Omitted from the broadcast...
   assert.match(src, /\.\.\.\(effortApplied \? \{ effort: choice\.effort, effortReason: choice\.reason \} : \{\}\)/);
   // ...and cleared from the run state, which `runSnapshot` replays on a refresh. Leaving it there

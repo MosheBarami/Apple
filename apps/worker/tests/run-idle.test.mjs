@@ -55,7 +55,8 @@ test('a prose step resets the count; a check and a change in one step does not c
 });
 
 test('the run loop feeds every step through afterStep and acts on its answer', () => {
-  assert.match(SESSION, /const idle = afterStep\(agent, \{\s*mutated: mutatedThisStep,\s*verified: verifiedThisStep,\s*calls: executedThisStep \+ duplicatesThisStep,\s*answerOnly: agent\.readOnly === true,\s*\}\);/);
+  // The property: every step's facts reach afterStep. Further facts may be added (canBuild was, 2026-09-23).
+  assert.match(SESSION, /const idle = afterStep\(agent, \{\s*mutated: mutatedThisStep,\s*verified: verifiedThisStep,\s*calls: executedThisStep \+ duplicatesThisStep,\s*answerOnly: agent\.readOnly === true,[^}]*\}\);/);
   assert.match(SESSION, /if \(idle\.action === 'answer'\) \{\s*agent\.llm\.push\(/);
   assert.match(SESSION, /if \(idle\.action === 'finish'\) \{[\s\S]{0,700}await this\.finishRun\(agent, 'done'\);/);
   assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(/);
@@ -118,4 +119,31 @@ test('after a passing check the stricter after-verify bound decides, not this on
     ...Array.from({ length: 30 }, () => BUILD_READ)]);
   assert.ok(!actions.includes('build') && !actions.includes('stall'));
   assert.equal(actions.indexOf('finish'), 2 + IDLE_AFTER_VERIFY_LIMIT - 1);
+});
+
+test('the run loop passes canBuild, ends a stalled run as incomplete, and tells a reading run to build', () => {
+  assert.match(SESSION, /answerOnly: agent\.readOnly === true,\s*canBuild,\s*\}\);/);
+  assert.match(SESSION, /if \(idle\.action === 'stall'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'incomplete'\);/);
+  assert.match(SESSION, /if \(idle\.action === 'build'\) \{\s*agent\.llm\.push\(/);
+  assert.match(SESSION, /trimTranscriptReport\(agent\.llm, MAX_PROMPT_CHARS, MAX_PROMPT_TARGET\)/);
+});
+
+// Changing the same thing over and over — F-036, 101 steps re-tuning one Lighting value.
+test('the same target changed again and again is told to stop tuning, then ended; other targets are separate', async () => {
+  const { afterChange, RETUNE_NUDGE, RETUNE_LIMIT, RETUNE_KEYS } = await import('../src/run-idle.ts');
+  let counts; const actions = [];
+  for (let i = 0; i < RETUNE_LIMIT; i++) { const r = afterChange(counts, 'set_props game.Lighting'); counts = r.counts; actions.push(r.action); }
+  assert.equal(actions.indexOf('nudge'), RETUNE_NUDGE - 1);
+  assert.equal(actions.filter((a) => a === 'nudge').length, 1);
+  assert.equal(actions.at(-1), 'finish');
+  let spread; const spreadActions = [];
+  for (let i = 0; i < 40; i++) { const r = afterChange(spread, `create_instances Coin${i}`); spread = r.counts; spreadActions.push(r.action); }
+  assert.ok(spreadActions.every((a) => a === 'none'), 'forty different targets are forty pieces of work, not one retune');
+  assert.ok(Object.keys(spread).length <= RETUNE_KEYS, 'the remembered targets are bounded');
+});
+
+test('the run loop counts each successful change by its target and acts on the answer', () => {
+  assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;\s*const retune = afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{aim\(call\.arguments\)\}`\);/);
+  assert.match(SESSION, /if \(retuneThisStep === 'finish'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'done'\);/);
+  assert.match(SESSION, /if \(retuneThisStep === 'nudge'\) \{\s*agent\.llm\.push\(/);
 });

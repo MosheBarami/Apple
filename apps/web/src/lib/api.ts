@@ -3,6 +3,7 @@
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
 import type { ChatAttachment, CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
 import type { ApiKeyMode, ApiScope } from '@golem/shared';
+import type { ByokProvider, ModelCatalogue, ModelKeyCheck, ModelKeySummary } from '@golem/shared';
 import type { ApiKeyView } from './api-keys.ts';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
@@ -2065,6 +2066,34 @@ export const putRobloxKey = (body: {
 
 export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
   request('/api/me/roblox-key', { method: 'DELETE' });
+
+// ------------------------------------------------------------- model keys and the catalogue
+//
+// Owner decisions D-BYOK-1 and D-FREE-1. Under `/api/me/model-keys`, NOT `/api/keys`: those are the
+// Apple API-key routes above, and the worker keeps the two apart for exactly that reason.
+//
+// NOTHING HERE RETURNS A KEY. The PUT sends one and gets back its last four characters; the GET never
+// had it. What a check found is one of three answers, and `unchecked` (OpenRouter could not be asked)
+// is not the same fact as `valid`.
+
+/**
+ * The picker's catalogue. In mock mode there is no worker and so no catalogue: refusing says that,
+ * where a fixture would have to invent when a free list was "read". The picker then offers Apple's
+ * own models only, as it does whenever the catalogue cannot be read.
+ */
+export const fetchModelCatalogue = (): Promise<ModelCatalogue> =>
+  MOCK_MODE
+    ? Promise.reject(new ApiError('Model choices beyond Apple are not available in the demo.', 503))
+    : request('/api/models');
+
+export const fetchModelKeys = (): Promise<{ keys: ModelKeySummary[] }> =>
+  MOCK_MODE ? Promise.resolve({ keys: [] }) : request('/api/me/model-keys');
+
+export const putModelKey = (provider: ByokProvider, apiKey: string): Promise<{ key: ModelKeySummary; check: ModelKeyCheck }> =>
+  request(`/api/me/model-keys/${encodeURIComponent(provider)}`, { method: 'PUT', body: JSON.stringify({ apiKey }) });
+
+export const deleteModelKey = (provider: ByokProvider): Promise<{ removed: boolean }> =>
+  request(`/api/me/model-keys/${encodeURIComponent(provider)}`, { method: 'DELETE' });
 
 export interface RobloxWrite {
   at: string;

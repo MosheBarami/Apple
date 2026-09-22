@@ -4672,7 +4672,7 @@ export async function runTool(
   const impl = TOOLS[name];
   if (!impl) return { summary: `unknown tool ${name}`, resultForLlm: JSON.stringify({ error: `unknown tool: ${name}` }), ok: false };
   if (impl.studio && !ctx.studioConnected()) {
-    return { summary: `${name}: Studio not connected`, resultForLlm: JSON.stringify({ error: 'Studio is not connected. Ask the user to connect Studio, or continue without Studio tools.' }), ok: false };
+    return { summary: `${name}: Studio not connected`, resultForLlm: JSON.stringify({ error: 'Roblox Studio is not connected right now — the Apple plugin is not answering. It is not a limit of this mode. Tell the user to reconnect Studio from the Apple panel, and do not claim any Studio change you did not see succeed.' }), ok: false };
   }
   // UNPARSEABLE ARGUMENTS ARE NOT ABSENT ARGUMENTS. This used to swallow the parse error and
   // continue with `{}`, so `'{not json'` reached web_fetch and came back as

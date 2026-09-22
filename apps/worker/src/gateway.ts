@@ -26,8 +26,10 @@ import {
   gatewayOpts,
   modelById,
   neuronsForModelTokens,
+  openrouterAdapter,
   ProviderError,
   recordProviderCall,
+  scrubKey,
   workersAiAdapter,
 } from './providers';
 
@@ -227,6 +229,17 @@ async function reserve(env: Env, model: string, neurons: number): Promise<number
   return data.reserved ?? neurons;
 }
 
+/**
+ * The one spend guard a customer-key call still passes. Such a call costs Apple nothing on the
+ * model, so it neither reserves against nor settles to the shared neuron budget — but the kill
+ * switch is an operator's "stop all generation", and it means all of it. Fails closed: a budget
+ * object that cannot be read refuses the call, exactly as reserve() does.
+ */
+async function assertNotKilled(env: Env): Promise<void> {
+  const state = (await (await budgetStub(env).fetch('https://do/state')).json()) as { killed?: boolean; killedReason?: string | null };
+  if (state?.killed === true) throw new BudgetError('killed', state.killedReason ?? BUDGET_MESSAGES.killed!);
+}
+
 async function settle(env: Env, reserved: number, actual: number, model: string, kind: string): Promise<void> {
   await budgetStub(env)
     .fetch('https://do/settle', { method: 'POST', body: JSON.stringify({ reserved, actual, model, kind }) })
@@ -292,19 +305,38 @@ export interface ChatOptions {
   actorId?: string;
   projectId?: string;
   runId?: string;
+  /**
+   * Run THIS call on a customer's own key (owner decision D-BYOK-1). `modelId` is an OpenRouter id
+   * from the catalogue; the internal model key (`req.model`) still supplies the output ceiling and
+   * temperature, so a customer-key step is bounded exactly like an Apple step.
+   *
+   * What changes: the call goes through the OpenRouter adapter with `apiKey`, it does NOT reserve
+   * against or settle to the shared neuron budget (Apple is not paying for it), and it reports
+   * `neurons: 0`, which is what keeps the session from billing Credits for it. The kill switch still
+   * applies. `apiKey` lives only in this call's frame: it is not logged, not traced, and scrubbed
+   * from every error message that leaves here.
+   */
+  customerKey?: { provider: 'openrouter'; apiKey: string; modelId: string };
 }
 
 export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}): Promise<GatewayResponse> {
   const models = await getModels(env);
-  const cfg = models[req.model];
-  if (!cfg) throw new Error(`unknown model key: ${req.model}`);
+  const baseCfg = models[req.model];
+  if (!baseCfg) throw new Error(`unknown model key: ${req.model}`);
+  const customer = opts.customerKey;
+  // Every catalogue model on the customer lane supports tools natively (the catalogue admits no
+  // other kind), and no reasoning effort is sent: whether a given OpenRouter model honours one is
+  // not something this worker has measured, so it is not claimed.
+  const cfg: ModelCfg = customer
+    ? { id: customer.modelId, nativeTools: true, maxTokens: baseCfg.maxTokens, ctx: baseCfg.ctx, temperature: baseCfg.temperature }
+    : baseCfg;
 
   // Which provider owns this model id. Every DEFAULT_MODELS entry is a Workers AI id, so in
   // production this is always the Workers AI adapter and the call below is the same env.AI.run it
   // has always been. An unrecognised id also resolves to Workers AI — the AI binding is the only
   // transport this worker has.
-  const adapter = adapterForModelId(cfg.id);
-  const priced = modelById(cfg.id);
+  const adapter = customer ? openrouterAdapter : adapterForModelId(cfg.id);
+  const priced = customer ? undefined : modelById(cfg.id);
 
   const usePrompted = !!req.tools?.length && !cfg.nativeTools;
   // The prompted-tool fallback is GATEWAY policy, not provider format: it rewrites the
@@ -337,7 +369,7 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   const maxTokens = Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens);
   // Per-call effort wins over the model default: the adaptive policy decides how hard to think
   // based on what the step is, and pays for it out of the same budget.
-  const effort = req.reasoningEffort ?? cfg.reasoningEffort;
+  const effort = customer ? undefined : (req.reasoningEffort ?? cfg.reasoningEffort);
   const encoded = adapter.encode({
     modelId: cfg.id,
     messages,
@@ -364,13 +396,22 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   // because a cap enforced in exactly one place has a single point of failure. If you are simplifying
   // this, the thing to verify is that budget.ts's own per-request check still refuses: that is what
   // covers this one's absence, and it is the only thing that does.
-  if (estimate > MAX_NEURONS_PER_REQUEST) {
+  // A customer-key call is not Apple's spend: it takes no reservation and only the kill switch applies.
+  if (!customer && estimate > MAX_NEURONS_PER_REQUEST) {
     throw new BudgetError('request_too_large', BUDGET_MESSAGES.request_too_large!);
   }
-  const reserved = await reserve(env, cfg.id, estimate);
+  let reserved = 0;
+  if (customer) await assertNotKilled(env);
+  else reserved = await reserve(env, cfg.id, estimate);
 
   const kind = opts.kind ?? req.model;
-  const invokeCtx = { modelId: cfg.id, kind, cacheTtl: opts.cacheTtl ?? 0, ...(opts.sessionId ? { sessionId: opts.sessionId } : {}) };
+  const invokeCtx = {
+    modelId: cfg.id,
+    kind,
+    cacheTtl: opts.cacheTtl ?? 0,
+    ...(opts.sessionId ? { sessionId: opts.sessionId } : {}),
+    ...(customer ? { customerApiKey: customer.apiKey } : {}),
+  };
   let raw: unknown;
   let lastLatencyMs: number | null = null;
   /** One model trace. Every field it cannot establish stays null rather than becoming zero. */
@@ -438,7 +479,7 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
           latencyMs: Date.now() - started,
           ok: false,
           errorKind: cls.kind,
-          errorMessage: e instanceof Error ? e.message : String(e),
+          errorMessage: scrubKey(e instanceof Error ? e.message : String(e), customer?.apiKey),
         });
         // A failed ATTEMPT is its own trace. The retry loop swallows rate-limit rejections and the
         // call still succeeds, so a log that only recorded the final outcome would show a clean run
@@ -454,23 +495,28 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
       }
     }
     if (lastErr) {
-      await release(env, reserved);
-      const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+      if (!customer) await release(env, reserved);
+      const msg = scrubKey(lastErr instanceof Error ? lastErr.message : String(lastErr), customer?.apiKey);
       const classified = adapter.classifyError(lastErr);
       //[[ `neurons` ON ITS OWN MATCHED ANY MESSAGE CONTAINING THE WORD.
       //   Workers AI writes "neurons" in messages that are not the daily cap, and this branch tells
       //   the customer their allowance is spent and that waiting will not help. A transient
       //   reported as an exhausted quota is the worse of the two errors: it tells somebody to stop
       //   trying when trying again would have worked. 4006 is the code that means it. ]]
-      if (/\b4006\b|daily free allocation/i.test(msg)) {
+      // Apple's own daily allocation. Never the reading of a customer-key failure: their key has no
+      // share in Apple's capacity, and telling them Apple's capacity is spent would be false.
+      if (!customer && /\b4006\b|daily free allocation/i.test(msg)) {
         throw new BudgetError('daily_cap', BUDGET_MESSAGES.daily_cap!);
       }
       // `capacity temporarily` is classified RETRYABLE by WORKERS_AI_RETRYABLE and was missing
       // here, so that one class exhausted the ladder and then fell through to the raw
       // `inference failed (model): ...` below — a transient, shown to a customer as a crash.
+      // On the customer's key the limit is OpenRouter's (common on free models), not Apple's.
       if (/\b3021\b|rate limit|too many requests|capacity temporarily/i.test(msg)) {
         throw new RateLimitedError(
-          'Apple is handling a burst of requests right now. Nothing was charged — try that again in a moment.',
+          customer
+            ? 'OpenRouter is limiting requests to this model right now. Try again in a moment, or pick a different model.'
+            : 'Apple is handling a burst of requests right now. Nothing was charged — try that again in a moment.',
         );
       }
       // Preserve the provider's structured failure kind across the gateway boundary. SessionDO
@@ -516,8 +562,10 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   const computed = priced
     ? neuronsForModelTokens(priced, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens)
     : neuronsFor(cfg.id, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens);
-  const actual = Math.ceil(Math.max(usage.reportedNeurons ?? 0, computed));
-  await settle(env, reserved, actual, cfg.id, kind);
+  // Zero on the customer lane: the customer's key paid the provider, and a non-zero figure here is
+  // what the session would turn into Apple Credits.
+  const actual = customer ? 0 : Math.ceil(Math.max(usage.reportedNeurons ?? 0, computed));
+  if (!customer) await settle(env, reserved, actual, cfg.id, kind);
   trace({
     outcome: 'ok',
     latencyMs: lastLatencyMs,

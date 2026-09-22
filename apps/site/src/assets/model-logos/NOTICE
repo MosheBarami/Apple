@@ -1,0 +1,32 @@
+Lobe Icons — vendored vendor marks for apps/site/src/pages/models.astro and the landing's
+"On your own key" row.
+
+Upstream project:  https://github.com/lobehub/lobe-icons
+Package:           @lobehub/icons-static-svg 1.95.1 (license field in its package.json: "MIT")
+LICENSE commit:    2e76c48721e91b9aaa40803a0fa2eb8aca7399c4 (the package ships no LICENSE file, so
+                   LICENSE in this directory is the repository's own, byte for byte)
+Copyright (c) 2023 LobeHub. Licensed under the MIT License; see LICENSE.
+
+The marks themselves are the trademarks of the companies they depict. They are shown only beside
+the name of that company's model, to identify it.
+
+Every .svg below is the upstream file BYTE FOR BYTE. The page removes the <title>, the fixed 1em
+width/height and the inline style when it inlines a mark (src/lib/model-catalogue.ts, logoSvg), so
+the file on disk stays verifiable against its row. tests/models-page.test.mjs recomputes every
+sha256 and fails on a mismatch, on an unlisted file, and on a listed file that is missing.
+
+FILE  sha256  source
+anthropic.svg  e833fdfa7e7187a86a05b870925067556a506dcd4239089aed73e1e58c9366a3  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/anthropic.svg
+deepseek.svg  8f9443e351b6dacce71871790201b799d92e8bf96a45ef79aeb5e9bf4db423e2  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/deepseek.svg
+dotsstudio.svg  ed4e9c618a27ac16f2e1e8c16e6d217f3f7c01665afb068fe2f12164298b2310  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/dotsstudio.svg
+gemini.svg  87d5b3c4be75a66f54c1936482a263df68185545b741129badd1b7c2449c18d3  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/gemini.svg
+gemma.svg  8f9b74f6bbbf17203da8d81c3a4bb8750dbf13afe3ab4c1d482e84be62cd03a6  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/gemma.svg
+grok.svg  9175fc90c22655160231976c849f25a03b888d7cc0e04c5f1b987b659bb07c95  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/grok.svg
+meta.svg  805ef9a35305393eb5a89be46b0708c9b119b3308ca44aaedd1457ff04857060  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/meta.svg
+nvidia.svg  5a419b99e0ffdbfbe8caa7ec25581054eae03024da59cb860c54ea55ac8e7e73  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/nvidia.svg
+openai.svg  a595df6b423920c67a7f8f73c063e4bfb72d415948097b6cac063a2366bb5186  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/openai.svg
+poolside.svg  1765259d468c3e2f1ea0f1e24f3e4b26a9682ebe592611cac0c8be2f866711b8  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/poolside.svg
+qwen.svg  dcb3ba2f2b55ccbacbade0ca0bf98921fbaf8a07848972974b4a9bf8077376cf  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/qwen.svg
+xiaomimimo.svg  b04ad7dad52af2212c4567daf0ee6856f2c4625c92c680a27f9880295d558b71  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/xiaomimimo.svg
+zai.svg  e748cb5108ce37b116d7a5ba97d37e0ae97eadf6849b0de11afb248e244a01e1  https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@1.95.1/icons/zai.svg
+LICENSE  add9d7531d1b21646317a8958e38fc727506fa39d24bdecb44154d943c82753a  https://raw.githubusercontent.com/lobehub/lobe-icons/2e76c48721e91b9aaa40803a0fa2eb8aca7399c4/LICENSE

@@ -129,14 +129,20 @@ test('the seven routes that change a credential or a membership all tell the acc
   // real Roblox account, permanently — fired nothing at all, while minting an Apple API key fired
   // one. The count moving is the point of pinning it: adding a credential route and not telling
   // the account holder about it should be a decision somebody makes on purpose, in this file.
+  //
+  // EIGHT since 2026-09-23: saving an OpenRouter model key (PUT /api/me/model-keys/:provider) tells
+  // the account holder, naming only the last four characters. Reviewed: it is the direction that
+  // grants authority, like Roblox connect. Removing a model key sends nothing — it only takes
+  // authority away, spends nothing, and the key keeps working on OpenRouter until revoked there,
+  // which the add notice already says.
   const body = code(index);
   assert.match(body, /function securityNotice\(/, 'securityNotice is gone');
   assert.match(body, /kind: 'security_event'/, 'securityNotice no longer emits the security kind');
   const calls = [...body.matchAll(/\bsecurityNotice\(/g)].length - 1; // minus the declaration
   assert.equal(
     calls,
-    7,
-    `expected the seven call sites (mint, rotate, revoke, invite, remove, roblox connect, roblox disconnect); found ${calls}`,
+    8,
+    `expected the eight call sites (mint, rotate, revoke, invite, remove, roblox connect, roblox disconnect, model key saved); found ${calls}`,
   );
 });
 
@@ -157,7 +163,7 @@ test('the membership notice goes to the OWNER, not to the person who was added o
   // in their list, which is the arrival they actually care about.
   const body = code(index);
   const sites = [...body.matchAll(/securityNotice\(\s*c,\s*([A-Za-z_.]+),/g)].map((m) => m[1]);
-  assert.equal(sites.length, 7, `could not read all seven call sites; read ${JSON.stringify(sites)}`);
+  assert.equal(sites.length, 8, `could not read all eight call sites; read ${JSON.stringify(sites)}`);
   assert.deepEqual(
     sites.filter((s) => s === 'ctx.project.owner_id').length,
     2,
@@ -166,7 +172,8 @@ test('the membership notice goes to the OWNER, not to the person who was added o
   // Three Apple keys and two Roblox connection events, all addressed to the person on the token —
   // never to an id read off a body, which would be a way to post alarming sentences into anybody's
   // account history.
-  assert.deepEqual(sites.filter((s) => s === 'user.userId').length, 5, 'the credential routes address the key owner');
+  // Plus the model-key save (2026-09-23), also addressed to the person on the token.
+  assert.deepEqual(sites.filter((s) => s === 'user.userId').length, 6, 'the credential routes address the key owner');
 });
 
 test('a notification that cannot be delivered does not fail the security action it reports', () => {

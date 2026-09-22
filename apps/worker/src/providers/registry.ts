@@ -8,20 +8,21 @@ import { workersAiAdapter } from './workers-ai';
 import {
   MODEL_KEY_NEEDS,
   PROVIDER_ORDER,
+  type PlatformProviderId,
   type ProviderAdapter,
   type ProviderAvailability,
   type ProviderId,
   type ProviderModel,
 } from './types';
 
-export const ADAPTERS: Record<ProviderId, ProviderAdapter> = {
+export const ADAPTERS: Record<PlatformProviderId, ProviderAdapter> = {
   'workers-ai': workersAiAdapter,
   openai: openaiAdapter,
   google: googleAdapter,
   deepseek: deepseekAdapter,
 };
 
-export function getAdapter(id: ProviderId): ProviderAdapter {
+export function getAdapter(id: PlatformProviderId): ProviderAdapter {
   return ADAPTERS[id];
 }
 
@@ -173,7 +174,7 @@ export function selectProvider(env: Env, opts: AutoSelectOptions = {}): AutoSele
   eligible.sort((a, b) => {
     const d = blendedPricePer1M(a) - blendedPricePer1M(b);
     if (d !== 0) return d;
-    return PROVIDER_ORDER.indexOf(a.provider) - PROVIDER_ORDER.indexOf(b.provider);
+    return PROVIDER_ORDER.indexOf(a.provider as PlatformProviderId) - PROVIDER_ORDER.indexOf(b.provider as PlatformProviderId);
   });
   const chosen = eligible[0]!;
 

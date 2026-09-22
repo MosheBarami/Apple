@@ -19,6 +19,21 @@ exist is DELETE with a dated owner statement, per §6.6.
 
 ---
 
+## apps/web/src/components/ai-elements/task.tsx — WIRE, 2026-09-23
+
+**Found:** imported by nothing after the BYOK/short-replies track (workflow wf_46d0bb34-725).
+
+**Why it lost its caller:** `ws/thinking.tsx` rendered the plan checklist with it. The owner's
+direction D-UX-2 (docs/autonomy/DECISIONS.md) removed plan checklists from the conversation; the
+checklist became one "Next:" row, so the vendored AI Elements Task had nothing left to draw.
+
+**Caller being added:** the step list inside the Thinking disclosure, in the component-library
+rollout the owner asked for on 2026-09-23 ("use all of them … not a few"). It stays vendored,
+hash-verified, for that; if the rollout chooses another component for the step list, this entry
+becomes DELETE with that decision recorded.
+
+---
+
 ## apps/web/src/components/plans.tsx — WIRE, pass 6
 
 **Found:** imported by nothing in the tree.
@@ -551,3 +566,98 @@ kept rather than deleted because the measurement behind it is real and the next 
 embeddings should read the arm that was already built and already beaten, not rebuild it. If the
 staleness problem is ever solved — an index rebuilt on corpus change rather than on a schedule —
 this becomes a WIRE and this entry goes.
+
+---
+
+## `.tmp-blue-matrix.mjs` — DELETE
+
+**Found:** imported by nothing in the tree, 2026-09-22.
+
+A one-off Playwright harness written during the minimal-redesign pass: it walked the site and the
+app at four viewports, screenshotted each, and printed the ones that overflowed. Its siblings
+(`.tmp-*.png`, `.tmp-*.b64`) are its output and are untracked alongside it.
+
+**Why it goes:** it is scratch, not source. The `.tmp-` prefix is the only marker it ever had, and
+a scratch file with no importer is indistinguishable from a module somebody forgot to wire up — so
+it is disposed of here rather than left for the next dead-end report to re-derive. The visual QA it
+performed is a standing requirement, not a one-off: it belongs in a committed harness under
+`docs/evidence/`, which is where the real evidence for a release goes.
+
+**Deleted:** with this entry, along with `apps/web/vite.config.ts.timestamp-*.mjs`.
+
+## `apps/web/vite.config.ts.timestamp-1790089612853-3b4c4637a4608.mjs` — DELETE
+
+**Found:** imported by nothing in the tree, 2026-09-22.
+
+A Vite build byproduct. When Vite loads a config that is not plain ESM it writes a timestamped
+`.mjs` beside it and imports that instead; the file is meant to be transient and is regenerated on
+the next build.
+
+**Why it goes:** it is output, not input, and it is the one thing in this list whose absence is
+guaranteed to be recreated. It is recorded rather than silently removed because a stray
+`vite.config.ts.timestamp-*.mjs` at the top of a diff is exactly the kind of file that gets
+committed by accident.
+
+## `apps/web/src/components/aicss/index.ts` — STRUCTURALLY-BLOCKED
+
+**Found:** imported by nothing in the tree, 2026-09-22.
+
+It is the barrel for the vendored AICSS components: ten `export * from` lines, one per component
+directory, matching the shape the upstream package publishes.
+
+**Why nothing imports it, and why that is correct:** every call site reaches for the component it
+actually wants, by subpath — `admin.tsx` imports `../components/aicss/data-table`, `usage.tsx`
+imports `../components/aicss/comparison-table`, and `lib/generative-ui/render.tsx` imports
+`../components/aicss/file-diff/FileDiff.runtime.js`. That is deliberate: the runtime `.js` entry
+points and the CSS Module side-effects mean a barrel that re-exports all ten would pull the whole
+vendored surface into any bundle that wanted one table.
+
+**Structurally blocked on:** `apps/web/tests/aicss-vendor.test.mjs` and `UPSTREAM.md` in the same
+directory, which pin the vendored tree against its upstream commit and its MIT licence. The barrel
+is part of that pinned surface. Deleting it would be editing vendored source to satisfy a dead-end
+report, which is the wrong direction — so it stays, and this entry says why nobody should "fix" it
+by wiring the barrel in.
+
+## `apps/web/src/components/ws/connect-studio.tsx` — DELETE, and it has been
+
+**Found:** imported by nothing in the tree, 2026-09-22.
+
+**What it was:** the compact connection block that sat at the foot of the conversation — the
+"Install Apple for Studio" / "Connect Studio" prompt, with the pairing code a click away. It drew
+nothing once `status === 'connected'`, and it was written so it could never claim the plugin was
+installed, because the browser has no way to observe a Studio plugin.
+
+**Why it went:** the minimal redesign replaced the block with two surfaces that say the same things
+in less space. The studio pill in the workspace topbar (`routes/workspace.tsx`) carries the
+connection state and opens the pairing dialog, and `components/ws/studio-link-note.tsx` carries the
+one sentence worth reading — when Studio last polled, how much work is queued, how slow the round
+trip is, and whether Studio is holding the wrong place open. The block was a third place for the
+same facts.
+
+**WHAT ALMOST WENT WITH IT, and this is the part worth recording.** The component was the only
+element in the app carrying `data-tour="connect-studio"`, and `lib/onboarding.ts` still lists a step
+anchored to it. The tour withholds a step whose anchor is not in the document rather than pointing
+at nothing, so deleting this file did not break the tour — it silently removed the step that teaches
+a new user to connect Studio, which is the one step this product cannot afford to lose. The anchor
+now lives on the connect control in `routes/workspace.tsx`, which is the element the step was always
+trying to describe. **If this component comes back, the anchor goes back with it and this entry is
+where to find out why it left.**
+
+## `apps/web/src/components/ws/evidence-model.ts` — STRUCTURALLY-BLOCKED
+
+**Found:** imported only by `apps/web/tests/evidence-model.test.mjs`, 2026-09-22.
+
+**Why it has no product caller:** the evidence-card RENDERER was retired with the rest of the old
+activity pipeline — `ws/evidence-cards.tsx` and its stylesheet are gone, and the activity list no
+longer draws evidence chips. This module is the DATA half of that pair: it decides what counts as
+evidence, how a claim is tied to the tool call that produced it, and what a piece of evidence is
+allowed to say about itself.
+
+**Structurally blocked on:** the data model is kept on purpose, and the brief that retired the
+renderer says so in as many words — "the activity DATA MODEL can remain for audit truth; do not
+delete useful event data merely because the old renderer is gone." A run's claims and the calls
+behind them are what an audit reads when a customer disputes a change, and that question does not
+stop being askable because the UI stopped drawing chips.
+
+**If a renderer returns:** it reads this module rather than re-deriving the rules, and
+`tests/evidence-model.test.mjs` is already the guard on them.

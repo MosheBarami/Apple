@@ -158,8 +158,11 @@ test('honesty gates render observed facts only and failures stay with the turn o
   assert.match(JSX, /if \(!hasObservedContent\) return null;/,
     'an unobserved run must not receive placeholder reasoning UI');
   assert.match(JSX, /aria-label="Observed run activity"/);
-  assert.match(JSX, /aria-label="Planned next actions"/);
-  assert.match(JSX, /aria-label="Verified checks"/);
+  //[[ RESTATED 2026-09-23 (D-UX-2): the planned-steps checklist and the list of passed gate names
+  //   are detail. What stays is one next step and one "Checked it works" drawn from PASSED gates. ]]
+  assert.match(JSX, /const verified = passedGates\.length > 0;/);
+  assert.match(JSX, /const next = plannedSteps\[0\];/);
+  assert.match(JSX, /label="Checked it works"/);
   assert.match(JSX, /role="note">\{denied\}<\/p>/);
   assert.match(JSX, /aria-live="polite">\{isLive \? title : ''\}<\/span>/,
     'live activity changes need a non-visual announcement path');

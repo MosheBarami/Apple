@@ -207,7 +207,8 @@ test('an unsaved edit is not overwritten by a refetch', () => {
 test('the panel is unmounted when the drawer closes, so abandoning an edit abandons it', () => {
   // Closing the drawer is the gesture people use to walk away from an edit. Keeping the component
   // mounted would preserve a half-finished change and re-present it later as if it were saved.
-  assert.match(WS, /\{drawer === 'memory' && <MemoryPanel projectId=\{projectId\} \/>\}/);
+  // Restated 2026-09-22: the web lane lazy-loads the panel inside <Suspense>; still mounted only while open.
+  assert.match(WS, new RegExp(`\\{drawer === 'memory' && \\(?\\s*(?:<Suspense[\\s\\S]{0,160}?)?<MemoryPanel projectId=\\{projectId\\} \\/>`));
 });
 
 test('loading and failure are both named', () => {

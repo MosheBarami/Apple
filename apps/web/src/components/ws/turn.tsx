@@ -8,13 +8,13 @@
 // for content whose structure genuinely benefits — a render, a diff, a critique
 // — and those come from the typed component registry, never from free-form
 // model output.
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import type { PlaytestRun, StudioFrame } from '@golem/shared';
 import type { UIDocument } from '../../lib/generative-ui/schema';
 import { splitSpilledPayload } from '../../lib/spilled-payload';
 import { extractUIFence, parseDocument } from '../../lib/generative-ui';
-import { GenerativeUI } from '../../lib/generative-ui/render';
 import { panelFromTool } from '../../lib/panels';
+import { splitReplyDocs } from '../../lib/reply-docs';
 import { gatesFromDocs, plannedStepsFromDocs, type ValidatedDoc } from '../../lib/gates';
 import { docSourcesFromTools } from '../../lib/doc-sources';
 import { clockTime, isoStamp } from '../../lib/format';
@@ -45,15 +45,21 @@ function useNow(active: boolean): number {
   return now;
 }
 
-/** Validated technical output belongs directly in the answer; no secondary disclosure is needed. */
-function InlineResults({ docs }: { docs: UIDocument[] }) {
-  const compactDocs = docs.map((doc) => ({
-    ...doc,
-    blocks: doc.blocks.filter((block) => block.type !== 'render_review' && block.type !== 'scene_comparison'),
-  })).filter((doc) => doc.blocks.length > 0);
-  if (compactDocs.length === 0) return null;
-  return <div className="gx-inline-results">
-    {compactDocs.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
+// The component registry's renderer arrives when a reply first has something to draw with it. It is
+// not in the page everybody loads first: most replies are only words (D-UX-2).
+const GenerativeUI = lazy(() => import('../../lib/generative-ui/render').then((m) => ({ default: m.GenerativeUI })));
+
+/**
+ * WHAT THE PERSON ASKED TO SEE, AND NOTHING ELSE (owner decision D-UX-2). An image or a sound Apple
+ * made stays in the reply; every other validated document — plans, property cards, tables, diffs —
+ * goes to Details inside the Thinking disclosure. lib/reply-docs.ts draws the line.
+ */
+function ReplyMedia({ docs }: { docs: UIDocument[] }) {
+  if (docs.length === 0) return null;
+  return <div className="gx-reply-media">
+    <Suspense fallback={<p className="gx-reply-media__wait">Loading…</p>}>
+      {docs.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
+    </Suspense>
   </div>;
 }
 
@@ -143,6 +149,13 @@ export function Turn({
   const validated = useMemo<ValidatedDoc[]>(() => panels.map((p) => ({ id: p.id, doc: p.doc })), [panels]);
   const gates = useMemo(() => gatesFromDocs(validated), [validated]);
   const plannedSteps = useMemo(() => plannedStepsFromDocs(validated), [validated]);
+
+  // The one split between the reply and Details (lib/reply-docs.ts): a fence the model wrote and every
+  // validated tool result, in the order they happened.
+  const replyDocs = useMemo(
+    () => splitReplyDocs([...(fenceDoc ? [fenceDoc] : []), ...panels.map((panel) => panel.doc)]),
+    [fenceDoc, panels],
+  );
 
   // The documentation pages this turn's own searches returned — read from the tool results that
   // carried them, validated field by field, never invented. See lib/doc-sources.ts.
@@ -289,6 +302,7 @@ export function Turn({
           frames={isLast ? frames : undefined}
           playtest={isLast ? playtest : null}
           studioConnected={studioConnected}
+          details={replyDocs.details}
         />
 
         {item.content && (
@@ -329,7 +343,7 @@ export function Turn({
           </Sources>
         )}
 
-        <InlineResults docs={[...(fenceDoc ? [fenceDoc] : []), ...panels.map((panel) => panel.doc)]} />
+        <ReplyMedia docs={replyDocs.media} />
 
         {outcome ? (
           <div className={`gx-outcome${outcome.tone === 'bad' ? ' is-bad' : ''}`}>

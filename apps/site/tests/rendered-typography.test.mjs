@@ -53,6 +53,8 @@ const ROUTES = [
   // long monospace lines the wrapper cannot break, beside prose columns it can.
   '/proof/',
   '/pricing/',
+  // Built 2026-09-23: model rows are short names beside long ones, which is where a word strands.
+  '/models/',
   '/changelog/',
   '/status/',
   '/privacy/',

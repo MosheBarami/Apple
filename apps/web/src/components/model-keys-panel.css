@@ -1,0 +1,29 @@
+/* SETTINGS › MODELS & KEYS. The page's own rhythm (design/system.css .settings-*), one accent at most
+   (the focus ring), and no colour for "free": it is a fact about a price, not a status. A refused save
+   is the one --bad line, because it is an answer from OpenRouter about the key just pasted. */
+.mk { display:grid; gap:12px; min-width:0; max-width:720px; }
+.mk__promise { margin:0; color:var(--ink); font-size:14px; line-height:1.6; }
+.mk__note { margin:0; color:var(--muted); font-size:13px; line-height:1.6; }
+.mk__note--when { color:var(--faint); font-size:12px; }
+.mk__provider { display:grid; gap:10px; padding:16px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2); }
+.mk__provider-name { margin:0; color:var(--ink); font-size:14px; font-weight:600; }
+.mk__saved { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
+.mk__saved-line { margin:0; color:var(--ink); font-size:13px; font-variant-numeric:tabular-nums; }
+.mk__none { margin:0; color:var(--muted); font-size:13px; }
+.mk__form { display:grid; gap:6px; }
+.mk__label { color:var(--muted); font-size:12px; }
+.mk__row { display:flex; flex-wrap:wrap; gap:8px; }
+.mk__input {
+  flex:1 1 220px; min-width:0; min-height:var(--h-md); padding:0 12px; border:1px solid var(--control-line);
+  border-radius:var(--r-sm); background:var(--surface); color:var(--ink); font:inherit; font-size:13px;
+}
+.mk__input:focus-visible { outline:2px solid var(--accent-ring); outline-offset:1px; }
+.mk__hint { margin:0; color:var(--faint); font-size:12px; }
+.mk__hint a { color:var(--muted); }
+.mk__result { margin:0; padding:10px 12px; border:1px solid var(--line); border-inline-start-width:2px; border-radius:var(--r-sm); color:var(--ink); font-size:13px; }
+.mk__result.is-bad { border-inline-start-color:var(--bad); }
+.mk__free { list-style:none; display:grid; margin:0; padding:0; }
+.mk__free-row { display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding-block:9px; border-top:1px solid var(--line); font-size:13px; }
+.mk__free-row:first-child { border-top:0; }
+.mk__free-name { min-width:0; overflow-wrap:anywhere; color:var(--ink); }
+.mk__free-vendor { flex:none; color:var(--faint); font-size:12px; }

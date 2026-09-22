@@ -108,7 +108,10 @@ test('retry goes through edit_resend rather than a second re-run path', () => {
   // The server behaviour a retry needs — drop the failed turn, run the prompt again — is exactly
   // what an edit does. A second endpoint would be a second definition of re-running.
   const fn = WS.slice(WS.indexOf('const retryLast'), WS.indexOf('const [editing'));
-  assert.match(fn, /editAndResend\(lastUser\.id, lastUser\.content, mode, productModel, autonomous\)/);
+  // RESTATED 2026-09-23: the call gained a sixth argument, the model on the customer's own key
+  // (D-BYOK-1). The property is that the attachments, mode, model and autonomy all still ride on it,
+  // not that it ends after `autonomous`.
+  assert.match(fn, /editAndResend\(lastUser\.id, lastUser\.content, mode, productModel, autonomous\b/);
 });
 
 test('it resends the last USER message, not the failed assistant turn', () => {
@@ -131,7 +134,10 @@ test('the text is sent unchanged — a retry is not an edit', () => {
 
 test('the public mode and autonomy reach retry unchanged', () => {
   const fn = WS.slice(WS.indexOf('const retryLast'), WS.indexOf('const [editing'));
-  assert.match(fn, /editAndResend\([^;]+mode, productModel, autonomous\)/);
+  // RESTATED 2026-09-23: the call gained a sixth argument, the model on the customer's own key
+  // (D-BYOK-1). The property is that the attachments, mode, model and autonomy all still ride on it,
+  // not that it ends after `autonomous`.
+  assert.match(fn, /editAndResend\([^;]+mode, productModel, autonomous\b/);
 });
 
 // ----------------------------------------------------------------- the shape ---

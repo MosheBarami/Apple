@@ -613,18 +613,122 @@ test('a read trimmed out of the transcript can be read again; the duplicate guar
     answerOp: (op) => (op.op === 'get_tree' ? big(op.root ?? 'game.Workspace') : { ok: true, data: {} }),
     responses: [
       calls(['get_project_tree', { root: 'game.Workspace.StreetLamp' }]),
-      ...['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((b) => calls(['get_project_tree', { root: `game.Workspace.Filler${b}` }])),
+      // Enough filler reads to push the lamp's result past the transcript budget (MAX_PROMPT_CHARS in session.ts).
+      ...Array.from({ length: 24 }, (_, b) => calls(['get_project_tree', { root: `game.Workspace.Filler${b}` }])),
       calls(['get_project_tree', { root: 'game.Workspace.StreetLamp' }]),
       answer({ text: 'The lamp has 120 parts.' }),
     ],
   });
   try {
     await start(h, { text: 'List the parts inside the StreetLamp model. Do not change anything.' });
-    for (let i = 0; i < 14 && !lastEnd(h); i++) await h.session.alarm();
+    for (let i = 0; i < 34 && !lastEnd(h); i++) await h.session.alarm();
     const lampReads = h.ops.filter((op) => op.op === 'get_tree' && op.root === 'game.Workspace.StreetLamp').length;
     const dropped = h.sent.filter((m) => m.type === 'context_budget' && m.dropped).length;
     assert.ok(dropped > 0, 'the fixture never trimmed the transcript, so this proves nothing');
     assert.equal(lampReads, 2, 'the second read of the lamp must reach Studio, not be refused as a duplicate');
+  } finally {
+    h.stop();
+  }
+});
+
+// F-039, 2026-09-23, run c71b89a9: one install, then 88 read-only calls for 242 Credits. A run that can
+// build and only reads is told to build, and then ended — plainly, as incomplete, not as done.
+test('a run that changed something and then only reads is ended at the read-stall limit, as incomplete', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => (op.op === 'get_tree' ? { ok: true, data: { root: { path: op.root, name: 'x', class: 'Folder', children: [] } } } : { ok: true, data: {} }),
+    responses: [
+      calls(['create_instances', { instances: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
+      ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
+      answer({ text: 'Done.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'make a coin game' });
+    for (let i = 0; i < 60 && !lastEnd(h); i++) await h.session.alarm();
+    const end = lastEnd(h);
+    assert.ok(end, 'the run never ended');
+    const reads = h.ops.filter((op) => op.op === 'get_tree').length;
+    assert.ok(reads <= 21, `ended after ${reads} read-only steps, not at the limit`);
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+    assert.match(text, /kept re-reading your place instead of building/);
+    assert.notEqual(end.stopReason, 'done');
+  } finally {
+    h.stop();
+  }
+});
+
+// F-019, 2026-09-22: "Hi" cost 9 Credits — every call carries all 69 tool definitions (~67k chars).
+test('a greeting is answered without the tool definitions; a build request still gets them', async () => {
+  const hi = await makeSession({ connected: true, responses: [answer({ text: 'Hi! What should we build?' })] });
+  try {
+    await start(hi, { text: 'hi' });
+    for (let i = 0; i < 4 && !lastEnd(hi); i++) await hi.session.alarm();
+    assert.ok(hi.chatCalls.length >= 1, 'no model call was made — this checks nothing');
+    assert.equal(hi.chatCalls[0].req.tools?.length ?? 0, 0, 'the greeting was sent the build tools');
+  } finally {
+    hi.stop();
+  }
+  const build = await makeSession({ connected: true, responses: [answer({ text: 'Done.' })] });
+  try {
+    await start(build, { text: 'hi, build me a red tower' });
+    for (let i = 0; i < 4 && !lastEnd(build); i++) await build.session.alarm();
+    assert.ok(build.chatCalls[0].req.tools.length > 20, 'a build request lost its tools');
+  } finally {
+    build.stop();
+  }
+});
+
+// F-036, 2026-09-22: 101 steps re-tuning one Lighting value between renders.
+test('a run that keeps changing the same thing is ended at the retune limit, on what it built', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: () => ({ ok: true, data: {} }),
+    responses: [
+      ...Array.from({ length: 16 }, (_, i) => calls(['set_properties', { path: 'game.Lighting', props: { FogEnd: 1000 + i } }])),
+      answer({ text: 'Done.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'make the lighting a warm sunset' });
+    for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended');
+    const sets = h.ops.filter((op) => op.op === 'set_props').length;
+    assert.ok(sets > 0, 'no set_props reached Studio — the fixture checks nothing');
+    assert.ok(sets <= 12, `changed the same target ${sets} times before stopping`);
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+    assert.match(text, /changed the same thing many times in a row/);
+  } finally {
+    h.stop();
+  }
+});
+
+// F-033, 2026-09-22 (run d1a97c0d): Studio stopped answering mid-run, its tools were withdrawn, and the
+// reply told the customer the terrain and lighting tools "aren't offered in this mode".
+test('when Studio drops mid-run its tools stay offered, and a call is refused as a disconnect, not a mode limit', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => (op.op === 'get_tree' ? { ok: true, data: { root: { path: 'game.Workspace', name: 'Workspace', class: 'Workspace', children: [] } } } : { ok: true, data: {} }),
+    responses: [
+      calls(['get_project_tree', { root: 'game.Workspace' }]),
+      calls(['set_properties', { path: 'game.Lighting', props: { ClockTime: 18 } }]),
+      answer({ text: 'Studio disconnected; reconnect it from the Apple panel.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'make it sunset' });
+    await h.session.alarm();
+    assert.ok(h.chatCalls.length >= 1, 'no model call was made — this checks nothing');
+    // The plugin stops answering: every heartbeat the session reads is cleared.
+    h.store.set('pluginLastSeen', 0); h.session.lastSeenWrittenAt = 0; h.session.pluginLastSeenMs = 0;
+    for (let i = 0; i < 6 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(h.chatCalls.length >= 2, 'the run ended before a step with Studio down — this checks nothing');
+    const offered = (h.chatCalls[1].req.tools ?? []).map((t) => t.name);
+    assert.ok(offered.includes('set_properties'), 'the Studio tools were withdrawn when the link dropped');
+    const toolText = JSON.stringify(h.chatCalls[2]?.req.messages.filter((m) => m.role === 'tool' && /set_properties/.test(String(m.content))));
+    assert.equal(h.ops.filter((op) => op.op === 'set_props').length, 0, 'the change reached Studio although it was down');
+    assert.match(toolText, /not connected right now/);
+    assert.match(toolText, /It is not a limit of this mode/);
   } finally {
     h.stop();
   }

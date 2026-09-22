@@ -122,7 +122,7 @@ const WHERE_ELSE: Readonly<Record<string, string>> = {
   notifications: 'GET /api/notifications — your whole inbox, read and unread',
   automations: 'GET /api/projects/{projectId}/automations',
   automation_runs: 'GET /api/automations/{id}/runs',
-  user_credentials: 'GET /api/me/roblox-key — the fingerprint and last four only; the key itself is never returned to anyone',
+  user_credentials: 'GET /api/me/roblox-key and GET /api/me/model-keys — the fingerprint or last four only; the key itself is never returned to anyone',
   creator_write_log: 'GET /api/me/roblox/writes',
   project_asset_use: 'GET /api/projects/{projectId}/attribution',
   account_deletions: 'GET /api/me/delete — the record of your own deletion request and what it left behind',

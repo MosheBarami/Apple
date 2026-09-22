@@ -23,6 +23,7 @@ import { countdownTo } from '../lib/format';
 import { Failure } from '../components/failure';
 import { ApiKeysPanel } from '../components/api-keys-panel';
 import { RobloxKeyPanel } from '../components/roblox-key-panel';
+import { FreeModelsList, ModelKeysPanel } from '../components/model-keys-panel';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/toast';
 import { usePrefs } from '../lib/theme';
@@ -869,6 +870,7 @@ const SECTION_INDEX = [
     fields: ['email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history'],
   },
   { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-key', 'api-keys', 'discord'] },
+  { group: 'Building', id: 'models', label: 'Models & keys', fields: ['model-keys', 'free-models'] },
   { group: 'Building', id: 'assets', label: 'Assets', fields: ['asset-sources'] },
   {
     group: 'Building',
@@ -2472,6 +2474,19 @@ export function SettingsPage() {
         </Row>
         <Row id="discord" visible={shows('discord')}>
           <DiscordCard userId={userId} />
+        </Row>
+      </Section>
+
+      {/* THE MODELS A RUN CAN USE BEYOND APPLE'S OWN (owner decisions D-BYOK-1, D-FREE-1): the
+          person's own OpenRouter key, and what OpenRouter prices at zero today. Its own section, not
+          under Connections: a model key decides what a run costs, which is a building choice. The
+          composer's model picker sends people here from a locked row (#models). */}
+      <Section id="models" title="Models & keys" visible={sectionShows('model-keys', 'free-models')}>
+        <Row id="model-keys" visible={shows('model-keys')}>
+          <ModelKeysPanel />
+        </Row>
+        <Row id="free-models" visible={shows('free-models')}>
+          <FreeModelsList />
         </Row>
       </Section>
 

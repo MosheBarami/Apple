@@ -10,14 +10,19 @@
 //                        two before it, with every earlier step one disclosure away.
 //   Tool                 one row per tool call: friendly name, running / done / a real final
 //                        failure, and — opened — only what it was pointed at, what the worker said
-//                        came back, and how long it took. Never a payload, never JSON.
-//   Task                 the next steps a validated `build_plan` announced. Never inferred.
+//                        came back, and how long it took. Never a payload, never JSON. Closed until
+//                        somebody opens it (D-UX-2: the detail is there, not in the way).
+//   Next                 the ONE next step a validated `build_plan` announced, as a pending step in
+//                        plain words. Never the plan's checklist (D-UX-2), and never inferred.
+//   Details              every validated document the reply no longer draws (lib/reply-docs.ts),
+//                        closed, its renderer loaded only once it is opened.
 //
 // What the surface may show, and what it may not, is decided in execution-model.ts, where a test can
 // reach it. This file only lays those decisions out, and holds no state of its own: every
 // disclosure here is owned by the AI Elements component that draws it.
-import { useId, type ReactNode } from 'react';
+import { Suspense, lazy, useId, type ReactNode } from 'react';
 import type { PlaytestRun, RunIntent, StudioFrame } from '@golem/shared';
+import type { UIDocument } from '../../lib/generative-ui/schema';
 import type { AgentStatus } from '../../lib/use-project-socket';
 import { deniedNote } from '../../lib/tool-permissions';
 import type { ActivityRun } from './activity-model';
@@ -28,13 +33,11 @@ import {
   ChainOfThought,
   ChainOfThoughtContent,
   ChainOfThoughtHeader,
-  ChainOfThoughtSearchResult,
-  ChainOfThoughtSearchResults,
   ChainOfThoughtStep,
 } from '../ai-elements/chain-of-thought';
 import { Tool, ToolContent, ToolHeader } from '../ai-elements/tool';
-import { Task, TaskContent, TaskItem, TaskTrigger } from '../ai-elements/task';
-import { CheckCircleIcon, ChevronDownIcon, ListTodoIcon } from '../ai-elements/icons';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ai-elements/ui/collapsible';
+import { CheckCircleIcon, ChevronDownIcon } from '../ai-elements/icons';
 import type { ToolUIPartState } from '../ai-elements/ai-types';
 import {
   executionView,
@@ -46,6 +49,10 @@ import {
 } from './execution-model';
 import { PHASE_LABEL, type GateRow, type PlannedStep } from './thinking-model';
 import './reasoning.css';
+
+// Loaded only when somebody opens Details: the component registry is large, and most runs are never
+// looked at this closely.
+const GenerativeUI = lazy(() => import('../../lib/generative-ui/render').then((m) => ({ default: m.GenerativeUI })));
 
 /* ------------------------------------------------------------------ rows --- */
 
@@ -76,11 +83,11 @@ function ToolFacts({ row }: { row: ToolRow }) {
 }
 
 function ToolStep({ row }: { row: ToolRow }) {
-  // OPEN WHILE IT RUNS. What a step is pointed at is worth reading only in the seconds it runs —
-  // "which of my scripts?" — so the running row shows it without a click. The caller keys the row
-  // on its state, so it closes itself once it finishes and the column stays one line per step.
+  // CLOSED, EVEN WHILE IT RUNS (D-UX-2). The step's name says what is happening in plain words; what
+  // it was pointed at and what came back are one click away for whoever wants them. The row used to
+  // open itself while running, which put a facts list in front of every child watching a build.
   return (
-    <Tool className="apple-step" defaultOpen={row.state === 'running'}>
+    <Tool className="apple-step">
       <ToolHeader title={row.title} type={`tool-${row.tool ?? 'unnamed'}`} state={TOOL_STATE[row.state]} />
       <ToolContent forceMount className="apple-step__body">
         <ToolFacts row={row} />
@@ -111,6 +118,7 @@ export function ExecutionSurface({
   playtest,
   frames,
   studioConnected,
+  details = [],
 }: {
   view: ExecutionView;
   intent?: RunIntent;
@@ -120,12 +128,16 @@ export function ExecutionSurface({
   playtest?: PlaytestRun | null;
   frames?: StudioFrame[];
   studioConnected: boolean;
+  /** Validated documents the reply does not draw (lib/reply-docs.ts). */
+  details?: readonly UIDocument[];
 }) {
   // ChainOfThoughtHeader and ChainOfThoughtContent each wrap a Collapsible of their own, so the
   // header can name its content only if both are handed the same id.
   const historyId = useId();
-  const verified = passedGates.slice(-2);
-  const nextTitle = `${plannedSteps.length} planned ${plannedSteps.length === 1 ? 'step' : 'steps'}`;
+  const verified = passedGates.length > 0;
+  // THE NEXT STEP, NOT THE PLAN. One pending row in the same list as the work already done, in the
+  // plan's own words; the whole checklist is in Details for whoever wants it.
+  const next = plannedSteps[0];
 
   return (
     <>
@@ -137,7 +149,7 @@ export function ExecutionSurface({
 
       {intent?.summary && <p className="apple-reasoning__note">{intent.summary}</p>}
 
-      {(view.rows.length > 0 || verified.length > 0) && (
+      {(view.rows.length > 0 || verified || next) && (
         <ChainOfThought className="apple-reasoning__chain" role="group" aria-label="Observed run activity">
           {view.earlier.length > 0 && (
             <>
@@ -150,36 +162,36 @@ export function ExecutionSurface({
             </>
           )}
           {view.visible.map((row) => <StepRow key={rowKey(row)} row={row} />)}
-          {verified.length > 0 && (
+          {/* ONE STEP, IN PLAIN WORDS. Which checks passed ("Visual quality gate", "Playtest") is
+              detail; that it was checked and works is the thing a child needs to know. Drawn only
+              for a check that really PASSED — a failed one is never painted as a success. */}
+          {verified && (
             <ChainOfThoughtStep
               className="apple-step apple-step--verified"
               icon={CheckCircleIcon}
-              label="Verified"
+              label="Checked it works"
               status="complete"
-            >
-              <ChainOfThoughtSearchResults role="group" aria-label="Verified checks">
-                {verified.map((gate) => <ChainOfThoughtSearchResult key={gate.key}>{gate.label}</ChainOfThoughtSearchResult>)}
-              </ChainOfThoughtSearchResults>
-            </ChainOfThoughtStep>
+            />
+          )}
+          {next && (
+            <ChainOfThoughtStep className="apple-step apple-step--next" label={`Next: ${next.title}`} status="pending" />
           )}
         </ChainOfThought>
       )}
 
-      {plannedSteps.length > 0 && (
-        <Task className="apple-reasoning__next" role="group" aria-label="Planned next actions">
-          {/* Upstream's default trigger is a <div>, which a keyboard cannot reach. The same parts,
-              in a real button: `asChild` carries the trigger's state and handler onto it. */}
-          <TaskTrigger title={nextTitle}>
-            <button type="button" className="apple-reasoning__next-trigger">
-              <ListTodoIcon className="ai-task__icon" />
-              <span className="ai-task__title">{nextTitle}</span>
-              <ChevronDownIcon className="ai-task__chevron" />
-            </button>
-          </TaskTrigger>
-          <TaskContent forceMount>
-            {plannedSteps.map((step) => <TaskItem key={step.key}>{step.title}</TaskItem>)}
-          </TaskContent>
-        </Task>
+      {details.length > 0 && (
+        <Collapsible className="apple-reasoning__more">
+          <CollapsibleTrigger className="apple-reasoning__more-trigger">
+            <span>Details</span>
+            <ChevronDownIcon className="apple-reasoning__more-chevron" />
+          </CollapsibleTrigger>
+          {/* Not force-mounted: closed, nothing is rendered and the renderer is not fetched. */}
+          <CollapsibleContent className="apple-reasoning__more-body">
+            <Suspense fallback={<p className="apple-reasoning__note">Loading…</p>}>
+              {details.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
+            </Suspense>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {denied && <p className="apple-reasoning__denied" role="note">{denied}</p>}
@@ -234,6 +246,7 @@ export function Thinking({
   frames,
   playtest,
   studioConnected = false,
+  details = [],
 }: {
   status: AgentStatus | null;
   streaming: boolean;
@@ -254,6 +267,8 @@ export function Thinking({
   /** Worker-owned playtest state for the active run. */
   playtest?: PlaytestRun | null;
   studioConnected?: boolean;
+  /** Validated documents the reply does not draw, kept under Details (lib/reply-docs.ts). */
+  details?: readonly UIDocument[];
 }) {
   const view = executionView(activity);
   const isLive = streaming && !activity.terminal;
@@ -280,7 +295,8 @@ export function Thinking({
     activity.terminal ||
     playtest ||
     passedGates.length > 0 ||
-    plannedSteps.length > 0,
+    plannedSteps.length > 0 ||
+    details.length > 0,
   );
   if (!hasObservedContent) return null;
 
@@ -302,6 +318,7 @@ export function Thinking({
           playtest={playtest}
           frames={frames}
           studioConnected={studioConnected}
+          details={details}
         />
       </ReasoningContent>
       <span className="gx-sr" aria-live="polite">{isLive ? title : ''}</span>

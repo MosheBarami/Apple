@@ -17,6 +17,7 @@ import {
 } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 import { paidPlansOnSale } from '../lib/billing-probe';
+import { siteCatalogue, byokProviderNames, logoFileFor, logoSvg } from '../lib/model-catalogue';
 
 /*
  * THE FRONT PAGE, REBUILT TO THE FINAL DIRECTION (2026-09-22).
@@ -173,6 +174,19 @@ const paidOnly = (model: (typeof PRODUCT_MODELS)[number]) => !canUseProductModel
 /* The install line. When the listing is live the shared href IS the store URL, and it leaves the
    site, so it opens in a new tab without handing Roblox a window reference. */
 const installExternal = STUDIO_PLUGIN_STORE_LIVE;
+
+/* THE OTHER MODELS, IN ONE LINE AND A ROW OF MARKS. Read from the worker's own catalogue through
+   lib/model-catalogue.ts, like /models, so the two names in the sentence and the marks under it are
+   ones the picker really offers. One mark per maker, in the catalogue's order. */
+const byokCatalogue = await siteCatalogue();
+const byokPaid = byokCatalogue.models.filter((m) => !m.builtIn && !m.free);
+const byokHasFree = byokCatalogue.models.some((m) => !m.builtIn && m.free);
+const byokFirstPerMaker = byokPaid.filter((m, i) => byokPaid.findIndex((x) => x.vendor === m.vendor) === i);
+const byokExamples = byokFirstPerMaker.slice(0, 2).map((m) => m.label);
+const byokProviders = byokProviderNames().join(' or ');
+const byokMakers = byokFirstPerMaker
+  .map((m) => ({ vendor: m.vendor, icon: logoSvg(logoFileFor(m)) }))
+  .filter((m) => m.icon);
 ---
 
 <Landing
@@ -433,6 +447,23 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
               ))}
             </ul>
           </div>
+        </div>
+
+        {/* SHORT ON PURPOSE (D-UX-2). The full list, the key explained and the dated free list are on
+            /models; this is the one line that says they exist. */}
+        <div class="byok-strip" data-reveal>
+          <div class="byok-copy">
+            <h3 class="micro choice-label">On your own key</h3>
+            <p class="byok-line">
+              Add your own {byokProviders} key to build with models like {byokExamples.join(' or ')} without spending Apple Credits.{byokHasFree && ' Some are free for a limited time.'}
+            </p>
+            <a class="byok-link" href="/models">See every model</a>
+          </div>
+          <ul class="byok-logos" role="list" aria-label="Some of the makers">
+            {byokMakers.map((m) => (
+              <li class="byok-logo"><span set:html={m.icon} /><span class="visually-hidden">{m.vendor}</span></li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

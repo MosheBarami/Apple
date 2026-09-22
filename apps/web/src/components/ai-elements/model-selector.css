@@ -1,0 +1,26 @@
+/* AI Elements ModelSelector, in the app's tokens. The dialog and the command list are drawn by
+   ./ui/ui.css; this sheet only undoes the dialog's padding for a list that runs edge to edge (upstream
+   does it with `p-0`) and draws the logo. The logo is currentColor at one size, so every vendor mark
+   is the same weight and colour as the text beside it: no brand colour enters the product. */
+.ai-dialog.ai-model-selector { gap:0; max-width:28rem; padding:0; overflow:hidden; }
+.ai-model-selector__command { background:transparent; }
+/* The dialog's name, for assistive technology only (upstream's `sr-only`, which system.css defines). */
+.ai-model-selector__title { position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+.ai-model-selector .ai-command__input-wrap { min-height:48px; padding-inline-end:44px; }
+/* The app's global field style would draw a second box inside the search row; upstream's input is
+   bare, and the row itself is the field. The caret and the typed text are the focus signal. */
+.ai-model-selector .ai-command__input,
+.ai-model-selector .ai-command__input:focus,
+.ai-model-selector .ai-command__input:focus-visible { min-height:46px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.ai-model-selector .ai-command__list { max-height:min(420px,60vh); }
+.ai-model-selector__logo {
+  display:inline-grid; place-items:center; flex:none; width:14px; height:14px;
+  color:currentColor; font-size:14px; line-height:1;
+}
+.ai-model-selector__logo svg { width:14px; height:14px; }
+.ai-model-selector__logo--initial {
+  border:1px solid var(--line-strong); border-radius:var(--r-pill);
+  color:var(--muted); font-size:8.5px; font-weight:600;
+}
+.ai-model-selector__name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:start; }
+.ai-model-selector__logo-group { display:flex; flex:none; align-items:center; }

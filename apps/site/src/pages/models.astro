@@ -1,0 +1,354 @@
+---
+import Base from '../layouts/Base.astro';
+import AppleMark from '../components/AppleMark.astro';
+import { PRODUCT_MODEL_INFO, type CatalogueModel } from '@golem/shared';
+import { siteCatalogue, byokProviderNames, logoFileFor, logoSvg } from '../lib/model-catalogue';
+
+/*
+ * /models — WHICH MODELS CAN ANSWER, AND WHAT EACH ONE COSTS THE READER.
+ *
+ * Every row below comes from lib/model-catalogue.ts, which asks the worker's own modelCatalogue()
+ * — nothing on this page names a model, a vendor or a date by hand. Three groups, in the order a
+ * young creator meets them: Apple's two built-in models, the models their own key unlocks, and the
+ * ones OpenRouter prices at zero today.
+ *
+ * THE FREE LIST IS DATED ON THE PAGE. Free promotions end (D-FREE-1). The app reads the list live;
+ * this static page shows the snapshot the worker falls back to, with the time it was read, and says
+ * in words that the app has the current one.
+ *
+ * Copy is short and plain on purpose (D-UX-2): the readers are young and not technical, and the
+ * explanation of a key is two sentences.
+ *
+ * NOTHING HERE SAYS THE STUDIO PLUGIN CAN BE INSTALLED. It currently cannot (STUDIO_PLUGIN_STORE_LIVE
+ * is false), and this page has no reason to mention installing at all.
+ */
+
+const catalogue = await siteCatalogue();
+const builtIn = catalogue.models.filter((m) => m.builtIn);
+const paid = catalogue.models.filter((m) => !m.builtIn && !m.free);
+const free = catalogue.models.filter((m) => !m.builtIn && m.free);
+
+const providers = byokProviderNames();
+const providerList =
+  providers.length < 2 ? providers.join('') : `${providers.slice(0, -1).join(', ')} or ${providers[providers.length - 1]}`;
+
+const readOn = new Date(catalogue.free.readAt).toLocaleDateString('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/* OpenRouter spells a free variant's name with a trailing "(free)". The row already carries a Free
+   badge, so the name is shown without the repeat; the id is untouched. */
+const displayLabel = (m: CatalogueModel) => (m.free ? m.label.replace(/\s*\(free\)\s*$/i, '') : m.label);
+
+const rows = (list: CatalogueModel[]) =>
+  list.map((m) => ({ model: m, label: displayLabel(m), icon: logoSvg(logoFileFor(m)), initial: m.vendor.trim().charAt(0).toUpperCase() }));
+
+const paidRows = rows(paid);
+const freeRows = rows(free);
+---
+
+<Base
+  title="Models — Apple"
+  description={`The models that can build with you in Apple: ${builtIn.map((m) => m.label).join(' and ')}, which use Apple Credits, and ${paid.length + free.length} more you can use with your own ${providerList} key.`}
+>
+  <section class="section mhead" aria-labelledby="models-title">
+    <div class="wrap">
+      <p class="eyebrow">Models</p>
+      <h1 id="models-title" class="carved">Choose who builds with you.</h1>
+      <p class="lede">
+        {builtIn.map((m) => m.label).join(' and ')} are built in and use your Apple Credits. Add your own key and you can pick any
+        of the other models on this page instead.
+      </p>
+    </div>
+  </section>
+
+  <section class="section" id="built-in" aria-labelledby="built-in-title">
+    <div class="wrap">
+      <h2 id="built-in-title" class="mtitle">Built into Apple</h2>
+      <ul class="builtin" role="list">
+        {builtIn.map((m) => (
+          <li class="builtin-card">
+            <span class="logo logo--apple"><AppleMark size={18} /></span>
+            <div>
+              <p class="mname">{m.id === 'apple-max' ? <>Apple <span class="max-name">MAX</span></> : m.label}</p>
+              <p class="mblurb">{PRODUCT_MODEL_INFO[m.id as keyof typeof PRODUCT_MODEL_INFO]?.blurb}</p>
+              <p class="micro mmeta">Uses Apple Credits · plans on the <a href="/pricing">pricing page</a></p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="your-key" aria-labelledby="your-key-title">
+    <div class="wrap">
+      <h2 id="your-key-title" class="mtitle">Bring your own key</h2>
+      {/* THE TWO SENTENCES (task: "two plain sentences for non-technical people").
+          tests/models-page.test.mjs counts them in the built page. */}
+      <p class="mexplain" data-byok-explainer>A key is a private code from another AI service that lets Apple use your account there. You paste it into Apple once, Apple keeps it locked away, and the models it unlocks are paid for by that account instead of your Apple Credits.</p>
+
+      <dl class="facts">
+        <div>
+          <dt class="micro">Keys Apple takes today</dt>
+          <dd>{providerList}. One key reaches every model below.</dd>
+        </div>
+        <div>
+          <dt class="micro">What Apple shows back</dt>
+          <dd>Only the last four characters, so you can tell which key it is.</dd>
+        </div>
+        <div>
+          <dt class="micro">Apple Credits spent</dt>
+          <dd>None. The service your key is from bills you there.</dd>
+        </div>
+      </dl>
+
+      <ul class="mlist" role="list" aria-label="Models you can use with your own key">
+        {paidRows.map((r) => (
+          <li class="mrow" data-model-id={r.model.id}>
+            {r.icon ? <span class="logo" set:html={r.icon} /> : <span class="logo logo--initial" aria-hidden="true">{r.initial}</span>}
+            <div class="mrow-text">
+              <p class="mrow-name">{r.label}</p>
+              <p class="mrow-vendor">{r.model.vendor}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="free" aria-labelledby="free-title">
+    <div class="wrap">
+      <h2 id="free-title" class="mtitle">Free models</h2>
+      <p class="mexplain" data-free-notice>
+        Free models are free only for a limited time, so the app reads the current list live whenever you choose a model.
+        This list was read on <time datetime={catalogue.free.readAt}>{readOn}</time> and may already have changed.
+        {!catalogue.free.keyless && <>They still need your own {providerList} key.</>}
+      </p>
+
+      <ul class="mlist" role="list" aria-label="Models that were free when this list was read">
+        {freeRows.map((r) => (
+          <li class="mrow" data-model-id={r.model.id} data-free>
+            {r.icon ? <span class="logo" set:html={r.icon} /> : <span class="logo logo--initial" aria-hidden="true">{r.initial}</span>}
+            <div class="mrow-text">
+              <p class="mrow-name">{r.label}</p>
+              <p class="mrow-vendor">{r.model.vendor}</p>
+            </div>
+            <span class="badge">Free</span>
+          </li>
+        ))}
+      </ul>
+
+      <p class="credit">Vendor icons from <a href="https://github.com/lobehub/lobe-icons">Lobe Icons</a> (MIT). Each name belongs to its owner.</p>
+
+      <a class="btn btn-primary btn-lg mcta" href="/app/signup">Create a free account</a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  /* Structure only; every colour is a token from apple-minimal.css. No shadow, no glow, no colour
+     but ink: the one accent is the site-wide focus ring, which this page does not touch. */
+  .mhead {
+    padding-top: clamp(48px, 7vw, 96px);
+  }
+
+  .mtitle {
+    margin: 0 0 20px;
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 2.4vw, 1.875rem);
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.024em;
+  }
+
+  .mexplain {
+    max-width: 62ch;
+    margin: 0 0 28px;
+    color: var(--ink-2);
+    font-size: 1.0625rem;
+    line-height: 1.65;
+  }
+
+  .builtin {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .builtin-card {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+  }
+
+  .mname {
+    margin: 2px 0 0;
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .max-name {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .mblurb {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .mmeta {
+    margin: 12px 0 0;
+  }
+
+  .mmeta a,
+  .credit a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin: 0 0 32px;
+  }
+
+  .facts > div {
+    padding-top: 14px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .facts dt {
+    margin: 0 0 6px;
+  }
+
+  .facts dd {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .mlist {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 24px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mrow {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    min-width: 0;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .logo {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-xs);
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .logo :global(svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .logo--initial {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .mrow-text {
+    display: grid;
+    min-width: 0;
+  }
+
+  /* Name and maker are two separate lines by design, so they are two blocks rather than one text
+     run: the orphan scan (tests/rendered-typography.test.mjs) then reads each for what it is. */
+  .mrow-name,
+  .mrow-vendor {
+    margin: 0;
+  }
+
+  .mrow-name {
+    overflow-wrap: anywhere;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  .mrow-vendor {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  /* "Free" is a fact about price, not a status a reader must act on, so it is ink on a surface
+     step — never the status green, which this site keeps for status dots. */
+  .badge {
+    flex: none;
+    margin-left: auto;
+    padding: 2px 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-pill);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .credit {
+    margin: 28px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .mcta {
+    margin-top: 40px;
+  }
+
+  @media (max-width: 1000px) {
+    .mlist {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 720px) {
+    .builtin,
+    .facts,
+    .mlist {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

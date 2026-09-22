@@ -908,6 +908,69 @@ a {
   text-underline-offset: 3px;
 }
 
+.byok-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 48px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 48px;
+  padding-top: 28px;
+  border-top: 1px solid var(--hairline);
+}
+
+.byok-copy {
+  flex: 1 1 300px;
+  max-width: 560px;
+}
+
+.byok-line {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.byok-link {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+
+.byok-link:hover {
+  text-decoration-color: var(--accent);
+}
+
+.byok-logos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.byok-logo {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  color: var(--ink-2);
+}
+
+.byok-logo svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
 .auto-row {
   display: flex;
   align-items: flex-start;
