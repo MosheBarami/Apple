@@ -1779,6 +1779,216 @@ end
 return DailyReward
 `;
 
+const COLLECTIBLES_SOURCE = `--!strict
+-- Collectibles — touch to collect, score it, bring it back.
+--
+-- The first game most creators ask for, and the one Apple got wrong three times in a row on
+-- 2026-09-22 (runs 76b59615, fad0ab1b, a95f86fa). Each failure was silent in a playtest with no player:
+--
+--   * The coins were found by PART name ("coin") when the name was on the MODEL (Coin1..Coin8) and
+--     the parts were called Body and Face — "[CoinService] managing 0 coins".
+--   * A coin was hidden with model.Transparency = 1. A Model has no Transparency, so the Touched
+--     handler errored after awarding the point and before hiding anything.
+--   * The Coins stat lived in another script that died on its first line, so no player ever had one.
+--
+-- So this module finds what you GIVE it (a Model or a part, or every child of a folder whose name
+-- matches), hides and restores every part inside it (remembering each part's own transparency),
+-- creates the stat itself unless you hand it an award function, and awards once per collection no
+-- matter how many limbs touch.
+--
+-- SETUP (once, in a server Script):
+--   local Collectibles = require(game.ServerScriptService.Collectibles)
+--   Collectibles.configure({ stat = "Coins", value = 1, respawnSeconds = 10, spinDegreesPerSecond = 90 })
+--   Collectibles.addNamed(workspace, "^Coin")   -- every child of Workspace named Coin...
+--   Collectibles.start()
+--   -- to route points through a saved currency instead of leaderstats:
+--   -- Collectibles.configure({ award = function(player, amount) Currency.award(player, amount) end })
+
+local Collectibles = {}
+
+local config: any = {
+	stat = "Coins",
+	value = 1,
+	respawnSeconds = 10,
+	spinDegreesPerSecond = 0,
+	award = nil,
+	-- Injectable so the logic can run outside Studio; defaults are read when first needed.
+	players = nil,
+	delay = nil,
+	newInstance = nil,
+}
+
+local items: { [any]: any } = {}
+local order: { any } = {}
+local started = false
+
+function Collectibles.configure(options: any)
+	for key, value in options do
+		if config[key] == nil and key ~= "award" and key ~= "players" and key ~= "delay" and key ~= "newInstance" then
+			error("Collectibles.configure: unknown option " .. tostring(key), 2)
+		end
+		config[key] = value
+	end
+	if type(config.value) ~= "number" or config.value <= 0 or config.value % 1 ~= 0 then
+		error("Collectibles.configure: value must be a positive whole number", 2)
+	end
+	if type(config.respawnSeconds) ~= "number" or config.respawnSeconds < 0 then
+		error("Collectibles.configure: respawnSeconds must be zero or more", 2)
+	end
+end
+
+local function playersService(): any
+	if config.players == nil then config.players = game:GetService("Players") end
+	return config.players
+end
+
+local function later(seconds: number, fn: () -> ())
+	if config.delay then config.delay(seconds, fn) else task.delay(seconds, fn) end
+end
+
+local function make(className: string): any
+	if config.newInstance then return config.newInstance(className) end
+	return Instance.new(className)
+end
+
+local function partsOf(root: any): { any }
+	if root:IsA("BasePart") then return { root } end
+	local out = {}
+	for _, descendant in root:GetDescendants() do
+		if descendant:IsA("BasePart") then table.insert(out, descendant) end
+	end
+	return out
+end
+
+-- An accessory or a tool is nested inside the character, so climb until a player owns the model.
+local function playerFrom(hit: any): any
+	local players = playersService()
+	local node = hit
+	while node ~= nil do
+		local player = players:GetPlayerFromCharacter(node)
+		if player then return player end
+		node = node.Parent
+	end
+	return nil
+end
+
+local function statFor(player: any): any
+	local folder = player:FindFirstChild("leaderstats")
+	if not folder then
+		folder = make("Folder")
+		folder.Name = "leaderstats"
+		folder.Parent = player
+	end
+	local value = folder:FindFirstChild(config.stat)
+	if not value then
+		value = make("IntValue")
+		value.Name = config.stat
+		value.Value = 0
+		value.Parent = folder
+	end
+	return value
+end
+
+local function award(player: any)
+	if config.award then
+		config.award(player, config.value)
+	else
+		local stat = statFor(player)
+		stat.Value += config.value
+	end
+end
+
+-- Collect root for player. True when it counted; false when it was already hidden or unknown.
+function Collectibles.collect(root: any, player: any): boolean
+	local state = items[root]
+	if not state or state.hidden then return false end
+	state.hidden = true
+	local saved = {}
+	for _, part in state.parts do
+		saved[part] = { transparency = part.Transparency, canTouch = part.CanTouch }
+		part.Transparency = 1
+		part.CanTouch = false
+	end
+	award(player)
+	later(config.respawnSeconds, function()
+		for part, was in saved do
+			part.Transparency = was.transparency
+			part.CanTouch = was.canTouch
+		end
+		state.hidden = false
+	end)
+	return true
+end
+
+function Collectibles.add(root: any): boolean
+	if items[root] then return false end
+	local parts = partsOf(root)
+	if #parts == 0 then
+		warn("Collectibles.add: " .. tostring(root) .. " has no parts to touch; it was not added")
+		return false
+	end
+	local state = { parts = parts, hidden = false }
+	items[root] = state
+	table.insert(order, root)
+	for _, part in parts do
+		part.Touched:Connect(function(hit)
+			local player = playerFrom(hit)
+			if player then Collectibles.collect(root, player) end
+		end)
+	end
+	return true
+end
+
+-- Every direct child of parent whose NAME matches pattern (a Lua pattern, e.g. "^Coin").
+function Collectibles.addNamed(parent: any, pattern: string): number
+	local added = 0
+	for _, child in parent:GetChildren() do
+		if string.find(child.Name, pattern) and Collectibles.add(child) then added += 1 end
+	end
+	if added == 0 then
+		warn("Collectibles.addNamed: nothing under " .. tostring(parent) .. " is named like " .. pattern)
+	end
+	return added
+end
+
+function Collectibles.count(): number
+	return #order
+end
+
+function Collectibles.isHidden(root: any): boolean
+	local state = items[root]
+	return state ~= nil and state.hidden
+end
+
+-- Spins visible collectibles. The loop calls this; call it directly to test.
+function Collectibles.step(dt: number)
+	if config.spinDegreesPerSecond == 0 then return end
+	local turn = CFrame.Angles(0, math.rad(config.spinDegreesPerSecond * dt), 0)
+	for _, root in order do
+		if not items[root].hidden then
+			if root:IsA("Model") then root:PivotTo(root:GetPivot() * turn) else root.CFrame = root.CFrame * turn end
+		end
+	end
+end
+
+function Collectibles.start(): boolean
+	if started then return false end
+	started = true
+	if not config.award then
+		local players = playersService()
+		players.PlayerAdded:Connect(statFor)
+		for _, player in players:GetPlayers() do statFor(player) end
+	end
+	if config.spinDegreesPerSecond ~= 0 then
+		game:GetService("RunService").Heartbeat:Connect(Collectibles.step)
+	end
+	print(("[Collectibles] managing %d"):format(#order))
+	return true
+end
+
+return Collectibles
+`;
+
 export const PREFABS: Record<string, Prefab> = {
   ui_kit: {
     id: 'ui_kit',
@@ -1888,6 +2098,31 @@ export const PREFABS: Record<string, Prefab> = {
       'Income.liveCount(dropper) -> number',
     ],
     source: TYCOON_SOURCE,
+  },
+  collectibles: {
+    id: 'collectibles',
+    moduleName: 'Collectibles',
+    summary: 'Touch to collect, score it on the leaderboard, and bring it back — the coin loop, done once, correctly.',
+    prevents: [
+      'finding the coins by PART name when the name is on the Model and its parts are called something else, so the script manages zero coins and says nothing',
+      'setting Transparency on a Model, which has no such property — the Touched handler errors after awarding the point and before hiding anything',
+      'the Coins stat living in another script that errors before it runs, so no player ever has one to add to',
+      'Touched firing once per limb, awarding several points for one pickup',
+      'a hidden coin that can still be collected because CanTouch stayed on, or a respawn that makes every part opaque including the ones meant to be see-through',
+    ],
+    defaultParent: 'game.ServerScriptService',
+    className: 'ModuleScript',
+    api: [
+      'Collectibles.configure({ stat = "Coins", value = 1, respawnSeconds = 10, spinDegreesPerSecond = 90 })',
+      'Collectibles.addNamed(workspace, "^Coin") -> number   -- every child of the parent whose NAME matches',
+      'Collectibles.add(modelOrPart) -> boolean',
+      'Collectibles.start() -> boolean   -- idempotent; creates leaderstats.<stat> unless configure({ award = fn })',
+      'Collectibles.collect(root, player) -> boolean   -- Touched calls this; call it directly to test',
+      'Collectibles.isHidden(root) -> boolean',
+      'Collectibles.count() -> number',
+      'Collectibles.step(dt)   -- the spin; the loop calls this',
+    ],
+    source: COLLECTIBLES_SOURCE,
   },
   leaderboard: {
     id: 'leaderboard',

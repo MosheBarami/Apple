@@ -2951,3 +2951,93 @@ test('an unloaded profile is refused, and an unconfigured module says so', () =>
   ].join('\n'), 'dr-unconfigured');
   assert.ok(u.ok, u.output);
 });
+
+// ------------------------------------------------------------------------------------ collectibles ---
+//
+// The coin loop, executed. Every case here is a failure measured in real Studio on 2026-09-22 (runs
+// 76b59615, fad0ab1b, a95f86fa): coins found by part name when the name is on the Model, a Model given
+// a Transparency it does not have, a Coins stat that never existed, and several points per touch.
+// The stubs model only what the module touches: parts, a Model of parts, signals, a character.
+const WORLD = [
+  'local function signal() local s = { fns = {} } function s:Connect(fn) table.insert(self.fns, fn) end function s:Fire(...) for _, f in self.fns do f(...) end end return s end',
+  'local function part(name, transparency) local p = { Name = name, ClassName = "Part", Transparency = transparency or 0, CanTouch = true, Touched = signal() }',
+  '  function p:IsA(c) return c == "BasePart" or c == "Part" end function p:GetDescendants() return {} end return p end',
+  'local function model(name, parts) local m = { Name = name, ClassName = "Model", kids = parts }',
+  // A Model has NO Transparency: reading or writing it errors, exactly as in Studio.
+  '  setmetatable(m, { __index = function(_, k) if k == "Transparency" then error("Transparency is not a valid member of Model") end end,',
+  '                    __newindex = function(t, k, v) if k == "Transparency" then error("Transparency is not a valid member of Model") end rawset(t, k, v) end })',
+  '  function m:IsA(c) return c == "Model" end function m:GetDescendants() return self.kids end return m end',
+  'local function newInstance(className) local o = { ClassName = className, kids = {} }',
+  '  function o:FindFirstChild(n) for _, k in self.kids do if k.Name == n then return k end end return nil end',
+  '  setmetatable(o, { __newindex = function(t, k, v) if k == "Parent" and v then table.insert(v.kids, t) end rawset(t, k, v) end }) return o end',
+  'local player = { Name = "P1", kids = {} }',
+  'function player:FindFirstChild(n) for _, k in self.kids do if k.Name == n then return k end end return nil end',
+  'local character = { Name = "P1", Parent = nil }',
+  'local players = { PlayerAdded = signal(), GetPlayers = function() return { player } end,',
+  '  GetPlayerFromCharacter = function(_, node) if node == character then return player end return nil end }',
+  'local pending = {}',
+  'local function later(_, fn) table.insert(pending, fn) end',
+  'local function runLater() local fns = pending pending = {} for _, fn in fns do fn() end end',
+  'local function limb() return { Name = "LeftFoot", Parent = character } end',
+  'local function coins() return player:FindFirstChild("leaderstats"):FindFirstChild("Coins").Value end',
+  'local folder = { Name = "Workspace" }',
+  'local c1 = model("Coin1", { part("Body"), part("Face", 0.4) })',
+  'local c2 = model("Coin2", { part("Body"), part("Face") })',
+  'local lamp = model("StreetLamp", { part("Post") })',
+  'function folder:GetChildren() return { c1, c2, lamp } end',
+  'M.configure({ players = players, delay = later, newInstance = newInstance, respawnSeconds = 10 })',
+].join('\n');
+
+test('the collectibles harness runs, and a false assertion in it still fails', () => {
+  const good = runLuau('collectibles', [WORLD, 'assert(M.addNamed(folder, "^Coin") == 2, "two coins")'].join('\n'), 'col-sanity');
+  assert.ok(good.ok, good.output);
+  const bad = runLuau('collectibles', [WORLD, 'assert(M.addNamed(folder, "^Coin") == 3, "intentional")'].join('\n'), 'col-neg');
+  assert.equal(bad.ok, false);
+  assert.match(bad.output, /intentional/);
+});
+
+test('coins are found by the MODEL name, and the stat exists before anyone touches one', () => {
+  const r = runLuau('collectibles', [WORLD,
+    'assert(M.addNamed(folder, "^Coin") == 2, "the Coin models were not found by their own name")',
+    'assert(M.count() == 2, "the lamp must not be a coin")',
+    'M.start()',
+    'assert(coins() == 0, "the Coins stat must exist, at 0, as soon as the module starts")',
+  ].join('\n'), 'col-find');
+  assert.ok(r.ok, r.output);
+});
+
+test('ONE touch, several limbs, one point — then every part hides, including a Model\'s', () => {
+  const r = runLuau('collectibles', [WORLD, 'M.addNamed(folder, "^Coin")', 'M.start()',
+    'for _ = 1, 4 do c1.kids[1].Touched:Fire(limb()) end',
+    'c1.kids[2].Touched:Fire(limb())',
+    'assert(coins() == 1, "one pickup must award exactly one point, got " .. coins())',
+    'assert(M.isHidden(c1), "the coin must be hidden")',
+    'assert(c1.kids[1].Transparency == 1 and c1.kids[2].Transparency == 1, "every part of the Model hides")',
+    'assert(c1.kids[1].CanTouch == false, "a hidden coin cannot be touched again")',
+    'assert(not M.isHidden(c2), "the other coin is untouched")',
+  ].join('\n'), 'col-touch');
+  assert.ok(r.ok, r.output);
+});
+
+test('it comes back after the delay with each part\'s OWN transparency, and scores again', () => {
+  const r = runLuau('collectibles', [WORLD, 'M.addNamed(folder, "^Coin")', 'M.start()',
+    'c1.kids[1].Touched:Fire(limb())',
+    'runLater()',
+    'assert(not M.isHidden(c1), "the coin must come back")',
+    'assert(c1.kids[1].Transparency == 0 and c1.kids[2].Transparency == 0.4, "a see-through part stays see-through")',
+    'assert(c1.kids[1].CanTouch == true, "and can be touched again")',
+    'c1.kids[1].Touched:Fire(limb())',
+    'assert(coins() == 2, "a respawned coin scores again")',
+  ].join('\n'), 'col-respawn');
+  assert.ok(r.ok, r.output);
+});
+
+test('a touch from something that is not a player scores nothing, and a bad value is refused', () => {
+  const r = runLuau('collectibles', [WORLD, 'M.addNamed(folder, "^Coin")', 'M.start()',
+    'c1.kids[1].Touched:Fire({ Name = "Ball", Parent = nil })',
+    'assert(coins() == 0 and not M.isHidden(c1), "an unowned part must not collect a coin")',
+    'local ok = pcall(M.configure, { value = 1.5 })',
+    'assert(not ok, "a fractional value must be refused")',
+  ].join('\n'), 'col-guard');
+  assert.ok(r.ok, r.output);
+});

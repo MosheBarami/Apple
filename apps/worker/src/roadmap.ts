@@ -1054,6 +1054,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     satisfiedBy: ['currency'],
     build: [
       'Install the reviewed module first: install_module("currency"). It already does everything below, and the rules below are then what to check rather than what to write.',
+      'If the core action is picking things up — coins, gems, orbs — also install_module("collectibles") and configure it with award = Currency.award: it finds the pickups by their own name, hides every part, and awards once per touch.',
       'Create a leaderstats folder per player with the single currency the loop uses.',
       'Award it from the server on the core action.',
       'Keep the authoritative balance in the save and treat leaderstats as a display mirror of it. leaderstats is replicated state built for showing a number, and anything that writes to it directly will drift from what the player actually owns.',

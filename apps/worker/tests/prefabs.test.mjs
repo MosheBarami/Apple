@@ -88,7 +88,11 @@ const writes = (ops) => ops.filter((o) => o.op !== 'read_script');
 
 test('the catalogue is real and each entry is complete', () => {
   // Inventory tripwire: ui_kit is a reviewed client presentation module, not a money authority.
-  assert.equal(P.PREFAB_IDS.length, 11);
+  // 12 since 2026-09-22 — collectibles, reviewed: a SERVER module (defaultParent ServerScriptService)
+  // whose only write is to a leaderstats IntValue it creates itself, or to an award function the
+  // caller passes (Currency.award for a saved balance), so it never becomes a second writer of money.
+  // It reads no DataStore and no remote. Its behaviour is executed in prefabs-behaviour.test.mjs.
+  assert.equal(P.PREFAB_IDS.length, 12);
   for (const id of P.PREFAB_IDS) {
     const p = P.PREFABS[id];
     assert.equal(p.id, id);
