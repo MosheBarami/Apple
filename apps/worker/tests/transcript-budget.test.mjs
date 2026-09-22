@@ -94,3 +94,24 @@ test('turnGroups keeps the head that persistAgent sheds down to', () => {
   assert.equal(head.length, 2, 'system + pinned user');
   assert.ok(groups.length >= 1);
 });
+
+// A trim that stops at the budget drops one group on EVERY later step, and each drop changes the
+// transcript right after the system prompt, so the provider's prefix cache misses the whole history
+// each time. A trim that stops at a lower target leaves room for several steps of pure appends.
+test('once over the budget, a trim goes down to the target, and the next steps are appends', async () => {
+  const { trimTranscriptReport, transcriptChars: chars } = await import('../src/transcript.ts');
+  const turns = [sys, user];
+  for (let i = 0; i < 40; i++) turns.push({ ...callTurn(900), toolCalls: [{ id: `c${i}`, name: 'edit_script', arguments: JSON.stringify({ source: 'x'.repeat(900) }) }] }, { ...toolReply, toolCallId: `c${i}` });
+  const max = 20_000, target = 14_000;
+  const once = trimTranscriptReport(turns, max, target);
+  assert.ok(once.droppedGroups > 0, 'the fixture must be over the budget, or this checks nothing');
+  // The run record of the dropped turns is added after the cut, so the target bounds what was KEPT.
+  assert.ok(once.after <= target + 3000, `trimmed to ${once.after}, well above the ${target} target`);
+  assert.ok(once.after < max - 2000, 'the trim left no room for the next steps to append');
+  // Grow it by one step and trim again: still under the budget, so nothing is dropped this time.
+  const grown = [...once.llm, { ...callTurn(900), toolCalls: [{ id: 'n1', name: 'edit_script', arguments: JSON.stringify({ source: 'y'.repeat(900) }) }] }, { ...toolReply, toolCallId: 'n1' }];
+  assert.ok(chars(grown) <= max);
+  assert.equal(trimTranscriptReport(grown, max, target).droppedGroups, 0, 'the step after a trim is an append, not another cut');
+  // Without a target the old behaviour stands: trim only to the budget.
+  assert.ok(trimTranscriptReport(turns, max).after > target);
+});

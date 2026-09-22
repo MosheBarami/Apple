@@ -68,7 +68,7 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   makes every stored customer key unreadable — customers would have to add their keys again. Do not rotate it
   without a re-encryption step.
 - **D-STORE-2 — No more public store updates until the final version; nothing is removed from the plugin.**
-  Owner, 2026-09-23 ~02:15 IDT, after Roblox refused to distribute version 2 (F-038): "they always gonna flag
+  Owner, 2026-09-23 ~01:35 IDT, after Roblox refused to distribute version 2 (F-038): "they always gonna flag
   this so from now on you are gonna be building without on the public and the final version should be appealed
   with roblox as before done. NEVER decrease the tools the plugin have." So: development continues on the local
   install (~/Documents/Roblox/Plugins/AppleStudio.rbxm); no Creator Store overwrite until the product's final

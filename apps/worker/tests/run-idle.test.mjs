@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterStep, IDLE_AFTER_VERIFY_NUDGE, IDLE_AFTER_VERIFY_LIMIT, ANSWER_ONLY_NUDGE } from '../src/run-idle.ts';
+import { afterStep, IDLE_AFTER_VERIFY_NUDGE, IDLE_AFTER_VERIFY_LIMIT, ANSWER_ONLY_NUDGE, READ_STALL_NUDGE, READ_STALL_LIMIT } from '../src/run-idle.ts';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SESSION = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
@@ -17,7 +17,7 @@ const run = (steps) => {
   for (const s of steps) {
     const next = afterStep(state, s);
     actions.push(next.action);
-    state = { verifiedAfterMutation: next.verifiedAfterMutation, idleAfterVerify: next.idleAfterVerify };
+    state = { verifiedAfterMutation: next.verifiedAfterMutation, idleAfterVerify: next.idleAfterVerify, readsSinceChange: next.readsSinceChange };
   }
   return { state, actions };
 };
@@ -88,4 +88,34 @@ test('a run told not to change anything is told to answer after a few reads, onc
 test('control: an ordinary run reading before any change is still not idle', () => {
   const { actions } = run(Array.from({ length: 20 }, () => ({ mutated: false, verified: false, calls: 1 })));
   assert.ok(actions.every((a) => a === 'none'));
+});
+
+// Reading without building — run c71b89a9, 2026-09-23: one install, then 88 read-only calls, 242 Credits.
+const BUILD_READ = { mutated: false, verified: false, calls: 1, canBuild: true };
+
+test('the coin-game shape — one change, then only reads — is told to build, then ended', () => {
+  const { actions } = run([{ mutated: true, verified: false, calls: 1, canBuild: true }, ...Array.from({ length: 40 }, () => BUILD_READ)]);
+  assert.equal(actions.indexOf('build'), READ_STALL_NUDGE, 'told to build after the tenth read-only step');
+  assert.equal(actions.filter((a) => a === 'build').length, 1, 'told once, not every step');
+  assert.equal(actions.indexOf('stall'), READ_STALL_LIMIT, 'ended at the limit rather than 88 paid steps later');
+});
+
+test('reading before the first change is bounded too, and a change or a check restarts the count', () => {
+  const { actions } = run(Array.from({ length: 25 }, () => BUILD_READ));
+  assert.equal(actions.indexOf('stall'), READ_STALL_LIMIT - 1);
+  const steps = [];
+  for (let i = 0; i < 6; i++) steps.push(...Array.from({ length: READ_STALL_NUDGE - 1 }, () => BUILD_READ), { mutated: true, verified: false, calls: 1, canBuild: true });
+  assert.ok(run(steps).actions.every((a) => a === 'none'), 'a run that keeps building between reads is never counted');
+});
+
+test('a run that cannot build (Plan mode, Studio disconnected) or owes only an answer is not counted', () => {
+  assert.ok(run(Array.from({ length: 30 }, () => ({ ...BUILD_READ, canBuild: false }))).actions.every((a) => a === 'none'));
+  assert.ok(!run(Array.from({ length: 30 }, () => ({ ...BUILD_READ, answerOnly: true }))).actions.includes('stall'));
+});
+
+test('after a passing check the stricter after-verify bound decides, not this one', () => {
+  const { actions } = run([{ mutated: true, verified: false, calls: 1, canBuild: true }, { mutated: false, verified: true, calls: 1, canBuild: true },
+    ...Array.from({ length: 30 }, () => BUILD_READ)]);
+  assert.ok(!actions.includes('build') && !actions.includes('stall'));
+  assert.equal(actions.indexOf('finish'), 2 + IDLE_AFTER_VERIFY_LIMIT - 1);
 });

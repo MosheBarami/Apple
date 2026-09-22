@@ -18,11 +18,26 @@ export const IDLE_AFTER_VERIFY_LIMIT = 8;
  */
 export const ANSWER_ONLY_NUDGE = 5;
 
+/**
+ * Reading without building. Measured 2026-09-23 (run c71b89a9, "make a coin game!" on an empty
+ * baseplate): after installing the coin module the run made 88 read-only calls — get_tree,
+ * read_script, search_scripts in a fixed cycle — for 242 Credits and built nothing. Every call sent the
+ * same ~21.5k tokens: each new result pushed the previous read out of the trimmed transcript, and the
+ * duplicate guard deliberately forgets trimmed reads, so the cycle never repeated a call it could see.
+ * The one mutation (the install) switched off the "you have not built anything" steer, and no check
+ * ever passed, so neither bound above started. This one counts read-only steps since the last change
+ * in any run that can build, tells the model to build at the nudge, and ends the run at the limit.
+ */
+export const READ_STALL_NUDGE = 10;
+export const READ_STALL_LIMIT = 20;
+
 export interface IdleState {
   /** A verifier passed after the latest change to the place. */
   verifiedAfterMutation?: boolean;
   /** Consecutive read-only steps since then. */
   idleAfterVerify?: number;
+  /** Consecutive read-only steps since the last change or check, in a run that can build. */
+  readsSinceChange?: number;
 }
 
 export interface StepFacts {
@@ -34,9 +49,11 @@ export interface StepFacts {
   calls: number;
   /** The run owes no change (the person forbade one), so reading is idle from the first step. */
   answerOnly?: boolean;
+  /** The run is offered tools that change the place (Agent mode with Studio connected). */
+  canBuild?: boolean;
 }
 
-export type IdleAction = 'none' | 'nudge' | 'finish' | 'answer';
+export type IdleAction = 'none' | 'nudge' | 'finish' | 'answer' | 'build' | 'stall';
 
 export function afterStep(state: IdleState, step: StepFacts): IdleState & { action: IdleAction } {
   let verifiedAfterMutation = state.verifiedAfterMutation === true;
@@ -45,8 +62,14 @@ export function afterStep(state: IdleState, step: StepFacts): IdleState & { acti
   const onlyRead = !step.mutated && !step.verified && step.calls > 0;
   const counting = step.answerOnly ? onlyRead : verifiedAfterMutation && onlyRead;
   const idleAfterVerify = counting ? (state.idleAfterVerify ?? 0) + 1 : 0;
-  const action: IdleAction = step.answerOnly
+  const stalling = step.canBuild === true && !step.answerOnly && onlyRead;
+  const readsSinceChange = stalling ? (state.readsSinceChange ?? 0) + 1 : 0;
+  let action: IdleAction = step.answerOnly
     ? idleAfterVerify === ANSWER_ONLY_NUDGE ? 'answer' : 'none'
     : idleAfterVerify >= IDLE_AFTER_VERIFY_LIMIT ? 'finish' : idleAfterVerify === IDLE_AFTER_VERIFY_NUDGE ? 'nudge' : 'none';
-  return { verifiedAfterMutation, idleAfterVerify, action };
+  if (action === 'none' && !verifiedAfterMutation) {
+    if (readsSinceChange >= READ_STALL_LIMIT) action = 'stall';
+    else if (readsSinceChange === READ_STALL_NUDGE) action = 'build';
+  }
+  return { verifiedAfterMutation, idleAfterVerify, readsSinceChange, action };
 }

@@ -112,7 +112,14 @@ export interface TrimReport {
   droppedChars: number;
 }
 
-export function trimTranscriptReport(llm: GatewayMessage[], maxChars: number): TrimReport {
+/**
+ * `targetChars` is where a trim stops once `maxChars` is exceeded. Trimming only to `maxChars` drops
+ * one group on every step once the run is at the budget, and every drop changes the transcript right
+ * after the system prompt — so the provider's prefix cache (cached input is a fifth of the price)
+ * misses the whole history on every one of those steps. Trimming further, to `targetChars`, makes the
+ * next several steps pure appends that the cache serves.
+ */
+export function trimTranscriptReport(llm: GatewayMessage[], maxChars: number, targetChars: number = maxChars): TrimReport {
   // The repair runs on EVERY step, not only on a step that is over budget, because the defect it
   // answers has nothing to do with size — see `answerOnlyWhatRan`. `before` is measured after it so
   // that `droppedChars` keeps meaning exactly one thing: what the group trim below removed.
@@ -127,7 +134,8 @@ export function trimTranscriptReport(llm: GatewayMessage[], maxChars: number): T
   const size = () => transcriptChars(head) + groups.slice(first).reduce((n, g) => n + transcriptChars(g), 0);
 
   const dropped: GatewayMessage[][] = [];
-  while (size() > maxChars && first < groups.length - KEEP_RECENT_GROUPS) {
+  const goal = Math.min(maxChars, targetChars);
+  while (size() > goal && first < groups.length - KEEP_RECENT_GROUPS) {
     // A pinned message inside a later group is unexpected, but honouring it is cheap and the whole
     // point of this function is that nothing pinned is ever lost.
     if (groups[first]!.some((m) => m.pinned)) head.push(...groups[first]!);

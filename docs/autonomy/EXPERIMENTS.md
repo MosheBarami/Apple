@@ -119,7 +119,7 @@
 - Store page (Chrome): "Apple Studio · By @Shahar474 · Created Sep 19, 2026 · Updated Sep 23, 2026".
 - apis.roblox.com/toolbox-service/v1/items/details?assetIds=107230158271368 → 404 immediately after (was 200 on
   2026-09-22). Treated as index/moderation lag until re-probed; LATEST_PLUGIN_VERSION stays 1.0.0 until it answers.
-- Re-probed 02:0x IDT: NOT lag. Configure page → Distribution: "Not distributed on Creator Store — This asset may be
+- Re-probed ~01:30 IDT: NOT lag. Configure page → Distribution: "Not distributed on Creator Store — This asset may be
   in violation of Roblox Community Standards … you can appeal"; Version History shows version 2 (01:23) and
   version 1 (09-19). toolbox details still 404. Recorded as F-038; owner decision D-STORE-2 (appeal the final
   version, no interim store updates, keep every plugin tool).
