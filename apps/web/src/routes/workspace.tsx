@@ -320,6 +320,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
 
   const {
     conn,
+    lostChat,
+    clearLostChat,
     messages,
     historyState,
     studio,
@@ -340,6 +342,14 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     restoreStatus,
     reloadHistory,
   } = useProjectSocket(projectId, onServerError, onNotice);
+  // A prompt the connection dropped as it was sent goes back in the box, and the person is told —
+  // never resent on their behalf, because it may yet have arrived and a second run would cost twice.
+  useEffect(() => {
+    if (!lostChat) return;
+    setSeed(lostChat.text);
+    toast("Your message didn't reach Apple — the connection dropped as you sent it. It's back in the box; press Enter to send it again.", 'error');
+    clearLostChat();
+  }, [lostChat, clearLostChat]);
 
   // A second Restore while the first is still clearing the place would race the plugin against
   // itself. The worker's own phases decide this, not a flag set by the click: a click that never

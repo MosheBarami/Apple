@@ -601,3 +601,31 @@ test('a Studio tool called while Studio is disconnected is refused as "not conne
     h.stop();
   }
 });
+
+// 2026-09-23, runs 867aff43 and 2d3d2ea9: the lamp's tree was read, trimmed out of the transcript, and
+// every identical re-read refused by the duplicate guard as "already done" — the result it pointed at
+// was gone. A read whose result was trimmed away may be read again; a write is still never repeated.
+test('a read trimmed out of the transcript can be read again; the duplicate guard does not strand it', async () => {
+  const big = (root) => ({ ok: true, data: { root: { path: root, name: root.split('.').pop(), class: 'Model',
+    children: Array.from({ length: 120 }, (_, i) => ({ path: `${root}.Part${i}`, name: `Part${i}`, class: 'Part' })) } } });
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => (op.op === 'get_tree' ? big(op.root ?? 'game.Workspace') : { ok: true, data: {} }),
+    responses: [
+      calls(['get_project_tree', { root: 'game.Workspace.StreetLamp' }]),
+      ...['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((b) => calls(['get_project_tree', { root: `game.Workspace.Filler${b}` }])),
+      calls(['get_project_tree', { root: 'game.Workspace.StreetLamp' }]),
+      answer({ text: 'The lamp has 120 parts.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'List the parts inside the StreetLamp model. Do not change anything.' });
+    for (let i = 0; i < 14 && !lastEnd(h); i++) await h.session.alarm();
+    const lampReads = h.ops.filter((op) => op.op === 'get_tree' && op.root === 'game.Workspace.StreetLamp').length;
+    const dropped = h.sent.filter((m) => m.type === 'context_budget' && m.dropped).length;
+    assert.ok(dropped > 0, 'the fixture never trimmed the transcript, so this proves nothing');
+    assert.equal(lampReads, 2, 'the second read of the lamp must reach Studio, not be refused as a duplicate');
+  } finally {
+    h.stop();
+  }
+});

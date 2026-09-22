@@ -2917,9 +2917,17 @@ export class SessionDO extends DurableObject<Env> {
     }
   }
 
-  async webSocketClose() {
-    // Nothing to clean — but the room has changed, and presence is derived from the sockets that
-    // are still attached, so the people left behind need to be told.
+  async webSocketClose(ws: WebSocket, code: number, reason: string) {
+    // Reciprocate the close. The runtime does it itself on this compatibility date, and Cloudflare
+    // documents the call as safe either way; measured 2026-09-23, a browser that closed its socket
+    // still sat in CLOSING 27 s later, so the handshake is completed explicitly rather than assumed.
+    try {
+      ws.close(code === 1005 || code === 1006 ? 1000 : code, reason);
+    } catch {
+      /* already closed */
+    }
+    // The room has changed, and presence is derived from the sockets that are still attached, so
+    // the people left behind need to be told.
     this.broadcastPresence();
   }
 
@@ -3464,6 +3472,16 @@ export class SessionDO extends DurableObject<Env> {
     //   take. What they can lose is turns, and that is what this counts. ]]
     const trimmed = trimTranscriptReport(agent.llm, MAX_PROMPT_CHARS);
     agent.llm = trimmed.llm;
+    // A READ WHOSE RESULT WAS TRIMMED AWAY MAY BE READ AGAIN. The duplicate guard refuses an identical
+    // call as "you already have the result above" — after the trim, it no longer is above. Measured
+    // 2026-09-23 (runs 867aff43, 2d3d2ea9): the lamp's tree was read, trimmed out, and every re-read
+    // refused, so "list the parts of the StreetLamp" ended with no answer. Writes stay remembered:
+    // redoing a change is the harm the guard exists to prevent; re-reading is not.
+    if (trimmed.droppedGroups > 0 && agent.seenCalls?.length) {
+      const visible = new Set(agent.llm.flatMap((m) => (m.toolCalls ?? []).map((c) => `${c.name}:${c.arguments}`)));
+      const writers = new Set(projectMutatingToolNames());
+      agent.seenCalls = agent.seenCalls.filter((sig) => visible.has(sig) || writers.has(sig.slice(0, sig.indexOf(':'))));
+    }
     // Keep only the arithmetic needed to reconstruct the last live `context_budget` state after a
     // reload. No prompt text is copied. The last size wins; drops accumulate because a turn removed
     // on step four is still absent on step sixteen, exactly like the browser's live reducer.

@@ -178,6 +178,9 @@ export type PresenceState = Extract<ServerMsg, { type: 'presence' }>['present'][
 
 export interface ProjectSocket {
   conn: ConnState;
+  /** A prompt the socket closed on before the server acknowledged it; hand it back to the person. */
+  lostChat: { text: string; at: number } | null;
+  clearLostChat: () => void;
   messages: ChatItem[];
   historyState: 'loading' | 'ready' | 'error';
   /**
@@ -376,6 +379,14 @@ export function useProjectSocket(
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   const [phaseMarks, setPhaseMarks] = useState<PhaseMark[]>([]);
   const [running, setRunning] = useState(false);
+  // A PROMPT SENT INTO A SOCKET THAT WAS ALREADY GONE. A deploy evicts the session and the browser
+  // learns of the close a moment later; a frame written in between is accepted by ws.send and never
+  // arrives. Measured 2026-09-23 twice in production: the prompt vanished from the box, nothing ran,
+  // and nothing said so. Any frame from the server after the send proves it arrived, because a dead
+  // socket delivers nothing; if the socket closes first, the prompt is handed back.
+  const unackedChat = useRef<{ text: string; localId: string } | null>(null);
+  const [lostChat, setLostChat] = useState<{ text: string; at: number } | null>(null);
+  const clearLostChat = useCallback(() => setLostChat(null), []);
   const [logs, setLogs] = useState<StudioEventLog[]>([]);
   const [frames, setFrames] = useState<StudioFrame[]>([]);
   const [playtest, setPlaytest] = useState<PlaytestRun | null>(null);
@@ -994,11 +1005,24 @@ export function useProjectSocket(
       } catch {
         return;
       }
+      // Only a frame that ANSWERS a chat acknowledges it: the run starting, or a refusal. Presence and
+      // status frames are broadcast to every socket all the time, so counting them would clear a
+      // prompt that never arrived (caught by simulating the dropped frame in production).
+      if (msg.type === 'msg_start' || msg.type === 'error' || msg.type === 'quota' || msg.type === 'notice') {
+        unackedChat.current = null;
+      }
       handleServerMsg(msg);
     };
 
     ws.onclose = () => {
       if (wsRef.current !== ws || !requestFenceRef.current.isSelected(socketProjectId)) return;
+      const lost = unackedChat.current;
+      unackedChat.current = null;
+      if (lost) {
+        setMessages((list) => list.filter((m) => m.id !== lost.localId));
+        setRunning(false);
+        setLostChat({ text: lost.text, at: Date.now() });
+      }
       wsRef.current = null;
       wsProjectRef.current = null;
       if (pingTimer.current) {
@@ -1110,10 +1134,12 @@ export function useProjectSocket(
       const ok = sendRaw({ type: 'chat', text, mode, ...(enabled ? { autonomous: true } : {}), ...(productModel ? { productModel } : {}), ...(attachments.length ? { attachments } : {}) });
       if (ok) {
         setRunning(true);
+        const id = localId();
+        unackedChat.current = { text, localId: id };
         setMessages((list) => [
           ...list,
           {
-            id: localId(),
+            id,
             role: 'user',
             mode,
             autonomous: enabled,
@@ -1157,6 +1183,8 @@ export function useProjectSocket(
 
   return {
     conn,
+    lostChat,
+    clearLostChat,
     messages,
     historyState,
     studio,

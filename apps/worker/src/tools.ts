@@ -738,6 +738,59 @@ async function runTerrainEdits(ctx: AgentCtx, a: Record<string, unknown>): Promi
   return { completed: done.length, results: done };
 }
 
+/**
+ * THE TREE THE MODEL READS IS AN OUTLINE, NOT THE WIRE JSON.
+ *
+ * Every tool result is cut at MAX_RESULT_CHARS, and get_tree's JSON carries typed props and
+ * attributes on every node, so a single model's tree ran past the cut: the model received a JSON
+ * fragment ending "...[truncated N chars]", could not name the children, and asked again. Measured
+ * 2026-09-23 (run 867aff43): "List the parts inside the StreetLamp model by name" called
+ * get_project_tree on game.Workspace.StreetLamp four times and ended with no answer. One line per
+ * node — indented name and class — fits a few hundred nodes, and when the budget runs out it says how
+ * many were not shown and how to read a branch, instead of cutting a sentence in half.
+ */
+function treeOutline(data: unknown, budget = MAX_RESULT_CHARS - 300): Record<string, unknown> | null {
+  const root = treeRoot(data);
+  if (!root) return null;
+  const lines: string[] = [];
+  let used = 0;
+  let total = 0;
+  let firstHidden: string | undefined;
+  const walk = (node: StudioTreeNode, depth: number) => {
+    total += 1;
+    const name = node.name ?? node.path?.split('.').pop() ?? '?';
+    const unfetched = Number((node as { moreChildren?: unknown }).moreChildren) || 0;
+    const line = `${'  '.repeat(depth)}${name} (${node.class ?? '?'})${unfetched > 0 ? ` +${unfetched} more children not fetched` : ''}`;
+    if (used + line.length + 1 <= budget) {
+      lines.push(line);
+      used += line.length + 1;
+    } else if (!firstHidden) {
+      firstHidden = node.path ?? name;
+    }
+    for (const child of node.children ?? []) walk(child, depth + 1);
+  };
+  walk(root, 0);
+  // Fit on the SERIALISED reply, which is what the cap measures: JSON escapes every newline and quote,
+  // so counting raw characters let a large tree overrun the cap and be cut after all.
+  const render = () => {
+    const hidden = total - lines.length;
+    return {
+      root: root.path ?? root.name,
+      nodes: total,
+      outline: lines.join('\n'),
+      ...(hidden > 0
+        ? { notShown: `${hidden} more node(s) not shown to stay within the reply limit — call get_project_tree with root set to a branch such as ${firstHidden ?? root.path} to read it` }
+        : {}),
+    };
+  };
+  let result = render();
+  while (lines.length > 1 && JSON.stringify(result).length > MAX_RESULT_CHARS) {
+    lines.pop();
+    result = render();
+  }
+  return result;
+}
+
 function toolError(value: unknown): value is { error: unknown } {
   return !!value && typeof value === 'object' && 'error' in (value as Record<string, unknown>);
 }
@@ -1594,7 +1647,15 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['get_tree'],
-    run: (ctx, a) => op(ctx, { op: 'get_tree', root: a.root as string | undefined, maxDepth: (a.maxDepth as number) ?? 4, maxNodes: 800 }),
+    run: async (ctx, a) => {
+      const raw = await op(ctx, { op: 'get_tree', root: a.root as string | undefined, maxDepth: (a.maxDepth as number) ?? 4, maxNodes: 800 });
+      if (toolError(raw)) return raw;
+      const outline = treeOutline(raw);
+      if (!outline) return raw;
+      // The UI keeps the full typed tree for its panels; the model gets the outline below.
+      ctx.uiDetail = raw;
+      return outline;
+    },
   },
   list_scripts: {
     def: { name: 'list_scripts', description: 'List all scripts in the project with paths, class and line counts.', parameters: S({ root: { type: 'string' } }) },
