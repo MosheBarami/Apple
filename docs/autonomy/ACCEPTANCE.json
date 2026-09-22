@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "deterministic_gates_green": false,
+  "production_deployed": false,
+  "production_bytes_verified": false,
+  "signed_in_browser_qa": false,
+  "mobile_qa": false,
+  "real_studio_end_to_end": false,
+  "studio_readback_verified": false,
+  "follow_up_edit_verified": false,
+  "failure_recovery_verified": false,
+  "database_security_verified": false,
+  "production_error_reviewed": false,
+  "fresh_reviews_without_material_blocker": 0,
+  "required_fresh_reviews_without_material_blocker": 3,
+  "open_critical_findings": 0,
+  "open_high_findings": 0,
+  "candidate_complete": false,
+  "missions": {
+    "gameplay_loop_from_baseplate": false,
+    "visually_ambitious_environment": false,
+    "scripts_networking_ui": false,
+    "modify_existing_project": false,
+    "debug_broken_experience": false,
+    "follow_up_change": false,
+    "playtest_inspect_repair": false
+  },
+  "evidence": {},
+  "_notes": "Every true flag and every true mission must have at least one existing path under evidence[<key>]; scripts/autonomy-review-gate.py refuses a true without evidence. fresh_reviews_without_material_blocker counts CONSECUTIVE fresh-context reviews that returned PASS; any MATERIAL_FINDINGS resets it to 0. open_*_findings are counted from CUSTOMER_FINDINGS.md open items, not typed by hand."
+}

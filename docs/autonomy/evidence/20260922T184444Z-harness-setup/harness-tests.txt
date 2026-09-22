@@ -1,0 +1,26 @@
+✔ the guard denies every forbidden command it names (551.781041ms)
+✔ the guard lets ordinary engineering commands through with no decision (275.239542ms)
+✔ credential stores are protected for reads and writes alike (123.259292ms)
+✔ the STOP switch freezes every mutating tool and nothing else (150.346084ms)
+✔ the project settings actually wire the guard as a PreToolUse hook over the mutating tools (0.438ms)
+✔ STOP present: the supervisor starts no session at all (40.054167ms)
+✔ a crashed session makes the NEXT fresh session run in RECOVERY MODE (119.457125ms)
+✔ three consecutive failed sessions stop the supervisor with a recorded blocker (192.612167ms)
+✔ an overrunning session is killed at the wall-clock ceiling and counted as a failure (1127.290959ms)
+✔ a stale result.json from an earlier session is never read as this session's result (192.103417ms)
+✔ candidate_complete is IGNORED while the acceptance gate refuses it (171.626917ms)
+✔ strangers and reviewers get the mission only; implementers get the owner prompt (199.552458ms)
+✔ the review streak is kept by the supervisor: PASS counts, MATERIAL_FINDINGS resets (343.879792ms)
+✔ the supervisor refuses to run while an interactive Product Owner holds the lock (146.302417ms)
+✔ the acceptance gate passes only a fully evidenced, fully reviewed state (26.290834ms)
+✔ the acceptance gate refuses each way completion can be faked (182.464958ms)
+✔ the real docs/autonomy contract is readable by the gate and its findings file is not vacuous (25.30025ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3927.306958
+harness exit=0

@@ -263,3 +263,6 @@ handoff/
 # for nothing. Deleting them costs a recompile.
 __pycache__/
 *.pyc
+
+# Autonomy harness runtime state (docs/autonomy/README.md). Durable knowledge lives in docs/autonomy/.
+.autonomy/

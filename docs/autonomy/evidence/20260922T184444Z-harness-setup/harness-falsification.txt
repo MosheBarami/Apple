@@ -1,0 +1,10 @@
+.claude/hooks/autonomy_guard.py
+  broken -> exit 1; red: ['✖ the guard denies every forbidden command it names (148.028791ms)']
+  restored byte-identical: True
+scripts/autonomy-supervisor.py
+  broken -> exit 1; red: ["✖ a stale result.json from an earlier session is never read as this session's result (121.18275ms)"]
+  restored byte-identical: True
+scripts/autonomy-review-gate.py
+  broken -> exit 1; red: ['✖ the acceptance gate refuses each way completion can be faked (32.331375ms)']
+  restored byte-identical: True
+green-after: exit 0; red: []

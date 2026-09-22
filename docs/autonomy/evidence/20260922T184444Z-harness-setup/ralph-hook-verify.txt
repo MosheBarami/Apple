@@ -1,0 +1,7 @@
+ok   no active loop: silent, exit 0
+ok   no promise yet: blocks and re-feeds the prompt
+ok   iteration advanced to 2
+ok   max iterations reached: releases and removes state
+ok   exact promise: releases and removes state
+ok   another session's loop is ignored and untouched
+RALPH HOOK VERIFY: 6 ok, 0 failed

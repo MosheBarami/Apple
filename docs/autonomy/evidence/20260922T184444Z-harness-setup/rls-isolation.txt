@@ -1,0 +1,62 @@
+Starting postgres:16-alpine as golem-rls-98927 …
+  applied 0001_init.sql
+  applied 0002_waitlist_policy.sql
+  applied 0003_security_hardening.sql
+  applied 0004_project_archive.sql
+  applied 0005_collaboration.sql
+  applied 0006_membership_lifecycle.sql
+  applied 0007_project_pinning.sql
+  applied 0008_project_tags.sql
+  applied 0009_membership_access_outbox.sql
+  applied 0010_schema_hardening.sql
+  applied 0011_link_guest_project_read.sql
+  applied 0012_plan_constraint_matches_the_product.sql
+  applied 0013_product_modes_only.sql
+
+Applied 13 migrations; seeded 2 tenants.
+
+  ok    projects: the database really holds 2 rows (2) — the fixture is not empty
+  ok    projects: alice CAN see their own row (control — grants are present)
+  ok    projects: alice cannot see the other tenant's row
+  ok    projects: alice sees exactly 1 row in total
+  ok    projects: bob CAN see their own row (control — grants are present)
+  ok    projects: bob cannot see the other tenant's row
+  ok    projects: bob sees exactly 1 row in total
+  ok    messages: the database really holds 2 rows (2) — the fixture is not empty
+  ok    messages: alice CAN see their own row (control — grants are present)
+  ok    messages: alice cannot see the other tenant's row
+  ok    messages: alice sees exactly 1 row in total
+  ok    messages: bob CAN see their own row (control — grants are present)
+  ok    messages: bob cannot see the other tenant's row
+  ok    messages: bob sees exactly 1 row in total
+  ok    checkpoints: the database really holds 2 rows (2) — the fixture is not empty
+  ok    checkpoints: alice CAN see their own row (control — grants are present)
+  ok    checkpoints: alice cannot see the other tenant's row
+  ok    checkpoints: alice sees exactly 1 row in total
+  ok    checkpoints: bob CAN see their own row (control — grants are present)
+  ok    checkpoints: bob cannot see the other tenant's row
+  ok    checkpoints: bob sees exactly 1 row in total
+  ok    usage_events: the database really holds 2 rows (2) — the fixture is not empty
+  ok    usage_events: alice CAN see their own row (control — grants are present)
+  ok    usage_events: alice cannot see the other tenant's row
+  ok    usage_events: alice sees exactly 1 row in total
+  ok    usage_events: bob CAN see their own row (control — grants are present)
+  ok    usage_events: bob cannot see the other tenant's row
+  ok    usage_events: bob sees exactly 1 row in total
+  ok    profiles: the database really holds 2 rows (2) — the fixture is not empty
+  ok    profiles: alice CAN see their own row (control — grants are present)
+  ok    profiles: alice cannot see the other tenant's row
+  ok    profiles: alice sees exactly 1 row in total
+  ok    profiles: bob CAN see their own row (control — grants are present)
+  ok    profiles: bob cannot see the other tenant's row
+  ok    profiles: bob sees exactly 1 row in total
+  ok    messages: alice cannot read bob's message CONTENT
+  ok    messages: bob cannot read alice's message CONTENT
+  ok    projects: alice cannot UPDATE bob's project
+  ok    projects: alice cannot DELETE bob's project
+  ok    projects: a row alice plants as bob is FORCED to her own ownership (force_project_id) — got aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+  ok    projects: with the trigger gone, the POLICY alone still refuses the cross-tenant insert
+  ok    FALSIFICATION: with RLS off, alice sees both messages (2) — the harness can see a violation
+  ok    FALSIFICATION restored: isolation is back on after the break
+
+RLS ISOLATION HOLDS — two tenants, 5 owner-scoped tables, reads writes and plants, self-falsified
