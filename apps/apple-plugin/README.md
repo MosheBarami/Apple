@@ -8,9 +8,14 @@ New source and package, separate from `apps/plugin` and the removed Creator Stor
 asset. This is not a re-upload or renamed binary. Nothing here changes the existing
 installation or its public asset identifier.
 
-It is still a local preview. Nothing in this repository uploads to Roblox, `STUDIO_PLUGIN_STORE_LIVE`
-is `false`, and the public site says so in its own words. Publishing is a human decision
-and is not automated anywhere — see the runbook.
+**On the Creator Store as "Apple Studio", asset 107230158271368.** Published 2026-09-19 as
+version 1.0.0 (5 scripts, no `StudioCapture`), removed by moderation the same day, and distributed
+again as of 2026-09-22 — `STUDIO_PLUGIN_STORE_LIVE` in `packages/shared` is `true`. This source is
+**1.1.0** (`PLUGIN_VERSION` in `src/Bridge.luau`): it adds native viewport capture, Run-mode control
+and model inspection that the store build does not have, and it is **not published**. Customers who
+install from the store today get 1.0.0. The worker's `LATEST_PLUGIN_VERSION` stays `1.0.0` until the
+owner publishes this build. Nothing in this repository uploads to Roblox; publishing is a human step
+in Studio and is not automated anywhere — see the runbook.
 
 ## Safety contract
 
@@ -79,7 +84,8 @@ old plugin implementation. Do not rename live backend bindings or wire literals.
 With the repository's existing Luau and Rojo installations:
 
 ```sh
-node --test apps/apple-plugin/tests/*.test.mjs   # 37
+node --test apps/apple-plugin/tests/*.test.mjs   # 41 on 2026-09-22
+node apps/apple-plugin/scripts/syntax-check.mjs  # the parse gate; also `pnpm -r typecheck`
 node apps/apple-plugin/scripts/build.mjs
 node apps/apple-plugin/scripts/build-studio-engine-proof.mjs
 node apps/apple-plugin/scripts/build-generation-engine-proof.mjs
@@ -91,9 +97,10 @@ BUILT artifact rather than the source (`scripts/verify-artifact.py`): the legacy
 once shipped `VERSION = "0.1.0"` with zero occurrences of `GenerateModelAsync` while its
 source had generation, and every test was green because every test read the `.luau`.
 
-The binary is a local
-preview, not a released replacement. Do not change public install links until a
-new, policy-compliant distribution has actually been accepted and verified.
+The binary `build.mjs` writes is a local build of THIS source, not the one the store serves.
+Do not hand it to customers as "the plugin": they install from the Creator Store. CI builds and
+verifies the same artifact on every PR (`.github/workflows/ci.yml`, artifact
+`apple-studio-pr-unverified`), and `plugin-release.yml` produces the release candidate.
 
 The disposable proof build creates
 `release/apple-studio-engine-proof.rbxl`. Open that local unpublished place in

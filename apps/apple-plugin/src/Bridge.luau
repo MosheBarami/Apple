@@ -11,7 +11,13 @@ local HttpService = game:GetService("HttpService")
 local APPLE_ORIGIN = "https://apple.moshe-barami111.workers.dev"
 local CLAIM_URL = APPLE_ORIGIN .. "/api/studio/claim"
 local POLL_URL = APPLE_ORIGIN .. "/api/studio/poll"
-local PLUGIN_VERSION = "1.0.0"
+-- 1.1.0 because this source does more than the 1.0.0 build published to the Creator Store on
+-- 2026-09-19 (asset 107230158271368): native viewport capture, Run-mode control and model
+-- inspection. A build that reported 1.0.0 would be indistinguishable from the store build while
+-- behaving differently. The worker's LATEST_PLUGIN_VERSION stays at the store's version until this
+-- one is published. init.server.luau repeats this literal in its label and its state event, and
+-- packages/evals/src/plugin-version.test.mjs fails if the copies disagree.
+local PLUGIN_VERSION = "1.1.0"
 local PLUGIN_PROTOCOL = "1"
 
 -- The worker currently serves at most ten operations.  These limits are client-side guardrails

@@ -10,7 +10,7 @@
  *     parsePluginCapabilities returns null  ->  COMPATIBILITY MODE  ->  every tool is offered
  *
  * A report that is one field out does not produce an error anywhere. It produces a session where
- * the agent is handed `run_luau`, `audit_build` and `inspect_visually`, calls them, collects
+ * the agent is handed `run_luau` and `inspect_visually`, calls them, collects
  * refusals one at a time, and is never told at the start what this Studio cannot do. Worse, the
  * sentence SessionDO appends when the visual gate is withheld — "Rendered appearance was not
  * verified" — is keyed off `withheld`, so it would never appear either: the user would be told
@@ -18,7 +18,7 @@
  * know it is not happening is to run both halves against each other, which is this file.
  *
  * It is also the place the COST of the decision is written down. Shipping this plugin withholds
- * real tools. The exact list is asserted below as a TRIPWIRE — it is meant to fire on any change,
+ * arbitrary execution tools whose safe typed replacements do not exist. The exact list is asserted below as a TRIPWIRE — it is meant to fire on any change,
  * because every entry is a capability a user loses and each new one needs a human to look at it.
  * If it fires, write the review; do not edit the list to match.
  */
@@ -130,8 +130,11 @@ const skip = luauMissing ? 'luau is not on PATH' : !workerBuildable ? 'the worke
  *   run_code       — received text is never compiled or required inside Studio. That refusal is the
  *                    whole reason this plugin can be submitted at all; the removed asset built a
  *                    ModuleScript out of the HTTP body and required it. Twelve tools ride on it.
- *   inspect_model  — the verified model-quality gate is not in this build.
- *   run_mode       — no automatic Run; the user starts and stops tests themselves.
+ *
+ * `run_mode` and `inspect_model` LEFT THIS LIST in the Studio-authority pass: both can be expressed
+ * as bounded typed operations without evaluating received source. Run mode uses RunService controls
+ * behind pairing + edit consent; inspect_model is read-only structural QC. `run_and_check` now uses
+ * a typed project_census op rather than depending on run_code for its before/after tripwire.
  *
  * insert_asset LEFT THIS LIST ON 2026-09-19, and this paragraph is the review the comment below
  * demands. It was withheld because "no remote asset loader is reachable from the command bridge",
@@ -156,13 +159,11 @@ const skip = luauMissing ? 'luau is not on PATH' : !workerBuildable ? 'the worke
  * If this list changes, a human reviews the change. Do not bump it to match.
  */
 const WITHHELD_BY_DESIGN = [
-  'add_effect', 'assign_sounds', 'audit_build', 'check_composition', 'design_sound',
-  'inspect_model', 'remove_effect', 'run_and_check', 'run_luau', 'run_spec',
-  'set_mood',
+  'run_luau', 'run_spec',
 ].sort();
 
-/** The visual gate: three tools, all of them standing on the one operation `render_view`. */
-const VISUAL_GATE = ['compose_thumbnail', 'inspect_visually', 'render_view'];
+/** The visual/layout gate: four tools, all of them standing on the one operation `render_view`. */
+const VISUAL_GATE = ['check_composition', 'compose_thumbnail', 'inspect_visually', 'render_view'];
 
 test('the report the plugin emits parses — it never lands in compatibility mode', { skip }, async () => {
   const { C } = await workerModules();

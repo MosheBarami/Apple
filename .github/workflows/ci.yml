@@ -83,7 +83,7 @@ jobs:
           curl -fsSL -o luau.zip \
             "https://github.com/luau-lang/luau/releases/download/${LUAU_VERSION}/luau-ubuntu.zip"
           unzip -q luau.zip -d "$RUNNER_TEMP/luau"
-          chmod +x "$RUNNER_TEMP/luau/luau-analyze" "$RUNNER_TEMP/luau/luau"
+          chmod +x "$RUNNER_TEMP/luau/luau-analyze" "$RUNNER_TEMP/luau/luau" "$RUNNER_TEMP/luau/luau-compile"
           echo "$RUNNER_TEMP/luau" >> "$GITHUB_PATH"
           echo "LUAU_CHECK_BIN=$RUNNER_TEMP/luau/luau-analyze" >> "$GITHUB_ENV"
 
@@ -215,12 +215,35 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------- plugin --
+  # THE SHIPPED PLUGIN IS apps/apple-plugin — the Creator Store's "Apple Studio", asset
+  # 107230158271368. Until 2026-09-22 this job built apps/plugin, the legacy source whose asset
+  # Roblox removed, so CI proved that the plugin nobody installs still compiled and never looked at
+  # the one people do. apps/plugin now lives on only as test fixtures: its Luau specs still run under
+  # `pnpm -r test` in the job above, because apple-plugin's render-parity test and a dozen worker and
+  # eval tests read its files. Nothing builds it into an artifact.
   plugin:
-    name: Build Studio plugin
+    name: Build and verify the Studio plugin (apps/apple-plugin)
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Luau toolchain
+        # build.mjs parses every source with luau-analyze before it builds, and refuses to build
+        # without it rather than skipping the parse. Same pinned release as the test job.
+        env:
+          LUAU_VERSION: '0.663'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o luau.zip \
+            "https://github.com/luau-lang/luau/releases/download/${LUAU_VERSION}/luau-ubuntu.zip"
+          unzip -q luau.zip -d "$RUNNER_TEMP/luau"
+          chmod +x "$RUNNER_TEMP/luau/luau-analyze" "$RUNNER_TEMP/luau/luau" "$RUNNER_TEMP/luau/luau-compile"
+          echo "$RUNNER_TEMP/luau" >> "$GITHUB_PATH"
 
       - name: Install Rojo
         # Pinned and fetched straight from the upstream release rather than via
@@ -239,22 +262,33 @@ jobs:
       - name: Rojo version
         run: rojo --version
 
-      - name: Build plugin
-        run: rojo build apps/plugin/default.project.json --output apple-plugin.rbxm
+      - name: Build the plugin and verify the built bytes
+        # One command, the same one a person runs locally and the one docs/PLUGIN-RELEASE.md names:
+        # parse every source, refuse a require of a module that is not bundled, rojo build
+        # apps/apple-plugin/default.project.json into release/apple-studio.rbxm, scan the artifact
+        # for secrets (scripts/inspect-plugin-build.py), then read the BUILT bytes for every
+        # capability the source claims (apps/apple-plugin/scripts/verify-artifact.py). The last
+        # step is the one that was never run in CI: every test reads the .luau, and the legacy
+        # artifact once shipped with zero GenerateModelAsync while its source had generation.
+        # Any of the four failing fails this step.
+        run: |
+          set -euo pipefail
+          node apps/apple-plugin/scripts/build.mjs
+          ls -l apps/apple-plugin/release/apple-studio.rbxm
+          sha256sum apps/apple-plugin/release/apple-studio.rbxm
 
       - name: Upload plugin
         uses: actions/upload-artifact@v4
         with:
           #[[ NAMED SO NOBODY INSTALLS IT BY MISTAKE.
           #
-          #   plugin-release.yml tells a human to download "the artifact" and drop the
-          #   .rbxm into their local Plugins folder. THIS artifact is built from
-          #   whatever a pull request contains, including a fork's, and now that every
-          #   PR runs CI there are many more of them. It is a build check, not a
-          #   release. The release artifact comes from plugin-release.yml, which is
-          #   workflow_dispatch-only. ]]
-          name: apple-plugin-pr-unverified
-          path: apple-plugin.rbxm
+          #   This artifact is built from whatever a pull request contains, including a
+          #   fork's. It is a build check, not a release. Customers install the plugin
+          #   from the Creator Store, and the release candidate comes from
+          #   plugin-release.yml, which is workflow_dispatch-only. ]]
+          name: apple-studio-pr-unverified
+          path: apps/apple-plugin/release/apple-studio.rbxm
+          if-no-files-found: error
           retention-days: 7
 
   # --------------------------------------------------------- static checks --

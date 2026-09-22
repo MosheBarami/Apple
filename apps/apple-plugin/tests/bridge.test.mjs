@@ -110,6 +110,10 @@ local plugin = { Unloading = signal() }
 local Bridge = (function()
 `;
 
+// The header must carry the version this source declares, whatever that is. Pinning the literal
+// here made every honest version bump read as a transport failure.
+const DECLARED_VERSION = SOURCE.match(/local PLUGIN_VERSION = "([^"]+)"/)?.[1];
+
 const ASSERTIONS = String.raw`
 end)()
 
@@ -183,7 +187,7 @@ do
     assert(requests[1].method == "POST")
     assert(requests[1].headers["Content-Type"] == "application/json")
     assert(requests[1].headers["X-Golem-Token"] == "")
-    assert(requests[1].headers["X-Golem-Plugin-Version"] == "1.0.0")
+    assert(requests[1].headers["X-Golem-Plugin-Version"] == "${DECLARED_VERSION}")
     assert(requests[1].headers["X-Golem-Plugin-Protocol"] == "1")
     assert(requests[1].body.code == "ABC123")
     assert(requests[1].body.place.placeId == 77 and requests[1].body.place.gameId == 88)
@@ -448,6 +452,7 @@ test('Bridge source is independent, memory-only, and fixed to the Apple HTTPS or
   assert.match(SOURCE, /https:\/\/apple\.moshe-barami111\.workers\.dev/);
   assert.match(SOURCE, /X-Golem-Token/);
   assert.match(SOURCE, /X-Golem-Plugin-Version/);
+  assert.ok(DECLARED_VERSION, 'Bridge.luau no longer declares PLUGIN_VERSION as a quoted literal');
   assert.match(SOURCE, /X-Golem-Plugin-Protocol/);
   assert.doesNotMatch(SOURCE, /GetSetting|SetSetting|golem_session|LoadAsset|loadstring|HttpGet/);
   assert.doesNotMatch(SOURCE, /apiBase|baseUrl/i);

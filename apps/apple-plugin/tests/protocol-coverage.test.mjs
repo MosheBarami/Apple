@@ -6,10 +6,18 @@ const shared = readFileSync(new URL('../../../packages/shared/src/index.ts', imp
 const commands = readFileSync(new URL('../src/Commands.luau', import.meta.url), 'utf8');
 const generation = readFileSync(new URL('../src/GenerationService.luau', import.meta.url), 'utf8');
 
+// The table may be declared in place (`local X = {`) or assigned to a local declared earlier
+// (`X = {` inside the handler region's `do` block, which keeps Commands.luau under Luau's
+// 200-local limit when Studio compiles it at -O0). What matters is that it is a LOCAL — an
+// assignment with no local in scope would silently create a global — and what its keys are.
 function tableKeys(name) {
-  const match = new RegExp(`local ${name} = \\{([\\s\\S]*?)\\n\\}`, 'm').exec(commands);
+  const match = new RegExp(`(local )?(?<![.\\w])${name} = \\{([\\s\\S]*?)\\n\\}`).exec(commands);
   assert.ok(match, `${name} table was not found`);
-  return new Set([...match[1].matchAll(/^\s*([a-z_]+)\s*=/gm)].map((entry) => entry[1]));
+  if (!match[1]) {
+    const declared = new RegExp(`^local [^=\\n]*\\b${name}\\b[^=\\n]*$`, 'm').test(commands.slice(0, match.index));
+    assert.ok(declared, `${name} is assigned without a local declared before it — that would be a global`);
+  }
+  return new Set([...match[2].matchAll(/^\s*([a-z_]+)\s*=/gm)].map((entry) => entry[1]));
 }
 
 test('every live StudioOp has a handler, named refusal, deferred path, restore preflight, or waypoint path', () => {
@@ -37,7 +45,7 @@ test('dangerous compatibility operations explain their refusal', () => {
   for (const op of ['run_code']) {
     assert.match(commands, new RegExp(`\\b${op}\\s*=\\s*"[^"]{24,}"`));
   }
-  assert.match(commands, /received text is never loaded, required or executed/);
+  assert.match(commands, /no constrained plugin evaluator/);
   assert.match(commands, /no substitute was created/);
 });
 

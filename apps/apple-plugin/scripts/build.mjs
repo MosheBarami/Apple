@@ -25,6 +25,19 @@ for (const name of readdirSync(join(root, 'src')).filter((name) => name.endsWith
 }
 // Roblox type definitions are not loaded by this CLI: this is explicitly a parse
 // gate, not a claim of successful engine type checking or actual Studio execution.
+//
+// A parse is not a compile. Studio compiles plugin scripts without constant folding (luau-compile
+// -O0), and on 2026-09-22 a build that parsed cleanly refused to load in Studio with "Out of local
+// registers ... exceeded limit 200". Compile every source the way Studio does before building bytes
+// nobody could load.
+for (const name of readdirSync(join(root, 'src')).filter((name) => name.endsWith('.luau'))) {
+  try {
+    execFileSync('luau-compile', ['--null', '-O0', join(root, 'src', name)], { encoding: 'utf8', stdio: 'pipe' });
+  } catch (error) {
+    if (error.code === 'ENOENT') throw new Error('luau-compile is not on PATH: the Studio (-O0) compile gate cannot run, so nothing is built');
+    throw new Error(`${name} does not compile the way Studio compiles it (-O0):\n${error.stdout ?? ''}${error.stderr ?? ''}`);
+  }
+}
 mkdirSync(join(root, 'release'), { recursive: true });
 const artifact = join(root, 'release', 'apple-studio.rbxm');
 execFileSync('rojo', ['build', join(root, 'default.project.json'), '--output', artifact], { stdio: 'inherit' });

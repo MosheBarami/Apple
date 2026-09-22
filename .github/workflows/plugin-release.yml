@@ -1,22 +1,19 @@
 name: Plugin release
 
 # ===========================================================================
-# STALE TARGET — READ BEFORE TAKING THIS WORKFLOW'S ARTIFACT.
+# WHAT THIS BUILDS: apps/apple-plugin, into apps/apple-plugin/release/apple-studio.rbxm.
+# WHERE IT GOES: the Creator Store asset "Apple Studio", 107230158271368 (creator Shahar474).
 #
-# This job still builds `apps/plugin`, which as of 2026-09-19 is NOT the plugin
-# this product ships. The shipped plugin is `apps/apple-plugin`; the legacy one
-# compiles text received over HTTP into a ModuleScript and requires it
-# (`apps/plugin/src/Ops.luau:521`), which is the pattern the Creator Store asset
-# requirements prohibit and the most likely reason the previous asset was
-# removed. See `apps/plugin/README.md` and `docs/PLUGIN-RELEASE.md`.
+# Retargeted 2026-09-22. Until then this job built `apps/plugin` — the legacy source, which compiles
+# text received over HTTP into a ModuleScript and requires it (`apps/plugin/src/Ops.luau:521`) — and
+# told a human to overwrite asset 132128477945417 "Golem", which Roblox removed. Both are retired:
+# `apps/plugin` is kept only as test fixtures (see `apps/plugin/README.md`), and 132128477945417
+# answers 404 on toolbox-service. Never publish to it. `docs/PLUGIN-RELEASE.md` is the runbook.
 #
-# Retargeting is a real change, not a path substitution: the version step below
-# parses `apps/plugin/src/Version.luau`, and the new plugin declares its identity
-# as PLUGIN_VERSION/PLUGIN_PROTOCOL in `apps/apple-plugin/src/Bridge.luau`. It
-# also needs `apps/apple-plugin/scripts/verify-artifact.py`, which reads the BUILT
-# bytes. Until someone does that and watches this workflow run green, build
-# locally with `node apps/apple-plugin/scripts/build.mjs` and do not publish what
-# comes out of here.
+# The version is read from `apps/apple-plugin/src/Bridge.luau` (PLUGIN_VERSION / PLUGIN_PROTOCOL),
+# the constant the plugin sends on every request, and the build is the same `build.mjs` a person
+# runs locally and ci.yml runs on every PR: parse, rojo build, secret scan, then
+# `apps/apple-plugin/scripts/verify-artifact.py` over the BUILT bytes.
 # ===========================================================================
 
 # ===========================================================================
@@ -27,7 +24,7 @@ name: Plugin release
 #         -> [HUMAN, in Roblox Studio] publish/update the Creator Store asset
 #
 #   USER (them, entirely inside Roblox)
-#       Creator Store -> install -> pair with a code -> build a game
+#       Creator Store -> Get Plugin -> Studio Plugins tab -> Apple -> pair with a code -> build
 #
 # This workflow implements the first line and stops dead at the human step. It
 # produces a verified artifact and never touches Roblox.
@@ -60,29 +57,25 @@ name: Plugin release
 # plugin's DESCRIPTION would trade the account for nothing. Do not do it.
 #
 # So every version bump requires a human in Roblox Studio:
-#   Plugins -> Publish as Plugin -> "Overwrite an existing asset" -> Golem
+#   Plugins -> Publish as Plugin -> "Overwrite an existing asset" -> Apple Studio (107230158271368)
 # Keep the asset under a USER account. Group-owned plugin overwrite is a known
 # broken path (DevForum 587851, acknowledged by staff, never resolved).
 #
-# One more thing the human must do ONCE, and has not done yet: the asset is
-# uploaded but not distributable. apis.roblox.com/toolbox-service/v1/items/
-# details?assetIds=132128477945417 returns 404 while known-public plugins
-# return 200. That is not moderation — the Creator Store flow has no documented
-# review gate; uploading merely makes a plugin private to you, "available to you
-# in the Toolbox under the Inventory and Creations tabs". It becomes public only
-# when someone toggles it: Creator Dashboard -> Development Items -> Golem ->
-# Configure -> Distribution -> "Distribute on Creator Store" -> Save Changes.
-# Until then, nothing here is installable by anyone, and no copy anywhere should
-# claim otherwise.
+# DISTRIBUTION, MEASURED 2026-09-22: toolbox-service/v1/items/details for
+# 107230158271368 answers 200 (published, purchasable, free) beside two listed
+# controls that also answer 200 and the retired 132128477945417 that answers 404,
+# and `STUDIO_PLUGIN_STORE_LIVE` in packages/shared is true. A publish can change
+# that — the 09-19 upload was removed the same day — so re-probe after every one;
+# the summary below prints the command.
 #
 # ---------------------------------------------------------------------------
 # NO SECRETS, BY CONSTRUCTION.
 #
 # This job is given no repository secrets, matching ci.yml. A workflow with no
 # credentials cannot leak them and cannot publish anything, which is exactly the
-# property we want for a job whose output is a public artifact. Rojo is fetched
-# from a pinned upstream release rather than a third-party action, for the same
-# reason as in ci.yml: one fewer supply chain to trust.
+# property we want for a job whose output is a public artifact. Rojo and Luau are
+# fetched from pinned upstream releases rather than third-party actions, for the
+# same reason as in ci.yml: one fewer supply chain to trust.
 # ===========================================================================
 
 on:
@@ -109,6 +102,10 @@ env:
   PNPM_VERSION: '11.13.0'
   ROJO_VERSION: '7.7.0'
   LUAU_VERSION: '0.663'
+  # The one Creator Store asset this plugin is published as. The literal lives in
+  # packages/shared/src/index.ts (STUDIO_PLUGIN_ASSET_ID); the step below fails if
+  # the two disagree, so this cannot quietly point somewhere else.
+  STORE_ASSET_ID: '107230158271368'
 
 jobs:
   release:
@@ -140,53 +137,45 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          SRC=apps/plugin/src/Version.luau
-          VERSION=$(grep -oE 'VERSION = "[^"]+"' "$SRC" | head -1 | sed -E 's/.*"(.*)"/\1/')
-          PROTOCOL=$(grep -oE 'PROTOCOL = [0-9]+' "$SRC" | head -1 | grep -oE '[0-9]+')
+          SRC=apps/apple-plugin/src/Bridge.luau
+          VERSION=$(grep -oE '^local PLUGIN_VERSION = "[^"]+"' "$SRC" | head -1 | sed -E 's/.*"(.*)"/\1/')
+          PROTOCOL=$(grep -oE '^local PLUGIN_PROTOCOL = "[0-9]+"' "$SRC" | head -1 | grep -oE '[0-9]+')
           if [ -z "$VERSION" ] || [ -z "$PROTOCOL" ]; then
-            echo "::error::could not parse VERSION/PROTOCOL out of $SRC"
+            echo "::error::could not parse PLUGIN_VERSION/PLUGIN_PROTOCOL out of $SRC"
             exit 1
           fi
           # These values reach shell commands and a JSON manifest below, so they are
           # constrained to a charset that cannot carry quoting or substitution. A
           # version string is not a place for shell metacharacters.
           if ! printf '%s' "$VERSION" | grep -qE '^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$'; then
-            echo "::error::VERSION '$VERSION' is not a plain version string"
+            echo "::error::PLUGIN_VERSION '$VERSION' is not a plain version string"
+            exit 1
+          fi
+          if ! grep -qE "^export const STUDIO_PLUGIN_ASSET_ID = '${STORE_ASSET_ID}';" packages/shared/src/index.ts; then
+            echo "::error::STORE_ASSET_ID ${STORE_ASSET_ID} is not STUDIO_PLUGIN_ASSET_ID in packages/shared/src/index.ts"
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "protocol=$PROTOCOL" >> "$GITHUB_OUTPUT"
-          echo "plugin version $VERSION, wire protocol $PROTOCOL"
+          echo "plugin version $VERSION, wire protocol $PROTOCOL, store asset $STORE_ASSET_ID"
 
       # ------------------------------------------------------ static checks --
-      - name: Install Luau analyzer
+      - name: Install Luau toolchain
+        # luau-analyze parses the sources; luau runs the plugin's own Luau tests.
         run: |
           set -euo pipefail
           curl -fsSL -o luau.zip \
             "https://github.com/luau-lang/luau/releases/download/${LUAU_VERSION}/luau-ubuntu.zip"
           unzip -q luau.zip -d "$RUNNER_TEMP/luau"
-          chmod +x "$RUNNER_TEMP/luau/luau-analyze"
+          chmod +x "$RUNNER_TEMP/luau/luau-analyze" "$RUNNER_TEMP/luau/luau" "$RUNNER_TEMP/luau/luau-compile"
           echo "$RUNNER_TEMP/luau" >> "$GITHUB_PATH"
 
       - name: Parse every plugin source
-        # Keyed on SyntaxError, not on exit code. Measured on this repo's
-        # toolchain: valid Roblox code still exits non-zero with "Unknown global
-        # 'game'" because no definitions file is loaded, so exit code is not a
-        # usable signal and treating it as one would fail every green build.
-        # Same convention as packages/evals/src/luau.mjs.
-        run: |
-          set -uo pipefail
-          fail=0
-          for f in apps/plugin/src/*.luau; do
-            out=$(luau-analyze "$f" 2>&1 || true)
-            if echo "$out" | grep -q "SyntaxError"; then
-              echo "::error file=$f::does not parse"
-              echo "$out" | grep "SyntaxError" | head -5
-              fail=1
-            fi
-          done
-          [ "$fail" -eq 0 ] && echo "all plugin sources parse"
-          exit "$fail"
+        # Keyed on SyntaxError, not on exit code: valid Roblox code still exits
+        # non-zero with "Unknown global 'game'" because no definitions file is
+        # loaded. The script also refuses a require of a module that is not bundled,
+        # and fails rather than skips when the analyzer is missing under CI.
+        run: node apps/apple-plugin/scripts/syntax-check.mjs
 
       - name: Secret-inspection rules self-test
         # Run the scanner's own rules against known-positive and known-negative
@@ -194,11 +183,12 @@ jobs:
         # patterns have silently stopped matching reports every build as clean.
         run: python3 scripts/inspect-plugin-build.py --self-test
 
-      - name: Typecheck and test the worker contract
+      - name: Test the plugin, and the worker contract it speaks
         # The plugin and the worker agree on a protocol number and a version
-        # string across two files in two languages, and nothing but this suite
-        # enforces that they still match.
+        # string across two files in two languages, and nothing but these suites
+        # enforces that they still match (packages/evals/src/plugin-version.test.mjs).
         run: |
+          pnpm --filter @apple/studio-plugin test
           pnpm --filter @golem/worker typecheck
           pnpm --filter @golem/evals test
 
@@ -215,11 +205,15 @@ jobs:
       - name: Rojo version
         run: rojo --version
 
-      - name: Build plugin
-        run: rojo build apps/plugin/default.project.json --output apple-plugin.rbxm
+      - name: Build the plugin and verify the built bytes
+        # rojo build -> apps/apple-plugin/release/apple-studio.rbxm, then the
+        # secret scan, then verify-artifact.py, which reads the BUILT bytes for every
+        # capability the source claims. The legacy artifact once shipped with zero
+        # GenerateModelAsync while its source had generation, and every test was green.
+        run: node apps/apple-plugin/scripts/build.mjs
 
       # ------------------------------------------------- refuse to ship junk --
-      - name: Inspect the built artifact for secrets
+      - name: Inspect the built artifact for secrets, at the version being recorded
         # THE GATE. Runs against the .rbxm, not against the source, because the
         # source is not what ships. The scanner decompresses every chunk first:
         # .rbxm payloads are LZ4-compressed, so `strings | grep` finds none of
@@ -230,7 +224,7 @@ jobs:
         env:
           EXPECT_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          python3 scripts/inspect-plugin-build.py apple-plugin.rbxm \
+          python3 scripts/inspect-plugin-build.py apps/apple-plugin/release/apple-studio.rbxm \
             --expect-version "$EXPECT_VERSION"
 
       # ------------------------------------------------------------ record --
@@ -245,8 +239,9 @@ jobs:
           ROJO: ${{ env.ROJO_VERSION }}
         run: |
           set -euo pipefail
-          SHA=$(sha256sum apple-plugin.rbxm | cut -d' ' -f1)
-          SIZE=$(stat -c%s apple-plugin.rbxm)
+          ARTIFACT=apps/apple-plugin/release/apple-studio.rbxm
+          SHA=$(sha256sum "$ARTIFACT" | cut -d' ' -f1)
+          SIZE=$(stat -c%s "$ARTIFACT")
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
           BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           # Built with jq so the values are JSON-encoded rather than string-pasted.
@@ -258,19 +253,21 @@ jobs:
             --arg commit "$COMMIT" \
             --arg builtAt "$BUILT_AT" \
             --arg rojo "$ROJO" \
-            '{$version, $protocol, $sha256, $bytes, $commit, $builtAt, $rojo,
+            --arg storeAssetId "$STORE_ASSET_ID" \
+            '{$version, $protocol, $sha256, $bytes, $commit, $builtAt, $rojo, $storeAssetId,
               published: false,
               publishNote: "Publishing is a human step in Roblox Studio. Open Cloud cannot update a Plugin asset."}' \
-            > apple-plugin.manifest.json
-          cat apple-plugin.manifest.json
+            > apps/apple-plugin/release/apple-studio.manifest.json
+          cat apps/apple-plugin/release/apple-studio.manifest.json
 
       - name: Upload plugin build
         uses: actions/upload-artifact@v4
         with:
-          name: apple-plugin-${{ steps.version.outputs.version }}
+          name: apple-studio-${{ steps.version.outputs.version }}
           path: |
-            apple-plugin.rbxm
-            apple-plugin.manifest.json
+            apps/apple-plugin/release/apple-studio.rbxm
+            apps/apple-plugin/release/apple-studio.manifest.json
+          if-no-files-found: error
           retention-days: 90
 
       # ------------------------------------------- hand off to the human ----
@@ -289,7 +286,7 @@ jobs:
           REASON: ${{ github.event.inputs.reason }}
         run: |
           {
-            echo "## Golem plugin $VERSION"
+            echo "## Apple Studio plugin $VERSION"
             echo ""
             echo "| | |"
             echo "|---|---|"
@@ -297,6 +294,7 @@ jobs:
             echo "| wire protocol | \`$PROTOCOL\` |"
             echo "| sha256 | \`$SHA256\` |"
             echo "| commit | \`$COMMIT\` |"
+            echo "| Creator Store asset | \`$STORE_ASSET_ID\` (Apple Studio) |"
             echo "| reason | $REASON |"
             echo "| published to Roblox | **no — see below** |"
             echo ""
@@ -310,27 +308,33 @@ jobs:
             echo ""
             echo "### To release it (human, in Roblox Studio)"
             echo ""
-            echo "1. Download the \`apple-plugin-$VERSION\` artifact."
-            echo "2. Put \`apple-plugin.rbxm\` in your local Plugins folder and restart Studio."
-            echo "3. Smoke-test it: pair with a code, run one build."
-            echo "4. Right-click the plugin in Explorer -> **Publish as Plugin**."
-            echo "5. Choose **Overwrite an existing asset** and select **Golem** (asset 132128477945417)."
+            echo "1. Download the \`apple-studio-$VERSION\` artifact."
+            echo "2. Smoke-test it: put \`apple-studio.rbxm\` in your local Plugins folder, restart"
+            echo "   Studio, pair with a code, allow edits, run one build. Remove the local file"
+            echo "   afterwards so Studio does not load it beside the Creator Store copy."
+            echo "3. Drag \`apple-studio.rbxm\` into Explorer, right-click it -> **Publish as Plugin**."
+            echo "4. Choose **Overwrite an existing asset** and select **Apple Studio** (asset $STORE_ASSET_ID)."
             echo "   Creator must be **Me**, not a group — group overwrite is broken (DevForum 587851)."
-            echo "6. Record the sha256 above against the published version."
+            echo "   Never 132128477945417: that is the retired legacy asset and Roblox removed it."
+            echo "5. Record the sha256 above against the published version."
+            echo "6. Only once the store serves it (step below), set LATEST_PLUGIN_VERSION in"
+            echo "   \`apps/worker/src/plugin-version.ts\` to \`$VERSION\`. Before that, it must keep"
+            echo "   naming the version the store serves: it drives the \"update available\" notice."
             echo ""
-            echo "### One-time, still outstanding"
+            echo "### Then check the store still distributes it"
             echo ""
-            echo "The asset is uploaded but **not distributable**. toolbox-service returns"
-            echo "404 for it while public plugins return 200. Fix by toggling it on:"
-            echo "Creator Dashboard -> Development Items -> Golem -> Configure ->"
-            echo "Distribution -> **Distribute on Creator Store** -> Save Changes."
-            echo "Then re-check:"
+            echo "The 2026-09-19 upload was removed by moderation the same day, so a publish is"
+            echo "not proof of distribution. Probe the asset beside a listed control (Rojo 7):"
             echo ""
-            echo "    curl -s -o /dev/null -w '%{http_code}' \\"
-            echo "      'https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=132128477945417'"
+            echo "    curl -s -w '\\n%{http_code}\\n' \\"
+            echo "      'https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=$STORE_ASSET_ID'"
+            echo "    curl -s -o /dev/null -w '%{http_code}\\n' \\"
+            echo "      'https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=6415005344'"
             echo ""
-            echo "200 means live. 404 means still not installable by anyone, and no"
-            echo "copy anywhere should say otherwise."
+            echo "200 for both means listed; read \`updatedUtc\` and \`scriptCount\` in the first"
+            echo "response to confirm it is THIS build rather than the previous one. A 404 means"
+            echo "it is not installable by anyone: flip \`STUDIO_PLUGIN_STORE_LIVE\` in"
+            echo "\`packages/shared/src/index.ts\` back to false and record the notice verbatim."
             echo ""
             echo "### After users have it"
             echo ""

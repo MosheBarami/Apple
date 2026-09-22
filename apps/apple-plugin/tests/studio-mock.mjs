@@ -29,6 +29,10 @@ local function v3(x, y, z) return setmetatable({ __type = "Vector3", X = x or 0,
 Vector3 = { new = v3, zero = v3(0,0,0) }
 Vector2 = { new = function(x, y) return { __type = "Vector2", X = x or 0, Y = y or 0 } end }
 NumberRange = { new = function(a, b) return { __type = "NumberRange", Min = a, Max = b or a } end }
+NumberSequenceKeypoint = { new = function(t, v, e) return { Time = t, Value = v, Envelope = e or 0 } end }
+NumberSequence = { new = function(keypoints) return { __type = "NumberSequence", Keypoints = keypoints } end }
+ColorSequenceKeypoint = { new = function(t, v) return { Time = t, Value = v } end }
+ColorSequence = { new = function(keypoints) return { __type = "ColorSequence", Keypoints = keypoints } end }
 Rect = { new = function(a, b, c, d) return { __type = "Rect", Min = v3(a, b, 0), Max = v3(c, d, 0) } end }
 Color3 = { new = function(r, g, b) return { __type = "Color3", R = r or 0, G = g or 0, B = b or 0 } end }
 UDim = { new = function(s, o) return { __type = "UDim", Scale = s or 0, Offset = o or 0 } end }
@@ -42,14 +46,25 @@ local function cf(x,y,z)
     value._c = {value.Position.X,value.Position.Y,value.Position.Z,1,0,0,0,1,0,0,0,1}
     return value
 end
-function CFrame.new(...) local a={...}; return cf(a[1] or 0,a[2] or 0,a[3] or 0) end
+function CFrame.new(...)
+    local a={...}
+    if type(a[1]) == "table" and a[1].__type == "Vector3" then return cf(a[1].X,a[1].Y,a[1].Z) end
+    return cf(a[1] or 0,a[2] or 0,a[3] or 0)
+end
 function CFrame.Angles(...) return cf(0,0,0) end
 function CFrame.lookAt(origin, target) return cf(origin.X,origin.Y,origin.Z) end
 function cfmt:GetComponents() return table.unpack(self._c) end
 function cfmt:VectorToWorldSpace(value) return value end
 cfmt.__mul = function(a,b) return cf(a.Position.X+b.Position.X,a.Position.Y+b.Position.Y,a.Position.Z+b.Position.Z) end
 cfmt.__add = function(a,b) return cf(a.Position.X+b.X,a.Position.Y+b.Y,a.Position.Z+b.Z) end
-Enum = { FinishRecordingOperation = { Commit = "Commit", Cancel = "Cancel" }, Material = { SmoothPlastic = "Enum.Material.SmoothPlastic" }, Font = { SourceSans = "Enum.Font.SourceSans" } }
+Region3 = {}
+local regionMt = {}; regionMt.__index = regionMt
+function Region3.new(lo, hi) return setmetatable({ __type="Region3", Min=lo, Max=hi }, regionMt) end
+function regionMt:ExpandToGrid(_) return self end
+Enum = { FinishRecordingOperation = { Commit = "Commit", Cancel = "Cancel" }, Material = {
+    SmoothPlastic = "Enum.Material.SmoothPlastic", Grass = "Enum.Material.Grass", Rock = "Enum.Material.Rock",
+    Air = "Enum.Material.Air", Water = "Enum.Material.Water",
+}, Font = { SourceSans = "Enum.Font.SourceSans" }, ReverbType = { Cave = "Enum.ReverbType.Cave", NoReverb = "Enum.ReverbType.NoReverb" } }
 
 local methods = {}
 local mt = {
@@ -74,7 +89,7 @@ function methods:IsA(wanted)
     if wanted == "Instance" or wanted == self.ClassName then return true end
     if wanted == "LuaSourceContainer" then return self.ClassName == "Script" or self.ClassName == "LocalScript" or self.ClassName == "ModuleScript" end
     if wanted == "BasePart" then return self.ClassName == "Part" or self.ClassName == "MeshPart" or self.ClassName == "WedgePart" or self.ClassName == "CornerWedgePart" or self.ClassName == "SpawnLocation" end
-    if wanted == "GuiObject" then return self.ClassName == "Frame" or self.ClassName == "TextLabel" or self.ClassName == "TextButton" or self.ClassName == "TextBox" or self.ClassName == "ScrollingFrame" end
+    if wanted == "GuiObject" then return self.ClassName == "Frame" or self.ClassName == "TextLabel" or self.ClassName == "TextButton" or self.ClassName == "TextBox" or self.ClassName == "ImageLabel" or self.ClassName == "ImageButton" or self.ClassName == "ScrollingFrame" end
     return false
 end
 function methods:GetChildren() local out={}; for i,child in ipairs(self.__children) do out[i]=child end; return out end
@@ -133,6 +148,12 @@ game = root
 workspace = services.Workspace
 local camera=Instance.new("Camera"); camera.Name="Camera"; camera.CFrame=cf(0,10,20); camera.FieldOfView=70; camera.ViewportSize=v3(1280,720,0); camera.Parent=workspace; workspace.CurrentCamera=camera
 local terrain=Instance.new("Terrain"); terrain.Name="Terrain"; terrain.Parent=workspace
+terrain.calls = {}
+function terrain:FillBlock(cframe, size, material) table.insert(self.calls, { action="fill_block", cframe=cframe, size=size, material=material }) end
+function terrain:FillBall(center, radius, material) table.insert(self.calls, { action="fill_ball", center=center, radius=radius, material=material }) end
+function terrain:FillRegion(region, resolution, material) table.insert(self.calls, { action="fill_region", region=region, resolution=resolution, material=material }) end
+function terrain:ReplaceMaterial(region, resolution, source, target) table.insert(self.calls, { action="replace_material", region=region, resolution=resolution, source=source, target=target }) end
+function terrain:WriteVoxels(region, resolution, materials, occupancy) table.insert(self.calls, { action="write_voxels", region=region, resolution=resolution, materials=materials, occupancy=occupancy }) end
 local starterPlayerScripts=Instance.new("StarterPlayerScripts"); starterPlayerScripts.Name="StarterPlayerScripts"; starterPlayerScripts.Parent=services.StarterPlayer
 local starterCharacterScripts=Instance.new("StarterCharacterScripts"); starterCharacterScripts.Name="StarterCharacterScripts"; starterCharacterScripts.Parent=services.StarterPlayer
 for _, className in ipairs({"ChatWindowConfiguration","ChatInputBarConfiguration","ChannelTabsConfiguration","BubbleChatConfiguration"}) do
@@ -150,8 +171,19 @@ function history:FinishRecording(id, operation)
     table.insert(self.log, tostring(operation)); self.recording = nil
 end
 function history:SetWaypoint(name) table.insert(self.log, "waypoint:" .. name) end
-local runService = { edit = true }
+local runService = { edit = true, running = false, runMode = false }
 function runService:IsEdit() return self.edit end
+function runService:IsRunning() return self.running end
+function runService:IsRunMode() return self.runMode end
+-- As documented (Engine API, RunService:IsRunMode): a simulation started with Run() does NOT set
+-- IsRunMode — only Studio's own Run button does. The mock used to set it, which is how 43 tests passed
+-- over a plugin that could not stop its own playtest (2026-09-22, run fad0ab1b).
+-- And IsEdit() STAYS TRUE under Run(): measured 2026-09-22 (run 604bfd32), Apple's writes were
+-- admitted as edit mode while its own simulation ran. Only IsRunning() tells the two apart.
+function runService:Run() self.running=true end
+function runService:PressRunButton() self.running=true; self.runMode=true end
+function runService:Pause() self.running=false end
+function runService:Stop() self.running=false; self.runMode=false; self.edit=true end
 local selection = { values = {} }
 function selection:Get() return self.values end
 function selection:Set(v) self.values = v end

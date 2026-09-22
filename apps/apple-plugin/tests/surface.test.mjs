@@ -15,8 +15,11 @@ test('Apple has an independent entry point and no legacy session restore', () =>
 test('edit permission defaults off and is bound to this live connection', () => {
   assert.match(source, /local allowEdits = false/);
   assert.match(source, /local function consentStillCurrent\(\)/);
+  assert.match(source, /local function pairingStillCurrent\(\)/);
   assert.match(source, /sessionCurrent/);
-  assert.match(source, /commands:execute\(id, op, consentStillCurrent\(\), consentStillCurrent\)/);
+  assert.match(source, /local authorized = if runAction ~= nil then pairingStillCurrent\(\) and allowEdits else consentStillCurrent\(\)/,
+    'Run-mode controls keep the connection consent while ordinary writes still require edit mode');
+  assert.match(source, /commands:execute\(id, op, authorized, consentStillCurrent\)/);
   assert.match(source, /allowEdits = false[\s\S]*bridge:connect/);
   assert.match(source, /not bridge:isConnected\(\)[\s\S]*allowEdits = false/);
   assert.match(source, /Allow edits for this connection/);

@@ -1,12 +1,11 @@
 --!strict
 -- Software renderer: turns the live DataModel into actual PIXELS the agent can look at.
 --
--- Why this exists: Roblox gives Studio plugins no way to read the rendered viewport.
--- ThumbnailGenerator is not a valid service for plugins and CaptureService's callback never fires
--- in edit mode (both verified against real Studio). Without pixels the agent can only ever *infer*
--- that its work looks good, which is exactly the failure this system was built to stop. So we
--- rasterise the scene ourselves: perspective projection, per-pixel depth, lambert shading and a
--- material response curve.
+-- Why this still exists: StudioCaptureService can now supply the active 3D viewport as a native PNG,
+-- but it is one user-controlled camera and may be unavailable until screenshot permission is granted.
+-- The critique path also needs deterministic target-framed hero/front/side/top/eye views. This module
+-- produces those independently: perspective projection, per-pixel depth, lambert shading and a
+-- material response curve. Native viewport capture is additive in Commands.luau, not a replacement.
 --
 -- The image is deliberately small and low-fidelity. It is not a beauty shot — it carries enough
 -- signal for a vision model to judge composition, massing, proportion, spacing, silhouette and

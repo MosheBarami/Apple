@@ -6,10 +6,11 @@ or run the provider.
 | File | SHA-256 | Evidence state |
 |---|---|---|
 | `release/apple-studio-engine-proof.rbxl` | `58944ee805fa17689e94552b6ca469a21b5dc6ca4a27ef5db8f2f47bbc145532` | Local general Engine-proof build, 58,227 bytes. This exact SHA is not cited as a successful current restore observation. |
-| `release/apple-generation-engine-proof.rbxl` | `7ad12cd49ab929adaa68dfaea96fcbb8f71722b5c87cc71e7f825e4c48b4be7a` | Separate one-shot generation proof, 58,342 bytes. A live Studio result has not been observed. |
+| `release/apple-generation-engine-proof.rbxl` | `7ad12cd49ab929adaa68dfaea96fcbb8f71722b5c87cc71e7f825e4c48b4be7a` | **Actual one-shot Studio Engine/provider pass on 2026-09-21: `ok:true`.** DynamicGeneration was available; the real `GenerateModelAsync` path returned a detached Model that passed structural QC, committed in exactly one ChangeHistory recording, and survived Undo/Redo. The generated model remains structurally accepted but visually **unreviewed**: the marker-gated local capture probe called `StudioCaptureService:CanCaptureScreenshot()` successfully and got `false`, while this session also lacks macOS Screen Recording/Accessibility permission. No screenshot permission prompt, upload or publication was attempted. Evidence: `docs/evidence/apple-generation-engine-2026-09-21.md`. |
 | `release/apple-restore-engine-proof.rbxl` | `0c28fdad64979136ede955458e9ab92e4eb8a397ef2609d7173d3326b457c65c` | Frozen restore r3, 64,112 bytes. Actually run once in Studio: 5/7 checks, failed Undo/Cancel because restore used `Destroy()` on instances ChangeHistory needed to recover. Failed evidence only. |
 | `release/apple-restore-engine-proof-r4.rbxl` | `cc20a9cbfdb1bc6158a981cb3d7771b95c231d24e3381eb36f4cd89641caf355` | Frozen restore r4, 64,378 bytes. **Actual one-shot Studio Engine pass: 7/7.** Undo restored the captured Engine readbacks exactly; forced-failure Cancel rolled back the live structure; default-place coverage was `supported-subset` with 6 protected Engine-owned objects and no skipped authored content. This proves the isolated restore proof only, not the whole plugin UI/Play flow, native widget behavior, visual quality, installability, or publication. |
-| `release/apple-studio.rbxm` | `5a7a4086b89be19448f2439991d954272a7aefa189532ab4f7390a232780110d` | Current inspected local preview, 81,610 bytes, rebuilt after the edit/test lifecycle fence (`init.server.luau` SHA-256 `317372edf3a57ed71c89c2750588476d0ecfd1a8456ab763da4ca64c94431920`). The previously installed/native-observed preview remains `5adf58f824b6ac1efdb3525e6f77e6d9cffdb3101c6984720b023907644f3ca9`; this replacement has not been installed or run in Studio. Build inspection alone is not UI Play/native-widget/visual acceptance. |
+| `release/apple-restore-engine-proof-r5-current.rbxl` | `3c51c756e6a48600485c01a49ca08688cd646f43e45dddf4d9033b9f53e8cff7` | Fresh **unrun** restore proof for the present plugin source, 75,161 bytes. It bundles `Commands.luau` SHA-256 `00af28e7aeb9a612527df2897abf304ef0c1dada805d9894f02776c487d24189` and the same restore runner SHA used by r4 (`c225a9d2bc71adea26c426bff9667d75a3d5f50674716e6db238ce12c4cc216c`). The current Commands source has changed since measured r4, so r4's 7/7 pass is historical mechanism evidence, not proof of this exact current build. |
+| `release/apple-studio.rbxm` | `fcf5684216ab90a50194dbf2fa2b896a8a32a455adf233eeba83f581051c600a` | Local preview rebuilt 2026-09-22 21:19 IDT by `node apps/apple-plugin/scripts/build.mjs`, 120,575 bytes, **PLUGIN_VERSION 1.1.0**, 6 scripts (StudioCapture included), each byte-identical to the working tree at that minute (`init.server.luau` `c23dbed97612…`, `Commands.luau` `57984c0bda28…`, `Bridge.luau` `fbe81ef4b677…`). `verify-artifact.py` exit 0; `inspect-plugin-build.py --expect-version 1.1.0` clean. The working tree was uncommitted, so no commit reproduces these bytes. **Not installed, not run in Studio, not published.** It is NOT the Creator Store build: asset 107230158271368 serves the 1.0.0 build uploaded 2026-09-19 (5 scripts, no StudioCapture), whose bytes are not recorded here. Superseded: `5a7a4086…` (81,610 B, 2026-09-18) and `96f7cfe1…` (120,179 B, 1.0.0, 2026-09-22 20:21). The previously installed/native-observed preview remains `5adf58f824b6ac1efdb3525e6f77e6d9cffdb3101c6984720b023907644f3ca9`. Build inspection alone is not UI Play/native-widget/visual acceptance. |
 
 Build the current preview and generation proof:
 
@@ -67,3 +68,46 @@ Do not rerun or replace the measured r4 artifact. A later restore-source change 
 proof artifact and a fresh one-shot Engine observation. This pass is evidence for the bounded restore
 path exercised by this disposable proof; it does not establish the remaining UI Play proof, native
 widget behavior, whole-plugin visual acceptance, installation, Creator Store eligibility, or publication.
+
+The older post-r4 candidate `release/apple-restore-engine-proof-r5-current.rbxl` is now stale because
+`Commands.luau` changed again after it was built. Do not use r5 to claim the current source was measured.
+
+The present-source candidate is `release/apple-restore-engine-proof-r6-current.rbxl`, built directly
+from the same restore project into a new filename so the measured r4 artifact remained byte-for-byte
+untouched. It bundles `Commands.luau` SHA-256
+`f431cf341ec12ed04fe592a7fa585a7d7ff0361ac1d72b4b139b6be9979e4ec3` and
+`AppleRestoreEngineProof.luau` SHA-256
+`c225a9d2bc71adea26c426bff9667d75a3d5f50674716e6db238ce12c4cc216c`.
+Artifact: 86,887 bytes, SHA-256
+`94d11cb2dc9a066de8d62a3a5970cc465dae983444650aeafef72f0701715bcd`.
+It has not been opened or executed in Studio. Its exact one-shot command is:
+
+```luau
+require(game.ServerScriptService.AppleRestoreEngineProof).run()
+```
+
+Current checkpoint coverage is substantially broader than r4-era coverage. `Decal`, `Texture`,
+`SurfaceAppearance`, `Sound`/sound effects, image UI, prompts/click detectors, particles/beams/trails,
+ordinary remotes, value objects, forces/velocities, constraints and the listed post effects are now
+restorable. `Sky` under `Lighting` is preserved as protected coverage because Apple deliberately does
+not rewrite its external content ids.
+
+Coverage remains deliberately bounded. `MeshPart` is the highest-impact remaining class outside
+`RESTORE_CLASSES`: a checkpoint that already contains one is `coverage="incomplete"`,
+`restorable=false`, and names `MeshPart` in `skipped`. A `MeshPart` added *after* an eligible checkpoint
+is delete-only and may be removed during restore without claiming Apple could reconstruct its mesh.
+Other ordinary examples still outside `RESTORE_CLASSES` include `UnionOperation`, `SpecialMesh`,
+`Tool`, `Humanoid`, `Animator`, `Animation`, `Motor6D`, `Weld`, `ViewportFrame`, clothing/accessory
+classes, and authored `Sky` outside `Lighting`. These are safe refusals rather than silent data loss,
+but they remain a product limitation for arbitrary real-world project checkpoints.
+
+## 2026-09-22 — the local 1.1.0 build that passed real-Studio acceptance (not published)
+
+`release/apple-studio.rbxm` (gitignored, rebuilt by `scripts/build.mjs`) sha256
+`56ec11d327b07d452ca8df185455f49fb510e968183ecd186c2efba339be896d`, installed at
+`~/Documents/Roblox/Plugins/AppleStudio.rbxm`. Two defects are fixed in it relative to the store's 1.0.0 and to
+the first 1.1.0 candidate (`7e8d692e…`): Commands.luau compiled over Luau's 200-local limit at Studio's -O0
+(F-018), and the plugin could not stop the playtest it started, because `RunService:IsRunMode()` is false
+for a `Run()` simulation and `IsEdit()` stays true under it (F-020). Measured in real Studio on the
+Apple-Acceptance place: run 5316f52b started and stopped two playtests, 0 failed ops. Publishing it to the
+Creator Store (asset 107230158271368) is the owner's action.

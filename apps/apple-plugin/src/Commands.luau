@@ -41,6 +41,10 @@ local MAX_TRANSLATION = 1000000
 local MAX_ROTATION_DEGREES = 36000
 local MIN_SCALE = 0.001
 local MAX_SCALE = 1000
+local MAX_SEQUENCE_KEYPOINTS = 32
+local MAX_TERRAIN_VOXELS = 65536
+local TERRAIN_RESOLUTION = 4
+local MAX_INSPECT_DESCENDANTS = MAX_TREE_NODES * 3
 -- Two attributes make the visibility state self-authenticating. A project may already use an
 -- attribute with the old, obvious name; treating that value as ours would restore the wrong
 -- transparency and destroy user data. We write only when both reserved fields are absent, and we
@@ -120,6 +124,18 @@ local CREATE_CLASSES = {
 	HingeConstraint = true,
 	AlignPosition = true,
 	AlignOrientation = true,
+	NoCollisionConstraint = true,
+	PrismaticConstraint = true,
+	CylindricalConstraint = true,
+	RigidConstraint = true,
+	UniversalConstraint = true,
+	TorsionSpringConstraint = true,
+	LineForce = true,
+	VectorForce = true,
+	Torque = true,
+	AngularVelocity = true,
+	LinearVelocity = true,
+	PlaneConstraint = true,
 	ScreenGui = true,
 	SurfaceGui = true,
 	BillboardGui = true,
@@ -127,9 +143,12 @@ local CREATE_CLASSES = {
 	TextLabel = true,
 	TextButton = true,
 	TextBox = true,
+	ImageLabel = true,
+	ImageButton = true,
 	ScrollingFrame = true,
 	UICorner = true,
 	UIStroke = true,
+	UIGradient = true,
 	UIListLayout = true,
 	UIGridLayout = true,
 	UIPageLayout = true,
@@ -142,12 +161,33 @@ local CREATE_CLASSES = {
 	SpotLight = true,
 	SurfaceLight = true,
 	Highlight = true,
+	ProximityPrompt = true,
+	ClickDetector = true,
+	Sound = true,
+	SoundGroup = true,
+	ChorusSoundEffect = true,
+	CompressorSoundEffect = true,
+	DistortionSoundEffect = true,
+	EchoSoundEffect = true,
+	EqualizerSoundEffect = true,
+	FlangeSoundEffect = true,
+	PitchShiftSoundEffect = true,
+	ReverbSoundEffect = true,
+	ParticleEmitter = true,
+	Beam = true,
+	Trail = true,
+	Fire = true,
+	Smoke = true,
+	Sparkles = true,
 	StringValue = true,
 	BoolValue = true,
 	IntValue = true,
 	NumberValue = true,
 	Vector3Value = true,
 	Color3Value = true,
+	CFrameValue = true,
+	BrickColorValue = true,
+	ObjectValue = true,
 	-- Ordinary in-place networking primitives. These do not load code or external content; their
 	-- behavior lives in the Script/LocalScript source Apple writes through edit_script. Refusing
 	-- them made a normal server-authoritative shop impossible to build and also made an existing
@@ -165,6 +205,10 @@ local CREATE_CLASSES = {
 	DepthOfFieldEffect = true,
 	SunRaysEffect = true,
 	SurfaceAppearance = true,
+	-- Existing face textures must round-trip through a checkpoint. Their external content reference
+	-- is still refused on ordinary model writes below; only snapshot/restore passes allowContent.
+	Decal = true,
+	Texture = true,
 }
 
 -- Snapshot restore may re-materialise source that was already in this place.  It still cannot
@@ -176,6 +220,14 @@ end
 RESTORE_CLASSES.Script = true
 RESTORE_CLASSES.LocalScript = true
 RESTORE_CLASSES.ModuleScript = true
+
+-- MeshPart content cannot be reconstructed by assigning MeshId/MeshContent, so it is deliberately
+-- absent from RESTORE_CLASSES. A checkpoint that already contains one stays ineligible. A MeshPart
+-- added after an eligible checkpoint is different: restore may safely remove it because doing so
+-- requires no claim that Apple can recreate its mesh.
+local DELETE_ONLY_CLASSES = {
+	MeshPart = true,
+}
 
 local SCRIPT_CLASSES = {
 	Script = true,
@@ -248,8 +300,17 @@ local PROPERTY_ALLOW = {
 	GeographicLatitude = true,
 	Ambient = true,
 	OutdoorAmbient = true,
-	ExposureCompensation = true,
-	Intensity = true,
+		ExposureCompensation = true,
+		ShadowSoftness = true,
+		GlobalShadows = true,
+		ColorShift_Top = true,
+		ColorShift_Bottom = true,
+		EnvironmentDiffuseScale = true,
+		EnvironmentSpecularScale = true,
+		FogStart = true,
+		FogEnd = true,
+		FogColor = true,
+		Intensity = true,
 	Threshold = true,
 	FocusDistance = true,
 	InFocusRadius = true,
@@ -314,11 +375,179 @@ local PROPERTY_ALLOW = {
 	OutlineTransparency = true,
 	FillColor = true,
 	FillTransparency = true,
+	Image = true,
+	HoverImage = true,
+	PressedImage = true,
+	ImageColor3 = true,
+	ImageTransparency = true,
+	ImageRectOffset = true,
+	ImageRectSize = true,
+	ResampleMode = true,
+	ScaleType = true,
+	SliceCenter = true,
+	SliceScale = true,
+	TileSize = true,
+	GroupColor3 = true,
+	GroupTransparency = true,
+	ActionText = true,
+	ObjectText = true,
+	AutoLocalize = true,
+	ClickablePrompt = true,
+	HoldDuration = true,
+	KeyboardKeyCode = true,
+	GamepadKeyCode = true,
+	MaxActivationDistance = true,
+	MaxIndicatorDistance = true,
+	RequiresLineOfSight = true,
+	Exclusivity = true,
+	Style = true,
+	UIOffset = true,
+	SoundId = true,
+	Looped = true,
+	LoopRegion = true,
+	PlaybackRegion = true,
+	PlaybackRegionsEnabled = true,
+	PlaybackSpeed = true,
+	RollOffMaxDistance = true,
+	RollOffMinDistance = true,
+	RollOffMode = true,
+	Volume = true,
+		SoundGroup = true,
+		AmbientReverb = true,
+		RolloffScale = true,
+		DistanceFactor = true,
+		DopplerScale = true,
+	Attack = true,
+	GainMakeup = true,
+	Ratio = true,
+	Release = true,
+	Level = true,
+	Delay = true,
+	DryLevel = true,
+	Feedback = true,
+	WetLevel = true,
+	HighGain = true,
+	LowGain = true,
+	MidGain = true,
+	Mix = true,
+	Rate = true,
+	Octave = true,
+	DecayTime = true,
+	Diffusion = true,
+	Lifetime = true,
+	LightEmission = true,
+	LightInfluence = true,
+	LockedToPart = true,
+	EmissionDirection = true,
+	Speed = true,
+	SpreadAngle = true,
+	Drag = true,
+	Acceleration = true,
+	RotSpeed = true,
+	TimeScale = true,
+	VelocityInheritance = true,
+	WindAffectsDrag = true,
+	ZOffset = true,
+	FaceCamera = true,
+	CurveSize0 = true,
+	CurveSize1 = true,
+	Segments = true,
+	TextureLength = true,
+	TextureMode = true,
+	TextureSpeed = true,
+	Width0 = true,
+	Width1 = true,
+	MaxLength = true,
+	MinLength = true,
+	WidthScale = true,
+	Heat = true,
+	Opacity = true,
+	RiseVelocity = true,
+	SecondaryColor = true,
+	Adornee = true,
+	PrimaryPart = true,
+	Part0 = true,
+	Part1 = true,
+	Attachment0 = true,
+	Attachment1 = true,
+	LimitsEnabled = true,
+	TwistLimitsEnabled = true,
+	TwistLowerAngle = true,
+	TwistUpperAngle = true,
+	UpperAngle = true,
+	LowerAngle = true,
+	MaxFrictionTorque = true,
+	Radius = true,
+	Restitution = true,
+	ActuatorType = true,
+	AngularActuatorType = true,
+	AngularResponsiveness = true,
+	AngularSpeed = true,
+	AngularVelocity = true,
+	MotorMaxAcceleration = true,
+	MotorMaxAngularAcceleration = true,
+	MotorMaxTorque = true,
+	ServoMaxTorque = true,
+	TargetAngle = true,
+	Length = true,
+	LimitAngle0 = true,
+	LimitAngle1 = true,
+	WinchEnabled = true,
+	WinchForce = true,
+	WinchResponsiveness = true,
+	WinchSpeed = true,
+	WinchTarget = true,
+	Coils = true,
+	Damping = true,
+	FreeLength = true,
+	MaxForce = true,
+	Stiffness = true,
+	ApplyAtCenterOfMass = true,
+	ForceLimitMode = true,
+	ForceRelativeTo = true,
+	MaxAxesForce = true,
+	MaxVelocity = true,
+	Mode = true,
+	ReactionForceEnabled = true,
+	Responsiveness = true,
+	RigidityEnabled = true,
+	AlignType = true,
+	LookAtPosition = true,
+	MaxAngularVelocity = true,
+	MaxTorque = true,
+	PrimaryAxis = true,
+	ReactionTorqueEnabled = true,
+	SecondaryAxis = true,
+	AngularLimitsEnabled = true,
+	AngularRestitution = true,
+	InclinationAngle = true,
+	RotationAxisVisible = true,
+	LimitEnabled = true,
+	MaxAngle = true,
+	InverseSquareLaw = true,
+	Magnitude = true,
+	Force = true,
+	RelativeTo = true,
+	Torque = true,
+	ForceLimitsEnabled = true,
+	LineDirection = true,
+	LineVelocity = true,
+	MaxPlanarAxesForce = true,
+	PlaneVelocity = true,
+	PrimaryTangentAxis = true,
+	SecondaryTangentAxis = true,
+	VectorVelocity = true,
+	VelocityConstraintMode = true,
 	AlphaMode = true,
 	ColorMap = true,
 	MetalnessMap = true,
 	NormalMap = true,
 	RoughnessMap = true,
+	Texture = true,
+	StudsPerTileU = true,
+	StudsPerTileV = true,
+	OffsetStudsU = true,
+	OffsetStudsV = true,
 
 	Value = true,
 }
@@ -353,8 +582,17 @@ local READ_PROPERTIES = {
 	GeographicLatitude = true,
 	Ambient = true,
 	OutdoorAmbient = true,
-	ExposureCompensation = true,
-	Intensity = true,
+		ExposureCompensation = true,
+		ShadowSoftness = true,
+		GlobalShadows = true,
+		ColorShift_Top = true,
+		ColorShift_Bottom = true,
+		EnvironmentDiffuseScale = true,
+		EnvironmentSpecularScale = true,
+		FogStart = true,
+		FogEnd = true,
+		FogColor = true,
+		Intensity = true,
 	Threshold = true,
 	FocusDistance = true,
 	InFocusRadius = true,
@@ -414,11 +652,179 @@ local READ_PROPERTIES = {
 	OutlineTransparency = true,
 	FillColor = true,
 	FillTransparency = true,
+	Image = true,
+	HoverImage = true,
+	PressedImage = true,
+	ImageColor3 = true,
+	ImageTransparency = true,
+	ImageRectOffset = true,
+	ImageRectSize = true,
+	ResampleMode = true,
+	ScaleType = true,
+	SliceCenter = true,
+	SliceScale = true,
+	TileSize = true,
+	GroupColor3 = true,
+	GroupTransparency = true,
+	ActionText = true,
+	ObjectText = true,
+	AutoLocalize = true,
+	ClickablePrompt = true,
+	HoldDuration = true,
+	KeyboardKeyCode = true,
+	GamepadKeyCode = true,
+	MaxActivationDistance = true,
+	MaxIndicatorDistance = true,
+	RequiresLineOfSight = true,
+	Exclusivity = true,
+	Style = true,
+	UIOffset = true,
+	SoundId = true,
+	Looped = true,
+	LoopRegion = true,
+	PlaybackRegion = true,
+	PlaybackRegionsEnabled = true,
+	PlaybackSpeed = true,
+	RollOffMaxDistance = true,
+	RollOffMinDistance = true,
+	RollOffMode = true,
+	Volume = true,
+		SoundGroup = true,
+		AmbientReverb = true,
+		RolloffScale = true,
+		DistanceFactor = true,
+		DopplerScale = true,
+	Attack = true,
+	GainMakeup = true,
+	Ratio = true,
+	Release = true,
+	Level = true,
+	Delay = true,
+	DryLevel = true,
+	Feedback = true,
+	WetLevel = true,
+	HighGain = true,
+	LowGain = true,
+	MidGain = true,
+	Mix = true,
+	Rate = true,
+	Octave = true,
+	DecayTime = true,
+	Diffusion = true,
+	Lifetime = true,
+	LightEmission = true,
+	LightInfluence = true,
+	LockedToPart = true,
+	EmissionDirection = true,
+	Speed = true,
+	SpreadAngle = true,
+	Drag = true,
+	Acceleration = true,
+	RotSpeed = true,
+	TimeScale = true,
+	VelocityInheritance = true,
+	WindAffectsDrag = true,
+	ZOffset = true,
+	FaceCamera = true,
+	CurveSize0 = true,
+	CurveSize1 = true,
+	Segments = true,
+	TextureLength = true,
+	TextureMode = true,
+	TextureSpeed = true,
+	Width0 = true,
+	Width1 = true,
+	MaxLength = true,
+	MinLength = true,
+	WidthScale = true,
+	Heat = true,
+	Opacity = true,
+	RiseVelocity = true,
+	SecondaryColor = true,
+	Adornee = true,
+	PrimaryPart = true,
+	Part0 = true,
+	Part1 = true,
+	Attachment0 = true,
+	Attachment1 = true,
+	LimitsEnabled = true,
+	TwistLimitsEnabled = true,
+	TwistLowerAngle = true,
+	TwistUpperAngle = true,
+	UpperAngle = true,
+	LowerAngle = true,
+	MaxFrictionTorque = true,
+	Radius = true,
+	Restitution = true,
+	ActuatorType = true,
+	AngularActuatorType = true,
+	AngularResponsiveness = true,
+	AngularSpeed = true,
+	AngularVelocity = true,
+	MotorMaxAcceleration = true,
+	MotorMaxAngularAcceleration = true,
+	MotorMaxTorque = true,
+	ServoMaxTorque = true,
+	TargetAngle = true,
+	Length = true,
+	LimitAngle0 = true,
+	LimitAngle1 = true,
+	WinchEnabled = true,
+	WinchForce = true,
+	WinchResponsiveness = true,
+	WinchSpeed = true,
+	WinchTarget = true,
+	Coils = true,
+	Damping = true,
+	FreeLength = true,
+	MaxForce = true,
+	Stiffness = true,
+	ApplyAtCenterOfMass = true,
+	ForceLimitMode = true,
+	ForceRelativeTo = true,
+	MaxAxesForce = true,
+	MaxVelocity = true,
+	Mode = true,
+	ReactionForceEnabled = true,
+	Responsiveness = true,
+	RigidityEnabled = true,
+	AlignType = true,
+	LookAtPosition = true,
+	MaxAngularVelocity = true,
+	MaxTorque = true,
+	PrimaryAxis = true,
+	ReactionTorqueEnabled = true,
+	SecondaryAxis = true,
+	AngularLimitsEnabled = true,
+	AngularRestitution = true,
+	InclinationAngle = true,
+	RotationAxisVisible = true,
+	LimitEnabled = true,
+	MaxAngle = true,
+	InverseSquareLaw = true,
+	Magnitude = true,
+	Force = true,
+	RelativeTo = true,
+	Torque = true,
+	ForceLimitsEnabled = true,
+	LineDirection = true,
+	LineVelocity = true,
+	MaxPlanarAxesForce = true,
+	PlaneVelocity = true,
+	PrimaryTangentAxis = true,
+	SecondaryTangentAxis = true,
+	VectorVelocity = true,
+	VelocityConstraintMode = true,
 	AlphaMode = true,
 	ColorMap = true,
 	MetalnessMap = true,
 	NormalMap = true,
 	RoughnessMap = true,
+	Texture = true,
+	StudsPerTileU = true,
+	StudsPerTileV = true,
+	OffsetStudsU = true,
+	OffsetStudsV = true,
 	Value = true,
 }
 
@@ -473,6 +879,36 @@ local ENUM_ALLOW = {
 	SurfaceGuiShape = true,
 	BorderMode = true,
 	AlphaMode = true,
+	KeyCode = true,
+	ProximityPromptExclusivity = true,
+	ProximityPromptStyle = true,
+	ResamplerMode = true,
+		ScaleType = true,
+		RollOffMode = true,
+		ReverbType = true,
+		TextureMode = true,
+	ParticleOrientation = true,
+	ParticleEmitterShape = true,
+	ParticleEmitterShapeInOut = true,
+	ParticleEmitterShapeStyle = true,
+	ActuatorType = true,
+	ForceLimitMode = true,
+	ActuatorRelativeTo = true,
+	PositionAlignmentMode = true,
+	AlignType = true,
+	OrientationAlignmentMode = true,
+	VelocityConstraintMode = true,
+}
+
+local INSTANCE_REF_PROPERTY = {
+	Attachment0 = true,
+	Attachment1 = true,
+	Part0 = true,
+	Part1 = true,
+	Adornee = true,
+	PrimaryPart = true,
+	SoundGroup = true,
+	Value = true,
 }
 
 local function nowSeconds(): number
@@ -795,7 +1231,7 @@ local function enumValue(enumText: string): (any?, string?)
 	return item
 end
 
-local function decodeValue(value: any, label: string, allowInstance: boolean?): (any?, string?)
+local function decodeValue(value: any, label: string, allowInstance: boolean?, gameRef: any?, services: any?): (any?, string?)
 	if type(value) ~= "table" or type(value.t) ~= "string" then return nil, ("%s must be a typed property value"):format(label) end
 	local t = value.t
 	if t == "nil" then
@@ -863,13 +1299,51 @@ local function decodeValue(value: any, label: string, allowInstance: boolean?): 
 		local ok, result = pcall(function() return BrickColor.new(text) end)
 		if not ok then return nil, ("%s is not a valid BrickColor"):format(label) end
 		return result
+	elseif t == "NumberSequence" then
+		if type(value.v) ~= "table" then return nil, label .. " must be a NumberSequence keypoint array" end
+		local count = #value.v
+		if count < 2 or count > MAX_SEQUENCE_KEYPOINTS then return nil, ("%s must have 2-%d keypoints"):format(label, MAX_SEQUENCE_KEYPOINTS) end
+		local keypoints = {}
+		for index = 1, count do
+			local row = value.v[index]
+			if type(row) ~= "table" or not finite(row[1]) or not finite(row[2]) or not finite(row[3]) then return nil, ("%s[%d] is not a finite NumberSequence keypoint"):format(label, index) end
+			if row[1] < 0 or row[1] > 1 or row[3] < 0 then return nil, ("%s[%d] has an invalid time or envelope"):format(label, index) end
+			if index > 1 and row[1] < value.v[index - 1][1] then return nil, label .. " keypoint times must be ordered" end
+			local ok, keypoint = pcall(function() return NumberSequenceKeypoint.new(row[1], row[2], row[3]) end)
+			if not ok then return nil, ("%s[%d] could not be constructed"):format(label, index) end
+			table.insert(keypoints, keypoint)
+		end
+		local ok, result = pcall(function() return NumberSequence.new(keypoints) end)
+		if not ok then return nil, label .. " could not be constructed" end
+		return result
+	elseif t == "ColorSequence" then
+		if type(value.v) ~= "table" then return nil, label .. " must be a ColorSequence keypoint array" end
+		local count = #value.v
+		if count < 2 or count > MAX_SEQUENCE_KEYPOINTS then return nil, ("%s must have 2-%d keypoints"):format(label, MAX_SEQUENCE_KEYPOINTS) end
+		local keypoints = {}
+		for index = 1, count do
+			local row = value.v[index]
+			local rgb = type(row) == "table" and row[2] or nil
+			local validRgb = type(rgb) == "table" and finite(rgb[1]) and finite(rgb[2]) and finite(rgb[3])
+			if type(row) ~= "table" or not finite(row[1]) or not validRgb then return nil, ("%s[%d] is not a finite ColorSequence keypoint"):format(label, index) end
+			if row[1] < 0 or row[1] > 1 then return nil, ("%s[%d] time must be 0..1"):format(label, index) end
+			for channel = 1, 3 do if rgb[channel] < 0 or rgb[channel] > 1 then return nil, ("%s[%d] color channels must be 0..1"):format(label, index) end end
+			if index > 1 and row[1] < value.v[index - 1][1] then return nil, label .. " keypoint times must be ordered" end
+			local ok, keypoint = pcall(function() return ColorSequenceKeypoint.new(row[1], Color3.new(rgb[1], rgb[2], rgb[3])) end)
+			if not ok then return nil, ("%s[%d] could not be constructed"):format(label, index) end
+			table.insert(keypoints, keypoint)
+		end
+		local ok, result = pcall(function() return ColorSequence.new(keypoints) end)
+		if not ok then return nil, label .. " could not be constructed" end
+		return result
 	elseif t == "EnumItem" then
 		local text, err = safeText(value.v, 100, label)
 		if not text then return nil, err end
 		return enumValue(text)
 	elseif t == "Instance" then
 		if not allowInstance then return nil, ("%s may not reference an instance"):format(label) end
-		local ref, _, resolveErr = resolvePath(nil, nil, value.v, false)
+		if gameRef == nil then return nil, ("%s cannot resolve an instance reference without a DataModel"):format(label) end
+		local ref, _, resolveErr = resolvePath(gameRef, services, value.v, false)
 		if not ref then return nil, resolveErr or (label .. " reference was not found") end
 		return ref
 	elseif t == "Content" then
@@ -918,6 +1392,25 @@ local function encodeValue(value: any, gameRef: any, label: string): (any?, stri
 		return { t = "UDim", v = { value.Scale, value.Offset } }
 	elseif kind == "BrickColor" then
 		return { t = "BrickColor", v = tostring(value) }
+	elseif kind == "NumberSequence" then
+		local keypoints = value.Keypoints
+		if type(keypoints) ~= "table" or #keypoints < 2 or #keypoints > MAX_SEQUENCE_KEYPOINTS then return nil, label .. " has an unsupported NumberSequence size" end
+		local out = {}
+		for index, keypoint in keypoints do
+			if not finite(keypoint.Time) or not finite(keypoint.Value) or not finite(keypoint.Envelope) then return nil, label .. " is non-finite" end
+			out[index] = { keypoint.Time, keypoint.Value, keypoint.Envelope }
+		end
+		return { t = "NumberSequence", v = out }
+	elseif kind == "ColorSequence" then
+		local keypoints = value.Keypoints
+		if type(keypoints) ~= "table" or #keypoints < 2 or #keypoints > MAX_SEQUENCE_KEYPOINTS then return nil, label .. " has an unsupported ColorSequence size" end
+		local out = {}
+		for index, keypoint in keypoints do
+			local color = keypoint.Value
+			if not finite(keypoint.Time) or not color or not finite(color.R) or not finite(color.G) or not finite(color.B) then return nil, label .. " is non-finite" end
+			out[index] = { keypoint.Time, { color.R, color.G, color.B } }
+		end
+		return { t = "ColorSequence", v = out }
 	elseif kind == "EnumItem" then
 		return { t = "EnumItem", v = tostring(value) }
 	elseif kind == "Instance" then
@@ -1059,7 +1552,7 @@ local function validatePropertyName(property: any, allowContent: boolean?): (str
 	return name
 end
 
-local function validateProps(props: any, label: string, allowInstance: boolean?, allowContent: boolean?): ({ [string]: any }?, { [string]: any }?, string?)
+local function validateProps(props: any, label: string, allowInstance: boolean?, allowContent: boolean?, gameRef: any?, services: any?): ({ [string]: any }?, { [string]: any }?, string?)
 	if props == nil then return {} end
 	if type(props) ~= "table" then return nil, nil, label .. " must be an object" end
 	local decoded = {}
@@ -1070,7 +1563,8 @@ local function validateProps(props: any, label: string, allowInstance: boolean?,
 		if count > MAX_PROPS then return nil, nil, label .. " exceeds the property limit" end
 		local valid, nameErr = validatePropertyName(property, allowContent)
 		if not valid then return nil, nil, nameErr end
-		local value, valueErr = decodeValue(typed, label .. "." .. valid, allowInstance)
+		local mayReferenceInstance = allowInstance == true and INSTANCE_REF_PROPERTY[valid] == true
+		local value, valueErr = decodeValue(typed, label .. "." .. valid, mayReferenceInstance, gameRef, services)
 		if valueErr then return nil, nil, valueErr end
 		decoded[valid] = value
 		encoded[valid] = typed
@@ -1095,8 +1589,8 @@ local function validateAttributes(attrs: any, label: string): ({ [string]: any }
 	return decoded
 end
 
-local function setProperties(inst: any, props: any, attrs: any, label: string): ({ string }?, string?)
-	local decodedProps, _, propErr = validateProps(props, label .. ".props", false)
+local function setProperties(self: any, inst: any, props: any, attrs: any, label: string): ({ string }?, string?)
+	local decodedProps, _, propErr = validateProps(props, label .. ".props", true, false, self.game, self.options.services)
 	if propErr then return nil, propErr end
 	local decodedAttrs, attrErr = validateAttributes(attrs, label .. ".attributes")
 	if attrErr then return nil, attrErr end
@@ -1440,7 +1934,7 @@ local function buildSpec(options: any, gameRef: any, spec: any, parentOverride: 
 	elseif not classAllowedForParent(parent, className) then
 		return nil, "class is not allowed in that parent"
 	end
-	local props, _, propErr = validateProps(spec.props, "instance props", false)
+	local props, _, propErr = validateProps(spec.props, "instance props", true, false, gameRef, options.services)
 	if propErr then return nil, propErr end
 	local attrs, attrErr = validateAttributes(spec.attributes, "instance attributes")
 	if attrErr then return nil, attrErr end
@@ -1474,7 +1968,7 @@ local function buildSpec(options: any, gameRef: any, spec: any, parentOverride: 
 	return inst
 end
 
-local function validateCreateSpec(spec: any, depth: number, state: any, nested: boolean): (string?, string?)
+local function validateCreateSpec(options: any, gameRef: any, spec: any, depth: number, state: any, nested: boolean): (string?, string?)
 	if type(spec) ~= "table" then return "instance spec must be an object", "invalid" end
 	if depth > MAX_SNAPSHOT_DEPTH then return "instance spec is too deeply nested", "invalid" end
 	state.nodes += 1
@@ -1488,7 +1982,7 @@ local function validateCreateSpec(spec: any, depth: number, state: any, nested: 
 	if not CREATE_CLASSES[className] then return ("class %s is not in Apple's create allowlist"):format(className), "refused" end
 	local name, nameErr = safeName(spec.name or className, "instance name")
 	if not name then return nameErr, "invalid" end
-	local _, _, propErr = validateProps(spec.props, "instance props", false)
+	local _, _, propErr = validateProps(spec.props, "instance props", true, false, gameRef, options.services)
 	if propErr then return propErr, "invalid" end
 	local _, attrErr = validateAttributes(spec.attributes, "instance attributes")
 	if attrErr then return attrErr, "invalid" end
@@ -1513,7 +2007,7 @@ local function validateCreateSpec(spec: any, depth: number, state: any, nested: 
 		if not childName then return childNameErr, "invalid" end
 		if names[childName] then return ("two nested children are named %s"):format(childName), "conflict" end
 		names[childName] = true
-		local childErr, childKind = validateCreateSpec(child, depth + 1, state, true)
+		local childErr, childKind = validateCreateSpec(options, gameRef, child, depth + 1, state, true)
 		if childErr then return childErr, childKind end
 	end
 	return nil
@@ -1532,7 +2026,7 @@ local function validateCreateItems(options: any, gameRef: any, items: any): (str
 	local reserved = {}
 	for index = 1, count do
 		local spec = items[index]
-		local specErr, specKind = validateCreateSpec(spec, 0, state, false)
+		local specErr, specKind = validateCreateSpec(options, gameRef, spec, 0, state, false)
 		if specErr then return specErr, specKind end
 		local parentPath = spec.parent
 		local parent, canonicalParent, parentErr, parentKind, parentRemedy = resolvePath(gameRef, options.services, parentPath, true)
@@ -1872,7 +2366,7 @@ local function snapshotDataModel(self: any, state: any): (any?, string?)
 	return node
 end
 
-local function validateSnapshotNode(node: any, depth: number, parentClass: string?, rootClass: string?, stats: any): string?
+local function validateSnapshotNode(self: any, node: any, depth: number, parentClass: string?, rootClass: string?, stats: any): string?
 	if type(node) ~= "table" then return "snapshot node must be an object" end
 	local depthAllowance = if rootClass == "DataModel" then 1 else 0
 	if depth > MAX_SNAPSHOT_DEPTH + depthAllowance then return "snapshot is too deeply nested" end
@@ -1903,7 +2397,7 @@ local function validateSnapshotNode(node: any, depth: number, parentClass: strin
 	if not name then return nameErr end
 	if dataModel and name ~= "game" then return "DataModel snapshot root must be named game" end
 	if (serviceClass or protectedContainer) and name ~= className then return "protected snapshot identity has an unexpected name" end
-	local _, _, propErr = validateProps(node.props, "snapshot props", false, true)
+	local _, _, propErr = validateProps(node.props, "snapshot props", true, true, self.game, self.options.services)
 	if propErr then return propErr end
 	local _, attrErr = validateAttributes(node.attributes, "snapshot attributes")
 	if attrErr then return attrErr end
@@ -1943,7 +2437,7 @@ local function validateSnapshotNode(node: any, depth: number, parentClass: strin
 			if seenServices[childClass] then return "whole-place snapshot contains a duplicate service" end
 			seenServices[childClass] = true
 		end
-		local childErr = validateSnapshotNode(child, depth + 1, className, effectiveRoot, stats)
+		local childErr = validateSnapshotNode(self, child, depth + 1, className, effectiveRoot, stats)
 		if childErr then return childErr end
 	end
 	if dataModel then
@@ -1962,13 +2456,18 @@ local function sourceWrite(editor: any, inst: any, callback: (string) -> string)
 end
 
 local function applySnapshotState(self: any, inst: any, node: any, state: any, expectEmptySource: boolean?): string?
-	local props, _, propErr = validateProps(node.props, "snapshot props", false, true)
+	local props, _, propErr = validateProps(node.props, "snapshot props", true, true, self.game, self.options.services)
 	if propErr then return propErr end
 	local attrs, attrErr = validateAttributes(node.attributes, "snapshot attributes")
 	if attrErr then return attrErr end
 	for property, value in props do
-		local ok, err = pcall(function() inst[property] = value end)
-		if not ok then return ("could not restore %s: %s"):format(property, tostring(err)) end
+		local typed = node.props[property]
+		if type(typed) == "table" and typed.t == "Instance" then
+			table.insert(state.pendingRefs, { inst = inst, property = property, typed = typed })
+		else
+			local ok, err = pcall(function() inst[property] = value end)
+			if not ok then return ("could not restore %s: %s"):format(property, tostring(err)) end
+		end
 	end
 	local okCurrent, currentAttrs = pcall(function() return inst:GetAttributes() end)
 	if not okCurrent or type(currentAttrs) ~= "table" then return "could not read current attributes before restore" end
@@ -2021,7 +2520,7 @@ local function clearRestoreRoot(self: any, root: any): string?
 		local preserve = engineOwnedSnapshotPreserve(self, child)
 		local protectedContainer = protectedContainerIdentity(child)
 		if not preserve and not protectedContainer then
-			if not RESTORE_CLASSES[className] then return "restore would have to delete an unsupported instance class" end
+			if not RESTORE_CLASSES[className] and not DELETE_ONLY_CLASSES[className] then return "restore would have to delete an unsupported instance class" end
 			-- Destroy locks Parent and makes the instance impossible for ChangeHistory to restore.
 			-- Studio's undoable deletion model reparents to nil; the recording retains the instance
 			-- so Commit can be undone and Cancel can put the exact pre-restore object back.
@@ -2041,7 +2540,8 @@ local function preflightDeletable(node: any, depth: number): string?
 		if SNAPSHOT_PRESERVE_CLASSES[className] or PROTECTED_CONTAINER_CLASSES[className] then
 			return "restore would delete protected Studio content nested inside a recreatable instance"
 		end
-		if not RESTORE_CLASSES[className] then return "restore would delete an unsupported current instance class: " .. className end
+		if not RESTORE_CLASSES[className] and not DELETE_ONLY_CLASSES[className] then return "restore would delete an unsupported current instance class: " .. className end
+		if DELETE_ONLY_CLASSES[className] then continue end
 		local childErr = preflightDeletable(child, depth + 1)
 		if childErr then return childErr end
 	end
@@ -2083,6 +2583,9 @@ local function preflightExisting(self: any, current: any, node: any, protectedPa
 		elseif RESTORE_CLASSES[className] then
 			local nestedErr = preflightDeletable(child, 0)
 			if nestedErr then return nestedErr end
+		elseif DELETE_ONLY_CLASSES[className] then
+			-- An admitted checkpoint cannot contain this class, so seeing it now proves it was added
+			-- after the checkpoint. It may be removed without implying Apple could ever recreate it.
 		else
 			return "restore encountered unsupported current content before mutation: " .. className
 		end
@@ -2115,6 +2618,19 @@ local function restoreExisting(self: any, current: any, node: any, state: any): 
 	return nil
 end
 
+-- WHY THIS REGION IS A `do` BLOCK.
+--
+-- Luau allows 200 live locals per function, and the top level of a module is a function. Roblox
+-- Studio compiles plugin scripts WITHOUT constant folding (the equivalent of luau-compile -O0), so
+-- every top-level `local` - constants included - costs a register. On 2026-09-22 the 1.1.0 build
+-- passed every repository check and then refused to load in real Studio with:
+--   Commands:4672: Out of local registers when trying to allocate capabilityReason: exceeded limit 200
+-- The handlers and their private helpers are therefore scoped inside this block; only the names
+-- declared here are used after it. apps/apple-plugin/tests/studio-compile.test.mjs compiles every
+-- source at -O0 so the limit is caught before Studio ever sees it.
+local HANDLERS, prepareRestore, applyRestore, failureResult, errorParts
+local loadGenerationAdapter, loadRenderAdapter, loadStudioCaptureAdapter, runGeneration, runModeState
+do
 local function opPing(): any
 	return { pong = true }
 end
@@ -2526,9 +3042,156 @@ local function handleSetProps(self: any, op: any): (any?, string?, string?, stri
 	if not inst then return nil, pathKind or "not_found", err, pathRemedy end
 	if not writableTarget(self.game, inst) then return nil, "refused", "target is outside Apple's place scope", "choose_allowed_target" end
 	if op.props == nil and op.attributes == nil then return nil, "invalid", "set_props needs props or attributes" end
-	local set, setErr = setProperties(inst, op.props, op.attributes, "set_props")
+	local set, setErr = setProperties(self, inst, op.props, op.attributes, "set_props")
 	if not set then return nil, "invalid", setErr end
 	return { path = canonical, set = set }, nil
+end
+
+local handleTerrainEdit
+do
+local function terrainVector(value: any, label: string): (any?, string?)
+	local valid, err = arrayShape(value, 3, label)
+	if not valid then return nil, err end
+	for index = 1, 3 do
+		if math.abs(value[index]) > MAX_TRANSLATION then return nil, label .. " exceeds the world-coordinate limit" end
+	end
+	local ok, vector = pcall(function() return Vector3.new(value[1], value[2], value[3]) end)
+	if not ok then return nil, label .. " could not be constructed" end
+	return vector
+end
+
+local function terrainMaterial(value: any, label: string): (any?, string?)
+	local text, err = safeText(value, 100, label)
+	if not text then return nil, err end
+	if string.match(text, "^Enum%.Material%.[A-Za-z][A-Za-z0-9_]*$") == nil then return nil, label .. " must be an Enum.Material value" end
+	return enumValue(text)
+end
+
+local function terrainCellBudget(size: any): (number?, string?)
+	local x = math.max(1, math.ceil(math.abs(size.X) / TERRAIN_RESOLUTION))
+	local y = math.max(1, math.ceil(math.abs(size.Y) / TERRAIN_RESOLUTION))
+	local z = math.max(1, math.ceil(math.abs(size.Z) / TERRAIN_RESOLUTION))
+	local cells = x * y * z
+	if cells > MAX_TERRAIN_VOXELS then return nil, ("terrain edit spans %d voxels; limit is %d"):format(cells, MAX_TERRAIN_VOXELS) end
+	return cells
+end
+
+local function terrainRegion(minimum: any, maximum: any): (any?, any?, string?)
+	local lo, loErr = terrainVector(minimum, "terrain min")
+	if not lo then return nil, nil, loErr end
+	local hi, hiErr = terrainVector(maximum, "terrain max")
+	if not hi then return nil, nil, hiErr end
+	if hi.X <= lo.X or hi.Y <= lo.Y or hi.Z <= lo.Z then return nil, nil, "terrain max must be greater than min on every axis" end
+	local size = hi - lo
+	-- ExpandToGrid can grow each axis to the surrounding 4-stud boundaries. Budget the worst-case
+	-- two extra cells per axis before constructing it so the 65,536-cell ceiling remains real after
+	-- alignment rather than being an estimate made on the pre-expanded box.
+	local _, budgetErr = terrainCellBudget(size + Vector3.new(TERRAIN_RESOLUTION * 2, TERRAIN_RESOLUTION * 2, TERRAIN_RESOLUTION * 2))
+	if budgetErr then return nil, nil, budgetErr end
+	local ok, region = pcall(function() return Region3.new(lo, hi):ExpandToGrid(TERRAIN_RESOLUTION) end)
+	if not ok or not region then return nil, nil, "terrain region could not be constructed" end
+	return region, size
+end
+
+local function terrainObject(self: any): (any?, string?)
+	local workspaceService = serviceFrom(self.game, self.options.services, "Workspace")
+	if not workspaceService then return nil, "Workspace is unavailable" end
+	local ok, terrain = pcall(function() return workspaceService:FindFirstChild("Terrain") end)
+	if not ok or not terrain or classNameOf(terrain) ~= "Terrain" then return nil, "Workspace Terrain is unavailable" end
+	return terrain
+end
+
+function handleTerrainEdit(self: any, op: any): (any?, string?, string?)
+	local terrain, terrainErr = terrainObject(self)
+	if not terrain then return nil, "refused", terrainErr end
+	local action, actionErr = safeText(op.action, 40, "terrain_edit.action")
+	if not action then return nil, "invalid", actionErr end
+
+	if action == "fill_block" then
+		local center, centerErr = terrainVector(op.center, "terrain center")
+		if not center then return nil, "invalid", centerErr end
+		local size, sizeErr = terrainVector(op.size, "terrain size")
+		if not size then return nil, "invalid", sizeErr end
+		if size.X <= 0 or size.Y <= 0 or size.Z <= 0 then return nil, "invalid", "terrain size must be positive on every axis" end
+		local cells, budgetErr = terrainCellBudget(size)
+		if not cells then return nil, "invalid", budgetErr end
+		local material, materialErr = terrainMaterial(op.material, "terrain material")
+		if not material then return nil, "invalid", materialErr end
+		local ok, err = pcall(function() terrain:FillBlock(CFrame.new(center), size, material) end)
+		if not ok then return nil, "internal", "Studio refused terrain FillBlock: " .. tostring(err) end
+		return { action = action, voxelsBound = cells, resolution = TERRAIN_RESOLUTION }, nil
+	elseif action == "fill_ball" then
+		local center, centerErr = terrainVector(op.center, "terrain center")
+		if not center then return nil, "invalid", centerErr end
+		if not finite(op.radius) or op.radius <= 0 or op.radius > 4096 then return nil, "invalid", "terrain radius must be > 0 and <= 4096" end
+		local diameter = op.radius * 2
+		local cells, budgetErr = terrainCellBudget(Vector3.new(diameter, diameter, diameter))
+		if not cells then return nil, "invalid", budgetErr end
+		local material, materialErr = terrainMaterial(op.material, "terrain material")
+		if not material then return nil, "invalid", materialErr end
+		local ok, err = pcall(function() terrain:FillBall(center, op.radius, material) end)
+		if not ok then return nil, "internal", "Studio refused terrain FillBall: " .. tostring(err) end
+		return { action = action, voxelsBound = cells, resolution = TERRAIN_RESOLUTION }, nil
+	elseif action == "fill_region" or action == "replace_material" then
+		local region, size, regionErr = terrainRegion(op.min, op.max)
+		if not region then return nil, "invalid", regionErr end
+		local cells = terrainCellBudget(size)
+		if action == "fill_region" then
+			local material, materialErr = terrainMaterial(op.material, "terrain material")
+			if not material then return nil, "invalid", materialErr end
+			local ok, err = pcall(function() terrain:FillRegion(region, TERRAIN_RESOLUTION, material) end)
+			if not ok then return nil, "internal", "Studio refused terrain FillRegion: " .. tostring(err) end
+		else
+			local source, sourceErr = terrainMaterial(op.sourceMaterial, "terrain sourceMaterial")
+			if not source then return nil, "invalid", sourceErr end
+			local target, targetErr = terrainMaterial(op.targetMaterial, "terrain targetMaterial")
+			if not target then return nil, "invalid", targetErr end
+			local ok, err = pcall(function() terrain:ReplaceMaterial(region, TERRAIN_RESOLUTION, source, target) end)
+			if not ok then return nil, "internal", "Studio refused terrain ReplaceMaterial: " .. tostring(err) end
+		end
+		return { action = action, voxelsBound = cells, resolution = TERRAIN_RESOLUTION }, nil
+	elseif action == "write_voxels" then
+		local origin, originErr = terrainVector(op.origin, "terrain origin")
+		if not origin then return nil, "invalid", originErr end
+		if origin.X % TERRAIN_RESOLUTION ~= 0 or origin.Y % TERRAIN_RESOLUTION ~= 0 or origin.Z % TERRAIN_RESOLUTION ~= 0 then
+			return nil, "invalid", "terrain voxel origin must align to the 4-stud voxel grid"
+		end
+		if type(op.dimensions) ~= "table" or #op.dimensions ~= 3 then return nil, "invalid", "terrain dimensions must be [x,y,z]" end
+		local dx, dy, dz = op.dimensions[1], op.dimensions[2], op.dimensions[3]
+		if not integer(dx) or not integer(dy) or not integer(dz) or dx < 1 or dy < 1 or dz < 1 or dx > 64 or dy > 64 or dz > 64 then
+			return nil, "invalid", "terrain voxel dimensions must be whole numbers from 1 to 64"
+		end
+		local count = dx * dy * dz
+		if count > MAX_TERRAIN_VOXELS then return nil, "invalid", "terrain voxel payload exceeds the bounded cell limit" end
+		if type(op.voxels) ~= "table" or #op.voxels ~= count then return nil, "invalid", "terrain voxels length must exactly match dimensions" end
+		local materials, occupancy = {}, {}
+		local cursor = 1
+		for x = 1, dx do
+			materials[x], occupancy[x] = {}, {}
+			for y = 1, dy do
+				materials[x][y], occupancy[x][y] = {}, {}
+				for z = 1, dz do
+					local cell = op.voxels[cursor]
+					if type(cell) ~= "table" then return nil, "invalid", ("terrain voxels[%d] must be an object"):format(cursor) end
+					local material, materialErr = terrainMaterial(cell.material, ("terrain voxels[%d].material"):format(cursor))
+					if not material then return nil, "invalid", materialErr end
+					if not finite(cell.occupancy) or cell.occupancy < 0 or cell.occupancy > 1 then return nil, "invalid", ("terrain voxels[%d].occupancy must be 0..1"):format(cursor) end
+					materials[x][y][z] = material
+					occupancy[x][y][z] = cell.occupancy
+					cursor += 1
+				end
+			end
+		end
+		local extent = Vector3.new(dx * TERRAIN_RESOLUTION, dy * TERRAIN_RESOLUTION, dz * TERRAIN_RESOLUTION)
+		local okRegion, region = pcall(function() return Region3.new(origin, origin + extent) end)
+		if not okRegion or not region then return nil, "invalid", "terrain voxel region could not be constructed" end
+		local ok, err = pcall(function() terrain:WriteVoxels(region, TERRAIN_RESOLUTION, materials, occupancy) end)
+		if not ok then return nil, "internal", "Studio refused terrain WriteVoxels: " .. tostring(err) end
+		return { action = action, voxelsWritten = count, resolution = TERRAIN_RESOLUTION }, nil
+	end
+
+	return nil, "invalid", "terrain_edit.action must be fill_block, fill_ball, fill_region, replace_material or write_voxels"
+end
 end
 
 local function handleDelete(self: any, op: any): (any?, string?, string?, string?)
@@ -3046,6 +3709,7 @@ local function handleSnapshot(self: any, op: any): (any?, string?, string?)
 	}, nil
 end
 
+do
 local function restoreCheckpointIdentity(value: any, label: string): (string?, string?)
 	local checkpointId, err = safeText(value, 128, label)
 	if not checkpointId then return nil, err end
@@ -3111,7 +3775,7 @@ local function validateProtectedManifest(self: any, root: any, manifest: any): (
 	return paths
 end
 
-local function prepareRestore(self: any, op: any): (any?, string?, string?, string?)
+function prepareRestore(self: any, op: any): (any?, string?, string?, string?)
 	local root, canonical, err, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.root, true)
 	if not root then return nil, pathKind or "not_found", err, pathRemedy end
 	if root ~= self.game and not writableTarget(self.game, root) then return nil, "refused", "restore root is outside Apple's place scope", "choose_allowed_target" end
@@ -3140,7 +3804,7 @@ local function prepareRestore(self: any, op: any): (any?, string?, string?, stri
 	if type(op.snapshot.skipped) ~= "table" or next(op.snapshot.skipped) ~= nil then return nil, "invalid", "snapshot omitted unsupported authored content" end
 	local rootNode = op.snapshot.node
 	local stats = { nodes = 0, instances = 0, scripts = 0, sourceChars = 0 }
-	local nodeErr = validateSnapshotNode(rootNode, 0, nil, nil, stats)
+	local nodeErr = validateSnapshotNode(self, rootNode, 0, nil, nil, stats)
 	if nodeErr then return nil, "invalid", nodeErr end
 	for field, observed in { nodeCount = stats.nodes, instanceCount = stats.instances, scriptCount = stats.scripts, sourceChars = stats.sourceChars } do
 		if not integer(op.snapshot[field]) or op.snapshot[field] ~= observed then return nil, "invalid", "snapshot " .. field .. " does not match its payload" end
@@ -3168,9 +3832,10 @@ local function prepareRestore(self: any, op: any): (any?, string?, string?, stri
 		checkpointId = checkpointId,
 	}
 end
+end
 
-local function applyRestore(self: any, plan: any): (any?, string?, string?)
-	local state = { created = {}, instancesCreated = 0, scriptsRestored = 0 }
+function applyRestore(self: any, plan: any): (any?, string?, string?)
+	local state = { created = {}, instancesCreated = 0, scriptsRestored = 0, pendingRefs = {} }
 	local root = plan.root
 	local rootNode = plan.rootNode
 	if root == self.game then
@@ -3183,6 +3848,12 @@ local function applyRestore(self: any, plan: any): (any?, string?, string?)
 	else
 		local restoreErr = restoreExisting(self, root, rootNode, state)
 		if restoreErr then return nil, "internal", restoreErr end
+	end
+	for _, pending in state.pendingRefs do
+		local value, valueErr = decodeValue(pending.typed, "snapshot props." .. pending.property, true, self.game, self.options.services)
+		if valueErr then return nil, "internal", "could not resolve restored " .. pending.property .. ": " .. valueErr end
+		local ok, setErr = pcall(function() pending.inst[pending.property] = value end)
+		if not ok then return nil, "internal", ("could not restore %s: %s"):format(pending.property, tostring(setErr)) end
 	end
 	if state.scriptsRestored ~= plan.snapshot.scriptCount then return nil, "internal", "restore script count did not match the checkpoint" end
 	return {
@@ -3208,7 +3879,7 @@ end
 -- never mentioned the button two inches from the refusal. A refusal that names no remedy is an
 -- invitation to invent one. Optional, because most failures are not refusals; omitted reads as
 -- "unknown" on the worker side, never as "there is nothing to do".
-local function failureResult(id: string, kind: string, message: string, started: number, remedy: string?): any
+function failureResult(id: string, kind: string, message: string, started: number, remedy: string?): any
 	return {
 		id = id,
 		ok = false,
@@ -3219,12 +3890,12 @@ local function failureResult(id: string, kind: string, message: string, started:
 	}
 end
 
-local function errorParts(err: any): (string, string)
+function errorParts(err: any): (string, string)
 	if type(err) == "table" and type(err.kind) == "string" and type(err.message) == "string" then return err.kind, err.message end
 	return "internal", tostring(err)
 end
 
-local function loadGenerationAdapter(options: any, gameRef: any): (any?, string?)
+function loadGenerationAdapter(options: any, gameRef: any): (any?, string?)
 	if options.generation ~= nil then
 		if type(options.generation) ~= "table" or type(options.generation.generate) ~= "function" then
 			return nil, "the injected GenerationService adapter is malformed"
@@ -3249,11 +3920,11 @@ end
 --[[
 	THE RENDERER IS LOADED THE SAME WAY THE GENERATION ADAPTER IS, AND FOR THE SAME REASON.
 
-	`render_view` is the only operation that returns PIXELS, and the worker's whole visual gate —
-	`render_view`, `compose_thumbnail`, `inspect_visually` and the automatic critique in SessionDO —
-	stands on it. Studio gives a plugin no viewport readback at all (ThumbnailGenerator is not a
-	valid service and CaptureService's callback never fires in edit mode, both measured against live
-	Studio), so a software rasteriser is the only way those pixels exist.
+		`render_view` is the visual operation the worker's critique path stands on. StudioCaptureService
+		now provides a native PNG of the ACTIVE 3D viewport when Roblox grants screenshot permission.
+		The software renderer remains bundled because native capture is one current viewport: it cannot
+		produce the deterministic target-framed hero/front/side/top views used by critique and thumbnail
+		composition, and it can be unavailable when screenshot permission is absent.
 
 	What matters here is that a build WITHOUT the module says so. If `Render.luau` is missing from
 	the bundle, this returns a named reason, the capability report says `render_view` is
@@ -3261,7 +3932,7 @@ end
 	was not verified. The alternative — a handler that fails at execution time — would let the agent
 	spend a step discovering per-call what the pairing could have known once.
 ]]
-local function loadRenderAdapter(options: any): (any?, string?)
+function loadRenderAdapter(options: any): (any?, string?)
 	if options.render ~= nil then
 		if type(options.render) ~= "table" or type(options.render.capture) ~= "function" then
 			return nil, "the injected renderer is malformed"
@@ -3277,6 +3948,29 @@ local function loadRenderAdapter(options: any): (any?, string?)
 	return module
 end
 
+function loadStudioCaptureAdapter(options: any, gameRef: any): (any?, string?)
+	if options.capture ~= nil then
+		if type(options.capture) ~= "table" or type(options.capture.capture) ~= "function" then
+			return nil, "the injected StudioCapture adapter is malformed"
+		end
+		return options.capture
+	end
+	local loaded, module = pcall(function()
+		return require(script.Parent.StudioCapture)
+	end)
+	if not loaded or type(module) ~= "table" or type(module.new) ~= "function" then
+		return nil, "the StudioCapture adapter is not bundled in this build"
+	end
+	local created, adapter = pcall(function()
+		return module.new({ game = gameRef, services = options.services, enum = options.enum })
+	end)
+	if not created or type(adapter) ~= "table" or type(adapter.capture) ~= "function" then
+		return nil, "StudioCaptureService could not be initialised"
+	end
+	return adapter
+end
+
+do
 local function discardGenerated(adapter: any, model: any)
 	if model == nil then return end
 	if adapter and type(adapter.discard) == "function" then
@@ -3326,7 +4020,7 @@ local function generationFailure(id: string, started: number, result: any): any
 	return failureResult(id, kind, message, started)
 end
 
-local function runGeneration(
+function runGeneration(
 	self: any,
 	id: string,
 	op: any,
@@ -3473,6 +4167,7 @@ local function runGeneration(
 	if type(generated.generationId) == "string" then data.generationId = string.sub(generated.generationId, 1, 160) end
 	return { id = id, ok = true, data = data, durationMs = math.max(0, math.floor((nowSeconds() - started) * 1000)) }
 end
+end
 
 --[[
 	RENDERING IS A READ. It walks Workspace, projects boxes and returns base64 RGB; it opens no
@@ -3518,6 +4213,30 @@ local function renderCapture(self: any, op: any, view: string, width: number, he
 	-- is a real answer about the place, not a fault, and it is returned as a NAMED failure so the
 	-- agent is told the frame is empty instead of being handed a picture of the sky.
 	if type(result.error) == "string" then return nil, "not_found", result.error end
+	-- Native viewport capture is additive. Software views remain the multi-angle, target-framed
+	-- critique surface; StudioCaptureService contributes what the person is actually seeing in the
+	-- active 3D viewport. Failure here must not erase a valid software observation.
+	if self.capture and type(self.capture.capture) == "function" then
+		local nativeOk, native, nativeErr = pcall(function() return self.capture:capture(w :: number, h :: number) end)
+		if nativeOk and type(native) == "table" and type(native.rgbBase64) == "string" and #native.rgbBase64 > 0 then
+			result.studioViewport = {
+				rgbBase64 = native.rgbBase64,
+				encoding = "png",
+				source = "studio_viewport",
+				width = native.width,
+				height = native.height,
+				capturedAt = native.capturedAt,
+				view = "viewport",
+				subject = "game.Workspace",
+			}
+		elseif nativeOk and type(nativeErr) == "string" then
+			result.studioViewportError = string.sub(nativeErr, 1, 240)
+		elseif not nativeOk then
+			result.studioViewportError = string.sub(tostring(native), 1, 240)
+		end
+	elseif type(self.captureError) == "string" then
+		result.studioViewportError = string.sub(self.captureError, 1, 240)
+	end
 	return result, nil
 end
 
@@ -3533,10 +4252,209 @@ local function handleScreenshot(self: any, op: any): (any?, string?, string?)
 	return renderCapture(self, op, "hero", nil, nil)
 end
 
-local HANDLERS = {
+function runModeState(runService: any): (any?, string?)
+	if not runService then return nil, "RunService is unavailable" end
+	if type(runService.IsRunning) ~= "function" or type(runService.IsRunMode) ~= "function" then
+		return nil, "this Studio build does not expose RunService run-state controls"
+	end
+	local ok, running, runMode = pcall(function()
+		return runService:IsRunning(), runService:IsRunMode()
+	end)
+	if not ok then return nil, "Studio would not report its current test state" end
+	return { running = running == true, runMode = runMode == true }
+end
+
+local RUN_MODE_ACTIONS = { start = true, run = true, pause = true, resume = true, stop = true, restart = true }
+
+local function handleRunMode(self: any, op: any): (any?, string?, string?, string?)
+	local action, actionErr = safeText(op.action, 24, "run_mode.action")
+	if not action then return nil, "invalid", actionErr end
+	if not RUN_MODE_ACTIONS[action] then return nil, "invalid", "run_mode.action must be start, run, pause, resume, stop or restart" end
+	local before, stateErr = runModeState(self.runService)
+	if not before then return nil, "refused", stateErr end
+
+	-- APPLE'S OWN RUN READS AS SOMEONE ELSE'S TEST. RunService:IsRunMode() is FALSE for a simulation
+	-- started with RunService:Run() (Engine API reference, RunService:IsRunMode), and Run() is how this
+	-- handler starts one. So after Apple's own start Studio reports running=true, runMode=false —
+	-- exactly the shape of a Play test the user started — and the guard below refused Apple's own
+	-- stop. Measured 2026-09-22 (run fad0ab1b): every playtest left Studio running ("playsolo" in the
+	-- Studio log), run_and_check came back stopped=false, and every edit after it was refused. Studio
+	-- gives no other signal, so the engine remembers the Run it started. A Run the user stopped with
+	-- Studio's own Stop button is forgotten here rather than left to authorize a later stop.
+	if self.appleRun == "running" and not before.running then self.appleRun = nil end
+	local ours = self.appleRun ~= nil
+	local active = before.runMode or ours
+	-- The state this decision was made on travels with every answer, because a refusal that cannot say
+	-- what it saw is how this defect survived two releases (2026-09-22).
+	local editOk, isEdit = pcall(function() return self.runService:IsEdit() end)
+	local seen = ("running=%s runMode=%s edit=%s appleRun=%s"):format(
+		tostring(before.running), tostring(before.runMode), if editOk then tostring(isEdit) else "unknown", tostring(self.appleRun))
+	if before.running and not active then
+		return nil, "refused", "Studio is running a non-Run test; Apple will not take over a test it did not start (" .. seen .. ")", "leave_test_mode"
+	end
+
+	local calls = {}
+	local note = ""
+	local noop = false
+	if action == "start" or action == "run" then
+		if active then noop = true; note = "Run mode is already active" else table.insert(calls, "Run"); note = "Run mode started" end
+	elseif action == "pause" then
+		if not active then return nil, "conflict", "Run mode is not active" end
+		if not before.running then noop = true; note = "Run mode is already paused" else table.insert(calls, "Pause"); note = "Run mode paused" end
+	elseif action == "resume" then
+		if not active then return nil, "conflict", "Run mode is not active" end
+		if before.running then noop = true; note = "Run mode is already running" else table.insert(calls, "Run"); note = "Run mode resumed" end
+	elseif action == "stop" then
+		if not active then noop = true; note = "Run mode is already stopped" else table.insert(calls, "Stop"); note = "Run mode stopped" end
+	elseif action == "restart" then
+		if active then table.insert(calls, "Stop") end
+		table.insert(calls, "Run")
+		note = "Run mode restarted"
+	end
+
+	for _, call in calls do
+		local method = self.runService[call]
+		if type(method) ~= "function" then return nil, "refused", "RunService." .. call .. " is unavailable in this Studio build" end
+		local ok, err = pcall(function() method(self.runService) end)
+		if not ok then return nil, "internal", "Studio refused RunService." .. call .. ": " .. tostring(err) end
+		if call == "Stop" then
+			self.appleRun = nil
+		elseif call == "Pause" then
+			if ours then self.appleRun = "paused" end
+		elseif call == "Run" and (ours or not before.runMode or action == "restart") then
+			-- A resume of the user's own Run-button test stays theirs; anything Run() started is Apple's.
+			self.appleRun = "running"
+		end
+	end
+	local after, afterErr = runModeState(self.runService)
+	if not after then return nil, "internal", afterErr end
+	local activeAfter = after.runMode or self.appleRun ~= nil
+	return {
+		action = action, note = note, noop = noop, calls = calls, seen = seen,
+		running = after.running, runMode = activeAfter,
+		started = (not active) and activeAfter or nil,
+		stopped = active and not activeAfter or nil,
+	}, nil
+end
+
+local function handleInspectModel(self: any, op: any): (any?, string?, string?)
+	local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, op.path, false)
+	if not inst then return nil, pathKind or "not_found", resolveErr end
+	if not isA(inst, "Model") and not isA(inst, "BasePart") then return nil, "invalid", "inspect_model target must be a Model or BasePart" end
+	local intent = nil
+	if op.intent ~= nil then
+		local text, intentErr = safeText(op.intent, 240, "inspect_model.intent")
+		if not text then return nil, "invalid", intentErr end
+		intent = text
+	end
+	local descendants, descendantsErr = descendantsOf(inst)
+	if not descendants then return nil, "internal", descendantsErr end
+	if #descendants > MAX_INSPECT_DESCENDANTS then return nil, "invalid", ("inspect_model exceeds the %d-descendant inspection limit"):format(MAX_INSPECT_DESCENDANTS) end
+
+	local parts = {}
+	local scripts = 0
+	local meshParts = 0
+	local texturedMeshParts = 0
+	local unanchored = 0
+	local nonCollidable = 0
+	local function inspectOne(item: any)
+		if isScript(item) then scripts += 1 end
+		if isA(item, "BasePart") then
+			table.insert(parts, item)
+			local anchoredOk, anchored = pcall(function() return item.Anchored end)
+			if anchoredOk and anchored ~= true then unanchored += 1 end
+			local collideOk, canCollide = pcall(function() return item.CanCollide end)
+			if collideOk and canCollide == false then nonCollidable += 1 end
+			if classNameOf(item) == "MeshPart" then
+				meshParts += 1
+				local textureOk, textureId = pcall(function() return item.TextureID end)
+				if textureOk and type(textureId) == "string" and #textureId > 0 then texturedMeshParts += 1 end
+			end
+		end
+	end
+	inspectOne(inst)
+	for _, descendant in descendants do inspectOne(descendant) end
+	if #parts == 0 then return nil, "invalid", "inspect_model target contains no BaseParts" end
+	if #parts > MAX_AFFECTED_PARTS then return nil, "invalid", ("inspect_model exceeds the %d-part inspection limit"):format(MAX_AFFECTED_PARTS) end
+
+	local cframe, size, boundsErr = boundsOf(inst)
+	if not cframe or not size then return nil, "internal", boundsErr end
+	local bounds = { size.X, size.Y, size.Z }
+	for index = 1, 3 do
+		if not finite(bounds[index]) or bounds[index] <= 0 or bounds[index] > MAX_TRANSLATION then return nil, "invalid", "inspect_model found invalid or out-of-range bounds" end
+	end
+	local pivotOffsetFromBase = nil
+	if isA(inst, "Model") and type(inst.GetPivot) == "function" then
+		local okPivot, pivot = pcall(function() return inst:GetPivot() end)
+		if okPivot and pivot and pivot.Position and cframe.Position then
+			local base = cframe.Position.Y - size.Y / 2
+			pivotOffsetFromBase = math.round(math.abs(pivot.Position.Y - base) * 1000) / 1000
+		end
+	end
+	local fixes = {}
+	if scripts > 0 then table.insert(fixes, ("remove %d script object(s) before treating this as inert model content"):format(scripts)) end
+	if unanchored > 0 then table.insert(fixes, ("anchor %d part(s) if this is static scenery"):format(unanchored)) end
+	return {
+		path = canonical, intent = intent, kind = "structural", verdict = if scripts == 0 then "pass" else "fail",
+		verdictScope = "structural_only", parts = #parts, descendants = #descendants, scripts = scripts,
+		meshParts = meshParts, texturedMeshParts = texturedMeshParts, anchoredParts = #parts - unanchored,
+		unanchoredParts = unanchored, nonCollidableParts = nonCollidable, boundsStuds = bounds,
+		pivotOffsetFromBaseStuds = pivotOffsetFromBase, triangles = nil, trianglesMeasured = false,
+		visualVerdict = "unreviewed", visualJudgementRequired = true, fixes = fixes,
+	}, nil
+end
+
+local function handleProjectCensus(self: any, _op: any): (any?, string?, string?)
+	local services = {}
+	local instances = 0
+	local parts = 0
+	local scripts = 0
+	local traversed = 0
+	local limit = MAX_TREE_NODES * 4
+	for _, serviceName in PLACE_SERVICES do
+		local root = serviceFrom(self.game, self.options.services, serviceName)
+		if not root then return nil, "refused", "service is unavailable during census: " .. serviceName end
+		local count = 0
+		local stack = {}
+		local children, childErr = childrenOf(root)
+		if not children then return nil, "internal", childErr end
+		for _, child in children do table.insert(stack, child) end
+		while #stack > 0 do
+			local current = table.remove(stack)
+			traversed += 1
+			if traversed > limit then return nil, "invalid", ("project census exceeds the %d-instance traversal limit"):format(limit) end
+			count += 1
+			instances += 1
+			if isA(current, "BasePart") then parts += 1 end
+			if isScript(current) then scripts += 1 end
+			local nested, nestedErr = childrenOf(current)
+			if not nested then return nil, "internal", nestedErr end
+			for _, child in nested do table.insert(stack, child) end
+		end
+		services[serviceName] = count
+	end
+	local workspaceService = serviceFrom(self.game, self.options.services, "Workspace")
+	local topLevel = {}
+	if workspaceService then
+		local children, childErr = childrenOf(workspaceService)
+		if not children then return nil, "internal", childErr end
+		for _, child in children do
+			if #topLevel >= MAX_SNAPSHOT_CHILDREN then break end
+			local name = nameOf(child)
+			if #name > 0 then table.insert(topLevel, string.sub(name, 1, MAX_NAME)) end
+		end
+		table.sort(topLevel)
+	end
+	return { instances = instances, parts = parts, scripts = scripts, services = services, topLevel = topLevel }, nil
+end
+
+HANDLERS = {
 	ping = function(_, _) return opPing() end,
 	render_view = handleRenderView,
 	screenshot = handleScreenshot,
+	run_mode = handleRunMode,
+	inspect_model = handleInspectModel,
+	project_census = handleProjectCensus,
 	get_tree = handleTree,
 	get_instance = handleInstance,
 	list_scripts = handleListScripts,
@@ -3550,6 +4468,7 @@ local HANDLERS = {
 	camera_focus = handleCameraFocus,
 	create_instances = handleCreate,
 	set_props = handleSetProps,
+	terrain_edit = handleTerrainEdit,
 	delete_instances = handleDelete,
 	move_instances = handleMove,
 	transform_instances = handleTransform,
@@ -3563,15 +4482,15 @@ local HANDLERS = {
 	snapshot = handleSnapshot,
 	insert_asset = handleInsertAsset,
 }
+end
+
 
 	-- Operations that this independent build cannot implement without widening the Studio capability
 	-- surface remain explicit refusals. Restore is handled separately below because all of its
 	-- validation and stale-content checks must finish before the ChangeHistory recording starts.
 	local UNSUPPORTED = {
-		run_code = "run_code is intentionally unavailable in this readable plugin: received text is never loaded, required or executed inside Studio",
-	run_mode = "run_mode is not supported by this independent Apple plugin build; start and stop tests in Studio",
-	inspect_model = "inspect_model is unavailable in this build because the verified model-quality gate is not present",
-}
+		run_code = "run_code is unavailable because Roblox exposes no constrained plugin evaluator: the legacy temporary ModuleScript path executes received text with full plugin authority, which can reach account, upload and publish services outside Apple's place-edit boundary",
+	}
 
 -- Generation is a mutating operation, but its slow provider call and detached structural QC must
 -- complete before ChangeHistory begins.  The execute path below gives it the same consent and
@@ -3584,6 +4503,7 @@ local MUTATING = {
 	create_instances = true,
 	insert_asset = true,
 	set_props = true,
+	terrain_edit = true,
 	delete_instances = true,
 	move_instances = true,
 	transform_instances = true,
@@ -3618,8 +4538,9 @@ function Commands.new(options: any?): any
 		activeRecording = nil,
 		activeGeneration = nil,
 	}
-	self.generation, self.generationError = loadGenerationAdapter(opts, gameRef)
-	self.render, self.renderError = loadRenderAdapter(opts)
+		self.generation, self.generationError = loadGenerationAdapter(opts, gameRef)
+		self.render, self.renderError = loadRenderAdapter(opts)
+		self.capture, self.captureError = loadStudioCaptureAdapter(opts, gameRef)
 	self.editor = opts.editor or serviceFrom(gameRef, opts.services, "ScriptEditorService")
 	self.history = opts.history or serviceFrom(gameRef, opts.services, "ChangeHistoryService")
 	self.runService = opts.runService or serviceFrom(gameRef, opts.services, "RunService")
@@ -3638,7 +4559,10 @@ function Commands.new(options: any?): any
 		end
 		if not self.runService or type(self.runService.IsEdit) ~= "function" then return false end
 		local ok, value = pcall(function() return self.runService:IsEdit() end)
-		return ok and value == true
+		if not ok or value ~= true then return false end
+		-- Same rule as init.server's editModeActive: IsEdit() stays true under a Run() simulation.
+		local runningOk, running = pcall(function() return self.runService:IsRunning() end)
+		return not (runningOk and running == true)
 	end
 
 	local function runUndoWaypoint(id: string, op: any, started: number): any
@@ -3655,10 +4579,33 @@ function Commands.new(options: any?): any
 		local id = if type(rawId) == "string" then rawId else tostring(rawId or "")
 		if self.destroyed then return failureResult(id, "refused", "command engine is destroyed", started) end
 		if type(op) ~= "table" or type(op.op) ~= "string" then return failureResult(id, "invalid", "operation must contain a string op", started) end
-		local name = op.op
-		if UNSUPPORTED[name] then return failureResult(id, "refused", UNSUPPORTED[name], started, "none") end
-		local handler = HANDLERS[name]
-		if name == "undo_waypoint" then
+			local name = op.op
+			-- Every command is an observation of Studio's mode. Back in edit mode means Apple's Run is over,
+			-- however it ended, so it can no longer authorize a stop. The one gap: a Stop and a new Play test
+			-- of the user's own with no Apple command between them is not observable from here.
+			if self.appleRun == "running" and editMode() then self.appleRun = nil end
+			if UNSUPPORTED[name] then return failureResult(id, "refused", UNSUPPORTED[name], started, "none") end
+			local handler = HANDLERS[name]
+			if name == "run_mode" then
+				if allowEdits ~= true then return failureResult(id, "refused", "Run-mode controls require explicit edit consent for this Studio connection", started, "edit_consent") end
+				local before, stateErr = runModeState(self.runService)
+				if not before then return failureResult(id, "refused", stateErr or "RunService state is unavailable", started) end
+				-- Starting a test must originate in edit mode. Once Apple started Run mode, pause/resume/stop
+				-- stay reachable while Studio is intentionally outside edit mode; init.server retains consent
+				-- only for that Apple-owned transition and clears it on manual test entry or disconnect.
+				if not before.runMode and self.appleRun == nil and not editMode() then return failureResult(id, "refused", "start or restart Run mode from Studio edit mode", started, "leave_test_mode") end
+				local ok, data, kind, message, remedy = pcall(function()
+					local result, resultKind, resultMessage, resultRemedy = handler(self, op)
+					return result, resultKind, resultMessage, resultRemedy
+				end)
+				if not ok then
+					local failureKind, failureMessage = errorParts(data)
+					return failureResult(id, failureKind, failureMessage, started)
+				end
+				if data == nil or kind then return failureResult(id, kind or "internal", message or "run_mode failed", started, remedy) end
+				return { id = id, ok = true, data = data, durationMs = math.max(0, math.floor((nowSeconds() - started) * 1000)) }
+			end
+			if name == "undo_waypoint" then
 			if not editMode() then return failureResult(id, "refused", "writes require Studio edit mode", started, "leave_test_mode") end
 			if allowEdits ~= true then return failureResult(id, "refused", "writes require explicit edit consent — this is Apple's own gate, not a Roblox Studio setting: press \"Enable edits…\" then \"Allow edits for this connection\" in the Apple panel in Studio", started, "edit_consent") end
 			return runUndoWaypoint(id, op, started)

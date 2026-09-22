@@ -297,6 +297,217 @@ spec("checkpoint round-trips existing SurfaceAppearance content without granting
     c:destroy()
 end)
 
+spec("checkpoint round-trips Decal and Texture content without granting external content writes", function()
+    local part = Instance.new("Part"); part.Name = "TextureHost"; part.Parent = workspace
+    local decal = Instance.new("Decal"); decal.Name = "Badge"; decal.Texture = "rbxassetid://111111"; decal.Transparency = 0.15; decal.Parent = part
+    local tiled = Instance.new("Texture"); tiled.Name = "Tiles"; tiled.Texture = "rbxassetid://222222"; tiled.StudsPerTileU = 3; tiled.StudsPerTileV = 4; tiled.OffsetStudsU = 0.5; tiled.OffsetStudsV = 1.25; tiled.Parent = part
+    local c = newCommands()
+
+    local refused = run(c, "texture-content-write-refused", {
+        op = "set_props",
+        path = "game.Workspace.TextureHost.Tiles",
+        props = { Texture = { t = "string", v = "rbxassetid://999999" } },
+    }, true)
+    eq(refused.ok, false); has(refused.error, "external content")
+    eq(tiled.Texture, "rbxassetid://222222", "ordinary writes must not change an existing texture asset reference")
+
+    local snap = run(c, "decal-texture-snapshot", {
+        op = "snapshot", root = "game.Workspace.TextureHost", includeScripts = true, checkpointId = "cp-decal-texture",
+    }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true)
+    eq(next(snap.data.skipped), nil, "Decal/Texture must not poison a checkpoint")
+    local savedDecal = nil
+    local savedTexture = nil
+    for _, child in ipairs(snap.data.node.children) do
+        if child.className == "Decal" then savedDecal = child elseif child.className == "Texture" then savedTexture = child end
+    end
+    eq(savedDecal ~= nil, true); eq(savedDecal.props.Texture.v, "rbxassetid://111111")
+    eq(savedTexture ~= nil, true); eq(savedTexture.props.Texture.v, "rbxassetid://222222")
+    eq(savedTexture.props.StudsPerTileU.v, 3); eq(savedTexture.props.StudsPerTileV.v, 4)
+    eq(savedTexture.props.OffsetStudsU.v, 0.5); eq(savedTexture.props.OffsetStudsV.v, 1.25)
+
+    decal.Texture = "rbxassetid://changed-decal"; decal.Transparency = 0.8
+    tiled.Texture = "rbxassetid://changed-texture"; tiled.StudsPerTileU = 9; tiled.OffsetStudsV = 7
+    local restored = run(c, "decal-texture-restore", {
+        op = "restore", root = "game.Workspace.TextureHost", checkpointId = "cp-decal-texture", snapshot = snap.data,
+    }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    local restoredDecal = part:FindFirstChild("Badge")
+    local restoredTexture = part:FindFirstChild("Tiles")
+    eq(restoredDecal.Texture, "rbxassetid://111111"); eq(restoredDecal.Transparency, 0.15)
+    eq(restoredTexture.Texture, "rbxassetid://222222")
+    eq(restoredTexture.StudsPerTileU, 3); eq(restoredTexture.StudsPerTileV, 4)
+    eq(restoredTexture.OffsetStudsU, 0.5); eq(restoredTexture.OffsetStudsV, 1.25)
+    part:Destroy()
+    c:destroy()
+end)
+
+spec("unsupported MeshPart still makes checkpoints incomplete", function()
+    local root = Instance.new("Folder"); root.Name = "UnsupportedOrdinaryCheckpoint"; root.Parent = workspace
+    local mesh = Instance.new("MeshPart"); mesh.Name = "GeneratedMesh"; mesh.Parent = root
+    local c = newCommands()
+    local snap = run(c, "ordinary-unsupported-snapshot", {
+        op = "snapshot", root = "game.Workspace.UnsupportedOrdinaryCheckpoint", includeScripts = true, checkpointId = "cp-ordinary-unsupported",
+    }, false)
+    eq(snap.ok, true, tostring(snap.error))
+    eq(snap.data.complete, false); eq(snap.data.restorable, false); eq(snap.data.checkpointEligible, false); eq(snap.data.coverage, "incomplete")
+    eq(snap.data.skipped.MeshPart, 1, "MeshPart must be named rather than silently omitted")
+    root:Destroy()
+    c:destroy()
+end)
+
+spec("a MeshPart added after an eligible checkpoint can be removed without claiming mesh recreation", function()
+    local root = Instance.new("Folder"); root.Name = "MeshDeleteOnly"; root.Parent = workspace
+    local kept = Instance.new("Part"); kept.Name = "Kept"; kept.Parent = root
+    local c = newCommands()
+    local snap = run(c, "mesh-delete-only-snapshot", {
+        op = "snapshot", root = "game.Workspace.MeshDeleteOnly", includeScripts = true, checkpointId = "cp-mesh-delete-only",
+    }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true)
+    local later = Instance.new("MeshPart"); later.Name = "GeneratedLater"; later.Parent = root
+    local restored = run(c, "mesh-delete-only-restore", {
+        op = "restore", root = "game.Workspace.MeshDeleteOnly", checkpointId = "cp-mesh-delete-only", snapshot = snap.data,
+    }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    eq(root:FindFirstChild("GeneratedLater"), nil, "a post-checkpoint MeshPart must be removable")
+    eq(root:FindFirstChild("Kept") ~= nil, true, "ordinary checkpoint content must still restore")
+    root:Destroy(); c:destroy()
+end)
+
+spec("typed terrain edits are bounded, recorded and never use run_code", function()
+    terrain.calls = {}
+    local c = newCommands()
+    local before = #history.log
+    local filled = run(c, "terrain-fill", {
+        op = "terrain_edit", action = "fill_block", center = { 0, 8, 0 }, size = { 32, 12, 32 }, material = "Enum.Material.Grass",
+    }, true)
+    eq(filled.ok, true, tostring(filled.error)); eq(terrain.calls[1].action, "fill_block"); eq(terrain.calls[1].material, Enum.Material.Grass)
+    eq(#history.log, before + 2); has(history.log[before + 1], "begin:Apple terrain_edit terrain-fill"); eq(history.log[before + 2], "Commit")
+
+    local voxels = run(c, "terrain-voxels", {
+        op = "terrain_edit", action = "write_voxels", origin = { 0, 0, 0 }, dimensions = { 2, 1, 1 }, voxels = {
+            { material = "Enum.Material.Rock", occupancy = 1 }, { material = "Enum.Material.Air", occupancy = 0 },
+        },
+    }, true)
+    eq(voxels.ok, true, tostring(voxels.error)); eq(voxels.data.voxelsWritten, 2)
+    local write = terrain.calls[2]; eq(write.action, "write_voxels"); eq(write.materials[1][1][1], Enum.Material.Rock); eq(write.occupancy[2][1][1], 0)
+
+    local region = run(c, "terrain-region", {
+        op = "terrain_edit", action = "fill_region", min = { -16, 0, -16 }, max = { 16, 12, 16 }, material = "Enum.Material.Rock",
+    }, true)
+    eq(region.ok, true, tostring(region.error)); eq(terrain.calls[3].action, "fill_region"); eq(terrain.calls[3].resolution, 4)
+    local replaced = run(c, "terrain-replace", {
+        op = "terrain_edit", action = "replace_material", min = { -16, 0, -16 }, max = { 16, 12, 16 }, sourceMaterial = "Enum.Material.Rock", targetMaterial = "Enum.Material.Grass",
+    }, true)
+    eq(replaced.ok, true, tostring(replaced.error)); eq(terrain.calls[4].action, "replace_material"); eq(terrain.calls[4].source, Enum.Material.Rock); eq(terrain.calls[4].target, Enum.Material.Grass)
+
+    local oversized = run(c, "terrain-too-large", {
+        op = "terrain_edit", action = "write_voxels", origin = { 0, 0, 0 }, dimensions = { 64, 64, 64 }, voxels = {},
+    }, true)
+    eq(oversized.ok, false); eq(oversized.failure, "invalid"); has(oversized.error, "bounded cell limit")
+    local denied = run(c, "terrain-denied", { op = "terrain_edit", action = "fill_ball", center = {0,0,0}, radius = 8, material = "Enum.Material.Grass" }, false)
+    eq(denied.ok, false); eq(denied.remedy, "edit_consent")
+    c:destroy()
+end)
+
+spec("ordinary prompts, UI images, sounds and particles are creatable while new external content stays refused", function()
+    local host = Instance.new("Part"); host.Name = "OrdinaryHost"; host.Parent = workspace
+    local gui = Instance.new("ScreenGui"); gui.Name = "OrdinaryGui"; gui.Parent = services.StarterGui
+    local c = newCommands()
+    local made = run(c, "ordinary-authoring", { op = "create_instances", items = {
+        { className = "ProximityPrompt", name = "Use", parent = "game.Workspace.OrdinaryHost", props = {
+            ActionText = { t = "string", v = "Use" }, HoldDuration = { t = "number", v = 0.4 }, MaxActivationDistance = { t = "number", v = 12 },
+        } },
+        { className = "ImageButton", name = "IconButton", parent = "game.StarterGui.OrdinaryGui", props = {
+            ImageColor3 = { t = "Color3", v = { 0.2, 0.4, 0.8 } }, ImageTransparency = { t = "number", v = 0.1 },
+        } },
+        { className = "SoundGroup", name = "SFX", parent = "game.SoundService", props = { Volume = { t = "number", v = 0.8 } } },
+        { className = "Sound", name = "Click", parent = "game.Workspace.OrdinaryHost", props = { Volume = { t = "number", v = 0.6 }, Looped = { t = "bool", v = false } } },
+        { className = "ParticleEmitter", name = "Dust", parent = "game.Workspace.OrdinaryHost", props = {
+            Rate = { t = "number", v = 7 }, Lifetime = { t = "NumberRange", v = { 0.5, 1.5 } },
+            Size = { t = "NumberSequence", v = { { 0, 0.2, 0 }, { 1, 0.8, 0 } } },
+            Color = { t = "ColorSequence", v = { { 0, { 1, 0.8, 0.4 } }, { 1, { 0.2, 0.1, 0.05 } } } },
+        } },
+    } }, true)
+    eq(made.ok, true, tostring(made.error))
+    eq(host:FindFirstChild("Use").ActionText, "Use")
+    eq(gui:FindFirstChild("IconButton").ImageTransparency, 0.1)
+    eq(services.SoundService:FindFirstChild("SFX").Volume, 0.8)
+    eq(host:FindFirstChild("Dust").Size.Keypoints[2].Value, 0.8)
+    local imageRefused = run(c, "image-content-refused", { op = "set_props", path = "game.StarterGui.OrdinaryGui.IconButton", props = { Image = { t = "string", v = "rbxassetid://1" } } }, true)
+    eq(imageRefused.ok, false); has(imageRefused.error, "external content")
+    local soundRefused = run(c, "sound-content-refused", { op = "set_props", path = "game.Workspace.OrdinaryHost.Click", props = { SoundId = { t = "string", v = "rbxassetid://2" } } }, true)
+    eq(soundRefused.ok, false); has(soundRefused.error, "external content")
+    host:Destroy(); gui:Destroy(); services.SoundService:FindFirstChild("SFX"):Destroy(); c:destroy()
+end)
+
+spec("typed mood and mixer properties used by worker tools are writable", function()
+    local c = newCommands()
+    local lighting = run(c, "typed-mood", { op = "set_props", path = "game.Lighting", props = {
+        ShadowSoftness = { t = "number", v = 0.35 },
+        GlobalShadows = { t = "bool", v = true },
+        ColorShift_Top = { t = "Color3", v = { 1, 0.7, 0.4 } },
+        EnvironmentDiffuseScale = { t = "number", v = 0.9 },
+        FogStart = { t = "number", v = 20 },
+        FogEnd = { t = "number", v = 300 },
+    } }, true)
+    eq(lighting.ok, true, tostring(lighting.error))
+    eq(services.Lighting.ShadowSoftness, 0.35)
+    eq(services.Lighting.GlobalShadows, true)
+    eq(services.Lighting.ColorShift_Top.R, 1)
+    eq(services.Lighting.FogEnd, 300)
+
+    local mixer = run(c, "typed-mixer", { op = "set_props", path = "game.SoundService", props = {
+        AmbientReverb = { t = "EnumItem", v = "Enum.ReverbType.Cave" },
+        RolloffScale = { t = "number", v = 1.2 },
+        DistanceFactor = { t = "number", v = 3.33 },
+        DopplerScale = { t = "number", v = 1 },
+    } }, true)
+    eq(mixer.ok, true, tostring(mixer.error))
+    eq(services.SoundService.AmbientReverb, "Enum.ReverbType.Cave")
+    eq(services.SoundService.RolloffScale, 1.2)
+    eq(services.SoundService.DistanceFactor, 3.33)
+    c:destroy()
+end)
+
+spec("checkpoint restores opaque visual/audio content, sequences and deferred instance links", function()
+    local root = Instance.new("Folder"); root.Name = "RichCheckpoint"; root.Parent = workspace
+    local a = Instance.new("Part"); a.Name = "A"; a.Parent = root
+    local b = Instance.new("Part"); b.Name = "B"; b.Parent = root
+    local a0 = Instance.new("Attachment"); a0.Name = "A0"; a0.Parent = a
+    local a1 = Instance.new("Attachment"); a1.Name = "A1"; a1.Parent = b
+    local weld = Instance.new("WeldConstraint"); weld.Name = "Weld"; weld.Part0 = a; weld.Part1 = b; weld.Parent = root
+    local beam = Instance.new("Beam"); beam.Name = "Beam"; beam.Attachment0 = a0; beam.Attachment1 = a1; beam.Texture = "rbxassetid://333"; beam.Width0 = 0.2; beam.Width1 = 0.6
+    beam.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.new(1,0,0)), ColorSequenceKeypoint.new(1, Color3.new(0,0,1)) })
+    beam.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0,0,0), NumberSequenceKeypoint.new(1,1,0) }); beam.Parent = root
+    local sound = Instance.new("Sound"); sound.Name = "Tone"; sound.SoundId = "rbxassetid://444"; sound.Volume = 0.35; sound.Parent = root
+    local c = newCommands()
+    local snap = run(c, "rich-snapshot", { op = "snapshot", root = "game.Workspace.RichCheckpoint", includeScripts = true, checkpointId = "cp-rich" }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true); eq(next(snap.data.skipped), nil)
+    weld.Part0 = nil; weld.Part1 = nil; beam.Attachment0 = nil; beam.Attachment1 = nil; beam.Texture = "changed"; sound.SoundId = "changed"
+    local restored = run(c, "rich-restore", { op = "restore", root = "game.Workspace.RichCheckpoint", checkpointId = "cp-rich", snapshot = snap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    local restoredA = root:FindFirstChild("A"); local restoredB = root:FindFirstChild("B")
+    local restoredWeld = root:FindFirstChild("Weld"); local restoredBeam = root:FindFirstChild("Beam"); local restoredSound = root:FindFirstChild("Tone")
+    eq(restoredWeld.Part0, restoredA); eq(restoredWeld.Part1, restoredB)
+    eq(restoredBeam.Attachment0, restoredA:FindFirstChild("A0")); eq(restoredBeam.Attachment1, restoredB:FindFirstChild("A1"))
+    eq(restoredBeam.Texture, "rbxassetid://333"); eq(restoredBeam.Color.Keypoints[2].Value.B, 1); eq(restoredBeam.Transparency.Keypoints[2].Value, 1)
+    eq(restoredSound.SoundId, "rbxassetid://444"); eq(restoredSound.Volume, 0.35)
+    root:Destroy(); c:destroy()
+end)
+
+spec("set_props can wire bounded in-place instance references after creation", function()
+    local a = Instance.new("Part"); a.Name = "RefA"; a.Parent = workspace
+    local b = Instance.new("Part"); b.Name = "RefB"; b.Parent = workspace
+    local weld = Instance.new("WeldConstraint"); weld.Name = "RefWeld"; weld.Parent = workspace
+    local c = newCommands()
+    local wired = run(c, "wire-ref", { op = "set_props", path = "game.Workspace.RefWeld", props = {
+        Part0 = { t = "Instance", v = "game.Workspace.RefA" }, Part1 = { t = "Instance", v = "game.Workspace.RefB" },
+    } }, true)
+    eq(wired.ok, true, tostring(wired.error)); eq(weld.Part0, a); eq(weld.Part1, b)
+    a:Destroy(); b:Destroy(); weld:Destroy(); c:destroy()
+end)
+
 spec("create_instances preflights collisions and the whole nested tree", function()
     local c = newCommands()
     local existing = run(c, "existing-name", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace" }} }, true)
@@ -508,11 +719,11 @@ end)
 spec("incomplete snapshot is never checkpoint-eligible or mutated from", function()
     local root = Instance.new("Folder"); root.Name = "IncompleteSnapshot"; root.Parent = workspace
     local supported = Instance.new("Part"); supported.Name = "Supported"; supported.Parent = root
-    local unsupported = Instance.new("ObjectValue"); unsupported.Name = "Unsupported"; unsupported.Parent = root
+    local unsupported = Instance.new("MeshPart"); unsupported.Name = "Unsupported"; unsupported.Parent = root
     local c = newCommands()
     local snap = run(c, "incomplete-snapshot", { op = "snapshot", root = "game.Workspace.IncompleteSnapshot", includeScripts = true, checkpointId = "cp-incomplete-1" }, false)
     eq(snap.ok, true, tostring(snap.error)); eq(snap.data.complete, false); eq(snap.data.restorable, false); eq(snap.data.checkpointEligible, false); eq(snap.data.coverage, "incomplete")
-    eq(snap.data.skipped.ObjectValue, 1)
+    eq(snap.data.skipped.MeshPart, 1)
     local beforeHistory = #history.log
     local refused = run(c, "incomplete-restore", { op = "restore", root = "game.Workspace.IncompleteSnapshot", checkpointId = "cp-incomplete-1", snapshot = snap.data }, true, function() return true end)
     eq(refused.ok, false); eq(refused.failure, "invalid"); has(refused.error, "incomplete or unbound")
@@ -540,7 +751,7 @@ spec("restore rejects stale protected or unsupported current content before muta
     local supported = Instance.new("Part"); supported.Name = "Supported"; supported.Parent = subtree
     local supportedSnap = run(c, "unsupported-snapshot", { op = "snapshot", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", includeScripts = true }, false)
     eq(supportedSnap.ok, true)
-    local unknown = Instance.new("ObjectValue"); unknown.Name = "DoNotDelete"; unknown.Parent = subtree
+    local unknown = Instance.new("Humanoid"); unknown.Name = "DoNotDelete"; unknown.Parent = subtree
     local refused = run(c, "unsupported-restore", { op = "restore", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", snapshot = supportedSnap.data }, true, function() return true end)
     eq(refused.ok, false); eq(refused.failure, "conflict"); has(refused.error, "unsupported current content")
     eq(subtree:FindFirstChild("DoNotDelete"), unknown); eq(subtree:FindFirstChild("Supported"), supported); eq(#history.log, beforeHistory)
@@ -552,9 +763,92 @@ spec("3D generation fails closed when the adapter is unavailable", function()
     local c = newCommands()
     local generated = run(c, "generate", { op = "generate_model", prompt = "a genre-specific haunted station", parent = "game.Workspace" }, true)
     eq(generated.ok, false); eq(generated.failure, "refused"); has(generated.error, "GenerationService adapter"); has(generated.error, "no substitute")
-    local inspected = run(c, "inspect", { op = "inspect_model", path = "game.Workspace.Mover" }, false)
-    eq(inspected.ok, false); has(inspected.error, "quality gate")
     c:destroy()
+end)
+
+spec("inspect_model is bounded read-only structural QC with honest triangle/visual limits", function()
+    local model = Instance.new("Model"); model.Name = "InspectMe"; model.Parent = workspace
+    local part = Instance.new("Part"); part.Name = "Body"; part.Size = v3(4,6,8); part.Anchored = false; part.CanCollide = true; part.Parent = model
+    local mesh = Instance.new("MeshPart"); mesh.Name = "Mesh"; mesh.Size = v3(2,2,2); mesh.Anchored = true; mesh.TextureID = "rbxassetid://123"; mesh.Parent = model
+    local scriptObject = Instance.new("Script"); scriptObject.Name = "Code"; scriptObject.Parent = model
+    local c = newCommands()
+    local before = #history.log
+    local inspected = run(c, "inspect", { op = "inspect_model", path = "game.Workspace.InspectMe", intent = "crate" }, false)
+    eq(inspected.ok, true, tostring(inspected.error)); eq(inspected.data.kind, "structural"); eq(inspected.data.verdict, "fail")
+    eq(inspected.data.parts, 2); eq(inspected.data.scripts, 1); eq(inspected.data.meshParts, 1); eq(inspected.data.texturedMeshParts, 1)
+    eq(inspected.data.unanchoredParts, 1); eq(inspected.data.trianglesMeasured, false); eq(inspected.data.visualVerdict, "unreviewed")
+    eq(#history.log, before, "inspection must not create undo history")
+    scriptObject:Destroy()
+    local clean = run(c, "inspect-clean", { op = "inspect_model", path = "game.Workspace.InspectMe" }, false)
+    eq(clean.ok, true); eq(clean.data.verdict, "pass")
+    model:Destroy(); c:destroy()
+end)
+
+spec("run_mode uses explicit consent, controls only Run mode, and creates no undo entries", function()
+    runService.edit=true; runService.running=false; runService.runMode=false
+    local c = newCommands()
+    local before = #history.log
+    local denied = run(c, "run-denied", { op = "run_mode", action = "start" }, false)
+    eq(denied.ok, false); eq(denied.remedy, "edit_consent")
+    local started = run(c, "run-start", { op = "run_mode", action = "start" }, true)
+    eq(started.ok, true, tostring(started.error)); eq(started.data.running, true); eq(started.data.runMode, true); eq(runService.running, true)  -- IsEdit stays true under Run(); running is the fact
+    local writeDuringRun = run(c, "run-write", { op = "set_props", path = "game.Workspace.Mover", props = { Transparency = { t = "number", v = 0.2 } } }, true)
+    eq(writeDuringRun.ok, false); eq(writeDuringRun.remedy, "leave_test_mode")
+    local paused = run(c, "run-pause", { op = "run_mode", action = "pause" }, true)
+    eq(paused.ok, true); eq(paused.data.running, false); eq(paused.data.runMode, true)
+    local resumed = run(c, "run-resume", { op = "run_mode", action = "resume" }, true)
+    eq(resumed.ok, true); eq(resumed.data.running, true)
+    local stopped = run(c, "run-stop", { op = "run_mode", action = "stop" }, true)
+    eq(stopped.ok, true); eq(stopped.data.stopped, true); eq(stopped.data.runMode, false); eq(runService.edit, true)
+    eq(#history.log, before, "RunService controls are Studio state, not DataModel undo entries")
+    c:destroy()
+end)
+
+spec("Apple can stop the Run it started, although Studio reports IsRunMode false for it", function()
+    runService.edit=true; runService.running=false; runService.runMode=false
+    local c = newCommands()
+    local started = run(c, "own-start", { op = "run_mode", action = "start" }, true)
+    eq(started.ok, true, tostring(started.error)); eq(started.data.started, true)
+    eq(runService:IsRunMode(), false, "the mock must model the documented IsRunMode for Run()")
+    local stopped = run(c, "own-stop", { op = "run_mode", action = "stop" }, true)
+    eq(stopped.ok, true, tostring(stopped.error)); eq(stopped.data.stopped, true); eq(runService.running, false); eq(runService.edit, true)
+    c:destroy()
+end)
+
+spec("a test Apple did not start is still refused, and a Run-button test can still be stopped", function()
+    runService.edit=false; runService.running=true; runService.runMode=false  -- the user pressed Play
+    local c = newCommands()
+    local refused = run(c, "play-stop", { op = "run_mode", action = "stop" }, true)
+    eq(refused.ok, false); eq(refused.remedy, "leave_test_mode"); eq(runService.running, true)
+    runService:Stop()
+    runService:PressRunButton()
+    local stopped = run(c, "button-stop", { op = "run_mode", action = "stop" }, true)
+    eq(stopped.ok, true, tostring(stopped.error)); eq(stopped.data.stopped, true); eq(runService.running, false)
+    c:destroy()
+end)
+
+spec("a Run the user stopped from Studio is forgotten, so it cannot authorize a later takeover", function()
+    runService.edit=true; runService.running=false; runService.runMode=false
+    local c = newCommands()
+    eq(run(c, "own-start2", { op = "run_mode", action = "start" }, true).ok, true)
+    runService:Stop()                                   -- the user pressed Studio's Stop
+    eq(run(c, "observe", { op = "project_census" }, false).ok, true)  -- any command sees edit mode again
+    runService.edit=false; runService.running=true      -- ...then the user started a Play test of their own
+    local refused = run(c, "late-stop", { op = "run_mode", action = "stop" }, true)
+    eq(refused.ok, false); eq(refused.remedy, "leave_test_mode"); eq(runService.running, true)
+    runService:Stop(); c:destroy()
+end)
+
+spec("project_census replaces run_code for playtest safety counting", function()
+    local marker = Instance.new("Part"); marker.Name = "CensusMarker"; marker.Parent = workspace
+    local code = Instance.new("Script"); code.Name = "CensusScript"; code.Parent = services.ServerScriptService
+    local c = newCommands()
+    local census = run(c, "census", { op = "project_census" }, false)
+    eq(census.ok, true, tostring(census.error)); eq(census.data.parts >= 1, true); eq(census.data.scripts >= 1, true)
+    eq(census.data.services.Workspace >= 1, true); eq(census.data.services.ServerScriptService >= 1, true)
+    local found = false; for _, name in census.data.topLevel do if name == "CensusMarker" then found = true end end
+    eq(found, true)
+    marker:Destroy(); code:Destroy(); c:destroy()
 end)
 
 local function fakeRenderer(config)
@@ -600,6 +894,34 @@ spec("render_view is a read: no consent, no recording, and the engine resolves t
     eq(renderer.lastHeight, 90)
     eq(renderer.lastEnv.scene, services.Workspace, "the scene is injected; the renderer has no reach of its own")
     eq(renderer.lastEnv.lighting, services.Lighting, "lighting is judged from configuration, so it travels with the render")
+    c:destroy()
+end)
+
+spec("render_view adds the real Studio viewport PNG without replacing software critique views", function()
+    local renderer = fakeRenderer()
+    local native = { calls = 0 }
+    function native:capture(width, height)
+        self.calls += 1
+        return { source = "studio_viewport", encoding = "png", rgbBase64 = "iVBORw0KGgo=", width = width, height = height, capturedAt = 123000 }, nil
+    end
+    local c = newCommands({ render = renderer, capture = native })
+    local r = run(c, "native-frame", { op = "render_view", view = "eye", width = 160, height = 100 }, false)
+    eq(r.ok, true, tostring(r.error)); eq(native.calls, 1)
+    eq(r.data.views[1].rgbBase64, "AAAA", "software render remains available for calibrated critique")
+    eq(r.data.studioViewport.rgbBase64, "iVBORw0KGgo=")
+    eq(r.data.studioViewport.encoding, "png"); eq(r.data.studioViewport.source, "studio_viewport")
+    eq(r.data.studioViewport.width, 160); eq(r.data.studioViewport.height, 100)
+    eq(r.data.studioViewport.view, "viewport"); eq(r.data.studioViewport.subject, "game.Workspace")
+    c:destroy()
+end)
+
+spec("native viewport failure degrades to software pixels instead of failing visual inspection", function()
+    local renderer = fakeRenderer()
+    local native = {}
+    function native:capture(_, _) return nil, "permission not granted" end
+    local c = newCommands({ render = renderer, capture = native })
+    local r = run(c, "native-fallback", { op = "render_view", view = "hero" }, false)
+    eq(r.ok, true, tostring(r.error)); eq(r.data.views[1].rgbBase64, "AAAA"); has(r.data.studioViewportError, "permission")
     c:destroy()
 end)
 
@@ -699,7 +1021,10 @@ spec("capability report is operation-derived and reports live generation availab
     eq(byOp(report, "restore").status, "supported")
     eq(byOp(report, "undo_waypoint").status, "supported")
     eq(byOp(report, "run_code").status, "unsupported")
-    has(byOp(report, "run_code").reason, "never loaded")
+    has(byOp(report, "run_code").reason, "no constrained plugin evaluator")
+    eq(byOp(report, "run_mode").status, "supported")
+    eq(byOp(report, "inspect_model").status, "supported")
+    eq(byOp(report, "project_census").status, "supported")
     eq(byOp(report, "generate_model").status, "unsupported")
     for index = 2, #report.operations do
         eq(report.operations[index - 1].op < report.operations[index].op, true, "capabilities are deterministic")
@@ -860,21 +1185,21 @@ test('mutation-consent guard is live (red-first falsification)', { skip: availab
   assert.notEqual(swappedResult.status, 0, 'consent-before-edit-mode stayed green:\n' + swappedResult.output);
 });
 
-test('both dispatcher branches bind the handler remedy, not just the one with a test', () => {
+test('every dispatcher branch binds the handler remedy, including Studio-state controls', () => {
   // WHY THIS IS A SOURCE ASSERTION AND NOT A BEHAVIOURAL ONE, said plainly rather than left to be
-  // inferred: `execute` binds the handler's return in two places — the read/consent-only branch and
-  // the recorded-write branch — and today no READ handler produces a remedy, so nothing can be
+  // inferred: `execute` binds the handler's return in three places — the special run_mode Studio
+  // state-control branch, the read/consent-only branch and the recorded-write branch — and today no READ handler produces a remedy, so nothing can be
   // executed that would notice the read branch narrowing back to three values. That is exactly the
   // condition the three unreachable remedies grew in: a slot nobody could observe, discovered only
   // when a refusal arrived with nothing in it. So the shape is pinned here until a read-side remedy
   // exists to pin it behaviourally, and the failure message says which branch lost the value.
   const branches = SOURCE.match(/local result, resultKind, resultMessage(, resultRemedy)? = handler\(self, op\)/g) ?? [];
-  assert.equal(branches.length, 2, 'execute should call the handler in exactly two branches');
+  assert.equal(branches.length, 3, 'execute should call the handler in exactly three branches');
   for (const branch of branches) {
     assert.match(branch, /resultRemedy/, 'a dispatcher branch stopped binding the handler remedy: ' + branch);
   }
   const passed = SOURCE.match(/return result, resultKind, resultMessage, resultRemedy/g) ?? [];
-  assert.equal(passed.length, 2, 'a dispatcher branch bound the remedy and then dropped it on the way out');
+  assert.equal(passed.length, 3, 'a dispatcher branch bound the remedy and then dropped it on the way out');
 });
 
 test('restore removal stays undoable for ChangeHistory', () => {

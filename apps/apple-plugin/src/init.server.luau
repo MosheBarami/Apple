@@ -12,6 +12,11 @@ pcall(function() LogService = game:GetService("LogService") end)
 local function editModeActive(): boolean
 	local runOk, runIsEdit = pcall(function() return RunService:IsEdit() end)
 	if not runOk or runIsEdit ~= true then return false end
+	-- A simulation started with RunService:Run() leaves IsEdit() AND StudioTestService.EditModeActive
+	-- true. Measured 2026-09-22 (run 604bfd32): Apple's own playtest was still running and two
+	-- edit_script writes were admitted as "edit mode". A running simulation is not edit mode.
+	local runningOk, running = pcall(function() return RunService:IsRunning() end)
+	if runningOk and running == true then return false end
 	if StudioTestService == nil then
 		-- Explicit compatibility fallback for environments where the Studio-only service is absent.
 		-- This preserves the RunService gate but cannot prove a Studio test transition by itself.
@@ -37,6 +42,7 @@ local allowEdits = false
 local confirmingEdits = false
 local connecting = false
 local disposed = false
+local appleRunActive = false
 local connections: { RBXScriptConnection } = {}
 local bridge: any = nil
 
@@ -187,7 +193,7 @@ heading.Font = Enum.Font.SourceSansSemibold
 text("Your place. Your control.", 15, true)
 local status = text("Not connected", 17, false)
 local place = text(game.Name, 13, true)
-	text("Pair with a project at apple.moshe-barami111.workers.dev. While connected, Apple may read this place’s objects and scripts, the current selection, and Studio Output messages over HTTPS.", 14, true)
+		text("Pair with a project at apple.moshe-barami111.workers.dev. While connected, Apple may read this place’s objects and scripts, the current selection, Studio Output messages, and snapshots of the active 3D viewport over HTTPS.", 14, true)
 
 order += 1
 local code = Instance.new("TextBox")
@@ -210,9 +216,9 @@ codeCorner.Parent = code
 local connect = control("Connect to Apple")
 local permission = text("Access: inspect only", 15, false)
 local edits = control("Enable edits…")
-local disclosure = text("Edits stay off until you allow them. This build supports a limited set of place operations. It cannot publish, upload assets or run code inside the plugin.", 13, true)
+local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations and Run-mode playtests. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
 local activity = text("No actions yet", 13, true)
-local version = text("Apple Studio · 1.0.0 · independent preview", 12, true)
+local version = text("Apple Studio · 1.1.0 · independent preview", 12, true)
 version.LayoutOrder = 100
 
 local function refreshAccess()
@@ -220,6 +226,7 @@ local function refreshAccess()
 	if not connected then
 		allowEdits = false
 		confirmingEdits = false
+		appleRunActive = false
 	end
 	permission.Text = if allowEdits then "Access: edits allowed for this connection" else "Access: inspect only"
 	edits.Text = if allowEdits then "Turn edits off" elseif confirmingEdits then "Allow edits for this connection" else "Enable edits…"
@@ -227,14 +234,22 @@ local function refreshAccess()
 	edits.AutoButtonColor = edits.Active
 	edits.TextColor3 = if edits.Active then colors.text else colors.muted
 	disclosure.Text = if confirmingEdits
-		then "Apple may create or change supported objects and scripts in this place. Writes require edit mode and an undo recording. Disconnecting turns this permission off."
-		else "Edits stay off until you allow them. This build supports a limited set of place operations. It cannot publish, upload assets or run code inside the plugin."
+			then "Apple may create or change supported objects and scripts in this place and control a Run-mode playtest. Writes require edit mode and an undo recording. Disconnecting turns this permission off."
+			else "Edits stay off until you allow them. This build supports bounded place operations and Run-mode playtests. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin."
 	connect.Text = if connecting then "Connecting…" elseif connected then "Disconnect" else "Connect to Apple"
 	code.Visible = not connected
 end
 
 local function keepEditConsentOnlyInEditMode(): boolean
-	if editModeActive() then return true end
+	if editModeActive() then
+		appleRunActive = false
+		return true
+	end
+	if appleRunActive then
+		confirmingEdits = false
+		refreshAccess()
+		return false
+	end
 	allowEdits = false
 	confirmingEdits = false
 	refreshAccess()
@@ -245,21 +260,42 @@ bridge = Bridge.new({
 	plugin = plugin,
 	capabilities = function() return Commands.capabilities(commands) end,
 	execute = function(id: string, op: any, sessionCurrent: (() -> boolean)?)
-		local function consentStillCurrent(): boolean
-			if disposed or not bridge:isConnected() then return false end
-			if not keepEditConsentOnlyInEditMode() then return false end
-			if not allowEdits then return false end
-			if sessionCurrent == nil then return true end
-			local ok, current = pcall(sessionCurrent)
-			return ok and current == true
-		end
-		return commands:execute(id, op, consentStillCurrent(), consentStillCurrent)
-	end,
+			local function pairingStillCurrent(): boolean
+				if disposed or not bridge:isConnected() then return false end
+				if sessionCurrent == nil then return true end
+				local ok, current = pcall(sessionCurrent)
+				return ok and current == true
+			end
+			local function consentStillCurrent(): boolean
+				if not pairingStillCurrent() then return false end
+				if not keepEditConsentOnlyInEditMode() then return false end
+				return allowEdits
+			end
+			local runAction = if type(op) == "table" and op.op == "run_mode" then op.action else nil
+			local startsAppleRun = runAction == "start" or runAction == "run" or runAction == "restart"
+			local ownedBefore = appleRunActive
+			if startsAppleRun and allowEdits and editModeActive() then appleRunActive = true end
+			-- Run-mode stop/pause/resume happen while Studio is intentionally outside edit mode. The
+			-- retained per-connection consent authorizes those controls; ordinary writes still receive
+			-- consentStillCurrent() and remain blocked until Studio returns to edit mode.
+			local authorized = if runAction ~= nil then pairingStillCurrent() and allowEdits else consentStillCurrent()
+			local result = commands:execute(id, op, authorized, consentStillCurrent)
+			if runAction ~= nil then
+				if result.ok ~= true then
+					appleRunActive = ownedBefore
+				elseif runAction == "stop" then
+					appleRunActive = false
+				elseif result.data and result.data.runMode == true then
+					appleRunActive = true
+				end
+			end
+			return result
+		end,
 	state = function()
 		return {
 			kind = "state", placeName = game.Name, placeId = game.PlaceId,
 			gameId = game.GameId, isRunMode = RunService:IsRunMode(),
-			selectionCount = #Selection:Get(), pluginVersion = "1.0.0",
+			selectionCount = #Selection:Get(), pluginVersion = "1.1.0",
 		}
 	end,
 	onStatus = function(message: string)

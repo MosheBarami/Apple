@@ -45,6 +45,8 @@ local DockWidgetPluginGuiInfo = {new=function(...) return {...} end}
 local run = object('RunService')
 run.edit=true
 function run:IsEdit() return self.edit end
+run.running=false
+function run:IsRunning() return self.running end
 function run:IsRunMode() return not self.edit end
 local studioTest = object('StudioTestService')
 studioTest.EditModeActive=true
@@ -83,7 +85,15 @@ local commandOptions
 local Commands = {new=function(options)
   commandOptions=options
   return {execute=function(self,id,op,allow)
-    table.insert(editsObserved,allow); return {id=id,ok=true}
+    table.insert(editsObserved,allow)
+    if type(op)=='table' and op.op=='run_mode' and (op.action=='start' or op.action=='run' or op.action=='restart') then
+      studioTest.EditModeActive=false; studioTest:FirePropertyChanged('EditModeActive')
+      return {id=id,ok=true,data={runMode=true,running=true}}
+    elseif type(op)=='table' and op.op=='run_mode' and op.action=='stop' then
+      studioTest.EditModeActive=true; studioTest:FirePropertyChanged('EditModeActive')
+      return {id=id,ok=true,data={runMode=false,running=false,stopped=true}}
+    end
+    return {id=id,ok=true}
   end,destroy=function() commandDestroyed=true end}
 end}
 local script = {Bridge=Bridge,Commands=Commands}
@@ -108,6 +118,12 @@ studioTest.EditModeActive=false
 assert(run:IsEdit()==true,'fixture keeps RunService IsEdit true while the test service leaves edit mode')
 assert(commandOptions.isEdit()==false,'the engine gate must see a Studio test the same way the consent fence does')
 studioTest.EditModeActive=true
+-- 2026-09-22, run 604bfd32: under a RunService:Run() simulation IsEdit() AND EditModeActive both stay
+-- true, and Apple's writes were admitted while its own playtest ran. Running is what says otherwise.
+run.running=true
+assert(run:IsEdit()==true and studioTest.EditModeActive==true,'fixture models a Run() simulation as real Studio reports it')
+assert(commandOptions.isEdit()==false,'a running simulation is not edit mode')
+run.running=false
 
 bridgeConfig.execute('a',{})
 assert(editsObserved[#editsObserved]==false,'starts readonly')
@@ -145,6 +161,18 @@ assert(editsObserved[#editsObserved]==false,'leaving edit mode during confirmati
 byText('Allow edits for this connection').Activated:Fire()
 bridgeConfig.execute('g',{})
 assert(editsObserved[#editsObserved]==true,'fresh two-step confirmation can grant after returning to edit mode')
+
+-- Apple-owned Run mode is the exception to clearing consent. The start is explicitly authorised,
+-- ordinary writes remain blocked while the test is live, stop stays authorised so the agent cannot
+-- strand the Studio in Run mode, and the original connection consent is usable again afterward.
+local playStart=bridgeConfig.execute('play-start',{op='run_mode',action='start'})
+assert(playStart.ok==true and editsObserved[#editsObserved]==true,'Apple Run start uses explicit connection consent')
+bridgeConfig.execute('during-play',{})
+assert(editsObserved[#editsObserved]==false,'ordinary writes stay blocked while Apple Run mode is active')
+local playStop=bridgeConfig.execute('play-stop',{op='run_mode',action='stop'})
+assert(playStop.ok==true and editsObserved[#editsObserved]==true,'Apple can stop the Run mode it started without a stale permission gate')
+bridgeConfig.execute('after-play',{})
+assert(editsObserved[#editsObserved]==true,'connection edit consent survives an Apple-owned playtest so autonomous fixing can continue')
 
 studioTest.EditModeActive=false
 studioTest:FirePropertyChanged('EditModeActive')
