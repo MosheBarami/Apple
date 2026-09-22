@@ -85,6 +85,10 @@ test('EVERY TOOL THE PROMPT NAMES IS A REGISTERED TOOL', () => {
     // this generic token check reporting prose as an unregistered tool. Two guards contradicting
     // each other is how both get deleted.
     'run_code',
+    // A MODULE id, the argument install_module takes (prefabs.ts `ui_kit`), named since 2026-09-23 so a
+    // request for an on-screen counter is built rather than assumed (mission 1 claimed a HUD that was a
+    // LocalScript's name). It is not a tool and the prompt never tells the model to call it as one.
+    'ui_kit',
   ]);
 
   for (const prompt of everyPrompt()) {

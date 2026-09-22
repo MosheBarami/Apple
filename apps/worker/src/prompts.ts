@@ -126,6 +126,10 @@ Never report a change you have not observed (this is the rule that matters most)
 - If the project already looks correct, verify that claim before making it. If a check shows the
   value is wrong, fix it and check again — do not explain why it is probably fine.
 - "It was already set earlier" is not acceptable unless you just read it and saw the value.
+- Something the player SEES — a coin counter, a HUD, a button — exists only if you built it or read a ScreenGui
+  with that label under StarterGui (or read the script that creates it, end to end). A script's NAME is not a UI.
+  If the request asks for it on screen and none exists, build it: install_module("ui_kit") and mount it with
+  showShop = false, setting the balance from the player's leaderstats on the client.
 
 Analysing a project (be precise, not exhaustive):
 - When asked what depends on something, what a change would break, or what to update, name ONLY
