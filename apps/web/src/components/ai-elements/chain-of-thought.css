@@ -1,0 +1,63 @@
+/* AI ELEMENTS CHAIN OF THOUGHT, DRAWN WITH THIS APP'S TOKENS.
+ *
+ * Upstream's look, without Tailwind: a column of steps, each a 16px icon on a rail with the label
+ * beside it, muted when complete and in ink while active; a quiet disclosure header; small badges
+ * for results. Only the app's tokens, no raw colour, weight 400 throughout (upstream's
+ * `font-medium` would be 500, which DESIGN-LOCK rule 2 does not allow).
+ */
+.ai-chain-of-thought { display:flex; flex-direction:column; gap:10px; width:100%; min-width:0; }
+
+/* Header and Content each wrap a Collapsible of their own (upstream's structure). The wrapper is
+   layout-neutral, so a closed Content leaves no empty gap in the column. */
+.ai-chain-of-thought > [data-slot='collapsible'] { display:contents; }
+
+.ai-chain-of-thought__header {
+  display:flex; width:100%; min-height:var(--h-xs); align-items:center; gap:8px;
+  padding:0 6px; margin-inline:-6px; border:0; border-radius:var(--r-xs); background:transparent;
+  color:var(--muted); font:inherit; font-size:13px; line-height:20px; text-align:start;
+  transition:color var(--t-fast) var(--ease-out);
+}
+/* Hover is a surface step that hugs the words: 6px of padding, taken back by a negative margin so
+   the icon stays in its column. The app's global `button:hover:not(:disabled):not([…])` paints ink
+   at 12% and outranks a single class, so the quieter fill is stated at a specificity that clears it. */
+button.ai-chain-of-thought__header:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); }
+.ai-chain-of-thought__title { flex:1; min-width:0; text-align:start; }
+.ai-chain-of-thought__icon { width:16px; height:16px; flex:none; }
+.ai-chain-of-thought__chevron { width:16px; height:16px; flex:none; transition:transform var(--t-fast) var(--ease-out); }
+.ai-chain-of-thought__chevron.is-open { transform:rotate(180deg); }
+
+.ai-chain-of-thought__content { display:flex; flex-direction:column; gap:10px; min-width:0; outline:none; animation:ai-chain-of-thought-in var(--t-fast) var(--ease-out) both; }
+
+/* ------------------------------------------------------------------- a step --- */
+.ai-chain-of-thought__step { display:flex; gap:8px; min-width:0; font-size:13px; line-height:20px; animation:ai-chain-of-thought-in var(--t-fast) var(--ease-out) both; }
+.ai-chain-of-thought__step--active { color:var(--ink); }
+.ai-chain-of-thought__step--complete { color:var(--muted); }
+.ai-chain-of-thought__step--pending { color:var(--faint); }
+
+/* The rail stretches to the step's height (a flex row stretches its children), so the connector
+   below the icon only draws when the step is taller than its first line — as upstream's does. */
+.ai-chain-of-thought__rail { position:relative; flex:none; width:16px; padding-block-start:2px; }
+.ai-chain-of-thought__rail > .ai-chain-of-thought__icon { display:block; }
+.ai-chain-of-thought__line { position:absolute; inset-block:26px 0; inset-inline-start:calc(50% - .5px); width:1px; background:var(--line); }
+.ai-chain-of-thought__body { flex:1; min-width:0; display:grid; gap:6px; overflow:hidden; }
+.ai-chain-of-thought__label { min-width:0; }
+.ai-chain-of-thought__description { color:var(--faint); font-size:12px; line-height:18px; }
+
+.ai-chain-of-thought__results { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.ai-chain-of-thought__result { gap:4px; padding:1px 8px; font-size:11px; }
+
+.ai-chain-of-thought__image { display:grid; gap:8px; margin-block-start:8px; }
+.ai-chain-of-thought__image-frame { position:relative; display:flex; align-items:center; justify-content:center; max-height:22rem; overflow:hidden; padding:12px; border-radius:var(--r-md); background:var(--surface-2); }
+.ai-chain-of-thought__caption { margin:0; color:var(--faint); font-size:12px; }
+
+@keyframes ai-chain-of-thought-in {
+  from { opacity:0; transform:translateY(-4px); }
+  to { opacity:1; transform:none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-chain-of-thought__header,
+  .ai-chain-of-thought__chevron { transition:none; }
+  .ai-chain-of-thought__content,
+  .ai-chain-of-thought__step { animation:none; }
+}

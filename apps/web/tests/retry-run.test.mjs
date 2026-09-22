@@ -73,11 +73,13 @@ test('the two cases are not labelled the same thing', () => {
 });
 
 test('regenerating states the discard, because it throws away a reply the user may want back', () => {
-  // There is no message-revision store yet, so the previous reply is gone. Saying so in a title
-  // is the honest minimum; a confirmation dialog belongs here only once there is something to
-  // restore FROM.
+  // There is no message-revision store yet, so the previous reply is gone. Saying so where the
+  // control is described is the honest minimum; a confirmation dialog belongs here only once there
+  // is something to restore FROM. The control is AI Elements' MessageAction now, and its
+  // description is its `tooltip` — shown on hover and focus, and read as part of its name.
   const control = TURN.slice(TURN.indexOf('const retryControl ='), TURN.indexOf('{outcome ? ('));
-  assert.match(control, /title=/);
+  assert.match(control, /<MessageAction\b/);
+  assert.match(control, /tooltip=/);
   assert.match(control, /replaces this reply/);
   assert.match(control, /cannot be brought back/);
 });
@@ -106,7 +108,7 @@ test('retry goes through edit_resend rather than a second re-run path', () => {
   // The server behaviour a retry needs — drop the failed turn, run the prompt again — is exactly
   // what an edit does. A second endpoint would be a second definition of re-running.
   const fn = WS.slice(WS.indexOf('const retryLast'), WS.indexOf('const [editing'));
-  assert.match(fn, /editAndResend\(lastUser\.id, lastUser\.content, PRODUCT_MODE_TO_SPECIALIST\[mode\](?:,\s*\w+)?\)/);
+  assert.match(fn, /editAndResend\(lastUser\.id, lastUser\.content, mode, productModel, autonomous\)/);
 });
 
 test('it resends the last USER message, not the failed assistant turn', () => {
@@ -127,10 +129,9 @@ test('the text is sent unchanged — a retry is not an edit', () => {
   assert.equal(/\.trim\(\)|prompt\(|setEditing/.test(fn), false, 'retry must not alter or re-ask for the text');
 });
 
-test('the mode is translated the same way the composer translates it', () => {
-  // Sending the product mode raw puts "plan" on a wire that expects a specialist.
+test('the public mode and autonomy reach retry unchanged', () => {
   const fn = WS.slice(WS.indexOf('const retryLast'), WS.indexOf('const [editing'));
-  assert.match(fn, /PRODUCT_MODE_TO_SPECIALIST\[mode\]/);
+  assert.match(fn, /editAndResend\([^;]+mode, productModel, autonomous\)/);
 });
 
 // ----------------------------------------------------------------- the shape ---

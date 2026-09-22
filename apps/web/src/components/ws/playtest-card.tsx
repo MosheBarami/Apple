@@ -2,23 +2,15 @@
 //
 // READ THIS BEFORE CHANGING THE COPY.
 //
-// Roblox gives Studio plugins no viewport readback. ThumbnailGenerator is not a
-// valid service for plugins, and CaptureService's callback never fires in edit
-// mode — both verified against real Studio, see apps/plugin/src/Render.luau.
-// There is no screenshot of the user's Studio window and no video stream to
-// subscribe to, at any price.
+// Current Studio builds can expose StudioCaptureService. When Roblox grants screenshot
+// permission, the plugin uses it to capture the active 3D viewport as a bounded PNG. Older Studio
+// builds or sessions without that permission fall back to Apple's own depth-buffered geometry
+// renderer. The frame's `source` says which path produced it; the UI must never blur that line.
 //
-// So this card shows what the plugin CAN produce: its own depth-buffered
-// triangle rasteriser, run on demand against the live DataModel, at 160x100,
-// roughly every 1.5 seconds. During Run mode that DataModel is the one the
-// server scripts are executing against — the same edit DataModel, which is the
-// hazard playtest.ts exists to contain and also the reason these frames show
-// real simulation state rather than a frozen scene.
-//
-// WHAT THESE FRAMES DO NOT CONTAIN, and why the card must never imply
-// otherwise: no characters (Run mode is server-only, nobody spawns), no
-// particles, no shadows, no PointLights, no post-effects, no textures. Flat
-// Lambert with one fixed sun.
+// Neither path is video. frame-bus.ts allows a capture request no more often than every 1.5s, so
+// this surface is a sequence of periodic snapshots. The software fallback also omits characters,
+// particles, shadows, local lights, post-effects and textures; it is useful evidence, not a claim
+// to reproduce the viewport.
 //
 // THE LINE THAT MUST NOT BE CROSSED: this is periodic stills of computed
 // geometry. Calling it "live video", adding a LIVE badge that stays lit when
@@ -28,7 +20,7 @@
 // timestamps and is rendered here without softening.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PlaytestRun, StudioFrame } from '@golem/shared';
-import { paintFrame } from '../../lib/frame-decode';
+import { frameImageSrc, paintFrame } from '../../lib/frame-decode';
 import { playtestView, PLAYTEST_TICK_MS } from '../../lib/playtest-view';
 import { Icon, PATH } from './primitives';
 import './playtest-card.css';
@@ -76,6 +68,8 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
 
   const view = useMemo(() => playtestView(run, frames, now), [run, frames, now]);
   const canvasRef = useFrameCanvas(view.frame);
+  const imageSrc = view.frame ? frameImageSrc(view.frame) : null;
+  const direct = view.frame?.source === 'studio_viewport' && view.frame?.encoding === 'png';
 
   if (!view.visible) return null;
 
@@ -112,7 +106,20 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
             onClick={() => setExpanded((v) => !v)}
             aria-label={expanded ? 'Collapse playtest frame' : 'Expand playtest frame'}
           >
-            <canvas ref={canvasRef} className="gx-playtest__canvas" />
+            {imageSrc ? (
+              <img
+                key={`${view.frame.playtestRunId ?? 'frame'}:${view.frame.seq ?? view.frame.capturedAt}`}
+                src={imageSrc}
+                className="gx-playtest__canvas gx-playtest__image"
+                alt="Studio viewport playtest frame"
+              />
+            ) : (
+              <canvas
+                key={`${view.frame.playtestRunId ?? 'frame'}:${view.frame.seq ?? view.frame.capturedAt}`}
+                ref={canvasRef}
+                className="gx-playtest__canvas"
+              />
+            )}
             {/* An overlay, not a replacement. The pixels underneath are real and
                 stay visible; what changes is that the card stops claiming they
                 are current. */}
@@ -141,9 +148,10 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
       </div>
 
       <footer className="gx-playtest__foot">
-        {/* The honest label. Do not shorten this to "Live view" or "Gameplay". */}
         {view.frame && <span className="gx-playtest__what">
-          Rasterised geometry from Studio — not a viewport capture. No characters, particles or lighting effects.
+          {direct
+            ? 'Studio viewport capture · up to every 1.5s'
+            : 'Software render from Studio · geometry fallback'}
         </span>}
 
         {view.consoleErrors > 0 && (

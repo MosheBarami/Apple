@@ -33,6 +33,10 @@ import { CODE_LANGUAGES } from '../src/lib/generative-ui/schema.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, '..');
 const BLOCK = readFileSync(join(WEB, 'src', 'components', 'ws', 'code-block.tsx'), 'utf8');
+// The reply's code block is AI Elements' CodeBlock, adapted (components/ai-elements/code-block.tsx).
+// The rendering properties below are asserted against that owner; BLOCK is the reply's wiring.
+const AI_BLOCK = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'code-block.tsx'), 'utf8');
+const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const MARKDOWN = readFileSync(join(WEB, 'src', 'lib', 'markdown.tsx'), 'utf8');
 const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
 
@@ -236,8 +240,20 @@ test('code is rendered as React children, never as an HTML string', () => {
   // The safety argument, and the reason there is no escaping step to get wrong: a `<script>` in a
   // code block is text by construction. An HTML-string highlighter would have had to escape it
   // inside the one pipeline that exists because this text is untrusted.
-  assert.equal(/dangerouslySetInnerHTML/.test(BLOCK), false, 'the code block must not set innerHTML');
-  assert.match(BLOCK, /tokens\.map/);
+  //
+  // RESTATED, not relaxed: the tokens are now rendered by AI Elements' CodeBlock, so the property
+  // is asserted there — each token's text is a React child of its span — and on the reply's
+  // wiring, which must hand the code to that block rather than render any of it itself.
+  // ai-elements-render.test.mjs renders it and checks the markup a `<script>` fence produces.
+  for (const [name, src] of [['ws/code-block.tsx', BLOCK], ['ai-elements/code-block.tsx', AI_BLOCK]]) {
+    assert.equal(/dangerouslySetInnerHTML/.test(stripComments(src)), false, `${name} must not set innerHTML`);
+  }
+  assert.match(AI_BLOCK, /keyedLine\.tokens\.map\(/, 'the lines are rendered token by token');
+  assert.match(AI_BLOCK, /\{token\.content\}/, "each token's text is a React child");
+  assert.match(AI_BLOCK, /import \{ codeToTokens \} from "\.\/highlight-compat"/, 'the tokens come from the local highlighter, not shiki');
+  const COMPAT = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'highlight-compat.ts'), 'utf8');
+  assert.match(COMPAT, /tokenize\(code, normaliseLanguage\(language\)\)/, 'the local highlighter is lib/highlight.ts');
+  assert.match(stripComments(BLOCK), /<AICodeBlock[^>]*code=\{code\}/, 'the reply passes its code to the AI Elements block');
 });
 
 test('prose keeps the sanitiser it always had', () => {
@@ -251,31 +267,53 @@ test('the markdown component routes fences to the code block and the rest to pro
 });
 
 test('there is a copy control, and it copies the code rather than the rendered text', () => {
-  assert.match(BLOCK, /navigator\.clipboard\?\.writeText\(code\)/);
+  // RESTATED against AI Elements' CodeBlockCopyButton: it copies `code` from the block's context,
+  // and the block puts its own `code` prop there — the source, not the rendered text.
+  assert.match(stripComments(BLOCK), /<CodeBlockCopyButton\b/);
+  assert.match(AI_BLOCK, /const \{ code \} = useContext\(CodeBlockContext\)/);
+  assert.match(AI_BLOCK, /await navigator\.clipboard\.writeText\(code\)/);
+  assert.match(AI_BLOCK, /const contextValue = useMemo\(\(\) => \(\{ code \}\), \[code\]\)/);
 });
 
 test('NO COPY CONTROL ON A FENCE THAT HAS NOT CLOSED', () => {
   // Copying a half-written function puts half a function on the clipboard, and the user finds out
   // in Studio. A control that is present and gives the wrong answer is worse than one that is a
-  // second late.
-  assert.match(BLOCK, /\{closed && \(/);
-  const guard = BLOCK.indexOf('{closed && (');
-  const copy = BLOCK.indexOf('gx-code__copy');
+  // second late. (ai-elements-render.test.mjs renders both cases and counts the buttons.)
+  const code = stripComments(BLOCK);
+  const guard = code.indexOf('{closed && (');
+  const copy = code.indexOf('<CodeBlockCopyButton');
   assert.ok(guard !== -1 && copy > guard, 'the copy button must sit inside the closed guard');
+  assert.equal(code.split('<CodeBlockCopyButton').length - 1, 1, 'exactly one copy button, and it is the guarded one');
 });
 
 test('a refused clipboard shows no tick', () => {
-  // The only promise this can keep: no confirmation for a copy that did not happen.
-  const fn = BLOCK.slice(BLOCK.indexOf('const copy = () =>'), BLOCK.indexOf('const name ='));
+  // The only promise this can keep: no confirmation for a copy that did not happen. The tick is
+  // set only AFTER the clipboard write resolved, inside the try; the catch reports and sets nothing.
+  const fn = AI_BLOCK.slice(AI_BLOCK.indexOf('const copyToClipboard = useCallback('), AI_BLOCK.indexOf('const Icon = isCopied'));
   assert.ok(fn.length > 0, 'the copy handler was not found — this test checks nothing');
-  assert.match(fn, /\(\) => setCopied\(false\)/);
+  const write = fn.indexOf('await navigator.clipboard.writeText(code)');
+  const tick = fn.indexOf('setIsCopied(true)');
+  assert.ok(write !== -1 && tick > write, 'the tick must come after the write resolved');
+  const failure = fn.slice(fn.indexOf('} catch'));
+  assert.match(failure, /onError\?\.\(/);
+  assert.equal(/setIsCopied\(true\)/.test(failure), false, 'a failed write must not show a tick');
 });
 
 test('the copied tick clears itself, and clears on unmount too', () => {
   // An edit-and-resend can replace the turn mid-timeout, and a setState on an unmounted component
   // is a warning in the console the team reads for real problems.
-  assert.match(BLOCK, /window\.clearTimeout\(timer\.current\)/);
-  assert.match(BLOCK, /\(\) => \{\s*if \(timer\.current !== null\) window\.clearTimeout\(timer\.current\);/);
+  assert.match(AI_BLOCK, /window\.setTimeout\(\s*\(\) => setIsCopied\(false\),\s*timeout\s*\)/);
+  assert.match(AI_BLOCK, /useEffect\(\s*\(\) => \(\) => \{\s*window\.clearTimeout\(timeoutRef\.current\);\s*\}/);
+});
+
+test('the reply block is the AI Elements CodeBlock, and a closed fence keeps its highlighting', () => {
+  // The block this replaced sent a CLOSED fence to a copy-only component that drew plain lines, so
+  // a script lost its colours the moment its closing fence arrived. One block now serves both.
+  assert.match(BLOCK, /from '\.\.\/ai-elements\/code-block'/);
+  const code = stripComments(BLOCK);
+  assert.equal(/if \(closed\)/.test(code), false, 'closed and streaming fences render the same block');
+  assert.equal(code.split('<AICodeBlock').length - 1, 1, 'one block for both states');
+  assert.match(AI_BLOCK, /`tok tok--\$\{token\.kind\}`/, 'each highlighted token carries its colour class');
 });
 
 test('every token kind the renderer can emit has a colour in BOTH themes', () => {

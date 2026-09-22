@@ -42,6 +42,7 @@ import { useProvideNewProject } from '../lib/shell';
 import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { filterProjects } from '../lib/project-search';
 import './dashboard.css';
+import './nonworkspace-minimal.css';
 
 /**
  * The project list for one scope.
@@ -362,7 +363,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
     onSuccess: (row) => {
       void qc.invalidateQueries({ queryKey: ['projects'] });
       void qc.invalidateQueries({ queryKey: ['projects-nav'] });
-      toast('Project summoned', 'success');
+      toast('Project created', 'success');
       //[[ THE TEMPLATE IS A SEEDED REQUEST, NOT SEEDED CONTENT.
       //
       //   It rides the handoff the workspace already consumes — the same one the suggestion chips
@@ -390,7 +391,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title="Summon a new project" onClose={onClose} locked={create.isPending}>
+    <Modal title="New project" onClose={onClose} locked={create.isPending}>
       <form onSubmit={onSubmit}>
         <label className="field">
           <span className="field-label">Name</span>
@@ -1199,20 +1200,20 @@ export function DashboardPage() {
           <span className="eyebrow">Getting Apple into Studio</span>
           <p>
             {STUDIO_PLUGIN_STORE_LIVE
-              ? <>Install the Studio plugin, then use <strong>Connect</strong> to pair your place.</>
+              ? <>Get Apple Studio from the Creator Store, install it from Studio’s Toolbox, and click <strong>Apple</strong> in the Plugins tab. Then open a project here, press <strong>Connect Studio</strong>, type the 6-character code into Apple, and allow edits for that connection.</>
               : 'Public Studio installation is unavailable. You can use chat now; building in Studio requires an existing plugin connection.'}
           </p>
           <div className="page-foot-links">
-            {/* Destination comes from @golem/shared and is the store page only
-                once the asset is actually distributable; until then it is
-                /docs/plugin, which says so. Same-origin while not live, so the
-                new tab and its rel are conditional too. */}
+            {/* Destination comes from @golem/shared: the Creator Store page while the
+                listing is distributed (true since 2026-09-22), /docs/plugin if it is ever
+                withdrawn. Same-origin while not live, so the new tab and its rel are
+                conditional too. */}
             <a
               href={STUDIO_PLUGIN_INSTALL_HREF}
               target={STUDIO_PLUGIN_STORE_LIVE ? '_blank' : undefined}
               rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
             >
-              {STUDIO_PLUGIN_STORE_LIVE ? 'Install Apple for Studio' : 'Studio installation status'}{' '}
+              {STUDIO_PLUGIN_STORE_LIVE ? 'Get Apple Studio' : 'Studio installation status'}{' '}
               {STUDIO_PLUGIN_STORE_LIVE && <span aria-hidden="true">↗</span>}
             </a>
             <a href="/docs" target="_blank" rel="noopener noreferrer">

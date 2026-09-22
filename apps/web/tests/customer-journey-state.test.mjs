@@ -75,7 +75,7 @@ test('switching projects invalidates every channel, not only history', () => {
 
 test('late durable history cannot erase terminal facts the live wire observed', () => {
   const persisted = [{
-    id: 'assistant-1', role: 'assistant', mode: 'stone', content: 'persisted final answer', tools: [],
+    id: 'assistant-1', role: 'assistant', mode: 'agent', content: 'persisted final answer', tools: [],
     streaming: false, createdAt: 100,
   }];
   const live = [{
@@ -95,10 +95,10 @@ test('late durable history cannot erase terminal facts the live wire observed', 
 
 test('history that lands mid-stream cannot roll visible assistant text back to the durable snapshot', () => {
   const history = [{
-    id: 'assistant-live', role: 'assistant', mode: 'stone', content: '', tools: [], streaming: false, createdAt: 100,
+    id: 'assistant-live', role: 'assistant', mode: 'agent', content: '', tools: [], streaming: false, createdAt: 100,
   }];
   const live = [{
-    id: 'assistant-live', role: 'assistant', mode: 'stone', content: 'Already visible streamed text',
+    id: 'assistant-live', role: 'assistant', mode: 'agent', content: 'Already visible streamed text',
     tools: [{ id: 't1', name: 'get_project_tree', state: 'running' }], streaming: true, createdAt: 100,
   }];
   const [merged] = mergeHistoryWithLive(history, live);
@@ -119,7 +119,7 @@ test('a reloaded terminal row carries the same persisted outcome/cost/context fi
   const persisted = chatItemFromMessageDto({
     id: 'assistant-terminal',
     role: 'assistant',
-    mode: 'stone',
+    mode: 'agent',
     productModel: 'apple-max',
     content: 'Finished with a bounded result.',
     toolTrace: null,
@@ -144,7 +144,7 @@ test('a reloaded terminal row carries the same persisted outcome/cost/context fi
 
 test('a legacy transcript row with no terminal metadata stays unknown after reload', () => {
   const legacy = chatItemFromMessageDto({
-    id: 'assistant-old', role: 'assistant', mode: 'stone', content: 'Old answer', toolTrace: null,
+    id: 'assistant-old', role: 'assistant', mode: 'agent', content: 'Old answer', toolTrace: null,
     createdAt: '2026-01-01T00:00:00.000Z',
   });
   for (const field of ['stopReason', 'error', 'creditsSpent', 'context', 'deniedTools']) {
@@ -206,6 +206,10 @@ test('falsification: cleanup may never delete an old attachment through the newl
 
 test('the primary composer lets typed text choose its own bidi direction', () => {
   const start = COMPOSER.indexOf('id="gx-composer-input"');
-  const tag = COMPOSER.slice(COMPOSER.lastIndexOf('<textarea', start), COMPOSER.indexOf('>', start) + 1);
+  // The textarea is AI Elements' PromptInputTextarea (it renders the <textarea> and spreads these
+  // props onto it). The tag is bounded by its own self-close, since its handlers contain `=>`.
+  const open = COMPOSER.lastIndexOf('<PromptInputTextarea', start);
+  assert.ok(open !== -1, 'the composer input is no longer a PromptInputTextarea');
+  const tag = COMPOSER.slice(open, COMPOSER.indexOf('/>', start) + 2);
   assert.match(tag, /dir="auto"/);
 });

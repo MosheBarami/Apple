@@ -26,26 +26,23 @@
 .gx-code__lang { display:flex; align-items:center; min-height:24px; font-family:var(--font-mono); font-size:11px; letter-spacing:0; color:var(--faint); white-space:nowrap; }
 
 /* COPY. The one control on the block, and the reason the block has a header at all — so it is
-   legible at rest (`--muted`, not `--faint`) and never louder than that. The app's button defaults
-   are wrong here in two specific ways: `padding:9px 14px` with `border-radius:var(--r-md)` draws a form
-   control inside an 8px-padded strip, and `button:hover { background:var(--surface-2) }` is the
-   exact colour of the surface this button already sits on — the shared hover is INVISIBLE here,
-   which is worse than no hover, because the control looks dead under the pointer. The border stays
+   legible at rest (`--muted`, not `--faint`) and never louder than that. It is AI Elements'
+   CodeBlockCopyButton: an icon, which turns into a tick (an SVG path, never a glyph) for as long
+   as the copy is fresh and back again. The app's button defaults are wrong here in two specific
+   ways: `padding:0 8px` with `border-radius:var(--r-md)` draws a form control inside an 8px-padded
+   strip, and a 36px floor would push the header taller than the label beside it. So the button is
+   the head's own 24px floor, square — the same floor `.gx-code__lang` carries, so the row does not
+   grow by a pixel at the moment the closing fence arrives and the button appears. The border stays
    1px and goes transparent instead of going away, so the hover can bring a hairline back without
-   moving the label by a pixel.
-   The width floor is six characters plus the padding: the label swaps Copy → Copied in place, and
-   with the right edge pinned by the row the whole box would otherwise jump wider under the finger
-   that just pressed it. It buys the tap target the same width.
-   `line-height:1` is what makes the floor above actually hold: at the inherited 1.55 the label's
-   line box plus the padding and the border measures 25.05px, which is OVER the floor, so the
-   button would set the row's height and the label — floored at 24 — would be stretched up to meet
-   it. One pixel, and it moves every line of code in a streaming reply the moment the fence closes.
-   Measured, not assumed; the label is centred by the flex box, not by its leading. */
+   moving the icon.
+   The icon swap cannot change the box: both icons are drawn on the same 24-unit grid at the same
+   size, which is what the text label it replaced needed a width floor for. */
 .gx-code__copy {
-  display:inline-flex; align-items:center; justify-content:center; min-height:24px; min-width:calc(6ch + 20px);
-  padding:3px 10px; border-color:transparent; border-radius:var(--r-xs); font-size:11px; line-height:1; color:var(--muted);
+  display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; min-height:24px;
+  padding:0; border-color:transparent; border-radius:var(--r-xs); background:transparent; color:var(--muted);
   transition:color 140ms var(--ease-out),background 140ms var(--ease-out),border-color 140ms var(--ease-out);
 }
+.gx-code__copy svg.ai-icon { width:14px; height:14px; }
 /* An ink mix rather than a fixed surface: `--ink` is near-white in the dark theme and near-black in
    the light one, so the same declaration lifts the button off `--surface-2` in one and presses it
    into the other. A tint that only read on the dark theme would need a correction below; this one
@@ -53,10 +50,10 @@
 .gx-code__copy:hover:not(:disabled) { background:color-mix(in srgb,var(--ink) 8%,transparent); border-color:var(--line); color:var(--ink); }
 .gx-code__copy:focus-visible { color:var(--ink); }
 
-/* THE COPIED STATE IS NOT COLOURED, DELIBERATELY. `Copied` is a confirmation of something the
+/* THE COPIED STATE IS NOT COLOURED, DELIBERATELY. The tick is a confirmation of something the
    reader just did, not a status they have to act on, and this product spends colour only on the
-   second kind. The word itself is the whole receipt — and it is the only state the markup exposes,
-   since nothing but the label and the aria-label changes when the clipboard write resolves. */
+   second kind. The shape change is the whole receipt; a polite status line beside the button says
+   the same thing to a screen reader, which cannot see an icon change. */
 
 /* THE CODE. Three corrections to rules it inherits, and nothing invented:
    - the global `pre` pads 18px while the head pads 14px, so the first character of every line sat
@@ -70,14 +67,16 @@
    the browser's back gesture: the chat behind it must not navigate away because one line was wide.
    No height cap. A long script is long, and silently cropping it would hide the half a reader is
    about to paste. */
-.gx-code__body { padding:14px; line-height:1.6; tab-size:4; overscroll-behavior-inline:contain; }
-.gx-code__body code { font-size:1em; }
+.gx-code .ai-code-block__pre { padding:14px; line-height:1.6; tab-size:4; overscroll-behavior-inline:contain; }
+/* A long line scrolls inside the block; the bar that says so is thin and in the theme's edge colour,
+   not the platform's default black slab across the foot of a light code block. */
+.gx-code .ai-code-block__pre { scrollbar-width:thin; scrollbar-color:var(--line-strong) transparent; }
+.gx-code .ai-code-block__pre code { font-size:1em; }
 
 /* --------------------------------------------------------------------- at 375px --- */
 
 /* Nothing in this file is a column, so nothing has to reflow; the one thing that has to change is
-   the target. A 24px-tall, 11px-labelled button is comfortable under a pointer and about half what
-   a thumb needs. The pseudo-element grows the HIT AREA without touching the box, so the header is
+   the target. A 24px square is comfortable under a pointer and about half what a thumb needs. The pseudo-element grows the HIT AREA without touching the box, so the header is
    drawn at the size it is on a laptop and still catches the tap. It covers the head's own padding
    and the block's border, where there is nothing else to press, and stops 8px down at the hairline
    rather than reaching into the code: a long-press that was meant to start a selection on the first

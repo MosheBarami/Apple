@@ -195,7 +195,7 @@ export function mockBrief(milestoneId: string): Promise<MilestoneBrief> {
         'It is finished when:',
         ...acceptance.map((l) => `- ${l}`),
       ].join('\n'),
-      mode: 'stone',
+      mode: 'agent',
       context,
       steps,
       acceptance,

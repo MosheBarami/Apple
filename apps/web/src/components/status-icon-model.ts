@@ -7,8 +7,8 @@
  *
  * §16.1 names a status vocabulary (I01–I12) and §16.4 asks for it as "semantic status
  * icon sets". What existed instead was the same idea drawn four different ways: a
- * literal `✓` character in `pairing-dialog.tsx` and `loading.tsx`, `✓ ✗ –` in
- * `generative-ui/render.tsx`, and inline SVG in `ws/activity.tsx`.
+ * literal `✓` character in `pairing-dialog.tsx` and `loading.tsx`, plus independent
+ * status drawings in the generative UI. Apple-owned renderers now use one vocabulary.
  *
  * A Unicode tick is not a small shortcut. It renders in whatever the font decides —
  * different weight, different baseline, different size from every other mark on the
@@ -42,4 +42,3 @@ export type StatusName = keyof typeof STATUS;
 export const STATUS_PATH = Object.fromEntries(
   Object.entries(STATUS).map(([k, v]) => [k, v.path]),
 ) as Record<StatusName, string>;
-

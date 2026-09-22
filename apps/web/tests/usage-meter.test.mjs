@@ -281,7 +281,7 @@ test('A CALLER THAT KNOWS THE FETCH FAILED SAYS SO, rather than leaving it to be
 const DAYS = [
   { day: '2026-09-10', credits: 10, events: 3, kinds: [
     { kind: 'usage_agent', credits: 8 }, { kind: 'chat_agent', credits: 1 }, { kind: 'docs_search', credits: 1 }] },
-  { day: '2026-09-09', credits: 20, events: 1, kinds: [{ kind: 'usage_super', credits: 20 }] },
+  { day: '2026-09-09', credits: 20, events: 1, kinds: [{ kind: 'usage_plan', credits: 20 }] },
 ];
 
 test('THE BREAKDOWN SUMS TO THE TOTAL THE CHART ALREADY SHOWS', () => {
@@ -297,23 +297,21 @@ test('THE TWO LEDGER ROWS FOR ONE ACTIVITY ARE ONE LINE', () => {
   // activity charged in two instalments, and printing them as two categories would invite the
   // reader to conclude they were charged twice.
   const rows = spendByKind(DAYS);
-  // Filtered by the bucket key rather than by the label: 'super' renders as "Super Agent", so a
-  // label match on /agent/ would call this green while the two instalments were still apart.
   const agent = rows.filter((r) => r.key === 'mode:agent');
   assert.equal(agent.length, 1, `Agent must be one row, got ${JSON.stringify(rows)}`);
   assert.equal(agent[0].credits, 9, '8 settled plus the 1 charged on admission');
-  assert.equal(rows.length, 3, 'Agent, Super Agent and Search — three buckets, not four rows');
+  assert.equal(rows.length, 3, 'Plan, Agent and Search — three buckets, not four rows');
 });
 
-test('legacy specialist ledger names use the public activity and preserve the whole charge', () => {
-  for (const [internal, publicMode] of [['clay', 'plan'], ['stone', 'agent'], ['rune', 'super']]) {
-    const rows = spendByKind([{ kinds: [{ kind: `chat_${publicMode}`, credits: 1 }, { kind: `usage_${internal}`, credits: 8 }] }]);
-    assert.equal(rows.length, 1, `${internal} admission and settlement must share one activity`);
-    assert.equal(rows[0].credits, 9);
-    assert.equal(rows[0].label, usageKindLabel(`usage_${publicMode}`));
-    assert.doesNotMatch(rows[0].label, /clay|stone|rune/i);
-  }
-  assert.equal(usageKindLabel('usage_constructor'), 'Usage constructor');
+test('a concrete ledger row with a non-ProductMode suffix stays counted without becoming a new mode', () => {
+  const rows = spendByKind([{ kinds: [
+    { kind: 'chat_retired_mode', credits: 1 },
+    { kind: 'usage_retired_mode', credits: 8 },
+  ] }]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].credits, 9);
+  assert.equal(rows[0].label, 'Other usage');
+  assert.equal(rows[0].key, 'kind:other-usage');
 });
 
 test('an aggregate extra balance does not claim it was purchased rather than granted', () => {
@@ -325,7 +323,7 @@ test('an aggregate extra balance does not claim it was purchased rather than gra
 test('THE BIGGEST SPEND IS FIRST, because that is the one worth knowing about', () => {
   const rows = spendByKind(DAYS);
   for (let i = 1; i < rows.length; i++) assert.ok(rows[i - 1].credits >= rows[i].credits, JSON.stringify(rows));
-  assert.equal(rows[0].key, 'mode:super', 'the 20-Credit day leads');
+  assert.equal(rows[0].key, 'mode:plan', 'the 20-Credit day leads');
 });
 
 test('A KIND THIS PAGE HAS NEVER SEEN IS SHOWN, not dropped and not guessed at', () => {
@@ -382,9 +380,9 @@ test('A GENUINE ZERO LAST MONTH IS A COMPARISON; an unknown one is not', () => {
 });
 
 test('the labels are the product’s own words for the modes', () => {
-  // A historical autonomy label must not pretend it identifies product-model weights.
   assert.equal(usageKindLabel('chat_plan'), 'Plan');
-  assert.match(usageKindLabel('usage_super'), /super/i);
+  assert.equal(usageKindLabel('usage_agent'), 'Agent');
+  assert.equal(usageKindLabel('usage_retired_mode'), 'Other usage');
   assert.match(usageKindLabel('api_chat'), /api/i);
   assert.match(usageKindLabel('docs_search'), /search/i);
   assert.ok(usageKindLabel('').length > 0, 'even an empty kind gets a word rather than a blank row');

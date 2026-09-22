@@ -19,7 +19,7 @@
 // including when the summary was `<tick> get_genre_references`, which is what the worker sends for
 // every tool whose argument is not one of the five keys `summarize()` knows. So the panel printed
 // a tool name it had already printed as the row's label and dropped the genre. They are now two
-// fields answering two questions — on what, and what came back — and `activity.tsx` prints the
+// fields answering two questions — on what, and what came back — and the minimal reasoning surface prints the
 // subject only when the worker's sentence does not already contain it. Every claim below is the
 // same claim; it is read off the field that now holds the answer.
 import test from 'node:test';

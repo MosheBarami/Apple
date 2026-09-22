@@ -13,10 +13,8 @@
  *   THE ARITHMETIC. "How many more today" from a cost that is a RANGE has a most and a fewest, and
  *   quoting only the most is the flattering reading of a spread presented as a fact.
  *
- *   THE DERIVATION. The figure must come out of MODE_INFO through PRODUCT_MODE_TO_SPECIALIST, the
- *   same path /pricing and /docs/credits-and-limits take. A literal typed into the app is a price
- *   free to drift from the site's, and from the measurements in docs/COST-MODEL.md that
- *   scripts/check-credit-figures.mjs polices.
+ *   THE DERIVATION. The figure must come from PRODUCT_MODE_INFO for the same Plan/Agent value the
+ *   page renders. A literal typed into the app is a price free to drift from the shared contract.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,11 +24,8 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
-  MODE_INFO,
   PRODUCT_MODES,
-  PRODUCT_MODES_OFFERED,
   PRODUCT_MODE_INFO,
-  PRODUCT_MODE_TO_SPECIALIST,
 } from '@golem/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -50,7 +45,7 @@ const dir = mkdtempSync(join(tmpdir(), 'reqcost-'));
 const src = join(dir, 'block.ts');
 writeFileSync(
   src,
-  `import { MODE_INFO, PRODUCT_MODES_OFFERED, PRODUCT_MODE_INFO, PRODUCT_MODE_TO_SPECIALIST } from ${JSON.stringify(join(ROOT, 'packages', 'shared', 'src', 'index.ts'))};\n` +
+  `import { PRODUCT_MODES, PRODUCT_MODE_INFO } from ${JSON.stringify(join(ROOT, 'packages', 'shared', 'src', 'index.ts'))};\n` +
     `import { formatNumber } from ${JSON.stringify(join(WEB, 'src', 'lib', 'format.ts'))};\n` +
     PAGE.slice(from, to) +
     '\nexport { REQUEST_COSTS };\n',
@@ -88,41 +83,39 @@ test('the article matches the mode name', () => {
 
 /* -------------------------------------------------------------- the derivation --- */
 
-test('every offered mode has a per-request figure, and it is the published one', () => {
+test('both product modes have a per-request figure, and it is the published one', () => {
   assert.ok(REQUEST_COSTS.length > 0, 'the app shows no per-request cost at all');
   assert.deepEqual(
     REQUEST_COSTS.map((c) => c.mode),
-    [...PRODUCT_MODES_OFFERED],
-    'the app must price exactly the modes a person can choose',
+    [...PRODUCT_MODES],
+    'the app must price exactly Plan and Agent from the shared ProductMode list',
   );
   for (const c of REQUEST_COSTS) {
-    const published = String(MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[c.mode]].typicalCredits);
-    assert.equal(c.published, published.replace('-', '–'), `${c.mode} quotes a figure MODE_INFO does not`);
+    const published = String(PRODUCT_MODE_INFO[c.mode].typicalCredits);
+    assert.equal(c.published, published.replace('-', '–'), `${c.mode} quotes a figure PRODUCT_MODE_INFO does not`);
     assert.equal(c.name, PRODUCT_MODE_INFO[c.mode].name);
     assert.equal(c.low, Number(published.split('-')[0]));
     assert.ok(Number.isFinite(c.low) && Number.isFinite(c.high) && c.low > 0 && c.high >= c.low, `${c.mode} has no usable range`);
   }
 });
 
-test('a mode nobody can select is not priced', () => {
-  const withdrawn = PRODUCT_MODES.filter((m) => !PRODUCT_MODES_OFFERED.includes(m));
-  for (const m of withdrawn) {
-    assert.equal(REQUEST_COSTS.some((c) => c.mode === m), false, `${m} is priced and cannot be chosen`);
-  }
+test('Autonomous is not priced as a build mode', () => {
+  assert.equal(REQUEST_COSTS.some((c) => c.mode === 'autonomous'), false);
 });
 
 test('the figure is not a literal in the page — it is read from the table the site reads', () => {
   const block = PAGE.slice(from, to);
-  assert.match(block, /MODE_INFO\[PRODUCT_MODE_TO_SPECIALIST\[m\]\]\.typicalCredits/, 'the price must be derived');
+  assert.match(block, /PRODUCT_MODE_INFO\[m\]\.typicalCredits/, 'the price must be derived from the direct mode');
+  assert.match(block, /PRODUCT_MODES\.map\(\(m\)/, 'the shared ProductMode list must drive the rows directly');
   // Commentary stripped first: a comment explaining what "2" means is not the number being
   // typed in, and this file's first run failed on its own doc comment saying exactly that.
   const code = block.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-  for (const m of PRODUCT_MODES_OFFERED) {
-    const published = String(MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].typicalCredits);
+  for (const m of PRODUCT_MODES) {
+    const published = String(PRODUCT_MODE_INFO[m].typicalCredits);
     assert.equal(
       new RegExp(`['"\`]${published.replace('-', '[-–]')}['"\` ]`).test(code),
       false,
-      `${published} is typed into usage.tsx as a literal and will drift from MODE_INFO`,
+      `${published} is typed into usage.tsx as a literal and will drift from PRODUCT_MODE_INFO`,
     );
   }
 });

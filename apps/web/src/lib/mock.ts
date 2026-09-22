@@ -542,7 +542,7 @@ export const mockMessages: MessageDto[] = [
   {
     id: 'm1',
     role: 'user',
-    mode: 'stone',
+    mode: 'agent',
     content: 'Build a lobby with a spinning golden portal that teleports players to the arena.',
     toolTrace: null,
     createdAt: new Date(now - 32 * 60_000).toISOString(),
@@ -550,9 +550,9 @@ export const mockMessages: MessageDto[] = [
   {
     id: 'm2',
     role: 'assistant',
-    mode: 'stone',
+    mode: 'agent',
     content:
-      "Done. The lobby now has a raised stone plinth, a spinning golden portal ring, and a teleport pad wired to the arena.\n\n**What I changed**\n\n- `Workspace.Lobby` — new plinth, four pillars and warm PointLights\n- `Workspace.Lobby.Portal` — a torus of `Neon` parts rotating at 45°/s\n- `ServerScriptService.PortalService` — teleports on touch, with a 2s debounce per player\n\nThe portal reads a `TargetPlace` attribute so you can point it somewhere else without editing the script.",
+      "Done. The lobby now has a raised stone plinth, a spinning golden portal ring, and a teleport pad wired to the arena.\n\n**What I changed**\n\n- `Workspace.Lobby` — new plinth, four pillars and warm PointLights\n- `Workspace.Lobby.Portal` — a torus of `Neon` parts rotating at 45°/s\n- `ServerScriptService.PortalService` — teleports on touch, with a 2s debounce per player\n\nThe portal reads a `TargetPlace` attribute so you can point it somewhere else without editing the script:\n\n```luau\nlocal Players = game:GetService(\"Players\")\nlocal portal = workspace.Lobby.Portal\n\nportal.Touched:Connect(function(hit)\n\tlocal player = Players:GetPlayerFromCharacter(hit.Parent)\n\tif player then\n\t\t-- 2s debounce per player, then teleport\n\t\tteleport(player, portal:GetAttribute(\"TargetPlace\"))\n\tend\nend)\n```",
     toolTrace: [
       { tool: 'get_project_tree', summary: 'Read 386 instances across 6 services', ok: true, durationMs: 640 },
       { tool: 'create_checkpoint', summary: 'Snapshot "before lobby rebuild" (14 scripts)', ok: true, durationMs: 1180 },
@@ -567,7 +567,7 @@ export const mockMessages: MessageDto[] = [
   {
     id: 'm3',
     role: 'user',
-    mode: 'stone',
+    mode: 'agent',
     content: 'The floor still looks flat. Can you check it visually and fix whatever the critique finds?',
     toolTrace: null,
     createdAt: new Date(now - 6 * 60_000).toISOString(),

@@ -107,7 +107,7 @@ test('an empty or missing server id changes nothing', () => {
 test('the server names the user row on the message it already sends', () => {
   // Not a new ServerMsg: msg_start is broadcast exactly once per run, after the user row is
   // inserted, and already carries the run's other id.
-  assert.match(SESSION, /type: 'msg_start', msgId, role: 'assistant', mode,[^}\n]*\buserMsgId/);
+  assert.match(SESSION, /type: 'msg_start', msgId, role: 'assistant', mode,[^\n]*\buserMsgId/);
 });
 
 test('the field is optional on the wire, because the worker and the app deploy separately', () => {

@@ -38,7 +38,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { frameFreshness, framesForRun, playtestView } from '../src/lib/playtest-view.ts';
-import { decodeFrame, rleDecode } from '../src/lib/frame-decode.ts';
+import { decodeFrame, frameImageSrc, rleDecode } from '../src/lib/frame-decode.ts';
 // Reached across the package boundary on purpose — see the codec-agreement
 // test below. Testing the two halves separately proves nothing about them
 // agreeing, and a divergence would paint a wrong picture rather than throw.
@@ -251,6 +251,14 @@ test('an rle24 frame decodes to exactly the pixels that were encoded', () => {
   assert.deepEqual(out, new Uint8Array([10, 20, 30, 10, 20, 30, 40, 50, 60, 40, 50, 60]));
 });
 
+test('a PNG viewport capture uses the browser image path, not packed RGB decoding', () => {
+  const payload = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64');
+  const f = { rgbBase64: payload, encoding: 'png', width: 1, height: 1 };
+  assert.equal(decodeFrame(f), null, 'PNG bytes must never be misread as packed RGB');
+  const src = frameImageSrc(f);
+  assert.ok(src && src.startsWith('data:image/png'), 'PNG frame must become a browser image source');
+});
+
 test('a malformed rle stream decodes to null, never to a partial picture', () => {
   assert.equal(rleDecode(new Uint8Array([2, 1, 2]), 2), null, 'truncated record');
   assert.equal(rleDecode(new Uint8Array([0, 1, 2, 3]), 2), null, 'zero-length run');
@@ -378,11 +386,7 @@ test('a finished playtest that captured nothing says so', () => {
 
 // ---------------------------------------------------------------- copy guarantees
 
-test('the card never claims to be video, a stream, or a viewport capture', () => {
-  // Roblox exposes no viewport readback to plugins: ThumbnailGenerator is not
-  // a valid service and CaptureService's callback never fires in edit mode,
-  // both verified against real Studio. These frames are computed geometry.
-  // Language that implies otherwise is banned here rather than left to review.
+test('the card never claims to be video or continuous streaming, and labels source honestly', () => {
   const src = readFileSync(join(HERE, '..', 'src', 'components', 'ws', 'playtest-card.tsx'), 'utf8');
   const code = src
     .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -391,11 +395,12 @@ test('the card never claims to be video, a stream, or a viewport capture', () =>
   for (const banned of [/live video/i, /\bvideo\b/i, /screen ?share/i, /\bstreaming live\b/i, /webcam/i]) {
     assert.ok(!banned.test(code), `banned phrasing ${banned} appears in the card`);
   }
-  // And the disclaimer must actually be present, not merely un-lied-about.
-  assert.match(code, /not a viewport capture/i);
+  assert.match(code, /Studio viewport capture/);
+  assert.match(code, /Software render from Studio/);
+  assert.match(code, /frame\?\.source === 'studio_viewport'/);
 });
 
-test('the honest disclaimer names what the frames do not contain', () => {
+test('the fallback disclaimer names what software-render frames may omit', () => {
   const src = readFileSync(join(HERE, '..', 'src', 'components', 'ws', 'playtest-card.tsx'), 'utf8');
   assert.match(src, /characters/i, 'Run mode spawns no players; the card must say so');
   assert.match(src, /particles/i);

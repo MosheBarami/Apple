@@ -36,6 +36,7 @@ import {
   blockedTools,
   withToolBlocked,
 } from '../src/components/ws/tool-permissions.ts';
+import { GOVERNED_TOOL_NAMES } from '@golem/shared';
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const workerTools = read('../../worker/src/tools.ts');
@@ -81,16 +82,15 @@ test('nothing read-only is offered, because blocking it buys nothing and breaks 
   assert.deepEqual(pointless, [], `these cannot change anything, so blocking them is only damage: ${pointless.join(', ')}`);
 });
 
-test('the tools that actually mutate a project are all offered', () => {
-  // The set the run loop itself calls mutating. Leaving one out would be a safety control with a
-  // hole in it, which is worse than no control because it reads as complete.
-  const decl = workerTools.length && readFileSync(new URL('../../worker/src/do/session.ts', import.meta.url), 'utf8');
-  const mutating = [...decl.slice(decl.indexOf('const MUTATING_TOOLS'), decl.indexOf('const MUTATING_TOOLS') + 400)
-    .matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
-  assert.ok(mutating.length >= 5, 'MUTATING_TOOLS did not parse');
-  const offered = new Set(GOVERNABLE_TOOLS.map((t) => t.tool));
-  const missing = mutating.filter((t) => !offered.has(t));
-  assert.deepEqual(missing, [], `these change the user's project and cannot be withheld: ${missing.join(', ')}`);
+test('the panel renders the shared governed-tool vocabulary exactly', () => {
+  // Mutation truth now lives beside each ToolImpl in worker/tools.ts and the worker test proves
+  // every mutation-capable tool appears in GOVERNED_TOOL_NAMES. This web-side assertion checks the
+  // second half of that contract: the panel must render that one shared vocabulary without losing
+  // or inventing a name of its own.
+  assert.deepEqual(
+    GOVERNABLE_TOOLS.map((tool) => tool.tool),
+    [...GOVERNED_TOOL_NAMES],
+  );
 });
 
 test('the list fits the server\'s entry cap', () => {

@@ -24,6 +24,62 @@ execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
    '--platform=neutral', '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
 const { STATUS, STATUS_PATH } = await import(out);
 
+/**
+ * Every stylesheet the app actually ships, read from the entry point rather than named here.
+ *
+ * The design system grew a second file during the minimal pass, and the rules these guards exist
+ * for moved into it. A guard that hardcoded `system.css` kept passing while the thing it was
+ * protecting was no longer in the file it read — the failure mode is a green light over an
+ * unstyled mark, which is exactly what happened: every tone fell back to `currentColor`.
+ */
+function shippedCss() {
+  const entry = readFileSync(join(SRC, 'main.tsx'), 'utf8');
+  const files = [...entry.matchAll(/import\s+'\.\/([^']+\.css)'/g)].map((m) => m[1]);
+  assert.ok(files.length >= 2, `the entry imports ${files.length} stylesheets; the design system is split`);
+  return files.map((f) => readFileSync(join(SRC, f), 'utf8')).join('\n');
+}
+
+/** Flattened and comment-free, so an assertion cannot be satisfied by prose or by whitespace. */
+const flatten = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\s+/g, ' ');
+
+/** `[start, end)` offsets of every `@media (prefers-reduced-motion …)` block, in flattened css. */
+function reducedMotionSpans(css) {
+  const flat = flatten(css);
+  const spans = [];
+  for (let at = flat.indexOf('prefers-reduced-motion'); at !== -1; at = flat.indexOf('prefers-reduced-motion', at + 1)) {
+    const open = flat.indexOf('{', at);
+    if (open === -1) continue;
+    let depth = 0;
+    for (let i = open; i < flat.length; i++) {
+      if (flat[i] === '{') depth++;
+      else if (flat[i] === '}' && --depth === 0) { spans.push([at, i + 1]); break; }
+    }
+  }
+  return spans;
+}
+
+/** The body of every reduced-motion escape. */
+function reducedMotionBlocks(css) {
+  const flat = flatten(css);
+  return reducedMotionSpans(css).map(([a, b]) => flat.slice(a, b));
+}
+
+/**
+ * Flattened css with every reduced-motion escape removed.
+ *
+ * THIS EXISTS BECAUSE THE OBVIOUS ASSERTION WAS MIS-AIMED, and a planted break proved it: asking
+ * `/\.st--spin \{[^}]*animation:/` of the whole stylesheet is satisfied by the rule that turns the
+ * animation OFF, because `animation:none` is still an `animation:` declaration. Deleting the real
+ * animation left the guard green — the escape was answering the question on its behalf.
+ */
+function withoutReducedMotion(css) {
+  const flat = flatten(css);
+  let out = '';
+  let cursor = 0;
+  for (const [a, b] of reducedMotionSpans(css)) { out += flat.slice(cursor, a); cursor = b; }
+  return out + flat.slice(cursor);
+}
+
 test('every status carries a canonical id from the reference board', () => {
   for (const [name, spec] of Object.entries(STATUS)) {
     assert.match(spec.canonical, /^I\d{2}$/, `${name} has no canonical id`);
@@ -45,7 +101,7 @@ test('tone never contradicts the meaning', () => {
 });
 
 test('every tone has a stylesheet rule, so none renders in the inherited colour', () => {
-  const css = readFileSync(join(SRC, 'design', 'system.css'), 'utf8');
+  const css = shippedCss();
   for (const spec of Object.values(STATUS)) {
     assert.ok(css.includes(`.st--${spec.tone}`), `.st--${spec.tone} has no rule`);
   }
@@ -70,7 +126,12 @@ test('success and error are visibly different shapes, not the same path recolour
 function sources(dir = SRC, acc = []) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
-    if (statSync(p).isDirectory()) sources(p, acc);
+    if (statSync(p).isDirectory()) {
+      // AICSS is third-party source pinned byte-for-byte against its upstream MIT package.
+      // Apple-owned style guards must not force a rewrite that would break the vendor fidelity proof.
+      if (relative(SRC, p) === join('components', 'aicss')) continue;
+      sources(p, acc);
+    }
     else if (/\.tsx?$/.test(name)) acc.push(p);
   }
   return acc;
@@ -130,12 +191,17 @@ test('exactly one mark animates, and it is the one that means work is happening'
     .map(([name]) => name);
   assert.deepEqual(spinning, ['pending']);
 
-  // And the animation must actually exist, with a reduced-motion escape.
-  const css = readFileSync(join(WEB, 'src/design/system.css'), 'utf8');
-  assert.match(css, /\.st--spin \{[^}]*animation:/, '.st--spin must animate');
+  // And the animation must actually exist, with a reduced-motion escape. Asserted as the property
+  // rather than the spelling: the rule may sit in any shipped stylesheet, in any formatting.
+  const css = shippedCss();
   assert.match(
-    css,
-    /prefers-reduced-motion: reduce\) \{ \.st--spin \{ animation: none/,
-    'and must stop for a reader who asked for less motion',
+    withoutReducedMotion(css),
+    /\.st--spin \{[^}]*animation:/,
+    '.st--spin must animate outside the reduced-motion escape',
+  );
+  const escapes = reducedMotionBlocks(css).filter((block) => /\.st--spin \{[^}]*animation:\s*none/.test(block));
+  assert.ok(
+    escapes.length >= 1,
+    'and must stop for a reader who asked for less motion — no reduced-motion block disables .st--spin',
   );
 });

@@ -141,8 +141,8 @@
    derived it, where --sh-accent-light must be DARKER than the page rather than lighter or an
    accented control loses its edge against white. */
 :root[data-theme='light'] .page.shelf {
-  --sh-accent-light: #00553c;
-  --sh-accent-deep: #00563d;
+  --sh-accent-light: #285fb5;
+  --sh-accent-deep: #154394;
   --sh-accent-ring: color-mix(in srgb, var(--sh-accent) 45%, transparent);
   --sh-accent-glow: color-mix(in srgb, var(--sh-accent) 12%, transparent);
 

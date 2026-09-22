@@ -1796,6 +1796,32 @@ export const adminAccount = (adminKey: string, userId: string, days = 7): Promis
         { 'X-Admin-Key': adminKey },
       );
 
+export interface AdminModelRoutingRow {
+  id: string;
+  provider: string;
+  label: string;
+  available: boolean;
+  unavailableReason: string | null;
+  reason: string | null;
+  unsupportedModelKeys: { key: string; reason: string }[];
+  supportsTools: boolean;
+  supportsVision: boolean;
+  contextWindow: number;
+  maxOutput: number;
+  inputCostPer1M: number;
+  outputCostPer1M: number;
+  unverifiedFields: string[];
+}
+
+export interface AdminModelRoutingResponse {
+  models: AdminModelRoutingRow[];
+  auto: { model: string | null; provider: string | null; reasoning: string; rejected: unknown[] };
+  health: unknown[];
+}
+
+export const adminModelRouting = (adminKey: string): Promise<AdminModelRoutingResponse> =>
+  request<AdminModelRoutingResponse>('/api/admin/model-routing', {}, { 'X-Admin-Key': adminKey });
+
 export interface ModelTestResponse {
   ok: boolean;
   ms: number;

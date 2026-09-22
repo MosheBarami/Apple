@@ -29,8 +29,8 @@
  * interpolation, any smoothing between frames, and any placeholder image. The
  * plugin rasterises geometry on demand — there is no video stream at any price,
  * so a card that implied one would be dressing periodic stills up as something
- * they are not. See components/ws/studio-view.tsx for the same rule applied to
- * the build renders.
+ * they are not. The playtest card applies this rule to both native Studio captures and
+ * software-render fallbacks.
  */
 import type { PlaytestRun, StudioFrame } from '@golem/shared';
 import { PLAYTEST_DEAD_MS, PLAYTEST_STALE_MS } from '@golem/shared';

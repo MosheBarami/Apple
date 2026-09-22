@@ -1,0 +1,8 @@
+/* THE WELCOME SHEET'S SEEDS ARE A GRID THAT NEVER SCROLLS.
+ *
+ * AI Elements' Suggestions wraps its row in a scroll area so a long row of pills can scroll
+ * sideways. The welcome sheet lays its three seeds out as a grid instead (`.start-sheet__ideas`),
+ * which always fits — so the scroll area must not clip: an `overflow` that is not `visible` would
+ * cut the 4px focus ring off every seed on its outer edge. */
+.start-sheet .ai-suggestions,
+.start-sheet .ai-suggestions > .ai-scroll-area__viewport { overflow:visible; white-space:normal; }

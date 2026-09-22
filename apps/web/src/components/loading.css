@@ -1,7 +1,7 @@
 /* THE WAIT — and the first thing to record is that it had no stylesheet at all.
  *
  * `loading.tsx` draws with eight class names — `forge`, `forge-mark`, `forge-label`, `forge-steps`,
- * `forge-step`, `forge-step-mark`, `forge-bar`, `rune-spinner` — and a grep for each of them across
+ * `forge-step`, `forge-step-mark`, `forge-bar`, `loading-spinner` — and a grep for each of them across
  * every sheet in apps/web returned ZERO. None of them is written `foo__bar`, so
  * scripts/check-unstyled-classes.mjs never looked at them: its matcher requires a `__` or a `--` in
  * the name, and a single-hyphen family falls straight through the gap. The check reported CLASSES
@@ -115,8 +115,8 @@
    project…" is the only call site, and a 14px mark alone in a 100px-padded page says less than the
    sentence the caller had already written. With no label there is nothing to show and the span
    stays a bare mark with its accessible name in screen-reader text. */
-.rune-spinner { display:inline-flex; align-items:center; gap:10px; min-width:0; color:var(--muted); font-size:14px; line-height:1.5; letter-spacing:-.01em; }
-.rune-spinner__label { min-width:0; text-wrap:pretty; overflow-wrap:anywhere; }
+.loading-spinner { display:inline-flex; align-items:center; gap:10px; min-width:0; color:var(--muted); font-size:14px; line-height:1.5; letter-spacing:-.01em; }
+.loading-spinner__label { min-width:0; text-wrap:pretty; overflow-wrap:anywhere; }
 
 /* ---------------------------------------------------------------------- the splash --- */
 

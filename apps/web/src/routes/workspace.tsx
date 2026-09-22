@@ -5,15 +5,14 @@
 // The two things that genuinely persist between turns — checkpoints and
 // project memory — remain one click away in a drawer rather than occupying a
 // third of the screen forever.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, canUseProductModel, type ProductMode, type ProductModel } from '@golem/shared';
+import { PRODUCT_MODES, canUseProductModel, type ProductMode, type ProductModel } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
 import { useProvideCheckpoints } from '../lib/shell';
-import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
@@ -26,13 +25,10 @@ import { useAuth } from '../lib/auth';
 import { useCommands } from '../lib/commands';
 import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { useGlobalShortcut } from '../components/shortcuts-dialog';
-import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { RevisionsDialog } from '../components/ws/revisions-dialog';
-import { MemoryPanel } from '../components/ws/memory-panel';
 import { AutomationsPanel } from '../components/ws/automations-panel';
 import { MembersPanel } from '../components/ws/members-panel';
-import { InstructionsPanel } from '../components/ws/instructions-panel';
 import {
   ApiError,
   downloadExport,
@@ -54,7 +50,9 @@ import { ACCESS_LOADING, allows, normaliseAccess, whyNot, type AccessState } fro
 import type { AssetSourcePolicy, ChatAttachment } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
-import { isNearBottom, jumpLabel, unseenCount } from '../lib/follow-latest';
+import { jumpLabel, unseenCount } from '../lib/follow-latest';
+import { Conversation, ConversationContent, ConversationScrollButton } from '../components/ai-elements/conversation';
+import { useStickToBottomContext, type StickToBottomContext } from '../components/ai-elements/stick-to-bottom';
 import { replyAnnouncement } from '../lib/announce';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { fidelityLine, restoreInFlight, restoreSentence, restoreTone } from '../lib/restore-status';
@@ -64,11 +62,21 @@ import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
 import { StudioActivity } from '../components/ws/studio-activity';
-import { ProjectStage } from '../components/ws/project-stage';
 import { ChatWelcome } from '../components/ws/chat-welcome';
 import { EmptyState } from '../components/empty-state';
 import { Spinner } from '../components/loading';
 import { maxUpgradeAvailable } from '../lib/creation-intent';
+
+// The credits drawer's panel, loaded the first time the drawer opens (see the drawer below).
+const CreditsPanel = lazy(() => import('../components/ws/credits-panel').then((m) => ({ default: m.CreditsPanel })));
+// Search is mounted with the workspace (it keeps its query), but it is a drawer's content: fetched
+// as its own chunk right after the workspace renders, rather than weighing on the entry chunk.
+const SearchPanel = lazy(() => import('../components/ws/search-panel').then((m) => ({ default: m.SearchPanel })));
+// The memory drawer's two panels, on first open for the same reason as the credits panel: only the
+// person who opens the drawer needs them, and the composer's AI Elements parts needed the room in
+// the entry chunk (scripts/check-app-bundle.mjs).
+const MemoryPanel = lazy(() => import('../components/ws/memory-panel').then((m) => ({ default: m.MemoryPanel })));
+const InstructionsPanel = lazy(() => import('../components/ws/instructions-panel').then((m) => ({ default: m.InstructionsPanel })));
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
   if (MOCK_MODE) return mockProjects.find((p) => p.id === id) ?? mockProjects[0] ?? null;
@@ -118,8 +126,37 @@ const SUGGESTIONS = [
 type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations';
 type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations';
 const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history', 'automations'] as const;
-const STAGE_STATES = ['open', 'collapsed'] as const;
-type MobileSurface = 'conversation' | 'project';
+
+//[[ BACK TO THE LIVE EDGE, AND HOW MUCH ARRIVED WHILE THE READER WAS AWAY.
+//
+//   Whether the reader is following is the conversation's own state now — `isAtBottom`, the lock
+//   the AI Elements Conversation keeps (components/ai-elements/stick-to-bottom.tsx), decided by the
+//   same `isNearBottom` slack this view has always used. What stays here is the COUNT, because
+//   only this view knows what a turn is.
+//
+//   `seen` is a WATERMARK, not a counter. The transcript can shrink — an edit-and-resend
+//   truncates it, and `history_truncated` drops rows the server deleted — and an accumulating
+//   counter would go on announcing turns that no longer exist. While following, the watermark
+//   tracks the total, so the count starts from zero the moment the reader leaves.
+//
+//   The control is AI Elements' ConversationScrollButton: shown only while the reader has left
+//   the edge, and pressing it scrolls to the end and re-arms following in one step. Its name is
+//   the full sentence; the count alone is what it shows beside the arrow. ]]
+function LatestEdgeJump({ total }: { total: number }) {
+  const { isAtBottom } = useStickToBottomContext();
+  const seen = useRef(total);
+  useEffect(() => {
+    if (isAtBottom) seen.current = total;
+  }, [isAtBottom, total]);
+  const unseen = isAtBottom ? 0 : unseenCount(total, seen.current);
+  return (
+    <ConversationScrollButton
+      aria-label={jumpLabel(unseen)}
+      title={jumpLabel(unseen)}
+      data-unseen={unseen > 0 ? `${unseen} new` : undefined}
+    />
+  );
+}
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -156,29 +193,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     },
     [projectId],
   );
-  // The stage is an optional companion, not the default destination. Keep a
-  // per-project choice on this device so opening it is intentional and a
-  // reload does not reclaim the conversation's reading width.
-  const [stageOpen, setStageOpen] = useState(
-    () => readViewChoice(`stage.${projectId}`, STAGE_STATES, 'collapsed') === 'open',
-  );
-  const [mobileSurface, setMobileSurface] = useState<MobileSurface>('conversation');
-  const setStageExpanded = useCallback(
-    (open: boolean) => {
-      setStageOpen(open);
-      writeViewChoice(`stage.${projectId}`, open ? 'open' : 'collapsed');
-      // Opening the stage should reveal it immediately on a narrow screen;
-      // closing always returns the user to the conversation lane.
-      setMobileSurface(open ? 'project' : 'conversation');
-    },
-    [projectId],
-  );
-  useEffect(() => {
-    const restored = readViewChoice(`stage.${projectId}`, STAGE_STATES, 'collapsed') === 'open';
-    setStageOpen(restored);
-    setMobileSurface('conversation');
-  }, [projectId]);
   const [mode, setMode] = useState<ProductMode>('agent');
+  // OFF until the person turns it on, per run of the page (F-009). Autonomous lifts the per-tool
+  // permissions and lets a run take up to 1000 steps; measured 2026-09-22, single ordinary requests
+  // cost 105-450 Credits against a 100-Credit free day. Nobody should start that without choosing to.
+  const [autonomous, setAutonomous] = useState(false);
   const [productModel, setProductModel] = useState<ProductModel>('apple');
   const account = useQuery({ queryKey: ['me'], queryFn: fetchMe, staleTime: 60_000, retry: 1 });
   const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, staleTime: 60_000, retry: false });
@@ -191,8 +210,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   // describes the wrong snapshot.
   const [note, setNote] = useState('');
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const stick = useRef(true);
+  // The conversation's follow state, reached from outside it: sending re-arms following, and a
+  // jump to an older message releases it before scrolling there.
+  const conversation = useRef<StickToBottomContext>(null);
 
   // The rail's Checkpoints card opens this route's drawer.
   const showCheckpoints = useCallback(() => setDrawer('checkpoints'), []);
@@ -448,8 +468,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     if (running || !modelAllowed || !chatAllowed) return;
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
     if (!lastUser) return;
-    editAndResend(lastUser.id, lastUser.content, PRODUCT_MODE_TO_SPECIALIST[mode], productModel);
-  }, [messages, running, editAndResend, mode, productModel, modelAllowed, chatAllowed]);
+    editAndResend(lastUser.id, lastUser.content, mode, productModel, autonomous);
+  }, [messages, running, editAndResend, mode, productModel, autonomous, modelAllowed, chatAllowed]);
 
   // Which of my own messages is being edited, if any.
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
@@ -502,6 +522,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
       }
       setDrawer(null);
       navigate({ hash: `#msg-${messageId}` }, { replace: true });
+      // Leaving the live edge on purpose: without this, a reply streaming in while the jump is
+      // still travelling would pull the reader straight back down past the message they asked for.
+      conversation.current?.stopScroll();
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       // A flash rather than a persistent highlight: it answers "which one?" and then gets out of
       // the way, so the next jump is just as legible as the first.
@@ -725,47 +748,6 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     wasConnected.current = studio.connected;
   }, [studio.connected, studio.state, toast]);
 
-  //[[ FOLLOWING THE LIVE EDGE IS A STATE THE USER CAN SEE AND LEAVE.
-  //
-  //   This was a `useRef` written from the scroll handler. As a heuristic it was right and it is
-  //   kept — `isNearBottom` is that same expression, named — but as the whole mechanism it had two
-  //   failures on a long build. It was INVISIBLE: scrolling up to re-read step 3 silently left the
-  //   live edge, and nothing said so or offered a way back. And a ref does not re-render, so no
-  //   control COULD have been offered from it.
-  //
-  //   `seen` is a WATERMARK, not a counter. The transcript can shrink — an edit-and-resend
-  //   truncates it, and `history_truncated` drops rows the server deleted — and an accumulating
-  //   counter would go on announcing turns that no longer exist. ]]
-  const [following, setFollowing] = useState(true);
-  const seen = useRef(0);
-
-  const jumpToLatest = useCallback(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-    stick.current = true;
-    setFollowing(true);
-    seen.current = 0;
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el && stick.current) el.scrollTop = el.scrollHeight;
-    // While following, there is nothing unseen by definition — the watermark tracks the total so
-    // the count starts from zero the moment the reader leaves.
-    if (stick.current) seen.current = messages.length;
-  }, [messages]);
-
-  const onScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const near = isNearBottom(el);
-    stick.current = near;
-    if (near) seen.current = messages.length;
-    setFollowing(near);
-  };
-
-  const unseen = following ? 0 : unseenCount(messages.length, seen.current);
-
   //[[ THE SETTLED REPLY, SAID ONCE.
   //
   //   The Thinking card already announces the phase while a run is in flight; nothing announced the
@@ -813,13 +795,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     }
     if (askFirst(text)) return false;
     // Sending re-arms following: you have just added to the conversation, so you want to watch it.
-    stick.current = true;
-    setFollowing(true);
+    void conversation.current?.scrollToBottom();
     setSeed(undefined);
-    // The product mode the user picked becomes the internal specialist here,
-    // at the one point a message is built. Everything downstream — the wire
-    // protocol, stored sessions, budget accounting — still speaks GolemMode.
-    if (!sendChat(text, PRODUCT_MODE_TO_SPECIALIST[mode], attachments, productModel)) {
+    if (!sendChat(text, mode, attachments, productModel, autonomous)) {
       toast('Not connected yet — hang on a moment. Your message is still in the box.', 'error');
       return false;
     }
@@ -892,16 +870,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   const when = shortRelative(activityAt);
 
   return (
-    <div className={`gx-ws aw-workspace${running ? ' is-running' : ' is-idle'}${stageOpen ? ' has-stage' : ''}`}>
-      <div className="aw-cinema" aria-hidden="true">
-        <span className="aw-cinema__halo aw-cinema__halo--one" />
-        <span className="aw-cinema__halo aw-cinema__halo--two" />
-        <span className="aw-cinema__grid" />
-        <span className="aw-cinema__grain" />
-        <span className="aw-cinema__scan" />
-      </div>
+    <div className={`gx-ws apple-workspace${running ? ' is-running' : ' is-idle'}`}>
       {/* ------------------------------------------------------- topbar -- */}
-      <header className="gx-top aw-commandbar">
+      <header className="gx-top apple-workspace__topbar">
         {/* The rail opener used to be here. It is now drawn by the shell (components/layout.tsx)
             so that it exists on every route rather than only inside a conversation; at narrow
             width it lands in this bar's reserved leading space, so the topbar is unchanged to
@@ -911,9 +882,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
         {/* Renamable in place: this is where you notice a bad name, so this is where fixing it
             belongs. Falls back to a plain heading until the project has loaded — an editable
             control over a placeholder would offer to rename something that is not there yet. */}
-        <div className="aw-commandbar__identity">
-          <span className="aw-commandbar__signal" aria-hidden="true" />
-          <div className="aw-commandbar__copy">
+        <div className="apple-workspace__identity">
+          <div className="apple-workspace__titlecopy">
             {project.data ? (
               <EditableProjectTitle projectId={projectId} name={project.data.name} className="gx-top__title" />
             ) : (
@@ -927,16 +897,22 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           </div>
         </div>
 
-        <div className="studio-workspace-controls aw-commandbar__controls">
-          <button type="button" className="studio-preview-toggle" onClick={() => setStageExpanded(!stageOpen)} aria-expanded={stageOpen}>Studio <span aria-hidden="true">↗</span></button>
-          <details className="studio-project-menu">
-            <summary aria-label="Project actions" title="Project actions">
-              <span className="studio-project-menu__dots" aria-hidden="true">•••</span>
-            </summary>
-        <div className="gx-top__actions">
-          {/* Who else is in this project. Draws nothing at all when you are alone — see
-              components/presence-model.ts. */}
-          <PresenceBar present={presence} selfUserId={selfUserId} />
+        {/* THE ONBOARDING ANCHOR LIVES HERE, and it moved.
+            `data-tour="connect-studio"` used to be on components/ws/connect-studio.tsx, the block
+            that sat at the foot of the conversation and was deleted with the minimal redesign.
+            lib/onboarding.ts still lists the step, and the tour SKIPS a step whose anchor is absent
+            rather than stalling — so the deletion did not break anything loudly, it silently dropped
+            the one step that teaches a new user to pair Studio.
+
+            It sits on this STABLE CONTAINER rather than on the `Connect Studio` button inside it,
+            and that is deliberate. The button renders only in the disconnected/unknown branch: once
+            Studio is paired it is replaced by the connected pill, so anchoring there would silently
+            drop the step again for exactly the users the step is least needed by — and silently is
+            the failure mode being fixed. This div always renders. */}
+        <div className="studio-workspace-controls apple-workspace__controls" data-tour="connect-studio">
+          {/* THE STUDIO PILL IS OUTSIDE THE MENU (F-002, measured 2026-09-22): pairing Studio is the one
+              step every new customer must take, and it sat inside the collapsed "•••" Project actions
+              menu, where nothing on the page pointed to it. */}
           {studioStatus === 'connected' ? (
             <span className="gx-pill is-live" title={studio.state?.placeName ?? studio.link.place?.placeName ?? 'Connected to Studio'}>
               <span className="gx-dot" aria-hidden="true" />
@@ -966,6 +942,14 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               {studioStatus === 'disconnected' ? 'Studio disconnected' : 'Connect Studio'}
             </button>
           )}
+          <details className="studio-project-menu">
+            <summary aria-label="Project actions" title="Project actions">
+              <span className="studio-project-menu__dots" aria-hidden="true">•••</span>
+            </summary>
+        <div className="gx-top__actions">
+          {/* Who else is in this project. Draws nothing at all when you are alone — see
+              components/presence-model.ts. */}
+          <PresenceBar present={presence} selfUserId={selfUserId} />
 
           {/* Who else is in this project. An icon button beside memory rather than a named
               control: it is opened when someone wants to add or remove a collaborator, which is
@@ -1078,46 +1062,15 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      <div className="gx-workbench-shell aw-scene">
-        <div className="aw-scene__edge aw-scene__edge--top" aria-hidden="true" />
-        <div className="aw-scene__edge aw-scene__edge--bottom" aria-hidden="true" />
-        {stageOpen && (
-          <div className="gx-workbench__tabs aw-scene-tabs" role="tablist" aria-label="Workspace views">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mobileSurface === 'conversation'}
-              aria-controls="workspace-conversation"
-              className={mobileSurface === 'conversation' ? 'is-active' : ''}
-              onClick={() => setMobileSurface('conversation')}
-            >
-              Conversation
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mobileSurface === 'project'}
-              aria-controls="workspace-project-stage"
-              className={mobileSurface === 'project' ? 'is-active' : ''}
-              onClick={() => setMobileSurface('project')}
-            >
-              Project
-            </button>
-          </div>
-        )}
-
-        <div
-          className={`gx-workbench aw-viewport ${stageOpen ? 'is-stage-open' : 'is-stage-collapsed'}`}
-          data-mobile-surface={mobileSurface}
-        >
-          <section id="workspace-conversation" className="gx-conversation aw-conversation" aria-label="Conversation">
-          <div className="aw-conversation__beam" aria-hidden="true" />
+      <div className="gx-workbench-shell">
+        <div className="gx-workbench">
+          <section id="workspace-conversation" className="gx-conversation" aria-label="Conversation">
           {/* The one sentence under the Studio pill — when it last polled, how much work is waiting,
               how slow the round trip is, or the fact that Studio is holding the wrong place open. Draws
               nothing when there is nothing worth saying, so a healthy link adds no chrome. The rebind
               button is passed only while a mismatch is actually on the wire; see components/ws/
               studio-link-note.tsx. */}
-          <div className="aw-conversation__notice">
+          <div className="apple-workspace__notice">
             <StudioLinkNote
               status={studioStatus}
               facts={studio.link}
@@ -1126,14 +1079,20 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           </div>
 
           {/* ------------------------------------------------ conversation */}
-          <div className="gx-scroll aw-scroll" ref={scrollRef} onScroll={onScroll}>
+          <Conversation
+            contextRef={conversation}
+            // The log is the CONTENT below, not this frame: the frame also holds the jump control,
+            // and a control appearing inside a live region is announced as if it were a turn.
+            role={undefined}
+          >
             {/* role="log" with `aria-relevant="additions"` — NOT the default "additions text".
                 A whole turn appearing is an addition worth reporting; the characters streaming into a
                 turn already on screen are a text mutation, and reporting those floods the polite queue
                 with fragments of a sentence that is still being written. The settled reply is
                 announced once, by the region at the foot of this view. */}
-            <div
-              className="gx-thread aw-thread"
+            <ConversationContent
+              scrollClassName="gx-scroll"
+              className="gx-thread"
               role="log"
               aria-label="Conversation"
               aria-live="polite"
@@ -1158,7 +1117,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           {messages.map((item) => (
             // The id is on a wrapper rather than passed into Turn: search jumps to a message by
             // scrolling to it, and that only needs an element to aim at.
-            <div key={item.id} id={`msg-${item.id}`} data-message-id={item.id} className="aw-message-anchor">
+            <div key={item.id} id={`msg-${item.id}`} data-message-id={item.id}>
             <Turn
               item={item}
               status={agentStatus}
@@ -1177,41 +1136,23 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               // Drawn only when the transcript says this message HAS earlier versions — Turn makes
               // that call, because it is the thing holding the count.
               onShowRevisions={setShowingRevisions}
+              frames={item.id === lastAssistantId ? frames : undefined}
+              playtest={item.id === lastAssistantId ? playtest : null}
+              studioConnected={studio.connected}
             />
             </div>
           ))}
 
-            </div>
-          </div>
+            </ConversationContent>
+            <LatestEdgeJump total={messages.length} />
+          </Conversation>
         </section>
 
-        <ProjectStage
-          collapsed={!stageOpen}
-          onCollapsedChange={(collapsed) => setStageExpanded(!collapsed)}
-          status={studioStatus}
-          onPair={() => setShowPairing(true)}
-          frames={frames}
-          running={running}
-          playtest={playtest}
-          studioConnected={studio.connected}
-          boundPlaceName={studio.link.place?.placeName ?? null}
-        />
         </div>
       </div>
 
       {/* ------------------------------------------------------ composer -- */}
-      <div className="gx-compose-region aw-command-zone">
-        {/* BACK TO THE LIVE EDGE.
-            Shown only while the reader has actually left it, so it is never a control sitting
-            there doing nothing, and it names how much arrived while they were away — counted from
-            a watermark, so a rewound conversation reports zero rather than a stale total. */}
-        {!following && (
-          <button type="button" className="gx-jump" onClick={jumpToLatest}>
-            <Icon d={PATH.chevronDown} size={13} />
-            {jumpLabel(unseen)}
-          </button>
-        )}
-
+      <div className="gx-compose-region">
         {/* The settled reply, said once. Empty while a run is in flight, which is silence rather
             than an announcement of silence. */}
         <span className="gx-sr" aria-live="polite" aria-atomic="true">
@@ -1270,18 +1211,13 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           modelPlan={modelPlan}
           maxUpgradeAvailable={maxUpgradeAvailable(billing.data)}
           onModelChange={setProductModel}
-          //[[ THE MODE THE COMPOSER NOW SHOWS IS THIS STATE — it always was, and nothing could
-          //   reach it. `mode` has been sent with every message since the workspace was written
-          //   (`PRODUCT_MODE_TO_SPECIALIST[mode]` in `send`, and again in the edit-and-resend
-          //   path), the worker has routed Plan to a read-only toolset the whole time, and the
-          //   only surfaces that ever set it were the Automations form and a Roadmap handoff.
-          //
-          //   `onModelChange` USED TO RESET IT TO 'agent'. That silently overrode a choice the
-          //   person had made, from a control about a different question — and with no mode chip
-          //   on screen, it overrode it invisibly. Picking a model is not a statement about
-          //   whether this message should change the place. ]]
           mode={mode}
-          onModeChange={setMode}
+          onModeChange={(next) => {
+            setMode(next);
+            if (next === 'plan') setAutonomous(false);
+          }}
+          autonomous={autonomous}
+          onAutonomousChange={setAutonomous}
           onUpgrade={() => navigate('/usage')}
           seed={seed}
           selection={studio.selection}
@@ -1429,16 +1365,16 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               toast('Choose Apple or subscribe to use Apple MAX. Your edit is kept.', 'error');
               return;
             }
-            // Same translation the composer does: `mode` is the PRODUCT mode the user picked,
-            // and the wire carries the specialist it maps to.
-            editAndResend(editing.id, text, PRODUCT_MODE_TO_SPECIALIST[mode], productModel);
+            editAndResend(editing.id, text, mode, productModel, autonomous);
             setEditing(null);
           }}
         />
       )}
 
       <Drawer open={drawer === 'search'} onClose={() => setDrawer(null)} title="Search this conversation">
-        <SearchPanel projectId={projectId} onOpen={openHit} />
+        <Suspense fallback={null}>
+          <SearchPanel projectId={projectId} onOpen={openHit} />
+        </Suspense>
       </Drawer>
 
       {/* THE OP LOG, WHICH HAD NO ENTRY POINT.
@@ -1469,7 +1405,23 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">
         {/* Mounted only while open so the request is made when a user asks the
             question, not on every workspace load for everyone who never will. */}
-        {drawer === 'credits' && <CreditsPanel projectId={projectId} />}
+        {drawer === 'credits' && (
+          // Loaded on first open, like the drawer's request: the panel and its model are needed only
+          // by someone who asks, and they are not worth a place in the entry chunk
+          // (scripts/check-app-bundle.mjs). The fallback is the panel's own loading skeleton, so
+          // opening it shows one waiting state, not two.
+          <Suspense
+            fallback={(
+              <div className="cr" aria-busy="true">
+                <div className="skeleton skeleton-title" />
+                <div className="skeleton skeleton-line" />
+                <div className="skeleton skeleton-line short" />
+              </div>
+            )}
+          >
+            <CreditsPanel projectId={projectId} />
+          </Suspense>
+        )}
       </Drawer>
 
       <Drawer open={drawer === 'automations'} onClose={() => setDrawer(null)} title="Saved instructions">
@@ -1482,11 +1434,19 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
         {/* Mounted only while open: the panel holds unsaved edits, and closing the drawer is the
             gesture people use to abandon them. Keeping it mounted would silently preserve a
             half-finished edit and re-present it later as if it had been saved. */}
-        {drawer === 'memory' && <MemoryPanel projectId={projectId} />}
+        {drawer === 'memory' && (
+          <Suspense fallback={<div className="skeleton skeleton-line" aria-busy="true" />}>
+            <MemoryPanel projectId={projectId} />
+          </Suspense>
+        )}
         {/* The other half of memory: settings, profile, and project/team instructions, which live
             in the scoped store rather than in this project's Durable Object. Mounted on the same
             condition and for the same reason — closing the drawer abandons an unsaved edit. */}
-        {drawer === 'memory' && <InstructionsPanel projectId={projectId} />}
+        {drawer === 'memory' && (
+          <Suspense fallback={<div className="skeleton skeleton-line" aria-busy="true" />}>
+            <InstructionsPanel projectId={projectId} />
+          </Suspense>
+        )}
       </Drawer>
 
       {showPairing && (

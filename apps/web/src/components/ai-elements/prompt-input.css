@@ -1,0 +1,30 @@
+/* AI ELEMENTS PromptInput, DRAWN WITH THIS APP'S TOKENS.
+ *
+ * The component keeps upstream's Tailwind strings, which nothing here generates; these rules give
+ * each part the layout those strings describe, in the app's tokens only — no raw colour, no radius or
+ * shadow outside the lock (docs/DESIGN-LOCK.md). The look of the one composer that uses it (the
+ * card, the chips, Send, the Autonomous switch) is components/ws/composer.css's to decide; this sheet
+ * is the neutral shape any PromptInput would have.
+ */
+
+/* `hidden` is a Tailwind utility this app does not have. The file input is PromptInput's: it is
+   clicked from code (openFileDialog) and never shown, and display:none keeps it out of the tab
+   order as well as off the screen. */
+.ai-prompt-input__file { display:none; }
+
+.ai-prompt-input { display:block; width:100%; }
+.ai-prompt-input__group { overflow:visible; }
+/* `contents` upstream: the body adds no box of its own, so the textarea and whatever sits beside it
+   are laid out by the group. */
+.ai-prompt-input__body { display:contents; }
+.ai-prompt-input__textarea { flex:none; width:100%; min-height:64px; max-height:12rem; padding:12px; overflow-y:auto; }
+.ai-prompt-input__header { flex-wrap:wrap; gap:4px; padding:12px 12px 0; }
+.ai-prompt-input__footer { justify-content:space-between; gap:4px; padding:0 12px 12px; cursor:default; }
+.ai-prompt-input__tools { display:flex; min-width:0; align-items:center; gap:4px; }
+.ai-prompt-input__button { gap:6px; }
+.ai-prompt-input__shortcut { margin-inline-start:8px; color:var(--faint); }
+.ai-prompt-input__select-trigger { border-color:transparent; background:transparent; color:var(--muted); box-shadow:none; }
+.ai-prompt-input__select-trigger:hover,
+.ai-prompt-input__select-trigger[aria-expanded='true'] { background:var(--control-fill); color:var(--ink); }
+.ai-prompt-input__menu { min-width:14rem; }
+.ai-prompt-input__submit { flex:none; }

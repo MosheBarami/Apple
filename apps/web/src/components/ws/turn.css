@@ -83,6 +83,10 @@
    the worst place in the product for a one-word last line. */
 .gx-outcome__text { margin:0; font-size:13px; line-height:1.6; letter-spacing:-.01em; color:var(--muted); text-wrap:pretty; }
 .gx-outcome.is-bad .gx-outcome__text { color:var(--bad); }
+/* THE SENTENCE HAS THE LINE TO ITSELF, and the controls sit under it. As one wrapping row, a long
+   sentence pushed Try again to the far end of its last line and Why runs stop onto the next, so
+   the two actions for one failure were on two lines 700px apart. */
+.gx-outcome:not(.gx-outcome--bare) > .gx-outcome__text { flex-basis:100%; }
 
 /* TRY AGAIN / REGENERATE — an underlined text control, and the global `button:hover` was drawing a
    --surface-2 box round it because nothing here said otherwise: a 4px-padded grey rectangle
@@ -103,7 +107,14 @@
 
 /* Nothing to explain, so there is no sentence to stand clear of: the row closes up under the
    reply instead of holding a full block of air for a single control. */
-.gx-outcome--bare { margin-block:8px 0; }
+/* Two classes: system.css loads after this sheet and its `.gx-outcome { margin-block:16px }` won the
+   tie, so the bare row held 16px above and below a single control, and Regenerate floated 26px
+   from the time it belongs with. */
+.gx-outcome.gx-outcome--bare { margin-block:8px 0; }
+/* The retry control sits in AI Elements' MessageActions row. It is one item on the outcome row's
+   baseline, like the sentence and the help link beside it — the actions row's own centring would
+   lift a 12px label off the 13px sentence's baseline. */
+.gx-outcome .gx-outcome__actions { display:inline-flex; align-items:baseline; gap:12px; }
 
 /* EDIT. A repair tool on every one of your own messages competes with the messages themselves, so
    it is drawn only while the turn is under the pointer or holds focus — `:focus-within` keeps it
@@ -155,3 +166,7 @@
   font:11px/1.6 var(--font-mono); letter-spacing:0; color:var(--muted);
   white-space:pre-wrap; overflow-wrap:anywhere;
 }
+
+/* THE PAGES A REPLY'S OWN SEARCHES RETURNED (lib/doc-sources.ts). Under the reply and above its
+   results, as quiet as the footer: a list of places to read further, not part of the answer. */
+.gx-turn__sources { margin-block:12px 0; }

@@ -118,12 +118,19 @@ test('the only hand-written block states are the two that have no canonical form
 // useful evidence about the paired Studio document, so it should remain valid at every
 // width; a narrow-viewport label swap only recreates the old truncated-header problem.
 
-test('the Studio place label stays full inside the Project menu', () => {
+test('the Studio place label stays full, and the pill is visible outside the Project menu', () => {
+  // Restated 2026-09-22 (F-002): the pill lived INSIDE the collapsed "•••" menu, so the one step a new
+  // customer must take — pairing Studio — was reachable only by opening it. It now sits in the
+  // workspace controls beside the menu; the full-label rule below is unchanged.
   const tsx = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
+  const controls = /<div className="studio-workspace-controls[^"]*"[^>]*>([\s\S]*?)<details className="studio-project-menu">/.exec(tsx);
+  assert.ok(controls, 'the workspace controls were not found — this test would check nothing');
+  assert.match(controls[1], /gx-pill__place/, 'the full Studio place label must be in the visible controls');
+  assert.match(controls[1], /title=\{studio\.state\?\.placeName[\s\S]*?Connected to Studio/);
+  assert.match(controls[1], /onClick=\{\(\) => setShowPairing\(true\)\}/, 'Connect Studio must be one click from the page');
   const menu = /<details className="studio-project-menu">[\s\S]*?<\/details>/.exec(tsx);
   assert.ok(menu, 'the Project details menu is gone');
-  assert.match(menu[0], /gx-pill__place/, 'the full Studio place label must live in Project details');
-  assert.match(menu[0], /title=\{studio\.state\?\.placeName[\s\S]*?Connected to Studio/);
+  assert.doesNotMatch(menu[0], /gx-pill__place/, 'the pill must not be back inside the collapsed menu');
 
   const css = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
   // The full Studio place label remains valid at every width. There is no second

@@ -8,6 +8,7 @@ import {
   adminAccount,
   adminAnalytics,
   adminKillSwitch,
+  adminModelRouting,
   adminModelTest,
   adminRagTest,
   adminRegisterDiscordCommands,
@@ -20,6 +21,7 @@ import {
   type ModelTestResponse,
   type RagHit,
 } from '../lib/api';
+import { DataTable } from '../components/aicss/data-table';
 import { adminSpendCeremony, type AdminSpendAction } from '../lib/admin-actions';
 import { formatNumber } from '../lib/format';
 import { MOCK_MODE } from '../lib/mock';
@@ -614,6 +616,58 @@ function StatsPanel({ adminKey }: { adminKey: string }) {
   );
 }
 
+function compactContextWindow(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '—';
+  if (value >= 1_000_000) return `${Number((value / 1_000_000).toFixed(1))}M`;
+  return `${Math.round(value / 1000)}k`;
+}
+
+function aicssModelName(id: string): string | null {
+  if (id.startsWith('@cf/openai/gpt-')) return id.slice('@cf/openai/'.length);
+  if (id.startsWith('gpt-')) return id;
+  if (id.startsWith('@cf/meta/llama-')) return id.slice('@cf/meta/'.length);
+  if (id.startsWith('llama-')) return id;
+  return null;
+}
+
+function ModelRoutingTable({ adminKey }: { adminKey: string }) {
+  const routing = useQuery({
+    queryKey: ['admin-model-routing', adminKey],
+    queryFn: () => adminModelRouting(adminKey),
+    enabled: !MOCK_MODE && adminKey.length > 0,
+    retry: false,
+  });
+
+  const rows = (routing.data?.models ?? []).flatMap((model) => {
+    const name = aicssModelName(model.id);
+    if (!name || model.unverifiedFields.includes('contextWindow')) return [];
+    return [{
+      model: name,
+      context: compactContextWindow(model.contextWindow),
+      price: `$${model.inputCostPer1M.toFixed(model.inputCostPer1M < 0.1 ? 3 : 2)}`,
+    }];
+  });
+
+  return (
+    <section className="card admin-panel">
+      <div className="admin-panel-head">
+        <div>
+          <h2>Provider model registry</h2>
+          <p className="muted">Verified-context OpenAI and Meta rows from the live admin routing table.</p>
+        </div>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => void routing.refetch()} disabled={!adminKey || routing.isFetching}>
+          Refresh
+        </button>
+      </div>
+      {!adminKey && <p className="muted">Enter the admin key above.</p>}
+      {routing.isPending && adminKey && <p className="muted" aria-busy="true">Reading model routing…</p>}
+      {routing.isError && <Failure error={routing.error} onRetry={() => void routing.refetch()} compact />}
+      {routing.isSuccess && rows.length > 0 && <DataTable rows={rows} />}
+      {routing.isSuccess && rows.length === 0 && <p className="muted">No verified OpenAI or Meta rows are available.</p>}
+    </section>
+  );
+}
+
 function ModelTester({ adminKey }: { adminKey: string }) {
   const [model, setModel] = useState('');
   const [prompt, setPrompt] = useState('');
@@ -849,6 +903,7 @@ export function AdminPage() {
       <SpendPanel adminKey={adminKey} />
       <AccountPanel adminKey={adminKey} />
       <StatsPanel adminKey={adminKey} />
+      <ModelRoutingTable adminKey={adminKey} />
       <ModelTester adminKey={adminKey} />
       <RagTester adminKey={adminKey} />
       <DiscordCommands adminKey={adminKey} />

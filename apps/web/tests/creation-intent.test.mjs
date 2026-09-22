@@ -66,7 +66,9 @@ test('3D cannot be selected or submitted without a verified Studio connection', 
   const composer = readFileSync(join(web, 'src/components/ws/composer.tsx'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.match(composer, /studioConnected\s*=\s*false/);
-  assert.match(composer, /aria-pressed=\{creation === 'model'\}[^>]*disabled=\{running \|\| !studioConnected\}/);
+  // A checkbox item in the AI Elements Create menu since 2026-09-22: checked while 3D is the intent,
+  // and `disabled` — skipped and unchoosable — without a verified Studio connection.
+  assert.match(composer, /checked=\{creation === 'model'\}[^>]*disabled=\{running \|\| !studioConnected\}/);
   const submit = composer.slice(composer.indexOf('const submit ='), composer.indexOf('files.current.clear();'));
   assert.ok(submit.indexOf('creationUnavailable') >= 0);
   assert.ok(submit.indexOf('creationUnavailable') < submit.indexOf('onSend(message'));

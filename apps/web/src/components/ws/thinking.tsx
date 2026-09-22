@@ -1,198 +1,229 @@
-// The Thinking card — the centrepiece of the conversation.
+// The Thinking card: ONE continuous surface, built from Vercel AI Elements.
 //
-// A compact black-glass card with a luminous ring, the current phase and a
-// chevron; inside, the event-backed detail timeline remains available:
-// Intent → Plan → Actions → Validation.
+//   Reasoning            owns the header line and the disclosure: Brain, the current observable
+//                        action under a Shimmer while the run is live, the measured duration, the
+//                        chevron — and the Credits settled so far, beside it.
+//   ReasoningContent     the disclosure body. It is a real CollapsibleContent carrying the id the
+//                        trigger's aria-controls names, and it renders COMPONENTS: this product has
+//                        no model reasoning to show, and none crosses the wire (docs/THINKING-UX.md).
+//   ChainOfThought       the observed execution, from the activity reducer: the current step and the
+//                        two before it, with every earlier step one disclosure away.
+//   Tool                 one row per tool call: friendly name, running / done / a real final
+//                        failure, and — opened — only what it was pointed at, what the worker said
+//                        came back, and how long it took. Never a payload, never JSON.
+//   Task                 the next steps a validated `build_plan` announced. Never inferred.
 //
-// READ `thinking-model.ts` BEFORE CHANGING ANYTHING HERE. Every row this
-// component can draw comes from `buildTimeline`, and `buildTimeline` emits a
-// stage only when the worker genuinely supplied its data. This file is a
-// renderer: it has no fallback copy, no default stage list and no way to invent
-// a row. If the backend never sent an intent, the Intent and Plan bullets do
-// not exist in the DOM at all — they are not greyed out, not "waiting", not
-// there. There is also no percentage anywhere, because a progress figure here
-// would be a guess presented as a measurement.
-//
-// The Actions stage delegates to <Activity> (`activity-model.ts`), which groups
-// the same real events into ordered, timed phases with a terminal state and
-// hangs each step's typed evidence on it. `buildTimeline` still decides whether
-// that stage exists at all, so the honesty tests keep gating the whole timeline.
-import { useCallback, useEffect, useId, useState } from 'react';
-import type { RunIntent } from '@golem/shared';
-import type { AgentStatus, ToolEvent } from '../../lib/use-project-socket';
-import { readSoundEnabled, writeSoundEnabled } from '../../lib/prefs';
-import { useReducedMotion } from '../../lib/theme';
-import { interfaceSound } from '../../lib/interface-sound';
+// What the surface may show, and what it may not, is decided in execution-model.ts, where a test can
+// reach it. This file only lays those decisions out, and holds no state of its own: every
+// disclosure here is owned by the AI Elements component that draws it.
+import { useId, type ReactNode } from 'react';
+import type { PlaytestRun, RunIntent, StudioFrame } from '@golem/shared';
+import type { AgentStatus } from '../../lib/use-project-socket';
 import { deniedNote } from '../../lib/tool-permissions';
-import { Activity, ActivityTerminal } from './activity';
-import type { ActivityRun, ActivityStep } from './activity-model';
-import type { Evidence } from './evidence-model';
-import { Icon, PATH } from './primitives';
-import { ModelMark } from './model-mark';
+import type { ActivityRun } from './activity-model';
+import { PlaytestCard } from './playtest-card';
+import { Reasoning, ReasoningContent, ReasoningTrigger, useReasoning } from '../ai-elements/reasoning';
+import { Shimmer } from '../ai-elements/shimmer';
 import {
-  buildTimeline,
-  headerHint,
-  labelForTool,
-  PHASE_LABEL,
-  type GateRow,
-  type PlannedStep,
-  type TimelineInput,
-  type TimelineStage,
-} from './thinking-model';
-import './thinking.css';
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtSearchResult,
+  ChainOfThoughtSearchResults,
+  ChainOfThoughtStep,
+} from '../ai-elements/chain-of-thought';
+import { Tool, ToolContent, ToolHeader } from '../ai-elements/tool';
+import { Task, TaskContent, TaskItem, TaskTrigger } from '../ai-elements/task';
+import { CheckCircleIcon, ChevronDownIcon, ListTodoIcon } from '../ai-elements/icons';
+import type { ToolUIPartState } from '../ai-elements/ai-types';
+import {
+  executionView,
+  formatSeconds,
+  type ExecutionRow,
+  type ExecutionView,
+  type ToolRow,
+  type ToolRowState,
+} from './execution-model';
+import { PHASE_LABEL, type GateRow, type PlannedStep } from './thinking-model';
+import './reasoning.css';
 
-/* ---------------------------------------------------------- compact view --- */
+/* ------------------------------------------------------------------ rows --- */
 
-/** The small, always-visible slice of the event log. No status counter or prediction enters here. */
-export interface CompactActivity {
-  current: ActivityStep | null;
-  recent: ActivityStep[];
+/** The three observed tool states, in AI Elements' tool-part vocabulary. */
+const TOOL_STATE: Record<ToolRowState, ToolUIPartState> = {
+  running: 'input-available',
+  done: 'output-available',
+  failed: 'output-error',
+};
+
+/** Only the safe facts about a step: on what, what came back, how long. */
+function ToolFacts({ row }: { row: ToolRow }) {
+  const facts: { term: string; value: string; className: string }[] = [];
+  if (row.target) facts.push({ term: 'On', value: row.target, className: 'apple-reasoning__target' });
+  if (row.result) facts.push({ term: 'Result', value: row.result, className: 'apple-reasoning__detail' });
+  if (row.duration) facts.push({ term: 'Time', value: row.duration, className: 'apple-reasoning__time' });
+  if (facts.length === 0) return <p className="apple-step__none">No details were reported for this step.</p>;
+  return (
+    <dl className="apple-step__facts">
+      {facts.map((fact) => (
+        <div key={fact.term} className="apple-step__fact">
+          <dt>{fact.term}</dt>
+          <dd className={fact.className}>{fact.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
+
+function ToolStep({ row }: { row: ToolRow }) {
+  // OPEN WHILE IT RUNS. What a step is pointed at is worth reading only in the seconds it runs —
+  // "which of my scripts?" — so the running row shows it without a click. The caller keys the row
+  // on its state, so it closes itself once it finishes and the column stays one line per step.
+  return (
+    <Tool className="apple-step" defaultOpen={row.state === 'running'}>
+      <ToolHeader title={row.title} type={`tool-${row.tool ?? 'unnamed'}`} state={TOOL_STATE[row.state]} />
+      <ToolContent forceMount className="apple-step__body">
+        <ToolFacts row={row} />
+      </ToolContent>
+    </Tool>
+  );
+}
+
+function StepRow({ row }: { row: ExecutionRow }) {
+  if (row.kind === 'tool') return <ToolStep row={row} />;
+  return <ChainOfThoughtStep className="apple-step apple-step--phase" label={row.label} status={row.status} />;
+}
+
+const rowKey = (row: ExecutionRow) => `${row.key}:${row.kind === 'tool' ? row.state : row.status}`;
+
+/* ------------------------------------------------------------ the surface --- */
 
 /**
- * Keep the run card useful at a glance without turning it into a progress meter:
- * the one active step, plus the two latest other steps that the reducer can
- * substantiate. Upcoming steps deliberately do not appear in this preview.
+ * The disclosure body. Exported so a test can render a settled run's body directly: a settled
+ * card starts closed, and server rendering cannot open it.
  */
-export function compactActivity(run: ActivityRun): CompactActivity {
-  const steps = run.phases.flatMap((phase) => phase.steps);
-  let currentIndex = -1;
-  for (let index = steps.length - 1; index >= 0; index -= 1) {
-    if (steps[index]?.state === 'active') {
-      currentIndex = index;
-      break;
-    }
-  }
-  const current = currentIndex === -1 ? null : steps[currentIndex]!;
-  const recent = steps.filter((_, index) => index !== currentIndex).slice(-2);
-  return { current, recent };
-}
-
-/** The canonical activity table stays the source of completed wording. These small
- * verb changes make only the one currently running row read as an action. */
-const PRESENT_VERBS: readonly [RegExp, string][] = [
-  [/^Read\b/, 'Reading'],
-  [/^Inspected\b/, 'Inspecting'],
-  [/^Listed\b/, 'Listing'],
-  [/^Searched\b/, 'Searching'],
-  [/^Reviewed\b/, 'Reviewing'],
-  [/^Looked up\b/, 'Looking up'],
-  [/^Formatted\b/, 'Formatting'],
-  [/^Chose\b/, 'Choosing'],
-  [/^Picked\b/, 'Choosing'],
-  [/^Generated\b/, 'Generating'],
-  [/^Made\b/, 'Making'],
-  [/^Spoke\b/, 'Speaking'],
-  [/^Created\b/, 'Creating'],
-  [/^Inserted\b/, 'Inserting'],
-  [/^Ran\b/, 'Running'],
-  [/^Set\b/, 'Setting'],
-  [/^Routed\b/, 'Routing'],
-  [/^Deleted instances\b/, 'Removing instances'],
-  [/^Edited\b/, 'Editing'],
-  [/^Rendered\b/, 'Rendering'],
-  [/^Framed\b/, 'Framing'],
-  [/^Checked\b/, 'Checking'],
-  [/^Moved\b/, 'Moving'],
-  [/^Added\b/, 'Adding'],
-  [/^Audited\b/, 'Auditing'],
-  [/^Selected\b/, 'Selecting'],
-  [/^Installed\b/, 'Installing'],
-  [/^Removed\b/, 'Removing'],
-  [/^Saved\b/, 'Saving'],
-  [/^Noted\b/, 'Noting'],
-  [/^Planned\b/, 'Planning'],
-  [/^Fetched\b/, 'Fetching'],
-  [/^Captured\b/, 'Capturing'],
-  [/^Wrote\b/, 'Writing'],
-];
-
-function presentTense(label: string): string {
-  for (const [pattern, replacement] of PRESENT_VERBS) {
-    if (pattern.test(label)) return label.replace(pattern, replacement);
-  }
-  return label;
-}
-
-function presentActionLabel(step: ActivityStep): string {
-  if (step.tool) return presentTense(labelForTool(step.tool));
-  if (step.phase) return PHASE_LABEL[step.phase] ?? step.label;
-  return step.label;
-}
-
-function usePageHidden(): boolean {
-  const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden === true);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const onVisibility = () => setHidden(document.hidden === true);
-    onVisibility();
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, []);
-
-  return hidden;
-}
-
-/* --------------------------------------------------------------- stages --- */
-
-function Gate({ gate }: { gate: GateRow }) {
-  return (
-    <li className={`gx-gate${gate.passed ? ' is-pass' : ' is-fail'}`}>
-      <span className="gx-gate__name">
-        {gate.label}
-        <span className="gx-gate__verdict">
-          {gate.passed ? 'passed' : 'not passed'}
-          {gate.score !== undefined ? ` · ${gate.score.toFixed(1)}/10` : ''}
-        </span>
-      </span>
-      {gate.detail && <span className="gx-gate__detail">{gate.detail}</span>}
-    </li>
-  );
-}
-
-function Stage({
-  stage,
-  activity,
-  evidence,
+export function ExecutionSurface({
+  view,
+  intent,
+  plannedSteps,
+  passedGates,
+  denied,
+  playtest,
+  frames,
+  studioConnected,
 }: {
-  stage: TimelineStage;
-  activity: ActivityRun;
-  evidence: Map<string, Evidence>;
+  view: ExecutionView;
+  intent?: RunIntent;
+  plannedSteps: PlannedStep[];
+  passedGates: GateRow[];
+  denied: string | null;
+  playtest?: PlaytestRun | null;
+  frames?: StudioFrame[];
+  studioConnected: boolean;
 }) {
+  // ChainOfThoughtHeader and ChainOfThoughtContent each wrap a Collapsible of their own, so the
+  // header can name its content only if both are handed the same id.
+  const historyId = useId();
+  const verified = passedGates.slice(-2);
+  const nextTitle = `${plannedSteps.length} planned ${plannedSteps.length === 1 ? 'step' : 'steps'}`;
+
   return (
-    <li className={`gx-stage-row${stage.live ? ' is-live' : ''}`}>
-      <span className="gx-stage-row__bullet" aria-hidden="true" />
-      <div className="gx-stage-row__body">
-        <span className="gx-stage-row__name">{stage.label}</span>
+    <>
+      {playtest && (
+        <div className="apple-reasoning__playtest">
+          <PlaytestCard run={playtest} frames={frames ?? []} studioConnected={studioConnected} />
+        </div>
+      )}
 
-        {stage.summary && <p className="gx-stage-row__text">{stage.summary}</p>}
+      {intent?.summary && <p className="apple-reasoning__note">{intent.summary}</p>}
 
-        {stage.items && (
-          <ul className="gx-plan">
-            {stage.items.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        )}
+      {(view.rows.length > 0 || verified.length > 0) && (
+        <ChainOfThought className="apple-reasoning__chain" role="group" aria-label="Observed run activity">
+          {view.earlier.length > 0 && (
+            <>
+              <ChainOfThoughtHeader aria-controls={historyId} className="apple-reasoning__history">
+                {view.earlier.length === 1 ? '1 earlier step' : `${view.earlier.length} earlier steps`}
+              </ChainOfThoughtHeader>
+              <ChainOfThoughtContent id={historyId} forceMount>
+                {view.earlier.map((row) => <StepRow key={rowKey(row)} row={row} />)}
+              </ChainOfThoughtContent>
+            </>
+          )}
+          {view.visible.map((row) => <StepRow key={rowKey(row)} row={row} />)}
+          {verified.length > 0 && (
+            <ChainOfThoughtStep
+              className="apple-step apple-step--verified"
+              icon={CheckCircleIcon}
+              label="Verified"
+              status="complete"
+            >
+              <ChainOfThoughtSearchResults role="group" aria-label="Verified checks">
+                {verified.map((gate) => <ChainOfThoughtSearchResult key={gate.key}>{gate.label}</ChainOfThoughtSearchResult>)}
+              </ChainOfThoughtSearchResults>
+            </ChainOfThoughtStep>
+          )}
+        </ChainOfThought>
+      )}
 
-        {/* The Actions stage is drawn by <Activity>, which groups the same real
-            events into ordered, timed phases and hangs each step's evidence on
-            it. `stage.actions` still decides whether this stage EXISTS AT ALL —
-            it is the honesty gate `tests/thinking-model.test.mjs` pins, and no
-            timeline appears without it. */}
-        {stage.actions && <Activity run={activity} evidence={evidence} />}
+      {plannedSteps.length > 0 && (
+        <Task className="apple-reasoning__next" role="group" aria-label="Planned next actions">
+          {/* Upstream's default trigger is a <div>, which a keyboard cannot reach. The same parts,
+              in a real button: `asChild` carries the trigger's state and handler onto it. */}
+          <TaskTrigger title={nextTitle}>
+            <button type="button" className="apple-reasoning__next-trigger">
+              <ListTodoIcon className="ai-task__icon" />
+              <span className="ai-task__title">{nextTitle}</span>
+              <ChevronDownIcon className="ai-task__chevron" />
+            </button>
+          </TaskTrigger>
+          <TaskContent forceMount>
+            {plannedSteps.map((step) => <TaskItem key={step.key}>{step.title}</TaskItem>)}
+          </TaskContent>
+        </Task>
+      )}
 
-        {stage.gates && <ul className="gx-gates">{stage.gates.map((g) => <Gate key={g.key} gate={g} />)}</ul>}
-      </div>
-    </li>
+      {denied && <p className="apple-reasoning__denied" role="note">{denied}</p>}
+    </>
   );
 }
 
-/* ----------------------------------------------------------------- card --- */
+/* ---------------------------------------------------------------- header --- */
+
+/** The line inside the trigger: the observed action while live, the measured time once settled. */
+function thinkingMessage(title: string, isStreaming: boolean, duration: number | undefined): ReactNode {
+  const time = formatSeconds(duration);
+  if (isStreaming) {
+    return (
+      <>
+        <Shimmer as="span" className="apple-reasoning__summary" duration={1}>{title}</Shimmer>
+        {time && <span className="apple-reasoning__time">{time}</span>}
+      </>
+    );
+  }
+  return <p className="apple-reasoning__summary">{time ? `Thought for ${time}` : title}</p>;
+}
+
+function ReasoningHeader({ title, creditsSpent }: { title: string; creditsSpent?: number }) {
+  const { isOpen } = useReasoning();
+  return (
+    <div className="apple-reasoning__head">
+      <ReasoningTrigger
+        aria-label={`${title}. ${isOpen ? 'Hide reasoning details' : 'Show reasoning details'}`}
+        className="apple-reasoning__trigger"
+        getThinkingMessage={(isStreaming, duration) => thinkingMessage(title, isStreaming, duration)}
+      />
+      {creditsSpent !== undefined && creditsSpent > 0 && (
+        <span className="apple-reasoning__cost" title="Credits settled for this run so far">
+          {creditsSpent} {creditsSpent === 1 ? 'Credit' : 'Credits'}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ card --- */
 
 export function Thinking({
-  tools,
   status,
   streaming,
   intent,
@@ -200,9 +231,10 @@ export function Thinking({
   gates,
   plannedSteps,
   activity,
-  evidence,
+  frames,
+  playtest,
+  studioConnected = false,
 }: {
-  tools: ToolEvent[];
   status: AgentStatus | null;
   streaming: boolean;
   /** From the `run_intent` server message. Absent until the worker sends one. */
@@ -217,194 +249,62 @@ export function Thinking({
   plannedSteps: PlannedStep[];
   /** The ordered, timed activity — see `activity-model.ts`. */
   activity: ActivityRun;
-  /** Typed artifacts, keyed by `toolId`. See `evidence-model.ts`. */
-  evidence: Map<string, Evidence>;
+  /** Real Studio frames for the active run. Never shown on historical turns. */
+  frames?: StudioFrame[];
+  /** Worker-owned playtest state for the active run. */
+  playtest?: PlaytestRun | null;
+  studioConnected?: boolean;
 }) {
-  //[[ WHO DECIDED THIS PANEL IS SHUT.
-  //
-  //   `useState(false)` meant nobody did: every run, on every screen, started with its own record
-  //   folded away behind "View details". The card is the one place the product shows what it is
-  //   doing with a person's Credits WHILE it is doing it, and none of it was on screen until they
-  //   clicked. An audit of the deployed product read the live cost out of the DOM and recorded it
-  //   as visible; it was not visible, because `.gx-think__body` is `display:none` until `.is-open`
-  //   and `innerText` falls back to `textContent` on an unrendered element.
-  //
-  //   `null` is "the person has not said", and while the run is live that resolves to open. A
-  //   click is a statement and outranks it from then on, in both directions.
-  const [open, setOpen] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(readSoundEnabled);
-  const detailsId = useId();
-  const reducedMotion = useReducedMotion();
-  const pageHidden = usePageHidden();
-
-  const input: TimelineInput = { intent, tools, plannedSteps, gates, status, streaming };
-  const stages = buildTimeline(input);
-  const compact = compactActivity(activity);
-  // A terminal event is enough to draw the card. It is a real answer about the
-  // run, even when the run produced no stages of its own.
+  const view = executionView(activity);
   const isLive = streaming && !activity.terminal;
-  const title = activity.terminal?.note ?? (isLive && compact.current ? presentActionLabel(compact.current) : (isLive && status ? (PHASE_LABEL[status.phase] ?? status.phase) : 'Activity'));
-  // THE SECOND LINE OF THE HEADER, WHICH WAS COMPUTED ON EVERY RENDER AND DRAWN BY NOBODY.
-  //
-  // `hint` has been assigned here since the redesign and never reached the JSX, so `.gx-think__hint`
-  // and the 375px rule that hides it were both dead, and so was headerHint()'s whole return value.
-  // Collapsed, the card was one line of text and an arrow with no statement anywhere that the arrow
-  // did something.
-  //
-  // AND IT MAY NOT SAY WHAT THE FIRST LINE ALREADY SAID. While a run is live with a named action,
-  // `title` IS that action label and the expression below produces the identical string — printing
-  // it twice, once in ink and once in grey, would have been the reason this line looked wrong
-  // enough to leave out. Where the two collide the second line falls back to the affordance, which
-  // is the thing the first line never carries.
-  const liveHint = activity.terminal
-    ? (open ? 'Hide details' : 'View details')
-    : isLive
-      ? (compact.current ? presentActionLabel(compact.current) : 'Working')
-      : headerHint(input, open);
-  const hint = liveHint === title ? (open ? 'Hide details' : 'View details') : liveHint;
-
-  useEffect(() => {
-    // Applying the preference is intentionally silent: this must not create or
-    // resume an AudioContext while a history turn is being painted.
-    interfaceSound.setEnabled(soundEnabled);
-  }, [soundEnabled]);
-
-  const toggleSound = useCallback(() => {
-    const next = !soundEnabled;
-    setSoundEnabled(next);
-    writeSoundEnabled(next);
-    // Keep the module state in step with the trusted click before trying to
-    // unlock. The effect below mirrors this too, but runs after the gesture.
-    interfaceSound.setEnabled(next);
-    if (next) {
-      // This is the only card path allowed to unlock audio, and it runs from
-      // the button's trusted click/tap gesture. A replay never invokes it.
-      void interfaceSound.unlock();
-    } else {
-      interfaceSound.stop();
-    }
-  }, [soundEnabled]);
-
-  const cardClasses = [
-    'gx-think',
-    'gx-think--redesign',
-    'aw-runtime',
-    isLive ? 'is-live' : '',
-    activity.terminal ? 'is-terminal' : '',
-    reducedMotion ? 'is-reduced' : '',
-    pageHidden ? 'is-page-hidden' : '',
-  ].filter(Boolean).join(' ');
-
-  // Keep all hooks above this guard. A terminal-only card is real, while a
-  // turn with no observed stage or terminal remains absent from the DOM.
-  if (stages.length === 0 && !activity.terminal) return null;
+  const title = isLive && view.current
+    ? (view.current.kind === 'tool' ? view.current.title : view.current.label)
+    : isLive && status
+      ? (PHASE_LABEL[status.phase] ?? status.phase)
+      : isLive
+        ? 'Thinking'
+        : activity.terminal?.kind === 'done' || activity.terminal?.kind === 'recovered'
+          ? 'Completed'
+          : activity.terminal?.kind === 'stopped'
+            ? 'Stopped'
+            : activity.terminal?.kind === 'quota'
+              ? 'Paused'
+              : 'Activity';
+  const elapsedSeconds = activity.elapsed ? Math.max(1, Math.ceil(activity.elapsed.ms / 1000)) : undefined;
+  const passedGates = gates.filter((gate) => gate.passed);
+  const denied = deniedNote(deniedTools);
+  const hasObservedContent = Boolean(
+    status ||
+    intent?.summary ||
+    view.rows.length > 0 ||
+    activity.terminal ||
+    playtest ||
+    passedGates.length > 0 ||
+    plannedSteps.length > 0,
+  );
+  if (!hasObservedContent) return null;
 
   return (
-    <div className={cardClasses} data-terminal={activity.terminal?.kind ?? undefined}>
-      <div className="gx-think__head aw-runtime__head">
-        <span className="aw-runtime__scan" aria-hidden="true" />
-        <button
-          type="button"
-          className="gx-think__toggle aw-runtime__toggle"
-          aria-expanded={open}
-          aria-controls={detailsId}
-          aria-label={`${title}. ${open ? 'Hide details' : 'View details'}`}
-          onClick={() => setOpen(!open)}
-        >
-          <span className="aw-runtime__mark">
-            <ModelMark live={isLive && !reducedMotion && !pageHidden} />
-          </span>
-          <span className="aw-runtime__copy">
-            <span className="gx-think__word">{title}</span>
-            <span className="gx-think__hint" aria-hidden="true">{hint}</span>
-          </span>
-          <span className="aw-runtime__signal" aria-hidden="true">
-            <i /><i /><i /><i /><i />
-          </span>
-          {/* Not announced: `aria-expanded` on this button already tells a screen reader what the
-              arrow means, and "View details" read out after the run's own state is noise. It is a
-              visual affordance, which is exactly what was missing. */}
-          <span className="gx-think__chev" aria-hidden="true">
-            <Icon d={PATH.chevronDown} size={14} />
-          </span>
-        </button>
-
-        {/*[[ WHAT THIS RUN HAS COST, ON SCREEN WHILE IT IS STILL COSTING IT.
-            This figure used to live in the foot INSIDE `.gx-think__body`, which is `display:none`
-            until the person opens the panel — so the answer to "what is this costing me" was one
-            click away for the whole of the run, and arrived in the turn footer only once the money
-            was already spent. It is settled by the worker and never estimated here, and it is
-            drawn only once something has actually been spent: an opening run showing a confident
-            "0 Credits" would be a claim nobody measured.
-            OUTSIDE the toggle deliberately. Inside, it would join the button's accessible name and
-            a screen reader would hear the cost re-read every time the label changed. ]]*/}
-        {status?.creditsSpent != null && status.creditsSpent > 0 && (
-          <span className="gx-think__cost" title="Credits settled for this run so far">
-            <strong>{status.creditsSpent}</strong> {status.creditsSpent === 1 ? 'Credit' : 'Credits'}
-            <span className="gx-sr"> spent on this run so far</span>
-          </span>
-        )}
-        {open && <button
-          type="button"
-          className={`gx-think__sound${soundEnabled ? ' is-on' : ' is-muted'}`}
-          aria-pressed={soundEnabled}
-          aria-label={soundEnabled ? 'Mute interface sounds' : 'Enable interface sounds'}
-          title={soundEnabled ? 'Mute interface sounds' : 'Enable interface sounds'}
-          onClick={toggleSound}
-        >
-          <span aria-hidden="true">{soundEnabled ? '◖))' : '◖×'}</span>
-        </button>}
-      </div>
-
-      <div
-        className={`gx-think__body aw-runtime__drawer${open ? ' is-open' : ''}`}
-        id={detailsId}
-        aria-hidden={!open}
-      >
-        <div className="gx-think__inner aw-runtime__inner">
-          <ol className="gx-timeline">
-            {stages.map((stage) => (
-              <Stage key={stage.kind} stage={stage} activity={activity} evidence={evidence} />
-            ))}
-
-            {/* How the run ended, last — after the gates, because a gate result
-                arrives while the run is still going. Absent entirely when the
-                outcome was never reported, which is the case for every turn
-                reloaded from message history. */}
-            {activity.terminal && <ActivityTerminal terminal={activity.terminal} />}
-          </ol>
-
-          {/* WHAT THIS RUN WAS NOT ALLOWED TO DO.
-              Above the effort line and below the timeline, because it explains the timeline: a
-              step that never happened leaves no row, and without this the absence has no cause
-              anywhere on the screen. Drawn only when something really was withheld — `deniedNote`
-              returns null otherwise, and an empty announcement is worse than no announcement. */}
-          {deniedNote(deniedTools) && (
-            <p className="gx-think__foot gx-think__denied" role="note">
-              {deniedNote(deniedTools)}
-            </p>
-          )}
-
-          {/* The reasoning POLICY's own justification for the effort tier it
-              picked. A classification of the request, not the model's private
-              reasoning. */}
-          {/* The credit figure is NOT restated here — it is in the card's head, where it is on
-              screen whether or not this panel is open. Printing it in both places would show one
-              measurement twice and invite the reader to add them up. */}
-          {status?.effort && (
-            <p className="gx-think__foot">
-              Reasoning effort: <strong>{status.effort}</strong>
-              {status.effortReason ? ` — ${status.effortReason}` : ''}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Announce phase changes to assistive technology without flooding it:
-          polite, and only the one line. */}
-      <span className="gx-sr" aria-live="polite">
-        {streaming ? hint : ''}
-      </span>
-    </div>
+    <Reasoning
+      className={`apple-reasoning${isLive ? ' is-live' : ''}`}
+      data-terminal={activity.terminal?.kind ?? undefined}
+      isStreaming={isLive}
+      duration={elapsedSeconds}
+    >
+      <ReasoningHeader title={title} creditsSpent={status?.creditsSpent} />
+      <ReasoningContent className="apple-reasoning__details">
+        <ExecutionSurface
+          view={view}
+          intent={intent}
+          plannedSteps={plannedSteps}
+          passedGates={passedGates}
+          denied={denied}
+          playtest={playtest}
+          frames={frames}
+          studioConnected={studioConnected}
+        />
+      </ReasoningContent>
+      <span className="gx-sr" aria-live="polite">{isLive ? title : ''}</span>
+    </Reasoning>
   );
 }

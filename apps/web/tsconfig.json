@@ -10,5 +10,10 @@
     // step. Legal because this project never emits from tsc.
     "allowImportingTsExtensions": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // AICSS is vendored byte-for-byte from its public MIT package. Its upstream
+  // tsconfig does not enable this repo's noUncheckedIndexedAccess/noUnusedLocals
+  // flags, so keep the untouched vendor out of Apple's stricter root program
+  // until a workspace integration imports or wraps it deliberately.
+  "exclude": ["src/components/aicss"]
 }

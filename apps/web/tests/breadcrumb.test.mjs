@@ -25,7 +25,13 @@ function trail(src) {
 }
 
 function projectMenu(src) {
-  const match = /<details className="studio-project-menu">[\s\S]*?<\/details>/.exec(src);
+  //[[ ATTRIBUTE-ORDER TOLERANT ON PURPOSE, AND IT WAS NOT BEFORE.
+  //   This used to be `<details className="studio-project-menu">` — the WHOLE opening tag — so
+  //   adding any attribute to that element (a `data-tour` anchor, a test id, an aria hook) failed
+  //   with "the workspace has no Project details menu". That message is a false statement about the
+  //   world: the menu is right there. It asserted the expression, not the property. It now asserts
+  //   that a `details` element carries the class, whatever else is on it. ]]
+  const match = /<details[^>]*className="studio-project-menu"[^>]*>[\s\S]*?<\/details>/.exec(src);
   assert.ok(match, 'the workspace has no Project details menu');
   return match[0];
 }

@@ -1,0 +1,34 @@
+/* AI ELEMENTS MESSAGE, DRAWN WITH THIS APP'S TOKENS.
+ *
+ * A turn's spacing, bubble and gutter are the workspace's (`.gx-turn`, `.gx-user`, `.gx-turn__body`
+ * in turn.css and the design system), and those load later and win every tie. What is here is
+ * only what a Message needs to be correct anywhere else: a column that can shrink, a user turn
+ * pushed to the end of the line, and the parts of upstream that have no Tailwind to draw them.
+ *
+ * NO FLEX GAP ON THE CONTENT, deliberately. Upstream's `flex-col gap-2` would stop the vertical
+ * margins inside a reply from collapsing, and every paragraph, code block and result card in a
+ * reply is spaced by those margins today; the rhythm would change under every answer.
+ */
+.ai-message { display:flex; flex-direction:column; min-width:0; }
+.ai-message.is-user { margin-inline-start:auto; align-items:flex-end; }
+.ai-message__content { min-width:0; max-width:100%; }
+
+.ai-message__actions { display:flex; align-items:center; gap:4px; }
+.ai-message__action { white-space:nowrap; }
+.ai-message__tooltip { max-width:min(300px,calc(100vw - 16px)); }
+
+.ai-message__branch { display:grid; width:100%; gap:8px; }
+.ai-message__branch-content { display:grid; gap:8px; }
+/* Upstream hides the branches that are not current with Tailwind's `hidden`, which does not exist
+   here — without this every branch of a message would render at once. */
+.ai-message__branch-content.hidden { display:none; }
+.ai-message__branch-selector { display:flex; align-items:center; }
+.ai-message__branch-page { border:0; background:transparent; color:var(--muted); }
+
+/* A reply that opens with a heading starts at the top of its turn, as upstream's first-child rule
+   intends. The LAST block keeps its margin: the space between a reply's final paragraph and the
+   row under it is that margin today, and zeroing it would pull every footer up against the text. */
+.ai-message__response > .markdown > :first-child > :first-child,
+.ai-message__response > .markdown > :first-child { margin-top:0; }
+
+.ai-message__toolbar { display:flex; width:100%; align-items:center; justify-content:space-between; gap:16px; margin-top:16px; }

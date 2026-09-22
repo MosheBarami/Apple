@@ -43,6 +43,14 @@ import type {
 } from './schema';
 import { validateDocument, type ValidateOptions } from './validate';
 import { StatusIcon, type StatusName } from '../../components/status-icon';
+import {
+  CodeBlock,
+  CodeBlockActions,
+  CodeBlockCopyButton,
+  CodeBlockFilename,
+  CodeBlockHeader,
+  CodeBlockTitle,
+} from '../../components/ai-elements/code-block';
 import './render.css';
 
 // ---------------------------------------------------------------------------
@@ -352,52 +360,51 @@ function KeyValuesView({ block }: { block: KeyValuesBlock }) {
 // code_diff
 // ---------------------------------------------------------------------------
 
-const DIFF_SIGIL: Record<string, string> = { add: '+', del: '−', ctx: ' ' };
-
-function CodeDiffView({ block }: { block: CodeDiffBlock }) {
-  const counts = useMemo(() => {
-    let added = 0;
-    let removed = 0;
-    for (const hunk of block.hunks) {
-      for (const line of hunk.lines) {
-        if (line.kind === 'add') added++;
-        else if (line.kind === 'del') removed++;
-      }
+/**
+ * The validated hunks as a unified diff: `+` added, `-` removed, a space for context, and a hunk
+ * header only where the document gave one (a bare `@@` separates two hunks that did not, so lines
+ * that are far apart in the file never read as adjacent). A line's text is never rewritten.
+ */
+export function unifiedDiff(block: CodeDiffBlock): string {
+  const out: string[] = [];
+  block.hunks.forEach((hunk, index) => {
+    if (hunk.header) out.push(hunk.header.startsWith('@@') ? hunk.header : `@@ ${hunk.header}`);
+    else if (index > 0) out.push('@@');
+    for (const line of hunk.lines) {
+      const sigil = line.kind === 'add' ? '+' : line.kind === 'del' ? '-' : ' ';
+      for (const piece of line.text.split('\n')) out.push(`${sigil}${piece}`);
     }
-    return { added, removed };
-  }, [block.hunks]);
+  });
+  return out.join('\n');
+}
+
+// AI Elements has no diff component. Upstream's way to show one is CodeBlock with shiki's `diff`
+// language, which colours each line by its sigil; the local stand-in does the same
+// (components/ai-elements/highlight-compat.ts). The sigil stays in the text, so an added line and
+// a removed one differ by a character as well as by colour.
+function CodeDiffView({ block }: { block: CodeDiffBlock }) {
+  const code = useMemo(() => unifiedDiff(block), [block]);
+  const lines = block.hunks.flatMap((hunk) => hunk.lines);
+  const added = lines.filter((line) => line.kind === 'add').length;
+  const removed = lines.filter((line) => line.kind === 'del').length;
 
   return (
-    <section className="gu-panel gu-diff">
-      <header className="gu-panel-head">
-        <span className="gu-path" title={block.path}>
-          {block.path}
-        </span>
-        <span className="gu-diff-counts">
-          <span className="gu-diff-added">+{counts.added}</span>
-          <span className="gu-diff-removed">−{counts.removed}</span>
-          {block.language && <span className="gu-chip">{block.language}</span>}
-        </span>
-      </header>
+    <section className="gu-code-diff">
       {block.summary && <p className="gu-panel-sub">{block.summary}</p>}
-      <div className="gu-scroll-x">
-        <div className="gu-diff-body">
-          {block.hunks.map((hunk, hi) => (
-            <div key={hi} className="gu-diff-hunk">
-              {hunk.header && <div className="gu-diff-hunk-head">{hunk.header}</div>}
-              {hunk.lines.map((line, li) => (
-                <div key={li} className={`gu-diff-line gu-diff-line--${line.kind}`}>
-                  <span className="gu-diff-gutter">{line.n ?? ''}</span>
-                  <span className="gu-diff-sigil" aria-hidden="true">
-                    {DIFF_SIGIL[line.kind]}
-                  </span>
-                  <code>{line.text}</code>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
+      <CodeBlock className="gx-code gu-code-diff__block" code={code} language="diff">
+        <CodeBlockHeader className="gx-code__head">
+          <CodeBlockTitle>
+            <CodeBlockFilename className="gx-code__lang" title={block.path}>{block.path}</CodeBlockFilename>
+          </CodeBlockTitle>
+          <CodeBlockActions>
+            <span className="gu-diff-counts">
+              <span className="gu-diff-added">+{added}</span>
+              <span className="gu-diff-removed">-{removed}</span>
+            </span>
+            <CodeBlockCopyButton className="gx-code__copy" aria-label="Copy diff" title="Copy diff" />
+          </CodeBlockActions>
+        </CodeBlockHeader>
+      </CodeBlock>
     </section>
   );
 }

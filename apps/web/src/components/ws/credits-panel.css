@@ -47,7 +47,10 @@
    both, not assumed: this keeps the card a surface step in either theme. */
 :root[data-theme='light'] :is(.cr-verdict--good,.cr-verdict--bad,.cr-verdict--warn) {
   border-color:color-mix(in srgb,var(--cr-tone) 28%,var(--line));
-  background:color-mix(in srgb,var(--cr-tone) 5%,var(--paper-2));
+  /* Over --surface, not --paper-2. The drawer IS --surface (white) here, and a card mixed from the
+     page's blue-grey sat in it as a grey slab darker than everything round it — the brown of --warn
+     over #eef1f6 reads as grey, not as a tint. A white card with a toned edge is the surface step. */
+  background:color-mix(in srgb,var(--cr-tone) 4%,var(--surface));
 }
 
 /* ------------------------------------------------------------------- the groups --- */
@@ -106,3 +109,11 @@
 @media (prefers-reduced-motion: reduce) {
   .cr-entry__links a { transition:none; }
 }
+
+/* ------------------------------------------------------------ source credits --- */
+
+/* The AI Elements Sources list, inside a group whose rhythm is set by hairlines and 10px gaps. The
+   component's own bottom margin would double that space. The host is a quieter second half of the
+   line: where the link goes, not what the credit says. */
+.cr-sources { margin:0; }
+.cr-sources__host { color:var(--faint); font-family:var(--font-mono); font-size:11px; white-space:nowrap; }

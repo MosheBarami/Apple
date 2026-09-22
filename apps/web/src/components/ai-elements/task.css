@@ -1,0 +1,43 @@
+/* AI ELEMENTS TASK, DRAWN WITH THIS APP'S TOKENS.
+ *
+ * Upstream's look: a quiet trigger line (icon, title, chevron) over an indented list with a 2px
+ * rule at its start edge. The edge is logical, so the rule sits on the right in a right-to-left
+ * page, where upstream's `border-l` would stay on the left.
+ */
+.ai-task { min-width:0; }
+
+/* The trigger is either upstream's default <div> or the <button> a caller passes as children; both
+   carry this class through `asChild`. The app's global `button` rule would give it a fill, a
+   border and 36px of height, none of which a text-line trigger has. */
+.ai-task__trigger {
+  display:flex; width:100%; min-height:var(--h-xs); align-items:center; gap:8px;
+  padding:0 6px; margin-inline:-6px; border:0; border-radius:var(--r-xs); background:transparent;
+  color:var(--muted); font:inherit; font-size:13px; line-height:20px; text-align:start; cursor:pointer;
+  transition:color var(--t-fast) var(--ease-out);
+}
+/* Hover is a surface step that hugs the words: 6px of padding, taken back by a negative margin so
+   the icon stays in its column. The app's global `button:hover:not(:disabled):not([…])` paints ink
+   at 12% and outranks a single class, so the quieter fill is stated at a specificity that clears it. */
+.ai-task__trigger:hover { color:var(--ink); }
+button.ai-task__trigger:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); }
+.ai-task__trigger-row { display:flex; width:100%; align-items:center; gap:8px; }
+.ai-task__title { margin:0; min-width:0; }
+.ai-task__icon { width:16px; height:16px; flex:none; }
+.ai-task__chevron { width:16px; height:16px; flex:none; transition:transform var(--t-fast) var(--ease-out); }
+.ai-task__trigger[data-state='open'] .ai-task__chevron { transform:rotate(180deg); }
+
+.ai-task__content { outline:none; animation:ai-task-in var(--t-fast) var(--ease-out) both; }
+.ai-task__list { display:grid; gap:8px; margin-block-start:10px; padding-inline-start:16px; border-inline-start:2px solid var(--line); }
+.ai-task__item { color:var(--muted); font-size:13px; line-height:20px; }
+.ai-task__file { display:inline-flex; align-items:center; gap:4px; padding:1px 6px; border:1px solid var(--line); border-radius:var(--r-xs); background:var(--surface-2); color:var(--ink); font-size:12px; }
+
+@keyframes ai-task-in {
+  from { opacity:0; transform:translateY(-4px); }
+  to { opacity:1; transform:none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-task__trigger,
+  .ai-task__chevron { transition:none; }
+  .ai-task__content { animation:none; }
+}

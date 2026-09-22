@@ -102,6 +102,7 @@ import {
 // it here is what keeps the cost line styled if either route is ever made lazy.
 import '../components/asset-source-dialog.css';
 import './settings.css';
+import './nonworkspace-minimal.css';
 
 /**
  * The account's enrolled factors.

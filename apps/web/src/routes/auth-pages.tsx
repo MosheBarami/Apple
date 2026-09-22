@@ -9,8 +9,7 @@ import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'reac
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
 import { capturePendingStart } from '../lib/pending-start';
-import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
-import { ModelMark } from '../components/ws/model-mark';
+import { STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../lib/mfa';
@@ -31,6 +30,7 @@ import {
   signupOutcome,
 } from '../lib/auth-flows';
 import './auth.css';
+import './nonworkspace-minimal.css';
 
 /* ----------------------------------------------------------------- the three marks --- */
 
@@ -88,40 +88,6 @@ function CardMark({ kind }: { kind: 'mail' | 'alert' | 'done' }) {
   );
 }
 
-/* ------------------------------------------------------------------ the ambience --- */
-
-/**
- * The lit ground the card sits on, as one aria-hidden element.
- *
- * NOT GLASS. The lock reserves backdrop-filter for the composer and the top bar — surfaces that sit
- * over content that is actually moving — so the depth here is made of light and a hairline instead:
- * a slow beam, and an isometric plane drawn in the hairline token that says "this builds in a 3D
- * editor" once and then gets out of the way. Both are decoration with no semantics, which is why
- * they are spans in a hidden container rather than anything a reader can reach.
- */
-function AuthAtmosphere() {
-  return (
-    <div className="auth__atmosphere" aria-hidden="true">
-      <span className="auth__aura" />
-      <span className="auth__grid" />
-    </div>
-  );
-}
-
-/**
- * What the signed-out hero lists, which is NOT every mode the product has.
- *
- * 'super' is deliberately absent: the owner does not want Super Agent on the
- * front of the product, and this panel is the first thing a person who has not
- * signed up yet reads. It is presentation only — `PRODUCT_MODE_INFO` still
- * defines all three, the composer inside the app still offers all three, and
- * nothing in apps/worker changed. A visitor is not being told there are two
- * modes; they are being shown the two that answer what they arrived asking.
- */
-// The modes a person may CHOOSE. PRODUCT_MODES is every mode the system can produce —
-// pricing one nobody can start is how "Super Agent" survived being removed from the composer.
-const MODELS = PRODUCT_MODELS;
-
 function ThemeCorner() {
   const { theme, setTheme } = useTheme();
   const next = theme === 'dark' ? 'light' : 'dark';
@@ -144,42 +110,12 @@ function AuthHero() {
     <div className="auth-hero">
       <div className="auth-hero-inner">
         <div className="auth-hero-brand">
-          <AppleGlyph size={38} />
-          <span className="wordmark wordmark-lg">Apple</span>
+          <AppleGlyph size={28} />
+          <span className="wordmark">Apple</span>
         </div>
-        {/*
-          * NOT "Describe it. Apple builds it." That is revix.tech's headline, it is banned by name
-          * in scripts/check-copy.mjs, and it sat here in production anyway — the `<br />` between
-          * the two sentences was enough to hide it from a checker reading source instead of
-          * rendered text. The checker now collapses tags; this says what the product does.
-          */}
-        <h1 className="auth-hero-title carved">
-          It builds in the place
-          <br />
-          you already have open.
-        </h1>
         <p className="auth-hero-sub">
-          Apple reads your project in Studio and takes a checkpoint before it touches anything, then
-          writes the scripts and places the parts. Every step is named while it happens, and you can
-          stop it mid-run.
+          Build directly in the Roblox Studio place you already have open.
         </p>
-        {/* THE NAME IS NO LONGER `<strong>`. system.css resets font-weight on h1–h6 and on nothing
-            else, so the user agent's bold survived here — on the one screen whose design brief
-            opens with "nothing is bolder than 400". The row is a grid now rather than a sentence
-            with a dash in it, so the name and what it costs occupy their own lines. */}
-        <ul className="auth-hero-points">
-          {MODELS.map((m) => (
-            <li key={m}>
-              <ModelMark variant={m === 'apple' ? 'apple' : 'max'} />
-              <span className="auth-hero-points__name">
-                {m === 'apple-max' ? <>Apple <span className="apple-max-name">MAX</span></> : PRODUCT_MODEL_INFO[m].name}
-              </span>
-              <span className="auth-hero-points__note">
-                {m === 'apple' ? 'Limited free access.' : 'For paid subscribers.'}
-              </span>
-            </li>
-          ))}
-        </ul>
       </div>
     </div>
   );
@@ -189,16 +125,9 @@ function AuthHero() {
 function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="auth-page">
-      <AuthAtmosphere />
       <ThemeCorner />
-      <AuthHero />
       <div className="auth-form-col">
-        {/* The hero is hidden below 900px; without this the signed-out mobile
-            page would carry no brand at all. */}
-        <div className="auth-mobile-brand" aria-hidden="true">
-          <AppleGlyph size={26} />
-          <span className="wordmark">Apple</span>
-        </div>
+        <AuthHero />
         {children}
       </div>
     </div>
@@ -720,14 +649,14 @@ export function SignupPage() {
               dashboard is named for it — and on the screen BEFORE the account exists it reads as a
               flourish rather than as an instruction. The heading on a form says what the form does. */}
           <h2 className="auth-card-title">Create your account</h2>
-          {/* "no Studio setup beyond one plugin" was true about the card and false about the plugin:
-              that one plugin cannot currently be obtained, and every other surface in the product
-              says so. A sign-up page is the worst place to be the single optimistic exception,
-              because it is read by exactly the people who have not learnt otherwise yet. Derived
-              from the same constant the install affordances obey, so it corrects itself. */}
+          {/* Derived from the same constant the install affordances obey, so it corrects itself.
+              Until 2026-09-22 the plugin could not be obtained and this line said so; a sign-up page
+              is the worst place to be the single optimistic exception, because it is read by exactly
+              the people who have not learnt otherwise yet. Now that the listing is distributed it
+              names the one thing Studio needs and where it comes from. */}
           <p className="auth-card-sub">
             {STUDIO_PLUGIN_STORE_LIVE
-              ? 'Free to start. No card, no Studio setup beyond one plugin.'
+              ? 'Free to start, no card. Building in Studio needs one free plugin, Apple Studio, from the Creator Store.'
               : 'Free to start, no card. Chat works now; building inside Studio needs the plugin, and public installation is not open yet.'}
           </p>
           <FormError message={error} />

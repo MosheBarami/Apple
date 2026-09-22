@@ -5,7 +5,7 @@
  * validator refusing fourteen named things, a store with a per-owner cap, and routes that fire a
  * run — and no person could reach any of it. This file is the client half of that agreement, and
  * it imports BOTH sides, for the reason search-filters.test.mjs records: a web test asserting
- * "we send mode: stone" passes against a worker reading something else, and the symptom is not a
+ * "we send mode: agent" passes against a worker reading something else, and the symptom is not a
  * failure but a refusal the user reads as "the form is broken".
  *
  * THE THREE PROPERTIES THIS FILE EXISTS FOR:
@@ -106,14 +106,22 @@ test('a blank draft plus a name and a prompt is accepted by the worker unchanged
   assert.equal(r.automation.enabled, true);
 });
 
-test('the mode crosses the wire as the specialist, not as the product word', async () => {
+test('the ProductMode crosses the wire unchanged', async () => {
   const shared = await import('@golem/shared');
   for (const product of shared.PRODUCT_MODES) {
     const draft = { ...web.blankDraft(), name: 'n', prompt: 'p', mode: product };
     const r = normalise(draft);
     assert.equal(r.ok, true, `${product}: ${r.reason}`);
-    assert.equal(r.automation.mode, shared.PRODUCT_MODE_TO_SPECIALIST[product]);
+    assert.equal(r.automation.mode, product);
   }
+});
+
+test('Autonomous is separate from automation mode', async () => {
+  const shared = await import('@golem/shared');
+  assert.deepEqual([...web.MODE_CHOICES].map((choice) => choice.id), [...shared.PRODUCT_MODES]);
+  assert.equal(web.MODE_CHOICES.some((choice) => choice.id === 'autonomous'), false);
+  const body = web.draftToBody({ ...web.blankDraft(), name: 'n', prompt: 'p' });
+  assert.equal('autonomous' in body, false);
 });
 
 test('an over-long name is sent WHOLE and refused by the server, never trimmed here', () => {

@@ -15,14 +15,18 @@
  * 2. It never claims the plugin is installed. Nothing in this file can render
  *    such a claim, because no such state exists: the browser has no way to
  *    observe a Roblox Studio plugin, so step 1 is phrased as an action the user
- *    takes ("Install Apple for Studio"), never as a status we report.
+ *    takes ("Get Apple Studio from the Creator Store"), never as a status we report.
  *
  * The install button's destination is STUDIO_PLUGIN_INSTALL_HREF, not the store
- * URL directly. As of 2026-08-31 the asset is uploaded but not distributed
- * (toolbox-service returns 404 for it), so the store page has nothing to get;
- * sending someone there would be the lie. While that is true the button goes to
- * /docs/plugin, which says so, and it becomes the store link automatically when
- * STUDIO_PLUGIN_STORE_LIVE flips.
+ * URL directly. Since 2026-09-22 the listing is distributed and that constant IS
+ * the Creator Store page, opened in a new tab. If the listing is ever withdrawn,
+ * STUDIO_PLUGIN_STORE_LIVE goes back to false and the same button quietly becomes
+ * a same-origin link to /docs/plugin, which says what happened — no edit here.
+ *
+ * The steps name what the user actually sees, in the order they meet it: "Get
+ * Plugin" on the web only adds it to their inventory, the Install happens in
+ * Studio's Toolbox, the plugin's button is "Apple" in the Plugins tab, the code is
+ * six characters, and edits stay off until allowed for that connection.
  */
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
 import type { StudioConnection } from '../../lib/studio-connection';
@@ -74,30 +78,34 @@ export function ConnectStudio({ status, onPair, placeName = null }: ConnectStudi
             ? `Apple is paired to ${placeName} and can’t reach it. Open ${placeName} in Studio — if you have a different place open, that is why — or pair again.`
             : 'Apple can’t reach your place right now. Open the Apple plugin in Studio, or pair again.'
           : STUDIO_PLUGIN_STORE_LIVE
-            ? 'Apple makes its changes inside Studio. Three steps, once.'
-            : 'The Studio plugin is not distributed publicly yet. If you already have it, open it in Studio and pair below.'}
+            ? 'Apple works inside Roblox Studio through the free Apple Studio plugin. Set it up once.'
+            : 'Public installation of the Studio plugin is unavailable right now. If you already have it, open it in Studio and pair below.'}
       </p>
 
       <ol className="gx-connect__steps">
         {!dropped && (
           <li className="gx-connect__step">
-            <span className="gx-connect__what">{STUDIO_PLUGIN_STORE_LIVE ? 'Install Apple for Studio' : 'Studio plugin not yet distributed'}</span>
+            <span className="gx-connect__what">{STUDIO_PLUGIN_STORE_LIVE ? 'Get Apple Studio from the Creator Store' : 'Public installation unavailable'}</span>
             <a
               className="gx-btn gx-btn--outline"
               href={STUDIO_PLUGIN_INSTALL_HREF}
               target={STUDIO_PLUGIN_STORE_LIVE ? '_blank' : undefined}
               rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
             >
-              {STUDIO_PLUGIN_STORE_LIVE ? 'Install' : 'See status'}
+              {STUDIO_PLUGIN_STORE_LIVE ? 'Get plugin' : 'See status'}
               {STUDIO_PLUGIN_STORE_LIVE && <Icon d={PATH.arrowUpRight} size={13} />}
             </a>
           </li>
         )}
         <li className="gx-connect__step">
-          <span className="gx-connect__what">Open the Apple plugin in Studio</span>
+          <span className="gx-connect__what">
+            {STUDIO_PLUGIN_STORE_LIVE && !dropped
+              ? 'In Studio, install it from the Toolbox, then click Apple in the Plugins tab'
+              : 'In Studio, click Apple in the Plugins tab'}
+          </span>
         </li>
         <li className="gx-connect__step">
-          <span className="gx-connect__what">Pair your project</span>
+          <span className="gx-connect__what">Get a 6-character code, type it into the Apple panel, then allow edits for this connection</span>
           {/* THE ONE PRIMARY ACTION ON THIS PANEL. Every other control here is secondary — the
               install link leaves the product, and the middle step has no control at all — so this
               is where docs/DESIGN-LOCK.md's single accent per screen is spent while Studio is

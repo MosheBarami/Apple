@@ -52,6 +52,7 @@
 /* The page had a class called `usage-grid` and no grid: both cards ran the full 1160px, so a
    140px ring sat alone on a line of its own. */
 .usage-grid { display:grid; grid-template-columns:minmax(0,330px) minmax(0,1fr); gap:20px; align-items:start; }
+.usage-grid > .mode-compare-card { grid-column:1 / -1; }
 
 /*[[ THE PANEL, WHICH IS THE ONE OBJECT THIS PAGE IS MADE OF.
  *

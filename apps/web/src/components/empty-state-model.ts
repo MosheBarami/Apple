@@ -66,7 +66,7 @@ export interface EmptyStateSpec {
 export const EMPTY_STATES = {
   noProjects: {
     canonical: 'M01',
-    title: 'Summon your first project',
+    title: 'Create your first project',
     body: 'A project is one Roblox experience. Apple opens it, reads it, and builds with you.',
     tone: 'creation',
   },

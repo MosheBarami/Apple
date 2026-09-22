@@ -1,0 +1,606 @@
+/*
+ * Apple minimal product system.
+ *
+ * The interaction bar was measured directly in the browser against the reference product:
+ * black page, #0a0a0a card, #2e2e2e border, #fafafa foreground, #a6a6a6 muted text, 24px
+ * composer radius, 24px backdrop blur and a soft 25/50 shadow. We reuse the grammar, not its
+ * code/assets/copy. Apple keeps blue for normal action and violet only for Autonomous.
+ */
+
+:root {
+  color-scheme:dark;
+  --paper:#000;
+  --paper-2:#05070b;
+  --surface:#0a0a0a;
+  --surface-2:#111217;
+  --surface-3:#181a22;
+  --ink:#fafafa;
+  --muted:#a6a6a6;
+  /* Raised from #70737d (4.44:1 on paper, 3.95:1 on surface-2): --faint carries real text — the
+     time under a turn, a code block's language, the Edit control — and text clears 4.5:1 here.
+     The value is the public site's (apps/site/src/styles/apple-minimal.css), so the two stay one
+     product; tests/app-ink-ramp.test.mjs measures it against every surface in both themes. */
+  --faint:#8a8d96;
+  --line:#2e2e2e;
+  --line-strong:#3b3d46;
+  --control-fill:rgba(255,255,255,.035);
+  --control-line:rgba(255,255,255,.11);
+  --quiet-line:rgba(255,255,255,.07);
+  --quiet-ink:rgba(250,250,250,.36);
+  --accent:#5b7cfa;
+  --accent-light:#8ca4ff;
+  --accent-deep:#4264e8;
+  --accent-soft:rgba(91,124,250,.10);
+  --accent-ring:rgba(91,124,250,.32);
+  --accent-glow:rgba(91,124,250,.12);
+  --autonomous:#8b5cf6;
+  --autonomous-light:#b49aff;
+  --autonomous-soft:rgba(139,92,246,.13);
+  --autonomous-ring:rgba(139,92,246,.38);
+  --r-xs:8px;
+  --r-sm:10px;
+  --r-md:12px;
+  --r-lg:16px;
+  --r-xl:24px;
+  --shadow-pop:0 18px 52px rgba(0,0,0,.34);
+  --shadow-modal:0 28px 88px rgba(0,0,0,.48);
+  --shadow-primary:0 10px 26px rgba(25,46,120,.22);
+}
+
+:root[data-theme='light'] {
+  color-scheme:light;
+  --paper:#f6f7fa;
+  --paper-2:#eef1f6;
+  --surface:#fff;
+  --surface-2:#f5f6f9;
+  --surface-3:#eceff4;
+  --ink:#101217;
+  --muted:#5d626d;
+  --faint:#646973;
+  --line:#d9dce3;
+  --line-strong:#c7cbd4;
+  --control-fill:rgba(16,18,23,.035);
+  --control-line:rgba(16,18,23,.10);
+  --quiet-line:rgba(16,18,23,.07);
+  --quiet-ink:rgba(16,18,23,.40);
+  --accent:#4568e8;
+  --accent-light:#3155d4;
+  --accent-deep:#3155d4;
+  --accent-soft:rgba(69,104,232,.09);
+  --accent-ring:rgba(69,104,232,.25);
+  --accent-glow:rgba(69,104,232,.10);
+  --autonomous:#7550de;
+  --autonomous-light:#6845ce;
+  --autonomous-soft:rgba(117,80,222,.10);
+  --autonomous-ring:rgba(117,80,222,.26);
+  --shadow-pop:0 16px 44px rgba(31,41,55,.11);
+  --shadow-modal:0 28px 70px rgba(31,41,55,.16);
+}
+
+html,body,#root { min-height:100%; background:var(--paper); }
+body {
+  color:var(--ink);
+  background:var(--paper);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+}
+
+/* --------------------------------------------------------------- app shell */
+.gx-shell { --gx-dock-w:236px; background:var(--paper); }
+.gx-shell .gx-main {
+  width:calc(100% - var(--gx-dock-w));
+  margin-inline-start:var(--gx-dock-w);
+  background:var(--paper);
+}
+.gx-shell .studio-atmosphere { display:none !important; }
+.gx-shell .studio-dock {
+  width:var(--gx-dock-w);
+  inset-block:0;
+  inset-inline-start:0;
+  padding:12px;
+  gap:0;
+  align-items:stretch;
+  border-inline-end:1px solid var(--line);
+  background:var(--paper);
+  backdrop-filter:none;
+  box-shadow:none;
+}
+.gx-shell .studio-dock .studio-dock__brand {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  width:auto;
+  min-height:42px;
+  padding:8px 10px;
+  margin:0 0 15px;
+  border-radius:10px;
+}
+.gx-shell .studio-dock .studio-dock__brand:hover { background:var(--control-fill); }
+.gx-shell .studio-dock__wordmark {
+  color:var(--ink);
+  font-size:15px;
+  font-weight:600;
+  letter-spacing:-.02em;
+}
+.gx-shell .studio-dock__nav {
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  padding:0;
+  margin:0;
+}
+.gx-shell .studio-dock__group { display:grid; gap:2px; }
+.gx-shell .studio-dock__group-label {
+  margin:14px 0 5px;
+  padding-inline:10px;
+  color:var(--faint);
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation) {
+  width:100%;
+  min-height:38px;
+  padding:8px 10px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  border:1px solid transparent;
+  border-radius:9px;
+  background:transparent;
+  color:var(--muted);
+  font-size:13px;
+  text-align:start;
+  text-decoration:none;
+  transition:background-color .15s ease,color .15s ease,border-color .15s ease;
+}
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):hover {
+  background:var(--control-fill);
+  color:var(--ink);
+}
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation)[aria-current='page'],
+.gx-shell .studio-dock .studio-navigation[aria-expanded='true'] {
+  color:var(--ink);
+  background:var(--surface-2);
+  border-color:var(--line);
+}
+.gx-shell .studio-dock .studio-dock__row::before { display:none; }
+.gx-shell .studio-dock__kbd { color:var(--faint); font-size:10px; }
+.gx-shell .studio-dock__foot {
+  margin-top:auto;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+}
+
+.gx-rail {
+  border:1px solid var(--line);
+  background:rgba(10,10,10,.94);
+  box-shadow:var(--shadow-modal);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+}
+
+/* --------------------------------------------------------------- workspace */
+.apple-workspace {
+  position:relative;
+  z-index:1;
+  height:100dvh;
+  display:grid;
+  grid-template-rows:64px minmax(0,1fr) auto;
+  /* One column that may be NARROWER than its widest child's min-content. The implicit column was
+     `auto`, which is at least min-content, so a long place name in the topbar made every row —
+     the conversation included — wider than a phone screen, and the overflow was clipped. */
+  grid-template-columns:minmax(0,1fr);
+  overflow:hidden;
+  background:var(--paper);
+}
+.apple-workspace__topbar {
+  min-height:64px;
+  padding:10px 22px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  border:0;
+  border-bottom:1px solid var(--line);
+  background:rgba(0,0,0,.74);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+:root[data-theme='light'] .apple-workspace__topbar { background:rgba(246,247,250,.82); }
+.apple-workspace__identity {
+  min-width:0;
+  flex:0 1 auto;
+  display:flex;
+  align-items:center;
+}
+.apple-workspace__titlecopy {
+  min-width:0;
+  display:flex;
+  align-items:baseline;
+  gap:9px;
+}
+.apple-workspace__titlecopy .gx-top__title {
+  max-width:min(46vw,640px);
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--ink);
+  font-size:14px;
+  font-weight:500;
+  letter-spacing:-.018em;
+}
+.apple-workspace__titlecopy .gx-top__when {
+  color:var(--faint);
+  font-size:11px;
+}
+.apple-workspace__controls {
+  margin-inline-start:auto;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+/* The Studio pill sits in the topbar itself (F-002), so it must yield width instead of setting it:
+   with `flex:none` and a long place name it made the header 574px wide in a 500px window, and the
+   whole page column took that width, clipping every card in the conversation. The name truncates
+   with the ellipsis .gx-pill__place already carries; the full name stays in the title attribute. */
+.apple-workspace__controls .gx-pill {
+  flex:0 1 auto;
+  min-width:0;
+  max-width:min(34vw, 320px);
+}
+.apple-workspace__controls .gx-pill__place { min-width:0; }
+.studio-project-menu > summary {
+  width:36px;
+  height:36px;
+  min-height:36px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:transparent;
+  color:var(--muted);
+  list-style:none;
+}
+.studio-project-menu > summary::-webkit-details-marker { display:none; }
+.studio-project-menu > summary:hover { color:var(--ink); background:var(--control-fill); }
+/* The overflow glyph. It is three literal characters, not an icon, so it needs its own tracking:
+   at the summary's inherited letter-spacing the dots collide into a single blurred mark. */
+.studio-project-menu__dots {
+  font-size:13px;
+  line-height:1;
+  letter-spacing:.09em;
+  color:inherit;
+}
+.studio-project-menu:not([open]) > .gx-top__actions { display:none !important; }
+.studio-project-menu[open] > .gx-top__actions {
+  inset-block-start:43px;
+  inset-inline-end:0;
+  width:288px;
+  padding:7px;
+  display:grid;
+  gap:2px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(10,10,10,.96);
+  box-shadow:var(--shadow-pop);
+  backdrop-filter:blur(24px);
+}
+:root[data-theme='light'] .studio-project-menu[open] > .gx-top__actions { background:rgba(255,255,255,.96); }
+.studio-project-menu[open] > .gx-top__actions > :is(button,a,.gx-pill) {
+  width:100%;
+  min-height:38px;
+  justify-content:flex-start;
+  padding:8px 10px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+}
+.studio-project-menu[open] > .gx-top__actions > :is(button,a):hover { background:var(--control-fill); }
+
+.gx-workbench-shell,.gx-workbench,.gx-conversation { min-height:0; height:100%; }
+.gx-workbench { display:grid; grid-template-columns:minmax(0,1fr); }
+.gx-conversation {
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  background:var(--paper);
+}
+.apple-workspace__notice {
+  flex:none;
+  max-width:min(900px,calc(100% - 32px));
+  margin:10px auto 0;
+}
+.gx-scroll {
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  scrollbar-width:thin;
+  /* A token, not #24262d: that raw charcoal was drawn in the light theme too, as a dark bar down the
+     right edge of a white page. --line-strong is the quiet edge colour in each theme. */
+  scrollbar-color:var(--line-strong) transparent;
+}
+.gx-thread {
+  width:min(900px,100%);
+  margin-inline:auto;
+  padding:44px 34px 104px;
+}
+.gx-thread:has(.start-sheet) {
+  width:min(920px,100%);
+  min-height:100%;
+  display:grid;
+  align-items:center;
+}
+
+/* --------------------------------------------------------------- turns */
+.gx-turn { animation:minimal-turn-in .18s ease-out both; }
+.gx-turn--user {
+  width:fit-content;
+  max-width:min(76%,720px);
+  margin:0 0 30px auto;
+}
+.gx-user {
+  padding:11px 15px;
+  border:1px solid var(--line);
+  border-radius:18px 18px 5px 18px;
+  background:var(--surface-2);
+  color:var(--ink);
+  font-size:14.5px;
+  line-height:1.56;
+  box-shadow:none;
+}
+.gx-user__foot {
+  min-height:19px;
+  margin-top:5px;
+  color:var(--faint);
+}
+.gx-turn--agent {
+  width:100%;
+  display:grid;
+  grid-template-columns:30px minmax(0,1fr);
+  gap:14px;
+  margin:0 0 38px;
+}
+.gx-turn--agent .gx-mark {
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--surface);
+  color:var(--ink);
+}
+.gx-turn__body { min-width:0; max-width:820px; }
+.gx-prose {
+  color:var(--ink);
+  font-size:15.5px;
+  line-height:1.72;
+  letter-spacing:-.012em;
+}
+.gx-prose :is(p,ul,ol,blockquote) { max-width:74ch; }
+.gx-stamp { color:var(--faint); font-size:10px; }
+.gx-inline-results {
+  display:grid;
+  gap:10px;
+  margin-top:14px;
+}
+/* ------------------------------------------------------------- composer */
+.gx-compose-region {
+  z-index:20;
+  padding:0 18px;
+  /* From the page's own colour, so the light theme fades to light: a raw black here drew a dark
+     band above the composer on the white page. */
+  background:linear-gradient(to top,var(--paper) 54%,color-mix(in srgb,var(--paper) 92%,transparent) 76%,transparent);
+}
+/* The composer itself — the card, the textarea, the bar, its chips, the Autonomous switch and
+   Send — is drawn by components/ws/composer.css over the AI Elements PromptInput sheets
+   (components/ai-elements/prompt-input.css, attachments.css, ui/ui.css), in tokens only. The rules
+   that used to sit here carried four raw greys and fought that sheet on specificity; there is one
+   owner now. */
+
+/* -------------------------------------------------------------- welcome */
+.start-sheet {
+  width:min(760px,100%);
+  min-height:100%;
+  margin-inline:auto;
+  padding:44px 24px 76px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:28px;
+  text-align:start;
+}
+.start-sheet__identity { margin:0; filter:none; }
+.start-sheet__identity .model-signature { width:36px; height:36px; }
+.start-sheet h1 {
+  max-width:14ch;
+  margin:15px 0 10px;
+  color:var(--ink);
+  font-size:clamp(34px,4.2vw,52px);
+  line-height:1.04;
+  letter-spacing:-.05em;
+  font-weight:520;
+}
+.start-sheet__lead p {
+  max-width:48ch;
+  margin:0;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.6;
+}
+.start-sheet__ideas {
+  width:100%;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.start-sheet__ideas > button {
+  min-height:54px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--muted);
+  font-size:12px;
+  text-align:start;
+}
+.start-sheet__ideas > button:hover {
+  color:var(--ink);
+  background:var(--surface-2);
+  border-color:var(--line-strong);
+}
+
+/* -------------------------------------------------------------- popovers */
+.gx-pop {
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(10,10,10,.97);
+  box-shadow:var(--shadow-pop);
+  backdrop-filter:blur(24px);
+}
+:root[data-theme='light'] .gx-pop { background:rgba(255,255,255,.97); }
+.gx-pop__item {
+  min-height:38px;
+  border-radius:8px;
+  color:var(--muted);
+}
+.gx-pop__item:hover { color:var(--ink); background:var(--control-fill); }
+/* The MAX marker on a gated row. It is a quiet outline rather than a filled badge: it names a
+   requirement, and a filled chip in the accent would read as the recommended choice. */
+.gx-pop__badge {
+  margin-inline-start:6px;
+  padding:1px 5px;
+  border:1px solid var(--line);
+  border-radius:5px;
+  color:var(--faint);
+  font-size:9px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  vertical-align:middle;
+}
+/* A section heading inside a popover. `display:block` matters: without it the span stays inline
+   and runs into the row above it, which is the exact defect scripts/check-unstyled-classes.mjs
+   exists to catch. */
+.gx-pop__section {
+  display:block;
+  margin:8px 0 3px;
+  padding-inline:10px;
+  color:var(--faint);
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+
+/* ---------------------------------------------------------- status marks */
+/*
+ * THE CANONICAL STATUS MARKS, RE-STATED FOR THIS SYSTEM.
+ *
+ * `status-icon.tsx` emits `st st--<tone>` and the tone IS the status. The previous system carried
+ * these six rules plus the one animation; the minimal pass replaced the palette and dropped the
+ * rules with it, so every mark fell back to `currentColor` — which happens to look plausible on a
+ * monochrome page, and is exactly why nobody noticed — and the pending spinner stopped spinning,
+ * leaving a static three-quarter arc that reads as a broken circle rather than as progress.
+ *
+ * `pending` is the only status that animates, and the reduced-motion escape below is the reason it
+ * is allowed to.
+ */
+.st--good { color:var(--good); }
+.st--bad { color:var(--bad); }
+.st--warn { color:var(--warn); }
+.st--info { color:var(--accent-light); }
+.st--muted { color:var(--faint); }
+/* Not violet: violet is spent on Autonomous-on and nowhere else (tests/ai-elements-composer). */
+.st--future { color:var(--muted); }
+.st--spin { animation:minimal-status-turn 1.2s linear infinite; }
+@keyframes minimal-status-turn { to { transform:rotate(360deg); } }
+
+@keyframes minimal-spin { to { transform:rotate(360deg); } }
+@keyframes minimal-pulse {
+  0%,100% { box-shadow:0 0 0 3px rgba(91,124,250,.06); }
+  50% { box-shadow:0 0 0 5px rgba(91,124,250,.12); }
+}
+@keyframes minimal-turn-in {
+  from { opacity:0; transform:translateY(4px); }
+  to { opacity:1; transform:none; }
+}
+@keyframes minimal-details-in {
+  from { opacity:0; transform:translateY(-3px); }
+  to { opacity:1; transform:none; }
+}
+@keyframes minimal-frame-in {
+  from { opacity:.72; transform:scale(1.003); }
+  to { opacity:1; transform:none; }
+}
+
+@media (max-width:900px) {
+  .gx-shell { --gx-dock-w:0px; }
+  .gx-shell .gx-main { width:100%; margin-inline-start:0; }
+  .gx-shell .studio-dock {
+    width:48px;
+    height:48px;
+    inset-block:8px auto;
+    inset-inline-start:8px;
+    padding:0;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:rgba(10,10,10,.92);
+    box-shadow:var(--shadow-pop);
+    backdrop-filter:blur(18px);
+    overflow:hidden;
+  }
+  .gx-shell .studio-dock .studio-dock__brand,
+  .gx-shell .studio-dock .studio-dock__row,
+  .gx-shell .studio-dock .studio-dock__foot { display:none; }
+  .gx-shell .studio-dock__nav,
+  .gx-shell .studio-dock__group { display:contents; }
+  .gx-shell .studio-dock .studio-navigation {
+    width:46px;
+    height:46px;
+    min-height:46px;
+    display:grid;
+    place-items:center;
+    padding:0;
+  }
+  .gx-shell .studio-dock .studio-navigation .studio-dock__label { display:none; }
+  .apple-workspace__topbar { padding-inline:68px 10px; }
+  .gx-thread { padding:34px 16px 92px; }
+  .gx-compose-region { padding-inline:8px; }
+  .gx-turn--user { max-width:88%; }
+  .start-sheet__ideas { grid-template-columns:1fr; }
+}
+
+@media (max-width:520px) {
+  .apple-workspace { grid-template-rows:60px minmax(0,1fr) auto; }
+  .apple-workspace__topbar { min-height:60px; }
+  .apple-workspace__titlecopy .gx-top__when { display:none; }
+  /* 16px, the composer's own gutter below it: at 8px the reply's right edge, the user bubble and
+     every row's chevron ran to within 8px of the glass while the composer sat 16px in, so the two
+     halves of one screen had different edges. */
+  .gx-thread { padding:26px 16px 84px; }
+  /* The 84px foot clears the last turn from under the composer's fade. The welcome sheet has no last
+     turn and its own 64px foot, so on a phone the two together made an empty screen scroll by 27px. */
+  .gx-thread:has(.start-sheet) { padding-block-end:26px; }
+  .gx-turn--agent { grid-template-columns:26px minmax(0,1fr); gap:9px; }
+  .gx-turn--agent .gx-mark { width:26px; height:26px; border-radius:8px; }
+  .gx-prose { font-size:15px; line-height:1.66; }
+  .start-sheet { padding:34px 10px 64px; }
+  .start-sheet h1 { font-size:36px; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .gx-turn {
+    animation:none !important;
+  }
+  .st--spin {
+    animation:none !important;
+  }
+}

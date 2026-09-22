@@ -23,6 +23,7 @@ export const OP_LABEL: Record<string, string> = {
   dump_scripts: 'Read the scripts',
   search_scripts: 'Searched the scripts',
   get_logs: 'Read the output log',
+  project_census: 'Counted the project contents',
   get_selection: 'Read what was selected',
   viewport_info: 'Read the camera and viewport',
   inspect_model: 'Checked a model over',
@@ -42,6 +43,7 @@ export const OP_LABEL: Record<string, string> = {
   set_visible: 'Showed or hid objects',
   insert_asset: 'Inserted an asset',
   generate_model: 'Generated a model',
+  terrain_edit: 'Edited terrain',
   run_code: 'Ran Luau inside Studio',
 
   // --- the view, which changes nothing in the place ----------------------

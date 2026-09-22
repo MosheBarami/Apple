@@ -175,10 +175,11 @@ test('writes are debounced rather than one per keystroke', () => {
 test('the draft is cleared only after the message actually left', () => {
   // A send refused because the socket had closed must leave the draft exactly where it was.
   const submit = COMPOSER.slice(COMPOSER.indexOf('const submit ='), COMPOSER.indexOf('const onKeyDown'));
-  assert.match(submit, /if \(!value \|\| running \|\| disabled\) return;/);
+  // `return false`: the refusal PromptInput honours by clearing nothing (composer-send.test.mjs).
+  assert.match(submit, /if \(!value \|\| running \|\| disabled\) return false;/);
   assert.ok(submit.indexOf('onSend(value)') < submit.indexOf('clearDraft(draftKey)'), 'send, then clear');
   assert.ok(
-    submit.indexOf('if (!value || running || disabled) return;') < submit.indexOf('clearDraft(draftKey)'),
+    submit.indexOf('if (!value || running || disabled) return false;') < submit.indexOf('clearDraft(draftKey)'),
     'a refused send must never reach the clear',
   );
 });

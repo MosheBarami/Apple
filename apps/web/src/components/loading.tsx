@@ -10,7 +10,7 @@ import { OPERATION_STEPS, type OperationKind } from '../lib/tool-meta';
 // `useReducedMotion` — but a user who has overridden it in settings must be able to override it
 // HERE too, and a second local copy of the query could only ever disagree with the first.
 import { useReducedMotion } from '../lib/theme';
-import { RunePulse } from './glyphs';
+import { ApplePulse } from './glyphs';
 import { StatusIcon } from './status-icon';
 import './loading.css';
 
@@ -57,7 +57,7 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
     // been sized by the same padding as one holding seven.
     <div className={`forge${compact ? ' is-compact' : ''}`} role="status" aria-live="polite">
       <span className="forge-mark" aria-hidden="true">
-        <RunePulse size={24} />
+        <ApplePulse size={24} />
       </span>
       <p className="forge-label">{label ?? HEADLINE[kind]}</p>
       {!compact && (
@@ -103,10 +103,10 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
  */
 export function Spinner({ label }: { label?: string }) {
   return (
-    <span className="rune-spinner" role="status">
+    <span className="loading-spinner" role="status">
       <StatusIcon status="pending" size={14} />
       {label
-        ? <span className="rune-spinner__label">{label}</span>
+        ? <span className="loading-spinner__label">{label}</span>
         : <span className="visually-hidden">Loading</span>}
     </span>
   );

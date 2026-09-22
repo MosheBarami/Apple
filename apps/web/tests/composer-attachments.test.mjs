@@ -52,18 +52,31 @@ const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
 /** Source with comments removed, so a negative assertion cannot be tripped by prose. */
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const CODE = stripComments(COMPOSER);
+// Since 2026-09-22 the file input, the paste and the drop plumbing are AI Elements' PromptInput
+// (vendored, components/ai-elements/prompt-input.tsx). The composer gives it `onAddFiles`, so every
+// file it collects comes to the composer's own admission door; the properties below are asserted
+// where each now lives.
+const INPUT = stripComments(src('components', 'ai-elements', 'prompt-input.tsx'));
+const INPUT_CSS = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'prompt-input.css'), 'utf8');
 
 /* ------------------------------------------------------------------ the control ---- */
 
 test('the paperclip is no longer disabled, and no longer says attachments are unsupported', () => {
   assert.ok(!COMPOSER.includes('Attachments aren’t supported yet'), 'the disabled title is still there');
-  assert.match(CODE, /<input[\s\S]*?type="file"/, 'a real file input is what a paperclip opens');
+  assert.match(INPUT, /<input[\s\S]*?type="file"/, 'a real file input is what a paperclip opens');
+  // The paperclip opens THAT input: PromptInput's openFileDialog, reached through its own hook.
+  assert.match(CODE, /onClick=\{\(\) => attachments\.openFileDialog\(\)\}/);
+  assert.match(INPUT, /const openFileDialogLocal = useCallback\(\(\) => \{\s*inputRef\.current\?\.click\(\);/);
+  // Hidden, not absent — and hidden by a rule this app actually has (it has no `.hidden` utility).
+  assert.match(INPUT, /className="hidden ai-prompt-input__file"/);
+  assert.match(INPUT_CSS.replace(/\/\*[\s\S]*?\*\//g, ''), /\.ai-prompt-input__file\s*\{\s*display:\s*none;?\s*\}/);
 });
 
 test('the picker offers exactly the types the server takes', () => {
   // A dialog that offers a type the worker refuses is a dialog that lies about what it takes. The
   // accept string is built from the shared allowlist, never written out beside it.
-  assert.match(CODE, /accept=\{ATTACHMENT_ACCEPT\}/);
+  assert.match(CODE, /<PromptInput\b[^>]*?\baccept=\{ATTACHMENT_ACCEPT\}/, 'the composer must give PromptInput the shared list');
+  assert.match(INPUT, /<input\s+accept=\{accept\}/, 'and PromptInput must put it on the input the dialog opens from');
   assert.ok(ATTACHMENT_ACCEPT.includes('text/markdown'));
 });
 
@@ -82,10 +95,14 @@ test('unsupported voice input is not advertised as a dead composer control', () 
 /* ------------------------------------------------------------------ paste ---- */
 
 test('a paste is inspected for files and left alone when it has none', () => {
-  assert.match(CODE, /onPaste=/, 'nothing reads the clipboard');
-  const handler = CODE.slice(CODE.indexOf('const onPaste'), CODE.indexOf('const onDrop'));
+  // The vendored textarea's own paste handler; the composer must not replace it with one of its
+  // own (a caller's onPaste would override it, and then two rules would decide what a paste is).
+  assert.match(INPUT, /onPaste=\{handlePaste\}/, 'nothing reads the clipboard');
+  const tag = CODE.slice(CODE.indexOf('<PromptInputTextarea'), CODE.indexOf('/>', CODE.indexOf('<PromptInputTextarea')));
+  assert.equal(/\bonPaste=/.test(tag), false, 'the composer overrides the vendored paste handler');
+  const handler = INPUT.slice(INPUT.indexOf('const handlePaste'), INPUT.indexOf('const handleCompositionEnd'));
   assert.match(handler, /clipboardData/);
-  assert.match(handler, /kind === 'file'|kind !== 'file'/);
+  assert.match(handler, /kind [!=]== ['"]file['"]/);
   // preventDefault has to be INSIDE the branch that found files. Unconditional, it breaks the
   // most-used gesture in the product to catch the rarest one.
   const beforeGuard = handler.slice(0, handler.indexOf('preventDefault'));
@@ -95,7 +112,15 @@ test('a paste is inspected for files and left alone when it has none', () => {
 test('a pasted image is refused in words rather than silently ignored', () => {
   // Images are not supported on this build. The path a pasted screenshot takes must end in the
   // same sentence a picked one does, or the person concludes the paste itself is broken.
-  assert.match(CODE, /onFiles\(|addFiles\(/, 'paste has to reach the same admission path as the picker');
+  // Paste, pick and drop all call PromptInput's `add`, which — given onAddFiles — hands the files to
+  // the caller untouched; the composer's onAddFiles IS its one admission door.
+  assert.match(INPUT, /attachments\.add\(files\)/, 'a pasted file must go to PromptInput\'s add');
+  assert.match(INPUT, /const add = onAddFiles\s*\?\s*addToCaller/, 'with onAddFiles, add must be the hand-over');
+  const handOver = INPUT.slice(INPUT.indexOf('const addToCaller'), INPUT.indexOf('const add = onAddFiles'));
+  assert.match(handOver, /onAddFilesRef\.current\?\.\(incoming\)/);
+  assert.equal(/createObjectURL|matchesAccept|maxFileSize/.test(handOver), false, 'the hand-over must not filter or copy the files itself');
+  assert.match(CODE, /onAddFiles=\{addFiles\}/, 'paste has to reach the same admission path as the picker');
+  assert.match(CODE, /const addFiles = \(incoming: readonly File\[\]\) => \{[\s\S]*?admitFiles\(staged, incoming\)/);
 });
 
 /* ------------------------------------------------------------------ drag and drop ---- */
@@ -157,8 +182,8 @@ test('the message carries the attachments all the way to the socket frame', () =
   // written and nothing ever set it.
   assert.match(CODE, /readyAttachments\(/);
   assert.match(COMPOSER, /onSend: \(text: string, attachments: ChatAttachment\[\]\) => boolean/);
-  // Extra model metadata must not invalidate the attachment boundary.
-  assert.match(WORKSPACE, /sendChat\(text, PRODUCT_MODE_TO_SPECIALIST\[mode\], attachments(?:,\s*\w+)?\)/);
+  // Mode, model and autonomy metadata must not invalidate the attachment boundary.
+  assert.match(WORKSPACE, /sendChat\(text, mode, attachments, productModel, autonomous\)/);
   assert.match(SOCKET, /sendRaw\(\{ type: 'chat'[^\n]+attachments/);
 });
 

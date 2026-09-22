@@ -171,11 +171,24 @@ test('the picker is a listbox, so it is reachable without a mouse', () => {
 test('Enter picks the highlighted file instead of sending the message', () => {
   // The one interaction that must not be got wrong: a send key that fires while a picker is open
   // sends a message with `@pla` in it and the picker still on screen.
+  //
+  // RESTATED 2026-09-22: the send binding is matched inside the vendored PromptInputTextarea now, so
+  // "the picker claims the key first" is two facts that have to hold together. The composer's handler
+  // takes Enter (and the arrows and Escape) with preventDefault while the list is open, and the
+  // textarea runs that handler FIRST and does not look at the binding for a key it has taken.
   const handler = CODE.slice(CODE.indexOf('const onKeyDown'), CODE.indexOf('const selectionLabel'));
-  assert.match(handler, /mention/i, 'the send chord must be checked against the picker first');
-  const mentionBranch = handler.indexOf('mention');
-  const sendBranch = handler.indexOf('matchesShortcut');
-  assert.ok(mentionBranch < sendBranch, 'the picker has to claim the key before the send binding does');
-  assert.match(handler, /ArrowDown/);
-  assert.match(handler, /Escape/);
+  const branch = handler.slice(handler.indexOf('if (mentionHits.length) {'));
+  assert.ok(handler.includes('if (mentionHits.length) {'), 'the picker branch must be guarded by an open list');
+  assert.match(branch, /if \(e\.key === 'Enter' \|\| e\.key === 'Tab'\) \{\s*e\.preventDefault\(\);/, 'Enter must be claimed, with preventDefault, while the list is open');
+  assert.match(branch, /ArrowDown/);
+  assert.match(branch, /Escape/);
+  const tag = CODE.slice(CODE.indexOf('<PromptInputTextarea'), CODE.indexOf('/>', CODE.indexOf('<PromptInputTextarea')));
+  assert.match(tag, /\bonKeyDown=\{onKeyDown\}/, 'the handler has to be the textarea’s');
+  const INPUT = stripComments(readFileSync(join(HERE, '..', 'src', 'components', 'ai-elements', 'prompt-input.tsx'), 'utf8'));
+  const keydown = INPUT.slice(INPUT.indexOf('const handleKeyDown'), INPUT.indexOf('const handlePaste'));
+  const external = keydown.indexOf('onKeyDown?.(e);');
+  const yielded = keydown.indexOf('if (e.defaultPrevented) {');
+  const send = keydown.indexOf('matchesShortcut(e, submitBinding)');
+  assert.ok(external !== -1 && yielded !== -1 && send !== -1, 'the textarea’s key handler was not found');
+  assert.ok(external < yielded && yielded < send, 'the caller’s handler must run, and be able to claim the key, before the send binding is matched');
 });

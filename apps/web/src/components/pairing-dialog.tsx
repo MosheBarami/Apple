@@ -103,6 +103,10 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
   if (!link.paired) return null;
 
   const place = link.place;
+  // A place never published to Roblox reports placeId 0 and is never BOUND (studio-place.ts refuses
+  // to bind what it cannot compare later), but Studio still named it. Measured 2026-09-22 (F-008):
+  // the dock read "Apple-Acceptance-2026-09-22.rbxl" while this row said Studio "has not named" it.
+  const open = record.data.openPlace;
   const expires = record.data.pairingExpiresAt;
   const lapsed = expires !== null && expires <= Date.now();
   const busy = cut.isPending || rebind.isPending || discard.isPending;
@@ -112,9 +116,15 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
       <header className="pairing-record__head">
         <StatusIcon status={link.connected ? 'success' : 'waiting'} size={16} />
         <div className="pairing-record__ident">
-          <p className="pairing-record__place">{place ? place.placeName : 'Paired to a place Studio has not named'}</p>
+          <p className="pairing-record__place">{place ? place.placeName : open ? open.placeName : 'Paired to a place Studio has not named'}</p>
           <p className="pairing-record__sub">
-            {place ? `Place ${place.placeId}` : 'Studio has not reported which place it has open.'}
+            {place
+              ? `Place ${place.placeId}`
+              : open
+                ? open.placeId > 0
+                  ? `Place ${open.placeId}`
+                  : 'Not published to Roblox yet, so it has no place ID. Apple builds in it as it is.'
+                : 'Studio has not reported which place it has open.'}
           </p>
         </div>
         <span className="pairing-record__state">
@@ -379,7 +389,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
               <StatusIcon status="success" size={22} />
             </span>
             <h3>Studio connected</h3>
-            <p className="muted">Enable edits in the plugin before asking Apple to change your place.</p>
+            <p className="muted">Apple changes your place only while the Apple panel in Studio shows edits allowed for this connection.</p>
             <button type="button" className="btn btn-primary" onClick={onClose}>
               Start building
             </button>
@@ -450,7 +460,9 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
             {state === 'ready' && pairing && !expired && (
               <>
                 <p className="pairing-how">
-                  In Roblox Studio, open the <strong>Apple</strong> plugin and enter this code.
+                  In Roblox Studio, click <strong>Apple</strong> in the Plugins tab, enter this code and
+                  press <strong>Connect to Apple</strong>. Edits stay off until you allow them for this
+                  connection.
                 </p>
 
                 <p className="pairing-waiting muted" aria-live="polite">
@@ -459,9 +471,10 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
               </>
             )}
 
-            {/* Deliberately understated, and deliberately not a promise: the asset
-                is on the Creator Store but not yet distributed there, so this goes
-                to the docs page that says so until it is. */}
+            {/* Deliberately understated: most people reading this dialog already have the
+                plugin. The destination follows STUDIO_PLUGIN_STORE_LIVE — the Creator Store page
+                in a new tab while the listing is distributed (true since 2026-09-22), and the
+                same-origin /docs/plugin, which says why, if it is ever withdrawn. */}
             <p className="pairing-how">
               <a
                 href={STUDIO_PLUGIN_INSTALL_HREF}
@@ -469,7 +482,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
                 rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
                 className="pairing-link"
               >
-                {STUDIO_PLUGIN_STORE_LIVE ? 'Install Apple for Studio' : 'Public installation unavailable — see status'}
+                {STUDIO_PLUGIN_STORE_LIVE ? 'Get Apple Studio from the Creator Store' : 'Public installation unavailable — see status'}
                 {STUDIO_PLUGIN_STORE_LIVE ? ' ↗' : ''}
               </a>
             </p>

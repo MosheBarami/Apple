@@ -1,0 +1,41 @@
+/* The specimen's own bar — the one thing on these screens that is not the product. It sits in the
+   row the workspace top bar occupies, so everything below it is laid out exactly as it is in a
+   project. Tokens only. */
+.spec-bar {
+  min-height:64px;
+  padding:10px 22px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+  border-bottom:1px solid var(--line);
+  background:var(--paper);
+  font-size:12px;
+}
+.spec-bar__tag {
+  padding:3px 8px;
+  border:1px solid var(--line-strong);
+  border-radius:999px;
+  color:var(--ink);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.spec-bar__note { color:var(--muted); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-inline-end:auto; }
+.spec-bar__pick select {
+  height:32px;
+  max-width:44vw;
+  padding:0 10px;
+  border:1px solid var(--control-line);
+  border-radius:var(--r-sm);
+  background:var(--surface);
+  color:var(--ink);
+  font:inherit;
+}
+.spec-bar__theme { height:32px; }
+@media (max-width:680px) {
+  .spec-bar { padding:10px 16px; gap:8px; }
+  .spec-bar__note { display:none; }
+  .spec-bar__pick { margin-inline-start:auto; }
+}

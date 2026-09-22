@@ -38,8 +38,15 @@ function tsxUnder(dir) {
   return out;
 }
 
-/** Surfaces that fetch, and therefore can be mid-flight or can fail. */
-const fetching = tsxUnder(SRC).filter(({ src }) => /useQuery|useSuspenseQuery/.test(src));
+/**
+ * Surfaces that fetch, and therefore can be mid-flight or can fail.
+ *
+ * A CALL to a query hook, not the letters "useQuery": `useQueryClient` begins with them, and the
+ * DEV-only chat specimen (routes/studio-preview.tsx) uses it to SEED the cache so the credits drawer
+ * renders without a request — it runs no query and has no in-flight or failed state to show. On
+ * 2026-09-22 the call form selected 19 files and the old substring the same 19 plus that one.
+ */
+const fetching = tsxUnder(SRC).filter(({ src }) => /\buse(?:Suspense)?Quer(?:y|ies)\s*[(<]/.test(src));
 
 test('there are surfaces to check, so this cannot pass vacuously', () => {
   assert.ok(fetching.length >= 5, `expected several fetching surfaces, found ${fetching.length}`);

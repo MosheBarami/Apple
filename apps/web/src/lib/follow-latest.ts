@@ -11,9 +11,7 @@
 //   * A ref does not re-render, so no control COULD be offered from it. This is why the state
 //     below is state.
 //
-// The pattern with real controls already exists in this product: `studio-view.tsx` pins and
-// releases frame-following explicitly, and says which frame you are on. This is the same idea for
-// the transcript.
+// The transcript owns an explicit follow/release state and a control to return to the live edge.
 
 export const NEAR_BOTTOM_PX = 90;
 

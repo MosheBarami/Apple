@@ -70,6 +70,8 @@ export function decodeFrame(frame: Pick<StudioFrame, 'rgbBase64' | 'encoding' | 
   if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) return null;
   const pixels = width * height;
 
+  if (frame.encoding === 'png') return null;
+
   const bytes = fromBase64(frame.rgbBase64);
   if (!bytes) return null;
 
@@ -80,6 +82,12 @@ export function decodeFrame(frame: Pick<StudioFrame, 'rgbBase64' | 'encoding' | 
   // longer than needed is expected; shorter is a frame we refuse to guess at.
   if (bytes.length < pixels * 3) return null;
   return bytes.subarray(0, pixels * 3);
+}
+
+/** Browser-native image source for encoded Studio captures. */
+export function frameImageSrc(frame: Pick<StudioFrame, 'rgbBase64' | 'encoding'>): string | null {
+  if (frame.encoding !== 'png' || !frame.rgbBase64) return null;
+  return 'data:image/png;base64,' + frame.rgbBase64;
 }
 
 /** Paint a decoded frame onto a canvas, sizing the canvas to it. Returns success. */

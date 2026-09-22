@@ -69,6 +69,15 @@ export const ICON_PATH = {
   people: 'M9.5 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3 20a6.5 6.5 0 0 1 13 0M16.5 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2a6.5 6.5 0 0 1 3 5.8',
   rail: 'M3 4h18v16H3zM15 4v16',
   surface: 'M3 4h18v16H3zM3 10h18',
+  actionScript: 'M7 3h7l4 4v14H7z M14 3v5h5 M10 12l-2 2 2 2 M15 12l2 2-2 2',
+  actionTerrain: 'M3 19l5-8 3 4 3-7 7 11z M4 19h16',
+  actionPlaytest: 'M8 5l11 7-11 7z',
+  actionCamera: 'M4 7h4l2-3h4l2 3h4v12H4z M12 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+  actionCube: 'M12 3l8 4.5v9L12 21l-8-4.5v-9z M4 7.5l8 4.5 8-4.5 M12 12v9',
+  actionSearch: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z M15.5 15.5L21 21',
+  actionCheckpoint: 'M12 3l8 4-8 4-8-4z M4 12l8 4 8-4 M4 17l8 4 8-4',
+  actionEdit: 'M5 19h4L19 9l-4-4L5 15z M13.5 6.5l4 4',
+  actionDefault: 'M5 12h14 M12 5v14',
 } as const;
 
 export type IconName = keyof typeof ICON_PATH;

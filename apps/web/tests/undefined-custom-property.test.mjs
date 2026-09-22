@@ -37,7 +37,12 @@ function sources(dir = 'src', match = /\.(css|tsx?|mjs)$/) {
   const out = [];
   for (const entry of readdirSync(join(WEB, dir)).sort()) {
     const rel = `${dir}/${entry}`;
-    if (statSync(join(WEB, rel)).isDirectory()) out.push(...sources(rel, match));
+    if (statSync(join(WEB, rel)).isDirectory()) {
+      // Exact third-party AICSS source uses component-local runtime CSS variables populated by
+      // inline styles. Apple-owned token hygiene must not force edits to byte-pinned vendor CSS.
+      if (rel === 'src/components/aicss') continue;
+      out.push(...sources(rel, match));
+    }
     else if (match.test(entry)) out.push(rel);
   }
   return out;

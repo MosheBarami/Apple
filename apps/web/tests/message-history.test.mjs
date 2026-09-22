@@ -72,9 +72,16 @@ test('a retry is not an edit on the client either, and both sides ask the same f
 // ------------------------------------------------------------------ the panel ---
 
 test('the mark is on the user turn, beside Edit, because that is what made it', () => {
-  const foot = TURN.slice(TURN.indexOf('gx-user__foot'), TURN.indexOf('</div>\n      </div>\n    );'));
+  // Bounded to the user turn's own actions row. The end marker used to be a closing-tag sequence
+  // that no longer existed, so the slice silently ran to the end of the file and would have passed
+  // on an Edited mark drawn anywhere at all.
+  const from = TURN.indexOf('gx-user__foot');
+  const to = TURN.indexOf('</MessageActions>', from);
+  assert.ok(from !== -1 && to > from, 'the user turn\'s actions row was not found — this test checks nothing');
+  const foot = TURN.slice(from, to);
   assert.match(foot, /gx-user__edited/);
   assert.match(foot, /Edited/);
+  assert.match(foot, /gx-user__edit\b/, 'beside Edit');
 });
 
 test('the earlier versions are fetched for the message that was opened', () => {

@@ -1,0 +1,38 @@
+/* AI ELEMENTS SOURCES, DRAWN WITH THIS APP'S TOKENS.
+ *
+ * Upstream's look: a small "Used N sources" disclosure over a column of book-marked links. The
+ * links are the only thing on it that is actionable, so they take ink and an underline on hover;
+ * the trigger and the book icon stay muted. No raw colour, weight 400.
+ */
+.ai-sources { margin-block-end:16px; color:var(--muted); font-size:12px; line-height:18px; }
+
+.ai-sources__trigger {
+  display:inline-flex; min-height:var(--h-xs); align-items:center; gap:8px;
+  padding:0 6px; margin-inline:-6px; border:0; border-radius:var(--r-xs); background:transparent;
+  color:var(--muted); font:inherit; font-size:12px; line-height:18px; text-align:start;
+  transition:color var(--t-fast) var(--ease-out);
+}
+/* Hover is a surface step that hugs the words: 6px of padding, taken back by a negative margin so
+   the icon stays in its column. The app's global `button:hover:not(:disabled):not([…])` paints ink
+   at 12% and outranks a single class, so the quieter fill is stated at a specificity that clears it. */
+button.ai-sources__trigger:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); }
+.ai-sources__count { margin:0; font-weight:400; }
+.ai-sources__chevron { width:16px; height:16px; flex:none; transition:transform var(--t-fast) var(--ease-out); }
+.ai-sources__trigger[data-state='open'] .ai-sources__chevron { transform:rotate(180deg); }
+
+.ai-sources__content { display:flex; flex-direction:column; gap:8px; width:fit-content; max-width:100%; margin-block-start:8px; outline:none; animation:ai-sources-in var(--t-fast) var(--ease-out) both; }
+.ai-sources__source { display:flex; min-width:0; align-items:center; gap:8px; color:var(--ink); text-decoration:none; }
+.ai-sources__source:hover .ai-sources__title { text-decoration:underline; text-underline-offset:3px; }
+.ai-sources__icon { width:16px; height:16px; flex:none; color:var(--muted); }
+.ai-sources__title { display:block; min-width:0; font-weight:400; overflow-wrap:anywhere; }
+
+@keyframes ai-sources-in {
+  from { opacity:0; transform:translateY(-4px); }
+  to { opacity:1; transform:none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-sources__trigger,
+  .ai-sources__chevron { transition:none; }
+  .ai-sources__content { animation:none; }
+}

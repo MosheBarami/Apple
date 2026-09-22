@@ -38,7 +38,7 @@
 //    plenty". Both are claims this file cannot support. credits-model.ts set this precedent for
 //    the attribution ledger — an empty ledger is never drawn as a clearance — and it is the same
 //    mistake in a different subsystem.
-import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, PRODUCT_MODE_INFO, SPECIALIST_TO_PRODUCT_MODE, isPlanId, type QuotaState, CREDIT_PURCHASE_LIVE } from '@golem/shared';
+import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, PRODUCT_MODE_INFO, isPlanId, type ProductMode, type QuotaState, CREDIT_PURCHASE_LIVE } from '@golem/shared';
 
 export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
 
@@ -324,22 +324,19 @@ export interface SpendSlice {
  * admission and the settlement when the run finishes — so they share a bucket. Printing them as two
  * categories would invite the reader to conclude they had been charged twice for one run.
  *
- * AN UNRECOGNISED KIND IS TIDIED, NEVER DROPPED. A new spend kind ships on the server before it is
- * named here, and dropping it would stop the parts summing to the whole silently, in the direction
- * that flatters us.
+ * AN UNRECOGNISED RUN MODE IS NOT PROMOTED INTO THE PRODUCT VOCABULARY. The only named run buckets
+ * are Plan and Agent. Any other `chat_*` / `usage_*` value is still counted, under one generic
+ * "Other usage" bucket, so the totals remain honest without reintroducing retired mode names.
  */
-function ledgerMode(kind: string): string | undefined {
+function ledgerMode(kind: string): ProductMode | undefined {
   const raw = /^(?:chat|usage)_(.+)$/.exec(kind)?.[1];
-  // Old settlements store internal specialist names. Normalize to the existing public
-  // activity, not Apple/MAX: those historical rows do not prove which product model ran.
-  return raw && Object.prototype.hasOwnProperty.call(SPECIALIST_TO_PRODUCT_MODE, raw)
-    ? SPECIALIST_TO_PRODUCT_MODE[raw as keyof typeof SPECIALIST_TO_PRODUCT_MODE]
-    : raw;
+  return raw === 'plan' || raw === 'agent' ? raw : undefined;
 }
 
 export function usageKindLabel(kind: string): string {
   const mode = ledgerMode(kind);
-  if (mode === 'plan' || mode === 'agent' || mode === 'super') return PRODUCT_MODE_INFO[mode].name;
+  if (mode) return PRODUCT_MODE_INFO[mode].name;
+  if (/^(?:chat|usage)_/.test(kind)) return 'Other usage';
   if (kind.startsWith('api_')) return 'API';
   if (kind === 'docs_search') return 'Search';
   if (kind === 'roadmap_rank') return 'Roadmap';
@@ -351,6 +348,7 @@ export function usageKindLabel(kind: string): string {
 function bucketKey(kind: string): string {
   const mode = ledgerMode(kind);
   if (mode) return `mode:${mode}`;
+  if (/^(?:chat|usage)_/.test(kind)) return 'kind:other-usage';
   if (kind.startsWith('api_')) return 'api';
   return `kind:${kind}`;
 }
@@ -358,9 +356,9 @@ function bucketKey(kind: string): string {
 /**
  * Every day's breakdown collapsed into one list, biggest first.
  *
- * NO "OTHER" BUCKET IS INVENTED. A worker that sends no `kinds` produces an empty list, and the
- * page renders nothing — right, because nothing is known. Filling the day's total into a category
- * called "Other" would be a figure attributed to something nobody spent it on.
+ * A worker that sends no `kinds` produces an empty list and the page renders nothing. "Other usage"
+ * appears only for concrete ledger rows whose run-mode suffix is outside the current ProductMode
+ * contract; it never backfills an unobserved day's total.
  */
 export function spendByKind(days: readonly UsageDayRow[] | null | undefined): SpendSlice[] {
   if (!Array.isArray(days)) return [];

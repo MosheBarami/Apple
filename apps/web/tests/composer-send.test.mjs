@@ -33,6 +33,7 @@ import { DEFAULT_PREFS, SEND_KEYS, isSendKey, normalisePrefs } from '../src/lib/
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, '..');
 const COMPOSER = readFileSync(join(WEB, 'src', 'components', 'ws', 'composer.tsx'), 'utf8');
+const PROMPT_INPUT = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'prompt-input.tsx'), 'utf8');
 const WS = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
 const DIALOG = readFileSync(join(WEB, 'src', 'components', 'shortcuts-dialog.tsx'), 'utf8');
 const SESSION = readFileSync(join(WEB, '..', 'worker', 'src', 'do', 'session.ts'), 'utf8');
@@ -121,19 +122,39 @@ test('bare Enter is NOT in the global shortcut map', () => {
 
 // ------------------------------------------------- the composer actually uses it ---
 
-test('the composer matches through the SHARED matcher, not a hand-rolled key check', () => {
+test('the send key is the person’s binding, matched by the SHARED matcher inside the vendored textarea', () => {
   // This is the regression. A hand-matched chord in one component is exactly what lib/shortcuts.ts
   // exists to prevent, and it survived here, in the most-used control in the product.
   //
+  // RESTATED 2026-09-22 when the composer moved onto AI Elements' PromptInput. The key handling now
+  // lives in the vendored PromptInputTextarea, whose upstream original hand-matches
+  // `e.key === "Enter"`. The property is unchanged and is held in both places: the composer hands
+  // the textarea the binding it resolved from the preference, and the textarea matches THAT binding
+  // with `matchesShortcut` — no Enter is hand-matched anywhere in it.
+  const code = stripComments(COMPOSER);
+  const tag = code.slice(code.indexOf('<PromptInputTextarea'), code.indexOf('/>', code.indexOf('<PromptInputTextarea')));
+  assert.ok(tag.length > 20, 'the composer no longer renders PromptInputTextarea');
+  assert.match(tag, /\bsubmitBinding=\{sendKeyBinding\}/, 'the composer must hand the textarea the resolved binding');
+  const input = stripComments(PROMPT_INPUT);
+  assert.match(input, /matchesShortcut\(e, submitBinding\)/, 'the vendored textarea must match the binding it was given');
+  assert.match(input, /submitBinding = ENTER_SEND/, 'the default binding is the named bare-Enter record, not an inline key test');
+  assert.equal(/\.key === ["']Enter["']/.test(input), false, 'the vendored textarea must not hand-match Enter');
+
   // THE BAN IS ON HAND-MATCHING THE SEND, not on the word Enter. The @-mention picker claims
   // Enter for itself while it is open — that is a different key doing a different job, and it is
-  // guarded by `mentionHits.length` so it can only fire when a list is on screen. So the branch
-  // is cut out and the ban is applied to everything else, which is where the defect lived.
-  const code = stripComments(COMPOSER);
-  assert.match(code, /matchesShortcut\(e, sendKeyBinding\)/);
+  // guarded by `mentionHits.length` so it can only fire when a list is on screen. So the branch is
+  // cut out (by balancing its braces) and the ban is applied to everything else in the composer.
   const guard = code.indexOf('if (mentionHits.length) {');
   assert.ok(guard !== -1, 'the mention branch must stay guarded, or it claims Enter with no list open');
-  const withoutPicker = code.slice(0, guard) + code.slice(code.indexOf('matchesShortcut(e, sendKeyBinding)'));
+  let depth = 0;
+  let end = -1;
+  for (let i = code.indexOf('{', guard); i < code.length; i += 1) {
+    if (code[i] === '{') depth += 1;
+    else if (code[i] === '}' && --depth === 0) { end = i + 1; break; }
+  }
+  assert.ok(end > guard, 'the mention branch could not be bounded');
+  const withoutPicker = code.slice(0, guard) + code.slice(end);
+  assert.match(code.slice(guard, end), /e\.key === 'Enter'/, 'the cut must actually contain the picker’s own Enter, or it cut the wrong block');
   assert.equal(
     /e\.key === 'Enter'/.test(withoutPicker),
     false,
@@ -179,7 +200,9 @@ test('a refused send returns before the box or the draft is cleared', () => {
   const submit = COMPOSER.slice(COMPOSER.indexOf('const submit ='), COMPOSER.indexOf('const onKeyDown'));
   // The submitted text may include a user-selected creation intent. Its variable name is not
   // the invariant: refused delivery must still precede every destructive clear.
-  const refusal = /if \(!onSend\(\w+, readyAttachments\(staged\)\)\) return;/;
+  // `return false`: the composer's submit is PromptInput's onSubmit now, and false is the refusal
+  // PromptInput honours by leaving everything as it was (see the next test).
+  const refusal = /if \(!onSend\(\w+, readyAttachments\(staged\)\)\) return false;/;
   assert.match(stripComments(submit), refusal, 'the refusal must short-circuit');
   const guard = submit.search(refusal);
   assert.ok(guard !== -1);
@@ -187,9 +210,25 @@ test('a refused send returns before the box or the draft is cleared', () => {
   assert.ok(guard < submit.indexOf('clearDraft(draftKey)'), 'the guard must precede clearing the draft');
 });
 
+test('and the vendored PromptInput keeps everything when the send is refused', () => {
+  // Upstream clears the form and its attachments unless onSubmit THROWS. A `false` result must be
+  // a refusal too, and the form reset — which upstream ran before the result was known — must only
+  // follow an accepted one.
+  const input = stripComments(PROMPT_INPUT);
+  const submit = input.slice(input.indexOf('const handleSubmit'), input.indexOf('// Render with or without local provider'));
+  assert.ok(submit.length > 200, 'handleSubmit was not found');
+  const accept = submit.slice(submit.indexOf('const accept = () => {'), submit.indexOf('try {'));
+  assert.match(accept, /form\.reset\(\)/, 'the reset belongs to the accepted path');
+  assert.equal((submit.match(/form\.reset\(\)/g) ?? []).length, 1, 'no reset may run outside the accepted path');
+  assert.match(submit, /\(await result\) !== false\) \{\s*accept\(\);/, 'an async false must not clear');
+  assert.match(submit, /else if \(result !== false\) \{[\s\S]*?accept\(\);/, 'a sync false must not clear');
+  // And the composer really is that onSubmit.
+  assert.match(stripComments(COMPOSER), /onSubmit=\{\(\) => submit\(\)\}/);
+});
+
 test('the workspace returns false when the socket refused the message', () => {
   const fn = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
-  assert.match(fn, /if \(!sendChat\(text, PRODUCT_MODE_TO_SPECIALIST\[mode\], attachments(?:,\s*\w+)?\)\) \{/);
+  assert.match(fn, /if \(!sendChat\(text, mode, attachments, productModel, autonomous\)\) \{/);
   assert.match(fn, /return false;/);
   assert.match(fn, /return true;/);
 });

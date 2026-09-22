@@ -1,0 +1,114 @@
+.ai-reasoning {
+  margin-block-end: 16px;
+}
+
+.ai-reasoning__trigger {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: start;
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.ai-reasoning__trigger:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.ai-reasoning__trigger > p {
+  margin: 0;
+}
+
+.ai-reasoning__icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.ai-reasoning__chevron {
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.ai-reasoning__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.ai-reasoning__content {
+  margin-block-start: 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+  animation: ai-reasoning-open var(--t-fast) var(--ease-out) both;
+}
+
+.ai-reasoning__content > .markdown {
+  color: inherit;
+}
+
+.ai-elements-shimmer {
+  --ai-shimmer-spread: 20px;
+  --ai-shimmer-duration: 1s;
+  position: relative;
+  display: inline-block;
+  margin: 0;
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - var(--ai-shimmer-spread)),
+      var(--ink),
+      transparent calc(50% + var(--ai-shimmer-spread))
+    ),
+    linear-gradient(var(--muted), var(--muted));
+  background-position: 100% center, 0 0;
+  background-repeat: no-repeat, no-repeat;
+  background-size: 250% 100%, auto;
+  background-clip: text;
+  color: transparent;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ai-elements-shimmer var(--ai-shimmer-duration) linear infinite;
+}
+
+@keyframes ai-elements-shimmer {
+  to {
+    background-position: 0% center, 0 0;
+  }
+}
+
+@keyframes ai-reasoning-open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-reasoning__trigger,
+  .ai-reasoning__chevron {
+    transition: none;
+  }
+
+  .ai-reasoning__content,
+  .ai-elements-shimmer {
+    animation: none;
+  }
+
+  .ai-elements-shimmer {
+    background: none;
+    color: var(--muted);
+    -webkit-text-fill-color: currentColor;
+  }
+}

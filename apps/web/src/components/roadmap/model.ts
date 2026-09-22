@@ -18,11 +18,8 @@
 // These mirror `apps/worker/src/roadmap.ts` exactly. Two omissions are
 // deliberate rather than accidental:
 //
-//   `mode`  — the worker tags every milestone with its internal specialist
-//             (clay / stone / rune). Manifest §1 keeps those identities out of
-//             normal product UI, and the surest way to keep them out is for the
-//             client type not to have the field at all. The product mode a
-//             brief runs in is derived at the edge, from the brief.
+//   `mode`  — roadmap milestones themselves do not need a run mode. A generated brief does,
+//             and that brief carries the public ProductMode directly.
 //   `shape` — the scan's FULL feature map, which is not what is mirrored below.
 //             `RoadmapShape` takes three of its fields and no more: the counts,
 //             the named systems, and the scan's own limits. `features`,
@@ -137,8 +134,8 @@ export interface MilestoneBrief {
   milestoneId: string;
   title: string;
   request: string;
-  /** The worker's internal specialist for this work. Mapped at the edge, never shown. */
-  mode: 'clay' | 'stone' | 'rune';
+  /** The public run mode the worker chose for this brief. */
+  mode: 'plan' | 'agent';
   context: string[];
   steps: string[];
   acceptance: string[];
@@ -480,42 +477,14 @@ export function progressLabel(p: RoadmapProgress): string {
 }
 
 /**
- * Effort, with the internal specialist names taken back out.
+ * Effort already arrives in the public ProductMode vocabulary: Plan or Agent.
  *
- * The worker composes this line as "about two Stone runs". Clay, Stone and Rune
- * are internal specialist identities — @golem/shared says plainly that nothing
- * in normal product UI should name them, and manifest §1 keeps engine identity
- * off every non-admin surface. The card renders `effort` verbatim, so the
- * substitution happens here rather than in the card: one place, tested, and it
- * quietly becomes a no-op the day the worker stops emitting them.
- *
- * The mapping is the same one @golem/shared publishes (clay -> Plan,
- * stone -> Agent, rune -> Super Agent); it is restated as plain strings only so
- * that this module keeps its no-imports property and stays loadable by
- * `node --test`.
+ * This helper now has one job: make a missing optional string render as nothing. It deliberately
+ * does not translate or infer modes; doing that here would recreate a second mode architecture in
+ * the client and let the roadmap disagree with the worker again.
  */
 export function effortLabel(effort: string | null | undefined): string {
-  if (!effort) return '';
-  /*
-   * TWO VOCABULARIES, AND BOTH ARE LOAD-BEARING.
-   *
-   * The worker composes these strings from the model it actually ran. The models were renamed —
-   * Clay and Stone became Apple and Apple Max — but rows written before that still carry the old
-   * spellings, and a milestone recorded yesterday must not start printing a name the product no
-   * longer uses. So both map to the same mode.
-   *
-   * The names are literals here rather than read from MODE_INFO because this module deliberately
-   * has no runtime imports (see the header). tests/roadmap-model.test.mjs closes that gap from the
-   * other side: it imports MODE_INFO and fails if a name exists there that this does not strip, so
-   * a third rename cannot pass silently.
-   */
-  return effort
-    .replace(/\bApple Max Auto\b/g, 'Super Agent')
-    .replace(/\bApple Max\b/g, 'Agent')
-    .replace(/\bApple\b/g, 'Plan')
-    .replace(/\bClay\b/g, 'Plan')
-    .replace(/\bStone\b/g, 'Agent')
-    .replace(/\bRune\b/g, 'Super Agent');
+  return effort ?? '';
 }
 
 /**

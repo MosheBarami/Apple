@@ -1,0 +1,37 @@
+/* AI ELEMENTS CONVERSATION, DRAWN WITH THIS APP'S TOKENS.
+ *
+ * The root is the frame the transcript scrolls inside and the thing the jump control is placed
+ * against; the scroll element and the content are the workspace's own `.gx-scroll` / `.gx-thread`,
+ * which design/apple-minimal.css already draws. Nothing here re-draws them.
+ */
+.ai-conversation { position:relative; display:flex; flex-direction:column; flex:1 1 auto; min-height:0; overflow:hidden; }
+.ai-conversation__content { min-width:0; }
+
+/* THE EMPTY STATE. Upstream centres a small title and description; the workspace passes its own
+   welcome sheet as children and styles it as `.start-sheet`, which loads later and wins. These are
+   the defaults for a conversation that does not. */
+.ai-conversation__empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; width:100%; min-height:100%; padding:32px; text-align:center; }
+.ai-conversation__empty-icon { color:var(--muted); }
+.ai-conversation__empty-copy { display:grid; gap:4px; }
+.ai-conversation__empty-title { margin:0; color:var(--ink); font-size:14px; font-weight:400; }
+.ai-conversation__empty-description { margin:0; color:var(--muted); font-size:14px; }
+
+/* BACK TO THE LIVE EDGE. Upstream's round arrow, centred at the foot of the transcript. Shown only
+   while the reader has left the edge (the component itself renders nothing otherwise).
+
+   It names how much arrived while they were away. The accessible name is the full sentence the
+   workspace puts in `aria-label`; the visible count is `data-unseen`, drawn after the arrow, and
+   only when there is one — "0 new" is noise, and the bare arrow already says "latest". The
+   control grows from a circle to a pill for it rather than changing shape under the pointer. */
+.ai-conversation__scroll-button {
+  position:absolute; inset-inline-start:50%; bottom:16px; z-index:15;
+  transform:translateX(-50%);
+  min-height:0; width:var(--h-sm); height:var(--h-sm); padding:0;
+  border:1px solid var(--line-strong); border-radius:var(--r-pill);
+  background:var(--surface-2); color:var(--muted); font-size:12px; line-height:1;
+}
+:root[dir='rtl'] .ai-conversation__scroll-button { transform:translateX(50%); }
+.ai-conversation__scroll-button[data-unseen] { width:auto; gap:6px; padding-inline:9px 12px; }
+.ai-conversation__scroll-button[data-unseen]::after { content:attr(data-unseen); white-space:nowrap; }
+.ai-conversation__scroll-icon { flex:none; }
+.ai-conversation__download { position:absolute; top:16px; inset-inline-end:16px; border-radius:var(--r-pill); }

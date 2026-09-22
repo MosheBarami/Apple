@@ -82,7 +82,11 @@ test('the seed no longer replaces the box', () => {
 
 test('the composer has a template picker wired to the shared list', () => {
   assert.match(CODE, /insertableTemplates/);
-  assert.match(CODE, /Popover/, 'the existing primitive, not a second menu implementation');
+  // The existing primitive, not a second menu implementation: since 2026-09-22 that is AI Elements'
+  // action menu (PromptInputActionMenu over the vendored dropdown-menu), and each starting point
+  // is one of its items. No menu is hand-built in this file.
+  assert.match(CODE, /<PromptInputActionMenuItem key=\{t\.id\}[^>]*onSelect=\{\(\) => insertPhrase\(t\.prompt/);
+  assert.equal(/role="menu"|role="menuitem"/.test(CODE), false, 'a hand-built menu is back beside the shared one');
   assert.match(COMPOSER, /Create/);
   assert.match(COMPOSER, /Starting points/);
 });

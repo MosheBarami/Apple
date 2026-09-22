@@ -8,36 +8,53 @@
 // for content whose structure genuinely benefits — a render, a diff, a critique
 // — and those come from the typed component registry, never from free-form
 // model output.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { PlaytestRun, StudioFrame } from '@golem/shared';
 import type { UIDocument } from '../../lib/generative-ui/schema';
-import { Markdown } from '../../lib/markdown';
 import { splitSpilledPayload } from '../../lib/spilled-payload';
 import { extractUIFence, parseDocument } from '../../lib/generative-ui';
 import { GenerativeUI } from '../../lib/generative-ui/render';
 import { panelFromTool } from '../../lib/panels';
 import { gatesFromDocs, plannedStepsFromDocs, type ValidatedDoc } from '../../lib/gates';
+import { docSourcesFromTools } from '../../lib/doc-sources';
 import { clockTime, isoStamp } from '../../lib/format';
 import { AppleGlyph } from '../glyphs';
 import type { AgentStatus, ChatItem } from '../../lib/use-project-socket';
-import { useNow } from './activity';
 import { eventsFromTurn, reduceActivity, type PhaseMark } from './activity-model';
-import { buildEvidence } from './evidence-model';
 import { outcomeLine } from './outcome-model';
 import { Thinking } from './thinking';
+import {
+  Message,
+  MessageAction,
+  MessageActions,
+  MessageContent,
+  MessageResponse,
+} from '../ai-elements/message';
+import { Source, Sources, SourcesContent, SourcesTrigger } from '../ai-elements/sources';
+import { ChevronDownIcon } from '../ai-elements/icons';
 import './turn.css';
 
-/** Technical artifacts are opt-in. Automatic scene galleries never enter chat. */
-function ResultDetails({ docs }: { docs: UIDocument[] }) {
-  const [open, setOpen] = useState(false);
+function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [active]);
+  return now;
+}
+
+/** Validated technical output belongs directly in the answer; no secondary disclosure is needed. */
+function InlineResults({ docs }: { docs: UIDocument[] }) {
   const compactDocs = docs.map((doc) => ({
     ...doc,
     blocks: doc.blocks.filter((block) => block.type !== 'render_review' && block.type !== 'scene_comparison'),
   })).filter((doc) => doc.blocks.length > 0);
   if (compactDocs.length === 0) return null;
-  return <details className="gx-result-details" onToggle={(event) => setOpen(event.currentTarget.open)}>
-    <summary>View results</summary>
-    {open && compactDocs.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
-  </details>;
+  return <div className="gx-inline-results">
+    {compactDocs.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
+  </div>;
 }
 
 function Stamp({ at, align }: { at: number; align: 'start' | 'end' }) {
@@ -59,6 +76,9 @@ export function Turn({
   editable,
   onRetry,
   onShowRevisions,
+  frames,
+  playtest,
+  studioConnected = false,
 }: {
   item: ChatItem;
   status: AgentStatus | null;
@@ -81,6 +101,10 @@ export function Turn({
    * mark.
    */
   onShowRevisions?: (messageId: string) => void;
+  /** Live Studio frames belong to the active run, not to a separate project-state panel. */
+  frames?: StudioFrame[];
+  playtest?: PlaytestRun | null;
+  studioConnected?: boolean;
   /**
    * The phase transitions observed on THIS run, when this turn is the run in
    * flight. Undefined for every other turn, because `agent_status` carries no
@@ -120,24 +144,9 @@ export function Turn({
   const gates = useMemo(() => gatesFromDocs(validated), [validated]);
   const plannedSteps = useMemo(() => plannedStepsFromDocs(validated), [validated]);
 
-  // Evidence is keyed by toolId so the activity timeline can hang each card on
-  // the step that produced it. `panelFromTool` already built and validated the
-  // document; this only re-keys it — no second parse, and no second source of
-  // truth that could disagree with the panel below the prose.
-  const evidence = useMemo(() => {
-    const docs = new Map(panels.map((p) => [p.toolId, p.doc]));
-    return buildEvidence(
-      item.tools.map((t) => ({
-        toolId: t.toolId,
-        tool: t.tool,
-        summary: t.summary,
-        ok: t.ok,
-        done: t.done,
-        hasDetail: t.detail !== undefined && t.detail !== null,
-      })),
-      docs,
-    );
-  }, [item.tools, panels]);
+  // The documentation pages this turn's own searches returned — read from the tool results that
+  // carried them, validated field by field, never invented. See lib/doc-sources.ts.
+  const docSources = useMemo(() => docSourcesFromTools(item.tools), [item.tools]);
 
   // The ordered, timed activity. Rebuilt from the merged turn through the same
   // reducer the live socket log feeds, so a reloaded turn and a live one cannot
@@ -168,29 +177,27 @@ export function Turn({
 
   if (item.role === 'user') {
     return (
-      <article className="gx-turn gx-turn--user gx-msg-in aw-turn aw-turn--user">
-        <div className="aw-prompt__meta">
-          <span className="aw-prompt__label">You</span>
-          <span className="aw-prompt__line" aria-hidden="true" />
-        </div>
+      // role="article": each turn is one entry in the conversation log, which is how a screen
+      // reader steps through it. AI Elements' Message is a div, so the role is said explicitly.
+      <Message from="user" role="article" className="gx-turn gx-turn--user gx-msg-in">
         {/* dir="auto" — the direction of a message belongs to the message. A Hebrew sentence
             typed in an English session (or the reverse) otherwise inherits the page and puts its
             own trailing punctuation at the wrong end. */}
-        <div className="gx-user aw-prompt" dir="auto">{item.content}</div>
-        <div className="gx-user__foot">
+        <MessageContent className="gx-user" dir="auto">{item.content}</MessageContent>
+        <MessageActions className="gx-user__foot">
           {/* Revealed on hover or focus rather than always drawn: a control on every one of your
               own messages competes with the messages themselves, and this is a repair tool, not
               something anyone reaches for on a normal turn. It stays keyboard-reachable because
               `:focus-within` shows it too. */}
           {editable && onEdit && (
-            <button
-              type="button"
+            <MessageAction
+              size="sm"
               className="gx-user__edit"
               onClick={() => onEdit(item.id, item.content)}
-              title="Edit this message and run again from here"
+              tooltip="Edit this message and run again from here"
             >
               Edit
-            </button>
+            </MessageAction>
           )}
           {/* WHAT YOU WROTE BEFORE. Beside Edit because Edit is what made it, and always visible
               rather than revealed on hover: it is a fact about this message, not a tool.
@@ -199,18 +206,18 @@ export function Turn({
               different facts here — a worker that predates message_revisions sends no field at
               all, and drawing "no earlier versions" from that would be an answer nobody checked. */}
           {onShowRevisions && (item.revisions ?? 0) > 0 && (
-            <button
-              type="button"
+            <MessageAction
+              size="sm"
               className="gx-user__edited"
               onClick={() => onShowRevisions(item.id)}
-              title={`You edited this message. See ${item.revisions === 1 ? 'the earlier version' : `all ${item.revisions} earlier versions`}.`}
+              tooltip={`You edited this message. See ${item.revisions === 1 ? 'the earlier version' : `all ${item.revisions} earlier versions`}.`}
             >
               Edited
-            </button>
+            </MessageAction>
           )}
           <Stamp at={item.createdAt} align="end" />
-        </div>
-      </article>
+        </MessageActions>
+      </Message>
     );
   }
 
@@ -243,46 +250,35 @@ export function Turn({
 
   const retryControl =
     onRetry && item.stopReason !== 'quota' ? (
-      <button
-        type="button"
-        className="gx-outcome__retry"
-        onClick={onRetry}
-        // Stated rather than confirmed. A dialog here would guard a loss it cannot undo — there is
-        // no message-revision store to restore the old reply from — so it would collect a click
-        // and change nothing. When revisions exist, this becomes a real confirmation.
-        title={
-          outcome
-            ? 'Run that prompt again'
-            : 'Run that prompt again. The new reply replaces this reply, which cannot be brought back.'
-        }
-      >
-        {outcome ? 'Try again' : 'Regenerate'}
-      </button>
+      <MessageActions className="gx-outcome__actions">
+        <MessageAction
+          size="sm"
+          className="gx-outcome__retry"
+          onClick={onRetry}
+          // Stated rather than confirmed. A dialog here would guard a loss it cannot undo — there
+          // is no message-revision store to restore the old reply from — so it would collect a
+          // click and change nothing. When revisions exist, this becomes a real confirmation.
+          tooltip={
+            outcome
+              ? 'Run that prompt again'
+              : 'Run that prompt again. The new reply replaces this reply, which cannot be brought back.'
+          }
+        >
+          {outcome ? 'Try again' : 'Regenerate'}
+        </MessageAction>
+      </MessageActions>
     ) : null;
 
   return (
-    <article
-      className={`gx-turn gx-turn--agent gx-msg-in aw-turn aw-turn--agent${item.streaming ? ' is-streaming' : ''}`}
+    <Message
+      from="assistant"
+      role="article"
+      className="gx-turn gx-turn--agent gx-msg-in"
       data-run-state={item.streaming ? 'live' : outcome ? 'ended' : 'settled'}
     >
-      <div className="aw-run-rail" aria-hidden="true">
-        <span className="aw-run-rail__beam" />
-        <span className="gx-mark aw-run-rail__core">
-          <AppleGlyph size={20} />
-        </span>
-        <span className="aw-run-rail__tail" />
-      </div>
-
-      <div className="gx-turn__body aw-response">
-        <header className="aw-response__head">
-          <span className="aw-response__name">Apple</span>
-          <span className="aw-response__state">
-            <span className="aw-response__state-dot" aria-hidden="true" />
-            {item.streaming ? 'Run live' : 'Run output'}
-          </span>
-        </header>
+      <span className="gx-mark" aria-hidden="true"><AppleGlyph size={20} /></span>
+      <MessageContent className="gx-turn__body">
         <Thinking
-          tools={item.tools}
           status={isLast ? status : null}
           streaming={item.streaming}
           intent={item.intent}
@@ -290,12 +286,16 @@ export function Turn({
           gates={gates}
           plannedSteps={plannedSteps}
           activity={activity}
-          evidence={evidence}
+          frames={isLast ? frames : undefined}
+          playtest={isLast ? playtest : null}
+          studioConnected={studioConnected}
         />
 
         {item.content && (
           // The reply answers in the user's language, so it takes its direction from itself too.
-          <div className="gx-prose" dir="auto">
+          // MessageResponse renders through lib/markdown.tsx (marked + DOMPurify, fences to the code
+          // block) — the one renderer allowed to put model output on screen.
+          <>
             {/* THE WIRE FORMAT IS NOT PROSE. The renderer's rule was "anything that is not a UI
                 fence is a message", so when the model wrote a `create_instances` payload as text —
                 which is what it does when it runs out of output tokens mid-structure — the customer
@@ -303,17 +303,33 @@ export function Turn({
                 Nothing is deleted: it is collapsed, because somebody quoting it to support must
                 still be able to, and because hiding output the model really produced is how a
                 product starts lying about what happened. */}
-            <Markdown source={spilled.prose} />
+            {spilled.prose && <MessageResponse className="gx-prose" dir="auto">{spilled.prose}</MessageResponse>}
             {spilled.collapsed && (
               <details className="gx-turn__spill">
                 <summary>Apple wrote out part of a build instruction instead of running it. Show it</summary>
                 <pre>{spilled.collapsed}</pre>
               </details>
             )}
-          </div>
+          </>
         )}
 
-        <ResultDetails docs={[...(fenceDoc ? [fenceDoc] : []), ...panels.map((panel) => panel.doc)]} />
+        {docSources.length > 0 && (
+          <Sources className="gx-turn__sources">
+            {/* Not upstream's "Used N sources": these are the pages the search returned, and the
+                browser cannot see which of them the reply leaned on. */}
+            <SourcesTrigger count={docSources.length}>
+              <p className="ai-sources__count">
+                {docSources.length} documentation {docSources.length === 1 ? 'page' : 'pages'}
+              </p>
+              <ChevronDownIcon className="ai-sources__chevron" />
+            </SourcesTrigger>
+            <SourcesContent forceMount>
+              {docSources.map((source) => <Source key={source.url} href={source.url} title={source.title} />)}
+            </SourcesContent>
+          </Sources>
+        )}
+
+        <InlineResults docs={[...(fenceDoc ? [fenceDoc] : []), ...panels.map((panel) => panel.doc)]} />
 
         {outcome ? (
           <div className={`gx-outcome${outcome.tone === 'bad' ? ' is-bad' : ''}`}>
@@ -371,7 +387,7 @@ export function Turn({
             </span>
           )}
         </p>
-      </div>
-    </article>
+      </MessageContent>
+    </Message>
   );
 }

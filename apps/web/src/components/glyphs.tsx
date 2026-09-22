@@ -65,15 +65,15 @@ export function AppleGlyph({ size = 28, className }: { size?: number; className?
   );
 }
 
-/** Small rune used for the agent avatar and live status. */
-export function RunePulse({ size = 16 }: { size?: number }) {
+/** Small Apple status mark used by branded waits. */
+export function ApplePulse({ size = 16 }: { size?: number }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 16 16"
       fill="none"
-      className="rune-pulse"
+      className="apple-pulse"
       aria-hidden="true"
       focusable="false"
     >

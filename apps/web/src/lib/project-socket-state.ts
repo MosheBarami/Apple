@@ -51,6 +51,7 @@ export function chatItemFromMessageDto(message: MessageDto): ChatItem {
     id: message.id,
     role: message.role,
     mode: message.mode,
+    autonomous: message.autonomous,
     productModel: message.productModel,
     content: message.content,
     tools: (message.toolTrace ?? []).map((trace, index) => ({
@@ -103,6 +104,7 @@ export function mergeHistoryWithLive(history: ChatItem[], live: ChatItem[]): Cha
       ...(observed.error !== undefined ? { error: observed.error } : {}),
       ...(observed.creditsSpent !== undefined ? { creditsSpent: observed.creditsSpent } : {}),
       ...(observed.intent !== undefined ? { intent: observed.intent } : {}),
+      ...(observed.autonomous !== undefined ? { autonomous: observed.autonomous } : {}),
       ...(observed.deniedTools !== undefined ? { deniedTools: observed.deniedTools } : {}),
       ...(observed.context !== undefined ? { context: observed.context } : {}),
     } satisfies ChatItem;

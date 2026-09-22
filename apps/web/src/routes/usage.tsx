@@ -12,18 +12,18 @@ import { maxUpgradeAvailable } from '../lib/creation-intent';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
 import {
-  MODE_INFO,
   PLAN_COPY,
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
-  PRODUCT_MODES_OFFERED,
+  PRODUCT_MODES,
   PRODUCT_MODE_INFO,
-  PRODUCT_MODE_TO_SPECIALIST,
   formatMoney,
   isPlanId,
   type PlanId,
+  type ProductMode,
 } from '@golem/shared';
 import { ModelMark } from '../components/ws/model-mark';
+import { ComparisonTable } from '../components/aicss/comparison-table';
 import {
   billingChangeLine,
   billingDetailsSaveLine,
@@ -54,10 +54,18 @@ import {
 import { ConfirmDialog } from '../components/confirm-dialog';
 import { useToast } from '../components/toast';
 import './usage.css';
+import './nonworkspace-minimal.css';
 
-// The modes a person may CHOOSE. PRODUCT_MODES is every mode the system can produce —
-// pricing one nobody can start is how "Super Agent" survived being removed from the composer.
+// Product model selection is a separate axis from whether a request is Plan or Agent.
 const MODELS = PRODUCT_MODELS;
+
+const RUN_MODE_COMPARISON = [
+  { label: 'Inspect the open project', values: [true, true] },
+  { label: 'Search Roblox docs and references', values: [true, true] },
+  { label: 'Change the Studio place', values: [false, true] },
+  { label: 'Run and inspect playtests', values: [false, true] },
+  { label: 'Use Autonomous tool access', values: [false, true] },
+];
 
 /* ===== WHAT THE NEXT REQUEST COSTS: BEGIN — executed by tests/next-request-cost.test.mjs ===== */
 
@@ -71,20 +79,14 @@ const MODELS = PRODUCT_MODELS;
  * literal that nothing rendered; the only place a customer could read a per-request figure was
  * /pricing and /docs/credits-and-limits, which are pages you leave the app to reach.
  *
- * DERIVED, NEVER RESTATED. The figure comes through PRODUCT_MODE_TO_SPECIALIST into MODE_INFO,
- * exactly as apps/site/src/pages/pricing.astro and docs/credits-and-limits.astro derive theirs,
- * so the app and the site cannot quote different prices. scripts/check-credit-figures.mjs checks
- * that table against the measurements in docs/COST-MODEL.md; a second copy here would be a second
- * copy free to drift, which is the defect that check exists because of.
- *
- * PRODUCT_MODES_OFFERED, not PRODUCT_MODES: pricing a mode nobody can select is how Super Agent
- * kept a published price after it left the composer.
+ * DERIVED, NEVER RESTATED. `PRODUCT_MODE_INFO` is the shared product-mode table, so this page reads
+ * the exact Plan/Agent cost range published everywhere else rather than keeping another price list.
  *
  * An unparseable figure produces NO LINE rather than a wrong one. A missing price is a gap; a
  * price rendered as NaN Credits is a lie with a number in it.
  */
 interface RequestCost {
-  mode: string;
+  mode: ProductMode;
   name: string;
   /** The published figure, en-dashed for reading: "2", "4–18". */
   published: string;
@@ -92,8 +94,8 @@ interface RequestCost {
   high: number;
 }
 
-const REQUEST_COSTS: RequestCost[] = PRODUCT_MODES_OFFERED.map((m) => {
-  const published = String(MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].typicalCredits);
+const REQUEST_COSTS: RequestCost[] = PRODUCT_MODES.map((m) => {
+  const published = String(PRODUCT_MODE_INFO[m].typicalCredits);
   const parts = published.split('-').map((piece) => Number(piece.trim()));
   const low = parts[0] ?? NaN;
   const high = parts.length === 2 ? (parts[1] ?? NaN) : low;
@@ -765,7 +767,7 @@ export function UsagePage() {
   const billingView = me.data?.billing ?? null;
 
   return (
-    <div className="page">
+    <div className="page usage-page">
       <div className="page-head">
         <div>
           <h1 className="page-title">Usage &amp; billing</h1>
@@ -879,6 +881,12 @@ export function UsagePage() {
                   <SpendBreakdown days={usage.data.days} />
                 </>
               ))}
+          </div>
+
+          <div className="card mode-compare-card">
+            <h2>Plan or Agent</h2>
+            <p className="muted">Autonomous is an Agent option, not a third mode.</p>
+            <ComparisonTable plans={['Plan', 'Agent']} features={RUN_MODE_COMPARISON} />
           </div>
 
         </div>

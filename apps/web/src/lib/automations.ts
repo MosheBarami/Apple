@@ -28,11 +28,8 @@
 // The daily cap IS offered, because `startVerdict` refuses `daily_cap` against `firesSince` and
 // the live route test drives it. That is the difference between a setting and a control.
 import {
-  PRODUCT_MODES_OFFERED,
-  PRODUCT_MODE_TO_SPECIALIST,
-  SPECIALIST_TO_PRODUCT_MODE,
+  PRODUCT_MODES,
   PRODUCT_MODE_INFO,
-  type GolemMode,
   type ProductMode,
 } from '@golem/shared';
 
@@ -62,7 +59,7 @@ export interface AutomationDraft {
   name: string;
   description: string;
   prompt: string;
-  /** The PRODUCT mode, which is what the person picks. Translated at the edge, like the composer. */
+  /** The run mode the person picks. Autonomous is a separate per-run option, not another mode. */
   mode: ProductMode;
   maxRunsPerDay: number;
 }
@@ -72,8 +69,8 @@ export function blankDraft(): AutomationDraft {
   return { name: '', description: '', prompt: '', mode: 'agent', maxRunsPerDay: 4 };
 }
 
-/** The product-mode choices, with the copy the composer uses, so two pickers cannot disagree. */
-export const MODE_CHOICES: readonly { id: ProductMode; name: string; blurb: string }[] = PRODUCT_MODES_OFFERED.map((id) => ({
+/** The two product-mode choices, read from the shared source of truth. */
+export const MODE_CHOICES: readonly { id: ProductMode; name: string; blurb: string }[] = PRODUCT_MODES.map((id) => ({
   id,
   name: PRODUCT_MODE_INFO[id].name,
   blurb: PRODUCT_MODE_INFO[id].blurb,
@@ -95,7 +92,7 @@ export function draftToBody(draft: AutomationDraft): Record<string, unknown> {
     name: draft.name,
     ...(description === '' ? {} : { description: draft.description }),
     prompt: draft.prompt,
-    mode: PRODUCT_MODE_TO_SPECIALIST[draft.mode],
+    mode: draft.mode,
     trigger: 'manual',
     // Always sent, because the server refuses an unknown zone rather than defaulting, and a
     // manual automation's zone is still what its daily cap is counted in.
@@ -121,7 +118,7 @@ export function localZone(): string {
   }
 }
 
-/** Fill the draft from a stored row, for editing. The specialist spelling comes back as a product mode. */
+/** Fill the draft from a stored row. Unknown future values fall back to Agent rather than guessing. */
 export function draftFrom(a: {
   name: string;
   description: string | null;
@@ -129,11 +126,12 @@ export function draftFrom(a: {
   mode: string;
   budget: { maxRunsPerDay: number };
 }): AutomationDraft {
+  const mode = (PRODUCT_MODES as readonly string[]).includes(a.mode) ? (a.mode as ProductMode) : 'agent';
   return {
     name: a.name,
     description: a.description ?? '',
     prompt: a.prompt,
-    mode: SPECIALIST_TO_PRODUCT_MODE[a.mode as GolemMode] ?? 'agent',
+    mode,
     maxRunsPerDay: a.budget.maxRunsPerDay,
   };
 }

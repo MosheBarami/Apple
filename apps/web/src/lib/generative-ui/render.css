@@ -105,6 +105,22 @@
 
 /* ---------------------------------------------------------------------- code_diff --- */
 
+/* The diff is an AI Elements CodeBlock in the `diff` language, drawn as the reply's own code block
+   (`.gx-code`): the same box, the same header, the same copy control. Its lines are tinted in
+   components/ai-elements/code-block.css. A diff is read line by line, so a line runs its full width
+   under the tint rather than stopping at its last character. */
+.gu-code-diff { display:grid; gap:8px; min-width:0; }
+/* Two classes: design/system.css loads after this sheet and gives `.gx-code` an 18px margin. */
+.gu-code-diff .gu-code-diff__block { margin-block:0; }
+.gu-code-diff__block .ai-code-block__code { display:block; min-width:max-content; }
+.gu-code-diff .gu-diff-counts { font-family:var(--font-mono); }
+/* THE PATH GIVES WAY, THE COUNTS DO NOT. At 390px a long script path ran under "+2 -1" and the copy
+   button: `.gx-code__lang` is a nowrap flex box and cannot shrink. Here it is a block that ends in
+   an ellipsis (the full path is its title), and the counts and copy keep their width. */
+.gu-code-diff .ai-code-block__title { flex:1 1 auto; min-width:0; }
+.gu-code-diff .gx-code__lang { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; line-height:24px; }
+.gu-code-diff .ai-code-block__actions { flex:none; }
+
 .gu-diff-hunk + .gu-diff-hunk { margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
 /* `del` and `ctx` are the kinds this renderer actually emits (DIFF_LINE_KINDS); the
    shared sheet tints `--remove`, a class no document can produce, so every removed

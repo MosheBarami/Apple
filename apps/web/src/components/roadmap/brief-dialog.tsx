@@ -11,7 +11,7 @@
 // the copy button is what the user falls back to if they would rather paste it
 // themselves.
 import { useState } from 'react';
-import { PRODUCT_MODE_INFO, SPECIALIST_TO_PRODUCT_MODE, type ProductMode } from '@golem/shared';
+import { PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
 import { Modal } from '../modal';
 import type { MilestoneBrief } from './model';
 import type { BriefIntent } from './milestone-card';
@@ -25,14 +25,11 @@ interface Props {
 }
 
 /**
- * Plan always means Plan — the mode that inspects and proposes without touching
- * the place. Build defers to the specialist the worker chose for this milestone,
- * translated at the edge into the product's own vocabulary; the internal
- * specialist name (§1) never reaches the screen.
+ * Plan always means Plan. Build uses the public mode already returned by the worker.
  */
 export function modeForIntent(brief: MilestoneBrief, intent: BriefIntent): ProductMode {
   if (intent === 'plan') return 'plan';
-  return SPECIALIST_TO_PRODUCT_MODE[brief.mode] ?? 'agent';
+  return brief.mode;
 }
 
 export function BriefDialog({ brief, intent, onClose, onOpenConversation }: Props) {

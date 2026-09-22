@@ -142,6 +142,7 @@ export const TOOL = {
   // C09 — adding to the world.
   create_instances: { kind: 'building', label: 'Created instances' },
   insert_asset: { kind: 'building', label: 'Inserted an asset' },
+  edit_terrain: { kind: 'building', label: 'Edited terrain' },
   // Arbitrary Luau against the place can do anything; `building` is the coarsest
   // honest answer rather than a specific claim about which.
   run_luau: { kind: 'building', label: 'Ran Luau' },
@@ -156,6 +157,14 @@ export const TOOL = {
   // C08 — changing what is already there, which is not the same act as building it.
   set_properties: { kind: 'editing', label: 'Set properties' },
   delete_instances: { kind: 'editing', label: 'Deleted instances' },
+  move_instances: { kind: 'editing', label: 'Moved instances to a new parent' },
+  transform_instances: { kind: 'editing', label: 'Moved, rotated or scaled instances' },
+  clone_instances: { kind: 'editing', label: 'Cloned instances' },
+  group_instances: { kind: 'editing', label: 'Grouped instances' },
+  ungroup_instances: { kind: 'editing', label: 'Ungrouped instances' },
+  rename_instance: { kind: 'editing', label: 'Renamed an instance' },
+  set_locked: { kind: 'editing', label: 'Changed instance locking' },
+  set_visible: { kind: 'editing', label: 'Changed instance visibility' },
 
   // C07
   edit_script: { kind: 'writing_luau', label: 'Edited a script' },

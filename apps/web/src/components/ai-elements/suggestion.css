@@ -1,0 +1,10 @@
+/* AI ELEMENTS SUGGESTIONS, DRAWN WITH THIS APP'S TOKENS.
+ *
+ * Upstream is one row of pill buttons that scrolls sideways with its scrollbar hidden. These are
+ * those defaults; the workspace's welcome sheet lays its seeds out as a grid through
+ * `.start-sheet__ideas`, which loads later and wins. */
+.ai-suggestions { width:100%; }
+.ai-suggestions > .ai-scroll-area__viewport { overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+.ai-suggestions > .ai-scroll-area__viewport::-webkit-scrollbar { display:none; }
+.ai-suggestions__list { display:flex; width:max-content; flex-wrap:nowrap; align-items:center; gap:8px; }
+.ai-suggestion { border-radius:var(--r-pill); padding-inline:16px; cursor:pointer; }

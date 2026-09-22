@@ -8,8 +8,8 @@
  *     build silently left the live edge, nothing said so, and the way back was to scroll by hand
  *     past everything the agent had written since. A ref does not re-render, so no control could
  *     have been offered from it even in principle. The explicit version of this pattern was
- *     already in the product — `studio-view.tsx` pins and releases frame-following with real
- *     controls — and the transcript did not have it.
+ *     already in the product — the playtest surface keeps an explicit frame-freshness boundary —
+ *     and the transcript did not have an equivalent return control.
  *
  *   * ANNOUNCEMENTS covered the WAIT and not the ANSWER. `thinking.tsx` has an sr-only polite
  *     region carrying the phase hint while a run is in flight, so a blind user knew Apple was
@@ -34,6 +34,10 @@ import { ANNOUNCE_MAX, replyAnnouncement, speakableBody } from '../src/lib/annou
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, '..');
 const WS = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
+// The follow state now lives in the AI Elements Conversation: the lock is the stick-to-bottom
+// stand-in's, the control is upstream's ConversationScrollButton. The workspace keeps the count.
+const STICK = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'stick-to-bottom.tsx'), 'utf8');
+const CONVERSATION = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'conversation.tsx'), 'utf8');
 
 const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
@@ -90,40 +94,86 @@ test('the label names a count only when there is one', () => {
 
 // ----------------------------------------------------------- wired to the view ---
 
+/** The body of a function or component, from its declaration to the next top-level declaration. */
+const body = (src, start) => {
+  const from = src.indexOf(start);
+  assert.notEqual(from, -1, `${start} was not found — this test checks nothing`);
+  const rest = src.slice(from + start.length);
+  const end = rest.search(/\n(?:function |export |const [A-Z])/);
+  return src.slice(from, from + start.length + (end === -1 ? rest.length : end));
+};
+
 test('following is state, so a control can exist at all', () => {
-  // This is the defect in one line: it was a ref, and a ref does not re-render.
-  assert.match(WS, /const \[following, setFollowing\] = useState\(true\)/);
+  // This is the defect in one line: it was a ref, and a ref does not re-render. RESTATED: the lock
+  // is the Conversation's `isAtBottom`, which is React state, and the jump control reads it.
+  assert.match(STICK, /const \[isAtBottom, setIsAtBottom\] = useState\(/);
+  assert.match(STICK, /const setLock = useCallback\(\(next: boolean\) => \{[\s\S]*?setIsAtBottom\(next\)/);
+  const jump = body(WS, 'function LatestEdgeJump(');
+  assert.match(jump, /const \{ isAtBottom \} = useStickToBottomContext\(\)/);
 });
 
 test('the jump control appears only when the reader has left the live edge', () => {
-  assert.match(WS, /\{!following && \(/);
-  assert.match(WS, /onClick=\{jumpToLatest\}/);
-  assert.match(WS, /jumpLabel\(unseen\)/);
+  // Upstream's ConversationScrollButton renders nothing while at the bottom.
+  const button = body(CONVERSATION, 'export const ConversationScrollButton = (');
+  assert.match(button, /!isAtBottom && \(/);
+  assert.match(button, /onClick=\{handleScrollToBottom\}/);
+  // The workspace places it INSIDE the conversation (it reads the conversation's context) and
+  // names it with the count.
+  const jump = body(WS, 'function LatestEdgeJump(');
+  assert.match(jump, /<ConversationScrollButton\b/);
+  assert.match(jump, /aria-label=\{jumpLabel\(unseen\)\}/);
+  // An onClick here would REPLACE upstream's scroll-to-bottom (props spread after it) and leave a
+  // button that does nothing.
+  assert.equal(/onClick=/.test(stripComments(jump)), false, 'the workspace must not override the button\'s own click');
+  const code = stripComments(WS);
+  const open = code.search(/<Conversation[\s>]/);
+  assert.notEqual(open, -1, 'the workspace renders no <Conversation>');
+  assert.match(code.slice(open, code.indexOf('</Conversation>')), /<LatestEdgeJump total=\{messages\.length\} \/>/);
 });
 
 test('jumping scrolls to the end AND re-arms following', () => {
   // Scrolling without re-arming leaves the reader at the bottom with the button still there and
   // new turns still not followed — which looks like the button did not work.
-  const fn = WS.slice(WS.indexOf('const jumpToLatest'), WS.indexOf('useEffect(() => {', WS.indexOf('const jumpToLatest')));
-  assert.ok(fn.length > 0, 'jumpToLatest was not found — this test checks nothing');
-  assert.match(fn, /el\.scrollTop = el\.scrollHeight/);
-  assert.match(fn, /setFollowing\(true\)/);
-  assert.match(fn, /seen\.current = 0/);
+  const fn = STICK.slice(STICK.indexOf('const scrollToBottom = useCallback'), STICK.indexOf('const stopScroll'));
+  assert.ok(fn.length > 0, 'scrollToBottom was not found — this test checks nothing');
+  assert.match(fn, /setLock\(true\)/, 'the lock is re-armed');
+  assert.match(fn, /jump\(/, 'and the view moves');
+  const jump = STICK.slice(STICK.indexOf('const jump = useCallback'), STICK.indexOf('const scrollToBottom'));
+  assert.match(jump, /el\.scrollTop = el\.scrollHeight/);
+  assert.match(jump, /el\.scrollTo\(\{ top: el\.scrollHeight/);
+  // And the count starts again from zero: while following, the watermark tracks the total.
+  const edge = body(WS, 'function LatestEdgeJump(');
+  assert.match(edge, /if \(isAtBottom\) seen\.current = total/);
+  assert.match(edge, /const unseen = isAtBottom \? 0 : unseenCount\(total, seen\.current\)/);
 });
 
 test('sending re-arms following too', () => {
   const fn = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
-  assert.match(fn, /setFollowing\(true\)/);
+  assert.match(fn, /conversation\.current\?\.scrollToBottom\(\)/);
+  assert.match(WS, /contextRef=\{conversation\}/, 'and the ref it calls through is the Conversation\'s');
+});
+
+test('a jump to an older message releases following before it scrolls there', () => {
+  // Otherwise a reply streaming in during the smooth scroll pulls the reader straight back down
+  // past the message they asked for.
+  const fn = /const jumpToMessage = useCallback\(([\s\S]*?)\n  \);/.exec(WS)?.[1] ?? '';
+  const stop = fn.indexOf('conversation.current?.stopScroll()');
+  const scroll = fn.indexOf('el.scrollIntoView(');
+  assert.ok(stop !== -1 && scroll > stop, 'stopScroll must come before scrollIntoView');
 });
 
 test('the scroll handler decides with the shared predicate, not a copy of the arithmetic', () => {
-  const code = stripComments(WS);
-  assert.match(code, /isNearBottom\(el\)/);
-  assert.equal(
-    /scrollHeight - el\.scrollTop - el\.clientHeight < 90/.test(code),
-    false,
-    'the inline arithmetic must not survive beside the named predicate',
-  );
+  const code = stripComments(STICK);
+  assert.match(code, /import \{ isNearBottom, type ScrollMetrics \} from '\.\.\/\.\.\/lib\/follow-latest'/);
+  assert.match(code, /if \(isNearBottom\(metrics\)\) return true/);
+  assert.match(code, /lockAfterScroll\(locked\.current, lastTop\.current, el\)/, 'the scroll listener asks the rule');
+  for (const [name, src] of [['stick-to-bottom.tsx', code], ['workspace.tsx', stripComments(WS)]]) {
+    assert.equal(
+      /scrollHeight - \w+\.scrollTop - \w+\.clientHeight < 90/.test(src),
+      false,
+      `${name}: the inline arithmetic must not survive beside the named predicate`,
+    );
+  }
 });
 
 // -------------------------------------------------------------- the live region ---
@@ -141,6 +191,22 @@ test('the transcript is a log, and reports ADDITIONS rather than text mutations'
   assert.match(code, /role="log"/);
   assert.match(code, /aria-relevant="additions"/);
   assert.equal(/aria-relevant="additions text"/.test(code), false);
+});
+
+test('exactly ONE element is the log, and it is the list of turns', () => {
+  // Upstream's Conversation root defaults to role="log". The root also holds the jump control, and
+  // a control appearing inside a live region is announced as if it were a turn — so the workspace
+  // switches the root's role off and puts the log on the content, which holds only the turns.
+  assert.match(CONVERSATION, /role="log"/, 'upstream default — if this moved, re-read the override below');
+  const code = stripComments(WS);
+  const open = code.search(/<Conversation[\s>]/);
+  assert.notEqual(open, -1, 'the workspace renders no <Conversation>');
+  const root = code.slice(open, code.indexOf('>', open));
+  assert.match(root, /role=\{undefined\}/, 'the Conversation root must not also be a log');
+  assert.equal(code.split('role="log"').length - 1, 1, 'one log in the workspace');
+  const content = code.slice(code.indexOf('<ConversationContent'), code.indexOf('>', code.indexOf('<ConversationContent')));
+  assert.match(content, /role="log"/);
+  assert.match(content, /aria-relevant="additions"/);
 });
 
 test('the transcript log is named, so it is not an unlabelled region', () => {

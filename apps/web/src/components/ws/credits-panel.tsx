@@ -11,6 +11,8 @@ import { Failure } from '../failure';
 import { fetchAttribution } from '../../lib/api';
 import { StatusIcon } from '../status-icon';
 import { EmptyState } from '../empty-state';
+import { Source, Sources, SourcesContent, SourcesTrigger } from '../ai-elements/sources';
+import { BookIcon, ChevronDownIcon } from '../ai-elements/icons';
 import {
   copyableCredits,
   creditLine,
@@ -36,6 +38,25 @@ function Credit({ entry }: { entry: CreditEntry }) {
       </span>
     </li>
   );
+}
+
+function sourceCitationData(entries: AttributionResponse['attribution']['sourceCredits']) {
+  const refs: { label: string; host: string; url: string }[] = [];
+  const unlinked: string[] = [];
+  for (const entry of entries) {
+    try {
+      const url = new URL(entry.url);
+      if (url.protocol !== 'https:' || url.username || url.password) {
+        unlinked.push(entry.text);
+        continue;
+      }
+      refs.push({ label: entry.text, host: url.hostname, url: url.href });
+    } catch {
+      // Keep the obligation visible even when its URL is not safe to click.
+      unlinked.push(entry.text);
+    }
+  }
+  return { refs, unlinked };
 }
 
 export function CreditsPanel({ projectId }: { projectId: string }) {
@@ -83,6 +104,7 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
   // null when nothing is owed, and also when the worker did not send the document —
   // see copyableCredits. The section still renders; only the button depends on it.
   const copyable = copyableCredits(res);
+  const sourceCitations = sourceCitationData(a.sourceCredits);
 
   return (
     <div className="cr">
@@ -143,17 +165,36 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
             {a.required.map((e) => (
               <Credit key={e.assetId} entry={e} />
             ))}
-            {a.sourceCredits.map((s) => (
-              <li key={s.url} className="cr-entry">
-                <span className="cr-entry__line">{s.text}</span>
-                <span className="cr-entry__links">
-                  <a href={s.url} target="_blank" rel="noopener noreferrer">
-                    {s.url.replace(/^https:\/\//, '')}
-                  </a>
-                </span>
-              </li>
-            ))}
           </ul>
+          {/* OPEN BY DEFAULT. Each line here is a credit that has to ship with the game, so it is
+              an obligation to read, not a detail to reveal; the disclosure only lets a reader who
+              has read it fold it away. The host is printed beside each line so where the link goes
+              is on the page, not only in the status bar. */}
+          {sourceCitations.refs.length > 0 && (
+            <Sources className="cr-sources" defaultOpen>
+              {/* Upstream's default reads "Used 1 sources"; the same words, with the plural right. */}
+              <SourcesTrigger count={sourceCitations.refs.length}>
+                <p className="ai-sources__count">
+                  Used {sourceCitations.refs.length} {sourceCitations.refs.length === 1 ? 'source' : 'sources'}
+                </p>
+                <ChevronDownIcon className="ai-sources__chevron" />
+              </SourcesTrigger>
+              <SourcesContent>
+                {sourceCitations.refs.map((ref) => (
+                  <Source key={ref.url} href={ref.url} title={ref.label}>
+                    <BookIcon className="ai-sources__icon" />
+                    <span className="ai-sources__title">{ref.label}</span>
+                    <span className="cr-sources__host">{ref.host}</span>
+                  </Source>
+                ))}
+              </SourcesContent>
+            </Sources>
+          )}
+          {sourceCitations.unlinked.length > 0 && (
+            <ul className="cr-entries">
+              {sourceCitations.unlinked.map((text, index) => <li key={`${index}:${text}`} className="cr-entry">{text}</li>)}
+            </ul>
+          )}
           {copyable !== null && (
           <button
             type="button"

@@ -242,15 +242,12 @@ test('genre confidence is words, and a weak signal says so', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 8. Engine identity never reaches the card
+// 8. Effort already uses the ProductMode vocabulary
 // ---------------------------------------------------------------------------
 
-test('the internal specialist names are stripped out of the effort line', () => {
-  // The worker composes effort as "about two Stone runs". §1 keeps that name
-  // off every non-admin surface, so the card must never be able to print it.
-  assert.equal(effortLabel('about one Stone run'), 'about one Agent run');
-  assert.equal(effortLabel('about two Clay runs'), 'about two Plan runs');
-  assert.equal(effortLabel('about three Rune runs'), 'about three Super Agent runs');
+test('Plan and Agent effort lines pass through unchanged', () => {
+  assert.equal(effortLabel('about one Plan run'), 'about one Plan run');
+  assert.equal(effortLabel('about two Agent runs'), 'about two Agent runs');
 });
 
 // --- what it costs, not just how much work it is --------------------------
@@ -292,52 +289,10 @@ test('the card actually renders the range it is handed', async () => {
   assert.match(tsx, /creditRangeLabel\(/, 'the milestone card never prints the credit range');
 });
 
-test('an effort line that never named a specialist is left exactly as it is', () => {
+test('a mode-free effort line is left exactly as it is', () => {
   assert.equal(effortLabel('about two runs'), 'about two runs');
   assert.equal(effortLabel(''), '');
   assert.equal(effortLabel(null), '');
-});
-
-test('no readable specialist name survives any effort line the catalogue can produce', async () => {
-  /*
-   * THE NAMES COME FROM MODE_INFO, not from this file.
-   *
-   * This used to iterate ['Clay','Stone','Rune'] as literals, which made it a test of three
-   * strings rather than of the model vocabulary. The models were renamed to Apple / Apple Max and
-   * every assertion here went on passing over names that no longer exist anywhere — while the new
-   * ones, which effortLabel had never been told about, went straight through to the card.
-   *
-   * Reading the current names means a rename fails HERE, at the one function whose whole job is to
-   * keep a model name off the roadmap. The old spellings stay in the list because rows written
-   * before the rename still carry them.
-   */
-  const { MODE_INFO } = await import('@golem/shared');
-  const current = Object.values(MODE_INFO).map((m) => m.name);
-  assert.ok(current.length >= 3, 'MODE_INFO shrank — this test would be checking fewer names than exist');
-
-  /*
-   * EACH NAME IS CHECKED AGAINST THE MODE IT MUST BECOME, not merely for its own absence.
-   *
-   * Absence alone is not enough, and the hole is specific: "Apple Max" contains "Apple", so a
-   * missing `Apple Max` rule leaves the shorter rule to turn it into "Plan Max" — which names no
-   * specialist and is still the wrong answer on the card. Asserting the destination catches that;
-   * asserting the absence does not, and I only found out by deleting the rule and watching this
-   * stay green.
-   */
-  const EXPECT = {
-    [MODE_INFO.clay.name]: 'Plan', [MODE_INFO.stone.name]: 'Agent', [MODE_INFO.rune.name]: 'Super Agent',
-    Clay: 'Plan', Stone: 'Agent', Rune: 'Super Agent',
-  };
-  const names = Object.keys(EXPECT);
-  assert.ok(names.length >= 4, 'the name set collapsed — this would be checking almost nothing');
-
-  for (const runs of ['one', 'two', 'three', 'four']) {
-    for (const mode of names) {
-      const out = effortLabel(`about ${runs} ${mode} run${runs === 'one' ? '' : 's'}`);
-      assert.equal(out, `about ${runs} ${EXPECT[mode]} run${runs === 'one' ? '' : 's'}`,
-        `"${mode}" should render as "${EXPECT[mode]}", got "${out}"`);
-    }
-  }
 });
 
 // ---------------------------------------------------------------------------

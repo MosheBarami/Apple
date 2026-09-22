@@ -1,0 +1,39 @@
+/* AI ELEMENTS CODE BLOCK, DRAWN WITH THIS APP'S TOKENS.
+ *
+ * These are the defaults for any code block. The workspace's reply block adds its own tuned rules
+ * through `.gx-code*` (design/system.css and components/ws/code-block.css), which load later and
+ * win every tie. Syntax colour is not here at all: each token carries `tok tok--<kind>`, and those
+ * colours are the `--syntax-*` tokens system.css defines for both themes.
+ */
+.ai-code-block { position:relative; width:100%; min-width:0; overflow:hidden; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--surface-2); color:var(--ink); }
+.ai-code-block__header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 12px; border-bottom:1px solid var(--line); color:var(--muted); font-size:11px; }
+.ai-code-block__title { display:flex; align-items:center; gap:8px; min-width:0; }
+.ai-code-block__filename { font-family:var(--font-mono); }
+.ai-code-block__actions { display:flex; align-items:center; gap:8px; }
+.ai-code-block__content { position:relative; }
+
+/* The <pre> scrolls sideways on its own (the app's `pre` rule), so a long line never widens the
+   reply; the lines inside it are blocks, which is what upstream's `block` utility meant. */
+.ai-code-block__pre { margin:0; padding:14px; border:0; background:transparent; font-size:13px; line-height:1.6; tab-size:4; }
+.ai-code-block__code { font-size:1em; }
+.ai-code-block__line { display:block; }
+.ai-code-block__code:has(.ai-code-block__line--numbered) { counter-reset:line; }
+.ai-code-block__line--numbered::before {
+  counter-increment:line; content:counter(line);
+  display:inline-block; width:2rem; margin-inline-end:1rem; text-align:end;
+  color:var(--muted); user-select:none;
+}
+
+.ai-code-block__copy { color:var(--muted); }
+.ai-code-block__language { min-height:var(--h-xs); padding:0 8px; border-color:transparent; background:transparent; font-size:12px; }
+
+/* THE `diff` LANGUAGE (./highlight-compat.ts). Shiki's diff grammar colours an inserted line and a
+   deleted one; here the whole line also takes a faint tint of the same token, so the two read
+   apart at a glance and not only up close. Both tints are mixes of --good and --bad, which
+   system.css defines for each theme, so neither needs a light-theme correction. The sigil stays in
+   the text: colour is never the only difference. */
+.tok--ins { color:var(--good); }
+.tok--del { color:var(--bad); }
+.tok--hunk { color:var(--faint); }
+.ai-code-block__line:has(> .tok--ins) { background:color-mix(in srgb,var(--good) 9%,transparent); }
+.ai-code-block__line:has(> .tok--del) { background:color-mix(in srgb,var(--bad) 9%,transparent); }

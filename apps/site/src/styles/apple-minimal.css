@@ -44,11 +44,9 @@
   --line-strong: #3b3d46;
   --hairline: #1a1b1f;
   --control-fill: rgba(255, 255, 255, 0.035);
-  --control-line: rgba(255, 255, 255, 0.11);
 
   /* Blue: the ordinary active state — focus, the current page, a selected control. */
   --accent: #5b7cfa;
-  --accent-ink: #8ca4ff;
   --accent-soft: rgba(91, 124, 250, 0.1);
   --accent-ring: rgba(91, 124, 250, 0.32);
 
@@ -67,9 +65,6 @@
   --primary: #fafafa;
   --primary-hover: #d4d4d8;
   --on-primary: #000000;
-
-  --shadow-pop: 0 18px 52px rgba(0, 0, 0, 0.34);
-  --shadow-modal: 0 28px 88px rgba(0, 0, 0, 0.48);
   --glass: rgba(0, 0, 0, 0.72);
   --composer-fill: rgba(10, 10, 10, 0.82);
   --composer-line: rgba(46, 46, 46, 0.6);
@@ -95,10 +90,8 @@
   --line-strong: #c7cbd4;
   --hairline: #e4e7ed;
   --control-fill: rgba(16, 18, 23, 0.035);
-  --control-line: rgba(16, 18, 23, 0.1);
 
   --accent: #4568e8;
-  --accent-ink: #3155d4;
   --accent-soft: rgba(69, 104, 232, 0.09);
   --accent-ring: rgba(69, 104, 232, 0.25);
 
@@ -114,9 +107,6 @@
   --primary: #101217;
   --primary-hover: #33363d;
   --on-primary: #ffffff;
-
-  --shadow-pop: 0 16px 44px rgba(31, 41, 55, 0.11);
-  --shadow-modal: 0 28px 70px rgba(31, 41, 55, 0.16);
   --glass: rgba(246, 247, 250, 0.78);
   --composer-fill: rgba(255, 255, 255, 0.88);
   --composer-line: rgba(190, 194, 203, 0.7);

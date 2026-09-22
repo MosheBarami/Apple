@@ -9,7 +9,7 @@ import type {
   ClientMsg,
   StudioFrame,
   PlaytestRun,
-  GolemMode,
+  ProductMode,
   ProductModel,
   QuotaState,
   RunIntent,
@@ -74,7 +74,9 @@ export interface ToolEvent {
 export interface ChatItem {
   id: string;
   role: 'user' | 'assistant' | 'system';
-  mode: GolemMode | null;
+  mode: ProductMode | null;
+  /** Whether this Agent run was granted the Autonomous tool policy. */
+  autonomous?: boolean;
   productModel?: ProductModel;
   content: string;
   tools: ToolEvent[];
@@ -252,7 +254,7 @@ export interface ProjectSocket {
    * that never received the frame.
    */
   restoreStatus: RestoreStatus | null;
-  sendChat: (text: string, mode: GolemMode, attachments?: ChatAttachment[], productModel?: ProductModel) => boolean;
+  sendChat: (text: string, mode: ProductMode, attachments?: ChatAttachment[], productModel?: ProductModel, autonomous?: boolean) => boolean;
   /**
    * "I am still here, and this is what I am doing."
    *
@@ -263,7 +265,7 @@ export interface ProjectSocket {
    */
   signalPresence: (activity: 'viewing' | 'typing' | 'building') => boolean;
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
-  editAndResend: (messageId: string, text: string, mode: GolemMode, productModel?: ProductModel) => boolean;
+  editAndResend: (messageId: string, text: string, mode: ProductMode, productModel?: ProductModel, autonomous?: boolean) => boolean;
   stop: () => void;
   /** @param description what the snapshot contains or why it was taken. Optional — see ClientMsg. */
   createCheckpoint: (label: string, description?: string) => void;
@@ -311,7 +313,7 @@ function mockHistory(): ChatItem[] {
   base.push({
     id: 'm4',
     role: 'assistant',
-    mode: 'stone',
+    mode: 'agent',
     stopReason: 'done',
     content:
       "I rendered all five angles and ran the visual gate. It scored **6.5/10** — the portal and lighting read well, but the floor is one flat plate and the top-down view shows a lot of empty ground.\n\nI've already retextured the floor into alternating Concrete tiles. The composition fix (seating and planters) is bigger — say the word and I'll lay it out.",
@@ -541,7 +543,7 @@ export function useProjectSocket(
             // `run_intent` may have created the shell first; fill in the mode
             // it did not know, and keep the intent it did.
             const next = [...list];
-            next[existing] = { ...list[existing]!, mode: msg.mode, productModel: msg.productModel, streaming: true };
+            next[existing] = { ...list[existing]!, mode: msg.mode, autonomous: msg.autonomous, productModel: msg.productModel, streaming: true };
             return next;
           }
           return [
@@ -550,6 +552,7 @@ export function useProjectSocket(
               id: msg.msgId,
               role: 'assistant',
               mode: msg.mode,
+              autonomous: msg.autonomous,
               productModel: msg.productModel,
               content: '',
               tools: [],
@@ -1071,8 +1074,9 @@ export function useProjectSocket(
    * message id that has already gone, finds nothing, and changes nothing.
    */
   const editAndResend = useCallback(
-    (messageId: string, text: string, mode: GolemMode, productModel?: ProductModel): boolean => {
-      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(productModel ? { productModel } : {}) });
+    (messageId: string, text: string, mode: ProductMode, productModel?: ProductModel, autonomous = false): boolean => {
+      const enabled = mode === 'agent' && autonomous;
+      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(enabled ? { autonomous: true } : {}), ...(productModel ? { productModel } : {}) });
       if (ok) {
         setRunning(true);
         setMessages((list) => {
@@ -1088,7 +1092,7 @@ export function useProjectSocket(
             edited && recordsRevision(edited.content, text) ? (carried ?? 0) + 1 : carried;
           return [
             ...kept,
-            { id: localId(), role: 'user', mode, productModel, content: text, tools: [], streaming: false, createdAt: Date.now(), revisions },
+            { id: localId(), role: 'user', mode, autonomous: enabled, productModel, content: text, tools: [], streaming: false, createdAt: Date.now(), revisions },
           ];
         });
       }
@@ -1098,11 +1102,12 @@ export function useProjectSocket(
   );
 
   const sendChat = useCallback(
-    (text: string, mode: GolemMode, attachments: ChatAttachment[] = [], productModel?: ProductModel): boolean => {
+    (text: string, mode: ProductMode, attachments: ChatAttachment[] = [], productModel?: ProductModel, autonomous = false): boolean => {
       // The field has been on this frame since the protocol was written and nothing ever set it.
       // Omitted entirely when there are none, so a message with no files is byte-identical on the
       // wire to every message this product has ever sent.
-      const ok = sendRaw({ type: 'chat', text, mode, ...(productModel ? { productModel } : {}), ...(attachments.length ? { attachments } : {}) });
+      const enabled = mode === 'agent' && autonomous;
+      const ok = sendRaw({ type: 'chat', text, mode, ...(enabled ? { autonomous: true } : {}), ...(productModel ? { productModel } : {}), ...(attachments.length ? { attachments } : {}) });
       if (ok) {
         setRunning(true);
         setMessages((list) => [
@@ -1111,6 +1116,7 @@ export function useProjectSocket(
             id: localId(),
             role: 'user',
             mode,
+            autonomous: enabled,
             productModel,
             content: text,
             tools: [],

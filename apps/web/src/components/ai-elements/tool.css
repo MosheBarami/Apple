@@ -1,0 +1,58 @@
+/* AI ELEMENTS TOOL, DRAWN WITH THIS APP'S TOKENS.
+ *
+ * Upstream's default is a bordered disclosure: a header row (wrench, name, state badge, chevron)
+ * over a padded body. That default is kept here. A surface that lists many tools in one column —
+ * the workspace's execution surface — flattens it into rows in its own sheet, because a column of
+ * bordered cards is exactly the card soup the design rules out.
+ *
+ * STATE COLOUR IS RATIONED. Upstream paints each state its own hue (yellow, blue, green, orange,
+ * red). Here: the one running step takes the accent, a real failure takes --bad, a warning state
+ * takes --warn, and a completed step takes no colour at all — completion is the ordinary case and
+ * a column of green ticks is the "green as primary visual language" the design rules out.
+ */
+.ai-tool { width:100%; min-width:0; margin-block-end:16px; border:1px solid var(--line); border-radius:var(--r-md); }
+
+.ai-tool__header {
+  display:flex; width:100%; min-height:0; align-items:center; justify-content:space-between; gap:16px;
+  padding:12px; border:0; border-radius:inherit; background:transparent;
+  color:var(--ink); font:inherit; font-size:13px; line-height:20px; text-align:start;
+}
+/* The app's global button hover (ink at 12%) outranks a single class; a row takes the quieter fill. */
+button.ai-tool__header:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); }
+.ai-tool__heading { display:flex; min-width:0; align-items:center; gap:8px; }
+.ai-tool__icon { width:16px; height:16px; flex:none; color:var(--muted); }
+.ai-tool__title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:400; }
+.ai-tool__chevron { width:16px; height:16px; flex:none; color:var(--muted); transition:transform var(--t-fast) var(--ease-out); }
+.ai-tool[data-state='open'] .ai-tool__chevron { transform:rotate(180deg); }
+
+.ai-tool__badge { gap:6px; }
+.ai-tool__status-icon { width:12px; height:12px; flex:none; }
+.ai-tool__badge--input-streaming .ai-tool__status-icon { color:var(--faint); }
+.ai-tool__badge--input-available .ai-tool__status-icon { color:var(--accent); animation:ai-tool-pulse 1.4s ease-in-out infinite; }
+.ai-tool__badge--output-available .ai-tool__status-icon { color:var(--muted); }
+.ai-tool__badge--output-error .ai-tool__status-icon { color:var(--bad); }
+.ai-tool__badge--output-denied .ai-tool__status-icon,
+.ai-tool__badge--approval-requested .ai-tool__status-icon { color:var(--warn); }
+.ai-tool__badge--approval-responded .ai-tool__status-icon { color:var(--muted); }
+
+.ai-tool__content { display:grid; gap:16px; padding:16px; color:var(--ink); outline:none; animation:ai-tool-in var(--t-fast) var(--ease-out) both; }
+
+.ai-tool__input,.ai-tool__output { display:grid; gap:8px; min-width:0; overflow:hidden; }
+.ai-tool__section-title { margin:0; color:var(--faint); font-size:11px; font-weight:400; letter-spacing:.04em; text-transform:uppercase; }
+.ai-tool__code,.ai-tool__result { overflow-x:auto; border-radius:var(--r-md); background:var(--control-fill); font-size:12px; }
+.ai-tool__result.is-error { color:var(--bad); }
+
+@keyframes ai-tool-in {
+  from { opacity:0; transform:translateY(-4px); }
+  to { opacity:1; transform:none; }
+}
+@keyframes ai-tool-pulse {
+  0%,100% { opacity:.55; }
+  50% { opacity:1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-tool__chevron { transition:none; }
+  .ai-tool__content,
+  .ai-tool__badge--input-available .ai-tool__status-icon { animation:none; }
+}

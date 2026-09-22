@@ -106,7 +106,7 @@
    *
    *   The three alpha tokens carry the bar's own numbers — 12% fill, 38% border, 14% glow — so the
    *   chip that names the model looks like the object it was learned from. ]]*/
-  --accent:#00d492;
+  --accent:#2f7df6;
   --accent-light:#66efc2;
   --accent-deep:#00794f;
   --accent-soft:color-mix(in srgb,var(--accent) 12%,transparent);
@@ -203,10 +203,10 @@
   --line:rgba(6,16,9,.10); --line-strong:rgba(6,16,9,.20);
   --control-fill:rgba(6,16,9,.05); --control-line:rgba(6,16,9,.18);
   --quiet-line:rgba(6,16,9,.12); --quiet-ink:rgba(6,16,9,.42);
-  --accent:#00694a; --accent-light:#00553c; --accent-deep:#00563d;
+  --accent:#1f5fce; --accent-light:#285fb5; --accent-deep:#154394;
   /* The tint stays mixed from the BRIGHT green: a tint's job is to be a tint, and 12% of the dark
      shade over a white page is a grey box. */
-  --accent-soft:color-mix(in srgb,#00d492 12%,transparent);
+  --accent-soft:color-mix(in srgb,#4f8df7 12%,transparent);
   --accent-ring:color-mix(in srgb,var(--accent) 45%,transparent);
   --accent-glow:color-mix(in srgb,var(--accent) 12%,transparent);
   --accent-fill:var(--accent-deep); --accent-on-fill:#ffffff;
@@ -343,7 +343,7 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
  *   color:var(--paper)`: a WHITE filled button, which on a screen that already has one filled
  *   primary is two answers to the question of what to press. The third is the generic pressed
  *   chip, which painted the accent on an accent tint and had no edge. ]]*/
-.gx-chip[aria-pressed='true'],.gx-project-stage__surfaces button[aria-selected='true'],.preview-scenarios button[aria-pressed='true'] { background:transparent; border:1px solid var(--accent-ring); color:var(--accent-light); box-shadow:var(--glow); }
+.gx-chip[aria-pressed='true'] { background:transparent; border:1px solid var(--accent-ring); color:var(--accent-light); box-shadow:var(--glow); }
 /* THE WORKSPACE SCOPE. This block used to declare twenty-one `--gx-*` aliases of the tokens above
    — a second name for every colour, every line, two more radii and the mono stack. Nothing read
    any of them: `grep -roE "var\(--gx-[a-z0-9-]+" src` returns exactly one name, --gx-dock-w, and
@@ -523,83 +523,24 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .gx-prose,.markdown { line-height:1.75; font-size:16px; overflow-wrap:anywhere; } .gx-prose p,.markdown p { margin-bottom:16px; } .gx-prose :is(h1,h2,h3),.markdown :is(h1,h2,h3) { margin-top:24px; }
 pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(--surface-2); font-size:13px; } code { font-size:.87em; }
 .gx-outcome__retry { border:0; background:transparent; border-bottom:1px solid var(--line); border-radius:0; min-height:var(--h-xs); font-size:12px; padding:0; }
-/*[[ THE THINKING CARD IS A PANEL NOW, because it was never an object at all.
- *
- *   `margin-bottom:10px` was the whole of it: a header row and a body floating directly on the
- *   thread with nothing containing them, which is what a blind critic meant by "text on a
- *   background rather than a designed screen". The bar's panel is one shape repeated — 8px
- *   radius, a 1px rgba(255,255,255,0.08) hairline, a raised fill — with its internal bands
- *   supplying their own spacing rather than the panel padding everything.
- *
- *   AND IT IS THE OBJECT THE ACCENT IS SPENT ON WHILE A RUN IS IN FLIGHT. `is-live` is already on
- *   this element (thinking.tsx sets it, and `.gx-think.is-live .gx-think__word` below has read it
- *   since the redesign), so the accented state is REACHED rather than declared: an accent-ring
- *   edge and the measured 12px glow at 14%, which is the treatment the bar gives the one chip it
- *   accents. When the run ends the class goes and the card returns to a hairline. ]]*/
-.gx-think { margin-bottom:10px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--paper-2); }
-.gx-think.is-live { border-color:var(--accent-ring); box-shadow:var(--glow); }
-.gx-think__head { display:flex; align-items:center; gap:8px; padding-inline:14px; }
-/* model-mark.tsx emits `model-signature`, never `model-mark`, so the 18px cap never applied and
-   the header glyph rendered at its intrinsic size beside 14px text. */
-.gx-think__toggle .model-signature { width:18px; height:18px; }
-.gx-result-details { margin-block:12px; font-size:13px; color:var(--muted); }
-.gx-result-details > summary { cursor:pointer; width:fit-content; padding:5px 0; }
-.gx-result-details[open] > summary { margin-bottom:12px; }
 .gu-image-save { display:grid; justify-items:start; gap:7px; margin-top:10px; }
 .gu-image-save__note { color:var(--muted); font-size:12px; }
 .gu-generated-image { margin:12px 0; width:min(360px,100%); }
 .gu-generated-image__pixels { display:block; width:100%; height:auto; max-height:max(180px,calc(100dvh - 390px)); object-fit:contain; object-position:left center; border-radius:var(--r-md); }
 .gu-asset-grid { list-style:none; padding:0; margin:0; }
 .gx-cp__note { color:var(--muted); font-size:13px; margin-top:6px; }
-.gx-think__toggle { display:flex; align-items:center; text-align:start; gap:10px; flex:1; min-width:0; border:0; padding:10px 0; background:transparent; }
-.gx-think__toggle:hover:not(:disabled) { background:transparent; }
-/* TOKENS, NOT HEX. This was `linear-gradient(100deg,#a0a0a0,#ffffff,#a0a0a0)` over `color:#f1f1f1`
-   — three values that only ever made sense on the dark ramp. On the light ramp (--paper:#fafafa)
-   the midpoint is white on near-white: 1.04:1, against the 4.5:1 this file holds itself to at the
-   top. The sweep crosses that midpoint twice per cycle, so the leading letters of the line telling
-   you what Apple is doing right now were erased, twice every 2.8s, for the whole wait. At rest —
-   reduced motion, hidden tab — the tail sits ~85% toward the bright stop and stays faded.
-   --muted -> --ink -> --muted is the same shimmer and flips with the ramp, which is what
-   .apple-max-name two rules up already does correctly. */
-.gx-think.is-live .gx-think__word { background:linear-gradient(100deg,var(--muted) 20%,var(--ink) 50%,var(--muted) 80%); background-size:220% 100%; color:var(--muted); background-clip:text; -webkit-text-fill-color:transparent; animation:thinking-light 2.8s ease-in-out infinite; }
-.gx-think.is-reduced .gx-think__word,.gx-think.is-page-hidden .gx-think__word { animation:none; }
-@keyframes thinking-light { 0%,100% { background-position:100% 0; } 50% { background-position:0% 0; } }
-.gx-think__word { font-size:14px; font-weight:400; } .gx-think__hint { color:var(--faint); font-size:12px; margin-inline-start:auto; } .gx-think__chev { display:flex; } .gx-think__sound { border:0; background:transparent; min-height:var(--h-xs); padding:0 5px; font-size:12px; }
-/* THE ONLY CHEVRON IN THE BUNDLE THAT DID NOT TURN. Measured open and shut in Chromium: both
-   reported `transform: none`, so the one visible acknowledgement that the click landed was the
-   content appearing — and on a card whose body is a height transition, that reads as a delay.
-   Four other carets in this app already do this and all four do it the same way, so this is the
-   idiom rather than a new one: layout.css:302 (the account menu), composer.css:134 (the model
-   chip), project-stage.css:98 (the project panel). --t-base because the reader is watching the
-   panel move, not the cursor. The reduced-motion block at the foot of this file kills the
-   transition with !important and leaves the rotation, which is correct: the arrow still ends up
-   pointing the right way, it simply gets there without travelling. */
-.gx-think__chev { transition:transform var(--t-base) var(--ease-in-out); }
-.gx-think__toggle[aria-expanded='true'] .gx-think__chev { transform:rotate(180deg); }
-.gx-think__body { display:none; } .gx-think__body.is-open { display:block; animation:panel-open var(--t-base) var(--ease-out); } .gx-think__inner { padding:0 14px 18px 38px; border-block-start:1px solid var(--line); }
-/* THE COMPACT PREVIEW IS GONE AND ITS SEVEN RULES WENT WITH IT.
-   `.gx-think__compact`, `-list`, `-step`, `-copy`, `-kicker`, `-mark` and `-ring` styled a second
-   activity row under the header that the redesign removed — and
-   tests/thinking-redesign.test.mjs now FORBIDS the markup (`assert.doesNotMatch(JSX,
-   /className="gx-think__compact/)`) while three of its own assertions pinned the CSS for it, so
-   the suite was simultaneously requiring the rules to exist and the elements to not. Nothing in
-   src/ has emitted any of these class names; grep, not inference.
-   THE LIVE INDICATOR IT USED TO BE is now `.model-signature.is-live` (line ~212), whose animation
-   is gated in the JSX by `live={isLive && !reducedMotion && !pageHidden}` rather than by the three
-   `.gx-think.is-*` CSS overrides below — which is why those overrides had nothing to turn off. The
-   test's three assertions were re-aimed at the mechanism that renders.
-   `.gx-think__compact-list` was the first selector in the list-reset rule and only that selector
-   is dropped: --timeline, --plan, --act__steps, --act and --act__phases all render. */
-.gx-timeline,.gx-plan,.gx-act__steps,.gx-act,.gx-act__phases { list-style:none; padding:0; margin:0; }
-.gx-stage-row { padding:10px 0; border-top:1px solid var(--line); } .gx-stage-row__name,.gx-act__phase-name { font-size:13px; font-weight:400; } .gx-stage-row__text,.gx-stage-row__body,.gx-act__detail { color:var(--muted); font-size:13px; }
-.gx-act__step { display:flex; gap:10px; padding:6px 0; } .gx-act__mark { width:17px; flex-shrink:0; } .gx-act__mark svg { max-width:16px; height:16px; } .gx-act__step-body { flex:1; min-width:0; } .gx-act__step-head { display:flex; justify-content:space-between; gap:16px; } .gx-act__detail { display:block; } .gx-act__ms { font:10px var(--font-mono); color:var(--faint); flex-shrink:0; }
-.gx-act__step-label,.gx-act__detail,.gx-stage-row__body,.gx-act__phase-body { min-width:0; overflow-wrap:anywhere; }
-.gx-gate__verdict { margin-inline-start:12px; } .is-pass { color:var(--good); } .is-fail { color:var(--bad); } .gx-tick { fill:none; stroke:currentColor; } .gx-ring { width:16px; height:16px; fill:none; stroke:var(--accent); }
 .gx-pop-wrap { position:relative; } .gx-pop { position:absolute; z-index:60; background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow-pop); border-radius:var(--r-lg); padding:6px; min-width:245px; max-width:min(370px,90vw); animation:pop-open var(--t-fast) var(--ease-out); }
 .gx-pop--up { bottom:calc(100% + 8px); inset-inline-start:0; } .gx-pop--down-right { top:calc(100% + 8px); inset-inline-end:0; }
 .gx-pop__item { display:flex; width:100%; gap:12px; align-items:center; text-align:start; border:0; background:transparent; border-radius:var(--r-md); min-height:var(--h-sm); padding:8px 11px; }
 .gx-pop__item:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); } .gx-pop__main { display:grid; font-size:14px; } .gx-pop__sub { font-size:12px; color:var(--muted); margin-top:4px; } .gx-pop__sep { border-top:1px solid var(--line); }
 .gx-scrim,.modal-backdrop,.dialog-backdrop,.cmdk-backdrop { position:fixed; inset:0; z-index:70; background:color-mix(in srgb,var(--paper) 66%,transparent); border:0; border-radius:0; animation:scrim-in var(--t-fast) var(--ease-out); }
+/* THE SCRIM IS A <button> (a click on it closes the drawer), so the global button hover above lit
+   it: pointing anywhere on the page behind an open drawer washed the whole page in ink at 12%, a
+   grey sheet over a black one. The scrim keeps its own fill whatever the pointer does. And the
+   drawer panel takes focus on open so Tab starts inside it; it is a container (tabindex -1), not a
+   control, so it draws no ring of its own — the controls inside it do. */
+button.gx-scrim:hover:not(:disabled):not([aria-disabled='true']) { background:color-mix(in srgb,var(--paper) 66%,transparent); }
+.gx-drawer:focus { outline:none; }
 .gx-drawer { position:fixed; inset-block:0; inset-inline-end:0; z-index:80; width:min(540px,100%); background:var(--surface); border-inline-start:1px solid var(--line); display:flex; flex-direction:column; box-shadow:var(--shadow-modal); animation:panel-arrive var(--t-slow) var(--ease-out); }
 .gx-drawer__head { display:flex; align-items:center; padding:22px 28px; border-bottom:1px solid var(--line); } .gx-drawer__title { font-family:var(--font-display); font-size:24px; } .gx-drawer__body { flex:1; overflow:auto; padding:26px; }
 .gx-rail { position:fixed; inset-block:0; inset-inline-start:0; z-index:90; width:min(340px,90vw); padding:24px; background:var(--surface); display:flex; flex-direction:column; border-inline-end:1px solid var(--line); animation:panel-arrive var(--t-base) var(--ease-out); }
@@ -609,9 +550,6 @@ pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(
 .gx-rail__foot { display:grid; gap:18px; } .gx-card-btn { display:flex; text-align:start; align-items:center; gap:12px; padding:12px 0; border:0; background:transparent; border-top:1px solid var(--line); } .gx-card-btn__text { display:grid; } .gx-card-btn__title { font-size:14px; } .gx-card-btn__sub { font-size:11px; color:var(--muted); } .gx-card-btn__chev { margin-inline-start:auto; }
 .gx-usage { font-size:12px; } .gx-usage__top,.gx-usage__foot { display:flex; justify-content:space-between; gap:12px; } .gx-usage__plan { font-size:10px; } .gx-usage__bar { height:3px; background:var(--surface-3); display:flex; margin-block:10px; } .gx-usage__fill { height:100%; display:block; background:var(--ink); } .gx-usage__detail { margin:0 0 7px; color:var(--muted); } .gx-usage__foot { font-size:10px; color:var(--faint); }
 .gx-user-card { display:flex; align-items:center; gap:8px; } .gx-user-card__id { display:flex; align-items:center; gap:10px; border:0; background:transparent; flex:1; min-width:0; padding:8px 0; } .gx-user-card__names { display:grid; overflow:hidden; text-align:start; } .gx-user-card__name { font-size:13px; } .gx-user-card__email { font-size:10px; overflow:hidden; text-overflow:ellipsis; } .gx-avatar { width:30px; height:30px; display:grid; place-items:center; background:var(--surface-2); font-size:12px; } .gx-user-card__wrap { min-width:0; flex:1; }
-.gx-project-stage { border-inline-start:1px solid var(--line); overflow:auto; background:var(--paper-2); } .gx-project-stage.is-collapsed { display:none; } .gx-project-stage__head { position:sticky; top:0; background:var(--paper-2); z-index:2; border-bottom:1px solid var(--line); }
-.gx-project-stage__toggle { width:100%; border:0; background:transparent; border-radius:0; padding:18px; display:flex; gap:12px; align-items:center; text-align:start; } .gx-project-stage__heading { display:grid; } .gx-project-stage__summary { font-size:12px; color:var(--muted); } .gx-project-stage__chevron { margin-inline-start:auto; } .gx-project-stage__body { padding:20px; } .gx-project-stage__surfaces { display:flex; gap:10px; margin-bottom:20px; } 
-.gx-project-stage__blueprint-art,.gx-project-stage__cinema-glow { display:none; } .gx-project-stage__blueprint { min-height:250px; display:flex; flex-direction:column; justify-content:center; } .gx-project-stage__blueprint-title { font-size:24px; } .gx-project-stage__blueprint-copy { color:var(--muted); font-size:14px; }
 .gx-workbench__tabs { display:none; } .gx-studio-view img,.gx-playtest img { display:block; width:100%; object-fit:contain; }
 .gx-connect { padding:20px 0; }
 .gx-connect__title { margin:0 0 8px; font-size:16px; font-weight:400; letter-spacing:0; }
@@ -624,7 +562,6 @@ pre { overflow:auto; border:1px solid var(--line); padding:18px; background:var(
 .gx-connect--quiet { color:var(--muted); font-size:13px; }
 .gx-conn-note,.gx-link-note { font-size:13px; color:var(--muted); padding:10px 26px; margin:0; }
 .gx-compose-region { position:relative; min-width:0; }
-.gx-jump { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); z-index:15; background:var(--surface); font-size:12px; }
 .gx-row { padding:12px 0; border-bottom:1px solid var(--line); } .gx-empty,.empty-state { padding:48px 24px; text-align:center; animation:empty-arrive var(--t-slow) var(--ease-out); } .gx-plain { padding:100px 30px; }
 .page { max-width:1160px; margin:0 auto; padding:110px 36px 70px; } .page-head { display:flex; align-items:start; justify-content:space-between; gap:24px; margin-bottom:36px; } .page-title { font-size:44px; margin-bottom:14px; } .page-desc { color:var(--muted); max-width:650px; }
 .project-grid,.projects-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:20px; } .project-card { border:1px solid var(--line); background:var(--surface); padding:24px; position:relative; } .project-card:hover { border-color:var(--accent); }
@@ -733,14 +670,13 @@ table { width:100%; border-collapse:collapse; font-size:13px; } th,td { padding:
 @keyframes max-ink { from { background-position:0% 50%; } to { background-position:-200% 50%; } }
 @media(max-width:1000px) {
   .start-sheet { gap:26px; } .start-sheet h1 { font-size:32px; } .gx-thread { padding-inline:26px; }
-  .gx-workbench.is-stage-open { grid-template-columns:minmax(0,1fr); } .gx-workbench.is-stage-open .gx-project-stage { position:fixed; z-index:50; top:72px; bottom:0; inset-inline-end:0; width:min(520px,100%); box-shadow:var(--shadow-modal); }
 }
 @media(max-width:680px) {
   .gx-main { width:100%; margin-inline-start:0; } .studio-atmosphere { inset-inline-start:0; }
   .studio-dock { inset-block:10px auto; inset-inline-start:12px; padding:0; width:44px; height:44px; background:transparent; border:0; backdrop-filter:none; }
   .studio-dock > button,.studio-dock > a { display:none; } .studio-dock > .studio-navigation { display:grid; }
   .gx-ws { grid-template-rows:64px minmax(0,1fr) auto; } .gx-top { padding:12px 18px 12px 72px; gap:8px; } .gx-top__title { max-width:32vw; font-size:13px; } .gx-top__when { display:none; } .studio-workspace-controls { gap:12px; } .studio-project-menu summary,.studio-preview-toggle { font-size:12px; } .studio-preview-toggle span,.studio-project-menu summary span { margin-inline-start:3px; }
-  .start-sheet { gap:26px; padding-block:20px; } .start-sheet h1 { font-size:27px; } .start-sheet__lead p { font-size:13px; } .start-sheet__ideas { gap:8px; } .start-sheet__ideas > button { min-height:var(--h-md); padding:0 12px; font-size:11px; } .gx-thread { padding:20px; } .gx-composer,.gx-ws:has(.start-sheet) .gx-composer { padding:10px 12px 18px; } .gx-composer textarea { min-height:85px; font-size:16px; padding:18px; } .gx-composer__bar { gap:3px; padding:6px 10px 10px; } .gx-chip { font-size:11px; gap:5px; padding:0 6px; } .gx-composer__note { font-size:10px; } .gx-chip--template { display:none; } .gx-send { width:var(--h-md); height:var(--h-md); } .gx-think__hint { display:none; } .gx-user { font-size:15px; } .gx-turn--user { margin-inline-start:7%; } .page { padding:90px 20px 40px; } .page-head { display:block; } .settings-row { align-items:start; } .settings-pair { display:grid; } .modal,.dialog,.cmdk { padding:22px; }
+  .start-sheet { gap:26px; padding-block:20px; } .start-sheet h1 { font-size:27px; } .start-sheet__lead p { font-size:13px; } .start-sheet__ideas { gap:8px; } .start-sheet__ideas > button { min-height:var(--h-md); padding:0 12px; font-size:11px; } .gx-thread { padding:20px; } .gx-composer,.gx-ws:has(.start-sheet) .gx-composer { padding:10px 12px 18px; } .gx-composer textarea { min-height:85px; font-size:16px; padding:18px; } .gx-composer__bar { gap:3px; padding:6px 10px 10px; } .gx-chip { font-size:11px; gap:5px; padding:0 6px; } .gx-composer__note { font-size:10px; } .gx-chip--template { display:none; } .gx-send { width:var(--h-md); height:var(--h-md); } .gx-user { font-size:15px; } .gx-turn--user { margin-inline-start:7%; } .page { padding:90px 20px 40px; } .page-head { display:block; } .settings-row { align-items:start; } .settings-pair { display:grid; } .modal,.dialog,.cmdk { padding:22px; }
 }
 @media(max-height:740px) and (min-width:681px) { .start-sheet { padding-block:12px; } .start-sheet h1 { font-size:30px; } .gx-ws:has(.start-sheet) .gx-composer { padding-bottom:20px; } }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
@@ -764,6 +700,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
    tint disappears on a white page, is now carried by --accent-soft in the one light block, which
    mixes from #00d492 for exactly that reason. */
 .card,.admin-panel { padding:22px; border:1px solid var(--line); margin-block:20px; }
+.admin-panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
 .rail-head,.admin-actions,.admin-form-row,.switch-row,.admin-tools-check { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .model-tag { font:11px var(--font-mono); padding:4px 7px; border:1px solid var(--line); }
 .error-text { color:var(--bad); } .spend-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:20px; }
@@ -796,66 +733,6 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gx-assumed,.gx-open-qs { border-inline-start:2px solid var(--warn); padding:10px 16px; margin-block:14px; font-size:13px; }
 .gx-assumed__label,.gx-open-qs__label { display:block; font-weight:400; color:var(--ink); }
 .gx-assumed ul,.gx-open-qs ul { padding-inline-start:18px; color:var(--muted); }
-.gx-stage-row__bullet { display:none; } .gx-act__phase { border-block-start:1px solid var(--line); padding-block:12px; }
-.gx-act__phase-head { display:flex; align-items:center; gap:9px; margin-bottom:8px; flex-wrap:wrap; }
-/* "3 steps failed and were retried" sits in that head beside the phase name and the clock. It is a
-   CAVEAT, not a failure — the phase recovered, which is the whole point of the sentence — so it
-   takes the warn ink and never the bad one, and it is the only coloured thing in the row. At 12px
-   it stays subordinate to the phase name it qualifies. */
-.gx-act__repaired { font-size:12px; color:var(--warn); }
-/* `display:inline-block` — activity.tsx renders the pip as a <span>, and width/height do not apply
-   to an inline box, so the phase marker has never drawn and the live-phase accent halo had nothing
-   to sit on. */
-.gx-act__pip { display:inline-block; width:5px; height:5px; background:var(--faint); border-radius:50%; }
-/* THE LIVE PHASE, GLOWING. The 3px halo was the whole accent on this row; --glow adds the measured
-   12px at 14% behind it, which is the same halo the thinking card and the model chip carry — one
-   treatment for "this is the thing happening now".
-   NO ANIMATION AND NO TRANSITION, deliberately and permanently: tests/activity-motion.test.mjs
-   requires every travelling rule on .gx-act to be gated behind .gx-act.is-moving, and requires
-   this halo to exist WITHOUT one so a reduced-motion reader still sees which phase is live. */
-.gx-act__phase.is-active .gx-act__pip { background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft),var(--glow); }
-/* THE ROWS. A phase is a band inside the card, and the live one is NAMED in the lighter accent
-   tint rather than filled — variant 3 of the five below, applied to a row instead of a button. */
-.gx-act__phase.is-active .gx-act__phase-name { color:var(--accent-light); }
-/* activity.tsx:205 renders `gx-stage-row gx-term is-<kind>`; this rule said `.gx-act__terminal`. */
-.gx-term { border-block-start:1px solid var(--line); margin-block-start:12px; padding-block:12px; font-size:13px; }
-/* A RUN THAT CRASHED LOOKED EXACTLY LIKE A RUN THAT WORKED, three rows deep in the same card.
-   Measured in Chromium with getComputedStyle, before these three rules: a failed step's glyph came
-   out at rgb(189,186,182) — --muted, the same ink as the ✓ beside it; a failed phase's pip at
-   rgb(170,167,163), --faint, the same as a finished phase's; and "Stopped by an error" was drawn in
-   exactly the colour of "Finished". The gate verdicts a few pixels above DO carry `.is-fail`'s
-   --bad, so one card said failure in colour in one place and said it in a 5px grey glyph in three
-   others.
-   THE COLOUR LANDS ON THE STATUS MARK, NEVER ON THE PROSE — the same rule empty-state.css states
-   and for the same reason: the reader already knows which step it was from the row they are
-   reading, and tinting the label would make the step's NAME look like the thing that is wrong.
-   `.gx-act__mark` rather than `.gx-tick`, because the × is a <path> carrying its own
-   `stroke="currentColor"` presentation attribute — a `stroke` set on the parent <svg> loses to it,
-   so colouring the wrapper and letting currentColor resolve is the only thing that reaches the
-   stroke. Verified rendered, not assumed. */
-.gx-act__step.is-failed .gx-act__mark { color:var(--bad); }
-.gx-act__phase.is-failed .gx-act__pip { background:var(--bad); }
-/* THE TWO TERMINALS THAT ARE A STOP, and only those two. `stopped` is the user's own Stop button
-   and `recovered` is a run that got there anyway; neither is a failure and neither takes the
-   colour. `incomplete` stays neutral for the reason activity-model.ts gives about `unknown` — it
-   is the absence of an outcome, not a bad one, and painting it red would be a claim the wire never
-   made. That leaves `failed` and `quota`: the run stopped and nothing came of it. */
-.gx-term.is-failed .gx-stage-row__name,.gx-term.is-quota .gx-stage-row__name { color:var(--bad); }
-.gx-ev { border:1px solid var(--line); margin-block:10px; padding:14px; } .gx-ev__bar { height:3px; background:var(--accent); }
-.gx-ring__track { stroke:var(--line); } .gx-ring__spin { stroke-dasharray:20 12; transform-origin:center; }
-/* The `prefers-reduced-motion` block below already sets `.gx-ring__spin { animation:none }` — it was
-   switching off an animation no rule ever switched on, which is why an in-flight step's ring sat
-   still and a slow step was indistinguishable from a frozen page. `is-moving` comes from
-   activity-model.ts:759 and is swapped for `is-still` when the user prefers reduced motion. */
-.gx-act.is-moving .gx-ring__spin { animation:status-turn 1.2s linear infinite; }
-.gx-hollow { width:16px; height:16px; fill:none; stroke:var(--faint); } .gx-hollow--dashed { stroke-dasharray:2 3; }
-.st--good { color:var(--good); } .st--bad { color:var(--bad); } .st--warn { color:var(--warn); } .st--info { color:var(--info); } .st--muted { color:var(--faint); } .st--future { color:var(--future); }
-.st--spin { animation:status-turn 1.2s linear infinite; } @keyframes status-turn { to { transform:rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .st--spin { animation: none; } }
-@media (prefers-reduced-motion: reduce) {
-  .gx-act__step,.gx-ev,.gx-ev__bar,.gx-act__pip { animation:none; transition:none; background-position:0 0; }
-  .gx-ring__spin { animation:none; stroke-dasharray:20 12; }
-}
 .tok--kw { color:var(--syntax-keyword); } .tok--str { color:var(--syntax-string); } .tok--num { color:var(--syntax-number); } .tok--com { color:var(--syntax-comment); } .tok--fn { color:var(--syntax-function); }
 .gx-code { border:1px solid var(--line); background:var(--surface-2); margin-block:18px; min-width:0; }
 .gx-code__head { display:flex; justify-content:space-between; padding:8px 14px; font-size:11px; border-bottom:1px solid var(--line); } .gx-code pre { border:0; margin:0; }
@@ -933,7 +810,6 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gx-pill { flex:none; } .gx-pill__place,.gx-pill__label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .gx-pill__full { display:inline; } .gx-pill__short { display:none; }
 .gx-btn > svg,.gx-icon-btn > svg,.gx-pill > svg,.gx-chip > svg { flex:none; }
-.studio-preview { min-height:100dvh; padding:26px; }
 .gu-audio__player { display:block; width:100%; } .gu-audio__save { display:inline-block; font-size:12px; margin-top:10px; }
 .gu-img-gone__why { font-size:12px; color:var(--muted); }
 .au-count { font-size:11px; color:var(--faint); } .au-count--over,.au-err,.au-run__err { color:var(--bad); }
@@ -1078,14 +954,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gu-prop-row { display:flex; gap:18px; padding-block:8px; font-size:12px; justify-content:space-between; border-bottom:1px solid var(--line); } .gu-prop-row dd { margin:0; } .gu-prop-prev { color:var(--faint); }
 .gu-asset-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; } .gu-asset { border:1px solid var(--line); border-radius:var(--r-md); padding:12px; }
 .gu-img-loading,.gu-noimg { display:grid; place-content:center; padding:30px; color:var(--muted); background:var(--surface-2); font-size:12px; }
-.preview-toolbar,.preview-scenarios { display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding-block:12px; font-size:12px; }
-.preview-toolbar > span { color:var(--muted); font-size:10px; margin-inline-end:auto; }
 
-.preview-workspace { display:grid; grid-template-columns:minmax(0,1fr) minmax(240px,32%); margin-top:20px; min-height:70vh; border-top:1px solid var(--line); }
-.preview-workspace--chat { grid-template-columns:1fr; } .preview-chat { padding:24px; display:flex; flex-direction:column; }
-.preview-chat__heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
-.preview-chat__scroll { flex:1; max-width:1050px; width:100%; margin:auto; } .preview-request { margin-inline-start:20%; padding:18px; background:var(--surface-2); }
-.preview-composer { margin-top:35px; padding:20px; background:var(--surface); border:1px solid var(--line); } .preview-composer label { display:block; font-size:12px; }
 .mode-cost-list { list-style:none; padding:0; margin:18px 0 0; display:grid; gap:14px; }
 .rk__form { display:grid; gap:10px; max-width:720px; }
 .rk__label { font-weight:400; margin-top:12px; }
@@ -1109,15 +978,9 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .ring-caption,.bar-label { fill:var(--muted); font:12px var(--font-body); }
 .usage-bars { display:block; width:100%; max-height:210px; overflow:visible; }
 .bar { fill:var(--line); } .bar-active { fill:var(--accent); } .bar-base { stroke:var(--line); }
-.preview-composer textarea { width:100%; margin-block:12px; } .preview-composer > div { display:flex; gap:12px; justify-content:space-between; align-items:center; font-size:11px; }
-.preview-stage { padding:28px; border-inline-start:1px solid var(--line); background:var(--paper-2); }
-.preview-stage header,.preview-stage footer { font:10px var(--font-mono); display:flex; gap:18px; justify-content:space-between; }
-.preview-stage__art { padding-block:40px; } .preview-stage__caption h2 { margin-block:20px; } .preview-stage__caption p,.preview-notice { color:var(--muted); font-size:14px; }
-.preview-notice { border-inline-start:2px solid var(--accent); margin-block:18px; padding:18px; } .preview-notice strong { color:var(--ink); }
-@media(max-width:680px) { .preview-workspace { grid-template-columns:1fr; } .preview-stage { display:none; } .studio-preview { padding:16px; } .preview-chat { padding:16px 0; } .modal-overlay { padding:12px; } .modal-panel { padding:22px; } }
+@media(max-width:680px) { .modal-overlay { padding:12px; } .modal-panel { padding:22px; } }
 @media(max-width:480px) {
   .gx-top__title { min-width:0; text-align:start; }
-  .gx-workbench.is-stage-open .gx-project-stage { top:64px; }
   .gx-top__actions { width:min(270px,calc(100vw - 32px)); }
   .gx-composer__tools { gap:2px; } .gx-composer__bar { row-gap:8px; }
 }
