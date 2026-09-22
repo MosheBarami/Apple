@@ -706,6 +706,38 @@ function treeRoot(value: unknown): StudioTreeNode | null {
   return root && typeof root === 'object' ? root as StudioTreeNode : null;
 }
 
+/**
+ * Terrain operations per edit_terrain call. Measured 2026-09-22 (run d1a97c0d): "a grassy hill with a
+ * small pond" took 149 single-operation calls — 152 paid steps, 450 Credits — and the load made Studio
+ * miss a 30 s op deadline, after which the link read as down and the Studio tools were withdrawn.
+ */
+const MAX_TERRAIN_BATCH = 32;
+
+async function runTerrainEdits(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
+  const { operations, ...single } = a;
+  if (operations === undefined) {
+    if (typeof single.action !== 'string') return { error: 'edit_terrain needs an action, or operations: [...]' };
+    return op(ctx, { ...single, op: 'terrain_edit' } as StudioOp);
+  }
+  if (!Array.isArray(operations) || operations.length === 0) return { error: 'operations must be a non-empty array of terrain actions' };
+  if (operations.length > MAX_TERRAIN_BATCH) {
+    return { error: `operations holds ${operations.length} actions; the limit is ${MAX_TERRAIN_BATCH} per call — split it` };
+  }
+  const done: unknown[] = [];
+  for (const [index, raw] of operations.entries()) {
+    if (!raw || typeof raw !== 'object' || typeof (raw as { action?: unknown }).action !== 'string') {
+      return { error: `operations[${index}] has no action`, completed: done.length, ...(done.length ? { projectMutated: true } : {}) };
+    }
+    const res = await op(ctx, { ...(raw as Record<string, unknown>), op: 'terrain_edit' } as StudioOp);
+    if (toolError(res)) {
+      // The earlier operations are already in the place. Say so, and let mutation truth say so too.
+      return { ...(res as Record<string, unknown>), failedAt: index, completed: done.length, ...(done.length ? { projectMutated: true } : {}) };
+    }
+    done.push(res);
+  }
+  return { completed: done.length, results: done };
+}
+
 function toolError(value: unknown): value is { error: unknown } {
   return !!value && typeof value === 'object' && 'error' in (value as Record<string, unknown>);
 }
@@ -2055,9 +2087,15 @@ export const TOOLS: Record<string, ToolImpl> = {
         'Actions: fill_block (center,size,material), fill_ball (center,radius,material), fill_region (min,max,material), ' +
         'replace_material (min,max,sourceMaterial,targetMaterial), or write_voxels (4-stud-grid origin, integer dimensions, flat voxels [{material,occupancy}]). ' +
         'Materials are Enum.Material names such as Enum.Material.Grass. At most 65,536 voxels are touched per call. ' +
-        'Requires Studio edit consent and is one undo-recorded change. Checkpoint restore preserves Terrain identity but does not serialize voxel contents, so use Studio Undo for terrain rollback.',
+        'Requires Studio edit consent and is one undo-recorded change. Checkpoint restore preserves Terrain identity but does not serialize voxel contents, so use Studio Undo for terrain rollback. ' +
+        `BUILD A WHOLE FEATURE IN ONE CALL: pass operations (up to ${MAX_TERRAIN_BATCH} of the actions above, each with its own fields) and they run in order — a hill is several overlapping fill_ball calls with decreasing radius, a pond is a fill_ball of Enum.Material.Air then a smaller one of Enum.Material.Water. One operation per call costs a step each.`,
       parameters: S(
         {
+          operations: {
+            type: 'array',
+            description: `Up to ${MAX_TERRAIN_BATCH} terrain actions run in order, each shaped like a single call ({action, center, radius, material, ...}). Stops at the first failure.`,
+            items: { type: 'object' },
+          },
           action: { type: 'string', enum: ['fill_block', 'fill_ball', 'fill_region', 'replace_material', 'write_voxels'] },
           center: { type: 'array', items: { type: 'number' } },
           size: { type: 'array', items: { type: 'number' } },
@@ -2071,13 +2109,13 @@ export const TOOLS: Record<string, ToolImpl> = {
           dimensions: { type: 'array', items: { type: 'number' } },
           voxels: { type: 'array', items: { type: 'object' } },
         },
-        ['action'],
+        [],
       ),
     },
     studio: true,
     studioOps: ['terrain_edit'],
     mutatesProject: true,
-    run: (ctx, a) => op(ctx, { ...(a as Record<string, unknown>), op: 'terrain_edit' } as StudioOp),
+    run: (ctx, a) => runTerrainEdits(ctx, a),
   },
   delete_instances: {
     def: { name: 'delete_instances', description: 'Delete instances by path.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
