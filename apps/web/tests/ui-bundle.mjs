@@ -20,7 +20,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
-const esbuild = await import(pathToFileURL(join(WEB, '..', 'worker', 'node_modules', 'esbuild', 'lib', 'main.js')).href);
+// Resolved through the worker package's own dependency graph, as a clone installs it, rather than by a
+// path into its node_modules that no commit holds (tests/check-committed-imports.test.mjs).
+const esbuild = createRequire(join(WEB, '..', 'worker', 'package.json'))('esbuild');
 
 const passThroughPurify = {
   name: 'dompurify-without-a-dom',
