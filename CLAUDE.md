@@ -5,6 +5,10 @@
 > (`docs/autonomy/OWNER_PROMPT.md`). Read `docs/autonomy/README.md`, `MISSION.md`, `CURRENT_STATE.md`
 > and `NEXT_ACTION.md` before anything below. The hard safety envelope is enforced by
 > `.claude/hooks/autonomy_guard.py`; `touch .autonomy/STOP` freezes every mutating tool.
+>
+> **Owner autonomy is enforced** — load `.claude/skills/apple-owner-autonomy/SKILL.md`. Decide instead of asking
+> (AskUserQuestion is blocked), keep working until acceptance (a Stop hook blocks the turn while agent-doable work
+> remains), and route only payments, account creation, passwords/2FA and CAPTCHAs to `docs/autonomy/OWNER_QUEUE.md`.
 
 > Drop this into your project's CLAUDE.md (append or replace the GSD section).
 > Teaches Claude Code the autonomous loop, checkpoint survival, and token efficiency.
