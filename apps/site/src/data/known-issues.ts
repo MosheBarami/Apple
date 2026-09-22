@@ -37,22 +37,21 @@ export interface KnownIssue {
 
 export const KNOWN_ISSUES: KnownIssue[] = [
   {
-    // CLOSED 2026-09-22, NOT DELETED. The listing (asset 107230158271368, "Apple Studio") resolves
-    // publicly again — toolbox details, Creator Store search and the rendered store page all show it
-    // free to get — and packages/shared flipped STUDIO_PLUGIN_STORE_LIVE to true. The entry stays so
-    // the page shows the list is maintained; tests/known-issues.test.mjs holds it to the flag in
-    // both directions.
+    // REOPENED 2026-09-23. Closed on 2026-09-22 when the listing resolved publicly again; the
+    // 2026-09-23 update was removed by Roblox ("Misusing Roblox Systems") and the listing no longer
+    // resolves (toolbox details 404 beside healthy controls). packages/shared flipped
+    // STUDIO_PLUGIN_STORE_LIVE back to false; tests/known-issues.test.mjs holds this entry to it.
     id: 'plugin-not-in-creator-store',
-    title: 'Studio plugin installation was unavailable',
+    title: 'Studio plugin installation is unavailable',
     impact:
-      'Between 1 and 22 September 2026 the Studio plugin could not be installed from the Roblox '
-      + 'Creator Store, so new customers could chat but could not build inside Studio.',
+      'The Apple Studio plugin cannot be installed from the Roblox Creator Store right now, so new '
+      + 'customers can chat and plan but cannot build inside Studio yet.',
     workaround:
-      'Resolved: Apple Studio is on the Creator Store again. Get it from the store page, install it '
-      + 'from the Studio Toolbox, then pair it with your project.',
-    links: [{ label: 'Install the plugin', href: '/docs/plugin' }],
-    openedAt: '2026-09-01',
-    resolvedAt: '2026-09-22',
+      'Plan your game in the chat meanwhile. We are sending Roblox an appeal together with the next '
+      + 'plugin release; this page changes the day it is back.',
+    links: [{ label: 'Plugin availability', href: '/docs/plugin' }],
+    openedAt: '2026-09-23',
+    resolvedAt: null,
   },
   {
     id: 'plugin-presence-not-detectable',

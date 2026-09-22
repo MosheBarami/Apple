@@ -67,3 +67,15 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   piped straight into `wrangler secret put` on 2026-09-23; it was never printed or written to disk. Rotating it
   makes every stored customer key unreadable — customers would have to add their keys again. Do not rotate it
   without a re-encryption step.
+- **D-STORE-2 — No more public store updates until the final version; nothing is removed from the plugin.**
+  Owner, 2026-09-23 ~02:15 IDT, after Roblox refused to distribute version 2 (F-038): "they always gonna flag
+  this so from now on you are gonna be building without on the public and the final version should be appealed
+  with roblox as before done. NEVER decrease the tools the plugin have." So: development continues on the local
+  install (~/Documents/Roblox/Plugins/AppleStudio.rbxm); no Creator Store overwrite until the product's final
+  plugin build; that build is published once and then appealed through the Configure page's Appeal link, as was
+  done for the legacy plugin. The plugin keeps every capability (insert_asset / LoadAsset, StudioCapture); the
+  store-safe variant considered first (drop both) is rejected. LATEST_PLUGIN_VERSION stays at the version the
+  store serves. Roblox's record (roblox.com/report-appeals, violation 3JhaXRZAqvmSw5iIhea5QZgT67R): "Plugin
+  removed — Misusing Roblox Systems", reviewed 2026-09-23 01:23, **appeal by 2026-10-23 01:23 IDT** — the final
+  build has to be published and appealed before that date (version 1's appeal, 09-19, was accepted).
+

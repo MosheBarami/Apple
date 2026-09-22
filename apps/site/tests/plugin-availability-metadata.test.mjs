@@ -87,7 +87,10 @@ test('/pricing derives its Studio bullet instead of calling the block "pending"'
   const html = readFileSync(file, 'utf8');
   assert.doesNotMatch(html, /public installation pending/i);
   // and the card now says the same thing the page's own closing note says
-  assert.match(html, /Studio integration ·[^<]*(unavailable|removed by Roblox moderation)/i);
+  // The property is "the card says installation is unavailable", not the bullet's first words: the
+  // 2026-09-22 redesign renamed "Studio integration" to "Roblox Studio plugin" while the store was
+  // live, so this branch was not exercised until the flag flipped back on 2026-09-23.
+  assert.match(html, /Studio (?:integration|plugin) ·[^<]*(unavailable|removed by Roblox moderation)/i);
 });
 
 // ---------------------------------------------------------------------------

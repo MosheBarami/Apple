@@ -1795,10 +1795,17 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  *   3. the owner reports the new plugin approved.
  * If the probe returns 404 again, flip this back — every install affordance follows it.
  *
+ * FLIPPED BACK 2026-09-23 ~02:20 IDT. The 01:23 overwrite (version 2) was refused: the Configure
+ * page reads "Not distributed on Creator Store — may be in violation of Roblox Community
+ * Standards", and toolbox details answer 404 for this id while Rojo (6415005344) and Moon
+ * Animator (4725618216) answer 200 and an impossible id 404; store search returns nothing.
+ * The owner's decision (docs/autonomy/DECISIONS.md D-STORE-2) is to publish once more only with
+ * the final build and appeal it; flip this to true when the probe answers 200 again.
+ *
  * Typed `boolean` rather than the literal `false` on purpose: consumers branch
  * on it, and a literal type would make the live branch look unreachable.
  */
-export const STUDIO_PLUGIN_STORE_LIVE: boolean = true;
+export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;
 
 /**
  * Can a customer buy Credits today? No, and three surfaces used to say otherwise.
@@ -1833,6 +1840,7 @@ export const CREDIT_PURCHASE_LIVE: boolean = false;
  * roblox.com/report-appeals for this asset id — not from the dashboard banner, which names no rule.
  *
  * It is `null` from 2026-09-22 because the listing is distributed again (STUDIO_PLUGIN_STORE_LIVE).
+ * It is set again from 2026-09-23 — version 2 was removed for the same rule (see below).
  * The decision it used to carry is kept here as history, not as state: 'Misusing Roblox Systems',
  * decided 2026-09-19T21:26+03:00, appeal 3JYeMPD1jVZIh8wYJV521ooFrHw sent 2026-09-19T22:04+03:00.
  */
@@ -1848,7 +1856,16 @@ export interface StudioPluginStoreRefusal {
   readonly appealedAt: string | null;
 }
 
-export const STUDIO_PLUGIN_STORE_REFUSAL: StudioPluginStoreRefusal | null = null;
+// 2026-09-23: version 2 (the 01:23 overwrite) was removed — roblox.com/report-appeals, violation
+// 3JhaXRZAqvmSw5iIhea5QZgT67R. Per the owner (docs/autonomy/DECISIONS.md D-STORE-2) the appeal is sent
+// with the product's final plugin build, before appealableUntil.
+export const STUDIO_PLUGIN_STORE_REFUSAL: StudioPluginStoreRefusal | null = {
+  reason: 'Misusing Roblox Systems',
+  decidedAt: '2026-09-23T01:23+03:00',
+  appealableUntil: '2026-10-23T01:23+03:00',
+  appealId: null,
+  appealedAt: null,
+};
 
 /**
  * Where an "install" affordance may actually send someone TODAY.
