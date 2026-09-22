@@ -3,8 +3,14 @@
 You are almost certainly an agent. This file is the map. Read it before the first edit, together
 with `.claude/skills/rbxai-working-rules/SKILL.md`, which is the **method** and loads automatically.
 
-Every number below was measured on 2026-09-16, not remembered. Where a number will drift, the
-command that produced it is beside it.
+> **START HERE — `docs/autonomy/`.** The most important artifact in this repository is the owner's
+> autonomy research (`docs/autonomy/RESEARCH-REPORT.md`) and the mission it ends in
+> (`docs/autonomy/OWNER_PROMPT.md`). Read `docs/autonomy/README.md`, `MISSION.md`, `CURRENT_STATE.md`
+> and `NEXT_ACTION.md` before anything below. The hard safety envelope is enforced by
+> `.claude/hooks/autonomy_guard.py`; `touch .autonomy/STOP` freezes every mutating tool.
+
+Every number below was measured, not remembered — on 2026-09-16 unless the line gives another date.
+Where a number will drift, the command that produced it is beside it.
 
 ---
 
@@ -59,7 +65,16 @@ apps/
   web/        the app SPA — React + Vite. Routes in src/routes, the workspace in
               src/components/ws (chat, thinking card, composer, panels).
   site/       the marketing site + docs — Astro, static, served from D1.
-  plugin/     the Roblox Studio plugin — 8 Luau files. Ships as release/apple-plugin.rbxm.
+  apple-plugin/  THE Roblox Studio plugin — the one customers install. 6 Luau files in src/.
+              `node apps/apple-plugin/scripts/build.mjs` builds release/apple-studio.rbxm and
+              verifies the built bytes; CI's `plugin` job runs the same command. Published on the
+              Creator Store as "Apple Studio", asset 107230158271368. The store build (5 scripts,
+              uploaded 2026-09-19) is 1.0.0 by inference: every committed Bridge.luau declares 1.0.0,
+              but nobody has read the published bytes. The source is 1.1.0 and unpublished. Runbook:
+              docs/PLUGIN-RELEASE.md.
+  plugin/     LEGACY — test fixtures only. Not built, not shipped, not installable; ~16 test files
+              elsewhere read its source, which is the only reason it exists (apps/plugin/README.md).
+              Its release/apple-plugin.rbxm is stale, and its asset 132128477945417 was removed.
   benchmark/  model comparison harness.
 
 packages/
@@ -78,8 +93,26 @@ scripts/      the checkers. check-copy, check-deadends, check-backlog, check-cre
 tests/        repository-level tests that cross app boundaries.
 ```
 
-**Test counts** (`ls <dir>/*.mjs | wc -l`): worker 199 · web 136 · evals 96 · root 28 · site 8.
-Current totals: **worker 3,184 · web 1,799 · evals 1,328 · site 34**, all green.
+**Test files** (`ls <dir>/*.test.mjs | wc -l`, 2026-09-22): worker 266 · web 175 · evals 55 · root 39 ·
+site 46 · apple-plugin 12.
+
+**Totals, measured 2026-09-22 between 21:19 and 21:33 IDT** by running each suite (`node --test` in
+apps/worker and apps/web; `node src/selftest.mjs && node --test src/*.test.mjs tasks-visual/*.test.mjs`
+in packages/evals; `node --test tests/*.test.mjs` in apps/site, apps/apple-plugin and at the root;
+`node tests/run.mjs` + `node tests/mutation-check.mjs` in apps/plugin). Other agents were editing the
+tree at the time, so these are a snapshot of that quarter-hour, not a baseline:
+
+| suite | tests | failing then, and whose |
+|---|---:|---|
+| worker | 3,706 | 0 |
+| web | 2,072 | 2 — `ai-elements-reasoning`, `contrast` (chat-UI migration in flight) |
+| evals | 1,416 | 0 |
+| site | 224 | 24 — the site redesign in flight, the store-flag flip (`onboarding-recovery`), and `build-from-source-target`, whose CI premise changed when CI moved to apps/apple-plugin |
+| root `tests/` | 526 | 2 — `known-issues` (the flag flipped, the issue is not yet resolved), `check-deadends` |
+| apple-plugin | 41 | 0 |
+| legacy plugin fixtures | 250 Luau specs, 56/56 mutations caught | 0 |
+
+Re-run them rather than quoting this table.
 
 ---
 
@@ -111,20 +144,28 @@ skeletons forever. **If a query 400s on a missing column, look here first.**
 
 ## 5. The data
 
-**`packages/corpus/data/library/` (429 M)** — the asset library. `index.json` is the manifest:
+**The asset library is GONE, removed by the owner on 2026-09-20.** The harvest directory under
+packages/corpus/data/ held 510,014 rows across Kenney, OpenGameArt, cgbookcase, game-icons, iconify and a
+Creator Store scrape; the directory, the `asset_library` D1 table's code, the ingest and import
+pipelines, the `search_asset_library` tool and the `/api/assets/*` routes are all deleted. The
+reason was not size: every upload that pipeline could make was an Image or a Decal, Roblox refuses
+to archive either, so each one was permanent in somebody's real account, and the catalogue held rows
+named after other companies' properties under one blanket licence claim. The last measurement —
+`docs/evidence/library-requires-ownership-2026-09-19.md` — put the number insertable by the product
+at **0 of 511,208**.
 
-```
-total 510,014 items a user can insert · 215 packs, counted separately as containers
-carries a robloxAssetId: 81,648 of 511,208 D1 rows · 429,560 pending_ingest · 0 audio ingested
-INSERTABLE BY THE PRODUCT TODAY: 0. Measured in Studio — InsertService:LoadAsset answers
-"User is not authorized" for library assets and OK for an asset the account owns. Free on the
-Creator Store means free to TAKE, not free to LOAD. See docs/evidence/library-requires-ownership-2026-09-19.md
-creator_store 102,780 rows for 81,311 distinct assets · kenney 215 packs / 56,718 files
-iconify · game_icons · opengameart · cgbookcase · creator_store_audio 13,023 (reachable by nobody)
-never harvested: sketchfab   (poly_haven and ambientcg ARE live in D1)
-superseded: "474,745" added packs to files; "115,803 usable" counted duplicates up to 10x and
-13,023 audio rows ingested nowhere. See scripts/library-canonicalise.mjs.
-```
+What replaced it, and what to reach for instead: `find_verified_asset` (the Roblox Creator Store,
+live, verified per id), `insert_asset` for an id the model found there or the user pasted,
+`generate_image` for a texture or icon drawn into the customer's own account, `generate_model` for
+geometry in their own Studio session, and `create_instances` for everything parts can build.
+
+**`packages/corpus/data/kit-pins.json`** — the one piece of the catalogue's evidence that outlived
+it: what Roblox's details endpoint said about the fifty audio ids the genre kits pin, on a recorded
+date. `apps/worker/tests/genre-kit-pins.test.mjs` checks every pin against it. It moved up one level
+when `data/library/` was deleted. Regenerate with `node scripts/probe-kit-pins.mjs`.
+
+The 511,208 rows are still sitting in the live `CORPUS` D1 database until somebody drops them. The
+product no longer reads or writes them.
 
 Every row carries its licence. That provenance is the product's argument — no rival shows it —
 so **never add an asset without one**.

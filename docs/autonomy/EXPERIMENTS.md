@@ -16,3 +16,71 @@
 
 - **Measured:** identical failure: calls 71 s/4559, 6 s/6, 91 s/6500 (ceiling), then failed 272 ms;
   `error`, 27 Credits refunded, opsFailed 1. **Deterministic, not a flake.**
+
+## E-3 — Same prompt after D-RUN-1, real paired Studio on the 1.1.0 build (2026-09-22 22:09 IDT)
+
+- **Setup:** worker c0dd945f (buildSha ad10090-dirty) with the truncation fix (gateway drops incomplete
+  tool calls on a provider `length`; history never holds unparseable arguments); Studio instance on the
+  disposable copy Apple-Acceptance-2026-09-22.rbxl with Apple Studio 1.1.0 (sha256 7e8d692e…), paired,
+  edits allowed; Agent, Autonomous OFF.
+- **Result (measured):** the run SURVIVED the output ceiling this time (no truncation death). The first two
+  create_instances calls were refused by the plugin ("className must be a string", "path must be a string")
+  because the tool's item schema was an untyped object; the third succeeded. The lamp EXISTS in the real
+  place — stepped plinth, dark post with brass collars, lit glazed lantern, finial (Studio screenshot 22:16
+  IDT; trace: propose_plan, viewport_info, create_instances ✗✗✓, add_effect, focus_camera, render_view,
+  audit_build ✓). Then a duplicate-guard loop: 53 paid steps of identical refused re-reads after the build,
+  nothing executed or traced; I pressed Stop at 441 s (my stop, not a product failure). 68 steps, 205
+  Credits. → fixed: create_instances item schema + unambiguous alias reader; duplicate streak bounded at 3;
+  a project change forgets remembered read signatures. Deployed as worker 9418fbd5.
+
+## E-4 — Customer mission 1, coin game, real paired Studio (2026-09-22 22:23 IDT)
+
+- **Setup:** worker 9418fbd5 (E-3 fixes live); same disposable place and project; Agent, Autonomous OFF.
+- **Prompt:** "Make a simple coin collecting game on this baseplate: put 8 spinning gold coins around the
+  map. When a player touches a coin it disappears and their Coins on the leaderboard goes up by 1. Each
+  coin comes back after 10 seconds."
+- **Measured:** run 76b59615, outcome `done`, 52 steps, 381 s, 195 Credits, 35 ops applied / 5 failed.
+  Plan of 6 steps; 5 done (tree, checkpoint, 8 coins, CoinService script, leaderboard); the planned
+  playtest (`run_and_check`) NEVER RAN. The first create_instances was refused ('path must start with
+  "game"') — caused by MY E-3 default parent `Workspace`. After the build the run tried to create the
+  coins again ("already contains a child named Coin1") and then spent ~40 paid steps re-reading tree and
+  scripts until the duplicate guard ended it ("Apple stopped because it kept repeating a step…").
+- **Root cause (measured):** message metadata `context: {usedChars 21868, maxChars 24000, dropped:
+  {groups 55, chars 97566}}` — the 24k transcript budget minus a ~15k system prompt kept only the last two
+  turn groups; the agent held no record of its own finished work. Same mechanism explains the E-3 tail.
+- **Fixed:** the trim now writes every dropped group as one line into a single pinned, bounded (3k) run
+  record ("already happened … do not repeat them"); top-level parents are rooted at `game`, checked against
+  the plugin resolver's own source. Tests: transcript-ledger (5), studio-props (+1, 3 corrected); falsified
+  4 breaks red. Worker 3753/0, evals 1354/0 (2 eval guards restated: the request is the non-ledger user
+  message). Deployed worker 30d97330.
+
+## E-5 — Mission 2 follow-up "playtest it and fix what's broken" (2026-09-22 22:38 IDT)
+
+- **Setup:** worker 30d97330 (run record + game-rooted parents live); plugin 1.1.0 (7e8d692e…).
+- **Measured:** run fad0ab1b, `done`, 37 steps, 243 s, 123 Credits, 48 groups dropped. It rewrote CoinService
+  twice, ran run_and_check (✓, but detail `stopped:false`), then wandered 25 read steps until the repeat
+  guard. Studio log: "[CoinService] managing 0 coins"; "playsolo" still at 19:48 (six minutes later).
+- **Root cause (docs + measured):** RunService:IsRunMode() is false for a Run() simulation, so the plugin
+  refused its own stop; IsEdit() and StudioTestService.EditModeActive also stay TRUE under Run() — the
+  stuck run 604bfd32 had two edit_script writes admitted as "edit mode" while its own simulation ran.
+- **Fixed:** plugin remembers the Run it started; edit mode = IsEdit ∧ ¬IsRunning in both definitions;
+  mock models the documented semantics; refusals carry the state they saw. Worker: a refused stop fails
+  run_and_check and leads its result. Plugin 43/43, worker 3755/0; 6 breaks falsified red.
+
+## E-6 — Playtest-only request on the fixed plugin (2026-09-22 23:03 IDT)
+
+- **Setup:** plugin build 56ec11d3… installed locally, Studio restarted and re-paired; worker 79704b0f.
+- **Measured:** run 5316f52b, `done`, 12 steps, 115 s, 35 Credits, 0 failed ops. Two playtests, each
+  started and STOPPED (run_mode ok). The reply quoted the real log lines. It also created a RemoteEvent
+  although the request said "Do not change anything" → F-022, fixed in worker 863a30f9.
+
+## E-7 — Mission 3 "debug a broken game", read-only then fix (2026-09-22 23:08–23:19 IDT)
+
+- **Read-only diagnosis (run 3bcf3f57, worker 863a30f9):** no writes (F-022 fix held live: only reads and a
+  checkpoint), but no answer either — 32 steps, `incomplete`, 99 Credits refunded, and the reply apologised
+  for "never making the edit you asked for" → reply copy fixed (worker 200134b0).
+- **Fix request (run a95f86fa):** `done`, 54 steps, 167 Credits, 72 groups dropped; both playtests started
+  and stopped. The place still cannot score (F-029), and the run spent ~20 read steps after its check
+  (F-030) → post-verification idle bound, worker 3f353ba2.
+- **Instrument that worked:** saving the disposable place and reading it with lune (`roblox.deserializePlace`)
+  gives the true tree and every script source without trusting any product claim.
