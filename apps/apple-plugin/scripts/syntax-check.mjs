@@ -14,7 +14,8 @@
 // script. Under CI (the CI env var GitHub Actions sets) it exits 1, because the workflow installs
 // the analyzer in the same job and a missing one there means nothing was parsed.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { missingRequires, pluginSources } from './sources.mjs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,7 +40,8 @@ if (!haveAnalyzer()) {
   process.exit(0);
 }
 
-const files = readdirSync(SRC).filter((f) => f.endsWith('.luau')).sort();
+const sources = pluginSources(SRC);
+const files = sources.map((entry) => entry.rel);
 if (files.length === 0) {
   console.error(`apple-plugin syntax-check: no .luau files under ${SRC} — nothing was checked`);
   process.exit(1);
@@ -48,9 +50,7 @@ if (files.length === 0) {
 const problems = [];
 for (const f of files) {
   const code = readFileSync(join(SRC, f), 'utf8').replace(/--\[(=*)\[[\s\S]*?\]\1\]/g, '').replace(/--[^\n]*/g, '');
-  for (const dependency of code.matchAll(/require\(script(?:\.Parent)?\.([A-Za-z_]\w*)\)/g)) {
-    if (!existsSync(join(SRC, `${dependency[1]}.luau`))) problems.push(`${f}: requires ${dependency[1]}, which is not bundled`);
-  }
+  for (const dependency of missingRequires(SRC, f, code)) problems.push(`${f}: requires ${dependency}, which is not bundled`);
   let output = '';
   try {
     output = execFileSync('luau-analyze', [join(SRC, f)], { encoding: 'utf8', stdio: 'pipe' });

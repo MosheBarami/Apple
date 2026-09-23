@@ -51,6 +51,10 @@ REQUIRED = {
     "__ApplePlayCheckHarnessV1": "the marker the play check's harness removal is counted by; without it removal cannot be verified",
     "GenerateModelAsync": "Roblox-native text-to-3D; the legacy artifact shipped with zero of these",
     "golem.studio-ops.v1": "the capability report schema the worker parses; without it every tool is offered blind",
+    # src/ops/ is a directory, and a build that dropped it would still pass every test (the tests
+    # embed the family sources). Its installer is in Commands; its loader is the ops ModuleScript.
+    "OP_FAMILIES.install": "the one installer that merges src/ops families into the allowlists",
+    "Apple Studio op families": "the ops ModuleScript (src/ops/init.luau) that loads every family is in the build",
     "/api/studio/poll": "the long-poll the plugin is",
     # INSERTION IS ALLOWED ONLY WITH ITS GUARD.
     #

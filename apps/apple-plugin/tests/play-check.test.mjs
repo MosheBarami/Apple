@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PRELUDE } from './studio-mock.mjs';
+import { PRELUDE, opFamiliesChunk } from './studio-mock.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const COMMANDS = readFileSync(join(HERE, '..', 'src', 'Commands.luau'), 'utf8');
@@ -38,6 +38,7 @@ local function fresh() runService.edit = true; runService.running = false; runSe
 local function newCommands(extra)
     local opts = extra or {}
     opts.game = game
+    if opts.opFamilies == nil then opts.opFamilies = OP_FAMILIES_UNDER_TEST end
     if opts.playCheck == nil then opts.playCheck = PlayCheck end
     if opts.playCheck == false then opts.playCheck = nil end
     return Commands.new(opts)
@@ -245,7 +246,7 @@ function available() {
 export function runPlayCheckSuite({ playCheck = PLAY_CHECK, commands = COMMANDS } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'apple-play-check-'));
   const file = join(dir, 'play-check.gen.luau');
-  writeFileSync(file, `${PRELUDE}\nlocal PlayCheck = (function()\n${playCheck}\nend)()\nlocal Commands = (function()\n${commands}\nend)()\n${SPEC}`);
+  writeFileSync(file, `${PRELUDE}\n${opFamiliesChunk()}local PlayCheck = (function()\n${playCheck}\nend)()\nlocal Commands = (function()\n${commands}\nend)()\n${SPEC}`);
   try { return { status: 0, output: execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' }) }; }
   catch (error) { return { status: error.status ?? 1, output: String(error.stdout ?? '') + String(error.stderr ?? '') }; }
 }

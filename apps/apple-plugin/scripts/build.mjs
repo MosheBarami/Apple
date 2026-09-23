@@ -1,20 +1,20 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { missingRequires, pluginSources } from './sources.mjs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-for (const name of readdirSync(join(root, 'src')).filter((name) => name.endsWith('.luau'))) {
-  const source = readFileSync(join(root, 'src', name), 'utf8')
+const SOURCES = pluginSources(join(root, 'src'));
+for (const { abs, rel: name } of SOURCES) {
+  const source = readFileSync(abs, 'utf8')
     .replace(/--\[\[[\s\S]*?\]\]/g, '').replace(/--[^\n]*/g, '');
-  for (const dependency of source.matchAll(/require\(script(?:\.Parent)?\.([A-Za-z_]\w*)\)/g)) {
-    if (!existsSync(join(root, 'src', `${dependency[1]}.luau`))) {
-      throw new Error(`${name}: missing bundled module ${dependency[1]}`);
-    }
+  for (const dependency of missingRequires(join(root, 'src'), name, source)) {
+    throw new Error(`${name}: missing bundled module ${dependency}`);
   }
   let output;
   try {
-    output = execFileSync('luau-analyze', [join(root, 'src', name)], { encoding: 'utf8', stdio: 'pipe' });
+    output = execFileSync('luau-analyze', [abs], { encoding: 'utf8', stdio: 'pipe' });
   } catch (error) {
     if (error.code === 'ENOENT') throw error;
     output = `${error.stdout ?? ''}${error.stderr ?? ''}`;
@@ -30,9 +30,9 @@ for (const name of readdirSync(join(root, 'src')).filter((name) => name.endsWith
 // -O0), and on 2026-09-22 a build that parsed cleanly refused to load in Studio with "Out of local
 // registers ... exceeded limit 200". Compile every source the way Studio does before building bytes
 // nobody could load.
-for (const name of readdirSync(join(root, 'src')).filter((name) => name.endsWith('.luau'))) {
+for (const { abs, rel: name } of SOURCES) {
   try {
-    execFileSync('luau-compile', ['--null', '-O0', join(root, 'src', name)], { encoding: 'utf8', stdio: 'pipe' });
+    execFileSync('luau-compile', ['--null', '-O0', abs], { encoding: 'utf8', stdio: 'pipe' });
   } catch (error) {
     if (error.code === 'ENOENT') throw new Error('luau-compile is not on PATH: the Studio (-O0) compile gate cannot run, so nothing is built');
     throw new Error(`${name} does not compile the way Studio compiles it (-O0):\n${error.stdout ?? ''}${error.stderr ?? ''}`);

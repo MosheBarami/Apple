@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PRELUDE } from './studio-mock.mjs';
+import { PRELUDE, opFamiliesChunk } from './studio-mock.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SOURCE_PATH = join(HERE, '..', 'src', 'Commands.luau');
@@ -26,6 +26,7 @@ const SPEC = String.raw`
 local function newCommands(options)
     local opts = options or {}
     opts.game = game
+    if opts.opFamilies == nil then opts.opFamilies = OP_FAMILIES_UNDER_TEST end
     return Commands.new(opts)
 end
 local function run(c, id, op, allow, stillCurrent) return c:execute(id, op, allow == true, stillCurrent) end
@@ -1196,7 +1197,7 @@ function available() {
 function runLuau(source = SOURCE) {
   const dir = mkdtempSync(join(tmpdir(), 'apple-commands-'));
   const file = join(dir, 'commands.gen.luau');
-  writeFileSync(file, PRELUDE + '\nlocal Commands = (function()\n' + source + '\nend)()\n' + SPEC);
+  writeFileSync(file, PRELUDE + '\n' + opFamiliesChunk() + 'local Commands = (function()\n' + source + '\nend)()\n' + SPEC);
   try { return { status: 0, output: execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' }) }; }
   catch (error) { return { status: error.status ?? 1, output: String(error.stdout ?? '') + String(error.stderr ?? '') }; }
 }

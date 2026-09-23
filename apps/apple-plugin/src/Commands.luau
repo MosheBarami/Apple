@@ -4612,6 +4612,95 @@ local CONSENT_ONLY = {
 	play_check = true,
 }
 
+--[[ OP FAMILIES LIVE IN src/ops/, AND THIS IS THE ONE PLACE THEY JOIN THE ALLOWLISTS.
+
+	This file is at the edge of Luau's 200-local limit when Studio compiles it at -O0 (it refused to
+	load once, 2026-09-22), so a new family of operations cannot be added here as more top-level
+	`local function`s. Each family is a ModuleScript under src/ops/ that returns
+	`{ name, build = function(api) return spec end }`; `spec` names its handlers and the classes and
+	properties it needs. They are merged HERE into the same HANDLERS / MUTATING / CONSENT_ONLY /
+	CREATE_CLASSES / PROPERTY_ALLOW / READ_PROPERTIES tables everything else consults, so there is
+	still exactly one allowlist authority, and the capability report is still derived from it.
+
+	A family may ADD, never override or widen past the fixed rules: an op name that already exists,
+	a script class, an engine-owned class, or a Content property (or Source/Parent/ClassName) makes
+	the whole family refuse to install, and the reason is kept for the capability report. A family
+	that is not installed reports none of its operations, which the worker reads as "not offered"
+	because every family op is opt-in there (OPT_IN_OPERATIONS).
+]]
+local OP_FAMILIES = { installed = false, errors = {}, names = {} }
+
+function OP_FAMILIES.install(list: any, api: any)
+	OP_FAMILIES.installed = true
+	OP_FAMILIES.errors = {}
+	if type(list) ~= "table" then
+		table.insert(OP_FAMILIES.errors, "the op families are not bundled in this build")
+		return
+	end
+	OP_FAMILIES.source = list
+	local forbiddenProperty = { Source = true, Parent = true, ClassName = true }
+	for _, family in list do
+		local label = if type(family) == "table" and type(family.name) == "string" then family.name else "unnamed"
+		local built, spec = false, nil
+		if type(family) == "table" and type(family.build) == "function" then
+			built, spec = pcall(family.build, api)
+		end
+		local refusal = nil
+		if not built or type(spec) ~= "table" or type(spec.handlers) ~= "table" then
+			refusal = "did not build: " .. tostring(spec)
+		else
+			for name, handler in spec.handlers do
+				if type(name) ~= "string" or string.match(name, "^[a-z][a-z0-9_]*$") == nil or type(handler) ~= "function" then refusal = "has a malformed handler entry"
+				elseif HANDLERS[name] or DEFERRED_MUTATING[name] or UNSUPPORTED[name] or name == "restore" or name == "undo_waypoint" then refusal = "would override operation " .. name end
+			end
+			for className in spec.createClasses or {} do
+				if SCRIPT_CLASSES[className] or PRESERVE_CLASSES[className] or SNAPSHOT_PRESERVE_CLASSES[className] or PROTECTED_CONTAINER_CLASSES[className] then refusal = "would allow creating " .. tostring(className) end
+			end
+			for _, allow in { spec.propertyAllow or {}, spec.readProperties or {} } do
+				for property in allow do
+					if CONTENT_PROPERTY[property] or forbiddenProperty[property] then refusal = "would allow property " .. tostring(property) end
+				end
+			end
+		end
+		if refusal then
+			table.insert(OP_FAMILIES.errors, ("op family %s %s"):format(label, refusal))
+		else
+			for name, handler in spec.handlers do HANDLERS[name] = handler end
+			for name in spec.mutating or {} do if spec.handlers[name] then MUTATING[name] = true end end
+			for name in spec.consentOnly or {} do if spec.handlers[name] then CONSENT_ONLY[name] = true end end
+			for className in spec.createClasses or {} do CREATE_CLASSES[className] = true; RESTORE_CLASSES[className] = true end
+			for className in spec.deleteOnlyClasses or {} do DELETE_ONLY_CLASSES[className] = true end
+			for property in spec.propertyAllow or {} do PROPERTY_ALLOW[property] = true end
+			for property in spec.readProperties or {} do READ_PROPERTIES[property] = true end
+			for enumName in spec.enumAllow or {} do ENUM_ALLOW[enumName] = true end
+			table.insert(OP_FAMILIES.names, label)
+		end
+	end
+end
+
+-- What a family may use. Read-only by convention: the tables are the live allowlists, so a family
+-- reads them to validate, and only `install` above writes to them.
+function OP_FAMILIES.api(): any
+	return {
+		resolvePath = resolvePath, writableTarget = writableTarget, parsePath = parsePath, fullPath = fullPath,
+		serviceFrom = serviceFrom, decodeValue = decodeValue, encodeValue = encodeValue, validateProps = validateProps,
+		validateAttributes = validateAttributes, setProperties = setProperties, makeInstance = makeInstance,
+		destroyInstance = destroyInstance, parentInstance = parentInstance, safeText = safeText, safeName = safeName,
+		safeCount = safeCount, finite = finite, integer = integer, arrayShape = arrayShape, classNameOf = classNameOf,
+		nameOf = nameOf, childrenOf = childrenOf, isA = isA, isScript = isScript, descendantsOf = descendantsOf,
+		isDescendantOf = isDescendantOf, captureProperties = captureProperties, captureAttributes = captureAttributes,
+		boundsOf = boundsOf, uniqueName = uniqueName, reserveUniqueName = reserveUniqueName, destinationRefusal = destinationRefusal,
+		structuralRefusal = structuralRefusal, resolveTargets = resolveTargets, enumValue = enumValue, safeClone = safeClone,
+		partsUnder = partsUnder, parentOf = parentOf, validateCreateItems = validateCreateItems, buildSpec = buildSpec,
+		handlers = HANDLERS, createClasses = CREATE_CLASSES, propertyAllow = PROPERTY_ALLOW, readProperties = READ_PROPERTIES,
+		contentProperty = CONTENT_PROPERTY, scriptClasses = SCRIPT_CLASSES, readServices = READ_SERVICES, writeServices = WRITE_SERVICES,
+		limits = {
+			items = MAX_ITEMS, createNodes = MAX_CREATE_NODES, terrainVoxels = MAX_TERRAIN_VOXELS, terrainResolution = TERRAIN_RESOLUTION,
+			translation = MAX_TRANSLATION, path = MAX_PATH, name = MAX_NAME, text = MAX_TEXT, props = MAX_PROPS, affectedParts = MAX_AFFECTED_PARTS,
+		},
+	}
+end
+
 function Commands.new(options: any?): any
 	local opts = options or {}
 	local gameRef = opts.game
@@ -4626,6 +4715,16 @@ function Commands.new(options: any?): any
 		activeRecording = nil,
 		activeGeneration = nil,
 	}
+	-- Once per plugin load: the tables are module-level, so a second engine sees the same merge.
+	if not OP_FAMILIES.installed or (opts.opFamilies ~= nil and OP_FAMILIES.source == nil) then
+		local families = opts.opFamilies
+		if families == nil then
+			local loaded, value = pcall(function() return require(script.Parent.ops) end)
+			families = if loaded then value else nil
+		end
+		OP_FAMILIES.install(families, OP_FAMILIES.api())
+	end
+	self.opFamilyErrors = OP_FAMILIES.errors
 		self.generation, self.generationError = loadGenerationAdapter(opts, gameRef)
 		self.render, self.renderError = loadRenderAdapter(opts)
 		self.playCheck, self.playCheckError = loadPlayCheckAdapter(opts, gameRef)

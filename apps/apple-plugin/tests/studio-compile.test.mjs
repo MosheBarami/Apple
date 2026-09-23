@@ -12,7 +12,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { pluginSources } from '../scripts/sources.mjs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -31,8 +32,11 @@ if (!HAVE && process.env.CI) {
 }
 
 test('every shipped plugin source compiles at -O0, as Studio compiles it', { skip: !HAVE && !process.env.CI ? 'luau-compile not installed on this machine' : false }, () => {
-  const files = readdirSync(SRC).filter((f) => f.endsWith('.luau')).sort();
+  // Every bundled source, src/ops/ included: the families exist because Commands.luau is at the
+  // local limit, so they are exactly the files a top-level-only scan would have let through.
+  const files = pluginSources(SRC).map((entry) => entry.rel);
   assert.ok(files.length >= 6, `expected the shipped sources, found ${files.length} — this test would check nothing`);
+  assert.ok(files.some((f) => f.startsWith('ops/')), 'no src/ops source was found — the op families would ship uncompiled');
   for (const f of files) {
     const r = compile(join(SRC, f));
     assert.equal(r.status, 0, `${f} does not compile the way Studio compiles it:\n${r.stdout}${r.stderr}`);

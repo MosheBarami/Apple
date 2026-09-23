@@ -1,10 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { opFamilySources } from './studio-mock.mjs';
 
 const shared = readFileSync(new URL('../../../packages/shared/src/index.ts', import.meta.url), 'utf8');
 const commands = readFileSync(new URL('../src/Commands.luau', import.meta.url), 'utf8');
 const generation = readFileSync(new URL('../src/GenerationService.luau', import.meta.url), 'utf8');
+
+// The op families (src/ops/*.luau) join HANDLERS at load, through OP_FAMILIES.install. Their
+// handler names are read from each family's `handlers = { ... }` table, the same way HANDLERS is.
+function familyHandlerKeys() {
+  const keys = new Set();
+  for (const [name, source] of Object.entries(opFamilySources())) {
+    const match = /\n\t\thandlers = \{([\s\S]*?)\n\t\t\}/.exec(source);
+    assert.ok(match, `${name} has no handlers table`);
+    for (const entry of match[1].matchAll(/^\s*([a-z_]+)\s*=/gm)) keys.add(entry[1]);
+  }
+  return keys;
+}
 
 // The table may be declared in place (`local X = {`) or assigned to a local declared earlier
 // (`X = {` inside the handler region's `do` block, which keeps Commands.luau under Luau's
@@ -27,7 +40,7 @@ test('every live StudioOp has a handler, named refusal, deferred path, restore p
   const handlers = tableKeys('HANDLERS');
   const refused = tableKeys('UNSUPPORTED');
   const deferred = tableKeys('DEFERRED_MUTATING');
-  const accounted = new Set([...handlers, ...refused, ...deferred, 'restore', 'undo_waypoint']);
+  const accounted = new Set([...handlers, ...familyHandlerKeys(), ...refused, ...deferred, 'restore', 'undo_waypoint']);
 
   assert.deepEqual(
     [...liveOps].filter((op) => !accounted.has(op)),

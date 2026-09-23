@@ -10,6 +10,8 @@
  * a hard error — so if the command engine ever evaluates generated source, every suite built on
  * this turns red. Where it cannot model engine behaviour it omits the method rather than faking it.
  */
+import { readdirSync, readFileSync } from 'node:fs';
+
 export const PRELUDE = String.raw`--!nocheck
 local function typeofMock(v)
     if type(v) == "table" and rawget(v, "__type") then return v.__type end
@@ -363,3 +365,19 @@ local function eq(a, b, why) if a ~= b then error((why or "value") .. ": expecte
 local function has(text, needle) if not string.find(tostring(text), needle, 1, true) then error("expected " .. tostring(text) .. " to contain " .. needle, 2) end end
 local function report() print(("commands: %d passed%s"):format(passed, if failed > 0 then ", " .. failed .. " FAILED" else "")); for _, e in ipairs(failures) do print(e) end; if failed > 0 then error("command specs failed") end end
 `;
+
+/**
+ * The op families under src/ops/, as Luau that evaluates to the list `src/ops/init.luau` returns in
+ * Studio: `local OP_FAMILIES_UNDER_TEST = { <each family module> }`. Each module is embedded
+ * byte-for-byte and evaluated in place — nothing is loaded through `require`, which the prelude
+ * keeps a hard error. A suite passes the list as `Commands.new({ opFamilies = ... })`.
+ */
+export const OP_FAMILY_FILES = readdirSync(new URL('../src/ops/', import.meta.url))
+  .filter((name) => name.endsWith('.luau') && name !== 'init.luau').sort();
+export function opFamilySources() {
+  return Object.fromEntries(OP_FAMILY_FILES.map((name) => [name, readFileSync(new URL(`../src/ops/${name}`, import.meta.url), 'utf8')]));
+}
+export function opFamiliesChunk() {
+  const bodies = Object.values(opFamilySources()).map((src) => `(function()\n${src}\nend)()`);
+  return `local OP_FAMILIES_UNDER_TEST = {\n${bodies.join(',\n')}\n}\n`;
+}

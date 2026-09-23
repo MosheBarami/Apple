@@ -30,7 +30,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { PRELUDE } from './studio-mock.mjs';
+import { OP_FAMILY_FILES, PRELUDE, opFamiliesChunk } from './studio-mock.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..', '..', 'worker');
@@ -73,7 +73,7 @@ local function stubGeneration() return { generate = function() return { ok = fal
 
 -- The shipped PlayCheck module is bundled beside Commands, exactly as rojo places it; the mock's
 -- StudioTestService exposes ExecutePlayModeAsync as current Studio documents it.
-emit("BUNDLED", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), generation = stubGeneration(), playCheck = PlayCheck })))
+emit("BUNDLED", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), generation = stubGeneration(), playCheck = PlayCheck, opFamilies = OP_FAMILIES_UNDER_TEST })))
 emit("NO_RENDERER", Commands.capabilities(Commands.new({ game = game, generation = stubGeneration(), playCheck = PlayCheck })))
 emit("NO_PLAY_CHECK", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), generation = stubGeneration() })))
 `;
@@ -81,7 +81,7 @@ emit("NO_PLAY_CHECK", Commands.capabilities(Commands.new({ game = game, render =
 function pluginReports() {
   const dir = mkdtempSync(join(tmpdir(), 'apple-capability-contract-'));
   const file = join(dir, 'capabilities.gen.luau');
-  writeFileSync(file, `${PRELUDE}\nlocal PlayCheck = (function()\n${PLAY_CHECK}\nend)()\nlocal Commands = (function()\n${COMMANDS}\nend)()\n${EMIT}`);
+  writeFileSync(file, `${PRELUDE}\n${opFamiliesChunk()}local PlayCheck = (function()\n${PLAY_CHECK}\nend)()\nlocal Commands = (function()\n${COMMANDS}\nend)()\n${EMIT}`);
   const out = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
   const read = (label) => {
     const line = out.split('\n').find((l) => l.startsWith(`${label} `));
@@ -321,7 +321,7 @@ test('the shipped plugin refuses the pattern the removed Creator Store asset con
     /\bCreateAssetAsync\s*\(/,
     /rbxassetid:\/\//,
   ];
-  for (const name of ['Commands.luau', 'Bridge.luau', 'GenerationService.luau', 'init.server.luau', 'Render.luau', 'PlayCheck.luau']) {
+  for (const name of ['Commands.luau', 'Bridge.luau', 'GenerationService.luau', 'init.server.luau', 'Render.luau', 'PlayCheck.luau', 'ops/init.luau', ...OP_FAMILY_FILES.map((f) => `ops/${f}`)]) {
     const raw = readFileSync(join(HERE, '..', 'src', name), 'utf8');
     const src = raw.replace(/--\[\[[\s\S]*?\]\]/g, ' ').replace(/--[^\n]*/g, ' ');
     assert.ok(src.length > 200, `${name}: comment stripping ate the source — this test would check nothing`);
