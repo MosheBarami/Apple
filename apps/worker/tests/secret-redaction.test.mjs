@@ -71,6 +71,7 @@ for (const [kind, secret] of [
   ['openai_key', 'sk-proj-abcdefghijklmnopqrstuvwxyz0123456789'],
   ['anthropic_key', 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123'],
   ['github_token', GITHUB],
+  ['hf_token', 'hf_' + 'Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr'],
   ['aws_access_key_id', AWS],
   ['google_api_key', GOOGLE],
   ['slack_token', SLACK],

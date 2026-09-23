@@ -46,6 +46,7 @@ export const DISCLOSURE_KINDS = [
   'anthropic_key',
   'openai_key',
   'github_token',
+  'hf_token',
   'aws_access_key_id',
   'google_api_key',
   'slack_token',
@@ -194,6 +195,13 @@ export const DISCLOSURE_RULES: readonly DisclosureRule[] = [
     confidence: 'high',
     pattern: /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g,
     why: 'a GitHub access token',
+  },
+  {
+    kind: 'hf_token',
+    cls: 'secret',
+    confidence: 'high',
+    pattern: /\bhf_[A-Za-z0-9]{30,}\b/g,
+    why: 'a Hugging Face access token',
   },
   {
     kind: 'aws_access_key_id',
