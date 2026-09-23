@@ -300,6 +300,8 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   inspect_visually: 'Renders the scene and has a vision model critique it. Paid inference on every call.',
   check_composition: 'Runs a model over the blockout. Paid inference on every call.',
   generate_image: 'Paid image generation on every call, billed to the project owner rather than to whoever is driving the client.',
+  generate_ui_image_hf: 'Paid image generation on a provider capped at a few calls a day for the whole deployment; an MCP client could spend the day\'s allowance for every user.',
+  generate_model_external: 'Uploads a generated Model into the project owner\'s own Roblox account with their connected key, then inserts it into the place.',
   ocr_image: 'Paid vision inference over an image the caller supplies, billed to the project owner.',
   design_sound: 'Paid inference: it reasons over a scene to decide what that scene should sound like.',
   generate_sound: 'Paid audio generation, and the result is uploaded to Roblox under the product\'s own creator account.',

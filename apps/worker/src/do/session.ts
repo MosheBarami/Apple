@@ -5207,6 +5207,9 @@ export class SessionDO extends DurableObject<Env> {
       discoveredAssetIds: new Set(agent?.discoveredAssetIds ?? []),
       env: this.env,
       projectId: this.boundProjectId ?? undefined,
+      // The run's user is the project owner (startRun records `bind.ownerId`); a tool that acts in
+      // the user's own account (generate_model_external) needs it. No run, no user.
+      userId: agent?.userId,
       assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
       // "can you build right now" is no. The connection half now comes from the same rule the

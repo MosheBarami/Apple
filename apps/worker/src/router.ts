@@ -131,7 +131,11 @@ const PLAN_TOOLS = [
  */
 const KNOWLEDGE_TOOLS = ['get_verified_module', 'get_ui_construction'];
 const OFFLINE_TOOLS = ['search_docs', 'search_creation_skills', 'read_creation_skill', 'get_genre_references', ...KNOWLEDGE_TOOLS, 'remember'];
-const OFFLINE_IMAGE_TOOLS = [...OFFLINE_TOOLS, 'generate_image'];
+// `generate_ui_image_hf` is generate_image's declared fallback (a second model, same art direction
+// and refusals, same project-scoped storage, never the place), so it passes the same rule. Without
+// it here the fallback the description points to would be unreachable in exactly the mode that
+// offers generate_image. `generate_model_external` is NOT here: it inserts, so it needs Studio.
+const OFFLINE_IMAGE_TOOLS = [...OFFLINE_TOOLS, 'generate_image', 'generate_ui_image_hf'];
 
 export function toolsForMode(mode: ProductMode, studioConnected: boolean, allNames: string[]): Set<string> {
   if (!studioConnected) {

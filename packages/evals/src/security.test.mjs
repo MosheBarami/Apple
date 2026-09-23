@@ -961,6 +961,8 @@ const TOOL_ARGS = {
   generate_model: { prompt: 'a lamp post', intent: 'lamp post' },
   inspect_model: { path: 'game.Workspace.Lamp', intent: 'lamp post' },
   generate_image: { subject: 'a gold coin', target: 'ui_icon', palette: ['currency_soft'] },
+  generate_ui_image_hf: { subject: 'a gold coin', target: 'ui_icon' },
+  generate_model_external: { prompt: 'a wooden barrel' },
   search_docs: { query: 'BasePart' },
   remember: { fact: 'the user prefers stone' },
   create_checkpoint: { label: 'manual' },

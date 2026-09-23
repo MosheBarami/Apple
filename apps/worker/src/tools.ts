@@ -65,7 +65,9 @@ import {
   type ThumbnailKind,
 } from './thumbnail';
 import { semanticCheck, semanticLine } from './semantic';
-import { generateImage, storeImage, imagePanel, imagePathFor, type ImageRequest, type PaletteRole } from './imagegen';
+import { generateImage, storeImage, imagePanel, imagePathFor, composeArtDirection, type ImageRequest, type PaletteRole } from './imagegen';
+import { generateImage as hfGenerateImage, isHfConfigured, HF_IMAGE_MODEL } from './hf';
+import { generateModelForRoblox } from './hf-3d-pipeline';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
@@ -119,6 +121,13 @@ export interface AgentCtx {
    * permissive one by omission.
    */
   assetSources?: AssetSourcePolicy;
+  /**
+   * The user the run acts for: the project owner (`bind.ownerId`, recorded on the run as `userId`).
+   * `generate_model_external` creates its Model in this user's own Roblox account with their
+   * connected key. Optional because the eval harness and the admin route have no run and no user;
+   * a tool that needs one refuses without it.
+   */
+  userId?: string;
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
@@ -4344,6 +4353,87 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (!hits.length) return { results: [], searched: outcome.kind !== 'empty-index' && outcome.kind !== 'unavailable', note: outcome.detail, conclusive: outcome.certain };
       const n = new Map(citations.map((cit) => [cit.url, cit.n]));
       return hits.map((h) => ({ citation: n.get(h.url) ?? null, title: h.title, url: h.url, excerpt: h.text.slice(0, 900) }));
+    },
+  },
+  generate_ui_image_hf: {
+    def: {
+      name: 'generate_ui_image_hf',
+      description:
+        'Second image model (Z-Image-Turbo on Hugging Face). Same job and same rules as generate_image — an original UI icon, decal, texture or thumbnail, no words, no brands — use it when generate_image failed or the user asks for another take. Capped at a few calls a day across all users; a daily_cap error means use generate_image instead.',
+      parameters: S(
+        {
+          subject: { type: 'string', description: 'What to draw, as a plain noun phrase. No words to render, no brand names.' },
+          target: { type: 'string', enum: ['ui_icon', 'decal', 'texture', 'thumbnail', 'concept'] },
+        },
+        ['subject', 'target'],
+      ),
+    },
+    studio: false,
+    run: async (ctx, a) => {
+      const req: ImageRequest = {
+        subject: String(a.subject ?? ''),
+        target: (a.target as ImageRequest['target']) ?? 'ui_icon',
+      };
+      // Same art direction and refusals as generate_image, decided before any paid call.
+      const direction = composeArtDirection(req);
+      if ('refused' in direction) return { error: direction.message, reason: direction.reason, offending: direction.offending };
+      if (!isHfConfigured(ctx.env)) return { error: 'The Hugging Face image model is not configured here. Use generate_image.' };
+      if (!ctx.projectId) return { error: 'generate_ui_image_hf needs a project to store the result against' };
+      if (!await generatedImageCapacity(ctx.env, ctx.projectId)) return { error: 'Image storage is full or this project was deleted. No image generation was started.' };
+
+      const res = await hfGenerateImage(ctx.env, direction.prompt);
+      if (!res.ok) return { error: res.message, reason: res.reason };
+
+      let imageId: string;
+      try { imageId = await saveGeneratedImage(ctx.env, bytesToBase64(res.png), ctx.projectId); }
+      catch { return { error: 'The image was generated but could not be saved. Do not claim successful delivery or retry automatically.' }; }
+      ctx.uiDetail = imagePanel(ctx.projectId, imageId, req.subject, { width: res.width, height: res.height });
+      return {
+        imageId,
+        width: res.width,
+        height: res.height,
+        model: HF_IMAGE_MODEL.hubId,
+        appearanceVerified: false,
+        verificationNote: 'Image delivered, but subject/color fidelity has not been visually verified. Do not claim it matches the request merely because generation succeeded.',
+      };
+    },
+  },
+  generate_model_external: {
+    def: {
+      name: 'generate_model_external',
+      description:
+        "Generate a 3D mesh on Hugging Face (Hunyuan3D-2), upload it as a Model into the USER'S OWN Roblox account with their connected Open Cloud key, and insert it. Untextured (grey) mesh, 10k triangles, ~1 minute. Use only when generate_model (Roblox GenerationService) cannot produce the shape. Capped at a few calls a day; needs the user's Roblox key with asset:write.",
+      parameters: S(
+        {
+          prompt: { type: 'string', description: 'One object, as a plain noun phrase. No brands, no text.' },
+          displayName: { type: 'string', description: 'asset name in the user\'s inventory, max 50 chars' },
+          parent: { type: 'string' },
+        },
+        ['prompt'],
+      ),
+    },
+    studio: true,
+    // insertAndProveClean's ops, as on insert_asset.
+    studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances'],
+    // A still-processing upload is a success that changed nothing in the place.
+    mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'pending' in r),
+    run: async (ctx, a) => {
+      if (!isHfConfigured(ctx.env)) return { error: 'The Hugging Face 3D generator is not configured here. Use generate_model.' };
+      if (!ctx.userId) return { error: 'generate_model_external needs a signed-in user: the model is created in their own Roblox account.' };
+      const made = await generateModelForRoblox(ctx.env, ctx.userId, {
+        prompt: String(a.prompt ?? ''),
+        displayName: a.displayName ? String(a.displayName) : undefined,
+      });
+      if (!made.ok) return { error: made.message, stage: made.stage, reason: made.reason };
+      // Roblox still processing: the Model exists in the user's account but has no id yet.
+      if (made.assetId === null) {
+        return {
+          pending: true,
+          operationId: made.operationId,
+          note: 'Uploaded to the user\'s Roblox account; Roblox is still processing it. Nothing was inserted yet — do not claim it is in the place.',
+        };
+      }
+      return insertAndProveClean(ctx, made.assetId, String(a.parent ?? 'game.Workspace'));
     },
   },
   remember: {

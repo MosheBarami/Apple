@@ -110,7 +110,10 @@ test('without Studio, builders retain image generation but Plan stays read-only'
   const KNOWLEDGE = ['get_verified_module', 'get_ui_construction'];
   const expected = {
     plan: ['get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
-    agent: ['generate_image', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
+    // generate_ui_image_hf: reviewed 2026-09-23 as generate_image's fallback — studio:false,
+    // writes only to project-scoped image storage, refuses without HF_TOKEN or a project before
+    // any call, and is capped per day in hf.ts (hf-tools-wiring.test.mjs).
+    agent: ['generate_image', 'generate_ui_image_hf', 'get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
   };
   for (const [mode, names] of Object.entries(expected)) {
     const allowed = toolsForMode(mode, false, ALL);

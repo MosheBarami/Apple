@@ -922,7 +922,9 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'set_visible':
     case 'insert_asset':
     case 'generate_model':
+    case 'generate_model_external':
     case 'generate_image':
+    case 'generate_ui_image_hf':
     // generate_sound and speak_line, beside generate_image and for the same reason and with the
     // same imprecision, named here rather than left to be discovered: all three PRODUCE an asset
     // and none of them puts it in the place, so "building" overstates what the user's project just
@@ -2832,6 +2834,18 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'generate_model',
     label: 'Generate 3D models',
     why: 'Calls a 3D model service. The slowest and most expensive thing Apple can do.',
+    group: 'spends',
+  },
+  {
+    name: 'generate_model_external',
+    label: 'Generate 3D models on Hugging Face',
+    why: 'Calls an outside 3D model service, uploads the result into your own Roblox account with your connected key, then inserts it.',
+    group: 'spends',
+  },
+  {
+    name: 'generate_ui_image_hf',
+    label: 'Generate images with the second model',
+    why: 'Calls an outside image model on Hugging Face when the usual one fails. Limited to a few a day.',
     group: 'spends',
   },
   {

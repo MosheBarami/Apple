@@ -132,6 +132,8 @@ export const TOOL = {
 
   // C11
   generate_model: { kind: 'generating', label: 'Generated a model' },
+  generate_model_external: { kind: 'generating', label: 'Generated a model on Hugging Face' },
+  generate_ui_image_hf: { kind: 'generating', label: 'Generated an image with the second model' },
   generate_image: { kind: 'generating', label: 'Generated an image' },
   // The two audio tools that MAKE something. Both produce a file the user can hear and download,
   // and neither puts anything in their Roblox place — so the label says what was made rather than
