@@ -23,7 +23,7 @@ import type {
 import { recordsRevision } from '@golem/shared';
 import type { PhaseMark } from '../components/ws/activity-model';
 import type { RestoreStatus } from './restore-status';
-import { fetchCheckpoints, fetchMessages } from './api';
+import { fetchCheckpoints, fetchMessages, stopRun } from './api';
 // One definition of what a client-minted id looks like, and one place that reconciles it with the
 // server's. Two would drift, and the drift is invisible until an Edit truncates from nowhere.
 import { adoptUserMessageId, localId } from './message-identity';
@@ -1203,9 +1203,17 @@ export function useProjectSocket(
     [sendRaw],
   );
 
-  const stop = useCallback(() => {
-    sendRaw({ type: 'stop' });
-  }, [sendRaw]);
+  // Both paths, every time: the socket is instant when it is heard, the HTTP call is the one that
+  // can answer. Resolves false only when NEITHER reached the worker, so the button can say so.
+  const stop = useCallback(async (): Promise<boolean> => {
+    const sent = sendRaw({ type: 'stop' });
+    try {
+      await stopRun(projectId);
+      return true;
+    } catch {
+      return sent;
+    }
+  }, [sendRaw, projectId]);
 
   const createCheckpoint = useCallback(
     (label: string, description?: string) => {

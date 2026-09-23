@@ -2668,8 +2668,8 @@ export class SessionDO extends DurableObject<Env> {
       });
     }
 
-    // Admin-only: the Stop button, for a run started without a browser (the benchmark harness)
-    // or one whose browser cannot reach the socket. The same signal the socket writes.
+    // The Stop button over HTTP: reached by the admin route (a run started without a browser) and by
+    // POST /api/projects/:id/stop (a browser whose socket is not heard). The same signal the socket writes.
     if (path === '/agent-stop' && req.method === 'POST') {
       const agent = await this.ctx.storage.get<AgentState>('agent');
       if (!agent || agent.status === 'idle') return json({ ok: true, stopping: false, status: 'idle' });

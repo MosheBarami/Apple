@@ -864,6 +864,15 @@ export const fetchStudioDiagnostics = (projectId: string): Promise<StudioDiagnos
     ? Promise.resolve(mockDiagnostics())
     : request<StudioDiagnosticsResponse>(`/api/projects/${encodeURIComponent(projectId)}/studio/diagnostics`);
 
+/**
+ * Stop the run over HTTP. The Stop button sends this beside the socket frame: a socket can look open
+ * and still not be delivered a frame, and a Stop that silently goes nowhere leaves the build running.
+ */
+export const stopRun = (projectId: string): Promise<{ ok: boolean; stopping: boolean; status: string }> =>
+  MOCK_MODE
+    ? Promise.resolve({ ok: true, stopping: true, status: 'running' })
+    : request(`/api/projects/${encodeURIComponent(projectId)}/stop`, { method: 'POST' });
+
 /** Revoke the plugin's token. The next poll is answered 401 and Studio clears its own session. */
 export const disconnectStudio = (projectId: string): Promise<{ ok: boolean; revoked: boolean }> =>
   request(`/api/projects/${encodeURIComponent(projectId)}/studio/disconnect`, { method: 'POST' });

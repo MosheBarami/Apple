@@ -665,7 +665,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
       enabled: running && chatAllowed,
       why: !running ? 'Nothing is running' : (chatWhy ?? 'You cannot stop this run'),
       run: () => {
-        if (chatAllowed) stop();
+        if (chatAllowed) void stop();
       },
     },
     {
@@ -1289,7 +1289,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               toast(chatWhy ?? 'You cannot stop this run.', 'error');
               return;
             }
-            stop();
+            void stop().then((ok) => {
+              if (!ok) toast('Stop did not reach Apple. Check your connection and press Stop again.', 'error');
+            });
           }}
           draftKey={projectId}
           // The upload target. Same value as the draft key here and a different KIND of thing —

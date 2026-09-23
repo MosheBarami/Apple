@@ -130,3 +130,35 @@ test('clearing a signal that is not set is harmless', async () => {
   await clearStop(storage);
   assert.equal(await stopRequested(storage), false);
 });
+
+/*
+ * THE STOP THAT WENT NOWHERE (round 6, 2026-09-23). The browser's socket opened, said hello and was
+ * then never delivered a frame, so Stop was pressed and the build kept going. The button now also
+ * sends an HTTP stop, which answers. Held here as properties of the source, comments stripped.
+ */
+import { readFileSync } from 'node:fs';
+
+const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const read = (rel) => strip(readFileSync(new URL(rel, import.meta.url), 'utf8'));
+
+test('the HTTP stop route is gated like the socket stop and writes the same signal', () => {
+  const src = read('../src/index.ts');
+  const at = src.indexOf("app.post('/api/projects/:id/stop'");
+  assert.ok(at >= 0, 'POST /api/projects/:id/stop is missing');
+  const body = src.slice(at, src.indexOf('\n});', at));
+  // A viewer may not end a build: the socket refuses without 'chat', and so must this.
+  assert.match(body, /withOwnedProject\(\s*c\s*,[^,]+,\s*'chat'/);
+  assert.match(body, /if \(!ctx\) return/);
+  assert.match(body, /https:\/\/do\/agent-stop/);
+});
+
+test('the web Stop button sends the HTTP stop and says so when neither path reached the worker', () => {
+  const hook = read('../../web/src/lib/use-project-socket.ts');
+  const at = hook.indexOf('const stop = useCallback');
+  assert.ok(at >= 0);
+  const stop = hook.slice(at, hook.indexOf('}, [', at));
+  assert.match(stop, /sendRaw\(\{ type: 'stop' \}\)/);
+  assert.match(stop, /stopRun\(/);
+  const ws = read('../../web/src/routes/workspace.tsx');
+  assert.match(ws, /stop\(\)\.then\(\(ok\) => \{\s*if \(!ok\) toast\(/);
+});

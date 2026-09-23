@@ -32,7 +32,9 @@ test('stop is reachable from the workspace, not only from the plugin', () => {
   const composer = WS.slice(WS.indexOf('<Composer'), WS.indexOf('/>', WS.indexOf('<Composer')) + 2);
   assert.match(composer, /onStop=\{\(\) => \{/);
   assert.match(composer, /if \(!chatAllowed\)/, 'a viewer/commenter must not send a stop frame the server will refuse');
-  assert.match(composer, /\bstop\(\);/, 'the allowed path no longer reaches the socket stop action');
+  // The property, not the spelling: the allowed path calls stop(). It used to be a bare `stop();`; it
+  // now also reads stop()'s answer so a stop that reached nothing is said aloud (round 6).
+  assert.match(composer, /\bstop\(\)[;.]/, 'the allowed path no longer reaches the stop action');
 });
 
 // ------------------------------------------------------------------- retry ---

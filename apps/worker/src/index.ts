@@ -1979,6 +1979,18 @@ app.post('/api/projects/:id/restore', async (c) => {
 });
 
 /**
+ * THE STOP BUTTON OVER HTTP. The socket is the fast path, but a socket that opened and is then
+ * never delivered a frame (seen in round 6: the run kept building after Stop) looks healthy from
+ * the browser, so the button also sends this. Same signal, same rule as the socket's 'stop': the
+ * caller must be allowed to chat on the project, so a viewer cannot end someone's build.
+ */
+app.post('/api/projects/:id/stop', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'chat');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  return ctx.stub.fetch('https://do/agent-stop', { method: 'POST' });
+});
+
+/**
  * DELETE A PROJECT'S DATA — all of it, not the part that happened to be in one Durable Object.
  *
  * This route used to be one line: purge the SessionDO and return whatever it said. That deleted the
