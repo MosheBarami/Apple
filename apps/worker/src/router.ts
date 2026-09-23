@@ -93,6 +93,7 @@ const PLAN_TOOLS = [
   'web_fetch',
   'browse_page',
   'web_search',
+  'docs_lookup',
   'screenshot_page',
   'ocr_image',
   'github_lookup',

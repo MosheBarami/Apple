@@ -4,7 +4,7 @@
  * webtools.ts can be perfect and still ship nothing: a tool the agent loop cannot reach is a
  * library. So this file asserts the seams rather than the behaviour —
  *
- *   the registry: all ten are in `TOOLS`, none of them claims to need Studio;
+ *   the registry: all eleven are in `TOOLS`, none of them claims to need Studio;
  *   the LITERAL registry: each one is a visible `  name: {` entry, because three existing guards
  *     (tool-vocabulary, tools-for-mode, phase-coverage) find the tool table by PARSING that
  *     literal. A `...spread` would be invisible to all three, and ten tools would silently acquire
@@ -46,8 +46,8 @@ const WEB = W.WEB_TOOL_NAMES;
 
 /* ------------------------------------------------------------- the registry --- */
 
-test('the fixture is the real thing: ten web tools, and a registry that has other tools in it too', () => {
-  assert.equal(WEB.length, 10);
+test('the fixture is the real thing: eleven web tools, and a registry that has other tools in it too', () => {
+  assert.equal(WEB.length, 11);
   assert.ok(T.toolNames().length > 30, 'the worker registry did not load');
 });
 
@@ -200,7 +200,7 @@ test('an unrecognised mode still gets no more than Plan does, web tools included
   }
 });
 
-test('Agent gets all ten', () => {
+test('Agent gets all eleven', () => {
   const all = R.toolsForMode('agent', true, T.toolNames());
   for (const name of WEB) assert.ok(all.has(name), `Agent is missing ${name}`);
 });

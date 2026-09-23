@@ -4539,6 +4539,11 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: false,
     run: (ctx, a) => runWebTool('web_search', webCtx(ctx), a),
   },
+  docs_lookup: {
+    def: webToolDef('docs_lookup'),
+    studio: false,
+    run: (ctx, a) => runWebTool('docs_lookup', webCtx(ctx), a),
+  },
   screenshot_page: {
     def: webToolDef('screenshot_page'),
     studio: false,

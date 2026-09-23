@@ -95,7 +95,7 @@ function assertNotAnObservation(result, fields) {
 test('the module loaded and the registry is the real one', () => {
   assert.deepEqual(
     W.WEB_TOOL_NAMES.sort(),
-    ['browse_page', 'git_history', 'github_lookup', 'ocr_image', 'screenshot_page', 'web_fetch', 'web_search', 'workspace_list', 'workspace_read', 'workspace_write'].sort(),
+    ['browse_page', 'docs_lookup', 'git_history', 'github_lookup', 'ocr_image', 'screenshot_page', 'web_fetch', 'web_search', 'workspace_list', 'workspace_read', 'workspace_write'].sort(),
   );
   for (const [name, tool] of Object.entries(W.WEB_TOOLS)) {
     assert.equal(tool.contract.name, name, `${name} disagrees with its own contract name`);
@@ -300,7 +300,10 @@ test('a search endpoint that is not itself allowlisted is a misconfiguration, an
 
 const SEARCH_ENV = { SEARCH_API_URL: 'https://search.example.com/q', WEB_TOOL_ALLOWLIST: 'search.example.com' };
 
-test('a configured search returns rows, and drops the ones the allowlist would not let it read', async () => {
+// D-VISION-1 design 4.3a changed this: an off-allowlist result is now RETURNED, marked
+// `readable: false`, instead of dropped — the model learns the page exists and that it cannot open
+// it. What still holds is that the model can tell the two apart, and that the count is reported.
+test('a configured search returns rows, and marks the ones the allowlist would not let it read', async () => {
   const { impl, calls } = net(
     json({
       results: [
@@ -311,9 +314,13 @@ test('a configured search returns rows, and drops the ones the allowlist would n
   );
   const r = await run('web_search', { query: 'humanoid' }, { fetchImpl: impl, env: SEARCH_ENV });
   assert.equal(r.error, undefined);
-  assert.equal(r.results.length, 1);
+  assert.equal(r.results.length, 2);
   assert.equal(r.results[0].url, 'https://create.roblox.com/docs/humanoid');
-  assert.equal(r.offAllowlist, 1, 'the dropped row was not counted, so the model cannot tell it was dropped');
+  assert.equal(r.results[0].readable, true);
+  assert.equal(r.results[1].url, 'https://evil.example/drive-by');
+  assert.equal(r.results[1].readable, false, 'an off-allowlist row is shown as openable');
+  assert.equal(r.offAllowlist, 1, 'the unreadable row was not counted');
+  assert.equal(r.untrusted, true);
   assert.match(calls[0], /q=humanoid/);
 });
 
@@ -611,7 +618,9 @@ test('a KV row with no size metadata reports "not recorded" rather than a confid
 test('a tool that cannot work here says which binding is missing', () => {
   const none = W.webToolAvailability({});
   assert.equal(none.web_search.ok, false);
-  assert.match(none.web_search.why, /SEARCH_API_URL/);
+  assert.match(none.web_search.why, /SERPER_API_KEY/);
+  assert.equal(none.docs_lookup.ok, false);
+  assert.match(none.docs_lookup.why, /CONTEXT7_API_KEY/);
   assert.equal(none.screenshot_page.ok, false);
   assert.match(none.screenshot_page.why, /SCREENSHOT_API_URL/);
   assert.equal(none.web_fetch.ok, true, 'the tools that need nothing must still be available');

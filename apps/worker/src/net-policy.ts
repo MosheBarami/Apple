@@ -125,7 +125,16 @@ function isIpLiteral(hostname: string): boolean {
   return hostname.startsWith('[');
 }
 
-export function checkUrl(raw: unknown, policy: HostPolicy): UrlVerdict {
+/**
+ * Everything `checkUrl` checks EXCEPT the allowlist: https, no credentials, no IP literal in any
+ * spelling, no local or metadata name, an allowed port.
+ *
+ * It exists for one caller that must not use the allowlist as its filter — `web_search` results
+ * (design D-VISION-1 section 4.3a). A result the agent may SEE is a wider set than a page it may
+ * READ; this decides the first, and `checkUrl` still decides the second. It is never a substitute
+ * for `checkUrl` on a request, because it would accept any public host in the world.
+ */
+export function checkPublicUrl(raw: unknown, policy: Pick<HostPolicy, 'ports' | 'maxUrlLength'> = {}): UrlVerdict {
   if (typeof raw !== 'string' || !raw.trim()) {
     return { ok: false, reason: 'not_a_string', detail: 'no URL was given' };
   }
@@ -153,7 +162,9 @@ export function checkUrl(raw: unknown, policy: HostPolicy): UrlVerdict {
   if (isIpLiteral(host)) {
     return { ok: false, reason: 'ip_literal', detail: `${host} is an IP address; this policy allowlists names` };
   }
-  if (LOCAL_NAMES.includes(host) || LOCAL_SUFFIXES.some((s) => host.endsWith(s)) || !host.includes('.')) {
+  // `metadata.*` is the naming convention of cloud instance-metadata services; no allowlist entry
+  // makes one a public site worth reading.
+  if (LOCAL_NAMES.includes(host) || LOCAL_SUFFIXES.some((s) => host.endsWith(s)) || host.startsWith('metadata.') || !host.includes('.')) {
     return { ok: false, reason: 'local_host', detail: `${host} is not a public name` };
   }
   const allowedPorts = policy.ports && policy.ports.length ? policy.ports : [443];
@@ -161,6 +172,13 @@ export function checkUrl(raw: unknown, policy: HostPolicy): UrlVerdict {
   if (!Number.isInteger(port) || !allowedPorts.includes(port)) {
     return { ok: false, reason: 'port', detail: `port ${url.port || '443'} is not allowed (allowed: ${allowedPorts.join(', ')})` };
   }
+  return { ok: true, url: url.toString(), host };
+}
+
+export function checkUrl(raw: unknown, policy: HostPolicy): UrlVerdict {
+  const verdict = checkPublicUrl(raw, policy);
+  if (!verdict.ok) return verdict;
+  const host = verdict.host;
   const allowed = policy.hosts.some((entry) => {
     const e = entry.toLowerCase();
     if (e.startsWith('.')) return host === e.slice(1) || host.endsWith(e);
@@ -169,7 +187,7 @@ export function checkUrl(raw: unknown, policy: HostPolicy): UrlVerdict {
   if (!allowed) {
     return { ok: false, reason: 'not_allowlisted', detail: `${host} is not on this deployment's allowlist` };
   }
-  return { ok: true, url: url.toString(), host };
+  return verdict;
 }
 
 /* ------------------------------------------------------------------ fetching --- */
@@ -237,6 +255,15 @@ function isAbort(e: unknown): boolean {
   return name === 'AbortError' || name === 'TimeoutError';
 }
 
+const CREDENTIAL_HEADERS = new Set(['authorization', 'proxy-authorization', 'x-api-key', 'cookie']);
+
+function withoutCredentialHeaders(headers: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (!headers) return headers;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) if (!CREDENTIAL_HEADERS.has(k.toLowerCase())) out[k] = v;
+  return out;
+}
+
 /**
  * One request, with the policy applied to every hop.
  *
@@ -252,6 +279,7 @@ export async function guardedFetch(rawUrl: unknown, opts: FetchOptions): Promise
 
   let target = rawUrl;
   const hops: string[] = [];
+  let firstHost = '';
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
     const verdict = checkUrl(target, opts.policy);
     if (!verdict.ok) {
@@ -281,6 +309,7 @@ export async function guardedFetch(rawUrl: unknown, opts: FetchOptions): Promise
       };
     }
     hops.push(verdict.url);
+    if (hop === 0) firstHost = verdict.host;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -288,7 +317,10 @@ export async function guardedFetch(rawUrl: unknown, opts: FetchOptions): Promise
     try {
       res = await doFetch(verdict.url, {
         method: hop === 0 ? (opts.method ?? 'GET') : 'GET',
-        headers: opts.headers,
+        // A credential this worker attached was meant for the host it was attached for. A redirect is
+        // chosen by the far end, so on a hop to any OTHER host the credential headers are dropped —
+        // even an allowlisted host has no business receiving another service's key.
+        headers: verdict.host === firstHost ? opts.headers : withoutCredentialHeaders(opts.headers),
         body: hop === 0 ? opts.body : undefined,
         // MANUAL, always. See the note at the top of this file: following redirects for us would
         // let one allowlisted host hand the request to any host in the world.

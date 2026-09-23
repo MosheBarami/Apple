@@ -874,6 +874,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'web_fetch':
     case 'browse_page':
     case 'web_search':
+    case 'docs_lookup':
     case 'github_lookup':
     case 'git_history':
     case 'ocr_image':

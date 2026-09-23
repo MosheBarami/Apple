@@ -216,6 +216,7 @@ export const TOOL = {
   web_fetch: { kind: 'browsing', label: 'Fetched a page' },
   browse_page: { kind: 'browsing', label: 'Read a web page' },
   web_search: { kind: 'browsing', label: 'Searched the web' },
+  docs_lookup: { kind: 'browsing', label: 'Read the documentation' },
   screenshot_page: { kind: 'browsing', label: 'Captured a page' },
   ocr_image: { kind: 'browsing', label: 'Read the text in an image' },
   github_lookup: { kind: 'browsing', label: 'Looked something up on GitHub' },

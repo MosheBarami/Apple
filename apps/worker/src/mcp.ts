@@ -313,6 +313,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   web_fetch: 'Makes the worker fetch a URL the caller chooses. An MCP client has its own fetch; this one would run from inside the product\'s network.',
   browse_page: 'Same as web_fetch, with page rendering on top, so it costs as well as reaching outward from inside the product\'s network.',
   web_search: 'Outbound search on the caller\'s behalf, billed to the product\'s own search credential.',
+  docs_lookup: 'Outbound documentation lookup spending the product\'s own Context7 key and rate limit; an MCP client already has documentation access of its own.',
   screenshot_page: 'Outbound page rendering on the caller\'s behalf, billed to the product\'s own rendering credential.',
   github_lookup: 'Outbound GitHub reads spending the product\'s token and rate limit; an MCP client already has repository access of its own.',
   git_history: 'Outbound GitHub reads spending the product\'s token and rate limit; an MCP client already has repository access of its own.',

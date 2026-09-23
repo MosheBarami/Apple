@@ -218,6 +218,12 @@ const SECRETS = {
   SEARCH_API_KEY: 'SENTINEL-search-4b19e7c206',
   SCREENSHOT_API_KEY: 'SENTINEL-shots-8a3f2d5e71',
   GITHUB_TOKEN: 'SENTINEL-github-1c6b90af43',
+  // The research providers (D-VISION-1). Serper and Tavily carry the key in a header on a POST,
+  // Context7 in a Bearer header; with these set, `web_search` and `docs_lookup` run their real
+  // provider paths here and A2 watches all three values.
+  SERPER_API_KEY: 'SENTINEL-serper-0d7e3b19a4',
+  TAVILY_API_KEY: 'tvly-SENTINEL-tavily-6c2f81e05b',
+  CONTEXT7_API_KEY: 'ctx7sk-SENTINEL-context7-93a1d4f6c8',
 };
 
 /** Fails naming the variable, never quoting it. */
@@ -787,16 +793,21 @@ function studioCtx(env, overrides = {}) {
     // stub answers the web tools, and `allFetched` keeps meaning what A1 says it means.
     webFetch: async (url) => {
       const isPng = url.includes('shots.golem.test') || url.endsWith('.png');
-      const isJson = url.includes('search.golem.test') || url.includes('api.github.com');
+      const isJson = url.includes('search.golem.test') || url.includes('api.github.com') || url.includes('google.serper.dev');
+      const isText = url.includes('context7.com');
       const body = url.includes('search.golem.test')
         ? JSON.stringify({ results: [{ title: 'A thread', url: 'https://devforum.roblox.com/t/example', snippet: 'a snippet' }] })
+        : url.includes('google.serper.dev')
+          ? JSON.stringify({ organic: [{ title: 'A thread', link: 'https://devforum.roblox.com/t/example', snippet: 'a snippet' }] })
+        : isText
+          ? 'Humanoid.WalkSpeed: the speed at which the Humanoid walks, in studs per second.'
         : url.includes('api.github.com')
           ? JSON.stringify({ full_name: 'Roblox/creator-docs', description: 'the docs', default_branch: 'main', tree: [], files: [] })
           : '<html><head><title>A page</title></head><body><p>Some readable text.</p><a href="/t/other">another thread</a></body></html>';
       const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
       return {
         status: 200,
-        headers: { get: (h) => (h.toLowerCase() === 'content-type' ? (isPng ? 'image/png' : isJson ? 'application/json' : 'text/html') : null) },
+        headers: { get: (h) => (h.toLowerCase() === 'content-type' ? (isPng ? 'image/png' : isJson ? 'application/json' : isText ? 'text/plain' : 'text/html') : null) },
         text: async () => body,
         arrayBuffer: async () => (isPng ? png.buffer : new TextEncoder().encode(body).buffer),
       };
@@ -969,12 +980,13 @@ const TOOL_ARGS = {
   run_spec: { cases: [{ name: 'a placed part is anchored', code: 'assert(true)' }] },
   install_module: { module: 'profile_store' },
 
-  // The ten web-facing tools. Every URL here is on the default host allowlist and none of them is
+  // The eleven web-facing tools. Every URL here is on the default host allowlist and none of them is
   // a PROVIDER_HOST, so A1's "no provider endpoint was contacted" keeps its meaning; the requests
   // themselves are answered by the injected `webFetch` above and never reach a socket.
   web_fetch: { url: 'https://devforum.roblox.com/t/example' },
   browse_page: { url: 'https://devforum.roblox.com/t/example', extract: 'links' },
   web_search: { query: 'humanoid state' },
+  docs_lookup: { query: 'humanoid walkspeed' },
   screenshot_page: { url: 'https://devforum.roblox.com/t/example' },
   ocr_image: { imageUrl: 'https://devforum.roblox.com/uploads/sign.png' },
   github_lookup: { repo: 'Roblox/creator-docs', resource: 'repo' },
