@@ -16,7 +16,9 @@ function roblox(r) {
   if (isFail(r)) return failCard(r.reason, { level: 'warn', title: 'בדיקת החנות של Roblox לא זמינה' });
   const ctl = arr(r?.controls); const ctlOk = ctl.some((c) => ok2xx(c.httpStatus));
   const ours = r?.httpStatus;
+  const rf = r?.refusal;
   const [state, head, meaning] = ok2xx(ours) ? ['ok', 'הפלאגין מופיע בחנות', 'אפשר למצוא ולהתקין את הפלאגין ב-Creator Store.']
+    : ctlOk && rf ? ['warn', 'Roblox הסירה את הפלאגין מהחנות (ידוע)', `הסיבה של Roblox: "${rf.reason}" (${String(rf.decidedAt).slice(0, 10)}). האתר כבר לא מציג קישור התקנה שלא עובד. אפשר לערער עד ${String(rf.appealableUntil).slice(0, 10)}${rf.appealId ? ' — ערעור נשלח.' : ' — ערעור עוד לא נשלח.'}`]
     : ctlOk ? ['bad', 'הפלאגין עדיין לא מופיע בחנות', 'הבדיקה עצמה עובדת (נכס הביקורת כן נמצא), אז הבעיה היא שהפלאגין שלנו לא מפורסם או ממתין לאישור של Roblox.']
       : ctl.length ? ['warn', 'אי אפשר לדעת כרגע', 'גם נכסי הביקורת לא ענו, כלומר כנראה יש תקלה זמנית אצל Roblox ולא אצלנו.'] : ['off', 'אין נתון', 'השרת לא שלח תוצאה.'];
   return html`<article class="card mc">

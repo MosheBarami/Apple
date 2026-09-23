@@ -57,6 +57,16 @@
       "value_sha256": "1a4fa2b28975a84ce3b8b28d8d12b9c763d0dcb140a81f8227e4c81306486d4b"
     },
     {
+      "path": "apps/worker/tests/byok-openrouter.test.mjs",
+      "pattern": "OpenAI key",
+      "value_sha256": "50fb1ab493d059c646783f6d085ef85e2d6d83baf7c973647d092e1871b99fbe"
+    },
+    {
+      "path": "apps/worker/tests/byok-session-run.test.mjs",
+      "pattern": "OpenAI key",
+      "value_sha256": "2598134dc6ec15b44a63c4428111e8bdba8f5d319f3e5b2a32c5312f0825a4f2"
+    },
+    {
       "path": "apps/worker/tests/creator-routes-live.test.mjs",
       "pattern": "Assigned secret literal",
       "value_sha256": "34c704cfb49a6465874eae319a3d99d599b47f600b01fd0516ccee38b98cfecb"
@@ -65,6 +75,11 @@
       "path": "apps/worker/tests/credential-expiry.test.mjs",
       "pattern": "Assigned secret literal",
       "value_sha256": "dd16498cf316797fe499edc40cc7525c8b41f6facb6fb2dee592d82256314573"
+    },
+    {
+      "path": "apps/worker/tests/hf.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "6e13d2f10dea59253c8c231c6854cc0ad20415d6cb20152697ccdef09f80322f"
     },
     {
       "path": "apps/worker/tests/membership-access-scheduled-live.test.mjs",
@@ -85,6 +100,11 @@
       "path": "apps/worker/tests/memory.test.mjs",
       "pattern": "JWT",
       "value_sha256": "3202d96069c0d15abbdd1d270519e946d722b567f083eb8e1ab4f47d7b4e775f"
+    },
+    {
+      "path": "apps/worker/tests/plugin-capability-session.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "a91516de1677ca1ed4669ef021d562920eb1570a437d4e43ee19a6b3271bcd77"
     },
     {
       "path": "apps/worker/tests/roblox-integration.test.mjs",
@@ -165,6 +185,11 @@
       "path": "docs/GO-LIVE.md",
       "pattern": "Slack token",
       "value_sha256": "9fb28bb8e51420ccd832c43840319f26625fabde26e8765cfd0472d169fe8bbc"
+    },
+    {
+      "path": "packages/langflow/sync.test.mjs",
+      "pattern": "Assigned secret literal",
+      "value_sha256": "428460bee30712d165053ec1929e3758300f32a530c22981ffae01d52fcdaa42"
     }
   ]
 }
