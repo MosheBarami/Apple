@@ -90,5 +90,13 @@ const G = {
   arrow: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   key: '<circle cx="8" cy="14" r="4"/><path d="m11 11 8.5-8.5M16.5 5.5 19 8M14 8l2 2"/>',
   cmd: '<path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3Z"/>',
+  commits: '<circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5M12 15.5V21"/><circle cx="12" cy="3.5" r=".6"/><circle cx="12" cy="20.5" r=".6"/>',
+  models: '<path d="M12 3.5 19.5 7.8v8.4L12 20.5l-7.5-4.3V7.8Z"/><path d="M4.5 7.8 12 12l7.5-4.2M12 12v8.5"/>',
+  palette: '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 1.9-.9 1.6-2-.4-1.4.4-2.5 1.9-2.5h1.7a3.3 3.3 0 0 0 3.3-3.3C20.5 7.3 16.7 3.5 12 3.5Z"/><circle cx="7.8" cy="11" r="1"/><circle cx="10.5" cy="7.3" r="1"/><circle cx="15" cy="7.8" r="1"/>',
+  camera: '<path d="M4.5 8h3l1.6-2.5h5.8L16.5 8h3a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.5"/>',
+  health: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.2 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10Z"/><path d="M7 12.5h2.5l1.3-2.5 2 4.5 1.3-2H17"/>',
+  library: '<rect x="4" y="4" width="4" height="16" rx="1"/><rect x="10" y="4" width="4" height="16" rx="1"/><path d="m16.2 5.2 3.8-1 3 15.5-3.8 1Z" transform="translate(-2.5 0)"/>',
+  coins: '<ellipse cx="9" cy="7" rx="5.5" ry="2.5"/><path d="M3.5 7v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7M3.5 11v4c0 1.4 2.5 2.5 5.5 2.5 1 0 2-.1 2.8-.4"/><circle cx="16.5" cy="15.5" r="4.5"/><path d="M16.5 13.5v4"/>',
+  briefcase: '<rect x="3.5" y="7" width="17" height="12.5" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3.5 12.5h17M12 11.5v2"/>',
 };
 export const icon = (name, size = 16) => raw(`<svg class="ic" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${G[name] || ''}</svg>`);

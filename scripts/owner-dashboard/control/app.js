@@ -43,11 +43,12 @@ const PAGES = [
 ];
 const GROUPS = [
   ['מרכז', ['hq', 'overview', 'explorer', 'repos']],
-  ['ריפו וידע', []],
+  ['ריפו וידע', ['commits', 'models', 'design-history', 'studio-shots', 'repo-health']],
   ['מוצר ותשתית', ['apple', 'cloudflare', 'supabase', 'vercel', 'clerk', 'github']],
   ['AI ומודלים', ['hf', 'groq', 'langflow']],
   ['תקלות, קהילה ומיילים', ['sentry', 'discord', 'resend', 'roblox']],
   ['מעבדה', ['tests']],
+  ['עסק וספריות', ['business', 'costs', 'library']],
   ['חיבורים', ['connect', 'status']],
 ];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));

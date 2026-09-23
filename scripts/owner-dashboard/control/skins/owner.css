@@ -1,0 +1,89 @@
+/* The owner's pages (הספריות, עלויות, עסק): the base skin (always loaded as link#skin-base) plus a few
+   pieces of their own. Loaded through library.css / costs.css / business.css (the shell loads
+   skins/<page id>.css). */
+
+.ow-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.ow-tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px; color: var(--muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; transition: color var(--t-fast) var(--ease-out), border-color var(--t-base) var(--ease-out); }
+.ow-tab:hover { color: var(--ink); }
+.ow-tab.on { color: var(--ink); border-bottom-color: var(--accent); }
+.ow-tab small { color: var(--faint); font-variant-numeric: tabular-nums; }
+.ow-panel { display: grid; gap: 16px; animation: ow-in var(--t-slow) var(--ease-out) both; }
+@keyframes ow-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .ow-panel, .ow-card { animation: none !important; } }
+
+.ow-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.ow-bar .search { flex: 1 1 240px; }
+.ow-count { color: var(--faint); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ow-pager { display: flex; gap: 8px; align-items: center; justify-content: center; }
+
+/* card grids (UI pairs, models, VFX) */
+.ow-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.ow-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; display: flex; flex-direction: column; min-width: 0;
+  animation: ow-in var(--t-slow) var(--ease-out) both; animation-delay: calc(min(var(--n, 0), 20) * 18ms); transition: border-color var(--t-fast), transform var(--t-base) var(--ease-out); }
+.ow-card:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+.ow-img { position: relative; aspect-ratio: 4 / 3; display: grid; place-items: center; background: repeating-conic-gradient(#d4d6dc 0 25%, #eceef2 0 50%) 0 0 / 16px 16px; }
+/* light checkerboard: many catalogue images are dark shadows or panels that vanish on the dark surface */
+.ow-img img { max-width: 78%; max-height: 78%; object-fit: contain; image-rendering: auto; }
+.ow-img .ow-ico { position: absolute; inset-inline-start: 10px; bottom: 10px; width: 30px; height: 30px; padding: 4px; border-radius: 8px; background: rgba(0,0,0,.55); }
+.ow-img .ow-none { color: var(--faint); font-size: 12px; }
+.ow-b { padding: 10px 12px 12px; display: grid; gap: 4px; }
+.ow-b b { font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; }
+.ow-b p { color: var(--muted); font-size: 12px; }
+.ow-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.ow-sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--line-strong); vertical-align: middle; }
+
+/* the virtual icon grid */
+.ow-vgrid { position: relative; height: 70vh; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); contain: strict; }
+.ow-vgrid-in { position: relative; }
+.ow-cell { position: absolute; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 4px; padding: 6px; border-radius: 10px; text-align: center; }
+.ow-cell:hover { background: var(--surface-2); }
+.ow-cell img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.ow-cell span { font-size: 10.5px; line-height: 1.3; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; }
+.ow-cell.sk { background: var(--surface-2); opacity: .5; }
+
+/* audio rows */
+.ow-play { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink); display: inline-grid; place-items: center; cursor: pointer; flex: none; }
+.ow-play:hover { border-color: var(--accent); color: var(--accent-ink); }
+.ow-play.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ow-play:disabled { opacity: .35; cursor: default; }
+
+/* tables */
+.ow-t td, .ow-t th { padding: 8px 10px; text-align: start; border-top: 1px solid var(--hairline); vertical-align: middle; }
+.ow-t th { color: var(--faint); font-weight: 500; font-size: 12px; border-top: 0; white-space: nowrap; }
+.ow-t td.n, .ow-t th.n { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ow-t tr { transition: background-color var(--t-fast); }
+.ow-t tbody tr:hover { background: var(--control-fill); }
+
+/* "no data source" cards */
+.ow-nos { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.ow-no { border: 1px dashed var(--line-strong); border-radius: var(--r-md); padding: 14px 16px; display: grid; gap: 6px; background: transparent; }
+.ow-no .chip { justify-self: start; }
+.ow-no b { font-size: 14px; }
+.ow-no p { color: var(--muted); font-size: 13px; }
+.ow-no code { font-size: 12px; }
+
+/* meters, funnel, flags */
+.ow-meter { display: grid; gap: 6px; padding: 12px 0; border-top: 1px solid var(--hairline); }
+.ow-meter:first-of-type { border-top: 0; }
+.ow-meter .row { justify-content: space-between; }
+.ow-meter .meter { width: 100%; height: 8px; }
+.ow-meter.over .meter i { background: var(--warn) !important; }
+.ow-funnel { display: grid; gap: 8px; }
+.ow-fs { display: grid; grid-template-columns: minmax(130px, 200px) 1fr 60px; align-items: center; gap: 12px; }
+.ow-fs .ow-fbar { height: 26px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.ow-fs .ow-fbar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-ink)); border-radius: 6px; transform-origin: right; animation: ow-grow .9s var(--ease-out) both; }
+@keyframes ow-grow { from { transform: scaleX(0); } }
+.ow-fs small { grid-column: 1 / -1; color: var(--faint); font-size: 11.5px; margin-top: -4px; }
+.ow-flags { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.ow-flag { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; display: grid; gap: 4px; }
+.ow-flag b { font-size: 13.5px; }
+.ow-flag p { font-size: 12.5px; color: var(--muted); }
+.ow-flag small { color: var(--faint); font-size: 11px; direction: ltr; text-align: end; }
+.ow-flag.is-bad { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); }
+.ow-flag.is-warn { border-color: color-mix(in srgb, var(--warn) 55%, var(--line)); }
+.ow-flag.is-ok { border-color: color-mix(in srgb, var(--good) 40%, var(--line)); }
+.ow-sev { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.ow-sev.bad { background: var(--bad); } .ow-sev.warn { background: var(--warn); } .ow-sev.ok { background: var(--good); }
+.ow-preset pre { font: 11.5px/1.5 var(--mono); color: var(--ink-2); white-space: pre-wrap; direction: ltr; text-align: left; background: var(--surface-2); border-radius: 8px; padding: 8px 10px; max-height: 180px; overflow: auto; }
+@media (max-width: 900px) { .ow-fs { grid-template-columns: 1fr 50px; } .ow-fs > span:first-child { grid-column: 1 / -1; } }

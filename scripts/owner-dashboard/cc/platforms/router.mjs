@@ -75,6 +75,9 @@ const pulseEvent = async () => { const [p, i] = await Promise.all([pulse(), insi
 // The repo-depth pages: lazy like the platforms above, but the GET hands its query (page, filters,
 // sha, fresh) to the module. id -> exported function of platforms/<id>.mjs.
 const REPO_PAGES = { commits: 'commits', models: 'models', 'design-history': 'designHistory', 'studio-shots': 'studioShots', 'repo-health': 'repoHealth' };
+// The owner's pages (lane O): the libraries (query = tab, filters, page), costs and the owner console.
+// ?fresh=1 drops the module's cached() key first; library caches per file mtime and has none.
+const OWNER_PAGES = { library: 'library', costs: 'costs', business: 'business' };
 
 async function api(req, res, name, query) {
   if (!localHost(req)) return sendJson(res, 403, fail('הבקשה חייבת להגיע מ-localhost'));
@@ -82,6 +85,10 @@ async function api(req, res, name, query) {
   if (name === 'media' && req.method === 'GET') return media(req, res, query);
   try {
     if (req.method === 'GET' && REPO_PAGES[name]) return sendJson(res, 200, await laneB(`platforms/${name}.mjs`, REPO_PAGES[name], query));
+    if (req.method === 'GET' && OWNER_PAGES[name]) {
+      if (query.get('fresh') === '1' && name !== 'library') uncache(name);
+      return sendJson(res, 200, await laneB(`platforms/${name}.mjs`, OWNER_PAGES[name], query));
+    }
     if (req.method === 'GET' && GETS[name]) {
       if (query.get('fresh') === '1' && FRESH[name]) uncache(FRESH[name]);
       return sendJson(res, 200, await GETS[name]());
