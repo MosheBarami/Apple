@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apple · לוח הבקרה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07090f; --bg2: #0b0f1a; --card: #0f1422; --line: #1b2236; --line2: #253052;
+    --text: #e8ecf6; --dim: #8b95ad; --faint: #5a6480;
+    --accent: #5b7cfa; --accent2: #8aa2ff; --glow: rgba(91,124,250,.35);
+    --c-read: #5b7cfa; --c-w5: #8a6cf5; --c-w1: #c26cf5; --c-in: #6cc3f5; --c-out: #f5b86c;
+    --live: #4ade80; --ok: #4ade80; --warn: #f5b86c; --bad: #f87171; --violet: #c26cf5;
+    --r: 16px;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.55 Heebo, system-ui, -apple-system, sans-serif; min-height: 100vh; overflow-x: hidden; }
+  button { font: inherit; color: inherit; }
+  .aurora { position: fixed; inset: -25% -15% auto; height: 85vh; pointer-events: none; z-index: 0; filter: blur(24px);
+    background: radial-gradient(40% 50% at 72% 30%, rgba(91,124,250,.22), transparent 70%),
+                radial-gradient(34% 44% at 22% 8%, rgba(194,108,245,.14), transparent 70%),
+                radial-gradient(30% 40% at 50% 70%, rgba(74,222,128,.05), transparent 70%);
+    animation: drift 26s ease-in-out infinite alternate; }
+  @keyframes drift { to { transform: translate3d(-5%, 4%, 0) scale(1.1); } }
+  .ltr { direction: ltr; unicode-bidi: isolate; }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .dim { color: var(--dim); } .faint { color: var(--faint); }
+  .nm-missing { color: var(--faint); font-size: 13px; font-family: Heebo, sans-serif; font-weight: 400; }
+
+  /* header */
+  header.top { position: sticky; top: 0; z-index: 30; background: rgba(7,9,15,.74); backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1440px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 14px 22px; flex-wrap: wrap;
+    padding: 14px clamp(16px, 4vw, 40px) 10px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 38px; height: 38px; flex: none; filter: drop-shadow(0 0 14px var(--glow)); }
+  .brand h1 { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+  .brand .sub { color: var(--dim); font-size: 13px; }
+  .ticker { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .tk { display: inline-flex; align-items: baseline; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line2);
+    background: rgba(15,20,34,.7); font-size: 12px; color: var(--dim); white-space: nowrap; }
+  .tk b { color: var(--text); font: 600 13px var(--mono); }
+  .tk b.hot { color: var(--bad); } .tk b.warn { color: var(--warn); }
+  .livepill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line2); border-radius: 999px;
+    font-size: 12px; color: var(--dim); background: rgba(15,20,34,.7); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live); animation: pulse 1.8s infinite; }
+  .dot.off { background: var(--bad); animation: none; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.6); } 70% { box-shadow: 0 0 0 9px rgba(74,222,128,0); } 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); } }
+  .tabs { max-width: 1440px; margin: 0 auto; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px clamp(16px, 4vw, 40px) 12px; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn { position: relative; padding: 8px 16px; border-radius: 999px; border: 1px solid transparent; background: none; color: var(--dim);
+    font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap; transition: color .2s, background .2s, border-color .2s, box-shadow .3s; }
+  .tab-btn:hover { color: var(--text); background: rgba(255,255,255,.035); }
+  .tab-btn.on { color: #fff; background: linear-gradient(180deg, rgba(91,124,250,.26), rgba(91,124,250,.08)); border-color: rgba(91,124,250,.5);
+    box-shadow: 0 0 26px -6px var(--glow), inset 0 1px 0 rgba(255,255,255,.08); }
+  .tab-btn .ct { margin-inline-start: 6px; font: 500 11px var(--mono); color: var(--faint); }
+  .tab-btn.on .ct { color: var(--accent2); }
+
+  main { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 22px clamp(16px, 4vw, 40px) 64px; }
+  .tab { display: none; }
+  .tab.on { display: block; animation: fadeUp .45s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* cards */
+  .card { position: relative; background: linear-gradient(180deg, rgba(18,24,42,.8), rgba(11,15,26,.82)); border: 1px solid var(--line);
+    border-radius: var(--r); padding: 18px 20px; min-width: 0; }
+  .card::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+    background: linear-gradient(140deg, rgba(138,162,255,.32), transparent 38%, transparent 68%, rgba(194,108,245,.2));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+  .card h2 { font-size: 14px; font-weight: 600; color: var(--dim); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card h2 .ct { font: 500 12px var(--mono); color: var(--faint); }
+  .g { display: grid; gap: 16px; margin-bottom: 16px; }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g21 { grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .mb { margin-bottom: 16px; }
+  @media (max-width: 1180px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g21 { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 860px) { .g3, .g2 { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 560px) { .g4 { grid-template-columns: minmax(0, 1fr); } }
+
+  /* shimmer while a source is still loading */
+  .sk { display: block; height: 14px; margin: 8px 0; border-radius: 7px; background: linear-gradient(90deg, #121829 25%, #1f2a4a 50%, #121829 75%);
+    background-size: 300% 100%; animation: sk 1.5s linear infinite; }
+  .sk.w60 { width: 60%; } .sk.w80 { width: 80%; } .sk.h40 { height: 40px; } .sk.h120 { height: 120px; }
+  @keyframes sk { from { background-position: 100% 0; } to { background-position: -200% 0; } }
+  .shine { background: linear-gradient(100deg, var(--text) 30%, #ffffff 44%, var(--accent2) 50%, var(--text) 62%); background-size: 260% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 6s ease-in-out infinite; }
+  @keyframes shine { 0% { background-position: 100% 0; } 55%, 100% { background-position: -60% 0; } }
+
+  /* rings */
+  .ringcard { display: flex; align-items: center; gap: 16px; text-align: start; cursor: pointer; transition: transform .25s, border-color .25s, box-shadow .25s; }
+  .ringcard:hover { transform: translateY(-2px); border-color: var(--line2); box-shadow: 0 18px 40px -22px var(--glow); }
+  .ring { position: relative; width: 116px; height: 116px; flex: none; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+  .ring circle { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray 1.5s cubic-bezier(.2,.8,.2,1); }
+  .ring .trk { stroke: #161d31; }
+  .ring .s2 { stroke: rgba(138,162,255,.22); }
+  .ring .s1 { filter: drop-shadow(0 0 5px rgba(138,162,255,.45)); }
+  .ring .c { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+  .ring .c b { display: block; font: 700 26px var(--mono); letter-spacing: -.04em; line-height: 1.1; }
+  .ring .c small { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
+  .rt { min-width: 0; }
+  .rtt { font-weight: 700; font-size: 16px; line-height: 1.3; }
+  .rts { color: var(--dim); font-size: 13px; margin-top: 6px; }
+
+  /* the live "what is happening" column */
+  .now-line { font-size: clamp(19px, 2.1vw, 25px); font-weight: 700; line-height: 1.35; letter-spacing: -.01em; }
+  .pulse { width: 9px; height: 9px; border-radius: 50%; background: var(--live); animation: pulse 1.8s infinite; flex: none; }
+  .agents-now { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 14px; }
+  .feed-list, .scroll { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+  .feed-list { display: flex; flex-direction: column; gap: 2px; max-height: 470px; overflow: auto; margin-inline: -8px; }
+  .fi { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; padding: 8px; border-radius: 10px; }
+  .fi:hover { background: rgba(255,255,255,.025); }
+  .fi.new { animation: flash 1.6s ease; }
+  @keyframes flash { from { background: rgba(91,124,250,.2); } to { background: transparent; } }
+  .fi .t { color: var(--faint); font: 12px var(--mono); padding-top: 2px; }
+  .fi .w { font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+  .fi .a { color: var(--faint); font-size: 12px; margin-top: 1px; }
+  .says .s { padding: 12px 0; border-top: 1px solid var(--line); }
+  .says .s:first-child { border-top: 0; padding-top: 0; }
+  .says .s .t { color: var(--faint); font: 12px var(--mono); margin-bottom: 4px; }
+  .says .s p { color: #cfd6e8; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+
+  .big-next { font-size: 18px; font-weight: 600; line-height: 1.45; }
+  details { margin-top: 10px; }
+  details summary { cursor: pointer; color: var(--accent2); font-size: 13px; list-style: none; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: '▸ '; display: inline-block; transition: transform .2s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  .en { direction: ltr; unicode-bidi: isolate; text-align: left; color: var(--dim); font-size: 13px; line-height: 1.5; margin-top: 8px; }
+  .en ol { padding-left: 18px; } .en li { margin: 4px 0; }
+
+  .blk { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+  .blk:first-child { border-top: 0; padding-top: 0; }
+  .blk .x { flex: 1; min-width: 0; }
+  .blk .x b { font-weight: 600; }
+
+  .kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; font-size: 14px; align-items: center; }
+  .kv span { color: var(--dim); }
+  .kv b { font: 600 14px var(--mono); text-align: end; }
+
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line2);
+    color: var(--dim); white-space: nowrap; line-height: 1.7; }
+  .chip i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+  .st-done { color: var(--ok); border-color: rgba(74,222,128,.35); background: rgba(74,222,128,.07); }
+  .st-partial { color: var(--accent2); border-color: rgba(138,162,255,.38); background: rgba(138,162,255,.07); }
+  .st-progress { color: var(--violet); border-color: rgba(194,108,245,.42); background: rgba(194,108,245,.08); }
+  .st-progress i { animation: pulseV 1.6s infinite; }
+  @keyframes pulseV { 0% { box-shadow: 0 0 0 0 rgba(194,108,245,.7); } 70% { box-shadow: 0 0 0 7px rgba(194,108,245,0); } 100% { box-shadow: none; } }
+  .st-blocked { color: var(--bad); border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.06); }
+  .st-todo { color: var(--faint); }
+  .sev-critical { color: #fb7185; border-color: rgba(251,113,133,.4); background: rgba(251,113,133,.07); }
+  .sev-high { color: var(--warn); border-color: rgba(245,184,108,.4); background: rgba(245,184,108,.06); }
+  .sev-medium { color: var(--accent2); }
+  .sev-low { color: var(--faint); }
+  .tag-agent { color: #9fe0b5; border-color: rgba(74,222,128,.28); }
+  .tag-site { color: #9cc2ff; border-color: rgba(108,195,245,.3); }
+
+  .compare { display: block; width: 100%; border-radius: 12px; border: 1px solid var(--line); cursor: zoom-in; transition: transform .4s, box-shadow .4s; }
+  .compare:hover { transform: scale(1.01); box-shadow: 0 24px 60px -30px var(--glow); }
+  .refs { display: flex; gap: 8px; margin-top: 10px; }
+  .refs img { flex: 1; min-width: 0; aspect-ratio: 16/10; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); cursor: zoom-in; }
+
+  /* bars */
+  .hbar { display: block; height: 10px; background: #161d31; border-radius: 5px; overflow: hidden; }
+  .hbar.thin { height: 6px; }
+  .hbar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(270deg, var(--accent), var(--accent2));
+    transition: width 1.3s cubic-bezier(.2,.8,.2,1); }
+  .hbar.g i { background: linear-gradient(270deg, #22c55e, #86efac); }
+  .hbar.v i { background: linear-gradient(270deg, #8a6cf5, #e0a6ff); }
+  .hbar.w i { background: linear-gradient(270deg, #f5896c, #fcd34d); }
+  .hbar.r i { background: linear-gradient(270deg, #ef4444, #fb7185); }
+  .hbar.f i { background: #2a3452; }
+  .brow { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) auto; gap: 12px; align-items: center; padding: 7px 0; font-size: 14px; }
+  .brow .v { font: 600 13px var(--mono); min-width: 76px; text-align: end; }
+  .para { color: var(--dim); font-size: 14px; line-height: 1.6; margin-bottom: 14px; }
+  .para b { color: var(--text); font-weight: 600; }
+  .bignum { font: 700 40px var(--mono); letter-spacing: -.04em; line-height: 1; }
+
+  /* plans */
+  .plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 960px) { .plans { grid-template-columns: minmax(0, 1fr); } }
+  .plan { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: rgba(8,11,19,.5); }
+  .plan.max { border-color: rgba(194,108,245,.35); background: linear-gradient(180deg, rgba(194,108,245,.07), rgba(8,11,19,.5)); }
+  .plan.pro { border-color: rgba(91,124,250,.35); background: linear-gradient(180deg, rgba(91,124,250,.07), rgba(8,11,19,.5)); }
+  .plan h3 { font-size: 20px; font-weight: 800; display: flex; align-items: baseline; gap: 8px; }
+  .plan h3 small { font-size: 12px; color: var(--faint); font-weight: 400; }
+  .model { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+  .model:first-of-type { border-top: 0; }
+  .vend { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font: 700 13px var(--mono); flex: none; }
+  .model .mn { font-weight: 700; }
+  .model .mb2 { color: var(--dim); font-size: 12.5px; }
+  .model .chips2 { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+
+  /* training timeline */
+  .tl { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; position: relative; }
+  .tl::before { content: ''; position: absolute; top: 17px; inset-inline: 14px; height: 2px; background: linear-gradient(270deg, var(--accent), var(--violet)); opacity: .45; }
+  @media (max-width: 860px) { .tl::before { display: none; } }
+  .run { position: relative; padding-top: 38px; }
+  .run .dt { position: absolute; top: 9px; inset-inline-start: 10px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent);
+    box-shadow: 0 0 0 5px rgba(91,124,250,.16), 0 0 18px var(--glow); }
+  .run.plan2 .dt { background: var(--bg); border: 2px dashed var(--violet); box-shadow: none; animation: spin 8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .run .box { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: rgba(8,11,19,.55); height: 100%; }
+  .run.plan2 .box { border-style: dashed; border-color: rgba(194,108,245,.45); }
+  .run .nm { font: 700 18px var(--mono); }
+  .run .base { color: var(--dim); font-size: 12.5px; margin: 2px 0 10px; }
+  .run .kv { font-size: 12.5px; gap: 4px 10px; } .run .kv b { font-size: 12.5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: start; font-weight: 500; color: var(--faint); font-size: 12px; padding: 0 8px 10px; }
+  td { padding: 9px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+  td.r, th.r { text-align: end; }
+  .scroll { max-height: 520px; overflow: auto; }
+
+  /* libraries */
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .fbtn { padding: 5px 13px; border-radius: 999px; border: 1px solid var(--line2); background: rgba(15,20,34,.6); color: var(--dim); cursor: pointer;
+    font-size: 13px; transition: .2s; }
+  .fbtn:hover { color: var(--text); }
+  .fbtn.on { color: #fff; border-color: rgba(91,124,250,.55); background: rgba(91,124,250,.16); }
+  .fbtn .ct { font: 11px var(--mono); color: var(--faint); margin-inline-start: 4px; }
+  .libs { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; margin-bottom: 16px; }
+  .lib { display: flex; flex-direction: column; animation: fadeUp .5s cubic-bezier(.2,.8,.2,1) both; transition: transform .25s, border-color .25s; }
+  .lib:hover { transform: translateY(-2px); border-color: var(--line2); }
+  .lib .top2 { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .lib .n { font: 700 36px var(--mono); letter-spacing: -.04em; line-height: 1.05; background: linear-gradient(180deg, #ffffff, #a9b8ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lib .u { color: var(--dim); font-size: 13px; }
+  .lib .nm { font-weight: 700; font-size: 16px; margin-top: 8px; }
+  .lib .wt { color: var(--dim); font-size: 13.5px; margin-top: 3px; }
+  .lib .ex { color: var(--faint); font-size: 12.5px; margin-top: 6px; }
+  .lib .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .lib .pv { display: flex; gap: 6px; margin-top: 12px; }
+  .lib .pv img { flex: 1; min-width: 0; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); cursor: zoom-in; background: #0b0f1a; }
+  .lib .path { font: 11px var(--mono); color: var(--faint); margin-top: auto; padding-top: 12px; direction: ltr; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; max-height: 92px; overflow: hidden; direction: ltr; justify-content: flex-end; }
+  .chips span { font: 11px var(--mono); padding: 1px 7px; border-radius: 6px; background: rgba(91,124,250,.08); border: 1px solid rgba(91,124,250,.18); color: #b9c6ff; }
+  .chips.he { direction: rtl; justify-content: flex-start; }
+  .chips.he span { font-family: Heebo, sans-serif; font-size: 12px; }
+  .note { border: 1px dashed rgba(245,184,108,.4); background: rgba(245,184,108,.05); border-radius: 12px; padding: 12px 14px; color: #f3d7b4; font-size: 14px; }
+
+  /* gallery */
+  .gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+  .shot { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #0b0f1a; aspect-ratio: 16/10; cursor: zoom-in; padding: 0; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+  .shot:hover img { transform: scale(1.06); }
+  .shot .lab { position: absolute; inset: auto 0 0 0; padding: 26px 10px 8px; background: linear-gradient(transparent, rgba(0,0,0,.85)); font-size: 12px;
+    color: #e6ebf8; text-align: start; }
+  .shot .lab small { display: block; color: #9aa6c4; font-size: 11px; }
+  .day { font-size: 13px; font-weight: 700; color: var(--accent2); margin: 14px 0 4px; }
+  .day:first-child { margin-top: 0; }
+  .cm { display: grid; grid-template-columns: 50px 64px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; align-items: baseline; }
+  .cm .h { font: 12px var(--mono); color: var(--accent2); direction: ltr; }
+  .cm .t { font: 12px var(--mono); color: var(--faint); }
+  .cm .s { direction: ltr; unicode-bidi: isolate; text-align: left; color: #cdd5ea; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* 100% */
+  .hero100 { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: center; margin-bottom: 16px; overflow: hidden; }
+  @media (max-width: 700px) { .hero100 { grid-template-columns: minmax(0, 1fr); } }
+  .hero100 .ring { width: 150px; height: 150px; }
+  .hero100 .ring .c b { font-size: 34px; }
+  .hero100 h3 { font-size: clamp(22px, 2.6vw, 30px); font-weight: 800; letter-spacing: -.02em; line-height: 1.25; }
+  .grp { font-size: 13px; font-weight: 700; color: var(--accent2); margin: 16px 0 2px; }
+  .grp:first-child { margin-top: 0; }
+  .ck { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .ck .b { width: 22px; height: 22px; border-radius: 7px; flex: none; display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+  .ck.ok .b { background: rgba(74,222,128,.14); color: var(--ok); }
+  .ck.no .b { background: rgba(248,113,113,.13); color: var(--bad); }
+  .ck.no { color: #ffd9d9; }
+  .vis { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .vi { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: rgba(8,11,19,.5); }
+  .vi .hd { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .vi .he { font-weight: 600; font-size: 14.5px; }
+  .vi .dt2 { color: var(--dim); font-size: 13px; margin-top: 6px; }
+  .vi .by { color: var(--faint); font-size: 12px; margin-top: 6px; }
+  .q { padding: 10px 0; border-top: 1px solid var(--line); }
+  .q:first-child { border-top: 0; padding-top: 0; }
+  .q .id { font: 600 12px var(--mono); color: var(--warn); }
+  .sevbar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #161d31; margin: 6px 0 14px; }
+  .sevbar span { height: 100%; transition: width 1.2s; }
+
+  /* tokens (the original token dashboard) */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 900px) { .hero { grid-template-columns: minmax(0, 1fr); } }
+  .total { overflow: hidden; }
+  .total::after { content: ''; position: absolute; inset: auto auto -60% -40%; width: 420px; height: 420px; background: radial-gradient(circle, var(--glow), transparent 65%); pointer-events: none; }
+  .bigc { font: 600 clamp(44px, 7vw, 76px) var(--mono); letter-spacing: -.035em; line-height: 1; direction: ltr; text-align: right; }
+  .bigc .cents { color: var(--accent2); }
+  .bigc.bump { animation: bump .5s ease; }
+  @keyframes bump { 0% { color: var(--accent2); } 100% { color: var(--text); } }
+  .under { margin-top: 12px; color: var(--dim); font-size: 13px; }
+  .under b { color: var(--text); font-weight: 500; }
+  .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .kpi { background: rgba(8,11,19,.55); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .kpi .v { font: 600 21px var(--mono); letter-spacing: -.02em; margin-top: 4px; direction: ltr; text-align: right; }
+  .kpi .v small { font-size: 12px; color: var(--dim); font-weight: 400; margin-left: 4px; }
+  .kpi .l { font-size: 12px; color: var(--dim); }
+  canvas { width: 100%; height: 260px; display: block; }
+  .stack { height: 14px; border-radius: 7px; overflow: hidden; display: flex; background: var(--line); margin: 6px 0 16px; direction: ltr; }
+  .stack span { height: 100%; transition: width .6s ease; }
+  .legend { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px 14px; align-items: center; font-size: 13px; }
+  .sw { width: 10px; height: 10px; border-radius: 3px; }
+  .legend .n { text-align: end; color: var(--dim); }
+  .agent { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .agent .nm2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 360px; }
+  .tag { font-size: 10.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line2); color: var(--dim); white-space: nowrap; }
+  .tag.on { color: var(--live); border-color: rgba(74,222,128,.35); }
+  .bar2 { height: 4px; background: var(--line); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+  .bar2 i { display: block; height: 100%; background: linear-gradient(270deg, var(--accent), var(--accent2)); }
+  .feed td { font-size: 12.5px; }
+  .feed tr.new td { animation: flash 1.2s ease; }
+  .lgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 900px) { .lgrid { grid-template-columns: minmax(0, 1fr); } }
+  .lim { background: rgba(8,11,19,.55); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .lim .top3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .lim .name { font-size: 13px; color: var(--dim); }
+  .lim .pct { font: 600 30px var(--mono); letter-spacing: -.03em; }
+  .lim .pct small { font-size: 13px; color: var(--dim); font-weight: 400; }
+  .meter { position: relative; height: 10px; background: var(--line); border-radius: 5px; margin: 12px 0 10px; overflow: hidden; }
+  .meter .m { position: absolute; inset-block: 0; inset-inline-start: 0; background: linear-gradient(270deg, var(--accent), var(--accent2)); border-radius: 5px; transition: width .6s; }
+  .meter .e { position: absolute; inset-block: 0; background: repeating-linear-gradient(45deg, rgba(138,162,255,.55) 0 4px, rgba(138,162,255,.2) 4px 8px); transition: all .6s; }
+  .meter .tnow { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #e8ecf6; opacity: .55; }
+  .lim.warn .m { background: linear-gradient(270deg, #f5b86c, #f59e6c); }
+  .lim.hot .m { background: linear-gradient(270deg, #f87171, #fb7185); }
+  .lim.stale { opacity: .6; }
+  .lim .rows { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; font-size: 12.5px; color: var(--dim); }
+  .lim .rows b { color: var(--text); font-weight: 500; text-align: end; }
+  .foot { color: var(--faint); font-size: 12.5px; margin-top: 18px; line-height: 1.6; }
+
+  /* lightbox */
+  .lb { position: fixed; inset: 0; z-index: 100; background: rgba(3,5,10,.88); backdrop-filter: blur(8px); display: grid; place-items: center; padding: 24px; cursor: zoom-out; }
+  .lb[hidden] { display: none; }
+  .lb figure { max-width: min(1600px, 100%); animation: fadeUp .3s ease both; }
+  .lb img { display: block; max-width: 100%; max-height: 84vh; margin: 0 auto; border-radius: 12px; box-shadow: 0 30px 90px rgba(0,0,0,.65); }
+  .lb figcaption { margin-top: 12px; color: var(--dim); text-align: center; font-size: 14px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="gA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9b8ff"/><stop offset="1" stop-color="#5b7cfa"/></linearGradient>
+    <linearGradient id="gV" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e7b6ff"/><stop offset="1" stop-color="#8a6cf5"/></linearGradient>
+    <linearGradient id="gG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a7f3c4"/><stop offset="1" stop-color="#22c55e"/></linearGradient>
+    <linearGradient id="gW" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f5896c"/></linearGradient>
+  </defs>
+</svg>
+<div class="aurora" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="bar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 40 40" aria-hidden="true">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9b8ff"/><stop offset="1" stop-color="#5b7cfa"/></linearGradient></defs>
+        <rect x="2" y="2" width="36" height="36" rx="11" fill="#0f1422" stroke="#253052"/>
+        <rect x="11" y="11" width="18" height="18" rx="4" fill="url(#lg)" transform="rotate(12 20 20)"/>
+        <rect x="17" y="17" width="6" height="6" rx="1.5" fill="#0f1422" transform="rotate(12 20 20)"/>
+      </svg>
+      <div><h1>Apple · לוח הבקרה של המוצר</h1><div class="sub">כל מה שקורה בפרויקט במקום אחד, ומתעדכן לבד</div></div>
+    </div>
+    <div class="ticker">
+      <div class="tk"><span>עלות הריצה</span><b class="ltr" id="tkCost">—</b></div>
+      <span id="tkLimits" style="display:contents"></span>
+      <div class="livepill"><span class="dot" id="dot"></span><span id="status">מתחבר…</span></div>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="לשוניות">
+    <button class="tab-btn" role="tab" data-tab="now">עכשיו</button>
+    <button class="tab-btn" role="tab" data-tab="model">המודל והאימון</button>
+    <button class="tab-btn" role="tab" data-tab="libs">ספריות<span class="ct" id="ctLibs"></span></button>
+    <button class="tab-btn" role="tab" data-tab="changes">מה השתנה<span class="ct" id="ctShots"></span></button>
+    <button class="tab-btn" role="tab" data-tab="hundred">מה זה 100%</button>
+    <button class="tab-btn" role="tab" data-tab="tokens">טוקנים ועלות</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ NOW ============ -->
+  <section class="tab" id="tab-now" role="tabpanel">
+    <div class="g g4" id="rings">
+      <div class="card"><span class="sk h120"></span></div><div class="card"><span class="sk h120"></span></div>
+      <div class="card"><span class="sk h120"></span></div><div class="card"><span class="sk h120"></span></div>
+    </div>
+    <div class="g g21">
+      <div class="card">
+        <h2><span class="pulse"></span>מה קורה עכשיו</h2>
+        <div class="now-line shine" id="nowLine"><span class="sk h40"></span></div>
+        <div class="agents-now" id="agentsNow"></div>
+        <div class="feed-list" id="doing"><span class="sk"></span><span class="sk w80"></span><span class="sk w60"></span></div>
+      </div>
+      <div class="col">
+        <div class="card"><h2>הצעד הבא</h2><div id="next"><span class="sk"></span><span class="sk w60"></span></div></div>
+        <div class="card"><h2>מה עוד חוסם את ה-100%</h2><div id="blockers"><span class="sk"></span><span class="sk w80"></span></div></div>
+        <div class="card"><h2>מה באוויר עכשיו</h2><div id="prod"><span class="sk"></span><span class="sk w60"></span></div></div>
+      </div>
+    </div>
+    <div class="g g21">
+      <div class="card"><h2>ההשוואה האחרונה: Apple MAX מול המשחק האמיתי</h2><div id="latestCompare"><span class="sk h120"></span></div></div>
+      <div class="card"><h2>מה כתבתי לך לאחרונה</h2><div class="says" id="says"><span class="sk"></span><span class="sk w80"></span></div></div>
+    </div>
+  </section>
+
+  <!-- ============ MODEL ============ -->
+  <section class="tab" id="tab-model" role="tabpanel">
+    <div class="card mb"><h2>המודלים שהלקוחות בוחרים, לפי מסלול</h2><div class="plans" id="plans"><span class="sk h120"></span></div></div>
+    <div class="g g2">
+      <div class="card"><h2>כמה Apple קרוב ל-100% Frontier ברובלוקס</h2><div id="frontier"><span class="sk h120"></span></div></div>
+      <div class="card"><h2>מה הבדיקות אומרות</h2><div id="evals"><span class="sk h120"></span></div></div>
+    </div>
+    <div class="card mb"><h2>האימונים של Apple, לפי הסדר <span class="ct" id="runsTotal"></span></h2><div id="runs"><span class="sk h120"></span></div></div>
+    <div class="g g21">
+      <div class="card"><h2>על מה הוא התאמן, ומאיפה זה הגיע</h2><div id="datasets"><span class="sk h120"></span></div></div>
+      <div class="card"><h2>מאיפה הידע מגיע</h2><div id="sources"><span class="sk h120"></span></div></div>
+    </div>
+    <div class="card"><h2>מה הוא יודע</h2><div id="knows"><span class="sk h120"></span></div></div>
+  </section>
+
+  <!-- ============ LIBRARIES ============ -->
+  <section class="tab" id="tab-libs" role="tabpanel">
+    <div class="card mb">
+      <h2>כל הספריות של המוצר</h2>
+      <div class="para" id="libsIntro"><span class="sk w80"></span></div>
+      <div id="libsNote"></div>
+      <div class="filters" id="libFilters" style="margin-top:14px"></div>
+    </div>
+    <div class="libs" id="libs"></div>
+    <div class="card"><h2>הקוד של המוצר <span class="ct" id="codeTotal"></span></h2><div id="code"><span class="sk h120"></span></div></div>
+  </section>
+
+  <!-- ============ CHANGES ============ -->
+  <section class="tab" id="tab-changes" role="tabpanel">
+    <div class="g g21">
+      <div class="card"><h2>תמונות מהמוצר <span class="ct" id="shotCount"></span></h2><div class="filters" id="shotFilters"></div><div class="gal" id="gallery"><span class="sk h120"></span></div></div>
+      <div class="card"><h2>השינויים האחרונים בקוד <span class="ct" id="commitCount"></span></h2><div class="scroll" style="max-height:1200px" id="commits"><span class="sk"></span><span class="sk w80"></span></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 100% ============ -->
+  <section class="tab" id="tab-hundred" role="tabpanel">
+    <div class="card hero100" id="hero100"><span class="sk h120"></span></div>
+    <div class="g g2">
+      <div class="card"><h2>התנאים ל-100%</h2><div id="checklist"><span class="sk h120"></span></div></div>
+      <div class="col">
+        <div class="card"><h2>התקלות שמצאתי <span class="ct" id="findCount"></span></h2><div id="findings"><span class="sk h120"></span></div></div>
+        <div class="card"><h2>מה רק אתה יכול לעשות</h2><div id="queue"><span class="sk"></span></div></div>
+      </div>
+    </div>
+    <div class="card"><h2>החזון שלך: מה נבנה ומה עוד יתווסף <span class="ct" id="visCount"></span></h2><div class="vis" id="vision"><span class="sk h120"></span></div></div>
+  </section>
+
+  <!-- ============ TOKENS ============ -->
+  <section class="tab" id="tab-tokens" role="tabpanel">
+    <section class="hero">
+      <div class="card total">
+        <h2>עלות ה-API של הריצה עד עכשיו (מחיר מחירון)</h2>
+        <div class="bigc" id="total">$0<span class="cents">.00</span></div>
+        <div class="under" id="since">—</div>
+      </div>
+      <div class="card">
+        <h2>ממש עכשיו</h2>
+        <div class="kpis">
+          <div class="kpi"><div class="l">הוצאה ב-60 הדקות האחרונות</div><div class="v" id="perHour">—</div></div>
+          <div class="kpi"><div class="l">הוצאה ב-10 הדקות האחרונות</div><div class="v" id="last10">—</div></div>
+          <div class="kpi"><div class="l">טוקנים לדקה</div><div class="v" id="tpm">—</div></div>
+          <div class="kpi"><div class="l">סוכנים שעובדים</div><div class="v" id="active">—</div></div>
+          <div class="kpi"><div class="l">סך הטוקנים</div><div class="v" id="tokens">—</div></div>
+          <div class="kpi"><div class="l">קריאות API</div><div class="v" id="calls">—</div></div>
+        </div>
+      </div>
+    </section>
+    <section class="card mb" id="limitsCard">
+      <h2>מגבלות המנוי · <span id="planName">—</span></h2>
+      <div class="para" id="reading" style="margin-bottom:12px">—</div>
+      <div class="lgrid" id="limits"></div>
+    </section>
+    <section class="g g21">
+      <div class="card"><h2>הוצאה מצטברת</h2><canvas id="chart"></canvas></div>
+      <div class="card">
+        <h2>לאן הטוקנים הולכים</h2>
+        <div class="stack" id="stack"></div>
+        <div class="legend" id="legend"></div>
+        <h2 style="margin-top:22px">המודלים שבשימוש</h2>
+        <table><thead><tr><th>מודל</th><th class="r">קריאות</th><th class="r">טוקנים</th><th class="r">עלות</th></tr></thead><tbody id="models"></tbody></table>
+      </div>
+    </section>
+    <section class="g g2">
+      <div class="card"><h2>הסוכנים לפי עלות</h2><div class="scroll"><table><thead><tr><th>סוכן</th><th class="r">קריאות</th><th class="r">טוקנים</th><th class="r">עלות</th></tr></thead><tbody id="agents"></tbody></table></div></div>
+      <div class="card"><h2>קריאות חיות</h2><div class="scroll"><table class="feed"><thead><tr><th>שעה</th><th>סוכן</th><th class="r">נכנס</th><th class="r">יצא</th><th class="r">$</th></tr></thead><tbody id="feed"></tbody></table></div></div>
+    </section>
+    <p class="foot" id="note">המחירים: מחירון ה-API של Claude (platform.claude.com/docs/en/about-claude/pricing). Opus 5.5: ‎$4 קלט · ‎$5 כתיבה למטמון ל-5 דקות · ‎$8 כתיבה למטמון לשעה · ‎$0.20 קריאה מהמטמון · ‎$20 פלט, למיליון טוקנים; במצב מהיר המחיר כפול. כל קריאה נספרת פעם אחת, מתוך קובצי השיחה של הריצה ושל כל סוכן שהיא הפעילה.</p>
+  </section>
+
+  <p class="foot" id="collected"></p>
+</main>
+
+<div class="lb" id="lb" hidden><figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure></div>
+
+<script>
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NM = '<span class="nm-missing">לא נמדד</span>';
+const nf = (n) => n == null ? '—' : Number(n).toLocaleString('en-US');
+const fmtN = (n) => n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(Math.round(n));
+const fmtUsd = (v) => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtUsd4 = (v) => '$' + v.toFixed(v < 1 ? 4 : 2);
+const pctTxt = (f) => f == null ? '—' : Math.round(f * 100) + '%';
+const clamp01 = (f) => Math.max(0, Math.min(1, f || 0));
+const ago = (t) => {
+  if (!t) return '';
+  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if (s < 60) return `לפני ${s} שנ׳`;
+  const m = Math.round(s / 60); if (m < 60) return `לפני ${m} דק׳`;
+  const h = Math.round(m / 60); if (h < 24) return h === 1 ? 'לפני שעה' : `לפני ${h} שע׳`;
+  const d = Math.round(h / 24); return d === 1 ? 'אתמול' : `לפני ${d} ימים`;
+};
+const hhmm = (t) => new Date(t).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+const heDay = (t) => new Date(t).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: '2-digit' });
+const dur = (ms) => {
+  if (ms <= 0) return 'עכשיו';
+  const m = Math.round(ms / 60000), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
+  return d ? `${d} ימ׳ ${h} שע׳` : h ? `${h} שע׳ ${mm} דק׳` : `${mm} דק׳`;
+};
+
+let P = null, T = null;
+
+// ---- motion: counters, bars and rings animate from their last value (or from zero when a tab opens)
+const last = new Map();
+const C = 2 * Math.PI * 52;
+function animate(root, fromZero) {
+  const still = reduced || document.hidden;
+  const els = { w: $$('[data-w]', root), d: $$('circle[data-d]', root), n: $$('[data-count]', root) };
+  const settle = () => {
+    for (const el of els.w) { el.style.width = el.dataset.w + '%'; last.set(el.dataset.k, Number(el.dataset.w)); }
+    for (const el of els.d) { el.style.strokeDasharray = `${el.dataset.d} ${C}`; last.set(el.dataset.k, Number(el.dataset.d)); }
+  };
+  if (still) settle();
+  else {
+    for (const el of els.w) el.style.width = (fromZero ? 0 : last.get(el.dataset.k) ?? 0) + '%';
+    for (const el of els.d) el.style.strokeDasharray = `${fromZero ? 0 : last.get(el.dataset.k) ?? 0} ${C}`;
+    requestAnimationFrame(() => requestAnimationFrame(settle));
+  }
+  for (const el of els.n) {
+    const to = Number(el.dataset.count), dec = Number(el.dataset.dec || 0), suf = el.dataset.suf || '';
+    const from = fromZero ? 0 : last.get(el.dataset.k) ?? 0;
+    last.set(el.dataset.k, to);
+    const fmt = (v) => v.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suf;
+    if (still || from === to) { el.textContent = fmt(to); continue; }
+    const t0 = performance.now();
+    const f = (t) => { const k = Math.min(1, (t - t0) / 1200), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(f); };
+    requestAnimationFrame(f);
+  }
+}
+const count = (k, v, dec = 0, suf = '') => v == null ? NM : `<span class="ltr" data-k="${k}" data-count="${v}" data-dec="${dec}" data-suf="${esc(suf)}">0</span>`;
+const bar = (k, frac, cls = '') => `<span class="hbar ${cls}"><i data-k="${k}" data-w="${(clamp01(frac) * 100).toFixed(2)}"></i></span>`;
+function ring(k, f1, f2, grad, center, small) {
+  return `<div class="ring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="trk" cx="60" cy="60" r="52"/>`
+    + (f2 != null ? `<circle class="s2" cx="60" cy="60" r="52" data-k="${k}-2" data-d="${(clamp01(f2) * C).toFixed(1)}"/>` : '')
+    + `<circle class="s1" cx="60" cy="60" r="52" stroke="url(#${grad})" data-k="${k}" data-d="${(clamp01(f1) * C).toFixed(1)}"/></svg>`
+    + `<div class="c"><div><b class="ltr">${center}</b><small>${small}</small></div></div></div>`;
+}
+
+// ---- Hebrew names for the things the code names in English
+const STATUS_HE = { done: 'הושלם', partial: 'חלקית', progress: 'בעבודה עכשיו', blocked: 'מחכה', todo: 'עוד לא התחיל' };
+const SEV_HE = { critical: 'קריטי', high: 'חמור', medium: 'בינוני', low: 'קל' };
+const ARM_HE = { neutral: 'המודל לבד, בלי הדרכה', 'house-rules': 'עם הכללים שלנו (מה שבאוויר היום)', 'house-rules-plus': 'עם 4 כללים נוספים (ניסוי)' };
+const AXIS_HE = { 'modern-api': 'שימוש ב-API העדכני של רובלוקס', 'server-authority': 'השרת מחליט, לא השחקן (נגד רמאות)', 'datastore-safety': 'שמירת נתונים בלי לאבד התקדמות' };
+const DOMAIN_HE = { ui: 'ממשק ומסכים', input: 'שליטה וקלט', client_server: 'לקוח ושרת', data: 'שמירת נתונים', gameplay: 'משחקיות', worldbuilding: 'בניית עולם', performance: 'ביצועים', security: 'אבטחה', genre_pattern: "דפוסים לפי ז'אנר" };
+const KIT_HE = { horror: 'אימה', obby: 'אובי', tycoon: 'טייקון', simulator: 'סימולטור', racing: 'מרוצים', roleplay: 'משחק תפקידים', tower_defense: 'הגנת מגדלים', fps_arena: 'יריות', anime_battle: 'קרבות אנימה', survival: 'הישרדות', adventure: 'הרפתקאות' };
+const TIERS = [{ id: 'free', he: 'Free', note: 'חינם' }, { id: 'pro', he: 'Pro', note: 'בתשלום' }, { id: 'max', he: 'Max', note: 'הכול' }];
+const ROUTE_HE = { 'workers-ai': 'Cloudflare Workers AI', 'unified-billing': 'Cloudflare AI Gateway' };
+const VENDOR = { Apple: ['A', '#5b7cfa'], Google: ['G', '#22c55e'], OpenAI: ['O', '#e8ecf6'] };
+const LIMIT_HE = (l) => /5-hour/i.test(l) ? 'מגבלת 5 שעות' : /fable/i.test(l) ? 'שבועי · Fable' : /weekly/i.test(l) ? 'שבועי · כל המודלים' : l;
+const visItem = (id) => P?.vision?.items?.find((i) => i.id === id);
+const chip = (cls, text) => `<span class="chip ${cls}"><i></i>${esc(text)}</span>`;
+const stChip = (st) => chip('st-' + st, STATUS_HE[st] || st);
+const sevChip = (sv) => chip('sev-' + sv, SEV_HE[sv] || sv);
+const clean = (s) => String(s || '').split(/\n##\s*Recap/i)[0].replace(/```[\s\S]*?```/g, '').replace(/\*\*|`|^#+\s*/gm, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\n{3,}/g, '\n\n').trim();
+
+// ---- tabs
+const TABS = ['now', 'model', 'libs', 'changes', 'hundred', 'tokens'];
+let current = 'now';
+function show(tab, replay = true) {
+  if (!TABS.includes(tab)) tab = 'now';
+  current = tab;
+  $$('.tab-btn').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+  $$('.tab').forEach((s) => s.classList.toggle('on', s.id === 'tab-' + tab));
+  try { localStorage.setItem('owner-dash-tab', tab); } catch {}
+  history.replaceState(null, '', '#' + tab);
+  if (tab === 'tokens' && T) requestAnimationFrame(() => drawChart(T.series));
+  if (replay) animate($('#tab-' + tab), true);
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-tab]'); if (b) { show(b.dataset.tab); scrollTo({ top: 0 }); return; }
+  const g = e.target.closest('[data-go]'); if (g) { show(g.dataset.go); scrollTo({ top: 0 }); return; }
+  const f = e.target.closest('[data-full]');
+  if (f) { $('#lbImg').src = f.dataset.full; $('#lbCap').textContent = f.dataset.cap || ''; $('#lb').hidden = false; return; }
+  if (e.target.closest('#lb')) { $('#lb').hidden = true; $('#lbImg').removeAttribute('src'); }
+});
+addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#lb').hidden = true; });
+
+// =========================================================================================
+// Project half (every minute)
+// =========================================================================================
+function renderProject() {
+  if (!P) return;
+  const parts = [renderRings, renderNext, renderBlockers, renderProd, renderCompare, renderPlans, renderFrontier, renderEvals, renderRuns,
+    renderDatasets, renderSources, renderKnows, renderLibs, renderCode, renderGallery, renderCommits, renderHundred];
+  for (const f of parts) { try { f(); } catch (err) { console.error(f.name, err); } }
+  animate(document, false);
+  $('#collected').textContent = `הנתונים על הפרויקט נאספו ${ago(P.collectedAt)} מתוך הקוד עצמו, והם מתעדכנים כל דקה. הטוקנים והעלות מתעדכנים כל 2 שניות.`;
+}
+
+function renderRings() {
+  const a = P.acceptance, fr = P.training?.frontier, vs = P.vision?.items || [], g = P.gauntlet;
+  const prodArm = fr?.arms?.find((x) => x.id === 'house-rules') || fr?.best;
+  const best = fr?.best, neutral = fr?.arms?.find((x) => x.id === 'neutral');
+  const n = (st) => vs.filter((i) => i.status === st).length;
+  const done = n('done'), moving = n('partial') + n('progress'), waiting = n('blocked');
+  const rounds = g?.rounds?.length || 0;
+  const cards = [
+    { tab: 'hundred', title: 'המוצר מוכן ל-100%', html: ring('r-acc', a ? a.done / a.total : 0, null, 'gA', a ? pctTxt(a.done / a.total) : '—', 'מוכן'),
+      sub: a ? `${a.done} מתוך ${a.total} התנאים מתקיימים` : NM },
+    { tab: 'model', title: 'הקוד של Apple מול ה-Frontier', html: ring('r-fr', prodArm?.pct, best?.pct, 'gG', prodArm ? pctTxt(prodArm.pct) : '—', 'היום'),
+      sub: prodArm ? `בניסוי ${pctTxt(best?.pct)} · המודל לבד ${pctTxt(neutral?.pct)}` : NM },
+    { tab: 'hundred', title: 'החזון שלך', html: ring('r-vis', vs.length ? done / vs.length : 0, vs.length ? (done + moving) / vs.length : 0, 'gV', `${done}/${vs.length}`, 'הושלמו'),
+      sub: `${moving} בעבודה · ${waiting} מחכים למישהו אחר` },
+    { tab: 'changes', title: 'מבחן המראה מול המשחק האמיתי', html: ring('r-g', rounds ? (g.passes || 0) / rounds : 0, null, 'gW', `${g?.passes ?? 0}/${rounds}`, 'סבבים עברו'),
+      sub: esc(visItem('gauntlet')?.detail || '') },
+  ];
+  $('#rings').innerHTML = cards.map((c) => `<button class="card ringcard" data-go="${c.tab}">${c.html}<div class="rt"><div class="rtt">${esc(c.title)}</div><div class="rts">${c.sub}</div></div></button>`).join('');
+}
+
+function renderNext() {
+  const v = P.vision, nx = P.next;
+  $('#nowLine').textContent = v?.now || '—';
+  $('#next').innerHTML = `<div class="big-next">${esc(v?.nextStep || '—')}</div>`
+    + (nx ? `<details><summary>הצעדים המלאים ביומן (באנגלית)</summary><div class="en"><b>${esc(nx.headline || '')}</b><ol>${(nx.steps || []).map((s) => `<li>${esc(s.text)}</li>`).join('')}</ol></div></details>` : '');
+}
+
+function renderBlockers() {
+  const f = P.findings, bl = P.vision?.blockers || {};
+  if (!f) { $('#blockers').innerHTML = NM; return; }
+  const top = f.open.filter((x) => x.sev === 'critical' || x.sev === 'high');
+  const reviews = P.acceptance?.reviews;
+  $('#blockers').innerHTML = (top.length ? top.map((x) => `<div class="blk">${sevChip(x.sev)}<div class="x"><b class="ltr">${esc(x.id)}</b> · ${esc(bl[x.id] || '')}
+      <details><summary>הפרטים ביומן</summary><div class="en">${esc(x.text)}</div></details></div></div>`).join('') : '<div class="dim">אין תקלות קריטיות או חמורות פתוחות</div>')
+    + (reviews && reviews.fresh < reviews.required ? `<div class="blk">${chip('st-todo', 'בסוף')}<div class="x">${reviews.required} ביקורות חיצוניות נקיות בסוף הדרך. יש ${reviews.fresh} עד עכשיו.</div></div>` : '');
+}
+
+function renderProd() {
+  const p = P.prod, g = P.git;
+  const rows = [];
+  if (p && !p.error) {
+    rows.push(`<span>הגרסה שבאוויר</span><b class="ltr">${esc(p.buildSha || '—')}</b>`);
+    rows.push(`<span>שינויים שמורים שעוד לא עלו לאוויר</span><b>${p.behind ?? '—'}</b>`);
+  } else rows.push(`<span>הגרסה שבאוויר</span><b>${p?.error ? 'לא ענה' : '…'}</b>`);
+  if (g) {
+    rows.push(`<span>שינויים שנשמרו ב-24 השעות האחרונות</span><b>${g.last24h}</b>`);
+    rows.push(`<span>קבצים שעוד לא נשמרו</span><b>${g.dirty ?? '—'}</b>`);
+  }
+  $('#prod').innerHTML = `<div class="kv">${rows.join('')}</div>`
+    + (p?.dirtyBuild ? `<div class="para" style="margin:12px 0 0">הגרסה שבאוויר נבנתה כשהיו במחשב שינויים שעוד לא נשמרו. בהעלאה הבאה זה יתוקן.</div>` : '')
+    + (p?.checkedAt ? `<div class="faint" style="font-size:12px;margin-top:10px">נבדק ${ago(p.checkedAt)}</div>` : '');
+}
+
+function renderCompare() {
+  const g = P.gauntlet;
+  if (!g?.latest) { $('#latestCompare').innerHTML = '<div class="dim">עוד אין השוואות</div>'; return; }
+  const cap = `סבב ${g.latest.round} · ${ago(g.latest.mtime)}`;
+  $('#latestCompare').innerHTML = `<img class="compare" src="${esc(g.latest.url)}" alt="${esc(cap)}" data-full="${esc(g.latest.url)}" data-cap="${esc(cap)}" loading="lazy">
+    <div class="para" style="margin:10px 0 0">${esc(cap)}. כל סבב מושווה לתמונות מהמשחק האמיתי, ומבחן עובר רק כשאי אפשר להבדיל ביניהם.</div>
+    <div class="refs">${(g.refs || []).slice(0, 5).map((u) => `<img src="${esc(u)}" alt="" loading="lazy" data-full="${esc(u)}" data-cap="המשחק האמיתי">`).join('')}</div>`;
+}
+
+function renderPlans() {
+  const f = P.code?.facts;
+  if (!f || f.error) { $('#plans').innerHTML = f?.error ? NM : '<span class="sk h120"></span>'; return; }
+  const rank = Object.fromEntries(TIERS.map((t, i) => [t.id, i]));
+  const plansFor = (tier) => Object.entries(f.tierForPlan || {}).filter(([, t]) => t === tier).map(([p]) => p);
+  const mv = visItem('models');
+  $('#plans').innerHTML = TIERS.map((t, i) => {
+    const ms = f.models.filter((m) => rank[m.tier] <= i);
+    return `<div class="plan ${t.id}"><h3>${t.he}<small class="ltr">${esc(plansFor(t.id).join(' · '))}</small></h3>
+      <div class="dim" style="font-size:13px;margin-bottom:6px">${ms.length} מודלים · ${t.note}</div>
+      ${ms.map((m) => { const [ch, col] = VENDOR[m.vendor] || [m.vendor?.[0] || '?', '#8b95ad'];
+        return `<div class="model"><span class="vend" style="background:${col}22;color:${col};border:1px solid ${col}55">${esc(ch)}</span><div style="min-width:0">
+          <div class="mn">${esc(m.displayName)}</div><div class="mb2 ltr" style="display:block;text-align:right">${esc(m.blurb || '')}</div>
+          <div class="chips2">${chip('', ROUTE_HE[m.route] || m.route)}${chip('', `×${m.creditMultiplier} קרדיטים`)}${m.lora ? chip('st-done', 'מאומן על הידע שלנו') : chip('st-todo', 'עוד לא מאומן')}</div></div></div>`; }).join('')}
+      ${t.id === 'max' && mv && mv.status !== 'done' ? `<div class="para" style="margin:10px 0 0">${esc(mv.detail)}</div>` : ''}</div>`;
+  }).join('');
+}
+
+function renderFrontier() {
+  const fr = P.training?.frontier;
+  if (!fr?.arms?.length) { $('#frontier').innerHTML = NM; return; }
+  const axes = Object.keys(fr.arms[0].axes || {});
+  const cls = { neutral: 'f', 'house-rules': '', 'house-rules-plus': 'g' };
+  const when = Math.max(...fr.arms.map((a) => a.last || 0));
+  $('#frontier').innerHTML = `<div class="para"><b>Frontier</b> = מה שהמודלים הכי טובים בעולם כותבים לרובלוקס. הבחינה מריצה <b>${fr.arms[0].measured / Math.max(1, fr.arms[0].runs)}</b> בדיקות קוד בשלושה תחומים, כמה פעמים לכל מצב. <b>100%</b> = כל הבדיקות עוברות בכל פעם.</div>
+    ${fr.arms.map((a) => `<div class="brow"><span>${esc(ARM_HE[a.id] || a.id)}</span>${bar('fr-' + a.id, a.pct, cls[a.id] ?? '')}<span class="v">${pctTxt(a.pct)} <span class="faint">(${a.passed}/${a.measured})</span></span></div>`).join('')}
+    <div class="grp" style="margin-top:18px">לפי תחום</div>
+    ${axes.map((ax) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><div style="font-size:14px;margin-bottom:6px">${esc(AXIS_HE[ax] || ax)}</div>
+      ${fr.arms.map((a) => { const v = a.axes[ax]; const f = v?.measured ? v.passed / v.measured : 0;
+        return `<div class="brow" style="padding:3px 0;font-size:12.5px"><span class="faint">${esc(ARM_HE[a.id] || a.id)}</span>${bar(`fr-${a.id}-${ax}`, f, 'thin ' + (cls[a.id] ?? ''))}<span class="v" style="font-size:12px">${pctTxt(f)}</span></div>`; }).join('')}</div>`).join('')}
+    <div class="faint" style="font-size:12px;margin-top:10px">נמדד ${when ? heDay(when) : '—'}</div>`;
+}
+
+function renderEvals() {
+  const e = P.training?.evals;
+  if (!e) { $('#evals').innerHTML = NM; return; }
+  const frac = (x) => x && x.n ? x.ok / x.n : 0;
+  const pair = (k, label, before, after) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><div style="font-size:14px;margin-bottom:6px">${label}</div>
+    <div class="brow" style="padding:2px 0"><span class="faint">לפני האימון</span>${bar(k + 'b', frac(before), 'f')}<span class="v">${before ? `${before.ok}/${before.n}` : '—'}</span></div>
+    <div class="brow" style="padding:2px 0"><span class="faint">אחרי האימון</span>${bar(k + 'a', frac(after), frac(after) > frac(before) ? 'g' : 'r')}<span class="v">${after ? `${after.ok}/${after.n}` : '—'}</span></div></div>`;
+  const pr = e.production;
+  $('#evals').innerHTML = (e.v4 ? `<div class="grp">האימון האחרון (v4): מה השתפר</div>${pair('ev-tr', 'שימוש נכון בכלים של הסטודיו', e.v4.trajectory.base, e.v4.trajectory.adapter)}${pair('ev-gl', 'לוגיקת משחק (מטבעות, מלאי, זמנים)', e.v4.gameLogic.base, e.v4.gameLogic.adapter)}` : '')
+    + (pr ? `<div class="grp">משימות אמיתיות באתר, כמו לקוח (${esc(pr.at || '')})</div>
+      ${[['ev-p1', 'Apple · 24 המשימות הראשונות', pr.free1], ['ev-p2', 'Apple · 22 משימות נוספות', pr.free2], ['ev-p3', 'Apple MAX · 24 משימות', pr.max]].map(([k, l, x]) =>
+        `<div class="brow"><span>${l}</span>${bar(k, frac(x))}<span class="v">${x ? `${pctTxt(frac(x))} (${x.ok}/${x.n})` : '—'}</span></div>`).join('')}` : '')
+    + (e.failureCoverage ? `<div class="grp">רשת ביטחון</div><div class="brow"><span>תקלות מתועדות שיש להן בדיקה</span>${bar('ev-fc', e.failureCoverage.pct / 100, 'v')}<span class="v">${e.failureCoverage.pct}% (${e.failureCoverage.cited}/${e.failureCoverage.total})</span></div>` : '')
+    + (e.library?.honesty ? `<div class="brow"><span>כשאין בספרייה תשובה, הוא אומר את זה בכנות</span>${bar('ev-hon', e.library.honesty.n ? e.library.honesty.honestMisses / e.library.honesty.n : 0, 'r')}<span class="v">${e.library.honesty.honestMisses}/${e.library.honesty.n}</span></div>` : '');
+}
+
+function renderRuns() {
+  const ad = P.training?.adapters, v5 = P.training?.v5;
+  if (!ad) { $('#runs').innerHTML = NM; return; }
+  const runs = ad.filter((a) => !a.best);
+  const hasBest = new Set(ad.filter((a) => a.best).map((a) => a.name.replace(/-best$/, '')));
+  const short = (b) => String(b || '').split('/').pop().replace(/-Instruct.*$/, '').replace(/-/g, ' ');
+  const total = runs.reduce((s, r) => s + (r.minutes || 0), 0);
+  $('#runsTotal').textContent = `· ${runs.length} אימונים · בערך ${total} דקות אימון בסך הכול`;
+  $('#runs').innerHTML = `<div class="tl">${runs.map((r) => `<div class="run"><span class="dt"></span><div class="box">
+      <div class="nm ltr" style="display:block;text-align:right">${esc(r.name.replace(/^apple-/, ''))}</div>
+      <div class="base">${esc(short(r.base))} · ${r.startedAt ? heDay(r.startedAt) : ''}</div>
+      <div class="brow" style="grid-template-columns:auto minmax(0,1fr) auto;padding:0 0 8px"><span class="faint" style="font-size:12px">צעדים</span>${bar('run-' + r.name, r.itersPlanned ? r.itersReached / r.itersPlanned : 0, 'v thin')}<span class="v" style="min-width:0;font-size:12px">${r.itersReached ?? '?'}/${r.itersPlanned ?? '?'}</span></div>
+      <div class="kv"><span>משך</span><b>${r.minutes != null ? `${r.minutes} דק׳` : '—'}</b><span>נתונים</span><b class="ltr">${esc(r.data || '—')}</b><span>גודל</span><b>${r.sizeMb ?? '—'} MB</b><span>דרגה · שכבות</span><b>${r.rank ?? '?'} · ${r.layers ?? '?'}</b></div>
+      ${hasBest.has(r.name) ? `<div style="margin-top:8px">${chip('st-done', 'נשמרה הגרסה הטובה ביותר')}</div>` : ''}</div></div>`).join('')}
+    ${v5 ? `<div class="run plan2"><span class="dt"></span><div class="box"><div class="nm ltr" style="display:block;text-align:right">v5</div>
+      <div class="base">${esc(short(v5.base))} · מתוכנן</div>
+      <div class="kv"><span>צעדים מתוכננים</span><b>${v5.iters ?? '—'}</b><span>סט הנתונים</span><b>${v5.dataReady ? 'מוכן' : 'עוד לא נבנה'}</b><span>אומן</span><b>${v5.trained ? 'כן' : 'עוד לא'}</b></div>
+      <div class="para" style="margin:10px 0 0;font-size:13px">הצעד הבא באימון: לבנות סט נתונים שמלמד את מה שנכשל במבחנים (לוגיקת משחק ומראה), ואז להריץ.</div></div></div>` : ''}</div>
+    <div class="para" style="margin:14px 0 0">${esc(visItem('lora')?.detail || '')}</div>`;
+}
+
+function renderDatasets() {
+  const ds = P.training?.datasets;
+  if (!ds) { $('#datasets').innerHTML = NM; return; }
+  const src = (s) => chip(/Hugging/.test(s) ? 'st-progress' : /GitHub/.test(s) ? 'st-partial' : 'st-done', s);
+  $('#datasets').innerHTML = `<div class="scroll" style="max-height:none"><table><thead><tr><th>מה</th><th class="r">כמה</th><th>מקור</th><th>בשימוש</th></tr></thead><tbody>
+    ${ds.map((d) => `<tr><td><b>${esc(d.name)}</b><div class="faint" style="font-size:12.5px">${esc(d.what)}</div>${d.extra ? `<div class="faint" style="font-size:12px">${esc(d.extra)}</div>` : ''}
+      ${d.parts ? `<div class="faint" style="font-size:12px">קוד ${nf(d.parts.code)} · דוגמאות אימון ${nf(d.parts.sft)} · ידע ${nf(d.parts.knowledge)}</div>` : ''}</td>
+      <td class="r mono">${d.rows != null ? nf(d.rows) : d.parts ? nf((d.parts.code || 0) + (d.parts.sft || 0) + (d.parts.knowledge || 0)) : '—'}${d.unit ? `<div class="faint" style="font-size:11px;font-family:Heebo">${esc(d.unit)}</div>` : ''}</td>
+      <td>${src(d.source)}</td><td class="dim" style="font-size:12.5px">${esc(d.usedIn || '')}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function renderSources() {
+  const t = P.training || {}, hf = t.hf, lf = t.langflow, vz = t.vectorize;
+  const docs = P.libraries?.find((l) => l.id === 'docs');
+  const KIND = { model: 'מודל', dataset: 'מאגר נתונים', space: 'Space' };
+  const hfHtml = Array.isArray(hf) ? hf.map((r) => `<div class="blk">${chip(r.private ? 'st-todo' : 'st-done', r.private ? 'פרטי' : 'ציבורי')}<div class="x"><b class="ltr">${esc(r.id)}</b><div class="faint" style="font-size:12px">${KIND[r.kind] || r.kind}${r.modified ? ' · עודכן ' + heDay(Date.parse(r.modified)) : ''}</div></div></div>`).join('')
+    : hf?.error ? NM : '<span class="sk"></span>';
+  const vf = vz && !vz.error && docs?.count ? vz.vectors / docs.count : null;
+  $('#sources').innerHTML = `<div class="grp">Hugging Face</div>${hfHtml}
+    <div class="grp">Langflow (זרימות עבודה)</div>
+    ${lf ? `<div class="blk">${chip(lf.running ? 'st-done' : 'st-blocked', lf.running ? 'רץ אצלך במחשב' : 'לא רץ')}<div class="x">${lf.version ? `גרסה <span class="ltr">${esc(lf.version)}</span> · ` : ''}זרימות של המוצר: <b>${lf.flowsInRepo}</b></div></div>` : '<span class="sk"></span>'}
+    <div class="grp">Cloudflare Vectorize (חיפוש בידע)</div>
+    ${vz && !vz.error ? `<div class="brow" style="grid-template-columns:minmax(0,1fr) auto"><span>${nf(vz.vectors)} מתוך ${nf(docs?.count)} קטעי ידע מחוברים לחיפוש</span><span class="v">${pctTxt(vf)}</span></div>${bar('vz', vf, 'w')}
+      <div class="faint" style="font-size:12px;margin-top:6px">עודכן לאחרונה ${vz.updated ? heDay(Date.parse(vz.updated)) : '—'}</div>` : vz?.error ? NM : '<span class="sk"></span>'}`;
+}
+
+function renderKnows() {
+  const f = P.code?.facts;
+  if (!f || f.error) { $('#knows').innerHTML = f?.error ? NM : '<span class="sk h120"></span>'; return; }
+  const doms = Object.entries(f.skillDomains || {}).sort((a, b) => b[1] - a[1]);
+  const max = doms[0]?.[1] || 1;
+  $('#knows').innerHTML = `<div class="g g3" style="margin:0">
+    <div><div class="bignum">${count('kn-sk', f.skills)}</div><div class="dim" style="margin:4px 0 12px">מדריכי בנייה שהוא קורא לפני שהוא בונה</div>
+      ${doms.map(([d, n]) => `<div class="brow" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;padding:3px 0;font-size:13px"><span>${esc(DOMAIN_HE[d] || d)}</span>${bar('kn-' + d, n / max, 'thin')}<span class="v" style="min-width:30px">${n}</span></div>`).join('')}</div>
+    <div><div class="bignum">${count('kn-tools', f.tools?.length)}</div><div class="dim" style="margin:4px 0 12px">כלים שהוא יכול להפעיל בסטודיו</div>
+      <div class="chips">${(f.tools || []).map((t) => `<span>${esc(t)}</span>`).join('')}</div></div>
+    <div><div class="bignum">${count('kn-kits', f.kits?.length)}</div><div class="dim" style="margin:4px 0 12px">ערכות לפי ז'אנר, ועוד ${count('kn-mech', f.mechanics)} דפוסי מכניקה בדוקים</div>
+      <div class="chips he">${(f.kits || []).map((k) => `<span>${esc(KIT_HE[k] || k)}</span>`).join('')}</div></div></div>`;
+}
+
+let libFilter = 'הכול';
+function libCards() {
+  const libs = (P.libraries || []).slice();
+  for (const d of P.training?.datasets || []) {
+    const n = d.rows ?? (d.parts ? (d.parts.code || 0) + (d.parts.sft || 0) + (d.parts.knowledge || 0) : null);
+    libs.push({ id: 'ds-' + d.id, cat: 'מאגרי אימון', name: d.name, what: d.what, count: n, unit: d.unit || 'שורות', extra: d.extra, forAgent: true, path: 'packages/training/data' });
+  }
+  return libs;
+}
+function renderLibs() {
+  const libs = libCards();
+  const cats = ['הכול', ...new Set(libs.map((l) => l.cat))];
+  if (!cats.includes(libFilter)) libFilter = 'הכול';
+  const measured = libs.filter((l) => typeof l.count === 'number');
+  const items = measured.reduce((s, l) => s + l.count, 0);
+  $('#ctLibs').textContent = libs.length;
+  $('#libsIntro').innerHTML = `למוצר יש <b>${libs.length}</b> ספריות ומאגרים, עם <b>${nf(items)}</b> פריטים בסך הכול. כל מספר כאן נספר עכשיו ישר מהקוד ומהקבצים, לא נכתב ביד.
+    <span class="chip tag-agent" style="margin-inline-start:6px">לסוכן</span> = Apple משתמש בזה כשהוא בונה. <span class="chip tag-site">לאתר</span> = מופיע באתר ובאפליקציה.`;
+  const ui = visItem('uiLibraries');
+  $('#libsNote').innerHTML = ui && ui.status !== 'done' ? `<div class="note"><b>הספריות מהאתרים ששלחת:</b> ${esc(ui.detail)}</div>` : '';
+  $('#libFilters').innerHTML = cats.map((c) => `<button class="fbtn ${c === libFilter ? 'on' : ''}" data-lib="${esc(c)}">${esc(c)}<span class="ct">${c === 'הכול' ? libs.length : libs.filter((l) => l.cat === c).length}</span></button>`).join('');
+  const shown = libs.filter((l) => libFilter === 'הכול' || l.cat === libFilter);
+  $('#libs').innerHTML = shown.map((l, i) => `<div class="card lib" style="animation-delay:${Math.min(i, 20) * 35}ms">
+    <div class="top2"><div><div class="n">${count('lib-' + l.id, l.count)}</div><div class="u">${esc(l.unit || '')}</div></div><span class="chip">${esc(l.cat)}</span></div>
+    <div class="nm">${esc(l.name)}</div><div class="wt">${esc(l.what || '')}</div>${l.extra ? `<div class="ex">${esc(l.extra)}</div>` : ''}
+    ${l.breakdown ? `<div class="chips he">${Object.entries(l.breakdown).map(([d, n]) => `<span>${esc(DOMAIN_HE[d] || d)} ${n}</span>`).join('')}</div>` : ''}
+    ${l.sample ? `<div class="chips ${l.id === 'kits' ? 'he' : ''}">${l.sample.map((s) => `<span>${esc(l.id === 'kits' ? KIT_HE[s] || s : s)}</span>`).join('')}</div>` : ''}
+    ${l.previews?.length ? `<div class="pv">${l.previews.slice(0, 3).map((u) => `<img src="${esc(u)}" alt="" loading="lazy" data-full="${esc(u)}" data-cap="${esc(l.name)}">`).join('')}</div>` : ''}
+    <div class="badges">${l.forAgent ? '<span class="chip tag-agent">לסוכן</span>' : ''}${l.forSite ? '<span class="chip tag-site">לאתר</span>' : ''}${l.license ? chip('', l.license) : ''}</div>
+    <div class="path" title="${esc(l.path || '')}">${esc(l.path || '')}</div></div>`).join('');
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-lib]'); if (!b || !P) return;
+  libFilter = b.dataset.lib; renderLibs(); animate($('#libs'), true);
+});
+
+function renderCode() {
+  const sz = P.code?.sizes;
+  if (!sz || sz.error) { $('#code').innerHTML = sz?.error ? NM : '<span class="sk h120"></span>'; return; }
+  const max = sz[0]?.lines || 1;
+  const tl = sz.reduce((s, p) => s + p.lines, 0), tf = sz.reduce((s, p) => s + p.files, 0);
+  $('#codeTotal').textContent = `· ${nf(tf)} קבצים · ${nf(tl)} שורות`;
+  $('#code').innerHTML = sz.map((p) => `<div class="brow" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto"><span class="ltr mono" style="font-size:12.5px;text-align:right">${esc(p.name)}</span>${bar('code-' + p.name, p.lines / max)}<span class="v">${nf(p.lines)} <span class="faint">· ${nf(p.files)}</span></span></div>`).join('')
+    + `<div class="faint" style="font-size:12px;margin-top:8px">שורות קוד · קבצים, לכל חלק של המוצר (בלי נתונים ובלי קבצים שנבנים אוטומטית)</div>`;
+}
+
+let shotFilter = 'הכול';
+function renderGallery() {
+  const s = P.screenshots;
+  if (!s) { $('#gallery').innerHTML = NM; return; }
+  const groups = ['הכול', ...new Set(s.items.map((x) => x.group))];
+  if (!groups.includes(shotFilter)) shotFilter = 'הכול';
+  $('#ctShots').textContent = s.total;
+  $('#shotCount').textContent = `· ${s.total} תמונות${s.total > s.items.length ? `, מוצגות ${s.items.length} האחרונות` : ''}`;
+  $('#shotFilters').innerHTML = groups.map((g) => `<button class="fbtn ${g === shotFilter ? 'on' : ''}" data-shot="${esc(g)}">${esc(g)}<span class="ct">${g === 'הכול' ? s.items.length : s.items.filter((x) => x.group === g).length}</span></button>`).join('');
+  const shown = s.items.filter((x) => shotFilter === 'הכול' || x.group === shotFilter);
+  $('#gallery').innerHTML = shown.map((x) => `<button class="shot" data-full="${esc(x.url)}" data-cap="${esc(x.group + ' · ' + x.title)}"><img src="${esc(x.url)}" alt="${esc(x.title)}" loading="lazy">
+    <span class="lab"><span class="ltr">${esc(x.title)}</span><small>${esc(x.group)} · ${ago(x.mtime)}</small></span></button>`).join('');
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-shot]'); if (!b || !P) return;
+  shotFilter = b.dataset.shot; renderGallery();
+});
+
+function renderCommits() {
+  const g = P.git;
+  if (!g) { $('#commits').innerHTML = NM; return; }
+  const today = new Date().toDateString(), yest = new Date(Date.now() - 86400000).toDateString();
+  let day = '', html = '';
+  for (const c of g.commits) {
+    const d = new Date(c.t).toDateString();
+    if (d !== day) { day = d; html += `<div class="day">${d === today ? 'היום' : d === yest ? 'אתמול' : heDay(c.t)}</div>`; }
+    html += `<div class="cm"><span class="t">${hhmm(c.t)}</span><span class="h">${esc(c.h)}</span><span class="s" title="${esc(c.s)}">${esc(c.s)}</span></div>`;
+  }
+  $('#commitCount').textContent = `· ${g.last24h} ב-24 השעות האחרונות`;
+  $('#commits').innerHTML = html;
+}
+
+function renderHundred() {
+  const a = P.acceptance, f = P.findings, q = P.queue, vs = P.vision?.items || [];
+  if (a) {
+    const miss = a.items.filter((i) => !i.ok);
+    $('#hero100').innerHTML = `${ring('h-acc', a.done / a.total, null, 'gA', pctTxt(a.done / a.total), 'מוכן')}
+      <div><h3>המוצר מוכן כש<span class="shine">כל ${a.total} התנאים</span> מתקיימים, ובדיקת הקבלה עוברת.</h3>
+      <div class="para" style="margin:10px 0 0">עכשיו <b>${a.done}</b> מתוך <b>${a.total}</b> מתקיימים. חסרים: ${miss.map((i) => esc(i.label)).join(' · ')}.</div></div>`;
+    const grp = (title, list) => `<div class="grp">${title}</div>${list.map((i) => `<div class="ck ${i.ok ? 'ok' : 'no'}"><span class="b">${i.ok ? '✓' : '✗'}</span><span>${esc(i.label)}</span></div>`).join('')}`;
+    $('#checklist').innerHTML = grp('איכות ובדיקות', a.flags) + grp('משימות שהמוצר צריך לעשות לבד', a.missions)
+      + grp('ביקורות חיצוניות בסוף', a.items.filter((i) => /^review/.test(i.key))) + grp('תקלות', a.items.filter((i) => i.key === 'critical' || i.key === 'high'));
+  } else { $('#hero100').innerHTML = NM; $('#checklist').innerHTML = NM; }
+
+  if (f) {
+    const sevs = ['critical', 'high', 'medium', 'low'];
+    const colors = { critical: '#fb7185', high: '#f5b86c', medium: '#8aa2ff', low: '#5a6480' };
+    $('#findCount').textContent = `· ${f.closed} מתוך ${f.total} נסגרו`;
+    $('#findings').innerHTML = `<div class="brow" style="grid-template-columns:minmax(0,1fr) auto"><span>נסגרו</span><span class="v">${pctTxt(f.closed / f.total)}</span></div>${bar('f-closed', f.closed / f.total, 'g')}
+      <div class="sevbar" style="margin-top:14px">${sevs.map((s) => `<span style="width:${(f.bySev[s]?.open || 0) / Math.max(1, f.open.length) * 100}%;background:${colors[s]}" title="${SEV_HE[s]}"></span>`).join('')}</div>
+      <div class="kv" style="margin-bottom:10px">${sevs.map((s) => `<span>${sevChip(s)} פתוחות</span><b>${f.bySev[s]?.open || 0}</b>`).join('')}</div>
+      <details><summary>כל ${f.open.length} התקלות הפתוחות (באנגלית)</summary>${f.open.map((x) => `<div class="blk">${sevChip(x.sev)}<div class="x"><b class="ltr">${esc(x.id)}</b><div class="en" style="margin-top:2px">${esc(x.text)}</div></div></div>`).join('')}</details>`;
+  } else $('#findings').innerHTML = NM;
+
+  const open = (q || []).filter((x) => x.status === 'open');
+  $('#queue').innerHTML = open.length ? `<div class="para">דברים שרק אדם יכול לעשות: תשלום, פתיחת חשבון, סיסמה או קוד אימות. כל השאר עליי. המוצר נבנה כך שכל אחד מהם יופעל לבד ברגע שתעשה אותו.</div>`
+    + open.map((x) => `<div class="q"><span class="id ltr">${esc(x.id)}</span><div class="en" style="margin-top:2px;color:#cdd5ea">${esc(x.step)}</div><div class="en" style="margin-top:2px;font-size:12px">${esc(x.why)}</div></div>`).join('')
+    : '<div class="dim">אין כרגע שום דבר שמחכה לך</div>';
+
+  const order = { progress: 0, partial: 1, blocked: 2, todo: 3, done: 4 };
+  const n = (st) => vs.filter((i) => i.status === st).length;
+  $('#visCount').textContent = `· ${n('done')} הושלמו · ${n('partial') + n('progress')} בעבודה · ${n('blocked')} מחכים · ${n('todo')} עוד לא התחילו`;
+  $('#vision').innerHTML = vs.slice().sort((x, y) => (order[x.status] ?? 9) - (order[y.status] ?? 9)).map((i) => `<div class="vi"><div class="hd"><span class="he">${esc(i.he)}</span>${stChip(i.status)}</div>
+    <div class="dt2">${esc(i.detail || '')}</div>${i.blockedBy ? `<div class="by">מחכה ל: <span class="ltr">${esc(i.blockedBy)}</span></div>` : ''}</div>`).join('');
+}
+
+// =========================================================================================
+// Token half (every 2 seconds)
+// =========================================================================================
+const PARTS = [['read', 'קריאה מהמטמון', 'var(--c-read)'], ['write5m', 'כתיבה למטמון (5 דק׳)', 'var(--c-w5)'], ['write1h', 'כתיבה למטמון (שעה)', 'var(--c-w1)'], ['output', 'פלט', 'var(--c-out)'], ['input', 'קלט חדש', 'var(--c-in)']];
+let shownCost = 0, lastFeedTs = 0, lastDoingTs = 0;
+
+function animateTotal(target) {
+  const el = $('#total'); const from = shownCost || target * 0.985; const t0 = performance.now();
+  if (Math.abs(target - from) > 0.004) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+  const step = (t) => {
+    const k = reduced ? 1 : Math.min(1, (t - t0) / 900); const v = from + (target - from) * (1 - Math.pow(1 - k, 3));
+    const [d, c] = v.toFixed(2).split('.');
+    el.innerHTML = '$' + Number(d).toLocaleString('en-US') + '<span class="cents">.' + c + '</span>';
+    if (k < 1) requestAnimationFrame(step); else shownCost = target;
+  };
+  requestAnimationFrame(step);
+}
+
+function drawChart(series) {
+  const cv = $('#chart'); if (!cv.clientWidth) return;
+  const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; cv.width = w * dpr; cv.height = h * dpr;
+  const g = cv.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
+  if (!series || series.length < 2) return;
+  const pad = { l: 56, r: 12, t: 10, b: 26 };
+  const t0 = series[0][0], t1 = series.at(-1)[0], max = series.at(-1)[1] || 1, maxB = Math.max(...series.map((s) => s[2])) || 1;
+  const X = (t) => pad.l + (t - t0) / (t1 - t0 || 1) * (w - pad.l - pad.r);
+  const Y = (v) => h - pad.b - v / max * (h - pad.t - pad.b);
+  g.strokeStyle = '#1b2236'; g.fillStyle = '#5a6480'; g.font = '11px JetBrains Mono, monospace'; g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { const v = max * i / 4, y = Y(v); g.beginPath(); g.moveTo(pad.l, y); g.lineTo(w - pad.r, y); g.stroke(); g.fillText('$' + Math.round(v), 6, y + 4); }
+  const bw = Math.max(1, (w - pad.l - pad.r) / series.length - 1);
+  g.fillStyle = 'rgba(245,184,108,.35)';
+  for (const [t, , b] of series) { const bh = b / maxB * (h - pad.t - pad.b) * 0.35; g.fillRect(X(t) - bw / 2, h - pad.b - bh, bw, bh); }
+  const grad = g.createLinearGradient(0, pad.t, 0, h - pad.b); grad.addColorStop(0, 'rgba(91,124,250,.38)'); grad.addColorStop(1, 'rgba(91,124,250,0)');
+  g.beginPath(); g.moveTo(X(t0), Y(0)); for (const [t, v] of series) g.lineTo(X(t), Y(v)); g.lineTo(X(t1), Y(0)); g.closePath(); g.fillStyle = grad; g.fill();
+  g.beginPath(); series.forEach(([t, v], i) => i ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v))); g.strokeStyle = '#7d97ff'; g.lineWidth = 2; g.stroke();
+  const [lt, lv] = series.at(-1); g.beginPath(); g.arc(X(lt), Y(lv), 4, 0, 7); g.fillStyle = '#8aa2ff'; g.fill();
+  g.fillStyle = '#5a6480'; const fmtT = (t) => new Date(t).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+  g.fillText(fmtT(t0), pad.l, h - 6); const s = fmtT(t1); g.fillText(s, w - pad.r - g.measureText(s).width, h - 6);
+}
+
+function renderTokens(d) {
+  animateTotal(d.cost);
+  const hrs = d.startedAt ? (d.now - d.startedAt) / 3600000 : 0;
+  $('#since').innerHTML = d.startedAt ? `מאז <b>${new Date(d.startedAt).toLocaleString('he-IL', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</b> · <b>${hrs.toFixed(1)}</b> שעות עבודה · בממוצע <b class="ltr">${fmtUsd(d.cost / Math.max(hrs, 0.01))}</b> לשעה` : '—';
+  $('#perHour').textContent = fmtUsd(d.perHour); $('#last10').textContent = fmtUsd(d.last10);
+  $('#tpm').textContent = fmtN(d.tokPerMin); $('#tokens').textContent = fmtN(d.tokens); $('#calls').textContent = d.calls.toLocaleString('en-US');
+  $('#active').innerHTML = d.activeAgents + '<small>מתוך ' + d.agents.length + '</small>';
+  const tt = Object.values(d.tok).reduce((a, b) => a + b, 0) || 1;
+  $('#stack').innerHTML = PARTS.map(([k, , c]) => `<span style="width:${d.tok[k] / tt * 100}%;background:${c}"></span>`).join('');
+  $('#legend').innerHTML = PARTS.map(([k, l, c]) => `<span class="sw" style="background:${c}"></span><span>${l}</span><span class="n mono">${fmtN(d.tok[k])}</span><span class="mono">${fmtUsd(d.costBy[k])}</span>`).join('');
+  $('#models').innerHTML = d.models.map((m) => `<tr><td><span class="ltr">${esc(m.name)}</span>${m.fast ? ' <span class="tag">מהיר ' + m.fast + '</span>' : ''}</td><td class="r mono">${m.calls.toLocaleString('en-US')}</td><td class="r mono">${fmtN(m.tokens)}</td><td class="r mono">${fmtUsd(m.cost)}</td></tr>`).join('');
+  const top = d.agents[0]?.cost || 1;
+  $('#agents').innerHTML = d.agents.map((a) => `<tr><td><div class="agent"><span class="nm2" title="${esc(a.name)}">${esc(a.name)}</span>${a.active ? '<span class="tag on">עובד</span>' : ''}</div><div class="bar2"><i style="width:${a.cost / top * 100}%"></i></div></td><td class="r mono">${a.calls.toLocaleString('en-US')}</td><td class="r mono">${fmtN(a.tokens)}</td><td class="r mono">${fmtUsd(a.cost)}</td></tr>`).join('');
+  $('#feed').innerHTML = d.feed.map((f) => `<tr class="${f.ts > lastFeedTs && lastFeedTs ? 'new' : ''}"><td class="mono">${new Date(f.ts).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td><td><span class="nm2">${esc(f.agent.length > 34 ? f.agent.slice(0, 33) + '…' : f.agent)}</span></td><td class="r mono">${fmtN(f.in)}</td><td class="r mono">${fmtN(f.out)}</td><td class="r mono">${fmtUsd4(f.cost)}</td></tr>`).join('');
+  lastFeedTs = d.feed[0]?.ts || lastFeedTs;
+  if (current === 'tokens') drawChart(d.series);
+  renderLimits(d.limits, d.now);
+  if (d.unpriced) $('#note').dataset.unpriced = d.unpriced;
+}
+
+function renderLimits(L, now) {
+  if (!L) { $('#limitsCard').style.display = 'none'; $('#tkLimits').innerHTML = ''; return; }
+  $('#limitsCard').style.display = '';
+  $('#planName').textContent = 'Claude ' + L.plan + (L.extra?.enabled ? ' · שימוש נוסף פעיל' : ' · שימוש נוסף כבוי');
+  const w0 = L.windows[0];
+  $('#reading').textContent = `נמדד באפליקציה של Claude ${ago(w0.measuredAt)}. החלק המפוספס הוא הערכה מאז, לפי ההוצאה החיה של כל החשבון.`;
+  const tk = [];
+  $('#limits').innerHTML = L.windows.map((w) => {
+    const stale = now >= w.resetsAt;
+    const shown = stale ? null : w.estimate ?? w.measured;
+    const cls = stale ? 'stale' : shown >= 90 ? 'hot' : shown >= 70 ? 'warn' : '';
+    tk.push(`<div class="tk"><span>${esc(LIMIT_HE(w.label))}</span><b class="ltr ${cls}">${stale ? 'התאפס' : Math.round(shown) + '%'}</b></div>`);
+    if (stale) return `<div class="lim stale"><div class="top3"><span class="name">${esc(LIMIT_HE(w.label))}</span><span class="pct">—</span></div>
+      <div class="meter"></div><div class="rows"><span>החלון התאפס ${ago(w.resetsAt)}</span><b>מחכה לקריאה חדשה</b></div></div>`;
+    const elapsed = Math.min(100, Math.max(0, (now - w.start) / (w.resetsAt - w.start) * 100));
+    const est = w.estimate != null && w.estimate > w.measured ? `<span class="e" style="inset-inline-start:${w.measured}%;width:${w.estimate - w.measured}%"></span>` : '';
+    const full = w.fullAt && w.fullAt < w.resetsAt ? `<span>בקצב הזה יתמלא</span><b>${new Date(w.fullAt).toLocaleString('he-IL', { weekday: 'short', hour: '2-digit', minute: '2-digit' })} (בעוד ${dur(w.fullAt - now)})</b>`
+      : w.pctPerHour != null ? `<span>בקצב הזה</span><b>לא יתמלא לפני האיפוס</b>` : '';
+    return `<div class="lim ${cls}"><div class="top3"><span class="name">${esc(LIMIT_HE(w.label))}</span><span class="pct ltr">${w.measured}%<small>${w.estimate != null && w.estimate - w.measured >= 0.5 ? ' → ~' + w.estimate.toFixed(0) + '% עכשיו' : ''}</small></span></div>
+      <div class="meter"><span class="m" style="width:${w.measured}%"></span>${est}<span class="tnow" style="inset-inline-start:${elapsed}%" title="כמה מהזמן של החלון עבר"></span></div>
+      <div class="rows"><span>מתאפס בעוד</span><b data-reset="${w.resetsAt}">${dur(w.resetsAt - now)}</b><span>כמה מהזמן עבר</span><b>${elapsed.toFixed(0)}%</b>
+        ${w.pctPerHour != null ? `<span>קצב בשעה האחרונה</span><b class="ltr">${w.pctPerHour.toFixed(1)}% / h</b>` : ''}${full}</div></div>`;
+  }).join('');
+  $('#tkLimits').innerHTML = tk.slice(0, 2).join('');
+}
+setInterval(() => { $$('[data-reset]').forEach((el) => { el.textContent = dur(Number(el.dataset.reset) - Date.now()); }); }, 1000);
+
+function renderLive(d) {
+  $('#tkCost').textContent = fmtUsd(d.cost);
+  const act = d.agents.filter((a) => a.active);
+  $('#agentsNow').innerHTML = act.length ? act.map((a) => `<span class="chip st-progress"><i></i>${esc(a.name.length > 46 ? a.name.slice(0, 45) + '…' : a.name)}</span>`).join('')
+    : '<span class="dim" style="font-size:13px">אף סוכן לא עובד ברגע זה</span>';
+  $('#doing').innerHTML = d.doing.length ? d.doing.map((x) => `<div class="fi ${x.ts > lastDoingTs && lastDoingTs ? 'new' : ''}"><span class="t">${ago(x.ts).replace('לפני ', '')}</span>
+      <div style="min-width:0"><div class="w ltr" style="display:block;text-align:right">${esc(x.what)}</div><div class="a">${esc(x.agent)}</div></div></div>`).join('') : '<div class="dim">—</div>';
+  lastDoingTs = d.doing[0]?.ts || lastDoingTs;
+  $('#says').innerHTML = d.says.length ? d.says.slice(0, 4).map((s) => `<div class="s"><div class="t">${hhmm(s.ts)} · ${ago(s.ts)}</div><p>${esc(clean(s.text).slice(0, 700))}</p></div>`).join('') : '<div class="dim">—</div>';
+  $('#status').textContent = 'חי · ' + new Date(d.now).toLocaleTimeString('he-IL');
+}
+
+function connect() {
+  const es = new EventSource('/events');
+  es.onmessage = (e) => { $('#dot').className = 'dot'; T = JSON.parse(e.data); try { renderLive(T); renderTokens(T); } catch (err) { console.error(err); } };
+  es.addEventListener('project', (e) => { P = JSON.parse(e.data); renderProject(); });
+  es.onerror = () => { $('#dot').className = 'dot off'; $('#status').textContent = 'מתחבר מחדש…'; };
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && P) animate($('#tab-' + current), true); });
+addEventListener('resize', () => { if (T && current === 'tokens') drawChart(T.series); });
+setInterval(() => { if (P) $('#collected').textContent = `הנתונים על הפרויקט נאספו ${ago(P.collectedAt)} מתוך הקוד עצמו, והם מתעדכנים כל דקה. הטוקנים והעלות מתעדכנים כל 2 שניות.`; }, 5000);
+
+let first = 'now';
+try { first = location.hash.slice(1) || localStorage.getItem('owner-dash-tab') || 'now'; } catch {}
+show(first, false);
+connect();
+</script>
+</body>
+</html>

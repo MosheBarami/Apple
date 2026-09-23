@@ -1,0 +1,141 @@
+{
+  "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
+  "updatedAt": "2026-09-23T17:10:00Z",
+  "now": "בונה את הלוח המשולב, ומחבר ספריות UI ואייקונים חינמיות וחוקיות לסוכן ולאתר",
+  "nextStep": "לסיים את תיקון המראה של Apple MAX (משחקים צבעוניים בסגנון רובלוקס), להעלות אותו לאוויר, ולהריץ את סבב 2 בסטודיו מול Grow a Garden",
+  "items": [
+    {
+      "id": "models",
+      "he": "מודלים לפי מסלול: Free = Apple, Pro = Apple + Apple MAX, Max = הכול",
+      "status": "partial",
+      "blockedBy": "Q-006",
+      "detail": "Apple ו-Apple MAX עובדים. שלושת המודלים של Max (Gemini 3.8 Flash, GPT-5.6, GPT-5.6 Luna) מחוברים בקוד ומחכים לקרדיטים ב-Cloudflare"
+    },
+    {
+      "id": "byok",
+      "he": "הסרת \"הבא מפתח משלך\"",
+      "status": "partial",
+      "detail": "הוסר מהמוצר. באתר השיווקי נשאר טקסט ישן עד ההעלאה הבאה של האתר"
+    },
+    {
+      "id": "voice",
+      "he": "קול: הילד מדבר ו-Apple בונה",
+      "status": "blocked",
+      "blockedBy": "Q-008",
+      "detail": "מחכה למפתח של AssemblyAI"
+    },
+    {
+      "id": "uiImages",
+      "he": "מודל תמונות ל-UI והעלאה לרובלוקס",
+      "status": "partial",
+      "detail": "יצירת תמונות עובדת. ההעלאה האוטומטית לרובלוקס עדיין חלקית"
+    },
+    {
+      "id": "threeD",
+      "he": "תלת-ממד משלושה מקורות",
+      "status": "partial",
+      "blockedBy": "Q-010",
+      "detail": "המחולל של רובלוקס וחנות הנכסים עובדים. מחולל חיצוני מחכה למפתח"
+    },
+    {
+      "id": "genreKits",
+      "he": "ערכות UI לכל ז'אנר",
+      "status": "done",
+      "detail": "11 ערכות: אימה, אובי, טייקון, סימולטור, מרוצים, משחק תפקידים, הגנת מגדלים, יריות, אנימה, הישרדות, הרפתקאות"
+    },
+    {
+      "id": "uiLibraries",
+      "he": "ספריות UI ואייקונים חינמיות וחוקיות, אלפי פריטים, לסוכן ולאתר",
+      "status": "progress",
+      "detail": "שני האתרים ששלחת דורשים תשלום ואוסרים שימוש במשחקים של לקוחות, לכן אני מביא ספריות CC0 חינמיות באותו היקף"
+    },
+    {
+      "id": "agentTools",
+      "he": "סוכן עם הרבה כלים, כולל אינטרנט ותיעוד",
+      "status": "partial",
+      "blockedBy": "Q-009",
+      "detail": "85 כלים פעילים. כלי החיפוש באינטרנט מחכים למפתחות"
+    },
+    {
+      "id": "rag",
+      "he": "ידע: חיפוש בספריית הידע של רובלוקס",
+      "status": "partial",
+      "detail": "מאגר הידע קיים, אבל רק חלק ממנו מחובר לחיפוש, והסוכן עוד לא שולף ממנו לבד"
+    },
+    {
+      "id": "lora",
+      "he": "אימון Apple על הידע שלנו",
+      "status": "partial",
+      "detail": "4 אימונים נעשו. v4 שופר בשימוש בכלים (מ-0 ל-8 מתוך 13) אבל עוד לא בלוגיקת משחק. v5 מוכן להרצה"
+    },
+    {
+      "id": "cloudflare",
+      "he": "שימוש מלא ב-Cloudflare",
+      "status": "partial",
+      "detail": "AI Gateway, Vectorize, D1, R2 ו-Durable Objects בשימוש. Turnstile, Queues, Workflows, Images ו-Analytics Engine עוד לא"
+    },
+    {
+      "id": "stripe",
+      "he": "תשלומים במצב בדיקה",
+      "status": "blocked",
+      "blockedBy": "Q-012",
+      "detail": "הקוד מוכן. חסרה הרצת תשלום אחת עם כרטיס בדיקה"
+    },
+    {
+      "id": "icons",
+      "he": "אייקונים ואנימציות",
+      "status": "done",
+      "detail": "אייקוני סטודיו, אייקונים לאתר ותנועה עדינה בכל המסכים"
+    },
+    {
+      "id": "visualTests",
+      "he": "בדיקות ויזואליות לכל מודל בסטודיו",
+      "status": "todo",
+      "detail": "יבוצע אחרי תיקון המראה של Apple MAX"
+    },
+    {
+      "id": "findings",
+      "he": "כל התקלות סגורות",
+      "status": "live",
+      "detail": "נספר אוטומטית מיומן התקלות"
+    },
+    {
+      "id": "langflow",
+      "he": "זרימות עבודה ב-Langflow",
+      "status": "todo",
+      "detail": "Langflow רץ אצלך במחשב. עוד אין בו זרימות של המוצר"
+    },
+    {
+      "id": "hf",
+      "he": "Hugging Face: מודל, מאגר נתונים ו-Space",
+      "status": "partial",
+      "detail": "המודל והמאגר הועלו כפרטיים. עוד לא מחוברים למוצר"
+    },
+    {
+      "id": "gauntlet",
+      "he": "Apple MAX בונה משחק שנראה כמו המשחק האמיתי",
+      "status": "progress",
+      "detail": "סבב 1 נכשל: המשחק יצא אפור ולא צבעוני. התיקון בעבודה, ואחריו סבב 2"
+    },
+    {
+      "id": "pluginStore",
+      "he": "התוסף בחנות של רובלוקס",
+      "status": "blocked",
+      "blockedBy": "Roblox",
+      "detail": "התוסף פורסם והוסר אוטומטית. הערעור נשלח ב-23.9, רובלוקס עונים בדרך כלל תוך 5 ימי עסקים"
+    },
+    {
+      "id": "repoPublic",
+      "he": "הקוד פתוח לציבור ב-GitHub",
+      "status": "blocked",
+      "blockedBy": "Q-011",
+      "detail": "קודם צריך להחליף סיסמת בדיקה שדלפה"
+    }
+  ],
+  "blockers": {
+    "F-020": "כל בדיקת משחק השאירה את הסטודיו במצב ריצה. התיקון כבר בקוד ומחכה לפרסום התוסף בחנות",
+    "F-034": "התוסף ניתק אחרי 256 פעולות. התיקון כבר בקוד ומחכה לפרסום התוסף בחנות",
+    "F-038": "רובלוקס הסירו את הגרסה החדשה של התוסף מהחנות. נשלח ערעור",
+    "F-059": "Apple MAX בונה עולם אפור במקום עולם צבעוני בסגנון רובלוקס"
+  }
+}

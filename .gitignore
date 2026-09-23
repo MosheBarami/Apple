@@ -273,3 +273,6 @@ __pycache__/
 .workbuddy-ai/
 orgsweep.tsv
 claude-autonomy-research-pack/
+
+# owner dashboard: local usage readings
+scripts/owner-dashboard/limits.json
