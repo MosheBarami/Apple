@@ -15,6 +15,7 @@ import { useAuth } from '../lib/auth';
 import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../lib/mfa';
 import { canSubmit as canSubmitRecovery, recoveryOutcome, type RecoveryOutcome } from '../lib/account-recovery';
 import { submitRecoveryRequest } from '../lib/api';
+import { captchaOptions, turnstileToken } from '../lib/turnstile';
 import { AppleGlyph } from '../components/glyphs';
 import {
   CHECK_EMAIL_LINE,
@@ -354,7 +355,11 @@ export function LoginPage() {
     if (busy) return;
     setError(null);
     setBusy(true);
-    const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const { error: err } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+      options: captchaOptions(await turnstileToken('signin')),
+    });
     const outcome = signInOutcome(err);
     if (outcome.kind === 'retry') {
       setBusy(false);
@@ -605,7 +610,7 @@ export function SignupPage() {
       // WITHOUT THIS the confirmation link points at Supabase's own site_url, which is not
       // necessarily this app — the link "works" and drops the user somewhere that cannot finish
       // the job. /confirm is the route that can.
-      options: { emailRedirectTo: emailRedirectTo('/confirm') },
+      options: { emailRedirectTo: emailRedirectTo('/confirm'), ...captchaOptions(await turnstileToken('signup')) },
     });
     setBusy(false);
     const outcome: AuthOutcome = signupOutcome(data, err, address);
@@ -628,7 +633,7 @@ export function SignupPage() {
     await supabase.auth.resend({
       type: 'signup',
       email: sentTo,
-      options: { emailRedirectTo: emailRedirectTo('/confirm') },
+      options: { emailRedirectTo: emailRedirectTo('/confirm'), ...captchaOptions(await turnstileToken('resend')) },
     });
     setResend('sent');
   };
@@ -731,6 +736,7 @@ export function ForgotPasswordPage() {
     const address = email.trim();
     const { error: err } = await supabase.auth.resetPasswordForEmail(address, {
       redirectTo: emailRedirectTo('/reset'),
+      ...captchaOptions(await turnstileToken('reset')),
     });
     setBusy(false);
     const outcome = resetRequestOutcome(err, address);
@@ -1073,7 +1079,7 @@ export function ConfirmEmailPage() {
     await supabase.auth.resend({
       type: 'signup',
       email: to,
-      options: { emailRedirectTo: emailRedirectTo('/confirm') },
+      options: { emailRedirectTo: emailRedirectTo('/confirm'), ...captchaOptions(await turnstileToken('resend')) },
     });
     setResend('sent');
   };
@@ -1235,7 +1241,7 @@ export function RecoveryRequestPage() {
     if (busy || !canSubmitRecovery(email)) return;
     setBusy(true);
     // The reply is not interpreted here — see the module's own note on why that matters.
-    const reply = await submitRecoveryRequest(email.trim(), note.trim());
+    const reply = await submitRecoveryRequest(email.trim(), note.trim(), await turnstileToken('recovery'));
     setBusy(false);
     setOutcome(recoveryOutcome(reply));
   };

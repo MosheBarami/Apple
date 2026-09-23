@@ -162,7 +162,8 @@ function SafeImage({ image, className, onAvailabilityChange }: {
     let cancelled = false;
     let created: string | null = null;
     setState('loading');
-    fetchImageObjectUrl(internal.projectId, internal.imageId)
+    // 1024 = the generated size: same pixels, delivered as a WebP a fraction of the PNG's weight.
+    fetchImageObjectUrl(internal.projectId, internal.imageId, 1024)
       .then((url) => {
         created = url;
         if (cancelled) {

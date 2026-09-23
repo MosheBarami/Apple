@@ -12,6 +12,7 @@
 // constructor that already runs one.
 import type { Env } from './env';
 import { drainEvents, normalizeEvent, pendingEventCount, type GolemEvent, type RejectReason } from './analytics';
+import { writeProductEvents } from './analytics-engine';
 
 /** Buffered events that trigger a flush. One DO write per request would cost more than the data. */
 export const FLUSH_THRESHOLD = 16;
@@ -38,6 +39,9 @@ export interface FlushResult {
 export async function flushEvents(env: Env): Promise<FlushResult> {
   const batch = drainEvents();
   if (batch.length === 0) return { sent: 0, stored: 0, lost: 0 };
+  // Analytics Engine keeps the long-horizon, person-free copy (analytics-engine.ts). Synchronous,
+  // never throws, and independent of whether AdminDO below accepts the batch.
+  writeProductEvents(env, batch);
   try {
     const res = await adminStub(env).fetch('https://do/events', {
       method: 'POST',

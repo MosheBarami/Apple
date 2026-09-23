@@ -181,15 +181,24 @@ test('a notification that cannot be delivered does not fail the security action 
   const body = code(index);
   const fn = /function securityNotice\([\s\S]*?\n\}/.exec(body);
   assert.ok(fn, 'could not read securityNotice');
-  assert.match(fn[0], /\.catch\(/, 'a failed delivery must not reject into the route');
-  assert.match(fn[0], /try \{[\s\S]*executionCtx\.waitUntil[\s\S]*\} catch/, 'executionCtx must be reached for inside a try');
+  // Since D-VISION-1 the notice goes through dispatchNotifications (notify-queue.ts), which owns both
+  // guarantees: the delivery is caught there, and `backgroundOf` reaches for executionCtx in a try.
+  assert.match(fn[0], /dispatchNotifications\(c\.env,[\s\S]*backgroundOf\(c\)\)/, 'the notice is dispatched, not awaited');
+  const queue = code(read('notify-queue.ts'));
+  const dispatch = /export function dispatchNotifications\([\s\S]*?\n\}/.exec(queue);
+  assert.ok(dispatch, 'could not read dispatchNotifications');
+  assert.match(dispatch[0], /\.catch\(/, 'a failed delivery must not reject into the route');
+  const bg = /export function backgroundOf\([\s\S]*?\n\}/.exec(queue);
+  assert.ok(bg, 'could not read backgroundOf');
+  assert.match(bg[0], /try \{[\s\S]*executionCtx[\s\S]*\} catch/, 'executionCtx must be reached for inside a try');
 });
 
 /* ------------------------------------------------------------------- the billing alarm --- */
 
 test('the Stripe webhook still emits the only billing alarm the product has', () => {
   const body = code(index);
-  const emit = /notify\(c\.env, \{\s*kind: 'billing_issue',([\s\S]{0,400}?)\}\)/.exec(body);
+  // Direct `notify(...)` or, since D-VISION-1, a one-item `dispatchNotifications(...)` (the queue).
+  const emit = /(?:notify\(c\.env, \{|dispatchNotifications\(c\.env, \[\{)\s*kind: 'billing_issue',([\s\S]{0,400}?)\}\]?[,)]/.exec(body);
   assert.ok(emit, 'the dunning path no longer notifies');
   assert.match(emit[1], /recipientId: dunning\.userId/);
   // The field was `invoiceId` when this was written and is now `subjectId`: the module grew a

@@ -107,6 +107,8 @@ export function authErrorMessage(error: unknown): string {
   if (m.includes('same password') || m.includes('should be different')) {
     return 'That is already your password. Choose a different one.';
   }
+  // Supabase's captcha refusal ("captcha protection: request disallowed …") — Turnstile, lib/turnstile.ts.
+  if (m.includes('captcha')) return 'We could not confirm you are a person. Refresh the page and try again.';
   if (m.includes('failed to fetch') || m.includes('network')) {
     return "Couldn't reach the server. Check your connection and try again.";
   }

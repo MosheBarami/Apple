@@ -72,7 +72,7 @@
       "id": "cloudflare",
       "he": "שימוש מלא ב-Cloudflare",
       "status": "partial",
-      "detail": "AI Gateway, Vectorize, D1, R2 ו-Durable Objects בשימוש. Turnstile, Queues, Workflows, Images ו-Analytics Engine עוד לא"
+      "detail": "AI Gateway, Vectorize, D1, R2 ו-Durable Objects בשימוש. חמשת הנוספים נבנו ונבדקו מול Cloudflare האמיתי אבל עוד לא עלו לאתר: Turnstile בהרשמה, בכניסה, באיפוס סיסמה ובבקשת שחזור; Analytics Engine לספירת ריצות, בניות, קריאות למודל וקרדיטים, עם דוח למנהל; תור שלא מאבד התראות; Workflow שמודיע כשמודל תלת-ממד סיים לעלות ל-Roblox; Images שמקטין תמונות ל-WebP. הם נדלקים אחרי פריסה והגדרת שני מפתחות"
     },
     {
       "id": "stripe",

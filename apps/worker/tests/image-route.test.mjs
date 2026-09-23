@@ -96,7 +96,8 @@ test('every failure is the same 404, so the route is not an existence oracle', (
 
 test('the bytes are served as a private, non-sniffable image', () => {
   assert.match(route, /'Content-Type': contentType/);
-  assert.match(route, /const contentType = imageMimeType\(bytes\)/);
+  // `let`, since a display copy (image-resize.ts, `?w=`) may replace it with image/webp.
+  assert.match(route, /(?:const|let) contentType = imageMimeType\(bytes\)/);
   // PRIVATE: one user's generated content behind an authorised route. A shared cache holding it
   // would serve it to whoever asked next.
   assert.match(route, /'Cache-Control':[^\n]+private, no-store[^\n]+private, max-age=\$\{remainingLife\(metadata\)\}/);

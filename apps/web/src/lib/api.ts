@@ -941,11 +941,15 @@ export const disconnectDiscord = (): Promise<{ removed: boolean }> =>
  * The caller OWNS the returned URL and must URL.revokeObjectURL it, or the blob is held for the
  * life of the document.
  */
-export async function fetchImageObjectUrl(projectId: string, imageId: string): Promise<string> {
-  return URL.createObjectURL(await fetchImageBlob(projectId, imageId));
+export async function fetchImageObjectUrl(projectId: string, imageId: string, width?: number): Promise<string> {
+  return URL.createObjectURL(await fetchImageBlob(projectId, imageId, width));
 }
 
-async function fetchImageBlob(projectId: string, imageId: string): Promise<Blob> {
+/**
+ * `width` asks the worker for a display copy (WebP, scaled down, Cloudflare Images) instead of the
+ * original PNG. Only on-screen cards ask; a download never does, so the saved file is the original.
+ */
+async function fetchImageBlob(projectId: string, imageId: string, width?: number): Promise<Blob> {
   const token = await getAccessToken();
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -953,7 +957,7 @@ async function fetchImageBlob(projectId: string, imageId: string): Promise<Blob>
   let res: Response;
   try {
     res = await fetch(
-      `/api/projects/${encodeURIComponent(projectId)}/images/${encodeURIComponent(imageId)}`,
+      `/api/projects/${encodeURIComponent(projectId)}/images/${encodeURIComponent(imageId)}${width ? `?w=${width}` : ''}`,
       { headers },
     );
   } catch {
@@ -2212,13 +2216,15 @@ export const reportPasswordChanged = (): Promise<{ recorded: boolean; reason?: s
 export async function submitRecoveryRequest(
   email: string,
   note: string,
+  turnstileToken: string | null = null,
 ): Promise<{ status?: number; body?: unknown; error?: unknown }> {
   if (MOCK_MODE) return { status: 200, body: { received: true } };
   try {
     const res = await fetch('/api/recovery-request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, note }),
+      // The Turnstile token (lib/turnstile.ts) — the worker refuses without one once it has a secret.
+      body: JSON.stringify(turnstileToken ? { email, note, turnstileToken } : { email, note }),
     });
     noteReachability(true);
     let body: unknown = null;

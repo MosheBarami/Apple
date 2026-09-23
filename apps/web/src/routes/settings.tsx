@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PairingCodeDto } from '@golem/shared';
 import { MOCK_MODE, mockProfile } from '../lib/mock';
 import { getAccessToken, supabase, type ProfileRow } from '../lib/supabase';
+import { captchaOptions, turnstileToken } from '../lib/turnstile';
 import { createDiscordCode, disconnectDiscord, fetchDiscordLink } from '../lib/api';
 import { countdownTo } from '../lib/format';
 import { Failure } from '../components/failure';
@@ -1960,7 +1961,11 @@ export function SettingsPage() {
     mutationFn: async () => {
       const email = session?.user.email;
       if (!email) throw new Error('No address on this session.');
-      await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: emailRedirectTo('/confirm') } });
+      await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: emailRedirectTo('/confirm'), ...captchaOptions(await turnstileToken('resend')) },
+      });
     },
     onSuccess: () => toast('Confirmation link sent — check your inbox.', 'success'),
     onError: (e: Error) => toast(authErrorMessage(e), 'error'),

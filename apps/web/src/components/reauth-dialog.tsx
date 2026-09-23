@@ -11,6 +11,7 @@
 import { useState, type FormEvent } from 'react';
 import { Modal } from './modal';
 import { supabase } from '../lib/supabase';
+import { captchaOptions, turnstileToken } from '../lib/turnstile';
 import { authErrorMessage, type SensitiveAction } from '../lib/auth-flows';
 import { useAuth } from '../lib/auth';
 import { PasswordInput } from './picks/settings/password-input';
@@ -53,7 +54,11 @@ export function ReauthDialog({
     // The account's OWN address, from the session — never a field on this form. A re-auth dialog
     // that accepts an address as input is a login form, and a login form here would let someone
     // prove they are a different person and then act as this one.
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: err } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: captchaOptions(await turnstileToken('reauth')),
+    });
     setBusy(false);
     if (err) {
       setError(authErrorMessage(err));

@@ -4477,6 +4477,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const made = await generateModelForRoblox(ctx.env, ctx.userId, {
         prompt: String(a.prompt ?? ''),
         displayName: a.displayName ? String(a.displayName) : undefined,
+        projectId: ctx.projectId,
       });
       if (!made.ok) return { error: made.message, stage: made.stage, reason: made.reason };
       // Roblox still processing: the Model exists in the user's account but has no id yet.

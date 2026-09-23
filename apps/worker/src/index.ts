@@ -141,6 +141,10 @@ import {
   summarize,
 } from './analytics';
 import { fetchStoredEvents, flushEvents, maybeFlush } from './analytics-sink';
+import { readProductAnalytics } from './analytics-engine';
+import { TURNSTILE_REFUSAL, TURNSTILE_TOKEN_HEADER, verifyTurnstile } from './turnstile';
+import { backgroundOf, consumeNotifications, dispatchNotifications } from './notify-queue';
+import { displayWidth, resizeForDisplay } from './image-resize';
 import { reportToSentry, sentryMiddleware } from './sentry';
 import {
   INBOX_KINDS,
@@ -150,7 +154,7 @@ import {
   markRead,
   unreadCount,
 } from './notification-store';
-import { notify, notifyMany } from './notify';
+import { notify } from './notify';
 import {
   authorizeFire,
   describeSchedule,
@@ -330,6 +334,7 @@ export { AdminDO } from './do/admin';
 export { BudgetDO } from './do/budget';
 import { readResetScope, SPEND_RESET_USAGE } from './do/budget';
 export { DiscordDO } from './do/discord';
+export { ModelUploadWorkflow } from './model-upload-workflow';
 
 type Vars = {
   user: AuthedUser;
@@ -973,8 +978,15 @@ app.get('/api/projects/:id/images/:imageId', async (c) => {
   // SNIFFED, NOT TAKEN FROM STORAGE, and that is unchanged by the move. R2 records the content type
   // it was written with and would hand it straight back, which is precisely the shape of value that
   // must never reach a response header unchecked. The bytes decide what the bytes are.
-  const contentType = imageMimeType(bytes);
+  let contentType = imageMimeType(bytes);
   if (!contentType) return c.json({ error: 'not found' }, 404);
+  // `?w=` asks for a display-sized WebP (image-resize.ts); null keeps the original bytes.
+  const width = displayWidth(c.req.query('w'));
+  const small = width ? await resizeForDisplay(c.env, bytes, width) : null;
+  if (small) {
+    bytes = small.bytes;
+    contentType = small.contentType;
+  }
   return new Response(bytes, {
     headers: {
       'Content-Type': contentType,
@@ -2484,16 +2496,15 @@ app.post('/api/billing/webhook', async (c) => {
   const dunning = interpretDunningEvent(event);
   if (dunning) {
     const copy = dunningCopy(dunning);
-    c.executionCtx.waitUntil(
-      notify(c.env, {
-        kind: 'billing_issue',
-        recipientId: dunning.userId,
-        subject: dunning.subjectId ?? dunning.eventId,
-        title: copy.title,
-        body: copy.body,
-        at: Date.now(),
-      }).then(() => undefined),
-    );
+    // Through the notifications queue (notify-queue.ts): retried if D1 hiccups, instead of lost.
+    dispatchNotifications(c.env, [{
+      kind: 'billing_issue',
+      recipientId: dunning.userId,
+      subject: dunning.subjectId ?? dunning.eventId,
+      title: copy.title,
+      body: copy.body,
+      at: Date.now(),
+    }], backgroundOf(c));
   }
 
   // The env goes in so the TIER can be read from the price Stripe is actually billing. A tier change
@@ -3453,6 +3464,16 @@ app.get('/api/admin/analytics', async (c) => {
     ...(by ? { requested: breakdownBy(stored.events, by) } : {}),
     log: { retained: stored.retained, rejected: stored.rejected, isolate: logStats() },
   });
+});
+
+/**
+ * The same events over months instead of days: Workers Analytics Engine (analytics-engine.ts).
+ * Runs, builds, model calls, credits — counts and sums per kind/label/outcome, no person in it.
+ * `configured: false` names what is missing rather than answering with an empty table.
+ */
+app.get('/api/admin/product-analytics', async (c) => {
+  const days = Number(c.req.query('days') ?? 7);
+  return c.json(await readProductAnalytics(c.env, days));
 });
 
 /**
@@ -4574,7 +4595,12 @@ app.get('/api/admin/static-list', async (c) => {
  * `security_event` is a kind nobody may mute (notifications.ts), so this needs no preference check.
  */
 function securityNotice(c: Context, recipientId: string, subject: string, title: string, body: string): void {
-  const sending = notify(c.env, {
+  // A notification that cannot be DELIVERED must not surface as a failure of the thing it is
+  // about. The key was minted; the member was removed; those are done and the answer is true.
+  // `dispatchNotifications` never throws, goes through the notifications queue when it is bound
+  // (so a D1 hiccup is retried, not lost), and `backgroundOf` guards `c.executionCtx`, which
+  // THROWS when a test harness calls `app.fetch(request, env)` without one.
+  dispatchNotifications(c.env, [{
     kind: 'security_event',
     recipientId,
     actorId: c.get('user')?.userId,
@@ -4582,20 +4608,7 @@ function securityNotice(c: Context, recipientId: string, subject: string, title:
     title,
     body,
     at: Date.now(),
-  })
-    .then(() => undefined)
-    // A notification that cannot be DELIVERED must not surface as a failure of the thing it is
-    // about. The key was minted; the member was removed; those are done and the answer is true.
-    .catch(() => undefined);
-  //[[ `c.executionCtx` THROWS — it does not return undefined — when the worker was invoked without
-  //   one. Every test harness in this repository calls `app.fetch(request, env)` with two
-  //   arguments, so reaching for it unguarded turned an API-key mint and a member removal into
-  //   500s: a security NOTICE taking down the security ACTION it was reporting on. ]]
-  try {
-    c.executionCtx.waitUntil(sending);
-  } catch {
-    void sending;
-  }
+  }], backgroundOf(c));
 }
 
 /**
@@ -4674,8 +4687,15 @@ app.post('/api/recovery-request', async (c) => {
     return c.json({ error: 'Too many requests — wait a minute and try again.' }, 429);
   }
 
-  const body = await c.req.json<{ email?: unknown; note?: unknown }>().catch(() => null);
+  const body = await c.req.json<{ email?: unknown; note?: unknown; turnstileToken?: unknown }>().catch(() => null);
   if (!body) return c.json({ error: 'expected a JSON body' }, 400);
+
+  // Turnstile (turnstile.ts): a person, not a script, before a row is inserted. Unset secret = off.
+  const human = await verifyTurnstile(c.env.TURNSTILE_SECRET, body.turnstileToken ?? c.req.header(TURNSTILE_TOKEN_HEADER), {
+    ip,
+    expectedAction: 'recovery',
+  });
+  if (!human.ok) return c.json({ error: TURNSTILE_REFUSAL, reason: human.reason }, 403);
 
   const outcome = await openRecoveryRequest(c.env, { email: body.email, note: body.note });
 
@@ -6766,7 +6786,7 @@ const collabHandler = (route: (typeof COLLAB_ROUTES)[number]) => async (c: Conte
         body: kind === 'mention' ? 'Someone named you in a comment.' : 'Someone asked you to review a change.',
         at: Date.now(),
       }));
-    if (inputs.length > 0) c.executionCtx.waitUntil(notifyMany(c.env, inputs).then(() => undefined));
+    dispatchNotifications(c.env, inputs, backgroundOf(c));
   }
   return res;
 };
@@ -7301,4 +7321,6 @@ async function reportedScheduled(env: Env, cron: string | null): Promise<void> {
 export default Object.assign(app, {
   scheduled: (event: { cron?: unknown } | null, env: Env, _ctx: unknown) =>
     reportedScheduled(env, typeof event?.cron === 'string' ? event.cron : RETENTION_CRON),
+  // The `apple-notifications` consumer (notify-queue.ts).
+  queue: (batch: MessageBatch<unknown>, env: Env) => consumeNotifications(batch, env),
 });

@@ -163,6 +163,22 @@ export interface Env {
   GITHUB_TOKEN?: string;
   /** Extra repositories those two tools may read: `owner/name` or `owner/*`, comma-separated. */
   GITHUB_REPO_ALLOWLIST?: string;
+  // ---------------------------------------------------------------------------
+  // Cloudflare platform (D-VISION-1). Every one optional: absent means the path that existed before.
+  // ---------------------------------------------------------------------------
+  /** Turnstile widget secret (turnstile.ts). Unset: unauthenticated routes are not challenged. */
+  TURNSTILE_SECRET?: string;
+  /** Analytics Engine dataset `apple_product_events` (analytics-engine.ts). */
+  PRODUCT_EVENTS?: AnalyticsEngineDataset;
+  /** Account id and an "Account Analytics: Read" token, for reading that dataset back over SQL. */
+  CF_ACCOUNT_ID?: string;
+  CF_ANALYTICS_TOKEN?: string;
+  /** Queue `apple-notifications` (notify-queue.ts). */
+  NOTIFY_QUEUE?: Queue<unknown>;
+  /** Workflow that finishes a slow 3D model upload and notifies the user (model-upload.ts). */
+  MODEL_UPLOAD_WORKFLOW?: Workflow<import('./model-upload').ModelUploadParams>;
+  /** Images binding: display-sized WebP copies of generated images (image-resize.ts). */
+  IMAGES?: ImagesBinding;
 }
 
 export interface AuthedUser {

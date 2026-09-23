@@ -27,12 +27,16 @@ import {
   type UploadAssetInput,
 } from './creator-dashboard';
 import { describeRobloxCredential } from './user-credentials';
+import { startModelUploadFollowUp, type ModelUploadParams } from './model-upload';
 
 export interface ModelPipelineDeps extends HfOptions {
   describeCredential?: (env: CreatorEnv, userId: string) => Promise<{ scopes: readonly string[] } | null>;
   upload?: (env: CreatorEnv, userId: string, input: UploadAssetInput) => Promise<Result<UploadedAsset>>;
   uploadStatus?: (env: CreatorEnv, userId: string, operationId: string) => Promise<Result<UploadedAsset>>;
+  followUp?: (env: ModelPipelineEnv, params: ModelUploadParams) => Promise<boolean>;
 }
+
+export type ModelPipelineEnv = HfEnv & CreatorEnv & { MODEL_UPLOAD_WORKFLOW?: Workflow<ModelUploadParams> };
 
 export type ModelPipelineResult =
   | {
@@ -41,6 +45,8 @@ export type ModelPipelineResult =
     assetId: number | null;
     operationId: string;
     done: boolean;
+    /** True when a Workflow is now watching the still-processing upload and will notify the user. */
+    followUp: boolean;
     triangles: number;
     model: string;
   }
@@ -51,9 +57,9 @@ const POLLS = 5;
 const POLL_MS = 2_000;
 
 export async function generateModelForRoblox(
-  env: HfEnv & CreatorEnv,
+  env: ModelPipelineEnv,
   userId: string,
-  input: { prompt: string; displayName?: string },
+  input: { prompt: string; displayName?: string; projectId?: string | null },
   deps: ModelPipelineDeps = {},
 ): Promise<ModelPipelineResult> {
   const describe = deps.describeCredential ?? describeRobloxCredential;
@@ -91,11 +97,22 @@ export async function generateModelForRoblox(
     if (!s.ok) return { ok: false, stage: 'upload', message: s.error };
     asset = s.data;
   }
+  // Roblox is slower than the tool can wait: hand the operation to a durable follow-up that keeps
+  // asking and tells the user the asset id when it lands (model-upload-workflow.ts).
+  const followUp = asset.done
+    ? false
+    : await (deps.followUp ?? startModelUploadFollowUp)(env, {
+      userId,
+      operationId: asset.operationId,
+      projectId: input.projectId ?? null,
+      displayName: name,
+    });
   return {
     ok: true,
     assetId: asset.done ? asset.assetId : null,
     operationId: asset.operationId,
     done: asset.done,
+    followUp,
     triangles: mesh.triangles,
     model: mesh.model,
   };

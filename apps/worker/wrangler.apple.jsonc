@@ -110,6 +110,45 @@
       "index_name": "golem-docs"
     }
   ],
+  //[[ THE REST OF CLOUDFLARE (D-VISION-1). Apple-only on purpose: a queue has exactly one consumer
+  //   worker, so these cannot be mirrored into golem's config the way the data bindings above are,
+  //   and every one is optional in env.ts — golem runs the pre-existing path without them.
+  //   PRODUCT_EVENTS: product events, 3 months, no person in them (analytics-engine.ts).
+  //   NOTIFY_QUEUE: notifications written by a consumer with retries (notify-queue.ts).
+  //   MODEL_UPLOAD_WORKFLOW: finishes a slow 3D upload and tells the user (model-upload.ts).
+  //   IMAGES: display-sized WebP copies of generated images (image-resize.ts). ]]
+  "analytics_engine_datasets": [
+    {
+      "binding": "PRODUCT_EVENTS",
+      "dataset": "apple_product_events"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "NOTIFY_QUEUE",
+        "queue": "apple-notifications"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "apple-notifications",
+        "max_batch_size": 10,
+        "max_batch_timeout": 2,
+        "max_retries": 6
+      }
+    ]
+  },
+  "workflows": [
+    {
+      "name": "apple-model-upload",
+      "binding": "MODEL_UPLOAD_WORKFLOW",
+      "class_name": "ModelUploadWorkflow"
+    }
+  ],
+  "images": {
+    "binding": "IMAGES"
+  },
   "vars": {
     "SUPABASE_URL": "https://npqvyijsvzkuwddyhtpm.supabase.co",
     "SUPABASE_ANON_KEY": "sb_publishable_CZXQt2nYfaSnkYF5XoslzQ_LaIIn6wt",
@@ -119,6 +158,8 @@
     "BILLING_TEST_ADMINS": "moshe.barami111@gmail.com",
     "MEMBERSHIP_OUTBOX_CONSUMER": "apple",
     "AI_GATEWAY_ID": "golem",
+    // Public account id; with the CF_ANALYTICS_TOKEN secret it lets /api/admin/product-analytics read Analytics Engine.
+    "CF_ACCOUNT_ID": "e9b8acf2e89a1de289a1ee4abb0f3f8d",
     "BUILD_SHA": "616d84b"
   },
   "triggers": {
