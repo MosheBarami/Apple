@@ -677,3 +677,38 @@ a.pc:hover { text-decoration: none; transform: translateY(-2px); border-color: c
   .ticker-r { animation: none !important; }
   .ticker-v { overflow-x: auto; }
 }
+
+/* ---------------------------------------------------------------- shell v2: lazy pages, live diff, skins, insight ticker */
+.wip { display: flex; gap: 14px; align-items: flex-start; max-width: 640px; }
+.wip-ic { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--r-sm); background: var(--surface-2); color: var(--accent-ink); }
+.wip b { display: block; font-size: 16px; font-weight: 600; color: var(--ink); }
+.wip p { color: var(--muted); margin-top: 4px; }
+.wip .nc-d { margin-top: 10px; }
+/* morph(): a new keyed row slides in, a vanished one fades out, then it is removed (fx.js) */
+.is-in { animation: row-in 420ms var(--ease-out) both; }
+.is-out { animation: row-out 260ms var(--ease-io) both; pointer-events: none; }
+@keyframes row-in { from { opacity: 0; transform: translateY(-6px); background-color: var(--accent-soft); } }
+@keyframes row-out { to { opacity: 0; transform: scale(.98); } }
+/* skin swap: View Transitions where supported, else a short cross-fade of the page */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 260ms; animation-timing-function: var(--ease-io); }
+html.xfade .page, html.xfade .side, html.xfade .top { animation: xfade 320ms var(--ease-io); }
+@keyframes xfade { from { opacity: .35; } }
+/* top-bar ticker: the most urgent inferred insight, rotating */
+.itk { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 460px; height: 32px; padding: 0 4px 0 10px; border-radius: var(--r-pill); background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.itk[hidden] { display: none; }
+.itk-n { flex: none; font-size: 12px; font-weight: 600; padding: 0 8px; height: 22px; display: inline-grid; place-items: center; border-radius: var(--r-pill); background: var(--surface-3); color: var(--ink); }
+.itk-n[data-sev='bad'] { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+.itk-n[data-sev='warn'] { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.itk-v { display: grid; min-width: 0; flex: 1; height: 100%; }
+.itk-l { grid-area: 1 / 1; display: flex; align-items: center; gap: 8px; min-width: 0; border: 0; background: none; padding: 0 6px; color: var(--ink-2); font-size: 13px; text-align: start; animation: itk-in 360ms var(--ease-out) both; }
+.itk-l:hover { color: var(--ink); }
+.itk-l .logo-sm { width: 18px; height: 18px; border-radius: 5px; flex: none; }
+.itk-t { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.itk-l.out { animation: itk-out 360ms var(--ease-io) both; }
+@keyframes itk-in { from { opacity: 0; transform: translateY(70%); } }
+@keyframes itk-out { to { opacity: 0; transform: translateY(-70%); } }
+@media (max-width: 900px) { .itk { flex: none; padding: 0 4px; } .itk-v { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .is-in, .is-out, .itk-l, .itk-l.out, html.xfade .page, html.xfade .side, html.xfade .top { animation: none !important; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}

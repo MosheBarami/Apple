@@ -18,14 +18,17 @@ import { status } from './status.mjs';
 import { connectors, connectorAction } from './connectors.mjs';
 import { langflow } from './langflow.mjs';
 import { pulse } from './pulse.mjs';
+import { insights } from '../insights.mjs';
+import { stream } from '../stream.mjs';
 
 loadEnv();
 
 const CC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const CONTROL = path.resolve(CC, '../control');
 
-// Lane B's modules, imported on first use (and again after an edit, keyed by mtime) so this server
-// runs before they exist.
+// Modules imported on first use (and again after an edit, keyed by mtime) so this server runs before
+// they exist: lane B's repo/deps readers and the platform modules the page lanes add (vercel, clerk,
+// resend). A missing module or export answers {ok:false, reason:'המודול עדיין בבנייה'}.
 async function laneB(file, name, arg) {
   try {
     const abs = path.join(CC, file);
@@ -43,8 +46,11 @@ const GETS = {
   overview: () => laneB('repo.mjs', 'overview'),
   tree: () => laneB('repo.mjs', 'tree'),
   repos: () => laneB('deps.mjs', 'repos'),
-  github, supabase, cloudflare, sentry, hf, extras, apple, groq, discord, roblox, status, connectors, langflow, pulse,
+  github, supabase, cloudflare, sentry, hf, extras, apple, groq, discord, roblox, status, connectors, langflow, pulse, insights,
 };
+// Platforms whose module lives in platforms/<id>.mjs and is loaded lazily: GET → <id>(), POST → <id>Action(body).
+export const LAZY_PLATFORMS = ['vercel', 'clerk', 'resend'];
+for (const id of LAZY_PLATFORMS) GETS[id] = () => laneB(`platforms/${id}.mjs`, id);
 const POSTS = {
   review: (b) => (b.dryRun === true ? ok({ dryRun: true, plan: { method: 'WRITE', url: 'scripts/owner-dashboard/cc/review.json', body: { sha: b.sha, verdict: b.verdict } } })
     : laneB('repo.mjs', 'review', { sha: b.sha, verdict: b.verdict })),
@@ -55,13 +61,19 @@ const POSTS = {
   'hf/action': hfAction,
   'connectors/action': connectorAction,
 };
+for (const id of LAZY_PLATFORMS) POSTS[`${id}/action`] = (b) => laneB(`platforms/${id}.mjs`, `${id}Action`, b);
 // ?fresh=1 on a GET drops that platform's cache first (the "refresh now" button). The keys match
 // each module's cached() key; pulse refreshes nothing on its own.
 const FRESH = { github: 'github', supabase: 'supabase', cloudflare: 'cloudflare', sentry: 'sentry', hf: 'hf', extras: 'extras',
-  apple: 'apple', groq: 'groq', discord: 'discord', roblox: 'roblox', status: 'status', connectors: 'conn:', langflow: 'langflow' };
+  apple: 'apple', groq: 'groq', discord: 'discord', roblox: 'roblox', status: 'status', connectors: 'conn:', langflow: 'langflow',
+  vercel: 'vercel', clerk: 'clerk', resend: 'resend' };
+
+// The `pulse` SSE event: the pulse payload with the derived insights beside it.
+const pulseEvent = async () => { const [p, i] = await Promise.all([pulse(), insights()]); return { ...p, insights: i.insights, insightCounts: i.counts }; };
 
 async function api(req, res, name, query) {
   if (!localHost(req)) return sendJson(res, 403, fail('הבקשה חייבת להגיע מ-localhost'));
+  if (name === 'stream' && req.method === 'GET') return stream(req, res, pulseEvent);
   try {
     if (req.method === 'GET' && GETS[name]) {
       if (query.get('fresh') === '1' && FRESH[name]) uncache(FRESH[name]);

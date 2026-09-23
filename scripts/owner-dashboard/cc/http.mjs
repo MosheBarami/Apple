@@ -98,11 +98,15 @@ export async function section(fn) {
 
 // ---- cache: one entry per key, 60 s for a good answer, 10 s for a failure ---------------------------
 const cache = new Map();
+// Listeners told (key, value) each time a cached fn produced a fresh answer: the SSE stream turns it
+// into a `platform:<id>` event.
+export const onRefresh = new Set();
 export function cached(key, fn, ttl = 60000) {
   const hit = cache.get(key);
   if (hit && hit.until > Date.now()) return hit.p;
   const p = Promise.resolve().then(fn).then((v) => {
     cache.set(key, { p, until: Date.now() + (v?.ok === false ? 10000 : ttl) });
+    for (const f of onRefresh) { try { f(key, v); } catch { /* a listener never breaks a read */ } }
     return v;
   }, (e) => { cache.delete(key); throw e; });
   cache.set(key, { p, until: Date.now() + ttl });

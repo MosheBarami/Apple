@@ -1,0 +1,6 @@
+Geist Sans and Geist Mono (variable, woff2) from the official npm package `geist` 1.7.2 (Vercel),
+downloaded via jsdelivr:
+  https://cdn.jsdelivr.net/npm/geist@1.7.2/dist/fonts/geist-sans/Geist-Variable.woff2      69652 bytes
+  https://cdn.jsdelivr.net/npm/geist@1.7.2/dist/fonts/geist-mono/GeistMono-Variable.woff2  71368 bytes
+  https://cdn.jsdelivr.net/npm/geist@1.7.2/LICENSE.txt (SIL Open Font License 1.1)
+Geist has no Hebrew glyphs; Hebrew falls back to the system Hebrew face (see skins/base.css --font).

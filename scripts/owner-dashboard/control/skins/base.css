@@ -1,0 +1,148 @@
+/* Base skin: Vercel Geist, 1:1 with the Geist tokens (vercel.com/geist: colors, materials, typography,
+   button, badge, table, tabs/switch, focus ring), in dark and light.
+   Loaded after styles.css on every page (link#skin-base) so it is the fallback under any platform skin.
+
+   How a platform skin overrides it (the shell contract):
+     html[data-skin="<id>"]                      { dark tokens + fonts + radii }
+     html[data-skin="<id>"][data-theme="light"]  { light tokens }
+     html[data-skin="<id>"] .card, .btn, ...     { component restyles }
+   The token names below are the override surface. Every shell colour, font and radius goes through them. */
+
+@font-face { font-family: 'Geist'; src: url('../fonts/base/Geist-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Geist Mono'; src: url('../fonts/base/GeistMono-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+
+/* ------------------------------------------------ Geist scales (dark) */
+:root, [data-theme='dark'] {
+  --ds-bg-100: #0a0a0a; --ds-bg-200: #000;
+  --ds-gray-100: #1a1a1a; --ds-gray-200: #1f1f1f; --ds-gray-300: #292929; --ds-gray-400: #2e2e2e; --ds-gray-500: #454545;
+  --ds-gray-600: #878787; --ds-gray-700: #8f8f8f; --ds-gray-800: #7d7d7d; --ds-gray-900: #a1a1a1; --ds-gray-1000: #ededed;
+  --ds-alpha-100: rgba(255,255,255,.06); --ds-alpha-200: rgba(255,255,255,.09); --ds-alpha-400: rgba(255,255,255,.145);
+  --ds-blue-700: #0070f3; --ds-blue-900: #52a8ff; --ds-blue-200: #0f1f3d;
+  --ds-red-700: #e5484d; --ds-red-900: #ff6166; --ds-red-200: #3c1618;
+  --ds-amber-700: #ffb224; --ds-amber-900: #ff990a; --ds-amber-200: #362005;
+  --ds-green-700: #46a758; --ds-green-900: #62c073; --ds-green-200: #0f2e18;
+  --ds-shadow-border: 0 0 0 1px var(--ds-alpha-400);
+  --ds-shadow-small: 0 2px 2px rgba(0,0,0,.32);
+  --ds-shadow-menu: 0 0 0 1px var(--ds-alpha-400), 0 1px 1px rgba(0,0,0,.2), 0 4px 8px -4px rgba(0,0,0,.4), 0 16px 24px -8px rgba(0,0,0,.5);
+  --ds-shadow-modal: 0 0 0 1px var(--ds-alpha-400), 0 1px 1px rgba(0,0,0,.2), 0 8px 16px -4px rgba(0,0,0,.4), 0 24px 32px -8px rgba(0,0,0,.6);
+
+  /* the override surface */
+  --bg: var(--ds-bg-200); --paper: var(--ds-bg-200); --paper-2: var(--ds-bg-100);
+  --surface: var(--ds-bg-100); --surface-2: var(--ds-gray-100); --surface-3: var(--ds-gray-200);
+  --card: var(--surface); --card2: var(--surface-2);
+  --ink: var(--ds-gray-1000); --text: var(--ink); --ink-2: color-mix(in srgb, var(--ds-gray-1000) 78%, var(--ds-gray-900));
+  --muted: var(--ds-gray-900); --dim: var(--muted); --faint: var(--ds-gray-800); --off: var(--ds-gray-700);
+  --line: var(--ds-gray-400); --line2: var(--ds-gray-500); --line-strong: var(--ds-gray-500); --hairline: var(--ds-gray-200);
+  --control-fill: var(--ds-alpha-100);
+  --accent: var(--ds-blue-700); --accent2: var(--ds-blue-900); --accent-ink: var(--ds-blue-900);
+  --accent-soft: color-mix(in srgb, var(--ds-blue-700) 14%, transparent); --accent-ring: color-mix(in srgb, var(--ds-blue-700) 40%, transparent);
+  --primary: var(--ds-gray-1000); --primary-hover: #ccc; --on-primary: var(--ds-bg-100);
+  --good: var(--ds-green-900); --warn: var(--ds-amber-900); --bad: var(--ds-red-900); --mid: var(--ds-blue-900);
+  --ok: var(--good); --ok-t: var(--good); --warn-t: var(--warn); --bad-t: var(--bad);
+  --shadow: var(--ds-shadow-small); --glow: transparent; --glass: rgba(0,0,0,.72);
+  --focus-ring: 0 0 0 2px var(--ds-bg-100), 0 0 0 4px var(--ds-blue-700);
+  color-scheme: dark;
+}
+/* ------------------------------------------------ Geist scales (light) */
+[data-theme='light'] {
+  --ds-bg-100: #fff; --ds-bg-200: #fafafa;
+  --ds-gray-100: #f2f2f2; --ds-gray-200: #ebebeb; --ds-gray-300: #e6e6e6; --ds-gray-400: #ebebeb; --ds-gray-500: #c9c9c9;
+  --ds-gray-600: #a8a8a8; --ds-gray-700: #8f8f8f; --ds-gray-800: #7d7d7d; --ds-gray-900: #666; --ds-gray-1000: #171717;
+  --ds-alpha-100: rgba(0,0,0,.05); --ds-alpha-200: rgba(0,0,0,.08); --ds-alpha-400: rgba(0,0,0,.08);
+  --ds-blue-700: #006bff; --ds-blue-900: #0060d1; --ds-blue-200: #eaf3ff;
+  --ds-red-700: #e5484d; --ds-red-900: #cb2a2f; --ds-red-200: #ffebeb;
+  --ds-amber-700: #ffb224; --ds-amber-900: #a35200; --ds-amber-200: #fff4d5;
+  --ds-green-700: #46a758; --ds-green-900: #297c3b; --ds-green-200: #e9f9ec;
+  --ds-shadow-small: 0 2px 2px rgba(0,0,0,.04);
+  --ds-shadow-menu: 0 0 0 1px var(--ds-alpha-400), 0 1px 1px rgba(0,0,0,.02), 0 4px 8px -4px rgba(0,0,0,.04), 0 16px 24px -8px rgba(0,0,0,.06);
+  --ds-shadow-modal: 0 0 0 1px var(--ds-alpha-400), 0 1px 1px rgba(0,0,0,.02), 0 8px 16px -4px rgba(0,0,0,.04), 0 24px 32px -8px rgba(0,0,0,.06);
+  --ink-2: #3d3d3d; --faint: #737373; /* gray-800 is 3.9:1 on white; one step darker keeps small labels at AA */
+  --line: var(--ds-gray-300); --line-strong: var(--ds-gray-500); --line2: var(--ds-gray-500); --hairline: var(--ds-gray-100);
+  --primary-hover: #383838; --glass: rgba(255,255,255,.8);
+  color-scheme: light;
+}
+:root {
+  /* Geist has no Hebrew glyphs: Latin, digits and ids render in Geist, Hebrew falls through to the system Hebrew face */
+  --font: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Hebrew', Arial, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --r-xs: 4px; --r-sm: 6px; --r: 12px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 9999px;
+  --t-fast: 150ms; --t-base: 200ms; --t-slow: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ------------------------------------------------ typography (Geist copy-14 / heading scale) */
+body { font: 400 14px/20px var(--font); font-feature-settings: 'ss01' off; }
+.phead h1 { font-size: 32px; line-height: 40px; font-weight: 600; letter-spacing: -0.049375rem; }
+.psub { font-size: 14px; line-height: 20px; color: var(--muted); }
+.card > h2, .card-h { font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: -0.020625rem; }
+.eyebrow, .nav-gl { font-size: 12px; line-height: 16px; letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--faint); }
+.mono, code, kbd { font-family: var(--mono); }
+:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--r-sm); }
+
+/* ------------------------------------------------ materials */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: none; }
+.hero { background: var(--surface); border-color: var(--line); border-radius: var(--r-lg); }
+.note { border-radius: var(--r-md); }
+.modal-card, .pal { border: 0; border-radius: var(--r-lg); box-shadow: var(--ds-shadow-modal); }
+.toast { border: 0; border-radius: var(--r-lg); box-shadow: var(--ds-shadow-menu); }
+
+/* ------------------------------------------------ shell */
+.side { background: var(--bg); border-inline-end-color: var(--line); }
+.nav-a { min-height: 32px; padding: 4px 8px; border-radius: var(--r-sm); color: var(--muted); font-size: 14px; }
+.nav-a:hover { background: var(--ds-alpha-100); color: var(--ink); }
+.nav-a.on { background: var(--ds-alpha-200); color: var(--ink); font-weight: 500; }
+.nav-a.on::before { display: none; }
+.top { border-bottom-color: var(--line); }
+.pal-btn { height: 32px; border-radius: var(--r-sm); border: 0; box-shadow: var(--ds-shadow-border); background: var(--surface); }
+.ib { border-radius: var(--r-sm); }
+
+/* ------------------------------------------------ button (Geist: small 32, medium 40, radius 6) */
+.btn { min-height: 40px; padding: 0 12px; border: 0; border-radius: var(--r-sm); font-size: 14px; font-weight: 500; background: var(--surface); color: var(--ink);
+  box-shadow: var(--ds-shadow-border); transition: background-color var(--t-fast) ease, box-shadow var(--t-fast) ease, color var(--t-fast) ease; }
+.btn:hover { background: var(--ds-alpha-100); }
+.btn:focus-visible { box-shadow: var(--focus-ring); }
+.btn-sm { min-height: 32px; padding: 0 8px; font-size: 14px; }
+.btn-primary { background: var(--primary); color: var(--on-primary); box-shadow: none; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-ghost { background: transparent; box-shadow: none; color: var(--ink); }
+.btn-ghost:hover { background: var(--ds-alpha-200); }
+.btn-danger { background: var(--ds-red-700); color: #fff; box-shadow: none; }
+.btn-danger:hover { background: color-mix(in srgb, var(--ds-red-700) 86%, #000); }
+.btn:disabled { background: var(--ds-gray-100); color: var(--ds-gray-700); box-shadow: var(--ds-shadow-border); cursor: not-allowed; }
+
+/* ------------------------------------------------ badge (Geist: sm 20, md 24; subtle colour variants) */
+.chip { height: 24px; padding: 0 10px; border: 0; border-radius: var(--r-pill); font-size: 12px; font-weight: 500; background: var(--ds-gray-200); color: var(--ink); }
+.chip-sm { height: 20px; padding: 0 6px; font-size: 11px; }
+.chip-ai, .chip-mid { background: var(--ds-blue-200); color: var(--ds-blue-900); }
+.chip-bad { background: var(--ds-red-200); color: var(--ds-red-900); }
+.chip-warn { background: var(--ds-amber-200); color: var(--ds-amber-900); }
+.chip-ok { background: var(--ds-green-200); color: var(--ds-green-900); }
+.chip-b { background: color-mix(in srgb, var(--b-use) 16%, transparent); color: var(--b-use); }
+.chip-off { background: var(--ds-gray-100); color: var(--ds-gray-900); }
+.chip-btn:hover { background: var(--ds-gray-300); color: var(--ink); }
+.chip-btn.on, .chip-btn[aria-pressed='true'] { background: var(--primary); color: var(--on-primary); }
+
+/* ------------------------------------------------ table (Geist: header strip on background-200, 40px head, hover row) */
+th { height: 40px; padding: 0 12px; background: var(--bg); color: var(--muted); font-size: 12px; font-weight: 500; border-bottom: 1px solid var(--line); }
+td { height: 48px; padding: 8px 12px; font-size: 14px; border-bottom-color: var(--line); }
+tbody tr:hover td { background: var(--ds-alpha-100); }
+
+/* ------------------------------------------------ switch / segmented (Geist Switch) and tabs (Geist Tabs) */
+.seg { border: 0; box-shadow: var(--ds-shadow-border); border-radius: var(--r-sm); padding: 4px; gap: 2px; background: var(--surface); }
+.seg-b { min-height: 32px; padding: 0 12px; border-radius: var(--r-xs); color: var(--muted); font-size: 14px; }
+.seg-b:hover { color: var(--ink); }
+.seg-b.on { background: var(--ds-gray-200); color: var(--ink); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.tab { position: relative; padding: 0 12px; height: 40px; display: inline-flex; align-items: center; background: none; border: 0; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.tab:hover { color: var(--ink); }
+.tab.on, .tab[aria-selected='true'] { color: var(--ink); }
+.tab.on::after, .tab[aria-selected='true']::after { content: ''; position: absolute; inset-inline: 8px; bottom: -1px; height: 2px; background: var(--ink); border-radius: 1px; }
+
+/* ------------------------------------------------ inputs, lists, stat */
+.search { min-height: 40px; border: 0; box-shadow: var(--ds-shadow-border); border-radius: var(--r-sm); background: var(--surface); }
+.search:focus-within { box-shadow: var(--focus-ring); }
+.li { border-top-color: var(--line); }
+.li:hover { background: var(--ds-alpha-100); }
+.stat-k { font-size: 14px; color: var(--muted); }
+.stat-v { font-size: 32px; line-height: 40px; letter-spacing: -0.049375rem; font-weight: 600; }
+.kv dt { color: var(--muted); }

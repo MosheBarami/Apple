@@ -1,34 +1,54 @@
-// Repo Command HQ shell: sidebar + glass top bar, hash router, API client (?mock=1 only in demo),
-// the confirm → POST → toast action path (with a dry-run mode that shows the exact upstream call
-// and sends nothing), the Cmd/Ctrl+K palette, theme, and the 20-second live pulse.
+// Repo Command HQ shell: sidebar + top bar, hash router with lazily imported pages, skins (one CSS
+// file per platform, swapped with a view transition), API client (?mock=1 only in demo), the
+// confirm → POST → toast action path (with a dry-run mode that shows the exact upstream call and
+// sends nothing), the Cmd/Ctrl+K palette, theme, the live stream (SSE, with a 20-second polling
+// fallback) and the insights ticker.
+//
+// Page contract: control/pages/<id>.js default-exports
+//   { id, title, nav, brand, needs:[apiName...], sub, links(d), render(d, ctx), actions:{...},
+//     after?(root, ctx), mount?(root, ctx), unmount?() }
+// render() runs on every refresh; a quiet refresh morphs the DOM (rows keyed by data-k slide in and
+// fade out, .rn numbers roll). An element marked data-keep is left untouched by the morph, so a live
+// widget started in mount() survives refreshes. mount() runs once per visit, unmount() on leaving;
+// ctx.live(apiName, ms, fn) subscriptions are cancelled on leaving.
+// A page may also ship control/actions/<id>.js exporting catalog(seen) → action specs for the palette.
 import { html, agoSeconds, failCard } from './ui.js';
 import { PLATFORMS, logo, brandVars, icon } from './logos.js';
-import { mountField, rollAll, scramble, transition, recolourFields } from './fx.js';
+import { mountField, rollAll, scramble, transition, recolourFields, morph, reduced } from './fx.js';
 import { catalog, REG } from './actions.js';
-import hq from './pages/hq.js';
-import overview from './pages/overview.js';
-import explorer from './pages/explorer.js';
-import repos from './pages/repos.js';
-import apple from './pages/apple.js';
-import github from './pages/github.js';
-import cloudflare from './pages/cloudflare.js';
-import supabase from './pages/supabase.js';
-import sentry from './pages/sentry.js';
-import hf from './pages/hf.js';
-import roblox from './pages/roblox.js';
-import groq from './pages/groq.js';
-import discord from './pages/discord.js';
-import langflow from './pages/langflow.js';
-import connect from './pages/connect.js';
-import status from './pages/status.js';
 
-const PAGES = [hq, overview, explorer, repos, apple, github, cloudflare, supabase, sentry, hf, roblox, groq, discord, langflow, connect, status];
+// Every page the shell knows. The module itself is imported on first visit. skin: 'base' for the
+// shell's own pages; platform pages use their id (control/skins/<id>.css, base when missing).
+const PAGES = [
+  { id: 'hq', title: 'מרכז הפיקוד', glyph: 'hq', skin: 'base' },
+  { id: 'overview', title: 'סקירת AI', glyph: 'overview', skin: 'base' },
+  { id: 'explorer', title: 'מפת הריפו', glyph: 'explorer', skin: 'base' },
+  { id: 'repos', title: 'מאגרי GitHub', glyph: 'repos', skin: 'base' },
+  { id: 'apple', title: 'Apple', brand: 'apple' },
+  { id: 'cloudflare', title: 'Cloudflare', brand: 'cloudflare' },
+  { id: 'supabase', title: 'Supabase', brand: 'supabase' },
+  { id: 'vercel', title: 'Vercel', brand: 'vercel' },
+  { id: 'clerk', title: 'Clerk', brand: 'clerk' },
+  { id: 'github', title: 'GitHub', brand: 'github' },
+  { id: 'hf', title: 'Hugging Face', brand: 'huggingface' },
+  { id: 'groq', title: 'Groq', brand: 'groq' },
+  { id: 'langflow', title: 'Langflow', brand: 'langflow' },
+  { id: 'sentry', title: 'Sentry', brand: 'sentry' },
+  { id: 'discord', title: 'Discord', brand: 'discord' },
+  { id: 'resend', title: 'Resend', brand: 'resend' },
+  { id: 'roblox', title: 'Roblox', brand: 'roblox' },
+  { id: 'connect', title: 'חיבורים', glyph: 'connect', skin: 'base' },
+  { id: 'status', title: 'מצב הספקים', glyph: 'status', skin: 'base' },
+];
 const GROUPS = [
   ['מרכז', ['hq', 'overview', 'explorer', 'repos']],
-  ['פלטפורמות', ['apple', 'github', 'cloudflare', 'supabase', 'sentry', 'hf', 'roblox', 'groq', 'discord', 'langflow']],
+  ['מוצר ותשתית', ['apple', 'cloudflare', 'supabase', 'vercel', 'clerk', 'github']],
+  ['AI ומודלים', ['hf', 'groq', 'langflow']],
+  ['תקלות, קהילה ומיילים', ['sentry', 'discord', 'resend', 'roblox']],
   ['חיבורים', ['connect', 'status']],
 ];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
+const mods = {}; // id -> loaded page module (or the 'בבנייה' stand-in)
 const MOCK = new URLSearchParams(location.search).get('mock') === '1';
 const POLL_MS = 20_000;
 const STALE_MS = 60_000;
@@ -83,6 +103,8 @@ const store = {
   pings: [], // client-side history of the worker's response time
   seen: {}, // endpoint -> latest payload (feeds the palette's action list)
   lastOk: 0,
+  insights: null, // derived cross-platform conclusions (server cc/insights.mjs), red first
+  streamAt: 0, // last event from /api/cc/stream
 };
 
 // ---------- toasts ----------
@@ -174,17 +196,87 @@ async function act(spec) {
   return res;
 }
 
+// ---------- lazy pages ----------
+function building(meta, detail) {
+  return html`<div class="card wip" role="status"><span class="wip-ic" aria-hidden="true">${icon('bolt', 18)}</span>
+    <div><b>הדף של ${meta.title} בבנייה</b><p>הדף הזה עוד נבנה. כל שאר הלוח עובד כרגיל, ואפשר לחזור לכאן בעוד כמה דקות.</p>
+    ${detail ? html`<details class="nc-d"><summary>פרטים טכניים</summary><bdi class="mono small" dir="ltr">${detail}</bdi></details>` : ''}</div></div>`;
+}
+async function page(id) {
+  if (mods[id]) return mods[id];
+  const meta = byId[id];
+  try {
+    const m = (await import(`./pages/${id}.js`)).default;
+    if (!m || typeof m.render !== 'function') throw new Error('the module has no default export with render()');
+    mods[id] = { ...meta, ...m, id, brand: m.brand ?? meta.brand, skin: meta.skin };
+  } catch (e) {
+    console.warn(`page ${id} is not ready`, e); // eslint-disable-line no-console
+    mods[id] = { ...meta, wip: true, detail: e?.message || String(e), render: () => building(meta, e?.message) };
+  }
+  return mods[id];
+}
+const P = (id) => mods[id] || byId[id];
+
+// ---------- skins ----------
+// html[data-skin] names the active skin; <link id="skin"> carries its file. A missing file falls back
+// to base silently and is remembered, so the next visit does not ask again.
+const skinMissing = new Set();
+const skinLinks = {}; // id -> loaded <link>
+const skinOf = (id) => (byId[id]?.skin === 'base' || skinMissing.has(id) ? 'base' : id);
+function skinReady(id) {
+  const want = skinOf(id);
+  if (want === 'base' || skinLinks[want]) return Promise.resolve();
+  return new Promise((resolve) => {
+    const el = document.createElement('link'); el.rel = 'stylesheet'; el.href = `/control/skins/${want}.css`; el.dataset.skinFile = want; el.media = 'not all';
+    const done = (okay) => { clearTimeout(t); if (okay) skinLinks[want] = el; else { skinMissing.add(want); el.remove(); } resolve(); };
+    const t = setTimeout(() => done(false), 2500);
+    el.onload = () => done(true); el.onerror = () => done(false);
+    document.head.append(el);
+  });
+}
+function setSkin(id) {
+  const want = skinOf(id);
+  const root = document.documentElement;
+  for (const [k, el] of Object.entries(skinLinks)) el.media = k === want ? 'all' : 'not all';
+  const cur = document.getElementById('skin');
+  if (cur) cur.href = want === 'base' ? '/control/skins/base.css' : `/control/skins/${want}.css`;
+  root.dataset.skin = want;
+}
+
 // ---------- router & page lifecycle ----------
 const cache = {}; // id -> {data, at}
 let current = null; const seqs = {};
+let navSeq = 0;
+let mounted = null; // id of the page whose mount() ran for this visit
+const subs = new Set(); // ctx.live subscriptions of the current page
 const ctx = {
   api, act, toast, store,
   get root() { return $('#page'); },
   get data() { return cache[current]?.data; },
+  get insights() { return store.insights; },
   rerender: () => paint(current),
   refresh: () => load(current, { quiet: true }),
   go: (id) => { location.hash = `#/${id}`; },
+  /** Calls fn(payload) now, every `ms`, and whenever the stream says `apiName` refreshed. Returns a stop(). */
+  live(apiName, ms, fn) {
+    const sub = { apiName, dead: false, busy: false };
+    sub.run = async () => {
+      if (sub.dead || sub.busy) return; sub.busy = true;
+      try { const v = await api.get(`/api/cc/${apiName}`); if (v?.ok !== false) store.seen[apiName] = v; if (!sub.dead) fn(v); } catch (e) { console.warn('live', apiName, e); } // eslint-disable-line no-console
+      finally { sub.busy = false; }
+    };
+    sub.timer = setInterval(sub.run, Math.max(1000, ms || POLL_MS));
+    sub.stop = () => { sub.dead = true; clearInterval(sub.timer); subs.delete(sub); };
+    subs.add(sub); sub.run();
+    return sub.stop;
+  },
+  runInsight: (x) => runInsight(x),
 };
+function teardown(id) {
+  for (const s of [...subs]) s.stop();
+  if (id && mounted === id) { try { P(id).unmount?.(); } catch (e) { console.warn('unmount', e); } } // eslint-disable-line no-console
+  mounted = null;
+}
 
 function routeId() { const m = location.hash.match(/^#\/([\w-]+)/); return m && byId[m[1]] ? m[1] : 'hq'; }
 const pulseOf = (p) => (store.pulse?.platforms || []).find((x) => x.id === (p.brand === 'hf' ? 'huggingface' : p.brand));
@@ -219,7 +311,7 @@ function markNav() {
 function head(p, state) {
   const c = cache[p.id]; const d = c?.data;
   const pl = p.brand ? PLATFORMS[p.brand] : null; const pu = p.brand ? pulseOf(p) : null;
-  const links = d && d.ok !== false && p.links ? p.links(d) : [];
+  let links = []; try { links = d && d.ok !== false && p.links ? p.links(d) || [] : []; } catch { links = []; }
   return html`<header class="phead ${p.brand ? 'phead-b' : ''}">
     <div class="phead-t">${p.brand ? logo(p.brand, 'lg') : html`<span class="logo logo-lg logo-ui">${icon(p.glyph || p.id, 24)}</span>`}
       <div class="phead-n"><p class="eyebrow">${pl ? pl.he : p.eyebrow || 'Apple · מרכז הפיקוד'}${pu ? html` · <span class="st st-${pu.state}"><i class="dot dot-${pu.state}"></i>${pu.line}</span>` : ''}</p>
@@ -235,33 +327,42 @@ function skeleton() {
 
 function paint(id, state = 'ready', enter = false) {
   if (id !== current) return;
-  const p = byId[id]; const root = $('#page'); const c = cache[id];
+  const p = P(id); const root = $('#page'); const c = cache[id];
   const ae = document.activeElement; const fid = ae && root.contains(ae) ? ae.id : null;
   const sel = fid && 'selectionStart' in ae ? [ae.selectionStart, ae.selectionEnd] : null;
   const y = window.scrollY;
-  let body;
-  if (state === 'loading' && !c) body = skeleton();
+  let body; let real = false;
+  if (p.wip) body = p.render();
+  else if (state === 'loading' && !c) body = skeleton();
   else if (!c) body = failCard('עדיין אין נתונים.', { retry: true });
   else if (c.data?.ok === false) body = failCard(c.data.reason, { retry: true, title: p.failTitle || 'לא הצלחנו להביא את הנתונים של הדף הזה' });
   else {
-    try { body = p.render(c.data, ctx); } catch (e) {
+    try { body = p.render(c.data, ctx); real = true; } catch (e) {
       console.warn('render failed', e); // eslint-disable-line no-console
-      body = failCard(`התקבלו נתונים בצורה שהדף לא ציפה לה (${e.message}).`, { title: 'שגיאה בהצגת הדף', retry: true });
+      body = building(p, `render: ${e.message}`);
     }
   }
+  const markup = html`${head(p, state)}<div class="pbody">${body}</div>`.s;
+  // A quiet refresh of the page already on screen morphs it (animated diff); anything else replaces it.
+  const same = root.dataset.pid === id && root.dataset.real === '1' && real && !enter;
   root.className = `page page-${id} ${p.brand ? 'pf' : ''} ${enter ? 'enter' : ''}`;
   root.setAttribute('style', p.brand ? brandVars(p.brand) : '');
-  root.innerHTML = html`${head(p, state)}<div class="pbody">${body}</div>`.s;
+  let morphed = false;
+  if (same) { try { morph(root, markup); morphed = true; } catch (e) { console.warn('morph failed, repainting', e); } } // eslint-disable-line no-console
+  if (!morphed) root.innerHTML = markup;
+  root.dataset.pid = id; root.dataset.real = real ? '1' : '0';
   if (enter) [...root.querySelector('.pbody').children].forEach((el, i) => el.style.setProperty('--i', Math.min(i, 8)));
   for (const f of root.querySelectorAll('[data-nf]')) mountField(f);
   rollAll(root);
-  p.after?.(root, ctx);
+  try { p.after?.(root, ctx); } catch (e) { console.warn('after failed', e); } // eslint-disable-line no-console
+  if (real && mounted !== id && p.mount) { mounted = id; try { p.mount(root, ctx); } catch (e) { console.warn('mount failed', e); } } // eslint-disable-line no-console
   if (!enter) window.scrollTo(0, y);
-  if (fid) { const el = document.getElementById(fid); if (el) { el.focus({ preventScroll: true }); if (sel) try { el.setSelectionRange(...sel); } catch { /* not text */ } } }
+  if (fid) { const el = document.getElementById(fid); if (el && el !== document.activeElement) { el.focus({ preventScroll: true }); if (sel) try { el.setSelectionRange(...sel); } catch { /* not text */ } } }
 }
 
 async function fetchNeeds(p, fresh) {
   const q = fresh ? '?fresh=1' : '';
+  if (p.wip) return { ok: true };
   if (!p.needs) {
     const d = await (p.load ? p.load(ctx) : api.get(p.endpoint));
     return d;
@@ -279,7 +380,7 @@ async function fetchNeeds(p, fresh) {
 }
 
 async function load(id, { quiet = false, fresh = false, enter = false } = {}) {
-  const p = byId[id]; const my = (seqs[id] = (seqs[id] || 0) + 1);
+  const p = await page(id); const my = (seqs[id] = (seqs[id] || 0) + 1);
   if (!quiet || !cache[id]) paint(id, 'loading', enter);
   let data;
   try { data = await fetchNeeds(p, fresh); } catch (e) { data = { ok: false, reason: e?.message || 'שגיאה לא צפויה.' }; }
@@ -290,38 +391,120 @@ async function load(id, { quiet = false, fresh = false, enter = false } = {}) {
   liveTick();
 }
 
-function go() {
-  const id = routeId(); const changed = id !== current; current = id;
-  const p = byId[id]; document.title = `${p.title} · Apple HQ`;
+async function go() {
+  const id = routeId(); const changed = id !== current;
+  if (changed) teardown(current);
+  current = id; const my = ++navSeq;
+  const meta = byId[id]; document.title = `${meta.title} · Apple HQ`;
   markNav(); closeMenu();
+  const [p] = await Promise.all([page(id), skinReady(id)]);
+  if (my !== navSeq) return;
+  for (const n of p.needs || []) listenPlatform(n);
+  document.title = `${p.title} · Apple HQ`;
   const c = cache[id];
   const run = () => {
+    setSkin(id);
     if (changed) window.scrollTo(0, 0);
     if (c) { paint(id, 'ready', changed); if (Date.now() - c.at > POLL_MS) load(id, { quiet: true }); } else load(id, { enter: true });
   };
-  if (changed && c) transition(run); else run();
+  if (changed && (c || document.documentElement.dataset.skin !== skinOf(id))) transition(run); else run();
   if (changed) $('#page').focus({ preventScroll: true });
 }
 
-// ---------- live pulse ----------
+// ---------- live: stream first, polling as the fallback ----------
 function takePulse(v) {
   store.pulse = v; store.pulseAt = Date.now();
   if (typeof v.ping?.ms === 'number') { store.pings.push(v.ping.ms); if (store.pings.length > 40) store.pings.shift(); }
+  if (Array.isArray(v.insights)) takeInsights(v.insights);
   markDots();
 }
+const streamLive = () => Date.now() - store.streamAt < POLL_MS + 5000;
 async function poll() {
   if (store.paused || document.visibilityState !== 'visible' || $('#modal').open || $('#palette').open) return;
-  const v = await api.get('/api/cc/pulse'); if (v?.ok !== false) { takePulse(v); store.seen.pulse = v; }
+  if (!streamLive()) {
+    const [v, ins] = await Promise.all([api.get('/api/cc/pulse'), api.get('/api/cc/insights')]);
+    if (v?.ok !== false) { takePulse(v); store.seen.pulse = v; }
+    if (ins?.ok !== false && Array.isArray(ins?.insights)) takeInsights(ins.insights);
+  }
   if (current) load(current, { quiet: true });
+}
+// A burst of platform:<id> events (one pulse refreshes many caches) becomes one quiet reload.
+let bump = null;
+function refreshSoon() {
+  if (store.paused || bump) return;
+  bump = setTimeout(() => { bump = null; if (current && !$('#modal').open && !$('#palette').open) load(current, { quiet: true }); }, 600);
+}
+let es = null; const heard = new Set();
+function listenPlatform(name) {
+  if (!es || heard.has(name)) return; heard.add(name);
+  es.addEventListener(`platform:${name}`, () => {
+    store.streamAt = Date.now();
+    for (const s of subs) if (s.apiName === name) s.run();
+    if ((P(current)?.needs || []).includes(name)) refreshSoon();
+  });
+}
+function connectStream() {
+  if (MOCK || !('EventSource' in window)) return;
+  es = new EventSource('/api/cc/stream');
+  es.addEventListener('hello', () => { store.streamAt = Date.now(); liveTick(); });
+  es.addEventListener('pulse', (e) => {
+    let v; try { v = JSON.parse(e.data); } catch { return; }
+    store.streamAt = Date.now();
+    if (v?.ok === false) return;
+    takePulse(v); store.seen.pulse = v; store.lastOk = Date.now();
+    for (const s of subs) if (s.apiName === 'pulse') s.run();
+    const cur = P(current);
+    if (!store.paused && cur?.needs?.includes('pulse') && cache[current]?.data && !$('#modal').open && !$('#palette').open) {
+      cache[current].data.pulse = v; paint(current, 'ready');
+    }
+    liveTick();
+  });
+  es.onerror = () => { liveTick(); };
+  for (const id of new Set(PAGES.map((p) => p.id).concat(['connectors', 'extras', 'status', 'apple']))) listenPlatform(id);
 }
 function liveTick() {
   const el = $('#live'); if (!el) return;
   const age = store.lastOk ? Date.now() - store.lastOk : null;
   const state = store.paused ? 'paused' : age == null ? 'wait' : age > STALE_MS ? 'stale' : 'live';
-  el.dataset.state = state;
-  $('#live-t').textContent = state === 'paused' ? 'מושהה' : state === 'wait' ? 'מתחבר…' : state === 'stale' ? `לא עודכן ${agoSeconds(store.lastOk).replace('עודכן ', '')}` : `חי · ${agoSeconds(store.lastOk)}`;
+  el.dataset.state = state; el.dataset.via = streamLive() ? 'stream' : 'poll';
+  $('#live-t').textContent = state === 'paused' ? 'מושהה' : state === 'wait' ? 'מתחבר…' : state === 'stale' ? `לא עודכן ${agoSeconds(store.lastOk).replace('עודכן ', '')}` : `${streamLive() ? 'שידור חי' : 'חי'} · ${agoSeconds(store.lastOk)}`;
   const pb = $('#pause'); pb.innerHTML = icon(store.paused ? 'play' : 'pause', 14).s; pb.setAttribute('aria-pressed', String(store.paused));
   pb.setAttribute('aria-label', store.paused ? 'להמשיך לעדכן אוטומטית' : 'להשהות את העדכון האוטומטי');
+}
+
+// ---------- insights: the top-bar ticker and the one-click path ----------
+const SEV_HE = { bad: 'דחוף', warn: 'לבדוק', info: 'לידיעה' };
+let tickI = 0; let tickTimer = null; let tickSig = '';
+function takeInsights(list) {
+  store.insights = list;
+  const sig = list.map((x) => x.id + x.title).join('|');
+  if (sig === tickSig) return; tickSig = sig;
+  tickI = 0; drawTicker(true);
+  clearInterval(tickTimer);
+  if (list.length > 1) tickTimer = setInterval(() => { if (!store.paused && document.visibilityState === 'visible') { tickI = (tickI + 1) % Math.min(list.length, 6); drawTicker(false); } }, 6000);
+  markDots();
+}
+function drawTicker(first) {
+  const box = $('#itk'); if (!box) return;
+  const list = store.insights || [];
+  if (!list.length) { box.hidden = true; return; }
+  box.hidden = false;
+  const bad = list.filter((x) => x.sev === 'bad').length; const warn = list.filter((x) => x.sev === 'warn').length;
+  const x = list[tickI] || list[0];
+  const cnt = $('#itk-n'); cnt.textContent = bad ? `${bad} דחוף` : warn ? `${warn} לבדוק` : `${list.length}`; cnt.dataset.sev = bad ? 'bad' : warn ? 'warn' : 'info';
+  const line = document.createElement('button');
+  line.className = `itk-l sev-${x.sev}`; line.type = 'button'; line.dataset.i = String(list.indexOf(x));
+  line.innerHTML = html`${PLATFORMS[x.platform] ? logo(x.platform, 'sm') : ''}<span class="itk-t" dir="auto">${x.title}</span><span class="sr"> · ${SEV_HE[x.sev]}</span>`.s;
+  line.title = x.why || '';
+  const vp = $('#itk-v'); const old = vp.firstElementChild;
+  vp.append(line);
+  if (old) { if (reduced() || first) old.remove(); else { old.classList.add('out'); setTimeout(() => old.remove(), 360); } }
+}
+function runInsight(x) {
+  const a = x?.action; if (!a) return;
+  if (a.type === 'url' && a.url) { window.open(a.url, '_blank', 'noopener,noreferrer'); return; }
+  if (a.type === 'act') { const spec = REG.get(a.id) || allActions().find((s) => s.id === a.id); if (spec) { act(spec); return; } }
+  if (a.page && byId[a.page]) ctx.go(a.page);
 }
 
 // ---------- toggles ----------
@@ -338,20 +521,39 @@ function setDry(v) {
 const togglePause = () => { store.paused = !store.paused; liveTick(); if (!store.paused) poll(); };
 
 // ---------- command palette ----------
+// Every registered action: the shell's catalogue plus each platform's control/actions/<id>.js
+// (export catalog(seen) or a default function), fed with whatever payloads are loaded.
+const laneActs = {}; // id -> catalog fn | null (no file)
+async function loadLaneActions() {
+  await Promise.all(PAGES.filter((p) => p.brand && !(p.id in laneActs)).map(async (p) => {
+    try { const m = await import(`./actions/${p.id}.js`); laneActs[p.id] = typeof m.catalog === 'function' ? m.catalog : typeof m.default === 'function' ? m.default : null; } catch { laneActs[p.id] = null; }
+  }));
+}
+function allActions() {
+  const out = catalog(store.seen); const ids = new Set(out.map((a) => a.id));
+  for (const fn of Object.values(laneActs)) {
+    if (!fn) continue;
+    let list = []; try { list = fn(store.seen) || []; } catch (e) { console.warn('lane catalog failed', e); } // eslint-disable-line no-console
+    for (const a of list) if (a?.id && a.path && !ids.has(a.id)) { ids.add(a.id); out.push(a); }
+  }
+  return out;
+}
 function paletteItems() {
   const pages = PAGES.map((p) => ({ kind: 'page', id: `go-${p.id}`, label: p.title, hint: p.brand ? PLATFORMS[p.brand].name : 'דף', platform: p.brand, glyph: p.glyph || p.id, run: () => ctx.go(p.id) }));
+  const ins = (store.insights || []).map((x, i) => ({ kind: 'insight', id: `in-${i}`, label: x.title, hint: `${SEV_HE[x.sev]} · ${x.action?.label || ''}`, platform: PLATFORMS[x.platform] ? x.platform : null, glyph: 'alert', run: () => runInsight(x) }));
   const toggles = [
     { kind: 'toggle', id: 't-dry', label: store.dry ? 'כיבוי מצב ניסוי' : 'הדלקת מצב ניסוי (שום דבר לא נשלח)', hint: 'מתג', glyph: 'flask', run: () => setDry(!store.dry) },
     { kind: 'toggle', id: 't-theme', label: document.documentElement.dataset.theme === 'dark' ? 'מצב בהיר' : 'מצב כהה', hint: 'מתג', glyph: 'sun', run: () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark') },
     { kind: 'toggle', id: 't-pause', label: store.paused ? 'להמשיך עדכון חי' : 'להשהות עדכון חי', hint: 'מתג', glyph: 'pause', run: togglePause },
     { kind: 'toggle', id: 't-fresh', label: 'לרענן עכשיו מהמקור', hint: 'פעולה', glyph: 'refresh', run: () => load(current, { quiet: true, fresh: true }) },
   ];
-  const acts = catalog(store.seen).map((a) => ({ kind: 'act', id: a.id, label: a.label, hint: a.hint, platform: a.platform, run: () => act(a) }));
-  return [...pages, ...toggles, ...acts];
+  const acts = allActions().map((a) => ({ kind: 'act', id: a.id, label: a.label, hint: a.hint, platform: a.platform, run: () => act(a) }));
+  return [...ins, ...pages, ...toggles, ...acts];
 }
 let palSel = 0; let palList = [];
-function openPalette() {
+async function openPalette() {
   const dlg = $('#palette'); if (dlg.open) return;
+  await loadLaneActions();
   const opener = document.activeElement;
   dlg.innerHTML = html`<div class="pal"><label class="pal-in">${icon('search', 18)}<span class="sr">חיפוש דף או פעולה</span>
     <input id="pal-q" type="text" placeholder="לאן לקפוץ או מה לעשות? (למשל: הרצה, Sentry, בהיר)" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="pal-list" aria-autocomplete="list">
@@ -362,7 +564,7 @@ function openPalette() {
     const s = q.value.trim().toLowerCase();
     palList = (s ? all.filter((x) => `${x.label} ${x.hint} ${x.platform || ''} ${PLATFORMS[x.platform]?.name || ''}`.toLowerCase().includes(s)) : all).slice(0, 40);
     palSel = Math.min(palSel, Math.max(0, palList.length - 1));
-    const grp = { page: 'דפים', toggle: 'מתגים', act: 'פעולות בלחיצה' }; let lastK = '';
+    const grp = { insight: 'מה קורה עכשיו', page: 'דפים', toggle: 'מתגים', act: 'פעולות בלחיצה' }; let lastK = '';
     $('#pal-list').innerHTML = palList.length ? palList.map((x, i) => {
       const h = x.kind !== lastK ? html`<li class="pal-g" role="presentation">${grp[x.kind]}</li>` : ''; lastK = x.kind;
       return html`${h}<li id="pal-${i}" class="pal-i ${i === palSel ? 'on' : ''}" role="option" aria-selected="${i === palSel}" data-i="${i}">
@@ -390,9 +592,10 @@ function dispatch(e, attr) {
   const el = e.target.closest(`[${attr}]`); if (!el || !$('#page').contains(el)) return;
   const name = el.getAttribute(attr);
   if (name === 'app:refresh') { load(current, { quiet: !!cache[current], fresh: true }); return; }
-  if (name === 'app:act') { const a = REG.get(el.dataset.aid) || catalog(store.seen).find((x) => x.id === el.dataset.aid); if (a) act(a); return; }
+  if (name === 'app:act') { const a = REG.get(el.dataset.aid) || allActions().find((x) => x.id === el.dataset.aid); if (a) act(a); return; }
   if (name === 'app:dry') { setDry(!store.dry); return; }
-  const fn = byId[current]?.actions?.[name];
+  if (name === 'app:insight') { const x = (store.insights || [])[+el.dataset.i]; if (x) runInsight(x); return; }
+  const fn = P(current)?.actions?.[name];
   if (fn) { if (attr === 'data-act' && el.tagName === 'A' && !el.getAttribute('href')) e.preventDefault(); fn(el, ctx, e); }
 }
 document.addEventListener('click', (e) => dispatch(e, 'data-act'));
@@ -421,7 +624,12 @@ function boot() {
   setInterval(() => { for (const el of document.querySelectorAll('[data-ago]')) if (el.dataset.ago) el.textContent = agoSeconds(el.dataset.ago); liveTick(); }, 1000);
   setInterval(poll, POLL_MS);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - store.lastOk > POLL_MS) poll(); });
-  api.get('/api/cc/pulse').then((v) => { if (v?.ok !== false) { takePulse(v); store.seen.pulse = v; } });
+  $('#itk-v').onclick = (e) => { const b = e.target.closest('.itk-l'); const x = b && (store.insights || [])[+b.dataset.i]; if (x) runInsight(x); };
+  connectStream();
+  if (!es) {
+    api.get('/api/cc/pulse').then((v) => { if (v?.ok !== false) { takePulse(v); store.seen.pulse = v; } });
+    api.get('/api/cc/insights').then((v) => { if (v?.ok !== false && Array.isArray(v?.insights)) takeInsights(v.insights); });
+  }
   go();
 }
 boot();

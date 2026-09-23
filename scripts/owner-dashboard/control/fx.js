@@ -42,7 +42,7 @@ const rgb = (c) => {
 const fields = new Set();
 export function mountField(host) {
   if (!host || host._nf) return; host._nf = true;
-  const canvas = document.createElement('canvas'); canvas.setAttribute('aria-hidden', 'true'); host.prepend(canvas);
+  const canvas = document.createElement('canvas'); canvas.setAttribute('aria-hidden', 'true'); canvas.dataset.fx = ''; host.prepend(canvas);
   const ctx = canvas.getContext('2d'); if (!ctx) return;
   const area = host.parentElement || host;
   const XG = 12, YG = 28;
@@ -176,8 +176,62 @@ export function spark(values, { w = 120, h = 32, cls = '', area = true, label = 
     ${area ? `<path class="spark-area" d="${d}L${w} ${h}L0 ${h}Z"/>` : ''}<path class="spark-line" d="${d}" pathLength="1"/><circle class="spark-dot" cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.2"/></svg>`);
 }
 
-// ---------- page transition ----------
+// ---------- page / skin transition ----------
+// View Transitions where the browser has them; otherwise a short cross-fade of the whole app.
 export function transition(fn) {
-  if (!reduced() && document.startViewTransition) return document.startViewTransition(fn);
-  fn(); return null;
+  if (reduced()) { fn(); return null; }
+  if (document.startViewTransition) return document.startViewTransition(fn);
+  const r = document.documentElement; fn();
+  r.classList.remove('xfade'); void r.offsetWidth; r.classList.add('xfade');
+  setTimeout(() => r.classList.remove('xfade'), 320);
+  return null;
+}
+
+// ---------- morph: the animated diff of a quiet refresh ----------
+// Patches `el`'s children to match `markup` in place, so what did not change is not touched (focus,
+// scroll, running canvases). Children keyed with data-k are matched by key: a new key slides in
+// (.is-in), a vanished one fades out (.is-out) before it is removed. data-keep elements belong to a
+// live widget and are left alone; data-fx children are injected by effects and are skipped.
+const TRANSIENT = ['is-on', 'rn-go', 'is-in'];
+const kOf = (n) => (n.nodeType === 1 ? n.getAttribute('data-k') : null);
+const skip = (n) => n.nodeType === 1 && (n.hasAttribute('data-fx') || n.classList.contains('is-out'));
+export function morph(el, markup) {
+  const t = document.createElement('template'); t.innerHTML = markup;
+  kids(el, t.content);
+}
+function kids(from, to) {
+  const old = [...from.childNodes].filter((n) => !skip(n));
+  const keyed = new Map(); for (const n of old) { const k = kOf(n); if (k != null) keyed.set(k, n); }
+  const used = new Set(); const next = []; let i = 0;
+  for (const nn of [...to.childNodes]) {
+    const k = kOf(nn); let m = null;
+    if (k != null) { const c = keyed.get(k); if (c && c.tagName === nn.tagName && !used.has(c)) m = c; } else {
+      while (i < old.length && (used.has(old[i]) || kOf(old[i]) != null)) i++;
+      const c = old[i];
+      if (c && c.nodeType === nn.nodeType && (c.nodeType !== 1 || c.tagName === nn.tagName)) { m = c; i++; }
+    }
+    if (m) { used.add(m); patch(m, nn); next.push(m); } else { if (k != null && keyed.size && nn.nodeType === 1 && !reduced()) nn.classList.add('is-in'); next.push(nn); }
+  }
+  for (const n of old) {
+    if (used.has(n)) continue;
+    if (kOf(n) != null && !reduced() && n.nodeType === 1) { n.classList.add('is-out'); setTimeout(() => n.remove(), 260); } else n.remove();
+  }
+  let cur = from.firstChild;
+  for (const n of next) {
+    while (cur && cur !== n && skip(cur)) cur = cur.nextSibling;
+    if (cur === n) { cur = cur.nextSibling; continue; }
+    from.insertBefore(n, cur);
+  }
+}
+function patch(a, b) {
+  if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+  if (a.hasAttribute('data-keep') && b.hasAttribute('data-keep') && a.getAttribute('data-keep') === b.getAttribute('data-keep')) return;
+  for (const { name } of [...a.attributes]) if (!b.hasAttribute(name) && !(name === 'open' && a.tagName === 'DETAILS') && name !== 'style') a.removeAttribute(name);
+  for (const { name, value } of [...b.attributes]) {
+    if (name === 'class') { const keep = TRANSIENT.filter((c) => a.classList.contains(c)); const v = [value, ...keep].join(' ').trim(); if (a.getAttribute('class') !== v) a.setAttribute('class', v); continue; }
+    if (a.getAttribute(name) !== value) a.setAttribute(name, value);
+  }
+  if (b.hasAttribute('style') && a.getAttribute('style') !== b.getAttribute('style')) a.setAttribute('style', b.getAttribute('style'));
+  if ((a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT') && a === document.activeElement) return;
+  kids(a, b);
 }
