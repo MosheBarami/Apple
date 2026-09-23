@@ -2,7 +2,7 @@
 
 Directly measured facts only. Re-measure at the start of every session; this file is a snapshot.
 
-**Measured:** 2026-09-23 ~05:05 IDT.
+**Measured:** 2026-09-23 ~06:50 IDT.
 
 ## Repository
 
@@ -22,6 +22,15 @@ Directly measured facts only. Re-measure at the start of every session; this fil
   (c58b1815-7bcb-4ab9-a809-da159374bf78), running the plugin build loaded at 04:21 (ed6622c5 era, before the
   ColorGradingEffect and NumberSequence fixes). A quit prompt is open on it (Q-005).
 - Installed local plugin (loaded at the next launch): sha256 494fb68f875cdb1f9481634aedcdc43886fd87c4b709a32a4248356a2d7d7f8e.
+
+## Since 05:05
+
+- build_scene kit floating_island + kit guard (worker 8d4f21c): the first sky island that reads as one,
+  observed in the Studio viewport; 179 Credits with the guard. Renderer now draws Terrain (plugin 8a9ec295,
+  installed, NOT loaded — Studio restart waits on Q-005). aim() reads list targets (retune bound no longer
+  ends builds that move many different objects); bound endings say what changed; terrain_edit clear.
+- The paired Studio (pid 24529) still runs the plugin loaded at 04:21; menus and the command bar work
+  behind the open quit prompt, so runs continue in Sky Island 2.
 
 ## Missions tonight
 
