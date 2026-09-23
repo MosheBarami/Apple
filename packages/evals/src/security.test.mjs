@@ -2301,6 +2301,10 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
       'GET /api/admin/session-info/:id',
       'GET /api/admin/session-messages/:id',
       'POST /api/admin/agent-run/:id',
+      // Reviewed 2026-09-24: writes the stop signal a project's owner could already send from the
+      // Stop button, and nothing else. It can end a run; it cannot read, start or change one, which
+      // is strictly less than agent-run above already grants the same key.
+      'POST /api/admin/agent-stop/:id',
       'POST /api/admin/recovery-requests/:id',
       'POST /api/admin/run-tool/:id',
       'POST /api/admin/studio-op/:id',

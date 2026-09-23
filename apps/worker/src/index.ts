@@ -4447,6 +4447,12 @@ app.post('/api/admin/agent-run/:id', async (c) => {
   return c.json(await res.json(), res.status as 200);
 });
 
+/** Stop a project's run, owner-key gated — the same signal the Stop button sends over the socket. */
+app.post('/api/admin/agent-stop/:id', async (c) => {
+  const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/agent-stop', { method: 'POST' });
+  return c.json(await res.json(), res.status as 200);
+});
+
 /** Read a project's transcript, owner-key gated — the benchmark suite records what the agent said. */
 app.get('/api/admin/session-messages/:id', async (c) => {
   const url = new URL(c.req.url);

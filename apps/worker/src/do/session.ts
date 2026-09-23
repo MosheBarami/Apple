@@ -88,7 +88,7 @@ import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, par
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
-import { clearStop, requestStop, stopRequested } from '../stop-signal';
+import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
 import { sceneSignature, shouldRebuild, semanticCheck, type PassRecord } from '../semantic';
 import { runIntentFor } from '../run-intent';
@@ -2659,8 +2659,22 @@ export class SessionDO extends DurableObject<Env> {
         queuedOps: this.opQueue.length,
         // The same record the owner sees at /studio/diagnostics, so the two views cannot drift.
         link: await this.linkSummary(),
+        // WHETHER THE SOCKETS ARE HEARD. A stop pressed in the browser crosses only this path, and
+        // a socket that opens, says hello and is then never delivered a frame looks healthy from
+        // both ends. Counted in memory: a restart zeroes it, which reads as "none since restart".
+        sockets: { clients: this.ctx.getWebSockets('client').length, framesSinceStart: this.wsFrames, lastFrameAt: this.wsLastFrameAt },
+        stopRequestedAt: await stopRequestedAt(this.ctx.storage),
         oplog,
       });
+    }
+
+    // Admin-only: the Stop button, for a run started without a browser (the benchmark harness)
+    // or one whose browser cannot reach the socket. The same signal the socket writes.
+    if (path === '/agent-stop' && req.method === 'POST') {
+      const agent = await this.ctx.storage.get<AgentState>('agent');
+      if (!agent || agent.status === 'idle') return json({ ok: true, stopping: false, status: 'idle' });
+      await requestStop(this.ctx.storage);
+      return json({ ok: true, stopping: true, status: agent.status });
     }
 
     return json({ error: 'not found' }, 404);
@@ -2704,6 +2718,8 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
+    this.wsFrames++;
+    this.wsLastFrameAt = Date.now();
     let msg: ClientMsg;
     try {
       msg = JSON.parse(typeof raw === 'string' ? raw : new TextDecoder().decode(raw)) as ClientMsg;
@@ -5310,6 +5326,9 @@ export class SessionDO extends DurableObject<Env> {
   /** The last poll, in memory. Written on every one; the stored copy lags by up to 4s by design. */
   private pluginLastSeenMs = 0;
   private liveJwt: string | null = null;
+  /** Socket frames delivered to this instance, and when the last one was. Reported by /info. */
+  private wsFrames = 0;
+  private wsLastFrameAt: number | null = null;
 
   // ------------------------------------------------------------------ frames
   /**
