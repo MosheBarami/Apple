@@ -48,6 +48,28 @@ test('a prompt nobody answers is handed back after a deadline, not left running 
   assert.ok(ms >= 10_000 && ms <= 60_000, `deadline ${ms}ms: long enough for a slow start, short enough to notice`);
   // Only THIS prompt, still unanswered, on the socket it was sent on: an answered one, or one whose
   // socket was already replaced, must not close a healthy connection.
-  assert.match(send, /setTimeout\(\(\) => \{[\s\S]*?unackedChat\.current\?\.localId === id[\s\S]*?wsRef\.current === sentOn[\s\S]*?\.close\(/);
+  assert.match(send, /setTimeout\(\(\) => \{[\s\S]*?unackedChat\.current\?\.localId === id[\s\S]*?wsRef\.current === sentOn[\s\S]*?(\.close\(|abandon\(sentOn)/);
   assert.match(send, /\}, CHAT_ACK_DEADLINE_MS\);/);
+});
+
+// Measured 2026-09-23 on the owner's Grow-a-Garden build: the run went on to step 23 in Studio while the
+// page sat on step 11 for six minutes. The socket never closed, so nothing reconnected; the pings kept
+// going out every 25 s and nobody checked that a pong ever came back.
+test('a socket that stops answering pings is closed so it reconnects and resumes', () => {
+  const onOpen = between(HOOK, 'ws.onopen = () => {', 'ws.onmessage');
+  const onMessage = between(HOOK, 'ws.onmessage = (ev) => {', 'ws.onclose');
+  const m = HOOK.match(/const SOCKET_SILENCE_MS = ([\d_]+);/);
+  assert.ok(m, 'the silence limit is a named constant');
+  const ms = Number(m[1].replace(/_/g, ''));
+  assert.ok(ms > 25_000 && ms <= 90_000, `limit ${ms}ms: longer than one ping interval, short enough to notice`);
+  // Any frame is proof of life; the ping tick compares against it and closes a silent socket.
+  const heard = onMessage.match(/(\w+)\.current = Date\.now\(\);/);
+  assert.ok(heard, 'every received frame is timestamped');
+  assert.ok(onMessage.indexOf(heard[0]) < onMessage.indexOf('JSON.parse'), 'stamped before parsing, so any frame counts');
+  assert.match(onOpen, new RegExp(`${heard[1]}\\.current = Date\\.now\\(\\);`), 'the clock starts at open');
+  assert.match(onOpen, new RegExp(`Date\\.now\\(\\) - ${heard[1]}\\.current > SOCKET_SILENCE_MS[\\s\\S]*?(ws\\.close\\(|abandon\\(ws)`));
+  // close() alone waits on a handshake a dead peer never sends; the handover must run now.
+  const abandonFn = between(HOOK, 'function abandon(', '\n}');
+  assert.match(abandonFn, /\.close\(/);
+  assert.match(abandonFn, /onclose\?\.call\(/);
 });

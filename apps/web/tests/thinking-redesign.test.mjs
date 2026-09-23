@@ -63,7 +63,7 @@ test('AI Elements Reasoning owns disclosure, streaming state, auto-close, and du
 
   assert.match(REASONING, /const resolvedDefaultOpen = defaultOpen \?\? isStreaming/,
     'streaming must own the initial open state');
-  assert.match(REASONING, /if \(isStreaming && !isOpen && !isExplicitlyClosed\) \{\s*setIsOpen\(true\)/,
+  assert.match(REASONING, /if \(isStreaming && !isOpen && !isExplicitlyClosed\b[^)]*\) \{\s*setIsOpen\(true\)/,
     'streaming must reopen the reasoning surface when appropriate');
   assert.match(REASONING, /hasEverStreamedRef\.current &&\s*!isStreaming &&\s*isOpen &&\s*!hasAutoClosed/,
     'completion must be the condition that starts the one-shot auto-close');

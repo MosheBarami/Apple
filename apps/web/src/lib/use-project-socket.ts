@@ -350,6 +350,18 @@ function mockHistory(): ChatItem[] {
 
 /** How long a sent prompt may go without msg_start or a refusal before the socket is presumed dead. */
 const CHAT_ACK_DEADLINE_MS = 30_000;
+/** A socket that has heard nothing, not even a pong, for this long is presumed dead and replaced. */
+const SOCKET_SILENCE_MS = 60_000;
+
+/**
+ * Give up on a socket now. close() alone waits for a closing handshake the dead far end will never
+ * send, so the handover in onclose is run straight away; the real close event, when it comes, finds
+ * the socket already replaced and does nothing.
+ */
+function abandon(ws: WebSocket, reason: string) {
+  ws.close(4000, reason);
+  ws.onclose?.call(ws, new CloseEvent('close', { code: 4000, reason }));
+}
 
 export function useProjectSocket(
   projectId: string,
@@ -403,6 +415,7 @@ export function useProjectSocket(
   const closedRef = useRef(false);
   const reconnectTimer = useRef<number | null>(null);
   const pingTimer = useRef<number | null>(null);
+  const lastHeard = useRef(0);
   const errorCbRef = useRef(onServerError);
   errorCbRef.current = onServerError;
   const noticeCbRef = useRef(onNotice);
@@ -997,8 +1010,15 @@ export function useProjectSocket(
       if (wsRef.current !== ws || !requestFenceRef.current.isSelected(socketProjectId)) return;
       attemptsRef.current = 0;
       setConn('open');
+      lastHeard.current = Date.now();
       if (pingTimer.current) window.clearInterval(pingTimer.current);
       pingTimer.current = window.setInterval(() => {
+        // A half-open socket never fires onclose: the owner's page sat on step 11 for six minutes while
+        // the run reached step 23. Closing it hands over to the reconnect, whose resume replays the run.
+        if (Date.now() - lastHeard.current > SOCKET_SILENCE_MS) {
+          abandon(ws, 'silent');
+          return;
+        }
         // `t` is this browser's clock, echoed back untouched on the pong so the round trip is
         // measured in one clock domain. See the 'pong' case.
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping', t: Date.now() } satisfies ClientMsg));
@@ -1007,6 +1027,7 @@ export function useProjectSocket(
 
     ws.onmessage = (ev) => {
       if (wsRef.current !== ws || !requestFenceRef.current.isSelected(socketProjectId)) return;
+      lastHeard.current = Date.now();
       let msg: ServerMsg;
       try {
         msg = JSON.parse(typeof ev.data === 'string' ? ev.data : '') as ServerMsg;
@@ -1150,7 +1171,7 @@ export function useProjectSocket(
         // never runs. Closing it ourselves does: the prompt goes back in the box and we reconnect.
         const sentOn = wsRef.current;
         window.setTimeout(() => {
-          if (unackedChat.current?.localId === id && wsRef.current === sentOn) sentOn?.close(4000, 'no answer');
+          if (unackedChat.current?.localId === id && wsRef.current === sentOn && sentOn) abandon(sentOn, 'no answer');
         }, CHAT_ACK_DEADLINE_MS);
         setMessages((list) => [
           ...list,

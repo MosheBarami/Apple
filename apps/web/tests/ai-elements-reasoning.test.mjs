@@ -51,7 +51,7 @@ test('streaming owns the initial open state and explicit defaultOpen=false opts 
   assert.match(REASONING, /const isExplicitlyClosed = defaultOpen === false/);
   assert.match(
     REASONING,
-    /if \(isStreaming && !isOpen && !isExplicitlyClosed\) \{\s*setIsOpen\(true\)/,
+    /if \(isStreaming && !isOpen && !isExplicitlyClosed\b[^)]*\) \{\s*setIsOpen\(true\)/,
   );
 });
 
@@ -101,4 +101,19 @@ test('the trigger names its content only while that content is in the DOM', () =
   assert.match(content, /const id = idProp \?\? context\.contentId/);
   assert.match(content, /setMountedContentId\(id\);\s*return \(\) => setMountedContentId\(null\)/, 'mounting registers the id, and unmounting takes it back');
   assert.match(content, /\bid,\n/, 'and the content carries the very id it registered');
+});
+
+// Measured 2026-09-23 on the owner's live build: clicking the card's header while Apple worked
+// collapsed it, and 261 ms later the auto-open effect saw "streaming and closed" and reopened it.
+// The reader could never close it. Once the reader has toggled the card, neither automatic move
+// may override them.
+test("the reader's own toggle wins over auto-open and auto-close", () => {
+  const change = REASONING.match(/const handleOpenChange = useCallback\(\s*\(newOpen: boolean\) => \{([\s\S]*?)\},/);
+  assert.ok(change, 'handleOpenChange is where a reader toggle arrives');
+  const flag = change[1].match(/(\w+)\.current = true/);
+  assert.ok(flag, 'a reader toggle is recorded');
+  const autoOpen = REASONING.match(/if \(isStreaming && !isOpen && !isExplicitlyClosed([^)]*)\) \{\s*setIsOpen\(true\)/);
+  assert.ok(autoOpen && autoOpen[1].includes(`!${flag[1]}.current`), 'auto-open must stand down after a reader toggle');
+  const autoClose = REASONING.match(/hasEverStreamedRef\.current &&\s*!isStreaming &&\s*isOpen &&\s*!hasAutoClosed([^)]*)\)/);
+  assert.ok(autoClose && autoClose[1].includes(`!${flag[1]}.current`), 'auto-close must stand down after a reader toggle');
 });

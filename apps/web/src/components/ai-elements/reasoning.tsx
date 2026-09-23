@@ -110,6 +110,9 @@ export const Reasoning = memo(
 
     const hasEverStreamedRef = useRef(isStreaming);
     const [hasAutoClosed, setHasAutoClosed] = useState(false);
+    // Once the reader has opened or closed the card themselves, the automatic moves stand down: the
+    // auto-open used to reopen a card the reader had just closed mid-run, 261 ms after they closed it.
+    const readerChoseRef = useRef(false);
     const startTimeRef = useRef<number | null>(null);
 
     // Track when streaming starts and compute duration
@@ -127,7 +130,7 @@ export const Reasoning = memo(
 
     // Auto-open when streaming starts (unless explicitly closed)
     useEffect(() => {
-      if (isStreaming && !isOpen && !isExplicitlyClosed) {
+      if (isStreaming && !isOpen && !isExplicitlyClosed && !readerChoseRef.current) {
         setIsOpen(true);
       }
     }, [isStreaming, isOpen, setIsOpen, isExplicitlyClosed]);
@@ -138,7 +141,8 @@ export const Reasoning = memo(
         hasEverStreamedRef.current &&
         !isStreaming &&
         isOpen &&
-        !hasAutoClosed
+        !hasAutoClosed &&
+        !readerChoseRef.current
       ) {
         const timer = setTimeout(() => {
           setIsOpen(false);
@@ -151,6 +155,7 @@ export const Reasoning = memo(
 
     const handleOpenChange = useCallback(
       (newOpen: boolean) => {
+        readerChoseRef.current = true;
         setIsOpen(newOpen);
       },
       [setIsOpen],

@@ -230,6 +230,21 @@ if (args[0] === '--file') {
     console.error(`deploy-static: --only takes site or web, not ${only === undefined ? '(nothing)' : only}`);
     process.exit(2);
   }
+  // A DIST OLDER THAN ITS SOURCE IS NOT THE CHANGE YOU MEANT TO SHIP. This script uploads what is
+  // in dist and never builds, so on 2026-09-23 two web fixes were "deployed" and "verified" while
+  // the URL kept serving the previous bundle: the verification compares the URL with dist, and
+  // dist was stale. Build first (`pnpm --dir apps/<app> build`), then deploy.
+  const newest = (dir) => readdirSync(dir, { withFileTypes: true }).reduce((max, e) => {
+    const p = join(dir, e.name);
+    return Math.max(max, e.isDirectory() ? newest(p) : statSync(p).mtimeMs);
+  }, 0);
+  for (const app of only ? [only] : ['site', 'web']) {
+    const built = statSync(join(root, `apps/${app}/dist/index.html`)).mtimeMs;
+    if (newest(join(root, `apps/${app}/src`)) > built) {
+      console.error(`deploy-static: apps/${app}/src is newer than apps/${app}/dist — build it first, nothing was uploaded`);
+      process.exit(2);
+    }
+  }
   let total = 0;
   if (!only || only === 'site') total += (await uploadDir(join(root, 'apps/site/dist'), '/')).count;
   if (!only || only === 'web') total += (await uploadDir(join(root, 'apps/web/dist'), '/app')).count;
