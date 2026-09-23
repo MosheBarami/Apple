@@ -85,6 +85,7 @@ import { aim, trimTranscriptReport } from '../transcript';
 import { VERIFIER_TOOLS } from '../verifiers';
 import { afterStep, afterChange, builtSummary, type RetuneAction } from '../run-idle';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
+import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested } from '../stop-signal';
 import { singleFlight } from '../single-flight';
@@ -352,6 +353,8 @@ interface AgentState {
    * forbidsChanges in reasoning.ts.
    */
   readOnly?: boolean;
+  /** The request is only about the light: changes outside Lighting are refused (request-scope.ts). */
+  lightingOnly?: boolean;
   /**
    * Which tools the permissions above actually REMOVED from this run, computed once at the first
    * step and kept so the announcement is made once and survives a reload.
@@ -473,6 +476,10 @@ const MAX_DUPLICATE_STREAK = 3;
 const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
 /** What a run that was told not to change anything is never offered. */
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
+/** What a lighting-only run is told when it reaches for anything else. */
+const LIGHTING_ONLY =
+  'Not run: this request is only about the lighting, so only Lighting changes are made in this run. ' +
+  'Finish the lighting change, then reply to the user in one or two short, simple sentences.';
 /** What a run is told when it tries to redo a kit it already built. */
 const KIT_KEPT =
   'Not run: the ready-made scene is finished, and its pieces and the terrain around it are kept as built in this run. ' +
@@ -3236,6 +3243,7 @@ export class SessionDO extends DurableObject<Env> {
       // trimTranscript documents — the agent kept working with no record of the task.
       llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text, pinned: true }],
       ...(mode === 'agent' && forbidsChanges(text) ? { readOnly: true } : {}),
+      ...(mode === 'agent' && isLightingOnlyRequest(text) ? { lightingOnly: true } : {}),
       step: 0,
       maxSteps: MAX_RUN_STEPS,
       creditsSpent: quota ? 1 : 0,
@@ -4192,6 +4200,13 @@ export class SessionDO extends DurableObject<Env> {
         });
         continue;
       }
+      if (agent.lightingOnly && READ_ONLY_WITHHELD.has(call.name) && !staysInLighting(call.name, call.arguments)) {
+        duplicatesThisStep += 1;
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (this request is about the lighting)` });
+        agent.llm.push({ role: 'tool', content: `[${call.name}] ${LIGHTING_ONLY}`, toolCallId: call.id, name: call.name });
+        continue;
+      }
       if (agent.kitZone && touchesKit(agent.kitZone, call.name, call.arguments)) {
         duplicatesThisStep += 1;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
@@ -4365,7 +4380,9 @@ export class SessionDO extends DurableObject<Env> {
     // Three in a row is a loop, not deliberation: end on what the run has, and say so.
     agent.duplicateStreak = executedThisStep === 0 && duplicatesThisStep > 0 ? (agent.duplicateStreak ?? 0) + 1 : 0;
     if (agent.duplicateStreak >= MAX_DUPLICATE_STREAK) {
-      const note = agent.kitZone
+      const note = agent.lightingOnly && agent.mutated
+        ? `The lighting is changed. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what else you would like and Apple will do it.`
+        : agent.kitZone
         ? `Your scene is built. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what you would like changed and Apple will change it.`
         : agent.mutated
         ? `Apple stopped because it kept repeating a step it had already done. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Everything it built is in your place.`
