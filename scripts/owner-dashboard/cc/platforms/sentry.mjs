@@ -33,21 +33,39 @@ export function sentry() {
         projects: (projects || []).map((p) => ({ slug: p.slug, name: p.name, platform: p.platform ?? null })),
         issues: (issues || []).map((i) => ({ id: i.id, shortId: i.shortId, title: i.title, culprit: i.culprit ?? null, level: i.level,
           count: Number(i.count), users: i.userCount, firstSeen: i.firstSeen, lastSeen: i.lastSeen, project: i.project?.slug ?? null,
-          url: i.permalink })),
+          url: i.permalink, status: i.status ?? null, substatus: i.substatus ?? null, priority: i.priority ?? null,
+          bookmarked: Boolean(i.isBookmarked), seen: Boolean(i.hasSeen), unhandled: Boolean(i.isUnhandled),
+          assignee: i.assignedTo?.name ?? null, trend: (i.stats?.['14d'] || i.stats?.['24h'] || []).map((p) => Number(p?.[1]) || 0) })),
       });
     } catch (e) { return fail(e?.reason || 'Sentry לא זמין', { configured: true }); }
   });
 }
 
-export async function sentryAction({ kind, id }) {
-  if (kind !== 'resolve') return fail('פעולה לא מוכרת');
-  if (!process.env.SENTRY_AUTH_TOKEN) return fail('Sentry עדיין לא מחובר', { configured: false, how: HOW });
+// Every kind is a single, reversible issue update. `resolve` stays for the owner; tests never send it
+// to the real Sentry (the dashboard's dry-run shows the call instead).
+const UPDATES = {
+  resolve: { status: 'resolved' },
+  unresolve: { status: 'unresolved' },
+  ignore: { status: 'ignored', statusDetails: { ignoreUntilEscalating: true } },
+  bookmark: { isBookmarked: true },
+  unbookmark: { isBookmarked: false },
+  seen: { hasSeen: true },
+  'priority-high': { priority: 'high' },
+  'priority-medium': { priority: 'medium' },
+  'priority-low': { priority: 'low' },
+};
+
+export async function sentryAction({ kind, id, dryRun }) {
+  const body = UPDATES[kind];
+  if (!body) return fail('פעולה לא מוכרת');
   if (!/^\d{1,20}$/.test(String(id))) return fail('מזהה לא תקין');
+  const url = (slug) => `${api()}/organizations/${encodeURIComponent(slug)}/issues/?id=${id}`;
+  if (dryRun === true) return ok({ dryRun: true, plan: { method: 'PUT', url: url(process.env.SENTRY_ORG || '<org>'), body } });
+  if (!process.env.SENTRY_AUTH_TOKEN) return fail('Sentry עדיין לא מחובר', { configured: false, how: HOW });
   try {
     const slug = await org();
-    await fetchJson(`${api()}/organizations/${encodeURIComponent(slug)}/issues/?id=${id}`, { label: LABEL, what: 'סגירת תקלה',
-      method: 'PUT', headers: auth(), body: { status: 'resolved' } });
-  } catch (e) { return fail(e?.reason || 'סגירת התקלה נכשלה'); }
+    await fetchJson(url(slug), { label: LABEL, what: 'עדכון התקלה', method: 'PUT', headers: auth(), body });
+  } catch (e) { return fail(e?.reason || 'עדכון התקלה נכשל'); }
   uncache('sentry');
   return ok({ kind, id: String(id) });
 }

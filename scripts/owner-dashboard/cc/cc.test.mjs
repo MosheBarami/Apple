@@ -98,7 +98,7 @@ test('path traversal under /control/ is refused', async () => {
   }
 });
 
-const GET_ROUTES = ['session', 'github', 'supabase', 'cloudflare', 'sentry', 'hf', 'extras'];
+const GET_ROUTES = ['session', 'github', 'supabase', 'cloudflare', 'sentry', 'hf', 'extras', 'apple', 'groq', 'discord', 'roblox', 'status', 'connectors', 'langflow', 'pulse'];
 
 test('leak guard: no response ever contains a credential, whatever the upstream sends back', async () => {
   let redacted = 0;
@@ -113,7 +113,9 @@ test('leak guard: no response ever contains a credential, whatever the upstream 
       if (res.body.includes('[redacted]')) redacted++;
     }
     for (const [p, b] of [['github/action', { kind: 'rerun', id: 5 }], ['cloudflare/action', { kind: 'purge', zoneId: 'z' }],
-      ['sentry/action', { kind: 'resolve', id: '123' }], ['supabase/action', { kind: 'nothing' }]]) {
+      ['sentry/action', { kind: 'resolve', id: '123' }], ['supabase/action', { kind: 'nothing' }],
+      ['sentry/action', { kind: 'bookmark', id: '123' }], ['hf/action', { kind: 'restart', id: 'moshebarami/x' }],
+      ['cloudflare/action', { kind: 'traces', value: true }], ['connectors/action', { id: 'posthog', kind: 'flag', target: 1, value: true }]]) {
       const res = await post(`/api/cc/${p}`, { ...b, confirm: true });
       assert.ok(!res.body.includes(SENTINEL), `${m} POST ${p} leaked a credential`);
     }
@@ -134,4 +136,45 @@ test('sentry resolve sends status=resolved to the org issues endpoint (fake upst
 test('no credential is ever put in an upstream URL or body', () => {
   assert.ok(calls.length > 20);
   assert.ok(calls.every((c) => !c.url.includes(SENTINEL) && !String(c.body || '').includes(SENTINEL)));
+});
+
+test('dryRun returns the exact upstream call and sends nothing', async () => {
+  mode = 'echo200';
+  const cases = [
+    ['sentry/action', { kind: 'ignore', id: '77' }, 'PUT', 'https://sentry.test/api/0/organizations/test-org/issues/?id=77'],
+    ['hf/action', { kind: 'restart', id: 'moshebarami/backrooms-api' }, 'POST', 'https://huggingface.co/api/spaces/moshebarami/backrooms-api/restart'],
+    ['cloudflare/action', { kind: 'logs', value: false }, 'PATCH', 'https://api.cloudflare.com/client/v4/accounts/<account>/workers/scripts/apple/script-settings'],
+    ['supabase/action', { kind: 'backup' }, 'POST', 'https://api.supabase.com/v1/projects/npqvyijsvzkuwddyhtpm/database/query'],
+    ['review', { sha: 'abc1234', verdict: 'approve' }, 'WRITE', 'scripts/owner-dashboard/cc/review.json'],
+  ];
+  for (const [p, b, method, url] of cases) {
+    const before = calls.length;
+    const r = JSON.parse((await post(`/api/cc/${p}`, { ...b, dryRun: true, confirm: true })).body);
+    assert.equal(r.ok, true, p); assert.equal(r.dryRun, true, p);
+    assert.equal(r.plan.method, method, p); assert.equal(r.plan.url, url, p);
+    assert.equal(calls.length, before, `${p} dry run touched the network`);
+  }
+  const bad = JSON.parse((await post('/api/cc/hf/action', { kind: 'restart', id: 'someone-else/space', dryRun: true, confirm: true })).body);
+  assert.equal(bad.ok, false);
+  const nope = JSON.parse((await post('/api/cc/sentry/action', { kind: 'delete', id: '1', dryRun: true, confirm: true })).body);
+  assert.equal(nope.ok, false);
+});
+
+test('sentry bookmark and cloudflare traces toggle send the right bodies (fake upstream)', async () => {
+  mode = 'echo200';
+  JSON.parse((await post('/api/cc/sentry/action', { kind: 'bookmark', id: '9', confirm: true })).body);
+  const put = calls.findLast((c) => c.method === 'PUT');
+  assert.deepEqual(JSON.parse(put.body), { isBookmarked: true });
+  await post('/api/cc/cloudflare/action', { kind: 'traces', value: false, confirm: true });
+  const patch = calls.findLast((c) => c.method === 'PATCH');
+  assert.match(patch.url, /workers\/scripts\/apple\/script-settings$/);
+  assert.equal(JSON.parse(patch.body).observability.traces.enabled, false);
+});
+
+test('langflow degrades to "not running" when the local instance is down', async () => {
+  mode = 'throw'; uncache('');
+  const r = JSON.parse((await req('/api/cc/langflow')).body);
+  assert.equal(r.ok, true); assert.equal(r.running, false);
+  assert.ok(Array.isArray(r.flows));
+  mode = 'echo200'; uncache('');
 });

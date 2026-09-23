@@ -2,11 +2,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-const PAGE = process.env.MORE_PAGE ?? '../control/pages/more.js';
+const PAGE = process.env.STORE_PAGE ?? '../control/pages/roblox.js';
 const page = (await import(new URL(PAGE, import.meta.url))).default;
 const { STUDIO_PLUGIN_STORE_REFUSAL } = await import('../../../packages/shared/src/index.ts');
 
-const card = (robloxStore) => String(page.render({ apple: null, robloxStore, stripe: {}, posthog: {} }));
+const card = (robloxStore) => String(page.render({ roblox: { assets: [] }, extras: { robloxStore } }));
 const controls = [{ assetId: 6415005344, httpStatus: 200 }];
 
 test('a 404 with a recorded refusal names the removal, its reason and the appeal deadline', () => {

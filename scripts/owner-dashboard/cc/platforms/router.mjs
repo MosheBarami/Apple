@@ -3,13 +3,21 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadEnv, sendJson, readJsonBody, postAllowed, localHost, SESSION_TOKEN, ok, fail } from '../http.mjs';
+import { loadEnv, sendJson, readJsonBody, postAllowed, localHost, SESSION_TOKEN, ok, fail, uncache } from '../http.mjs';
 import { github, githubAction } from './github.mjs';
 import { supabase, supabaseAction } from './supabase.mjs';
 import { cloudflare, cloudflareAction } from './cloudflare.mjs';
 import { sentry, sentryAction } from './sentry.mjs';
-import { hf } from './hf.mjs';
+import { hf, hfAction } from './hf.mjs';
 import { extras } from './extras.mjs';
+import { apple } from './apple.mjs';
+import { groq } from './groq.mjs';
+import { discord } from './discord.mjs';
+import { roblox } from './roblox.mjs';
+import { status } from './status.mjs';
+import { connectors, connectorAction } from './connectors.mjs';
+import { langflow } from './langflow.mjs';
+import { pulse } from './pulse.mjs';
 
 loadEnv();
 
@@ -35,20 +43,30 @@ const GETS = {
   overview: () => laneB('repo.mjs', 'overview'),
   tree: () => laneB('repo.mjs', 'tree'),
   repos: () => laneB('deps.mjs', 'repos'),
-  github, supabase, cloudflare, sentry, hf, extras,
+  github, supabase, cloudflare, sentry, hf, extras, apple, groq, discord, roblox, status, connectors, langflow, pulse,
 };
 const POSTS = {
-  review: (b) => laneB('repo.mjs', 'review', { sha: b.sha, verdict: b.verdict }),
+  review: (b) => (b.dryRun === true ? ok({ dryRun: true, plan: { method: 'WRITE', url: 'scripts/owner-dashboard/cc/review.json', body: { sha: b.sha, verdict: b.verdict } } })
+    : laneB('repo.mjs', 'review', { sha: b.sha, verdict: b.verdict })),
   'github/action': githubAction,
   'supabase/action': supabaseAction,
   'cloudflare/action': cloudflareAction,
   'sentry/action': sentryAction,
+  'hf/action': hfAction,
+  'connectors/action': connectorAction,
 };
+// ?fresh=1 on a GET drops that platform's cache first (the "refresh now" button). The keys match
+// each module's cached() key; pulse refreshes nothing on its own.
+const FRESH = { github: 'github', supabase: 'supabase', cloudflare: 'cloudflare', sentry: 'sentry', hf: 'hf', extras: 'extras',
+  apple: 'apple', groq: 'groq', discord: 'discord', roblox: 'roblox', status: 'status', connectors: 'conn:', langflow: 'langflow' };
 
-async function api(req, res, name) {
+async function api(req, res, name, query) {
   if (!localHost(req)) return sendJson(res, 403, fail('הבקשה חייבת להגיע מ-localhost'));
   try {
-    if (req.method === 'GET' && GETS[name]) return sendJson(res, 200, await GETS[name]());
+    if (req.method === 'GET' && GETS[name]) {
+      if (query.get('fresh') === '1' && FRESH[name]) uncache(FRESH[name]);
+      return sendJson(res, 200, await GETS[name]());
+    }
     if (req.method === 'POST' && POSTS[name]) {
       if (!postAllowed(req)) return sendJson(res, 403, fail('בקשה לא מורשית — רעננו את הדף ונסו שוב'));
       let body;
@@ -86,8 +104,8 @@ export function route(req, res) {
   const raw = (req.url || '/').split('?')[0];
   // Refuse any dot-segment before URL normalisation can quietly resolve it.
   if (raw.startsWith('/control/') && /(^|\/|%2f|%5c|\\)(\.|%2e){2}(\/|%2f|%5c|\\|$)/i.test(raw)) { notFound(res); return true; }
-  const { pathname } = new URL(req.url || '/', 'http://localhost');
-  if (pathname.startsWith('/api/cc/')) { api(req, res, pathname.slice('/api/cc/'.length).replace(/\/+$/, '')); return true; }
+  const { pathname, searchParams } = new URL(req.url || '/', 'http://localhost');
+  if (pathname.startsWith('/api/cc/')) { api(req, res, pathname.slice('/api/cc/'.length).replace(/\/+$/, ''), searchParams); return true; }
   if (pathname.startsWith('/control/')) { serveControl(res, pathname.slice('/control/'.length)); return true; }
   if (pathname === '/' && fs.existsSync(path.join(CONTROL, 'index.html'))) { serveControl(res, 'index.html'); return true; }
   return false;

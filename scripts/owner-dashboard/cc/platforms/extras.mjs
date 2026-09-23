@@ -32,7 +32,7 @@ export function extras() {
         siteSaysLive: STUDIO_PLUGIN_STORE_LIVE, refusal: STUDIO_PLUGIN_STORE_REFUSAL },
       stripe: { configured: Boolean(process.env.STRIPE_SECRET_KEY),
         how: 'ב-Stripe Dashboard → Developers → API keys צרו Restricted key לקריאה בלבד והוסיפו לקובץ ‎.env שורה STRIPE_SECRET_KEY=<המפתח>' },
-      posthog: { configured: Boolean(process.env.POSTHOG_API_KEY) },
+      posthog: { configured: Boolean(process.env.POSTHOG_PERSONAL_API_KEY) },
     });
   });
 }

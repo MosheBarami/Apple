@@ -34,7 +34,9 @@ export function github() {
     for (const [k, s] of Object.entries({ account, gql, commits, workflows, runs })) if (s.error) errors[k === 'gql' ? 'branches' : k] = s.error;
     const r = gql.value?.data?.repository;
     return ok({
-      repo: { fullName: full, url: repo.html_url, private: repo.private, defaultBranch: repo.default_branch, pushedAt: repo.pushed_at },
+      repo: { fullName: full, url: repo.html_url, private: repo.private, defaultBranch: repo.default_branch, pushedAt: repo.pushed_at,
+        sizeKb: repo.size ?? null, openIssues: repo.open_issues_count ?? null, language: repo.language ?? null },
+      settings: Object.fromEntries(SETTINGS.map((k) => [k, typeof repo[k] === 'boolean' ? repo[k] : null])),
       account: account.value?.login ?? null,
       branches: (r?.refs?.nodes || []).map((b) => ({
         name: b.name, sha: b.target?.oid ?? null, protected: Boolean(b.branchProtectionRule),
@@ -59,23 +61,36 @@ export function github() {
   });
 }
 
-// Reversible or non-destructive actions only: no merge, no force push, no branch deletion.
-export async function githubAction({ kind, id }) {
-  const idOk = kind === 'dispatch' ? /^[\w.-]{1,100}$/.test(String(id)) : /^\d{1,20}$/.test(String(id));
-  if (!idOk) return fail('מזהה לא תקין');
+// Reversible or non-destructive actions only: no merge, no force push, no branch deletion. Repo
+// settings are limited to workflow conveniences; visibility, protection and security are not offered.
+export const SETTINGS = ['delete_branch_on_merge', 'allow_auto_merge', 'allow_update_branch', 'has_issues', 'has_wiki', 'has_projects', 'has_discussions'];
+
+export async function githubAction({ kind, id, key, value, dryRun }) {
+  if (kind === 'setting') {
+    if (!SETTINGS.includes(key) || typeof value !== 'boolean') return fail('הגדרה לא מוכרת');
+  } else {
+    const idOk = kind === 'dispatch' ? /^[\w.-]{1,100}$/.test(String(id)) : /^\d{1,20}$/.test(String(id));
+    if (!idOk) return fail('מזהה לא תקין');
+  }
+  const plans = {
+    rerun: ['POST', `actions/runs/${id}/rerun`, null, 'הרצה מחדש'],
+    'rerun-failed': ['POST', `actions/runs/${id}/rerun-failed-jobs`, null, 'הרצה מחדש של מה שנכשל'],
+    cancel: ['POST', `actions/runs/${id}/cancel`, null, 'ביטול ריצה'],
+    dispatch: ['POST', `actions/workflows/${id}/dispatches`, { ref: '<default branch>' }, 'הפעלת workflow'],
+    'wf-enable': ['PUT', `actions/workflows/${id}/enable`, null, 'הפעלת workflow'],
+    'wf-disable': ['PUT', `actions/workflows/${id}/disable`, null, 'השבתת workflow'],
+    'approve-pr': ['POST', `pulls/${id}/reviews`, { event: 'APPROVE' }, 'אישור PR'],
+    'close-pr': ['PATCH', `pulls/${id}`, { state: 'closed' }, 'סגירת PR'],
+    setting: ['PATCH', '', { [key]: value }, 'שינוי הגדרת הריפו'],
+  };
+  if (!plans[kind]) return fail('פעולה לא מוכרת');
+  const [method, sub, fields, what] = plans[kind];
   let repo;
   try { repo = await repoSlug(); } catch (e) { return fail(e?.reason || 'לא הצלחתי לקרוא את הריפו מ-GitHub'); }
-  const base = `repos/${repo.full_name}`;
-  const calls = {
-    rerun: () => ghApi(`${base}/actions/runs/${id}/rerun`, { method: 'POST', what: 'הרצה מחדש' }),
-    'rerun-failed': () => ghApi(`${base}/actions/runs/${id}/rerun-failed-jobs`, { method: 'POST', what: 'הרצה מחדש של מה שנכשל' }),
-    cancel: () => ghApi(`${base}/actions/runs/${id}/cancel`, { method: 'POST', what: 'ביטול ריצה' }),
-    dispatch: () => ghApi(`${base}/actions/workflows/${id}/dispatches`, { method: 'POST', fields: { ref: repo.default_branch }, what: 'הפעלת workflow' }),
-    'approve-pr': () => ghApi(`${base}/pulls/${id}/reviews`, { method: 'POST', fields: { event: 'APPROVE' }, what: 'אישור PR' }),
-    'close-pr': () => ghApi(`${base}/pulls/${id}`, { method: 'PATCH', fields: { state: 'closed' }, what: 'סגירת PR' }),
-  };
-  if (!calls[kind]) return fail('פעולה לא מוכרת');
-  try { await calls[kind](); } catch (e) { return fail(e?.reason || 'הפעולה נכשלה'); }
+  const apiPath = `repos/${repo.full_name}${sub ? `/${sub}` : ''}`;
+  const body = kind === 'dispatch' ? { ref: repo.default_branch } : fields;
+  if (dryRun === true) return ok({ dryRun: true, plan: { method, url: `https://api.github.com/${apiPath}`, body } });
+  try { await ghApi(apiPath, { method, fields: body || undefined, what }); } catch (e) { return fail(e?.reason || 'הפעולה נכשלה'); }
   uncache('github');
-  return ok({ kind, id: String(id) });
+  return ok({ kind, id: id == null ? undefined : String(id), key, value });
 }

@@ -1,5 +1,5 @@
 // Hugging Face: the owner's models, datasets and Spaces, private ones included (read-only, free).
-import { fetchJson, cached, ok, fail, section } from '../http.mjs';
+import { fetchJson, cached, uncache, ok, fail, section } from '../http.mjs';
 
 const API = 'https://huggingface.co/api';
 const LABEL = 'Hugging Face';
@@ -32,4 +32,18 @@ export function hf() {
       errors,
     });
   });
+}
+
+// Space power switches: restart (also wakes a paused Space) and pause. Only the owner's own Spaces;
+// nothing is deleted and no visibility or secret changes.
+export async function hfAction({ kind, id, dryRun }) {
+  if (!['restart', 'pause'].includes(kind)) return fail('פעולה לא מוכרת');
+  if (!new RegExp(`^${HF_USER}/[\\w.-]{1,96}$`).test(String(id))) return fail('ה-Space לא שייך לחשבון');
+  const url = `${API}/spaces/${id}/${kind}`;
+  if (dryRun === true) return ok({ dryRun: true, plan: { method: 'POST', url, body: null } });
+  if (!process.env.HF_TOKEN) return fail('חסר HF_TOKEN בקובץ ‎.env');
+  try { await fetchJson(url, { label: LABEL, what: kind === 'restart' ? 'הפעלה מחדש של ה-Space' : 'השהיית ה-Space', method: 'POST', headers: auth() }); }
+  catch (e) { return fail(e?.reason || 'הפעולה נכשלה'); }
+  uncache('hf');
+  return ok({ kind, id });
 }

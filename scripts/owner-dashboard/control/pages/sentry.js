@@ -1,37 +1,48 @@
-import { html, num, ago, arr, brand, extLink, part } from '../ui.js';
+// Sentry: the open issues with their 24-hour trend, and per-issue one-click triage that is always
+// reversible (bookmark, mark seen, priority, silence until it gets worse, resolve / reopen).
+import { html, num, ago, arr } from '../ui.js';
+import { icon } from '../logos.js';
+import { spark } from '../fx.js';
+import { sx } from '../actions.js';
+import { stat, actBtn } from './kit.js';
 
-const LEVEL = { fatal: ['קריטי', 'lv-fatal'], error: ['שגיאה', 'lv-error'], warning: ['אזהרה', 'lv-warning'], info: ['מידע', 'lv-info'], debug: ['דיבאג', 'lv-debug'] };
+const st = { f: '' };
+const LEVEL = { fatal: ['bad', 'קריטית'], error: ['bad', 'שגיאה'], warning: ['warn', 'אזהרה'], info: ['mid', 'מידע'] };
+const PRI = { high: ['bad', 'עדיפות גבוהה'], medium: ['warn', 'בינונית'], low: ['off', 'נמוכה'] };
+const SUB = { regressed: 'חזרה אחרי תיקון', escalating: 'מחמירה', new: 'חדשה', ongoing: 'נמשכת' };
 
 export default {
-  id: 'sentry', title: 'Sentry', theme: 'sentry', icon: brand('sentry'), mark: brand('sentry', 'bm-lg'), endpoint: '/api/cc/sentry',
-  sub: 'שגיאות שקרו למשתמשים אמיתיים',
+  id: 'sentry', title: 'Sentry', nav: 'Sentry', brand: 'sentry', needs: ['sentry'],
+  sub: 'התקלות שהאתר והשרת דיווחו עליהן, מהחמורה ביותר, עם סימון ומיון בלחיצה',
+  links: (d) => [{ label: 'כל התקלות ב-Sentry', url: d.sentry?.org && `https://${d.sentry.org}.sentry.io/issues/` }],
   render(d) {
-    if (d.configured === false) {
-      return html`<section class="st-off">
-        <div class="st-off-art" aria-hidden="true">${brand('sentry', 'bm-xl')}</div>
-        <div><h2>נדלק ברגע שמוסיפים מפתח</h2>
-          <p>Sentry עוד לא מחובר ללוח. אחרי שמוסיפים את המפתח, יופיעו כאן כל השגיאות שהמשתמשים נתקלים בהן: מה קרה, כמה פעמים ולכמה אנשים.</p>
-          ${d.how ? html`<div class="st-how"><b>איך מחברים:</b><pre dir="auto">${d.how}</pre></div>` : ''}</div>
-      </section>`;
-    }
-    const issues = arr(d.issues);
-    return html`<section class="st-panel">
-      <header class="st-panel-h"><h2>בעיות פתוחות <span class="st-count">${num(issues.length)}</span></h2>
-        <span class="faint small">ממוינות לפי מתי נראו לאחרונה</span></header>
-      ${part(d.issues, (is) => html`<ul class="st-issues">${[...is].sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen)).map((i) => { const [lv, cls] = LEVEL[i.level] || [i.level || '—', 'lv-debug']; return html`<li class="st-issue ${cls}">
-        <div class="st-i-m">
-          <div class="st-i-t">${extLink(i.permalink, i.title, 'st-link')}</div>
-          <div class="st-i-s"><span class="st-lv">${lv}</span>${i.culprit ? html`<bdi class="ltr mono">${i.culprit}</bdi>` : ''}${i.project ? html`<span class="st-proj">${i.project}</span>` : ''}</div>
-        </div>
-        <dl class="st-i-n"><div><dt>אירועים</dt><dd>${num(+i.count || 0)}</dd></div><div><dt>משתמשים</dt><dd>${num(+i.userCount || 0)}</dd></div><div><dt>נראה לאחרונה</dt><dd>${ago(i.lastSeen)}</dd></div></dl>
-        <button class="st-btn" data-act="resolve" data-id="${i.id}">✓ סמן כנפתר</button>
-      </li>`; })}</ul>`, { empty: 'אין שגיאות פתוחות. הכל שקט.' })}
-    </section>`;
+    const s = d.sentry || {}; const iss = arr(s.issues);
+    const total = iss.reduce((a, i) => a + (+i.count || 0), 0);
+    const trend = iss.reduce((acc, i) => arr(i.trend).map((v, k) => (acc[k] || 0) + v), []);
+    const shown = iss.filter((i) => !st.f || (st.f === 'high' ? i.priority === 'high' : st.f === 'new' ? !i.seen : i.bookmarked));
+    return html`
+      <section class="g g4" aria-label="מדדים">
+        ${stat({ key: 'se-open', label: 'תקלות פתוחות', value: iss.length, tone: iss.length ? 'warn' : 'good', series: trend, sparkCls: 'bad', sub: 'אירועים לפי שעה, 24 שעות' })}
+        ${stat({ key: 'se-ev', label: 'פעמים שקרו בסך הכול', value: total, sub: `${num(iss.filter((i) => i.unhandled).length)} לא נתפסו בקוד` })}
+        ${stat({ key: 'se-hi', label: 'בעדיפות גבוהה', value: iss.filter((i) => i.priority === 'high').length, tone: iss.some((i) => i.priority === 'high') ? 'bad' : 'good' })}
+        ${stat({ key: 'se-new', label: 'עוד לא נקראו', value: iss.filter((i) => !i.seen).length, sub: `${num(arr(s.projects).length)} פרויקטים: ${arr(s.projects).map((p) => p.slug).join(', ')}` })}
+      </section>
+      <section class="card flush" aria-labelledby="h-iss"><h2 class="card-h" id="h-iss">${icon('alert', 15)}תקלות<span class="grow"></span>
+        ${[['', 'הכול'], ['high', 'גבוהה'], ['new', 'לא נקראו'], ['star', 'מועדפים']].map(([k, l]) => html`<button class="chip chip-btn ${st.f === k ? 'on' : ''}" data-act="f" data-k="${k}" aria-pressed="${st.f === k}">${l}</button>`)}</h2>
+        <ul class="list">${shown.length ? shown.map((i) => {
+          const [lc, ll] = LEVEL[i.level] || ['off', i.level]; const [pc, pl] = PRI[i.priority] || ['off', i.priority || '—'];
+          return html`<li class="li"><div class="li-m">
+            <a class="li-t" dir="ltr" style="text-align:right" href="${i.url}" target="_blank" rel="noopener noreferrer" title="${i.title}">${i.title}</a>
+            <span class="li-s"><span class="chip chip-sm chip-${lc}">${ll}</span><span class="chip chip-sm chip-${pc}">${pl}</span>${SUB[i.substatus] ? html`<span>${SUB[i.substatus]}</span>` : ''}
+              <bdi class="mono">${i.shortId}</bdi><bdi class="mono">${i.culprit || ''}</bdi><span>${num(i.count)} פעמים</span><span>נראתה ${ago(i.lastSeen)}</span>${i.bookmarked ? html`<span class="chip chip-sm chip-b">★ מועדף</span>` : ''}</span></div>
+            ${spark(i.trend, { w: 96, h: 26, cls: 'bad', label: `${i.shortId}: אירועים לפי שעה` })}
+            <div class="li-a">${actBtn(sx.bookmark(i), i.bookmarked ? 'הסרה ממועדפים' : 'מועדף', { ic: 'check', cls: 'btn-sm btn-ghost' })}
+              ${!i.seen ? actBtn(sx.seen(i), 'נקרא', { ic: 'check', cls: 'btn-sm btn-ghost' }) : ''}
+              ${i.priority !== 'high' ? actBtn(sx.priority(i, 'high'), 'עדיפות גבוהה', { ic: 'alert', cls: 'btn-sm btn-ghost' }) : actBtn(sx.priority(i, 'medium'), 'להוריד עדיפות', { ic: 'arrow', cls: 'btn-sm btn-ghost' })}
+              ${actBtn(sx.ignore(i), 'השתקה', { ic: 'pause', cls: 'btn-sm' })}
+              ${actBtn(sx.resolve(i), 'תוקן', { ic: 'check', cls: 'btn-sm btn-ok' })}</div></li>`;
+        }) : html`<li class="empty good" style="padding:14px 20px">אין תקלות בסינון הזה.</li>`}</ul></section>
+      <p class="explain">"השתקה" מסתירה תקלה עד שהיא מתחילה לקרות יותר. "תוקן" אומר ל-Sentry שהבעיה נפתרה, ואם היא תחזור היא תיפתח לבד. הכול הפיך מתוך Sentry.</p>`;
   },
-  actions: {
-    resolve(el, ctx) {
-      const id = el.dataset.id; const i = arr(ctx.data.issues).find((x) => String(x.id) === id) || {};
-      ctx.act({ title: 'לסמן את הבעיה כנפתרה?', what: `הבעיה "${i.title || id}" תסומן ב-Sentry כנפתרה ותרד מהרשימה.`, undo: 'כן. אפשר לפתוח אותה מחדש ב-Sentry, ואם השגיאה תחזור היא תיפתח שוב לבד.', confirmLabel: '✓ כן, נפתר', path: '/api/cc/sentry/action', body: { kind: 'resolve', id }, okMsg: 'סומן כנפתר.' });
-    },
-  },
+  actions: { f(el, ctx) { st.f = el.dataset.k; ctx.rerender(); } },
 };

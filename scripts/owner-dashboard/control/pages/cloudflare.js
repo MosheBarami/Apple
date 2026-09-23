@@ -1,92 +1,54 @@
-import { html, num, compact, bytes, ago, arr, brand, extLink, bars, legend, part, light, isNum, isFail, failCard, hourOf, short, pct } from '../ui.js';
+// Cloudflare: traffic of the last 24 hours, the Worker's observability switches (logs, traces),
+// deployments, and every storage resource the account runs (D1, KV, R2, Vectorize, Queues, AI Gateway).
+import { html, num, compact, bytes, ago, arr, bars, legend, hourOf } from '../ui.js';
+import { icon } from '../logos.js';
+import { cf } from '../actions.js';
+import { stat, swBtn, note } from './kit.js';
 
-function health(h) {
-  if (isFail(h)) return failCard(h.reason, { level: 'warn', title: 'בדיקת הבריאות לא זמינה' });
-  const code = h?.httpStatus; const ms = h?.ms;
-  const state = code == null ? 'off' : code >= 200 && code < 300 ? (ms > 1500 ? 'warn' : 'ok') : 'bad';
-  const lbl = { ok: 'השרת עונה ותקין', warn: 'השרת עונה, אבל לאט', bad: 'השרת לא עונה כמו שצריך', off: 'אין נתון' }[state];
-  return html`<section class="cf-card cf-health cf-${state}">
-    <div class="cf-health-l"><span class="cf-dot" aria-hidden="true"></span><div><h3>בריאות השרת (Worker)</h3>${light(state, lbl)}</div></div>
-    <dl class="cf-kv">
-      <div><dt>קוד תשובה</dt><dd class="mono">${code ?? '—'}</dd></div>
-      <div><dt>זמן תגובה</dt><dd class="mono">${isNum(ms) ? `${num(ms)}ms` : '—'}</dd></div>
-      <div><dt>גרסה (build)</dt><dd class="mono"><bdi>${short(h?.buildSha) || '—'}</bdi></dd></div>
-    </dl>
-    ${h?.url ? html`<p class="faint small"><bdi class="ltr mono">${h.url}</bdi></p>` : ''}</section>`;
-}
-
-function inv(title, icon, x, row, explain) {
-  const n = Array.isArray(x) ? x.length : null;
-  return html`<section class="cf-card cf-inv"><h3><span aria-hidden="true">${icon}</span> ${title} ${n != null ? html`<span class="cf-count">${num(n)}</span>` : ''}</h3>
-    <p class="explain">${explain}</p>
-    ${part(x, (xs) => html`<ul class="cf-list">${xs.slice(0, 8).map((i) => html`<li>${row(i)}</li>`)}${xs.length > 8 ? html`<li class="faint">ועוד ${num(xs.length - 8)}…</li>` : ''}</ul>`, { title: 'לא זמין', empty: 'אין כאלה בחשבון.' })}</section>`;
-}
-
-function zones(d) {
-  const z = d.zones;
-  if (isFail(z)) return failCard(z.reason, { level: 'warn', title: 'אין גישה לדומיינים' });
-  if (!arr(z).length) return html`<p class="empty">${d.zonesReason || z?.reason || 'אין דומיינים (zones) בחשבון Cloudflare הזה, אז אין מטמון לנקות.'}</p>`;
-  return html`<ul class="cf-zones">${arr(z).map((x) => html`<li>
-    <div><bdi class="ltr cf-zone">${x.name}</bdi> ${light(x.status === 'active' ? 'ok' : 'warn', x.status === 'active' ? 'פעיל' : x.status || 'לא ידוע')} <span class="cf-tag">${x.plan || ''}</span></div>
-    <button class="cf-btn" data-act="purge" data-z="${x.id}">ניקוי מטמון מיידי</button></li>`)}</ul>`;
-}
+const res = (label, items, fmt) => html`<div class="card stat"><p class="stat-k">${label}</p><p class="stat-v">${num(items.length)}</p>
+  <ul class="list">${items.map((x) => html`<li class="li" style="padding:6px 0"><div class="li-m"><bdi class="li-t mono">${fmt(x)[0]}</bdi><span class="li-s">${fmt(x)[1]}</span></div></li>`)}</ul></div>`;
 
 export default {
-  id: 'cloudflare', title: 'Cloudflare', theme: 'cloudflare', icon: brand('cloudflare'), mark: brand('cloudflare', 'bm-lg'), endpoint: '/api/cc/cloudflare',
-  sub: 'השרת שמריץ את Apple, התנועה אליו והמשאבים שלו',
+  id: 'cloudflare', title: 'Cloudflare', nav: 'Cloudflare', brand: 'cloudflare', needs: ['cloudflare'],
+  sub: 'השרת שמריץ את האתר: כמה תנועה יש, כמה שגיאות, ומה שמור בו',
+  links: (d) => [{ label: 'לוח הבקרה של Cloudflare', url: d.cloudflare?.account?.id && `https://dash.cloudflare.com/${d.cloudflare.account.id}/workers-and-pages` }],
   render(d) {
-    const t = d.traffic || {}; const l = t.last24h || {};
-    const keys = [{ key: 'requests', label: 'בקשות', color: 'var(--p-accent)' }, { key: 'errors', label: 'שגיאות', color: 'var(--bad)' }];
-    const errRate = l.requests > 0 && isNum(l.errors) ? l.errors / l.requests : null;
-    const workers = d.workers;
+    const c = d.cloudflare || {}; const t = c.traffic?.last24h || {}; const ph = arr(c.traffic?.perHour); const s = c.settings || {};
+    const keys = [{ key: 'requests', label: 'בקשות', color: 'var(--b-use)' }, { key: 'errors', label: 'שגיאות', color: 'var(--bad)' }];
     return html`
-      <div class="cf-top">
-        ${health(d.health)}
-        <section class="cf-card cf-acct"><h3>חשבון</h3><p class="cf-acct-n"><bdi class="ltr">${d.account?.name || '—'}</bdi></p>
-          ${d.account?.id ? html`<p class="faint small mono"><bdi>${d.account.id}</bdi></p>` : ''}${isFail(d.account) ? html`<p class="faint small">${d.account.reason}</p>` : ''}</section>
-      </div>
-      <section class="cf-card"><h3>תנועה ב-24 השעות האחרונות</h3>
-        ${isFail(d.traffic) ? failCard(d.traffic.reason, { level: 'warn', title: 'נתוני התנועה לא זמינים' }) : html`
-        <dl class="cf-stats">
-          <div><dt>בקשות</dt><dd>${compact(l.requests)}</dd></div>
-          <div><dt>שגיאות</dt><dd class="${l.errors > 0 ? 'cf-bad' : ''}">${compact(l.errors)} <small class="faint">${errRate != null ? `(${pct(errRate, 2)})` : ''}</small></dd></div>
-          <div><dt>תת-בקשות</dt><dd>${compact(l.subrequests)}</dd></div>
-          <div><dt>זמן מעבד חציוני</dt><dd>${isNum(l.cpuP50Ms) ? `${num(l.cpuP50Ms, 1)}ms` : '—'}</dd></div>
-          <div><dt>זמן מעבד באיטיים (1%)</dt><dd>${isNum(l.cpuP99Ms) ? `${num(l.cpuP99Ms, 1)}ms` : '—'}</dd></div>
-        </dl>
-        ${part(t.perHour, (rows) => html`${bars(rows, keys, { x: (r) => r.hour, xfmt: hourOf, overlay: true, tip: (r) => `${hourOf(r.hour)} · בקשות: ${num(r.requests)} · שגיאות: ${num(r.errors)}` })}${legend(keys)}`, { empty: 'אין נתונים לפי שעה.' })}
-        <p class="explain">"זמן מעבד" = כמה זמן השרת חושב על כל בקשה. החציוני הוא בקשה רגילה, והאיטיים הם ה-1% הכבדים ביותר.</p>`}
+      <section class="g g4" aria-label="מדדים">
+        ${stat({ key: 'cf-req', label: 'בקשות ב-24 שעות', value: t.requests, series: ph.map((x) => x.requests), sub: `${compact(t.subrequests)} בקשות-משנה` })}
+        ${stat({ key: 'cf-err', label: 'שגיאות', value: t.errors, tone: t.errors ? 'bad' : 'good', series: ph.map((x) => x.errors), sparkCls: 'bad', sub: t.requests ? `${num((t.errors / t.requests) * 100, 2)}% מהבקשות` : '' })}
+        ${stat({ key: 'cf-cpu', label: 'זמן מעבד (חציון)', value: t.cpuP50Ms, text: num(t.cpuP50Ms, 1), unit: 'ms', sub: `99% מהבקשות מתחת ל-${num(t.cpuP99Ms, 1)} ms` })}
+        ${stat({ key: 'cf-ms', label: 'זמן תגובה עכשיו', value: c.health?.ms, unit: 'ms', tone: c.health?.httpStatus === 200 ? 'good' : 'bad', sub: `HTTP ${c.health?.httpStatus ?? '—'}` })}
       </section>
-      <section class="cf-card"><h3>שרתים (Workers) ופריסות אחרונות</h3>
-        ${part(workers, (ws) => html`<div class="cf-workers">${ws.map((w) => html`<article class="cf-worker">
-          <header><bdi class="ltr mono cf-wn">${extLink(w.url, w.name)}</bdi><span class="faint small">עודכן ${ago(w.modifiedAt)}</span></header>
-          ${arr(w.deployments).length ? html`<ol class="cf-deps">${arr(w.deployments).slice(0, 5).map((x, i) => html`<li>
-            <span class="cf-tag ${i === 0 ? 'cf-tag-live' : ''}">${i === 0 ? 'פעיל' : 'קודם'}</span>
-            <span dir="auto" class="cf-dm">${x.message || 'ללא תיאור'}</span>
-            <span class="faint small">${ago(x.createdAt)}${x.author ? ` · ${x.author}` : ''}</span></li>`)}</ol>` : html`<p class="empty">אין רשימת פריסות.</p>`}
-        </article>`)}</div>`, { empty: 'אין Workers בחשבון.' })}</section>
-      <h2 class="cf-sec">המשאבים בחשבון</h2>
-      <div class="cf-invs">
-        ${inv('D1 מסדי נתונים', '🗄', d.d1, (x) => html`<bdi class="ltr mono">${x.name}</bdi> <span class="faint small">${bytes(x.sizeBytes)}${isNum(x.tables) ? ` · ${num(x.tables)} טבלאות` : ''}</span>`, 'מסדי נתונים קטנים שיושבים ליד השרת.')}
-        ${inv('KV', '🔑', d.kv, (x) => html`<bdi class="ltr mono">${x.title || x.id}</bdi>`, 'מחסן מהיר של מפתח-ערך (הגדרות ומטמון).')}
-        ${inv('R2 אחסון', '🪣', d.r2, (x) => html`<bdi class="ltr mono">${x.name}</bdi> <span class="faint small">${ago(x.createdAt)}</span>`, 'אחסון קבצים גדולים.')}
-        ${inv('Vectorize', '🧭', d.vectorize, (x) => html`<bdi class="ltr mono">${x.name}</bdi> <span class="faint small ltr">${x.dimensions ?? ''}d ${x.metric || ''}</span>`, 'אינדקס חיפוש לפי משמעות (לחיפוש חכם).')}
-        ${inv('Queues', '📬', d.queues, (x) => html`<bdi class="ltr mono">${x.name || x.queue_name || x.id || ''}</bdi>`, 'תורי משימות שרצות ברקע.')}
-        ${inv('AI Gateway', '🤖', d.aiGateway, (x) => html`<bdi class="ltr mono">${x.id || x.name}</bdi>`, 'השער שדרכו עוברות קריאות למודלי AI.')}
+      <div class="g g21">
+        <section class="card" aria-labelledby="h-ph"><h2 id="h-ph">תנועה לפי שעה<small>24 השעות האחרונות</small></h2>
+          ${bars(ph, keys, { h: 170, overlay: true, x: (r) => r.hour, xfmt: hourOf })}${legend(keys)}</section>
+        <section class="card flush" aria-labelledby="h-obs"><h2 class="card-h" id="h-obs">${icon('status', 15)}מעקב ב-Worker<small>מתג = חלון אישור, ואז שינוי ב-Worker החי</small></h2>
+          <div class="sw-row"><div class="li-m"><b>יומני הרצה (Logs)</b><span>כל שורה שה-Worker כותב נשמרת לחיפוש</span></div>${swBtn(cf.toggle('logs', !!s.logs), !!s.logs, 'Logs')}</div>
+          <div class="sw-row"><div class="li-m"><b>מעקב בקשות (Traces)</b><span>כמה זמן לקח כל שלב בכל בקשה</span></div>${swBtn(cf.toggle('traces', !!s.traces), !!s.traces, 'Traces')}</div>
+          <div class="sw-row"><div class="li-m"><b>דגימה</b><span>איזה חלק מהבקשות נשמר</span></div><b class="mono">${num((s.sampling ?? 0) * 100)}%</b></div>
+          <div class="sw-row"><div class="li-m"><b>Logpush</b><span>שליחת יומנים לשירות חיצוני</span></div><span class="chip ${s.logpush ? 'chip-ok' : 'chip-off'}">${s.logpush ? 'דלוק' : 'כבוי'}</span></div>
+          <p class="explain" style="padding:0 20px 16px">שינוי כאן מגיע רק ל-Worker החי. בפריסה הבאה ההגדרות שבקוד (wrangler.toml) קובעות שוב.</p></section>
       </div>
-      <section class="cf-card"><h3>דומיינים ומטמון</h3>
-        <p class="explain">"ניקוי מטמון" גורם ל-Cloudflare לשכוח עותקים שמורים של האתר, כדי שכולם יקבלו מיד את הגרסה החדשה.</p>
-        ${zones(d)}</section>`;
-  },
-  actions: {
-    purge(el, ctx) {
-      const id = el.dataset.z; const z = arr(ctx.data.zones).find((x) => x.id === id) || {};
-      ctx.act({
-        title: `לנקות את המטמון של ${z.name || 'הדומיין'}?`, danger: true, reversible: false, confirmLabel: 'כן, לנקות מטמון',
-        what: `Cloudflare ימחק את כל העותקים השמורים של ${z.name || 'האתר'}. האתר עצמו והנתונים לא נמחקים, אבל בדקות הקרובות הטעינה עלולה להיות קצת איטית יותר.`,
-        undo: 'אי אפשר להחזיר את המטמון, אבל אין צורך: הוא נבנה מחדש לבד תוך כמה דקות.',
-        path: '/api/cc/cloudflare/action', body: { kind: 'purge', zoneId: id }, okMsg: 'המטמון נוקה.',
-      });
-    },
+      <section class="card flush" aria-labelledby="h-wk"><h2 class="card-h" id="h-wk">Workers<small>${num(arr(c.workers).length)} בחשבון</small></h2>
+        <ul class="list">${arr(c.workers).map((w) => html`<li class="li"><div class="li-m"><span class="li-t mono" dir="ltr" style="text-align:right">${w.name}</span>
+          <span class="li-s">עודכן ${ago(w.modifiedAt)}${arr(w.deployments).length ? html`<span>${num(arr(w.deployments).length)} פריסות אחרונות · האחרונה ${ago(w.deployments[0].createdAt)} דרך ${w.deployments[0].source || '—'}</span>` : ''}</span></div>
+          ${w.url ? html`<a class="btn btn-sm btn-ghost" href="${w.url}" target="_blank" rel="noopener noreferrer">${icon('ext', 13)}</a>` : ''}</li>`)}</ul></section>
+      <div class="g g3">
+        ${res('D1 · מסדי נתונים', arr(c.d1), (x) => [x.name, `${bytes(x.sizeBytes)} · ${num(x.tables)} טבלאות`])}
+        ${res('Vectorize · חיפוש לפי משמעות', arr(c.vectorize), (x) => [x.name, `${num(x.dimensions)} ממדים · ${x.metric}`])}
+        ${res('R2 · קבצים', arr(c.r2), (x) => [x.name, `נוצר ${new Date(x.createdAt).toLocaleDateString('he-IL')}`])}
+        ${res('KV · מפתח-ערך', arr(c.kv), (x) => [x.title, ''])}
+        ${res('Queues · תורים', arr(c.queues), (x) => [x.name, `${num(x.producers)} שולחים · ${num(x.consumers)} צורכים`])}
+        ${res('AI Gateway', arr(c.aiGateway), (x) => [x.id, ''])}
+      </div>
+      <div class="g g2">
+        <section class="card" aria-labelledby="h-cron"><h2 id="h-cron">משימות לפי שעון</h2>
+          ${arr(c.crons).length ? arr(c.crons).map((x) => html`<p class="row"><code class="code">${x.cron}</code><span class="faint small">${x.cron === '* * * * *' ? 'כל דקה' : ''} · עודכן ${ago(x.modifiedAt)}</span></p>`) : html`<p class="empty">אין.</p>`}
+          <p class="explain">כתובת workers.dev: ${c.subdomain?.enabled ? 'פעילה' : 'כבויה'} · תצוגות מקדימות: ${c.subdomain?.previews ? 'פעילות' : 'כבויות'}</p></section>
+        ${arr(c.zones).length ? '' : note('info', 'אין דומיינים בחשבון הזה', 'האתר רץ על כתובת workers.dev, ולכן אין כאן כפתור "ניקוי מטמון": ניקוי מטמון שייך לדומיין (zone). כשיהיה דומיין, ניקוי מטמון נעשה מהמסך שלו ב-Cloudflare.')}
+      </div>`;
   },
 };

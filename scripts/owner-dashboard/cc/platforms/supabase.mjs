@@ -71,9 +71,11 @@ async function ensureIgnored() {
 
 // A LOGICAL backup: each public table's rows (at most 50k) as JSON under .backups/supabase-<ISO>/.
 // Every query is read-only; nothing is reset, deleted or truncated.
-export async function supabaseAction({ kind }) {
+export async function supabaseAction({ kind, dryRun }) {
   if (kind === 'reset' || kind === 'reset-test-data') return fail('מחיקת נתונים בפרודקשן חסומה בכוונה — אפשר לבקש ממני בצ׳אט');
   if (kind !== 'backup') return fail('פעולה לא מוכרת');
+  if (dryRun === true) return ok({ dryRun: true, plan: { method: 'POST', url: `${API}/projects/${REF}/database/query`,
+    body: { query: `select * from public.<table> limit ${ROW_CAP}`, read_only: true }, writes: '.backups/supabase-<time>/<table>.json' } });
   if (!process.env.SUPABASE_ACCESS_TOKEN) return fail('חסר SUPABASE_ACCESS_TOKEN בקובץ ‎.env');
   try {
     const list = await sql(`select table_name as name from information_schema.tables

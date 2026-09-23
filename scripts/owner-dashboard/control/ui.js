@@ -25,7 +25,7 @@ export function bytes(n) {
   if (!isNum(n)) return '—';
   const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; let v = n;
   while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-  return `${num(v, v < 10 && i ? 1 : 0)} ${u[i]}`;
+  return `\u2066${num(v, v < 10 && i ? 1 : 0)} ${u[i]}\u2069`; // isolated so RTL text keeps "224 KB" in order
 }
 const toDate = (d) => { if (d == null || d === '') return null; const t = typeof d === 'number' ? new Date(d < 1e12 ? d * 1000 : d) : new Date(d); return Number.isNaN(t.getTime()) ? null : t; };
 export function rel(d) {

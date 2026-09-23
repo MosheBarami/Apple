@@ -86,6 +86,9 @@ export function cloudflare() {
       queues: section(() => get(`${acct()}/queues`, 'Queues')),
       aiGateway: section(() => get(`${acct()}/ai-gateway/gateways`, 'AI Gateway')),
       zones: section(() => get(`${API}/zones?account.id=${encodeURIComponent(id)}&per_page=50`, 'Zones')),
+      settings: section(() => get(SETTINGS_URL(), 'הגדרות ה-Worker')),
+      schedules: section(() => get(`${acct()}/workers/scripts/${WORKER}/schedules`, 'תזמונים (Cron)')),
+      subdomain: section(() => get(`${acct()}/workers/scripts/${WORKER}/subdomain`, 'כתובת workers.dev')),
     };
     const [health, ...vals] = await Promise.all([workerHealth(), ...Object.values(s)]);
     const r = Object.fromEntries(Object.keys(s).map((k, i) => [k, vals[i]]));
@@ -103,15 +106,42 @@ export function cloudflare() {
         consumers: q.consumers_total_count ?? null })),
       aiGateway: (r.aiGateway.value || []).map((g) => ({ id: g.id, createdAt: g.created_at ?? null })),
       zones: (r.zones.value || []).map((z) => ({ id: z.id, name: z.name, status: z.status, plan: z.plan?.name ?? null })),
+      settings: r.settings.value ? { observability: Boolean(r.settings.value.observability?.enabled),
+        logs: Boolean(r.settings.value.observability?.logs?.enabled), traces: Boolean(r.settings.value.observability?.traces?.enabled),
+        sampling: r.settings.value.observability?.head_sampling_rate ?? null, logpush: Boolean(r.settings.value.logpush) } : null,
+      crons: (r.schedules.value?.schedules || []).map((c) => ({ cron: c.cron, modifiedAt: c.modified_on ?? null })),
+      subdomain: r.subdomain.value ? { enabled: Boolean(r.subdomain.value.enabled), previews: Boolean(r.subdomain.value.previews_enabled) } : null,
       health,
       errors,
     });
   });
 }
 
-export async function cloudflareAction({ kind, zoneId }) {
-  if (kind !== 'purge') return fail('פעולה לא מוכרת');
+const SETTINGS_URL = () => `${acct()}/workers/scripts/${WORKER}/script-settings`;
+
+// Two reversible worker switches (Workers Logs and traces of the `apple` worker) and the zone cache
+// purge. The switch sends back the worker's whole current observability block with one flag changed.
+export async function cloudflareAction({ kind, zoneId, value, dryRun }) {
+  if (!['purge', 'logs', 'traces'].includes(kind)) return fail('פעולה לא מוכרת');
+  if (kind !== 'purge' && typeof value !== 'boolean') return fail('ערך לא תקין');
+  if (kind === 'purge' && !/^[\w-]{1,64}$/.test(String(zoneId))) return fail('מזהה דומיין לא תקין');
+  if (dryRun === true) {
+    return ok({ dryRun: true, plan: kind === 'purge'
+      ? { method: 'POST', url: `${API}/zones/${zoneId}/purge_cache`, body: { purge_everything: true } }
+      : { method: 'PATCH', url: `${API}/accounts/<account>/workers/scripts/${WORKER}/script-settings`, body: { observability: { [kind]: { enabled: value } } } } });
+  }
   if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) return fail('חסרים CLOUDFLARE_API_TOKEN או CLOUDFLARE_ACCOUNT_ID בקובץ ‎.env');
+  if (kind !== 'purge') {
+    try {
+      const cur = await get(SETTINGS_URL(), 'הגדרות ה-Worker');
+      const obs = { ...(cur?.observability || { enabled: true }) };
+      obs[kind] = { ...(obs[kind] || {}), enabled: value };
+      if (value) obs.enabled = true;
+      await fetchJson(SETTINGS_URL(), { label: LABEL, what: 'שינוי הגדרות ה-Worker', method: 'PATCH', headers: auth(), body: { observability: obs } });
+    } catch (e) { return fail(e?.reason || 'שינוי ההגדרה נכשל'); }
+    uncache('cloudflare');
+    return ok({ kind, value });
+  }
   let zones;
   try { zones = await get(`${API}/zones?account.id=${encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID)}&per_page=50`, 'Zones'); }
   catch (e) { return fail(e?.reason || 'לא הצלחתי לקרוא את רשימת הדומיינים'); }
