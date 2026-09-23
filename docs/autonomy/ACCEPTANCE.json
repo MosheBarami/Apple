@@ -4,7 +4,7 @@
  "production_deployed": true,
  "production_bytes_verified": true,
  "signed_in_browser_qa": true,
- "mobile_qa": false,
+ "mobile_qa": true,
  "real_studio_end_to_end": true,
  "studio_readback_verified": true,
  "follow_up_edit_verified": true,
@@ -74,8 +74,11 @@
   ],
   "mission:scripts_networking_ui": [
    "docs/autonomy/evidence/20260923T0105Z-coin-rush/README.md"
+  ],
+  "mobile_qa": [
+   "docs/autonomy/evidence/20260923T0145Z-mobile-qa/README.md"
   ]
  },
  "_notes": "Every true flag and every true mission must have at least one existing path under evidence[<key>]; scripts/autonomy-review-gate.py refuses a true without evidence. fresh_reviews_without_material_blocker counts CONSECUTIVE fresh-context reviews that returned PASS; any MATERIAL_FINDINGS resets it to 0. open_*_findings are counted from CUSTOMER_FINDINGS.md open items, not typed by hand.",
- "_status_2026_09_23": "NOT candidate-complete. Open: 2 critical (F-020, F-034 \u2014 fixed in the local plugin build, reach customers only after the owner publishes it to the Creator Store), 10 high (web F-002/F-003 await the web deploy; cost/wander F-019/F-023/F-030/F-033/F-036; model quality F-025/F-028/F-029). Missions not passed: gameplay loop and debug (the coin game still cannot score), visually ambitious, scripts/networking/UI, playtest-inspect-repair (playtest works, repair did not). Deterministic gates: CI cannot run (GitHub billing); local gate suite pending the web lane."
+ "_status_2026_09_23": "NOT candidate-complete. Open: 2 critical (F-020, F-034 — fixed in the local plugin build, reach customers only after the owner publishes it to the Creator Store), 10 high (web F-002/F-003 await the web deploy; cost/wander F-019/F-023/F-030/F-033/F-036; model quality F-025/F-028/F-029). Missions not passed: gameplay loop and debug (the coin game still cannot score), visually ambitious, scripts/networking/UI, playtest-inspect-repair (playtest works, repair did not). Deterministic gates: CI cannot run (GitHub billing); local gate suite pending the web lane."
 }
