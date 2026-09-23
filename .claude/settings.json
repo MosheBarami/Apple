@@ -23,7 +23,49 @@
       "Read(~/.mcp-auth/**)",
       "Edit(**/.env)",
       "Edit(~/.ssh/**)",
-      "Edit(~/Library/Keychains/**)"
+      "Edit(~/Library/Keychains/**)",
+      "Artifact",
+      "Workflow",
+      "ScheduleWakeup",
+      "ReportFindings",
+      "ListAgents",
+      "SuggestSkills",
+      "mcp__playwright",
+      "mcp__meshy-mcp-server",
+      "mcp__hf-mcp-server",
+      "mcp__MCP_DOCKER",
+      "mcp__github",
+      "mcp__claude_ai_Resend",
+      "mcp__claude_ai_Figma",
+      "mcp__claude_ai_Openrouter",
+      "mcp__claude_ai_Hugging_Face",
+      "mcp__claude_ai_Claude_Docs",
+      "mcp__claude_ai_Clerk",
+      "mcp__claude_ai_PostHog",
+      "mcp__claude_ai_Netlify",
+      "mcp__claude_ai_Vercel",
+      "mcp__claude_ai_visualize",
+      "mcp__claude_ai_Context7",
+      "mcp__claude_ai_Firecrawl",
+      "mcp__plugin_cloudflare_cloudflare-docs",
+      "mcp__plugin_cloudflare_cloudflare-bindings",
+      "mcp__plugin_cloudflare_cloudflare-api",
+      "mcp__plugin_cloudflare_cloudflare-builds",
+      "mcp__plugin_cloudflare_cloudflare-observability",
+      "mcp__claude_ai_Cloudflare_Developer_Platform",
+      "mcp__Claude_Browser",
+      "mcp__Claude_Code_iOS_Simulator",
+      "mcp__visualize",
+      "mcp__mcp-registry",
+      "mcp__scheduled-tasks",
+      "CronCreate",
+      "CronDelete",
+      "CronList",
+      "DesignSync",
+      "RemoteTrigger",
+      "ListMcpResourcesTool",
+      "ReadMcpResourceTool",
+      "ReadMcpResourceDirTool"
     ]
   },
   "hooks": {
@@ -82,11 +124,243 @@
     "hf-cli@huggingface-skills": false,
     "superpowers@claude-plugins-official": false,
     "data@knowledge-work-plugins": false,
-    "mcp-builder@mcp-use": false
+    "mcp-builder@mcp-use": false,
+    "cloudflare@cloudflare": false,
+    "supabase@claude-plugins-official": false
   },
   "env": {
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "20",
     "BASH_MAX_OUTPUT_LENGTH": "12000"
   },
-  "effortLevel": "high"
+  "effortLevel": "high",
+  "deniedMcpServers": [
+    {
+      "serverName": "github"
+    },
+    {
+      "serverName": "hf-mcp-server"
+    },
+    {
+      "serverName": "meshy-mcp-server"
+    },
+    {
+      "serverName": "MCP_DOCKER"
+    },
+    {
+      "serverName": "playwright"
+    },
+    {
+      "serverName": "claude.ai Resend"
+    },
+    {
+      "serverName": "claude.ai Figma"
+    },
+    {
+      "serverName": "claude.ai Openrouter"
+    },
+    {
+      "serverName": "claude.ai Hugging Face"
+    },
+    {
+      "serverName": "claude.ai Claude Docs"
+    },
+    {
+      "serverName": "claude.ai Clerk"
+    },
+    {
+      "serverName": "claude.ai PostHog"
+    },
+    {
+      "serverName": "claude.ai Netlify"
+    },
+    {
+      "serverName": "claude.ai Vercel"
+    },
+    {
+      "serverName": "claude.ai visualize"
+    },
+    {
+      "serverName": "claude.ai Context7"
+    },
+    {
+      "serverName": "claude.ai Firecrawl"
+    },
+    {
+      "serverName": "claude.ai Cloudflare Developer Platform"
+    },
+    {
+      "serverName": "plugin:data:amplitude"
+    },
+    {
+      "serverName": "plugin:data:amplitude-eu"
+    },
+    {
+      "serverName": "plugin:data:bigquery"
+    },
+    {
+      "serverName": "plugin:data:definite"
+    },
+    {
+      "serverName": "plugin:data:hex"
+    },
+    {
+      "serverName": "plugin:data:atlassian"
+    },
+    {
+      "serverName": "plugin:design:asana"
+    },
+    {
+      "serverName": "plugin:design:atlassian"
+    },
+    {
+      "serverName": "plugin:design:figma"
+    },
+    {
+      "serverName": "plugin:design:intercom"
+    },
+    {
+      "serverName": "plugin:design:linear"
+    },
+    {
+      "serverName": "plugin:design:notion"
+    },
+    {
+      "serverName": "plugin:design:slack"
+    },
+    {
+      "serverName": "plugin:cloudflare:cloudflare-api"
+    },
+    {
+      "serverName": "plugin:cloudflare:cloudflare-builds"
+    },
+    {
+      "serverName": "plugin:cloudflare:cloudflare-observability"
+    }
+  ],
+  "skillOverrides": {
+    "acestep": "off",
+    "agent-browser": "off",
+    "ai-sdk": "off",
+    "animate": "off",
+    "brand": "off",
+    "companion-clis": "off",
+    "composio": "off",
+    "context7-mcp": "off",
+    "contribute": "off",
+    "design": "off",
+    "dispatching-parallel-agents": "off",
+    "elevenlabs": "off",
+    "emil-design-eng": "off",
+    "eval-audit": "off",
+    "faceless-explainer": "off",
+    "ffmpeg": "off",
+    "find-skills": "off",
+    "flash": "off",
+    "frontend-design": "off",
+    "gauntlet-loop": "off",
+    "general-video": "off",
+    "generate-voiceover": "off",
+    "grill-me": "off",
+    "handoff": "off",
+    "huggingface-community-evals": "off",
+    "huggingface-datasets": "off",
+    "huggingface-gradio": "off",
+    "huggingface-llm-trainer": "off",
+    "huggingface-papers": "off",
+    "huggingface-tool-builder": "off",
+    "huggingface-trackio": "off",
+    "huggingface-vision-trainer": "off",
+    "hyperframes": "off",
+    "hyperframes-animation": "off",
+    "hyperframes-audio": "off",
+    "hyperframes-cli": "off",
+    "hyperframes-core": "off",
+    "hyperframes-creative": "off",
+    "hyperframes-keyframes": "off",
+    "hyperframes-registry": "off",
+    "ideogram4": "off",
+    "learned": "off",
+    "ltx2": "off",
+    "mcp-builder": "off",
+    "media-use": "off",
+    "meshy-3d-generation": "off",
+    "meshy-3d-printing": "off",
+    "meshy-openclaw": "off",
+    "motion-graphics": "off",
+    "moviepy": "off",
+    "netlify-access-control": "off",
+    "netlify-agent-runner": "off",
+    "netlify-ai-gateway": "off",
+    "netlify-blobs": "off",
+    "netlify-caching": "off",
+    "netlify-config": "off",
+    "netlify-database": "off",
+    "netlify-deploy": "off",
+    "netlify-edge-functions": "off",
+    "netlify-forms": "off",
+    "netlify-frameworks": "off",
+    "netlify-functions": "off",
+    "netlify-identity": "off",
+    "netlify-image-cdn": "off",
+    "netlify-mcp-servers": "off",
+    "playwright-best-practices": "off",
+    "playwright-recording": "off",
+    "publish": "off",
+    "qwen-edit": "off",
+    "record-demo": "off",
+    "redub": "off",
+    "remotion": "off",
+    "remotion-official": "off",
+    "review-animations": "off",
+    "runpod": "off",
+    "runpod-mcp": "off",
+    "runpod-migrate": "off",
+    "runpod-templates": "off",
+    "runpod-usage": "off",
+    "runpodctl": "off",
+    "scene-review": "off",
+    "setup": "off",
+    "setup-matt-pocock-skills": "off",
+    "skill-creator": "off",
+    "skills": "off",
+    "subagent-driven-development": "off",
+    "synced": "off",
+    "systematic-debugging": "off",
+    "template": "off",
+    "transformers-js": "off",
+    "vercel-composition-patterns": "off",
+    "vercel-optimize": "off",
+    "vercel-react-best-practices": "off",
+    "verification-before-completion": "off",
+    "versions": "off",
+    "video": "off",
+    "video-toolkit": "off",
+    "voice-clone": "off",
+    "web-design-guidelines": "off",
+    "webapp-testing": "off",
+    "youtube": "off",
+    "roblox-animation": "name-only",
+    "roblox-audio": "name-only",
+    "roblox-core": "name-only",
+    "roblox-datastores": "name-only",
+    "roblox-gamepasses": "name-only",
+    "roblox-mcp": "name-only",
+    "roblox-networking": "name-only",
+    "roblox-npcs": "name-only",
+    "roblox-open-cloud": "name-only",
+    "roblox-physics": "name-only",
+    "roblox-rojo": "name-only",
+    "roblox-teleport": "name-only",
+    "roblox-testing": "name-only",
+    "roblox-user-interfaces": "name-only",
+    "roblox-vfx": "name-only"
+  },
+  "claudeMdExcludes": [
+    "/Users/moshe/.claude/rules/context7.md"
+  ],
+  "autoMemoryEnabled": false,
+  "includeGitInstructions": false,
+  "disableBundledSkills": true,
+  "skillListingMaxDescChars": 120,
+  "skillListingBudgetFraction": 0.003
 }
