@@ -23,6 +23,7 @@
  * `installed` state here would mean inventing it, so there isn't one.
  */
 import type { ConnState } from './use-project-socket';
+import { opSentence } from '../components/ws/op-vocabulary.ts';
 
 export type StudioConnection = 'connecting' | 'connected' | 'disconnected' | 'not-connected';
 
@@ -209,12 +210,15 @@ export function latencyLabel(rttMs: number | null): string | null {
  *
  * Blank is missing. `summary ?? kind` falls through only on null, so an EMPTY summary used to be
  * printed — as nothing, a bare ✓ with no words beside it (F-027).
+ *
+ * THE KIND IS WHAT HAPPENED; the summary is not. The oplog's `summary` column holds only error text
+ * (op-vocabulary.ts), and a successful row has nothing but its wire name — so the row reads as the
+ * same plain sentence the activity panel uses, and the ✓/✕ beside it says how it went.
  */
 export function recentOpLabel(op: { summary: string | null; kind: string | null }): string {
-  const summary = op.summary?.trim();
-  if (summary) return summary;
   const kind = op.kind?.trim();
-  return kind || 'A change in Studio';
+  if (kind) return opSentence(kind);
+  return op.summary?.trim() || 'A change in Studio';
 }
 
 /** "3 changes waiting", or null when the queue is empty — an empty queue is not news. */

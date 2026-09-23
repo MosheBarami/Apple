@@ -44,6 +44,19 @@ test('"Stopped." is not drawn under a reply that already ends "Stopped."', () =>
   assert.equal(outcomeLine('stopped', undefined, 'I added the coins.\n\nStopped.').text, null);
 });
 
+// F-013, 2026-09-23: a failed run read "That step failed on our side. Work already applied to Studio
+// is saved." in the reply and "That step failed on our side. Everything up to there is saved…" on
+// the outcome row directly beneath it — the refund paragraph after the worker's sentence meant the
+// last-paragraph comparison above never matched.
+test('a failure the reply already announces is not announced again under it', () => {
+  const reply = 'That step failed on our side. Work already applied to Studio is saved.' +
+    '\n\nYou have not been charged for this run: the 6 Credits it used have been put back.';
+  const line = outcomeLine('error', 'model_failed', reply);
+  assert.ok(line, 'the run still ended in a failure: the row (tone, "Try again") must remain');
+  assert.equal(line.tone, 'bad');
+  assert.equal(line.text, null, `the failure sentence was printed twice: ${line.text}`);
+});
+
 test('CONTROL: a stop under the model\'s own prose, and a failure under any reply, keep their sentence', () => {
   assert.match(outcomeLine('stopped', undefined, 'I added three coins so far.').text, /Stopped/);
   assert.ok(outcomeLine('error', 'busy', 'I added three coins so far.').text.length > 20);

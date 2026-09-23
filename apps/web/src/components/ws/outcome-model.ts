@@ -107,11 +107,16 @@ export function outcomeLine(
  *     the real reason — the read-stall bound, a refusal and its remedy — so "That run finished
  *     without changing anything" under it is a second, vaguer account of the same ending.
  *   - any stop whose sentence IS the reply's last paragraph: "Stopped." under "Stopped.".
+ *   - any line whose OPENING sentence the reply already contains (F-013): the worker's failure
+ *     reply "That step failed on our side. …" is followed by its refund paragraph, so it is not the
+ *     last paragraph, and the row under it said "That step failed on our side." a second time.
  */
 function restates(stopReason: string, text: string | null, reply: string | undefined): boolean {
   const body = (reply ?? '').trim();
   if (!body || !text) return false;
   if (stopReason === 'incomplete') return true;
   const last = body.slice(body.lastIndexOf('\n\n') + 1).trim();
-  return last === text.trim();
+  if (last === text.trim()) return true;
+  const lead = text.trim().split(/(?<=\.)\s/)[0];
+  return body.includes(lead);
 }

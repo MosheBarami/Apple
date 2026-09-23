@@ -111,8 +111,9 @@
 .pairing-success > .btn + .btn { margin-top:0; }
 /* The one ring in the file, and it is a surface step rather than a tint. See the header: the
    green fill this plate used to carry put a second green object on the same panel as the primary
-   button, and the tick alone already carries the status. */
-.pairing-success-icon { display:grid; place-items:center; width:46px; height:46px; border:1px solid var(--line); border-radius:var(--r-pill); background:var(--paper-2); color:var(--good); }
+   button, and the tick alone already carries the status. The tick is the accent, not green (F-004):
+   green is for status dots, and this sits beside the blue "Start building". */
+.pairing-success-icon { display:grid; place-items:center; width:46px; height:46px; border:1px solid var(--line); border-radius:var(--r-pill); background:var(--paper-2); color:var(--accent); }
 
 /* -------------------------------------------------------------- the code half --- */
 

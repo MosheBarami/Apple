@@ -526,3 +526,7 @@
   .billing-details__field input,
   :is(.billing-details,.billing-history) > summary { transition:none; }
 }
+
+/* THE COMPARISON TABLE TICKS IN THE PRODUCT ACCENT (F-004). The vendored table (aicss, byte-pinned)
+   defaults its ✓ to #34d399 green; green is kept for status dots only. */
+.usage-page { --tbl-yes:var(--accent); }

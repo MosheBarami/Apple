@@ -39,8 +39,16 @@ test('an empty or blank summary is treated as missing, never printed as nothing'
   }
 });
 
-test('a real summary is shown as written, trimmed', () => {
-  assert.equal(recentOpLabel(row('  Built the lobby  ', 'batch')), 'Built the lobby');
+//[[ RESTATED 2026-09-23 (Lane W): this pinned "a summary is shown as written". Measured on
+//   production, `summary` is the oplog's ERROR column (op-vocabulary.ts, session.ts) and successful
+//   rows carry only their wire name — so the fallback printed "snapshot", "viewport_info",
+//   "get_instance", and a failed row printed the worker's internal error text. The property the
+//   dialog needs is the activity panel's: every row reads as a plain past-tense sentence. ]]
+test('a row reads as the op\'s plain sentence, never its wire name or its error text', () => {
+  assert.equal(recentOpLabel(row('', 'snapshot')), 'Saved a checkpoint of the place');
+  assert.equal(recentOpLabel(row(null, 'viewport_info')), 'Read the camera and viewport');
+  assert.equal(recentOpLabel(row('property Name is not a valid member', 'create_instances')), 'Created objects');
+  assert.doesNotMatch(recentOpLabel(row('', 'some_new_op')), /_/, 'an unknown kind is printed as an identifier');
 });
 
 test('the dialog row uses that label rather than chaining the raw fields', () => {
@@ -81,4 +89,16 @@ test('the dead ConnectStudio block is gone and nothing imports it', () => {
     assert.doesNotMatch(code, /from ['"][./]*(ws\/)?connect-studio['"]/, `${f} imports the deleted block`);
     assert.doesNotMatch(code, /\.gx-connect\b/, `${f} keeps styles for the deleted block`);
   }
+});
+
+// F-014, 2026-09-22: "Studio connected" was followed by "Enable edits in the plugin before asking
+// Apple to change your place" while the dock read "edits allowed for this connection". The browser
+// cannot see the plugin's consent (it lives in Studio; the worker is never told), so the dialog may
+// only say what is true in BOTH states — a condition, never an instruction that presumes edits are off.
+test('the connected panel never tells someone to enable edits it cannot see are off', () => {
+  const at = DIALOG.indexOf('<h3>Studio connected</h3>');
+  assert.ok(at > 0, 'the connected panel was not found — this checks nothing');
+  const panel = DIALOG.slice(at, DIALOG.indexOf('</div>', at));
+  assert.doesNotMatch(panel, /\bEnable edits\b/i, 'the panel instructs the reader to enable edits');
+  assert.match(panel, /only while[^<]*edits allowed/i, 'the panel no longer says when Apple may change the place');
 });

@@ -210,3 +210,17 @@ test('the welcome sheet keeps its copy and its seeds, and none of the upstream d
   for (const seed of seeds) assert.match(html, new RegExp(`<span>${seed.label}</span>`));
   assert.equal(/No messages yet|Start a conversation/.test(html), false);
 });
+
+// F-005, 2026-09-23: the accessibility tree listed the three seeds as bare `button` — the label
+// sits in a nested span beside an aria-hidden icon, and the tree the owner's browser tooling reads
+// named none of them. Each seed now carries its label as its own name.
+test('every welcome seed is a button named by its label', () => {
+  const seeds = [
+    { label: 'A portal hub', prompt: 'Build a lobby with a portal.' },
+    { label: 'A floating obby', prompt: 'Build a floating obby.' },
+  ];
+  const html = render(h(ui.ChatWelcome, { seeds, onSeed: () => {} }));
+  const buttons = html.match(/<button\b[^>]*>/g) ?? [];
+  assert.equal(buttons.length, seeds.length, 'the seeds were not found — this checks nothing');
+  seeds.forEach((seed, i) => assert.match(buttons[i], new RegExp(`aria-label="${seed.label}"`), `seed ${i} has no name`));
+});

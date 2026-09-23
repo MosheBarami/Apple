@@ -26,7 +26,7 @@ export function ChatWelcome({ seeds, onSeed }: {
       <p>Describe the change. Apple will inspect the place, build it and verify the result.</p>
     </div>
     <Suggestions className="start-sheet__ideas">
-      {seeds.map((seed, i) => <Suggestion key={seed.prompt} suggestion={seed.prompt} onClick={onSeed} style={{ '--i': i } as CSSProperties}>
+      {seeds.map((seed, i) => <Suggestion key={seed.prompt} suggestion={seed.prompt} onClick={onSeed} aria-label={seed.label} style={{ '--i': i } as CSSProperties}>
         <span>{seed.label}</span>
         <AnimatedIcon motion="nudge">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
