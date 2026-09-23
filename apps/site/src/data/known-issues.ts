@@ -51,7 +51,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       + 'plugin release; this page changes the day it is back.',
     links: [{ label: 'Plugin availability', href: '/docs/plugin' }],
     openedAt: '2026-09-23',
-    resolvedAt: null,
+    resolvedAt: '2026-09-24',
   },
   {
     id: 'plugin-presence-not-detectable',

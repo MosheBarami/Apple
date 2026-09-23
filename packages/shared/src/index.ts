@@ -1966,10 +1966,18 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  * The owner's decision (docs/autonomy/DECISIONS.md D-STORE-2) is to publish once more only with
  * the final build and appeal it; flip this to true when the probe answers 200 again.
  *
+ * FLIPPED AGAIN 2026-09-24 ~02:35 IDT: the appeal on the final build (3Jj4h4hPWRTA3QPDRlNRmejqPrP,
+ * sent 2026-09-23 14:02 IDT) was upheld. Re-probed 2026-09-23T23:34:48Z: ours 200 (visibilityStatus 1,
+ * isAssetHashApproved, published + free, updatedUtc 2026-09-23T11:00:54Z, 7 scripts — the final
+ * build), Rojo 7 and Moon Animator 2 both 200, the impossible id and the retired Golem id 404. The
+ * signed-out store page renders "Apple Studio - Creator Store" with a "Get Plugin" button, and the
+ * Configure page no longer shows the violation notice. Evidence:
+ * docs/autonomy/evidence/20260924T0000Z-store-listed-again/README.md.
+ *
  * Typed `boolean` rather than the literal `false` on purpose: consumers branch
  * on it, and a literal type would make the live branch look unreachable.
  */
-export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;
+export const STUDIO_PLUGIN_STORE_LIVE: boolean = true;
 
 /**
  * Can a customer buy Credits today? No, and three surfaces used to say otherwise.
@@ -2021,15 +2029,12 @@ export interface StudioPluginStoreRefusal {
 }
 
 // 2026-09-23: version 2 (the 01:23 overwrite) was removed — roblox.com/report-appeals, violation
-// 3JhaXRZAqvmSw5iIhea5QZgT67R. Per the owner (docs/autonomy/DECISIONS.md D-STORE-2) the appeal is sent
-// with the product's final plugin build, before appealableUntil.
-export const STUDIO_PLUGIN_STORE_REFUSAL: StudioPluginStoreRefusal | null = {
-  reason: 'Misusing Roblox Systems',
-  decidedAt: '2026-09-23T01:23+03:00',
-  appealableUntil: '2026-10-23T01:23+03:00',
-  appealId: null,
-  appealedAt: null,
-};
+// 3JhaXRZAqvmSw5iIhea5QZgT67R. Per the owner (docs/autonomy/DECISIONS.md D-STORE-2) the appeal was sent
+// with the product's final plugin build: removal 3Jj4h4hPWRTA3QPDRlNRmejqPrP (2026-09-23 14:00 IDT,
+// 'Misusing Roblox Systems'), appealed 14:02 IDT.
+// null again from 2026-09-24: that appeal was upheld and the final build is distributed (see
+// STUDIO_PLUGIN_STORE_LIVE). The removal above is history, not state.
+export const STUDIO_PLUGIN_STORE_REFUSAL: StudioPluginStoreRefusal | null = null;
 
 /**
  * Where an "install" affordance may actually send someone TODAY.
