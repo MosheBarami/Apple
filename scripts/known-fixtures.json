@@ -190,6 +190,21 @@
       "path": "packages/langflow/sync.test.mjs",
       "pattern": "Assigned secret literal",
       "value_sha256": "428460bee30712d165053ec1929e3758300f32a530c22981ffae01d52fcdaa42"
+    },
+    {
+      "path": "scripts/owner-dashboard/cc/platforms/clerk.mjs",
+      "pattern": "Password literal",
+      "value_sha256": "2c7f41e60a3ce428f3ee963a33195b5cbbb83c32e70aa033457a3ab7dfb7cab8"
+    },
+    {
+      "path": "scripts/owner-dashboard/cc/supabase.test.mjs",
+      "pattern": "JWT",
+      "value_sha256": "1b1643ac89ebbed3ee9da8cc5fff5b30d0904f1eda4734ae7c895fbd1150a210"
+    },
+    {
+      "path": "scripts/owner-dashboard/control/pages/clerk.js",
+      "pattern": "Password literal",
+      "value_sha256": "2c7f41e60a3ce428f3ee963a33195b5cbbb83c32e70aa033457a3ab7dfb7cab8"
     }
   ]
 }
