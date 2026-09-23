@@ -119,3 +119,61 @@ test('the port takes a resolved Instance and never resolves a path or reaches fo
   // capture() takes what the engine already resolved.
   assert.match(src, /function Render\.capture\(root: Instance, subject: string, view: string, width: number, height: number, env: any\?\)/);
 });
+
+// 2026-09-23: Terrain was invisible to this renderer, so every terrain island was judged as trees floating
+// over nothing. The terrain pass is exercised here against a stub Terrain holding a solid grass box.
+const TERRAIN_SPEC = String.raw`--!nocheck
+--!modules Paths,Render
+Region3 = { new = function(lo, hi)
+	local r = { CFrame = CFrame.new((lo.X + hi.X) / 2, (lo.Y + hi.Y) / 2, (lo.Z + hi.Z) / 2), Size = hi - lo }
+	function r:ExpandToGrid() return r end
+	return r
+end }
+local terrain = {}
+function terrain:ReadVoxels(region, res)
+	local sx, sy, sz = math.floor(region.Size.X / 4), math.floor(region.Size.Y / 4), math.floor(region.Size.Z / 4)
+	local m, o = {}, {}
+	for x = 1, sx do m[x], o[x] = {}, {}
+		for y = 1, sy do m[x][y], o[x][y] = {}, {}
+			for z = 1, sz do
+				local solid = y <= sy / 2
+				m[x][y][z] = if solid then Enum.Material.Grass else Enum.Material.Air
+				o[x][y][z] = if solid then 1 else 0
+			end
+		end
+	end
+	return m, o
+end
+function terrain:GetMaterialColor() return Color3.new(0.3, 0.6, 0.25) end
+
+local cam = CFrame.lookAt(Vector3.new(0, 40, 90), Vector3.new(0, 0, 0))
+local box = { instance = terrain, lo = Vector3.new(-32, -32, -32), hi = Vector3.new(32, 32, 32) }
+H.test("terrain in the box is drawn, and counted", function()
+	local _, meta = Render.renderView(cam, 64, 48, 55, game:GetService("Workspace"), box)
+	H.ok(meta.terrainCells > 0, "no terrain cells were drawn: " .. tostring(meta.terrainCells))
+	local seen = false
+	for _, row in meta.materials do if row.material == "Terrain Grass" then seen = true end end
+	H.ok(seen, "the terrain material is not reported")
+end)
+H.test("without the terrain argument nothing changes for existing callers", function()
+	local _, meta = Render.renderView(cam, 64, 48, 55, game:GetService("Workspace"))
+	H.ok(meta.terrainCells == 0, "terrain drawn although none was asked for")
+end)
+H.test("the drawn terrain changes the pixels", function()
+	local a = Render.renderView(cam, 64, 48, 55, game:GetService("Workspace"), box)
+	local b = Render.renderView(cam, 64, 48, 55, game:GetService("Workspace"))
+	H.ok(a ~= b, "the image is identical with and without terrain")
+end)
+H.report("apple-plugin/render-terrain")
+`;
+
+test('the renderer draws Terrain it is given', { skip: luauMissing() && 'luau is not on PATH' }, () => {
+  const chunk = buildChunk(TERRAIN_SPEC, modules);
+  const dir = mkdtempSync(join(tmpdir(), 'apple-render-terrain-'));
+  const file = join(dir, 'terrain.gen.luau');
+  writeFileSync(file, chunk);
+  let out;
+  try { out = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' }); } catch (err) { out = `${err.stdout ?? ''}${err.stderr ?? ''}`; assert.fail(out); }
+  assert.match(out, /3 passed/, out);
+  assert.doesNotMatch(out, /failed/i, out);
+});

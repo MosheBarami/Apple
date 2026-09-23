@@ -142,3 +142,5 @@ four refusals of exactly that shape. Commands "a NumberSequence written as [time
 line removed; plugin 46/0.
 
 Superseded 2026-09-23 ~05:15 IDT by sha256 `8c7624f2fd32b7b416619023291f6c3b238a8a5c37b6382ce9b291c8f9fd6d31` (installed locally): terrain_edit gains `clear` (Terrain:Clear() in one call). A "clear the terrain" request made 29 terrain calls and 16 were refused as larger than the voxel limit. Commands terrain spec red with the branch removed; plugin 46/0.
+
+Superseded 2026-09-23 ~06:30 IDT by sha256 `8a9ec295c175392295b5c56a916a74104452bee715a0c925ec1adc1de2728330` (installed locally; loads at the next Studio launch): the software renderer draws Terrain. It drew BaseParts only, so every Terrain landform was invisible to the visual critique ("a flat grey slab", 2/10 and 3/10 on islands that were there). Capture samples the voxels around the subject on an 8-stud grid (at most 100x60x100 voxels) and draws each surface cell in its Terrain material colour. render-parity "the renderer draws Terrain it is given" red with the pass disabled; plugin 47/0.

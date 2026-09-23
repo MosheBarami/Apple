@@ -228,7 +228,17 @@ local function sceneRoot(scene: Instance?): Instance?
 	return nil
 end
 
-function Render.renderView(camCF: CFrame, width: number, height: number, fovDeg: number, scene: Instance?): (string, any)
+--[[ TERRAIN IS PART OF THE SCENE (2026-09-23).
+	This renderer drew BaseParts only. Measured on the sky-island runs: every Terrain landform was
+	invisible to it, so the critique judged trees floating over nothing ("a flat grey slab", 2/10 and
+	3/10) and the model rebuilt a correct island again and again. `terrain` = { instance, lo, hi }
+	samples the voxels in that box on an 8-stud grid and draws each filled cell that has an empty
+	neighbour as a box in the material's own Terrain colour. Optional and last, so every existing
+	caller and the ported specs are unchanged. ]]
+local TERRAIN_STEP = 2 -- voxels (4 studs each) per drawn cell
+local MAX_TERRAIN_CELLS = 120 * 60 * 120 -- 4-stud voxels read, at most
+
+function Render.renderView(camCF: CFrame, width: number, height: number, fovDeg: number, scene: Instance?, terrain: any?): (string, any)
 	local px = width * height
 	local buf: Buf = { colour = table.create(px, SKY), depth = table.create(px, math.huge), w = width, h = height }
 	local tanHalf = math.tan(math.rad(fovDeg) / 2)
@@ -250,58 +260,104 @@ function Render.renderView(camCF: CFrame, width: number, height: number, fovDeg:
 	local materials: { [string]: number } = {}
 	local sp = table.create(8)
 
+	local function drawBox(boxCF: CFrame, size: Vector3, base: Color3, matName: string, transparency: number): boolean
+		for i, c in C do
+			local wp = boxCF:PointToWorldSpace(Vector3.new(c.X * size.X, c.Y * size.Y, c.Z * size.Z))
+			local p = camCF:PointToObjectSpace(wp)
+			local z = -p.Z
+			if z <= 0.05 then
+				return false -- any corner behind the near plane: skip rather than near-clip
+			end
+			sp[i] = {
+				((p.X / (z * tanHalf * aspect)) * 0.5 + 0.5) * width,
+				(1 - ((p.Y / (z * tanHalf)) * 0.5 + 0.5)) * height,
+				z,
+			}
+		end
+		local look = MATERIAL_LOOK[matName] or { value = 1.0, rough = 0.6, emissive = false }
+		-- quantise to a 16³ cube: counts *perceptibly* distinct hues, not float noise
+		palette[math.floor(base.R * 15) * 256 + math.floor(base.G * 15) * 16 + math.floor(base.B * 15)] = true
+		local alpha = 1 - transparency
+		for _, f in FACES do
+			local i1, i2, i3, i4 = f[1] :: number, f[2] :: number, f[3] :: number, f[4] :: number
+			local n = boxCF:VectorToWorldSpace(f[5] :: Vector3)
+			local fc = boxCF:PointToWorldSpace(Vector3.new(
+				(C[i1].X + C[i3].X) * 0.5 * size.X,
+				(C[i1].Y + C[i3].Y) * 0.5 * size.Y,
+				(C[i1].Z + C[i3].Z) * 0.5 * size.Z
+			))
+			if n:Dot((fc - camPos).Unit) < 0 then -- backface cull
+				local lam = if look.emissive
+					then 1.2
+					else look.value * (0.26 + 0.74 * (math.max(0, -n:Dot(SUN)) * (1 - look.rough * 0.35) + look.rough * 0.25))
+				local a, b, c, d = sp[i1], sp[i2], sp[i3], sp[i4]
+				-- distance fog keeps depth ordering readable in a flat-shaded image
+				local fog = math.clamp((a[3] + b[3] + c[3] + d[3]) * 0.25 / 900, 0, 0.55)
+				local r = math.clamp(base.R * lam * alpha, 0, 1) * (1 - fog) + 0.62 * fog
+				local g = math.clamp(base.G * lam * alpha, 0, 1) * (1 - fog) + 0.72 * fog
+				local bl = math.clamp(base.B * lam * alpha, 0, 1) * (1 - fog) + 0.85 * fog
+				local packed = math.floor(r * 255) * 65536 + math.floor(g * 255) * 256 + math.floor(bl * 255)
+				rasterTri(buf, a[1], a[2], a[3], b[1], b[2], b[3], c[1], c[2], c[3], packed)
+				rasterTri(buf, a[1], a[2], a[3], c[1], c[2], c[3], d[1], d[2], d[3], packed)
+			end
+		end
+		return true
+	end
+
 	local walked = sceneRoot(scene)
 	for _, inst in (if walked then walked:GetDescendants() else {}) do
 		if renderable(inst) then
 			local part = inst :: BasePart
 			considered += 1
-			local ok = true
-			for i, c in C do
-				local wp = part.CFrame:PointToWorldSpace(Vector3.new(c.X * part.Size.X, c.Y * part.Size.Y, c.Z * part.Size.Z))
-				local p = camCF:PointToObjectSpace(wp)
-				local z = -p.Z
-				if z <= 0.05 then
-					ok = false -- any corner behind the near plane: skip rather than near-clip
-					break
-				end
-				sp[i] = {
-					((p.X / (z * tanHalf * aspect)) * 0.5 + 0.5) * width,
-					(1 - ((p.Y / (z * tanHalf)) * 0.5 + 0.5)) * height,
-					z,
-				}
-			end
-			if not ok then
-				clipped += 1
-			else
+			local matName = tostring(part.Material):gsub("Enum%.Material%.", "")
+			if drawBox(part.CFrame, part.Size, part.Color, matName, part.Transparency) then
 				visible += 1
-				local matName = tostring(part.Material):gsub("Enum%.Material%.", "")
 				materials[matName] = (materials[matName] or 0) + 1
-				local look = MATERIAL_LOOK[matName] or { value = 1.0, rough = 0.6, emissive = false }
-				local base = part.Color
-				-- quantise to a 16³ cube: counts *perceptibly* distinct hues, not float noise
-				palette[math.floor(base.R * 15) * 256 + math.floor(base.G * 15) * 16 + math.floor(base.B * 15)] = true
-				local alpha = 1 - part.Transparency
-				for _, f in FACES do
-					local i1, i2, i3, i4 = f[1] :: number, f[2] :: number, f[3] :: number, f[4] :: number
-					local n = part.CFrame:VectorToWorldSpace(f[5] :: Vector3)
-					local fc = part.CFrame:PointToWorldSpace(Vector3.new(
-						(C[i1].X + C[i3].X) * 0.5 * part.Size.X,
-						(C[i1].Y + C[i3].Y) * 0.5 * part.Size.Y,
-						(C[i1].Z + C[i3].Z) * 0.5 * part.Size.Z
-					))
-					if n:Dot((fc - camPos).Unit) < 0 then -- backface cull
-						local lam = if look.emissive
-							then 1.2
-							else look.value * (0.26 + 0.74 * (math.max(0, -n:Dot(SUN)) * (1 - look.rough * 0.35) + look.rough * 0.25))
-						local a, b, c, d = sp[i1], sp[i2], sp[i3], sp[i4]
-						-- distance fog keeps depth ordering readable in a flat-shaded image
-						local fog = math.clamp((a[3] + b[3] + c[3] + d[3]) * 0.25 / 900, 0, 0.55)
-						local r = math.clamp(base.R * lam * alpha, 0, 1) * (1 - fog) + 0.62 * fog
-						local g = math.clamp(base.G * lam * alpha, 0, 1) * (1 - fog) + 0.72 * fog
-						local bl = math.clamp(base.B * lam * alpha, 0, 1) * (1 - fog) + 0.85 * fog
-						local packed = math.floor(r * 255) * 65536 + math.floor(g * 255) * 256 + math.floor(bl * 255)
-						rasterTri(buf, a[1], a[2], a[3], b[1], b[2], b[3], c[1], c[2], c[3], packed)
-						rasterTri(buf, a[1], a[2], a[3], c[1], c[2], c[3], d[1], d[2], d[3], packed)
+			else
+				clipped += 1
+			end
+		end
+	end
+
+	local terrainCells = 0
+	if terrain and terrain.instance and terrain.lo and terrain.hi then
+		local okRead, mats, occ = pcall(function()
+			local region = Region3.new(terrain.lo, terrain.hi):ExpandToGrid(4)
+			local m, o = terrain.instance:ReadVoxels(region, 4)
+			return { m = m, o = o, region = region }, nil
+		end)
+		if okRead and mats and mats.m then
+			local m, o = mats.m, mats.o
+			local sx, sy, sz = #m, (#m > 0 and #m[1] or 0), (#m > 0 and #m[1] > 0 and #m[1][1] or 0)
+			local origin = mats.region.CFrame.Position - mats.region.Size / 2
+			local colours: { [any]: Color3 } = {}
+			local function filled(x: number, y: number, z: number): boolean
+				if x < 1 or y < 1 or z < 1 or x > sx or y > sy or z > sz then return false end
+				return o[x][y][z] > 0.5 and m[x][y][z] ~= Enum.Material.Air
+			end
+			if sx * sy * sz <= MAX_TERRAIN_CELLS then
+				local cell = 4 * TERRAIN_STEP
+				for x = 1, sx, TERRAIN_STEP do
+					for y = 1, sy, TERRAIN_STEP do
+						for z = 1, sz, TERRAIN_STEP do
+							if filled(x, y, z) and not (filled(x + TERRAIN_STEP, y, z) and filled(x - TERRAIN_STEP, y, z)
+								and filled(x, y + TERRAIN_STEP, z) and filled(x, y - TERRAIN_STEP, z)
+								and filled(x, y, z + TERRAIN_STEP) and filled(x, y, z - TERRAIN_STEP)) then
+								local material = m[x][y][z]
+								local colour = colours[material]
+								if not colour then
+									local okC, c = pcall(function() return terrain.instance:GetMaterialColor(material) end)
+									colour = if okC and c then c else Color3.new(0.45, 0.5, 0.4)
+									colours[material] = colour
+								end
+								local matName = tostring(material):gsub("Enum%.Material%.", "")
+								local centre = origin + Vector3.new((x - 1) * 4 + cell / 2, (y - 1) * 4 + cell / 2, (z - 1) * 4 + cell / 2)
+								if drawBox(CFrame.new(centre), Vector3.new(cell, cell, cell), colour :: Color3, matName, if matName == "Water" then 0.3 else 0) then
+									terrainCells += 1
+									materials["Terrain " .. matName] = (materials["Terrain " .. matName] or 0) + 1
+								end
+							end
+						end
 					end
 				end
 			end
@@ -331,6 +387,7 @@ function Render.renderView(camCF: CFrame, width: number, height: number, fovDeg:
 		subjectCoverage = math.round(filled / px * 100) / 100,
 		distinctColours = distinct,
 		materials = matList,
+		terrainCells = terrainCells,
 	}
 end
 
@@ -345,8 +402,19 @@ function Render.capture(root: Instance, subject: string, view: string, width: nu
 	local w = math.clamp(width, 48, 320)
 	local h = math.clamp(height, 32, 240)
 	local views = {}
+	-- The terrain box around the subject: generous sideways and far below, where a floating island's
+	-- underside hangs, capped so a huge map cannot make one render read millions of voxels.
+	local terrainArg = nil
+	local okT, terrainInst = pcall(function() return (scene or workspace):FindFirstChildOfClass("Terrain") end)
+	if okT and terrainInst then
+		local l, hh = lo :: Vector3, hi :: Vector3
+		local mid = (l + hh) / 2
+		-- At most 400 x 240 x 400 studs = 100 x 60 x 100 voxels, inside MAX_TERRAIN_CELLS.
+		local half = Vector3.new(math.min((hh.X - l.X) / 2 + 80, 200), math.min((hh.Y - l.Y) / 2 + 60, 90), math.min((hh.Z - l.Z) / 2 + 80, 200))
+		terrainArg = { instance = terrainInst, lo = mid - half - Vector3.new(0, 60, 0), hi = mid + half }
+	end
 	for _, v in Render.viewpoints(lo :: Vector3, hi :: Vector3, view) do
-		local b64, meta = Render.renderView(v.cf, w, h, 55, scene)
+		local b64, meta = Render.renderView(v.cf, w, h, 55, scene, terrainArg)
 		table.insert(views, { name = v.name, rgbBase64 = b64, meta = meta })
 	end
 	local size = (hi :: Vector3) - (lo :: Vector3)
