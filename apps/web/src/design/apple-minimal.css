@@ -205,6 +205,11 @@ body {
   background:rgba(0,0,0,.74);
   backdrop-filter:blur(18px);
   -webkit-backdrop-filter:blur(18px);
+  /* The blur makes this bar its own stacking context, and the conversation below painted over it —
+     measured 2026-09-23 on /app/projects/:id: every row of the open project menu hit-tested to the
+     thread, so no menu item could be clicked. Lifted above the thread; its menus float over it. */
+  position:relative;
+  z-index:20;
 }
 :root[data-theme='light'] .apple-workspace__topbar { background:rgba(246,247,250,.82); }
 .apple-workspace__identity {
@@ -289,6 +294,10 @@ body {
   backdrop-filter:blur(24px);
 }
 :root[data-theme='light'] .studio-project-menu[open] > .gx-top__actions { background:rgba(255,255,255,.96); }
+/* Below 860px system.css drops the words from the top bar's Roadmap and Checkpoints buttons to save
+   room. Inside this menu the room is there and the word is the only label: measured 2026-09-23 at
+   500px, the two rows showed an icon each and nothing else (F-027). */
+.studio-project-menu[open] > .gx-top__actions .gx-top__cp-label { display:inline; }
 .studio-project-menu[open] > .gx-top__actions > :is(button,a,.gx-pill) {
   width:100%;
   min-height:38px;
