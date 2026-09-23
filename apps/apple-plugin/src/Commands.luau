@@ -1322,6 +1322,9 @@ local function decodeValue(value: any, label: string, allowInstance: boolean?, g
 		local keypoints = {}
 		for index = 1, count do
 			local row = value.v[index]
+			-- [time, value] is the shape a model writes most often (2026-09-23, four refusals in one
+			-- run); the envelope it leaves out is the one Roblox itself defaults to.
+			if type(row) == "table" and #row == 2 then row = { row[1], row[2], 0 } end
 			if type(row) ~= "table" or not finite(row[1]) or not finite(row[2]) or not finite(row[3]) then return nil, ("%s[%d] is not a finite NumberSequence keypoint"):format(label, index) end
 			if row[1] < 0 or row[1] > 1 or row[3] < 0 then return nil, ("%s[%d] has an invalid time or envelope"):format(label, index) end
 			if index > 1 and row[1] < value.v[index - 1][1] then return nil, label .. " keypoint times must be ordered" end

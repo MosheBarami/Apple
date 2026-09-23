@@ -481,6 +481,20 @@ spec("ordinary prompts, UI images, sounds and particles are creatable while new 
     host:Destroy(); gui:Destroy(); services.SoundService:FindFirstChild("SFX"):Destroy(); c:destroy()
 end)
 
+spec("a NumberSequence written as [time, value] pairs is accepted with the default envelope", function()
+    local host = Instance.new("Part"); host.Name = "PairHost"; host.Parent = workspace
+    local c = newCommands()
+    local made = run(c, "sequence-pairs", { op = "create_instances", items = {
+        { className = "ParticleEmitter", name = "Mist", parent = "game.Workspace.PairHost", props = {
+            Transparency = { t = "NumberSequence", v = { { 0, 0.3 }, { 1, 1 } } },
+        } },
+    } }, true)
+    eq(made.ok, true, tostring(made.error))
+    local kp = host:FindFirstChild("Mist").Transparency.Keypoints
+    eq(kp[2].Value, 1); eq(kp[1].Envelope, 0)
+    host:Destroy(); c:destroy()
+end)
+
 spec("typed mood and mixer properties used by worker tools are writable", function()
     local c = newCommands()
     local lighting = run(c, "typed-mood", { op = "set_props", path = "game.Lighting", props = {

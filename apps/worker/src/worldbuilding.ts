@@ -344,6 +344,15 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
   * Trees, rocks and crystals: use generate_model when it is offered, one hero object at a time; otherwise
     follow the ornate rules above — a tapered trunk of 4-6 segments and 3-5 overlapping canopy balls in two
     greens, and crystals as clusters of 5-9 tall spikes with the biggest taller than a player.
+  * Floating scenes: the template Baseplate under the island breaks the illusion. Hide it (set_visible) and
+    move the SpawnLocation onto the island, and say so in the reply. Clouds are never Parts: flat slabs read
+    as glass. Leave them out rather than fake them.
+  * Real sizes: a big tree is 30-50 studs tall and a crystal 6-15, next to a 5-stud player. Scale a
+    generated model to that size ONCE and move on; resizing it again and again is the loop that ends a run.
+  * A waterfall is a thin sheet, not a tube: 2-4 studs deep, as wide as the stream, reaching all the way down
+    into a pool or ending in mist. It never stops in mid-air.
+  * The built-in sky can be warmed, not painted: set_mood "golden" gives a low warm sun and warm light on
+    everything, but the sky itself stays the Roblox sky. Never promise an orange sky in the reply.
   * Spend in this order and stop to check: landform, set_mood, 3-5 hero objects, check_composition, then
     detail. A whole environment should fit in about 60 steps.`;
 

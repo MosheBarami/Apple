@@ -135,3 +135,8 @@ Voxel Lighting migration adds to a place it converts. Measured on a fresh basepl
 checkpoint was refused ("could not capture those objects exactly: ColorGradingEffect x1"), so a brand-new
 customer started without an undo point (F-051). Commands "a ColorGradingEffect from Studio's lighting
 migration…" red with the class removed; plugin 46/0.
+
+Superseded 2026-09-23 ~04:45 IDT by sha256 `494fb68f875cdb1f9481634aedcdc43886fd87c4b709a32a4248356a2d7d7f8e` (installed locally): a NumberSequence keypoint written as
+[time, value] is accepted with the default envelope 0. The sky-island run of 04:20 lost its waterfall mist to
+four refusals of exactly that shape. Commands "a NumberSequence written as [time, value] pairs…" red with the
+line removed; plugin 46/0.
