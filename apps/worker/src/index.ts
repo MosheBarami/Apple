@@ -330,6 +330,7 @@ export { QuotaDO } from './do/quota';
 export { PairingDO } from './do/pairing';
 export { AdminDO } from './do/admin';
 export { BudgetDO } from './do/budget';
+import { readResetScope, SPEND_RESET_USAGE } from './do/budget';
 export { DiscordDO } from './do/discord';
 
 type Vars = {
@@ -3840,10 +3841,19 @@ app.post('/api/admin/spend-simulate', async (c) => {
   return c.json(await (await stub.fetch('https://do/simulate-usage', { method: 'POST', body: JSON.stringify({ neurons }) })).json());
 });
 
-/** Clears the spend ledger (used after testing). Real usage rolls over on its own. */
+/**
+ * Clears the spend ledger (used after testing). Real usage rolls over on its own.
+ *
+ * The caller must name the scope — `day`, `month` or `all` — and send `confirm: true`. The month
+ * ledger is the only guard on an uncapped provider bill, and a bare POST used to erase it along
+ * with the day. The reset is audited with its scope, BEFORE the write, like set-plan.
+ */
 app.post('/api/admin/spend-reset', async (c) => {
+  const scope = readResetScope(await c.req.json().catch(() => null));
+  if (!scope) return c.json({ ok: false, error: SPEND_RESET_USAGE }, 400);
+  auditAdminAction(c, `admin.spend-reset.${scope}`, null);
   const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName('singleton'));
-  return c.json(await (await stub.fetch('https://do/reset-ledger', { method: 'POST' })).json());
+  return c.json(await (await stub.fetch('https://do/reset-ledger', { method: 'POST', body: JSON.stringify({ scope, confirm: true }) })).json());
 });
 
 /**

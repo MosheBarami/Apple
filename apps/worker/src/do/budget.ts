@@ -99,6 +99,17 @@ function thisMonth(): string {
   return new Date().toISOString().slice(0, 7);
 }
 
+export type SpendResetScope = 'day' | 'month' | 'all';
+export const SPEND_RESET_USAGE = 'send { "scope": "day" | "month" | "all", "confirm": true } — nothing was cleared';
+
+/** The scope of a spend reset, or null unless the body names one AND carries `confirm: true`. */
+export function readResetScope(body: unknown): SpendResetScope | null {
+  if (!body || typeof body !== 'object') return null;
+  const { scope, confirm } = body as { scope?: unknown; confirm?: unknown };
+  if (confirm !== true) return null;
+  return scope === 'day' || scope === 'month' || scope === 'all' ? scope : null;
+}
+
 export class BudgetDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
 
@@ -238,15 +249,23 @@ export class BudgetDO extends DurableObject<Env> {
     }
 
     if (url.pathname === '/reset-ledger' && req.method === 'POST') {
-      // clears simulated/test usage; real usage rolls over on its own at the day/month boundary
+      // clears simulated/test usage; real usage rolls over on its own at the day/month boundary.
+      // The month ledger is the backstop the whole bill rests on, so nothing is cleared unless the
+      // caller names what (day | month | all) and confirms — a bare POST used to erase both.
+      const scope = readResetScope(await req.json().catch(() => null));
+      if (!scope) {
+        return Response.json({ ok: false, reason: 'scope_required', error: SPEND_RESET_USAGE }, { status: 400 });
+      }
       const s = await this.load();
-      s.dayNeurons = 0;
-      s.dayPending = 0;
-      s.dayBillableNeurons = 0;
-      s.monthBillableNeurons = 0;
+      if (scope === 'day' || scope === 'all') {
+        s.dayNeurons = 0;
+        s.dayPending = 0;
+        s.dayBillableNeurons = 0;
+      }
+      if (scope === 'month' || scope === 'all') s.monthBillableNeurons = 0;
       await this.ctx.storage.put(KEY, s);
-      this.sql.exec(`delete from spend where day = ?`, s.day);
-      return Response.json({ ok: true, state: this.view(s, killed, killedReason, await this.limits()) });
+      if (scope === 'day' || scope === 'all') this.sql.exec(`delete from spend where day = ?`, s.day);
+      return Response.json({ ok: true, scope, state: this.view(s, killed, killedReason, await this.limits()) });
     }
 
     if (url.pathname === '/reserve' && req.method === 'POST') {
