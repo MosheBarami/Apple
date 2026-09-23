@@ -1,0 +1,156 @@
+/* Resend skin: the monochrome Resend dashboard (resend.com: pure black canvas in dark and white in
+   light, Radix-style slate grays, Inter for text, Commit Mono for ids, hairline borders, soft 8-12px
+   radii, the gray-3 selected pill, small dot badges in emerald / amber / red / blue).
+   Resend's display serif is proprietary and is not shipped; Inter and Commit Mono are OFL.
+   Neither has Hebrew glyphs, so Hebrew falls through to the system Hebrew face. */
+
+@font-face { font-family: 'Inter'; src: url('../fonts/resend/inter-variable-latin.woff2') format('woff2'); font-weight: 400 600; font-style: normal; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Commit Mono'; src: url('../fonts/resend/commit-mono-400-latin.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+
+/* ------------------------------------------------ tokens (dark) */
+html[data-skin='resend'] {
+  --rs-1: #141517; --rs-2: #191b1e; --rs-3: #212629; --rs-4: #293034; --rs-5: #333b3e; --rs-6: #3b4345; --rs-7: #434a4d; --rs-8: #52595b;
+  --rs-9: #6e7679; --rs-10: #878d8f; --rs-11: #a1a4a5; --rs-12: #f0f0f0;
+  --rs-a3: #ffffff0d; --rs-a4: #ffffff14; --rs-a5: #ffffff1f; --rs-a6: #ffffff26;
+  --rs-green: #00d294; --rs-green-soft: #00d2941f; --rs-amber: #f99c00; --rs-amber-soft: #f99c001f; --rs-red: #ff6369; --rs-red-soft: #ff63691f; --rs-blue: #3080ff; --rs-blue-soft: #3080ff1f;
+
+  --bg: #000; --paper: #000; --paper-2: var(--rs-1);
+  --surface: #000; --surface-2: var(--rs-1); --surface-3: var(--rs-2);
+  --card: var(--surface); --card2: var(--surface-2);
+  --ink: var(--rs-12); --text: var(--ink); --ink-2: #d9d9d9;
+  --muted: var(--rs-11); --dim: var(--muted); --faint: var(--rs-10); --off: var(--rs-9);
+  --line: var(--rs-4); --line2: var(--rs-5); --line-strong: var(--rs-6); --hairline: var(--rs-3);
+  --control-fill: var(--rs-a3);
+  --accent: var(--rs-12); --accent2: var(--rs-11); --accent-ink: var(--rs-12);
+  --accent-soft: var(--rs-a4); --accent-ring: var(--rs-a6);
+  --primary: var(--rs-12); --primary-hover: #fff; --on-primary: #000;
+  --good: var(--rs-green); --warn: var(--rs-amber); --bad: var(--rs-red); --mid: var(--rs-blue);
+  --ok: var(--good); --ok-t: var(--good); --warn-t: var(--warn); --bad-t: var(--bad);
+  --shadow: none; --glow: transparent; --glass: #000000d9;
+  --focus-ring: 0 0 0 1px #000, 0 0 0 3px var(--rs-8);
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Hebrew', Arial, sans-serif;
+  --mono: 'Commit Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --r-xs: .125rem; --r-sm: .25rem; --r: .5rem; --r-md: .375rem; --r-lg: .75rem; --r-xl: 1rem; --r-pill: 9999px;
+  --t-fast: 150ms; --t-base: 200ms; --t-slow: 300ms;
+  color-scheme: dark;
+}
+/* ------------------------------------------------ tokens (light) */
+html[data-skin='resend'][data-theme='light'] {
+  --rs-1: #fcfcfc; --rs-2: #f9f9f9; --rs-3: #f0f0f0; --rs-4: #e8e8e8; --rs-5: #e0e0e0; --rs-6: #d9d9d9; --rs-7: #cecece; --rs-8: #bbb;
+  --rs-9: #8d8d8d; --rs-10: #6f6f6f; --rs-11: #646464; --rs-12: #191919;
+  --rs-a3: #0000000d; --rs-a4: #00000014; --rs-a5: #0000001f; --rs-a6: #00000026;
+  --rs-green: #00875f; --rs-green-soft: #00bb7f1f; --rs-amber: #a45c00; --rs-amber-soft: #f99c0026; --rs-red: #d4181f; --rs-red-soft: #e5484d1a; --rs-blue: #1f5fd1; --rs-blue-soft: #3080ff1a;
+  --bg: #fff; --paper: #fff; --paper-2: var(--rs-2); --surface: #fff; --surface-2: var(--rs-2); --surface-3: var(--rs-3);
+  --ink-2: #333; --primary-hover: #000; --on-primary: #fff; --glass: #ffffffd9;
+  --focus-ring: 0 0 0 1px #fff, 0 0 0 3px var(--rs-8);
+  color-scheme: light;
+}
+html[data-skin='resend'] [style*='--b:'] { --b-use: var(--rs-12); }
+
+/* ------------------------------------------------ type */
+html[data-skin='resend'] body { font: 400 14px/1.5 var(--font); color: var(--ink); background: var(--bg); font-feature-settings: 'cv11', 'ss01'; }
+html[data-skin='resend'] .phead h1 { font-size: 28px; line-height: 1.2; font-weight: 600; letter-spacing: -.02em; }
+html[data-skin='resend'] .psub { color: var(--muted); }
+html[data-skin='resend'] .card > h2, html[data-skin='resend'] .card-h { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+html[data-skin='resend'] .mono, html[data-skin='resend'] code, html[data-skin='resend'] kbd { font-family: var(--mono); font-size: .92em; letter-spacing: -.01em; }
+html[data-skin='resend'] code { padding: 1px 5px; border-radius: var(--r-sm); background: var(--rs-3); border: 1px solid var(--rs-4); }
+html[data-skin='resend'] :focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ------------------------------------------------ shell: black sidebar, gray-3 selected pill */
+html[data-skin='resend'] .side { background: var(--bg); border-inline-end: 1px solid var(--hairline); }
+html[data-skin='resend'] .top { background: var(--glass); border-bottom: 1px solid var(--hairline); }
+html[data-skin='resend'] .nav-a { border-radius: var(--r); color: var(--muted); }
+html[data-skin='resend'] .nav-a:hover { background: var(--rs-a3); color: var(--ink); }
+html[data-skin='resend'] .nav-a.on { background: var(--rs-3); color: var(--ink); font-weight: 500; }
+html[data-skin='resend'] .nav-a.on::before { display: none; }
+html[data-skin='resend'] .pal-btn { background: var(--rs-1); border: 1px solid var(--line); border-radius: var(--r); box-shadow: none; }
+
+/* ------------------------------------------------ surfaces */
+html[data-skin='resend'] .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: none; }
+html[data-skin='resend'] .modal-card, html[data-skin='resend'] .pal { background: var(--rs-1); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: 0 16px 48px #00000080; }
+html[data-skin='resend'] .toast { background: var(--rs-2); border: 1px solid var(--line); border-radius: var(--r-lg); }
+html[data-skin='resend'] .note { border-radius: var(--r-lg); }
+html[data-skin='resend'] .stat-k { font-size: 13px; color: var(--muted); font-weight: 500; }
+html[data-skin='resend'] .stat-v { font-weight: 600; letter-spacing: -.03em; }
+html[data-skin='resend'] .spark { color: var(--rs-12); }
+
+/* ------------------------------------------------ buttons: dark fill, subtle border, ~10px radius */
+html[data-skin='resend'] .btn { min-height: 36px; padding: 0 14px; border-radius: .625rem; border: 1px solid var(--rs-5); background: var(--rs-2); color: var(--ink);
+  font-weight: 500; box-shadow: none; transition: background-color var(--t-fast) ease, border-color var(--t-fast) ease; }
+html[data-skin='resend'] .btn:hover { background: var(--rs-3); border-color: var(--rs-6); }
+html[data-skin='resend'] .btn-sm { min-height: 32px; padding: 0 12px; font-size: 13px; border-radius: var(--r); }
+html[data-skin='resend'] .btn-primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+html[data-skin='resend'] .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+html[data-skin='resend'] .btn-ghost { background: transparent; border-color: transparent; }
+html[data-skin='resend'] .btn-ghost:hover { background: var(--rs-a3); border-color: transparent; }
+html[data-skin='resend'] .btn-danger { background: var(--rs-red); color: #fff; border-color: var(--rs-red); }
+
+/* ------------------------------------------------ chips + switch */
+html[data-skin='resend'] .chip { height: 24px; padding: 0 8px; border-radius: var(--r-md); border: 1px solid var(--rs-4); background: var(--rs-2); color: var(--ink-2); font-size: 12px; font-weight: 500; }
+html[data-skin='resend'] .chip-ok { color: var(--rs-green); background: var(--rs-green-soft); border-color: transparent; }
+html[data-skin='resend'] .chip-warn { color: var(--rs-amber); background: var(--rs-amber-soft); border-color: transparent; }
+html[data-skin='resend'] .chip-bad { color: var(--rs-red); background: var(--rs-red-soft); border-color: transparent; }
+html[data-skin='resend'] .chip-mid { color: var(--rs-blue); background: var(--rs-blue-soft); border-color: transparent; }
+html[data-skin='resend'] .sw { background: var(--rs-5); }
+html[data-skin='resend'] .swb[aria-checked='true'] .sw { background: var(--rs-12); }
+html[data-skin='resend'] .swb[aria-checked='true'] .sw i { background: var(--bg); }
+
+/* ------------------------------------------------ table */
+html[data-skin='resend'] th { height: 40px; padding: 0 16px; background: var(--rs-1); color: var(--muted); font-size: 13px; font-weight: 500; border-bottom: 1px solid var(--line); text-align: start; }
+html[data-skin='resend'] td { height: 52px; padding: 8px 16px; font-size: 14px; border-bottom: 1px solid var(--hairline); }
+html[data-skin='resend'] tbody tr:last-child td { border-bottom: 0; }
+html[data-skin='resend'] tbody tr:hover td { background: var(--rs-a3); }
+html[data-skin='resend'] .search, html[data-skin='resend'] select, html[data-skin='resend'] input:not([type='checkbox']) { background: var(--rs-1); border: 1px solid var(--line); border-radius: var(--r); box-shadow: none; }
+
+/* ================================================ page */
+html[data-skin='resend'] .rs-concl { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+html[data-skin='resend'] .rs-cc { padding: 14px 16px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--rs-1); }
+html[data-skin='resend'] .rs-cc b { display: flex; gap: 8px; align-items: baseline; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+html[data-skin='resend'] .rs-cc b::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--rs-9); transform: translateY(-1px); }
+html[data-skin='resend'] .rs-cc.is-bad b::before { background: var(--rs-red); } html[data-skin='resend'] .rs-cc.is-warn b::before { background: var(--rs-amber); }
+html[data-skin='resend'] .rs-cc.is-good b::before { background: var(--rs-green); } html[data-skin='resend'] .rs-cc.is-info b::before { background: var(--rs-blue); }
+html[data-skin='resend'] .rs-cc.is-bad { border-color: color-mix(in srgb, var(--rs-red) 35%, var(--line)); }
+html[data-skin='resend'] .rs-cc p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+
+html[data-skin='resend'] .rs-test { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--rs-1); }
+html[data-skin='resend'] .rs-test-t { flex: 1 1 320px; min-width: 0; }
+html[data-skin='resend'] .rs-test-t p { margin: 4px 0 0; color: var(--muted); overflow-wrap: anywhere; }
+
+html[data-skin='resend'] .rs-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; border-bottom: 1px solid var(--hairline); }
+html[data-skin='resend'] .rs-tb { height: 32px; padding: 0 12px; border: 0; border-radius: var(--r); background: none; color: var(--muted); font: inherit; font-weight: 500; white-space: nowrap; cursor: pointer; }
+html[data-skin='resend'] .rs-tb:hover { color: var(--ink); background: var(--rs-a3); }
+html[data-skin='resend'] .rs-tb.on { background: var(--rs-3); color: var(--ink); }
+html[data-skin='resend'] .rs-tab { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+html[data-skin='resend'] .rs-badge { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: var(--r-md); font-size: 12px; font-weight: 500;
+  background: var(--rs-3); color: var(--ink-2); white-space: nowrap; }
+html[data-skin='resend'] .rs-badge i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+html[data-skin='resend'] .rs-badge.is-ok { color: var(--rs-green); background: var(--rs-green-soft); }
+html[data-skin='resend'] .rs-badge.is-warn { color: var(--rs-amber); background: var(--rs-amber-soft); }
+html[data-skin='resend'] .rs-badge.is-bad { color: var(--rs-red); background: var(--rs-red-soft); }
+html[data-skin='resend'] .rs-badge.is-mid { color: var(--rs-blue); background: var(--rs-blue-soft); }
+html[data-skin='resend'] .rs-badge.is-off { color: var(--muted); }
+html[data-skin='resend'] .rs-subj { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-skin='resend'] .rs-more { margin: 0; color: var(--faint); font-size: 13px; }
+html[data-skin='resend'] .rs-domains { display: flex; flex-direction: column; gap: 12px; }
+html[data-skin='resend'] .rs-domain { display: flex; flex-direction: column; gap: 12px; }
+html[data-skin='resend'] .rs-dh { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: flex-start; }
+html[data-skin='resend'] .rs-dh h2 { margin: 0; }
+html[data-skin='resend'] .rs-sub { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+html[data-skin='resend'] .rs-acts, html[data-skin='resend'] .rs-sw { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+html[data-skin='resend'] .rs-sw label { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+html[data-skin='resend'] .rs-dns summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500; }
+html[data-skin='resend'] .rs-dns table { margin-top: 8px; }
+html[data-skin='resend'] .rs-card .list { margin: 0; }
+
+@media (max-width: 720px) {
+  html[data-skin='resend'] .rs-hide-s { display: none; }
+  html[data-skin='resend'] td { padding: 8px 10px; height: auto; }
+  html[data-skin='resend'] th { padding: 0 10px; }
+  html[data-skin='resend'] .rs-subj { max-width: 140px; }
+  html[data-skin='resend'] .rs-test { padding: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin='resend'] .btn { transition: none; }
+}
