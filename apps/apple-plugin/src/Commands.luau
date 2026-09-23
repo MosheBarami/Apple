@@ -1257,11 +1257,19 @@ end
 
 local function enumValue(enumText: string): (any?, string?)
 	local enumName, itemName = string.match(enumText, "^Enum%.([A-Za-z][A-Za-z0-9_]*)%.([A-Za-z][A-Za-z0-9_]*)$")
-	if not enumName or not itemName or not ENUM_ALLOW[enumName] then return nil, "enum is outside Apple's allowlist" end
+	if not enumName or not itemName then return nil, "enum must look like Enum.Name.Item" end
+	if not ENUM_ALLOW[enumName] then return nil, ("Enum.%s is outside Apple's allowlist"):format(enumName) end
 	local ok, enum = pcall(function() return Enum[enumName] end)
 	if not ok or not enum then return nil, "the requested enum is unavailable in this Studio build" end
 	local okItem, item = pcall(function() return enum[itemName] end)
-	if not okItem or item == nil then return nil, "the requested enum item is unavailable in this Studio build" end
+	if not okItem or item == nil then
+		-- name the valid items so the model can correct itself on the next call instead of guessing again
+		local names = {}
+		local okList, items = pcall(function() return enum:GetEnumItems() end)
+		if okList then for _, it in items do table.insert(names, it.Name) end end
+		table.sort(names)
+		return nil, ("Enum.%s has no item %s; valid items: %s"):format(enumName, itemName, table.concat(names, ", "))
+	end
 	return item
 end
 

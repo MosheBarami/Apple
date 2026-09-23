@@ -47,3 +47,10 @@ test('signs and floating labels can be sized and placed in the world', () => {
     assert.ok(readProperties.has(p), `${p} is not readable`);
   }
 });
+
+test('a wrong enum item is answered with the valid items, so the model can correct itself', () => {
+  const fn = source.match(/local function enumValue\([\s\S]*?\nend\n/);
+  assert.ok(fn, 'enumValue not found');
+  assert.match(fn[0], /GetEnumItems\(\)/, 'the refusal does not list the valid items');
+  assert.doesNotMatch(fn[0], /"the requested enum item is unavailable/, 'the refusal names nothing the model can use');
+});
