@@ -31,5 +31,7 @@ test('a project change forgets remembered READ signatures and keeps WRITE ones',
 
 test('the duplicate streak is bounded and the bound ends the run', () => {
   assert.match(src, /const MAX_DUPLICATE_STREAK = [1-9]\d*;/);
-  assert.match(src, /agent\.duplicateStreak\s*>=\s*MAX_DUPLICATE_STREAK/);
+  // the bound is handed to afterDuplicateStreak, whose 'end' finishes the run (run-unstick.test.mjs)
+  assert.match(src, /streak: agent\.duplicateStreak,\s*limit: MAX_DUPLICATE_STREAK/);
+  assert.match(src, /streak === 'end'\)[\s\S]{0,1500}this\.finishRun\(/);
 });

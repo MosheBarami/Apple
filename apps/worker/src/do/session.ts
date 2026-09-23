@@ -81,7 +81,7 @@ import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool }
 import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, afterDuplicateStreak, UNSTICK_STEER, type RetuneAction } from '../run-idle';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
@@ -243,6 +243,10 @@ interface AgentState {
    * MAX_DUPLICATE_STREAK; the run then ends on what it built.
    */
   duplicateStreak?: number;
+  /** Times this run was moved on from a duplicate streak instead of ended (run-idle.ts afterDuplicateStreak). */
+  unstucks?: number;
+  /** The next step is offered only tools that change the place — set by an unstick, cleared when offered. */
+  readsWithheldOnce?: boolean;
   /** A verifier passed after the latest change to the place. Cleared by the next change. */
   verifiedAfterMutation?: boolean;
   /**
@@ -3619,9 +3623,14 @@ export class SessionDO extends DurableObject<Env> {
     // A request that forbade changes gets no tool that can make one — narrowing only, like the
     // permissions below. The playtest stays: it restores anything it disturbs, and it is often
     // exactly what such a request asks for.
+    // One step after an unstick (run-idle.ts afterDuplicateStreak): only what changes the place, so
+    // the model cannot re-read its way back into the loop. Narrowing only, and for this one step.
     const base = agent.readOnly
       ? new Set([...modeBase].filter((name) => !READ_ONLY_WITHHELD.has(name)))
-      : modeBase;
+      : agent.readsWithheldOnce
+        ? new Set([...modeBase].filter((name) => READ_ONLY_WITHHELD.has(name) || name === 'propose_plan'))
+        : modeBase;
+    agent.readsWithheldOnce = false;
     const userAllowed = agent.mode === 'agent' && agent.autonomous
       ? base
       : applyToolPermissions(base, agent.toolPermissions);
@@ -4382,7 +4391,22 @@ export class SessionDO extends DurableObject<Env> {
     // A step whose every call was refused as a duplicate made no progress and was still paid for.
     // Three in a row is a loop, not deliberation: end on what the run has, and say so.
     agent.duplicateStreak = executedThisStep === 0 && duplicatesThisStep > 0 ? (agent.duplicateStreak ?? 0) + 1 : 0;
-    if (agent.duplicateStreak >= MAX_DUPLICATE_STREAK) {
+    const planOpen = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
+    const streakGaps = gameGaps(agent.request, agent, allowed.has('play_check'));
+    const streak = afterDuplicateStreak({
+      streak: agent.duplicateStreak,
+      limit: MAX_DUPLICATE_STREAK,
+      autonomous: agent.mode === 'agent' && agent.autonomous === true && canBuild,
+      unstucks: agent.unstucks ?? 0,
+      workOpen: planOpen !== undefined || streakGaps.length > 0,
+    });
+    if (streak === 'unstick') {
+      agent.unstucks = (agent.unstucks ?? 0) + 1;
+      agent.duplicateStreak = 0;
+      agent.readsWithheldOnce = true;
+      const next = planOpen ? ` Your plan's next step is "${planOpen.title}" (${planOpen.tool}).` : '';
+      agent.llm.push({ role: 'user', content: UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') });
+    } else if (streak === 'end') {
       const note = agent.lightingOnly && agent.mutated
         ? `The lighting is changed. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what else you would like and Apple will do it.`
         : agent.kitZone

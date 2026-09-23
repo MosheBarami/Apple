@@ -54,8 +54,9 @@ test('a read-only run is offered no project-writing tool and owes no mutation', 
     `the writer list looks wrong (${writers.length}) — this test would check nothing`);
   assert.match(SESSION, /const READ_ONLY_WITHHELD = new Set\(projectMutatingToolNames\(\)\);/);
   // The narrowing happens to `base`, which every later narrowing (permissions, autonomous, plugin
-  // capabilities) starts from, so nothing downstream can hand a writer back.
-  assert.match(SESSION, /const base = agent\.readOnly\s*\?\s*new Set\(\[\.\.\.modeBase\]\.filter\(\(name\) => !READ_ONLY_WITHHELD\.has\(name\)\)\)\s*:\s*modeBase;/);
+  // capabilities) starts from, so nothing downstream can hand a writer back. The read-only branch
+  // is tested first, so the one-step unstick narrowing after it can never apply to such a run.
+  assert.match(SESSION, /const base = agent\.readOnly\s*\?\s*new Set\(\[\.\.\.modeBase\]\.filter\(\(name\) => !READ_ONLY_WITHHELD\.has\(name\)\)\)\s*:/);
   assert.match(SESSION, /const userAllowed = agent\.mode === 'agent' && agent\.autonomous\s*\?\s*base/);
   // The "you have not changed the project yet" nudge must not fire on a run that was told not to.
   assert.match(SESSION, /const askedForWork =[^;]*!agent\.readOnly;/);
