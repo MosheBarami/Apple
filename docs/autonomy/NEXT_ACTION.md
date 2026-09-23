@@ -1,21 +1,17 @@
 # NEXT ACTION
 
-**Load the new plugin build in Studio, then re-check what only it can show.** Studio pid 24529 sits behind a
-"Save changes?" prompt the agent may not click (OWNER_QUEUE Q-005). Once it is gone, relaunch
-`/private/tmp/RobloxStudioNoUpdate.app/Contents/MacOS/RobloxStudio -localPlaceFile
-/Users/moshe/Documents/Apple-Mission2c-Baseplate.rbxl -task EditFile` (installed plugin sha256 8a9ec295: Terrain in
-renders, ColorGradingEffect checkpoints, [t,v] NumberSequence keypoints, terrain_edit clear). Then:
-1. F-051: the first checkpoint on a fresh place is taken (no "ColorGradingEffect" toast).
-2. Mission 2 once more: inspect_visually now SEES the island — record its score instead of "not scored".
-3. F-033: start a build and press Disconnect in the Apple panel mid-run; the reply must say Studio
-   disconnected, not "not offered in this mode", and must not overcount changes.
-4. F-052 live: after "Start building" the composer is empty.
+**Wait for Roblox's appeal decision on Apple Studio, then flip the store switch.** The final plugin build
+(sha256 8a9ec295) was published over asset 107230158271368 on 2026-09-23 14:00 IDT and removed the same minute
+("Misusing Roblox Systems", 3Jj4h4hPWRTA3QPDRlNRmejqPrP). The appeal was sent at 14:02; Roblox estimates 5
+business days (evidence/20260923T1100Z-final-publish-appeal).
 
-Then: F-028 (read-only diagnosis), F-036 (a lighting change under ~60 Credits), F-053, three fresh reviews,
-and the final plugin publish + appeal before 2026-10-23 01:23 IDT (D-STORE-2) which closes F-020/F-034/F-038.
+1. Re-probe `https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=107230158271368,6415005344`
+   (Rojo is the control) and the Violations & Appeals page once a day.
+2. Accepted → set STUDIO_PLUGIN_STORE_LIVE true, drop the known-issue entry, redeploy site + web, close
+   F-020/F-034/F-038 with the probe as evidence (per docs/PLUGIN-RELEASE.md).
+3. Refused → read the stated reason, record it in F-038, and change only what it names. Never remove a tool
+   (owner direction); a second appeal is not possible on the same decision.
 
-**Fresh reviews run only under the supervisor, and it refuses while an interactive Product Owner session
-drives the checkout (D-AUT-1; measured 2026-09-23 07:58: "refusing to start: an interactive Product Owner
-(pid …) is driving this checkout").** .autonomy/state.json is set to phase "reviewer". After the final
-publish + appeal, end the interactive session and start `python3 scripts/autonomy-supervisor.py`; it begins
-with a reviewer and records the verdict itself.
+Meanwhile, three fresh reviews: end the interactive session and start `python3 scripts/autonomy-supervisor.py`
+(it refuses while an interactive Product Owner drives the checkout, D-AUT-1; .autonomy/state.json phase is
+"reviewer"). Optional: F-053 (undo after generate_model).
