@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-23T17:10:00Z",
-  "now": "בונה את הלוח המשולב, ומחבר ספריות UI ואייקונים חינמיות וחוקיות לסוכן ולאתר",
-  "nextStep": "לסיים את תיקון המראה של Apple MAX (משחקים צבעוניים בסגנון רובלוקס), להעלות אותו לאוויר, ולהריץ את סבב 2 בסטודיו מול Grow a Garden",
+  "updatedAt": "2026-09-23T16:50:00Z",
+  "now": "תיקון המראה של Apple MAX עלה לאוויר. מביא ספריות UI ואייקונים חינמיות וחוקיות לסוכן ולאתר",
+  "nextStep": "להריץ את סבב 2 בסטודיו: Apple MAX בונה Grow a Garden, ולהשוות מול המשחק האמיתי",
   "items": [
     {
       "id": "models",
@@ -14,8 +14,8 @@
     {
       "id": "byok",
       "he": "הסרת \"הבא מפתח משלך\"",
-      "status": "partial",
-      "detail": "הוסר מהמוצר. באתר השיווקי נשאר טקסט ישן עד ההעלאה הבאה של האתר"
+      "status": "done",
+      "detail": "הוסר מהמוצר ומהאתר השיווקי"
     },
     {
       "id": "voice",
@@ -115,7 +115,7 @@
       "id": "gauntlet",
       "he": "Apple MAX בונה משחק שנראה כמו המשחק האמיתי",
       "status": "progress",
-      "detail": "סבב 1 נכשל: המשחק יצא אפור ולא צבעוני. התיקון בעבודה, ואחריו סבב 2"
+      "detail": "סבב 1 נכשל: המשחק יצא אפור. התיקון (סגנון רובלוקס צבעוני) עלה לאוויר ב-23.9, עכשיו סבב 2"
     },
     {
       "id": "pluginStore",
@@ -136,6 +136,6 @@
     "F-020": "כל בדיקת משחק השאירה את הסטודיו במצב ריצה. התיקון כבר בקוד ומחכה לפרסום התוסף בחנות",
     "F-034": "התוסף ניתק אחרי 256 פעולות. התיקון כבר בקוד ומחכה לפרסום התוסף בחנות",
     "F-038": "רובלוקס הסירו את הגרסה החדשה של התוסף מהחנות. נשלח ערעור",
-    "F-059": "Apple MAX בונה עולם אפור במקום עולם צבעוני בסגנון רובלוקס"
+    "F-059": "Apple MAX בנה עולם אפור. התיקון עלה לאוויר, ונבדק בסבב 2 בסטודיו"
   }
 }
