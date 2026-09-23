@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-23T16:50:00Z",
-  "now": "תיקון המראה של Apple MAX עלה לאוויר. מביא ספריות UI ואייקונים חינמיות וחוקיות לסוכן ולאתר",
-  "nextStep": "להריץ את סבב 2 בסטודיו: Apple MAX בונה Grow a Garden, ולהשוות מול המשחק האמיתי",
+  "updatedAt": "2026-09-23T17:40:00Z",
+  "now": "סבב 3 של המבחן מול המשחק האמיתי: Apple MAX בונה מאפס בסטודיו",
+  "nextStep": "להשוות את סבב 3 למשחק האמיתי, לתקן את היכולת החלשה ביותר, ולהריץ שוב",
   "items": [
     {
       "id": "models",
@@ -46,8 +46,8 @@
     {
       "id": "uiLibraries",
       "he": "ספריות UI ואייקונים חינמיות וחוקיות, אלפי פריטים, לסוכן ולאתר",
-      "status": "progress",
-      "detail": "שני האתרים ששלחת דורשים תשלום ואוסרים שימוש במשחקים של לקוחות, לכן אני מביא ספריות CC0 חינמיות באותו היקף"
+      "status": "done",
+      "detail": "5,277 אייקונים ורכיבי UI חינמיים (CC0) באוויר, בגלריה באתר ולסוכן"
     },
     {
       "id": "agentTools",
@@ -115,7 +115,7 @@
       "id": "gauntlet",
       "he": "Apple MAX בונה משחק שנראה כמו המשחק האמיתי",
       "status": "progress",
-      "detail": "סבב 1 נכשל: המשחק יצא אפור. התיקון (סגנון רובלוקס צבעוני) עלה לאוויר ב-23.9, עכשיו סבב 2"
+      "detail": "סבב 2: המשחק צבעוני יותר אבל חסרו כפתורים וממשק ובדיקת משחק. תיקנתי את היכולות האלה באופן כללי ועכשיו סבב 3"
     },
     {
       "id": "pluginStore",
