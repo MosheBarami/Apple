@@ -134,6 +134,11 @@ export interface Env {
    * the unauthenticated toolbox-service/v1 endpoint — it is never required.
    */
   ROBLOX_API_KEY?: string;
+  /**
+   * Hugging Face token (D-HF-1): Inference Providers for the second image model and the ZeroGPU
+   * Space the 3D generator runs on. Unset, hf.ts reports `not_configured` and nothing is called.
+   */
+  HF_TOKEN?: string;
   /** Optional dedicated Vectorize index for the asset library; falls back to VEC. */
   VEC_ASSETS?: VectorizeIndex;
   // ---------------------------------------------------------------------------
