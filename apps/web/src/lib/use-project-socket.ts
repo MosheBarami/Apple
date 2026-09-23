@@ -348,6 +348,9 @@ function mockHistory(): ChatItem[] {
   return base;
 }
 
+/** How long a sent prompt may go without msg_start or a refusal before the socket is presumed dead. */
+const CHAT_ACK_DEADLINE_MS = 30_000;
+
 export function useProjectSocket(
   projectId: string,
   onServerError: (code: string, message: string) => void,
@@ -1143,6 +1146,12 @@ export function useProjectSocket(
         setRunning(true);
         const id = localId();
         unackedChat.current = { text, localId: id };
+        // An OPEN socket whose server end answers nothing never fires onclose, so the handover there
+        // never runs. Closing it ourselves does: the prompt goes back in the box and we reconnect.
+        const sentOn = wsRef.current;
+        window.setTimeout(() => {
+          if (unackedChat.current?.localId === id && wsRef.current === sentOn) sentOn?.close(4000, 'no answer');
+        }, CHAT_ACK_DEADLINE_MS);
         setMessages((list) => [
           ...list,
           {

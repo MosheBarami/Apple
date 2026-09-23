@@ -36,3 +36,18 @@ test('the workspace puts it back in the box and says so, and never resends it by
   assert.match(effect, /didn't reach Apple/);
   assert.doesNotMatch(effect, /sendChat\(/, 'a resend could double-run a prompt that did arrive');
 });
+
+// Measured 2026-09-23 on the owner's first build: the socket was OPEN at both ends, the hello arrived,
+// and the server then answered nothing — not the prompt, not a ping. No close ever fired, so the
+// handover above never ran and the page said "working" for as long as it stayed open.
+test('a prompt nobody answers is handed back after a deadline, not left running forever', () => {
+  const send = between(HOOK, 'const sendChat = useCallback(', 'const signalPresence');
+  const m = HOOK.match(/const CHAT_ACK_DEADLINE_MS = ([\d_]+);/);
+  assert.ok(m, 'the deadline is a named constant');
+  const ms = Number(m[1].replace(/_/g, ''));
+  assert.ok(ms >= 10_000 && ms <= 60_000, `deadline ${ms}ms: long enough for a slow start, short enough to notice`);
+  // Only THIS prompt, still unanswered, on the socket it was sent on: an answered one, or one whose
+  // socket was already replaced, must not close a healthy connection.
+  assert.match(send, /setTimeout\(\(\) => \{[\s\S]*?unackedChat\.current\?\.localId === id[\s\S]*?wsRef\.current === sentOn[\s\S]*?\.close\(/);
+  assert.match(send, /\}, CHAT_ACK_DEADLINE_MS\);/);
+});

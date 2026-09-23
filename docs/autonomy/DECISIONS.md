@@ -143,3 +143,9 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
 
 ## D-UI-GREEN-1 — Green means status, nowhere else, on the web app (2026-09-23, F-004)
 - Green (`--good`) stays only for status dots (Live, toast dot) and the small ✓/✕ op-result marks; decorative ticks (usage-page comparison, the "Studio connected" hero tick) use `--accent` #5b7cfa. Studio dialog op rows are labelled from the op kind (opSentence), because the oplog `summary` column holds only error text. Reverse: drop `.usage-page { --tbl-yes }` in usage.css and set `.pairing-success-icon` back to `var(--good)`.
+
+## D-SPEND-DAY-1 — Day-scope spend reset after test lanes exhausted the shared daily capacity (2026-09-23)
+- The shared daily cap (100k neurons) was spent by 913 calls, mostly agent test runs (apple:step 822) and my eval probes; customers then got "today's shared building capacity" refusals, which the owner saw as "broken when building".
+- Reset `scope:day` via the audited admin route; the monthly backstop (1.8M neurons ≈ $19.80) is untouched, worst case +$0.99 today.
+- Bulk training work now runs on a local MLX teacher, never the worker. Reverse: none needed; the cap re-arms at midnight UTC.
+- Root cause of the owner's stuck build was the deployed worker `15b5a04-dirty`, which ignored client socket frames; a clean deploy (98bc7ea) fixed it. The web client now closes a socket that leaves a prompt unanswered for 30 s, so the prompt returns to the box instead of "working" forever.
