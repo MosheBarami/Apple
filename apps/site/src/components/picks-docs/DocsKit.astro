@@ -1,0 +1,274 @@
+---
+/*
+ * THE DOCS' SHARED TOUCHES: the side navigation, the keyboard keys, and the links.
+ *
+ * Mounted once at the END of every page under src/pages/docs/ (the end, so the script tag it
+ * renders never becomes the prose's first child). It renders nothing visible; it upgrades what
+ * DocsLayout.astro already draws instead of adding a second copy of it. Three of the owner's picks:
+ *
+ * 1. React Bits' "Line Sidebar" (MIT + Commons Clause, https://github.com/DavidHDev/react-bits):
+ *    every nav link gets a short marker line; as the pointer moves down the list, the links near it
+ *    brighten, their markers lengthen and they lean right, eased each frame; the current page
+ *    stays lit. The proximity-and-smoothing idea is the original's; this code is written against
+ *    the layout's own nav (#docs-nav-list) rather than the demo's list.
+ * 2. Componentry's "Mac Keyboard" (MIT, https://github.com/componentry/componentry): every <kbd> in
+ *    the docs is drawn as a real keycap, a combination such as "Ctrl+Z" or "⌘Z" is split into one
+ *    cap per key, and pressing that key on your own keyboard presses the cap on the page. The
+ *    original's synthesised click sound is left out: the site ships no audio
+ *    (tests/interface-sound.test.mjs).
+ * 3. UI Layouts' "Button Hover Underline" (MIT, https://github.com/ui-layouts/uilayouts): a line
+ *    draws in under a link from the left on hover or keyboard focus and leaves to the right. The
+ *    quiet static underline stays, so a link is still recognisable as a link without a pointer.
+ *    Only links on a single line get the drawn bar; see the rule below for why.
+ */
+---
+
+<style is:global>
+  /* ---- 1. line sidebar ---- */
+  #docs-nav-list.line-nav a {
+    position: relative;
+    padding-left: 26px;
+    color: color-mix(in srgb, var(--ink) calc(var(--effect, 0) * 100%), var(--muted));
+    translate: calc(var(--effect, 0) * 5px) 0;
+  }
+
+  #docs-nav-list.line-nav a::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    width: 12px;
+    height: 1px;
+    background: color-mix(in srgb, var(--accent) calc(var(--effect, 0) * 100%), var(--line-strong));
+    transform: translateY(-50%) scaleX(calc(0.55 + var(--effect, 0) * 0.45));
+    transform-origin: left center;
+  }
+
+  /* ---- 2. keycaps ---- */
+  .docs__main kbd.keycap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.9em;
+    height: 1.75em;
+    margin: 0 0.1em;
+    padding: 0 0.45em;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    background: var(--surface-3);
+    box-shadow:
+      inset 0 -2px 0 color-mix(in srgb, var(--paper) 55%, transparent),
+      inset 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent),
+      0 1px 1px color-mix(in srgb, var(--paper) 70%, transparent);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.78em;
+    font-weight: 500;
+    line-height: 1;
+    vertical-align: 0.1em;
+    transition:
+      transform 90ms var(--ease-out),
+      box-shadow 90ms var(--ease-out),
+      border-color 90ms var(--ease-out);
+  }
+
+  .docs__main kbd.keycap.is-down {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    transform: translateY(1px) scale(0.97);
+  }
+
+  .docs__main kbd.keys {
+    padding: 0;
+    background: none;
+    font-size: inherit;
+    white-space: nowrap;
+  }
+
+  .docs__main kbd.keys > .keys__plus {
+    color: var(--faint);
+    font-family: var(--font-body);
+    font-size: 0.8em;
+  }
+
+  /* ---- 3. hover underline ----
+     A 1.5px bar in the link's own colour, scaled from 0 to full width. It is only armed on a link
+     that sits on one line (.u-draw, set by the script and re-checked on resize): a bar under a
+     link that wraps would run from its first word to its last across the gap between lines. A
+     wrapped link keeps the plain underline brightening, which it always had. */
+  .docs__main .prose a.u-draw,
+  .docs__main .docs__foot a.u-draw {
+    position: relative;
+  }
+
+  .docs__main .prose a.u-draw::after,
+  .docs__main .docs__foot a.u-draw::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: -0.12em;
+    left: 0;
+    height: 1.5px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: right center;
+    transition: transform 300ms cubic-bezier(0.65, 0.05, 0.36, 1);
+    pointer-events: none;
+  }
+
+  .docs__main .prose a.u-draw:is(:hover, :focus-visible),
+  .docs__main .docs__foot a.u-draw:is(:hover, :focus-visible) {
+    text-decoration-color: transparent;
+  }
+
+  .docs__main .prose a.u-draw:is(:hover, :focus-visible)::after,
+  .docs__main .docs__foot a.u-draw:is(:hover, :focus-visible)::after {
+    transform: scaleX(1);
+    transform-origin: left center;
+  }
+</style>
+
+<script>
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  /* ---- 1. line sidebar ---- */
+  const nav = document.getElementById('docs-nav-list');
+  if (nav) {
+    const links = Array.from(nav.querySelectorAll<HTMLAnchorElement>('a'));
+    const target = links.map(() => 0);
+    const now = links.map(() => 0);
+    let pointerY: number | null = null;
+    let raf = 0;
+    let last = 0;
+    const REACH = 64; // px either side of the pointer that a link still feels it
+
+    nav.classList.add('line-nav');
+
+    const aim = () => {
+      const box = nav.getBoundingClientRect();
+      links.forEach((a, i) => {
+        let t = a.getAttribute('aria-current') === 'page' || a === document.activeElement ? 1 : 0;
+        if (pointerY !== null) {
+          const r = a.getBoundingClientRect();
+          const d = Math.abs(pointerY - (r.top - box.top + r.height / 2));
+          const p = Math.max(0, 1 - d / REACH);
+          t = Math.max(t, p * p * (3 - 2 * p));
+        }
+        target[i] = t;
+      });
+    };
+
+    const frame = (time: number) => {
+      const dt = Math.min((time - (last || time)) / 1000, 0.05);
+      last = time;
+      const k = reduced.matches ? 1 : 1 - Math.exp(-dt / 0.09);
+      let moving = false;
+      links.forEach((a, i) => {
+        const next = now[i]! + (target[i]! - now[i]!) * k;
+        const settled = Math.abs(target[i]! - next) < 0.002;
+        now[i] = settled ? target[i]! : next;
+        a.style.setProperty('--effect', now[i]!.toFixed(3));
+        if (!settled) moving = true;
+      });
+      raf = moving ? requestAnimationFrame(frame) : 0;
+      if (!raf) last = 0;
+    };
+
+    const kick = () => {
+      aim();
+      if (!raf) raf = requestAnimationFrame(frame);
+    };
+
+    nav.addEventListener('pointermove', (e) => {
+      pointerY = e.clientY - nav.getBoundingClientRect().top;
+      kick();
+    });
+    nav.addEventListener('pointerleave', () => {
+      pointerY = null;
+      kick();
+    });
+    nav.addEventListener('focusin', kick);
+    nav.addEventListener('focusout', () => requestAnimationFrame(kick));
+    kick();
+  }
+
+  /* ---- 3. hover underline: arm it on links that fit on one line ---- */
+  const main = document.querySelector<HTMLElement>('.docs__main');
+  if (main) {
+    const drawn = Array.from(main.querySelectorAll<HTMLAnchorElement>('.prose a:not(.btn), .docs__foot a'));
+    const arm = () => drawn.forEach((a) => a.classList.toggle('u-draw', a.getClientRects().length === 1));
+    arm();
+    new ResizeObserver(arm).observe(main);
+  }
+
+  /* ---- 2. keycaps ---- */
+  const NAMES: Record<string, string> = {
+    ctrl: 'control',
+    control: 'control',
+    '⌘': 'meta',
+    cmd: 'meta',
+    command: 'meta',
+    '⌥': 'alt',
+    option: 'alt',
+    alt: 'alt',
+    '⇧': 'shift',
+    shift: 'shift',
+    enter: 'enter',
+    return: 'enter',
+    esc: 'escape',
+  };
+  const keyName = (label: string) => NAMES[label.toLowerCase()] ?? label.toLowerCase();
+
+  /** "Ctrl+Z" -> ["Ctrl", "Z"]; "⌘Z" -> ["⌘", "Z"]; "Z" -> ["Z"]. */
+  const split = (text: string) =>
+    text
+      .split('+')
+      .flatMap((part) => (/^[⌘⌥⇧]./.test(part.trim()) ? [part.trim()[0]!, part.trim().slice(1)] : [part.trim()]))
+      .filter(Boolean);
+
+  const caps: HTMLElement[] = [];
+  document.querySelectorAll<HTMLElement>('.docs__main kbd').forEach((kbd) => {
+    if (kbd.closest('kbd.keys') || kbd.children.length) return;
+    const parts = split(kbd.textContent ?? '');
+    if (parts.length <= 1) {
+      kbd.classList.add('keycap');
+      kbd.dataset.key = keyName(parts[0] ?? '');
+      caps.push(kbd);
+      return;
+    }
+    kbd.classList.add('keys');
+    kbd.textContent = '';
+    parts.forEach((part, i) => {
+      if (i) {
+        const plus = document.createElement('span');
+        plus.className = 'keys__plus';
+        plus.textContent = '+';
+        kbd.append(plus);
+      }
+      const cap = document.createElement('kbd');
+      cap.className = 'keycap';
+      cap.textContent = part;
+      cap.dataset.key = keyName(part);
+      kbd.append(cap);
+      caps.push(cap);
+    });
+  });
+
+  if (caps.length) {
+    const press = (key: string, down: boolean) => {
+      const name = key.toLowerCase();
+      caps.forEach((cap) => {
+        if (cap.dataset.key === name) cap.classList.toggle('is-down', down);
+      });
+    };
+    window.addEventListener('keydown', (e) => {
+      if (!e.repeat) press(e.key, true);
+    });
+    window.addEventListener('keyup', (e) => {
+      // macOS sends no keyup for a letter released while ⌘ is held, so letting go of ⌘ lets go of all.
+      if (e.key === 'Meta') caps.forEach((cap) => cap.classList.remove('is-down'));
+      else press(e.key, false);
+    });
+    window.addEventListener('blur', () => caps.forEach((cap) => cap.classList.remove('is-down')));
+  }
+</script>

@@ -38,6 +38,7 @@
  * own reasons gets its own file.
  */
 import { CONSENT_PROOF } from '../data/consent-proof';
+import ArrowLink from './picks/ArrowLink.astro';
 ---
 
 <section class="band" id="proof" aria-labelledby="proof-title">
@@ -99,7 +100,7 @@ import { CONSENT_PROOF } from '../data/consent-proof';
         nothing linking to it for exactly that reason. A component this lane owns can carry its own
         door. */}
     <p class="proof-more">
-      <a href="/proof">The whole log of one run, and the five defects it left behind &rarr;</a>
+      <ArrowLink href="/proof">The whole log of one run, and the five defects it left behind</ArrowLink>
     </p>
 
     {/* The limit is the record's own sentence and stays on the page. The record's repository path
@@ -121,14 +122,4 @@ import { CONSENT_PROOF } from '../data/consent-proof';
     line-height: 21px;
   }
 
-  .proof-more a {
-    color: var(--ink);
-    text-decoration: underline;
-    text-decoration-color: var(--line-strong);
-    text-underline-offset: 3px;
-  }
-
-  .proof-more a:hover {
-    text-decoration-color: var(--ink);
-  }
 </style>

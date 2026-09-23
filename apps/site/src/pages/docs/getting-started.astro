@@ -1,6 +1,8 @@
 ---
 import { MODE_INFO, PLAN_LIMITS, PRODUCT_MODES } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import DocsKit from '../../components/picks-docs/DocsKit.astro';
+import Folder from '../../components/picks-docs/Folder.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
 // Mode names and the free allowance are read from the shared product contract so this guide cannot
@@ -49,6 +51,14 @@ const free = PLAN_LIMITS.free;
     <strong>New project</strong>, give it a name (naming it after the place helps), and you land in
     the chat workspace.
   </p>
+  <Folder
+    label="What a project keeps"
+    items={[
+      { name: 'Chat', text: 'everything you and Apple have said about this place.' },
+      { name: 'Checkpoints', text: 'saved copies of your place from before each Agent run.' },
+      { name: 'Memory', text: 'what you have built together, so Apple remembers next time.' },
+    ]}
+  />
   <p>
     Projects are unlimited on the free tier, so make one per place rather than reusing a single
     project — the per-project memory works much better that way.
@@ -115,4 +125,6 @@ const free = PLAN_LIMITS.free;
     <li><a href="/docs/updating">Updating the plugin</a> — Roblox will not do it for you.</li>
     <li><a href="/docs/troubleshooting">Troubleshooting</a> — when the panel says something you didn't expect.</li>
   </ul>
+
+  <DocsKit />
 </DocsLayout>

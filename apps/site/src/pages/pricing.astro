@@ -196,7 +196,29 @@ const planFeatures = PLAN_FEATURES.map((f) => (f.id === 'modes' ? { ...f, label:
     : f,
 );
 import Base from '../layouts/Base.astro';
-import FAQ from '../components/FAQ.astro';
+import Accordion from '../components/picks-docs/Accordion.astro';
+import BeamBorder from '../components/picks-docs/BeamBorder.astro';
+import BuildEstimator from '../components/picks-docs/BuildEstimator.astro';
+import PriceSwitch from '../components/picks-docs/PriceSwitch.astro';
+import ShinyButton from '../components/picks-docs/ShinyButton.astro';
+import Spotlight from '../components/picks-docs/Spotlight.astro';
+
+/* A PLAN'S PRICE PER BUILD, for the "a month / a build" switch above the cards. Derived from the
+   same two numbers the card already prints — the monthly price and buildsPerMonth — so the switch
+   cannot show a figure the card does not imply. Rounded to the cent. */
+const perBuild = (id: PlanId) =>
+  formatMoney(Math.round(((PLAN_COPY[id].priceUsdMonthly ?? 0) / Math.max(1, buildsPerMonth(id))) * 100) / 100, {
+    currency: PRICE_CURRENCY,
+  });
+
+/* The build estimator's plans, in order, from the same configuration as the cards. A paid plan
+   nobody can buy yet says so; Enterprise is a conversation, not a checkout. */
+const estimatorPlans = PLAN_IDS.map((id) => ({
+  name: PLAN_COPY[id].name,
+  builds: buildsPerMonth(id),
+  planned: id !== 'free' && id !== 'enterprise' && !canBuy(id),
+  contact: id === 'enterprise',
+}));
 
 // Figures come from docs/COST-MODEL.md through the SAME arithmetic the worker uses,
 // `creditsForNeurons(n) = max(1, ceil(n / 30))`, and are not invented here:
@@ -328,16 +350,22 @@ const limitFaq = [
       </p>
 
       <div class="plans">
+        <PriceSwitch creditsPerBuild={CREDITS_PER_BUILD} />
         <div class="plan-rail">
         <article
           class={`plan slab slab--seam${promoted === 'free' ? ' is-promoted' : ''}`}
           aria-labelledby="plan-free"
           data-reveal
+          data-spotlight
         >
+          {promoted === 'free' && <BeamBorder />}
           {promoted === 'free' && <p class="plan__flag">Available now</p>}
           <header class="plan__head">
             <h2 id="plan-free">Free</h2>
-            <p class="plan__price"><span>{formatMoney(0, { currency: PRICE_CURRENCY })}</span> forever</p>
+            <p class="plan__price">
+              <span data-price-roll data-month={formatMoney(0, { currency: PRICE_CURRENCY })} data-build={perBuild('free')}>{formatMoney(0, { currency: PRICE_CURRENCY })}</span>
+              <small class="plan__per" data-price-unit data-month="forever" data-build="a build">forever</small>
+            </p>
           </header>
           <ul class="plan__list">
             <li><strong>{free.creditsPerDay.toLocaleString()} Credits</strong> per day · {free.creditsPerMonth.toLocaleString()} a month</li>
@@ -360,7 +388,11 @@ const limitFaq = [
             {/* The same words the landing uses for the same door. "Start building" promised a
                 build to a reader whose card, a few lines up, could say Studio installation was
                 unavailable; the note under the button is asked of the same flag. */}
-            <a href="/app/signup" class="btn btn-primary plan__cta">Create a free account</a>
+            {promoted === 'free' ? (
+              <ShinyButton href="/app/signup" class="plan__cta">Create a free account</ShinyButton>
+            ) : (
+              <a href="/app/signup" class="btn btn-primary plan__cta">Create a free account</a>
+            )}
             <p class="plan__note plan__note--foot">
               {STUDIO_PLUGIN_STORE_LIVE
                 ? 'No card required. Chat and building in Studio both work on Free.'
@@ -378,12 +410,21 @@ const limitFaq = [
               aria-labelledby={`plan-${id}`}
               data-reveal
               data-reveal-delay={110 + i * 60}
+              data-spotlight
             >
+              {promoted === id && <BeamBorder />}
               {promoted === id ? <p class="plan__flag">Recommended</p> : <p class="plan__flag plan__flag--quiet">Planned</p>}
               <header class="plan__head">
                 <h2 id={`plan-${id}`}>{PLAN_COPY[id].name}</h2>
                 <p class="plan__price">
-                  <span>{formatMoney(PLAN_COPY[id].priceUsdMonthly ?? 0, { currency: PRICE_CURRENCY })}</span> a month
+                  <span
+                    data-price-roll
+                    data-month={formatMoney(PLAN_COPY[id].priceUsdMonthly ?? 0, { currency: PRICE_CURRENCY })}
+                    data-build={perBuild(id)}
+                  >
+                    {formatMoney(PLAN_COPY[id].priceUsdMonthly ?? 0, { currency: PRICE_CURRENCY })}
+                  </span>
+                  <small class="plan__per" data-price-unit data-month="a month" data-build="a build">a month</small>
                 </p>
               </header>
               <ul class="plan__list">
@@ -419,7 +460,11 @@ const limitFaq = [
               </ul>
               <footer class="plan__foot">
                 {canBuy(id) ? (
-                  <a href={`/app/usage?plan=${id}`} class="btn btn-primary plan__cta">Choose {PLAN_COPY[id].name}</a>
+                  promoted === id ? (
+                    <ShinyButton href={`/app/usage?plan=${id}`} class="plan__cta">Choose {PLAN_COPY[id].name}</ShinyButton>
+                  ) : (
+                    <a href={`/app/usage?plan=${id}`} class="btn btn-primary plan__cta">Choose {PLAN_COPY[id].name}</a>
+                  )
                 ) : (
                   /*[[ A BUTTON THAT IS VISIBLY OFF, RATHER THAN NO BUTTON AT ALL.
                        The two planned cards rendered a 12px grey sentence and nothing else, so the
@@ -453,6 +498,14 @@ const limitFaq = [
           <span>{PLAN_COPY.enterprise.blurb}</span>
           <a href={`mailto:${SUPPORT_EMAIL}`}>Email us</a>
         </p>
+
+        <BuildEstimator
+          plans={estimatorPlans}
+          creditsPerBuild={CREDITS_PER_BUILD}
+          start={buildsPerMonth('free')}
+          step={10}
+          max={400}
+        />
 
         {/* FOUR NOTES, EACH WITH ITS OWN TITLE (2026-09-22). They were four dense paragraphs in a row
             directly under the cards, which read as a wall of fine print. Nothing in them is cut; each
@@ -675,10 +728,12 @@ const limitFaq = [
         <h2 id="limits-title" data-reveal class="carved">Limits, plainly stated</h2>
       </header>
       <div data-reveal data-reveal-delay="90">
-        <FAQ items={limitFaq} />
+        <Accordion items={limitFaq} />
       </div>
     </div>
   </section>
+
+  <Spotlight />
 </Base>
 
 <style>
@@ -771,6 +826,10 @@ const limitFaq = [
     margin: 0;
     color: var(--muted);
     font-size: 14px;
+  }
+
+  .plan__per {
+    font-size: inherit;
   }
 
   .plan__price span {

@@ -1,0 +1,148 @@
+/* The merged call to action (see CtaButton.astro for which pick supplies what). */
+:root,
+:root[data-theme='dark'] {
+  /* The sheen and the specular rim are drawn on the ink face, so they are its opposite. */
+  --cta-sheen: rgba(91, 124, 250, 0.32);
+  --cta-rim: #5b7cfa;
+}
+
+:root[data-theme='light'] {
+  --cta-sheen: rgba(255, 255, 255, 0.22);
+  --cta-rim: rgba(255, 255, 255, 0.85);
+}
+
+.cta {
+  --cta-h: 48px;
+  --cta-pad: 4px;
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--cta-h);
+  padding: 0 calc(var(--cta-h) + 6px) 0 22px;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.cta--sm {
+  --cta-h: 36px;
+  --cta-pad: 3px;
+  padding-left: 14px;
+  font-size: 14px;
+}
+
+.cta:active {
+  transform: scale(0.98);
+}
+
+.cta:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.cta__label {
+  position: relative;
+  z-index: 2;
+}
+
+/* Button Arrow Right + Liquid: the knob runs out to fill the button, overshooting a little and
+   settling, with its leading edge kept round. */
+.cta__knob {
+  position: absolute;
+  top: var(--cta-pad);
+  right: var(--cta-pad);
+  bottom: var(--cta-pad);
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: calc(var(--cta-h) - 2 * var(--cta-pad));
+  padding-right: calc((var(--cta-h) - 2 * var(--cta-pad) - 16px) / 2);
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-primary);
+  transition: width 560ms cubic-bezier(0.3, 1.45, 0.5, 1);
+}
+
+.cta__knob svg {
+  display: block;
+  flex: none;
+}
+
+.cta:hover .cta__knob,
+.cta:focus-visible .cta__knob {
+  width: calc(100% - 2 * var(--cta-pad));
+}
+
+/* Button Background Shine: one pass of light across the face. The band is a solid colour shaped by
+   a mask, so the button itself stays a flat fill. */
+.cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background-color: var(--cta-sheen);
+  mask-image: linear-gradient(110deg, transparent 38%, #000 50%, transparent 62%);
+  -webkit-mask-image: linear-gradient(110deg, transparent 38%, #000 50%, transparent 62%);
+  mask-size: 250% 100%;
+  -webkit-mask-size: 250% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: 150% 0;
+  -webkit-mask-position: 150% 0;
+  pointer-events: none;
+}
+
+.cta:hover::after,
+.cta.is-shine::after {
+  animation: cta-shine 900ms var(--ease-in-out) 1;
+}
+
+@keyframes cta-shine {
+  from {
+    mask-position: 150% 0;
+    -webkit-mask-position: 150% 0;
+  }
+
+  to {
+    mask-position: -50% 0;
+    -webkit-mask-position: -50% 0;
+  }
+}
+
+/* Specular: the rim lights on the side nearest the pointer. `--cta-x/--cta-y/--cta-spec` are
+   written by cta-button.ts. */
+.cta__rim {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 1.5px solid var(--cta-rim);
+  border-radius: inherit;
+  opacity: var(--cta-spec, 0);
+  mask-image: radial-gradient(80px circle at var(--cta-x, 50%) var(--cta-y, 50%), #000 0, transparent 100%);
+  -webkit-mask-image: radial-gradient(80px circle at var(--cta-x, 50%) var(--cta-y, 50%), #000 0, transparent 100%);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta,
+  .cta__knob {
+    transition: none;
+  }
+
+  .cta:hover::after,
+  .cta.is-shine::after {
+    animation: none;
+  }
+}

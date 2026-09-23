@@ -1,0 +1,210 @@
+---
+/*
+ * A COMMAND, TYPED OUT, AND WHAT IT REALLY PRINTS WHEN IT FINISHES.
+ *
+ * Adapted from Eldora UI's "Terminal" (MIT, https://github.com/karthikmudunuri/eldoraui): a window
+ * with three dots, the command typed a character at a time behind a caret, then the output lines
+ * revealed one by one. The demo's invented CLI session is not reproduced. The command and the
+ * output here are props, and the page passes the real ones: the build command it already
+ * publishes, and the closing lines the build scripts print, quoted verbatim —
+ * apps/site/tests/picks-pricing-docs.test.mjs fails if a quoted line stops appearing in the
+ * script it came from. Output the page does not quote is shown as an ellipsis, not made up.
+ *
+ * Without JavaScript, or under prefers-reduced-motion, the whole transcript is simply there. It
+ * types once, when it first scrolls into view. The copy button copies the command only.
+ */
+interface Props {
+  command: string;
+  output: string[];
+  /** The window's title, e.g. "Terminal". */
+  title?: string;
+}
+
+const { command, output, title = 'Terminal' } = Astro.props;
+---
+
+<figure class="term" data-terminal>
+  <div class="term__bar">
+    <span class="term__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    <figcaption class="term__title">{title}</figcaption>
+    <button type="button" class="term__copy" data-copy={command} aria-label="Copy the command">Copy</button>
+  </div>
+  <pre class="term__body"><code><span class="term__cmd"><span class="term__prompt" aria-hidden="true">$ </span><span data-term-cmd>{command}</span><span class="term__caret" aria-hidden="true"></span></span>{output.map((line) => <span class:list={['term__out', { 'term__out--gap': line === '…' }]} data-term-line>{line}</span>)}</code></pre>
+  <span class="visually-hidden" role="status" data-copy-status></span>
+</figure>
+
+<style>
+  .term {
+    margin: 20px 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--paper-2);
+  }
+
+  .term__bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 38px;
+    padding: 0 8px 0 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .term__dots {
+    display: inline-flex;
+    gap: 6px;
+  }
+
+  /* The traffic lights are the window's shape, not status, so they are the ink ramp rather than
+     red / amber / green. */
+  .term__dots i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--line-strong);
+  }
+
+  .term__title {
+    flex: 1;
+    color: var(--faint);
+    font-size: 12px;
+  }
+
+  .term__copy {
+    min-height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-xs);
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .term__copy:hover {
+    color: var(--ink);
+  }
+
+  .term__copy.is-done {
+    color: var(--ink);
+    border-color: var(--line-strong);
+  }
+
+  .term__body {
+    display: grid;
+    margin: 0;
+    padding: 16px;
+    overflow-x: auto;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    line-height: 1.7;
+  }
+
+  .term__body code {
+    display: grid;
+    padding: 0;
+    background: none;
+    font-size: inherit;
+    white-space: pre-wrap;
+  }
+
+  .term__prompt {
+    color: var(--faint);
+  }
+
+  .term__out {
+    color: var(--muted);
+  }
+
+  .term__out--gap {
+    color: var(--faint);
+  }
+
+  .term__caret {
+    display: none;
+    width: 7px;
+    height: 1.05em;
+    margin-left: 1px;
+    vertical-align: -0.15em;
+    background: var(--ink);
+    animation: term-blink 1s steps(2, start) infinite;
+  }
+
+  .term.is-typing .term__caret {
+    display: inline-block;
+  }
+
+  .term.is-typing .term__out:not(.is-shown) {
+    visibility: hidden;
+  }
+
+  @keyframes term-blink {
+    to {
+      opacity: 0;
+    }
+  }
+</style>
+
+<script>
+  import { wireCopy } from './copy-button';
+
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document.querySelectorAll<HTMLElement>('[data-terminal]').forEach((root) => {
+    wireCopy(root);
+    const cmd = root.querySelector<HTMLElement>('[data-term-cmd]');
+    const lines = Array.from(root.querySelectorAll<HTMLElement>('[data-term-line]'));
+    if (!cmd || reduced || !('IntersectionObserver' in window)) return;
+    const full = cmd.textContent ?? '';
+    // A screen reader gets the whole command at once; only the painting is staged.
+    const spoken = document.createElement('span');
+    spoken.className = 'visually-hidden';
+    spoken.textContent = full;
+    cmd.before(spoken);
+    cmd.setAttribute('aria-hidden', 'true');
+
+    const play = () => {
+      root.classList.add('is-typing');
+      let i = 0;
+      const typeTimer = window.setInterval(() => {
+        i += 1;
+        cmd.textContent = full.slice(0, i);
+        if (i < full.length) return;
+        window.clearInterval(typeTimer);
+        let n = 0;
+        const lineTimer = window.setInterval(() => {
+          lines[n]?.classList.add('is-shown');
+          n += 1;
+          if (n < lines.length) return;
+          window.clearInterval(lineTimer);
+          root.classList.remove('is-typing');
+        }, 320);
+      }, 38);
+    };
+
+    cmd.textContent = '';
+    root.classList.add('is-typing');
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      play();
+    }, { threshold: 0.4 });
+    io.observe(root);
+    // Never leave it blank: if the observer never fires, show the whole transcript.
+    window.setTimeout(() => {
+      if (cmd.textContent === '' && root.classList.contains('is-typing')) {
+        io.disconnect();
+        cmd.textContent = full;
+        lines.forEach((l) => l.classList.add('is-shown'));
+        root.classList.remove('is-typing');
+      }
+    }, 8000);
+  });
+</script>

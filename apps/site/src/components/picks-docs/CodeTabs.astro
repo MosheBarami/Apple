@@ -1,0 +1,290 @@
+---
+/*
+ * ONE BLOCK OF CODE PER CHOICE, WITH A COPY BUTTON.
+ *
+ * Two of the owner's picks, merged because they are the same component with two looks: UI Layouts'
+ * "Code Tabs" (tabs over a code panel, a copy button that ticks when it has copied) and "Code Tabs
+ * MDX" (tabs named like files, in the mono face, set inside the prose). Both MIT
+ * (https://github.com/ui-layouts/uilayouts). A tab can be a plain word ("Windows") or, with
+ * `file: true`, a file name.
+ *
+ * The highlighting runs at BUILD time — the reader downloads coloured HTML, not a highlighter — and
+ * it is monochrome on purpose: weight and the ink ramp, never a colour the contrast guard has not
+ * measured. Tabs follow the ARIA tabs pattern (arrow keys, Home, End). Without JavaScript every
+ * panel is shown, stacked, each under its own label.
+ */
+interface Tab {
+  label: string;
+  code: string;
+  lang?: 'bash' | 'lua' | 'path' | 'text';
+  file?: boolean;
+}
+
+interface Props {
+  tabs: Tab[];
+  /** What the block is, for the tab list's accessible name. */
+  label: string;
+}
+
+const { tabs, label } = Astro.props;
+const id = `ct-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const KEYWORDS: Record<string, string[]> = {
+  lua: ['local', 'function', 'end', 'if', 'then', 'else', 'elseif', 'for', 'in', 'do', 'while', 'return', 'and', 'or', 'not', 'nil', 'true', 'false'],
+  bash: ['node', 'npx', 'npm', 'pnpm', 'rojo', 'git', 'cd', 'python3'],
+};
+
+function highlight(code: string, lang: Tab['lang'] = 'text'): string {
+  if (lang === 'text') return esc(code);
+  if (lang === 'path') {
+    // A path reads as its folders: the separators step back so the names stand out.
+    return esc(code).replace(/([\\/])/g, '<i class="ct-p">$1</i>');
+  }
+  const kw = KEYWORDS[lang] ?? [];
+  const re = lang === 'lua'
+    ? /(--[^\n]*)|("[^"\n]*"|'[^'\n]*')|(\b\d+(?:\.\d+)?\b)|(\b[A-Za-z_]\w*\b)|([\s\S])/g
+    : /(#[^\n]*)|("[^"\n]*"|'[^'\n]*')|(\b\d+(?:\.\d+)?\b)|(\b[A-Za-z_][\w.-]*\b)|([\s\S])/g;
+  return code.replace(re, (m, comment, str, num, word) => {
+    if (comment) return `<i class="ct-c">${esc(comment)}</i>`;
+    if (str) return `<i class="ct-s">${esc(str)}</i>`;
+    if (num) return `<i class="ct-n">${num}</i>`;
+    if (word && kw.includes(word)) return `<i class="ct-k">${word}</i>`;
+    return esc(m);
+  });
+}
+---
+
+<div class="ct" data-code-tabs>
+  <div class="ct__tabs" role="tablist" aria-label={label} hidden>
+    {
+      tabs.map((tab, i) => (
+        <button
+          type="button"
+          role="tab"
+          id={`${id}-tab-${i}`}
+          aria-controls={`${id}-panel-${i}`}
+          aria-selected={i === 0 ? 'true' : 'false'}
+          tabindex={i === 0 ? 0 : -1}
+          class:list={['ct__tab', { 'ct__tab--file': tab.file }]}
+        >
+          {tab.label}
+        </button>
+      ))
+    }
+  </div>
+  {
+    tabs.map((tab, i) => (
+      <div class="ct__panel" role="tabpanel" id={`${id}-panel-${i}`} aria-labelledby={`${id}-tab-${i}`}>
+        <p class:list={['ct__label', { 'ct__label--file': tab.file }]}>{tab.label}</p>
+        <button type="button" class="ct__copy" data-copy={tab.code} aria-label={`Copy ${tab.label}`}>
+          <svg class="ct__icon ct__icon--copy" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+            <rect x="8" y="8" width="14" height="14" rx="2" />
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+          </svg>
+          <svg class="ct__icon ct__icon--done" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </button>
+        <pre><code set:html={highlight(tab.code, tab.lang)} /></pre>
+      </div>
+    ))
+  }
+  <span class="visually-hidden" role="status" data-copy-status></span>
+</div>
+
+<style>
+  .ct {
+    position: relative;
+    margin: 20px 0;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+  }
+
+  .ct__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin: 4px 4px 0;
+  }
+
+  .ct__tabs[hidden] {
+    display: none;
+  }
+
+  .ct__tab {
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: var(--r-xs);
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition:
+      color var(--t-fast) var(--ease-out),
+      background-color var(--t-fast) var(--ease-out);
+  }
+
+  .ct__tab--file {
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .ct__tab:hover {
+    color: var(--ink);
+  }
+
+  .ct__tab[aria-selected='true'] {
+    border-color: var(--line);
+    background: var(--surface-3);
+    color: var(--ink);
+  }
+
+  .ct__panel {
+    position: relative;
+    margin-top: 4px;
+    border-radius: var(--r-sm);
+    background: var(--paper-2);
+  }
+
+  .ct__panel[hidden] {
+    display: none;
+  }
+
+  /* Each panel's own label shows only when the tab list does not — that is, without JavaScript. */
+  .ct__label {
+    margin: 0;
+    padding: 10px 14px 0;
+    color: var(--faint);
+    font-size: 12px;
+  }
+
+  .ct__label--file {
+    font-family: var(--font-mono);
+  }
+
+  .ct.is-tabbed .ct__label {
+    display: none;
+  }
+
+  .ct pre {
+    margin: 0;
+    padding: 14px 52px 14px 14px;
+    overflow-x: auto;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    tab-size: 2;
+  }
+
+  .ct pre code {
+    padding: 0;
+    background: none;
+    font-size: inherit;
+  }
+
+  .ct pre :global(i) {
+    font-style: normal;
+  }
+
+  .ct pre :global(.ct-k) {
+    font-weight: 600;
+  }
+
+  .ct pre :global(.ct-s) {
+    color: var(--ink-2);
+  }
+
+  .ct pre :global(.ct-c),
+  .ct pre :global(.ct-p) {
+    color: var(--faint);
+  }
+
+  .ct__copy {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-xs);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: color var(--t-fast) var(--ease-out);
+  }
+
+  .ct__copy:hover {
+    color: var(--ink);
+  }
+
+  .ct__icon {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .ct__icon--done,
+  .ct__copy.is-done .ct__icon--copy {
+    display: none;
+  }
+
+  .ct__copy.is-done .ct__icon--done {
+    display: block;
+    color: var(--ink);
+  }
+</style>
+
+<script>
+  import { wireCopy } from './copy-button';
+
+  document.querySelectorAll<HTMLElement>('[data-code-tabs]').forEach((root) => {
+    wireCopy(root);
+    const list = root.querySelector<HTMLElement>('[role="tablist"]');
+    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const panels = Array.from(root.querySelectorAll<HTMLElement>('[role="tabpanel"]'));
+    if (!list || tabs.length < 2) return;
+    list.hidden = false;
+    root.classList.add('is-tabbed');
+
+    const select = (index: number, focus = false) => {
+      tabs.forEach((tab, i) => {
+        const on = i === index;
+        tab.setAttribute('aria-selected', String(on));
+        tab.tabIndex = on ? 0 : -1;
+        panels[i]!.hidden = !on;
+      });
+      if (focus) tabs[index]!.focus();
+    };
+
+    tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => select(i));
+      tab.addEventListener('keydown', (e) => {
+        const last = tabs.length - 1;
+        const to =
+          e.key === 'ArrowRight' ? (i === last ? 0 : i + 1)
+          : e.key === 'ArrowLeft' ? (i === 0 ? last : i - 1)
+          : e.key === 'Home' ? 0
+          : e.key === 'End' ? last
+          : -1;
+        if (to < 0) return;
+        e.preventDefault();
+        select(to, true);
+      });
+    });
+    select(0);
+  });
+</script>

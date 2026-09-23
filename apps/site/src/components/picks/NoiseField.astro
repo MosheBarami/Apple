@@ -1,0 +1,26 @@
+---
+/**
+ * A quiet moving ground behind one section. Picks merged: React Bits Waves (mode="lines"), Shape
+ * Waves (mode="bricks"), Topography + Dither (mode="contours"). The engine and its reasons are in
+ * ./noise-field.ts.
+ *
+ * Put it as the FIRST child of a section that carries `data-field-host`; the section becomes the
+ * stacking context and the field sits behind everything else in it. It is aria-hidden and takes no
+ * pointer events, so it can never cover a control or be announced. With scripting off it is an
+ * empty box — the section reads exactly as it did before the field existed.
+ */
+import './noise-field.css';
+
+interface Props {
+  mode: 'lines' | 'bricks' | 'contours';
+}
+
+const { mode } = Astro.props;
+---
+
+<div class={`nf nf--${mode}`} data-nf={mode} aria-hidden="true"><canvas></canvas></div>
+
+<script>
+  import { mountFields } from './noise-field';
+  mountFields();
+</script>

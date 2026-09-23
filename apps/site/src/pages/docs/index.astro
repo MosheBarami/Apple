@@ -1,6 +1,7 @@
 ---
 import { MODE_INFO, PRODUCT_MODES } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
 // The two ProductMode values are named from the shared contract rather than repeated here.
@@ -96,4 +97,6 @@ const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
     <a href="/docs/build-from-source">Build the plugin from source</a> covers the Rojo build and the
     local-plugin debug loop. It is explicitly not the install path.
   </p>
+
+  <DocsKit />
 </DocsLayout>

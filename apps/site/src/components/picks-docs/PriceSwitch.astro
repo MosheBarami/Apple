@@ -1,0 +1,136 @@
+---
+/*
+ * PRICE SWITCHER — "a month" or "a build".
+ *
+ * The owner's pick was Motion's "Price switcher" (a Monthly / Yearly toggle with a sliding pill and
+ * rolling price). Motion+ licence: behaviour re-implemented here, no code copied. There is no yearly
+ * price in this product, so a yearly toggle would have to invent one. The question a young creator
+ * actually asks is "what does one build cost me?", and the page already knows the answer: the
+ * monthly price over the builds that month buys. So the toggle flips every plan card between its
+ * price a month and its price a build, with the digits rolling (rolling-number.ts).
+ *
+ * The figures are not in this component. Each price on the page carries its own two strings as
+ * data-month / data-build, derived in pricing.astro from PLAN_COPY and buildsPerMonth, and this only
+ * picks which one shows. Without JavaScript the switch stays hidden and the monthly prices stand.
+ */
+import './rolling-number.css';
+
+interface Props {
+  creditsPerBuild: number;
+}
+
+const { creditsPerBuild } = Astro.props;
+---
+
+<div class="pswitch" data-price-switch hidden>
+  <div class="pswitch__seg" role="group" aria-label="Show prices" data-view="month">
+    <span class="pswitch__pill" aria-hidden="true"></span>
+    <button type="button" aria-pressed="true" data-view="month">A month</button>
+    <button type="button" aria-pressed="false" data-view="build">A build</button>
+  </div>
+  <p class="pswitch__hint">One build is about {creditsPerBuild} Credits.</p>
+</div>
+
+<style>
+  .pswitch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px 16px;
+    margin: 0 auto 22px;
+  }
+
+  .pswitch[hidden] {
+    display: none;
+  }
+
+  .pswitch__seg {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+  }
+
+  .pswitch__pill {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+    border-radius: var(--r-xs);
+    background: var(--surface-3);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+    transition: transform 380ms cubic-bezier(0.3, 1.3, 0.5, 1);
+  }
+
+  .pswitch__seg[data-view='build'] .pswitch__pill {
+    transform: translateX(100%);
+  }
+
+  .pswitch__seg button {
+    position: relative;
+    z-index: 1;
+    min-width: 104px;
+    min-height: 32px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: var(--r-xs);
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color var(--t-fast) var(--ease-out);
+  }
+
+  .pswitch__seg button[aria-pressed='true'],
+  .pswitch__seg button:hover {
+    color: var(--ink);
+  }
+
+  .pswitch__hint {
+    margin: 0;
+    color: var(--faint);
+    font-size: 13px;
+  }
+</style>
+
+<script>
+  import { rollTo } from './rolling-number';
+
+  const root = document.querySelector<HTMLElement>('[data-price-switch]');
+  const seg = root?.querySelector<HTMLElement>('.pswitch__seg');
+  if (root && seg) {
+    root.hidden = false;
+    const buttons = Array.from(seg.querySelectorAll<HTMLButtonElement>('button[data-view]'));
+    const prices = Array.from(document.querySelectorAll<HTMLElement>('[data-price-roll]'));
+    const units = Array.from(document.querySelectorAll<HTMLElement>('[data-price-unit]'));
+    prices.forEach((el) => rollTo(el, el.dataset.month ?? el.textContent ?? '', true));
+
+    const show = (view: 'month' | 'build') => {
+      seg.dataset.view = view;
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+      prices.forEach((el) => rollTo(el, (view === 'build' ? el.dataset.build : el.dataset.month) ?? ''));
+      units.forEach((el) => {
+        el.textContent = (view === 'build' ? el.dataset.build : el.dataset.month) ?? '';
+      });
+    };
+
+    buttons.forEach((b, i) => {
+      b.addEventListener('click', () => show(b.dataset.view === 'build' ? 'build' : 'month'));
+      // Arrow keys move between the two options, as they would in any segmented control.
+      b.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault();
+        const other = buttons[(i + 1) % buttons.length]!;
+        other.focus();
+        other.click();
+      });
+    });
+  }
+</script>

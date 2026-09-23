@@ -1,0 +1,25 @@
+/* Motion "Conic gradient pointer", re-implemented (see PointerRim.astro). */
+[data-rim] {
+  position: relative;
+}
+
+/* An arc of the accent laid over the control's own hairline, turned by --prim-a and shown by
+   --prim-near (both written by pointer-rim.ts on the host). */
+.prim {
+  position: absolute;
+  inset: -1px;
+  z-index: 1;
+  border: 1px solid var(--accent);
+  border-radius: inherit;
+  opacity: var(--prim-near, 0);
+  mask-image: conic-gradient(from calc(var(--prim-a, 0deg) - 70deg), transparent 0deg, #000 70deg, transparent 140deg);
+  -webkit-mask-image: conic-gradient(from calc(var(--prim-a, 0deg) - 70deg), transparent 0deg, #000 70deg, transparent 140deg);
+  pointer-events: none;
+}
+
+/* ONE RING, NOT TWO: while anything inside has focus the control draws its own focus ring, and the
+   arc steps aside rather than adding a second blue line inside it. */
+[data-rim]:focus-within .prim {
+  opacity: 0;
+  transition: opacity var(--t-base) var(--ease-out);
+}

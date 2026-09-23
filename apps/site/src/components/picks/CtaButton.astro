@@ -1,0 +1,43 @@
+---
+/**
+ * THE SITE'S ONE CALL TO ACTION, carrying four of the owner's picks at once, because all four were
+ * the same object — the primary button — and a page with four kinds of primary button has none.
+ *
+ *   UI Layouts "Button Arrow Right" (MIT): an arrow knob at the right end that, on hover or focus,
+ *            runs out to fill the whole button.
+ *   UI Layouts "Liquid Button" (MIT): the fill POURS rather than slides — the knob's run overshoots
+ *            and settles, and its leading edge stays round like a drop. Its iridescent blend and
+ *            blurred glow are left out: the site's direction has no glow and no second hue.
+ *   UI Layouts "Button Background Shine" (MIT): one sheen crosses the face when the button first
+ *            comes into view and again on each hover. Once, never on a loop.
+ *   React Bits "Specular Button" (MIT + Commons Clause, code not used): the rim catches the light
+ *            on the side nearest the pointer, before the pointer even arrives.
+ *
+ * It is an ordinary <a>. The knob, sheen and rim are aria-hidden spans; the accessible name is the
+ * label. The knob fills with the accent, which is the ordinary active-state colour, and the label
+ * keeps `--on-primary` throughout, which holds 4.5:1 against both the ink face and the blue fill in
+ * both themes.
+ */
+import './cta-button.css';
+
+interface Props {
+  href: string;
+  size?: 'sm' | 'lg';
+  class?: string;
+}
+
+const { href, size = 'lg', class: extra } = Astro.props;
+---
+
+<a class:list={['cta', `cta--${size}`, extra]} href={href} data-cta>
+  <span class="cta__knob" aria-hidden="true">
+    <svg viewBox="0 0 15 15" width="16" height="16" aria-hidden="true"><path d="M8.146 3.146a.5.5 0 0 1 .708 0l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L11.293 8H2.5a.5.5 0 0 1 0-1h8.793L8.146 3.854a.5.5 0 0 1 0-.708z" fill="currentColor"></path></svg>
+  </span>
+  <span class="cta__label"><slot /></span>
+  <span class="cta__rim" aria-hidden="true"></span>
+</a>
+
+<script>
+  import { mountCtas } from './cta-button';
+  mountCtas();
+</script>

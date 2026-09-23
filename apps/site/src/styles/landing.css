@@ -10,9 +10,14 @@
  * composer, which floats. Blue marks an ordinary active state (focus, a selected tab, a pressed
  * control). Violet is spent only by an Autonomous control while it is on.
  *
- * MOTION is two small things: the composer's example sentences cross-fading ONCE in an empty field
- * and then resting on the first, and a short fade as a section scrolls in. Nothing loops. Both are
+ * MOTION IN THIS SHEET is two small things: the composer's example sentences cross-fading ONCE in
+ * an empty field and then resting on the first, and a short fade as a section scrolls in. Both are
  * off under prefers-reduced-motion.
+ *
+ * THE OWNER'S PICKED COMPONENTS (2026-09-23) carry the rest of the page's motion, and each keeps
+ * its own sheet beside it under components/picks/ — the ideas ticker, the beams, the tablet, the
+ * maker tiles, the moving grounds, the call to action. They share one contract
+ * (components/picks/motion.ts): still under reduced motion, idle off screen, drawn in these tokens.
  */
 
 /* The mono token reaches every technical surface; the body face comes from apple-minimal.css. */
@@ -505,9 +510,13 @@ a {
   line-height: 1.6;
 }
 
+/* The panel sits on the tablet's screen (components/picks/DeviceFrame.astro). */
+.demos-device {
+  margin-top: 56px;
+}
+
 /* THE STAGE PANEL: one surface, one row of small tabs, one stage at a time. */
 .demos {
-  margin-top: 56px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -946,31 +955,6 @@ a {
   text-decoration-color: var(--accent);
 }
 
-.byok-logos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.byok-logo {
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-xs);
-  color: var(--ink-2);
-}
-
-.byok-logo svg {
-  display: block;
-  width: 16px;
-  height: 16px;
-}
-
 .auto-row {
   display: flex;
   align-items: flex-start;
@@ -1067,9 +1051,7 @@ a {
 }
 
 .btn-closing {
-  min-height: 40px;
   margin-top: 28px;
-  padding-inline: 18px;
 }
 
 /* ------------------------------------------------------------------ reveal */

@@ -1,0 +1,196 @@
+---
+/*
+ * THE BEAM AROUND THE ONE PLAN YOU CAN TAKE.
+ *
+ * Two of the owner's picks did the same job in the same place — mark the ranked card — so they are
+ * one component with both qualities:
+ *   - Motion's "BorderBeam": a short bright arc travelling round the card's edge. Motion+ licence,
+ *     so the behaviour is re-implemented and no code is copied.
+ *   - React Bits' "Electric Border" (MIT + Commons Clause): the edge line is displaced by noise so
+ *     it crackles. The amplitude is a pixel or two and only the beam itself jitters, which keeps it
+ *     inside Apple's quiet look; the original's 60px violet lightning is not reproduced. The noise
+ *     and the rounded-rectangle walk are written here from scratch.
+ *
+ * It paints the accent token, read from the page so the light theme gets the light accent, as a
+ * plain line: no glow, which this site does not paint anywhere (tests/living-background.test.mjs). It runs
+ * only while the card is on screen. Under prefers-reduced-motion it draws one still ring and stops.
+ * The host must be position: relative; the canvas is aria-hidden and ignores the pointer.
+ */
+---
+
+<span class="beam" data-beam aria-hidden="true"><canvas></canvas></span>
+
+<style>
+  .beam {
+    position: absolute;
+    inset: -4px;
+    z-index: 2;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .beam canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<script>
+  const PAD = 4; // the canvas overhangs the card by this much, so the jitter has room
+  const LAP_MS = 5200; // one trip round the card
+  const TAIL = 0.24; // share of the perimeter the beam's tail covers
+  const AMP = 1.6; // px of electric displacement at the beam's head
+
+  const hash = (n: number) => {
+    const s = Math.sin(n * 127.1) * 43758.5453;
+    return s - Math.floor(s);
+  };
+  // Smooth value noise over (x, t): cheap, deterministic, no library.
+  const noise = (x: number, t: number) => {
+    const xi = Math.floor(x), ti = Math.floor(t);
+    const xf = x - xi, tf = t - ti;
+    const u = xf * xf * (3 - 2 * xf), v = tf * tf * (3 - 2 * tf);
+    const a = hash(xi + ti * 57), b = hash(xi + 1 + ti * 57);
+    const c = hash(xi + (ti + 1) * 57), d = hash(xi + 1 + (ti + 1) * 57);
+    return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v - 0.5;
+  };
+
+  /** A point `p` (0..1) of the way round a rounded rectangle, clockwise from the top-left. */
+  function around(p: number, x: number, y: number, w: number, h: number, r: number) {
+    const sw = w - 2 * r, sh = h - 2 * r, arc = (Math.PI * r) / 2;
+    const total = 2 * sw + 2 * sh + 4 * arc;
+    let d = p * total;
+    const corner = (cx: number, cy: number, start: number, t: number) => {
+      const a = start + (t / arc) * (Math.PI / 2);
+      return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as const;
+    };
+    if (d <= sw) return [x + r + d, y] as const;
+    d -= sw;
+    if (d <= arc) return corner(x + w - r, y + r, -Math.PI / 2, d);
+    d -= arc;
+    if (d <= sh) return [x + w, y + r + d] as const;
+    d -= sh;
+    if (d <= arc) return corner(x + w - r, y + h - r, 0, d);
+    d -= arc;
+    if (d <= sw) return [x + w - r - d, y + h] as const;
+    d -= sw;
+    if (d <= arc) return corner(x + r, y + h - r, Math.PI / 2, d);
+    d -= arc;
+    if (d <= sh) return [x, y + h - r - d] as const;
+    d -= sh;
+    return corner(x + r, y + r, Math.PI, Math.min(d, arc));
+  }
+
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  document.querySelectorAll<HTMLElement>('[data-beam]').forEach((host) => {
+    const canvas = host.querySelector('canvas');
+    const card = host.parentElement;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !card || !ctx) return;
+
+    let w = 0, h = 0, radius = 16, dpr = 1, color = '#5b7cfa';
+    let running = false, visible = false, raf = 0, t0 = 0;
+
+    const readColor = () => {
+      color = getComputedStyle(card).getPropertyValue('--accent').trim() || color;
+    };
+    const size = () => {
+      const box = card.getBoundingClientRect();
+      w = box.width;
+      h = box.height;
+      radius = parseFloat(getComputedStyle(card).borderTopLeftRadius) || 16;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round((w + PAD * 2) * dpr);
+      canvas.height = Math.round((h + PAD * 2) * dpr);
+    };
+
+    const draw = (now: number) => {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w + PAD * 2, h + PAD * 2);
+      ctx.strokeStyle = color;
+      ctx.lineCap = 'round';
+      const r = Math.min(radius, w / 2, h / 2);
+      // The electric edge sits on the card's own 1px border line.
+      const x0 = PAD + 0.5, y0 = PAD + 0.5, bw = w - 1, bh = h - 1;
+
+      if (reduced.matches) {
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i <= 240; i += 1) {
+          const [px, py] = around(i / 240, x0, y0, bw, bh, r);
+          if (i) ctx.lineTo(px, py);
+          else ctx.moveTo(px, py);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        return;
+      }
+
+      const head = ((now - t0) / LAP_MS) % 1;
+      const perimeter = 2 * (bw + bh);
+      const steps = Math.max(60, Math.round((perimeter * TAIL) / 2));
+      const time = (now - t0) / 260;
+      let prev: readonly [number, number] | null = null;
+      for (let i = 0; i <= steps; i += 1) {
+        const behind = (i / steps) * TAIL; // 0 at the head, TAIL at the end of the tail
+        const p = (head - behind + 1) % 1;
+        const strength = (1 - behind / TAIL) ** 2;
+        const jitter = AMP * strength;
+        const [bx, by] = around(p, x0, y0, bw, bh, r);
+        const pt = [bx + noise(p * 90, time) * jitter * 2, by + noise(p * 90 + 31, time) * jitter * 2] as const;
+        if (prev) {
+          ctx.globalAlpha = strength;
+          ctx.lineWidth = 1 + strength * 0.8;
+          ctx.beginPath();
+          ctx.moveTo(prev[0], prev[1]);
+          ctx.lineTo(pt[0], pt[1]);
+          ctx.stroke();
+        }
+        prev = pt;
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const frame = (now: number) => {
+      draw(now);
+      raf = running ? requestAnimationFrame(frame) : 0;
+    };
+    const sync = () => {
+      const want = visible && !document.hidden && !reduced.matches;
+      if (want && !running) {
+        running = true;
+        t0 ||= performance.now();
+        raf = requestAnimationFrame(frame);
+      } else if (!want && running) {
+        running = false;
+        cancelAnimationFrame(raf);
+      }
+      if (!running) draw(performance.now());
+    };
+
+    readColor();
+    size();
+    new ResizeObserver(() => {
+      size();
+      if (!running) draw(performance.now());
+    }).observe(card);
+    new MutationObserver(() => {
+      readColor();
+      if (!running) draw(performance.now());
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver((entries) => {
+        visible = entries.some((e) => e.isIntersecting);
+        sync();
+      }).observe(card);
+    } else {
+      visible = true;
+    }
+    document.addEventListener('visibilitychange', sync);
+    reduced.addEventListener('change', sync);
+    sync();
+  });
+</script>

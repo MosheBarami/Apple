@@ -1,5 +1,18 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import DocsKit from '../../components/picks-docs/DocsKit.astro';
+import CodeTabs from '../../components/picks-docs/CodeTabs.astro';
+import Terminal from '../../components/picks-docs/Terminal.astro';
+
+/* The last two lines the build prints when it succeeds, quoted from the scripts that print them:
+   verify-artifact.py's result line, then build.mjs's own. Everything Rojo and the inspector print
+   before them is elided rather than invented. tests/picks-pricing-docs.test.mjs holds each line
+   to its source. */
+const buildOutput = [
+  '…',
+  'RESULT: the shipped bytes carry the capabilities this source claims',
+  'Local preview built, inspected and verified against its own source; not installed or published.',
+];
 ---
 
 <DocsLayout
@@ -50,7 +63,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <a href="https://rojo.space" rel="noopener noreferrer" target="_blank">Rojo</a> — version
     <strong>7.7.0</strong>, the version this repository pins.
   </p>
-  <pre><code>node apps/apple-plugin/scripts/build.mjs</code></pre>
+  <Terminal command="node apps/apple-plugin/scripts/build.mjs" output={buildOutput} />
   <p>
     It parses every source, refuses a <code>require</code> of a module that is not bundled, runs
     Rojo, and then reads the <em>built</em> artifact back — scanning it for credentials and
@@ -63,10 +76,13 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>Load it as a local plugin</h2>
   <p>Drop the <code>.rbxm</code> into Studio's local plugins folder and restart Studio:</p>
-  <ul>
-    <li><strong>Windows:</strong> <code>%LOCALAPPDATA%\Roblox\Plugins</code></li>
-    <li><strong>macOS:</strong> <code>~/Documents/Roblox/Plugins</code></li>
-  </ul>
+  <CodeTabs
+    label="Studio's local plugins folder"
+    tabs={[
+      { label: 'Windows', code: '%LOCALAPPDATA%\\Roblox\\Plugins', lang: 'path' },
+      { label: 'macOS', code: '~/Documents/Roblox/Plugins', lang: 'path' },
+    ]}
+  />
   <p>
     Studio's <strong>Plugins</strong> tab has a <strong>Plugins Folder</strong> button that opens
     the same directory, which is the reliable way to find it if the path above does not exist yet.
@@ -111,4 +127,6 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     them.
   </p>
 
+
+  <DocsKit />
 </DocsLayout>

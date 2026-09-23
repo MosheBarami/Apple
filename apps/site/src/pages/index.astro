@@ -6,6 +6,25 @@ import ConsentProof from '../components/ConsentProof.astro';
 /* The one piece of MODEL OUTPUT on this page: a screen the deployed model built, shipped
    byte-identical from docs/evidence. Its own header carries the reasons. */
 import BuiltScreen from '../components/BuiltScreen.astro';
+/* THE OWNER'S PICKED COMPONENTS (2026-09-23), each in the place it does a job. Every one is a
+   component of its own, with its reasons and its licence in its header:
+     NoiseField   the quiet moving ground under the hero, the capabilities and the closing line
+     PointerRim   the composer's rim turning toward the pointer
+     Marquee      the rows of ideas under the composer; pressing one types it into the field
+     BeamFlow     what a run reads and what it can make, as beams through a hub
+     DeviceFrame  the "try it" panel on a tablet that settles flat as it scrolls in
+     MakerTiles   the makers whose models run on your own key
+     ArrowLink    the text links that lead somewhere
+     CtaButton    the one primary button
+   tests/picks-landing.test.mjs fails if any of them stops being mounted. */
+import NoiseField from '../components/picks/NoiseField.astro';
+import PointerRim from '../components/picks/PointerRim.astro';
+import Marquee from '../components/Marquee.astro';
+import BeamFlow from '../components/picks/BeamFlow.astro';
+import DeviceFrame from '../components/picks/DeviceFrame.astro';
+import MakerTiles from '../components/picks/MakerTiles.astro';
+import ArrowLink from '../components/picks/ArrowLink.astro';
+import CtaButton from '../components/picks/CtaButton.astro';
 import {
   PLAN_COPY,
   PLAN_IDS,
@@ -48,6 +67,14 @@ const composerExamples = [
   'Make a twelve-stage obby',
   'Add a shop that saves what I buy',
   'Build a lobby with a round timer',
+];
+
+/* MORE THINGS TO ASK FOR, one tap away under the composer (components/Marquee.astro). Like the
+   three above they are requests a reader might type, never results; each is short enough to sit
+   on one chip. */
+const promptIdeas = [
+  ['Make the coins spin', 'Add a lava floor', 'Give players a double jump', 'Add a day and night cycle', 'Make a shop with three swords', 'Add a timer to each stage'],
+  ['Spawn a pet that follows me', 'Add a leaderboard', 'Build a tycoon with droppers', 'Add rain', 'Make a racing track', 'Add a checkpoint every ten stages'],
 ];
 
 /* THE CRITIQUE HAS ONE HOME. The score and the defect count are read by the activity figure and by
@@ -198,7 +225,8 @@ const byokMakers = byokFirstPerMaker
   <Nav />
 
   <main id="main">
-    <section class="hero" aria-labelledby="hero-title">
+    <section class="hero" aria-labelledby="hero-title" data-field-host>
+      <NoiseField mode="lines" />
       <div class="shell hero-inner">
         <p class="eyebrow hero-eyebrow">Inside Roblox Studio</p>
         <h1 id="hero-title" class="display">Build it in the place you already have open.</h1>
@@ -210,7 +238,8 @@ const byokMakers = byokFirstPerMaker
             HANDOFF-HERO-START.md names that hop — so the page promises no prefill. The three
             example sentences are the empty state, a ghost CSS hides the moment the field is
             focused or holds a character. */}
-        <form class="composer" action="/app/signup" method="get">
+        <form class="composer" action="/app/signup" method="get" data-rim>
+          <PointerRim />
           <div class="composer-field">
             <label class="visually-hidden" for="hero-start">What do you want built in your Roblox Studio place?</label>
             {/* `placeholder=" "` makes `:placeholder-shown` true while the field is empty, which is
@@ -242,12 +271,14 @@ const byokMakers = byokFirstPerMaker
           </div>
         </form>
 
+        <Marquee rows={promptIdeas} fills="hero-start" label="Ideas to try — pressing one writes it into the box above" caption="Or tap an idea" />
+
         <p class="availability">
           Free to start, no card.{' '}
           {installExternal ? (
             <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">Get Apple Studio from the Creator Store <span aria-hidden="true">↗</span></a>
           ) : (
-            <a href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</a>
+            <ArrowLink href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</ArrowLink>
           )}
         </p>
       </div>
@@ -263,6 +294,7 @@ const byokMakers = byokFirstPerMaker
           <h2 id="sequence-title" class="section-title">How a run actually goes</h2>
           <p class="section-sub">Three steps, in order, with the third one being the point.</p>
         </div>
+        <BeamFlow />
         <div class="sequence">
           <figure class="sequence-figure" data-reveal>
             <figcaption class="figure-head micro">Studio · activity</figcaption>
@@ -290,7 +322,8 @@ const byokMakers = byokFirstPerMaker
       </div>
     </section>
 
-    <section class="band" id="capabilities" aria-labelledby="cap-title">
+    <section class="band" id="capabilities" aria-labelledby="cap-title" data-field-host>
+      <NoiseField mode="bricks" />
       <div class="shell">
         <div class="band-head" data-reveal>
           <h2 id="cap-title" class="section-title">What it is good at</h2>
@@ -309,92 +342,94 @@ const byokMakers = byokFirstPerMaker
         {/* ONE PANEL, THREE STAGES. Every control is a <button>; the state lives in aria-pressed or
             aria-selected rather than a class, and each readout is a live region so a change is
             announced rather than only drawn. */}
-        <div class="demos" data-reveal>
-          <div class="stage-tabs" role="tablist" aria-label="Three of them, to try">
-            {stages.map((s, i) => (
-              <button
-                type="button"
-                class="stage-tab"
-                role="tab"
-                id={`tab-${s.demo}`}
-                aria-controls={`stage-${s.demo}`}
-                aria-selected={i === 0 ? 'true' : 'false'}
-                tabindex={i === 0 ? '0' : '-1'}
-                data-tab={s.demo}
-              >{s.tab}</button>
-            ))}
-          </div>
+        <DeviceFrame class="demos-device">
+          <div class="demos">
+            <div class="stage-tabs" role="tablist" aria-label="Three of them, to try">
+              {stages.map((s, i) => (
+                <button
+                  type="button"
+                  class="stage-tab"
+                  role="tab"
+                  id={`tab-${s.demo}`}
+                  aria-controls={`stage-${s.demo}`}
+                  aria-selected={i === 0 ? 'true' : 'false'}
+                  tabindex={i === 0 ? '0' : '-1'}
+                  data-tab={s.demo}
+                >{s.tab}</button>
+              ))}
+            </div>
 
-          {stages.map((s) => (
-            <div class="demo-stage" role="tabpanel" id={`stage-${s.demo}`} aria-labelledby={`tab-${s.demo}`} data-demo={s.demo}>
-              <p class="micro demo-head">{s.head}</p>
+            {stages.map((s) => (
+              <div class="demo-stage" role="tabpanel" id={`stage-${s.demo}`} aria-labelledby={`tab-${s.demo}`} data-demo={s.demo}>
+                <p class="micro demo-head">{s.head}</p>
 
-              {s.demo === 'tree' && (
-                <div class="rd">
-                  <ul class="rd-tree" role="list">
-                    {readTree.map((n) => (
-                      <li class="rd-row" style={`--depth:${n.depth}`}>
-                        <button type="button" class="rd-node" data-path={n.path} data-kids={String(n.kids)} aria-pressed="false">
-                          <span class="rd-dot" aria-hidden="true"></span>{n.path}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                  <div class="rd-side">
-                    <p class="rd-log" role="status" aria-live="polite">Read a node. That is the first thing it does.</p>
-                    <p class="rd-gate" data-read="0">0 of 3 read · writes still shut</p>
-                  </div>
-                </div>
-              )}
-
-              {s.demo === 'eye' && (
-                <div class="cw">
-                  <div class="cw-render">
-                    <svg class="cw-scene" viewBox="0 0 220 124" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-                      <rect class="cw-floor" x="0" y="74" width="220" height="50" />
-                      <rect class="cw-block" x="36" y="40" width="34" height="34" />
-                      <rect class="cw-block" x="112" y="26" width="26" height="48" />
-                      <rect class="cw-block" x="138" y="34" width="26" height="40" />
-                      <rect class="cw-block" x="176" y="56" width="20" height="18" />
-                      <path class="cw-edge" d="M0 74 H220" />
-                    </svg>
-                    {defects.map((d) => (
-                      <button type="button" class="cw-mark" data-defect={d.id} style={`left:${d.at[0]}%;top:${d.at[1]}%`} aria-label={d.text}></button>
-                    ))}
-                  </div>
-                  <div class="cw-side">
-                    <p class="cw-score"><span class="cw-score-n">{critique.score}</span><span class="cw-score-d">/{critique.outOf}</span></p>
-                    <ul class="cw-defects" role="list">
-                      {defects.map((d) => (
-                        <li>
-                          <button type="button" class="cw-defect" data-defect={d.id} aria-pressed="false">{d.text}</button>
+                {s.demo === 'tree' && (
+                  <div class="rd">
+                    <ul class="rd-tree" role="list">
+                      {readTree.map((n) => (
+                        <li class="rd-row" style={`--depth:${n.depth}`}>
+                          <button type="button" class="rd-node" data-path={n.path} data-kids={String(n.kids)} aria-pressed="false">
+                            <span class="rd-dot" aria-hidden="true"></span>{n.path}
+                          </button>
                         </li>
                       ))}
                     </ul>
+                    <div class="rd-side">
+                      <p class="rd-log" role="status" aria-live="polite">Read a node. That is the first thing it does.</p>
+                      <p class="rd-gate" data-read="0">0 of 3 read · writes still shut</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {s.demo === 'code' && (
-                <div class="lu">
-                  <div class="lu-asks" role="group" aria-label="Ask for one of three things">
-                    {asks.map((a, n) => (
-                      <button
-                        type="button"
-                        class="lu-ask"
-                        data-ask={String(n)}
-                        data-lines={a.lines.join('\n')}
-                        data-refused={a.refused ? 'true' : 'false'}
-                        aria-pressed={n === 0 ? 'true' : 'false'}
-                      >{a.label}</button>
-                    ))}
+                {s.demo === 'eye' && (
+                  <div class="cw">
+                    <div class="cw-render">
+                      <svg class="cw-scene" viewBox="0 0 220 124" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                        <rect class="cw-floor" x="0" y="74" width="220" height="50" />
+                        <rect class="cw-block" x="36" y="40" width="34" height="34" />
+                        <rect class="cw-block" x="112" y="26" width="26" height="48" />
+                        <rect class="cw-block" x="138" y="34" width="26" height="40" />
+                        <rect class="cw-block" x="176" y="56" width="20" height="18" />
+                        <path class="cw-edge" d="M0 74 H220" />
+                      </svg>
+                      {defects.map((d) => (
+                        <button type="button" class="cw-mark" data-defect={d.id} style={`left:${d.at[0]}%;top:${d.at[1]}%`} aria-label={d.text}></button>
+                      ))}
+                    </div>
+                    <div class="cw-side">
+                      <p class="cw-score"><span class="cw-score-n">{critique.score}</span><span class="cw-score-d">/{critique.outOf}</span></p>
+                      <ul class="cw-defects" role="list">
+                        {defects.map((d) => (
+                          <li>
+                            <button type="button" class="cw-defect" data-defect={d.id} aria-pressed="false">{d.text}</button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                  <pre class="lu-out" role="status" aria-live="polite"><code>{asks[0].lines.join('\n')}</code></pre>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                )}
+
+                {s.demo === 'code' && (
+                  <div class="lu">
+                    <div class="lu-asks" role="group" aria-label="Ask for one of three things">
+                      {asks.map((a, n) => (
+                        <button
+                          type="button"
+                          class="lu-ask"
+                          data-ask={String(n)}
+                          data-lines={a.lines.join('\n')}
+                          data-refused={a.refused ? 'true' : 'false'}
+                          aria-pressed={n === 0 ? 'true' : 'false'}
+                        >{a.label}</button>
+                      ))}
+                    </div>
+                    <pre class="lu-out" role="status" aria-live="polite"><code>{asks[0].lines.join('\n')}</code></pre>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </DeviceFrame>
       </div>
     </section>
 
@@ -457,21 +492,18 @@ const byokMakers = byokFirstPerMaker
             <p class="byok-line">
               Add your own {byokProviders} key to build with models like {byokExamples.join(' or ')} without spending Apple Credits.{byokHasFree && ' Some are free for a limited time.'}
             </p>
-            <a class="byok-link" href="/models">See every model</a>
+            <ArrowLink class="byok-link" href="/models">See every model</ArrowLink>
           </div>
-          <ul class="byok-logos" role="list" aria-label="Some of the makers">
-            {byokMakers.map((m) => (
-              <li class="byok-logo"><span set:html={m.icon} /><span class="visually-hidden">{m.vendor}</span></li>
-            ))}
-          </ul>
+          <MakerTiles makers={byokMakers} label="Some of the makers" />
         </div>
       </div>
     </section>
 
-    <section class="closing" data-reveal>
+    <section class="closing" data-reveal data-field-host>
+      <NoiseField mode="contours" />
       <div class="shell">
         <h2 class="statement">Start with one place and one idea.</h2>
-        <a class="btn btn-primary btn-closing" href="/app/signup">Create a free account</a>
+        <CtaButton class="btn-closing" href="/app/signup">Create a free account</CtaButton>
       </div>
     </section>
   </main>

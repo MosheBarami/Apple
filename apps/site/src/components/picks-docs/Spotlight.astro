@@ -1,0 +1,57 @@
+---
+/*
+ * A SOFT LIGHT THAT FOLLOWS THE POINTER ACROSS A PLAN CARD.
+ *
+ * The owner's pick was GSAP's gsap.quickSetter(), shown as a pricing-card spotlight: on every
+ * pointer move it writes the pointer's position into two CSS variables and a radial highlight
+ * follows. GSAP's licence is not MIT and GSAP is not installed here, so the behaviour is written
+ * natively: pointermove records the position, one requestAnimationFrame per frame writes
+ * --spot-x / --spot-y, and the CSS does the painting. Nothing tweens, which was the point of
+ * quickSetter in the first place. What lights is the card's edge, not a glow over its face.
+ *
+ * Mount once per page; it lights every element carrying data-spotlight. Touch and pen do not hover,
+ * so only a mouse pointer lights a card. Reduced motion keeps the light but drops its fade.
+ */
+---
+
+<style is:global>
+  /* The light is the card's own border turning accent where the pointer is, fading with distance.
+     It is a mask over a solid 1px ring — not a gradient background and not a glow, neither of
+     which this site paints (tests/living-background.test.mjs). */
+  [data-spotlight]::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid var(--accent);
+    border-radius: inherit;
+    -webkit-mask-image: radial-gradient(320px circle at var(--spot-x, 50%) var(--spot-y, 0%), #000, transparent 65%);
+    mask-image: radial-gradient(320px circle at var(--spot-x, 50%) var(--spot-y, 0%), #000, transparent 65%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--t-slow) var(--ease-out);
+  }
+
+  [data-spotlight].is-lit::before {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-spotlight]').forEach((card) => {
+    let x = 0, y = 0, raf = 0;
+    const write = () => {
+      raf = 0;
+      card.style.setProperty('--spot-x', `${x}px`);
+      card.style.setProperty('--spot-y', `${y}px`);
+    };
+    card.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      const box = card.getBoundingClientRect();
+      x = e.clientX - box.left;
+      y = e.clientY - box.top;
+      card.classList.add('is-lit');
+      if (!raf) raf = requestAnimationFrame(write);
+    });
+    card.addEventListener('pointerleave', () => card.classList.remove('is-lit'));
+  });
+</script>

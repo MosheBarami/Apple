@@ -1,5 +1,7 @@
 ---
 import AppleMark from './AppleMark.astro';
+/* The call to action is the site's one merged primary button (picks/CtaButton.astro). */
+import CtaButton from './picks/CtaButton.astro';
 
 //[[ ONE NAVIGATION FOR THE WHOLE SITE, THE FRONT PAGE INCLUDED.
 //
@@ -39,7 +41,7 @@ const isCurrent = (href: string) =>
           links.map((l) => (
             <li>
               <a href={l.href} aria-current={isCurrent(l.href)}>
-                {l.label}
+                <span data-scramble>{l.label}</span>
               </a>
             </li>
           ))
@@ -62,7 +64,7 @@ const isCurrent = (href: string) =>
         {/* Two doors, named for what is behind them: a signed-out visitor — most of this page's
             traffic — needs the account, a returning one needs sign-in. */}
         <a href="/app/login" class="btn btn-ghost nav__signin">Sign in</a>
-        <a href="/app/signup" class="btn btn-primary nav__cta">Create an account</a>
+        <CtaButton href="/app/signup" size="sm" class="nav__cta">Create an account</CtaButton>
       </div>
     </nav>
 
@@ -308,13 +310,17 @@ const isCurrent = (href: string) =>
       margin-top: 16px;
     }
 
-    .nav__cta {
+    .nav__tools :global(.nav__cta) {
       flex: 1;
     }
   }
 </style>
 
 <script>
+  /* The labels scramble and resolve on hover or keyboard focus (picks/scramble.ts). */
+  import { scrambleOnHover } from './picks/scramble';
+  scrambleOnHover(document.querySelectorAll<HTMLElement>('#primary-nav ul a'));
+
   const burger = document.getElementById('menu-toggle');
   const menu = document.getElementById('primary-nav');
 

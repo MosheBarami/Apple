@@ -1,0 +1,40 @@
+---
+/**
+ * THE ROW OF MAKERS WHOSE MODELS RUN ON YOUR OWN KEY, as tiles a light runs beneath.
+ *
+ * This replaces the landing's plain row of 32px logo boxes, and merges two Eldora UI picks (MIT)
+ * that both draw "the things it works with" as tiles:
+ *   Integrations         the tile — a rounded square with a soft inner shade — and its arrival:
+ *                        the tiles fade in one by one, in a shuffled order, the first time the
+ *                        row is seen. Its coloured blur behind each logo is left out (no glow).
+ *   Animated Frameworks  a light travelling along a line, and each tile tipping up toward the
+ *                        reader as the light passes under it.
+ *
+ * The makers themselves are not chosen here: index.astro reads them from the worker's own model
+ * catalogue, one per maker. Without scripting every tile is simply shown; under reduced motion the
+ * tiles are shown at once and the light is not drawn.
+ */
+import './maker-tiles.css';
+
+interface Props {
+  makers: { vendor: string; icon: string | null }[];
+  label: string;
+}
+
+const { label } = Astro.props;
+const makers = Astro.props.makers.filter((m): m is { vendor: string; icon: string } => !!m.icon);
+---
+
+<div class="mk" data-mk>
+  <ul class="mk-row" role="list" aria-label={label}>
+    {makers.map((m) => (
+      <li class="mk-tile"><span class="mk-icon" set:html={m.icon} /><span class="visually-hidden">{m.vendor}</span></li>
+    ))}
+  </ul>
+  <span class="mk-rail" aria-hidden="true"><span class="mk-light"></span></span>
+</div>
+
+<script>
+  import { mountMakerTiles } from './maker-tiles';
+  mountMakerTiles();
+</script>

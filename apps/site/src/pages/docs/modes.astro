@@ -1,6 +1,7 @@
 ---
 import { MODE_INFO, PLAN_COPY, PLAN_IDS, PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODES, canUseProductModel, type ProductMode } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
 const free = PLAN_LIMITS.free;
@@ -64,4 +65,6 @@ const MODE_DETAIL: Record<ProductMode, string> = {
     includes {free.creditsPerDay} Credits per day subject to its monthly ceiling. See <a href="/docs/credits-and-limits">Credits and limits</a> for the current
     allowance and metering rules.
   </p>
+
+  <DocsKit />
 </DocsLayout>

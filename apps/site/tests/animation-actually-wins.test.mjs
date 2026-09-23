@@ -230,18 +230,73 @@ test('the harness read a real sheet and a real page, so nothing below is vacuous
 
 //[[ TIGHTENED 2026-09-22. The composer's ghost was the one thing allowed to loop, and it looped
 //   forever with a blinking caret — decorative motion under a "calm" direction. It now plays one
-//   pass and rests on the first sentence, so the exemption has nothing left to exempt and is gone:
-//   NOTHING on the front page may animate forever. An infinite animation coming back is a design
-//   decision; whoever makes it should restate this test and say why. ]]
-test('the landing stays calm: few keyframes, and nothing loops at all', () => {
+//   pass and rests on the first sentence, so the exemption has nothing left to exempt and is gone. ]]
+//[[ RESTATED 2026-09-23. "Nothing on the front page may animate forever" pinned the calm direction
+//   of 2026-09-22. The owner then picked looping pieces for the front page on purpose (the beam
+//   lights, the prompt ticker, the noise grounds), so the rule is restated to what a reader feels:
+//     - the landing's OWN sheet stays calm: at most three keyframes and nothing infinite. Motion
+//       lives in the pick components (src/components/picks), never in the page chrome;
+//     - any infinite animation in a pick sheet is switched off under prefers-reduced-motion in the
+//       same sheet, has a paused state for when it is off screen, and animates no layout property,
+//       so it cannot push the page around.
+//   The pick scripts' frame loops are held to the same three properties by EXECUTING them, in
+//   picks-landing.test.mjs. ]]
+test('the landing chrome stays calm: few keyframes, and nothing in landing.css loops', () => {
   assert.ok(KEYFRAMES.size <= 3,
     `landing.css declares ${KEYFRAMES.size} keyframes (${[...KEYFRAMES.keys()].join(', ')}); the calm budget is 3`);
   const looping = RULES.filter((r) => /\binfinite\b/.test(r.body));
   assert.deepEqual(looping.map((r) => r.selector), [],
-    'something on the front page animates forever; the composer ghost plays once and stops');
+    'the page chrome animates forever; a loop belongs in a pick component that stops for reduced motion and off screen');
   // The ghost itself is still animated — a guard over an empty rule list proves nothing.
   assert.ok(RULES.some((r) => /\.composer-line\b/.test(r.selector)),
     'no animation rule targets .composer-line; the parse no longer sees the ghost');
+});
+
+/** The bodies of every `@media (prefers-reduced-motion: reduce)` block in a sheet. */
+function reducedBlocks(css) {
+  const out = [];
+  const re = /@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)\s*\{/g;
+  let m;
+  while ((m = re.exec(css))) {
+    let depth = 1;
+    let i = re.lastIndex;
+    for (; i < css.length && depth; i++) {
+      if (css[i] === '{') depth++;
+      else if (css[i] === '}') depth--;
+    }
+    out.push(css.slice(re.lastIndex, i - 1));
+  }
+  return out.join('\n');
+}
+
+const lastClass = (sel) => (sel.trim().split(/\s+/).at(-1).match(/\.([\w-]+)/g) ?? []).at(-1);
+
+test('whatever loops on the front page stops under reduced motion, pauses off screen, and never moves the layout', () => {
+  const dir = join(SITE, 'src', 'components', 'picks');
+  const sheets = readdirSync(dir).filter((f) => f.endsWith('.css'))
+    .map((f) => [f, stripComments(readFileSync(join(dir, f), 'utf8'))]);
+  assert.ok(sheets.length >= 1, 'no pick sheets were read');
+  let animated = 0;
+  for (const [file, css] of sheets) {
+    const rules = flatRules(css).filter((r) => !r.inAt && /(?:^|[;{\s])animation(?:-name)?\s*:/.test(r.body));
+    animated += rules.length;
+    const frames = declaredKeyframes(css);
+    const reduce = flatRules(reducedBlocks(css));
+    for (const rule of rules.filter((r) => /\binfinite\b/.test(r.body))) {
+      const cls = lastClass(rule.selector);
+      assert.ok(cls, `${file}: the looping rule ${rule.selector} has no class this check can follow`);
+      assert.ok(reduce.some((r) => r.selector.includes(cls) && /animation\s*:\s*none/.test(r.body)),
+        `${file}: ${rule.selector} loops and is not switched off under prefers-reduced-motion`);
+      assert.ok(flatRules(css).some((r) => r.selector.includes(cls) && /animation-play-state\s*:\s*paused/.test(r.body)),
+        `${file}: ${rule.selector} loops and has no paused state for when it is off screen`);
+      for (const name of namesIn(rule.body)) {
+        assert.ok(frames.has(name), `${file}: ${rule.selector} loops on ${name}, which the sheet does not declare`);
+        assert.doesNotMatch(frames.get(name), /(?:^|[;{\s])(?:width|height|top|left|right|bottom|inset|margin[\w-]*|padding[\w-]*)\s*:/,
+          `${file}: the looping keyframe ${name} animates a layout property, so it shifts the page every cycle`);
+      }
+    }
+  }
+  assert.ok(animated >= 1, 'no animation rule was parsed in any pick sheet; the scan has drifted');
 });
 
 test('every declared keyframe actually WINS on some element of the page', () => {

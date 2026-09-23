@@ -1,0 +1,23 @@
+---
+/**
+ * A text link whose arrow grows a shaft and steps forward when it is pointed at or focused.
+ *
+ * Pick: Motion "ArrowLink" (LicenseRef-Motion-Plus). Its code is NOT used — the licence does not
+ * allow it. What it does is re-implemented in CSS alone: the shaft is a one-unit path drawn from
+ * dash offset 1 to 0, and the head moves 3px on an overshooting curve that stands in for the
+ * original's spring. Under reduced motion the arrow is simply drawn whole.
+ */
+import './arrow-link.css';
+
+interface Props {
+  href: string;
+  class?: string;
+  target?: string;
+  rel?: string;
+  'aria-label'?: string;
+}
+
+const { href, class: extra, target, rel, 'aria-label': label } = Astro.props;
+---
+
+<a class:list={['arrow-link', extra]} href={href} target={target} rel={rel} aria-label={label}><slot /><svg class="arrow-link__icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="arrow-link__shaft" d="M2 8h10" pathLength="1" /><path class="arrow-link__head" d="M8 4l4 4-4 4" /></svg></a>

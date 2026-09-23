@@ -1,0 +1,23 @@
+---
+/**
+ * A thin accent arc on a control's border that turns to face the pointer, and brightens while the
+ * control has focus.
+ *
+ * Pick: Motion "Conic gradient pointer" (LicenseRef-Motion-Plus). Its code is NOT used. What it does
+ * — a conic sweep around a card whose angle springs toward the pointer by the shortest way round —
+ * is re-implemented in ./pointer-rim.ts with a small hand-written spring. The source's violet stop
+ * is dropped: violet belongs to Autonomous alone, so the arc is the accent blue, which is the
+ * site's ordinary active-state colour, and it only shows while the pointer is near or the field is
+ * focused.
+ *
+ * Place it as a child of the element whose border should light, and give that element `data-rim`.
+ */
+import './pointer-rim.css';
+---
+
+<span class="prim" aria-hidden="true"></span>
+
+<script>
+  import { mountRims } from './pointer-rim';
+  mountRims();
+</script>

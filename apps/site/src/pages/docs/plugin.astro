@@ -1,5 +1,6 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import DocsKit from '../../components/picks-docs/DocsKit.astro';
 
 // The canonical Creator Store identity for the plugin, "Apple Studio". The asset id has exactly ONE
 // definition in this repository — packages/shared/src/index.ts — and everything, including this
@@ -167,6 +168,8 @@ const decided = refusal
       development and debugging only; do not follow it to use Apple.
     </p>
   </div>
+
+  <DocsKit />
 </DocsLayout>
 
 <style>

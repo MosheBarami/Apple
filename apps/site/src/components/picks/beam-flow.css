@@ -1,0 +1,155 @@
+/* The beam diagram (BeamFlow.astro). */
+.beam {
+  margin: 0 0 56px;
+}
+
+.beam-cap {
+  margin: 0 0 18px;
+}
+
+.beam-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: clamp(40px, 9vw, 140px);
+  align-items: center;
+  padding: 28px clamp(16px, 3vw, 32px);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.beam-col {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.beam-node {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.beam-col--in .beam-node {
+  justify-content: flex-end;
+}
+
+.beam-label {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.beam-dot {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink-2);
+}
+
+.beam-dot svg {
+  display: block;
+}
+
+.beam-hub {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.beam-svg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.beam-base {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+
+/* The travelling light: one short dash run once along the whole curve per cycle. */
+.beam-run {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 0.14 1;
+  stroke-dashoffset: 0.14;
+  opacity: 0;
+}
+
+.beam.is-drawn .beam-run {
+  opacity: 1;
+  animation: beam-run var(--beam-dur, 3s) cubic-bezier(0.45, 0, 0.25, 1) var(--beam-delay, 0s) infinite;
+}
+
+.beam.is-paused .beam-run {
+  animation-play-state: paused;
+}
+
+@keyframes beam-run {
+  from { stroke-dashoffset: 0.14; }
+  to { stroke-dashoffset: -1; }
+}
+
+/* On a phone the three columns stack: what it reads, the hub, what it makes. The beams follow,
+   because their curves are computed from where the nodes really are. */
+@media (max-width: 640px) {
+  .beam-grid {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 44px;
+  }
+
+  .beam-col {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 6px;
+    width: 100%;
+  }
+
+  .beam-node,
+  .beam-col--in .beam-node {
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .beam-col--in .beam-label {
+    order: 2;
+  }
+
+  .beam-label {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beam.is-drawn .beam-run {
+    animation: none;
+    opacity: 0;
+  }
+}

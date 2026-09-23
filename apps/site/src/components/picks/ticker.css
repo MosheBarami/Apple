@@ -1,0 +1,77 @@
+/* The prompt ticker (components/Marquee.astro). */
+.ticker {
+  display: grid;
+  gap: 8px;
+  width: min(100%, 760px);
+  margin-top: 20px;
+}
+
+.ticker-cap {
+  margin: 0 0 2px;
+}
+
+/* At rest — no script, or reduced motion — a row is a still list you can scroll sideways. */
+.ticker-row {
+  padding: 4px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  mask-image: linear-gradient(90deg, transparent 0, #000 9%, #000 91%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 9%, #000 91%, transparent 100%);
+}
+
+.ticker-row::-webkit-scrollbar {
+  display: none;
+}
+
+.ticker.is-live .ticker-row {
+  overflow: hidden;
+}
+
+.ticker-track {
+  display: flex;
+  gap: 8px;
+  width: max-content;
+  margin: 0;
+  padding: 1px 0;
+  list-style: none;
+  will-change: transform;
+}
+
+.ticker-track li {
+  flex: none;
+}
+
+.ticker-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--control-fill);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out);
+}
+
+.ticker-chip:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.ticker-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  color: var(--ink);
+}
+
+.ticker-chip:active {
+  background: var(--accent-soft);
+}

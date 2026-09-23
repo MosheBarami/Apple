@@ -1,5 +1,6 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { SUPPORT_EMAIL } from '@golem/shared';
 
 // WHY THIS PAGE EXISTS. Apple can take money — a Stripe checkout, a customer portal, a
@@ -156,4 +157,6 @@ const checkoutOpen = billingProbe?.checkout === true;
       want, and which nobody at Apple can see.
     </p>
   </div>
+
+  <DocsKit />
 </DocsLayout>

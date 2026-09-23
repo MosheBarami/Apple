@@ -1,0 +1,172 @@
+---
+/*
+ * QUESTIONS THAT OPEN SMOOTHLY.
+ *
+ * The owner's pick was Motion's "Accordion": the answer's height and opacity spring open with a
+ * little overshoot, close without one, and the chevron turns. Motion+ licence, so the behaviour is
+ * re-implemented with the Web Animations API and no code is copied.
+ *
+ * It replaces FAQ.astro on /pricing and /docs/faq and keeps what that component got right: it is
+ * built on native <details>/<summary>, so it opens with no JavaScript at all and is keyboard
+ * operable for free. The script only adds the motion, and an animation interrupted mid-way starts
+ * from where the panel is rather than snapping. Under prefers-reduced-motion it does not animate.
+ *
+ * Answers arrive as HTML strings (the pages' existing data), rendered with set:html.
+ */
+interface Props {
+  items: { q: string; a: string }[];
+}
+
+const { items } = Astro.props;
+---
+
+<div class="acc">
+  {
+    items.map((item) => (
+      <details class="acc__item" data-acc>
+        <summary>
+          <span class="acc__q">{item.q}</span>
+          <svg class="acc__chev" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </summary>
+        <div class="acc__panel">
+          <div class="acc__a" set:html={item.a} />
+        </div>
+      </details>
+    ))
+  }
+</div>
+
+<style>
+  .acc {
+    display: grid;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .acc__item {
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 56px;
+    padding: 14px 4px;
+    color: var(--ink-2);
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 500;
+    list-style: none;
+    cursor: pointer;
+    transition: color var(--t-fast) var(--ease-out);
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary:hover,
+  .acc__item[open] summary {
+    color: var(--ink);
+  }
+
+  .acc__chev {
+    flex: none;
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 420ms cubic-bezier(0.3, 1.5, 0.5, 1);
+  }
+
+  .acc__item[open]:not([data-closing]) .acc__chev {
+    transform: rotate(180deg);
+  }
+
+  .acc__panel {
+    overflow: hidden;
+  }
+
+  .acc__a {
+    max-width: 68ch;
+    padding: 0 4px 20px;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .acc__a :global(p) {
+    margin: 0 0 0.7em;
+  }
+
+  .acc__a :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .acc__a :global(strong) {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .acc__a :global(a) {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+  }
+</style>
+
+<script>
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  document.querySelectorAll<HTMLDetailsElement>('details[data-acc]').forEach((item) => {
+    const summary = item.querySelector('summary');
+    const panel = item.querySelector<HTMLElement>('.acc__panel');
+    if (!summary || !panel) return;
+    let anim: Animation | null = null;
+
+    summary.addEventListener('click', (e) => {
+      if (reduced.matches || typeof panel.animate !== 'function') return;
+      e.preventDefault();
+      // Start from wherever the panel is now, so a second click mid-animation reverses smoothly.
+      const from = panel.getBoundingClientRect().height;
+      anim?.cancel();
+      const opening = !item.open || item.hasAttribute('data-closing');
+      if (opening) {
+        item.removeAttribute('data-closing');
+        item.open = true;
+        const to = panel.scrollHeight;
+        anim = panel.animate(
+          [
+            { height: `${from}px`, opacity: from ? 1 : 0 },
+            { height: `${to}px`, opacity: 1 },
+          ],
+          // A spring with a little bounce on the way open, as the pick does.
+          { duration: 420, easing: 'cubic-bezier(0.3, 1.25, 0.5, 1)' },
+        );
+      } else {
+        item.setAttribute('data-closing', '');
+        anim = panel.animate(
+          [
+            { height: `${from}px`, opacity: 1 },
+            { height: '0px', opacity: 0 },
+          ],
+          { duration: 260, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+        );
+      }
+      const mine = anim;
+      mine.onfinish = () => {
+        if (anim !== mine) return;
+        anim = null;
+        if (item.hasAttribute('data-closing')) {
+          item.open = false;
+          item.removeAttribute('data-closing');
+        }
+      };
+    });
+  });
+</script>

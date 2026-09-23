@@ -15,6 +15,7 @@ import {
 const free = PLAN_LIMITS.free;
 const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
 import DocsLayout from '../../layouts/DocsLayout.astro';
+import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_COUNT } from '../../../../worker/src/generated-image-limits';
 
 /*
@@ -258,4 +259,6 @@ const sessionShape = modes
       the expensive request is almost always the one that had to be sent twice.
     </p>
   </div>
+
+  <DocsKit />
 </DocsLayout>

@@ -22,9 +22,13 @@
  *   - the third ask produces the refusal, marked as refused
  *   - exactly one stage is shown at a time, and a tab click or an arrow key moves it
  *   - the Autonomous toggle's state is its own aria-pressed, off at rest
- *   - nothing on the front page runs an animation-frame loop (RESTATED 2026-09-22: the spinning
- *     wireframe mesh, and the two tests that proved it drew, went with the calm redesign; the
- *     property that replaces them is that no stage draws on a loop at all)
+ *   - no STAGE runs an animation-frame loop (RESTATED 2026-09-22: the spinning wireframe mesh,
+ *     and the two tests that proved it drew, went with the calm redesign). RESTATED AGAIN
+ *     2026-09-23: the owner then picked canvas grounds and a particle wordmark for the front page
+ *     on purpose, so "the page ships no canvas" became "the page's own script draws nothing, and
+ *     every canvas it does carry belongs to a pick that is decoration (aria-hidden), stops under
+ *     reduced motion, sleeps off screen, and cannot shift the layout". Those loops are EXECUTED in
+ *     picks-landing.test.mjs; this file checks the page keeps them in that shape
  *
  * It pins no call spelling and no argument list. §2 of the working rules: eight guards in one
  * session went red because the code under them improved, every one of them pinned to an
@@ -343,14 +347,47 @@ test('the Autonomous toggle is off at rest and its state is its own aria-pressed
   assert.equal(p.auto.getAttribute('aria-pressed'), 'false', 'a second press did not turn it off again');
 });
 
-test('nothing on the front page draws on an animation-frame loop, and it ships no canvas', () => {
+test('the capability stages draw on no animation-frame loop, and the page script draws nothing', () => {
   const p = run();
   assert.equal(p.frames.length, 0, `the page script requested ${p.frames.length} animation frame(s) at start`);
   for (const t of p.root.querySelectorAll('.stage-tab')) t.dispatch('click');
   assert.equal(p.frames.length, 0, 'switching stages started an animation-frame loop');
-  assert.doesNotMatch(MARKUP, /<canvas\b/i, 'the landing renders a <canvas> again — the wireframe mesh was removed on purpose');
+  assert.doesNotMatch(MARKUP, /<canvas\b/i, 'index.astro renders a <canvas> of its own — drawing belongs in a pick component that sleeps');
   assert.doesNotMatch(clientScript(), /requestAnimationFrame|getContext\(/,
-    'the landing script draws again — the calm redesign has no drawing loop on the front page');
+    'the landing script draws — the stages are still pictures, and any moving ground is a pick component');
+});
+
+test('every canvas on the front page is a decoration that stops for reduced motion, sleeps off screen, and holds its box', () => {
+  const COMPONENTS = join(SITE, 'src', 'components');
+  const imported = [...SOURCE.matchAll(/import\s+(\w+)\s+from\s+'(\.\.\/components\/[^']+\.astro)'/g)];
+  const footer = readFileSync(join(COMPONENTS, 'Footer.astro'), 'utf8');
+  const files = new Set(imported.map((m) => join(SITE, 'src', 'pages', m[2])));
+  for (const m of footer.matchAll(/import\s+\w+\s+from\s+'(\.\/[^']+\.astro)'/g)) files.add(join(COMPONENTS, m[1]));
+  let canvases = 0;
+  for (const file of files) {
+    const src = readFileSync(file, 'utf8');
+    const body = src.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ');
+    if (!/<canvas\b/i.test(body)) continue;
+    canvases += 1;
+    const name = file.split('/').at(-1);
+    const host = /<(\w+)\b([^>]*)>\s*<canvas\b/i.exec(body);
+    assert.ok(host && /aria-hidden="true"/.test(host[2]), `${name}: the canvas host is not aria-hidden, so a decoration is announced`);
+    const script = /<script>[\s\S]*?from '(\.\/[\w-]+)'[\s\S]*?<\/script>/.exec(body);
+    assert.ok(script, `${name}: no script mounts the canvas`);
+    const ts = readFileSync(join(dirname(file), `${script[1]}.ts`), 'utf8');
+    for (const guard of ['reducedMotion', 'whileVisible']) {
+      assert.match(ts, new RegExp(`import\\s*\\{[^}]*\\b${guard}\\b[^}]*\\}\\s*from\\s*'\\./motion'`),
+        `${name}: its drawing script does not take ${guard} from picks/motion.ts`);
+    }
+    const css = /import\s+'(\.\/[\w-]+\.css)'/.exec(src);
+    assert.ok(css, `${name}: the canvas has no sheet of its own to hold its box`);
+    const sheet = readFileSync(join(dirname(file), css[1]), 'utf8');
+    const cls = /class=\{?[`"']([\w-]+)/.exec(host[2])?.[1];
+    const block = new RegExp(`\\.${cls}\\s*\\{([^}]*)\\}`).exec(sheet)?.[1] ?? '';
+    assert.ok(/position:\s*absolute[\s\S]*inset:\s*0/.test(block) || /(?:^|;|\s)height\s*:/.test(block),
+      `${name}: the canvas box is sized by its drawing, so it can shift the layout when the script runs`);
+  }
+  assert.ok(canvases >= 1, 'no canvas component was found on the front page; the scan has drifted');
 });
 
 test('one stage cannot take the others down with it', () => {

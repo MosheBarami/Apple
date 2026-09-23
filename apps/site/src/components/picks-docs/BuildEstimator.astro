@@ -1,0 +1,218 @@
+---
+/*
+ * "HOW MANY BUILDS DO YOU NEED?" — a stepper that answers which plan covers it.
+ *
+ * The owner's pick was Motion's "Number counter" (a − / + stepper whose digits roll) and, merged into
+ * it, "Number formatting" (the same roll across Intl-formatted strings). Motion+ licence: behaviour
+ * re-implemented, no code copied (see rolling-number.ts). The demo counted "credits to buy"; this
+ * product cannot sell Credits (CREDIT_PURCHASE_LIVE), so the counter counts the unit people think in
+ * — builds a month — and the answer is derived: builds x CREDITS_PER_BUILD, and the first plan whose
+ * monthly builds (buildsPerMonth, the same floor the cards print) is enough. Every number arrives
+ * as a prop from pricing.astro; nothing here is typed.
+ *
+ * Without JavaScript the buttons do nothing, so they are hidden and the starting sentence stands.
+ */
+import './rolling-number.css';
+
+interface Plan {
+  name: string;
+  builds: number;
+  planned: boolean;
+  contact: boolean;
+}
+
+interface Props {
+  plans: Plan[];
+  creditsPerBuild: number;
+  start: number;
+  step: number;
+  max: number;
+}
+
+const { plans, creditsPerBuild, start, step, max } = Astro.props;
+
+function fitFor(n: number): string {
+  const plan = plans.find((p) => p.builds >= n);
+  if (!plan) return 'That is more than any plan covers.';
+  if (plan.contact) return `${plan.name} covers it. Email us about it.`;
+  return plan.planned ? `${plan.name} covers it (not on sale yet).` : `${plan.name} covers it.`;
+}
+
+const credits = (n: number) => (n * creditsPerBuild).toLocaleString('en-US');
+---
+
+<section
+  class="est"
+  aria-labelledby="est-title"
+  data-estimator
+  data-plans={JSON.stringify(plans)}
+  data-cpb={creditsPerBuild}
+  data-step={step}
+  data-max={max}
+>
+  <h2 id="est-title" class="est__title">How many builds do you need?</h2>
+  <div class="est__row">
+    <button type="button" class="est__step" data-d="-1" aria-label="Fewer builds" hidden>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12h14" /></svg>
+    </button>
+    <span class="est__n" data-est-n>{start}</span>
+    <button type="button" class="est__step" data-d="1" aria-label="More builds" hidden>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+    </button>
+  </div>
+  <p class="est__unit">builds a month</p>
+  <p class="est__out" aria-live="polite">
+    <span class="visually-hidden" data-est-sr>{start} builds a month.</span>
+    That is <strong data-est-credits>{credits(start)}</strong> Credits a month.
+    <span data-est-fit>{fitFor(start)}</span>
+  </p>
+</section>
+
+<style>
+  .est {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    margin: 16px 0 0;
+    padding: 28px 22px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    text-align: center;
+  }
+
+  .est__title {
+    margin: 0 0 10px;
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .est__row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .est__n {
+    min-width: 3ch;
+    color: var(--ink);
+    font-size: 44px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .est__step {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--ink);
+    cursor: pointer;
+    transition:
+      border-color var(--t-fast) var(--ease-out),
+      transform 260ms cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+
+  .est__step[hidden] {
+    display: none;
+  }
+
+  .est__step svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .est__step:hover {
+    border-color: var(--line-strong);
+  }
+
+  .est__step:active {
+    transform: scale(0.88);
+  }
+
+  .est__step:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .est__unit {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .est__out {
+    max-width: 44ch;
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .est__out strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+</style>
+
+<script>
+  import { rollTo } from './rolling-number';
+
+  interface Plan {
+    name: string;
+    builds: number;
+    planned: boolean;
+    contact: boolean;
+  }
+
+  const root = document.querySelector<HTMLElement>('[data-estimator]');
+  if (root) {
+    const plans = JSON.parse(root.dataset.plans ?? '[]') as Plan[];
+    const cpb = Number(root.dataset.cpb);
+    const step = Number(root.dataset.step);
+    const max = Number(root.dataset.max);
+    const nEl = root.querySelector<HTMLElement>('[data-est-n]')!;
+    const creditsEl = root.querySelector<HTMLElement>('[data-est-credits]')!;
+    const fitEl = root.querySelector<HTMLElement>('[data-est-fit]')!;
+    const srEl = root.querySelector<HTMLElement>('[data-est-sr]')!;
+    const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('.est__step'));
+    let n = Number(nEl.textContent);
+
+    // Mirrors fitFor() in the frontmatter, so the first paint and every later click agree.
+    const fit = (count: number) => {
+      const plan = plans.find((p) => p.builds >= count);
+      if (!plan) return 'That is more than any plan covers.';
+      if (plan.contact) return `${plan.name} covers it. Email us about it.`;
+      return plan.planned ? `${plan.name} covers it (not on sale yet).` : `${plan.name} covers it.`;
+    };
+
+    const render = (instant = false) => {
+      rollTo(nEl, String(n), instant);
+      rollTo(creditsEl, (n * cpb).toLocaleString('en-US'), instant);
+      fitEl.textContent = fit(n);
+      srEl.textContent = `${n} builds a month.`;
+      buttons[0]!.disabled = n <= step;
+      buttons[1]!.disabled = n >= max;
+    };
+
+    buttons.forEach((b) => {
+      b.hidden = false;
+      b.addEventListener('click', () => {
+        const d = Number(b.dataset.d);
+        // Snap to the step grid first, so a start that is not a multiple of it lands on one.
+        const base = d > 0 ? Math.floor(n / step) * step : Math.ceil(n / step) * step;
+        n = Math.min(max, Math.max(step, base + d * step));
+        render();
+      });
+    });
+    render(true);
+  }
+</script>

@@ -1,0 +1,59 @@
+/* Motion ArrowLink, re-implemented (see ArrowLink.astro). */
+.arrow-link {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--t-fast) var(--ease-out);
+}
+
+.arrow-link:hover,
+.arrow-link:focus-visible {
+  text-decoration-color: var(--accent);
+}
+
+/* Inline, not flex, so a long link wraps like the sentence it sits in and the arrow rides the last
+   line. */
+.arrow-link__icon {
+  display: inline-block;
+  margin-left: 4px;
+  overflow: visible;
+  vertical-align: -0.2em;
+}
+
+.arrow-link__shaft {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 200ms var(--ease-out);
+}
+
+.arrow-link__head {
+  transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.arrow-link:hover .arrow-link__shaft,
+.arrow-link:focus-visible .arrow-link__shaft {
+  stroke-dashoffset: 0;
+}
+
+.arrow-link:hover .arrow-link__head,
+.arrow-link:focus-visible .arrow-link__head {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrow-link__shaft {
+    stroke-dashoffset: 0;
+    transition: none;
+  }
+
+  .arrow-link__head {
+    transition: none;
+  }
+
+  .arrow-link:hover .arrow-link__head,
+  .arrow-link:focus-visible .arrow-link__head {
+    transform: none;
+  }
+}

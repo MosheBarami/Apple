@@ -1,0 +1,106 @@
+---
+/*
+ * THE PRIMARY BUTTON WITH A LIGHT RUNNING ROUND ITS EDGE.
+ *
+ * After Eldora UI's "Animated Shiny Button" (MIT, https://github.com/karthikmudunuri/eldoraui,
+ * copyright Karthik Mudunuri). Kept: a short light that travels round the button's border without
+ * stopping; on hover or keyboard focus a second, faster and longer light joins it, so the button
+ * visibly speeds up; the arrow nudges forward. Changed, and why:
+ *   - the original paints its sweep as a conic-GRADIENT background with a coloured glow, and this
+ *     site has no gradient backgrounds and no glows anywhere (tests/living-background.test.mjs,
+ *     the owner's call). The light here is a solid accent dash on an SVG outline, moved with
+ *     stroke-dashoffset — the same motion, no gradient, no glow;
+ *   - it stays Apple's primary button (ink fill, --on-primary text), and the accent only marks it:
+ *     "the accent never fills a button" (apple-minimal.css).
+ *
+ * Under prefers-reduced-motion the lights hold still.
+ */
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'a'> & { href: string };
+
+const { class: className = '', ...rest } = Astro.props;
+---
+
+<a class:list={['btn btn-primary shiny', className]} {...rest}>
+  <svg class="shiny__edge" aria-hidden="true">
+    <rect class="shiny__run" width="100%" height="100%" rx="9" pathLength="100"></rect>
+    <rect class="shiny__run shiny__run--fast" width="100%" height="100%" rx="9" pathLength="100"></rect>
+  </svg>
+  <span class="shiny__label"><slot /></span>
+  <svg class="shiny__arrow" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+    <path d="m9 18 6-6-6-6"></path>
+  </svg>
+</a>
+
+<style>
+  .shiny {
+    position: relative;
+  }
+
+  .shiny__edge {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .shiny__run {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-dasharray: 10 90;
+    animation: shiny-run 3.4s linear infinite;
+  }
+
+  .shiny__run--fast {
+    stroke-dasharray: 22 78;
+    opacity: 0;
+    animation-duration: 1.3s;
+    animation-direction: reverse;
+    transition: opacity var(--t-base) var(--ease-out);
+  }
+
+  .shiny:hover .shiny__run--fast,
+  .shiny:focus-visible .shiny__run--fast {
+    opacity: 1;
+  }
+
+  .shiny:active {
+    translate: 0 1px;
+  }
+
+  .shiny__label {
+    position: relative;
+  }
+
+  .shiny__arrow {
+    position: relative;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 300ms var(--ease-out);
+  }
+
+  .shiny:hover .shiny__arrow,
+  .shiny:focus-visible .shiny__arrow {
+    transform: translateX(3px);
+  }
+
+  @keyframes shiny-run {
+    to {
+      stroke-dashoffset: -100;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shiny__run {
+      animation: none;
+    }
+  }
+</style>

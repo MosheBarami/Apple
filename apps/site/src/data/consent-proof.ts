@@ -130,7 +130,7 @@ export const CONSENT_PROOF = {
 
   /** The panel's standing disclosure, reproduced from the plugin rather than paraphrased. */
   disclosure: {
-    text: 'Edits stay off until you allow them. This build supports bounded place operations and Run-mode playtests. '
+    text: 'Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. '
       + 'It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.',
     from: plugin,
   } as ProofQuote,

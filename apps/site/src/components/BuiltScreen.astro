@@ -37,6 +37,7 @@
  * tests/reveal-cannot-hide-content.test.mjs exists for.
  */
 import { BUILT_SCREEN } from '../data/showcase-proof';
+import ArrowLink from './picks/ArrowLink.astro';
 
 /* Seconds, from the manifest's milliseconds. Derived here rather than written down, so the page
    cannot state a duration the run did not take. One decimal: the run took a minute and a half and
@@ -85,7 +86,7 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
       </p>
 
       <p class="built-more">
-        <a href={BUILT_SCREEN.capture.src}>See this render at full size &rarr;</a>
+        <ArrowLink href={BUILT_SCREEN.capture.src}>See this render at full size</ArrowLink>
       </p>
     </div>
 
@@ -217,19 +218,6 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
     margin: 20px 0 0;
     font-size: 14px;
     line-height: 21px;
-  }
-
-  /* `a` is `text-decoration: none` on the landing, so an unstyled anchor here would not read as a
-     link. */
-  .built-more a {
-    color: var(--ink);
-    text-decoration: underline;
-    text-decoration-color: var(--line-strong);
-    text-underline-offset: 3px;
-  }
-
-  .built-more a:hover {
-    text-decoration-color: var(--ink);
   }
 
   /* Below the three-column breakpoint the picture goes under the text, still capped so it never
