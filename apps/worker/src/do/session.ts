@@ -86,6 +86,7 @@ import { VERIFIER_TOOLS } from '../verifiers';
 import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, afterDuplicateStreak, UNSTICK_STEER, type RetuneAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
+import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
@@ -275,6 +276,8 @@ interface AgentState {
   changesByTarget?: Record<string, number>;
   /** Set when build_scene has built a kit this run; its pieces and terrain are kept (scene-kits.ts). */
   kitZone?: KitZone;
+  /** Consecutive terrain writes since the last other change (terrain-streak.ts; round 6 made 951). */
+  terrainStreak?: number;
   /** A Studio tool was refused because the plugin stopped answering (run-refund.ts studioDropped). */
   studioDropped?: boolean;
   /** Studio was connected at some step of this run, so its tools stay offered if the link drops (F-033). */
@@ -4281,6 +4284,14 @@ export class SessionDO extends DurableObject<Env> {
         agent.llm.push({ role: 'tool', content: `[${call.name}] ${KIT_KEPT}`, toolCallId: call.id, name: call.name });
         continue;
       }
+      const terrainRefusal = terrainStreakRefusal(agent.terrainStreak ?? 0, call.name);
+      if (terrainRefusal) {
+        duplicatesThisStep += 1;
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (the ground is done for now)` });
+        agent.llm.push({ role: 'tool', content: `[${call.name}] ${terrainRefusal}`, toolCallId: call.id, name: call.name });
+        continue;
+      }
       if (repeated && retry) retry.retries += 1;
       else if (call.name !== 'propose_plan') agent.seenCalls.push(sig);
       //[[ BOUNDED, like uiTools two lines below. `sig` is `name:arguments`, and arguments is
@@ -4340,6 +4351,7 @@ export class SessionDO extends DurableObject<Env> {
       };
       agent.trace.push(entry);
       executedThisStep += 1;
+      agent.terrainStreak = nextTerrainStreak(agent.terrainStreak ?? 0, call.name, out.ok, out.mutatedProject === true);
       // Feed the outcome back to the reasoning policy: a failed tool or a failed visual gate
       // means the next step should think harder rather than repeat the same cheap attempt.
       if (!out.ok) agent.priorStepFailed = true;

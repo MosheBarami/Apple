@@ -240,3 +240,14 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   - shots staged with neutral names;
   - no prompt, genre or history.
 - Reverse: restore compare.py from git history and the "CURRENT TARGET" header in GAUNTLET.md.
+
+## D-TERRAIN-1 (2026-09-24): a run of terrain edits is capped
+
+- What: after 24 consecutive terrain writes (edit_terrain, shape_terrain; derived from the registry)
+  the next one is refused with a steer to the library, scripts and UI. Any other successful change
+  lifts the cap; a read or a failure does not.
+- Why: gauntlet round 6 made 951 edit_terrain calls in a row (one grass ball each), spent 1198
+  credits, hit the daily capacity and built no prop, script or UI. Every call succeeded, so the
+  duplicate and idle guards never fired.
+- Reverse: raise TERRAIN_STREAK_CAP in apps/worker/src/terrain-streak.ts, or drop its gate in
+  do/session.ts.
