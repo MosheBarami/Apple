@@ -22,6 +22,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
+import { gunzipSync } from 'node:zlib';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const LIB = join(HERE, '..');
@@ -47,8 +48,10 @@ const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
 const limit = args.includes('--limit') ? Number(args[args.indexOf('--limit') + 1]) : Infinity;
 
 function readJsonl(p) {
-  if (!existsSync(p)) return [];
-  return readFileSync(p, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  // A large source is committed gzipped (as in build.mjs): `x.jsonl.gz` is read in place of `x.jsonl`.
+  const gz = existsSync(p + '.gz');
+  if (!gz && !existsSync(p)) return [];
+  return (gz ? gunzipSync(readFileSync(p + '.gz')).toString('utf8') : readFileSync(p, 'utf8')).split('\n').filter(Boolean).map((l) => JSON.parse(l));
 }
 function log(row) {
   appendFileSync(LOG, JSON.stringify({ at: new Date().toISOString(), ...row }) + '\n');

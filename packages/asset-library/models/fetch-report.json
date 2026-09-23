@@ -70,5 +70,27 @@
   },
   "storeBytes": 777180546,
   "freeBytes": 16641036288
+ },
+ "github": {
+  "at": "2026-09-23T20:17:09.679Z",
+  "considered": 31564,
+  "fetched": 0,
+  "already": 0,
+  "skipped": {
+   "reference-only row": 25889,
+   "licence is not on the download allowlist": 763,
+   "free disk under 15 GB": 1,
+   "stopped: free disk under 15 GB": 4911
+  },
+  "failed": 0,
+  "stoppedFor": "free disk under 15 GB",
+  "scans": {
+   "thisRun": 0,
+   "clean": 0,
+   "withScripts": 0,
+   "unreadable": 0
+  },
+  "storeBytes": 782001810,
+  "freeBytes": 11607306240
  }
 }
