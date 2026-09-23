@@ -1,6 +1,15 @@
-# Visual gauntlet — Apple MAX Autonomous vs the real game
+# Visual gauntlet — Apple MAX Autonomous
 
-## CURRENT TARGET (owner, 2026-09-23 evening): a real cartoon simulator, three tests
+## CURRENT METHOD (owner, 2026-09-24): the blind critic — see `BLIND_CRITIC.md`
+
+The owner dropped the comparison against his reference images (D-GAUNTLET-2):
+- `compare.py` is removed.
+- The images under `refs/` are kept as an archive only; nothing is judged against them.
+- A round now runs the fixed customer prompt below.
+- A fresh agent then judges ONLY the final screenshots: is this a fit and amazing Roblox game, and
+  what is broken, down to the smallest thing.
+
+## Retired target (2026-09-23 evening): a real cartoon simulator, three tests against refs
 
 The owner retired Grow-a-Garden as the target. The loop now builds **one full simulator game** and is
 judged against his reference images in `refs/simulator/`, as three separate tests:
@@ -20,8 +29,8 @@ game** — the refs are the bar, not training data; no hand-placing the map.
 
 Apple MAX, Agent, Autonomous, fresh Baseplate. After the run, three shots, one per test: the wide
 hub from the spawn (map), a close shot of the best props (models), and the playtest with the shop
-open (UI). Each goes through `compare.py --round N --test <test> --ours <shot> --note ...` and is sent
-to the owner in the chat.
+open (UI), plus every UI screen. They go to the blind critic (`BLIND_CRITIC.md`), and its verdict
+is sent to the owner in the chat.
 
 ---
 

@@ -22,7 +22,7 @@
    - fresh place;
    - new project and pairing (plugin 1.2.0 needs a Studio reload first);
    - Autonomous ON, Apple MAX, the same prompt;
-   - then `compare.py --round 6 --test map|models|ui`, each comparison sent to the owner.
+   - then the blind critic on the final shots only (`docs/gauntlet/visual/BLIND_CRITIC.md`, D-GAUNTLET-2), with its verdict sent to the owner.
 
 Cloudflare lane, live since 2026-09-23: web (Turnstile widget) deployed, TURNSTILE_SECRET set; a
 recovery request with no token or a forged one answers 403. After round 6: Supabase captcha (provider

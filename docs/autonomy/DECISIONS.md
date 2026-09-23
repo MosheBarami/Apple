@@ -227,3 +227,16 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
 - The worldbuilding brief, prompts.ts and roadmap.ts no longer teach part-built trees, fences or props.
 - Tests: `apps/worker/tests/model-only.test.mjs` (red-first verified).
 - Reverse: remove the three model-rule calls in tools.ts, restore the two generator run bodies from git history, and revert the prompt lines.
+
+## D-GAUNTLET-2 — Apple's games are judged by a blind critic on the final screenshots, not against reference images (2026-09-24)
+- Owner order: drop the tests against the images he uploaded, and stop them. A completely blind agent
+  receives ONLY the final screenshots of the game Apple made, and checks in depth whether it is fit
+  and amazing for Roblox and whether anything is broken, down to the smallest thing.
+- `docs/gauntlet/visual/compare.py` is removed.
+- `refs/` stays as an archive, because the owner dashboard and a Langflow example still point at it.
+  No round is measured against it.
+- The procedure and the verbatim rubric are in `docs/gauntlet/visual/BLIND_CRITIC.md`:
+  - one fresh subagent;
+  - shots staged with neutral names;
+  - no prompt, genre or history.
+- Reverse: restore compare.py from git history and the "CURRENT TARGET" header in GAUNTLET.md.
