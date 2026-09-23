@@ -3,7 +3,7 @@
  *
  * The app is behind Supabase auth, so design review of the signed-in surfaces
  * would otherwise be impossible without a real account. With
- * `VITE_APPLE_MOCK=1` (or `?mock=1` in a dev server) every network read is
+ * `VITE_APPLE_MOCK=1` or `?mock=1` on a dev server every network read is
  * replaced by realistic fixtures and the WebSocket is replaced by a scripted
  * session. Nothing here runs in a normal production build: the flag folds to a
  * constant `false` and the fixtures are tree-shaken out.
@@ -38,8 +38,13 @@ function queryFlag(): boolean {
   }
 }
 
-/** True when the app should serve fixtures instead of talking to the network. */
-export const MOCK_MODE: boolean = FLAG || (import.meta.env.DEV && queryFlag());
+/**
+ * True when the app should serve fixtures instead of talking to the network.
+ *
+ * DEV gates BOTH switches. The env flag used to sit outside it, so `VITE_APPLE_MOCK=1 vite build`
+ * produced a production bundle full of fake projects that never reached the API.
+ */
+export const MOCK_MODE: boolean = import.meta.env.DEV && (FLAG || queryFlag());
 
 // ---------------------------------------------------------------------------
 // Operator fixtures
