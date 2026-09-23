@@ -22,7 +22,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -55,8 +55,11 @@ test('the guard still reaches a verdict on the real repository', () => {
   assert.match(r.out, /modes agree — COST-MODEL neurons/, 'and it still prints the sentence under test');
 });
 
+const METER = 'components/CreditMeter.astro';
+const METER_ABS = join(ROOT, 'apps/site/src', METER);
+
 test('THE SUCCESS LINE CLAIMS THE CALCULATOR ONLY IF A PAGE RENDERS IT', () => {
-  const rendered = componentIsRendered('components/CreditMeter.astro');
+  const rendered = componentIsRendered(METER);
   const { out } = run();
   const claimsCalculator = /the page and the calculator/.test(out);
 
@@ -72,8 +75,22 @@ test('THE SUCCESS LINE CLAIMS THE CALCULATOR ONLY IF A PAGE RENDERS IT', () => {
   if (!rendered) {
     // Silence would be the other half of the same defect: dropping the claim and saying nothing
     // leaves an unrendered 600-line component with retired plan copy in it and no reader informed.
-    assert.match(out, /NOTHING RENDERS IT/,
-      'dropping the claim is not enough — the orphan has to be reported to whoever reads this run');
     assert.match(out, /CreditMeter\.astro/, 'and named, so the decision has a file attached to it');
+
+    // WHY THE TWO STATES ARE ASSERTED SEPARATELY. "Exists and nothing imports it" and "does not
+    // exist" are different situations with opposite next actions, and the guard used to print the
+    // first for both — so once the minimal site rebuild deleted the file, the run still told the
+    // reader to "wire it back or delete it" about a file that was already gone. A guard that names
+    // the wrong state sends the next person to wire up something that is not there.
+    if (existsSync(METER_ABS)) {
+      assert.match(out, /NOTHING RENDERS IT/, 'an orphan is reported as an orphan');
+    } else {
+      assert.match(out, /no longer exists/, 'a deletion is reported as a deletion');
+      assert.doesNotMatch(
+        out,
+        /NOTHING RENDERS IT/,
+        'and not as an orphan — the file is gone, so there is nothing to wire back',
+      );
+    }
   }
 });

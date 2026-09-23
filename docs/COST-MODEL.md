@@ -1,12 +1,12 @@
-# Golem — cost model and spend safety
+# Apple — cost model and spend safety
 
 Every number here is **measured in production**, not estimated. Reproduce any of it from the admin
 console (`/app/admin` → AI spend) or `GET /api/admin/spend`.
 
 ## Production model
 
-**`@cf/zai-org/glm-5.3-flash`** — the single model behind every mode (Clay, Stone, Rune, memory,
-vision). $0.15/M input, $0.03/M cached input, $0.50/M output, 1M context, native tool calling,
+**`@cf/zai-org/glm-5.3-flash`** — the model used for the historical Plan/Agent, memory and vision measurements below.
+Current serving may route Apple and Apple MAX differently; these rows remain the measured cost record. $0.15/M input, $0.03/M cached input, $0.50/M output, 1M context, native tool calling,
 multimodal. It replaced gpt-oss-120b on 2026-08-30 and is both **better** (98.9 vs 96.8 on the
 Roblox eval suite) and **cheaper per token**.
 
@@ -20,17 +20,17 @@ Workers AI in *neurons* at **$0.011 per 1,000 neurons**.
 
 | Request | Neurons | USD |
 |---|---|---|
-| Clay question (Studio attached) | 37–43 | $0.00041–0.00047 |
-| Stone, answer only (no Studio) | 107 | $0.00118 |
-| Stone, targeted edit + read-back verify in Studio | 111 | $0.00122 |
-| Stone, inspect + playtest verify in Studio | 241 | $0.00265 |
-| **Stone, full build + edit + verify in Studio** | **511** | **$0.00562** |
-| **Rune, build + read-back verify + playtest in Studio** | **297** | **$0.00327** |
+| Plan question (Studio attached) | 37–43 | $0.00041–0.00047 |
+| Agent, answer only (no Studio) | 107 | $0.00118 |
+| Agent, targeted edit + read-back verify in Studio | 111 | $0.00122 |
+| Agent, inspect + playtest verify in Studio | 241 | $0.00265 |
+| **Agent, full build + edit + verify in Studio** | **511** | **$0.00562** |
+| **Agent, build + read-back verify + playtest in Studio** | **297** | **$0.00327** |
 | Memory distillation (after a run) | ~21 | $0.00023 |
 | Docs search (embedding, cached 24h) | 1 | $0.00001 |
 | **Visual critique (`inspect_visually`, 3 frames)** | **63–72** | **$0.00069–0.00079** |
 
-A full Stone build costs **$0.0056 versus $0.0139 before the GLM migration — 2.5× cheaper for the
+A full Agent build costs **$0.0056 versus $0.0139 before the GLM migration — 2.5× cheaper for the
 same work**, on a model that scores higher.
 
 ### What the visual loop adds
@@ -39,7 +39,7 @@ Building blind was cheap. Looking at the result is not free, and this is the hon
 
 | | before the visual loop | with it |
 |---|---|---|
-| Stone full build | 511 neurons | ~526 neurons (adaptive reasoning, +3%) |
+| Agent full build | 511 neurons | ~526 neurons (adaptive reasoning, +3%) |
 | Visual critique passes | 0 | 2–3 × ~67 = 134–201 |
 | **Total per build** | **511** | **~660–727** |
 | Cost per build | $0.0056 | **$0.0073–0.0080** |
@@ -59,8 +59,8 @@ loop closable. Re-measured from the live ledger across 70 real agent steps:
 
 | purpose | calls | neurons | per call |
 |---|---|---|---|
-| `stone:step:high` | 53 | 7,426 | **140** |
-| `stone:step:low` | 17 | 2,638 | **155** |
+| Agent step, high effort | 53 | 7,426 | **140** |
+| Agent step, low effort | 17 | 2,638 | **155** |
 | `visual:critique` | 29 | 1,904 | **66** |
 
 Two things stand out.
@@ -122,7 +122,7 @@ Measured against the live service on 2026-08-30, GLM-5.3-flash, two samples per 
 `low` and returns **nothing at all** on two of three task types.
 
 `high` reasons briefly and decisively and costs 3–29% more than `low` while returning better
-answers. So Stone and Rune now default to `high`, Clay stays `low`, and **`medium` is never
+answers. So Agent defaults to `high`, Plan stays `low`, and **`medium` is never
 selected**. See `apps/worker/src/reasoning.ts`.
 
 ## The bill
@@ -200,12 +200,12 @@ now that the same work costs less.
 | Free | 60 | 900 | ~3 full builds, ~16 small edits, or ~45 questions per day |
 | Pro (designed, not launched) | 400 | 6,000 | ~23 full builds/day |
 
-Whichever limit binds first applies. Golem's own housekeeping (memory distillation) counts against
+Whichever limit binds first applies. Apple's own housekeeping (memory distillation) counts against
 the global budget but is **not** charged to the user.
 
 ## Cost controls in the product
 
-- **AI Gateway** (`golem`): all inference routes through it — 200 req/min sliding rate limit,
+- **Apple AI Gateway** (deployment binding `golem`): all inference routes through it — 200 req/min sliding rate limit,
   response caching, per-call `kind` metadata, full logs. Cache hits cost **zero**; verified in the
   gateway log. Gateway-level retries are explicitly disabled.
 - **No automatic retries.** A retry is a second bill for the same work. Removed entirely.
@@ -220,7 +220,7 @@ the global budget but is **not** charged to the user.
   it is retried with backoff. A *failed inference* is still never retried — that would bill the
   same work twice.
 - **Context reduction.** Tool results capped at 3,000 chars (was 7,000); agent transcript capped at
-  24,000 chars (was 120,000); tool definitions filtered per mode so Clay does not pay to be told
+  24,000 chars (was 120,000); tool definitions filtered per mode so Plan does not pay to be told
   about playtesting tools. Step budgets cut from 4/14/32 to 3/8/14.
 - **Embedding cache**: 24h TTL, deterministic inputs — repeat doc searches are free.
 - **Rate limiting**: 240 requests/min per account, 400/min per IP on the plugin poll endpoint,
@@ -231,14 +231,14 @@ the global budget but is **not** charged to the user.
 From the live ledger after a day of testing:
 
 Every purpose now resolves to the same model, so the admin breakdown reads by *purpose* rather
-than by model — `stone:step`, `clay:step`, `rune:step`, `memory`, `embed`. Agent steps in builder
-modes remain the overwhelming majority of spend, which is the right place for it to go.
+than by model — Plan steps, Agent steps, `memory` and `embed`. Agent steps in builder
+mode remain the overwhelming majority of spend, which is the right place for it to go.
 
 ## Known limitation: per-model rate ceiling
 
 GLM-5.3-flash is a frontier-tier model on Workers AI and carries a low per-account
 requests-per-minute ceiling (Workers AI error `3021`). Measured sustained throughput with retry
-handling in place: **~30 successful requests/minute**. A single Stone build makes 2–11 model calls,
+handling in place: **~30 successful requests/minute**. A single Agent build makes 2–11 model calls,
 so a handful of simultaneous builders will queue rather than fail — visible as higher p95 latency
 (17.3s under 6 concurrent inferences vs 2.0s median), not as errors. The 20-user concurrency test
 completed with **zero inference errors**. If this becomes a real constraint, the documented lever
@@ -249,9 +249,9 @@ the owner first.
 
 `cached_tokens` reported 0 on every identical call. The cause was **not** request shape and not the
 gateway: Workers AI prefix caching only engages when consecutive requests are routed to the same
-model instance, which requires an `x-session-affinity` header that Golem never sent
+model instance, which requires an `x-session-affinity` header that Apple previously did not send
 (https://developers.cloudflare.com/changelog/product/workers-ai/ — "Prefix caching and session
-affinity"). Golem now sends it, keyed on the session Durable Object id: per-project, opaque, never
+affinity"). Apple now sends it, keyed on the session Durable Object id: per-project, opaque, never
 shared across tenants. It is a routing hint rather than a cache key, so a collision costs a cache
 miss and can never produce a cross-tenant read. AI Gateway *response* caching, which would be a
 tenant risk, stays off (`cacheTtl: 0`) on every agent call.
@@ -264,7 +264,7 @@ tenant risk, stays off (`cacheTtl: 0`) on every agent call.
 | `@cf/zai-org/glm-5.3-flash` | `x-session-affinity` | cached 0 | cached 0 | cached 0 |
 | `@cf/moonshotai/kimi-k2.5` | `x-session-affinity` | cached 0 | **cached 2,688 / 2,723** | **cached 2,688 / 2,723** |
 
-Same code path, same gateway, same header. **Prefix caching works on Workers AI and Golem's plumbing
+Same code path, same gateway, same header. **Prefix caching works on Workers AI and Apple's plumbing
 is now correct — but the production model does not surface cached tokens.** This is a per-model
 property, not a misconfiguration: Cloudflare's changelog documents the feature against kimi-k2.5 and
 lists cached pricing on that model's page.
@@ -286,7 +286,7 @@ if it were new.
 ## Addendum — 2026-08-31: the largest cost lever is the false-reject rate
 
 This phase did **not** reduce the measured per-build neuron cost. A normal
-quality-gated Stone build still costs roughly what it did (~2,300 neurons by
+quality-gated Agent build still costs roughly what it did (~2,300 neurons by
 the estimate above), against a Free daily allowance of 1,800 neurons
 (60 Credits x 30). **1,800 was not reached, and no accounting change was made to
 make it look closer.**

@@ -6,9 +6,9 @@
  * The pricing page states a per-mode cost and a "requests per free day" derived from it.
  * Nothing connected the two, and they had drifted:
  *
- *   Clay is 37-43 neurons. ceil(43/30) = 2 credits. The page said 1, and 60 requests a
- *   free day when it is 30. Stone (111 -> 4) and Rune (297 -> 10) were both correct,
- *   which is what makes Clay an arithmetic slip rather than a different pricing model.
+ *   Plan is 37-43 neurons. ceil(43/30) = 2 credits. The page said 1, and 60 requests a
+ *   free day when it is 30. Agent (111 -> 4) and Agent (297 -> 10) were both correct,
+ *   which is what makes Plan an arithmetic slip rather than a different pricing model.
  *
  * The same number lived in three more places inside CreditMeter.astro — the visible
  * label, the `data-cost` attribute, and a literal `c * 1` in the script that ignored the
@@ -27,7 +27,7 @@
  * COST-MODEL is representative. On 2026-09-02 a measured Agent run — the §9.1 tycoon
  * exercise, through the real product path — consumed 60 Credits and did not finish, against
  * a published "Agent · 4 credits" that this file happily reports as agreeing. The 4 is
- * `ceil(111 / 30)` from the "targeted edit" row, and COST-MODEL's largest Stone row is 511
+ * `ceil(111 / 30)` from the "targeted edit" row, and COST-MODEL's largest Agent row is 511
  * neurons where that run was roughly 1,800. See BLOCKERS.md and
  * evidence/2026-09-02-second-creation-exercise.md.
  *
@@ -35,15 +35,18 @@
  *
  * Usage: node scripts/check-credit-figures.mjs
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 const root = new URL('..', import.meta.url).pathname;
 const read = (p) => readFileSync(root + p, 'utf8');
+/** Read a file that may legitimately be absent. Absence is a state, not a crash. */
+const readMaybe = (p) => (existsSync(root + p) ? readFileSync(root + p, 'utf8') : null);
 
 const pricing = read('apps/worker/src/pricing.ts');
 const costModel = read('docs/COST-MODEL.md');
 const page = read('apps/site/src/pages/pricing.astro');
-const meter = read('apps/site/src/components/CreditMeter.astro');
+const METER_PATH = 'apps/site/src/components/CreditMeter.astro';
+const meter = readMaybe(METER_PATH);
 
 /**
  * WHETHER THE CALCULATOR IS ON A PAGE AT ALL — asked because the answer was no and this file said
@@ -65,7 +68,7 @@ const astroFiles = (dir) =>
     .filter((e) => e.isFile() && e.name.endsWith('.astro'))
     .map((e) => `${e.parentPath}/${e.name}`.slice(root.length));
 const renderers = [...astroFiles('apps/site/src/pages'), ...astroFiles('apps/site/src/layouts')];
-const meterIsRendered = renderers.some((f) => read(f).includes('components/CreditMeter.astro'));
+const meterIsRendered = meter !== null && renderers.some((f) => read(f).includes('components/CreditMeter.astro'));
 
 const problems = [];
 /** Modes whose requests-per-free-day is computed by the page rather than typed into it. */
@@ -113,167 +116,94 @@ function neuronsFor(label) {
   return numbers.length ? Math.max(...numbers) : null;
 }
 
-// The row each published figure is derived from. Named here rather than guessed, because
-// "Stone" has four rows in COST-MODEL and only one of them is the advertised case.
-//
-// TWO NAMES PER MODE, on purpose. COST-MODEL.md is internal and names the specialists —
-// Clay, Stone, Rune. The public site must not: packages/shared states that those "are
-// internal specialist identities, not user-facing brands: nothing in normal product UI
-// should name them", and §15.3 gives the public modes as Plan / Agent / Super Agent.
-// This guard therefore reads the neuron figure by the internal name and checks the
-// published figure by the public one.
-//[[ THE LIST IS DERIVED, because a hand-written one outlives what it lists.
-//
-//   This was three literal rows including Super Agent. That mode was withdrawn — it is in
-//   PRODUCT_MODES and not in PRODUCT_MODES_OFFERED, and no page names it any more — so this guard
-//   went on demanding a figure for a mode nobody can choose, found nothing, and reported `NaN`.
-//   Three of its five failures were about a page correctly not mentioning something.
-//
-//   PRODUCT_MODES_OFFERED is the list of modes a person may pick, and it is the same list the
-//   pricing page renders from. Parsed rather than imported, for the reason workspace-limits.test.mjs
-//   already gives: @golem/shared is unbuilt TypeScript and CI pins a Node that will not load it. ]]
-const offered = /PRODUCT_MODES_OFFERED: readonly ProductMode\[\] = \[([^\]]*)\]/.exec(shared_)?.[1];
-const specialistBlock = /PRODUCT_MODE_TO_SPECIALIST: Record<ProductMode, GolemMode> = \{([\s\S]*?)\n\};/.exec(shared_)?.[1];
-const productInfoBlock = /export const PRODUCT_MODE_INFO[\s\S]*?=\s*\{([\s\S]*?)\n\};/.exec(shared_)?.[1];
-if (!offered || !specialistBlock || !productInfoBlock) {
-  console.error(
-    'check-credit-figures: could not read PRODUCT_MODES_OFFERED, PRODUCT_MODE_TO_SPECIALIST or '
-    + 'PRODUCT_MODE_INFO from packages/shared/src/index.ts. One of them moved; follow it rather '
-    + 'than letting this pass.',
-  );
+// ProductMode is the only run-mode contract. Read the two keys and their published values directly
+// from MODE_INFO; there is no specialist translation layer and Autonomous is not a third mode.
+const productModes = /export const PRODUCT_MODES: readonly ProductMode\[\] = \[([^\]]*)\]/.exec(shared_)?.[1];
+const modeInfoAt = shared_.indexOf('export const MODE_INFO');
+const modeInfoEnd = modeInfoAt >= 0 ? shared_.indexOf('\n};', modeInfoAt) : -1;
+const modeInfo = modeInfoAt >= 0 && modeInfoEnd > modeInfoAt ? shared_.slice(modeInfoAt, modeInfoEnd + 3) : '';
+if (!productModes || !modeInfo) {
+  console.error('check-credit-figures: could not read PRODUCT_MODES or MODE_INFO from packages/shared/src/index.ts. One of them moved; follow it.');
   process.exit(1);
 }
-const specialistOf = Object.fromEntries(
-  [...specialistBlock.matchAll(/(\w+)\s*:\s*'(\w+)'/g)].map((m) => [m[1], m[2]]),
-);
-/** The public name the site shows, read from the same table the page renders. */
-const publicName = (key) =>
-  /name: '([^']+)'/.exec(new RegExp(`\n  ${key}: \\{[\\s\\S]*?\n  \\},`).exec(productInfoBlock)?.[0] ?? '')?.[1] ?? null;
-
-/** The COST-MODEL row each specialist's advertised figure comes from. */
+const modeField = (key, field) =>
+  new RegExp(`\\n  ${key}: \\{[\\s\\S]*?\\b${field}: '([^']+)'`).exec(modeInfo)?.[1] ?? null;
 const ROW_FOR = {
-  clay: 'Clay question (Studio attached)',
-  stone: 'Stone, targeted edit + read-back verify in Studio',
-  rune: 'Rune, build + read-back verify + playtest in Studio',
+  plan: 'Plan question (Studio attached)',
+  agent: 'Agent, targeted edit + read-back verify in Studio',
 };
-
-const MODES = [...offered.matchAll(/'(\w+)'/g)].map((m) => {
-  const key = m[1];
-  const specialist = specialistOf[key];
-  return { key, mode: publicName(key), specialist, row: ROW_FOR[specialist] };
-});
-if (!MODES.length || MODES.some((m) => !m.mode || !m.row)) {
-  console.error(`check-credit-figures: could not resolve every offered mode to a COST-MODEL row: ${JSON.stringify(MODES)}`);
+const MODES = [...productModes.matchAll(/'(plan|agent)'/g)].map((m) => ({
+  key: m[1],
+  mode: modeField(m[1], 'name'),
+  row: ROW_FOR[m[1]],
+}));
+if (MODES.length !== 2 || MODES.some((m) => !m.mode || !m.row)) {
+  console.error(`check-credit-figures: could not resolve every ProductMode to a COST-MODEL row: ${JSON.stringify(MODES)}`);
   process.exit(1);
 }
 
-for (const { mode, row, specialist } of MODES) {
+for (const { key, mode, row } of MODES) {
   const neurons = neuronsFor(row);
   if (neurons === null) {
-    problems.push(`COST-MODEL.md has no row "${row}" — the ${mode} figure cannot be derived`);
+    problems.push(`COST-MODEL.md has no row \"${row}\" — the ${mode} figure cannot be derived`);
     continue;
   }
   const expected = creditsFor(neurons);
-
-  //[[ THE FIGURE IS NO LONGER A LITERAL ON THE PAGE, so this follows it to where it now lives.
-  //
-  //   pricing.astro used to carry `cost: '4 credits'` per row. It now derives the row from
-  //   `MODE_INFO[PRODUCT_MODE_TO_SPECIALIST[m]].typicalCredits`, so the regex below found nothing
-  //   and reported `NaN` — a guard failing because the thing it guards got BETTER, which is the
-  //   fourth time that shape has come up in this repository this week.
-  //
-  //   The chain is one link longer and one copy shorter: COST-MODEL neurons -> the worker's
-  //   NEURONS_PER_CREDIT -> `MODE_INFO.typicalCredits` -> the page. So the figure is checked where
-  //   it is now declared, and the page is checked for DERIVING it rather than for restating it —
-  //   the same stated-or-derived-but-never-neither rule this file already applies to perDay. ]]
-  const infoRow = new RegExp(`\\b${specialist}: \\{[^}]*typicalCredits: '([^']+)'`).exec(shared_)?.[1];
-  if (infoRow === undefined) {
-    problems.push(`packages/shared MODE_INFO has no typicalCredits for ${specialist} — the ${mode} figure has no source`);
+  const published = modeField(key, 'typicalCredits');
+  if (published === null) {
+    problems.push(`packages/shared MODE_INFO has no typicalCredits for ${key} — the ${mode} figure has no source`);
   } else {
-    // "4-18" advertises what a request STARTS at; the low end is the published number.
-    const low = Number(infoRow.split('-')[0]);
+    const low = Number(published.split('-')[0]);
     if (low !== expected) {
-      problems.push(`MODE_INFO.${specialist}.typicalCredits starts at ${low} for ${mode}; ${neurons} neurons / ${perCredit} = ${expected}`);
+      problems.push(`MODE_INFO.${key}.typicalCredits starts at ${low} for ${mode}; ${neurons} neurons / ${perCredit} = ${expected}`);
     }
   }
-  const derivesCost = /typicalCredits/.test(page) && /PRODUCT_MODE_TO_SPECIALIST\[m\]/.test(page);
-  const literal = Number(/cost: '(\d+) credit/.exec(page.slice(page.indexOf(`mode: '${mode}'`)))?.[1]);
-  if (!derivesCost && !Number.isFinite(literal)) {
-    problems.push(
-      `pricing.astro neither states a Credit cost for ${mode} nor derives one from MODE_INFO — `
-      + `the figure a reader plans around is unchecked`,
-    );
-  } else if (Number.isFinite(literal) && literal !== expected) {
-    problems.push(`pricing.astro says ${mode} costs ${literal} credit(s); ${neurons} neurons / ${perCredit} = ${expected}`);
+  if (!/PRODUCT_MODES\.map/.test(page) || !/const info = MODE_INFO\[mode\]/.test(page)) {
+    problems.push('pricing.astro no longer derives its ProductMode rows from PRODUCT_MODES + MODE_INFO');
   }
-
-  // Requests per free day. The page may STATE it or DERIVE it, and this has to tell the
-  // two apart from "neither", because that third case is the one that looks like success.
-  //
-  // It was stated, as a literal, and was wrong: 30 / 15 / up to 6 against a free tier the
-  // repricing had taken from 60 Credits a day to 231. It is derived now — computed from
-  // PLAN_LIMITS.free at build time — so there is no literal left for the regex below to
-  // read. A guard that simply found nothing and moved on would print "3 modes agree"
-  // having checked nothing at all, which is precisely the defect this file was written
-  // about in the first place. So: a literal is checked, a derivation is confirmed to be
-  // present, and the absence of both is a failure.
-  const perDay = /perDay: '([^']+)'/.exec(page.slice(page.indexOf(`mode: '${mode}'`)))?.[1];
-  if (perDay === undefined) {
-    if (!/const perFreeDay\b/.test(page) || !/perDay: perFreeDay\(/.test(page)) {
-      problems.push(
-        `pricing.astro states no requests-per-free-day for ${mode} and does not derive one ` +
-        `via perFreeDay() — the figure a reader plans around is now unchecked`,
-      );
-    } else {
-      derived += 1;
-    }
+  if (!/perDay: perFreeDay\(r\.cost\)/.test(page)) {
+    problems.push('pricing.astro no longer derives requests-per-free-day from the same mode cost');
   } else {
-    // A STATED FIGURE HAS TO BE READABLE AS A NUMBER. The original rule was
-    // `if (/^\d+$/.test(perDay) && ...)` — a guard whose first condition was the
-    // opportunity to skip itself. "up to 6" fell through it for as long as it was on the
-    // page, and so did a literal `'?'` when this was falsified. Anything this cannot
-    // parse is unchecked, and unchecked is reported, not passed.
-    const m = /^(?:up to )?(\d+)$/.exec(perDay.trim());
-    if (!m) {
-      problems.push(
-        `pricing.astro states "${perDay}" ${mode} requests a free day — not a number this ` +
-        `can check against ${freeDay} Credits/day. Write a count, or derive it with perFreeDay().`,
-      );
-    } else if (Number(m[1]) !== Math.floor(freeDay / expected)) {
-      problems.push(`pricing.astro says ${perDay} ${mode} requests a free day; ${freeDay} / ${expected} = ${Math.floor(freeDay / expected)}`);
-    } else {
-      stated += 1;
-    }
+    derived += 1;
   }
-
-  // The slider's label and its data-cost, which the calculator now reads.
-  const ctl = meter.slice(meter.indexOf(`ctl__mode mono">${mode} ·`));
-  const label = Number(new RegExp(`${mode} · (\\d+) credit`).exec(ctl)?.[1]);
-  const attr = Number(/data-cost="(\d+)"/.exec(ctl)?.[1]);
-  if (label !== expected) problems.push(`CreditMeter label says ${mode} · ${label}; expected ${expected}`);
-  if (attr !== expected) problems.push(`CreditMeter data-cost for ${mode} is ${attr}; expected ${expected}`);
+  // The calculator's own figures are checked only while the calculator exists. When it does not,
+  // there is nothing to bind to MODE_INFO and no literal to re-introduce — and a check that read a
+  // missing file would be the crash this guard used to end on, which reported nothing at all.
+  if (meter !== null) {
+    const creditVar = `${key.toUpperCase()}_CREDITS`;
+    if (!new RegExp(`const ${creditVar} = entryCredits\\('${key}'\\)`).test(meter)) {
+      problems.push(`CreditMeter does not derive ${mode} from MODE_INFO`);
+    }
+    const ctlAt = meter.indexOf(`data-mode=\"${key}\"`);
+    const ctl = ctlAt >= 0 ? meter.slice(ctlAt, ctlAt + 1400) : '';
+    if (!ctl.includes(`${mode} · {${creditVar}} credits`)) problems.push(`CreditMeter label for ${mode} is not bound to ${creditVar}`);
+    if (!ctl.includes(`data-cost={${creditVar}}`)) problems.push(`CreditMeter data-cost for ${mode} is not bound to ${creditVar}`);
+  }
 }
 
 // The calculator must not reintroduce a literal cost.
-if (/perDay = c \* \d/.test(meter)) {
+if (meter !== null && /perDay = c \* \d/.test(meter)) {
   problems.push('CreditMeter computes a mode cost from a literal again instead of reading data-cost');
 }
 
-// EVERY page that states a per-mode cost, not just the pricing table. The wrong Clay
+// EVERY page that states a per-mode cost, not just the pricing table. The wrong Plan
 // figure turned out to be repeated in six places across the docs, the changelog and the
 // docs layout's own footer — each of them a sentence a reader would plan around.
-const PROSE = [
-  'apps/site/layouts/DocsLayout.astro',
-  'apps/site/pages/changelog.astro',
-  'apps/site/pages/docs/credits-and-limits.astro',
-  'apps/site/pages/docs/modes.astro',
-  'apps/site/pages/docs/faq.astro',
-  // The landing states a Credit cost per mode in its `modes` table. It did not before —
-  // the one-viewport version carried no figures at all — so the moment it started
-  // carrying them it had to join this list or it would have been the one page free to
-  // drift.
-  'apps/site/pages/index.astro',
-].map((p) => `apps/site/src/${p.slice('apps/site/'.length)}`);
+//[[ THE LIST IS THE SITE'S OWN SOURCE TREE, walked, not typed (2026-09-23).
+//
+//   It was six hand-written paths. A page that begins stating a per-mode cost had to be added here
+//   by hand or it was the one page free to drift, and the landing was that page once already. Every
+//   .astro file under apps/site/src is read now — pages, layouts and components — so a new page or
+//   component is checked the day it exists. Comments are stripped first: a scanner that reads prose
+//   will otherwise find its own explanation of a fix and report it as a figure. ]]
+const siteSources = astroFiles('apps/site/src');
+if (siteSources.length < 20) {
+  console.error(`check-credit-figures: only ${siteSources.length} .astro files under apps/site/src — the walk is wrong, and the prose check would check nothing`);
+  process.exit(1);
+}
+const PROSE = siteSources;
+const stripMarkupComments = (src) =>
+  src.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 const expectedFor = {};
 for (const { mode, row } of MODES) {
@@ -284,7 +214,7 @@ for (const { mode, row } of MODES) {
 for (const file of PROSE) {
   let text;
   try {
-    text = read(file);
+    text = stripMarkupComments(read(file));
   } catch {
     problems.push(`${file} is listed here but does not exist — update this list`);
     continue;
@@ -292,15 +222,9 @@ for (const file of PROSE) {
   for (const [mode, expected] of Object.entries(expectedFor)) {
     // "Plan — 3 credits", "Plan: 3 credits", "Plan</strong> (3 credits", "Plan ... for 3 credits".
     //
-    // The lookbehind is load-bearing: "Agent" is a substring of "Super Agent", so
-    // without it every "Super Agent — 10 credits" is reported as Agent costing 10.
-    // It produced five false positives against a correct file.
-    const guard = mode === 'Agent' ? '(?<!Super )' : '';
+    const guard = '';
     // `gi`, not `g`. The unit is a proper noun in product copy — "2 Credits" — and a
-    // case-sensitive `credit` walked straight past every capitalised claim while
-    // reporting the file checked. Lowering the mode name too is safe: each of Plan,
-    // Agent and Super Agent is a distinct word, and the (?<!Super ) guard below is
-    // applied to the same lowered text.
+    // case-sensitive `credit` would walk straight past every capitalised claim.
     // `[^.]`, NOT `[^.\n]`. The class excluded newlines, so it could only ever see a cost
     // written on the same line as its mode name — which is how prose puts it and is NOT
     // how structured copy does. The landing lists `name: 'Agent',` and `tag: '4 credits',`
@@ -317,49 +241,37 @@ for (const file of PROSE) {
   }
 }
 
-// THE APP'S OWN FIGURE. The composer renders `MODE_INFO[...].typicalCredits` as
-// "Typically N Credits", so the app makes the same claim the site does and had drifted
-// from it in the same direction: Plan read "~1" where every measured Plan question is
-// 2 credits, and Agent read "2-15" against a measured 4-18. The site and the app must
-// agree with COST-MODEL, not merely with each other.
-/**
- * Comments stripped. This is the fourth guard in one session to be fooled by prose
- * describing the very thing it forbids — the creditsPerRequest check below matched the
- * comment that explains why creditsPerRequest was removed. A guard that reads source text
- * must read the source, not the commentary on it.
- */
+// THE APP'S OWN FIGURE. MODE_INFO is the only ProductMode price table, and its published ranges
+// must agree with the measured Plan/Agent rows.
 const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 const shared = stripComments(read('packages/shared/src/index.ts'));
-const SPECIALIST = { Plan: 'clay', Agent: 'stone', 'Super Agent': 'rune' };
 const RANGE = {
-  Plan: ['Clay question (Studio attached)'],
-  Agent: [
-    'Stone, targeted edit + read-back verify in Studio',
-    'Stone, full build + edit + verify in Studio',
+  plan: ['Plan question (Studio attached)'],
+  agent: [
+    'Agent, targeted edit + read-back verify in Studio',
+    'Agent, full build + edit + verify in Studio',
   ],
 };
-for (const [mode, rows] of Object.entries(RANGE)) {
+for (const { key, mode } of MODES) {
+  const rows = RANGE[key] ?? [];
   const credits = rows.map((r) => neuronsFor(r)).filter((n) => n !== null).map(creditsFor);
   if (credits.length === 0) continue;
   const lo = Math.min(...credits);
   const hi = Math.max(...credits);
   const want = lo === hi ? String(lo) : `${lo}-${hi}`;
-  const line = new RegExp(`${SPECIALIST[mode]}: \\{[^}]*typicalCredits: '([^']+)'`).exec(shared);
-  if (!line) {
-    problems.push(`packages/shared has no typicalCredits for ${SPECIALIST[mode]}`);
-  } else if (line[1] !== want) {
-    problems.push(`MODE_INFO.${SPECIALIST[mode]}.typicalCredits is '${line[1]}'; COST-MODEL gives '${want}' for ${mode}`);
-  }
+  const actual = modeField(key, 'typicalCredits');
+  if (actual === null) problems.push(`packages/shared has no typicalCredits for ${key}`);
+  else if (actual !== want) problems.push(`MODE_INFO.${key}.typicalCredits is '${actual}'; COST-MODEL gives '${want}' for ${mode}`);
 }
 
 // THE MILESTONE PRICE MUST BE DERIVED, NOT TYPED.
 //
-// The roadmap card shows a milestone's cost as a Credit range: `runs × the mode's typical
+// The roadmap card shows a mileagent's cost as a Credit range: `runs × the mode's typical
 // Credits`. That is a fourth surface for a number this file already tracks through three, and
 // the whole reason this guard exists is that the same figure, typed into more than one place,
 // drifted in three of them inside a single component.
 //
-// So what is checked is not the arithmetic — milestone-credits.test.mjs does that — but that
+// So what is checked is not the arithmetic — mileagent-credits.test.mjs does that — but that
 // there is still only ONE place a price is written down. `creditRangeForRuns` must read
 // MODE_INFO, and must not contain a published figure of its own; roadmap.ts must call it rather
 // than multiply by hand.
@@ -369,16 +281,16 @@ if (!rangeFn || rangeFn === shared) {
 } else {
   const body = rangeFn.slice(0, rangeFn.indexOf('\n}\n'));
   if (!/MODE_INFO\[/.test(body)) {
-    problems.push('creditRangeForRuns does not read MODE_INFO — the milestone price is a second copy free to drift');
+    problems.push('creditRangeForRuns does not read MODE_INFO — the mileagent price is a second copy free to drift');
   }
   // Only the MULTI-DIGIT published figures are searched for, and the single-digit ones are
   // deliberately not. `2` and `4` are indistinguishable from the arity literals a parser
   // legitimately contains (`parts.length > 2`), so looking for them finds the parser and reports
   // it as a hard-coded price — which is how this check first went red against correct code. The
   // limitation is stated rather than papered over: a hard-coded '2' here would not be caught by
-  // this line, and milestone-credits.test.mjs is what would catch the wrong answer it produced.
+  // this line, and mileagent-credits.test.mjs is what would catch the wrong answer it produced.
   const published = new Set();
-  for (const mode of ['clay', 'stone', 'rune']) {
+  for (const mode of ['plan', 'agent', 'agent']) {
     const line = new RegExp(`${mode}: \\{[^}]*typicalCredits: '([^']+)'`).exec(shared);
     for (const n of (line?.[1] ?? '').split('-')) if (n.trim().length >= 2) published.add(n.trim());
   }
@@ -397,7 +309,7 @@ if (!rangeFn || rangeFn === shared) {
 //   /pricing carried `Apple Max · 4 credits · "Builds features across your project" ·
 //   ~57 requests a free day` about a hundred lines under `One build costs about 77 Credits`, which
 //   the plan cards turn into three builds a free day and thirty a month. Both figures are measured
-//   and neither is wrong: the 4 is ceil(111/30) from COST-MODEL's *Stone, targeted edit +
+//   and neither is wrong: the 4 is ceil(111/30) from COST-MODEL's *Agent, targeted edit +
 //   read-back verify in Studio*, and the 77 is ceil(2300/30) from BUILD_NEURONS.qualityGated. What
 //   was wrong was publishing them in the same unit-less breath, so a buyer dividing the free
 //   allowance got 57 builds a day where the product delivers 3 — 19x, on the one question the
@@ -409,8 +321,8 @@ if (!rangeFn || rangeFn === shared) {
 //   has to be the build price, or the page is publishing 231/cost builds a day and 231/77 builds a
 //   day at once.
 //
-//   ONLY OFFERED MODES. `rune` declares a build at 10 Credits and is deliberately not checked
-//   here, because it is withdrawn from PRODUCT_MODES_OFFERED. COST-MODEL measures its build at 297
+//   ONLY OFFERED MODES. `agent` declares a build at 10 Credits and is deliberately not checked
+//   here, because it is withdrawn from PRODUCT_MODES. COST-MODEL measures its build at 297
 //   neurons and BUILD_NEURONS measures the quality-gated one at 2,300; whoever re-offers that mode
 //   has to reconcile those before publishing either, and this guard going red on that day is the
 //   reason it is written against the offered list rather than against all three.
@@ -430,18 +342,18 @@ if (!creditsPerBuild) {
 const buildsFreeDay = Math.floor(freeDay / creditsPerBuild);
 /** Modes whose declared entry unit was actually parsed. Not "not missing". */
 let unitsChecked = 0;
-for (const { mode, specialist } of MODES) {
-  const unit = new RegExp(`${specialist}: \\{[^}]*entryUnit: '([^']+)'`).exec(shared)?.[1];
+for (const { key, mode } of MODES) {
+  const unit = modeField(key, 'entryUnit');
   if (unit === undefined) {
     problems.push(
-      `MODE_INFO.${specialist} has no entryUnit — the ${mode} row publishes a Credit cost and a `
+      `MODE_INFO.${key} has no entryUnit — the ${mode} row publishes a Credit cost and a `
       + 'requests-per-day count with no statement of what one request is, which is the shape that '
       + `let "${mode} builds features" sit beside a per-request price`,
     );
     continue;
   }
   unitsChecked += 1;
-  const neurons = neuronsFor(ROW_FOR[specialist]);
+  const neurons = neuronsFor(ROW_FOR[key]);
   if (neurons === null) continue;
   const cost = creditsFor(neurons);
   // `\bbuild` catches build, builds, building. A mode that says it builds at its entry price is
@@ -465,7 +377,7 @@ if (unitsChecked === 0) {
 // gets left behind by the next repricing, which is how "30 / 15 / up to 6" survived a fourfold
 // change to the free tier.
 const pageSrc = stripComments(page);
-if (!/MODE_INFO\[PRODUCT_MODE_TO_SPECIALIST\[m\]\]\.entryUnit/.test(pageSrc)) {
+if (!/const info = MODE_INFO\[mode\]/.test(pageSrc) || !/unit: info\.entryUnit/.test(pageSrc)) {
   problems.push('pricing.astro does not read MODE_INFO.entryUnit — the per-request table states a price and a per-day count with no unit between them');
 }
 if (!/\{r\.unit\}/.test(pageSrc)) {
@@ -481,7 +393,7 @@ if (!/buildsPerDay\('free'\)/.test(pageSrc) || !/CREDITS_PER_BUILD/.test(pageSrc
 
 const roadmapSrc = stripComments(read('apps/worker/src/roadmap.ts'));
 if (/creditsLow:/.test(roadmapSrc) && !/creditRangeForRuns\(/.test(roadmapSrc)) {
-  problems.push('apps/worker/src/roadmap.ts sets a milestone credit figure without going through creditRangeForRuns');
+  problems.push('apps/worker/src/roadmap.ts sets a mileagent credit figure without going through creditRangeForRuns');
 }
 
 // The dead constant must not come back: nothing charges from it, and its comment used
@@ -518,12 +430,22 @@ if (!meterIsRendered) {
   // Not a failure: every SHIPPED surface in that list is still verified, and no figure a customer
   // plans around is unchecked. It is printed because the alternative — checking the component
   // silently and counting it in the sentence — is the over-claim this guard exists to prevent
-  // elsewhere, and because the file it names carries retired plan vocabulary ("Pro (waitlist)",
-  // 400/day, 6000/month) that must be fixed before anyone re-imports it.
+  // elsewhere.
+  //
+  // TWO REASONS IT CAN BE FALSE, and they are different things. The component can exist and be
+  // imported by nothing — the orphan this notice was written for, whose file carried retired plan
+  // vocabulary and had to be wired back or deleted. Or it can be GONE, which is what happened:
+  // the minimal site rebuild deleted it, and the previous wording told the reader to "wire it back
+  // or delete it" without noticing the second had already been done. A file that does not exist
+  // has no figures to check and no drift to report, so the run says which of the two it found.
   console.log(
-    `  apps/site/src/components/CreditMeter.astro was checked too, and NOTHING RENDERS IT — ` +
-    `no page or layout under apps/site/src imports it, so its figures ship to nobody. ` +
-    `Wire it back or delete it; until then this run verified no calculator.`,
+    meter === null
+      ? `  ${METER_PATH} no longer exists — the calculator was deleted, so this run verified no ` +
+        `calculator. Nothing is unchecked: every figure it carried is either gone with it or is ` +
+        `stated on /pricing, which IS checked above.`
+      : `  ${METER_PATH} was checked too, and NOTHING RENDERS IT — ` +
+        `no page or layout under apps/site/src imports it, so its figures ship to nobody. ` +
+        `Wire it back or delete it; until then this run verified no calculator.`,
   );
 }
 console.log(
