@@ -131,6 +131,11 @@ long-poll queue for the plugin, the agent run loop), `QuotaDO`, `BudgetDO`, `Pai
 `<kind>/<projectId>/<id>` so a project's bytes are one `list({ prefix })` from deletion).
 `MEDIA` is optional: `mediaStore()` answers `null` where it is unbound and the caller keeps
 its KV path, so a deployment from an older config degrades instead of failing its first write.
+Apple-only and optional in `env.ts` (golem runs the older path without them): `PRODUCT_EVENTS`
+(Analytics Engine, product events with no person in them, `analytics-engine.ts`), `NOTIFY_QUEUE`
+(notifications written by a queue consumer with retries, `notify-queue.ts`), `MODEL_UPLOAD_WORKFLOW`
+(the `ModelUploadWorkflow` Workflow class, which finishes a slow 3D upload and tells the user,
+`model-upload.ts`), and `IMAGES` (display-sized WebP copies of generated images, `image-resize.ts`).
 
 **Auth and data:** Supabase Postgres with RLS on every table. The worker forwards the caller's own
 JWT to PostgREST, so **RLS is the thing deciding** — not the worker. `infra/supabase/tests/rls-isolation.mjs`
