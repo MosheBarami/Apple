@@ -202,23 +202,25 @@ export function gameGapSteer(gaps: readonly ('hud' | 'playtest')[]): string {
 /**
  * A stuck step is not a finished run. Gauntlet round 3 (2026-09-23): chasing one defect, the model
  * re-read the same scripts, three all-duplicate steps ended the run, and the plan's next step (the
- * HUD) was never built. An Autonomous run with work still open is moved on instead — reads withheld
+ * HUD) was never built. An Agent run with work still open is moved on instead — reads withheld
  * for one step, told to leave the detail — at most UNSTICKS_PER_RUN times; after that it ends as before.
  */
 export const UNSTICKS_PER_RUN = 2;
 
 export const UNSTICK_STEER =
-  'You are stuck: your last steps repeated reads you already made. Stop re-reading and stop investigating ' +
+  'You are stuck: your last steps repeated calls you already made, and they were not run again. Do not repeat ' +
+  'any of them. Stop re-reading and stop investigating ' +
   'that detail — leave it as it is and note it for your final summary. Build the next missing piece of the ' +
   'request now with a tool call that changes the place; reading tools are unavailable for this one step.';
 
 export function afterDuplicateStreak(f: {
   streak: number;
   limit: number;
-  autonomous: boolean;
+  /** An Agent-mode run that can change the place — Autonomous or not (gauntlet round 4, run a933ac87). */
+  building: boolean;
   unstucks: number;
   workOpen: boolean;
 }): 'continue' | 'unstick' | 'end' {
   if (f.streak < f.limit) return 'continue';
-  return f.autonomous && f.workOpen && f.unstucks < UNSTICKS_PER_RUN ? 'unstick' : 'end';
+  return f.building && f.workOpen && f.unstucks < UNSTICKS_PER_RUN ? 'unstick' : 'end';
 }

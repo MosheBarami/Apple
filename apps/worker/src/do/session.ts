@@ -4396,7 +4396,7 @@ export class SessionDO extends DurableObject<Env> {
     const streak = afterDuplicateStreak({
       streak: agent.duplicateStreak,
       limit: MAX_DUPLICATE_STREAK,
-      autonomous: agent.mode === 'agent' && agent.autonomous === true && canBuild,
+      building: agent.mode === 'agent' && canBuild,
       unstucks: agent.unstucks ?? 0,
       workOpen: planOpen !== undefined || streakGaps.length > 0,
     });

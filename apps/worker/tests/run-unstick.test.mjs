@@ -13,13 +13,13 @@ const SESSION = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..',
   .replace(/\/\/\[\[[\s\S]*?\]\]/g, '')
   .replace(/\/\/[^\n]*/g, '');
 
-const at = (o) => afterDuplicateStreak({ streak: 3, limit: 3, autonomous: true, unstucks: 0, workOpen: true, ...o });
+const at = (o) => afterDuplicateStreak({ streak: 3, limit: 3, building: true, unstucks: 0, workOpen: true, ...o });
 
 test('below the limit nothing happens', () => {
   assert.equal(at({ streak: 2 }), 'continue');
 });
 
-test('an Autonomous run with work still open is moved on, not ended', () => {
+test('an Agent run with work still open is moved on, not ended', () => {
   assert.equal(at({}), 'unstick');
 });
 
@@ -28,9 +28,23 @@ test('the move-on is bounded per run, so a truly stuck run still ends', () => {
   assert.equal(at({ unstucks: UNSTICKS_PER_RUN }), 'end');
 });
 
-test('a run that was not Autonomous, or has nothing left to do, ends as before', () => {
-  assert.equal(at({ autonomous: false }), 'end');
+test('a run that cannot build, or has nothing left to do, ends as before', () => {
+  assert.equal(at({ building: false }), 'end');
   assert.equal(at({ workOpen: false }), 'end');
+});
+
+// Gauntlet round 4 (2026-09-23, run a933ac87): Autonomous was off, the plan's "Audit and light the
+// scene" was still open, and three duplicate steps ended a "make the full game" run after 6 minutes.
+// Whether the user pre-approved tools says nothing about whether the work is finished.
+test('an Agent run with open work is moved on whether or not Autonomous is on', () => {
+  assert.equal(afterDuplicateStreak({ streak: 3, limit: 3, building: true, unstucks: 0, workOpen: true }), 'unstick');
+  const call = SESSION.match(/afterDuplicateStreak\(\{[\s\S]*?\}\)/);
+  assert.ok(call, 'the session call was not found');
+  assert.doesNotMatch(call[0], /autonomous/, 'the move-on still depends on the Autonomous switch');
+});
+
+test('the steer does not assume the repeats were reads', () => {
+  assert.doesNotMatch(UNSTICK_STEER, /repeated reads/i);
 });
 
 test('the steer tells the model to leave the stuck detail and build the next missing piece', () => {
