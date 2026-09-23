@@ -131,6 +131,8 @@ importers:
         specifier: workspace:*
         version: link:../design
 
+  packages/langflow: {}
+
   packages/sdk: {}
 
   packages/shared: {}

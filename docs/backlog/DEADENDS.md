@@ -661,3 +661,52 @@ stop being askable because the UI stopped drawing chips.
 
 **If a renderer returns:** it reads this module rather than re-deriving the rules, and
 `tests/evidence-model.test.mjs` is already the guard on them.
+
+---
+
+## packages/training/src/generate-eval-remote.mjs — WIRE, 2026-09-23
+
+**Found:** imported by nothing in the tree (landed in 141a1ad).
+
+**What it is:** a CLI, the remote twin of `generate_eval.py`. It produces the same output shape
+from the SERVED models through `/api/admin/model-test`, so `score-eval.mjs` scores it unchanged.
+Bases that do not fit on this Mac can only be measured this way. It is run by hand with
+`GOLEM_ADMIN_KEY`, like `score-eval.mjs` above.
+
+**Caller being added:** a `scripts` entry in `packages/training/package.json`, which is what makes
+it a declared entry point for this checker. That manifest belongs to the knowledge lane, so the
+entry is theirs to add. Until then, this line is where the CLI is recorded.
+
+---
+
+## packages/training/src/synthesize-game-logic.mjs — WIRE, 2026-09-23
+
+**Found:** imported only by `packages/training/src/synthesize-game-logic.test.mjs` (141a1ad).
+
+**What it is:** a CLI that grows the game-logic curriculum by executor-verified synthesis. A
+teacher model drafts examples. A draft is kept only when `verifyExample` runs it with the real
+`luau` binary and its mutation turns an assertion red. It writes `data/game-logic-synth-v1/`, and
+`build-mlx-dataset.mjs` consumes that through `assemble({ extraLogic })`.
+
+**Caller being added:** the same manifest `scripts` entry as the one above, owned by the same lane.
+The test exercises only the pure helpers. It does not import the CLI to run it, because running it
+spends teacher calls.
+
+---
+
+## packages/training/src/tool-trajectory-curriculum-c.mjs — WIRE, 2026-09-23
+
+**Found:** reported as imported only by `packages/training/src/tool-trajectory-curriculum-c.test.mjs`.
+
+**It already has a product caller, and the resolver cannot see it.** `build-mlx-dataset.mjs`
+`assemble()` loads it through
+`loadExtraCurricula(['./tool-trajectory-curriculum-b.mjs', './tool-trajectory-curriculum-c.mjs'])`.
+That is a dynamic `import()` of a computed path, which this checker does not follow, by design,
+because it resolves only literal specifiers. Batch C is in the v5 dataset (fe2bdf2).
+
+That also makes the `curriculum-b` entry above stale: the builder does read both. The
+STRUCTURALLY-BLOCKED reasoning given there no longer holds for the MLX dataset.
+
+**Caller being added:** none is needed. The WIRE here records that the wire exists. The finding
+clears if `loadExtraCurricula` takes static imports, which is an edit to `packages/training`, the
+knowledge lane's package.

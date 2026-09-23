@@ -167,8 +167,23 @@ const examined = tracked.filter((f) => !isExcepted(f) && !f.includes('node_modul
  *
  * Keeping the two sets separate means the graph gets the edge and the denominator does not move:
  * 318 files before and after.
+ *
+ * AND `.css` IS THE SAME BUG A THIRD TIME, found 2026-09-22. The vendored AICSS components import
+ * their styles as CSS Modules — `components/aicss/comparison-table/ComparisonTable.tsx` imports
+ * `./ComparisonTable.module.css` and `data-table/DataTable.tsx` imports `./DataTable.module.css`,
+ * and both files are right there on disk. They resolved to nothing, and
+ * because those specifiers sit in PRODUCT source rather than in a test, they are not in the class the
+ * residue ratio is allowed to cover: the meta-test in tests/check-deadends.test.mjs states the
+ * property plainly — in product source an unresolved in-repo specifier is a resolver hole or a
+ * broken import, and both must be red at one. The ratio had reached 0.93% against a 0.5% ceiling,
+ * and these were the entries pushing it there.
+ *
+ * `.css` goes in THIS set and not in `tracked`, for the reason the paragraph above gives: a
+ * stylesheet is something a specifier may resolve to, and it is not something that can be a dead
+ * end worth reporting — every stylesheet in this tree is imported by the component it belongs to,
+ * so adding them to the denominator would only move the number the suite is built on.
  */
-const RESOLVABLE = new Set([...importerSources, ...currentFiles('*.json')]);
+const RESOLVABLE = new Set([...importerSources, ...currentFiles('*.json'), ...currentFiles('*.css')]);
 
 console.log(`DENOMINATOR ${examined.length} files; EXCEPTIONS ${EXCEPTIONS.length}: ${EXCEPTIONS.map((e) => e.glob).join(', ')}`);
 

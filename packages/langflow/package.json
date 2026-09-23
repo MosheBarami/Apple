@@ -1,0 +1,12 @@
+{
+  "name": "@golem/langflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Apple's offline/admin Langflow flows: build, sync and run them in the local Langflow Desktop app.",
+  "scripts": {
+    "sync": "node sync.mjs",
+    "typecheck": "node --check sync.mjs",
+    "test": "node --test sync.test.mjs"
+  }
+}
