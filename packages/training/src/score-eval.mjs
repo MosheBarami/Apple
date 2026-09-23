@@ -99,6 +99,42 @@ export function scoreTrajectory(call, registry) {
   return problems.length ? { ok: false, reason: 'arguments_rejected', detail: problems[0] } : { ok: true };
 }
 
+/**
+ * The craft a call carries: every instance class it creates, the font, the lighting mood, the
+ * terrain operation. A registry-valid call can still be the unstyled UI the visual gauntlet
+ * failed on, so trajectory validity alone cannot say whether the model learned the craft.
+ */
+export function styleFeatures(call) {
+  const out = new Set();
+  const walk = (v) => {
+    if (Array.isArray(v)) return v.forEach(walk);
+    if (!v || typeof v !== 'object') return;
+    for (const [k, x] of Object.entries(v)) {
+      if (k === 'className' && typeof x === 'string') out.add(`class:${x}`);
+      else if (k === 'Font') out.add(`font:${x?.v ?? x}`);
+      else if (k === 'mood' && typeof x === 'string') out.add(`mood:${x}`);
+      else if (k === 'action' && typeof x === 'string') out.add(`op:${x}`);
+      else walk(x);
+    }
+  };
+  walk(call?.args);
+  return out;
+}
+
+/** Share of the reference call's craft features the produced call has; null when the reference has none. */
+export function styleRecall(reference, produced) {
+  const want = styleFeatures(reference);
+  if (want.size === 0) return null;
+  const got = styleFeatures(produced);
+  return [...want].filter((f) => got.has(f)).length / want.size;
+}
+
+function referenceCall(message) {
+  const fn = message?.tool_calls?.[0]?.function;
+  if (!fn) return null;
+  try { return { name: fn.name, args: typeof fn.arguments === 'string' ? JSON.parse(fn.arguments) : fn.arguments }; } catch { return null; }
+}
+
 async function main() {
   const file = process.argv[2];
   if (!file) {
@@ -113,6 +149,7 @@ async function main() {
     adapter: { 'game-logic': { ok: 0, n: 0, reasons: {} }, trajectory: { ok: 0, n: 0, reasons: {} } },
   };
   const perRow = [];
+  const style = { base: { sum: 0, n: 0 }, adapter: { sum: 0, n: 0 } };
 
   for (const [id, row] of Object.entries(data.rows)) {
     const isTrajectory = row.kind === 'apple-tool-trajectory';
@@ -121,7 +158,14 @@ async function main() {
       const answer = row[side];
       let result;
       if (isTrajectory) {
-        result = scoreTrajectory(extractToolCall(answer), registry);
+        const call = extractToolCall(answer);
+        result = scoreTrajectory(call, registry);
+        const recall = styleRecall(referenceCall(row.reference), call);
+        if (recall !== null) {
+          entry[`${side}Style`] = recall;
+          style[side].sum += recall;
+          style[side].n += 1;
+        }
       } else {
         const example = byId.get(id);
         result = example ? scoreGameLogic(example, answer) : { ok: false, reason: 'example_not_in_curriculum' };
@@ -150,8 +194,12 @@ async function main() {
     }
   }
 
+  // Craft recall on the rows whose reference call carries any (classes, font, mood, terrain op).
+  const mean = (s) => (s.n ? (s.sum / s.n).toFixed(2) : '—');
+  console.log(`style recall   ${mean(style.base).padStart(10)}      ${mean(style.adapter)}   (n=${style.base.n} visual call rows)`);
+
   const out = file.replace(/\.json$/, '-scored.json');
-  writeFileSync(out, JSON.stringify({ tally, perRow }, null, 1));
+  writeFileSync(out, JSON.stringify({ tally, style, perRow }, null, 1));
   console.log(`\nwrote ${out}`);
 }
 

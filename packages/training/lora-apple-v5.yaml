@@ -9,6 +9,13 @@
 #
 # The held-out TEST split is v4's, pinned family by family (build-mlx-dataset.mjs --v5), so base,
 # v4 and v5 are scored on identical rows. Synthetic families go to train or valid, never test.
+#
+# 2026-09-23: v5 ALSO carries batch C (tool-trajectory-curriculum-c.mjs) — general visual craft:
+# outlined/gradient UI, pills, round buttons, card sizing, layered terrain, primitive props,
+# lighting moods. Its families split among themselves (v4's trajectory families stay pinned), so
+# v5 is no longer a one-variable change: it is more game logic AND the visual-craft track. A styled
+# create_instances call is ~900 tokens of typed envelopes, so max_seq_length is 2048, not 1024
+# (at 1024, 19 batch-C rows would have been truncated through their label).
 model: "unsloth/Llama-3.2-3B-Instruct"
 train: true
 data: "mlxdata-apple-v5"
@@ -19,7 +26,7 @@ num_layers: 16
 batch_size: 1
 grad_accumulation_steps: 4
 grad_checkpoint: true
-max_seq_length: 1024
+max_seq_length: 2048
 iters: 400
 learning_rate: 5.0e-5
 # Validate on the WHOLE valid split, not 12 rows of it: the checkpoint is chosen by this number.

@@ -75,6 +75,8 @@ packages/corpus/raw/*
 # Built by scripts/build-verified-modules.mjs. COMMITTED for the same reason: verified-modules.ts
 # imports it statically and a Worker has no filesystem.
 !packages/corpus/data/verified-modules.json
+# Hand-written general craft cards. COMMITTED for the same reason: skill-cards.ts imports it statically.
+!packages/corpus/data/skill-cards.json
 # THE ASSET CATALOGUE LIVED HERE AND WAS DELETED ON 2026-09-20.
 #
 # `packages/corpus/data/library/` held the harvests behind the curated asset library: 510,014 rows
@@ -276,3 +278,10 @@ claude-autonomy-research-pack/
 
 # owner dashboard: local usage readings
 scripts/owner-dashboard/limits.json
+.backups/
+scripts/owner-dashboard/cc/review.json
+
+# D-FXLIB-1: downloaded sound and effect files whose licence does not allow redistribution (or that
+# are too large to commit) stay on this machine. Their manifests are committed; the files are not.
+packages/asset-library/sfx-store/
+packages/asset-library/vfx-store/

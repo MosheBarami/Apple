@@ -34,6 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { ALL_GAME_LOGIC_CURRICULUM, buildGameLogic } from './build-game-logic.mjs';
 import { TOOL_TRAJECTORY_CURRICULUM } from './tool-trajectory-curriculum.mjs';
 import { buildTrajectoryRows, splitRows } from './build-tool-trajectories.mjs';
+import { assignSplits } from './build-dataset.mjs';
 import { loadRegistry } from './tool-trajectory-verify.mjs';
 import { loadEvalGuard } from './audit-dataset.mjs';
 
@@ -57,15 +58,29 @@ async function loadExtraCurricula(names) {
   return out;
 }
 
-export async function assemble({ guard = loadEvalGuard(), registry = null, extraLogic = [], previousCard, newFamilySplits } = {}) {
+/**
+ * Trajectory rows split with every family in `pinned` kept where it was, and the rest split among
+ * themselves by the same greedy splitter — so adding a batch can never move an earlier held-out
+ * family into training.
+ */
+export function pinTrajectorySplits(rows, pinned) {
+  const splits = { train: [], val: [], test: [] };
+  const counts = {};
+  for (const row of rows) if (!pinned[row.family]) counts[row.family] = (counts[row.family] ?? 0) + 1;
+  const { assignment } = assignSplits(counts);
+  for (const row of rows) splits[pinned[row.family] ?? assignment[row.family]].push(row);
+  return { splits };
+}
+
+export async function assemble({ guard = loadEvalGuard(), registry = null, extraLogic = [], previousCard, newFamilySplits, trajectoryFamilies } = {}) {
   const logic = buildGameLogic({ examples: [...ALL_GAME_LOGIC_CURRICULUM, ...extraLogic], guard, previousCard, newFamilySplits });
 
-  const trajectorySeeds = [...TOOL_TRAJECTORY_CURRICULUM, ...(await loadExtraCurricula(['./tool-trajectory-curriculum-b.mjs']))];
+  const trajectorySeeds = [...TOOL_TRAJECTORY_CURRICULUM, ...(await loadExtraCurricula(['./tool-trajectory-curriculum-b.mjs', './tool-trajectory-curriculum-c.mjs']))];
   const { rows, refused } = await buildTrajectoryRows(trajectorySeeds, { registry: registry ?? (await loadRegistry()) });
   if (refused.length) {
     throw new Error(`${refused.length} trajectory seed(s) did not verify: ${refused.map((r) => r.id).join(', ')}`);
   }
-  const { splits: trajectorySplits } = splitRows(rows);
+  const { splits: trajectorySplits } = trajectoryFamilies ? pinTrajectorySplits(rows, trajectoryFamilies) : splitRows(rows);
 
   const merged = { train: [], val: [], test: [] };
   for (const split of ['train', 'val', 'test']) {
@@ -109,18 +124,20 @@ export async function assemble({ guard = loadEvalGuard(), registry = null, extra
 export function v5Inputs(root = ROOT) {
   const synth = JSON.parse(readFileSync(join(root, 'packages/training/data/game-logic-synth-v1/examples.json'), 'utf8'));
   const families = {};
+  const trajectoryFamilies = {};
   for (const [split, file] of [['train', 'train'], ['val', 'valid'], ['test', 'test']]) {
     for (const line of readFileSync(join(root, `packages/training/mlxdata-apple-v4/${file}.jsonl`), 'utf8').split('\n')) {
       if (!line.trim()) continue;
       const { meta } = JSON.parse(line);
       if (meta?.kind === 'game-logic') families[meta.family] = split;
+      if (meta?.kind === 'apple-tool-trajectory') trajectoryFamilies[meta.family] = split;
     }
   }
   const newFamilySplits = {};
   for (const family of new Set(synth.map((e) => e.family))) {
     newFamilySplits[family] = parseInt(hash(family).slice(0, 8), 16) % 10 === 0 ? 'val' : 'train';
   }
-  return { extraLogic: synth, previousCard: { digest: 'mlxdata-apple-v4', families }, newFamilySplits };
+  return { extraLogic: synth, previousCard: { digest: 'mlxdata-apple-v4', families }, newFamilySplits, trajectoryFamilies };
 }
 
 async function main() {
@@ -153,7 +170,7 @@ async function main() {
   }
   const card = {
     schema: `apple-mlx-dataset-${v5 ? 'v5' : 'v4'}`,
-    builtFrom: ['ALL_GAME_LOGIC_CURRICULUM', 'TOOL_TRAJECTORY_CURRICULUM(+b)', ...(v5 ? ['game-logic-synth-v1 (teacher-drafted, luau-executed, mutation-checked)'] : [])],
+    builtFrom: ['ALL_GAME_LOGIC_CURRICULUM', 'TOOL_TRAJECTORY_CURRICULUM(+b,+c general visual craft)', ...(v5 ? ['game-logic-synth-v1 (teacher-drafted, luau-executed, mutation-checked)', 'v4 trajectory and game-logic splits pinned'] : [])],
     rows: counts.train + counts.val + counts.test,
     splitSizes: { train: counts.train, valid: counts.val, test: counts.test },
     trackRows: { 'game-logic': byTrack('game-logic'), 'tool-trajectory': byTrack('tool-trajectory') },

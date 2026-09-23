@@ -121,3 +121,13 @@ test('guidePriority is a total order, so chunk selection is not arbitrary', () =
   const paths = ['getting-started/index.md', 'reference/engine/classes/Part.md', 'random/thing.md'];
   for (const p of paths) assert.equal(typeof guidePriority(p), 'number', `${p} has no priority`);
 });
+
+test('visual-building guides get an embed bucket instead of staying keyword-only', () => {
+  // Measured 2026-09-23: Parts, Terrain, Lighting and Atmosphere guides were FTS-only (bucket 99), so
+  // a semantic query about building a map or lighting a scene could never reach them.
+  for (const p of ['parts/terrain.md', 'environment/lighting.md', 'effects/particle-emitters.md', 'art/modeling/index.md', 'workspace/cframes.md', 'physics/constraints.md', 'animation/index.md', 'studio/toolbox.md']) {
+    const bucket = guidePriority(p);
+    assert.ok(bucket > guidePriority('tutorials/x.md') && bucket < 99, `${p} -> ${bucket}`);
+  }
+  assert.equal(guidePriority('production/monetization/index.md'), 99);
+});

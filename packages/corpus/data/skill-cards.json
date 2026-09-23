@@ -1,0 +1,598 @@
+{
+  "schema": "apple-skill-cards-v1",
+  "what": "General, genre-agnostic craft recipes for the visual skills Apple MAX was measured weak at (gauntlet rounds 1-4: flat UI without outlines/gradients/cartoon fonts, collapsed cards, missing-glyph icons, maps that are a ground plus one template, flat lighting). Every value is expressed through tools Apple already has and properties the plugin allowlist accepts. Grounded in the Roblox Creator Docs pages listed per card (local corpus packages/corpus/data/chunks.jsonl, mirrored from github.com/Roblox/creator-docs). Nothing here names or describes a specific game.",
+  "cards": [
+    {
+      "id": "ui-cartoon-panel-styling",
+      "title": "Style a game panel: thick outline, gradient, rounded corners, cartoon font",
+      "domain": "ui",
+      "tools": [
+        "create_instances",
+        "set_properties",
+        "build_ui"
+      ],
+      "triggers": [
+        "ui",
+        "gui",
+        "panel",
+        "menu",
+        "window",
+        "shop",
+        "store",
+        "inventory",
+        "settings",
+        "popup",
+        "modal",
+        "screen",
+        "hud",
+        "interface",
+        "frame",
+        "cartoon",
+        "colorful",
+        "colourful",
+        "style",
+        "outline",
+        "stroke",
+        "gradient",
+        "font",
+        "polish",
+        "pretty",
+        "beautiful"
+      ],
+      "recipe": [
+        "Every panel/card/button gets three children: UICorner (CornerRadius UDim [0.08,0] panels, [0.15,0] cards), UIStroke (Thickness 3-5, Color a near-black version of the fill hue, e.g. [0.05,0.1,0.2]), UIGradient (Rotation 90, ColorSequence light top -> base colour bottom, e.g. [[0,[0.45,0.8,1]],[1,[0.15,0.45,0.9]]]).",
+        "Titles and numbers: Font Enum.Font.FredokaOne or Enum.Font.LuckiestGuy (display) / Enum.Font.GothamBlack; body text Enum.Font.GothamBold. TextScaled true on a label sized in Scale, so the label's height sets the text size (a title strip ~12-15% of the panel height).",
+        "Outline text too: a UIStroke under a TextLabel outlines the glyphs (Thickness 2-3, Color near-black). White or pale-yellow text + dark stroke reads on any background.",
+        "Panel header = a separate strip Frame (saturated colour, its own gradient + stroke) holding the title and the close button, so the panel reads as layered, not one flat slab.",
+        "Size in Scale ([0.45,0,0.6,0] panel), AnchorPoint [0.5,0.5] centred, UIAspectRatioConstraint on the panel so it keeps its shape on phones."
+      ],
+      "avoid": [
+        "A flat single-colour Frame with thin 1px border and default SourceSans text: this is the 'unstyled' look.",
+        "Stroke colour equal to the fill colour (invisible outline); stroke thinner than 2 on a panel.",
+        "Tweening UIStroke.Thickness on text (docs: renders many glyph sizes per frame)."
+      ],
+      "check": "render_view or check_ui_layout: every visible Frame/TextButton/ImageButton has a UIStroke + UICorner child; titles use a display font; nothing overlaps on phone.",
+      "docs": [
+        {
+          "title": "UI appearance modifiers (gradient, stroke, corners)",
+          "url": "https://create.roblox.com/docs/ui/appearance-modifiers",
+          "vecId": "g-5cb7c70a-5"
+        },
+        {
+          "title": "UIStroke",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/UIStroke",
+          "vecId": "api-uistroke-1"
+        },
+        {
+          "title": "UIGradient",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/UIGradient",
+          "vecId": "api-uigradient-1"
+        },
+        {
+          "title": "Enum.Font",
+          "url": "https://create.roblox.com/docs/reference/engine/enums/Font",
+          "vecId": "api-enum-font-1"
+        }
+      ]
+    },
+    {
+      "id": "ui-buttons-with-depth",
+      "title": "Build buttons that look pressable: bordered body, highlight, round side buttons",
+      "domain": "ui",
+      "tools": [
+        "create_instances",
+        "set_properties",
+        "build_ui"
+      ],
+      "triggers": [
+        "button",
+        "buttons",
+        "buy",
+        "close",
+        "side",
+        "sidebar",
+        "round",
+        "circle",
+        "circular",
+        "icon",
+        "icons",
+        "menu",
+        "hud",
+        "press",
+        "click",
+        "tap",
+        "cta",
+        "nav",
+        "navigation"
+      ],
+      "recipe": [
+        "Button body = ImageButton (no Image; BackgroundColor3 the button colour) so a child UIStroke draws the BORDER (on a TextButton the stroke outlines the text instead, and ApplyStrokeMode is not writable through Apple). Put the label in a child TextLabel (BackgroundTransparency 1) with its own text UIStroke.",
+        "Depth: UIGradient Rotation 90 light->dark on the body, UIStroke Thickness 3 near-black, UICorner [0.25,0]. A darker 'lip' Frame 6% taller behind the body (ZIndex lower) reads as a 3D bottom edge.",
+        "Colour meaning, consistent everywhere: green = buy/confirm, red = close/cancel, blue/purple = navigate, yellow/orange = reward/premium.",
+        "Round side buttons (menu rail): ImageButton Size [0.075,0,0.075,0] + UIAspectRatioConstraint AspectRatio 1 + UICorner CornerRadius [0.5,0] (docs: 0.5 scale = circle/pill) + UIStroke 3-4. Stack 4-6 in a Frame with UIListLayout (Padding [0.015,0]) anchored left or right middle; an icon image or a short word inside, and a small caption TextLabel under each.",
+        "Close button: small red square/circle at the header's top-right corner, overlapping the edge (AnchorPoint [0.5,0.5] on the corner), label 'X' in a bold font."
+      ],
+      "avoid": [
+        "Buttons that are the same colour as the panel behind them.",
+        "Rectangular grey default buttons; icons without a background disc on a busy scene."
+      ],
+      "check": "play_check_ui presses at least the main button of each screen; render_view shows the rail buttons as circles, not ovals, at phone and desktop sizes.",
+      "docs": [
+        {
+          "title": "Text and image buttons",
+          "url": "https://create.roblox.com/docs/ui/buttons",
+          "vecId": "g-c899c8ec-2"
+        },
+        {
+          "title": "UI appearance modifiers — corners",
+          "url": "https://create.roblox.com/docs/ui/appearance-modifiers",
+          "vecId": "g-5cb7c70a-7"
+        },
+        {
+          "title": "UIAspectRatioConstraint",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/UIAspectRatioConstraint",
+          "vecId": "api-uiaspectratioconstraint-1"
+        },
+        {
+          "title": "ImageButton",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/ImageButton",
+          "vecId": "api-imagebutton-1"
+        }
+      ]
+    },
+    {
+      "id": "ui-currency-pill-hud",
+      "title": "Show currencies as icon pills in a top HUD row",
+      "domain": "ui",
+      "tools": [
+        "create_instances",
+        "set_properties",
+        "build_ui",
+        "find_ui_asset"
+      ],
+      "triggers": [
+        "currency",
+        "coins",
+        "coin",
+        "cash",
+        "money",
+        "gems",
+        "gem",
+        "balance",
+        "wallet",
+        "counter",
+        "hud",
+        "top",
+        "bar",
+        "stats",
+        "leaderstats",
+        "points",
+        "score"
+      ],
+      "recipe": [
+        "One pill per currency: Frame Size [0.16,0,0.06,0], UICorner [0.5,0] (pill), UIStroke 3 near-black, dark or saturated fill with a subtle UIGradient.",
+        "Icon disc overlapping the pill's left end: an ImageLabel (icon from find_ui_asset) or a coloured circle Frame (UICorner [0.5,0], UIAspectRatioConstraint 1) with a 1-2 character label, Size ~1.2x the pill height, AnchorPoint [0.5,0.5] on the pill's left edge.",
+        "Amount: TextLabel Font FredokaOne/GothamBlack, white, TextScaled with UIStroke 2; format big numbers as 1.2K / 3.4M, never raw 1234567.",
+        "A small green '+' ImageButton (circle, stroke) on the pill's right end opens the store for that currency.",
+        "Row: a transparent Frame at the top centre (AnchorPoint [0.5,0], Position [0.5,0,0.02,0]) with a horizontal UIListLayout, Padding [0.01,0], HorizontalAlignment Center; keep it inside the safe area below the top bar."
+      ],
+      "avoid": [
+        "Plain text 'Coins: 0' in the corner.",
+        "An icon glyph the font cannot draw (shows as an empty box); use an image or plain letters."
+      ],
+      "check": "render_view at phone size: pills do not overlap the Roblox top bar, the amount text is readable, the icon sits on the pill edge.",
+      "docs": [
+        {
+          "title": "UI appearance modifiers — corners (pill shape)",
+          "url": "https://create.roblox.com/docs/ui/appearance-modifiers",
+          "vecId": "g-5cb7c70a-7"
+        },
+        {
+          "title": "UIListLayout",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/UIListLayout",
+          "vecId": "api-uilistlayout-1"
+        },
+        {
+          "title": "On-screen UI containers",
+          "url": "https://create.roblox.com/docs/ui/on-screen-containers",
+          "vecId": "g-d9d2371c-2"
+        }
+      ]
+    },
+    {
+      "id": "ui-scroll-card-sizing",
+      "title": "Size cards inside scrolling lists and grids so they never collapse",
+      "domain": "ui",
+      "tools": [
+        "create_instances",
+        "set_properties",
+        "build_ui",
+        "check_ui_layout"
+      ],
+      "triggers": [
+        "card",
+        "cards",
+        "grid",
+        "list",
+        "scroll",
+        "scrolling",
+        "items",
+        "item",
+        "tiles",
+        "tile",
+        "slots",
+        "slot",
+        "inventory",
+        "shop",
+        "store",
+        "catalog",
+        "catalogue",
+        "offers",
+        "products"
+      ],
+      "recipe": [
+        "Inside a ScrollingFrame the canvas, not the frame, is the parent size: with AutomaticCanvasSize Y and CanvasSize [0,0,0,0], a child with a Scale height has nothing to be a fraction of and collapses to 0. Give cards an OFFSET height, or Scale width + UIAspectRatioConstraint (e.g. AspectRatio 0.8 portrait card).",
+        "Grid of cards: UIGridLayout CellSize [0.3,0,0,180] (scale width, offset height) or CellSize in scale plus a UIAspectRatioConstraint in the layout, CellPadding [0.03,0,0,12]; ScrollingFrame AutomaticCanvasSize Y, ScrollBarThickness 6-8.",
+        "Card anatomy: header/name strip, big icon/image area (60% of height), price row with currency icon + amount, one buy button; UICorner + UIStroke + UIGradient like every panel.",
+        "Feature/hero card first (full width, taller), then the regular grid, so the list has hierarchy."
+      ],
+      "avoid": [
+        "Scale-Y sizes on children of an automatic canvas (the collapsed-card defect).",
+        "Cards with only a name and a button: nothing to look at."
+      ],
+      "check": "check_ui_layout reports no zero-height or overlapping card; render_view shows full cards on phone and desktop.",
+      "docs": [
+        {
+          "title": "Scrolling frames",
+          "url": "https://create.roblox.com/docs/ui/scrolling-frames",
+          "vecId": "g-5339790e-1"
+        },
+        {
+          "title": "Size modifiers and constraints",
+          "url": "https://create.roblox.com/docs/ui/size-modifiers",
+          "vecId": "g-5f78a250-5"
+        },
+        {
+          "title": "UIGridLayout",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/UIGridLayout",
+          "vecId": "api-uigridlayout-1"
+        }
+      ]
+    },
+    {
+      "id": "ui-icons-without-missing-glyphs",
+      "title": "Use icons that always render: images first, safe text second",
+      "domain": "ui",
+      "tools": [
+        "find_ui_asset",
+        "upload_ui_asset",
+        "generate_image",
+        "create_instances"
+      ],
+      "triggers": [
+        "icon",
+        "icons",
+        "glyph",
+        "symbol",
+        "emoji",
+        "image",
+        "picture",
+        "close",
+        "x",
+        "star",
+        "heart",
+        "arrow",
+        "badge",
+        "logo"
+      ],
+      "recipe": [
+        "First choice: find_ui_asset for the concept (coin, gem, gear, cart, close, star, lock...) and put its rbxassetid in ImageLabel/ImageButton.Image with ScaleType Fit and UIAspectRatioConstraint 1.",
+        "No asset available: draw it from shapes (a circle Frame with UICorner [0.5,0] + stroke + a 1-2 letter label), or use plain ASCII in a bold font: 'X' close, '+' add, '<' '>' arrows, '$' money, '?' help, '!' alert.",
+        "Unicode symbols such as ✕ ★ ⚙ 🛒 depend on the font; Gotham/Fredoka do not carry most of them and they render as an empty box. Do not put them in TextLabels unless render_view has shown them drawn.",
+        "Give every icon a disc or rounded-square backing so it reads on any background."
+      ],
+      "avoid": [
+        "Empty-box (missing glyph) text in a button.",
+        "Asset ids that were never looked up or uploaded."
+      ],
+      "check": "render_view shows every icon as a drawn shape or image; no square tofu boxes.",
+      "docs": [
+        {
+          "title": "Text and image buttons",
+          "url": "https://create.roblox.com/docs/ui/buttons",
+          "vecId": "g-c899c8ec-2"
+        },
+        {
+          "title": "ImageButton",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/ImageButton",
+          "vecId": "api-imagebutton-1"
+        }
+      ]
+    },
+    {
+      "id": "map-layered-composition",
+      "title": "Compose a map in layers: landform, frame, paths, landmarks, props, dressing",
+      "domain": "map",
+      "tools": [
+        "shape_terrain",
+        "edit_terrain",
+        "create_instances",
+        "scatter_instances",
+        "clone_instances",
+        "set_mood",
+        "render_view"
+      ],
+      "triggers": [
+        "map",
+        "world",
+        "level",
+        "island",
+        "hub",
+        "lobby",
+        "spawn",
+        "area",
+        "zone",
+        "zones",
+        "terrain",
+        "ground",
+        "landscape",
+        "environment",
+        "scene",
+        "town",
+        "village",
+        "park",
+        "forest",
+        "hills",
+        "hill",
+        "mountain",
+        "path",
+        "paths",
+        "road",
+        "build",
+        "place"
+      ],
+      "recipe": [
+        "1 Landform: terrain, not a flat baseplate. shape_terrain heightmap (amplitude 0.15-0.3, scale 64-128) over the play area, then hide/remove the Baseplate. Keep the central play space gently rolling so players can walk it.",
+        "2 Frame: raise the edges — edit_terrain fill_ball/fill_block hills and rock cliffs (Enum.Material.Rock/Ground) around the perimeter, 30-80 studs tall, so the map has a skyline and a boundary instead of an endless plane.",
+        "3 Paths: connect spawn -> each landmark with 8-12 stud wide paths: edit_terrain replace_material strips (Grass -> Sand/Ground/Pavement) or flat Parts 0.5 tall. Paths should curve and meet at a central plaza.",
+        "4 Landmarks: a centrepiece at the plaza (statue, fountain, big sign) and one distinct building/structure per zone, each visible from spawn.",
+        "5 Props: group into Models (see props card), place in clusters of 3-7 along paths and around landmarks, never evenly spread; fences follow path edges; lamps every 20-30 studs along paths.",
+        "6 Dressing: scatter_instances trees/rocks/bushes on Grass only (onMaterial, minSpacing 8-15, scale [0.8,1.3], randomYaw) in the gaps and along the edges; then set_mood and render_view from spawn and from above.",
+        "Budget by layer: a small hub is 150-250 studs across with 20-60 prop models, not one ground plane plus one template."
+      ],
+      "avoid": [
+        "A single flat grass plate with one model on it.",
+        "Props floating or sunk (use scatter_instances ray drop, or read_terrain heights).",
+        "Uniform grid placement; everything the same size."
+      ],
+      "check": "render_view from spawn: foreground, midground and background all have content; audit_build/check_composition shows several prop groups and terrain relief.",
+      "docs": [
+        {
+          "title": "Environmental terrain — generate and edit",
+          "url": "https://create.roblox.com/docs/parts/terrain",
+          "vecId": "g-eb535b9a-5"
+        },
+        {
+          "title": "Create an environment with terrain",
+          "url": "https://create.roblox.com/docs/tutorials/curriculums/core/building/create-an-environment-with-terrain",
+          "vecId": "g-bd1e339e-2"
+        },
+        {
+          "title": "Terrain (FillBlock, FillBall, FillWedge, ReplaceMaterial)",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/Terrain",
+          "vecId": "api-terrain-2"
+        }
+      ]
+    },
+    {
+      "id": "props-low-poly-from-primitives",
+      "title": "Build low-poly props from Parts: trees, rocks, fences, lamps",
+      "domain": "props",
+      "tools": [
+        "create_instances",
+        "group_instances",
+        "clone_instances",
+        "scatter_instances"
+      ],
+      "triggers": [
+        "prop",
+        "props",
+        "tree",
+        "trees",
+        "rock",
+        "rocks",
+        "bush",
+        "bushes",
+        "fence",
+        "fences",
+        "lamp",
+        "lamps",
+        "bench",
+        "barrel",
+        "barrels",
+        "crate",
+        "crates",
+        "flower",
+        "flowers",
+        "decoration",
+        "decorations",
+        "low-poly",
+        "lowpoly",
+        "stylized",
+        "stylised",
+        "model",
+        "models",
+        "asset",
+        "detail"
+      ],
+      "recipe": [
+        "Materials: SmoothPlastic (or Plastic) with saturated flat colours reads as stylised low-poly; 2-3 tones per prop (base, shade, accent). Anchored true, CastShadow true.",
+        "Round tree: trunk Part Shape Cylinder (rotate so its axis is vertical: Orientation [0,0,90]) 2x10x2, brown; canopy 2-3 overlapping Shape Ball parts 8-12 studs in two greens, offset so the silhouette is lumpy.",
+        "Pine tree: trunk cylinder + 3 stacked WedgePart/Part tiers shrinking upward (12 -> 8 -> 4 wide), each rotated 45 degrees from the one below, dark green.",
+        "Rock: 2-3 Parts with random Orientation, slightly different greys, partly sunk into the ground.",
+        "Fence: posts every 6-8 studs (1x4x1) + two rails (0.5x0.5xlength) between them, light wood colour; follow path edges.",
+        "Lamp: thin dark post, a small box/ball head with Material Neon warm yellow and a PointLight (Range 12-16, Brightness 1-2).",
+        "Always wrap each prop in a Model with a PrimaryPart, name it (e.g. 'PineTree'), then clone_instances/scatter_instances the Model instead of building each copy."
+      ],
+      "avoid": [
+        "One giant Part as a 'tree'.",
+        "Every prop identical in size and rotation.",
+        "Neon on large surfaces."
+      ],
+      "check": "render_view close-up: each prop reads as the object from 30 studs away; the Model count matches what was placed.",
+      "docs": [
+        {
+          "title": "Parts — basic part types",
+          "url": "https://create.roblox.com/docs/parts",
+          "vecId": "g-aa75ccbc-2"
+        },
+        {
+          "title": "Enum.PartType",
+          "url": "https://create.roblox.com/docs/reference/engine/enums/PartType",
+          "vecId": "api-enum-parttype-1"
+        },
+        {
+          "title": "WedgePart",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/WedgePart",
+          "vecId": "api-wedgepart-1"
+        },
+        {
+          "title": "Model",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/Model",
+          "vecId": "api-model-1"
+        }
+      ]
+    },
+    {
+      "id": "map-buildings-from-parts",
+      "title": "Build readable small buildings and stalls from Parts",
+      "domain": "props",
+      "tools": [
+        "create_instances",
+        "group_instances",
+        "clone_instances"
+      ],
+      "triggers": [
+        "building",
+        "buildings",
+        "house",
+        "houses",
+        "shop",
+        "store",
+        "stall",
+        "stalls",
+        "stand",
+        "booth",
+        "hut",
+        "cabin",
+        "tower",
+        "roof",
+        "awning",
+        "sign",
+        "market",
+        "structure"
+      ],
+      "recipe": [
+        "Footprint 14-24 studs; floor slab 1 stud tall, slightly larger than the walls.",
+        "Walls: 3 wall Parts + a front with an opening (two side pieces + a lintel) so players can see in; wall colour warm/light, trim darker.",
+        "Roof: two WedgePart halves meeting at a ridge (or one wedge for a lean-to), overhanging the walls by 1-2 studs, contrasting colour.",
+        "Awning/stall: a striped canopy from alternating coloured thin Parts (e.g. 4-6 stripes of two colours) tilted 10-20 degrees over the counter; counter Part at waist height (3 studs).",
+        "Sign: a Part above the door with a SurfaceGui + TextLabel (FredokaOne, stroke) naming the building's function in one or two words.",
+        "Details that sell it: a door frame, 1-2 windows (lighter or Glass inset), barrels/crates beside the entrance, a lamp."
+      ],
+      "avoid": [
+        "A single box with a label.",
+        "Roof flush with the walls (no overhang reads as a crate)."
+      ],
+      "check": "render_view from the nearest path: the building's purpose is readable from its sign and silhouette.",
+      "docs": [
+        {
+          "title": "Parts",
+          "url": "https://create.roblox.com/docs/parts",
+          "vecId": "g-aa75ccbc-2"
+        },
+        {
+          "title": "SurfaceGui",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/SurfaceGui",
+          "vecId": "api-surfacegui-1"
+        },
+        {
+          "title": "In-experience UI containers",
+          "url": "https://create.roblox.com/docs/ui/in-experience-containers",
+          "vecId": "g-e6b115af-2"
+        }
+      ]
+    },
+    {
+      "id": "lighting-mood-stylized",
+      "title": "Light the scene with a mood instead of default flat lighting",
+      "domain": "lighting",
+      "tools": [
+        "set_mood",
+        "set_properties",
+        "create_instances",
+        "render_view"
+      ],
+      "triggers": [
+        "lighting",
+        "light",
+        "lights",
+        "mood",
+        "atmosphere",
+        "sky",
+        "sun",
+        "day",
+        "night",
+        "sunset",
+        "fog",
+        "bright",
+        "dark",
+        "colorful",
+        "colourful",
+        "vibrant",
+        "cozy",
+        "spooky",
+        "vibe",
+        "flat",
+        "grey",
+        "gray",
+        "dull"
+      ],
+      "recipe": [
+        "Always finish a visual build with set_mood (sunny or day for bright stylised worlds, golden for warm, misty for depth, night/horror for dark) — then render_view to see it.",
+        "Bright stylised baseline if tuning by hand: Lighting ClockTime 13-14.5, Brightness 2-3, OutdoorAmbient raised (~[0.55,0.55,0.6]) so shadows are not black, ShadowSoftness 0.2-0.4.",
+        "Atmosphere: Density 0.25-0.35, Haze 0-1 for clear air (distance still fades), Color slightly blue; higher Density/Haze only for misty or eerie moods.",
+        "ColorCorrectionEffect: Saturation 0.1-0.25, Contrast 0.05-0.15 for cartoon vibrancy; BloomEffect Intensity 0.3-0.6, Threshold 1.5-2.5 so only bright things glow; optional SunRaysEffect Intensity 0.05-0.1.",
+        "Practical lights where the eye should go: warm PointLights on lamps/landmarks, Neon accents on interactables."
+      ],
+      "avoid": [
+        "Leaving Lighting at defaults (flat, grey)",
+        "Fog so dense the landmarks disappear",
+        "Bloom threshold below 1 (everything glows)"
+      ],
+      "check": "render_view before and after: after has visible shadows, coloured sky/haze and clear foreground/background separation.",
+      "docs": [
+        {
+          "title": "Global lighting",
+          "url": "https://create.roblox.com/docs/environment/lighting",
+          "vecId": "g-a09ac1a9-2"
+        },
+        {
+          "title": "Atmospheric effects",
+          "url": "https://create.roblox.com/docs/environment/atmosphere",
+          "vecId": "g-4685c508-2"
+        },
+        {
+          "title": "ColorCorrectionEffect",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/ColorCorrectionEffect",
+          "vecId": "api-colorcorrectioneffect-1"
+        },
+        {
+          "title": "BloomEffect",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/BloomEffect",
+          "vecId": "api-bloomeffect-1"
+        }
+      ]
+    }
+  ]
+}

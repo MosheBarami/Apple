@@ -46,6 +46,8 @@ const WORKER = resolve(HERE, '../../../apps/worker');
 export const TYPED_PROP_KINDS = new Set([
   'string', 'number', 'bool', 'Vector3', 'Vector2', 'CFrame', 'Color3', 'UDim2', 'UDim',
   'EnumItem', 'BrickColor', 'Content', 'NumberRange', 'Rect', 'Instance', 'nil',
+  // The plugin decodes both (Commands.luau); a UIGradient's Color is a ColorSequence.
+  'ColorSequence', 'NumberSequence',
 ]);
 
 let cachedRegistry = null;
@@ -189,12 +191,16 @@ export function typedPropProblems(tool, args, where) {
       if (typeof item.className !== 'string' || !item.className) {
         problems.push(`${where}.items[${i}]: needs a className`);
       }
-      checkTable(item.props, `${where}.items[${i}].props`);
-      if (Array.isArray(item.children)) {
-        item.children.forEach((child, j) => {
-          if (isPlainObject(child)) checkTable(child.props, `${where}.items[${i}].children[${j}].props`);
-        });
-      }
+      // Children nest to any depth in the plugin, so they are checked to any depth here.
+      const checkTree = (node, at) => {
+        checkTable(node.props, `${at}.props`);
+        if (Array.isArray(node.children)) {
+          node.children.forEach((child, j) => {
+            if (isPlainObject(child)) checkTree(child, `${at}.children[${j}]`);
+          });
+        }
+      };
+      checkTree(item, `${where}.items[${i}]`);
     });
   }
   if (tool === 'set_properties') {

@@ -36,6 +36,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { batchWork, changedDocs, planFullIndex, planIndex } from './index-plan.mjs';
+import { skillCardChunks } from './skill-card-chunks.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CHUNKS_PATH = path.join(ROOT, 'data', 'chunks.jsonl');
@@ -104,13 +105,16 @@ const get = (pathName) => request('GET', pathName, undefined);
 
 function loadChunks() {
   const lines = readFileSync(CHUNKS_PATH, 'utf8').split('\n').filter((l) => l.trim());
-  return lines.map((l, i) => {
+  const docs = lines.map((l, i) => {
     try {
       return JSON.parse(l);
     } catch (err) {
       fail(`chunks.jsonl line ${i + 1} is not valid JSON: ${err.message}`);
     }
   });
+  // The general craft cards ride along, so the index holds them and a prune never removes them.
+  const cards = JSON.parse(readFileSync(path.join(ROOT, 'data', 'skill-cards.json'), 'utf8')).cards;
+  return [...docs, ...skillCardChunks(cards)];
 }
 
 /**

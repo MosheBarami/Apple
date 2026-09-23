@@ -69,3 +69,22 @@ test('a trajectory scores against a registry, and every refusal reason is reacha
   assert.equal(scoreTrajectory(extractToolCall('{"name":"real_tool","parameters":{}}'), registry).reason, 'arguments_rejected');
   assert.equal(scoreTrajectory(extractToolCall('{"name":"real_tool","parameters":{"path":"a.lua"}}'), registry).ok, true);
 });
+
+// A valid call is not a styled one: the visual gauntlet failed on calls the registry accepted
+// (no outline, no gradient, default font, flat lighting). styleRecall scores how much of the
+// reference call's craft the produced call carries.
+test('styleFeatures reads the craft a call carries, and styleRecall compares it with the reference', async () => {
+  const { styleFeatures, styleRecall } = await import('./score-eval.mjs');
+  const ref = {
+    name: 'create_instances',
+    args: { items: [{ className: 'TextButton', props: { Font: { t: 'EnumItem', v: 'Enum.Font.FredokaOne' } }, children: [{ className: 'UIStroke' }, { className: 'UIGradient' }] }] },
+  };
+  assert.deepEqual([...styleFeatures(ref)].sort(), ['class:TextButton', 'class:UIGradient', 'class:UIStroke', 'font:Enum.Font.FredokaOne']);
+  assert.deepEqual([...styleFeatures({ name: 'set_mood', args: { mood: 'golden' } })], ['mood:golden']);
+  assert.deepEqual([...styleFeatures({ name: 'edit_terrain', args: { operations: [{ action: 'fill_ball' }] } })], ['op:fill_ball']);
+  assert.equal(styleRecall(ref, ref), 1);
+  const bare = { name: 'create_instances', args: { items: [{ className: 'TextButton' }] } };
+  assert.equal(styleRecall(ref, bare), 0.25);
+  assert.equal(styleRecall(ref, null), 0);
+  assert.equal(styleRecall({ name: 'run_spec', args: { name: 'x' } }, bare), null, 'a call with no craft features is not a visual row');
+});

@@ -69,6 +69,7 @@ import { TOOLS, toolDefs, toolNames, targetOf, runTool, projectMutatingToolNames
 import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
+import { skillCardsForRun, skillSteerForStep } from '../skill-cards';
 import { refundSentence, refundVerdict } from '../run-refund';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
@@ -445,6 +446,8 @@ interface AgentState {
    * pushes the persisted AgentState past the Durable Object's value limit.
    */
   plan?: RunPlan;
+  /** Skill cards (skill-cards.ts) already given to this run, so none repeats and the run cap holds. */
+  skillCardsShown?: string[];
 }
 
 type AccessChange = RevocationReason | 'clear';
@@ -3239,6 +3242,7 @@ export class SessionDO extends DurableObject<Env> {
       .slice(0, -1) // drop the message we just inserted; re-added below
       .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content.slice(0, 4000) }));
 
+    const skills = skillCardsForRun(text, mode === 'agent');
     const msgId = crypto.randomUUID();
     const agent: AgentState = {
       status: 'running',
@@ -3249,7 +3253,8 @@ export class SessionDO extends DurableObject<Env> {
       fenceId,
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
       // trimTranscript documents — the agent kept working with no record of the task.
-      llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text, pinned: true }],
+      llm: [{ role: 'system', content: skills.block ? `${sys}\n\n${skills.block}` : sys }, ...history, { role: 'user', content: text, pinned: true }],
+      ...(skills.ids.length > 0 ? { skillCardsShown: skills.ids } : {}),
       ...(mode === 'agent' && forbidsChanges(text) ? { readOnly: true } : {}),
       ...(mode === 'agent' && isLightingOnlyRequest(text) ? { lightingOnly: true } : {}),
       step: 0,
@@ -4589,6 +4594,12 @@ export class SessionDO extends DurableObject<Env> {
         content:
           'You have spent several steps researching without changing the project. Stop investigating and build now with what you know: create the instances or edit the scripts the request needs. Build geometry from Parts rather than looking for assets.',
       });
+    }
+    // The plan's next step may call for a craft recipe the prompt did not carry (skill-cards.ts).
+    const skillSteer = canBuild ? skillSteerForStep(agent.plan, agent.trace, agent.skillCardsShown ?? []) : null;
+    if (skillSteer) {
+      agent.llm.push({ role: 'user', content: skillSteer.message });
+      agent.skillCardsShown = [...(agent.skillCardsShown ?? []), ...skillSteer.ids];
     }
     this.captureProvenance(agent, ctx);
     await this.persistAgent(agent);

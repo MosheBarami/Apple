@@ -4,7 +4,8 @@
 //   kind 'api'   — creator-docs YAML engine reference (classes/enums/datatypes/libraries/globals)
 //   kind 'guide' — creator-docs markdown guides + luau.org markdown docs
 // embed=true is capped at EMBED_CAP total chunks; priority: all api chunks, then
-// luau docs, then scripting/ui/mechanics/tutorials guides. The rest are FTS-only.
+// luau docs, then scripting/ui/mechanics/tutorials guides, then building/environment/art guides.
+// The rest are FTS-only.
 
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -425,6 +426,8 @@ function guidePriority(relPath) {
   if (p.startsWith('ui/')) return 3;
   if (p.includes('mechanics')) return 4;
   if (p.startsWith('tutorials/')) return 5;
+  // Building, environment and art guides: how a map, prop or lit scene is actually made (2026-09-23).
+  if (/^(parts|environment|effects|art|workspace|physics|animation|studio)\//.test(p)) return 6;
   return 99; // FTS-only unless budget allows
 }
 
