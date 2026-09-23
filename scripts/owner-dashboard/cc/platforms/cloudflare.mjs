@@ -427,6 +427,11 @@ async function d1Query({ db, sql }) {
 }
 
 // KV: key NAMES and expiration only. A long opaque segment of a key name (a session id, a token) is cut.
+// A segment is cut when it is long and opaque (32+ token characters), or 16+ characters that mix upper
+// case, lower case and digits, the shape of a random token (share links contain dashes, so they never
+// reach 32 in one run). UUIDs and hex ids are lower case, so they stay readable.
+const opaque = (seg) => /[A-Za-z0-9+/=_]{32,}/.test(seg) || (/^[\w+/=.-]{16,}$/.test(seg) && /[A-Z]/.test(seg) && /[a-z]/.test(seg) && /\d/.test(seg));
+const keyName = (n) => (str(n) || '').split(':').map((seg) => (opaque(seg) ? '…' : seg)).join(':');
 async function kvKeys({ ns, prefix, cursor }) {
   if (typeof ns !== 'string' || !ID.test(ns)) return fail('מזהה KV לא תקין');
   if (prefix != null && (typeof prefix !== 'string' || prefix.length > 256)) return fail('קידומת לא תקינה');
@@ -435,7 +440,7 @@ async function kvKeys({ ns, prefix, cursor }) {
   if (!all.some((k) => obj(k).id === ns)) return fail('ה-namespace הזה לא שייך לחשבון');
   const q = new URLSearchParams({ limit: '100' }); if (prefix) q.set('prefix', prefix); if (cursor) q.set('cursor', cursor);
   const j = await fetchJson(`${acct()}/storage/kv/namespaces/${encodeURIComponent(ns)}/keys?${q}`, { label: LABEL, what: 'מפתחות KV', headers: auth() });
-  return ok({ ns, keys: arr(j?.result).map(obj).map((k) => ({ name: redact((str(k.name) || '').replace(/[A-Za-z0-9+/=_]{32,}/g, '…')), expiration: num(k.expiration) })),
+  return ok({ ns, keys: arr(j?.result).map(obj).map((k) => ({ name: redact(keyName(k.name)), expiration: num(k.expiration) })),
     cursor: str(obj(j?.result_info).cursor) || null });
 }
 
@@ -476,7 +481,6 @@ const rollbackBody = (versionId) => ({ strategy: 'percentage', versions: [{ vers
 async function rollback({ script, versionId, dryRun }) {
   if (typeof script !== 'string' || !ID.test(script)) return fail('שם Worker לא תקין');
   if (typeof versionId !== 'string' || !UUID.test(versionId)) return fail('מזהה גרסה לא תקין');
-  if (dryRun === true) return ok({ dryRun: true, plan: { method: 'POST', url: `${API}/accounts/<account>/workers/scripts/${script}/deployments`, body: rollbackBody(versionId) } });
   if (!connected()) return fail(MISSING);
   const base = `${acct()}/workers/scripts/${encodeURIComponent(script)}`;
   try {
@@ -487,6 +491,8 @@ async function rollback({ script, versionId, dryRun }) {
     const cur = arr(obj(await get(`${base}/deployments`, 'היסטוריית הפריסות')).deployments).map(obj).map(deployment).sort(byNewest)[0];
     if (cur && cur.versions.length === 1 && cur.versions[0].id === versionId && cur.versions[0].pct === 100) return fail('הגרסה הזו כבר מגישה 100% מהתנועה');
   } catch (e) { return fail(e?.reason || 'לא הצלחתי לאמת את הגרסה'); }
+  // The preview runs after the checks (reads only), so it never shows a plan the real call would refuse.
+  if (dryRun === true) return ok({ dryRun: true, plan: { method: 'POST', url: `${API}/accounts/<account>/workers/scripts/${script}/deployments`, body: rollbackBody(versionId) } });
   try {
     await fetchJson(`${base}/deployments`, { label: LABEL, what: 'חזרה לגרסה קודמת', method: 'POST', headers: auth(), body: rollbackBody(versionId) });
   } catch (e) {

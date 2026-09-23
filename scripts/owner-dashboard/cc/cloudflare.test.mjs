@@ -86,7 +86,9 @@ function fixture(u, init) {
     return R([{ results, success: true, meta: { rows_read: 250, duration: 1.5, changes: 0 } }]);
   }
   if (p === `${acc}/storage/kv/namespaces`) return R([{ id: 'kv-1', title: 'golem-kv', supports_url_encoding: true }]);
-  if (p === `${acc}/storage/kv/namespaces/kv-1/keys`) return R([{ name: 'user:1' }, { name: `sess:${'Z'.repeat(40)}`, expiration: 1790000000, metadata: { v: LEAK } }], { result_info: { cursor: 'c2', count: 2 } });
+  if (p === `${acc}/storage/kv/namespaces/kv-1/keys`) return R([{ name: 'user:1' }, { name: `sess:${'Z'.repeat(40)}`, expiration: 1790000000, metadata: { v: LEAK } },
+    // a share-link token with dashes (random-looking, mixed case) is masked; uuids and short hex ids stay readable
+    { name: 'share:link:Qw7Rt--y5Ui0Op3As_Df9Gh2' }, { name: 'share:grant:5ffa10c1-3c57-4b64-b7c1-60cea0aa8a6a' }], { result_info: { cursor: 'c2', count: 2 } });
   if (p === `${acc}/r2/buckets`) return R({ buckets: [{ name: 'apple-media', creation_date: iso(NOW - 500 * HOUR), location: 'WEUR' }] });
   if (p === `${acc}/r2/buckets/apple-media/objects`) return R([{ key: 'image/a.png', size: 1234, last_modified: iso(NOW - 5 * HOUR), etag: 'e', http_metadata: { contentType: 'image/png' }, custom_metadata: { owner: LEAK }, storage_class: 'Standard' }], { result_info: { delimited: ['image/thumbs/'], is_truncated: false, cursor: '' } });
   if (p === `${acc}/vectorize/v2/indexes`) return R([{ name: 'golem-docs', config: { dimensions: 384, metric: 'cosine' }, created_on: iso(NOW - 700 * HOUR) }]);
@@ -265,7 +267,8 @@ test('kv-keys returns names and expiration only, never values', async () => {
   assert.ok(calls.every((c) => !/\/values\//.test(c.url)));
   const k = calls.find((c) => /\/keys/.test(c.url));
   assert.equal(new URL(k.url).searchParams.get('prefix'), 'se');
-  assert.deepEqual(r.keys, [{ name: 'user:1', expiration: null }, { name: 'sess:…', expiration: 1790000000 }]);
+  assert.deepEqual(r.keys, [{ name: 'user:1', expiration: null }, { name: 'sess:…', expiration: 1790000000 },
+    { name: 'share:link:…', expiration: null }, { name: 'share:grant:5ffa10c1-3c57-4b64-b7c1-60cea0aa8a6a', expiration: null }]);
   assert.equal(r.cursor, 'c2');
   assert.ok(!hasLeak(r));
   assert.equal((await cloudflareAction({ kind: 'kv-keys', ns: 'kv-nope' })).ok, false);
@@ -300,11 +303,14 @@ test('dryRun returns the exact plan without calling fetch', async () => {
     { method: 'PATCH', url: `${API}/accounts/<account>/workers/scripts/apple/script-settings`, body: { observability: { traces: { enabled: true } } } });
   assert.deepEqual((await cloudflareAction({ kind: 'purge', zoneId: 'z1', dryRun: true })).plan,
     { method: 'POST', url: `${API}/zones/z1/purge_cache`, body: { purge_everything: true } });
+  assert.equal(calls.length, 0);
+  // The rollback preview reads (script list, versions, deployments) so it can refuse what the real call
+  // would refuse; it still never writes.
   const rb = await cloudflareAction({ kind: 'rollback', script: 'apple', versionId: V.prev, dryRun: true });
   assert.equal(rb.dryRun, true);
   assert.deepEqual(rb.plan, { method: 'POST', url: `${API}/accounts/<account>/workers/scripts/apple/deployments`,
     body: { strategy: 'percentage', versions: [{ version_id: V.prev, percentage: 100 }], annotations: { 'workers/message': 'Rollback from owner dashboard' } } });
-  assert.equal(calls.length, 0);
+  assert.ok(!calls.some((c) => c.method !== 'GET'), 'a dry run wrote');
 });
 
 test('rollback validates the script and the version before it writes', async () => {
@@ -320,6 +326,12 @@ test('rollback validates the script and the version before it writes', async () 
   const serving = await cloudflareAction({ kind: 'rollback', script: 'apple', versionId: V.new });
   assert.equal(serving.ok, false);
   assert.match(serving.reason, /כבר/);
+  // The preview refuses the same cases, so the owner never sees a plan the real call would reject.
+  for (const b of [{ script: 'apple', versionId: '44444444-4444-4444-8444-444444444444' }, { script: 'nope', versionId: V.prev }, { script: 'apple', versionId: V.new }]) {
+    const r = await cloudflareAction({ kind: 'rollback', ...b, dryRun: true });
+    assert.equal(r.ok, false, `dry run accepted ${JSON.stringify(b)}`);
+    assert.equal(r.plan, undefined);
+  }
   assert.ok(!calls.some((c) => c.method === 'POST'), 'a refused rollback still wrote');
 });
 
