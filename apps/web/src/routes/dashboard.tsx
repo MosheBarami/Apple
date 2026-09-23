@@ -452,7 +452,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={!name.trim() || create.isPending}>
-            {create.isPending ? 'Summoning…' : 'Create project'}
+            {create.isPending ? 'Creating…' : 'Create project'}
           </button>
         </div>
       </form>
@@ -1111,7 +1111,7 @@ export function DashboardPage() {
           detail={<p className="es__body">Name a project, then describe the game you want — an obby, a tycoon, a story world. Apple writes the scripts and builds it in your Roblox place.</p>}
           action={
             <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
-              Summon a project
+              Create a project
             </button>
           }
         />

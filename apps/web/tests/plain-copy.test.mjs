@@ -21,10 +21,14 @@ test('no shown copy summons a project', () => {
   const hits = [];
   for (const f of files) {
     const code = stripComments(readFileSync(f, 'utf8'));
+    // A literal is shown copy unless it is a bare lowercase word — a palette search keyword such as
+    // 'summon' is typed BY the user, never shown to them. "Summoning…" is one word and still copy:
+    // requiring a space here is what let the create button's busy label through.
     for (const m of code.matchAll(/(['"`])((?:(?!\1)[^\n])*)\1/g)) {
-      if (/\bsummon(ed|s|ing)?\b/i.test(m[2]) && /\s/.test(m[2])) hits.push(`${f.slice(SRC.length + 1)}: ${m[2]}`);
+      if (/\bsummon(ed|s|ing)?\b/i.test(m[2]) && !/^[a-z]+$/.test(m[2])) hits.push(`${f.slice(SRC.length + 1)}: ${m[2]}`);
     }
-    for (const m of code.matchAll(/>([^<>{}\n]*\bsummon[^<>{}\n]*)</gi)) hits.push(`${f.slice(SRC.length + 1)}: ${m[1].trim()}`);
+    // JSX text may sit on its own line between the tags, so newlines are allowed inside it.
+    for (const m of code.matchAll(/>([^<>{}]*\bsummon[^<>{}]*)</gi)) hits.push(`${f.slice(SRC.length + 1)}: ${m[1].trim()}`);
   }
   assert.deepEqual(hits, []);
 });
