@@ -6,9 +6,11 @@
 // independently correct. A kit is the unit that carries coherence: one palette, one lighting state,
 // one set of style tags, and the same set every time so a build is reproducible.
 //
-// TEN KITS, NOT FORTY. These are the genres that actually carry Roblox's front page — obby,
-// simulator, tycoon, roleplay, horror, anime battle, tower defence, FPS, survival, racing. A
-// fortieth kit for a genre nobody ships would be a row in a table and nothing a person would pick.
+// ELEVEN KITS, NOT FORTY. These are the genres that actually carry Roblox's front page — obby,
+// simulator, tycoon, roleplay, horror, anime battle (the fighting genre), tower defence, FPS (the
+// shooter genre), survival, racing, adventure. Adventure was added on 2026-09-23 because the owner
+// named it and no other kit covers exploration toward a landmark. A fortieth kit for a genre nobody
+// ships would be a row in a table and nothing a person would pick.
 //
 // A KIT IS A BRIEF, NOT A BAG OF ASSETS. Every visual slot below says WHAT the genre needs and WHY,
 // and the thing itself is made at build time — drawn by generate_image into the customer's own
@@ -38,6 +40,7 @@ export const GENRE_KIT_IDS = [
   'fps_arena',
   'anime_battle',
   'survival',
+  'adventure',
 ] as const;
 export type GenreKitId = (typeof GENRE_KIT_IDS)[number];
 
@@ -245,6 +248,13 @@ const PINS: Record<GenreKitId, PinnedAsset[]> = {
     sfx("craft", 102230222976522, "crafting item", "Rypyd"),
     sfx("eat", 9114225125, "Eating Food 1 (SFX)", "ProSoundEffects"),
     sfx("howl", 87663220945458, "wolf-howl", "XxFabio2004xX"),
+  ],
+  adventure: [
+    sfx("treasure", 9120873380, "Wooden Chest Open Close Cedar Box 1 (SFX)", "ProSoundEffects"),
+    sfx("pickup", 2575934454, "Item Pickup", "GnomeCode"),
+    sfx("swing", 135315310485417, "sword-swing-whoosh-sound-effect-1-full-pack", "Akin_TR"),
+    sfx("discovery", 9040172806, "Small Discoveries (sting b)", "APMOfficial"),
+    sfx("portal", 134847459602515, "portal open", "TheNotSoGloriousFork"),
   ],
 };
 
@@ -518,6 +528,33 @@ export const GENRE_KITS: readonly GenreKit[] = [
       { need: 'foliage', query: 'tree pine bush fern grass rock', tags: ['nature', 'forest'], count: 6, why: 'the one kit where foliage is mandatory and procedural is banned: parts-and-wedges trees look amateur at any part count' },
     ],
     procedural: ['shelters are Parts on a 4-stud grid — the player builds them, so they must be cheap', 'the campfire is a ParticleEmitter, a PointLight and a Sound; no mesh is needed for fire', 'hunger and temperature are server timers, never client values'],
+  },
+  {
+    id: 'adventure',
+    name: 'Adventure',
+    pitch: 'A landmark on the horizon, a path that bends toward it, and a chest just off the path for whoever looks.',
+    palette: [
+      { role: 'base', hex: '#4f7d3b', why: 'meadow green — the ground is walked across for the whole session, so it recedes and lets the route read' },
+      { role: 'surface', hex: '#b59a72', why: 'weathered sandstone for paths, walls and ruins: the warm, light surface is the one the player follows' },
+      { role: 'accent', hex: '#2fa3c9', why: 'river teal for points of interest — the shrine, the gate, the portal — so the next goal is a colour, not a waypoint arrow' },
+      { role: 'highlight', hex: '#ffc93c', why: 'treasure gold on chests, collectibles and the quest marker only; gold anywhere else teaches the player to chase scenery' },
+      { role: 'danger', hex: '#d64533', why: 'traps and enemies, and never used on decoration, so a red thing on the path always means stop' },
+      { role: 'text', hex: '#fff8e7', why: 'parchment white with a dark stroke — the quest log and map read as paper against a bright outdoor scene' },
+    ],
+    lighting: {
+      ambient: '#6f7f8f', outdoorAmbient: '#a8b8a0', brightness: 2.6, clockTime: 9.5,
+      fogEnd: 1600, fogColor: '#bcd3d6',
+      effects: ['Atmosphere density 0.3 haze 1.5 — aerial haze is what makes the far landmark read as far', 'SunRays intensity 0.1', 'Bloom intensity 0.4 threshold 2', 'morning sun at clockTime 9.5 throws long shadows that give cliffs and ruins depth'],
+    },
+    pinned: PINS.adventure,
+    slots: [
+      { need: 'ui_icon', query: 'compass map scroll key chest quest-marker heart backpack', tags: ['parchment', 'bold', 'outline'], count: 8, why: 'adventure UI is a quest log, a compass and a bag — each needs one glyph a child can find at a glance, and a quest marker that matches the gold highlight' },
+      { need: 'particle', query: 'sparkle glint firefly waterfall mist dust', tags: ['sparkle', 'soft', 'nature'], count: 4, why: 'a glint on a collectible is how the world says "look here" without a HUD arrow; mist at a waterfall tells the player the area is worth walking to' },
+      { need: 'texture', query: 'mossy stone sandstone brick grass dirt path wood planks', tags: ['stylised', 'nature', 'ancient'], count: 5, why: 'the path, the ruin and the meadow must be three different surfaces from a distance, because route-reading is the whole skill of the genre' },
+      { need: 'sfx', query: 'chest open item pickup sword swing discovery sting portal', tags: ['adventure'], count: 5, why: 'the discovery sting and the chest are the reward loop; the swing is the only combat sound, and the portal marks leaving one zone for the next' },
+      { need: 'prop', query: 'ruin pillar arch chest signpost bridge statue', tags: ['ancient', 'stylised', 'chunky'], count: 6, why: 'adventure props are landmarks and gates — chunky silhouettes the player navigates by, placed where the path turns' },
+    ],
+    procedural: ['the world is zones joined by chokepoints — a bridge, a gate, a cave mouth — each built from Parts and Terrain, with the next landmark visible from the chokepoint', 'chests are a Model + ProximityPrompt; the loot roll is on the server and the lid is a CFrame tween', 'quest steps are server-owned values sent to a client ScreenGui — the client never decides a quest is complete'],
   },
 ];
 

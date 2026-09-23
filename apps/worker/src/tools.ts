@@ -3849,7 +3849,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         domain: { type: 'string', enum: [...CREATOR_SKILL_DOMAINS], description: 'Optional task domain filter.' },
         genre: { type: 'string', enum: [...GENRE_KIT_IDS], description: 'Optional genre applicability filter.' },
         limit: { type: 'number', description: 'Maximum matches, clamped to 1–5. Default 5.' },
-        max_chars: { type: 'number', description: 'Maximum serialized result size, clamped to 700–2600 characters.' },
+        max_chars: { type: 'number', description: 'Maximum serialized result size, clamped to 900–2600 characters.' },
       }),
     },
     studio: false,
@@ -3988,7 +3988,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (!kit) {
         // Naming the ten is the whole answer: a model told only "unknown genre" guesses again, and
         // the second guess is no better informed than the first.
-        return { error: `there is no "${String(a.genre)}" kit. The ten are: ${GENRE_KIT_IDS.join(', ')}.` };
+        return { error: `there is no "${String(a.genre)}" kit. The kits are: ${GENRE_KIT_IDS.join(', ')}.` };
       }
       const skillProfile = getGenreSkillProfile(kit.id);
 

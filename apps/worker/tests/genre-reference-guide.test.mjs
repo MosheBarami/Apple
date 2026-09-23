@@ -304,7 +304,7 @@ test('AN UNCOVERED GENRE GETS AN ANSWER, and the answer is what is not known', (
   assert.equal(r.nearestByWording, null);
   assert.ok(r.saySoOutLoud.includes('fishing'), 'the sentence must name what was asked for');
   assert.match(r.saySoOutLoud, /my own judgement/);
-  assert.ok(r.knownGenres.length === 10, 'the answer must list what IS covered, or it is only a refusal');
+  assert.deepEqual([...r.knownGenres].sort(), [...genreIds].sort(), 'the answer must list what IS covered, or it is only a refusal');
 });
 
 test('A NEAR GENRE IS OFFERED ONLY WHEN THE CUSTOMER SAID IT — this is not a similarity table', () => {

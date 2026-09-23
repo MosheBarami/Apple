@@ -8,7 +8,7 @@
 // suite runs green while observing nothing about whether the sounds exist.
 //
 // So the evidence is a ledger: what the live Roblox details endpoint said about each pinned id, on
-// a date, checked in. Fifty rows, not ten megabytes. Regenerate with:
+// a date, checked in. One row per pin, not ten megabytes. Regenerate with:
 //   node scripts/probe-kit-pins.mjs
 //
 // Run: node --test apps/worker/tests/genre-kit-pins.test.mjs
@@ -28,12 +28,16 @@ const KITS = join(ROOT, 'apps', 'worker', 'src', 'genre-kits.ts');
 const src = readFileSync(KITS, 'utf8');
 const pins = [...src.matchAll(/sfx\("([^"]+)", (\d+), "([^"]+)", "([^"]+)"\)/g)]
   .map((m) => ({ role: m[1], assetId: Number(m[2]), name: m[3], author: m[4] }));
+// Every line that calls the helper, however it is written. The strict parse above must account for
+// all of them, so a pin written in a shape the regex misses fails here instead of going unchecked.
+const sfxCallLines = src.match(/^\s*sfx\(/gm) ?? [];
 
-test('the pins parsed out of genre-kits.ts are the fifty the kits ship', () => {
+test('the pins parsed out of genre-kits.ts are every pin the kits ship', () => {
   // Without this the regex could silently match nothing and every test below would iterate an
   // empty list and report clean — the exact failure the sibling suite already had once.
-  assert.equal(pins.length, 50, `parsed ${pins.length} pins out of genre-kits.ts, expected 50`);
-  assert.equal(new Set(pins.map((p) => p.assetId)).size, 50, 'two kits pin the same asset id');
+  assert.ok(pins.length > 0, 'parsed no pins out of genre-kits.ts');
+  assert.equal(pins.length, sfxCallLines.length, `parsed ${pins.length} pins but genre-kits.ts has ${sfxCallLines.length} sfx( calls`);
+  assert.equal(new Set(pins.map((p) => p.assetId)).size, pins.length, 'two kits pin the same asset id');
 });
 
 test('the ledger proving those ids are real is present and readable', () => {
@@ -68,7 +72,7 @@ test('every pinned id resolves, live, to a free sound effect from a verified cre
     assert.equal(row.name, pin.name, `asset ${pin.assetId} is now named "${row.name}", the kit calls it "${pin.name}"`);
     checked++;
   }
-  assert.equal(checked, 50, `checked ${checked} pins, expected 50`);
+  assert.equal(checked, pins.length, `checked ${checked} pins, expected ${pins.length}`);
 });
 
 test('the ledger has no rows for pins that no longer exist', () => {

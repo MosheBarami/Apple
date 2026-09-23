@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-09-18",
+ "generatedAt": "2026-09-23",
  "taxonomySource": "apps/worker/src/genre-kits.ts#GENRE_KIT_IDS",
  "policy": {
   "purpose": "genre_visual_reference_and_official_implementation_retrieval",
@@ -110,6 +110,11 @@
    "id": "survival",
    "name": "Survival",
    "description": "Resource gathering, crafting, environmental navigation, equipment, and threat visibility."
+  },
+  {
+   "id": "adventure",
+   "name": "Adventure",
+   "description": "Exploration toward visible landmarks, quests, treasure, light combat, and readable routes between zones."
   }
  ],
  "externalReferences": [
@@ -3232,6 +3237,535 @@
     "copyPermission": false,
     "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
    }
+  },
+  {
+   "id": "adventure-castle-valley-layout",
+   "genreIds": [
+    "adventure"
+   ],
+   "aspects": [
+    "map_composition",
+    "low_poly_props",
+    "materials"
+   ],
+   "title": "Map Progress on Adventure game",
+   "url": "https://devforum.roblox.com/t/map-progress-on-adventure-game/1665754",
+   "origin": {
+    "publisher": "Roblox Developer Forum",
+    "author": "coolduckluck",
+    "publishedAt": "2022-02-13",
+    "updatedAt": "2022-02-13",
+    "type": "original_creator_post"
+   },
+   "verification": {
+    "status": "live_topic_json_verified",
+    "topicId": 1665754,
+    "checkedAt": "2026-09-23"
+   },
+   "inspection": {
+    "status": "visual_inspected",
+    "method": "first_post_text_and_representative_images",
+    "inspectedAt": "2026-09-23",
+    "inspectedMediaCount": 1,
+    "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+   },
+   "observations": [
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "map_composition",
+     "text": "A walled village sits in a bowl of tall cliffs, so the valley reads as one destination and the gatehouse wall in front becomes the approach landmark."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "low_poly_props",
+     "text": "Crenellated sandstone walls, pitched red roofs, and cone-shaped pine trees stay recognisable as chunky primitives from a high camera."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "materials",
+     "text": "Warm sandstone walls against saturated grass and cool grey-blue cliff faces separate built space, open ground, and boundary at a glance."
+    }
+   ],
+   "referenceUse": "reference_only",
+   "licence": {
+    "status": "unverified_reference_only",
+    "copyPermission": false,
+    "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+   },
+   "cautions": [
+    "Use this source for landmark and enclosure planning; it is an unfinished blockout, not a finished art target."
+   ]
+  },
+  {
+   "id": "adventure-village-path-stylised",
+   "genreIds": [
+    "adventure"
+   ],
+   "aspects": [
+    "map_composition",
+    "lighting",
+    "materials",
+    "low_poly_props"
+   ],
+   "title": "Rpg Map Feedback Needed!",
+   "url": "https://devforum.roblox.com/t/rpg-map-feedback-needed/3049882",
+   "origin": {
+    "publisher": "Roblox Developer Forum",
+    "author": "Takeoi",
+    "publishedAt": "2024-07-02",
+    "updatedAt": "2024-07-02",
+    "type": "original_creator_post"
+   },
+   "verification": {
+    "status": "live_topic_json_verified",
+    "topicId": 3049882,
+    "checkedAt": "2026-09-23"
+   },
+   "inspection": {
+    "status": "visual_inspected",
+    "method": "first_post_text_and_representative_images",
+    "inspectedAt": "2026-09-23",
+    "inspectedMediaCount": 1,
+    "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+   },
+   "observations": [
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "map_composition",
+     "text": "A dirt path curves from the foreground bridge past a signpost toward village roofs on a hill, pulling the eye and the player along one route."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "lighting",
+     "text": "Bright, saturated daylight with soft shadows under the canopy keeps the route readable while tree shade marks the edges of the play space."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "materials",
+     "text": "Bare dirt path, lush tall grass, and bright blue water read as three distinct surfaces, so walkable ground is obvious without markers."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "low_poly_props",
+     "text": "A wooden signpost, a small notice board, rail fences, and a hanging lantern are the only props on the path, each placed where the route turns."
+    }
+   ],
+   "referenceUse": "reference_only",
+   "licence": {
+    "status": "unverified_reference_only",
+    "copyPermission": false,
+    "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+   },
+   "cautions": [
+    "Dense stylised foliage is shown for composition; budget it for phones before copying the density."
+   ]
+  },
+  {
+   "id": "adventure-medieval-open-world-light",
+   "genreIds": [
+    "adventure"
+   ],
+   "aspects": [
+    "lighting",
+    "map_composition",
+    "materials"
+   ],
+   "title": "Everdawn - Alpha v0.5.2 - Medieval RPG - Looking for testers",
+   "url": "https://devforum.roblox.com/t/everdawn-alpha-v052-medieval-rpg-looking-for-testers/4667122",
+   "origin": {
+    "publisher": "Roblox Developer Forum",
+    "author": "Kevinjdlb33",
+    "publishedAt": "2026-06-03",
+    "updatedAt": "2026-07-01",
+    "type": "original_creator_post"
+   },
+   "verification": {
+    "status": "live_topic_json_verified",
+    "topicId": 4667122,
+    "checkedAt": "2026-09-23"
+   },
+   "inspection": {
+    "status": "visual_inspected",
+    "method": "first_post_text_and_representative_images",
+    "inspectedAt": "2026-09-23",
+    "inspectedMediaCount": 3,
+    "evidence": "Reviewed the first post and 3 representative images from the source page; only observations and the source URL are retained."
+   },
+   "observations": [
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "lighting",
+     "text": "Low sun behind a large tree throws visible god rays across the scene, which turns a single landmark tree into a place worth walking to."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "lighting",
+     "text": "At night the road stays navigable because lanterns on posts and distant campfires form a chain of warm points across a dark blue field."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "map_composition",
+     "text": "A massive rock outcrop with a lantern at its base sits at the end of the dirt road, acting as a destination that is visible over the grass."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "materials",
+     "text": "Knee-high grass hides the ground plane while the packed dirt road stays smooth and pale, so the route remains the brightest band of terrain."
+    }
+   ],
+   "referenceUse": "reference_only",
+   "licence": {
+    "status": "unverified_reference_only",
+    "copyPermission": false,
+    "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+   },
+   "cautions": [
+    "The realistic foliage and post-processing are a mood reference; they are heavier than a phone-first build should ship."
+   ]
+  },
+  {
+   "id": "adventure-classic-rpg-valley-town",
+   "genreIds": [
+    "adventure"
+   ],
+   "aspects": [
+    "ui_hud",
+    "map_composition",
+    "low_poly_props"
+   ],
+   "title": "Looking for feedback on my classic style rpg",
+   "url": "https://devforum.roblox.com/t/looking-for-feedback-on-my-classic-style-rpg/3139772",
+   "origin": {
+    "publisher": "Roblox Developer Forum",
+    "author": "Achivuus",
+    "publishedAt": "2024-08-30",
+    "updatedAt": "2024-08-30",
+    "type": "original_creator_post"
+   },
+   "verification": {
+    "status": "live_topic_json_verified",
+    "topicId": 3139772,
+    "checkedAt": "2026-09-23"
+   },
+   "inspection": {
+    "status": "visual_inspected",
+    "method": "first_post_text_and_representative_images",
+    "inspectedAt": "2026-09-23",
+    "inspectedMediaCount": 3,
+    "evidence": "Reviewed the first post and 3 representative images from the source page; only observations and the source URL are retained."
+   },
+   "observations": [
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "ui_hud",
+     "text": "Enemies carry a nameplate above the head with the name on the left, the level on the right, and a segmented red health bar beneath both."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "ui_hud",
+     "text": "Damage appears as a large red number floating above the target, separate from the nameplate, so a hit is read without looking at a bar."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "map_composition",
+     "text": "A cliff-ringed valley town uses a central fountain plaza as the hub, with grey paths radiating to houses, a walled keep, and a tower."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "low_poly_props",
+     "text": "Ball-and-stick trees, plank-roof cottages, and stepped cliffs are built from simple blocks yet read as a complete fantasy town from above."
+    }
+   ],
+   "referenceUse": "reference_only",
+   "licence": {
+    "status": "unverified_reference_only",
+    "copyPermission": false,
+    "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+   },
+   "cautions": [
+    "The blocky classic look is the reference; its flat textured floors are not a materials target."
+   ]
+  },
+  {
+   "id": "adventure-rpg-resource-bars",
+   "genreIds": [
+    "adventure"
+   ],
+   "aspects": [
+    "ui_hud"
+   ],
+   "title": "Looking feedback to new RPG HudBar(Health/Xp/Mana)",
+   "url": "https://devforum.roblox.com/t/looking-feedback-to-new-rpg-hudbarhealthxpmana/3524035",
+   "origin": {
+    "publisher": "Roblox Developer Forum",
+    "author": "ilm2art",
+    "publishedAt": "2025-03-03",
+    "updatedAt": "2025-03-03",
+    "type": "original_creator_post"
+   },
+   "verification": {
+    "status": "live_topic_json_verified",
+    "topicId": 3524035,
+    "checkedAt": "2026-09-23"
+   },
+   "inspection": {
+    "status": "visual_inspected",
+    "method": "first_post_text_and_representative_images",
+    "inspectedAt": "2026-09-23",
+    "inspectedMediaCount": 2,
+    "evidence": "Reviewed the first post and 2 representative images from the source page; only observations and the source URL are retained."
+   },
+   "observations": [
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "ui_hud",
+     "text": "Three stacked bars share one frame: a thin experience bar on top, the thickest health bar in the middle with a numeric readout, and a thin mana bar below."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "ui_hud",
+     "text": "Each resource keeps one colour family, red for health, blue for mana, and amber for experience, and the swatch study proves the choice before the art."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "ui_hud",
+     "text": "Pointed arrow ends and a gold bevelled border make the health bar the focal element, while numbers sit right-aligned inside the fill for quick reading."
+    }
+   ],
+   "referenceUse": "reference_only",
+   "licence": {
+    "status": "unverified_reference_only",
+    "copyPermission": false,
+    "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+   },
+   "cautions": [
+    "The ornate frame is one designer study; keep the stacking and hierarchy, not the exact ornament."
+   ]
+  },
+  {
+   "id": "adventure-chest-inventory-grid",
+   "genreIds": [
+    "adventure"
+   ],
+   "aspects": [
+    "inventory"
+   ],
+   "title": "Thoughts on Inventory Gui",
+   "url": "https://devforum.roblox.com/t/thoughts-on-inventory-gui/2740488",
+   "origin": {
+    "publisher": "Roblox Developer Forum",
+    "author": "MikeartsRBLX",
+    "publishedAt": "2023-12-14",
+    "updatedAt": "2023-12-14",
+    "type": "original_creator_post"
+   },
+   "verification": {
+    "status": "live_topic_json_verified",
+    "topicId": 2740488,
+    "checkedAt": "2026-09-23"
+   },
+   "inspection": {
+    "status": "visual_inspected",
+    "method": "first_post_text_and_representative_images",
+    "inspectedAt": "2026-09-23",
+    "inspectedMediaCount": 1,
+    "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+   },
+   "observations": [
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "inventory",
+     "text": "A wide grid of equal square slots under a full-width search bar lets the player filter a large chest instead of scrolling through it."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "inventory",
+     "text": "A capacity counter in the footer reads the chest name and used-over-maximum slots, so the storage limit is always visible while sorting."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "inventory",
+     "text": "Dark brown wood tones match the in-world chest metaphor, but empty slots sit so close to the panel colour that the grid edges almost disappear."
+    }
+   ],
+   "referenceUse": "reference_only",
+   "licence": {
+    "status": "unverified_reference_only",
+    "copyPermission": false,
+    "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+   },
+   "cautions": [
+    "Low contrast between empty slots and the panel is visible in the source and should not be copied."
+   ]
+  },
+  {
+   "id": "adventure-merchant-shop-structure",
+   "genreIds": [
+    "adventure"
+   ],
+   "aspects": [
+    "shop",
+    "interaction"
+   ],
+   "title": "Working On A Simple Item Shop [Detecting A Nearby Shop, SurfaceGui Buy Buttons, Server-Sided Cash/Item Transactions]",
+   "url": "https://devforum.roblox.com/t/working-on-a-simple-item-shop-detecting-a-nearby-shop-surfacegui-buy-buttons-server-sided-cashitem-transactions/3141187",
+   "origin": {
+    "publisher": "Roblox Developer Forum",
+    "author": "OfficerPigbelly",
+    "publishedAt": "2024-08-31",
+    "updatedAt": "2024-08-31",
+    "type": "original_creator_post"
+   },
+   "verification": {
+    "status": "live_topic_json_verified",
+    "topicId": 3141187,
+    "checkedAt": "2026-09-23"
+   },
+   "inspection": {
+    "status": "visual_inspected",
+    "method": "first_post_text_and_representative_images",
+    "inspectedAt": "2026-09-23",
+    "inspectedMediaCount": 3,
+    "evidence": "Reviewed the first post and 3 representative images from the source page; only observations and the source URL are retained."
+   },
+   "observations": [
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "shop",
+     "text": "The merchant shop keeps sale items on physical shelves in the world, each with its own price and shelf slot, instead of a full-screen catalogue."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "shop",
+     "text": "Each shelf item has a matching buy button and name label in a SurfaceGui, so browsing happens at the counter where the player already stands."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "interaction",
+     "text": "A single ShopPrompt with an interact button opens the merchant, a camera focus part frames the counter, and the purchase is handled by a server script."
+    }
+   ],
+   "referenceUse": "reference_only",
+   "licence": {
+    "status": "unverified_reference_only",
+    "copyPermission": false,
+    "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+   },
+   "cautions": [
+    "The images show an Explorer hierarchy rather than finished art; use them for shop structure, not for visual style."
+   ]
+  },
+  {
+   "id": "adventure-dungeon-torch-hall",
+   "genreIds": [
+    "adventure"
+   ],
+   "aspects": [
+    "lighting",
+    "low_poly_props",
+    "materials"
+   ],
+   "title": "LOOT the DUNGEON [Devlog] - Team up with friends, explore terrifying dungeons, and escape with the loot",
+   "url": "https://devforum.roblox.com/t/loot-the-dungeon-devlog-team-up-with-friends-explore-terrifying-dungeons-and-escape-with-the-loot/4669840",
+   "origin": {
+    "publisher": "Roblox Developer Forum",
+    "author": "CaptHaddox",
+    "publishedAt": "2026-06-05",
+    "updatedAt": "2026-06-05",
+    "type": "original_creator_post"
+   },
+   "verification": {
+    "status": "live_topic_json_verified",
+    "topicId": 4669840,
+    "checkedAt": "2026-09-23"
+   },
+   "inspection": {
+    "status": "visual_inspected",
+    "method": "first_post_text_and_representative_images",
+    "inspectedAt": "2026-09-23",
+    "inspectedMediaCount": 1,
+    "evidence": "Reviewed the first post and 1 representative image from the source page; only observations and the source URL are retained."
+   },
+   "observations": [
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "lighting",
+     "text": "Torches on short pillars create evenly spaced warm pools along a stone hall, so the player can count the distance to the next doorway."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "low_poly_props",
+     "text": "Oversized rounded stone blocks, heavy arches, carved heads, and thick timber beams keep a chunky hand-built silhouette at low polygon counts."
+    },
+    {
+     "genreIds": [
+      "adventure"
+     ],
+     "aspect": "materials",
+     "text": "Warm brown stone, orange timber, and a cool purple-lit floor split the frame into walls, ceiling, and walkable ground by temperature."
+    }
+   ],
+   "referenceUse": "reference_only",
+   "licence": {
+    "status": "unverified_reference_only",
+    "copyPermission": false,
+    "note": "The page was reviewed as visual research. No reusable asset, media, or code licence was verified; do not copy source media or implementation."
+   },
+   "cautions": [
+    "This is a key-art style frame with heavy colour grading; treat the purple floor light as mood, not a default."
+   ]
   }
  ],
  "officialDocuments": [
@@ -4924,6 +5458,94 @@
    "rules": [
     "Use action and object labels such as “Harvest — Pine Tree” or “Open — Supply Crate” so repeated props remain understandable.",
     "Use hold duration for harvesting or repair and exclusivity in dense resource areas so several prompts do not overlap."
+   ]
+  },
+  {
+   "id": "impl-adventure-ui-hud",
+   "genreId": "adventure",
+   "aspect": "ui_hud",
+   "documentId": "docs-tutorials-use-case-tutorials-ui-create-hud-meters",
+   "rationale": "Adventure players track health, stamina, and the current objective while exploring, so persistent meters must stay small and readable.",
+   "rules": [
+    "Keep the health meter and the current quest objective on safe screen edges and leave the centre of the screen clear for landmarks and paths.",
+    "Show enemy health on a world-space nameplate instead of the HUD so the player never has to look away from the fight to read it."
+   ]
+  },
+  {
+   "id": "impl-adventure-shop",
+   "genreId": "adventure",
+   "aspect": "shop",
+   "documentId": "docs-production-game-design-contextual-purchases",
+   "rationale": "Adventure purchases fit naturally at a merchant, a camp, or a town hub, which are pauses between exploration and combat.",
+   "rules": [
+    "Offer supplies and cosmetic gear at a merchant in a safe town or camp, never in the middle of a dungeon fight or a timed puzzle.",
+    "Keep the purchase flow short and return the player to the same spot in the world, with the quest state unchanged underneath the dialog."
+   ]
+  },
+  {
+   "id": "impl-adventure-inventory",
+   "genreId": "adventure",
+   "aspect": "inventory",
+   "documentId": "docs-ui-grid-table-layouts",
+   "rationale": "Adventure inventories hold keys, quest items, consumables, and gear, which need a uniform grid plus a clear separation of quest items.",
+   "rules": [
+    "Use a uniform grid of equal slots for gear and consumables and keep quest items and keys in their own tab so they cannot be sold or dropped.",
+    "Show a used-over-maximum capacity counter and a strong empty-slot outline so the player can see space at a glance on a phone screen."
+   ]
+  },
+  {
+   "id": "impl-adventure-map-composition",
+   "genreId": "adventure",
+   "aspect": "map_composition",
+   "documentId": "docs-tutorials-curriculums-environmental-art-construct-your-world",
+   "rationale": "Adventure worlds depend on landmark hierarchy: every zone should show the player where the next goal is before they reach it.",
+   "rules": [
+    "Place one large landmark per zone that is visible from the zone entrance, and bend paths toward it instead of running them straight.",
+    "Join zones through clear chokepoints such as a bridge, a gate, or a cave mouth so the player knows when they have entered a new area."
+   ]
+  },
+  {
+   "id": "impl-adventure-low-poly-props",
+   "genreId": "adventure",
+   "aspect": "low_poly_props",
+   "documentId": "docs-tutorials-use-case-tutorials-modeling-assemble-modular-environments",
+   "rationale": "Ruins, walls, bridges, and village buildings repeat across zones and benefit from a shared modular kit on one snap grid.",
+   "rules": [
+    "Build walls, arches, pillars, stairs, and bridge pieces as modular parts on one grid so new zones reuse the same kit with different arrangement.",
+    "Keep chests, signposts, and quest objects chunky and slightly oversized so they read as interactable against the modular architecture around them."
+   ]
+  },
+  {
+   "id": "impl-adventure-materials",
+   "genreId": "adventure",
+   "aspect": "materials",
+   "documentId": "docs-parts-materials",
+   "rationale": "Adventure routes must be readable from surfaces alone, so paths, grass, stone, and water need distinct built-in materials.",
+   "rules": [
+    "Give the walkable path its own material and a lighter value than the ground around it, so the route reads without arrows or markers.",
+    "Use a small set of built-in materials per zone, for example grass, sandstone, and wood, and change the set between zones to mark progress."
+   ]
+  },
+  {
+   "id": "impl-adventure-lighting",
+   "genreId": "adventure",
+   "aspect": "lighting",
+   "documentId": "docs-environment-atmosphere",
+   "rationale": "Atmosphere haze and colour control how far landmarks read, which is the core navigation signal of an adventure map.",
+   "rules": [
+    "Tune density and haze so the next landmark is visible but softened by distance, which tells the player it is far away and worth reaching.",
+    "Shift atmosphere colour and decay between zones or times of day to mark a new area, while keeping paths and chests readable at gameplay range."
+   ]
+  },
+  {
+   "id": "impl-adventure-interaction",
+   "genreId": "adventure",
+   "aspect": "interaction",
+   "documentId": "api-proximityprompt",
+   "rationale": "Chests, doors, levers, merchants, and quest givers are the main verbs of an adventure and benefit from clear named prompts.",
+   "rules": [
+    "Use explicit action and object text such as “Open — Old Chest” or “Talk — Village Elder” so the player knows what will happen before pressing.",
+    "Give treasure chests a short hold duration and handle the loot roll on the server so a prompt cannot be triggered twice for double rewards."
    ]
   }
  ]

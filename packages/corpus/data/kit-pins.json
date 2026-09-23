@@ -1,8 +1,8 @@
 {
- "probedAt": "2026-09-15T15:21:07.132Z",
+ "probedAt": "2026-09-23T13:41:07.025Z",
  "endpoint": "https://apis.roblox.com/toolbox-service/v1/items/details",
  "source": "apps/worker/src/genre-kits.ts",
- "pinCount": 50,
+ "pinCount": 55,
  "unresolved": [],
  "pins": [
   {
@@ -951,6 +951,101 @@
     "value": 5
    },
    "creatorName": "XxFabio2004xX",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 9120873380,
+   "role": "treasure",
+   "name": "Wooden Chest Open Close Cedar Box 1 (SFX)",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 2
+   },
+   "creatorName": "ProSoundEffects",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 2575934454,
+   "role": "pickup",
+   "name": "Item Pickup",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 0
+   },
+   "creatorName": "GnomeCode",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 135315310485417,
+   "role": "swing",
+   "name": "sword-swing-whoosh-sound-effect-1-full-pack",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "Akin_TR",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 9040172806,
+   "role": "discovery",
+   "name": "Small Discoveries (sting b)",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 4
+   },
+   "creatorName": "APMOfficial",
+   "isVerifiedCreator": true,
+   "isFree": true,
+   "hasScripts": false
+  },
+  {
+   "assetId": 134847459602515,
+   "role": "portal",
+   "name": "portal open",
+   "exists": true,
+   "assetTypeId": 3,
+   "audioType": {
+    "reported": true,
+    "value": "SoundEffect"
+   },
+   "durationSeconds": {
+    "reported": true,
+    "value": 1
+   },
+   "creatorName": "TheNotSoGloriousFork",
    "isVerifiedCreator": true,
    "isFree": true,
    "hasScripts": false

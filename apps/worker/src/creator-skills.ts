@@ -450,21 +450,21 @@ const MECHANIC_GENRES: Readonly<Record<string, readonly GenreKitId[]>> = Object.
   checkpoints: ['obby', 'racing'],
   killbricks: ['obby', 'survival'],
   weapons: ['fps_arena', 'anime_battle', 'survival'],
-  enemies: ['horror', 'tower_defense', 'anime_battle', 'survival'],
+  enemies: ['horror', 'tower_defense', 'anime_battle', 'survival', 'adventure'],
   waves: ['horror', 'tower_defense', 'anime_battle', 'survival'],
   towers: ['tower_defense'],
   path_waypoints: ['horror', 'tower_defense', 'anime_battle', 'survival'],
   rebirth: ['tycoon', 'simulator'],
   dropper: ['tycoon'],
   plots: ['tycoon', 'roleplay'],
-  dialogue: ['horror', 'simulator', 'roleplay'],
+  dialogue: ['horror', 'simulator', 'roleplay', 'adventure'],
   vehicles: ['racing', 'roleplay'],
   racing_track: ['racing'],
   teams: ['racing', 'fps_arena', 'anime_battle'],
   customization: ['simulator', 'roleplay', 'anime_battle'],
   ragdoll: ['fps_arena', 'anime_battle', 'survival'],
   placement: ['tycoon', 'roleplay', 'tower_defense'],
-  zones: ['horror', 'simulator', 'roleplay', 'survival'],
+  zones: ['horror', 'simulator', 'roleplay', 'survival', 'adventure'],
   procedural_terrain: ['horror', 'racing', 'roleplay', 'survival'],
 });
 
@@ -692,6 +692,16 @@ GENRE_SEEDS.push(
   genreTask('survival', 'inventory-persistence-cap', 'Persist survival inventory with stack and capacity caps', 'Store compact item ids and counts while validating every add, remove, drop and use on the server.', ['saveData', 'clientBoundary'], ['Define stack and total capacity by item type.', 'Validate source action before inventory mutation.', 'Commit world drop and inventory removal as one guarded transition.'], ['Over-cap, negative index, duplicate drop and failed load.', 'Rejoin with the same bounded inventory.'], ['Full item instances bloat the save.', 'World item clones before inventory removal.'], ['inventory', 'capacity']),
   genreTask('survival', 'enemy-wave-pressure', 'Scale survival enemy pressure with bounded waves', 'Spawn enemies over time, cap living count and end or ease pressure when players are eliminated.', ['collection', 'pathfinding'], ['Define bounded count, health and spacing curves.', 'Track the living set by death and removal.', 'Pause or end spawning from current player and round state.'], ['Enemies fall out of world, players leave and caps are reached.', 'Wave state cleans before the next phase.'], ['Exponential health becomes unkillable or non-finite.', 'Missing enemies stall the wave forever.'], ['wave', 'enemy']),
   genreTask('survival', 'streamed-world-chunks', 'Stream survival world chunks from a stable seed', 'Generate or reveal bounded low-poly chunks near players and release distant optional state without losing durable progress.', ['streaming', 'terrain'], ['Derive chunk identity from a stable seed and coordinates.', 'Generate with a work budget and yield between chunks.', 'Persist durable discoveries separately from chunk instances.'], ['Move quickly across boundaries with several players.', 'Unload and regenerate the same chunk deterministically.'], ['Unseeded chunks disagree across sessions.', 'Chunks never release and memory grows indefinitely.'], ['world generation', 'streaming', 'low poly']),
+
+  // Adventure: the world is the reward, so every system serves a player walking toward a landmark.
+  genreTask('adventure', 'landmark-route-blockout', 'Block out an adventure route toward a visible landmark', 'Place one large landmark per zone first and bend the walkable path toward it so the next goal is always in view.', ['parts', 'worldRoot'], ['Place the zone landmark before any other geometry.', 'Walk the route from the entrance and bend it so the landmark stays in view.', 'Mark the zone exit with a chokepoint such as a bridge, gate or cave mouth.'], ['From every zone entrance the landmark is visible without turning the camera around.', 'A first-time tester reaches the landmark without a waypoint arrow.'], ['The landmark is hidden behind props placed later.', 'Straight corridors make every zone read the same.'], ['landmark', 'route', 'exploration']),
+  genreTask('adventure', 'quest-step-state', 'Advance adventure quest steps from server-owned state', 'Store each quest as an ordered list of step ids on the server so completion cannot be skipped, repeated or claimed by the client.', ['saveData', 'clientBoundary'], ['Define quest ids and ordered step ids in a server module.', 'Accept a step only when it is the current step and its condition is true on the server.', 'Persist the current step and send the objective text to the client.'], ['Firing the completion remote for a later step changes nothing.', 'Rejoining restores the same current step and objective text.'], ['The client decides a step is done and the server trusts it.', 'Two quests share a step id and complete each other.'], ['quest', 'objective']),
+  genreTask('adventure', 'treasure-chest-loot', 'Open an adventure treasure chest exactly once per player', 'Open a chest through a named prompt, roll loot on the server and record the chest as opened so it cannot pay twice.', ['proximity', 'securityTactics'], ['Give each chest a stable id and a ProximityPrompt with action and object text.', 'Validate distance and opened state on the server before rolling loot.', 'Record the opened chest in player data and play the lid tween for everyone.'], ['Triggering the prompt twice quickly grants one reward.', 'An opened chest stays opened after rejoining.'], ['Loot is rolled on the client.', 'The opened flag is saved only after the reward, so a crash duplicates loot.'], ['treasure', 'chest', 'loot']),
+  genreTask('adventure', 'npc-dialogue-branch', 'Run adventure NPC dialogue that can start a quest', 'Show a short branching conversation from a server-owned script and start quests only from a server-validated choice.', ['uiScreen', 'remotes'], ['Author dialogue nodes with stable ids and at most three choices each.', 'Send the current node to the client and accept only choices listed for that node.', 'Start or advance the quest on the server when the chosen node says so.'], ['A choice id not offered by the current node is rejected.', 'Walking away closes the dialogue and leaves quest state unchanged.'], ['The client sends a quest id directly.', 'Dialogue text is built from player-supplied strings.'], ['npc', 'dialogue']),
+  genreTask('adventure', 'zone-gate-progression', 'Gate adventure zones behind earned progress', 'Open the next zone only when the server confirms the required quest step, key or level, and explain the lock in plain words.', ['worldRoot', 'accessControl'], ['Give each gate a requirement read from server data.', 'Check the requirement on the server when the player approaches or interacts.', 'Show what is missing in one short sentence when the gate stays closed.'], ['A player without the key cannot pass by jumping or clipping around the gate.', 'The lock message names the missing requirement.'], ['The gate is only a visual door with no server check.', 'A locked gate gives no reason, so players think the game is broken.'], ['gate', 'progression', 'zone']),
+  genreTask('adventure', 'collectible-glint-cue', 'Signal adventure collectibles with a glint instead of a marker', 'Draw the eye to hidden collectibles with a small sparkle and colour cue so exploration is rewarded without a waypoint arrow.', ['particles', 'lighting'], ['Attach a small looping sparkle emitter to each collectible.', 'Use the kit highlight colour on collectibles and nowhere else in the zone.', 'Stop the emitter and hide the item on the server when it is collected.'], ['From ten studs away a tester spots the collectible without being told.', 'A collected item stops sparkling for that player after rejoining.'], ['Every prop sparkles, so the cue means nothing.', 'The sparkle keeps playing on an item that is already collected.'], ['collectible', 'sparkle']),
+  genreTask('adventure', 'light-combat-encounter', 'Place a light adventure combat encounter on the route', 'Put small enemy groups at route turns, resolve hits on the server and reset the encounter when the player leaves.', ['humanoid', 'pathfinding'], ['Spawn a small enemy group at a route turn, not on the path itself.', 'Resolve damage on the server with range and cooldown checks.', 'Despawn and reset the group when no player is nearby.'], ['An enemy group never blocks the only path permanently.', 'Leaving and returning resets the encounter to its start state.'], ['Enemies chase forever and pile up at spawn.', 'Client-reported hits deal damage without validation.'], ['combat', 'enemy', 'encounter']),
+  genreTask('adventure', 'zone-streaming-budget', 'Stream adventure zones within a phone budget', 'Keep each zone inside a measured part and memory budget and let streaming load the next zone as the player approaches the chokepoint.', ['streaming', 'perfDesign'], ['Enable streaming and set a target radius that covers one zone.', 'Keep the landmark as a persistent model so it stays visible at distance.', 'Measure memory and frame time at the busiest point of each zone.'], ['The next landmark is visible before its zone streams in.', 'The busiest zone holds frame rate on a phone-class device.'], ['The landmark streams out and the player loses the goal.', 'Dense foliage in one zone blows the memory budget.'], ['streaming', 'performance']),
 );
 
 const rawSkills = [...FOUNDATION_SEEDS, ...MECHANIC_SEEDS, ...GENRE_SEEDS].map(materialise);
@@ -713,6 +723,7 @@ const GENRE_PROFILE_MECHANICS: Readonly<Record<GenreKitId, readonly string[]>> =
   fps_arena: ['weapons', 'teams'],
   anime_battle: ['weapons', 'ragdoll'],
   survival: ['inventory', 'procedural_terrain'],
+  adventure: ['dialogue', 'zones'],
 });
 
 const GENRE_QUALITY: Readonly<Record<GenreKitId, readonly string[]>> = Object.freeze({
@@ -726,6 +737,7 @@ const GENRE_QUALITY: Readonly<Record<GenreKitId, readonly string[]>> = Object.fr
   fps_arena: ['Cover, spawn and combat lanes read from player eye height.', 'Hits and ammo remain server-authoritative under latency.'],
   anime_battle: ['Telegraphs survive effect overlap and camera motion.', 'Combos, hitboxes, meter and cooldown state are server-owned.'],
   survival: ['Resources and safe routes remain readable through time and weather changes.', 'World, inventory and enemy pressure stay bounded over long sessions.'],
+  adventure: ['The next landmark is visible from every zone entrance and the route bends toward it.', 'Quest steps, chest loot and zone gates are server-owned and cannot pay or open twice.'],
 });
 
 export interface GenreSkillProfile {
@@ -784,9 +796,10 @@ const DEFAULT_SEARCH_CHARS = 2200;
 // status, and the payload's disclosure says what that status means, so the smallest payload that
 // still returns ONE result costs more than it did. Measured: at 700 this query reports
 // `totalMatches: 73, returned: 0` — seventy-three matches and nothing to show for them. At 740 it
-// returns the top hit in 711 characters. 800 leaves headroom for a longer title or genre list
-// without another round of this.
-export const MIN_SEARCH_CHARS = 800;
+// returns the top hit in 711 characters. 800 left headroom for a longer title or genre list, and
+// the eleventh genre (adventure) used it up: a hit that applies to every genre lists all of them,
+// and the top hit for this query then needed ~810. 900 restores the headroom.
+export const MIN_SEARCH_CHARS = 900;
 const MAX_SEARCH_CHARS = 2600;
 const DEFAULT_READ_CHARS = 2700;
 // RAISED FROM 1400 WHEN `implementation` BECAME MANDATORY. The floor is the size of the smallest

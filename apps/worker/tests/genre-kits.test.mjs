@@ -74,6 +74,7 @@ test('no kit as SHIPPED contains a pinned asset the gate would refuse', () => {
   // the suite reported clean. Falsification caught it — a deliberately planted CC-BY-NC row stayed
   // green. The count assertions below exist so this test can never again pass by seeing nothing.
   let checked = 0;
+  const expected = GENRE_KITS.reduce((sum, kit) => sum + (kit.pinned?.length ?? 0), 0);
   for (const kit of GENRE_KITS) {
     assert.ok(Array.isArray(kit.pinned) && kit.pinned.length > 0, `kit ${kit.id} pins nothing — this test would check it vacuously`);
     for (const p of kit.pinned) {
@@ -83,16 +84,18 @@ test('no kit as SHIPPED contains a pinned asset the gate would refuse', () => {
       checked++;
     }
   }
-  assert.equal(checked, 50, `expected 50 pinned assets across ten kits, checked ${checked}`);
+  assert.ok(checked > 0 && checked === expected, `expected ${expected} pinned assets across ${GENRE_KITS.length} kits, checked ${checked}`);
 });
 
 // ==============================================================================================
 // 2. The kits are a real, coherent, named thing — not forty shallow ones
 // ==============================================================================================
 
-test('there are exactly ten kits, each addressable by name', () => {
-  assert.equal(GENRE_KITS.length, 10);
-  assert.equal(new Set(GENRE_KIT_IDS).size, 10);
+test('there is exactly one kit per genre id, each addressable by name', () => {
+  assert.ok(GENRE_KIT_IDS.length > 0);
+  assert.equal(GENRE_KITS.length, GENRE_KIT_IDS.length);
+  assert.equal(new Set(GENRE_KIT_IDS).size, GENRE_KIT_IDS.length);
+  assert.deepEqual(GENRE_KITS.map((k) => k.id), [...GENRE_KIT_IDS]);
   for (const id of GENRE_KIT_IDS) assert.equal(getGenreKit(id).id, id);
 });
 
