@@ -41,16 +41,45 @@ export const MODEL_PRICES: Record<string, ModelPrice> = {
   '@cf/meta/llama-3.2-11b-vision-instruct': { id: '@cf/meta/llama-3.2-11b-vision-instruct', usdPerMInput: 0.049, usdPerMOutput: 0.68 },
   '@cf/baai/bge-small-en-v1.5': { id: '@cf/baai/bge-small-en-v1.5', usdPerMInput: 0.02, usdPerMOutput: 0 },
   '@cf/baai/bge-m3': { id: '@cf/baai/bge-m3', usdPerMInput: 0.012, usdPerMOutput: 0 },
+
+  // THIRD-PARTY MODELS ON CLOUDFLARE UNIFIED BILLING (D-VISION-1). Read from the account's AI
+  // catalogue (GET /accounts/{id}/ai/catalog/models) on 2026-09-23. They are paid from prepaid AI
+  // Gateway credits, not in neurons; the neuron is kept as the internal unit for every wallet, so
+  // their dollars convert at the same USD_PER_NEURON and BudgetDO keeps them on their OWN ceiling
+  // (THIRD_PARTY_USD_PER_DAY below). Reasoning tokens bill as output on all three.
+  'google/gemini-3.8-flash': { id: 'google/gemini-3.8-flash', usdPerMInput: 0.75, usdPerMOutput: 3.75, usdPerMCachedInput: 0.075 },
+  'openai/gpt-5.6-luna': { id: 'openai/gpt-5.6-luna', usdPerMInput: 0.2, usdPerMOutput: 1.2, usdPerMCachedInput: 0.02 },
+  // PRICE CONFLICT, RESOLVED TOWARDS THE DEARER FIGURE. The catalogue lists Sol at $2/$10/$0.25;
+  // Cloudflare's 2026-08-19 changelog says the standard rate is $5/$30/$0.50 after a promotion that
+  // ended 2026-09-18. This table is a reservation boundary, where over-reserving is safe and
+  // under-reserving lets a bill escape, so Sol is reserved and settled at $5/$30 until ONE live
+  // bill shows which rate Cloudflare charges. Then change this row and nothing else.
+  'openai/gpt-5.6-sol': { id: 'openai/gpt-5.6-sol', usdPerMInput: 5, usdPerMOutput: 30, usdPerMCachedInput: 0.5 },
 };
 
+/** Thrown for a model id with no price row. An unpriced call cannot be reserved, so it is not run. */
+export class UnpricedModelError extends Error {
+  readonly modelId: string;
+  constructor(modelId: string) {
+    super(`no price for model ${modelId}: add a MODEL_PRICES row before this model can run`);
+    this.name = 'UnpricedModelError';
+    this.modelId = modelId;
+  }
+}
+
 /**
- * Neurons a call consumed, from token counts. Unknown models are costed at the most expensive rate.
+ * Neurons a call consumed, from token counts.
  * `cachedInputTokens` are billed at the model's discounted cached rate when it publishes one.
+ *
+ * AN UNKNOWN MODEL THROWS. It used to be costed at the dearest row in the table, which was a safe
+ * over-estimate only while every model was a Workers AI model: the dearest row was qwen2.5-coder at
+ * $0.66/$1.00, which prices GPT-5.6 Sol at a fifth of its input rate and a thirtieth of its output
+ * rate. A guess that under-reserves is the one failure this table exists to prevent, so a model with
+ * no row is refused before it runs rather than priced by analogy.
  */
 export function neuronsFor(modelId: string, inputTokens: number, outputTokens: number, cachedInputTokens = 0): number {
-  const price =
-    MODEL_PRICES[modelId] ??
-    Object.values(MODEL_PRICES).reduce((worst, p) => (p.usdPerMInput > worst.usdPerMInput ? p : worst));
+  const price = Object.prototype.hasOwnProperty.call(MODEL_PRICES, modelId) ? MODEL_PRICES[modelId] : undefined;
+  if (!price) throw new UnpricedModelError(modelId);
   const cached = Math.min(Math.max(0, cachedInputTokens), inputTokens);
   const fresh = inputTokens - cached;
   const cachedRate = price.usdPerMCachedInput ?? price.usdPerMInput;
@@ -138,8 +167,48 @@ export const BILLABLE_NEURONS_PER_MONTH = 1_800_000;
 /** Total neurons usable in a day (free + billable) before generation stops. */
 export const DAILY_NEURON_CEILING = FREE_NEURONS_PER_DAY + BILLABLE_NEURONS_PER_DAY;
 
-/** A single request may never reserve more than this — one runaway agent cannot drain the day. */
+/**
+ * A single request may never reserve more than this — one runaway agent cannot drain the day.
+ *
+ * Since D-VISION-1 this is the cap for every model that is NOT in the model registry (memory,
+ * embeddings, images, speech). A registry model carries its own `maxNeuronsPerStep`, sized to its
+ * own price: one global number either refuses every GPT-5.6 step (a ~64k-token step at $5/$30 is
+ * ~46,900 neurons) or lets an Apple step reserve forty times what it can cost.
+ */
 export const MAX_NEURONS_PER_REQUEST = 1_200;
+
+/** The per-call reservation cap for a provider model id. */
+export function maxNeuronsPerStepFor(modelId: string): number {
+  return registryModelByProviderId(modelId)?.maxNeuronsPerStep ?? MAX_NEURONS_PER_REQUEST;
+}
+
+/**
+ * Which wallet a provider model id spends. The registry is authoritative; an `author/model` id it
+ * does not list is still a third-party model and goes on the third-party ceiling (the tighter,
+ * dollar-denominated one), so an operator probe of an unlisted model cannot spend Workers AI's.
+ */
+export function routeForModelId(modelId: string): ModelRoute {
+  const known = registryModelByProviderId(modelId)?.route;
+  if (known) return known;
+  return !modelId.startsWith('@cf/') && modelId.includes('/') ? 'unified-billing' : 'workers-ai';
+}
+
+/*[[ THE THIRD-PARTY CEILING. A SPENDING DECISION, SO IT IS WRITTEN DOWN AS ONE — D-VISION-1.
+ *
+ *   Gemini 3.8 Flash, GPT-5.6 (Sol) and GPT-5.6 Luna are paid from prepaid AI Gateway credits on
+ *   Cloudflare Unified Billing — a different wallet from Workers AI's neurons. BudgetDO keeps them
+ *   on this separate ceiling instead of the neuron day above, for two reasons: at the neuron day's
+ *   $0.99 of billable spend, about two Sol steps would take the whole service's day and leave Apple
+ *   with nothing; and a separate number is the only way to say how much of the owner's money the
+ *   third-party models may spend, which is the question he will ask.
+ *
+ *   $5 a day and $60 a month were proposed in the D-VISION-1 design and are the owner's to change.
+ *   To change them: edit these two constants and deploy. Lowering is also possible at runtime
+ *   without a deploy (POST /limits on BudgetDO, via the admin budget route), raising is not — the
+ *   same ratchet as the neuron limits. The prepaid AI Gateway balance is a second, hard bound.
+ * ]]*/
+export const THIRD_PARTY_USD_PER_DAY = 5;
+export const THIRD_PARTY_USD_PER_MONTH = 60;
 
 /**
  * Credits are the user-facing unit. Recalibrated for GLM-5.3-flash when it replaced gpt-oss-120b
@@ -153,7 +222,7 @@ export const MAX_NEURONS_PER_REQUEST = 1_200;
  * drifted — it quoted the build-blind neuron figure beside the quality-gated price.
  */
 export { NEURONS_PER_CREDIT, BUILD_NEURONS } from '@golem/shared';
-import { NEURONS_PER_CREDIT as NEURONS_PER_CREDIT_VALUE, BUILD_NEURONS } from '@golem/shared';
+import { NEURONS_PER_CREDIT as NEURONS_PER_CREDIT_VALUE, BUILD_NEURONS, registryModelByProviderId, type ModelRoute } from '@golem/shared';
 
 // The plan ladder now lives in @golem/shared: the limits are both a server rule and a page of
 // copy, and written down twice they drift — a plan page disagreeing with the ledger that enforces

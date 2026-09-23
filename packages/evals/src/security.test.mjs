@@ -2607,7 +2607,10 @@ test('A6 STATIC CHECK — the gateway has exactly one adapter invocation and it 
   assert.ok(gw.indexOf('await settle(env, reserved,') > invokes[0].index, 'settlement must follow the invocation');
   // The only other transport in the file is embed(), which reserves/settles/releases on its own.
   const embed = gw.slice(gw.indexOf('export async function embed'));
-  for (const required of ['await reserve(env, model, estimate)', 'await settle(env, reserved,', 'await release(env, reserved)']) {
+  // `await release(env, reserved` with no closing paren: the release may name the ledger the hold
+  // was taken on (D-VISION-1 keeps third-party models on their own wallet). The property is that
+  // the reservation is released, not how many arguments say where.
+  for (const required of ['await reserve(env, model, estimate)', 'await settle(env, reserved,', 'await release(env, reserved']) {
     assert.ok(embed.includes(required), `embed() is missing ${required}`);
   }
 });
@@ -2686,7 +2689,7 @@ test('A6 STATIC CHECK — the direct env.AI.run call sites are the known, metere
   assert.ok(reserveAt > 0, 'rawProbe() must take a reservation');
   assert.ok(reserveAt < runAt, 'rawProbe() must reserve BEFORE it runs the model');
   assert.ok(probe.indexOf('await settle(env, reserved,') > runAt, 'rawProbe() must settle AFTER the model returns');
-  assert.ok(probe.includes('await release(env, reserved)'), 'rawProbe() must release its reservation when the call fails');
+  assert.ok(probe.includes('await release(env, reserved'), 'rawProbe() must release its reservation when the call fails');
 });
 
 test('A6 an HTTP provider bills through the SAME neuron ledger — tokens are converted, not exempted', async () => {

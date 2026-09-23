@@ -11,6 +11,11 @@ import {
   BILLABLE_NEURONS_PER_MONTH,
   FREE_NEURONS_PER_DAY,
   MAX_NEURONS_PER_REQUEST,
+  THIRD_PARTY_USD_PER_DAY,
+  THIRD_PARTY_USD_PER_MONTH,
+  USD_PER_NEURON,
+  maxNeuronsPerStepFor,
+  routeForModelId,
   usdFor,
 } from '../pricing';
 
@@ -25,6 +30,16 @@ export interface BudgetState {
   dayRemainingFraction: number;
   estimatedMonthUsd: number;
   freeRemainingToday: number;
+  /** The third-party wallet (D-VISION-1), in dollars because that is how its ceiling is set. */
+  thirdParty: ThirdPartyView;
+}
+
+export interface ThirdPartyView {
+  dayUsd: number;
+  dayPendingUsd: number;
+  monthUsd: number;
+  dayCeilingUsd: number;
+  monthCeilingUsd: number;
 }
 
 interface Stored {
@@ -36,19 +51,54 @@ interface Stored {
   dayBillableNeurons: number;
 }
 
+/**
+ * THE THIRD-PARTY LEDGER (D-VISION-1). Gemini, GPT-5.6 and Luna are paid from prepaid AI Gateway
+ * credits, not Workers AI neurons, so they are reserved and settled HERE and never against the
+ * neuron day above. Kept in neurons like everything else (USD converts at USD_PER_NEURON); the
+ * ceilings are set in dollars in pricing.ts. There is no free allocation on this wallet: every
+ * neuron of it is billable.
+ */
+interface ThirdPartyStored {
+  day: string;
+  month: string;
+  dayNeurons: number;
+  dayPending: number;
+  monthNeurons: number;
+}
+
 const KEY = 'budget';
+const TP_KEY = 'thirdParty';
 const LIMITS_KEY = 'limits';
 
 interface Limits {
   billableNeuronsPerDay: number;
   billableNeuronsPerMonth: number;
+  /**
+   * The per-call cap for models outside the registry. A registry model uses its own
+   * `maxNeuronsPerStep` — but when an operator RATCHETS this below its compiled default, every
+   * model is held to the lower figure too, because "lower it now" has to mean every call.
+   */
   maxNeuronsPerRequest: number;
+  thirdPartyNeuronsPerDay: number;
+  thirdPartyNeuronsPerMonth: number;
 }
 const DEFAULT_LIMITS: Limits = {
   billableNeuronsPerDay: BILLABLE_NEURONS_PER_DAY,
   billableNeuronsPerMonth: BILLABLE_NEURONS_PER_MONTH,
   maxNeuronsPerRequest: MAX_NEURONS_PER_REQUEST,
+  thirdPartyNeuronsPerDay: Math.floor(THIRD_PARTY_USD_PER_DAY / USD_PER_NEURON),
+  thirdPartyNeuronsPerMonth: Math.floor(THIRD_PARTY_USD_PER_MONTH / USD_PER_NEURON),
 };
+
+/** The per-call cap that applies to `model` under `limits`. */
+function perCallCap(model: unknown, limits: Limits): number {
+  const own = maxNeuronsPerStepFor(typeof model === 'string' ? model : '');
+  return limits.maxNeuronsPerRequest < DEFAULT_LIMITS.maxNeuronsPerRequest ? Math.min(own, limits.maxNeuronsPerRequest) : own;
+}
+
+function isThirdParty(model: unknown): boolean {
+  return typeof model === 'string' && routeForModelId(model) === 'unified-billing';
+}
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, Math.floor(Number(n) || 0)));
@@ -153,7 +203,44 @@ export class BudgetDO extends DurableObject<Env> {
     return s;
   }
 
-  private view(s: Stored, killed: boolean, killedReason: string | null, limits: Limits = DEFAULT_LIMITS): BudgetState {
+  private async loadThirdParty(): Promise<ThirdPartyStored> {
+    const t = (await this.ctx.storage.get<ThirdPartyStored>(TP_KEY)) ?? {
+      day: today(),
+      month: thisMonth(),
+      dayNeurons: 0,
+      dayPending: 0,
+      monthNeurons: 0,
+    };
+    if (t.day !== today()) {
+      t.day = today();
+      t.dayNeurons = 0;
+      t.dayPending = 0;
+    }
+    if (t.month !== thisMonth()) {
+      t.month = thisMonth();
+      t.monthNeurons = 0;
+    }
+    return t;
+  }
+
+  private thirdPartyView(t: ThirdPartyStored | undefined, limits: Limits): ThirdPartyView {
+    const usd = (n: number) => Number(usdFor(n).toFixed(4));
+    return {
+      dayUsd: usd(t?.dayNeurons ?? 0),
+      dayPendingUsd: usd(t?.dayPending ?? 0),
+      monthUsd: usd(t?.monthNeurons ?? 0),
+      dayCeilingUsd: usd(limits.thirdPartyNeuronsPerDay),
+      monthCeilingUsd: usd(limits.thirdPartyNeuronsPerMonth),
+    };
+  }
+
+  private view(
+    s: Stored,
+    killed: boolean,
+    killedReason: string | null,
+    limits: Limits = DEFAULT_LIMITS,
+    t?: ThirdPartyStored,
+  ): BudgetState {
     const used = s.dayNeurons + s.dayPending;
     const ceiling = FREE_NEURONS_PER_DAY + limits.billableNeuronsPerDay;
     return {
@@ -167,7 +254,48 @@ export class BudgetDO extends DurableObject<Env> {
       dayRemainingFraction: Math.max(0, 1 - used / ceiling),
       estimatedMonthUsd: Number(usdFor(s.monthBillableNeurons).toFixed(4)),
       freeRemainingToday: Math.max(0, FREE_NEURONS_PER_DAY - used),
+      thirdParty: this.thirdPartyView(t, limits),
     };
+  }
+
+  /**
+   * Settle on the third-party ledger, with the neuron ledger's rules: the provider has already been
+   * paid, so an unreadable figure is charged at the reservation (or the model's own cap), never at
+   * zero, and an unreadable reservation is not subtracted.
+   */
+  private async settleThirdParty(
+    reserved: unknown,
+    actual: unknown,
+    model: string,
+    kind: string,
+    killed: boolean,
+    killedReason: string | null,
+  ): Promise<Response> {
+    const limits = await this.limits();
+    const t = await this.loadThirdParty();
+    const heldRaw = readableNeurons(reserved);
+    const actualRaw = readableNeurons(actual);
+    if (heldRaw !== null) t.dayPending = Math.max(0, t.dayPending - heldRaw);
+    else console.warn(`budget: unreadable third-party reservation from model=${String(model).slice(0, 80)}; the hold leaks until the UTC rollover`);
+    const spent = actualRaw !== null ? Math.ceil(actualRaw) : heldRaw !== null ? Math.ceil(heldRaw) : perCallCap(model, limits);
+    t.dayNeurons += spent;
+    t.monthNeurons += spent;
+    await this.ctx.storage.put(TP_KEY, t);
+    const s = await this.load();
+    this.sql.exec(
+      `insert into spend(day, model, kind, neurons, calls) values(?,?,?,?,1)
+       on conflict(day, model, kind) do update set neurons = neurons + excluded.neurons, calls = calls + 1`,
+      t.day,
+      String(model).slice(0, 80),
+      String(kind).slice(0, 40),
+      spent,
+    );
+    return Response.json({
+      ok: true,
+      route: 'unified-billing',
+      ...(actualRaw === null ? { estimated: true } : {}),
+      state: this.view(s, killed, killedReason, limits, t),
+    });
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -176,7 +304,7 @@ export class BudgetDO extends DurableObject<Env> {
     const killedReason = (await this.ctx.storage.get<string>('killedReason')) ?? null;
 
     if (url.pathname === '/state') {
-      return Response.json(this.view(await this.load(), killed, killedReason, await this.limits()));
+      return Response.json(this.view(await this.load(), killed, killedReason, await this.limits(), await this.loadThirdParty()));
     }
 
     if (url.pathname === '/limits' && req.method === 'POST') {
@@ -202,6 +330,9 @@ export class BudgetDO extends DurableObject<Env> {
         billableNeuronsPerDay: clamp(body.billableNeuronsPerDay ?? cur.billableNeuronsPerDay, 0, DEFAULT_LIMITS.billableNeuronsPerDay),
         billableNeuronsPerMonth: clamp(body.billableNeuronsPerMonth ?? cur.billableNeuronsPerMonth, 0, DEFAULT_LIMITS.billableNeuronsPerMonth),
         maxNeuronsPerRequest: clamp(body.maxNeuronsPerRequest ?? cur.maxNeuronsPerRequest, 100, DEFAULT_LIMITS.maxNeuronsPerRequest),
+        // The third-party ceilings ratchet the same way: down at runtime, up only by a deploy.
+        thirdPartyNeuronsPerDay: clamp(body.thirdPartyNeuronsPerDay ?? cur.thirdPartyNeuronsPerDay, 0, DEFAULT_LIMITS.thirdPartyNeuronsPerDay),
+        thirdPartyNeuronsPerMonth: clamp(body.thirdPartyNeuronsPerMonth ?? cur.thirdPartyNeuronsPerMonth, 0, DEFAULT_LIMITS.thirdPartyNeuronsPerMonth),
       };
       await this.ctx.storage.put(LIMITS_KEY, next);
       return Response.json({ ok: true, limits: next });
@@ -209,10 +340,20 @@ export class BudgetDO extends DurableObject<Env> {
 
     if (url.pathname === '/probe' && req.method === 'POST') {
       // dry-run the exact reserve decision, then leave state untouched
-      const { neurons } = (await req.json()) as { neurons: number };
+      const { neurons, model } = (await req.json()) as { neurons: number; model?: string };
       const s = await this.load();
       const limits = await this.limits();
       const asked = readableNeurons(neurons);
+      if (asked !== null && isThirdParty(model)) {
+        const t = await this.loadThirdParty();
+        const want = Math.max(1, Math.ceil(asked));
+        let verdict: string = 'allowed';
+        if (killed) verdict = 'killed';
+        else if (want > perCallCap(model, limits)) verdict = 'request_too_large';
+        else if (t.dayNeurons + t.dayPending + want > limits.thirdPartyNeuronsPerDay) verdict = 'third_party_daily_cap';
+        else if (t.monthNeurons + t.dayPending + want > limits.thirdPartyNeuronsPerMonth) verdict = 'third_party_monthly_cap';
+        return Response.json({ verdict, want, route: 'unified-billing', limits, state: this.view(s, killed, killedReason, limits, t) });
+      }
       if (asked === null) {
         // probe must agree with reserve on every verdict, including this one
         return Response.json({ verdict: 'unreadable_estimate', want: null, projectedDay: null, dayCeiling: FREE_NEURONS_PER_DAY + limits.billableNeuronsPerDay, limits, state: this.view(s, killed, killedReason, limits) });
@@ -224,7 +365,7 @@ export class BudgetDO extends DurableObject<Env> {
       const billableDelta = Math.max(0, billableAfter - s.dayBillableNeurons);
       let verdict: string = 'allowed';
       if (killed) verdict = 'killed';
-      else if (want > limits.maxNeuronsPerRequest) verdict = 'request_too_large';
+      else if (want > perCallCap(model, limits)) verdict = 'request_too_large';
       else if (projectedDay > dayCeiling) verdict = 'daily_cap';
       else if (s.monthBillableNeurons + billableDelta > limits.billableNeuronsPerMonth) verdict = 'monthly_cap';
       return Response.json({ verdict, want, projectedDay, dayCeiling, limits, state: this.view(s, killed, killedReason, limits) });
@@ -269,7 +410,7 @@ export class BudgetDO extends DurableObject<Env> {
     }
 
     if (url.pathname === '/reserve' && req.method === 'POST') {
-      const { neurons } = (await req.json()) as { neurons: number; model: string };
+      const { neurons, model } = (await req.json()) as { neurons: number; model: string };
       const s = await this.load();
       const limits = await this.limits();
 
@@ -291,7 +432,7 @@ export class BudgetDO extends DurableObject<Env> {
           state: this.view(s, killed, killedReason, limits),
         });
       }
-      if (Math.ceil(asked) > limits.maxNeuronsPerRequest) {
+      if (Math.ceil(asked) > perCallCap(model, limits)) {
         return Response.json({
           ok: false,
           reason: 'request_too_large',
@@ -299,6 +440,31 @@ export class BudgetDO extends DurableObject<Env> {
         });
       }
       const want = Math.max(1, Math.ceil(asked));
+
+      // A third-party model spends the third-party wallet and ONLY that one: its ceiling is in the
+      // owner's dollars, and it must neither eat Apple's neuron day nor be admitted by it.
+      if (isThirdParty(model)) {
+        const t = await this.loadThirdParty();
+        if (t.dayNeurons + t.dayPending + want > limits.thirdPartyNeuronsPerDay) {
+          return Response.json({
+            ok: false,
+            reason: 'third_party_daily_cap',
+            message: "Today's allowance for outside models (Gemini and GPT) is used up. Apple and Apple MAX still work, and it resets at midnight UTC.",
+            state: this.view(s, killed, killedReason, limits, t),
+          });
+        }
+        if (t.monthNeurons + t.dayPending + want > limits.thirdPartyNeuronsPerMonth) {
+          return Response.json({
+            ok: false,
+            reason: 'third_party_monthly_cap',
+            message: "This month's allowance for outside models (Gemini and GPT) is used up. Apple and Apple MAX still work.",
+            state: this.view(s, killed, killedReason, limits, t),
+          });
+        }
+        t.dayPending += want;
+        await this.ctx.storage.put(TP_KEY, t);
+        return Response.json({ ok: true, reserved: want, route: 'unified-billing', state: this.view(s, killed, killedReason, limits, t) });
+      }
 
       const projectedDay = s.dayNeurons + s.dayPending + want;
       const dayCeiling = FREE_NEURONS_PER_DAY + limits.billableNeuronsPerDay;
@@ -324,6 +490,7 @@ export class BudgetDO extends DurableObject<Env> {
         model: string;
         kind: string;
       };
+      if (isThirdParty(model)) return this.settleThirdParty(reserved, actual, model, kind, killed, killedReason);
       const s = await this.load();
 
       // Settle runs AFTER the provider has been paid, so refusing an unreadable cost here would
@@ -361,7 +528,7 @@ export class BudgetDO extends DurableObject<Env> {
       } else {
         // Nothing readable at all: charge the most it could have been. A true upper bound, because
         // /reserve already refused anything above it.
-        spent = (await this.limits()).maxNeuronsPerRequest;
+        spent = perCallCap(model, await this.limits());
         console.warn(
           `budget: neither reservation nor actual was readable for model=${String(model).slice(0, 80)} ` +
             `kind=${String(kind).slice(0, 40)}; charging the per-request ceiling ${spent} as an upper bound`,
@@ -396,12 +563,20 @@ export class BudgetDO extends DurableObject<Env> {
 
     if (url.pathname === '/release' && req.method === 'POST') {
       // a call failed before consuming anything — hand the reservation back
-      const { reserved } = (await req.json()) as { reserved: number };
+      const { reserved, model } = (await req.json()) as { reserved: number; model?: string };
       const held = readableNeurons(reserved);
       if (held === null) {
         // Subtracting an unreadable amount would either poison the counter with NaN or, clamped,
         // erase reservations this caller never made. Leaking fails closed; guessing does not.
         return Response.json({ ok: false, reason: 'unreadable_reservation' }, { status: 400 });
+      }
+      // Released on the ledger it was reserved on. A release that names no model is from a caller
+      // that only ever reserves Workers AI models (images, speech), so that is the neuron ledger.
+      if (isThirdParty(model)) {
+        const t = await this.loadThirdParty();
+        t.dayPending = Math.max(0, t.dayPending - held);
+        await this.ctx.storage.put(TP_KEY, t);
+        return Response.json({ ok: true });
       }
       const s = await this.load();
       s.dayPending = Math.max(0, s.dayPending - held);
@@ -426,14 +601,20 @@ export class BudgetDO extends DurableObject<Env> {
         .toArray() as { day: string; model: string; kind: string; neurons: number; calls: number }[];
       const byDay = new Map<string, { neurons: number; calls: number }>();
       for (const r of rows) {
+        // The per-day totals are the NEURON wallet's, and their billable column subtracts the free
+        // allocation. Third-party spend has neither, so it is left to the breakdown and to
+        // state.thirdParty rather than folded into a neuron total it would misstate.
+        if (isThirdParty(r.model)) continue;
         const e = byDay.get(r.day) ?? { neurons: 0, calls: 0 };
         e.neurons += r.neurons;
         e.calls += r.calls;
         byDay.set(r.day, e);
       }
       return Response.json({
-        state: this.view(s, killed, killedReason, limits),
+        state: this.view(s, killed, killedReason, limits, await this.loadThirdParty()),
         limits: { freeNeuronsPerDay: FREE_NEURONS_PER_DAY, ...limits },
+        maxThirdPartyDailyUsd: Number(usdFor(limits.thirdPartyNeuronsPerDay).toFixed(2)),
+        maxThirdPartyMonthlyUsd: Number(usdFor(limits.thirdPartyNeuronsPerMonth).toFixed(2)),
         maxMonthlyUsd: Number(usdFor(limits.billableNeuronsPerMonth).toFixed(2)),
         days: [...byDay.entries()]
           .map(([day, v]) => ({

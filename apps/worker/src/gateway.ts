@@ -16,7 +16,7 @@
 import type { Env } from './env';
 import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@golem/shared';
 import { isCompleteToolCall } from './tool-call-integrity';
-import { estimateNeurons, neuronsFor, MAX_NEURONS_PER_REQUEST } from './pricing';
+import { estimateNeurons, neuronsFor, maxNeuronsPerStepFor } from './pricing';
 import { recordEvent } from './analytics';
 import {
   acceptsReasoningEffort,
@@ -55,7 +55,7 @@ export class RateLimitedError extends Error {
 /** Thrown when spend policy — not the provider — refuses a call. Callers surface these kindly. */
 export class BudgetError extends Error {
   constructor(
-    readonly reason: 'killed' | 'daily_cap' | 'monthly_cap' | 'request_too_large',
+    readonly reason: 'killed' | 'daily_cap' | 'monthly_cap' | 'request_too_large' | 'third_party_daily_cap' | 'third_party_monthly_cap',
     message: string,
   ) {
     super(message);
@@ -214,6 +214,8 @@ const BUDGET_MESSAGES: Record<string, string> = {
   monthly_cap: "Apple has reached this month's shared building capacity.",
   request_too_large: 'That request needs more context than a single step allows — try narrowing it.',
   killed: 'AI generation is paused right now.',
+  third_party_daily_cap: "Today's allowance for outside models (Gemini and GPT) is used up. Apple and Apple MAX still work, and it resets at midnight UTC.",
+  third_party_monthly_cap: "This month's allowance for outside models (Gemini and GPT) is used up. Apple and Apple MAX still work.",
 };
 
 async function reserve(env: Env, model: string, neurons: number): Promise<number> {
@@ -246,9 +248,11 @@ async function settle(env: Env, reserved: number, actual: number, model: string,
     .catch(() => {});
 }
 
-async function release(env: Env, reserved: number): Promise<void> {
+async function release(env: Env, reserved: number, model: string): Promise<void> {
+  // The model says which ledger the hold is on: a third-party reservation is released from the
+  // third-party wallet, not from Workers AI's neuron day.
   await budgetStub(env)
-    .fetch('https://do/release', { method: 'POST', body: JSON.stringify({ reserved }) })
+    .fetch('https://do/release', { method: 'POST', body: JSON.stringify({ reserved, model }) })
     .catch(() => {});
 }
 
@@ -386,9 +390,12 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   // Providers that bill in tokens are converted to neurons here, so the BudgetDO ceiling applies
   // to every provider in the same unit. For Workers AI this is the identical price-table path.
   const inputChars = encoded.promptChars;
-  const estimate = priced
-    ? estimateNeuronsForModel(priced, inputChars, maxTokens)
-    : estimateNeurons(cfg.id, inputChars, maxTokens);
+  // The customer lane is not priced: an unpriced id throws (pricing.ts), and nothing is reserved.
+  const estimate = customer
+    ? 0
+    : priced
+      ? estimateNeuronsForModel(priced, inputChars, maxTokens)
+      : estimateNeurons(cfg.id, inputChars, maxTokens);
   // THIS CHECK CANNOT BE FALSIFIED BEHAVIOURALLY, and that is not a reason to remove it.
   // BudgetDO applies the same cap and reserve() throws the identical BudgetError('request_too_large')
   // one hop later, so deleting these lines turns no test red -- measured by rbxai-04, not assumed. It
@@ -397,7 +404,10 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   // this, the thing to verify is that budget.ts's own per-request check still refuses: that is what
   // covers this one's absence, and it is the only thing that does.
   // A customer-key call is not Apple's spend: it takes no reservation and only the kill switch applies.
-  if (!customer && estimate > MAX_NEURONS_PER_REQUEST) {
+  // The cap is the MODEL's (registry `maxNeuronsPerStep`), not one global number: a GPT-5.6 step
+  // costs forty times an Apple step, and a single cap either refuses every one or lets an Apple
+  // step reserve forty times what it can cost. BudgetDO applies the same per-model cap.
+  if (!customer && estimate > maxNeuronsPerStepFor(cfg.id)) {
     throw new BudgetError('request_too_large', BUDGET_MESSAGES.request_too_large!);
   }
   let reserved = 0;
@@ -495,7 +505,7 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
       }
     }
     if (lastErr) {
-      if (!customer) await release(env, reserved);
+      if (!customer) await release(env, reserved, cfg.id);
       const msg = scrubKey(lastErr instanceof Error ? lastErr.message : String(lastErr), customer?.apiKey);
       const classified = adapter.classifyError(lastErr);
       //[[ `neurons` ON ITS OWN MATCHED ANY MESSAGE CONTAINING THE WORD.
@@ -559,9 +569,11 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   // Cloudflare returns the exact neuron cost on models that support it; use it when present and
   // fall back to the price table otherwise. Never bill less than the provider says we spent.
   // Token-billed providers have no neuron figure of their own, so the converted cost is the bill.
-  const computed = priced
-    ? neuronsForModelTokens(priced, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens)
-    : neuronsFor(cfg.id, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens);
+  const computed = customer
+    ? 0
+    : priced
+      ? neuronsForModelTokens(priced, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens)
+      : neuronsFor(cfg.id, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens);
   // Zero on the customer lane: the customer's key paid the provider, and a non-zero figure here is
   // what the session would turn into Apple Credits.
   const actual = customer ? 0 : Math.ceil(Math.max(usage.reportedNeurons ?? 0, computed));
@@ -612,7 +624,7 @@ export async function embed(env: Env, texts: string[], kind = 'embed'): Promise<
     await settle(env, reserved, neuronsFor(model, Math.ceil(chars / 3.5), 0), model, kind);
     return r.data;
   } catch (e) {
-    await release(env, reserved);
+    await release(env, reserved, model);
     throw e;
   }
 }
@@ -686,7 +698,7 @@ export async function rawProbe(env: Env, req: RawProbeRequest, kind = 'admin:raw
     : estimateNeurons(req.model, promptChars, maxTokens);
   // Same cap, same redundancy, same reason to keep it as the check earlier in this file -- see the
   // note there before simplifying either.
-  if (estimate > MAX_NEURONS_PER_REQUEST) {
+  if (estimate > maxNeuronsPerStepFor(req.model)) {
     throw new BudgetError('request_too_large', BUDGET_MESSAGES.request_too_large!);
   }
 
@@ -700,7 +712,7 @@ export async function rawProbe(env: Env, req: RawProbeRequest, kind = 'admin:raw
     raw = await env.AI.run(req.model as never, payload as never, gatewayOpts(env, kind, 0, req.sessionId) as never);
   } catch (e) {
     // Nothing ran, so hand the reservation back.
-    await release(env, reserved);
+    await release(env, reserved, req.model);
     throw e;
   }
   // Past this line the model HAS run and the tokens ARE spent, so the reservation must be settled

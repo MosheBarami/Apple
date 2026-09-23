@@ -3378,7 +3378,7 @@ export class SessionDO extends DurableObject<Env> {
         resetsAt.setUTCHours(24, 0, 0, 0);
         const hours = Math.max(1, Math.round((resetsAt.getTime() - Date.now()) / 3_600_000));
         const tail =
-          e.reason === 'monthly_cap'
+          e.reason === 'monthly_cap' || e.reason === 'third_party_monthly_cap'
             ? 'Capacity refills at the start of next month.'
             : e.reason === 'killed'
               ? 'An administrator paused generation; it will be back shortly.'
