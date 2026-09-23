@@ -1,10 +1,15 @@
 # NEXT ACTION
 
-**Ship the F-039 fix and re-run mission 1 (gameplay loop from a baseplate).** When workflow
-`wf_46d0bb34-725` returns (review + fix of the BYOK track), run every suite, deploy the worker, web and
-site together, verify `/api/health` serves the new build, then send "make a coin game!" again in the
-paired Place1.rbxl (project Coin Rush 23 Sep) and read the place back: coins exist, touching one scores,
-it respawns, the counter shows. Falsified if the run again reads more than 20 steps without a change, or
-ends without coins.
+**Re-run mission 2 (visually ambitious environment) on the current build in a fresh place.**
+Studio pid 24529 sits behind a "Save changes to Apple-Mission2b-Baseplate.rbxl?" dialog that the agent may
+not click (it belongs to a system panel process; OWNER_QUEUE Q-005). Once it is gone: launch
+`/private/tmp/RobloxStudioNoUpdate.app/Contents/MacOS/RobloxStudio -localPlaceFile
+/Users/moshe/Documents/Apple-Mission2c-Baseplate.rbxl -task EditFile` (a fresh baseplate made at 04:33; the
+plugin it loads is local build 494fb68f), create a project, pair, allow edits, and send the exact mission-2
+prompt. Measure: Credits, time, how it ends, and the place read back with lune plus the viewport. Pass = no
+Baseplate under the island, Terrain landform, waterfall reaching a pool, trees 30-50 studs, warm light, and
+a reply that does not promise an orange sky. Also confirm in that run: the first checkpoint is taken
+(F-051), the composer clears after "Start building" (F-052), and no NumberSequence refusal.
 
-Then: publish the component gallery for the owner; mobile QA; missions 2–5.
+Then: F-053 (undo point lost after generate_model), the remaining high findings, three fresh reviews, and the
+final plugin publish + appeal before 2026-10-23 01:23 IDT (D-STORE-2).
