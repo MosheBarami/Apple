@@ -326,6 +326,27 @@ SELF-CHECK before reporting done: 3-4 materials, no Plastic, no default grey · 
 exposed edge, frames on openings, plinths under uprights · lighting + atmosphere + 2 post-effects
 · part count in the right order of magnitude for the tier.`;
 
+// Only outdoor requests carry this: it is ~400 tokens and an interior, shop or obby has no use for it.
+const OUTDOOR_RE =
+  /\b(island|hill|mountain|cliff|canyon|valley|forest|jungle|woods?|trees?|waterfall|river|lake|ocean|sea|beach|shore|sky|skies|sunset|sunrise|nature|meadow|volcano|cave|outdoor|landscape|terrain)\b/i;
+
+const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterfalls, skies) are built with the engine's
+  own tools, not out of Parts — measured 2026-09-23 on "a floating sky island with a waterfall, trees,
+  crystals and a sunset": a Parts-only build scored 2/10 on the visual check after 232 Credits ("a flat grey
+  slab", "a 2D billboard", "lollipop trees", "specks").
+  * Landforms are Terrain: edit_terrain with Rock or Slate for the mass and Grass or LeafyGrass for the
+    top. A floating island is a flattened Rock ball with a grass cap and an irregular underside of 3-5
+    overlapping balls that shrink downward — never stacked flat slabs.
+  * The sky and the time of day are Lighting, never geometry: set_mood with "golden" for a sunset or golden
+    hour, "night", "misty" and so on. Never build a sun, a sky or a sunset out of parts or flat planes.
+  * Water is Terrain water. A waterfall is a tall, narrow column of it falling off an edge, with add_effect's
+    waterfall mist preset where it lands.
+  * Trees, rocks and crystals: use generate_model when it is offered, one hero object at a time; otherwise
+    follow the ornate rules above — a tapered trunk of 4-6 segments and 3-5 overlapping canopy balls in two
+    greens, and crystals as clusters of 5-9 tall spikes with the biggest taller than a player.
+  * Spend in this order and stop to check: landform, set_mood, 3-5 hero objects, check_composition, then
+    detail. A whole environment should fit in about 60 steps.`;
+
 const KINDS: Record<string, string> = {
   plaza: `SCENE: PLAZA — 140x160 open. Central dais 20x20 raised +2 with the spawn; four 12-wide paths
 radiating out; perimeter colonnade every 15 studs; corner planters. Landmark: a monument/spire ~50
@@ -418,7 +439,8 @@ export function worldBuildingBrief(kind: string): string {
   const resolved = resolveKind(kind);
   const specific = resolved ? KINDS[resolved] : undefined;
   const names = `Moods: ${Object.keys(MOODS).join(', ')}. Palettes: ${Object.keys(PALETTES).join(', ')}.`;
-  return specific ? `${UNIVERSAL}\n\n${specific}\n\n${names}` : `${UNIVERSAL}\n\n${names}`;
+  const base = OUTDOOR_RE.test(kind) ? `${UNIVERSAL}\n\n${OUTDOOR}` : UNIVERSAL;
+  return specific ? `${base}\n\n${specific}\n\n${names}` : `${base}\n\n${names}`;
 }
 
 /**

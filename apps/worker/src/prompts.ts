@@ -335,7 +335,7 @@ export const BRIEF_END = '<<<END_ART_DIRECTION>>>';
 
 /** The one-line reminder that replaces the brief once the blockout exists. */
 export const BRIEF_REMINDER =
-  'Art direction (full brief already given above earlier in this run): keep one element dominant in height and mass, keep the material and colour language you established, and add detail in layers rather than scattering props.';
+  'Art direction (full brief already given above earlier in this run): keep one element dominant in height and mass, keep the material and colour language you established, add detail in layers rather than scattering props, and keep the sky in Lighting (set_mood), never in parts.';
 
 /**
  * Replace the art-direction brief with a short reminder. Returns the prompt unchanged when the

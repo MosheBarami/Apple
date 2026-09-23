@@ -134,6 +134,18 @@ test('the brief does not grow past where it already is', () => {
     'obby is now inside the stated 1.5k budget — good news; tighten this test to match.');
 });
 
+// F-049: a sky island built out of Parts scored 2/10. Outdoor requests carry the Terrain/set_mood
+// rules; everything else is spared the ~400 tokens.
+test('outdoor requests get the natural-scene rules and indoor ones do not', () => {
+  const island = worldBuildingBrief('make an awesome floating sky island with a waterfall, big trees and a sunset sky');
+  assert.match(island, /NATURAL OUTDOOR SCENES/);
+  assert.match(island, /edit_terrain/);
+  assert.match(island, /set_mood/);
+  for (const indoor of ['a cosy coffee shop interior', 'obby', 'tycoon']) {
+    assert.doesNotMatch(worldBuildingBrief(indoor), /NATURAL OUTDOOR SCENES/, indoor);
+  }
+});
+
 test('the brief names the moods and palettes a model may choose from', () => {
   // The model picks a mood by name. If the list is not in the prompt it invents one,
   // moodLuau falls back to day, and every scene comes out looking the same.
