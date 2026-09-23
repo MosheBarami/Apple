@@ -271,6 +271,21 @@ export function Composer({
   const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
   const [creation, setCreation] = useState<CreationIntent>('build');
   const box = useRef<HTMLTextAreaElement>(null);
+  // THE WHOLE BOX IS THE TARGET. A click on the composer's padding, above or beside the text, landed on
+  // the panel and focused nothing — measured 2026-09-23: the message typed after that click went
+  // nowhere. Anything interactive inside keeps its own click; empty box focuses the text.
+  useEffect(() => {
+    const el = panel.current;
+    if (!el) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest('button, a, input, textarea, select, label, [contenteditable="true"]')) return;
+      e.preventDefault();
+      box.current?.focus();
+    };
+    el.addEventListener('mousedown', onDown);
+    return () => el.removeEventListener('mousedown', onDown);
+  });
   const lastKey = useRef(draftKey);
   const { prefs } = usePrefs();
 

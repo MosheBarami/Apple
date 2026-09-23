@@ -21,3 +21,8 @@ test('the composer credits ring never shows 0 while extra credits remain', () =>
   const src = readFileSync(new URL('../src/components/picks/composer/credits-ring.tsx', import.meta.url), 'utf8');
   assert.match(src, /view\.allowanceRemaining === 0 && view\.credits > 0[\s\S]{0,300}COMPACT\.format\(view\.credits\)/);
 });
+
+test('a click on the composer box outside the text still focuses the text', () => {
+  const src = readFileSync(new URL('../src/components/ws/composer.tsx', import.meta.url), 'utf8');
+  assert.match(src, /const el = panel\.current;[\s\S]{0,300}closest\('button, a, input, textarea[\s\S]{0,200}box\.current\?\.focus\(\)[\s\S]{0,120}addEventListener\('mousedown'/);
+});
