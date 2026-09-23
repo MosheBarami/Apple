@@ -911,6 +911,15 @@ const TOOL_ARGS = {
   find_sound: { query: 'coin pickup' },
   find_vfx: { query: 'level up' },
   play_library_sound: { query: 'coin pickup' },
+  // D-MODELLIB-1. Egress reviewed 2026-09-23 by the model-library lane: find_library_model searches
+  // packages/asset-library/models/index.json bundled into the worker — no fetch, no key. For a
+  // Roblox-owned id row insert_library_model sends the same op as insert_asset through the op-sender.
+  // For a file row it reads the bytes from the worker's own static store and creates a Model in the
+  // signed-in user's OWN account through creator-dashboard uploadAsset with their stored key. The
+  // result is a library id, an asset id, the instance paths and position, or an error. The key
+  // stays in user-credentials.ts.
+  find_library_model: { query: 'oak tree' },
+  insert_library_model: { id: 'cs-18717544', position: [0, 10, 0] },
   // D-UILIB-2 (b54e84d). Egress reviewed 2026-09-23 by the security lane: find_ui_asset searches
   // the index bundled from packages/asset-library/index.json — no fetch, no key. upload_ui_asset
   // resolves `asset` by EXACT lookup in that index (a made-up path is refused before any read),

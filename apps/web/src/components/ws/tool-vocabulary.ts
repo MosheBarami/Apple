@@ -132,6 +132,7 @@ export const TOOL = {
   find_ui_asset: { kind: 'searching_assets', label: 'Looked in the UI image library' },
   find_sound: { kind: 'searching_assets', label: 'Looked in the sound library' },
   find_vfx: { kind: 'searching_assets', label: 'Looked in the effect library' },
+  find_library_model: { kind: 'searching_assets', label: 'Looked in the model library' },
   play_library_sound: { kind: 'searching_assets', label: 'Played you a sound' },
   upload_ui_asset: { kind: 'generating', label: 'Uploaded a library image to Roblox' },
 
@@ -204,6 +205,7 @@ export const TOOL = {
   insert_ui_component: { kind: 'building', label: 'Added a UI piece' },
   insert_sound: { kind: 'building', label: 'Added a sound' },
   insert_vfx: { kind: 'building', label: 'Added a visual effect' },
+  insert_library_model: { kind: 'building', label: 'Added a model from the library' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent' },
