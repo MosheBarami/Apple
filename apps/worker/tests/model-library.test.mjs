@@ -175,10 +175,12 @@ test('create_instances refuses a part-built prop the library holds, and sends no
   assert.equal(created(ops), 0, 'nothing may reach Studio');
 });
 
+// D-MODELLIB-2: structure grouped in a Folder, and a single plain part; a part named "Tree" is now a prop (model-only.test.mjs).
 test('parts stay allowed for terrain, baseplates, paths and zones, and for a single part', async () => {
+  const folder = (item) => ({ ...item, className: 'Folder' });
   for (const items of [
-    [twoParts('Baseplate')], [twoParts('SpawnArea')], [twoParts('ObbyStage3')], [twoParts('MainPath')], [twoParts('SafeZone')],
-    [{ className: 'Part', name: 'Tree', props: { Size: { t: 'Vector3', v: [1, 8, 1] } } }],
+    [folder(twoParts('Baseplate'))], [folder(twoParts('SpawnArea'))], [folder(twoParts('ObbyStage3'))], [folder(twoParts('MainPath'))], [folder(twoParts('SafeZone'))],
+    [{ className: 'Part', name: 'Floor', props: { Size: { t: 'Vector3', v: [100, 1, 100] } } }],
   ]) {
     const { ctx, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }));
     const res = await run(ctx, 'create_instances', { items });
@@ -187,12 +189,12 @@ test('parts stay allowed for terrain, baseplates, paths and zones, and for a sin
   }
 });
 
-test('the guard stands down when the library is switched off, or already failed for that prop', async () => {
+// D-MODELLIB-2 removed the "already failed for that prop" fallback: a miss means search again, never parts.
+test('the guard stands down only when the library is switched off or not offered', async () => {
   const s = sample(() => true);
   const name = s.word[0].toUpperCase() + s.word.slice(1);
   for (const over of [
     { assetSources: { allow: ['from_scratch'] } },
-    { ctx: { libraryMisses: new Set([s.word]) } },
     { ctx: { offeredTools: new Set(['create_instances']) } },
   ]) {
     const { ctx, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }), over);

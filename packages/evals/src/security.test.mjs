@@ -2681,7 +2681,8 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   assert.ok(returns.length >= 4, `requestedArtifactTool returned from ${returns.length} places — the scan missed its body`);
   assert.deepEqual(
     [...new Set(returns)].sort(),
-    ["'generate_image'", "'generate_model'", 'null'],
+    // Reviewed 2026-09-24 (D-MODELLIB-2): 'generate_model' became 'insert_library_model' — still a literal.
+    ["'generate_image'", "'insert_library_model'", 'null'],
     'requestedArtifactTool no longer returns a fixed vocabulary — the steer above can now interpolate text the request chose',
   );
   // (b) and the name is additionally one the run's own registry offers at that moment.

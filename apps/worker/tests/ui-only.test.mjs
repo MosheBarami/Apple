@@ -73,9 +73,10 @@ test('create_instances refuses a Frame, a nested TextButton and a BillboardGui, 
   }
 });
 
-test('create_instances still builds the world: Parts, Models, lights and layout-only UI objects are not refused', async () => {
-  const s = studio({ created: ['game.Workspace.Lamp'] });
-  const r = await T.TOOLS.create_instances.run(s.ctx, { items: [{ className: 'Model', name: 'Lamp', children: [{ className: 'Part', name: 'Pole' }, { className: 'PointLight', name: 'L' }] }] });
+// D-MODELLIB-2 closed hand-assembled Models (model-only.test.mjs); plain structure in a Folder still passes the UI rule.
+test('create_instances still builds the world: plain Parts, Folders, lights and layout-only UI objects are not refused', async () => {
+  const s = studio({ created: ['game.Workspace.Arena'] });
+  const r = await T.TOOLS.create_instances.run(s.ctx, { items: [{ className: 'Folder', name: 'Arena', children: [{ className: 'Part', name: 'Floor', children: [{ className: 'PointLight', name: 'L' }] }] }] });
   assert.ok(!refused(r), JSON.stringify(r));
   assert.equal(s.calls.length, 1);
   const layout = studio({ created: ['x'] });

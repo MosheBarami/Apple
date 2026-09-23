@@ -7,7 +7,8 @@ test('direct generation commands require their actual artifact tool', () => {
   for (const request of ['Generate exactly one image: a silver moon.', 'Create a picture of a fox', 'Please draw an icon', 'צור תמונה של ירח']) {
     assert.equal(requestedArtifactTool(request), 'generate_image', request);
   }
-  assert.equal(requestedArtifactTool('Generate a 3D model using generate_model in my connected Studio.'), 'generate_model');
+  // D-MODELLIB-2: a requested 3D model is proven by a library insert, never by a generator.
+  assert.equal(requestedArtifactTool('Generate a 3D model using generate_model in my connected Studio.'), 'insert_library_model');
 });
 
 test('the session verifies artifact evidence before exposing prose and again before finalizing', () => {

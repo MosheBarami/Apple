@@ -290,13 +290,12 @@ In either style, full-saturation primaries (255,0,0 / 0,0,255 / 255,255,0) never
 
 FUNCTIONAL AREAS — every plot, pad, stall, stage, spawn or arena floor is built, not painted: a base
 1-2 studs thick (never a flush 0.2 plate) with a contrasting rim 0.5-1 proud; a fence when it is
-owned or enclosed (posts every 4-6 studs, two rails, 3-4 tall, a gap facing the path); a sign on a
-post or arch (board + SurfaceGui text); 3-6 props clustered at its edges. Repeated areas are one
+owned or enclosed, a sign and 3-6 props clustered at its edges — the fence, the sign and every prop
+from find_library_model + insert_library_model, never assembled from parts (D-MODELLIB-2). Repeated areas are one
 module built once, then cloned with small variations.
 
-ORGANIC SHAPES — foliage, bushes, fruit, rocks and clouds are clusters of 3-9 overlapping balls or
-rotated blocks in 2-3 tones, never one primitive. A tree is a tapered trunk (2-4 segments) and a
-canopy of 4-7 blobs; fruit is oversized (1-3 studs) in a contrasting colour.
+ORGANIC SHAPES — trees, foliage, bushes, fruit, rocks and crystals are library models
+(find_library_model "oak tree", "bush", "boulder"), never balls or blocks; clouds are a Clouds object.
 
 COMPOSITION:
 - One hero landmark at least 3x the height of its surroundings, off-centre (about a third in),
@@ -312,9 +311,8 @@ DETAIL PASS — what separates a scene from a greybox. Never skip it.
 - No unbroken flat surface over 20x20: break it with an inset panel, recess, value shift or object.
 - Clutter in clusters of 3-5, hugging walls and corners, rotated +/-15deg, layered floor, waist
   (2-3), eye (4-5) and above (8+). Props per 100 studs^2: exterior 1-2, room 4-8, shop 10-18.
-- PART BUDGETS ARE MANDATORY — never "a handful of well-placed parts": simple prop 3-6 · good prop
-  (lamp, bench, sign) 8-20 · hero prop 25-60 · dressed room 150-400 · dressed plaza or game map
-  600-1500. Reach them with create_instances batches, then clone_instances and transform_instances.
+- Props are library models, never parts (D-MODELLIB-2): place one with insert_library_model, then
+  clone_instances and transform_instances for repeats with small rotation and scale variation.
 
 LIGHTING — every scene gets a lighting pass: set_mood with one named mood (stylised: sunny or day),
 or by hand the Lighting properties, an Atmosphere, Bloom and ColorCorrection. Every lamp, lantern
@@ -374,9 +372,8 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
     hour, "night", "misty" and so on. Never build a sun, a sky or a sunset out of parts or flat planes.
   * Water is Terrain water. A waterfall is a tall, narrow column of it falling off an edge, with add_effect's
     waterfall mist preset where it lands.
-  * Trees, rocks and crystals: use generate_model when it is offered, one hero object at a time; otherwise
-    follow the ornate rules above — a tapered trunk of 4-6 segments and 3-5 overlapping canopy balls in two
-    greens, and crystals as clusters of 5-9 tall spikes with the biggest taller than a player.
+  * Trees, rocks and crystals: find_library_model + insert_library_model, never parts and never a
+    generator (D-MODELLIB-2). A crystal cluster's biggest spike stands taller than a player.
   * Floating scenes: the template Baseplate under the island breaks the illusion. Hide it (set_visible) and
     move the SpawnLocation onto the island, and say so in the reply. Clouds are never Parts: flat slabs read
     as glass. Use a Clouds object under Terrain (Cover 0.5-0.6, Density 0.6) or leave them out.

@@ -155,10 +155,12 @@ test('the model tool without HF_TOKEN refuses, names generate_model, and touches
   assert.deepEqual(c.ops, []);
 });
 
-test('the model tool without a signed-in user refuses: it has no account to create the model in', async () => {
-  const c = ctx({ userId: undefined, env: { HF_TOKEN: 'hf_SENTINEL_model' } });
+// D-MODELLIB-2: the tool is closed to the agent, configured or not, signed in or not.
+test('the model tool refuses even with a token and a signed-in user, and touches neither network nor Studio', async () => {
+  const c = ctx({ env: { HF_TOKEN: 'hf_SENTINEL_model' } });
   const { result, calls } = await withNoNetwork(() => run(c.ctx, MODEL, { prompt: 'a wooden barrel' }));
-  assert.match(result.error, /signed-in user/);
+  assert.match(result.error, /D-MODELLIB-2/);
+  assert.match(result.error, /insert_library_model/);
   assert.deepEqual(calls, []);
   assert.deepEqual(c.ops, []);
 });

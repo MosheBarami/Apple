@@ -67,9 +67,9 @@ import {
 import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, imagePanel, imagePathFor, composeArtDirection, type ImageRequest, type PaletteRole } from './imagegen';
 import { generateImage as hfGenerateImage, isHfConfigured, HF_IMAGE_MODEL } from './hf';
-import { generateModelForRoblox } from './hf-3d-pipeline';
 import { findUiAssets, uploadLibraryAsset } from './asset-library';
 import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
+import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau } from './model-rule';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, MAX_UPLOADS_PER_RUN, placeInserted, tokensOf as libraryTokens, uploadLibraryModel } from './model-library';
@@ -2141,6 +2141,9 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-MODELLIB-1: a prop the model library holds comes from the library, not from parts.
       // It stands down when this run was not offered insert_library_model (a plugin without spatial_query).
       if (!sourceRefusal(ctx.assetSources, 'creator_store') && (!ctx.offeredTools || ctx.offeredTools.has('insert_library_model'))) {
+        // D-MODELLIB-2: and no prop is ever made from parts, whether the library matched it or not.
+        const handMadeModel = LIBRARY_BUILT.has(a.items as object) ? null : refuseHandMadeModel(a.items);
+        if (handMadeModel) return Promise.resolve(handMadeModel);
         const handBuilt = handBuiltPropRefusal(Array.isArray(a.items) ? a.items : [], ctx.libraryMisses);
         if (handBuilt) return Promise.resolve({ error: `Nothing was created. ${handBuilt}` });
       }
@@ -2663,6 +2666,9 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (handMadeUi) return handMadeUi;
       const handMadeFx = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), FX_RULE);
       if (handMadeFx) return handMadeFx;
+      // D-MODELLIB-2: run_luau does not assemble props either.
+      const handMadeModel = refuseHandMadeModelLuau(luauScanVariants(String(a.code ?? '')));
+      if (handMadeModel) return handMadeModel;
       const job = admitProgram({
         runtime: 'luau',
         backend: 'studio',
@@ -4114,7 +4120,7 @@ export const TOOLS: Record<string, ToolImpl> = {
               ? 'use the ids under `sounds` — do not search for audio, they are already chosen for this genre'
               : s.need === 'ui_icon' || s.need === 'particle' || s.need === 'texture'
                 ? `generate_image with target="${s.need === 'ui_icon' ? 'ui_icon' : s.need === 'particle' ? 'decal' : 'texture'}", subject as given, and the styleTags folded into the style fields`
-                : 'build it from Parts with create_instances, or generate_model for a shape parts cannot describe',
+                : 'find_library_model with the subject as a plain noun, then insert_library_model; never parts or a generator (D-MODELLIB-2)',
         })),
         sounds: admitted,
         // Present even when empty is wrong — an empty key reads as "we checked and all were fine",
@@ -4259,7 +4265,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'generate_model',
       description:
-        "Generate a 3D model from text with Roblox's own GenerationService, then QC it automatically. Free, ~20s, 10/min. Use ONLY for what procedural geometry cannot do: organic silhouettes, curved vehicle bodywork, one bespoke hero prop. The result is session-scoped and does not survive save/publish. The returned QC verdict is authoritative — if it fails, fix or discard; success does not mean good.",
+        "CLOSED to the agent (D-MODELLIB-2): Apple never generates a 3D model from scratch, so this refuses. Every prop, building, vehicle and character comes from find_library_model + insert_library_model.",
       parameters: S(
         {
           prompt: { type: 'string' },
@@ -4274,19 +4280,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['generate_model'],
     mutatesProject: true,
-    run: (ctx, a) =>
-      op(
-        ctx,
-        {
-          op: 'generate_model',
-          prompt: String(a.prompt ?? ''),
-          intent: a.intent ? String(a.intent) : undefined,
-          maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
-          predefinedSchema: a.predefinedSchema ? String(a.predefinedSchema) : undefined,
-          parent: String(a.parent ?? 'game.Workspace'),
-        },
-        120_000,
-      ),
+    // D-MODELLIB-2: the plugin op stays; the agent is refused and sent to the library.
+    run: () => Promise.resolve(refuseGeneratedModel('generate_model')),
   },
   inspect_model: {
     def: {
@@ -4609,7 +4604,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'generate_model_external',
       description:
-        "Generate a 3D mesh on Hugging Face (Hunyuan3D-2), upload it as a Model into the USER'S OWN Roblox account with their connected Open Cloud key, and insert it. Untextured (grey) mesh, 10k triangles, ~1 minute. Use only when generate_model (Roblox GenerationService) cannot produce the shape. Capped at a few calls a day; needs the user's Roblox key with asset:write.",
+        "CLOSED to the agent (D-MODELLIB-2): Apple never generates a 3D model from scratch, so this refuses. Every prop, building, vehicle and character comes from find_library_model + insert_library_model.",
       parameters: S(
         {
           prompt: { type: 'string', description: 'One object, as a plain noun phrase. No brands, no text.' },
@@ -4624,25 +4619,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances'],
     // A still-processing upload is a success that changed nothing in the place.
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'pending' in r),
-    run: async (ctx, a) => {
-      if (!isHfConfigured(ctx.env)) return { error: 'The Hugging Face 3D generator is not configured here. Use generate_model.' };
-      if (!ctx.userId) return { error: 'generate_model_external needs a signed-in user: the model is created in their own Roblox account.' };
-      const made = await generateModelForRoblox(ctx.env, ctx.userId, {
-        prompt: String(a.prompt ?? ''),
-        displayName: a.displayName ? String(a.displayName) : undefined,
-        projectId: ctx.projectId,
-      });
-      if (!made.ok) return { error: made.message, stage: made.stage, reason: made.reason };
-      // Roblox still processing: the Model exists in the user's account but has no id yet.
-      if (made.assetId === null) {
-        return {
-          pending: true,
-          operationId: made.operationId,
-          note: 'Uploaded to the user\'s Roblox account; Roblox is still processing it. Nothing was inserted yet — do not claim it is in the place.',
-        };
-      }
-      return insertAndProveClean(ctx, made.assetId, String(a.parent ?? 'game.Workspace'));
-    },
+    // D-MODELLIB-2: the agent is sent to the library; hf-3d-pipeline.ts stays for the owner's tooling.
+    run: () => Promise.resolve(refuseGeneratedModel('generate_model_external')),
   },
   remember: {
     def: {

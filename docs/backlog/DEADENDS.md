@@ -746,3 +746,10 @@ hand, it writes the free-model rows `build.mjs` folds into the manifest.
 puts the insertable files into the worker's static store at `/model-library/<path>`, where
 `insert_library_model` reads them. Same shape as `../upload.mjs`.
 **Caller being added:** none is needed; the operator is the caller and the static store is the wire.
+
+## apps/worker/src/hf-3d-pipeline.ts — STRUCTURALLY-BLOCKED, 2026-09-24
+
+The Hugging Face (Hunyuan3D) text-to-3D pipeline behind `generate_model_external`. D-MODELLIB-2 (owner
+order: Apple never generates a 3D model from scratch) closed that tool to the agent, so its run now
+refuses and nothing imports the pipeline. Kept, not deleted, because reversing D-MODELLIB-2 is one line
+in tools.ts; `apps/worker/tests/hf.test.mjs` keeps it honest meanwhile.

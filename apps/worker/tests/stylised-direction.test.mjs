@@ -90,12 +90,15 @@ test('a saturated palette and a clear bright mood exist for the stylised look', 
 
 test('functional areas are built with a base, a rim, a fence, a sign and props', () => {
   const areas = section(worldBuildingBrief(PLOT_GAME), 'FUNCTIONAL AREAS');
-  for (const cue of [/thick/i, /rim/i, /fence/i, /posts?/i, /sign/i, /props/i]) assert.match(areas, cue);
+  // D-MODELLIB-2: the fence, sign and props come from the model library, so no post spacing here.
+  for (const cue of [/thick/i, /rim/i, /fence/i, /sign/i, /props/i, /insert_library_model/]) assert.match(areas, cue);
 });
 
-test('organic shapes are clusters, never one primitive', () => {
+// D-MODELLIB-2: organic shapes are library models, never clusters of balls.
+test('organic shapes are library models, never primitives', () => {
   const organic = section(worldBuildingBrief(PLOT_GAME), 'ORGANIC SHAPES');
-  assert.match(organic, /cluster/i);
+  assert.match(organic, /find_library_model/);
+  assert.match(organic, /never balls or blocks/);
   assert.match(organic, /tree/i);
   assert.match(organic, /fruit|foliage/i);
 });

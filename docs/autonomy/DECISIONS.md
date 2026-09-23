@@ -209,3 +209,21 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
 - `GET /api/cc/stream` (localhost only) is Server-Sent Events: a `pulse` every 10 s and `platform:<id>` after a refresh. Every frame passes `redact()` and a sanitised event name. The front end diffs the DOM in place (`morph`), and polling remains as the fallback.
 - `cc/insights.mjs` derives the Hebrew one-liners (evidence plus one action, sorted red first) from what the platforms reported. It never hard-codes a finding. HQ shows them as the "מה קורה עכשיו ומה לעשות" feed, a top-bar ticker, and node colours on the live architecture map.
 - Reverse: point `index.html` back at `styles.css` alone, and remove `cc/stream.mjs`, `cc/insights.mjs` and the router's lazy block.
+
+## D-MODELLIB-2 — Apple never makes a model from scratch; every prop comes from the model library (2026-09-24)
+- Owner order: "NEVER generate from scratch models and 3d, only plain simple parts like floor etc. Search the library for the perfect model/kit instead."
+- `apps/worker/src/model-rule.ts` holds the rule. Parts remain for plain structure only: floors, paths, walls, pads, platforms, stages and zones, grouped in a Folder. Parts named for what they do (ShopTrigger, CoinPad) also pass.
+- create_instances refuses:
+  - a Model assembled from parts;
+  - a part, Folder or Model named as a prop (tree, fence, stall, lamp, chest, pet, coin…), or one inside something so named;
+  - a ball-shaped part;
+  - a MeshPart, SpecialMesh or Union made by hand.
+- run_luau refuses the same shapes in Luau.
+- generate_model and generate_model_external refuse. Their plugin op and the HF pipeline stay in the tree.
+- A vetted kit (LIBRARY_BUILT) still passes.
+- D-MODELLIB-1's "the library missed, so parts are the fallback" is gone: a miss means searching again with a simpler noun.
+- Reading taken: the rule stands down, as D-MODELLIB-1 did, when the project has not allowed the Creator Store or the run was not offered insert_library_model. In that case the library cannot be used at all.
+- A requested "3D model" is proven by a successful insert_library_model (artifact-completion.ts).
+- The worldbuilding brief, prompts.ts and roadmap.ts no longer teach part-built trees, fences or props.
+- Tests: `apps/worker/tests/model-only.test.mjs` (red-first verified).
+- Reverse: remove the three model-rule calls in tools.ts, restore the two generator run bodies from git history, and revert the prompt lines.
