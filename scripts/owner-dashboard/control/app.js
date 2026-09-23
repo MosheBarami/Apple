@@ -42,12 +42,16 @@ const PAGES = [
 ];
 const GROUPS = [
   ['מרכז', ['hq', 'overview', 'explorer', 'repos']],
+  ['ריפו וידע', []],
   ['מוצר ותשתית', ['apple', 'cloudflare', 'supabase', 'vercel', 'clerk', 'github']],
   ['AI ומודלים', ['hf', 'groq', 'langflow']],
   ['תקלות, קהילה ומיילים', ['sentry', 'discord', 'resend', 'roblox']],
+  ['מעבדה', []],
   ['חיבורים', ['connect', 'status']],
 ];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
+// A page listed only in GROUPS still routes: its title comes from its module once loaded (see page()).
+for (const [, ids] of GROUPS) for (const id of ids) if (!byId[id]) PAGES.push(byId[id] = { id, title: id, glyph: 'bolt', auto: true });
 const mods = {}; // id -> loaded page module (or the 'בבנייה' stand-in)
 const MOCK = new URLSearchParams(location.search).get('mock') === '1';
 const POLL_MS = 20_000;
@@ -209,6 +213,11 @@ async function page(id) {
     const m = (await import(`./pages/${id}.js`)).default;
     if (!m || typeof m.render !== 'function') throw new Error('the module has no default export with render()');
     mods[id] = { ...meta, ...m, id, brand: m.brand ?? meta.brand, skin: meta.skin };
+    if (meta.auto) { // a GROUPS-only page names itself
+      Object.assign(meta, { title: m.title || id, nav: m.nav, brand: m.brand, glyph: m.glyph || meta.glyph });
+      const a = document.querySelector(`.nav-a[data-id="${id}"]`);
+      if (a) { a.querySelector('.logo').outerHTML = navIcon(meta).s; a.querySelector('.nav-t').textContent = meta.nav || meta.title; a.setAttribute('aria-label', meta.nav || meta.title); }
+    }
   } catch (e) {
     console.warn(`page ${id} is not ready`, e); // eslint-disable-line no-console
     mods[id] = { ...meta, wip: true, detail: e?.message || String(e), render: () => building(meta, e?.message) };
@@ -282,9 +291,10 @@ function routeId() { const m = location.hash.match(/^#\/([\w-]+)/); return m && 
 const pulseOf = (p) => (store.pulse?.platforms || []).find((x) => x.id === (p.brand === 'hf' ? 'huggingface' : p.brand));
 
 function navIcon(p) { return p.brand ? logo(p.brand, 'sm') : html`<span class="logo logo-sm logo-ui">${icon(p.glyph || p.id, 15)}</span>`; }
+function navLink(id) { const p = byId[id]; return html`<a class="nav-a" href="#/${id}" data-id="${id}">${navIcon(p)}<span class="nav-t" data-scramble>${p.nav || p.title}</span><i class="dot" data-dot="${id}" aria-hidden="true"></i></a>`; }
 function renderNav() {
-  $('#nav').innerHTML = GROUPS.map(([label, ids]) => html`<div class="nav-g"><p class="nav-gl">${label}</p>
-    ${ids.map((id) => { const p = byId[id]; return html`<a class="nav-a" href="#/${id}" data-id="${id}">${navIcon(p)}<span class="nav-t" data-scramble>${p.nav || p.title}</span><i class="dot" data-dot="${id}" aria-hidden="true"></i></a>`; })}</div>`.s).join('');
+  $('#nav').innerHTML = GROUPS.filter(([, ids]) => ids.length).map(([label, ids]) => html`<div class="nav-g"><p class="nav-gl">${label}</p>
+    ${ids.map(navLink)}</div>`.s).join('');
   for (const a of document.querySelectorAll('#nav .nav-a')) {
     const lab = a.querySelector('[data-scramble]'); a.setAttribute('aria-label', lab.textContent);
     a.addEventListener('pointerenter', () => scramble(lab));
@@ -631,5 +641,7 @@ function boot() {
     api.get('/api/cc/insights').then((v) => { if (v?.ok !== false && Array.isArray(v?.insights)) takeInsights(v.insights); });
   }
   go();
+  // GROUPS-only pages: load their module when idle so the nav shows their real names
+  (window.requestIdleCallback || setTimeout)(() => { for (const p of PAGES) if (p.auto) page(p.id); });
 }
 boot();

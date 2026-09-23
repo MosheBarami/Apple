@@ -35,7 +35,7 @@ globalThis.fetch = async (url, init = {}) => {
   return new Response(JSON.stringify(body), { status: mode === 'echo403' ? 403 : 200, headers: { 'content-type': 'application/json' } });
 };
 
-const { route } = await import('./platforms/router.mjs');
+const { route, LAZY_PLATFORMS } = await import('./platforms/router.mjs');
 const { SESSION_TOKEN, uncache } = await import('./http.mjs');
 
 let server, port;
@@ -98,7 +98,7 @@ test('path traversal under /control/ is refused', async () => {
   }
 });
 
-const GET_ROUTES = ['session', 'github', 'supabase', 'cloudflare', 'sentry', 'hf', 'extras', 'apple', 'groq', 'discord', 'roblox', 'status', 'connectors', 'langflow', 'pulse'];
+const GET_ROUTES = ['session', 'github', 'supabase', 'cloudflare', 'sentry', 'hf', 'extras', 'apple', 'groq', 'discord', 'roblox', 'status', 'connectors', 'langflow', 'pulse', 'insights', ...LAZY_PLATFORMS];
 
 test('leak guard: no response ever contains a credential, whatever the upstream sends back', async () => {
   let redacted = 0;
@@ -184,4 +184,106 @@ test('the Langflow page lists only flow exports, not other JSON beside them (pac
   const flows = repoFlows();
   assert.ok(flows && flows.length >= 4, 'the repo flows were not found — this test would check nothing');
   assert.deepEqual(flows.filter((f) => f.nodes === null && !f.invalid).map((f) => f.file), []);
+});
+
+// ---------------------------------------------------------------- shell v2: lazy platforms, SSE, insights
+const { derive } = await import('./insights.mjs');
+const { frame } = await import('./stream.mjs');
+
+test('lazy platforms: GET and POST routes exist and keep the POST guards', async () => {
+  assert.ok(LAZY_PLATFORMS.length >= 3, 'no lazy platforms registered — this test would check nothing');
+  for (const id of LAZY_PLATFORMS) {
+    const g = await req(`/api/cc/${id}`);
+    assert.equal(g.status, 200, `/api/cc/${id} is not routed`);
+    const j = JSON.parse(g.body);
+    assert.equal(typeof j.ok, 'boolean'); assert.ok(j.fetchedAt);
+    assert.ok(!g.body.includes(SENTINEL));
+    const noTok = await req(`/api/cc/${id}/action`, { method: 'POST', body: { kind: 'x', confirm: true },
+      headers: { 'content-type': 'application/json', origin: `http://127.0.0.1:${port}` } });
+    assert.equal(noTok.status, 403, `${id}/action accepted a POST without the session token`);
+    assert.equal((await post(`/api/cc/${id}/action`, { kind: 'x' })).status, 400, `${id}/action is not routed, or ran without confirm:true`);
+  }
+});
+
+// Reads the SSE stream until `until(frames)` holds or `ms` passes, then hangs up.
+function sse(headers = {}, until = () => false, ms = 15000) {
+  return new Promise((resolve, reject) => {
+    const r = http.request({ host: '127.0.0.1', port, path: '/api/cc/stream', headers }, (res) => {
+      let raw = ''; const done = () => { clearTimeout(t); res.destroy(); resolve({ status: res.statusCode, type: res.headers['content-type'], raw, frames: parse(raw) }); };
+      const t = setTimeout(done, ms);
+      res.on('data', (c) => { raw += c; if (until(parse(raw))) done(); });
+      res.on('end', done);
+    });
+    r.on('error', reject); r.end();
+  });
+}
+const parse = (raw) => raw.split('\n\n').filter((b) => /^event: /m.test(b)).map((b) => {
+  const lines = b.split('\n'); const ev = lines.find((l) => l.startsWith('event: ')); const data = lines.filter((l) => l.startsWith('data: '));
+  return { event: ev.slice(7), data: data.map((l) => l.slice(6)).join('\n'), dataLines: data.length, lines };
+});
+
+test('SSE stream: refused for a foreign Host', async () => {
+  const r = await sse({ host: 'evil.example' }, () => true, 3000);
+  assert.equal(r.status, 403);
+  assert.ok(!/event-stream/.test(r.type || ''));
+});
+
+test('SSE stream: text/event-stream, hello then a pulse, every frame well-formed and free of secrets', async () => {
+  mode = 'echo200'; uncache('');
+  const r = await sse({}, (f) => f.some((x) => x.event === 'pulse'), 20000);
+  assert.equal(r.status, 200);
+  assert.match(r.type, /^text\/event-stream/);
+  assert.equal(r.frames[0]?.event, 'hello');
+  assert.ok(r.frames.some((x) => x.event === 'pulse'), 'no pulse frame arrived');
+  for (const f of r.frames) {
+    assert.match(f.event, /^[\w:.-]+$/);
+    assert.equal(f.dataLines, 1, `${f.event}: data must be one line`);
+    assert.equal(f.lines.length, 2, `${f.event}: a frame is exactly event + data`);
+    assert.doesNotThrow(() => JSON.parse(f.data), `${f.event}: data is not JSON`);
+  }
+  const pulse = JSON.parse(r.frames.find((x) => x.event === 'pulse').data);
+  assert.ok(Array.isArray(pulse.insights), 'the pulse carries the derived insights');
+  assert.ok(!r.raw.includes(SENTINEL), 'the stream leaked a credential');
+});
+
+test('SSE frame(): newlines cannot inject fields, and secrets are redacted', () => {
+  const f = frame('pulse\ndata: evil', { t: `line1\nline2 ${process.env.HF_TOKEN}` });
+  assert.equal(f.split('\n').filter(Boolean).length, 2);
+  const [ev, data] = f.split('\n');
+  assert.match(ev, /^event: [\w:.-]+$/); assert.match(data, /^data: \{.*\}$/);
+  assert.ok(!f.includes(SENTINEL));
+});
+
+// A minimal world for insights: one failing CI streak, a site answer, a Discord app without a bot token.
+const runs = (fails, sec = 5) => [...Array.from({ length: fails }, (_, i) => ({ id: 900 + i, status: 'completed', conclusion: 'failure', branch: 'main', durationSec: sec })),
+  { id: 1, status: 'completed', conclusion: 'success', branch: 'main', durationSec: 300, createdAt: '2026-09-01T00:00:00Z' }];
+const gh = (fails, sec) => ({ ok: true, repo: { defaultBranch: 'main' }, runs: runs(fails, sec), commits: [] });
+
+test('insights: nothing observed gives no insights', () => {
+  assert.deepEqual(derive({}), []);
+  assert.deepEqual(derive({ github: { ok: false, configured: false }, sentry: { ok: true, configured: false }, discord: { ok: false } }), []);
+});
+
+test('insights are derived from the inputs, not hard-coded', () => {
+  const ci = (d) => derive(d).find((x) => x.id === 'ci-failing');
+  const three = ci({ github: gh(3, 5) }); const five = ci({ github: gh(5, 5) });
+  assert.match(three.title, /3/); assert.match(five.title, /5/);
+  assert.equal(three.evidence.find((e) => /15/.test(e.k)).v, '3/3');
+  assert.equal(three.action.id, 'gh-rerunf-900');
+  assert.notEqual(ci({ github: gh(3, 200) }).title, three.title, 'slow failures must not be called an account block');
+  assert.equal(ci({ github: gh(0) }), undefined, 'a green main gives no CI insight');
+  const down = derive({ health: { httpStatus: 503, ms: 80 } }).find((x) => x.id === 'site-down');
+  assert.match(down.why, /503/);
+  assert.equal(derive({ health: { httpStatus: 200, ms: 80 } }).find((x) => x.id === 'site-down'), undefined);
+  for (const x of derive({ github: gh(3, 5), health: { httpStatus: 503 } })) {
+    assert.ok(x.title && x.why && Array.isArray(x.evidence) && x.action?.type, `${x.id} is missing a field`);
+    assert.ok(!JSON.stringify(x).includes('NaN'), `${x.id} shows NaN`);
+  }
+});
+
+test('insights are ordered red first, then yellow, then info', () => {
+  // inserted by derive() in the order warn (blind sentry), bad (site), info (discord) — the output must reorder them
+  const out = derive({ sentry: { ok: false, reason: 'HTTP 401' }, health: { httpStatus: 500, ms: 1 }, discord: { ok: true, configured: true, bot: false } });
+  assert.deepEqual(out.map((x) => x.sev), ['bad', 'warn', 'info']);
+  assert.ok(out.every((x) => !('weight' in x)), 'the internal weight leaked into the output');
 });

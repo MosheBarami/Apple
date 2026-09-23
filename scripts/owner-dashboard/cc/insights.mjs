@@ -47,7 +47,7 @@ export function derive(d = {}, { now = Date.now(), history = {} } = {}) {
   const h = d.health || d.cloudflare?.health || d.apple?.health;
   if (h && h.httpStatus != null && h.httpStatus !== 200) add({ id: 'site-down', sev: 'bad', platform: 'apple', weight: 100,
     title: 'האתר לא עונה כמו שצריך', why: `בדיקת הבריאות של האתר החזירה ${h.httpStatus} במקום 200. משתמשים כנראה רואים שגיאה.`,
-    evidence: [{ k: 'HTTP', v: String(h.httpStatus) }, { k: 'זמן תגובה', v: `${nf(h.ms)} ms` }], action: { type: 'page', page: 'cloudflare', label: 'לדף Cloudflare' } });
+    evidence: [{ k: 'HTTP', v: String(h.httpStatus) }, { k: 'זמן תגובה', v: Number.isFinite(h.ms) ? `${nf(h.ms)} ms` : '—' }], action: { type: 'page', page: 'cloudflare', label: 'לדף Cloudflare' } });
   else if (h && h.httpStatus == null && h.reason) add({ id: 'site-down', sev: 'bad', platform: 'apple', weight: 100,
     title: 'האתר לא עונה', why: `לא הגענו לאתר בכלל: ${h.reason}.`, evidence: [{ k: 'ניסיון', v: h.reason }], action: { type: 'page', page: 'cloudflare', label: 'לדף Cloudflare' } });
 
