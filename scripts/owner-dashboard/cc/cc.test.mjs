@@ -205,6 +205,21 @@ test('lazy platforms: GET and POST routes exist and keep the POST guards', async
   }
 });
 
+// dryRun plans only: nothing here reaches Groq or the Hub.
+test('lane B actions: groq probe and hf rebuild reach their modules, behind the POST guards', async () => {
+  const noTok = await req('/api/cc/groq/action', { method: 'POST', body: { kind: 'probe', confirm: true, dryRun: true },
+    headers: { 'content-type': 'application/json', origin: `http://127.0.0.1:${port}` } });
+  assert.equal(noTok.status, 403, `groq/action answered ${noTok.status} to a POST without the session token (404 = not routed)`);
+  assert.equal((await post('/api/cc/groq/action', { kind: 'probe', dryRun: true })).status, 400, 'groq/action is not routed, or ran without confirm:true');
+  const g = await post('/api/cc/groq/action', { kind: 'probe', confirm: true, dryRun: true });
+  assert.equal(g.status, 200); const gj = JSON.parse(g.body);
+  assert.equal(gj.ok, true); assert.match(gj.plan?.url || '', /\/chat\/completions$/, 'the probe plan did not come from groqAction');
+  const { HF_USER } = await import('./platforms/hf.mjs');
+  const h = JSON.parse((await post('/api/cc/hf/action', { kind: 'rebuild', id: `${HF_USER}/demo`, confirm: true, dryRun: true })).body);
+  assert.equal(h.ok, true); assert.match(h.plan?.url || '', /\/spaces\/[^/]+\/demo\/restart\?factory=true$/, 'kind:"rebuild" did not reach hfAction');
+  assert.ok(!g.body.includes(SENTINEL) && !JSON.stringify(h).includes(SENTINEL));
+});
+
 // Reads the SSE stream until `until(frames)` holds or `ms` passes, then hangs up.
 function sse(headers = {}, until = () => false, ms = 15000) {
   return new Promise((resolve, reject) => {
