@@ -27,12 +27,25 @@ export interface PluginToolLimitation {
 }
 
 export interface PluginToolFilter {
-  /** False means legacy/unknown: no capability-based filtering was applied. */
+  /** False means legacy/unknown: only OPT_IN_OPERATIONS tools were withheld; nothing else was filtered. */
   capabilitiesKnown: boolean;
   allowed: Set<string>;
   withheld: string[];
   limitations: PluginToolLimitation[];
 }
+
+/**
+ * OPERATIONS NO INSTALLED PLUGIN EVER HAD, which therefore cannot be left to "unknown".
+ *
+ * The rule above — missing means unknown, and unknown keeps the tool — protects the tools every
+ * plugin already executes. It is the wrong rule for an operation that is NEWER than the plugins in
+ * customers' hands: the 1.1.0 store build reports every op it has and simply does not name
+ * `play_check`, so "unknown" would offer a player-side check that is refused on first call, and the
+ * model would be left to explain a check that never ran. A tool standing on one of these is offered
+ * only when the plugin says, explicitly, `supported` — including in compatibility mode.
+ */
+export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName>(['play_check']);
+const NOT_REPORTED = 'the connected Studio plugin does not report this operation';
 
 const MAX_OPERATIONS = 128;
 const MAX_REASON_CHARS = 240;
@@ -120,7 +133,8 @@ export function pluginOperationVerdict(
  * `requirements` belongs beside the real tool registry: it describes which Studio operations a
  * tool actually invokes. This helper intentionally does not carry a second hand-maintained list of
  * tool names. A tool with no declared Studio-op requirement, an operation omitted by the report,
- * or a legacy client with no valid report is left alone.
+ * or a legacy client with no valid report is left alone — except a tool that needs one of
+ * OPT_IN_OPERATIONS, which is withheld unless that operation is explicitly reported supported.
  */
 export function filterToolsForPlugin(
   candidates: Iterable<string>,
@@ -129,14 +143,6 @@ export function filterToolsForPlugin(
 ): PluginToolFilter {
   const names = [...new Set(candidates)];
   const parsed = parsePluginCapabilities(rawCapabilities);
-  if (!parsed) {
-    return {
-      capabilitiesKnown: false,
-      allowed: new Set(names),
-      withheld: [],
-      limitations: [],
-    };
-  }
 
   const allowed = new Set<string>();
   const withheld: string[] = [];
@@ -147,6 +153,7 @@ export function filterToolsForPlugin(
     for (const operation of requirements[tool] ?? []) {
       const verdict = pluginOperationVerdict(parsed, operation);
       if (verdict.status === 'unsupported') blockers.push({ operation, reason: verdict.reason });
+      else if (verdict.status === 'unknown' && OPT_IN_OPERATIONS.has(operation)) blockers.push({ operation, reason: NOT_REPORTED });
     }
 
     if (blockers.length === 0) {
@@ -170,7 +177,7 @@ export function filterToolsForPlugin(
   }
 
   return {
-    capabilitiesKnown: true,
+    capabilitiesKnown: parsed !== null,
     allowed,
     withheld,
     limitations: [...byOperation.values()],

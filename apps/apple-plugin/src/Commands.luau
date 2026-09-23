@@ -2641,7 +2641,7 @@ end
 -- declared here are used after it. apps/apple-plugin/tests/studio-compile.test.mjs compiles every
 -- source at -O0 so the limit is caught before Studio ever sees it.
 local HANDLERS, prepareRestore, applyRestore, failureResult, errorParts
-local loadGenerationAdapter, loadRenderAdapter, loadStudioCaptureAdapter, runGeneration, runModeState
+local loadGenerationAdapter, loadRenderAdapter, loadStudioCaptureAdapter, runGeneration, runModeState, loadPlayCheckAdapter
 do
 local function opPing(): any
 	return { pong = true }
@@ -3960,6 +3960,26 @@ function loadRenderAdapter(options: any): (any?, string?)
 	return module
 end
 
+-- The player-side check (PlayCheck.luau). Reported unsupported, by name, when the module is not
+-- bundled or this Studio has no StudioTestService:ExecutePlayModeAsync, so the worker withholds the
+-- tool instead of offering a check that cannot run.
+function loadPlayCheckAdapter(options: any, gameRef: any): (any?, string?)
+	local module = options.playCheck
+	if module == nil then
+		local loaded, value = pcall(function() return require(script.Parent.PlayCheck) end)
+		if not loaded then return nil, "the player-side play check is not bundled in this build" end
+		module = value
+	end
+	if type(module) ~= "table" or type(module.run) ~= "function" or type(module.available) ~= "function" then
+		return nil, "the player-side play check module is malformed"
+	end
+	local ok, available, why = pcall(module.available, gameRef, options.services)
+	if not ok or available ~= true then
+		return nil, if ok and type(why) == "string" then why else "StudioTestService:ExecutePlayModeAsync is unavailable"
+	end
+	return module
+end
+
 function loadStudioCaptureAdapter(options: any, gameRef: any): (any?, string?)
 	if options.capture ~= nil then
 		if type(options.capture) ~= "table" or type(options.capture.capture) ~= "function" then
@@ -4416,6 +4436,43 @@ local function handleInspectModel(self: any, op: any): (any?, string?, string?)
 	}, nil
 end
 
+-- PLAYER-SIDE CHECK (F-046). The gates it shares with every write — edit mode first, then the
+-- person's consent — are applied by `execute` (play_check is CONSENT_ONLY: it changes Studio state
+-- and inserts only a harness that PlayCheck removes again, so it opens no undo recording). This
+-- handler validates the bounded arguments and resolves every touch target against the place
+-- BEFORE anything is inserted, so a bad path costs nothing.
+local function handlePlayCheck(self: any, op: any): (any?, string?, string?, string?)
+	if not self.playCheck then return nil, "refused", self.playCheckError or "the player-side play check is unavailable", "none" end
+	if self.activeRecording ~= nil or self.activeGeneration ~= nil or self.activePlayCheck then
+		return nil, "conflict", "another Apple operation is still in progress"
+	end
+	if self.appleRun ~= nil then return nil, "conflict", "Apple's Run-mode playtest is still active; stop it before a play check", "leave_test_mode" end
+	local seconds, secondsErr = safeCount(op.seconds, 5, 3, 15, "play_check.seconds")
+	if not seconds then return nil, "invalid", secondsErr end
+	local touch = {}
+	if op.touch ~= nil then
+		if type(op.touch) ~= "table" or #op.touch > 5 then return nil, "invalid", "play_check.touch must be a list of at most 5 instance paths" end
+		for index, raw in op.touch do
+			if type(index) ~= "number" then return nil, "invalid", "play_check.touch must be a list" end
+			local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, raw, false)
+			if not inst then return nil, pathKind or "not_found", resolveErr end
+			local parts = parsePath(canonical)
+			if not parts or parts[2] ~= "Workspace" or #parts < 3 then return nil, "invalid", "play_check.touch targets must be inside game.Workspace" end
+			if not isA(inst, "BasePart") and not isA(inst, "Model") then return nil, "invalid", "play_check.touch targets must be a BasePart or Model: " .. tostring(canonical) end
+			local segments = {}
+			for segmentIndex = 2, #parts do table.insert(segments, parts[segmentIndex]) end
+			table.insert(touch, { path = canonical, segments = segments })
+		end
+	end
+	self.activePlayCheck = true
+	local ok, data, kind, message, remedy = pcall(self.playCheck.run, {
+		game = self.game, services = self.options.services, editor = self.editor, seconds = seconds, touch = touch,
+	})
+	self.activePlayCheck = false
+	if not ok then return nil, "internal", "play check failed: " .. tostring(data) end
+	return data, kind, message, remedy
+end
+
 local function handleProjectCensus(self: any, _op: any): (any?, string?, string?)
 	local services = {}
 	local instances = 0
@@ -4467,6 +4524,7 @@ HANDLERS = {
 	run_mode = handleRunMode,
 	inspect_model = handleInspectModel,
 	project_census = handleProjectCensus,
+	play_check = handlePlayCheck,
 	get_tree = handleTree,
 	get_instance = handleInstance,
 	list_scripts = handleListScripts,
@@ -4530,10 +4588,13 @@ local MUTATING = {
 }
 
 -- These change Studio state but not the DataModel, so they need the user's per-connection consent
--- without manufacturing empty entries on the place's undo stack.
+-- without manufacturing empty entries on the place's undo stack. play_check starts a Test session
+-- (which runs on a COPY of the place) and inserts only its own harness, which PlayCheck removes and
+-- counts on every path — so it nets no change to undo, and takes the same two gates as a write.
 local CONSENT_ONLY = {
 	select = true,
 	camera_focus = true,
+	play_check = true,
 }
 
 function Commands.new(options: any?): any
@@ -4552,6 +4613,7 @@ function Commands.new(options: any?): any
 	}
 		self.generation, self.generationError = loadGenerationAdapter(opts, gameRef)
 		self.render, self.renderError = loadRenderAdapter(opts)
+		self.playCheck, self.playCheckError = loadPlayCheckAdapter(opts, gameRef)
 		self.capture, self.captureError = loadStudioCaptureAdapter(opts, gameRef)
 	self.editor = opts.editor or serviceFrom(gameRef, opts.services, "ScriptEditorService")
 	self.history = opts.history or serviceFrom(gameRef, opts.services, "ChangeHistoryService")
@@ -4774,6 +4836,14 @@ function Commands.capabilities(engine: any): any
 	-- Same rule as generate_model: report whether the MODULE is bundled, which is fixed for the
 	-- life of this build, not whether one render happened to succeed. A build with no renderer
 	-- withholds the worker's whole visual gate, and says which operation caused it.
+	if engine == nil or engine.playCheck == nil then
+		byName.play_check = {
+			op = "play_check",
+			status = "unsupported",
+			reason = capabilityReason(engine and engine.playCheckError, "the player-side play check is unavailable in this Studio session"),
+		}
+	end
+
 	if engine == nil or engine.render == nil then
 		local reason = capabilityReason(engine and engine.renderError, "the bounded software renderer is not bundled in this build")
 		byName.render_view = { op = "render_view", status = "unsupported", reason = reason }

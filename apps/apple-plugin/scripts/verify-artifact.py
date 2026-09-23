@@ -46,6 +46,9 @@ REQUIRED = {
     "run_mode.action must be start": "the typed Run/Pause/Resume/Stop playtest control path is present in the shipped command engine",
     "inspect_model target must be a Model or BasePart": "bounded structural model inspection is present in the shipped command engine",
     "project census exceeds the": "the typed playtest safety census is present, so run_and_check does not need arbitrary run_code",
+    # F-046: without these the worker withholds play_check and every UI claim must say "not verified".
+    "ExecutePlayModeAsync": "the player-side play check starts a real solo Test session through StudioTestService",
+    "__ApplePlayCheckHarnessV1": "the marker the play check's harness removal is counted by; without it removal cannot be verified",
     "GenerateModelAsync": "Roblox-native text-to-3D; the legacy artifact shipped with zero of these",
     "golem.studio-ops.v1": "the capability report schema the worker parses; without it every tool is offered blind",
     "/api/studio/poll": "the long-poll the plugin is",

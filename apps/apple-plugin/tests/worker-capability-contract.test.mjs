@@ -35,6 +35,7 @@ import { PRELUDE } from './studio-mock.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..', '..', 'worker');
 const COMMANDS = readFileSync(join(HERE, '..', 'src', 'Commands.luau'), 'utf8');
+const PLAY_CHECK = readFileSync(join(HERE, '..', 'src', 'PlayCheck.luau'), 'utf8');
 
 const luauMissing = (() => {
   try { execFileSync('luau', ['--help'], { stdio: 'pipe' }); return false; } catch { return true; }
@@ -70,21 +71,24 @@ end
 local function stubRenderer() return { capture = function() return { views = {} } end } end
 local function stubGeneration() return { generate = function() return { ok = false } end } end
 
-emit("BUNDLED", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), generation = stubGeneration() })))
-emit("NO_RENDERER", Commands.capabilities(Commands.new({ game = game, generation = stubGeneration() })))
+-- The shipped PlayCheck module is bundled beside Commands, exactly as rojo places it; the mock's
+-- StudioTestService exposes ExecutePlayModeAsync as current Studio documents it.
+emit("BUNDLED", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), generation = stubGeneration(), playCheck = PlayCheck })))
+emit("NO_RENDERER", Commands.capabilities(Commands.new({ game = game, generation = stubGeneration(), playCheck = PlayCheck })))
+emit("NO_PLAY_CHECK", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), generation = stubGeneration() })))
 `;
 
 function pluginReports() {
   const dir = mkdtempSync(join(tmpdir(), 'apple-capability-contract-'));
   const file = join(dir, 'capabilities.gen.luau');
-  writeFileSync(file, `${PRELUDE}\nlocal Commands = (function()\n${COMMANDS}\nend)()\n${EMIT}`);
+  writeFileSync(file, `${PRELUDE}\nlocal PlayCheck = (function()\n${PLAY_CHECK}\nend)()\nlocal Commands = (function()\n${COMMANDS}\nend)()\n${EMIT}`);
   const out = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
   const read = (label) => {
     const line = out.split('\n').find((l) => l.startsWith(`${label} `));
     assert.ok(line, `the plugin printed no ${label} report:\n${out}`);
     return JSON.parse(line.slice(label.length + 1));
   };
-  return { bundled: read('BUNDLED'), noRenderer: read('NO_RENDERER') };
+  return { bundled: read('BUNDLED'), noRenderer: read('NO_RENDERER'), noPlayCheck: read('NO_PLAY_CHECK') };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -244,6 +248,25 @@ test('the visual gate survives when the renderer is bundled, and is withheld by 
   assert.doesNotMatch(note, /not bundled in this build/, 'plugin-authored prose leaked into the model note');
 });
 
+test('the player-side check is offered with this plugin, and withheld by name without it or from the store build', { skip }, async () => {
+  const { C, T } = await workerModules();
+  const { candidates, requirements } = studioRequirements(T.TOOLS);
+  const { bundled, noPlayCheck } = pluginReports();
+
+  assert.equal(bundled.operations.find((o) => o.op === 'play_check')?.status, 'supported', 'the shipped build must report play_check');
+  assert.ok(C.filterToolsForPlugin(candidates, requirements, bundled).allowed.has('play_check'), 'play_check must be offered when it ships');
+
+  const without = C.filterToolsForPlugin(candidates, requirements, noPlayCheck);
+  assert.ok(without.withheld.includes('play_check'), 'a build without the module must withhold the tool');
+  assert.match(C.pluginCapabilityPromptNote(without), /play_check is unavailable/);
+
+  // The 1.1.0 store build never had the op: its report omits it, and "unknown" must NOT offer it.
+  const store = { ...bundled, operations: bundled.operations.filter((o) => o.op !== 'play_check') };
+  const storeFilter = C.filterToolsForPlugin(candidates, requirements, store);
+  assert.ok(storeFilter.withheld.includes('play_check'), 'an unreported play_check must be withheld, not guessed supported');
+  assert.ok(storeFilter.allowed.has('run_and_check'), 'the server-side playtest is unaffected');
+});
+
 test('SessionDO still keys its unverified-appearance sentence off the withheld set', { skip }, async () => {
   // Pinned to the PROPERTY, not the spelling: what must stay true is that the sentence is produced
   // by membership of `inspect_visually` in `withheld`, and that it says the check did not run. If
@@ -298,7 +321,7 @@ test('the shipped plugin refuses the pattern the removed Creator Store asset con
     /\bCreateAssetAsync\s*\(/,
     /rbxassetid:\/\//,
   ];
-  for (const name of ['Commands.luau', 'Bridge.luau', 'GenerationService.luau', 'init.server.luau', 'Render.luau']) {
+  for (const name of ['Commands.luau', 'Bridge.luau', 'GenerationService.luau', 'init.server.luau', 'Render.luau', 'PlayCheck.luau']) {
     const raw = readFileSync(join(HERE, '..', 'src', name), 'utf8');
     const src = raw.replace(/--\[\[[\s\S]*?\]\]/g, ' ').replace(/--[^\n]*/g, ' ');
     assert.ok(src.length > 200, `${name}: comment stripping ate the source — this test would check nothing`);

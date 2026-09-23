@@ -75,7 +75,7 @@ function currentAuthoringReport() {
     'set_props', 'delete_instances', 'move_instances', 'transform_instances', 'clone_instances',
     'group_instances', 'ungroup_instances', 'rename_instance', 'set_locked', 'set_visible',
     'edit_script', 'terrain_edit', 'snapshot', 'restore', 'undo_waypoint', 'insert_asset', 'generate_model',
-    'run_mode', 'inspect_model', 'project_census',
+    'run_mode', 'inspect_model', 'project_census', 'play_check',
   ];
   return {
     schema: C.PLUGIN_CAPABILITY_SCHEMA,
@@ -89,7 +89,7 @@ function currentAuthoringReport() {
 test('the current-authoring fixture follows the live plugin surface instead of preserving old refusals', () => {
   const handlers = luauTableKeys('HANDLERS');
   const unsupported = luauTableKeys('UNSUPPORTED');
-  for (const operation of ['render_view', 'screenshot', 'insert_asset', 'create_instances', 'edit_script', 'run_mode', 'inspect_model', 'project_census']) {
+  for (const operation of ['render_view', 'screenshot', 'insert_asset', 'create_instances', 'edit_script', 'run_mode', 'inspect_model', 'project_census', 'play_check']) {
     assert.equal(handlers.has(operation), true, `${operation} moved out of the current plugin handler surface`);
     assert.equal(unsupported.has(operation), false, `${operation} is now refused by the current plugin; update the worker fixture`);
   }
@@ -124,6 +124,11 @@ test('composite tools declare the operations their safety behavior actually depe
 });
 
 test('legacy, missing, malformed and unknown-schema clients preserve the existing tool set', () => {
+  // "Existing" is the property: every tool such a client could already execute stays. A tool that
+  // stands on an OPT_IN operation — one no installed plugin ever had — is not part of that set, and
+  // offering it on "unknown" would hand the model a check that is refused on its first call.
+  const optIn = candidates.filter((name) => requirements[name].some((op) => C.OPT_IN_OPERATIONS.has(op)));
+  assert.deepEqual(optIn, ['play_check'], 'the opt-in tool set changed — review it');
   for (const raw of [
     undefined,
     null,
@@ -134,10 +139,35 @@ test('legacy, missing, malformed and unknown-schema clients preserve the existin
   ]) {
     const filtered = C.filterToolsForPlugin(candidates, requirements, raw);
     assert.equal(filtered.capabilitiesKnown, false);
-    assert.deepEqual([...filtered.allowed], candidates);
-    assert.deepEqual(filtered.withheld, []);
-    assert.deepEqual(filtered.limitations, []);
+    assert.deepEqual([...filtered.allowed], candidates.filter((name) => !optIn.includes(name)));
+    assert.deepEqual(filtered.withheld, optIn);
+    assert.deepEqual(filtered.limitations.map((item) => item.operation), ['play_check']);
   }
+});
+
+test('the player-side check is offered only when the plugin explicitly reports play_check supported', () => {
+  // The 1.1.0 store build: a valid report that simply does not name play_check.
+  const store = currentAuthoringReport();
+  store.operations = store.operations.filter((item) => item.op !== 'play_check');
+  const withoutIt = C.filterToolsForPlugin(candidates, requirements, store);
+  assert.equal(withoutIt.capabilitiesKnown, true);
+  assert.equal(withoutIt.allowed.has('play_check'), false, 'an unreported play_check must not be offered');
+  assert.ok(withoutIt.withheld.includes('play_check'));
+  assert.equal(withoutIt.allowed.has('run_and_check'), true, 'the server-side playtest is unaffected');
+  const note = C.pluginCapabilityPromptNote(withoutIt);
+  assert.match(note, /play_check is unavailable\. Withheld tools: play_check\./, 'the model is told the check is not available');
+
+  const withIt = C.filterToolsForPlugin(candidates, requirements, currentAuthoringReport());
+  assert.equal(withIt.allowed.has('play_check'), true);
+  assert.equal(withIt.withheld.includes('play_check'), false);
+
+  const refused = currentAuthoringReport();
+  refused.operations = refused.operations.map((item) => item.op === 'play_check'
+    ? { op: 'play_check', status: 'unsupported', reason: 'this Studio build does not expose StudioTestService:ExecutePlayModeAsync' }
+    : item);
+  const refusedFilter = C.filterToolsForPlugin(candidates, requirements, refused);
+  assert.equal(refusedFilter.allowed.has('play_check'), false);
+  assert.match(refusedFilter.limitations.find((item) => item.operation === 'play_check').reason, /ExecutePlayModeAsync/);
 });
 
 test('only explicitly unsupported operations withhold their dependent tools', () => {

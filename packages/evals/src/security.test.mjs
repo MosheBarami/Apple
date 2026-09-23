@@ -864,6 +864,9 @@ const TOOL_ARGS = {
 
   run_luau: { code: 'return 1' },
   run_and_check: { seconds: 2 },
+  // Egress reviewed 2026-09-23: the result is built only from the plugin's bounded play_check report
+  // (ScreenGui names, label text, leaderstats, log lines) and fixed sentences; it reads no env or token.
+  play_check: { seconds: 3, touch: ['game.Workspace.Coin1'] },
   get_output_logs: {},
   render_view: { view: 'hero' },
   //[[ `compose_thumbnail` EGRESS REVIEWED 2026-09-16, which is what this enumeration is for.

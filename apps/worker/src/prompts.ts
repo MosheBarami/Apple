@@ -130,6 +130,11 @@ Never report a change you have not observed (this is the rule that matters most)
   with that label under StarterGui (or read the script that creates it, end to end). A script's NAME is not a UI.
   If the request asks for it on screen and none exists, build it: install_module("ui_kit") and mount it with
   showShop = false, setting the balance from the player's leaderstats on the client.
+- A claim that on-screen UI WORKS or is VERIFIED needs play_check: it plays as a real player and reports the
+  ScreenGuis, their visible text and the CLIENT errors. run_and_check has no player and cannot see a screen or a
+  LocalScript, and reading the scripts is not playing them. Pass touch for the part that should change the UI
+  (e.g. a coin) and quote what playerSees says. If play_check was not offered, or it reports client errors or
+  no report, say plainly that the on-screen part is NOT verified.
 
 Analysing a project (be precise, not exhaustive):
 - When asked what depends on something, what a change would break, or what to update, name ONLY

@@ -90,6 +90,7 @@ const TOOL_EVIDENCE: Record<string, EvidenceKind> = {
   render_view: 'render',
   edit_script: 'diff',
   run_and_check: 'test',
+  play_check: 'test',
   find_verified_asset: 'assets',
 };
 

@@ -137,3 +137,135 @@ export function needsProtection(before: Census | null): boolean {
   if (!before) return true;
   return before.instances >= CHECKPOINT_FLOOR_INSTANCES;
 }
+
+// ------------------------------------------------------------------ the player-side check (F-046)
+//
+// `run_and_check` has no player: RunService:Run() simulates the server only, so a coin counter, a
+// LocalScript HUD or a client error cannot be seen by it at all. On 2026-09-23 that is how a customer
+// was told a HUD "is verified" while in a real Test session the LocalScript errored ("ResetOnSpawn is
+// not a valid member of LocalScript") and PlayerGui held no ScreenGui. The plugin's `play_check` op
+// runs a real solo Test session with a player and reports what that player had; this turns the
+// report into sentences the model cannot misread as more than they say.
+
+interface PlayLabel { name: string; class?: string; text: string; visible: boolean }
+interface PlayGui { name: string; enabled: boolean; labels: PlayLabel[]; truncated?: boolean }
+interface PlayLog { message: string; source?: string }
+interface PlayStat { name: string; value: number | string }
+interface PlayTouch {
+  path: string;
+  found: boolean;
+  moved?: boolean;
+  stillInPlace?: boolean;
+  transparency?: number;
+  leaderstatsAfter?: PlayStat[];
+}
+
+/** Roblox Studio puts its own Freecam ScreenGui into PlayerGui in every Test session. */
+const STUDIO_OWN_GUIS = new Set(['Freecam']);
+
+const list = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+const statText = (stats: PlayStat[]): string => stats.map((s) => `${s.name} ${s.value}`).join(', ');
+
+export interface PlayCheckSummary {
+  verdict: 'no_report' | 'no_player' | 'client_errors' | 'server_errors' | 'no_screen_gui' | 'observed';
+  playerSees: string;
+  clientErrors: string[];
+  serverErrors: string[];
+  warnings: number;
+  leaderstats?: string;
+  touches?: string[];
+  harness: string;
+  note: string;
+}
+
+/**
+ * Read a plugin `play_check` result. Anything missing is stated as missing: a report the client half
+ * never sent is "not observed", never an empty screen, and an empty screen is never a pass.
+ */
+export function summarisePlayCheck(raw: unknown): PlayCheckSummary {
+  const d = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const harness = d.harnessRemoved === true
+    ? 'the temporary check scripts were removed from the place'
+    : `WARNING: ${Number(d.harnessRemaining) || 'some'} temporary check script(s) could NOT be removed — tell the user to delete ApplePlayCheckServer / ApplePlayCheckClient`;
+  const clientErrors = list<PlayLog>(d.clientErrors).slice(0, 10).map((e) => (e.source ? `${e.message} (${e.source})` : e.message));
+  const serverErrors = list<PlayLog>(d.serverErrors).slice(0, 10).map((e) => (e.source ? `${e.message} (${e.source})` : e.message));
+  const warnings = list(d.clientWarnings).length + list(d.serverWarnings).length;
+  const before = list<PlayStat>(d.leaderstatsBefore);
+  const after = list<PlayStat>(d.leaderstatsAfter);
+  const leaderstats = d.leaderstatsBefore == null && d.leaderstatsAfter == null
+    ? 'the player has no leaderstats folder'
+    : `${statText(before) || 'none'} at the start → ${statText(after) || 'none'} at the end`;
+  const touches = list<PlayTouch>(d.touches).map((t) => {
+    if (!t.found) return `${t.path}: not found in the running game`;
+    const parts = [`${t.path}: walked onto it${t.moved === false ? ' (the move failed)' : ''}`];
+    if (t.leaderstatsAfter) parts.push(`leaderstats then ${statText(t.leaderstatsAfter) || 'none'}`);
+    if (t.stillInPlace === false) parts.push('it was removed');
+    if (typeof t.transparency === 'number') parts.push(`Transparency ${t.transparency}`);
+    return parts.join(', ');
+  });
+
+  const base = { clientErrors, serverErrors, warnings, harness };
+  // A harness left in the customer's place is the one thing that must survive truncation, so it
+  // leads; otherwise the verdict and what the player sees come first.
+  const lead = (r: PlayCheckSummary): PlayCheckSummary => (d.harnessRemoved === true ? r : Object.assign({ harness: r.harness }, r));
+  if (d.playerJoined !== true || d.characterSpawned !== true) {
+    return lead({
+      verdict: 'no_player',
+      playerSees: 'NOTHING WAS OBSERVED: no player character spawned within the bound, so nothing on screen was checked.',
+      ...base,
+      note: `The check stopped at "${String(d.stage ?? 'unknown')}". Do not claim anything about what the player sees.`,
+    });
+  }
+  if (d.clientReported !== true) {
+    const guis = list<PlayGui>(d.serverViewScreenGuis).map((g) => g.name);
+    return lead({
+      verdict: 'no_report',
+      playerSees:
+        'NOT OBSERVED: the player\'s client never answered, so what is on screen is unknown' +
+        (guis.length ? ` (the server saw these ScreenGuis cloned from StarterGui: ${guis.join(', ')}; the server cannot see GUIs a LocalScript builds)` : '') + '.',
+      ...base,
+      leaderstats,
+      ...(touches.length ? { touches } : {}),
+      note: 'A UI claim is NOT verified by this check. Say so.',
+    });
+  }
+
+  const guis = list<PlayGui>(d.screenGuis);
+  const own = guis.filter((g) => STUDIO_OWN_GUIS.has(g.name) && g.labels.length === 0);
+  const game = guis.filter((g) => !own.includes(g));
+  const others = list<{ name: string; class: string }>(d.otherPlayerGuiChildren);
+  const lines: string[] = [];
+  for (const g of game) {
+    const visible = g.labels.filter((l) => l.visible);
+    const hidden = g.labels.filter((l) => !l.visible);
+    let line = `ScreenGui "${g.name}" (${g.enabled ? 'enabled' : 'DISABLED — the player sees none of it'})`;
+    line += visible.length
+      ? `: visible text ${visible.map((l) => `"${l.text}" [${l.name}]`).join(', ')}`
+      : ': no visible text';
+    if (hidden.length) line += `; hidden: ${hidden.map((l) => l.name).join(', ')}`;
+    if (g.truncated) line += ' (more elements not listed)';
+    lines.push(line);
+  }
+  const otherText = others.length ? ` PlayerGui also held non-GUI objects: ${others.map((o) => `${o.name} (${o.class})`).join(', ')}.` : '';
+  const ownText = own.length ? ` (Studio's own ${own.map((g) => g.name).join(', ')} ScreenGui is not part of the game.)` : '';
+  const playerSees = game.length
+    ? `The player's screen: ${lines.join(' | ')}.${otherText}${ownText}`
+    : `The player's screen has NO game ScreenGui at all — nothing the game built is on screen.${otherText}${ownText}`;
+
+  const verdict: PlayCheckSummary['verdict'] = clientErrors.length
+    ? 'client_errors'
+    : serverErrors.length
+      ? 'server_errors'
+      : game.length === 0
+        ? 'no_screen_gui'
+        : 'observed';
+  const note =
+    verdict === 'client_errors'
+      ? 'Client scripts ERRORED while the player played. A HUD or UI with a client error is broken — fix it and check again; do not call it verified.'
+      : verdict === 'server_errors'
+        ? 'Server scripts errored during the session. Fix them before reporting the game works.'
+        : verdict === 'no_screen_gui'
+          ? 'There is no on-screen UI. If the user asked for a counter or HUD, it does not exist yet.'
+          : 'This is what one player saw. The screen was read AFTER the touches, so a counter showing the new leaderstats value updated and one showing the old value did not. Claim only what playerSees says.';
+  return lead({ verdict, playerSees, ...base, leaderstats, ...(touches.length ? { touches } : {}), note });
+}

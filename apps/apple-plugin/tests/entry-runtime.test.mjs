@@ -89,6 +89,14 @@ local Commands = {new=function(options)
     if type(op)=='table' and op.op=='run_mode' and (op.action=='start' or op.action=='run' or op.action=='restart') then
       studioTest.EditModeActive=false; studioTest:FirePropertyChanged('EditModeActive')
       return {id=id,ok=true,data={runMode=true,running=true}}
+    elseif type(op)=='table' and op.op=='play_check' then
+      -- ExecutePlayModeAsync yields for the whole solo Test session: Studio leaves edit mode and
+      -- returns to it before the call returns, and both transitions are signalled.
+      if allow then
+        studioTest.EditModeActive=false; studioTest:FirePropertyChanged('EditModeActive')
+        studioTest.EditModeActive=true; studioTest:FirePropertyChanged('EditModeActive')
+      end
+      return {id=id,ok=allow==true,data={completed=true}}
     elseif type(op)=='table' and op.op=='run_mode' and op.action=='stop' then
       studioTest.EditModeActive=true; studioTest:FirePropertyChanged('EditModeActive')
       return {id=id,ok=true,data={runMode=false,running=false,stopped=true}}
@@ -201,6 +209,19 @@ studioTest.EditModeActive=true
 studioTest:FirePropertyChanged('EditModeActive')
 bridgeConfig.execute('h',{})
 assert(editsObserved[#editsObserved]==true,'a test the person started pauses edits, and edit mode resumes them (D-PLUGIN-2)')
+
+-- F-046: Apple's player-side check starts a real Test session. It takes the same consent as a write,
+-- and that session is Apple's own: coming back from it must neither revoke nor pause the consent.
+local playCheck=bridgeConfig.execute('play-check',{op='play_check',seconds=3})
+assert(playCheck.ok==true and editsObserved[#editsObserved]==true,'the play check is authorised by the connection consent')
+bridgeConfig.execute('after-play-check',{})
+assert(editsObserved[#editsObserved]==true,"Apple's own Test session must not revoke or pause the consent afterwards")
+assert(byText('Access: edits allowed for this connection'),'after the play check the panel still says edits are allowed')
+studioTest.EditModeActive=false
+bridgeConfig.execute('play-check-during-test',{op='play_check'})
+assert(editsObserved[#editsObserved]==false,'a play check is not authorised while Studio is already testing')
+studioTest.EditModeActive=true
+studioTest:FirePropertyChanged('EditModeActive')
 
 byText('Disconnect').Activated:Fire()
 bridgeConfig.execute('i',{})

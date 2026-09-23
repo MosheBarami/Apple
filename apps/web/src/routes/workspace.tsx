@@ -8,7 +8,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PRODUCT_MODES, canUseProductModel, type ProductMode, type ProductModel } from '@golem/shared';
+import { PRODUCT_MODES, canUseProductModel, isSmallTalk, type ProductMode, type ProductModel } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
@@ -414,6 +414,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     enabled: projectId.length > 0,
   });
   const sourcePolicy = personal.data?.preferences.asset_sources ?? null;
+  const justAnswered = useRef(false);
   // The most this project could ever be allowed. Resolved by the server from the org and account
   // layers — see PersonalisationResponse.assetSourceCeiling.
   const sourceCeiling = personal.data?.assetSourceCeiling ?? null;
@@ -832,6 +833,12 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   //   choice was remembered but not changeable. The state itself is declared beside the policy,
   //   above, because the command palette opens it from further up this component. ]]
   const askFirst = (text: string): boolean => {
+    // The send that follows a fresh answer skips the question once (F-040, 2026-09-23): it runs in
+    // the same render as the save, where `sourcePolicy` is still the unanswered value, so it reopened
+    // the dialog and "Start building" needed a second press. The next render has the stored answer.
+    if (justAnswered.current) { justAnswered.current = false; return false; }
+    // Talk is not a build: a greeting is answered without asking where assets come from (F-048).
+    if (isSmallTalk(text)) return false;
     if (!owesAnswer(sourcePolicy)) return false;
     setSourceAsk({ held: text });
     return true;
@@ -1236,7 +1243,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               // message to release, and sending one would be the product putting words in.
               const text = sourceAsk.held;
               setSourceAsk(null);
-              if (text) send(text);
+              if (text) { justAnswered.current = true; send(text); }
             }}
             onCancel={() => setSourceAsk(null)}
           />

@@ -190,6 +190,7 @@ export const TOOL = {
 
   // C14 / C15 / C18
   run_and_check: { kind: 'playtesting', label: 'Ran the game and checked it' },
+  play_check: { kind: 'playtesting', label: 'Played it as a player and checked the screen' },
   get_output_logs: { kind: 'debugging', label: 'Read the output log' },
   create_checkpoint: { kind: 'saving', label: 'Saved a checkpoint' },
   remember: { kind: 'remembering', label: 'Noted a fact about the project' },

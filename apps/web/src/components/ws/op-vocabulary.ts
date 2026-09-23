@@ -59,6 +59,7 @@ export const OP_LABEL: Record<string, string> = {
 
   // --- playtest ----------------------------------------------------------
   run_mode: 'Started, paused or stopped a playtest',
+  play_check: 'Played the game as a player and looked at the screen',
 
   // --- rows that are not StudioOps at all; see NON_OP_KINDS --------------
   frame_rejected: 'Refused a Studio picture',

@@ -282,6 +282,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   // ---- runs code, or runs the game -------------------------------------------------------
   run_luau: 'Executes arbitrary Luau in the user\'s Studio. There is no subset of this that is read-only, and it is the one tool that makes every other exclusion here pointless.',
   run_and_check: 'Starts and stops Run mode in the user\'s Studio. It takes over the window of whoever is sitting at it.',
+  play_check: 'Starts a Test session with a player in the user\'s Studio and inserts a temporary harness for it. It takes over the window of whoever is sitting at it.',
   run_spec: 'Executes assertion code against the place\'s modules, which means executing code.',
   audit_build: 'Runs Luau probes AND a panel of critic models. Both halves disqualify it: it executes, and it spends.',
 

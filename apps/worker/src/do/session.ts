@@ -4219,7 +4219,7 @@ export class SessionDO extends DurableObject<Env> {
               error: studioDown
                 ? `${safeToolName} did not run because Roblox Studio is not connected right now — the Apple plugin stopped answering. It is not a limit of this mode. Tell the user to reconnect Studio from the Apple panel, and do not claim any Studio change you did not see succeed.`
                 : capabilityBlocked
-                  ? `${safeToolName} is unavailable because the connected Studio explicitly reports a required operation unsupported. It was not executed. Use the Studio tools still offered for this run.`
+                  ? `${safeToolName} is unavailable because the connected Studio reports a required operation unsupported, or does not report one it needs. It was not executed. Use the Studio tools still offered for this run.`
                   : `${safeToolName} is not available in this run and was not executed. Use only the tools offered for the current mode and permissions.`,
               executed: false,
             }),

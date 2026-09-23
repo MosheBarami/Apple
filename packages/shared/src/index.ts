@@ -97,6 +97,13 @@ export type StudioOp =
    * `start` is a kept alias for `run`. Unknown actions are refused, never treated as stop.
    */
   | { op: 'run_mode'; action: 'start' | 'run' | 'pause' | 'resume' | 'stop' | 'restart' }
+  /**
+   * The PLAYER-SIDE check (F-046): a solo Test session through StudioTestService:ExecutePlayModeAsync
+   * with a temporary harness that waits for the player, stays `seconds` (3-15), walks the character
+   * onto each `touch` path (at most 5, inside game.Workspace), and reports the player's ScreenGuis,
+   * visible text, leaderstats and the server AND client errors. Edit mode + edit consent, like a write.
+   */
+  | { op: 'play_check'; seconds?: number; touch?: string[] }
   // Companion direct manipulation: what a person clicks in the panel, with no model in the loop.
   // `move` is a stud offset, `rotate` is degrees about the target's own centre, `scale` is a
   // positive multiplier. Non-finite and out-of-range values are refused rather than clamped.
@@ -843,6 +850,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'run_spec':
       return 'critiquing';
     case 'run_and_check':
+    case 'play_check':
       return 'playtesting';
     case 'get_output_logs':
       return 'debugging';
@@ -2614,6 +2622,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
+    name: 'play_check',
+    label: 'Playtest as a player',
+    why: 'Starts a short Test session with one player in your Studio. Withhold it and Apple cannot check what a player sees on screen.',
+    group: 'changes',
+  },
+  {
     name: 'workspace_write',
     label: 'Write files in the workspace',
     why: 'Writes to the file workspace beside your project. It cannot reach the place itself.',
@@ -2734,3 +2748,23 @@ export function isRunFailure(v: unknown): v is RunFailure {
 // ---------------------------------------------------------------------------
 export * from './attachments.ts';
 export * from './models.ts';
+
+/**
+ * Talk, not work — a greeting, thanks, an acknowledgement, or a question about Apple itself.
+ * One definition for both sides (moved from apps/worker/src/reasoning.ts on 2026-09-23): the worker
+ * uses it to price such a turn like talk (F-019), and the web app uses it so a greeting does not open
+ * the "where should Apple get assets from?" question before a word of conversation (F-048).
+ * Anchored to the whole message, so "hi, build me a tower" is work.
+ */
+export const CONVERSATIONAL_RE =
+  /^(?:\s*(?:hi|hey|hello|yo|sup|hiya|howdy|thanks?|thank you|thx|ty|ok|okay|k|cool|nice|great|awesome|got it|sure|yes|yeah|no|nope|bye|goodbye|see ya|good (?:morning|afternoon|evening|night)|שלום|היי|הי|תודה|תודה רבה|אהלן|בוקר טוב|ערב טוב)(?![\p{L}\p{N}])[\s!.,?]*)+$/iu;
+
+/** Questions ABOUT the assistant rather than about the project — also talk, not work. */
+export const META_QUESTION_RE =
+  /\b(?:who are you|what are you|what can you do|what do you do|how do you work|which model|what model|are you (?:an? )?(?:ai|bot|human)|help me understand you|what is apple|what's apple)\b/i;
+
+export function isSmallTalk(text: string): boolean {
+  const trimmed = text.trim();
+  return CONVERSATIONAL_RE.test(trimmed) || META_QUESTION_RE.test(trimmed);
+}
+

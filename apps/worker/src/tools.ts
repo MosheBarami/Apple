@@ -44,7 +44,7 @@ import {
   type ScriptFile,
 } from './luau-review';
 import { propertyChangeGroups } from './property-diff';
-import { parseCensus, destructiveDelta, needsProtection } from './playtest';
+import { parseCensus, destructiveDelta, needsProtection, summarisePlayCheck } from './playtest';
 import { countConsole, parseLogEntries } from './playtest-stream';
 import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
 import { compositionHardFails, structureFromLayout, structureLine, compositionMetrics } from './composition';
@@ -2714,6 +2714,50 @@ export const TOOLS: Record<string, ToolImpl> = {
         stopped: stop.ok,
         logs: logs.ok ? logs.data : { error: logs.error },
       };
+    },
+  },
+  /**
+   * THE PLAYER-SIDE CHECK (F-046). A separate tool rather than `run_and_check({ player: true })`,
+   * because the capability filter withholds whole tools: an option on run_and_check would be
+   * advertised to every model on every plugin, including the 1.1.0 store build that cannot run it,
+   * and the first the model heard of that would be a refusal mid-check. As its own tool it is
+   * offered only when the plugin explicitly reports `play_check` supported (OPT_IN_OPERATIONS).
+   * It also has none of run_and_check's census/checkpoint machinery to carry: a Test session runs
+   * on a COPY of the place, so the customer's scripts cannot destroy committed work through it.
+   */
+  play_check: {
+    def: {
+      name: 'play_check',
+      description:
+        "Playtest AS A PLAYER: starts a real Studio Test session with one player, waits `seconds`, optionally walks the character onto each `touch` part (e.g. a coin), then reports what the player's screen actually shows (every ScreenGui in PlayerGui, enabled or not, and its visible text), the player's leaderstats before and after, and the errors from BOTH the client (LocalScripts) and the server. Use it before you say a counter, HUD, button or other on-screen UI works — run_and_check has no player and cannot see the screen or any LocalScript. The session runs on a copy of the place; its temporary check scripts are removed afterwards. It takes Studio over for up to about a minute.",
+      parameters: S({
+        seconds: { type: 'number', description: '3-15, default 5: how long the player stays in before the touches and the screen read' },
+        touch: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'up to 5 BasePart/Model paths inside game.Workspace to walk onto, in order, e.g. ["game.Workspace.Coins.Coin1"]',
+        },
+      }),
+    },
+    studio: true,
+    studioOps: ['play_check'],
+    run: async (ctx, a) => {
+      const seconds = Math.min(15, Math.max(3, Math.round(Number(a.seconds) || 5)));
+      const rawTouch = a.touch === undefined ? [] : a.touch;
+      if (!Array.isArray(rawTouch) || rawTouch.length > 5 || rawTouch.some((p) => typeof p !== 'string' || p.length > 320)) {
+        return { error: 'touch must be a list of at most 5 instance paths inside game.Workspace' };
+      }
+      const touch = rawTouch as string[];
+      // The plugin's own bound on the session is 50s; the slack covers inserting and removing the
+      // harness and Studio starting and ending the Test session around it.
+      const res = await op(ctx, { op: 'play_check', seconds, ...(touch.length ? { touch } : {}) }, 90_000);
+      if (res && typeof res === 'object' && 'error' in res) {
+        return {
+          ...(res as Record<string, unknown>),
+          notVerified: 'The player-side check did not produce a report, so nothing on the player\'s screen was observed. Do not claim any UI works.',
+        };
+      }
+      return summarisePlayCheck(res);
     },
   },
   get_output_logs: {

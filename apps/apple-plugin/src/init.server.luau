@@ -216,7 +216,7 @@ codeCorner.Parent = code
 local connect = control("Connect to Apple")
 local permission = text("Access: inspect only", 15, false)
 local edits = control("Enable edits…")
-local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations and Run-mode playtests. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
+local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
 local activity = text("No actions yet", 13, true)
 local version = text("Apple Studio · 1.1.0 · independent preview", 12, true)
 version.LayoutOrder = 100
@@ -235,8 +235,8 @@ local function refreshAccess()
 	edits.AutoButtonColor = edits.Active
 	edits.TextColor3 = if edits.Active then colors.text else colors.muted
 	disclosure.Text = if confirmingEdits
-			then "Apple may create or change supported objects and scripts in this place and control a Run-mode playtest. Writes require edit mode and an undo recording. Disconnecting turns this permission off."
-			else "Edits stay off until you allow them. This build supports bounded place operations and Run-mode playtests. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin."
+			then "Apple may create or change supported objects and scripts in this place, control a Run-mode playtest, and start a short Test session with a player (its temporary check scripts are removed afterwards). Writes require edit mode and an undo recording. Disconnecting turns this permission off."
+			else "Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin."
 	connect.Text = if connecting then "Connecting…" elseif connected then "Disconnect" else "Connect to Apple"
 	code.Visible = not connected
 end
