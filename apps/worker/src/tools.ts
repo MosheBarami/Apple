@@ -2145,7 +2145,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       name: 'edit_terrain',
       description:
         'Create or edit Roblox smooth Terrain through bounded typed operations, without running arbitrary Luau. ' +
-        'Actions: fill_block (center,size,material), fill_ball (center,radius,material), fill_region (min,max,material), ' +
+        'Actions: clear (no fields; empties ALL Terrain in one call — use it for "clear/remove the terrain", never Air fills), fill_block (center,size,material), fill_ball (center,radius,material), fill_region (min,max,material), ' +
         'replace_material (min,max,sourceMaterial,targetMaterial), or write_voxels (4-stud-grid origin, integer dimensions, flat voxels [{material,occupancy}]). ' +
         'Materials are Enum.Material names such as Enum.Material.Grass. At most 65,536 voxels are touched per call. ' +
         'Requires Studio edit consent and is one undo-recorded change. Checkpoint restore preserves Terrain identity but does not serialize voxel contents, so use Studio Undo for terrain rollback. ' +
@@ -2157,7 +2157,7 @@ export const TOOLS: Record<string, ToolImpl> = {
             description: `Up to ${MAX_TERRAIN_BATCH} terrain actions run in order, each shaped like a single call ({action, center, radius, material, ...}). Stops at the first failure.`,
             items: { type: 'object' },
           },
-          action: { type: 'string', enum: ['fill_block', 'fill_ball', 'fill_region', 'replace_material', 'write_voxels'] },
+          action: { type: 'string', enum: ['clear', 'fill_block', 'fill_ball', 'fill_region', 'replace_material', 'write_voxels'] },
           center: { type: 'array', items: { type: 'number' } },
           size: { type: 'array', items: { type: 'number' } },
           radius: { type: 'number' },

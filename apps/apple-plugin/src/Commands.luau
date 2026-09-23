@@ -3127,7 +3127,14 @@ function handleTerrainEdit(self: any, op: any): (any?, string?, string?)
 	local action, actionErr = safeText(op.action, 40, "terrain_edit.action")
 	if not action then return nil, "invalid", actionErr end
 
-	if action == "fill_block" then
+	if action == "clear" then
+		-- The whole Terrain, in one engine call: "clear the terrain" is an ordinary request, and the
+		-- only way to it without this was fill_region Air in 65,536-voxel slices — measured
+		-- 2026-09-23, a clear request made 29 terrain calls and 16 of them were refused as too large.
+		local ok, err = pcall(function() terrain:Clear() end)
+		if not ok then return nil, "internal", "Studio refused terrain Clear: " .. tostring(err) end
+		return { action = action, resolution = TERRAIN_RESOLUTION }, nil
+	elseif action == "fill_block" then
 		local center, centerErr = terrainVector(op.center, "terrain center")
 		if not center then return nil, "invalid", centerErr end
 		local size, sizeErr = terrainVector(op.size, "terrain size")
@@ -3210,7 +3217,7 @@ function handleTerrainEdit(self: any, op: any): (any?, string?, string?)
 		return { action = action, voxelsWritten = count, resolution = TERRAIN_RESOLUTION }, nil
 	end
 
-	return nil, "invalid", "terrain_edit.action must be fill_block, fill_ball, fill_region, replace_material or write_voxels"
+	return nil, "invalid", "terrain_edit.action must be clear, fill_block, fill_ball, fill_region, replace_material or write_voxels"
 end
 end
 

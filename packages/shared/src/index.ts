@@ -72,7 +72,7 @@ export type StudioOp =
   | { op: 'set_props'; path: string; props?: Record<string, PropValue>; attributes?: Record<string, PropValue> }
   | {
       op: 'terrain_edit';
-      action: 'fill_block' | 'fill_ball' | 'fill_region' | 'replace_material' | 'write_voxels';
+      action: 'clear' | 'fill_block' | 'fill_ball' | 'fill_region' | 'replace_material' | 'write_voxels';
       center?: [number, number, number];
       size?: [number, number, number];
       radius?: number;

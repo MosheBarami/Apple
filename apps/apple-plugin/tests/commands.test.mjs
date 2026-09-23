@@ -445,6 +445,8 @@ spec("typed terrain edits are bounded, recorded and never use run_code", functio
         op = "terrain_edit", action = "write_voxels", origin = { 0, 0, 0 }, dimensions = { 64, 64, 64 }, voxels = {},
     }, true)
     eq(oversized.ok, false); eq(oversized.failure, "invalid"); has(oversized.error, "bounded cell limit")
+    local cleared = run(c, "terrain-clear", { op = "terrain_edit", action = "clear" }, true)
+    eq(cleared.ok, true, tostring(cleared.error)); eq(terrain.calls[#terrain.calls].action, "clear")
     local denied = run(c, "terrain-denied", { op = "terrain_edit", action = "fill_ball", center = {0,0,0}, radius = 8, material = "Enum.Material.Grass" }, false)
     eq(denied.ok, false); eq(denied.remedy, "edit_consent")
     c:destroy()

@@ -168,6 +168,7 @@ local camera=Instance.new("Camera"); camera.Name="Camera"; camera.CFrame=cf(0,10
 local terrain=Instance.new("Terrain"); terrain.Name="Terrain"; terrain.Parent=workspace
 terrain.calls = {}
 function terrain:FillBlock(cframe, size, material) table.insert(self.calls, { action="fill_block", cframe=cframe, size=size, material=material }) end
+function terrain:Clear() table.insert(self.calls, { action="clear" }) end
 function terrain:FillBall(center, radius, material) table.insert(self.calls, { action="fill_ball", center=center, radius=radius, material=material }) end
 function terrain:FillRegion(region, resolution, material) table.insert(self.calls, { action="fill_region", region=region, resolution=resolution, material=material }) end
 function terrain:ReplaceMaterial(region, resolution, source, target) table.insert(self.calls, { action="replace_material", region=region, resolution=resolution, source=source, target=target }) end

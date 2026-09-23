@@ -140,3 +140,5 @@ Superseded 2026-09-23 ~04:45 IDT by sha256 `494fb68f875cdb1f9481634aedcdc43886fd
 [time, value] is accepted with the default envelope 0. The sky-island run of 04:20 lost its waterfall mist to
 four refusals of exactly that shape. Commands "a NumberSequence written as [time, value] pairs…" red with the
 line removed; plugin 46/0.
+
+Superseded 2026-09-23 ~05:15 IDT by sha256 `8c7624f2fd32b7b416619023291f6c3b238a8a5c37b6382ce9b291c8f9fd6d31` (installed locally): terrain_edit gains `clear` (Terrain:Clear() in one call). A "clear the terrain" request made 29 terrain calls and 16 were refused as larger than the voxel limit. Commands terrain spec red with the branch removed; plugin 46/0.
