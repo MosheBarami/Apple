@@ -258,6 +258,48 @@ test('the supervisor refuses to run while an interactive Product Owner holds the
   assert.ok(r2.calls >= 1, 'a lock held by a dead pid is stale and must not block forever');
 });
 
+// --reviews-only (owner, 23 Sep: "you don't leave this session until the product is ready"): reviews
+// run beside the interactive session, and the streak is still kept by the supervisor, never the session.
+test('--reviews-only runs only reviewers beside a live Product Owner and stops at the required streak', () => {
+  const root = sandbox([
+    { exit: 0, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'critic' } },
+    { exit: 0, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'implementer' } },
+    { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
+    { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
+  ]);
+  mkdirSync(join(root, '.autonomy', 'locks'), { recursive: true });
+  writeFileSync(join(root, '.autonomy', 'locks', 'product-owner.lock'), `${process.pid}\n`);
+  const r = spawnSync('python3', [SUPERVISOR, '--reviews-only'], {
+    env: { ...process.env, AUTONOMY_ROOT: root, AUTONOMY_AGENT_CMD: JSON.stringify(['node', join(root, 'fake-agent.mjs'), '{PROMPT}']), AUTONOMY_BACKOFF: '0' },
+    encoding: 'utf8', timeout: 60_000,
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(Number(readFileSync(join(root, 'calls'), 'utf8')), 3, 'it stops once three reviews passed');
+  for (const i of [1, 2, 3]) {
+    const p = readFileSync(join(root, `prompt-${i}.txt`), 'utf8');
+    assert.match(p, /INDEPENDENT CUSTOMER REVIEWER/, `session ${i} must be a reviewer whatever next_phase said`);
+    assert.doesNotMatch(p, /FORGET OWNER PREFERENCES/);
+  }
+  const acc = JSON.parse(readFileSync(join(root, 'docs', 'autonomy', 'ACCEPTANCE.json'), 'utf8'));
+  assert.equal(acc.fresh_reviews_without_material_blocker, 3);
+});
+
+test('--reviews-only stops at the first material finding with the streak reset', () => {
+  const root = sandbox([
+    { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
+    { exit: 0, result: { status: 'continue', review_verdict: 'MATERIAL_FINDINGS' } },
+    { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
+  ]);
+  const r = spawnSync('python3', [SUPERVISOR, '--reviews-only'], {
+    env: { ...process.env, AUTONOMY_ROOT: root, AUTONOMY_AGENT_CMD: JSON.stringify(['node', join(root, 'fake-agent.mjs'), '{PROMPT}']), AUTONOMY_BACKOFF: '0' },
+    encoding: 'utf8', timeout: 60_000,
+  });
+  assert.equal(r.status, 6);
+  assert.equal(Number(readFileSync(join(root, 'calls'), 'utf8')), 2);
+  const acc = JSON.parse(readFileSync(join(root, 'docs', 'autonomy', 'ACCEPTANCE.json'), 'utf8'));
+  assert.equal(acc.fresh_reviews_without_material_blocker, 0);
+});
+
 // ------------------------------------------------------------ the acceptance gate
 
 const FLAGS = ['deterministic_gates_green', 'production_deployed', 'production_bytes_verified', 'signed_in_browser_qa',

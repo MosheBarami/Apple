@@ -14,6 +14,10 @@ Differences from the report's reference script, each forced by a measurement on 
   * A Product-Owner lock (.autonomy/locks/product-owner.lock) makes the supervisor refuse to start
     while an interactive session is driving the same shared checkout (the report's "single Product
     Owner lock" risk row). A lock whose pid is dead is stale and is taken over.
+  * --reviews-only runs reviewer sessions and nothing else, beside a live interactive Product Owner
+    (owner, 2026-09-23: the interactive session stays until the product is ready). Reviewers only use
+    the product and append findings, so the lock does not apply; the streak is still kept HERE. It
+    exits 0 once the required streak is reached and 6 at the first MATERIAL_FINDINGS.
   * Roles rotate. Customer-strangers and reviewers are given MISSION.md and the production URL only;
     DECISIONS.md, HANDOFF.md and the implementation rationale are withheld by construction.
   * The fresh-review counter in ACCEPTANCE.json is maintained HERE, from the reviewer's verdict, so the
@@ -303,11 +307,12 @@ def ceilings_hit(state: dict):
 
 
 def main() -> int:
+    reviews_only = "--reviews-only" in sys.argv[1:]
     RUNTIME.mkdir(exist_ok=True)
     SESSIONS.mkdir(exist_ok=True)
     LOCKS.mkdir(exist_ok=True)
 
-    owner = lock_holder(OWNER_LOCK)
+    owner = None if reviews_only else lock_holder(OWNER_LOCK)
     if owner is not None:
         log(f"refusing to start: interactive Product Owner pid {owner} holds {OWNER_LOCK}")
         print(f"refusing to start: an interactive Product Owner (pid {owner}) is driving this checkout", file=sys.stderr)
@@ -344,7 +349,7 @@ def main() -> int:
                 log(f"ceiling: {hit}")
                 return 5
 
-            role = state.get("phase") if state.get("phase") in ROLES else ROLES[0]
+            role = "reviewer" if reviews_only else (state.get("phase") if state.get("phase") in ROLES else ROLES[0])
             iteration = int(state.get("iteration", 0)) + 1
             state["iteration"] = iteration
             state["last_session_started_at"] = utc_now()
@@ -379,6 +384,16 @@ def main() -> int:
             (SESSIONS / f"iteration-{iteration}-result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
             if role == "reviewer":
                 record_review(result.get("review_verdict"))
+            if reviews_only:
+                save_json(STATE_PATH, state)
+                if result.get("review_verdict") == "MATERIAL_FINDINGS":
+                    log(f"iteration {iteration}: reviewer found material findings; reviews-only run ends")
+                    return 6
+                acc = load_json(ACCEPTANCE, {})
+                if int(acc.get("fresh_reviews_without_material_blocker", 0)) >= int(acc.get("required_fresh_reviews_without_material_blocker", 3)):
+                    log("reviews-only: required fresh-review streak reached")
+                    return 0
+                continue
             state["phase"] = next_role(role, result)
 
             if result.get("status") == "human_blocked":

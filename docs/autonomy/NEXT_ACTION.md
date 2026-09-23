@@ -12,6 +12,5 @@ business days (evidence/20260923T1100Z-final-publish-appeal).
 3. Refused → read the stated reason, record it in F-038, and change only what it names. Never remove a tool
    (owner direction); a second appeal is not possible on the same decision.
 
-Meanwhile, three fresh reviews: end the interactive session and start `python3 scripts/autonomy-supervisor.py`
-(it refuses while an interactive Product Owner drives the checkout, D-AUT-1; .autonomy/state.json phase is
-"reviewer"). Optional: F-053 (undo after generate_model).
+Three fresh reviews, once the running lanes have shipped: `python3 scripts/autonomy-supervisor.py --reviews-only`
+runs reviewer sessions beside this interactive session (D-AUT-2) and keeps the streak itself. Optional: F-053 (undo after generate_model).
