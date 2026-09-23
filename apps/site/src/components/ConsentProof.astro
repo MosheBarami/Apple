@@ -100,7 +100,10 @@ import ArrowLink from './picks/ArrowLink.astro';
         nothing linking to it for exactly that reason. A component this lane owns can carry its own
         door. */}
     <p class="proof-more">
-      <ArrowLink href="/proof">The whole log of one run, and the five defects it left behind</ArrowLink>
+      {/* `left&nbsp;behind`: at 375px "behind" wrapped alone onto the last line
+          (tests/rendered-typography.test.mjs). Binding the last two words holds at every width
+          and in every font, as the footer's "provided&nbsp;as-is." does. */}
+      <ArrowLink href="/proof">The whole log of one run, and the five defects it left&nbsp;behind</ArrowLink>
     </p>
 
     {/* The limit is the record's own sentence and stays on the page. The record's repository path

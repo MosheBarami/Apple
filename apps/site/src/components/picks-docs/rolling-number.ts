@@ -9,7 +9,10 @@
  * become "12,600" without the component knowing what a currency is.
  *
  * Screen readers get the plain string: the columns are aria-hidden and a visually hidden copy of
- * the text sits beside them. Before the script runs the element holds plain server-rendered text,
+ * the text sits beside them. The ten digits of a column are DRAWN, not written: each is CSS
+ * generated content (`data-d` + `::before`, rolling-number.css), so the nine a column hides are not
+ * text. As text nodes they were copied with the figure ("$0$0123456789 forever"), matched by
+ * find-in-page, and read by tests/rendered-typography.test.mjs as a "9" stranded below the line. Before the script runs the element holds plain server-rendered text,
  * so a page without JavaScript still reads correctly.
  */
 
@@ -27,7 +30,7 @@ function makeCol(ch: string): Col {
     strip.className = 'rn-strip';
     for (let i = 0; i < 10; i += 1) {
       const d = document.createElement('span');
-      d.textContent = String(i);
+      d.dataset.d = String(i);
       strip.appendChild(d);
     }
     col.appendChild(strip);

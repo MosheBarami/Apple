@@ -119,7 +119,14 @@ function measure() {
     tab.click();
     const shown = [...document.querySelectorAll('.demo-stage')].filter((s) => !s.hidden && s.getBoundingClientRect().width > 0);
     for (const stage of shown) {
-      out.stages.push(box(stage));
+      // THE PANEL IS MEASURED WITH THE STAGE IT HOLDS, not once before the tabs are pressed. The
+      // panel sits on DeviceFrame's tablet, which is tilted back (rotateX, perspective) until it
+      // scrolls into view — and this pass runs at the top of the page, where it is tilted. A taller
+      // stage makes a taller panel whose lower edge projects WIDER, so a panel box taken with the
+      // short first stage showed the Critique and Luau stages "outside" a panel that, laid out,
+      // holds them exactly (clientWidth = scrollWidth = the stage's offsetWidth at every width,
+      // measured 2026-09-23). Comparing two boxes from two different panel heights compared nothing.
+      out.stages.push({ ...box(stage), grid: demos ? box(demos) : null });
       if (stage.querySelector('.cw-mark')) {
         out.marks = [...stage.querySelectorAll('.cw-mark')].map(box);
         out.render = [...stage.querySelectorAll('.cw-render')].map(box);
@@ -182,11 +189,12 @@ test('no capability stage is wider than the grid that holds it, at any supported
       // A horizontal rail may intentionally keep later cards to the inline end until the person
       // scrolls it. The old grid could not. In both shapes a CARD itself still has to fit the rail
       // and viewport, and the rail must never widen the document.
-      if (s.w > m.grid.w + 1 || s.w > m.viewport + 1) {
-        bad.push(`${width}px stage ${i + 1}: x${s.l}->${s.r} (w ${s.w}) outside .demos x${m.grid.l}->${m.grid.r} (w ${m.grid.w})`);
+      const g = s.grid ?? m.grid;
+      if (s.w > g.w + 1 || s.w > m.viewport + 1) {
+        bad.push(`${width}px stage ${i + 1}: x${s.l}->${s.r} (w ${s.w}) outside .demos x${g.l}->${g.r} (w ${g.w})`);
       }
-      if (!rail && (s.r > m.grid.r + 1 || s.l < m.grid.l - 1)) {
-        bad.push(`${width}px stage ${i + 1}: x${s.l}->${s.r} leaves a non-scrollable .demos x${m.grid.l}->${m.grid.r}`);
+      if (!rail && (s.r > g.r + 1 || s.l < g.l - 1)) {
+        bad.push(`${width}px stage ${i + 1}: x${s.l}->${s.r} leaves a non-scrollable .demos x${g.l}->${g.r}`);
       }
     }
   });

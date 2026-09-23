@@ -7,12 +7,17 @@
   white-space: nowrap;
 }
 
+/* The hidden copy is set on the columns' own 1.15em line, so its glyphs sit exactly where the
+   visible figure is. On the paragraph's taller line they sat 3px below it: a screen reader's focus
+   box landed under the number, and tests/rendered-typography.test.mjs read "2,310" as a word
+   stranded on a line of its own in "That is 2,310 Credits a month." */
 .rn-sr {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+  line-height: 1.15em;
   white-space: nowrap;
 }
 
@@ -39,6 +44,11 @@
   display: block;
   height: 1.15em;
   text-align: center;
+}
+
+/* The digit is generated content, not a text node (see rolling-number.ts). */
+.rn-strip > span::before {
+  content: attr(data-d);
 }
 
 .rn-enter {
