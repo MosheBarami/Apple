@@ -1,0 +1,231 @@
+/* Langflow skin: Langflow's own UI (1.12, shadcn/Tailwind zinc) in dark and light.
+   Sources: the running Langflow's CSS bundle (its HSL custom properties: --background, --canvas, --border,
+   --muted, --muted-foreground, --input, --primary, --node-selected, --connection, --canvas-dot,
+   --datatype-*, --status-*, --radius .5rem), and screenshots of the real canvas and project list.
+   Type: Inter + JetBrains Mono (both OFL, Langflow's own pair). Neither has Hebrew: the system Hebrew
+   face carries it through the fallback stack. */
+
+@font-face { font-family: 'LF Inter'; src: url('/control/fonts/langflow/Inter-latin.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'LF Mono'; src: url('/control/fonts/langflow/JetBrainsMono-latin.woff2') format('woff2'); font-weight: 100 800; font-style: normal; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+/* ------------------------------------------------ tokens (dark: Langflow's .dark) */
+html[data-skin='langflow'][data-theme='dark'] {
+  --lf-bg: #18181b; --lf-canvas: #000; --lf-border: #3f3f46; --lf-muted: #27272a; --lf-muted-fg: #a1a1aa; --lf-input: #52525b;
+  --lf-fg: #fff; --lf-placeholder: #71717a; --lf-dot: #3f3f46; --lf-conn: #6d6c6c; --lf-sel: #828df8; --lf-hover: #1a202e;
+  --lf-t-Message: #a5b4fc; --lf-t-Text: #a5b4fc; --lf-t-Data: #fca5a5; --lf-t-DataFrame: #f9a8d4; --lf-t-LanguageModel: #f0abfc;
+  --lf-t-Tool: #67e8f9; --lf-t-Embeddings: #6ee7b7; --lf-t-Memory: #fdba74; --lf-t-other: #d1d5db;
+  --bg: #18181b; --paper: #18181b; --paper-2: #1f1f23;
+  --surface: #18181b; --surface-2: #27272a; --surface-3: #3f3f46; --card: #18181b; --card2: #27272a;
+  --ink: #fff; --ink-2: #fafafa; --text: #fafafa; --muted: #a1a1aa; --dim: #a1a1aa; --faint: #8b8b94; --off: #71717a;
+  --line: #3f3f46; --line2: #3f3f46; --line-strong: #52525b; --hairline: #27272a; --control-fill: #27272a;
+  --accent: #828df8; --accent2: #a585ff; --accent-ink: #a5b4fc; --accent-soft: rgba(130,141,248,.14); --accent-ring: rgba(130,141,248,.45);
+  --primary: #fff; --primary-hover: #e4e4e7; --on-primary: #000;
+  --good: #4ade80; --warn: #eab308; --bad: #ef4444; --mid: #2563eb;
+  --glass: rgba(24,24,27,.85); --shadow: none; --glow: transparent;
+  --focus-ring: 0 0 0 2px #18181b, 0 0 0 4px #fff;
+  color-scheme: dark;
+}
+/* ------------------------------------------------ tokens (light: Langflow's :root) */
+html[data-skin='langflow'][data-theme='light'] {
+  --lf-bg: #fff; --lf-canvas: #f4f4f5; --lf-border: #e4e4e7; --lf-muted: #f4f4f5; --lf-muted-fg: #71717a; --lf-input: #e4e4e7;
+  --lf-fg: #000; --lf-placeholder: #a1a1aa; --lf-dot: #a1a1aa; --lf-conn: #555; --lf-sel: #4f46e5; --lf-hover: #f2f4f5;
+  --lf-t-Message: #4f46e5; --lf-t-Text: #4f46e5; --lf-t-Data: #dc2626; --lf-t-DataFrame: #db2777; --lf-t-LanguageModel: #c026d3;
+  --lf-t-Tool: #0891b2; --lf-t-Embeddings: #059669; --lf-t-Memory: #ea580c; --lf-t-other: #4b5563;
+  --bg: #fff; --paper: #fff; --paper-2: #fafafa;
+  --surface: #fff; --surface-2: #f4f4f5; --surface-3: #e4e4e7; --card: #fff; --card2: #f4f4f5;
+  --ink: #000; --ink-2: #18181b; --text: #18181b; --muted: #71717a; --dim: #71717a; --faint: #71717a; --off: #a1a1aa;
+  --line: #e4e4e7; --line2: #e4e4e7; --line-strong: #d4d4d8; --hairline: #f4f4f5; --control-fill: #f4f4f5;
+  --accent: #4f46e5; --accent2: #7528fc; --accent-ink: #4338ca; --accent-soft: rgba(79,70,229,.1); --accent-ring: rgba(79,70,229,.4);
+  --primary: #000; --primary-hover: #27272a; --on-primary: #fff;
+  --good: #16a34a; --warn: #ca8a04; --bad: #dc2626; --mid: #2563eb;
+  --glass: rgba(255,255,255,.88); --shadow: none; --glow: transparent;
+  --focus-ring: 0 0 0 2px #fff, 0 0 0 4px #000;
+  color-scheme: light;
+}
+html[data-skin='langflow'] {
+  --font: 'LF Inter', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Hebrew', 'Arial Hebrew', Arial, sans-serif;
+  --mono: 'LF Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --r-xs: .25rem; --r-sm: .375rem; --r-md: .5rem; --r-lg: .75rem; --r-xl: .75rem; --r-pill: 9999px;
+  --t-fast: 150ms; --t-base: 200ms; --t-slow: 400ms; --ease-out: cubic-bezier(.4, 0, .2, 1); --ease-io: cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ------------------------------------------------ shell chrome in Langflow's clothes */
+html[data-skin='langflow'] body { font: 400 14px/1.5 var(--font); color: var(--text); background: var(--bg); }
+html[data-skin='langflow'] .mono, html[data-skin='langflow'] code, html[data-skin='langflow'] kbd { font-family: var(--mono); }
+html[data-skin='langflow'] .side { background: var(--lf-bg); border-inline-end-color: var(--lf-border); }
+html[data-skin='langflow'] .top { background: var(--lf-bg); border-bottom: 1px solid var(--lf-border); height: 48px; }
+html[data-skin='langflow'] .nav-a.on { background: var(--lf-muted); }
+html[data-skin='langflow'] .nav-a.on::before { background: var(--lf-fg); }
+html[data-skin='langflow'] .phead h1 { font-size: clamp(22px, 2.2vw, 26px); font-weight: 600; letter-spacing: -.02em; color: var(--ink); }
+html[data-skin='langflow'] .psub { color: var(--muted); font-size: 14px; }
+html[data-skin='langflow'] .card { background: var(--lf-bg); border-color: var(--lf-border); border-radius: .75rem; box-shadow: none; }
+html[data-skin='langflow'] .btn { border-radius: .375rem; font-weight: 500; border-color: var(--lf-border); }
+html[data-skin='langflow'] .btn-primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+html[data-skin='langflow'] .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+html[data-skin='langflow'] :focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: .375rem; }
+html[data-skin='langflow'] .modal-card { border-radius: .75rem; border-color: var(--lf-border); background: var(--lf-bg); }
+html[data-skin='langflow'] .toast { border-radius: .5rem; border-color: var(--lf-border); background: var(--lf-bg); }
+
+/* ------------------------------------------------ conclusions */
+html[data-skin='langflow'] .lf-concl { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+html[data-skin='langflow'] .lf-cc { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--lf-border); border-radius: .75rem; background: var(--lf-bg); min-width: 0; }
+html[data-skin='langflow'] .lf-cc h2 { font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.35; margin: 0 0 4px; }
+html[data-skin='langflow'] .lf-cc p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+html[data-skin='langflow'] .lf-cc-i { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: .5rem; background: var(--lf-muted); color: var(--muted); }
+html[data-skin='langflow'] .lf-cc.is-ok .lf-cc-i { color: var(--good); }
+html[data-skin='langflow'] .lf-cc.is-warn .lf-cc-i { color: var(--warn); }
+html[data-skin='langflow'] .lf-cc.is-bad { border-color: color-mix(in srgb, var(--bad) 55%, var(--lf-border)); }
+html[data-skin='langflow'] .lf-cc.is-bad .lf-cc-i { color: var(--bad); }
+html[data-skin='langflow'] .lf-cc.is-info .lf-cc-i { color: var(--lf-sel); }
+
+/* ------------------------------------------------ the Langflow window: top bar, project list, canvas */
+html[data-skin='langflow'] .lf-app { border: 1px solid var(--lf-border); border-radius: .75rem; background: var(--lf-bg); overflow: hidden; min-width: 0; }
+html[data-skin='langflow'] .lf-bar { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 14px; border-bottom: 1px solid var(--lf-border); flex-wrap: wrap; }
+html[data-skin='langflow'] .lf-mark { display: grid; place-items: center; width: 24px; height: 24px; border-radius: .375rem; background: var(--lf-fg); color: var(--lf-bg); }
+html[data-skin='langflow'] .lf-crumb { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; color: var(--lf-muted-fg); }
+html[data-skin='langflow'] .lf-crumb b { color: var(--lf-fg); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-skin='langflow'] .lf-pill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--lf-border); border-radius: .5rem; font-size: 12.5px; font-weight: 500; color: var(--lf-fg); margin-inline-start: auto; }
+html[data-skin='langflow'] .lf-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--lf-muted-fg); }
+html[data-skin='langflow'] .lf-pill.is-ok i { background: #4ade80; box-shadow: 0 0 0 0 rgba(74,222,128,.6); animation: lf-pulse 2.4s var(--ease-out) infinite; }
+html[data-skin='langflow'] .lf-pill.is-bad i { background: #ef4444; }
+html[data-skin='langflow'] .lf-q { font-size: 12.5px; color: var(--lf-muted-fg); }
+@keyframes lf-pulse { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.55); } 70%, 100% { box-shadow: 0 0 0 6px rgba(74,222,128,0); } }
+
+html[data-skin='langflow'] .lf-split { display: grid; grid-template-columns: 290px minmax(0, 1fr); min-height: 460px; }
+html[data-skin='langflow'] .lf-side { border-inline-end: 1px solid var(--lf-border); padding: 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+html[data-skin='langflow'] .lf-sh { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 600; color: var(--lf-fg); padding: 4px 8px 6px; margin: 0; }
+html[data-skin='langflow'] .lf-n { font-size: 12px; color: var(--lf-muted-fg); font-weight: 500; }
+html[data-skin='langflow'] .lf-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+html[data-skin='langflow'] .lf-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 8px; border: 0; border-radius: .5rem; background: none; color: inherit; text-align: start; cursor: pointer; font: inherit;
+  transition: background var(--t-fast) var(--ease-out); }
+html[data-skin='langflow'] .lf-row:hover { background: var(--lf-muted); }
+html[data-skin='langflow'] .lf-row.on { background: var(--lf-muted); box-shadow: inset 0 0 0 1px var(--lf-border); }
+html[data-skin='langflow'] .lf-tile { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: .5rem; background: var(--sw); color: color-mix(in srgb, var(--sw) 30%, #fff); }
+html[data-skin='langflow'] .lf-tile.sm { width: 22px; height: 22px; border-radius: .375rem; }
+html[data-skin='langflow'] .lf-rn { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+html[data-skin='langflow'] .lf-rn b { font-size: 13.5px; font-weight: 600; color: var(--lf-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: end; }
+html[data-skin='langflow'] .lf-rn small { font-size: 12px; color: var(--lf-muted-fg); }
+html[data-skin='langflow'] .lf-extra { font-size: 12.5px; color: var(--lf-muted-fg); padding: 8px; margin: 0; }
+
+html[data-skin='langflow'] .lf-chip { flex: none; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px solid var(--lf-border); border-radius: .375rem; font-size: 12px; font-weight: 500; color: var(--lf-muted-fg); white-space: nowrap; }
+html[data-skin='langflow'] .lf-chip.is-ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, var(--lf-border)); background: color-mix(in srgb, var(--good) 8%, transparent); }
+html[data-skin='langflow'] .lf-chip.is-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, var(--lf-border)); background: color-mix(in srgb, var(--warn) 8%, transparent); }
+html[data-skin='langflow'] .lf-chip.is-bad { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--lf-border)); }
+
+/* canvas: the React Flow pane (dot grid on --canvas), node cards, grey bezier edges, typed round handles */
+html[data-skin='langflow'] .lf-main { min-width: 0; background: radial-gradient(circle, var(--lf-dot) 1.1px, transparent 1.3px) 0 0 / 20px 20px, var(--lf-canvas); display: flex; }
+html[data-skin='langflow'] .lf-canvas { position: relative; margin: 0; flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 18px 18px 64px; }
+html[data-skin='langflow'] .lf-svg { display: block; width: 100%; height: auto; margin: 0 auto; overflow: visible; }
+html[data-skin='langflow'] .lf-fo { overflow: visible; }
+html[data-skin='langflow'] .lf-e { fill: none; stroke: var(--lf-conn); stroke-width: 2; stroke-dasharray: 1; stroke-dashoffset: 0; }
+html[data-skin='langflow'] .lf-hc { stroke: var(--lf-canvas); stroke-width: 3; }
+html[data-skin='langflow'] .lf-canvas .t-Message { --t: var(--lf-t-Message); } html[data-skin='langflow'] .lf-canvas .t-Text { --t: var(--lf-t-Text); }
+html[data-skin='langflow'] .lf-canvas .t-Data { --t: var(--lf-t-Data); } html[data-skin='langflow'] .lf-canvas .t-DataFrame { --t: var(--lf-t-DataFrame); }
+html[data-skin='langflow'] .lf-canvas .t-LanguageModel { --t: var(--lf-t-LanguageModel); } html[data-skin='langflow'] .lf-canvas .t-Tool { --t: var(--lf-t-Tool); }
+html[data-skin='langflow'] .lf-canvas .t-Embeddings { --t: var(--lf-t-Embeddings); } html[data-skin='langflow'] .lf-canvas .t-Memory { --t: var(--lf-t-Memory); }
+html[data-skin='langflow'] .lf-canvas .t-other { --t: var(--lf-t-other); }
+html[data-skin='langflow'] .lf-hc { fill: var(--t); }
+
+html[data-skin='langflow'] .lf-node { box-sizing: border-box; width: 256px; height: 100%; display: flex; flex-direction: column; background: var(--lf-bg); color: var(--lf-fg);
+  border: 1px solid var(--lf-border); border-radius: .75rem; font: 400 13px/1.4 var(--font); text-align: left;
+  transition: border-color var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out); }
+html[data-skin='langflow'] .lf-node:hover { border-color: var(--lf-sel); box-shadow: 0 0 0 1px var(--lf-sel); }
+html[data-skin='langflow'] .lf-nh { flex: none; height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 14px; }
+html[data-skin='langflow'] .lf-nh b { font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+html[data-skin='langflow'] .lf-ni { display: grid; place-items: center; color: var(--lf-fg); }
+html[data-skin='langflow'] .lf-nb { font: 600 10.5px/1 var(--mono); padding: 3px 5px; border-radius: .25rem; color: var(--lf-t-LanguageModel); border: 1px solid color-mix(in srgb, var(--lf-t-LanguageModel) 45%, transparent); }
+html[data-skin='langflow'] .lf-nd { flex: none; height: 46px; margin: 0; padding: 0 14px 8px; font-size: 12.5px; line-height: 19px; color: var(--lf-muted-fg); border-bottom: 1px solid var(--lf-border);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; box-sizing: border-box; }
+html[data-skin='langflow'] .lf-f { flex: none; height: 56px; box-sizing: border-box; padding: 8px 14px 0; display: flex; flex-direction: column; gap: 5px; }
+html[data-skin='langflow'] .lf-fl { font-size: 12.5px; font-weight: 500; line-height: 18px; }
+html[data-skin='langflow'] .lf-fi { display: block; height: 26px; line-height: 24px; box-sizing: border-box; padding: 0 8px; border: 1px solid var(--lf-input); border-radius: .375rem; font-size: 11.5px; color: var(--lf-placeholder);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-skin='langflow'] .lf-fx { font-size: 11.5px; color: var(--lf-placeholder); line-height: 24px; }
+html[data-skin='langflow'] .lf-no { margin-top: auto; background: var(--lf-muted); border-top: 1px solid var(--lf-border); border-radius: 0 0 calc(.75rem - 1px) calc(.75rem - 1px); }
+html[data-skin='langflow'] .lf-o { height: 38px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 14px; font-size: 13px; font-weight: 500; }
+html[data-skin='langflow'] .lf-h { display: none; width: 11px; height: 11px; border-radius: 50%; background: var(--t); }
+html[data-skin='langflow'] .lf-stack { display: none; }
+html[data-skin='langflow'] .lf-ctl { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; max-width: calc(100% - 24px);
+  padding: 6px 12px; border: 1px solid var(--lf-border); border-radius: .5rem; background: var(--lf-bg); font-size: 12px; color: var(--lf-muted-fg); white-space: nowrap; }
+html[data-skin='langflow'] .lf-ctl span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+html[data-skin='langflow'] .lf-empty { padding: 28px 16px; color: var(--lf-muted-fg); font-size: 13.5px; text-align: center; margin: 0; }
+
+/* ------------------------------------------------ run box, flow details, run log */
+html[data-skin='langflow'] .lf-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
+html[data-skin='langflow'] .lf-ph, html[data-skin='langflow'] .lf-rh { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+html[data-skin='langflow'] .lf-ph h2, html[data-skin='langflow'] .lf-rh h2, html[data-skin='langflow'] .lf-info h2 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--ink); margin: 0; }
+html[data-skin='langflow'] .lf-ph .lf-chip { margin-inline-start: auto; }
+html[data-skin='langflow'] .lf-pl { display: block; font-size: 12.5px; font-weight: 500; color: var(--lf-muted-fg); margin: 0 0 6px; }
+html[data-skin='langflow'] .lf-ta { display: block; width: 100%; box-sizing: border-box; min-height: 120px; resize: vertical; padding: 10px 12px; border: 1px solid var(--lf-input); border-radius: .5rem;
+  background: transparent; color: var(--lf-fg); font-size: 12.5px; line-height: 1.55; }
+html[data-skin='langflow'] .lf-ta:focus { outline: none; border-color: var(--lf-fg); }
+html[data-skin='langflow'] .lf-ta:disabled { opacity: .6; }
+html[data-skin='langflow'] .lf-pa { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+html[data-skin='langflow'] .lf-pa small { font-size: 12.5px; color: var(--lf-muted-fg); flex: 1; min-width: 180px; }
+html[data-skin='langflow'] .lf-out { margin-top: 14px; }
+html[data-skin='langflow'] .lf-out pre { margin: 0; padding: 12px; max-height: 260px; overflow: auto; border-radius: .5rem; background: var(--lf-muted); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+html[data-skin='langflow'] .lf-desc { font-size: 13px; color: var(--lf-muted-fg); margin: 4px 0 12px; text-align: start; }
+html[data-skin='langflow'] .lf-kv { margin: 0 0 16px; }
+html[data-skin='langflow'] .lf-kv div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--lf-border); }
+html[data-skin='langflow'] .lf-kv dt { font-size: 12.5px; color: var(--lf-muted-fg); }
+html[data-skin='langflow'] .lf-kv dd { margin: 0; font-size: 13.5px; overflow-wrap: anywhere; }
+html[data-skin='langflow'] .lf-info h3 { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; margin: 0 0 8px; }
+html[data-skin='langflow'] .lf-vers { list-style: none; margin: 0 0 12px; padding: 0; }
+html[data-skin='langflow'] .lf-vers li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 7px 0; font-size: 13px; border-bottom: 1px solid var(--lf-border); }
+html[data-skin='langflow'] .lf-vers li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: end; }
+html[data-skin='langflow'] .lf-vers small { font-size: 12px; color: var(--lf-muted-fg); white-space: nowrap; }
+html[data-skin='langflow'] .lf-sha { font-size: 11.5px; padding: 1px 6px; border-radius: .25rem; background: var(--lf-muted); color: var(--lf-fg); }
+html[data-skin='langflow'] .lf-noui { font-size: 12.5px; }
+
+html[data-skin='langflow'] .lf-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: .5rem; background: var(--lf-muted); }
+html[data-skin='langflow'] .lf-tab { border: 0; background: none; color: var(--lf-muted-fg); font: 500 13px/1 var(--font); padding: 6px 12px; border-radius: .375rem; cursor: pointer; }
+html[data-skin='langflow'] .lf-tab.on { background: var(--lf-bg); color: var(--lf-fg); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+html[data-skin='langflow'] .lf-rt { margin-inline-start: auto; font-size: 12.5px; color: var(--lf-muted-fg); }
+html[data-skin='langflow'] .lf-tw { overflow-x: auto; margin: 0 -20px -20px; }
+html[data-skin='langflow'] .lf-t { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+html[data-skin='langflow'] .lf-t th { text-align: start; font-size: 12.5px; font-weight: 500; color: var(--lf-muted-fg); padding: 8px 20px; border-top: 1px solid var(--lf-border); background: var(--lf-muted); white-space: nowrap; }
+html[data-skin='langflow'] .lf-t td { padding: 10px 20px; border-top: 1px solid var(--lf-border); white-space: nowrap; }
+html[data-skin='langflow'] .lf-t tbody tr { transition: background var(--t-fast) var(--ease-out); }
+html[data-skin='langflow'] .lf-t tbody tr:hover { background: var(--lf-hover); }
+html[data-skin='langflow'] .lf-tn { text-align: end; }
+html[data-skin='langflow'] .lf-st { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; }
+html[data-skin='langflow'] .lf-st i { width: 8px; height: 8px; border-radius: 50%; }
+html[data-skin='langflow'] .lf-st.is-ok i { background: #4ade80; } html[data-skin='langflow'] .lf-st.is-bad i { background: #ef4444; }
+html[data-skin='langflow'] .lf-st.is-bad { color: var(--bad); }
+
+/* ------------------------------------------------ motion: nodes rise in, edges draw left to right */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-skin='langflow'] .page.enter .lf-fo .lf-node, html[data-skin='langflow'] .page.enter .lf-stack .lf-node { animation: lf-rise 420ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms); }
+  html[data-skin='langflow'] .lf-canvas .lf-e { stroke-dashoffset: 1; animation: lf-draw 700ms var(--ease-out) forwards; animation-delay: calc(180ms + var(--i, 0) * 120ms); }
+}
+@keyframes lf-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes lf-draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin='langflow'] .lf-pill.is-ok i { animation: none; }
+  html[data-skin='langflow'] .lf-e { stroke-dashoffset: 0; animation: none; }
+}
+
+/* ------------------------------------------------ narrow: stacked canvas, one column */
+@media (max-width: 1100px) {
+  html[data-skin='langflow'] .lf-grid { grid-template-columns: minmax(0, 1fr); }
+  html[data-skin='langflow'] .lf-split { grid-template-columns: 240px minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  html[data-skin='langflow'] .lf-split { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  html[data-skin='langflow'] .lf-side { border-inline-end: 0; border-bottom: 1px solid var(--lf-border); }
+  html[data-skin='langflow'] .lf-svg { display: none; }
+  html[data-skin='langflow'] .lf-canvas { padding: 16px 14px; }
+  html[data-skin='langflow'] .lf-ctl { position: static; transform: none; max-width: none; margin-top: 18px; flex-wrap: wrap; justify-content: center; white-space: normal; }
+  html[data-skin='langflow'] .lf-stack { display: flex; flex-direction: column; gap: 26px; list-style: none; margin: 0; padding: 0; }
+  html[data-skin='langflow'] .lf-stack li { position: relative; }
+  html[data-skin='langflow'] .lf-stack li + li::before { content: ''; position: absolute; left: 50%; top: -26px; width: 2px; height: 26px; background: var(--lf-conn); }
+  html[data-skin='langflow'] .lf-stack .lf-node { width: 100%; height: auto; }
+  html[data-skin='langflow'] .lf-stack .lf-h { display: inline-block; }
+  html[data-skin='langflow'] .lf-kv div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  html[data-skin='langflow'] .lf-pill { margin-inline-start: 0; }
+  html[data-skin='langflow'] .lf-vers li { grid-template-columns: auto minmax(0, 1fr); }
+  html[data-skin='langflow'] .lf-vers small { grid-column: 2; }
+}
