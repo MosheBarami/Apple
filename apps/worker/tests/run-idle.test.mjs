@@ -171,3 +171,24 @@ test('every bound ending that follows a change carries the count', async () => {
     assert.match(src.slice(at, at + 120), /builtSummary\(agent\.trace, READ_ONLY_WITHHELD\)/, `"${lead.trim()}" does not say what was changed`);
   }
 });
+
+test('an Autonomous reply that names owed work or asks leave to continue is recognised; a finished one is not', async () => {
+  const { leavesWorkOpen } = await import('../src/run-idle.ts');
+  // the gauntlet round-2 ending, verbatim in shape
+  assert.ok(leavesWorkOpen("audit_build still reports one real defect I have not fixed yet. Want me to fix the z-fighting next, then run the playtest?"));
+  assert.ok(leavesWorkOpen('The loop has not been playtested yet.'));
+  assert.ok(leavesWorkOpen('Should I add a shop next?'));
+  assert.ok(!leavesWorkOpen('Built six plots, a seed shop and a sell stand. The playtest passed: planting, growing and selling all work.'));
+  assert.ok(!leavesWorkOpen(''));
+});
+
+test('the run loop hands an Autonomous run its owed work back, bounded, instead of ending on a question', async () => {
+  const { AUTONOMOUS_CONTINUES } = await import('../src/run-idle.ts');
+  assert.ok(AUTONOMOUS_CONTINUES >= 1 && AUTONOMOUS_CONTINUES <= 5, 'unbounded or disabled');
+  // prose ending: autonomous + changed + can build + reply leaves work open -> steer, not finishRun
+  assert.match(SESSION, /agent\.autonomous && agent\.mutated && canBuild[\s\S]{0,200}leavesWorkOpen\(res\.text\)\s*\)\s*\{[\s\S]{0,200}AUTONOMOUS_CONTINUE_STEER[\s\S]{0,200}setAlarm[\s\S]{0,30}return;/);
+  // idle bound: autonomous runs are steered before the finish branch can end them
+  assert.match(SESSION, /if \(idle\.action === 'finish' && agent\.autonomous && \(agent\.autonomousContinues \?\? 0\) < AUTONOMOUS_CONTINUES\) \{[\s\S]{0,200}AUTONOMOUS_IDLE_STEER[\s\S]{0,40}\} else if \(idle\.action === 'finish'\)/);
+  // the nudge must not tell an Autonomous run to "reply to the user now"
+  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(\{\s*role: 'user',\s*content: agent\.autonomous \? AUTONOMOUS_IDLE_STEER/);
+});

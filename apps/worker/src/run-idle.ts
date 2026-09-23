@@ -132,3 +132,35 @@ export function builtSummary(trace: readonly { tool: string; ok: boolean }[], mu
     .map(([tool, n]) => `${CHANGE_WORDS[tool] ?? tool.replace(/_/g, ' ')} (${n})`);
   return `It made ${total} change${total === 1 ? '' : 's'} in your place: ${parts.join(', ')}.`;
 }
+
+/**
+ * Autonomous runs that stop to ask. Measured 2026-09-23 (gauntlet round 2, Apple MAX, "make the full
+ * game"): the run placed a landmark, passed check_composition, then wrote "audit_build still reports
+ * one real defect I have not fixed yet … the full loop has not been playtested … Want me to fix the
+ * z-fighting next, then run the playtest?" and the idle bound ended it. Autonomous means the person
+ * already said yes, so a reply that names owed work or asks leave to continue is handed back as work,
+ * at most AUTONOMOUS_CONTINUES times per run; MAX_RUN_STEPS, Credits and Stop still end it.
+ */
+export const AUTONOMOUS_CONTINUES = 3;
+
+const ASKS_LEAVE = /\b(want me to|should i|shall i|would you like( me)? to|do you want( me)? to|let me know if|if you('d| would) like)\b/i;
+const OWES_WORK = /\b((not|never) (yet )?(been )?(fixed|verified|done|built|finished|run|tested|playtested|implemented)|haven'?t (yet )?(fixed|verified|run|tested|playtested|built|finished)|still (owed|needs?|missing|to do)|is still owed|next step would be|remaining work)\b/i;
+
+/** The reply leaves work it names undone, or asks permission to do more. */
+export function leavesWorkOpen(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return ASKS_LEAVE.test(text) || OWES_WORK.test(text);
+}
+
+export const AUTONOMOUS_CONTINUE_STEER =
+  'Autonomous is ON: the user already approved finishing this request, so do not ask them anything. ' +
+  'Your last reply names work that is still missing, broken or unverified. Do that work now with tool ' +
+  'calls — fix the defects your checks reported, then playtest the game loop the request asked for. ' +
+  'Reply to the user only when nothing the request needs is left, and end that reply with a statement, not a question.';
+
+/** For an Autonomous run the idle bound would end: finishing is the model's call, reading is not. */
+export const AUTONOMOUS_IDLE_STEER =
+  'Autonomous is ON, and you have only been reading since your last check passed. If anything the request ' +
+  'needs is still missing, broken or unverified (defects your checks reported, a game loop nobody has ' +
+  'playtested), make that change now. If nothing is left, reply to the user with the final summary and no ' +
+  'tool calls, ending with a statement, not a question.';

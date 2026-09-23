@@ -81,7 +81,7 @@ import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool }
 import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, type RetuneAction } from '../run-idle';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
@@ -254,6 +254,8 @@ interface AgentState {
   idleAfterVerify?: number;
   /** Consecutive read-only steps since the last change or check, in a run that can build (run-idle.ts). */
   readsSinceChange?: number;
+  /** Times an Autonomous run that was about to stop was handed its owed work back (run-idle). */
+  autonomousContinues?: number;
   /** Successful changes per target (tool + what it was aimed at) this run — run-idle.ts afterChange. */
   changesByTarget?: Record<string, number>;
   /** Set when build_scene has built a kit this run; its pieces and terrain are kept (scene-kits.ts). */
@@ -4113,6 +4115,17 @@ export class SessionDO extends DurableObject<Env> {
         agent.streamedText = prior ? `${prior}\n\n${note}` : note;
         this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
       }
+      // Autonomous: the person already said yes, so "want me to…?" or "not fixed yet" is work, not an ending.
+      if (
+        agent.autonomous && agent.mutated && canBuild && !owesWork &&
+        (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES && leavesWorkOpen(res.text)
+      ) {
+        agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
+        agent.llm.push({ role: 'user', content: AUTONOMOUS_CONTINUE_STEER });
+        await this.persistAgent(agent);
+        await this.ctx.storage.setAlarm(Date.now() + 10);
+        return;
+      }
       await this.finishRun(agent, owesWork ? 'incomplete' : 'done');
       return;
     }
@@ -4440,7 +4453,11 @@ export class SessionDO extends DurableObject<Env> {
           'already know. If a detail is missing, choose a sensible default instead of reading again.',
       });
     }
-    if (idle.action === 'finish') {
+    if (idle.action === 'finish' && agent.autonomous && (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES) {
+      agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
+      agent.idleAfterVerify = 0;
+      agent.llm.push({ role: 'user', content: AUTONOMOUS_IDLE_STEER });
+    } else if (idle.action === 'finish') {
       const note = 'Apple stopped here: the change was made and checked, and further steps were only re-reading the place.';
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
@@ -4460,7 +4477,7 @@ export class SessionDO extends DurableObject<Env> {
     if (idle.action === 'nudge') {
       agent.llm.push({
         role: 'user',
-        content:
+        content: agent.autonomous ? AUTONOMOUS_IDLE_STEER :
           'The change is made and your check has run. Stop reading and reply to the user now: what you changed, ' +
           'what the check showed, and anything that is still wrong or unverified. Only call another tool if you are ' +
           'about to change something.',
