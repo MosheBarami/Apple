@@ -83,7 +83,7 @@ import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool }
 import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, builtSummary, type RetuneAction } from '../run-idle';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested } from '../stop-signal';
 import { singleFlight } from '../single-flight';
@@ -470,6 +470,8 @@ const MAX_DUPLICATE_STREAK = 3;
 const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
 /** What a run that was told not to change anything is never offered. */
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
+/** A sentence followed by one space, or nothing — so an empty summary leaves no double space. */
+const spaced = (t: string): string => (t ? `${t} ` : '');
 /** Consecutive steps a tool-call-written-as-text steer may be given before the ordinary ending decides. */
 const MAX_TEXT_CALL_STEERS = 2;
 const MODE_BASE_TOKENS: Record<ProductMode, number> = { plan: 4400, agent: 4400 };
@@ -4344,7 +4346,7 @@ export class SessionDO extends DurableObject<Env> {
     agent.duplicateStreak = executedThisStep === 0 && duplicatesThisStep > 0 ? (agent.duplicateStreak ?? 0) + 1 : 0;
     if (agent.duplicateStreak >= MAX_DUPLICATE_STREAK) {
       const note = agent.mutated
-        ? 'Apple stopped because it kept repeating a step it had already done. Everything it built is in your place.'
+        ? `Apple stopped because it kept repeating a step it had already done. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Everything it built is in your place.`
         : 'Apple stopped because it kept repeating a step it had already done, and nothing in your place was changed.';
       agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
@@ -4370,7 +4372,7 @@ export class SessionDO extends DurableObject<Env> {
     // build at the nudge; at the limit the run ends and says plainly what it did and did not do.
     if (idle.action === 'stall') {
       const note = agent.mutated
-        ? 'Apple stopped because it kept re-reading your place instead of building the rest. What it built so far is in your place; ask again to continue.'
+        ? `Apple stopped because it kept re-reading your place instead of building the rest. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Ask again to continue.`
         : 'Apple stopped because it kept re-reading your place instead of building, and nothing in your place was changed. Ask again to continue.';
       agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
@@ -4382,7 +4384,7 @@ export class SessionDO extends DurableObject<Env> {
     }
     // Changing the same thing over and over — F-036: 101 steps re-tuning one Lighting value.
     if (retuneThisStep === 'finish') {
-      const note = 'Apple stopped here: it had changed the same thing many times in a row. What it built is in your place; say what should be different and it will pick up from there.';
+      const note = `Apple stopped here: it had changed the same thing many times in a row. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what should be different and it will pick up from there.`;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;

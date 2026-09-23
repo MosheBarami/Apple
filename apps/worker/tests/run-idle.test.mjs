@@ -147,3 +147,27 @@ test('the run loop counts each successful change by its target and acts on the a
   assert.match(SESSION, /if \(retuneThisStep === 'finish'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'done'\);/);
   assert.match(SESSION, /if \(retuneThisStep === 'nudge'\) \{\s*agent\.llm\.push\(/);
 });
+
+// 2026-09-23: bound endings said "What it built is in your place" and nothing about what that was.
+test('a stopped run says what it changed, counted from its own trace', async () => {
+  const { builtSummary } = await import('../src/run-idle.ts');
+  const mutating = new Set(['edit_terrain', 'create_instances', 'transform_instances']);
+  const trace = [
+    { tool: 'get_project_tree', ok: true },
+    { tool: 'edit_terrain', ok: true }, { tool: 'edit_terrain', ok: true }, { tool: 'edit_terrain', ok: false },
+    { tool: 'create_instances', ok: true },
+    { tool: 'transform_instances', ok: true }, { tool: 'transform_instances', ok: true }, { tool: 'transform_instances', ok: true },
+  ];
+  assert.equal(builtSummary(trace, mutating), 'It made 6 changes in your place: moves and resizes (3), terrain (2), new objects (1).');
+  assert.equal(builtSummary([{ tool: 'get_project_tree', ok: true }], mutating), '', 'a run that changed nothing claims nothing');
+});
+
+test('every bound ending that follows a change carries the count', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
+  for (const lead of ['kept repeating a step it had already done. ', 'instead of building the rest. ', 'many times in a row. ']) {
+    const at = src.indexOf(lead);
+    assert.ok(at > 0, `ending "${lead.trim()}" not found — this checks nothing`);
+    assert.match(src.slice(at, at + 120), /builtSummary\(agent\.trace, READ_ONLY_WITHHELD\)/, `"${lead.trim()}" does not say what was changed`);
+  }
+});

@@ -245,6 +245,27 @@ export function aim(args: string | undefined): string {
   for (const k of ['path', 'target', 'root', 'parent', 'name', 'query', 'title']) {
     if (typeof o[k] === 'string' && o[k]) return plain(String(o[k]));
   }
+  // TARGETS PASSED AS LISTS. transform_instances / delete_instances / set_visible take `paths`,
+  // move_instances takes `moves[].path`, a batched edit_terrain takes `operations`. None was read, so
+  // every such call aimed at '' — and run-idle's afterChange counts changes per aim, so twelve moves of
+  // twelve different trees read as "the same thing changed twelve times" and ended the run. Measured
+  // 2026-09-23 on the sky-island runs of 04:20 and 05:08, both ended by that bound mid-build.
+  const list = (xs: unknown[], label: string, pick: (x: unknown) => string | undefined) => {
+    const names = xs.map(pick).filter((n): n is string => typeof n === 'string' && n.length > 0).map(plain);
+    return `${xs.length} ${label}${names.length ? `: ${names.slice(0, 8).join(', ')}` : ''}`;
+  };
+  if (Array.isArray(o.paths)) return list(o.paths, 'path(s)', (x) => (typeof x === 'string' ? x : undefined));
+  if (Array.isArray(o.moves)) {
+    return list(o.moves, 'move(s)', (x) => (x && typeof x === 'object' ? (x as Record<string, unknown>).path as string : undefined));
+  }
+  if (Array.isArray(o.operations)) {
+    return list(o.operations, 'operation(s)', (x) => {
+      if (!x || typeof x !== 'object') return undefined;
+      const r = x as Record<string, unknown>;
+      const at = r.center ?? r.min ?? r.origin;
+      return typeof r.action === 'string' ? `${r.action}${Array.isArray(at) ? ` @${at.join(',')}` : ''}` : undefined;
+    });
+  }
   return '';
 }
 

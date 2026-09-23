@@ -10,7 +10,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  trimTranscriptReport, orphanedToolMessages, unansweredToolCalls, LEDGER_MAX_CHARS, KEEP_RECENT_GROUPS,
+  trimTranscriptReport, orphanedToolMessages, unansweredToolCalls, LEDGER_MAX_CHARS, KEEP_RECENT_GROUPS, aim,
 } from '../src/transcript.ts';
 
 const sys = { role: 'system', content: 's'.repeat(15_000) };
@@ -115,4 +115,18 @@ test('no tool output reaches the record — only done/failed — and targets kee
   assert.match(ledger.content, /read_script \(game\.ServerScriptService\.CoinServicescript\) → done/);
   assert.match(ledger.content, /get_instance \(game\.Workspace\.CoinRing\) → failed/);
   assert.doesNotMatch(ledger.content, /[<>"]/, 'no markup or quotes can travel in a target');
+});
+
+
+// 2026-09-23: twelve transform_instances calls on twelve different objects shared the aim '', so the
+// retune bound (per-aim change count) ended two sky-island builds mid-way.
+test('calls that name their targets in a list aim at those targets', () => {
+  const tree = aim(JSON.stringify({ paths: ['game.Workspace.HeroTree'], scale: 0.3 }));
+  const crystal = aim(JSON.stringify({ paths: ['game.Workspace.CrystalCluster'], move: [0, 2, 0] }));
+  assert.notEqual(tree, crystal, 'moving two different objects must not count as changing one thing');
+  assert.equal(tree, aim(JSON.stringify({ paths: ['game.Workspace.HeroTree'], move: [1, 0, 0] })), 'the same object is still the same aim');
+  assert.match(aim(JSON.stringify({ moves: [{ path: 'game.Workspace.A', newParent: 'game.Workspace.B' }] })), /game\.Workspace\.A/);
+  const hill = aim(JSON.stringify({ operations: [{ action: 'fill_ball', center: [0, 100, 0], radius: 30 }] }));
+  const pond = aim(JSON.stringify({ operations: [{ action: 'fill_ball', center: [40, 90, 0], radius: 8 }] }));
+  assert.notEqual(hill, pond, 'two terrain features in two places are two aims');
 });

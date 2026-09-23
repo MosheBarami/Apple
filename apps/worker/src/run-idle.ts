@@ -99,3 +99,36 @@ export function afterChange(counts: Record<string, number> | undefined, key: str
   return { counts: next, action };
 }
 
+
+/** Plain words for what a change was, for a young reader. Anything unlisted reads as its tool name. */
+const CHANGE_WORDS: Record<string, string> = {
+  edit_terrain: 'terrain',
+  create_instances: 'new objects',
+  generate_model: 'generated models',
+  transform_instances: 'moves and resizes',
+  set_properties: 'property changes',
+  set_mood: 'lighting',
+  add_effect: 'effects',
+  edit_script: 'script edits',
+  delete_instances: 'deletions',
+  clone_instances: 'copies',
+  insert_asset: 'inserted assets',
+  install_module: 'modules',
+};
+
+/**
+ * What a run that a bound stopped actually changed, counted from its own trace. Measured 2026-09-23:
+ * three sky-island runs ended "Apple stopped here … What it built is in your place" with no word of
+ * what that was, and an earlier reply (F-033) guessed "about a dozen" edits for 149. A count from the
+ * trace cannot be that wrong. Empty when nothing changed.
+ */
+export function builtSummary(trace: readonly { tool: string; ok: boolean }[], mutating: ReadonlySet<string>): string {
+  const counts = new Map<string, number>();
+  for (const t of trace) if (t.ok && mutating.has(t.tool)) counts.set(t.tool, (counts.get(t.tool) ?? 0) + 1);
+  const total = [...counts.values()].reduce((a, b) => a + b, 0);
+  if (total === 0) return '';
+  const parts = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([tool, n]) => `${CHANGE_WORDS[tool] ?? tool.replace(/_/g, ' ')} (${n})`);
+  return `It made ${total} change${total === 1 ? '' : 's'} in your place: ${parts.join(', ')}.`;
+}
