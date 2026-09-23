@@ -710,3 +710,39 @@ STRUCTURALLY-BLOCKED reasoning given there no longer holds for the MLX dataset.
 **Caller being added:** none is needed. The WIRE here records that the wire exists. The finding
 clears if `loadExtraCurricula` takes static imports, which is an edit to `packages/training`, the
 knowledge lane's package.
+
+## packages/asset-library/build-ui-components.mjs — WIRE, 2026-09-24
+
+**Found:** reported as imported only by `packages/asset-library/ui-components.test.mjs`.
+
+**It is a build step, and its product is reached.** Run by hand (`node packages/asset-library/build-ui-components.mjs`),
+it writes `ui-components.json`, which the worker's `insert_ui_component` tool reads (D-UIONLY-1). The
+import graph sees the builder and not the JSON edge, so the reachable thing is the file it writes.
+
+**Caller being added:** none is needed. The WIRE here records that the wire exists: the operator runs it
+when the UI library changes, and its test pins that the output matches the committed JSON.
+
+## packages/asset-library/models/build.mjs — WIRE, 2026-09-24
+
+**Found:** imported by nothing. **It is the model library's manifest builder** (D-MODELLIB-1): run by hand,
+it writes `models/manifest.json`, which `find_library_model` and `insert_library_model` read.
+**Caller being added:** none is needed; the operator is the caller and the manifest is the wire.
+
+## packages/asset-library/models/fetch.mjs — WIRE, 2026-09-24
+
+**Found:** imported by nothing. **It is the model library's download step** (D-MODELLIB-1): run by hand, it
+fills the gitignored store with licence-cleared packs that `build.mjs` then indexes.
+**Caller being added:** none is needed; it is an operator CLI, first link of fetch → build → upload.
+
+## packages/asset-library/models/harvest-creator-store.mjs — WIRE, 2026-09-24
+
+**Found:** imported by nothing. **It is the model library's Creator Store harvester** (D-MODELLIB-1): run by
+hand, it writes the free-model rows `build.mjs` folds into the manifest.
+**Caller being added:** none is needed; it is an operator CLI feeding the same manifest.
+
+## packages/asset-library/models/upload.mjs — WIRE, 2026-09-24
+
+**Found:** imported by nothing. **It is the model library's publish step** (D-MODELLIB-1): run by hand, it
+puts the insertable files into the worker's static store at `/model-library/<path>`, where
+`insert_library_model` reads them. Same shape as `../upload.mjs`.
+**Caller being added:** none is needed; the operator is the caller and the static store is the wire.
