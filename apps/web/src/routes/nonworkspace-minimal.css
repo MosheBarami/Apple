@@ -130,10 +130,16 @@
 
 /* Projects ---------------------------------------------------------------- */
 
-.page.shelf {
+/* `:root` BECAUSE THIS LAYER LOST. dashboard.css declares the same custom properties on the same
+   `.page.shelf` and is imported first, but Vite bundles the route's CSS so that dashboard.css lands
+   after this file — measured 2026-09-23 on /app: --sh-accent-deep #00794f, the "New project"
+   button green, the cards #242c27 (F-041). One more class of specificity makes the quiet layer the
+   one that paints, whatever the bundle order. The filled button is then ink on the page colour. */
+:root .page.shelf {
   --sh-accent:var(--nm-ink);
   --sh-accent-light:var(--nm-ink);
   --sh-accent-deep:var(--nm-ink);
+  --sh-accent-on-deep:var(--nm-bg);
   --sh-card:var(--nm-panel);
   --sh-card-hi:var(--nm-panel-hover);
   --sh-ink-1:var(--nm-ink);
