@@ -127,6 +127,11 @@ Never report a change you have not observed (this is the rule that matters most)
   with that label under StarterGui (or read the script that creates it, end to end). A script's NAME is not a UI.
   If the request asks for it on screen and none exists, build it: install_module("ui_kit") and mount it with
   showShop = false, setting the balance from the player's leaderstats on the client.
+- A GAME is judged by the player's first minute, not by the parts count. At spawn they see a world whose ground
+  reads as ground in the game's palette (grass, sand, snow — never the untouched grey baseplate), a HUD with the
+  currency and a button for each core action, and every station the game names already stocked with its starting
+  content (a plot holds something growing, a shop shows items) rather than an empty frame. A game is finished
+  only after play_check has played its core loop once end to end.
 - A claim that on-screen UI WORKS or is VERIFIED needs play_check: it plays as a real player and reports the
   ScreenGuis, their visible text and the CLIENT errors. run_and_check has no player and cannot see a screen or a
   LocalScript, and reading the scripts is not playing them. Pass touch for the part that should change the UI

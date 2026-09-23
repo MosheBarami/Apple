@@ -81,7 +81,7 @@ import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool }
 import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, type RetuneAction } from '../run-idle';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
@@ -256,6 +256,10 @@ interface AgentState {
   readsSinceChange?: number;
   /** Times an Autonomous run that was about to stop was handed its owed work back (run-idle). */
   autonomousContinues?: number;
+  /** This run built something the player sees on screen (a ScreenGui, the ui_kit, build_ui). */
+  hudBuilt?: boolean;
+  /** play_check ran as a player in this run. */
+  playChecked?: boolean;
   /** Successful changes per target (tool + what it was aimed at) this run — run-idle.ts afterChange. */
   changesByTarget?: Record<string, number>;
   /** Set when build_scene has built a kit this run; its pieces and terrain are kept (scene-kits.ts). */
@@ -4115,13 +4119,15 @@ export class SessionDO extends DurableObject<Env> {
         agent.streamedText = prior ? `${prior}\n\n${note}` : note;
         this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
       }
-      // Autonomous: the person already said yes, so "want me to…?" or "not fixed yet" is work, not an ending.
+      // Autonomous: the person already said yes, so "want me to…?" or "not fixed yet" is work, not an ending,
+      // and a game with nothing on screen or a loop nobody played is not finished either.
+      const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
       if (
         agent.autonomous && agent.mutated && canBuild && !owesWork &&
-        (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES && leavesWorkOpen(res.text)
+        (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES && (gaps.length > 0 || leavesWorkOpen(res.text))
       ) {
         agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
-        agent.llm.push({ role: 'user', content: AUTONOMOUS_CONTINUE_STEER });
+        agent.llm.push({ role: 'user', content: gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_CONTINUE_STEER });
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
@@ -4287,6 +4293,8 @@ export class SessionDO extends DurableObject<Env> {
         if (!('error' in kit)) agent.kitZone = kitZone(kit.facts);
       }
       if (out.ok && VERIFIERS.has(call.name) && agent.mutated) verifiedThisStep = true;
+      if (out.mutatedProject === true && (call.name === 'build_ui' || /ScreenGui|ui_kit/.test(call.arguments ?? ''))) agent.hudBuilt = true;
+      if (out.ok && call.name === 'play_check') agent.playChecked = true;
       // A read made BEFORE the place changed is not the same read after it. Refusing an identical
       // get_project_tree as "you already have the result above" after a create_instances hands the
       // model a result that is now false — and it asks again (run 1870ecfe). So a change forgets the
@@ -4456,7 +4464,8 @@ export class SessionDO extends DurableObject<Env> {
     if (idle.action === 'finish' && agent.autonomous && (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES) {
       agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
       agent.idleAfterVerify = 0;
-      agent.llm.push({ role: 'user', content: AUTONOMOUS_IDLE_STEER });
+      const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
+      agent.llm.push({ role: 'user', content: gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_IDLE_STEER });
     } else if (idle.action === 'finish') {
       const note = 'Apple stopped here: the change was made and checked, and further steps were only re-reading the place.';
       const prior = agent.streamedText ?? '';

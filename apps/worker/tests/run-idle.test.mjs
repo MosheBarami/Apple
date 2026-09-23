@@ -186,9 +186,35 @@ test('the run loop hands an Autonomous run its owed work back, bounded, instead 
   const { AUTONOMOUS_CONTINUES } = await import('../src/run-idle.ts');
   assert.ok(AUTONOMOUS_CONTINUES >= 1 && AUTONOMOUS_CONTINUES <= 5, 'unbounded or disabled');
   // prose ending: autonomous + changed + can build + reply leaves work open -> steer, not finishRun
-  assert.match(SESSION, /agent\.autonomous && agent\.mutated && canBuild[\s\S]{0,200}leavesWorkOpen\(res\.text\)\s*\)\s*\{[\s\S]{0,200}AUTONOMOUS_CONTINUE_STEER[\s\S]{0,200}setAlarm[\s\S]{0,30}return;/);
+  assert.match(SESSION, /agent\.autonomous && agent\.mutated && canBuild[\s\S]{0,200}leavesWorkOpen\(res\.text\)[\s)]*\{[\s\S]{0,200}AUTONOMOUS_CONTINUE_STEER[\s\S]{0,200}setAlarm[\s\S]{0,30}return;/);
   // idle bound: autonomous runs are steered before the finish branch can end them
-  assert.match(SESSION, /if \(idle\.action === 'finish' && agent\.autonomous && \(agent\.autonomousContinues \?\? 0\) < AUTONOMOUS_CONTINUES\) \{[\s\S]{0,200}AUTONOMOUS_IDLE_STEER[\s\S]{0,40}\} else if \(idle\.action === 'finish'\)/);
+  assert.match(SESSION, /if \(idle\.action === 'finish' && agent\.autonomous && \(agent\.autonomousContinues \?\? 0\) < AUTONOMOUS_CONTINUES\) \{[\s\S]{0,400}AUTONOMOUS_IDLE_STEER[\s\S]{0,40}\} else if \(idle\.action === 'finish'\)/);
   // the nudge must not tell an Autonomous run to "reply to the user now"
   assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(\{\s*role: 'user',\s*content: agent\.autonomous \? AUTONOMOUS_IDLE_STEER/);
+});
+
+test('a built game with nothing on screen or an unplayed loop is not finished; other requests owe nothing', async () => {
+  const { gameGaps, gameGapSteer } = await import('../src/run-idle.ts');
+  const ask = 'Build Basically Grow A Garden Type Game include 6 plots make the full game make no mistakes';
+  assert.deepEqual(gameGaps(ask, {}, true), ['hud', 'playtest']);
+  assert.deepEqual(gameGaps(ask, { hudBuilt: true }, true), ['playtest']);
+  assert.deepEqual(gameGaps(ask, { hudBuilt: true, playChecked: true }, true), []);
+  // a run that cannot play is not told to
+  assert.deepEqual(gameGaps('make an obby', { hudBuilt: true }, false), []);
+  // not a game: a prop, or no request at all
+  assert.deepEqual(gameGaps('build a wooden bridge over the river', {}, true), []);
+  assert.deepEqual(gameGaps(undefined, {}, true), []);
+  const steer = gameGapSteer(['hud', 'playtest']);
+  assert.match(steer, /ScreenGui/);
+  assert.match(steer, /play_check/);
+  assert.doesNotMatch(steer, /garden|plot|seed/i, 'the steer teaches one game instead of games');
+});
+
+test('the run loop records the HUD and the playtest, and steers an unfinished game before it can end', () => {
+  assert.match(SESSION, /out\.mutatedProject === true && \(call\.name === 'build_ui' \|\| \/ScreenGui\|ui_kit\/\.test\(call\.arguments[^)]*\)\)\) agent\.hudBuilt = true/);
+  assert.match(SESSION, /out\.ok && call\.name === 'play_check'\) agent\.playChecked = true/);
+  // both Autonomous endings consult the game gaps
+  const uses = SESSION.match(/gameGaps\(agent\.request, agent, allowed\.has\('play_check'\)\)/g) ?? [];
+  assert.equal(uses.length, 2, 'the prose ending and the idle ending must both check the game');
+  assert.match(SESSION, /gaps\.length > 0 \|\| leavesWorkOpen\(res\.text\)/);
 });

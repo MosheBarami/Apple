@@ -46,12 +46,13 @@ console.log(`asset-library: ${wanted.length} files, ${wanted.length - todo.lengt
 async function send({ local, remote }) {
   const b64 = readFileSync(local).toString('base64');
   for (let attempt = 1; ; attempt++) {
+    // A dropped connection throws rather than answering; it is retried like a failed status.
     const res = await fetch(`${BASE}/api/admin/static-upload`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'X-Admin-Key': KEY },
       // Not `immutable`: a pack update re-sends under the same path and must not be cached forever.
       body: JSON.stringify({ path: remote, contentType: 'image/png', b64 }),
-    });
+    }).catch((err) => ({ ok: false, status: 0, text: async () => String(err.cause ?? err) }));
     if (res.ok) return;
     // D1 is shared with live traffic and resets under bulk writes; back off rather than abort.
     if (attempt >= 5) throw new Error(`${remote}: ${res.status} ${await res.text()}`);

@@ -164,3 +164,37 @@ export const AUTONOMOUS_IDLE_STEER =
   'needs is still missing, broken or unverified (defects your checks reported, a game loop nobody has ' +
   'playtested), make that change now. If nothing is left, reply to the user with the final summary and no ' +
   'tool calls, ending with a statement, not a question.';
+
+// A request to build a game, as opposed to a prop, a script or a question about one.
+const GAME_REQUEST = /\b(game|simulator|tycoon|obby|roleplay|rpg|shooter|battlegrounds?|survival|horror|racing|tower defen[cs]e)\b/i;
+
+/**
+ * What a built game still lacks that a player notices in the first minute: nothing on screen (no
+ * currency, no action buttons) or a loop nobody has played. Only what this run can supply is owed.
+ */
+export function gameGaps(
+  request: string | null | undefined,
+  run: { hudBuilt?: boolean; playChecked?: boolean },
+  canPlay: boolean,
+): ('hud' | 'playtest')[] {
+  if (!request || !GAME_REQUEST.test(request)) return [];
+  const gaps: ('hud' | 'playtest')[] = [];
+  if (!run.hudBuilt) gaps.push('hud');
+  if (canPlay && !run.playChecked) gaps.push('playtest');
+  return gaps;
+}
+
+export function gameGapSteer(gaps: readonly ('hud' | 'playtest')[]): string {
+  const owed: string[] = [];
+  if (gaps.includes('hud')) {
+    owed.push('The player has nothing on screen: this run built no ScreenGui. Build the HUD the game needs — its ' +
+      'currency counter bound to leaderstats and a button for each core action the request names (shop, sell, ' +
+      'inventory…) — under StarterGui, styled to match the world.');
+  }
+  if (gaps.includes('playtest')) {
+    owed.push('Nobody has played the game loop yet. Run play_check as a real player through the loop the request ' +
+      'asks for (earn, spend, grow, win — whatever it is), touching the parts that drive it, and fix what it reports.');
+  }
+  return `Autonomous is ON and this is a game a player will open. ${owed.join(' ')} ` +
+    'Then reply with the final summary, ending with a statement, not a question.';
+}
