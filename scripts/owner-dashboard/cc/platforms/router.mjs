@@ -10,13 +10,13 @@ import { cloudflare, cloudflareAction } from './cloudflare.mjs';
 import { sentry, sentryAction } from './sentry.mjs';
 import { hf, hfAction } from './hf.mjs';
 import { extras } from './extras.mjs';
-import { apple } from './apple.mjs';
+import { apple, appleAction } from './apple.mjs';
 import { groq, groqAction } from './groq.mjs';
 import { discord, discordAction } from './discord.mjs';
 import { roblox, robloxAction } from './roblox.mjs';
 import { status } from './status.mjs';
 import { connectors, connectorAction } from './connectors.mjs';
-import { langflow } from './langflow.mjs';
+import { langflow, langflowAction } from './langflow.mjs';
 import { pulse } from './pulse.mjs';
 import { insights } from '../insights.mjs';
 import { stream } from '../stream.mjs';
@@ -64,6 +64,8 @@ const POSTS = {
   'discord/action': discordAction,
   'roblox/action': robloxAction,
   'connectors/action': connectorAction,
+  'langflow/action': langflowAction,
+  'apple/action': appleAction,
 };
 for (const id of LAZY_PLATFORMS) POSTS[`${id}/action`] = (b) => laneB(`platforms/${id}.mjs`, `${id}Action`, b);
 // ?fresh=1 on a GET drops that platform's cache first (the "refresh now" button). The keys match

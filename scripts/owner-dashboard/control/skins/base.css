@@ -125,6 +125,7 @@ body { font: 400 14px/20px var(--font); font-feature-settings: 'ss01' off; }
 /* ------------------------------------------------ table (Geist: header strip on background-200, 40px head, hover row) */
 th { height: 40px; padding: 0 12px; background: var(--bg); color: var(--muted); font-size: 12px; font-weight: 500; border-bottom: 1px solid var(--line); }
 td { height: 48px; padding: 8px 12px; font-size: 14px; border-bottom-color: var(--line); }
+@media (max-width: 720px) { td { height: auto; min-height: 48px; } }
 tbody tr:hover td { background: var(--ds-alpha-100); }
 
 /* ------------------------------------------------ switch / segmented (Geist Switch) and tabs (Geist Tabs) */
