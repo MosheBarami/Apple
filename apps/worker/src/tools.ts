@@ -68,6 +68,7 @@ import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, imagePanel, imagePathFor, composeArtDirection, type ImageRequest, type PaletteRole } from './imagegen';
 import { generateImage as hfGenerateImage, isHfConfigured, HF_IMAGE_MODEL } from './hf';
 import { findUiAssets, uploadLibraryAsset } from './asset-library';
+import { findUiStoreImages, UI_STORE_COUNT, UI_STORE_GENRES } from './ui-store-search';
 import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
 import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau } from './model-rule';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
@@ -4458,25 +4459,39 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_ui_asset',
       description:
-        'Search Apple\'s library of ready-made, openly licensed (CC0) UI images: 5,000+ PNG buttons, panels, bars, borders, HUD and menu icons, controller/keyboard/touch prompts, emotes, inventory items, cursors and crosshairs. Use it before generating an image for a standard UI element. Plain words match file names (e.g. "button blue", "heart", "xbox a", "settings", "coin"); `pack` narrows to one pack; an empty query lists the packs. Returns `asset` ids — pass one to upload_ui_asset to get an rbxassetid for an ImageLabel/ImageButton. Nothing is uploaded or changed by this call.',
+        `Search Apple's UI image library: 5,000+ CC0 PNGs (buttons, panels, bars, borders, HUD and menu icons, controller/keyboard/touch prompts, emotes, cursors) AND ${UI_STORE_COUNT.toLocaleString('en-US')} free Roblox Creator Store UI images. Use it before generating an image for a standard UI element. Plain words match names (e.g. "coin icon", "shop button", "gamepass", "settings", "rebirth"); \`genre\` lifts that genre's Creator Store images; \`pack\` narrows the CC0 part to one pack; an empty query lists the packs. \`results\` are CC0 files: pass an \`asset\` to upload_ui_asset, or as an icon to insert_ui_component. \`store\` hits are already on Roblox: their \`image\` (rbxassetid://…) goes straight into an icon of insert_ui_component or an Image property, never uploaded. Nothing is uploaded or changed by this call.`,
       parameters: S(
         {
           query: { type: 'string', description: 'Plain words for the element, e.g. "red round button" or "pause".' },
           pack: { type: 'string', description: 'Optional pack id from an earlier answer, e.g. kenney-ui-pack or kenney-input-prompts.' },
           kind: { type: 'string', enum: ['ui', 'icons'], description: 'ui = panels, buttons, bars, frames; icons = single glyphs.' },
+          genre: { type: 'string', enum: [...UI_STORE_GENRES], description: 'Optional: lift Creator Store images made for this genre.' },
           limit: { type: 'number', description: 'How many results, 1 to 40. Default 12.' },
         },
         [],
       ),
     },
     studio: false,
-    run: async (_ctx, a) =>
-      findUiAssets({
-        query: a.query === undefined ? undefined : String(a.query),
+    run: async (_ctx, a) => {
+      const query = a.query === undefined ? undefined : String(a.query);
+      const found = findUiAssets({
+        query,
         pack: a.pack ? String(a.pack) : undefined,
         kind: a.kind ? String(a.kind) : undefined,
         limit: a.limit === undefined ? undefined : Number(a.limit),
-      }),
+      });
+      if (!query?.trim() || a.pack) return found;
+      // Tool answers are cut at 3,000 characters, so the store part is slim and short.
+      const genre = a.genre && UI_STORE_GENRES.includes(String(a.genre)) ? String(a.genre) : undefined;
+      const store = findUiStoreImages({ query, genre, limit: 8 }).map((h) => ({ image: h.image, name: h.name, kind: h.kind }));
+      if (!store.length) return found;
+      // With store hits, an empty CC0 answer needs no pack list; the two sources then share the room.
+      const out = { ...found, ...(found.results.length ? {} : { packs: undefined }), store };
+      while (JSON.stringify(out).length > 2900 && (out.results.length || out.store.length)) {
+        (out.results.length > out.store.length ? out.results : out.store).pop();
+      }
+      return out;
+    },
   },
   upload_ui_asset: {
     def: {

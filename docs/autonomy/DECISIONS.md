@@ -251,3 +251,18 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   duplicate and idle guards never fired.
 - Reverse: raise TERRAIN_STREAK_CAP in apps/worker/src/terrain-streak.ts, or drop its gate in
   do/session.ts.
+
+## D-UISTORE-1 (2026-09-24): the UI library includes free Creator Store images already on Roblox
+
+- What: `find_ui_asset` answers from two libraries at once:
+  - the 5,000+ CC0 PNGs (`results`, uploaded on use);
+  - 77,076 free Roblox Creator Store UI images (`store`, each an `rbxassetid://` already on Roblox).
+- A store image can be the icon of any insert_ui_component. The id resolver sets it as it is and
+  never uploads it. An id the index does not hold is still refused, so D-UIONLY-1 holds: UI comes
+  only from the stored library.
+- The store part is slim (image, name, kind). The two sources share the 3,000-character answer, so
+  a common word ("heart") keeps both, and a word with no CC0 match ("gem") returns 8 store images.
+- Why: the owner said 157 UI assets is nothing and expected more than 50,000. The index is bundled,
+  so a search costs no network call and no Workers AI neurons.
+- Reverse: drop the `store` branch in find_ui_asset's run and the `uiStoreImage` fallbacks in
+  apps/worker/src/ui-components.ts (iconAsset, uiImageResolver).

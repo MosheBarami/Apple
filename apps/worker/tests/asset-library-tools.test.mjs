@@ -210,3 +210,29 @@ test('the static read accepts only a 200 PNG and refuses the not-found page', as
   const html200 = await L.readLibraryPng({}, 'kenney-ui-pack/x.png', async () => new Response('<html>', { status: 200, headers: { 'content-type': 'image/png' } }));
   assert.equal(html200, null, 'a body that is not a PNG was accepted');
 });
+
+/* ------------------------------------------------ the Creator Store part (D-UISTORE-1) --- */
+
+test('a UI search also answers from the Creator Store library: slim hits already on Roblox, inside the answer cap', async () => {
+  const c = ctx();
+  const { result, calls } = await withNoNetwork(() => T.runTool(c.ctx, FIND, JSON.stringify({ query: 'coin icon', genre: 'Simulator/Tycoon' })));
+  assert.equal(calls.length, 0, 'the store search is bundled, not fetched');
+  assert.ok(result.resultForLlm.length <= 3000, `answer is ${result.resultForLlm.length} chars`);
+  const r = JSON.parse(result.resultForLlm);
+  assert.ok(Array.isArray(r.store) && r.store.length > 0, JSON.stringify(r).slice(0, 400));
+  for (const h of r.store) {
+    assert.match(h.image, /^rbxassetid:\/\/\d+$/);
+    assert.ok(/coin/i.test(h.name) || /icon/i.test(h.name), h.name);
+  }
+  assert.deepEqual(c.ops, [], 'the place is not touched');
+  for (const q of ['gem', 'heart', 'shop button']) {
+    const text = (await T.runTool(c.ctx, FIND, JSON.stringify({ query: q }))).resultForLlm;
+    assert.ok(text.length <= 3000, `${q}: ${text.length} chars`);
+    const out = JSON.parse(text);
+    assert.ok(out.store.length >= 4, `${q}: only ${out.store.length} store hits survived the cap`);
+  }
+  const none = JSON.parse((await T.runTool(c.ctx, FIND, JSON.stringify({ query: 'qqzzxxvv' }))).resultForLlm);
+  assert.equal(none.results.length, 0);
+  assert.ok(none.note && none.packs?.length, 'nothing anywhere: the answer still points the way');
+  assert.match(T.TOOLS[FIND].def.description, /[1-9]\d,\d{3} free Roblox Creator Store/, 'the description states the real store count');
+});

@@ -1,28 +1,29 @@
 # NEXT ACTION
 
-**Gauntlet round 6 (simulator target: map, models and UI), once two changes ship.**
+**Gauntlet round 7 (the same simulator prompt), started right after the 00:00 UTC capacity reset.**
 
-1. F-064 to F-067: DEPLOYED 2026-09-23 (fe2bdf2, version 8ccfe2c2). A run is no longer ended while the
-   request's own list has parts unbuilt (run-parts.ts); skill cards ship in the same deploy. Check live in
-   round 6: "The request is not finished" steers appear, and context_budget maxChars is about 116k.
-2. D-UIONLY-1 (owner order, 2026-09-23): Apple never builds UI by hand. Every UI part comes from the
-   stored library (packages/asset-library packs and sources) through one component tool. Raw GUI
-   creation and scripts that Instance.new GUI classes are refused. Every component is shown in real
-   Studio (docs/gauntlet/visual/ui-library/).
-   D-MODELLIB-1 (owner order, 2026-09-23), the same for 3D: props, buildings, nature, vehicles and pets
-   come from the model library (packages/asset-library/models) through find_library_model and
-   insert_library_model. create_instances refuses a part-built prop the library holds; parts stay for
-   terrain, baseplates, paths and zones. Studio inserts per genre are in docs/gauntlet/visual/model-library/.
-   D-FXLIB-1 (owner order, 2026-09-23), the same for sounds and effects: insert_sound / find_sound /
-   play_library_sound and insert_vfx / find_vfx (22 Roblox presets). create_instances and Luau refuse a
-   hand-made Sound or emitter. Studio evidence is in docs/gauntlet/visual/fx-library/. The worker is ready but
-   NOT deployed. Plugin 1.3.0 (the preview_sound op) needs a Studio reload. The OpenGameArt download stopped at
-   the 15 GB free-disk floor; rerun the scratchpad fetchers once disk is above 15 GB.
-3. Round 6:
-   - fresh place;
-   - new project and pairing (plugin 1.2.0 needs a Studio reload first);
-   - Autonomous ON, Apple MAX, the same prompt;
-   - then the blind critic on the final shots only (`docs/gauntlet/visual/BLIND_CRITIC.md`, D-GAUNTLET-2), with its verdict sent to the owner.
+Round 6 (2026-09-23) built no game. Apple MAX made 951 edit_terrain calls in a row until the day's shared
+capacity ran out (F-068). Stop in the workspace did not reach the run (F-069). Both fixes are live:
+- D-TERRAIN-1: ead1e60, a cap of 24 terrain writes in a row;
+- the HTTP Stop fallback: 069c821.
+
+Ready since 2026-09-23 22:55Z:
+- Studio 0.740 is on a fresh Baseplate. Its self-update loop was broken (the Temp installer copy has no
+  libmimalloc), so the in-place installer was run once.
+- A new project is paired, with edits allowed: "Gauntlet Round 7",
+  f199a2a8-353b-4110-9166-1743e01be850.
+
+Steps:
+1. Start the run: Apple MAX, Agent, Autonomous.
+2. Watch these live:
+   - the longest terrain streak is 24 or fewer;
+   - the run reaches props from the model library, scripts and library UI;
+   - Stop ends the run within one step (F-069);
+   - F-064 to F-066.
+3. Take 4 to 8 final shots and stage them as `$SCRATCH/blind-7/shot-K.png`.
+4. Spawn one fresh blind critic with only the rubric in `docs/gauntlet/visual/BLIND_CRITIC.md`.
+5. Save its report as `docs/gauntlet/visual/rounds/round-7-blind.md`, then send the owner the verdict in Hebrew.
+6. Fix the model's general weaknesses that the critic finds, never this one game.
 
 Cloudflare lane, live since 2026-09-23: web (Turnstile widget) deployed, TURNSTILE_SECRET set; a
 recovery request with no token or a forged one answers 403. After round 6: Supabase captcha (provider

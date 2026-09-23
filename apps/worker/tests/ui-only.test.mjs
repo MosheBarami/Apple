@@ -330,3 +330,17 @@ test('ids: the shared table first, then the user cache, then an upload, and a fa
   const none = await U.uiImageResolver({}, undefined, {})(['kenney-ui-pack/blue/button_rectangle_depth_gloss.png']);
   assert.equal(none.missing.length, 1);
 });
+
+test('a Creator Store image is a library icon: accepted by the component and set as it is, never uploaded (D-UISTORE-1)', async () => {
+  const T2 = await import(pathToFileURL(bundle('ui-store-search')).href);
+  const [hit] = T2.findUiStoreImages({ query: 'coin', limit: 1 });
+  assert.ok(hit, 'the store search found something to test with');
+  const plan = U.compileComponent({ component: 'currency_counter', genre: 'simulator', icon: hit.image });
+  assert.ok(!('error' in plan), JSON.stringify(plan));
+  assert.ok(plan.assets.includes(hit.image), 'the store image is one of the component\'s images');
+  assert.ok('error' in U.compileComponent({ component: 'currency_counter', genre: 'simulator', icon: 'rbxassetid://1' }), 'an id the library does not hold is refused');
+  const uploads = [];
+  const out = await U.uiImageResolver({}, 'u1', { upload: async () => { uploads.push(1); return { ok: false, error: 'no' }; } })([hit.image]);
+  assert.equal(out.ids[hit.image], String(hit.imageId));
+  assert.equal(uploads.length, 0);
+});

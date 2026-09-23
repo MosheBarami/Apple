@@ -19,6 +19,7 @@ import type { Env } from './env';
 import type { LibraryRule } from './library-guard';
 import type { OpCall } from './phase-a-tools';
 import { libraryAsset, uploadLibraryAsset, type UploadDeps } from './asset-library';
+import { uiStoreImage } from './ui-store-search';
 
 type Spec = Omit<InstanceSpec, 'parent'>;
 type P = Record<string, PropValue>;
@@ -482,8 +483,9 @@ function card(b: Builder, name: string, it: Item, place: P = {}): Spec {
 
 function iconAsset(key: string): string | null {
   if (L.icons[key]) return L.icons[key]!;
-  // Any other library file may stand in for an icon, but only one the index names.
-  return libraryAsset(key)?.asset ?? null;
+  // Any other library file may stand in for an icon, but only one the index names — a CC0 pack
+  // file, or a Creator Store image already on Roblox (D-UISTORE-1).
+  return libraryAsset(key)?.asset ?? uiStoreImage(key)?.image ?? null;
 }
 
 export interface Compiled {
@@ -597,6 +599,9 @@ export function uiImageResolver(env: Env, userId: string | undefined, deps: Uplo
     const missing: { asset: string; why: string }[] = [];
     await Promise.all(assets.map(async (asset) => {
       if (SHARED_IDS[asset]) { ids[asset] = SHARED_IDS[asset]!; return; }
+      // A Creator Store image is on Roblox already: its id is set as it is, never uploaded.
+      const store = uiStoreImage(asset);
+      if (store) { ids[asset] = String(store.imageId); return; }
       const key = userId ? `ui-image:${userId}:${asset}` : null;
       const cached = key ? await env.KV?.get(key).catch(() => null) : null;
       if (cached && /^\d+$/.test(cached)) { ids[asset] = cached; return; }
