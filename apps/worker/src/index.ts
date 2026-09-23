@@ -16,6 +16,7 @@ import {
   checkoutConfigured,
   checkoutGuard,
   billingConfigFor,
+  testModeEventRefusal,
   readInvoicePreview,
   subscriptionView,
   invoiceBelongsTo,
@@ -2461,6 +2462,12 @@ app.post('/api/billing/webhook', async (c) => {
   } catch {
     return c.json({ error: 'invalid json' }, 400);
   }
+  // D-PAY-2: a test-mode event in production changes nothing unless an allow-listed admin opened it.
+  const testModeRefusal = testModeEventRefusal(event, c.env);
+  if (testModeRefusal) {
+    console.warn('stripe webhook ignored:', testModeRefusal);
+    return c.json({ ok: true, ignored: testModeRefusal });
+  }
 
   //[[ THE PAYMENT PROBLEM NOBODY WAS EVER TOLD ABOUT.
   //
@@ -2891,7 +2898,10 @@ app.get('/api/billing/invoices/:id', async (c) => {
 
 /** What the plan controls should offer, so the UI never shows a button that cannot work. */
 app.get('/api/billing/config', async (c) => {
-  const billing = billingConfigFor(c.env);
+  // Public route; a signed-in caller's verified email matters only for D-PAY-2 (test-mode admins).
+  const token = bearerToken(c.req.raw);
+  const caller = token ? await verifyJwt(c.env, token).catch(() => null) : null;
+  const billing = billingConfigFor(c.env, caller?.email);
   return c.json({
     ...billing,
     // THE SERVER SAYS WHAT IT CHARGES IN. A '$' on a page is not a currency — the same glyph is the

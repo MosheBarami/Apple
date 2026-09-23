@@ -913,6 +913,12 @@ export function UsagePage() {
               </p>
             </div>
           </div>
+          {billing.data?.testMode && (
+            <p className="plans-note" role="status" data-testid="billing-test-mode">
+              <strong>Test mode — no real charge.</strong> Checkout opens Stripe&apos;s sandbox; pay with
+              the test card 4242 4242 4242 4242. Only admins on the allowlist see this.
+            </p>
+          )}
           {returned === 'done' && (
             <p className="plans-note" role="status">
               Thanks — your payment went through. The plan changes when Stripe confirms it, usually

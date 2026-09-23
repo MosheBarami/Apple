@@ -445,13 +445,17 @@ export function priceIdFor(env: Env, plan: PlanId): string | null {
 export interface BillingConfig {
   checkout: boolean;
   purchasable: PlanId[];
+  /** D-PAY-2: present (true) only when this caller's checkout is Stripe test mode — no real charge. */
+  testMode?: true;
 }
 
-export function billingConfigFor(env: Env): BillingConfig {
-  const checkout = checkoutConfigured(env);
+/** `email` is the signed-in caller's verified address, when there is one (D-PAY-2). */
+export function billingConfigFor(env: Env, email?: string | null): BillingConfig {
+  const checkout = checkoutConfigured(env, email);
   return {
     checkout,
     purchasable: checkout ? PLAN_IDS.filter((plan) => priceIdFor(env, plan) !== null) : [],
+    ...(checkoutIsTestMode(env, email) ? { testMode: true as const } : {}),
   };
 }
 
@@ -784,16 +788,59 @@ export function buildCustomerDetailsRequest(next: BillingDetails, previous: Bill
  * page says the plans cannot be bought — which is TRUE. A page that tells a visitor they cannot
  * buy something is a smaller failure than a page that sells it for nothing.
  */
-export function checkoutConfigured(env: Env): boolean {
+export function checkoutConfigured(env: Env, email?: string | null): boolean {
   const key = (env as unknown as CheckoutEnv).STRIPE_SECRET_KEY;
   if (!billingConfigured(env) || typeof key !== 'string' || key.trim().length === 0) return false;
-  const production = (env as unknown as { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
   // `/^[a-z]+_test_/` rather than `sk_test_`: Stripe issues restricted keys too, and `rk_test_` is
   // just as much a test key as `sk_test_` is. Matching the prefix SHAPE catches every kind it
   // currently mints and every kind it adds later, while an unrecognised LIVE form stays admitted —
   // refusing what we do not recognise would break a working deployment to guard a hypothesis.
-  if (production && /^[a-z]+_test_/.test(key.trim())) return false;
+  // D-PAY-2: the one exception is a signed-in allow-listed admin, for whom it is test mode.
+  if (isProduction(env) && /^[a-z]+_test_/.test(key.trim())) return isBillingTestAdmin(env, email);
   return true;
+}
+
+function isProduction(env: Env): boolean {
+  return (env as unknown as { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
+}
+
+/**
+ * D-PAY-2 — is this SIGNED-IN address on `BILLING_TEST_ADMINS` (comma-separated, case-insensitive)?
+ *
+ * Only ever pass the address from the verified session. The billing contact is a field the
+ * customer types, and typing the owner's address into it must not open a test checkout.
+ */
+export function isBillingTestAdmin(env: Env, email: string | null | undefined): boolean {
+  const who = (email ?? '').trim().toLowerCase();
+  if (!who) return false;
+  const list = (env as unknown as { BILLING_TEST_ADMINS?: string }).BILLING_TEST_ADMINS ?? '';
+  return list.split(',').some((entry) => entry.trim().toLowerCase() === who);
+}
+
+/** Checkout is open for this caller ONLY through the D-PAY-2 admin exception: no real charge. */
+export function checkoutIsTestMode(env: Env, email?: string | null): boolean {
+  return checkoutConfigured(env, email) && !checkoutConfigured(env);
+}
+
+/**
+ * D-PAY-2 — may this verified Stripe event change an entitlement here?
+ *
+ * In production a `livemode: false` event was paid with a published test card, so it grants only
+ * when the subscription (or session) was opened by an allow-listed admin: `buildCheckoutRequest`
+ * stamps the signed-in admin's address into `metadata.testAdmin`, and only a holder of the Stripe
+ * secret key can write metadata. The list is re-read here, so removing an address stops its grants.
+ * Everything else — live events, and every event outside production — passes as before.
+ */
+export function testModeEventRefusal(event: unknown, env: Env): string | null {
+  if (!isProduction(env)) return null;
+  const e = (typeof event === 'object' && event !== null ? event : {}) as {
+    livemode?: unknown;
+    data?: { object?: { metadata?: Record<string, unknown> } };
+  };
+  if (e.livemode !== false) return null;
+  const admin = e.data?.object?.metadata?.['testAdmin'];
+  if (typeof admin === 'string' && isBillingTestAdmin(env, admin)) return null;
+  return 'test-mode event in production not opened by an allow-listed admin';
 }
 
 export type CheckoutRefusal =
@@ -847,7 +894,8 @@ export function buildCheckoutRequest(
     nowSeconds?: number;
   },
 ): CheckoutRequest | CheckoutRefusal {
-  if (!checkoutConfigured(env)) {
+  // `opts.email` is the signed-in address; `billingEmail` is typed by the customer and never counts.
+  if (!checkoutConfigured(env, opts.email)) {
     return { ok: false, status: 503, error: 'checkout is not configured for this deployment' };
   }
   if (!opts.userId) return { ok: false, status: 400, error: 'no user' };
@@ -879,6 +927,12 @@ export function buildCheckoutRequest(
   // checkout ever set. It is NOT an instruction about entitlement — entitlementFor still recomputes
   // from status and period, so a cancelled subscription naming 'studio' here still grants nothing.
   p.set('subscription_data[metadata][plan]', opts.plan);
+  // D-PAY-2: the test-mode webhook grants only what an allow-listed admin opened (testModeEventRefusal).
+  if (checkoutIsTestMode(env, opts.email)) {
+    const admin = (opts.email ?? '').trim().toLowerCase();
+    p.set('metadata[testAdmin]', admin);
+    p.set('subscription_data[metadata][testAdmin]', admin);
+  }
   const to = (opts.billingEmail ?? '').trim() || (opts.email ?? '').trim();
   if (to) p.set('customer_email', to);
   /*

@@ -217,6 +217,8 @@ export interface BillingConfig {
   purchasable: PlanId[];
   /** ISO 4217 code this deployment actually charges in. Optional: an older worker does not send it. */
   currency?: string;
+  /** D-PAY-2: true only for an allow-listed admin whose checkout is Stripe test mode — no real charge. */
+  testMode?: boolean;
 }
 
 export const fetchBillingConfig = (): Promise<BillingConfig> =>
