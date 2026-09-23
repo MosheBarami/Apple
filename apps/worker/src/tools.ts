@@ -1819,16 +1819,21 @@ export const TOOLS: Record<string, ToolImpl> = {
       }
 
       let after: string;
+      let sentEdits = edits;
       if (directSource !== undefined) {
         after = directSource;
       } else {
         const applied = applyEdits(before ?? '', edits!);
         if (!applied.ok) {
-          return {
-            error: `${applied.error} in ${path}. Nothing was written — read the script again and match the text that is actually there.`,
-          };
+          return applied.closest
+            ? {
+                error: `${applied.error} in ${path}. Nothing was written. \`closest\` is the script's current text nearest your anchor, with line numbers — copy the find from it exactly (without the "N| " prefix) instead of reading the script again.`,
+                closest: applied.closest,
+              }
+            : { error: `${applied.error} in ${path}. Nothing was written — read the script again and match the text that is actually there.` };
         }
         after = applied.source;
+        sentEdits = applied.edits;
       }
 
       // THE PRE-WRITE PARSE. A body that does not compile used to be discovered by run_spec, after
@@ -1855,7 +1860,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         op: 'edit_script',
         path,
         source: directSource !== undefined ? after : undefined,
-        edits: directSource !== undefined ? undefined : edits,
+        edits: directSource !== undefined ? undefined : sentEdits,
         create,
         baseHash,
       });

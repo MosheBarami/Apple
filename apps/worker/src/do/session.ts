@@ -80,8 +80,10 @@ import { chooseEffort, classifyRequest, forbidsChanges, tokensForEffort, type Re
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
 import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
+import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
 import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, afterDuplicateStreak, UNSTICK_STEER, type RetuneAction } from '../run-idle';
+import { addEvidence, evidenceWords, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
@@ -264,6 +266,10 @@ interface AgentState {
   hudBuilt?: boolean;
   /** play_check ran as a player in this run. */
   playChecked?: boolean;
+  /** Words the run's successful changes named (run-parts.ts evidenceWords), bounded. */
+  builtWords?: string[];
+  /** Steers to a missing requested part, counted at the current missing count (run-parts.ts). */
+  partSteers?: { missing: number; steers: number };
   /** Successful changes per target (tool + what it was aimed at) this run — run-idle.ts afterChange. */
   changesByTarget?: Record<string, number>;
   /** Set when build_scene has built a kit this run; its pieces and terrain are kept (scene-kits.ts). */
@@ -480,6 +486,23 @@ const MAX_DUPLICATE_STREAK = 3;
 const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
 /** What a run that was told not to change anything is never offered. */
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
+/** What the request's list and the plan's building steps named that nothing this run built is named for. */
+function openParts(agent: AgentState) {
+  if (agent.mode !== 'agent') return [];
+  const steps = agent.plan ? settlePlan(agent.plan, agent.trace).steps : [];
+  return missingParts(requestedParts(agent.request, steps, (tool) => READ_ONLY_WITHHELD.has(tool)), agent.builtWords ?? []);
+}
+/**
+ * The steer to the next missing part, or null when none is open or the allowance at this missing
+ * count is spent (run-parts.ts partSteerAllowed). Consumes the allowance.
+ */
+function steerToPart(agent: AgentState): string | null {
+  const missing = openParts(agent);
+  const gate = partSteerAllowed(agent.partSteers, missing.length);
+  if (!gate.allowed) return null;
+  agent.partSteers = gate.next;
+  return partSteer(missing, gate.next.steers - 1);
+}
 /** What a lighting-only run is told when it reaches for anything else. */
 const LIGHTING_ONLY =
   'Not run: this request is only about the lighting, so only Lighting changes are made in this run. ' +
@@ -707,10 +730,15 @@ const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
 const MAX_CHECKPOINT_DESCRIPTION = 500;
 // The transcript is re-sent every step, and the budget includes the ~15k-char system prompt. At 24,000
 // a building run kept about two turn groups and re-read what it had just read (F-039: 88 reads, 242
-// Credits). The model takes 1M tokens and cached input is a fifth of the price, so the budget is
-// larger, and a trim cuts to MAX_PROMPT_TARGET so the steps after it are appends the cache serves.
-const MAX_PROMPT_CHARS = 60_000;
-const MAX_PROMPT_TARGET = 42_000;
+// Credits); at a fixed 60,000 gauntlet round 4 dropped 23 turn groups and lost its plan. The budget is
+// now derived per step from the model it goes to (prompt-budget.ts): its per-step reservation cap,
+// its window and the run-state storage limit, less the tool definitions that ride on every step. A
+// trim cuts to the budget's target so the steps after it are appends the cache serves.
+let toolDefsChars: number | undefined;
+function transcriptBudget(modelKey: string) {
+  toolDefsChars ??= JSON.stringify(toolDefs(true).map((d) => ({ type: 'function', function: d }))).length;
+  return promptBudgetForKey(modelKey, toolDefsChars);
+}
 
 export class SessionDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
@@ -3564,7 +3592,8 @@ export class SessionDO extends DurableObject<Env> {
     //   prompt, not the user's conversation. It is a cost optimisation on our instructions, and
     //   announcing it to a builder as "context was truncated" would describe a loss they did not
     //   take. What they can lose is turns, and that is what this counts. ]]
-    const trimmed = trimTranscriptReport(agent.llm, MAX_PROMPT_CHARS, MAX_PROMPT_TARGET);
+    const budget = transcriptBudget(gatewayModelFor(agent.mode, agent.productModel));
+    const trimmed = trimTranscriptReport(agent.llm, budget.maxChars, budget.targetChars);
     agent.llm = trimmed.llm;
     // A READ WHOSE RESULT WAS TRIMMED AWAY MAY BE READ AGAIN. The duplicate guard refuses an identical
     // call as "you already have the result above" — after the trim, it no longer is above. Measured
@@ -4131,6 +4160,14 @@ export class SessionDO extends DurableObject<Env> {
       // Autonomous: the person already said yes, so "want me to…?" or "not fixed yet" is work, not an ending,
       // and a game with nothing on screen or a loop nobody played is not finished either.
       const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
+      // …nor is a request whose own list still names a part nothing built is named for (run-parts.ts).
+      const partNext = agent.autonomous && agent.mutated && canBuild && !owesWork ? steerToPart(agent) : null;
+      if (partNext) {
+        agent.llm.push({ role: 'user', content: partNext });
+        await this.persistAgent(agent);
+        await this.ctx.storage.setAlarm(Date.now() + 10);
+        return;
+      }
       if (
         agent.autonomous && agent.mutated && canBuild && !owesWork &&
         (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES && (gaps.length > 0 || leavesWorkOpen(res.text))
@@ -4293,6 +4330,7 @@ export class SessionDO extends DurableObject<Env> {
         mutatedThisStep = true;
         const retune = afterChange(agent.changesByTarget, `${call.name} ${aim(call.arguments)}`);
         agent.changesByTarget = retune.counts;
+        agent.builtWords = addEvidence(agent.builtWords, evidenceWords(call.name, call.arguments));
         if (retune.action === 'finish' || (retune.action === 'nudge' && retuneThisStep === 'none')) retuneThisStep = retune.action;
       }
       if (out.ok && call.name === 'build_scene') {
@@ -4393,19 +4431,23 @@ export class SessionDO extends DurableObject<Env> {
     agent.duplicateStreak = executedThisStep === 0 && duplicatesThisStep > 0 ? (agent.duplicateStreak ?? 0) + 1 : 0;
     const planOpen = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
     const streakGaps = gameGaps(agent.request, agent, allowed.has('play_check'));
+    const streakParts = agent.duplicateStreak >= MAX_DUPLICATE_STREAK ? openParts(agent) : [];
     const streak = afterDuplicateStreak({
       streak: agent.duplicateStreak,
       limit: MAX_DUPLICATE_STREAK,
       building: agent.mode === 'agent' && canBuild,
       unstucks: agent.unstucks ?? 0,
-      workOpen: planOpen !== undefined || streakGaps.length > 0,
+      workOpen: planOpen !== undefined || streakGaps.length > 0 || streakParts.length > 0,
     });
     if (streak === 'unstick') {
       agent.unstucks = (agent.unstucks ?? 0) + 1;
       agent.duplicateStreak = 0;
       agent.readsWithheldOnce = true;
       const next = planOpen ? ` Your plan's next step is "${planOpen.title}" (${planOpen.tool}).` : '';
-      agent.llm.push({ role: 'user', content: UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') });
+      agent.llm.push({
+        role: 'user',
+        content: UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') + (streakParts.length ? ` ${partSteer(streakParts)}` : ''),
+      });
     } else if (streak === 'end') {
       const note = agent.lightingOnly && agent.mutated
         ? `The lighting is changed. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what else you would like and Apple will do it.`
@@ -4434,6 +4476,23 @@ export class SessionDO extends DurableObject<Env> {
     agent.verifiedAfterMutation = idle.verifiedAfterMutation;
     agent.idleAfterVerify = idle.idleAfterVerify;
     agent.readsSinceChange = idle.readsSinceChange;
+    // F-064 round 5 (run 2e381849): a bound that would end the run, or tell it to reply, while the
+    // request's own list or the plan still names a part nothing built is named for, hands it that part
+    // instead — Autonomous or not, bounded by partSteerAllowed. Reads are withheld for one step when
+    // the run was about to end on reading.
+    if ((idle.action === 'finish' || idle.action === 'stall' || idle.action === 'nudge') &&
+        agent.mode === 'agent' && canBuild && !agent.lightingOnly && !agent.kitZone) {
+      const steer = steerToPart(agent);
+      if (steer) {
+        if (idle.action !== 'nudge') {
+          agent.idleAfterVerify = 0;
+          agent.readsSinceChange = 0;
+          agent.readsWithheldOnce = true;
+        }
+        agent.llm.push({ role: 'user', content: steer });
+        idle.action = 'none';
+      }
+    }
     // Reading without building — F-039, run c71b89a9: one install, then 88 read-only calls. Told to
     // build at the nudge; at the limit the run ends and says plainly what it did and did not do.
     if (idle.action === 'stall' && agent.lightingOnly && agent.mutated) {

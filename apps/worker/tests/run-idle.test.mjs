@@ -125,7 +125,8 @@ test('the run loop passes canBuild, ends a stalled run as incomplete, and tells 
   assert.match(SESSION, /answerOnly: agent\.readOnly === true,\s*canBuild,\s*\}\);/);
   assert.match(SESSION, /if \(idle\.action === 'stall'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'incomplete'\);/);
   assert.match(SESSION, /if \(idle\.action === 'build'\) \{\s*agent\.llm\.push\(/);
-  assert.match(SESSION, /trimTranscriptReport\(agent\.llm, MAX_PROMPT_CHARS, MAX_PROMPT_TARGET\)/);
+  // The trim's budget is pinned behaviourally in run-loop-traps.test.mjs (derived from the model) and
+  // prompt-budget.test.mjs, not by spelling here.
 });
 
 // Changing the same thing over and over — F-036, 101 steps re-tuning one Lighting value.

@@ -81,6 +81,9 @@ const { SessionDO, PROVIDER_OUTAGE_MAX_MS } = await import(pathToFileURL(OUT).hr
 const REGISTRY_OUT = join(TMP, 'tools.mjs');
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: REGISTRY_OUT, logLevel: 'silent' });
 const W = await import(pathToFileURL(REGISTRY_OUT).href);
+const PB_OUT = join(TMP, 'prompt-budget.mjs');
+await esbuild.build({ entryPoints: [join(WORKER, 'src', 'prompt-budget.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: PB_OUT, logLevel: 'silent' });
+const PB = await import(pathToFileURL(PB_OUT).href);
 test.after(() => rmSync(TMP, { recursive: true, force: true }));
 
 // ------------------------------------------------------------------------------------ harness ---
@@ -606,6 +609,8 @@ test('a Studio tool called while Studio is disconnected is refused as "not conne
 // every identical re-read refused by the duplicate guard as "already done" — the result it pointed at
 // was gone. A read whose result was trimmed away may be read again; a write is still never repeated.
 test('a read trimmed out of the transcript can be read again; the duplicate guard does not strand it', async () => {
+  const defsChars = JSON.stringify(W.toolDefs(true).map((d) => ({ type: 'function', function: d }))).length;
+  const fillers = Math.ceil(PB.promptBudgetForKey('agent', defsChars).maxChars / 2_500);
   const big = (root) => ({ ok: true, data: { root: { path: root, name: root.split('.').pop(), class: 'Model',
     children: Array.from({ length: 120 }, (_, i) => ({ path: `${root}.Part${i}`, name: `Part${i}`, class: 'Part' })) } } });
   const h = await makeSession({
@@ -613,19 +618,38 @@ test('a read trimmed out of the transcript can be read again; the duplicate guar
     answerOp: (op) => (op.op === 'get_tree' ? big(op.root ?? 'game.Workspace') : { ok: true, data: {} }),
     responses: [
       calls(['get_project_tree', { root: 'game.Workspace.StreetLamp' }]),
-      // Enough filler reads to push the lamp's result past the transcript budget (MAX_PROMPT_CHARS in session.ts).
-      ...Array.from({ length: 24 }, (_, b) => calls(['get_project_tree', { root: `game.Workspace.Filler${b}` }])),
+      // Enough filler reads to push the lamp's result past the transcript budget (prompt-budget.ts);
+      // each result is capped at MAX_RESULT_CHARS, so the count follows the budget.
+      ...Array.from({ length: fillers }, (_, b) => calls(['get_project_tree', { root: `game.Workspace.Filler${b}` }])),
       calls(['get_project_tree', { root: 'game.Workspace.StreetLamp' }]),
       answer({ text: 'The lamp has 120 parts.' }),
     ],
   });
   try {
     await start(h, { text: 'List the parts inside the StreetLamp model. Do not change anything.' });
-    for (let i = 0; i < 34 && !lastEnd(h); i++) await h.session.alarm();
+    for (let i = 0; i < fillers + 10 && !lastEnd(h); i++) await h.session.alarm();
     const lampReads = h.ops.filter((op) => op.op === 'get_tree' && op.root === 'game.Workspace.StreetLamp').length;
     const dropped = h.sent.filter((m) => m.type === 'context_budget' && m.dropped).length;
     assert.ok(dropped > 0, 'the fixture never trimmed the transcript, so this proves nothing');
     assert.equal(lampReads, 2, 'the second read of the lamp must reach Studio, not be refused as a duplicate');
+  } finally {
+    h.stop();
+  }
+});
+
+// Gauntlet round 4 (2026-09-23): Apple MAX on a 1.3M-token model was trimmed at a fixed 60,000 chars
+// and dropped 23 turn groups. The ceiling a step is told about is the one derived from its model
+// (prompt-budget.ts), and it is larger than the old constant.
+test('the context budget a step reports is derived from the model the step is sent to', async () => {
+  const h = await makeSession({ connected: true, responses: [answer({ text: 'Hello.' })] });
+  try {
+    await start(h, { text: 'build me a spawn platform' });
+    for (let i = 0; i < 4 && !lastEnd(h); i++) await h.session.alarm();
+    const budget = h.sent.find((m) => m.type === 'context_budget');
+    assert.ok(budget, 'no context_budget frame');
+    const defsChars = JSON.stringify(W.toolDefs(true).map((d) => ({ type: 'function', function: d }))).length;
+    assert.equal(budget.maxChars, PB.promptBudgetForKey('agent', defsChars).maxChars);
+    assert.ok(budget.maxChars > 60_000, `budget ${budget.maxChars}`);
   } finally {
     h.stop();
   }
@@ -849,6 +873,74 @@ test('F-045: a reply that spoke in more than one step is sent once, live and as 
     assert.equal(count(streamed(h), new RegExp(body.replace(/\./g, '\\.'), 'g')), 1, `the reply body was streamed twice: ${JSON.stringify(streamed(h))}`);
     assert.equal(count(row.content, new RegExp(body.replace(/\./g, '\\.'), 'g')), 1);
     assert.equal(end.content, row.content, 'the live client must settle on the stored reply');
+  } finally {
+    h.stop();
+  }
+});
+
+// F-064 round 5 (2026-09-23, run 2e381849, Apple MAX): 128 ops in, a check passed, eight steps of
+// reading, and the run ended "the change was made and checked" with half the request's list unbuilt.
+// Every plan step was ticked by its tool having run once, so nothing read as open. The request's own
+// list is the checklist: a run is steered to the next part nothing it built is named for.
+const LISTED = 'Build a harbour scene: a lighthouse, a wooden pier, fishing boats, a tavern and a market square with stalls. Make it complete, make no mistakes';
+function listedRun() {
+  return [
+    calls(['create_instances', { items: [
+      { className: 'Model', name: 'Lighthouse', parent: 'Workspace' },
+      { className: 'Model', name: 'WoodenPier', parent: 'Workspace' },
+    ] }]),
+    calls(['audit_build', {}]),
+    ...Array.from({ length: 8 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
+    calls(['create_instances', { items: [
+      { className: 'Model', name: 'FishingBoat', parent: 'Workspace' },
+      { className: 'Model', name: 'Tavern', parent: 'Workspace' },
+      { className: 'Model', name: 'MarketSquare', parent: 'Workspace' },
+      { className: 'Model', name: 'Stall', parent: 'Workspace.MarketSquare' },
+    ] }]),
+    answer({ text: 'Built the harbour.' }),
+    answer({ text: 'Built the harbour.' }),
+  ];
+}
+const builtTree = (op) => (op.op === 'get_tree'
+  ? { ok: true, data: { root: { path: op.root, name: 'x', class: 'Folder', children: [
+    { path: `${op.root}.Block`, name: 'Block', class: 'Part', props: { Position: [0, 2, 0], Size: [4, 4, 4], Material: 'Wood', Color: [0.6, 0.4, 0.2], Anchored: true } },
+  ] } } }
+  : { ok: true, data: {} });
+const steersSent = (h) => [...new Set(h.chatCalls.flatMap((c) => c.req.messages ?? [])
+  .filter((m) => m.role === 'user' && /not finished/i.test(String(m.content))).map((m) => String(m.content)))];
+
+for (const autonomous of [false, true]) {
+  test(`F-064: a run whose request lists parts it has not built is steered to the next one, not ended after its check (Autonomous ${autonomous ? 'on, continues spent' : 'off'})`, async () => {
+    const h = await makeSession({ connected: true, answerOp: builtTree, responses: listedRun() });
+    try {
+      await start(h, { text: LISTED, autonomous });
+      if (autonomous) h.store.set('agent', structuredClone({ ...h.store.get('agent'), autonomousContinues: 99 }));
+      for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
+      assert.ok(lastEnd(h), 'the run never ended');
+      assert.ok(h.chatCalls.length >= 11, `the fixture never reached the idle bound (${h.chatCalls.length} model calls)`);
+      assert.doesNotMatch(streamed(h), /only re-reading the place/, 'the run ended on the idle bound with parts unbuilt');
+      const steers = steersSent(h);
+      assert.ok(steers.length > 0, 'no steer named a missing part');
+      assert.match(steers[0], /boat|tavern|market|stall/i, `the steer did not name an unbuilt part: ${steers[0]}`);
+      assert.doesNotMatch(steers[0], /lighthouse|pier/i, 'the steer named a part that was already built');
+      assert.ok(h.ops.some((op) => JSON.stringify(op).includes('Tavern')), 'the steered build never reached Studio');
+      assert.equal(lastEnd(h).stopReason, 'done');
+    } finally {
+      h.stop();
+    }
+  });
+}
+
+test('F-064 control: a run whose listed parts are all built still ends on the idle bound as before', async () => {
+  const built = listedRun();
+  built[0] = calls(['create_instances', { items: ['Lighthouse', 'WoodenPier', 'FishingBoat', 'Tavern', 'MarketSquare', 'Stall']
+    .map((name) => ({ className: 'Model', name, parent: 'Workspace' })) }]);
+  const h = await makeSession({ connected: true, answerOp: builtTree, responses: built });
+  try {
+    await start(h, { text: LISTED });
+    for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
+    assert.match(streamed(h), /only re-reading the place/);
+    assert.equal(steersSent(h).length, 0);
   } finally {
     h.stop();
   }

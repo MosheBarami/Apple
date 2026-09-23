@@ -105,7 +105,9 @@ export interface ScriptEdit {
   all?: boolean;
 }
 
-export type EditResult = { ok: true; source: string; applied: number } | { ok: false; error: string };
+export type EditResult =
+  | { ok: true; source: string; applied: number; edits: ScriptEdit[] }
+  | { ok: false; error: string; closest?: string };
 
 /**
  * Apply an ordered find/replace list the way `Ops.luau` does inside `UpdateSourceAsync`.
@@ -117,27 +119,97 @@ export type EditResult = { ok: true; source: string; applied: number } | { ok: f
  *   - a find that is not present fails the whole op, naming the 1-based edit index;
  *   - an edit that leaves the text unchanged also fails, for the same reason: it means the model
  *     believed something about the file that is not true.
+ *
+ * TWO ADDITIONS, both from gauntlet round 4 (2026-09-23), where a stale anchor was retried step
+ * after step because the refusal said only "read the script again":
+ *   - A single-occurrence find that misses only on WHITESPACE (indentation, tabs for spaces, CRLF,
+ *     trailing spaces) is anchored on the text actually there, if that match is unique. `edits` on
+ *     success is the list to send to Studio, with each find replaced by the literal text it matched,
+ *     so the plugin's exact match finds the same place and the two implementations still agree.
+ *   - A miss carries `closest`: the script's lines nearest the anchor, numbered, so the next step
+ *     can copy the anchor instead of reading the whole script again.
  */
 export function applyEdits(source: string, edits: ScriptEdit[]): EditResult {
   let text = String(source ?? '');
   let applied = 0;
+  const anchored: ScriptEdit[] = [];
   for (let i = 0; i < edits.length; i += 1) {
     const e = edits[i]!;
-    const find = String(e.find ?? '');
+    let find = String(e.find ?? '');
     const replace = String(e.replace ?? '');
     if (!find) return { ok: false, error: `edit ${i + 1}: empty find text` };
     const before = text;
     if (e.all) {
+      if (!text.includes(find)) return { ok: false, error: `edit ${i + 1}: text to find not present`, ...closestTo(text, find) };
       text = text.split(find).join(replace);
     } else {
-      const at = text.indexOf(find);
-      if (at < 0) return { ok: false, error: `edit ${i + 1}: text to find not present` };
+      let at = text.indexOf(find);
+      if (at < 0) {
+        const loose = looseMatch(text, find);
+        if (loose === 'ambiguous') {
+          return { ok: false, error: `edit ${i + 1}: text to find not present exactly, and it matches more than once ignoring whitespace — include more surrounding lines`, ...closestTo(text, find) };
+        }
+        if (!loose) return { ok: false, error: `edit ${i + 1}: text to find not present`, ...closestTo(text, find) };
+        find = loose;
+        at = text.indexOf(find);
+      }
       text = text.slice(0, at) + replace + text.slice(at + find.length);
     }
     if (text === before) return { ok: false, error: `edit ${i + 1} changed nothing` };
+    anchored.push({ ...e, find, replace });
     applied += 1;
   }
-  return { ok: true, source: text, applied };
+  return { ok: true, source: text, applied, edits: anchored };
+}
+
+const MAX_LOOSE_FIND = 20_000;
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The literal text in `text` that `find` names once whitespace runs are ignored, or null, or
+ * 'ambiguous' when it names more than one place. The span keeps the line's own indentation when the
+ * find began with whitespace and its line end when the find ended with a newline, so a replacement
+ * written with its own indentation and newline is not doubled up.
+ */
+function looseMatch(text: string, find: string): string | null | 'ambiguous' {
+  const core = find.trim();
+  if (!core || find.length > MAX_LOOSE_FIND) return null;
+  const lead = /^\s/.test(find) ? '[\\t ]*' : '';
+  const tail = /\n[\t ]*$/.test(find) ? '[\\t ]*\\r?\\n' : /\s$/.test(find) ? '[\\t ]*' : '';
+  const re = new RegExp(lead + core.split(/\s+/).map(escapeRe).join('\\s+') + tail, 'g');
+  const first = re.exec(text);
+  if (!first) return null;
+  if (re.exec(text)) return 'ambiguous';
+  return first[0];
+}
+
+const CLOSEST_MAX_CHARS = 1_500;
+const words = (s: string): Set<string> => new Set(s.match(/[A-Za-z_][A-Za-z0-9_]*|\d+(?:\.\d+)?/g) ?? []);
+
+/** The run of script lines sharing the most words with `find`, numbered, for a refused edit. */
+function closestTo(text: string, find: string): { closest?: string } {
+  const lines = text.split('\n');
+  const want = words(find);
+  if (want.size === 0 || lines.length === 0) return {};
+  const span = Math.max(1, Math.min(40, find.trim().split('\n').length));
+  const perLine = lines.map(words);
+  let best = -1;
+  let bestAt = 0;
+  for (let i = 0; i <= Math.max(0, lines.length - span); i += 1) {
+    const seen = new Set<string>();
+    for (let j = i; j < Math.min(lines.length, i + span); j += 1) for (const w of perLine[j]!) if (want.has(w)) seen.add(w);
+    if (seen.size > best) { best = seen.size; bestAt = i; }
+  }
+  if (best <= 0) return {};
+  const from = Math.max(0, bestAt - 2);
+  const to = Math.min(lines.length, bestAt + span + 2);
+  let out = '';
+  for (let n = from; n < to; n += 1) {
+    const row = `${n + 1}| ${lines[n]}\n`;
+    if (out.length + row.length > CLOSEST_MAX_CHARS) break;
+    out += row;
+  }
+  return out ? { closest: out } : {};
 }
 
 /**
