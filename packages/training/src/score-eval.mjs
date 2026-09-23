@@ -23,7 +23,12 @@ import { runSpecCase } from './tool-trajectory-verify.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-const byId = new Map(ALL_GAME_LOGIC_CURRICULUM.map((e) => [e.id, e]));
+// The teacher-drafted, executor-verified examples (v5+) carry their own checks too; a held-out
+// row from them is scored exactly like an authored one.
+const SYNTH = join(HERE, '../data/game-logic-synth-v1/examples.json');
+let synth = [];
+try { synth = JSON.parse(readFileSync(SYNTH, 'utf8')); } catch { /* no synth set yet */ }
+const byId = new Map([...ALL_GAME_LOGIC_CURRICULUM, ...synth].map((e) => [e.id, e]));
 
 /** Pull the first fenced Luau block, or null. A model that wrote prose scores as a miss. */
 export function fencedLuau(answer) {

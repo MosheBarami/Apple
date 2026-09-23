@@ -1,0 +1,32 @@
+# Apple v5 — v4's recipe on v4's data PLUS executor-verified synthetic game logic.
+#
+# v4 learned the tool-calling track (0/13 -> 8/13 held out) and nothing on game logic (0/8 -> 0/8):
+# it copied what the modules LOOK like, not what they COMPUTE, from 80 authored examples
+# (docs/evidence/apple-v4-evaluation-2026-09-19.md). v5 changes one variable — more game-logic
+# rows, each drafted by a teacher and kept only if the real `luau` binary passes its checks and
+# rejects its one-site mutation (src/synthesize-game-logic.mjs). Everything else is v4's, so a
+# difference in the held-out numbers is the data.
+#
+# The held-out TEST split is v4's, pinned family by family (build-mlx-dataset.mjs --v5), so base,
+# v4 and v5 are scored on identical rows. Synthetic families go to train or valid, never test.
+model: "unsloth/Llama-3.2-3B-Instruct"
+train: true
+data: "mlxdata-apple-v5"
+fine_tune_type: lora
+optimizer: adamw
+num_layers: 16
+# batch 1 x accumulation 4: batch 2 dies on the macOS METAL watchdog (see lora-apple-v4.yaml).
+batch_size: 1
+grad_accumulation_steps: 4
+grad_checkpoint: true
+max_seq_length: 1024
+iters: 400
+learning_rate: 5.0e-5
+# Validate on the WHOLE valid split, not 12 rows of it: the checkpoint is chosen by this number.
+val_batches: -1
+steps_per_report: 10
+steps_per_eval: 25
+# Save at every eval, so the best-val checkpoint exists on disk (v4's best, iter 100, only did
+# because 100 happened to be a multiple of save_every 50).
+save_every: 25
+adapter_path: "adapters/apple-v5"

@@ -28,7 +28,7 @@
  * mlx-lm wants `valid.jsonl`, not `val.jsonl`. That rename is the only transformation applied.
  */
 import { createHash } from 'node:crypto';
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ALL_GAME_LOGIC_CURRICULUM, buildGameLogic } from './build-game-logic.mjs';
@@ -57,8 +57,8 @@ async function loadExtraCurricula(names) {
   return out;
 }
 
-export async function assemble({ guard = loadEvalGuard(), registry = null } = {}) {
-  const logic = buildGameLogic({ guard });
+export async function assemble({ guard = loadEvalGuard(), registry = null, extraLogic = [], previousCard, newFamilySplits } = {}) {
+  const logic = buildGameLogic({ examples: [...ALL_GAME_LOGIC_CURRICULUM, ...extraLogic], guard, previousCard, newFamilySplits });
 
   const trajectorySeeds = [...TOOL_TRAJECTORY_CURRICULUM, ...(await loadExtraCurricula(['./tool-trajectory-curriculum-b.mjs']))];
   const { rows, refused } = await buildTrajectoryRows(trajectorySeeds, { registry: registry ?? (await loadRegistry()) });
@@ -100,11 +100,35 @@ export async function assemble({ guard = loadEvalGuard(), registry = null } = {}
   return { merged, logicCard: logic.card, trajectorySeeds: trajectorySeeds.length };
 }
 
+/**
+ * v5 = v4 plus the executor-verified synthesized examples (data/game-logic-synth-v1). The v4 split
+ * of every existing family is read back from mlxdata-apple-v4 and PINNED, so nothing v4 held out
+ * moves into training; a synthesized family goes to valid when its name hashes into ~10%, else train,
+ * and never to test, so the v4 test set stays the one both adapters are compared on.
+ */
+export function v5Inputs(root = ROOT) {
+  const synth = JSON.parse(readFileSync(join(root, 'packages/training/data/game-logic-synth-v1/examples.json'), 'utf8'));
+  const families = {};
+  for (const [split, file] of [['train', 'train'], ['val', 'valid'], ['test', 'test']]) {
+    for (const line of readFileSync(join(root, `packages/training/mlxdata-apple-v4/${file}.jsonl`), 'utf8').split('\n')) {
+      if (!line.trim()) continue;
+      const { meta } = JSON.parse(line);
+      if (meta?.kind === 'game-logic') families[meta.family] = split;
+    }
+  }
+  const newFamilySplits = {};
+  for (const family of new Set(synth.map((e) => e.family))) {
+    newFamilySplits[family] = parseInt(hash(family).slice(0, 8), 16) % 10 === 0 ? 'val' : 'train';
+  }
+  return { extraLogic: synth, previousCard: { digest: 'mlxdata-apple-v4', families }, newFamilySplits };
+}
+
 async function main() {
   const write = process.argv.includes('--write');
-  const outDir = join(ROOT, 'packages/training/mlxdata-apple-v4');
+  const v5 = process.argv.includes('--v5');
+  const outDir = join(ROOT, `packages/training/mlxdata-apple-${v5 ? 'v5' : 'v4'}`);
 
-  const { merged, logicCard, trajectorySeeds } = await assemble();
+  const { merged, logicCard, trajectorySeeds } = await assemble(v5 ? v5Inputs() : {});
   const counts = Object.fromEntries(Object.entries(merged).map(([k, v]) => [k, v.length]));
   const byTrack = (track) => Object.values(merged).flat().filter((r) => r.track === track).length;
 
@@ -128,8 +152,8 @@ async function main() {
     digests[name] = hash(body);
   }
   const card = {
-    schema: 'apple-mlx-dataset-v4',
-    builtFrom: ['ALL_GAME_LOGIC_CURRICULUM', 'TOOL_TRAJECTORY_CURRICULUM(+b)'],
+    schema: `apple-mlx-dataset-${v5 ? 'v5' : 'v4'}`,
+    builtFrom: ['ALL_GAME_LOGIC_CURRICULUM', 'TOOL_TRAJECTORY_CURRICULUM(+b)', ...(v5 ? ['game-logic-synth-v1 (teacher-drafted, luau-executed, mutation-checked)'] : [])],
     rows: counts.train + counts.val + counts.test,
     splitSizes: { train: counts.train, valid: counts.val, test: counts.test },
     trackRows: { 'game-logic': byTrack('game-logic'), 'tool-trajectory': byTrack('tool-trajectory') },
