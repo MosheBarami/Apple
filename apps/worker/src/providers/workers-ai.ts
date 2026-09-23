@@ -403,6 +403,7 @@ export const workersAiAdapter: ProviderAdapter = {
       payload.reasoning_effort = req.reasoningEffort;
     }
     if (req.jsonSchema) payload.response_format = { type: 'json_schema', json_schema: req.jsonSchema };
+    if (req.lora) payload.lora = req.lora;
 
     const promptChars =
       messages.reduce((n, m) => n + contentChars(m.content), 0) + JSON.stringify(payload.tools ?? '').length;

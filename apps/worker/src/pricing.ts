@@ -38,6 +38,8 @@ export const MODEL_PRICES: Record<string, ModelPrice> = {
   '@cf/openai/gpt-oss-20b': { id: '@cf/openai/gpt-oss-20b', usdPerMInput: 0.2, usdPerMOutput: 0.3 },
   '@cf/qwen/qwen3-30b-a3b-fp8': { id: '@cf/qwen/qwen3-30b-a3b-fp8', usdPerMInput: 0.051, usdPerMOutput: 0.335 },
   '@cf/qwen/qwen2.5-coder-32b-instruct': { id: '@cf/qwen/qwen2.5-coder-32b-instruct', usdPerMInput: 0.66, usdPerMOutput: 1.0 },
+  // The LoRA training-lab base (Apple's adapters are trained on it). From `wrangler ai models list`, 2026-09-23.
+  '@cf/meta/llama-3.2-3b-instruct': { id: '@cf/meta/llama-3.2-3b-instruct', usdPerMInput: 0.0509, usdPerMOutput: 0.335 },
   '@cf/meta/llama-3.2-11b-vision-instruct': { id: '@cf/meta/llama-3.2-11b-vision-instruct', usdPerMInput: 0.049, usdPerMOutput: 0.68 },
   '@cf/baai/bge-small-en-v1.5': { id: '@cf/baai/bge-small-en-v1.5', usdPerMInput: 0.02, usdPerMOutput: 0 },
   '@cf/baai/bge-m3': { id: '@cf/baai/bge-m3', usdPerMInput: 0.012, usdPerMOutput: 0 },

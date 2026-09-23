@@ -43,6 +43,12 @@ export interface ModelCfg {
   ctx: number;
   temperature: number;
   reasoningEffort?: 'low' | 'medium' | 'high';
+  /**
+   * A Workers AI fine-tune (LoRA adapter) name or id to serve on top of `id`. Only the bases that
+   * accept adapters honour it (llama-3.2-3b, qwen2.5-coder-32b, ...); set it only after the adapter
+   * has beaten its base on the product eval (the `lora` gate in packages/shared/src/models.ts).
+   */
+  lora?: string;
 }
 
 /** The provider refused before running the model, so nothing was billed. Safe to try again. */
@@ -110,6 +116,12 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   agent: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
 
   memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 800, ctx: 32_768, temperature: 0.2 },
+
+  // TRAINING LAB. The two Workers AI bases that accept Apple's LoRA adapters, addressable only by
+  // key (no product lane selects them), so /api/admin/model-test can score base against adapter on
+  // the same wire the product would use. GLM-5.3 Flash, Apple's current base, rejects adapters.
+  'lab-llama-3b': { id: '@cf/meta/llama-3.2-3b-instruct', nativeTools: true, maxTokens: 2048, ctx: 80_000, temperature: 0.25 },
+  'lab-qwen-coder-32b': { id: '@cf/qwen/qwen2.5-coder-32b-instruct', nativeTools: true, maxTokens: 2048, ctx: 32_768, temperature: 0.25 },
 
   // The visual critic sends real image_url data URLs and must remain on a multimodal model.
   vision: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 4000, ctx: 1_310_720, temperature: 0.3, reasoningEffort: 'low' },
@@ -320,6 +332,8 @@ export interface ChatOptions {
    * reused; never share it between tenants. Omit it and every step re-prefills from cold.
    */
   sessionId?: string;
+  /** Admin eval only: serve this LoRA adapter instead of the model's configured one. */
+  lora?: string;
   /**
    * Who this call is for, for the analytics event log ONLY. Both are optional and both default to
    * an unattributed event rather than to a plausible-looking placeholder: a model trace filed
@@ -404,6 +418,7 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     temperature: req.temperature ?? cfg.temperature,
     ...(effort ? { reasoningEffort: effort } : {}),
     ...(req.jsonSchema ? { jsonSchema: req.jsonSchema } : {}),
+    ...(!customer && (opts.lora ?? cfg.lora) ? { lora: opts.lora ?? cfg.lora } : {}),
   });
 
   // ---- spend gate: nothing below this line runs without a reservation ----

@@ -3578,7 +3578,7 @@ app.get('/api/admin/account/:userId', async (c) => {
 });
 
 app.post('/api/admin/model-test', async (c) => {
-  const body = await c.req.json<{ model: string; prompt: string; tools?: boolean; system?: string; rag?: boolean; maxTokens?: number }>();
+  const body = await c.req.json<{ model: string; prompt: string; tools?: boolean; system?: string; rag?: boolean; maxTokens?: number; lora?: string }>();
   const t0 = Date.now();
   try {
     let userContent = body.prompt;
@@ -3618,7 +3618,7 @@ app.post('/api/admin/model-test', async (c) => {
         ? [{ name: 'echo_tool', description: 'Echo a message back (test tool)', parameters: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'] } }]
         : undefined,
       maxTokens: body.maxTokens ?? 1600,
-    });
+    }, body.lora ? { lora: body.lora, kind: 'admin:lora-eval' } : undefined);
     // A marker pointing at a source the model was never shown makes a sentence look sourced, and it
     // survives review. If it is going to be caught at all it has to be caught here, where the
     // sources are still in hand.
