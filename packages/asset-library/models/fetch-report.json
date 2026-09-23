@@ -1,0 +1,74 @@
+{
+ "kaykit": {
+  "at": "2026-09-23T19:56:25.161Z",
+  "considered": 25,
+  "fetched": 10,
+  "already": 0,
+  "skipped": {
+   "no direct download": 15
+  },
+  "failed": 0,
+  "stoppedFor": null,
+  "scans": {
+   "thisRun": 0,
+   "clean": 0,
+   "withScripts": 0,
+   "unreadable": 0
+  },
+  "storeBytes": 278379727,
+  "freeBytes": 18665091072
+ },
+ "other": {
+  "at": "2026-09-23T19:56:40.449Z",
+  "considered": 22,
+  "fetched": 17,
+  "already": 0,
+  "skipped": {
+   "host is not trusted": 5
+  },
+  "failed": 0,
+  "stoppedFor": null,
+  "scans": {
+   "thisRun": 0,
+   "clean": 0,
+   "withScripts": 0,
+   "unreadable": 0
+  },
+  "storeBytes": 311465088,
+  "freeBytes": 18487840768
+ },
+ "kenney": {
+  "at": "2026-09-23T19:58:29.575Z",
+  "considered": 50,
+  "fetched": 50,
+  "already": 0,
+  "skipped": {},
+  "failed": 0,
+  "stoppedFor": null,
+  "scans": {
+   "thisRun": 0,
+   "clean": 0,
+   "withScripts": 0,
+   "unreadable": 0
+  },
+  "storeBytes": 501876273,
+  "freeBytes": 17994100736
+ },
+ "polypizza": {
+  "at": "2026-09-23T20:01:05.706Z",
+  "considered": 3000,
+  "fetched": 3000,
+  "already": 0,
+  "skipped": {},
+  "failed": 0,
+  "stoppedFor": null,
+  "scans": {
+   "thisRun": 0,
+   "clean": 0,
+   "withScripts": 0,
+   "unreadable": 0
+  },
+  "storeBytes": 777180546,
+  "freeBytes": 16641036288
+ }
+}

@@ -9,6 +9,10 @@
    stored library (packages/asset-library packs and sources) through one component tool. Raw GUI
    creation and scripts that Instance.new GUI classes are refused. Every component is shown in real
    Studio (docs/gauntlet/visual/ui-library/).
+   D-MODELLIB-1 (owner order, 2026-09-23), the same for 3D: props, buildings, nature, vehicles and pets
+   come from the model library (packages/asset-library/models) through find_library_model and
+   insert_library_model. create_instances refuses a part-built prop the library holds; parts stay for
+   terrain, baseplates, paths and zones. Studio inserts per genre are in docs/gauntlet/visual/model-library/.
 3. Round 6:
    - fresh place;
    - new project and pairing (plugin 1.2.0 needs a Studio reload first);

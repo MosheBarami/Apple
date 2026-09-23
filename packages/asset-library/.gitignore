@@ -1,0 +1,3 @@
+# The model library store (D-MODELLIB-1): downloaded packs and stripped Roblox files. Only the
+# manifest in models/ is committed; `node models/fetch.mjs` re-creates this folder.
+models-store/
