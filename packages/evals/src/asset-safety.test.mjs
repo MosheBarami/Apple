@@ -1573,7 +1573,16 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
     }
     return '';
   });
-  writeFileSync(workerOut, `class __DurableObjectStub { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n${bound.map((n) => `const ${n} = __DurableObjectStub;`).join('\n')}\n${stripped}`);
+  // model-upload-workflow.ts takes the NAMESPACE (`import * as workers`) and falls back when
+  // WorkflowEntrypoint is absent; left in place, Node refuses the `cloudflare:` scheme and the whole
+  // file dies before its first test. The namespace becomes an object holding the stub.
+  const namespaces = [];
+  const unscoped = stripped.replace(/import\s*\*\s*as\s+(\w+)\s+from\s*["']cloudflare:workers["'];?/g, (_m, name) => {
+    namespaces.push(name);
+    return '';
+  });
+  assert.equal(/from\s*["']cloudflare:workers["']/.test(unscoped), false, 'a cloudflare:workers import form this shim does not handle');
+  writeFileSync(workerOut, `class __DurableObjectStub { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n${bound.map((n) => `const ${n} = __DurableObjectStub;`).join('\n')}\n${namespaces.map((n) => `const ${n} = { DurableObject: __DurableObjectStub };`).join('\n')}\n${unscoped}`);
 }
 const worker = (await import(workerOut)).default;
 

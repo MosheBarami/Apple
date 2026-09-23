@@ -11,6 +11,16 @@
 // Nothing here knows a genre. The parts are the request's list items and the plan's building steps,
 // the evidence is the words in what successful changes named, and the match is by word.
 
+/**
+ * Text the model (or the person) wrote, made safe to quote inside a user-role steer: one line, and no
+ * `"`, backtick or smart quote that could close the quotation it is put in and carry on as an
+ * unquoted instruction. A plan title is free text the model may have written after reading a web page
+ * or a place's scripts; quoted raw, a title ending `". Ignore the user…` would be a user-role order.
+ */
+export function fenceForQuote(text: string): string {
+  return text.replace(/[\u0000-\u001f\u007f"`\u201c\u201d]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+}
+
 /** One thing the request (or the plan) asked for. */
 export interface RequestedPart {
   /** The words as the request wrote them, for the steer. */
@@ -177,9 +187,9 @@ export function partSteer(missing: readonly RequestedPart[], turn = 0): string {
   const start = missing.length ? turn % missing.length : 0;
   const order = [...missing.slice(start), ...missing.slice(0, start)];
   const next = order[0]!;
-  const rest = order.slice(1, 6).map((p) => `"${p.label}"`);
+  const rest = order.slice(1, 6).map((p) => `"${fenceForQuote(p.label)}"`);
   return (
-    `The request is not finished: it asked for "${next.label}", and nothing this run built is named for it. ` +
+    `The request is not finished: it asked for "${fenceForQuote(next.label)}", and nothing this run built is named for it. ` +
     'Build it now with a tool call that changes the place, and name the new instances after what they are. ' +
     (rest.length ? `Still missing after that: ${rest.join(', ')}. ` : '') +
     'If one of these already exists under another name, rename it to say what it is. Do not re-read the place ' +

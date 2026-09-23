@@ -12,6 +12,7 @@
 //   agnostic and cite the Creator Docs chunks they came from (packages/corpus/data/skill-cards.json). ]]
 import data from '../../../packages/corpus/data/skill-cards.json' with { type: 'json' };
 import { nextPlanStep, type PlanTraceEntry, type RunPlan } from './run-plan';
+import { fenceForQuote } from './run-parts';
 
 export interface SkillCard {
   id: string;
@@ -82,5 +83,5 @@ export function skillSteerForStep(
   if (!step) return null;
   const [card] = pick(`${step.title} ${step.detail ?? ''}`, step.tool, shown, 1);
   if (!card) return null;
-  return { message: `Before "${step.title}", the recipe for this kind of step:\n\n${renderSkillCard(card)}`, ids: [card.id] };
+  return { message: `Before "${fenceForQuote(step.title)}", the recipe for this kind of step:\n\n${renderSkillCard(card)}`, ids: [card.id] };
 }

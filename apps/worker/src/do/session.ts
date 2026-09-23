@@ -84,7 +84,7 @@ import { aim, trimTranscriptReport } from '../transcript';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
 import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, afterDuplicateStreak, UNSTICK_STEER, type RetuneAction } from '../run-idle';
-import { addEvidence, evidenceWords, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
+import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
@@ -4448,7 +4448,7 @@ export class SessionDO extends DurableObject<Env> {
       agent.unstucks = (agent.unstucks ?? 0) + 1;
       agent.duplicateStreak = 0;
       agent.readsWithheldOnce = true;
-      const next = planOpen ? ` Your plan's next step is "${planOpen.title}" (${planOpen.tool}).` : '';
+      const next = planOpen ? ` Your plan's next step is "${fenceForQuote(planOpen.title)}" (${planOpen.tool}).` : '';
       agent.llm.push({
         role: 'user',
         content: UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') + (streakParts.length ? ` ${partSteer(streakParts)}` : ''),

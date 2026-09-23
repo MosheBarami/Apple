@@ -358,7 +358,18 @@ test('gateway defaults: the run modes share one foundation, and memory and visio
   // mean Autonomous crept back in as a mode.
   const outside = MODEL_REGISTRY.filter((m) => m.route === 'unified-billing').map((m) => m.id);
   assert.ok(outside.length >= 1, 'the registry lists no outside model — the subtraction below checks nothing');
-  assert.deepEqual(Object.keys(G.DEFAULT_MODELS).filter((k) => !outside.includes(k)).sort(), ['agent', 'memory', 'plan', 'vision']);
+  //
+  // TRAINING LAB KEYS, reviewed 2026-09-23 (15b5a04, `lab-llama-3b` / `lab-qwen-coder-32b`): the two
+  // Workers AI bases that accept LoRA adapters, for /api/admin/model-test (ADMIN_KEY) to score an
+  // adapter against its base. They are not run modes: no product path can select one, because the
+  // run's key comes from `gatewayModelFor(mode, productModel)`, which returns the mode or a
+  // registry id routed 'unified-billing' — and a lab key is in neither. Both ids are priced in
+  // pricing.ts MODEL_PRICES, so the spend gate meters them like any other call.
+  const lab = Object.keys(G.DEFAULT_MODELS).filter((k) => k.startsWith('lab-'));
+  for (const k of lab) {
+    assert.equal(MODEL_REGISTRY.some((m) => m.id === k), false, `${k} is in the product registry — a customer could select it`);
+  }
+  assert.deepEqual(Object.keys(G.DEFAULT_MODELS).filter((k) => !outside.includes(k) && !lab.includes(k)).sort(), ['agent', 'memory', 'plan', 'vision']);
   for (const id of outside) assert.ok(G.DEFAULT_MODELS[id], `no model key for ${id}`);
 });
 
