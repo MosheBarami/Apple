@@ -174,8 +174,21 @@ export interface PlayCheckSummary {
   warnings: number;
   leaderstats?: string;
   touches?: string[];
+  /** play_check_ui (F-050): one line per on-screen button the player pressed, in order. */
+  presses?: string[];
+  leaderstatsAfterPresses?: string;
   harness: string;
   note: string;
+}
+
+interface PlayPress {
+  path: string;
+  found: boolean;
+  visible?: boolean;
+  pressed?: boolean;
+  activated?: boolean;
+  activations?: number;
+  error?: string;
 }
 
 /**
@@ -203,6 +216,21 @@ export function summarisePlayCheck(raw: unknown): PlayCheckSummary {
     if (typeof t.transparency === 'number') parts.push(`Transparency ${t.transparency}`);
     return parts.join(', ');
   });
+  const pressList = list<PlayPress>(d.presses);
+  const presses = pressList.map((p) => {
+    if (!p.found) return `${p.path}: NOT FOUND on the player's screen${p.error ? ` (${p.error})` : ''}`;
+    if (p.activated) return `${p.path}: pressed, and the button activated${Number(p.activations) > 1 ? ` (${p.activations} times)` : ''}`;
+    if (p.pressed) return `${p.path}: pressed, but the button did NOT activate${p.error ? ` (${p.error})` : ''}`;
+    return `${p.path}: NOT pressed${p.error ? ` — ${p.error}` : ''}`;
+  });
+  const failedPresses = pressList.filter((p) => !p.activated).length;
+  const afterPresses = d.leaderstatsAfterPresses == null ? undefined : statText(list<PlayStat>(d.leaderstatsAfterPresses)) || 'none';
+  const pressed = presses.length ? { presses, ...(afterPresses !== undefined ? { leaderstatsAfterPresses: afterPresses } : {}) } : {};
+  const pressNote = failedPresses
+    ? `${failedPresses} of ${pressList.length} button press(es) did NOT activate, so that part of the flow is NOT verified — say so, and fix the button or its script before claiming it works. `
+    : presses.length
+      ? 'Every listed button activated; the screen below was read AFTER the presses. '
+      : '';
 
   const base = { clientErrors, serverErrors, warnings, harness };
   // A harness left in the customer's place is the one thing that must survive truncation, so it
@@ -226,6 +254,7 @@ export function summarisePlayCheck(raw: unknown): PlayCheckSummary {
       ...base,
       leaderstats,
       ...(touches.length ? { touches } : {}),
+      ...pressed,
       note: 'A UI claim is NOT verified by this check. Say so.',
     });
   }
@@ -267,5 +296,5 @@ export function summarisePlayCheck(raw: unknown): PlayCheckSummary {
         : verdict === 'no_screen_gui'
           ? 'There is no on-screen UI. If the user asked for a counter or HUD, it does not exist yet.'
           : 'This is what one player saw. The screen was read AFTER the touches, so a counter showing the new leaderstats value updated and one showing the old value did not. Claim only what playerSees says.';
-  return lead({ verdict, playerSees, ...base, leaderstats, ...(touches.length ? { touches } : {}), note });
+  return lead({ verdict, playerSees, ...base, leaderstats, ...(touches.length ? { touches } : {}), ...pressed, note: pressNote + note });
 }

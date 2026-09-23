@@ -92,6 +92,10 @@ import {
 import { checkWorkspacePath, kvWorkspace, runWebTool, webToolDef, WORKSPACE_MAX_BYTES, type WebToolCtx, type WorkspaceStore } from './webtools';
 import type { WebFetchLike } from './net-policy';
 import { chat } from './gateway';
+import {
+  searchInstances, setPropertiesBulk, spatialQuery, scatterInstances, collisionGroups, shapeTerrain, readTerrain,
+  createRig, checkUiLayout, buildUi, playCheckUiOp, PLAY_CHECK_UI_DEF, type OpCall,
+} from './phase-a-tools';
 
 export interface AgentCtx {
   env: Env;
@@ -919,6 +923,9 @@ async function dumpScripts(
  * answers "may I do this again"; `fix` answers "what does the PERSON do", and a refusal is precisely
  * the case where those two have different answers. See remedyHint in op-failure.ts.
  */
+/** The Studio channel as phase-a-tools.ts sees it: the same `op`, bound to this run. */
+const studioCall = (ctx: AgentCtx): OpCall => (studioOp, timeoutMs) => op(ctx, studioOp, timeoutMs);
+
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
   if (!res.ok) {
@@ -2812,6 +2819,29 @@ export const TOOLS: Record<string, ToolImpl> = {
       return summarisePlayCheck(res);
     },
   },
+  /**
+   * F-050: play_check that also PRESSES on-screen buttons, so a flow like Shop -> Buy is verified by
+   * a click rather than asserted. Its own tool for the same reason play_check is not an option on
+   * run_and_check: an option would be offered to the store plugin that cannot run it.
+   */
+  play_check_ui: {
+    def: PLAY_CHECK_UI_DEF,
+    studio: true,
+    studioOps: ['play_check_ui'],
+    run: async (ctx, a) => {
+      const request = playCheckUiOp(a);
+      if ('error' in request) return request;
+      // Each press adds up to two seconds to the plugin's own bound; the slack is play_check's.
+      const res = await op(ctx, request, 100_000);
+      if (res && typeof res === 'object' && 'error' in res) {
+        return {
+          ...(res as Record<string, unknown>),
+          notVerified: 'The player-side check did not produce a report, so no button was observed being pressed. Do not claim any UI flow works.',
+        };
+      }
+      return summarisePlayCheck(res);
+    },
+  },
   get_output_logs: {
     def: { name: 'get_output_logs', description: 'Read recent Studio output/console logs (errors, warnings, prints).', parameters: S({}) },
     studio: true,
@@ -4543,6 +4573,78 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: webToolDef('workspace_write'),
     studio: false,
     run: (ctx, a) => runWebTool('workspace_write', webCtx(ctx), a),
+  },
+  /*
+   * THE PHASE A STUDIO TOOLS (D-VISION-1), registered one by one for the reason given for the audio
+   * tools below. Their argument checks and bodies live in phase-a-tools.ts, where they are tested
+   * against a recorded op channel; each stands on an OPT-IN plugin operation, so a plugin that has
+   * not reported that operation is never offered the tool.
+   */
+  search_instances: {
+    def: searchInstances.def,
+    studio: true,
+    studioOps: ['query_instances'],
+    run: (ctx, a) => searchInstances.run(studioCall(ctx), a),
+  },
+  set_properties_bulk: {
+    def: setPropertiesBulk.def,
+    studio: true,
+    studioOps: ['set_props_bulk'],
+    mutatesProject: (result) => positiveCount(result, 'count'),
+    run: (ctx, a) => setPropertiesBulk.run(studioCall(ctx), a),
+  },
+  spatial_query: {
+    def: spatialQuery.def,
+    studio: true,
+    studioOps: ['spatial_query'],
+    run: (ctx, a) => spatialQuery.run(studioCall(ctx), a),
+  },
+  scatter_instances: {
+    def: scatterInstances.def,
+    studio: true,
+    studioOps: ['scatter'],
+    mutatesProject: (result) => positiveCount(result, 'placed'),
+    run: (ctx, a) => scatterInstances.run(studioCall(ctx), a),
+  },
+  collision_groups: {
+    def: collisionGroups.def,
+    studio: true,
+    studioOps: ['collision_groups', 'collision_groups_list'],
+    mutatesProject: (result) => collisionGroups.mutates(result),
+    run: (ctx, a) => collisionGroups.run(studioCall(ctx), a),
+  },
+  shape_terrain: {
+    def: shapeTerrain.def,
+    studio: true,
+    studioOps: ['terrain_shape'],
+    mutatesProject: true,
+    run: (ctx, a) => shapeTerrain.run(studioCall(ctx), a),
+  },
+  read_terrain: {
+    def: readTerrain.def,
+    studio: true,
+    studioOps: ['terrain_read'],
+    run: (ctx, a) => readTerrain.run(studioCall(ctx), a),
+  },
+  create_rig: {
+    def: createRig.def,
+    studio: true,
+    studioOps: ['create_rig'],
+    mutatesProject: true,
+    run: (ctx, a) => createRig.run(studioCall(ctx), a),
+  },
+  check_ui_layout: {
+    def: checkUiLayout.def,
+    studio: true,
+    studioOps: ['ui_layout_check'],
+    run: (ctx, a) => checkUiLayout.run(studioCall(ctx), a),
+  },
+  build_ui: {
+    def: buildUi.def,
+    studio: true,
+    studioOps: ['query_instances', 'create_instances', 'ui_layout_check'],
+    mutatesProject: (result) => !!result && typeof result === 'object' && typeof (result as Record<string, unknown>).built === 'string',
+    run: (ctx, a) => buildUi.run(studioCall(ctx), a),
   },
   /*
    * THE AUDIO TOOLS, REGISTERED ONE BY ONE ON PURPOSE.

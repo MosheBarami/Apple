@@ -38,6 +38,11 @@ export interface InstanceSpec {
   children?: Omit<InstanceSpec, 'parent'>[];
 }
 
+/** Device frames ui_layout_check lays a screen out in (phones and tablets also get the touch-target check). */
+export type UiLayoutDevice = 'phone_portrait' | 'phone_landscape' | 'tablet' | 'desktop' | 'console_tv';
+/** How set_props_bulk adjusts a number or Vector3 property. Named, not inlined, because an inline `op: '…'` would read as a StudioOp. */
+export type BulkAdjustOp = 'add' | 'mul';
+
 export type StudioOp =
   | { op: 'ping' }
   | { op: 'get_tree'; root?: string; maxDepth?: number; maxNodes?: number }
@@ -132,7 +137,92 @@ export type StudioOp =
   // evidence the model is good.
   | { op: 'generate_model'; prompt: string; intent?: string; maxTriangles?: number; predefinedSchema?: string; parent: string }
   | { op: 'inspect_model'; path: string; intent?: string } // QC gate over an existing model
-  | { op: 'undo_waypoint'; name: string }; // explicit ChangeHistoryService waypoint
+  | { op: 'undo_waypoint'; name: string } // explicit ChangeHistoryService waypoint
+  // --- op families (apps/apple-plugin/src/ops, D-VISION-1 Phase A). Every one is OPT-IN: the worker
+  // offers a tool that needs one only when the paired plugin reports it supported.
+  | {
+      op: 'query_instances';
+      root?: string;
+      name?: string; // substring, or a `*` glob
+      className?: string;
+      isA?: string;
+      tag?: string;
+      attribute?: { name: string; equals?: string | number | boolean };
+      property?: { name: string; op?: 'eq' | 'lt' | 'gt' | 'contains'; value: string | number | boolean };
+      limit?: number;
+    }
+  | {
+      op: 'set_props_bulk';
+      targets?: string[];
+      query?: Record<string, unknown>;
+      props?: Record<string, PropValue>;
+      attributes?: Record<string, PropValue>;
+      adjust?: { property: string; op: BulkAdjustOp; value: number | [number, number, number] }[];
+    }
+  | {
+      op: 'spatial_query';
+      action: 'raycast' | 'find_ground' | 'bounds' | 'check_placement' | 'overlap' | 'find_flat';
+      origin?: [number, number, number];
+      direction?: [number, number, number];
+      position?: [number, number, number];
+      path?: string;
+      center?: [number, number, number];
+      size?: [number, number, number];
+      region?: { min: [number, number, number]; max: [number, number, number] };
+      samples?: number;
+      maxSlopeDeg?: number;
+      exclude?: string[];
+    }
+  | {
+      op: 'scatter';
+      template: string;
+      count?: number;
+      region: { min: [number, number, number]; max: [number, number, number] };
+      onMaterial?: string[];
+      minSpacing?: number;
+      scale?: [number, number];
+      randomYaw?: boolean;
+      seed?: number;
+      parent?: string;
+    }
+  | { op: 'collision_groups'; action: 'register' | 'set_collidable' | 'assign'; group: string; other?: string; collidable?: boolean; paths?: string[] }
+  | { op: 'collision_groups_list' }
+  | {
+      op: 'terrain_shape';
+      action: 'fill_cylinder' | 'fill_wedge' | 'clear_region' | 'smooth' | 'heightmap' | 'appearance';
+      center?: [number, number, number];
+      size?: [number, number, number];
+      height?: number;
+      radius?: number;
+      rotationY?: number;
+      min?: [number, number, number];
+      max?: [number, number, number];
+      material?: string;
+      subMaterial?: string;
+      strength?: number;
+      octaves?: number;
+      seed?: number;
+      amplitude?: number;
+      scale?: number;
+      water?: { color?: [number, number, number]; transparency?: number; reflectance?: number; waveSize?: number; waveSpeed?: number };
+      decoration?: boolean;
+      materialColors?: Record<string, [number, number, number]>;
+    }
+  | { op: 'terrain_read'; min: [number, number, number]; max: [number, number, number] }
+  | {
+      op: 'create_rig';
+      rigType?: 'R15' | 'R6';
+      name?: string;
+      position?: [number, number, number];
+      parent?: string;
+      bodyColors?: Partial<Record<'head' | 'torso' | 'leftArm' | 'rightArm' | 'leftLeg' | 'rightLeg', [number, number, number]>>;
+      scale?: Partial<Record<'height' | 'width' | 'depth' | 'head' | 'proportion' | 'bodyType', number>>;
+      npc?: boolean;
+      displayName?: string;
+    }
+  | { op: 'ui_layout_check'; screen: string; devices?: UiLayoutDevice[] }
+  /** play_check plus presses (F-050): each `press` path is a GuiButton inside a ScreenGui in StarterGui. */
+  | { op: 'play_check_ui'; seconds?: number; touch?: string[]; press: string[] };
 
 /**
  * Camera presets the plugin's software renderer can produce. Multi-view exists because a single
@@ -792,6 +882,12 @@ export function phaseForTool(tool: string): AgentPhase {
     // Capturing a page is looking at it. NOT `rendering`, which in this product means the plugin
     // is rasterising the Roblox scene — a different machine doing a different thing.
     case 'screenshot_page':
+    // Phase A readers (D-VISION-1): each asks the place a question — what matches, what is below
+    // this point, what Terrain holds here, does this screen fit a phone — and changes nothing.
+    case 'search_instances':
+    case 'spatial_query':
+    case 'read_terrain':
+    case 'check_ui_layout':
       return 'inspecting';
     // Announcing the plan is not doing the work. This tool runs before anything in the project
     // moves, so the one phase it must never fall through to is the `default` below — 'building'
@@ -853,6 +949,14 @@ export function phaseForTool(tool: string): AgentPhase {
     // claims and is therefore the only phase they may honestly announce.
     case 'design_sound':
     case 'assign_sounds':
+    // Phase A writers (D-VISION-1): bulk property changes, scattered copies, collision groups,
+    // terrain shapes, character rigs and whole UI screens all change the open place.
+    case 'set_properties_bulk':
+    case 'scatter_instances':
+    case 'collision_groups':
+    case 'shape_terrain':
+    case 'create_rig':
+    case 'build_ui':
       return 'building';
     case 'render_view':
     // Framing a store-page image IS a rasterise of the place — the same five camera angles, at the
@@ -869,6 +973,7 @@ export function phaseForTool(tool: string): AgentPhase {
       return 'critiquing';
     case 'run_and_check':
     case 'play_check':
+    case 'play_check_ui':
       return 'playtesting';
     case 'get_output_logs':
       return 'debugging';
@@ -2506,7 +2611,7 @@ export interface GovernedTool {
  * Every tool that DECLARES ITSELF A WRITER in the registry — `TOOLS[name].mutatesProject` in
  * apps/worker/src/tools.ts — appears here, plus the tools that spend Credits without writing
  * (generate_image, generate_sound, speak_line, run_and_check, workspace_write). Measured
- * 2026-09-22: 23 writers declared, 28 governed, and the writers are a strict subset. A safety
+ * 2026-09-23: 30 writers declared, 37 governed, and the writers are a strict subset. A safety
  * control with a hole in it is worse than none, because it reads as complete.
  *
  * This used to say "every member of the run loop's own MUTATING_TOOLS set appears here". That set
@@ -2651,6 +2756,48 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'play_check',
     label: 'Playtest as a player',
     why: 'Starts a short Test session with one player in your Studio. Withhold it and Apple cannot check what a player sees on screen.',
+    group: 'changes',
+  },
+  {
+    name: 'play_check_ui',
+    label: 'Playtest and press buttons',
+    why: 'Starts a short Test session and clicks on-screen buttons as a player would. Withhold it and Apple cannot prove a menu or shop works.',
+    group: 'changes',
+  },
+  {
+    name: 'set_properties_bulk',
+    label: 'Change many objects at once',
+    why: 'One step can change up to 500 parts or objects, chosen by list or by search.',
+    group: 'changes',
+  },
+  {
+    name: 'scatter_instances',
+    label: 'Scatter copies across the map',
+    why: 'Places up to 200 copies of an object (trees, rocks, coins) on the ground in an area.',
+    group: 'changes',
+  },
+  {
+    name: 'collision_groups',
+    label: 'Change what collides',
+    why: 'Creates collision groups and decides which of them pass through each other.',
+    group: 'changes',
+  },
+  {
+    name: 'shape_terrain',
+    label: 'Shape terrain and water',
+    why: 'Adds hills, ramps and pillars, clears or smooths terrain, and changes water and grass.',
+    group: 'changes',
+  },
+  {
+    name: 'create_rig',
+    label: 'Add characters',
+    why: 'Adds a Roblox character model, for NPCs and mannequins.',
+    group: 'changes',
+  },
+  {
+    name: 'build_ui',
+    label: 'Build UI screens',
+    why: 'Adds a whole on-screen menu, shop or HUD to StarterGui.',
     group: 'changes',
   },
   {

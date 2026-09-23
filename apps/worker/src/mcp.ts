@@ -279,11 +279,18 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   generate_model: 'Creates geometry and parents it into the place, and spends on generation to do it.',
   remember: 'Writes a durable fact into project memory, which steers every later agent run. A program that can edit the agent\'s standing instructions is writing the place slowly.',
   create_checkpoint: 'Snapshots the whole place into Durable Object storage. Cheap to call, not cheap to serve; a loop over it is a storage bill.',
+  set_properties_bulk: 'Changes up to 500 instances in one call. The widest single write in the registry; it belongs to an agent run with its checkpoint.',
+  scatter_instances: 'Places up to 200 copies of an object into the place. A build belongs to an agent run, where a checkpoint exists to undo it.',
+  collision_groups: 'Registers collision groups and changes which collide, which changes how the whole game plays. A write to the place.',
+  shape_terrain: 'Changes Terrain voxels, water and material colours in the open place. Terrain authoring belongs to a consented agent run.',
+  create_rig: 'Adds a character model to the place. A build belongs to an agent run.',
+  build_ui: 'Adds a whole ScreenGui to StarterGui. A build belongs to an agent run.',
 
   // ---- runs code, or runs the game -------------------------------------------------------
   run_luau: 'Executes arbitrary Luau in the user\'s Studio. There is no subset of this that is read-only, and it is the one tool that makes every other exclusion here pointless.',
   run_and_check: 'Starts and stops Run mode in the user\'s Studio. It takes over the window of whoever is sitting at it.',
   play_check: 'Starts a Test session with a player in the user\'s Studio and inserts a temporary harness for it. It takes over the window of whoever is sitting at it.',
+  play_check_ui: 'play_check plus clicking on-screen buttons in the running game: the same takeover of the window of whoever is sitting at it.',
   run_spec: 'Executes assertion code against the place\'s modules, which means executing code.',
   audit_build: 'Runs Luau probes AND a panel of critic models. Both halves disqualify it: it executes, and it spends.',
 
@@ -322,6 +329,10 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   workspace_list: 'Reads Apple\'s own per-project scratch storage rather than the Roblox place. No scope in API_SCOPES describes it, and reusing projects:read would silently widen every key already minted.',
   workspace_read: 'Same as workspace_list: a different resource from the place, needing a scope the credential model does not yet have.',
   workspace_write: 'Writes into that scratch storage, so it fails the read-only rule as well.',
+  search_instances: 'Read-only, and excluded until MCP negotiates plugin capabilities: it stands on an OPT-IN plugin operation, and this surface does not filter tools by what the connected plugin reports, so it would be offered to plugins that refuse it.',
+  spatial_query: 'Read-only, excluded for the same reason as search_instances: its plugin operation is opt-in and MCP does not check the connected plugin supports it.',
+  read_terrain: 'Read-only, excluded for the same reason as search_instances: its plugin operation is opt-in and MCP does not check the connected plugin supports it.',
+  check_ui_layout: 'Changes nothing in the place, but it builds a temporary copy of a screen in Studio\'s own UI layer, and its plugin operation is opt-in, which MCP does not negotiate. Excluded for both reasons.',
 };
 
 // ---------------------------------------------------------------------------

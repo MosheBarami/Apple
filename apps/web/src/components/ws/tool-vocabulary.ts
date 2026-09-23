@@ -184,6 +184,16 @@ export const TOOL = {
   viewport_info: { kind: 'inspecting', label: 'Looked at the workspace layout' },
   install_module: { kind: 'writing_luau', label: 'Installed a vetted module' },
   remove_effect: { kind: 'editing', label: 'Removed an ambient effect' },
+  search_instances: { kind: 'inspecting', label: 'Searched the project for matching objects' },
+  set_properties_bulk: { kind: 'editing', label: 'Changed many objects at once' },
+  spatial_query: { kind: 'inspecting', label: 'Measured the space in the world' },
+  scatter_instances: { kind: 'building', label: 'Scattered copies across the ground' },
+  collision_groups: { kind: 'editing', label: 'Set up what collides with what' },
+  shape_terrain: { kind: 'building', label: 'Shaped the terrain' },
+  read_terrain: { kind: 'inspecting', label: 'Looked at the terrain' },
+  create_rig: { kind: 'building', label: 'Added a character' },
+  check_ui_layout: { kind: 'critiquing', label: 'Checked the screen on phone, tablet and PC sizes' },
+  build_ui: { kind: 'building', label: 'Built a screen' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent' },
@@ -192,6 +202,7 @@ export const TOOL = {
   // C14 / C15 / C18
   run_and_check: { kind: 'playtesting', label: 'Ran the game and checked it' },
   play_check: { kind: 'playtesting', label: 'Played it as a player and checked the screen' },
+  play_check_ui: { kind: 'playtesting', label: 'Played it and pressed the buttons on screen' },
   get_output_logs: { kind: 'debugging', label: 'Read the output log' },
   create_checkpoint: { kind: 'saving', label: 'Saved a checkpoint' },
   remember: { kind: 'remembering', label: 'Noted a fact about the project' },

@@ -36,6 +36,7 @@ PlayCheck.CLIENT_NAME = "ApplePlayCheckClient"
 PlayCheck.MIN_SECONDS = 3
 PlayCheck.MAX_SECONDS = 15
 PlayCheck.MAX_TOUCHES = 5
+PlayCheck.MAX_PRESSES = 5
 
 -- Shared census code, spliced into both harnesses so the server fallback and the client report
 -- describe a PlayerGui the same way.
@@ -242,9 +243,21 @@ local okGui, playerGui = pcall(function() return player:FindFirstChild("PlayerGu
 if okGui and playerGui then
 	report.serverViewGuis, report.serverViewOthers = census(playerGui)
 end
-pcall(function() channel:FireClient(player, { nonce = args.nonce, since = since }) end)
-local reportBy = os.clock() + 6
+-- F-050: the client presses the listed on-screen buttons BEFORE it describes its screen, so the
+-- report (and the leaderstats read after it) show what pressing them did.
+local presses = {}
+if type(args.press) == "table" then
+	for index, target in args.press do
+		if index > 5 then break end
+		if type(target) == "table" and type(target.segments) == "table" then
+			table.insert(presses, { path = clip(target.path, 320), segments = target.segments })
+		end
+	end
+end
+pcall(function() channel:FireClient(player, { nonce = args.nonce, since = since, press = presses }) end)
+local reportBy = os.clock() + 6 + 2 * #presses
 while clientReport == nil and not ended and os.clock() < reportBy do task.wait(0.2) end
+if #presses > 0 then report.leaderstatsAfterPresses = stats() end
 finish("done")
 ]==]
 
@@ -260,13 +273,77 @@ local scriptErrors = {}
 watchErrors(ScriptContext, scriptErrors)
 local channel = ReplicatedStorage:WaitForChild("ApplePlayCheckChannel", 30)
 if not channel or channel:GetAttribute(MARKER) ~= marker then return end
+-- F-050. A press is a real mouse click at the button's centre, sent through VirtualInput, so the
+-- button's own Activated / MouseButton1Click handlers run exactly as a player's click would run
+-- them. Nothing here fires a signal directly or calls a handler: if VirtualInput is unavailable the
+-- press is reported as not pressed, never as pressed.
+local function pressAll(playerGui, list)
+	local results = {}
+	if type(list) ~= "table" or #list == 0 then return results end
+	local UserInputService = game:GetService("UserInputService")
+	local GuiService = game:GetService("GuiService")
+	local okVirtual, virtual = pcall(function() return UserInputService:CreateVirtualInput() end)
+	for index, target in list do
+		if index > 5 then break end
+		local entry = { path = clip(target.path, 320), found = false, pressed = false, activations = 0 }
+		-- segments are relative to StarterGui: the ScreenGui is copied into PlayerGui under its name.
+		local node = playerGui
+		local waitUntil = os.clock() + 3
+		for _, segment in target.segments do
+			if node == nil then break end
+			local child = node:FindFirstChild(segment)
+			while child == nil and os.clock() < waitUntil do task.wait(0.1); child = node:FindFirstChild(segment) end
+			node = child
+		end
+		if node and node:IsA("GuiButton") then
+			entry.found = true
+			entry.visible = shown(node, playerGui)
+			local screen = node:FindFirstAncestorOfClass("ScreenGui")
+			if screen and not screen.Enabled then entry.visible = false end
+			if not entry.visible then
+				entry.error = "the button is not visible on the player's screen, so a player could not press it"
+			elseif not okVirtual or virtual == nil then
+				entry.error = "Studio did not provide VirtualInput (UserInputService:CreateVirtualInput), so the button was not pressed"
+			else
+				local fired = 0
+				local connections = {}
+				pcall(function() table.insert(connections, node.Activated:Connect(function() fired += 1 end)) end)
+				local centre = node.AbsolutePosition + node.AbsoluteSize / 2
+				if screen and not screen.IgnoreGuiInset then
+					local okInset, inset = pcall(function() return GuiService:GetGuiInset() end)
+					if okInset and inset then centre += inset end
+				end
+				local okPress, pressErr = pcall(function()
+					virtual:SendMouseButton(centre, Enum.UserInputType.MouseButton1, true)
+					task.wait(0.05)
+					virtual:SendMouseButton(centre, Enum.UserInputType.MouseButton1, false)
+				end)
+				task.wait(1)
+				for _, connection in connections do connection:Disconnect() end
+				entry.pressed = okPress
+				entry.activations = fired
+				entry.activated = fired > 0
+				if not okPress then entry.error = clip(pressErr, 200) end
+			end
+		elseif node then
+			entry.error = "the path is not a GuiButton (TextButton or ImageButton)"
+		else
+			entry.error = "the button did not appear in the player's PlayerGui"
+		end
+		table.insert(results, entry)
+	end
+	pcall(function() if virtual then virtual:Destroy() end end)
+	return results
+end
+
 channel.OnClientEvent:Connect(function(request)
 	if type(request) ~= "table" or request.nonce ~= marker then return end
 	local player = Players.LocalPlayer
 	local playerGui = player and player:FindFirstChild("PlayerGui")
+	local presses = if playerGui then pressAll(playerGui, request.press) else {}
 	local guis, others = census(playerGui)
 	local errors, warnings = collectLogs(LogService, tonumber(request.since) or 0, scriptErrors)
-	channel:FireServer({ nonce = marker, playerGui = playerGui ~= nil, screenGuis = guis, otherChildren = others, errors = errors, warnings = warnings })
+	channel:FireServer({ nonce = marker, playerGui = playerGui ~= nil, screenGuis = guis, otherChildren = others, errors = errors, warnings = warnings, presses = presses })
 end)
 ]==]
 
@@ -368,6 +445,24 @@ local function guiList(raw: any): { any }
 	return out
 end
 
+local function pressList(raw: any): { any }
+	local out = {}
+	if type(raw) ~= "table" then return out end
+	for _, item in raw do
+		if #out >= PlayCheck.MAX_PRESSES then break end
+		if type(item) == "table" then
+			table.insert(out, {
+				path = clipText(item.path, 320), found = item.found == true,
+				visible = if item.visible == nil then nil else item.visible == true,
+				pressed = item.pressed == true, activated = item.activated == true,
+				activations = if type(item.activations) == "number" then math.clamp(math.floor(item.activations), 0, 1000) else 0,
+				error = if item.error ~= nil then clipText(item.error, 200) else nil,
+			})
+		end
+	end
+	return out
+end
+
 local function otherList(raw: any): { any }
 	local out = {}
 	if type(raw) ~= "table" then return out end
@@ -416,11 +511,13 @@ function PlayCheck.normalise(report: any, seconds: number): any
 		leaderstatsBefore = statList(report.leaderstatsBefore),
 		leaderstatsAfter = statList(report.leaderstatsAfter),
 		touches = touches,
+		presses = if client then pressList(client.presses) else {},
+		leaderstatsAfterPresses = statList(report.leaderstatsAfterPresses),
 	}
 end
 
 --[[
-	Run one check. `ctx` = { game, services, editor, seconds, touch = { { path, segments } }, nonce? }.
+	Run one check. `ctx` = { game, services, editor, seconds, touch = { { path, segments } }, press = { { path, segments } }?, nonce? }.
 	Returns (data) or (nil, kind, message, remedy). The caller has already enforced edit mode and
 	the person's edit consent; this function does not widen either.
 ]]
@@ -476,6 +573,7 @@ function PlayCheck.run(ctx: any): (any?, string?, string?, string?)
 		applePlayCheck = 1, nonce = nonce, seconds = ctx.seconds,
 		since = if okTime and type(since) == "number" then since else 0,
 		touch = ctx.touch or {},
+		press = ctx.press or {},
 	}
 	local called, result = pcall(function() return studioTest:ExecutePlayModeAsync(args) end)
 

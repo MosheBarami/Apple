@@ -808,7 +808,9 @@ spec("restore rejects stale protected or unsupported current content before muta
     local supported = Instance.new("Part"); supported.Name = "Supported"; supported.Parent = subtree
     local supportedSnap = run(c, "unsupported-snapshot", { op = "snapshot", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", includeScripts = true }, false)
     eq(supportedSnap.ok, true)
-    local unknown = Instance.new("Humanoid"); unknown.Name = "DoNotDelete"; unknown.Parent = subtree
+    -- Any class Apple can neither recreate nor delete. (It was Humanoid until the rig op family made
+    -- Humanoid recreatable; Tool is in no allowlist and no op family.)
+    local unknown = Instance.new("Tool"); unknown.Name = "DoNotDelete"; unknown.Parent = subtree
     local refused = run(c, "unsupported-restore", { op = "restore", root = "game.Workspace.UnsupportedCurrent", checkpointId = "cp-unsupported-1", snapshot = supportedSnap.data }, true, function() return true end)
     eq(refused.ok, false); eq(refused.failure, "conflict"); has(refused.error, "unsupported current content")
     eq(subtree:FindFirstChild("DoNotDelete"), unknown); eq(subtree:FindFirstChild("Supported"), supported); eq(#history.log, beforeHistory)

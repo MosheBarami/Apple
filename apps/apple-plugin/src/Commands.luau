@@ -4479,9 +4479,31 @@ local function handlePlayCheck(self: any, op: any): (any?, string?, string?, str
 			table.insert(touch, { path = canonical, segments = segments })
 		end
 	end
+	-- F-050: on-screen buttons the player presses, named where they are authored (StarterGui).
+	local press = {}
+	if op.press ~= nil then
+		if type(op.press) ~= "table" or #op.press > 5 then return nil, "invalid", "play_check.press must be a list of at most 5 button paths" end
+		for index, raw in op.press do
+			if type(index) ~= "number" then return nil, "invalid", "play_check.press must be a list" end
+			local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, raw, false)
+			if not inst then return nil, pathKind or "not_found", resolveErr end
+			local parts = parsePath(canonical)
+			if not parts or parts[2] ~= "StarterGui" or #parts < 4 then
+				return nil, "invalid", "play_check.press targets must be buttons inside a ScreenGui in game.StarterGui"
+			end
+			local starterGui = serviceFrom(self.game, self.options.services, "StarterGui")
+			local screen = starterGui and starterGui:FindFirstChild(parts[3])
+			if not screen or not isA(screen, "ScreenGui") then return nil, "invalid", "play_check.press targets must be inside a ScreenGui: " .. tostring(canonical) end
+			if not isA(inst, "GuiButton") then return nil, "invalid", "play_check.press targets must be a TextButton or ImageButton: " .. tostring(canonical) end
+			local segments = {}
+			for segmentIndex = 3, #parts do table.insert(segments, parts[segmentIndex]) end
+			table.insert(press, { path = canonical, segments = segments })
+		end
+	end
 	self.activePlayCheck = true
 	local ok, data, kind, message, remedy = pcall(self.playCheck.run, {
 		game = self.game, services = self.options.services, editor = self.editor, seconds = seconds, touch = touch,
+		press = if #press > 0 then press else nil,
 	})
 	self.activePlayCheck = false
 	if not ok then return nil, "internal", "play check failed: " .. tostring(data) end
@@ -4956,6 +4978,9 @@ function Commands.capabilities(engine: any): any
 			status = "unsupported",
 			reason = capabilityReason(engine and engine.playCheckError, "the player-side play check is unavailable in this Studio session"),
 		}
+	end
+	if byName.play_check_ui ~= nil and byName.play_check ~= nil and byName.play_check.status == "unsupported" then
+		byName.play_check_ui = { op = "play_check_ui", status = "unsupported", reason = byName.play_check.reason }
 	end
 
 	if engine == nil or engine.render == nil then

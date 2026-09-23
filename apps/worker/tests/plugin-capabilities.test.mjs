@@ -63,6 +63,20 @@ function luauTableKeys(name) {
   return new Set([...match[2].matchAll(/^\s*([a-z_]+)\s*=/gm)].map((entry) => entry[1]));
 }
 
+// D-VISION-1 Phase A: operations installed by the op families in apps/apple-plugin/src/ops/*.luau.
+// No installed plugin ever had them, so every one is OPT-IN.
+const PHASE_A_OPS = [
+  'query_instances', 'set_props_bulk', 'spatial_query', 'scatter', 'collision_groups', 'collision_groups_list',
+  'terrain_shape', 'terrain_read', 'create_rig', 'ui_layout_check', 'play_check_ui',
+];
+const PHASE_A_TOOLS = [
+  'play_check_ui', 'search_instances', 'set_properties_bulk', 'spatial_query', 'scatter_instances', 'collision_groups',
+  'shape_terrain', 'read_terrain', 'create_rig', 'check_ui_layout', 'build_ui',
+];
+const familySource = ['Query', 'Physics', 'Terrain', 'Rig', 'Ui']
+  .map((name) => readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'ops', `${name}.luau`), 'utf8'))
+  .join('\n');
+
 const reasons = {
   run_code: 'Roblox exposes no constrained plugin evaluator for arbitrary received Luau',
 };
@@ -76,6 +90,7 @@ function currentAuthoringReport() {
     'group_instances', 'ungroup_instances', 'rename_instance', 'set_locked', 'set_visible',
     'edit_script', 'terrain_edit', 'snapshot', 'restore', 'undo_waypoint', 'insert_asset', 'generate_model',
     'run_mode', 'inspect_model', 'project_census', 'play_check',
+    ...PHASE_A_OPS,
   ];
   return {
     schema: C.PLUGIN_CAPABILITY_SCHEMA,
@@ -96,6 +111,16 @@ test('the current-authoring fixture follows the live plugin surface instead of p
   for (const operation of ['run_code']) {
     assert.equal(unsupported.has(operation), true, `${operation} changed support status; update the worker fixture and expectations`);
   }
+  // The family ops are installed at load, not listed in HANDLERS: each must be a handler key in its family.
+  for (const operation of PHASE_A_OPS) {
+    assert.match(familySource, new RegExp(`\\b${operation} = function|\\b${operation} = handle|handlers\\.${operation}\\b|\\[\"${operation}\"\\]`), `${operation} is not a handler in any op family`);
+  }
+});
+
+test('every Phase A operation is OPT-IN, and the plugin report stays under the operation cap', () => {
+  for (const operation of PHASE_A_OPS) assert.equal(C.OPT_IN_OPERATIONS.has(operation), true, `${operation} must be opt-in`);
+  const reported = currentAuthoringReport().operations.length;
+  assert.ok(reported <= 128, `the fixture reports ${reported} operations; the worker refuses more than 128`);
 });
 
 test('every Studio tool carries non-empty co-located StudioOp metadata and every named op is live', () => {
@@ -121,6 +146,8 @@ test('composite tools declare the operations their safety behavior actually depe
   assert.deepEqual(T.TOOLS.check_composition.studioOps, ['render_view']);
   assert.deepEqual(T.TOOLS.design_sound.studioOps, ['get_tree', 'set_props', 'create_instances']);
   assert.deepEqual(T.TOOLS.assign_sounds.studioOps, ['get_tree', 'get_instance', 'set_props']);
+  assert.deepEqual(T.TOOLS.build_ui.studioOps, ['query_instances', 'create_instances', 'ui_layout_check']);
+  assert.deepEqual(T.TOOLS.collision_groups.studioOps, ['collision_groups', 'collision_groups_list']);
 });
 
 test('legacy, missing, malformed and unknown-schema clients preserve the existing tool set', () => {
@@ -128,7 +155,7 @@ test('legacy, missing, malformed and unknown-schema clients preserve the existin
   // stands on an OPT_IN operation — one no installed plugin ever had — is not part of that set, and
   // offering it on "unknown" would hand the model a check that is refused on its first call.
   const optIn = candidates.filter((name) => requirements[name].some((op) => C.OPT_IN_OPERATIONS.has(op)));
-  assert.deepEqual(optIn, ['play_check'], 'the opt-in tool set changed — review it');
+  assert.deepEqual([...optIn].sort(), ['play_check', ...PHASE_A_TOOLS].sort(), 'the opt-in tool set changed — review it');
   for (const raw of [
     undefined,
     null,
@@ -141,7 +168,7 @@ test('legacy, missing, malformed and unknown-schema clients preserve the existin
     assert.equal(filtered.capabilitiesKnown, false);
     assert.deepEqual([...filtered.allowed], candidates.filter((name) => !optIn.includes(name)));
     assert.deepEqual(filtered.withheld, optIn);
-    assert.deepEqual(filtered.limitations.map((item) => item.operation), ['play_check']);
+    assert.deepEqual(filtered.limitations.map((item) => item.operation).sort(), ['play_check', ...PHASE_A_OPS].sort());
   }
 });
 

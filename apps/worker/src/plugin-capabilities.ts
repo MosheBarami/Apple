@@ -44,7 +44,12 @@ export interface PluginToolFilter {
  * model would be left to explain a check that never ran. A tool standing on one of these is offered
  * only when the plugin says, explicitly, `supported` — including in compatibility mode.
  */
-export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName>(['play_check']);
+export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName>([
+  'play_check',
+  // D-VISION-1 Phase A: the op families in apps/apple-plugin/src/ops. No plugin before them had any.
+  'query_instances', 'set_props_bulk', 'spatial_query', 'scatter', 'collision_groups', 'collision_groups_list',
+  'terrain_shape', 'terrain_read', 'create_rig', 'ui_layout_check', 'play_check_ui',
+]);
 const NOT_REPORTED = 'the connected Studio plugin does not report this operation';
 
 const MAX_OPERATIONS = 128;

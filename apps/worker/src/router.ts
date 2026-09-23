@@ -53,6 +53,13 @@ import type { ProductMode } from '@golem/shared';
 /** Inspection only. Nothing in this list can change the user's project — see the note above. */
 const PLAN_TOOLS = [
   'get_project_tree',
+  // Phase A reads (D-VISION-1). Each sends one opt-in op that only reads the place: a query over
+  // instances, a raycast/overlap/flat-ground probe, a terrain voxel read. `check_ui_layout` is
+  // deliberately NOT here: it changes nothing saved, but it builds a temporary copy of a screen
+  // in Studio's own UI layer, and Plan's promise is that it reads.
+  'search_instances',
+  'spatial_query',
+  'read_terrain',
   'list_scripts',
   'read_script',
   'search_scripts',

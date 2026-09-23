@@ -871,6 +871,22 @@ const TOOL_ARGS = {
   // Egress reviewed 2026-09-23: the result is built only from the plugin's bounded play_check report
   // (ScreenGui names, label text, leaderstats, log lines) and fixed sentences; it reads no env or token.
   play_check: { seconds: 3, touch: ['game.Workspace.Coin1'] },
+  // Phase A (D-VISION-1). Egress reviewed 2026-09-23: every body lives in apps/worker/src/
+  // phase-a-tools.ts and receives only an op-sender (`studioCall(ctx)`), never ctx itself, so the
+  // env, tokens, project id and stores are out of reach by construction. Each validates its
+  // arguments, sends bounded plugin ops and returns the plugin's data or fixed sentences; build_ui
+  // compiles its tree against frozen theme constants (ui-kit-themes.ts). Nothing fetches.
+  play_check_ui: { seconds: 3, press: ['game.StarterGui.ShopGui.Panel.Buy'] },
+  search_instances: { isA: 'BasePart', tag: 'Coin' },
+  set_properties_bulk: { targets: ['game.Workspace.A'], props: { Anchored: true } },
+  spatial_query: { action: 'raycast', origin: [0, 50, 0], direction: [0, -100, 0] },
+  scatter_instances: { template: 'game.ServerStorage.Tree', region: { min: [0, 0, 0], max: [100, 20, 100] }, count: 10 },
+  collision_groups: { action: 'register', group: 'Ghosts' },
+  shape_terrain: { action: 'fill_cylinder', center: [0, 0, 0], height: 10, radius: 8, material: 'Enum.Material.Grass' },
+  read_terrain: { min: [0, 0, 0], max: [16, 16, 16] },
+  create_rig: { rigType: 'R15', name: 'Shopkeeper', position: [0, 5, 0], npc: true },
+  check_ui_layout: { screen: 'game.StarterGui.ShopGui' },
+  build_ui: { screen: 'ShopGui', theme: 'tycoon', tree: { kind: 'panel', id: 'Panel', anchor: 'center', size: [0.5, 0.6], children: [{ kind: 'button', id: 'Buy', text: 'Buy' }] } },
   get_output_logs: {},
   render_view: { view: 'hero' },
   //[[ `compose_thumbnail` EGRESS REVIEWED 2026-09-16, which is what this enumeration is for.

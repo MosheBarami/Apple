@@ -53,9 +53,28 @@ function pluginHandlers() {
     ...tableKeys('HANDLERS'),
     ...tableKeys('UNSUPPORTED'),
     ...tableKeys('DEFERRED_MUTATING'),
+    ...familyHandlers(),
     'restore',
     'undo_waypoint',
   ]);
+}
+
+/**
+ * The op families (apps/apple-plugin/src/ops) install their handlers at load. Each family is named
+ * by a literal `require(script.X)` in ops/init.luau; only those count, so a module that is present
+ * but never required contributes nothing, exactly as in Studio.
+ */
+function familyHandlers() {
+  const dir = join(ROOT, 'apps/apple-plugin/src/ops');
+  const init = readFileSync(join(dir, 'init.luau'), 'utf8');
+  const names = [...init.matchAll(/^load\(function\(\) return require\(script\.([A-Za-z]+)\) end\)/gm)].map((m) => m[1]);
+  assert.ok(names.length >= 1, 'ops/init.luau requires no family');
+  return names.flatMap((name) => {
+    const src = readFileSync(join(dir, `${name}.luau`), 'utf8');
+    const block = /\bhandlers = \{([\s\S]*?)\n\t*\}/.exec(src);
+    assert.ok(block, `ops/${name}.luau has no handlers table`);
+    return [...block[1].matchAll(/^\s*([a-z_]+)\s*=/gm)].map((m) => m[1]);
+  });
 }
 
 test('both sides parsed, so the comparison is not vacuous', () => {

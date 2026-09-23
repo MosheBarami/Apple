@@ -50,6 +50,9 @@ const MUTATING = [
   'group_instances', 'ungroup_instances', 'rename_instance', 'set_locked', 'set_visible',
   'run_luau', 'insert_asset', 'generate_model', 'set_mood', 'add_effect', 'remove_effect',
   'design_sound', 'assign_sounds',
+  // Phase A writers (D-VISION-1).
+  'set_properties_bulk', 'scatter_instances', 'collision_groups', 'shape_terrain', 'create_rig',
+  'build_ui',
 ];
 
 test('every tool this file calls mutating is really in the table', () => {
