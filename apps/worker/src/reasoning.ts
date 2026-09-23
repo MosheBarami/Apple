@@ -19,7 +19,7 @@
 // task) that consumes the whole output budget before it writes a word. `high` reasons briefly and
 // decisively — 161 characters — and costs 2.8% more than `low` while returning a better answer.
 // So escalating to `high` is nearly free, and `medium` is a trap.
-import { PRODUCT_MODE_INFO, CONVERSATIONAL_RE, META_QUESTION_RE } from '@golem/shared';
+import { MODEL_REGISTRY, PRODUCT_MODE_INFO, CONVERSATIONAL_RE, META_QUESTION_RE } from '@golem/shared';
 import type { ProductMode, ProductModel } from '@golem/shared';
 
 /** `medium` exists in the provider's API but is never selected — see the table above. */
@@ -198,7 +198,18 @@ const BASELINE: Record<ProductMode, Effort> = { plan: 'low', agent: 'high' };
  * conversational early-return below still wins over it, because a greeting has nothing to
  * deliberate about no matter what the account is entitled to.
  */
-const ENTITLEMENT_FLOOR: Record<ProductModel, Effort> = { apple: 'low', 'apple-max': 'high' };
+/**
+ * The third-party models (D-VISION-1) have no adaptive floor: the provider is sent the registry's
+ * fixed effort (low until multipliers are re-measured), because their thinking bills as output at
+ * up to 60× Apple's rate. `low` here adds nothing over any baseline — it exists so the table stays
+ * total over ProductModel and the Apple lanes' two entries stay the ones the training harness
+ * mirrors (packages/training/src/production-settings.mjs).
+ */
+const THIRD_PARTY_FLOOR = Object.fromEntries(
+  MODEL_REGISTRY.filter((m) => m.route === 'unified-billing').map((m) => [m.id, 'low']),
+) as Record<Exclude<ProductModel, 'apple' | 'apple-max'>, Effort>;
+
+const ENTITLEMENT_FLOOR: Record<ProductModel, Effort> = { apple: 'low', 'apple-max': 'high', ...THIRD_PARTY_FLOOR };
 
 export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   // Talk costs `low`, in every mode, with no escalation path. A greeting has nothing to deliberate

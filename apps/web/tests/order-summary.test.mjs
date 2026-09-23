@@ -72,9 +72,11 @@ test('IT SAYS HOW OFTEN THE CHARGE REPEATS, because a subscription is not a purc
 });
 
 test('IT NAMES WHAT THE ACCOUNT MOVES FROM AND TO, not just where it lands', () => {
+  // RESTATED for D-VISION-1: the display names became Pro and Max, so the property — both plans
+  // are named — is asserted against the names the plan table carries, not two literals.
   const s = order('studio', 'builder');
-  assert.match(whole(s), /Studio/);
-  assert.match(whole(s), /Builder/, 'the plan being left is half of what changed');
+  assert.ok(whole(s).includes(PLAN_COPY.studio.name), whole(s));
+  assert.ok(whole(s).includes(PLAN_COPY.builder.name), 'the plan being left is half of what changed');
 });
 
 test('and it never calls a smaller allowance an upgrade', () => {

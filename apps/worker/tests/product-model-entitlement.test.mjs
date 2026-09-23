@@ -162,13 +162,69 @@ function makeSession({ plan = 'free', quotaStatus = 200, aiRun } = {}) {
 }
 
 test('the shared selector keeps Apple free and Apple MAX paid-only', () => {
-  assert.deepEqual(shared.PRODUCT_MODELS, ['apple', 'apple-max']);
+  // RESTATED for D-VISION-1: the list is the registry's, so it is asserted to BE the registry's
+  // and to lead with the two Apple lanes older clients send, not pinned to a two-item literal.
+  assert.deepEqual(shared.PRODUCT_MODELS, shared.MODEL_REGISTRY.map((m) => m.id));
+  assert.deepEqual(shared.PRODUCT_MODELS.slice(0, 2), ['apple', 'apple-max']);
   assert.equal(shared.canUseProductModel('apple'), true);
   for (const plan of [undefined, null, 'free', 'unknown', {}]) {
     assert.equal(shared.canUseProductModel('apple-max', plan), false, `MAX must refuse ${String(plan)}`);
   }
   for (const plan of ['builder', 'studio', 'enterprise']) assert.equal(shared.canUseProductModel('apple-max', plan), true);
   assert.equal(shared.canUseProductModel('not-a-model', 'builder'), false);
+});
+
+test('D-VISION-1 tiers: Free = Apple, Pro = + Apple MAX, Max = every model', () => {
+  const ids = shared.MODEL_REGISTRY.map((m) => m.id);
+  assert.deepEqual(ids, ['apple', 'apple-max', 'gemini-3.8-flash', 'gpt-5.6', 'gpt-5.6-luna']);
+  const allowed = (plan) => ids.filter((id) => shared.canUseModel(id, plan));
+  assert.deepEqual(allowed('free'), ['apple']);
+  assert.deepEqual(allowed(undefined), ['apple'], 'no plan read is Free, never more');
+  assert.deepEqual(allowed('builder'), ['apple', 'apple-max']);
+  assert.deepEqual(allowed('studio'), ids);
+  assert.deepEqual(allowed('enterprise'), ids);
+  assert.deepEqual(allowed('owner'), ['apple'], 'an unknown plan string is not an entitlement');
+  // Every plan the product sells names a tier, so a fifth plan cannot silently fall through.
+  assert.deepEqual(Object.keys(shared.TIER_FOR_PLAN).sort(), [...shared.PLAN_IDS].sort());
+});
+
+test('the registry names the exact Cloudflare ids, and Apple has no LoRA until one passes the eval', () => {
+  const byId = Object.fromEntries(shared.MODEL_REGISTRY.map((m) => [m.id, m]));
+  assert.equal(byId['gpt-5.6'].providerModelId, 'openai/gpt-5.6-sol');
+  assert.equal(byId['gpt-5.6-luna'].providerModelId, 'openai/gpt-5.6-luna');
+  assert.equal(byId['gemini-3.8-flash'].providerModelId, 'google/gemini-3.8-flash');
+  assert.equal(byId.apple.providerModelId, '@cf/zai-org/glm-5.3-flash');
+  assert.equal(byId.apple.reasoningEffort, 'low');
+  assert.equal(byId.apple.lora, undefined);
+  // The Responses-only family must be encoded as Responses; everything else as chat.
+  for (const m of shared.MODEL_REGISTRY) {
+    assert.equal(m.wire, m.providerModelId.startsWith('openai/') ? 'responses' : 'chat', m.id);
+    assert.equal(m.route, m.providerModelId.startsWith('@cf/') ? 'workers-ai' : 'unified-billing', m.id);
+  }
+});
+
+test('plan display names are Pro and Max; the stored ids are not renamed', () => {
+  assert.equal(shared.PLAN_COPY.builder.name, 'Pro');
+  assert.equal(shared.PLAN_COPY.studio.name, 'Max');
+  assert.deepEqual(shared.PLAN_IDS, ['free', 'builder', 'studio', 'enterprise']);
+  // Every model a plan can be refused is a plan-table row, valued by the same rule.
+  const rows = shared.PLAN_FEATURES.filter((f) => shared.isModelId(f.id));
+  assert.deepEqual(rows.map((r) => r.id), shared.MODEL_REGISTRY.filter((m) => m.tier !== 'free').map((m) => m.id));
+  for (const row of rows) {
+    for (const plan of shared.PLAN_IDS) assert.equal(row.values[plan], shared.canUseModel(row.id, plan), `${row.id}/${plan}`);
+  }
+});
+
+test('a locked model says which plan includes it, and a downgrade falls back to an entitled Apple lane', () => {
+  assert.equal(shared.lockedReason('apple-max'), 'Included with Pro');
+  assert.equal(shared.lockedReason('gpt-5.6'), 'Included with the Max plan');
+  assert.equal(shared.lockedReason('apple'), '');
+  assert.equal(shared.bestEntitledModel('builder', 'gpt-5.6'), 'apple-max');
+  assert.equal(shared.bestEntitledModel('free', 'apple-max'), 'apple');
+  assert.equal(shared.bestEntitledModel('studio', 'gpt-5.6'), 'gpt-5.6');
+  const listing = shared.modelListing('builder');
+  assert.deepEqual(listing.filter((m) => m.available).map((m) => m.id), ['apple', 'apple-max']);
+  for (const m of listing) assert.equal(m.lockedReason === '', m.available, m.id);
 });
 
 test('SessionDO refuses MAX for a free plan before quota spend', async () => {

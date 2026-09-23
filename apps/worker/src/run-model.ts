@@ -12,7 +12,7 @@
 // again for every step (`keyForRun`), used for that one call and dropped, so an evicted Durable
 // Object, a persisted AgentState or a transcript row can never carry it.
 import type { Env } from './env';
-import { isCatalogueModelIdShape, PRODUCT_MODELS, type ProductModel } from '@golem/shared';
+import { isCatalogueModelIdShape, PRODUCT_MODELS, registryModel, type ProductModel } from '@golem/shared';
 import { catalogueEntry, keylessFree, type CatalogueOptions } from './model-catalogue';
 import { openModelKey, type ModelKeyEnv } from './model-keys';
 
@@ -35,7 +35,8 @@ export type RunModelChoice =
 export const UNKNOWN_MODEL_MESSAGE = 'That model is not available any more. Pick another one.';
 
 function isProductModel(v: string): v is ProductModel {
-  return (PRODUCT_MODELS as readonly string[]).includes(v);
+  // The Apple lanes only until the gateway can run the registry's third-party models (step 3).
+  return (PRODUCT_MODELS as readonly string[]).includes(v) && registryModel(v)?.route === 'workers-ai';
 }
 
 /**

@@ -1,6 +1,8 @@
 // @golem/shared — wire protocol + domain types shared by worker, web app, evals.
 // The Studio plugin (Luau) mirrors these shapes; apps/plugin/src/Protocol.luau documents the mapping.
 
+import { MODEL_IDS, MODEL_REGISTRY, canUseModel, type ModelId } from './models.ts';
+
 // ---------------------------------------------------------------------------
 // Studio op protocol: commands the agent sends to the Studio plugin.
 // Instance paths are game-tree paths like "game.Workspace.Lobby.Door" (names
@@ -593,23 +595,20 @@ export type ProductMode = 'plan' | 'agent';
 
 /**
  * The user-facing model selector. This is deliberately separate from `ProductMode`: one chooses
- * Plan or Agent behavior, while this value is the model entitlement selected for a new request.
+ * Plan or Agent behavior, while this value is the model selected for a new request.
+ *
+ * DERIVED FROM THE MODEL REGISTRY (./models.ts, D-VISION-1). The name is kept because it is the
+ * wire field (`productModel`) and a hundred call sites; the values are the registry's ids, so a
+ * model added there is a model everywhere this type reaches.
  */
-export type ProductModel = 'apple' | 'apple-max';
+export type ProductModel = ModelId;
 
 /** The models the current product picker may offer, in display order. */
-export const PRODUCT_MODELS: readonly ProductModel[] = ['apple', 'apple-max'];
+export const PRODUCT_MODELS: readonly ProductModel[] = MODEL_IDS;
 
-export const PRODUCT_MODEL_INFO: Record<ProductModel, { name: string; blurb: string }> = {
-  apple: {
-    name: 'Apple',
-    blurb: 'Fast, capable help for smaller changes.',
-  },
-  'apple-max': {
-    name: 'Apple MAX',
-    blurb: 'The full builder for larger multi-file work.',
-  },
-};
+export const PRODUCT_MODEL_INFO: Record<ProductModel, { name: string; blurb: string }> = Object.fromEntries(
+  MODEL_REGISTRY.map((m) => [m.id, { name: m.displayName, blurb: m.blurb }]),
+) as Record<ProductModel, { name: string; blurb: string }>;
 
 /**
  * THE LONGEST MESSAGE A USER CAN SEND, AND THE ONE PLACE IT IS WRITTEN DOWN.
@@ -1984,15 +1983,12 @@ export function isPlanId(v: unknown): v is PlanId {
 /**
  * Whether an account may select a product model right now.
  *
- * Apple is the free lane and therefore does not require a subscription record to be present.
- * Apple MAX is paid-only: an absent, malformed or unknown plan is refused just like Free. The
- * helper intentionally has no owner/admin exception; those identities are not documented model
- * entitlements, while an explicit paid `PlanId` remains authoritative for every caller.
+ * The older name for `canUseModel` (./models.ts), kept so every caller that already asks this
+ * question keeps asking the one rule. Apple is the free lane and needs no subscription record;
+ * every other model is refused for an absent, malformed or unknown plan, just like Free.
  */
 export function canUseProductModel(model: unknown, plan?: string): boolean {
-  if (model === 'apple') return true;
-  if (model !== 'apple-max') return false;
-  return isPlanId(plan) && plan !== 'free';
+  return canUseModel(model, plan);
 }
 
 export interface PlanCopy {
@@ -2060,9 +2056,11 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
     priceUsdMonthly: 0,
     highlights: ['Every build mode', STUDIO_PLUGIN_STORE_LIVE ? 'Studio plugin' : 'Studio integration · public installation unavailable', 'Checkpoints and restore'],
   },
+  // THE ID STAYS `builder`; ONLY THE NAME IS "Pro" (D-VISION-1). The id is stored in QuotaDO and
+  // mapped to a Stripe price, so renaming it would orphan every existing subscription.
   builder: {
     id: 'builder',
-    name: 'Builder',
+    name: 'Pro',
     blurb: 'For building most days.',
     priceUsdMonthly: 12,
     //[[ 'Priority during busy periods' IS GONE, and it was the third reason to pay $12.
@@ -2076,12 +2074,13 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
     //   thing that does not exist is the defect; a shorter honest card is not. ]]
     highlights: ['About 5× the Free allowance', 'Buy credits when you need more', 'Everything in Free'],
   },
+  // Likewise `studio` is shown as "Max". Copy that names it beside Apple MAX says "the Max plan".
   studio: {
     id: 'studio',
-    name: 'Studio',
+    name: 'Max',
     blurb: 'For sustained building with a larger allowance.',
     priceUsdMonthly: 40,
-    highlights: ['About 9× the Free allowance', 'Everything in Builder'],
+    highlights: ['About 9× the Free allowance', 'Everything in Pro'],
   },
   enterprise: {
     id: 'enterprise',
@@ -2267,12 +2266,14 @@ function everyPlan<T>(f: (plan: PlanId) => T): Record<PlanId, T> {
 }
 
 export const PLAN_FEATURES: readonly PlanFeature[] = [
-  {
-    id: 'apple-max',
-    label: PRODUCT_MODEL_INFO['apple-max'].name,
-    note: 'Model access is separate from the work mode.',
-    values: everyPlan((p) => canUseProductModel('apple-max', p)),
-  },
+  // One row per model a plan can be refused, from the registry and asked of the same rule the
+  // worker enforces. A model every plan includes (Apple) is not a row: it cannot differ by plan.
+  ...MODEL_REGISTRY.filter((m) => m.tier !== 'free').map((m, i): PlanFeature => ({
+    id: m.id,
+    label: m.displayName,
+    ...(i === 0 ? { note: 'Model access is separate from the work mode.' } : {}),
+    values: everyPlan((p) => canUseModel(m.id, p)),
+  })),
   {
     id: 'price',
     label: 'Price',

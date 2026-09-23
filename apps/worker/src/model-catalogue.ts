@@ -11,7 +11,7 @@
 // creator should be offered is a product decision. It names ids only; every label and vendor is
 // taken from OpenRouter's own record of that id, so nothing here can invent a model.
 import type { Env } from './env';
-import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, type CatalogueModel, type ModelCatalogue } from '@golem/shared';
+import { PRODUCT_MODELS, PRODUCT_MODEL_INFO, registryModel, type CatalogueModel, type ModelCatalogue } from '@golem/shared';
 import { OPENROUTER_SNAPSHOT, OPENROUTER_SNAPSHOT_READ_AT } from './openrouter-snapshot';
 import { OPENROUTER_BASE_URL, type FetchLike } from './providers';
 
@@ -110,7 +110,9 @@ async function freeRows(env: Env, opts: CatalogueOptions): Promise<{ readAt: str
 }
 
 function builtIns(): CatalogueModel[] {
-  return PRODUCT_MODELS.map((id) => ({
+  // The Apple lanes only, until the registry's third-party models are wired through the gateway
+  // (D-VISION-1 rollout step 3); listing them here would offer a model no run can reach.
+  return PRODUCT_MODELS.filter((id) => registryModel(id)?.route === 'workers-ai').map((id) => ({
     id,
     label: PRODUCT_MODEL_INFO[id].name,
     vendor: 'Apple',

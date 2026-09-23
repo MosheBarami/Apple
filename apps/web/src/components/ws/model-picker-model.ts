@@ -9,6 +9,7 @@ import {
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
   canUseProductModel,
+  registryModel,
   type CatalogueModel,
   type ModelCatalogue,
   type ModelKeySummary,
@@ -108,7 +109,7 @@ export function pickerGroups(input: {
   const builtIn = models.filter((m) => m.builtIn && isProductModel(m.id)).map((m) => m.id as ProductModel);
   // Apple's own rows are ours to name even when the catalogue is absent: they are the models the
   // product has always offered, and the entitlement rule is in @golem/shared.
-  const appleIds = builtIn.length > 0 ? builtIn : [...PRODUCT_MODELS];
+  const appleIds = builtIn.length > 0 ? builtIn : [...PRODUCT_MODELS].filter((id) => registryModel(id)?.vendor === 'Apple');
   const apple = appleIds.map((id) => appleRow(id, modelPlan, maxUpgradeAvailable));
 
   const offered = models.filter((m) => !m.builtIn && m.supportsTools);

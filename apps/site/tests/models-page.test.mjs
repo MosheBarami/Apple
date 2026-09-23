@@ -83,10 +83,12 @@ test('THE ROWS ARE THE CATALOGUE: every paid and free model the worker offers, i
   }
 });
 
-test('THE BUILT-IN MODELS ARE THE PRODUCT\'S OWN, named from @golem/shared', () => {
-  const shared = read('packages/shared/src/index.ts');
-  const names = [...(/PRODUCT_MODEL_INFO[^=]*=\s*\{([\s\S]*?)\n\};/.exec(shared)?.[1] ?? '').matchAll(/name: '([^']+)'/g)].map((m) => m[1]);
-  assert.ok(names.length >= 2, 'PRODUCT_MODEL_INFO names not found in packages/shared');
+test('THE BUILT-IN MODELS ARE THE PRODUCT\'S OWN, named from @golem/shared', async () => {
+  // RESTATED for D-VISION-1: PRODUCT_MODEL_INFO is derived from the model registry now, so the
+  // names are read from the registry itself — Apple's own lanes, the ones built into Apple.
+  const { MODEL_REGISTRY } = await import('../../../packages/shared/src/models.ts');
+  const names = MODEL_REGISTRY.filter((m) => m.vendor === 'Apple').map((m) => m.displayName);
+  assert.ok(names.length >= 2, 'the Apple lanes were not found in the model registry');
   const built = text(section('built-in'));
   for (const n of names) assert.ok(built.includes(n), `the built-in section does not name ${n}`);
   assert.match(built, /Apple Credits/, 'the built-in section does not say what the built-in models spend');
