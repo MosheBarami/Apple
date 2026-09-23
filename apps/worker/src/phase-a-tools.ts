@@ -34,15 +34,39 @@ function vec3(v: unknown, label: string, limit = WORLD_LIMIT): [number, number, 
   return [v[0] as number, v[1] as number, v[2] as number];
 }
 
-function region(v: unknown, label = 'region'): { min: [number, number, number]; max: [number, number, number] } | Refusal {
-  if (!v || typeof v !== 'object' || Array.isArray(v)) return refuse(`${label} must be {min: [x,y,z], max: [x,y,z]}.`);
+const REGION_EXAMPLE = 'e.g. {min: [-50, -10, -50], max: [50, 60, 50]}';
+/** How far a widened drop ray reaches below and above a flat scatter height (studs). */
+const FLAT_SPAN_BELOW = 50;
+const FLAT_SPAN_ABOVE = 100;
+
+/**
+ * A box. With `flatY`, a Y span that is flat or inverted is widened around its height rather than
+ * refused: for a scatter, Y is only how far the drop ray reaches (gauntlet round 4, 2026-09-23, a
+ * region at ground height refused step after step). `widened` then says so.
+ */
+function region(
+  v: unknown,
+  label = 'region',
+  flatY = false,
+): { min: [number, number, number]; max: [number, number, number]; widened?: string } | Refusal {
+  const form = `${label} must be {min: [x, y, z], max: [x, y, z]} with max greater than min on every axis, ${REGION_EXAMPLE}.`;
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return refuse(form);
   const r = v as Args;
   const min = vec3(r.min, `${label}.min`);
   if (isRefusal(min)) return min;
   const max = vec3(r.max, `${label}.max`);
   if (isRefusal(max)) return max;
-  if (max.some((n, i) => n <= min[i]!)) return refuse(`${label}.max must be greater than ${label}.min on every axis.`);
-  return { min, max };
+  let widened: string | undefined;
+  if (flatY && max[1] <= min[1]) {
+    const low = Math.min(min[1], max[1]);
+    const high = Math.max(min[1], max[1]);
+    min[1] = low - FLAT_SPAN_BELOW;
+    max[1] = high + FLAT_SPAN_ABOVE;
+    widened = `The region's Y span was flat or inverted, so it was widened to ${min[1]}..${max[1]}: the drop ray starts at max.y and stops at min.y.`;
+  }
+  const bad = ['x', 'y', 'z'].filter((_, i) => max[i]! <= min[i]!);
+  if (bad.length) return refuse(`${label}.max is not greater than ${label}.min on ${bad.join(', ')}. ${form}`);
+  return widened ? { min, max, widened } : { min, max };
 }
 
 function text(v: unknown, label: string, max: number): string | Refusal {
@@ -298,9 +322,9 @@ export const scatterInstances = {
     if (isRefusal(template)) return template;
     const count = integer(a.count, 'count', 1, 200, 20);
     if (isRefusal(count)) return count;
-    const r = region(a.region);
+    const r = region(a.region, 'region', true);
     if (isRefusal(r)) return r;
-    const out: Record<string, unknown> = { op: 'scatter', template, count, region: r };
+    const out: Record<string, unknown> = { op: 'scatter', template, count, region: { min: r.min, max: r.max } };
     if (a.onMaterial !== undefined) {
       if (!Array.isArray(a.onMaterial) || a.onMaterial.length === 0 || a.onMaterial.length > 12
         || !a.onMaterial.every((m) => typeof m === 'string' && /^Enum\.Material\.[A-Za-z]+$/.test(m))) {
@@ -332,7 +356,8 @@ export const scatterInstances = {
       if (isRefusal(p)) return p;
       out.parent = p;
     }
-    return call(out as StudioOp, 60_000);
+    const placed = await call(out as StudioOp, 60_000);
+    return r.widened && placed && typeof placed === 'object' && !isRefusal(placed) ? { ...placed, note: r.widened } : placed;
   },
 };
 

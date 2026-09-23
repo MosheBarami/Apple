@@ -347,3 +347,26 @@ test('build_ui says the layout was not checked when the check fails, and never c
   assert.match(out.layout.notChecked, /timed out/);
   assert.doesNotMatch(out.next, /lays out cleanly/);
 });
+
+/* ------------------------------------------------- scatter: a flat region, and the valid form --- */
+
+// Gauntlet round 4 (2026-09-23): the model gave scatter_instances a region at ground height, min.y ==
+// max.y, and was refused "must be greater … on every axis" step after step. For a scatter the Y span is
+// only how far the drop ray reaches, so a flat span is widened around that height and the call runs.
+test('scatter: a flat or inverted Y span is widened around the height given, and the result says so', async () => {
+  const s = studio({ placed: 3 });
+  const out = await T.TOOLS.scatter_instances.run(s.ctx, { template: 'game.ServerStorage.Tree', count: 3, region: { min: [-40, 2, -40], max: [40, 2, 40] } });
+  assert.equal(s.calls.length, 1, `a flat region was refused: ${JSON.stringify(out)}`);
+  const { min, max } = s.calls[0].op.region;
+  assert.ok(max[1] > 2 && min[1] < 2, `the ray span does not contain the height given: ${min[1]}..${max[1]}`);
+  assert.deepEqual([min[0], min[2], max[0], max[2]], [-40, -40, 40, 40], 'the horizontal area must not change');
+  assert.match(JSON.stringify(out), /widen|Y span/i, 'the result does not say the span was changed');
+});
+
+test('scatter: an inverted horizontal region is still refused, and the refusal states the valid form', async () => {
+  const s = studio({});
+  const out = await T.TOOLS.scatter_instances.run(s.ctx, { template: 'game.ServerStorage.Tree', region: { min: [10, 0, 0], max: [0, 10, 10] } });
+  assert.equal(s.calls.length, 0);
+  assert.match(out.error, /\bx\b/i, 'the refusal does not name the axis');
+  assert.match(out.error, /min: \[-?\d+, -?\d+, -?\d+\], max: \[-?\d+, -?\d+, -?\d+\]/, `the refusal gives no valid example: ${out.error}`);
+});
