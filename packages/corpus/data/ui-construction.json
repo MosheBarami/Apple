@@ -4,6 +4,96 @@
  "generatedBy": "scripts/build-ui-construction.mjs",
  "genres": [
   {
+   "genre": "adventure",
+   "label": "Adventure / fantasy RPG: stacked resource bars, enemy nameplates, floating damage numbers, chest inventories, counter-side merchant shops",
+   "kind": "genre",
+   "incomplete": false,
+   "referenceCount": 8,
+   "demonstrates": [
+    "three resource bars share ONE frame: a thin experience bar on top, the thickest health bar in the middle carrying a numeric readout, and a thin mana bar below",
+    "each resource keeps one colour family, red for health, blue for mana and amber for experience, and a swatch study settles the colours before the art is drawn",
+    "the health bar is the focal element, marked by pointed arrow ends and a gold bevelled border, with the number right-aligned inside the fill",
+    "an enemy carries a nameplate above its head: name on the left, level on the right, and a segmented red health bar beneath both",
+    "damage is a large red number floating above the target, separate from the nameplate, so a hit reads without looking at a bar",
+    "the town hub is a central fountain plaza with paths radiating out, so world UI such as nameplates sits over a readable, uncluttered scene",
+    "a wide grid of equal square slots sits under a full-width search bar, so the player filters a large chest instead of scrolling it",
+    "a footer capacity counter shows the chest name and used-over-maximum slots, keeping the storage limit visible while sorting",
+    "dark brown wood tones match the in-world chest, but empty slots sit so close to the panel colour that the grid edges nearly vanish, a visible failure the source itself shows",
+    "sale items sit on physical shelves in the world, each with its own price and shelf slot, instead of in a full-screen catalogue",
+    "each shelf item has its own buy button and name label on a surface in the world, so browsing happens at the counter where the player already stands",
+    "one interact prompt opens the merchant, a camera focus part frames the counter, and the purchase is settled by a server script",
+    "at night the road stays navigable because lanterns on posts and distant campfires form a chain of warm points across a dark blue field, so the world, not a HUD arrow, carries the route",
+    "a massive rock outcrop with a lantern at its base ends the dirt road as a destination visible over the grass",
+    "the packed dirt road stays the palest band of terrain while knee-high grass hides the ground plane",
+    "a wooden signpost and a small notice board are the only information surfaces on the path, each placed where the route turns",
+    "a dirt path curves from a foreground bridge past the signpost toward village roofs on a hill, pulling the eye and the player along one route",
+    "dirt, tall grass and bright blue water read as three distinct surfaces, so walkable ground is obvious without markers",
+    "torches on short pillars make evenly spaced warm pools along a stone hall, so the player can count the distance to the next doorway",
+    "warm brown stone, orange timber and a cool purple-lit floor split the frame into walls, ceiling and walkable ground by colour temperature",
+    "a walled village in a bowl of tall cliffs reads as one destination, with the gatehouse wall as the approach landmark",
+    "warm sandstone walls, saturated grass and cool grey-blue cliffs separate built space, open ground and boundary at a glance"
+   ],
+   "sources": [
+    "https://devforum.roblox.com/t/looking-feedback-to-new-rpg-hudbarhealthxpmana/3524035 (ilm2art, 2025-03-03, 2 images inspected 2026-09-23)",
+    "https://devforum.roblox.com/t/looking-for-feedback-on-my-classic-style-rpg/3139772 (Achivuus, 2024-08-30, 3 images inspected 2026-09-23)",
+    "https://devforum.roblox.com/t/thoughts-on-inventory-gui/2740488 (MikeartsRBLX, 2023-12-14, 1 image inspected 2026-09-23)",
+    "https://devforum.roblox.com/t/working-on-a-simple-item-shop-detecting-a-nearby-shop-surfacegui-buy-buttons-server-sided-cashitem-transactions/3141187 (OfficerPigbelly, 2024-08-31, 3 images inspected 2026-09-23)",
+    "https://devforum.roblox.com/t/everdawn-alpha-v052-medieval-rpg-looking-for-testers/4667122 (Kevinjdlb33, 2026-06-03, 3 images inspected 2026-09-23)",
+    "https://devforum.roblox.com/t/rpg-map-feedback-needed/3049882 (Takeoi, 2024-07-02, 1 image inspected 2026-09-23)",
+    "https://devforum.roblox.com/t/loot-the-dungeon-devlog-team-up-with-friends-explore-terrifying-dungeons-and-escape-with-the-loot/4669840 (CaptHaddox, 2026-06-05, 1 image inspected 2026-09-23)",
+    "https://devforum.roblox.com/t/map-progress-on-adventure-game/1665754 (coolduckluck, 2022-02-13, 1 image inspected 2026-09-23)"
+   ],
+   "rules": {
+    "note": "Distilled from the references above. Under D-UIONLY-1 every element comes from insert_ui_component with genre 'adventure'; these rules say which components, where, and how they relate. They set no px values, because none were measured.",
+    "vitalsStack": {
+     "rule": "Health, mana and experience are ONE stacked assembly in one corner: a thin experience bar on top, the thickest health bar in the middle, a thin mana bar below. Build it from health_bar, progress_bar and level_bar placed as a column.",
+     "healthIsThickest": true,
+     "never": "three separate bars scattered to different screen edges",
+     "why": "the one adventure HUD study in the set stacks all three in a shared frame and makes health the focal element, so a player reads their state in one glance at one place"
+    },
+    "resourceColours": {
+     "health": "red",
+     "mana": "blue",
+     "experience": "amber",
+     "why": "the resource-bar study fixes one colour family per resource and proves the choice with a swatch study before the art, which is what lets a player read a bar by colour alone"
+    },
+    "numberInsideFill": {
+     "rule": "The health readout is a number right-aligned inside the health fill, set through the component's text/value, not a separate label beside the bar.",
+     "why": "the reference sets the number inside the fill so the value and the bar are read together without the eye leaving the bar"
+    },
+    "enemyNameplate": {
+     "rule": "Enemies carry a billboard_tag above the head: name on the left, level on the right, health bar beneath both.",
+     "why": "the classic-RPG reference shows exactly this layout on every enemy, so the player learns threat level before engaging without opening any menu"
+    },
+    "damageNumbers": {
+     "rule": "Damage is a separate floating number above the target, apart from the nameplate, in the health colour.",
+     "never": "damage shown only as the nameplate bar shrinking",
+     "why": "the reference shows hits as large red floating numbers separate from the nameplate, so a hit is read without looking at a bar"
+    },
+    "chestInventory": {
+     "rule": "A chest or bag is an inventory_grid of equal square slots with a full-width search field above it and a footer that reads the container name and used/maximum slots.",
+     "why": "the inventory reference filters a large chest by search instead of scrolling, and its capacity footer keeps the storage limit visible while sorting"
+    },
+    "emptySlotContrast": {
+     "rule": "Empty slots must contrast visibly with the panel behind them; a themed wood panel does not excuse the grid disappearing.",
+     "why": "the inventory reference shows the failure directly: its empty slots sit so close to the brown panel that the grid edges nearly vanish"
+    },
+    "merchantAtTheCounter": {
+     "rule": "A merchant shop sells from the world: items on shelves, each with a surface_sign carrying its name, price and buy button, opened by one interact prompt at the counter.",
+     "never": "a full-screen shop catalogue as the only way to buy from an in-world merchant",
+     "why": "the shop reference keeps browsing at the counter where the player already stands, so the purchase feels like visiting a place rather than opening a menu"
+    },
+    "worldCarriesTheRoute": {
+     "rule": "Wayfinding is built into the world: signposts and notice boards where the route turns, and lantern or torch chains at night or underground. Do not add a HUD arrow unless the build asks for one.",
+     "why": "four of the eight references (village path, open-world night road, dungeon hall, castle valley) guide the player with signposts, light chains and landmarks, and none of them shows an on-screen arrow"
+    },
+    "hudLeavesTheSceneOpen": {
+     "rule": "Keep the always-on HUD to the vitals stack and nameplates. Inventory, shop and settings open as windows on demand.",
+     "why": "every adventure reference that sells the genre does it with the scene (landmarks, lit routes, readable materials), so a HUD that covers the view removes the thing players came for"
+    }
+   }
+  },
+  {
    "genre": "anime_battle",
    "label": "Anime fighting / battlegrounds — move bar with cooldowns, combo counter, quest list, boss bar, ability gacha",
    "kind": "genre",

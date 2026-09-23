@@ -52,6 +52,7 @@
     "genre:fps_arena":["fps-prototype-feedback-hud","fps-operation-strife-loadout-devlog","fps-three-lane-greybox-map","fps-map-vote-rank-and-urban-map","fps-freefire-shop-lobby"],
     "genre:anime_battle":["anime-battle-cliff-village-world","anime-battle-lore-menu-and-hud","multi-genre-ui-portfolio-chenami","anime-design-ui-2025","anime-game-ui-2019"],
     "genre:survival":["survival-boundless-ui-world-lighting","survival-diegetic-3d-main-menu","survival-crafting-and-hotbar-ui","survival-rpg-valley-and-village","survival-disaster-shop-ui"],
+    "genre:adventure":["adventure-rpg-resource-bars","adventure-classic-rpg-valley-town","adventure-chest-inventory-grid","adventure-merchant-shop-structure","adventure-medieval-open-world-light","adventure-village-path-stylised","adventure-dungeon-torch-hall","adventure-castle-valley-layout"],
     "genre:pet_simulator":["pet-sim-inspired-ui-2025","pet-sim-remake-ui-2025","pets-ui-2025","pets-ui-2020","pet-inventory-2023"],
 
     "family:tycoon":["tycoon-sandbox-hud-inventory","tycoon-kit-store-ui","tycoon-ultraw-creator-spotlight","tycoon-radial-city-map-assets","tycoon-low-poly-medieval-map"],
