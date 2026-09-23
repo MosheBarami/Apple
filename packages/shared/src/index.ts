@@ -154,8 +154,25 @@ export interface RenderedView {
     subjectCoverage: number;
     distinctColours: number;
     materials: { material: string; parts: number }[];
+    /** Terrain surface cells drawn. Absent from renderers older than 2026-09-23, which drew no Terrain. */
+    terrainCells?: number;
   };
 }
+
+/**
+ * Whether these images can show Roblox Terrain. Plugins before 2026-09-23 rendered BaseParts only, so
+ * a terrain island was invisible to every critique of it ("a flat slab with no underside", 2/10 on an
+ * island that had one) — and every store customer runs such a plugin until the next publish.
+ */
+export function renderShowsTerrain(result: { views: { meta: { terrainCells?: number } }[] }): boolean {
+  return result.views.some((v) => typeof v.meta.terrainCells === 'number');
+}
+
+/** Told to every critic when the images cannot show Terrain. */
+export const TERRAIN_BLIND_NOTE =
+  'THESE IMAGES CANNOT SHOW ROBLOX TERRAIN. Landforms, islands, ground, rock, grass and water made of Terrain are ' +
+  'absent from them even when they exist in the place. Never report a missing, flat or floating landform, underside, ' +
+  'ground or water as a defect; judge only the parts you can see.';
 
 /**
  * The scene's lighting configuration, reported alongside the render.

@@ -8,6 +8,7 @@
 // vision -> structured critique with named defects -> the agent edits and renders again.
 import type { Env } from './env';
 import type { RenderViewResult, RenderedView } from '@golem/shared';
+import { renderShowsTerrain, TERRAIN_BLIND_NOTE } from '@golem/shared';
 import { chat } from './gateway';
 import { rgbBase64ToDataUrl, decodeRgbBase64 } from './png';
 import { pixelStats, pixelHardFails, statsLine, type ViewStats } from './pixel-stats';
@@ -317,7 +318,7 @@ export async function critiqueViews(
     {
       model: 'vision',
       messages: [
-        { role: 'system', content: CRITIC_PROMPT + '\n\n' + SUBJECT_RULES[subject] },
+        { role: 'system', content: CRITIC_PROMPT + '\n\n' + SUBJECT_RULES[subject] + (renderShowsTerrain(result) ? '' : '\n\n' + TERRAIN_BLIND_NOTE) },
         { role: 'user', content },
       ],
       jsonSchema: CRITIQUE_SCHEMA,

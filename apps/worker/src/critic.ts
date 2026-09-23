@@ -1,3 +1,4 @@
+import { TERRAIN_BLIND_NOTE } from '@golem/shared';
 // ADVERSARIAL VISUAL CRITIC — a panel of prosecutors, not a panel of reviewers.
 //
 // THE FAILURE THIS REPLACES.
@@ -141,6 +142,8 @@ export interface CriticInput {
   };
   /** Elements named in the request. `missing` evidence must name one of these. */
   requestedElements?: string[];
+  /** True when the renderer drew no Terrain (see renderShowsTerrain in @golem/shared). */
+  terrainInvisible?: boolean;
 }
 
 /** A model call, injected so the critic has no dependency on the gateway and tests need no network. */
@@ -214,6 +217,9 @@ export function evidenceFingerprint(e: Evidence): string {
  * that says "coverage 0.9 exceeds the 0.6 limit" when the harness measured 0.31 is discarded, and
  * so is one that cites a real number which does not in fact violate the threshold it names.
  */
+/** What a request names that is usually built as Terrain, so its absence from a part-only render proves nothing. */
+const TERRAIN_THINGS = /\b(terrain|island|land|ground|water|waterfall|river|lake|pond|ocean|sea|cliff|mountain|hill|rock|underside|grass)/i;
+
 export function rejectionReason(c: Criticism, input: CriticInput, rule: AdjudicationRule): string | null {
   if (!c.subject || !c.subject.trim()) return 'no subject: the criticism names nothing that could be corroborated or retested';
   if (!c.claim || isVagueClaim(c.claim)) return `vague claim, nothing actionable: "${c.claim}"`;
@@ -243,6 +249,7 @@ export function rejectionReason(c: Criticism, input: CriticInput, rule: Adjudica
     case 'missing': {
       const { element, searchedIn } = c.evidence;
       if (!element?.trim()) return 'missing-element evidence names no element';
+      if (input.terrainInvisible && TERRAIN_THINGS.test(element)) return `"${element}" may be Terrain, which these images cannot show`;
       if (!searchedIn?.length) return `claims "${element}" is missing without saying which views were searched`;
       const unknown = searchedIn.filter((v) => !viewNames.has(v));
       if (unknown.length) return `searched views that were not rendered: ${unknown.join(', ')}`;
@@ -729,6 +736,7 @@ export function buildLensPrompt(lens: LensId, input: CriticInput): { system: str
     'Finding nothing is an acceptable answer. Inventing something is not.',
     '',
     `WHAT THE RENDERER CAN SHOW: ${RENDERER_CONSTRAINTS}`,
+    ...(input.terrainInvisible ? ['', TERRAIN_BLIND_NOTE] : []),
     '',
     `YOUR LENS: ${LENS_MANDATES[lens]}`,
     '',

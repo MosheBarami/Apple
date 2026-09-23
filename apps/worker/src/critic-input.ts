@@ -20,6 +20,7 @@
 // So this supplies exactly what the render genuinely knows, and the panel says what it could not
 // check. A short defect list and a clean build stopped being the same sentence.
 import type { RenderViewResult } from '@golem/shared';
+import { renderShowsTerrain } from '@golem/shared';
 import type { CriticInput } from './critic';
 import { lightingIsDefault, lightingTouchedProperties } from './roblox-defaults';
 
@@ -81,6 +82,7 @@ export function criticInputFromRender(result: RenderViewResult, intent: string):
     subject: result.subject === 'Workspace' ? 'scene' : 'prop',
     views: result.views.map((v) => ({ name: v.name, width: v.meta.width, height: v.meta.height })),
     metrics: metricsFromRender(result),
+    terrainInvisible: !renderShowsTerrain(result),
     lighting: result.lighting
       ? {
           brightness: result.lighting.brightness,
