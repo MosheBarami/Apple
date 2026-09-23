@@ -2,9 +2,9 @@
 
 **Gauntlet round 6 (simulator target: map, models and UI), once two changes ship.**
 
-1. F-064: round 5 (run 2e381849) still ended after 15 minutes on "only re-reading the place" while the map
-   was a bare baseplate. The worker quality lane is tracing the end path. Deploy the fix with
-   `node infra/deploy-worker.mjs apple`.
+1. F-064 to F-067: DEPLOYED 2026-09-23 (fe2bdf2, version 8ccfe2c2). A run is no longer ended while the
+   request's own list has parts unbuilt (run-parts.ts); skill cards ship in the same deploy. Check live in
+   round 6: "The request is not finished" steers appear, and context_budget maxChars is about 116k.
 2. D-UIONLY-1 (owner order, 2026-09-23): Apple never builds UI by hand. Every UI part comes from the
    stored library (packages/asset-library packs and sources) through one component tool. Raw GUI
    creation and scripts that Instance.new GUI classes are refused. Every component is shown in real
@@ -14,6 +14,12 @@
    - new project and pairing (plugin 1.2.0 needs a Studio reload first);
    - Autonomous ON, Apple MAX, the same prompt;
    - then `compare.py --round 6 --test map|models|ui`, each comparison sent to the owner.
+
+Cloudflare lane, live since 2026-09-23: web (Turnstile widget) deployed, TURNSTILE_SECRET set; a
+recovery request with no token or a forged one answers 403. After round 6: Supabase captcha (provider
+turnstile, same secret), once the scripted test sign-ins carry a token or use a bypass. The probe worker
+apple-cf-probe and queue apple-cf-probe-q are idle leftovers; the safety hook forbids removing a worker,
+so they stay until the owner removes them.
 
 ## Parked: the Creator Store appeal
 
