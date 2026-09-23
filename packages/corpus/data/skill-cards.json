@@ -3,13 +3,14 @@
   "what": "General, genre-agnostic craft recipes for the visual skills Apple MAX was measured weak at (gauntlet rounds 1-4: flat UI without outlines/gradients/cartoon fonts, collapsed cards, missing-glyph icons, maps that are a ground plus one template, flat lighting). Every value is expressed through tools Apple already has and properties the plugin allowlist accepts. Grounded in the Roblox Creator Docs pages listed per card (local corpus packages/corpus/data/chunks.jsonl, mirrored from github.com/Roblox/creator-docs). Nothing here names or describes a specific game.",
   "cards": [
     {
-      "id": "ui-cartoon-panel-styling",
-      "title": "Style a game panel: thick outline, gradient, rounded corners, cartoon font",
+      "id": "ui-from-library",
+      "title": "Game UI from the stored library: pick components, fill them in, place them, check them",
       "domain": "ui",
       "tools": [
-        "create_instances",
+        "insert_ui_component",
         "set_properties",
-        "build_ui"
+        "check_ui_layout",
+        "inspect_visually"
       ],
       "triggers": [
         "ui",
@@ -37,54 +38,7 @@
         "font",
         "polish",
         "pretty",
-        "beautiful"
-      ],
-      "recipe": [
-        "Every panel/card/button gets three children: UICorner (CornerRadius UDim [0.08,0] panels, [0.15,0] cards), UIStroke (Thickness 3-5, Color a near-black version of the fill hue, e.g. [0.05,0.1,0.2]), UIGradient (Rotation 90, ColorSequence light top -> base colour bottom, e.g. [[0,[0.45,0.8,1]],[1,[0.15,0.45,0.9]]]).",
-        "Titles and numbers: Font Enum.Font.FredokaOne or Enum.Font.LuckiestGuy (display) / Enum.Font.GothamBlack; body text Enum.Font.GothamBold. TextScaled true on a label sized in Scale, so the label's height sets the text size (a title strip ~12-15% of the panel height).",
-        "Outline text too: a UIStroke under a TextLabel outlines the glyphs (Thickness 2-3, Color near-black). White or pale-yellow text + dark stroke reads on any background.",
-        "Panel header = a separate strip Frame (saturated colour, its own gradient + stroke) holding the title and the close button, so the panel reads as layered, not one flat slab.",
-        "Size in Scale ([0.45,0,0.6,0] panel), AnchorPoint [0.5,0.5] centred, UIAspectRatioConstraint on the panel so it keeps its shape on phones."
-      ],
-      "avoid": [
-        "A flat single-colour Frame with thin 1px border and default SourceSans text: this is the 'unstyled' look.",
-        "Stroke colour equal to the fill colour (invisible outline); stroke thinner than 2 on a panel.",
-        "Tweening UIStroke.Thickness on text (docs: renders many glyph sizes per frame)."
-      ],
-      "check": "render_view or check_ui_layout: every visible Frame/TextButton/ImageButton has a UIStroke + UICorner child; titles use a display font; nothing overlaps on phone.",
-      "docs": [
-        {
-          "title": "UI appearance modifiers (gradient, stroke, corners)",
-          "url": "https://create.roblox.com/docs/ui/appearance-modifiers",
-          "vecId": "g-5cb7c70a-5"
-        },
-        {
-          "title": "UIStroke",
-          "url": "https://create.roblox.com/docs/reference/engine/classes/UIStroke",
-          "vecId": "api-uistroke-1"
-        },
-        {
-          "title": "UIGradient",
-          "url": "https://create.roblox.com/docs/reference/engine/classes/UIGradient",
-          "vecId": "api-uigradient-1"
-        },
-        {
-          "title": "Enum.Font",
-          "url": "https://create.roblox.com/docs/reference/engine/enums/Font",
-          "vecId": "api-enum-font-1"
-        }
-      ]
-    },
-    {
-      "id": "ui-buttons-with-depth",
-      "title": "Build buttons that look pressable: bordered body, highlight, round side buttons",
-      "domain": "ui",
-      "tools": [
-        "create_instances",
-        "set_properties",
-        "build_ui"
-      ],
-      "triggers": [
+        "beautiful",
         "button",
         "buttons",
         "buy",
@@ -96,61 +50,12 @@
         "circular",
         "icon",
         "icons",
-        "menu",
-        "hud",
         "press",
         "click",
         "tap",
         "cta",
         "nav",
-        "navigation"
-      ],
-      "recipe": [
-        "Button body = ImageButton (no Image; BackgroundColor3 the button colour) so a child UIStroke draws the BORDER (on a TextButton the stroke outlines the text instead, and ApplyStrokeMode is not writable through Apple). Put the label in a child TextLabel (BackgroundTransparency 1) with its own text UIStroke.",
-        "Depth: UIGradient Rotation 90 light->dark on the body, UIStroke Thickness 3 near-black, UICorner [0.25,0]. A darker 'lip' Frame 6% taller behind the body (ZIndex lower) reads as a 3D bottom edge.",
-        "Colour meaning, consistent everywhere: green = buy/confirm, red = close/cancel, blue/purple = navigate, yellow/orange = reward/premium.",
-        "Round side buttons (menu rail): ImageButton Size [0.075,0,0.075,0] + UIAspectRatioConstraint AspectRatio 1 + UICorner CornerRadius [0.5,0] (docs: 0.5 scale = circle/pill) + UIStroke 3-4. Stack 4-6 in a Frame with UIListLayout (Padding [0.015,0]) anchored left or right middle; an icon image or a short word inside, and a small caption TextLabel under each.",
-        "Close button: small red square/circle at the header's top-right corner, overlapping the edge (AnchorPoint [0.5,0.5] on the corner), label 'X' in a bold font."
-      ],
-      "avoid": [
-        "Buttons that are the same colour as the panel behind them.",
-        "Rectangular grey default buttons; icons without a background disc on a busy scene."
-      ],
-      "check": "play_check_ui presses at least the main button of each screen; render_view shows the rail buttons as circles, not ovals, at phone and desktop sizes.",
-      "docs": [
-        {
-          "title": "Text and image buttons",
-          "url": "https://create.roblox.com/docs/ui/buttons",
-          "vecId": "g-c899c8ec-2"
-        },
-        {
-          "title": "UI appearance modifiers — corners",
-          "url": "https://create.roblox.com/docs/ui/appearance-modifiers",
-          "vecId": "g-5cb7c70a-7"
-        },
-        {
-          "title": "UIAspectRatioConstraint",
-          "url": "https://create.roblox.com/docs/reference/engine/classes/UIAspectRatioConstraint",
-          "vecId": "api-uiaspectratioconstraint-1"
-        },
-        {
-          "title": "ImageButton",
-          "url": "https://create.roblox.com/docs/reference/engine/classes/ImageButton",
-          "vecId": "api-imagebutton-1"
-        }
-      ]
-    },
-    {
-      "id": "ui-currency-pill-hud",
-      "title": "Show currencies as icon pills in a top HUD row",
-      "domain": "ui",
-      "tools": [
-        "create_instances",
-        "set_properties",
-        "build_ui",
-        "find_ui_asset"
-      ],
-      "triggers": [
+        "navigation",
         "currency",
         "coins",
         "coin",
@@ -161,55 +66,12 @@
         "balance",
         "wallet",
         "counter",
-        "hud",
         "top",
         "bar",
         "stats",
         "leaderstats",
         "points",
-        "score"
-      ],
-      "recipe": [
-        "One pill per currency: Frame Size [0.16,0,0.06,0], UICorner [0.5,0] (pill), UIStroke 3 near-black, dark or saturated fill with a subtle UIGradient.",
-        "Icon disc overlapping the pill's left end: an ImageLabel (icon from find_ui_asset) or a coloured circle Frame (UICorner [0.5,0], UIAspectRatioConstraint 1) with a 1-2 character label, Size ~1.2x the pill height, AnchorPoint [0.5,0.5] on the pill's left edge.",
-        "Amount: TextLabel Font FredokaOne/GothamBlack, white, TextScaled with UIStroke 2; format big numbers as 1.2K / 3.4M, never raw 1234567.",
-        "A small green '+' ImageButton (circle, stroke) on the pill's right end opens the store for that currency.",
-        "Row: a transparent Frame at the top centre (AnchorPoint [0.5,0], Position [0.5,0,0.02,0]) with a horizontal UIListLayout, Padding [0.01,0], HorizontalAlignment Center; keep it inside the safe area below the top bar."
-      ],
-      "avoid": [
-        "Plain text 'Coins: 0' in the corner.",
-        "An icon glyph the font cannot draw (shows as an empty box); use an image or plain letters."
-      ],
-      "check": "render_view at phone size: pills do not overlap the Roblox top bar, the amount text is readable, the icon sits on the pill edge.",
-      "docs": [
-        {
-          "title": "UI appearance modifiers — corners (pill shape)",
-          "url": "https://create.roblox.com/docs/ui/appearance-modifiers",
-          "vecId": "g-5cb7c70a-7"
-        },
-        {
-          "title": "UIListLayout",
-          "url": "https://create.roblox.com/docs/reference/engine/classes/UIListLayout",
-          "vecId": "api-uilistlayout-1"
-        },
-        {
-          "title": "On-screen UI containers",
-          "url": "https://create.roblox.com/docs/ui/on-screen-containers",
-          "vecId": "g-d9d2371c-2"
-        }
-      ]
-    },
-    {
-      "id": "ui-scroll-card-sizing",
-      "title": "Size cards inside scrolling lists and grids so they never collapse",
-      "domain": "ui",
-      "tools": [
-        "create_instances",
-        "set_properties",
-        "build_ui",
-        "check_ui_layout"
-      ],
-      "triggers": [
+        "score",
         "card",
         "cards",
         "grid",
@@ -222,62 +84,15 @@
         "tile",
         "slots",
         "slot",
-        "inventory",
-        "shop",
-        "store",
         "catalog",
         "catalogue",
         "offers",
-        "products"
-      ],
-      "recipe": [
-        "Inside a ScrollingFrame the canvas, not the frame, is the parent size: with AutomaticCanvasSize Y and CanvasSize [0,0,0,0], a child with a Scale height has nothing to be a fraction of and collapses to 0. Give cards an OFFSET height, or Scale width + UIAspectRatioConstraint (e.g. AspectRatio 0.8 portrait card).",
-        "Grid of cards: UIGridLayout CellSize [0.3,0,0,180] (scale width, offset height) or CellSize in scale plus a UIAspectRatioConstraint in the layout, CellPadding [0.03,0,0,12]; ScrollingFrame AutomaticCanvasSize Y, ScrollBarThickness 6-8.",
-        "Card anatomy: header/name strip, big icon/image area (60% of height), price row with currency icon + amount, one buy button; UICorner + UIStroke + UIGradient like every panel.",
-        "Feature/hero card first (full width, taller), then the regular grid, so the list has hierarchy."
-      ],
-      "avoid": [
-        "Scale-Y sizes on children of an automatic canvas (the collapsed-card defect).",
-        "Cards with only a name and a button: nothing to look at."
-      ],
-      "check": "check_ui_layout reports no zero-height or overlapping card; render_view shows full cards on phone and desktop.",
-      "docs": [
-        {
-          "title": "Scrolling frames",
-          "url": "https://create.roblox.com/docs/ui/scrolling-frames",
-          "vecId": "g-5339790e-1"
-        },
-        {
-          "title": "Size modifiers and constraints",
-          "url": "https://create.roblox.com/docs/ui/size-modifiers",
-          "vecId": "g-5f78a250-5"
-        },
-        {
-          "title": "UIGridLayout",
-          "url": "https://create.roblox.com/docs/reference/engine/classes/UIGridLayout",
-          "vecId": "api-uigridlayout-1"
-        }
-      ]
-    },
-    {
-      "id": "ui-icons-without-missing-glyphs",
-      "title": "Use icons that always render: images first, safe text second",
-      "domain": "ui",
-      "tools": [
-        "find_ui_asset",
-        "upload_ui_asset",
-        "generate_image",
-        "create_instances"
-      ],
-      "triggers": [
-        "icon",
-        "icons",
+        "products",
         "glyph",
         "symbol",
         "emoji",
         "image",
         "picture",
-        "close",
         "x",
         "star",
         "heart",
@@ -286,26 +101,34 @@
         "logo"
       ],
       "recipe": [
-        "First choice: find_ui_asset for the concept (coin, gem, gear, cart, close, star, lock...) and put its rbxassetid in ImageLabel/ImageButton.Image with ScaleType Fit and UIAspectRatioConstraint 1.",
-        "No asset available: draw it from shapes (a circle Frame with UICorner [0.5,0] + stroke + a 1-2 letter label), or use plain ASCII in a bold font: 'X' close, '+' add, '<' '>' arrows, '$' money, '?' help, '!' alert.",
-        "Unicode symbols such as ✕ ★ ⚙ 🛒 depend on the font; Gotham/Fredoka do not carry most of them and they render as an empty box. Do not put them in TextLabels unless render_view has shown them drawn.",
-        "Give every icon a disc or rounded-square backing so it reads on any background."
+        "Every visible UI piece is one insert_ui_component call (D-UIONLY-1). The library draws it from stored 9-slice panels, buttons, bars and icons with its own outline, depth and display font, so it reads as a finished game, not grey boxes.",
+        "Pick the skin once with genre (simulator/tycoon/pet, obby/parkour, adventure/horror/rpg, shooter/fighting) and use the same genre and colour on every piece.",
+        "Component per job: currency_counter or stat_counter for top balance pills (icon coin, gem...), button_icon for round side buttons down the left edge, button_primary for the main action, shop_window, inventory_grid or item_card for card grids (items fill the cards, so none collapses), daily_reward, dialog_confirm, notification_toast for popups, settings_window, button_close on every window.",
+        "Place with anchor (top_left, left, center...) and position/size as screen fractions: counters at the top clear of the Roblox top bar, side rail at the left, windows at center.",
+        "Pictures are icon keys (coin, gem, star, heart, gear, trophy, cart, lock, gift...). Never type emoji or symbols into Text: the font has no glyph and they render as square tofu boxes.",
+        "Afterwards change only Text, Position, Size and Visible with set_properties; wire behaviour in a LocalScript that finds the piece by path (PlayerGui:WaitForChild(name))."
       ],
       "avoid": [
-        "Empty-box (missing glyph) text in a button.",
-        "Asset ids that were never looked up or uploaded."
+        "Creating ScreenGui, Frame, TextLabel, TextButton, ImageLabel, ImageButton, UIStroke, UICorner or UIGradient with create_instances or Instance.new: refused.",
+        "Setting colours, Font or Image on an inserted piece: refused.",
+        "Mixing skins, two pieces on one anchor, emoji in Text."
       ],
-      "check": "render_view shows every icon as a drawn shape or image; no square tofu boxes.",
+      "check": "check_ui_layout on phone and desktop reports nothing overlapping, off screen or zero-sized; inspect_visually shows library panels with readable text and drawn icons, no tofu squares.",
       "docs": [
+        {
+          "title": "On-screen UI containers",
+          "url": "https://create.roblox.com/docs/ui/on-screen-containers",
+          "vecId": "g-d9d2371c-2"
+        },
+        {
+          "title": "Size modifiers and constraints",
+          "url": "https://create.roblox.com/docs/ui/size-modifiers",
+          "vecId": "g-5f78a250-5"
+        },
         {
           "title": "Text and image buttons",
           "url": "https://create.roblox.com/docs/ui/buttons",
           "vecId": "g-c899c8ec-2"
-        },
-        {
-          "title": "ImageButton",
-          "url": "https://create.roblox.com/docs/reference/engine/classes/ImageButton",
-          "vecId": "api-imagebutton-1"
         }
       ]
     },
@@ -470,7 +293,8 @@
       "tools": [
         "create_instances",
         "group_instances",
-        "clone_instances"
+        "clone_instances",
+        "insert_ui_component"
       ],
       "triggers": [
         "building",
@@ -497,7 +321,7 @@
         "Walls: 3 wall Parts + a front with an opening (two side pieces + a lintel) so players can see in; wall colour warm/light, trim darker.",
         "Roof: two WedgePart halves meeting at a ridge (or one wedge for a lean-to), overhanging the walls by 1-2 studs, contrasting colour.",
         "Awning/stall: a striped canopy from alternating coloured thin Parts (e.g. 4-6 stripes of two colours) tilted 10-20 degrees over the counter; counter Part at waist height (3 studs).",
-        "Sign: a Part above the door with a SurfaceGui + TextLabel (FredokaOne, stroke) naming the building's function in one or two words.",
+        "Sign: a Part above the door, then insert_ui_component with component surface_sign, parent that Part and text naming the building's function in one or two words.",
         "Details that sell it: a door frame, 1-2 windows (lighter or Glass inset), barrels/crates beside the entrance, a lamp."
       ],
       "avoid": [

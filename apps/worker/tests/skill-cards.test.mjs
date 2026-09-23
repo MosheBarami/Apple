@@ -35,8 +35,8 @@ const planOf = (...steps) => ({ toolId: 't0', steps: steps.map(([title, tool]) =
 test('a UI request gets UI craft cards in the system prompt block', () => {
   const r = mod.skillCardsForRun('Make the shop menu look colorful with cartoon buttons and a coins counter', true);
   assert.ok(r.ids.length >= 1 && r.ids.length <= mod.MAX_PROMPT_CARDS);
-  assert.ok(r.ids.every((id) => id.startsWith('ui-')), r.ids.join(','));
-  assert.match(r.block, /UIStroke/);
+  assert.ok(r.ids.includes('ui-from-library'), r.ids.join(','));
+  assert.match(r.block, /insert_ui_component/);
   assert.match(r.block, /create\.roblox\.com\/docs/);
 });
 
@@ -73,7 +73,7 @@ test('the next plan step pulls its card once, never a card already shown, and st
 });
 
 test('every card is complete and every cited Creator Docs chunk exists in the corpus', (t) => {
-  assert.ok(mod.SKILL_CARDS.length >= 8);
+  assert.ok(mod.SKILL_CARDS.length >= 5);
   for (const c of mod.SKILL_CARDS) {
     for (const k of ['id', 'title', 'domain', 'check']) assert.ok(typeof c[k] === 'string' && c[k].length > 0, c.id + '.' + k);
     for (const k of ['tools', 'triggers', 'recipe', 'avoid', 'docs']) assert.ok(Array.isArray(c[k]) && c[k].length > 0, c.id + '.' + k);
@@ -83,4 +83,14 @@ test('every card is complete and every cited Creator Docs chunk exists in the co
   if (!existsSync(chunks)) return t.skip('chunks.jsonl is a gitignored build artifact and is absent here');
   const ids = new Set(readFileSync(chunks, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l).vecId));
   for (const c of mod.SKILL_CARDS) for (const d of c.docs) assert.ok(ids.has(d.vecId), c.id + ' cites missing ' + d.vecId);
+});
+
+// D-UIONLY-1: game UI comes only from insert_ui_component; create_instances refuses GuiObjects and
+// UIStroke/UICorner/UIGradient. A recipe that teaches building them by hand steers a run into refusals.
+test('no card recipe teaches hand-built UI, and none lists a refused UI tool', () => {
+  const HAND_UI = /\b(ScreenGui|ScrollingFrame|TextLabel|TextButton|ImageLabel|ImageButton|UIStroke|UICorner|UIGradient)\b/;
+  for (const c of mod.SKILL_CARDS) {
+    for (const r of c.recipe) assert.doesNotMatch(r, HAND_UI, `${c.id}: ${r}`);
+    assert.ok(!c.tools.includes('build_ui'), `${c.id} lists build_ui, which D-UIONLY-1 refuses`);
+  }
 });
