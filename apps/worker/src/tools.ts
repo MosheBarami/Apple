@@ -69,6 +69,8 @@ import { generateImage, storeImage, imagePanel, imagePathFor, composeArtDirectio
 import { generateImage as hfGenerateImage, isHfConfigured, HF_IMAGE_MODEL } from './hf';
 import { generateModelForRoblox } from './hf-3d-pipeline';
 import { findUiAssets, uploadLibraryAsset } from './asset-library';
+import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
+import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
@@ -1485,6 +1487,12 @@ export function scanLuauForAssetIngress(code: string): LuauIngressFinding[] {
  * The refusal itself, shared by `run_luau` and by the admin diagnostics route, so the two cannot
  * drift apart. Returns null when the code may run.
  */
+/** The texts a Luau rule reads: comments stripped, then literals folded (see scanLuauForAssetIngress). */
+export function luauScanVariants(code: string): string[] {
+  const stripped = stripLuauComments(code);
+  return [stripped, foldLuauLiterals(stripped)];
+}
+
 export function refuseLuauIngress(code: string): { error: string; blocked: string[] } | null {
   const findings = scanLuauForAssetIngress(code);
   if (!findings.length) return null;
@@ -1855,6 +1863,9 @@ export const TOOLS: Record<string, ToolImpl> = {
         const ingress = refuseLuauIngress(after);
         if (ingress) return ingress;
       }
+      // D-UIONLY-1: a script may use inserted UI but not make more UI than it already did.
+      const handMadeUi = refuseLibraryLuau(luauScanVariants(after), UI_RULE, before === null ? undefined : luauScanVariants(before));
+      if (handMadeUi) return handMadeUi;
 
       const res = await op(ctx, {
         op: 'edit_script',
@@ -2099,6 +2110,9 @@ export const TOOLS: Record<string, ToolImpl> = {
     //   position goes and call it a success. A refusal here is a tool error the model corrects in
     //   the same turn: no round trip, no failed op, nothing touched in the place. ]]
     run: (ctx, a) => {
+      // D-UIONLY-1: UI classes come from insert_ui_component only.
+      const handMadeUi = refuseLibraryItems(a.items, UI_RULE);
+      if (handMadeUi) return Promise.resolve(handMadeUi);
       const pass = normaliseItems(a.items);
       if (pass.refusals.length > 0) {
         return Promise.resolve({
@@ -2149,6 +2163,8 @@ export const TOOLS: Record<string, ToolImpl> = {
 
       // The same gate as create_instances, for the same reason: `set_properties` writes straight
       // into the place, so an untagged value here is a failed op in the customer's log too.
+      const restyle = refuseUiLook(props, prior?.class);
+      if (restyle) return restyle;
       let sending = props;
       if (props !== undefined) {
         const pass = normaliseProps(props);
@@ -2615,6 +2631,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       // already had their chance to run, so there is no useful check on the far side of this.
       // The ingress gate is handed to admission rather than called beside it: sandbox.ts REFUSES
       // Luau bound for Studio that arrives without one, so this cannot be forgotten later.
+      const handMadeUi = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), UI_RULE);
+      if (handMadeUi) return handMadeUi;
       const job = admitProgram({
         runtime: 'luau',
         backend: 'studio',
@@ -3467,6 +3485,9 @@ export const TOOLS: Record<string, ToolImpl> = {
       const id = String(a.module ?? '');
       const prefab = PREFABS[id];
       if (!prefab) return { error: `unknown module "${id}". Choose one of: ${PREFAB_IDS.join(', ')}.` };
+      if (id === 'ui_kit') {
+        return { error: 'Refused (D-UIONLY-1): ui_kit (AppleUI) draws its screens by hand. Insert them from the UI library with insert_ui_component({"component":"shop_window","genre":"<game genre>"}) (currency_counter, notification_toast, quest_list, ...), then wire them in a LocalScript by path. Nothing was written.' };
+      }
 
       const parent = String(a.parent ?? '').trim() || prefab.defaultParent;
       // The parent is concatenated into an instance path. A quote, backslash, newline or control
@@ -4741,7 +4762,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['set_props_bulk'],
     mutatesProject: (result) => positiveCount(result, 'count'),
-    run: (ctx, a) => setPropertiesBulk.run(studioCall(ctx), a),
+    run: (ctx, a) => Promise.resolve(refuseUiLook(a.props)).then((restyle) => restyle ?? setPropertiesBulk.run(studioCall(ctx), a)),
   },
   spatial_query: {
     def: spatialQuery.def,
@@ -4794,7 +4815,17 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['query_instances', 'create_instances', 'ui_layout_check'],
     mutatesProject: (result) => !!result && typeof result === 'object' && typeof (result as Record<string, unknown>).built === 'string',
-    run: (ctx, a) => buildUi.run(studioCall(ctx), a),
+    // Retired by D-UIONLY-1 (its screens were hand-styled Frames). Reverse: call buildUi.run again.
+    run: async () => ({
+      error: 'Refused (D-UIONLY-1): build_ui draws UI by hand and is retired. Insert each piece from the UI library with insert_ui_component({"component":"shop_window","genre":"<game genre>"}) (or currency_counter, main_menu, settings_window, ...). Nothing was sent to Studio.',
+    }),
+  },
+  insert_ui_component: {
+    def: insertUiComponent.def,
+    studio: true,
+    studioOps: ['query_instances', 'get_instance', 'create_instances', 'ui_layout_check'],
+    mutatesProject: (result) => !!result && typeof result === 'object' && typeof (result as Record<string, unknown>).inserted === 'string',
+    run: (ctx, a) => insertUiComponent.run(studioCall(ctx), a, uiImageResolver(ctx.env, ctx.userId)),
   },
   /*
    * THE AUDIO TOOLS, REGISTERED ONE BY ONE ON PURPOSE.
@@ -4877,6 +4908,7 @@ const TARGET_ARG: Readonly<Record<string, { key: string; kind: 'string' | 'list'
   set_properties: { key: 'path', kind: 'string' },
   edit_terrain: { key: 'action', kind: 'string' },
   get_instance: { key: 'path', kind: 'string' },
+  insert_ui_component: { key: 'component', kind: 'string' },
   delete_instances: { key: 'paths', kind: 'list' },
   move_instances: { key: 'moves', kind: 'moves' },
   transform_instances: { key: 'paths', kind: 'list' },

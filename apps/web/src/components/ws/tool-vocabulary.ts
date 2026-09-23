@@ -198,6 +198,7 @@ export const TOOL = {
   create_rig: { kind: 'building', label: 'Added a character' },
   check_ui_layout: { kind: 'critiquing', label: 'Checked the screen on phone, tablet and PC sizes' },
   build_ui: { kind: 'building', label: 'Built a screen' },
+  insert_ui_component: { kind: 'building', label: 'Added a UI piece' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent' },

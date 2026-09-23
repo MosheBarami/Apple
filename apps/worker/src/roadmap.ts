@@ -875,9 +875,9 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'small', mode: 'agent', runs: 1, priority: 40,
     dependsOn: [], genres: ['any'], satisfiedBy: ['client_ui'],
     build: [
-      'install_module("ui_kit") — the first-party AppleUI HUD and shop presentation module in ReplicatedStorage.',
-      'From a LocalScript in StarterPlayerScripts, require AppleUI and mount it in the local PlayerGui with showShop=false for a HUD-only game. Use setBalance for the server-confirmed number and destroy the controller when replacing it.',
-      'If this game already has objectives, use setObjectives with observed server progress and explicit completion; do not add an unsolicited quest system. Use notify for confirmed events, never fabricated rewards. Check narrow-screen text, safe areas and scrolling in Play mode.',
+      'insert_ui_component("currency_counter") (and stat_counter, level_bar or health_bar as the game needs) in the game\'s genre skin — every HUD piece comes from the stored UI library, never from hand-made Frames (D-UIONLY-1).',
+      'From a LocalScript in StarterPlayerScripts, find the inserted piece by path in PlayerGui and set its Text from the server-confirmed value.',
+      'If this game already has objectives, insert quest_list and fill it with observed server progress and explicit completion; do not add an unsolicited quest system. Use notification_toast for confirmed events, never fabricated rewards. Check narrow-screen text, safe areas and scrolling in Play mode.',
       'Update it from the server value, never from a local guess.',
     ],
     acceptance: ['The number on screen matches the server value after a rejoin.'],
@@ -992,8 +992,8 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'agent', runs: 1, priority: 90,
     dependsOn: ['economy', 'readable_hud'], genres: ['any'], satisfiedBy: ['shop'],
     build: [
-      'install_module("ui_kit") — reuse AppleUI for the responsive shop instead of recreating button and pending-state logic.',
-      'Wire setItems to the real server catalog, and onRequest(itemId) to a rate-limited server purchase handler. Return true only after the server confirms; update the displayed balance from server data. Missing wiring must remain unavailable, never simulate a purchase.',
+      'insert_ui_component("shop_window") — the library shop with item cards; never draw a shop by hand (D-UIONLY-1).',
+      'Set each card\'s Text from the real server catalog, and wire its buy button to a rate-limited server purchase handler. Return true only after the server confirms; update the displayed balance from server data. Missing wiring must remain unavailable, never simulate a purchase.',
       'Build a shop the player walks to, with the purchasable items shown in the world.',
       'Take the purchase decision on the server and deduct there.',
     ],

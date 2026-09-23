@@ -89,6 +89,9 @@ test('EVERY TOOL THE PROMPT NAMES IS A REGISTERED TOOL', () => {
     // request for an on-screen counter is built rather than assumed (mission 1 claimed a HUD that was a
     // LocalScript's name). It is not a tool and the prompt never tells the model to call it as one.
     'ui_kit',
+    // UI library COMPONENT ids, the argument insert_ui_component takes (D-UIONLY-1), named as examples.
+    'currency_counter',
+    'shop_window',
   ]);
 
   for (const prompt of everyPrompt()) {

@@ -961,6 +961,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'shape_terrain':
     case 'create_rig':
     case 'build_ui':
+    case 'insert_ui_component':
       return 'building';
     case 'render_view':
     // Framing a store-page image IS a rasterise of the place — the same five camera angles, at the
@@ -2796,6 +2797,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'build_ui',
     label: 'Build UI screens',
     why: 'Adds a whole on-screen menu, shop or HUD to StarterGui.',
+    group: 'changes',
+  },
+  {
+    name: 'insert_ui_component',
+    label: 'Add UI from the library',
+    why: 'Adds a ready-made menu, shop, button or HUD piece from Apple\'s UI library to StarterGui or a part.',
     group: 'changes',
   },
   {

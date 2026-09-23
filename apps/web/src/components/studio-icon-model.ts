@@ -101,6 +101,7 @@ export const TOOL_CLASS: Partial<Record<ToolName, StudioIconClass>> = {
   find_ui_asset: 'ImageLabel',
   upload_ui_asset: 'ImageLabel',
   build_ui: 'ScreenGui',
+  insert_ui_component: 'ScreenGui',
   check_ui_layout: 'ScreenGui',
   get_ui_construction: 'ScreenGui',
   play_check_ui: 'TextButton',

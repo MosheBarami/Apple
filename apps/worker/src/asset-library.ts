@@ -205,9 +205,8 @@ export async function uploadLibraryAsset(
   return {
     assetId: asset.assetId,
     image: `rbxassetid://${asset.assetId}`,
-    // build_ui has no image node, so it is not named here: the plugin (1.2.0+) accepts exactly this
-    // string on ImageLabel/ImageButton Image (HoverImage/PressedImage on ImageButton), nothing else.
-    use: `Set ImageLabel.Image or ImageButton.Image to {"t":"string","v":"rbxassetid://${asset.assetId}"} with set_properties, or create an ImageLabel/ImageButton with that Image in create_instances. Nothing was put in the place yet.`,
+    // D-UIONLY-1: hand-made ImageLabels and Image edits are refused, so no create/set recipe is offered here.
+    use: `Nothing was put in the place yet. UI images are placed only by insert_ui_component, which uploads the library files it needs itself; hand-made ImageLabels and Image edits are refused (D-UIONLY-1).`,
     ...credit,
   };
 }

@@ -72,6 +72,7 @@ const PHASE_A_OPS = [
 const PHASE_A_TOOLS = [
   'play_check_ui', 'search_instances', 'set_properties_bulk', 'spatial_query', 'scatter_instances', 'collision_groups',
   'shape_terrain', 'read_terrain', 'create_rig', 'check_ui_layout', 'build_ui',
+  'insert_ui_component', // D-UIONLY-1: checks its layout with ui_layout_check, as build_ui did
 ];
 const familySource = ['Query', 'Physics', 'Terrain', 'Rig', 'Ui']
   .map((name) => readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'ops', `${name}.luau`), 'utf8'))

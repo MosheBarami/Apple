@@ -285,6 +285,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   shape_terrain: 'Changes Terrain voxels, water and material colours in the open place. Terrain authoring belongs to a consented agent run.',
   create_rig: 'Adds a character model to the place. A build belongs to an agent run.',
   build_ui: 'Adds a whole ScreenGui to StarterGui. A build belongs to an agent run.',
+  insert_ui_component: 'Adds a library UI piece to StarterGui or a part and may first create permanent Image assets in the customer\'s own Roblox account. A build belongs to an agent run.',
 
   // ---- runs code, or runs the game -------------------------------------------------------
   run_luau: 'Executes arbitrary Luau in the user\'s Studio. There is no subset of this that is read-only, and it is the one tool that makes every other exclusion here pointless.',

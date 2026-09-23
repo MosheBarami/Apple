@@ -1,0 +1,4 @@
+{
+ "note": "Shared Roblox image ids for library files (D-UIONLY-1). insert_ui_component uses an id here before uploading into the user's account. Every key must be a file index.json lists; ids are uploads of that exact file.",
+ "ids": {}
+}

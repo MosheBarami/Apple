@@ -212,7 +212,7 @@ test('a built game with nothing on screen or an unplayed loop is not finished; o
 });
 
 test('the run loop records the HUD and the playtest, and steers an unfinished game before it can end', () => {
-  assert.match(SESSION, /out\.mutatedProject === true && \(call\.name === 'build_ui' \|\| \/ScreenGui\|ui_kit\/\.test\(call\.arguments[^)]*\)\)\) agent\.hudBuilt = true/);
+  assert.match(SESSION, /out\.mutatedProject === true && \(call\.name === 'build_ui' \|\| call\.name === 'insert_ui_component' \|\| \/ScreenGui\|ui_kit\/\.test\(call\.arguments[^)]*\)\)\) agent\.hudBuilt = true/);
   assert.match(SESSION, /out\.ok && call\.name === 'play_check'\) agent\.playChecked = true/);
   // every Autonomous ending consults the game gaps: prose, idle, and the duplicate-streak unstick
   const uses = SESSION.match(/gameGaps\(agent\.request, agent, allowed\.has\('play_check'\)\)/g) ?? [];

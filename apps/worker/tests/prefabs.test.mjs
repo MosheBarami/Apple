@@ -276,16 +276,12 @@ test('a chosen parent is honoured', async () => {
   assert.equal(w[0].create.parent, 'game.ServerScriptService.Systems');
 });
 
-test('the UI kit installs its exact reviewed source where a LocalScript can require it', async () => {
+test('the UI kit is retired (D-UIONLY-1): installing it writes nothing and names insert_ui_component', async () => {
   const { ctx, ops } = stubCtx();
   const result = await T.TOOLS.install_module.run(ctx, { module: 'ui_kit' });
-  const edits = writes(ops);
-  assert.equal(edits.length, 1);
-  assert.equal(edits[0].path, 'game.ReplicatedStorage.AppleUI');
-  assert.deepEqual(edits[0].create, { className: 'ModuleScript', parent: 'game.ReplicatedStorage' });
-  assert.equal(edits[0].source, P.PREFABS.ui_kit.source);
-  assert.equal(result.installed, 'AppleUI');
-  assert.match(result.api.join(' '), /CLIENT ONLY/);
+  assert.equal(writes(ops).length, 0);
+  assert.equal(ops.length, 0, 'it does not even read the place');
+  assert.match(result.error, /insert_ui_component/);
 });
 
 // --- installing over something that is already there -------------------------------------------

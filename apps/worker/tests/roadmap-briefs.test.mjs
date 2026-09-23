@@ -226,7 +226,9 @@ test('the rules survive alongside the module, for a builder who declines it', ()
 test('every module in the library is offered by some brief, or is deliberately unoffered', () => {
   // The other drift direction: a module nobody is told about is a module nobody installs.
   const named = new Set(modulesNamedInBriefs());
-  const unoffered = P.PREFAB_IDS.filter((id) => !named.has(id));
+  // ui_kit is retired by D-UIONLY-1: install_module refuses it and names insert_ui_component instead.
+  const RETIRED = new Set(['ui_kit']);
+  const unoffered = P.PREFAB_IDS.filter((id) => !named.has(id) && !RETIRED.has(id));
   assert.deepEqual(unoffered, [],
     `these modules exist and no brief mentions them: ${unoffered.join(', ')}`);
 });

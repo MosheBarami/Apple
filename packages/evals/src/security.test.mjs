@@ -898,6 +898,11 @@ const TOOL_ARGS = {
   create_rig: { rigType: 'R15', name: 'Shopkeeper', position: [0, 5, 0], npc: true },
   check_ui_layout: { screen: 'game.StarterGui.ShopGui' },
   build_ui: { screen: 'ShopGui', theme: 'tycoon', tree: { kind: 'panel', id: 'Panel', anchor: 'center', size: [0.5, 0.6], children: [{ kind: 'button', id: 'Buy', text: 'Buy' }] } },
+  // D-UIONLY-1. Egress reviewed 2026-09-23: ui-components.ts gets an op-sender and an image resolver
+  // (shared id table, then the user's KV cache, then uploadLibraryAsset with their stored key). The
+  // result carries component, instance paths, asset -> rbxassetid pairs and missing file names; the
+  // key never leaves asset-library.ts.
+  insert_ui_component: { component: 'currency_counter', genre: 'simulator' },
   get_output_logs: {},
   render_view: { view: 'hero' },
   //[[ `compose_thumbnail` EGRESS REVIEWED 2026-09-16, which is what this enumeration is for.

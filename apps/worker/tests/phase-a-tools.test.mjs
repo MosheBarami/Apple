@@ -233,6 +233,21 @@ test('play_check_ui: every button activating is said, and the screen is marked a
 
 /* ---------------------------------------------------------------------- build_ui --- */
 
+// D-UIONLY-1 retired the build_ui TOOL (it drew UI by hand); its builder stays in phase-a-tools.ts so
+// the decision reverses in one line. These tests keep that builder honest; the tool itself refuses.
+const PA = await import(pathToFileURL(bundle('phase-a-tools')).href);
+const buildUi = (ctx, a) => PA.buildUi.run(async (o, t) => {
+  const r = await ctx.execStudioOp(o, t);
+  return r.ok ? r.data : { error: r.error };
+}, a);
+
+test('the build_ui tool is retired (D-UIONLY-1): it sends nothing and names insert_ui_component', async () => {
+  const { ctx, calls } = studio(() => ({ matches: [], truncated: false }));
+  const out = await T.TOOLS.build_ui.run(ctx, { screen: 'ShopGui', theme: 'tycoon', tree: [] });
+  assert.match(out.error, /insert_ui_component/);
+  assert.equal(calls.length, 0);
+});
+
 const SHOP = [
   { kind: 'text', id: 'Title', text: 'Shop', anchor: 'top', size: [0.4, 0.1], style: 'title' },
   {
@@ -272,7 +287,7 @@ test('build_ui, for EVERY theme, emits only classes, properties, value types and
   assert.ok(TH.APPLE_UI_THEME_IDS.length >= 5, 'the theme list parsed short');
   for (const theme of TH.APPLE_UI_THEME_IDS) {
     const { ctx, calls } = studio(freshScreen);
-    const out = await T.TOOLS.build_ui.run(ctx, { screen: 'ShopGui', theme, tree: SHOP });
+    const out = await buildUi(ctx, { screen: 'ShopGui', theme, tree: SHOP });
     assert.equal(typeof out.built, 'string', `${theme}: ${JSON.stringify(out)}`);
     const item = builtItem(calls);
     assert.equal(item.parent, 'game.StarterGui');
@@ -297,7 +312,7 @@ test('build_ui, for EVERY theme, emits only classes, properties, value types and
 
 test('build_ui checks the name is free, creates once, lays out, and returns pressable button paths', async () => {
   const { ctx, calls } = studio(freshScreen);
-  const out = await T.TOOLS.build_ui.run(ctx, { screen: 'ShopGui', theme: 'tycoon', tree: SHOP, devices: ['phone_portrait'] });
+  const out = await buildUi(ctx, { screen: 'ShopGui', theme: 'tycoon', tree: SHOP, devices: ['phone_portrait'] });
   assert.deepEqual(calls.map((c) => c.op.op), ['query_instances', 'create_instances', 'ui_layout_check']);
   assert.deepEqual(calls[0].op, { op: 'query_instances', root: 'game.StarterGui', className: 'ScreenGui', name: 'ShopGui', limit: 50 });
   assert.deepEqual(calls[2].op, { op: 'ui_layout_check', screen: 'game.StarterGui.ShopGui', devices: ['phone_portrait'] });
@@ -328,21 +343,21 @@ test('build_ui refuses a screen name that already exists and builds nothing', as
   const { ctx, calls } = studio((op) => (op.op === 'query_instances'
     ? { matches: [{ path: 'game.StarterGui.ShopGui', className: 'ScreenGui' }], truncated: false }
     : freshScreen(op)));
-  const out = await T.TOOLS.build_ui.run(ctx, { screen: 'ShopGui', theme: 'tycoon', tree: SHOP });
+  const out = await buildUi(ctx, { screen: 'ShopGui', theme: 'tycoon', tree: SHOP });
   assert.match(out.error, /already exists/);
   assert.deepEqual(calls.map((c) => c.op.op), ['query_instances'], 'nothing may be created over an existing screen');
 });
 
 test('build_ui builds nothing when it cannot check the name', async () => {
   const { ctx, calls } = studio((op) => (op.op === 'query_instances' ? { __fail: 'unknown op query_instances' } : freshScreen(op)));
-  const out = await T.TOOLS.build_ui.run(ctx, { screen: 'ShopGui', theme: 'tycoon', tree: SHOP });
+  const out = await buildUi(ctx, { screen: 'ShopGui', theme: 'tycoon', tree: SHOP });
   assert.ok(out.error);
   assert.deepEqual(calls.map((c) => c.op.op), ['query_instances']);
 });
 
 test('build_ui says the layout was not checked when the check fails, and never claims a clean layout', async () => {
   const { ctx } = studio((op) => (op.op === 'ui_layout_check' ? { __fail: 'layout check timed out' } : freshScreen(op)));
-  const out = await T.TOOLS.build_ui.run(ctx, { screen: 'HudGui', theme: 'obby', tree: SHOP });
+  const out = await buildUi(ctx, { screen: 'HudGui', theme: 'obby', tree: SHOP });
   assert.equal(out.built, 'game.StarterGui.HudGui');
   assert.match(out.layout.notChecked, /timed out/);
   assert.doesNotMatch(out.next, /lays out cleanly/);

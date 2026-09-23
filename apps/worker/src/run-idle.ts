@@ -187,9 +187,9 @@ export function gameGaps(
 export function gameGapSteer(gaps: readonly ('hud' | 'playtest')[]): string {
   const owed: string[] = [];
   if (gaps.includes('hud')) {
-    owed.push('The player has nothing on screen: this run built no ScreenGui. Build the HUD the game needs — its ' +
+    owed.push('The player has nothing on screen: this run built no ScreenGui. Insert the HUD the game needs with insert_ui_component — its ' +
       'currency counter bound to leaderstats and a button for each core action the request names (shop, sell, ' +
-      'inventory…) — under StarterGui, styled to match the world.');
+      'inventory…) — in the genre skin that matches the world; UI is never built by hand.');
   }
   if (gaps.includes('playtest')) {
     owed.push('Nobody has played the game loop yet. Run play_check as a real player through the loop the request ' +
