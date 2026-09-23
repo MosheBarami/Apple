@@ -581,8 +581,9 @@ const TOOLS = [
 ];
 
 test('OpenAI-shaped providers encode tools as {type:function, function:{...}}', () => {
-  // The chat wire on the binding, and the OpenAI-compatible encoder the customer-key path uses.
-  for (const encode of [P.workersAiAdapter.encode, P.encodeOpenAiChat]) {
+  // The chat wire on the binding. The standalone OpenAI-compatible encoder served only the
+  // customer-key path and went with BYOK (D-VISION-1); every model now encodes here.
+  for (const encode of [P.workersAiAdapter.encode]) {
     const { payload } = encode({
       modelId: 'm',
       messages: [{ role: 'user', content: 'hi' }],
@@ -606,10 +607,12 @@ test('OpenAI-shaped providers decode tool_calls into GatewayToolCall', () => {
     ],
     usage: { prompt_tokens: 10, completion_tokens: 3 },
   };
-  const out = P.decodeOpenAiChat(raw, 100, 'gpt-5.6-luna', 'openai');
+  const out = P.workersAiAdapter.decode(raw, 100, P.APPLE_MODEL_ID);
   assert.deepEqual(out.toolCalls, [{ id: 'c1', name: 'run_luau', arguments: '{"source":"x"}' }]);
   assert.equal(out.finishReason, 'tool_calls');
-  assert.deepEqual(out.usage, { inputTokens: 10, outputTokens: 3, cachedInputTokens: 0 });
+  // The token counts, by field: the binding's decoder also carries `reportedNeurons` (absent here).
+  const { inputTokens, outputTokens, cachedInputTokens } = out.usage;
+  assert.deepEqual({ inputTokens, outputTokens, cachedInputTokens }, { inputTokens: 10, outputTokens: 3, cachedInputTokens: 0 });
 });
 
 // The direct Gemini adapter (functionDeclarations, systemInstruction, inlineData) was removed by
@@ -633,18 +636,9 @@ test('Workers AI errors map to the common taxonomy, and only free failures are r
   assert.equal(c('something nobody has seen before').kind, 'unknown');
 });
 
-test('HTTP providers classify by status first, then by message', () => {
-  const err = (status, msg) => new P.ProviderError('unknown', 'openai', msg ?? '', status);
-  assert.deepEqual(P.classifyHttpError(err(429)), { kind: 'rate_limit', retryable: true });
-  assert.equal(P.classifyHttpError(err(401)).kind, 'auth');
-  assert.equal(P.classifyHttpError(err(403)).kind, 'auth');
-  assert.equal(P.classifyHttpError(err(500)).kind, 'transient');
-  // a 5xx may or may not have run the model, so it is never retried — that would risk a double bill
-  assert.equal(P.classifyHttpError(err(500)).retryable, false);
-  assert.equal(P.classifyHttpError(err(400, 'maximum context length exceeded')).kind, 'context_length');
-  assert.equal(P.classifyHttpError(err(400, 'response was flagged by our content policy')).kind, 'content_filter');
-  assert.equal(P.classifyHttpError(new Error('who knows')).kind, 'unknown');
-});
+// `classifyHttpError` (status-first classification for direct HTTP providers) was removed with
+// providers/openai.ts in D-VISION-1: no provider this worker calls speaks HTTP to it directly any
+// more — every model, Apple's and the outside ones, is reached through the AI binding.
 
 test('every adapter answers classifyError with a kind from the taxonomy', () => {
   const KINDS = new Set(['rate_limit', 'auth', 'context_length', 'content_filter', 'transient', 'unknown']);

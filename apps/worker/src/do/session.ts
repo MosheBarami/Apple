@@ -32,7 +32,7 @@ import type {
 } from '@golem/shared';
 import { canUseProductModel, isModelId, isRunFailure, MESSAGE_MAX_CHARS, modelRefusal, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
 import { isRefusalRemedyCode, type RefusalRemedyCode } from '@golem/shared';
-import { isCatalogueModelIdShape, registryModel } from '@golem/shared';
+import { registryModel } from '@golem/shared';
 
 /**
  * The edit history being moved onto the message that replaces an edited one.
@@ -63,8 +63,6 @@ import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-eviden
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, reasoningEffortApplies, BudgetError, RateLimitedError } from '../gateway';
-import { isCustomerKeyError } from '../providers';
-import { keyForRun, resolveRunModel, type CustomerRunModel } from '../run-model';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
 import { TOOLS, toolDefs, toolNames, targetOf, runTool, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
@@ -205,12 +203,6 @@ interface AgentState {
   autonomous?: boolean;
   /** The user's model entitlement, independent of Plan/Agent and the Autonomous toggle. */
   productModel?: ProductModel;
-  /**
-   * Present only on a run on the customer's OWN key (D-BYOK-1): which OpenRouter model and whose
-   * key. Never the key — run-model.ts opens it again for each step and drops it. Its presence is
-   * also what makes this run spend no Apple Credits (startRunInner, runStep).
-   */
-  customerModel?: CustomerRunModel;
   msgId: string;
   llm: GatewayRequest['messages'];
   step: number;
@@ -963,13 +955,12 @@ export class SessionDO extends DurableObject<Env> {
   /**
    * Read additive model metadata without changing the long-lived messages table schema.
    *
-   * The column holds an Apple product model OR, for a run on the customer's own key, the catalogue
-   * id of the model that actually ran. They come back as different fields (`productModel` /
-   * `model`, the same split `msg_start` uses) so a GPT-6 run is never relabelled as Apple after a
-   * reload. Anything else in the column is dropped as unknown.
+   * The column holds a registry model id. Anything else in it — including the OpenRouter ids that
+   * runs on a customer's own key wrote before BYOK was removed (D-VISION-1) — is dropped as
+   * unknown, so such a turn is never relabelled as a model that did not run it.
    */
-  private productModelsFor(ids: readonly string[]): Map<string, { productModel: ProductModel } | { model: string }> {
-    const out = new Map<string, { productModel: ProductModel } | { model: string }>();
+  private productModelsFor(ids: readonly string[]): Map<string, { productModel: ProductModel }> {
+    const out = new Map<string, { productModel: ProductModel }>();
     if (ids.length === 0) return out;
     const placeholders = ids.map(() => '?').join(',');
     const rows = this.sql
@@ -979,7 +970,6 @@ export class SessionDO extends DurableObject<Env> {
       if (typeof row.message_id !== 'string') continue;
       const productModel = asProductModel(row.product_model);
       if (productModel) out.set(row.message_id, { productModel });
-      else if (isCatalogueModelIdShape(row.product_model)) out.set(row.message_id, { model: row.product_model });
     }
     return out;
   }
@@ -1076,9 +1066,9 @@ export class SessionDO extends DurableObject<Env> {
 
   /**
    * Persist model identity beside a message; old rows remain valid and simply have no entry.
-   * `model` is an Apple product model, or the catalogue id a customer-key run ran on.
+   * `model` is the registry id the run ran on.
    */
-  private rememberProductModel(messageId: string, model: ProductModel | CustomerRunModel['modelId']): void {
+  private rememberProductModel(messageId: string, model: ProductModel): void {
     this.sql.exec(
       `insert into message_models(message_id, product_model) values(?,?)
          on conflict(message_id) do update set product_model = excluded.product_model`,
@@ -2775,11 +2765,6 @@ export class SessionDO extends DurableObject<Env> {
             this.refuseOne(ws, { type: 'error', code: 'bad_product_model', message: 'Unknown product model for this request.' });
             return;
           }
-          const runModel = await resolveRunModel(this.env, msg.model, productModel);
-          if (runModel.lane === 'refused') {
-            this.refuseOne(ws, { type: 'error', code: 'bad_model', message: runModel.message });
-            return;
-          }
           const text = msg.text.slice(0, MESSAGE_MAX_CHARS);
           //[[ THE SAME BUILD, ASKED AGAIN.
           //
@@ -2818,11 +2803,10 @@ export class SessionDO extends DurableObject<Env> {
             undefined,
             ws,
             undefined,
-            runModel.lane === 'apple' ? runModel.productModel : productModel,
+            productModel,
             autonomous,
             me?.userId,
             me?.grantExpiresAt ?? undefined,
-            runModel.lane === 'customer' ? runModel : undefined,
           );
         }
         return;
@@ -2862,13 +2846,7 @@ export class SessionDO extends DurableObject<Env> {
           this.refuseOne(ws, { type: 'error', code: 'bad_product_model', message: 'Unknown product model for this request.' });
           return;
         }
-        const runModel = await resolveRunModel(this.env, msg.model, productModel);
-        if (runModel.lane === 'refused') {
-          this.refuseOne(ws, { type: 'error', code: 'bad_model', message: runModel.message });
-          return;
-        }
-        const editProductModel = runModel.lane === 'apple' ? runModel.productModel : productModel;
-        const modelVerdict = await this.productModelVerdict(bind, mode, editProductModel);
+        const modelVerdict = await this.productModelVerdict(bind, mode, productModel);
         if (!modelVerdict.ok) {
           this.refuseOne(ws, { type: 'error', code: 'product_model_unavailable', message: modelVerdict.message });
           return;
@@ -2939,11 +2917,10 @@ export class SessionDO extends DurableObject<Env> {
               previous: recordsRevision(row.content, text) ? row.content : null,
               at: row.created_at,
             },
-            editProductModel,
+            productModel,
             autonomous,
             me?.userId,
             me?.grantExpiresAt ?? undefined,
-            runModel.lane === 'customer' ? runModel : undefined,
           );
         }
         return;
@@ -3043,10 +3020,9 @@ export class SessionDO extends DurableObject<Env> {
     autonomous = false,
     initiatedBy?: string,
     initiatorExpiresAt?: string | number,
-    customerChoice?: { modelId: string; label: string; free: boolean },
   ) {
     const attempt = await this.startGate(() =>
-      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, autonomous, initiatedBy, initiatorExpiresAt, customerChoice),
+      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, autonomous, initiatedBy, initiatorExpiresAt),
     );
     if (!attempt.ran) {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
@@ -3064,7 +3040,6 @@ export class SessionDO extends DurableObject<Env> {
     autonomous = false,
     initiatedBy?: string,
     initiatorExpiresAt?: string | number,
-    customerChoice?: { modelId: string; label: string; free: boolean },
   ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
     if (existing && existing.status !== 'idle') {
@@ -3082,22 +3057,6 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     const selectedProductModel = modelVerdict.model;
-    //[[ A RUN ON THE CUSTOMER'S OWN KEY is refused HERE, before a Credit is taken or a row is
-    //   written, when there is no key it could spend. The key is opened only to prove it exists and
-    //   is dropped at once; each step opens it again. Whose key: the person who pressed send. ]]
-    let customerModel: CustomerRunModel | undefined;
-    if (customerChoice) {
-      customerModel = {
-        provider: 'openrouter',
-        ...customerChoice,
-        keyOwnerId: typeof initiatedBy === 'string' && initiatedBy.trim() ? initiatedBy : bind.ownerId,
-      };
-      const key = await keyForRun(this.env, customerModel);
-      if (!key.ok) {
-        this.refuseOne(origin, { type: 'error', code: 'model_key_missing', message: key.message });
-        return;
-      }
-    }
     // Clear any stop left behind by a previous run. Belt and braces with finishRun's clear:
     // a stop that arrives in the moment a run is finishing can land after that clear, and it
     // must not travel into the run the user starts next.
@@ -3105,21 +3064,20 @@ export class SessionDO extends DurableObject<Env> {
 
     // Credits are billed from measured usage after each model call, so entering a run only
     // requires having some balance left — the user is never charged for an estimate.
-    // A run on the customer's own key takes no admission Credit: nothing Apple meters is spent.
-    const quota = customerModel ? null : await this.quotaSpend(bind.ownerId, 1, `chat_${mode}`);
-    if (quota && !quota.ok) {
+    const quota = await this.quotaSpend(bind.ownerId, 1, `chat_${mode}`);
+    if (!quota.ok) {
       this.refuseOne(origin, { type: 'error', code: 'quota', message: 'Daily Credits are used up. They refill at midnight UTC.' });
       this.broadcast({ type: 'quota', quota: quota.state });
       return;
     }
-    if (quota) this.broadcast({ type: 'quota', quota: quota.state });
+    this.broadcast({ type: 'quota', quota: quota.state });
     // Mark the socket only after entitlement and quota admission succeeded. A refused MAX request
     // must not leave a collaborator's presence claiming that a build is in flight.
     if (origin) this.touch(origin, 'building');
 
     const userMsgId = crypto.randomUUID();
     this.sql.exec(`insert into messages(id, role, mode, content, created_at) values(?,?,?,?,?)`, userMsgId, 'user', mode, text, Date.now());
-    this.rememberProductModel(userMsgId, customerModel?.modelId ?? selectedProductModel);
+    this.rememberProductModel(userMsgId, selectedProductModel);
 
     //[[ THE EDIT HISTORY FOLLOWS THE MESSAGE.
     //
@@ -3249,7 +3207,6 @@ export class SessionDO extends DurableObject<Env> {
       mode,
       autonomous: runAutonomous,
       productModel: selectedProductModel,
-      ...(customerModel ? { customerModel } : {}),
       msgId,
       fenceId,
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
@@ -3292,7 +3249,7 @@ export class SessionDO extends DurableObject<Env> {
     // server had never heard of, and Edit / Try again / Regenerate — all of which resolve that id
     // against the messages table — answered "That message is no longer in the conversation" until
     // the page was reloaded. See web/src/lib/message-identity.ts.
-    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, ...(runAutonomous ? { autonomous: true } : {}), productModel: selectedProductModel, ...(customerModel ? { model: customerModel.modelId } : {}), userMsgId });
+    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, ...(runAutonomous ? { autonomous: true } : {}), productModel: selectedProductModel, userMsgId });
     // Exactly once per run, and only after msg_start so the client has a message to attach it to.
     if (intent) this.broadcast({ type: 'run_intent', msgId, intent });
     this.currentMsgId = agent.msgId;
@@ -3442,13 +3399,6 @@ export class SessionDO extends DurableObject<Env> {
         await this.finishRun(agent, 'quota');
         return;
       }
-      // The customer's own key was refused or their OpenRouter balance is empty. Their sentence, as
-      // written in providers/openrouter.ts — "failed on our side" would be false.
-      if (isCustomerKeyError(e)) {
-        agent.finalText = agent.finalText || msg;
-        await this.finishRun(agent, 'error', 'model_failed');
-        return;
-      }
       // NOT `Something went wrong: ${msg}`. That interpolated the upstream's unredacted message
       // into the reply, on the one path where nothing else had classified the failure — so the
       // least-understood failure produced the least comprehensible sentence. Same shape as the
@@ -3547,13 +3497,20 @@ export class SessionDO extends DurableObject<Env> {
     agent.lastStepAt = Date.now();
     this.lastActivity = agent.lastStepAt;
 
+    // A run persisted before BYOK was removed may still name a customer key. That run cannot be
+    // continued on the key and must not silently move onto Apple's Credits, so it ends here.
+    if ((agent as { customerModel?: unknown }).customerModel) {
+      agent.finalText = agent.finalText || 'Runs on your own key have been retired. Choose a model and send again. Progress is saved.';
+      await this.finishRun(agent, 'error', 'model_failed');
+      return;
+    }
     //[[ THE MODEL IS RE-CHECKED ON EVERY STEP, NOT ONLY AT ADMISSION (D-VISION-1).
     //
     //   A run can outlive the plan it started on: a downgrade or a lapsed subscription lands while
     //   a 16-step build is between steps, and admission alone would let a paid model finish the run
     //   on an account that no longer has it. `agent.userId` is the owner's billing identity, the
     //   same identity admission read. A free model needs no read, so this costs nothing on Apple. ]]
-    if (!agent.customerModel && agent.productModel) {
+    if (agent.productModel) {
       const verdict = await this.productModelVerdict({ ownerId: agent.userId }, agent.mode, agent.productModel);
       if (!verdict.ok) {
         agent.finalText = agent.finalText || `${verdict.message} Progress is saved.`;
@@ -3561,7 +3518,7 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
     }
-    if (agent.step > 1 && !agent.customerModel) {
+    if (agent.step > 1) {
       const state = await this.quotaState(agent.userId);
       if (state.unmetered !== true && state.creditsRemaining <= 0) {
         agent.finalText = agent.finalText || 'I paused because your daily Credits ran out. Progress is saved.';
@@ -3727,8 +3684,7 @@ export class SessionDO extends DurableObject<Env> {
     //
     //   What the policy chose is NOT wasted on this lane — `tokensForEffort` still sizes the output
     //   budget from it. What is withheld is only the statement about the provider's own knob. ]]
-    // A customer-key step sends no reasoning effort (gateway.ts), so none is claimed for it.
-    const effortApplied = agent.customerModel ? false : await reasoningEffortApplies(this.env, gatewayModel);
+    const effortApplied = await reasoningEffortApplies(this.env, gatewayModel);
     if (effortApplied) {
       // Surface the reasoning POLICY's decision — the tier it picked and its own
       // one-line justification. This is a classification of the request, never
@@ -3747,18 +3703,6 @@ export class SessionDO extends DurableObject<Env> {
       creditsSpent: agent.creditsSpent,
     });
 
-    // The customer's key for THIS call only — opened here, passed in the call's options, and gone
-    // when the step returns. A key removed mid-run ends the run in a plain sentence.
-    let customerKey: { provider: 'openrouter'; apiKey: string; modelId: string } | undefined;
-    if (agent.customerModel) {
-      const key = await keyForRun(this.env, agent.customerModel);
-      if (!key.ok) {
-        agent.finalText = agent.finalText || key.message;
-        await this.finishRun(agent, 'error', 'model_failed');
-        return;
-      }
-      customerKey = { provider: 'openrouter', apiKey: key.apiKey, modelId: agent.customerModel.modelId };
-    }
     // TALK IS NOT PRICED LIKE BUILDING (F-019). A greeting, a thanks or a question about Apple itself,
     // on the run's first step, gets no tool definitions: they are 69 tools and ~67k characters, about
     // 80% of the input of every call, and "hi" needs none of them. CONVERSATIONAL_RE is anchored to the
@@ -3787,7 +3731,6 @@ export class SessionDO extends DurableObject<Env> {
         actorId: agent.initiatedBy ?? agent.userId,
         ...(this.boundProjectId ? { projectId: this.boundProjectId } : {}),
         runId: agent.msgId,
-        ...(customerKey ? { customerKey } : {}),
       },
     ).catch((e: unknown) => {
       // THE BOUNDARY THE RESUME IS ALLOWED TO REACH. Everything above this line is idempotent —
@@ -3871,9 +3814,7 @@ export class SessionDO extends DurableObject<Env> {
     // Round Credits once per RUN, not once per call: otherwise a run of five small calls costs
     // five whole Credits when the compute used barely fills one.
     agent.neuronsUsed = (agent.neuronsUsed ?? 0) + res.neurons;
-    // Never on the customer's own key. `creditsForNeurons` has a floor of ONE Credit, so even the
-    // zero neurons such a step reports would otherwise bill a Credit on the first step.
-    const owed = agent.customerModel ? 0 : creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
+    const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
     if (owed > 0) {
       const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
       //[[ ONLY A SPEND THAT HAPPENED IS ADDED TO WHAT THE RUN COST.
@@ -4977,7 +4918,7 @@ export class SessionDO extends DurableObject<Env> {
       deniedToolsForHistory,
       agent.msgId,
     );
-    this.rememberProductModel(agent.msgId, agent.customerModel?.modelId ?? agent.productModel ?? effectiveProductModel(agent.mode));
+    this.rememberProductModel(agent.msgId, agent.productModel ?? effectiveProductModel(agent.mode));
     await this.persistAgent(agent);
     // The settled cost of the whole run. Read here, after the last `quotaSpend`, because every
     // earlier broadcast of this number was taken before that step's settlement and was therefore

@@ -44,9 +44,11 @@ test('chat and edit frames carry the selected model independently', () => {
   const edit = socket.slice(socket.indexOf('const editAndResend ='), socket.indexOf('const sendChat ='));
   assert.match(chat, /type: 'chat'[^\n]+productModel/);
   assert.match(edit, /type: 'edit_resend'[^\n]+productModel/);
-  // `model` only when a model on a key was chosen: an Apple run's frame is the one it always was.
-  assert.match(chat, /type: 'chat'[^\n]+\.\.\.\(model \? \{ model \} : \{\}\)/);
-  assert.match(edit, /type: 'edit_resend'[^\n]+\.\.\.\(model \? \{ model \} : \{\}\)/);
+  //[[ RESTATED 2026-09-23 (D-VISION-1). The frames carried a second, separate `model` for a model on
+  //   the customer's own key; that lane went with BYOK. The property now: the registry id in
+  //   `productModel` is the ONLY model a frame can name — no second field the worker might honour. ]]
+  assert.doesNotMatch(chat.slice(0, chat.indexOf('\n  );')), /[{,]\s*model\b|\bmodel \?/, 'the chat frame still carries a second model field');
+  assert.doesNotMatch(edit, /[{,]\s*model\b|\bmodel \?/, 'the edit frame still carries a second model field');
 });
 
 test('a model row that cannot be chosen says so, in both channels', () => {

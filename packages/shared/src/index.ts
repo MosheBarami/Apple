@@ -746,11 +746,7 @@ export interface ChatAttachment {
 }
 
 export type ClientMsg =
-  //[[ `model` IS THE PICKER'S CHOICE, a CatalogueModel id from GET /api/models (see ./models).
-  //   Optional, so a client that predates the picker keeps working. A built-in id (`apple`,
-  //   `apple-max`) runs on Apple and spends Credits exactly like `productModel`; any other id runs
-  //   on the customer's own saved key and spends no Credits. ]]
-  | { type: 'chat'; text: string; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel; model?: string; attachments?: ChatAttachment[] }
+  | { type: 'chat'; text: string; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel; attachments?: ChatAttachment[] }
   /**
    * Correct an earlier prompt and run again from there.
    *
@@ -762,7 +758,7 @@ export type ClientMsg =
    * work is not. Checkpoints are the tool for that, and the two are deliberately separate — a
    * wording fix should not silently revert a working door.
    */
-  | { type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel; model?: string }
+  | { type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel }
   | { type: 'stop' } // interrupt agent
   | { type: 'resume' }
   /**
@@ -1259,8 +1255,7 @@ export type ServerMsg =
   //   run, after the user row is inserted, and already carries the run's other id. OPTIONAL
   //   because the worker and the web app deploy separately: a client that required it would be
   //   describing a worker that may not be live yet. See web/src/lib/message-identity.ts. ]]
-  // `model` is present only when the run is on a customer-key model: the OpenRouter id it runs on.
-  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel; model?: string; userMsgId?: string }
+  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel; userMsgId?: string }
   | { type: 'delta'; msgId: string; text: string }
   //[[ `target` is WHICH THING this step is about — the script path, the instance paths, the URL —
   //   read from the call's arguments BEFORE it runs. `summary` at this point is only the tool's
@@ -1546,11 +1541,6 @@ export interface MessageDto {
   autonomous?: boolean;
   /** The selected model, when this message was created by a model-aware client. */
   productModel?: ProductModel;
-  /**
-   * The catalogue id of the model a run on the customer's own key ran on (the same field
-   * `msg_start` carries). Present instead of `productModel`, never beside it.
-   */
-  model?: string;
   content: string;
   toolTrace: ToolTraceEntry[] | null;
   createdAt: string;

@@ -163,20 +163,6 @@ export interface Env {
   GITHUB_TOKEN?: string;
   /** Extra repositories those two tools may read: `owner/name` or `owner/*`, comma-separated. */
   GITHUB_REPO_ALLOWLIST?: string;
-  // ---------------------------------------------------------------------------
-  // Customer keys (owner decisions D-BYOK-1, D-BYOK-2, D-FREE-1).
-  // ---------------------------------------------------------------------------
-  /**
-   * 32 random bytes, base64: the AES-GCM key that seals customers' own model-provider keys at rest
-   * (model-keys.ts). Set in production on 2026-09-23. Absent → the key routes refuse and store
-   * nothing. Rotating it makes every stored key unreadable (D-BYOK-2).
-   */
-  BYOK_ENCRYPTION_KEY?: string;
-  /**
-   * A PLATFORM OpenRouter key. Absent today. Present → free OpenRouter models run without the
-   * customer's own key; absent → free models say they need the customer's key (D-FREE-1).
-   */
-  OPENROUTER_API_KEY?: string;
 }
 
 export interface AuthedUser {

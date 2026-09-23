@@ -306,9 +306,9 @@ export function orphanedToolMessages(llm: GatewayMessage[]): string[] {
  *
  * WHAT IT IS FOR, MEASURED 2026-09-20. `do/session.ts` records the assistant turn with every tool
  * call the model emitted and then executes `res.toolCalls.slice(0, 4)`. Only an executed call gets
- * a reply, so a turn of five calls leaves the fifth unanswered — and both encoders on the live path
- * (`providers/workers-ai.ts`, `providers/openai.ts`) put the whole list on the wire, because they
- * render `m.toolCalls` verbatim. `orphanedToolMessages` returns `[]` for that transcript: it
+ * a reply, so a turn of five calls leaves the fifth unanswered — and the encoder on the live path
+ * (`providers/workers-ai.ts`) puts the whole list on the wire, because it renders `m.toolCalls`
+ * verbatim. `orphanedToolMessages` returns `[]` for that transcript: it
  * collects call ids and tests messages against them, so a call nothing answers is invisible to it
  * by construction.
  *
@@ -333,9 +333,9 @@ export function unansweredToolCalls(llm: GatewayMessage[]): string[] {
  * WHY THIS LIVES HERE AND NOT WHERE THE DEFECT IS CAUSED. `do/session.ts` records the assistant
  * turn with EVERY tool call the model emitted — `agent.llm.push({ role: 'assistant', ..., toolCalls:
  * res.toolCalls })` — and then executes `res.toolCalls.slice(0, 4)`. A turn of five calls leaves the
- * fifth with no result, and both live encoders (`providers/workers-ai.ts`, `providers/openai.ts`)
- * render `m.toolCalls` verbatim, so that unanswered call goes to the provider. Measured 2026-09-20
- * against the real openai encoder: `UNANSWERED tool_call ids : tc_5`.
+ * fifth with no result, and the live encoder (`providers/workers-ai.ts`) renders `m.toolCalls`
+ * verbatim, so that unanswered call goes to the provider. Measured 2026-09-20 against the
+ * OpenAI-compatible encoder since removed with BYOK: `UNANSWERED tool_call ids : tc_5`.
  *
  * THAT IS STILL A DEFECT IN THE LOOP AND THIS DOES NOT CLOSE IT. A run should not silently discard
  * the model's fifth call in the first place; the fix for that is `docs/backlog/

@@ -268,3 +268,28 @@ test('replacing a key resets the use record rather than inheriting it', async ()
   assert.equal(after.lastUsedAt, null);
   assert.notEqual(after.fingerprint, await C.sha256hex(GOOD.apiKey), 'and the fingerprint follows the new key');
 });
+
+/* ------------------------------------------------------------- the BYOK purge --- */
+
+test('THE OPENROUTER KEYS ARE PURGED when the table is readied, and a Roblox key survives it (D-VISION-1)', async () => {
+  // Rows as a real table holds them, one per (user, provider). This fake executes only the two
+  // statement shapes that can remove a row, so a purge that names the wrong provider — or no purge
+  // at all — leaves the OpenRouter rows standing and this goes red.
+  const rows = [
+    { user_id: 'u1', provider: 'openrouter' },
+    { user_id: 'u2', provider: 'openrouter' },
+    { user_id: 'u1', provider: 'roblox' },
+  ];
+  const apply = (sql, args = []) => {
+    const m = /^delete from user_credentials where provider = '([a-z]+)'$/i.exec(sql.trim());
+    if (m) { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].provider === m[1]) rows.splice(i, 1); return; }
+    if (/^delete from user_credentials/i.test(sql)) throw new Error(`unexpected delete: ${sql} ${args}`);
+  };
+  const CORPUS = {
+    prepare(sql) {
+      return { async run() { apply(sql); return { meta: {} }; }, bind: (...a) => ({ async run() { apply(sql, a); return { meta: {} }; } }) };
+    },
+  };
+  await C.ensureCredentialTable({ CORPUS });
+  assert.deepEqual(rows, [{ user_id: 'u1', provider: 'roblox' }], 'every OpenRouter key is gone and the Roblox key is kept');
+});

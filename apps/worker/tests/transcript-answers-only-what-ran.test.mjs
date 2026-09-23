@@ -2,7 +2,7 @@
 //
 // THE DEFECT, MEASURED. `do/session.ts` records the assistant turn with EVERY tool call the model
 // emitted and then executes `res.toolCalls.slice(0, 4)`. A turn of five calls leaves the fifth with
-// no `tool` message answering it, and `encodeOpenAiChat` renders `m.toolCalls` verbatim, so the
+// no `tool` message answering it, and the chat encoder renders `m.toolCalls` verbatim, so the
 // unanswered call reaches the provider. Nothing throws; the model is simply shown a call it made,
 // with no result, forever — the shape that makes an agent repeat work or narrate a result it never
 // received.
@@ -16,7 +16,9 @@
 //
 // THE ASSERTION IS ON THE WIRE PAYLOAD, not on a helper in the module under test. `unansweredToolCalls`
 // lives in the same file as the repair, so a test that only consulted it would be asking the patient
-// to take their own temperature. `encodeOpenAiChat` is the real encoder on the real path.
+// to take their own temperature. The Workers AI adapter's `encode` is the real encoder on the real
+// path. (It was `encodeOpenAiChat` from providers/openai.ts until that encoder was removed with BYOK
+// in D-VISION-1; every model now goes through workers-ai.ts, so the instrument moved with it.)
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -35,9 +37,9 @@ const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dir = mkdtempSync(join(tmpdir(), 'answered-'));
 const out = join(dir, 'oa.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
-  [join(WORKER, 'src/providers/openai.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out],
+  [join(WORKER, 'src/providers/workers-ai.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out],
   { cwd: WORKER, stdio: 'pipe' });
-const { encodeOpenAiChat } = await import(`file://${out}`);
+const { workersAiAdapter, APPLE_MODEL_ID } = await import(`file://${out}`);
 
 const HUGE = 1_000_000;
 const sys = { role: 'system', content: 'S'.repeat(200) };
@@ -63,7 +65,7 @@ function overflowingStep(n, emitted, executed, text = '') {
  * itself. Named after the failure rather than the fix.
  */
 function unansweredOnTheWire(llm) {
-  const { payload } = encodeOpenAiChat({ modelId: 'gpt-x', messages: llm, maxTokens: 64, temperature: 0 });
+  const { payload } = workersAiAdapter.encode({ modelId: APPLE_MODEL_ID, messages: llm, maxTokens: 64, temperature: 0 });
   const answered = new Set(payload.messages.filter((m) => m.tool_call_id).map((m) => m.tool_call_id));
   return payload.messages.flatMap((m) => (m.tool_calls ?? []).map((c) => c.id)).filter((id) => !answered.has(id));
 }

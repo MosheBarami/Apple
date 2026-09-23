@@ -54,16 +54,19 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
 - **D-REASONING-2 — The Thinking shimmer opens onto the model's own reasoning, live.** Overrides the earlier
   rule "never render hidden chain of thought". Only text the provider itself returns as reasoning is shown,
   as plain text, never interpreted as markup; providers that return none show only the shimmer.
-- **D-BYOK-1 — Bring your own key.** Customers may add keys (OpenRouter, OpenAI, Anthropic, Google, DeepSeek)
+- **D-BYOK-1 — Bring your own key.** SUPERSEDED by D-VISION-1 (2026-09-23): BYOK is removed; every model
+  runs inside Apple on Apple Credits, and stored OpenRouter keys are purged. Kept for history: customers may add keys (OpenRouter, OpenAI, Anthropic, Google, DeepSeek)
   and pick the latest models (GPT-6 Astra/Sol/Luna, Claude Fable 5.1, Claude Opus 5.5, Gemini 3.8 Flash,
   DeepSeek V4.1 Flash, …), shown with their official icons. Keys are encrypted at rest with a worker secret,
   never returned to the browser beyond their last four characters, never logged, never put in a transcript.
   A run on the customer's own key does not spend Apple Credits.
-- **D-FREE-1 — Free models are the ones OpenRouter prices at zero today, read live.** Free promotions are
+- **D-FREE-1 — Free models are the ones OpenRouter prices at zero today, read live.** SUPERSEDED by
+  D-VISION-1 (2026-09-23): the model list is the registry in packages/shared/src/models.ts. Kept for history: free promotions are
   time-limited, so the list is derived from OpenRouter's catalogue (prompt and completion price 0, tool calling
   supported) and cached briefly, never hard-coded. They need an OpenRouter key; a keyless free tier switches on
   only if the owner adds a platform OpenRouter key (OPENROUTER_API_KEY) — creating that account is the owner's.
-- **D-BYOK-2 — The encryption key.** `BYOK_ENCRYPTION_KEY` (32 random bytes, base64) was generated in memory and
+- **D-BYOK-2 — The encryption key.** SUPERSEDED by D-VISION-1 (2026-09-23): nothing reads the secret any more;
+  it can be deleted with `wrangler secret delete BYOK_ENCRYPTION_KEY`. Kept for history: `BYOK_ENCRYPTION_KEY` (32 random bytes, base64) was generated in memory and
   piped straight into `wrangler secret put` on 2026-09-23; it was never printed or written to disk. Rotating it
   makes every stored customer key unreadable — customers would have to add their keys again. Do not rotate it
   without a re-encryption step.

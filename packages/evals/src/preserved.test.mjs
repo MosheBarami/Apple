@@ -901,9 +901,9 @@ test('B9 the provider abstraction did not change which model actually serves a r
   for (const [k, id] of entries) {
     assert.match(id, /^@cf\//, `${k} must still resolve to a Workers AI model id`);
   }
-  // The one alternative is a call on the CUSTOMER'S OWN key (ChatOptions.customerKey, D-BYOK-1),
-  // which goes to OpenRouter by construction. Every Apple call is still chosen from the model id.
-  assert.match(gw, /const adapter = (?:customer \? openrouterAdapter : )?adapterForModelId\(cfg\.id\);/, 'the adapter must be chosen from the resolved model id');
+  // Every call is chosen from the model id. (The customer-key alternative to OpenRouter went with
+  // BYOK, D-VISION-1, so there is no second choice left for this to allow.)
+  assert.match(gw, /const adapter = adapterForModelId\(cfg\.id\);/, 'the adapter must be chosen from the resolved model id');
   // …and an unknown id still falls back to the only transport this worker has.
   assert.match(read('providers/registry.ts'), /return workersAiAdapter;/, 'an unrecognised model id must fall back to the AI binding');
 });

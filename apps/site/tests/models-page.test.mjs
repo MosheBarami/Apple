@@ -1,17 +1,17 @@
 /**
- * /models AND THE LANDING'S "ON YOUR OWN KEY" ROW — WHAT THEY MAY CLAIM, AND HOW THEY LOOK.
+ * /models AND THE LANDING'S "FROM OTHER MAKERS" ROW — WHAT THEY MAY CLAIM, AND HOW THEY LOOK.
  *
- * The page lists models a young creator can pick. Three ways it can lie, each guarded below:
+ * The page lists models a young creator can pick. RESTATED for owner decision D-VISION-1, which
+ * replaced the OpenRouter catalogue with the model registry and removed models on a customer's own
+ * key. Four ways it can lie, each guarded below:
  *
- *   1. A MODEL THAT IS NOT ON OFFER. The rows must be exactly what the worker's catalogue would
- *      give: its curated paid ids, and the free, tool-capable rows of the snapshot it embeds. This
- *      file does NOT reuse the page's own path to get there (lib/model-catalogue.ts calls the
- *      worker's function); it re-derives the expected lists from the worker's SOURCE TEXT, so a
- *      page that stopped asking — or asked something else — disagrees with it.
- *   2. A FREE LIST PRESENTED AS TODAY'S. Free promotions end (owner decision D-FREE-1). Every free
- *      row must say Free, and the page must say, beside it, that free is time-limited, that the
- *      app reads the list live, and the date this list was read — the snapshot's own date.
- *   3. AN INSTALL PROMISE. The Studio plugin cannot be installed right now; nothing here may say it
+ *   1. A MODEL THAT IS NOT ON OFFER. The rows must be exactly the registry's, in its order. This
+ *      file reads the registry itself rather than the page's own helper, so a page that stopped
+ *      asking — or asked something else — disagrees with it.
+ *   2. A PRICE OR A PLAN IT DID NOT ASK FOR. Every other maker's row says the plan that includes it
+ *      and its "×N credits" rate, both derived here from the registry's tier and multiplier.
+ *   3. A KEY OF YOUR OWN. That path is gone; nothing on /models or the landing may offer it.
+ *   4. AN INSTALL PROMISE. The Studio plugin cannot be installed right now; nothing here may say it
  *      can while STUDIO_PLUGIN_STORE_LIVE is false.
  *
  * And the look: 4.5:1 text in both themes and no horizontal overflow at 320/390/768/1440, measured
@@ -47,40 +47,25 @@ function section(id) {
   return html.slice(start, html.indexOf('</section>', open));
 }
 
-// ------------------------------------------------------------------ the worker's facts, re-derived
+// ------------------------------------------------------------------ the registry's facts
 
-const SNAPSHOT_SRC = read('apps/worker/src/openrouter-snapshot.ts');
-const CATALOGUE_SRC = read('apps/worker/src/model-catalogue.ts');
-const SNAPSHOT = [...SNAPSHOT_SRC.matchAll(/\{ id: "([^"]+)", name: "([^"]+)", free: (true|false), tools: (true|false) \}/g)].map(
-  (m) => ({ id: m[1], name: m[2], free: m[3] === 'true', tools: m[4] === 'true' }),
-);
-const READ_AT = /OPENROUTER_SNAPSHOT_READ_AT = "([^"]+)"/.exec(SNAPSHOT_SRC)?.[1];
-const CURATED = [...(/CURATED_PAID_IDS[^=]*=\s*\[([\s\S]*?)\];/.exec(CATALOGUE_SRC)?.[1] ?? '').matchAll(/'([^']+)'/g)].map((m) => m[1]);
-const expectedPaid = CURATED.filter((id) => SNAPSHOT.find((r) => r.id === id)?.tools);
-const expectedFree = SNAPSHOT.filter((r) => r.free && r.tools && !r.id.startsWith('openrouter/') && !expectedPaid.includes(r.id)).map((r) => r.id);
+const { MODEL_REGISTRY, TIER_PLAN_NAME } = await import('../../../packages/shared/src/models.ts');
+const OTHERS = MODEL_REGISTRY.filter((m) => m.vendor !== 'Apple');
 
 const idsIn = (s) => [...s.matchAll(/<li class="mrow"[^>]*data-model-id="([^"]+)"/g)].map((m) => m[1]);
 
 test('the build and the worker facts are both here, so nothing below is vacuous', () => {
   assert.ok(html, 'dist/models/index.html is missing — run `npx astro build` in apps/site first');
   assert.ok(landing, 'dist/index.html is missing — run `npx astro build` in apps/site first');
-  assert.ok(SNAPSHOT.length >= 10, `only ${SNAPSHOT.length} snapshot rows parsed — the row pattern has drifted`);
-  assert.ok(READ_AT, 'OPENROUTER_SNAPSHOT_READ_AT not found in the worker snapshot');
-  assert.ok(expectedPaid.length >= 5, `only ${expectedPaid.length} curated paid ids derived`);
-  assert.ok(expectedFree.length >= 1, 'no free rows derived from the snapshot');
+  assert.ok(OTHERS.length >= 1, 'the registry has no model from another maker — the rows below would check nothing');
 });
 
-test('THE ROWS ARE THE CATALOGUE: every paid and free model the worker offers, in its order, and nothing else', () => {
-  assert.deepEqual(idsIn(section('your-key')), expectedPaid, 'the own-key list is not the worker\'s curated paid list');
-  assert.deepEqual(idsIn(section('free')), expectedFree, 'the free list is not the snapshot\'s free, tool-capable rows');
-  const known = new Set(SNAPSHOT.map((r) => r.id));
+test('THE ROWS ARE THE REGISTRY: every other maker\'s model, in registry order, and nothing else', () => {
+  assert.deepEqual(idsIn(section('other-makers')), OTHERS.map((m) => m.id), 'the other-makers list is not the registry\'s');
+  const known = new Set(MODEL_REGISTRY.map((m) => m.id));
   const invented = idsIn(html).filter((id) => !known.has(id));
-  assert.deepEqual(invented, [], `ids on /models that OpenRouter's snapshot does not have: ${invented.join(', ')}`);
-  for (const id of [...expectedPaid, ...expectedFree]) {
-    const row = SNAPSHOT.find((r) => r.id === id);
-    const label = row.name.slice(row.name.indexOf(': ') + 2).replace(/\s*\(free\)\s*$/i, '');
-    assert.ok(text(html).includes(label), `/models does not print ${id}'s own name "${label}"`);
-  }
+  assert.deepEqual(invented, [], `ids on /models that the registry does not have: ${invented.join(', ')}`);
+  for (const m of OTHERS) assert.ok(text(section('other-makers')).includes(m.displayName), `/models does not print ${m.id}'s name "${m.displayName}"`);
 });
 
 test('THE BUILT-IN MODELS ARE THE PRODUCT\'S OWN, named from @golem/shared', async () => {
@@ -94,28 +79,25 @@ test('THE BUILT-IN MODELS ARE THE PRODUCT\'S OWN, named from @golem/shared', asy
   assert.match(built, /Apple Credits/, 'the built-in section does not say what the built-in models spend');
 });
 
-test('EVERY FREE ROW SAYS FREE, NO PAID ROW DOES, and the page dates the list and says it is read live', () => {
-  const rows = (s) => [...s.matchAll(/<li class="mrow"[\s\S]*?<\/li>/g)].map((m) => m[0]);
-  const freeRows = rows(section('free'));
-  assert.equal(freeRows.length, expectedFree.length);
-  for (const r of freeRows) assert.match(text(r), /\bFree$/, `a free row does not end on its Free badge: ${text(r)}`);
-  for (const r of rows(section('your-key'))) assert.doesNotMatch(text(r), /\bFree\b/i, `a paid row says Free: ${text(r)}`);
-
-  const notice = /data-free-notice[^>]*>([\s\S]*?)<\/p>/.exec(section('free'))?.[1] ?? '';
-  assert.match(text(notice), /limited time/i, 'the free notice does not say free is time-limited');
-  assert.match(text(notice), /reads the current list live/i, 'the free notice does not say the app reads the list live');
-  const d = new Date(READ_AT);
-  const day = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-  assert.ok(notice.includes(`datetime="${READ_AT}"`), `the notice's <time> is not the snapshot's read time ${READ_AT}`);
-  assert.ok(text(notice).includes(day), `the notice does not print the date the list was read (${day})`);
+test('EVERY OTHER MAKER\'S ROW SAYS WHICH PLAN INCLUDES IT AND ITS CREDIT RATE, as the registry has them', () => {
+  const rows = [...section('other-makers').matchAll(/<li class="mrow"[\s\S]*?<\/li>/g)].map((m) => m[0]);
+  assert.equal(rows.length, OTHERS.length);
+  for (const m of OTHERS) {
+    const row = text(rows.find((r) => r.includes(`data-model-id="${m.id}"`)) ?? '');
+    if (m.tier === 'free') assert.match(row, /every plan/i, `${m.id} is free-tier and its row does not say every plan includes it`);
+    else assert.ok(row.includes(`Included with ${TIER_PLAN_NAME[m.tier]}`), `${m.id}'s row does not name the plan that includes it: ${row}`);
+    if (m.creditMultiplier > 1) assert.ok(row.endsWith(`×${m.creditMultiplier} credits`), `${m.id}'s row does not end on its ×${m.creditMultiplier} credits badge: ${row}`);
+    else assert.doesNotMatch(row, /×\d+ credits/, `${m.id} costs what Apple MAX costs and its row carries a badge`);
+  }
+  assert.match(text(section('other-makers')), /Apple Credits/, 'the section does not say these models use Apple Credits');
 });
 
-test('BRING-YOUR-OWN-KEY IS TWO PLAIN SENTENCES', () => {
-  const p = /data-byok-explainer[^>]*>([\s\S]*?)<\/p>/.exec(html)?.[1];
-  assert.ok(p, 'the key explainer paragraph is missing');
-  const sentences = text(p).split(/(?<=[.!?])\s+/).filter(Boolean);
-  assert.equal(sentences.length, 2, `the explainer is ${sentences.length} sentences: ${text(p)}`);
-  assert.doesNotMatch(text(p), /\b(API|BYOK|encrypt\w*|token|endpoint|OAuth|provider)\b/i, 'the explainer uses a technical word');
+test('NOTHING ON /models OR THE LANDING OFFERS A KEY OF YOUR OWN (D-VISION-1)', () => {
+  const words = /own key|your key|bring your own|OpenRouter|\bBYOK\b|free for a limited time/i;
+  const main = (h) => text(h.slice(h.indexOf('<main'), h.indexOf('</main>')));
+  assert.ok(main(html).length > 200 && main(landing).length > 200, 'no <main> to read');
+  assert.doesNotMatch(main(html), words, '/models still offers a key of your own');
+  assert.doesNotMatch(main(landing), words, 'the landing still offers a key of your own');
 });
 
 test('NOTHING ON /models OR IN THE LANDING ROW SAYS THE PLUGIN CAN BE INSTALLED while the store is not live', () => {
@@ -124,8 +106,8 @@ test('NOTHING ON /models OR IN THE LANDING ROW SAYS THE PLUGIN CAN BE INSTALLED 
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
   assert.ok(main.length > 1000, '/models has no <main> to read');
   assert.doesNotMatch(text(main), /install|Creator Store|download the plugin/i, '/models promises an install');
-  const strip = /class="byok-strip"[\s\S]*?<\/ul>/.exec(landing)?.[0];
-  assert.ok(strip, 'the landing has no "On your own key" row');
+  const strip = /class="makers-strip"[\s\S]*?<\/ul>/.exec(landing)?.[0];
+  assert.ok(strip, 'the landing has no "From other makers" row');
   assert.doesNotMatch(text(strip), /install|Creator Store/i, 'the landing row promises an install');
   assert.match(strip, /href="\/models"/, 'the landing row does not lead to /models');
 });
@@ -221,7 +203,7 @@ test('NO HORIZONTAL OVERFLOW at 320, 390, 768 and 1440, on /models and on the la
   await withPages(async (browser, base) => {
     for (const width of [320, 390, 768, 1440]) {
       const page = await (await browser.newContext({ viewport: { width, height: 900 } })).newPage();
-      for (const [route, scope] of [['/models/', 'main'], ['/', '.byok-strip']]) {
+      for (const [route, scope] of [['/models/', 'main'], ['/', '.makers-strip']]) {
         await page.goto(base + route, { waitUntil: 'load' });
         const count = await page.evaluate((s) => document.querySelectorAll(s).length, scope);
         assert.ok(count > 0, `${route} has no ${scope} at ${width}px, so nothing was measured`);
@@ -284,7 +266,9 @@ test('EVERY WORD ON /models CLEARS 4.5:1 against what is behind it, dark and lig
       await page.waitForTimeout(700);
       assert.equal(await page.evaluate(() => document.documentElement.getAttribute('data-theme')), theme);
       const { seen, bad } = await page.evaluate(lowContrast);
-      assert.ok(seen >= 40, `${theme}: only ${seen} text runs measured`);
+      // RESTATED (D-VISION-1): the page is the registry now, a handful of rows rather than dozens,
+      // so the floor is derived from it — at least three runs per model plus the page's head.
+      assert.ok(seen >= 3 * MODEL_REGISTRY.length + 5, `${theme}: only ${seen} text runs measured`);
       assert.deepEqual(bad, [], `${theme}: text below 4.5:1 on /models:\n  ${bad.join('\n  ')}`);
       await ctx.close();
     }

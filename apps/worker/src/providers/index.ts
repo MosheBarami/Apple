@@ -24,16 +24,3 @@ export {
   VISION_CONTEXT_WINDOW,
   WORKERS_AI_MODELS,
 } from './workers-ai';
-export { classifyHttpError, encodeOpenAiChat, decodeOpenAiChat } from './openai';
-export {
-  openrouterAdapter,
-  encodeOpenRouterChat,
-  postOpenRouterChat,
-  checkOpenRouterKey,
-  openRouterFailure,
-  scrubKey,
-  CustomerKeyError,
-  isCustomerKeyError,
-  OPENROUTER_BASE_URL,
-  type FetchLike,
-} from './openrouter';

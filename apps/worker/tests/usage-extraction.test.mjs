@@ -44,7 +44,8 @@ const bundle = (rel, name) => {
     { cwd: WORKER, stdio: 'pipe' });
   return import(`file://${out}`);
 };
-const OA = await bundle('providers/openai.ts', 'oa.mjs');
+// providers/openai.ts was removed with BYOK (D-VISION-1): every model — Apple's and the outside
+// ones on unified billing — is decoded by workers-ai.ts, so that is the one adapter checked here.
 const WA = await bundle('providers/workers-ai.ts', 'wa.mjs');
 const COST = await bundle('providers/cost.ts', 'cost.mjs');
 
@@ -75,13 +76,6 @@ const PROMPT_CHARS = 700;
 const TEXT = 'a short answer';
 
 for (const [label, usage] of BROKEN_USAGE) {
-  test(`openai: ${label} still yields a usable token count`, () => {
-    const r = OA.decodeOpenAiChat(
-      { choices: [{ message: { content: TEXT }, finish_reason: 'stop' }], usage },
-      PROMPT_CHARS, 'gpt-x', 'openai');
-    assertUsable(r.usage, `openai/${label}`);
-  });
-
   test(`workers-ai: ${label} still yields a usable token count`, () => {
     assertUsable(WA.extractUsage({ usage }, PROMPT_CHARS, TEXT), `workers-ai/${label}`);
   });
@@ -106,17 +100,12 @@ for (const [label, usage] of BROKEN_RESPONSES) {
 test('CONTROL: a well-formed usage block is passed through EXACTLY, not estimated', () => {
   // Without this, an adapter that ignored the provider and always estimated would pass every case
   // above — while silently billing a figure the provider never reported.
-  const r = OA.decodeOpenAiChat(
-    { choices: [{ message: { content: TEXT }, finish_reason: 'stop' }],
-      usage: { prompt_tokens: 1234, completion_tokens: 56, prompt_tokens_details: { cached_tokens: 7 } } },
-    PROMPT_CHARS, 'gpt-x', 'openai');
-  assert.equal(r.usage.inputTokens, 1234, 'a reported input count must be used, not replaced by an estimate');
-  assert.equal(r.usage.outputTokens, 56);
-  assert.equal(r.usage.cachedInputTokens, 7);
-
-  const w = WA.extractUsage({ usage: { prompt_tokens: 99, completion_tokens: 3 } }, PROMPT_CHARS, TEXT);
-  assert.equal(w.inputTokens, 99);
-  assert.equal(w.outputTokens, 3);
+  const w = WA.extractUsage(
+    { usage: { prompt_tokens: 1234, completion_tokens: 56, prompt_tokens_details: { cached_tokens: 7 } } },
+    PROMPT_CHARS, TEXT);
+  assert.equal(w.inputTokens, 1234, 'a reported input count must be used, not replaced by an estimate');
+  assert.equal(w.outputTokens, 56);
+  assert.equal(w.cachedInputTokens, 7);
 
   const g = WA.extractUsage(
     { output: [], usage: { input_tokens: 321, output_tokens: 12, input_tokens_details: { cached_tokens: 5 } } },
@@ -130,11 +119,6 @@ test('CONTROL: an unmetered call is estimated as COSTING SOMETHING, never as fre
   // The fallback exists so a provider that reports nothing still moves the ledger. An adapter that
   // fell back to zero would satisfy "usable" above and give away the work.
   for (const [label, usage] of [['none', undefined], ['empty', {}]]) {
-    const r = OA.decodeOpenAiChat(
-      { choices: [{ message: { content: TEXT }, finish_reason: 'stop' }], usage },
-      PROMPT_CHARS, 'gpt-x', 'openai');
-    assert.ok(r.usage.inputTokens > 0, `openai/${label}: an unmetered call must still cost input tokens`);
-    assert.ok(r.usage.outputTokens > 0, `openai/${label}: and output tokens`);
     const w = WA.extractUsage({ usage }, PROMPT_CHARS, TEXT);
     assert.ok(w.inputTokens > 0 && w.outputTokens > 0, `workers-ai/${label}: must still cost something`);
   }
@@ -144,10 +128,8 @@ test('the cost of every usage an adapter can produce is a real number', () => {
   // The end of the chain: whatever the adapters emit must price to money, not to NaN.
   const model = { provider: 'openai', id: 'gpt-x', inputCostPer1M: 150, outputCostPer1M: 600 };
   for (const [label, usage] of BROKEN_USAGE) {
-    const r = OA.decodeOpenAiChat(
-      { choices: [{ message: { content: TEXT }, finish_reason: 'stop' }], usage },
-      PROMPT_CHARS, 'gpt-x', 'openai');
-    const n = COST.neuronsForModelTokens(model, r.usage.inputTokens, r.usage.outputTokens, r.usage.cachedInputTokens);
+    const u = WA.extractUsage({ usage }, PROMPT_CHARS, TEXT);
+    const n = COST.neuronsForModelTokens(model, u.inputTokens, u.outputTokens, u.cachedInputTokens);
     assert.equal(Number.isFinite(n), true, `${label}: priced to ${n}, and every cap downstream admits that`);
     assert.ok(n >= 0, `${label}: priced to a negative (${n})`);
   }

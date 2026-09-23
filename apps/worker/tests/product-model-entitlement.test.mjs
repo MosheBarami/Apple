@@ -399,3 +399,39 @@ test('the re-check is a no-op for the free model and while the plan still includ
     assert.equal(h.providerRuns.length, 1, `${productModel} on ${plan} did not reach its model call`);
   }
 });
+
+//[[ BRING-YOUR-OWN-KEY IS GONE (D-VISION-1). A client that predates the removal can still send a
+//   `model` field naming an OpenRouter id; the worker no longer reads it. The property: such a frame
+//   runs on the registry model it names in `productModel`, takes the admission Credit like any other
+//   run, and nothing about the customer key reaches the run or the wire. ]]
+test('a frame that still names a model on the customer\'s own key runs on Apple and spends Credits', async () => {
+  const h = makeSession({ plan: 'free' });
+  await h.session.webSocketMessage(h.ws, JSON.stringify({
+    type: 'chat', text: 'build a small tower', mode: 'agent', productModel: 'apple', model: 'openai/gpt-4o',
+  }));
+  const agent = h.store.get('agent');
+  assert.ok(agent, 'the run was refused instead of admitted on Apple');
+  assert.equal(agent.productModel, 'apple');
+  assert.equal('customerModel' in agent, false, 'no customer-key lane is carried by the run');
+  assert.equal(h.calls.some((c) => c.name === 'QUOTA_DO' && c.path === '/spend'), true, 'the admission Credit was not taken');
+  const start = h.sent.find((m) => m.type === 'msg_start');
+  assert.equal(start.productModel, 'apple');
+  assert.equal('model' in start, false, 'msg_start names no customer-key model');
+});
+
+test('a run persisted on a customer key before the removal ends in a sentence, with no model call', async () => {
+  const h = makeSession({
+    plan: 'free',
+    aiRun: async () => ({ choices: [{ finish_reason: 'stop', message: { content: 'ran' } }], usage: { prompt_tokens: 10, completion_tokens: 2 } }),
+  });
+  await h.session.fetch(new Request('https://do/agent-run', {
+    method: 'POST', body: JSON.stringify({ text: 'build a tower', mode: 'agent', productModel: 'apple' }),
+  }));
+  // The shape an older worker persisted for a run on the customer's own OpenRouter key.
+  const agent = h.store.get('agent');
+  h.store.set('agent', { ...agent, customerModel: { provider: 'openrouter', modelId: 'openai/gpt-4o', label: 'GPT-4o', free: false, keyOwnerId: 'owner-1' } });
+  await h.session.alarm();
+  assert.equal(h.providerRuns.length, 0, 'the step ran — on Apple\'s Credits — although the run was started on a key');
+  const reply = h.sql.messages.filter((x) => x.role === 'assistant').map((x) => x.content).join('\n');
+  assert.match(reply, /own key have been retired/, `the run ended without saying why — ${reply.slice(0, 200)}`);
+});

@@ -66,19 +66,6 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     keywords: ['roblox', 'open cloud', 'api key', 'connect', 'upload', 'creator', 'credential', 'account'],
   },
   {
-    id: 'model-keys',
-    title: 'Your model keys',
-    section: 'Models & keys',
-    // What somebody types when they have a key and want to use it, or when they worry about it.
-    keywords: ['openrouter', 'byok', 'bring your own key', 'api key', 'key', 'models', 'gpt', 'claude', 'gemini', 'deepseek', 'credits', 'remove key'],
-  },
-  {
-    id: 'free-models',
-    title: 'Free models',
-    section: 'Models & keys',
-    keywords: ['free', 'no cost', 'models', 'openrouter', 'price'],
-  },
-  {
     id: 'asset-sources',
     title: 'Where Apple gets assets',
     section: 'Building',

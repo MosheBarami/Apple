@@ -137,9 +137,9 @@ test('carried-over history is droppable but the pinned request is not', () => {
 // checked calls against results; it never did, and that is precisely the direction in which
 // do/session.ts breaks the transcript. session.ts records the assistant turn with EVERY tool call
 // the model emitted and then executes `res.toolCalls.slice(0, 4)`, so a turn of five calls leaves
-// the fifth with no `tool` message answering it — and both live encoders render `m.toolCalls`
-// verbatim, so that unanswered call goes to the provider. Measured 2026-09-20 against the real
-// providers/openai.ts encoder: `UNANSWERED tool_call ids : tc_5`.
+// the fifth with no `tool` message answering it — and the live encoder renders `m.toolCalls`
+// verbatim, so that unanswered call goes to the provider. Measured 2026-09-20 against the
+// OpenAI-compatible encoder since removed with BYOK (D-VISION-1): `UNANSWERED tool_call ids : tc_5`.
 //
 // The fix belongs in session.ts, which another lane owns; see
 // docs/backlog/HANDOFF-SESSION-AGENT-LOOP.md. What belongs HERE is the instrument, because a

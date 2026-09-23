@@ -190,6 +190,13 @@ async function createCredentialTable(env: Pick<CredentialEnv, 'CORPUS'>): Promis
   } catch {
     // already present
   }
+  //[[ THE OPENROUTER KEYS GO (D-VISION-1: BYOK removed).
+  //
+  //   Customers' own OpenRouter keys were sealed into this table while BYOK existed. Nothing reads
+  //   them any more, and a secret kept for no purpose is only a liability, so every such row is
+  //   deleted. Idempotent: once they are gone this deletes nothing. Not caught — a purge that failed
+  //   must not be reported as a table that is ready. ]]
+  await env.CORPUS.prepare("delete from user_credentials where provider = 'openrouter'").run();
 }
 
 export interface PutCredentialInput {

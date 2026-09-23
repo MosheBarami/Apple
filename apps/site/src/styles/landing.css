@@ -999,7 +999,7 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
   text-underline-offset: 3px;
 }
 
-.byok-strip {
+.makers-strip {
   display: flex;
   flex-wrap: wrap;
   gap: 24px 48px;
@@ -1010,19 +1010,19 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
   border-top: 1px solid var(--hairline);
 }
 
-.byok-copy {
+.makers-copy {
   flex: 1 1 300px;
   max-width: 560px;
 }
 
-.byok-line {
+.makers-line {
   margin: 6px 0 0;
   color: var(--muted);
   font-size: 15px;
   line-height: 1.6;
 }
 
-.byok-link {
+.makers-link {
   display: inline-block;
   margin-top: 10px;
   color: var(--ink);
@@ -1033,7 +1033,7 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
   text-underline-offset: 3px;
 }
 
-.byok-link:hover {
+.makers-link:hover {
   text-decoration-color: var(--accent);
 }
 

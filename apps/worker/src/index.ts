@@ -92,9 +92,6 @@ import {
 import { companionOpAccess, companionRefusal, sanitizeCompanionOp } from './companion';
 import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, rawProbe, BudgetError } from './gateway';
 import { capabilityTable, providerHealth, selectProvider } from './providers';
-import { checkOpenRouterKey } from './providers';
-import { deleteModelKey, listModelKeys, saveModelKey } from './model-keys';
-import { isByokProvider } from '@golem/shared';
 import { imageKvKey, imageMimeType, type ImageMeta } from './imagegen';
 import { readGeneratedImage } from './generated-images';
 import { ATTACHMENT_TTL_SECONDS, deleteAttachment, putAttachment, readAttachment } from './attachments';
@@ -3944,50 +3941,6 @@ app.get('/api/models', async (c) => {
   if (!user) return c.json({ error: 'not signed in' }, 401);
   const plan = await quotaPlan(c.env, user.userId);
   return c.json({ models: modelListing(typeof plan === 'string' ? plan : undefined) });
-});
-
-/**
- * A customer's OWN model-provider keys: save, list, remove. model-keys.ts has the rules.
- *
- * Under `/api/me/` and NOT at `/api/keys`: `GET /api/keys` and `DELETE /api/keys/:id` already are
- * the Apple API-key routes the settings page calls (web/src/lib/api.ts), and a second meaning on
- * the same path would make one of the two pages list or revoke the other's credentials.
- *
- * No handler here ever puts the key, or anything derived from it beyond its last four characters,
- * into a response, a log line, an analytics event or an error.
- */
-app.get('/api/me/model-keys', async (c) => {
-  const user = c.get('user');
-  if (!user) return c.json({ error: 'not signed in' }, 401);
-  return c.json({ keys: await listModelKeys(c.env, user.userId) });
-});
-
-app.put('/api/me/model-keys/:provider', async (c) => {
-  const user = c.get('user');
-  if (!user) return c.json({ error: 'not signed in' }, 401);
-  const provider = c.req.param('provider');
-  if (!isByokProvider(provider)) return c.json({ error: 'Only OpenRouter keys can be saved.' }, 400);
-  const body = await c.req.json<{ apiKey?: unknown }>().catch(() => null);
-  if (!body) return c.json({ error: 'a JSON body is required' }, 400);
-  const res = await saveModelKey(c.env, user.userId, provider, body.apiKey, (key) => checkOpenRouterKey(key));
-  if (!res.ok) return c.json({ error: res.error, ...(res.check ? { check: res.check } : {}) }, res.status);
-  securityNotice(
-    c,
-    user.userId,
-    `model-key:${provider}`,
-    'A model key was added to Apple',
-    `An OpenRouter key ending ${res.key.last4} was saved. Runs on OpenRouter models now use it and spend `
-    + 'no Apple Credits. If this was not you, remove it in Settings and revoke it on openrouter.ai.',
-  );
-  return c.json({ key: res.key, check: res.check });
-});
-
-app.delete('/api/me/model-keys/:provider', async (c) => {
-  const user = c.get('user');
-  if (!user) return c.json({ error: 'not signed in' }, 401);
-  const provider = c.req.param('provider');
-  if (!isByokProvider(provider)) return c.json({ error: 'Only OpenRouter keys can be saved.' }, 400);
-  return c.json({ removed: await deleteModelKey(c.env, user.userId, provider) });
 });
 
 app.delete('/api/me/roblox-key', async (c) => {

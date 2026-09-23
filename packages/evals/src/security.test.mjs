@@ -2638,12 +2638,12 @@ test('A6 STATIC CHECK — the gateway has exactly one adapter invocation and it 
   assert.equal(invokes.length, 1, 'a second adapter.invoke call site would be a way to spend without reserving');
   const reserveAt = gw.indexOf('reserved = await reserve(env, cfg.id, estimate)');
   assert.ok(reserveAt > 0 && reserveAt < invokes[0].index, 'the reservation must be taken before the adapter is invoked');
-  // The ONE path past the reservation is a call on the customer's own key (D-BYOK-1): Apple spends
-  // nothing on it, so there is nothing to reserve, and the kill switch is consulted in its place.
-  // It must be exactly that branch — any other condition skipping reserve() is spend without a gate.
-  assert.match(gw, /if \(customer\) await assertNotKilled\(env\);\s*\n\s*else reserved = await reserve\(env, cfg\.id, estimate\);/,
-    'the reservation is skipped by something other than the customer-key lane');
-  assert.ok(gw.indexOf('await assertNotKilled(env)') < invokes[0].index, 'the kill switch must be read before the adapter is invoked');
+  // RESTATED (D-VISION-1). There was one path past the reservation — a call on the customer's own
+  // key (D-BYOK-1) — and it went with BYOK. The property now: NOTHING skips it. The reservation is a
+  // statement of its own at the start of a line, not the arm of a condition, so no branch can route
+  // a call around it.
+  assert.match(gw, /^\s*const reserved = await reserve\(env, cfg\.id, estimate\);/m,
+    'the reservation is conditional — some branch can reach the adapter without it');
   assert.ok(gw.indexOf('await settle(env, reserved,') > invokes[0].index, 'settlement must follow the invocation');
   // The only other transport in the file is embed(), which reserves/settles/releases on its own.
   const embed = gw.slice(gw.indexOf('export async function embed'));

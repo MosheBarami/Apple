@@ -1,5 +1,5 @@
 Lobe Icons — vendored vendor marks for apps/site/src/pages/models.astro and the landing's
-"On your own key" row.
+"From other makers" row.
 
 Upstream project:  https://github.com/lobehub/lobe-icons
 Package:           @lobehub/icons-static-svg 1.95.1 (license field in its package.json: "MIT")

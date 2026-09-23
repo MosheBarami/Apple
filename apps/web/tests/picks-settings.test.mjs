@@ -48,7 +48,6 @@ const MOUNTS = [
   ['reactbits--hold-button', 'components/confirm-dialog.tsx', /import \{ HoldButton \} from '\.\/picks\/settings\/hold-button'/, /<HoldButton\b/],
   ['animate-ui--alert-dialog', 'components/confirm-dialog.tsx', /import \{ Modal \} from '\.\/modal'/, /alert=\{tone === 'danger'\}/],
   ['motion--modal-dialog', 'components/modal.tsx', /import \{ reducedMotion, spring \} from '\.\/picks\/settings\/motion'/, /panel\.animate\(/],
-  ['aicss-data-table', 'components/model-keys-panel.tsx', /import \{ FreeModelsTable \} from '\.\/picks\/settings\/free-models-table'/, /<FreeModelsTable\b/],
   ['motion--radix-checkbox', 'components/api-keys-panel.tsx', /import \{ Checkbox \}/, /<Checkbox\b/],
   ['ui-layouts--motion-number-input', 'components/api-keys-panel.tsx', /import \{ NumberInput \}/, /<NumberInput\b/],
   ['reactbits--decrypted-text', 'components/api-keys-panel.tsx', /import \{ DecryptedText \}/, /<DecryptedText text=\{revealed\.key\}/],
@@ -73,7 +72,10 @@ const MOUNTS = [
 test('every pick of the lane is listed exactly once', () => {
   const ids = MOUNTS.map((m) => m[0]);
   assert.equal(new Set(ids).size, ids.length, 'a pick is listed twice');
-  assert.equal(ids.length, 33, `the settings lane has 33 picks; this table lists ${ids.length}`);
+  // A TRIPWIRE, exact on purpose. 33 → 32 on 2026-09-23: `aicss-data-table` was mounted only as the
+  // free-models table in the BYOK settings panel, and BYOK was removed (D-VISION-1), so the pick
+  // went with the one surface it had rather than staying listed against a file that is gone.
+  assert.equal(ids.length, 32, `the settings lane has 32 picks; this table lists ${ids.length}`);
 });
 
 for (const [id, file, imp, use] of MOUNTS) {

@@ -257,7 +257,7 @@ export interface ProjectSocket {
    * that never received the frame.
    */
   restoreStatus: RestoreStatus | null;
-  sendChat: (text: string, mode: ProductMode, attachments?: ChatAttachment[], productModel?: ProductModel, autonomous?: boolean, model?: string) => boolean;
+  sendChat: (text: string, mode: ProductMode, attachments?: ChatAttachment[], productModel?: ProductModel, autonomous?: boolean) => boolean;
   /**
    * "I am still here, and this is what I am doing."
    *
@@ -268,7 +268,7 @@ export interface ProjectSocket {
    */
   signalPresence: (activity: 'viewing' | 'typing' | 'building') => boolean;
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
-  editAndResend: (messageId: string, text: string, mode: ProductMode, productModel?: ProductModel, autonomous?: boolean, model?: string) => boolean;
+  editAndResend: (messageId: string, text: string, mode: ProductMode, productModel?: ProductModel, autonomous?: boolean) => boolean;
   stop: () => void;
   /** @param description what the snapshot contains or why it was taken. Optional — see ClientMsg. */
   createCheckpoint: (label: string, description?: string) => void;
@@ -1103,11 +1103,11 @@ export function useProjectSocket(
    * message id that has already gone, finds nothing, and changes nothing.
    */
   const editAndResend = useCallback(
-    (messageId: string, text: string, mode: ProductMode, productModel?: ProductModel, autonomous = false, model?: string): boolean => {
+    (messageId: string, text: string, mode: ProductMode, productModel?: ProductModel, autonomous = false): boolean => {
       const enabled = mode === 'agent' && autonomous;
       // `model` only for a model on the customer's own key: an Apple run stays byte-identical on the
       // wire to every run before the picker existed (the worker reads `productModel` then).
-      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(enabled ? { autonomous: true } : {}), ...(productModel ? { productModel } : {}), ...(model ? { model } : {}) });
+      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(enabled ? { autonomous: true } : {}), ...(productModel ? { productModel } : {}) });
       if (ok) {
         setRunning(true);
         setMessages((list) => {
@@ -1133,12 +1133,12 @@ export function useProjectSocket(
   );
 
   const sendChat = useCallback(
-    (text: string, mode: ProductMode, attachments: ChatAttachment[] = [], productModel?: ProductModel, autonomous = false, model?: string): boolean => {
+    (text: string, mode: ProductMode, attachments: ChatAttachment[] = [], productModel?: ProductModel, autonomous = false): boolean => {
       // The field has been on this frame since the protocol was written and nothing ever set it.
       // Omitted entirely when there are none, so a message with no files is byte-identical on the
       // wire to every message this product has ever sent.
       const enabled = mode === 'agent' && autonomous;
-      const ok = sendRaw({ type: 'chat', text, mode, ...(enabled ? { autonomous: true } : {}), ...(productModel ? { productModel } : {}), ...(model ? { model } : {}), ...(attachments.length ? { attachments } : {}) });
+      const ok = sendRaw({ type: 'chat', text, mode, ...(enabled ? { autonomous: true } : {}), ...(productModel ? { productModel } : {}), ...(attachments.length ? { attachments } : {}) });
       if (ok) {
         setRunning(true);
         const id = localId();
