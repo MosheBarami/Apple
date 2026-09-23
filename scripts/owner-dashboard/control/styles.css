@@ -488,7 +488,8 @@ a.pc:hover { text-decoration: none; transform: translateY(-2px); border-color: c
 .flow-n i + i { position: relative; margin-inline-start: 6px; } .flow-n i + i::before { content: ''; position: absolute; right: 100%; top: 4px; width: 6px; height: 1px; background: var(--line-strong); }
 
 /* ---------------------------------------------------------------- modal / palette / toasts */
-.modal, .palette { border: 0; padding: 0; background: transparent; color: var(--ink); max-width: min(560px, calc(100vw - 24px)); width: 100%; }
+.modal, .palette { margin: auto; border: 0; padding: 0; background: transparent; color: var(--ink); max-width: min(560px, calc(100vw - 24px)); width: 100%; }
+.palette { margin: 12vh auto auto; }
 .modal::backdrop, .palette::backdrop { background: rgba(0,0,0,.6); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
 [data-theme='light'] .modal::backdrop, [data-theme='light'] .palette::backdrop { background: rgba(16,18,23,.25); }
 .modal[open] .modal-card, .palette[open] .pal { animation: pop 260ms var(--ease-out); }
