@@ -122,3 +122,9 @@ Roblox creates under touched parts (24 of them had blocked every protective chec
 refused), and edit consent survives the test-state flicker right after Apple stops its own playtest (the panel
 had read "inspect only" after run c71b89a9's successor). Tests: commands "a TouchTransmitter Roblox created…",
 entry-runtime "a test-state flicker after Apple stopped…", each red with its fix removed; plugin 43/0.
+
+Superseded 2026-09-23 ~03:25 IDT by sha256 `4e9d104523dc57b8b4ca2373b7d2acda9e9c4a8aec9fbe65095b45e52ab2136a`
+(installed locally, loaded at the next Studio launch): decision D-PLUGIN-2 — a test the person starts pauses
+Apple's edits instead of revoking them; the settle window of the previous build is no longer needed and was
+removed. Plugin 43/0, the pause red-first.
+

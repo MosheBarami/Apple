@@ -39,8 +39,6 @@ local Commands = require(script.Commands)
 -- engine gets that one, so a refusal names the thing that is actually shut.
 local commands = Commands.new({ isEdit = editModeActive })
 local allowEdits = false
-local appleStoppedAt: number? = nil
-local APPLE_STOP_SETTLE_SECONDS = 3
 local confirmingEdits = false
 local connecting = false
 local disposed = false
@@ -230,7 +228,8 @@ local function refreshAccess()
 		confirmingEdits = false
 		appleRunActive = false
 	end
-	permission.Text = if allowEdits then "Access: edits allowed for this connection" else "Access: inspect only"
+	permission.Text = if allowEdits and not editModeActive() then "Access: edits paused while Studio is testing"
+		elseif allowEdits then "Access: edits allowed for this connection" else "Access: inspect only"
 	edits.Text = if allowEdits then "Turn edits off" elseif confirmingEdits then "Allow edits for this connection" else "Enable edits…"
 	edits.Active = connected and not connecting
 	edits.AutoButtonColor = edits.Active
@@ -245,18 +244,15 @@ end
 local function keepEditConsentOnlyInEditMode(): boolean
 	if editModeActive() then
 		appleRunActive = false
+		refreshAccess()
 		return true
 	end
-	-- F-044, 2026-09-23 (Coin Rush): after Apple stopped its own playtest the panel read "inspect only".
-	-- Studio's test-state flag can still change for a moment after Stop() returns, and that signal is
-	-- the tail of Apple's own test, not a test the person started.
-	local settlingAppleStop = appleStoppedAt ~= nil and os.clock() - appleStoppedAt < APPLE_STOP_SETTLE_SECONDS
-	if appleRunActive or settlingAppleStop then
-		confirmingEdits = false
-		refreshAccess()
-		return false
-	end
-	allowEdits = false
+	-- Outside edit mode every write is refused (the gate above), so leaving it PAUSES Apple's edits rather
+	-- than revoking the person's consent. Decision D-PLUGIN-2 (2026-09-23): a kid presses Play to try the
+	-- game all the time, and revoking on every test made each next request fail until "Enable edits…" was
+	-- clicked twice again; after Apple's own playtest a test-state flicker did the same (F-044). The consent
+	-- was given for this connection, and it ends only when the connection does or the person turns it off.
+	-- A half-finished confirmation is still retired, so a stale first click cannot grant.
 	confirmingEdits = false
 	refreshAccess()
 	return false
@@ -278,9 +274,6 @@ bridge = Bridge.new({
 				return allowEdits
 			end
 			local runAction = if type(op) == "table" and op.op == "run_mode" then op.action else nil
-			-- Apple moving on to an ordinary operation means its own stop has settled: from here a
-			-- test-state change is the person's again (the settle window in keepEditConsentOnlyInEditMode).
-			if runAction == nil then appleStoppedAt = nil end
 			local startsAppleRun = runAction == "start" or runAction == "run" or runAction == "restart"
 			local ownedBefore = appleRunActive
 			if startsAppleRun and allowEdits and editModeActive() then appleRunActive = true end
@@ -294,7 +287,6 @@ bridge = Bridge.new({
 					appleRunActive = ownedBefore
 				elseif runAction == "stop" then
 					appleRunActive = false
-					appleStoppedAt = os.clock()
 				elseif result.data and result.data.runMode == true then
 					appleRunActive = true
 				end

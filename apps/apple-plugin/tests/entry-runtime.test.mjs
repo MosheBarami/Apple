@@ -145,10 +145,17 @@ studioTest.EditModeActive=false
 assert(run:IsEdit()==true,'fixture keeps RunService IsEdit true while StudioTestService leaves edit mode')
 bridgeConfig.execute('e',{})
 assert(editsObserved[#editsObserved]==false,'execute fence must reject after StudioTestService leaves edit mode even before a signal')
-assert(byText('Enable edits…'),'direct execute fence clears stale access UI')
+-- D-PLUGIN-2, 2026-09-23: leaving edit mode PAUSES the consent given for this connection instead of revoking
+-- it (writes are refused outside edit mode regardless); the panel says so, and edit mode resumes it.
+assert(byText('Access: edits paused while Studio is testing'),'outside edit mode the panel says edits are paused')
 
 studioTest.EditModeActive=true
 studioTest:FirePropertyChanged('EditModeActive')
+bridgeConfig.execute('e2',{})
+assert(editsObserved[#editsObserved]==true,'returning to edit mode resumes the consent given for this connection')
+byText('Turn edits off').Activated:Fire()
+bridgeConfig.execute('e3',{})
+assert(editsObserved[#editsObserved]==false,'the person can still turn edits off')
 byText('Enable edits…').Activated:Fire()
 local staleConfirm = byText('Allow edits for this connection')
 studioTest.EditModeActive=false
@@ -193,10 +200,8 @@ studioTest:FirePropertyChanged('EditModeActive')
 studioTest.EditModeActive=true
 studioTest:FirePropertyChanged('EditModeActive')
 bridgeConfig.execute('h',{})
-assert(editsObserved[#editsObserved]==false,'permission cleared by test-state signal must stay off after returning to edit mode')
+assert(editsObserved[#editsObserved]==true,'a test the person started pauses edits, and edit mode resumes them (D-PLUGIN-2)')
 
-byText('Enable edits…').Activated:Fire()
-byText('Allow edits for this connection').Activated:Fire()
 byText('Disconnect').Activated:Fire()
 bridgeConfig.execute('i',{})
 assert(editsObserved[#editsObserved]==false,'disconnect clears permission')
@@ -246,7 +251,7 @@ run.edit=false
 run:FirePropertyChanged('RunState')
 run.edit=true
 bridgeConfig.execute('fallback-after-runstate',{})
-assert(editsObserved[#editsObserved]==false,'fallback RunState transition clears permission and never restores it')
+assert(editsObserved[#editsObserved]==true,'fallback RunState transition pauses permission and edit mode resumes it (D-PLUGIN-2)')
 plugin.Unloading:Fire()
 print('missing StudioTestService fallback assertions passed')
 `;

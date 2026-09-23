@@ -78,4 +78,13 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   store serves. Roblox's record (roblox.com/report-appeals, violation 3JhaXRZAqvmSw5iIhea5QZgT67R): "Plugin
   removed — Misusing Roblox Systems", reviewed 2026-09-23 01:23, **appeal by 2026-10-23 01:23 IDT** — the final
   build has to be published and appealed before that date (version 1's appeal, 09-19, was accepted).
+- **D-PLUGIN-2 — A Studio test the person starts pauses Apple's edits; it does not revoke them (2026-09-23).**
+  Until now the plugin cleared the connection's edit consent whenever Studio left edit mode for any test Apple
+  did not start, so after every Play the next request failed until "Enable edits…" and "Allow edits for this
+  connection" were clicked again — and a test-state flicker after Apple's own playtest did the same (F-044).
+  Young creators press Play constantly. Writes are refused outside edit mode regardless, so nothing is gained
+  by revoking: the panel now reads "Access: edits paused while Studio is testing" and the consent resumes in
+  edit mode. It still ends on Disconnect, on "Turn edits off", and a half-finished confirmation is still
+  retired. Reverse by restoring `allowEdits = false` in keepEditConsentOnlyInEditMode
+  (apps/apple-plugin/src/init.server.luau); entry-runtime.test.mjs holds the new behaviour.
 
