@@ -753,3 +753,23 @@ The Hugging Face (Hunyuan3D) text-to-3D pipeline behind `generate_model_external
 order: Apple never generates a 3D model from scratch) closed that tool to the agent, so its run now
 refuses and nothing imports the pipeline. Kept, not deleted, because reversing D-MODELLIB-2 is one line
 in tools.ts; `apps/worker/tests/hf.test.mjs` keeps it honest meanwhile.
+
+## packages/asset-library/ui-store/harvest-creator-store-ui.mjs — WIRE, 2026-09-24
+
+**Found:** imported by nothing. **It is the Creator Store UI image harvester** (D-UISTORE-1): run by hand, it
+searches free decals keyless (toolbox-service v2, searchCategoryType=Decal), keeps each one's Image id
+(`asset.textureId`) and writes `sources/ui-creator-store.jsonl.gz`, which `build.mjs` beside it compiles.
+**Caller being added:** none is needed; it is an operator CLI, first link of harvest → build → index.json.
+
+## packages/asset-library/ui-store/build.mjs — WIRE, 2026-09-24
+
+**Found:** imported by nothing. **It is the UI image library's index builder** (D-UISTORE-1): run by hand, it
+writes `ui-store/index.json`, which the worker search module `ui-store-search.ts` imports into the bundle.
+**Caller being added:** none is needed; the operator is the caller and the index is the wire.
+
+## apps/worker/src/ui-store-search.ts — WIRE, 2026-09-24
+
+**Found:** imported only by `packages/evals/src/ui-store-search.test.mjs`. **It is the search over the
+50,000+ Creator Store UI images** (D-UISTORE-1), a pure module built for `find_ui_asset`.
+**Caller being added:** `find_ui_asset` in `apps/worker/src/tools.ts`, wired by the lead engineer, who
+held tools.ts while this module was written.

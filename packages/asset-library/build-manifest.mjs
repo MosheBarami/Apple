@@ -82,6 +82,18 @@ export const PACKS = [
     whatHe: 'מאתיים כוונות לנשק בארבעה סגנונות',
     variant: 'PNG, 2x size only',
     previews: ['light/crosshair-034.png', 'glow/crosshair-119.png', 'outline/crosshair-024.png'] },
+  { id: 'kenney-mobile-controls', page: 'mobile-controls', kind: 'ui', name: 'Mobile Controls', nameHe: 'פקדי מובייל',
+    what: 'On-screen touch buttons, joysticks, D-pads, highlights and action icons in eight styles.',
+    whatHe: 'כפתורי מגע, ג\'ויסטיקים, חצים והדגשות למסך מגע, בשמונה סגנונות',
+    // Flattened: <name>_style_<a-h>, <name>_highlight_<a|b>, icon_<name>. Eleven folder names would push
+    // find_ui_asset's pack listing past the 3,000-character tool result cap.
+    variant: 'PNG, Large (2x) size only, one folder (spritesheets dropped)',
+    previews: ['button_circle_style_a.png', 'joystick_circle_pad_a_style_c.png', 'icon_jump.png'] },
+  { id: 'kenney-pattern-pack', page: 'pattern-pack', kind: 'ui', name: 'Pattern Pack', nameHe: 'תבניות רקע',
+    what: 'Tileable black-and-white background patterns (stripes, dots, waves, shapes). Files are numbered, not named.',
+    whatHe: 'תבניות רקע חוזרות בשחור-לבן: פסים, נקודות, גלים וצורות',
+    variant: 'PNG, Double size only',
+    previews: ['pattern_01.png', 'pattern_40.png', 'pattern_80.png'] },
 ];
 
 const IMAGE = /\.(png|svg)$/i;
