@@ -1,6 +1,7 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import DocsKit from '../../components/picks-docs/DocsKit.astro';
+import ObjectIcon, { type ObjectName } from '../../components/ObjectIcon.astro';
 
 // The canonical Creator Store identity for the plugin, "Apple Studio". The asset id has exactly ONE
 // definition in this repository — packages/shared/src/index.ts — and everything, including this
@@ -30,6 +31,17 @@ import {
  * edits…, Allow edits for this connection, Turn edits off — are the plugin's own strings in
  * apps/apple-plugin/src/init.server.luau.
  */
+/* WHAT "CREATE INSTANCES" MEANS, IN OBJECTS A YOUNG CREATOR WILL MEET IN STUDIO'S EXPLORER. Each is
+   one the worker's tools make or change (apps/worker/src/tools.ts): scripts through edit_script's
+   Script / LocalScript / ModuleScript, terrain through edit_terrain, meshes through generate_model,
+   and the rest through create_instances, which takes any class name. The glyphs are the site's own
+   drawings (components/ObjectIcon.astro), not Roblox's artwork. */
+const objects: ObjectName[] = [
+  'Part', 'MeshPart', 'Model', 'Terrain', 'SpawnLocation', 'Humanoid',
+  'Script', 'LocalScript', 'ModuleScript', 'RemoteEvent',
+  'ScreenGui', 'Frame', 'TextButton', 'ImageLabel', 'Sound', 'ParticleEmitter',
+];
+
 const decided = refusal
   ? new Date(refusal.decidedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
   : null;
@@ -152,6 +164,15 @@ const decided = refusal
     </li>
   </ul>
 
+  <figure class="obj-strip" data-reveal>
+    <figcaption>A few of the objects it creates or edits</figcaption>
+    <ul role="list">
+      {objects.map((name, i) => (
+        <li style={`--i:${i}`}><ObjectIcon name={name} /><code>{name}</code></li>
+      ))}
+    </ul>
+  </figure>
+
   <h2>Removing it</h2>
   <p>
     Uninstall Apple Studio from Studio's plugin management window, the same place you manage every
@@ -199,6 +220,84 @@ const decided = refusal
   .cta-row > span {
     color: var(--muted);
     font-size: 14px;
+  }
+
+  /* THE OBJECT STRIP. Tiles that wrap at their own width; each icon arrives a step after the one before it once the
+     figure is revealed, and lifts and turns blue under the pointer. Without scripting, through the
+     layout's failsafe and under reduced motion, every icon is simply there. */
+  :global(.prose) .obj-strip {
+    margin: 4px 0 32px;
+  }
+
+  :global(.prose) .obj-strip figcaption {
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  :global(.prose) .obj-strip ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  :global(.prose) .obj-strip li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--ink-2);
+    transition: border-color var(--t-base) var(--ease-out);
+  }
+
+  :global(.prose) .obj-strip code {
+    font-size: 13px;
+  }
+
+  :global(.prose) .obj-strip li :global(.obj-icon) {
+    transition:
+      opacity var(--t-slow) var(--ease-out) calc(var(--i) * 30ms + 160ms),
+      scale var(--t-slow) var(--ease-out) calc(var(--i) * 30ms + 160ms),
+      translate var(--t-base) var(--ease-out),
+      stroke var(--t-base) var(--ease-out);
+  }
+
+  :global(html:not(.no-js) .prose [data-reveal]) li :global(.obj-icon) {
+    opacity: 0;
+    scale: 0.7;
+  }
+
+  :global(html:not(.no-js) .prose [data-reveal].is-in) li :global(.obj-icon) {
+    opacity: 1;
+    scale: 1;
+  }
+
+  :global(.prose) .obj-strip li:hover {
+    border-color: var(--accent-ring);
+  }
+
+  /* The stroke, not `color`: a glyph is a graphic, and --accent is no text colour on this site
+     (tests/contrast.test.mjs). */
+  :global(.prose) .obj-strip li:hover :global(.obj-icon) {
+    translate: 0 -2px;
+    stroke: var(--accent);
+  }
+
+  @media (prefers-reduced-motion: reduce), print {
+    :global(html:not(.no-js) .prose [data-reveal]) li :global(.obj-icon) {
+      opacity: 1;
+      scale: 1;
+    }
+
+    :global(.prose) .obj-strip li:hover :global(.obj-icon) {
+      translate: none;
+    }
   }
 
   /* `:global(.prose)` in front because DocsLayout styles `.prose ol` and `.prose li` at a higher

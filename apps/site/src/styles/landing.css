@@ -510,6 +510,77 @@ a {
   line-height: 1.6;
 }
 
+/* THE OBJECT EACH CAPABILITY WORKS ON (components/ObjectIcon.astro). It arrives a beat after its
+   card — the card's own reveal delay plus a little — and turns blue and lifts under the pointer.
+   The entrance moves `scale` and `rotate`, the hover moves `translate`: separate properties, so the
+   hover is never held back by the entrance delay. Every path ends visible: without scripting the
+   hidden state never applies, the layout's failsafe adds .is-in, and reduced motion drops it. */
+.cap-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+  color: var(--ink-2);
+  transition:
+    opacity var(--t-slow) var(--ease-out) calc(var(--reveal-delay, 0ms) + 160ms),
+    scale var(--t-slow) var(--ease-out) calc(var(--reveal-delay, 0ms) + 160ms),
+    rotate var(--t-slow) var(--ease-out) calc(var(--reveal-delay, 0ms) + 160ms),
+    translate var(--t-base) var(--ease-out),
+    border-color var(--t-base) var(--ease-out);
+}
+
+/* Blue is set on the STROKE, not on `color`: the glyph is a graphic (3:1 is its bar, and --accent
+   clears it), and `color: var(--accent)` would register --accent as a text colour with
+   tests/contrast.test.mjs, which it is not anywhere on the site. */
+.cap-icon .obj-icon {
+  transition: stroke var(--t-base) var(--ease-out);
+}
+
+html:not(.no-js) [data-reveal] .cap-icon {
+  opacity: 0;
+  scale: 0.8;
+  rotate: -8deg;
+}
+
+html:not(.no-js) [data-reveal].is-in .cap-icon {
+  opacity: 1;
+  scale: 1;
+  rotate: 0deg;
+}
+
+.capability:hover .cap-icon {
+  translate: 0 -2px;
+  border-color: var(--accent-ring);
+}
+
+.capability:hover .cap-icon .obj-icon {
+  stroke: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.no-js) [data-reveal] .cap-icon {
+    opacity: 1;
+    scale: 1;
+    rotate: 0deg;
+  }
+
+  .capability:hover .cap-icon {
+    translate: none;
+  }
+}
+
+@media print {
+  html:not(.no-js) [data-reveal] .cap-icon {
+    opacity: 1;
+    scale: 1;
+    rotate: 0deg;
+  }
+}
+
 /* The panel sits on the tablet's screen (components/picks/DeviceFrame.astro). */
 .demos-device {
   margin-top: 56px;
@@ -636,6 +707,17 @@ a {
 .rd-node[aria-pressed='true'] .rd-dot {
   border-color: var(--accent);
   background: var(--accent);
+}
+
+/* The node's class, as Studio's Explorer shows one beside every name. It takes the row's colour,
+   and its stroke turns blue with the dot once the node is read. */
+.rd-node .rd-icon {
+  margin-right: -2px;
+  transition: stroke var(--t-fast) var(--ease-out);
+}
+
+.rd-node[aria-pressed='true'] .rd-icon {
+  stroke: var(--accent);
 }
 
 .rd-side {

@@ -23,16 +23,12 @@
  */
 import './beam-flow.css';
 import AppleMark from '../AppleMark.astro';
+import ObjectIcon, { type ObjectName } from '../ObjectIcon.astro';
 
 const ICON: Record<string, string> = {
   idea: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   place: '<path d="M6 3v12M6 9h9M6 15h9"/><circle cx="18" cy="9" r="2.5"/><circle cx="18" cy="15" r="2.5"/><circle cx="6" cy="3" r="0.5"/>',
   selection: '<path d="M4 4l7 17 2.5-7.5L21 11z"/>',
-  scripts: '<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>',
-  parts: '<path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/>',
-  terrain: '<path d="m3 20 6-10 4 6 2-3 6 7z"/>',
-  lighting: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>',
-  models: '<path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18M9 3l3 18 3-18"/>',
 };
 
 const inputs = [
@@ -41,12 +37,13 @@ const inputs = [
   { icon: 'selection', label: 'What you selected' },
 ];
 
-const outputs = [
-  { icon: 'scripts', label: 'Scripts' },
-  { icon: 'parts', label: 'Parts' },
-  { icon: 'terrain', label: 'Terrain' },
-  { icon: 'lighting', label: 'Lighting' },
-  { icon: 'models', label: '3D models' },
+/* The outputs are Roblox objects, so they are drawn from the site's one object icon set. */
+const outputs: { icon: ObjectName; label: string }[] = [
+  { icon: 'Script', label: 'Scripts' },
+  { icon: 'Part', label: 'Parts' },
+  { icon: 'Terrain', label: 'Terrain' },
+  { icon: 'Lighting', label: 'Lighting' },
+  { icon: 'MeshPart', label: '3D models' },
 ];
 
 const svg = (name: string) =>
@@ -73,7 +70,7 @@ const svg = (name: string) =>
     <ul class="beam-col beam-col--out" role="list" aria-label="What it can make">
       {outputs.map((n) => (
         <li class="beam-node">
-          <span class="beam-dot" data-beam-out set:html={svg(n.icon)} />
+          <span class="beam-dot" data-beam-out><ObjectIcon name={n.icon} /></span>
           <span class="beam-label">{n.label}</span>
         </li>
       ))}

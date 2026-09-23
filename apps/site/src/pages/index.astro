@@ -25,6 +25,8 @@ import DeviceFrame from '../components/picks/DeviceFrame.astro';
 import MakerTiles from '../components/picks/MakerTiles.astro';
 import ArrowLink from '../components/picks/ArrowLink.astro';
 import CtaButton from '../components/picks/CtaButton.astro';
+/* The site's one set of Roblox object glyphs, drawn for it (its header has the rules). */
+import ObjectIcon from '../components/ObjectIcon.astro';
 import {
   PLAN_COPY,
   PLAN_IDS,
@@ -100,13 +102,15 @@ const activity = [
   { text: `inspect_visually score ${critique.score}/${critique.outOf} · ${defects.length} defects   ok` },
 ];
 
-/* The four capabilities. The titles and bodies are the page's long-standing copy. */
+/* The four capabilities. The titles and bodies are the page's long-standing copy; each carries the
+   Roblox object it works on: the Workspace it reads, the Camera it renders through, the Script it
+   writes and the MeshPart generation returns. */
 const capabilities = [
-  { title: 'Reads before it writes', body: 'It walks your instance tree and scripts first, then proposes the change — and takes a checkpoint before touching anything.' },
-  { title: 'Checks its own work', body: 'It renders the scene from inside Studio and scores the picture against a visual gate, with named defects rather than a verdict.' },
-  { title: 'Builds in Luau, not pseudocode', body: 'Scripts land in your place through Studio’s own editor APIs, and it refuses to write code that loads assets or calls the network.' },
-  { title: 'Generates real geometry', body: 'Text-to-3D runs through Roblox’s own generation service, and a descendant scan refuses anything that arrives carrying code.' },
-];
+  { icon: 'Workspace', title: 'Reads before it writes', body: 'It walks your instance tree and scripts first, then proposes the change — and takes a checkpoint before touching anything.' },
+  { icon: 'Camera', title: 'Checks its own work', body: 'It renders the scene from inside Studio and scores the picture against a visual gate, with named defects rather than a verdict.' },
+  { icon: 'Script', title: 'Builds in Luau, not pseudocode', body: 'Scripts land in your place through Studio’s own editor APIs, and it refuses to write code that loads assets or calls the network.' },
+  { icon: 'MeshPart', title: 'Generates real geometry', body: 'Text-to-3D runs through Roblox’s own generation service, and a descendant scan refuses anything that arrives carrying code.' },
+] as const;
 
 /* THE THREE STAGES A READER CAN OPERATE, one panel at a time. `demo` is the hook the page script
    switches on. Each stage is finished in the markup before any script runs, and without scripting
@@ -126,13 +130,13 @@ const stages = [
 /* The instance tree the first stage reads: the empty-baseplate shape every new Studio file opens
    with, which is the one tree a reader can check against their own screen. */
 const readTree = [
-  { path: 'Workspace', kids: 2, depth: 0 },
-  { path: 'Baseplate', kids: 0, depth: 1 },
-  { path: 'SpawnLocation', kids: 1, depth: 1 },
-  { path: 'ServerScriptService', kids: 1, depth: 0 },
-  { path: 'Main', kids: 0, depth: 1 },
-  { path: 'ReplicatedStorage', kids: 0, depth: 0 },
-];
+  { path: 'Workspace', kids: 2, depth: 0, icon: 'Workspace' },
+  { path: 'Baseplate', kids: 0, depth: 1, icon: 'Part' },
+  { path: 'SpawnLocation', kids: 1, depth: 1, icon: 'SpawnLocation' },
+  { path: 'ServerScriptService', kids: 1, depth: 0, icon: 'ServerScriptService' },
+  { path: 'Main', kids: 0, depth: 1, icon: 'Script' },
+  { path: 'ReplicatedStorage', kids: 0, depth: 0, icon: 'ReplicatedStorage' },
+] as const;
 
 /* The three asks and what comes back. The first two are Luau; the third is the refusal. */
 const asks = [
@@ -333,6 +337,7 @@ const byokMakers = byokFirstPerMaker
         <ul class="capabilities" role="list">
           {capabilities.map((c, i) => (
             <li class="capability" data-reveal data-reveal-delay={String(i * 60)}>
+              <span class="cap-icon"><ObjectIcon name={c.icon} size={20} /></span>
               <h3>{c.title}</h3>
               <p>{c.body}</p>
             </li>
@@ -369,7 +374,7 @@ const byokMakers = byokFirstPerMaker
                       {readTree.map((n) => (
                         <li class="rd-row" style={`--depth:${n.depth}`}>
                           <button type="button" class="rd-node" data-path={n.path} data-kids={String(n.kids)} aria-pressed="false">
-                            <span class="rd-dot" aria-hidden="true"></span>{n.path}
+                            <span class="rd-dot" aria-hidden="true"></span><ObjectIcon name={n.icon} size={16} class="rd-icon" />{n.path}
                           </button>
                         </li>
                       ))}
