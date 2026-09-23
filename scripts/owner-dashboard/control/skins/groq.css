@@ -1,0 +1,237 @@
+/* Groq skin: the GroqCloud console (console.groq.com) in dark and light.
+   Sources: the console's own CSS variables (brand-primary #F55036, dark card rgb(18,20,24), nav #1C1E22,
+   border rgba(153,153,153,.16), radius .75rem), its models table (uppercase xs headers, tracking-wider,
+   underlined model name over a mono id) and its top nav + uppercase-labelled sidebar.
+   Type: groq.com's own faces (esbuild, aether, komuna) are proprietary, so this uses the console's
+   open fonts instead: Inter (body, OFL), Space Grotesk (headings, OFL), IBM Plex Mono (ids, OFL).
+   None of them has Hebrew; Heebo (OFL) carries the Hebrew under the same family names. */
+
+@font-face { font-family: 'GQ Sans'; src: url('/control/fonts/groq/Inter-latin.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'GQ Sans'; src: url('/control/fonts/groq/Heebo-hebrew.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap;
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: 'GQ Head'; src: url('/control/fonts/groq/SpaceGrotesk-latin.woff2') format('woff2'); font-weight: 300 700; font-style: normal; font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'GQ Head'; src: url('/control/fonts/groq/Heebo-hebrew.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap;
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: 'GQ Mono'; src: url('/control/fonts/groq/IBMPlexMono-400-latin.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'GQ Mono'; src: url('/control/fonts/groq/IBMPlexMono-500-latin.woff2') format('woff2'); font-weight: 500 700; font-style: normal; font-display: swap; }
+
+/* ------------------------------------------------ tokens (dark: the console's default) */
+html[data-skin='groq'][data-theme='dark'] {
+  --bg: #1c1e22; --paper: #1c1e22; --paper-2: #121418;
+  --surface: #121418; --surface-2: #1c1e22; --surface-3: #262626; --card: #121418; --card2: #17191d;
+  --ink: #f5f5f4; --ink-2: #e0e0e0; --text: #e0e0e0; --muted: #a5a09c; --dim: #a5a09c; --faint: #8f8a86; --off: #6f6a67;
+  --line: rgba(153,153,153,.161); --line2: rgba(153,153,153,.24); --line-strong: rgba(153,153,153,.32); --hairline: rgba(153,153,153,.1); --control-fill: #262626;
+  --accent: #f55036; --accent2: #ff7a5c; --accent-ink: #ff6b52; --accent-soft: rgba(245,80,54,.14); --accent-ring: rgba(245,80,54,.45);
+  --primary: #f5f5f4; --primary-hover: #fff; --on-primary: #121418;
+  --good: #4ade80; --warn: #fbbf24; --bad: #f87171; --mid: #949aa7;
+  --glass: rgba(28,30,34,.86); --shadow: none; --glow: transparent;
+  --gq-orange: #f55036; --gq-nav: #1c1e22; --gq-panel: #121418; --gq-sec: #313236; --gq-net: #4b4f58; --gq-srv: #f55036;
+  --focus-ring: 0 0 0 2px #121418, 0 0 0 4px rgba(245,80,54,.75);
+  color-scheme: dark;
+}
+/* ------------------------------------------------ tokens (light) */
+html[data-skin='groq'][data-theme='light'] {
+  --bg: #fafafa; --paper: #fafafa; --paper-2: #fff;
+  --surface: #fff; --surface-2: #fafafa; --surface-3: #f3f3f2; --card: #fff; --card2: #fafafa;
+  --ink: #0c0a09; --ink-2: #1c1917; --text: #1c1917; --muted: #5f5955; --dim: #5f5955; --faint: #6f6864; --off: #8a8480;
+  --line: #e7e5e4; --line2: #d6d3d1; --line-strong: #d6d3d1; --hairline: #f3f3f2; --control-fill: #f3f3f2;
+  --accent: #f55036; --accent2: #d93d24; --accent-ink: #c2321b; --accent-soft: rgba(245,80,54,.1); --accent-ring: rgba(245,80,54,.4);
+  --primary: #0c0a09; --primary-hover: #292524; --on-primary: #fff;
+  --good: #15803d; --warn: #b45309; --bad: #dc2626; --mid: #0082a0;
+  --glass: rgba(250,250,250,.88); --shadow: none; --glow: transparent;
+  --gq-orange: #f55036; --gq-nav: #fafafa; --gq-panel: #fff; --gq-sec: #f7f7f7; --gq-net: #c9c5c2; --gq-srv: #f55036;
+  --focus-ring: 0 0 0 2px #fff, 0 0 0 4px #f55036;
+  color-scheme: light;
+}
+html[data-skin='groq'] {
+  --font: 'GQ Sans', Inter, 'Heebo', -apple-system, 'Segoe UI', 'Noto Sans Hebrew', Arial, sans-serif;
+  --head: 'GQ Head', 'Space Grotesk', 'GQ Sans', sans-serif;
+  --mono: 'GQ Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --r-xs: .375rem; --r-sm: .5rem; --r-md: .625rem; --r: .75rem; --r-lg: .75rem; --r-xl: 1rem; --r-pill: 9999px;
+  --t-fast: 150ms; --t-base: 200ms; --t-slow: 320ms; --ease-out: cubic-bezier(.4, 0, .2, 1); --ease-io: cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ------------------------------------------------ type */
+html[data-skin='groq'] body { font: 400 15px/1.55 var(--font); color: var(--text); background: var(--bg); }
+html[data-skin='groq'] .mono, html[data-skin='groq'] code, html[data-skin='groq'] kbd { font-family: var(--mono); }
+html[data-skin='groq'] .phead h1 { font-family: var(--head); font-size: clamp(26px, 2.4vw, 30px); font-weight: 600; letter-spacing: -.01em; color: var(--ink); }
+html[data-skin='groq'] .psub { font-size: 15px; color: var(--muted); }
+html[data-skin='groq'] .nav-gl, html[data-skin='groq'] .eyebrow { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+html[data-skin='groq'] :focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--r-sm); }
+
+/* ------------------------------------------------ shell chrome: the console's nav bar and sidebar */
+html[data-skin='groq'] .side { background: var(--gq-nav); border-inline-end: 0; }
+html[data-skin='groq'] .nav-a { border-radius: var(--r-sm); color: var(--muted); font-size: 14.5px; min-height: 34px; }
+html[data-skin='groq'] .nav-a:hover { background: transparent; color: var(--ink); }
+html[data-skin='groq'] .nav-a.on { background: transparent; color: var(--gq-orange); font-weight: 600; }
+html[data-skin='groq'] .nav-a.on::before { display: none; }
+html[data-skin='groq'] .top { background: var(--glass); border-bottom: 0; backdrop-filter: blur(10px); }
+html[data-skin='groq'] .pal-btn { border-radius: var(--r-pill); border: 1px solid var(--line2); box-shadow: none; background: transparent; color: var(--muted); }
+html[data-skin='groq'] .ib { border-radius: var(--r-sm); }
+html[data-skin='groq'] .phead { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+
+/* ------------------------------------------------ materials */
+html[data-skin='groq'] .btn { min-height: 34px; padding: 0 14px; border: 1px solid var(--line2); border-radius: var(--r-sm); box-shadow: none;
+  background: var(--gq-panel); color: var(--ink-2); font-weight: 500; font-size: 14px; transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out); }
+html[data-skin='groq'] .btn:hover { background: var(--surface-3); border-color: var(--line-strong); }
+html[data-skin='groq'] .btn-sm { min-height: 30px; padding: 0 11px; font-size: 13.5px; }
+/* #F55036 with white text is 3.4:1, so the filled button uses the console's pressed shade (4.5:1) */
+html[data-skin='groq'] .btn-brand, html[data-skin='groq'] .btn-primary { background: #d93d24; border-color: #d93d24; color: #fff; }
+html[data-skin='groq'] .btn-brand:hover, html[data-skin='groq'] .btn-primary:hover { background: #c9361e; border-color: #c9361e; }
+html[data-skin='groq'] .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
+html[data-skin='groq'] .btn-ghost:hover { background: var(--control-fill); color: var(--ink); }
+html[data-skin='groq'] .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: none; }
+html[data-skin='groq'] .chip { border: 1px solid var(--line2); border-radius: var(--r-pill); background: transparent; color: var(--ink-2); font-weight: 500; }
+html[data-skin='groq'] .meter { background: var(--gq-sec); height: 6px; border-radius: var(--r-pill); }
+html[data-skin='groq'] .explain { color: var(--faint); font-size: 13.5px; }
+html[data-skin='groq'] #modal .modal-card, html[data-skin='groq'] .pal { background: var(--gq-panel); border: 1px solid var(--line2); border-radius: var(--r-xl); box-shadow: 0 24px 60px -16px rgba(0,0,0,.5); }
+html[data-skin='groq'] .toast { background: var(--gq-panel); border: 1px solid var(--line2); border-radius: var(--r-lg); }
+html[data-skin='groq'] .faint { color: var(--faint); }
+
+/* ------------------------------------------------ conclusions */
+html[data-skin='groq'] .gq-concl { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+html[data-skin='groq'] .gq-cc { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; background: var(--gq-panel); border: 1px solid var(--line); border-radius: var(--r-lg); }
+html[data-skin='groq'] .gq-cc p { color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+html[data-skin='groq'] .gq-cc small { display: block; margin-top: 6px; color: var(--faint); font-size: 12.5px; }
+html[data-skin='groq'] .gq-cc-i { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-pill); background: var(--gq-sec); color: var(--faint); }
+html[data-skin='groq'] .gq-cc.is-good .gq-cc-i { color: var(--good); } html[data-skin='groq'] .gq-cc.is-warn .gq-cc-i { color: var(--warn); }
+html[data-skin='groq'] .gq-cc.is-bad .gq-cc-i { color: var(--bad); } html[data-skin='groq'] .gq-cc.is-info .gq-cc-i { color: var(--gq-orange); }
+html[data-skin='groq'] .gq-cc.is-bad { border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
+
+/* ------------------------------------------------ the console frame: nav bar, sidebar, rounded panel */
+html[data-skin='groq'] .gq-console { margin-top: 18px; background: var(--gq-nav); border: 1px solid var(--line); border-radius: var(--r-xl); overflow: hidden; }
+html[data-skin='groq'][data-theme='light'] .gq-console { background: #fafafa; }
+html[data-skin='groq'] .gq-top { display: flex; align-items: center; gap: 22px; height: 60px; padding: 0 20px; }
+html[data-skin='groq'] .gq-word { font-family: var(--head); font-weight: 700; font-size: 27px; letter-spacing: -.04em; color: var(--ink); line-height: 1; }
+html[data-skin='groq'] .gq-topnav { display: flex; gap: 22px; margin-inline-start: auto; }
+html[data-skin='groq'] .gq-topnav a { color: var(--muted); font-size: 14.5px; font-weight: 500; text-decoration: none; }
+html[data-skin='groq'] .gq-topnav a:hover { color: var(--gq-orange); }
+html[data-skin='groq'] .gq-body { display: grid; grid-template-columns: 200px minmax(0, 1fr); }
+html[data-skin='groq'] .gq-side { display: flex; flex-direction: column; gap: 2px; padding: 8px 16px 20px; }
+html[data-skin='groq'] .gq-side-l { margin: 14px 4px 6px; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+html[data-skin='groq'] .gq-side [role='tablist'] { display: flex; flex-direction: column; gap: 2px; }
+html[data-skin='groq'] .gq-side-a { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 4px; border: 0; background: none; color: var(--muted); font: 500 14.5px/1.4 var(--font); text-align: start; text-decoration: none; cursor: pointer; border-radius: var(--r-xs); }
+html[data-skin='groq'] .gq-side-a small { margin-inline-start: auto; color: var(--faint); font-size: 12px; }
+html[data-skin='groq'] .gq-side-a:hover { color: var(--ink); }
+html[data-skin='groq'] .gq-side-a.on { color: var(--gq-orange); font-weight: 600; }
+html[data-skin='groq'] .gq-panel { display: flex; flex-direction: column; gap: 20px; min-width: 0; padding: 26px 30px 30px; background: var(--gq-panel); border-start-start-radius: var(--r-xl); border-top: 1px solid var(--line); border-inline-start: 1px solid var(--line); }
+html[data-skin='groq'] .gq-h2 { display: flex; align-items: center; gap: 10px; font-family: var(--head); font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); }
+html[data-skin='groq'] .gq-small { color: var(--faint); font-size: 13px; line-height: 1.55; }
+html[data-skin='groq'] .gq-small.is-bad { color: var(--bad); }
+html[data-skin='groq'] .gq-lab { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* ------------------------------------------------ live latency (a console "featured model" card) */
+html[data-skin='groq'] .gq-card { border: 1px solid var(--line2); border-radius: var(--r-lg); background: var(--gq-panel); padding: 18px 20px; }
+html[data-skin='groq'] .gq-lat { display: flex; flex-direction: column; gap: 14px; }
+html[data-skin='groq'] .gq-lat-h { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+html[data-skin='groq'] .gq-lat-a { display: flex; gap: 8px; margin-inline-start: auto; flex-wrap: wrap; }
+html[data-skin='groq'] .gq-live { width: 9px; height: 9px; border-radius: 50%; background: var(--off); }
+html[data-skin='groq'] .gq-live.is-on { background: var(--gq-orange); animation: gq-live 1.8s ease-out infinite; }
+@keyframes gq-live { 0% { box-shadow: 0 0 0 0 rgba(245,80,54,.55); } 80%, 100% { box-shadow: 0 0 0 7px rgba(245,80,54,0); } }
+html[data-skin='groq'] .gq-lat-b { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 24px; align-items: center; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card2); }
+html[data-skin='groq'] .gq-big b { display: block; font-family: var(--head); font-size: 42px; font-weight: 600; letter-spacing: -.02em; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+html[data-skin='groq'] .gq-big b small { font-size: 16px; font-weight: 500; color: var(--muted); margin-inline-start: 3px; }
+html[data-skin='groq'] .gq-big span { display: block; margin-top: 6px; color: var(--faint); font-size: 12.5px; }
+html[data-skin='groq'] .gq-kv { display: grid; grid-template-columns: repeat(2, auto); gap: 8px 22px; }
+html[data-skin='groq'] .gq-kv dt { font-size: 12px; color: var(--faint); }
+html[data-skin='groq'] .gq-kv dd { font-family: var(--mono); font-size: 14px; color: var(--ink-2); text-align: start; }
+html[data-skin='groq'] .gq-kv dd small { font-family: var(--font); color: var(--faint); font-size: 12px; }
+html[data-skin='groq'] .gq-chart { min-width: 0; }
+html[data-skin='groq'] .gq-bars { display: block; width: 100%; height: 64px; } /* oldest on the left: time runs left to right, as in every chart here */
+html[data-skin='groq'] .gq-b-s { fill: var(--gq-srv); background: var(--gq-srv); }
+html[data-skin='groq'] .gq-b-n { fill: var(--gq-net); background: var(--gq-net); }
+html[data-skin='groq'] .gq-b-x { fill: var(--bad); background: var(--bad); }
+html[data-skin='groq'] .gq-leg { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; color: var(--faint); font-size: 12px; }
+html[data-skin='groq'] .gq-leg span { display: inline-flex; align-items: center; gap: 5px; }
+html[data-skin='groq'] .gq-leg i { width: 9px; height: 9px; border-radius: 2px; }
+
+/* ------------------------------------------------ sections, filters, the models table */
+html[data-skin='groq'] .gq-sec { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+html[data-skin='groq'] .gq-sec-h { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+html[data-skin='groq'] .gq-seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line2); border-radius: var(--r-pill); background: var(--card2); flex-wrap: wrap; }
+html[data-skin='groq'] .gq-seg-b { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: none; color: var(--muted); font: 500 13.5px var(--font); cursor: pointer; }
+html[data-skin='groq'] .gq-seg-b small { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+html[data-skin='groq'] .gq-seg-b:hover { color: var(--ink); }
+html[data-skin='groq'] .gq-seg-b.on { background: var(--surface-3); color: var(--ink); }
+html[data-skin='groq'][data-theme='light'] .gq-seg-b.on { background: #fff; box-shadow: 0 1px 2px rgba(12,10,9,.08); }
+html[data-skin='groq'] .gq-tw { overflow-x: auto; }
+html[data-skin='groq'] .gq-t { width: 100%; border-collapse: collapse; }
+html[data-skin='groq'] .gq-t th { height: 48px; padding: 0 12px; background: transparent; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; text-align: start; vertical-align: middle; white-space: nowrap; }
+html[data-skin='groq'] .gq-t td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: middle; font-size: 14px; color: var(--ink-2); }
+html[data-skin='groq'] .gq-t tbody tr { transition: background var(--t-fast) var(--ease-out); }
+html[data-skin='groq'] .gq-t tbody tr:hover td { background: color-mix(in srgb, var(--surface-3) 50%, transparent); }
+html[data-skin='groq'] .gq-mn { display: block; color: var(--ink); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--ink) 45%, transparent); }
+html[data-skin='groq'] .gq-mid { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); text-align: right; } /* an LTR block inside the RTL cell: keep it on the cell's start edge */
+html[data-skin='groq'] .gq-own { display: block; margin-top: 2px; font-size: 12.5px; color: var(--faint); }
+html[data-skin='groq'] .gq-io { display: inline-flex; align-items: center; gap: 5px; }
+html[data-skin='groq'] .gq-mods { display: inline-flex; gap: 3px; }
+html[data-skin='groq'] .gq-mod { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--line2); border-radius: 5px; font: 500 12px var(--mono); color: var(--ink-2); }
+html[data-skin='groq'] .gq-arr { color: var(--faint); font-size: 12px; }
+html[data-skin='groq'] .gq-ctx { display: inline-flex; align-items: center; gap: 8px; }
+html[data-skin='groq'] .gq-ctx .meter { width: 48px; flex: none; }
+html[data-skin='groq'] .gq-price { font-size: 14px; line-height: 1.45; white-space: nowrap; }
+html[data-skin='groq'] .gq-price b { font-weight: 500; color: var(--ink); }
+html[data-skin='groq'] .gq-price small { color: var(--muted); font-size: 12px; }
+html[data-skin='groq'] .gq-feat { display: inline-flex; gap: 4px; flex-wrap: wrap; max-width: 200px; }
+html[data-skin='groq'] .gq-chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px solid var(--line2); border-radius: var(--r-pill); font-size: 12px; color: var(--muted); white-space: nowrap; }
+html[data-skin='groq'] .gq-st { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--faint); white-space: nowrap; }
+html[data-skin='groq'] .gq-st i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+html[data-skin='groq'] .gq-st.is-ok { color: var(--good); } html[data-skin='groq'] .gq-st.is-warn { color: var(--warn); } html[data-skin='groq'] .gq-st.is-bad { color: var(--bad); }
+html[data-skin='groq'] .gq-top .gq-st { padding: 0 10px; height: 28px; border: 1px solid var(--line2); border-radius: var(--r-pill); }
+
+/* ------------------------------------------------ limits */
+html[data-skin='groq'] .gq-lims { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+html[data-skin='groq'] .gq-lim { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; border: 1px solid var(--line2); border-radius: var(--r-lg); }
+html[data-skin='groq'] .gq-lim-v { color: var(--muted); font-size: 14px; }
+html[data-skin='groq'] .gq-lim-v b { font-family: var(--head); font-size: 28px; font-weight: 600; color: var(--ink); margin-inline-end: 4px; font-variant-numeric: tabular-nums; }
+html[data-skin='groq'] .gq-lim .meter { height: 8px; }
+html[data-skin='groq'] .gq-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+html[data-skin='groq'] .gq-facts div { padding: 12px 16px; border-inline-end: 1px solid var(--line); }
+html[data-skin='groq'] .gq-facts div:last-child { border-inline-end: 0; }
+html[data-skin='groq'] .gq-facts dt { font-size: 12px; color: var(--faint); }
+html[data-skin='groq'] .gq-facts dd { margin-top: 4px; font-family: var(--mono); font-size: 14px; color: var(--ink-2); text-align: start; }
+html[data-skin='groq'] .gq-note { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; border-radius: var(--r-lg); background: var(--gq-sec); }
+html[data-skin='groq'][data-theme='dark'] .gq-note { background: #1a1c20; border: 1px solid var(--line); }
+html[data-skin='groq'] .gq-note p:not(.gq-lab) { color: var(--ink-2); font-size: 14px; line-height: 1.55; }
+html[data-skin='groq'] .gq-note .row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ------------------------------------------------ widths */
+@media (max-width: 1100px) {
+  html[data-skin='groq'] .gq-lat-b { grid-template-columns: auto minmax(0, 1fr); }
+  html[data-skin='groq'] .gq-chart { grid-column: 1 / -1; }
+}
+@media (max-width: 720px) {
+  html[data-skin='groq'] .gq-top { height: auto; flex-wrap: wrap; gap: 10px 16px; padding: 12px 14px; }
+  html[data-skin='groq'] .gq-topnav { order: 3; width: 100%; margin: 0; gap: 16px; overflow-x: auto; }
+  html[data-skin='groq'] .gq-top .gq-st { margin-inline-start: auto; }
+  html[data-skin='groq'] .gq-body { grid-template-columns: 1fr; }
+  html[data-skin='groq'] .gq-side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 4px 14px 12px; }
+  html[data-skin='groq'] .gq-side-l { display: none; }
+  html[data-skin='groq'] .gq-side [role='tablist'] { flex-direction: row; gap: 14px; }
+  html[data-skin='groq'] .gq-side-a { width: auto; padding: 6px 0; }
+  html[data-skin='groq'] .gq-panel { padding: 16px 12px 20px; border-inline-start: 0; border-start-start-radius: 0; }
+  html[data-skin='groq'] .gq-card { padding: 14px; }
+  html[data-skin='groq'] .gq-lat-b { grid-template-columns: 1fr; gap: 14px; padding: 14px; }
+  html[data-skin='groq'] .gq-big b { font-size: 36px; }
+  html[data-skin='groq'] .gq-tw { overflow: visible; }
+  html[data-skin='groq'] .gq-t td { height: auto; padding: 6px 0; border: 0; font-size: 13.5px; } /* base.css fixes td at 48px */
+  html[data-skin='groq'] .gq-t tbody tr:hover td { background: none; }
+  html[data-skin='groq'] .gq-ctx { min-width: 0; }
+  html[data-skin='groq'] .gq-t td[data-l='מודל'], html[data-skin='groq'] .gq-t td[data-l='יכולות'] { display: block; }
+  html[data-skin='groq'] .gq-t td[data-l='מודל']::before, html[data-skin='groq'] .gq-t td[data-l='יכולות']::before { display: block; margin-bottom: 4px; }
+  html[data-skin='groq'] .gq-feat { display: flex; max-width: none; }
+  html[data-skin='groq'] .gq-lims { grid-template-columns: 1fr; }
+  html[data-skin='groq'] .gq-seg { border-radius: var(--r-lg); }
+  html[data-skin='groq'] .gq-seg-b { padding: 0 8px; gap: 4px; }
+  html[data-skin='groq'] .gq-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-skin='groq'] .gq-facts div:nth-child(2n) { border-inline-end: 0; }
+  html[data-skin='groq'] .gq-facts div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+}
+
+/* ------------------------------------------------ motion */
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin='groq'] .gq-live.is-on { animation: none; }
+  html[data-skin='groq'] .btn, html[data-skin='groq'] .gq-t tbody tr { transition: none; }
+}
