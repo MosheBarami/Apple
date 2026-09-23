@@ -17,12 +17,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
-import { planFromDetail, settlePlan, planDetail } from '../src/run-plan.ts';
+import { planFromDetail, settlePlan, planDetail, nextPlanStep } from '../src/run-plan.ts';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(mkdtempSync(join(tmpdir(), 'rp-')), 't.mjs');
@@ -191,4 +191,31 @@ test('the run loop records the plan, and finishRun settles and re-broadcasts it'
   assert.match(src, /planFromDetail\(toolId, out\.detail\)/, 'nothing captures the plan the tool emitted');
   assert.match(src, /settlePlan\(/, 'nothing settles it');
   assert.match(src, /planDetail\(/, 're-broadcasting a settled plan needs the document back');
+});
+
+
+/* --------------------------------------------------- what a looping run is told --- */
+
+// Sky Island 2, 2026-09-23 04:45: the same terrain call three steps running while the plan's next step
+// was the trees. The duplicate refusal now names that step.
+test('nextPlanStep is the first promised step the trace has not delivered', async () => {
+  const plan = planFromDetail('p1', await realDetail(STEPS, 'Platform'));
+  const trace = [
+    { tool: 'propose_plan', ok: true, detail: planDetail(plan) },
+    { tool: 'get_project_tree', ok: true },
+    { tool: 'create_instances', ok: true },
+  ];
+  assert.equal(nextPlanStep(plan, trace)?.title, 'Light it');
+  assert.equal(nextPlanStep(plan, [...trace, { tool: 'set_properties', ok: true }, { tool: 'run_and_check', ok: true }]), undefined);
+});
+
+test('the duplicate refusal names the plan\'s next step', () => {
+  const src = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  const at = src.indexOf('You already made this exact call earlier in this run');
+  assert.ok(at > 0, 'the duplicate refusal was not found — this checks nothing');
+  const around = src.slice(at - 1600, at + 900);
+  assert.match(around, /const planNext = agent\.plan \? nextPlanStep\(agent\.plan, agent\.trace\)/, 'the refusal does not look up the plan\'s next step');
+  assert.match(around, /planNext \? `[^`]*\$\{planNext\.title\}/, 'the refusal does not word the plan\'s next step');
+  assert.match(around, /const steer =[\s\S]{0,200}planHint;/, 'the worded next step is not part of the steer');
+  assert.match(around, /Do not repeat it\.'\)\s*\+\s*steer,/, 'the steer never reaches the refusal');
 });

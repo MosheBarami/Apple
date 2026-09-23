@@ -113,6 +113,16 @@ export function settlePlan(plan: RunPlan, trace: readonly PlanTraceEntry[]): Run
 }
 
 /**
+ * The first promised step the trace has not yet delivered — what a looping run is told to do next.
+ * Measured 2026-09-23 (Sky Island 2, 04:45): the model repeated one terrain call three steps running
+ * while its own plan read "Next: Place hero trees and crystals", and the refusal only said "make the
+ * actual change", so the run ended on the duplicate bound having built nothing but terrain.
+ */
+export function nextPlanStep(plan: RunPlan, trace: readonly PlanTraceEntry[]): RunPlanStep | undefined {
+  return settlePlan(plan, trace).steps.find((s) => s.status === 'pending');
+}
+
+/**
  * The plan as the document the browser already knows how to render.
  *
  * Exactly the shape `propose_plan` emits, so the settled panel replaces the proposed one in place

@@ -70,7 +70,7 @@ import { designBrief } from '../design-brief';
 import { TOOLS, toolDefs, toolNames, targetOf, runTool, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
 import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
-import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
+import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { refundSentence, refundVerdict } from '../run-refund';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
@@ -4163,6 +4163,11 @@ export class SessionDO extends DurableObject<Env> {
       if (repeated && !(retry && retry.retries < MAX_IDENTICAL_RETRIES)) {
         // the model is looping — refuse the duplicate and steer it back to the work
         duplicatesThisStep += 1;
+        const planNext = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
+        const planHint = planNext ? ` Your plan's next step is "${planNext.title}" (${planNext.tool}); do that now.` : '';
+        const steer =
+          (canBuild ? ' Use what you know now and make the actual change to the project.' : ' Use what you already know to answer.') +
+          planHint;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `↺ ${call.name} (already done)` });
         agent.llm.push({
@@ -4172,9 +4177,7 @@ export class SessionDO extends DurableObject<Env> {
             (retry
               ? 'You have already retried this exact call and it failed every time, so it was not run again. Do not repeat it; change your approach.'
               : 'You already made this exact call earlier in this run and have the result above. Do not repeat it.') +
-            (canBuild
-              ? ' Use what you know now and make the actual change to the project.'
-              : ' Use what you already know to answer.'),
+            steer,
           toolCallId: call.id,
           name: call.name,
         });
