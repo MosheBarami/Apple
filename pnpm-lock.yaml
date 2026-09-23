@@ -115,6 +115,8 @@ importers:
         specifier: ^4.0.0
         version: 4.127.1(@cloudflare/workers-types@5.20260830.1)
 
+  packages/asset-library: {}
+
   packages/corpus:
     dependencies:
       yaml:

@@ -129,6 +129,8 @@ export const TOOL = {
   // our own data model, which is not a thing anybody watching a build is trying to find out.
   get_genre_kit: { kind: 'searching_assets', label: 'Picked the style for this genre' },
   find_verified_asset: { kind: 'searching_assets', label: 'Looked for a verified asset' },
+  find_ui_asset: { kind: 'searching_assets', label: 'Looked in the UI image library' },
+  upload_ui_asset: { kind: 'generating', label: 'Uploaded a library image to Roblox' },
 
   // C11
   generate_model: { kind: 'generating', label: 'Generated a model' },

@@ -1,0 +1,16 @@
+/* /library — pack cards on the system tokens (design/system.css), nothing of its own. */
+.library-page__head { margin-bottom:32px; }
+.library-grid { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:20px; }
+.library-card { border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); overflow:hidden; display:flex; flex-direction:column; }
+/* A mid-tone well in both themes: the packs mix black, white and coloured art, and a pure dark or
+   light tile would hide one of them. */
+.library-card__previews { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); }
+.library-card__previews img { width:100%; aspect-ratio:1; object-fit:contain; padding:18px; box-sizing:border-box; background:color-mix(in srgb,var(--ink) 45%,var(--paper)); image-rendering:auto; }
+.library-card__body { padding:16px 18px 18px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.library-card__name { font-size:17px; margin:0; }
+.library-card__what { color:var(--muted); font-size:13px; margin:0; }
+.library-card__meta { display:flex; flex-wrap:wrap; gap:6px; margin:0; font-size:12px; }
+.library-card__meta span { border:1px solid var(--line-strong); border-radius:var(--r-pill); padding:2px 9px; color:var(--muted); }
+.library-card__credit { font-size:12px; color:var(--muted); margin:0; }
+.library-card__source { margin-top:auto; font-size:13px; color:var(--accent); text-decoration:none; }
+.library-card__source:hover { text-decoration:underline; }

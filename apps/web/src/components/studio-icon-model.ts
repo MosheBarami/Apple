@@ -98,6 +98,8 @@ export const TOOL_CLASS: Partial<Record<ToolName, StudioIconClass>> = {
   read_terrain: 'Terrain',
   generate_image: 'ImageLabel',
   generate_ui_image_hf: 'ImageLabel',
+  find_ui_asset: 'ImageLabel',
+  upload_ui_asset: 'ImageLabel',
   build_ui: 'ScreenGui',
   check_ui_layout: 'ScreenGui',
   get_ui_construction: 'ScreenGui',

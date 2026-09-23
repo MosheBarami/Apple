@@ -20,7 +20,8 @@ export const MEDIA_ROOTS = {
   library: 'packages/asset-library',
 };
 // A sprite pack and 500 synthetic pixel-probe fixtures: images, but not pictures of the product.
-const MEDIA_SKIP = [/^evidence\/pixels\//, /^site\/assets\/wall\//];
+// library/packs: five thousand icons would bury the screenshots; the packs show under libraries.
+const MEDIA_SKIP = [/^evidence\/pixels\//, /^site\/assets\/wall\//, /^library\/packs\//];
 const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
 
 const HF_AUTHOR = 'moshebarami';
@@ -335,7 +336,7 @@ async function libraries(repo, facts) {
     { id: 'sources', cat: 'ידע', name: 'מקורות', what: 'רישום של כל מקור ידע ומה הרישיון שלו', count: len('sources.json', 'records'), unit: 'מקורות', path: 'packages/corpus/data/sources.json' },
     { id: 'docs', cat: 'ידע', name: 'תיעוד רובלוקס לחיפוש', what: 'קטעים מתוך התיעוד הרשמי של רובלוקס, שהסוכן מחפש בהם', count: await lines(C('chunks.jsonl')), unit: 'קטעים', extra: `${witness?.documentCount ?? '?'} מסמכי מקור`, forAgent: true, path: 'packages/corpus/data/chunks.jsonl' },
     { id: 'assets3d', cat: 'נכסים', name: 'מודלים תלת-ממדיים', what: 'לא נשמרים מראש: נוצרים בזמן אמת בקוד, במחולל של רובלוקס או מחנות הנכסים', count: 0, unit: 'קבצים שמורים', forAgent: true, path: 'apps/worker/src/assets.ts' },
-    ...(Array.isArray(newPacks?.packs) ? newPacks.packs.map((p) => ({ id: `pack:${p.id}`, cat: 'חבילות חדשות', name: p.name, what: p.what || p.source, count: p.files ?? null, unit: 'קבצים', license: p.license, forAgent: !!p.forAgent, forSite: !!p.forSite, previews: (p.previews || []).map((x) => `/media/library/${x}`), path: `packages/asset-library/${p.dir || p.id}` })) : []),
+    ...(Array.isArray(newPacks?.packs) ? newPacks.packs.map((p) => ({ id: `pack:${p.id}`, cat: p.kind === 'ui' ? 'UI' : 'אייקונים', name: p.nameHe || p.name, what: p.whatHe || p.what || p.source, count: p.files ?? null, unit: 'קבצים', license: p.license, forAgent: !!p.forAgent, forSite: !!p.forSite, previews: (p.previews || []).map((x) => `/media/library/${x}`), path: `packages/asset-library/${p.dir || p.id}` })) : []),
   ];
 }
 

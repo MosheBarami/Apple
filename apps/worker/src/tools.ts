@@ -68,6 +68,7 @@ import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, imagePanel, imagePathFor, composeArtDirection, type ImageRequest, type PaletteRole } from './imagegen';
 import { generateImage as hfGenerateImage, isHfConfigured, HF_IMAGE_MODEL } from './hf';
 import { generateModelForRoblox } from './hf-3d-pipeline';
+import { findUiAssets, uploadLibraryAsset } from './asset-library';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
@@ -4397,6 +4398,54 @@ export const TOOLS: Record<string, ToolImpl> = {
         verificationNote: 'Image delivered, but subject/color fidelity has not been visually verified. Do not claim it matches the request merely because generation succeeded.',
       };
     },
+  },
+  // The open UI/icon library (D-UILIB-1/2): thousands of CC0 Kenney PNGs — buttons, panels, bars,
+  // frames, HUD icons, controller prompts, cursors, crosshairs. The lookup answers from an index
+  // compiled into this bundle; the upload reads the PNG from the static store and puts it in the
+  // USER'S OWN Roblox account (their key), exactly as generate_model_external does.
+  find_ui_asset: {
+    def: {
+      name: 'find_ui_asset',
+      description:
+        'Search Apple\'s library of ready-made, openly licensed (CC0) UI images: 5,000+ PNG buttons, panels, bars, borders, HUD and menu icons, controller/keyboard/touch prompts, emotes, inventory items, cursors and crosshairs. Use it before generating an image for a standard UI element. Plain words match file names (e.g. "button blue", "heart", "xbox a", "settings", "coin"); `pack` narrows to one pack; an empty query lists the packs. Returns `asset` ids — pass one to upload_ui_asset to get an rbxassetid for an ImageLabel/ImageButton. Nothing is uploaded or changed by this call.',
+      parameters: S(
+        {
+          query: { type: 'string', description: 'Plain words for the element, e.g. "red round button" or "pause".' },
+          pack: { type: 'string', description: 'Optional pack id from an earlier answer, e.g. kenney-ui-pack or kenney-input-prompts.' },
+          kind: { type: 'string', enum: ['ui', 'icons'], description: 'ui = panels, buttons, bars, frames; icons = single glyphs.' },
+          limit: { type: 'number', description: 'How many results, 1 to 40. Default 12.' },
+        },
+        [],
+      ),
+    },
+    studio: false,
+    run: async (_ctx, a) =>
+      findUiAssets({
+        query: a.query === undefined ? undefined : String(a.query),
+        pack: a.pack ? String(a.pack) : undefined,
+        kind: a.kind ? String(a.kind) : undefined,
+        limit: a.limit === undefined ? undefined : Number(a.limit),
+      }),
+  },
+  upload_ui_asset: {
+    def: {
+      name: 'upload_ui_asset',
+      description:
+        "Upload ONE image chosen with find_ui_asset into the USER'S OWN Roblox account with their connected Open Cloud key (asset:write) and get back an rbxassetid for ImageLabel.Image / ImageButton.Image. `asset` must be an `asset` value find_ui_asset returned. Roblox keeps uploaded images permanently and moderates them: upload only images the build actually uses, once each, and reuse an id you already have. Nothing is put in the place — set the Image property yourself afterwards.",
+      parameters: S(
+        {
+          asset: { type: 'string', description: 'The `asset` value from find_ui_asset, unchanged.' },
+          displayName: { type: 'string', description: 'Name in the user\'s inventory, max 50 chars.' },
+        },
+        ['asset'],
+      ),
+    },
+    studio: false,
+    run: async (ctx, a) =>
+      uploadLibraryAsset(ctx.env, ctx.userId, {
+        asset: String(a.asset ?? ''),
+        displayName: a.displayName ? String(a.displayName) : undefined,
+      }),
   },
   generate_model_external: {
     def: {

@@ -106,8 +106,9 @@ test('without Studio, builders retain image generation but Plan stays read-only'
   // with no project access, network request or mutation (genre-reference-tools.test.mjs).
   // `get_verified_module` and `get_ui_construction` are here for the reason `get_genre_references`
   // is: studio:false, answered from a table compiled into this bundle, no project access, no
-  // network call, no inference.
-  const KNOWLEDGE = ['get_verified_module', 'get_ui_construction'];
+  // network call, no inference. `find_ui_asset` likewise: a lookup in the compiled library index
+  // that returns names and licences only (asset-library-tools.test.mjs).
+  const KNOWLEDGE = ['get_verified_module', 'get_ui_construction', 'find_ui_asset'];
   const expected = {
     plan: ['get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
     // generate_ui_image_hf: reviewed 2026-09-23 as generate_image's fallback — studio:false,

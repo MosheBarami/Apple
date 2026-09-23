@@ -42,6 +42,8 @@ import { WorkspacePage } from './routes/workspace';
 const RoadmapPage = lazy(() => import('./routes/roadmap').then((m) => ({ default: m.RoadmapPage })));
 const UsagePage = lazy(() => import('./routes/usage').then((m) => ({ default: m.UsagePage })));
 const SettingsPage = lazy(() => import('./routes/settings').then((m) => ({ default: m.SettingsPage })));
+// Lazy for the same reason as usage: reached from the dock, and it carries the pack manifest.
+const LibraryPage = lazy(() => import('./routes/library').then((m) => ({ default: m.LibraryPage })));
 // Lazy for the same reason, and one more. The admin console is rendered only for
 // `is_admin` profiles, so for very nearly every user this was 10.7 kB raw / 2.4 kB
 // gzipped of a page they cannot use. Splitting it also stops the console's shape — the
@@ -178,6 +180,14 @@ export function App() {
                       element={
                         <Suspense fallback={<div className="page" aria-busy="true" />}>
                           <UsagePage />
+                        </Suspense>
+                      }
+                    />
+                    <Route
+                      path="/library"
+                      element={
+                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                          <LibraryPage />
                         </Suspense>
                       }
                     />

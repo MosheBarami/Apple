@@ -532,6 +532,7 @@ function Shell() {
   useCommands([
     { id: 'nav-projects', title: 'Go to projects', section: 'Navigate', keywords: ['dashboard', 'home'], run: () => navigate('/') },
     { id: 'new-project', title: 'New project', section: 'Navigate', keywords: ['create', 'chat', 'summon'], hint: shortcutLabel(SHORTCUTS.newProject), run: () => { if (location.pathname !== '/') navigate('/'); newProject(); } },
+    { id: 'nav-library', title: 'UI library', section: 'Navigate', keywords: ['icons', 'assets', 'images', 'buttons'], run: () => navigate('/library') },
     { id: 'nav-usage', title: 'Usage', section: 'Navigate', keywords: ['credits', 'spend', 'billing'], run: () => navigate('/usage') },
     { id: 'nav-settings', title: 'Settings', section: 'Navigate', keywords: ['preferences', 'account', 'profile'], run: () => navigate('/settings') },
     ...(isAdmin ? [{ id: 'nav-admin', title: 'Admin', section: 'Navigate', keywords: ['ops'], run: () => navigate('/admin') }] : []),
@@ -637,6 +638,11 @@ function Shell() {
               <NavLink to="/" end className="studio-dock__row" aria-label="Projects" title="Projects">
                 <AnimatedIcon motion="pop"><Icon d={PATH.projects} size={16} /></AnimatedIcon>
                 <span className="studio-dock__label">Projects</span>
+              </NavLink>
+
+              <NavLink to="/library" className="studio-dock__row" aria-label="UI library" title="UI library">
+                <AnimatedIcon motion="pop"><Icon d={PATH.layers} size={16} /></AnimatedIcon>
+                <span className="studio-dock__label">UI library</span>
               </NavLink>
 
               <button

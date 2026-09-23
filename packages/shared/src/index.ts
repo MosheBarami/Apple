@@ -855,6 +855,8 @@ export function phaseForTool(tool: string): AgentPhase {
     // "Building world" for a lookup is a claim about work that is not happening.
     case 'get_ui_construction':
     case 'get_verified_module':
+    // A search over the bundled UI/icon library index; reads nothing of the project.
+    case 'find_ui_asset':
     case 'find_verified_asset':
     case 'inspect_model':
     // The read-only Studio tools. Each one ASKS the place something and changes nothing, so
@@ -921,6 +923,9 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'generate_model_external':
     case 'generate_image':
     case 'generate_ui_image_hf':
+    // Puts a library PNG into the user's Roblox account and nothing into the place, the same act
+    // as the generators beside it: an asset is produced for the build to use.
+    case 'upload_ui_asset':
     // generate_sound and speak_line, beside generate_image and for the same reason and with the
     // same imprecision, named here rather than left to be discovered: all three PRODUCE an asset
     // and none of them puts it in the place, so "building" overstates what the user's project just
@@ -2830,6 +2835,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'generate_model_external',
     label: 'Generate 3D models on Hugging Face',
     why: 'Calls an outside 3D model service, uploads the result into your own Roblox account with your connected key, then inserts it.',
+    group: 'spends',
+  },
+  {
+    name: 'upload_ui_asset',
+    label: 'Upload library images to Roblox',
+    why: 'Uploads a picked image from the free UI library into your own Roblox account with your connected key, so a button or icon can show it. Roblox keeps uploaded images for good.',
     group: 'spends',
   },
   {

@@ -1,0 +1,12 @@
+{
+  "name": "@golem/asset-library",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Openly licensed (CC0) UI and icon packs for the agent and the site, with a generated manifest.",
+  "scripts": {
+    "build": "node build-manifest.mjs",
+    "typecheck": "node --check build-manifest.mjs && node --check upload.mjs",
+    "test": "node --test"
+  }
+}
