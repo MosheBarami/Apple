@@ -130,6 +130,9 @@ export const TOOL = {
   get_genre_kit: { kind: 'searching_assets', label: 'Picked the style for this genre' },
   find_verified_asset: { kind: 'searching_assets', label: 'Looked for a verified asset' },
   find_ui_asset: { kind: 'searching_assets', label: 'Looked in the UI image library' },
+  find_sound: { kind: 'searching_assets', label: 'Looked in the sound library' },
+  find_vfx: { kind: 'searching_assets', label: 'Looked in the effect library' },
+  play_library_sound: { kind: 'searching_assets', label: 'Played you a sound' },
   upload_ui_asset: { kind: 'generating', label: 'Uploaded a library image to Roblox' },
 
   // C11
@@ -199,6 +202,8 @@ export const TOOL = {
   check_ui_layout: { kind: 'critiquing', label: 'Checked the screen on phone, tablet and PC sizes' },
   build_ui: { kind: 'building', label: 'Built a screen' },
   insert_ui_component: { kind: 'building', label: 'Added a UI piece' },
+  insert_sound: { kind: 'building', label: 'Added a sound' },
+  insert_vfx: { kind: 'building', label: 'Added a visual effect' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent' },

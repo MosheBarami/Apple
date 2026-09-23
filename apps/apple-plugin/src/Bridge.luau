@@ -19,7 +19,9 @@ local POLL_URL = APPLE_ORIGIN .. "/api/studio/poll"
 -- packages/evals/src/plugin-version.test.mjs fails if the copies disagree.
 -- 1.2.0 (2026-09-23): an uploaded image id is writable on UI images/decals, a checkpoint holds its
 -- MeshParts (F-053), and the dock says a Studio restart needs a new pairing code (F-026).
-local PLUGIN_VERSION = "1.2.0"
+-- 1.3.0 (2026-09-23, D-FXLIB-1): a Sound may carry a library audio id, an effect may name an engine
+-- particle texture, flipbook and Squash properties are writable, and preview_sound plays a sound here.
+local PLUGIN_VERSION = "1.3.0"
 local PLUGIN_PROTOCOL = "1"
 
 -- The worker currently serves at most ten operations.  These limits are client-side guardrails

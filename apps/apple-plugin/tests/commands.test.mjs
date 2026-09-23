@@ -577,8 +577,35 @@ spec("ordinary prompts, UI images, sounds and particles are creatable while new 
     eq(textureRefused.ok, false); has(textureRefused.error, "external content"); eq(mesh.TextureID, "rbxassetid://77")
     local textureCleared = run(c, "mesh-texture-cleared", { op = "set_props", path = "game.Workspace.OrdinaryHost.Statue", props = { TextureID = { t = "Content", v = "" } } }, true)
     eq(textureCleared.ok, true, tostring(textureCleared.error)); eq(mesh.TextureID, "")
-    local soundRefused = run(c, "sound-content-refused", { op = "set_props", path = "game.Workspace.OrdinaryHost.Click", props = { SoundId = { t = "string", v = "rbxassetid://2" } } }, true)
-    eq(soundRefused.ok, false); has(soundRefused.error, "external content")
+    -- D-FXLIB-1: a Sound may carry a library audio id (the same id-and-digits rule as an image);
+    -- any other SoundId, and a SoundId on anything that is not a Sound, stays refused.
+    local soundSet = run(c, "sound-library-id", { op = "set_props", path = "game.Workspace.OrdinaryHost.Click", props = { SoundId = { t = "string", v = "rbxassetid://2" } } }, true)
+    eq(soundSet.ok, true, tostring(soundSet.error)); eq(host:FindFirstChild("Click").SoundId, "rbxassetid://2")
+    for _, bad in { "http://example.com/x.mp3", "rbxasset://sounds/electronicpingshort.wav", "rbxassetid://2 ", "rbxassetid://abc", "2" } do
+        local refused = run(c, "sound-not-an-id", { op = "set_props", path = "game.Workspace.OrdinaryHost.Click", props = { SoundId = { t = "string", v = bad } } }, true)
+        eq(refused.ok, false, "refused " .. bad); has(refused.error, "external content")
+    end
+    eq(host:FindFirstChild("Click").SoundId, "rbxassetid://2", "a refused sound must leave the existing one")
+    local soundMade = run(c, "sound-created-with-id", { op = "create_instances", items = {
+        { className = "Sound", name = "Coin", parent = "game.Workspace.OrdinaryHost", props = { SoundId = { t = "string", v = "rbxassetid://9001" } } },
+    } }, true)
+    eq(soundMade.ok, true, tostring(soundMade.error)); eq(host:FindFirstChild("Coin").SoundId, "rbxassetid://9001")
+    -- An effect's Texture: an uploaded id, or exactly one of the engine particle textures on the list.
+    local fxMade = run(c, "effect-textures", { op = "create_instances", items = {
+        { className = "ParticleEmitter", name = "Spark", parent = "game.Workspace.OrdinaryHost", props = { Texture = { t = "string", v = "rbxasset://textures/particles/sparkles_main.dds" } } },
+        { className = "ParticleEmitter", name = "Uploaded", parent = "game.Workspace.OrdinaryHost", props = { Texture = { t = "string", v = "rbxassetid://123" } } },
+        { className = "Beam", name = "Ray", parent = "game.Workspace.OrdinaryHost", props = { Texture = { t = "string", v = "rbxasset://textures/particles/SquareParticle.png" } } },
+        { className = "Trail", name = "Streak", parent = "game.Workspace.OrdinaryHost", props = { Texture = { t = "string", v = "rbxasset://textures/particles/fire_sparks_main.dds" } } },
+    } }, true)
+    eq(fxMade.ok, true, tostring(fxMade.error))
+    eq(host:FindFirstChild("Spark").Texture, "rbxasset://textures/particles/sparkles_main.dds"); eq(host:FindFirstChild("Uploaded").Texture, "rbxassetid://123")
+    for _, bad in { "rbxasset://textures/face.png", "rbxasset://textures/particles/../face.png", "rbxasset://textures/particles/sparkles_main.dds ", "http://example.com/p.png", "rbxasset://sounds/particles/sparkles_main.dds" } do
+        local refused = run(c, "effect-texture-refused", { op = "set_props", path = "game.Workspace.OrdinaryHost.Spark", props = { Texture = { t = "string", v = bad } } }, true)
+        eq(refused.ok, false, "refused " .. bad); has(refused.error, "engine particle texture")
+    end
+    local decalEngine = Instance.new("Decal"); decalEngine.Name = "Sticker"; decalEngine.Parent = host
+    local decalRefused = run(c, "engine-texture-on-decal", { op = "set_props", path = "game.Workspace.OrdinaryHost.Sticker", props = { Texture = { t = "string", v = "rbxasset://textures/particles/sparkles_main.dds" } } }, true)
+    eq(decalRefused.ok, false, "an engine texture is for effects only")
     host:Destroy(); gui:Destroy(); services.SoundService:FindFirstChild("SFX"):Destroy(); c:destroy()
 end)
 

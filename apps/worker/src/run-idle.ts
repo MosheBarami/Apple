@@ -109,6 +109,8 @@ const CHANGE_WORDS: Record<string, string> = {
   set_properties: 'property changes',
   set_mood: 'lighting',
   add_effect: 'effects',
+  insert_vfx: 'effects',
+  insert_sound: 'sounds',
   edit_script: 'script edits',
   delete_instances: 'deletions',
   clone_instances: 'copies',

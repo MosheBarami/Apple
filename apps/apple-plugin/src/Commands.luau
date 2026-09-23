@@ -883,7 +883,7 @@ local CONTENT_PROPERTY = {
 	Image = { ImageLabel = true, ImageButton = true },
 	HoverImage = { ImageButton = true },
 	PressedImage = { ImageButton = true },
-	SoundId = true,
+	SoundId = { Sound = true },
 	AnimationId = true,
 	Video = true,
 	SkyboxBk = true,
@@ -900,6 +900,26 @@ local CONTENT_PROPERTY = {
 	PantsTemplate = true,
 	Graphic = true,
 }
+-- D-FXLIB-1 (2026-09-23): the sound and effect library. A Sound may carry a library audio id (the
+-- same rbxassetid-and-digits rule), and an effect's Texture may also name one of the particle
+-- textures that ship inside every Roblox client, listed here by path under the engine's textures
+-- folder (packages/asset-library/vfx/presets.mjs ENGINE_TEXTURES uses a subset of it). Assigned
+-- into the existing table, not declared as a new local: this file is at Luau's 200-local limit.
+CONTENT_PROPERTY.Texture.ParticleEmitter = {
+	["particles/sparkles_main.dds"] = true,
+	["particles/explosion01_implosion_main.dds"] = true,
+	["particles/explosion01_shockwave_main.dds"] = true,
+	["particles/explosion01_core_main.dds"] = true,
+	["particles/explosion01_smoke_main.dds"] = true,
+	["particles/fire_main.dds"] = true,
+	["particles/fire_sparks_main.dds"] = true,
+	["particles/smoke_main.dds"] = true,
+	["particles/forcefield_vortex_main.dds"] = true,
+	["particles/forcefield_glow_main.dds"] = true,
+	["particles/SquareParticle.png"] = true,
+}
+CONTENT_PROPERTY.Texture.Beam = CONTENT_PROPERTY.Texture.ParticleEmitter
+CONTENT_PROPERTY.Texture.Trail = CONTENT_PROPERTY.Texture.ParticleEmitter
 
 local ENUM_ALLOW = {
 	Material = true,
@@ -1604,7 +1624,7 @@ local function validatePropertyName(property: any, allowContent: boolean?): (str
 	end
 	if CONTENT_PROPERTY[name] and allowContent ~= true then
 		if type(CONTENT_PROPERTY[name]) == "table" then
-			return nil, ("property %s takes only an uploaded image id, exactly as upload_ui_asset returned it (the rbxassetid scheme and digits, nothing else), on an object that displays it (Image: ImageLabel/ImageButton, HoverImage/PressedImage: ImageButton, Texture: Decal/Texture); any other external content is refused"):format(name)
+			return nil, ("property %s takes only an uploaded image id, exactly as upload_ui_asset returned it (the rbxassetid scheme and digits, nothing else), on an object that displays it (Image: ImageLabel/ImageButton, HoverImage/PressedImage: ImageButton, Texture: Decal/Texture/ParticleEmitter/Beam/Trail, which may also name an engine particle texture from the effect library), or a library audio id on a Sound (SoundId, as find_sound returned it); any other external content is refused"):format(name)
 		end
 		return nil, ("property %s carries external content and is refused"):format(name)
 	end
@@ -1630,8 +1650,13 @@ local function validateProps(props: any, label: string, allowInstance: boolean?,
 			-- The scheme is compared as a word rather than matched as one URL literal: the shipped
 			-- source carries no asset-URL literal at all (tests/worker-capability-contract.test.mjs).
 			local scheme, digits = string.match(typed.v, "^(%l+)://(%d+)$")
-			if typed.v == "" or (type(classes) == "table" and className ~= nil and classes[className] == true and scheme == "rbxassetid" and #digits <= 20) then
+			local allowed = if type(classes) == "table" and className ~= nil then classes[className] else nil
+			if typed.v == "" or (allowed ~= nil and scheme == "rbxassetid" and #digits <= 20) then
 				contentText = typed.v
+			elseif type(allowed) == "table" then
+				-- An engine particle texture: the rbxasset scheme and a path on the list above, exactly.
+				local engineScheme, file = string.match(typed.v, "^(%l+)://textures/([%w_/]+%.%l+)$")
+				if engineScheme == "rbxasset" and allowed[file] == true then contentText = typed.v end
 			end
 		end
 		local valid, nameErr = validatePropertyName(property, allowContent == true or contentText ~= nil)

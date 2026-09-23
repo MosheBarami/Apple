@@ -903,6 +903,14 @@ const TOOL_ARGS = {
   // result carries component, instance paths, asset -> rbxassetid pairs and missing file names; the
   // key never leaves asset-library.ts.
   insert_ui_component: { component: 'currency_counter', genre: 'simulator' },
+  // D-FXLIB-1. Egress reviewed 2026-09-23: fx-library.ts reads two JSON indexes bundled into the
+  // worker and sends only get_tree / delete_instances / create_instances / set_props / preview_sound
+  // through the op-sender. No fetch, no key, no URL.
+  insert_sound: { query: 'coin pickup' },
+  insert_vfx: { preset: 'coin_burst', target: 'game.Workspace.Coin' },
+  find_sound: { query: 'coin pickup' },
+  find_vfx: { query: 'level up' },
+  play_library_sound: { query: 'coin pickup' },
   // D-UILIB-2 (b54e84d). Egress reviewed 2026-09-23 by the security lane: find_ui_asset searches
   // the index bundled from packages/asset-library/index.json — no fetch, no key. upload_ui_asset
   // resolves `asset` by EXACT lookup in that index (a made-up path is refused before any read),

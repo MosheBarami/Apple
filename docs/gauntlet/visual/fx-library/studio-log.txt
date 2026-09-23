@@ -1,0 +1,239 @@
+# Studio output, FXLAB lines only, from 0.739.0.7390687_20260923T195921Z_Studio_d1897_last.log
+# Place: Apple-FxLibrary.rbxl (separate place, Studio pid 21599). Edit-mode build, then RunService:Run() play-test (Emit, moving trail, Sound:Play), then Stop.
+2026-09-23T20:02:06.908Z FXLAB PING false
+2026-09-23T20:02:06.908Z FXLAB LOADSTRING true 1
+2026-09-23T20:02:18.010Z FXLAB BUILT Attachment=24 Beam=6 Folder=3 Highlight=2 Part=22 ParticleEmitter=42 PointLight=10 Trail=1 failures=0
+2026-09-23T20:02:18.010Z FXLAB PRESET coin_burst burst instances=3 Glints(particles/sparkles_main.dds,rate=24) Flash(particles/explosion01_implosion_main.dds,rate=1)
+2026-09-23T20:02:18.010Z FXLAB PRESET sparkle_shimmer loop instances=2 Shimmer(particles/sparkles_main.dds,rate=9)
+2026-09-23T20:02:18.010Z FXLAB PRESET level_up_aura loop instances=5 Rise(particles/explosion01_implosion_main.dds,rate=40) Stars(particles/sparkles_main.dds,rate=12) Ring(particles/explosion01_shockwave_main.dds,rate=1.5)
+2026-09-23T20:02:18.010Z FXLAB PRESET rebirth_pillar beam instances=6 Beam:Pillar(a0=RebirthPillarBase,a1=RebirthPillarTop) Beam:Core(a0=RebirthPillarBase,a1=RebirthPillarTop) Stream(particles/explosion01_implosion_main.dds,rate=35)
+2026-09-23T20:02:18.010Z FXLAB PRESET fire loop instances=4 Flames(particles/explosion01_core_main.dds,rate=28) Embers(particles/fire_sparks_main.dds,rate=8)
+2026-09-23T20:02:18.010Z FXLAB PRESET smoke loop instances=2 Smoke(particles/smoke_main.dds,rate=8)
+2026-09-23T20:02:18.010Z FXLAB PRESET explosion burst instances=6 Fireball(particles/explosion01_core_main.dds,rate=14) Shockwave(particles/explosion01_shockwave_main.dds,rate=1) Sparks(particles/fire_sparks_main.dds,rate=40) Smoke(particles/smoke_main.dds,rate=12)
+2026-09-23T20:02:18.010Z FXLAB PRESET magic_hit burst instances=5 Flash(particles/explosion01_implosion_main.dds,rate=1) Ring(particles/forcefield_vortex_main.dds,rate=1) Shards(particles/sparkles_main.dds,rate=22)
+2026-09-23T20:02:18.010Z FXLAB PRESET heal loop instances=4 Motes(particles/explosion01_implosion_main.dds,rate=18) Sparkles(particles/sparkles_main.dds,rate=8)
+2026-09-23T20:02:18.010Z FXLAB PRESET portal loop instances=5 Vortex(particles/forcefield_vortex_main.dds,rate=4) Core(particles/explosion01_implosion_main.dds,rate=3) Inflow(particles/sparkles_main.dds,rate=20)
+2026-09-23T20:02:18.010Z FXLAB PRESET water_splash burst instances=4 Droplets(particles/explosion01_implosion_main.dds,rate=30) Ripple(particles/explosion01_shockwave_main.dds,rate=2) Mist(particles/smoke_main.dds,rate=6)
+2026-09-23T20:02:18.010Z FXLAB PRESET dust_trail loop instances=2 Dust(particles/smoke_main.dds,rate=22)
+2026-09-23T20:02:18.010Z FXLAB PRESET speed_trail trail instances=3 Trail:Trail(a0=SpeedTrailTop,a1=SpeedTrailBottom)
+2026-09-23T20:02:18.010Z FXLAB PRESET confetti burst instances=6 ConfettiRed(particles/SquareParticle.png,rate=20) ConfettiYellow(particles/SquareParticle.png,rate=20) ConfettiBlue(particles/SquareParticle.png,rate=20) ConfettiGreen(particles/SquareParticle.png,rate=20) ConfettiPink(particles/SquareParticle.png,rate=20)
+2026-09-23T20:02:18.011Z FXLAB PRESET pet_hatch burst instances=5 Flash(particles/explosion01_implosion_main.dds,rate=1) Rings(particles/explosion01_shockwave_main.dds,rate=2) Stars(particles/sparkles_main.dds,rate=36)
+2026-09-23T20:02:18.011Z FXLAB PRESET egg_glow highlight instances=5 Highlight:Glow(adornee=Host_egg_glow) Aura(particles/explosion01_implosion_main.dds,rate=6) Twinkle(particles/sparkles_main.dds,rate=3)
+2026-09-23T20:02:18.011Z FXLAB PRESET lightning beam instances=11 Beam:Bolt1(a0=LightningSky,a1=LightningKink1) Beam:Bolt2(a0=LightningKink1,a1=LightningKink2) Beam:Bolt3(a0=LightningKink2,a1=LightningKink3) Beam:Bolt4(a0=LightningKink3,a1=LightningGround) Strike(particles/fire_sparks_main.dds,rate=30)
+2026-09-23T20:02:18.011Z FXLAB PRESET snow area instances=2 Snow(particles/explosion01_implosion_main.dds,rate=160)
+2026-09-23T20:02:18.011Z FXLAB PRESET rain area instances=2 Rain(particles/explosion01_implosion_main.dds,rate=900)
+2026-09-23T20:02:18.011Z FXLAB PRESET fireflies area instances=2 Fireflies(particles/explosion01_implosion_main.dds,rate=6)
+2026-09-23T20:02:18.011Z FXLAB PRESET hit_sparks burst instances=3 Sparks(particles/fire_sparks_main.dds,rate=18) Flash(particles/explosion01_implosion_main.dds,rate=1)
+2026-09-23T20:02:18.011Z FXLAB PRESET select_highlight highlight instances=1 Highlight:Outline(adornee=Host_select_highlight)
+2026-09-23T20:02:23.729Z FXLAB SOUND CandyMachineCoinDrops rbxassetid://9113703887 loaded=true length=3.6 looped=false vol=0.5
+2026-09-23T20:02:23.729Z FXLAB SOUND BeepsUi1Sfx rbxassetid://9113406784 loaded=true length=3.7 looped=false vol=0.5
+2026-09-23T20:02:23.729Z FXLAB SOUND AirBurstShortMetallic rbxassetid://9113057586 loaded=true length=3.0 looped=false vol=0.5
+2026-09-23T20:02:23.729Z FXLAB SOUND PhaseySynthPowerUp rbxassetid://9117297289 loaded=true length=3.4 looped=false vol=0.5
+2026-09-23T20:02:23.729Z FXLAB SOUND RobloxUiLoopCalm rbxassetid://15675069601 loaded=true length=95.5 looped=true vol=0.5
+2026-09-23T20:02:23.729Z FXLAB SOUND BrokenSword2Sfx rbxassetid://9113592309 loaded=true length=1.7 looped=false vol=0.5
+2026-09-23T20:02:23.729Z FXLAB SOUND BicycleJumpWood2 rbxassetid://9113424280 loaded=true length=1.2 looped=false vol=0.5
+2026-09-23T20:02:23.729Z FXLAB SOUND Victory rbxassetid://12222253 loaded=true length=1.2 looped=false vol=0.5
+2026-09-23T20:02:23.729Z FXLAB DONE
+2026-09-23T20:02:23.729Z FXLAB RESULT true nil
+2026-09-23T20:02:37.246Z FXLAB CAM overview
+2026-09-23T20:03:03.444Z FXLAB DAY
+2026-09-23T20:03:04.528Z FXLAB CAM coin_burst
+2026-09-23T20:03:08.727Z FXLAB CAM sparkle_shimmer
+2026-09-23T20:03:13.044Z FXLAB CAM level_up_aura
+2026-09-23T20:03:17.159Z FXLAB CAM rebirth_pillar
+2026-09-23T20:03:21.144Z FXLAB CAM fire
+2026-09-23T20:03:28.409Z FXLAB CAM smoke
+2026-09-23T20:03:35.427Z FXLAB CAM explosion
+2026-09-23T20:03:42.376Z FXLAB CAM magic_hit
+2026-09-23T20:03:47.193Z FXLAB CAM heal
+2026-09-23T20:03:52.059Z FXLAB CAM portal
+2026-09-23T20:03:57.792Z FXLAB CAM water_splash
+2026-09-23T20:04:05.392Z FXLAB CAM dust_trail
+2026-09-23T20:04:16.725Z FXLAB CAM speed_trail
+2026-09-23T20:04:21.158Z FXLAB CAM confetti
+2026-09-23T20:04:30.691Z FXLAB CAM pet_hatch
+2026-09-23T20:04:38.456Z FXLAB CAM egg_glow
+2026-09-23T20:04:44.656Z FXLAB CAM lightning
+2026-09-23T20:04:51.307Z FXLAB CAM snow
+2026-09-23T20:05:03.906Z FXLAB CAM rain
+2026-09-23T20:05:15.355Z FXLAB CAM fireflies
+2026-09-23T20:05:21.656Z FXLAB CAM hit_sparks
+2026-09-23T20:05:25.738Z FXLAB CAM select_highlight
+2026-09-23T20:06:30.753Z FXLAB GROUND 0, -0.5, -100
+2026-09-23T20:06:31.503Z FXLAB CAM 00-overview
+2026-09-23T20:06:35.653Z FXLAB CAM 01-coin_burst
+2026-09-23T20:06:39.952Z FXLAB CAM 02-sparkle_shimmer
+2026-09-23T20:06:44.252Z FXLAB CAM 03-level_up_aura
+2026-09-23T20:06:49.368Z FXLAB CAM 04-rebirth_pillar
+2026-09-23T20:06:54.268Z FXLAB CAM 05-fire
+2026-09-23T20:06:58.535Z FXLAB CAM 06-smoke
+2026-09-23T20:07:03.068Z FXLAB CAM 07-explosion
+2026-09-23T20:07:07.168Z FXLAB CAM 08-magic_hit
+2026-09-23T20:07:11.317Z FXLAB CAM 09-heal
+2026-09-23T20:07:16.001Z FXLAB CAM 10-portal
+2026-09-23T20:07:20.150Z FXLAB CAM 11-water_splash
+2026-09-23T20:07:24.266Z FXLAB CAM 12-dust_trail
+2026-09-23T20:07:28.767Z FXLAB CAM 13-speed_trail
+2026-09-23T20:07:34.601Z FXLAB CAM 14-confetti
+2026-09-23T20:07:38.567Z FXLAB CAM 15-pet_hatch
+2026-09-23T20:07:42.765Z FXLAB CAM 16-egg_glow
+2026-09-23T20:07:47.400Z FXLAB CAM 17-lightning
+2026-09-23T20:07:51.433Z FXLAB CAM 18-snow
+2026-09-23T20:07:56.582Z FXLAB CAM 19-rain
+2026-09-23T20:08:00.765Z FXLAB CAM 20-fireflies
+2026-09-23T20:08:05.065Z FXLAB CAM 21-hit_sparks
+2026-09-23T20:08:09.098Z FXLAB CAM 22-select_highlight
+2026-09-23T20:08:48.730Z FXLAB DBG 42, 0.5, 16 42, 14, -18 0, 0, 1 70 1151, 755
+2026-09-23T20:08:48.730Z FXLAB ATT LightningSky 42, 60.5, 16
+2026-09-23T20:08:48.731Z FXLAB ATT LightningKink1 45, 44.5, 17.5
+2026-09-23T20:08:48.731Z FXLAB ATT LightningKink2 39.5, 28.5, 15
+2026-09-23T20:08:48.731Z FXLAB ATT LightningKink3 43.5, 12.5, 16.799999237060547
+2026-09-23T20:08:48.731Z FXLAB ATT LightningGround 42, 0.5, 16
+2026-09-23T20:08:48.731Z FXLAB WS Camera Camera
+2026-09-23T20:08:48.731Z FXLAB WS Baseplate Part
+2026-09-23T20:08:48.731Z FXLAB WS SpawnLocation SpawnLocation
+2026-09-23T20:08:48.731Z FXLAB WS Terrain Terrain
+2026-09-23T20:08:48.731Z FXLAB WS FxLab Folder
+2026-09-23T20:09:11.496Z FXLAB LB Workspace.FxLab.Host_lightning.LightningSky.Bolt1 true LightningSky LightningSky LightningKink1 0 0 0 1 0 0 
+2026-09-23T20:09:11.496Z FXLAB LB Workspace.FxLab.Host_lightning.LightningSky.Bolt2 true LightningSky LightningKink1 LightningKink2 0 0 0 1 0 0 
+2026-09-23T20:09:11.496Z FXLAB LB Workspace.FxLab.Host_lightning.LightningSky.Bolt3 true LightningSky LightningKink2 LightningKink3 0 0 0 1 0 0 
+2026-09-23T20:09:11.496Z FXLAB LB Workspace.FxLab.Host_lightning.LightningSky.Bolt4 true LightningSky LightningKink3 LightningGround 0 0 0 1 0 0 
+2026-09-23T20:09:11.496Z FXLAB LB Workspace.FxLab.Host_lightning.LightningGround.Strike true LightningGround - - 0 0 0 1 1 0 
+2026-09-23T20:09:25.978Z FXLAB BP 0, 0, 0 512, 20, 512 0 0, 0, 0
+2026-09-23T20:09:42.763Z FXLAB BASEPLATE REMOVED (the test place baseplate top was at y=10 and buried the hosts)
+2026-09-23T20:09:43.461Z FXLAB CAM 00-overview
+2026-09-23T20:09:50.144Z FXLAB CAM 01-coin_burst
+2026-09-23T20:09:56.561Z FXLAB CAM 02-sparkle_shimmer
+2026-09-23T20:10:03.077Z FXLAB CAM 03-level_up_aura
+2026-09-23T20:10:10.477Z FXLAB CAM 04-rebirth_pillar
+2026-09-23T20:10:36.126Z FXLAB CAM 05-fire
+2026-09-23T20:10:42.375Z FXLAB CAM 06-smoke
+2026-09-23T20:10:49.825Z FXLAB CAM 07-explosion
+2026-09-23T20:11:03.991Z FXLAB CAM 08-magic_hit
+2026-09-23T20:11:14.207Z FXLAB CAM 09-heal
+2026-09-23T20:11:20.990Z FXLAB CAM 10-portal
+2026-09-23T20:11:33.074Z FXLAB CAM 11-water_splash
+2026-09-23T20:11:39.673Z FXLAB CAM 12-dust_trail
+2026-09-23T20:11:46.573Z FXLAB CAM 13-speed_trail
+2026-09-23T20:11:56.955Z FXLAB CAM 14-confetti
+2026-09-23T20:12:05.722Z FXLAB CAM 15-pet_hatch
+2026-09-23T20:12:27.571Z FXLAB CAM 16-egg_glow
+2026-09-23T20:12:33.937Z FXLAB CAM 17-lightning
+2026-09-23T20:12:40.237Z FXLAB CAM 18-snow
+2026-09-23T20:12:47.404Z FXLAB CAM 19-rain
+2026-09-23T20:12:56.238Z FXLAB CAM 20-fireflies
+2026-09-23T20:13:02.887Z FXLAB CAM 21-hit_sparks
+2026-09-23T20:13:10.053Z FXLAB CAM 22-select_highlight
+2026-09-23T20:15:22.065Z FXLAB INFO hit_sparks -14, 0.5, 44 4, 1, 4
+2026-09-23T20:15:22.065Z FXLAB INFO hit_sparks Workspace.FxLab.Host_hit_sparks.HitSparksFX.Sparks true 18 0.2 0.45  25 45  0 0.35 0 1 0 0  Enum.NormalId.Top Enum.ParticleEmitterShape.Box Enum.ParticleEmitterShapeStyle.Volume Attachment
+2026-09-23T20:15:22.065Z FXLAB INFO hit_sparks Workspace.FxLab.Host_hit_sparks.HitSparksFX.Flash true 1 0.12 0.12  0 0  0 1.5 0 1 3 0  Enum.NormalId.Top Enum.ParticleEmitterShape.Box Enum.ParticleEmitterShapeStyle.Volume Attachment
+2026-09-23T20:15:22.065Z FXLAB INFO speed_trail -70, 0.5, 16 4, 1, 4
+2026-09-23T20:15:22.065Z FXLAB INFO area Workspace.FxLab.Area_snow.SnowArea -150, 60, -220 120, 1, 120
+2026-09-23T20:15:22.065Z FXLAB INFO areaE Workspace.FxLab.Area_snow.SnowArea.Snow 160 8 12  3 5  0 0.3 0 1 0.25 0  Enum.NormalId.Bottom Enum.ParticleEmitterShape.Box
+2026-09-23T20:15:22.065Z FXLAB INFO area Workspace.FxLab.Area_rain.RainArea 0, 60, -220 120, 1, 120
+2026-09-23T20:15:22.065Z FXLAB INFO areaE Workspace.FxLab.Area_rain.RainArea.Rain 900 0.9 1.1  70 80  0 0.12 0 1 0.12 0  Enum.NormalId.Bottom Enum.ParticleEmitterShape.Box
+2026-09-23T20:15:22.065Z FXLAB INFO area Workspace.FxLab.Area_fireflies.FirefliesArea 150, 6, -220 80, 8, 80
+2026-09-23T20:15:22.065Z FXLAB INFO areaE Workspace.FxLab.Area_fireflies.FirefliesArea.Fireflies 6 4 7  0.3 1  0 0.25 0 1 0.25 0  Enum.NormalId.Top Enum.ParticleEmitterShape.Box
+2026-09-23T20:15:43.264Z FXLAB CAM snow
+2026-09-23T20:15:52.631Z FXLAB CAM rain
+2026-09-23T20:15:59.046Z FXLAB CAM fireflies
+2026-09-23T20:16:06.662Z FXLAB CAM hit_sparks
+2026-09-23T20:16:48.878Z FXLAB CAM rain
+2026-09-23T20:16:56.728Z FXLAB RAIN true 900 rbxasset://textures/particles/explosion01_implosion_main.dds Enum.ParticleOrientation.VelocityParallel 0 3 0 1 3 0  1 1
+2026-09-23T20:17:16.877Z FXLAB RAINTRY A
+2026-09-23T20:17:17.760Z FXLAB CAM rainA
+2026-09-23T20:17:32.660Z FXLAB RAINTRY B
+2026-09-23T20:17:33.792Z FXLAB CAM rainB
+2026-09-23T20:17:51.159Z FXLAB FFTRY
+2026-09-23T20:17:51.892Z FXLAB CAM fireflies
+2026-09-23T20:19:11.841Z FXLAB RUN true nil true false
+2026-09-23T20:19:27.824Z FXLAB EMITTERS with AppleEmitCount 22
+2026-09-23T20:19:55.239Z FXLAB PLAY bursts-off 22 running true
+2026-09-23T20:20:09.686Z FXLAB PLAY emit coin_burst emitters=2 particles=25 running=true
+2026-09-23T20:20:16.135Z FXLAB PLAY emit explosion emitters=4 particles=67 running=true
+2026-09-23T20:20:23.253Z FXLAB PLAY emit magic_hit emitters=3 particles=24 running=true
+2026-09-23T20:20:32.152Z FXLAB PLAY emit water_splash emitters=3 particles=38 running=true
+2026-09-23T20:20:40.234Z FXLAB PLAY emit confetti emitters=5 particles=100 running=true
+2026-09-23T20:20:48.302Z FXLAB PLAY emit pet_hatch emitters=3 particles=39 running=true
+2026-09-23T20:20:55.734Z FXLAB PLAY emit hit_sparks emitters=2 particles=19 running=true
+2026-09-23T20:21:44.549Z FXLAB PLAY cam coin_burst
+2026-09-23T20:21:48.250Z FXLAB PLAY emit coin_burst emitters=2 particles=25 running=true
+2026-09-23T20:21:52.566Z FXLAB PLAY cam explosion
+2026-09-23T20:21:56.132Z FXLAB PLAY emit explosion emitters=4 particles=67 running=true
+2026-09-23T20:22:00.932Z FXLAB PLAY cam magic_hit
+2026-09-23T20:22:04.332Z FXLAB PLAY emit magic_hit emitters=3 particles=24 running=true
+2026-09-23T20:22:09.048Z FXLAB PLAY cam water_splash
+2026-09-23T20:22:12.448Z FXLAB PLAY emit water_splash emitters=3 particles=38 running=true
+2026-09-23T20:22:16.599Z FXLAB PLAY cam confetti
+2026-09-23T20:22:19.898Z FXLAB PLAY emit confetti emitters=5 particles=100 running=true
+2026-09-23T20:22:23.748Z FXLAB PLAY cam pet_hatch
+2026-09-23T20:22:27.064Z FXLAB PLAY emit pet_hatch emitters=3 particles=39 running=true
+2026-09-23T20:22:30.864Z FXLAB PLAY cam hit_sparks
+2026-09-23T20:22:34.131Z FXLAB PLAY emit hit_sparks emitters=2 particles=19 running=true
+2026-09-23T20:22:49.064Z FXLAB PLAY cam coin_burst
+2026-09-23T20:22:52.546Z FXLAB PLAY emit coin_burst emitters=2 particles=25 running=true
+2026-09-23T20:22:55.897Z FXLAB PLAY cam explosion
+2026-09-23T20:22:59.147Z FXLAB PLAY emit explosion emitters=4 particles=67 running=true
+2026-09-23T20:23:02.130Z FXLAB PLAY cam magic_hit
+2026-09-23T20:23:05.779Z FXLAB PLAY emit magic_hit emitters=3 particles=24 running=true
+2026-09-23T20:23:08.896Z FXLAB PLAY cam water_splash
+2026-09-23T20:23:12.130Z FXLAB PLAY emit water_splash emitters=3 particles=38 running=true
+2026-09-23T20:23:15.262Z FXLAB PLAY cam confetti
+2026-09-23T20:23:18.530Z FXLAB PLAY emit confetti emitters=5 particles=100 running=true
+2026-09-23T20:23:22.079Z FXLAB PLAY cam pet_hatch
+2026-09-23T20:23:25.347Z FXLAB PLAY emit pet_hatch emitters=3 particles=39 running=true
+2026-09-23T20:23:28.563Z FXLAB PLAY cam hit_sparks
+2026-09-23T20:23:31.761Z FXLAB PLAY emit hit_sparks emitters=2 particles=19 running=true
+2026-09-23T20:23:46.760Z FXLAB PLAY cam coin_burst
+2026-09-23T20:23:51.062Z FXLAB PLAY emit coin_burst emitters=2 particles=25 running=true
+2026-09-23T20:23:59.877Z FXLAB PLAY cam explosion
+2026-09-23T20:24:03.076Z FXLAB PLAY emit explosion emitters=4 particles=67 running=true
+2026-09-23T20:24:06.443Z FXLAB PLAY cam magic_hit
+2026-09-23T20:24:09.676Z FXLAB PLAY emit magic_hit emitters=3 particles=24 running=true
+2026-09-23T20:24:13.177Z FXLAB PLAY cam water_splash
+2026-09-23T20:24:16.493Z FXLAB PLAY emit water_splash emitters=3 particles=38 running=true
+2026-09-23T20:24:20.993Z FXLAB PLAY cam confetti
+2026-09-23T20:24:24.225Z FXLAB PLAY emit confetti emitters=5 particles=100 running=true
+2026-09-23T20:24:27.976Z FXLAB PLAY cam pet_hatch
+2026-09-23T20:24:31.192Z FXLAB PLAY emit pet_hatch emitters=3 particles=39 running=true
+2026-09-23T20:24:34.659Z FXLAB PLAY cam hit_sparks
+2026-09-23T20:24:37.893Z FXLAB PLAY emit hit_sparks emitters=2 particles=19 running=true
+2026-09-23T20:24:58.108Z FXLAB PLAY cam coin_burst
+2026-09-23T20:25:01.342Z FXLAB PLAY emit coin_burst emitters=2 particles=25 running=true
+2026-09-23T20:25:04.757Z FXLAB PLAY cam hit_sparks
+2026-09-23T20:25:07.991Z FXLAB PLAY emit hit_sparks emitters=2 particles=19 running=true
+2026-09-23T20:25:29.257Z FXLAB PLAY sparks rbxasset://textures/particles/fire_sparks_main.dds 0 0.35 0 1 0 0  0 0 0 1 1 0  25 45  4 Enum.ParticleOrientation.VelocityParallel 0, 0, 0 false 0 -14, 0.5, 44
+2026-09-23T20:27:46.034Z FXLAB PLAY retexture Workspace.FxLab.Host_fire.FireFX.Embers rbxasset://textures/particles/explosion01_implosion_main.dds
+2026-09-23T20:27:46.034Z FXLAB PLAY retexture Workspace.FxLab.Host_explosion.ExplosionFX.Sparks rbxasset://textures/particles/sparkles_main.dds
+2026-09-23T20:27:46.034Z FXLAB PLAY retexture Workspace.FxLab.Host_lightning.LightningGround.Strike rbxasset://textures/particles/sparkles_main.dds
+2026-09-23T20:27:46.034Z FXLAB PLAY retexture Workspace.FxLab.Host_hit_sparks.HitSparksFX.Sparks rbxasset://textures/particles/sparkles_main.dds
+2026-09-23T20:27:46.035Z FXLAB PLAY retextured 4
+2026-09-23T20:27:48.268Z FXLAB PLAY cam hit_sparks
+2026-09-23T20:27:51.451Z FXLAB PLAY emit hit_sparks emitters=2 particles=19 running=true
+2026-09-23T20:27:54.684Z FXLAB PLAY cam explosion
+2026-09-23T20:27:57.934Z FXLAB PLAY emit explosion emitters=4 particles=67 running=true
+2026-09-23T20:28:18.517Z FXLAB PLAY cam speed_trail
+2026-09-23T20:28:25.200Z FXLAB PLAY speed_trail moved 4s trail=Workspace.FxLab.Host_speed_trail.SpeedTrailTop.Trail enabled=true lifetime=0.44999998807907104
+2026-09-23T20:28:41.965Z FXLAB TR host -70, 0.5, 16 4, 1, 4 Smoky grey
+2026-09-23T20:28:41.965Z FXLAB TR att SpeedTrailTop 0, 1, 0
+2026-09-23T20:28:41.965Z,1760.965576,712bf000,6 [FLog::Output] FXLAB TR trail SpeedTrailTop SpeedTrailBottom true 0.44999998807907104 0.05000000074505806 0 0 0.1 0 1 1 0  0 0.4706 0.902 1 0 1 0.7843 0.4706 1 0  rbxasset://textures/particles/explosion01_implosion_main.dds 0 1 0 1 0.2 0  true 1 2
+2026-09-23T20:28:41.967Z FXLAB TR att SpeedTrailBottom 0, -1, 0
+2026-09-23T20:28:59.048Z FXLAB PLAY cam speed_trail
+2026-09-23T20:29:06.764Z FXLAB PLAY speed_trail moved 5s
+2026-09-23T20:29:23.664Z FXLAB PLAY sound CandyMachineCoinDrops id=rbxassetid://9113703887 loaded=true playing=true pos=0.62 len=3.6 looped=false
+2026-09-23T20:29:24.281Z FXLAB PLAY sound BeepsUi1Sfx id=rbxassetid://9113406784 loaded=true playing=true pos=0.61 len=3.7 looped=false
+2026-09-23T20:29:24.897Z FXLAB PLAY sound AirBurstShortMetallic id=rbxassetid://9113057586 loaded=true playing=true pos=0.61 len=3.0 looped=false
+2026-09-23T20:29:25.513Z FXLAB PLAY sound PhaseySynthPowerUp id=rbxassetid://9117297289 loaded=true playing=true pos=0.62 len=3.4 looped=false
+2026-09-23T20:29:26.114Z FXLAB PLAY sound RobloxUiLoopCalm id=rbxassetid://15675069601 loaded=true playing=true pos=0.59 len=95.5 looped=true
+2026-09-23T20:29:26.731Z FXLAB PLAY sound BrokenSword2Sfx id=rbxassetid://9113592309 loaded=true playing=true pos=0.61 len=1.7 looped=false
+2026-09-23T20:29:27.347Z FXLAB PLAY sound BicycleJumpWood2 id=rbxassetid://9113424280 loaded=true playing=true pos=0.62 len=1.2 looped=false
+2026-09-23T20:29:27.964Z FXLAB PLAY sound Victory id=rbxassetid://12222253 loaded=true playing=true pos=0.61 len=1.2 looped=false
+2026-09-23T20:29:27.964Z FXLAB PLAY sounds done
+2026-09-23T20:29:42.080Z FXLAB STOP true nil
+2026-09-23T20:29:46.763Z FXLAB AFTERSTOP running false rain 400 rbxasset://textures/particles/SquareParticle.png
+2026-09-23T20:29:59.430Z FXLAB EDIT retextured 0
+2026-09-23T20:30:00.429Z FXLAB CAM rain
+2026-09-23T20:30:06.279Z FXLAB CAM fireflies
+2026-09-23T20:30:16.229Z FXLAB CAM hit_sparks
+2026-09-23T20:30:21.862Z FXLAB CAM fire
+2026-09-23T20:30:42.228Z FXLAB CAM fire

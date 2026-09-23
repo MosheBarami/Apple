@@ -1,0 +1,1193 @@
+{"source": "kenney", "url": "https://kenney.nl/assets/particle-pack", "reason": "dropped 'PNG (Black background)' folder: duplicates of the transparent PNGs; dropped Unity samples (non-texture)"}
+{"source": "kenney", "url": "https://kenney.nl/assets/splat-pack", "reason": "dropped 'Default (256px)' size variant and Vector (svg) folder: duplicates of kept 512px PNGs"}
+{"source": "kenney", "url": "https://kenney.nl/assets/smoke-particles", "reason": "dropped preview.png/sample.png (marketing images, not particle textures)"}
+{"source": "github", "url": "https://github.com/Aaditya-Paul-Git/Water-VFX", "reason": "licence 'none' not permissive: catalogued reference-only, 1 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/Aerodymier/roblox-endorsed-weapons-fork", "reason": "licence 'none' not permissive: catalogued reference-only, 7 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/Anonymous1000MC/EngineeringGameTHing", "reason": "licence 'NOASSERTION' not permissive: catalogued reference-only, 10 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/Astra-Corporation/Astra.Admin", "reason": "excluded: exploit/phishing/admin-tool/leak repo (unsafe or not VFX)"}
+{"source": "github", "url": "https://github.com/Bloodhundur/OpenVFX", "reason": "licence 'none' not permissive: catalogued reference-only, 2 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/CodedNil/RobloxArchive", "reason": "licence 'none' not permissive: catalogued reference-only, 1 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/Dankisey/PortableEmptyRobloxRojoProject", "reason": "licence 'none' not permissive: catalogued reference-only, 1 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/Epix-Incorporated/Adonis", "reason": "excluded: exploit/phishing/admin-tool/leak repo (unsafe or not VFX)"}
+{"source": "github", "url": "https://github.com/Epix-Incorporated/Adonis_2.0", "reason": "excluded: exploit/phishing/admin-tool/leak repo (unsafe or not VFX)"}
+{"source": "github", "url": "https://github.com/HwangJeongIn/ProjectR", "reason": "licence 'none' not permissive: catalogued reference-only, 2 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/Incube700/WorldOfBalance_Roblox", "reason": "licence 'none' not permissive: catalogued reference-only, 1 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/MaximumADHD/sm64-roblox", "reason": "excluded: exploit/phishing/admin-tool/leak repo (unsafe or not VFX)"}
+{"source": "github", "url": "https://github.com/PAKILA0/RBX-SpaceDust", "reason": "licence 'none' not permissive: catalogued reference-only, 1 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/QwinkleTee/Qwinkles-Particles-2", "reason": "licence 'none' not permissive: catalogued reference-only, 1 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/Roblox/avatar", "reason": "licence 'NOASSERTION' not permissive: catalogued reference-only, 3 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/Supazuto/Demo", "reason": "licence 'none' not permissive: catalogued reference-only, 3 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/Syngio/JailbreakArchive", "reason": "excluded: exploit/phishing/admin-tool/leak repo (unsafe or not VFX)"}
+{"source": "github", "url": "https://github.com/TheNexusAvenger/Nexus-Admin", "reason": "excluded: exploit/phishing/admin-tool/leak repo (unsafe or not VFX)"}
+{"source": "github", "url": "https://github.com/TrizaSoftware/Rudimentary", "reason": "excluded: exploit/phishing/admin-tool/leak repo (unsafe or not VFX)"}
+{"source": "github", "url": "https://github.com/WildCake/Voxel-Particles-Plugin", "reason": "licence 'none' not permissive: catalogued reference-only, 15 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/edmondyv/Legacy-Roblox-Scripts", "reason": "excluded: exploit/phishing/admin-tool/leak repo (unsafe or not VFX)"}
+{"source": "github", "url": "https://github.com/evilbocchi/eternal-empire", "reason": "licence 'NOASSERTION' not permissive: catalogued reference-only, 7 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/fernando3001/fernandogames", "reason": "licence 'none' not permissive: catalogued reference-only, 50 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/fgt20072007/repo", "reason": "licence 'none' not permissive: catalogued reference-only, 3 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/guibombadoida-prog/Retro-Verse-sistema-de-tools", "reason": "licence 'none' not permissive: catalogued reference-only, 9 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/officialkomickaze/Adonis", "reason": "excluded: exploit/phishing/admin-tool/leak repo (unsafe or not VFX)"}
+{"source": "github", "url": "https://github.com/rblxploit/roblox-scripts", "reason": "excluded: exploit/phishing/admin-tool/leak repo (unsafe or not VFX)"}
+{"source": "github", "url": "https://github.com/rocca1080/VFX-TestPlace-for-Roblox-Studio", "reason": "licence 'none' not permissive: catalogued reference-only, 2 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/travisdmathis/PlumeFXDocs", "reason": "licence 'none' not permissive: catalogued reference-only, 1 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/unrooot/beamchat", "reason": "licence 'none' not permissive: catalogued reference-only, 1 rbxm/rbxmx not downloaded"}
+{"source": "github", "url": "https://github.com/Unreal-Works/roform/blob/74c443caad6426324881143d06a1b9c26fcae933/fixtures/BEAM - grass droplet infuser.rbxmx", "reason": "removed after download: not a VFX model (rig fixture / game fixture matched 'beam' in name)"}
+{"source": "github", "url": "https://github.com/alycoulibal2-sketch/Cadence-Animator/blob/8343e2fbefcbd317a4068fb142cbc42372821210/test/fixtures/studio-rig-builder-r6-r15.rbxm", "reason": "removed after download: not a VFX model (rig fixture / game fixture matched 'beam' in name)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-models-60-days/4646911", "reason": "not VFX-related by title: Free Models 60 days"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-xocoatl-animate-your-ui-elements-with-keyframes-free/4514586", "reason": "not VFX-related by title: [Plugin] Xocoatl - Animate your UI elements with Keyframes! (Free)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-advanced-backpack-system%F0%9F%8E%92-v121-pre-1/4655791", "reason": "not VFX-related by title: [FREE] Advanced Backpack System\ud83c\udf92 [v1.2.1 Pre-1]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/gladrotools-%E2%80%94-a-native-macos-companion-for-roblox-studio/4660150", "reason": "not VFX-related by title: GladRoTools \u2014 a native macOS companion for Roblox Studio"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/calculon%E2%84%A2-episode-6-physics-aware-voronoi-fracture-integration-free-open-source-old/4639585", "reason": "not VFX-related by title: Calculon\u2122 Episode 6 | Physics Aware Voronoi Fracture Integration | (Free + Open Source) {OLD}"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/collection-of-useful-community-services-for-roblox-developers/3173037", "reason": "not VFX-related by title: Collection of Useful Community Services for Roblox Developers"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/best-posts-freepaid/3117786", "reason": "not VFX-related by title: # | best posts - free/paid | #"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/implot-for-iris/4301691", "reason": "not VFX-related by title: ImPlot for Iris"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/introducing-bulletlearn-the-duolingo-for-roblox-scripting/3892854", "reason": "not VFX-related by title: Introducing BulletLearn: The Duolingo for Roblox Scripting"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/chrythms-rpg-kit-free/436287", "reason": "not VFX-related by title: Chrythm's RPG Kit (Free)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/studio-the-all-in-one-solution-to-your-development-needs/3125843", "reason": "not VFX-related by title: Studio+ - The all in one solution to your development needs"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/roblox-ability-pack/4290278", "reason": "not VFX-related by title: Roblox Ability Pack"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/update-3-nickibreekis-fps-template-overhauled/3037501", "reason": "not VFX-related by title: [UPDATE 3] nickibreeki's FPS Template Overhauled"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/superbulletai-launched-the-most-powerful-ai-game-builder-for-roblox-and-its-free-for-everyone-to-try/3856417", "reason": "not VFX-related by title: SuperbulletAI launched the most powerful AI Game Builder for Roblox, and it's free for everyone to try"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/netray-high-performance-roblox-networking-library/3592849", "reason": "not VFX-related by title: NetRay - High-Performance Roblox Networking Library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/cameraeffectsxdopen-source-wet-vision-nausea-more/4139435", "reason": "not VFX-related by title: CameraEffectsXD(Open Source): Wet Vision Nausea & More!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/jack-of-all-trades-ui-plugin-beta-ui-animator-autoscale-studs-presets-templates/4605754", "reason": "not VFX-related by title: Jack of All Trades UI Plugin - *BETA* UI Animator - AutoScale, Studs, Presets, Templates"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/r6-barrage-module-a-simple-module-for-barrages/2823369", "reason": "not VFX-related by title: R6 Barrage Module: A simple module for barrages"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/hitbox-module-by-salvatore/3913281", "reason": "not VFX-related by title: Hitbox Module by Salvatore"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/swiftcast-simple-fast-and-easy-projectiles/4477145", "reason": "not VFX-related by title: SwiftCast - Simple, fast and easy projectiles!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/v123-praxis/4722591", "reason": "not VFX-related by title: [v1.2.3] Praxis"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-poolclass-%E2%80%93-a-compact-instance-pool-for-roblox/4810440", "reason": "not VFX-related by title: [Open Source] PoolClass \u2013 a compact instance pool for Roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/owlknit-a-modern-and-knit-inspired-framework-v112/4761632", "reason": "not VFX-related by title: OwlKnit | A modern and Knit-Inspired Framework | v1.1.2"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/fastcast2-an-improved-version-of-fastcast-with-parallel-scripting-more-extensions-and-statically-typed-a-powerful-modern-projectile-library/4093890", "reason": "not VFX-related by title: FastCast2 - An improved version of FastCast with Parallel scripting, more extensions, and statically typed, A powerful modern projectile library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/25-wcs-a-combat-system-framework/2843521", "reason": "not VFX-related by title: [2.5] WCS - A combat system framework"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/animations-all-in-1-animation-player-and-pre-loader-for-roblox/2504740", "reason": "not VFX-related by title: Animations | All-in-1 animation player and pre-loader for Roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-helpful-softwares-and-tools-for-all-developers/851233", "reason": "not VFX-related by title: Free helpful softwares and tools for all developers!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/lumin-suite-the-next-generation-of-tooling-by-lumin/3427600", "reason": "not VFX-related by title: Lumin Suite - The next generation of tooling by Lumin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/5-attacks-boss-fight-system-control-bosses-from-1-script-easy-customization-free-premade-abilities-and-more/4039013", "reason": "not VFX-related by title: [5 Attacks!] Boss Fight System | Control bosses from 1 script, easy customization, free premade abilities and more"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/performance-heatmap-plugin-tool/3416936", "reason": "not VFX-related by title: Performance Heatmap - Plugin Tool"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/roavatar-renderer-animated-3d-web-renderer-for-avatars/4651341", "reason": "not VFX-related by title: RoAvatar-Renderer | Animated 3D web renderer for avatars"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/idelwws-classic-materials-pack/4807967", "reason": "not VFX-related by title: Idelww's Classic Materials Pack"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/robridge-is-free-%E2%80%94-local-studio-mcp-24-tools-no-pro-tier/4815258", "reason": "not VFX-related by title: RoBridge is FREE \u2014 local Studio MCP, 24 tools, no Pro tier"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-ro2d-a-high-performance-2d-software-rendering-physics-engine-editableimage/4634716", "reason": "not VFX-related by title: [Open Source] Ro2D: A High-Performance 2D Software Rendering & Physics Engine (EditableImage)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/gfx-packs-for-gfx-artists/1046159", "reason": "not VFX-related by title: GFX Packs for GFX Artists"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/optimized-forest-pack/1228976", "reason": "not VFX-related by title: Optimized Forest Pack"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/simple-openrain-module/3669060", "reason": "not VFX-related by title: Simple OpenRain Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/smoothsequence-graph-the-easiest-way-to-edit-numbersequences/3044286", "reason": "not VFX-related by title: SmoothSequence Graph | The easiest way to edit NumberSequences"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-mlp-models/678878", "reason": "not VFX-related by title: Free MLP Models"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/cookie-client-sided-data-management/3025893", "reason": "not VFX-related by title: Cookie (client-sided data management)!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/deleted/3316742", "reason": "not VFX-related by title: Deleted -----------------------------"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/v025-color-palettes-plugin/2705269", "reason": "not VFX-related by title: [v0.25] Color Palettes Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/modern-rig-editor-plugin/260728", "reason": "not VFX-related by title: Modern Rig Editor Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/vanilla-3-the-pragmatic-icon-set-for-roblox-studio/935745", "reason": "not VFX-related by title: Vanilla 3 - The pragmatic icon set for Roblox Studio"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/cullservice-a-tool-to-optimize-your-experiences/2196835", "reason": "not VFX-related by title: CullService - A Tool to Optimize Your Experiences"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/folder-structure-organize-your-game-into-folders-for-easy-readiblity-and-use/1571109", "reason": "not VFX-related by title: Folder Structure - Organize your game into folders for easy readiblity and use"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/making-a-combat-game-with-ranged-weapons-fastcast-may-be-the-module-for-you/133474", "reason": "not VFX-related by title: Making a combat game with ranged weapons? FastCast may be the module for you!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/mediterranean-nature-assets-free-low-poly-realistic/4296744", "reason": "not VFX-related by title: Mediterranean Nature Assets [Free, Low-poly, Realistic]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/the-bandwith-art-learning-how-to-optimize-and-improve-your-game-network-performance/3865361", "reason": "not VFX-related by title: The Bandwith Art: learning how to optimize and improve your game network performance"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/immersive-environments-v2-advanced-package-based-audio-and-lighting-control/962709", "reason": "not VFX-related by title: Immersive Environments V2 - Advanced 'Package'-Based Audio and Lighting Control"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/performance-considerations-improvements-and-optimizations-when-making-a-game/817499", "reason": "not VFX-related by title: Performance considerations, improvements, and optimizations when making a game"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/lb-performance-a-simple-module-that-optimize-your-game-performance/1940376", "reason": "not VFX-related by title: LB Performance - A simple module that optimize your game performance"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/javascriptifying-systems/2018971", "reason": "not VFX-related by title: \"Javascriptifying\" systems"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/run-localscripts-in-the-workspace-universallocalscripts-obsolete/2915121", "reason": "not VFX-related by title: Run LocalScripts in the workspace (UniversalLocalScripts) (Obsolete)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/help-needed-vcommand-admin-panel/2392324", "reason": "not VFX-related by title: [HELP NEEDED] vCommand Admin Panel"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/sword-smith-script-swords-in-just-minutes-free/1289285", "reason": "not VFX-related by title: Sword Smith | Script Swords in Just Minutes! [FREE]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/pixelforge-220-3d-icon-studio/4650354", "reason": "not VFX-related by title: PixelForge 2.2.0 - 3D Icon Studio"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/peakdevs-%E2%80%94-find-roblox-developers-and-opportunities/4745149", "reason": "not VFX-related by title: PeakDevs \u2014 Find Roblox Developers and Opportunities"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/model-photobooth-create-asset-icons-with-ease/4550905", "reason": "not VFX-related by title: Model Photobooth | Create asset icons with ease"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bezier-debris-10/4755754", "reason": "not VFX-related by title: Bezier Debris 1.0"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/peak-devs-new-roblox-developer-marketplace/4741372", "reason": "not VFX-related by title: [Peak Devs] New Roblox Developer Marketplace"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/garbageman-cleanup-module/4639907", "reason": "not VFX-related by title: GarbageMan / cleanup module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/nami-actual-realtime-wave-physics/4687064", "reason": "not VFX-related by title: NAMI | Actual Realtime Wave Physics"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/rex-framework-designed-for-beginners-to-intermediate-developers/824299", "reason": "not VFX-related by title: Rex Framework | Designed for beginners to intermediate developers"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/introducing-localcast-easy-weapon-creation-and-server-side-projectile-casting-precision/3104136", "reason": "not VFX-related by title: Introducing LocalCast: Easy Weapon Creation and Server-Side Projectile Casting Precision!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/betterchat-v3-discontinued/1756348", "reason": "not VFX-related by title: BetterChat V3 | Discontinued"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/whisper-a-remote-communication-library-aiming-to-reduce-remote-overhead/3537869", "reason": "not VFX-related by title: Whisper - A remote communication library aiming to reduce remote overhead"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/lightspeed-shader-system-using-editableimage/2762254", "reason": "not VFX-related by title: Lightspeed Shader System using EditableImage"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/expressiveprompts-customizable-proximityprompt-ui-with-animation-sound-and-more/4513598", "reason": "not VFX-related by title: ExpressivePrompts - Customizable ProximityPrompt UI (with animation, sound, and more!)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/satchel-open-source-modern-backpack-system/2451549", "reason": "not VFX-related by title: Satchel - Open-source modern backpack system"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/inventorymaker-a-framework-to-help-you-create-your-own-inventory-system/3619173", "reason": "not VFX-related by title: InventoryMaker - A framework to help you create your own inventory system"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/projectile-an-all-in-one-projectile-system-10/3932599", "reason": "not VFX-related by title: Projectile+ | An all-in-one projectile system [1.0]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-sabers-unleashed-iii-is-out/3277129", "reason": "not VFX-related by title: [OPEN SOURCE] Sabers Unleashed III is out"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/voxbreaker-an-oop-voxel-destruction-module/2935099", "reason": "not VFX-related by title: VoxBreaker | An OOP Voxel Destruction module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/v2-moon2cutscene-play-moon-animator-2-files/3001411", "reason": "not VFX-related by title: [V2] Moon2Cutscene | Play Moon Animator 2 Files"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-sabers-unleashed-25/3066367", "reason": "not VFX-related by title: [OPEN SOURCE] Sabers Unleashed 2.5"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bootstrapper-make-your-own-framework-in-5-minutes-100-procedural-pipeline/4543851", "reason": "not VFX-related by title: Bootstrapper | Make Your Own Framework In 5 Minutes | 100% Procedural Pipeline"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bridgenet2-v100-a-blazing-fast-networking-library-for-roblox/2189165", "reason": "not VFX-related by title: BridgeNet2, v1.0.0 | A blazing fast networking library for Roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/kulleros-cutscene-exporter-v01/4271005", "reason": "not VFX-related by title: Kullero's Cutscene Exporter: v.01"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/closed-do-not-click/2956400", "reason": "not VFX-related by title: Closed [Do Not Click]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bhristts-bezier-curve-module-tween-support/1510751", "reason": "not VFX-related by title: Bhristt's Bezier Curve Module (Tween support)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/dysymmetrical-an-open-source-asymmetrical-game-engine-framework/4007783", "reason": "not VFX-related by title: Dysymmetrical - An open-source, asymmetrical game engine (framework)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/objectual-ui-blur-12-revision-2/3626057", "reason": "not VFX-related by title: Objectual UI Blur [1.2 / REVISION 2]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/cinnamon-3d-ui-v01/4350284", "reason": "not VFX-related by title: Cinnamon 3D UI [v0.1]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/clean-whitelisted-networking-system/4277192", "reason": "not VFX-related by title: Clean, Whitelisted Networking System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/rblxai-elevate-your-game-with-ai-generated-graphics/2974290", "reason": "not VFX-related by title: RBLX/ai - Elevate Your Game with AI-Generated Graphics"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/simplecast-an-alternative-to-fastcast/2271321", "reason": "not VFX-related by title: SimpleCast - An Alternative to FastCast"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/v2-rorift-create-a-fortnite-like-rift-in-an-instant/2305415", "reason": "not VFX-related by title: [v2] RoRift | Create a Fortnite-like rift in an instant"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ajhs-advanced-jail-and-handcuff-system-v1242/1974651", "reason": "not VFX-related by title: [AJHS] Advanced Jail and Handcuff System (v1.2.4.2)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/some-alarm-system-i-made/3808908", "reason": "not VFX-related by title: Some alarm system I made"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/outdated-cutscenemanager-managecreates-cutscene-of-qualtiy/3423077", "reason": "not VFX-related by title: (Outdated) CutsceneManager - Manage/Creates cutscene of qualtiy"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/decal-surface-displacement-plugin/1123313", "reason": "not VFX-related by title: Decal Surface Displacement Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/custom-wait-the-best-solution-to-yielding/715274", "reason": "not VFX-related by title: Custom wait - the best solution to yielding!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/how-to-make-a-successful-game/3170478", "reason": "not VFX-related by title: How to make a successful game!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/methodtween-a-library-for-tweening-object-methods-with-1-to-1-parity-to-tweenservice/2516809", "reason": "not VFX-related by title: MethodTween - a library for tweening object methods, with 1-to-1 parity to TweenService"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/depreactedopen-source-ots-gun-system/2455167", "reason": "not VFX-related by title: [DEPREACTED]Open Source OTS Gun System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ver-101-crater-generator/3094510", "reason": "not VFX-related by title: [Ver 1.0.1] | Crater Generator"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/webhook-service-v4-the-easiest-and-most-efficient-way-to-send-webhook-requests-to-discord/2200534", "reason": "not VFX-related by title: Webhook Service V4 - The easiest and most efficient way to send webhook requests to Discord"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/modifiers-animation-import-modifiers-animation-from-blender-to-roblox-studio/1240603", "reason": "not VFX-related by title: Modifiers Animation | Import modifiers animation from Blender to Roblox Studio"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/easy-beziercurve-create-any-curve-path/1769449", "reason": "not VFX-related by title: Easy BezierCurve | Create any curve path"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/proximityprompt-release/2732725", "reason": "not VFX-related by title: PROximityprompt + Release!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/mochi-skills-one-piece-fruit-open-source-updated-2-skills-now/1727654", "reason": "not VFX-related by title: Mochi Skills - One Piece Fruit - Open-Source [UPDATED, 2 SKILLS NOW]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/introducing-ro-tweener-beta/1790459", "reason": "not VFX-related by title: Introducing Ro-Tweener! **BETA**"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/basic-geometry-library/1568630", "reason": "not VFX-related by title: Basic Geometry Library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/exposed-why-elite-devs-finish-on-their-games-and-you-don%E2%80%99t-the-trick-theyre-hiding/3627019", "reason": "not VFX-related by title: EXPOSED: Why ELITE Devs FINISH on their Games and YOU DON\u2019T -- The TRICK they're HIDING!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-guiforge-roblox-ui-editorfigma-export/4834077", "reason": "not VFX-related by title: [FREE] GuiForge - Roblox UI editor/Figma export"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/render-booth-free-alternative-to-photobooth/4745736", "reason": "not VFX-related by title: Render Booth - Free alternative to Photobooth"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/inspectra-selecting-nested-ui-shouldnt-be-this-hard-so-i-fixed-it-free/4709792", "reason": "not VFX-related by title: Inspectra | Selecting nested UI shouldn't be this hard (so I fixed it) [FREE!]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/280-pesto-vs-code-%E2%86%94%EF%B8%8F-roblox-studio-sync-tool/4130334", "reason": "not VFX-related by title: [2.8.0] Pesto: VS Code \u2194\ufe0f Roblox Studio Sync Tool"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/cheatblocker-pro%F0%9F%92%BB-v10-make-your-game-safe%E2%9C%85-fully-server-sided/2626118", "reason": "not VFX-related by title: CheatBlocker PRO\ud83d\udcbb V1.0 - make your game safe\u2705 (Fully Server Sided)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/semi-realistic-storm-chasing-kit/2968791", "reason": "not VFX-related by title: Semi-Realistic Storm Chasing Kit"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/alare-obselete/3264629", "reason": "not VFX-related by title: Alare - obselete"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/easypool-a-simple-to-use-system-meant-to-make-object-pooling-easy/3584280", "reason": "not VFX-related by title: EasyPool - a simple to use system meant to make object pooling easy"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/new-environment-tools-plugin/3886611", "reason": "not VFX-related by title: (NEW) Environment Tools Plugin!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/os-game-ruddevs-battle-royale-open-sourced/340548", "reason": "not VFX-related by title: [OS Game] Ruddev's Battle Royale Open Sourced"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/cache-box-a-good-pool-module-for-parts/4339233", "reason": "not VFX-related by title: Cache Box - a good pool module for parts"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/assetcredits-give-credit-for-toolbox-assets-in-your-game/577159", "reason": "not VFX-related by title: AssetCredits - Give credit for toolbox assets in your game"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/simple-canvas-system-gui/1750225", "reason": "not VFX-related by title: Simple Canvas System GUI"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-nightwave-map-builder-a-powerful-tool-for-building-maps-levels-in-roblox/4144061", "reason": "not VFX-related by title: [PLUGIN] Nightwave Map Builder: A Powerful Tool For Building Maps & Levels In Roblox!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/feedback-on-my-damage-handleralpha/1560470", "reason": "not VFX-related by title: Feedback on my Damage handler(Alpha)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-studio-essentials/450560", "reason": "not VFX-related by title: [Plugin] Studio Essentials"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-chunksystem-module-for-easy-2d3d-spatial-partitioning/406832", "reason": "not VFX-related by title: Free ChunkSystem module for easy 2D/3D spatial partitioning"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/checkpoint-a-new-way-to-make-a-checkpoint-system/2092361", "reason": "not VFX-related by title: Checkpoint+ - A new way to make a Checkpoint System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/simpleweather-pluginupdate/1687977", "reason": "not VFX-related by title: SimpleWeather Plugin(Update!)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/updated-free-sprint-system/1215024", "reason": "not VFX-related by title: [Updated] Free Sprint System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/fork3x-a-solo-driven-and-open-source-f3x-btools-mod/3622698", "reason": "not VFX-related by title: Fork3X - A solo-driven and open-source F3X (BTools) mod"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/dual-render-scope-system/226389", "reason": "not VFX-related by title: \"Dual Render\" Scope System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/raycast-hitbox-401-for-all-your-melee-needs/374482", "reason": "not VFX-related by title: Raycast Hitbox 4.01: For all your melee needs!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/beta-roplus-free-roblox-enhancement-extension/4369102", "reason": "not VFX-related by title: [BETA] RoPlus - Free Roblox Enhancement Extension"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/calculon%E2%84%A2-episode-1-ornstein-uhlenbeck-method-for-realistic-camera-shake-free-open-source-old/4552402", "reason": "not VFX-related by title: Calculon\u2122 Episode 1 | Ornstein-Uhlenbeck Method for Realistic Camera Shake | (Free + Open Source) {OLD}"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/calculon%E2%84%A2-episode-2-production-ocean-waves-using-designed-octave-gerstner-free-open-source-old/4569839", "reason": "not VFX-related by title: Calculon\u2122 Episode 2 | Production Ocean Waves using Designed Octave Gerstner | (Free + Open Source) {OLD}"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-ots-gun-system-no-longer-updated/1576415", "reason": "not VFX-related by title: [ OPEN-SOURCE ] OTS Gun System [ NO LONGER UPDATED ]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/boids-flocking-swarming-simulation-luau-algorithm-library-animated-birdbatsinsects-v13-open-source-free-model/2806062", "reason": "not VFX-related by title: \"Boids\" Flocking Swarming Simulation Luau Algorithm - Library Animated Bird+Bats+Insects V.1.3 [Open Source] FREE MODEL"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/simple-breakable-glass-module/1139385", "reason": "not VFX-related by title: Simple Breakable glass module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/animation-tree-blueprint-driven-runtime-animation-editing/2521323", "reason": "not VFX-related by title: Animation Tree | Blueprint-Driven Runtime Animation Editing"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/skinned-mesh-enemies/2087128", "reason": "not VFX-related by title: Skinned mesh enemies"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-functional-game-scripts/4096337", "reason": "not VFX-related by title: Free functional game scripts"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/transformation-system-with-shadow-form-template-free-crawling-animations/3143541", "reason": "not VFX-related by title: Transformation System with Shadow Form Template + Free Crawling Animations"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-simulator-models/3109111", "reason": "not VFX-related by title: Free simulator Models"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/231-cascade-ui-animator-a-keyframe-based-ui-animator-try-the-free-version/4186565", "reason": "not VFX-related by title: [2.3.1] Cascade UI Animator - A Keyframe based UI Animator - Try the free version!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/legacy-visulie-dynamic-data-driven-animations/2707669", "reason": "not VFX-related by title: [LEGACY] Visulie - Dynamic, Data-Driven Animations"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/default-properties-editor-override-any-default-property-of-any-instance/2265182", "reason": "not VFX-related by title: Default Properties Editor // Override any default property of any instance!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/basic-splash-script/4097566", "reason": "not VFX-related by title: Basic splash script"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-xocoatl-animate-your-ui-elements-with-keyframes-old-threat-see-last-post/4587310", "reason": "not VFX-related by title: [Plugin] Xocoatl - Animate your UI elements with Keyframes! (Old Threat, see last post)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/screen-overlay-open-source/3556911", "reason": "not VFX-related by title: Screen overlay [open-source]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/angels-studio-virus-masterlist-protect-your-games/1492632", "reason": "not VFX-related by title: Angel's Studio Virus Masterlist - Protect your games!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/list-of-fixed-animation-r15-compatible-gears/3234827", "reason": "not VFX-related by title: List of Fixed Animation / R15 Compatible Gears"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/gear-remastered-dual-darkhearts/1294464", "reason": "not VFX-related by title: Gear Remastered: Dual Darkhearts"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/nature2d-2d-physics-engine-for-ui-elements/1510935", "reason": "not VFX-related by title: Nature2D - 2D Physics Engine for UI Elements"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/guide-top-5-plugins-that-supercharge-your-building/3669578", "reason": "not VFX-related by title: Guide: Top 5 Plugins That SUPERCHARGE Your Building"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/updateddeterminantai-ai-agent-powered-characters-that-you-can-customize/2740482", "reason": "not VFX-related by title: [Updated]DeterminantAI - AI Agent powered characters that you can customize!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/deity-framework-a-simple-modular-game-frameworkbase/3011673", "reason": "not VFX-related by title: Deity Framework | a simple modular game framework/base"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/calculon%E2%84%A2-episode-3-realistic-projectile-physics-using-exact-exponential-drag-integration-free-open-source-new-format-old/4597777", "reason": "not VFX-related by title: Calculon\u2122 Episode 3 | Realistic Projectile Physics using Exact Exponential Drag Integration | Free + Open Source | New Format {OLD}"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/asset-library-easy-asset-organization-management-old/1279233", "reason": "not VFX-related by title: Asset Library - Easy asset organization & management [OLD]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/calculon%E2%84%A2-episode-4-dynamics-beyond-interpolation-using-post-grad-mathematics-free-open-source-old/4618297", "reason": "not VFX-related by title: Calculon\u2122 Episode 4 | Dynamics Beyond Interpolation using Post-Grad Mathematics | (Free + Open Source) {OLD}"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/supertween-tween-anything/2942829", "reason": "not VFX-related by title: SuperTween - Tween ANYTHING"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/genericcache-an-instance-caching-modulescript/3192725", "reason": "not VFX-related by title: GenericCache - An Instance Caching ModuleScript"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/lua-trainable-rag-local-chatbot-library-local-model-aligns-large-model-geometryworded-math-solvermathgeometry-data-generator-chat-database/2468680", "reason": "not VFX-related by title: Lua Trainable RAG Local Chatbot Library, Local Model Aligns Large Model, Geometry+Worded Math Solver,Math/Geometry Data Generator, Chat Database"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/blu-framework-handler-plugin/2584268", "reason": "not VFX-related by title: BLU Framework Handler Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/general-guide-on-making-roblox-rts-games-what-you-should-know-before-starting/3863212", "reason": "not VFX-related by title: General guide on making Roblox RTS games: What you should know before starting"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/photobooth-plugin/3401720", "reason": "not VFX-related by title: Photobooth Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/shuris-tools-a-collection-of-building-tools/4781011", "reason": "not VFX-related by title: Shuri's Tools - A collection of building tools"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/kinetic-realistic-projectile-physics-13-perfomance-last-module/4638791", "reason": "not VFX-related by title: Kinetic Realistic projectile physics [1.3] - Perfomance Last module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/sirius-zero-lag-cinematic-out-of-body-death-experience-open-source/4696939", "reason": "not VFX-related by title: Sirius - Zero-Lag Cinematic Out-of-Body Death Experience [Open Source]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/areaobserver-a-minimalist-functional-and-data-oriented-approach-to-spatial-detection-v033/4844075", "reason": "not VFX-related by title: AreaObserver - A Minimalist Functional and Data Oriented Approach to Spatial Detection - v0.3.3"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/retroraster-the-real-time-raytracing-solution-for-pixelating-roblox/2954915", "reason": "not VFX-related by title: RetroRaster | The Real-time Raytracing Solution for Pixelating Roblox!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/stop-using-bindableevents-a-guide-to-signals-in-luau/4101875", "reason": "not VFX-related by title: Stop Using BindableEvents: A Guide to Signals in Luau"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/cooldowns-the-ultimate-cooldowndebounce-management-module-system/3885782", "reason": "not VFX-related by title: [Cooldowns] The Ultimate Cooldown/Debounce Management Module System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/996-stickers-sticker-system-overhead-popups-animated-emotes-live-reaction-gui-and-more/4404672", "reason": "not VFX-related by title: [996 Stickers!] Sticker System | Overhead popups, animated emotes, live reaction GUI and more!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/new-version-smile4s-material-footsteps-simple-customizable/2725074", "reason": "not VFX-related by title: (NEW VERSION) Smile4's Material Footsteps | Simple & Customizable"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/common-beginner-client-server-mistakes/2426194", "reason": "not VFX-related by title: Common Beginner Client / Server Mistakes"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/exe-the-apex-of-admin-panels/2434866", "reason": "not VFX-related by title: Exe | The Apex of Admin Panels"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/sync-footstep-noise-to-walkspeed/1452034", "reason": "not VFX-related by title: Sync Footstep Noise to WalkSpeed"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/graphics-preset-module/678523", "reason": "not VFX-related by title: Graphics Preset Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/chattags-an-easy-way-to-make-a-custom-chat-tags/2493753", "reason": "not VFX-related by title: ChatTags - An easy way to make a Custom Chat Tags!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/buffermodule-a-system-built-to-help-combat-input-latency-on-roblox/954045", "reason": "not VFX-related by title: BufferModule | A system built to help combat input latency on Roblox!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/picular-back-soon/914148", "reason": "not VFX-related by title: Picular - Back Soon"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/perclean-v25-for-easy-implementation-of-low-quality-mode/1662312", "reason": "not VFX-related by title: Perclean (v2.5) - For easy implementation of low-quality mode!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/save-your-player-data-with-profileservice-datastore-module/667805", "reason": "not VFX-related by title: Save your player data with ProfileService! (DataStore Module)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/manys-ray-tracer-21-gi-and-more/2895487", "reason": "not VFX-related by title: Many's Ray Tracer 2.1! [GI and MORE!]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/shapecasthitbox-for-all-your-melee-needs-v025/3624241", "reason": "not VFX-related by title: ShapecastHitbox: For all your melee needs! [V.0.2.5]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/optimized-interactive-grass-plugin/3054094", "reason": "not VFX-related by title: Optimized Interactive Grass Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/uistrokeadjuster-properly-scale-your-uistrokes/1889014", "reason": "not VFX-related by title: UIStrokeAdjuster - Properly scale your UIStrokes!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/hologram-robloxs-first-3d-proximityprompt-system-from-games-like-detroit-become-human-v021/3421356", "reason": "not VFX-related by title: Hologram | Roblox's First 3D ProximityPrompt System from games like Detroit: Become Human | v0.2.1"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/simple-scripts-for-beginners/133258", "reason": "not VFX-related by title: Simple Scripts For Beginners"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/puddle-system-object-oriented-4-examples-footprints-body-textures-customizable-efficient-the-only-one-you-will-need/3898476", "reason": "not VFX-related by title: Puddle System: Object Oriented - 4 Examples, Footprints, Body textures, Customizable, Efficient, the only one you will need"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/player-transparency-controller/3338305", "reason": "not VFX-related by title: Player Transparency Controller"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/roblox-scripting-roadmap-learning-resource-list/808430", "reason": "not VFX-related by title: Roblox Scripting Roadmap & Learning Resource List"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ez-hitbox-hitbox-made-easy/3738357", "reason": "not VFX-related by title: EZ Hitbox - Hitbox made easy"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/a-quick-way-to-detect-exploiters-that-use-electron/2741095", "reason": "not VFX-related by title: A quick way to detect exploiters that use Electron"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/easysprite-spritesheet-handler-flipbook-animator/3055290", "reason": "topic fetch failed"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/vision-new-declarative-ui-module/4845347", "reason": "not VFX-related by title: VISION | New declarative UI module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/luaucss-stylesheets-that-you-author-like-css/4813099", "reason": "not VFX-related by title: LuauCSS: StyleSheets that you author like CSS"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/stroke-tool-texture-lab-quickly-edit-your-images/3605876", "reason": "not VFX-related by title: [STROKE TOOL] Texture Lab - Quickly edit your images!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/alpha-bleeder-discord-bot-fix-your-images-for-free/2798249", "reason": "not VFX-related by title: Alpha Bleeder Discord Bot: Fix your images - For free!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/realistic-fft-ocean/2950964", "reason": "not VFX-related by title: Realistic FFT Ocean"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ui-labs-modern-storybook-plugin-for-roblox/3109174", "reason": "not VFX-related by title: UI Labs - Modern Storybook Plugin for Roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/spriteplayer-import-and-play-videos-gifs-spritesheets-with-ease-plugin/3686079", "reason": "not VFX-related by title: SpritePlayer - Import and play Videos / GIFs / Spritesheets with ease [PLUGIN]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/elttob-relight-%E2%80%94-laser-fast-light-painting/2923482", "reason": "not VFX-related by title: Elttob Relight \u2014 laser-fast light painting"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/awesome-roblox-a-curated-list-of-awesome-things-related-to-roblox-oss/3215840", "reason": "not VFX-related by title: Awesome Roblox: A curated list of awesome things related to Roblox OSS"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/onyxui-quick-customizable-ui-components-for-fusion/3145229", "reason": "not VFX-related by title: OnyxUI - Quick, customizable UI components for Fusion"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/basedlod-smart-lod-with-runtime-generated-models/3655518", "reason": "not VFX-related by title: BasedLOD - Smart LOD with runtime generated models"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/massive-sound-kit-with-142-sounds-all-categorized-taking-suggestions-for-new-sound-categories/1617141", "reason": "not VFX-related by title: Massive sound kit with 142 sounds, all categorized (Taking suggestions for new sound categories)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/feature-complete-roblox-typescript-game/2591073", "reason": "not VFX-related by title: Feature Complete Roblox Typescript Game"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/dogutsunes-assetid-cleaner/1616452", "reason": "not VFX-related by title: Dogutsune's AssetId Cleaner"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/clientcast-a-client-based-idiosyncratic-hitbox-system/895217", "reason": "not VFX-related by title: ClientCast - A Client-based, Idiosyncratic Hitbox System!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/simplepath-pathfinding-module/1196762", "reason": "not VFX-related by title: SimplePath - Pathfinding Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/topbarplus-v340-construct-topbar-icons-with-ease-customise-them-with-themes-dropdowns-captions-labels-and-more/1017485", "reason": "not VFX-related by title: TopbarPlus v3.4.0 | Construct topbar icons with ease; customise them with themes, dropdowns, captions, labels and more"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/easy-tiling-showcase/4682739", "reason": "not VFX-related by title: Easy Tiling [SHOWCASE]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bytenet-max-upgraded-networking-library-w-buffer-serialisation-strict-luau-and-remotefunction-support-v021/3268469", "reason": "not VFX-related by title: ByteNet Max | Upgraded networking library w/ buffer serialisation, strict Luau and RemoteFunction support | v0.2.1"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/parallel-scheduler-parallel-lua-made-easy-and-performant/2535929", "reason": "not VFX-related by title: Parallel Scheduler - Parallel lua made easy and performant"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/gsm-the-ultimate-developer-library/1910573", "reason": "not VFX-related by title: GSM - The Ultimate Developer Library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/introducing-lightingservice/2051221", "reason": "not VFX-related by title: Introducing LightingService!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/raddish-redis-like-cache-networking-for-roblox/4027336", "reason": "not VFX-related by title: Raddish - Redis-like Cache & Networking for Roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/volt-an-efficient-powerful-game-framework/1265274", "reason": "not VFX-related by title: Volt - An efficient & powerful game framework"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/warp-very-fast-powerful-networking-library/2779813", "reason": "not VFX-related by title: Warp - very fast & powerful networking library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/misc-scripts-modules-my-smaller-projects/383771", "reason": "not VFX-related by title: Misc Scripts & Modules - My smaller projects"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/genericsignal-somewhat-fast-signal-implementation/3989546", "reason": "not VFX-related by title: GenericSignal | Somewhat Fast Signal Implementation"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/text-compression/163637", "reason": "not VFX-related by title: Text compression"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/moderationservice-simplyifying-moderation/2023487", "reason": "not VFX-related by title: ModerationService - Simplyifying Moderation"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/v124-synmax-a-powerful-and-fast-command-line-for-developers/818497", "reason": "not VFX-related by title: [v1.2.4] Synmax - A Powerful and Fast Command Line for Developers"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/frequency-based-sound-attenuation-script/3228880", "reason": "not VFX-related by title: Frequency-Based Sound Attenuation Script"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/notificationstyle-module-powered-notifications/1587487", "reason": "not VFX-related by title: NotificationStyle - Module Powered Notifications"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-extrascale-autoscale-lite-evolved/4123839", "reason": "not VFX-related by title: [Plugin] ExtraScale | AutoScale Lite, evolved"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/knightmare-server-side-anti-cheat-service-updated-572025/2223732", "reason": "not VFX-related by title: Knightmare Server-side Anti-Cheat Service [updated 5/7/2025]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/treegrapher-treenode-create-skillprogression-trees-and-any-tree-graph-with-ease-tree-data-structure-included/3913679", "reason": "not VFX-related by title: TreeGrapher + TreeNode | Create skill/progression trees, and any tree graph with ease! (Tree Data Structure included)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/searchmodule-accurate-and-effective-search-barsengines-made-easily/1309604", "reason": "not VFX-related by title: SearchModule+ | Accurate and effective Search Bars/Engines made easily!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/sound-visualization-another-way-to-make-your-experience-accessible/3316142", "reason": "not VFX-related by title: Sound Visualization - Another way to make your experience Accessible"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/rbundle-a-roblox-studio-package-manager/1472610", "reason": "not VFX-related by title: rBundle | A Roblox Studio package manager"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/emoji-module-with-all-supported-emojis-except-country-flags/2093348", "reason": "not VFX-related by title: Emoji module with all supported emojis (Except country flags)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/customcollisions-for-collisions-and-clashes-between-projectiles-and-structures/3867390", "reason": "not VFX-related by title: CustomCollisions - For collisions and clashes between projectiles and structures"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/table-viewer-module/3586512", "reason": "not VFX-related by title: Table Viewer Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/power-pole-plugin/2069109", "reason": "not VFX-related by title: Power Pole Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/vibe-code-city-a-plugin-for-professional-vibe-coders/4571091", "reason": "not VFX-related by title: Vibe Code City -- A PLUGIN for professional VIBE CODERS"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/quicknet-v035-up-to-10x-faster-than-remoteevents-drop-in-networking-library/4624342", "reason": "not VFX-related by title: QuickNet v0.3.5 | Up to 10x Faster than RemoteEvents | Drop-in Networking Library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/jolt-a-high-performance-type-safe-and-developer-friendly-networking-library-for-roblox/4095212", "reason": "not VFX-related by title: Jolt | A high-performance, type-safe, and developer-friendly networking library for Roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/dominus-2-an-mcp-server-for-roblox-studio-46-tools/4833955", "reason": "not VFX-related by title: Dominus 2: an MCP server for Roblox Studio (46 tools)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/totable-toinstance-convert-tables-to-instances-and-vice-versa/998867", "reason": "not VFX-related by title: ToTable & ToInstance - Convert tables to instances and vice versa"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/we-built-a-full-game-with-2-people-using-ai-in-studio-heres-the-tool/4308613", "reason": "not VFX-related by title: We Built a Full Game With 2 People Using AI in Studio, Here's the Tool"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/vintage-admin-open-sourced-admin-module-for-rp-games/2782870", "reason": "not VFX-related by title: Vintage Admin: Open Sourced Admin Module for RP Games"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/unreliable-number-%E2%80%94-a-non-reliable-number-but-wait/3708915", "reason": "not VFX-related by title: Unreliable Number \u2014 A Non-Reliable Number... But wait!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bytenet-advanced-networking-library-w-buffer-serialization-strict-luau-absurd-optimization-and-rbxts-support-043/2733365", "reason": "not VFX-related by title: ByteNet | Advanced networking library w/ buffer serialization, strict Luau, absurd optimization, and rbxts support. | 0.4.3"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/v020-quantum-spring-tween-engine/4137405", "reason": "not VFX-related by title: [v0.2.0] Quantum - spring tween engine"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bring-ui-animations-to-life-with-roact-spring-a-modern-spring-based-animation-library/1670138", "reason": "not VFX-related by title: Bring UI animations to life with roact-spring, a modern spring-based animation library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/2d-game-engine-upside-engine/2310896", "reason": "not VFX-related by title: 2D Game Engine | Upside Engine"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/table-to-string-converter/712610", "reason": "not VFX-related by title: Table to String converter"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ultrafast-chess-engine-in-pure-luau-open-source-10m-positionssec-movegen-can-see-up-to-15-moves-ahead/4516705", "reason": "not VFX-related by title: Ultrafast Chess Engine in pure Luau (open-source): 10M positions/sec movegen, can see up to 15-moves ahead!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bloxora-the-best-roblox-group-management-platform/3873327", "reason": "not VFX-related by title: Bloxora - The Best Roblox Group Management Platform"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/outated-cr%C3%A9me-engine/2304088", "reason": "not VFX-related by title: (Outated) Cr\u00e9me Engine"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/scythe-a-data-oriented-cleanup-library-for-roblox-luau/4759291", "reason": "not VFX-related by title: Scythe - A data-oriented cleanup library for Roblox Luau"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/audiolink-v01-server-authoritative-voice-audio-channel-framework/4808219", "reason": "not VFX-related by title: AudioLink v0.1 - Server-Authoritative Voice & Audio Channel Framework"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/containermechanic-create-and-manage-mechanisms-easily/4638837", "reason": "not VFX-related by title: ContainerMechanic - create and manage mechanisms easily"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/sound-system-music-player-free-roblox-music-player-gui-sfx-system-6-skins-15-tracks/4849865", "reason": "not VFX-related by title: Sound System & Music Player - Free Roblox Music Player GUI & SFX System (6 Skins, 15 Tracks)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-edgewise-the-best-way-of-customizing-your-image-assets/4798163", "reason": "not VFX-related by title: [Plugin] Edgewise | The best way of customizing your image assets"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/scriptbench-v310-free-open-source-heavy-duty-graphing-benchmarker/3815286", "reason": "not VFX-related by title: Scriptbench v3.1.0 | Free & Open-source heavy duty graphing benchmarker!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/customizable-camera-bobbing/4639773", "reason": "not VFX-related by title: Customizable Camera Bobbing"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-lightkit-%E2%80%94-save-apply-lighting-presets-instantly-free/4711402", "reason": "not VFX-related by title: [Plugin] LightKit \u2014 Save & Apply Lighting Presets Instantly [FREE]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/multi-photobooth/4852166", "reason": "not VFX-related by title: Multi-Photobooth"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-plugin-ui-plus-advanced-and-free-ui-tools/4678479", "reason": "not VFX-related by title: (free plugin) UI Plus - Advanced and free UI Tools"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-gui-shine-module/4816664", "reason": "not VFX-related by title: [Open Source] GUI Shine Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/luck-buffing-rng-solution/4711280", "reason": "not VFX-related by title: Luck buffing RNG solution"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/musicmcp-an-experimental-agent-controlled-music-production-tool/4806058", "reason": "not VFX-related by title: MusicMCP - An experimental, agent-controlled music production tool"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/dialoguekit-free-drop-in-npc-dialogue-system/4636187", "reason": "not VFX-related by title: DialogueKit - Free Drop-In NPC Dialogue System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/simulator-ui-pro-v10-plugin-made-to-make-modern-ui-easier-to-make/4679693", "reason": "not VFX-related by title: Simulator UI Pro V1.0 | Plugin made to make modern ui easier to make!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-contour-terrain-v133-water-rivers-linked-waterfalls/4875253", "reason": "not VFX-related by title: [Plugin] Contour Terrain v1.3.3 | Water, Rivers & Linked Waterfalls"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/kripton-anticheat/4636724", "reason": "not VFX-related by title: Kripton AntiCheat"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/v2-release-figma-importer-assistant-a-free-and-faster-way-to-create-your-ui/2961561", "reason": "not VFX-related by title: [V2 RELEASE] Figma Importer Assistant, a free and faster way to create your UI"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/rspring-library-lightweight-hookes-law-spring-module/4679594", "reason": "not VFX-related by title: RSpring Library - Lightweight hooke's law spring module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/gifttools-a-powerful-customizable-tool-gifting-system/4754403", "reason": "not VFX-related by title: GiftTools+ | A Powerful & Customizable Tool Gifting System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/release-discord-webhook-proxy-your-webhooks-turbocharged/4647835", "reason": "not VFX-related by title: [Release] Discord Webhook Proxy: Your Webhooks, Turbocharged"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/fox-audio-studio-audio-playereditor-plugin/4655777", "reason": "not VFX-related by title: Fox Audio: Studio Audio Player/Editor Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/itsmartods-datastore-system-10/4716840", "reason": "not VFX-related by title: ItsMartod's DataStore System [1.0]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/framewisp-%E2%80%94-turn-a-figma-frame-into-native-roblox-ui-in-one-click/4759239", "reason": "not VFX-related by title: Framewisp \u2014 turn a Figma frame into native Roblox UI in one click"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/roconui-a-simple-and-customizable-icon-pack-for-roblox-ui-with-over-1600-icons/4865996", "reason": "not VFX-related by title: RoconUI - a Simple and Customizable Icon Pack for Roblox UI with over 1,600 Icons"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/nimbus-parallel-flow-multi-threading-library-for-roblox/4693785", "reason": "not VFX-related by title: Nimbus Parallel Flow - Multi-Threading Library for Roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/screen3d-a-3d-ui-framework-that-just-works/3273671", "reason": "not VFX-related by title: Screen3D - A 3D UI framework that just works"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/botstop-stop-bots-before-they-affect-your-game/1235849", "reason": "not VFX-related by title: BotStop | Stop bots before they affect your game!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/simple-first-and-third-person-camera-module/3633917", "reason": "not VFX-related by title: Simple First and Third Person Camera Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/rosound-221-audio-discovery-made-simple-15k-installs/1564911", "reason": "not VFX-related by title: RoSound 2.2.1: Audio discovery made simple [1.5K+ installs]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/jobcommision-payment-calculator/3179226", "reason": "not VFX-related by title: Job/Commision Payment Calculator"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/roblox-weapons-kit-fix/3064866", "reason": "not VFX-related by title: Roblox Weapons Kit Fix"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ripple-module-version-15/3564852", "reason": "not VFX-related by title: Ripple Module [Version 1.5]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/pop-ups-easily-customizable-monetization/2872034", "reason": "not VFX-related by title: Pop Ups | Easily Customizable Monetization"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/symbiote-shader-exemple-of-how-to-use-editable-image/3466121", "reason": "not VFX-related by title: \"Symbiote Shader\" - Exemple of how to use Editable Image"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/area-sound-kit-v52/2226619", "reason": "not VFX-related by title: Area Sound Kit [v5.2]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/xz-percentage-color-randomizer/3081841", "reason": "not VFX-related by title: XZ Percentage Color Randomizer"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/zyntex-the-real-time-roblox-dashboard-for-moderation-logs-and-metrics/3854072", "reason": "not VFX-related by title: Zyntex - The real-time Roblox dashboard for moderation, logs, and metrics"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-a-plugin-that-makes-gamepasses-easy-pass-creator-start-earning-now/2468161", "reason": "not VFX-related by title: [Plugin] A plugin that makes gamepasses. Easy Pass Creator, Start earning now!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/fast-ui-plugin-open-source/1890612", "reason": "not VFX-related by title: Fast UI plugin! [ OPEN SOURCE ]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/introducing-smartshutdown/1061298", "reason": "not VFX-related by title: Introducing SmartShutdown!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-shiny-gui-object-function/3163006", "reason": "not VFX-related by title: Free shiny gui object function"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/better-cheatblocker-free-serverside/2633734", "reason": "not VFX-related by title: Better cheatblocker (free, serverside.)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-plugin-tween-master-1-click-ui-animations-anchorpoint-fixer/4490027", "reason": "not VFX-related by title: [Free Plugin] Tween Master - 1-Click UI Animations & AnchorPoint Fixer"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/uncopylocked-tetris-like-game/938411", "reason": "not VFX-related by title: Uncopylocked - Tetris-like game"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/needs-maintainer-nexus-vr-character-model-open-source/109055", "reason": "not VFX-related by title: (Needs Maintainer) Nexus VR Character Model [Open Source]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/post-deleted-by-author/2909637", "reason": "not VFX-related by title: Post deleted by author"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ui-module-by-devscripter/2628183", "reason": "not VFX-related by title: UI Module by DevScripter!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/psa-enabling-loadstringenabled-doesnt-instantly-jeopardise-your-games/320307", "reason": "not VFX-related by title: PSA: Enabling LoadStringEnabled doesn't instantly jeopardise your games"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/truly-dynamic-lighting-module-advanced-lighting-capabilities-and-control/508173", "reason": "not VFX-related by title: \"Truly Dynamic Lighting\" Module (Advanced Lighting Capabilities and Control)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/an-effect-similar-to-stereoscopic-3d-effectchromatic-aberrationanaglyph/2917101", "reason": "topic fetch failed"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/fov-lighting-based-sound-visualizer/1607611", "reason": "not VFX-related by title: FOV-Lighting Based sound visualizer"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/mass-uncopylocked-35-free-games-and-projects/2880269", "reason": "not VFX-related by title: Mass Uncopylocked | 35 free games and projects"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/realistic-boat-system-floats-on-terrain-water-optimized-free/3541235", "reason": "not VFX-related by title: Realistic Boat System (Floats on terrain water) | Optimized, Free"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ui-assistant-v147-free-ui-plugin-tool/3193651", "reason": "not VFX-related by title: UI Assistant V1.4.7 - Free UI Plugin Tool"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/spriteclip-sprite-sheet-animation-module/294195", "reason": "not VFX-related by title: SpriteClip Sprite Sheet Animation Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/chatplus-%E2%80%94-for-your-chat-modification-and-formatting-needs/674457", "reason": "not VFX-related by title: ChatPlus \u2014 For your chat modification and formatting needs!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/audio-occlusion-muffle-sound-module-free-easy-to-use/4247727", "reason": "not VFX-related by title: Audio Occlusion / Muffle Sound Module (Free & Easy to Use)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-shirt-shadows-and-shading/1607565", "reason": "not VFX-related by title: Free shirt shadows and shading"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bloxbox-toolbox-but-no-backdoors/1249767", "reason": "not VFX-related by title: Bloxbox - Toolbox but no backdoors"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-ezbuttons-v2-animate-ui-buttons-easily/3826180", "reason": "not VFX-related by title: [Plugin] EZButtons V2 - Animate UI Buttons Easily!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/proximity-prompt-pack-wip/944554", "reason": "not VFX-related by title: Proximity Prompt Pack [WIP]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/examples-basepart-deconstructor-bpd-simplify-basepart-geometry/1295184", "reason": "not VFX-related by title: [Examples!] BasePart Deconstructor (BPD) - Simplify BasePart Geometry"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/tween-module-v3-free-tweening-module/3147542", "reason": "not VFX-related by title: Tween Module [V3] - Free Tweening Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/playerstate-profilestore-replica-without-the-headache/3766568", "reason": "not VFX-related by title: PlayerState: ProfileStore + Replica, Without the Headache"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/new-shops-popmall-%E2%80%93-free-catalog-avatar-editor/1907145", "reason": "not VFX-related by title: New! Shops; Popmall \u2013 Free Catalog & Avatar Editor"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/game-generator-the-ultimate-generator/3000490", "reason": "not VFX-related by title: Game Generator | The Ultimate Generator"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/remade-or-own-free-models-open-sourced/2448914", "reason": "not VFX-related by title: Remade or Own Free Models | Open Sourced"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/take-my-music-for-free/1400656", "reason": "not VFX-related by title: Take my music for FREE!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/light-transport-modelling/2204689", "reason": "not VFX-related by title: Light Transport Modelling"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/high-quality-open-source-revolver/1566503", "reason": "not VFX-related by title: High-quality Open Source Revolver"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/badgeservice3-set-up-badges-for-free-in-your-project/1112765", "reason": "not VFX-related by title: BadgeService3 | Set up badges for free in your project!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/file-linked-free-animated-settings-ui/2970529", "reason": "not VFX-related by title: (FILE LINKED) [Free] Animated Settings UI"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/introducing-suiteui-lite-a-free-full-ui-framework-for-your-game/694868", "reason": "not VFX-related by title: Introducing SuiteUI Lite - A free, full UI framework for your game"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/archived-moonscale/4138089", "reason": "not VFX-related by title: [Archived] MoonScale"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-easy-dialogue-system/3061677", "reason": "not VFX-related by title: [OPEN SOURCE] Easy Dialogue System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/grand-admin-a-very-secure-high-quality-lightweight-very-customisable-and-easy-to-use-admin-system/2628920", "reason": "not VFX-related by title: Grand Admin | A very secure, high quality, lightweight, very customisable and easy to use admin system"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-star-wars-gfx/540299", "reason": "not VFX-related by title: Free Star Wars GFX"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/rospeak-a-customizable-npc-chat-and-dialogue-system-version-1/3772098", "reason": "not VFX-related by title: RoSpeak | A customizable NPC chat and dialogue system. (Version 1)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-cartoon-ui-pack/219831", "reason": "not VFX-related by title: FREE! Cartoon UI Pack"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/physical-box-pusher-tech-demo-open-source-update-11252025-box-lifting/3315074", "reason": "not VFX-related by title: Physical Box Pusher Tech Demo [Open Source] UPDATE 11/25/2025: BOX LIFTING"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/new-shiny-proximity-prompt/2715898", "reason": "not VFX-related by title: [NEW] Shiny Proximity Prompt"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/task-scheduler-control-performance-hits-from-intensive-operations/21780", "reason": "not VFX-related by title: Task Scheduler - Control performance hits from intensive operations"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/introducing-the-more-components-plugin/2705961", "reason": "not VFX-related by title: Introducing the \"More Components\" Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/plugin-animation-in-place-freeze-animation-at-axis-xyz-as-one-click/3783871", "reason": "not VFX-related by title: [PLUGIN] Animation In Place: Freeze animation at Axis X/Y/Z as ONE Click"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/skinnedgrass-performant-interactive-foliage/3364812", "reason": "not VFX-related by title: SkinnedGrass - Performant interactive foliage"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/text-custom-fonts-advanced-control/3521684", "reason": "not VFX-related by title: Text+ | Custom fonts & advanced control"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-icons-for-your-games/1048976", "reason": "not VFX-related by title: Free Icons for your Games"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/asa-audio-spreadsheet-assistant-must-see/1705786", "reason": "not VFX-related by title: ASA, Audio Spreadsheet Assistant (MUST SEE!)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/moon-phases-plugin/502095", "reason": "not VFX-related by title: Moon Phases Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/radar-charts-module/3790515", "reason": "not VFX-related by title: Radar charts module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-detailed-lightsabers-i-made/754280", "reason": "not VFX-related by title: Open-Source detailed Lightsabers I made"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/eventcode-beta-code-without-coding/1192490", "reason": "not VFX-related by title: EventCode BETA | Code without coding!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-sekiro-grapple-hook/438788", "reason": "not VFX-related by title: [open source] sekiro grapple hook"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/skill-ability-previewer-plugin/3011780", "reason": "not VFX-related by title: Skill / Ability Previewer Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/alare-20-cancelled/4014227", "reason": "not VFX-related by title: Alare 2.0 - cancelled"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/notification-system/3596280", "reason": "not VFX-related by title: Notification System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-sourced-admin-commands-outdated-v189-unreliable/1161457", "reason": "not VFX-related by title: Open sourced admin commands! [OUTDATED] [V1.89] [UNRELIABLE]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/brandons-admin-commands-v22-unreliable-old/1381911", "reason": "not VFX-related by title: Brandon's admin commands V2.2 [UNRELIABLE] [OLD]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/repopack-codebase-bundler-for-ai/3558657", "reason": "not VFX-related by title: RepoPack - Codebase Bundler for AI"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/path3d-a-3d-equivalent-to-path2d/3349633", "reason": "not VFX-related by title: Path3D: A 3d Equivalent to Path2D"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/server-authority-client-beta-was-a-damn-nightmare-heres-some-advice/4712758", "reason": "not VFX-related by title: Server Authority Client Beta WAS a damn nightmare. Here's some advice"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/hapticpulse-discontinued-dynamic-haptic-feedback-library/2877295", "reason": "not VFX-related by title: HapticPulse [DISCONTINUED] | Dynamic Haptic Feedback Library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/vex-20-remastered-for-your-voxel-destruction-needs/1619456", "reason": "not VFX-related by title: Vex 2.0 | Remastered for your Voxel Destruction needs"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/recorder-module-record-any-property-and-attribute-of-any-roblox-instance-with-ease-and-then-playback-recorded-data/2660683", "reason": "not VFX-related by title: Recorder Module - Record any property and attribute of any roblox Instance with ease, and then \"playback\" recorded data"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/somewhat-decent-spritesheet-player-kit/1585064", "reason": "not VFX-related by title: Somewhat decent spritesheet player kit"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/working-with-the-replication-boundary/498521", "reason": "not VFX-related by title: Working with the Replication Boundary"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-audio-manager/682714", "reason": "not VFX-related by title: [Open Source] Audio Manager"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-sourced-projectilehandler-v22/3136644", "reason": "not VFX-related by title: [OPEN SOURCED] ProjectileHandler V2.2"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/list-of-built-in-roblox-imagestextures/2960345", "reason": "not VFX-related by title: List of built in roblox images/textures"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/soundbox-sound-event-editor-plugin/3384286", "reason": "not VFX-related by title: Soundbox - sound event editor plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/voxel-physics-an-oop-user-friendly-physics-destruction-module/2953123", "reason": "not VFX-related by title: Voxel Physics | An OOP user-friendly physics destruction module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/archived-rewind-server-authoritative-hit-validation-custom-character-replication/4160622", "reason": "not VFX-related by title: [Archived] Rewind - Server-Authoritative Hit Validation & Custom Character Replication"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ez-camera-shake-ported-to-roblox/98482", "reason": "not VFX-related by title: EZ Camera Shake ported to Roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/attributetimer-easiest-way-to-add-timers-to-any-object/3642193", "reason": "not VFX-related by title: AttributeTimer | Easiest Way to Add Timers to Any Object!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/new-bunny-hoppy-movement-code/1220394", "reason": "not VFX-related by title: New Bunny Hoppy Movement Code"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/release-hitmesh-pro-%E2%80%93-advanced-shapecast-hitbox-system/3275819", "reason": "not VFX-related by title: [RELEASE] HitMesh Pro \u2013 Advanced Shapecast Hitbox System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/vetra-every-shot-lands-where-physics-says-it-should/4549664", "reason": "not VFX-related by title: Vetra - Every shot lands where physics says it should"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/cameraservice-a-new-camera-for-a-new-roblox/1988655", "reason": "not VFX-related by title: CameraService: A New Camera for a New Roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/calculon%E2%84%A2-x-me7474-episode-5-bettertween-x-alvionics-labs%E2%84%A2-advanced-tweening-for-full-scale-production-free-open-source-old/4628899", "reason": "not VFX-related by title: Calculon\u2122 x @me7474 Episode 5 | BetterTween x Alvionics Labs\u2122 Advanced Tweening for Full-Scale Production | (Free + Open Source) {OLD}"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/custom-renderer-by-frodev/2995108", "reason": "not VFX-related by title: Custom renderer | by frodev"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/voxel-destruction-without-getpartsin-methods/4442974", "reason": "not VFX-related by title: Voxel Destruction without :GetPartsIn methods"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/legendry-code-editor-download/4806263", "reason": "not VFX-related by title: Legendry code editor + download"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/deprecated-streamx-reduce-lag-and-prevent-map-cloning/1992484", "reason": "not VFX-related by title: [DEPRECATED] StreamX - Reduce lag and prevent map cloning"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/20-useful-assets/882130", "reason": "not VFX-related by title: 20+ Useful Assets"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/asset-dictionary-a-fast-and-easy-way-to-get-assets/2433634", "reason": "not VFX-related by title: Asset Dictionary | A fast and easy way to get Assets"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/quick-menu-open-source-plugin-multi-tool/4432374", "reason": "not VFX-related by title: Quick Menu - Open Source Plugin Multi-Tool!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/p6-rig-a-minecraft-like-rig-that-works-with-64x64-textures-and-r6-animations/1464854", "reason": "not VFX-related by title: P6 Rig | A Minecraft-Like rig that works with 64x64 Textures and R6 Animations"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/jonswap-ocean-liquid/3661760", "reason": "not VFX-related by title: JONSWAP Ocean | Liquid"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/partcache-for-all-your-quick-part-creation-needs/246641", "reason": "not VFX-related by title: PartCache, for all your quick part-creation needs"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/parthollow-make-hollow-parts-and-effortlessly-create-buildings/1227006", "reason": "not VFX-related by title: PartHollow - make hollow parts and effortlessly create buildings"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-radial-health-bar/3042920", "reason": "not VFX-related by title: Open Source Radial Health Bar"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bolt-broad-narrow-phase-collision/4639233", "reason": "not VFX-related by title: Bolt - Broad & Narrow Phase Collision"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/aegisvm-remoteguard-%E2%80%94-protecting-roblox-servers-beyond-network-level-ddos/4852093", "reason": "not VFX-related by title: AegisVM RemoteGuard \u2014 Protecting Roblox Servers Beyond Network-Level DDoS"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/inputmanager-a-lightweight-input-management-module-for-roblox-very-easy-to-use/4881670", "reason": "not VFX-related by title: InputManager - a lightweight input management module for Roblox (very easy to use!)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/r6-updated-leg-controller-with-ik/4690100", "reason": "not VFX-related by title: [R6] Updated Leg Controller with IK"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/skybox-450-skybox-plugin-for-roblox/4651503", "reason": "not VFX-related by title: Skybox - 450+ Skybox plugin for roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/easy-mobile-buttons-contextactionutility/804219", "reason": "not VFX-related by title: Easy Mobile Buttons - ContextActionUtility"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/roblox-ban-system-supabase-netlify/4680584", "reason": "not VFX-related by title: Roblox Ban System (Supabase + Netlify)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/luau-reference-lesser-known-features-syntax-and-patterns-with-working-examples/4887964", "reason": "not VFX-related by title: Luau Reference | lesser known features, syntax and patterns with working examples"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/roblox-anticheat-v100/4647339", "reason": "not VFX-related by title: Roblox AntiCheat v1.0.0"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/virtualnet-networking-tool/4652763", "reason": "not VFX-related by title: VirtualNet - networking tool"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-impactframe-module/2963136", "reason": "not VFX-related by title: [Open Source] Impactframe Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/punching-voxel-destruction-pls-rate/3142115", "reason": "not VFX-related by title: Punching + voxel destruction! pls rate!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/raycast-projectile-module-with-raycasthitboxv4/1900081", "reason": "not VFX-related by title: Raycast Projectile Module with RaycastHitboxv4!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/senseis-gun-kit/1714719", "reason": "not VFX-related by title: Sensei's Gun Kit"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/fovcontroller-module-to-control-global-fov-values/4531398", "reason": "not VFX-related by title: FOVController - Module to control global fov values"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/acessorydetector/3915362", "reason": "not VFX-related by title: AcessoryDetector"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/hitboxclass-v11b-a-powerful-oop-based-hitbox-module/2790395", "reason": "not VFX-related by title: HitboxClass | v1.1B | A Powerful OOP-based Hitbox Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/evercyans-rpg-kit-v2/2253417", "reason": "not VFX-related by title: Evercyan's RPG Kit (V2)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-advanced-melee-system/1579485", "reason": "not VFX-related by title: OPEN SOURCE | Advanced Melee System"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/sharptween-extended-tweening-library/3962195", "reason": "not VFX-related by title: SharpTween - Extended Tweening library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/editableimage-pixelrasterizer-real-time-2d-pixel-grid-system-with-dynamic-lighting-editableimage-rendering/3881135", "reason": "not VFX-related by title: [EditableImage] PixelRasterizer -- Real-time 2D Pixel Grid System with Dynamic Lighting & EditableImage Rendering"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/meshtoterrain-v20-convert-your-meshes-to-terrain/2576245", "reason": "not VFX-related by title: MeshToTerrain V2.0 - Convert your meshes to terrain!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/dungeonify-large-templated-structure-generator-with-quotas-and-restrictions/601604", "reason": "not VFX-related by title: Dungeonify - Large templated structure generator with quotas and restrictions"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/zoneplus-v320-construct-dynamic-zones-and-effectively-determine-players-and-parts-within-their-boundaries/1017701", "reason": "not VFX-related by title: ZonePlus v3.2.0 | Construct dynamic zones and effectively determine players and parts within their boundaries"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/collector-lightweight-uncapped-debris-alternative/1886084", "reason": "not VFX-related by title: Collector - Lightweight, uncapped Debris alternative"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/jaxxon-jargons-treasure-island-open-source-uncopylocked/1592816", "reason": "not VFX-related by title: Jaxxon Jargon's Treasure Island - Open Source & Uncopylocked"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/fallservice-handle-fall-damage-easy-and-flexible/1758693", "reason": "not VFX-related by title: FallService - Handle fall damage easy and flexible"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/introducing-sagitta-the-next-step-for-secure-cast/3640074", "reason": "not VFX-related by title: Introducing Sagitta: The Next Step for Secure-Cast"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/replacement-for-robloxs-taghumanoid-function-rewards-based-on-damage-contributed-or-last-hit/3462094", "reason": "not VFX-related by title: Replacement for Roblox's TagHumanoid function (Rewards based on damage contributed OR last hit)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/reclass-classic-the-original-roblox-reclasser/402382", "reason": "not VFX-related by title: Reclass classic - the original Roblox reclasser"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/players-pixelated-shadow-script-v01-pixelated-shadows/4012328", "reason": "not VFX-related by title: Player's Pixelated Shadow Script v0.1 | Pixelated Shadows"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/module3d-v61-viewportframe-implementation/207383", "reason": "not VFX-related by title: Module3D V6.1 (ViewportFrame Implementation)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/dynamic-type-of-depth-of-field-for-your-games/855719", "reason": "not VFX-related by title: \"Dynamic\" Type of Depth of Field For Your Games"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/neon-ui-a-general-how-to/1677177", "reason": "not VFX-related by title: Neon UI, a general how-to"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/anti-aimbot-aimlock-detection/3480967", "reason": "not VFX-related by title: Anti Aimbot / Aimlock detection"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/advanced-camera-light-plugin/1987811", "reason": "not VFX-related by title: Advanced Camera Light - Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/what-is-a-hitbox-expander-how-to-prevent-it/682634", "reason": "not VFX-related by title: What Is A Hitbox Expander? How To Prevent It?"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/deprecated-tomatoes-customisable-ragdoll/259927", "reason": "not VFX-related by title: [Deprecated] Tom_atoes Customisable Ragdoll"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/predict-projectile-ballistics-including-gravity-and-motion/1842434", "reason": "not VFX-related by title: Predict projectile ballistics, including gravity and motion"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/free-tri-chaser-mesh-triangle-counter/2727504", "reason": "not VFX-related by title: [FREE] Tri Chaser - Mesh Triangle counter"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/physicscharactercontroller-mover-constraints-based-character-controller/1945222", "reason": "not VFX-related by title: PhysicsCharacterController | Mover Constraints based character controller"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/networkownership-exploit-patch-outdated/608831", "reason": "not VFX-related by title: NetworkOwnership Exploit Patch (Outdated)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/moved-voxeldestruct-voxelated-destruction-physics-with-greedy-meshing-hitboxes-and-more/3041472", "reason": "not VFX-related by title: [MOVED] VoxelDestruct | Voxelated destruction physics with greedy meshing, hitboxes, and more!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ps1-style-vertex-warping-shader-module-using-editablemeshes/3572022", "reason": "not VFX-related by title: PS1-Style Vertex Warping Shader Module using EditableMeshes"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/limb-in-limb-a-character-health-revamp/2635204", "reason": "not VFX-related by title: Limb-in-Limb: A Character Health Revamp!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/pylua-python-interpreter-in-luau/3672669", "reason": "not VFX-related by title: PyLua - Python Interpreter in Luau"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/sound-marker-add-sounds-to-animations-with-ease-fixed/2480416", "reason": "not VFX-related by title: Sound Marker - Add sounds to animations with ease [FIXED]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/zone-v1-deprecated-retrieving-players-within-an-areazone/397465", "reason": "not VFX-related by title: Zone+ v1 (deprecated) | Retrieving players within an area/zone"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/hitboxclass-v20-a-powerful-oop-based-hitbox-module/3929512", "reason": "not VFX-related by title: HitboxClass | v2.0 | A Powerful OOP-based Hitbox Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/chickynoid-server-authoritative-character-replacement/1660558", "reason": "not VFX-related by title: Chickynoid, server authoritative character replacement"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/soundprovider-lightweight-one-shot-sound-playback-module/2197559", "reason": "not VFX-related by title: SoundProvider - Lightweight One-Shot Sound Playback Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/datapredict%E2%84%A2-3-years-release-242-revenue-game-optimization-using-machine-learning-deep-learning-and-reinforcement-learning-100-models/2196446", "reason": "not VFX-related by title: DataPredict\u2122 [3 Years / Release 2.42] - Revenue & Game Optimization Using Machine Learning, Deep Learning And Reinforcement Learning (100+ Models)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/part-fracturing-system-v3/690547", "reason": "not VFX-related by title: Part fracturing system V3"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/giving-back-to-the-community-sharing-copies-of-my-projects/1693595", "reason": "not VFX-related by title: Giving Back To The Community. Sharing Copies of my Projects"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/detect-namecall-hooks-rspy-and-android-based-exploits/3810681", "reason": "not VFX-related by title: Detect __namecall Hooks, RSpy, and Android-Based Exploits"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/breaking-development-fatigue/207883", "reason": "not VFX-related by title: Breaking Development Fatigue"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/how-much-tris-does-it-take-for-roblox-games-to-lag-answer/2041885", "reason": "not VFX-related by title: How much tris does it take for Roblox games to lag? [ANSWER]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/supercharge-your-next-editing-session-beta-playtest-harness-%E2%80%94-studio-power-toolsdevkit/4605705", "reason": "not VFX-related by title: Supercharge Your Next Editing Session! *BETA* Playtest Harness \u2014 Studio Power Tools/DevKit"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/i-developed-a-little-kit-to-making-roblox-look-the-n64/3038916", "reason": "not VFX-related by title: I developed a little kit to making roblox look the N64"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/theory-aimbot-prevention/551013", "reason": "not VFX-related by title: Theory - Aimbot Prevention"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/deprecated-masvibrate-bring-advanced-haptic-feedback-to-your-game/3391028", "reason": "not VFX-related by title: [Deprecated] - MasVibrate: Bring Advanced Haptic Feedback to Your Game"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/do-not-use-high-precision-clock-syncing-tech-between-clients-and-server-with-accuracy-of-1ms/769346", "reason": "not VFX-related by title: *DO NOT USE* High precision clock syncing tech between clients and server with accuracy of <1ms"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ballservice-module/2657417", "reason": "not VFX-related by title: BallService Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/jecs-optimizing-declarative-scene-graphs-with-ecs/3263203", "reason": "not VFX-related by title: Jecs - Optimizing declarative scene graphs with ECS"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/botservice-module-beta/3408892", "reason": "not VFX-related by title: BotService (Module) [BETA]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ragdoll-module-easy-to-use-ragdoll-module-for-player-npc-deaths/3496063", "reason": "not VFX-related by title: Ragdoll Module - Easy to use ragdoll module for player / NPC deaths"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/guide-running-fully-featured-studio-using-a-proxy-this-is-currently-temporarily-unsupported-by-roblox-for-security-reasons/728603", "reason": "not VFX-related by title: (Guide) Running fully featured studio using a proxy (This is currently temporarily unsupported by Roblox for security reasons!)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/fragmentsmasher-windowother-object-obliterator-module/627655", "reason": "not VFX-related by title: FragmentSmasher - Window/other object obliterator Module"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/akiras-rng-template-release/3958932", "reason": "not VFX-related by title: Akira's RNG Template - RELEASE"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/what-8-years-of-roblox-development-taught-me/4703824", "reason": "not VFX-related by title: What 8 Years Of ROBLOX Development Taught Me"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/packet-networking-library/3573907", "reason": "not VFX-related by title: Packet - Networking library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/satset-hybrid-networking-with-zero-allocation-serialization-for-roblox/4608379", "reason": "not VFX-related by title: Satset - Hybrid Networking with Zero-Allocation Serialization for Roblox"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/open-source-stringlabel-module-textlabels-with-per-character-formatting/355603", "reason": "not VFX-related by title: [Open Source] StringLabel Module (TextLabels with per-character formatting.)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/fairy-lights-generator-plugin/3880484", "reason": "not VFX-related by title: Fairy Lights Generator Plugin"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/replicate-your-states-with-replicaservice-networking-system/894736", "reason": "not VFX-related by title: Replicate your states with ReplicaService! (Networking system)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/very-long-post-containing-lots-of-free-sfx-on-the-library/1561973", "reason": "not VFX-related by title: Very long post containing LOTS of free SFX on the library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/yucon-framework-optimization-organization-and-high-level-security/630895", "reason": "not VFX-related by title: Yucon Framework || Optimization, organization, and high-level security"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/kingdom-hearts-creation-pack/1634594", "reason": "not VFX-related by title: Kingdom Hearts (Creation Pack)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/uses-of-neon-material/225342", "reason": "not VFX-related by title: Uses Of Neon Material"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/gear-remastered-gravity-coil/1593778", "reason": "not VFX-related by title: Gear Remastered: Gravity Coil"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/madanticheat-v2-a-much-needed-upgrade/1637062", "reason": "not VFX-related by title: MadAntiCheat V2 - A Much Needed Upgrade"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/dialogue-tree-editor-plugin-dialogue-system-old/1075195", "reason": "not VFX-related by title: Dialogue Tree Editor Plugin & Dialogue System [OLD]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/easyeffects-make-your-ui-animation-better/3136121", "reason": "not VFX-related by title: EasyEffects Make Your UI Animation Better!"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/re-classic-tools-open-source/1717648", "reason": "not VFX-related by title: Re-Classic Tools [Open Source]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/datgui-a-lightweight-graphical-user-interface-and-controller-library/817209", "reason": "not VFX-related by title: dat.GUI - A lightweight graphical user interface and controller library"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/a-niche-module-that-fixes-the-behaviour-of-the-timeout-error/1419951", "reason": "not VFX-related by title: A niche module that fixes the behaviour of the timeout error"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/fban-beta-a-new-ban-tool-on-the-platform/1145830", "reason": "not VFX-related by title: FBan BETA | A new ban tool on the Platform"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/cutscene-cinematics-cutscene-editor-plugin-for-studio/4369035", "reason": "not VFX-related by title: Cutscene Cinematics | Cutscene editor plugin for Studio"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/cheatblocker%F0%9F%96%A5%EF%B8%8F-v151-free-and-strong-anti-cheat-%E2%AC%87%EF%B8%8F550-fully-server-sided/2451762", "reason": "not VFX-related by title: CheatBlocker\ud83d\udda5\ufe0f V1.5.1 - free and strong anti cheat [\u2b07\ufe0f550+] (Fully Server Sided)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/roblox-verification-bot/547252", "reason": "not VFX-related by title: Roblox Verification Bot"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/serverclient-cpu-load-measuring/2178083", "reason": "not VFX-related by title: Server/Client CPU Load Measuring"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/wall-stickgravity-controller/432598", "reason": "not VFX-related by title: Wall stick/Gravity Controller"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/interactive-object-system-for-procedural-environments-using-proximity-prompts/2954058", "reason": "not VFX-related by title: Interactive Object System for Procedural Environments using Proximity Prompts"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/car-crashing-system-v02/1899072", "reason": "not VFX-related by title: Car crashing system [v.0.2]"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/ww2-like-air-strike-system-open-source/2483659", "reason": "not VFX-related by title: WW2 like Air Strike System (OPEN SOURCE)"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/are-you-in-need-of-a-good-sword/857040", "reason": "not VFX-related by title: Are you in need of a good sword?"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/uwulogger-v110-intensity-levels-table-printing-and-a-logger-that-refuses-to-be-silenced/4465388", "reason": "not VFX-related by title: UwULogger v1.1.0 - intensity levels, table printing, and a logger that refuses to be silenced"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/numbersequencemultiplier-tweening-number-sequences-in-multipliers/1585536", "reason": "not VFX-related by title: NumberSequenceMultiplier - Tweening number sequences in multipliers"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/time-scale-framework/861231", "reason": "not VFX-related by title: Time Scale Framework"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/bloxylibrary-collection-of-high-quality-and-safe-development-resources/913536", "reason": "not VFX-related by title: BloxyLibrary - Collection of high-quality and safe development resources"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/api-service-v107b-a-utility-modulescript-for-roblox-api-methods/1548433", "reason": "not VFX-related by title: [ API Service ] v1.0.7b - A Utility ModuleScript for Roblox API Methods"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/footprint-basic-implemented-footprint-system/3474010", "reason": "not VFX-related by title: Footprint - Basic implemented footprint system"}
+{"source": "devforum", "url": "https://devforum.roblox.com/t/boattween-module/540277", "reason": "not VFX-related by title: BoatTween module"}
+{"source": "creator-store", "url": "https://apis.roblox.com/toolbox-service/v2/assets:search", "reason": "dropped 12164 free search hits whose name had no VFX word and whose categoryPath was not visual-effects (props, vehicles, characters etc.); raw crawl kept only in scratch"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Smoke.blend", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/smoke-particle-assets", "reason": "duplicate of Kenney pack already committed in vfx/packs"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/chimney_smoke.xcf", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/particle-pack-80-sprites", "reason": "duplicate of Kenney pack already committed in vfx/packs"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/particle_lights.7z", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/trading-card-art", "reason": "not an effect asset (title): TRADING CARD ART"}
+{"source": "opengameart", "url": "https://opengameart.org/content/background-with-ruins", "reason": "not an effect asset (title): Background with ruins"}
+{"source": "opengameart", "url": "https://opengameart.org/content/burning-city-backgrounds", "reason": "not an effect asset (title): Burning City Backgrounds"}
+{"source": "opengameart", "url": "https://opengameart.org/content/particle-effect-button", "reason": "not an effect asset (title): Particle Effect Button"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/exp2_alpha_1.xcf", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/backgrounds-effects-sprite-pack", "reason": "not an effect asset (title): Backgrounds & Effects sprite pack"}
+{"source": "opengameart", "url": "https://opengameart.org/content/explosion-tilesets", "reason": "not an effect asset (title): Explosion Tilesets"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Explosion_1.gif", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tower-defense-top-down", "reason": "duplicate of Kenney pack already committed in vfx/packs"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flat-spaceship-with-parts", "reason": "not an effect asset (title): Flat Spaceship with parts"}
+{"source": "opengameart", "url": "https://opengameart.org/content/bomberman-explosion-effect", "reason": "not an effect asset (title): Bomberman Explosion Effect"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/explosion_atlas.xcf", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/10-aimtargets", "reason": "not an effect asset (title): 10 AIM/Targets"}
+{"source": "opengameart", "url": "https://opengameart.org/content/alien-pixel-art-tileset-and-character", "reason": "not an effect asset (title): Alien pixel-art tileset and character"}
+{"source": "opengameart", "url": "https://opengameart.org/content/opp2017-sprites-characters-objects-effects", "reason": "not an effect asset (title): OPP2017 - Sprites, characters, objects, effects"}
+{"source": "opengameart", "url": "https://opengameart.org/content/space-shooter-assets", "reason": "not an effect asset (title): Space Shooter Assets"}
+{"source": "opengameart", "url": "https://opengameart.org/content/witchy-platformer", "reason": "not an effect asset (title): Witchy Platformer"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-tanks-10x10-explosion", "reason": "not an effect asset (title): Simple tanks 10x10 + explosion"}
+{"source": "opengameart", "url": "https://opengameart.org/content/the-vacuum-man-and-an-explosion-sprite", "reason": "not an effect asset (title): \"The Vacuum Man\", and an Explosion Sprite"}
+{"source": "opengameart", "url": "https://opengameart.org/content/voxel-pack", "reason": "duplicate of Kenney pack already committed in vfx/packs"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/explosion.svg", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/pirate_bomb_explosion_transparent_bkg-fixed_5.gif", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/candy-pack-1", "reason": "not an effect asset (title): candy pack 1"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rough-industrial-combat-props", "reason": "not an effect asset (title): Rough Industrial Combat Props"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spinning-coin-anim", "reason": "not an effect asset (title): Spinning coin anim"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-art-bomb-animation", "reason": "not an effect asset (title): Pixel art Bomb animation"}
+{"source": "opengameart", "url": "https://opengameart.org/content/bombman-2d-resources", "reason": "not an effect asset (title): Bombman 2D Resources"}
+{"source": "opengameart", "url": "https://opengameart.org/content/bomb-animation-24p-dx", "reason": "not an effect asset (title): Bomb Animation 24p DX"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spritesplosions", "reason": "not an effect asset (title): SpriteSplosions"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spaceships-sprite-frames", "reason": "not an effect asset (title): Spaceships sprite frames"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-explosive-icons", "reason": "not an effect asset (title): CC0 Explosive Icons"}
+{"source": "opengameart", "url": "https://opengameart.org/content/i-are-spaceship-16x16-space-sprites", "reason": "not an effect asset (title): I ARE SPACESHIP (16x16 space sprites)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/holiday-expansion-set", "reason": "not an effect asset (title): Holiday Expansion Set"}
+{"source": "opengameart", "url": "https://opengameart.org/content/abuse-art", "reason": "not an effect asset (title): Abuse Art"}
+{"source": "opengameart", "url": "https://opengameart.org/content/idylwilds-aerial-arsenal", "reason": "not an effect asset (title): Idylwild's Aerial Arsenal"}
+{"source": "opengameart", "url": "https://opengameart.org/content/space-war-man-new-laser-and-enemies", "reason": "not an effect asset (title): Space War Man: new laser and enemies"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sci-fi-shoot-em-up-object-images", "reason": "not an effect asset (title): Sci-Fi Shoot 'em up object images"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/explosion_13.png#explosion_13.png", "reason": "not a readable image: cannot identify image file '/Users/moshe/Desktop/RbxAI/packages/asset-library/vfx-store/opengameart/fire-explosion/explosion_13.png'"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mages-clerics-and-elementals", "reason": "not an effect asset (title): Mages, Clerics, and Elementals"}
+{"source": "opengameart", "url": "https://opengameart.org/content/faq", "reason": "licence box lacks CC0: []"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flare-buttons", "reason": "not an effect asset (title): Flare buttons"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Magic-Cliffs-Environment.zip#__MACOSX/Magic-Cliffs-Environment/PNG/._clouds.png", "reason": "unsafe path in zip (traversal/macos metadata)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Magic-Cliffs-Environment.zip#__MACOSX/Magic-Cliffs-Environment/PNG/._far-grounds.png", "reason": "unsafe path in zip (traversal/macos metadata)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Magic-Cliffs-Environment.zip#__MACOSX/Magic-Cliffs-Environment/PNG/._sea.png", "reason": "unsafe path in zip (traversal/macos metadata)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Magic-Cliffs-Environment.zip#__MACOSX/Magic-Cliffs-Environment/PNG/._sky.png", "reason": "unsafe path in zip (traversal/macos metadata)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Magic-Cliffs-Environment.zip#__MACOSX/Magic-Cliffs-Environment/PNG/._tileset.png", "reason": "unsafe path in zip (traversal/macos metadata)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Magic-Cliffs-Environment.zip#__MACOSX/Magic-Cliffs-Environment/PREVIEWS/._magic-cliffs-PREVIEWx1.png", "reason": "unsafe path in zip (traversal/macos metadata)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Magic-Cliffs-Environment.zip#__MACOSX/Magic-Cliffs-Environment/._public-license.txt", "reason": "unsafe path in zip (traversal/macos metadata)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Magic-Cliffs-Environment.zip", "reason": "dropped 8 non-texture files from zip (only png/licence kept)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/FIRE.zip", "reason": "dropped 2 non-texture files from zip (only png/licence kept)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Portal_Free.zip", "reason": "dropped 1 non-texture files from zip (only png/licence kept)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/dusty_0.gif", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/Splash.svg", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/springvfxpack.zip", "reason": "dropped 1 non-texture files from zip (only png/licence kept)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-space-shooter-assets", "reason": "not an effect asset (title): 2d space shooter assets"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/fire_4.gif", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/bluefire_0.gif", "reason": "file type not kept (only png/zip/jpg/tga; gif/rar/7z/psd/blend etc dropped)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/free-vfx-asset-pack", "reason": "entry too big (90 MB > 80 MB)"}
+{"source": "opengameart", "url": "https://opengameart.org/content/portal-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/goblin-encounter-splash-page", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sprites-and-icons-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mana-health-and-energy-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lasers-and-beams", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/double-slash-animation", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-art-heal-skill-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/snow-flakes", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cute-cloud", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fireflame", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-sci-fi-character-spritesheet-super-clone-cyborg-pre-rendered-3d-sprite", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/arcane-magic-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flare-effect-blender", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gui-alien-glow-style", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lightning-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fireworks-effect-spritesheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sprite-effects-part-1", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/portals-32-x-48", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-space-background", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/green-tank", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/energy", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/warped-shooting-fx", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tent-3", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fight-icons-spritesheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-platformer-snow-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lpc-modern-streets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fx-smoke-trail-pixel", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-explode", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/foliage-pack-100x", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cosmic-time-magic-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flare-windows", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/glow-trianle", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lightning-animation-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/skull-death-effect-spritesheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sprite-effects-part-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/platformer-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/health-overlay-images", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/planet-t-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tiny-rabbit-spirit", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/anubis-20-vector-source-cc0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-soldier", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tower-defense-snow-background", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/game-backgrounds", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-32x32", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/light-magic-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/demon-flare-sprite-sheets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gold-frame", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/m484-lightning-weapon", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/heart-achievement-effect-animation", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/hit-animation-2-frame-by-frame", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lost-in-the-time-space-continuum", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/kajak", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spaceship-19", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pickup-hex-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spells-and-company", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/basic-platformer-snow-ground-32x32", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-circle-fx", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/blood-magic-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flare-weapon-icons-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rock-monster", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lightning-bolt-iconsbuttons-collection", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/star-achievement-effect-animation", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/slash-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/portals", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/evil-blood-orb-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/basic-2d-car-collection", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/trail", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/unidentified-flying-objectufo", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/snowdesertwater-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animated-fire", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/nature-magic-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/demon-statue-flare-sprite-sheets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/asteroids-vector-style-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/assets-free-cursors-lightning-52", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/character-animations-caveman", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-animated-vfxs", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/platformer-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/blood-splat", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/stickman-skateboarder", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fx-charge", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spaceship-boss-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/very-basic-32x32-topdown-snow-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-ball-pixel", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magic-books", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flare-isometric-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/ui-orbs", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lightning-low-quality", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/battery-gif", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spring-monster-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-ornamented-arrow", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/bloodsplatter-and-bloodsplash-animation", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/happyland-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/bullet-silhouettes", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/trash-can-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/snow-flake-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-animate-fire", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magic-orbs-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flare-buckler-improved", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/zomglow-ui-buttons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lightnings", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/old-pagesflip-with-sound", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/bushly-and-princess-sera", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/oga-late-fall-2021-game-jam-logo", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/the-field-of-the-floating-islands", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/shiny-hud", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animated-spy-bot-security-bot", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/snow-tree", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-wave-32x32", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magic-stones", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-mug-and-torch-pack-flare", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lightmeter", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/kangaroo-game-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animated-flags-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/classic-knight-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/seasonal-platformer-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-creature-spritesheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/health-and-mana-ui", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-game-character-pack-slim-version", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-world-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/40x56-card-frames-revised-again", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-hydrant-32x32-sidescroller-view", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/music-magic-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/greenland-to-desert-tiles-flare-compatible", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/assets-free-laser-bullets-pack-2020", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/electric", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/hit-animation-frame-by-frame", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/free-sci-fi-platformer-game-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animations-blood-hit-and-both-d", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/nes-style-tetromino-game-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/battery-power-icon", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/little-girl-with-big-gun-for-platformer-games", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/christmas", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/object-icons-approx-20px", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/summoning-the-fire-titan", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pure-projectile-magic-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/modular-isometric-scifi-character-spritesheets-with-weapons-cyborg-or-android-avatar-for", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sci-fi-platform-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2dfx-impact-spritesheets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/xoco", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/ogaanimatedbanners-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/turntables-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/eradication-wars-weapon-sprite-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-blocks-pack-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/grapplers-relic-rivals-temp-assets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-spell-icon-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/earth-impact-magic-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-hammer-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/planet-red", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/wwii-top-down-usaaf-fighters", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/salute-boi", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/bear", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/shield-sprite", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/killer-snowflake", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/idylwilds-chromatic-campfires", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-cat-sprite", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magic-summoning-circle", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-trees-1", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/collection-of-rune-stones-seamless-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fantasy-rpg-icons-3", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/hug-toy", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/golden-knight-character-sprite", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/nuclear-power-plant-symbols-svg", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/nature-tilecollection-32x32", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/items-and-elements", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animated-flame-fire-sprite-sheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magic-staffs-set-1", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animated-fountain-isometric", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/planets-satellites-4x3000x3000-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/crypt-of-dracula-nes", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sapo-conchis", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/knight-and-knight-animation", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/space-stuff", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-svg-ice-platformer-tiles-16x16-16x96-96x16", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/topdown-tanks", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sprite-city-series-1-fire-station", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magic-spell-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/color-background-pack-1", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/44-old-school-planets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/bullet-collection-2-m484-games", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/xoco-sprite-sheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/chibi-komato-fiend-prototype-with-palettes-32-bits-source-indexing-palettes1000-cels", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/weapons-8", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/chipsets-from-neowolf", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gameboy-platformer-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-dragon-roller", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magic-powder-inventory-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/armor-icons-by-equipment-slot", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/blue-star", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/doom-komato-assassin-prototype-curvy-female", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lestripu", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/wang-3-edge-walkways-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/four-simple-outdoor-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/ye-oldy-musket-guy-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-fists", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/icons-dark-magic", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cloth-armorclothing-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gas-giant-with-rings-x1", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/complete-spaceship-game-art-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/turtle-toy", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/potion-bottles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/art-challenge-skiing", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/explosion-of-blood", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/musketeer-officer-caonnon-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-trap-rune-animation-sprite-sheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magic-fence", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-axe-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sci-fi-weapons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tuit", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/32px-food-items", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/winter-platformer-game-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/teleporter-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/chimney-aninmation", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/all-the-sprites-from-hold-fire", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lpc-magic-staff", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-club-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/equipment-icon-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cupkek", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/health-orb-11", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simply-winter-platformer-base", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/explosion-gif", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/missile-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/n64-fire", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magic-mirrorportal-pixel-sprite", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-footgear-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/blue-gas-giant-with-rings-x1", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/jaziu", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/space-themed-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/snowman-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-unarmed-wraith-failed-experiment", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-golem", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-magic-book", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-leggings-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gas-giant-with-rings-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/ronlado", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/orbital-satellite-ion-cannon", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/snowy-dungeon-tile-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/explosion-vectors", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cursed-sunflower-with-fire-powers-and-cured-form", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mechanized-magic-ultimate-ui-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-hand-wear-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/planets-6x3000x3000", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lechita", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-20x20-sprites-for-a-tactical-shooter", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flat-game-bg", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-slime-monster-variations-db32", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magician-doing-magic", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-torso-wear-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/planets-4x3000x3000", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pollo-plush", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/c64-style-knight", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/various-forest-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-11", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magic-shroom-2d", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-headgear-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gas-giants-430003000", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sassy-guards", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/16x16-detective-items", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/backgrounds-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-fire", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mechanized-magic-2d-vector-cards-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/stylized-grassland-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/super-epic-weapons-fantasy-pack-free", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/criko", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/elliot-rpg", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/box-symbols", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rpg-vfx-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-toon-fire-animation", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/potion-icons-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/grassland-tileset-1", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/planet-modified", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/ded-fish", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/weapon-inventory-graphics", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/another-background-made-from-glitch-assets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-art-explosion-animation-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-9", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-potion-icons", "reason": "not an effect asset (title): CC0 Potion Icons"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pollo-toy", "reason": "not an effect asset (title): Pollo Toy"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mini-daemon", "reason": "not an effect asset (title): Mini Daemon"}
+{"source": "opengameart", "url": "https://opengameart.org/content/winter-tileset-16x16", "reason": "not an effect asset (title): Winter Tileset [16x16]"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-extinguisher-3", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/assets-free-interface-ui-dark-miko", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/space-backgrounds-1", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/skelly-game-assets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-character-with-gun", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mech-icons-for-a-tactical-mech-roguelike", "reason": "not an effect asset (title): Mech icons for a tactical mech roguelike"}
+{"source": "opengameart", "url": "https://opengameart.org/content/blazes-platformer-pack-3-environments-included", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-expansive", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/assets-free-sprites-weapon-swords", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/terrain-renderer", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/blu", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/ui-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mountains-and-trees-parallax-background-detail", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-and-spell-animations", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/elixir-storage-building-for-mobile-rts-games", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-medieval-buildings-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/goofd-ducc", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/verlaine-byron-for-rpg-maker-mv", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/glitch-alpine-landscape-svg", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fire-slime", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/multiple-colors-of-sparkle-animations", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/free-isometric-cave-extras", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/ghost-toy", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/blood-moon", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/soul-fire", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/behrs-2500-pixel-staffs-32x32-archive", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-ground-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/dino-yen", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spooky-backgrounds", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gudejump-art-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-fire-sword", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/assets-free-ui-sprites-gem-stones", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/book-cover", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/block-block-punch", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/ice-cliffs-mini-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flame-creature", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lovecraftian-supernatural-horror-art-by-luigi-castellani-silent-legions", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fantasy-book", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cactus-3", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/season-symbols", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/water-aqua-layer-system", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/another-pixel-explosion", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animated-sprites-and-textures", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spell", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-spikes", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sinino", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/snowball-pixel-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/robot-attacks", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lots-of-game-effects", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-medieval-buildings", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-wands-orb", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/snowman-portrait-and-16x16-sprite", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/african-inspired-art-by-luigi-castellani-spears-of-the-dawn", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pickup-items-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/more-isometric-parts", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sokoban-clone-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-flame-vfx", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mothman-sprite-sheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/medieval-castle-lvl-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/winter-platformer-art-with-slopes", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cult-lair-hallway-and-entrance", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magerage-2d-resources", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/forest-tiles-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/snowlands-platformer-32x-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/elemental-weapons-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/underworld-armor-pixel-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-road-tiles-nova", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/wintery-pixel-art-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animated-fires", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/nature-spell", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/osare-weapon-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/coderunner", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fantasy-rpg-icons-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-spaceship-sprites-with-engines", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-2d-vectors-and-sprites-mix", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/explosion-11", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/first-campfire", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/angel-wings-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-medieval-props", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/candle-sprite", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-wands-star", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/jump-and-run-tileset-24x24", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/demondevil-head", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/16x16-swords-weird", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/40-game-backgrounds-1-painted-style-and-photorealistic", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rolling-ball-assets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/4-elements-8x10px", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/ivy-border", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/32x32-water-and-land-map-tilesets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-tileset-20x20-project-helena-sketch", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/skill-item-and-spell-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sword-7", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-blocks-beta", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flame-knight", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/epic-collection-parchment", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/santa-claus-free-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animated-pixel-torch", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/dragon-flight-revenge-of-the-wizad-toad", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/wyrmsun-cc0-over-900-items", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/kymiball-ii-second-prototype-scraps", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fireball-effect-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/bottles-and-crystals", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/oil-painting-landscapes", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/hand-axe-64x64", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/assorted-fireballs-and-effects", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/teleport-circle-sprite-sheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-grounds", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/toon-pawn-rpg-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rocket-thruster-effect-animations", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-wands-heart", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/basic-hex-tile-set-plus-16x16", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lighter-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/player-3", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/winter-story", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cute-pyromancer", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gems-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sandbox-style-terrain-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cute-forest-pixel-art-kit-32x32", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fireball-flying-through-the-air", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/staff-3", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/free-isometric-plants-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/16x16-animated-campfire", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/epic-collection-potion", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/ground-tiles-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/angel-shield-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spellbook-template", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/top-down-arcade-racing-game", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/burning-background", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cauldrons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/stone-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cracked-tiles-flare-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-props-and-tents", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tileset-pixel", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/platformer-art-deluxe", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/8-directional-sprite-sets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/barrier-sprite-sheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tilesets-from-aoliabe-v-06", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/small-fireball", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-wands-eye", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/barrels-mage-city-arcanos-remix", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/shattering-boulder", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-phoenix", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/wand-of-the-bats", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/seamless-grass-texture-ii", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/auras", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tower-defense", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/some-16x16-floor-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/floor-is-lava", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/epic-collection-book", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rocks-on-different-colored-layers", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fireball-spritesheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/forest-armor-pixel-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/grass-and-dirt-tiles-32x32", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/people-being-tortured-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/free-ui-hologram-interface", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/christmas-village-asset-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fireball-4", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/halloween-pumpkin", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/another-space-backgrounds", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/16x16-torch", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/evolving-fantasy-sword-pixel-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/top-down-seasonenvironment-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sacred-flaming-sword", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/16x16-simple-fantasy-rpg-fx", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/minimalistic-rpg-game-assets-2-back-and-stronger", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/glitch-firebog-terrain-svg", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/light-themed-weapons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/jet-plane-sprites-effects-and-tilesets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-dragon-spritesheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-potion-animations", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animated-asteroid", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mushroom-and-particles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/burning-man-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/16x16-rpg-items-db32", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tiny-soldiers-of-the-old-world-wars", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/book-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/top-down-man-with-gun-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/wizard-essentials", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pink-potion-item", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/space-war-man-platform-shmup-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/random-art-pack-update-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/17-rings", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sword-of-ultimate-sorcery", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-art-flame-icon", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/shiny-and-cute-invaders", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/weapon-slash-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/22-skill-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spell-effects-by-starsteelgaming", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/really-bad-drawn-wizard", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/space-starter-kit", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/public-domain-first-person-pistols", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flash-mage", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/concrete-ui-part-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/orbs-collection", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixvoxel-diverse-ortho-wargame-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fireball-effect", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-mage", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixvoxel-diverse-isometric-wargame-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-art-spells", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/abigail-platformer-character-incomplete", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixvoxel-very-diverse-isometric-wargame-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/modified-and-cliped-magic-skill-item-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/arcanist-bar", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixvoxel-very-diverse-ortho-wargame-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spritesheet-of-a-man-cc0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/32x32-line-runes", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/handpainted-2d-space-shooter-spritesheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/roguedb32-plus-add-on-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/5-random-game-icons-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/hand-drawn-square-characters-animated-8-directions-top-down-free-cc0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/monsterboy-in-wonder-world-mockup-assets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/scrolls-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/space-ship-shooter-pixel-art-assets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/skeleton-and-friends-8-directional", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/forest-weapons-pixel-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/2d-plane-shooter-side-scrolling-game", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spell-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rpg-item-tilesheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gun-construction-kit", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/art-dump", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/green-witch-with-red-dress-and-yellow-staff-2d-pixel-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/arkanoid-assets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/assault-rifle-ultra-customization-kit", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fantasy-potion-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/complete-komato-beast-1-for-platformer-or-fighting-games", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/16-direction-rocket-projectile", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/light-weapons-pixel-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spaceship-executor-class", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/war-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fantasy-magic-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/basic-ufo-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/n64-medallions", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rpg-ui-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tooth-and-nail-radial-and-junk", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rpg-sheet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spaceship-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tiny-creatures", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mages-rework", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/monster-rat-man-for-fps-game-of-25-kind", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/dark-fantasy-item-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixvoxel-colorful-isometric-wargame-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/element-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/heroesofmightandmagic2-style-basilisk", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/water-melon-explode-animation", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/the-juice-box", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/cc0-stave-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sideview-sci-fi-patreon-collection", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/komato-fiend-ranks-for-fps-or-platformers-17-bodytypesstructures", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fantasy-crystal-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/shiny-boulders", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/weapon-icons-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/lava-potion", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/8x8-cave-platformer-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/enemy-space-shuttle", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fantasy-coin-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/beta-6", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/idylwilds-alchemical-codex", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fantasy-sword-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tasen-soldiers-for-mugen-mk-style-male-and-female", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/bushes-2", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/dungeon-crawl-32x32-tiles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixvoxel-mini-isometric-wargame-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/icons-items-1", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/fantasy-parchment-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixvoxel-revised-ortho-wargame-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/assorted-powerups", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/miscellaneous-pixel-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixvoxel-revised-isometric-wargame-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/tasen-scout-for-platformer-games", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/denzis-public-domain-art", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/universal-prototype-for-scrolling-beat-em-up-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/platformer-art-winter", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/dungeon-crawl-32x32-tiles-supplemental", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mosin-nagant-and-variant-random-melee-weapons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/dark-shaded-buttons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/elemental-badges-from-the-savage-swordsman", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/halloween-art-by-karmabub", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/assets-free-space-modular-buildings-kit", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/zombie-fully-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animations-random-1", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/armor-icons-by-equipment-slot-with-transparency", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/16x16-overworld-tiles-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/idylwilds-runic-codex", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/platformer-art-candy-caverns", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/sci-fi-space-red-planet", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-2d-dungeon-starter-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/20x20-bow-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gentleman-spy-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/magical-orbs-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/stone-age-sprite-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/potion-inventory-set", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/space-shooter-redux", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/research-building-for-mobile-strategy-games", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rpg-itemterraincharacter-sprites-ice-insignia", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/abstract-background-screen-effects", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/god-like-character", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/wesnoth-attack-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/idylwilds-arcanum", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/monastery", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pirate-ships-3-types-with-multiple-angle-renders", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/spellbound-icon", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/gothicvania-magic-pack-9", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/free-cc0-melee-weapon-vector-sprites", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/iron-torches", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/mv-platformer-satyr-32x64", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/monster-mutant-for-fps-game", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/n64-ui", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/pixel-art-vehicles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/simple-stat-icons", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rpg-assets-tile-set-nes-0", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/weapons-for-a-roguelike", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/american-asian-european-city-tilesets", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/south-east-asian-inspired-art-by-david-lewis-johnson-scarlet-heroes", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/swimmer", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/witchybizness-pack", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/castles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/wesnoth-items", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/flare-item-variation-60x60-only", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/4-summoning-circles", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/galacti-chrons-civilian-character-pack-mv-non-chibi", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/overworld-grass-biome", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/animated-sci-fi-gateway-electric-trap", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/glitch-achievements-svg", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/free-graveyard-platformer-tileset", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/platformer-art-pixel-edition", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/a-platformer-in-the-forest", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/isometric-miniature-dungeon", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/rpg-game-ui", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/content/dragon-fully-animated", "reason": "free disk under 15 GB"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/lightning1-tutorial_artpack.zip", "reason": "zip has no png/jpg/tga textures"}
+{"source": "opengameart", "url": "https://opengameart.org/sites/default/files/lightning1-tutorial_artpack.zip", "reason": "dropped 4 non-texture files from zip (only png/licence kept)"}

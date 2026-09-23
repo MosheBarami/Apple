@@ -82,6 +82,11 @@ const PLAN_TOOLS = [
   'get_ui_construction',
   // The UI/icon library lookup (D-UILIB-2): a search over an index compiled into this bundle.
   'find_ui_asset',
+  // The 3D model library lookup (D-MODELLIB-1): the same shape, over the model index.
+  'find_library_model',
+  // The sound and effect library lookups (D-FXLIB-1): the same shape, over their indexes.
+  'find_sound',
+  'find_vfx',
   'remember',
   // The READ-ONLY web tools. Each one reads something outside the user's project — a page, a
   // search, a repository, an image, the project's own scratch files — and none of them can reach
@@ -132,7 +137,9 @@ const PLAN_TOOLS = [
  * end in a connection refusal — and these two pass it: they answer identically with Studio absent.
  */
 // `find_ui_asset` passes the same rule: it searches the UI/icon index compiled into this bundle.
-const KNOWLEDGE_TOOLS = ['get_verified_module', 'get_ui_construction', 'find_ui_asset'];
+// `find_library_model` too: the model index is compiled in the same way (D-MODELLIB-1).
+// `find_sound` and `find_vfx` too: the sound and effect indexes are compiled in (D-FXLIB-1).
+const KNOWLEDGE_TOOLS = ['get_verified_module', 'get_ui_construction', 'find_ui_asset', 'find_library_model', 'find_sound', 'find_vfx'];
 const OFFLINE_TOOLS = ['search_docs', 'search_creation_skills', 'read_creation_skill', 'get_genre_references', ...KNOWLEDGE_TOOLS, 'remember'];
 // `generate_ui_image_hf` is generate_image's declared fallback (a second model, same art direction
 // and refusals, same project-scoped storage, never the place), so it passes the same rule. Without

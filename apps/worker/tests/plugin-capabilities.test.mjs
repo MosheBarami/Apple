@@ -68,13 +68,15 @@ function luauTableKeys(name) {
 const PHASE_A_OPS = [
   'query_instances', 'set_props_bulk', 'spatial_query', 'scatter', 'collision_groups', 'collision_groups_list',
   'terrain_shape', 'terrain_read', 'create_rig', 'ui_layout_check', 'play_check_ui',
+  'preview_sound', // D-FXLIB-1 (ops/Fx.luau): a local audition, never written into the place
 ];
 const PHASE_A_TOOLS = [
   'play_check_ui', 'search_instances', 'set_properties_bulk', 'spatial_query', 'scatter_instances', 'collision_groups',
   'shape_terrain', 'read_terrain', 'create_rig', 'check_ui_layout', 'build_ui',
   'insert_ui_component', // D-UIONLY-1: checks its layout with ui_layout_check, as build_ui did
+  'play_library_sound', // D-FXLIB-1: reviewed 2026-09-23 — plays one library id through preview_sound, needs plugin 1.3.0
 ];
-const familySource = ['Query', 'Physics', 'Terrain', 'Rig', 'Ui']
+const familySource = ['Query', 'Physics', 'Terrain', 'Rig', 'Ui', 'Fx']
   .map((name) => readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'ops', `${name}.luau`), 'utf8'))
   .join('\n');
 
@@ -156,7 +158,8 @@ test('legacy, missing, malformed and unknown-schema clients preserve the existin
   // stands on an OPT_IN operation — one no installed plugin ever had — is not part of that set, and
   // offering it on "unknown" would hand the model a check that is refused on its first call.
   const optIn = candidates.filter((name) => requirements[name].some((op) => C.OPT_IN_OPERATIONS.has(op)));
-  assert.deepEqual([...optIn].sort(), ['play_check', ...PHASE_A_TOOLS].sort(), 'the opt-in tool set changed — review it');
+  // D-MODELLIB-1: insert_library_model stands its model on the spot through spatial_query, so it is opt-in too.
+  assert.deepEqual([...optIn].sort(), ['play_check', 'insert_library_model', ...PHASE_A_TOOLS].sort(), 'the opt-in tool set changed — review it');
   for (const raw of [
     undefined,
     null,

@@ -49,6 +49,8 @@ export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName
   // D-VISION-1 Phase A: the op families in apps/apple-plugin/src/ops. No plugin before them had any.
   'query_instances', 'set_props_bulk', 'spatial_query', 'scatter', 'collision_groups', 'collision_groups_list',
   'terrain_shape', 'terrain_read', 'create_rig', 'ui_layout_check', 'play_check_ui',
+  // D-FXLIB-1: the sound and effect library family (ops/Fx.luau).
+  'preview_sound',
 ]);
 const NOT_REPORTED = 'the connected Studio plugin does not report this operation';
 

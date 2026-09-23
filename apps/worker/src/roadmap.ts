@@ -845,6 +845,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     build: [
       'Place a SpawnLocation on solid ground at the entrance to the main play area.',
       'Aim the spawn so the first thing in frame is the landmark the game is about.',
+      'Take the landmark and the props around the spawn from the model library: find_library_model with a plain noun, then insert_library_model where it stands. Build from parts only what the library does not hold (D-MODELLIB-1).',
       'Give the spawn area a floor, a boundary and a readable path onward.',
     ],
     acceptance: ['A player spawns on the ground, not in the air.', 'The landmark is visible from the spawn without moving the camera.'],
@@ -903,8 +904,8 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'small', mode: 'plan', runs: 1, priority: 55,
     dependsOn: ['mood_pass'], genres: ['any'], satisfiedBy: ['sound'],
     build: [
-      'Add ambient sound to the main area and a short sound to the core action.',
-      'Keep volumes low enough to sit under the action.',
+      'Add ambient sound to the main area with insert_sound({"query":"<the place, e.g. forest ambience>","parent":"<a part there>","looped":true}), and a short sound for the core action with insert_sound into game.SoundService — every Sound comes from the stored library, never Instance.new (D-FXLIB-1).',
+      'Play the core-action sound from the script that runs the action (:Clone() it per use), and keep volumes low enough to sit under the action.',
     ],
     acceptance: ['The core action makes a sound.', 'Ambience plays in the main area.'],
   },
@@ -994,7 +995,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     build: [
       'insert_ui_component("shop_window") — the library shop with item cards; never draw a shop by hand (D-UIONLY-1).',
       'Set each card\'s Text from the real server catalog, and wire its buy button to a rate-limited server purchase handler. Return true only after the server confirms; update the displayed balance from server data. Missing wiring must remain unavailable, never simulate a purchase.',
-      'Build a shop the player walks to, with the purchasable items shown in the world.',
+      'Build a shop the player walks to, with the purchasable items shown in the world. Take the stall or building and the items on display from find_library_model and insert_library_model before building any from parts (D-MODELLIB-1).',
       'Take the purchase decision on the server and deduct there.',
     ],
     acceptance: ['A purchase deducts on the server and cannot be repeated for free.'],
@@ -1213,7 +1214,8 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'large', mode: 'agent', runs: 2, priority: 44,
     dependsOn: ['sim_zones', 'save_progress'], genres: ['simulator'], satisfiedBy: ['pets'],
     build: [
-      'Add eggs with a server-side rarity roll and a pet that follows the player.',
+      'Add eggs with a server-side rarity roll and a pet that follows the player. Take the pet and egg models from find_library_model (kind "pet") and insert_library_model (D-MODELLIB-1).',
+      'Put insert_vfx("egg_glow") on each egg and insert_vfx("pet_hatch") on the hatch spot; the hatch script fires each emitter with emitter:Emit(emitter:GetAttribute("AppleEmitCount")) (D-FXLIB-1).',
       'Apply the pet multiplier on the server and persist the inventory.',
     ],
     acceptance: ['Rarity is rolled server-side.', 'Pets survive a rejoin.'],
@@ -1231,6 +1233,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     genres: ['simulator', 'tycoon'], satisfiedBy: ['rebirth'],
     build: [
       'Reset the currency and upgrades, award a permanent multiplier, persist the rebirth count.',
+      'Mark the moment: insert_vfx("rebirth_pillar") where the player rebirths and a library sound from insert_sound({"query":"rebirth"}) (D-FXLIB-1).',
       'Show the count somewhere public so it is worth having.',
     ],
     acceptance: ['A rebirth resets progress and permanently raises the rate.', 'The count survives a rejoin.'],

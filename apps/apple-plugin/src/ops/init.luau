@@ -20,5 +20,6 @@ load(function() return require(script.Physics) end)
 load(function() return require(script.Terrain) end)
 load(function() return require(script.Rig) end)
 load(function() return require(script.Ui) end)
+load(function() return require(script.Fx) end)
 
 return families

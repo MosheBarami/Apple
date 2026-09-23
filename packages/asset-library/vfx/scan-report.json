@@ -1,0 +1,119 @@
+[
+ {
+  "file": "vfx-store/github/ActualFire-Games__game-utilities/src/FunctionUtils/_vfx/BulletTracer.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 4,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/MaximumADHD__Super-Nostalgia-Zone/Client/Explosions/Particle.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 1,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/MayGo__maze-world/models/Trails/GreenTrail.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 1,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/MayGo__maze-world/models/Trails/RainbowTrail.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 1,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/MayGo__maze-world/models/Trails/RedTrail.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 1,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/MayGo__maze-world/models/Trails/YellowTrail.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 1,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/NobleDraconian__Gamejam-2021/Assets/Particles/DecompileParticle.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 1,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/NobleDraconian__Gamejam-2021/Assets/Particles/WallBounceParticle.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 1,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/Ukendio__Game/assets/Heal.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 7,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/Y-Workplace__DissolveEffect/src/dissolveeffect/Actor.rbxm",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "scripts-stripped",
+  "scripts": 1,
+  "findings": [],
+  "instances": 2,
+  "stripped": "vfx-store/stripped/Y-Workplace__DissolveEffect__src__dissolveeffect__Actor.rbxm"
+ },
+ {
+  "file": "vfx-store/github/rojo-rbx__rbx-test-files/models/three-beams/xml.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 3,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/rojo-rbx__rbx-test-files/models/two-particleemitters/xml.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 2,
+  "stripped": null
+ },
+ {
+  "file": "vfx-store/github/thecreare__wos-mbee/src/Parts/TractorBeam.rbxmx",
+  "method": "lune rbx-dom (packages/asset-library/models/scan-rbx.luau)",
+  "verdict": "clean",
+  "scripts": 0,
+  "findings": [],
+  "instances": 9,
+  "stripped": null
+ }
+]

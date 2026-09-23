@@ -71,6 +71,8 @@ import { generateModelForRoblox } from './hf-3d-pipeline';
 import { findUiAssets, uploadLibraryAsset } from './asset-library';
 import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
+import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
+import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, MAX_UPLOADS_PER_RUN, placeInserted, tokensOf as libraryTokens, uploadLibraryModel } from './model-library';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
@@ -200,6 +202,14 @@ export interface AgentCtx {
    * with it, and every id now faces the identical verdict.
    */
   discoveredAssetIds?: Set<number>;
+  /**
+   * The model library (D-MODELLIB-1), per run: the Roblox id each library FILE row was uploaded
+   * as, so a second insert of the same row reuses it instead of creating another permanent asset in
+   * the user's account; and the name words insert_library_model failed for, so create_instances'
+   * library-first guard stands down for a prop the library could not deliver.
+   */
+  libraryUploads?: Map<string, number>;
+  libraryMisses?: Set<string>;
   /**
    * Outbound HTTP for the web-facing tools.
    *
@@ -937,6 +947,8 @@ async function dumpScripts(
  */
 /** The Studio channel as phase-a-tools.ts sees it: the same `op`, bound to this run. */
 const studioCall = (ctx: AgentCtx): OpCall => (studioOp, timeoutMs) => op(ctx, studioOp, timeoutMs);
+/** Item arrays a vetted kit in this file built (D-FXLIB-1): create_instances lets their emitters through. Arguments the model writes are never in it. */
+const LIBRARY_BUILT = new WeakSet<object>();
 
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
@@ -1866,6 +1878,9 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-UIONLY-1: a script may use inserted UI but not make more UI than it already did.
       const handMadeUi = refuseLibraryLuau(luauScanVariants(after), UI_RULE, before === null ? undefined : luauScanVariants(before));
       if (handMadeUi) return handMadeUi;
+      // D-FXLIB-1: the same for Sounds and particle effects, which come from insert_sound / insert_vfx.
+      const handMadeFx = refuseLibraryLuau(luauScanVariants(after), FX_RULE, before === null ? undefined : luauScanVariants(before));
+      if (handMadeFx) return handMadeFx;
 
       const res = await op(ctx, {
         op: 'edit_script',
@@ -2113,11 +2128,21 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-UIONLY-1: UI classes come from insert_ui_component only.
       const handMadeUi = refuseLibraryItems(a.items, UI_RULE);
       if (handMadeUi) return Promise.resolve(handMadeUi);
+      // D-FXLIB-1: Sounds and particle effects come from insert_sound / insert_vfx. A vetted kit
+      // built in this file (LIBRARY_BUILT) is the library too.
+      const handMadeFx = LIBRARY_BUILT.has(a.items as object) ? null : refuseLibraryItems(a.items, FX_RULE);
+      if (handMadeFx) return Promise.resolve(handMadeFx);
       const pass = normaliseItems(a.items);
       if (pass.refusals.length > 0) {
         return Promise.resolve({
           error: `Nothing was created. ${pass.refusals.length === 1 ? 'One property' : `${pass.refusals.length} properties`} could not be read, and the rest were left alone rather than half-building the set: ${pass.refusals.map((r) => r.message).join(' ')}`,
         });
+      }
+      // D-MODELLIB-1: a prop the model library holds comes from the library, not from parts.
+      // It stands down when this run was not offered insert_library_model (a plugin without spatial_query).
+      if (!sourceRefusal(ctx.assetSources, 'creator_store') && (!ctx.offeredTools || ctx.offeredTools.has('insert_library_model'))) {
+        const handBuilt = handBuiltPropRefusal(Array.isArray(a.items) ? a.items : [], ctx.libraryMisses);
+        if (handBuilt) return Promise.resolve({ error: `Nothing was created. ${handBuilt}` });
       }
       return op(ctx, { op: 'create_instances', items: (pass.items as never[]) ?? [] });
     },
@@ -2165,6 +2190,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       // into the place, so an untagged value here is a failed op in the customer's log too.
       const restyle = refuseUiLook(props, prior?.class);
       if (restyle) return restyle;
+      const silent = refuseSoundId(props, ctx.discoveredAssetIds);
+      if (silent) return silent;
       let sending = props;
       if (props !== undefined) {
         const pass = normaliseProps(props);
@@ -2256,6 +2283,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const terrain = await runTerrainEdits(ctx, { operations: kit.terrain });
       if (toolError(terrain)) return { ...(terrain as Record<string, unknown>), note: 'Only part of the island terrain was built; nothing else was added.' };
       const built = ['island terrain, stream and waterfall'];
+      LIBRARY_BUILT.add(kit.items);
       const made = await TOOLS.create_instances!.run(ctx, { items: kit.items });
       if (toolError(made)) return { ...(made as Record<string, unknown>), built, projectMutated: true, note: 'The terrain is in place; the trees and crystals were not created.' };
       built.push(`${kit.facts.trees} trees, ${kit.facts.crystals} crystal clusters and waterfall mist`);
@@ -2633,6 +2661,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       // Luau bound for Studio that arrives without one, so this cannot be forgotten later.
       const handMadeUi = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), UI_RULE);
       if (handMadeUi) return handMadeUi;
+      const handMadeFx = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), FX_RULE);
+      if (handMadeFx) return handMadeFx;
       const job = admitProgram({
         runtime: 'luau',
         backend: 'studio',
@@ -4098,7 +4128,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_verified_asset',
       description:
-        'Search the Roblox Creator Store and return only ids that passed full verification (free, publicly visible, ZERO scripts, Mesh/Image only — never a Model, trusted creator, inside the triangle budget). This is the ONLY search there is: Apple has no asset library or catalogue of its own. Never invent an assetId; an id may be inserted only if it was returned here or given to you by the user.',
+        'Search the Roblox Creator Store and return only ids that passed full verification (free, publicly visible, ZERO scripts, Mesh/Image only — never a Model, trusted creator, inside the triangle budget). For a ready-made prop, building or tree, call find_library_model first. Never invent an assetId; an id may be inserted only if it was returned here or given to you by the user.',
       parameters: S({ query: { type: 'string' }, maxTriangles: { type: 'number' }, robloxOnly: { type: 'boolean' } }, ['query']),
     },
     studio: false,
@@ -4473,6 +4503,108 @@ export const TOOLS: Record<string, ToolImpl> = {
         displayName: a.displayName ? String(a.displayName) : undefined,
       }),
   },
+  // The 3D model library (D-MODELLIB-1): script-free Creator Store models that Roblox itself owns,
+  // inserted by id, plus CC0/CC-BY/MIT files (Kenney, KayKit, GitHub .rbxm with every
+  // script stripped) uploaded once into the USER'S OWN account. Library first; parts are the
+  // fallback for props, and stay the tool for terrain, baseplates, paths and zones.
+  find_library_model: {
+    def: {
+      name: 'find_library_model',
+      description:
+        "Search Apple's 3D model library for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit: script-free Creator Store models that Roblox itself published, and openly licensed low-poly packs. Call it BEFORE building any object out of parts. Plain nouns work best (\"palm tree\", \"police car\", \"crate\", \"shop\"); `genre` and `kind` narrow it. Returns ids for insert_library_model. Nothing is inserted or uploaded by this call.",
+      parameters: S(
+        {
+          query: { type: 'string', description: 'Plain words for the object, e.g. "wooden crate" or "pine tree".' },
+          genre: { type: 'string', enum: [...LIBRARY_GENRES], description: 'Optional game genre.' },
+          kind: { type: 'string', enum: [...LIBRARY_KINDS], description: 'Optional kind of object.' },
+          limit: { type: 'number', description: 'How many results, 1 to 40. Default 10.' },
+        },
+        [],
+      ),
+    },
+    studio: false,
+    run: async (_ctx, a) =>
+      findLibraryModels({
+        query: a.query === undefined ? undefined : String(a.query),
+        genre: a.genre ? String(a.genre) : undefined,
+        kind: a.kind ? String(a.kind) : undefined,
+        limit: a.limit === undefined ? undefined : Number(a.limit),
+      }),
+  },
+  insert_library_model: {
+    def: {
+      name: 'insert_library_model',
+      description:
+        "Insert ONE model from Apple's model library into the place, scaled and standing on `position`. Pass `id` from find_library_model, or `query` (plus optional genre/kind) to take the best match. A Creator Store row is inserted by id; a file row is first uploaded as a Model into the USER'S OWN Roblox account with their connected key (asset:write) — once per run, reused after. Every insert is scanned in the place and any script is removed before it counts. Use this for props, buildings, nature, vehicles, pets and characters before building anything from parts. To place many copies, insert one and clone_instances it.",
+      parameters: S(
+        {
+          id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },
+          query: { type: 'string', description: 'Instead of id: plain words; the best match is inserted.' },
+          genre: { type: 'string', enum: [...LIBRARY_GENRES] },
+          kind: { type: 'string', enum: [...LIBRARY_KINDS] },
+          position: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' }, description: 'Where the bottom-centre lands, in studs. Default [0,0,0].' },
+          height: { type: 'number', description: 'Target height in studs (the model is scaled uniformly). Default: its own size for Creator Store rows, a size for its kind for file rows.' },
+          scale: { type: 'number', minimum: 0.001, maximum: 1000, description: 'Uniform scale factor instead of height.' },
+          parent: { type: 'string', description: 'Default game.Workspace.' },
+        },
+        [],
+      ),
+    },
+    studio: true,
+    studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
+    // A refusal or a still-processing upload changed nothing in the place.
+    mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
+    run: async (ctx, a) => {
+      const refused = sourceRefusal(ctx.assetSources, 'creator_store');
+      if (refused) return { error: refused };
+      const pick = a.id
+        ? libraryModel(String(a.id))
+        : findLibraryModels({ query: String(a.query ?? ''), genre: a.genre ? String(a.genre) : undefined, kind: a.kind ? String(a.kind) : undefined, limit: 1 }).results[0] ?? null;
+      const missed = (why: unknown) => {
+        const words = libraryTokens(String(a.query ?? pick?.name ?? a.id ?? ''));
+        ctx.libraryMisses = ctx.libraryMisses ?? new Set();
+        for (const w of words) if (w.length >= 3) ctx.libraryMisses.add(w);
+        return why;
+      };
+      if (!pick) return missed({ error: a.id ? `${String(a.id)} is not a library id. Call find_library_model and pass one of its ids unchanged.` : 'Nothing in the model library matched. Build it from parts with create_instances.' });
+      const pos = a.position === undefined ? [0, 0, 0] : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
+      if (!Array.isArray(pos)) return pos;
+      const scale = a.scale === undefined ? undefined : Number(a.scale);
+      if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return { error: `scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}` };
+      const height = a.height === undefined ? undefined : Number(a.height);
+      if (height !== undefined && !(height > 0 && height <= 2000)) return { error: 'height must be between 0 and 2000 studs' };
+
+      let assetId = pick.assetId ?? ctx.libraryUploads?.get(pick.id);
+      if (assetId === undefined) {
+        ctx.libraryUploads = ctx.libraryUploads ?? new Map();
+        if (ctx.libraryUploads.size >= MAX_UPLOADS_PER_RUN) {
+          return { error: `This run already uploaded ${MAX_UPLOADS_PER_RUN} library files into the user's account, the most one run may. Reuse (clone_instances) a model already in the place, or pick a Creator Store row from find_library_model.` };
+        }
+        const up = await uploadLibraryModel(ctx.env, ctx.userId, pick);
+        if ('error' in up) return missed({ error: up.error, stage: up.stage, library: pick.id });
+        if ('pending' in up) return { pending: true, operationId: up.operationId, library: pick.id, note: "Uploaded to the user's Roblox account; Roblox is still processing it, so nothing was inserted yet. Do not claim it is in the place." };
+        assetId = up.assetId;
+        ctx.libraryUploads.set(pick.id, assetId);
+      }
+      const placed = rec(await insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace')));
+      if ('error' in placed) return missed({ ...placed, library: pick.id });
+      let paths = (Array.isArray(placed.inserted) ? placed.inserted : []).filter((p): p is string => typeof p === 'string');
+      if (paths.length > 1) {
+        const grouped = await ctx.execStudioOp({ op: 'group_instances', paths, name: pick.name.replace(/[^A-Za-z0-9 _-]+/g, '').slice(0, 50) || 'LibraryModel' }, 20_000);
+        const path = grouped.ok ? strOrNull(rec(grouped.data).path) : null;
+        if (path) paths = [path];
+      }
+      const where = paths.length === 1
+        ? await placeInserted((o, t) => ctx.execStudioOp(o as StudioOp, t), paths[0]!, pick, { position: pos, scale, height })
+        : { error: 'inserted as several pieces; left where Roblox put them' };
+      return {
+        ...placed,
+        inserted: paths,
+        library: { id: pick.id, name: pick.name, kind: pick.kind, licence: pick.licence, ...(pick.attribution ? { attribution: pick.attribution } : {}) },
+        ...('error' in where ? { placementWarning: where.error } : { placed: where }),
+      };
+    },
+  },
   generate_model_external: {
     def: {
       name: 'generate_model_external',
@@ -4820,6 +4952,37 @@ export const TOOLS: Record<string, ToolImpl> = {
       error: 'Refused (D-UIONLY-1): build_ui draws UI by hand and is retired. Insert each piece from the UI library with insert_ui_component({"component":"shop_window","genre":"<game genre>"}) (or currency_counter, main_menu, settings_window, ...). Nothing was sent to Studio.',
     }),
   },
+  // D-FXLIB-1: the sound and effect library (fx-library.ts). Registered one by one, like the rest.
+  find_sound: {
+    def: findSound.def,
+    studio: false,
+    run: async (_ctx, a) => findSound.run(a),
+  },
+  insert_sound: {
+    def: insertSound.def,
+    studio: true,
+    studioOps: ['get_tree', 'delete_instances', 'create_instances'],
+    mutatesProject: (result) => (!!result && typeof result === 'object' && typeof (result as Record<string, unknown>).inserted === 'string') || (result as Record<string, unknown> | null)?.projectMutated === true,
+    run: (ctx, a) => insertSound.run(studioCall(ctx), a, ctx.discoveredAssetIds),
+  },
+  play_library_sound: {
+    def: playLibrarySound.def,
+    studio: true,
+    studioOps: ['preview_sound'],
+    run: (ctx, a) => playLibrarySound.run(studioCall(ctx), a, ctx.discoveredAssetIds),
+  },
+  find_vfx: {
+    def: findVfxTool.def,
+    studio: false,
+    run: async (_ctx, a) => findVfxTool.run(a),
+  },
+  insert_vfx: {
+    def: insertVfx.def,
+    studio: true,
+    studioOps: ['get_tree', 'delete_instances', 'create_instances', 'set_props'],
+    mutatesProject: (result) => (!!result && typeof result === 'object' && typeof (result as Record<string, unknown>).inserted === 'string') || (result as Record<string, unknown> | null)?.projectMutated === true,
+    run: (ctx, a) => insertVfx.run(studioCall(ctx), a),
+  },
   insert_ui_component: {
     def: insertUiComponent.def,
     studio: true,
@@ -4909,6 +5072,8 @@ const TARGET_ARG: Readonly<Record<string, { key: string; kind: 'string' | 'list'
   edit_terrain: { key: 'action', kind: 'string' },
   get_instance: { key: 'path', kind: 'string' },
   insert_ui_component: { key: 'component', kind: 'string' },
+  insert_sound: { key: 'query', kind: 'string' },
+  insert_vfx: { key: 'preset', kind: 'string' },
   delete_instances: { key: 'paths', kind: 'list' },
   move_instances: { key: 'moves', kind: 'moves' },
   transform_instances: { key: 'paths', kind: 'list' },

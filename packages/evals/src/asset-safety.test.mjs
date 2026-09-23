@@ -1735,8 +1735,11 @@ test('THE SYSTEM PROMPT NO LONGER CONTRADICTS THE TOOLS it is describing', () =>
 
   assert.equal(offered.includes('search_asset_library'), false, 'the catalogue search tool is offered again');
   assert.equal(sys.includes('search_asset_library'), false, 'the prompt names a tool the model cannot see');
-  assert.match(sys, /THERE IS NO APPLE ASSET LIBRARY AND NO CATALOGUE TO SEARCH/,
-    'the model must be TOLD there is no catalogue, or it will offer to search one it was never given');
+  // D-MODELLIB-1 (2026-09-23) replaced "there is no library" with a real one: the stored 3D model
+  // library. The invariant is the same agreement: the prompt sends the model to the library, and
+  // the tool that searches it is offered.
+  assert.match(sys, /find_library_model/, 'the prompt must send the model to the model library');
+  assert.ok(offered.includes('find_library_model'), 'the prompt names find_library_model but the tool is not offered');
 
   // The Creator Store route is what is left, and it must be named.
   assert.match(sys, /find_verified_asset/);

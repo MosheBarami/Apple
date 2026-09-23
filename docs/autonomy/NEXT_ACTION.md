@@ -13,6 +13,11 @@
    come from the model library (packages/asset-library/models) through find_library_model and
    insert_library_model. create_instances refuses a part-built prop the library holds; parts stay for
    terrain, baseplates, paths and zones. Studio inserts per genre are in docs/gauntlet/visual/model-library/.
+   D-FXLIB-1 (owner order, 2026-09-23), the same for sounds and effects: insert_sound / find_sound /
+   play_library_sound and insert_vfx / find_vfx (22 Roblox presets). create_instances and Luau refuse a
+   hand-made Sound or emitter. Studio evidence is in docs/gauntlet/visual/fx-library/. The worker is ready but
+   NOT deployed. Plugin 1.3.0 (the preview_sound op) needs a Studio reload. The OpenGameArt download stopped at
+   the 15 GB free-disk floor; rerun the scratchpad fetchers once disk is above 15 GB.
 3. Round 6:
    - fresh place;
    - new project and pairing (plugin 1.2.0 needs a Studio reload first);

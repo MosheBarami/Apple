@@ -232,3 +232,13 @@ test('every module in the library is offered by some brief, or is deliberately u
   assert.deepEqual(unoffered, [],
     `these modules exist and no brief mentions them: ${unoffered.join(', ')}`);
 });
+
+test('briefs that put things in the world send the model to the model library first (D-MODELLIB-1)', () => {
+  // A landmark, a shop the player walks to and a pet are all things the library holds. A brief
+  // that just says "build" gets them hand-assembled from parts, which create_instances refuses.
+  for (const id of ['playable_spawn', 'shopfront', 'sim_pets']) {
+    const t = brief(id);
+    assert.match(t, /find_library_model/, `${id} must name the library search`);
+    assert.match(t, /insert_library_model/, `${id} must name the library insert`);
+  }
+});

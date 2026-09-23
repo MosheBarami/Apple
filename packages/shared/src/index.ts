@@ -222,7 +222,8 @@ export type StudioOp =
     }
   | { op: 'ui_layout_check'; screen: string; devices?: UiLayoutDevice[] }
   /** play_check plus presses (F-050): each `press` path is a GuiButton inside a ScreenGui in StarterGui. */
-  | { op: 'play_check_ui'; seconds?: number; touch?: string[]; press: string[] };
+  | { op: 'play_check_ui'; seconds?: number; touch?: string[]; press: string[] }
+  | { op: 'preview_sound'; soundId: string; volume?: number }; // D-FXLIB-1: plays a library sound in Studio only
 
 /**
  * Camera presets the plugin's software renderer can produce. Multi-view exists because a single
@@ -857,6 +858,13 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'get_verified_module':
     // A search over the bundled UI/icon library index; reads nothing of the project.
     case 'find_ui_asset':
+    // D-FXLIB-1: searches over the bundled sound and effect library, and a local audition of one
+    // sound that is never put in the place.
+    case 'find_sound':
+    case 'find_vfx':
+    case 'play_library_sound':
+    // D-MODELLIB-1: a search over the bundled 3D model library index; touches nothing.
+    case 'find_library_model':
     case 'find_verified_asset':
     case 'inspect_model':
     // The read-only Studio tools. Each one ASKS the place something and changes nothing, so
@@ -919,6 +927,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'set_locked':
     case 'set_visible':
     case 'insert_asset':
+    // D-MODELLIB-1: puts a library model into the place, the same act as insert_asset.
+    case 'insert_library_model':
     case 'generate_model':
     case 'generate_model_external':
     case 'generate_image':
@@ -962,6 +972,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'create_rig':
     case 'build_ui':
     case 'insert_ui_component':
+    case 'insert_sound':
+    case 'insert_vfx':
       return 'building';
     case 'render_view':
     // Framing a store-page image IS a rasterise of the place — the same five camera angles, at the
@@ -2740,6 +2752,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
+    name: 'insert_library_model',
+    label: 'Insert models from Apple\'s model library',
+    why: 'Brings ready-made 3D models (props, buildings, trees, vehicles) into your place.',
+    group: 'changes',
+  },
+  {
     name: 'install_module',
     label: 'Install Luau modules',
     why: 'Adds third-party code to your project, which then runs as if you had written it.',
@@ -2803,6 +2821,18 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'insert_ui_component',
     label: 'Add UI from the library',
     why: 'Adds a ready-made menu, shop, button or HUD piece from Apple\'s UI library to StarterGui or a part.',
+    group: 'changes',
+  },
+  {
+    name: 'insert_sound',
+    label: 'Add sounds from the library',
+    why: 'Adds a Sound from Apple\'s library of Roblox audio to a part or SoundService.',
+    group: 'changes',
+  },
+  {
+    name: 'insert_vfx',
+    label: 'Add effects from the library',
+    why: 'Adds a ready-made particle, beam or glow effect from Apple\'s effect library to a part.',
     group: 'changes',
   },
   {
