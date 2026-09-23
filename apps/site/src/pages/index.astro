@@ -38,7 +38,7 @@ import {
 } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 import { paidPlansOnSale } from '../lib/billing-probe';
-import { otherModels, logoFileFor, logoSvg } from '../lib/model-catalogue';
+import { otherModels, logoFileFor, logoUrl } from '../lib/model-catalogue';
 
 /*
  * THE FRONT PAGE, REBUILT TO THE FINAL DIRECTION (2026-09-22).
@@ -214,7 +214,7 @@ const others = otherModels();
 const firstPerMaker = others.filter((m, i) => others.findIndex((x) => x.vendor === m.vendor) === i);
 const makerNames = firstPerMaker.map((m) => m.vendor).join(' and ');
 const makerTiles = firstPerMaker
-  .map((m) => ({ vendor: m.vendor, icon: logoSvg(logoFileFor(m)) }))
+  .map((m) => ({ vendor: m.vendor, icon: logoUrl(logoFileFor(m)) }))
   .filter((m) => m.icon);
 ---
 

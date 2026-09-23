@@ -34,6 +34,10 @@ export const creditBadge = (m: Pick<RegistryModel, 'creditMultiplier'>): string 
  */
 const svgs = import.meta.glob('../assets/model-logos/*.svg', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const svg = (file: string): string | null => svgs[`../assets/model-logos/${file}.svg`] ?? null;
+/* The same files as URLs of their own, for the landing's maker row. `no-inline` because Vite would
+   otherwise turn files this small back into data: URIs inside the markup, which is what this is for
+   avoiding: the landing budgets its markup (scripts/check-landing-budget.mjs). */
+const urls = import.meta.glob('../assets/model-logos/*.svg', { query: '?url&no-inline', import: 'default', eager: true }) as Record<string, string>;
 
 const BY_VENDOR: Readonly<Record<string, string>> = {
   Google: 'gemini',
@@ -43,6 +47,16 @@ const BY_VENDOR: Readonly<Record<string, string>> = {
 /** The icon file a model is drawn with, or null: Apple's own lanes are drawn with Apple's mark. */
 export function logoFileFor(model: Pick<RegistryModel, 'vendor'>): string | null {
   return BY_VENDOR[model.vendor] ?? null;
+}
+
+/**
+ * The URL of a model's icon file, or null. The landing's maker row draws it as a CSS mask filled with
+ * the text colour, so it keeps the theme's ink exactly as the inline SVG did, while its bytes load
+ * after the page instead of sitting in the markup a reader waits for.
+ */
+export function logoUrl(file: string | null): string | null {
+  if (!file) return null;
+  return urls[`../assets/model-logos/${file}.svg`] ?? null;
 }
 
 /**

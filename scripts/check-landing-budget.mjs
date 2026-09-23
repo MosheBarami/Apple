@@ -117,19 +117,27 @@ for (const asset of new Set(linked)) {
   if (!existsSync(file)) continue;
   const raw = readFileSync(file);
   const gz = gzipSync(raw, { level: 9 }).length;
-  totalGzip += gz;
   rows.push([asset, gz, 'B gzip']);
+  // A linked script is billed to the JavaScript line, raw, and ONLY there. Until 2026-09-23 its
+  // gzip was also added to the "markup + stylesheets" total, which the header above says the scripts
+  // were taken out of. That did not matter while Astro inlined every script (nothing was linked);
+  // the owner's picks rebuild made Astro emit nine as files, and the markup line then carried 9 kB
+  // of script it was never meant to — counted twice, once on each line.
   if (asset.endsWith('.js')) jsBytes += raw.length;
+  else totalGzip += gz;
 }
 
 // Images the ROOT DOCUMENT asks for. Anything referenced only by a stylesheet or fetched later is
 // out of scope here, the same way a script's own imports are: this file budgets what loading `/`
 // costs, and the page's own markup is where that is decided.
 let imageBytes = 0;
+// `url(/…)` in the markup counts too: a style attribute is the root document asking for an image
+// (the landing's maker marks are drawn that way), and without this they would read as zero bytes.
 const images = new Set(
-  [...html.toString().matchAll(/(?:href|src|srcset)="(\/[^"]+)"/g)]
-    .map((m) => m[1].split(/\s|,/)[0])
-    .filter((p) => IMAGE_BYTES.test(p)),
+  [
+    ...[...html.toString().matchAll(/(?:href|src|srcset)="(\/[^"]+)"/g)].map((m) => m[1].split(/\s|,/)[0]),
+    ...[...markup.matchAll(/url\((?:&#39;|&quot;|['"])?(\/[^)'"&]+)/g)].map((m) => m[1]),
+  ].filter((p) => IMAGE_BYTES.test(p)),
 );
 for (const asset of images) {
   const file = join(DIST, asset);

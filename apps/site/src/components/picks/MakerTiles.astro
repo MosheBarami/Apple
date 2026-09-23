@@ -13,6 +13,10 @@
  * The makers themselves are not chosen here: index.astro reads them from the model registry, one
  * per maker. Without scripting every tile is simply shown; under reduced motion the
  * tiles are shown at once and the light is not drawn.
+ *
+ * `icon` is the URL of the maker's mark (lib/model-catalogue.ts `logoUrl`), drawn as a mask in the
+ * text colour. It was the inline SVG until 2026-09-23; the two marks were ~1 kB of the landing's
+ * gzipped markup, the least compressible part of it, below the fold, and over the page's budget.
  */
 import './maker-tiles.css';
 
@@ -28,7 +32,7 @@ const makers = Astro.props.makers.filter((m): m is { vendor: string; icon: strin
 <div class="mk" data-mk>
   <ul class="mk-row" role="list" aria-label={label}>
     {makers.map((m) => (
-      <li class="mk-tile"><span class="mk-icon" set:html={m.icon} /><span class="visually-hidden">{m.vendor}</span></li>
+      <li class="mk-tile"><span class="mk-icon" aria-hidden="true" style={`--mk-logo:url(${m.icon})`} /><span class="visually-hidden">{m.vendor}</span></li>
     ))}
   </ul>
   <span class="mk-rail" aria-hidden="true"><span class="mk-light"></span></span>

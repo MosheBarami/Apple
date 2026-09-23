@@ -41,10 +41,14 @@
     opacity 900ms var(--ease-out);
 }
 
-.mk-icon svg {
+/* The mark is a file drawn as a mask, so it takes the tile's ink in both themes. */
+.mk-icon {
   display: block;
   width: 18px;
   height: 18px;
+  background-color: currentColor;
+  -webkit-mask: var(--mk-logo) center / contain no-repeat;
+  mask: var(--mk-logo) center / contain no-repeat;
 }
 
 /* Animated Frameworks' lift, for the tile the light is under. */
