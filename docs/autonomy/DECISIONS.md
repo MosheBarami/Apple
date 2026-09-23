@@ -87,4 +87,10 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   edit mode. It still ends on Disconnect, on "Turn edits off", and a half-finished confirmation is still
   retired. Reverse by restoring `allowEdits = false` in keepEditConsentOnlyInEditMode
   (apps/apple-plugin/src/init.server.luau); entry-runtime.test.mjs holds the new behaviour.
+- **D-AUT-2 — Waiting on background work is not stopping (2026-09-23).** The Stop gate allows a turn to end
+  while `.autonomy/WAITING` = {"until", "on"} names work the agent has in flight, for at most 20 minutes after
+  the marker was written. Background agents edit the tree, so the gate's no-progress rule never fired while
+  the agent was correctly waiting and each blocked stop was a paid no-op. Reverse by deleting
+  waiting_on_background_work from .claude/hooks/autonomy_stop_gate.py; tests/owner-autonomy-hooks.test.mjs
+  holds the four cases.
 

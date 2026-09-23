@@ -100,3 +100,27 @@ test('the hooks are wired in the project settings', () => {
   assert.ok(cmds('UserPromptSubmit').some((c) => c.includes('autonomy_prompt_context.py')));
   assert.ok(cmds('PreToolUse').some((c) => c.startsWith('AskUserQuestion ') && c.includes('autonomy_no_questions.py')));
 });
+
+// 2026-09-23: background agents keep editing the tree, so the idle rule never fires while the agent is
+// correctly waiting on them, and every blocked stop was a paid no-op. A WAITING marker allows the stop —
+// only while it names what is awaited, and never for longer than 20 minutes after it was written.
+test('a fresh WAITING marker allows the stop; an expired, empty or overlong one does not', async () => {
+  const { utimesSync } = await import('node:fs');
+  const doable = { acceptance: { ...PASSING, mobile_qa: false }, findings: CLOSED };
+  const mark = (dir, body, ageSeconds = 0) => {
+    mkdirSync(join(dir, '.autonomy'), { recursive: true });
+    const f = join(dir, '.autonomy', 'WAITING');
+    writeFileSync(f, JSON.stringify(body));
+    const t = Date.now() / 1000 - ageSeconds;
+    utimesSync(f, t, t);
+  };
+  const now = Date.now() / 1000;
+  let dir = fixture(doable); mark(dir, { until: now + 600, on: 'workflow wf_x' });
+  assert.equal(blocked(run('autonomy_stop_gate.py', dir)), false, 'waiting on named work is not stopping');
+  dir = fixture(doable); mark(dir, { until: now - 5, on: 'workflow wf_x' });
+  assert.ok(blocked(run('autonomy_stop_gate.py', dir)), 'an expired wait no longer excuses the stop');
+  dir = fixture(doable); mark(dir, { until: now + 600, on: '' });
+  assert.ok(blocked(run('autonomy_stop_gate.py', dir)), 'a wait that names nothing excuses nothing');
+  dir = fixture(doable); mark(dir, { until: now + 86400, on: 'workflow wf_x' }, 21 * 60);
+  assert.ok(blocked(run('autonomy_stop_gate.py', dir)), 'a marker older than 20 minutes is ignored whatever it claims');
+});

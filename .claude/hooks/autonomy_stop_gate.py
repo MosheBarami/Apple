@@ -45,6 +45,29 @@ def owner_blocked_findings() -> set[str]:
     return ids
 
 
+WAIT_MAX_SECONDS = 20 * 60
+
+
+def waiting_on_background_work() -> bool:
+    """A turn that ends while background work the agent started is still running is waiting, not stopping.
+
+    The agent writes `.autonomy/WAITING` = {"until": <unix seconds>, "on": "<what>"} when every remaining
+    item depends on work already in flight (a workflow, a subagent, a Studio run it is watching). The
+    marker is honoured for at most WAIT_MAX_SECONDS from when it was written, however far `until` says,
+    so a forgotten marker cannot switch the gate off. Background agents keep editing the tree, which is
+    why the idle rule below never fires in that state and each blocked stop was a paid no-op.
+    """
+    marker = ROOT / ".autonomy" / "WAITING"
+    try:
+        data = json.loads(marker.read_text(encoding="utf-8"))
+        written = marker.stat().st_mtime
+    except Exception:
+        return False
+    now = time.time()
+    until = float(data.get("until", 0))
+    return bool(data.get("on")) and now < min(until, written + WAIT_MAX_SECONDS)
+
+
 def progress_signature() -> str:
     """What 'something changed' means: HEAD plus the dirty tree's content hashes."""
     def run(*args: str) -> str:
@@ -85,6 +108,8 @@ def main() -> None:
     except Exception:
         pass
     if (ROOT / ".autonomy" / "STOP").exists():
+        allow()
+    if waiting_on_background_work():
         allow()
 
     unmet = unmet_conditions()
