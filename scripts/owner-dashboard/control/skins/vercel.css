@@ -1,0 +1,428 @@
+/* Vercel skin: the Vercel dashboard (vercel.com/{team}, /{team}/{project}, /deployments, /settings) built from
+   Geist (vercel.com/geist: colors, materials, typography, Button, Badge, Status Dot, Note, Tabs, Table, Input,
+   Gauge, Skeleton, Spinner, Menu, Modal, Command Menu, Toast). Fonts: Geist + Geist Mono 1.7.2 (OFL 1.1), the
+   same files the base skin ships in ../fonts/base. Status dot colours measured from the dashboard screenshots
+   in vercel.com/docs (Ready #50e3c2, Building #f5a623, Error #e5484d, Queued/Canceled gray). */
+
+@font-face { font-family: 'Geist'; src: url('../fonts/base/Geist-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Geist Mono'; src: url('../fonts/base/GeistMono-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+
+/* ------------------------------------------------ tokens (dark: dashboard background-200 page, background-100 materials) */
+html[data-skin='vercel'] {
+  --vc-bg-100: #0a0a0a; --vc-bg-200: #000;
+  --vc-g100: #1a1a1a; --vc-g200: #1f1f1f; --vc-g300: #292929; --vc-g400: #2e2e2e; --vc-g500: #454545;
+  --vc-g600: #878787; --vc-g700: #8f8f8f; --vc-g800: #7d7d7d; --vc-g900: #a1a1a1; --vc-g1000: #ededed;
+  --vc-a100: rgba(255,255,255,.06); --vc-a200: rgba(255,255,255,.09); --vc-a400: rgba(255,255,255,.145);
+  --vc-blue-200: #0f1f3d; --vc-blue-400: #0f3058; --vc-blue-700: #0070f3; --vc-blue-900: #52a8ff;
+  --vc-red-200: #3c1618; --vc-red-400: #671e21; --vc-red-700: #e5484d; --vc-red-900: #ff6166;
+  --vc-amber-200: #362005; --vc-amber-400: #573a07; --vc-amber-700: #ffb224; --vc-amber-900: #ff990a;
+  --vc-green-200: #0f2e18; --vc-green-400: #174d25; --vc-green-700: #46a758; --vc-green-900: #62c073;
+  --vc-purple-200: #2e1938; --vc-purple-900: #bf7af0;
+  --vc-ready: #50e3c2; --vc-building: #f5a623; --vc-error: #e5484d; --vc-queued: #8f8f8f;
+  --vc-border: 0 0 0 1px var(--vc-a400);
+  --vc-menu: 0 0 0 1px var(--vc-a400), 0 1px 1px rgba(0,0,0,.2), 0 4px 8px -4px rgba(0,0,0,.4), 0 16px 24px -8px rgba(0,0,0,.5);
+  --vc-modal: 0 0 0 1px var(--vc-a400), 0 1px 1px rgba(0,0,0,.2), 0 8px 16px -4px rgba(0,0,0,.4), 0 24px 32px -8px rgba(0,0,0,.6);
+  --vc-sk: linear-gradient(270deg, var(--vc-g100), var(--vc-g300), var(--vc-g300), var(--vc-g100));
+
+  --bg: var(--vc-bg-200); --paper: var(--vc-bg-200); --paper-2: var(--vc-bg-100);
+  --surface: var(--vc-bg-100); --surface-2: var(--vc-g100); --surface-3: var(--vc-g200);
+  --card: var(--surface); --card2: var(--surface-2);
+  --ink: var(--vc-g1000); --text: var(--ink); --ink-2: #d4d4d4;
+  --muted: var(--vc-g900); --dim: var(--muted); --faint: var(--vc-g800); --off: var(--vc-g700);
+  --line: var(--vc-g400); --line2: var(--vc-g500); --line-strong: var(--vc-g500); --hairline: var(--vc-g200);
+  --control-fill: var(--vc-a100);
+  --accent: var(--vc-blue-700); --accent2: var(--vc-blue-900); --accent-ink: var(--vc-blue-900);
+  --accent-soft: color-mix(in srgb, var(--vc-blue-700) 14%, transparent); --accent-ring: color-mix(in srgb, var(--vc-blue-700) 45%, transparent);
+  --primary: var(--vc-g1000); --primary-hover: #cccccc; --on-primary: var(--vc-bg-100);
+  --good: var(--vc-green-900); --warn: var(--vc-amber-900); --bad: var(--vc-red-900); --mid: var(--vc-blue-900);
+  --ok: var(--good); --ok-t: var(--good); --warn-t: var(--warn); --bad-t: var(--bad);
+  --shadow: 0 2px 2px rgba(0,0,0,.32); --glow: transparent; --glass: rgba(0,0,0,.72);
+  --focus-ring: 0 0 0 2px var(--vc-bg-100), 0 0 0 4px var(--vc-blue-700);
+  --font: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Hebrew', Arial, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --r-xs: 4px; --r-sm: 6px; --r: 8px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 9999px;
+  --t-fast: 150ms; --t-base: 200ms; --t-slow: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  color-scheme: dark;
+}
+/* ------------------------------------------------ tokens (light) */
+html[data-skin='vercel'][data-theme='light'] {
+  --vc-bg-100: #fff; --vc-bg-200: #fafafa;
+  --vc-g100: #f2f2f2; --vc-g200: #ebebeb; --vc-g300: #e6e6e6; --vc-g400: #ebebeb; --vc-g500: #c9c9c9;
+  --vc-g600: #a8a8a8; --vc-g700: #8f8f8f; --vc-g800: #7d7d7d; --vc-g900: #666; --vc-g1000: #171717;
+  --vc-a100: rgba(0,0,0,.05); --vc-a200: rgba(0,0,0,.08); --vc-a400: rgba(0,0,0,.08);
+  --vc-blue-200: #eaf3ff; --vc-blue-400: #cce6ff; --vc-blue-700: #006bff; --vc-blue-900: #0060d1;
+  --vc-red-200: #ffebeb; --vc-red-400: #ffd2d2; --vc-red-700: #e5484d; --vc-red-900: #cb2a2f;
+  --vc-amber-200: #fff4d5; --vc-amber-400: #ffdc8a; --vc-amber-700: #ffb224; --vc-amber-900: #a35200;
+  --vc-green-200: #e9f9ec; --vc-green-400: #c6ecd0; --vc-green-700: #46a758; --vc-green-900: #297c3b;
+  --vc-purple-200: #f9f0ff; --vc-purple-900: #7820bc;
+  --vc-menu: 0 0 0 1px var(--vc-a400), 0 1px 1px rgba(0,0,0,.02), 0 4px 8px -4px rgba(0,0,0,.04), 0 16px 24px -8px rgba(0,0,0,.06);
+  --vc-modal: 0 0 0 1px var(--vc-a400), 0 1px 1px rgba(0,0,0,.02), 0 8px 16px -4px rgba(0,0,0,.04), 0 24px 32px -8px rgba(0,0,0,.06);
+  --vc-ready: #0cce6b; --vc-building: #f5a623;
+  --ink-2: #3d3d3d; --faint: #737373; /* gray-800 is 3.9:1 on white: one step darker keeps small labels at AA */
+  --line: var(--vc-g300); --line2: var(--vc-g500); --line-strong: var(--vc-g500); --hairline: var(--vc-g100);
+  --primary-hover: #383838; --shadow: 0 2px 2px rgba(0,0,0,.04); --glass: rgba(255,255,255,.8);
+  color-scheme: light;
+}
+
+/* ------------------------------------------------ shell restyle (sidebar, top bar, modal, palette, toast) */
+html[data-skin='vercel'] body { font: 400 14px/20px var(--font); background: var(--bg); color: var(--ink); }
+html[data-skin='vercel'] .side { background: var(--vc-bg-100); border-inline-end: 1px solid var(--line); }
+html[data-skin='vercel'] .brand { color: var(--ink); }
+html[data-skin='vercel'] .nav-gl { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--faint); }
+html[data-skin='vercel'] .nav-a { min-height: 32px; padding: 4px 8px; border-radius: var(--r-sm); color: var(--muted); font-size: 14px; }
+html[data-skin='vercel'] .nav-a:hover { background: var(--vc-a100); color: var(--ink); }
+html[data-skin='vercel'] .nav-a.on { background: var(--vc-a200); color: var(--ink); font-weight: 500; }
+html[data-skin='vercel'] .nav-a.on::before { display: none; }
+html[data-skin='vercel'] .top { background: var(--glass); border-bottom: 1px solid var(--line); -webkit-backdrop-filter: saturate(180%) blur(5px); backdrop-filter: saturate(180%) blur(5px); }
+html[data-skin='vercel'] .pal-btn { height: 32px; border: 0; border-radius: var(--r-sm); box-shadow: var(--vc-border); background: var(--surface); color: var(--muted); }
+html[data-skin='vercel'] .pal-btn:hover { background: var(--vc-g100); color: var(--ink); }
+html[data-skin='vercel'] .ib { border-radius: var(--r-sm); color: var(--muted); }
+html[data-skin='vercel'] .ib:hover { background: var(--vc-a100); color: var(--ink); }
+html[data-skin='vercel'] .live { height: 28px; border: 0; box-shadow: var(--vc-border); font-size: 13px; color: var(--muted); background: var(--surface); }
+html[data-skin='vercel'] .live[data-state='live'] .live-d { background: var(--vc-ready); }
+html[data-skin='vercel'] .live[data-state='live'] .live-d::after { border-color: var(--vc-ready); }
+html[data-skin='vercel'] .dry { height: 32px; border: 0; box-shadow: var(--vc-border); border-radius: var(--r-sm); background: var(--surface); color: var(--muted); }
+html[data-skin='vercel'] .dry.on { box-shadow: 0 0 0 1px var(--vc-blue-700); background: var(--vc-blue-200); color: var(--vc-blue-900); }
+html[data-skin='vercel'] .sw { background: var(--vc-g300); border: 0; box-shadow: inset 0 0 0 1px var(--vc-a400); }
+html[data-skin='vercel'] .sw i { background: var(--vc-bg-100); box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+html[data-skin='vercel'] .dry.on .sw, html[data-skin='vercel'] .swb[aria-checked='true'] .sw { background: var(--vc-blue-700); }
+html[data-skin='vercel'] .dry.on .sw i, html[data-skin='vercel'] .swb[aria-checked='true'] .sw i { background: #fff; }
+html[data-skin='vercel'] .swb { color: var(--muted); } html[data-skin='vercel'] .swb:hover { background: var(--vc-a100); color: var(--ink); }
+html[data-skin='vercel'] .phead h1 { font-size: 32px; line-height: 40px; font-weight: 600; letter-spacing: -0.049375rem; }
+/* the page draws Vercel's own header; the shell title stays in the DOM (main is aria-labelledby it) but off screen */
+html[data-skin='vercel'] .page-vercel > .phead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; padding: 0; }
+html[data-skin='vercel'] .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: none; }
+html[data-skin='vercel'] .btn { min-height: 40px; padding: 0 12px; border: 0; border-radius: var(--r-sm); font-weight: 500; font-size: 14px; background: var(--surface); color: var(--ink); box-shadow: var(--vc-border); transition: background-color var(--t-fast) ease, box-shadow var(--t-fast) ease; }
+html[data-skin='vercel'] .btn:hover { background: var(--vc-g100); }
+html[data-skin='vercel'] .btn-sm { min-height: 32px; padding: 0 8px; }
+html[data-skin='vercel'] .btn-primary, html[data-skin='vercel'] .btn-brand, html[data-skin='vercel'] .btn-ok { background: var(--primary); color: var(--on-primary); box-shadow: none; }
+html[data-skin='vercel'] .btn-primary:hover, html[data-skin='vercel'] .btn-brand:hover, html[data-skin='vercel'] .btn-ok:hover { background: var(--primary-hover); }
+html[data-skin='vercel'] .btn-ghost { background: transparent; box-shadow: none; }
+html[data-skin='vercel'] .btn-ghost:hover { background: var(--vc-a200); }
+html[data-skin='vercel'] .btn-danger { background: var(--vc-red-700); color: #fff; box-shadow: none; }
+html[data-skin='vercel'] .btn-danger:hover { background: #d93036; }
+html[data-skin='vercel'] .btn-danger-o { background: var(--surface); color: var(--vc-red-900); box-shadow: 0 0 0 1px var(--vc-red-400); }
+html[data-skin='vercel'] .chip { height: 24px; padding: 0 10px; border: 0; border-radius: var(--r-pill); font-size: 12px; font-weight: 500; background: var(--vc-g200); color: var(--ink); }
+html[data-skin='vercel'] .li { border-top-color: var(--line); } html[data-skin='vercel'] .li:hover { background: var(--vc-a100); }
+html[data-skin='vercel'] .list { border-color: var(--line); }
+html[data-skin='vercel'] .stat-v { font-size: 32px; line-height: 40px; font-weight: 600; letter-spacing: -0.049375rem; }
+html[data-skin='vercel'] th { height: 40px; padding: 0 12px; background: var(--vc-bg-200); color: var(--muted); font-size: 12px; font-weight: 500; border-bottom: 1px solid var(--line); text-align: start; }
+html[data-skin='vercel'] td { height: 48px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+html[data-skin='vercel'] tbody tr:hover td { background: var(--vc-a100); }
+/* styles.css `* { margin: 0 }` removes the UA `margin: auto` that centres a modal <dialog>; restore it. */
+html[data-skin='vercel'] .modal { margin: auto; }
+html[data-skin='vercel'] .palette { margin: 12vh auto auto; }
+html[data-skin='vercel'] .modal::backdrop, html[data-skin='vercel'] .palette::backdrop { background: rgba(0,0,0,.5); -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-skin='vercel'][data-theme='light'] .modal::backdrop, html[data-skin='vercel'][data-theme='light'] .palette::backdrop { background: rgba(0,0,0,.25); }
+html[data-skin='vercel'] .modal-card { background: var(--vc-bg-100); border: 0; border-radius: var(--r-lg); box-shadow: var(--vc-modal); padding: 24px; }
+html[data-skin='vercel'] .modal-h h2 { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.029375rem; }
+html[data-skin='vercel'] .modal-b { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--vc-bg-200); }
+html[data-skin='vercel'] .modal-actions { margin: 24px -24px -24px; padding: 16px 24px; background: var(--vc-bg-200); border-top: 1px solid var(--line); border-radius: 0 0 var(--r-lg) var(--r-lg); justify-content: space-between; }
+html[data-skin='vercel'] .pal { background: var(--vc-bg-100); border: 0; border-radius: var(--r-lg); box-shadow: var(--vc-modal); }
+html[data-skin='vercel'] .pal-in { border-bottom: 1px solid var(--line); font-size: 16px; }
+html[data-skin='vercel'] .pal-g { font-size: 12px; font-weight: 500; color: var(--faint); letter-spacing: 0; text-transform: none; }
+html[data-skin='vercel'] .pal-i { border-radius: var(--r-sm); }
+html[data-skin='vercel'] .pal-i.on { background: var(--vc-a200); }
+html[data-skin='vercel'] .pal-f { border-top: 1px solid var(--line); background: var(--vc-bg-200); }
+html[data-skin='vercel'] kbd { font-family: var(--font); font-size: 12px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 4px; background: var(--vc-g100); box-shadow: var(--vc-border); color: var(--muted); border: 0; }
+html[data-skin='vercel'] .toast { background: var(--vc-bg-100); color: var(--ink); border: 0; border-radius: var(--r-lg); box-shadow: var(--vc-menu); }
+html[data-skin='vercel'] .toast-bad { box-shadow: 0 0 0 1px var(--vc-red-400), var(--vc-menu); }
+html[data-skin='vercel'] .skel > * { background: var(--vc-sk); background-size: 400% 100%; animation: vcx-shimmer 8s ease-in-out infinite; border-radius: var(--r-sm); }
+html[data-skin='vercel'] :focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--r-sm); }
+html[data-skin='vercel'] code, html[data-skin='vercel'] kbd, html[data-skin='vercel'] .mono { font-family: var(--mono); }
+html[data-skin='vercel'] ::selection { background: var(--vc-blue-700); color: #fff; }
+
+/* ------------------------------------------------ page chrome: dashboard header + tabs */
+html[data-skin='vercel'] .vcx { --vcx-pad: clamp(16px, 3vw, 24px); }
+html[data-skin='vercel'] .vcx bdi { unicode-bidi: isolate; }
+html[data-skin='vercel'] .vcx-i { flex: none; vertical-align: -3px; }
+html[data-skin='vercel'] .vcx-top { display: flex; align-items: center; gap: 8px; height: 64px; padding: 0 var(--vcx-pad); background: var(--vc-bg-100); border: 1px solid var(--line); border-bottom: 0; border-radius: var(--r-lg) var(--r-lg) 0 0; }
+html[data-skin='vercel'] .vcx-home { display: inline-grid; place-items: center; width: 32px; height: 32px; color: var(--ink); border-radius: var(--r-sm); }
+html[data-skin='vercel'] .vcx-slash { color: var(--vc-g500); font-size: 22px; font-weight: 200; transform: skewX(-12deg); margin: 0 2px; user-select: none; }
+html[data-skin='vercel'][dir='rtl'] .vcx-slash { transform: skewX(12deg); }
+html[data-skin='vercel'] .vcx-scope { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; border: 0; background: none; color: var(--ink); border-radius: var(--r-sm); font: inherit; font-weight: 500; cursor: pointer; }
+html[data-skin='vercel'] .vcx-scope:hover, html[data-skin='vercel'] .vcx-scope[aria-expanded='true'] { background: var(--vc-a100); }
+html[data-skin='vercel'] .vcx-scope .vcx-i { color: var(--muted); }
+html[data-skin='vercel'] .vcx-av { display: inline-block; flex: none; width: var(--s, 20px); height: var(--s, 20px); border-radius: 50%;
+  background: linear-gradient(135deg, hsl(var(--a, 200) 85% 62%), hsl(var(--b, 280) 85% 52%)); box-shadow: 0 0 0 1px var(--vc-a400); }
+html[data-skin='vercel'] .vcx-av-off { background: var(--vc-g300); }
+html[data-skin='vercel'] .vcx-proj { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; border-radius: var(--r-sm); font-weight: 500; }
+html[data-skin='vercel'] .vcx-proj:hover { background: var(--vc-a100); }
+html[data-skin='vercel'] .vcx-proj select { field-sizing: content; appearance: none; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 500; padding: 0; cursor: pointer; max-width: 22ch; }
+html[data-skin='vercel'] .vcx-proj select option { background: var(--vc-bg-100); color: var(--ink); }
+html[data-skin='vercel'] .vcx-proj > .vcx-i:last-child { color: var(--muted); pointer-events: none; }
+html[data-skin='vercel'] .vcx-grow { flex: 1 1 auto; min-width: 0; }
+html[data-skin='vercel'] .vcx-find { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px 0 10px; border: 0; border-radius: var(--r-sm); box-shadow: var(--vc-border); background: var(--vc-bg-100); color: var(--muted); font: inherit; cursor: pointer; min-width: 160px; }
+html[data-skin='vercel'] .vcx-find span { flex: 1; text-align: start; }
+html[data-skin='vercel'] .vcx-find:hover { color: var(--ink); background: var(--vc-g100); }
+html[data-skin='vercel'] .vcx-tabs { display: flex; gap: 0; padding: 0 calc(var(--vcx-pad) - 12px); background: var(--vc-bg-100); border: 1px solid var(--line); border-top: 0; border-radius: 0; overflow-x: auto; scrollbar-width: none; position: relative; }
+html[data-skin='vercel'] .vcx-tabs::after { content: ''; position: absolute; inset: auto 0 0; height: 1px; background: var(--line); pointer-events: none; }
+html[data-skin='vercel'] .vcx-tab { position: relative; flex: none; height: 46px; padding: 0 12px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap; }
+html[data-skin='vercel'] .vcx-tab::before { content: ''; position: absolute; inset: 8px 4px; border-radius: var(--r-sm); transition: background-color var(--t-fast) ease; }
+html[data-skin='vercel'] .vcx-tab:hover { color: var(--ink); } html[data-skin='vercel'] .vcx-tab:hover::before { background: var(--vc-a100); }
+html[data-skin='vercel'] .vcx-tab.on { color: var(--ink); }
+html[data-skin='vercel'] .vcx-tab.on::after { content: ''; position: absolute; inset-inline: 12px; bottom: 0; height: 2px; background: var(--ink); z-index: 1; animation: vcx-bar var(--t-base) var(--ease-out); }
+html[data-skin='vercel'] .vcx-body { padding: 32px var(--vcx-pad) 48px; background: var(--vc-bg-200); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 var(--r-lg) var(--r-lg); display: flex; flex-direction: column; gap: 24px; min-height: 60vh; }
+html[data-skin='vercel'] .vcx-body > *, html[data-skin='vercel'] .vcx-grid > *, html[data-skin='vercel'] .vcx-notes > *, html[data-skin='vercel'] .vcx-list > .vcx-dr, html[data-skin='vercel'] .vcx-side > * { animation: vcx-in 420ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms); }
+
+/* URLs and hosts truncate at their end (the LTR end), not at the RTL start */
+html[data-skin='vercel'] .vcx-pc-u, html[data-skin='vercel'] .vcx-dr-u, html[data-skin='vercel'] .vcx-mini a { direction: ltr; text-align: right; }
+
+/* ------------------------------------------------ Geist components */
+html[data-skin='vercel'] .vcx-muted { color: var(--muted); }
+html[data-skin='vercel'] .vcx h2 { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.029375rem; margin: 0; }
+html[data-skin='vercel'] .vcx h3 { font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: -0.020625rem; margin: 0; }
+html[data-skin='vercel'] .vcx-h3 { margin-bottom: -8px !important; }
+html[data-skin='vercel'] .vcx-row, html[data-skin='vercel'] .vcx-row-c { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+html[data-skin='vercel'] .vcx-row-c { justify-content: center; }
+html[data-skin='vercel'] .vcx-sec-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+html[data-skin='vercel'] .vcx-sec-h p { margin: 4px 0 0; }
+/* Button: small 32 / medium 40, radius 6; primary = gray-1000, secondary = background-100 + border, tertiary = none, error = red-800 */
+html[data-skin='vercel'] .vcx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 12px; border: 0; border-radius: var(--r-sm); font: inherit; font-weight: 500; font-size: 14px; text-decoration: none; cursor: pointer; white-space: nowrap;
+  transition: background-color var(--t-fast) ease, color var(--t-fast) ease, box-shadow var(--t-fast) ease; }
+html[data-skin='vercel'] .vcx-btn-sm { height: 32px; padding: 0 10px; }
+html[data-skin='vercel'] .vcx-btn-primary { background: var(--vc-g1000); color: var(--vc-bg-100); }
+html[data-skin='vercel'] .vcx-btn-primary:hover { background: var(--primary-hover); }
+html[data-skin='vercel'] .vcx-btn-secondary { background: var(--vc-bg-100); color: var(--ink); box-shadow: var(--vc-border); }
+html[data-skin='vercel'] .vcx-btn-secondary:hover { background: var(--vc-g100); }
+html[data-skin='vercel'] .vcx-btn-tertiary { background: none; color: var(--ink); }
+html[data-skin='vercel'] .vcx-btn-tertiary:hover { background: var(--vc-a200); }
+html[data-skin='vercel'] .vcx-btn-error { background: var(--vc-red-700); color: #fff; }
+html[data-skin='vercel'] .vcx-btn .vcx-i { color: inherit; }
+html[data-skin='vercel'] .vcx-ib { width: 32px; padding: 0; }
+html[data-skin='vercel'] .vcx-link { border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; cursor: pointer; padding: 0; }
+html[data-skin='vercel'] .vcx-link:hover { color: var(--ink); text-decoration: underline; }
+/* Badge: sm 20 / md 24, pill; gray-subtle, blue, *-subtle */
+html[data-skin='vercel'] .vcx-badge { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 10px; border-radius: var(--r-pill); font-size: 12px; font-weight: 500; white-space: nowrap; vertical-align: middle; font-feature-settings: 'tnum'; }
+html[data-skin='vercel'] .vcx-badge-sm { height: 20px; padding: 0 6px; font-size: 11px; }
+html[data-skin='vercel'] .vcx-badge-gray { background: var(--vc-g200); color: var(--ink); }
+html[data-skin='vercel'] .vcx-badge-o { background: transparent; box-shadow: inset 0 0 0 1px var(--vc-a400); }
+html[data-skin='vercel'] .vcx-badge-blue { background: var(--vc-blue-700); color: #fff; }
+html[data-skin='vercel'] .vcx-badge-blue-subtle { background: var(--vc-blue-200); color: var(--vc-blue-900); }
+html[data-skin='vercel'] .vcx-badge-red-subtle { background: var(--vc-red-200); color: var(--vc-red-900); }
+html[data-skin='vercel'] .vcx-badge-amber-subtle { background: var(--vc-amber-200); color: var(--vc-amber-900); }
+html[data-skin='vercel'] .vcx-badge-green-subtle { background: var(--vc-green-200); color: var(--vc-green-900); }
+html[data-skin='vercel'] .vcx-badge-purple-subtle { background: var(--vc-purple-200); color: var(--vc-purple-900); }
+html[data-skin='vercel'] .vcx-live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: vcx-pulse 2s ease-in-out infinite; }
+/* Status Dot: 10px disc + label */
+html[data-skin='vercel'] .vcx-st { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; color: var(--ink); }
+html[data-skin='vercel'] .vcx-dot { position: relative; display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--vc-queued)); }
+html[data-skin='vercel'] .vcx-st-ready { --c: var(--vc-ready); } html[data-skin='vercel'] .vcx-st-error { --c: var(--vc-error); }
+html[data-skin='vercel'] .vcx-st-building { --c: var(--vc-building); } html[data-skin='vercel'] .vcx-st-queued, html[data-skin='vercel'] .vcx-st-canceled { --c: var(--vc-queued); }
+html[data-skin='vercel'] .vcx-st-building .vcx-dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid var(--c); animation: vcx-ping 1.6s var(--ease-out) infinite; }
+html[data-skin='vercel'] .vcx-dots { display: inline-flex; }
+html[data-skin='vercel'] .vcx-dots .vcx-dot { width: 10px; height: 10px; box-shadow: 0 0 0 1.5px var(--vc-bg-100); }
+html[data-skin='vercel'] .vcx-dots .vcx-dot + .vcx-dot { margin-inline-start: -4px; }
+/* Note: 1px border, radius 6, 8/12 padding, tinted per type */
+html[data-skin='vercel'] .vcx-notes { display: grid; gap: 8px; }
+html[data-skin='vercel'] .vcx-note { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: var(--r-sm); border: 1px solid var(--nb, var(--line)); background: var(--nbg, var(--vc-bg-100)); color: var(--nc, var(--ink)); font-size: 14px; line-height: 20px; }
+html[data-skin='vercel'] .vcx-note > .vcx-i { margin-top: 2px; }
+html[data-skin='vercel'] .vcx-note p { margin: 0; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+html[data-skin='vercel'] .vcx-note p b { font-weight: 600; }
+html[data-skin='vercel'] .vcx-note-error { --nb: var(--vc-red-400); --nbg: var(--vc-red-200); --nc: var(--vc-red-900); }
+html[data-skin='vercel'] .vcx-note-warning { --nb: var(--vc-amber-400); --nbg: var(--vc-amber-200); --nc: var(--vc-amber-900); }
+html[data-skin='vercel'] .vcx-note-success { --nb: var(--vc-blue-400); --nbg: var(--vc-blue-200); --nc: var(--vc-blue-900); }
+html[data-skin='vercel'] .vcx-note-secondary { --nb: var(--line); --nbg: var(--vc-bg-100); --nc: var(--ink); }
+html[data-skin='vercel'] .vcx-note-a { display: inline-flex; align-items: center; gap: 4px; color: inherit; font-weight: 500; white-space: nowrap; text-decoration: none; }
+html[data-skin='vercel'] .vcx-note-a:hover { text-decoration: underline; }
+/* Card / material-base */
+html[data-skin='vercel'] .vcx-card { background: var(--vc-bg-100); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; min-width: 0; }
+html[data-skin='vercel'] .vcx-card-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+html[data-skin='vercel'] .vcx-card-h b { font-weight: 600; flex: 1; }
+html[data-skin='vercel'] .vcx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+/* Input */
+html[data-skin='vercel'] .vcx-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+html[data-skin='vercel'] .vcx-input { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: var(--r-sm); background: var(--vc-bg-100); box-shadow: var(--vc-border); color: var(--muted); min-width: 220px; transition: box-shadow var(--t-fast) ease; }
+html[data-skin='vercel'] .vcx-input:hover { box-shadow: 0 0 0 1px var(--vc-g500); }
+html[data-skin='vercel'] .vcx-input:focus-within { box-shadow: 0 0 0 1px var(--vc-g500), 0 0 0 4px var(--vc-a200); }
+html[data-skin='vercel'] .vcx-input input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; color: var(--ink); font: inherit; outline: none; box-shadow: none; }
+html[data-skin='vercel'] .vcx-input input::placeholder { color: var(--vc-g700); }
+html[data-skin='vercel'] .vcx-input input::-webkit-search-cancel-button { display: none; }
+html[data-skin='vercel'] .vcx-x { display: inline-grid; place-items: center; width: 24px; height: 24px; border: 0; background: none; color: var(--muted); border-radius: var(--r-xs); cursor: pointer; }
+html[data-skin='vercel'] .vcx-x:hover { background: var(--vc-a200); color: var(--ink); }
+/* Segmented (Geist Switch) */
+html[data-skin='vercel'] .vcx-seg { display: inline-flex; gap: 2px; padding: 4px; height: 40px; border-radius: var(--r-sm); background: var(--vc-bg-100); box-shadow: var(--vc-border); }
+html[data-skin='vercel'] .vcx-seg button { height: 32px; margin-top: -1px; padding: 0 12px; border: 0; border-radius: var(--r-xs); background: none; color: var(--muted); font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap; }
+html[data-skin='vercel'] .vcx-seg button:hover { color: var(--ink); }
+html[data-skin='vercel'] .vcx-seg button.on { background: var(--vc-g200); color: var(--ink); font-weight: 500; }
+html[data-skin='vercel'] .vcx-filter { height: 40px; gap: 10px; }
+/* Menu / popover */
+html[data-skin='vercel'] .vcx-pop-w { position: relative; }
+html[data-skin='vercel'] .vcx-menu { position: absolute; z-index: 30; top: calc(100% + 6px); inset-inline-start: 0; min-width: 220px; padding: 8px; border-radius: var(--r-lg); background: var(--vc-bg-100); box-shadow: var(--vc-menu); display: flex; flex-direction: column; animation: vcx-pop 160ms var(--ease-out); }
+/* an open menu lifts its row/card above siblings (the reveal animation gives each one its own stacking context) */
+html[data-skin='vercel'] .vcx-dr:has(.vcx-menu), html[data-skin='vercel'] .vcx-top:has(.vcx-menu), html[data-skin='vercel'] .vcx-bar:has(.vcx-menu) { position: relative; z-index: 20; }
+html[data-skin='vercel'] .vcx-menu-end { inset-inline-start: auto; inset-inline-end: 0; }
+html[data-skin='vercel'] .vcx-menu-scope { width: 280px; }
+html[data-skin='vercel'] .vcx-menu hr { border: 0; height: 1px; background: var(--line); margin: 4px 8px; }
+html[data-skin='vercel'] .vcx-menu-h { margin: 4px 8px 6px; font-size: 12px; color: var(--muted); }
+html[data-skin='vercel'] .vcx-menu-f { margin: 8px 8px 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+html[data-skin='vercel'] .vcx-menu-i { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 0 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--ink); font: inherit; font-size: 14px; text-align: start; text-decoration: none; cursor: pointer; white-space: nowrap; }
+html[data-skin='vercel'] .vcx-menu-i:hover, html[data-skin='vercel'] .vcx-menu-i:focus-visible { background: var(--vc-a200); }
+html[data-skin='vercel'] .vcx-menu-i.on { justify-content: flex-start; } html[data-skin='vercel'] .vcx-menu-i.on .vcx-i { margin-inline-start: auto; }
+html[data-skin='vercel'] .vcx-kebab { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: var(--r-sm); background: none; color: var(--muted); cursor: pointer; }
+html[data-skin='vercel'] .vcx-kebab .vcx-i { transform: rotate(90deg); }
+html[data-skin='vercel'] .vcx-kebab:hover, html[data-skin='vercel'] .vcx-kebab[aria-expanded='true'] { background: var(--vc-a200); color: var(--ink); }
+/* Gauge (Geist: ring with rounded arc, value in the middle) */
+html[data-skin='vercel'] .vcx-gauge { position: relative; display: inline-grid; place-items: center; flex: none; }
+html[data-skin='vercel'] .vcx-gauge svg { display: block; }
+html[data-skin='vercel'] .vcx-g-trk { fill: none; stroke: var(--vc-g200); stroke-width: 6; }
+html[data-skin='vercel'] .vcx-g-arc { fill: none; stroke: var(--gc, var(--vc-g700)); stroke-width: 6; stroke-linecap: round; transition: stroke-dasharray 800ms var(--ease-out); animation: vcx-arc 900ms var(--ease-out) both; }
+html[data-skin='vercel'] .vcx-gauge b { position: absolute; font-size: 15px; font-weight: 600; font-feature-settings: 'tnum'; }
+html[data-skin='vercel'] .vcx-gauge-green { --gc: var(--vc-green-700); } html[data-skin='vercel'] .vcx-gauge-amber { --gc: var(--vc-amber-700); } html[data-skin='vercel'] .vcx-gauge-red { --gc: var(--vc-red-700); }
+/* Spinner (Geist: 12 bars; here a single-stroke ring) */
+html[data-skin='vercel'] .vcx-spin { display: inline-block; width: 12px; height: 12px; margin-inline-end: 6px; vertical-align: -1px; border-radius: 50%; border: 1.5px solid var(--vc-g500); border-top-color: var(--ink); animation: vcx-rot 700ms linear infinite; }
+/* Skeleton */
+html[data-skin='vercel'] .vcx-sk { height: 12px; margin-top: 12px; border-radius: var(--r-sm); background: var(--vc-sk); background-size: 400% 100%; animation: vcx-shimmer 8s ease-in-out infinite; }
+html[data-skin='vercel'] .vcx-sk-s { width: 55%; margin-top: 8px; }
+/* Empty state */
+html[data-skin='vercel'] .vcx-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 48px 24px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--vc-bg-100); }
+html[data-skin='vercel'] .vcx-empty p { margin: 0; max-width: 56ch; }
+html[data-skin='vercel'] .vcx-empty-s { padding: 32px 16px; grid-column: 1 / -1; }
+html[data-skin='vercel'] .vcx-empty-ic { display: grid; place-items: center; width: 48px; height: 48px; border-radius: var(--r-lg); background: var(--vc-bg-100); box-shadow: var(--vc-border), 0 2px 6px rgba(0,0,0,.2); color: var(--ink); }
+html[data-skin='vercel'] .vcx-empty-ic .vcx-mark { width: 22px; height: 20px; }
+/* Table */
+html[data-skin='vercel'] .vcx-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+html[data-skin='vercel'] .vcx-table th:first-child, html[data-skin='vercel'] .vcx-table td:first-child { padding-inline-start: 16px; }
+html[data-skin='vercel'] .vcx-table tbody tr:last-child td { border-bottom: 0; }
+html[data-skin='vercel'] .vcx-table a { color: var(--ink); text-decoration: none; } html[data-skin='vercel'] .vcx-table a:hover { text-decoration: underline; }
+html[data-skin='vercel'] .vcx-code { margin: 8px 0 0; padding: 12px 16px; border-radius: var(--r-sm); background: var(--vc-bg-200); box-shadow: var(--vc-border); font: 13px/20px var(--mono); color: var(--ink); text-align: left; white-space: pre-wrap; overflow-x: auto; }
+html[data-skin='vercel'] .vcx code { font-size: 13px; }
+
+/* ------------------------------------------------ not connected */
+html[data-skin='vercel'] .vcx-connect { padding: 40px 24px 32px; }
+html[data-skin='vercel'] .vcx-steps { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 16px; width: min(520px, 100%); text-align: start; }
+html[data-skin='vercel'] .vcx-steps li { display: flex; gap: 12px; }
+html[data-skin='vercel'] .vcx-steps li > div { flex: 1; min-width: 0; } html[data-skin='vercel'] .vcx-steps p { margin: 2px 0 0; }
+html[data-skin='vercel'] .vcx-n { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--vc-g200); font-size: 12px; font-weight: 600; font-feature-settings: 'tnum'; }
+html[data-skin='vercel'] .vcx-det { font-size: 13px; color: var(--muted); max-width: 560px; }
+html[data-skin='vercel'] .vcx-det summary { cursor: pointer; color: var(--ink); }
+html[data-skin='vercel'] .vcx-ghost { border-style: dashed; }
+html[data-skin='vercel'] .vcx-ghost .vcx-card-h { justify-content: flex-start; margin-bottom: 6px; }
+html[data-skin='vercel'] .vcx-ghost p { margin: 0; font-size: 13px; }
+
+/* ------------------------------------------------ overview */
+html[data-skin='vercel'] .vcx-ov { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 24px; align-items: start; }
+html[data-skin='vercel'] .vcx-side, html[data-skin='vercel'] .vcx-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+html[data-skin='vercel'] .vcx-gauge-w { display: flex; align-items: center; gap: 16px; }
+html[data-skin='vercel'] .vcx-gauge-w p { margin: 0; }
+html[data-skin='vercel'] .vcx-big { font-size: 32px; line-height: 40px; font-weight: 600; letter-spacing: -0.049375rem; font-feature-settings: 'tnum'; }
+html[data-skin='vercel'] .vcx-kv { list-style: none; margin: 16px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+html[data-skin='vercel'] .vcx-kv li { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+html[data-skin='vercel'] .vcx-kv b { font-weight: 600; font-feature-settings: 'tnum'; }
+html[data-skin='vercel'] .vcx-mini { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+html[data-skin='vercel'] .vcx-mini li { display: flex; gap: 10px; align-items: flex-start; padding: 8px; margin: 0 -8px; border-radius: var(--r-sm); }
+html[data-skin='vercel'] .vcx-mini li:hover { background: var(--vc-a100); }
+html[data-skin='vercel'] .vcx-mini .vcx-st { padding-top: 5px; } html[data-skin='vercel'] .vcx-mini .vcx-st > span { display: none; }
+html[data-skin='vercel'] .vcx-mini li > div { min-width: 0; display: flex; flex-direction: column; }
+html[data-skin='vercel'] .vcx-mini a { color: var(--ink); font-weight: 500; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-skin='vercel'] .vcx-mini a:hover { text-decoration: underline; }
+html[data-skin='vercel'] .vcx-mini small { font-size: 12px; }
+/* Project card (dashboard grid): 36px framework circle, name + domain, repo pill, last commit, "ago on branch" */
+html[data-skin='vercel'] .vcx-pc { display: flex; flex-direction: column; gap: 12px; padding: 20px; transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease; }
+html[data-skin='vercel'] .vcx-pc:hover { border-color: var(--vc-g500); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+html[data-skin='vercel'] .vcx-pc-h { display: flex; align-items: center; gap: 12px; }
+html[data-skin='vercel'] .vcx-pc-n { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+html[data-skin='vercel'] .vcx-pc-t { all: unset; font-weight: 600; font-size: 14px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-skin='vercel'] .vcx-pc-t:hover { text-decoration: underline; }
+html[data-skin='vercel'] .vcx-pc-t:focus-visible { box-shadow: var(--focus-ring); }
+html[data-skin='vercel'] .vcx-pc-u { font-size: 14px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-skin='vercel'] .vcx-pc-u:hover { color: var(--ink); text-decoration: underline; }
+html[data-skin='vercel'] .vcx-fw { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--vc-g1000); color: var(--vc-bg-100); font-size: 11px; font-weight: 700; }
+html[data-skin='vercel'] .vcx-fw-l { width: 36px; height: 36px; font-size: 15px; box-shadow: 0 0 0 1px var(--vc-a400); }
+html[data-skin='vercel'] .vcx-circ { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; box-shadow: var(--vc-border); color: var(--muted); }
+html[data-skin='vercel'] .vcx-circ .vcx-st > span { display: none; }
+html[data-skin='vercel'] .vcx-repo { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; height: 28px; padding: 0 10px 0 8px; border-radius: var(--r-pill); background: var(--vc-g100); font-size: 13px; font-weight: 500; max-width: 100%; overflow: hidden; white-space: nowrap; }
+html[data-skin='vercel'] .vcx-pc-c { margin: 0; font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-skin='vercel'] .vcx-pc-f { margin: -8px 0 0; font-size: 13px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+/* Production Deployment panel */
+html[data-skin='vercel'] .vcx-prod { display: flex; flex-direction: column; gap: 16px; }
+html[data-skin='vercel'] .vcx-pd { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 24px; padding: 24px; }
+html[data-skin='vercel'] .vcx-shot { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; aspect-ratio: 16 / 10; border-radius: var(--r-md); background: var(--vc-g100); box-shadow: var(--vc-border); color: var(--muted); text-decoration: none; font-size: 12px; overflow: hidden; }
+html[data-skin='vercel'] .vcx-shot .vcx-mark { width: 40px; height: 36px; color: var(--ink); transition: transform var(--t-slow) var(--ease-out); }
+html[data-skin='vercel'] .vcx-shot:hover .vcx-mark { transform: translateY(-3px); }
+html[data-skin='vercel'] .vcx-pd-d { margin: 0; display: grid; gap: 20px; align-content: start; }
+html[data-skin='vercel'] .vcx-pd-d dt, html[data-skin='vercel'] .vcx-dl dt { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; margin-bottom: 4px; }
+html[data-skin='vercel'] .vcx-pd-d dd, html[data-skin='vercel'] .vcx-dl dd { margin: 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+html[data-skin='vercel'] .vcx-pd-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+html[data-skin='vercel'] .vcx-doms { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+html[data-skin='vercel'] .vcx-doms a { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); text-decoration: none; }
+html[data-skin='vercel'] .vcx-doms a:hover { text-decoration: underline; }
+html[data-skin='vercel'] .vcx-src { display: flex; flex-direction: column; gap: 6px; font-weight: 400 !important; }
+html[data-skin='vercel'] .vcx-src span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ------------------------------------------------ deployments list (bordered rows) */
+html[data-skin='vercel'] .vcx-list { padding: 0; overflow: visible; }
+html[data-skin='vercel'] .vcx-dr { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr) minmax(0, 1.6fr) minmax(0, 1fr) 32px; gap: 16px; align-items: center; padding: 14px 16px; border-top: 1px solid var(--line); transition: background-color var(--t-fast) ease; }
+html[data-skin='vercel'] .vcx-dr:first-child { border-top: 0; border-radius: var(--r-lg) var(--r-lg) 0 0; }
+html[data-skin='vercel'] .vcx-dr:last-child { border-radius: 0 0 var(--r-lg) var(--r-lg); }
+html[data-skin='vercel'] .vcx-dr:hover { background: var(--vc-a100); }
+html[data-skin='vercel'] .vcx-dr > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+html[data-skin='vercel'] .vcx-dr-u { color: var(--ink); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-skin='vercel'] .vcx-dr-u:hover { text-decoration: underline; }
+html[data-skin='vercel'] .vcx-dr-1 > span, html[data-skin='vercel'] .vcx-dr-3 > span:last-child { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+html[data-skin='vercel'] .vcx-dr-c { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+html[data-skin='vercel'] .vcx-dr-4 { flex-direction: row !important; align-items: center; justify-content: flex-end; gap: 8px !important; white-space: nowrap; font-size: 14px; }
+html[data-skin='vercel'] .vcx-dr-5 { align-items: flex-end; }
+html[data-skin='vercel'] .vcx-dr.is-live { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--vc-building) 5%, transparent), transparent); background-size: 200% 100%; animation: vcx-shimmer 3s linear infinite; }
+
+/* ------------------------------------------------ settings */
+html[data-skin='vercel'] .vcx-settings { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; align-items: start; }
+html[data-skin='vercel'] .vcx-snav { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 72px; }
+html[data-skin='vercel'] .vcx-snav button { height: 36px; padding: 0 12px; border: 0; border-radius: var(--r-sm); background: none; color: var(--muted); font: inherit; font-size: 14px; text-align: start; cursor: pointer; }
+html[data-skin='vercel'] .vcx-snav button:hover { background: var(--vc-a100); color: var(--ink); }
+html[data-skin='vercel'] .vcx-snav button.on { color: var(--ink); font-weight: 500; background: var(--vc-a200); }
+html[data-skin='vercel'] .vcx-sbody { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+html[data-skin='vercel'] .vcx-set { padding: 0; overflow: hidden; }
+html[data-skin='vercel'] .vcx-set-h { padding: 20px 24px 16px; } html[data-skin='vercel'] .vcx-set-h p { margin: 4px 0 0; }
+html[data-skin='vercel'] .vcx-set .vcx-note { margin: 0 24px 20px; }
+html[data-skin='vercel'] .vcx-set .vcx-table { border-top: 1px solid var(--line); }
+html[data-skin='vercel'] .vcx-set-f { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 24px; border-top: 1px solid var(--line); background: var(--vc-bg-200); font-size: 14px; }
+html[data-skin='vercel'] .vcx-pad { padding: 0 24px 20px; margin: 0; }
+html[data-skin='vercel'] .vcx-dl { margin: 0; padding: 0 24px 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+html[data-skin='vercel'] .vcx-dl dd { display: flex; align-items: center; gap: 6px; }
+html[data-skin='vercel'] .vcx-table-w { overflow-x: auto; }
+
+/* ------------------------------------------------ responsive */
+@media (max-width: 1100px) {
+  html[data-skin='vercel'] .vcx-ov { grid-template-columns: 1fr; }
+  html[data-skin='vercel'] .vcx-side { display: grid; grid-template-columns: 1fr 1fr; }
+  html[data-skin='vercel'] .vcx-dr { grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) minmax(0, 1.4fr) 32px; }
+  html[data-skin='vercel'] .vcx-dr-4 { display: none !important; }
+}
+@media (max-width: 760px) {
+  html[data-skin='vercel'] .vcx-top { height: 56px; gap: 4px; }
+  html[data-skin='vercel'] .vcx-hide-s, html[data-skin='vercel'] .vcx-find span, html[data-skin='vercel'] .vcx-find kbd, html[data-skin='vercel'] .vcx-scope .vcx-badge { display: none; }
+  html[data-skin='vercel'] .vcx-find { min-width: 0; width: 32px; padding: 0; justify-content: center; }
+  html[data-skin='vercel'] .vcx-scope b { max-width: 10ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  html[data-skin='vercel'] .vcx-proj select { max-width: 10ch; }
+  html[data-skin='vercel'] .vcx-top > .vcx-ib, html[data-skin='vercel'] .vcx-scope > .vcx-av, html[data-skin='vercel'] .vcx-proj .vcx-fw { display: none; }
+  html[data-skin='vercel'] .vcx-top > *, html[data-skin='vercel'] .vcx-pop-w { min-width: 0; }
+  html[data-skin='vercel'] .vcx-top > .vcx-find, html[data-skin='vercel'] .vcx-top > .vcx-home, html[data-skin='vercel'] .vcx-top > .vcx-av { flex-shrink: 0; }
+  html[data-skin='vercel'] .vcx-body { padding-top: 20px; gap: 16px; }
+  html[data-skin='vercel'] .vcx-side { grid-template-columns: 1fr; }
+  html[data-skin='vercel'] .vcx-dr { grid-template-columns: minmax(0, 1fr) auto 32px; gap: 8px 12px; }
+  html[data-skin='vercel'] .vcx-dr-3 { grid-column: 1 / 3; grid-row: 2; }
+  html[data-skin='vercel'] .vcx-dr-5 { grid-row: 1; grid-column: 3; }
+  html[data-skin='vercel'] .vcx-pd { grid-template-columns: 1fr; padding: 16px; }
+  html[data-skin='vercel'] .vcx-settings { grid-template-columns: 1fr; gap: 16px; }
+  html[data-skin='vercel'] .vcx-snav { flex-direction: row; overflow-x: auto; position: static; }
+  html[data-skin='vercel'] .vcx-snav button { white-space: nowrap; }
+  html[data-skin='vercel'] .vcx-seg { max-width: 100%; overflow-x: auto; }
+  html[data-skin='vercel'] .vcx-input { min-width: 0; flex-basis: 100%; }
+  html[data-skin='vercel'] .vcx-set .vcx-table { display: block; overflow-x: auto; }
+  html[data-skin='vercel'] .vcx h2 { font-size: 20px; line-height: 28px; }
+}
+
+/* ------------------------------------------------ motion */
+@keyframes vcx-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes vcx-pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes vcx-bar { from { transform: scaleX(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes vcx-ping { 0% { transform: scale(.6); opacity: .9; } 80%, 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes vcx-pulse { 50% { opacity: .35; } }
+@keyframes vcx-rot { to { transform: rotate(360deg); } }
+@keyframes vcx-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes vcx-arc { from { stroke-dasharray: 0 999; } }
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin='vercel'] .vcx *, html[data-skin='vercel'] .vcx *::before, html[data-skin='vercel'] .vcx *::after, html[data-skin='vercel'] .skel > * { animation: none !important; transition: none !important; }
+}
