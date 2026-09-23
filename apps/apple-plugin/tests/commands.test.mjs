@@ -381,6 +381,21 @@ spec("a TouchTransmitter Roblox created does not refuse a checkpoint, and a rest
     c:destroy()
 end)
 
+spec("a ColorGradingEffect from Studio's lighting migration is checkpointed, not refused", function()
+    local root = Instance.new("Folder"); root.Name = "MigratedLighting"; root.Parent = workspace
+    local grading = Instance.new("ColorGradingEffect"); grading.Name = "ColorGrading"; grading.Parent = root
+    local c = newCommands()
+    local snap = run(c, "color-grading-snapshot", {
+        op = "snapshot", root = "game.Workspace.MigratedLighting", includeScripts = true, checkpointId = "cp-grading",
+    }, false)
+    eq(snap.ok, true, tostring(snap.error))
+    eq(snap.data.restorable, true, "a fresh place's ColorGradingEffect must not cost the customer their undo point")
+    eq(next(snap.data.skipped), nil, "ColorGradingEffect must be captured, not skipped")
+    eq(snap.data.node.children[1].className, "ColorGradingEffect")
+    root:Destroy()
+    c:destroy()
+end)
+
 spec("a MeshPart added after an eligible checkpoint can be removed without claiming mesh recreation", function()
     local root = Instance.new("Folder"); root.Name = "MeshDeleteOnly"; root.Parent = workspace
     local kept = Instance.new("Part"); kept.Name = "Kept"; kept.Parent = root

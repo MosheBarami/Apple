@@ -202,6 +202,9 @@ local CREATE_CLASSES = {
 	BloomEffect = true,
 	BlurEffect = true,
 	ColorCorrectionEffect = true,
+	-- Studio's Voxel Lighting migration adds one to every place it converts (measured 2026-09-23 on a
+	-- fresh baseplate): without it here, the very first checkpoint of a new place was refused.
+	ColorGradingEffect = true,
 	DepthOfFieldEffect = true,
 	SunRaysEffect = true,
 	SurfaceAppearance = true,
@@ -336,6 +339,7 @@ local PROPERTY_ALLOW = {
 	Haze = true,
 	Glare = true,
 	Decay = true,
+	TonemapperPreset = true,
 
 	Visible = true,
 	Active = true,
@@ -618,6 +622,7 @@ local READ_PROPERTIES = {
 	Haze = true,
 	Glare = true,
 	Decay = true,
+	TonemapperPreset = true,
 	Visible = true,
 	Active = true,
 	Selectable = true,

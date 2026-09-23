@@ -128,3 +128,10 @@ Superseded 2026-09-23 ~03:25 IDT by sha256 `4e9d104523dc57b8b4ca2373b7d2acda9e9c
 Apple's edits instead of revoking them; the settle window of the previous build is no longer needed and was
 removed. Plugin 43/0, the pause red-first.
 
+
+Superseded 2026-09-23 04:27 IDT by sha256 `b979b6d34b20bafe1832c7f01bcaa15e562edea08c8070739b9ca84ac211b839`
+(installed locally, loaded at the next Studio launch): a checkpoint captures the `ColorGradingEffect` Studio's
+Voxel Lighting migration adds to a place it converts. Measured on a fresh baseplate at 04:20: the first run's
+checkpoint was refused ("could not capture those objects exactly: ColorGradingEffect x1"), so a brand-new
+customer started without an undo point (F-051). Commands "a ColorGradingEffect from Studio's lighting
+migration…" red with the class removed; plugin 46/0.
