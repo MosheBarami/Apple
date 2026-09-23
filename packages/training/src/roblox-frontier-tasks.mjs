@@ -785,7 +785,17 @@ export const HOUSE_RULES_SYSTEM =
  * checks on that item that are actually about server authority. A rule written to fix it would be
  * a rule about matching strings, and this arm would then be measuring the benchmark's phrasing.
  */
-export const HOUSE_RULES_PLUS_SYSTEM = HOUSE_RULES_SYSTEM.replace(
+/** The control's UI line, and the rule production's IDENTITY replaced it with on 2026-09-23 (D-UIONLY-1). */
+export const UI_RULE_BEFORE = '- UI: build with Frames/UIListLayout/UICorner/UIPadding, scale-based sizing for cross-device support.';
+export const UI_RULE_D_UIONLY_1 =
+  '- UI comes ONLY from the stored UI library: insert_ui_component(component, parent, props, position, colour, genre)\n'
+  + '  places each HUD piece, button and window. Never create ScreenGui/Frame/TextLabel/ImageLabel/UIStroke/UICorner\n'
+  + '  by hand or Instance.new them in a script; those calls are refused. Edit an inserted piece\'s Text, Position and\n'
+  + '  Visible freely, and have scripts find it by path (player.PlayerGui:WaitForChild("<name>")).';
+
+// Production's UI rule moved (D-UIONLY-1), so the arm that mirrors production carries the new one.
+// It bears on none of the scored items, which are all game logic; the four rules below are the intervention.
+export const HOUSE_RULES_PLUS_SYSTEM = HOUSE_RULES_SYSTEM.replace(UI_RULE_BEFORE, UI_RULE_D_UIONLY_1).replace(
   '\n\nAnswer with ONE fenced',
   '\n- Player-authored text that another player will see goes through TextService:FilterStringAsync\n'
   + '  before it is stored, replicated or shown. Filtering is a platform requirement, not a style choice.\n'

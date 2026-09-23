@@ -20,7 +20,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { FRONTIER_ITEMS, ALL_CHECK_IDS, AXES, ARMS } from './roblox-frontier-tasks.mjs';
+import { FRONTIER_ITEMS, ALL_CHECK_IDS, AXES, ARMS, UI_RULE_BEFORE, UI_RULE_D_UIONLY_1 } from './roblox-frontier-tasks.mjs';
 import { CONTROLS } from './roblox-frontier-controls.mjs';
 import { scoreFrontierItem, tally } from './score-roblox-frontier.mjs';
 import { resolveSettings } from './production-settings.mjs';
@@ -274,9 +274,12 @@ test('house-rules-plus is house-rules plus four sentences, and nothing else move
   const [baseRules, baseFormat] = base.split('\n\nAnswer with ONE fenced');
   const [plusRules, plusFormat] = plus.split('\n\nAnswer with ONE fenced');
   assert.equal(baseFormat, plusFormat, 'the answer-format half must be identical in both arms');
-  assert.ok(plusRules.startsWith(baseRules), 'the plus arm must OPEN with its control, byte for byte');
+  // The one other difference is production's own UI rule (D-UIONLY-1), swapped in whole.
+  assert.ok(baseRules.endsWith(UI_RULE_BEFORE), 'the control must still carry its historical UI line');
+  const control = baseRules.replace(UI_RULE_BEFORE, UI_RULE_D_UIONLY_1);
+  assert.ok(plusRules.startsWith(control), 'the plus arm must OPEN with its control (UI rule swapped), byte for byte');
 
-  const added = plusRules.slice(baseRules.length);
+  const added = plusRules.slice(control.length);
   const bullets = added.split('\n').filter((l) => l.startsWith('- '));
   assert.equal(bullets.length, 4, 'four rules were added for four permanently-failing checks; a fifth has no check behind it');
   // Each added rule names the API or the hazard of the check it was written for. A rule with no
