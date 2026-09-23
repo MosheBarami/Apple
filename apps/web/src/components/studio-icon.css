@@ -1,0 +1,88 @@
+/* ROBLOX STUDIO OBJECT ICONS, AND THE MOTION AROUND THE ROWS THAT WEAR THEM.
+ *
+ * The sprite is one 32px cell per class, stacked (scripts/build-studio-icons.py); a cell is drawn at
+ * --studio-icon-size, so it is crisp on a 2x screen. Studio ships a dark and a light set; each theme
+ * takes its own, and only the one in use is ever fetched.
+ *
+ * Motion tokens live on :root so a surface can retune them without restating a keyframe. Every
+ * animation here has its finished frame as the element's resting style, so under reduced motion
+ * (the OS setting, or the app's own .motion-reduced) the row is simply there. */
+:root {
+  --studio-icon-size:16px;
+  --motion-row-in:.26s;
+  --motion-row-rise:4px;
+  --motion-work:1.6s;
+  --motion-lift:-2px;
+  --motion-lift-shadow:0 6px 18px -10px color-mix(in srgb,var(--accent) 55%,transparent);
+}
+
+.studio-icon {
+  display:inline-block;
+  flex:none;
+  width:var(--studio-icon-size);
+  height:var(--studio-icon-size);
+  background-image:url('../assets/studio-icons/studio-icons-dark.png');
+  background-repeat:no-repeat;
+  background-size:var(--studio-icon-size) auto;
+  background-position:0 calc(var(--studio-icon-i, 0) * var(--studio-icon-size) * -1);
+}
+:root[data-theme='light'] .studio-icon { background-image:url('../assets/studio-icons/studio-icons-light.png'); }
+
+/* --------------------------------------------------------------- tool rows --- */
+
+/* A NEW STEP ARRIVES. Rows are keyed by their state (ws/thinking.tsx), so a step that finishes is
+   remounted; the entrance is tied to the running state so it plays once, when the step starts, and
+   a finished step does not slide in a second time. A reloaded history, all finished, stays still. */
+.ai-tool:has(.ai-tool__badge--input-available) > .ai-tool__header {
+  animation:studio-row-in var(--motion-row-in) var(--ease-out) both;
+}
+@keyframes studio-row-in {
+  from { opacity:0; transform:translateY(var(--motion-row-rise)); }
+  to { opacity:1; transform:none; }
+}
+
+/* THE OBJECT BEING WORKED ON BREATHES. The running step's Studio icon rises a pixel and glows in
+   the accent, the one colour the card spends; it stops the moment the step does. */
+.ai-tool:has(.ai-tool__badge--input-available) .studio-icon {
+  animation:studio-icon-work var(--motion-work) ease-in-out infinite;
+}
+@keyframes studio-icon-work {
+  0%,100% { transform:none; filter:none; }
+  50% { transform:translateY(-1px) scale(1.06); filter:drop-shadow(0 0 4px color-mix(in srgb,var(--accent) 60%,transparent)); }
+}
+
+/* -------------------------------------------------------------- cards lift --- */
+
+/* The welcome seeds are the cards a person reaches for first: under the pointer they rise and
+   catch a little of the accent, the way the dashboard's project cards already do. The rise is the
+   `translate` property, not `transform`: each seed's entrance (chat-welcome.css) holds its last
+   frame's `transform` with fill-mode both, and an animation outranks a hover declaration. One step
+   more specific than system.css's own `.start-sheet__ideas > button`, so bundle order cannot drop
+   the colour transitions restated here. */
+.start-sheet .start-sheet__ideas > button {
+  transition:color var(--t-color) var(--ease-hard),background-color var(--t-color) var(--ease-hard),
+    border-color var(--t-color) var(--ease-hard),translate var(--t-fast) var(--ease-out),box-shadow var(--t-fast) var(--ease-out);
+}
+.start-sheet .start-sheet__ideas > button:hover:not(:disabled),
+.start-sheet .start-sheet__ideas > button:focus-visible {
+  translate:0 var(--motion-lift);
+  box-shadow:var(--motion-lift-shadow);
+}
+.start-sheet .start-sheet__ideas > button:active:not(:disabled) { translate:none; box-shadow:none; }
+
+/* ------------------------------------------------------------ op rows (Studio) --- */
+
+.gx-op .studio-icon,
+.pairing-record__ops .studio-icon { vertical-align:-3px; margin-inline-end:8px; }
+/* The dialog's middle column holds the icon and the label; the label keeps its own ellipsis. */
+.pairing-record__what { display:flex; align-items:center; min-width:0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-tool:has(.ai-tool__badge--input-available) > .ai-tool__header,
+  .ai-tool:has(.ai-tool__badge--input-available) .studio-icon { animation:none; }
+  .start-sheet .start-sheet__ideas > button { transition:none; }
+  .start-sheet .start-sheet__ideas > button:hover:not(:disabled),
+  .start-sheet .start-sheet__ideas > button:focus-visible { translate:none; }
+}
+.motion-reduced .start-sheet .start-sheet__ideas > button:hover:not(:disabled),
+.motion-reduced .start-sheet .start-sheet__ideas > button:focus-visible { translate:none; }

@@ -32,6 +32,8 @@ import { createPairingCode, discardStudioQueue, disconnectStudio, fetchStudioDia
 import { countdownTo, fullStamp, shortRelative } from '../lib/format';
 import { pairingAttemptConnected, type PairingAttemptBaseline } from '../lib/pairing-confirmation';
 import { recentOpLabel } from '../lib/studio-connection';
+import { StudioIcon } from './studio-icon';
+import { classForOp } from './studio-icon-model';
 import { Modal } from './modal';
 import { Forge } from './loading';
 import { Failure } from './failure';
@@ -171,7 +173,10 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
               {/* ok is 1, 0, or null — SQLite has no boolean and an op that never reported has
                   neither. Unknown draws as waiting, never as failed. */}
               <StatusIcon status={op.ok === 1 ? 'success' : op.ok === 0 ? 'error' : 'waiting'} size={13} />
-              <span className="pairing-record__op">{recentOpLabel(op)}</span>
+              <span className="pairing-record__what">
+                {classForOp(op.kind) && <StudioIcon robloxClass={classForOp(op.kind)} />}
+                <span className="pairing-record__op">{recentOpLabel(op)}</span>
+              </span>
               <span className="pairing-record__when">{shortRelative(op.created_at)}</span>
             </li>
           ))}

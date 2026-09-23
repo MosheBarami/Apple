@@ -100,6 +100,8 @@ export interface OpLogRow {
 
 export interface ActivityRow {
   id: string;
+  /** The op's wire name, kept so the row can wear the Studio icon of what it acted on. */
+  kind: string;
   sentence: string;
   ok: boolean;
   /** The error text, or null. The `summary` column holds ONLY errors — see session.ts. */
@@ -119,6 +121,7 @@ export interface ActivityRow {
 export function activityRows(rows: OpLogRow[]): ActivityRow[] {
   return rows.map((r) => ({
     id: r.op_id,
+    kind: r.kind,
     sentence: opSentence(r.kind),
     ok: r.ok === 1,
     detail: r.summary ? r.summary : null,

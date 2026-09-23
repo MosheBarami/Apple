@@ -21,6 +21,8 @@ import { StackTrace } from '../ai-elements/stack-trace';
 import { Terminal } from '../ai-elements/terminal';
 import '../picks/tech/tech-ui.css';
 import { activityRows, type ActivityRow, type OpLogRow } from './op-vocabulary';
+import { StudioIcon } from '../studio-icon';
+import { classForOp } from '../studio-icon-model';
 
 /**
  * The raw record as a log, oldest first — what AI Elements' Terminal shows behind "Details". Every
@@ -102,6 +104,8 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
       {rows.map((r) => (
         <div key={r.id} className={`gx-row gx-op${r.ok ? '' : ' is-bad'}`}>
           <span className="gx-row__main">
+            {/* The object the op acted on, as Studio draws it. An op on no object has none. */}
+            {classForOp(r.kind) && <StudioIcon robloxClass={classForOp(r.kind)} />}
             {r.sentence}
             <span className="gx-row__meta">
               {relativeTime(r.at)}

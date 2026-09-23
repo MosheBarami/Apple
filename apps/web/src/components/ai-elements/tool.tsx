@@ -34,6 +34,9 @@ import {
   type LucideIcon,
 } from "./icons";
 import { kindForTool, type ActivityKind } from "../ws/tool-vocabulary";
+import { classForTool } from "../studio-icon-model";
+import { StudioIcon } from "../studio-icon";
+import { StepMark } from "../picks/thinking/step-mark";
 import type { ComponentProps, ReactNode } from "react";
 import { isValidElement } from "react";
 
@@ -78,7 +81,9 @@ const statusIcons: Record<ToolPart["state"], ReactNode> = {
   "approval-responded": <CheckCircleIcon className="size-4 text-blue-600 ai-tool__status-icon" />,
   "input-available": <ClockIcon className="size-4 animate-pulse ai-tool__status-icon" />,
   "input-streaming": <CircleIcon className="size-4 ai-tool__status-icon" />,
-  "output-available": <CheckCircleIcon className="size-4 text-green-600 ai-tool__status-icon" />,
+  // LOCAL: a finished step's tick draws itself in (StepMark, the same mark a finished phase step
+  // wears), once, because the state span below is keyed by the state.
+  "output-available": <StepMark status="complete" className="size-4 ai-tool__status-icon" />,
   "output-denied": <XCircleIcon className="size-4 text-orange-600 ai-tool__status-icon" />,
   "output-error": <XCircleIcon className="size-4 text-red-600 ai-tool__status-icon" />,
 };
@@ -117,6 +122,9 @@ export const ToolHeader = ({
 }: ToolHeaderProps) => {
   const derivedName =
     type === "dynamic-tool" ? toolName : type.split("-").slice(1).join("-");
+  // LOCAL: a step that acts on an object in the place wears that object's Roblox Studio icon
+  // (studio-icon-model.ts); one that touches no object keeps its line icon below.
+  const studioClass = classForTool(derivedName);
   const KindIcon = KIND_ICON[kindForTool(derivedName)] ?? WrenchIcon;
 
   return (
@@ -128,7 +136,9 @@ export const ToolHeader = ({
       {...props}
     >
       <div className="flex items-center gap-2 ai-tool__heading">
-        <KindIcon className="size-4 text-muted-foreground ai-tool__icon" />
+        {studioClass
+          ? <StudioIcon robloxClass={studioClass} className="ai-tool__icon ai-tool__icon--studio" />
+          : <KindIcon className="size-4 text-muted-foreground ai-tool__icon" />}
         {/* A running step's title carries a shimmer (Call Chip's "in flight" wash). */}
         <span className={cn("font-medium text-sm ai-tool__title", state === "input-available" && "is-running")}>{title ?? derivedName}</span>
         {getStatusBadge(state)}

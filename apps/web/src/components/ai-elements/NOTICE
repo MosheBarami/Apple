@@ -304,6 +304,9 @@ FILE tool.tsx
       colour is a token chosen in CSS rather than upstream's per-state Tailwind hue
     ToolInput and ToolOutput are kept as upstream wrote them (they print JSON.stringify of a
       call's arguments and result). The workspace renders neither; see tool.tsx's header.
+    LOCAL: a step that acts on an object in the place draws that object's Roblox Studio icon
+      (../studio-icon, ../studio-icon-model) in place of the line icon; the completed state's
+      CheckCircle is ../picks/thinking/step-mark's tick, which draws itself in.
 END
 
 FILE task.tsx
