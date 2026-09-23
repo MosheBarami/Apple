@@ -5,21 +5,22 @@
     "ok": 0,
     "n": 8,
     "reasons": {
-     "fails_own_checks": 8
+     "does_not_parse": 1,
+     "fails_own_checks": 7
     }
    },
    "trajectory": {
     "ok": 0,
-    "n": 10,
+    "n": 23,
     "reasons": {
-     "no_tool_call": 4,
-     "tool_does_not_exist": 2,
-     "arguments_rejected": 4
+     "no_tool_call": 8,
+     "tool_does_not_exist": 7,
+     "arguments_rejected": 8
     }
    },
    "finish": {
-    "ok": 0,
-    "n": 3,
+    "ok": 4,
+    "n": 7,
     "reasons": {
      "called_a_tool_instead_of_finishing": 3
     }
@@ -30,23 +31,23 @@
     "ok": 0,
     "n": 8,
     "reasons": {
-     "fails_own_checks": 7,
-     "not_standalone": 1
+     "fails_own_checks": 8
     }
    },
    "trajectory": {
-    "ok": 7,
-    "n": 10,
+    "ok": 13,
+    "n": 23,
     "reasons": {
-     "arguments_rejected": 2,
-     "no_tool_call": 1
+     "arguments_rejected": 5,
+     "arguments_not_an_object": 2,
+     "no_tool_call": 3
     }
    },
    "finish": {
-    "ok": 2,
-    "n": 3,
+    "ok": 5,
+    "n": 7,
     "reasons": {
-     "called_a_tool_instead_of_finishing": 1
+     "called_a_tool_instead_of_finishing": 2
     }
    }
   }
@@ -54,11 +55,11 @@
  "style": {
   "base": {
    "sum": 0,
-   "n": 0
+   "n": 4
   },
   "adapter": {
-   "sum": 0,
-   "n": 0
+   "sum": 0.3333333333333333,
+   "n": 4
   }
  },
  "perRow": [
@@ -68,7 +69,7 @@
    "kind": "game-logic",
    "base": {
     "ok": false,
-    "reason": "fails_own_checks"
+    "reason": "does_not_parse"
    },
    "adapter": {
     "ok": false,
@@ -163,7 +164,7 @@
    },
    "adapter": {
     "ok": false,
-    "reason": "not_standalone"
+    "reason": "fails_own_checks"
    }
   },
   {
@@ -175,7 +176,9 @@
     "reason": "no_tool_call"
    },
    "adapter": {
-    "ok": true
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: missing required argument \"steps\""
    }
   },
   {
@@ -201,8 +204,7 @@
    },
    "adapter": {
     "ok": false,
-    "reason": "arguments_rejected",
-    "detail": "call: missing required argument \"cases\""
+    "reason": "arguments_not_an_object"
    }
   },
   {
@@ -214,7 +216,8 @@
     "reason": "called_a_tool_instead_of_finishing"
    },
    "adapter": {
-    "ok": true
+    "ok": false,
+    "reason": "called_a_tool_instead_of_finishing"
    }
   },
   {
@@ -251,9 +254,7 @@
     "detail": "call: missing required argument \"cases\""
    },
    "adapter": {
-    "ok": false,
-    "reason": "arguments_rejected",
-    "detail": "call: missing required argument \"cases\""
+    "ok": true
    }
   },
   {
@@ -317,7 +318,8 @@
    },
    "adapter": {
     "ok": false,
-    "reason": "no_tool_call"
+    "reason": "arguments_rejected",
+    "detail": "call: missing required argument \"intent\""
    }
   },
   {
@@ -327,6 +329,228 @@
    "base": {
     "ok": false,
     "reason": "called_a_tool_instead_of_finishing"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "fence-along-path#0",
+   "family": "map-fence-line",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "no_tool_call"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "fence-along-path#1",
+   "family": "map-fence-line",
+   "kind": "trajectory",
+   "baseStyle": 0,
+   "base": {
+    "ok": false,
+    "reason": "tool_does_not_exist"
+   },
+   "adapterStyle": 0,
+   "adapter": {
+    "ok": false,
+    "reason": "no_tool_call"
+   }
+  },
+  {
+   "id": "fence-along-path#2",
+   "family": "map-fence-line",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: argument \"items\" is not in the tool's schema"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: argument \"root\" is not in the tool's schema"
+   }
+  },
+  {
+   "id": "fence-along-path#3",
+   "family": "map-fence-line",
+   "kind": "finish",
+   "base": {
+    "ok": true
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "striped-market-stall#0",
+   "family": "props-market-stall",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "no_tool_call"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "arguments_not_an_object"
+   }
+  },
+  {
+   "id": "striped-market-stall#1",
+   "family": "props-market-stall",
+   "kind": "trajectory",
+   "baseStyle": 0,
+   "base": {
+    "ok": false,
+    "reason": "tool_does_not_exist"
+   },
+   "adapterStyle": 0.3333333333333333,
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "striped-market-stall#2",
+   "family": "props-market-stall",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: argument \"model\" is not in the tool's schema"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call.subject: \"game.Workspace.MarketStall\" is not one of scene, prop"
+   }
+  },
+  {
+   "id": "striped-market-stall#3",
+   "family": "props-market-stall",
+   "kind": "finish",
+   "base": {
+    "ok": true
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "round-side-rail#0",
+   "family": "ui-round-side-buttons",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "no_tool_call"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "round-side-rail#1",
+   "family": "ui-round-side-buttons",
+   "kind": "trajectory",
+   "baseStyle": 0,
+   "base": {
+    "ok": false,
+    "reason": "tool_does_not_exist"
+   },
+   "adapterStyle": 0,
+   "adapter": {
+    "ok": false,
+    "reason": "no_tool_call"
+   }
+  },
+  {
+   "id": "round-side-rail#2",
+   "family": "ui-round-side-buttons",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: missing required argument \"intent\""
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "round-side-rail#3",
+   "family": "ui-round-side-buttons",
+   "kind": "finish",
+   "base": {
+    "ok": true
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "no-tofu-icons#0",
+   "family": "ui-safe-icon-glyphs",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "no_tool_call"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "no-tofu-icons#1",
+   "family": "ui-safe-icon-glyphs",
+   "kind": "trajectory",
+   "baseStyle": 0,
+   "base": {
+    "ok": false,
+    "reason": "tool_does_not_exist"
+   },
+   "adapterStyle": 0,
+   "adapter": {
+    "ok": false,
+    "reason": "no_tool_call"
+   }
+  },
+  {
+   "id": "no-tofu-icons#2",
+   "family": "ui-safe-icon-glyphs",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: argument \"asset_name\" is not in the tool's schema"
+   },
+   "adapter": {
+    "ok": false,
+    "reason": "arguments_rejected",
+    "detail": "call: argument \"domain\" is not in the tool's schema"
+   }
+  },
+  {
+   "id": "no-tofu-icons#3",
+   "family": "ui-safe-icon-glyphs",
+   "kind": "trajectory",
+   "base": {
+    "ok": false,
+    "reason": "tool_does_not_exist"
+   },
+   "adapter": {
+    "ok": true
+   }
+  },
+  {
+   "id": "no-tofu-icons#4",
+   "family": "ui-safe-icon-glyphs",
+   "kind": "finish",
+   "base": {
+    "ok": true
    },
    "adapter": {
     "ok": true

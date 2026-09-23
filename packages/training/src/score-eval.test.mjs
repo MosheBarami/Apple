@@ -88,3 +88,11 @@ test('styleFeatures reads the craft a call carries, and styleRecall compares it 
   assert.equal(styleRecall(ref, null), 0);
   assert.equal(styleRecall({ name: 'run_spec', args: { name: 'x' } }, bare), null, 'a call with no craft features is not a visual row');
 });
+
+// A trajectory's last turn is the prose wrap-up, not a call. Counting "no tool call" there as a
+// miss scored the right behaviour as wrong and hid an adapter that invents tools instead of finishing.
+test('scoreFinish passes a prose wrap-up and fails an invented call', async () => {
+  const { scoreFinish } = await import('./score-eval.mjs');
+  assert.deepEqual(scoreFinish('SideRail is on the left edge, vertically centred.'), { ok: true });
+  assert.equal(scoreFinish('{"name": "get_screenshot", "parameters": {}}').reason, 'called_a_tool_instead_of_finishing');
+});

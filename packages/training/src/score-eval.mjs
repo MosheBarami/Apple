@@ -99,6 +99,11 @@ export function scoreTrajectory(call, registry) {
   return problems.length ? { ok: false, reason: 'arguments_rejected', detail: problems[0] } : { ok: true };
 }
 
+/** A wrap-up turn is right when it answers in prose; any call there is the model not finishing. */
+export function scoreFinish(answer) {
+  return extractToolCall(answer) ? { ok: false, reason: 'called_a_tool_instead_of_finishing' } : { ok: true };
+}
+
 /**
  * The craft a call carries: every instance class it creates, the font, the lighting mood, the
  * terrain operation. A registry-valid call can still be the unstyled UI the visual gauntlet
@@ -145,19 +150,23 @@ async function main() {
   const registry = await loadRegistry();
 
   const tally = {
-    base: { 'game-logic': { ok: 0, n: 0, reasons: {} }, trajectory: { ok: 0, n: 0, reasons: {} } },
-    adapter: { 'game-logic': { ok: 0, n: 0, reasons: {} }, trajectory: { ok: 0, n: 0, reasons: {} } },
+    base: { 'game-logic': { ok: 0, n: 0, reasons: {} }, trajectory: { ok: 0, n: 0, reasons: {} }, finish: { ok: 0, n: 0, reasons: {} } },
+    adapter: { 'game-logic': { ok: 0, n: 0, reasons: {} }, trajectory: { ok: 0, n: 0, reasons: {} }, finish: { ok: 0, n: 0, reasons: {} } },
   };
   const perRow = [];
   const style = { base: { sum: 0, n: 0 }, adapter: { sum: 0, n: 0 } };
 
   for (const [id, row] of Object.entries(data.rows)) {
     const isTrajectory = row.kind === 'apple-tool-trajectory';
-    const entry = { id, family: row.family, kind: isTrajectory ? 'trajectory' : 'game-logic' };
+    // A trajectory row whose reference is prose is the wrap-up turn, scored on its own track.
+    const isFinish = isTrajectory && !row.reference?.tool_calls?.length;
+    const entry = { id, family: row.family, kind: isFinish ? 'finish' : isTrajectory ? 'trajectory' : 'game-logic' };
     for (const side of ['base', 'adapter']) {
       const answer = row[side];
       let result;
-      if (isTrajectory) {
+      if (isFinish) {
+        result = scoreFinish(answer);
+      } else if (isTrajectory) {
         const call = extractToolCall(answer);
         result = scoreTrajectory(call, registry);
         const recall = styleRecall(referenceCall(row.reference), call);
@@ -181,14 +190,14 @@ async function main() {
 
   const pct = (b) => (b.n ? ((b.ok / b.n) * 100).toFixed(0) : '—');
   console.log('track          base            adapter');
-  for (const kind of ['game-logic', 'trajectory']) {
+  for (const kind of ['game-logic', 'trajectory', 'finish']) {
     const b = tally.base[kind];
     const a = tally.adapter[kind];
     console.log(`${kind.padEnd(14)} ${String(b.ok + '/' + b.n).padEnd(7)} ${pct(b).padStart(3)}%   ${String(a.ok + '/' + a.n).padEnd(7)} ${pct(a).padStart(3)}%`);
   }
   console.log();
   for (const side of ['base', 'adapter']) {
-    for (const kind of ['game-logic', 'trajectory']) {
+    for (const kind of ['game-logic', 'trajectory', 'finish']) {
       const r = tally[side][kind].reasons;
       if (Object.keys(r).length) console.log(`  ${side} ${kind} misses: ${JSON.stringify(r)}`);
     }
