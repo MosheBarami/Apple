@@ -1,21 +1,20 @@
 // TALK INSTEAD OF TYPE — the composer's microphone. Four picks in one control:
 //
-//   AI Elements "speech-input"   the browser's own speech recognition (Web Speech API): no server,
-//                                no cost, no audio leaves through Apple. Hidden where the browser
-//                                has none, so nobody meets a microphone that cannot hear them.
+//   AI Elements "speech-input"   record the voice (MediaRecorder) and have APPLE'S WORKER transcribe
+//                                it — English, transcribed then deleted, never stored (D-VISION-1).
+//                                Not the browser's Web Speech API: in Chrome that ships a child's
+//                                voice to Google. Hidden where the browser cannot record.
 //   React Bits "Voice Pill"      tap to dictate, hold to talk, slide left to cancel; while it
 //                                listens the button stretches into a pill with a timer and a live
 //                                level trace. (MIT + Commons Clause: rebuilt, not copied.)
-//   AI Elements "transcription"  the words as they are heard, above the bar — settled words in ink,
-//                                the still-changing tail quieter — so nobody talks into a void.
+//   AI Elements "transcription"  a line above the bar while it listens and while the words are
+//                                being written down, so nobody talks into a void.
 //   AI Elements "mic-selector"   which microphone, but only when there is more than one to choose
 //                                between; one microphone needs no menu.
 //
-// What was said is handed to `onText` once, when listening ends, and goes into the box at the
+// What was said is handed to `onText` once, when the worker answers, and goes into the box at the
 // caret like any other insertion. Nothing is sent: the person reads it, fixes it, and sends it.
-//
-// The level trace needs its own microphone stream (speech recognition exposes no levels). If that
-// stream is refused the pill still listens; it just draws a flat trace.
+// Recording stops by itself at VOICE_MAX_SECONDS, the worker's limit.
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Icon, PATH } from '../../ws/primitives';
 import {
@@ -25,27 +24,11 @@ import {
 } from '../../ai-elements/prompt-input';
 import { DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '../../ai-elements/ui/dropdown-menu';
 import { reducedMotion } from './motion';
+import { VOICE_MAX_SECONDS, recordingToWav, transcribeVoice } from '../../../lib/voice-transcribe';
 import './voice-input.css';
 
-interface RecognitionResult { isFinal: boolean; 0: { transcript: string } }
-interface RecognitionEvent { resultIndex: number; results: ArrayLike<RecognitionResult> }
-interface Recognition {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  start: (track?: MediaStreamTrack) => void;
-  stop: () => void;
-  abort: () => void;
-  onresult: ((e: RecognitionEvent) => void) | null;
-  onerror: ((e: { error: string }) => void) | null;
-  onend: (() => void) | null;
-}
-type RecognitionCtor = new () => Recognition;
-
-function recognitionCtor(): RecognitionCtor | null {
-  if (typeof window === 'undefined') return null;
-  const w = window as unknown as { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+function canRecord(): boolean {
+  return typeof window !== 'undefined' && typeof window.MediaRecorder === 'function' && !!navigator.mediaDevices?.getUserMedia;
 }
 
 const MIC_KEY = 'apple.composer.mic';
@@ -68,15 +51,14 @@ export interface VoiceInputProps {
 export function VoiceInput({ onText, onNotice, disabled }: VoiceInputProps) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
-  const [heard, setHeard] = useState('');
-  const [tail, setTail] = useState('');
+  const [writing, setWriting] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [slide, setSlide] = useState(0);
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [mic, setMic] = useState(readMic);
 
-  const rec = useRef<Recognition | null>(null);
-  const finalText = useRef('');
+  const rec = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
   const keep = useRef(true);
   const stream = useRef<MediaStream | null>(null);
   const audio = useRef<AudioContext | null>(null);
@@ -86,7 +68,7 @@ export function VoiceInput({ onText, onNotice, disabled }: VoiceInputProps) {
   const onTextRef = useRef(onText);
   onTextRef.current = onText;
 
-  useEffect(() => setSupported(recognitionCtor() !== null), []);
+  useEffect(() => setSupported(canRecord()), []);
 
   const listMics = async () => {
     try {
@@ -148,94 +130,76 @@ export function VoiceInput({ onText, onNotice, disabled }: VoiceInputProps) {
   };
 
   const begin = async () => {
-    const Ctor = recognitionCtor();
-    if (!Ctor || rec.current) return;
-    const r = new Ctor();
-    r.lang = document.documentElement.lang || navigator.language || 'en-US';
-    r.continuous = true;
-    r.interimResults = true;
-    finalText.current = '';
+    if (rec.current || writing) return;
     keep.current = true;
-    setHeard('');
-    setTail('');
+    chunks.current = [];
     setSeconds(0);
-    r.onresult = (e) => {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i += 1) {
-        const res = e.results[i];
-        if (!res) continue;
-        if (res.isFinal) finalText.current += res[0].transcript;
-        else interim += res[0].transcript;
-      }
-      setHeard(finalText.current);
-      setTail(interim);
-    };
-    r.onerror = (e) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-        onNotice?.('The microphone is blocked. Allow it for this site to talk instead of typing.');
-      } else if (e.error === 'audio-capture') {
-        onNotice?.('No microphone was found.');
-      }
-    };
-    r.onend = () => {
-      const said = finalText.current.trim();
+    let s: MediaStream;
+    try {
+      s = await navigator.mediaDevices.getUserMedia({ audio: mic ? { deviceId: { exact: mic } } : true });
+    } catch (e) {
+      const name = e && typeof e === 'object' && 'name' in e ? String((e as { name: unknown }).name) : '';
+      onNotice?.(name === 'NotFoundError' ? 'No microphone was found.' : 'The microphone is blocked. Allow it for this site to talk instead of typing.');
+      return;
+    }
+    stream.current = s;
+    const r = new MediaRecorder(s);
+    rec.current = r;
+    r.ondataavailable = (e) => { if (e.data.size > 0) chunks.current.push(e.data); };
+    r.onstop = () => {
+      const recording = new Blob(chunks.current, { type: r.mimeType || 'audio/webm' });
+      chunks.current = [];
       rec.current = null;
       release();
       setListening(false);
       setSlide(0);
-      setHeard('');
-      setTail('');
-      if (keep.current && said) onTextRef.current(said);
+      if (!keep.current || recording.size === 0) return;
+      // The recording lives in this page only until the worker has the WAV; nothing keeps it.
+      setWriting(true);
+      void recordingToWav(recording)
+        .then((wav) => transcribeVoice(wav))
+        .then((t) => {
+          if (t.heard && t.text) onTextRef.current(t.text);
+          else onNotice?.('I did not hear any words. Try again a little closer to the microphone.');
+        })
+        .catch((err: unknown) => onNotice?.(err instanceof Error ? err.message : 'Voice typing did not work. You can still type.'))
+        .finally(() => setWriting(false));
     };
-    rec.current = r;
+    r.start();
     setListening(true);
-
-    // The microphone the person chose, for the trace — and for recognition itself where the
-    // browser accepts a track (older ones ignore the argument and use the default microphone).
-    let track: MediaStreamTrack | undefined;
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ audio: mic ? { deviceId: { exact: mic } } : true });
-      if (rec.current !== r) { s.getTracks().forEach((t) => t.stop()); return; }
-      stream.current = s;
-      track = s.getAudioTracks()[0];
-      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (AC) {
-        const ctx = new AC();
-        audio.current = ctx;
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 512;
-        ctx.createMediaStreamSource(s).connect(analyser);
-        trace(analyser);
-      } else trace(null);
-      void listMics();
-    } catch {
-      trace(null);
-    }
-    try {
-      r.start(track);
-    } catch {
-      try { r.start(); } catch { r.onend?.(); }
-    }
+    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (AC) {
+      const ctx = new AC();
+      audio.current = ctx;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      ctx.createMediaStreamSource(s).connect(analyser);
+      trace(analyser);
+    } else trace(null);
+    void listMics();
   };
 
   const finish = (keepIt: boolean) => {
     keep.current = keepIt;
     const r = rec.current;
-    if (!r) return;
-    if (keepIt) r.stop(); else r.abort();
+    if (r && r.state !== 'inactive') r.stop();
   };
 
   // The clock, once a second while listening.
   useEffect(() => {
     if (!listening) return;
     const t0 = Date.now();
-    const id = window.setInterval(() => setSeconds(Math.floor((Date.now() - t0) / 1000)), 250);
+    const id = window.setInterval(() => {
+      const sec = Math.floor((Date.now() - t0) / 1000);
+      setSeconds(sec);
+      if (sec >= VOICE_MAX_SECONDS) finish(true);
+    }, 250);
     return () => window.clearInterval(id);
   }, [listening]);
 
   // Leaving the page (or the project) while listening throws the words away rather than typing
   // them into a box the person can no longer see.
-  useEffect(() => () => { keep.current = false; rec.current?.abort(); release(); }, []);
+  useEffect(() => () => { keep.current = false; if (rec.current?.state === 'recording') rec.current.stop(); release(); }, []);
 
   useEffect(() => {
     if (!listening) return;
@@ -247,7 +211,7 @@ export function VoiceInput({ onText, onNotice, disabled }: VoiceInputProps) {
   if (!supported) return null;
 
   const down = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    if (e.button !== 0 || disabled) return;
+    if (e.button !== 0 || disabled || writing) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     press.current = { x: e.clientX, at: Date.now(), was: listening, id: e.pointerId };
     if (!listening) void begin();
@@ -272,7 +236,7 @@ export function VoiceInput({ onText, onNotice, disabled }: VoiceInputProps) {
   };
   // The keyboard's press: Enter and Space arrive as a click with no pointer (detail 0).
   const click = (e: ReactMouseEvent<HTMLButtonElement>) => {
-    if (e.detail !== 0 || disabled) return;
+    if (e.detail !== 0 || disabled || writing) return;
     if (listening) finish(true); else void begin();
   };
 
@@ -281,16 +245,9 @@ export function VoiceInput({ onText, onNotice, disabled }: VoiceInputProps) {
 
   return (
     <>
-      {listening && (
+      {(listening || writing) && (
         <p className="pk-transcript" aria-live="polite">
-          {heard || tail ? (
-            <>
-              <span className="pk-transcript__said">{heard}</span>
-              <span className="pk-transcript__tail">{tail}</span>
-            </>
-          ) : (
-            <span className="pk-transcript__tail">Listening…</span>
-          )}
+          <span className="pk-transcript__tail">{writing ? 'Writing down what you said…' : 'Listening… tap the button again when you are done.'}</span>
         </p>
       )}
       <span className="pk-voice-slot">
@@ -300,9 +257,10 @@ export function VoiceInput({ onText, onNotice, disabled }: VoiceInputProps) {
           style={{ ['--pk-slide' as string]: `${slide}px` }}
           aria-label={listening ? 'Stop and keep what you said' : 'Talk instead of typing'}
           aria-pressed={listening}
+          aria-busy={writing || undefined}
           data-tip={listening ? undefined : 'Tap to talk. Hold to talk, slide left to cancel.'}
           data-dock=""
-          disabled={disabled && !listening}
+          disabled={(disabled && !listening) || writing}
           onPointerDown={down}
           onPointerMove={move}
           onPointerUp={up}

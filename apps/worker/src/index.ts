@@ -98,6 +98,7 @@ import { isByokProvider } from '@golem/shared';
 import { imageKvKey, imageMimeType, type ImageMeta } from './imagegen';
 import { readGeneratedImage } from './generated-images';
 import { ATTACHMENT_TTL_SECONDS, deleteAttachment, putAttachment, readAttachment } from './attachments';
+import { handleVoiceTranscribe } from './voice-transcribe';
 // The route no longer knows which store an id came from, so it no longer needs the key helper,
 // the allowlist or the KV metadata shape. `readAudio` owns all three.
 import { readAudio } from './audio-store';
@@ -996,6 +997,10 @@ app.get('/api/projects/:id/images/:imageId', async (c) => {
     },
   });
 });
+
+// Voice typing in the composer (D-VISION-1): a WAV in, the words out, the audio never stored.
+// Signed-in only (the /api/* JWT gate above); limits, billing and no-storage live in voice-transcribe.ts.
+app.post('/api/voice/transcribe', (c) => handleVoiceTranscribe(c.req.raw, c.env, c.get('user')?.userId));
 
 /**
  * ATTACH A FILE TO THE CONVERSATION.
