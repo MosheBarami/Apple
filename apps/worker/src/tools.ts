@@ -2225,7 +2225,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (!toolError(hidden)) built.push('Baseplate hidden');
       const spawn = await op(ctx, { op: 'set_props', path: 'game.Workspace.SpawnLocation', props: { Position: { t: 'Vector3', v: kit.spawn } } as never });
       if (!toolError(spawn)) built.push('SpawnLocation moved onto the island');
-      return { built, ...kit.facts, projectMutated: true, next: 'Check it with inspect_visually, then add details on surfaceY rather than rebuilding these pieces.' };
+      return { built, ...kit.facts, projectMutated: true, next: 'The scene is finished and its pieces are kept for this run. If the request asks for something it does not have, add only that (on surfaceY). Otherwise reply now in two or three short, simple sentences for a young player — no numbers, sizes or part names.' };
     },
   },
   delete_instances: {

@@ -84,6 +84,7 @@ import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { VERIFIER_TOOLS } from '../verifiers';
 import { afterStep, afterChange, builtSummary, type RetuneAction } from '../run-idle';
+import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested } from '../stop-signal';
 import { singleFlight } from '../single-flight';
@@ -262,6 +263,8 @@ interface AgentState {
   readsSinceChange?: number;
   /** Successful changes per target (tool + what it was aimed at) this run — run-idle.ts afterChange. */
   changesByTarget?: Record<string, number>;
+  /** Set when build_scene has built a kit this run; its pieces and terrain are kept (scene-kits.ts). */
+  kitZone?: KitZone;
   /** Studio was connected at some step of this run, so its tools stay offered if the link drops (F-033). */
   studioSeen?: boolean;
   /**
@@ -470,6 +473,10 @@ const MAX_DUPLICATE_STREAK = 3;
 const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
 /** What a run that was told not to change anything is never offered. */
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
+/** What a run is told when it tries to redo a kit it already built. */
+const KIT_KEPT =
+  'Not run: the ready-made scene is finished, and its pieces and the terrain around it are kept as built in this run. ' +
+  'Add only what the request still asks for that the scene does not have, or reply to the user now in two or three short, simple sentences.';
 /** A sentence followed by one space, or nothing — so an empty summary leaves no double space. */
 const spaced = (t: string): string => (t ? `${t} ` : '');
 /** Consecutive steps a tool-call-written-as-text steer may be given before the ordinary ending decides. */
@@ -4185,6 +4192,13 @@ export class SessionDO extends DurableObject<Env> {
         });
         continue;
       }
+      if (agent.kitZone && touchesKit(agent.kitZone, call.name, call.arguments)) {
+        duplicatesThisStep += 1;
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (the ready-made scene is kept)` });
+        agent.llm.push({ role: 'tool', content: `[${call.name}] ${KIT_KEPT}`, toolCallId: call.id, name: call.name });
+        continue;
+      }
       if (repeated && retry) retry.retries += 1;
       else if (call.name !== 'propose_plan') agent.seenCalls.push(sig);
       //[[ BOUNDED, like uiTools two lines below. `sig` is `name:arguments`, and arguments is
@@ -4255,6 +4269,12 @@ export class SessionDO extends DurableObject<Env> {
         const retune = afterChange(agent.changesByTarget, `${call.name} ${aim(call.arguments)}`);
         agent.changesByTarget = retune.counts;
         if (retune.action === 'finish' || (retune.action === 'nudge' && retuneThisStep === 'none')) retuneThisStep = retune.action;
+      }
+      if (out.ok && call.name === 'build_scene') {
+        let kitArgs: Record<string, unknown> = {};
+        try { kitArgs = JSON.parse(call.arguments || '{}') as Record<string, unknown>; } catch { /* the tool already refused bad JSON */ }
+        const kit = floatingIslandKit(kitArgs);
+        if (!('error' in kit)) agent.kitZone = kitZone(kit.facts);
       }
       if (out.ok && VERIFIERS.has(call.name) && agent.mutated) verifiedThisStep = true;
       // A read made BEFORE the place changed is not the same read after it. Refusing an identical
@@ -4345,7 +4365,9 @@ export class SessionDO extends DurableObject<Env> {
     // Three in a row is a loop, not deliberation: end on what the run has, and say so.
     agent.duplicateStreak = executedThisStep === 0 && duplicatesThisStep > 0 ? (agent.duplicateStreak ?? 0) + 1 : 0;
     if (agent.duplicateStreak >= MAX_DUPLICATE_STREAK) {
-      const note = agent.mutated
+      const note = agent.kitZone
+        ? `Your scene is built. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what you would like changed and Apple will change it.`
+        : agent.mutated
         ? `Apple stopped because it kept repeating a step it had already done. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Everything it built is in your place.`
         : 'Apple stopped because it kept repeating a step it had already done, and nothing in your place was changed.';
       agent.terminalNote = note;

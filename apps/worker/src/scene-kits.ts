@@ -97,14 +97,18 @@ export function crystalCluster(name: string, ground: Vec3, scale: number, hue: '
   const colour = hue === 'cyan' ? rgb(90, 230, 255) : rgb(240, 110, 255);
   const spikes: [number, number, number, number][] = [
     // height, tilt x, tilt z, offset angle (deg)
-    [15, 0, 4, 0], [11, 18, -10, 60], [10, -16, 12, 140], [8.5, 10, 22, 210], [7, -22, -14, 280], [6, 26, 6, 330], [5, -8, -26, 100],
+    [18, 0, 6, 0], [13, 24, -14, 60], [12, -22, 16, 140], [10, 16, 28, 210], [8, -28, -18, 280], [7, 32, 8, 330], [6, -12, -32, 100],
   ];
   const kids: KitItem[] = spikes.map(([h, tx, tz, a], i) => {
     const hh = h * scale;
-    const rot = angles(tx, 0, tz);
+    // A turn about Y per spike so the wedges' blades face different ways — a cluster, not a row.
+    const rot = angles(tx, (i * 53) % 180, tz);
     const rad = i === 0 ? 0 : 2.2 * scale;
     const base: Vec3 = [ground[0] + Math.cos((a * Math.PI) / 180) * rad, ground[1] - 1.5, ground[2] + Math.sin((a * Math.PI) / 180) * rad];
-    return part(`Spike${i + 1}`, [2.2 * scale, hh, 2.2 * scale], cf(centreFromBase(base, hh, rot), rot), {
+    // A WEDGE, not a block: measured 2026-09-23 the block spikes read as chunky neon "L" shapes; a thin
+    // tall wedge has one sharp edge and a point, which is what a shard looks like at a distance.
+    return part(`Spike${i + 1}`, [1.6 * scale, hh, 2.6 * scale], cf(centreFromBase(base, hh, rot), rot), {
+      Shape: { t: 'EnumItem', v: 'Enum.PartType.Wedge' },
       Color: colour, Material: mat('Neon'), Transparency: num(0.12), CastShadow: bool(false),
     }, i === 0 ? [{ className: 'PointLight', name: 'Glow', props: { Color: colour, Range: num(22), Brightness: num(3) } }] : undefined);
   });
@@ -165,11 +169,61 @@ export function floatingIslandKit(a: { center?: unknown; radius?: unknown; trees
     terrain: [...island.operations, stream, ...fall.operations],
     items: [{ className: 'Folder', name: 'SkyIsland', parent: 'Workspace', children: items }],
     spawn: [x - usable * 0.2, surfaceY + 1, z - usable * 0.3],
-    facts: { kit: 'floating_island', surfaceY, usableRadius: usable, bottomY, trees, crystals, waterfallEdge: [x, surfaceY, r1(edgeZ)] },
+    facts: { kit: 'floating_island', center, radius, surfaceY, usableRadius: usable, bottomY, trees, crystals, waterfallEdge: [x, surfaceY, r1(edgeZ)] },
   };
 }
 
 /** Every node in an item tree — the plugin's create limit is 400. */
 export function countNodes(items: readonly KitItem[]): number {
   return items.reduce((n, i) => n + 1 + countNodes(i.children ?? []), 0);
+}
+
+/**
+ * THE KIT'S WORK IS KEPT FOR THE REST OF THE RUN. Measured 2026-09-23: the kit built a floating island
+ * that read as one; the model then spent 20 minutes "improving" it — a terrain mound over the grass,
+ * neon balls for canopies — and made it worse. After build_scene, a call that would move, repaint or
+ * delete its pieces, or edit terrain in the island's space, is refused; adding new things is not.
+ */
+export interface KitZone { x: number; z: number; r: number; yMin: number; yMax: number }
+
+export function kitZone(facts: Record<string, unknown>): KitZone | undefined {
+  const c = facts.center as number[] | undefined;
+  const r = facts.radius as number | undefined;
+  if (!Array.isArray(c) || typeof r !== 'number') return undefined;
+  return { x: c[0]!, z: c[2]!, r: r * 1.15, yMin: (facts.bottomY as number) - 10, yMax: (facts.surfaceY as number) + 70 };
+}
+
+const KIT_FOLDER = /(^|\.)SkyIsland(\.|$)/;
+const PATH_WRITERS = new Set(['transform_instances', 'set_properties', 'delete_instances', 'set_visible', 'move_instances', 'rename_instance', 'group_instances', 'ungroup_instances', 'set_locked']);
+
+function boxHits(z: KitZone, lo: number[], hi: number[]): boolean {
+  return lo[0]! <= z.x + z.r && hi[0]! >= z.x - z.r && lo[1]! <= z.yMax && hi[1]! >= z.yMin && lo[2]! <= z.z + z.r && hi[2]! >= z.z - z.r;
+}
+function terrainOpHits(z: KitZone, o: Record<string, unknown>): boolean {
+  const v = (k: string) => (Array.isArray(o[k]) && (o[k] as unknown[]).length === 3 ? (o[k] as number[]) : undefined);
+  const c = v('center'), size = v('size'), min = v('min'), max = v('max'), origin = v('origin');
+  if (o.action === 'clear') return true;
+  if (c && typeof o.radius === 'number') return boxHits(z, c.map((n) => n - (o.radius as number)), c.map((n) => n + (o.radius as number)));
+  if (c && size) return boxHits(z, c.map((n, i) => n - size[i]! / 2), c.map((n, i) => n + size[i]! / 2));
+  if (c) return boxHits(z, c, c);
+  if (min && max) return boxHits(z, min, max);
+  if (origin) return boxHits(z, origin, origin);
+  return false;
+}
+
+/** Whether a call would change what the kit built. */
+export function touchesKit(zone: KitZone, tool: string, argsJson: string | undefined): boolean {
+  let a: Record<string, unknown>;
+  try { a = JSON.parse(argsJson || '{}') as Record<string, unknown>; } catch { return false; }
+  if (tool === 'build_scene') return true;
+  if (PATH_WRITERS.has(tool)) {
+    const paths = [a.path, ...(Array.isArray(a.paths) ? a.paths : []), ...(Array.isArray(a.moves) ? a.moves.map((m) => (m as Record<string, unknown>)?.path) : [])];
+    return paths.some((p) => typeof p === 'string' && KIT_FOLDER.test(p));
+  }
+  if (tool === 'edit_terrain') {
+    if (typeof a.recipe === 'string') return terrainOpHits(zone, { center: a.center ?? a.top, radius: a.radius ?? 0 });
+    const ops = Array.isArray(a.operations) ? a.operations : [a];
+    return ops.some((o) => o && typeof o === 'object' && terrainOpHits(zone, o as Record<string, unknown>));
+  }
+  return false;
 }

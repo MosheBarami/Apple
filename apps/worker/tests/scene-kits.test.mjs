@@ -76,3 +76,26 @@ test('the kit hides nothing it does not name: one folder, and a spawn on the isl
   assert.ok(Math.abs(kit.spawn[1] - (kit.facts.surfaceY + 1)) < 0.01);
   assert.match(floatingIslandKit({ radius: 500 }).error, /radius/);
 });
+
+// 2026-09-23: after the kit the model spent 20 minutes restyling it and made it worse.
+test('after the kit, its pieces and the terrain in its space are kept; new things elsewhere are not blocked', async () => {
+  const { kitZone, touchesKit } = await import(`file://${out}`);
+  const kit = floatingIslandKit({ center: [0, 150, 0], radius: 50 });
+  const zone = kitZone(kit.facts);
+  assert.ok(zone, 'a zone is derived from the kit facts');
+  const J = JSON.stringify;
+  assert.equal(touchesKit(zone, 'transform_instances', J({ paths: ['game.Workspace.SkyIsland.Tree1'], scale: 1.2 })), true);
+  assert.equal(touchesKit(zone, 'set_properties', J({ path: 'Workspace.SkyIsland.Crystals1.Spike1', props: {} })), true);
+  assert.equal(touchesKit(zone, 'edit_terrain', J({ operations: [{ action: 'fill_ball', center: [0, 170, 0], radius: 20, material: 'Enum.Material.Slate' }] })), true, 'a mound on the island top');
+  assert.equal(touchesKit(zone, 'build_scene', J({ kit: 'floating_island' })), true, 'no second kit over the first');
+  assert.equal(touchesKit(zone, 'edit_terrain', J({ action: 'fill_ball', center: [400, 150, 0], radius: 20, material: 'Enum.Material.Rock' })), false, 'a second island far away is fine');
+  assert.equal(touchesKit(zone, 'create_instances', J({ items: [{ className: 'Model', name: 'Castle', parent: 'Workspace' }] })), false, 'adding a castle is fine');
+  assert.equal(touchesKit(zone, 'transform_instances', J({ paths: ['game.Workspace.Castle'], move: [0, 1, 0] })), false);
+});
+
+test('the session refuses kit edits and remembers the kit it built', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
+  assert.match(src, /if \(agent\.kitZone && touchesKit\(agent\.kitZone, call\.name, call\.arguments\)\) \{[\s\S]{0,1200}continue;/, 'kit edits are not refused before they run');
+  assert.match(src, /call\.name === 'build_scene'[\s\S]{0,400}agent\.kitZone = kitZone\(/, 'the run never records the kit');
+});
