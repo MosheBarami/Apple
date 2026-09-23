@@ -93,3 +93,64 @@ test('media: an SVG carries a sandboxing CSP', async () => {
   assert.equal(r.headers['content-type'], 'image/svg+xml');
   assert.match(r.headers['content-security-policy'], /sandbox/);
 });
+
+// ---- the five page modules, through the same route the dashboard calls -----------------------------
+test('commits: the whole history, paginated, with a detail view', { timeout: 120000 }, async () => {
+  const d = await json('/api/cc/commits');
+  assert.equal(d.ok, true);
+  assert.ok(d.summary.total > 100, `only ${d.summary.total} commits`);
+  assert.equal(d.items.length, 40);
+  assert.ok(d.pages > 2);
+  assert.match(d.items[0].sha, /^[0-9a-f]{40}$/);
+  assert.ok(d.summary.agents.length > 0 && d.summary.heat.length > 0);
+  const p2 = await json('/api/cc/commits?page=2');
+  assert.notEqual(p2.items[0].sha, d.items[0].sha);
+  const one = await json(`/api/cc/commits?sha=${d.items[5].sha}`);
+  assert.equal(one.commit.sha, d.items[5].sha);
+  assert.ok(one.commit.fileList.length > 0);
+  assert.equal((await json('/api/cc/commits?sha=not-a-sha;rm')).ok, false, 'a malformed sha never reaches git');
+});
+
+test('models: registry with plan gating, every LoRA run, evals and skills', async () => {
+  const d = await json('/api/cc/models');
+  assert.equal(d.ok, true);
+  assert.ok(d.registry.models.length >= 5);
+  assert.ok(d.registry.models.every((m) => m.providerModelId && Array.isArray(m.plans)));
+  assert.ok(d.lora.length >= 5);
+  assert.ok(d.lora.every((l) => l.version && l.base));
+  assert.ok(d.evals.length > 0 && d.evals.some((e) => e.tracks.some((t) => t.adapter.n > 0)));
+  assert.ok(d.rag.chunks > 0);
+  assert.ok(d.skills.cards.length > 0);
+});
+
+test('design-history: design commits since Golem, dated screenshots, decisions', { timeout: 120000 }, async () => {
+  const d = await json('/api/cc/design-history');
+  assert.equal(d.ok, true);
+  assert.ok(d.timeline.length > 0);
+  assert.ok(d.shots.length > 0);
+  assert.ok(d.shots.every((s) => s.url.startsWith('/api/cc/media?p=')));
+  assert.ok(d.decisions.length > 0);
+  assert.ok(d.era.golem.from < d.era.apple.from);
+  const shot = await get(d.shots[0].url);
+  assert.equal(shot.status, 200, 'the gallery points at the media route and it serves');
+});
+
+test('studio-shots: grouped pictures with a kind for every group', { timeout: 120000 }, async () => {
+  const d = await json('/api/cc/studio-shots');
+  assert.equal(d.ok, true);
+  assert.ok(d.counts.total > 0);
+  assert.ok(d.groups.length > 0);
+  assert.equal(d.groups.reduce((n, g) => n + g.shots.length, 0), d.counts.total);
+  assert.ok(d.groups.every((g) => d.kinds[g.kind]));
+});
+
+test('repo-health: activity, findings, gates, queue and deploys from the repository', { timeout: 120000 }, async () => {
+  const d = await json('/api/cc/repo-health');
+  assert.equal(d.ok, true);
+  assert.ok(d.activity.total > 100);
+  assert.ok(d.agents.length > 0);
+  assert.ok(d.findings.total > 0);
+  assert.ok(d.gates.total > 0 && d.gates.gates.length === d.gates.total);
+  assert.ok(d.queue.open.length + d.queue.done > 0);
+  assert.ok(d.deploys.length > 0);
+});
