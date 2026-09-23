@@ -604,7 +604,7 @@ function dispatch(e, attr) {
   if (name === 'app:refresh') { load(current, { quiet: !!cache[current], fresh: true }); return; }
   if (name === 'app:act') { const a = REG.get(el.dataset.aid) || allActions().find((x) => x.id === el.dataset.aid); if (a) act(a); return; }
   if (name === 'app:dry') { setDry(!store.dry); return; }
-  if (name === 'app:insight') { const x = (store.insights || [])[+el.dataset.i]; if (x) runInsight(x); return; }
+  if (name === 'app:insight') { const l = store.insights || []; const x = el.dataset.iid ? l.find((y) => y.id === el.dataset.iid) : l[+el.dataset.i]; if (x) runInsight(x); return; }
   const fn = P(current)?.actions?.[name];
   if (fn) { if (attr === 'data-act' && el.tagName === 'A' && !el.getAttribute('href')) e.preventDefault(); fn(el, ctx, e); }
 }

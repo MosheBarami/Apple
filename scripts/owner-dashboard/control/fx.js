@@ -129,9 +129,10 @@ export function rollAll(root = document) {
 function countUp(el) {
   const vis = el.querySelector('.rn-vis'); const text = vis.textContent; const n = Number(el.dataset.v);
   if (!Number.isFinite(n) || !/\d/.test(text)) return;
-  const t0 = performance.now(), D = 700;
+  const t0 = performance.now(), D = 700, v0 = el.dataset.v;
   const digits = text.replace(/[^\d]/g, '');
   const step = (now) => {
+    if (el.dataset.v !== v0) return; // a newer value landed mid-count: its own paint and roll own the text now
     const p = Math.min(1, (now - t0) / D), e = 1 - (1 - p) ** 3;
     let k = 0; const target = Math.round(Number(digits) * e).toString().padStart(digits.length, '0');
     vis.textContent = text.replace(/\d/g, () => target[k++] ?? '0');
