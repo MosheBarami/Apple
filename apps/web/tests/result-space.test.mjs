@@ -10,14 +10,6 @@ function rule(selector) {
   return css.slice(css.indexOf('{', at) + 1, css.indexOf('}', at));
 }
 
-test('connection steps separate descriptions and actions and can wrap', () => {
-  const step = rule('.gx-connect__step');
-  assert.match(step, /display:\s*flex/);
-  assert.match(step, /flex-wrap:\s*wrap/);
-  assert.match(step, /gap:\s*[^;]*[1-9]/);
-  assert.match(rule('.gx-connect__title'), /font-size:\s*1[4-8]px/);
-});
-
 test('generated image fits short screens without cropping pixels', () => {
   const image = rule('.gu-generated-image__pixels');
   assert.match(image, /max-height:\s*[^;]*dvh/);

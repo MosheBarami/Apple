@@ -72,7 +72,7 @@ test('the prompt disappears on connect and cannot reappear while connected', () 
 test('there is no "installed" state anywhere in the connection layer', () => {
   const files = [
     join(HERE, '..', 'src', 'lib', 'studio-connection.ts'),
-    join(HERE, '..', 'src', 'components', 'ws', 'connect-studio.tsx'),
+    join(HERE, '..', 'src', 'components', 'pairing-dialog.tsx'),
   ];
   for (const file of files) {
     const src = readFileSync(file, 'utf8');
@@ -88,7 +88,7 @@ test('there is no "installed" state anywhere in the connection layer', () => {
 });
 
 test('the install link is derived from the shared config, not retyped', () => {
-  const src = readFileSync(join(HERE, '..', 'src', 'components', 'ws', 'connect-studio.tsx'), 'utf8');
+  const src = readFileSync(join(HERE, '..', 'src', 'components', 'pairing-dialog.tsx'), 'utf8');
   assert.match(src, /STUDIO_PLUGIN_INSTALL_HREF/);
   assert.ok(!/create\.roblox\.com/.test(src), 'the URL must come from @golem/shared');
   assert.ok(!/\d{12,}/.test(src), 'no asset id literal may appear here');
@@ -102,7 +102,6 @@ test('no in-app install affordance points at the store while it is not distribut
   // STUDIO_PLUGIN_URL directly is how that guarantee gets lost, so it is banned
   // here rather than left to review.
   const files = [
-    join(HERE, '..', 'src', 'components', 'ws', 'connect-studio.tsx'),
     join(HERE, '..', 'src', 'components', 'pairing-dialog.tsx'),
     join(HERE, '..', 'src', 'routes', 'dashboard.tsx'),
   ];

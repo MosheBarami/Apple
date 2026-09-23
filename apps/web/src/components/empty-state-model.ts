@@ -141,6 +141,6 @@ export const M06_NOT_MODELLED = {
   canonical: 'M06',
   reason:
     'The browser cannot observe whether a Studio plugin is installed. Installation is '
-    + 'offered as an action in ws/connect-studio.tsx, never reported as a detected status.',
+    + 'offered as an action in pairing-dialog.tsx, never reported as a detected status.',
 } as const;
 

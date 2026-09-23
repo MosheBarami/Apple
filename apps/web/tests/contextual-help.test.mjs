@@ -45,7 +45,9 @@ const E = await bundle(join('src', 'components', 'empty-state-model.ts'), 'empty
 const FAILURE_TSX = readFileSync(join(WEB, 'src', 'components', 'failure.tsx'), 'utf8');
 const TURN_TSX = readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8');
 const EMPTY_TSX = readFileSync(join(WEB, 'src', 'components', 'empty-state.tsx'), 'utf8');
-const CONNECT_TSX = readFileSync(join(WEB, 'src', 'components', 'ws', 'connect-studio.tsx'), 'utf8');
+// The Studio install link lives in the pairing dialog; the ConnectStudio block that carried it had
+// no importer left and was deleted.
+const CONNECT_TSX = readFileSync(join(WEB, 'src', 'components', 'pairing-dialog.tsx'), 'utf8');
 
 /** /docs/x -> apps/site/src/pages/docs/x.astro. Anchors and trailing slashes stripped first. */
 function docsPageExists(href) {

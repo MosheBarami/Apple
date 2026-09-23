@@ -551,15 +551,6 @@ button.gx-scrim:hover:not(:disabled):not([aria-disabled='true']) { background:co
 .gx-usage { font-size:12px; } .gx-usage__top,.gx-usage__foot { display:flex; justify-content:space-between; gap:12px; } .gx-usage__plan { font-size:10px; } .gx-usage__bar { height:3px; background:var(--surface-3); display:flex; margin-block:10px; } .gx-usage__fill { height:100%; display:block; background:var(--ink); } .gx-usage__detail { margin:0 0 7px; color:var(--muted); } .gx-usage__foot { font-size:10px; color:var(--faint); }
 .gx-user-card { display:flex; align-items:center; gap:8px; } .gx-user-card__id { display:flex; align-items:center; gap:10px; border:0; background:transparent; flex:1; min-width:0; padding:8px 0; } .gx-user-card__names { display:grid; overflow:hidden; text-align:start; } .gx-user-card__name { font-size:13px; } .gx-user-card__email { font-size:10px; overflow:hidden; text-overflow:ellipsis; } .gx-avatar { width:30px; height:30px; display:grid; place-items:center; background:var(--surface-2); font-size:12px; } .gx-user-card__wrap { min-width:0; flex:1; }
 .gx-workbench__tabs { display:none; } .gx-studio-view img,.gx-playtest img { display:block; width:100%; object-fit:contain; }
-.gx-connect { padding:20px 0; }
-.gx-connect__title { margin:0 0 8px; font-size:16px; font-weight:400; letter-spacing:0; }
-.gx-connect__lede { margin:0 0 18px; font-size:13px; line-height:1.6; color:var(--muted); }
-.gx-connect__steps { list-style:none; counter-reset:connect-step; padding:0; margin:0; display:grid; gap:14px; }
-.gx-connect__step { counter-increment:connect-step; display:flex; flex-wrap:wrap; align-items:center; gap:10px; font-size:13px; line-height:1.5; }
-.gx-connect__step::before { content:counter(connect-step); color:var(--faint); font-size:11px; width:16px; flex:none; }
-.gx-connect__what { flex:1 1 160px; }
-.gx-connect__step > .gx-btn { padding:8px 12px; font-size:12px; border:1px solid var(--line); border-radius:var(--r-md); flex:none; }
-.gx-connect--quiet { color:var(--muted); font-size:13px; }
 .gx-conn-note,.gx-link-note { font-size:13px; color:var(--muted); padding:10px 26px; margin:0; }
 .gx-compose-region { position:relative; min-width:0; }
 .gx-row { padding:12px 0; border-bottom:1px solid var(--line); } .gx-empty,.empty-state { padding:48px 24px; text-align:center; animation:empty-arrive var(--t-slow) var(--ease-out); } .gx-plain { padding:100px 30px; }

@@ -102,9 +102,15 @@ test('the dialog wires confirmation into minted-code states and cleans its bound
 });
 
 test('error and expired code states do not keep telling Studio to enter a dead code', () => {
-  assert.match(
-    DIALOG,
-    /state === 'ready' && pairing && !expired[\s\S]{0,500}?Waiting for Studio/,
+  // The PROPERTY, not a distance: the guard nearest above the waiting copy is the claimable-code
+  // guard. This was `[\s\S]{0,500}?` and went red when a restart note (F-026) was added inside the
+  // very block it protects.
+  const at = DIALOG.indexOf('Waiting for Studio');
+  assert.ok(at > 0, 'the waiting copy was not found');
+  const guards = [...DIALOG.slice(0, at).matchAll(/\{(state === [^\n]*?) && \(/g)];
+  assert.equal(
+    guards.at(-1)?.[1],
+    "state === 'ready' && pairing && !expired",
     'waiting copy must exist only while the shown code is still claimable',
   );
 });

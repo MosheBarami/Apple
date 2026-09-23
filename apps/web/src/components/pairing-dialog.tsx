@@ -1,8 +1,8 @@
 // The Studio connection, in one dialog: what this project is bound to now, and how to change it.
 //
-// This used to be step 3 of a four-step wizard, then just "here is a code". The setup steps live in
-// the compact ConnectStudio block at the foot of the conversation (components/ws/connect-studio.tsx),
-// so what is left is the two halves of one question — WHAT IS PAIRED, and PAIR SOMETHING.
+// This used to be step 3 of a four-step wizard, then just "here is a code". The workspace's Studio
+// pill opens it, so it is the whole of the connection surface — the two halves of one question:
+// WHAT IS PAIRED, and PAIR SOMETHING.
 //
 // The record half calls three worker routes that had been served for weeks with nothing calling
 // them: /studio/diagnostics, /studio/disconnect and /studio/place/rebind. docs/troubleshooting and
@@ -31,6 +31,7 @@ import {
 import { createPairingCode, discardStudioQueue, disconnectStudio, fetchStudioDiagnostics, rebindPlace } from '../lib/api';
 import { countdownTo, fullStamp, shortRelative } from '../lib/format';
 import { pairingAttemptConnected, type PairingAttemptBaseline } from '../lib/pairing-confirmation';
+import { recentOpLabel } from '../lib/studio-connection';
 import { Modal } from './modal';
 import { Forge } from './loading';
 import { Failure } from './failure';
@@ -170,7 +171,7 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
               {/* ok is 1, 0, or null — SQLite has no boolean and an op that never reported has
                   neither. Unknown draws as waiting, never as failed. */}
               <StatusIcon status={op.ok === 1 ? 'success' : op.ok === 0 ? 'error' : 'waiting'} size={13} />
-              <span className="pairing-record__op">{op.summary ?? op.kind ?? 'an operation'}</span>
+              <span className="pairing-record__op">{recentOpLabel(op)}</span>
               <span className="pairing-record__when">{shortRelative(op.created_at)}</span>
             </li>
           ))}
@@ -409,11 +410,16 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
                 different Studio is offered, and named for what it does to the current one. */}
             {state === 'idle' && paired && (
               <div className="pairing-code-box">
+                {/* F-026: a restart ends the pairing by design — the plugin never stores its token —
+                    and from here a restarted Studio looks exactly like this: paired, and quiet. */}
+                <p className="pairing-how">
+                  Closed or restarted Studio? It needs a new code to connect again.
+                </p>
                 <p className="pairing-how">
                   Pairing a different Studio ends the connection above &mdash; one project, one Studio.
                 </p>
                 <button type="button" className="btn" onClick={mint}>
-                  Pair a different Studio
+                  Get a new code
                 </button>
               </div>
             )}
@@ -469,6 +475,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
                   press <strong>Connect to Apple</strong>. Edits stay off until you allow them for this
                   connection.
                 </p>
+                <p className="pairing-how">If you close or restart Studio, you will need a new code.</p>
 
                 <p className="pairing-waiting muted" aria-live="polite">
                   <span className="pulse-dot" aria-hidden="true" /> Waiting for Studio…

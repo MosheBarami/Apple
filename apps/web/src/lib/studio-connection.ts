@@ -204,6 +204,19 @@ export function latencyLabel(rttMs: number | null): string | null {
   return `${(rttMs / 1000).toFixed(1)} s`;
 }
 
+/**
+ * The words on one recent-operation row in the Studio dialog.
+ *
+ * Blank is missing. `summary ?? kind` falls through only on null, so an EMPTY summary used to be
+ * printed — as nothing, a bare ✓ with no words beside it (F-027).
+ */
+export function recentOpLabel(op: { summary: string | null; kind: string | null }): string {
+  const summary = op.summary?.trim();
+  if (summary) return summary;
+  const kind = op.kind?.trim();
+  return kind || 'A change in Studio';
+}
+
 /** "3 changes waiting", or null when the queue is empty — an empty queue is not news. */
 export function queueLabel(queuedOps: number): string | null {
   if (!Number.isFinite(queuedOps) || queuedOps <= 0) return null;

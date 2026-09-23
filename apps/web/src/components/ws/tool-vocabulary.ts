@@ -77,7 +77,7 @@ export const ACTIVITY_NOT_MODELLED: Record<string, string> = {
     + 'ScreenGui from creating a wall. Deriving it by string-matching the summary would be a '
     + 'guess wearing a canonical label. It needs the class names on the wire first.',
   C12: 'Connecting Studio. Not an activity in a run at all — pairing happens outside the '
-    + 'agent loop and has its own surface in connect-studio.tsx and the M04/M05 states. '
+    + 'agent loop and has its own surface in pairing-dialog.tsx and the M04/M05 states. '
     + 'Putting it in the activity stream would claim the agent did something it never did.',
 };
 
