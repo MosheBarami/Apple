@@ -2,7 +2,7 @@
 
 Directly measured facts only. Re-measure at the start of every session; this file is a snapshot.
 
-**Measured:** 2026-09-23 ~07:25 IDT.
+**Measured:** 2026-09-23 ~07:55 IDT.
 
 ## Repository
 
@@ -22,6 +22,14 @@ Directly measured facts only. Re-measure at the start of every session; this fil
   (c58b1815-7bcb-4ab9-a809-da159374bf78), running the plugin build loaded at 04:21 (ed6622c5 era, before the
   ColorGradingEffect and NumberSequence fixes). A quit prompt is open on it (Q-005).
 - Installed local plugin (loaded at the next launch): sha256 494fb68f875cdb1f9481634aedcdc43886fd87c4b709a32a4248356a2d7d7f8e.
+
+## Since 07:25
+
+- F-028 closed (planted bug found read-only in 14 s, 18 Credits); F-036 closed (lighting-only scope: 85 Credits,
+  nothing but Lighting changed). Project menu: rows were unclickable (under the thread) and two were unlabelled —
+  fixed and measured on production. Outcome line no longer says "without changing anything" for unfinished runs.
+- Gate: unmet = 0/3 fresh reviews; critical F-020, F-034, F-038 (final publish + appeal); high F-033, F-051
+  (Studio relaunch, Q-005).
 
 ## Since 06:50
 
