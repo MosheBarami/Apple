@@ -48,17 +48,18 @@ function hero(pulse, ins, store) {
 }
 
 // ---------------------------------------------------------------- key numbers
-function vitals(v, d) {
+function vitals(v, d, plats) {
+  const ghOff = arr(plats).find((p) => p.id === 'github')?.state === 'off'; // no read: its zeros are not a count
   const ci = arr(v.ciSeries); const ciRate = ci.length ? ci.filter(Boolean).length / ci.length : null;
   const spendF = v.maxMonthlyUsd ? v.monthUsd / v.maxMonthlyUsd : null;
   const users = d.supabase?.authUsers ?? v.authUsers;
   return html`<section class="bento" aria-label="מספרי המפתח">
     ${stat({ key: 'hq-req', label: 'בקשות לאתר ב-24 שעות', value: v.requests24h, text: num(v.requests24h), platform: 'cloudflare', series: v.requestsSeries, sub: `${num(v.errors24h)} שגיאות · לפי שעה`, href: '#/cloudflare', wide: true })}
     ${stat({ key: 'hq-spend', label: 'הוצאה על AI החודש', value: v.monthUsd, text: isNum(v.monthUsd) ? `$${num(v.monthUsd, 2)}` : '—', platform: 'apple', series: v.spendSeries, sub: v.maxMonthlyUsd ? `${pct(spendF)} מתקרה של $${num(v.maxMonthlyUsd, 2)}` : 'לפי יום', href: '#/apple', wide: true })}
-    ${stat({ key: 'hq-ci', label: 'בדיקות CI שעברו', value: ciRate == null ? null : Math.round(ciRate * 100), text: ciRate == null ? '—' : `${num(Math.round(ciRate * 100))}%`, platform: 'github', series: ci, sparkCls: ciRate != null && ciRate < 0.5 ? 'bad' : '', tone: ciRate != null && ciRate < 0.5 ? 'bad' : '', sub: `${num(ci.length)} הריצות האחרונות`, href: '#/github' })}
+    ${stat({ key: 'hq-ci', label: 'בדיקות CI שעברו', value: ciRate == null ? null : Math.round(ciRate * 100), text: ciRate == null ? '—' : `${num(Math.round(ciRate * 100))}%`, platform: 'github', series: ci, sparkCls: ciRate != null && ciRate < 0.5 ? 'bad' : '', tone: ciRate != null && ciRate < 0.5 ? 'bad' : '', sub: ghOff ? 'GitHub לא מחובר, אין ריצות לקרוא' : `${num(ci.length)} הריצות האחרונות`, href: '#/github' })}
     ${stat({ key: 'hq-sentry', label: 'תקלות פתוחות', value: v.sentryOpen, platform: 'sentry', series: v.sentrySeries, sparkCls: 'bad', tone: v.sentryOpen ? 'warn' : 'good', sub: 'אירועים לפי שעה, 24 שעות', href: '#/sentry' })}
     ${stat({ key: 'hq-calls', label: 'קריאות למודלים', value: v.modelCalls, platform: 'apple', sub: `${compact(v.tokens)} טוקנים · ${pct(v.cacheHit)} מהמטמון`, href: '#/apple' })}
-    ${stat({ key: 'hq-commits', label: 'קומיטים ב-14 יום', value: arr(v.commits14).reduce((a, b) => a + b, 0), platform: 'github', series: v.commits14, sub: 'לפי יום', href: '#/github' })}
+    ${stat({ key: 'hq-commits', label: 'קומיטים ב-14 יום', value: ghOff ? null : arr(v.commits14).reduce((a, b) => a + b, 0), text: ghOff ? '—' : undefined, platform: 'github', series: ghOff ? [] : v.commits14, sub: ghOff ? 'GitHub לא מחובר, אין מה לספור' : 'לפי יום', href: '#/github' })}
     ${stat({ key: 'hq-db', label: 'מסד הנתונים', value: v.dbBytes, text: bytes(v.dbBytes), platform: 'supabase', sub: `${num(users)} משתמשים רשומים`, href: '#/supabase', wide: true })}
     ${stat({ key: 'hq-sec', label: 'אזהרות אבטחה', value: v.securityWarn, platform: 'supabase', tone: v.securityWarn ? 'warn' : 'good', sub: 'מהבודק של Supabase', href: '#/supabase', wide: true })}
   </section>`;
@@ -259,7 +260,7 @@ export default {
     const ins = ctx.insights; const list = arr(ins);
     const now = Date.parse(pulse.fetchedAt) || Date.now();
     return html`${hero(pulse, list, ctx.store)}
-      ${vitals(pulse.vitals || {}, d)}
+      ${vitals(pulse.vitals || {}, d, pulse.platforms)}
       <div class="g g21 hq-now">
         <section class="card flush" id="hq-ins" aria-labelledby="h-ins"><h2 class="card-h" id="h-ins">${icon('bolt', 16)}מה קורה עכשיו ומה לעשות<small>מסקנות מכל הפלטפורמות יחד, הדחוף ראשון</small></h2>${insightsFeed(ins)}</section>
         <section class="card flush" aria-labelledby="h-tl"><h2 class="card-h" id="h-tl">${icon('status', 16)}ציר הזמן<small>קומיטים, בדיקות, פריסות ותקלות מכל המערכות</small></h2>${timeline(pulse.events, now)}</section>
