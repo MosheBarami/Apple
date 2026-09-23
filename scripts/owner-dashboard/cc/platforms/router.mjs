@@ -12,8 +12,8 @@ import { hf, hfAction } from './hf.mjs';
 import { extras } from './extras.mjs';
 import { apple } from './apple.mjs';
 import { groq, groqAction } from './groq.mjs';
-import { discord } from './discord.mjs';
-import { roblox } from './roblox.mjs';
+import { discord, discordAction } from './discord.mjs';
+import { roblox, robloxAction } from './roblox.mjs';
 import { status } from './status.mjs';
 import { connectors, connectorAction } from './connectors.mjs';
 import { langflow } from './langflow.mjs';
@@ -61,6 +61,8 @@ const POSTS = {
   'sentry/action': sentryAction,
   'hf/action': hfAction,
   'groq/action': groqAction,
+  'discord/action': discordAction,
+  'roblox/action': robloxAction,
   'connectors/action': connectorAction,
 };
 for (const id of LAZY_PLATFORMS) POSTS[`${id}/action`] = (b) => laneB(`platforms/${id}.mjs`, `${id}Action`, b);
