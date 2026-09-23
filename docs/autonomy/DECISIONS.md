@@ -109,3 +109,12 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   in chat is not used or stored; wrangler login + the dashboard in Chrome are used instead. Repo goes public after
   a secrets + personal-data scan. Reverse any item by editing this line and the plan
   (~/.claude/plans/swirling-strolling-wombat.md).
+
+## D-COST-1 — cut Claude usage per call (2026-09-23, owner: "as aggressive as you want")
+
+77% of this run's cost was cache reads: context size times number of calls. So the cut targets the size of every call and the number of calls.
+- Context compacts at 20% (`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=20`, which also covers subagents). Bash output is capped at 12k characters. Effort is set to `high`, not xhigh. All in `.claude/settings.json`.
+- Unused plugins are off for this repo: chrome-devtools, vercel, design×2, ui-ux-pro-max, hf-cli, superpowers, data, mcp-builder. Also off: the claude.ai connectors Vercel, Netlify, Resend, Figma, Clerk, PostHog, OpenRouter, Hugging Face, Claude Docs and visualize.
+- CLAUDE.md goes from 27 KB to 6.6 KB. The stale SGSD loop moved to `docs/sgsd/SGSD-ORCHESTRATOR.md`.
+- Bulk code-writing goes to `codex exec` (ChatGPT login, not Claude quota). Claude plans, reviews, deploys and verifies. Calls are batched and reports kept terse.
+- Reverse by deleting the `env` and `effortLevel` keys and the `false` plugin entries, re-enabling the connectors, and moving the SGSD file back.

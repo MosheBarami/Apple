@@ -73,6 +73,20 @@
     ]
   },
   "enabledPlugins": {
-    "ralph-loop@claude-plugins-official": true
-  }
+    "ralph-loop@claude-plugins-official": true,
+    "chrome-devtools-mcp@chrome-devtools-plugins": false,
+    "vercel@vercel-plugins": false,
+    "design@knowledge-work-plugins": false,
+    "design@lovstudio": false,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": false,
+    "hf-cli@huggingface-skills": false,
+    "superpowers@claude-plugins-official": false,
+    "data@knowledge-work-plugins": false,
+    "mcp-builder@mcp-use": false
+  },
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "20",
+    "BASH_MAX_OUTPUT_LENGTH": "12000"
+  },
+  "effortLevel": "high"
 }
