@@ -52,13 +52,15 @@ export function metricsFromRender(result: RenderViewResult): Record<string, numb
     metrics.distinctMaterials = materials.size;
 
     // Plastic is Roblox's default material. The share of parts still wearing it is the closest
-    // thing the render knows to "no material decision was made here".
+    // thing the render knows to "no material decision was made here" — while the colour was left
+    // alone too. In four or more chosen colours Plastic is the stylised classic-Roblox look, a
+    // decision, so the metric is absent (unchecked) there rather than a false fail (F-059).
     const total = result.views.reduce((n, v) => n + v.meta.materials.reduce((s, m) => s + m.parts, 0), 0);
     const plastic = result.views.reduce(
       (n, v) => n + v.meta.materials.filter((m) => m.material === 'Plastic').reduce((s, m) => s + m.parts, 0),
       0,
     );
-    if (total > 0) metrics.factoryDefaultShare = plastic / total;
+    if (total > 0 && metrics.distinctColours <= 3) metrics.factoryDefaultShare = plastic / total;
   }
 
   if (result.boundsSize) metrics.heightStuds = result.boundsSize[1];

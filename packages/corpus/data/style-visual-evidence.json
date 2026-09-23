@@ -73,6 +73,7 @@
     "mood:misty":["horror-mansion-future-lighting","horror-cinematic-devlog-process","survival-boundless-ui-world-lighting","survival-rpg-valley-and-village","obby-realistic-forest-route"],
     "mood:interior":["horror-mansion-future-lighting","survival-diegetic-3d-main-menu","simulator-shop-modal-tabs","simulator-complete-ui-system","anime-battle-lore-menu-and-hud"],
     "mood:horror":["horror-feedback-map-ring-layout","horror-mansion-future-lighting","horror-cinematic-devlog-process","horror-monster-silhouette-study","survival-diegetic-3d-main-menu"],
+    "mood:sunny":["simulator-forest-fountain-hub","adventure-village-path-stylised","tycoon-radial-city-map-assets","tower-defense-tropical-path-map","simulator-landmark-hub-map"],
 
     "palette:warmStone":["roleplay-coastal-city-showcase","tower-defense-snow-castle-map","survival-rpg-valley-and-village","tycoon-low-poly-medieval-map","obby-realistic-forest-route"],
     "palette:modernCivic":["roleplay-coastal-city-showcase","roleplay-army-campus-map","modern-ui-2024","racing-horizon-highway-demo","fps-three-lane-greybox-map"],
@@ -81,6 +82,7 @@
     "palette:sciFi":["racing-midnight-tokyo-creator-feature","fps-low-poly-container-lighting","anime-design-ui-2025","simulator-low-poly-moon-hub","anime-battle-lore-menu-and-hud"],
     "palette:coldHorror":["horror-feedback-map-ring-layout","horror-mansion-future-lighting","horror-cinematic-devlog-process","horror-monster-silhouette-study","survival-boundless-ui-world-lighting"],
     "palette:marketTown":["roleplay-coastal-city-showcase","tycoon-low-poly-medieval-map","survival-rpg-valley-and-village","farm-life-devlog-2024","farming-game-2020"],
-    "palette:fortressRuin":["tower-defense-snow-castle-map","tycoon-low-poly-medieval-map","survival-rpg-valley-and-village","horror-feedback-map-ring-layout","roleplay-army-campus-map"]
+    "palette:fortressRuin":["tower-defense-snow-castle-map","tycoon-low-poly-medieval-map","survival-rpg-valley-and-village","horror-feedback-map-ring-layout","roleplay-army-campus-map"],
+    "palette:brightPlay":["simulator-landmark-hub-map","obby-poison-valley-low-poly","adventure-village-path-stylised","tycoon-radial-city-map-assets","tower-defense-tropical-path-map"]
   }
 }

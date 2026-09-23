@@ -87,6 +87,8 @@ Judge only what you can SEE in the images. Never infer quality from the statisti
 
 The failure you exist to catch: every requested object is present, so the builder declares success, but the result is a flat grey slab with brightly coloured boxes and cylinders standing on it. That is a 2, not a 7. Object presence is not quality.
 
+A deliberately stylised classic-Roblox look (bright SmoothPlastic, saturated colour zones, chunky oversized props) is a legitimate style, not programmer art, when it is applied consistently with volume, trim and set dressing. Judge it on those, never on its lack of realistic textures.
+
 Score 0-10 on what a player would actually experience:
   0-2  programmer art: flat ground, primitives as props, arbitrary saturated colours, one material, no lighting
   3-4  recognisable but crude: right objects, wrong proportions, no detail, no composition
@@ -224,10 +226,14 @@ export function hardFailChecks(result: RenderViewResult, subject: SubjectKind = 
   if (merged.size === 1) {
     fails.push(`only one material used (${[...merged.keys()][0]}) — a scene needs a material language, not one surface everywhere`);
   }
-  // Plastic everywhere is the signature of parts that were created and never art-directed.
+  // Plastic everywhere is the signature of parts that were created and never art-directed — when the
+  // colour was left alone too. Plastic in four or more chosen colours is the classic stylised Roblox
+  // look (docs/ROBLOX-STYLE-SPEC.md), a decision rather than a default (F-059).
   const plastic = (merged.get('Plastic') ?? 0) + (merged.get('SmoothPlastic') ?? 0);
   const total = [...merged.values()].reduce((a, b) => a + b, 0);
-  if (total >= 6 && plastic / total > 0.9) fails.push('over 90% of parts are default Plastic — no material pass was done');
+  if (total >= 6 && plastic / total > 0.9 && colours <= 3) {
+    fails.push('over 90% of parts are Plastic in 3 colours or fewer — no material or colour pass was done');
+  }
   if (visible >= 6 && colours <= 1) fails.push('the whole scene is one colour — no palette was chosen');
   // Lighting is checked from PROPERTIES, never from the render — the rasteriser cannot draw it.
   const l = result.lighting;

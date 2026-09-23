@@ -86,8 +86,11 @@ test('every metric supplied is one the render actually measured', () => {
   assert.equal(m.distinctColours, 6);
   assert.equal(m.distinctMaterials, 2);
   assert.equal(m.heightStuds, 12);
-  // 40 Plastic of 72 parts across two views.
-  assert.ok(Math.abs(m.factoryDefaultShare - 40 / 72) < 1e-9, `got ${m.factoryDefaultShare}`);
+  // F-059: Plastic in six chosen colours is a style, so no factory-default share is reported.
+  assert.equal('factoryDefaultShare' in m, false);
+  // In three colours or fewer it is reported: 40 Plastic of 72 parts across two views.
+  const grey = metricsFromRender({ ...RENDER, views: [view('hero', { distinctColours: 2 }), view('front', { distinctColours: 2 })] });
+  assert.ok(Math.abs(grey.factoryDefaultShare - 40 / 72) < 1e-9, `got ${grey.factoryDefaultShare}`);
 });
 
 test('parts are taken as the MAXIMUM across views, not one camera\'s count', () => {

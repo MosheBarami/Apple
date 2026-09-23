@@ -185,18 +185,35 @@ export const MOODS: Record<string, LightingPreset> = {
     colorCorrection: { Brightness: -0.03, Contrast: 0.22, Saturation: -0.42, TintColor: [206, 222, 245] },
     depthOfField: { FocusDistance: 18, InFocusRadius: 26, FarIntensity: 0.35, NearIntensity: 0.1 },
   },
+  sunny: {
+    manualStudioSteps: MANUAL_LIGHTING_STEPS,
+    use: 'stylised bright games — simulators, tycoons, obbies, farming, pets: high sun, clear air so saturated colour stays vivid',
+    scriptable: {
+      ClockTime: 13, Brightness: 2.8, ExposureCompensation: 0, ShadowSoftness: 0.25,
+      GlobalShadows: true, GeographicLatitude: 20,
+      Ambient: [100, 104, 112], OutdoorAmbient: [150, 150, 160],
+      ColorShift_Top: [255, 246, 226], ColorShift_Bottom: [150, 170, 200],
+    },
+    atmosphere: { Density: 0.22, Offset: 0.1, Haze: 0.6, Glare: 0.1, Color: [200, 226, 255], Decay: [120, 160, 220] },
+    bloom: { Intensity: 0.3, Size: 24, Threshold: 1.2 },
+    colorCorrection: { Brightness: 0.02, Contrast: 0.1, Saturation: 0.22, TintColor: [255, 255, 250] },
+    sunRays: { Intensity: 0.06, Spread: 0.8 },
+  },
 };
 
 export interface Palette {
   /** ~60% of visible surface. */ dominant: RGB;
   /** ~30%. */ secondary: RGB;
-  /** ~10%, the only place saturation is allowed. */ accent: RGB;
+  /** ~10%; in a realistic palette the only saturated colour. */ accent: RGB;
   /** Edges, skirting, cornice, frames. Darkest value. */ trim: RGB;
   /** 3 primary materials + 1 accent, in that order. */ materials: readonly [string, string, string, string];
   moods: readonly string[];
 }
 
-/** Restrained palettes: desaturated bases, one saturated accent, wide value spread. */
+/**
+ * Realistic palettes are restrained: desaturated bases, one saturated accent, wide value spread.
+ * brightPlay is the stylised classic-Roblox one: saturated, high-key colour on SmoothPlastic.
+ */
 export const PALETTES: Record<string, Palette> = {
   warmStone: {
     dominant: [206, 188, 158], secondary: [150, 92, 66], accent: [58, 122, 118], trim: [92, 76, 58],
@@ -230,101 +247,112 @@ export const PALETTES: Record<string, Palette> = {
     dominant: [134, 134, 118], secondary: [88, 89, 86], accent: [124, 142, 96], trim: [44, 46, 44],
     materials: ['Slate', 'Sandstone', 'Cobblestone', 'LeafyGrass'], moods: ['overcast', 'misty'],
   },
+  brightPlay: {
+    dominant: [95, 201, 74], secondary: [201, 138, 75], accent: [255, 206, 64], trim: [122, 82, 48],
+    materials: ['SmoothPlastic', 'Plastic', 'WoodPlanks', 'Neon'], moods: ['sunny', 'day'],
+  },
 };
 
 const UNIVERSAL = `ART DIRECTION (mandatory — a scene that breaks these is rejected, not "fine")
 
-PLAN FIRST. Before creating anything, produce a scene plan (mood, palette, 3-4 materials, focal
-point, landmarks, zones, vertical layers, prop budget) and build to it. Do not improvise geometry.
+PLAN FIRST. Before creating anything, produce a scene plan (style, mood, palette, materials, focal
+point, zones and functional areas, vertical layers, prop budget) and build to it. Do not improvise.
+
+STYLE — pick ONE and hold it on every part; mixing reads as two games glued together.
+- STYLISED (default for simulators, tycoons, obbies, farming, pets, kids' games, "a game like X"):
+  classic Roblox. SmoothPlastic/Plastic, bright saturated high-key colour, flat shading, chunky
+  oversized props. Colour zones the space: each functional area owns a colour and paths contrast
+  hard with the ground. No realistic textures (Grass, Brick, Concrete) under stylised props.
+- REALISTIC (showcases, horror, realistic cities, anything asked to look "realistic"): textured
+  materials, restrained colour and the realistic limits below.
 
 SCALE (studs, avatar is 5 tall x 2 wide; snap structure to a 5-stud grid):
-doorway 10H x 10W where players move (7H x 4W decorative) · ceiling 10-12, grand 20-30 ·
-wall >=10 tall if impassable (8 is jumpable at JumpHeight 7.2) · wall 2 thick exterior, 1 interior ·
-floor slab 1-2 · corridor 10-12 wide · stair rise 1.0-1.5 + run 2.5-3 (never rise >2) ·
-railing 3-3.5 · seat 1.5-2 · table 3, counter 3.5-4 · window 5x5, sill at 4 · path 12 wide ·
-lamp post 14-18 · column 2x2 human / 6x6 monumental.
+doorway 10H x 10W (7H x 4W decorative) · ceiling 10-12, grand 20-30 · impassable wall >=10 tall (8
+is jumpable), 2 thick exterior, 1 interior · floor slab 1-2 · corridor 10-12 wide · stair rise
+1.0-1.5 + run 2.5-3 · railing 3-3.5 · seat 1.5-2 · table 3, counter 3.5-4 · window 5x5, sill 4 ·
+path 12 wide · lamp post 14-18 · column 2x2 human / 6x6 monumental.
 
-FACTORY DEFAULTS ARE THE SLOP SIGNATURE. A new Part arrives as Material=Plastic,
-Color=(163,162,165), Size=(4,1.2,2), Anchored=FALSE, CastShadow=TRUE. Override all five on every
-part you create. Anchored=false especially: unanchored decorative geometry is a simulated physics
-body and your scene will collapse the moment it runs.
+FACTORY DEFAULTS ARE THE SLOP SIGNATURE. A new Part arrives as Plastic, Color=(163,162,165),
+Size=(4,1.2,2), Anchored=FALSE. Set colour, size and Anchored=true on every part and choose the
+material on purpose (Plastic only in the stylised look). Unanchored decoration falls apart the
+moment the game runs.
 
-MATERIALS — exactly 3 primary + 1 accent, never more, never fewer.
-No part may keep Material=Plastic or Color=(163,162,165).
-Walls and floors must NOT share a material. Trim must contrast the plane it sits on.
-Neon is a light, not a colour: <5% of surface area, and every Neon part needs a light within
-10 studs or it reads as flat paint. Stylised glass = Neon + Transparency 0.6.
+MATERIALS — stylised: SmoothPlastic/Plastic for almost everything, Neon for glow, Wood/WoodPlanks
+only for fences, crates and signs. Realistic: exactly 3 primary + 1 accent; walls and floors never
+share one; trim contrasts the plane it sits on. Neon is a light, not a colour: <5% of surface and a
+light within 10 studs. Stylised glass = Neon + Transparency 0.6.
 
-COLOUR — 60/30/10: dominant 60%, secondary 30%, accent 10%, plus a dark trim colour. At most 5
-colours per scene. Large surfaces (>50 studs^2) must have HSV saturation <=0.35 — saturated hues
-are for accents only. Never put full-saturation primaries (255,0,0 / 0,255,0 / 0,0,255 /
-255,255,0) on anything over 4 studs; that is programmer art. Value structure beats hue: across
-the 10 largest surfaces the lightest and darkest must differ by >=0.35 in HSV value.
+COLOUR — 60/30/10 plus a dark trim colour. Stylised: 4-6 saturated high-key colours, each with a job
+(grass 95,201,74 · path 201,138,75 · sand 232,211,169 · trunk/fence 122,82,48 · accents at full
+chroma on props). Realistic: at most 5 colours; surfaces over 50 studs^2 keep HSV saturation <=0.35.
+In either style, full-saturation primaries (255,0,0 / 0,0,255 / 255,255,0) never go on anything over
+4 studs, and the 10 largest surfaces span >=0.35 in HSV value.
+
+FUNCTIONAL AREAS — every plot, pad, stall, stage, spawn or arena floor is built, not painted: a base
+1-2 studs thick (never a flush 0.2 plate) with a contrasting rim 0.5-1 proud; a fence when it is
+owned or enclosed (posts every 4-6 studs, two rails, 3-4 tall, a gap facing the path); a sign on a
+post or arch (board + SurfaceGui text); 3-6 props clustered at its edges. Repeated areas are one
+module built once, then cloned with small variations.
+
+ORGANIC SHAPES — foliage, bushes, fruit, rocks and clouds are clusters of 3-9 overlapping balls or
+rotated blocks in 2-3 tones, never one primitive. A tree is a tapered trunk (2-4 segments) and a
+canopy of 4-7 blobs; fruit is oversized (1-3 studs) in a contrasting colour.
 
 COMPOSITION:
-- One landmark at least 3x the height of its surroundings, placed off-centre (about a third in).
-  A flat expanse of evenly spaced identical props reads as dead.
-- Three tiers: hero (1 landmark) / mid (2-4 secondary masses) / dressing (the rest).
-- At least 3 distinct walkable elevations in any scene over 60 studs across — steps, daises,
-  sunken rings, ramps. Flat = unfinished.
-- Keep the centre open; cluster mass at edges and corners. Negative space makes the focal read.
-- Build hierarchy from contrast: height, density, orientation (one thing rotated off the grid),
-  shape (one round thing among rectangles).
-- Silhouette test: in solid black, would you still recognise the landmark?
+- One hero landmark at least 3x the height of its surroundings, off-centre (about a third in),
+  visible from the spawn; then 2-4 mid masses; dressing is the rest.
+- At least 3 walkable elevations in any scene over 60 studs across — steps, daises, sunken rings,
+  ramps. Flat = unfinished.
+- Keep the centre open and mass at edges and corners; break the grid with one rotated or round thing.
 
-DETAIL PASS — the step that separates a scene from a greybox. Never skip it.
-- Never leave a slab edge bare: add a trim part 0.4 studs proud along every exposed edge.
-- Skirting 0.8-1.2 tall / 0.3 proud at floor level, cornice 1.0-1.5 at ceiling, on every wall.
-- Every door and window opening gets a frame 0.5 proud. Never a bare hole.
-- Every column, statue, monument, sign or trophy gets a plinth (footprint 1-2 larger, 0.5-1 tall)
-  AND a cap. Shaft + plinth + cap + trim ring is 5 parts and already reads as designed.
-- No unbroken single-material flat surface larger than 20x20: break it with an inset panel, a
-  0.3-deep recess, a 10% value shift, or an applied object (vent, sign, pipe, poster, planter).
-- Clutter in clusters of 3-5 with gaps between, hugging walls and corners, rotated +/-15deg,
-  sunk 0.1 into what they rest on. Layer vertically: floor, waist (2-3), eye (4-5), above (8+).
-- Prop density per 100 studs^2 of floor: exterior 1-2, room 4-8, shop/workshop 10-18, ruin 8-14.
-- PART BUDGETS ARE MANDATORY and they override any instruction that a prop is "a handful of
-  well-placed parts" — that framing is what produces the stacked-cylinder trophy. Real counts:
-  simple prop 3-6 · good prop (lamp, bench, sign) 8-20 · hero prop (trophy, statue, fountain)
-  25-60 · dressed room 150-400 · dressed plaza 600-1500. A trophy is a plinth, a stem, a bowl,
-  a rim, two handles and a cap. At 40 parts you have a blockout; reach the count with repeated
-  create_instances batches, then clone_instances and transform_instances for the repetition.
+DETAIL PASS — what separates a scene from a greybox. Never skip it.
+- Never leave a slab edge bare: trim 0.4 proud along every exposed edge; skirting and cornice on
+  every wall; a frame 0.5 proud on every door and window.
+- Every column, statue, sign or trophy gets a plinth (1-2 larger, 0.5-1 tall) and a cap.
+- No unbroken flat surface over 20x20: break it with an inset panel, recess, value shift or object.
+- Clutter in clusters of 3-5, hugging walls and corners, rotated +/-15deg, layered floor, waist
+  (2-3), eye (4-5) and above (8+). Props per 100 studs^2: exterior 1-2, room 4-8, shop 10-18.
+- PART BUDGETS ARE MANDATORY — never "a handful of well-placed parts": simple prop 3-6 · good prop
+  (lamp, bench, sign) 8-20 · hero prop 25-60 · dressed room 150-400 · dressed plaza or game map
+  600-1500. Reach them with create_instances batches, then clone_instances and transform_instances.
 
-LIGHTING — every scene gets a lighting pass. Apply one named mood: set Lighting.Ambient,
-OutdoorAmbient, Brightness, ClockTime, ColorShift_Top, ColorShift_Bottom, ShadowSoftness and
-GlobalShadows, create an Atmosphere, and create at least 2 post-effects (Bloom + ColorCorrection).
-Then add local lights: every lamp, lantern, fixture or screen needs a PointLight/SpotLight/
-SurfaceLight, tinted (warm 255,214,170 / cool 190,214,255), Range 18-30.
-NEVER emit Lighting.Technology (removed by Unified Lighting — reading it throws), and never emit
-Lighting.LightingStyle or Lighting.PrioritizeLightingQuality (not scriptable, even for a plugin).
-Instead finish the reply with one line: "Set Lighting.LightingStyle = Realistic and
-PrioritizeLightingQuality = Enabled in Studio's Properties pane — they can't be set from a script."
+LIGHTING — every scene gets a lighting pass: set_mood with one named mood (stylised: sunny or day),
+or by hand the Lighting properties, an Atmosphere, Bloom and ColorCorrection. Every lamp, lantern
+or screen gets a tinted PointLight/SpotLight/SurfaceLight (warm 255,214,170 / cool 190,214,255),
+Range 18-30. An open sky gets a Clouds object under Terrain (Cover 0.5-0.6, Density 0.6); never
+build a sky, sun or clouds from Parts. End the reply with one line: "Set Lighting.LightingStyle =
+Realistic and PrioritizeLightingQuality = Enabled in Studio's Properties pane — they can't be set
+from a script."
 
-GROUND — never ship the default baseplate as final ground. Replace it: for organic scenes use
-Terrain, for built scenes a Pavement/Concrete deck with kerbs, seams and inset panels.
-Real Terrain methods: FillBlock(cframe, size, material), FillBall(center, radius, material),
-FillCylinder(cframe, height, radius, material), FillWedge, FillRegion(region, resolution, material),
-ReplaceMaterial(region, resolution, sourceMaterial, targetMaterial), SetMaterialColor, PasteRegion.
-Terrain:PaintRegion DOES NOT EXIST — use ReplaceMaterial. Terrain voxels are 4x4x4 studs, so size
-terrain features in multiples of 4.
+GROUND — never ship the default grey baseplate. Stylised: recolour it to the grass colour
+(SmoothPlastic), delete its grid Texture, and lay paths and area zones 1-2 thick on top in their own
+colours. Realistic: Terrain for organic scenes, a Pavement/Concrete deck with kerbs and inset panels
+for built ones. Terrain: FillBlock, FillBall, FillCylinder(cframe, height, radius, material),
+FillWedge, FillRegion, ReplaceMaterial(region, 4, from, to), SetMaterialColor. Terrain:PaintRegion
+DOES NOT EXIST. Voxels are 4x4x4 studs.
 
-PERFORMANCE — Anchored=true on every static part; CastShadow=false under ~40 studs^3; at most 4
-lights with Shadows=true; reuse one small kit of repeated pieces (identical geometry batches into
-a single draw call) rather than unique one-offs; keep a scene under ~5k parts.
+PERFORMANCE — CastShadow=false under ~40 studs^3; at most 4 shadowed lights; reuse a small kit of
+repeated pieces, not unique one-offs; under ~5k parts.
 
 BANNED — any of these means regenerate:
-- an unlit flat baseplate as final ground; any scene without a lighting pass
-- cylinder-on-cylinder / box-on-box stacks passing as a prop
-- a bare primitive pole standing in for a lamp post, tree, sign or statue
-- full-saturation primaries on large surfaces; Material=Plastic; the default grey; unanchored parts
+- the default grey baseplate as final ground; any scene without a lighting pass
+- stacked cylinders or boxes passing as a prop; a bare pole as a lamp, tree, sign or statue; a tree
+  that is a trunk plus one block
+- functional areas as flat plates with no rim, fence, sign or props
+- realistic and stylised materials mixed in one scene
+- full-saturation primaries on large surfaces; the default grey; unanchored parts
 - identical props at identical spacing with zero rotation or scale variation
 - emitting Lighting.Technology, LightingStyle, PrioritizeLightingQuality, Terrain:PaintRegion or
   Workspace.StreamingTargetRadius — all removed or non-scriptable
 
-SELF-CHECK before reporting done: 3-4 materials, no Plastic, no default grey · every part anchored
-· 4-5 colours with a value spread · 3+ elevations · a landmark 3x its neighbours · trim on every
-exposed edge, frames on openings, plinths under uprights · lighting + atmosphere + 2 post-effects
-· part count in the right order of magnitude for the tier.`;
+FINISH ORDER — ground zones → every functional area to full detail → the landmark → organic clusters
+→ set_mood and clouds → scripts and polish. Build every item of the plan before polishing any of it,
+and do not re-read what you already built.
+
+SELF-CHECK before reporting done: one style throughout · no default grey, every part anchored · 4-6
+colours with paths contrasting the ground · every functional area has base, rim, sign and props ·
+foliage and rocks are clusters · 3+ elevations · a landmark 3x its neighbours · trim on exposed edges
+· set_mood applied · part count on budget · every item of the plan built.`;
 
 // Only outdoor requests carry this: it is ~400 tokens and an interior, shop or obby has no use for it.
 const OUTDOOR_RE =
@@ -351,7 +379,7 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
     greens, and crystals as clusters of 5-9 tall spikes with the biggest taller than a player.
   * Floating scenes: the template Baseplate under the island breaks the illusion. Hide it (set_visible) and
     move the SpawnLocation onto the island, and say so in the reply. Clouds are never Parts: flat slabs read
-    as glass. Leave them out rather than fake them.
+    as glass. Use a Clouds object under Terrain (Cover 0.5-0.6, Density 0.6) or leave them out.
   * Real sizes: a big tree is 30-50 studs tall and a crystal 6-15, next to a 5-stud player. Scale a
     generated model to that size ONCE and move on; resizing it again and again is the loop that ends a run.
   * A waterfall is edit_terrain recipe "waterfall": top = a point ON the island's edge at surfaceY, a
@@ -398,7 +426,7 @@ material+colour; hazards get a different, saturated accent; decoration must neve
 for either. Platforms 8-12 across, gaps 8-14 (jump reach is ~7.2 up), rise between stages 4-6.
 Give every platform a trim edge 0.4 proud so its silhouette reads against the void, and a
 checkpoint landmark every 5-8 platforms. Build the surround (floating islands, a tower, terrain
-below) so it is not parts in empty sky. Suggested: palette verdant or sciFi, mood day or night.
+below) so it is not parts in empty sky. Suggested: palette brightPlay or sciFi, mood sunny or night.
 Budget 300-800 parts.`,
 
   arena: `SCENE: ARENA — playfield 100x100 kept clear and flat, everything interesting on the perimeter.
@@ -416,6 +444,14 @@ Terrain (Cover 0.6, Density 0.5). Landmark: one hero mass (rock outcrop, great t
 off-centre. Scatter foliage in clusters of 3-5 with clearings between, never a uniform grid; vary
 scale +/-25% and rotate freely. Rocks are 3-5 intersecting rotated parts, never one sphere.
 Suggested: palette verdant, mood misty or golden. Budget 400-1000 parts.`,
+
+  simulator: `SCENE: PLOT GAME (simulator, tycoon, farming) — a central hub (sand or plaza colour, 40-60
+across) with the spawn, shops or vendor stalls around it and one landmark; N identical player plots
+(default 6) in two rows or a ring off the hub, 30-40 across each, 12-16 apart, joined by 10-14 wide
+paths in a colour that contrasts the grass. Every plot is one module cloned: raised base, contrasting
+rim, fence with a gate gap facing the path, owner sign, 3-6 props, then its contents. Stalls are
+open-front booths with a counter, an awning in a bright accent and a big sign.
+Suggested: palette brightPlay, mood sunny. Budget 800-2000 parts.`,
 };
 
 const KIND_ALIASES: Record<string, string> = {
@@ -425,23 +461,27 @@ const KIND_ALIASES: Record<string, string> = {
   hall: 'lobby', entrance: 'lobby', atrium: 'lobby', museum: 'lobby',
   cave: 'dungeon', crypt: 'dungeon', horror: 'dungeon', ruins: 'dungeon', maze: 'dungeon',
   parkour: 'obby', tower: 'obby', platformer: 'obby',
-  stadium: 'arena', battlefield: 'arena', pvp: 'arena', map: 'arena',
+  stadium: 'arena', battlefield: 'arena', pvp: 'arena',
   forest: 'natural', island: 'natural', beach: 'natural', mountain: 'natural', outdoor: 'natural',
   terrain: 'natural', jungle: 'natural', desert: 'natural',
+  tycoon: 'simulator', farm: 'simulator', farming: 'simulator', plot: 'simulator',
 };
 
 function resolveKind(kind: string): string | null {
-  const k = kind.toLowerCase().trim();
-  if (k in KINDS) return k;
-  const alias = KIND_ALIASES[k];
-  if (alias) return alias;
-  for (const [word, target] of Object.entries(KIND_ALIASES)) {
-    if (k.includes(word)) return target;
+  // Whole words only ("install" is not a stall, "workshop" not a shop), and the FIRST scene word in
+  // the request decides: "an obby with a spawn" is an obby, not a plaza.
+  const k = kind.toLowerCase();
+  const words = [...Object.keys(KINDS).map((n) => [n, n] as const), ...Object.entries(KIND_ALIASES)];
+  let best: string | null = null;
+  let bestAt = Infinity;
+  for (const [word, target] of words) {
+    const at = k.search(new RegExp(`\\b${word}s?\\b`));
+    if (at >= 0 && at < bestAt) {
+      best = target;
+      bestAt = at;
+    }
   }
-  for (const name of Object.keys(KINDS)) {
-    if (k.includes(name)) return name;
-  }
-  return null;
+  return best;
 }
 
 /**
@@ -532,20 +572,21 @@ const S = (props: Record<string, unknown>, required: string[] = []): Record<stri
 export const SCENE_PLAN_SCHEMA = S(
   {
     kind: { type: 'string', description: 'Scene category: plaza, interior, obby, lobby, dungeon, shop, arena, natural…' },
+    style: { type: 'string', enum: ['stylised', 'realistic'], description: 'One art style held on every part (see STYLE).' },
     mood: { type: 'string', enum: Object.keys(MOODS), description: 'Named lighting mood to apply verbatim.' },
     palette: {
       type: 'string',
       description: `Named palette from: ${Object.keys(PALETTES).join(', ')}. Use "custom" only with explicit colors below.`,
     },
     colors: S({
-      dominant: { type: 'string', description: 'RGB "r,g,b" — ~60% of surface, desaturated (S<=0.35)' },
+      dominant: { type: 'string', description: 'RGB "r,g,b" — ~60% of surface; realistic: desaturated (S<=0.35), stylised: a saturated high-key colour' },
       secondary: { type: 'string', description: 'RGB "r,g,b" — ~30%' },
-      accent: { type: 'string', description: 'RGB "r,g,b" — ~10%, the only saturated colour' },
+      accent: { type: 'string', description: 'RGB "r,g,b" — ~10%, the strongest colour' },
       trim: { type: 'string', description: 'RGB "r,g,b" — darkest, for edges/skirting/frames' },
     }, ['dominant', 'secondary', 'accent', 'trim']),
     materials: {
       type: 'array',
-      description: 'Exactly 4 Enum.Material names: 3 primary + 1 accent. Plastic is forbidden.',
+      description: 'Enum.Material names: realistic exactly 3 primary + 1 accent; stylised SmoothPlastic/Plastic plus Neon and WoodPlanks. Never the default grey.',
       items: { type: 'string' },
     },
     focalPoint: S({
