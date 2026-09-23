@@ -19,7 +19,7 @@
  "missions": {
   "gameplay_loop_from_baseplate": true,
   "visually_ambitious_environment": false,
-  "scripts_networking_ui": false,
+  "scripts_networking_ui": true,
   "modify_existing_project": true,
   "debug_broken_experience": true,
   "follow_up_change": true,
@@ -70,6 +70,9 @@
    "docs/autonomy/evidence/20260923T0105Z-coin-rush/README.md"
   ],
   "mission:playtest_inspect_repair": [
+   "docs/autonomy/evidence/20260923T0105Z-coin-rush/README.md"
+  ],
+  "mission:scripts_networking_ui": [
    "docs/autonomy/evidence/20260923T0105Z-coin-rush/README.md"
   ]
  },

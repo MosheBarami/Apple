@@ -29,3 +29,19 @@ production worker (a268792c → cf65674d), Apple Studio local builds 1.1.0 (6db6
 - debug_broken_experience: passes — a customer-reported broken HUD with its error was diagnosed, fixed and
   verified as a player in one run.
 - playtest_inspect_repair: passes — play_check → edit → play_check → edit → play_check, then an honest reply.
+
+## Mission 3 — scripts, networking and UI (04:02 IDT, 69 Credits)
+Asked: "now add a shop! when i press a Shop button on the screen it opens a menu where i can buy a Speed Boost
+for 5 coins that makes me run faster. the coins should go down when i buy it and i cant buy it if i dont have
+enough. test it". Apple built a Shop button under the counter, a Shop panel, a server-validated purchase over
+a RemoteEvent and a timed speed boost; it ran play_check twice, but play_check cannot press a button, and its
+attempt to add a temporary client test script ended on the duplicate-streak stop ("Apple stopped because it
+kept repeating a step it had already done. Everything it built is in your place.") — F-050.
+
+Measured by the agent in a real Test session, clicking the on-screen buttons:
+- Shop opens a panel "Speed Boost · Run faster for 10 seconds · 5 Coins".
+- With 0 coins, Buy shows "Need 5 coins" and nothing changes.
+- After touching Coin6–Coin10: Coins 5, WalkSpeed 16 (APPLESHOP before). Buy → "Speed boost active!",
+  Coins 0, WalkSpeed 24 (APPLESHOP after); 11 s later WalkSpeed 16 (APPLESHOP later).
+
+Verdict: scripts_networking_ui passes in the place; Apple's own verification of it did not complete.
