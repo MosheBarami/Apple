@@ -525,6 +525,8 @@ function asProductMode(x: unknown): ProductMode | null {
  * hostile one still gets a terminal refusal.
  */
 const MODE_SKEW_REFUSAL = 'This connection is out of date — reload the page to keep building.';
+/** A restore refused because a run is still changing the place. Plain words: the reader may be young. */
+const RESTORE_WHILE_RUNNING = 'Apple is still building. Press Stop first, then restore.';
 
 /** Runtime validation for the additive product-model field on newer clients. */
 function asProductModel(x: unknown): ProductModel | undefined | null {
@@ -2301,6 +2303,9 @@ export class SessionDO extends DurableObject<Env> {
 
     if (path === '/restore' && req.method === 'POST') {
       const { checkpointId } = (await req.json()) as { checkpointId: string };
+      // Same rule as the socket path: no restore while a run is writing to the place.
+      const running = await this.ctx.storage.get<AgentState>('agent');
+      if (running && running.status !== 'idle') return json({ ok: false, error: RESTORE_WHILE_RUNNING }, 409);
       const res = await this.restoreCheckpoint(checkpointId);
       return json(res, res.ok ? 200 : 409);
     }
@@ -2978,6 +2983,13 @@ export class SessionDO extends DurableObject<Env> {
         // capability the version history requires — admin or owner. See collab.ts.
         if (mayNot('restore_version')) {
           refuse('Restoring a checkpoint discards work other people did. Only a project admin can do that.');
+          return;
+        }
+        // A restore rebuilds the place while a run would still be writing to it, so it waits for
+        // the run to end, the same way editing a message does. Told to the presser only.
+        const agent = await this.ctx.storage.get<AgentState>('agent');
+        if (agent && agent.status !== 'idle') {
+          this.refuseOne(ws, { type: 'error', code: 'busy', message: RESTORE_WHILE_RUNNING });
           return;
         }
         const res = await this.restoreCheckpoint(msg.checkpointId);
