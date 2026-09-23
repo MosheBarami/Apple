@@ -161,3 +161,36 @@ test('a write that was REFUSED is retried, not recorded as done', async () => {
   assert.equal(wrote.length, 2, 'the owner never got a second chance to write the place');
   assert.equal(h.store.get('placeMirrored'), '4815:Zeta Test Place', 'a success must be remembered, or the next poll writes again');
 });
+
+//[[ F-008. An UNSAVED place — one never published to Roblox, which reports placeId 0 — is never
+//   bound (studio-place.ts: nothing can be compared against it later), and the mirror above read
+//   only the bound place. So a project built in "Place1.rbxl" showed "No place name yet" on its
+//   card while the Studio dialog named the file. The property: with nothing bound, the name of the
+//   place that is open is the project's place name; a bound place always wins over it; and the
+//   unsaved place's id is written as null, never as 0. ]]
+test('with no place bound, the open unsaved place\'s name reaches the card', async () => {
+  const { h, calls, restore } = await signedIn();
+  try {
+    await h.session.handlePluginPoll({ state: state({ placeId: 0, gameId: 0, placeName: 'Apple-Mission2c-Baseplate.rbxl' }) });
+  } finally {
+    restore();
+  }
+  const wrote = patches(calls);
+  assert.equal(wrote.length, 1, 'an unsaved place never names the project: the card reads "No place name yet"');
+  assert.equal(wrote[0].body.place_name, 'Apple-Mission2c-Baseplate.rbxl');
+  assert.equal(wrote[0].body.place_id, null, 'placeId 0 is "not published", not a place called 0');
+  assert.equal(h.session.boundPlace ?? null, null, 'naming the card must not BIND an unidentifiable place');
+});
+
+test('a bound place wins over whatever unsaved place is open', async () => {
+  const { h, calls, restore } = await signedIn({
+    store: [['pluginPlace', { placeId: 4815, gameId: 162342, placeName: 'Zeta Test Place', boundAt: 1 }]],
+  });
+  try {
+    await h.session.handlePluginPoll({ state: state({ placeId: 0, gameId: 0, placeName: 'Place1.rbxl' }) });
+  } finally {
+    restore();
+  }
+  const names = patches(calls).map((c) => c.body.place_name);
+  assert.deepEqual(names, ['Zeta Test Place']);
+});

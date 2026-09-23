@@ -30,7 +30,7 @@ import type {
   ProductModel,
   PluginCapabilityReportV1,
 } from '@golem/shared';
-import { canUseProductModel, isRunFailure, MESSAGE_MAX_CHARS, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
+import { canUseProductModel, isModelId, isRunFailure, MESSAGE_MAX_CHARS, modelRefusal, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
 import { isRefusalRemedyCode, type RefusalRemedyCode } from '@golem/shared';
 import { isCatalogueModelIdShape, registryModel } from '@golem/shared';
 
@@ -531,7 +531,8 @@ const RESTORE_WHILE_RUNNING = 'Apple is still building. Press Stop first, then r
 /** Runtime validation for the additive product-model field on newer clients. */
 function asProductModel(x: unknown): ProductModel | undefined | null {
   if (x === undefined || x === null) return undefined;
-  return x === 'apple' || x === 'apple-max' ? x : null;
+  // Every registry model (D-VISION-1); what the account may USE is productModelVerdict's question.
+  return isModelId(x) ? x : null;
 }
 
 /** Model entitlement is independent of Plan/Agent. Older clients default to the free Apple lane. */
@@ -1111,11 +1112,7 @@ export class SessionDO extends DurableObject<Env> {
     if (canUseProductModel(model, undefined)) return { ok: true, model };
     const plan = await this.productModelPlan(bind.ownerId);
     if (canUseProductModel(model, plan)) return { ok: true, model };
-    return {
-      ok: false,
-      model,
-      message: 'Apple MAX requires a paid subscription. Choose Apple to continue free.',
-    };
+    return { ok: false, model, message: modelRefusal(model) };
   }
 
   /** The project this session is bound to, or null before the binding has been read. */
@@ -3550,6 +3547,20 @@ export class SessionDO extends DurableObject<Env> {
     agent.lastStepAt = Date.now();
     this.lastActivity = agent.lastStepAt;
 
+    //[[ THE MODEL IS RE-CHECKED ON EVERY STEP, NOT ONLY AT ADMISSION (D-VISION-1).
+    //
+    //   A run can outlive the plan it started on: a downgrade or a lapsed subscription lands while
+    //   a 16-step build is between steps, and admission alone would let a paid model finish the run
+    //   on an account that no longer has it. `agent.userId` is the owner's billing identity, the
+    //   same identity admission read. A free model needs no read, so this costs nothing on Apple. ]]
+    if (!agent.customerModel && agent.productModel) {
+      const verdict = await this.productModelVerdict({ ownerId: agent.userId }, agent.mode, agent.productModel);
+      if (!verdict.ok) {
+        agent.finalText = agent.finalText || `${verdict.message} Progress is saved.`;
+        await this.finishRun(agent, 'quota');
+        return;
+      }
+    }
     if (agent.step > 1 && !agent.customerModel) {
       const state = await this.quotaState(agent.userId);
       if (state.unmetered !== true && state.creditsRemaining <= 0) {
@@ -5752,7 +5763,8 @@ export class SessionDO extends DurableObject<Env> {
     //   place — a place never saved to Roblox, or one Studio is still loading, both of which report
     //   placeId 0 — is `unverified`, is SERVED, and never counts as a mismatch. Refusing on an
     //   absence would break a legitimate user intermittently. ]]
-    const admission = placeAdmission(this.boundPlace, readPlaceReport(body.state), Date.now());
+    const report = readPlaceReport(body.state);
+    const admission = placeAdmission(this.boundPlace, report, Date.now());
     if (admission.verdict === 'bind' || (admission.verdict === 'match' && admission.changed)) {
       this.boundPlace = admission.place;
       await this.ctx.storage.put<StudioPlace>('pluginPlace', admission.place);
@@ -5760,7 +5772,13 @@ export class SessionDO extends DurableObject<Env> {
     // NOT inside the branch above. That branch fires only when the binding is NEW, which would have
     // left every project paired before this shipped reading "No place name yet" until its owner
     // happened to rename the place. The mirror decides for itself whether there is anything to say.
-    await this.mirrorPlaceToRegistry(this.boundPlace);
+    //[[ F-008: an UNSAVED place (placeId 0) is never bound, so with nothing bound the open place's
+    //   own name is the best name the project has — mirrored for the card, never bound, and its id
+    //   written as null. A bound place always wins. ]]
+    const unsavedOpen = report && report.placeName.trim()
+      ? { placeId: report.placeId, gameId: report.gameId, placeName: report.placeName, boundAt: 0 }
+      : null;
+    await this.mirrorPlaceToRegistry(this.boundPlace ?? unsavedOpen);
     this.placeMismatch = admission.verdict === 'mismatch' ? admission : null;
     if (!servesOps(admission) && admission.verdict === 'mismatch') {
       // The link is alive and the plugin is welcome to keep polling — the user may simply switch

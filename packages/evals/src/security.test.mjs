@@ -1353,10 +1353,17 @@ test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fie
   //   hole the A5 recovery steer shipped with.
   assert.match(snapshot, /productModel: agent\.productModel\b/,
     'productModel is no longer the settled model on the run — re-review what now feeds it');
+  //   The vocabulary is the model registry (D-VISION-1): the wire value passes only through
+  //   membership of MODEL_IDS, which is read from MODEL_REGISTRY and never from the request.
   assert.match(
     readCode('do/session.ts'),
-    /function asProductModel\(x: unknown\)[\s\S]{0,240}?return x === 'apple' \|\| x === 'apple-max' \? x : null;/,
-    'asProductModel no longer confines the wire value to the two literals — the browser can be handed a string the client chose',
+    /function asProductModel\(x: unknown\)[\s\S]{0,240}?return isModelId\(x\) \? x : null;/,
+    'asProductModel no longer confines the wire value to the registry ids — the browser can be handed a string the client chose',
+  );
+  assert.match(
+    readFileSync(join(REPO, 'packages', 'shared', 'src', 'models.ts'), 'utf8'),
+    /export const MODEL_IDS: readonly ModelId\[\] = MODEL_REGISTRY\.map\(\(m\) => m\.id\);[\s\S]{0,120}?export function isModelId\(value: unknown\): value is ModelId \{\s*return typeof value === 'string' && \(MODEL_IDS as readonly string\[\]\)\.includes\(value\);/,
+    'isModelId is no longer membership of the fixed registry ids — re-review what the run snapshot can carry',
   );
   assert.match(snapshot, /deniedTools: agent\.deniedTools\b/,
     'deniedTools is no longer the run own denied list — re-review what now feeds it');

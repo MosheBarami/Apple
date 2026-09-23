@@ -17,7 +17,7 @@
 // not drawn as a failure.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { ModelCatalogue, PlaytestRun, ProductMode, ProductModel, StudioFrame } from '@golem/shared';
+import { modelListing, type PlaytestRun, type ProductMode, type ProductModel, type StudioFrame } from '@golem/shared';
 import { Turn } from '../components/ws/turn';
 import { ChatWelcome } from '../components/ws/chat-welcome';
 import { Composer } from '../components/ws/composer';
@@ -60,23 +60,10 @@ const SEEDS = [
 const SPECIMEN_PROJECT = 'specimen';
 
 /**
- * The model picker's three groups, for looking at. Every id and name is a row of the worker's
- * OpenRouter snapshot (apps/worker/src/openrouter-snapshot.ts), never one made up here; no key is
- * saved, so the key and free rows show locked with their reasons.
+ * The model picker, for looking at: the registry marked for a Builder (Pro) account, so the list
+ * shows Apple and Apple MAX open and the outside models locked with the plan that includes them.
  */
-const SPECIMEN_CATALOGUE: ModelCatalogue = {
-  models: [
-    { id: 'apple', label: 'Apple', vendor: 'Apple', requiresKey: false, free: false, supportsTools: true, builtIn: true },
-    { id: 'apple-max', label: 'Apple MAX', vendor: 'Apple', requiresKey: false, free: false, supportsTools: true, builtIn: true },
-    { id: 'openai/gpt-6-sol', label: 'GPT-6 Sol', vendor: 'OpenAI', requiresKey: true, free: false, supportsTools: true, builtIn: false },
-    { id: 'anthropic/claude-opus-5.5', label: 'Claude Opus 5.5', vendor: 'Anthropic', requiresKey: true, free: false, supportsTools: true, builtIn: false },
-    { id: 'google/gemini-3.8-flash', label: 'Gemini 3.8 Flash', vendor: 'Google', requiresKey: true, free: false, supportsTools: true, builtIn: false },
-    { id: 'deepseek/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash', vendor: 'DeepSeek', requiresKey: true, free: false, supportsTools: true, builtIn: false },
-    { id: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nemotron 3 Super (free)', vendor: 'NVIDIA', requiresKey: true, free: true, supportsTools: true, builtIn: false },
-    { id: 'poolside/laguna-s-2.1:free', label: 'Laguna S 2.1 (free)', vendor: 'Poolside', requiresKey: true, free: true, supportsTools: true, builtIn: false },
-  ],
-  free: { readAt: '2026-09-23T01:20:00.000Z', source: 'snapshot', keyless: false },
-};
+const SPECIMEN_MODELS = modelListing('builder');
 
 function user(id: string, content: string, at: number, revisions?: number): ChatItem {
   return { id, role: 'user', mode: 'agent', content, tools: [], streaming: false, createdAt: at, revisions };
@@ -312,7 +299,6 @@ function Screen({ items, status = null, running = false, mode: initialMode = 'ag
   const [mode, setMode] = useState<ProductMode>(initialMode);
   const [autonomous, setAutonomous] = useState(initialAuto);
   const [model, setModel] = useState<ProductModel>('apple');
-  const [keyModel, setKeyModel] = useState<string | null>(null);
   const [seed, setSeed] = useState<string | undefined>();
   const lastAssistant = [...items].reverse().find((item) => item.role === 'assistant')?.id;
   return (
@@ -352,11 +338,8 @@ function Screen({ items, status = null, running = false, mode: initialMode = 'ag
           studioConnected
           productModel={model}
           onModelChange={setModel}
-          customerModel={keyModel}
-          onCustomerModelChange={setKeyModel}
-          catalogue={SPECIMEN_CATALOGUE}
-          modelKeys={[]}
-          onOpenSettings={() => undefined}
+          modelPlan="builder"
+          models={SPECIMEN_MODELS}
           mode={mode}
           onModeChange={(next) => {
             setMode(next);

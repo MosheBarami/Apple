@@ -8,14 +8,13 @@ const read = (file) => readFileSync(new URL(`../src/${file}`, import.meta.url), 
 test('model selection is independent of the Plan/Agent mode and Autonomous capability', () => {
   const workspace = read('routes/workspace.tsx');
   assert.match(workspace, /useState<ProductModel>\('apple'\)/);
-  //[[ RESTATED 2026-09-23 (D-BYOK-1). Both calls gained a sixth argument — the model on the
-  //   customer's own key — so the pins now say the Apple fields still ride on them, and separately
-  //   that the key model does too. ]]
-  assert.match(workspace, /sendChat\(text, mode, attachments, productModel, autonomous, runModel\)/);
-  assert.match(workspace, /editAndResend\([^;]+mode, productModel, autonomous, runModel\)/);
-  assert.match(workspace, /const runModel = customerModel \?\? undefined;/);
+  //[[ RESTATED 2026-09-23 (D-VISION-1). Bring-your-own-key is gone, so the sixth argument (the model
+  //   on a key) went with it. The property is unchanged: the chosen model rides on both frames, next
+  //   to — and independent of — the mode and the Autonomous grant. ]]
+  assert.match(workspace, /sendChat\(text, mode, attachments, productModel, autonomous\)/);
+  assert.match(workspace, /editAndResend\([^;]+mode, productModel, autonomous\)/);
   assert.match(workspace, /productModel=\{productModel\}/);
-  assert.match(workspace, /customerModel=\{customerModel\}/);
+  assert.doesNotMatch(workspace, /customerModel|runModel/);
 });
 
 test('model picker uses model vocabulary and offers a real upgrade route', () => {
@@ -29,11 +28,14 @@ test('model picker uses model vocabulary and offers a real upgrade route', () =>
   const composer = read('components/ws/composer.tsx');
   for (const src of [picker, groups]) assert.doesNotMatch(src, /PRODUCT_MODES?(_OFFERED)?\b/);
   assert.match(picker, /ModelSelectorItem/);
-  assert.match(groups, /\[\.\.\.PRODUCT_MODELS\]/, 'Apple\'s rows are the shared list when the catalogue is absent');
-  assert.match(groups, /canUseProductModel\(/);
+  //[[ RESTATED 2026-09-23 (D-VISION-1). The rows are the registry marked by `modelListing` (the
+  //   shared rule, the same one GET /api/models runs), not Apple's two ids; the upgrade route is the
+  //   picker's own link and the composer's answer to a locked row. tests/model-picker.test.mjs
+  //   checks the rows by behaviour; this holds that the rule is the shared one and not a copy. ]]
+  assert.match(groups, /modelListing\(/, 'the fallback marking is the shared rule');
   assert.match(composer, /canUseProductModel\(/);
-  assert.match(composer, /onUpgrade\??\./);
-  assert.match(groups, /Subscribers/);
+  assert.match(composer, /onUpgrade\b/);
+  assert.match(picker, /onUpgrade\(\)/);
 });
 
 test('chat and edit frames carry the selected model independently', () => {

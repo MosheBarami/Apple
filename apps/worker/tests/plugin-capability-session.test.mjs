@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { sessionHarness } from './session-harness.mjs';
 
+//[[ THE RUNS BELOW ARE APPLE MAX RUNS, so their owner must be on a plan that includes it: the model
+//   is re-checked against the QuotaDO plan on every step (D-VISION-1), and the harness's default
+//   QuotaDO names no plan — which is no plan, so the step would stop before the part under test. ]]
+const PAID_PLAN = {
+  idFromName: () => ({}),
+  get: () => ({ fetch: async () => Response.json({ plan: 'builder', creditsRemaining: 99, creditsDaily: 100 }) }),
+};
+
 const state = {
   kind: 'state',
   placeName: 'Capability Fixture',
@@ -181,6 +189,7 @@ test('real SessionDO never executes a model-returned run_luau that the connected
       fetch: async (url) => Response.json(url.endsWith('/reserve') ? { ok: true, reserved: 1 } : { ok: true }),
     }),
   };
+  h.env.QUOTA_DO = PAID_PLAN;
   h.env.AI = {
     run: async (_model, payload) => {
       modelCalls += 1;
@@ -254,6 +263,7 @@ test('visual auto-inspection stays off when render_view is explicitly unsupporte
     idFromName: () => 'budget',
     get: () => ({ fetch: async (url) => Response.json(url.endsWith('/reserve') ? { ok: true, reserved: 1 } : { ok: true }) }),
   };
+  h.env.QUOTA_DO = PAID_PLAN;
   h.env.AI = {
     run: async (_model, payload) => {
       offered = (payload.tools ?? []).map((tool) => tool.function?.name).filter(Boolean);
@@ -309,6 +319,7 @@ test('a capability-blocked generate_model remains a failed artifact attempt and 
     idFromName: () => 'budget',
     get: () => ({ fetch: async (url) => Response.json(url.endsWith('/reserve') ? { ok: true, reserved: 1 } : { ok: true }) }),
   };
+  h.env.QUOTA_DO = PAID_PLAN;
   h.env.AI = {
     run: async () => {
       modelCalls += 1;

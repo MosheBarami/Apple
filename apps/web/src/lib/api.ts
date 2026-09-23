@@ -3,7 +3,7 @@
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
 import type { ChatAttachment, CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
 import type { ApiKeyMode, ApiScope } from '@golem/shared';
-import type { ByokProvider, ModelCatalogue, ModelKeyCheck, ModelKeySummary } from '@golem/shared';
+import type { ByokProvider, ModelCatalogue, ModelKeyCheck, ModelKeySummary, ModelListing } from '@golem/shared';
 import type { ApiKeyView } from './api-keys.ts';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
@@ -2086,6 +2086,16 @@ export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
 export const fetchModelCatalogue = (): Promise<ModelCatalogue> =>
   MOCK_MODE
     ? Promise.reject(new ApiError('Model choices beyond Apple are not available in the demo.', 503))
+    : request('/api/models');
+
+/**
+ * GET /api/models — the registry, each row marked for the signed-in account's plan (D-VISION-1). In
+ * mock mode there is no worker to mark it, and refusing says so: the picker then marks the same
+ * registry with the plan it has, through the one shared rule.
+ */
+export const fetchModels = (): Promise<{ models: ModelListing[] }> =>
+  MOCK_MODE
+    ? Promise.reject(new ApiError('The model list is read from the worker, which the demo does not have.', 503))
     : request('/api/models');
 
 export const fetchModelKeys = (): Promise<{ keys: ModelKeySummary[] }> =>

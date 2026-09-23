@@ -60,6 +60,8 @@ function bundle(entry, label) {
 const APP = (await import(`file://${bundle(SRC('index.ts'), 'worker')}`)).default;
 const K = await import(`file://${bundle(SRC('api-keys.ts'), 'api-keys')}`);
 const P = await import(`file://${bundle(SRC('public-api.ts'), 'public-api')}`);
+const GW = await import(`file://${bundle(SRC('gateway.ts'), 'gateway')}`);
+const S = await import(`file://${bundle(join(WORKER, '..', '..', 'packages', 'shared', 'src', 'models.ts'), 'models')}`);
 const INDEX_SRC = readFileSync(SRC('index.ts'), 'utf8');
 
 // ---------------------------------------------------------------------------
@@ -552,10 +554,31 @@ test('the model id is looked up on the table itself, not through Object.prototyp
 });
 
 test('a foundation-model id is refused by name rather than silently aliased', () => {
-  for (const id of ['gpt-4o', 'gpt-5.6-luna', 'gemini-3.7-flash', 'deepseek-v4', '@cf/openai/gpt-oss-120b']) {
+  // RESTATED for D-VISION-1. The outside models are now the product's to offer, by their REGISTRY
+  // id (`gpt-5.6-luna` is one); what stays refused is every PROVIDER id — the registry's own
+  // provider ids included — and every model the product does not offer.
+  const providerIds = S.MODEL_REGISTRY.map((m) => m.providerModelId);
+  assert.ok(providerIds.length >= 5);
+  for (const id of ['gpt-4o', 'gemini-3.7-flash', 'deepseek-v4', '@cf/openai/gpt-oss-120b', ...providerIds]) {
     const r = P.parseChatCompletionRequest({ model: id, messages: [{ role: 'user', content: 'x' }] });
     assert.equal(r.ok, false, `${id} was accepted as a model`);
     assert.equal(r.fault.status, 404);
+  }
+});
+
+test('the public model list is the registry: every model reachable by one id, each on a real gateway key', () => {
+  const byProduct = new Map();
+  for (const [id, m] of Object.entries(P.PUBLIC_MODELS)) {
+    assert.ok(Object.hasOwn(GW.DEFAULT_MODELS, m.internal), `${id} routes to '${m.internal}', which the gateway does not configure`);
+    if (m.productModel) byProduct.set(m.productModel, [...(byProduct.get(m.productModel) ?? []), id]);
+  }
+  for (const m of S.MODEL_REGISTRY) assert.equal(byProduct.get(m.id)?.length, 1, `${m.id} is reachable by ${byProduct.get(m.id)?.length ?? 0} public ids`);
+  assert.equal(byProduct.size, S.MODEL_REGISTRY.length, 'a public id names a model the registry does not have');
+  // `apple-chat` is Apple's published id and keeps working; it is not renamed to the registry id.
+  assert.equal(P.PUBLIC_MODELS['apple-chat']?.productModel, 'apple');
+  // An outside model runs under its OWN gateway key, never a mode key that would put it on GLM.
+  for (const m of S.MODEL_REGISTRY.filter((x) => x.route === 'unified-billing')) {
+    assert.equal(GW.DEFAULT_MODELS[P.PUBLIC_MODELS[m.id].internal].id, m.providerModelId, m.id);
   }
 });
 
@@ -869,6 +892,63 @@ test('Apple MAX is refused for a free account before quota spend or provider wor
   assert.equal(bundle.trace.ai.length, 0, 'an unentitled MAX request reached the provider');
   assert.equal(bundle.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), false, 'MAX was charged before entitlement');
   assert.equal(bundle.trace.calls.some((c) => c.ns === 'BUDGET_DO'), false, 'MAX reserved budget before entitlement');
+});
+
+test('every paid model is refused below its tier on both public routes, before spend, in the picker\'s words', async () => {
+  const BELOW = { pro: 'free', max: 'builder' };
+  const paid = S.MODEL_REGISTRY.filter((m) => m.tier !== 'free');
+  assert.ok(paid.length >= 4);
+  for (const m of paid) {
+    const plan = BELOW[m.tier];
+    const quota = async ({ path }) => (path === '/state' ? { ...QUOTA_STATE, plan } : { ok: true, state: { ...QUOTA_STATE, plan } });
+    const publicId = Object.entries(P.PUBLIC_MODELS).find(([, v]) => v.productModel === m.id)[0];
+
+    const chat = makeEnv({ quota });
+    const ck = await seedKey(chat, { scopes: ['chat:write'] });
+    const r = await call('/v1/chat/completions', { method: 'POST', key: ck.key, env: chat.env, body: { model: publicId, messages: [{ role: 'user', content: 'hi' }] } });
+    assert.equal(r.status, 403, `${m.id} on ${plan}`);
+    assert.equal(r.json.error.code, 'model_not_entitled');
+    assert.equal(r.json.error.message, S.modelRefusal(m.id));
+    assert.match(r.json.error.message, new RegExp(`^${m.displayName.replace(/[.]/g, '\\.')} is included with `));
+    assert.equal(chat.trace.ai.length, 0, `${m.id} reached the provider`);
+    assert.equal(chat.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), false, `${m.id} was charged`);
+
+    const run = makeEnv({ quota });
+    const rk = await seedKey(run, { scopes: ['runs:write'], projects: GRANTED });
+    const rr = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: rk.key, env: run.env, body: { input: 'x', mode: 'agent', productModel: m.id } });
+    assert.equal(rr.status, 403, `${m.id} run on ${plan}`);
+    assert.equal(rr.json.error.message, S.modelRefusal(m.id));
+  }
+});
+
+test('an unknown productModel on a run is refused with the registry ids listed', async () => {
+  const bundle = makeEnv();
+  const key = await seedKey(bundle, { scopes: ['runs:write'], projects: GRANTED });
+  const r = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, body: { input: 'x', productModel: 'gpt-4o' } });
+  assert.equal(r.status, 400);
+  for (const m of S.MODEL_REGISTRY) assert.ok(r.json.error.message.includes(m.id), `${m.id} missing from: ${r.json.error.message}`);
+});
+
+test('GET /api/models lists the registry in order, marked for the caller\'s own plan, and fails closed', async () => {
+  for (const [plan, status] of [['free', 200], ['builder', 200], ['studio', 200], ['studio', 503]]) {
+    const bundle = makeEnv({
+      quota: async ({ path }) => {
+        if (status !== 200) throw new Error('quota unavailable');
+        return path === '/state' ? { ...QUOTA_STATE, plan } : { ok: true };
+      },
+    });
+    const r = await call('/api/models', { jwt: OWNER_JWT, env: bundle.env });
+    assert.equal(r.status, 200, r.text.slice(0, 200));
+    const effective = status === 200 ? plan : undefined;
+    assert.deepEqual(r.json.models.map((x) => x.id), S.MODEL_REGISTRY.map((x) => x.id));
+    for (const row of r.json.models) {
+      assert.equal(row.available, S.canUseModel(row.id, effective), `${row.id} on ${plan}/${status}`);
+      assert.equal(row.lockedReason, row.available ? '' : S.lockedReason(row.id));
+      assert.equal(row.creditMultiplier, S.registryModel(row.id).creditMultiplier);
+      assert.equal('providerModelId' in row, false, 'the provider id is not published to the browser');
+    }
+  }
+  assert.equal((await call('/api/models', { env: makeEnv().env })).status, 401);
 });
 
 test('a paid account may use Apple MAX while the request remains model-labelled', async () => {

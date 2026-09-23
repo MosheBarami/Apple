@@ -28,7 +28,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { ATTACHMENT_ACCEPT } from '@golem/shared';
-import { WEB, bundle, count, element, renderWith, unescape } from './ui-bundle.mjs';
+import { WEB, bundle, count, decomment, element, renderWith, unescape } from './ui-bundle.mjs';
 
 const ui = await bundle(
   `
@@ -217,13 +217,18 @@ test('Mode, Model and Create are named by what they hold', () => {
   const fallback = src.slice(src.indexOf('fallback={'), src.indexOf('<ModelPicker'));
   assert.ok(fallback.length > 20, 'the model picker has lost its Suspense fallback');
   assert.match(fallback, /<button type="button" className="gx-chip gx-chip--model" disabled aria-label=\{`Model: \$\{modelLabel\}`\}>/);
-  // And a model on a key is named by its own label, read from the catalogue it came from.
-  const keyed = composer({
-    customerModel: 'openai/gpt-6-sol',
-    catalogue: { models: [{ id: 'openai/gpt-6-sol', label: 'GPT-6 Sol', vendor: 'OpenAI', requiresKey: true, free: false, supportsTools: true, builtIn: false }], free: { readAt: '2026-09-23T00:00:00.000Z', source: 'live', keyless: false } },
-    modelKeys: [{ provider: 'openrouter', last4: 'abcd', addedAt: '2026-09-23T00:00:00.000Z' }],
-  });
-  assert.ok(tags(keyed, 'button').some((t) => attr(t, 'aria-label') === 'Model: GPT-6 Sol'));
+  //[[ RESTATED 2026-09-23 (D-VISION-1). Bring-your-own-key is gone; every model is a registry
+  //   model. The property: the chip is named by the registry's display name of the model it holds,
+  //   for every model, not only Apple's. ]]
+  for (const id of ['apple-max', 'gemini-3.8-flash', 'gpt-5.6', 'gpt-5.6-luna']) {
+    const held = composer({ productModel: id, modelPlan: 'studio' });
+    const name = { 'apple-max': 'Apple MAX', 'gemini-3.8-flash': 'Gemini 3.8 Flash', 'gpt-5.6': 'GPT-5.6', 'gpt-5.6-luna': 'GPT-5.6 Luna' }[id];
+    assert.ok(tags(held, 'button').some((t) => attr(t, 'aria-label') === `Model: ${name}`), `the chip does not say ${name}`);
+  }
+  // The render above sees the loaded picker's own trigger once its chunk is in; the placeholder
+  // before that is named by `modelLabel`, so that name must be the registry's too. (Found by
+  // falsification: an Apple-only modelLabel stayed green on the render alone.)
+  assert.match(decomment(src), /const modelLabel = [^;]*\.displayName\b/);
 });
 
 test('an open menu: radio rows checked from the group value, and a row can be aria-disabled yet reachable', () => {

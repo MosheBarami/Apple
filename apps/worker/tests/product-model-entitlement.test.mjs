@@ -88,7 +88,7 @@ class SqlMemory {
   }
 }
 
-function makeSession({ plan = 'free', quotaStatus = 200, aiRun } = {}) {
+function makeSession({ plan = 'free', planOf = () => plan, quotaStatus = 200, aiRun, envExtra = {} } = {}) {
   const store = new Map([['bind', { projectId: 'project-1', projectName: 'Test Place', ownerId: 'owner-1' }]]);
   const sql = new SqlMemory();
   const sent = [];
@@ -108,8 +108,8 @@ function makeSession({ plan = 'free', quotaStatus = 200, aiRun } = {}) {
       fetch: async (url, init) => {
         const path = new URL(typeof url === 'string' ? url : url.url).pathname;
         calls.push({ name, path, id: id.__name });
-        if (name === 'QUOTA_DO' && path === '/state') return new Response(JSON.stringify({ plan, creditsRemaining: 100, allowanceRemaining: 100 }), { status: quotaStatus });
-        if (name === 'QUOTA_DO' && path === '/spend') return Response.json({ ok: true, state: { plan, creditsRemaining: 99, allowanceRemaining: 99 } });
+        if (name === 'QUOTA_DO' && path === '/state') return new Response(JSON.stringify({ plan: planOf(), creditsRemaining: 100, allowanceRemaining: 100 }), { status: quotaStatus });
+        if (name === 'QUOTA_DO' && path === '/spend') return Response.json({ ok: true, state: { plan: planOf(), creditsRemaining: 99, allowanceRemaining: 99 } });
         return Response.json({ ok: true, state: { killed: false }, reserved: 1 });
       },
     }),
@@ -157,6 +157,7 @@ function makeSession({ plan = 'free', quotaStatus = 200, aiRun } = {}) {
       },
     },
   };
+  Object.assign(env, envExtra);
   const session = new SessionDO(ctx, env);
   return { session, store, sql, sent, calls, providerRuns, ws };
 }
@@ -321,5 +322,80 @@ test('a free account cannot reach the MAX foundation through either Plan or Agen
     }));
     assert.equal(res.status, 403);
     assert.equal(h.providerRuns.length, 0, `free MAX/${mode} must stop before provider selection`);
+  }
+});
+
+// ---------------------------------------------------------------------------------------------
+// D-VISION-1 step 4: every registry model is selectable, each gated by its own tier, and the
+// gate is asked again at every step, not only at admission.
+// ---------------------------------------------------------------------------------------------
+
+/** The highest plan that does NOT include a model's tier: the account that must be refused. */
+const PLAN_BELOW = { pro: 'free', max: 'builder' };
+/** The lowest plan that does. */
+const PLAN_AT = { pro: 'builder', max: 'studio' };
+const PAID = shared.MODEL_REGISTRY.filter((m) => m.tier !== 'free');
+
+test('every paid model is refused one plan below its tier, in the words the picker uses, and admitted at it', async () => {
+  assert.ok(PAID.length >= 4, `only ${PAID.length} paid models; the loop below would check little`);
+  for (const m of PAID) {
+    const refusal = shared.modelRefusal(m.id);
+    // The property, not a spelling: the sentence names the model and the plan that includes it,
+    // which is exactly the locked row's reason.
+    assert.ok(refusal.startsWith(`${m.displayName} is included with ${shared.TIER_PLAN_NAME[m.tier]}.`), refusal);
+    assert.ok(refusal.includes(shared.lockedReason(m.id).replace('Included', 'included')), refusal);
+
+    const below = makeSession({ plan: PLAN_BELOW[m.tier] });
+    const res = await below.session.fetch(new Request('https://do/agent-run', {
+      method: 'POST', body: JSON.stringify({ text: 'build a tower', mode: 'agent', productModel: m.id }),
+    }));
+    const body = await res.json();
+    assert.equal(res.status, 403, `${m.id} admitted on ${PLAN_BELOW[m.tier]}`);
+    assert.equal(body.error, refusal, m.id);
+    assert.equal(below.store.has('agent'), false, `${m.id}: a refused run was created`);
+
+    const at = makeSession({ plan: PLAN_AT[m.tier] });
+    const ok = await at.session.fetch(new Request('https://do/agent-run', {
+      method: 'POST', body: JSON.stringify({ text: 'build a tower', mode: 'agent', productModel: m.id }),
+    }));
+    assert.equal(ok.status, 200, `${m.id} refused on ${PLAN_AT[m.tier]}`);
+    assert.equal(at.store.get('agent')?.productModel, m.id, `${m.id} was not the run's model`);
+  }
+  assert.equal(shared.modelRefusal('apple'), '', 'the free model is never refused');
+});
+
+test('a model is re-checked at the step: a downgrade after admission stops the run before any model call', async () => {
+  for (const m of PAID) {
+    let plan = PLAN_AT[m.tier];
+    const h = makeSession({
+      planOf: () => plan,
+      // AI_GATEWAY_ID set, so an outside model's step WOULD reach the binding: without it the
+      // adapter refuses first and this test could not tell the re-check from that refusal.
+      envExtra: { AI_GATEWAY_ID: 'gw-test' },
+      aiRun: async () => ({ choices: [{ finish_reason: 'stop', message: { content: 'ran' } }], usage: { prompt_tokens: 10, completion_tokens: 2 } }),
+    });
+    const start = await h.session.fetch(new Request('https://do/agent-run', {
+      method: 'POST', body: JSON.stringify({ text: 'build a tower', mode: 'agent', productModel: m.id }),
+    }));
+    assert.equal(start.status, 200, `${m.id} was not admitted on ${plan}`);
+    plan = PLAN_BELOW[m.tier];
+    await h.session.alarm();
+    assert.equal(h.providerRuns.length, 0, `${m.id}: a step ran after the plan stopped including it`);
+    const reply = h.sql.messages.filter((x) => x.role === 'assistant').map((x) => x.content).join('\n');
+    assert.ok(reply.includes(shared.modelRefusal(m.id)), `${m.id}: the run ended without saying why — ${reply.slice(0, 200)}`);
+  }
+});
+
+test('the re-check is a no-op for the free model and while the plan still includes the model', async () => {
+  for (const [productModel, plan] of [['apple', 'free'], ['apple-max', 'builder']]) {
+    const h = makeSession({
+      plan,
+      aiRun: async () => ({ choices: [{ finish_reason: 'stop', message: { content: 'ran' } }], usage: { prompt_tokens: 10, completion_tokens: 2 } }),
+    });
+    await h.session.fetch(new Request('https://do/agent-run', {
+      method: 'POST', body: JSON.stringify({ text: 'build a tower', mode: 'agent', productModel }),
+    }));
+    await h.session.alarm();
+    assert.equal(h.providerRuns.length, 1, `${productModel} on ${plan} did not reach its model call`);
   }
 });

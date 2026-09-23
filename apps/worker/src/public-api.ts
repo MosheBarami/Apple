@@ -12,7 +12,7 @@
 // so the published schema cannot describe a route that is not there and a route cannot exist
 // without a declared scope. A path Hono serves but this table omits is answered 404 by the
 // middleware — an undeclared route is unreachable rather than unguarded.
-import type { GatewayMessage, GatewayResponse, ProductModel } from '@golem/shared';
+import { MODEL_REGISTRY, type GatewayMessage, type GatewayResponse, type ProductModel } from '@golem/shared';
 import type { ApiScope } from './api-keys';
 
 // ---------------------------------------------------------------------------
@@ -178,10 +178,10 @@ export function matchRoute(method: string, pathname: string): RouteMatch | undef
 /**
  * The model ids this API accepts, and the internal gateway key each maps onto.
  *
- * PROVIDER IDENTITY IS NOT PUBLISHED HERE, deliberately and per the product manifest: a caller
- * names an Apple capability, not a foundation model. Accepting `gpt-4o` as an alias would be a
- * lie about what ran, and accepting it as a NO-OP alias for our own model is the worse version of
- * the same lie. Unknown ids — including every real provider id — are refused by name.
+ * PROVIDER IDS ARE NOT PUBLISHED HERE: a caller names a model the product offers (the registry,
+ * packages/shared/src/models.ts), never a provider's own id. Accepting `gpt-4o` as an alias would
+ * be a lie about what ran, and accepting it as a NO-OP alias for our own model is the worse version
+ * of the same lie. Unknown ids — including every real provider id — are refused by name.
  *
  * RENAMED FROM `golem-chat` / `golem-plan` WITH NO COMPATIBILITY ALIAS, which for a public API is
  * normally the wrong call. It is the right one here because nothing can be depending on the old
@@ -192,9 +192,22 @@ export function matchRoute(method: string, pathname: string): RouteMatch | undef
  * a caller who cannot exist would keep the old name alive in the product forever in exchange for
  * nothing. If a key is ever minted before this ships, add the aliases.
  */
+//
+// GENERATED FROM THE REGISTRY (D-VISION-1). The outside models are Apple's to offer by name — the
+// product picker names them too — and each is gated per account exactly as in the product. The
+// provider id is still never published: a caller names the registry id, never `openai/…`. Apple is
+// published as `apple-chat`, its existing id, and the two Apple lanes keep their mode keys.
+const APPLE_LANES: Record<string, { publicId: string; internal: string }> = {
+  apple: { publicId: 'apple-chat', internal: 'plan' },
+  'apple-max': { publicId: 'apple-max', internal: 'agent' },
+};
 export const PUBLIC_MODELS: Record<string, { internal: string; description: string; productModel?: ProductModel }> = {
-  'apple-chat': { internal: 'plan', productModel: 'apple', description: 'Apple. Fast answers and smaller edits.' },
-  'apple-max': { internal: 'agent', productModel: 'apple-max', description: 'Apple MAX. Larger multi-file builds for paid subscribers.' },
+  ...Object.fromEntries(
+    MODEL_REGISTRY.map((m) => {
+      const lane = APPLE_LANES[m.id];
+      return [lane?.publicId ?? m.id, { internal: lane?.internal ?? m.id, productModel: m.id, description: `${m.displayName}. ${m.blurb}` }];
+    }),
+  ),
   'apple-plan': { internal: 'plan', description: 'The planner. Reasons about a place without proposing edits to it.' },
 };
 
@@ -316,7 +329,7 @@ export function parseChatCompletionRequest(body: unknown): Parsed<ChatCompletion
     return fault(
       404,
       'model_not_found',
-      `Unknown model '${b.model.slice(0, 60)}'. This API serves ${Object.keys(PUBLIC_MODELS).join(', ')} — it does not proxy foundation models.`,
+      `Unknown model '${b.model.slice(0, 60)}'. This API serves ${Object.keys(PUBLIC_MODELS).join(', ')}.`,
       'model',
     );
   }

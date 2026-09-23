@@ -14,11 +14,11 @@ import {
   ATTACHMENT_ACCEPT,
   MESSAGE_MAX_CHARS,
   MESSAGE_WARN_CHARS,
-  PRODUCT_MODEL_INFO,
   canUseProductModel,
+  modelRefusal,
+  registryModel,
   type ChatAttachment,
-  type ModelCatalogue,
-  type ModelKeySummary,
+  type ModelListing,
   type ProductMode,
   type ProductModel,
   type StudioEventSelection,
@@ -74,7 +74,7 @@ import {
 import { usePrefs } from '../../lib/theme';
 import { CREATION_INTENTS, creationMessage, maxAccessNotice, type CreationIntent } from '../../lib/creation-intent';
 import { ModelChipFace } from './model-chip';
-import { findRow, pickerGroups, type PickerRow } from './model-picker-model';
+import { pickerGroups, type PickerRow } from './model-picker-model';
 //[[ THE OWNER'S PICKS, ON THE PARTS THEY BELONG TO (components/picks/composer/). Each file names
 //   the pick it came from and what was rebuilt; the short version, part by part:
 //     the card        Border Glow (the edge that lights toward the pointer), CSSPlugin focus ring
@@ -139,18 +139,10 @@ interface Props {
   modelPlan?: string;
   onModelChange: (model: ProductModel) => void;
   /**
-   * A MODEL ON THE CUSTOMER'S OWN KEY, when one is chosen (owner decision D-BYOK-1): a catalogue id
-   * from GET /api/models. Null while an Apple model is chosen, which is the lane `productModel`
-   * names. Absent props mean the picker offers Apple's own models only.
+   * GET /api/models: the registry, marked for this account's plan (D-VISION-1). Absent or null when
+   * it has not been read, and then the picker marks the same registry with `modelPlan`.
    */
-  customerModel?: string | null;
-  onCustomerModelChange?: (model: string | null) => void;
-  /** GET /api/models. Absent or null when it has not been read, and then only Apple is offered. */
-  catalogue?: ModelCatalogue | null;
-  /** GET /api/me/model-keys — which providers this person has saved a key for. */
-  modelKeys?: readonly ModelKeySummary[] | null;
-  /** Where "add your key" goes. Absent means the picker draws no link. */
-  onOpenSettings?: () => void;
+  models?: readonly ModelListing[] | null;
   /**
    * PLAN OR AGENT — the choice between looking and building, made by the person sending the
    * message.
@@ -245,11 +237,7 @@ export function Composer({
   productModel,
   modelPlan,
   onModelChange,
-  customerModel = null,
-  onCustomerModelChange,
-  catalogue,
-  modelKeys,
-  onOpenSettings,
+  models,
   mode,
   onModeChange,
   autonomous,
@@ -666,15 +654,10 @@ export function Composer({
 
   const blocked = blockingReason(staged);
   const creationUnavailable = creation === 'model' && !studioConnected;
-  const modelGroups = useMemo(
-    () => pickerGroups({ catalogue, keys: modelKeys, modelPlan, maxUpgradeAvailable }),
-    [catalogue, modelKeys, modelPlan, maxUpgradeAvailable],
-  );
-  // A model on a key is judged by its own row (is the key there?), never by the Apple entitlement:
-  // a free account on its own OpenRouter key is not asking for Apple MAX.
-  const customerRow = customerModel ? findRow(modelGroups, customerModel) : null;
-  const customerLocked = customerRow !== null && !customerRow.available;
-  const modelUnavailable = !customerModel && !canUseProductModel(productModel, modelPlan);
+  const modelGroups = useMemo(() => pickerGroups({ listing: models, modelPlan }), [models, modelPlan]);
+  // The shared rule the worker also applies at admission and at every step, so the chip and the
+  // send agree with what the run will be allowed to do.
+  const modelUnavailable = !canUseProductModel(productModel, modelPlan);
   const maxAvailable = canUseProductModel('apple-max', modelPlan);
   const requestMaxAccess = () => {
     if (maxUpgradeAvailable === true) onUpgrade?.();
@@ -683,33 +666,24 @@ export function Composer({
   const chooseCreation = (next: CreationIntent) => {
     if (!maxAvailable) { requestMaxAccess(); return; }
     setCreation(creation === next ? 'build' : next);
+    // Images and 3D are Apple MAX's, so choosing one puts the run on it.
     onModelChange('apple-max');
-    // Images and 3D are Apple MAX's, so choosing one puts the run back on Apple.
-    onCustomerModelChange?.(null);
     // After the menu has handed focus back to its trigger, so the box is where the typing goes.
     requestAnimationFrame(() => box.current?.focus());
   };
   /**
-   * A MODEL ROW THAT CANNOT BE HAD SAYS SO, and choosing it raises the sentence that explains why
-   * rather than moving the chip. The row stays reachable and clickable for exactly that reason.
-   */
-  const chooseModel = (id: ProductModel): boolean => {
-    if (!canUseProductModel(id, modelPlan)) { requestMaxAccess(); return false; }
-    onModelChange(id);
-    onCustomerModelChange?.(null);
-    if (id !== 'apple-max') setCreation('build');
-    return true;
-  };
-  /**
-   * ONE PICKER, TWO LANES. An Apple row goes through the entitlement rule above; any other row runs
-   * on the person's own key, and a row whose key is missing raises its own reason instead of moving
-   * the chip. Images and 3D are Apple MAX's, so a model on a key clears that choice.
+   * A MODEL ROW THAT CANNOT BE HAD SAYS SO, and choosing it goes to the plans (or, when none can be
+   * bought, says which plan includes it) rather than moving the chip. The row stays reachable and
+   * clickable for exactly that reason. Images and 3D are Apple MAX's, so any other model clears them.
    */
   const chooseRow = (row: PickerRow): boolean => {
-    if (row.group === 'apple') return chooseModel(row.id as ProductModel);
-    if (!row.available) { onNotice?.(row.note); return false; }
-    onCustomerModelChange?.(row.id);
-    setCreation('build');
+    if (!canUseProductModel(row.id, modelPlan)) {
+      if (maxUpgradeAvailable === true && onUpgrade) onUpgrade();
+      else onNotice?.(`${modelRefusal(row.id)} Your draft is kept.`);
+      return false;
+    }
+    onModelChange(row.id);
+    if (row.id !== 'apple-max') setCreation('build');
     return true;
   };
 
@@ -722,11 +696,7 @@ export function Composer({
     const value = text.trim();
     if (!value || running || disabled) return false;
     if (modelUnavailable) {
-      onNotice?.('Apple MAX requires a paid subscription. Choose Apple to continue free. Your draft is kept.');
-      return false;
-    }
-    if (customerLocked) {
-      onNotice?.(`${customerRow?.note ?? ''} Your draft is kept.`);
+      onNotice?.(`${modelRefusal(productModel)} Your draft is kept.`);
       return false;
     }
     if (creationUnavailable) {
@@ -815,10 +785,9 @@ export function Composer({
   };
 
   const showCount = text.length >= MESSAGE_WARN_CHARS;
-  // The id a send would use and the name the chip shows. A model on a key that the catalogue no
-  // longer lists keeps its own id as its name rather than borrowing Apple's.
-  const modelId = customerModel ?? productModel;
-  const modelLabel = customerModel ? (customerRow?.label ?? customerModel) : PRODUCT_MODEL_INFO[productModel].name;
+  // The id a send would use and the name the chip shows: the registry's display name.
+  const modelId = productModel;
+  const modelLabel = registryModel(productModel)?.displayName ?? productModel;
   const autonomousOn = autonomous && mode === 'agent';
 
   return (
@@ -1028,10 +997,9 @@ export function Composer({
             </PromptInputButton>
 
             {/*[[ -------------------------------------------------- model ----
-                AI Elements' ModelSelector, in model-picker.tsx: Apple's own models, the models the
-                person's own OpenRouter key unlocks, and the ones OpenRouter prices at zero today.
-                Which rows exist and which can be chosen is model-picker-model.ts; what choosing one
-                does is `chooseRow` above. ]]*/}
+                AI Elements' ModelSelector, in model-picker.tsx: the registry's models under one
+                heading. Which rows exist and which can be chosen is model-picker-model.ts; what
+                choosing one does is `chooseRow` above. ]]*/}
             <Suspense
               fallback={
                 <button type="button" className="gx-chip gx-chip--model" disabled aria-label={`Model: ${modelLabel}`}>
@@ -1044,7 +1012,7 @@ export function Composer({
                 selected={modelId}
                 fallbackLabel={modelLabel}
                 onChoose={chooseRow}
-                onOpenSettings={onOpenSettings}
+                onUpgrade={maxUpgradeAvailable === true ? onUpgrade : undefined}
               />
             </Suspense>
 
@@ -1154,7 +1122,7 @@ export function Composer({
               <PromptInputSubmit
                 className="gx-send pk-send"
                 status="ready"
-                disabled={!text.trim() || disabled || blocked !== null || creationUnavailable || modelUnavailable || customerLocked}
+                disabled={!text.trim() || disabled || blocked !== null || creationUnavailable || modelUnavailable}
                 title={creationUnavailable ? 'Connect Roblox Studio to generate this 3D model' : (blocked ?? undefined)}
                 aria-label="Send"
                 // The Send picks: it widens to say "Send" (composer-fx.css), a light follows the
@@ -1174,8 +1142,7 @@ export function Composer({
       {/* The one tooltip every `data-tip` control in the panel shares (tip-group.tsx). */}
       <TipGroup rootRef={panel} />
 
-      {modelUnavailable && <p className="gx-creation-note" role="status">Apple MAX requires a subscription. Choose Apple to continue free. Your draft is kept.</p>}
-      {customerLocked && <p className="gx-creation-note" role="status">{customerRow?.note} Your draft is kept.</p>}
+      {modelUnavailable && <p className="gx-creation-note" role="status">{modelRefusal(productModel)} Your draft is kept.</p>}
       {creation !== 'build' && <p className="gx-creation-note" role="status">{creationUnavailable ? 'Studio disconnected. Reconnect using Studio above, or switch to Images or chat. Your draft is kept.' : CREATION_INTENTS[creation].note}</p>}
       {/* TWO FACTS, AND THEY WERE RUNNING INTO EACH OTHER. JSX collapses the line break into a
           single space, so this line rendered "⇧↵ for a new line Apple can get things wrong" — one

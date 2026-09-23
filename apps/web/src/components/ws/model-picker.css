@@ -1,6 +1,6 @@
 /* The model picker's rows, in the dialog AI Elements' ModelSelector opens (portalled to <body>, so
    nothing here hangs off .gx-composer). One accent is not spent here at all: a chosen row gets a check
-   in ink, a locked row goes quiet, and "Free" is an outline badge, never green. */
+   in ink, a locked row goes quiet, and "×N credits" is an outline badge, never green. */
 .gx-model-picker .ai-command__group [cmdk-group-heading] { padding:10px 10px 4px; color:var(--muted); font-size:12px; font-weight:600; letter-spacing:0; }
 .gx-model-picker .ai-command__item.gx-model-row { align-items:center; gap:12px; min-height:44px; padding:6px 10px; }
 .gx-model-row .model-signature,
@@ -11,7 +11,7 @@
 .gx-model-row__main { display:grid; flex:1; min-width:0; gap:1px; }
 .gx-model-row__name { color:var(--ink); font-size:14px; line-height:18px; }
 .gx-model-row__note { overflow:hidden; color:var(--muted); font-size:12px; line-height:16px; text-overflow:ellipsis; white-space:nowrap; }
-.gx-model-row__free { color:var(--muted); font-size:11px; }
+.gx-model-row__credits { flex:none; color:var(--muted); font-size:11px; }
 .gx-model-row__check { display:inline-flex; flex:none; color:var(--ink); }
 .gx-model-row.is-unavailable .gx-model-row__name { color:var(--muted); }
 .gx-model-row.is-unavailable .model-signature,

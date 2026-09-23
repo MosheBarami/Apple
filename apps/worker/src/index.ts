@@ -94,7 +94,6 @@ import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSw
 import { capabilityTable, providerHealth, selectProvider } from './providers';
 import { checkOpenRouterKey } from './providers';
 import { deleteModelKey, listModelKeys, saveModelKey } from './model-keys';
-import { modelCatalogue } from './model-catalogue';
 import { isByokProvider } from '@golem/shared';
 import { imageKvKey, imageMimeType, type ImageMeta } from './imagegen';
 import { readGeneratedImage } from './generated-images';
@@ -303,7 +302,7 @@ import {
 } from './public-api';
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
 import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@golem/shared';
-import { canUseProductModel, isPlanId, PRICE_CURRENCY, type ProductModel } from '@golem/shared';
+import { canUseProductModel, isModelId, isPlanId, MODEL_IDS, modelListing, modelRefusal, PRICE_CURRENCY, type ProductModel } from '@golem/shared';
 import { MAX_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
 
 /**
@@ -3936,14 +3935,15 @@ app.get('/api/me/roblox-key/check', async (c) => {
 });
 
 /**
- * THE MODEL PICKER'S CATALOGUE (owner decisions D-BYOK-1, D-FREE-1). Apple's own models, the
- * curated paid models a customer's own OpenRouter key unlocks, and the models OpenRouter prices at
- * zero today — read live, cached an hour, and labelled with when they were read. model-catalogue.ts.
+ * THE MODEL PICKER'S LIST (D-VISION-1): every registry model, in registry order, each marked
+ * available or locked FOR THIS ACCOUNT by canUseModel against the QuotaDO plan. A failed plan read
+ * is no plan, so every paid model reads locked — the picker cannot offer what a run would refuse.
  */
 app.get('/api/models', async (c) => {
   const user = c.get('user');
   if (!user) return c.json({ error: 'not signed in' }, 401);
-  return c.json(await modelCatalogue(c.env));
+  const plan = await quotaPlan(c.env, user.userId);
+  return c.json({ models: modelListing(typeof plan === 'string' ? plan : undefined) });
 });
 
 /**
@@ -5077,7 +5077,8 @@ async function quotaPlan(env: Env, userId: string): Promise<unknown | null> {
 }
 
 async function accountCanUseProductModel(env: Env, userId: string, model: ProductModel): Promise<boolean> {
-  if (model === 'apple') return true;
+  // A free model needs no plan, so it stays usable while the billing read is unavailable.
+  if (canUseProductModel(model, undefined)) return true;
   const plan = await quotaPlan(env, userId);
   return canUseProductModel(model, typeof plan === 'string' ? plan : undefined);
 }
@@ -5127,7 +5128,7 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
   // admission or provider call. Test keys are deterministic simulations and never spend, so they
   // retain their sandbox behaviour even when the request names the paid model.
   if (key.mode !== 'test' && req.productModel && !(await accountCanUseProductModel(c.env, key.userId, req.productModel))) {
-    return refuse(403, 'model_not_entitled', 'Apple MAX requires a paid subscription. Choose Apple to continue free.', 'model');
+    return refuse(403, 'model_not_entitled', modelRefusal(req.productModel), 'model');
   }
 
   // ---- idempotency ----
@@ -5315,7 +5316,7 @@ const PUBLIC_RUN_MODES: Record<string, 'plan' | 'agent'> = { plan: 'plan', agent
 /** Additive model selector for API runs; autonomy is a separate per-run boolean. */
 function asProductModel(value: unknown): ProductModel | undefined | null {
   if (value === undefined || value === null) return undefined;
-  return value === 'apple' || value === 'apple-max' ? value : null;
+  return isModelId(value) ? value : null;
 }
 
 app.post('/v1/projects/:id/runs', async (c) => {
@@ -5351,12 +5352,12 @@ app.post('/v1/projects/:id/runs', async (c) => {
   const autonomous = mode === 'agent' && body?.autonomous === true;
   const productModel = asProductModel(body?.productModel);
   if (productModel === null) {
-    return c.json(errorBody(400, 'invalid_request_error', "'productModel' must be 'apple' or 'apple-max'.", requestId, 'productModel'), 400);
+    return c.json(errorBody(400, 'invalid_request_error', `'productModel' must be one of ${MODEL_IDS.join(', ')}.`, requestId, 'productModel'), 400);
   }
   // Entitlement is checked before any session admission. A paid model must never reach quota,
   // idempotency or provider work for an account whose authoritative QuotaDO plan is unavailable.
   if (key.mode !== 'test' && productModel && !(await accountCanUseProductModel(c.env, key.userId, productModel))) {
-    return c.json(errorBody(403, 'model_not_entitled', 'Apple MAX requires a paid subscription. Choose Apple to continue free.', requestId, 'productModel'), 403);
+    return c.json(errorBody(403, 'model_not_entitled', modelRefusal(productModel), requestId, 'productModel'), 403);
   }
 
   //[[ THE HEADER THE ROUTE TABLE ALREADY PROMISED.
@@ -5448,7 +5449,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
   const out = (await res.json()) as { ok?: boolean; error?: string; code?: string };
   if (!res.ok || out.ok === false) {
     if (res.status === 403 || out.code === 'product_model_unavailable') {
-      return c.json(errorBody(403, 'model_not_entitled', out.error ?? 'Apple MAX requires a paid subscription. Choose Apple to continue free.', requestId, 'productModel'), 403);
+      return c.json(errorBody(403, 'model_not_entitled', out.error ?? modelRefusal(productModel), requestId, 'productModel'), 403);
     }
     const status = res.status === 409 ? 409 : res.status === 400 ? 400 : 502;
     return c.json(errorBody(status, 'run_not_started', out.error ?? 'The run could not be started.', requestId), status as 409);

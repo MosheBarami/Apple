@@ -242,6 +242,17 @@ export function lockedReason(modelId: unknown): string {
   return `Included with ${TIER_PLAN_NAME[model.tier]}`;
 }
 
+/**
+ * The refusal for a model the account may not use, at admission and at every later step: the same
+ * words as the picker's locked row, as a sentence. Empty for a free model, which is never refused.
+ */
+export function modelRefusal(modelId: unknown): string {
+  const model = registryModel(modelId);
+  if (!model) return 'That model is not available. Choose another one.';
+  if (model.tier === 'free') return '';
+  return `${model.displayName} is included with ${TIER_PLAN_NAME[model.tier]}. Choose Apple to continue free.`;
+}
+
 /** The best model an account may use, in registry order of preference, for a downgrade fallback. */
 export function bestEntitledModel(plan: string | undefined, preferred?: unknown): ModelId {
   if (canUseModel(preferred, plan)) return preferred as ModelId;

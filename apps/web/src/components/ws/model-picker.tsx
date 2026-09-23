@@ -1,12 +1,12 @@
 // THE MODEL PICKER — AI Elements' ModelSelector (components/ai-elements/model-selector.tsx, vendored
-// at the pinned commit, see that directory's NOTICE): a dialog holding a searchable list, grouped
-// Apple, Your keys and Free, each model with its vendor's own mark.
+// at the pinned commit, see that directory's NOTICE): a dialog holding a searchable list of the
+// registry's models under one heading, each with its vendor's own mark (D-VISION-1).
 //
 // Loaded lazily by the composer. The vendor marks and the command list are only needed once somebody
 // opens the chip, and the composer is on the one page everybody loads first.
 //
-// What is chosen, and whether it can be, is decided by the composer (the entitlement rule, the key
-// rule, the sentence a locked row raises). This file draws the rows model-picker-model.ts grouped
+// What is chosen, and whether it can be, is decided by the composer (the entitlement rule and the
+// sentence a locked row raises). This file draws the rows model-picker-model.ts grouped
 // and hands a choice back. A row that cannot be chosen says so twice: `aria-disabled` for a screen
 // reader, and the reason itself as the row's second line for everybody else. It stays reachable, as
 // the MAX row always has, because choosing it is how the reason gets said out loud.
@@ -32,39 +32,39 @@ import { Badge } from '../ai-elements/ui/badge';
 import { CheckIcon } from '../ai-elements/icons';
 import { ModelMark } from './model-mark';
 import { ModelChipFace, ModelName } from './model-chip';
-import type { PickerGroup, PickerRow } from './model-picker-model';
+import { creditBadge, type PickerGroup, type PickerRow } from './model-picker-model';
 import { ModelListHighlight } from '../picks/composer/model-list-fx';
 import './model-picker.css';
 
 export interface ModelPickerProps {
   groups: readonly PickerGroup[];
-  /** The id a send would use now: a built-in Apple id, or the catalogue id of a model on a key. */
+  /** The registry id a send would use now. */
   selected: string;
-  /** The label to show when `selected` is not among the rows (the catalogue could not be read). */
+  /** The label to show when `selected` is not among the rows. */
   fallbackLabel: string;
   /** Returns true when the choice was taken, which closes the dialog. */
   onChoose: (row: PickerRow) => boolean;
-  /** Absent means there is nowhere to send somebody to add a key, and no link is drawn. */
-  onOpenSettings?: () => void;
+  /** Where a locked row's plan can be bought. Absent means there is nowhere to go, and no link is drawn. */
+  onUpgrade?: () => void;
 }
 
 function RowLogo({ row }: { row: PickerRow }) {
-  if (row.group === 'apple') return <ModelMark variant={row.id === 'apple' ? 'apple' : 'max'} />;
+  if (row.vendor === 'Apple') return <ModelMark variant={row.id === 'apple' ? 'apple' : 'max'} />;
   return <ModelSelectorLogo provider={row.logo ?? ''} label={row.vendor} />;
 }
 
 /**
  * The dialog's contents. Its own export so a test can render the open list (server rendering cannot
- * press the chip): `close` is what a taken choice or the Settings link calls.
+ * press the chip): `close` is what a taken choice or the upgrade link calls.
  */
 export function ModelPickerRows({
   groups,
   selected,
   onChoose,
-  onOpenSettings,
+  onUpgrade,
   close,
 }: Omit<ModelPickerProps, 'fallbackLabel'> & { close: () => void }) {
-  const locked = groups.some((g) => g.id !== 'apple' && g.rows.some((row) => !row.available));
+  const locked = groups.some((g) => g.rows.some((row) => !row.available));
   // Each row's place in the whole list, for the staggered arrival.
   let place = 0;
   return (
@@ -78,6 +78,7 @@ export function ModelPickerRows({
             {group.rows.map((row) => {
               const chosen = row.id === selected;
               const i = place++;
+              const badge = creditBadge(row.creditMultiplier);
               return (
                 <ModelSelectorItem
                   key={row.id}
@@ -98,7 +99,7 @@ export function ModelPickerRows({
                     </ModelSelectorName>
                     <span className="gx-model-row__note">{row.note}</span>
                   </span>
-                  {row.free && <Badge variant="outline" className="gx-model-row__free">Free</Badge>}
+                  {badge && <Badge variant="outline" className="gx-model-row__credits">{badge}</Badge>}
                   {chosen && (
                     <span className="gx-model-row__check">
                       <CheckIcon size={14} />
@@ -111,17 +112,17 @@ export function ModelPickerRows({
           </ModelSelectorGroup>
         ))}
       </ModelSelectorList>
-      {locked && onOpenSettings && (
+      {locked && onUpgrade && (
         <div className="gx-model-picker__foot">
           <button
             type="button"
             className="gx-model-picker__settings"
             onClick={() => {
               close();
-              onOpenSettings();
+              onUpgrade();
             }}
           >
-            Add your OpenRouter key in Settings
+            See plans
           </button>
         </div>
       )}
@@ -129,7 +130,7 @@ export function ModelPickerRows({
   );
 }
 
-export default function ModelPicker({ groups, selected, fallbackLabel, onChoose, onOpenSettings }: ModelPickerProps) {
+export default function ModelPicker({ groups, selected, fallbackLabel, onChoose, onUpgrade }: ModelPickerProps) {
   const [open, setOpen] = useState(false);
   const current = groups.flatMap((g) => g.rows).find((row) => row.id === selected);
   const label = current?.label ?? fallbackLabel;
@@ -141,7 +142,7 @@ export default function ModelPicker({ groups, selected, fallbackLabel, onChoose,
       </ModelSelectorTrigger>
       {/* Mounted only while open, so the search starts empty every time it is opened. */}
       {open && (
-        <ModelPickerRows groups={groups} selected={selected} onChoose={onChoose} onOpenSettings={onOpenSettings} close={() => setOpen(false)} />
+        <ModelPickerRows groups={groups} selected={selected} onChoose={onChoose} onUpgrade={onUpgrade} close={() => setOpen(false)} />
       )}
     </ModelSelector>
   );
