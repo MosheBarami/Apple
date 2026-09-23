@@ -15,8 +15,6 @@ import {
   MESSAGE_MAX_CHARS,
   MESSAGE_WARN_CHARS,
   PRODUCT_MODEL_INFO,
-  PRODUCT_MODES,
-  PRODUCT_MODE_INFO,
   canUseProductModel,
   type ChatAttachment,
   type ModelCatalogue,
@@ -44,8 +42,6 @@ import { Attachment, AttachmentInfo, AttachmentPreview, AttachmentRemove, Attach
 import {
   DropdownMenuCheckboxItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
 } from '../ai-elements/ui/dropdown-menu';
 import { ArrowUpIcon, CheckIcon, PaperclipIcon } from '../ai-elements/icons';
@@ -79,7 +75,32 @@ import { usePrefs } from '../../lib/theme';
 import { CREATION_INTENTS, creationMessage, maxAccessNotice, type CreationIntent } from '../../lib/creation-intent';
 import { ModelChipFace } from './model-chip';
 import { findRow, pickerGroups, type PickerRow } from './model-picker-model';
+//[[ THE OWNER'S PICKS, ON THE PARTS THEY BELONG TO (components/picks/composer/). Each file names
+//   the pick it came from and what was rebuilt; the short version, part by part:
+//     the card        Border Glow (the edge that lights toward the pointer), CSSPlugin focus ring
+//                     and hairline wipe, the File Upload + Chat Form Dropzone drop picture
+//     the empty box   Typing Text + Text Type (examples typed as the placeholder)
+//     the bar         Toggle Group + Highlight (Plan | Agent), Toggle + Rotating Gradient
+//                     (Autonomous), Folder Float + Inertia + utils.random (Ideas), Multi Selector
+//                     (Files), Create Button (the Create menu), Radix Tooltip (one tip for all)
+//     the tools       Context + Sliding Number (Credits), speech-input + Voice Pill +
+//                     transcription + mic-selector (talk), Magnetic Dock (the swell), and on Send
+//                     Button Hover Right, Spotlight, Press, Ripple, Hover and Animate UI Button
+//   None of the libraries is installed; every behaviour is rebuilt on the platform. ]]
+import { usePressFx } from '../picks/composer/press-fx';
+import { useMagneticDock } from '../picks/composer/magnetic-dock';
+import { TipGroup } from '../picks/composer/tip-group';
+import { ModeSwitch } from '../picks/composer/mode-switch';
+import { BorderGlow } from '../picks/composer/border-glow';
+import { TypingPlaceholder } from '../picks/composer/typing-placeholder';
+import { DropHint } from '../picks/composer/drop-hint';
+import { SlidingNumber } from '../picks/composer/sliding-number';
+import { IdeaFolder } from '../picks/composer/idea-folder';
+import { FilePicker } from '../picks/composer/file-picker';
+import { CreditsRing } from '../picks/composer/credits-ring';
+import { VoiceInput } from '../picks/composer/voice-input';
 import './composer.css';
+import '../picks/composer/composer-fx.css';
 
 //[[ THE PICKER'S CODE ARRIVES AFTER THE COMPOSER. The vendor marks and the searchable list are only
 //   needed once somebody opens the chip, and this is the page everybody loads first. Until the
@@ -202,8 +223,13 @@ function AttachButton({ projectId, disabled }: { projectId?: string; disabled?: 
       size="icon-sm"
       onClick={() => attachments.openFileDialog()}
       disabled={!projectId || disabled}
-      title={projectId ? 'Attach a file — text, Markdown, CSV, JSON or Luau' : 'Attachments need an open project'}
+      // The bar's tip when it can be pressed; the native title when it cannot, because a disabled
+      // button receives no pointer events and the reason would otherwise go unsaid.
+      data-tip={projectId ? 'Attach a file — text, Markdown, CSV, JSON or Luau' : undefined}
+      title={projectId ? undefined : 'Attachments need an open project'}
       aria-label="Attach a file"
+      data-dock=""
+      data-fx="press ripple lift"
     >
       <PaperclipIcon size={16} />
     </PromptInputButton>
@@ -260,6 +286,14 @@ export function Composer({
   //   lib/composer-height.ts, which toast.css's own header asked for by name. ]]
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => observeComposerHeight(panel.current, document.documentElement), []);
+
+  // The picks' behaviour, delegated from the panel: every `data-fx` button answers a press, and the
+  // round tools swell toward the pointer. See components/picks/composer/.
+  const tools = useRef<HTMLDivElement>(null);
+  usePressFx(panel);
+  useMagneticDock(tools);
+  const [boxFocused, setBoxFocused] = useState(false);
+  const [typingShown, setTypingShown] = useState(false);
 
   // ONE source for the chord. The textarea's handler and the hint below both read this, so the
   // help can never describe a key the handler does not listen for — which is how the two diverged
@@ -756,6 +790,9 @@ export function Composer({
 
   const selectionLabel = selectionChipLabel(selection);
 
+  /** Files ticked in the Files picker go in as mentions do: each path in backticks, at the caret. */
+  const insertFiles = (picked: readonly string[]) => insertPhrase(picked.map((p) => '`' + p + '`').join(' '));
+
   const insertSelection = () => {
     // Nothing selected produces no phrase, and inserting an empty one would move the caret for no
     // reason. The chip is hidden in that case anyway; this is the second door on the same room.
@@ -787,7 +824,9 @@ export function Composer({
           </label>
           <PromptInputTextarea
             id="gx-composer-input"
-            className="gx-composer__field"
+            className={`gx-composer__field${typingShown ? ' pk-has-typing' : ''}`}
+            onFocus={() => setBoxFocused(true)}
+            onBlur={() => setBoxFocused(false)}
             ref={box}
             dir="auto"
             value={text}
@@ -820,6 +859,16 @@ export function Composer({
             disabled={disabled}
             data-tour="composer"
           />
+
+          {/* The card's picks: the edge that lights toward the pointer, the examples the empty
+              box types to itself, and the picture a file-carrying drag gets. All decoration,
+              all aria-hidden; the box's own name and placeholder are unchanged. */}
+          <BorderGlow hostRef={panel} />
+          <TypingPlaceholder
+            active={!text && !disabled && !boxFocused && creation === 'build' && !placeholder}
+            onShowing={setTypingShown}
+          />
+          <DropHint active={dropping} />
 
           {/* ---------------------------------------------- @ mentions ----
               The project's own files, offered from the caret. A real listbox driven from the
@@ -856,7 +905,8 @@ export function Composer({
                the counter read the same at 400 characters left as at none — the one moment it has
                something to report is the one moment it said nothing. */
             <p className={`gx-composer__count${text.length >= MESSAGE_MAX_CHARS ? ' is-full' : ''}`} aria-live="polite">
-              {MESSAGE_MAX_CHARS - text.length} characters left
+              {/* Animate UI's Sliding Number: the count rolls rather than flickers as it drops. */}
+              <SlidingNumber value={MESSAGE_MAX_CHARS - text.length} /> characters left
             </p>
           )}
 
@@ -937,34 +987,10 @@ export function Composer({
                 Studio connection — Plan maps to the same free specialist a free account already
                 runs, so an entry that looked choosable and was not would repeat the defect the MAX
                 row once had. ]]*/}
-            <PromptInputActionMenu>
-              <PromptInputActionMenuTrigger
-                className="gx-chip gx-chip--mode"
-                size="sm"
-                aria-label={`Mode: ${PRODUCT_MODE_INFO[mode].name}`}
-                title={PRODUCT_MODE_INFO[mode].blurb}
-              >
-                <Icon d={mode === 'plan' ? PATH.docs : PATH.layers} size={13} />
-                <span className="gx-chip__label">{PRODUCT_MODE_INFO[mode].name}</span>
-                <span className="gx-chip__caret" aria-hidden="true">
-                  <Icon d={PATH.chevronDown} size={11} />
-                </span>
-              </PromptInputActionMenuTrigger>
-              <PromptInputActionMenuContent aria-label="Mode" side="top" className="gx-menu">
-                <DropdownMenuRadioGroup value={mode} onValueChange={(id) => onModeChange(id as ProductMode)}>
-                  {PRODUCT_MODES.map((id) => (
-                    <DropdownMenuRadioItem key={id} value={id} className="gx-menu__item">
-                      <span className="gx-menu__main">
-                        <span className="gx-menu__name">{PRODUCT_MODE_INFO[id].name}</span>
-                        {/* The blurb is the shared vocabulary's own sentence, not a second
-                            description written here that could drift from what the worker does. */}
-                        <span className="gx-menu__sub">{PRODUCT_MODE_INFO[id].blurb}</span>
-                      </span>
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </PromptInputActionMenuContent>
-            </PromptInputActionMenu>
+            {/* Plan | Agent, both on screen, one tap each — components/picks/composer/mode-switch.tsx.
+                It replaced a menu whose closed face showed only the current word. Each side's tip is
+                the shared vocabulary's own sentence about what that mode does. */}
+            <ModeSwitch mode={mode} onModeChange={onModeChange} />
 
             {/* AUTONOMOUS: A CAPABILITY OF AGENT, NEVER A THIRD MODE. The only violet in the product,
                 and only while it is on. */}
@@ -974,7 +1000,12 @@ export function Composer({
               role="switch"
               aria-checked={autonomous && mode === 'agent'}
               disabled={running || mode === 'plan'}
-              title={mode === 'plan' ? 'Autonomous is available in Agent mode' : 'Let Apple use all available project tools and continue through up to 1000 steps'}
+              // Why it is off goes in the native title (a disabled button gets no pointer events for
+              // the bar's tip to answer); what it does, while it can be pressed, is the bar's tip.
+              title={mode === 'plan' ? 'Autonomous is available in Agent mode' : undefined}
+              data-tip={mode === 'plan' ? undefined : 'Let Apple use all available project tools and continue through up to 1000 steps'}
+              // Animate UI's Toggle: the switch gives under the press; on, its edge turns (composer-fx.css).
+              data-fx="press"
               onClick={() => onAutonomousChange(!(autonomous && mode === 'agent'))}
             >
               <span className="gx-autonomous__switch" aria-hidden="true" />
@@ -1011,7 +1042,8 @@ export function Composer({
                 className="gx-chip gx-chip--selection"
                 size="sm"
                 onClick={insertSelection}
-                title="Refer to what is selected in Studio"
+                data-tip="Refer to what is selected in Studio"
+                data-fx="press ripple"
               >
                 <Icon d={PATH.surface} size={11} />
                 <span className="gx-chip__label">{selectionLabel}</span>
@@ -1027,7 +1059,8 @@ export function Composer({
                 size="sm"
                 data-active={creation === 'build' ? undefined : ''}
                 aria-label={creation === 'build' ? 'Create' : `Create: ${CREATION_INTENTS[creation].label}`}
-                title="Images, 3D and starting points"
+                data-tip="Images, 3D and starting points"
+                data-fx="press ripple"
               >
                 <Icon d={PATH.compose} size={11} />
                 <span className="gx-chip__label">{creation === 'build' ? 'Create' : CREATION_INTENTS[creation].label}</span>
@@ -1069,12 +1102,25 @@ export function Composer({
                 ))}
               </PromptInputActionMenuContent>
             </PromptInputActionMenu>
+
+            {/* SOMEWHERE TO START, AND SOMETHING TO POINT AT. Ideas deals plain first requests out of a
+                folder (idea-folder.tsx); Files is the @-mention for somebody who has never heard of
+                the @ (file-picker.tsx), and exists only where there is a project to list. */}
+            <IdeaFolder onPick={insertPhrase} dropTarget={box} disabled={disabled} />
+            {projectId && <FilePicker projectId={projectId} onAdd={insertFiles} disabled={disabled} />}
           </PromptInputTools>
 
-          <div className="gx-composer__tools">
+          <div className="gx-composer__tools" ref={tools}>
+            {/* What is left to spend, beside the button that spends it (credits-ring.tsx). */}
+            <CreditsRing />
+
             {/* THE PICKER ITSELF IS PromptInput's, hidden, and it carries the accept list built from
                 the shared allowlist so the dialog cannot offer a type the worker refuses. */}
             <AttachButton projectId={projectId} disabled={disabled} />
+
+            {/* Talk instead of type (voice-input.tsx). Absent in a browser that cannot hear; what
+                was said goes in at the caret, never straight out. */}
+            <VoiceInput onText={insertPhrase} onNotice={onNotice} disabled={disabled || running} />
 
             {running ? (
               // The title as well as the label: a pointer user gets no accessible name, and this
@@ -1086,21 +1132,32 @@ export function Composer({
                 disabled={disabled}
                 title="Stop this run"
                 aria-label="Stop this run"
+                data-fx="press squish ripple"
+                data-dock=""
               />
             ) : (
               <PromptInputSubmit
-                className="gx-send"
+                className="gx-send pk-send"
                 status="ready"
                 disabled={!text.trim() || disabled || blocked !== null || creationUnavailable || modelUnavailable || customerLocked}
                 title={creationUnavailable ? 'Connect Roblox Studio to generate this 3D model' : (blocked ?? undefined)}
                 aria-label="Send"
+                // The Send picks: it widens to say "Send" (composer-fx.css), a light follows the
+                // pointer across it, it gives under the press and springs back, a ring spreads from
+                // the click, the arrow lifts, and it swells with the other round tools.
+                data-fx="press squish ripple spotlight lift"
+                data-dock=""
               >
+                <span className="pk-send__label" aria-hidden="true">Send</span>
                 <ArrowUpIcon size={16} strokeWidth={2} />
               </PromptInputSubmit>
             )}
           </div>
         </PromptInputFooter>
       </PromptInput>
+
+      {/* The one tooltip every `data-tip` control in the panel shares (tip-group.tsx). */}
+      <TipGroup rootRef={panel} />
 
       {modelUnavailable && <p className="gx-creation-note" role="status">Apple MAX requires a subscription. Choose Apple to continue free. Your draft is kept.</p>}
       {customerLocked && <p className="gx-creation-note" role="status">{customerRow?.note} Your draft is kept.</p>}

@@ -1,0 +1,3 @@
+/* The block clips while it grows so the fields slide out from under the row above. */
+.pk-cond { overflow:hidden; }
+.pk-cond[data-open='true'] { overflow:visible; }

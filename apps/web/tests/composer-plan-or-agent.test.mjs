@@ -22,32 +22,31 @@ const read = (f) => readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8'
 const COMPOSER = read('components/ws/composer.tsx');
 const WORKSPACE = read('routes/workspace.tsx');
 
-// The local stand-in for Radix's DropdownMenu, which the shadcn wrappers in ui/dropdown-menu.tsx use.
-const MENU = read('components/ai-elements/ui/dropdown-menu-primitive.tsx');
+// RESTATED 2026-09-23: the Mode dropdown became a two-way radio switch (picks/composer/mode-switch.tsx),
+// so both words are on screen at once instead of one behind a menu. The property is unchanged: the
+// composer mounts a control labelled Mode, built from the ProductMode contract, whose checked radio is
+// the current mode, whose choice calls back, and which gates neither side.
+const SWITCH = read('components/picks/composer/mode-switch.tsx');
 
-/**
- * The mode menu only — the composer has three menus and they must not be read as one. Since
- * 2026-09-22 each is an AI Elements PromptInputActionMenu; the slice ends at its own content's close.
- */
+/** The mode control only: the radiogroup's own markup, from its label to its end. */
 function modeMenu() {
-  const from = COMPOSER.indexOf('aria-label="Mode"');
-  assert.notEqual(from, -1, 'the composer has no menu labelled "Mode"');
-  const to = COMPOSER.indexOf('</PromptInputActionMenuContent>', from);
-  assert.ok(to > from, 'the Mode menu has no end — the slice would read the rest of the file');
-  return COMPOSER.slice(from, to);
+  const from = SWITCH.indexOf('role="radiogroup"');
+  assert.notEqual(from, -1, 'the mode control is not a radio group');
+  const to = SWITCH.indexOf('</div>', from);
+  assert.ok(to > from, 'the Mode control has no end — the slice would read the rest of the file');
+  return SWITCH.slice(from, to);
 }
 
 test('the composer offers the choice, by name', () => {
-  assert.match(COMPOSER, /aria-label=\{`Mode: \$\{PRODUCT_MODE_INFO\[mode\]\.name\}`\}/);
+  assert.match(COMPOSER, /import \{ ModeSwitch \} from '\.\.\/picks\/composer\/mode-switch'/);
+  assert.match(COMPOSER, /<ModeSwitch mode=\{mode\} onModeChange=\{onModeChange\} \/>/);
   const menu = modeMenu();
-  assert.match(menu, /PRODUCT_MODES\.map/, 'the menu must be built from the ProductMode contract');
-  // A radio group whose value is the current mode, one radio item per mode, choosing calls back.
-  // The roles are the vendored primitive's: a RadioItem IS a menuitemradio whose aria-checked is
-  // "its value is the group's value" — asserted there, not re-spelled here.
-  assert.match(menu, /<DropdownMenuRadioGroup value=\{mode\} onValueChange=\{\(id\) => onModeChange\(id as ProductMode\)\}>/);
-  assert.match(menu, /<DropdownMenuRadioItem key=\{id\} value=\{id\}/);
-  assert.match(MENU, /role: 'menuitemradio',\s*checked: group\?\.value === value,/);
-  assert.match(MENU, /'aria-checked': internals\.checked === undefined \? undefined/);
+  assert.match(menu, /aria-label="Mode"/);
+  assert.match(menu, /PRODUCT_MODES\.map/, 'the control must be built from the ProductMode contract');
+  // One radio per mode; the checked one is the current mode; choosing calls back.
+  assert.match(menu, /role="radio"/);
+  assert.match(menu, /aria-checked=\{mode === id\}/);
+  assert.match(menu, /onClick=\{\(\) => onModeChange\(id\)\}/);
 });
 
 test('it offers exactly what the product offers — no more, no fewer', () => {
@@ -63,8 +62,7 @@ test('NEITHER ENTRY IS GATED — the defect the MAX row still has, not repeated'
   //[[ The model menu shows an "Apple MAX" entry that carries no disabled attribute, looks
   //   selectable, and silently refuses. Plan maps to the same free specialist a free account
   //   already runs, so there is nothing here to gate and nothing to pretend about. ]]
-  const menu = modeMenu();
-  assert.doesNotMatch(menu, /canUseProductModel|disabled|aria-disabled|maxUpgradeAvailable/);
+  assert.doesNotMatch(SWITCH, /canUseProductModel|disabled|aria-disabled|maxUpgradeAvailable/);
 });
 
 test('the choice reaches the workspace state that is already on the wire', () => {
@@ -88,6 +86,9 @@ test('and nothing quietly overrules it', () => {
   //[[ `onModelChange` used to be `(next) => { setProductModel(next); setMode('agent'); }`. With no
   //   mode control on screen that reset was invisible; with one it would move a chip the person
   //   just set, from a control about a different question. ]]
-  assert.doesNotMatch(WORKSPACE, /setMode\('agent'\)/);
+  // The one exception is the plan card's own "Build it" — the person's click, and the chip visibly
+  // moves to Agent with it (2026-09-23). Anywhere else a mode change would be a quiet overrule.
+  const withoutBuild = WORKSPACE.replace(/\? \(\) => \{ setMode\('agent'\); setBuildQueued\(true\); \}/, '');
+  assert.doesNotMatch(withoutBuild, /setMode\('agent'\)/);
   assert.doesNotMatch(WORKSPACE, /setMode\('plan'\)/);
 });

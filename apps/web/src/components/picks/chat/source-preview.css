@@ -1,0 +1,15 @@
+/* SOURCE PREVIEW — the hover card over a documentation link. It grows from half size out of the
+   corner nearest the link (Animate UI's scale .5 → 1 spring, as a CSS overshoot). */
+@keyframes pk-preview-in { from { opacity:0; transform:scale(.5); } to { opacity:1; transform:none; } }
+.ai-hover-card.pk-preview {
+  display:grid; gap:4px; width:17rem; padding:12px 14px; transform-origin:bottom left;
+  animation:pk-preview-in .3s cubic-bezier(.34,1.36,.64,1) both;
+}
+.ai-hover-card.pk-preview[data-side='bottom'] { transform-origin:top left; }
+:root[dir='rtl'] .ai-hover-card.pk-preview { transform-origin:bottom right; }
+.pk-preview p { margin:0; }
+.pk-preview__site { display:flex; align-items:center; gap:6px; color:var(--faint); font-size:11px; line-height:16px; }
+.pk-preview__title { color:var(--ink); font-size:13px; line-height:18px; letter-spacing:-.01em; overflow-wrap:anywhere; }
+.pk-preview__trail { color:var(--muted); font-size:12px; line-height:16px; text-transform:capitalize; overflow-wrap:anywhere; }
+.pk-preview__note { margin-top:4px; color:var(--faint); font-size:11px; line-height:16px; }
+@media (prefers-reduced-motion: reduce) { .ai-hover-card.pk-preview { animation:none; } }

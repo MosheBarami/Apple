@@ -1,0 +1,22 @@
+/* The accent edge (border-glow.tsx). A conic cone of the accent, centred on --pk-angle, masked down
+   to the card's 1px border. Its strength is --pk-edge (0–100). The mask colours are opaque stand-ins — a mask reads alpha, not hue. */
+.gx-composer .pk-glow {
+  --pk-edge:0; --pk-angle:45deg;
+  position:absolute; inset:-1px; z-index:2; border-radius:inherit; padding:1px; pointer-events:none;
+  opacity:calc(var(--pk-edge) / 100);
+  background:conic-gradient(from calc(var(--pk-angle) - 40deg),
+    transparent 0deg,
+    color-mix(in srgb,var(--accent-light) 70%,transparent) 20deg,
+    var(--accent) 40deg,
+    color-mix(in srgb,var(--accent-light) 70%,transparent) 60deg,
+    transparent 80deg, transparent 360deg);
+  -webkit-mask:linear-gradient(var(--ink) 0 0) content-box, linear-gradient(var(--ink) 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(var(--ink) 0 0) content-box exclude, linear-gradient(var(--ink) 0 0);
+}
+/* A disabled box does not invite anybody to type. */
+.gx-composer .gx-composer__inner:has(textarea:disabled) .pk-glow { display:none; }
+
+@media (prefers-reduced-motion:reduce) {
+  .gx-composer .pk-glow { display:none; }
+}

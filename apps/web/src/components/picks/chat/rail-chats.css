@@ -1,0 +1,58 @@
+/* THE DRAWER'S CHAT LIST (Pin List, Animated List, Swipe actions, Fuse, Icon Button particles).
+   The rows keep the drawer's own `.gx-conv` look from layout.css / system.css; this file adds the
+   parts those never had: the section labels, the arrival stagger, the pin button, and the swipe. */
+.pk-chats { display:grid; gap:4px; }
+.pk-chats__label { margin-block:8px 2px; }
+.pk-chats__list { margin:0; padding:0; list-style:none; }
+
+/* THE ARRIVAL. Each row fades up in turn (Animated List's `inView` scale/opacity, played once when
+   the drawer opens rather than on scroll: the list is eight rows and all of them are in view). */
+@keyframes pk-chat-in { from { opacity:0; transform:translateY(6px) scale(.98); } to { opacity:1; transform:none; } }
+.pk-chat { position:relative; animation:pk-chat-in .28s var(--ease-out) both; animation-delay:calc(var(--i, 0) * 24ms); }
+
+/* THE SWIPE. The face slides; the actions wait underneath it at the end edge. */
+.pk-chat__face { position:relative; z-index:1; display:flex; align-items:center; border-radius:var(--r-md); touch-action:pan-y; }
+.pk-chat[data-swipe='on'] .pk-chat__face { background:var(--surface); }
+.pk-chat:not([data-swipe='on']) .pk-chat__actions { visibility:hidden; }
+.pk-chat__face > .gx-conv { flex:1; min-width:0; }
+.pk-chat__actions {
+  position:absolute; inset-block:0; inset-inline-end:0; display:flex; align-items:stretch; gap:4px; padding-block:2px;
+}
+.pk-chat .pk-chat__action {
+  min-height:0; padding:0 10px; border:0; border-radius:var(--r-md); background:var(--surface-2); color:var(--ink); font-size:12px;
+}
+.pk-chat .pk-chat__action.is-danger { background:color-mix(in srgb,var(--bad) 22%,var(--surface-2)); }
+
+/* THE PIN BUTTON — on hover or focus it takes the time's place at the end of the row. */
+.pk-chat .pk-chat__pin {
+  position:absolute; inset-inline-end:0; top:50%; translate:0 -50%; display:grid; place-items:center;
+  width:28px; height:28px; min-height:0; padding:0; border:0; border-radius:var(--r-xs); background:transparent; color:var(--faint);
+  opacity:0; transition:opacity var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out),transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.pk-chat .pk-chat__pin:hover:not(:disabled) { background:var(--surface-3); color:var(--ink); }
+.pk-chat .pk-chat__pin:active { transform:scale(.86); }
+.pk-chat .pk-chat__pin[aria-pressed='true'] { color:var(--muted); }
+.pk-chat:is(:hover,:focus-within) .pk-chat__pin { opacity:1; }
+.pk-chat:is(:hover,:focus-within) .gx-conv__time { visibility:hidden; }
+/* No hover on a touch screen: the swipe is the route there, and an invisible button would be a
+   target a thumb finds by accident. */
+@media (hover:none) { .pk-chat .pk-chat__pin { display:none; } .pk-chat .gx-conv__time { visibility:visible; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-chat { animation:none; }
+  .pk-chat .pk-chat__pin { transition:none; }
+}
+
+/* THE SCROLL EDGES (Animated List's top/bottom gradients) as a mask on the drawer's scroller, so it
+   fades into whatever ground is under it in either theme without a second colour. */
+.gx-rail .gx-rail__scroll[data-edge='top'] { -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 24px); mask-image:linear-gradient(to bottom,transparent 0,#000 24px); }
+.gx-rail .gx-rail__scroll[data-edge='bottom'] { -webkit-mask-image:linear-gradient(to top,transparent 0,#000 24px); mask-image:linear-gradient(to top,transparent 0,#000 24px); }
+.gx-rail .gx-rail__scroll[data-edge='both'] {
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%);
+}
+
+/* The section label cross-fades when it changes words (Pin List's label fade). */
+@keyframes pk-label-in { from { opacity:0; } to { opacity:1; } }
+.pk-chats__label { animation:pk-label-in .22s var(--ease-in-out) both; }
+@media (prefers-reduced-motion: reduce) { .pk-chats__label { animation:none; } }

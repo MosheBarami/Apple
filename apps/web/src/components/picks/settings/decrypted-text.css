@@ -1,0 +1,4 @@
+.pk-decrypt { position:relative; }
+.pk-decrypt__sr { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.pk-decrypt__enc { color:var(--nm-faint,var(--faint)); }
+.pk-decrypt__rev { color:inherit; }

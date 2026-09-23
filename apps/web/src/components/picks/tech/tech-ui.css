@@ -1,0 +1,41 @@
+/* THE QUIET CONTROLS THE CHAT-TECH PICKS SHARE.
+ *
+ * The app's global `button` rule (design/system.css) gives every button a 36px min-height, a fill,
+ * a border, and a hover at `button:hover:not(:disabled):not([aria-disabled='true'])` — specificity
+ * 0,3,1, and system.css is emitted last. So each rule below states `min-height` and writes its hover
+ * one class stronger, on purpose, rather than winning or losing by emit order. */
+.tq-btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:var(--h-xs); min-height:0; padding:0 9px; border:1px solid var(--line); border-radius:var(--r-sm);
+  background:transparent; color:var(--muted); font:inherit; font-size:12px; line-height:1; white-space:nowrap; cursor:pointer;
+  transition:color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+.tq-btn--icon { width:var(--h-xs); padding:0; }
+.tq-btn--bare { border-color:transparent; }
+button.tq-btn:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); border-color:var(--line-strong); }
+.tq-btn--primary { background:var(--accent); border-color:transparent; color:#fff; }
+button.tq-btn--primary:hover:not(:disabled):not([aria-disabled='true']) { background:var(--accent-deep); color:#fff; border-color:transparent; }
+.tq-btn:disabled { opacity:.5; cursor:default; background:transparent; }
+.tq-btn--primary:disabled { background:var(--accent); color:#fff; }
+.tq-btn:focus-visible { outline:2px solid var(--accent); outline-offset:1px; box-shadow:none; animation:none; }
+.tq-btn[aria-pressed='true'] { background:var(--control-fill); color:var(--ink); border-color:var(--line-strong); }
+
+.tq-mono { font-family:var(--font-mono); font-size:12px; }
+.tq-sr { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+/* The "Details" fold: technical detail stays behind it for a non-technical reader. */
+.tq-details { margin-top:8px; }
+.tq-details > summary {
+  display:inline-flex; align-items:center; gap:6px; list-style:none; cursor:pointer; color:var(--muted); font-size:12px;
+  border-radius:var(--r-xs); padding:2px 4px; margin-inline-start:-4px;
+}
+.tq-details > summary::-webkit-details-marker { display:none; }
+.tq-details > summary::before { content:''; width:6px; height:6px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(-45deg); transition:transform var(--t-fast) var(--ease-out); }
+.tq-details[open] > summary::before { transform:rotate(45deg); }
+.tq-details > summary:hover { color:var(--ink); }
+.tq-details > summary:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.tq-details__body { margin-top:8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tq-btn, .tq-details > summary::before { transition:none; }
+}

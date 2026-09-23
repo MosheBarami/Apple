@@ -51,7 +51,24 @@ button.ai-tool__header:hover:not(:disabled):not([aria-disabled='true']) { backgr
   50% { opacity:1; }
 }
 
+/* THE CALL CHIP (React Bits, re-implemented). The state icon pops in each time the state changes
+   (it is keyed by the state, so it mounts fresh); a failure gives the badge one short shake, the
+   way a chip that could not finish would; the running title carries a slow wash of light across
+   its letters. Colour stays rationed as above: the wash is the ink, not a hue. */
+.ai-tool__state { display:inline-flex; animation:ai-tool-pop .32s cubic-bezier(.34,1.36,.64,1) both; }
+@keyframes ai-tool-pop { from { opacity:0; transform:scale(.4); } to { opacity:1; transform:none; } }
+.ai-tool__badge--output-error { animation:ai-tool-shake .36s var(--ease-out) both; }
+@keyframes ai-tool-shake { 0%,100% { transform:none; } 20% { transform:translateX(-2px); } 40% { transform:translateX(2px); } 60% { transform:translateX(-1px); } 80% { transform:translateX(1px); } }
+.ai-tool__title.is-running {
+  background:linear-gradient(90deg,var(--muted) 0%,var(--ink) 50%,var(--muted) 100%);
+  background-size:200% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+  animation:ai-tool-wash 1.8s linear infinite;
+}
+@keyframes ai-tool-wash { from { background-position:100% 0; } to { background-position:-100% 0; } }
+
 @media (prefers-reduced-motion: reduce) {
+  .ai-tool__state,.ai-tool__badge--output-error { animation:none; }
+  .ai-tool__title.is-running { animation:none; background:none; color:var(--ink); }
   .ai-tool__chevron { transition:none; }
   .ai-tool__content,
   .ai-tool__badge--input-available .ai-tool__status-icon { animation:none; }

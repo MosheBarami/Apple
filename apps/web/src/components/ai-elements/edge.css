@@ -1,0 +1,8 @@
+/* AI ELEMENTS EDGE. Lines are hairlines in the line colour; only the live one carries the accent. */
+.ai-edge { fill:none; stroke:var(--line-strong); stroke-width:1.5; transition:opacity var(--t-fast) var(--ease-out); }
+.ai-edge--temporary { stroke-dasharray:5 5; }
+.ai-edge--animated { stroke:var(--accent-line); }
+.ai-edge__flow { fill:none; stroke:var(--accent); stroke-width:2; stroke-linecap:round; stroke-dasharray:2 14; animation:ai-edge-flow 1.2s linear infinite; }
+.ai-edge.is-faded, .ai-edge-group.is-faded { opacity:.35; }
+@keyframes ai-edge-flow { to { stroke-dashoffset:-16; } }
+@media (prefers-reduced-motion: reduce) { .ai-edge__flow { animation:none; } .ai-edge { transition:none; } }

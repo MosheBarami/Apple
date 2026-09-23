@@ -10,6 +10,11 @@
 // and hands a choice back. A row that cannot be chosen says so twice: `aria-disabled` for a screen
 // reader, and the reason itself as the row's second line for everybody else. It stays reachable, as
 // the MAX row always has, because choosing it is how the reason gets said out loud.
+//
+// ITS MOTION IS TWO OF THE OWNER'S PICKS (components/picks/composer/model-list-fx.*): Motion's
+// "Variants" — the panel opens from a sliver and the rows arrive one after another out of a blur,
+// each carrying its place in the list as `--i` — and Animate UI's "Highlight", one backdrop that
+// travels behind whichever row the keyboard or the pointer is on.
 import { useState } from 'react';
 import {
   ModelSelector,
@@ -28,6 +33,7 @@ import { CheckIcon } from '../ai-elements/icons';
 import { ModelMark } from './model-mark';
 import { ModelChipFace, ModelName } from './model-chip';
 import type { PickerGroup, PickerRow } from './model-picker-model';
+import { ModelListHighlight } from '../picks/composer/model-list-fx';
 import './model-picker.css';
 
 export interface ModelPickerProps {
@@ -59,15 +65,19 @@ export function ModelPickerRows({
   close,
 }: Omit<ModelPickerProps, 'fallbackLabel'> & { close: () => void }) {
   const locked = groups.some((g) => g.id !== 'apple' && g.rows.some((row) => !row.available));
+  // Each row's place in the whole list, for the staggered arrival.
+  let place = 0;
   return (
     <ModelSelectorContent title="Choose a model" className="gx-model-picker">
       <ModelSelectorInput placeholder="Search models" aria-label="Search models" />
       <ModelSelectorList label="Models">
+        <ModelListHighlight />
         <ModelSelectorEmpty>No model matches that.</ModelSelectorEmpty>
         {groups.map((group) => (
           <ModelSelectorGroup key={group.id} heading={group.heading}>
             {group.rows.map((row) => {
               const chosen = row.id === selected;
+              const i = place++;
               return (
                 <ModelSelectorItem
                   key={row.id}
@@ -76,6 +86,7 @@ export function ModelPickerRows({
                   aria-disabled={row.available ? undefined : true}
                   data-checked={chosen ? '' : undefined}
                   className={`gx-model-row${row.available ? '' : ' is-unavailable'}`}
+                  style={{ ['--i' as string]: i }}
                   onSelect={() => {
                     if (onChoose(row)) close();
                   }}
@@ -125,7 +136,7 @@ export default function ModelPicker({ groups, selected, fallbackLabel, onChoose,
 
   return (
     <ModelSelector open={open} onOpenChange={setOpen}>
-      <ModelSelectorTrigger className="gx-chip gx-chip--model" aria-label={`Model: ${label}`}>
+      <ModelSelectorTrigger className="gx-chip gx-chip--model" aria-label={`Model: ${label}`} data-fx="press ripple" data-tip="Choose who does the work">
         <ModelChipFace id={selected} label={label} logo={current ? <RowLogo row={current} /> : undefined} />
       </ModelSelectorTrigger>
       {/* Mounted only while open, so the search starts empty every time it is opened. */}

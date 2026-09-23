@@ -396,3 +396,8 @@ legend.ak__label { padding: 0 0 10px; }
   .ak__grant,
   .btn--danger { transition: none; }
 }
+
+/* Picks: the expiry question is a switch; the day count opens under it only when it is on. */
+.ak__expiry { display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; }
+.ak__expiry > .ak__label { margin:0; }
+.ak .pk-radio__list { gap:6px; }

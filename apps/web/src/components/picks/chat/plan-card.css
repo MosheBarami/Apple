@@ -1,0 +1,37 @@
+/* THE PLAN CARD. One of the few places a reply earns a card: a plan is a structured object with an
+   action, not prose. Hairline, surface fill, one accent — the Build it button, the single primary
+   on this card. The title shimmers while the plan is still being written. */
+.pk-plan { display:grid; gap:12px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); }
+.pk-plan__head { display:flex; align-items:flex-start; gap:10px; }
+.pk-plan__icon { flex:none; margin-top:2px; color:var(--muted); }
+.pk-plan__copy { display:grid; gap:2px; min-width:0; }
+.pk-plan__copy p { margin:0; }
+.pk-plan__title { color:var(--ink); font-size:14px; line-height:20px; letter-spacing:-.01em; }
+.pk-plan[data-streaming] .pk-plan__title {
+  background:linear-gradient(90deg,var(--muted) 0%,var(--ink) 50%,var(--muted) 100%) 0 0/200% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent; animation:pk-plan-shimmer 1.6s linear infinite;
+}
+@keyframes pk-plan-shimmer { to { background-position:-200% 0; } }
+.pk-plan__summary { color:var(--muted); font-size:13px; line-height:20px; text-wrap:pretty; }
+.pk-plan__steps { padding-top:12px; border-top:1px solid var(--line); animation:pk-plan-open .22s var(--ease-out) both; }
+@keyframes pk-plan-open { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+.pk-plan__foot { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
+.pk-plan .pk-plan__toggle {
+  display:inline-flex; align-items:center; gap:6px; min-height:var(--h-xs); padding:0 6px; margin-inline:-6px;
+  border:0; border-radius:var(--r-xs); background:transparent; color:var(--muted); font-size:12px;
+}
+.pk-plan .pk-plan__toggle:hover:not(:disabled) { background:var(--control-fill); color:var(--ink); }
+.pk-plan__chevron { transition:transform var(--t-fast) var(--ease-out); }
+.pk-plan__toggle[data-state='open'] .pk-plan__chevron { transform:rotate(180deg); }
+.pk-plan .pk-plan__build {
+  min-height:var(--h-sm); padding:0 14px; border:0; border-radius:var(--r-md);
+  /* The accent darkened toward black rather than --accent-fill: that token is a green in the dark
+     ramp, and this product spends no green outside a status dot. White on it clears 4.5:1. */
+  background:color-mix(in srgb,var(--accent) 78%,#000); color:#fff; font-size:13px; box-shadow:var(--shadow-primary);
+}
+.pk-plan .pk-plan__build:hover:not(:disabled) { background:color-mix(in srgb,var(--accent) 88%,#000); }
+@media (prefers-reduced-motion: reduce) {
+  .pk-plan[data-streaming] .pk-plan__title { animation:none; color:var(--ink); background:none; }
+  .pk-plan__steps { animation:none; }
+  .pk-plan__chevron { transition:none; }
+}

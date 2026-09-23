@@ -1,0 +1,12 @@
+/* The canvas backdrops (code-rain.tsx, warp-field.tsx). A backdrop fills its positioned parent and
+   sits behind it; the parent decides where (loading.css). Low opacity always: texture, not content.
+   The colour is read from `color` by the canvas loop, so it follows the theme tokens. */
+.picks-backdrop { position:absolute; inset:0; z-index:-1; display:block; width:100%; height:100%; pointer-events:none; }
+.picks-backdrop--rain { color:var(--accent); opacity:.16; }
+.picks-backdrop--warp { color:var(--ink); opacity:.28; }
+/* Accent on a near-white ground loses most of its contrast; the rain needs more of it to read as texture. */
+:root[data-theme='light'] .picks-backdrop--rain { opacity:.32; }
+@media (prefers-reduced-motion: reduce) {
+  .picks-backdrop { display:none; }
+}
+.motion-reduced .picks-backdrop { display:none; }

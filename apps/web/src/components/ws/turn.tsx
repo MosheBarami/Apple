@@ -8,7 +8,7 @@
 // for content whose structure genuinely benefits — a render, a diff, a critique
 // — and those come from the typed component registry, never from free-form
 // model output.
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { PlaytestRun, StudioFrame } from '@golem/shared';
 import type { UIDocument } from '../../lib/generative-ui/schema';
 import { splitSpilledPayload } from '../../lib/spilled-payload';
@@ -30,8 +30,18 @@ import {
   MessageContent,
   MessageResponse,
 } from '../ai-elements/message';
-import { Source, Sources, SourcesContent, SourcesTrigger } from '../ai-elements/sources';
+import { Sources, SourcesContent, SourcesTrigger } from '../ai-elements/sources';
 import { ChevronDownIcon } from '../ai-elements/icons';
+import { MessageToolbar } from '../ai-elements/message';
+import { CopyButton } from '../picks/chat/copy-button';
+import { ShareButton } from '../picks/chat/share-button';
+import { ContextMenu, useContextMenu, type MenuItem } from '../picks/chat/context-menu';
+import { RollingNumber } from '../picks/chat/rolling-number';
+import { useWordReveal } from '../picks/chat/word-reveal';
+import { TurnCheckpoint } from '../picks/chat/turn-checkpoint';
+import { PlanCard } from '../picks/chat/plan-card';
+import { ExpandableImages } from '../picks/chat/expandable-images';
+import { SourcePreview } from '../picks/chat/source-preview';
 import './turn.css';
 
 function useNow(active: boolean): number {
@@ -56,11 +66,12 @@ const GenerativeUI = lazy(() => import('../../lib/generative-ui/render').then((m
  */
 function ReplyMedia({ docs }: { docs: UIDocument[] }) {
   if (docs.length === 0) return null;
-  return <div className="gx-reply-media">
+  // An image Apple made opens larger, growing out of where it sits (picks/chat/expandable-images).
+  return <ExpandableImages className="gx-reply-media">
     <Suspense fallback={<p className="gx-reply-media__wait">Loading…</p>}>
       {docs.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
     </Suspense>
-  </div>;
+  </ExpandableImages>;
 }
 
 function Stamp({ at, align }: { at: number; align: 'start' | 'end' }) {
@@ -85,6 +96,7 @@ export function Turn({
   frames,
   playtest,
   studioConnected = false,
+  onBuildPlan,
 }: {
   item: ChatItem;
   status: AgentStatus | null;
@@ -118,7 +130,22 @@ export function Turn({
    */
   phaseMarks?: PhaseMark[];
   isLast: boolean;
+  /**
+   * Send a Plan-mode reply's plan to be built. The Plan card draws its "Build it" button only when
+   * this is given — a button that is present and does nothing is worse than no button.
+   */
+  onBuildPlan?: () => void;
 }) {
+  // Right-click (or the reply's More button) opens this turn's menu — picks/chat/context-menu.
+  const menu = useContextMenu();
+  // The streamed reply lands word by word (picks/chat/word-reveal). A turn that mounted settled —
+  // history — is never touched.
+  const replyRef = useRef<HTMLDivElement>(null);
+  useWordReveal(replyRef, item.content, item.streaming);
+  // Whether this turn was still arriving when it mounted, so a figure it settles at can roll in
+  // while a reloaded conversation's figures simply sit there.
+  const [arrivedLive] = useState(item.streaming);
+
   const parsed = useMemo(() => {
     if (item.role !== 'assistant' || !item.content) return { json: null as string | null, rest: item.content };
     return extractUIFence(item.content);
@@ -192,7 +219,7 @@ export function Turn({
     return (
       // role="article": each turn is one entry in the conversation log, which is how a screen
       // reader steps through it. AI Elements' Message is a div, so the role is said explicitly.
-      <Message from="user" role="article" className="gx-turn gx-turn--user gx-msg-in">
+      <Message from="user" role="article" className="gx-turn gx-turn--user gx-msg-in" onContextMenu={menu.onContextMenu}>
         {/* dir="auto" — the direction of a message belongs to the message. A Hebrew sentence
             typed in an English session (or the reverse) otherwise inherits the page and puts its
             own trailing punctuation at the wrong end. */}
@@ -230,6 +257,18 @@ export function Turn({
           )}
           <Stamp at={item.createdAt} align="end" />
         </MessageActions>
+        <ContextMenu
+          at={menu.at}
+          label="Message options"
+          onClose={menu.close}
+          items={[
+            { id: 'copy', label: 'Copy text', onSelect: () => void navigator.clipboard?.writeText(item.content).catch(() => undefined) },
+            ...(editable && onEdit ? [{ id: 'edit', label: 'Edit and run again', onSelect: () => onEdit(item.id, item.content) }] : []),
+            ...(onShowRevisions && (item.revisions ?? 0) > 0
+              ? [{ id: 'versions', label: 'Earlier versions', onSelect: () => onShowRevisions(item.id) }]
+              : []),
+          ] satisfies MenuItem[]}
+        />
       </Message>
     );
   }
@@ -290,6 +329,10 @@ export function Turn({
       role="article"
       className="gx-turn gx-turn--agent gx-msg-in"
       data-run-state={item.streaming ? 'live' : outcome ? 'ended' : 'settled'}
+      // Still being written: assistive technology waits for the settled reply, which the workspace
+      // announces once, instead of reading each half-sentence as it lands.
+      aria-busy={item.streaming || undefined}
+      onContextMenu={menu.onContextMenu}
     >
       <span className="gx-mark" aria-hidden="true"><AppleGlyph size={20} /></span>
       <MessageContent className="gx-turn__body">
@@ -319,7 +362,20 @@ export function Turn({
                 Nothing is deleted: it is collapsed, because somebody quoting it to support must
                 still be able to, and because hiding output the model really produced is how a
                 product starts lying about what happened. */}
-            {spilled.prose && <MessageResponse className="gx-prose" dir="auto">{spilled.prose}</MessageResponse>}
+            {spilled.prose && (
+              // The wrapper is what the word reveal reads; it draws nothing (display:contents).
+              <div ref={replyRef} className="gx-turn__reply">
+                {item.mode === 'plan' ? (
+                  // A Plan-mode reply is a plan: a card with its first line showing and the steps
+                  // folded inside (picks/chat/plan-card).
+                  <PlanCard content={spilled.prose} streaming={item.streaming} onBuild={onBuildPlan}>
+                    <MessageResponse className="gx-prose" dir="auto">{spilled.prose}</MessageResponse>
+                  </PlanCard>
+                ) : (
+                  <MessageResponse className="gx-prose" dir="auto">{spilled.prose}</MessageResponse>
+                )}
+              </div>
+            )}
             {spilled.collapsed && (
               <details className="gx-turn__spill">
                 <summary>Apple wrote out part of a build instruction instead of running it. Show it</summary>
@@ -340,7 +396,8 @@ export function Turn({
               <ChevronDownIcon className="ai-sources__chevron" />
             </SourcesTrigger>
             <SourcesContent forceMount>
-              {docSources.map((source) => <Source key={source.url} href={source.url} title={source.title} />)}
+              {/* Each link previews where it goes on hover or focus (picks/chat/source-preview). */}
+              {docSources.map((source) => <SourcePreview key={source.url} href={source.url} title={source.title} />)}
             </SourcesContent>
           </Sources>
         )}
@@ -388,6 +445,48 @@ export function Turn({
           retryControl && <div className="gx-outcome gx-outcome--bare">{retryControl}</div>
         )}
 
+        {/* What this turn changed in the place, with the way back to a checkpoint. Drawn once the
+            run has settled, because a list of changes still being made is not a receipt. */}
+        {!item.streaming && <TurnCheckpoint tools={item.tools} />}
+
+        {/* THE REPLY'S TOOLBAR — Copy, Share, and the same menu a right-click opens. It is AI
+            Elements' MessageToolbar; on a pointer device it rises into view under the pointer or on
+            focus, like a node toolbar, and on the newest reply it is simply there. */}
+        {item.content && !item.streaming && (
+          <MessageToolbar className={`gx-turn__tools${isLast ? ' is-last' : ''}`}>
+            <div className="gx-turn__tools-main">
+              <CopyButton getText={() => spilled.prose || item.content} title="Copy this reply" />
+              <ShareButton getText={() => spilled.prose || item.content} />
+            </div>
+            <button
+              type="button"
+              className="gx-turn__more"
+              aria-label="More options for this reply"
+              aria-haspopup="menu"
+              onClick={(e) => menu.openFrom(e.currentTarget)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="5" cy="12" r="1.6" />
+                <circle cx="12" cy="12" r="1.6" />
+                <circle cx="19" cy="12" r="1.6" />
+              </svg>
+            </button>
+          </MessageToolbar>
+        )}
+        <ContextMenu
+          at={menu.at}
+          label="Reply options"
+          onClose={menu.close}
+          items={[
+            ...(item.content
+              ? [{ id: 'copy', label: 'Copy text', onSelect: () => void navigator.clipboard?.writeText(spilled.prose || item.content).catch(() => undefined) }]
+              : []),
+            ...(onRetry && item.stopReason !== 'quota'
+              ? [{ id: 'retry', label: outcome ? 'Try again' : 'Regenerate', onSelect: onRetry }]
+              : []),
+          ] satisfies MenuItem[]}
+        />
+
         {/* THE FOOTER ROW, AND WHY THE COST IS HERE RATHER THAN IN THE THINKING CARD.
             The Thinking card shows a running cost WHILE a run is in flight, and `msg_end` clears
             the status that feeds it — so the figure disappeared at the moment it finally became
@@ -399,7 +498,8 @@ export function Turn({
           <Stamp at={item.createdAt} align="start" />
           {item.creditsSpent != null && item.creditsSpent > 0 && (
             <span className="gx-turn__cost">
-              <strong>{item.creditsSpent}</strong> {item.creditsSpent === 1 ? 'Credit' : 'Credits'}
+              {/* The settled figure rolls in on a turn that was watched arriving (picks/chat/rolling-number). */}
+              <strong><RollingNumber value={item.creditsSpent} rollIn={arrivedLive} /></strong> {item.creditsSpent === 1 ? 'Credit' : 'Credits'}
             </span>
           )}
         </p>

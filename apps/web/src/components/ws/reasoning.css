@@ -54,6 +54,14 @@
   line-height:20px;
 }
 
+/* THE LINE SETTLES IN (React Bits "Thought Line"). The live action and the measured time are two
+   different elements, so when one replaces the other the new one fades up out of a 2px blur on
+   Thought Line's curve rather than snapping. The resting frame is the plain line: with the
+   animation removed (reduced motion) nothing is hidden. */
+.apple-reasoning__settle { animation:apple-reasoning-settle 350ms cubic-bezier(.23,1,.32,1) both; }
+@keyframes apple-reasoning-settle { from { opacity:0; filter:blur(2px); } to { opacity:1; filter:none; } }
+@media (prefers-reduced-motion: reduce) { .apple-reasoning__settle { animation:none; } }
+
 /* The shimmer is a gradient clipped to the text; as an inline-block it would not shrink, and a
    long action name would push the time and the chevron off the line. */
 .apple-reasoning__summary.ai-elements-shimmer { display:block; max-width:100%; }

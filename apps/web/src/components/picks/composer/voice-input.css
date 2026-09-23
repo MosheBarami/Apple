@@ -1,0 +1,68 @@
+/* The microphone (voice-input.tsx). At rest a round tool like the paperclip; while listening its
+   backdrop stretches toward the reading start into a pill that holds the clock and the level trace. */
+.pk-voice-slot { position:relative; display:inline-flex; flex:none; align-items:center; }
+.gx-composer .pk-voice {
+  position:relative; display:inline-grid; place-items:center; width:var(--h-sm); height:var(--h-sm); min-height:0; padding:0;
+  border:0; border-radius:var(--r-pill); background:transparent; box-shadow:none; color:var(--muted);
+  cursor:pointer; touch-action:none; user-select:none; -webkit-user-select:none;
+  transition:color var(--t-fast) var(--ease-out);
+}
+.gx-composer .pk-voice:hover:not(:disabled),.gx-composer .pk-voice.is-listening { color:var(--ink); }
+.gx-composer .pk-voice:disabled { opacity:.48; cursor:not-allowed; }
+.gx-composer .pk-voice:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.gx-composer .pk-voice.is-listening { z-index:4; }
+
+.pk-voice__cap {
+  position:absolute; inset-block:0; inset-inline-end:0; z-index:-1; inline-size:var(--h-sm);
+  border-radius:var(--r-pill); background:transparent; pointer-events:none;
+  transition:inline-size 220ms cubic-bezier(.23,1,.32,1),background-color var(--t-fast) var(--ease-out);
+}
+.gx-composer .pk-voice:hover:not(:disabled) .pk-voice__cap { background:var(--control-fill); }
+.gx-composer .pk-voice.is-listening .pk-voice__cap {
+  inline-size:calc(var(--h-sm) + 108px); background:var(--surface-3); box-shadow:inset 0 0 0 1px var(--line);
+}
+.pk-voice__glyph { position:relative; display:inline-grid; place-items:center; }
+.pk-voice__stop { display:block; width:10px; height:10px; border-radius:2px; background:currentColor; }
+
+/* The clock and the trace sit on the stretched part, and slide with the finger toward Cancel. */
+.pk-voice__clock,.pk-voice__wave,.pk-voice__cancel {
+  position:absolute; inset-block-start:50%; opacity:0; pointer-events:none;
+  transition:opacity var(--t-fast) var(--ease-out);
+}
+.pk-voice__clock {
+  inset-inline-end:calc(var(--h-sm) + 70px); translate:var(--pk-slide,0px) -50%;
+  color:var(--ink); font-size:11px; font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.pk-voice__wave {
+  inset-inline-end:calc(var(--h-sm) + 4px); inline-size:62px; block-size:18px; translate:var(--pk-slide,0px) -50%;
+  color:var(--ink);
+}
+.pk-voice__cancel {
+  inset-inline-end:calc(var(--h-sm) + 16px); translate:0 -50%;
+  color:var(--muted); font-size:12px; white-space:nowrap;
+}
+.gx-composer .pk-voice.is-listening .pk-voice__clock,
+.gx-composer .pk-voice.is-listening .pk-voice__wave { opacity:1; }
+.gx-composer .pk-voice.is-listening.is-cancelling .pk-voice__clock,
+.gx-composer .pk-voice.is-listening.is-cancelling .pk-voice__wave { opacity:0; }
+.gx-composer .pk-voice.is-listening.is-cancelling .pk-voice__cancel { opacity:1; color:var(--bad); }
+
+.gx-composer .pk-voice__pick {
+  width:16px; min-width:0; height:var(--h-sm); padding:0; border:0; background:transparent; color:var(--faint);
+}
+.gx-composer .pk-voice__pick:hover { color:var(--ink); }
+
+/* The words as they are heard, floating over the top of the card like the @ picker does. */
+.gx-composer .pk-transcript {
+  position:absolute; z-index:55; inset-block-end:calc(100% + 8px); inset-inline:12px; max-block-size:6lh;
+  margin:0; padding:8px 12px; overflow:auto;
+  border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); box-shadow:var(--shadow-pop);
+  font-size:13px; line-height:19px; text-wrap:pretty;
+}
+.pk-transcript__said { color:var(--ink); }
+.pk-transcript__tail { color:var(--muted); }
+
+@media (prefers-reduced-motion:reduce) {
+  .gx-composer .pk-voice,.pk-voice__cap,.pk-voice__clock,.pk-voice__wave,.pk-voice__cancel { transition:none; }
+  .pk-voice__wave { display:none; }
+}

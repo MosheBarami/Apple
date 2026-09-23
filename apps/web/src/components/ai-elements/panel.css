@@ -1,0 +1,9 @@
+.ai-panel {
+  position:absolute; z-index:2; max-width:calc(100% - 24px); padding:8px 10px;
+  border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); color:var(--ink); box-shadow:var(--shadow-pop);
+}
+.ai-panel--top-left { top:12px; left:12px; }
+.ai-panel--top-right { top:12px; right:12px; }
+.ai-panel--bottom-left { bottom:12px; left:12px; }
+.ai-panel--bottom-right { bottom:12px; right:12px; }
+.ai-panel.ai-panel--dock { position:static; max-width:none; margin:0; border-width:1px 0 0; border-radius:0 0 var(--r-md) var(--r-md); box-shadow:none; }

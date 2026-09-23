@@ -41,6 +41,14 @@ import { supabase } from '../lib/supabase';
 import { Failure } from './failure';
 import { useToast } from './toast';
 import './api-keys-panel.css';
+// The owner's picked account-screen components (./picks/settings).
+import { Checkbox } from './picks/settings/checkbox';
+import { RadioCards } from './picks/settings/radio-group';
+import { Switch } from './picks/settings/switch';
+import { ConditionalField } from './picks/settings/conditional-field';
+import { NumberInput } from './picks/settings/number-input';
+import { HoldButton } from './picks/settings/hold-button';
+import { DecryptedText } from './picks/settings/decrypted-text';
 
 /** What each scope lets a key do, in the words of what will happen. */
 const SCOPE_WORDS: Record<ApiScope, string> = {
@@ -80,6 +88,8 @@ export function ApiKeysPanel() {
   const [scopes, setScopes] = useState<ApiScope[]>([]);
   const [grants, setGrants] = useState<string[]>([]);
   const [days, setDays] = useState('');
+  // Whether the key expires at all. Its own state, so emptying the number does not hide the field.
+  const [expires, setExpires] = useState(false);
   const [problems, setProblems] = useState<ReturnType<typeof newKeyProblems>>([]);
 
   /**
@@ -110,6 +120,7 @@ export function ApiKeysPanel() {
       setScopes([]);
       setGrants([]);
       setDays('');
+      setExpires(false);
       setProblems([]);
       void qc.invalidateQueries({ queryKey: ['api-keys'] });
     },
@@ -170,7 +181,10 @@ export function ApiKeysPanel() {
       {revealed && (
         <div className="ak__reveal" role="alert">
           <p className="ak__reveal-title">This is the only time “{revealed.name}” will be shown.</p>
-          <code className="ak__secret">{revealed.key}</code>
+          {/* Picks: React Bits "Decrypted Text" — the key resolves once, on arrival. */}
+          <code className="ak__secret">
+            <DecryptedText text={revealed.key} />
+          </code>
           <p className="ak__reveal-note">
             Copy it now. Apple stores only a hash of it and cannot show it again — if you lose it,
             rotate the key.
@@ -272,14 +286,13 @@ export function ApiKeysPanel() {
                         <button type="button" className="btn" onClick={() => setConfirming(null)}>
                           Keep it
                         </button>
-                        <button
-                          type="button"
-                          className="btn btn--danger"
-                          onClick={() => revoke.mutate(k.id)}
-                          disabled={revoke.isPending}
-                        >
-                          {revoke.isPending ? 'Revoking…' : 'Revoke it'}
-                        </button>
+                        {/* Picks: hold to confirm — a revoke breaks whatever uses the key, at once. */}
+                        <HoldButton
+                          label="Hold to revoke"
+                          busy={revoke.isPending}
+                          busyLabel="Revoking…"
+                          onConfirm={() => revoke.mutate(k.id)}
+                        />
                       </>
                     ) : (
                       <>
@@ -329,22 +342,24 @@ export function ApiKeysPanel() {
           />
           {problemFor('name') && <p className="ak__problem">{problemFor('name')?.message}</p>}
 
-          <fieldset className="ak__modes">
-            <legend className="ak__label">Kind</legend>
-            {API_KEY_MODES.map((m) => (
-              <label key={m} className="ak__radio">
-                <input type="radio" name="ak-mode" value={m} checked={mode === m} onChange={() => setMode(m)} />
-                {m === 'live' ? 'Live — spends Credits' : 'Test — free, and cannot spend'}
-              </label>
-            ))}
-          </fieldset>
+          <RadioCards
+            legend="Kind"
+            legendClassName="ak__label"
+            name="ak-mode"
+            value={mode}
+            onChange={setMode}
+            options={API_KEY_MODES.map((m) => ({
+              value: m,
+              label: m === 'live' ? 'Live' : 'Test',
+              hint: m === 'live' ? 'Spends Credits' : 'Free, and cannot spend',
+            }))}
+          />
 
           <fieldset className="ak__scopes">
             <legend className="ak__label">What this key may do</legend>
             {API_SCOPES.map((s) => (
               <label key={s} className="ak__scope">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={scopes.includes(s)}
                   onChange={() =>
                     setScopes((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]))
@@ -368,8 +383,7 @@ export function ApiKeysPanel() {
             )}
             {(projects.data ?? []).map((p) => (
               <label key={p.id} className="ak__grant">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={grants.includes(p.id)}
                   onChange={() =>
                     setGrants((cur) => (cur.includes(p.id) ? cur.filter((x) => x !== p.id) : [...cur, p.id]))
@@ -386,18 +400,32 @@ export function ApiKeysPanel() {
             {problemFor('projectIds') && <p className="ak__warning">{problemFor('projectIds')?.message}</p>}
           </fieldset>
 
-          <label className="ak__label" htmlFor="ak-days">
-            Expires after (days, optional)
+          <label className="ak__expiry">
+            <span className="ak__label">Stops working by itself</span>
+            <Switch
+              checked={expires}
+              onChange={(e) => {
+                setExpires(e.target.checked);
+                setDays(e.target.checked ? '30' : '');
+              }}
+            />
           </label>
-          <input
-            id="ak-days"
-            className="ak__input"
-            inputMode="numeric"
-            value={days}
-            onChange={(e) => setDays(e.target.value)}
-            placeholder="blank for a key that does not expire"
-            aria-invalid={problemFor('expiresInDays') ? true : undefined}
-          />
+          {/* Picks: Clerk "Conditional Field" + UI Layouts "Motion Number Input" — the day count only
+              exists while the key is set to expire. */}
+          <ConditionalField open={expires}>
+            <label className="ak__label" htmlFor="ak-days">
+              After how many days
+            </label>
+            <NumberInput
+              id="ak-days"
+              value={days}
+              onChange={setDays}
+              min={1}
+              max={365}
+              placeholder="30"
+              invalid={Boolean(problemFor('expiresInDays'))}
+            />
+          </ConditionalField>
           {problemFor('expiresInDays') && <p className="ak__problem">{problemFor('expiresInDays')?.message}</p>}
 
           <button type="button" className="btn" onClick={() => setShowForm(false)}>

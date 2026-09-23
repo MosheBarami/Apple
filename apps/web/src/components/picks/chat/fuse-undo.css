@@ -1,0 +1,20 @@
+/* FUSE UNDO (React Bits Fuse Button, re-implemented). The row the action left behind: what happened,
+   one Undo, and a 2px line along the foot burning from the end toward the start. */
+.pk-fuse {
+  position:relative; display:flex; align-items:center; gap:8px; min-height:36px; padding:0 8px; margin-inline:-8px;
+  overflow:hidden; border-radius:var(--r-md); background:var(--surface); color:var(--muted); font-size:13px; line-height:18px;
+  animation:pk-fuse-in .2s var(--ease-out) both;
+}
+@keyframes pk-fuse-in { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
+.pk-fuse__text { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pk-fuse .pk-fuse__undo {
+  flex:none; min-height:var(--h-xs); padding:0 10px; border:1px solid var(--line-strong); border-radius:var(--r-md);
+  background:transparent; color:var(--ink); font-size:12px;
+}
+.pk-fuse .pk-fuse__undo:hover:not(:disabled) { background:var(--control-fill); }
+.pk-fuse__line { position:absolute; inset-inline:0; bottom:0; height:2px; background:var(--accent); transform-origin:left center; }
+:root[dir='rtl'] .pk-fuse__line { transform-origin:right center; }
+@media (prefers-reduced-motion: reduce) {
+  .pk-fuse { animation:none; }
+  .pk-fuse__line { visibility:hidden; }
+}

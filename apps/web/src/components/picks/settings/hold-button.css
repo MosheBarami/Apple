@@ -1,0 +1,43 @@
+/* The fill is the clock. `--pk-hold-p` (0..1) is written by the component every frame. */
+.pk-hold {
+  --pk-hold-p:0;
+  --pk-hold-ink:var(--nm-ink,var(--ink));
+  --pk-hold-sweep:var(--nm-ink,var(--ink));
+  --pk-hold-on:var(--nm-bg,var(--paper));
+  position:relative; display:inline-grid; place-items:center; min-height:38px; padding:0 16px; overflow:hidden;
+  isolation:isolate; user-select:none; -webkit-user-select:none; touch-action:none; cursor:pointer;
+  font:inherit; font-size:13px; font-weight:450; white-space:nowrap;
+  border:1px solid var(--nm-line,var(--line)); border-radius:var(--nm-r-control,12px);
+  background:var(--nm-panel-soft,var(--surface-2)); color:var(--pk-hold-ink);
+  transition:transform .3s var(--pk-hold-ease,ease),border-color .15s ease;
+}
+.pk-hold--danger { --pk-hold-ink:var(--bad); --pk-hold-sweep:var(--bad); --pk-hold-on:#fff; border-color:color-mix(in srgb,var(--bad) 45%,var(--nm-line,var(--line))); }
+:root[data-theme='light'] .pk-hold--danger { --pk-hold-on:#fff; }
+.pk-hold[data-phase='holding'] { transform:scale(.97); }
+.pk-hold:focus-visible { outline:2px solid var(--nm-ink,var(--ink)); outline-offset:2px; }
+.pk-hold:disabled { opacity:.5; cursor:not-allowed; }
+.pk-hold__label { grid-area:1/1; position:relative; z-index:1; }
+.pk-hold__fill {
+  position:absolute; inset:0; z-index:2; display:grid; place-items:center;
+  background:var(--pk-hold-sweep); color:var(--pk-hold-on);
+  clip-path:inset(0 calc((1 - var(--pk-hold-p)) * 100%) 0 0);
+}
+:dir(rtl) .pk-hold__fill { clip-path:inset(0 0 0 calc((1 - var(--pk-hold-p)) * 100%)); }
+.pk-hold__label--fill { z-index:auto; }
+.pk-hold[data-phase='done'] .pk-hold__fill { clip-path:inset(0); }
+.pk-hold__hint { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+/* A quiet pulse at rest tells a first-timer this is not an ordinary button. */
+.pk-hold[data-phase='idle']:not(:disabled)::after {
+  content:''; position:absolute; inset:0; z-index:0; border-radius:inherit; pointer-events:none;
+  box-shadow:inset 0 0 0 1px var(--pk-hold-sweep); opacity:0; animation:pk-hold-pulse 2.4s ease-in-out infinite;
+}
+@keyframes pk-hold-pulse { 0%,100% { opacity:0; } 50% { opacity:.35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-hold { transition:none; }
+  .pk-hold[data-phase='holding'] { transform:none; }
+  .pk-hold::after { animation:none !important; }
+}
+.motion-reduced .pk-hold { transition:none; }
+.motion-reduced .pk-hold[data-phase='holding'] { transform:none; }
+.motion-reduced .pk-hold::after { animation:none !important; }

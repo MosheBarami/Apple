@@ -32,6 +32,30 @@
 }
 :root[dir='rtl'] .ai-conversation__scroll-button { transform:translateX(50%); }
 .ai-conversation__scroll-button[data-unseen] { width:auto; gap:6px; padding-inline:9px 12px; }
-.ai-conversation__scroll-button[data-unseen]::after { content:attr(data-unseen); white-space:nowrap; }
+/* The count is drawn by the component (a rolling figure and a live dot), not by attr(). */
+.ai-conversation__scroll-count { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; color:var(--ink); }
 .ai-conversation__scroll-icon { flex:none; }
 .ai-conversation__download { position:absolute; top:16px; inset-inline-end:16px; border-radius:var(--r-pill); }
+
+/* THE LIVE BUTTON (Eldora UI, re-implemented). While replies arrived out of sight, a small accent
+   dot pings beside the count — the one place blue says "new" in the thread. Hovering sweeps a sheen
+   across the pill and lifts an accent glow round it; the press settles back. No green: the dot is
+   the product's accent, not a status. */
+.ai-conversation__scroll-button { overflow:hidden; isolation:isolate; transition:box-shadow var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out); }
+.ai-conversation__scroll-button::before {
+  content:''; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:linear-gradient(110deg,transparent 30%,color-mix(in srgb,var(--ink) 14%,transparent) 50%,transparent 70%);
+  transform:translateX(-120%);
+}
+.ai-conversation__scroll-button:hover:not(:disabled) { color:var(--ink); border-color:color-mix(in srgb,var(--accent) 55%,var(--line-strong)); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent),0 6px 18px -6px color-mix(in srgb,var(--accent) 45%,transparent); }
+.ai-conversation__scroll-button:hover:not(:disabled)::before { transform:translateX(120%); transition:transform .7s var(--ease-out); }
+.ai-conversation__scroll-button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.ai-conversation__live { position:relative; flex:none; width:6px; height:6px; border-radius:50%; background:var(--accent); }
+.ai-conversation__live::after { content:''; position:absolute; inset:0; border-radius:50%; background:var(--accent); animation:ai-conversation-ping 1.6s var(--ease-out) infinite; }
+@keyframes ai-conversation-ping { 0% { transform:scale(1); opacity:.7; } 80%,100% { transform:scale(2.6); opacity:0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-conversation__scroll-button,.ai-conversation__scroll-button:hover::before { transition:none; }
+  .ai-conversation__scroll-button::before { display:none; }
+  .ai-conversation__live::after { animation:none; }
+}

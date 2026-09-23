@@ -1,0 +1,31 @@
+/* The lattice glyph (lattice-glyph.tsx). 16px square, the same box as the Brain it stands in for.
+   The accent is spent on the running lattice only — it is the live indicator of the one running
+   thing. A settled mark takes the line's own colour, and a real failure takes --bad. */
+.picks-lattice { position:relative; display:inline-grid; flex:none; width:16px; height:16px; place-items:center; }
+.picks-lattice__layer { grid-area:1/1; display:grid; grid-template-columns:repeat(3,4px); gap:2px; }
+.picks-lattice__cell { width:4px; height:4px; border-radius:50%; background:currentColor; opacity:.16; }
+
+.picks-lattice__run { color:var(--accent); transition:opacity .2s ease; }
+.picks-lattice__run .picks-lattice__cell { animation:picks-lattice-orbit var(--picks-lattice-cycle,864ms) cubic-bezier(.77,0,.175,1) infinite; }
+.picks-lattice__run .picks-lattice__cell[data-hole] { animation:none; opacity:.07; }
+@keyframes picks-lattice-orbit { 0%,40%,100% { opacity:.16; } 12% { opacity:1; } }
+
+.picks-lattice__mark { opacity:0; transform:scale(.9); transition:opacity .16s cubic-bezier(.23,1,.32,1),transform .16s cubic-bezier(.23,1,.32,1); }
+.picks-lattice__mark .picks-lattice__cell { transition:opacity .2s ease; }
+.picks-lattice__mark .picks-lattice__cell[data-on] { opacity:1; }
+
+.picks-lattice:not([data-status='working']) .picks-lattice__run { opacity:0; }
+.picks-lattice:not([data-status='working']) .picks-lattice__run .picks-lattice__cell { animation-play-state:paused; }
+.picks-lattice:not([data-status='working']) .picks-lattice__mark { opacity:1; transform:none; }
+
+.picks-lattice[data-status='done'] .picks-lattice__mark { color:currentColor; }
+.picks-lattice[data-status='failed'] .picks-lattice__mark { color:var(--bad); }
+.picks-lattice[data-status='stopped'] .picks-lattice__mark,
+.picks-lattice[data-status='idle'] .picks-lattice__mark { color:var(--faint); }
+
+/* Reduced motion: the running lattice holds still at half strength rather than looking finished. */
+@media (prefers-reduced-motion: reduce) {
+  .picks-lattice__run .picks-lattice__cell:not([data-hole]) { animation:none; opacity:.5; }
+  .picks-lattice__run,.picks-lattice__mark,.picks-lattice__mark .picks-lattice__cell { transition:none; }
+}
+.motion-reduced .picks-lattice__run .picks-lattice__cell:not([data-hole]) { opacity:.5; }

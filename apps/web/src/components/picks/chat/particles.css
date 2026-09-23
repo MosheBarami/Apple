@@ -1,0 +1,4 @@
+/* The burst layer: fixed, zero-size, centred on the button; each dot is a 4px disc in the button's
+   own colour (set inline from its computed ink), so the effect is neutral in either theme. */
+.pk-burst { position:fixed; z-index:240; width:0; height:0; pointer-events:none; }
+.pk-burst > i { position:absolute; left:0; top:0; width:4px; height:4px; border-radius:var(--r-pill); background:currentColor; }

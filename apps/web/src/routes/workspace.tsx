@@ -867,6 +867,15 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     return true;
   };
 
+  // The plan card's "Build it": switch to Agent — the mode allowed to change the place — and send once
+  // that mode is the one in state, so the message goes through send() exactly like a typed one.
+  const [buildQueued, setBuildQueued] = useState(false);
+  useEffect(() => {
+    if (!buildQueued || mode !== 'agent') return;
+    setBuildQueued(false);
+    send('Build this plan.');
+  }, [buildQueued, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const lastAssistantId = useMemo(
     () => [...messages].reverse().find((m) => m.role === 'assistant')?.id,
     [messages],
@@ -1201,6 +1210,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               frames={item.id === lastAssistantId ? frames : undefined}
               playtest={item.id === lastAssistantId ? playtest : null}
               studioConnected={studio.connected}
+              // The plan card's "Build it": the latest plan, only while idle, sent through the same
+              // path as any message but in Agent mode — the mode that is allowed to change the place.
+              onBuildPlan={item.id === lastAssistantId && item.mode === 'plan' && !running && chatAllowed
+                ? () => { setMode('agent'); setBuildQueued(true); }
+                : undefined}
             />
             </div>
           ))}

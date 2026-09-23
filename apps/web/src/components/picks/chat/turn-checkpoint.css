@@ -1,0 +1,29 @@
+/* THE CHECKPOINT ROW (AI Elements checkpoint + task, Motion layout anchor).
+   A hairline card, quieter than the reply: the reply is the answer, this is a receipt with an exit.
+   The badge is absolutely anchored to the card's top end corner, so while the card's height tweens
+   open it does not move — which is the whole of what Layout Anchor is for. */
+.pk-cp {
+  position:relative; display:grid; gap:8px; margin-block:12px 0; padding:8px 12px;
+  border:1px solid var(--line); border-radius:var(--r-lg); background:transparent;
+}
+.pk-cp .ai-task__trigger.pk-cp__trigger {
+  display:inline-flex; width:auto; max-width:calc(100% - 96px); min-height:var(--h-xs); gap:8px;
+  color:var(--muted); font-size:12px; line-height:18px;
+}
+.pk-cp__dot { flex:none; width:6px; height:6px; border-radius:var(--r-pill); background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.pk-cp__title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pk-cp__chevron { flex:none; transition:transform var(--t-fast) var(--ease-out); }
+.pk-cp[data-state='open'] .pk-cp__chevron { transform:rotate(180deg); }
+.pk-cp__badge {
+  position:absolute; top:10px; inset-inline-end:12px; padding:1px 8px; border-radius:var(--r-pill);
+  background:var(--surface-2); color:var(--muted); font-size:11px; line-height:16px; font-variant-numeric:tabular-nums;
+}
+.pk-cp__content .ai-task__list { margin-block-start:4px; }
+.pk-cp__content .ai-task__item { font-size:12px; line-height:18px; }
+.pk-cp__times { color:var(--faint); font-variant-numeric:tabular-nums; }
+.pk-cp .pk-cp__restore {
+  justify-self:start; min-height:var(--h-xs); padding:0 10px; border:1px solid var(--line); border-radius:var(--r-md);
+  background:transparent; color:var(--ink); font-size:12px; line-height:18px;
+}
+.pk-cp .pk-cp__restore:hover:not(:disabled) { background:var(--control-fill); border-color:var(--line-strong); }
+@media (prefers-reduced-motion: reduce) { .pk-cp__chevron { transition:none; } }

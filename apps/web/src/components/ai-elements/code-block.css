@@ -37,3 +37,6 @@
 .tok--hunk { color:var(--faint); }
 .ai-code-block__line:has(> .tok--ins) { background:color-mix(in srgb,var(--good) 9%,transparent); }
 .ai-code-block__line:has(> .tok--del) { background:color-mix(in srgb,var(--bad) 9%,transparent); }
+
+/* The "Copied" tip (picks/chat/copy-button.css) is placed against the button. */
+.ai-code-block__copy { position:relative; overflow:visible; }

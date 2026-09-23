@@ -36,6 +36,9 @@ import { Forge } from './loading';
 import { Failure } from './failure';
 import { StatusIcon } from './status-icon';
 import './pairing-dialog.css';
+// The owner's picked onboarding components (./picks/settings).
+import { DecryptedText } from './picks/settings/decrypted-text';
+import './picks/settings/pop-in.css';
 
 /** One cache entry, read by both halves of this dialog. */
 const recordKey = (projectId: string) => ['studio-link', projectId];
@@ -384,8 +387,9 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
         <ConnectionRecord projectId={projectId} />
 
         {showConnected ? (
-          <div className="pairing-success" role="status">
-            <span className="pairing-success-icon">
+          // pk-pop: "Studio connected" arrives like a reward (picks: Motion "Pokopia: Modal").
+          <div className="pairing-success pk-pop" role="status">
+            <span className="pairing-success-icon pk-pop__icon">
               <StatusIcon status="success" size={22} />
             </span>
             <h3>Studio connected</h3>
@@ -439,7 +443,8 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
                   <>
                     <span className="pairing-label">Your pairing code</span>
                     <output className="pairing-code" aria-live="polite">
-                      {pairing.code}
+                      {/* Picks: React Bits "Decrypted Text" — a fresh code resolves into place. */}
+                      <DecryptedText text={pairing.code} />
                     </output>
                     <span className="pairing-countdown" role="timer">
                       expires in {remaining}

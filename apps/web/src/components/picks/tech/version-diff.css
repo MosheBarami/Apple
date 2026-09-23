@@ -1,0 +1,17 @@
+.vd { min-width:0; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); overflow:hidden; }
+.vd-head { padding:8px 10px; border-bottom:1px solid var(--line); background:var(--paper-2); }
+.vd-same { margin:0; padding:12px; font-size:12.5px; color:var(--muted); }
+.vd-lines { list-style:none; margin:0; padding:0; max-height:min(60vh, 520px); overflow:auto; font-family:var(--font-mono); font-size:12px; line-height:20px; }
+.vd-line { border-top:1px solid var(--line); }
+.vd-line:first-child { border-top:0; }
+.vd-row { position:relative; display:flex; min-width:0; padding-inline-start:22px; }
+.vd-row:hover .lt-bubble, .vd-row:focus-within .lt-bubble { opacity:1; }
+.vd-line--hunk { background:color-mix(in srgb,var(--muted) 9%,transparent); color:var(--muted); }
+.vd-line--add > .vd-row { background:var(--accent-soft); }
+.vd-line--del > .vd-row { background:color-mix(in srgb,var(--bad) 10%,transparent); }
+.vd-no { flex:none; width:2.8em; padding:0 6px; text-align:end; color:var(--faint); font-size:11px; font-variant-numeric:tabular-nums; border-inline-end:1px solid var(--line); user-select:none; }
+.vd-code { flex:1; min-width:0; padding:0 10px 0 8px; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--ink); }
+.vd-line--hunk .vd-code { color:var(--muted); }
+.vd-sign { display:inline-block; width:10px; margin-inline-end:4px; font-weight:600; text-align:center; }
+.vd-line--add .vd-sign { color:var(--accent-light); }
+.vd-line--del .vd-sign { color:var(--bad); }

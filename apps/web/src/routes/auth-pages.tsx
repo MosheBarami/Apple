@@ -15,7 +15,6 @@ import { useAuth } from '../lib/auth';
 import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../lib/mfa';
 import { canSubmit as canSubmitRecovery, recoveryOutcome, type RecoveryOutcome } from '../lib/account-recovery';
 import { submitRecoveryRequest } from '../lib/api';
-import { useTheme } from '../lib/theme';
 import { AppleGlyph } from '../components/glyphs';
 import {
   CHECK_EMAIL_LINE,
@@ -31,6 +30,12 @@ import {
 } from '../lib/auth-flows';
 import './auth.css';
 import './nonworkspace-minimal.css';
+// The owner's picked sign-in components (apps/web/src/components/picks/settings).
+import { ThemeToggler } from '../components/picks/settings/theme-toggler';
+import { Orb } from '../components/picks/settings/orb';
+import { MorphCard } from '../components/picks/settings/morph-card';
+import { PasswordInput } from '../components/picks/settings/password-input';
+import { CodeSlots } from '../components/picks/settings/code-slots';
 
 /* ----------------------------------------------------------------- the three marks --- */
 
@@ -88,19 +93,11 @@ function CardMark({ kind }: { kind: 'mail' | 'alert' | 'done' }) {
   );
 }
 
+/** Picks: Animate UI "Theme Toggler Button" — one button cycles the theme, and the new one wipes in. */
 function ThemeCorner() {
-  const { theme, setTheme } = useTheme();
-  const next = theme === 'dark' ? 'light' : 'dark';
   return (
     <div className="auth-theme-toggle">
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        onClick={() => setTheme(next)}
-        aria-label={`Switch to ${next} theme`}
-      >
-        {theme === 'dark' ? 'Daylight' : 'Night'}
-      </button>
+      <ThemeToggler />
     </div>
   );
 }
@@ -110,7 +107,11 @@ function AuthHero() {
     <div className="auth-hero">
       <div className="auth-hero-inner">
         <div className="auth-hero-brand">
-          <AppleGlyph size={28} />
+          {/* Picks: React Bits "Orb" — a slow monochrome glow behind the mark; still under reduced motion. */}
+          <span className="auth-hero-orb">
+            <Orb />
+            <AppleGlyph size={28} />
+          </span>
           <span className="wordmark">Apple</span>
         </div>
         <p className="auth-hero-sub">
@@ -121,14 +122,29 @@ function AuthHero() {
   );
 }
 
-/** The shell every one of these screens sits in. Extracted so five pages cannot drift apart. */
-function AuthShell({ children }: { children: ReactNode }) {
+/** Which way a card change travels: forward into sign-up / the code step, back toward sign-in. */
+const STAGE_ORDER = ['/login', 'code', '/signup', '/forgot', '/reset-password', '/confirm', '/recovery'];
+
+/**
+ * The shell every one of these screens sits in. Extracted so five pages cannot drift apart.
+ *
+ * THE CARD CHANGES SHAPE rather than being swapped (picks: Motion "Clerk: Sign-in-or-up"): when a
+ * page moves to its next step — the password is accepted and the six-digit step appears, or a form
+ * turns into "check your email" — the card's height springs to the new step and the new step
+ * slides in from the side of travel. `stage` names a step inside one page; the path does otherwise.
+ */
+function AuthShell({ children, stage }: { children: ReactNode; stage?: string }) {
+  const { pathname } = useLocation();
+  const key = stage ?? pathname;
+  const order = Math.max(0, STAGE_ORDER.findIndex((s) => key.startsWith(s)));
   return (
     <div className="auth-page">
       <ThemeCorner />
       <div className="auth-form-col">
         <AuthHero />
-        {children}
+        <MorphCard stage={key} order={order}>
+          {children}
+        </MorphCard>
       </div>
     </div>
   );
@@ -254,6 +270,7 @@ function PasswordField({
   invalid,
   autoFocus,
   minLength,
+  strength,
 }: {
   label: string;
   name: string;
@@ -264,39 +281,31 @@ function PasswordField({
   invalid?: boolean;
   autoFocus?: boolean;
   minLength?: number;
+  /** Draw the strength dots and tips — only for a password being chosen, never for a repeat. */
+  strength?: boolean;
 }) {
   const id = useId();
-  const [shown, setShown] = useState(false);
+  // Picks: UI Layouts "Show/Hide Password" + "Password Strength Hover Indicator", merged in
+  // PasswordInput — the eye swaps the field, the dots say how strong a new password is.
   return (
     <div className="field">
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
-      <div className="field__wrap">
-        <input
-          id={id}
-          type={shown ? 'text' : 'password'}
-          name={name}
-          autoComplete={autoComplete}
-          required
-          autoFocus={autoFocus}
-          minLength={minLength}
-          aria-invalid={invalid ? 'true' : undefined}
-          aria-describedby={hint ? `${id}-hint` : undefined}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <button
-          type="button"
-          className="field__reveal"
-          onClick={() => setShown((s) => !s)}
-          aria-pressed={shown}
-          aria-controls={id}
-          aria-label={shown ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
-        >
-          {shown ? 'Hide' : 'Show'}
-        </button>
-      </div>
+      <PasswordInput
+        id={id}
+        label={label}
+        name={name}
+        autoComplete={autoComplete}
+        required
+        autoFocus={autoFocus}
+        minLength={minLength}
+        strength={strength}
+        aria-invalid={invalid ? 'true' : undefined}
+        aria-describedby={hint ? `${id}-hint` : undefined}
+        value={value}
+        onChange={onChange}
+      />
       {hint && (
         <p className="field-hint" id={`${id}-hint`}>
           {hint}
@@ -427,31 +436,28 @@ export function LoginPage() {
 
   if (stepOwed?.step === 'code') {
     return (
-      <AuthShell>
+      <AuthShell stage="code">
         <form className="auth-card" onSubmit={onVerify} noValidate>
           <h2 className="auth-card-title">One more step</h2>
           <p className="auth-card-sub">Enter the six-digit code from your authenticator app.</p>
           <FormError message={error} />
-          <label className="field">
-            <span className="field-label">Verification code</span>
-            <input
+          <div className="field">
+            <span className="field-label" aria-hidden="true">Verification code</span>
+            {/* Picks: React Bits "Code Slots" — six boxes over one real one-time-code input. */}
+            <CodeSlots
               name="totpCode"
-              inputMode="numeric"
-              autoComplete="one-time-code"
+              label="Verification code"
               autoFocus
-              maxLength={12}
-              required
-              aria-invalid={codeBad ? 'true' : undefined}
+              status={codeBad ? 'error' : 'idle'}
               value={code}
-              onChange={(e) => {
+              onChange={(v) => {
                 // The mark comes off the field the moment it is being corrected. Leaving it on
                 // while somebody retypes marks the input they are fixing as the one that is wrong.
                 if (codeBad) setCodeBad(false);
-                setCode(e.target.value);
+                setCode(v);
               }}
-              placeholder="123456"
             />
-          </label>
+          </div>
           <button
             type="submit"
             className="btn btn-primary btn-block"
@@ -686,6 +692,7 @@ export function SignupPage() {
             value={password}
             invalid={Boolean(error) && passwordProblem(password, { email }) !== null}
             hint={`At least ${PASSWORD_MIN} characters. Use one you have not used on another site.`}
+            strength
             onChange={setPassword}
           />
           <button
@@ -929,6 +936,7 @@ export function ResetPasswordPage() {
           minLength={PASSWORD_MIN}
           value={password}
           hint={`At least ${PASSWORD_MIN} characters. Use one you have not used on another site.`}
+          strength
           onChange={setPassword}
         />
         {/* ONLY THE SECOND FIELD IS MARKED, because only the second field is the one to change. A

@@ -29,6 +29,8 @@ const WEB = join(HERE, '..');
 const REPO = join(WEB, '..', '..');
 const DASH = readFileSync(join(WEB, 'src', 'routes', 'dashboard.tsx'), 'utf8');
 const LAYOUT = readFileSync(join(WEB, 'src', 'components', 'layout.tsx'), 'utf8');
+// The rail's conversation rows are drawn by picks/chat/rail-chats.tsx, which layout.tsx mounts.
+const RAIL_CHATS = readFileSync(join(WEB, 'src', 'components', 'picks', 'chat', 'rail-chats.tsx'), 'utf8');
 const ROW = readFileSync(join(WEB, 'src', 'lib', 'supabase.ts'), 'utf8');
 const MIGRATION = readFileSync(join(REPO, 'infra', 'supabase', 'migrations', '0007_project_pinning.sql'), 'utf8');
 /** Statements only — a negative assertion must never run against the prose that explains it. */
@@ -134,5 +136,8 @@ test('a pinned project says it is pinned, on the card and in the rail', () => {
   // did not put it, and the only way to find out why is to open the menu.
   assert.match(DASH, /p\.pinned_at && /);
   assert.match(DASH, /aria-label="Pinned"/);
-  assert.match(LAYOUT, /p\.pinned_at && /);
+  // The rail: layout.tsx mounts the chat rows, and each pinned row carries the same visible mark.
+  assert.match(LAYOUT, /<RailChats\b/);
+  assert.match(RAIL_CHATS, /Boolean\(p\.pinned_at\)/);
+  assert.match(RAIL_CHATS, /pinned && [\s\S]{0,80}aria-label="Pinned"/);
 });

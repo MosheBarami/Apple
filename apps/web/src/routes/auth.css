@@ -288,10 +288,7 @@
    disappears beneath a button is how people mistype a password twice. 28px is the bare-text-button
    height, which is what this is. */
 .auth-page .field__wrap { position:relative; display:flex; align-items:center; min-width:0; }
-.auth-page .auth-form-col .field__wrap input { padding-inline-end:74px; }
-.auth-page .field__reveal { position:absolute; inset-inline-end:6px; min-height:var(--h-xs); padding:0 8.8px; border:1px solid transparent; border-radius:var(--r-md); background:transparent; font-size:12px; line-height:1.2; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); transition:color var(--t-color) var(--ease-hard),border-color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
-.auth-page .field__reveal:hover:not(:disabled):not([aria-disabled='true']) { border-color:var(--control-line); background:var(--control-fill); color:var(--ink); }
-.auth-page .field__reveal:active:not(:disabled) { background:color-mix(in srgb,var(--ink) 12%,transparent); }
+.auth-page .auth-form-col .field__wrap input { padding-inline-end:48px; }
 
 /* The six-digit code is a number being copied off another screen, so it is set in the mono face and
    spaced out to be checked digit by digit. Centred because there is nothing else on the line. */
@@ -439,8 +436,13 @@
   /* The field selectors carry `.auth-form-col` because the rules that DECLARE those transitions do
      — an opt-out written one step shorter than the rule it switches off is an opt-out that loses
      the cascade and reads, in source, as though motion were handled. */
-  .auth-page .auth-form-col .field input,.auth-page .auth-form-col .field textarea,.auth-page .field__reveal,.auth-page .btn-block,.auth-page .auth-switch a,.auth-page .field-hint a,.auth-page .auth-theme-toggle .btn { transition:none; }
+  .auth-page .auth-form-col .field input,.auth-page .auth-form-col .field textarea,.auth-page .btn-block,.auth-page .auth-switch a,.auth-page .field-hint a,.auth-page .auth-theme-toggle .btn { transition:none; }
   /* The pressed primary still has to sit down when it is pressed — that is a position, not a
      motion — so only the travel to it is removed. */
   .auth-page .auth-card .btn-block.btn-primary:active:not(:disabled) { transform:none; }
 }
+
+/* Picks: React Bits "Orb" sits behind the Apple mark — a soft ink glow, no hue. */
+.auth-page .auth-hero-orb { position:relative; display:inline-grid; place-items:center; width:28px; height:28px; }
+.auth-page .auth-hero-orb > .pk-orb { position:absolute; inset:-26px; width:auto; height:auto; z-index:0; opacity:.7; }
+.auth-page .auth-hero-orb > :not(.pk-orb) { position:relative; z-index:1; }

@@ -20,13 +20,20 @@ import {
 import { cn } from "./lib/utils";
 import type { DynamicToolUIPart, ToolUIPart } from "./ai-types";
 import {
+  BookIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   CircleIcon,
   ClockIcon,
+  FileTextIcon,
+  ImageIcon,
+  Monitor,
+  SearchIcon,
   WrenchIcon,
   XCircleIcon,
+  type LucideIcon,
 } from "./icons";
+import { kindForTool, type ActivityKind } from "../ws/tool-vocabulary";
 import type { ComponentProps, ReactNode } from "react";
 import { isValidElement } from "react";
 
@@ -76,12 +83,29 @@ const statusIcons: Record<ToolPart["state"], ReactNode> = {
   "output-error": <XCircleIcon className="size-4 text-red-600 ai-tool__status-icon" />,
 };
 
+// LOCAL (React Bits "Call Chip", MIT + Commons Clause, re-implemented in tool.css — no code
+// copied): the state icon is keyed by the state, so each change mounts it fresh and it pops in;
+// a failure gives the badge one short shake.
 export const getStatusBadge = (status: ToolPart["state"]) => (
   <Badge className={`gap-1.5 rounded-full text-xs ai-tool__badge ai-tool__badge--${status}`} variant="secondary">
-    {statusIcons[status]}
+    <span key={status} className="ai-tool__state">{statusIcons[status]}</span>
     {statusLabels[status]}
   </Badge>
 );
+
+// LOCAL (Call Chip): the step's icon says what kind of work it is — a search, a script read, a
+// render, a playtest — from the product's one tool table (ws/tool-vocabulary.ts), rather than the
+// same wrench on every row. A tool this build does not know keeps upstream's wrench.
+const KIND_ICON: Partial<Record<ActivityKind, LucideIcon>> = {
+  searching_knowledge: BookIcon,
+  searching_assets: SearchIcon,
+  inspecting: SearchIcon,
+  reading_scripts: FileTextIcon,
+  writing_luau: FileTextIcon,
+  generating: ImageIcon,
+  rendering: ImageIcon,
+  playtesting: Monitor,
+};
 
 export const ToolHeader = ({
   className,
@@ -93,6 +117,7 @@ export const ToolHeader = ({
 }: ToolHeaderProps) => {
   const derivedName =
     type === "dynamic-tool" ? toolName : type.split("-").slice(1).join("-");
+  const KindIcon = KIND_ICON[kindForTool(derivedName)] ?? WrenchIcon;
 
   return (
     <CollapsibleTrigger
@@ -103,8 +128,9 @@ export const ToolHeader = ({
       {...props}
     >
       <div className="flex items-center gap-2 ai-tool__heading">
-        <WrenchIcon className="size-4 text-muted-foreground ai-tool__icon" />
-        <span className="font-medium text-sm ai-tool__title">{title ?? derivedName}</span>
+        <KindIcon className="size-4 text-muted-foreground ai-tool__icon" />
+        {/* A running step's title carries a shimmer (Call Chip's "in flight" wash). */}
+        <span className={cn("font-medium text-sm ai-tool__title", state === "input-available" && "is-running")}>{title ?? derivedName}</span>
         {getStatusBadge(state)}
       </div>
       <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180 ai-tool__chevron" />

@@ -14,6 +14,9 @@
 //      them separate is deliberate — a wording fix should never silently revert a working door.
 import { useState, type FormEvent } from 'react';
 import { Modal } from '../modal';
+// The warning and the two answers are one AI Elements Confirmation block (picks/chat/confirmation),
+// so the sentence that says what will be lost sits directly over the button that loses it.
+import { Confirmation, ConfirmationAction, ConfirmationActions, ConfirmationBody } from '../picks/chat/confirmation';
 
 export function EditMessageDialog({
   current,
@@ -55,30 +58,36 @@ export function EditMessageDialog({
           />
         </label>
 
-        <div className="edit-warn">
-          {discards > 0 ? (
-            <p>
-              This discards <strong>{discards}</strong> later {discards === 1 ? 'message' : 'messages'} and
-              runs again from here. That cannot be undone.
+        <Confirmation
+          className="edit-warn"
+          tone={discards > 0 ? 'warn' : 'plain'}
+          title={
+            discards > 0 ? (
+              <p>
+                This discards <strong>{discards}</strong> later {discards === 1 ? 'message' : 'messages'} and
+                runs again from here. That cannot be undone.
+              </p>
+            ) : (
+              <p>This runs again from here.</p>
+            )
+          }
+        >
+          <ConfirmationBody>
+            {/* The part people assume and would otherwise only discover afterwards. */}
+            <p className="edit-warn__quiet">
+              Anything Apple already built in your place stays as it is — this rewinds the
+              conversation, not the work. Use a checkpoint to revert what was built.
             </p>
-          ) : (
-            <p>This runs again from here.</p>
-          )}
-          {/* The part people assume and would otherwise only discover afterwards. */}
-          <p className="edit-warn__quiet">
-            Anything Apple already built in your place stays as it is — this rewinds the
-            conversation, not the work. Use a checkpoint to revert what was built.
-          </p>
-        </div>
-
-        <div className="modal-actions">
-          <button type="button" className="btn" onClick={onCancel} disabled={busy}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-primary" disabled={!changed || busy}>
-            {busy ? 'Sending…' : 'Discard and run again'}
-          </button>
-        </div>
+          </ConfirmationBody>
+          <ConfirmationActions>
+            <ConfirmationAction onClick={onCancel} disabled={busy}>
+              Cancel
+            </ConfirmationAction>
+            <ConfirmationAction type="submit" variant="primary" disabled={!changed || busy}>
+              {busy ? 'Sending…' : 'Discard and run again'}
+            </ConfirmationAction>
+          </ConfirmationActions>
+        </Confirmation>
       </form>
     </Modal>
   );

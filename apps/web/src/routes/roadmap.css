@@ -167,3 +167,13 @@
   .rm-page .rm-meter__fill { animation:none; transition:none; }
   .rm-page .rm-crumbs a { transition:none; }
 }
+
+/* LIST OR MAP. A two-way switch above the plan; the pressed one is the one on screen. */
+.rm-view { display:inline-flex; gap:2px; margin-top:20px; padding:3px; border:1px solid var(--line); border-radius:var(--r-pill); background:var(--paper-2); }
+button.rm-view__opt {
+  min-height:0; height:28px; padding:0 14px; margin:0; border:0; border-radius:var(--r-pill); background:transparent;
+  color:var(--muted); font:inherit; font-size:12.5px; cursor:pointer;
+}
+button.rm-view__opt:hover:not(:disabled):not([aria-disabled='true']) { background:transparent; color:var(--ink); border-color:transparent; }
+button.rm-view__opt[aria-pressed='true'] { background:var(--surface); color:var(--ink); box-shadow:0 0 0 1px var(--line); }
+button.rm-view__opt:focus-visible { outline:2px solid var(--accent); outline-offset:1px; box-shadow:none; animation:none; }

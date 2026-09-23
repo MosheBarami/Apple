@@ -1,0 +1,14 @@
+/* The odometer (sliding-number.tsx). One em tall, clipped; the strip rolls on a springy curve. */
+.pk-num { display:inline-flex; font-variant-numeric:tabular-nums; }
+.pk-num__roll { display:inline-flex; }
+.pk-num__col { display:inline-block; height:1lh; overflow:hidden; }
+.pk-num__strip {
+  display:flex; flex-direction:column;
+  transition:transform 520ms cubic-bezier(.3,1.35,.5,1);
+}
+.pk-num__strip > span { display:block; height:1lh; text-align:center; }
+.pk-num__sep { display:inline-block; }
+
+@media (prefers-reduced-motion:reduce) {
+  .pk-num__strip { transition:none; }
+}

@@ -1,0 +1,33 @@
+/* The Credits ring (credits-ring.tsx): a quiet round tool beside the paperclip. The ring is the
+   allowance left; it is drawn in ink, turns to the warning hue when little is left and to the bad
+   hue at nothing — never green, which the product keeps for status dots. */
+.gx-composer .pk-credits {
+  display:inline-flex; flex:none; align-items:center; gap:5px; height:var(--h-sm); min-height:0; padding:0 9px 0 7px;
+  border:1px solid transparent; border-radius:var(--r-pill); background:transparent; box-shadow:none;
+  color:var(--muted); font-size:12px; line-height:1; cursor:pointer;
+  transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out);
+}
+.gx-composer .pk-credits:hover,.gx-composer .pk-credits[aria-expanded='true'] { background:var(--control-fill); color:var(--ink); }
+.gx-composer .pk-credits:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.pk-credits__ring { width:16px; height:16px; flex:none; }
+.pk-credits__track { fill:none; stroke:var(--control-line); stroke-width:2; }
+.pk-credits__fill {
+  fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round;
+  transition:stroke-dashoffset 600ms var(--ease-out);
+}
+.gx-composer .pk-credits.is-warn { color:var(--warn); }
+.gx-composer .pk-credits.is-bad { color:var(--bad); }
+.pk-credits__num { font-variant-numeric:tabular-nums; }
+
+.pk-credits__card { display:grid; gap:4px; }
+.pk-credits__card p { margin:0; }
+.pk-credits__head { color:var(--ink); font-size:13px; line-height:18px; }
+.pk-credits__detail,.pk-credits__line { color:var(--muted); font-size:12px; line-height:17px; }
+
+@media (max-width:520px) {
+  .gx-composer .pk-credits { padding-inline:7px; }
+  .gx-composer .pk-credits .pk-credits__num { display:none; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .gx-composer .pk-credits,.pk-credits__fill { transition:none; }
+}

@@ -17,6 +17,16 @@
 //   Details              every validated document the reply no longer draws (lib/reply-docs.ts),
 //                        closed, its renderer loaded only once it is opened.
 //
+// THE OWNER'S PICKS, 2026-09-23 (components/picks/thinking/):
+//   Lattice Loader       the header's glyph: a light running round a lattice while the run is live,
+//                        settling into a tick, a cross or two bars — the state at a glance.
+//   Thought Line         the header's line settles in (fade and un-blur) when it changes from the
+//                        live action to the measured time; the disclosure opens and closes on its
+//                        curve; a running phase step pulses.
+//   To-do list           a phase step that completes draws its tick in (StepMark, via ChainOfThought).
+//   Skeleton Shimmer     what Details shows while its renderer loads, and the blur-in once it has.
+//   Shiny / Shimmering   the live line's sweep (ai-elements/shimmer.tsx).
+//
 // What the surface may show, and what it may not, is decided in execution-model.ts, where a test can
 // reach it. This file only lays those decisions out, and holds no state of its own: every
 // disclosure here is owned by the AI Elements component that draws it.
@@ -25,7 +35,7 @@ import type { PlaytestRun, RunIntent, StudioFrame } from '@golem/shared';
 import type { UIDocument } from '../../lib/generative-ui/schema';
 import type { AgentStatus } from '../../lib/use-project-socket';
 import { deniedNote } from '../../lib/tool-permissions';
-import type { ActivityRun } from './activity-model';
+import type { ActivityRun, TerminalKind } from './activity-model';
 import { PlaytestCard } from './playtest-card';
 import { Reasoning, ReasoningContent, ReasoningTrigger, useReasoning } from '../ai-elements/reasoning';
 import { Shimmer } from '../ai-elements/shimmer';
@@ -37,7 +47,9 @@ import {
 } from '../ai-elements/chain-of-thought';
 import { Tool, ToolContent, ToolHeader } from '../ai-elements/tool';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ai-elements/ui/collapsible';
-import { CheckCircleIcon, ChevronDownIcon } from '../ai-elements/icons';
+import { ChevronDownIcon } from '../ai-elements/icons';
+import { LatticeGlyph, type LatticeStatus } from '../picks/thinking/lattice-glyph';
+import { Reveal, Skeleton } from '../picks/thinking/skeleton';
 import type { ToolUIPartState } from '../ai-elements/ai-types';
 import {
   executionView,
@@ -168,7 +180,6 @@ export function ExecutionSurface({
           {verified && (
             <ChainOfThoughtStep
               className="apple-step apple-step--verified"
-              icon={CheckCircleIcon}
               label="Checked it works"
               status="complete"
             />
@@ -187,8 +198,10 @@ export function ExecutionSurface({
           </CollapsibleTrigger>
           {/* Not force-mounted: closed, nothing is rendered and the renderer is not fetched. */}
           <CollapsibleContent className="apple-reasoning__more-body">
-            <Suspense fallback={<p className="apple-reasoning__note">Loading…</p>}>
-              {details.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
+            <Suspense fallback={<Skeleton lines={3} label="Loading details" />}>
+              <Reveal>
+                {details.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
+              </Reveal>
             </Suspense>
           </CollapsibleContent>
         </Collapsible>
@@ -207,21 +220,32 @@ function thinkingMessage(title: string, isStreaming: boolean, duration: number |
   if (isStreaming) {
     return (
       <>
-        <Shimmer as="span" className="apple-reasoning__summary" duration={1}>{title}</Shimmer>
+        <Shimmer as="span" className="apple-reasoning__summary apple-reasoning__settle" duration={1}>{title}</Shimmer>
         {time && <span className="apple-reasoning__time">{time}</span>}
       </>
     );
   }
-  return <p className="apple-reasoning__summary">{time ? `Thought for ${time}` : title}</p>;
+  return <p className="apple-reasoning__summary apple-reasoning__settle">{time ? `Thought for ${time}` : title}</p>;
 }
 
-function ReasoningHeader({ title, creditsSpent }: { title: string; creditsSpent?: number }) {
+/** The glyph for a settled run, by how it ended. `incomplete` changed nothing, so it is the dot. */
+const SETTLED_GLYPH: Record<TerminalKind, LatticeStatus> = {
+  done: 'done',
+  recovered: 'done',
+  failed: 'failed',
+  stopped: 'stopped',
+  quota: 'stopped',
+  incomplete: 'idle',
+};
+
+function ReasoningHeader({ title, creditsSpent, glyph }: { title: string; creditsSpent?: number; glyph: LatticeStatus }) {
   const { isOpen } = useReasoning();
   return (
     <div className="apple-reasoning__head">
       <ReasoningTrigger
         aria-label={`${title}. ${isOpen ? 'Hide reasoning details' : 'Show reasoning details'}`}
         className="apple-reasoning__trigger"
+        icon={<LatticeGlyph status={glyph} className="ai-reasoning__icon" />}
         getThinkingMessage={(isStreaming, duration) => thinkingMessage(title, isStreaming, duration)}
       />
       {creditsSpent !== undefined && creditsSpent > 0 && (
@@ -307,7 +331,11 @@ export function Thinking({
       isStreaming={isLive}
       duration={elapsedSeconds}
     >
-      <ReasoningHeader title={title} creditsSpent={status?.creditsSpent} />
+      <ReasoningHeader
+        title={title}
+        creditsSpent={status?.creditsSpent}
+        glyph={isLive ? 'working' : activity.terminal ? SETTLED_GLYPH[activity.terminal.kind] : 'idle'}
+      />
       <ReasoningContent className="apple-reasoning__details">
         <ExecutionSurface
           view={view}

@@ -1,0 +1,4 @@
+.ai-controls {
+  position:absolute; z-index:2; right:12px; top:12px; display:flex; gap:2px; padding:3px;
+  border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); box-shadow:var(--shadow-pop);
+}

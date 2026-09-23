@@ -1,0 +1,46 @@
+/* COPY — the merged Animate UI / Motion copy control and the Motion multi-state badge.
+ *
+ * `.pk-swap-in` is the entrance both originals share: the new icon arrives from scale 0 through a
+ * 4px blur. It is a class of its own because the code block's copy button (ai-elements/code-block)
+ * plays the same entrance on its tick. Tokens only; the copied state takes no colour, because a
+ * receipt for something the reader just did is not a status they have to act on.
+ */
+@keyframes pk-swap-in {
+  from { opacity:.4; transform:scale(0); filter:blur(4px); }
+  to { opacity:1; transform:none; filter:none; }
+}
+.pk-swap-in,.pk-copy__icon { animation:pk-swap-in .25s var(--ease-out) both; }
+
+/* THE "COPIED" TIP (Motion's copy button). It rises beside the control rather than above it: a code
+   block clips at its own edge, and a tip drawn outside it would be cut in half. */
+@keyframes pk-tip-rise {
+  0% { opacity:0; transform:translateY(4px) scale(.9); }
+  18%,78% { opacity:1; transform:none; }
+  100% { opacity:0; transform:translateY(-2px); }
+}
+.pk-copy-tip {
+  position:absolute; inset-inline-end:calc(100% + 6px); top:50%; translate:0 -50%;
+  padding:2px 6px; border-radius:var(--r-xs); background:var(--surface-3); color:var(--ink);
+  font:11px/16px var(--font-body, inherit); letter-spacing:0; white-space:nowrap; pointer-events:none;
+  animation:pk-tip-rise 1.6s var(--ease-out) both;
+}
+
+/* THE BADGE. A text control on the reply's toolbar: icon, word, and a width that follows the word.
+   `overflow:hidden` + `nowrap` so the width tween never wraps "Couldn't copy" onto two lines
+   mid-flight. */
+.pk-copy {
+  display:inline-flex; align-items:center; gap:6px; min-height:var(--h-xs); padding:0 8px;
+  overflow:hidden; white-space:nowrap; border:1px solid transparent; border-radius:var(--r-md);
+  background:transparent; color:var(--muted); font:inherit; font-size:12px; line-height:18px; letter-spacing:-.01em;
+  transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out);
+}
+.pk-copy:hover:not(:disabled) { background:var(--control-fill); border-color:var(--line); color:var(--ink); }
+.pk-copy:active:not(:disabled) { background:var(--surface-2); }
+.pk-copy[data-state='copied'] { color:var(--ink); }
+.pk-copy[data-state='failed'] { color:var(--bad); }
+.pk-copy__icon { flex:none; width:14px; height:14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-swap-in,.pk-copy__icon,.pk-copy-tip { animation:none; }
+  .pk-copy { transition:none; }
+}

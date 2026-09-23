@@ -783,3 +783,13 @@
   .settings-card .settings-switchrow { column-gap:16px; padding-block:11px; }
   .settings-card .settings-row--split .settings-row__text > p { font-size:12.5px; }
 }
+
+/* Picks: the rail's current row is drawn by the sliding glass pill (GlideIndicator, which also
+   clears the row's own fill); here it only takes the rail's corner radius. */
+.st-nav__list.pk-glide-host > .pk-glide { border-radius:var(--r-xs); }
+@media (max-width:1080px) {
+  .st-nav__list.pk-glide-host > .pk-glide { border-radius:var(--r-pill); }
+}
+
+/* Picks: Settings' own radio segments carry the springing ring-and-dot (RadioMark). */
+.settings-card .theme-toggle > .theme-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; }

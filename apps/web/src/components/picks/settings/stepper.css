@@ -1,0 +1,25 @@
+.pk-steps { display:flex; align-items:center; margin:0 0 12px; padding:0; list-style:none; }
+.pk-steps__item { display:flex; align-items:center; flex:1 1 auto; min-width:0; }
+.pk-steps__item:last-child { flex:0 0 auto; }
+.pk-steps__dot {
+  position:relative; display:grid; place-items:center; flex:none; width:22px; height:22px; border-radius:999px;
+  background:var(--surface-3); color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums;
+  transition:background-color .3s ease,color .3s ease;
+}
+.pk-steps__item.is-now .pk-steps__dot,.pk-steps__item.is-done .pk-steps__dot { background:var(--ink); color:var(--paper); }
+.pk-steps__core { width:8px; height:8px; border-radius:999px; background:var(--paper); animation:pk-steps-core .4s cubic-bezier(.34,1.56,.64,1) both; }
+.pk-steps__dot svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+.pk-steps__dot path { stroke-dasharray:1; stroke-dashoffset:1; animation:pk-steps-check .3s .1s ease-out forwards; }
+.pk-steps__sr { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.pk-steps__line { position:relative; flex:1 1 auto; height:2px; margin:0 6px; border-radius:2px; overflow:hidden; background:var(--surface-3); }
+.pk-steps__line-fill { position:absolute; inset:0; background:var(--ink); transform:scaleX(0); transform-origin:left; transition:transform .4s cubic-bezier(.23,1,.32,1); }
+:dir(rtl) .pk-steps__line-fill { transform-origin:right; }
+.pk-steps__item.is-done .pk-steps__line-fill { transform:scaleX(1); }
+@keyframes pk-steps-core { from { transform:scale(0); } to { transform:none; } }
+@keyframes pk-steps-check { to { stroke-dashoffset:0; } }
+@media (prefers-reduced-motion: reduce) {
+  .pk-steps__dot,.pk-steps__line-fill { transition:none; }
+  .pk-steps__core,.pk-steps__dot path { animation:none; stroke-dashoffset:0; }
+}
+.motion-reduced .pk-steps__dot,.motion-reduced .pk-steps__line-fill { transition:none; }
+.motion-reduced .pk-steps__core,.motion-reduced .pk-steps__dot path { animation:none; stroke-dashoffset:0; }

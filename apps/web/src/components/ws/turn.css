@@ -170,3 +170,33 @@
 /* THE PAGES A REPLY'S OWN SEARCHES RETURNED (lib/doc-sources.ts). Under the reply and above its
    results, as quiet as the footer: a list of places to read further, not part of the answer. */
 .gx-turn__sources { margin-block:12px 0; }
+
+/* THE REPLY WRAPPER draws nothing: it is only the node the word reveal (picks/chat/word-reveal)
+   reads, so the reply's own margins keep collapsing exactly as they did without it. */
+.gx-turn__reply { display:contents; }
+
+/* THE REPLY'S TOOLBAR (AI Elements MessageToolbar, merged with the Toolbar pick): Copy and Share on
+   the start side, More on the end. On a pointer device it rises into view while the turn is under
+   the pointer or holds focus — a node toolbar, not chrome on every reply — and on the newest reply
+   it is simply there. With no pointer to hover with, it is always drawn. */
+.gx-turn .gx-turn__tools { margin-top:8px; gap:8px; }
+.gx-turn__tools-main { display:flex; align-items:center; gap:4px; }
+.gx-turn__more {
+  display:inline-grid; place-items:center; flex:none; width:28px; height:28px; padding:0;
+  border:1px solid transparent; border-radius:var(--r-md); background:transparent; color:var(--muted);
+  transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out);
+}
+.gx-turn__more:hover:not(:disabled) { background:var(--control-fill); border-color:var(--line); color:var(--ink); }
+.gx-turn__more:active:not(:disabled) { background:var(--surface-2); }
+.gx-turn__more:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+@media (hover:hover) and (pointer:fine) {
+  .gx-turn .gx-turn__tools:not(.is-last) {
+    opacity:0; transform:translateY(-2px);
+    transition:opacity var(--t-fast) var(--ease-out),transform var(--t-fast) var(--ease-out);
+  }
+  .gx-turn--agent:hover .gx-turn__tools,
+  .gx-turn--agent:focus-within .gx-turn__tools { opacity:1; transform:none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gx-turn .gx-turn__tools:not(.is-last),.gx-turn__more { transition:none; transform:none; }
+}

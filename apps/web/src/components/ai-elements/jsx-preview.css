@@ -1,0 +1,9 @@
+.ai-jsx { min-width:0; }
+.ai-jsx__content { font-size:13.5px; line-height:1.6; color:var(--ink); overflow-wrap:anywhere; }
+.ai-jsx__content h1, .ai-jsx__content h2, .ai-jsx__content h3 { font-size:14.5px; margin:14px 0 6px; }
+.ai-jsx__content h1:first-child, .ai-jsx__content h2:first-child, .ai-jsx__content h3:first-child { margin-top:0; }
+.ai-jsx__content p { margin:0 0 8px; }
+.ai-jsx__content ul, .ai-jsx__content ol { margin:0 0 8px; padding-inline-start:20px; }
+.ai-jsx__content table { border-collapse:collapse; font-size:12px; }
+.ai-jsx__content th, .ai-jsx__content td { border:1px solid var(--line); padding:4px 8px; }
+.ai-jsx__error { margin:0; font-size:12px; color:var(--bad); }

@@ -1,0 +1,29 @@
+/* The ring a click leaves and the light that follows the pointer (press-fx.ts). Tokens only; the ring
+   is drawn in the button's own ink, so it reads on the filled Send and on a quiet chip alike. */
+[data-fx~='ripple'] { position:relative; overflow:hidden; isolation:isolate; }
+.pk-ripple {
+  position:absolute; z-index:0; width:20px; height:20px; border-radius:50%;
+  background:currentColor; opacity:0; pointer-events:none;
+}
+
+/* UI Layouts' spotlight (MIT): a soft disc of the accent under the pointer, only while pointed at or
+   focused from the keyboard. Behind the label, never over it. */
+[data-fx~='spotlight'] { position:relative; isolation:isolate; }
+[data-fx~='spotlight']::before {
+  content:''; position:absolute; inset:-1px; z-index:-1; border-radius:inherit; pointer-events:none; opacity:0;
+  background:radial-gradient(90px circle at var(--pk-spot-x,50%) var(--pk-spot-y,50%),
+    color-mix(in srgb,var(--accent) 42%,transparent), transparent 70%);
+  transition:opacity var(--t-base) var(--ease-out);
+}
+[data-fx~='spotlight']:hover:not(:disabled)::before,
+[data-fx~='spotlight']:focus-visible::before { opacity:1; }
+
+/* Motion's Hover lifts the icon as well as the button: two pixels, on the same beat. */
+[data-fx~='lift'] svg { transition:translate var(--t-fast) var(--ease-out); }
+[data-fx~='lift']:hover:not(:disabled) svg { translate:0 -2px; }
+
+@media (prefers-reduced-motion:reduce) {
+  [data-fx~='spotlight']::before,[data-fx~='lift'] svg { transition:none; }
+  [data-fx~='lift']:hover:not(:disabled) svg { translate:none; }
+  .pk-ripple { display:none; }
+}

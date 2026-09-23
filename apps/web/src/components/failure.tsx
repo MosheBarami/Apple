@@ -6,6 +6,7 @@
 // the order the questions arrive in.
 import { Link } from 'react-router-dom';
 import { explainFailure, type Explained } from '../lib/error-taxonomy';
+import { FoldedDetails } from './picks/thinking/folded-details';
 import './failure.css';
 
 export function Failure({
@@ -68,12 +69,13 @@ export function Failure({
         </p>
       )}
 
-      {/* The server's own words, available and not shouted. A screenshot of this is worth having. */}
+      {/* The server's own words, available and not shouted. A screenshot of this is worth having.
+          Folded behind the one word the whole app uses for technical text, "Details", and opened
+          with the Collapsible motion the owner picked (picks/thinking/folded-details.tsx). */}
       {e.detail && (
-        <details className="failure__detail">
-          <summary>Technical detail</summary>
+        <FoldedDetails className="failure__detail">
           <code>{e.detail}</code>
-        </details>
+        </FoldedDetails>
       )}
     </div>
   );

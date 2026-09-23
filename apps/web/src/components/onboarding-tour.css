@@ -9,3 +9,5 @@
 .tour-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; }
 .tour-actions button { min-height:40px; padding:8px 12px; font-size:13px; }
 .tour-actions .tour-skip { border-color:transparent; background:transparent; color:var(--ink); }
+.tour-card .tour-progress { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 10px; }
+.tour-card .tour-progress .tour-step { margin:0; }

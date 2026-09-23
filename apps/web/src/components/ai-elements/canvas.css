@@ -1,0 +1,12 @@
+/* AI ELEMENTS CANVAS, drawn with this app's tokens: a dotted ground you can drag. */
+.ai-canvas { position:relative; min-width:0; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2); }
+.ai-canvas__port {
+  position:relative; height:min(58vh, 480px); min-height:340px; overflow:hidden; border-radius:inherit; cursor:grab; touch-action:none;
+  background-image:radial-gradient(circle, var(--line-strong) 1px, transparent 1.2px); background-size:20px 20px;
+}
+.ai-canvas__port:active { cursor:grabbing; }
+.ai-canvas__port:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.ai-canvas__layer { position:absolute; top:0; left:0; transform-origin:0 0; will-change:transform; }
+.ai-canvas__layer.is-gliding { transition:transform var(--t-base) var(--ease-out); }
+.ai-canvas__edges { position:absolute; inset:0; overflow:visible; pointer-events:none; }
+@media (prefers-reduced-motion: reduce) { .ai-canvas__layer.is-gliding { transition:none; } }

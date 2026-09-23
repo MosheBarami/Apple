@@ -122,6 +122,17 @@
   overflow: auto;
 }
 
+/* The ASCII apple (picks/thinking/ascii-mark.tsx) sits above the title, at the card's start edge
+   like everything else on it. The canvas carries its own air, so the card's gap is enough. */
+.crash-mark { margin-block-end:-2px; }
+
+/* "Details": the fold that holds the message. Quiet, one step under the prose, and full width so
+   the <pre> inside it keeps the card's measure. */
+.crash-fold { width:100%; font-size:12px; color:var(--faint); }
+.crash-fold > summary { padding:3px 0; color:var(--faint); transition:color var(--t-fast) var(--ease-out); }
+.crash-fold > summary:hover { color:var(--muted); }
+.crash-fold .crash-detail { margin-top:6px; }
+
 /* --------------------------------------------------------------------- the way out --- */
 
 /* WRAPS RATHER THAN SHRINKS, so at 375px "Reload the app" drops to its own line instead of
@@ -154,6 +165,10 @@
 }
 
 /* ------------------------------------------------------------------------- at 375px --- */
+
+@media (prefers-reduced-motion: reduce) {
+  .crash-fold > summary { transition: none; }
+}
 
 @media (max-width: 600px) {
   .crash-screen,

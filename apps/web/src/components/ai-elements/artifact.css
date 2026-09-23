@@ -1,0 +1,20 @@
+/* AI ELEMENTS ARTIFACT, drawn with this app's tokens. A card with a hairline, a header row of
+   title + quiet actions, and the content below. No shadow, no glow: it sits in a drawer. */
+.ai-artifact { min-width:0; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface); overflow:hidden; }
+.ai-artifact__header { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:10px 12px; border-bottom:1px solid var(--line); background:var(--paper-2); }
+.ai-artifact__header > :first-child { min-width:0; }
+.ai-artifact__title { margin:0; font-size:13px; font-weight:600; color:var(--ink); overflow-wrap:anywhere; }
+.ai-artifact__description { margin:2px 0 0; font-size:12px; color:var(--muted); }
+.ai-artifact__actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; flex:none; }
+.ai-artifact__action,
+.ai-artifact__close {
+  display:inline-flex; align-items:center; gap:6px; height:var(--h-xs); min-height:0; padding:0 8px; border:1px solid transparent;
+  border-radius:var(--r-sm); background:transparent; color:var(--muted); font:inherit; font-size:12px; cursor:pointer;
+  transition:color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+}
+.ai-artifact__action--icon, .ai-artifact__close { width:var(--h-xs); padding:0; justify-content:center; }
+button.ai-artifact__action:hover:not(:disabled):not([aria-disabled='true']), button.ai-artifact__close:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); }
+.ai-artifact__action:disabled { opacity:.5; cursor:default; }
+.ai-artifact__action:focus-visible, .ai-artifact__close:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.ai-artifact__content { min-width:0; padding:12px; }
+@media (prefers-reduced-motion: reduce) { .ai-artifact__action, .ai-artifact__close { transition:none; } }

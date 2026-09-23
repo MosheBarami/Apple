@@ -1,0 +1,42 @@
+/* The notification bell swings when something new arrives (picks: React Bits "Bell Toggle" —
+   MIT + Commons Clause, re-implemented from its behaviour, not copied). The glyph rocks about a pivot
+   near its top, two small sound-waves open either side, and the badge pops in with each new count.
+   Ink only; the swing is the signal, not a colour. */
+.pk-bell { position:relative; display:inline-grid; place-items:center; width:16px; height:16px; }
+.pk-bell__glyph { display:inline-grid; place-items:center; transform-origin:50% 16%; }
+.pk-bell__wave {
+  position:absolute; inset-block-start:-3px; width:10px; height:10px; fill:none; stroke:currentColor;
+  stroke-width:1.6; stroke-linecap:round; opacity:0; pointer-events:none;
+}
+.pk-bell__wave--l { inset-inline-end:calc(100% - 1px); transform-origin:100% 100%; }
+.pk-bell__wave--r { inset-inline-start:calc(100% - 1px); transform-origin:0 100%; }
+
+.pk-bell.is-ringing .pk-bell__glyph { animation:pk-bell-swing .9s cubic-bezier(.36,.07,.19,.97) both; }
+.pk-bell.is-ringing .pk-bell__wave { animation:pk-bell-wave .7s .08s ease-out both; }
+.pk-bell__badge { animation:pk-bell-badge .32s cubic-bezier(.34,1.56,.64,1) both; }
+
+@keyframes pk-bell-swing {
+  0% { transform:rotate(0); }
+  15% { transform:rotate(16deg); }
+  30% { transform:rotate(-14deg); }
+  45% { transform:rotate(10deg); }
+  60% { transform:rotate(-6deg); }
+  75% { transform:rotate(3deg); }
+  100% { transform:rotate(0); }
+}
+@keyframes pk-bell-wave {
+  0% { opacity:0; transform:scale(.4); }
+  35% { opacity:.8; }
+  100% { opacity:0; transform:scale(1.15); }
+}
+@keyframes pk-bell-badge {
+  from { opacity:0; transform:translateY(4px) scale(.6); }
+  to { opacity:1; transform:none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-bell.is-ringing .pk-bell__glyph,.pk-bell.is-ringing .pk-bell__wave,.pk-bell__badge { animation:none; }
+}
+.motion-reduced .pk-bell.is-ringing .pk-bell__glyph,
+.motion-reduced .pk-bell.is-ringing .pk-bell__wave,
+.motion-reduced .pk-bell__badge { animation:none; }

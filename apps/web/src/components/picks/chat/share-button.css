@@ -1,0 +1,27 @@
+/* SHARE (Animate UI Share Button, re-implemented). The word and the ways share one box: at rest the
+   word shows; on hover or focus-within the word exits upward and the ways rise in with a stagger.
+   Under touch (no hover) the ways are simply shown — a reveal that can never happen is a control
+   that is gone. */
+.pk-share { position:relative; display:inline-grid; align-items:center; min-height:var(--h-xs); padding:0 4px; border-radius:var(--r-md); color:var(--muted); font-size:12px; line-height:18px; }
+.pk-share > * { grid-area:1/1; }
+.pk-share__word { padding:0 4px; transition:transform .22s var(--ease-out),opacity .18s var(--ease-out); }
+.pk-share__ways { display:inline-flex; gap:2px; }
+.pk-share .pk-share__way {
+  display:grid; place-items:center; width:var(--h-xs); height:var(--h-xs); min-height:0; padding:0; border:0;
+  border-radius:var(--r-md); background:transparent; color:var(--muted);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .2s var(--ease-out),color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out);
+}
+.pk-share .pk-share__way:hover:not(:disabled) { background:var(--control-fill); color:var(--ink); transform:translateY(-2px); }
+@media (hover:hover) and (pointer:fine) {
+  .pk-share__way { opacity:0; transform:translateY(12px); pointer-events:none; }
+  .pk-share__way:nth-child(2) { transition-delay:.04s; }
+  .pk-share__way:nth-child(3) { transition-delay:.08s; }
+  .pk-share:hover .pk-share__word,.pk-share:focus-within .pk-share__word { opacity:0; transform:translateY(-14px); }
+  .pk-share:hover .pk-share__way,.pk-share:focus-within .pk-share__way { opacity:1; transform:none; pointer-events:auto; }
+  /* Keyboard: the buttons are focusable while hidden, and focusing one opens the group. */
+  .pk-share__way:focus-visible { opacity:1; transform:none; }
+}
+@media (hover:none) { .pk-share__word { display:none; } }
+@media (prefers-reduced-motion: reduce) {
+  .pk-share__word,.pk-share .pk-share__way { transition:none; }
+}

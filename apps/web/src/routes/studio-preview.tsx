@@ -40,6 +40,7 @@ const SCENARIOS = [
   { id: 'history', label: 'Execution history' },
   { id: 'playtest', label: 'Playtest, fresh frame' },
   { id: 'playtest-stale', label: 'Playtest, stale frame' },
+  { id: 'playtest-done', label: 'Playtest, finished + results' },
   { id: 'markdown', label: 'Long markdown' },
   { id: 'diff', label: 'Generated diff' },
   { id: 'credits', label: 'Sources in Credits' },
@@ -263,6 +264,31 @@ function usePlaytestFixture(kind: 'fresh' | 'stale', startedAt: number) {
   return { run, frames: [frame] };
 }
 
+/**
+ * A playtest that has ENDED: five stills 1.5s apart, one lost, one error in Output — so the card's
+ * picture stepper has something to step through and its "Playtest results" has a failed check.
+ */
+function useFinishedPlaytestFixture(endedAt: number) {
+  const frames = useMemo(
+    () => [1, 2, 3, 4, 5].map((seq) => specimenFrame('specimen-done', seq, endedAt - (5 - seq) * 1_500)),
+    [endedAt],
+  );
+  const run: PlaytestRun = {
+    id: 'specimen-done',
+    phase: 'finished',
+    startedAt: endedAt - 8_000,
+    endedAt,
+    requestedSeconds: 8,
+    action: 'Finished',
+    consoleErrors: 1,
+    consoleWarnings: 0,
+    framesDelivered: 5,
+    framesDropped: 1,
+    lastFrameAt: endedAt,
+  };
+  return { run, frames };
+}
+
 /* ------------------------------------------------------------ the screen --- */
 
 interface ScreenProps {
@@ -354,6 +380,7 @@ function Scenario({ id }: { id: ScenarioId }) {
   const t0 = useRef(Date.now()).current;
   const fresh = usePlaytestFixture('fresh', t0 - 4_200);
   const stale = usePlaytestFixture('stale', t0 - 16_000);
+  const done = useFinishedPlaytestFixture(t0 - 30_000);
   const queryClient = useQueryClient();
   const [creditsOpen, setCreditsOpen] = useState(true);
   const [creditsSeeded, setCreditsSeeded] = useState(false);
@@ -375,7 +402,7 @@ function Scenario({ id }: { id: ScenarioId }) {
   // A settled Reasoning starts closed, so the history state opens it the way a person would: by
   // pressing the trigger, then the "earlier steps" header.
   useEffect(() => {
-    if (id !== 'history') return;
+    if (id !== 'history' && id !== 'playtest-done') return;
     const timer = window.setTimeout(() => {
       document.querySelector<HTMLButtonElement>('.apple-reasoning__trigger[aria-expanded="false"]')?.click();
       window.setTimeout(() => {
@@ -439,6 +466,12 @@ function Scenario({ id }: { id: ScenarioId }) {
         playtest={pt}
         items={[ask, { id: 'a1', role: 'assistant', mode: 'agent', content: '', tools, streaming: true, createdAt: t0 - 20_500 }]}
       />;
+    }
+
+    case 'playtest-done': {
+      const tools = settledTools(t0 - 60_000).slice(0, 5);
+      tools.push(tool('t6', 'run_and_check', 'Playtested the portal', done.run.startedAt, { ms: 8_000 }));
+      return <Screen playtest={done} items={[ask, settled({ tools })]} />;
     }
 
     case 'markdown': {

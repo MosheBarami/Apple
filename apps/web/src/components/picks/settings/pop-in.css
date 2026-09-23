@@ -1,0 +1,26 @@
+/* A card that arrives like a reward popping up.
+ *
+ * Pick: Motion "Pokopia: Modal" (Motion+ licence — re-implemented in CSS, nothing copied): the card
+ * scales up from small with a slight tilt, overshoots and settles; its icon drops in on a bounce and
+ * the lines inside follow on a short stagger. Applied to the onboarding tour card and to the
+ * "Studio connected" moment in the pairing dialog — the two places the product says "well done".
+ */
+.pk-pop { animation:pk-pop-card .55s cubic-bezier(.34,1.56,.64,1) both; transform-origin:50% 60%; }
+.pk-pop > * { animation:pk-pop-line .34s cubic-bezier(.23,1,.32,1) both; }
+.pk-pop > :nth-child(1) { animation-delay:.2s; }
+.pk-pop > :nth-child(2) { animation-delay:.26s; }
+.pk-pop > :nth-child(3) { animation-delay:.32s; }
+.pk-pop > :nth-child(4) { animation-delay:.38s; }
+.pk-pop > :nth-child(n+5) { animation-delay:.44s; }
+.pk-pop .pk-pop__icon { animation:pk-pop-icon .7s .15s cubic-bezier(.34,1.8,.5,1) both; }
+@keyframes pk-pop-card {
+  0% { opacity:0; transform:scale(.3) rotate(-6deg); }
+  60% { opacity:1; transform:scale(1.06) rotate(2deg); }
+  100% { opacity:1; transform:none; }
+}
+@keyframes pk-pop-line { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+@keyframes pk-pop-icon { from { opacity:0; transform:translateY(-30px) rotate(-30deg); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) {
+  .pk-pop,.pk-pop > *,.pk-pop .pk-pop__icon { animation:none; }
+}
+.motion-reduced .pk-pop,.motion-reduced .pk-pop > *,.motion-reduced .pk-pop .pk-pop__icon { animation:none; }

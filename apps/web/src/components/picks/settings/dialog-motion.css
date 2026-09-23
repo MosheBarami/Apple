@@ -1,0 +1,15 @@
+/* The shared dialog's entrance and exit (picks: Motion "Modal dialog", Animate UI "Alert Dialog").
+   modal.tsx plays both through the Web Animations API when motion is allowed and marks the panel
+   `pk-dialog--sprung`, so the CSS rise in modal.css steps aside rather than playing underneath the
+   spring. Without script-driven motion (reduced motion, no WAAPI) the CSS rise is left as it was. */
+.modal-panel.modal-panel.pk-dialog--sprung { animation:none; will-change:transform,opacity; }
+
+/* An alert tilts toward the reader, so the pivot is its top edge. */
+.modal-panel.modal-panel.pk-dialog--alert { transform-origin:50% 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-panel.modal-panel.pk-dialog--sprung { will-change:auto; }
+}
+
+/* The visible cue beside a hold-to-confirm button (confirm-dialog.tsx). */
+.modal-actions .modal-hold-hint { margin-inline-end:auto; align-self:center; font-size:12px; color:var(--muted); }

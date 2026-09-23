@@ -55,6 +55,20 @@ import {
   type LinkableRole,
 } from '../../lib/share-links';
 import {
+  EnvironmentVariable,
+  EnvironmentVariableActions,
+  EnvironmentVariableCopyButton,
+  EnvironmentVariableGroup,
+  EnvironmentVariableName,
+  EnvironmentVariableNote,
+  EnvironmentVariableRequired,
+  EnvironmentVariables,
+  EnvironmentVariablesContent,
+  EnvironmentVariablesHeader,
+  EnvironmentVariablesTitle,
+  EnvironmentVariableValue,
+} from '../ai-elements/environment-variables';
+import {
   GRANTABLE_ROLES,
   ROLE_BLURBS,
   ROLE_LABELS,
@@ -587,37 +601,43 @@ function ShareLinks({ projectId, access }: { projectId: string; access: AccessSt
           {links.data.links.length === 0 ? (
             <p className="cs__note">No links have been made for this project.</p>
           ) : (
-            <ul className="mb__list">
-              {links.data.links.map((l: ShareLinkRow) => (
-                <li key={l.token} className={`mb__row${isLiveLink(l.state) ? '' : ' is-inactive'}`}>
-                  <div className="mb__who">
-                    <span className="mb__handle mono">{tokenPreview(l.token)}</span>
-                    <span className="mb__sub">
-                      {ROLE_LABELS[l.role as keyof typeof ROLE_LABELS] ?? l.role}
-                      {l.scope === 'project' ? '' : ` · ${l.scope} only`}
-                      {l.expiresAt ? ` · expires ${relativeTime(l.expiresAt)}` : ' · no expiry'}
-                    </span>
-                    {/* The state comes from the server, computed through the same function the
-                        redeem route uses, so this line can never call a link live that the door
-                        will refuse. A state this build does not know prints as itself. */}
-                    <span className="mb__status">{describeLinkState(l.state)}</span>
-                  </div>
-                  <div className="mb__actions">
-                    <button type="button" className="btn btn-quiet" onClick={() => void copy(l.token)}>
-                      Copy link
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-quiet mb__remove"
-                      disabled={!isLiveLink(l.state) || revoke.isPending}
-                      onClick={() => revoke.mutate(l.token)}
-                    >
-                      Revoke
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <EnvironmentVariables>
+              <EnvironmentVariablesHeader>
+                <EnvironmentVariablesTitle count={links.data.links.length}>Links you made</EnvironmentVariablesTitle>
+              </EnvironmentVariablesHeader>
+              <EnvironmentVariablesContent>
+                {links.data.links.map((l: ShareLinkRow) => (
+                  <EnvironmentVariable key={l.token} live={isLiveLink(l.state)}>
+                    <EnvironmentVariableGroup>
+                      <EnvironmentVariableName>
+                        {ROLE_LABELS[l.role as keyof typeof ROLE_LABELS] ?? l.role}
+                        {/* The state comes from the server, computed through the same function the
+                            redeem route uses, so this line can never call a link live that the door
+                            will refuse. A state this build does not know prints as itself. */}
+                        <EnvironmentVariableRequired>{describeLinkState(l.state)}</EnvironmentVariableRequired>
+                      </EnvironmentVariableName>
+                      {/* Only the preview reaches the row; the token itself never goes on the page. */}
+                      <EnvironmentVariableValue preview={tokenPreview(l.token)} />
+                      <EnvironmentVariableNote>
+                        {l.scope === 'project' ? 'Whole project' : `${l.scope} only`}
+                        {l.expiresAt ? ` · expires ${relativeTime(l.expiresAt)}` : ' · no expiry'}
+                      </EnvironmentVariableNote>
+                    </EnvironmentVariableGroup>
+                    <EnvironmentVariableActions>
+                      <EnvironmentVariableCopyButton onCopy={() => void copy(l.token)}>Copy link</EnvironmentVariableCopyButton>
+                      <button
+                        type="button"
+                        className="btn btn-quiet mb__remove"
+                        disabled={!isLiveLink(l.state) || revoke.isPending}
+                        onClick={() => revoke.mutate(l.token)}
+                      >
+                        Revoke
+                      </button>
+                    </EnvironmentVariableActions>
+                  </EnvironmentVariable>
+                ))}
+              </EnvironmentVariablesContent>
+            </EnvironmentVariables>
           )}
         </>
       )}

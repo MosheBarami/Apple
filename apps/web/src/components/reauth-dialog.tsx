@@ -13,6 +13,7 @@ import { Modal } from './modal';
 import { supabase } from '../lib/supabase';
 import { authErrorMessage, type SensitiveAction } from '../lib/auth-flows';
 import { useAuth } from '../lib/auth';
+import { PasswordInput } from './picks/settings/password-input';
 
 const WHY: Readonly<Record<SensitiveAction, string>> = {
   'change-email': 'Changing the address on an account is how an account gets taken over, so this one asks first.',
@@ -77,15 +78,16 @@ export function ReauthDialog({
         <input type="text" name="username" autoComplete="username" value={email} readOnly hidden />
         <label className="field">
           <span className="field-label">Your password</span>
-          <input
-            type="password"
+          {/* Picks: UI Layouts "Show/Hide Password" — the eye lets you check what you typed. */}
+          <PasswordInput
+            label="password"
             name="currentPassword"
             id="reauth-password"
             autoComplete="current-password"
             required
             autoFocus
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
           />
         </label>
         <div className="modal-actions">

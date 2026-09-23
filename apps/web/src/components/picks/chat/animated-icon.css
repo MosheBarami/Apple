@@ -1,0 +1,32 @@
+/* ANIMATED ICONS. The span is layout-neutral (inline-flex, no size of its own); the motion plays on
+   the svg when the nearest control is hovered or keyboard-focused. */
+.pk-aicon { display:inline-flex; flex:none; }
+.pk-aicon > svg { transform-origin:50% 50%; }
+.pk-aicon[data-motion='write'] > svg { transform-origin:15% 85%; }
+.pk-aicon[data-motion='swing'] > svg { transform-origin:50% 70%; }
+
+@keyframes pk-ai-write { 0%,100% { transform:none; } 30% { transform:rotate(-14deg); } 60% { transform:rotate(8deg) translateX(1px); } }
+@keyframes pk-ai-pop { 0%,100% { transform:none; } 40% { transform:scale(.82); } 70% { transform:scale(1.08); } }
+@keyframes pk-ai-slide { 0%,100% { transform:none; } 40% { transform:translateX(3px); } 70% { transform:translateX(-1px); } }
+@keyframes pk-ai-swing { 0%,100% { transform:none; } 30% { transform:rotate(-24deg); } 65% { transform:rotate(12deg); } }
+@keyframes pk-ai-turn { from { transform:none; } to { transform:rotate(90deg); } }
+@keyframes pk-ai-drop { 0%,100% { transform:none; } 45% { transform:translateY(3px); } 75% { transform:translateY(-1px); } }
+@keyframes pk-ai-nudge { 0%,100% { transform:none; } 50% { transform:translateX(3px); } }
+@keyframes pk-ai-lift { 0%,100% { transform:none; } 50% { transform:translateY(-3px); } }
+
+:is(a,button,[role='button'],[role='menuitem']):is(:hover,:focus-visible) > .pk-aicon > svg,
+:is(a,button,[role='button'],[role='menuitem']):is(:hover,:focus-visible) > * > .pk-aicon > svg {
+  animation:.5s cubic-bezier(.34,1.36,.64,1) both;
+}
+:is(a,button,[role='button'],[role='menuitem']):is(:hover,:focus-visible) :is(.pk-aicon[data-motion='write']) > svg { animation-name:pk-ai-write; }
+:is(a,button,[role='button'],[role='menuitem']):is(:hover,:focus-visible) :is(.pk-aicon[data-motion='pop']) > svg { animation-name:pk-ai-pop; }
+:is(a,button,[role='button'],[role='menuitem']):is(:hover,:focus-visible) :is(.pk-aicon[data-motion='slide']) > svg { animation-name:pk-ai-slide; }
+:is(a,button,[role='button'],[role='menuitem']):is(:hover,:focus-visible) :is(.pk-aicon[data-motion='swing']) > svg { animation-name:pk-ai-swing; }
+:is(a,button,[role='button'],[role='menuitem']):is(:hover,:focus-visible) :is(.pk-aicon[data-motion='turn']) > svg { animation-name:pk-ai-turn; animation-duration:.6s; }
+:is(a,button,[role='button'],[role='menuitem']):is(:hover,:focus-visible) :is(.pk-aicon[data-motion='drop']) > svg { animation-name:pk-ai-drop; }
+:is(a,button,[role='button'],[role='menuitem']):is(:hover,:focus-visible) :is(.pk-aicon[data-motion='nudge']) > svg { animation-name:pk-ai-nudge; }
+:is(a,button,[role='button'],[role='menuitem']):is(:hover,:focus-visible) :is(.pk-aicon[data-motion='lift']) > svg { animation-name:pk-ai-lift; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-aicon > svg { animation:none !important; }
+}

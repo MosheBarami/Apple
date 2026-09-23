@@ -95,14 +95,26 @@
 /* THE ONE THING ON THIS PANEL THAT SAYS THE WORK IS STILL ALIVE, and the one place the accent is
    spent. It matters most in compact mode, where there is no step list: without it a splash is a
    static hexagon over a static sentence, which is indistinguishable from a screen that has hung.
-   NO RADIUS: the track is 2px tall, so a radius token would round nothing and only add a value to
-   a scale docs/DESIGN-LOCK.md keeps at four. */
-.forge-bar { display:block; width:min(220px,100%); height:2px; margin-block-start:4px; overflow:hidden; background:var(--line); }
-.forge-bar > span { display:block; width:38%; height:100%; background:var(--accent); animation:forge-sweep 1700ms var(--ease-in-out) infinite; }
-/* -100% parks the segment just off the left edge; 263% is (100-38)/38 of its own width plus that
-   same 100%, which lands it just off the right one. Both ends are outside the track, so the sweep
-   has no visible start or stop. */
-@keyframes forge-sweep { from { transform:translate3d(-100%,0,0); } to { transform:translate3d(263%,0,0); } }
+   It WAS a 2px bar with a sweeping segment; it is now the owner's pick, Motion's "Infinite path
+   drawing" (picks/thinking/infinity-path.tsx) — a segment running round a figure of eight. Same job,
+   and a loop has no far end for the segment to look as if it is arriving at. The class name is
+   kept because it names the job. */
+.forge-bar { width:44px; height:26px; margin-block-start:2px; }
+
+/* ------------------------------------------------------------------ the backdrops --- */
+
+/* Two waits carry a canvas behind them (picks/thinking/backdrops.css draws the canvas itself):
+   the pairing-code alphabet raining behind "Creating a pairing code", and Hyperspeed's streaks
+   behind the first screen. The panel becomes the canvas's positioning box and its own stacking
+   context, so the canvas's z-index:-1 lands behind the words and above the page. */
+.forge { position:relative; isolation:isolate; }
+.forge--connecting { overflow:hidden; border-radius:var(--r-md); }
+/* The first screen's streaks fill the screen, not the panel. */
+.forge-backdrop--screen { position:fixed; }
+
+/* THE FIRST SCREEN IS AN ACCOUNT SCREEN, so it is monochrome: the loop runs in ink, not the
+   accent, and the streaks behind it are ink too (backdrops.css). */
+.auth-splash .forge { --picks-infinity:var(--ink); }
 
 /* ----------------------------------------------------------------------- the spinner --- */
 
@@ -115,7 +127,10 @@
    project…" is the only call site, and a 14px mark alone in a 100px-padded page says less than the
    sentence the caller had already written. With no label there is nothing to show and the span
    stays a bare mark with its accessible name in screen-reader text. */
-.loading-spinner { display:inline-flex; align-items:center; gap:10px; min-width:0; color:var(--muted); font-size:14px; line-height:1.5; letter-spacing:-.01em; }
+.loading-spinner { --picks-arc:var(--accent); display:inline-flex; align-items:center; gap:10px; min-width:0; color:var(--muted); font-size:14px; line-height:1.5; letter-spacing:-.01em; }
+/* Inside a button (the composer's send, while it sends) the arc takes the button's own ink: an
+   accent arc on an accent fill would disappear. */
+button .loading-spinner { --picks-arc:currentColor; }
 .loading-spinner__label { min-width:0; text-wrap:pretty; overflow-wrap:anywhere; }
 
 /* ---------------------------------------------------------------------- the splash --- */
@@ -137,14 +152,12 @@
   .forge.is-compact { padding:20px 16px; }
   .forge-label { font-size:15px; }
   .forge-step { font-size:12.5px; gap:9px; }
-  .forge-bar { width:min(180px,100%); }
 }
 
-/* OFF, NOT SLOWED. system.css kills every animation under reduce with !important, so the sweep and
-   the step fade stop on their own — but an INDETERMINATE bar that has stopped moving is a bar
-   claiming a position it does not have, which is worse than no bar. It becomes a full-width
-   hairline in the accent's 22% tint: present, calm, and making no claim about progress. */
+/* OFF, NOT SLOWED. system.css kills every animation under reduce with !important, so the loop and
+   the step fade stop on their own — and an indeterminate segment that has stopped moving would claim
+   a position it does not have, so infinity-path.css drops the segment and draws the whole loop in
+   the accent's quiet tint: present, calm, and making no claim about progress. */
 @media (prefers-reduced-motion: reduce) {
   .forge-step { transition:none; }
-  .forge-bar > span { animation:none; width:100%; background:var(--accent-line); }
 }

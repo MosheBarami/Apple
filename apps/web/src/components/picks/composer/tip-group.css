@@ -1,0 +1,21 @@
+/* The bar's single tooltip (tip-group.tsx). It lives inside the composer panel, which is the
+   positioned box its coordinates are measured from. */
+.pk-tip { position:absolute; top:0; left:0; z-index:80; pointer-events:none; opacity:0; }
+.pk-tip.is-open { opacity:1; }
+/* Sliding from one control to its neighbour: the bubble travels, it does not blink. */
+.pk-tip.is-sliding { transition:transform 200ms var(--ease-out); }
+.pk-tip__body {
+  display:block; max-inline-size:min(260px,70vw); padding:6px 9px;
+  translate:-50% calc(-100% - 8px); transform-origin:50% 100%;
+  border:1px solid var(--line); border-radius:var(--r-sm);
+  background:var(--surface-3); color:var(--ink); box-shadow:var(--shadow-pop);
+  font-size:12px; line-height:16px; letter-spacing:-.005em; text-align:center; text-wrap:balance; white-space:normal;
+}
+.pk-tip.is-below .pk-tip__body { translate:-50% 8px; transform-origin:50% 0; }
+.pk-tip.is-open:not(.is-sliding) .pk-tip__body { animation:pk-tip-in 200ms cubic-bezier(.34,1.4,.64,1) both; }
+@keyframes pk-tip-in { from { opacity:0; scale:.9; } to { opacity:1; scale:1; } }
+
+@media (prefers-reduced-motion:reduce) {
+  .pk-tip.is-sliding { transition:none; }
+  .pk-tip.is-open:not(.is-sliding) .pk-tip__body { animation:none; }
+}

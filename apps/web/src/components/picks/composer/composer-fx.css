@@ -1,0 +1,97 @@
+/* THE PICKS ON THE COMPOSER'S EXISTING PARTS — Send, Autonomous, the card's focus, the round tools
+   and the Create menu. composer.css draws those parts; this sheet adds what the owner picked on top
+   of them, one class more specific than the rule it extends so the order the sheets load in never
+   decides the look. Tokens only. Everything that moves stops under prefers-reduced-motion. */
+
+/* ------------------------------------------------ Send: expands, lights, gives ---
+   UI Layouts "Button Hover Right (Expand)" (MIT): on hover or keyboard focus, and only when there is
+   something to send, the round button widens and its word slides out beside the arrow — so the
+   quietest control on the bar says what it does at the moment somebody is about to press it.
+   The spotlight and the press are press-fx's. */
+.gx-composer .gx-composer__tools .gx-send.pk-send {
+  display:inline-flex; align-items:center; justify-content:center; gap:0; width:auto; min-width:var(--h-sm); padding:0 8px;
+  transition:background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out),padding var(--t-base) var(--ease-out),gap var(--t-base) var(--ease-out);
+}
+.pk-send__label {
+  display:inline-block; max-inline-size:0; overflow:hidden; opacity:0; white-space:nowrap;
+  font-size:13px; line-height:1; letter-spacing:-.005em;
+  transition:max-inline-size var(--t-base) var(--ease-out),opacity var(--t-fast) var(--ease-out);
+}
+.gx-composer .gx-composer__tools .gx-send.pk-send:is(:hover,:focus-visible):not(:disabled) { gap:6px; padding-inline:13px 10px; }
+.gx-composer .gx-composer__tools .gx-send.pk-send:is(:hover,:focus-visible):not(:disabled) .pk-send__label { max-inline-size:4em; opacity:1; }
+
+/* ------------------------------------------------ Autonomous: the violet, alive ---
+   Animate UI "Toggle": switching on fades the highlight in behind it. UI Layouts "Button Rotating
+   Gradient" (MIT): while on, a conic band of the violet turns slowly round its edge — the one
+   thing on the bar that is allowed to keep moving, because it is the one that says Apple is
+   working on its own. Every rule that spends violet is under .is-on. */
+.gx-composer .gx-composer__bar .gx-autonomous.is-on { position:relative; isolation:isolate; overflow:hidden; border-color:transparent; background:transparent; }
+.gx-composer .gx-composer__bar .gx-autonomous.is-on::before {
+  content:''; position:absolute; inset:-300%; z-index:-2;
+  background:conic-gradient(from 90deg,var(--autonomous-ring),var(--autonomous) 25%,var(--autonomous-ring) 50%,var(--autonomous) 75%,var(--autonomous-ring));
+  animation:pk-spin 3.2s linear infinite;
+}
+.gx-composer .gx-composer__bar .gx-autonomous.is-on::after {
+  content:''; position:absolute; inset:1px; z-index:-1; border-radius:calc(var(--r-xs) - 1px);
+  background:linear-gradient(var(--autonomous-soft),var(--autonomous-soft)),var(--surface);
+  animation:pk-fade-in 200ms var(--ease-out) both;
+}
+@keyframes pk-spin { to { rotate:360deg; } }
+@keyframes pk-fade-in { from { opacity:0; } to { opacity:1; } }
+
+/* ------------------------------------------------ the card takes focus ---
+   GSAP "CSSPlugin" (the composer focusing): the edge turns to the accent (composer.css), a soft
+   ring of it spreads around the card — an outline, not a shadow, so the design lock's one shadow
+   stays the only one — and the hairline over the bar wipes in from the reading start. */
+.gx-composer form.gx-composer__inner { outline:3px solid transparent; outline-offset:0; }
+.gx-composer form.gx-composer__inner:focus-within { outline-color:color-mix(in srgb,var(--accent) 16%,transparent); }
+.gx-composer .gx-composer__inner .gx-composer__bar {
+  background-image:linear-gradient(90deg,color-mix(in srgb,var(--accent) 45%,transparent),var(--line) 60%);
+  background-repeat:no-repeat; background-position:0 0; background-size:0% 1px;
+  transition:background-size 450ms cubic-bezier(.65,0,.35,1);
+}
+:root[dir='rtl'] .gx-composer .gx-composer__inner .gx-composer__bar { background-position:100% 0; }
+.gx-composer .gx-composer__inner:focus-within .gx-composer__bar { background-size:calc(100% - 24px) 1px; background-position:12px 0; }
+:root[dir='rtl'] .gx-composer .gx-composer__inner:focus-within .gx-composer__bar { background-position:calc(100% - 12px) 0; }
+
+/* ------------------------------------------------ the round tools swell ---
+   Componentry "Magnetic Dock": magnetic-dock.ts writes --pk-dock; the swell grows up from the
+   bar, never down through it. */
+.gx-composer .gx-composer__tools [data-dock] { transform:translateY(calc((1 - var(--pk-dock,1)) * 6px)) scale(var(--pk-dock,1)); transform-origin:50% 100%; }
+
+/* ------------------------------------------------ the Create menu opens out of its chip ---
+   Motion "Create Button" (Motion+: behaviour only). The panel grows out of the chip it was opened
+   from — narrow and short to full, its corner easing from the chip's to the panel's — and its rows
+   rise into place one after another. */
+.ai-menu.gx-menu.gx-menu--create {
+  transform-origin:0 100%;
+  animation:pk-create-in 360ms cubic-bezier(.34,1.3,.64,1) both;
+}
+:root[dir='rtl'] .ai-menu.gx-menu.gx-menu--create { transform-origin:100% 100%; }
+.ai-menu.gx-menu.gx-menu--create > * { animation:pk-row-in 260ms var(--ease-out) both; }
+.ai-menu.gx-menu.gx-menu--create > :nth-child(1) { animation-delay:100ms; }
+.ai-menu.gx-menu.gx-menu--create > :nth-child(2) { animation-delay:140ms; }
+.ai-menu.gx-menu.gx-menu--create > :nth-child(3) { animation-delay:180ms; }
+.ai-menu.gx-menu.gx-menu--create > :nth-child(4) { animation-delay:220ms; }
+.ai-menu.gx-menu.gx-menu--create > :nth-child(5) { animation-delay:260ms; }
+.ai-menu.gx-menu.gx-menu--create > :nth-child(n+6) { animation-delay:300ms; }
+@keyframes pk-create-in {
+  from { opacity:.6; scale:.2 .18; border-radius:var(--r-xl); }
+  to { opacity:1; scale:1; }
+}
+@keyframes pk-row-in { from { opacity:0; translate:0 8px; } to { opacity:1; translate:none; } }
+
+@media (max-width:520px) {
+  /* The two newer chips keep their mark on a phone; their names are in their labels and tips. */
+  .gx-composer .gx-composer__bar .gx-chip--ideas .gx-chip__label,
+  .gx-composer .gx-composer__bar .gx-chip--files .gx-chip__label { display:none; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .gx-composer .gx-composer__tools .gx-send.pk-send,.pk-send__label,
+  .gx-composer .gx-composer__inner .gx-composer__bar { transition:none; }
+  .gx-composer .gx-composer__bar .gx-autonomous.is-on::before,.gx-composer .gx-composer__bar .gx-autonomous.is-on::after,
+  .ai-menu.gx-menu.gx-menu--create,.ai-menu.gx-menu.gx-menu--create > * { animation:none; }
+  .gx-composer .gx-composer__tools [data-dock] { transform:none; }
+}

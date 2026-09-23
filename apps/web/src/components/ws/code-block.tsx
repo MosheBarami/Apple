@@ -26,7 +26,14 @@ import {
   CodeBlockHeader,
   CodeBlockTitle,
 } from '../ai-elements/code-block';
+import { FileTextIcon } from '../ai-elements/icons';
 import './code-block.css';
+// THE WRITING STATE, from two picks merged into this one block. Animate UI "Code" writes a script
+// with a caret at the end of it and puts a file mark in the header; UI Layouts "Code Block" holds a
+// placeholder where the code is about to be. Here both answer the same fact — the fence has not
+// closed — so the caret blinks at the end of the last line while the model is still writing it, and
+// a fence that has opened with nothing in it yet shows three shimmering lines instead of an empty
+// box. Both are CSS (code-block.css), and neither moves under reduced motion.
 
 /** How the language reads in the block's header. 'text' names nothing, so it says nothing. */
 const LANG_NAME: Record<string, string> = {
@@ -56,9 +63,16 @@ export function CodeBlock({ code, lang, closed }: { code: string; lang: string; 
   }, [copied]);
 
   return (
-    <AICodeBlock className="gx-code" code={code} language={language}>
+    <AICodeBlock
+      className="gx-code"
+      code={code}
+      language={language}
+      data-writing={closed ? undefined : ''}
+      data-empty={!closed && !code ? '' : undefined}
+    >
       <CodeBlockHeader className="gx-code__head">
         <CodeBlockTitle>
+          <FileTextIcon size={13} className="gx-code__icon" />
           <CodeBlockFilename className="gx-code__lang">{name}</CodeBlockFilename>
         </CodeBlockTitle>
         {closed && (
@@ -76,6 +90,13 @@ export function CodeBlock({ code, lang, closed }: { code: string; lang: string; 
           </CodeBlockActions>
         )}
       </CodeBlockHeader>
+      {!closed && !code && (
+        <div className="gx-code__skeleton" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      )}
     </AICodeBlock>
   );
 }

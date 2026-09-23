@@ -1,0 +1,2 @@
+.ai-connection__line { fill:none; stroke:var(--accent); stroke-width:2; }
+.ai-connection__end { fill:var(--paper-2); stroke:var(--accent); stroke-width:1.5; }

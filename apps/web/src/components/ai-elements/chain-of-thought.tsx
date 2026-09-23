@@ -6,6 +6,13 @@
 // swapped for the local stand-ins, `ai-chain-of-thought*` classes are appended beside the inert
 // Tailwind strings, and `isOpen` defaults to false while the controllable state has no value yet
 // (as in ./reasoning.tsx). The components, their props and the open-state logic are upstream's.
+//
+// TWO PICKS MERGED IN (2026-09-23, the owner's component picks, Thinking lane):
+//   * The content animates open and closed (Animate UI "Collapsible" + React Bits "Thought Line",
+//     ../picks/thinking/disclosure.ts), as the Reasoning body above it does.
+//   * A step with no icon of its own is marked by its status (../picks/thinking/step-mark.tsx): a
+//     hollow ring while pending, Thought Line's pulse while active, and Motion's to-do check, drawn
+//     in, once complete. Upstream draws the same dot for all three.
 
 import { useControllableState } from "./reasoning-compat";
 import { Badge } from "./ui/badge";
@@ -16,14 +23,17 @@ import {
 } from "./ui/collapsible";
 import { cn } from "./lib/utils";
 import type { LucideIcon } from "./icons";
-import { BrainIcon, ChevronDownIcon, DotIcon } from "./icons";
+import { BrainIcon, ChevronDownIcon } from "./icons";
 import type { ComponentProps, ReactNode } from "react";
-import { createContext, memo, useContext, useMemo } from "react";
+import { createContext, memo, useContext, useId, useMemo, useRef } from "react";
+import { useAnimatedClose, useExpandOnOpen } from "../picks/thinking/disclosure";
+import { StepMark } from "../picks/thinking/step-mark";
 import "./chain-of-thought.css";
 
 interface ChainOfThoughtContextValue {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  contentIdRef: { current: string | null };
 }
 
 const ChainOfThoughtContext = createContext<ChainOfThoughtContextValue | null>(
@@ -55,14 +65,16 @@ export const ChainOfThought = memo(
     children,
     ...props
   }: ChainOfThoughtProps) => {
-    const [isOpen = false, setIsOpen] = useControllableState({
+    const [isOpen = false, setOpenState] = useControllableState({
       defaultProp: defaultOpen,
       onChange: onOpenChange,
       prop: open,
     });
+    const contentIdRef = useRef<string | null>(null);
+    const setIsOpen = useAnimatedClose(contentIdRef, setOpenState);
 
     const chainOfThoughtContext = useMemo(
-      () => ({ isOpen, setIsOpen }),
+      () => ({ contentIdRef, isOpen, setIsOpen }),
       [isOpen, setIsOpen]
     );
 
@@ -125,7 +137,7 @@ const stepStatusStyles = {
 export const ChainOfThoughtStep = memo(
   ({
     className,
-    icon: Icon = DotIcon,
+    icon: Icon,
     label,
     description,
     status = "complete",
@@ -142,7 +154,7 @@ export const ChainOfThoughtStep = memo(
       {...props}
     >
       <div className="relative mt-0.5 ai-chain-of-thought__rail">
-        <Icon className="size-4 ai-chain-of-thought__icon" />
+        {Icon ? <Icon className="size-4 ai-chain-of-thought__icon" /> : <StepMark status={status} className="size-4 ai-chain-of-thought__icon" />}
         <div className="absolute top-7 bottom-0 left-1/2 -mx-px w-px bg-border ai-chain-of-thought__line" />
       </div>
       <div className="flex-1 space-y-2 overflow-hidden ai-chain-of-thought__body">
@@ -186,12 +198,17 @@ export type ChainOfThoughtContentProps = ComponentProps<
 >;
 
 export const ChainOfThoughtContent = memo(
-  ({ className, children, ...props }: ChainOfThoughtContentProps) => {
-    const { isOpen } = useChainOfThought();
+  ({ className, children, id: idProp, ...props }: ChainOfThoughtContentProps) => {
+    const { contentIdRef, isOpen } = useChainOfThought();
+    const generated = useId();
+    const id = idProp ?? generated;
+    contentIdRef.current = id;
+    useExpandOnOpen(id, isOpen);
 
     return (
       <Collapsible open={isOpen}>
         <CollapsibleContent
+          id={id}
           className={cn(
             "mt-2 space-y-3 ai-chain-of-thought__content",
             "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",

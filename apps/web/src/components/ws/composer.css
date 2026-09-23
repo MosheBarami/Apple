@@ -32,7 +32,7 @@ div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; 
   background:color-mix(in srgb,var(--surface) 90%,transparent);
   box-shadow:var(--shadow-pop);
   backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-  transition:border-color var(--t-base) var(--ease-out),background-color var(--t-base) var(--ease-out);
+  transition:border-color var(--t-base) var(--ease-out),background-color var(--t-base) var(--ease-out),outline-color var(--t-base) var(--ease-out);
 }
 :root[data-theme='light'] .gx-composer .gx-composer__inner { background:var(--surface); border-color:var(--control-line); box-shadow:var(--shadow-pop); }
 /* THE FOCUSED EDGE HAS TO BE SEEN. --accent-ring is 32% and on the near-black card it measured as

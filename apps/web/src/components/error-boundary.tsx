@@ -29,8 +29,16 @@
 // Sentry accepted the event has nothing to do with whether this component can show the crash card,
 // and a boundary that waits on the network before painting is a boundary that shows a white screen
 // when the network is the thing that broke.
+//
+// THE OWNER'S PICKS, 2026-09-23. The card's mark is Componentry's "ASCII Effect" in its glitch
+// variant — an apple drawn in characters that slips and scrambles every few seconds, which is what
+// the title says happened (picks/thinking/ascii-mark.tsx). And the error's own words, which are for
+// whoever sends the screenshot to support and not for a young creator reading the sentence, are
+// folded behind "Details" with Animate UI's Collapsible motion (picks/thinking/folded-details.tsx).
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { captureException } from '../lib/sentry.ts';
+import { AsciiMark } from './picks/thinking/ascii-mark';
+import { FoldedDetails } from './picks/thinking/folded-details';
 import './error-boundary.css';
 
 interface State {
@@ -74,13 +82,16 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className={route ? 'crash-screen is-route' : 'crash-screen'} role="alert">
         <div className={route ? 'crash-card crash-card--route' : 'crash-card'}>
+          <AsciiMark className="crash-mark" />
           <h1>The apple stumbled</h1>
           <p>
             {route
               ? 'This screen broke — the rest of the app is still working, and your projects and data are safe.'
               : 'Something broke in the interface — your projects and data are safe.'}
           </p>
-          <pre className="crash-detail">{error.message}</pre>
+          <FoldedDetails className="crash-fold">
+            <pre className="crash-detail">{error.message}</pre>
+          </FoldedDetails>
           <div className="crash-actions">
             <button type="button" className="btn btn-primary" onClick={this.reset}>
               Try again

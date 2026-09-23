@@ -1,0 +1,18 @@
+/* AI ELEMENTS ENVIRONMENT VARIABLES, drawn with this app's tokens. Monochrome: this sits on an
+   account-style panel, so the only colour is the state badge's hairline. */
+.ai-env { display:grid; gap:0; min-width:0; margin-top:12px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); }
+.ai-env__header { display:flex; align-items:center; gap:8px; min-height:36px; padding:0 12px; border-bottom:1px solid var(--line); }
+.ai-env__title { display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--ink); }
+.ai-env__count { font-size:11px; font-weight:400; color:var(--muted); font-variant-numeric:tabular-nums; }
+.ai-env__list { list-style:none; margin:0; padding:0; }
+.ai-env__row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-width:0; padding:10px 12px; }
+.ai-env__row + .ai-env__row { border-top:1px solid var(--line); }
+.ai-env__row.is-inactive { opacity:.6; }
+.ai-env__group { display:grid; gap:3px; flex:1; min-width:min(100%, 220px); }
+.ai-env__name { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12.5px; color:var(--ink); }
+.ai-env__value { display:inline-flex; align-items:center; gap:2px; color:var(--muted); overflow-wrap:anywhere; }
+.ai-env__mask { letter-spacing:1px; color:var(--faint); }
+.ai-env__badge { font-size:11px; padding:1px 7px; border:1px solid var(--line-strong); border-radius:var(--r-pill); color:var(--muted); }
+.ai-env__meta { font-size:12px; color:var(--muted); }
+.ai-env__actions { display:flex; gap:6px; flex:none; }
+@media (max-width:520px) { .ai-env__actions { width:100%; } .ai-env__actions > * { flex:1; } }

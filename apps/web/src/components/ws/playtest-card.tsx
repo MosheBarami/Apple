@@ -21,8 +21,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PlaytestRun, StudioFrame } from '@golem/shared';
 import { frameImageSrc, paintFrame } from '../../lib/frame-decode';
-import { playtestView, PLAYTEST_TICK_MS } from '../../lib/playtest-view';
+import { framesForRun, playtestView, PLAYTEST_TICK_MS } from '../../lib/playtest-view';
 import { Icon, PATH } from './primitives';
+import { WebPreview, WebPreviewBody, WebPreviewNavigation, WebPreviewNavigationButton, WebPreviewUrl } from '../ai-elements/web-preview';
+import { Sandbox, SandboxContent, SandboxHeader, SandboxTabContent, SandboxTabs, SandboxTabsBar, SandboxTabsList, SandboxTabsTrigger } from '../ai-elements/sandbox';
+import { Test, TestResults, TestResultsDuration, TestResultsHeader, TestResultsProgress, TestResultsSummary, TestErrorMessage, TestResultsContent } from '../ai-elements/test-results';
+import { BackIcon, ExpandIcon, ForwardIcon } from '../picks/tech/icons';
+import { playtestChecks, playtestSummary } from '../picks/tech/playtest-checks';
 import './playtest-card.css';
 
 function useFrameCanvas(frame: StudioFrame | undefined) {
@@ -67,9 +72,18 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
   }, [run]);
 
   const view = useMemo(() => playtestView(run, frames, now), [run, frames, now]);
-  const canvasRef = useFrameCanvas(view.frame);
-  const imageSrc = view.frame ? frameImageSrc(view.frame) : null;
-  const direct = view.frame?.source === 'studio_viewport' && view.frame?.encoding === 'png';
+  // THE PICTURES THIS PLAYTEST SENT, oldest first. Back and forward step through them; `picked` is
+  // null while the card follows the newest, so a new picture arriving is shown without a click.
+  const mine = useMemo(() => framesForRun(frames, run), [frames, run]);
+  const [picked, setPicked] = useState<number | null>(null);
+  useEffect(() => setPicked(null), [run?.id]);
+  const at = picked !== null && picked < mine.length - 1 ? picked : mine.length - 1;
+  const earlier = at >= 0 && at < mine.length - 1;
+  const frame = earlier ? mine[at] : view.frame;
+  const canvasRef = useFrameCanvas(frame);
+  const imageSrc = frame ? frameImageSrc(frame) : null;
+  const direct = frame?.source === 'studio_viewport' && frame?.encoding === 'png';
+  const checks = useMemo(() => playtestChecks(run), [run]);
 
   if (!view.visible) return null;
 
@@ -98,8 +112,35 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
         </span>
       </header>
 
+      <WebPreview className="gx-playtest__preview">
+        <WebPreviewNavigation>
+          <WebPreviewNavigationButton tooltip="Earlier picture" disabled={at <= 0} onClick={() => setPicked(Math.max(0, at - 1))}>
+            <BackIcon />
+          </WebPreviewNavigationButton>
+          <WebPreviewNavigationButton
+            tooltip="Later picture"
+            disabled={!earlier}
+            onClick={() => setPicked(at + 1 >= mine.length - 1 ? null : at + 1)}
+          >
+            <ForwardIcon />
+          </WebPreviewNavigationButton>
+          <WebPreviewUrl
+            label="What the camera shows"
+            value={frame ? `${frame.subject} · ${frame.view}` : 'No picture yet'}
+            hint={mine.length > 1 ? `${at + 1} of ${mine.length}` : undefined}
+          />
+          <WebPreviewNavigationButton
+            tooltip={expanded ? 'Make smaller' : 'Make bigger'}
+            pressed={expanded}
+            disabled={!frame}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            <ExpandIcon />
+          </WebPreviewNavigationButton>
+        </WebPreviewNavigation>
+        <WebPreviewBody>
       <div className="gx-playtest__stage">
-        {view.frame ? (
+        {frame ? (
           <button
             type="button"
             className="gx-playtest__frame"
@@ -108,14 +149,14 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
           >
             {imageSrc ? (
               <img
-                key={`${view.frame.playtestRunId ?? 'frame'}:${view.frame.seq ?? view.frame.capturedAt}`}
+                key={`${frame.playtestRunId ?? 'frame'}:${frame.seq ?? frame.capturedAt}`}
                 src={imageSrc}
                 className="gx-playtest__canvas gx-playtest__image"
                 alt="Studio viewport playtest frame"
               />
             ) : (
               <canvas
-                key={`${view.frame.playtestRunId ?? 'frame'}:${view.frame.seq ?? view.frame.capturedAt}`}
+                key={`${frame.playtestRunId ?? 'frame'}:${frame.seq ?? frame.capturedAt}`}
                 ref={canvasRef}
                 className="gx-playtest__canvas"
               />
@@ -123,12 +164,18 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
             {/* An overlay, not a replacement. The pixels underneath are real and
                 stay visible; what changes is that the card stops claiming they
                 are current. */}
-            {view.freshness === 'stale' && (
+            {/* An earlier picture says so, and by how much, so it is never read as the newest. */}
+            {earlier && view.frame && (
+              <span className="gx-playtest__veil gx-playtest__veil--earlier">
+                Earlier picture · {Math.max(0, Math.round((view.frame.capturedAt - frame.capturedAt) / 1000))}s before the newest
+              </span>
+            )}
+            {!earlier && view.freshness === 'stale' && (
               <span className="gx-playtest__veil gx-playtest__veil--stale">
                 {Math.round((view.frameAgeMs ?? 0) / 1000)}s old
               </span>
             )}
-            {view.freshness === 'dead' && (
+            {!earlier && view.freshness === 'dead' && (
               <span className="gx-playtest__veil gx-playtest__veil--dead">
                 Last frame · {Math.round((view.frameAgeMs ?? 0) / 1000)}s ago
               </span>
@@ -146,9 +193,11 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
           </div>
         )}
       </div>
+        </WebPreviewBody>
+      </WebPreview>
 
       <footer className="gx-playtest__foot">
-        {view.frame && <span className="gx-playtest__what">
+        {frame && <span className="gx-playtest__what">
           {direct
             ? 'Studio viewport capture · up to every 1.5s'
             : 'Software render from Studio · geometry fallback'}
@@ -200,6 +249,57 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
           </button>
         )}
       </footer>
+
+      {/* WHAT THE FINISHED PLAYTEST MEASURED, and nothing it did not: see picks/tech/playtest-checks.ts. */}
+      {terminal && run && checks.length > 0 && (
+        <PlaytestResults run={run} checks={checks} />
+      )}
     </section>
+  );
+}
+
+function PlaytestResults({ run, checks }: { run: PlaytestRun; checks: ReturnType<typeof playtestChecks> }) {
+  const summary = playtestSummary(run, checks);
+  const data = { ...summary, duration: summary.durationMs ?? undefined };
+  return (
+    <Sandbox className="gx-playtest__results" defaultOpen={summary.failed > 0}>
+      <SandboxHeader title="Playtest results" state={run.phase === 'failed' ? 'error' : 'done'} />
+      <SandboxContent>
+        <SandboxTabs defaultValue="checks">
+          <SandboxTabsBar>
+            <SandboxTabsList label="Playtest results">
+              <SandboxTabsTrigger value="checks">Checks</SandboxTabsTrigger>
+              <SandboxTabsTrigger value="details">Details</SandboxTabsTrigger>
+            </SandboxTabsList>
+          </SandboxTabsBar>
+          <SandboxTabContent value="checks">
+            <TestResults>
+              <TestResultsHeader>
+                <TestResultsSummary summary={data} />
+                {data.duration !== undefined && <TestResultsDuration ms={data.duration} />}
+              </TestResultsHeader>
+              <TestResultsProgress summary={data} />
+              <TestResultsContent>
+                {checks.map((c) => (
+                  <Test key={c.id} name={c.name} status={c.status}>
+                    <TestErrorMessage>{c.note}</TestErrorMessage>
+                  </Test>
+                ))}
+              </TestResultsContent>
+            </TestResults>
+          </SandboxTabContent>
+          <SandboxTabContent value="details">
+            <dl className="gx-playtest__facts">
+              <dt>Asked for</dt><dd>{run.requestedSeconds}s</dd>
+              {summary.durationMs !== null && <><dt>Ran for</dt><dd>{clock(summary.durationMs)}</dd></>}
+              <dt>Pictures</dt><dd>{run.framesDelivered} arrived, {run.framesDropped} lost</dd>
+              <dt>Errors</dt><dd>{run.consoleErrors}</dd>
+              <dt>Warnings</dt><dd>{run.consoleWarnings}</dd>
+              <dt>Run</dt><dd className="tq-mono">{run.id}</dd>
+            </dl>
+          </SandboxTabContent>
+        </SandboxTabs>
+      </SandboxContent>
+    </Sandbox>
   );
 }

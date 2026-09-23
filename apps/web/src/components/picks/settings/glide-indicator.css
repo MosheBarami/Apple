@@ -1,0 +1,55 @@
+/* The host becomes the positioning box; its items sit above the pill. */
+.pk-glide-host { position:relative; isolation:isolate; }
+.pk-glide-host > *,.pk-glide-host > li > * { position:relative; z-index:1; }
+
+.pk-glide {
+  position:absolute; top:0; left:0; z-index:0; pointer-events:none;
+  border-radius:9px;
+  transition:
+    transform var(--pk-glide-dur,.4s) var(--pk-glide-ease,cubic-bezier(.23,1,.32,1)),
+    width var(--pk-glide-dur,.4s) var(--pk-glide-ease,cubic-bezier(.23,1,.32,1)),
+    height var(--pk-glide-dur,.4s) var(--pk-glide-ease,cubic-bezier(.23,1,.32,1));
+}
+
+/* Liquid glass: a translucent pill, lit along its edges, blurring what is under it. */
+.pk-glide--glass {
+  background:color-mix(in srgb,var(--nm-ink,var(--ink)) 6%,transparent);
+  backdrop-filter:blur(6px) saturate(140%); -webkit-backdrop-filter:blur(6px) saturate(140%);
+  box-shadow:
+    inset 1px 1px 1px 0 rgba(255,255,255,.16),
+    inset -1px -1px 1px 0 rgba(255,255,255,.06),
+    0 0 0 1px var(--nm-line-soft,var(--line)),
+    0 4px 14px rgba(0,0,0,.22);
+}
+:root[data-theme='light'] .pk-glide--glass {
+  background:rgba(255,255,255,.72);
+  box-shadow:inset 1px 1px 1px 0 #fff,inset -1px -1px 1px 0 rgba(0,0,0,.04),0 0 0 1px var(--nm-line,var(--line)),0 4px 12px rgba(24,24,20,.08);
+}
+
+/* Gooey: a solid pill; the burst leaves from its middle. */
+.pk-glide--goo {
+  background:var(--nm-panel-soft,var(--surface-2));
+  box-shadow:inset 0 0 0 1px var(--nm-line-soft,var(--line));
+}
+.pk-glide__burst { position:absolute; inset-block-start:50%; inset-inline-start:50%; width:0; height:0; }
+.pk-glide__burst > i {
+  position:absolute; width:4px; height:4px; margin:-2px; border-radius:999px; background:var(--nm-ink,var(--ink));
+  opacity:0; animation:pk-glide-burst .62s var(--dl,0ms) cubic-bezier(.2,.8,.3,1) both;
+}
+@keyframes pk-glide-burst {
+  0% { opacity:0; transform:translate(0,0) scale(.4); }
+  20% { opacity:.85; }
+  100% { opacity:0; transform:translate(var(--dx, 0px),var(--dy, 0px)) scale(1); }
+}
+
+/* The hosts' own "current" fill steps aside — the pill is the fill now. Text colour stays theirs. */
+.st-nav__list.pk-glide-host .st-nav__link.is-active,
+.usage-switch.pk-glide-host > button.is-active,
+.scope-tabs.pk-glide-host > .scope-tab.is-on { background:transparent !important; box-shadow:none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-glide { transition:none; }
+  .pk-glide__burst { display:none; }
+}
+.motion-reduced .pk-glide { transition:none; }
+.motion-reduced .pk-glide__burst { display:none; }

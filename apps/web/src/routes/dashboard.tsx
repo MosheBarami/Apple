@@ -28,7 +28,7 @@ import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, PROJECT_SCOPES, scopeToShow, type P
 import { BLANK_TEMPLATE_ID, PROJECT_TEMPLATES, templateSeed } from '../lib/project-templates';
 import { takePendingStart } from '../lib/pending-start';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
-import { TAG_MAX_LEN, TAGS_MAX, addTag, normaliseTag, removeTag, tagUniverse } from '../lib/tags';
+import { TAG_MAX_LEN, TAGS_MAX, addTag, normaliseTag, tagUniverse } from '../lib/tags';
 import { relativeTime, truncate } from '../lib/format';
 import { Modal } from '../components/modal';
 import { SummonIllustration } from '../components/glyphs';
@@ -43,6 +43,10 @@ import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { filterProjects } from '../lib/project-search';
 import './dashboard.css';
 import './nonworkspace-minimal.css';
+// The owner's picked account-screen components (apps/web/src/components/picks/settings).
+import { TagsInput } from '../components/picks/settings/tags-input';
+import { GlideIndicator } from '../components/picks/settings/glide-indicator';
+import '../components/picks/settings/account-buttons.css';
 
 /**
  * The project list for one scope.
@@ -478,60 +482,47 @@ function TagsModal({
   onApply: (tags: string[]) => void;
   onClose: () => void;
 }) {
-  const [draft, setDraft] = useState('');
   const tags = project.tags ?? [];
   const full = tags.length >= TAGS_MAX;
   const suggestions = existing.filter((t) => !tags.some((own) => normaliseTag(own) === t)).slice(0, 8);
 
   const commit = (raw: string) => {
     const next = addTag(tags, raw);
-    setDraft('');
     if (next !== tags) onApply(next);
   };
 
+  // Picks: UI Layouts "UTube Tags Input" — the chips and the caret share one box. Enter or a comma
+  // adds, × or Backspace removes, a click on a chip edits it in place; every write still goes
+  // through lib/tags.ts (addTag / removeTag), so one tag keeps one spelling.
   return (
     <Modal title={`Tags for ${project.name}`} onClose={onClose} locked={pending}>
       <form
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
-          commit(draft);
         }}
       >
-        {tags.length > 0 ? (
-          <div className="tag-row">
-            {tags.map((t) => (
-              <button
-                key={t}
-                type="button"
-                className="tag-chip tag-chip--own"
-                onClick={() => onApply(removeTag(tags, t))}
-                disabled={pending}
-                title={`Remove "${t}"`}
-              >
-                {t} <span aria-hidden="true">×</span>
-                <span className="visually-hidden">Remove tag</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="page-note">No tags yet. A tag groups projects on the dashboard — "client", "obby", "experiment".</p>
-        )}
-
-        <label className="field">
-          <span className="field-label">
+        <div className="field">
+          <label className="field-label" htmlFor="project-tag">
             Add a tag {full && <span className="field-hint">({TAGS_MAX} is the limit)</span>}
-          </span>
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+          </label>
+          <TagsInput
+            tags={tags}
+            onChange={onApply}
+            max={TAGS_MAX}
             maxLength={TAG_MAX_LEN}
             name="projectTag"
             id="project-tag"
             placeholder="client"
-            disabled={full || pending}
+            disabled={pending}
+            describedBy="project-tag-hint"
             autoFocus
           />
-        </label>
+          <span className="field-hint" id="project-tag-hint">
+            {tags.length === 0
+              ? 'No tags yet. A tag groups projects on the dashboard — "client", "obby", "experiment".'
+              : 'Press Enter to add. Click a tag to change it.'}
+          </span>
+        </div>
 
         {suggestions.length > 0 && !full && (
           <div className="tag-row">
@@ -544,11 +535,8 @@ function TagsModal({
         )}
 
         <div className="modal-actions">
-          <button type="button" className="btn" onClick={onClose} disabled={pending}>
+          <button type="button" className="btn btn-primary" onClick={onClose} disabled={pending}>
             Done
-          </button>
-          <button type="submit" className="btn btn-primary" disabled={!normaliseTag(draft) || full || pending}>
-            Add
           </button>
         </div>
       </form>
@@ -709,6 +697,8 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
       confirmLabel="Delete forever"
       busyLabel="Deleting…"
       busy={del.isPending}
+      // Typing the name, then holding: a deleted project cannot be brought back.
+      hold
       onConfirm={() => del.mutate()}
       onClose={onClose}
       details={
@@ -927,6 +917,7 @@ export function DashboardPage() {
   //   the whole contract, and focus has to follow the selection or the ring is left on a tab that
   //   is no longer current. ]]
   const tabRefs = useRef<Record<ProjectScope, HTMLButtonElement | null>>({ active: null, archived: null });
+  const scopeTabsRef = useRef<HTMLDivElement>(null);
   const onTabKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     const next: ProjectScope | null =
       e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'End' ? 'archived'
@@ -980,7 +971,9 @@ export function DashboardPage() {
           always empty is chrome; one that appears when it has contents is an answer to "where did
           that project go?". */}
       {(archived.data?.length ?? 0) > 0 && (
-        <div className="scope-tabs shelf__tabs" role="tablist" aria-label="Project scope" onKeyDown={onTabKey}>
+        <div className="scope-tabs shelf__tabs" role="tablist" aria-label="Project scope" onKeyDown={onTabKey} ref={scopeTabsRef}>
+          {/* Picks: React Bits "Gooey Nav" — the pill slides to the chosen scope. */}
+          <GlideIndicator host={scopeTabsRef} activeKey={scope} selector=".scope-tab.is-on" variant="goo" />
           <button
             type="button"
             role="tab"

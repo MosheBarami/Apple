@@ -1,0 +1,30 @@
+.pk-tags {
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-height:42px; padding:6px 8px; cursor:text;
+  border:1px solid var(--nm-line,var(--control-line)); border-radius:var(--nm-r-control,var(--r-md));
+  background:var(--nm-panel-soft,var(--paper-2));
+}
+.pk-tags:focus-within { outline:2px solid var(--nm-ink,var(--ink)); outline-offset:2px; }
+.pk-tags.is-disabled { opacity:.6; }
+.pk-tags__list { display:contents; list-style:none; margin:0; padding:0; }
+.pk-tags__chip {
+  display:inline-flex; align-items:center; gap:2px; padding:0 2px 0 8px; height:26px; border-radius:7px;
+  background:var(--nm-panel,var(--surface)); box-shadow:inset 0 0 0 1px var(--nm-line,var(--line));
+  animation:pk-tag-in .28s cubic-bezier(.34,1.56,.64,1) both;
+}
+.pk-tags__text,.pk-tags__x { border:0; background:transparent; font:inherit; font-size:13px; color:var(--nm-ink,var(--ink)); cursor:pointer; }
+.pk-tags__text { padding:0; }
+.pk-tags__x { display:grid; place-items:center; width:20px; height:20px; padding:0; border-radius:5px; color:var(--nm-muted,var(--muted)); }
+.pk-tags__x:hover:not(:disabled) { background:var(--nm-panel-soft,var(--surface-2)); color:var(--nm-ink,var(--ink)); }
+.pk-tags__x svg { width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; }
+.pk-tags__text:focus-visible,.pk-tags__x:focus-visible { outline:2px solid var(--nm-ink,var(--ink)); outline-offset:1px; border-radius:4px; }
+.pk-tags__edit,.pk-tags__input {
+  min-width:0; height:26px; padding:0 4px; border:0; outline:none; background:transparent;
+  font:inherit; font-size:13px; color:var(--nm-ink,var(--ink));
+}
+.pk-tags input.pk-tags__edit.pk-tags__edit.pk-tags__edit,.pk-tags input.pk-tags__input.pk-tags__input.pk-tags__input { background:transparent; border:0; border-radius:0; min-height:0; height:26px; padding:0 4px; }
+.pk-tags__edit { box-shadow:inset 0 -1px 0 var(--nm-ink,var(--ink)); }
+.pk-tags__input { flex:1 1 90px; }
+.pk-tags__input::placeholder { color:var(--nm-faint,var(--faint)); }
+@keyframes pk-tag-in { from { opacity:0; transform:scale(.8); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { .pk-tags__chip { animation:none; } }
+.motion-reduced .pk-tags__chip { animation:none; }

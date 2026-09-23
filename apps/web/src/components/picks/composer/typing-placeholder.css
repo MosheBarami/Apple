@@ -1,0 +1,22 @@
+/* Drawn exactly where the textarea draws its placeholder: the field's own padding, font and line. */
+.gx-composer .pk-typing {
+  position:absolute; inset-block-start:16px; inset-inline:20px; z-index:1;
+  display:block; overflow:hidden; pointer-events:none;
+  color:var(--faint); font-size:15px; line-height:24px; letter-spacing:-.01em; white-space:nowrap; text-overflow:ellipsis;
+}
+.gx-ws:has(.start-sheet) .gx-composer .pk-typing { inset-block-start:18px; }
+.pk-typing__cursor {
+  display:inline-block; inline-size:1.5px; block-size:1.05em; margin-inline-start:2px; vertical-align:-.15em;
+  background:var(--accent);
+}
+.pk-typing__cursor.is-idle { animation:pk-blink 1s steps(2,start) infinite; }
+@keyframes pk-blink { to { visibility:hidden; } }
+/* While the example is typing, the native placeholder steps aside (it is still there for a reader). */
+.gx-composer .gx-composer__field.pk-has-typing::placeholder { color:transparent; }
+
+@media (max-width:520px) {
+  .gx-composer .pk-typing { inset-block-start:14px; inset-inline:16px; font-size:16px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pk-typing__cursor.is-idle { animation:none; }
+}

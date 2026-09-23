@@ -17,7 +17,7 @@
 //   * COLLAPSED FIRST. Twelve failures of one run are one row with a count on it; twelve mentions
 //     across a project are twelve things a person wants to read. The grouping decides which, and it
 //     was decided on the server where the rows are.
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchNotifications, markNotificationsRead } from '../lib/api';
@@ -35,6 +35,11 @@ import {
 import { shortRelative } from '../lib/format';
 import { Icon, PATH, Popover } from './ws/primitives';
 import './notification-inbox.css';
+import './picks/settings/bell-ring.css';
+// The account popover's spring entrance (picks: Motion "Clerk: User Button"). The popover is drawn
+// by components/layout.tsx; its sheet is loaded here, beside the other half of the account card.
+import './picks/settings/user-button.css';
+import { reducedMotion } from './picks/settings/motion';
 
 /** The cache key. The badge and the list read the SAME one — see the header. */
 export const INBOX_KEY = ['notifications'];
@@ -58,6 +63,19 @@ export function NotificationInbox() {
 
   const data = inbox.data;
   const badge = badgeText(data?.unread ?? 0);
+
+  // THE BELL RINGS WHEN SOMETHING NEW ARRIVES (picks: React Bits "Bell Toggle", re-implemented):
+  // only when the unread count RISES between two answers — never on the first read, never when
+  // something is marked read — so a swing always means "there is news", not "the page loaded".
+  const lastUnread = useRef<number | null>(null);
+  const [ring, setRing] = useState(0);
+  useEffect(() => {
+    const now = data?.unread;
+    if (now === undefined) return;
+    const before = lastUnread.current;
+    lastUnread.current = now;
+    if (before !== null && now > before && !reducedMotion()) setRing((r) => r + 1);
+  }, [data?.unread]);
 
   const mark = useMutation({
     mutationFn: (body: { ids?: string[]; all?: boolean }) => markNotificationsRead(body),
@@ -100,9 +118,19 @@ export function NotificationInbox() {
         title="Notifications"
         onClick={() => setOpen((v) => !v)}
       >
-        <Icon d={PATH.bell} size={16} />
+        <span key={ring} className={`pk-bell${ring > 0 ? ' is-ringing' : ''}`} aria-hidden="true">
+          <span className="pk-bell__glyph">
+            <Icon d={PATH.bell} size={16} />
+          </span>
+          <svg className="pk-bell__wave pk-bell__wave--l" viewBox="0 0 14 14">
+            <path d="M10 2.5a7 7 0 0 0-6 9" />
+          </svg>
+          <svg className="pk-bell__wave pk-bell__wave--r" viewBox="0 0 14 14">
+            <path d="M4 2.5a7 7 0 0 1 6 9" />
+          </svg>
+        </span>
         {badge && (
-          <span className="gx-inbox__badge" aria-hidden="true">
+          <span key={badge} className="gx-inbox__badge pk-bell__badge" aria-hidden="true">
             {badge}
           </span>
         )}

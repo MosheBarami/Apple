@@ -17,7 +17,28 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchStudioOpLog, type StudioOpLog } from '../../lib/api';
 import { relativeTime } from '../../lib/format';
 import { Failure } from '../failure';
+import { StackTrace } from '../ai-elements/stack-trace';
+import { Terminal } from '../ai-elements/terminal';
+import '../picks/tech/tech-ui.css';
 import { activityRows, type ActivityRow, type OpLogRow } from './op-vocabulary';
+
+/**
+ * The raw record as a log, oldest first — what AI Elements' Terminal shows behind "Details". Every
+ * field is the worker's own column; nothing here is a sentence the vocabulary wrote.
+ */
+export function activityLog(rows: OpLogRow[]): string {
+  return [...rows]
+    .reverse()
+    .map((r) => {
+      const at = new Date(r.created_at);
+      const when = Number.isNaN(at.getTime()) ? '—' : at.toISOString().replace('T', ' ').slice(0, 19);
+      const result = r.ok === 1 ? 'ok  ' : 'FAIL';
+      const tail = [r.runId ? `run=${r.runId}` : null, r.failure ? `failure=${r.failure}` : null].filter(Boolean).join(' ');
+      const line = `${when}  ${result}  ${r.kind}${tail ? `  ${tail}` : ''}`;
+      return r.summary ? `${line}\n    ${r.summary.replace(/\n/g, '\n    ')}` : line;
+    })
+    .join('\n');
+}
 
 const PAGE = 40;
 
@@ -62,7 +83,8 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
   if (first.isPending) return <p className="gx-empty">Reading what Apple did in Studio…</p>;
   if (first.isError) return <Failure error={first.error} onRetry={() => void first.refetch()} compact />;
 
-  const rows: ActivityRow[] = activityRows([...(first.data?.recentOps ?? []), ...older]);
+  const raw: OpLogRow[] = [...(first.data?.recentOps ?? []), ...older];
+  const rows: ActivityRow[] = activityRows(raw);
 
   if (rows.length === 0) {
     return (
@@ -88,7 +110,16 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
                   that distinction is the difference between "try again" and "do not". */}
               {!r.ok && ` · failed${r.failure ? ` (${r.failure})` : ''}`}
             </span>
-            {r.detail && <span className="gx-op__detail">{r.detail}</span>}
+            {/* The error text is technical, so it waits behind Details: the kind of error in plain
+                words, then the script and line (AI Elements stack-trace, read as Luau). */}
+            {r.detail && (
+              <details className="tq-details">
+                <summary>Details</summary>
+                <div className="tq-details__body">
+                  <StackTrace trace={r.detail} />
+                </div>
+              </details>
+            )}
           </span>
           {/* Only when the row really belongs to a run. An op taken between runs — a manual
               checkpoint — belongs to no conversation, and a button that scrolls nowhere is worse
@@ -100,6 +131,14 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
           )}
         </div>
       ))}
+
+      {/* The whole record as it is stored, for the reader who wants the facts behind the sentences. */}
+      <details className="tq-details">
+        <summary>Details</summary>
+        <div className="tq-details__body">
+          <Terminal output={activityLog(raw)} label="Full log" aria-label="Studio activity log" />
+        </div>
+      </details>
 
       {moreError && (
         <p className="gx-pop__note" role="alert" style={{ padding: 0 }}>

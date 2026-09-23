@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { EMPTY_STATES, type EmptyStateName, type EmptyStateSpec, type EmptyTone } from './empty-state-model';
+import { RippleField } from './picks/thinking/ripple-field';
+import { TileBurst } from './picks/thinking/tile-burst';
 import './empty-state.css';
 
 /**
@@ -9,6 +11,23 @@ import './empty-state.css';
  * lives in `empty-state-model.ts`, which is where the tests are. A surface picks a
  * state; it cannot invent one here.
  */
+
+/**
+ * THE MARK A STATE GETS WHEN ITS SURFACE BRINGS NONE (the owner's picks, 2026-09-23).
+ *
+ *   creation  Motion "Physical stagger": a plate of tiles a wave runs across — somewhere to build,
+ *             and something to poke while it is empty.
+ *   studio    Eldora "SVG Ripple Effect": rings reaching outward — Apple reaching for Studio.
+ *
+ * A failure, a finished roadmap and a future plan get no default mark: an alarm is not decorated,
+ * and the surfaces that show the other two (the roadmap) bring their own. A surface's own
+ * illustration always wins.
+ */
+function defaultArt(tone: EmptyTone): ReactNode {
+  if (tone === 'creation') return <TileBurst />;
+  if (tone === 'studio') return <RippleField size={96} rings={7} className="es__ripple" />;
+  return null;
+}
 
 const TONE_CLASS: Record<EmptyTone, string> = {
   creation: 'es--creation',
@@ -54,6 +73,7 @@ export function EmptyState({ state, detail, action, illustration }: EmptyStatePr
   // an error TypeScript is right to raise.
   const spec: EmptyStateSpec = EMPTY_STATES[state];
   const isFailure = spec.tone === 'failure';
+  const art = illustration ?? defaultArt(spec.tone);
   return (
     <div
       className={`es ${TONE_CLASS[spec.tone]}`}
@@ -62,7 +82,7 @@ export function EmptyState({ state, detail, action, illustration }: EmptyStatePr
       // project" to a screen-reader user as an alert would be noise.
       role={isFailure ? 'alert' : undefined}
     >
-      {illustration ? <div className="es__art" aria-hidden="true">{illustration}</div> : null}
+      {art ? <div className="es__art" aria-hidden="true">{art}</div> : null}
       <h2 className="es__title">{spec.title}</h2>
       {detailBody(detail) ?? (spec.body ? <p className="es__body">{spec.body}</p> : null)}
       {action ? <div className="es__action">{action}</div> : null}

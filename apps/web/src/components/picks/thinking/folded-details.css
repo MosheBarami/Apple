@@ -1,0 +1,11 @@
+/* FoldedDetails (folded-details.tsx). The summary is a quiet line with a chevron that turns; the
+   panel it lives in decides the type size and colour (failure.css, error-boundary.css). */
+.picks-fold { min-width:0; }
+.picks-fold__summary { display:inline-flex; align-items:center; gap:6px; width:fit-content; cursor:pointer; list-style:none; }
+.picks-fold__summary::-webkit-details-marker { display:none; }
+.picks-fold__chevron { flex:none; transition:transform .2s cubic-bezier(.23,1,.32,1); }
+.picks-fold[open]:not([data-closing='true']) > .picks-fold__summary .picks-fold__chevron { transform:rotate(180deg); }
+.picks-fold__body { min-width:0; }
+@media (prefers-reduced-motion: reduce) {
+  .picks-fold__chevron { transition:none; }
+}

@@ -1,0 +1,29 @@
+.pk-check { position:relative; display:inline-flex; flex:none; width:18px; height:18px; vertical-align:middle; }
+.pk-check__input { position:absolute; inset:0; z-index:1; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
+.pk-check__input:disabled { cursor:not-allowed; }
+.pk-check__box {
+  display:grid; place-items:center; width:100%; height:100%; box-sizing:border-box;
+  border:1.5px solid var(--nm-line,var(--line-strong)); border-radius:5px;
+  background:var(--nm-panel-soft,var(--surface-2));
+  transition:background-color .15s ease,border-color .15s ease;
+}
+.pk-check__box svg { width:12px; height:12px; fill:none; stroke:var(--nm-bg,var(--paper)); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+.pk-check__box path { stroke-dasharray:1 1; stroke-dashoffset:1; transition:stroke-dashoffset .25s ease-out; }
+.pk-check__input:checked + .pk-check__box {
+  background:var(--nm-ink,var(--ink)); border-color:var(--nm-ink,var(--ink));
+  animation:pk-check-pop var(--pk-check-dur,.4s) var(--pk-check-ease,ease-out);
+}
+.pk-check__input:checked + .pk-check__box path { stroke-dashoffset:0; }
+.pk-check__input:not(:checked) + .pk-check__box { animation:pk-check-pop-off .3s ease-out; }
+.pk-check__input:hover:not(:disabled):not(:checked) + .pk-check__box { border-color:color-mix(in srgb,var(--nm-ink,var(--ink)) 45%,var(--nm-line,var(--line))); }
+.pk-check__input:focus-visible + .pk-check__box { outline:2px solid var(--nm-ink,var(--ink)); outline-offset:2px; }
+.pk-check__input:disabled + .pk-check__box { opacity:.45; }
+@keyframes pk-check-pop { from { transform:scale(.85); } to { transform:scale(1); } }
+@keyframes pk-check-pop-off { from { transform:scale(.92); } to { transform:scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-check__box,.pk-check__box path { transition:none; }
+  .pk-check__input + .pk-check__box { animation:none !important; }
+}
+.motion-reduced .pk-check__box,.motion-reduced .pk-check__box path { transition:none; }
+.motion-reduced .pk-check__input + .pk-check__box { animation:none !important; }

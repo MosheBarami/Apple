@@ -1,0 +1,30 @@
+/* Columns are weeks (Sunday at the top), filled in column order like the upstream calendar. */
+.pk-cal { display:grid; gap:10px; min-width:0; }
+.pk-cal__head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; margin:0; font-size:13px; color:var(--nm-ink,var(--ink)); }
+.pk-cal__total { color:var(--nm-muted,var(--muted)); font-size:12px; }
+.pk-cal__grid {
+  position:relative; display:grid; grid-auto-flow:column; grid-template-rows:repeat(7,14px); grid-auto-columns:14px; gap:4px;
+  width:fit-content;
+}
+.pk-cal__day {
+  display:block; width:14px; height:14px; border-radius:3px;
+  background:var(--nm-panel-soft,var(--surface-2)); box-shadow:inset 0 0 0 1px var(--nm-line-soft,var(--line));
+}
+.pk-cal__grid > .pk-cal__day { animation:pk-cal-pop var(--pk-cal-dur,.5s) var(--pk-cal-ease,ease-out) both; animation-delay:calc((var(--w, 0) + var(--d, 0)) * 22ms); }
+/* Monochrome levels: more building, more ink. */
+.pk-cal__day.l1 { background:color-mix(in srgb,var(--nm-ink,var(--ink)) 22%,transparent); box-shadow:none; }
+.pk-cal__day.l2 { background:color-mix(in srgb,var(--nm-ink,var(--ink)) 42%,transparent); box-shadow:none; }
+.pk-cal__day.l3 { background:color-mix(in srgb,var(--nm-ink,var(--ink)) 66%,transparent); box-shadow:none; }
+.pk-cal__day.l4 { background:var(--nm-ink,var(--ink)); box-shadow:none; }
+.pk-cal__day.is-future { opacity:.35; }
+.pk-cal__tip {
+  position:absolute; z-index:5; inset-inline-start:calc(var(--w, 0) * 18px + 7px); inset-block-end:calc((7 - var(--d, 0)) * 18px + 6px);
+  transform:translateX(-50%); padding:5px 8px; border-radius:7px; white-space:nowrap; pointer-events:none;
+  font-size:11px; background:var(--nm-panel,var(--surface)); color:var(--nm-ink,var(--ink));
+  box-shadow:0 0 0 1px var(--nm-line,var(--line)),var(--nm-shadow,var(--shadow-pop));
+}
+.pk-cal__legend { display:flex; align-items:center; gap:4px; margin:0; font-size:11px; color:var(--nm-faint,var(--faint)); }
+.pk-cal__legend .pk-cal__day { width:11px; height:11px; }
+@keyframes pk-cal-pop { from { opacity:0; transform:scale(0); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { .pk-cal__grid > .pk-cal__day { animation:none; } }
+.motion-reduced .pk-cal__grid > .pk-cal__day { animation:none; }

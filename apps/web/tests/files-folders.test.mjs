@@ -24,6 +24,20 @@ const panel = readFileSync(join(WEB, 'src', 'components', 'ws', 'files-panel.tsx
 const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const api = readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8');
 
+/**
+ * The folder branch of the files list: from `row.kind === 'folder'` to the `) : (` that starts the
+ * file branch, at whatever indentation the markup sits. Asserts it found both ends, so a moved
+ * branch fails here instead of silently slicing to the end of the file.
+ */
+function folderRow(src) {
+  const start = src.indexOf("row.kind === 'folder'");
+  const end = /\n\s*\) : \(/g;
+  end.lastIndex = start;
+  const hit = start < 0 ? null : end.exec(src);
+  assert.ok(start >= 0 && hit, 'the folder branch of the files list was not found');
+  return src.slice(start, hit.index);
+}
+
 /* ------------------------------------------------------------------- the copy --- */
 
 test('THE DELETE CONFIRMATION COUNTS THE FILES, including the ones not on screen', () => {
@@ -55,7 +69,7 @@ test('the folder row sends both operations the worker serves', () => {
 });
 
 test('a viewer is not shown folder controls they would be refused', () => {
-  const row = panel.slice(panel.indexOf("row.kind === 'folder'"), panel.indexOf('\n        ) : ('));
+  const row = folderRow(panel);
   assert.ok(row.length > 200, 'the folder row must still be there');
   assert.match(row, /canEdit &&/, 'the folder actions must sit behind the build permission');
 });
@@ -70,7 +84,7 @@ test('A FOLDER ROW IS NOT A BUTTON INSIDE A BUTTON', () => {
   // The row used to be one <button> wrapping everything, which is why the actions could not live
   // on it: nested interactive elements are invalid HTML and the inner one is unreachable by
   // keyboard in some engines. The name is its own control now.
-  const row = code(panel.slice(panel.indexOf("row.kind === 'folder'"), panel.indexOf('\n        ) : (')));
+  const row = code(folderRow(panel));
   const opens = (row.match(/<button/g) ?? []).length;
   const closes = (row.match(/<\/button>/g) ?? []).length;
   assert.equal(opens, closes, 'every button in the folder row must be closed before the next one opens');

@@ -1,0 +1,55 @@
+/* Account screens are monochrome: on is ink, off is a quiet well. No green, no accent fill. */
+.pk-switch {
+  --pk-sw-w:40px; --pk-sw-h:24px; --pk-sw-pad:3px; --pk-sw-thumb:18px;
+  position:relative; display:inline-flex; flex:none; width:var(--pk-sw-w); height:var(--pk-sw-h);
+  vertical-align:middle;
+}
+.pk-switch__input {
+  position:absolute; inset:0; z-index:1; width:100%; height:100%; margin:0; opacity:0; cursor:pointer;
+}
+.pk-switch__input:disabled { cursor:not-allowed; }
+.pk-switch__track {
+  position:relative; display:block; width:100%; height:100%; border-radius:999px;
+  background:var(--nm-panel-soft,var(--surface-2));
+  box-shadow:inset 0 0 0 1px var(--nm-line,var(--line));
+  transition:background-color .2s ease,box-shadow .2s ease;
+}
+.pk-switch__thumb {
+  position:absolute; inset-block-start:var(--pk-sw-pad); inset-inline-start:var(--pk-sw-pad);
+  width:var(--pk-sw-thumb); height:var(--pk-sw-thumb); border-radius:999px;
+  background:var(--nm-muted,var(--muted));
+  box-shadow:0 1px 2px rgba(0,0,0,.35);
+  transition:
+    transform var(--pk-switch-dur,.35s) var(--pk-switch-ease,cubic-bezier(.23,1,.32,1)),
+    width .15s ease, background-color .2s ease;
+}
+.pk-switch__icon {
+  position:absolute; inset-block-start:50%; width:10px; height:10px; margin-block-start:-5px;
+  fill:none; stroke:currentColor; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round;
+  transition:transform .25s cubic-bezier(.23,1,.32,1),opacity .2s ease;
+}
+.pk-switch__icon--on { inset-inline-start:7px; color:var(--nm-bg,var(--paper)); opacity:0; transform:scale(0); }
+.pk-switch__icon--off { inset-inline-end:7px; color:var(--nm-faint,var(--faint)); }
+
+/* Pressed: the thumb stretches toward where it is about to go (Animate UI). */
+.pk-switch__input:active:not(:disabled) + .pk-switch__track .pk-switch__thumb { width:calc(var(--pk-sw-thumb) + 5px); }
+
+.pk-switch__input:checked + .pk-switch__track { background:var(--nm-ink,var(--ink)); box-shadow:inset 0 0 0 1px var(--nm-ink,var(--ink)); }
+.pk-switch__input:checked + .pk-switch__track .pk-switch__thumb {
+  background:var(--nm-bg,var(--paper));
+  transform:translateX(calc(var(--pk-sw-w) - var(--pk-sw-thumb) - var(--pk-sw-pad) * 2));
+}
+.pk-switch__input:checked:active:not(:disabled) + .pk-switch__track .pk-switch__thumb {
+  transform:translateX(calc(var(--pk-sw-w) - var(--pk-sw-thumb) - var(--pk-sw-pad) * 2 - 5px));
+}
+.pk-switch__input:checked + .pk-switch__track .pk-switch__icon--on { opacity:1; transform:scale(1); }
+.pk-switch__input:checked + .pk-switch__track .pk-switch__icon--off { opacity:0; transform:scale(0); }
+:dir(rtl) .pk-switch__input:checked + .pk-switch__track .pk-switch__thumb { transform:translateX(calc((var(--pk-sw-w) - var(--pk-sw-thumb) - var(--pk-sw-pad) * 2) * -1)); }
+
+.pk-switch__input:disabled + .pk-switch__track { opacity:.45; }
+.pk-switch__input:focus-visible + .pk-switch__track { outline:2px solid var(--nm-ink,var(--ink)); outline-offset:2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-switch__thumb,.pk-switch__icon,.pk-switch__track { transition:none; }
+}
+.motion-reduced .pk-switch__thumb,.motion-reduced .pk-switch__icon,.motion-reduced .pk-switch__track { transition:none; }

@@ -1,0 +1,12 @@
+/* ROLLING NUMBER. One column per digit, one em tall, clipped; the reel inside it is ten digits
+   stacked, moved to the digit. `translateY(-n*10%)` because the reel is ten lines tall. */
+.pk-roll { display:inline-flex; font-variant-numeric:tabular-nums; }
+.pk-roll__face { display:inline-flex; }
+.pk-roll__col { display:inline-block; height:1lh; overflow:hidden; vertical-align:bottom; }
+@supports not (height:1lh) { .pk-roll__col { height:1.5em; } }
+.pk-roll__reel { display:flex; flex-direction:column; transition:transform .5s cubic-bezier(.34,1.3,.64,1); }
+.pk-roll__reel > span { display:block; height:1lh; }
+@supports not (height:1lh) { .pk-roll__reel > span { height:1.5em; } }
+@media (prefers-reduced-motion: reduce) {
+  .pk-roll__reel { transition:none; }
+}

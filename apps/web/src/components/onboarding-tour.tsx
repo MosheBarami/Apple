@@ -10,6 +10,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isTypingTarget } from '../lib/shortcuts';
 import './onboarding-tour.css';
+// The owner's picked onboarding components (./picks/settings).
+import { StepDots, StepSlide } from './picks/settings/stepper';
+import './picks/settings/pop-in.css';
 import {
   TOUR_STEPS,
   dismissTour,
@@ -177,7 +180,8 @@ export function OnboardingTour({ done }: { done: Record<string, unknown> }) {
       />
       <div
         ref={cardRef}
-        className={`tour-card${flip ? ' is-above' : ''}`}
+        // pk-pop: the card arrives like a small reward (picks: Motion "Pokopia: Modal").
+        className={`tour-card pk-pop${flip ? ' is-above' : ''}`}
         role="dialog"
         aria-labelledby="tour-title"
         aria-describedby="tour-body"
@@ -188,15 +192,22 @@ export function OnboardingTour({ done }: { done: Record<string, unknown> }) {
         tabIndex={-1}
         style={flip ? { bottom: Math.max(GAP, viewportH - box.top + GAP), left } : { top: Math.max(GAP, Math.min(below, viewportH - 232)), left }}
       >
-        <p className="tour-step">
-          Step {index + 1} of {TOUR_STEPS.length}
-        </p>
-        <h2 className="tour-title" id="tour-title">
-          {step.title}
-        </h2>
-        <p className="tour-body" id="tour-body">
-          {step.body}
-        </p>
+        {/* Picks: React Bits "Stepper" — dots that fill as the tour goes, and each step's words
+            slide in from the side of travel. The sentence stays for anyone not reading dots. */}
+        <div className="tour-progress">
+          <StepDots count={TOUR_STEPS.length} current={index} label="Tour progress" />
+          <p className="tour-step">
+            Step {index + 1} of {TOUR_STEPS.length}
+          </p>
+        </div>
+        <StepSlide stepKey={step.id} index={index}>
+          <h2 className="tour-title" id="tour-title">
+            {step.title}
+          </h2>
+          <p className="tour-body" id="tour-body">
+            {step.body}
+          </p>
+        </StepSlide>
         <div className="tour-actions">
           <button type="button" className="tour-skip" onClick={skip}>
             Skip the tour

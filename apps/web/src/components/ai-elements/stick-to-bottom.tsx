@@ -157,6 +157,25 @@ function StickToBottomRoot(
     return () => el.removeEventListener('scroll', onScroll);
   }, [setLock]);
 
+  // NO RUBBER BAND AT EITHER END (GSAP's stopOverscroll() helper, re-implemented; no GSAP code).
+  // `overscroll-behavior:contain` (stick-to-bottom.css) is enough everywhere except iOS Safari,
+  // which ignores it: a flick that starts exactly at the top or the bottom of the transcript drags
+  // the whole page — composer and all — instead. Starting every touch one pixel inside the ends
+  // means there is always room to scroll, so the gesture stays in the transcript. One pixel off the
+  // bottom is well inside the lock's slack, so following is not released by it.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onTouchStart = () => {
+      const max = el.scrollHeight - el.clientHeight;
+      if (max < 2) return;
+      if (el.scrollTop <= 0) el.scrollTop = 1;
+      else if (el.scrollTop >= max) el.scrollTop = max - 1;
+    };
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    return () => el.removeEventListener('touchstart', onTouchStart);
+  }, []);
+
   // Growth is followed while locked. The first measurement is the initial scroll. The scroll
   // element is watched too: when the composer below it grows a line, the viewport shrinks and the
   // newest line would slide under it without any content having changed.

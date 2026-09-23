@@ -1,0 +1,45 @@
+.pk-slots { position:relative; width:fit-content; max-width:100%; }
+.pk-slots__input {
+  position:absolute; inset:0; z-index:2; width:100%; height:100%; margin:0; padding:0; border:0;
+  background:transparent !important; color:transparent; caret-color:transparent; opacity:0; cursor:text;
+  font-size:16px; letter-spacing:1em;
+}
+.pk-slots.is-disabled .pk-slots__input { cursor:not-allowed; }
+.pk-slots__row { position:relative; display:grid; grid-template-columns:repeat(var(--pk-slots,6),44px); gap:8px; }
+@media (max-width:400px) { .pk-slots__row { grid-template-columns:repeat(var(--pk-slots,6),minmax(0,40px)); gap:6px; } }
+.pk-slots__slot {
+  position:relative; display:grid; place-items:center; height:52px; overflow:hidden;
+  border:1px solid var(--nm-line,var(--control-line)); border-radius:10px;
+  background:var(--nm-panel-soft,var(--paper-2)); color:var(--nm-ink,var(--ink));
+  font-size:22px; font-variant-numeric:tabular-nums;
+  transition:border-color .15s ease,background-color .15s ease;
+}
+.pk-slots__slot.is-active { border-color:var(--nm-ink,var(--ink)); }
+.pk-slots.is-focused .pk-slots__slot.is-filled { border-color:color-mix(in srgb,var(--nm-ink,var(--ink)) 35%,var(--nm-line,var(--line))); }
+.pk-slots__digit { display:block; animation:pk-slot-rise var(--pk-slot-dur,.4s) var(--pk-slot-ease,ease-out) both; }
+@keyframes pk-slot-rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+.pk-slots__caret { width:1.5px; height:22px; background:var(--nm-ink,var(--ink)); animation:pk-slot-caret 1s steps(1) infinite; }
+@keyframes pk-slot-caret { 50% { opacity:0; } }
+
+/* Wrong: the row gives a small shake and the digits drain from the right. */
+.pk-slots.is-error .pk-slots__slot { border-color:var(--bad); }
+.pk-slots.is-error .pk-slots__row { animation:pk-slot-shake .36s ease-in-out; }
+@keyframes pk-slot-shake { 20%,60% { transform:translateX(-5px); } 40%,80% { transform:translateX(5px); } }
+
+/* Right: an ink wash opens from the middle and a check draws in. */
+.pk-slots__wash {
+  position:absolute; inset:0; display:grid; place-items:center; border-radius:10px;
+  background:var(--nm-ink,var(--ink)); color:var(--nm-bg,var(--paper));
+  animation:pk-slot-wash .3s ease-out both;
+}
+.pk-slots__wash svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.pk-slots__wash path { stroke-dasharray:1; stroke-dashoffset:1; animation:pk-slot-check .35s .25s ease-out forwards; }
+@keyframes pk-slot-wash { from { clip-path:inset(0 50% round 10px); } to { clip-path:inset(0 0 round 10px); } }
+@keyframes pk-slot-check { to { stroke-dashoffset:0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-slots__digit,.pk-slots__caret,.pk-slots__row,.pk-slots__wash { animation:none !important; }
+  .pk-slots__wash path { animation:none; stroke-dashoffset:0; }
+}
+.motion-reduced .pk-slots__digit,.motion-reduced .pk-slots__caret,.motion-reduced .pk-slots__row,.motion-reduced .pk-slots__wash { animation:none !important; }
+.motion-reduced .pk-slots__wash path { animation:none; stroke-dashoffset:0; }

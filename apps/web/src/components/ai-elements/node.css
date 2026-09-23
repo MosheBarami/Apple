@@ -1,0 +1,22 @@
+/* AI ELEMENTS NODE: a small card on the canvas. The global button rule is out-specified with the
+   element name, because system.css is emitted last and would otherwise win every tie. */
+button.ai-node {
+  position:absolute; display:grid; align-content:center; gap:3px; min-height:0; margin:0; padding:8px 12px;
+  border:1px solid var(--line-strong); border-radius:var(--r-md); background:var(--surface); color:var(--ink);
+  font:inherit; text-align:start; letter-spacing:normal; cursor:pointer; box-shadow:none;
+  transition:border-color var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+}
+button.ai-node:hover:not(:disabled):not([aria-disabled='true']) { background:var(--surface-2); color:var(--ink); border-color:var(--accent-line); }
+button.ai-node.is-selected { border-color:var(--accent); background:var(--accent-soft); }
+button.ai-node.is-faded { opacity:.45; }
+button.ai-node:focus-visible { outline:2px solid var(--accent); outline-offset:2px; box-shadow:none; animation:none; }
+button.ai-node--waiting { border-style:dashed; }
+button.ai-node--landed { background:var(--paper-2); }
+.ai-node__header { display:flex; align-items:center; gap:6px; min-width:0; font-size:11px; color:var(--muted); }
+.ai-node__title { min-width:0; font-size:13px; line-height:1.3; color:var(--ink); overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; }
+.ai-node__desc { min-width:0; font-size:11.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ai-node__handle { position:absolute; top:50%; width:8px; height:8px; margin-top:-4px; border:1.5px solid var(--line-strong); border-radius:50%; background:var(--paper-2); }
+.ai-node__handle--target { left:-5px; }
+.ai-node__handle--source { right:-5px; }
+button.ai-node.is-selected .ai-node__handle { border-color:var(--accent); }
+@media (prefers-reduced-motion: reduce) { button.ai-node { transition:none; } }

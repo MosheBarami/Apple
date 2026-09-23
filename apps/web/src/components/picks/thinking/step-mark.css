@@ -1,0 +1,24 @@
+/* The step mark (step-mark.tsx). Colour comes from the row: muted when complete, ink or the accent
+   while active (ws/reasoning.css), faint while pending. Nothing here sets a colour of its own. */
+.picks-step { display:block; width:16px; height:16px; flex:none; overflow:visible; }
+
+/* ACTIVE — Thought Line's pulse: the dot breathes between .55 and 1, and a halo leaves it. */
+.picks-step__dot { animation:picks-step-breathe 1.6s cubic-bezier(.77,0,.175,1) infinite; }
+.picks-step__halo { transform-box:fill-box; transform-origin:center; opacity:0; animation:picks-step-halo 1.6s cubic-bezier(.23,1,.32,1) infinite; }
+@keyframes picks-step-breathe { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+@keyframes picks-step-halo { 0% { opacity:.35; transform:scale(1); } 100% { opacity:0; transform:scale(2.4); } }
+
+/* COMPLETE — the To-do check: the ring settles in with a spring-like overshoot, then the tick
+   draws. The resting values ARE the finished mark; the keyframes only describe how it got there. */
+.picks-step__done { transform-box:fill-box; transform-origin:center; animation:picks-step-settle .3s cubic-bezier(.34,1.56,.64,1) both; }
+.picks-step__ring { opacity:.55; }
+.picks-step__tick { stroke-dasharray:1; stroke-dashoffset:0; animation:picks-step-draw .25s cubic-bezier(.23,1,.32,1) .08s both; }
+@keyframes picks-step-settle { from { transform:scale(.8); } to { transform:scale(1); } }
+@keyframes picks-step-draw { from { stroke-dashoffset:1; } to { stroke-dashoffset:0; } }
+
+.picks-step--pending { opacity:.8; }
+
+@media (prefers-reduced-motion: reduce) {
+  .picks-step__dot,.picks-step__halo,.picks-step__done,.picks-step__tick { animation:none; }
+  .picks-step__halo { display:none; }
+}

@@ -10,6 +10,7 @@
 import { useState, type ReactNode } from 'react';
 import { Modal } from './modal';
 import { canConfirm, type Confirmation } from '../lib/confirm-model';
+import { HoldButton } from './picks/settings/hold-button';
 
 export interface ConfirmDialogProps {
   title: string;
@@ -38,6 +39,12 @@ export interface ConfirmDialogProps {
   /** Shown while the mutation is in flight, in place of `confirmLabel`. */
   busyLabel?: string;
   busy?: boolean;
+  /**
+   * Press-and-hold to confirm (picks: Motion "Hold to confirm" + React Bits "Hold Button"). For a
+   * danger action that cannot be undone, a click is too cheap: the confirm button becomes a hold,
+   * which a slip of the finger cannot complete.
+   */
+  hold?: boolean;
   onConfirm: () => void;
   onClose: () => void;
 }
@@ -52,6 +59,7 @@ export function ConfirmDialog({
   confirmLabel,
   busyLabel,
   busy = false,
+  hold = false,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
@@ -61,7 +69,7 @@ export function ConfirmDialog({
   return (
     // Locked while the mutation is in flight: a dialog that vanishes mid-delete leaves the user
     // with no idea whether it happened.
-    <Modal title={title} onClose={onClose} locked={busy}>
+    <Modal title={title} onClose={onClose} locked={busy} alert={tone === 'danger'}>
       {/* THIS PARAGRAPH WAS SET IN `--bad`, ON BOTH TONES.
           On a delete it made the whole explanation red beside a red button — two things claiming
           the same urgency, which is how a reader learns that red means nothing in particular. On
@@ -109,16 +117,24 @@ export function ConfirmDialog({
             two entirely different reasons — the name has not been typed yet, and the mutation is
             already running — and a reader cannot tell which, so it reads as broken rather than as
             waiting. `aria-busy` is the same sentence for a screen reader. */}
-        <button
-          type="button"
-          className={tone === 'primary' ? 'btn btn-primary' : 'btn btn-danger'}
-          disabled={!ready || busy}
-          aria-busy={busy || undefined}
-          title={busy ? 'Working — this finishes on its own' : ready ? undefined : 'Type the name above to confirm'}
-          onClick={onConfirm}
-        >
-          {busy ? (busyLabel ?? confirmLabel) : confirmLabel}
-        </button>
+        {hold && tone === 'danger' && ready ? (
+          <>
+            {/* Said out loud: a hold looks like a button, and a click on it does nothing. */}
+            {!busy && <span className="modal-hold-hint">Press and hold to confirm</span>}
+            <HoldButton label={confirmLabel} busy={busy} busyLabel={busyLabel} onConfirm={onConfirm} />
+          </>
+        ) : (
+          <button
+            type="button"
+            className={tone === 'primary' ? 'btn btn-primary' : 'btn btn-danger'}
+            disabled={!ready || busy}
+            aria-busy={busy || undefined}
+            title={busy ? 'Working — this finishes on its own' : ready ? undefined : 'Type the name above to confirm'}
+            onClick={onConfirm}
+          >
+            {busy ? (busyLabel ?? confirmLabel) : confirmLabel}
+          </button>
+        )}
       </div>
     </Modal>
   );

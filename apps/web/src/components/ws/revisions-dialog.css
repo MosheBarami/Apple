@@ -67,3 +67,20 @@
 @media (max-width:600px) {
   .gx-revs__item { padding-block:11px; gap:4px; }
 }
+
+/* PAGED (AI Elements MessageBranch). One version at a time under the dialog title, the pager under
+   it, and — while an older page is showing — the current text beneath as the anchor. The column's
+   closing hairline moves to the page itself. A page arrives with a short fade, off under reduced
+   motion (the one motion this sheet now has). */
+.gx-revs { border-block-end:0; gap:12px; }
+.gx-revs .ai-message__branch-content { border-block-end:1px solid var(--line); }
+.gx-revs .ai-message__branch-content:not(.hidden) { animation:gx-revs-page var(--t-fast) var(--ease-out) both; }
+@keyframes gx-revs-page { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
+.gx-revs__pager { justify-content:center; gap:4px; }
+.gx-revs__pager .ai-message__branch-page { min-width:64px; text-align:center; font-size:12px; font-variant-numeric:tabular-nums; }
+.gx-revs__anchor { display:grid; gap:5px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--r-sm); }
+.gx-revs__anchor .gx-revs__when,.gx-revs__anchor .gx-revs__text { margin:0; }
+.gx-revs__anchor .gx-revs__text { color:var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .gx-revs .ai-message__branch-content:not(.hidden) { animation:none; }
+}

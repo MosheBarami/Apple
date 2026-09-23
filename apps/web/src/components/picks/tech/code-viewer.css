@@ -1,0 +1,15 @@
+/* Tree Code Viewer's right pane: a mono path header with the copy control at its end, and numbered
+   lines. Lines WRAP rather than scroll — the drawer is narrow, and a sideways-scrolling file hides
+   the end of every long line from a reader who does not know to scroll. */
+.cv { min-width:0; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2); overflow:hidden; }
+.cv-head { display:flex; align-items:center; gap:8px; min-height:34px; padding:3px 4px 3px 12px; border-bottom:1px solid var(--line); }
+.cv-path { flex:1; min-width:0; font-family:var(--font-mono); font-size:11.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cv-lines { list-style:none; margin:0; padding:6px 0; max-height:min(60vh, 520px); overflow:auto; font-family:var(--font-mono); font-size:12.5px; line-height:1.6; counter-reset:none; }
+.cv-line { position:relative; }
+.cv-row { position:relative; display:flex; min-width:0; }
+.cv-lines--ask .cv-row { padding-inline-start:22px; }
+.cv-row:hover { background:var(--control-fill); }
+.cv-row:hover .lt-bubble, .cv-row:focus-within .lt-bubble { opacity:1; }
+.cv-line.is-asking > .cv-row { background:var(--accent-soft); }
+.cv-no { flex:none; width:3.2em; padding-inline-end:10px; text-align:end; color:var(--faint); user-select:none; font-variant-numeric:tabular-nums; }
+.cv-code { flex:1; min-width:0; padding-inline-end:12px; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--ink); background:none; font:inherit; tab-size:2; }

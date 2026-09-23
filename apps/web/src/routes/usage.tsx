@@ -3,7 +3,7 @@
 // Every number on this page comes from the live quota or from @golem/shared.
 // Credits are billed from the compute a run actually consumes, so the per-mode
 // figures are the measured typical range, not a price list.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
 import { OrderSummaryDialog } from '../components/order-summary';
@@ -55,6 +55,13 @@ import { ConfirmDialog } from '../components/confirm-dialog';
 import { useToast } from '../components/toast';
 import './usage.css';
 import './nonworkspace-minimal.css';
+// The owner's picked account-screen components (apps/web/src/components/picks/settings).
+import { useTweenedNumber } from '../components/picks/settings/motion';
+import { LineGraph } from '../components/picks/settings/line-graph';
+import { ActivityCalendar } from '../components/picks/settings/activity-calendar';
+import { LiveStats } from '../components/picks/settings/live-stats';
+import { GlideIndicator } from '../components/picks/settings/glide-indicator';
+import '../components/picks/settings/account-buttons.css';
 
 // Product model selection is a separate axis from whether a request is Plan or Agent.
 const MODELS = PRODUCT_MODELS;
@@ -166,7 +173,10 @@ export function articleFor(name: string): string {
 function CreditsRing({ remaining, daily, period }: { remaining: number; daily: number; period: 'day' | 'month' }) {
   const r = 52;
   const c = 2 * Math.PI * r;
-  const frac = daily > 0 ? Math.max(0, Math.min(1, remaining / daily)) : 0;
+  // The arc and the figure GLIDE to the balance instead of snapping (picks: GSAP AttrPlugin — the
+  // attribute tween is done natively in motion.ts). The label always carries the real number.
+  const shown = useTweenedNumber(remaining, 900, 0);
+  const frac = daily > 0 ? Math.max(0, Math.min(1, shown / daily)) : 0;
   const window = period === 'month' ? 'this month' : 'today';
   return (
     <svg
@@ -190,7 +200,7 @@ function CreditsRing({ remaining, daily, period }: { remaining: number; daily: n
         className="ring-arc"
       />
       <text x="70" y="68" textAnchor="middle" className="ring-number">
-        {remaining}
+        {Math.round(shown)}
       </text>
       <text x="70" y="90" textAnchor="middle" className="ring-caption">
         of {daily}
@@ -526,56 +536,46 @@ function UsageBars({ days }: { days: UsageDay[] }) {
     const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
     series.push({ day: d, credits: byDay.get(d) ?? 0 });
   }
-  const max = Math.max(10, ...series.map((s) => s.credits));
-  const W = 600;
-  const H = 150;
-  const pad = 4;
-  const bw = (W - pad * 2) / 30;
-
+  // Picks: Motion "Line graph" — a line you can run a finger (or the arrow keys) along.
   return (
     <div className="bars-wrap">
-      <svg
-        viewBox={`0 0 ${W} ${H + 24}`}
-        className="usage-bars"
-        role="img"
-        aria-label="Credits spent per day over the last 30 days"
-      >
-        <line x1={pad} x2={W - pad} y1={H} y2={H} className="bar-base" />
-        {series.map((s, i) => {
-          const h = Math.max(s.credits > 0 ? 3 : 1.5, (s.credits / max) * H);
-          const x = pad + i * bw;
-          const label = new Date(`${s.day}T00:00:00Z`).toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-          });
-          return (
-            <g key={s.day}>
-              <rect
-                x={x + 2}
-                y={H - h}
-                width={bw - 4}
-                height={h}
-                rx={2}
-                className={s.credits > 0 ? 'bar bar-active' : 'bar'}
-              >
-                <title>{`${label}: ${s.credits} Credits`}</title>
-              </rect>
-              {/* Anchor the end labels inward so they are not clipped by the viewBox. */}
-              {(i === 0 || i === 29 || i === 15) && (
-                <text
-                  x={i === 0 ? pad : i === 29 ? W - pad : x + bw / 2}
-                  y={H + 17}
-                  textAnchor={i === 0 ? 'start' : i === 29 ? 'end' : 'middle'}
-                  className="bar-label"
-                >
-                  {label}
-                </text>
-              )}
-            </g>
-          );
-        })}
-      </svg>
+      <LineGraph series={series} totalLabel="Spent in 30 days" />
     </div>
+  );
+}
+
+/**
+ * RIGHT NOW (picks: Motion "Stats: Live panel"). What is left and what today has cost, refreshed
+ * every 30 seconds while this page is open. It says "Live" only while the last answer is fresh —
+ * a paused tab or a failed refresh turns it to "Paused" rather than showing old numbers as current.
+ */
+const LIVE_EVERY = 30_000;
+function RightNow({ left, days, updatedAt }: { left: number; days: UsageDay[]; updatedAt: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 10_000);
+    return () => window.clearInterval(t);
+  }, []);
+  const today = new Date().toISOString().slice(0, 10);
+  const todayRow = days.find((d) => d.day === today);
+  const byDay = new Map(days.map((d) => [d.day, d.credits]));
+  const bars = Array.from({ length: 14 }, (_, k) => {
+    const d = new Date(Date.now() - (13 - k) * 864e5).toISOString().slice(0, 10);
+    const v = byDay.get(d) ?? 0;
+    return { key: d, value: v, label: `${d}: ${v} Credits` };
+  });
+  return (
+    <LiveStats
+      stats={[
+        { label: 'Credits left', value: left },
+        { label: 'Spent today', value: todayRow?.credits ?? 0 },
+        { label: 'Builds today', value: todayRow?.events ?? 0 },
+      ]}
+      bars={bars}
+      updatedAt={updatedAt}
+      intervalMs={LIVE_EVERY}
+      now={now}
+    />
   );
 }
 
@@ -633,8 +633,9 @@ function SpendBreakdown({ days }: { days: UsageDay[] }) {
  */
 
 export function UsagePage() {
-  const me = useQuery({ queryKey: ['me'], queryFn: fetchMe });
-  const usage = useQuery({ queryKey: ['usage'], queryFn: fetchUsage });
+  const me = useQuery({ queryKey: ['me'], queryFn: fetchMe, refetchInterval: LIVE_EVERY });
+  const usage = useQuery({ queryKey: ['usage'], queryFn: fetchUsage, refetchInterval: LIVE_EVERY });
+  const switchRef = useRef<HTMLDivElement>(null);
   const [usageSurface, setUsageSurface] = useState<'usage' | 'billing'>(() =>
     window.location.hash === '#billing' ? 'billing' : 'usage',
   );
@@ -777,7 +778,9 @@ export function UsagePage() {
         </div>
       </div>
 
-      <div className="usage-switch" role="tablist" aria-label="Usage and billing">
+      <div className="usage-switch" role="tablist" aria-label="Usage and billing" ref={switchRef}>
+        {/* Picks: React Bits "Gooey Nav" — the pill slides to the chosen tab and bursts on arrival. */}
+        <GlideIndicator host={switchRef} activeKey={usageSurface} selector='[role="tab"][aria-selected="true"]' variant="goo" />
         <button
           type="button"
           role="tab"
@@ -877,8 +880,15 @@ export function UsagePage() {
                 <p className="muted">No Credits spent yet — go build something.</p>
               ) : (
                 <>
+                  <RightNow
+                    left={view.allowanceRemaining + view.credits}
+                    days={usage.data.days}
+                    updatedAt={Math.min(me.dataUpdatedAt, usage.dataUpdatedAt)}
+                  />
                   <UsageBars days={usage.data.days} />
                   <SpendBreakdown days={usage.data.days} />
+                  {/* Picks: Componentry "Github Calendar" — which days you built on. */}
+                  <ActivityCalendar days={usage.data.days} />
                 </>
               ))}
           </div>

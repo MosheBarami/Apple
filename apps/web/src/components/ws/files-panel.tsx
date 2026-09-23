@@ -17,7 +17,8 @@
  *   next to the picker rather than discovered as a refusal, which is the part that was missing: a
  *   picker that silently accepts a subset would promise a feature the deployment does not have.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   downloadProjectArchive,
@@ -30,10 +31,46 @@ import {
   ApiError,
 } from '../../lib/api';
 import { Failure } from '../failure';
-import { Icon, PATH } from './primitives';
+import { relativeTime } from '../../lib/format';
+import type { CodeLanguage } from '../../lib/generative-ui/schema';
+import {
+  Artifact,
+  ArtifactAction,
+  ArtifactActions,
+  ArtifactClose,
+  ArtifactContent,
+  ArtifactDescription,
+  ArtifactHeader,
+  ArtifactTitle,
+} from '../ai-elements/artifact';
+import {
+  Commit,
+  CommitActions,
+  CommitAuthorAvatar,
+  CommitHash,
+  CommitHeader,
+  CommitInfo,
+  CommitMessage,
+  CommitMetadata,
+  CommitSeparator,
+  CommitTimestamp,
+} from '../ai-elements/commit';
+import { FileTree, FileTreeActions, FileTreeIcon, FileTreeMeta, FileTreeName, FileTreeRow, fileTreeMainProps } from '../ai-elements/file-tree';
+import { JSXPreview, JSXPreviewContent } from '../ai-elements/jsx-preview';
+import { SchemaDisplay } from '../ai-elements/schema-display';
+import { Snippet, SnippetCopyButton, SnippetInput, SnippetText } from '../ai-elements/snippet';
+import { CodeViewer } from '../picks/tech/code-viewer';
+import { diffLines } from '../picks/tech/diff-model';
+import { ancestorsOf, moveExpanded, treeRows } from '../picks/tech/file-tree-model';
+import { DownloadIcon } from '../picks/tech/icons';
+import { jsonShape } from '../picks/tech/json-shape';
+import { lineQuestion } from '../picks/tech/line-thread';
+import { VersionDiff } from '../picks/tech/version-diff';
+import '../picks/tech/tech-ui.css';
+import '../picks/tech/files-panel.css';
 import {
   breadcrumbs,
-  browseRows,
+  extensionOf,
   deleteConfirm,
   formatFileBytes,
   parentPrefix,
@@ -57,6 +94,11 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
   const [open, setOpen] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Folders open in the tree, and the saved version being compared with the current one.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [compare, setCompare] = useState<number | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const listing = useQuery({
     queryKey: ['project-files', projectId],
@@ -78,6 +120,34 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
     enabled: open !== null,
     retry: false,
   });
+
+  const older = useQuery({
+    queryKey: ['project-file', projectId, open, 'version', compare],
+    queryFn: () => fetchProjectFile(projectId, open as string, compare as number),
+    enabled: open !== null && compare !== null,
+    retry: false,
+  });
+
+  // A file opened somewhere the tree has folded (after a rename moved it, say) is shown in place.
+  useEffect(() => {
+    if (open === null) return;
+    const need = ancestorsOf(open);
+    setExpanded((e) => (need.every((p) => e.has(p)) ? e : new Set([...e, ...need])));
+  }, [open]);
+
+  /**
+   * Hand a question to the message box. The workspace already reads a `seed` out of router state
+   * (the roadmap's "Build" uses the same door), so this is a navigation to the page you are on with
+   * the words attached — the composer fills, nothing is sent until you press send.
+   */
+  const askApple = useCallback(
+    (text: string) => {
+      navigate(location.pathname, { state: { seed: text } });
+      setNotice('Your question is in the message box. Close this panel to send it.');
+      return true;
+    },
+    [navigate, location.pathname],
+  );
 
   const selection = useRef({ open, file, history });
   selection.current = { open, file, history };
@@ -257,7 +327,22 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
 
   const data = listing.data;
   const summary = storageSummary(data);
-  const rows = browseRows(data.files, prefix);
+  const rows = treeRows(data.files, expanded);
+  // Open a file, or close it when it is already the one open. A new file starts uncompared.
+  const choose = (path: string) => {
+    setOpen(open === path ? null : path);
+    setCompare(null);
+  };
+  // A folder press opens or closes it and makes it the folder new files go into.
+  const toggleFolder = (path: string, want?: boolean) => {
+    setExpanded((e) => {
+      const next = new Set(e);
+      if (want ?? !e.has(path)) next.add(path);
+      else next.delete(path);
+      return next;
+    });
+    setPrefix(path);
+  };
   const crumbs = breadcrumbs(prefix);
   const now = Date.now();
 
@@ -336,6 +421,8 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
         </p>
       )}
 
+      {/* The folder new files go into. The tree below opens folders in place; this trail says which
+          one an added file will land in, and gets back to the top in one press. */}
       <nav aria-label="Folder" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.6rem' }}>
         {crumbs.map((c, i) => (
           <span key={c.prefix} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
@@ -343,10 +430,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
             <button
               type="button"
               className="gx-btn gx-btn--ghost"
-              onClick={() => {
-                setPrefix(c.prefix);
-                setOpen(null);
-              }}
+              onClick={() => setPrefix(c.prefix)}
               aria-current={i === crumbs.length - 1 ? 'page' : undefined}
             >
               {c.label}
@@ -371,101 +455,120 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
         </p>
       )}
 
-      {rows.map((row) =>
-        row.kind === 'folder' ? (
-          // NOT one <button> around the whole row, which is what it was: the folder actions cannot
-          // live inside another button — nested interactive elements are invalid HTML and the inner
-          // control is unreachable by keyboard in some engines. The name is its own control.
-          <div key={row.path} className="gx-row">
-            <Icon d={PATH.layers} size={14} />
-            {/* The button reset lives in the stylesheet, not here. It was seven inline
-                properties — background, border, font, colour, padding, align, cursor — the whole
-                UA reset written at one call site, invisible to every check that reads CSS and
-                impossible to reuse at the next button that needs it. */}
-            <button
-              type="button"
-              className="gx-row__main gx-row__main--button"
-              onClick={() => {
-                setPrefix(row.path);
-                setOpen(null);
-              }}
-            >
-              {row.name}
-              <span className="gx-row__meta">
-                {row.fileCount} file{row.fileCount === 1 ? '' : 's'} · {formatFileBytes(row.bytes)}
-              </span>
-            </button>
-            {canEdit && (
-              <>
+      {/* THE TREE (AI Elements file-tree + UI Layouts Tree Code Viewer). Folders open in place; a
+          file opens in the viewer below. One flat list of rows, each with its own level, so the
+          arrow keys walk it in reading order and every row keeps its own buttons. */}
+      {rows.length > 0 && (
+        <FileTree aria-label="Project files" onToggle={(path, want) => toggleFolder(path, want)}>
+          {rows.map((row) =>
+            row.kind === 'folder' ? (
+              // NOT one <button> around the whole row: the folder actions cannot live inside another
+              // button — nested interactive elements are invalid HTML and the inner control is
+              // unreachable by keyboard in some engines. The name is its own control.
+              <FileTreeRow key={row.path} level={row.depth} kind="folder" open={row.expanded}>
                 <button
                   type="button"
-                  className="gx-btn gx-btn--outline"
-                  disabled={busy}
-                  onClick={() => {
-                    const to = window.prompt(renameFolderPrompt(row.path), row.path);
-                    if (!to || to === row.path) return;
-                    void act({ op: 'move_folder', path: row.path, to }, (result) =>
-                      `Moved ${result.moved ?? ''} file${result.moved === 1 ? '' : 's'} to ${to}`.replace('  ', ' '),
-                    );
-                  }}
+                  className="ai-tree__main"
+                  {...fileTreeMainProps(row.path, row.depth, 'folder', row.expanded)}
+                  onClick={() => toggleFolder(row.path)}
                 >
-                  Rename
+                  <FileTreeIcon kind="folder" open={row.expanded} />
+                  <FileTreeName>{row.name}</FileTreeName>
+                  <FileTreeMeta>
+                    {row.fileCount} file{row.fileCount === 1 ? '' : 's'} · {formatFileBytes(row.bytes)}
+                  </FileTreeMeta>
                 </button>
+                {canEdit && (
+                  <FileTreeActions>
+                    <button
+                      type="button"
+                      className="tq-btn"
+                      disabled={busy}
+                      onClick={() => {
+                        const to = window.prompt(renameFolderPrompt(row.path), row.path);
+                        if (!to || to === row.path) return;
+                        void act({ op: 'move_folder', path: row.path, to }, (result) =>
+                          `Moved ${result.moved ?? ''} file${result.moved === 1 ? '' : 's'} to ${to}`.replace('  ', ' '),
+                        ).then((done) => { if (done) setExpanded((e) => moveExpanded(e, row.path, to)); });
+                      }}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      type="button"
+                      className="tq-btn"
+                      disabled={busy}
+                      onClick={() => {
+                        // The count comes from the row, which is the worker's own count of the files
+                        // under the prefix — including the ones a level down that are not on screen.
+                        if (!window.confirm(deleteFolderConfirm(row.path, row.fileCount, data.trashRetentionDays))) return;
+                        void act({ op: 'delete_folder', path: row.path }, (result) =>
+                          `Moved ${result.deleted ?? ''} file${result.deleted === 1 ? '' : 's'} to the trash`.replace('  ', ' '),
+                        ).then((done) => { if (done) setExpanded((e) => moveExpanded(e, row.path, null)); });
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </FileTreeActions>
+                )}
+              </FileTreeRow>
+            ) : (
+              <FileTreeRow key={row.path} level={row.depth} kind="file" selected={open === row.path}>
                 <button
                   type="button"
-                  className="gx-btn gx-btn--outline"
-                  disabled={busy}
-                  onClick={() => {
-                    // The count comes from the row, which is the worker's own count of the files
-                    // under the prefix — including the ones a level down that are not on screen.
-                    if (!window.confirm(deleteFolderConfirm(row.path, row.fileCount, data.trashRetentionDays))) return;
-                    void act({ op: 'delete_folder', path: row.path }, (result) =>
-                      `Moved ${result.deleted ?? ''} file${result.deleted === 1 ? '' : 's'} to the trash`.replace('  ', ' '),
-                    );
-                  }}
+                  className="ai-tree__main"
+                  {...fileTreeMainProps(row.path, row.depth, 'file')}
+                  onClick={() => choose(row.path)}
                 >
-                  Delete
+                  <FileTreeIcon kind="file" />
+                  <FileTreeName>{row.name}</FileTreeName>
+                  <FileTreeMeta>
+                    {/* A size that was never recorded says so. -1 must never render as "0 B". */}
+                    {row.bytes < 0 ? 'size not recorded' : formatFileBytes(row.bytes)}
+                    {row.updatedAt > 0 ? ` · ${relativeTime(row.updatedAt)}` : ''}
+                  </FileTreeMeta>
                 </button>
-              </>
-            )}
-            <Icon d={PATH.chevronRight} size={13} />
-          </div>
-        ) : (
-          <div key={row.path} className="gx-row">
-            <span className="gx-row__main">
-              {row.name}
-              <span className="gx-row__meta">
-                {/* A size that was never recorded says so. -1 must never render as "0 B". */}
-                {row.bytes < 0 ? 'size not recorded' : formatFileBytes(row.bytes)}
-                {row.updatedAt > 0 ? ` · ${new Date(row.updatedAt).toLocaleString()}` : ''}
-              </span>
-            </span>
-            <button
-              type="button"
-              className="gx-btn gx-btn--outline"
-              onClick={() => setOpen(open === row.path ? null : row.path)}
-              aria-expanded={open === row.path}
-            >
-              {open === row.path ? 'Close' : 'Open'}
-            </button>
-          </div>
-        ),
+              </FileTreeRow>
+            ),
+          )}
+        </FileTree>
       )}
 
       {/* ------------------------------------------------------------- one file */}
+      {/* AI Elements artifact: the file as one card — its name, what it is, the things you can do
+          to it, and the file itself in the Tree Code Viewer pane. */}
       {open !== null && (
-        <section aria-label={`Preview of ${open}`} style={{ marginTop: '0.9rem' }}>
-          <h3 style={{ fontSize: '0.85rem', margin: '0 0 0.4rem' }}>{open}</h3>
+        <Artifact aria-label={`Preview of ${open}`} className="ft-artifact">
+          <ArtifactHeader>
+            <div>
+              <ArtifactTitle>{open.split('/').pop()}</ArtifactTitle>
+              <ArtifactDescription>
+                {file.data
+                  ? `${file.data.bytes < 0 ? 'size not recorded' : formatFileBytes(file.data.bytes)} · version ${file.data.version}${file.data.savedAt > 0 ? ` · saved ${relativeTime(file.data.savedAt)}` : ''}`
+                  : 'Reading…'}
+              </ArtifactDescription>
+            </div>
+            <ArtifactActions>
+              <ArtifactAction iconOnly tooltip="Download" onClick={() => void downloadProjectFile(projectId, open)}>
+                <DownloadIcon />
+              </ArtifactAction>
+              <ArtifactClose onClick={() => choose(open)} aria-label="Close the file" />
+            </ArtifactActions>
+          </ArtifactHeader>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.6rem' }}>
-            <button type="button" className="gx-btn gx-btn--outline" onClick={() => void downloadProjectFile(projectId, open)}>
-              Download
-            </button>
+          <ArtifactContent className="ft-body">
+            {/* AI Elements snippet: the path, ready to paste into a message to Apple. */}
+            <Snippet code={open}>
+              <SnippetText>Path</SnippetText>
+              <SnippetInput aria-label="File path" />
+              <SnippetCopyButton label="Copy the path" />
+            </Snippet>
+
             {canEdit && (
-              <>
+              <div className="ft-tools">
                 <button
                   type="button"
-                  className="gx-btn gx-btn--outline"
+                  className="tq-btn"
                   disabled={busy}
                   onClick={() => {
                     // The prompt takes a PATH, and says so. Rename and move are one operation on
@@ -481,7 +584,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                 </button>
                 <button
                   type="button"
-                  className="gx-btn gx-btn--outline"
+                  className="tq-btn"
                   disabled={busy}
                   // No destination is sent, which is the branch where the server picks a free name
                   // by probing the store. So the server knows the answer and the user does not:
@@ -497,7 +600,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                 </button>
                 <button
                   type="button"
-                  className="gx-btn gx-btn--outline"
+                  className="tq-btn"
                   disabled={busy}
                   onClick={() => {
                     if (!window.confirm(deleteConfirm(open, data.trashRetentionDays))) return;
@@ -506,49 +609,110 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                 >
                   Delete
                 </button>
-              </>
+              </div>
             )}
-          </div>
 
-          {file.isPending && <p className="gx-empty">Reading the file…</p>}
-          {file.isError && (
-            <p className="gx-pop__note" role="alert" style={{ padding: 0 }}>
-              {file.error instanceof ApiError ? file.error.message : 'That file could not be read.'}
-            </p>
-          )}
-          {file.data && <FilePreview path={open} content={file.data.content} />}
+            {file.isPending && <p className="gx-empty">Reading the file…</p>}
+            {file.isError && (
+              <p className="gx-pop__note" role="alert" style={{ padding: 0 }}>
+                {file.error instanceof ApiError ? file.error.message : 'That file could not be read.'}
+              </p>
+            )}
+            {file.data && (
+              <FilePreview
+                path={open}
+                content={file.data.content}
+                onAsk={(line, code, question) => askApple(lineQuestion(open, line, code, question))}
+              />
+            )}
 
-          {history.data && history.data.versions.length > 1 && (
-            <div style={{ marginTop: '0.7rem' }}>
-              <h4 style={{ fontSize: '0.8rem', margin: '0 0 0.35rem' }}>Earlier versions</h4>
-              {history.data.versions.map((v: FileVersion) => (
-                <div key={v.version} className="gx-row">
-                  <span className="gx-row__main">
-                    Version {v.version}
-                    {v.current ? ' · current' : ''}
-                    <span className="gx-row__meta">
-                      {v.bytes < 0 ? 'size not recorded' : formatFileBytes(v.bytes)}
-                      {v.savedAt > 0 ? ` · ${new Date(v.savedAt).toLocaleString()}` : ''}
-                    </span>
-                  </span>
-                  {!v.current && canEdit && (
-                    <button
-                      type="button"
-                      className="gx-btn gx-btn--outline"
-                      disabled={busy}
-                      onClick={() => {
-                        if (!window.confirm(revertConfirm(open, v.version))) return;
-                        void act({ op: 'revert', path: open, version: v.version }, `Put version ${v.version} back`);
-                      }}
-                    >
-                      Put back
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+            {/* AI Elements commit: every saved version on one rail, the current one lit. */}
+            {history.data && history.data.versions.length > 1 && (
+              <section aria-label="Earlier versions" className="ft-versions">
+                <h4 className="ft-h">Earlier versions</h4>
+                {history.data.versions.map((v: FileVersion) => (
+                  <Commit key={v.version} current={v.current}>
+                    <CommitHeader>
+                      <CommitAuthorAvatar />
+                      <CommitInfo>
+                        <CommitMessage>
+                          Version {v.version}
+                          {v.current ? ' · current' : ''}
+                        </CommitMessage>
+                        <CommitMetadata>
+                          <CommitHash>v{v.version}</CommitHash>
+                          <CommitSeparator />
+                          {v.savedAt > 0
+                            ? <CommitTimestamp date={new Date(v.savedAt)}>{relativeTime(v.savedAt)}</CommitTimestamp>
+                            : <span>time not recorded</span>}
+                          <CommitSeparator />
+                          <span>{v.bytes < 0 ? 'size not recorded' : formatFileBytes(v.bytes)}</span>
+                        </CommitMetadata>
+                      </CommitInfo>
+                      {!v.current && (
+                        <CommitActions>
+                          <button
+                            type="button"
+                            className="tq-btn"
+                            aria-pressed={compare === v.version}
+                            onClick={() => setCompare(compare === v.version ? null : v.version)}
+                          >
+                            Compare
+                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              className="tq-btn"
+                              disabled={busy}
+                              onClick={() => {
+                                if (!window.confirm(revertConfirm(open, v.version))) return;
+                                void act({ op: 'revert', path: open, version: v.version }, `Put version ${v.version} back`);
+                              }}
+                            >
+                              Put back
+                            </button>
+                          )}
+                        </CommitActions>
+                      )}
+                    </CommitHeader>
+                  </Commit>
+                ))}
+              </section>
+            )}
+
+            {/* Eldora GitHub Inline Comments, under an AI Elements package-info header: what changed
+                between the version picked above and the current one. */}
+            {compare !== null && (
+              <section aria-label={`Changes since version ${compare}`} className="ft-compare">
+                {older.isPending && <p className="gx-empty">Reading version {compare}…</p>}
+                {older.isError && (
+                  <p className="gx-pop__note" role="alert" style={{ padding: 0 }}>
+                    {older.error instanceof ApiError ? older.error.message : `Version ${compare} could not be read.`}
+                  </p>
+                )}
+                {older.data && file.data && (() => {
+                  const diff = diffLines(older.data.content, file.data.content);
+                  if (!diff) {
+                    return (
+                      <p className="gx-empty">
+                        These versions are too long to compare here. Download both to compare them.
+                      </p>
+                    );
+                  }
+                  return (
+                    <VersionDiff
+                      path={open}
+                      from={`Version ${compare}`}
+                      to={`Version ${file.data.version}`}
+                      diff={diff}
+                      onAsk={(line, code, question) => askApple(lineQuestion(open, line, code, question))}
+                    />
+                  );
+                })()}
+              </section>
+            )}
+          </ArtifactContent>
+        </Artifact>
       )}
 
       {/* --------------------------------------------------------------- trash */}
@@ -581,9 +745,37 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
   );
 }
 
-/** The preview itself. A CSV becomes a table, everything else becomes text, and a cut says so. */
-function FilePreview({ path, content }: { path: string; content: string }) {
+/** Which highlighter a file's extension asks for. Anything unlisted is plain text, never a guess. */
+function languageOf(path: string): CodeLanguage {
+  const ext = extensionOf(path);
+  if (ext === '.luau') return 'luau';
+  if (ext === '.lua') return 'lua';
+  if (ext === '.ts') return 'ts';
+  if (ext === '.js') return 'js';
+  if (ext === '.json') return 'json';
+  return 'text';
+}
+
+/**
+ * The preview itself. A CSV becomes a table; Markdown opens as a page (AI Elements jsx-preview,
+ * through the app's one sanitised renderer) with its text one press away; everything else opens in
+ * the code viewer. JSON also shows its shape (AI Elements schema-display) behind Details. A cut
+ * always says so.
+ */
+function FilePreview({
+  path,
+  content,
+  onAsk,
+}: {
+  path: string;
+  content: string;
+  onAsk: (line: number, code: string, question: string) => boolean;
+}) {
   const preview = previewOf(path, content);
+  const markdown = extensionOf(path) === '.md';
+  const [page, setPage] = useState(true);
+  const shape = useMemo(() => (extensionOf(path) === '.json' ? jsonShape(content) : null), [path, content]);
+
   if (preview.kind === 'table') {
     return (
       <div style={{ overflowX: 'auto' }}>
@@ -607,12 +799,38 @@ function FilePreview({ path, content }: { path: string; content: string }) {
     );
   }
   return (
-    <div>
-      <pre className="gx-files__text">{preview.text}</pre>
+    <div className="ft-preview">
+      {markdown && (
+        <div className="ft-switch" role="group" aria-label="How to show this file">
+          <button type="button" className="tq-btn" aria-pressed={page} onClick={() => setPage(true)}>Page</button>
+          <button type="button" className="tq-btn" aria-pressed={!page} onClick={() => setPage(false)}>Text</button>
+        </div>
+      )}
+      {markdown && page ? (
+        <JSXPreview jsx={preview.text} isStreaming={preview.truncated} className="ft-page">
+          <JSXPreviewContent />
+        </JSXPreview>
+      ) : (
+        <CodeViewer path={path} content={preview.text} language={languageOf(path)} onAsk={onAsk} />
+      )}
       {preview.truncated && (
         <p className="gx-row__meta">
           Showing the first {preview.text.split('\n').length} of {preview.lines} lines. Download the file for all of it.
         </p>
+      )}
+      {shape && shape.properties && (
+        <details className="tq-details">
+          <summary>Details</summary>
+          <div className="tq-details__body">
+            <SchemaDisplay
+              title="Data shape"
+              description={shape.count !== undefined
+                ? `A ${shape.type} (${shape.count}). Each item has these fields.`
+                : 'The fields in this file and what kind of value each holds.'}
+              properties={shape.properties}
+            />
+          </div>
+        </details>
       )}
     </div>
   );

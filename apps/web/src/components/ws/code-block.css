@@ -92,3 +92,36 @@
 @media (prefers-reduced-motion: reduce) {
   .gx-code__copy { transition:none; }
 }
+
+/* --------------------------------------------------- the writing state (picks) --- */
+
+/* The file mark before the language (Animate UI "Code"): a quiet glyph, the label's own ink. */
+.gx-code__icon { flex:none; color:var(--faint); }
+
+/* THE CARET. While the fence is still open, the end of the last line carries a thin bar that
+   blinks, so the reader can see the script is still being written and where. Drawn after the last
+   line's text, so it sits exactly where the next character will land. */
+@keyframes gx-code-caret { 0%,45% { opacity:1; } 55%,100% { opacity:0; } }
+.gx-code[data-writing] .ai-code-block__line:last-child::after {
+  content:''; display:inline-block; width:2px; height:1.1em; margin-inline-start:1px;
+  vertical-align:-.15em; background:var(--accent); border-radius:1px;
+  animation:gx-code-caret 1s steps(1,end) infinite;
+}
+
+/* THE PLACEHOLDER (UI Layouts "Code Block"). A fence that has opened with no code in it yet shows
+   three lines of shimmer at the code's own inset and rhythm, and the empty <pre> is not drawn. */
+.gx-code[data-empty] .ai-code-block__content { display:none; }
+.gx-code__skeleton { display:grid; gap:10px; padding:16px 14px; }
+.gx-code__skeleton span {
+  display:block; height:10px; border-radius:var(--r-xs);
+  background:linear-gradient(90deg,var(--control-fill) 0%,color-mix(in srgb,var(--ink) 10%,transparent) 50%,var(--control-fill) 100%);
+  background-size:200% 100%; animation:gx-code-shimmer 1.4s linear infinite;
+}
+.gx-code__skeleton span:nth-child(1) { width:62%; }
+.gx-code__skeleton span:nth-child(2) { width:84%; }
+.gx-code__skeleton span:nth-child(3) { width:40%; }
+@keyframes gx-code-shimmer { from { background-position:100% 0; } to { background-position:-100% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .gx-code[data-writing] .ai-code-block__line:last-child::after,.gx-code__skeleton span { animation:none; }
+}

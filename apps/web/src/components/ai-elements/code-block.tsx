@@ -30,6 +30,8 @@ import {
 import type { BundledLanguage, ThemedToken } from "./highlight-compat";
 import { codeToTokens } from "./highlight-compat";
 import "./code-block.css";
+// The tick's entrance and the "Copied" tip are the copy picks' (components/picks/chat/copy-button).
+import "../picks/chat/copy-button.css";
 
 // Shiki uses bitflags for font styles: 1=italic, 2=bold, 4=underline
 // oxlint-disable-next-line eslint(no-bitwise)
@@ -434,7 +436,11 @@ export const CodeBlockCopyButton = ({
       variant="ghost"
       {...props}
     >
-      {children ?? <Icon size={14} />}
+      {/* Keyed by state, so the tick (and the copy icon coming back) plays the Animate UI copy
+          entrance each time — scale from 0 through a 4px blur. The tip is Motion's "Copied" note,
+          re-implemented in CSS; the polite status line for screen readers is the caller's. */}
+      {children ?? <Icon key={String(isCopied)} size={14} className="pk-swap-in" />}
+      {isCopied && <span className="pk-copy-tip" aria-hidden="true">Copied</span>}
     </Button>
   );
 };

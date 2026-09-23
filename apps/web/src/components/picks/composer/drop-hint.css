@@ -1,0 +1,22 @@
+/* The drop picture (drop-hint.tsx), laid over the card's content while a file is dragged over it.
+   The dashed accent edge itself is composer.css's `.is-dropping`. */
+.gx-composer .pk-drop {
+  position:absolute; inset:0; z-index:5; display:grid; place-content:center; justify-items:center; gap:4px;
+  border-radius:inherit; pointer-events:none;
+  background:color-mix(in srgb,var(--surface) 88%,transparent);
+  color:var(--ink); text-align:center;
+  animation:pk-drop-in 180ms var(--ease-out) both;
+}
+.pk-drop__art { width:30px; height:24px; margin-bottom:6px; color:var(--accent-light); animation:pk-drop-bob 1.4s var(--ease-in-out) infinite; }
+.pk-drop__title { font-size:14px; line-height:20px; }
+.pk-drop__kinds { color:var(--muted); font-size:12px; line-height:16px; }
+@keyframes pk-drop-in { from { opacity:0; scale:.985; } to { opacity:1; scale:1; } }
+@keyframes pk-drop-bob { 50% { translate:0 -3px; } }
+
+/* A file that landed arrives as a tile that settles into the row (the chat-form dropzone's tiles). */
+.gx-composer .gx-attach .gx-attach__row { animation:pk-tile-in 260ms cubic-bezier(.34,1.4,.64,1) both; }
+@keyframes pk-tile-in { from { opacity:0; scale:.85; } to { opacity:1; scale:1; } }
+
+@media (prefers-reduced-motion:reduce) {
+  .gx-composer .pk-drop,.pk-drop__art,.gx-composer .gx-attach .gx-attach__row { animation:none; }
+}

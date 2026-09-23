@@ -1,0 +1,14 @@
+/* One saved version on a rail: the dot is the commit, the line joins it to the next one. */
+.ai-commit { position:relative; padding-inline-start:22px; }
+.ai-commit::before { content:''; position:absolute; inset-block:0; inset-inline-start:6px; width:1px; background:var(--line); }
+.ai-commit:first-child::before { top:14px; }
+.ai-commit:last-child::before { bottom:calc(100% - 14px); }
+.ai-commit__header { display:flex; align-items:center; gap:10px; min-height:40px; padding:6px 0; }
+.ai-commit__avatar { position:absolute; inset-inline-start:2px; top:14px; width:9px; height:9px; border-radius:50%; border:1.5px solid var(--line-strong); background:var(--surface); }
+.ai-commit.is-current .ai-commit__avatar { border-color:var(--accent); background:var(--accent); }
+.ai-commit__info { display:grid; gap:1px; min-width:0; flex:1; }
+.ai-commit__message { font-size:13px; color:var(--ink); }
+.ai-commit__meta { display:flex; flex-wrap:wrap; align-items:center; gap:5px; font-size:11.5px; color:var(--muted); }
+.ai-commit__hash { font-family:var(--font-mono); font-size:11px; padding:1px 5px; border-radius:var(--r-xs); background:var(--control-fill); color:var(--muted); }
+.ai-commit__sep { color:var(--faint); }
+.ai-commit__actions { display:flex; gap:4px; flex:none; }

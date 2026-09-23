@@ -140,13 +140,19 @@ test('a tool row carries only the four safe facts, and never the payload', () =>
 
 // ------------------------------------------------------------ the rendering ---
 
-test('the header is AI Elements\' own: Brain, the live action under Shimmer, the time, the chevron', () => {
+test('the header is AI Elements\' own trigger: the state glyph, the live action under Shimmer, the time, the chevron', () => {
   clock = T0;
   const tools = [tool('read_script'), { toolId: 'live', tool: 'edit_script', summary: 'edit_script', startedAt: clock, done: false, startObserved: true }];
   const html = render({ activity: run(tools, { streaming: true, now: clock + 4000 }), streaming: true, status: { phase: 'building', step: 2, creditsSpent: 3 } });
   const trigger = element(html, /<button[^>]*class="[^"]*\bapple-reasoning__trigger\b/);
   assert.ok(trigger, 'the Reasoning trigger is missing');
-  assert.match(trigger, /lucide-brain/, 'the Brain icon is upstream ReasoningTrigger\'s own');
+  //[[ RESTATED 2026-09-23 (the owner's component picks). The header's icon slot held upstream's
+  //   Brain; it now holds the Lattice Loader glyph, which says what the Brain could not — that the
+  //   run is live, and later how it ended. The property kept: the icon sits in ReasoningTrigger's
+  //   own slot (no children), and while the run is live it says so. The settled marks are checked
+  //   in tests/picks-thinking.test.mjs. ]]
+  assert.match(trigger, /class="picks-lattice[^"]*"[^>]*data-status="working"/, 'a live run\'s header glyph must say it is working');
+  assert.doesNotMatch(trigger, /lucide-brain/, 'one glyph in the icon slot, not the Brain beside it');
   assert.match(trigger, /class="ai-elements-shimmer[^"]*"[^>]*>Editing a script</, 'the live line is the observed current action, under Shimmer');
   assert.match(trigger, /class="apple-reasoning__time">\d+s</, 'the measured duration is on the line');
   assert.match(trigger, /lucide-chevron-down/);

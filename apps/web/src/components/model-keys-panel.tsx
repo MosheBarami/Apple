@@ -37,6 +37,7 @@ import {
 } from '../lib/model-keys';
 import { useToast } from './toast';
 import './model-keys-panel.css';
+import { FreeModelsTable } from './picks/settings/free-models-table';
 
 function ProviderKey({ provider, saved }: { provider: ByokProvider; saved: ModelKeySummary | undefined }) {
   const qc = useQueryClient();
@@ -180,14 +181,8 @@ export function FreeModelsList() {
         <>
           <p className="mk__note">{freeKeyNote(catalogue.data, hasKey)}</p>
           {free.length ? (
-            <ul className="mk__free">
-              {free.map((m) => (
-                <li key={m.id} className="mk__free-row">
-                  <span className="mk__free-name">{m.label}</span>
-                  <span className="mk__free-vendor">{m.vendor}</span>
-                </li>
-              ))}
-            </ul>
+            // Picks: AICSS "data-table" — the list is a small two-column table.
+            <FreeModelsTable rows={free} />
           ) : (
             <p className="mk__note">OpenRouter lists no free models that can build right now.</p>
           )}

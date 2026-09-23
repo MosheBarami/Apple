@@ -1,0 +1,23 @@
+/* The wipe: only while a theme change is running (the class is set for exactly that long). */
+html.pk-theme-wipe::view-transition-old(root),
+html.pk-theme-wipe::view-transition-new(root) { animation:none; mix-blend-mode:normal; }
+html.pk-theme-wipe::view-transition-new(root) { animation:pk-theme-wipe .7s ease-in-out both; }
+@keyframes pk-theme-wipe { from { clip-path:inset(0 100% 0 0); } to { clip-path:inset(0 0 0 0); } }
+@media (prefers-reduced-motion: reduce) {
+  html.pk-theme-wipe::view-transition-new(root) { animation:none; }
+}
+
+.pk-theme-toggle {
+  display:inline-flex; align-items:center; gap:7px; min-height:34px; padding:0 12px; cursor:pointer;
+  border:1px solid var(--nm-line,var(--line)); border-radius:999px;
+  background:var(--nm-panel-soft,var(--surface-2)); color:var(--nm-ink,var(--ink));
+  font:inherit; font-size:12px;
+  transition:border-color .15s ease,background-color .15s ease;
+}
+.pk-theme-toggle:hover { border-color:color-mix(in srgb,var(--nm-ink,var(--ink)) 26%,var(--nm-line,var(--line))); }
+.pk-theme-toggle:focus-visible { outline:2px solid var(--nm-ink,var(--ink)); outline-offset:2px; }
+.pk-theme-toggle__icon { display:inline-grid; place-items:center; animation:pk-theme-icon .45s cubic-bezier(.34,1.56,.64,1); }
+.pk-theme-toggle__icon svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+@keyframes pk-theme-icon { from { opacity:0; transform:rotate(-90deg) scale(.4); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { .pk-theme-toggle__icon { animation:none; } }
+.motion-reduced .pk-theme-toggle__icon { animation:none; }

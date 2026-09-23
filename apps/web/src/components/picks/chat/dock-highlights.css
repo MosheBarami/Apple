@@ -1,0 +1,35 @@
+/* THE RAIL'S BEDS. Absolutely placed in the dock's own box, behind the rows (the rows are
+   position:relative and later in the paint order). A bed moves by transform and resizes by
+   width/height, both on the sidebar's overshoot curve; it fades in where it first appears rather
+   than flying in from the corner. */
+.pk-bed {
+  position:absolute; top:0; left:0; z-index:0; border-radius:var(--r-md); pointer-events:none; opacity:0;
+  transition:transform .38s cubic-bezier(.34,1.3,.64,1),width .38s cubic-bezier(.34,1.3,.64,1),height .38s cubic-bezier(.34,1.3,.64,1),opacity .15s var(--ease-out);
+}
+.pk-bed[data-on] { opacity:1; }
+.pk-bed--hover { background:var(--surface); }
+.pk-bed--current { background:var(--surface-2); }
+/* The one accent in the navigation: a 2px marker on the current bed's start edge. It travels with
+   the bed, which is the shared-layout movement. */
+.pk-bed--current::before {
+  content:''; position:absolute; inset-block:8px; inset-inline-start:0; width:2px; border-radius:var(--r-pill); background:var(--accent);
+}
+
+/* While the beds are in charge the rows stop painting their own — two grounds under one row would
+   show as a flicker at the start of every slide. The row keeps its colour change. Above phone
+   width only: below it the rail is one button that keeps its own ground. */
+@media (min-width:681px) {
+  .gx-shell .studio-dock.has-pk-beds :is(.studio-dock__row,.studio-navigation) { z-index:1; }
+  .gx-shell .studio-dock.has-pk-beds :is(.studio-dock__row,.studio-navigation):is(:hover,:active),
+  .gx-shell .studio-dock.has-pk-beds .studio-dock__row[aria-current='page'],
+  .gx-shell .studio-dock.has-pk-beds .studio-dock__row[aria-current='page']:hover,
+  .gx-shell .studio-dock.has-pk-beds .studio-dock__account:hover,
+  :root[data-theme='light'] .gx-shell .studio-dock.has-pk-beds .studio-dock__row[aria-current='page'] { background:transparent; }
+  .gx-shell .studio-dock.has-pk-beds .studio-dock__row::before { display:none; }
+  /* The drawer is open: the opener keeps its own ground, which is a state rather than a place. */
+  .gx-shell .studio-dock.has-pk-beds .studio-navigation[aria-expanded='true'] { background:var(--surface-2); }
+}
+
+/* At phone width the rail is a single button; there is nothing to slide between. */
+@media (max-width:680px) { .pk-bed { display:none; } }
+@media (prefers-reduced-motion: reduce) { .pk-bed { transition:opacity .01s; } }

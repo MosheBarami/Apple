@@ -109,3 +109,20 @@
 @media (prefers-reduced-motion: reduce) {
   .gx-playtest__foot .gx-playtest__open { transition:none; }
 }
+
+/* ------------------------------------------------------ picture chrome + results --- */
+
+/* The AI Elements WebPreview bar (ai-elements/web-preview.tsx) frames the stage: back and forward
+   step through this playtest's pictures, the address says what the camera shows. The stage keeps
+   its own mat and shape; the preview's body only pads it. */
+.gx-playtest .gx-playtest__preview { margin-top:10px; }
+.gx-playtest .gx-playtest__preview .gx-playtest__stage { border-radius:var(--r-sm); }
+
+/* AN EARLIER PICTURE IS NOT THE NEWEST, AND SAYS SO. Same caption shape as the stale veil, no
+   colour: it is the reader's own choice to look back, not a warning. */
+.gx-playtest__frame .gx-playtest__veil--earlier { border-radius:var(--r-xs); white-space:nowrap; max-width:calc(100% - 20px); overflow:hidden; text-overflow:ellipsis; }
+
+.gx-playtest .gx-playtest__results { margin-top:12px; }
+.gx-playtest .gx-playtest__facts { display:grid; grid-template-columns:max-content 1fr; gap:4px 14px; margin:0; font-size:12px; }
+.gx-playtest .gx-playtest__facts dt { color:var(--muted); }
+.gx-playtest .gx-playtest__facts dd { margin:0; color:var(--ink); min-width:0; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }

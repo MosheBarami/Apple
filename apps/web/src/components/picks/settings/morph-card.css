@@ -1,0 +1,3 @@
+/* Clips only while the height animates; the card's own shadow sits inside `.auth-card`. */
+.pk-morph { position:relative; }
+.pk-morph__inner { display:grid; }

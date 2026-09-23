@@ -6,3 +6,10 @@
  * cut the 4px focus ring off every seed on its outer edge. */
 .start-sheet .ai-suggestions,
 .start-sheet .ai-suggestions > .ai-scroll-area__viewport { overflow:visible; white-space:normal; }
+
+/* The seeds rise in one after another, 60ms apart, after the lead has landed. */
+@keyframes start-seed-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+.start-sheet .ai-suggestion { animation:start-seed-in var(--t-slow) var(--ease-out) both; animation-delay:calc(120ms + var(--i, 0) * 60ms); }
+@media (prefers-reduced-motion: reduce) {
+  .start-sheet .ai-suggestion { animation:none; }
+}

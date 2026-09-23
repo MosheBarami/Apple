@@ -1,0 +1,4 @@
+/* The crash card's ASCII apple (ascii-mark.tsx). Ink on the card's own surface, monochrome: the
+   crash card is not a place for colour, and --bad on a mark would make the mark the alarm. */
+.picks-ascii { display:block; width:132px; height:120px; color:var(--muted); }
+@media (max-width:600px) { .picks-ascii { width:108px; height:96px; } }

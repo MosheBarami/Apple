@@ -1,0 +1,23 @@
+.picks-ripple { position:relative; display:inline-grid; place-items:center; flex:none; max-width:100%; }
+.picks-ripple__rings {
+  grid-area:1/1; width:100%; height:100%;
+  -webkit-mask-image:radial-gradient(circle,#000 0%,#000 30%,transparent 72%);
+  mask-image:radial-gradient(circle,#000 0%,#000 30%,transparent 72%);
+}
+.picks-ripple__rings circle {
+  stroke:currentColor; stroke-width:2; stroke-opacity:.3;
+  transform-box:view-box; transform-origin:250px 250px;
+  animation:picks-ripple 2s ease-in-out infinite; animation-delay:calc(var(--n, 0) * 50ms);
+}
+@keyframes picks-ripple {
+  0% { transform:scale(1); stroke-opacity:.3; }
+  18.75% { transform:scale(1.08); stroke-opacity:.6; }
+  37.5%,100% { transform:scale(1); stroke-opacity:.3; }
+}
+.picks-ripple__centre { grid-area:1/1; display:grid; place-items:center; }
+/* The default centre: a small raised disc with the accent dot, as the original draws it. */
+.picks-ripple__dot { grid-area:1/1; display:grid; place-items:center; width:26px; height:26px; border-radius:50%; border:1px solid var(--line); background:var(--surface); }
+.picks-ripple__dot::after { content:''; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+  .picks-ripple__rings circle { animation:none; }
+}

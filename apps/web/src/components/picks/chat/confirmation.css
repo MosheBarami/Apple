@@ -1,0 +1,18 @@
+/* CONFIRMATION — the warning and its two answers as one block (AI Elements Confirmation, rebuilt).
+ *
+ * The frame is `.edit-warn`'s when the caller passes that class (system.css owns its warm hairline
+ * and wash); this sheet adds the parts upstream has and that frame did not: the icon beside the
+ * sentence and the action row inside the block. The block arrives with a short rise so the eye
+ * lands on it; nothing moves under reduced motion.
+ */
+.pk-confirm { display:grid; gap:10px; animation:pk-confirm-in var(--t-slow) var(--ease-out) both; }
+.pk-confirm__title { display:flex; align-items:flex-start; gap:10px; }
+.pk-confirm__icon { flex:none; margin-top:3px; color:var(--warn); }
+.pk-confirm[data-tone='plain'] .pk-confirm__icon { color:var(--muted); }
+.pk-confirm__words { display:grid; gap:8px; min-width:0; }
+.pk-confirm__body { padding-inline-start:26px; }
+.pk-confirm__actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-top:4px; }
+@keyframes pk-confirm-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) {
+  .pk-confirm { animation:none; }
+}

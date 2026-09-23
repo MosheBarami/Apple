@@ -1,0 +1,17 @@
+/* AI ELEMENTS WEB PREVIEW, drawn with this app's tokens: a quiet address bar over the picture. */
+.ai-webpreview { display:grid; gap:0; min-width:0; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2); }
+.ai-webpreview__nav { display:flex; align-items:center; gap:2px; min-width:0; padding:4px; border-bottom:1px solid var(--line); }
+.ai-webpreview__url {
+  display:flex; align-items:center; gap:6px; flex:1; min-width:0; height:var(--h-xs); margin-inline:4px; padding:0 8px;
+  border:1px solid var(--line); border-radius:var(--r-pill); background:var(--surface);
+}
+/* Written three classes deep: system.css styles every input at (0,2,1) and is emitted last. */
+.ai-webpreview .ai-webpreview__url input.ai-webpreview__input {
+  flex:1; min-width:0; height:100%; min-height:0; padding:0; margin:0; border:0; border-radius:0; background:transparent; box-shadow:none;
+  color:var(--muted); font:inherit; font-family:var(--font-mono); font-size:11.5px; text-overflow:ellipsis;
+}
+.ai-webpreview .ai-webpreview__url input.ai-webpreview__input:focus-visible { outline:none; box-shadow:none; animation:none; }
+.ai-webpreview__url:focus-within { border-color:var(--accent); }
+.ai-webpreview__hint { flex:none; font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.ai-webpreview__body { min-width:0; padding:6px; }
+.ai-webpreview__btn:disabled { opacity:.35; }

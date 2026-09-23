@@ -1,0 +1,20 @@
+/* Rolling digits. Each column is ten stacked glyphs clipped to one line; the strip slides. */
+.pk-roll { position:relative; display:inline-flex; font-variant-numeric:tabular-nums; white-space:nowrap; line-height:1.2; }
+.pk-roll__sr { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.pk-roll__cols { display:inline-flex; }
+.pk-roll__char { display:inline-block; }
+.pk-roll__digit { position:relative; display:inline-block; height:1.2em; overflow:hidden; }
+.pk-roll__strip {
+  display:flex; flex-direction:column;
+  transition:transform .55s cubic-bezier(.23,1,.32,1);
+}
+.pk-roll__strip > span { display:block; height:1.2em; line-height:1.2em; text-align:center; }
+.pk-roll__digit { animation:pk-roll-in .2s ease-out both; }
+@keyframes pk-roll-in { from { opacity:0; } to { opacity:1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-roll__strip { transition:none; }
+  .pk-roll__digit { animation:none; }
+}
+.motion-reduced .pk-roll__strip { transition:none; }
+.motion-reduced .pk-roll__digit { animation:none; }

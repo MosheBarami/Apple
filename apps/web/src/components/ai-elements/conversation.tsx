@@ -11,6 +11,8 @@ import { ArrowDownIcon, DownloadIcon } from "./icons";
 import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import { StickToBottom, useStickToBottomContext } from "./stick-to-bottom";
+import { RollingNumber } from "../picks/chat/rolling-number";
+import { AnimatedIcon } from "../picks/chat/animated-icon";
 import "./conversation.css";
 
 export type ConversationProps = ComponentProps<typeof StickToBottom>;
@@ -81,6 +83,12 @@ export const ConversationScrollButton = ({
   ...props
 }: ConversationScrollButtonProps) => {
   const { isAtBottom, scrollToBottom } = useStickToBottomContext();
+  // LOCAL: the count the workspace hands over as `data-unseen` ("3 new") is drawn here rather than
+  // by a CSS `attr()`, so its figure can roll (picks/chat/rolling-number) and a live dot can ping
+  // beside it — Eldora UI "Live Button" (MIT, re-implemented in conversation.css: the ping, a sheen
+  // across the pill on hover and an accent glow). The attribute stays on the button as given.
+  const unseen = Number.parseInt(String((props as Record<string, unknown>)["data-unseen"] ?? ""), 10);
+  const hasUnseen = Number.isFinite(unseen) && unseen > 0;
 
   const handleScrollToBottom = useCallback(() => {
     scrollToBottom();
@@ -99,7 +107,15 @@ export const ConversationScrollButton = ({
         variant="outline"
         {...props}
       >
-        <ArrowDownIcon className="size-4 ai-conversation__scroll-icon" />
+        <AnimatedIcon motion="drop">
+          <ArrowDownIcon className="size-4 ai-conversation__scroll-icon" />
+        </AnimatedIcon>
+        {hasUnseen && (
+          <span className="ai-conversation__scroll-count" aria-hidden="true">
+            <span className="ai-conversation__live" />
+            <RollingNumber value={unseen} /> new
+          </span>
+        )}
       </Button>
     )
   );

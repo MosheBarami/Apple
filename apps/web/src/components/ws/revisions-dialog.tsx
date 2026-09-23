@@ -18,7 +18,20 @@ import type { MessageRevisionDto } from '@golem/shared';
 import { Modal } from '../modal';
 import { fetchMessageRevisions, ApiError } from '../../lib/api';
 import { clockTime } from '../../lib/format';
+import {
+  MessageBranch,
+  MessageBranchContent,
+  MessageBranchNext,
+  MessageBranchPage,
+  MessageBranchPrevious,
+  MessageBranchSelector,
+} from '../ai-elements/message';
 import './revisions-dialog.css';
+
+// PAGED, WITH THE CURRENT TEXT AS THE ANCHOR (AI Elements MessageBranch). The versions are pages —
+// "2 of 3", Previous and Next — in the order they were written, opening on the one in force. While an
+// older page is showing, what the message says now stays under it, because the point of this
+// dialog is comparing the two. Still read-only: paging chooses what to READ, never what to run.
 
 export function RevisionsDialog({
   projectId,
@@ -34,6 +47,7 @@ export function RevisionsDialog({
 }) {
   const [revisions, setRevisions] = useState<MessageRevisionDto[] | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [page, setPage] = useState<number | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -61,27 +75,44 @@ export function RevisionsDialog({
       {!failed && revisions === null && <p className="page-note">Reading…</p>}
 
       {!failed && revisions !== null && (
-        <ol className="gx-revs">
-          {revisions.map((r) => (
-            <li key={r.seq} className="gx-revs__item">
-              <p className="gx-revs__when">
-                {/* The stamp is the time the version was WRITTEN, carried across with the text, so
-                    a draft from last week does not claim to be from the moment it was replaced. */}
-                Version {r.seq + 1}
-                {clockTime(new Date(r.createdAt).getTime()) ? ` · ${clockTime(new Date(r.createdAt).getTime())}` : ''}
-              </p>
+        <MessageBranch className="gx-revs" defaultBranch={revisions.length} onBranchChange={setPage}>
+          <MessageBranchContent>
+            {[
+              ...revisions.map((r) => (
+                <div key={r.seq} className="gx-revs__item">
+                  <p className="gx-revs__when">
+                    {/* The stamp is the time the version was WRITTEN, carried across with the text, so
+                        a draft from last week does not claim to be from the moment it was replaced. */}
+                    Version {r.seq + 1}
+                    {clockTime(new Date(r.createdAt).getTime()) ? ` · ${clockTime(new Date(r.createdAt).getTime())}` : ''}
+                  </p>
+                  <p className="gx-revs__text" dir="auto">
+                    {r.content}
+                  </p>
+                </div>
+              )),
+              <div key="current" className="gx-revs__item is-current">
+                <p className="gx-revs__when">Current</p>
+                <p className="gx-revs__text" dir="auto">
+                  {current}
+                </p>
+              </div>,
+            ]}
+          </MessageBranchContent>
+          <MessageBranchSelector className="gx-revs__pager">
+            <MessageBranchPrevious aria-label="Earlier version" />
+            <MessageBranchPage aria-live="polite" />
+            <MessageBranchNext aria-label="Later version" />
+          </MessageBranchSelector>
+          {page !== null && page < revisions.length && (
+            <div className="gx-revs__anchor">
+              <p className="gx-revs__when">Now</p>
               <p className="gx-revs__text" dir="auto">
-                {r.content}
+                {current}
               </p>
-            </li>
-          ))}
-          <li className="gx-revs__item is-current">
-            <p className="gx-revs__when">Current</p>
-            <p className="gx-revs__text" dir="auto">
-              {current}
-            </p>
-          </li>
-        </ol>
+            </div>
+          )}
+        </MessageBranch>
       )}
 
       <div className="modal-actions">

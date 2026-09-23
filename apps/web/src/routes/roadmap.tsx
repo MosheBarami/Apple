@@ -34,6 +34,7 @@ import {
   type PlaceInventory,
 } from '../components/roadmap/model';
 import { RoadmapSpine } from '../components/roadmap/spine';
+import { DependencyMap } from '../components/roadmap/dependency-map';
 import { SuggestionPanel } from '../components/roadmap/suggestions';
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
@@ -59,6 +60,8 @@ export function RoadmapPage() {
   // than not having it at all.
   const [next, setNext] = useState<Milestone[] | null>(null);
   const [brief, setBrief] = useState<{ brief: MilestoneBrief; intent: BriefIntent } | null>(null);
+  // List is the plan you read; Map shows its shape. The list is always where a jump lands.
+  const [view, setView] = useState<'list' | 'map'>('list');
 
   const project = useQuery({
     queryKey: ['project', projectId],
@@ -94,13 +97,19 @@ export function RoadmapPage() {
     [roadmap.data],
   );
 
-  /** Follow a dependency chip: bring the card into view and focus it. */
+  /** Follow a dependency chip: bring the card into view and focus it. From the map, the list opens first. */
   const jumpTo = useCallback((milestoneId: string) => {
-    const el = document.getElementById(`milestone-${milestoneId}`);
-    if (!el) return;
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    el.focus({ preventScroll: true });
-  }, []);
+    const go = () => {
+      const el = document.getElementById(`milestone-${milestoneId}`);
+      if (!el) return;
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.focus({ preventScroll: true });
+    };
+    if (view === 'map') {
+      setView('list');
+      requestAnimationFrame(() => requestAnimationFrame(go));
+    } else go();
+  }, [view]);
 
   const suggest = useMutation({
     mutationFn: () => fetchNextMilestones(projectId),
@@ -316,12 +325,31 @@ export function RoadmapPage() {
 
           {inventory && <PlaceContents inventory={inventory} />}
 
-          <RoadmapSpine
-            stages={layout.stages}
-            onJumpTo={jumpTo}
-            onBrief={(milestoneId, intent) => askBrief.mutate({ milestoneId, intent })}
-            busy={busy}
-          />
+          <div className="rm-view" role="group" aria-label="Show the plan as">
+            <button type="button" className="rm-view__opt" aria-pressed={view === 'list'} onClick={() => setView('list')}>
+              List
+            </button>
+            <button type="button" className="rm-view__opt" aria-pressed={view === 'map'} onClick={() => setView('map')}>
+              Map
+            </button>
+          </div>
+
+          {view === 'map' ? (
+            <DependencyMap
+              stages={layout.stages}
+              currentId={current?.milestone.id ?? null}
+              onBrief={(milestoneId, intent) => askBrief.mutate({ milestoneId, intent })}
+              busy={busy}
+              onShowInList={jumpTo}
+            />
+          ) : (
+            <RoadmapSpine
+              stages={layout.stages}
+              onJumpTo={jumpTo}
+              onBrief={(milestoneId, intent) => askBrief.mutate({ milestoneId, intent })}
+              busy={busy}
+            />
+          )}
         </>
       )}
 

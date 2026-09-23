@@ -1,0 +1,34 @@
+.pk-radio { margin:0; padding:0; border:0; min-width:0; }
+.pk-radio > legend { padding:0; margin-block-end:8px; }
+.pk-radio__list { display:grid; gap:8px; }
+.pk-radio__card {
+  position:relative; display:flex; align-items:flex-start; gap:12px; padding:12px 14px; cursor:pointer;
+  border:1px solid var(--nm-line,var(--line)); border-radius:var(--nm-r-control,12px);
+  background:var(--nm-panel-soft,var(--surface-2)); color:var(--nm-ink,var(--ink));
+  transition:border-color .15s ease,background-color .15s ease;
+}
+.pk-radio__card:hover { border-color:color-mix(in srgb,var(--nm-ink,var(--ink)) 28%,var(--nm-line,var(--line))); }
+.pk-radio__card.is-on { border-color:var(--nm-ink,var(--ink)); }
+.pk-radio__input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
+.pk-radio__card:has(.pk-radio__input:focus-visible) { outline:2px solid var(--nm-ink,var(--ink)); outline-offset:2px; }
+.pk-radio[disabled] .pk-radio__card { opacity:.5; cursor:not-allowed; }
+.pk-radio__text { display:grid; gap:2px; min-width:0; }
+.pk-radio__label { font-size:13px; line-height:1.4; }
+.pk-radio__hint { font-size:12px; line-height:1.45; color:var(--nm-muted,var(--muted)); }
+
+.pk-radio__ring {
+  display:inline-grid; place-items:center; flex:none; width:16px; height:16px; margin-block-start:1px;
+  border:1.5px solid var(--nm-line,var(--line-strong)); border-radius:999px; box-sizing:border-box;
+  transition:border-color .15s ease;
+}
+.pk-radio__ring.is-on { border-color:var(--nm-ink,var(--ink)); }
+.pk-radio__dot {
+  width:8px; height:8px; border-radius:999px; background:var(--nm-ink,var(--ink)); transform:scale(0);
+  transition:transform var(--pk-radio-dur,.4s) var(--pk-radio-ease,cubic-bezier(.34,1.56,.64,1));
+}
+.pk-radio__ring.is-on .pk-radio__dot { transform:scale(1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-radio__dot,.pk-radio__ring,.pk-radio__card { transition:none; }
+}
+.motion-reduced .pk-radio__dot,.motion-reduced .pk-radio__ring,.motion-reduced .pk-radio__card { transition:none; }

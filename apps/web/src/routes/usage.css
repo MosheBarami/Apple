@@ -203,59 +203,11 @@
 .bars-wrap { margin-top:16px; }
 .bars-card > .bars-wrap { padding-inline:14px; }
 
-/*[[ THIRTY BARS THAT ARRIVE, one after another, from the baseline they are measured against.
- *
- *   This is the half of the brief the bar itself cannot supply: it declares zero @keyframes and
- *   runs zero animations. What the corpus says to do with the motion budget instead is spend it on
- *   STATE — chatgpt.com declares 138 keyframes and every one of them is a state (a toast opening, a
- *   skeleton shimmering, a dot pulsing) rather than scenery. A bar rising is the arrival of thirty
- *   days of history, which is a state this page genuinely enters.
- *
- *   scaleY from the fill box's own bottom edge, so the animation is a transform on the compositor
- *   and never a geometry change — and so a bar can never be drawn at a height that misreports a
- *   day's spend for longer than one frame. The stagger is written out per group because CSS cannot
- *   read an element's index; 9ms apart puts the whole sweep at 261ms, inside the ceiling. ]]*/
-.bars-wrap > .usage-bars .bar { transform-box:fill-box; transform-origin:bottom; animation:usage-bar-rise var(--t-base) var(--ease-hard) both; }
-.usage-bars g:nth-of-type(1) .bar { animation-delay:0ms; }
-.usage-bars g:nth-of-type(2) .bar { animation-delay:9ms; }
-.usage-bars g:nth-of-type(3) .bar { animation-delay:18ms; }
-.usage-bars g:nth-of-type(4) .bar { animation-delay:27ms; }
-.usage-bars g:nth-of-type(5) .bar { animation-delay:36ms; }
-.usage-bars g:nth-of-type(6) .bar { animation-delay:45ms; }
-.usage-bars g:nth-of-type(7) .bar { animation-delay:54ms; }
-.usage-bars g:nth-of-type(8) .bar { animation-delay:63ms; }
-.usage-bars g:nth-of-type(9) .bar { animation-delay:72ms; }
-.usage-bars g:nth-of-type(10) .bar { animation-delay:81ms; }
-.usage-bars g:nth-of-type(11) .bar { animation-delay:90ms; }
-.usage-bars g:nth-of-type(12) .bar { animation-delay:99ms; }
-.usage-bars g:nth-of-type(13) .bar { animation-delay:108ms; }
-.usage-bars g:nth-of-type(14) .bar { animation-delay:117ms; }
-.usage-bars g:nth-of-type(15) .bar { animation-delay:126ms; }
-.usage-bars g:nth-of-type(16) .bar { animation-delay:135ms; }
-.usage-bars g:nth-of-type(17) .bar { animation-delay:144ms; }
-.usage-bars g:nth-of-type(18) .bar { animation-delay:153ms; }
-.usage-bars g:nth-of-type(19) .bar { animation-delay:162ms; }
-.usage-bars g:nth-of-type(20) .bar { animation-delay:171ms; }
-.usage-bars g:nth-of-type(21) .bar { animation-delay:180ms; }
-.usage-bars g:nth-of-type(22) .bar { animation-delay:189ms; }
-.usage-bars g:nth-of-type(23) .bar { animation-delay:198ms; }
-.usage-bars g:nth-of-type(24) .bar { animation-delay:207ms; }
-.usage-bars g:nth-of-type(25) .bar { animation-delay:216ms; }
-.usage-bars g:nth-of-type(26) .bar { animation-delay:225ms; }
-.usage-bars g:nth-of-type(27) .bar { animation-delay:234ms; }
-.usage-bars g:nth-of-type(28) .bar { animation-delay:243ms; }
-.usage-bars g:nth-of-type(29) .bar { animation-delay:252ms; }
-.usage-bars g:nth-of-type(30) .bar { animation-delay:261ms; }
-
-/* A day with spend is the accent carrying its glow; a day without is the hairline, and it stays a
-   hairline — an empty day is not a small amount, it is none. */
-.bars-wrap > .usage-bars .bar-active { fill:var(--accent); filter:drop-shadow(0 0 5px var(--accent-glow)); }
-.bars-wrap > .usage-bars .bar:not(.bar-active) { fill:var(--line); }
-.bars-wrap > .usage-bars .bar-base { stroke:var(--line); }
-/* A bar is hoverable — it carries a <title> — so pointing at one says so. Colour only, on the
-   colour band's curve. */
-.bars-wrap > .usage-bars .bar { transition:fill var(--t-color) var(--ease-hard); }
-.bars-wrap > .usage-bars .bar:hover { fill:var(--accent-light); }
+/* The 30-day chart is the picked line graph now (components/picks/settings/line-graph); the bars'
+   own entrance, stagger and fills went with the bars. The Right-now panel and the calendar sit above
+   and below it with the card's own rhythm. */
+.bars-card .pk-live { margin-block:14px 22px; }
+.bars-card .pk-cal { margin-block-start:22px; }
 
 /* ------------------------------------------------------- what the credits went on --- */
 
@@ -509,7 +461,6 @@
  *   above whose selector matches markup usage.tsx actually renders:
  *
  *     usage-ring-arrive   the balance came back           .ring-arc
- *     usage-bar-rise      thirty days of history came back .usage-bars .bar
  *     usage-fill-grow     a spend share was computed       .spend-kind__fill
  *     usage-panel-arrive  a notice / a saved detail appeared .billing-notice, .plans-note, .billing-details__note
  *     usage-detail-open   an invoice was expanded          .invoice-detail
@@ -519,7 +470,6 @@
  *   Nothing here is scenery, and nothing here outlasts 0.26s except the two that are ambient by
  *   definition — the shimmer and the warning pulse — which the ceiling exempts. ]]*/
 @keyframes usage-ring-arrive { from { opacity:0; } to { opacity:1; } }
-@keyframes usage-bar-rise { from { transform:scaleY(0); opacity:.4; } to { transform:none; opacity:1; } }
 @keyframes usage-fill-grow { from { transform:scaleX(0); } to { transform:none; } }
 @keyframes usage-panel-arrive { from { opacity:0; transform:translate3d(0,6px,0); } to { opacity:1; transform:none; } }
 @keyframes usage-detail-open { from { opacity:0; transform:translate3d(0,-4px,0); } to { opacity:1; transform:none; } }
@@ -557,7 +507,6 @@
  *   invisible. A rule that adds motion carries its own switch. ]]*/
 @media (prefers-reduced-motion: reduce) {
   .credits-card .ring-arc,
-  .bars-wrap > .usage-bars .bar,
   .spend-kinds__list .spend-kind__fill,
   .billing-notice,
   .billing-notice--warn::before,
@@ -569,7 +518,6 @@
      painting stays transparent and the waiting state renders as an empty line. */
   :is(.usage-grid,.invoice-row > .invoice-detail) [aria-busy='true'] { background:none; -webkit-text-fill-color:currentColor; color:var(--muted); }
   .credits-card .ring-arc,
-  .bars-wrap > .usage-bars .bar,
   .spend-kinds__list .spend-kind__fill,
   .invoice-row__toggle,
   .invoice-row__toggle::before,

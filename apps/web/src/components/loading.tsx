@@ -4,6 +4,17 @@
 // The steps advance on a timer only as a *rhythm* — they never claim a stage is
 // finished when it is not. The last step stays active until the real work ends,
 // so the sequence can never race ahead of the truth.
+//
+// THE OWNER'S PICKS, 2026-09-23 (components/picks/thinking/), each where its wait is:
+//   Infinite path drawing   the Forge's "still alive" line: a segment running round a loop. It
+//                           replaces the sweeping bar — same job, and a loop has no end to seem to
+//                           arrive at.
+//   SVG Ripple Effect       rings around the mark while Apple reaches for Studio (connecting).
+//   Hacker Background       the pairing-code alphabet raining faintly behind "Creating a pairing code".
+//   Hyperspeed              streaks rushing past the first screen, "Waking the apple" (recalling).
+//   Fill text               that first screen's headline, inked left to right — no percentage.
+//   SVG loading spinner     the Spinner: an arc growing and shrinking round a turning ring.
+//   Shimmering Text         the Spinner's caption, brightening glyph by glyph.
 import { useEffect, useState } from 'react';
 import { OPERATION_STEPS, type OperationKind } from '../lib/tool-meta';
 // The OS query is no longer read here. It is still honoured — it is one of the two inputs to
@@ -12,6 +23,13 @@ import { OPERATION_STEPS, type OperationKind } from '../lib/tool-meta';
 import { useReducedMotion } from '../lib/theme';
 import { ApplePulse } from './glyphs';
 import { StatusIcon } from './status-icon';
+import { Shimmer } from './ai-elements/shimmer';
+import { ArcSpinner } from './picks/thinking/arc-spinner';
+import { CodeRain } from './picks/thinking/code-rain';
+import { FillText } from './picks/thinking/fill-text';
+import { InfinityPath } from './picks/thinking/infinity-path';
+import { RippleField } from './picks/thinking/ripple-field';
+import { WarpField } from './picks/thinking/warp-field';
 import './loading.css';
 
 const HEADLINE: Record<OperationKind, string> = {
@@ -55,11 +73,17 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
     // `is-compact` is carried as a class rather than left implicit in "no step list". The compact
     // wait is the only one that ships today, and a panel holding three short things cannot have
     // been sized by the same padding as one holding seven.
-    <div className={`forge${compact ? ' is-compact' : ''}`} role="status" aria-live="polite">
+    <div className={`forge forge--${kind}${compact ? ' is-compact' : ''}`} role="status" aria-live="polite">
+      {kind === 'connecting' && <CodeRain />}
+      {kind === 'recalling' && <WarpField className="forge-backdrop--screen" />}
       <span className="forge-mark" aria-hidden="true">
-        <ApplePulse size={24} />
+        {kind === 'connecting'
+          ? <RippleField size={88} rings={7}><ApplePulse size={24} /></RippleField>
+          : <ApplePulse size={24} />}
       </span>
-      <p className="forge-label">{label ?? HEADLINE[kind]}</p>
+      {kind === 'recalling'
+        ? <FillText className="forge-label">{label ?? HEADLINE[kind]}</FillText>
+        : <p className="forge-label">{label ?? HEADLINE[kind]}</p>}
       {!compact && (
         <ol className="forge-steps">
           {steps.map((step, i) => (
@@ -83,9 +107,7 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
           ))}
         </ol>
       )}
-      <span className="forge-bar" aria-hidden="true">
-        <span />
-      </span>
+      <InfinityPath className="forge-bar" />
       <span className="visually-hidden">{steps[Math.min(index, steps.length - 1)]}</span>
     </div>
   );
@@ -96,17 +118,20 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
  *
  * IT USED TO BE INVISIBLE. The span's only child was screen-reader text, so the workspace's
  * "Opening your project…" screen — the one a customer sees between clicking a project and seeing
- * it — rendered as an empty page. The mark comes from the shared status vocabulary so that the one
- * spinning thing in the product spins the same way everywhere, and `label`, when a caller gives
- * one, is now SHOWN rather than only announced: the caller had already written the sentence, and a
- * 14px mark alone on a full page says less than it does.
+ * it — rendered as an empty page. `label`, when a caller gives one, is SHOWN rather than only
+ * announced: the caller had already written the sentence, and a 14px mark alone on a full page
+ * says less than it does.
+ *
+ * The mark is the owner's pick, Motion's SVG spinner (picks/thinking/arc-spinner.tsx), and the
+ * caption shimmers glyph by glyph (Animate UI "Shimmering Text", merged into ai-elements Shimmer).
+ * Status marks elsewhere keep the shared StatusIcon; this is the wait, not a status.
  */
 export function Spinner({ label }: { label?: string }) {
   return (
     <span className="loading-spinner" role="status">
-      <StatusIcon status="pending" size={14} />
+      <ArcSpinner size={label ? 18 : 14} />
       {label
-        ? <span className="loading-spinner__label">{label}</span>
+        ? <Shimmer as="span" variant="wave" duration={1} className="loading-spinner__label">{label}</Shimmer>
         : <span className="visually-hidden">Loading</span>}
     </span>
   );

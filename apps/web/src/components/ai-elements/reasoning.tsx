@@ -16,6 +16,14 @@
  * (docs/THINKING-UX.md) — so the workspace fills the disclosure with components built from
  * observed run activity instead. A string still renders through the markdown path, as upstream's
  * does; no caller in this app passes one (tests/thinking-surface.test.mjs).
+ *
+ * TWO PICKS MERGED IN (2026-09-23, the owner's component picks, Thinking lane):
+ *   * Animate UI "Collapsible" + React Bits "Thought Line": the disclosure body now animates open
+ *     (height 0 -> measured, opacity, y) and animates closed before it is hidden. The state machine
+ *     is upstream's; only the moment the content hides is deferred by the collapse
+ *     (../picks/thinking/disclosure.ts). Re-implemented with the Web Animations API, no motion lib.
+ *   * ReasoningTrigger takes an optional `icon`, drawn where upstream draws the Brain. Without one
+ *     the Brain is drawn, as upstream does; the workspace passes its live state glyph.
  */
 import type { ComponentProps, ReactNode } from 'react';
 import {
@@ -24,6 +32,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -38,6 +47,7 @@ import {
 } from './reasoning-compat';
 import { BrainIcon, ChevronDownIcon } from './icons';
 import { Shimmer } from './shimmer';
+import { useAnimatedClose, useExpandOnOpen } from '../picks/thinking/disclosure';
 import './reasoning.css';
 
 interface ReasoningContextValue {
@@ -45,6 +55,8 @@ interface ReasoningContextValue {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   duration: number | undefined;
+  /** The id of the mounted ReasoningContent, so a close can animate it before it is hidden. */
+  contentIdRef: { current: string | null };
 }
 
 const ReasoningContext = createContext<ReasoningContextValue | null>(null);
@@ -83,11 +95,14 @@ export const Reasoning = memo(
     // Track if defaultOpen was explicitly set to false (to prevent auto-open)
     const isExplicitlyClosed = defaultOpen === false;
 
-    const [isOpen = false, setIsOpen] = useControllableState<boolean>({
+    const [isOpen = false, setOpenState] = useControllableState<boolean>({
       defaultProp: resolvedDefaultOpen,
       onChange: onOpenChange,
       prop: open,
     });
+    // Every close — the reader's, and the auto-close after streaming — collapses first.
+    const contentIdRef = useRef<string | null>(null);
+    const setIsOpen = useAnimatedClose(contentIdRef, setOpenState);
     const [duration, setDuration] = useControllableState<number | undefined>({
       defaultProp: undefined,
       prop: durationProp,
@@ -142,7 +157,7 @@ export const Reasoning = memo(
     );
 
     const contextValue = useMemo(
-      () => ({ duration, isOpen, isStreaming, setIsOpen }),
+      () => ({ contentIdRef, duration, isOpen, isStreaming, setIsOpen }),
       [duration, isOpen, isStreaming, setIsOpen],
     );
 
@@ -163,6 +178,8 @@ export const Reasoning = memo(
 
 export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger> & {
   getThinkingMessage?: (isStreaming: boolean, duration?: number) => ReactNode;
+  /** Drawn in the Brain's place. Omitted, the Brain is drawn, as upstream does. */
+  icon?: ReactNode;
 };
 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
@@ -180,6 +197,7 @@ export const ReasoningTrigger = memo(
     className,
     children,
     getThinkingMessage = defaultGetThinkingMessage,
+    icon,
     ...props
   }: ReasoningTriggerProps) => {
     const { isStreaming, isOpen, duration } = useReasoning();
@@ -194,7 +212,7 @@ export const ReasoningTrigger = memo(
       >
         {children ?? (
           <>
-            <BrainIcon className="size-4 ai-reasoning__icon" />
+            {icon ?? <BrainIcon className="size-4 ai-reasoning__icon" />}
             {getThinkingMessage(isStreaming, duration)}
             <ChevronDownIcon
               className={cn(
@@ -214,8 +232,15 @@ export type ReasoningContentProps = ComponentProps<typeof CollapsibleContent> & 
 };
 
 export const ReasoningContent = memo(
-  ({ className, children, ...props }: ReasoningContentProps) => (
+  ({ className, children, id: idProp, ...props }: ReasoningContentProps) => {
+    const { contentIdRef, isOpen } = useReasoning();
+    const generated = useId();
+    const id = idProp ?? generated;
+    contentIdRef.current = id;
+    useExpandOnOpen(id, isOpen);
+    return (
     <CollapsibleContent
+      id={id}
       className={cn(
         'mt-4 text-sm data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in ai-reasoning__content',
         className,
@@ -224,7 +249,8 @@ export const ReasoningContent = memo(
     >
       {typeof children === 'string' ? <Markdown source={children} /> : children}
     </CollapsibleContent>
-  ),
+    );
+  },
 );
 
 Reasoning.displayName = 'Reasoning';

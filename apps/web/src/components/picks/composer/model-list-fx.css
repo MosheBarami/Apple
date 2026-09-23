@@ -1,0 +1,29 @@
+/* The model dialog's motion (model-picker.tsx, model-list-fx.tsx).
+ *
+ * Motion "Variants" (MIT): opening, the panel is revealed from a sliver at its centre outward
+ * (clip-path; the dialog's own centring transform is left alone), and the rows arrive one after
+ * another, each rising out of a blur — `--i` is the row's place in the whole list.
+ *
+ * Animate UI "Highlight": one backdrop travels behind the marked row (.pk-list-hl); the row itself
+ * stops painting its own. */
+.ai-dialog.gx-model-picker { animation:pk-dialog-reveal 520ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes pk-dialog-reveal {
+  from { clip-path:inset(10% 50% 90% 50% round var(--r-lg)); opacity:.4; }
+  to { clip-path:inset(0 0 0 0 round var(--r-lg)); opacity:1; }
+}
+.gx-model-picker .ai-command__item.gx-model-row {
+  animation:pk-model-row-in 420ms cubic-bezier(.22,1,.36,1) both;
+  animation-delay:calc(120ms + min(var(--i,0), 12) * 35ms);
+}
+@keyframes pk-model-row-in { from { opacity:0; translate:0 14px; filter:blur(6px); } to { opacity:1; translate:none; filter:none; } }
+
+.gx-model-picker .pk-hl-host { position:relative; isolation:isolate; }
+.gx-model-picker .pk-list-hl {
+  position:absolute; top:0; left:0; z-index:-1; border-radius:var(--r-xs); background:var(--surface-3);
+  pointer-events:none; opacity:0;
+}
+.gx-model-picker .pk-hl-host .ai-command__item[data-selected='true'] { background:transparent; }
+
+@media (prefers-reduced-motion:reduce) {
+  .ai-dialog.gx-model-picker,.gx-model-picker .ai-command__item.gx-model-row { animation:none; }
+}

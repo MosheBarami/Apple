@@ -104,6 +104,18 @@ import {
 import '../components/asset-source-dialog.css';
 import './settings.css';
 import './nonworkspace-minimal.css';
+// The owner's picked account-screen components (apps/web/src/components/picks/settings).
+import { Switch } from '../components/picks/settings/switch';
+import { Select } from '../components/picks/settings/select';
+import { NumberSlider } from '../components/picks/settings/number-slider';
+import { ConditionalField } from '../components/picks/settings/conditional-field';
+import { RadioMark } from '../components/picks/settings/radio-group';
+import { withThemeWipe } from '../components/picks/settings/theme-toggler';
+import { GlideIndicator } from '../components/picks/settings/glide-indicator';
+import { CodeSlots } from '../components/picks/settings/code-slots';
+import { PasswordInput } from '../components/picks/settings/password-input';
+import { Accordion } from '../components/picks/settings/accordion';
+import '../components/picks/settings/account-buttons.css';
 
 /**
  * The account's enrolled factors.
@@ -706,22 +718,17 @@ function DiscordCard({ userId }: { userId: string }) {
             so only connect your own.
           </p>
           <div className="settings-inline">
-            <label className="field settings-grow">
-              <span className="field-label">Project</span>
-              <select
+            <div className="field settings-grow">
+              <label className="field-label" htmlFor="discord-project">Project</label>
+              <Select
                 id="discord-project"
                 name="discordProject"
                 value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
+                onChange={setProjectId}
                 disabled={projects.isPending || (projects.data?.length ?? 0) === 0}
-              >
-                {(projects.data ?? []).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={(projects.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
+              />
+            </div>
             <button
               type="button"
               className="btn"
@@ -907,11 +914,15 @@ function SettingsRail({
   active: string | null;
   onSelect: (id: string) => void;
 }) {
+  // The glass pill (picks: liquid-glass sidebar menu) slides to the current section; it is
+  // measured from the list, so it has to be the list's own positioned child.
+  const list = useRef<HTMLUListElement>(null);
   if (entries.length === 0) return null;
 
   return (
     <nav className="st-nav" aria-label="Settings sections">
-      <ul className="st-nav__list">
+      <ul className="st-nav__list" ref={list}>
+        <GlideIndicator host={list} activeKey={active} selector=".st-nav__link.is-active" variant="glass" as="li" />
         {entries.map((e, i) => (
           <li key={e.id}>
             {/* The group heading is drawn by the FIRST entry that belongs to it, rather than by
@@ -1004,6 +1015,7 @@ function Choice<T extends string>({
               }
             }}
           >
+            <RadioMark on={value === option} />
             {names[option] ?? option}
           </button>
       ))}
@@ -1178,9 +1190,7 @@ function AssetSourceSettings({
                   <span className="asrc__reach">{e.reach}</span>
                 </span>
               </span>
-              <input
-                className="settings-switch"
-                type="checkbox"
+              <Switch
                 disabled={save.isPending}
                 checked={displayedChosen.includes(e.choice)}
                 onChange={() => toggle(e.choice)}
@@ -1195,9 +1205,7 @@ function AssetSourceSettings({
                 Off, and Apple remembers this choice and gets on with it.
               </span>
             </span>
-            <input
-              className="settings-switch"
-              type="checkbox"
+            <Switch
               disabled={save.isPending}
               checked={displayedAsk}
               onChange={() => { setChosen([...displayedChosen]); setDirty(true); setAsk(!displayedAsk); }}
@@ -1345,19 +1353,17 @@ function NotificationSettings({
             </div>
             <label className="field">
               <span className="field-label">Read these times in</span>
-              <select
+              <Select
                 name="notifyTimeZone"
+                label="Read these times in"
                 value={delivery.timezone}
                 disabled={stored.isPending}
-                onChange={(e) => edit(() => setDelivery({ ...delivery, timezone: e.target.value }))}
-              >
-                {zoneOptions.map((z) => (
-                  <option key={z} value={z}>
-                    {z.replace(/_/g, ' ')}
-                    {z === deviceTimeZone() ? ' — this device' : ''}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => edit(() => setDelivery({ ...delivery, timezone: v }))}
+                options={zoneOptions.map((z) => ({
+                  value: z,
+                  label: `${z.replace(/_/g, ' ')}${z === deviceTimeZone() ? ' — this device' : ''}`,
+                }))}
+              />
             </label>
           </>
         }
@@ -1383,39 +1389,33 @@ function NotificationSettings({
           <>
             <label className="field">
               <span className="field-label">Delivery</span>
-              <select
+              <Select
                 name="notifyDigest"
+                label="Delivery"
                 value={delivery.digest}
                 disabled={stored.isPending}
-                onChange={(e) => edit(() => setDelivery({ ...delivery, digest: e.target.value as DigestMode }))}
-              >
-                {DIGEST_MODES.map((m) => (
-                  <option key={m} value={m}>
-                    {digestLabel(m)}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => edit(() => setDelivery({ ...delivery, digest: v as DigestMode }))}
+                options={DIGEST_MODES.map((m) => ({ value: m, label: digestLabel(m) }))}
+              />
             </label>
             {/* The hour means nothing for 'off' and 'hourly' — the server ignores it — and a
                 control that is always visible invites somebody to set a value that changes
                 nothing. */}
-            {delivery.digest === 'daily' && (
-              <label className="field">
-                <span className="field-label">Arriving at</span>
-                <select
-                  name="notifyDigestHour"
-                  value={String(delivery.digest_hour)}
+            <ConditionalField open={delivery.digest === 'daily'}>
+              <div className="field">
+                <span className="field-label" aria-hidden="true">Arriving at</span>
+                <input type="hidden" name="notifyDigestHour" value={String(delivery.digest_hour)} />
+                <NumberSlider
+                  label="Arriving at"
+                  min={0}
+                  max={23}
+                  value={delivery.digest_hour}
+                  format={digestHourLabel}
                   disabled={stored.isPending}
-                  onChange={(e) => edit(() => setDelivery({ ...delivery, digest_hour: Number(e.target.value) }))}
-                >
-                  {Array.from({ length: 24 }, (_, h) => (
-                    <option key={h} value={String(h)}>
-                      {digestHourLabel(h)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+                  onChange={(h) => edit(() => setDelivery({ ...delivery, digest_hour: h }))}
+                />
+              </div>
+            </ConditionalField>
           </>
         }
       >
@@ -1436,9 +1436,7 @@ function NotificationSettings({
                       not notify me about billing" — it does, and it always will. */}
                   {locked && <span className="settings-switchrow__does">{MANDATORY_REASON}</span>}
                 </span>
-                <input
-                  className="settings-switch"
-                  type="checkbox"
+                <Switch
                   name={`notify-${kind}`}
                   checked={eventEnabled(events, kind)}
                   disabled={locked || stored.isPending}
@@ -1658,18 +1656,16 @@ function TwoStepPanel({ onRemove }: { onRemove: (factorId: string) => void }) {
               Or enter this key by hand: <code>{pending.secret}</code>
             </p>
           )}
-          <label className="field">
-            <span className="field-label">Code from your app</span>
-            <input
+          <div className="field">
+            <span className="field-label" aria-hidden="true">Code from your app</span>
+            <CodeSlots
               name="totpCode"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={12}
+              label="Code from your app"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="123456"
+              onChange={setCode}
+              status={fault ? 'error' : 'idle'}
             />
-          </label>
+          </div>
           {fault && (
             <p className="form-error" role="alert">
               {fault}
@@ -2382,25 +2378,26 @@ export function SettingsPage() {
               <input type="text" name="username" autoComplete="username" value={session?.user.email ?? ''} readOnly hidden />
               <label className="field">
                 <span className="field-label">New password</span>
-                <input
-                  type="password"
+                <PasswordInput
+                  label="new password"
+                  strength
                   name="newPassword"
                   autoComplete="new-password"
                   minLength={PASSWORD_MIN}
                   value={newPassword}
                   aria-invalid={passwordTooWeak !== null || undefined}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={setNewPassword}
                 />
               </label>
               <label className="field">
                 <span className="field-label">New password again</span>
-                <input
-                  type="password"
+                <PasswordInput
+                  label="new password again"
                   name="confirmPassword"
                   autoComplete="new-password"
                   value={confirmPassword}
                   aria-invalid={passwordsDiffer || undefined}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={setConfirmPassword}
                 />
               </label>
               {passwordFault && (
@@ -2503,7 +2500,7 @@ export function SettingsPage() {
               value={prefs.appearance}
               options={APPEARANCES}
               names={APPEARANCE_NAMES}
-              onChange={(v) => setPref('appearance', v)}
+              onChange={(v) => withThemeWipe(() => setPref('appearance', v))}
             />
           }
         >
@@ -2542,17 +2539,13 @@ export function SettingsPage() {
           control={
             <label className="field">
               <span className="field-label">Regional formatting</span>
-              <select
+              <Select
                 name="region"
+                label="Regional formatting"
                 value={prefs.region}
-                onChange={(e) => setPref('region', e.target.value as Region)}
-              >
-                {REGIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {REGION_NAMES[r]}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setPref('region', v as Region)}
+                options={REGIONS.map((r) => ({ value: r, label: REGION_NAMES[r] }))}
+              />
             </label>
           }
         >
@@ -2584,23 +2577,21 @@ export function SettingsPage() {
           control={
             <label className="field">
               <span className="field-label">Time zone</span>
-              <select
+              <Select
                 name="timeZone"
+                label="Time zone"
                 value={prefs.timeZone}
-                onChange={(e) => setPref('timeZone', e.target.value)}
-              >
-                <option value="system">Match my device</option>
-                {/* A zone already stored that is not on the short list still works and still shows —
-                    dropping it silently would move every timestamp without saying so. */}
-                {!COMMON_TIME_ZONES.includes(prefs.timeZone) && prefs.timeZone !== 'system' && (
-                  <option value={prefs.timeZone}>{prefs.timeZone}</option>
-                )}
-                {COMMON_TIME_ZONES.map((z) => (
-                  <option key={z} value={z}>
-                    {z.replace(/_/g, ' ')}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setPref('timeZone', v)}
+                options={[
+                  { value: 'system', label: 'Match my device' },
+                  // A zone already stored that is not on the short list still works and still shows —
+                  // dropping it silently would move every timestamp without saying so.
+                  ...(!COMMON_TIME_ZONES.includes(prefs.timeZone) && prefs.timeZone !== 'system'
+                    ? [{ value: prefs.timeZone, label: prefs.timeZone }]
+                    : []),
+                  ...COMMON_TIME_ZONES.map((z) => ({ value: z, label: z.replace(/_/g, ' ') })),
+                ]}
+              />
             </label>
           }
         >
@@ -2638,9 +2629,7 @@ export function SettingsPage() {
           title="Analytics"
           control={
             <label className="switch-row switch-row--toggle">
-              <input
-                className="settings-switch"
-                type="checkbox"
+              <Switch
                 name="analyticsOptOut"
                 id="analytics-opt-out"
                 checked={storedPrefs.data?.preferences.prefs.analytics_opt_out ?? false}
@@ -2682,18 +2671,36 @@ export function SettingsPage() {
             </button>
           }
         >
-          <p className="settings-note">
-            One file, one click. Your profile and your projects, every message of every conversation in full, your
-            checkpoints, every Credit you have spent, your inbox, what Apple was asked to remember, your comments,
-            reviews, share links and Studio pairings. The browser walks every route the server holds about you rather
-            than handing you a list of them to fetch yourself, and it counts the requests while it does it.
-          </p>
-          <p className="settings-note settings-note-quiet">
-            Two things stay out of it and the file says so at the top, next to the route that serves each: bytes —
-            images, audio, your workspace files and checkpoint snapshots, which cannot be lines of JSON — and a live
-            Studio pairing code, which would be a working key to your project sitting in a downloaded file. Everything
-            else about those pairings is in there.
-          </p>
+          <p className="settings-note">One file with everything Apple keeps about you.</p>
+          {/* The long answers fold away (picks: multi-layout accordion) — one click, not the first read. */}
+          <Accordion
+            items={[
+              {
+                id: 'export-in',
+                title: 'What is in the file',
+                children: (
+                  <p className="settings-note">
+                    One file, one click. Your profile and your projects, every message of every conversation in full, your
+                    checkpoints, every Credit you have spent, your inbox, what Apple was asked to remember, your comments,
+                    reviews, share links and Studio pairings. The browser walks every route the server holds about you rather
+                    than handing you a list of them to fetch yourself, and it counts the requests while it does it.
+                  </p>
+                ),
+              },
+              {
+                id: 'export-out',
+                title: 'What stays out',
+                children: (
+                  <p className="settings-note settings-note-quiet">
+                    Two things stay out of it and the file says so at the top, next to the route that serves each: bytes —
+                    images, audio, your workspace files and checkpoint snapshots, which cannot be lines of JSON — and a live
+                    Studio pairing code, which would be a working key to your project sitting in a downloaded file. Everything
+                    else about those pairings is in there.
+                  </p>
+                ),
+              },
+            ]}
+          />
         </Row>
       </Section>
 
@@ -2801,6 +2808,8 @@ export function SettingsPage() {
           ceremony={CEREMONY[pending]!}
           confirmLabel={DIALOG[pending]!.confirmLabel}
           subject={DIALOG[pending]!.subject}
+          // Deleting the account is the one thing here nobody can take back: it is a hold, not a click.
+          hold={pending === 'delete-account'}
           onClose={() => setPending(null)}
           onConfirm={() => {
             const action = pending;

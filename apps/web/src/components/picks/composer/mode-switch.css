@@ -1,0 +1,31 @@
+/* Plan | Agent (mode-switch.tsx). Sized to the bar's 28px chips; the chosen side is a raised pill
+   in the surface ramp, never a colour, because choosing Plan is not a warning and choosing Agent is
+   not a success. */
+.pk-mode {
+  position:relative; display:inline-flex; flex:none; align-items:center; gap:0; height:var(--h-xs); padding:2px;
+  border:1px solid var(--control-line); border-radius:var(--r-sm); background:transparent; isolation:isolate;
+}
+.pk-mode__pill,.pk-mode__ghost {
+  position:absolute; top:0; left:0; z-index:-1; border-radius:calc(var(--r-sm) - 3px); pointer-events:none; opacity:0;
+}
+.pk-mode__pill { background:var(--surface-3); box-shadow:inset 0 0 0 1px var(--line); }
+.pk-mode__ghost { background:var(--control-fill); transition:opacity var(--t-fast) var(--ease-out); }
+.pk-mode__option {
+  display:inline-flex; align-items:center; gap:5px; height:100%; min-height:0; padding:0 9px 0 7px;
+  border:0; border-radius:calc(var(--r-sm) - 3px); background:transparent; box-shadow:none;
+  color:var(--muted); font-size:12.5px; line-height:1; letter-spacing:-.005em; white-space:nowrap; cursor:pointer;
+  transition:color var(--t-fast) var(--ease-out);
+}
+.pk-mode__option:hover { color:var(--ink); }
+.pk-mode__option[aria-checked='true'] { color:var(--ink); }
+.pk-mode__option:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.pk-mode__option svg { flex:none; }
+/* Before the first measurement (and in server-rendered markup) the chosen side draws its own pill. */
+.pk-mode:not(.is-measured) .pk-mode__option[aria-checked='true'] { background:var(--surface-3); }
+
+@media (max-width:520px) {
+  .pk-mode__option { padding-inline:7px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pk-mode__ghost,.pk-mode__option { transition:none; }
+}

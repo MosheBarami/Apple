@@ -185,11 +185,22 @@ test('Mode, Model and Create are named by what they hold', () => {
   //   trigger is aria-haspopup="dialog"). Its code loads after the composer, and until it lands the
   //   chip is the same face and cannot be pressed — which is what server rendering sees here. The
   //   property is unchanged: each of the three controls says what it currently holds. ]]
+  //[[ RESTATED 2026-09-23 (composer picks). Mode is no longer a menu either: it is a two-way radio
+  //   switch, so both words are on screen. It still says what it holds — its checked radio is the
+  //   current mode — so the menu triggers are Create alone. ]]
   const html = composer({ mode: 'plan' });
   const triggers = tags(html, 'button').filter((t) => attr(t, 'aria-haspopup') === 'menu');
   const names = triggers.map((t) => attr(t, 'aria-label'));
-  assert.deepEqual(names, ['Mode: Plan', 'Create']);
+  assert.deepEqual(names, ['Create']);
   for (const t of triggers) assert.equal(attr(t, 'aria-expanded'), 'false');
+  const group = tags(html, 'div').filter((t) => attr(t, 'role') === 'radiogroup' && attr(t, 'aria-label') === 'Mode');
+  assert.equal(group.length, 1, 'exactly one Mode switch');
+  const at = html.indexOf(group[0]);
+  const radios = html.slice(at, html.indexOf('</div>', at)).match(/<button\b[^>]*role="radio"[^>]*>[\s\S]*?<\/button>/g) ?? [];
+  assert.equal(radios.length, 2, 'Plan and Agent, both on screen');
+  const checked = radios.filter((r) => /aria-checked="true"/.test(r));
+  assert.equal(checked.length, 1, 'exactly one mode is chosen');
+  assert.match(checked[0], />Plan</, 'the chosen radio is the current mode');
   const model = tags(html, 'button').filter((t) => attr(t, 'aria-label')?.startsWith('Model: '));
   assert.equal(model.length, 1, 'exactly one model chip');
   assert.equal(attr(model[0], 'aria-label'), 'Model: Apple');

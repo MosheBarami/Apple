@@ -1,0 +1,36 @@
+.pk-select { position:relative; display:block; min-width:0; }
+.pk-select__trigger {
+  display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-width:0;
+  min-height:38px; padding:0 12px; font:inherit; font-size:13px; text-align:start; cursor:pointer;
+  border:1px solid var(--nm-line,var(--control-line)); border-radius:var(--nm-r-control,var(--r-md));
+  background:var(--nm-panel-soft,var(--paper-2)); color:var(--nm-ink,var(--ink));
+  transition:border-color .15s ease,background-color .15s ease;
+}
+.pk-select__trigger:hover:not(:disabled) { border-color:color-mix(in srgb,var(--nm-ink,var(--ink)) 26%,var(--nm-line,var(--line))); }
+.pk-select__trigger:focus-visible { outline:2px solid var(--nm-ink,var(--ink)); outline-offset:2px; }
+.pk-select__trigger:disabled { opacity:.5; cursor:not-allowed; }
+.pk-select__value { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pk-select__chev { flex:none; width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; color:var(--nm-muted,var(--muted)); transition:transform .25s var(--pk-select-ease,ease); }
+.pk-select.is-open .pk-select__chev { transform:rotate(180deg); }
+
+.pk-select__list {
+  position:absolute; z-index:40; inset-inline:0; inset-block-start:calc(100% + 6px);
+  min-width:max(100%,200px); max-height:280px; margin:0; padding:5px; overflow:auto; list-style:none;
+  overscroll-behavior:contain; scrollbar-width:thin;
+  border:1px solid var(--nm-line,var(--line)); border-radius:12px;
+  background:var(--nm-panel,var(--surface)); color:var(--nm-ink,var(--ink));
+  box-shadow:var(--nm-shadow,var(--shadow-pop));
+}
+.pk-select__list:focus { outline:none; }
+.pk-select__list:focus-visible { outline:2px solid var(--nm-ink,var(--ink)); outline-offset:2px; }
+.pk-select__option {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:8px 10px; border-radius:8px; font-size:13px; line-height:1.35; cursor:pointer;
+  color:var(--nm-muted,var(--muted));
+}
+.pk-select__option.is-active { background:var(--nm-panel-soft,var(--surface-2)); color:var(--nm-ink,var(--ink)); }
+.pk-select__option.is-selected { color:var(--nm-ink,var(--ink)); }
+.pk-select__tick { flex:none; width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+
+@media (prefers-reduced-motion: reduce) { .pk-select__chev,.pk-select__trigger { transition:none; } }
+.motion-reduced .pk-select__chev,.motion-reduced .pk-select__trigger { transition:none; }

@@ -1,0 +1,9 @@
+.picks-fill { position:relative; display:inline-grid; margin:0; }
+.picks-fill__base,.picks-fill__ink { grid-area:1/1; }
+.picks-fill__base { color:var(--line-strong); }
+.picks-fill__ink { color:var(--ink); clip-path:inset(0 0 0 0); animation:picks-fill 3.8s cubic-bezier(.4,0,.2,1) infinite; }
+/* 3s of fill, then 0.8s held full (the example's repeatDelay), in one 3.8s cycle. */
+@keyframes picks-fill { 0% { clip-path:inset(0 100% 0 0); } 79%,100% { clip-path:inset(0 0 0 0); } }
+@media (prefers-reduced-motion: reduce) {
+  .picks-fill__ink { animation:none; }
+}

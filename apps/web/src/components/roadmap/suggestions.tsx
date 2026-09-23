@@ -11,7 +11,9 @@
 // rather than an "Add" button that would silently do nothing.
 import { COMPLEXITY, ComplexityMark } from './marks';
 import type { BriefIntent } from './milestone-card';
-import { effortLabel, type Milestone } from './model';
+import { creditRangeLabel, effortLabel, type Milestone } from './model';
+import { CompareTable } from '../picks/tech/compare-table';
+import '../picks/tech/tech-ui.css';
 import './suggestions.css';
 
 interface Props {
@@ -150,6 +152,30 @@ export function SuggestionPanel({
             );
           })}
         </div>
+      )}
+
+      {/* Two or more suggestions can be weighed against each other, row by row. */}
+      {state === 'ready' && next.length > 1 && (
+        <details className="tq-details">
+          <summary>Compare them</summary>
+          <div className="tq-details__body">
+            <CompareTable
+              caption="The suggested milestones side by side"
+              columns={next.map((s) => s.title)}
+              rows={[
+                { label: 'Size', values: next.map((s) => COMPLEXITY[s.complexity]?.label ?? '') },
+                { label: 'Work', values: next.map((s) => effortLabel(s.effort)) },
+                { label: 'Cost', values: next.map((s) => creditRangeLabel(s.creditsLow, s.creditsHigh)) },
+                {
+                  label: 'Waits for',
+                  values: next.map((s) => (s.blockedBy ?? []).map(titleOf).filter((t): t is string => t !== null).join(', ')),
+                },
+                { label: 'In the plan', values: next.map((s) => (inPlan(s.id) ? 'Yes' : 'No')) },
+                // A row the worker sent nothing for is left out rather than drawn as a line of dashes.
+              ].filter((row) => row.values.some((v) => v !== ''))}
+            />
+          </div>
+        </details>
       )}
     </section>
   );

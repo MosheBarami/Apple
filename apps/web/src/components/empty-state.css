@@ -118,3 +118,10 @@
 @media (prefers-reduced-motion: reduce) {
   .es__help a { transition:none; }
 }
+
+/* ------------------------------------------------------------- the default marks --- */
+
+/* The Studio ripple (picks/thinking/ripple-field.tsx) draws its rings in currentColor. The art box
+   inherits the tone colour from `.es--studio`; the rings are meant to be quiet, so they take the
+   muted ink instead and only the centre dot carries the accent. */
+.es__ripple { color:var(--muted); }

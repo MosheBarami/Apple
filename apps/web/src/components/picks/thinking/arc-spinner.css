@@ -1,0 +1,12 @@
+.picks-arc { display:block; flex:none; overflow:visible; animation:picks-arc-turn 1.2s linear infinite; }
+.picks-arc__track { stroke:color-mix(in srgb,currentColor 22%,transparent); }
+.picks-arc__arc { stroke:var(--picks-arc,var(--accent)); stroke-dasharray:.25 1; animation:picks-arc-dash 1.6s ease-in-out infinite; }
+@keyframes picks-arc-turn { to { transform:rotate(360deg); } }
+@keyframes picks-arc-dash {
+  0% { stroke-dasharray:.05 1; stroke-dashoffset:0; }
+  50% { stroke-dasharray:.6 1; stroke-dashoffset:-.3; }
+  100% { stroke-dasharray:.05 1; stroke-dashoffset:-1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .picks-arc,.picks-arc__arc { animation:none; }
+}

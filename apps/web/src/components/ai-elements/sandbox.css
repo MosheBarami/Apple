@@ -1,0 +1,26 @@
+.ai-sandbox { min-width:0; border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); }
+.ai-sandbox__header {
+  display:flex; align-items:center; gap:8px; width:100%; min-height:0; height:36px; padding:0 10px; margin:0;
+  border:0; border-radius:var(--r-md); background:transparent; color:var(--ink); font:inherit; font-size:12.5px; text-align:start; cursor:pointer;
+}
+button.ai-sandbox__header:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); }
+.ai-sandbox__header:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; box-shadow:none; animation:none; }
+.ai-sandbox__chev { display:inline-flex; color:var(--muted); transition:transform var(--t-fast) var(--ease-out); }
+.ai-sandbox__chev.is-open { transform:rotate(90deg); }
+.ai-sandbox__title { flex:1; min-width:0; font-weight:600; }
+.ai-sandbox__state { font-size:11px; padding:2px 7px; border-radius:var(--r-pill); border:1px solid var(--line); color:var(--muted); }
+.ai-sandbox__state--error { border-color:color-mix(in srgb,var(--bad) 40%,transparent); color:var(--bad); }
+.ai-sandbox__state--running { border-color:var(--accent-ring); color:var(--accent-light); }
+.ai-sandbox__content { border-top:1px solid var(--line); }
+.ai-sandbox__bar { display:flex; align-items:center; padding:4px 6px 0; border-bottom:1px solid var(--line); }
+.ai-sandbox__list { display:flex; gap:2px; }
+.ai-sandbox__tab {
+  position:relative; min-height:0; height:30px; padding:0 10px; margin:0; border:0; border-radius:var(--r-xs) var(--r-xs) 0 0;
+  background:transparent; color:var(--muted); font:inherit; font-size:12px; cursor:pointer;
+}
+button.ai-sandbox__tab:hover:not(:disabled):not([aria-disabled='true']) { background:transparent; color:var(--ink); }
+.ai-sandbox__tab.is-selected { color:var(--ink); }
+.ai-sandbox__tab.is-selected::after { content:''; position:absolute; inset-inline:8px; bottom:-1px; height:2px; border-radius:2px; background:var(--accent); }
+.ai-sandbox__tab:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; box-shadow:none; animation:none; }
+.ai-sandbox__panel { padding:10px 12px 12px; }
+@media (prefers-reduced-motion: reduce) { .ai-sandbox__chev { transition:none; } }

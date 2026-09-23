@@ -1,0 +1,11 @@
+/* AICSS comparison-table's look (MIT), in this app's tokens. */
+.tq-compare { max-width:100%; overflow-x:auto; border-radius:var(--r-md); background:var(--paper-2); box-shadow:0 0 0 1px var(--line); }
+.tq-compare:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.tq-compare__table { width:100%; min-width:480px; border-collapse:separate; border-spacing:0; font-size:13px; }
+.tq-compare__table thead th { padding:7px 12px; font-weight:500; color:var(--muted); text-align:start; white-space:nowrap; }
+.tq-compare__table tbody th, .tq-compare__table tbody td { padding:9px 12px; background:var(--surface); border-top:1px solid var(--line); text-align:start; vertical-align:top; color:var(--ink); }
+.tq-compare__table tbody th { font-weight:400; color:var(--muted); white-space:nowrap; }
+.tq-compare__table tbody td + td, .tq-compare__table tbody th + td { border-inline-start:1px solid var(--line); }
+.tq-compare__table tbody tr:first-child > :first-child { border-start-start-radius:var(--r-md); }
+.tq-compare__table tbody tr:first-child > :last-child { border-start-end-radius:var(--r-md); }
+.tq-compare__none { color:var(--faint); }

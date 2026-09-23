@@ -19,13 +19,13 @@
 // which is the only place that knows whose checkpoints these are. The workspace
 // lends the shell an opener (see lib/shell.tsx); with no workspace mounted the
 // card is inert and says why rather than pretending to be live.
+import { AccountMenuHeader } from './picks/settings/user-button';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
 import { fetchBillingConfig, fetchMe } from '../lib/api';
 import { maxUpgradeAvailable } from '../lib/creation-intent';
-import { shortRelative } from '../lib/format';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { ShellProvider, useShell } from '../lib/shell';
 import { useCommands } from '../lib/commands';
@@ -49,6 +49,9 @@ import { OnboardingTour } from './onboarding-tour';
 import { StudioAtmosphere } from './studio-atmosphere';
 import { ModelMark } from './ws/model-mark';
 import { restartTour, writeProgress } from '../lib/onboarding';
+import { RailChats, useScrollEdges } from './picks/chat/rail-chats';
+import { DockHighlights } from './picks/chat/dock-highlights';
+import { AnimatedIcon } from './picks/chat/animated-icon';
 import './layout.css';
 
 /** How many conversations the rail lists before deferring to "View all chats". */
@@ -123,6 +126,7 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
         </button>
 
         <Popover open={open} onClose={() => setOpen(false)} placement="up" label="Account">
+          <AccountMenuHeader name={name} email={email} />
           <Link to="/settings" className="gx-pop__item" role="menuitem" onClick={() => setOpen(false)}>
             <Icon d={PATH.settings} size={15} />
             Settings
@@ -269,6 +273,8 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, upgradeA
   // the fetch at 20, so this cannot grow without bound either.
   const pinned = chats.filter((p) => p.pinned_at);
   const shown = [...pinned, ...chats.filter((p) => !p.pinned_at).slice(0, RAIL_LIMIT)];
+  // The scroller fades at an edge that has more chats behind it.
+  const scroller = useScrollEdges<HTMLDivElement>();
 
   return (
     <aside
@@ -315,42 +321,14 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, upgradeA
         </kbd>
       </Link>
 
-      <div className="gx-rail__scroll">
-        <div className="gx-rail__label">Chats</div>
+      <div className="gx-rail__scroll" ref={scroller}>
+        {/* With chats on screen the list draws its own section labels (Pinned / All chats). */}
+        {shown.length === 0 && <div className="gx-rail__label">Chats</div>}
 
-        {shown.length > 0 && (
-          <ul className="gx-rail__list">
-            {shown.map((p) => {
-              const at = p.last_activity_at ?? p.updated_at;
-              const when = shortRelative(at);
-              return (
-                <li key={p.id}>
-                  <NavLink
-                    to={`/projects/${p.id}`}
-                    className={({ isActive }) => `gx-conv${isActive ? ' is-active' : ''}`}
-                    title={p.name}
-                  >
-                    {/* Same reason as the dashboard card: without a mark, a conversation sitting
-                        above newer ones is just a list in the wrong order. */}
-                    {p.pinned_at && (
-                      <span className="gx-conv__pin" aria-label="Pinned" title="Pinned to the top">
-                        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                          <path d="M9.6 1.2 14.8 6.4l-1.1 1.1-1.2-.3-2.6 2.6.2 2.3-1.1 1.1-3-3-3.3 3.3-.8-.8L5.2 9.4l-3-3L3.3 5.3l2.3.2 2.6-2.6-.3-1.2z" />
-                        </svg>
-                      </span>
-                    )}
-                    <span className="gx-conv__name">{p.name}</span>
-                    {when && (
-                      <span className="gx-conv__time" title={at ? new Date(at).toLocaleString() : undefined}>
-                        {when}
-                      </span>
-                    )}
-                  </NavLink>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        {/* The chats themselves — pinned in their own section, pin and archive in place, swipe on a
+            phone, a menu on right-click — are components/picks/chat/rail-chats.tsx. This file still
+            decides WHICH chats: the query, the pinned-survive-the-limit slice above. */}
+        {shown.length > 0 && <RailChats chats={shown} />}
 
         {/* FOUR OUTCOMES, NOT TWO. This list had a success state and an empty state and nothing
             else, so a request still in flight and a request that failed both rendered as the same
@@ -473,6 +451,7 @@ function Shell() {
   const navigate = useNavigate();
   const { railOpen, openRail, closeRail, railCollapsed, newProject } = useShell();
   const { theme, setTheme } = useTheme();
+  const dockRef = useRef<HTMLElement>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   // Remounting the tour is how "Show me around" restarts it: the component reads its progress on
   // mount, and the command has just written a fresh one.
@@ -625,7 +604,9 @@ function Shell() {
             reads it, and the accent is drawn from the same fact the screen reader announces, so
             the two cannot drift apart. `end` on Projects because a bare `to="/"` matches every
             route under it and would mark Projects current from inside a conversation. */}
-        <nav className="studio-dock" aria-label="Workspace navigation">
+        <nav className="studio-dock" aria-label="Workspace navigation" ref={dockRef}>
+          {/* Where you are, and where the pointer is: two beds that slide between the rows. */}
+          <DockHighlights dock={dockRef} route={location.pathname} />
           <Link to="/" className="studio-dock__brand" aria-label="Apple — projects">
             <ModelMark variant="apple" />
             <span className="studio-dock__wordmark">Apple</span>
@@ -648,13 +629,13 @@ function Shell() {
                 data-tour="new-chat"
                 onClick={() => { if (location.pathname !== '/') navigate('/'); newProject(); }}
               >
-                <Icon d={PATH.compose} size={17} />
+                <AnimatedIcon motion="write"><Icon d={PATH.compose} size={16} /></AnimatedIcon>
                 <span className="studio-dock__label">New chat</span>
                 <kbd className="studio-dock__kbd" dir="ltr" aria-hidden="true">{shortcutLabel(SHORTCUTS.newProject)}</kbd>
               </button>
 
               <NavLink to="/" end className="studio-dock__row" aria-label="Projects" title="Projects">
-                <Icon d={PATH.projects} size={17} />
+                <AnimatedIcon motion="pop"><Icon d={PATH.projects} size={16} /></AnimatedIcon>
                 <span className="studio-dock__label">Projects</span>
               </NavLink>
 
@@ -666,7 +647,7 @@ function Shell() {
                 aria-expanded={railOpen}
                 title="Conversations"
               >
-                <Icon d={PATH.menu} size={17} />
+                <AnimatedIcon motion="slide"><Icon d={PATH.menu} size={16} /></AnimatedIcon>
                 <span className="studio-dock__label">Conversations</span>
               </button>
             </div>
@@ -676,7 +657,7 @@ function Shell() {
             <p className="studio-dock__group-label" aria-hidden="true">Account</p>
 
             <NavLink to="/usage" className="studio-dock__row" aria-label="Usage and Credits" title="Usage and Credits">
-              <Icon d={PATH.gauge} size={17} />
+              <AnimatedIcon motion="swing"><Icon d={PATH.gauge} size={16} /></AnimatedIcon>
               <span className="studio-dock__label">Usage and Credits</span>
             </NavLink>
 

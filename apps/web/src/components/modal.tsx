@@ -3,9 +3,11 @@
 // plan, pair Studio, get help, read the shortcuts — and the whole point of there being one is that
 // none of them can arrive differently from the others. The chrome is in ./modal.css, which the
 // command palette imports too, because the palette is a dialog and was drawn as if it were not.
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Icon, PATH } from './ws/primitives';
+import { reducedMotion, spring } from './picks/settings/motion';
 import './modal.css';
+import './picks/settings/dialog-motion.css';
 
 interface ModalProps {
   title: string;
@@ -14,6 +16,11 @@ interface ModalProps {
   wide?: boolean;
   /** When true the overlay/Escape do not close (e.g. mid-mutation). */
   locked?: boolean;
+  /**
+   * A dialog that interrupts to warn — a delete, a sign-out everywhere. It is announced as an
+   * `alertdialog` and tilts in (picks: Animate UI "Alert Dialog") instead of rising.
+   */
+  alert?: boolean;
 }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
@@ -79,11 +86,75 @@ export function useOverlayScrollLock(active = true): void {
   }, [active]);
 }
 
-export function Modal({ title, onClose, children, wide, locked }: ModalProps) {
+export function Modal({ title, onClose, children, wide, locked, alert }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
+  const closingRef = useRef(false);
 
   useOverlayScrollLock();
+
+  /*
+   * THE ENTRANCE AND THE EXIT (picks: Motion "Modal dialog" and Animate UI "Alert Dialog", both
+   * re-implemented natively — Motion is not installed). The panel arrives on a spring: a little
+   * larger-from-smaller, a few pixels of rise and a blur that clears; an alert tilts forward from
+   * a slight backward lean instead. Both are the Web Animations API with a spring sampled into a
+   * CSS linear() easing (./picks/settings/motion). Reduced motion keeps the CSS fade only.
+   */
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!panel || reducedMotion() || typeof panel.animate !== 'function') return;
+    panel.classList.add('pk-dialog--sprung');
+    const s = alert ? spring(260, 20) : spring(340, 28);
+    panel.animate(
+      alert
+        ? [
+            { opacity: 0, transform: 'perspective(900px) rotateX(-14deg) translate3d(0,18px,0) scale(.96)', filter: 'blur(4px)' },
+            { opacity: 1, transform: 'none', filter: 'none' },
+          ]
+        : [
+            { opacity: 0, transform: 'translate3d(0,14px,0) scale(.94)', filter: 'blur(6px)' },
+            { opacity: 1, transform: 'none', filter: 'none' },
+          ],
+      { duration: s.duration, easing: s.easing },
+    );
+    // The entrance plays once, on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Close from the dialog's own paths (Escape, the backdrop, ×) — it leaves before it goes. */
+  const requestClose = () => {
+    if (closingRef.current) return;
+    const panel = panelRef.current;
+    const overlay = overlayRef.current;
+    if (!panel || !overlay || reducedMotion() || typeof panel.animate !== 'function') {
+      onClose();
+      return;
+    }
+    closingRef.current = true;
+    const veil = overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 170, easing: 'ease-in', fill: 'forwards' });
+    const out = panel.animate(
+      [
+        { opacity: 1, transform: 'none', filter: 'none' },
+        alert
+          ? { opacity: 0, transform: 'perspective(900px) rotateX(10deg) translate3d(0,10px,0) scale(.97)', filter: 'blur(3px)' }
+          : { opacity: 0, transform: 'translate3d(0,8px,0) scale(.96)', filter: 'blur(4px)' },
+      ],
+      { duration: 170, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' },
+    );
+    const done = () => {
+      onClose();
+      // A caller may decline to close (a parent that keeps the dialog while something finishes).
+      // Then the dialog must come BACK, not stay mounted at opacity 0 holding the focus trap.
+      requestAnimationFrame(() => {
+        if (!panel.isConnected) return;
+        out.cancel();
+        veil.cancel();
+        closingRef.current = false;
+      });
+    };
+    out.onfinish = done;
+  };
 
   useEffect(() => {
     restoreRef.current = document.activeElement as HTMLElement | null;
@@ -103,7 +174,7 @@ export function Modal({ title, onClose, children, wide, locked }: ModalProps) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !locked) {
         e.stopPropagation();
-        onClose();
+        requestClose();
       }
       if (e.key === 'Tab' && panelRef.current) {
         const nodes = focusableIn(panelRef.current);
@@ -136,15 +207,16 @@ export function Modal({ title, onClose, children, wide, locked }: ModalProps) {
 
   return (
     <div
+      ref={overlayRef}
       className="modal-overlay"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !locked) onClose();
+        if (e.target === e.currentTarget && !locked) requestClose();
       }}
     >
       <div
         ref={panelRef}
-        className={`modal-panel${wide ? ' modal-wide' : ''}`}
-        role="dialog"
+        className={`modal-panel${wide ? ' modal-wide' : ''}${alert ? ' pk-dialog--alert' : ''}`}
+        role={alert ? 'alertdialog' : 'dialog'}
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
@@ -157,7 +229,7 @@ export function Modal({ title, onClose, children, wide, locked }: ModalProps) {
           <button
             type="button"
             className="gx-icon-btn modal-close"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Close dialog"
             title={locked ? 'Finishing — this closes when the change is done' : 'Close'}
             disabled={locked}

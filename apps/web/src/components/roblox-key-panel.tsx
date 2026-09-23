@@ -49,6 +49,9 @@ import {
 import { Failure } from './failure';
 import { useToast } from './toast';
 import './roblox-key-panel.css';
+// The owner's picked account-screen components (./picks/settings).
+import { Checkbox } from './picks/settings/checkbox';
+import { RadioCards } from './picks/settings/radio-group';
 
 /**
  * WHAT APPLE HAS DONE TO YOUR ROBLOX ACCOUNT.
@@ -340,27 +343,23 @@ export function RobloxKeyPanel() {
           afterwards. Recording it here is what lets Apple warn you before the key stops working.
         </p>
 
-        <fieldset className="rk__type">
-          <legend className="rk__label">Acting as</legend>
-          {(['user', 'group'] as const).map((t) => (
-            <label key={t} className="rk__radio">
-              <input
-                type="radio"
-                name="rk-creator-type"
-                value={t}
-                checked={creatorType === t}
-                onChange={() => setCreatorType(t)}
-              />
-              {t === 'user' ? 'My account' : 'A group I own'}
-            </label>
-          ))}
-        </fieldset>
+        <RadioCards
+          legend="Acting as"
+          legendClassName="rk__label"
+          name="rk-creator-type"
+          value={creatorType}
+          onChange={setCreatorType}
+          options={[
+            { value: 'user', label: 'My account' },
+            { value: 'group', label: 'A group I own' },
+          ]}
+        />
 
         <fieldset className="rk__scopes">
           <legend className="rk__label">What Apple may do</legend>
           {SCOPE_EXPLANATIONS.filter((e) => (ROBLOX_SCOPES as readonly string[]).includes(e.scope)).map((e) => (
             <label key={e.scope} className={`rk__scope${e.undoable ? '' : ' is-permanent'}${e.implemented ? '' : ' is-unused'}`}>
-              <input type="checkbox" checked={scopes.includes(e.scope)} onChange={() => toggle(e.scope)} />
+              <Checkbox checked={scopes.includes(e.scope)} onChange={() => toggle(e.scope)} />
               <span className="rk__scope-main">
                 <span className="rk__scope-title">
                   {e.title}

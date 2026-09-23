@@ -1,0 +1,13 @@
+/* The Files drawer's own arrangement of the picks: the tree, then the open file as an artifact card
+   (path snippet, tools, the viewer, the version rail, the comparison). Spacing only — each pick
+   draws itself. */
+.gx-files .ai-tree { margin-bottom:14px; }
+.ft-artifact { margin-top:4px; }
+.ft-body { display:grid; gap:12px; }
+.ft-tools { display:flex; flex-wrap:wrap; gap:6px; }
+.ft-preview { display:grid; gap:8px; min-width:0; }
+.ft-switch { display:inline-flex; gap:4px; }
+.ft-page { padding:4px 2px; max-height:min(60vh, 520px); overflow:auto; }
+.ft-versions { display:grid; }
+.ft-h { margin:0 0 4px; font-size:12px; font-weight:600; color:var(--muted); }
+.ft-compare { min-width:0; }
