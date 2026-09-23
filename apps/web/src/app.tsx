@@ -10,7 +10,6 @@ import { AuthGuard, AuthProvider, GuestGuard } from './lib/auth';
 import { AppLayout } from './components/layout';
 import { ConfirmEmailPage, ForgotPasswordPage, LoginPage, RecoveryRequestPage, ResetPasswordPage, SignupPage } from './routes/auth-pages';
 import { DashboardPage } from './routes/dashboard';
-import { WorkspacePage } from './routes/workspace';
 // LAZY, on a measurement rather than a hunch. `scripts/check-app-bundle.mjs` budgets the entry
 // graph at 70 kB gzipped, a figure measured when the entry WAS 54.2 kB. It then went unenforced —
 // the build job stopped at an earlier failure, so nobody saw the check — while the app grew, and
@@ -32,13 +31,19 @@ import { WorkspacePage } from './routes/workspace';
 // walkable-routes.test.mjs: no jsdom, no testing-library), so a route that is split cannot be
 // watched rendering here; the three above are chosen because losing one for a release costs a
 // settings page, and losing the workspace costs the product. The measured debt is recorded in
-// docs/backlog/WEB-BUNDLE-BUDGET-OPEN.md, not closed.
+// docs/backlog/WEB-BUNDLE-BUDGET-OPEN.md. SUPERSEDED 2026-09-23 — see the workspace note below.
 //
 // AND A NOTE FOR WHOEVER EDITS THIS COMMENT. The first draft of it wrote that subtree as a glob
 // with a star after the slash. Several checks in this repository strip comments from this file with
 // a naive block-comment regex before matching it, and that two-character sequence opened a comment
 // that ran to the next close — swallowing 60 lines of the route table. Two tests went red on the
 // text of a comment. Do not put that sequence in this file.
+// WORKSPACE IS LAZY NOW (2026-09-23). The note above was the right call while the entry fit its
+// budget; it stopped fitting (194.8 kB gzipped against 150 kB) and this subtree was the one piece
+// large enough to close the gap alone. The cost is one chunk fetch on the first project opened in
+// a session, behind the same fallback every other lazy route uses; the dashboard, which is where a
+// user lands, stays eager.
+const WorkspacePage = lazy(() => import('./routes/workspace').then((m) => ({ default: m.WorkspacePage })));
 const RoadmapPage = lazy(() => import('./routes/roadmap').then((m) => ({ default: m.RoadmapPage })));
 const UsagePage = lazy(() => import('./routes/usage').then((m) => ({ default: m.UsagePage })));
 const SettingsPage = lazy(() => import('./routes/settings').then((m) => ({ default: m.SettingsPage })));
@@ -72,9 +77,8 @@ const AdminPage = lazy(() => import('./routes/admin').then((m) => ({ default: m.
 // takes 3.09 kB of shared code out of the entry that splitting alone left behind.
 //
 // THIS SENTENCE USED TO READ "Only these two are lazy", and the three declarations above made it
-// false the moment they landed. Five routes are lazy now — admin, ui-lab, settings, usage and
-// roadmap. What still holds is the second half: dashboard and workspace are where a user lands,
-// and splitting those would trade bundle size for a round trip on the path that matters most.
+// false the moment they landed. Seven routes are lazy now — admin, ui-lab, settings, usage,
+// roadmap, library and workspace. The dashboard is where a user lands and stays eager.
 const UiLabPage = import.meta.env.DEV
   ? lazy(() => import('./routes/ui-lab').then((m) => ({ default: m.UiLabPage })))
   : () => null;
@@ -160,7 +164,14 @@ export function App() {
                         the ordinary way anyone walks up a path. A redirect rather than a second
                         mounting of DashboardPage, so the shelf keeps exactly one canonical URL. */}
                     <Route path="/projects" element={<Navigate to="/" replace />} />
-                    <Route path="/projects/:id" element={<WorkspacePage />} />
+                    <Route
+                      path="/projects/:id"
+                      element={
+                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                          <WorkspacePage />
+                        </Suspense>
+                      }
+                    />
                     {/* The plan for one project. Scoped under the project
                         because a roadmap without one has nothing to describe. */}
                     <Route

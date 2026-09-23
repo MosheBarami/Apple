@@ -70,7 +70,9 @@ const EAGER_BUDGET_GZIP = 300_000;
  * This is the half of the check that cannot be satisfied by editing a number, which is why three
  * entries were added to it in the same commit that raised the two numbers above.
  */
-const MUST_BE_SPLIT = ['admin', 'settings', 'usage', 'roadmap'];
+// `workspace` joined 2026-09-23: its subtree was ~115 kB of the entry, and lazy-loading it is what
+// brought the entry from 194.8 kB to 79.9 kB gzipped without touching the budget.
+const MUST_BE_SPLIT = ['admin', 'settings', 'usage', 'roadmap', 'workspace'];
 
 //[[ AND THE STRONGER CASE: a route that is not in the production build at all.
 //
