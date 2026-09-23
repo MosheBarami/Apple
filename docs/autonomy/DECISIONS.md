@@ -123,11 +123,20 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
 ## D-AUT-2 — Fresh reviews run beside the interactive session (2026-09-23, owner: "you don't leave this session until the product is ready; fix what contradicts that")
 - D-AUT-1's Product-Owner lock made the supervisor refuse while this session runs, so the three fresh reviews could only happen after the session ended — contradicting the owner's instruction. `scripts/autonomy-supervisor.py --reviews-only` now runs reviewer sessions only, ignores the lock (reviewers use the product and append findings; they do not build), and still keeps the streak in the supervisor, never in the session. Exit 0 at the required streak, 6 at the first MATERIAL_FINDINGS. Tests: tests/autonomy-harness.test.mjs. Reverse: drop the flag.
 
+## D-PAY-2 — Stripe test mode end to end, for admins only (2026-09-23, D-VISION-1 "Stripe test mode end to end")
+- `checkoutConfigured()` refuses test keys in production because a test key sells the plan for 4242 4242 4242 4242. Turning that off for everyone would give customers free plans, so the end-to-end test-mode path opens only for accounts on an admin allowlist (worker var `BILLING_TEST_ADMINS`, emails). Customers keep seeing "checkout unavailable" until live keys exist.
+- Reverse: delete `BILLING_TEST_ADMINS`; the old refusal applies to everyone again.
+
 ## D-VOICE-1 — Voice typing goes through the worker, never the browser's recognizer (2026-09-23, D-VISION-1 "a kid presses the mic and speaks")
 - The composer mic records in the page (MediaRecorder), converts to a 16 kHz mono WAV, and posts it to `POST /api/voice/transcribe` (signed-in only). Chrome's Web Speech API was dropped because it streams a child's voice to Google.
 - The worker transcribes and keeps nothing. The audio is never written to KV, R2 or a Durable Object, never logged, and the AI Gateway call sets `collectLog: false`. When `ASSEMBLYAI_API_KEY` exists, AssemblyAI answers first and the transcript (and its upload) is DELETEd in a `finally`; otherwise, or if AssemblyAI fails, Workers AI `@cf/openai/whisper-large-v3-turbo` answers through `speech.ts transcribe()`.
 - Limits: WAV only, 2 MB, 60 s measured from the decoded audio, 12 clips per minute per person. Billing: the global BudgetDO is reserved before the call (the neuron day for Whisper, the outside-model dollar wallet for AssemblyAI at $0.21/audio hour), and the person pays QuotaDO Credits of kind `voice` from the measured seconds (about 1 Credit per 30 s on Whisper).
 - Reverse: point `VoiceInput` back at the browser recognizer (commit before this one) and remove the route line in `index.ts`.
+
+## D-HF-1 — Hugging Face joins the stack (2026-09-23, owner: "work full stack fully with Hugging Face")
+- Owner gave a fine-grained token (user `moshebarami`: inference, repo write, Jobs). Stored only as worker secret `HF_TOKEN` and the local `hf` CLI login; never in git, logs or evidence.
+- Uses: (1) the external 3D generator and a second image model through HF Inference Providers, switched on by `HF_TOKEN` and capped per day because the account is on free credits; (2) private HF repos for training datasets and Apple's LoRA adapters; (3) Hub search for open models/datasets. HF Jobs (paid GPU) are not used without credits.
+- Reverse: `wrangler secret delete HF_TOKEN`; features that need it switch themselves off.
 
 ## D-UI-GREEN-1 — Green means status, nowhere else, on the web app (2026-09-23, F-004)
 - Green (`--good`) stays only for status dots (Live, toast dot) and the small ✓/✕ op-result marks; decorative ticks (usage-page comparison, the "Studio connected" hero tick) use `--accent` #5b7cfa. Studio dialog op rows are labelled from the op kind (opSentence), because the oplog `summary` column holds only error text. Reverse: drop `.usage-page { --tbl-yes }` in usage.css and set `.pairing-success-icon` back to `var(--good)`.
