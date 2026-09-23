@@ -4409,6 +4409,17 @@ export class SessionDO extends DurableObject<Env> {
     agent.readsSinceChange = idle.readsSinceChange;
     // Reading without building — F-039, run c71b89a9: one install, then 88 read-only calls. Told to
     // build at the nudge; at the limit the run ends and says plainly what it did and did not do.
+    if (idle.action === 'stall' && agent.lightingOnly && agent.mutated) {
+      // A lighting change that is made and then only looked at is finished, not stalled.
+      const note = `The lighting is changed. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what else you would like and Apple will do it.`;
+      agent.terminalNote = note;
+      const prior = agent.streamedText ?? '';
+      agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
+      agent.streamedText = prior ? `${prior}\n\n${note}` : note;
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
+      await this.finishRun(agent, 'done');
+      return;
+    }
     if (idle.action === 'stall') {
       const note = agent.mutated
         ? `Apple stopped because it kept re-reading your place instead of building the rest. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Ask again to continue.`

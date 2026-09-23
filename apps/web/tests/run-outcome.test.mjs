@@ -80,7 +80,9 @@ test('a run that did not fail keeps its own copy', () => {
   assert.equal(O.outcomeLine('done', undefined), null, 'a finished run has no outcome line');
   assert.equal(O.outcomeLine('quota', undefined).tone, 'note', 'running out is not a failure');
   assert.match(O.outcomeLine('stopped', undefined).text, /Stopped/);
-  assert.match(O.outcomeLine('incomplete', undefined).text, /without changing anything/);
+  // Not "without changing anything": an incomplete run can have changed things (2026-09-23).
+  assert.match(O.outcomeLine('incomplete', undefined).text, /stopped before it finished/);
+  assert.doesNotMatch(O.outcomeLine('incomplete', undefined).text, /without changing anything/);
   // A code on a non-error stop must not override the stop's own meaning.
   assert.equal(O.outcomeLine('quota', 'model_failed').tone, 'note');
 });

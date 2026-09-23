@@ -35,7 +35,7 @@ test('an incomplete reply that carries the worker\'s closing gets no second sent
 
 test('CONTROL: an incomplete turn with no reply text still says what happened', () => {
   for (const reply of [undefined, '', '   ']) {
-    assert.match(outcomeLine('incomplete', undefined, reply).text, /without changing anything/);
+    assert.match(outcomeLine('incomplete', undefined, reply).text, /stopped before it finished/);
   }
 });
 

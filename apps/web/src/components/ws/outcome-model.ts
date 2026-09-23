@@ -35,7 +35,7 @@ export interface OutcomeLine {
 const BY_STOP: Record<string, OutcomeLine> = {
   incomplete: {
     tone: 'note',
-    text: 'That run finished without changing anything. Try telling me more specifically what to build.',
+    text: 'That run stopped before it finished. Try telling me more specifically what to build.',
   },
   stopped: { tone: 'note', text: 'Stopped.' },
   //[[ 'quota' IS FOUR ENDINGS AND ONLY TWO OF THEM ARE THE READER'S CREDITS.

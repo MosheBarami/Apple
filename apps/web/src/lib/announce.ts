@@ -60,7 +60,9 @@ export interface AnnouncableTurn {
  */
 const OUTCOME_SPEECH: Record<string, string> = {
   stopped: 'Apple stopped.',
-  incomplete: 'That run finished without changing anything.',
+  // Not "without changing anything": an incomplete run can have changed things (a stall after edits,
+  // measured 2026-09-23 — the reply said "It made 3 changes" and this line said none).
+  incomplete: 'That run stopped before it finished.',
   quota: 'That run stopped before it finished. Everything up to there is saved.',
   error: 'Something went wrong partway through.',
 };
