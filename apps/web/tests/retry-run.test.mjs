@@ -53,7 +53,9 @@ test('a reply that SUCCEEDED can be regenerated too', () => {
   // EXECUTING it (run-outcome.test.mjs: `outcomeLine('done', undefined)` is null) rather than by
   // matching an expression. What is checked here is that turn.tsx still asks that question through
   // the model instead of deciding for itself.
-  assert.match(TURN, /const outcome = outcomeLine\(item\.stopReason, item\.error\)/);
+  //[[ RESTATED 2026-09-23 (F-045): the call gained the reply as a third argument so a line that only
+  //   restates the reply's closing is not drawn. The property is that the turn asks the model. ]]
+  assert.match(TURN, /const outcome = outcomeLine\(item\.stopReason, item\.error\b/);
   const beforeOutcome = TURN.slice(0, TURN.indexOf('{outcome ? ('));
   assert.match(beforeOutcome, /const retryControl =/, 'the control is built before the outcome branch, not inside it');
   assert.match(TURN, /\{outcome \? \(/, 'both branches render it — success as well as failure');

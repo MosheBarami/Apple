@@ -169,7 +169,8 @@ test('honesty gates render observed facts only and failures stay with the turn o
 
   assert.doesNotMatch(CODE, /<ActivityTerminal\b|<Failure\b|is-fail|is-bad/,
     'Thinking must stay calm and must not own terminal failure presentation');
-  assert.match(TURN, /const outcome = outcomeLine\(item\.stopReason, item\.error\)/,
+  // RESTATED 2026-09-23 (F-045): the reply is now a third argument; the property is the source of copy.
+  assert.match(TURN, /const outcome = outcomeLine\(item\.stopReason, item\.error\b/,
     'the turn outcome model must remain the source of terminal failure copy');
   assert.match(TURN, /className=\{`gx-outcome\$\{outcome\.tone === 'bad' \? ' is-bad' : ''\}`\}/,
     'terminal failures must remain in the answer-level outcome row');

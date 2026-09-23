@@ -1166,6 +1166,18 @@ export type ServerMsg =
        * that is the one message guaranteed to be sent once the charging is finished.
        */
       creditsSpent?: number;
+      /**
+       * THE REPLY AS STORED — the exact text a reload of this conversation shows (F-045,
+       * 2026-09-23). The live deltas show every step's text; the stored reply is the last step's,
+       * or the closing the product wrote in its place. A client that settles on this field reads
+       * the reply once, and reads the same reply live and after a reload. Optional: an older
+       * worker omits it and the streamed text stands.
+       *
+       * THE CLOSING CONTRACT. On `incomplete` this text always ends with the product's own closing
+       * sentence (finishRun never stores an incomplete reply without one), so a client must not add
+       * a second sentence saying the same thing.
+       */
+      content?: string;
     }
   // `effortReason` is the reasoning POLICY's own summary (e.g. "Agent baseline;
   // visual design task"). It is a classification of the request, not the

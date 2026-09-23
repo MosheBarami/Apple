@@ -733,3 +733,123 @@ test('when Studio drops mid-run its tools stay offered, and a call is refused as
     h.stop();
   }
 });
+
+// ================================================= F-045: one reply body, at most one closing line ===
+//
+// 2026-09-23, Coin Rush 03:10 IDT: one incomplete run's reply stacked the read-stall note, the generic
+// "I did not change anything … never made the edit", the refund sentence and the refusal heading, and
+// every multi-step reply read twice live. The property: what a client settles on (msg_end.content)
+// is the stored row, it carries ONE closing sentence, the refund at most once, and the deltas never
+// send a body the stream already shows.
+
+const GENERIC_INCOMPLETE = /I did not change anything in your project/g;
+const STALL = /kept re-reading your place instead of building/g;
+const REPEAT = /kept repeating a step it had already done/g;
+const REFUND = /You have not been charged for this run/g;
+const HEADING = /Apple could not change your place/g;
+const count = (text, re) => (String(text).match(re) ?? []).length;
+const streamed = (h) => h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+const emptyTree = (op) => (op.op === 'get_tree' ? { ok: true, data: { root: { path: op.root, name: 'x', class: 'Folder', children: [] } } } : { ok: true, data: {} });
+
+test('F-045: a read-stall that changed nothing ends on its own note — no generic sentence on top, the refund once', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: emptyTree,
+    responses: [
+      ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
+      answer({ text: 'Done.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'make a coin game' });
+    for (let i = 0; i < 60 && !lastEnd(h); i++) await h.session.alarm();
+    const end = lastEnd(h);
+    assert.equal(end?.stopReason, 'incomplete', 'the fixture never reached the read-stall bound');
+    const row = assistantRow(h);
+    assert.equal(end.content, row.content, 'what the live client settles on must be what a reload shows');
+    assert.equal(count(row.content, STALL), 1, `the stall note must close the reply once: ${row.content}`);
+    assert.equal(count(row.content, GENERIC_INCOMPLETE), 0, `the generic sentence was stacked on the stall note: ${row.content}`);
+    assert.equal(count(row.content, REFUND), 1, `the refund must be stated exactly once: ${row.content}`);
+    const live = streamed(h);
+    assert.equal(count(live, STALL), 1, 'the stream repeated the stall note');
+    assert.equal(count(live, GENERIC_INCOMPLETE), 0, 'the stream carried the generic sentence as well');
+    assert.equal(count(live, REFUND), 1, 'the stream stated the refund more than once');
+  } finally {
+    h.stop();
+  }
+});
+
+test('F-045: a refusal the product can explain, on a run that changed nothing, IS the closing — no incomplete note beside it', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => (op.op === 'get_tree' ? emptyTree(op) : { ok: false, error: 'writes require explicit edit consent', failure: 'refused', remedy: 'edit_consent' }),
+    responses: [
+      calls(['create_instances', { instances: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
+      ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
+      answer({ text: 'Done.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'make a coin game' });
+    for (let i = 0; i < 60 && !lastEnd(h); i++) await h.session.alarm();
+    const end = lastEnd(h);
+    assert.equal(end?.stopReason, 'incomplete', 'the fixture never reached an incomplete ending');
+    assert.ok(h.ops.some((op) => op.op !== 'get_tree'), 'no write was refused — this checks nothing');
+    const row = assistantRow(h);
+    assert.equal(end.content, row.content);
+    assert.equal(count(row.content, HEADING), 1, `the refusal heading must close the reply once: ${row.content}`);
+    assert.equal(count(row.content, GENERIC_INCOMPLETE), 0, `the generic sentence contradicts the refusal: ${row.content}`);
+    assert.equal(count(row.content, STALL), 0, `a second reason was given for the same ending: ${row.content}`);
+    assert.equal(count(row.content, REFUND), 1, `the refund must be stated exactly once: ${row.content}`);
+    assert.ok(row.content.indexOf('Apple could not change') < row.content.indexOf('You have not been charged'),
+      'the reason comes before the money');
+  } finally {
+    h.stop();
+  }
+});
+
+test('F-045: a duplicate streak that changed nothing ends on its own note, not the generic sentence', async () => {
+  const same = () => calls(['get_project_tree', { root: 'game.Workspace' }]);
+  const h = await makeSession({
+    connected: true,
+    answerOp: emptyTree,
+    responses: [...Array.from({ length: 12 }, same), answer({ text: 'Done.' })],
+  });
+  try {
+    await start(h, { text: 'make a coin game' });
+    for (let i = 0; i < 20 && !lastEnd(h); i++) await h.session.alarm();
+    const end = lastEnd(h);
+    assert.equal(end?.stopReason, 'incomplete', 'the fixture never reached the duplicate-streak bound');
+    const row = assistantRow(h);
+    assert.equal(count(row.content, REPEAT), 1, `the streak note must close the reply once: ${row.content}`);
+    assert.equal(count(row.content, GENERIC_INCOMPLETE), 0, `the generic sentence was stacked on the streak note: ${row.content}`);
+    assert.equal(end.content, row.content);
+  } finally {
+    h.stop();
+  }
+});
+
+test('F-045: a reply that spoke in more than one step is sent once, live and as stored', async () => {
+  const body = 'Fixed. The coin spins and gives one point.';
+  const h = await makeSession({
+    connected: true,
+    answerOp: () => ({ ok: true, data: {} }),
+    responses: [
+      answer({ finishReason: 'tool_calls', text: 'Adding a coin.', toolCalls: [{ id: 'c-coin', name: 'create_instances', arguments: JSON.stringify({ instances: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }) }] }),
+      answer({ text: body }),
+    ],
+  });
+  try {
+    await start(h, { text: 'make a coin' });
+    for (let i = 0; i < 12 && !lastEnd(h); i++) await h.session.alarm();
+    const end = lastEnd(h);
+    assert.ok(end, 'the run never ended');
+    assert.ok(h.ops.length > 0, 'the change never reached Studio — this checks nothing');
+    const row = assistantRow(h);
+    assert.equal(count(streamed(h), new RegExp(body.replace(/\./g, '\\.'), 'g')), 1, `the reply body was streamed twice: ${JSON.stringify(streamed(h))}`);
+    assert.equal(count(row.content, new RegExp(body.replace(/\./g, '\\.'), 'g')), 1);
+    assert.equal(end.content, row.content, 'the live client must settle on the stored reply');
+  } finally {
+    h.stop();
+  }
+});

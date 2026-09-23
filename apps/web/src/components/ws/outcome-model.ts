@@ -23,7 +23,12 @@ export type OutcomeTone = 'note' | 'bad';
 
 export interface OutcomeLine {
   tone: OutcomeTone;
-  text: string;
+  /**
+   * Null when the reply above already says it (F-045, 2026-09-23). The run still ENDED this way —
+   * the row, its tone and "Try again" stay — but a second sentence restating the reply's own
+   * closing is the stacking a young reader cannot untangle (D-UX-2).
+   */
+  text: string | null;
 }
 
 /** A stop that is not a failure still deserves a sentence. */
@@ -79,12 +84,34 @@ const BY_FAILURE: Record<RunFailure, string> = {
  * `code` is whatever arrived on the wire, of any shape: an unknown string, an old worker's prose,
  * undefined. Nothing that is not a declared failure reaches the returned text.
  */
-export function outcomeLine(stopReason: string | undefined, code: string | undefined): OutcomeLine | null {
+export function outcomeLine(
+  stopReason: string | undefined,
+  code: string | undefined,
+  /** The reply this line would sit under, when there is one. */
+  reply?: string,
+): OutcomeLine | null {
   if (!stopReason || stopReason === 'done') return null;
   const base = BY_STOP[stopReason];
   if (!base) return null;
   // A code only ever refines a FAILURE. Running out of Credits is not a failure, and a stray code
   // on that stop must not turn it into one.
-  if (stopReason === 'error' && isRunFailure(code)) return { tone: 'bad', text: BY_FAILURE[code] };
-  return base;
+  const line = stopReason === 'error' && isRunFailure(code) ? { tone: 'bad' as const, text: BY_FAILURE[code] } : base;
+  return restates(stopReason, line.text, reply) ? { ...line, text: null } : line;
+}
+
+/**
+ * Does the reply already say what this line would? Two cases, neither a guess from wording:
+ *
+ *   - `incomplete`: the worker never stores an incomplete reply without its own closing sentence
+ *     (finishRun; the contract is written on msg_end.content in @golem/shared). That sentence names
+ *     the real reason — the read-stall bound, a refusal and its remedy — so "That run finished
+ *     without changing anything" under it is a second, vaguer account of the same ending.
+ *   - any stop whose sentence IS the reply's last paragraph: "Stopped." under "Stopped.".
+ */
+function restates(stopReason: string, text: string | null, reply: string | undefined): boolean {
+  const body = (reply ?? '').trim();
+  if (!body || !text) return false;
+  if (stopReason === 'incomplete') return true;
+  const last = body.slice(body.lastIndexOf('\n\n') + 1).trim();
+  return last === text.trim();
 }

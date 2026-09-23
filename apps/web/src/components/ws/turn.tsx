@@ -237,7 +237,9 @@ export function Turn({
   // The worker's `error` field is a CODE, not a sentence — outcome-model.ts turns it into one and
   // drops anything it does not recognise. It used to be rendered verbatim, which put
   // 'rate_limited' and raw provider messages in front of users.
-  const outcome = outcomeLine(item.stopReason, item.error);
+  // The reply is passed so a line that would only restate the reply's own closing is not drawn
+  // (F-045): one closing line per turn.
+  const outcome = outcomeLine(item.stopReason, item.error, item.content);
 
   /* RUNNING IT AGAIN, AND WHY THIS IS NOT INSIDE THE OUTCOME BLOCK ANY MORE.
      It used to be: the control lived inside `{outcome && (...)}`, so it existed only after a run
@@ -352,7 +354,7 @@ export function Turn({
                 provider message); rendering it verbatim — which is what stood here — put one
                 server's note to another in front of the person whose build died. The model turns
                 a known code into a sentence and drops anything it does not recognise. */}
-            <p className="gx-outcome__text">{outcome.text}</p>
+            {outcome.text && <p className="gx-outcome__text">{outcome.text}</p>}
             {/* `retryControl` is built above and is null on a quota stop, so a run that did not
                 fail but ran out of Credits still offers nothing to press. */}
             {retryControl}

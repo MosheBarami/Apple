@@ -240,7 +240,9 @@ export function replyWithRemedy(content: string, remedy: RefusalRemedyCode | und
       'Nothing in your place was changed, so there is nothing to undo.'
     );
   }
-  return `${content}\n\n${remedyHeading(remedy)} ${REFUSAL_REMEDIES[remedy]}`;
+  const closing = `${remedyHeading(remedy)} ${REFUSAL_REMEDIES[remedy]}`;
+  // An empty reply is finishRun asking for the remedy AS the closing (F-045): no leading blank.
+  return content.trim() ? `${content}\n\n${closing}` : closing;
 }
 
 /** What was removed and why — for the run record, never for the reply itself. */

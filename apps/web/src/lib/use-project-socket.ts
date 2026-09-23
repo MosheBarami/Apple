@@ -667,6 +667,11 @@ export function useProjectSocket(
           const next = [...list];
           next[idx] = {
             ...item,
+            // THE STORED REPLY, WHEN THE WORKER SENT IT (F-045, 2026-09-23). The deltas showed every
+            // step's text; the reply a reload shows is the last step's, or the product's closing in
+            // its place. Settling on it here is what makes the live turn and the reloaded turn the
+            // same turn. An older worker sends none and the streamed text stands.
+            content: typeof msg.content === 'string' ? msg.content : item.content,
             streaming: false,
             stopReason: msg.stopReason,
             error: msg.error,

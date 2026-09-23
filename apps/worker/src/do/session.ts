@@ -107,6 +107,7 @@ import {
 } from '../run-access';
 import { placeAdmission, readPlaceReport, servesOps, type PlaceAdmission } from '../studio-place';
 import { WORKER_FAILURES, asFailureKind, replyWithRemedy, replacedFiction } from '../op-failure';
+import { replyDelta } from '../reply-delta';
 import { latestSelection, sameSelection, companionOpAccess, sanitizeCompanionOp, companionRefusal } from '../companion';
 import {
   MIN_QUERY,
@@ -281,6 +282,12 @@ interface AgentState {
   lastCalls?: { id: string; name: string; arguments: string }[];
   finalText: string;
   streamedText?: string;
+  /**
+   * The closing sentence a run bound already wrote into the reply (the read-stall end, a
+   * duplicate streak that changed nothing). finishRun's generic 'incomplete' sentence gives way to
+   * it: the note that names the real reason is the one closing line (F-045, 2026-09-23).
+   */
+  terminalNote?: string;
   startedAt: number;
   lastStepAt: number;
   userId: string;
@@ -4336,6 +4343,7 @@ export class SessionDO extends DurableObject<Env> {
       const note = agent.mutated
         ? 'Apple stopped because it kept repeating a step it had already done. Everything it built is in your place.'
         : 'Apple stopped because it kept repeating a step it had already done, and nothing in your place was changed.';
+      agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -4361,6 +4369,7 @@ export class SessionDO extends DurableObject<Env> {
       const note = agent.mutated
         ? 'Apple stopped because it kept re-reading your place instead of building the rest. What it built so far is in your place; ask again to continue.'
         : 'Apple stopped because it kept re-reading your place instead of building, and nothing in your place was changed. Ask again to continue.';
+      agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -4708,12 +4717,31 @@ export class SessionDO extends DurableObject<Env> {
     // point: on the run this was written for, that text was the single word "Done." A reply that
     // reports work which did not happen is worse than an error, because the user has no reason to
     // check. The tool trace is still attached, so the timeline shows exactly what was attempted.
+    //[[ ONE CLOSING LINE, AND IT IS THE ONE THAT NAMES THE REAL REASON (F-045, 2026-09-23).
+    //
+    //   Measured in production: one incomplete run's reply carried the read-stall note, then the
+    //   generic sentence below ("I did not change anything … I looked around but never made the
+    //   edit"), then the refund, then the refusal heading — four accounts of one ending, two of them
+    //   contradicting each other. So, in this order:
+    //     - a refusal the product can explain, on a run that changed nothing, IS the reason: its
+    //       heading and remedy are the closing, and neither incomplete sentence is added;
+    //     - a bound that already wrote its own note (`terminalNote`) keeps it, and the generic
+    //       sentence does not go on top;
+    //     - only a run with neither gets the generic sentence.
+    //   The refund sentence is money and always stays, once. ]]
+    const remedyCloses =
+      reason === 'incomplete' && !contentOverride && !artifact.missing && !agent.readOnly && !agent.mutated
+      && isRefusalRemedyCode(agent.refusalRemedy);
     const content = contentOverride ?? (
       reason === 'incomplete'
         ? artifact.missing
           ? (artifact.tool === 'generate_image'
             ? 'No image was generated in this run. There is no new image to view or download.'
             : 'No 3D model was generated in this run. Check the Studio connection and generation availability before retrying.')
+          : remedyCloses
+            ? replyWithRemedy('', agent.refusalRemedy)
+          : agent.terminalNote
+            ? agent.terminalNote
           : agent.readOnly
             // You asked for no changes, so "never made the edit you asked for" would be false twice
             // over. Measured 2026-09-22 (run 3bcf3f57): a diagnosis request got exactly that sentence.
@@ -4794,8 +4822,9 @@ export class SessionDO extends DurableObject<Env> {
     // fabrication — is worse than one. What was removed is written to the oplog rather than to the
     // reply: the user needs the truth, not a note about their assistant's imagination, and the next
     // person debugging this needs to know a replacement happened at all.
-    const fiction = replacedFiction(contentWithRefund, agent.refusalRemedy);
-    const withRemedy = replyWithRemedy(contentWithRefund, agent.refusalRemedy);
+    const fiction = remedyCloses ? null : replacedFiction(contentWithRefund, agent.refusalRemedy);
+    // When the remedy is already the closing it is not appended a second time.
+    const withRemedy = remedyCloses ? contentWithRefund : replyWithRemedy(contentWithRefund, agent.refusalRemedy);
     if (fiction) {
       this.sql.exec(
         `insert into oplog(op_id, kind, ok, summary, created_at, failure, run_id) values(?,?,?,?,?,?,?)`,
@@ -4808,13 +4837,17 @@ export class SessionDO extends DurableObject<Env> {
         agent.msgId,
       );
     }
-    if (withRemedy !== agent.streamedText) {
-      // make sure fallback/step-limit text reaches clients that saw no delta for it. The live
-      // socket and the stored row carry the SAME text: a remedy visible only after a reload would
-      // be the two-accounts-of-one-event bug the outcome model was written to end.
-      const delta = agent.streamedText ? withRemedy.slice(agent.streamedText.length) || '\n' + withRemedy : withRemedy;
-      this.broadcast({ type: 'delta', msgId: agent.msgId, text: delta });
-    }
+    // make sure fallback/step-limit text reaches clients that saw no delta for it. The live
+    // socket and the stored row carry the SAME text: a remedy visible only after a reload would
+    // be the two-accounts-of-one-event bug the outcome model was written to end.
+    //
+    // ONLY WHAT THE STREAM DOES NOT ALREADY SHOW (F-045, 2026-09-23). This was
+    // `withRemedy.slice(streamedText.length) || '\n' + withRemedy`: the stream holds every step's
+    // text and the reply only the last step's, so the whole reply was sent again and every
+    // multi-step reply read twice live ("Fixed. …" twice). msg_end below carries the stored reply
+    // itself, so a client that holds the stream can settle on exactly what a reload shows.
+    const delta = replyDelta(agent.streamedText ?? '', withRemedy);
+    if (delta) this.broadcast({ type: 'delta', msgId: agent.msgId, text: delta });
     this.sql.exec(
       `insert into messages(id, role, mode, content, tool_trace, created_at) values(?,?,?,?,?,?)`,
       agent.msgId,
@@ -4856,7 +4889,7 @@ export class SessionDO extends DurableObject<Env> {
     // The settled cost of the whole run. Read here, after the last `quotaSpend`, because every
     // earlier broadcast of this number was taken before that step's settlement and was therefore
     // an under-count of what the user had actually been charged.
-    this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error, creditsSpent: agent.creditsSpent });
+    this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error, creditsSpent: agent.creditsSpent, content: withRemedy });
 
     // BUILD LOG. One event per run, written from the branch that actually ended it, so `outcome` is
     // the reason recorded rather than a guess made later from the reply text. `neuronsUsed` is
