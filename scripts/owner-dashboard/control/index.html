@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>מרכז הבקרה של Apple</title>
+<script>
+  // Records any runtime error on <html data-cc-errors> so a headless check (--dump-dom) can see it.
+  (function () {
+    var add = function (m) { var d = document.documentElement; d.setAttribute('data-cc-errors', ((d.getAttribute('data-cc-errors') || '') + ' | ' + m).slice(0, 2000)); };
+    window.addEventListener('error', function (e) { add('error: ' + (e.message || (e.target && (e.target.src || e.target.href)) || 'unknown')); }, true);
+    window.addEventListener('unhandledrejection', function (e) { add('rejection: ' + (e.reason && e.reason.message || e.reason)); });
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Mona+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Rubik:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/control/styles.css">
+</head>
+<body>
+<a class="skip" href="#page">דילוג לתוכן</a>
+<div class="aurora" aria-hidden="true"></div>
+<header class="top">
+  <div class="bar">
+    <a class="brand" href="#/overview" aria-label="מרכז הבקרה של Apple, לדף הראשי">
+      <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8aa2ff"/><stop offset="1" stop-color="#5b7cfa"/></linearGradient></defs><rect x="2" y="2" width="36" height="36" rx="11" fill="url(#lg)"/><path d="M11 25l6-10 5 7 3-4 4 7" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span><b>מרכז הבקרה</b><small>Apple · לוח המנהל</small></span>
+    </a>
+    <span class="mock-pill" role="status">מצב דמו: הנתונים מזויפים</span>
+    <button id="menu-btn" class="menu-btn" aria-controls="nav" aria-expanded="false"><span aria-hidden="true">☰</span> תפריט</button>
+  </div>
+  <nav id="nav" class="nav" aria-label="ניווט ראשי"></nav>
+</header>
+<main id="page" class="page" tabindex="-1" aria-labelledby="ptitle">
+  <noscript><p class="fail fail-bad">כדי להשתמש בלוח הבקרה צריך להפעיל JavaScript בדפדפן.</p></noscript>
+</main>
+<dialog id="modal" class="modal" aria-modal="true"></dialog>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<script type="module" src="/control/app.js"></script>
+</body>
+</html>

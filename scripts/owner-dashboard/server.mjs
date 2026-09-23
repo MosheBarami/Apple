@@ -13,6 +13,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectProject, MEDIA_ROOTS } from './collect.mjs';
+// The Executive Control Center: /api/cc/*, /control/* and "/" (when control/index.html exists; the
+// live page below is then at /live).
+import { route as ccRoute } from './cc/platforms/router.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../..');
@@ -339,6 +342,7 @@ function media(res, pathname) {
 }
 
 http.createServer((req, res) => {
+  if (ccRoute(req, res)) return;
   const { pathname } = new URL(req.url, 'http://localhost');
   if (pathname === '/events') {
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });

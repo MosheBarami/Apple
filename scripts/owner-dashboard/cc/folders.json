@@ -1,0 +1,411 @@
+{
+  "": {
+    "he": "כל המוצר Apple במקום אחד: השרת בענן (apps/worker), אפליקציית האינטרנט (apps/web), אתר השיווק (apps/site), התוסף ל-Roblox Studio (apps/apple-plugin), ספריות משותפות (packages), תסריטי עבודה (scripts) ותיעוד (docs).",
+    "en": "The whole Apple product: the cloud worker, the web app, the marketing site, the Roblox Studio plugin, shared packages, scripts and docs.",
+    "docs": [
+      {
+        "label": "Cloudflare Workers",
+        "url": "https://developers.cloudflare.com/workers/"
+      },
+      {
+        "label": "Roblox Creator Docs",
+        "url": "https://create.roblox.com/docs"
+      }
+    ]
+  },
+  ".agents": {
+    "he": "הוראות עבודה לסוכני AI אחרים (למשל Codex). יש כאן קובץ אחד: \"כללי העבודה\" של המאגר, איך לבצע שינוי בלי לשבור עבודה של סוכן אחר שעובד במקביל.",
+    "en": "Instructions for other AI coding agents (e.g. Codex). One file: the repository's working rules, how to change code without breaking a peer agent's work.",
+    "docs": []
+  },
+  ".claude": {
+    "he": "ההגדרות של Claude Code במאגר הזה: \"שומרים\" אוטומטיים (hooks) שחוסמים פעולות מסוכנות ומונעים מהסוכן לעצור או לשאול שאלות מיותרות, ההגדרות, ו\"כישורים\" (skills) כמו חוזה האוטונומיה שלך.",
+    "en": "Claude Code configuration for this repo: hooks that block dangerous actions and keep the agent working, settings, and skills such as the owner-autonomy contract.",
+    "docs": [
+      {
+        "label": "Claude Code hooks",
+        "url": "https://docs.claude.com/en/docs/claude-code/hooks"
+      },
+      {
+        "label": "Claude Code settings",
+        "url": "https://docs.claude.com/en/docs/claude-code/settings"
+      },
+      {
+        "label": "Claude Code skills",
+        "url": "https://docs.claude.com/en/docs/claude-code/skills"
+      }
+    ]
+  },
+  ".codex": {
+    "he": "הגדרת \"שומרים\" (hooks) לכלי Codex של OpenAI: בסוף כל תור הוא מריץ שני סקריפטים מקומיים שמונעים ממנו לעצור לפני שהעבודה נגמרה.",
+    "en": "Hook configuration for OpenAI's Codex CLI: on Stop it runs two local scripts that keep it from quitting before the work is done.",
+    "docs": [
+      {
+        "label": "Codex CLI (GitHub)",
+        "url": "https://github.com/openai/codex"
+      }
+    ]
+  },
+  ".design-sync": {
+    "he": "קובץ הגדרה אחד שמקשר את מערכת העיצוב של Apple לפרויקט עיצוב חיצוני בשם \"Apple Design System\". לא ברור מהקובץ לאיזה כלי בדיוק.",
+    "en": "One config file linking Apple's design system to an external design project called \"Apple Design System\". Which tool exactly is not clear from the file.",
+    "docs": []
+  },
+  ".github": {
+    "he": "האוטומציה של GitHub: בדיקות שרצות על כל שינוי בקוד (CI), ותהליך שבונה את קובץ התוסף של Roblox Studio לקראת פרסום.",
+    "en": "GitHub automation: CI tests on every change, and a workflow that builds the Roblox Studio plugin file for release.",
+    "docs": [
+      {
+        "label": "GitHub Actions",
+        "url": "https://docs.github.com/en/actions"
+      }
+    ]
+  },
+  ".vscode": {
+    "he": "הגדרה לעורך הקוד VS Code: מפעילה את החיבור של כלי השפה Luau ל-Roblox Studio.",
+    "en": "VS Code editor setting: turns on the luau-lsp link to Roblox Studio.",
+    "docs": [
+      {
+        "label": "luau-lsp",
+        "url": "https://github.com/JohnnyMorganz/luau-lsp"
+      }
+    ]
+  },
+  "apps": {
+    "he": "האפליקציות של המוצר: התוסף ל-Roblox Studio, אתר השיווק, אפליקציית הווב, השרת בענן, ומשחקי הדגמה ומדידה.",
+    "en": "The product's applications: the Roblox Studio plugin, the marketing site, the web app, the cloud server, and demo/benchmark games.",
+    "docs": []
+  },
+  "apps/apple-plugin": {
+    "he": "זה המוצר: התוסף \"Apple Studio\" ל-Roblox Studio (כתוב ב-Luau). הוא מתחבר לחשבון שלך ובונה/כותב בתוך המקום הפתוח ב-Studio. מתפרסם ב-Creator Store (נכס 107230158271368).",
+    "en": "The product: the \"Apple Studio\" Roblox Studio plugin (Luau). It pairs with your account and builds/writes inside the open Studio place. Published on the Creator Store (asset 107230158271368).",
+    "docs": [
+      {
+        "label": "Roblox Studio plugins",
+        "url": "https://create.roblox.com/docs/studio/plugins"
+      },
+      {
+        "label": "Luau language",
+        "url": "https://luau.org/"
+      },
+      {
+        "label": "Rojo (project files)",
+        "url": "https://rojo.space/docs/"
+      }
+    ]
+  },
+  "apps/benchmark": {
+    "he": "משחק מדידה בשם Crystal Canyon (סימולטור/טייקון) שנבנה כדי לבדוק את איכות מה שהמערכת בונה מול דרישות ז'אנר ברורות.",
+    "en": "Crystal Canyon, a simulator/tycoon benchmark game built to measure what the system produces against a clear genre spec.",
+    "docs": [
+      {
+        "label": "Roblox Creator Docs",
+        "url": "https://create.roblox.com/docs"
+      }
+    ]
+  },
+  "apps/experiences": {
+    "he": "Lumen Isles: משחק Roblox שנבנה בבית לבדיקה ויזואלית מקומית. הקוד רץ ב-Roblox, והבדיקות מריצות אותו בכלי Luau עצמאי. לא מתפרסם ללקוחות.",
+    "en": "Lumen Isles: a first-party Roblox experience for local visual review. Its Luau runs in Roblox; tests run it in the standalone Luau CLI. Not shipped to customers.",
+    "docs": [
+      {
+        "label": "Roblox Creator Docs",
+        "url": "https://create.roblox.com/docs"
+      },
+      {
+        "label": "Luau language",
+        "url": "https://luau.org/"
+      }
+    ]
+  },
+  "apps/plugin": {
+    "he": "התוסף הישן (Golem). זה לא המוצר ולא מתפרסם: נשאר רק כקבצי בדיקה ונתוני ייחוס שבדיקות אחרות קוראות. המוצר האמיתי הוא apps/apple-plugin.",
+    "en": "The legacy (Golem) plugin. Not the product and never shipped: kept only as test fixtures and reference data. The real plugin is apps/apple-plugin.",
+    "docs": [
+      {
+        "label": "Roblox Studio plugins",
+        "url": "https://create.roblox.com/docs/studio/plugins"
+      }
+    ]
+  },
+  "apps/site": {
+    "he": "אתר השיווק הציבורי: דף הבית, מחירים, מודלים, סטטוס, הוכחות, תיעוד, פרטיות ותנאים. בנוי ב-Astro כאתר סטטי, והשרת בענן מגיש אותו.",
+    "en": "The public marketing site: home, pricing, models, status, proof, docs, privacy, terms. A static Astro site served by the Worker.",
+    "docs": [
+      {
+        "label": "Astro docs",
+        "url": "https://docs.astro.build/en/getting-started/"
+      }
+    ]
+  },
+  "apps/web": {
+    "he": "אפליקציית הווב שהלקוח משתמש בה: התחברות, פרויקטים, שיחה עם הסוכן, חיבור ל-Studio וחיוב. בנויה ב-React עם Vite, והתחברות דרך Supabase.",
+    "en": "The customer web app: sign-in, projects, chatting with the agent, connecting Studio, billing. React + Vite, auth via Supabase.",
+    "docs": [
+      {
+        "label": "Vite guide",
+        "url": "https://vite.dev/guide/"
+      },
+      {
+        "label": "React docs",
+        "url": "https://react.dev/learn"
+      },
+      {
+        "label": "Supabase JS client",
+        "url": "https://supabase.com/docs/reference/javascript/introduction"
+      }
+    ]
+  },
+  "apps/worker": {
+    "he": "השרת בענן (Cloudflare Workers): ה-API, התחברות, חיוב, הרצות של הסוכן, חיבור ל-Studio וזיכרון. משתמש במסד נתונים D1, ב-Durable Objects (שיחות, מכסות, צימוד, ניהול, תקציב), KV, R2, Vectorize ו-Workers AI.",
+    "en": "The cloud server on Cloudflare Workers: API, auth, billing, agent runs, Studio pairing. Uses D1, Durable Objects (session, quota, pairing, admin, budget, Discord), KV, R2, Vectorize and Workers AI.",
+    "docs": [
+      {
+        "label": "Cloudflare Workers",
+        "url": "https://developers.cloudflare.com/workers/"
+      },
+      {
+        "label": "Cloudflare D1",
+        "url": "https://developers.cloudflare.com/d1/"
+      },
+      {
+        "label": "Durable Objects",
+        "url": "https://developers.cloudflare.com/durable-objects/"
+      },
+      {
+        "label": "Wrangler",
+        "url": "https://developers.cloudflare.com/workers/wrangler/"
+      },
+      {
+        "label": "Hono",
+        "url": "https://hono.dev/docs/"
+      }
+    ]
+  },
+  "docs": {
+    "he": "כל המסמכים של הפרויקט: המשימה והמצב של הסוכן האוטונומי, החלטות, ראיות לכל ניסוי, מחקר, תוצאות מדידה, רשימת משימות והערות שחרור.",
+    "en": "All project documents: the autonomous agent's mission and state, decisions, evidence for every experiment, research, eval results, backlog and release notes.",
+    "docs": []
+  },
+  "docs/audit": {
+    "he": "דוחות ביקורת על הקוד: מה באמת עובד במוצר (\"ספר החשבונות\" של Apple), ספקי מודלים, מודלי בטיחות של Roblox ודוח האימון הראשון.",
+    "en": "Code audits: what really works in the product (the Apple ledger), inference providers, Roblox safety models, and the first training report.",
+    "docs": []
+  },
+  "docs/autonomy": {
+    "he": "הדבר הכי חשוב במאגר: ה\"מוח\" של הסוכן האוטונומי. המשימה, המצב הנוכחי, הצעד הבא, ממצאים שנמצאו כשבדק את המוצר כמו לקוח, והתור של דברים שרק אתה יכול לעשות.",
+    "en": "The most important folder: the autonomous agent's harness. Mission, current state, next action, customer findings, and the queue of things only you can do.",
+    "docs": []
+  },
+  "docs/backlog": {
+    "he": "רשימת המשימות: 1,249 פיצ'רים שביקשת, רשימת בדיקה, חסמים, מבואות סתומים והערות על תקלות CI.",
+    "en": "The backlog: the 1,249 requested features, the checklist, blockers, dead ends and CI incident notes.",
+    "docs": []
+  },
+  "docs/corrections": {
+    "he": "תיקונים לטעויות בהודעות קומיט קודמות. ההודעות עצמן לא נערכות, ולכן התיקון נכתב כקובץ.",
+    "en": "Corrections to mistakes in earlier commit messages; commits are not amended, so the correction is a file.",
+    "docs": []
+  },
+  "docs/design": {
+    "he": "הערות תכנון: ארגונים וסביבות עבודה (כמה משתמשים באותו חשבון) וחלוקת פלטת הצבעים.",
+    "en": "Design notes: organisations and workspaces (tenancy) and the colour-palette split.",
+    "docs": []
+  },
+  "docs/evals": {
+    "he": "תוצאות המדידות של המודלים: ציונים לפי סוג משימה, קריטריוני קבלה, סט בדיקה מוסתר, ומדד לאיכות ממשקים שנוצרו.",
+    "en": "Model eval results: scores per task type, acceptance criteria, the held-out set, and the UI-generation rubric.",
+    "docs": []
+  },
+  "docs/evidence": {
+    "he": "ספר הראיות: קובץ לכל ניסוי, עם השיטה, המספרים ומה עדיין לא עבד. כל טענה בהודעת קומיט אמורה להוביל לקובץ כאן.",
+    "en": "The evidence ledger: one file per experiment with method, numbers and what was still wrong. Every claim in a commit should trace to a file here.",
+    "docs": []
+  },
+  "docs/gauntlet": {
+    "he": "\"המבחן\": מבקר נפרד, בלי הקשר קודם, משווה את מה שנבנה לדוגמאות אמיתיות ולא לתיאור שלהן. כולל צילומי מסך מהסבבים.",
+    "en": "The gauntlet: a separate fresh-context critic compares what was built against the real references, not a description of them. Includes round screenshots.",
+    "docs": []
+  },
+  "docs/playbook": {
+    "he": "ספר השיטה: איך עובדים כאן ומה כבר נלמד בדרך הקשה, בקצרה, כדי שסוכן חדש לא יבזבז שעות על מה שכבר ידוע.",
+    "en": "The playbook: how work gets done here and what has been learned the hard way, short enough for a new agent to read first.",
+    "docs": []
+  },
+  "docs/releases": {
+    "he": "הערות שחרור לגרסאות v0.1.0 ו-v0.2.0: מה נוסף ומה השתנה.",
+    "en": "Release notes for v0.1.0 and v0.2.0: what was added and changed.",
+    "docs": []
+  },
+  "docs/requirements": {
+    "he": "דרישות בפורמט שמחשב קורא: 83 \"חוזי ביצוע\" ובדיקות אוטומטיות שמוודאות אותם.",
+    "en": "Machine-readable requirements: 83 execution contracts and the probes that check them.",
+    "docs": []
+  },
+  "docs/research": {
+    "he": "מחקרי רקע: מתחרים, מחירי מודלים ורישוי, מגבלות החינם של Cloudflare, אסטרטגיית נכסים גרפיים, צנרת תלת-ממד ועוד.",
+    "en": "Background research: competitors, model pricing and licensing, Cloudflare free-tier limits, asset strategy, the 3D pipeline and more.",
+    "docs": []
+  },
+  "docs/sgsd": {
+    "he": "שיטת עבודה ישנה (SGSD) שנשמרה בארכיון. קוראים אותה רק כשמבקשים במפורש.",
+    "en": "The archived SGSD orchestration method; read only when explicitly asked.",
+    "docs": []
+  },
+  "docs/spec": {
+    "he": "ההגדרה שלך ל\"גמור\" (DONE.md): סעיפים שכל אחד מהם נמדד מול המוצר החי, לא מול הקוד.",
+    "en": "Your definition of done (DONE.md): clauses each measured against the deployed product, not the code.",
+    "docs": []
+  },
+  "docs/superpowers": {
+    "he": "תוכנית עבודה אחת שנכתבה בכלי התכנון \"superpowers\": איך לגרום למדיניות מקורות הנכסים באמת לשלוט בבנייה.",
+    "en": "One implementation plan written with the superpowers planning skill: making the asset-source policy actually govern a build.",
+    "docs": []
+  },
+  "graphify-out": {
+    "he": "דוח אוטומטי שממפה את הקשרים בין חלקי הקוד (6,934 צמתים). נבנה ב-14.9.2026, ולכן ייתכן שהוא לא מעודכן.",
+    "en": "An auto-generated graph report of how the code connects (6,934 nodes). Built 2026-09-14, so it may be stale.",
+    "docs": []
+  },
+  "infra": {
+    "he": "סקריפטים של הפעלה ותפעול: פריסה של השרת והאתר, בדיקות עשן ובדיקות מקצה לקצה על המוצר החי, בדיקת עומס, בדיקת בריאות וחזרה לגרסה קודמת.",
+    "en": "Operations scripts: deploying the worker and site, smoke and end-to-end checks against production, load test, health check and rollback.",
+    "docs": [
+      {
+        "label": "Wrangler",
+        "url": "https://developers.cloudflare.com/workers/wrangler/"
+      }
+    ]
+  },
+  "infra/supabase": {
+    "he": "מסד הנתונים ב-Supabase (Postgres): קבצי שינוי מבנה (migrations) ממוספרים, הסקריפט שמריץ אותם, ובדיקות שמוודאות שהמבנה מוקשח.",
+    "en": "The Supabase (Postgres) database: numbered schema migrations, the runner that applies them, and schema-hardening tests.",
+    "docs": [
+      {
+        "label": "Supabase database migrations",
+        "url": "https://supabase.com/docs/guides/deployment/database-migrations"
+      },
+      {
+        "label": "Supabase database",
+        "url": "https://supabase.com/docs/guides/database/overview"
+      }
+    ]
+  },
+  "packages": {
+    "he": "ספריות משותפות: אוסף נכסים גרפיים, מאגר הידע של הסוכן, כללי עיצוב, מדידות, ערכת פיתוח ללקוחות, טיפוסים משותפים ואימון המודל.",
+    "en": "Shared libraries: asset library, the agent's knowledge corpus, design rules, evals, the customer SDK, shared types and model training.",
+    "docs": []
+  },
+  "packages/asset-library": {
+    "he": "חבילות אייקונים ורכיבי ממשק ברישיון פתוח (CC0) שהסוכן והאתר משתמשים בהם, עם קובץ רשימה שנוצר אוטומטית.",
+    "en": "Openly licensed (CC0) UI and icon packs used by the agent and the site, with a generated manifest.",
+    "docs": []
+  },
+  "packages/corpus": {
+    "he": "בונה את \"מאגר הידע\" (RAG) של הסוכן ממקורות Roblox/Luau שהרישיון שלהם מתיר זאת, ושומר מאיפה הגיע כל קטע.",
+    "en": "Builds the agent's retrieval (RAG) corpus from licence-compatible Roblox/Luau sources, recording where every chunk came from.",
+    "docs": [
+      {
+        "label": "Cloudflare Vectorize",
+        "url": "https://developers.cloudflare.com/vectorize/"
+      }
+    ]
+  },
+  "packages/design": {
+    "he": "\"אינטליגנציית העיצוב\" ל-Roblox: כללי ממשק שנבדקו, כך שממשק שנוצר מורכב מכללים מאומתים במקום להמציא מאפס.",
+    "en": "Roblox design intelligence: validated UI rules, so a generated interface is composed from rules instead of invented from a blank ScreenGui.",
+    "docs": [
+      {
+        "label": "Roblox UI",
+        "url": "https://create.roblox.com/docs/ui"
+      }
+    ]
+  },
+  "packages/evals": {
+    "he": "מערכת המדידה: שולחת משימות Roblox/Luau למודלים שונים דרך השרת ומדרגת את התשובות בבדיקות אובייקטיביות, כדי שבחירת מודל תתבסס על מספרים.",
+    "en": "The eval harness: sends Roblox/Luau tasks to candidate models through the worker and grades answers with objective checks.",
+    "docs": []
+  },
+  "packages/sdk": {
+    "he": "ערכות פיתוח ללקוחות שרוצים לחבר את Apple בקוד: JavaScript/TypeScript, Python ו-Luau, ועוד כלי שורת פקודה בשם apple.",
+    "en": "Client SDKs for the Apple REST + streaming API in JavaScript/TypeScript, Python and Luau, plus the apple CLI.",
+    "docs": []
+  },
+  "packages/shared": {
+    "he": "הגדרות משותפות: הפרוטוקול והטיפוסים שהשרת, אפליקציית הווב והמדידות מדברים בהם, ורשימת המודלים.",
+    "en": "Shared wire protocol and domain types used by the worker, web app and evals, plus the model registry.",
+    "docs": [
+      {
+        "label": "TypeScript",
+        "url": "https://www.typescriptlang.org/docs/"
+      }
+    ]
+  },
+  "packages/training": {
+    "he": "אימון המודל של Apple: בונה סטי נתונים שעברו בדיקת רישיון ואימות מכונה, ומריץ אימון LoRA מקומי (MLX).",
+    "en": "Apple's model training: builds licence-gated, machine-verified datasets and runs local LoRA fine-tuning (MLX).",
+    "docs": [
+      {
+        "label": "Hugging Face Hub",
+        "url": "https://huggingface.co/docs/hub"
+      },
+      {
+        "label": "Hugging Face Datasets",
+        "url": "https://huggingface.co/docs/datasets"
+      },
+      {
+        "label": "MLX LM (LoRA)",
+        "url": "https://github.com/ml-explore/mlx-lm"
+      }
+    ]
+  },
+  "scripts": {
+    "he": "סקריפטים של המאגר: בדיקות ושומרים שרצים לפני שינוי, שערי איכות, איסוף ידע מ-GitHub ומ-Hugging Face, שחרור גרסה, מפקח הסוכן האוטונומי ולוח הבקרה הזה.",
+    "en": "Repository scripts: checks and guards, quality gates, harvesting from GitHub and Hugging Face, release, the autonomy supervisor and this dashboard.",
+    "docs": [
+      {
+        "label": "Node.js",
+        "url": "https://nodejs.org/docs/latest/api/"
+      }
+    ]
+  },
+  "scripts/fixtures": {
+    "he": "נתוני דוגמה לבדיקה: שורות לדוגמה מ-Hugging Face שבדיקה של סקריפט איסוף הידע קוראת.",
+    "en": "Test data: sample Hugging Face rows read by the knowledge-harvest script's test.",
+    "docs": []
+  },
+  "scripts/lib": {
+    "he": "כללים משותפים שהסקריפטים משתמשים בהם: הרצת שינויי מסד נתונים, כללי שחרור וחזרה לאחור, כללי הצעת מחיר ועוד.",
+    "en": "Shared rule libraries used by the scripts: migration runner, release and rollback rules, offer rules and more.",
+    "docs": []
+  },
+  "scripts/owner-dashboard": {
+    "he": "לוח הבקרה שלך (הדף הזה): רץ מקומית על המחשב, מראה מה הסוכנים עושים, עלויות, מצב הקוד והמאגרים.",
+    "en": "Your control dashboard (this page): runs locally and shows what the agents are doing, costs, the code and the repositories.",
+    "docs": []
+  },
+  "supabase": {
+    "he": "קבצים זמניים של כלי שורת הפקודה של Supabase (לאיזה פרויקט הוא מחובר ואיזו גרסה). קבצי מבנה מסד הנתונים עצמם נמצאים ב-infra/supabase.",
+    "en": "Supabase CLI scratch state (linked project, CLI version). The actual database migrations live in infra/supabase.",
+    "docs": [
+      {
+        "label": "Supabase CLI",
+        "url": "https://supabase.com/docs/reference/cli/introduction"
+      }
+    ]
+  },
+  "tests": {
+    "he": "בדיקות ברמת המאגר כולו: שומרים שמוודאים שהמוצר עומד בהבטחות שלו, שהמיתוג נכון, שכללי השחרור נשמרים, ובדיקות דפדפן לאתר.",
+    "en": "Repository-wide tests: guards that the product keeps its promises, the rebrand holds and release rules are kept, plus browser tests for the site.",
+    "docs": [
+      {
+        "label": "Node.js test runner",
+        "url": "https://nodejs.org/api/test.html"
+      },
+      {
+        "label": "Playwright",
+        "url": "https://playwright.dev/docs/intro"
+      }
+    ]
+  }
+}
