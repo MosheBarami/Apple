@@ -38,6 +38,12 @@ export interface RefundInputs {
   artifactMissing: boolean;
   /** The MODEL's own prose reached the user (not the product's failure note). */
   textDelivered: boolean;
+  /**
+   * A Studio tool was refused this run because the plugin stopped answering. Measured 2026-09-23:
+   * Disconnect pressed mid-build, nothing changed, the model replied honestly and the run ended
+   * `done` — 60 Credits charged for a build the user never got (F-054).
+   */
+  studioDropped?: boolean;
   /** Credits charged to this run so far. */
   creditsSpent: number;
 }
@@ -121,7 +127,9 @@ export function runDeliveredSomething(i: RefundInputs): boolean {
  * clamped NaN is a silent zero with a sentence on top of it.
  */
 export function refundVerdict(i: RefundInputs): RefundVerdict {
-  const refundable = REFUNDABLE_REASONS.has(i.reason) || REFUNDABLE_OUTCOMES.has(i.buildOutcome ?? '');
+  const refundable = REFUNDABLE_REASONS.has(i.reason) || REFUNDABLE_OUTCOMES.has(i.buildOutcome ?? '')
+    // A person pressing Stop is their choice, not a failure; a dropped Studio link is not theirs.
+    || (i.studioDropped === true && i.reason !== 'stopped');
   if (!refundable) return { refund: false, credits: 0, why: 'not_a_failure' };
   if (runDeliveredSomething(i)) return { refund: false, credits: 0, why: 'delivered' };
   if (!Number.isSafeInteger(i.creditsSpent) || i.creditsSpent <= 0) {

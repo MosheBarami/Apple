@@ -589,3 +589,14 @@ test('A LEDGER THAT DID NOT ANSWER IS NOT A REFUND THAT FAILED — and the reply
   const note = h.sql.oplog.find((o) => o.kind === 'credits_refunded');
   assert.equal(note.failure, 'refund_unknown', 'but the operator can still see that a refund was owed');
 });
+
+// F-054, 2026-09-23: Disconnect pressed mid-build, nothing changed, reply honest, run ended `done`, 60 Credits kept.
+test('a run Studio dropped before any change is refunded, even though it ended done', async () => {
+  const { refundVerdict } = await import('../src/run-refund.ts');
+  const base = { reason: 'done', mode: 'agent', opsApplied: 2, mutated: false, artifactRequested: false, artifactMissing: false, textDelivered: true, creditsSpent: 60 };
+  assert.equal(refundVerdict({ ...base }).refund, false, 'a finished run is not refunded on its own');
+  assert.equal(refundVerdict({ ...base, studioDropped: true }).refund, true);
+  assert.equal(refundVerdict({ ...base, studioDropped: true }).credits, 60);
+  assert.equal(refundVerdict({ ...base, studioDropped: true, mutated: true }).refund, false, 'a run that changed the place keeps its charge');
+  assert.equal(refundVerdict({ ...base, studioDropped: true, reason: 'stopped' }).refund, false, 'pressing Stop is the user\'s choice');
+});

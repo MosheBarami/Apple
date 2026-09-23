@@ -266,6 +266,8 @@ interface AgentState {
   changesByTarget?: Record<string, number>;
   /** Set when build_scene has built a kit this run; its pieces and terrain are kept (scene-kits.ts). */
   kitZone?: KitZone;
+  /** A Studio tool was refused because the plugin stopped answering (run-refund.ts studioDropped). */
+  studioDropped?: boolean;
   /** Studio was connected at some step of this run, so its tools stay offered if the link drops (F-033). */
   studioSeen?: boolean;
   /**
@@ -4241,6 +4243,7 @@ export class SessionDO extends DurableObject<Env> {
       // and the model — told only "not available … for the current mode" — told the customer the
       // terrain and lighting tools "aren't offered in this mode". Say what actually happened.
       const studioDown = !studioConnected && TOOLS[call.name]?.studio === true;
+      if (studioDown) agent.studioDropped = true;
       const out = allowed.has(call.name)
         ? await runTool(ctx, call.name, call.arguments)
         : {
@@ -4843,6 +4846,7 @@ export class SessionDO extends DurableObject<Env> {
       // is: did the model stream anything of its own during this run?
       textDelivered: typeof agent.streamedText === 'string' && agent.streamedText.trim().length > 0 && !contentOverride,
       creditsSpent: agent.creditsSpent,
+      studioDropped: agent.studioDropped === true,
     });
     let refundNote: string | null = null;
     if (verdict.refund && agent.creditsRefunded === undefined) {
