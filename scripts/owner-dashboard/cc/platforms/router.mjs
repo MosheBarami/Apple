@@ -50,7 +50,7 @@ const GETS = {
   github, supabase, cloudflare, sentry, hf, extras, apple, groq, discord, roblox, status, connectors, langflow, pulse, insights,
 };
 // Platforms whose module lives in platforms/<id>.mjs and is loaded lazily: GET → <id>(), POST → <id>Action(body).
-export const LAZY_PLATFORMS = ['vercel', 'clerk', 'resend'];
+export const LAZY_PLATFORMS = ['vercel', 'clerk', 'resend', 'tests'];
 for (const id of LAZY_PLATFORMS) GETS[id] = () => laneB(`platforms/${id}.mjs`, id);
 const POSTS = {
   review: (b) => (b.dryRun === true ? ok({ dryRun: true, plan: { method: 'WRITE', url: 'scripts/owner-dashboard/cc/review.json', body: { sha: b.sha, verdict: b.verdict } } })
@@ -67,7 +67,7 @@ for (const id of LAZY_PLATFORMS) POSTS[`${id}/action`] = (b) => laneB(`platforms
 // each module's cached() key; pulse refreshes nothing on its own.
 const FRESH = { github: 'github', supabase: 'supabase', cloudflare: 'cloudflare', sentry: 'sentry', hf: 'hf', extras: 'extras',
   apple: 'apple', groq: 'groq', discord: 'discord', roblox: 'roblox', status: 'status', connectors: 'conn:', langflow: 'langflow',
-  vercel: 'vercel', clerk: 'clerk', resend: 'resend' };
+  vercel: 'vercel', clerk: 'clerk', resend: 'resend', tests: 'tests' };
 
 // The `pulse` SSE event: the pulse payload with the derived insights beside it.
 const pulseEvent = async () => { const [p, i] = await Promise.all([pulse(), insights()]); return { ...p, insights: i.insights, insightCounts: i.counts }; };

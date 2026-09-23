@@ -25,6 +25,7 @@ const PAGES = [
   { id: 'explorer', title: 'מפת הריפו', glyph: 'explorer', skin: 'base' },
   { id: 'repos', title: 'מאגרי GitHub', glyph: 'repos', skin: 'base' },
   { id: 'apple', title: 'Apple', brand: 'apple' },
+  { id: 'tests', title: 'מעבדת בדיקות', glyph: 'flask' },
   { id: 'cloudflare', title: 'Cloudflare', brand: 'cloudflare' },
   { id: 'supabase', title: 'Supabase', brand: 'supabase' },
   { id: 'vercel', title: 'Vercel', brand: 'vercel' },
@@ -46,7 +47,7 @@ const GROUPS = [
   ['מוצר ותשתית', ['apple', 'cloudflare', 'supabase', 'vercel', 'clerk', 'github']],
   ['AI ומודלים', ['hf', 'groq', 'langflow']],
   ['תקלות, קהילה ומיילים', ['sentry', 'discord', 'resend', 'roblox']],
-  ['מעבדה', []],
+  ['מעבדה', ['tests']],
   ['חיבורים', ['connect', 'status']],
 ];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
