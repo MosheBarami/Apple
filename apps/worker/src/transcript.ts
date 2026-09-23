@@ -266,6 +266,12 @@ export function aim(args: string | undefined): string {
       return typeof r.action === 'string' ? `${r.action}${Array.isArray(at) ? ` @${at.join(',')}` : ''}` : undefined;
     });
   }
+  // A SINGLE POSITIONAL CALL aims at where it acts. edit_terrain and shape_terrain with one action
+  // name no target but a place: twelve hills at twelve centres aimed at '' and read as one target
+  // changed twelve times (simulator gauntlet round 6, 2026-09-24). The same place still collides.
+  const at = [o.center, o.min, o.origin, o.top, o.position].find(Array.isArray) as unknown[] | undefined;
+  const verb = [o.recipe, o.action].find((v) => typeof v === 'string') as string | undefined;
+  if (at || verb) return plain(`${verb ?? ''}${at ? ` @${at.map((n) => (typeof n === 'number' ? Math.round(n) : '')).join(',')}` : ''}`.trim());
   return '';
 }
 

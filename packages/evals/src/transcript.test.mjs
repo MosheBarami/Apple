@@ -186,3 +186,20 @@ test('trimming never introduces an unanswered call — turn groups move whole', 
   }
   assert.deepEqual(T.unansweredToolCalls(T.trimTranscript(llm, MAX)), []);
 });
+
+// Round 6 of the simulator gauntlet (2026-09-24) ended after 18 changes: twelve single-operation
+// edit_terrain calls, each a hill at a different place, all aimed at '' — so run-idle's afterChange
+// counted "the same thing changed twelve times" and stopped a run that was building. A single
+// positional call must aim at WHERE it acts; a call repeated at the same place must still collide.
+test('single positional terrain calls at different places aim at different targets', () => {
+  const hill = (x, z) => JSON.stringify({ action: 'fill_ball', center: [x, 0, z], radius: 20, material: 'Enum.Material.Grass' });
+  const aims = new Set([hill(0, 0), hill(60, 0), hill(0, 60), hill(-60, -60)].map((a) => T.aim(a)));
+  assert.equal(aims.size, 4, `aims collapsed: ${[...aims].join(' | ')}`);
+  assert.equal(T.aim(hill(10, 10)), T.aim(hill(10, 10)), 'the same edit at the same place must still read as one target');
+  const shape = (x) => JSON.stringify({ action: 'hill', center: [x, 0, 0], radius: 30 });
+  assert.notEqual(T.aim(shape(0)), T.aim(shape(90)));
+  const region = (x) => JSON.stringify({ action: 'fill_region', min: [x, -4, 0], max: [x + 40, 0, 40], material: 'Enum.Material.Grass' });
+  assert.notEqual(T.aim(region(0)), T.aim(region(80)));
+  // A call that names its target by path keeps doing so — the F-036 retune guard depends on it.
+  assert.equal(T.aim(JSON.stringify({ path: 'Lighting', properties: { FogEnd: 100 } })), 'Lighting');
+});
