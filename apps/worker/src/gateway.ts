@@ -9,12 +9,13 @@
 //
 // PROVIDER NEUTRALITY. As of 2026-08-31 the transport lives behind an adapter (see ./providers):
 // this file owns spend policy, the prompted-tool fallback and response post-processing, and an
-// adapter owns one provider's wire format. The production path is unchanged — every model key
-// still resolves to a Workers AI model id, so adapterForModelId() returns the Workers AI adapter
-// and the call is still `env.AI.run(id, payload, gatewayOpts(...))` with the same payload and the
-// same options. Nothing else is credentialed, and the layer reports that honestly.
+// adapter owns one provider's wire format. Every model key resolves to the Workers AI adapter,
+// and every call is `env.AI.run(id, payload, gatewayOpts(...))`. The outside models (D-VISION-1)
+// take the same path: their third-party ids run through AI Gateway Unified Billing, and the
+// adapter picks the chat or Responses wire from the registry in @golem/shared.
 import type { Env } from './env';
 import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@golem/shared';
+import { MODEL_REGISTRY } from '@golem/shared';
 import { isCompleteToolCall } from './tool-call-integrity';
 import { estimateNeurons, neuronsFor, maxNeuronsPerStepFor } from './pricing';
 import { recordEvent } from './analytics';
@@ -33,7 +34,7 @@ import {
   workersAiAdapter,
 } from './providers';
 
-export { providerHealth, capabilityTable, providerAvailability, selectProvider } from './providers';
+export { providerHealth, resetProviderHealth, capabilityTable, providerAvailability, selectProvider } from './providers';
 
 export interface ModelCfg {
   id: string;
@@ -112,6 +113,25 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
 
   // The visual critic sends real image_url data URLs and must remain on a multimodal model.
   vision: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 4000, ctx: 1_310_720, temperature: 0.3, reasoningEffort: 'low' },
+
+  // THE OUTSIDE MODELS (D-VISION-1), keyed by their registry id and derived from the registry, so a
+  // model is added in packages/shared/src/models.ts and nowhere else. They run on the same binding
+  // as Apple (`env.AI.run` through AI Gateway, Unified Billing); the adapter picks the wire from
+  // the registry. Apple and Apple MAX are not listed here: both are GLM-5.3 Flash, which `plan` and
+  // `agent` above already configure, and the lanes differ only in the reasoning policy.
+  ...Object.fromEntries(
+    MODEL_REGISTRY.filter((m) => m.route === 'unified-billing').map((m): [string, ModelCfg] => [
+      m.id,
+      {
+        id: m.providerModelId,
+        nativeTools: m.nativeTools,
+        maxTokens: m.maxOutputTokens,
+        ctx: m.ctx,
+        temperature: 0.25,
+        ...(m.reasoningEffort ? { reasoningEffort: m.reasoningEffort } : {}),
+      },
+    ]),
+  ),
 };
 
 let modelCache: { at: number; models: Record<string, ModelCfg> } | null = null;
@@ -709,7 +729,7 @@ export async function rawProbe(env: Env, req: RawProbeRequest, kind = 'admin:raw
   let raw: unknown;
   try {
     // No retries, for the same reason chat() has none: a failed inference was still billed.
-    raw = await env.AI.run(req.model as never, payload as never, gatewayOpts(env, kind, 0, req.sessionId) as never);
+    raw = await env.AI.run(req.model as never, payload as never, gatewayOpts(env, kind, 0, req.sessionId, req.model) as never);
   } catch (e) {
     // Nothing ran, so hand the reservation back.
     await release(env, reserved, req.model);

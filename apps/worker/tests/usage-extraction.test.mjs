@@ -8,11 +8,13 @@
  * refuse a non-finite figure (bf64b0d, 72d3fc3). This is the other end: proving no adapter can emit
  * one in the first place.
  *
- * WHAT WAS ALREADY TRUE, and the reason this is a lock rather than a fix: all three adapters DO
- * guard. openai gates on `typeof prompt_tokens === 'number' && typeof completion_tokens === 'number'`
- * and falls back to a conservative estimate — its comment, "so unmetered calls still cost the
- * budget", is this done right. workers-ai does the same. google gates promptTokenCount and takes
- * `?? 0` for the rest.
+ * WHAT WAS ALREADY TRUE, and the reason this is a lock rather than a fix: both decoders DO guard.
+ * The OpenAI-compatible decoder (still used by the customer-key path) gates on
+ * `typeof prompt_tokens === 'number' && typeof completion_tokens === 'number'` and falls back to a
+ * conservative estimate — its comment, "so unmetered calls still cost the budget", is this done
+ * right. workers-ai does the same, for the chat wire and for the Responses wire the GPT-5.6 models
+ * speak through the same binding (D-VISION-1). The direct Google adapter is gone: Gemini now runs
+ * on the binding's chat wire, which the workers-ai cases cover.
  *
  * The guards are one deleted `typeof` from not being guards, and nothing was asserting them. That
  * is what this file is: the property stated so a future simplification goes red instead of quiet.
@@ -43,7 +45,6 @@ const bundle = (rel, name) => {
   return import(`file://${out}`);
 };
 const OA = await bundle('providers/openai.ts', 'oa.mjs');
-const GG = await bundle('providers/google.ts', 'gg.mjs');
 const WA = await bundle('providers/workers-ai.ts', 'wa.mjs');
 const COST = await bundle('providers/cost.ts', 'cost.mjs');
 
@@ -86,22 +87,19 @@ for (const [label, usage] of BROKEN_USAGE) {
   });
 }
 
-// Gemini names its fields differently, so its broken shapes are its own.
-const BROKEN_GEMINI = [
-  ['no usageMetadata', undefined],
-  ['an empty usageMetadata', {}],
-  ['promptTokenCount is null', { promptTokenCount: null }],
-  ['promptTokenCount is a string', { promptTokenCount: '120' }],
-  ['only a candidates count', { candidatesTokenCount: 8 }],
-  ['a cached count but no prompt count', { cachedContentTokenCount: 4 }],
+// The Responses wire (GPT-5.6 Sol and Luna) names its fields differently, so its broken shapes are
+// its own.
+const BROKEN_RESPONSES = [
+  ['input_tokens is null', { input_tokens: null, output_tokens: 8 }],
+  ['input_tokens is a string', { input_tokens: '120', output_tokens: 8 }],
+  ['only an output count', { output_tokens: 8 }],
+  ['a cached count that is not a number', { input_tokens: 120, output_tokens: 8, input_tokens_details: { cached_tokens: '4' } }],
+  ['a cached count but no input count', { input_tokens_details: { cached_tokens: 4 } }],
 ];
 
-for (const [label, usageMetadata] of BROKEN_GEMINI) {
-  test(`google: ${label} still yields a usable token count`, () => {
-    const r = GG.decodeGemini(
-      { candidates: [{ content: { parts: [{ text: TEXT }] }, finishReason: 'STOP' }], usageMetadata },
-      PROMPT_CHARS, 'gemini-x');
-    assertUsable(r.usage, `google/${label}`);
+for (const [label, usage] of BROKEN_RESPONSES) {
+  test(`workers-ai responses wire: ${label} still yields a usable token count`, () => {
+    assertUsable(WA.extractUsage({ output: [], usage }, PROMPT_CHARS, TEXT), `responses/${label}`);
   });
 }
 
@@ -120,13 +118,12 @@ test('CONTROL: a well-formed usage block is passed through EXACTLY, not estimate
   assert.equal(w.inputTokens, 99);
   assert.equal(w.outputTokens, 3);
 
-  const g = GG.decodeGemini(
-    { candidates: [{ content: { parts: [{ text: TEXT }] } }],
-      usageMetadata: { promptTokenCount: 321, candidatesTokenCount: 12, cachedContentTokenCount: 5 } },
-    PROMPT_CHARS, 'gemini-x');
-  assert.equal(g.usage.inputTokens, 321);
-  assert.equal(g.usage.outputTokens, 12);
-  assert.equal(g.usage.cachedInputTokens, 5);
+  const g = WA.extractUsage(
+    { output: [], usage: { input_tokens: 321, output_tokens: 12, input_tokens_details: { cached_tokens: 5 } } },
+    PROMPT_CHARS, TEXT);
+  assert.equal(g.inputTokens, 321);
+  assert.equal(g.outputTokens, 12);
+  assert.equal(g.cachedInputTokens, 5);
 });
 
 test('CONTROL: an unmetered call is estimated as COSTING SOMETHING, never as free', () => {

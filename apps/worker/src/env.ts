@@ -159,21 +159,6 @@ export interface Env {
   /** Extra repositories those two tools may read: `owner/name` or `owner/*`, comma-separated. */
   GITHUB_REPO_ALLOWLIST?: string;
   // ---------------------------------------------------------------------------
-  // Alternate model providers. ALL THREE ARE UNSET and nothing in the product sets them.
-  //
-  // They are declared so the provider layer can ASK whether a credential exists and answer
-  // honestly, which is the whole point: a provider is reported available only when its binding is
-  // actually present here at runtime. Declaring the binding does not enable the provider, does not
-  // add a key, and does not change which model serves a request — GLM-5.3 Flash over the Workers
-  // AI binding remains the only path inference takes.
-  // ---------------------------------------------------------------------------
-  /** OpenAI (GPT-5.6 Luna). Absent → the OpenAI provider reports `no_credentials`. */
-  OPENAI_API_KEY?: string;
-  /** Google Gemini (Gemini 3.7 Flash). Absent → the Google provider reports `no_credentials`. */
-  GOOGLE_API_KEY?: string;
-  /** DeepSeek (DeepSeek V4 Flash). Absent → the DeepSeek provider reports `no_credentials`. */
-  DEEPSEEK_API_KEY?: string;
-  // ---------------------------------------------------------------------------
   // Customer keys (owner decisions D-BYOK-1, D-BYOK-2, D-FREE-1).
   // ---------------------------------------------------------------------------
   /**

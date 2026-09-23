@@ -190,6 +190,8 @@ const APP = (await import(`file://${bundle(SRC('index.ts'), 'worker')}`)).defaul
 const P = await import(`file://${bundle(SRC('providers', 'index.ts'), 'providers')}`);
 const T = await import(`file://${bundle(SRC('tools.ts'), 'tools')}`);
 const G = await import(`file://${bundle(SRC('gateway.ts'), 'gateway')}`);
+const PR = await import(`file://${bundle(SRC('pricing.ts'), 'pricing')}`);
+const { MODEL_REGISTRY } = await import(`file://${bundle(join(REPO, 'packages', 'shared', 'src', 'models.ts'), 'models')}`);
 // A SECOND, independent instance of the gateway. `getModels` memoises for 60s at module scope, so
 // the tests that override `config:models` in KV must not poison the tests that do not.
 const GX = await import(`file://${bundle(SRC('gateway.ts'), 'gateway-alt')}`);
@@ -475,18 +477,21 @@ test('A1 /api/providers returns no credential value, and no provider identity at
   }
 });
 
-test(`A1 ${ROUTING} returns no credential value, with every provider credentialed`, async () => {
+test(`A1 ${ROUTING} returns no credential value, with every stray provider key set`, async () => {
   reset();
   const res = await call(ROUTING, { adminKey: SECRETS.ADMIN_KEY });
   assert.equal(res.status, 200);
   assertNoSecret(res.text, `GET ${ROUTING}`);
-  // With the sentinels in place all four providers report available — which is exactly the
-  // dangerous case, because it is the branch that renders the "is set" detail strings.
-  const byProvider = Object.fromEntries(res.json.models.map((m) => [m.provider, m]));
-  for (const id of ['workers-ai', 'openai', 'google', 'deepseek']) {
-    assert.equal(byProvider[id].available, true, `${id} should be available when its sentinel key is set`);
+  // RESTATED (D-VISION-1). This asserted that OpenAI, Google and DeepSeek reported available once
+  // their sentinel keys were set. Those direct-HTTP adapters were removed: the outside models run
+  // on the AI binding through AI Gateway. The sentinels stay in makeEnv as STRAY keys, and the
+  // properties are that none of them leaks and none of them brings a second transport back.
+  assert.ok(res.json.models.length >= 1, `${ROUTING} returned no model rows — this checks nothing`);
+  assert.deepEqual([...new Set(res.json.models.map((m) => m.provider))], ['workers-ai']);
+  for (const m of res.json.models) {
+    assert.equal(m.available, true, `${m.id} should be available with the binding present`);
+    assert.match(m.reason ?? '', /^$|null/, 'an available provider carries no reason');
   }
-  assert.match(byProvider.openai.reason ?? '', /^$|null/, 'an available provider carries no reason');
 });
 
 test(`A1 ${ROUTING} exposes exactly one whitelisted field set — no row spread`, () => {
@@ -559,10 +564,9 @@ test('A1 ProviderAvailability carries only a boolean and a reason string', () =>
       assertNoSecret(a, `providerAvailability(${a.provider})`);
     }
   }
-  // The "credential present" branch names the VARIABLE, never its contents.
-  const set = P.providerAvailability(makeEnv()).find((a) => a.provider === 'openai');
-  assert.match(set.detail, /OPENAI_API_KEY is set/);
-  assert.equal(set.detail.includes(SECRETS.OPENAI_API_KEY), false);
+  // RESTATED (D-VISION-1): the "OPENAI_API_KEY is set" branch this read belonged to the removed
+  // OpenAI adapter. What remains is that the stray keys in makeEnv() produce no row of their own.
+  assert.deepEqual(P.providerAvailability(makeEnv()).map((a) => a.provider), ['workers-ai']);
 });
 
 test('A1 selectProvider reasoning names providers and prices, never credentials', () => {
@@ -631,25 +635,24 @@ test('A1 /api/me and /api/health leak no credential', async () => {
     `buildSha must be a git sha or 'unknown', got ${health.json.buildSha}`);
 });
 
-test('A1 the disabled adapters refuse before the network, so no credential is ever put on the wire', async () => {
+test('A1 no provider endpoint is ever fetched, so no credential is ever put on the wire', async () => {
   // Every fetch in this file has been recorded in `allFetched`, which is never reset.
   assert.deepEqual(allFetched.filter((f) => PROVIDER_HOSTS.some((h) => f.url.includes(h))).map((o) => o.url), [], 'a provider endpoint was contacted');
-  // And the refusal is the adapter's own, thrown before any fetch: with no key, invoke() rejects.
-  for (const id of ['openai', 'google', 'deepseek']) {
-    const before = allFetched.length;
-    await assert.rejects(
-      () => P.getAdapter(id).invoke({}, { messages: [] }, { modelId: 'x', kind: 'k', cacheTtl: 0 }),
-      (e) => {
-        assert.equal(e.name, 'ProviderError');
-        assert.equal(e.kind, 'auth');
-        assert.equal(e.retryable, false, 'an un-credentialed provider must not be retried');
-        assert.match(e.message, /is unset/, 'the refusal must name the missing variable');
-        return true;
-      },
-      `${id} must refuse without credentials`,
-    );
-    assert.equal(allFetched.length, before, `${id}.invoke() reached the network without a credential`);
-  }
+  // RESTATED (D-VISION-1). This drove the OpenAI, Google and DeepSeek adapters' own refusal. Those
+  // adapters are gone; the only transport is the AI binding, and the adapters are exactly the
+  // platform provider list — there is no HTTP adapter left that a key could switch on.
+  assert.deepEqual(P.PROVIDER_ORDER, ['workers-ai']);
+  for (const id of P.PROVIDER_ORDER) assert.ok(P.getAdapter(id), `${id} has no adapter`);
+  // And an outside model with no gateway id refuses before the binding, with no fetch either:
+  // the one path a Unified Billing call could take that is not metered by AI Gateway.
+  const env = { ...makeEnv(), AI_GATEWAY_ID: undefined };
+  const before = { fetched: allFetched.length, runs: trace.order.filter((o) => o === 'AI.run').length };
+  await assert.rejects(
+    () => P.workersAiAdapter.invoke(env, { input: [] }, { modelId: 'openai/gpt-5.6-luna', kind: 'k', cacheTtl: 0 }),
+    (e) => e.name === 'ProviderError' && /AI_GATEWAY_ID/.test(e.message),
+  );
+  assert.equal(allFetched.length, before.fetched, 'the refusal reached the network');
+  assert.equal(trace.order.filter((o) => o === 'AI.run').length, before.runs, 'the refusal reached the binding');
 });
 
 test('A1 raw provider error text reaches NO ONE — not the user route, not the admin route', async () => {
@@ -2692,47 +2695,59 @@ test('A6 STATIC CHECK — the direct env.AI.run call sites are the known, metere
   assert.ok(probe.includes('await release(env, reserved'), 'rawProbe() must release its reservation when the call fails');
 });
 
-test('A6 an HTTP provider bills through the SAME neuron ledger — tokens are converted, not exempted', async () => {
+test('A6 an outside model bills through the SAME spend gate — its tokens are priced, not exempted', async () => {
   reset();
-  // Point a model key at an OpenAI-billed model. The adapter is now the OpenAI one, the transport
-  // is HTTP rather than the AI binding, and the whole spend gate must still apply.
+  // RESTATED (D-VISION-1). This pointed a key at the direct-HTTP OpenAI adapter. GPT-5.6 Luna now
+  // runs on the AI binding through AI Gateway (Unified Billing): the property is unchanged — the
+  // whole spend gate applies — and the reservation must name the model, because that is what puts
+  // it on the third-party wallet in BudgetDO rather than on Apple's neuron day.
+  const LUNA = 'openai/gpt-5.6-luna';
   const env = makeEnv({
-    kv: { 'config:models': JSON.stringify({ probe: { id: 'gpt-5.6-luna', nativeTools: true, maxTokens: 120, ctx: 128_000, temperature: 0.2 } }) },
+    kv: { 'config:models': JSON.stringify({ probe: { id: LUNA, nativeTools: true, maxTokens: 120, ctx: 128_000, temperature: 0.2 } }) },
+    aiResponse: {
+      status: 'completed',
+      output: [{ type: 'message', content: [{ type: 'output_text', text: 'stubbed' }] }],
+      usage: { input_tokens: 40, output_tokens: 20 },
+    },
   });
   const res = await GX.chat(env, { model: 'probe', messages: [{ role: 'user', content: 'hello there' }], maxTokens: 120 });
-  assert.equal(res.provider, 'openai');
+  assert.equal(res.text, 'stubbed');
   assert.ok(res.neurons >= 1, 'a token-billed call must cost a whole number of neurons, never zero');
   assert.deepEqual(
     trace.order.filter((o) => o.startsWith('BUDGET_DO') || o === 'http.invoke' || o === 'AI.run'),
-    ['BUDGET_DO/reserve', 'http.invoke', 'BUDGET_DO/settle'],
-    'the HTTP adapter must be reserved and settled exactly like the AI binding',
+    ['BUDGET_DO/reserve', 'AI.run', 'BUDGET_DO/settle'],
+    'an outside model must be reserved and settled exactly like an Apple lane',
   );
+  const budgetCalls = trace.doCalls.filter((d) => d.ns === 'BUDGET_DO');
+  for (const d of budgetCalls) assert.equal(d.body?.model, LUNA, `${d.path} did not name the model it was spending`);
 
-  // …and the per-request ceiling bites on the converted figure.
+  // …and the model's own per-step ceiling bites before the binding is called.
   reset();
   await assert.rejects(
-    () => GX.chat(env, { model: 'probe', messages: [{ role: 'user', content: 'x'.repeat(400_000) }], maxTokens: 120 }),
+    () => GX.chat(env, { model: 'probe', messages: [{ role: 'user', content: 'x'.repeat(4_000_000) }], maxTokens: 120 }),
     (e) => e.name === 'BudgetError' && e.reason === 'request_too_large',
   );
-  assert.equal(trace.order.includes('http.invoke'), false, 'the ceiling must stop a token-billed call before it leaves');
+  assert.equal(trace.order.includes('AI.run'), false, 'the ceiling must stop a token-billed call before it leaves');
 });
 
 test('A6 the token to neuron conversion is monotonic, never zero, and always rounded up', () => {
-  const models = P.allModels().filter((m) => m.provider !== 'workers-ai');
-  assert.ok(models.length >= 3, 'expected OpenAI, Google and DeepSeek models to be registered');
-  for (const m of models) {
-    assert.equal(P.neuronsForModelTokens(m, 0, 0), 0);
-    const one = P.neuronsForModelTokens(m, 1, 1);
-    assert.ok(one >= 1, `${m.id}: any non-zero usage must cost at least one neuron`);
+  // RESTATED (D-VISION-1). This iterated the retired OpenAI/Google/DeepSeek catalogue rows. The
+  // token-billed models are now the registry's outside models, priced by pricing.ts — the function
+  // the gateway reserves and settles with — so that is the conversion held here.
+  const outside = MODEL_REGISTRY.filter((m) => m.route === 'unified-billing').map((m) => m.providerModelId);
+  assert.ok(outside.length >= 3, 'expected Gemini, GPT-5.6 and Luna in the registry');
+  for (const id of outside) {
+    assert.equal(PR.neuronsFor(id, 0, 0), 0);
+    const one = PR.neuronsFor(id, 1, 1);
+    assert.ok(one >= 1, `${id}: any non-zero usage must cost at least one neuron`);
     assert.ok(Number.isInteger(one));
-    assert.ok(P.neuronsForModelTokens(m, 10_000, 10_000) > P.neuronsForModelTokens(m, 1_000, 1_000), `${m.id}: cost must grow with usage`);
+    assert.ok(PR.neuronsFor(id, 10_000, 10_000) > PR.neuronsFor(id, 1_000, 1_000), `${id}: cost must grow with usage`);
     // Estimation is pessimistic: it assumes every allowed output token is spent.
-    assert.ok(P.estimateNeuronsForModel(m, 3_500, 1_000) >= P.neuronsForModelTokens(m, 1_000, 1_000));
+    assert.ok(PR.estimateNeurons(id, 3_500, 1_000) >= PR.neuronsFor(id, 1_000, 1_000));
+    // The conversion is the price table, not a guess.
+    const expected = Math.ceil(PR.MODEL_PRICES[id].usdPerMInput / PR.USD_PER_NEURON);
+    assert.equal(PR.neuronsFor(id, 1_000_000, 0), expected, id);
   }
-  // The conversion is the price table, not a guess.
-  const openai = models.find((m) => m.provider === 'openai');
-  const expected = Math.ceil(((1_000_000 * openai.inputCostPer1M + 0) / 1_000_000) / P.USD_PER_NEURON);
-  assert.equal(P.neuronsForModelTokens(openai, 1_000_000, 0), expected);
 });
 
 test('A6 STATIC CHECK — the kill switch is consulted inside the same reservation', () => {
@@ -3045,15 +3060,11 @@ test('A9 every outbound request in this suite was answered by the stub, and the 
     // supa.golem.test  — JWKS + PostgREST, this file's own fake Supabase
     // apis.roblox.com  — the Creator Store catalogue lookup made by find_verified_asset (not a
     //                    model call, and free, but stubbed regardless)
-    // api.openai.com   — the deliberate HTTP-provider budget test, answered by the stub below
-    ['api.openai.com', 'apis.roblox.com', 'supa.golem.test'],
+    // (api.openai.com left this list with D-VISION-1: no model is reached over HTTP any more —
+    //  every inference, the outside models included, goes through the AI binding.)
+    ['apis.roblox.com', 'supa.golem.test'],
     'a new outbound host appeared — confirm it is stubbed and that it is not a paid endpoint',
   );
-  // The one MODEL-INFERENCE host reached was reached only by the test that exists to prove the
-  // spend gate wraps HTTP providers too.
   const inference = allFetched.filter((f) => ['api.openai.com', 'generativelanguage.googleapis.com', 'api.deepseek.com'].some((h) => f.url.includes(h)));
-  for (const o of inference) {
-    assert.equal(o.url, 'https://api.openai.com/v1/chat/completions', `an unexpected inference endpoint was contacted: ${o.url}`);
-  }
-  assert.ok(inference.length <= 2, 'more inference calls were made than the budget test needs');
+  assert.deepEqual(inference.map((o) => o.url), [], 'a model-inference endpoint was contacted over HTTP');
 });

@@ -3,10 +3,10 @@
 // Everything above this directory imports from `./providers` and never from a provider file
 // directly, so adding a fifth provider is one new adapter plus one line in registry.ts.
 //
-// STATE OF THE WORLD (2026-09-18): exactly one provider is usable. Cloudflare Workers AI is bound
-// and serves the Apple / Apple MAX routes plus the internal visual specialist. OpenAI, Google and DeepSeek are fully implemented
-// and fully DISABLED — no credential exists for any of them, `availability()` says so, and their
-// `invoke()` refuses before touching the network.
+// STATE OF THE WORLD (D-VISION-1): one platform provider. The Workers AI binding serves Apple,
+// Apple MAX and the visual specialist, and — through AI Gateway Unified Billing — the outside
+// models (Gemini 3.8 Flash, GPT-5.6 Sol and Luna). The direct-HTTP OpenAI, Google and DeepSeek
+// adapters, which never had a credential, are gone.
 export * from './types';
 export * from './cost';
 export * from './health';
@@ -24,9 +24,7 @@ export {
   VISION_CONTEXT_WINDOW,
   WORKERS_AI_MODELS,
 } from './workers-ai';
-export { openaiAdapter, OPENAI_MODELS, classifyHttpError, encodeOpenAiChat, decodeOpenAiChat } from './openai';
-export { googleAdapter, GOOGLE_MODELS, encodeGemini, decodeGemini, toGeminiTools, toGeminiContents, fromGeminiFunctionCall, dataUrlToInlineData } from './google';
-export { deepseekAdapter, DEEPSEEK_MODELS, deepseekUnsupportedKeys } from './deepseek';
+export { classifyHttpError, encodeOpenAiChat, decodeOpenAiChat } from './openai';
 export {
   openrouterAdapter,
   encodeOpenRouterChat,

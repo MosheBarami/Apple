@@ -1,9 +1,6 @@
 // The registry: who exists, who is actually usable right now, and who should serve a given task.
 import type { Env } from '../env';
 import { blendedPricePer1M } from './cost';
-import { deepseekAdapter } from './deepseek';
-import { googleAdapter } from './google';
-import { openaiAdapter } from './openai';
 import { workersAiAdapter } from './workers-ai';
 import {
   MODEL_KEY_NEEDS,
@@ -17,9 +14,6 @@ import {
 
 export const ADAPTERS: Record<PlatformProviderId, ProviderAdapter> = {
   'workers-ai': workersAiAdapter,
-  openai: openaiAdapter,
-  google: googleAdapter,
-  deepseek: deepseekAdapter,
 };
 
 export function getAdapter(id: PlatformProviderId): ProviderAdapter {
@@ -128,8 +122,7 @@ function usd(n: number): string {
  *   3. of what is left, take the cheapest by blended price
  *   4. break ties by PROVIDER_ORDER
  *
- * With only Workers AI credentialed — which is the state of this account — steps 2-4 never have a
- * choice to make, and the answer is GLM-5.3 Flash with the other three named as unavailable.
+ * Workers AI is the only platform provider, so steps 3-4 choose among its own models only.
  */
 export function selectProvider(env: Env, opts: AutoSelectOptions = {}): AutoSelection {
   const needs = needsFor(opts);

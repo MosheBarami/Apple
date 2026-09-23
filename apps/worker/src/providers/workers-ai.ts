@@ -11,8 +11,11 @@
 // Workers AI is reached through a BINDING, not HTTP: there is no key and no base URL, which is
 // why its availability is "does env.AI exist", not "is a secret set".
 import type { Env } from '../env';
+import { registryModelByProviderId, type ModelWire } from '@golem/shared';
+import { routeForModelId } from '../pricing';
 import {
   contentChars,
+  contentText,
   type EncodedRequest,
   type ErrorClassification,
   type GatewayToolCall,
@@ -24,6 +27,7 @@ import {
   type ProviderAvailability,
   type ProviderModel,
   errorMessage,
+  ProviderError,
 } from './types';
 
 /** Product-model routing. Apple chosen 2026-09-18; Apple MAX moved to GLM-5.3 Flash on 2026-09-19. */
@@ -166,11 +170,21 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
  * eval that treats such a pair as two samples reports a precision that does not exist;
  * docs/frontier-for-roblox.md §8.3 discards one on exactly this evidence.
  */
-export function gatewayOpts(env: Env, kind: string, cacheTtl: number, sessionId?: string) {
+export function gatewayOpts(env: Env, kind: string, cacheTtl: number, sessionId?: string, model?: string) {
   const id = env.AI_GATEWAY_ID;
   const affinity = sessionId ? { extraHeaders: { 'x-session-affinity': sessionId } } : undefined;
-  if (!id) return affinity;
-  return { ...affinity, gateway: { id, cacheTtl, collectLog: true, metadata: { kind } } };
+  if (!id) {
+    // A third-party model (D-VISION-1) is paid from AI Gateway credits under Unified Billing, and
+    // only a call that names the gateway is billed there. Without one it is refused HERE, before
+    // anything leaves the worker, rather than sent somewhere it is not metered.
+    if (model && routeForModelId(model) === 'unified-billing') {
+      throw new ProviderError('unknown', 'workers-ai', `${model} runs through AI Gateway, and AI_GATEWAY_ID is not set on this worker`, undefined, false);
+    }
+    return affinity;
+  }
+  // `model` rides in the metadata so the gateway's own log attributes spend per model, not only per
+  // kind of call. Logging stays on for text: that log is the spend attribution.
+  return { ...affinity, gateway: { id, cacheTtl, collectLog: true, metadata: { kind, ...(model ? { model } : {}) } } };
 }
 
 // ---------------------------------------------------------------------------
@@ -226,9 +240,12 @@ export function extractToolCalls(r: any): GatewayToolCall[] {
 
 export function extractUsage(r: any, inputChars: number, text: string): NormalizedUsage {
   const u = r?.usage ?? r?.result?.usage;
+  // chat names them prompt/completion; the Responses wire names them input/output, and its output
+  // count already includes reasoning tokens, which bill as output.
   const inTok = u?.prompt_tokens ?? u?.input_tokens;
   const outTok = u?.completion_tokens ?? u?.output_tokens;
-  const cached = u?.prompt_tokens_details?.cached_tokens ?? 0;
+  const cachedRaw = u?.prompt_tokens_details?.cached_tokens ?? u?.input_tokens_details?.cached_tokens;
+  const cached = typeof cachedRaw === 'number' && Number.isFinite(cachedRaw) && cachedRaw >= 0 ? cachedRaw : 0;
   const reported = typeof u?.neurons === 'number' ? u.neurons : undefined;
   if (typeof inTok === 'number' && typeof outTok === 'number') {
     return { inputTokens: inTok, outputTokens: outTok, cachedInputTokens: cached, reportedNeurons: reported };
@@ -262,7 +279,67 @@ export const WORKERS_AI_RETRYABLE = /\b3021\b|rate limit|too many requests|capac
  * Exported so there is ONE rule rather than a second copy of this regex living next to the UI.
  */
 export function acceptsReasoningEffort(modelId: string): boolean {
-  return /^@cf\/zai-org\/glm-/.test(modelId);
+  if (/^@cf\/zai-org\/glm-/.test(modelId)) return true;
+  // The third-party registry models each have a documented effort field: `reasoning.effort` on the
+  // Responses wire (GPT-5.6) and `reasoning_effort` on Gemini's chat-completions wire. Sent at the
+  // registry's `low`, because thinking tokens bill as output. Not yet observed on a live call —
+  // the AI Gateway balance is $0 (OWNER_QUEUE Q-006) — and listed for live verification.
+  return registryModelByProviderId(modelId)?.route === 'unified-billing';
+}
+
+/** Which wire a model id speaks. Anything the registry does not list is a Workers AI chat model. */
+export function wireFor(modelId: string): ModelWire {
+  return registryModelByProviderId(modelId)?.wire ?? 'chat';
+}
+
+/**
+ * THE RESPONSES WIRE (OpenAI GPT-5.6 Sol and Luna on Unified Billing, D-VISION-1).
+ *
+ * These models take no `messages` body — the 2026-08-31 probe that sent one got "7003 Invalid value
+ * at input". The same conversation goes out as:
+ *   - every system message joined into `instructions`;
+ *   - user and assistant turns as input messages, images as `input_image`;
+ *   - an assistant's structured tool calls as `function_call` items, and each tool result as a
+ *     `function_call_output` item answering its call id — structured, never as text;
+ *   - tools flattened to `{type:'function', name, description, parameters}`.
+ * `store: false` because nothing is to be kept on the provider's side. No temperature: the GPT-5
+ * reasoning models refuse the field, and effort is the knob they document instead.
+ */
+export function encodeResponses(req: NormalizedRequest): EncodedRequest {
+  const instructions: string[] = [];
+  const input: Record<string, unknown>[] = [];
+  for (const m of req.messages) {
+    if (m.role === 'system') {
+      instructions.push(contentText(m.content));
+    } else if (m.role === 'tool') {
+      input.push({ type: 'function_call_output', call_id: m.toolCallId ?? '', output: contentText(m.content) });
+    } else if (m.role === 'assistant') {
+      const text = contentText(m.content);
+      if (text) input.push({ role: 'assistant', content: text });
+      for (const c of m.toolCalls ?? []) input.push({ type: 'function_call', call_id: c.id, name: c.name, arguments: c.arguments });
+    } else {
+      input.push({
+        role: 'user',
+        content: typeof m.content === 'string'
+          ? m.content
+          : m.content.map((p) => ('text' in p ? { type: 'input_text', text: p.text } : { type: 'input_image', image_url: p.image_url.url })),
+      });
+    }
+  }
+  const payload: Record<string, unknown> = {
+    ...(instructions.length ? { instructions: instructions.join('\n\n') } : {}),
+    input,
+    max_output_tokens: req.maxTokens,
+    store: false,
+  };
+  if (req.tools?.length) {
+    payload.tools = req.tools.map((t) => ({ type: 'function', name: t.name, description: t.description, parameters: t.parameters }));
+  }
+  if (req.reasoningEffort && acceptsReasoningEffort(req.modelId)) payload.reasoning = { effort: req.reasoningEffort };
+  if (req.jsonSchema) payload.text = { format: { type: 'json_schema', ...(req.jsonSchema as Record<string, unknown>) } };
+  const promptChars =
+    req.messages.reduce((n, m) => n + contentChars(m.content), 0) + JSON.stringify(payload.tools ?? '').length;
+  return { payload, promptChars };
 }
 
 // ---------------------------------------------------------------------------
@@ -288,6 +365,7 @@ export const workersAiAdapter: ProviderAdapter = {
   },
 
   encode(req: NormalizedRequest): EncodedRequest {
+    if (wireFor(req.modelId) === 'responses') return encodeResponses(req);
     // Assistant tool calls go back to the model as STRUCTURED tool_calls, never as text fences.
     // Serialising them as ```tool_call blocks teaches a model to imitate the pattern in prose,
     // which then never executes — observed with GLM-5.3-flash before this was fixed.
@@ -318,8 +396,9 @@ export const workersAiAdapter: ProviderAdapter = {
         function: { name: t.name, description: t.description, parameters: t.parameters },
       }));
     }
-    // Cloudflare documents reasoning_effort for GLM-4.7/5.3. Qwen3 is reasoning-capable but its
-    // binding schema does not document an effort knob, so do not send it an invented field.
+    // Cloudflare documents reasoning_effort for GLM-4.7/5.3, and Gemini's chat-completions wire
+    // takes the same field. Qwen3 is reasoning-capable but its binding schema does not document an
+    // effort knob, so do not send it an invented field.
     if (req.reasoningEffort && acceptsReasoningEffort(req.modelId)) {
       payload.reasoning_effort = req.reasoningEffort;
     }
@@ -334,20 +413,25 @@ export const workersAiAdapter: ProviderAdapter = {
     return env.AI.run(
       ctx.modelId as Parameters<Ai['run']>[0],
       payload as never,
-      gatewayOpts(env, ctx.kind, ctx.cacheTtl, ctx.sessionId) as never,
+      gatewayOpts(env, ctx.kind, ctx.cacheTtl, ctx.sessionId, ctx.modelId) as never,
     );
   },
 
   decode(raw: unknown, promptChars: number, modelId: string): NormalizedResponse {
     const text = extractText(raw);
     const toolCalls = extractToolCalls(raw);
-    const finish = (raw as { choices?: { finish_reason?: string }[] })?.choices?.[0]?.finish_reason;
+    const r = raw as { choices?: { finish_reason?: string }[]; status?: string; incomplete_details?: { reason?: string } };
+    // chat says `finish_reason: 'length'`; the Responses wire says `status: 'incomplete'` because
+    // of `max_output_tokens`. Both are a response cut at the ceiling.
+    const cut =
+      r?.choices?.[0]?.finish_reason === 'length' ||
+      (r?.status === 'incomplete' && r?.incomplete_details?.reason === 'max_output_tokens');
     return {
       text,
       toolCalls,
       usage: extractUsage(raw, promptChars, text),
-      finishReason: toolCalls.length ? 'tool_calls' : finish === 'length' ? 'length' : 'stop',
-      truncated: finish === 'length',
+      finishReason: toolCalls.length ? 'tool_calls' : cut ? 'length' : 'stop',
+      truncated: cut,
       provider: 'workers-ai',
       model: modelId,
     };

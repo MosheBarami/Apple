@@ -16,12 +16,14 @@
 //    the suite for the wrong reason. Cost arithmetic is asserted separately, against an explicit
 //    model, and the current frontier defaults are asserted in their own tests below.
 //
-// 2. THE LAYER IS HONEST. OpenAI, Google and DeepSeek have no credentials on this account, and the
-//    tests assert they report exactly that, that DeepSeek additionally reports it cannot serve the
-//    `vision` key, and that their invoke() refuses BEFORE reaching the network.
+// 2. THE LAYER IS HONEST. The Workers AI binding is the only transport. The direct-HTTP OpenAI,
+//    Google and DeepSeek adapters, which never had a credential, were removed by D-VISION-1: the
+//    outside models (Gemini, GPT-5.6) now run on the same binding through AI Gateway, and their
+//    wires are proven in apps/worker/tests/model-wires.test.mjs. So the tests below assert that no
+//    stray key can bring a second transport back, and that an outside model without a gateway is
+//    refused before it reaches the binding.
 //
-// NOTHING IN THIS FILE MAKES A NETWORK CALL. Every provider response is a synthetic fixture and
-// every credential is absent, which is also the state of production.
+// NOTHING IN THIS FILE MAKES A NETWORK CALL. Every provider response is a synthetic fixture.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -48,6 +50,11 @@ function bundle(entry, label) {
 const providersFile = bundle(join(WORKER, 'src', 'providers', 'index.ts'), 'providers');
 const P = await import(`file://${providersFile}`);
 rmSync(providersFile, { force: true });
+
+const modelsFile = bundle(join(ROOT, 'packages', 'shared', 'src', 'models.ts'), 'models');
+const { MODEL_REGISTRY } = await import(`file://${modelsFile}`);
+rmSync(modelsFile, { force: true });
+const OUTSIDE = MODEL_REGISTRY.filter((m) => m.route === 'unified-billing');
 
 const gatewayFile = bundle(join(WORKER, 'src', 'gateway.ts'), 'gateway');
 const G = await import(`file://${gatewayFile}`);
@@ -281,7 +288,17 @@ test('REFACTOR PROOF: provider refactor preserves transport outside model-specif
       return rest;
     };
     assert.deepEqual(stablePayload(a.seen.runs[0].payload), stablePayload(b.seen.runs[0].payload), `${name}: same transport payload`);
-    assert.deepEqual(a.seen.runs[0].opts, b.seen.runs[0].opts, `${name}: same AI Gateway options`);
+    // RE-AIMED (D-VISION-1): the live gateway's log metadata now also names the model a call went
+    // to, so the gateway's own log attributes spend per model. The model id is configuration and is
+    // excluded above for that reason; every other option — gateway id, cache TTL, logging, the
+    // `kind`, the session-affinity header — must still match the baseline exactly.
+    const withoutModelTag = (opts) => {
+      const o = structuredClone(opts);
+      if (o?.gateway?.metadata) delete o.gateway.metadata.model;
+      return o;
+    };
+    assert.equal(a.seen.runs[0].opts?.gateway?.metadata?.model, a.seen.runs[0].id, `${name}: the log names the model that ran`);
+    assert.deepEqual(withoutModelTag(a.seen.runs[0].opts), b.seen.runs[0].opts, `${name}: same AI Gateway options`);
 
     // WHAT THIS PROOF DOES AND DOES NOT COVER.
     //
@@ -335,9 +352,14 @@ test('gateway defaults: the run modes share one foundation, and memory and visio
   assert.equal(G.DEFAULT_MODELS.vision.id, P.VISION_MODEL_ID, 'vision remains the separate multimodal specialist');
   assert.equal(G.DEFAULT_MODELS.vision.ctx, P.VISION_CONTEXT_WINDOW);
   assert.equal(G.DEFAULT_MODELS.vision.nativeTools, false);
-  // THE KEY SET IS THE CONTRACT, so it is asserted rather than assumed: two run modes and the two
-  // lanes that are not run modes. A third run-mode key would mean Autonomous crept back in as a mode.
-  assert.deepEqual(Object.keys(G.DEFAULT_MODELS).sort(), ['agent', 'memory', 'plan', 'vision']);
+  // THE KEY SET IS THE CONTRACT, so it is asserted rather than assumed: two run modes, the two
+  // lanes that are not run modes, and — since D-VISION-1 — one key per outside model, named by its
+  // registry id and read from the registry rather than listed here. A third run-mode key would
+  // mean Autonomous crept back in as a mode.
+  const outside = MODEL_REGISTRY.filter((m) => m.route === 'unified-billing').map((m) => m.id);
+  assert.ok(outside.length >= 1, 'the registry lists no outside model — the subtraction below checks nothing');
+  assert.deepEqual(Object.keys(G.DEFAULT_MODELS).filter((k) => !outside.includes(k)).sort(), ['agent', 'memory', 'plan', 'vision']);
+  for (const id of outside) assert.ok(G.DEFAULT_MODELS[id], `no model key for ${id}`);
 });
 
 test('the chosen Apple, Apple MAX and vision catalogue rows carry the verified facts', () => {
@@ -467,18 +489,11 @@ test('the response still reports provider "workers-ai" and settles on reported n
 // 2. availability is computed, never asserted
 // ---------------------------------------------------------------------------
 
-test('only Workers AI is available on an env with no provider keys', () => {
+test('Workers AI is the only platform provider, and it claims no gap it does not have', () => {
   const { env } = fakeEnv();
   const rows = P.providerAvailability(env);
-  assert.deepEqual(
-    rows.map((r) => [r.provider, r.available, r.reason]),
-    [
-      ['workers-ai', true, null],
-      ['openai', false, 'no_credentials'],
-      ['google', false, 'no_credentials'],
-      ['deepseek', false, 'no_credentials'],
-    ],
-  );
+  assert.deepEqual(rows.map((r) => [r.provider, r.available, r.reason]), [['workers-ai', true, null]]);
+  assert.deepEqual(rows[0].unsupportedModelKeys, []);
 });
 
 test('Workers AI is unavailable when the AI binding is missing — availability reads env, not a literal', () => {
@@ -489,27 +504,14 @@ test('Workers AI is unavailable when the AI binding is missing — availability 
   assert.equal(row.reason, 'binding_missing');
 });
 
-test('a provider flips to available the moment its credential appears, and only then', () => {
+test('a stray provider key brings no second transport back', () => {
+  // RESTATED (D-VISION-1). This asserted that OpenAI flipped to available when OPENAI_API_KEY
+  // appeared. That adapter is gone, and the property that replaces it is the opposite one: a key
+  // left in the environment must not open a path that bypasses the gateway and its credits.
   const { env } = fakeEnv();
-  assert.equal(P.providerAvailability(env).find((r) => r.provider === 'openai').available, false);
-  const withKey = { ...env, OPENAI_API_KEY: 'sk-not-a-real-key' };
-  assert.equal(P.providerAvailability(withKey).find((r) => r.provider === 'openai').available, true);
-  // whitespace is not a credential
-  const blank = { ...env, OPENAI_API_KEY: '   ' };
-  assert.equal(P.providerAvailability(blank).find((r) => r.provider === 'openai').available, false);
-});
-
-test('DeepSeek reports that it cannot serve the vision model key — with or without a key', () => {
-  const { env } = fakeEnv();
-  for (const e of [env, { ...env, DEEPSEEK_API_KEY: 'ds-not-a-real-key' }]) {
-    const row = P.providerAvailability(e).find((r) => r.provider === 'deepseek');
-    assert.deepEqual(row.unsupportedModelKeys, [{ key: 'vision', reason: 'no_vision' }]);
-    assert.match(row.detail, /cannot serve the `vision` model key/);
-  }
-  // and no other provider claims a gap it does not have
-  for (const p of ['workers-ai', 'openai', 'google']) {
-    assert.deepEqual(P.providerAvailability(env).find((r) => r.provider === p).unsupportedModelKeys, []);
-  }
+  const keyed = { ...env, OPENAI_API_KEY: 'sk-not-a-real-key', GOOGLE_API_KEY: 'k', DEEPSEEK_API_KEY: 'k' };
+  assert.deepEqual(P.providerAvailability(keyed), P.providerAvailability(env));
+  assert.deepEqual(P.capabilityTable(keyed).map((r) => r.provider), P.capabilityTable(env).map((r) => r.provider));
 });
 
 test('the capability table carries every required field and computes availability per row', () => {
@@ -543,32 +545,31 @@ test('the capability table carries every required field and computes availabilit
   }
 });
 
-test('the catalogued facts match the verified product choices', () => {
-  const by = Object.fromEntries(P.allModels().map((m) => [m.id, m]));
-  assert.deepEqual(
-    [by['gpt-5.6-luna'].supportsTools, by['gpt-5.6-luna'].supportsVision, by['gpt-5.6-luna'].inputCostPer1M, by['gpt-5.6-luna'].outputCostPer1M],
-    [true, true, 0.2, 1.2],
-  );
-  assert.deepEqual(
-    [by['gemini-3.7-flash'].supportsTools, by['gemini-3.7-flash'].supportsVision, by['gemini-3.7-flash'].inputCostPer1M, by['gemini-3.7-flash'].outputCostPer1M],
-    [true, true, 0.75, 3.75],
-  );
-  assert.deepEqual(
-    [by['deepseek-v4-flash'].supportsTools, by['deepseek-v4-flash'].supportsVision, by['deepseek-v4-flash'].inputCostPer1M, by['deepseek-v4-flash'].outputCostPer1M],
-    [true, false, 0.44, 1.32],
-  );
+test('the outside models are not in the platform catalogue, so no capability row claims them', () => {
+  // RESTATED (D-VISION-1). This pinned the prices of the retired direct-HTTP catalogue rows. The
+  // outside models' prices now live in pricing.ts MODEL_PRICES, pinned by
+  // apps/worker/tests/model-step-caps.test.mjs. What this file owns is availability: an outside
+  // model is not "available" until a live call through the gateway has been observed (Q-006), so it
+  // must not appear as a row the capability table would report available.
+  assert.ok(OUTSIDE.length >= 1, 'the registry lists no outside model — this checks nothing');
+  const catalogued = new Set(P.allModels().map((m) => m.id));
+  for (const m of OUTSIDE) assert.equal(catalogued.has(m.providerModelId), false, `${m.id} is in the platform catalogue`);
 });
 
-test('a disabled provider refuses BEFORE it can reach the network', async () => {
-  const { env } = fakeEnv();
-  for (const id of ['openai', 'google', 'deepseek']) {
-    const adapter = P.getAdapter(id);
-    await assert.rejects(
-      () => adapter.invoke(env, { model: 'x' }, { modelId: 'x', kind: 'probe', cacheTtl: 0 }),
-      (e) => e.kind === 'auth' && /not configured/.test(e.message),
-      `${id} must refuse without credentials`,
-    );
+test('an outside model without AI_GATEWAY_ID refuses BEFORE it can reach the binding', async () => {
+  // RESTATED (D-VISION-1). The disabled HTTP adapters this covered are gone. The same property now
+  // belongs to the outside models: only a call that names the gateway is billed to its credits.
+  for (const m of OUTSIDE) {
+    G.resetModelCache();
+    const { env, seen } = fakeEnv({ AI_GATEWAY_ID: undefined });
+    await assert.rejects(() => G.chat(env, { model: m.id, messages: [{ role: 'user', content: 'hi' }] }, { kind: 'probe' }), /AI_GATEWAY_ID/);
+    assert.equal(seen.runs.length, 0, `${m.id} reached the binding without a gateway`);
+    assert.equal(seen.released.length, seen.reserved.length, `${m.id}: the hold was not handed back`);
   }
+  G.resetModelCache();
+  // The refusals above are real failures in the gateway's health ring; later tests read that ring
+  // as if it started clean.
+  G.resetProviderHealth();
 });
 
 // ---------------------------------------------------------------------------
@@ -580,8 +581,9 @@ const TOOLS = [
 ];
 
 test('OpenAI-shaped providers encode tools as {type:function, function:{...}}', () => {
-  for (const id of ['openai', 'deepseek']) {
-    const { payload } = P.getAdapter(id).encode({
+  // The chat wire on the binding, and the OpenAI-compatible encoder the customer-key path uses.
+  for (const encode of [P.workersAiAdapter.encode, P.encodeOpenAiChat]) {
+    const { payload } = encode({
       modelId: 'm',
       messages: [{ role: 'user', content: 'hi' }],
       tools: TOOLS,
@@ -610,67 +612,9 @@ test('OpenAI-shaped providers decode tool_calls into GatewayToolCall', () => {
   assert.deepEqual(out.usage, { inputTokens: 10, outputTokens: 3, cachedInputTokens: 0 });
 });
 
-test('GEMINI OUT: tools become functionDeclarations', () => {
-  assert.deepEqual(P.toGeminiTools(TOOLS), [
-    { functionDeclarations: [{ name: 'run_luau', description: 'Run Luau', parameters: TOOLS[0].parameters }] },
-  ]);
-});
-
-test('GEMINI OUT: system becomes systemInstruction, assistant becomes model, tool becomes functionResponse', () => {
-  const convo = P.toGeminiContents([
-    { role: 'system', content: 'You are Golem.' },
-    { role: 'user', content: 'Build it.' },
-    { role: 'assistant', content: 'on it', toolCalls: [{ id: 'c1', name: 'run_luau', arguments: '{"source":"x"}' }] },
-    { role: 'tool', content: '{"ok":true}', toolCallId: 'c1', name: 'run_luau' },
-  ]);
-  assert.deepEqual(convo.systemInstruction, { parts: [{ text: 'You are Golem.' }] });
-  assert.deepEqual(convo.contents, [
-    { role: 'user', parts: [{ text: 'Build it.' }] },
-    { role: 'model', parts: [{ text: 'on it' }, { functionCall: { name: 'run_luau', args: { source: 'x' } } }] },
-    { role: 'user', parts: [{ functionResponse: { name: 'run_luau', response: { ok: true } } }] },
-  ]);
-});
-
-test('GEMINI OUT: a data: image becomes inlineData', () => {
-  const convo = P.toGeminiContents([
-    { role: 'user', content: [{ type: 'text', text: 'look' }, { type: 'image_url', image_url: { url: 'data:image/png;base64,QUJD' } }] },
-  ]);
-  assert.deepEqual(convo.contents[0].parts, [{ text: 'look' }, { inlineData: { mimeType: 'image/png', data: 'QUJD' } }]);
-});
-
-test('GEMINI IN: functionCall parts become GatewayToolCall with JSON-string arguments', () => {
-  const raw = {
-    candidates: [
-      {
-        finishReason: 'STOP',
-        content: { parts: [{ text: 'Placing it.' }, { functionCall: { name: 'run_luau', args: { source: 'print(1)' } } }] },
-      },
-    ],
-    usageMetadata: { promptTokenCount: 900, candidatesTokenCount: 40, cachedContentTokenCount: 100 },
-  };
-  const out = P.decodeGemini(raw, 3000, 'gemini-3.7-flash');
-  assert.equal(out.text, 'Placing it.');
-  assert.equal(out.toolCalls.length, 1);
-  assert.equal(out.toolCalls[0].name, 'run_luau');
-  assert.equal(out.toolCalls[0].arguments, '{"source":"print(1)"}', 'args object must be serialised to the JSON string Golem carries');
-  assert.equal(out.finishReason, 'tool_calls');
-  assert.deepEqual(out.usage, { inputTokens: 900, outputTokens: 40, cachedInputTokens: 100 });
-  assert.equal(out.provider, 'google');
-});
-
-test('GEMINI round trip: a tool call survives out-and-back unchanged', () => {
-  const original = { id: 'c1', name: 'run_luau', arguments: '{"source":"print(1)","n":3}' };
-  const convo = P.toGeminiContents([{ role: 'assistant', content: '', toolCalls: [original] }]);
-  const part = convo.contents[0].parts[0];
-  const back = P.fromGeminiFunctionCall(part, 0);
-  assert.equal(back.name, original.name);
-  assert.deepEqual(JSON.parse(back.arguments), JSON.parse(original.arguments));
-});
-
-test('GEMINI: MAX_TOKENS and safety blocks map to length and error', () => {
-  assert.equal(P.decodeGemini({ candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'cut' }] } }] }, 10, 'g').finishReason, 'length');
-  assert.equal(P.decodeGemini({ candidates: [{ finishReason: 'SAFETY', content: { parts: [] } }] }, 10, 'g').finishReason, 'error');
-});
+// The direct Gemini adapter (functionDeclarations, systemInstruction, inlineData) was removed by
+// D-VISION-1: Gemini now runs on the binding's chat-completions wire, whose encode/decode are
+// covered above and in apps/worker/tests/model-wires.test.mjs.
 
 // ---------------------------------------------------------------------------
 // 4. error normalization
@@ -704,7 +648,8 @@ test('HTTP providers classify by status first, then by message', () => {
 
 test('every adapter answers classifyError with a kind from the taxonomy', () => {
   const KINDS = new Set(['rate_limit', 'auth', 'context_length', 'content_filter', 'transient', 'unknown']);
-  for (const id of ['workers-ai', 'openai', 'google', 'deepseek']) {
+  assert.ok(P.PROVIDER_ORDER.length >= 1);
+  for (const id of P.PROVIDER_ORDER) {
     const cls = P.getAdapter(id).classifyError(new Error('boom'));
     assert.ok(KINDS.has(cls.kind), `${id} returned ${cls.kind}`);
     assert.equal(typeof cls.retryable, 'boolean');
@@ -757,18 +702,24 @@ test('Apple and Apple MAX reservations use the conservative selected-model price
   assert.ok(cached < P.neuronsForModelTokens(max, 1_000_000, 0, 0), 'the cached discount is not reaching the MAX lane');
 });
 
+// RESTATED (D-VISION-1). These three used the retired OpenAI and DeepSeek catalogue rows. The
+// conversion they pin is still cost.ts's, so they now run against an explicit token-billed record
+// that is not on the Workers AI table — the arithmetic, not a catalogue entry, is the subject.
+const TOKEN_BILLED = {
+  id: 'token-billed-probe', displayName: 'probe', provider: 'openrouter', supportsTools: true, supportsVision: false,
+  contextWindow: 128_000, maxOutput: 16_384, inputCostPer1M: 0.2, outputCostPer1M: 1.2, unverifiedFields: [],
+};
+
 test('token-billed providers convert into neurons so the BudgetDO ceiling still applies', () => {
-  const luna = P.allModels().find((m) => m.id === 'gpt-5.6-luna');
+  const luna = TOKEN_BILLED;
   // 1M in at $0.20 + 1M out at $1.20 = $1.40; $1.40 / $0.000011 per neuron
   assert.equal(P.neuronsForModelTokens(luna, 1_000_000, 1_000_000), Math.ceil(1.4 / 0.000011));
-  const ds = P.allModels().find((m) => m.id === 'deepseek-v4-flash');
-  assert.equal(P.neuronsForModelTokens(ds, 1_000_000, 1_000_000), Math.ceil((0.44 + 1.32) / 0.000011));
   // cached tokens are NOT discounted for providers whose cache pricing we have not verified
   assert.equal(P.neuronsForModelTokens(luna, 1_000_000, 0, 1_000_000), P.neuronsForModelTokens(luna, 1_000_000, 0, 0));
 });
 
 test('a converted cost is expressible in Credits on the same NEURONS_PER_CREDIT scale', () => {
-  const luna = P.allModels().find((m) => m.id === 'gpt-5.6-luna');
+  const luna = TOKEN_BILLED;
   const c = P.costOf(luna, 10_000, 1_000);
   assert.ok(c.neurons > 0 && c.usd > 0);
   assert.equal(c.credits, Math.max(1, Math.ceil(c.neurons / P.NEURONS_PER_CREDIT)));
@@ -776,7 +727,7 @@ test('a converted cost is expressible in Credits on the same NEURONS_PER_CREDIT 
 });
 
 test('the pre-flight estimate is pessimistic: every allowed output token is assumed spent', () => {
-  const luna = P.allModels().find((m) => m.id === 'gpt-5.6-luna');
+  const luna = TOKEN_BILLED;
   const est = P.estimateNeuronsForModel(luna, 3500, 1000);
   assert.equal(est, P.neuronsForModelTokens(luna, 1000, 1000));
   assert.ok(est >= P.neuronsForModelTokens(luna, 1000, 1), 'estimate must never undershoot a short answer');
@@ -861,41 +812,49 @@ test('AUTO: with only Workers AI credentialed the choice is deterministic and it
   // it catalogues several, the string ranks within the credentialed provider and the per-provider
   // detail lives in `rejected`. The diagnostic did not disappear, it became structured — and a
   // field is a sturdier thing to assert than a sentence.
-  const why = Object.fromEntries(picks[0].rejected.map((x) => [x.provider, x.why]));
-  assert.equal(why.openai, 'no credentials configured');
-  assert.equal(why.google, 'no credentials configured');
-  assert.equal(why.deepseek, 'no credentials configured');
+  //
+  // RESTATED (D-VISION-1): the three uncredentialed HTTP providers it named are gone, so every
+  // rejection is now a capability verdict about a Workers AI model, never a missing credential.
+  for (const x of picks[0].rejected) {
+    assert.equal(x.provider, 'workers-ai');
+    assert.notEqual(x.why, 'no credentials configured');
+  }
   assert.match(r, /tool calling/, 'it should name the capability the task needed');
 });
 
-test('AUTO: a vision task rules DeepSeek out on capability, not on credentials', () => {
+test('AUTO: a vision task rules text-only models out on capability, not on credentials', () => {
   const { env } = fakeEnv();
-  const all = { ...env, OPENAI_API_KEY: 'k', GOOGLE_API_KEY: 'k', DEEPSEEK_API_KEY: 'k' };
-  const pick = P.selectProvider(all, { modelKey: 'vision' });
+  const pick = P.selectProvider(env, { modelKey: 'vision' });
   assert.equal(pick.ok, true);
-  const ds = pick.rejected.find((r) => r.provider === 'deepseek');
-  assert.equal(ds.why, 'no vision support');
+  const textOnly = P.allModels().filter((m) => !m.supportsVision);
+  assert.ok(textOnly.length >= 1, 'no text-only model in the catalogue — this checks nothing');
+  for (const m of textOnly) {
+    assert.equal(pick.rejected.find((r) => r.model === m.id)?.why, 'no vision support', m.id);
+  }
   // and whatever wins must actually be able to see an image — that is the whole point of the
   // `vision` key, and a text-only winner would make the visual critic silently non-visual.
   assert.equal(pick.model.supportsVision, true, 'the vision key must resolve to a vision model');
   assert.match(pick.reasoning, /cheapest of the \d+ usable options/);
 });
 
-test('AUTO: ranking is by cost and is stable when GLM is out of the picture', () => {
+test('AUTO: ranking is by cost among the models that can serve the task', () => {
+  // RESTATED (D-VISION-1): this ranked the retired HTTP providers against each other with the
+  // binding absent. With one provider the ranking is within its catalogue, and the pick is the
+  // cheapest tool-capable model by the same blended price the selector uses.
   const { env } = fakeEnv();
-  const noBinding = { ...env, AI: undefined, OPENAI_API_KEY: 'k', GOOGLE_API_KEY: 'k', DEEPSEEK_API_KEY: 'k' };
-  const pick = P.selectProvider(noBinding, { modelKey: 'agent' });
+  const pick = P.selectProvider(env, { modelKey: 'agent' });
   assert.equal(pick.ok, true);
-  assert.equal(pick.provider, 'openai', 'Luna at $0.20/$1.20 is cheaper than DeepSeek $0.44/$1.32 and Gemini $0.75/$3.75');
+  const capable = P.allModels().filter((m) => m.supportsTools);
+  const cheapest = Math.min(...capable.map((m) => P.blendedPricePer1M(m)));
+  assert.equal(P.blendedPricePer1M(pick.model), cheapest);
   assert.match(pick.reasoning, /cheapest/);
 });
 
 test('AUTO: when nothing can serve the task it refuses and explains, rather than picking anyway', () => {
   const { env } = fakeEnv();
-  const only = { ...env, AI: undefined, DEEPSEEK_API_KEY: 'k' };
+  const only = { ...env, AI: undefined };
   const pick = P.selectProvider(only, { modelKey: 'vision' });
   assert.equal(pick.ok, false);
   assert.match(pick.reasoning, /No provider can serve the `vision` task/);
-  assert.match(pick.reasoning, /deepseek \(no vision support\)/);
   assert.match(pick.reasoning, /workers-ai \(binding not present\)/);
 });

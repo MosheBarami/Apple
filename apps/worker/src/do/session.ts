@@ -32,7 +32,7 @@ import type {
 } from '@golem/shared';
 import { canUseProductModel, isRunFailure, MESSAGE_MAX_CHARS, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
 import { isRefusalRemedyCode, type RefusalRemedyCode } from '@golem/shared';
-import { isCatalogueModelIdShape } from '@golem/shared';
+import { isCatalogueModelIdShape, registryModel } from '@golem/shared';
 
 /**
  * The edit history being moved onto the message that replaces an edited one.
@@ -540,10 +540,12 @@ function effectiveProductModel(mode: ProductMode, requested?: ProductModel): Pro
   return requested ?? 'apple';
 }
 
-// Product-model entitlement and Plan/Agent are separate axes. Both modes currently use the same
-// measured foundation; entitlement still controls paid capabilities and effort policy.
+// Product-model entitlement and Plan/Agent are separate axes. The two Apple lanes use the same
+// measured foundation under the mode keys (plan/agent), so entitlement reaches them only as effort
+// policy. A third-party model (D-VISION-1) is its own DEFAULT_MODELS key, named by its registry id,
+// because its provider id, output ceiling and wire differ from GLM's.
 export function gatewayModelFor(mode: ProductMode, productModel?: ProductModel): string {
-  void productModel;
+  if (productModel && registryModel(productModel)?.route === 'unified-billing') return productModel;
   return mode;
 }
 
@@ -3680,8 +3682,8 @@ export class SessionDO extends DurableObject<Env> {
     const choice = chooseEffort({
       mode: agent.mode,
       // The entitlement travels WITH the mode. `chooseEffort` is the ONLY thing that reads it now:
-      // `gatewayModelFor` voids its productModel argument and `baseTokensFor` is keyed on the mode
-      // alone, so the entitlement reaches the request as an EFFORT FLOOR and nothing else. The
+      // for the Apple lanes `gatewayModelFor` returns the mode key and `baseTokensFor` is keyed on
+      // the mode alone, so the entitlement reaches the request as an EFFORT FLOOR and nothing else. The
       // thinking policy used to ignore it entirely, which is how Apple MAX in Plan mode came to
       // think at `low`.
       productModel: agent.productModel,

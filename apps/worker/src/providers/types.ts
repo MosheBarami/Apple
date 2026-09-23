@@ -16,7 +16,7 @@ export type { GatewayContentPart, GatewayMessage, GatewayToolCall, GatewayToolDe
 // ---------------------------------------------------------------------------
 
 /** Providers credentialed by THIS worker's own secrets: the registry's domain. */
-export type PlatformProviderId = 'workers-ai' | 'openai' | 'google' | 'deepseek';
+export type PlatformProviderId = 'workers-ai';
 
 /**
  * Providers reached ONLY with a customer's own key, supplied per call (InvokeContext.customerApiKey).
@@ -34,7 +34,7 @@ export type ProviderId = PlatformProviderId | CustomerKeyProviderId;
  * Fixed iteration order. Auto-selection sorts on cost and breaks ties with this list, so the
  * choice is deterministic rather than dependent on object key order.
  */
-export const PROVIDER_ORDER: readonly PlatformProviderId[] = ['workers-ai', 'openai', 'google', 'deepseek'];
+export const PROVIDER_ORDER: readonly PlatformProviderId[] = ['workers-ai'];
 
 // ---------------------------------------------------------------------------
 // capability metadata
@@ -95,7 +95,7 @@ export interface ProviderAvailability {
   detail: string;
   /**
    * Model keys this provider could not serve even with credentials, because the model lacks a
-   * capability the key requires. DeepSeek V4 Flash has no vision, so it reports `vision` here.
+   * capability the key requires (a text-only model reports `vision` here).
    */
   unsupportedModelKeys: UnsupportedModelKey[];
 }

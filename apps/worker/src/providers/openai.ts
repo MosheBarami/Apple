@@ -1,51 +1,23 @@
-// OpenAI adapter — DISABLED. There is no OPENAI_API_KEY on this account and none is being added.
+// The OpenAI chat-completions wire shape: encode, decode and HTTP error classification.
 //
-// The code is real and complete so that adding the secret is the only step to enabling it, but
-// `availability()` reads env at call time and reports {available:false, reason:'no_credentials'}
-// until one exists, and `invoke()` refuses rather than reaching the network without a key.
-//
-// The OpenAI chat-completions wire shape is also what Workers AI and DeepSeek speak, so the
-// encode/decode helpers here are exported and reused by deepseek.ts.
-import type { Env } from '../env';
+// There is no OpenAI adapter any more. GPT-5.6 Sol and Luna, and Gemini, run on the Workers AI
+// binding through AI Gateway (D-VISION-1; see workers-ai.ts). These helpers stay only because the
+// customer-key OpenRouter path (openrouter.ts) speaks this wire; they go when that path goes.
 import {
   contentChars,
   ProviderError,
   type EncodedRequest,
   type ErrorClassification,
   type GatewayToolCall,
-  type InvokeContext,
   type NormalizedRequest,
   type NormalizedResponse,
   type NormalizedUsage,
-  type ProviderAdapter,
-  type ProviderAvailability,
   type ProviderId,
-  type ProviderModel,
   errorMessage,
 } from './types';
 
-export const OPENAI_BASE_URL = 'https://api.openai.com/v1';
-
-export const OPENAI_MODELS: readonly ProviderModel[] = [
-  {
-    id: 'gpt-5.6-luna',
-    displayName: 'GPT-5.6 Luna',
-    provider: 'openai',
-    supportsTools: true,
-    supportsVision: true,
-    // NOT VERIFIED. The product brief established the id, tool/vision support and the price; it did
-    // not establish these two, and no call has ever been made to check. They are conservative
-    // placeholders and are declared as such below rather than dressed up as facts.
-    contextWindow: 128_000,
-    maxOutput: 16_384,
-    inputCostPer1M: 0.2,
-    outputCostPer1M: 1.2,
-    unverifiedFields: ['contextWindow', 'maxOutput'],
-  },
-];
-
 // ---------------------------------------------------------------------------
-// OpenAI chat-completions wire shape — shared with DeepSeek
+// OpenAI chat-completions wire shape
 // ---------------------------------------------------------------------------
 
 export interface OpenAiWireMessage {
@@ -187,62 +159,3 @@ export function classifyHttpError(e: unknown): ErrorClassification {
   }
   return { kind: 'unknown', retryable: false };
 }
-
-/** POST a chat-completions payload. Never reached without a key — invoke() checks first. */
-export async function postJson(
-  provider: ProviderId,
-  url: string,
-  apiKey: string,
-  payload: unknown,
-): Promise<unknown> {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    const cls = classifyHttpError(new ProviderError('unknown', provider, body, res.status));
-    throw new ProviderError(cls.kind, provider, `${provider} HTTP ${res.status}: ${body.slice(0, 400)}`, res.status, cls.retryable);
-  }
-  return res.json();
-}
-
-// ---------------------------------------------------------------------------
-// adapter
-// ---------------------------------------------------------------------------
-
-export const openaiAdapter: ProviderAdapter = {
-  id: 'openai',
-  models: OPENAI_MODELS,
-
-  availability(env: Env): ProviderAvailability {
-    const key = env.OPENAI_API_KEY?.trim();
-    const available = !!key;
-    return {
-      provider: 'openai',
-      available,
-      reason: available ? null : 'no_credentials',
-      detail: available
-        ? 'OPENAI_API_KEY is set.'
-        : 'No OPENAI_API_KEY secret is configured on this worker, so OpenAI cannot be called.',
-      unsupportedModelKeys: [],
-    };
-  },
-
-  encode: encodeOpenAiChat,
-
-  async invoke(env: Env, payload: unknown, _ctx: InvokeContext): Promise<unknown> {
-    const key = env.OPENAI_API_KEY?.trim();
-    if (!key) {
-      throw new ProviderError('auth', 'openai', 'OpenAI is not configured: OPENAI_API_KEY is unset.', undefined, false);
-    }
-    return postJson('openai', `${OPENAI_BASE_URL}/chat/completions`, key, payload);
-  },
-
-  decode(raw: unknown, promptChars: number, modelId: string): NormalizedResponse {
-    return decodeOpenAiChat(raw, promptChars, modelId, 'openai');
-  },
-
-  classifyError: classifyHttpError,
-};
