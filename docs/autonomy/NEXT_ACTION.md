@@ -1,15 +1,15 @@
 # NEXT ACTION
 
-**Re-run mission 2 (visually ambitious environment) on the current build in a fresh place.**
-Studio pid 24529 sits behind a "Save changes to Apple-Mission2b-Baseplate.rbxl?" dialog that the agent may
-not click (it belongs to a system panel process; OWNER_QUEUE Q-005). Once it is gone: launch
+**Load the new plugin build in Studio, then re-check what only it can show.** Studio pid 24529 sits behind a
+"Save changes?" prompt the agent may not click (OWNER_QUEUE Q-005). Once it is gone, relaunch
 `/private/tmp/RobloxStudioNoUpdate.app/Contents/MacOS/RobloxStudio -localPlaceFile
-/Users/moshe/Documents/Apple-Mission2c-Baseplate.rbxl -task EditFile` (a fresh baseplate made at 04:33; the
-plugin it loads is local build 494fb68f), create a project, pair, allow edits, and send the exact mission-2
-prompt. Measure: Credits, time, how it ends, and the place read back with lune plus the viewport. Pass = no
-Baseplate under the island, Terrain landform, waterfall reaching a pool, trees 30-50 studs, warm light, and
-a reply that does not promise an orange sky. Also confirm in that run: the first checkpoint is taken
-(F-051), the composer clears after "Start building" (F-052), and no NumberSequence refusal.
+/Users/moshe/Documents/Apple-Mission2c-Baseplate.rbxl -task EditFile` (installed plugin sha256 8a9ec295: Terrain in
+renders, ColorGradingEffect checkpoints, [t,v] NumberSequence keypoints, terrain_edit clear). Then:
+1. F-051: the first checkpoint on a fresh place is taken (no "ColorGradingEffect" toast).
+2. Mission 2 once more: inspect_visually now SEES the island — record its score instead of "not scored".
+3. F-033: start a build and press Disconnect in the Apple panel mid-run; the reply must say Studio
+   disconnected, not "not offered in this mode", and must not overcount changes.
+4. F-052 live: after "Start building" the composer is empty.
 
-Then: F-053 (undo point lost after generate_model), the remaining high findings, three fresh reviews, and the
-final plugin publish + appeal before 2026-10-23 01:23 IDT (D-STORE-2).
+Then: F-028 (read-only diagnosis), F-036 (a lighting change under ~60 Credits), F-053, three fresh reviews,
+and the final plugin publish + appeal before 2026-10-23 01:23 IDT (D-STORE-2) which closes F-020/F-034/F-038.

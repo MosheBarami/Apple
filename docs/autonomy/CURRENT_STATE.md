@@ -2,7 +2,7 @@
 
 Directly measured facts only. Re-measure at the start of every session; this file is a snapshot.
 
-**Measured:** 2026-09-23 ~06:50 IDT.
+**Measured:** 2026-09-23 ~07:25 IDT.
 
 ## Repository
 
@@ -22,6 +22,13 @@ Directly measured facts only. Re-measure at the start of every session; this fil
   (c58b1815-7bcb-4ab9-a809-da159374bf78), running the plugin build loaded at 04:21 (ed6622c5 era, before the
   ColorGradingEffect and NumberSequence fixes). A quit prompt is open on it (Q-005).
 - Installed local plugin (loaded at the next launch): sha256 494fb68f875cdb1f9481634aedcdc43886fd87c4b709a32a4248356a2d7d7f8e.
+
+## Since 06:50
+
+- Mission 2 met (D-VIS-1): 07:14 run, one sentence → the kit floating island, 62 Credits, 1 m 51 s, honest reply;
+  follow-up "add a campfire" 40 Credits, 2 m 52 s. A render that cannot show Terrain no longer scores an
+  outdoor scene. F-023, F-030 closed; F-049 medium (sunset sky only).
+- Gate: unmet = 0/3 fresh reviews; critical F-020, F-034, F-038 (final publish); high F-028, F-033, F-036, F-051.
 
 ## Since 05:05
 
