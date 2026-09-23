@@ -25,7 +25,7 @@ async function authHeaders() {
 // Repo flows: Langflow's export format ({ id?, name, description, endpoint_name?, data:{nodes,edges} }),
 // at packages/langflow/*.json or packages/langflow/flows/*.json. A file that does not parse is listed
 // with its name and `invalid: true` so the owner sees it rather than nothing.
-function repoFlows() {
+export function repoFlows() {
   if (!fs.existsSync(FLOW_DIR)) return null;
   const files = [];
   for (const dir of [FLOW_DIR, path.join(FLOW_DIR, 'flows')]) {
@@ -35,10 +35,12 @@ function repoFlows() {
     const file = path.relative(FLOW_DIR, full), base = path.basename(full, '.json');
     try {
       const j = JSON.parse(fs.readFileSync(full, 'utf8'));
+      // Other JSON beside the flows (package.json) is not an export: an export carries `data`.
+      if (!j || typeof j.data !== 'object') return null;
       return { file, id: j.id ?? null, name: j.name || base, description: j.description || null, endpoint: j.endpoint_name || null,
         nodes: Array.isArray(j.data?.nodes) ? j.data.nodes.length : null, updatedAt: fs.statSync(full).mtime.toISOString() };
     } catch { return { file, id: null, name: base, description: null, endpoint: null, nodes: null, invalid: true }; }
-  });
+  }).filter(Boolean);
 }
 
 // The newest vertex build of a flow: when it ran and whether every vertex came back valid.

@@ -178,3 +178,10 @@ test('langflow degrades to "not running" when the local instance is down', async
   assert.ok(Array.isArray(r.flows));
   mode = 'echo200'; uncache('');
 });
+
+test('the Langflow page lists only flow exports, not other JSON beside them (package.json)', async () => {
+  const { repoFlows } = await import('./platforms/langflow.mjs');
+  const flows = repoFlows();
+  assert.ok(flows && flows.length >= 4, 'the repo flows were not found — this test would check nothing');
+  assert.deepEqual(flows.filter((f) => f.nodes === null && !f.invalid).map((f) => f.file), []);
+});
