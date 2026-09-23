@@ -861,6 +861,7 @@ const TOOL_ARGS = {
   set_locked: { paths: ['game.Workspace.A'], locked: true },
   set_visible: { paths: ['game.Workspace.A'], visible: false },
   edit_terrain: { action: 'fill_block', center: [0, 0, 0], size: [4, 4, 4], material: 'Grass' },
+  build_scene: { kit: 'floating_island', center: [0, 150, 0], radius: 40 },
 
   run_luau: { code: 'return 1' },
   run_and_check: { seconds: 2 },

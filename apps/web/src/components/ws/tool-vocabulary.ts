@@ -143,6 +143,7 @@ export const TOOL = {
   create_instances: { kind: 'building', label: 'Created instances' },
   insert_asset: { kind: 'building', label: 'Inserted an asset' },
   edit_terrain: { kind: 'building', label: 'Edited terrain' },
+  build_scene: { kind: 'building', label: 'Built the scene' },
   // Arbitrary Luau against the place can do anything; `building` is the coarsest
   // honest answer rather than a specific claim about which.
   run_luau: { kind: 'building', label: 'Ran Luau' },

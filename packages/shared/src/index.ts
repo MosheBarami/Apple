@@ -794,6 +794,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'create_instances':
     case 'set_properties':
     case 'edit_terrain':
+    case 'build_scene':
     case 'delete_instances':
     // Direct bounded authoring ops. These all mutate the open place through typed plugin commands;
     // they are distinct tools so Agent can express the edit without arbitrary Luau.
@@ -2535,6 +2536,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'edit_terrain',
     label: 'Edit terrain',
     why: 'Changes Roblox Terrain voxels and materials in the open place.',
+    group: 'changes',
+  },
+  {
+    name: 'build_scene',
+    label: 'Build a ready-made scene',
+    why: 'Builds a whole environment — terrain, trees, crystals, water and lighting — in the open place.',
     group: 'changes',
   },
   {

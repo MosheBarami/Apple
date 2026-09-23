@@ -261,6 +261,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   create_instances: 'Creates instances in the place. A build belongs to an agent run, where a checkpoint exists to undo it.',
   set_properties: 'Mutates existing instances. Same reason as create_instances, and easier to do damage with because it overwrites rather than adds.',
   edit_terrain: 'Changes Terrain voxels and materials in the open place. Terrain authoring belongs to a consented agent run with its normal safety and review fences.',
+  build_scene: 'Builds a whole environment (terrain, instances, lighting, Baseplate visibility) in the open place. Belongs to a consented agent run with its checkpoint and review fences.',
   delete_instances: 'Deletes instances. The single most destructive tool in the registry; the checkpoint an agent run takes first is exactly what makes it survivable.',
   move_instances: 'Reparents existing objects in the place. Direct hierarchy writes stay behind the watched agent-run consent and checkpoint path.',
   transform_instances: 'Moves, rotates, or scales existing objects. Direct spatial edits stay behind the watched agent-run consent and verification path.',

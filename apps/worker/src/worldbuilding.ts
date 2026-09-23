@@ -334,7 +334,9 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
   own tools, not out of Parts — measured 2026-09-23 on "a floating sky island with a waterfall, trees,
   crystals and a sunset": a Parts-only build scored 2/10 on the visual check after 232 Credits ("a flat grey
   slab", "a 2D billboard", "lollipop trees", "specks").
-  * Landforms are Terrain. A floating island is ONE call: edit_terrain recipe "floating_island" with
+  * A floating / sky island is build_scene kit "floating_island" — island, waterfall, trees, crystals,
+    mist, golden light, Baseplate hidden, spawn on top, in one call. Then add to it; never rebuild its
+    pieces by hand. For a lone landform without the kit: edit_terrain recipe "floating_island" with
     center (high in the air, e.g. y 150) and radius 40-60; it returns surfaceY — put trees, crystals and
     the spawn on that height. Other landforms: Rock or Slate for the mass, Grass or LeafyGrass on top.
   * The sky and the time of day are Lighting, never geometry: set_mood with "golden" for a sunset or golden

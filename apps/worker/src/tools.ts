@@ -1,5 +1,6 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
+import { floatingIslandKit } from './scene-kits';
 import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
 import type { Env } from './env';
 import { generatedImageCapacity, saveGeneratedImage } from './generated-images';
@@ -2190,6 +2191,42 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOps: ['terrain_edit'],
     mutatesProject: true,
     run: (ctx, a) => runTerrainEdits(ctx, a),
+  },
+  build_scene: {
+    def: {
+      name: 'build_scene',
+      description:
+        'Build a whole ready-made environment in ONE call, then add to it. kit "floating_island": a Terrain island with a flat grassy top and a rock underside tapering to a point, a stream that pours off the edge as a waterfall with mist, 2-6 stylised trees (30-45 studs), 1-5 glowing crystal clusters, the golden-hour mood, the Baseplate hidden and the SpawnLocation moved onto the island. ' +
+        'Use it for any floating / sky island request instead of building those pieces yourself — their shapes are tested; yours have not looked right. It returns surfaceY and usableRadius: place anything extra on that height. Everything lands in Workspace.SkyIsland.',
+      parameters: S({
+        kit: { type: 'string', enum: ['floating_island'] },
+        center: { type: 'array', items: { type: 'number' }, description: 'Island centre, default [0, 150, 0]' },
+        radius: { type: 'number', description: '12-70 studs, default 50' },
+        trees: { type: 'number', description: '2-6, default 4' },
+        crystals: { type: 'number', description: '1-5, default 3' },
+      }, ['kit']),
+    },
+    studio: true,
+    studioOps: ['terrain_edit', 'create_instances', 'get_tree', 'delete_instances', 'set_props', 'set_visible'],
+    mutatesProject: true,
+    run: async (ctx, a) => {
+      if (a.kit !== 'floating_island') return { error: 'kit must be "floating_island"' };
+      const kit = floatingIslandKit(a);
+      if ('error' in kit) return kit;
+      const terrain = await runTerrainEdits(ctx, { operations: kit.terrain });
+      if (toolError(terrain)) return { ...(terrain as Record<string, unknown>), note: 'Only part of the island terrain was built; nothing else was added.' };
+      const built = ['island terrain, stream and waterfall'];
+      const made = await TOOLS.create_instances!.run(ctx, { items: kit.items });
+      if (toolError(made)) return { ...(made as Record<string, unknown>), built, projectMutated: true, note: 'The terrain is in place; the trees and crystals were not created.' };
+      built.push(`${kit.facts.trees} trees, ${kit.facts.crystals} crystal clusters and waterfall mist`);
+      const mood = await TOOLS.set_mood!.run(ctx, { mood: 'golden' });
+      if (!toolError(mood)) built.push('golden-hour lighting');
+      const hidden = await op(ctx, { op: 'set_visible', paths: ['game.Workspace.Baseplate'], visible: false });
+      if (!toolError(hidden)) built.push('Baseplate hidden');
+      const spawn = await op(ctx, { op: 'set_props', path: 'game.Workspace.SpawnLocation', props: { Position: { t: 'Vector3', v: kit.spawn } } as never });
+      if (!toolError(spawn)) built.push('SpawnLocation moved onto the island');
+      return { built, ...kit.facts, projectMutated: true, next: 'Check it with inspect_visually, then add details on surfaceY rather than rebuilding these pieces.' };
+    },
   },
   delete_instances: {
     def: { name: 'delete_instances', description: 'Delete instances by path.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
