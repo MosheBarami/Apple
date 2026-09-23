@@ -1,0 +1,265 @@
+/* Sentry skin: the 2025 "chonky" Sentry UI (getsentry/sentry static/app/utils/theme: colours, type,
+   radii, motion; components/core/button: the lifted chonk button; issue stream layout from sentry.io).
+   Fonts are the ones Sentry itself ships (static/fonts, OFL) plus Rubik's Hebrew subset from Google Fonts. */
+
+@font-face { font-family: 'Rubik'; src: url('../fonts/sentry/rubik-regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; unicode-range: U+0000-058F, U+0600-FFFF; }
+@font-face { font-family: 'Rubik'; src: url('../fonts/sentry/rubik-medium.woff2') format('woff2'); font-weight: 500 700; font-style: normal; font-display: swap; unicode-range: U+0000-058F, U+0600-FFFF; }
+@font-face { font-family: 'Rubik'; src: url('../fonts/sentry/rubik-hebrew-variable.woff2') format('woff2'); font-weight: 300 700; font-style: normal; font-display: swap;
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: 'Roboto Mono'; src: url('../fonts/sentry/roboto-mono-variable.woff2') format('woff2'); font-weight: 100 700; font-style: normal; font-display: swap; }
+
+/* ------------------------------------------------ tokens (dark) */
+html[data-skin='sentry'] {
+  --sx-bg-1: #2E2936; --sx-bg-2: #24202B; --sx-bg-3: #1B1821; --sx-overlay: #393442;
+  --sx-accent: #7553FF; --sx-accent-chonk: #120539; --sx-danger: #FF002B; --sx-danger-chonk: #330000; --sx-warning: #FFCE00; --sx-success: #00F261;
+  --sx-c-1: #E7E5EA; --sx-c-2: #B5B0BD; --sx-c-accent: #ABA8F8; --sx-c-danger: #F6938C; --sx-c-warn: #FFCE00; --sx-c-ok: #5ECE73; --sx-head: #FFFFFF;
+  --sx-b-1: #141119; --sx-b-2: #1B1821; --sx-b-muted: #534D5E; --sx-b-mod: #898294;
+  --sx-m-accent: #4828B894; --sx-m-danger: #F8000033; --sx-m-warn: #FFCE0026; --sx-m-ok: #00F8001F; --sx-m-neutral: #C0A8F81A;
+  --sx-g100: #C0A8F81A; --sx-g200: #D0B8F821; --sx-deboss: #00000026;
+  --sx-chonk: #141119; --sx-viz: #7553FF; --sx-meh: #FFCE00; --sx-bad-viz: #FF002B; --sx-other: #898294; --sx-trend: #898294;
+
+  --bg: var(--sx-bg-3); --paper: var(--sx-bg-3); --paper-2: var(--sx-bg-2);
+  --surface: var(--sx-bg-1); --surface-2: var(--sx-bg-2); --surface-3: var(--sx-overlay);
+  --card: var(--surface); --card2: var(--surface-2);
+  --ink: var(--sx-c-1); --text: var(--ink); --ink-2: var(--sx-c-1);
+  --muted: var(--sx-c-2); --dim: var(--muted); --faint: var(--sx-b-mod); --off: var(--sx-b-mod);
+  --line: var(--sx-b-muted); --line2: var(--sx-b-mod); --line-strong: var(--sx-b-mod); --hairline: var(--sx-b-2);
+  --control-fill: var(--sx-g100);
+  --accent: var(--sx-accent); --accent2: var(--sx-c-accent); --accent-ink: var(--sx-c-accent);
+  --accent-soft: var(--sx-m-accent); --accent-ring: color-mix(in srgb, var(--sx-accent) 50%, transparent);
+  --primary: var(--sx-accent); --primary-hover: #8466FF; --on-primary: #fff;
+  --good: var(--sx-c-ok); --warn: var(--sx-c-warn); --bad: var(--sx-c-danger); --mid: var(--sx-c-accent);
+  --ok: var(--good); --ok-t: var(--good); --warn-t: var(--warn); --bad-t: var(--bad);
+  --shadow: none; --glow: transparent; --glass: color-mix(in srgb, var(--sx-bg-3) 80%, transparent);
+  --focus-ring: 0 0 0 2px var(--sx-accent);
+  --font: 'Rubik', 'Avenir Next', -apple-system, 'Segoe UI', 'Noto Sans Hebrew', sans-serif;
+  --mono: 'Roboto Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
+  --r-xs: 3px; --r-sm: 6px; --r: 8px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 999px;
+  --t-fast: 120ms; --t-base: 160ms; --t-slow: 240ms;
+  --ease-out: cubic-bezier(.24, 1, .32, 1); --ease-io: cubic-bezier(.72, 0, .16, 1); --sx-snap: cubic-bezier(.8, -.4, .5, 1);
+  --lift: 2px;
+  color-scheme: dark;
+}
+/* ------------------------------------------------ tokens (light) */
+html[data-skin='sentry'][data-theme='light'] {
+  --sx-bg-1: #FFFFFF; --sx-bg-2: #F8F8F9; --sx-bg-3: #F0F0F2; --sx-overlay: #FFFFFF;
+  --sx-accent-chonk: #5827D6; --sx-danger: #D50000; --sx-danger-chonk: #C10000;
+  --sx-c-1: #302E36; --sx-c-2: #6A6772; --sx-c-accent: #653DE9; --sx-c-danger: #D50000; --sx-c-warn: #A45200; --sx-c-ok: #008900; --sx-head: #181225;
+  --sx-b-1: #DAD9DE; --sx-b-2: #E6E6E9; --sx-b-muted: #DAD9DE; --sx-b-mod: #6A6772;
+  --sx-m-accent: #7553FF1F; --sx-m-danger: #FF002B1A; --sx-m-warn: #FFCE0033; --sx-m-ok: #00F26126; --sx-m-neutral: #0000200F;
+  --sx-g100: #0000200F; --sx-g200: #0000181A; --sx-deboss: #10103008;
+  --sx-chonk: #DAD9DE; --sx-trend: #C0BEC6; --sx-other: #C0BEC6;
+  --faint: #6A6772; --line2: #C0BEC6; --line-strong: #C0BEC6;
+  --primary-hover: #6A45F5;
+  --glass: color-mix(in srgb, #fff 85%, transparent);
+  color-scheme: light;
+}
+html[data-skin='sentry'] [style*='--b:'] { --b-use: var(--sx-c-accent); }
+
+/* ------------------------------------------------ type (theme.font: xs 11, sm 12, md 14, lg 16, xl 20, 2xl 24, 3xl 32) */
+html[data-skin='sentry'] body { font: 400 14px/1.4 var(--font); color: var(--ink); background: var(--bg); }
+html[data-skin='sentry'] .phead h1 { font-size: 24px; line-height: 1.2; font-weight: 500; letter-spacing: -.01em; color: var(--sx-head); }
+html[data-skin='sentry'] .psub { font-size: 14px; color: var(--muted); }
+html[data-skin='sentry'] .card > h2, html[data-skin='sentry'] .card-h { font-size: 16px; font-weight: 500; letter-spacing: 0; color: var(--sx-head); }
+html[data-skin='sentry'] .mono, html[data-skin='sentry'] code, html[data-skin='sentry'] kbd { font-family: var(--mono); font-weight: 425; }
+html[data-skin='sentry'] :focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ------------------------------------------------ shell */
+html[data-skin='sentry'] .side { background: var(--sx-bg-2); border-inline-end: 1px solid var(--sx-b-1); }
+html[data-skin='sentry'] .top { background: var(--glass); border-bottom: 1px solid var(--sx-b-1); }
+html[data-skin='sentry'] .nav-a { border-radius: var(--r-sm); color: var(--muted); font-size: 14px; }
+html[data-skin='sentry'] .nav-a:hover { background: var(--sx-g100); color: var(--ink); }
+html[data-skin='sentry'] .nav-a.on { background: var(--sx-m-accent); color: var(--sx-c-accent); font-weight: 500; }
+html[data-skin='sentry'] .nav-a.on::before { display: none; }
+html[data-skin='sentry'] .pal-btn { border: 1px solid var(--sx-b-muted); border-radius: var(--r-md); background: var(--sx-deboss); box-shadow: inset 0 1px 0 0 var(--sx-chonk); }
+
+/* ------------------------------------------------ surfaces */
+html[data-skin='sentry'] .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: none; }
+html[data-skin='sentry'] .modal-card, html[data-skin='sentry'] .pal { background: var(--sx-overlay); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: 0 8px 24px #0000004d; }
+html[data-skin='sentry'] .toast { background: var(--sx-overlay); border: 1px solid var(--line); border-radius: var(--r-md); }
+html[data-skin='sentry'] .note { border-radius: var(--r-md); }
+html[data-skin='sentry'] .stat-k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; font-weight: 500; }
+html[data-skin='sentry'] .stat-v { font-weight: 500; color: var(--sx-head); letter-spacing: -.02em; }
+html[data-skin='sentry'] .stat.is-bad .stat-v { color: var(--bad); } html[data-skin='sentry'] .stat.is-warn .stat-v { color: var(--warn); } html[data-skin='sentry'] .stat.is-good .stat-v { color: var(--good); }
+html[data-skin='sentry'] .spark { color: var(--sx-accent); }
+
+/* ------------------------------------------------ chonky button: a raised surface over a chonk layer */
+html[data-skin='sentry'] .btn { --chonk: var(--sx-chonk); --face: var(--surface); --fg: var(--ink);
+  position: relative; isolation: isolate; min-height: 36px; padding: 0 16px; border: 0; border-radius: var(--r-md); background: none; box-shadow: none; color: var(--fg);
+  font-size: 14px; font-weight: 500; transition: none; margin-block-start: var(--lift); }
+html[data-skin='sentry'] .btn::before { content: ''; position: absolute; inset: 0; top: var(--lift); height: calc(100% - var(--lift)); border-radius: inherit;
+  background: var(--chonk); box-shadow: 0 var(--lift) 0 0 var(--chonk); z-index: -2; }
+html[data-skin='sentry'] .btn::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--face); border: 1px solid var(--chonk);
+  transform: translateY(calc(var(--lift) * -1)); transition: transform var(--t-fast) var(--sx-snap), background-color var(--t-fast) var(--sx-snap); z-index: -1; }
+html[data-skin='sentry'] .btn > * { position: relative; z-index: 1; transform: translateY(calc(var(--lift) * -1)); transition: transform var(--t-fast) var(--sx-snap); }
+html[data-skin='sentry'] .btn:hover { --lift: 3px; }
+html[data-skin='sentry'] .btn:active { --lift: 0px; }
+html[data-skin='sentry'] .btn:focus-visible { box-shadow: none; }
+html[data-skin='sentry'] .btn:focus-visible::after { box-shadow: var(--focus-ring); }
+html[data-skin='sentry'] .btn-sm { --lift: 2px; min-height: 32px; padding: 0 12px; border-radius: var(--r-sm); font-size: 14px; }
+html[data-skin='sentry'] .btn-sm:hover { --lift: 3px; } html[data-skin='sentry'] .btn-sm:active { --lift: 0px; }
+html[data-skin='sentry'] .btn-primary { --chonk: var(--sx-accent-chonk); --face: var(--sx-accent); --fg: #fff; }
+html[data-skin='sentry'] .btn-danger { --chonk: var(--sx-danger-chonk); --face: var(--sx-danger); --fg: #fff; }
+html[data-skin='sentry'] .btn-ghost { --lift: 0px; margin-block-start: 0; }
+html[data-skin='sentry'] .btn-ghost::before { display: none; }
+html[data-skin='sentry'] .btn-ghost::after { background: transparent; border-color: transparent; }
+html[data-skin='sentry'] .btn-ghost:hover { --lift: 0px; } html[data-skin='sentry'] .btn-ghost:hover::after { background: var(--sx-g100); }
+html[data-skin='sentry'] .btn:disabled { opacity: .55; cursor: not-allowed; --lift: 0px; }
+
+/* ------------------------------------------------ tags (20px, 12px text, radius 4, no border) */
+html[data-skin='sentry'] .chip { height: 24px; padding: 0 10px; border: 0; border-radius: var(--r-pill); font-size: 12px; font-weight: 400; background: var(--sx-m-neutral); color: var(--ink); }
+html[data-skin='sentry'] .chip-sm { height: 20px; padding: 0 8px; border-radius: 4px; }
+html[data-skin='sentry'] .chip-mid, html[data-skin='sentry'] .chip-b { background: var(--sx-m-accent); color: var(--sx-c-accent); }
+html[data-skin='sentry'] .chip-bad { background: var(--sx-m-danger); color: var(--sx-c-danger); }
+html[data-skin='sentry'] .chip-warn { background: var(--sx-m-warn); color: var(--sx-c-warn); }
+html[data-skin='sentry'] .chip-ok { background: var(--sx-m-ok); color: var(--sx-c-ok); }
+html[data-skin='sentry'] .chip-off { background: var(--sx-m-neutral); color: var(--muted); }
+html[data-skin='sentry'] .chip-btn { cursor: pointer; }
+html[data-skin='sentry'] .chip-btn:hover { background: var(--sx-g200); color: var(--ink); }
+html[data-skin='sentry'] .chip-btn.on, html[data-skin='sentry'] .chip-btn[aria-pressed='true'] { background: var(--sx-m-accent); color: var(--sx-c-accent); box-shadow: inset 0 0 0 1px var(--sx-accent); }
+
+/* ------------------------------------------------ table */
+html[data-skin='sentry'] th { height: 36px; padding: 0 16px; background: var(--sx-bg-2); color: var(--muted); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .02em;
+  border-bottom: 1px solid var(--line); text-align: start; }
+html[data-skin='sentry'] td { padding: 10px 16px; font-size: 14px; border-bottom: 1px solid var(--hairline); vertical-align: middle; }
+html[data-skin='sentry'] td .mono + .mono { margin-inline-start: 6px; }
+html[data-skin='sentry'] tbody tr:hover td { background: var(--sx-g100); }
+
+/* ------------------------------------------------ inputs (debossed) */
+html[data-skin='sentry'] .search, html[data-skin='sentry'] select, html[data-skin='sentry'] input:not([type='checkbox']) {
+  background: var(--sx-deboss); border: 1px solid var(--sx-b-muted); border-radius: var(--r-md); box-shadow: inset 0 1px 0 0 var(--sx-chonk); color: var(--ink); }
+
+/* ================================================ page: conclusions */
+html[data-skin='sentry'] .sx-concl { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+html[data-skin='sentry'] .sx-cc { position: relative; padding: 14px 16px 14px 16px; padding-inline-start: 20px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+html[data-skin='sentry'] .sx-cc::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 4px; background: var(--sx-other); }
+html[data-skin='sentry'] .sx-cc.is-bad::before { background: var(--sx-danger); } html[data-skin='sentry'] .sx-cc.is-warn::before { background: var(--sx-warning); }
+html[data-skin='sentry'] .sx-cc.is-good::before, html[data-skin='sentry'] .sx-cc.is-ok::before { background: var(--sx-c-ok); } html[data-skin='sentry'] .sx-cc.is-info::before { background: var(--sx-accent); }
+html[data-skin='sentry'] .sx-cc b { display: block; font-size: 16px; font-weight: 500; color: var(--sx-head); margin-bottom: 4px; }
+html[data-skin='sentry'] .sx-cc p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+
+/* ------------------------------------------------ page: tabs (Sentry's underline tabs, accent bar) */
+html[data-skin='sentry'] .sx-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+html[data-skin='sentry'] .sx-tb { position: relative; height: 40px; padding: 0 12px; background: none; border: 0; color: var(--muted); font: inherit; font-size: 14px; white-space: nowrap; cursor: pointer; border-radius: var(--r-sm) var(--r-sm) 0 0; }
+html[data-skin='sentry'] .sx-tb:hover { color: var(--ink); background: var(--sx-g100); }
+html[data-skin='sentry'] .sx-tb.on { color: var(--sx-c-accent); font-weight: 500; }
+html[data-skin='sentry'] .sx-tb.on::after { content: ''; position: absolute; inset-inline: 8px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--sx-accent); }
+html[data-skin='sentry'] .sx-tab { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+html[data-skin='sentry'] .sx-tab.g { display: grid; }
+
+/* ------------------------------------------------ page: filters (joined buttons like the project | env | 14D bar) */
+html[data-skin='sentry'] .sx-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+html[data-skin='sentry'] .sx-join { display: inline-flex; border: 1px solid var(--sx-b-muted); border-radius: var(--r-md); box-shadow: 0 2px 0 0 var(--sx-chonk); background: var(--surface); overflow: hidden; max-width: 100%; }
+html[data-skin='sentry'] .sx-jb { height: 34px; padding: 0 12px; background: none; border: 0; border-inline-start: 1px solid var(--sx-b-muted); color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+html[data-skin='sentry'] .sx-jb:first-child { border-inline-start: 0; }
+html[data-skin='sentry'] .sx-jb:hover { background: var(--sx-g100); }
+html[data-skin='sentry'] .sx-jb.on { background: var(--sx-m-accent); color: var(--sx-c-accent); }
+html[data-skin='sentry'] .sx-jb.is-static { cursor: default; color: var(--muted); }
+html[data-skin='sentry'] .sx-sort select { height: 36px; padding: 0 10px; font: inherit; font-size: 14px; }
+html[data-skin='sentry'] .sx-search { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 8px; min-height: 40px; background: var(--sx-deboss);
+  border: 1px solid var(--sx-b-muted); border-radius: var(--r-md); box-shadow: inset 0 1px 0 0 var(--sx-chonk); }
+html[data-skin='sentry'] .sx-token { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 4px; background: var(--sx-m-accent); color: var(--sx-c-accent); font-size: 12px; }
+
+/* ------------------------------------------------ page: the issue stream */
+html[data-skin='sentry'] .sx-stream { border-radius: var(--r-lg); }
+html[data-skin='sentry'] .sx-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 72px 132px 72px 64px 84px; gap: 12px; align-items: center;
+  width: 100%; padding: 12px 16px; background: none; border: 0; border-top: 1px solid var(--hairline); color: inherit; font: inherit; text-align: start; cursor: pointer; }
+html[data-skin='sentry'] .sx-row:hover { background: var(--sx-g100); }
+html[data-skin='sentry'] .sx-row.on { background: var(--sx-m-neutral); box-shadow: inset -3px 0 0 0 var(--sx-accent); } /* the shell is always dir=rtl: inline-start is the right edge */
+html[data-skin='sentry'] .sx-head { cursor: default; padding-block: 8px; background: var(--sx-bg-2); border-top: 0; border-bottom: 1px solid var(--line); color: var(--muted);
+  font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: .02em; }
+html[data-skin='sentry'] .sx-head:hover { background: var(--sx-bg-2); }
+html[data-skin='sentry'] .sx-rows > .sx-row:first-child { border-top: 0; }
+html[data-skin='sentry'] .sx-issue { position: relative; display: flex; flex-direction: column; gap: 3px; min-width: 0; padding-inline-start: 12px; }
+html[data-skin='sentry'] .sx-lvl { position: absolute; inset-inline-start: 0; top: 2px; bottom: 2px; width: 3px; border-radius: 2px; background: var(--sx-other); }
+html[data-skin='sentry'] .sx-lvl.sx-bad { background: var(--sx-danger); } html[data-skin='sentry'] .sx-lvl.sx-warn { background: var(--sx-warning); } html[data-skin='sentry'] .sx-lvl.sx-mid { background: var(--sx-accent); }
+html[data-skin='sentry'] .sx-t { display: flex; gap: 6px; align-items: baseline; min-width: 0; overflow: hidden; }
+html[data-skin='sentry'] .sx-t b { font-weight: 500; font-size: 14px; color: var(--sx-head); white-space: nowrap; }
+html[data-skin='sentry'] .sx-t span { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+html[data-skin='sentry'] .sx-row:not(.unread) .sx-t b { font-weight: 400; }
+html[data-skin='sentry'] .sx-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 0; font-size: 12px; color: var(--muted); min-width: 0; }
+html[data-skin='sentry'] .sx-meta .mono { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+html[data-skin='sentry'] .sx-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sx-accent); display: inline-block; }
+html[data-skin='sentry'] .sx-unh { color: var(--sx-c-danger); font-weight: 500; font-size: 12px; }
+html[data-skin='sentry'] .sx-c-last, html[data-skin='sentry'] .sx-c-age { color: var(--muted); font-size: 13px; }
+html[data-skin='sentry'] .sx-c-n, html[data-skin='sentry'] .sx-c-u { text-align: end; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+html[data-skin='sentry'] .sx-head .sx-c-n, html[data-skin='sentry'] .sx-head .sx-c-u { font-family: var(--font); font-size: 12px; color: var(--muted); }
+html[data-skin='sentry'] .sx-trend { display: flex; align-items: center; gap: 6px; }
+html[data-skin='sentry'] .sx-trend svg { width: 100px; height: 28px; fill: var(--sx-trend); }
+html[data-skin='sentry'] .sx-row.on .sx-trend svg, html[data-skin='sentry'] .sx-row:hover .sx-trend svg { fill: var(--sx-accent); }
+html[data-skin='sentry'] .sx-trend .sx-base { stroke: var(--line); stroke-width: 1; }
+html[data-skin='sentry'] .sx-trend small { font-size: 10px; color: var(--faint); }
+
+/* ------------------------------------------------ page: issue detail + stack trace */
+html[data-skin='sentry'] .sx-detail { display: flex; flex-direction: column; gap: 16px; padding: 20px; }
+html[data-skin='sentry'] .sx-dh { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: flex-start; }
+html[data-skin='sentry'] .sx-dh-t { min-width: 0; flex: 1 1 360px; display: flex; flex-direction: column; gap: 6px; }
+html[data-skin='sentry'] .sx-dh h2 { margin: 0; font-size: 20px; font-weight: 500; line-height: 1.3; color: var(--sx-head); overflow-wrap: anywhere; }
+html[data-skin='sentry'] .sx-culprit { margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+html[data-skin='sentry'] .sx-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+html[data-skin='sentry'] .sx-dstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 0; }
+html[data-skin='sentry'] .sx-dstats div { padding: 10px 12px; border-radius: var(--r-md); background: var(--sx-bg-2); border: 1px solid var(--hairline); min-width: 0; }
+html[data-skin='sentry'] .sx-dstats dt { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); font-weight: 500; }
+html[data-skin='sentry'] .sx-dstats dd { margin: 4px 0 0; font-size: 16px; font-weight: 500; color: var(--sx-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-skin='sentry'] .sx-dchart .chart { margin: 0; }
+html[data-skin='sentry'] .sx-h3 { margin: 4px 0 0; font-size: 16px; font-weight: 500; color: var(--sx-head); display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+html[data-skin='sentry'] .sx-h3 small { font-size: 12px; font-weight: 400; }
+html[data-skin='sentry'] .sx-ex { border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
+html[data-skin='sentry'] .sx-ex-h { margin: 0; padding: 10px 14px; background: var(--sx-bg-2); border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; text-align: left; }
+html[data-skin='sentry'] .sx-ex-h b { color: var(--sx-c-danger); font-weight: 500; }
+html[data-skin='sentry'] .sx-frames { list-style: none; margin: 0; padding: 0; text-align: left; }
+html[data-skin='sentry'] .sx-fr { border-top: 1px solid var(--hairline); }
+html[data-skin='sentry'] .sx-fr:first-child { border-top: 0; }
+html[data-skin='sentry'] .sx-fr > p { margin: 0; padding: 8px 14px; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+html[data-skin='sentry'] .sx-fr .sx-file { color: var(--ink); }
+html[data-skin='sentry'] .sx-fr.app > p { background: var(--sx-m-neutral); }
+html[data-skin='sentry'] .sx-fr.app .sx-file { color: var(--sx-head); font-weight: 500; }
+html[data-skin='sentry'] .sx-fr:not(.app) > p { opacity: .8; }
+html[data-skin='sentry'] .sx-code { margin: 0; padding: 6px 0; background: var(--sx-bg-3); font: 12px/1.6 var(--mono); overflow-x: auto; white-space: pre; }
+html[data-skin='sentry'] .sx-code span { display: block; padding-inline: 14px; }
+html[data-skin='sentry'] .sx-code span.hit { background: var(--sx-m-accent); color: var(--sx-head); }
+html[data-skin='sentry'] .sx-code i { display: inline-block; width: 4ch; margin-inline-end: 12px; font-style: normal; color: var(--faint); text-align: right; user-select: none; }
+html[data-skin='sentry'] .sx-perr { padding: 10px 14px; border-radius: var(--r-md); background: var(--sx-m-warn); color: var(--ink); font-size: 13px; }
+html[data-skin='sentry'] .sx-perr p { margin: 2px 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+html[data-skin='sentry'] .sx-perr .faint { color: var(--muted); display: block; }
+html[data-skin='sentry'] .sx-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+html[data-skin='sentry'] .sx-tag { display: inline-flex; max-width: 100%; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; font-size: 12px; direction: ltr; }
+html[data-skin='sentry'] .sx-tag b { padding: 2px 8px; background: var(--sx-bg-2); color: var(--muted); font-weight: 500; white-space: nowrap; }
+html[data-skin='sentry'] .sx-tag bdi { padding: 2px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* ------------------------------------------------ page: honest empty states + projects */
+html[data-skin='sentry'] .sx-honest { padding: 16px 18px; border-radius: var(--r-lg); border: 1px dashed var(--sx-b-mod); background: var(--sx-bg-2); }
+html[data-skin='sentry'] .sx-honest b { display: block; font-size: 16px; font-weight: 500; color: var(--sx-head); margin-bottom: 4px; }
+html[data-skin='sentry'] .sx-honest p { margin: 0; color: var(--muted); line-height: 1.5; }
+html[data-skin='sentry'] .sx-note { margin: 0; padding: 10px 14px; border-radius: var(--r-md); background: var(--sx-m-accent); color: var(--ink); font-size: 13px; }
+html[data-skin='sentry'] .sx-proj { display: flex; flex-direction: column; gap: 12px; }
+html[data-skin='sentry'] .sx-proj .card-h .mono:last-child { font-size: 12px; color: var(--muted); font-weight: 400; }
+html[data-skin='sentry'] .chart .grid { stroke: var(--hairline); } html[data-skin='sentry'] .chart .axis { fill: var(--muted); font-family: var(--font); }
+
+/* ------------------------------------------------ narrow widths */
+@media (max-width: 1180px) {
+  html[data-skin='sentry'] .sx-row { grid-template-columns: minmax(0, 1fr) 84px 120px 64px 80px; }
+  html[data-skin='sentry'] .sx-c-age, html[data-skin='sentry'] .sx-c-u { display: none; }
+}
+@media (max-width: 720px) {
+  html[data-skin='sentry'] .sx-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 12px; }
+  html[data-skin='sentry'] .sx-head { display: none; }
+  html[data-skin='sentry'] .sx-issue { grid-column: 1 / -1; }
+  html[data-skin='sentry'] .sx-c-last, html[data-skin='sentry'] .sx-c-trend { display: none; }
+  html[data-skin='sentry'] .sx-c-n::after { content: ' אירועים'; font-family: var(--font); color: var(--muted); font-size: 12px; }
+  html[data-skin='sentry'] .sx-c-n { text-align: start; }
+  html[data-skin='sentry'] .sx-t { flex-direction: column; align-items: stretch; gap: 2px; text-align: right; } /* one edge for every row, English titles included */
+  html[data-skin='sentry'] .sx-t b, html[data-skin='sentry'] .sx-t span { white-space: normal; overflow-wrap: anywhere; }
+  html[data-skin='sentry'] .sx-detail { padding: 14px; }
+  html[data-skin='sentry'] .sx-dstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-skin='sentry'] .sx-hide-s { display: none; }
+  html[data-skin='sentry'] .sx-join { overflow-x: auto; scrollbar-width: none; }
+  html[data-skin='sentry'] .sx-cc { padding: 12px 14px; padding-inline-start: 18px; }
+  html[data-skin='sentry'] td { padding: 8px 10px; }
+  html[data-skin='sentry'] th { padding: 0 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin='sentry'] .btn::after, html[data-skin='sentry'] .btn > * { transition: none; }
+  html[data-skin='sentry'] .btn:hover, html[data-skin='sentry'] .btn-sm:hover { --lift: 2px; }
+}
