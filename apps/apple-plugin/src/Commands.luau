@@ -227,6 +227,17 @@ RESTORE_CLASSES.ModuleScript = true
 -- requires no claim that Apple can recreate its mesh.
 local DELETE_ONLY_CLASSES = {
 	MeshPart = true,
+	TouchTransmitter = true,
+}
+
+-- Runtime objects Roblox itself creates, never authored: a TouchTransmitter appears under a part the
+-- moment any script connects its Touched event, and a Run-mode playtest leaves them behind. Measured
+-- 2026-09-23 (Coin Rush, F-044): 24 of them under 12 coins made every protective checkpoint refuse
+-- ("could not capture TouchTransmitter x24"), so the playtest itself was refused. A snapshot leaves
+-- them out — neither captured nor counted as skipped — and a restore may delete them, because the
+-- next Touched connection recreates exactly what was there.
+local SNAPSHOT_EPHEMERAL_CLASSES = {
+	TouchTransmitter = true,
 }
 
 local SCRIPT_CLASSES = {
@@ -2268,6 +2279,7 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 	if state.nodes >= MAX_SNAPSHOT_NODES then truncate(state, "objects"); return nil end
 	if depth > MAX_SNAPSHOT_DEPTH then truncate(state, "depth"); return nil end
 	local className = classNameOf(inst)
+	if SNAPSHOT_EPHEMERAL_CLASSES[className] then return nil end
 	-- Engine-owned identities are recorded separately so restore can prove the same protected object
 	-- still exists without deleting/recreating it. An instance with one of these classes in any other
 	-- location is authored/unknown content and makes the checkpoint incomplete.

@@ -114,3 +114,11 @@ Creator Store (asset 107230158271368) is the owner's action.
 
 Superseded the same evening by sha256 `1e04e884de46143248116b8396cbf35db313676d05da1e71151eb36b2fedaa99`, which also stops
 ending a Studio session after 256 operations (F-034): acknowledged replay entries are evicted oldest-first.
+
+Superseded 2026-09-23 03:07 IDT by sha256 `6db6b47a91621ae14b09843552572467bdffd4c398d00a6bc750b26dfaab63d0`
+(installed locally; per D-STORE-2 no store publish until the final build, which is then appealed). It fixes
+two things measured on the Coin Rush place (F-044): a checkpoint no longer refuses the TouchTransmitters
+Roblox creates under touched parts (24 of them had blocked every protective checkpoint, so the playtest was
+refused), and edit consent survives the test-state flicker right after Apple stops its own playtest (the panel
+had read "inspect only" after run c71b89a9's successor). Tests: commands "a TouchTransmitter Roblox created…",
+entry-runtime "a test-state flicker after Apple stopped…", each red with its fix removed; plugin 43/0.

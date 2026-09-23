@@ -39,6 +39,8 @@ local Commands = require(script.Commands)
 -- engine gets that one, so a refusal names the thing that is actually shut.
 local commands = Commands.new({ isEdit = editModeActive })
 local allowEdits = false
+local appleStoppedAt: number? = nil
+local APPLE_STOP_SETTLE_SECONDS = 3
 local confirmingEdits = false
 local connecting = false
 local disposed = false
@@ -245,7 +247,11 @@ local function keepEditConsentOnlyInEditMode(): boolean
 		appleRunActive = false
 		return true
 	end
-	if appleRunActive then
+	-- F-044, 2026-09-23 (Coin Rush): after Apple stopped its own playtest the panel read "inspect only".
+	-- Studio's test-state flag can still change for a moment after Stop() returns, and that signal is
+	-- the tail of Apple's own test, not a test the person started.
+	local settlingAppleStop = appleStoppedAt ~= nil and os.clock() - appleStoppedAt < APPLE_STOP_SETTLE_SECONDS
+	if appleRunActive or settlingAppleStop then
 		confirmingEdits = false
 		refreshAccess()
 		return false
@@ -272,6 +278,9 @@ bridge = Bridge.new({
 				return allowEdits
 			end
 			local runAction = if type(op) == "table" and op.op == "run_mode" then op.action else nil
+			-- Apple moving on to an ordinary operation means its own stop has settled: from here a
+			-- test-state change is the person's again (the settle window in keepEditConsentOnlyInEditMode).
+			if runAction == nil then appleStoppedAt = nil end
 			local startsAppleRun = runAction == "start" or runAction == "run" or runAction == "restart"
 			local ownedBefore = appleRunActive
 			if startsAppleRun and allowEdits and editModeActive() then appleRunActive = true end
@@ -285,6 +294,7 @@ bridge = Bridge.new({
 					appleRunActive = ownedBefore
 				elseif runAction == "stop" then
 					appleRunActive = false
+					appleStoppedAt = os.clock()
 				elseif result.data and result.data.runMode == true then
 					appleRunActive = true
 				end

@@ -174,6 +174,20 @@ assert(playStop.ok==true and editsObserved[#editsObserved]==true,'Apple can stop
 bridgeConfig.execute('after-play',{})
 assert(editsObserved[#editsObserved]==true,'connection edit consent survives an Apple-owned playtest so autonomous fixing can continue')
 
+-- F-044, 2026-09-23 (Coin Rush): after Apple's own playtest the panel read "inspect only". Studio's test-state
+-- flag can still flicker after RunService:Stop() returns; a change signal in that window must not be taken
+-- for a test the person started, so Apple's ownership lasts until edit mode is seen again.
+local flickerStart=bridgeConfig.execute('flicker-start',{op='run_mode',action='start'})
+assert(flickerStart.ok==true,'second Apple playtest starts')
+local flickerStop=bridgeConfig.execute('flicker-stop',{op='run_mode',action='stop'})
+assert(flickerStop.ok==true,'second Apple playtest stops')
+studioTest.EditModeActive=false
+studioTest:FirePropertyChanged('EditModeActive')
+studioTest.EditModeActive=true
+studioTest:FirePropertyChanged('EditModeActive')
+bridgeConfig.execute('after-flicker',{})
+assert(editsObserved[#editsObserved]==true,'a test-state flicker after Apple stopped its own playtest must not revoke consent')
+
 studioTest.EditModeActive=false
 studioTest:FirePropertyChanged('EditModeActive')
 studioTest.EditModeActive=true

@@ -356,6 +356,31 @@ spec("unsupported MeshPart still makes checkpoints incomplete", function()
     c:destroy()
 end)
 
+spec("a TouchTransmitter Roblox created does not refuse a checkpoint, and a restore may remove it (F-044)", function()
+    local root = Instance.new("Folder"); root.Name = "TouchedCoins"; root.Parent = workspace
+    local coin = Instance.new("Part"); coin.Name = "Coin1"; coin.Parent = root
+    local touch = Instance.new("TouchTransmitter"); touch.Name = "TouchInterest"; touch.Parent = coin
+    local c = newCommands()
+    local snap = run(c, "touch-transmitter-snapshot", {
+        op = "snapshot", root = "game.Workspace.TouchedCoins", includeScripts = true, checkpointId = "cp-touch",
+    }, false)
+    eq(snap.ok, true, tostring(snap.error))
+    eq(snap.data.restorable, true, "an engine-made TouchTransmitter must not make the checkpoint unrestorable")
+    eq(next(snap.data.skipped), nil, "a TouchTransmitter is not authored content and is not reported as skipped")
+    for _, child in ipairs(snap.data.node.children[1].children or {}) do
+        eq(child.className ~= "TouchTransmitter", true, "the snapshot must not claim to capture a TouchTransmitter")
+    end
+    coin.Transparency = 1
+    local again = Instance.new("TouchTransmitter"); again.Name = "TouchInterest"; again.Parent = coin
+    local restored = run(c, "touch-transmitter-restore", {
+        op = "restore", root = "game.Workspace.TouchedCoins", checkpointId = "cp-touch", snapshot = snap.data,
+    }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    eq(root:FindFirstChild("Coin1") ~= nil, true)
+    root:Destroy()
+    c:destroy()
+end)
+
 spec("a MeshPart added after an eligible checkpoint can be removed without claiming mesh recreation", function()
     local root = Instance.new("Folder"); root.Name = "MeshDeleteOnly"; root.Parent = workspace
     local kept = Instance.new("Part"); kept.Name = "Kept"; kept.Parent = root
