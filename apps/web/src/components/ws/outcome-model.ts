@@ -117,6 +117,6 @@ function restates(stopReason: string, text: string | null, reply: string | undef
   if (stopReason === 'incomplete') return true;
   const last = body.slice(body.lastIndexOf('\n\n') + 1).trim();
   if (last === text.trim()) return true;
-  const lead = text.trim().split(/(?<=\.)\s/)[0];
+  const lead = text.trim().split(/(?<=\.)\s/)[0] ?? text.trim();
   return body.includes(lead);
 }
