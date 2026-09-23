@@ -298,7 +298,7 @@ spec("checkpoint round-trips existing SurfaceAppearance content without granting
     c:destroy()
 end)
 
-spec("checkpoint round-trips Decal and Texture content without granting external content writes", function()
+spec("checkpoint round-trips Decal and Texture content; only an image id may be written to them", function()
     local part = Instance.new("Part"); part.Name = "TextureHost"; part.Parent = workspace
     local decal = Instance.new("Decal"); decal.Name = "Badge"; decal.Texture = "rbxassetid://111111"; decal.Transparency = 0.15; decal.Parent = part
     local tiled = Instance.new("Texture"); tiled.Name = "Tiles"; tiled.Texture = "rbxassetid://222222"; tiled.StudsPerTileU = 3; tiled.StudsPerTileV = 4; tiled.OffsetStudsU = 0.5; tiled.OffsetStudsV = 1.25; tiled.Parent = part
@@ -307,10 +307,10 @@ spec("checkpoint round-trips Decal and Texture content without granting external
     local refused = run(c, "texture-content-write-refused", {
         op = "set_props",
         path = "game.Workspace.TextureHost.Tiles",
-        props = { Texture = { t = "string", v = "rbxassetid://999999" } },
+        props = { Texture = { t = "string", v = "http://example.com/tiles.png" } },
     }, true)
     eq(refused.ok, false); has(refused.error, "external content")
-    eq(tiled.Texture, "rbxassetid://222222", "ordinary writes must not change an existing texture asset reference")
+    eq(tiled.Texture, "rbxassetid://222222", "a refused write must not change an existing texture asset reference")
 
     local snap = run(c, "decal-texture-snapshot", {
         op = "snapshot", root = "game.Workspace.TextureHost", includeScripts = true, checkpointId = "cp-decal-texture",
@@ -339,22 +339,91 @@ spec("checkpoint round-trips Decal and Texture content without granting external
     eq(restoredTexture.Texture, "rbxassetid://222222")
     eq(restoredTexture.StudsPerTileU, 3); eq(restoredTexture.StudsPerTileV, 4)
     eq(restoredTexture.OffsetStudsU, 0.5); eq(restoredTexture.OffsetStudsV, 1.25)
+    local decalSet = run(c, "decal-image-id", { op = "set_props", path = "game.Workspace.TextureHost.Badge", props = { Texture = { t = "string", v = "rbxassetid://999999" } } }, true)
+    eq(decalSet.ok, true, tostring(decalSet.error)); eq(restoredDecal.Texture, "rbxassetid://999999")
     part:Destroy()
     c:destroy()
 end)
 
-spec("unsupported MeshPart still makes checkpoints incomplete", function()
+spec("an image id written by the model survives a checkpoint round trip", function()
+    local gui = Instance.new("ScreenGui"); gui.Name = "IconGui"; gui.Parent = services.StarterGui
+    local c = newCommands()
+    local made = run(c, "icon-made", { op = "create_instances", items = {
+        { className = "ImageButton", name = "Shop", parent = "game.StarterGui.IconGui", props = { Image = { t = "string", v = "rbxassetid://123" }, HoverImage = { t = "Content", v = "rbxassetid://456" } } },
+    } }, true)
+    eq(made.ok, true, tostring(made.error))
+    local snap = run(c, "icon-snapshot", { op = "snapshot", root = "game.StarterGui.IconGui", includeScripts = true, checkpointId = "cp-icon" }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true)
+    eq(snap.data.node.children[1].props.Image.v, "rbxassetid://123")
+    gui:FindFirstChild("Shop").Image = "rbxassetid://999"
+    local restored = run(c, "icon-restore", { op = "restore", root = "game.StarterGui.IconGui", checkpointId = "cp-icon", snapshot = snap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    eq(gui:FindFirstChild("Shop").Image, "rbxassetid://123"); eq(gui:FindFirstChild("Shop").HoverImage, "rbxassetid://456")
+    gui:Destroy(); c:destroy()
+end)
+
+spec("a class Apple cannot hold or recreate still makes checkpoints incomplete", function()
     local root = Instance.new("Folder"); root.Name = "UnsupportedOrdinaryCheckpoint"; root.Parent = workspace
-    local mesh = Instance.new("MeshPart"); mesh.Name = "GeneratedMesh"; mesh.Parent = root
+    local union = Instance.new("UnionOperation"); union.Name = "Carved"; union.Parent = root
     local c = newCommands()
     local snap = run(c, "ordinary-unsupported-snapshot", {
         op = "snapshot", root = "game.Workspace.UnsupportedOrdinaryCheckpoint", includeScripts = true, checkpointId = "cp-ordinary-unsupported",
     }, false)
     eq(snap.ok, true, tostring(snap.error))
     eq(snap.data.complete, false); eq(snap.data.restorable, false); eq(snap.data.checkpointEligible, false); eq(snap.data.coverage, "incomplete")
-    eq(snap.data.skipped.MeshPart, 1, "MeshPart must be named rather than silently omitted")
+    eq(snap.data.skipped.UnionOperation, 1, "an unsupported class must be named rather than silently omitted")
     root:Destroy()
     c:destroy()
+end)
+
+spec("a MeshPart in a checkpoint is held by this Studio session, so the checkpoint stays an undo point (F-053)", function()
+    local root = Instance.new("Folder"); root.Name = "HeldMeshes"; root.Parent = workspace
+    local model = Instance.new("Model"); model.Name = "Dragon"; model.Parent = root
+    local head = Instance.new("MeshPart"); head.Name = "Head"; head.MeshId = "rbxassetid://4242"; head.TextureID = "rbxassetid://4343"
+    head.Size = v3(2, 3, 4); head.Anchored = true; head.Parent = model
+    local eye = Instance.new("Attachment"); eye.Name = "Eye"; eye.Parent = head
+    local c = newCommands()
+    local snap = run(c, "held-snapshot", { op = "snapshot", root = "game.Workspace.HeldMeshes", includeScripts = true, checkpointId = "cp-held" }, false)
+    eq(snap.ok, true, tostring(snap.error))
+    eq(snap.data.restorable, true, "a generated model must not cost the customer their undo point"); eq(snap.data.checkpointEligible, true)
+    eq(next(snap.data.skipped), nil, "a held MeshPart is not skipped")
+    eq(snap.data.heldMeshParts, 1)
+    local headNode = snap.data.node.children[1].children[1]
+    eq(headNode.className, "MeshPart"); eq(type(headNode.held), "string"); eq(headNode.props.MeshId, nil, "the snapshot carries no mesh id")
+    eq(#headNode.children, 1); eq(headNode.children[1].className, "Attachment")
+
+    -- The build after the checkpoint: the head is resized, then deleted, and something new is added.
+    head.Size = v3(9, 9, 9); head.Parent = nil
+    local added = Instance.new("Part"); added.Name = "Added"; added.Parent = model
+    local restored = run(c, "held-restore", { op = "restore", root = "game.Workspace.HeldMeshes", checkpointId = "cp-held", snapshot = snap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    local back = root:FindFirstChild("Dragon"):FindFirstChild("Head")
+    eq(back ~= nil, true, "the held MeshPart must come back"); eq(back.ClassName, "MeshPart")
+    eq(back.MeshId, "rbxassetid://4242", "the mesh comes from the held copy, not from an id"); eq(back.TextureID, "rbxassetid://4343")
+    eq(back.Size.X, 2); eq(#back:GetChildren(), 1, "children are restored once, not doubled by the copy"); eq(back:GetChildren()[1].Name, "Eye")
+    eq(root:FindFirstChild("Dragon"):FindFirstChild("Added"), nil)
+    -- The held copy is reusable: a second undo to the same checkpoint works too.
+    back.Parent = nil
+    local again = run(c, "held-restore-again", { op = "restore", root = "game.Workspace.HeldMeshes", checkpointId = "cp-held", snapshot = snap.data }, true, function() return true end)
+    eq(again.ok, true, tostring(again.error)); eq(root:FindFirstChild("Dragon"):FindFirstChild("Head").MeshId, "rbxassetid://4242")
+
+    -- A snapshot that is not a checkpoint holds nothing, so its MeshPart is still named as skipped.
+    local plain = run(c, "held-plain", { op = "snapshot", root = "game.Workspace.HeldMeshes", includeScripts = true }, false)
+    eq(plain.ok, true, tostring(plain.error)); eq(plain.data.restorable, false); eq(plain.data.skipped.MeshPart, 1)
+
+    -- A forged or foreign hold key is refused before anything changes.
+    local forged = run(c, "held-forged", { op = "snapshot", root = "game.Workspace.HeldMeshes", includeScripts = true, checkpointId = "cp-held-2" }, false)
+    forged.data.node.children[1].children[1].held = "not-a-hold"
+    local refusedForged = run(c, "held-forged-restore", { op = "restore", root = "game.Workspace.HeldMeshes", checkpointId = "cp-held-2", snapshot = forged.data }, true, function() return true end)
+    eq(refusedForged.ok, false); has(refusedForged.error, "held")
+    c:destroy()
+
+    -- After a plugin reload the copies are gone: the restore refuses by name and touches nothing.
+    local reloaded = newCommands()
+    local before = root:FindFirstChild("Dragon"):FindFirstChild("Head")
+    local refused = run(reloaded, "held-after-reload", { op = "restore", root = "game.Workspace.HeldMeshes", checkpointId = "cp-held", snapshot = snap.data }, true, function() return true end)
+    eq(refused.ok, false); has(refused.error, "held"); eq(root:FindFirstChild("Dragon"):FindFirstChild("Head"), before)
+    root:Destroy(); reloaded:destroy()
 end)
 
 spec("a TouchTransmitter Roblox created does not refuse a checkpoint, and a restore may remove it (F-044)", function()
@@ -477,8 +546,37 @@ spec("ordinary prompts, UI images, sounds and particles are creatable while new 
     eq(gui:FindFirstChild("IconButton").ImageTransparency, 0.1)
     eq(services.SoundService:FindFirstChild("SFX").Volume, 0.8)
     eq(host:FindFirstChild("Dust").Size.Keypoints[2].Value, 0.8)
-    local imageRefused = run(c, "image-content-refused", { op = "set_props", path = "game.StarterGui.OrdinaryGui.IconButton", props = { Image = { t = "string", v = "rbxassetid://1" } } }, true)
-    eq(imageRefused.ok, false); has(imageRefused.error, "external content")
+    -- An uploaded image id is the one content a model may write (gauntlet 4/5: every UI was icon-less).
+    local imageSet = run(c, "image-id-accepted", { op = "set_props", path = "game.StarterGui.OrdinaryGui.IconButton", props = {
+        Image = { t = "string", v = "rbxassetid://1" }, HoverImage = { t = "Content", v = "rbxassetid://22" }, PressedImage = { t = "string", v = "rbxassetid://333" },
+    } }, true)
+    eq(imageSet.ok, true, tostring(imageSet.error))
+    local icon = gui:FindFirstChild("IconButton")
+    eq(icon.Image, "rbxassetid://1"); eq(icon.HoverImage, "rbxassetid://22"); eq(icon.PressedImage, "rbxassetid://333")
+    local labelMade = run(c, "image-label-created", { op = "create_instances", items = {
+        { className = "ImageLabel", name = "Coin", parent = "game.StarterGui.OrdinaryGui", props = { Image = { t = "string", v = "rbxassetid://4455" } } },
+    } }, true)
+    eq(labelMade.ok, true, tostring(labelMade.error)); eq(gui:FindFirstChild("Coin").Image, "rbxassetid://4455")
+    for _, bad in { "http://example.com/x.png", "https://www.roblox.com/asset/?id=1", "rbxasset://textures/face.png", "rbxthumb://type=Asset&id=1&w=150&h=150", "rbxassetid://1 ", "rbxassetid://abc", "rbxassetid://1?x=2", "1" } do
+        local refused = run(c, "image-not-an-id", { op = "set_props", path = "game.StarterGui.OrdinaryGui.IconButton", props = { Image = { t = "string", v = bad } } }, true)
+        eq(refused.ok, false, "refused " .. bad); has(refused.error, "uploaded image id")
+    end
+    eq(icon.Image, "rbxassetid://1", "a refused image must leave the existing one")
+    local wrongClass = run(c, "image-on-a-part", { op = "set_props", path = "game.Workspace.OrdinaryHost", props = { Image = { t = "string", v = "rbxassetid://1" } } }, true)
+    eq(wrongClass.ok, false); has(wrongClass.error, "uploaded image id")
+    local labelHover = run(c, "hover-on-a-label", { op = "create_instances", items = {
+        { className = "ImageLabel", name = "NoHover", parent = "game.StarterGui.OrdinaryGui", props = { HoverImage = { t = "string", v = "rbxassetid://9" } } },
+    } }, true)
+    eq(labelHover.ok, false); eq(gui:FindFirstChild("NoHover"), nil)
+    local cleared = run(c, "image-cleared", { op = "set_props", path = "game.StarterGui.OrdinaryGui.IconButton", props = { HoverImage = { t = "Content", v = "" } } }, true)
+    eq(cleared.ok, true, tostring(cleared.error)); eq(icon.HoverImage, "")
+    local mesh = Instance.new("MeshPart"); mesh.Name = "Statue"; mesh.TextureID = "rbxassetid://77"; mesh.Parent = host
+    local meshRefused = run(c, "mesh-content-refused", { op = "set_props", path = "game.Workspace.OrdinaryHost.Statue", props = { MeshId = { t = "string", v = "rbxassetid://5" } } }, true)
+    eq(meshRefused.ok, false); has(meshRefused.error, "allowlist")
+    local textureRefused = run(c, "mesh-texture-refused", { op = "set_props", path = "game.Workspace.OrdinaryHost.Statue", props = { TextureID = { t = "string", v = "rbxassetid://5" } } }, true)
+    eq(textureRefused.ok, false); has(textureRefused.error, "external content"); eq(mesh.TextureID, "rbxassetid://77")
+    local textureCleared = run(c, "mesh-texture-cleared", { op = "set_props", path = "game.Workspace.OrdinaryHost.Statue", props = { TextureID = { t = "Content", v = "" } } }, true)
+    eq(textureCleared.ok, true, tostring(textureCleared.error)); eq(mesh.TextureID, "")
     local soundRefused = run(c, "sound-content-refused", { op = "set_props", path = "game.Workspace.OrdinaryHost.Click", props = { SoundId = { t = "string", v = "rbxassetid://2" } } }, true)
     eq(soundRefused.ok, false); has(soundRefused.error, "external content")
     host:Destroy(); gui:Destroy(); services.SoundService:FindFirstChild("SFX"):Destroy(); c:destroy()
@@ -776,11 +874,11 @@ end)
 spec("incomplete snapshot is never checkpoint-eligible or mutated from", function()
     local root = Instance.new("Folder"); root.Name = "IncompleteSnapshot"; root.Parent = workspace
     local supported = Instance.new("Part"); supported.Name = "Supported"; supported.Parent = root
-    local unsupported = Instance.new("MeshPart"); unsupported.Name = "Unsupported"; unsupported.Parent = root
+    local unsupported = Instance.new("UnionOperation"); unsupported.Name = "Unsupported"; unsupported.Parent = root
     local c = newCommands()
     local snap = run(c, "incomplete-snapshot", { op = "snapshot", root = "game.Workspace.IncompleteSnapshot", includeScripts = true, checkpointId = "cp-incomplete-1" }, false)
     eq(snap.ok, true, tostring(snap.error)); eq(snap.data.complete, false); eq(snap.data.restorable, false); eq(snap.data.checkpointEligible, false); eq(snap.data.coverage, "incomplete")
-    eq(snap.data.skipped.MeshPart, 1)
+    eq(snap.data.skipped.UnionOperation, 1)
     local beforeHistory = #history.log
     local refused = run(c, "incomplete-restore", { op = "restore", root = "game.Workspace.IncompleteSnapshot", checkpointId = "cp-incomplete-1", snapshot = snap.data }, true, function() return true end)
     eq(refused.ok, false); eq(refused.failure, "invalid"); has(refused.error, "incomplete or unbound")

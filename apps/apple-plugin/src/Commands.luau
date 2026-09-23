@@ -225,9 +225,11 @@ RESTORE_CLASSES.LocalScript = true
 RESTORE_CLASSES.ModuleScript = true
 
 -- MeshPart content cannot be reconstructed by assigning MeshId/MeshContent, so it is deliberately
--- absent from RESTORE_CLASSES. A checkpoint that already contains one stays ineligible. A MeshPart
--- added after an eligible checkpoint is different: restore may safely remove it because doing so
--- requires no claim that Apple can recreate its mesh.
+-- absent from RESTORE_CLASSES. A checkpoint HOLDS one instead (F-053): the snapshot keeps a detached
+-- copy of the MeshPart in this Studio session and restore re-parents a copy of that copy, so no mesh
+-- id is ever assigned or loaded. Without the held copy (not a checkpoint, or the plugin reloaded) a
+-- MeshPart still makes the snapshot incomplete. A MeshPart added after an eligible checkpoint may
+-- be removed by restore, because doing so requires no claim that Apple can recreate its mesh.
 local DELETE_ONLY_CLASSES = {
 	MeshPart = true,
 	TouchTransmitter = true,
@@ -399,6 +401,8 @@ local PROPERTY_ALLOW = {
 	OutlineTransparency = true,
 	FillColor = true,
 	FillTransparency = true,
+	-- Writable ONLY as "" (CONTENT_PROPERTY): the worker strips an inserted mesh's texture this way.
+	TextureID = true,
 	Image = true,
 	HoverImage = true,
 	PressedImage = true,
@@ -862,16 +866,23 @@ local READ_PROPERTIES = {
 	Value = true,
 }
 
+-- A table instead of `true` names the ONE content a model may write there: an image id, exactly
+-- the rbxassetid scheme followed by digits, on the classes listed (validateProps). Measured 2026-09-23 (gauntlet
+-- rounds 4/5): upload_ui_asset handed the model an rbxassetid for ImageLabel.Image and this table
+-- refused every Image by name, so every generated UI was icon-less. A table is still truthy, so the
+-- capture filter and the op-family refusal (a family can never add one of these) are unchanged; any
+-- other content (a URL, rbxasset://, rbxthumb://, a mesh, a sound, an animation) stays refused, and
+-- clearing any content property to "" is allowed because it removes content rather than loading it.
 local CONTENT_PROPERTY = {
 	MeshId = true,
 	MeshContent = true,
 	TextureID = true,
 	TextureId = true,
 	TextureContent = true,
-	Texture = true,
-	Image = true,
-	HoverImage = true,
-	PressedImage = true,
+	Texture = { Decal = true, Texture = true },
+	Image = { ImageLabel = true, ImageButton = true },
+	HoverImage = { ImageButton = true },
+	PressedImage = { ImageButton = true },
 	SoundId = true,
 	AnimationId = true,
 	Video = true,
@@ -1592,12 +1603,17 @@ local function validatePropertyName(property: any, allowContent: boolean?): (str
 		return nil, ("property %s is not in Apple's write allowlist"):format(name)
 	end
 	if CONTENT_PROPERTY[name] and allowContent ~= true then
+		if type(CONTENT_PROPERTY[name]) == "table" then
+			return nil, ("property %s takes only an uploaded image id, exactly as upload_ui_asset returned it (the rbxassetid scheme and digits, nothing else), on an object that displays it (Image: ImageLabel/ImageButton, HoverImage/PressedImage: ImageButton, Texture: Decal/Texture); any other external content is refused"):format(name)
+		end
 		return nil, ("property %s carries external content and is refused"):format(name)
 	end
 	return name
 end
 
-local function validateProps(props: any, label: string, allowInstance: boolean?, allowContent: boolean?, gameRef: any?, services: any?): ({ [string]: any }?, { [string]: any }?, string?)
+-- `className` is the class being written, when one class is: it scopes the image-id exception in
+-- CONTENT_PROPERTY. Without it (a bulk write across classes) an image id is refused like any content.
+local function validateProps(props: any, label: string, allowInstance: boolean?, allowContent: boolean?, gameRef: any?, services: any?, className: string?): ({ [string]: any }?, { [string]: any }?, string?)
 	if props == nil then return {} end
 	if type(props) ~= "table" then return nil, nil, label .. " must be an object" end
 	local decoded = {}
@@ -1606,13 +1622,30 @@ local function validateProps(props: any, label: string, allowInstance: boolean?,
 	for property, typed in props do
 		count += 1
 		if count > MAX_PROPS then return nil, nil, label .. " exceeds the property limit" end
-		local valid, nameErr = validatePropertyName(property, allowContent)
+		-- The only content a model write may carry: "" (clearing), or an image id on a class that
+		-- displays it. Either spelling of the tag is read, because the tool description offers Content.
+		local contentText = nil
+		local classes = type(property) == "string" and CONTENT_PROPERTY[property] or nil
+		if classes and allowContent ~= true and type(typed) == "table" and (typed.t == "string" or typed.t == "Content") and type(typed.v) == "string" then
+			-- The scheme is compared as a word rather than matched as one URL literal: the shipped
+			-- source carries no asset-URL literal at all (tests/worker-capability-contract.test.mjs).
+			local scheme, digits = string.match(typed.v, "^(%l+)://(%d+)$")
+			if typed.v == "" or (type(classes) == "table" and className ~= nil and classes[className] == true and scheme == "rbxassetid" and #digits <= 20) then
+				contentText = typed.v
+			end
+		end
+		local valid, nameErr = validatePropertyName(property, allowContent == true or contentText ~= nil)
 		if not valid then return nil, nil, nameErr end
-		local mayReferenceInstance = allowInstance == true and INSTANCE_REF_PROPERTY[valid] == true
-		local value, valueErr = decodeValue(typed, label .. "." .. valid, mayReferenceInstance, gameRef, services)
-		if valueErr then return nil, nil, valueErr end
-		decoded[valid] = value
-		encoded[valid] = typed
+		if contentText ~= nil then
+			decoded[valid] = contentText
+			encoded[valid] = { t = "string", v = contentText }
+		else
+			local mayReferenceInstance = allowInstance == true and INSTANCE_REF_PROPERTY[valid] == true
+			local value, valueErr = decodeValue(typed, label .. "." .. valid, mayReferenceInstance, gameRef, services)
+			if valueErr then return nil, nil, valueErr end
+			decoded[valid] = value
+			encoded[valid] = typed
+		end
 	end
 	return decoded, encoded
 end
@@ -1635,7 +1668,7 @@ local function validateAttributes(attrs: any, label: string): ({ [string]: any }
 end
 
 local function setProperties(self: any, inst: any, props: any, attrs: any, label: string): ({ string }?, string?)
-	local decodedProps, _, propErr = validateProps(props, label .. ".props", true, false, self.game, self.options.services)
+	local decodedProps, _, propErr = validateProps(props, label .. ".props", true, false, self.game, self.options.services, classNameOf(inst))
 	if propErr then return nil, propErr end
 	local decodedAttrs, attrErr = validateAttributes(attrs, label .. ".attributes")
 	if attrErr then return nil, attrErr end
@@ -1979,7 +2012,7 @@ local function buildSpec(options: any, gameRef: any, spec: any, parentOverride: 
 	elseif not classAllowedForParent(parent, className) then
 		return nil, "class is not allowed in that parent"
 	end
-	local props, _, propErr = validateProps(spec.props, "instance props", true, false, gameRef, options.services)
+	local props, _, propErr = validateProps(spec.props, "instance props", true, false, gameRef, options.services, className)
 	if propErr then return nil, propErr end
 	local attrs, attrErr = validateAttributes(spec.attributes, "instance attributes")
 	if attrErr then return nil, attrErr end
@@ -2027,7 +2060,7 @@ local function validateCreateSpec(options: any, gameRef: any, spec: any, depth: 
 	if not CREATE_CLASSES[className] then return ("class %s is not in Apple's create allowlist"):format(className), "refused" end
 	local name, nameErr = safeName(spec.name or className, "instance name")
 	if not name then return nameErr, "invalid" end
-	local _, _, propErr = validateProps(spec.props, "instance props", true, false, gameRef, options.services)
+	local _, _, propErr = validateProps(spec.props, "instance props", true, false, gameRef, options.services, className)
 	if propErr then return propErr, "invalid" end
 	local _, attrErr = validateAttributes(spec.attributes, "instance attributes")
 	if attrErr then return attrErr, "invalid" end
@@ -2337,7 +2370,15 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 			state.skipped[className] = (state.skipped[className] or 0) + 1
 			return nil
 		end
-		if not RESTORE_CLASSES[className] and not isService and not isProtectedContainer then
+		-- F-053: only a checkpoint (state.holds) holds a copy; its children are captured as nodes.
+		local held = nil
+		if className == "MeshPart" and state.holds ~= nil then
+			held = safeClone(inst)
+			if held then
+				for _, copyChild in (childrenOf(held) or {}) do pcall(function() copyChild:Destroy() end) end
+			end
+		end
+		if not RESTORE_CLASSES[className] and not held and not isService and not isProtectedContainer then
 		state.complete = false
 		state.skipped[className] = (state.skipped[className] or 0) + 1
 		return nil
@@ -2356,6 +2397,11 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 	if #attrIssues > 0 then state.complete = false end
 	local node: any = { className = className, name = name, props = props, attributes = attrs, children = {} }
 	if isService or isProtectedContainer then node.protectedIdentity = true end
+	if held then
+		state.heldCount += 1
+		node.held = "h" .. state.heldCount
+		state.holds[node.held] = held
+	end
 	if isScript(inst) then
 		state.scriptCount += 1
 		if not state.includeScripts then
@@ -2432,9 +2478,17 @@ local function validateSnapshotNode(self: any, node: any, depth: number, parentC
 		return "snapshot service appears below the place root"
 	elseif protectedContainer then
 		if parentClass ~= "StarterPlayer" then return "protected StarterPlayer container appears outside StarterPlayer" end
+	elseif node.held ~= nil then
+		-- Only a copy THIS engine took for this checkpoint, used once, and only for its own class.
+		local copy = if type(node.held) == "string" and stats.holds then stats.holds[node.held] else nil
+		if className ~= "MeshPart" or copy == nil or stats.usedHolds[node.held] then
+			return "snapshot MeshPart is not held by this Studio session (the plugin was reloaded since the checkpoint, or the snapshot was altered), so it cannot be restored; use Studio Undo instead"
+		end
+		stats.usedHolds[node.held] = true
 	elseif not RESTORE_CLASSES[className] then
 		return "snapshot contains a class outside Apple's restore allowlist"
 	end
+	if node.held ~= nil and (depth == 0 or className ~= "MeshPart") then return "snapshot hold metadata is attached to the wrong node" end
 	if dataModel and depth ~= 0 then return "DataModel may appear only as the snapshot root" end
 	local protectedIdentity = dataModel or serviceClass or protectedContainer
 	if protectedIdentity and node.protectedIdentity ~= true then return "snapshot is missing protected identity metadata" end
@@ -2541,7 +2595,13 @@ end
 
 local function restoreNode(self: any, parent: any, node: any, state: any): (any?, string?)
 	if node.protectedIdentity == true then return nil, "protected snapshot identity cannot be recreated" end
-	local inst, createErr = makeInstance(self.options, node.className)
+	local inst, createErr
+	if node.held ~= nil then
+		-- A copy of the held copy, so the checkpoint can be restored again (validated in prepareRestore).
+		inst, createErr = safeClone(state.holds[node.held])
+	else
+		inst, createErr = makeInstance(self.options, node.className)
+	end
 	if not inst then return nil, createErr end
 	table.insert(state.created, inst)
 	state.instancesCreated += 1
@@ -3720,6 +3780,8 @@ local function handleSnapshot(self: any, op: any): (any?, string?, string?)
 		truncated = false,
 		skipped = {},
 		protected = {},
+		holds = if checkpointId ~= nil then {} else nil,
+		heldCount = 0,
 	}
 	local node, nodeErr
 	if root == self.game then
@@ -3730,6 +3792,25 @@ local function handleSnapshot(self: any, op: any): (any?, string?, string?)
 	if nodeErr then return nil, "invalid", nodeErr end
 	if not node then return nil, "invalid", "snapshot exceeded its bounded size" end
 	local restorable = state.complete and not state.truncated
+	-- Held MeshPart copies live as long as this engine, for the newest MAX_HELD_CHECKPOINTS checkpoints.
+	if checkpointId ~= nil then
+		local previous = self.heldCopies[checkpointId]
+		if previous then for _, copy in previous do pcall(function() copy:Destroy() end) end end
+		self.heldCopies[checkpointId] = nil
+		local index = table.find(self.heldOrder, checkpointId)
+		if index then table.remove(self.heldOrder, index) end
+		if restorable and state.heldCount > 0 then
+			self.heldCopies[checkpointId] = state.holds
+			table.insert(self.heldOrder, checkpointId)
+			while #self.heldOrder > 8 do
+				local oldest = table.remove(self.heldOrder, 1)
+				for _, copy in self.heldCopies[oldest] or {} do pcall(function() copy:Destroy() end) end
+				self.heldCopies[oldest] = nil
+			end
+		else
+			for _, copy in state.holds do pcall(function() copy:Destroy() end) end
+		end
+	end
 	local exact = restorable and #state.protected == 0
 	local scope = if root == self.game then "place" else "subtree"
 	local coverage = if exact then "exact" elseif restorable then "supported-subset" else "incomplete"
@@ -3759,6 +3840,8 @@ local function handleSnapshot(self: any, op: any): (any?, string?, string?)
 		truncatedBy = state.truncatedBy,
 		skipped = state.skipped,
 		protected = state.protected,
+		-- MeshParts this checkpoint holds in this Studio session (F-053); a plugin reload loses them.
+		heldMeshParts = if restorable then state.heldCount else 0,
 	}, nil
 end
 
@@ -3856,7 +3939,7 @@ function prepareRestore(self: any, op: any): (any?, string?, string?, string?)
 		if op.snapshot.sourceHashAlgorithm ~= "fnv1a32" then return nil, "invalid", "snapshot source hash algorithm is not recognised" end
 	if type(op.snapshot.skipped) ~= "table" or next(op.snapshot.skipped) ~= nil then return nil, "invalid", "snapshot omitted unsupported authored content" end
 	local rootNode = op.snapshot.node
-	local stats = { nodes = 0, instances = 0, scripts = 0, sourceChars = 0 }
+	local stats = { nodes = 0, instances = 0, scripts = 0, sourceChars = 0, holds = self.heldCopies[checkpointId], usedHolds = {} }
 	local nodeErr = validateSnapshotNode(self, rootNode, 0, nil, nil, stats)
 	if nodeErr then return nil, "invalid", nodeErr end
 	for field, observed in { nodeCount = stats.nodes, instanceCount = stats.instances, scriptCount = stats.scripts, sourceChars = stats.sourceChars } do
@@ -3883,12 +3966,13 @@ function prepareRestore(self: any, op: any): (any?, string?, string?, string?)
 		rootNode = rootNode,
 		snapshot = op.snapshot,
 		checkpointId = checkpointId,
+		holds = stats.holds,
 	}
 end
 end
 
 function applyRestore(self: any, plan: any): (any?, string?, string?)
-	local state = { created = {}, instancesCreated = 0, scriptsRestored = 0, pendingRefs = {} }
+	local state = { created = {}, instancesCreated = 0, scriptsRestored = 0, pendingRefs = {}, holds = plan.holds or {} }
 	local root = plan.root
 	local rootNode = plan.rootNode
 	if root == self.game then
@@ -4762,6 +4846,8 @@ function Commands.new(options: any?): any
 		destroyed = false,
 		activeRecording = nil,
 		activeGeneration = nil,
+		heldCopies = {},
+		heldOrder = {},
 	}
 	-- Once per plugin load: the tables are module-level, so a second engine sees the same merge.
 	if not OP_FAMILIES.installed or (opts.opFamilies ~= nil and OP_FAMILIES.source == nil) then
@@ -4942,6 +5028,9 @@ function Commands.new(options: any?): any
 	function self:destroy()
 		if self.destroyed then return end
 		self.destroyed = true
+		for _, holds in self.heldCopies do for _, copy in holds do pcall(function() copy:Destroy() end) end end
+		self.heldCopies = {}
+		self.heldOrder = {}
 		if self.generation and type(self.generation.destroy) == "function" then
 			pcall(function() self.generation:destroy() end)
 		end

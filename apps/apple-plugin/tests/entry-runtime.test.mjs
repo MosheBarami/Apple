@@ -113,6 +113,11 @@ local function byText(value)
   error('Missing control '..value)
 end
 assert(bridgeInstance.claims==0,'must not auto-pair')
+-- F-026: the token is never saved, so a Studio restart ends the pairing. The dock says so up front,
+-- instead of leaving the customer to discover it from a bare "Not connected".
+local offlineNotice = nil
+for _,o in objects do if type(o.Text)=='string' and string.find(o.Text,'Not connected',1,true) then offlineNotice = o.Text end end
+assert(offlineNotice and string.find(offlineNotice,'Studio closes',1,true) and string.find(offlineNotice,'new code',1,true),'the offline dock must say a restart needs a new code: '..tostring(offlineNotice))
 
 -- ONE DEFINITION OF EDIT MODE, HANDED TO THE ENGINE. Given nothing, the command engine falls back
 -- to RunService:IsEdit() alone, and this fixture deliberately keeps IsEdit() true while the Studio

@@ -77,8 +77,9 @@ spec("a family cannot open a script class or a Content property", function()
     eq(byOp.sneaky_create, nil); eq(byOp.sneaky_image, nil)
     local r = c:execute("s", { op = "create_instances", items = {{ className = "Script", name = "S", parent = "game.Workspace" }} }, true)
     eq(r.ok, false)
+    -- An image id is writable only on a class that displays it; the family's Humanoid is not one.
     local img = c:execute("i", { op = "set_props", path = "game.Workspace.H", props = { Image = { t = "string", v = "rbxassetid://1" } } }, true)
-    eq(img.ok, false)
+    eq(img.ok, false); has(img.error, "uploaded image id")
 end)
 
 spec("every refused family is named with its reason", function()

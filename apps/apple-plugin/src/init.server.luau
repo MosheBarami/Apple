@@ -191,7 +191,9 @@ end
 local heading = text("Apple", 30, false)
 heading.Font = Enum.Font.SourceSansSemibold
 text("Your place. Your control.", 15, true)
-local status = text("Not connected", 17, false)
+-- F-026: the token is deliberately never saved (surface.test.mjs forbids GetSetting), so closing
+-- Studio ends the pairing; say so before the customer finds out from a code that no longer works.
+local status = text("Not connected. A pairing lasts until Studio closes; after a restart, enter a new code from your Apple project.", 17, false)
 local place = text(game.Name, 13, true)
 		text("Pair with a project at apple.moshe-barami111.workers.dev. While connected, Apple may read this place’s objects and scripts, the current selection, Studio Output messages, and snapshots of the active 3D viewport over HTTPS.", 14, true)
 
@@ -218,7 +220,7 @@ local permission = text("Access: inspect only", 15, false)
 local edits = control("Enable edits…")
 local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
 local activity = text("No actions yet", 13, true)
-local version = text("Apple Studio · 1.1.0 · independent preview", 12, true)
+local version = text("Apple Studio · 1.2.0 · independent preview", 12, true)
 version.LayoutOrder = 100
 
 local function refreshAccess()
@@ -297,7 +299,7 @@ bridge = Bridge.new({
 		return {
 			kind = "state", placeName = game.Name, placeId = game.PlaceId,
 			gameId = game.GameId, isRunMode = RunService:IsRunMode(),
-			selectionCount = #Selection:Get(), pluginVersion = "1.1.0",
+			selectionCount = #Selection:Get(), pluginVersion = "1.2.0",
 		}
 	end,
 	onStatus = function(message: string)

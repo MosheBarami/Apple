@@ -17,7 +17,9 @@ local POLL_URL = APPLE_ORIGIN .. "/api/studio/poll"
 -- behaving differently. The worker's LATEST_PLUGIN_VERSION stays at the store's version until this
 -- one is published. init.server.luau repeats this literal in its label and its state event, and
 -- packages/evals/src/plugin-version.test.mjs fails if the copies disagree.
-local PLUGIN_VERSION = "1.1.0"
+-- 1.2.0 (2026-09-23): an uploaded image id is writable on UI images/decals, a checkpoint holds its
+-- MeshParts (F-053), and the dock says a Studio restart needs a new pairing code (F-026).
+local PLUGIN_VERSION = "1.2.0"
 local PLUGIN_PROTOCOL = "1"
 
 -- The worker currently serves at most ten operations.  These limits are client-side guardrails
