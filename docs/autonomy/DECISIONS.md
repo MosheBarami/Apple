@@ -95,3 +95,17 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   holds the four cases.
 - D-VIS-1 (2026-09-23): mission 2 counted as met and F-049 lowered to medium once one sentence produced a coherent floating-island scene in under 2 minutes for 62 Credits; the unmet part — an orange sunset sky — needs a skybox the product cannot insert (Model assets are refused by the asset gate). Reverse by reopening F-049 as high if the owner judges the scene short of the bar.
 - D-PICKS-1 (2026-09-23): the owner submitted 193 picks (no notes). Implemented in seven lanes with disjoint file ownership (chat-core, chat-tech, composer, thinking+loading, settings+onboarding, site landing, site pricing+docs), all dependency-free because apps/web ships no motion/gsap/radix and pnpm install is off-limits in the shared checkout; Motion+ and unknown-license sources are re-implemented, not copied. Reverse any single pick by removing its component under components/picks/<lane>/.
+- **D-VISION-1 — The owner's definition of finished (question round, 2026-09-23 ~14:30 IDT).** Done = everything
+  the project ever planned, a child builds a working game alone, all findings closed, the gate passes; priority
+  game quality. Models picked by name: Free = Apple (best cheap trainable open model on Workers AI), Pro = + Apple
+  MAX (glm-5.3-flash), Max = + Gemini 3.8 Flash, GPT-5.6, openai/gpt-5.6-luna — all through Cloudflare AI Gateway;
+  BYOK removed. Train everything trainable (RAG + skills for all; LoRA for Apple). Voice: AssemblyAI Universal-3.5
+  Pro via the worker, English, transcribed then deleted (never stored). UI images: a dedicated image model,
+  uploaded through our Roblox account; outside images used as-is only when licensed (CC0 / free Creator Store),
+  otherwise reference only. 3D: Roblox's generator, Creator Store, an external AI generator — chosen by pixels.
+  UI kits for every genre. Agent: many more Studio tools, web + Context7, image generation. Plugin publishing
+  unrestricted (supersedes D-STORE-2's "no interim updates"; nothing is ever removed). No domain for now. Stripe
+  in test mode. Roblox icons within brand guidelines. English only; audience: everyone. The Global API key pasted
+  in chat is not used or stored; wrangler login + the dashboard in Chrome are used instead. Repo goes public after
+  a secrets + personal-data scan. Reverse any item by editing this line and the plan
+  (~/.claude/plans/swirling-strolling-wombat.md).
