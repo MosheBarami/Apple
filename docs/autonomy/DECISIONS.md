@@ -93,4 +93,4 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   the agent was correctly waiting and each blocked stop was a paid no-op. Reverse by deleting
   waiting_on_background_work from .claude/hooks/autonomy_stop_gate.py; tests/owner-autonomy-hooks.test.mjs
   holds the four cases.
-
+- D-VIS-1 (2026-09-23): mission 2 counted as met and F-049 lowered to medium once one sentence produced a coherent floating-island scene in under 2 minutes for 62 Credits; the unmet part — an orange sunset sky — needs a skybox the product cannot insert (Model assets are refused by the asset gate). Reverse by reopening F-049 as high if the owner judges the scene short of the bar.

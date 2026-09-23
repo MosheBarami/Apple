@@ -18,7 +18,7 @@
  "candidate_complete": false,
  "missions": {
   "gameplay_loop_from_baseplate": true,
-  "visually_ambitious_environment": false,
+  "visually_ambitious_environment": true,
   "scripts_networking_ui": true,
   "modify_existing_project": true,
   "debug_broken_experience": true,
@@ -77,6 +77,9 @@
   ],
   "mobile_qa": [
    "docs/autonomy/evidence/20260923T0145Z-mobile-qa/README.md"
+  ],
+  "mission:visually_ambitious_environment": [
+   "docs/autonomy/evidence/20260923T0415Z-sky-island/README.md"
   ]
  },
  "_notes": "Every true flag and every true mission must have at least one existing path under evidence[<key>]; scripts/autonomy-review-gate.py refuses a true without evidence. fresh_reviews_without_material_blocker counts CONSECUTIVE fresh-context reviews that returned PASS; any MATERIAL_FINDINGS resets it to 0. open_*_findings are counted from CUSTOMER_FINDINGS.md open items, not typed by hand.",
