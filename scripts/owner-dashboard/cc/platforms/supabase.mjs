@@ -325,7 +325,7 @@ export function insightsOf(d) {
     const worst = sec.groups[0];
     if (total && worst) {
       out.push({ level: sec.error ? 'bad' : 'warn', title: `${nf(total)} אזהרות אבטחה, הכי חמורה: ${worstPhrase(worst)}`,
-        detail: `${worst.he} (${worst.name}), ${nf(worst.count)} מקרים. הגדרות אבטחה לא משתנים מכאן בכוונה: פותחים את יועץ האבטחה ב-Supabase ומתקנים שם.`, href: `${dash}/advisors/security`, tab: 'advisors' });
+        detail: `${worst.he} (${worst.name}), ${nf(worst.count)} מקרים. הגדרות אבטחה לא משתנות מכאן בכוונה: פותחים את יועץ האבטחה ב-Supabase ומתקנים שם.`, href: `${dash}/advisors/security`, tab: 'advisors' });
     } else out.push({ level: 'good', title: 'אין אזהרות אבטחה פתוחות', detail: `יועץ האבטחה של Supabase לא מצא בעיות ברמת ERROR או WARN${sec.info ? ` (יש ${nf(sec.info)} הערות מידע)` : ''}.`, tab: 'advisors' });
   } else if (E.security) out.push({ level: 'info', title: 'לא הצלחנו לקרוא את יועץ האבטחה', detail: E.security, tab: 'advisors' });
   else if (!sec && Array.isArray(d.tables)) {
@@ -354,7 +354,8 @@ export function insightsOf(d) {
 
   if (d.backups) {
     const last = (d.localBackups || [])[0];
-    const local = last ? `הגיבוי המקומי האחרון נעשה לפני ${nf(daysAgo(last.at))} ימים.` : 'עוד לא נעשה גיבוי מקומי: הכפתור "לגבות עכשיו" במסך Database שומר עותק במחשב.';
+    const ageHe = (n) => (n < 1 ? 'היום' : n < 2 ? 'אתמול' : `לפני ${nf(n)} ימים`);
+    const local = last ? `הגיבוי המקומי האחרון נעשה ${ageHe(daysAgo(last.at))}.` : 'עוד לא נעשה גיבוי מקומי: הכפתור "לגבות עכשיו" במסך Database שומר עותק במחשב.';
     if (d.backups.pitr) out.push({ level: 'good', title: 'שחזור לנקודת זמן (PITR) פעיל', detail: local, tab: 'database' });
     else if (d.backups.list?.length) out.push({ level: 'info', title: `${nf(d.backups.list.length)} גיבויים יומיים של Supabase`, detail: `PITR כבוי. ${local}`, tab: 'database' });
     else out.push({ level: last && daysAgo(last.at) < 7 ? 'info' : 'warn', title: 'אין גיבוי אוטומטי ב-Supabase', detail: `בתוכנית הזו אין גיבויים יומיים ואין PITR. ${local}`, tab: 'database' });
