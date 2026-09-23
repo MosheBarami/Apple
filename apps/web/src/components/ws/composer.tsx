@@ -151,6 +151,13 @@ interface Props {
   onUpgrade?: () => void;
   maxUpgradeAvailable?: boolean | null;
   seed?: string;
+  /**
+   * Bumped by the parent when a message this composer handed over, and was told had NOT left (a
+   * `false` from onSend), leaves later on its own — the asset-source question holds the first
+   * build's message and releases it after the answer. The composer then clears exactly as a send
+   * would have; without this the sent words stayed in the box (F-052).
+   */
+  sentLater?: number;
   placeholder?: string;
   /** The project this draft belongs to. Empty means "do not persist" — draft.ts no-ops on it. */
   draftKey?: string;
@@ -224,6 +231,7 @@ export function Composer({
   onUpgrade,
   maxUpgradeAvailable = null,
   seed,
+  sentLater = 0,
   placeholder,
   draftKey = '',
   projectId,
@@ -689,6 +697,11 @@ export function Composer({
       return false;
     }
     if (!onSend(message, readyAttachments(staged))) return false;
+    afterSent();
+    return true;
+  };
+
+  function afterSent() {
     // These files are no longer unsent composer state. Their attachment ids now belong to the sent
     // message, so a later project switch/unmount must not clean them up as orphans.
     for (const row of staged) owners.current.delete(row.id);
@@ -701,8 +714,14 @@ export function Composer({
     beat(onComposerSubmit(presence.current, Date.now()));
     setText('');
     clearDraft(draftKey);
-    return true;
-  };
+  }
+
+  // A ref for the same reason as insertRef: the effect must fire on the bump, not on every render.
+  const afterSentRef = useRef(afterSent);
+  afterSentRef.current = afterSent;
+  useEffect(() => {
+    if (sentLater > 0) afterSentRef.current();
+  }, [sentLater]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     //[[ THE PICKER CLAIMS THE KEY FIRST.

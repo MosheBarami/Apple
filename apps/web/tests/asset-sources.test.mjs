@@ -290,7 +290,7 @@ test('THE QUESTION IS ASKED BEFORE THE MESSAGE LEAVES, and the words are not los
   // A build that has already started has already decided. `send` returns false so the composer
   // keeps what was typed, and the held text goes on its own once the policy is stored.
   const send = WS.slice(WS.indexOf('const askFirst ='), WS.indexOf('const lastAssistantId'));
-  assert.match(send, /if \(askFirst\(text\)\) return false/, 'the send must be held, not allowed through');
+  assert.match(send, /if \(askFirst\(text\b[^)]*\)\) return false/, 'the send must be held, not allowed through');
   assert.match(send, /if \(!owesAnswer\(sourcePolicy\)\) return false/, 'and held only when an answer is owed');
 });
 

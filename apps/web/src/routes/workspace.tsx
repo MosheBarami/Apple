@@ -425,7 +425,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   //   set: the command palette is registered further up this component and opens this dialog, so
   //   a declaration below that point would read as reachable only by luck. See `askFirst` for
   //   what `held` means and why answering releases the message. ]]
-  const [sourceAsk, setSourceAsk] = useState<{ held: string | null } | null>(null);
+  const [sourceAsk, setSourceAsk] = useState<{ held: string | null; attachments?: ChatAttachment[] } | null>(null);
+  // Counts messages the question held and then sent, so the composer clears as if it had sent them.
+  const [sentLater, setSentLater] = useState(0);
 
   //[[ NAMES FOR THE PEOPLE WHO TOOK THE CHECKPOINTS.
   //
@@ -832,7 +834,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   //   a project whose answer was already settled had no way to reach the dialog at all and the
   //   choice was remembered but not changeable. The state itself is declared beside the policy,
   //   above, because the command palette opens it from further up this component. ]]
-  const askFirst = (text: string): boolean => {
+  const askFirst = (text: string, attachments: ChatAttachment[]): boolean => {
     // The send that follows a fresh answer skips the question once (F-040, 2026-09-23): it runs in
     // the same render as the save, where `sourcePolicy` is still the unanswered value, so it reopened
     // the dialog and "Start building" needed a second press. The next render has the stored answer.
@@ -840,7 +842,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     // Talk is not a build: a greeting is answered without asking where assets come from (F-048).
     if (isSmallTalk(text)) return false;
     if (!owesAnswer(sourcePolicy)) return false;
-    setSourceAsk({ held: text });
+    setSourceAsk({ held: text, attachments });
     return true;
   };
 
@@ -853,7 +855,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
       toast('Apple MAX requires a paid subscription. Choose Apple to continue free. Your draft is kept.', 'error');
       return false;
     }
-    if (askFirst(text)) return false;
+    if (askFirst(text, attachments)) return false;
     // Sending re-arms following: you have just added to the conversation, so you want to watch it.
     void conversation.current?.scrollToBottom();
     setSeed(undefined);
@@ -1243,7 +1245,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               // message to release, and sending one would be the product putting words in.
               const text = sourceAsk.held;
               setSourceAsk(null);
-              if (text) { justAnswered.current = true; send(text); }
+              // Its files go with it, and the composer that still shows it is told it left (F-052).
+              if (text) {
+                justAnswered.current = true;
+                if (send(text, sourceAsk.attachments ?? [])) setSentLater((n) => n + 1);
+              }
             }}
             onCancel={() => setSourceAsk(null)}
           />
@@ -1251,6 +1257,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
 
         <Composer
           onSend={send}
+          sentLater={sentLater}
           studioConnected={studio.connected}
           onStop={() => {
             if (!chatAllowed) {
