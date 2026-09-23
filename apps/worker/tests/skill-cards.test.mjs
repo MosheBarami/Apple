@@ -94,3 +94,14 @@ test('no card recipe teaches hand-built UI, and none lists a refused UI tool', (
     assert.ok(!c.tools.includes('build_ui'), `${c.id} lists build_ui, which D-UIONLY-1 refuses`);
   }
 });
+
+// D-MODELLIB-1: props and buildings come from the model library first; Parts are the fallback. The
+// cards say so conditionally, so they stay right on a run that is not offered the library tools.
+test('the props and buildings cards send the run to the model library before Parts', () => {
+  for (const id of ['props-low-poly-from-primitives', 'map-buildings-from-parts']) {
+    const c = mod.SKILL_CARDS.find((x) => x.id === id);
+    assert.match(c.recipe[0], /find_library_model/, id);
+    assert.match(c.recipe[0], /insert_library_model/, id);
+    assert.ok(mod.renderSkillCard(c).length < mod.MAX_CARD_CHARS, `${id} is truncated`);
+  }
+});

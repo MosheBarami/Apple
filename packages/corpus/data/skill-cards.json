@@ -179,7 +179,7 @@
         "2 Frame: raise the edges — edit_terrain fill_ball/fill_block hills and rock cliffs (Enum.Material.Rock/Ground) around the perimeter, 30-80 studs tall, so the map has a skyline and a boundary instead of an endless plane.",
         "3 Paths: connect spawn -> each landmark with 8-12 stud wide paths: edit_terrain replace_material strips (Grass -> Sand/Ground/Pavement) or flat Parts 0.5 tall. Paths should curve and meet at a central plaza.",
         "4 Landmarks: a centrepiece at the plaza (statue, fountain, big sign) and one distinct building/structure per zone, each visible from spawn.",
-        "5 Props: group into Models (see props card), place in clusters of 3-7 along paths and around landmarks, never evenly spread; fences follow path edges; lamps every 20-30 studs along paths.",
+        "5 Props: from the model library or grouped into Models (see props card), place in clusters of 3-7 along paths and around landmarks, never evenly spread; fences follow path edges; lamps every 20-30 studs along paths.",
         "6 Dressing: scatter_instances trees/rocks/bushes on Grass only (onMaterial, minSpacing 8-15, scale [0.8,1.3], randomYaw) in the gaps and along the edges; then set_mood and render_view from spawn and from above.",
         "Budget by layer: a small hub is 150-250 studs across with 20-60 prop models, not one ground plane plus one template."
       ],
@@ -209,9 +209,11 @@
     },
     {
       "id": "props-low-poly-from-primitives",
-      "title": "Build low-poly props from Parts: trees, rocks, fences, lamps",
+      "title": "Low-poly props: the model library first, Parts as the fallback (trees, rocks, fences, lamps)",
       "domain": "props",
       "tools": [
+        "insert_library_model",
+        "find_library_model",
         "create_instances",
         "group_instances",
         "clone_instances",
@@ -249,6 +251,7 @@
         "detail"
       ],
       "recipe": [
+        "Library first (D-MODELLIB-1): when the run offers find_library_model, search it with a plain noun (pine tree, rock, fence, lamp, crate) and place the best hit with insert_library_model (position = its bottom centre, height in studs), then clone_instances it for repeats. Build from Parts, as below, only when the library has nothing for it or insert_library_model failed.",
         "Materials: SmoothPlastic (or Plastic) with saturated flat colours reads as stylised low-poly; 2-3 tones per prop (base, shade, accent). Anchored true, CastShadow true.",
         "Round tree: trunk Part Shape Cylinder (rotate so its axis is vertical: Orientation [0,0,90]) 2x10x2, brown; canopy 2-3 overlapping Shape Ball parts 8-12 studs in two greens, offset so the silhouette is lumpy.",
         "Pine tree: trunk cylinder + 3 stacked WedgePart/Part tiers shrinking upward (12 -> 8 -> 4 wide), each rotated 45 degrees from the one below, dark green.",
@@ -288,9 +291,11 @@
     },
     {
       "id": "map-buildings-from-parts",
-      "title": "Build readable small buildings and stalls from Parts",
+      "title": "Readable small buildings and stalls: the model library first, Parts as the fallback",
       "domain": "props",
       "tools": [
+        "insert_library_model",
+        "find_library_model",
         "create_instances",
         "group_instances",
         "clone_instances",
@@ -317,6 +322,7 @@
         "structure"
       ],
       "recipe": [
+        "Library first (D-MODELLIB-1): when the run offers find_library_model, try a plain noun (house, shop, stall, hut) and place a fitting hit with insert_library_model. Build from Parts, as below, only when nothing fits or insert_library_model failed.",
         "Footprint 14-24 studs; floor slab 1 stud tall, slightly larger than the walls.",
         "Walls: 3 wall Parts + a front with an opening (two side pieces + a lintel) so players can see in; wall colour warm/light, trim darker.",
         "Roof: two WedgePart halves meeting at a ridge (or one wedge for a lean-to), overhanging the walls by 1-2 studs, contrasting colour.",
