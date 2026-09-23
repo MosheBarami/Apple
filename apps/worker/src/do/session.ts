@@ -1813,10 +1813,10 @@ export class SessionDO extends DurableObject<Env> {
         this.pluginSelection = sel;
         server.send(JSON.stringify({ type: 'studio_selection', selection: sel } satisfies ServerMsg));
       }
-      // If a build is already in flight, hand the client the whole picture
-      // straight away rather than making it ask.
+      // Whether a build is in flight, straight away rather than making the client ask. Sent when
+      // none is, too: a page that missed msg_end learns the run is over only from this.
       const live = await this.runSnapshot();
-      if (live) server.send(JSON.stringify({ type: 'run_state', run: live } satisfies ServerMsg));
+      server.send(JSON.stringify({ type: 'run_state', run: live } satisfies ServerMsg));
       // A playtest in flight, and the frames still in the ring. Without this, a
       // user who refreshes during a playtest gets an empty card until the next
       // capture tick — up to a rate-gate interval of looking at nothing while

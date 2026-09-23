@@ -778,6 +778,11 @@ export function useProjectSocket(
           setRunning(false);
           setAgentStatus(null);
           setPhaseMarks([]);
+          // No run in flight. A turn still streaming here ended while this page was not listening
+          // (the owner's page sat on "Working out the next step" after the build had finished), so
+          // settle it and take the stored reply.
+          setMessages((list) => list.map((m) => (m.streaming ? { ...m, streaming: false } : m)));
+          loadHistory();
           break;
         }
         const run = msg.run;
@@ -960,7 +965,7 @@ export function useProjectSocket(
         }
         break;
     }
-  }, []);
+  }, [loadHistory]);
 
   const connect = useCallback(async () => {
     if (MOCK_MODE || closedRef.current) return;
