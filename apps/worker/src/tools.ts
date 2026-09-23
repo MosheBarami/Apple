@@ -1,5 +1,6 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
+import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
 import type { Env } from './env';
 import { generatedImageCapacity, saveGeneratedImage } from './generated-images';
 import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
@@ -714,6 +715,12 @@ function treeRoot(value: unknown): StudioTreeNode | null {
 const MAX_TERRAIN_BATCH = 32;
 
 async function runTerrainEdits(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
+  if (typeof a.recipe === 'string') {
+    const expanded = expandTerrainRecipe(a.recipe, a);
+    if ('error' in expanded) return expanded;
+    const res = await runTerrainEdits(ctx, { operations: expanded.operations });
+    return toolError(res) ? res : { ...(res as Record<string, unknown>), ...expanded.facts };
+  }
   const { operations, ...single } = a;
   if (operations === undefined) {
     if (typeof single.action !== 'string') return { error: 'edit_terrain needs an action, or operations: [...]' };
@@ -2149,6 +2156,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         'replace_material (min,max,sourceMaterial,targetMaterial), or write_voxels (4-stud-grid origin, integer dimensions, flat voxels [{material,occupancy}]). ' +
         'Materials are Enum.Material names such as Enum.Material.Grass. At most 65,536 voxels are touched per call. ' +
         'Requires Studio edit consent and is one undo-recorded change. Checkpoint restore preserves Terrain identity but does not serialize voxel contents, so use Studio Undo for terrain rollback. ' +
+        'RECIPES FIRST for these landforms: recipe "floating_island" (center, radius) builds a flat grassy top on a rock underside that tapers to a point and returns surfaceY to stand things on; recipe "waterfall" (top = the edge point it pours over, height, width, endsIn) hangs a thin sheet of water. ' +
         `BUILD A WHOLE FEATURE IN ONE CALL: pass operations (up to ${MAX_TERRAIN_BATCH} of the actions above, each with its own fields) and they run in order — a hill is several overlapping fill_ball calls with decreasing radius, a pond is a fill_ball of Enum.Material.Air then a smaller one of Enum.Material.Water. One operation per call costs a step each.`,
       parameters: S(
         {
@@ -2157,6 +2165,11 @@ export const TOOLS: Record<string, ToolImpl> = {
             description: `Up to ${MAX_TERRAIN_BATCH} terrain actions run in order, each shaped like a single call ({action, center, radius, material, ...}). Stops at the first failure.`,
             items: { type: 'object' },
           },
+          recipe: { type: 'string', enum: [...TERRAIN_RECIPES], description: 'A whole landform in one call. floating_island {center, radius 12-70}; waterfall {top, height, width, endsIn: "pool"|"mist"}.' },
+          top: { type: 'array', items: { type: 'number' } },
+          height: { type: 'number' },
+          width: { type: 'number' },
+          endsIn: { type: 'string', enum: ['pool', 'mist'] },
           action: { type: 'string', enum: ['clear', 'fill_block', 'fill_ball', 'fill_region', 'replace_material', 'write_voxels'] },
           center: { type: 'array', items: { type: 'number' } },
           size: { type: 'array', items: { type: 'number' } },

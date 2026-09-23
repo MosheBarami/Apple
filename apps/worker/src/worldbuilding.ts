@@ -334,9 +334,9 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
   own tools, not out of Parts — measured 2026-09-23 on "a floating sky island with a waterfall, trees,
   crystals and a sunset": a Parts-only build scored 2/10 on the visual check after 232 Credits ("a flat grey
   slab", "a 2D billboard", "lollipop trees", "specks").
-  * Landforms are Terrain: edit_terrain with Rock or Slate for the mass and Grass or LeafyGrass for the
-    top. A floating island is a flattened Rock ball with a grass cap and an irregular underside of 3-5
-    overlapping balls that shrink downward — never stacked flat slabs.
+  * Landforms are Terrain. A floating island is ONE call: edit_terrain recipe "floating_island" with
+    center (high in the air, e.g. y 150) and radius 40-60; it returns surfaceY — put trees, crystals and
+    the spawn on that height. Other landforms: Rock or Slate for the mass, Grass or LeafyGrass on top.
   * The sky and the time of day are Lighting, never geometry: set_mood with "golden" for a sunset or golden
     hour, "night", "misty" and so on. Never build a sun, a sky or a sunset out of parts or flat planes.
   * Water is Terrain water. A waterfall is a tall, narrow column of it falling off an edge, with add_effect's
@@ -349,8 +349,8 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
     as glass. Leave them out rather than fake them.
   * Real sizes: a big tree is 30-50 studs tall and a crystal 6-15, next to a 5-stud player. Scale a
     generated model to that size ONCE and move on; resizing it again and again is the loop that ends a run.
-  * A waterfall is a thin sheet, not a tube: 2-4 studs deep, as wide as the stream, reaching all the way down
-    into a pool or ending in mist. It never stops in mid-air.
+  * A waterfall is edit_terrain recipe "waterfall": top = a point ON the island's edge at surfaceY, a
+    height that clears the underside, endsIn "mist" for a fall into the sky (then add_effect mist there).
   * The built-in sky can be warmed, not painted: set_mood "golden" gives a low warm sun and warm light on
     everything, but the sky itself stays the Roblox sky. Never promise an orange sky in the reply.
   * Spend in this order and stop to check: landform, set_mood, 3-5 hero objects, check_composition, then
