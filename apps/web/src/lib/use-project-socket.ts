@@ -269,7 +269,8 @@ export interface ProjectSocket {
   signalPresence: (activity: 'viewing' | 'typing' | 'building') => boolean;
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
   editAndResend: (messageId: string, text: string, mode: ProductMode, productModel?: ProductModel, autonomous?: boolean) => boolean;
-  stop: () => void;
+  /** Resolves false only when neither the socket nor the HTTP stop reached the worker. */
+  stop: () => Promise<boolean>;
   /** @param description what the snapshot contains or why it was taken. Optional — see ClientMsg. */
   createCheckpoint: (label: string, description?: string) => void;
   restoreCheckpoint: (checkpointId: string) => void;

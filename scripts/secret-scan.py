@@ -91,7 +91,9 @@ HARD_SIGNATURE = {
 
 PATTERNS = [
     ("AWS access key id", re.compile(rb"AKIA[0-9A-Z]{16}")),
-    ("OpenAI key", re.compile(rb"sk-[A-Za-z0-9_\-]{32,}")),
+    #   A key STARTS a token. Without the lookbehind every DevForum slug in the asset library
+    #   whose words met at "…sk-" (`task-scheduler-…`, `…dsk-an-open-source-…`) was a key.
+    ("OpenAI key", re.compile(rb"(?<![A-Za-z0-9])sk-[A-Za-z0-9_\-]{32,}")),
     ("Anthropic key", re.compile(rb"sk-ant-[A-Za-z0-9_\-]{20,}")),
     ("Google API key", re.compile(rb"AIza[0-9A-Za-z_\-]{35}")),
     ("GitHub token", re.compile(rb"gh[pousr]_[A-Za-z0-9]{36,}")),

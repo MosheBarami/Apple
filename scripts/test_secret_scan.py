@@ -33,6 +33,7 @@ SCANNER = pathlib.Path(__file__).resolve().parent / "secret-scan.py"
 ANTHROPIC = "sk-ant-api03-" + "abcdefghijklmnopqrstuvwxyz0123"
 AWS = "AKIA" + "ABCDEFGHIJKLMNOP"
 GITHUB = "ghp_" + "abcdefghijklmnopqrstuvwxyz0123456789"
+OPENAI = "sk-" + "proj-" + "abcdefghijklmnopqrstuvwxyz0123456789"
 
 
 def sha256_of(value: str) -> str:
@@ -292,6 +293,25 @@ class SuppressionBoundaries(ScannerHarness):
         r = self.scan()
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn("NOBODY HAS ACCEPTED", r.stdout)
+
+
+class PatternShapes(ScannerHarness):
+    def test_sk_inside_a_word_is_not_an_openai_key(self):
+        """The asset library stores tens of thousands of DevForum links, and a slug such as
+        `…dsk-an-open-source-…` or `task-scheduler-…` held `sk-` plus 32 slug characters:
+        two red CI runs over URLs. A key starts a token; it is not the tail of a word."""
+        self.commit("data/links.jsonl", (
+            '{"url":"https://devforum.roblox.com/t/shotgun-utpsdsk-an-open-source-weapons-animation-system/1"}\n'
+            '{"url":"https://devforum.roblox.com/t/task-scheduler-control-performance-hacks-for-games/2"}\n'
+        ))
+        r = self.scan()
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_an_openai_key_after_a_delimiter_still_fails(self):
+        self.commit("src/config.ts", f"OPENAI_API_KEY={OPENAI}\nconst k = '{OPENAI}';\n")
+        r = self.scan()
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("OpenAI key", r.stdout)
 
 
 if __name__ == "__main__":
