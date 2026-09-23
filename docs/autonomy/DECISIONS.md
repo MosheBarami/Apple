@@ -149,3 +149,8 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
 - Reset `scope:day` via the audited admin route; the monthly backstop (1.8M neurons ≈ $19.80) is untouched, worst case +$0.99 today.
 - Bulk training work now runs on a local MLX teacher, never the worker. Reverse: none needed; the cap re-arms at midnight UTC.
 - Root cause of the owner's stuck build was the deployed worker `15b5a04-dirty`, which ignored client socket frames; a clean deploy (98bc7ea) fixed it. The web client now closes a socket that leaves a prompt unanswered for 30 s, so the prompt returns to the box instead of "working" forever.
+
+## D-UILIB-1 — UI and icon libraries come from open licences, not the two sites the owner linked (2026-09-23)
+- The owner asked to download "everything" from magnific.com/vectors/roblox-gui and rhosgfx.itch.io/vector-icon-pack and give it to the agent and the site. Magnific (ex-Freepik) needs a paid account and its licence forbids redistributing files inside another product or letting customers' games carry them; the RhosGFX pack is paid and its licence covers the buyer's own projects, not a tool that hands it to every user. Scraping either would be piracy and puts the owner's accounts at risk.
+- Instead: CC0 packs (Kenney UI Pack, Game Icons, Input Prompts and similar, thousands of files) and CC-BY sets with attribution go into `packages/asset-library` with a `manifest.json` (source, licence, file count, who may use it). The agent can search and insert them; the site can show them. MIT/ISC icon sets are site-only.
+- Reverse: if the owner buys a RhosGFX commercial licence that allows redistribution in a product, add it as another pack in the manifest.
