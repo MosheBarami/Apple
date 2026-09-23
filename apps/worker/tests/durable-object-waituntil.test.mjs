@@ -89,7 +89,7 @@ test('the events a run records are flushed before the run method returns', () =>
   const code = decomment(readFileSync(join(SRC, 'do', 'session.ts'), 'utf8'));
   const recorded = code.indexOf("kind: 'build'");
   assert.notEqual(recorded, -1, 'the build event is gone — the product records nothing about its own builds');
-  const flushed = code.indexOf('await flushEvents(this.env)');
-  assert.notEqual(flushed, -1, 'the flush is not awaited — DO-recorded events are dropped, which is how build sat at 0 rows');
-  assert.ok(recorded < flushed, 'the flush must come after the event it is meant to carry');
+  // The first awaited flush AFTER the event: the alarm also flushes each step, earlier in the file.
+  const flushed = code.indexOf('await flushEvents(this.env)', recorded);
+  assert.notEqual(flushed, -1, 'no awaited flush follows the build event — DO-recorded events are dropped, which is how build sat at 0 rows');
 });

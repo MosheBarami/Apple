@@ -3408,6 +3408,10 @@ export class SessionDO extends DurableObject<Env> {
         'That step failed on our side. Work already applied to Studio is saved.';
       console.warn('[session] step failed:', msg);
       await this.finishRun(agent, 'error', 'model_failed');
+    } finally {
+      // Each step's model calls reach the log now, not when the run ends: a 422 s step on the owner's
+      // build left nothing to read while it was happening. Awaited, since waitUntil is a no-op here.
+      await flushEvents(this.env);
     }
   }
 
