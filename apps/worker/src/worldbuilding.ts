@@ -330,6 +330,9 @@ exposed edge, frames on openings, plinths under uprights · lighting + atmospher
 const OUTDOOR_RE =
   /\b(island|hill|mountain|cliff|canyon|valley|forest|jungle|woods?|trees?|waterfall|river|lake|ocean|sea|beach|shore|sky|skies|sunset|sunrise|nature|meadow|volcano|cave|outdoor|landscape|terrain)\b/i;
 
+/** Whether a request is an outdoor scene — the ones built from Terrain. */
+export const isOutdoorRequest = (text: string): boolean => OUTDOOR_RE.test(text);
+
 const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterfalls, skies) are built with the engine's
   own tools, not out of Parts — measured 2026-09-23 on "a floating sky island with a waterfall, trees,
   crystals and a sunset": a Parts-only build scored 2/10 on the visual check after 232 Credits ("a flat grey

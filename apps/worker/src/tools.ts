@@ -1,5 +1,7 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
+import { renderShowsTerrain } from '@golem/shared';
+import { isOutdoorRequest } from './worldbuilding';
 import { floatingIslandKit } from './scene-kits';
 import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
 import type { Env } from './env';
@@ -3679,6 +3681,18 @@ export const TOOLS: Record<string, ToolImpl> = {
       if ('error' in res) return res;
       ctx.lastRender = res;
       const intent = String(a.intent ?? 'a well-built Roblox scene');
+      // A CHECK THAT CANNOT SEE THE SCENE DOES NOT SCORE IT (2026-09-23). The connected plugin's renderer
+      // draws no Terrain, so an outdoor scene's island, rock and water are absent from the images. Scored
+      // anyway, it said "a flat slab with no underside" (1/10) about an island that had one, and the model
+      // spent 15 minutes and 219 Credits rebuilding it. The prompt note alone was ignored.
+      if (!renderShowsTerrain(res) && isOutdoorRequest(intent)) {
+        return {
+          judged: false,
+          reason:
+            'Not scored: the connected Apple plugin draws no Terrain in its renders, so this outdoor scene\'s land, rock and water cannot be seen by the check. ' +
+            'Do not change the scene because of this check. Reply to the user, and say the visual check could not look at the landform.',
+        };
+      }
       const critique = await critiqueViews(ctx.env, res, intent);
 
       // THE DETERMINISTIC PANEL, alongside the model's opinion.

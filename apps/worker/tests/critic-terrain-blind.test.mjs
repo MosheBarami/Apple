@@ -32,3 +32,13 @@ test('a blind render tells every critic, and a "missing landform" finding is del
   const seeing = { ...blind, terrainInvisible: false };
   assert.doesNotMatch(C.buildLensPrompt('composition', seeing).system, /CANNOT SHOW ROBLOX TERRAIN/);
 });
+
+test('inspect_visually does not score an outdoor scene its renderer cannot see', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  const at = src.indexOf("name: 'inspect_visually'");
+  const body = src.slice(at, at + 4000);
+  const skip = body.indexOf('if (!renderShowsTerrain(res) && isOutdoorRequest(intent))');
+  assert.ok(skip > 0, 'the blind-renderer skip is missing');
+  assert.ok(skip < body.indexOf('critiqueViews('), 'the skip must come before any scoring');
+});
