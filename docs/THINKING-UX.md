@@ -97,7 +97,7 @@ forever. Folding by `toolId` makes both cases expressible:
 | Activity state | Derived from |
 | --- | --- |
 | `understanding` | `agent_status.phase = understanding` |
-| `planning` | `agent_status.phase = planning` |
+| `planning` | `agent_status.phase = planning`, or `composing` (the model writing its next step, F-007) |
 | `inspecting` | `get_project_tree`, `list_scripts`, `read_script`, `search_scripts`, `search_docs`, `inspect_model`; `phase = inspecting` |
 | `searching_assets` | `choose_asset_source`, `search_asset_library`, `find_verified_asset` |
 | `generating` | `generate_model` |
@@ -107,8 +107,8 @@ forever. Folding by `toolId` makes both cases expressible:
 | `critiquing` | `check_composition`, `inspect_visually`, `visual_critique`; `phase = critiquing` |
 | `playtesting` | `run_and_check`; `phase = playtesting` |
 | `debugging` | `get_output_logs`; `phase = debugging` |
-| `repairing` | `phase = rebuilding` — **currently dead**, see §4 |
-| `verifying` | `phase = verifying` — **currently dead**, see §4 |
+| `repairing` | `phase = rebuilding` — set when the worker's own visual check orders the layout started over |
+| `verifying` | `phase = verifying` — the worker's own visual check after a change |
 | `saving` | `create_checkpoint`; `phase = checkpointing` |
 | `remembering` | `remember`; `phase = remembering` |
 | `working` | the honest floor: an unmapped tool, or a step whose name never arrived |
@@ -181,19 +181,20 @@ silent about how its runs ended rather than assuming they succeeded.
 
 ## 4. §Y states that are NOT derivable
 
-Four of the example states in the brief have no honest source in the current
+Two of the example states in the brief have no honest source in the current
 protocol. They are absent from the code, not stubbed:
 
 | §Y state | Why not | What would have to change |
 | --- | --- | --- |
 | **Creating UI** | No tool authors Roblox UI. A `ScreenGui` is created by `create_instances`, indistinguishable from a wall or a lamp. Reporting "Creating UI" would mean sniffing class names out of a tool argument the UI never receives. | Either a dedicated tool, or `tool_start.summary` promoted to a structured payload naming the instance classes. |
 | **Evaluating kit** | There is no "kit" concept anywhere in the worker, the shared package or the corpus. The nearest real tools are `choose_asset_source` and `inspect_model`, which are already `Searching assets` and `Inspecting`. | A kit-selection step in the worker that emits its own tool. |
-| **Verifying** | `AgentPhase` declares `verifying`, but **the worker never sets it**. Every `agent_status` in `apps/worker/src/do/session.ts` assigns `understanding`, `planning`, `critiquing`, `building` (as a fallback) or `phaseForTool(...)` — and `phaseForTool` never returns `verifying`. No tool maps to it either. The state is wired in the client and is currently **dead**. | The worker announcing `verifying` around the post-change confirmation it already performs. |
-| **Repairing** | Same: reachable only via `phase = rebuilding`, which **the worker never sets**, even on the path that orders a rebuild after a failed visual gate. The commoner shape of repair — a tool fails and the agent retries — is visible as a failed step and a `recovered` terminal, but is deliberately **not** promoted to a `Repairing` phase, because "the agent is now repairing" is an inference about intent, not an observation. | The worker announcing `rebuilding` where it already sets `agent.rebuildOrdered`. |
 
-Both `verifying` and `repairing` are kept in the client's map rather than deleted:
-they cost nothing while unreachable, and the day the worker announces them the
-UI reports them without a change here. Nothing renders them in advance.
+**No longer dead (2026-09-23):** the worker now announces `verifying` around the visual check it
+runs by itself after a change, and `rebuilding` where that check sets `agent.rebuildOrdered` (the
+next step keeps `rebuilding` while the model writes it). Every later step opens as `composing`
+instead of repeating the last tool's phase (F-007). Pinned by `apps/worker/tests/thinking-phase.test.mjs`.
+A tool that fails and is retried is still **not** promoted to a `Repairing` phase — that would be
+an inference about intent, not an observation.
 
 `Generating` is wired to `generate_model`, which still exists in the worker. Note
 that the 3D-generation provider was cancelled as a product direction; if the tool

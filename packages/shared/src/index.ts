@@ -712,6 +712,7 @@ export type ClientMsg =
 export type AgentPhase =
   | 'understanding' // the request has arrived, before the first model call
   | 'planning' // first step of a multi-step mode
+  | 'composing' // the model is writing its next step (after a tool, before the next one)
   | 'inspecting' // reading the project: tree, scripts, docs, assets
   | 'building' // creating or configuring instances
   | 'writing_luau' // editing script source

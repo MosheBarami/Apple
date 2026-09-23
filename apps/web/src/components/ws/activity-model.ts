@@ -67,6 +67,7 @@ export type { ActivityKind };
 const PHASE_KIND: Record<AgentPhase, ActivityKind | null> = {
   understanding: 'understanding',
   planning: 'planning',
+  composing: 'planning',
   inspecting: 'inspecting',
   building: 'building',
   writing_luau: 'writing_luau',

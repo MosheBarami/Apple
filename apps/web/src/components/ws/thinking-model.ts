@@ -34,6 +34,7 @@ import type { AgentStatus, ToolEvent } from '../../lib/use-project-socket';
 export const PHASE_LABEL: Record<AgentPhase, string> = {
   understanding: 'Understanding the request',
   planning: 'Planning',
+  composing: 'Working out the next step',
   inspecting: 'Inspecting the project',
   building: 'Building',
   writing_luau: 'Writing Luau',
@@ -42,7 +43,7 @@ export const PHASE_LABEL: Record<AgentPhase, string> = {
   rebuilding: 'Starting the layout over',
   playtesting: 'Playtesting',
   debugging: 'Reading the output',
-  verifying: 'Verifying',
+  verifying: 'Checking your build',
   checkpointing: 'Saving a checkpoint',
   remembering: 'Noting what changed',
   done: 'Done',

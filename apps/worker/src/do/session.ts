@@ -3611,10 +3611,14 @@ export class SessionDO extends DurableObject<Env> {
         : {}),
     });
     await this.persistAgent(agent);
-    // The opening phase of a step is 'understanding' on the first step and
-    // otherwise carries whatever the previous tool left us in, until the next
-    // tool call renames it. Never invent a stage the agent has not entered.
-    agent.phase = agent.step === 1 ? (agent.mode === 'plan' ? 'understanding' : 'planning') : (agent.phase ?? 'building');
+    // The opening phase of a step is 'understanding' / 'planning' on the first step. After that the
+    // model is writing its next move, and says so: carrying the last tool's phase over read as
+    // "Inspecting the project" for the 90 s the model spent writing (F-007). A step that follows an
+    // ordered rebuild keeps 'rebuilding' — that is what the model is doing.
+    agent.phase =
+      agent.step === 1
+        ? agent.mode === 'plan' ? 'understanding' : 'planning'
+        : agent.phase === 'rebuilding' ? 'rebuilding' : 'composing';
     this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, creditsSpent: agent.creditsSpent });
 
     const studioConnected = await this.pluginConnected();
@@ -4044,10 +4048,11 @@ export class SessionDO extends DurableObject<Env> {
         !agent.autoCritiqued
       ) {
         agent.autoCritiqued = true;
-        agent.phase = 'critiquing';
+        // The worker's own check that the change came out right — not a tool the model chose.
+        agent.phase = 'verifying';
         this.broadcast({
           type: 'agent_status',
-          phase: 'critiquing',
+          phase: 'verifying',
           step: agent.step,
           tool: 'inspect_visually',
         });
@@ -4072,7 +4077,11 @@ export class SessionDO extends DurableObject<Env> {
           const semantic = agent.request ? semanticCheck(agent.request, layout) : null;
           const verdict = shouldRebuild(agent.passes, semantic?.failures.length ?? 0);
           const rebuild = verdict.rebuild && !agent.rebuildOrdered;
-          if (rebuild) agent.rebuildOrdered = true;
+          if (rebuild) {
+            agent.rebuildOrdered = true;
+            agent.phase = 'rebuilding';
+            this.broadcast({ type: 'agent_status', phase: 'rebuilding', step: agent.step, creditsSpent: agent.creditsSpent });
+          }
 
           agent.llm.push({
             role: 'user',
