@@ -37,9 +37,9 @@ function mounts(file, name, from) {
 
 const MOUNTS = [
   // id                                  surface file                                 component       module
-  ['reactbits--lattice-loader',         'components/ws/thinking.tsx',                 'LatticeGlyph', 'picks/thinking/lattice-glyph'],
-  ['motion--skeleton-shimmer',          'components/ws/thinking.tsx',                 'Skeleton',     'picks/thinking/skeleton'],
-  ['motion--skeleton-shimmer (reveal)', 'components/ws/thinking.tsx',                 'Reveal',       'picks/thinking/skeleton'],
+  //[[ RESTATED 2026-09-24 (owner decision D-THINK-1): the Lattice glyph, Skeleton and Reveal lived in
+  //   the Thinking card's header and trace, which the owner replaced with one morphing status line.
+  //   Their rows are gone from here; the line's own motion is held below and in thinking-surface. ]]
   ['motion--to-do-list',                'components/ai-elements/chain-of-thought.tsx', 'StepMark',    'picks/thinking/step-mark'],
   ['motion--svg-loading-spinner',       'components/loading.tsx',                     'ArcSpinner',   'picks/thinking/arc-spinner'],
   ['eldora--hacker-background',         'components/loading.tsx',                     'CodeRain',     'picks/thinking/code-rain'],
@@ -72,12 +72,16 @@ test('the disclosure motion (Collapsible + Thought Line) drives Reasoning and Ch
   assert.match(motion, /expand\(/);
 });
 
-test('Thought Line: the header line settles in, and the Lattice glyph is handed to the trigger', () => {
+test('Thought Line: the status line arrives, and its words morph in and out', () => {
+  //[[ RESTATED 2026-09-24 (D-THINK-1): the settle-in and the Lattice glyph in the Reasoning trigger
+  //   became the status pill's arrival and the leaving/entering words of MorphingWords. ]]
   const src = read('components/ws/thinking.tsx');
-  assert.equal(count(src, 'apple-reasoning__settle'), 2, 'both the live line and the settled line must settle in');
-  assert.match(src, /icon=\{<LatticeGlyph status=\{glyph\}/);
-  assert.match(read('components/ai-elements/reasoning.tsx'), /\{icon \?\? <BrainIcon/, 'the trigger must draw the icon it is handed');
-  assert.match(readFileSync(join(SRC, 'components/ws/reasoning.css'), 'utf8'), /\.apple-reasoning__settle \{[^}]*animation:/);
+  assert.match(src, /className="apple-status__phrase is-leaving"/);
+  assert.match(src, /className="apple-status__phrase is-entering"/);
+  const css = readFileSync(join(SRC, 'components/ws/thinking.css'), 'utf8');
+  for (const rule of ['\\.apple-status\\.is-live \\.apple-status__line', '\\.apple-status__phrase\\.is-entering', '\\.apple-status__phrase\\.is-leaving']) {
+    assert.match(css, new RegExp(`${rule} \\{[^}]*animation:`), `${rule} does not move`);
+  }
 });
 
 test('the shimmer is one component with both qualities: the Shiny Text sweep and the per-glyph wave', () => {
@@ -124,16 +128,18 @@ function settled(stopReason, ok = true) {
   const tools = [{ toolId: 'a', tool: 'read_script', summary: 'Read 12 lines', ok, startedAt: T0, durationMs: 800, done: true, startObserved: true }];
   return activity.reduceActivity({ events: activity.eventsFromTurn({ tools, stopReason, endedAt: T0 + 2000 }), now: T0 + 3000, streaming: false });
 }
-const thinking = (props) => html(ui.h(ui.Thinking, { status: null, streaming: false, gates: [], plannedSteps: [], ...props }));
+const thinking = (props) => html(ui.h(ui.Thinking, { status: null, streaming: false, ...props }));
 
-test('Lattice Loader: a settled run\'s header glyph says how it ended', () => {
-  const done = element(thinking({ activity: settled('done') }), /<span class="picks-lattice/);
-  assert.match(done, /data-status="done"/);
-  const failed = element(thinking({ activity: settled('error', false) }), /<span class="picks-lattice/);
-  assert.match(failed, /data-status="failed"/);
-  const stopped = element(thinking({ activity: settled('stopped') }), /<span class="picks-lattice/);
-  assert.match(stopped, /data-status="stopped"/);
-  assert.match(done, /aria-hidden="true"/, 'the glyph repeats the words; it must not be read twice');
+test('a settled run is marked only when it went well; failure and stop are the outcome row\'s to say', () => {
+  //[[ RESTATED 2026-09-24 (D-THINK-1): the Lattice glyph drew done / failed / stopped in the header.
+  //   Now a run that went well keeps one tick beside its summary, and nothing else is marked here. ]]
+  const tools = [{ toolId: 'a', tool: 'create_instances', summary: 'x', ok: true, startedAt: T0, durationMs: 800, done: true, startObserved: true }];
+  const built = activity.reduceActivity({ events: activity.eventsFromTurn({ tools, stopReason: 'done', endedAt: T0 + 2000 }), now: T0 + 3000, streaming: false });
+  const done = element(thinking({ activity: built }), /<span class="apple-status__tick"/);
+  assert.ok(done, 'a finished build has no mark');
+  assert.match(done, /aria-hidden="true"/, 'the tick repeats the words; it must not be read twice');
+  assert.equal(thinking({ activity: settled('error', false) }), '');
+  assert.equal(thinking({ activity: settled('stopped') }), '');
 });
 
 test('To-do list / Thought Line: a step is marked by its status', () => {

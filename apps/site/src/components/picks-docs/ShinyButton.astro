@@ -13,7 +13,8 @@
  *   - it stays Apple's primary button (ink fill, --on-primary text), and the accent only marks it:
  *     "the accent never fills a button" (apple-minimal.css).
  *
- * Under prefers-reduced-motion the lights hold still.
+ * Under prefers-reduced-motion the lights hold still, and off screen they pause (../picks/motion.ts:
+ * nothing moves where nobody can see it).
  */
 import type { HTMLAttributes } from 'astro/types';
 
@@ -98,9 +99,22 @@ const { class: className = '', ...rest } = Astro.props;
     }
   }
 
+  .shiny.is-paused .shiny__run {
+    animation-play-state: paused;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .shiny__run {
       animation: none;
     }
   }
 </style>
+
+<script>
+  import { whileVisible } from '../picks/motion';
+
+  for (const el of document.querySelectorAll<HTMLElement>('.shiny')) {
+    el.classList.add('is-paused');
+    whileVisible(el, () => el.classList.remove('is-paused'), () => el.classList.add('is-paused'), '0px');
+  }
+</script>

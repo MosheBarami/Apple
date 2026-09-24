@@ -32,6 +32,13 @@
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28%, #000 72%, transparent 100%);
 }
 
+/* On the light ground a thread is darker than the ground, and at full strength one passing under
+   the lead took it to 4.49:1 — below WCAG AA. At half strength the worst case is 4.58:1 for the
+   faintest words (tests/e2e/landing.spec.ts measures the pixels). */
+:root[data-theme='light'] .nf--lines.is-on {
+  opacity: 0.5;
+}
+
 /* The bricks gather at the band's right edge, away from the headings a reader starts on. */
 .nf--bricks {
   mask-image: radial-gradient(ellipse 60% 70% at 85% 30%, #000 0, transparent 100%);

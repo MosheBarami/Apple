@@ -15,8 +15,7 @@ import { splitSpilledPayload } from '../../lib/spilled-payload';
 import { extractUIFence, parseDocument } from '../../lib/generative-ui';
 import { panelFromTool } from '../../lib/panels';
 import { splitReplyDocs } from '../../lib/reply-docs';
-import { gatesFromDocs, plannedStepsFromDocs, type ValidatedDoc } from '../../lib/gates';
-import { docSourcesFromTools } from '../../lib/doc-sources';
+import { plannedStepsFromDocs, type ValidatedDoc } from '../../lib/gates';
 import { clockTime, isoStamp } from '../../lib/format';
 import { AppleGlyph } from '../glyphs';
 import type { AgentStatus, ChatItem } from '../../lib/use-project-socket';
@@ -30,18 +29,14 @@ import {
   MessageContent,
   MessageResponse,
 } from '../ai-elements/message';
-import { Sources, SourcesContent, SourcesTrigger } from '../ai-elements/sources';
-import { ChevronDownIcon } from '../ai-elements/icons';
 import { MessageToolbar } from '../ai-elements/message';
 import { CopyButton } from '../picks/chat/copy-button';
 import { ShareButton } from '../picks/chat/share-button';
 import { ContextMenu, useContextMenu, type MenuItem } from '../picks/chat/context-menu';
 import { RollingNumber } from '../picks/chat/rolling-number';
 import { useWordReveal } from '../picks/chat/word-reveal';
-import { TurnCheckpoint } from '../picks/chat/turn-checkpoint';
 import { PlanCard } from '../picks/chat/plan-card';
 import { ExpandableImages } from '../picks/chat/expandable-images';
-import { SourcePreview } from '../picks/chat/source-preview';
 import './turn.css';
 
 function useNow(active: boolean): number {
@@ -93,9 +88,6 @@ export function Turn({
   editable,
   onRetry,
   onShowRevisions,
-  frames,
-  playtest,
-  studioConnected = false,
   onBuildPlan,
 }: {
   item: ChatItem;
@@ -119,7 +111,10 @@ export function Turn({
    * mark.
    */
   onShowRevisions?: (messageId: string) => void;
-  /** Live Studio frames belong to the active run, not to a separate project-state panel. */
+  /**
+   * Accepted and not drawn (owner decision D-THINK-1): the turn shows one friendly status line and
+   * no playtest panel, frame strip or connection detail. Kept so callers need not change.
+   */
   frames?: StudioFrame[];
   playtest?: PlaytestRun | null;
   studioConnected?: boolean;
@@ -171,22 +166,16 @@ export function Turn({
     [item.tools, item.id, item.createdAt],
   );
 
-  // The Thinking card's Validation stage and its pending bullets both read from
-  // the same validated documents — never from the raw tool payload.
+  // The steps a validated build_plan announced feed the activity reducer — never the raw tool payload.
   const validated = useMemo<ValidatedDoc[]>(() => panels.map((p) => ({ id: p.id, doc: p.doc })), [panels]);
-  const gates = useMemo(() => gatesFromDocs(validated), [validated]);
   const plannedSteps = useMemo(() => plannedStepsFromDocs(validated), [validated]);
 
-  // The one split between the reply and Details (lib/reply-docs.ts): a fence the model wrote and every
-  // validated tool result, in the order they happened.
+  // The one split (lib/reply-docs.ts): an image or a sound Apple made stays in the reply; every other
+  // document is technical detail and is not drawn at all (owner decision D-THINK-1).
   const replyDocs = useMemo(
     () => splitReplyDocs([...(fenceDoc ? [fenceDoc] : []), ...panels.map((panel) => panel.doc)]),
     [fenceDoc, panels],
   );
-
-  // The documentation pages this turn's own searches returned — read from the tool results that
-  // carried them, validated field by field, never invented. See lib/doc-sources.ts.
-  const docSources = useMemo(() => docSourcesFromTools(item.tools), [item.tools]);
 
   // The ordered, timed activity. Rebuilt from the merged turn through the same
   // reducer the live socket log feeds, so a reloaded turn and a live one cannot
@@ -336,18 +325,12 @@ export function Turn({
     >
       <span className="gx-mark" aria-hidden="true"><AppleGlyph size={20} /></span>
       <MessageContent className="gx-turn__body">
+        {/* ONE FRIENDLY LINE while Apple works, and at most one once it is done (D-THINK-1). */}
         <Thinking
           status={isLast ? status : null}
           streaming={item.streaming}
-          intent={item.intent}
           deniedTools={item.deniedTools}
-          gates={gates}
-          plannedSteps={plannedSteps}
           activity={activity}
-          frames={isLast ? frames : undefined}
-          playtest={isLast ? playtest : null}
-          studioConnected={studioConnected}
-          details={replyDocs.details}
         />
 
         {item.content && (
@@ -355,13 +338,9 @@ export function Turn({
           // MessageResponse renders through lib/markdown.tsx (marked + DOMPurify, fences to the code
           // block) — the one renderer allowed to put model output on screen.
           <>
-            {/* THE WIRE FORMAT IS NOT PROSE. The renderer's rule was "anything that is not a UI
-                fence is a message", so when the model wrote a `create_instances` payload as text —
-                which is what it does when it runs out of output tokens mid-structure — the customer
-                got several screens of {'{'}"t":"Vector3"{'}'} where their game should have been.
-                Nothing is deleted: it is collapsed, because somebody quoting it to support must
-                still be able to, and because hiding output the model really produced is how a
-                product starts lying about what happened. */}
+            {/* THE WIRE FORMAT IS NOT PROSE. When the model writes a build payload out as text (it does
+                when it runs out of output tokens mid-structure), only the prose around it is drawn.
+                The payload itself is technical detail and is not shown or openable (D-THINK-1). */}
             {spilled.prose && (
               // The wrapper is what the word reveal reads; it draws nothing (display:contents).
               <div ref={replyRef} className="gx-turn__reply">
@@ -376,30 +355,7 @@ export function Turn({
                 )}
               </div>
             )}
-            {spilled.collapsed && (
-              <details className="gx-turn__spill">
-                <summary>Apple wrote out part of a build instruction instead of running it. Show it</summary>
-                <pre>{spilled.collapsed}</pre>
-              </details>
-            )}
           </>
-        )}
-
-        {docSources.length > 0 && (
-          <Sources className="gx-turn__sources">
-            {/* Not upstream's "Used N sources": these are the pages the search returned, and the
-                browser cannot see which of them the reply leaned on. */}
-            <SourcesTrigger count={docSources.length}>
-              <p className="ai-sources__count">
-                {docSources.length} documentation {docSources.length === 1 ? 'page' : 'pages'}
-              </p>
-              <ChevronDownIcon className="ai-sources__chevron" />
-            </SourcesTrigger>
-            <SourcesContent forceMount>
-              {/* Each link previews where it goes on hover or focus (picks/chat/source-preview). */}
-              {docSources.map((source) => <SourcePreview key={source.url} href={source.url} title={source.title} />)}
-            </SourcesContent>
-          </Sources>
         )}
 
         <ReplyMedia docs={replyDocs.media} />
@@ -444,10 +400,6 @@ export function Turn({
           // last thing under the reply and above the timestamp, where the eye already is.
           retryControl && <div className="gx-outcome gx-outcome--bare">{retryControl}</div>
         )}
-
-        {/* What this turn changed in the place, with the way back to a checkpoint. Drawn once the
-            run has settled, because a list of changes still being made is not a receipt. */}
-        {!item.streaming && <TurnCheckpoint tools={item.tools} />}
 
         {/* THE REPLY'S TOOLBAR — Copy, Share, and the same menu a right-click opens. It is AI
             Elements' MessageToolbar; on a pointer device it rises into view under the pointer or on

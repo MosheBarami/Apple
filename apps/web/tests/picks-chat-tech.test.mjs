@@ -58,7 +58,9 @@ const SURFACES = [
   ['components/ws/files-panel.tsx', 'routes/workspace.tsx', 'FilesPanel'],
   ['components/ws/studio-activity.tsx', 'routes/workspace.tsx', 'StudioActivity'],
   ['components/ws/members-panel.tsx', 'routes/workspace.tsx', 'MembersPanel'],
-  ['components/ws/playtest-card.tsx', 'components/ws/thinking.tsx', 'PlaytestCard'],
+  //[[ RESTATED 2026-09-24 (D-THINK-1): PlaytestCard was drawn inside the Thinking disclosure, which the
+  //   owner removed; a playtest is now the status line's words. tests/thinking-redesign.test.mjs holds
+  //   that it stays out of the thinking surface. ]]
   ['components/roadmap/dependency-map.tsx', 'routes/roadmap.tsx', 'DependencyMap'],
   ['components/roadmap/suggestions.tsx', 'routes/roadmap.tsx', 'SuggestionPanel'],
   ['components/picks/tech/version-diff.tsx', 'components/ws/files-panel.tsx', 'VersionDiff'],

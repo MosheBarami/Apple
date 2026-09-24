@@ -134,10 +134,12 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
     position: relative;
     z-index: 0;
     margin: 0;
-    border: 1px solid var(--line);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-lg);
     overflow: hidden;
-    background: var(--surface);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
 
   .built-open {

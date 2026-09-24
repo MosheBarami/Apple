@@ -1,0 +1,339 @@
+/*
+ * THE GLASS SHELL — D-GLASS-1 (owner, 2026-09-24).
+ *
+ * The owner's words: the app did not look glassy, matte, friendly or animated; it was getting more
+ * static, and that is not good. The audience is young, non-technical Roblox creators. This sheet is
+ * the answer for the app SHELL: an ambient aurora in the brand blue and violet behind translucent,
+ * matte "glass" surfaces, with a little friendly motion — cards that lift, controls that squish when
+ * pressed, popovers that pop, lists that arrive one after another.
+ *
+ * It supersedes three lines of docs/DESIGN-LOCK.md for the shell ("glass is reserved for the
+ * composer and the top bar", "a card does not cast", "two radii"). Reverse: drop the import of this
+ * file from main.tsx; nothing else reads it.
+ *
+ * WHAT IS NOT HERE: the running-turn progress UI and the turn/trace components. Another lane owns
+ * them; this file does not name their classes.
+ *
+ * THE RULES THIS FILE KEEPS (tests/glass-shell.test.mjs holds each one):
+ *   - It is imported LAST in main.tsx, so equal specificity wins. Lazily loaded route sheets
+ *     (settings, usage) arrive later still and carry their own copy of nonworkspace-minimal.css, so
+ *     every rule answering that sheet carries `#main-content.gx-main`, one class more than it does.
+ *   - Colours are literal rgba() tokens so the contrast guard can composite them: every text ink
+ *     clears 4.5:1 on the page with all aurora layers stacked at full strength, bare and under each
+ *     glass fill, in both themes.
+ *   - Blur is only on single chrome surfaces that float over moving content (top bar, composer,
+ *     popovers, dialogs, toasts). Cards and rows get a translucent fill and no blur: the aurora
+ *     behind them is already soft, so a blur would cost a full-screen pass per card and change no
+ *     pixel.
+ *   - The ambient layer moves by transform only (compositor, no repaint) and stops when the
+ *     workspace marks it `.is-still` — which StudioAtmosphere does for a hidden tab and for a
+ *     reduced-motion reader.
+ *   - Everything that lifts or squishes is stilled under prefers-reduced-motion AND under the app's
+ *     own `.motion-reduced`. system.css already kills every animation and transition in both cases;
+ *     the transforms themselves are cancelled here so nothing snaps to a lifted position either.
+ */
+
+/* ------------------------------------------------------------------ tokens --- */
+
+:root {
+  /* The aurora: brand blue (--accent-deep), brand violet (--autonomous), and the light accent tint.
+     The deeper blue carries more colour per unit of brightness, so --faint keeps its 4.5:1. */
+  --aurora-1:rgba(66,100,232,.18);
+  --aurora-2:rgba(139,92,246,.12);
+  --aurora-3:rgba(140,164,255,.02);
+  /* Matte glass. Tinted toward the accent so it belongs to the aurora rather than sitting on it. */
+  --glass-fill:rgba(20,22,34,.52);
+  --glass-fill-hover:rgba(30,33,50,.6);
+  --glass-fill-strong:rgba(15,16,24,.86);
+  --glass-line:rgba(255,255,255,.08);
+  --glass-line-hover:rgba(255,255,255,.15);
+  --glass-sheen:inset 0 1px 0 rgba(255,255,255,.06);
+  --glass-shadow:0 1px 2px rgba(0,0,0,.2),0 10px 30px rgba(0,0,0,.24);
+  --glass-shadow-lift:0 2px 6px rgba(0,0,0,.24),0 22px 50px rgba(0,0,0,.34);
+  --glass-blur:blur(22px) saturate(160%);
+  --glass-r:20px;
+  --glass-r-control:12px;
+  --glass-spring:cubic-bezier(.34,1.45,.64,1);
+  --glass-ease:cubic-bezier(.2,.8,.2,1);
+}
+
+:root[data-theme='light'] {
+  /* Pale on purpose: the light theme's --faint ink has little headroom, and the guard stacks all
+     three layers on one pixel. */
+  --aurora-1:rgba(69,104,232,.035);
+  --aurora-2:rgba(117,80,222,.03);
+  --aurora-3:rgba(91,124,250,0); /* at the alpha contrast allows here it only shows as banding */
+  --glass-fill:rgba(255,255,255,.6);
+  --glass-fill-hover:rgba(255,255,255,.78);
+  --glass-fill-strong:rgba(255,255,255,.9);
+  --glass-line:rgba(16,18,23,.08);
+  --glass-line-hover:rgba(16,18,23,.14);
+  --glass-sheen:inset 0 1px 0 rgba(255,255,255,.85);
+  --glass-shadow:0 1px 2px rgba(31,41,55,.05),0 10px 28px rgba(31,41,55,.07);
+  --glass-shadow-lift:0 2px 6px rgba(31,41,55,.06),0 20px 44px rgba(31,41,55,.12);
+}
+
+/* ------------------------------------------------------------ the aurora --- */
+
+/* Shown on every signed-in route, over apple-minimal's `display:none !important` and the
+   non-workspace pages' own hide. It spans the whole window now, rail included, so the rail can be
+   glass too. The old beam, thread mesh and dust are retired: the dust animated background-position,
+   which repaints the full screen every frame. */
+.gx-shell .gx-main > .studio-atmosphere {
+  display:block !important;
+  inset:0;
+  z-index:0;
+  background:none;
+  opacity:1;
+  filter:none;
+}
+.gx-shell .studio-atmosphere > * { display:none; }
+.gx-shell .studio-atmosphere::before,
+.gx-shell .studio-atmosphere::after {
+  content:'';
+  position:absolute;
+  inset:-25%;
+  filter:none;
+  opacity:1;
+  pointer-events:none;
+  will-change:transform;
+}
+.gx-shell .studio-atmosphere::after {
+  background:
+    radial-gradient(34% 30% at 26% 22%,var(--aurora-1),transparent 70%),
+    radial-gradient(30% 26% at 72% 64%,var(--aurora-3),transparent 72%);
+  animation:glass-aurora-a 34s ease-in-out infinite alternate;
+}
+.gx-shell .studio-atmosphere::before {
+  background:radial-gradient(32% 30% at 76% 30%,var(--aurora-2),transparent 70%);
+  animation:glass-aurora-b 47s ease-in-out infinite alternate;
+}
+.gx-shell .studio-atmosphere.is-still::before,
+.gx-shell .studio-atmosphere.is-still::after { animation:none; }
+@keyframes glass-aurora-a {
+  from { transform:translate3d(-4%,-3%,0) rotate(0deg) scale(1); }
+  to { transform:translate3d(6%,5%,0) rotate(9deg) scale(1.14); }
+}
+@keyframes glass-aurora-b {
+  from { transform:translate3d(5%,4%,0) scale(1.1); }
+  to { transform:translate3d(-7%,-2%,0) scale(.94); }
+}
+
+/* The grounds that used to paint over it are opened up. The page colour stays on <html>. */
+.gx-shell,
+.gx-shell .gx-main,
+.gx-shell .apple-workspace,
+.gx-shell .gx-conversation { background:transparent; }
+
+/* -------------------------------------------------------------------- rail --- */
+
+/* Glass without blur: nothing scrolls behind the rail but the aurora, which is already soft. It
+   also keeps the rail free of backdrop-filter, which would make it the containing block for the
+   fixed-position context menu its chat rows open. */
+.gx-shell .studio-dock,
+:root[data-theme='light'] .gx-shell .studio-dock {
+  background:var(--glass-fill);
+  border-inline-end:1px solid var(--glass-line);
+  box-shadow:var(--glass-sheen);
+}
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation) {
+  border-radius:var(--glass-r-control);
+  transition:background-color .18s var(--glass-ease),color .18s var(--glass-ease),border-color .18s var(--glass-ease),box-shadow .18s var(--glass-ease);
+}
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):hover { background:var(--glass-fill-hover); }
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation)[aria-current='page'],
+.gx-shell .studio-dock .studio-navigation[aria-expanded='true'] {
+  background:var(--glass-fill-hover);
+  border-color:var(--glass-line-hover);
+  box-shadow:var(--glass-sheen),0 6px 18px rgba(0,0,0,.16);
+}
+/* The icon, not the row, does the wiggle: a transform on the row would re-parent that fixed menu. */
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation) svg { transition:transform .32s var(--glass-spring); }
+.gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):hover svg { transform:rotate(-8deg) scale(1.12); }
+
+@media (max-width:900px) {
+  .gx-shell .studio-dock {
+    background:var(--glass-fill-strong);
+    border:1px solid var(--glass-line-hover);
+    border-radius:16px;
+    box-shadow:var(--glass-sheen),var(--glass-shadow);
+  }
+}
+
+/* ----------------------------------------------------------------- top bar --- */
+
+.gx-shell .apple-workspace__topbar,
+:root[data-theme='light'] .gx-shell .apple-workspace__topbar {
+  background:var(--glass-fill);
+  border-bottom:1px solid var(--glass-line);
+  box-shadow:var(--glass-sheen);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+}
+.studio-project-menu > summary {
+  border-color:var(--glass-line-hover);
+  border-radius:var(--glass-r-control);
+  background:var(--glass-fill);
+  transition:background-color .18s var(--glass-ease),transform .18s var(--glass-spring);
+}
+.studio-project-menu > summary:active { transform:scale(.92); }
+
+/* ---------------------------------------------------------- composer card --- */
+
+.gx-composer .gx-composer__inner,
+:root[data-theme='light'] .gx-composer .gx-composer__inner {
+  border-color:var(--glass-line-hover);
+  background:var(--glass-fill-strong);
+  box-shadow:var(--glass-sheen),var(--glass-shadow-lift);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  transition:border-color .2s var(--glass-ease),box-shadow .24s var(--glass-ease),background-color .2s var(--glass-ease);
+}
+.gx-composer .gx-composer__inner:focus-within,
+:root[data-theme='light'] .gx-composer .gx-composer__inner:focus-within {
+  border-color:color-mix(in srgb,var(--accent) 70%,transparent);
+  box-shadow:var(--glass-sheen),0 0 0 4px var(--accent-soft),var(--glass-shadow-lift);
+}
+
+/* ------------------------------------------------------------ popovers --- */
+
+/* Every floating menu is the same object: frosted, a hairline of light, and it pops open from the
+   control that summoned it. Opacity and a small scale only, so nothing it covers moves. */
+:root[data-theme] .gx-pop,
+:root[data-theme] .gx-top__actions,
+:root[data-theme] .studio-project-menu[open] > .gx-top__actions,
+:root[data-theme] #main-content .shelf .menu-pop {
+  border-color:var(--glass-line-hover);
+  border-radius:16px;
+  background:var(--glass-fill-strong);
+  box-shadow:var(--glass-sheen),var(--shadow-pop);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  transform-origin:top;
+  animation:glass-pop .24s var(--glass-spring) both;
+}
+:root[data-theme] .gx-pop:is(.gx-pop--up) { transform-origin:bottom; }
+@keyframes glass-pop {
+  from { opacity:0; transform:translateY(-4px) scale(.94); }
+  to { opacity:1; transform:none; }
+}
+
+/* ---------------------------------------------------- dialogs and toasts --- */
+
+:root[data-theme] .modal-panel.modal-panel,
+:root[data-theme] .cmdk.cmdk {
+  border-color:var(--glass-line-hover);
+  border-radius:22px;
+  background:var(--glass-fill-strong);
+  box-shadow:var(--glass-sheen),var(--shadow-modal);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+}
+:root[data-theme] .modal-panel .modal-head { background:transparent; }
+:root[data-theme] .toast-stack .toast {
+  border:1px solid var(--glass-line-hover);
+  border-radius:16px;
+  background:var(--glass-fill-strong);
+  box-shadow:var(--glass-sheen),var(--shadow-pop);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  animation:glass-toast .42s var(--glass-spring) both;
+}
+@keyframes glass-toast {
+  from { opacity:0; transform:translateY(14px) scale(.96); }
+  to { opacity:1; transform:none; }
+}
+
+/* ------------------------------------------------------- buttons, inputs --- */
+
+/* Friendly physics: a button rises a pixel toward the pointer and squishes when pressed. The press
+   replaces system.css's 1px dip, which played underneath a transform and fought it. */
+:is(.btn,.gx-btn) {
+  transition:transform .2s var(--glass-spring),background-color .16s var(--glass-ease),border-color .16s var(--glass-ease),box-shadow .2s var(--glass-ease),color .16s var(--glass-ease);
+}
+:is(.btn,.gx-btn):hover:not(:disabled) { transform:translateY(-1px); }
+:is(.btn,.gx-btn):active:not(:disabled) { transform:scale(.95); animation:none; transition-duration:.08s; }
+
+/* ----------------------------------------- projects, settings, usage, plans --- */
+
+/* The quiet non-workspace layer is token-driven, so re-pointing its tokens turns every card, field,
+   tab and chip on those pages to glass in one place. */
+#main-content.gx-main > :is(.page.shelf,.page.usage-page,.page.settings-page) {
+  --nm-panel:var(--glass-fill);
+  --nm-panel-hover:var(--glass-fill-hover);
+  --nm-panel-soft:var(--glass-fill-hover);
+  --nm-line:var(--glass-line-hover);
+  --nm-line-soft:var(--glass-line);
+  --nm-shadow:var(--glass-sheen),var(--glass-shadow);
+  --nm-shadow-hover:var(--glass-sheen),var(--glass-shadow-lift);
+  --nm-r-panel:var(--glass-r);
+  --nm-r-control:var(--glass-r-control);
+}
+
+/* Cards lift toward the pointer on a spring and settle back; a press squishes them. */
+#main-content.gx-main > .page.shelf .project-card,
+#main-content.gx-main > .page.usage-page .plan,
+#main-content.gx-main > .page.settings-page .card.settings-card {
+  transition:transform .32s var(--glass-spring),box-shadow .28s var(--glass-ease),border-color .2s var(--glass-ease),background-color .2s var(--glass-ease);
+}
+#main-content.gx-main > .page.shelf .project-card:hover,
+#main-content.gx-main > .page.usage-page .plan:hover { transform:translateY(-4px); }
+#main-content.gx-main > .page.shelf .project-card:active,
+#main-content.gx-main > .page.usage-page .plan:active { transform:translateY(-1px) scale(.985); transition-duration:.1s; }
+#main-content.gx-main > .page.usage-page .plan:hover { box-shadow:var(--nm-shadow-hover); }
+/* A lifted card is its own stacking context; the one whose menu is open stays above its neighbours. */
+#main-content.gx-main > .page.shelf .project-card:has(.menu-pop) { z-index:5; }
+#main-content.gx-main > .page.usage-page .plan.is-current {
+  box-shadow:var(--glass-sheen),0 0 0 1px var(--accent-ring),var(--glass-shadow);
+}
+
+/* Lists arrive one after another. `backwards`, never `both`: a filled animation holds its last
+   transform forever and would pin the hover lift above to `none` — which is what the shelf's own
+   entrance did. The delay is capped so a long list is not slow to finish appearing. */
+#main-content.gx-main > .page.shelf .card-grid > .project-card {
+  animation:glass-rise .56s var(--glass-ease) backwards;
+  animation-delay:calc(min(var(--card-i,0),8) * 60ms);
+}
+#main-content.gx-main > .page.usage-page .plans > .plan,
+#main-content.gx-main > .page.usage-page .usage-grid > *,
+#main-content.gx-main > .page.settings-page .settings-stream > .settings-card {
+  animation:glass-rise .56s var(--glass-ease) backwards;
+}
+#main-content.gx-main > .page :is(.plans,.usage-grid,.settings-stream) > :nth-child(2) { animation-delay:.06s; }
+#main-content.gx-main > .page :is(.plans,.usage-grid,.settings-stream) > :nth-child(3) { animation-delay:.12s; }
+#main-content.gx-main > .page :is(.plans,.usage-grid,.settings-stream) > :nth-child(4) { animation-delay:.18s; }
+#main-content.gx-main > .page :is(.plans,.usage-grid,.settings-stream) > :nth-child(n+5) { animation-delay:.24s; }
+@keyframes glass-rise {
+  from { opacity:0; transform:translateY(14px) scale(.98); }
+  to { opacity:1; transform:none; }
+}
+
+/* Fields: rounder, and a soft accent glow joins the focus outline (the outline itself stays). */
+#main-content.gx-main > .page :is(input:not([type='checkbox']):not([type='radio']):not([type='range']),select,textarea) {
+  border-radius:var(--glass-r-control);
+  transition:border-color .16s var(--glass-ease),box-shadow .2s var(--glass-ease),background-color .16s var(--glass-ease);
+}
+#main-content.gx-main > .page :is(input,select,textarea):focus-visible { box-shadow:0 0 0 4px var(--accent-soft); }
+#main-content.gx-main > .page.shelf .shelf__field { border-radius:var(--glass-r-control); box-shadow:var(--glass-sheen),var(--glass-shadow); }
+#main-content.gx-main > .page.shelf .shelf__field:focus-within { box-shadow:var(--glass-sheen),0 0 0 4px var(--accent-soft),var(--glass-shadow); }
+
+/* --------------------------------------------------------- reduced motion --- */
+
+@media (prefers-reduced-motion:reduce) {
+  :is(.btn,.gx-btn):hover:not(:disabled),
+  :is(.btn,.gx-btn):active:not(:disabled),
+  .studio-project-menu > summary:active,
+  .gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):hover svg,
+  #main-content.gx-main > .page.shelf .project-card:hover,
+  #main-content.gx-main > .page.usage-page .plan:hover,
+  #main-content.gx-main > .page.shelf .project-card:active,
+  #main-content.gx-main > .page.usage-page .plan:active { transform:none; }
+}
+.motion-reduced :is(.btn,.gx-btn):hover:not(:disabled),
+.motion-reduced :is(.btn,.gx-btn):active:not(:disabled),
+.motion-reduced .studio-project-menu > summary:active,
+.motion-reduced .gx-shell .studio-dock :is(.studio-dock__row,.studio-navigation):hover svg,
+.motion-reduced #main-content.gx-main > .page.shelf .project-card:hover,
+.motion-reduced #main-content.gx-main > .page.usage-page .plan:hover,
+.motion-reduced #main-content.gx-main > .page.shelf .project-card:active,
+.motion-reduced #main-content.gx-main > .page.usage-page .plan:active { transform:none; }

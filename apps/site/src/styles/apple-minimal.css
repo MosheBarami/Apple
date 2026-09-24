@@ -65,10 +65,26 @@
   --primary: #fafafa;
   --primary-hover: #d4d4d8;
   --on-primary: #000000;
-  --glass: rgba(0, 0, 0, 0.72);
   --composer-fill: rgba(10, 10, 10, 0.82);
   --composer-line: rgba(46, 46, 46, 0.6);
   --composer-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255, 255, 255, 0.025);
+
+  /* FROSTED MATTE GLASS (owner, 2026-09-24, D-GLASS-1). A panel is a translucent fill over the
+     aura, a light top edge and a soft low shadow. The fills stay near --surface-2 so every text
+     token keeps its measured contrast on them. */
+  --glass-fill: rgba(20, 22, 30, 0.56);
+  --glass-fill-quiet: rgba(14, 15, 21, 0.44);
+  --glass-fill-strong: rgba(12, 13, 18, 0.8);
+  --glass-line: rgba(255, 255, 255, 0.08);
+  --glass-line-hover: rgba(255, 255, 255, 0.16);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 40px -24px rgba(0, 0, 0, 0.7);
+  --glass-shadow-lift: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 26px 50px -24px rgba(0, 0, 0, 0.8);
+
+  /* The aura behind every page: three soft washes (components/picks/Aura.astro). Low alpha on
+     purpose — on black they lift the ground a few steps and never reach a text token. */
+  --aura-1: rgba(91, 124, 250, 0.26);
+  --aura-2: rgba(45, 190, 170, 0.16);
+  --aura-3: rgba(240, 140, 110, 0.13);
 }
 
 :root[data-theme='light'] {
@@ -107,10 +123,23 @@
   --primary: #101217;
   --primary-hover: #33363d;
   --on-primary: #ffffff;
-  --glass: rgba(246, 247, 250, 0.78);
   --composer-fill: rgba(255, 255, 255, 0.88);
   --composer-line: rgba(190, 194, 203, 0.7);
   --composer-shadow: 0 25px 50px -12px rgba(31, 41, 55, 0.18), 0 0 0 1px rgba(16, 18, 23, 0.02);
+
+  --glass-fill: rgba(255, 255, 255, 0.62);
+  --glass-fill-quiet: rgba(255, 255, 255, 0.42);
+  --glass-fill-strong: rgba(250, 251, 253, 0.84);
+  --glass-line: rgba(16, 18, 23, 0.08);
+  --glass-line-hover: rgba(16, 18, 23, 0.16);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 18px 40px -26px rgba(31, 41, 55, 0.28);
+  --glass-shadow-lift: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 26px 50px -24px rgba(31, 41, 55, 0.34);
+
+  /* Pale washes on a pale ground: each is within a few luminance steps of --paper, so the faintest
+     words over the hero threads keep AA (the light ground is where contrast is tightest). */
+  --aura-1: rgba(120, 150, 255, 0.14);
+  --aura-2: rgba(80, 200, 185, 0.12);
+  --aura-3: rgba(255, 170, 140, 0.14);
 }
 
 /* Theme-independent tokens. */
@@ -132,6 +161,9 @@
   --t-slow: 420ms;
   --ease-out: cubic-bezier(0.22, 0.68, 0.24, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /* A small overshoot: hover lifts and presses settle with a little give, which reads friendly. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --glass-blur: blur(20px) saturate(150%);
 
   --content: 1120px;
   --gutter: clamp(16px, 4vw, 40px);
@@ -158,7 +190,8 @@ body {
   min-width: 320px;
   margin: 0;
   overflow-x: hidden;
-  background: var(--paper);
+  /* Transparent: <html> carries the paper and the aura sits between the two (Aura.astro). */
+  background: transparent;
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 16px;
@@ -270,7 +303,6 @@ svg {
   min-height: 36px;
   padding: 0 14px;
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -281,19 +313,25 @@ svg {
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
+  /* Friendly buttons: pill shaped, a lift under the pointer and a small squish on press. */
+  border-radius: var(--r-pill);
   transition:
     background-color var(--t-fast) var(--ease-out),
     border-color var(--t-fast) var(--ease-out),
-    color var(--t-fast) var(--ease-out);
+    color var(--t-fast) var(--ease-out),
+    transform var(--t-base) var(--ease-spring);
 }
 
 .btn:hover {
-  border-color: var(--line-strong);
+  border-color: var(--glass-line-hover);
   background: var(--control-fill);
+  transform: translateY(-1px);
 }
 
 .btn:active {
   background: var(--surface-2);
+  transform: translateY(0) scale(0.97);
+  transition-duration: var(--t-fast);
 }
 
 .btn-primary {
@@ -330,6 +368,18 @@ svg {
 .btn:disabled:hover {
   border-color: var(--line);
   background: transparent;
+  transform: none;
+}
+
+/* ------------------------------------------------------------------ glass */
+
+/* One frosted surface, shared by both layouts: a panel, a card, a table, the header. */
+.glass {
+  border: 1px solid var(--glass-line);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 /* ------------------------------------------------------------------ Autonomous */
@@ -359,5 +409,11 @@ svg {
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* No lift or squish either: the state change stays, the movement goes. */
+  .btn:hover,
+  .btn:active {
+    transform: none;
   }
 }

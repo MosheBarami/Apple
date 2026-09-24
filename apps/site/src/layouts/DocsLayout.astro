@@ -159,9 +159,12 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     font: inherit;
     font-size: 14px;
     color: var(--ink);
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--r-sm);
+    background: var(--glass-fill);
+    border: 1px solid var(--glass-line);
+    border-radius: var(--r-pill);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     transition: border-color var(--t-fast) var(--ease-out);
   }
 
@@ -200,15 +203,21 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     display: grid;
     gap: 0.15rem;
     padding: 0.5rem 0.65rem;
-    border: 1px solid var(--line);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-md);
     text-decoration: none;
-    background: var(--surface);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    transition:
+      border-color var(--t-fast) var(--ease-out),
+      translate var(--t-base) var(--ease-spring);
   }
 
   .docs__results :global(a:hover) {
-    border-color: var(--line-strong);
+    border-color: var(--glass-line-hover);
     text-decoration: none;
+    translate: 0 -2px;
   }
 
   .docs__results :global(.docs__resulttitle) {
@@ -256,19 +265,21 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     display: block;
     color: var(--muted);
     font-size: 14px;
-    padding: 6px 10px;
-    border-radius: var(--r-xs);
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
     margin-left: 0;
     text-decoration: none;
     transition:
       color var(--t-fast) var(--ease-out),
-      background-color var(--t-fast) var(--ease-out);
+      background-color var(--t-fast) var(--ease-out),
+      translate var(--t-base) var(--ease-spring);
   }
 
   .docs__group a:hover {
     color: var(--ink);
     background: var(--control-fill);
     text-decoration: none;
+    translate: 3px 0;
   }
 
   /* The current page is an ordinary active state: the restrained blue. */
@@ -341,8 +352,11 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
   }
 
   .prose :global(.callout) {
-    background: var(--surface);
-    border: 1px solid var(--line);
+    background: var(--glass-fill);
+    border: 1px solid var(--glass-line);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: var(--r-lg);
     padding: 16px 20px;
     margin: 24px 0;
@@ -355,7 +369,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
   }
 
   .prose :global(.callout--violet) {
-    border-color: var(--line);
+    border-color: var(--glass-line);
   }
 
   .docs__foot {
@@ -378,9 +392,12 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     }
 
     .docs__nav {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--r-lg);
+      background: var(--glass-fill);
+      border: 1px solid var(--glass-line);
+      border-radius: var(--r-xl);
+      box-shadow: var(--glass-shadow);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
       overflow: hidden;
     }
 

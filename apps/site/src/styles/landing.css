@@ -226,11 +226,16 @@ a {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--t-fast) var(--ease-out);
+  transition: background-color var(--t-fast) var(--ease-out), transform var(--t-base) var(--ease-spring);
 }
 
 .composer-send:hover {
   background: var(--primary-hover);
+  transform: translateY(-1px) scale(1.04);
+}
+
+.composer-send:active {
+  transform: scale(0.95);
 }
 
 .availability {
@@ -305,9 +310,6 @@ a {
 .proof-shot {
   margin: 0;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
 }
 
 .proof-shot img {
@@ -421,9 +423,6 @@ a {
 .sequence-figure {
   margin: 0;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
 }
 
 .figure-head {
@@ -484,15 +483,37 @@ a {
 .capabilities {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 32px;
+  gap: 16px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .capability {
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
+  padding: 22px;
+}
+
+/* FROSTED MATTE GLASS (owner, 2026-09-24, D-GLASS-1): every panel on the page is the same
+   translucent sheet over the aura, and a capability card lifts a little under the pointer. */
+.proof-shot,
+.sequence-figure,
+.demos,
+.capability {
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-xl);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.capability {
+  transition: translate var(--t-slow) var(--ease-spring), box-shadow var(--t-base) var(--ease-out);
+}
+
+.capability:hover {
+  translate: 0 -4px;
+  box-shadow: var(--glass-shadow-lift);
 }
 
 .capability h3 {
@@ -522,8 +543,8 @@ a {
   height: 36px;
   margin-bottom: 14px;
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: var(--paper);
+  border-radius: var(--r-md);
+  background: var(--glass-fill-strong);
   color: var(--ink-2);
   transition:
     opacity var(--t-slow) var(--ease-out) calc(var(--reveal-delay, 0ms) + 160ms),
@@ -568,6 +589,7 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
     rotate: 0deg;
   }
 
+  .capability:hover,
   .capability:hover .cap-icon {
     translate: none;
   }
@@ -589,9 +611,6 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
 /* THE STAGE PANEL: one surface, one row of small tabs, one stage at a time. */
 .demos {
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
 }
 
 .stage-tabs {
@@ -1149,10 +1168,11 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
 
 html:not(.no-js) [data-reveal] {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(18px) scale(0.985);
   transition:
     opacity var(--t-slow) var(--ease-out),
-    transform var(--t-slow) var(--ease-out);
+    transform 700ms var(--ease-spring),
+    translate var(--t-slow) var(--ease-spring);
   transition-delay: var(--reveal-delay, 0ms);
 }
 

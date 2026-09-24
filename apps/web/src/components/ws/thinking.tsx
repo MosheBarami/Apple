@@ -1,355 +1,130 @@
-// The Thinking card: ONE continuous surface, built from Vercel AI Elements.
+// THE STATUS LINE: what Apple is doing right now, in one friendly sentence (owner decision D-THINK-1).
 //
-//   Reasoning            owns the header line and the disclosure: Brain, the current observable
-//                        action under a Shimmer while the run is live, the measured duration, the
-//                        chevron — and the Credits settled so far, beside it.
-//   ReasoningContent     the disclosure body. It is a real CollapsibleContent carrying the id the
-//                        trigger's aria-controls names, and it renders COMPONENTS: this product has
-//                        no model reasoning to show, and none crosses the wire (docs/THINKING-UX.md).
-//   ChainOfThought       the observed execution, from the activity reducer: the current step and the
-//                        two before it, with every earlier step one disclosure away.
-//   Tool                 one row per tool call: friendly name, running / done / a real final
-//                        failure, and — opened — only what it was pointed at, what the worker said
-//                        came back, and how long it took. Never a payload, never JSON. Closed until
-//                        somebody opens it (D-UX-2: the detail is there, not in the way).
-//   Next                 the ONE next step a validated `build_plan` announced, as a pending step in
-//                        plain words. Never the plan's checklist (D-UX-2), and never inferred.
-//   Details              every validated document the reply no longer draws (lib/reply-docs.ts),
-//                        closed, its renderer loaded only once it is opened.
+// While a run is live the turn shows ONE line: a soft animated orb and a few plain words —
+// "Editing the shop", "Placing things around the map". When the next step starts, the old words
+// blur and slide away and the new ones blur and slide in; nothing is appended, so the steps never
+// pile up into a list. There is nothing to open: no tool names, arguments, paths, JSON, durations
+// or traces, because the people using this are young creators, not engineers. What the line says
+// is decided in lib/live-status.ts, where a test can reach it.
 //
-// THE OWNER'S PICKS, 2026-09-23 (components/picks/thinking/):
-//   Lattice Loader       the header's glyph: a light running round a lattice while the run is live,
-//                        settling into a tick, a cross or two bars — the state at a glance.
-//   Thought Line         the header's line settles in (fade and un-blur) when it changes from the
-//                        live action to the measured time; the disclosure opens and closes on its
-//                        curve; a running phase step pulses.
-//   To-do list           a phase step that completes draws its tick in (StepMark, via ChainOfThought).
-//   Skeleton Shimmer     what Details shows while its renderer loads, and the blur-in once it has.
-//   Shiny / Shimmering   the live line's sweep (ai-elements/shimmer.tsx).
+// A finished run keeps at most one quiet line ("Built and scripted your game"); a run that failed
+// or stopped says so once, in the turn's outcome row (outcome-model.ts), not here.
 //
-// What the surface may show, and what it may not, is decided in execution-model.ts, where a test can
-// reach it. This file only lays those decisions out, and holds no state of its own: every
-// disclosure here is owned by the AI Elements component that draws it.
-import { Suspense, lazy, useId, type ReactNode } from 'react';
-import type { PlaytestRun, RunIntent, StudioFrame } from '@golem/shared';
-import type { UIDocument } from '../../lib/generative-ui/schema';
+// Motion: the morph and the orb are CSS animations, and both stop for a reader who asked for less
+// motion (the media query and the app's own `.motion-reduced`), leaving a plain swap.
+import { useEffect, useRef, useState } from 'react';
 import type { AgentStatus } from '../../lib/use-project-socket';
-import { deniedNote } from '../../lib/tool-permissions';
-import type { ActivityRun, TerminalKind } from './activity-model';
-import { PlaytestCard } from './playtest-card';
-import { Reasoning, ReasoningContent, ReasoningTrigger, useReasoning } from '../ai-elements/reasoning';
+import { doneSummary, livePhrase } from '../../lib/live-status';
+import type { ActivityRun } from './activity-model';
 import { Shimmer } from '../ai-elements/shimmer';
-import {
-  ChainOfThought,
-  ChainOfThoughtContent,
-  ChainOfThoughtHeader,
-  ChainOfThoughtStep,
-} from '../ai-elements/chain-of-thought';
-import { Tool, ToolContent, ToolHeader } from '../ai-elements/tool';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ai-elements/ui/collapsible';
-import { ChevronDownIcon } from '../ai-elements/icons';
-import { LatticeGlyph, type LatticeStatus } from '../picks/thinking/lattice-glyph';
-import { Reveal, Skeleton } from '../picks/thinking/skeleton';
-import type { ToolUIPartState } from '../ai-elements/ai-types';
-import {
-  executionView,
-  formatSeconds,
-  type ExecutionRow,
-  type ExecutionView,
-  type ToolRow,
-  type ToolRowState,
-} from './execution-model';
-import { PHASE_LABEL, type GateRow, type PlannedStep } from './thinking-model';
-import './reasoning.css';
+// The Shimmer's own styles live beside the vendored Reasoning, which this surface no longer mounts.
+import '../ai-elements/reasoning.css';
+import './thinking.css';
 
-// Loaded only when somebody opens Details: the component registry is large, and most runs are never
-// looked at this closely.
-const GenerativeUI = lazy(() => import('../../lib/generative-ui/render').then((m) => ({ default: m.GenerativeUI })));
+/** How long a phrase stays before the next may replace it, so fast steps read instead of flicker. */
+const DWELL_MS = 900;
 
-/* ------------------------------------------------------------------ rows --- */
-
-/** The three observed tool states, in AI Elements' tool-part vocabulary. */
-const TOOL_STATE: Record<ToolRowState, ToolUIPartState> = {
-  running: 'input-available',
-  done: 'output-available',
-  failed: 'output-error',
-};
-
-/** Only the safe facts about a step: on what, what came back, how long. */
-function ToolFacts({ row }: { row: ToolRow }) {
-  const facts: { term: string; value: string; className: string }[] = [];
-  if (row.target) facts.push({ term: 'On', value: row.target, className: 'apple-reasoning__target' });
-  if (row.result) facts.push({ term: 'Result', value: row.result, className: 'apple-reasoning__detail' });
-  if (row.duration) facts.push({ term: 'Time', value: row.duration, className: 'apple-reasoning__time' });
-  if (facts.length === 0) return <p className="apple-step__none">No details were reported for this step.</p>;
-  return (
-    <dl className="apple-step__facts">
-      {facts.map((fact) => (
-        <div key={fact.term} className="apple-step__fact">
-          <dt>{fact.term}</dt>
-          <dd className={fact.className}>{fact.value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
+/** The newest phrase, but never sooner than DWELL_MS after the last change. Skips the ones between. */
+function useSteadyPhrase(phrase: string): string {
+  const [shown, setShown] = useState(phrase);
+  const since = useRef(Date.now());
+  useEffect(() => {
+    if (phrase === shown) return;
+    const wait = Math.max(0, since.current + DWELL_MS - Date.now());
+    const id = window.setTimeout(() => {
+      since.current = Date.now();
+      setShown(phrase);
+    }, wait);
+    return () => window.clearTimeout(id);
+  }, [phrase, shown]);
+  return shown;
 }
 
-function ToolStep({ row }: { row: ToolRow }) {
-  // CLOSED, EVEN WHILE IT RUNS (D-UX-2). The step's name says what is happening in plain words; what
-  // it was pointed at and what came back are one click away for whoever wants them. The row used to
-  // open itself while running, which put a facts list in front of every child watching a build.
-  return (
-    <Tool className="apple-step">
-      <ToolHeader title={row.title} type={`tool-${row.tool ?? 'unnamed'}`} state={TOOL_STATE[row.state]} />
-      <ToolContent forceMount className="apple-step__body">
-        <ToolFacts row={row} />
-      </ToolContent>
-    </Tool>
-  );
-}
+/** The words, morphing: the previous phrase leaves while the new one arrives in the same place. */
+function MorphingWords({ phrase }: { phrase: string }) {
+  const [state, setState] = useState({ current: phrase, leaving: null as string | null, n: 0 });
+  if (state.current !== phrase) setState({ current: phrase, leaving: state.current, n: state.n + 1 });
 
-function StepRow({ row }: { row: ExecutionRow }) {
-  if (row.kind === 'tool') return <ToolStep row={row} />;
-  return <ChainOfThoughtStep className="apple-step apple-step--phase" label={row.label} status={row.status} />;
-}
-
-const rowKey = (row: ExecutionRow) => `${row.key}:${row.kind === 'tool' ? row.state : row.status}`;
-
-/* ------------------------------------------------------------ the surface --- */
-
-/**
- * The disclosure body. Exported so a test can render a settled run's body directly: a settled
- * card starts closed, and server rendering cannot open it.
- */
-export function ExecutionSurface({
-  view,
-  intent,
-  plannedSteps,
-  passedGates,
-  denied,
-  playtest,
-  frames,
-  studioConnected,
-  details = [],
-}: {
-  view: ExecutionView;
-  intent?: RunIntent;
-  plannedSteps: PlannedStep[];
-  passedGates: GateRow[];
-  denied: string | null;
-  playtest?: PlaytestRun | null;
-  frames?: StudioFrame[];
-  studioConnected: boolean;
-  /** Validated documents the reply does not draw (lib/reply-docs.ts). */
-  details?: readonly UIDocument[];
-}) {
-  // ChainOfThoughtHeader and ChainOfThoughtContent each wrap a Collapsible of their own, so the
-  // header can name its content only if both are handed the same id.
-  const historyId = useId();
-  const verified = passedGates.length > 0;
-  // THE NEXT STEP, NOT THE PLAN. One pending row in the same list as the work already done, in the
-  // plan's own words; the whole checklist is in Details for whoever wants it.
-  const next = plannedSteps[0];
+  // The line's width follows the words smoothly instead of jumping.
+  const wordsRef = useRef<HTMLSpanElement>(null);
+  const [width, setWidth] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const el = wordsRef.current?.querySelector<HTMLElement>('.apple-status__phrase.is-entering');
+    if (el) setWidth(el.offsetWidth);
+  }, [state.current]);
 
   return (
-    <>
-      {playtest && (
-        <div className="apple-reasoning__playtest">
-          <PlaytestCard run={playtest} frames={frames ?? []} studioConnected={studioConnected} />
-        </div>
-      )}
-
-      {intent?.summary && <p className="apple-reasoning__note">{intent.summary}</p>}
-
-      {(view.rows.length > 0 || verified || next) && (
-        <ChainOfThought className="apple-reasoning__chain" role="group" aria-label="Observed run activity">
-          {view.earlier.length > 0 && (
-            <>
-              <ChainOfThoughtHeader aria-controls={historyId} className="apple-reasoning__history">
-                {view.earlier.length === 1 ? '1 earlier step' : `${view.earlier.length} earlier steps`}
-              </ChainOfThoughtHeader>
-              <ChainOfThoughtContent id={historyId} forceMount>
-                {view.earlier.map((row) => <StepRow key={rowKey(row)} row={row} />)}
-              </ChainOfThoughtContent>
-            </>
-          )}
-          {view.visible.map((row) => <StepRow key={rowKey(row)} row={row} />)}
-          {/* ONE STEP, IN PLAIN WORDS. Which checks passed ("Visual quality gate", "Playtest") is
-              detail; that it was checked and works is the thing a child needs to know. Drawn only
-              for a check that really PASSED — a failed one is never painted as a success. */}
-          {verified && (
-            <ChainOfThoughtStep
-              className="apple-step apple-step--verified"
-              label="Checked it works"
-              status="complete"
-            />
-          )}
-          {next && (
-            <ChainOfThoughtStep className="apple-step apple-step--next" label={`Next: ${next.title}`} status="pending" />
-          )}
-        </ChainOfThought>
-      )}
-
-      {details.length > 0 && (
-        <Collapsible className="apple-reasoning__more">
-          <CollapsibleTrigger className="apple-reasoning__more-trigger">
-            <span>Details</span>
-            <ChevronDownIcon className="apple-reasoning__more-chevron" />
-          </CollapsibleTrigger>
-          {/* Not force-mounted: closed, nothing is rendered and the renderer is not fetched. */}
-          <CollapsibleContent className="apple-reasoning__more-body">
-            <Suspense fallback={<Skeleton lines={3} label="Loading details" />}>
-              <Reveal>
-                {details.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
-              </Reveal>
-            </Suspense>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-      {denied && <p className="apple-reasoning__denied" role="note">{denied}</p>}
-    </>
-  );
-}
-
-/* ---------------------------------------------------------------- header --- */
-
-/** The line inside the trigger: the observed action while live, the measured time once settled. */
-function thinkingMessage(title: string, isStreaming: boolean, duration: number | undefined): ReactNode {
-  const time = formatSeconds(duration);
-  if (isStreaming) {
-    return (
-      <>
-        <Shimmer as="span" className="apple-reasoning__summary apple-reasoning__settle" duration={1}>{title}</Shimmer>
-        {time && <span className="apple-reasoning__time">{time}</span>}
-      </>
-    );
-  }
-  return <p className="apple-reasoning__summary apple-reasoning__settle">{time ? `Thought for ${time}` : title}</p>;
-}
-
-/** The glyph for a settled run, by how it ended. `incomplete` changed nothing, so it is the dot. */
-const SETTLED_GLYPH: Record<TerminalKind, LatticeStatus> = {
-  done: 'done',
-  recovered: 'done',
-  failed: 'failed',
-  stopped: 'stopped',
-  quota: 'stopped',
-  incomplete: 'idle',
-};
-
-function ReasoningHeader({ title, creditsSpent, glyph }: { title: string; creditsSpent?: number; glyph: LatticeStatus }) {
-  const { isOpen } = useReasoning();
-  return (
-    <div className="apple-reasoning__head">
-      <ReasoningTrigger
-        aria-label={`${title}. ${isOpen ? 'Hide reasoning details' : 'Show reasoning details'}`}
-        className="apple-reasoning__trigger"
-        icon={<LatticeGlyph status={glyph} className="ai-reasoning__icon" />}
-        getThinkingMessage={(isStreaming, duration) => thinkingMessage(title, isStreaming, duration)}
-      />
-      {creditsSpent !== undefined && creditsSpent > 0 && (
-        <span className="apple-reasoning__cost" title="Credits settled for this run so far">
-          {creditsSpent} {creditsSpent === 1 ? 'Credit' : 'Credits'}
+    <span ref={wordsRef} className="apple-status__words" style={width ? { width } : undefined}>
+      {state.leaving && (
+        <span
+          key={`leave-${state.n}`}
+          className="apple-status__phrase is-leaving"
+          aria-hidden="true"
+          onAnimationEnd={() => setState((s) => ({ ...s, leaving: null }))}
+        >
+          {state.leaving}
         </span>
       )}
-    </div>
+      <Shimmer key={`enter-${state.n}`} as="span" className="apple-status__phrase is-entering" duration={1.6}>
+        {state.current}
+      </Shimmer>
+    </span>
   );
 }
-
-/* ------------------------------------------------------------------ card --- */
 
 export function Thinking({
   status,
   streaming,
-  intent,
-  deniedTools,
-  gates,
-  plannedSteps,
   activity,
-  frames,
-  playtest,
-  studioConnected = false,
-  details = [],
+  deniedTools,
 }: {
   status: AgentStatus | null;
   streaming: boolean;
-  /** From the `run_intent` server message. Absent until the worker sends one. */
-  intent?: RunIntent;
-  /**
-   * Tools this run was not given, from `tools_denied`. Absent until the worker sends one, so a
-   * reloaded conversation and an older deployment are silent rather than claiming nothing was
-   * withheld — which is a different statement from having checked and found nothing.
-   */
-  deniedTools?: string[];
-  gates: GateRow[];
-  plannedSteps: PlannedStep[];
-  /** The ordered, timed activity — see `activity-model.ts`. */
+  /** The ordered activity — see `activity-model.ts`. Only its running step is ever put into words. */
   activity: ActivityRun;
-  /** Real Studio frames for the active run. Never shown on historical turns. */
-  frames?: StudioFrame[];
-  /** Worker-owned playtest state for the active run. */
-  playtest?: PlaytestRun | null;
-  studioConnected?: boolean;
-  /** Validated documents the reply does not draw, kept under Details (lib/reply-docs.ts). */
-  details?: readonly UIDocument[];
+  /** Tools this run was not given (`tools_denied`). Said as one sentence, never by name. */
+  deniedTools?: string[];
 }) {
-  const view = executionView(activity);
   const isLive = streaming && !activity.terminal;
-  const title = isLive && view.current
-    ? (view.current.kind === 'tool' ? view.current.title : view.current.label)
-    : isLive && status
-      ? (PHASE_LABEL[status.phase] ?? status.phase)
-      : isLive
-        ? 'Thinking'
-        : activity.terminal?.kind === 'done' || activity.terminal?.kind === 'recovered'
-          ? 'Completed'
-          : activity.terminal?.kind === 'stopped'
-            ? 'Stopped'
-            : activity.terminal?.kind === 'quota'
-              ? 'Paused'
-              : 'Activity';
-  const elapsedSeconds = activity.elapsed ? Math.max(1, Math.ceil(activity.elapsed.ms / 1000)) : undefined;
-  const passedGates = gates.filter((gate) => gate.passed);
-  const denied = deniedNote(deniedTools);
-  const hasObservedContent = Boolean(
-    status ||
-    intent?.summary ||
-    view.rows.length > 0 ||
-    activity.terminal ||
-    playtest ||
-    passedGates.length > 0 ||
-    plannedSteps.length > 0 ||
-    details.length > 0,
-  );
-  if (!hasObservedContent) return null;
+  const phrase = useSteadyPhrase(isLive ? livePhrase(activity, status?.phase) : '');
+  const denied = (deniedTools ?? []).some((tool) => typeof tool === 'string' && tool.trim())
+    ? 'Some of Apple’s abilities are turned off in your settings, so it worked without them.'
+    : null;
 
+  if (isLive) {
+    const credits = status?.creditsSpent;
+    return (
+      <div className="apple-status is-live">
+        <p className="apple-status__line">
+          <span className="apple-status__orb" aria-hidden="true"><span /></span>
+          <MorphingWords phrase={phrase || livePhrase(activity, status?.phase)} />
+          {credits !== undefined && credits > 0 && (
+            <span className="apple-status__cost">
+              {credits} {credits === 1 ? 'Credit' : 'Credits'}
+              <span className="gx-sr"> settled for this run so far</span>
+            </span>
+          )}
+        </p>
+        {/* Read once per change, politely; the morph itself is decoration. */}
+        <span className="gx-sr" role="status">{phrase}</span>
+        {denied && <p className="apple-status__note">{denied}</p>}
+      </div>
+    );
+  }
+
+  const summary = doneSummary(activity);
+  if (!summary && !denied) return null;
   return (
-    <Reasoning
-      className={`apple-reasoning${isLive ? ' is-live' : ''}`}
-      data-terminal={activity.terminal?.kind ?? undefined}
-      isStreaming={isLive}
-      duration={elapsedSeconds}
-    >
-      <ReasoningHeader
-        title={title}
-        creditsSpent={status?.creditsSpent}
-        glyph={isLive ? 'working' : activity.terminal ? SETTLED_GLYPH[activity.terminal.kind] : 'idle'}
-      />
-      <ReasoningContent className="apple-reasoning__details">
-        <ExecutionSurface
-          view={view}
-          intent={intent}
-          plannedSteps={plannedSteps}
-          passedGates={passedGates}
-          denied={denied}
-          playtest={playtest}
-          frames={frames}
-          studioConnected={studioConnected}
-          details={details}
-        />
-      </ReasoningContent>
-      <span className="gx-sr" aria-live="polite">{isLive ? title : ''}</span>
-    </Reasoning>
+    <div className="apple-status is-settled">
+      {summary && (
+        <p className="apple-status__line">
+          <span className="apple-status__tick" aria-hidden="true">
+            <svg viewBox="0 0 16 16" width="12" height="12"><path d="M3.5 8.5l3 3 6-7" /></svg>
+          </span>
+          <span className="apple-status__done">{summary}</span>
+        </p>
+      )}
+      {denied && <p className="apple-status__note">{denied}</p>}
+    </div>
   );
 }

@@ -5,6 +5,7 @@ import '../styles/apple-minimal.css';
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import Aura from '../components/picks/Aura.astro';
 
 interface Props {
   title: string;
@@ -100,6 +101,7 @@ const ogImage = new URL('/og.png', site);
     </script>
   </head>
   <body>
+    <Aura />
     <a href="#main" class="skip-link">Skip to content</a>
 
     {!bare && <Nav />}
@@ -117,6 +119,16 @@ const ogImage = new URL('/og.png', site);
       // the transform, so adding the class is harmless and nothing can
       // ever stay invisible.
       // ---------------------------------------------------------------
+      // Panels and section headings BELOW the first screen get the same
+      // entrance without every page marking them (D-GLASS-1). Only below
+      // it: tagging something already on screen would blink it out.
+      document
+        .querySelectorAll<HTMLElement>('main :is(.slab, .card, .callout, .table-scroll, .prose > h2)')
+        .forEach((el) => {
+          if (!el.closest('[data-reveal]') && el.getBoundingClientRect().top > window.innerHeight) {
+            el.setAttribute('data-reveal', '');
+          }
+        });
       const reveals = Array.from(
         document.querySelectorAll<HTMLElement>('[data-reveal], .kinetic')
       );

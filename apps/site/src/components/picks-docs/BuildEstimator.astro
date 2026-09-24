@@ -75,9 +75,11 @@ const credits = (n: number) => (n * creditsPerBuild).toLocaleString('en-US');
     gap: 6px;
     margin: 16px 0 0;
     padding: 28px 22px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     text-align: center;
   }
 

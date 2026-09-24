@@ -83,19 +83,13 @@ const isCurrent = (href: string) =>
 </header>
 
 <style>
+  /* A floating frosted pill (D-GLASS-1). The bar itself is transparent; the pill inside it is the
+     glass, so the page and the aura show around it. Total height stays --nav-h. */
   .nav {
     position: sticky;
     top: 0;
     z-index: 500;
-    border-bottom: 1px solid transparent;
-    background: var(--glass);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    transition: border-color var(--t-base) var(--ease-out);
-  }
-
-  :global(html.scrolled) .nav {
-    border-bottom-color: var(--hairline);
+    padding-top: 8px;
   }
 
   .nav__inner {
@@ -103,7 +97,23 @@ const isCurrent = (href: string) =>
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    height: var(--nav-h);
+    height: calc(var(--nav-h) - 8px);
+    padding-inline: 14px 8px;
+    border: 1px solid var(--glass-line);
+    border-radius: var(--r-pill);
+    background: var(--glass-fill);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    transition:
+      background-color var(--t-base) var(--ease-out),
+      box-shadow var(--t-base) var(--ease-out);
+  }
+
+  /* Once the page moves under it, the pill thickens so the words behind never compete. */
+  :global(html.scrolled) .nav__inner {
+    background: var(--glass-fill-strong);
+    box-shadow: var(--glass-shadow-lift);
   }
 
   .brand {
@@ -143,19 +153,25 @@ const isCurrent = (href: string) =>
     align-items: center;
     min-height: 32px;
     padding: 0 12px;
-    border-radius: var(--r-xs);
+    border-radius: var(--r-pill);
     color: var(--muted);
     font-size: 14px;
     font-weight: 500;
     text-decoration: none;
     transition:
       color var(--t-fast) var(--ease-out),
-      background-color var(--t-fast) var(--ease-out);
+      background-color var(--t-fast) var(--ease-out),
+      transform var(--t-base) var(--ease-spring);
   }
 
   .nav__links ul a:hover {
     color: var(--ink);
     background: var(--control-fill);
+    transform: translateY(-1px);
+  }
+
+  .nav__links ul a:active {
+    transform: scale(0.96);
   }
 
   /* The current page: an ordinary active state, so it is the restrained blue. */
@@ -200,18 +216,20 @@ const isCurrent = (href: string) =>
     height: 32px;
     padding: 0;
     border: 1px solid transparent;
-    border-radius: var(--r-xs);
+    border-radius: var(--r-pill);
     background: transparent;
     color: var(--muted);
     cursor: pointer;
     transition:
       color var(--t-fast) var(--ease-out),
-      background-color var(--t-fast) var(--ease-out);
+      background-color var(--t-fast) var(--ease-out),
+      transform var(--t-slow) var(--ease-spring);
   }
 
   .iconbtn:hover {
     color: var(--ink);
     background: var(--control-fill);
+    transform: rotate(20deg);
   }
 
   /* The theme toggle shows the icon of the theme you would switch TO. */
@@ -239,8 +257,8 @@ const isCurrent = (href: string) =>
     width: 36px;
     height: 36px;
     padding: 0 10px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-sm);
+    border: 1px solid var(--glass-line);
+    border-radius: var(--r-pill);
     background: transparent;
     cursor: pointer;
   }
@@ -268,20 +286,32 @@ const isCurrent = (href: string) =>
 
     .nav__links {
       position: absolute;
-      top: var(--nav-h);
-      left: 0;
-      right: 0;
+      top: calc(var(--nav-h) + 6px);
+      left: var(--gutter);
+      right: var(--gutter);
       display: none;
       flex-direction: column;
       align-items: stretch;
       gap: 0;
-      padding: 8px var(--gutter) 20px;
-      border-bottom: 1px solid var(--hairline);
-      background: var(--paper);
+      padding: 8px 16px 18px;
+      border: 1px solid var(--glass-line);
+      border-radius: var(--r-xl);
+      background: var(--glass-fill-strong);
+      box-shadow: var(--glass-shadow-lift);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
     .nav__links.is-open {
       display: flex;
+      animation: menu-drop var(--t-base) var(--ease-spring);
+    }
+
+    @keyframes menu-drop {
+      from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+      }
     }
 
     .nav__links ul {

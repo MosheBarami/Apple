@@ -1,33 +1,30 @@
+//[[ RESTATED 2026-09-24 (owner decision D-THINK-1). This held the cost in the Reasoning header, outside
+//   the disclosure. The disclosure is gone; the cost now sits in the one live status line, beside the
+//   words. Same properties: always visible while the run is live, worker data only, never hidden on a
+//   narrow screen. The rendered "3 Credits" is checked in tests/live-status.test.mjs. ]]
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const JSX = readFileSync(new URL('../src/components/ws/thinking.tsx', import.meta.url), 'utf8');
-const CSS = readFileSync(new URL('../src/components/ws/reasoning.css', import.meta.url), 'utf8');
+const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const JSX = strip(readFileSync(new URL('../src/components/ws/thinking.tsx', import.meta.url), 'utf8'));
+const CSS = strip(readFileSync(new URL('../src/components/ws/thinking.css', import.meta.url), 'utf8'));
 
-test('run cost stays in the always-visible reasoning header, outside disclosure details', () => {
-  //[[ RESTATED 2026-09-22 (A2): the disclosed body is now `ExecutionSurface` (the ReasoningContent's
-  //   child), not `ReasoningDetails`. Same property. The rendered markup — the cost span outside both
-  //   the trigger and the collapsible content — is checked in tests/thinking-surface.test.mjs. ]]
-  const cost = JSX.indexOf('className="apple-reasoning__cost"');
-  const details = JSX.indexOf('function ExecutionSurface');
-  const header = JSX.indexOf('function ReasoningHeader');
-  assert.ok(header >= 0 && details >= 0 && cost > header, 'reasoning header cost is missing');
-  const headerSource = JSX.slice(header, JSX.indexOf('function Thinking', header));
-  const detailSource = JSX.slice(details, JSX.indexOf('function thinkingMessage', details));
-  assert.ok(detailSource.length > 200, 'the disclosed body was not found — this test would check nothing');
-  assert.match(headerSource, /creditsSpent !== undefined && creditsSpent > 0/);
-  assert.match(headerSource, /className="apple-reasoning__cost"/);
-  assert.doesNotMatch(detailSource, /creditsSpent/, 'disclosed details must not restate run cost');
+test('run cost stays in the live status line, beside the words', () => {
+  const line = JSX.slice(JSX.indexOf('<p className="apple-status__line">'), JSX.indexOf('</p>'));
+  assert.ok(line.length > 50, 'the live line was not found — this test would check nothing');
+  assert.match(line, /<MorphingWords\b/);
+  assert.match(line, /className="apple-status__cost"/, 'the cost is not in the live line');
+  assert.equal((JSX.match(/apple-status__cost/g) ?? []).length, 1, 'the cost is said once');
 });
 
 test('the visible cost is worker data with singular/plural copy, never a client estimate', () => {
-  assert.match(JSX, /creditsSpent=\{status\?\.creditsSpent\}/);
-  assert.match(JSX, /creditsSpent === 1 \? 'Credit' : 'Credits'/);
+  assert.match(JSX, /const credits = status\?\.creditsSpent;/);
+  assert.match(JSX, /credits === 1 \? 'Credit' : 'Credits'/);
   assert.doesNotMatch(JSX, /NEURONS_PER_CREDIT|creditsFor|Math\.ceil\([^)]*neuron/i);
 });
 
-test('narrow-screen reasoning never hides the cost', () => {
-  const stripped = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.doesNotMatch(stripped, /apple-reasoning__cost[^{]*\{[^}]*display\s*:\s*none/);
+test('a narrow screen never hides the cost', () => {
+  assert.match(CSS, /\.apple-status__cost \{/, 'the rule this checks is missing');
+  assert.doesNotMatch(CSS, /apple-status__cost[^{]*\{[^}]*display\s*:\s*none/);
 });

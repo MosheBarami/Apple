@@ -34,6 +34,11 @@
   margin: 0;
   padding: 1px 0;
   list-style: none;
+}
+
+/* Its own layer only while it slides: a still row kept on one was re-rasterised a second after
+   the page settled on a busy phone, and under reduced motion that is a picture that changes. */
+.ticker.is-live .ticker-track {
   will-change: transform;
 }
 

@@ -79,7 +79,10 @@ test('the client carries it forward between settlements', () => {
 });
 
 test('the UI shows it, and does not display a confident zero before anything is spent', () => {
-  assert.match(THINKING, /creditsSpent !== undefined && creditsSpent > 0/, 'an opening run must not render "0 Credits"');
+  //[[ RESTATED 2026-09-24 (D-THINK-1): the figure moved from the Reasoning header into the one live
+  //   status line, read as `credits` there. Same properties: no zero, the scope said to a screen
+  //   reader, singular and plural. ]]
+  assert.match(THINKING, /credits !== undefined && credits > 0/, 'an opening run must not render "0 Credits"');
   //[[ "this run" MOVED INTO THE SCREEN-READER SPAN when the figure moved out of the collapsible
   //   body and into the card's head, on 2026-09-20. Sighted readers get the scope from where it
   //   sits — inside the run's own card, beside that run's title — and a header that reads
@@ -89,9 +92,9 @@ test('the UI shows it, and does not display a confident zero before anything is 
   //   defect this file missed for a whole audit cycle: the old line WAS in the source, inside a
   //   `display:none` panel. `tests/run-cost-visible.test.mjs` renders it in a browser and
   //   measures it instead. ]]
-  assert.match(THINKING, /Credits settled for this run so far/);
+  assert.match(THINKING, /<span className="gx-sr"> settled for this run so far<\/span>/);
   // Singular and plural, because the string is shown verbatim.
-  assert.match(THINKING, /creditsSpent === 1 \? 'Credit' : 'Credits'/);
+  assert.match(THINKING, /credits === 1 \? 'Credit' : 'Credits'/);
 });
 
 test('activity does not advertise a finite step denominator for autonomous runs', () => {

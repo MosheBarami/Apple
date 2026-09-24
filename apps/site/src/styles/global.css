@@ -60,12 +60,28 @@
   padding-inline: 18px;
 }
 
-/* A panel is a surface step and a hairline. It does not cast (DESIGN-LOCK: a card does not cast). */
+/* A panel is frosted matte glass over the aura (owner, 2026-09-24, D-GLASS-1 — this replaces the
+   DESIGN-LOCK "a card does not cast"): translucent fill, a light top edge, a soft low shadow, and a
+   friendly lift under the pointer. */
 .card,
 .slab {
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-xl);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  transition:
+    border-color var(--t-base) var(--ease-out),
+    box-shadow var(--t-base) var(--ease-out),
+    translate var(--t-slow) var(--ease-spring);
+}
+
+.card:hover,
+.slab:hover {
+  border-color: var(--glass-line-hover);
+  box-shadow: var(--glass-shadow-lift);
+  translate: 0 -3px;
 }
 
 .slab--pad {
@@ -177,9 +193,12 @@
 .callout {
   margin: 24px 0;
   padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--surface);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-lg);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .callout p {
@@ -206,9 +225,12 @@
   position: relative;
   overflow-x: auto;
   margin-top: 28px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-xl);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 /* THE ROW LABEL STAYS PUT WHILE THE PLANS SCROLL PAST IT. The first column is a <th scope="row">,
@@ -218,7 +240,10 @@
   inset-inline-start: 0;
   z-index: 1;
   max-width: 160px;
-  background: var(--surface);
+  /* Frosted too, so the plans scrolling under it blur rather than show through. */
+  background: var(--glass-fill-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .table-scroll table th[scope='row']::after {
@@ -292,13 +317,15 @@ tr:last-child th {
   transform: none;
 }
 
+/* A friendly entrance: up, a touch small, settling with a little give. */
 html:not(.no-js) [data-reveal],
 html:not(.no-js) .kinetic {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(18px) scale(0.985);
   transition:
     opacity var(--t-slow) var(--ease-out),
-    transform var(--t-slow) var(--ease-out);
+    transform 700ms var(--ease-spring),
+    translate var(--t-slow) var(--ease-spring);
   transition-delay: var(--reveal-delay, 0ms);
 }
 

@@ -1,10 +1,10 @@
 /**
- * THE REPLY IS SHORT; THE DETAIL IS ONE CLICK AWAY (owner decision D-UX-2, 2026-09-23).
+ * THE REPLY IS SHORT (owner decision D-UX-2, 2026-09-23; detail removed entirely by D-THINK-1, 2026-09-24).
  *
  * Apple is for young creators who are not technical. Plan checklists, property and instance cards
  * ("game.Lighting · FogStart 5000 → 100000"), diff tables and raw tool names were drawn inline in the
  * reply. They are not any more: the reply keeps the words and any image or sound Apple made, and
- * everything else is under Details inside the Thinking disclosure — kept, closed, not deleted.
+ * everything else was under Details inside the Thinking disclosure, which D-THINK-1 removed: it is not drawn.
  *
  * Held three ways: the split itself (lib/reply-docs.ts) on real documents; a whole assistant Turn
  * rendered with react-dom/server, checked for what a browser receives; and the one path the renderer
@@ -88,18 +88,20 @@ test('a whole settled reply, rendered: the words and the picture, no property ca
   assert.doesNotMatch(shown, /set_properties|propose_plan|create_instances/, 'a raw tool name reached the page');
 });
 
-test('the renderer has exactly two ways into the conversation: generated media in the reply, and Details', () => {
+//[[ RESTATED 2026-09-24 (owner decision D-THINK-1, which overrides D-UX-2's "detail one click away").
+//   This held two render sites: media in the reply, and the rest under Details in the Thinking
+//   disclosure. The owner asked that there be no way at all to see technical detail, so the
+//   disclosure is gone and the renderer has ONE way into the conversation: the media in the reply. ]]
+test('the renderer has exactly one way into the conversation: generated media in the reply', () => {
   const turn = decomment(readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8'));
   assert.doesNotMatch(turn, /InlineResults/);
   assert.equal((turn.match(/<GenerativeUI\b/g) ?? []).length, 1, 'one render site in the turn');
   const media = turn.slice(turn.indexOf('function ReplyMedia'), turn.indexOf('function Stamp'));
   assert.match(media, /<GenerativeUI\b/, 'and it is ReplyMedia');
   assert.match(turn, /<ReplyMedia docs=\{replyDocs\.media\} \/>/);
-  assert.match(turn, /details=\{replyDocs\.details\}/);
+  assert.doesNotMatch(turn, /replyDocs\.details/, 'the detail documents are handed to something that could draw them');
   const thinking = decomment(readFileSync(join(WEB, 'src', 'components', 'ws', 'thinking.tsx'), 'utf8'));
-  const more = thinking.slice(thinking.indexOf('<Collapsible className="apple-reasoning__more">'), thinking.indexOf('</Collapsible>'));
-  assert.match(more, /<GenerativeUI\b/, 'the other is under Details');
-  assert.match(more, /<CollapsibleContent className="apple-reasoning__more-body">/, 'and not force-mounted, so closed renders nothing');
+  assert.doesNotMatch(thinking, /GenerativeUI|Collapsible/, 'the thinking surface draws documents, or can be opened');
 });
 
 test('a plan step shows what it does in words, never its wire name', () => {

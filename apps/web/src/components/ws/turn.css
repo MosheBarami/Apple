@@ -153,24 +153,6 @@
   .gx-msg-in { animation:none; }
 }
 
-/* THE COLLAPSED WIRE FORMAT. A customer asked for a lava obby and got several screens of
-   {"t":"Vector3"} — the payload the model wrote as message text instead of running it. It is kept
-   rather than deleted, because somebody quoting it to support must be able to, and folded away
-   because it is not a message. Quiet on purpose: this is a receipt, not a finding, and the sentence
-   above it has already told the reader what happened. */
-.gx-turn__spill { margin-block-start:10px; border-block-start:1px solid var(--line); padding-block-start:10px; font-size:12px; color:var(--faint); }
-.gx-turn__spill > summary { width:fit-content; padding-block:2px; cursor:pointer; }
-.gx-turn__spill > pre {
-  margin:10px 0 0; padding:12px 14px; max-height:220px; overflow:auto;
-  border:1px solid var(--line); border-radius:var(--r-xs); background:var(--paper);
-  font:11px/1.6 var(--font-mono); letter-spacing:0; color:var(--muted);
-  white-space:pre-wrap; overflow-wrap:anywhere;
-}
-
-/* THE PAGES A REPLY'S OWN SEARCHES RETURNED (lib/doc-sources.ts). Under the reply and above its
-   results, as quiet as the footer: a list of places to read further, not part of the answer. */
-.gx-turn__sources { margin-block:12px 0; }
-
 /* THE REPLY WRAPPER draws nothing: it is only the node the word reveal (picks/chat/word-reveal)
    reads, so the reply's own margins keep collapsing exactly as they did without it. */
 .gx-turn__reply { display:contents; }

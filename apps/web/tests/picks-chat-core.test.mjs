@@ -53,7 +53,10 @@ test('the surfaces themselves are on screen: the workspace renders the turn, the
   mounted(WS, 'ConversationScrollButton', '../components/ai-elements/conversation', 'workspace');
   mounted(WS, 'RevisionsDialog', '../components/ws/revisions-dialog', 'workspace');
   mounted(WS, 'EditMessageDialog', '../components/ws/edit-message-dialog', 'workspace');
-  assert.match(THINKING, /<ToolHeader\b/, 'the Thinking card renders the tool header');
+  //[[ RESTATED 2026-09-24 (D-THINK-1): the Thinking card no longer draws tool headers; the turn
+  //   renders the live status line, whose words are the one Shimmer in thinking.tsx. ]]
+  mounted(TURN, 'Thinking', './thinking', 'turn');
+  assert.match(THINKING, /<Shimmer\b/, 'the status line renders its moving words');
   assert.match(COMPOSER, /<Attachment\b/, 'the composer renders attachment chips');
 });
 
@@ -122,15 +125,17 @@ test('the reply toolbar: AI Elements MessageToolbar + Toolbar, with Share (Anima
   assert.match(TURN_CSS, /\.gx-turn \.gx-turn__tools:not\(\.is-last\)/);
 });
 
-test('sources preview where they go (ae-sources + Animate UI Hover Card + Preview Link Card + ae-inline-citation)', () => {
-  mounted(TURN, 'Sources', '../ai-elements/sources', 'turn');
-  mounted(TURN, 'SourcePreview', '../picks/chat/source-preview', 'turn');
-  assert.match(code('src/components/picks/chat/source-preview.tsx'), /<HoverCard\b/);
+//[[ RESTATED 2026-09-24 (owner decision D-THINK-1). These two held the documentation Sources
+//   (with their hover preview) and the per-turn "what changed" checkpoint list under a reply. The
+//   owner asked for no technical detail in the turn: a list of doc links and a list of changed
+//   instances are both that. The way back stays: the Checkpoints drawer restores. ]]
+test('a reply lists no documentation sources or changed instances (D-THINK-1)', () => {
+  assert.doesNotMatch(TURN, /<(?:Sources|SourcePreview|TurnCheckpoint|Task)\b/, 'a detail list is back under the reply');
 });
 
-test('what changed, with the way back (ae-checkpoint + ae-task + Motion Layout Anchor)', () => {
-  mounted(TURN, 'TurnCheckpoint', '../picks/chat/turn-checkpoint', 'turn');
-  mounted(code('src/components/picks/chat/turn-checkpoint.tsx'), 'Task', '../../ai-elements/task', 'turn checkpoint');
+test('the way back stays reachable: the Checkpoints drawer restores', () => {
+  assert.match(WS, /title: 'Checkpoints'/);
+  assert.match(WS, /restoreCheckpoint\(/, 'the drawer can restore a checkpoint');
 });
 
 test('a Plan-mode reply is a plan card (ae-plan)', () => {

@@ -273,8 +273,8 @@ const makerTiles = firstPerMaker
           </div>
         </form>
 
-        <Marquee rows={promptIdeas} fills="hero-start" label="Ideas to try — pressing one writes it into the box above" caption="Or tap an idea" />
-
+        {/* The offer line sits straight under the composer, ABOVE the ideas: with the two rows of
+            ideas between them it ended 24px below the fold at 1366x768 on Linux's fallback font. */}
         <p class="availability">
           Free to start, no card.{' '}
           {installExternal ? (
@@ -283,6 +283,8 @@ const makerTiles = firstPerMaker
             <ArrowLink href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</ArrowLink>
           )}
         </p>
+
+        <Marquee rows={promptIdeas} fills="hero-start" label="Ideas to try — pressing one writes it into the box above" caption="Or tap an idea" />
       </div>
     </section>
 

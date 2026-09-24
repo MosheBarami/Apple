@@ -1,0 +1,25 @@
+---
+/**
+ * The soft moving light behind every page (owner, 2026-09-24, D-GLASS-1: "glassy, matte,
+ * friendly, animated"). Three blurred washes in the --aura tokens drift slowly behind the frosted
+ * panels, so the glass has something to frost.
+ *
+ * Mounted once by each layout as the first child of <body>. It is fixed, aria-hidden, takes no
+ * pointer events and sits at z-index -1: between the paper on <html> and everything on the page.
+ * The motion is CSS only — no frame loop. It stops under reduced motion and pauses while the tab
+ * is hidden (./motion.ts `whileVisible`). With scripting off it still drifts, which is harmless.
+ */
+import './aura.css';
+---
+
+<div class="aura" data-aura aria-hidden="true">
+  <span class="aura__wash aura__wash--1"></span>
+  <span class="aura__wash aura__wash--2"></span>
+  <span class="aura__wash aura__wash--3"></span>
+</div>
+
+<script>
+  import { whileVisible } from './motion';
+  const aura = document.querySelector<HTMLElement>('[data-aura]');
+  if (aura) whileVisible(aura, () => aura.removeAttribute('data-still'), () => aura.setAttribute('data-still', ''));
+</script>

@@ -74,7 +74,12 @@ test('the socket keeps the message, live and on replay', () => {
   assert.match(SOCKET, /deniedTools: run\.deniedTools/, 'a refresh mid-run loses it');
 });
 
-test('and the card actually renders it', () => {
-  assert.match(TURN, /deniedTools/, 'the turn never passes it to the card');
-  assert.match(THINKING, /deniedNote\(/, 'the card never renders the line');
+test('and the turn actually renders it, as one plain sentence', () => {
+  //[[ RESTATED 2026-09-24 (owner decision D-THINK-1). The card rendered deniedNote(), which names
+  //   the tools by their settings labels but falls back to the raw tool name for an ungoverned one
+  //   (test 3 above) — a tool name on screen is what the owner ruled out. The turn now says one
+  //   sentence that gives the reason and where to act, and names nothing. The rendered sentence,
+  //   and that no tool name is in it, is checked in tests/thinking-surface.test.mjs. ]]
+  assert.match(TURN, /deniedTools=\{item\.deniedTools\}/, 'the turn never passes it to the status line');
+  assert.match(THINKING, /turned off in your settings/, 'the status line never says why');
 });

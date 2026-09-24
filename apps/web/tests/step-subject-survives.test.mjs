@@ -15,11 +15,10 @@
 // Neither was drawn.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { informativeSummary, reduceActivity } from '../src/components/ws/activity-model.ts';
-import { executionView } from '../src/components/ws/execution-model.ts';
+import { livePhrase } from '../src/lib/live-status.ts';
+import { TOOL } from '../src/components/ws/tool-vocabulary.ts';
 
-const THINKING = readFileSync(new URL('../src/components/ws/thinking.tsx', import.meta.url), 'utf8');
 const T0 = 1_700_000_000_000;
 const step = (events) => reduceActivity({ events, now: T0 + 5000, streaming: true })
   .phases.flatMap((p) => p.steps).find((s) => s.toolId === 't1');
@@ -61,27 +60,14 @@ test('and a real result still lands on the result line', () => {
   assert.equal(s.detail, 'Created 3 parts under Workspace.Course');
 });
 
-test('the renderer draws it, and does not draw it twice', () => {
-  //[[ A field the reducer fills and nobody renders is the same as no field — the shape of the bug
-  //   this file exists for. The second assertion is the other half: when the worker's sentence
-  //   already contains the subject (every tool whose argument `summarize()` recognises), printing
-  //   the subject again underneath would read as two facts where there is one.
-  //   RESTATED 2026-09-22 (A2): the decision moved into execution-model.ts (a tool row's `target`
-  //   and `result`), and the Tool row's content draws both. Asserted on behaviour now, not on the
-  //   expression that used to make the decision inline. The rendered ToolContent is checked in
-  //   tests/thinking-surface.test.mjs. ]]
-  const rows = (events) => executionView(reduceActivity({ events, now: T0 + 5000, streaming: false })).rows;
-  const [kept] = rows([
-    { type: 'tool_start', at: T0, toolId: 't1', tool: 'get_genre_references', summary: 'get_genre_references', target: 'obby' },
-    { type: 'tool_end', at: T0 + 400, toolId: 't1', ok: true, summary: '✓ get_genre_references' },
-  ]);
-  assert.equal(kept.target, 'obby', 'the subject the step reported is not on its row');
-  const [once] = rows([
-    { type: 'tool_start', at: T0, toolId: 't1', tool: 'read_script', summary: 'read_script', target: 'ServerScriptService.Main' },
-    { type: 'tool_end', at: T0 + 400, toolId: 't1', ok: true, summary: '✓ read_script · ServerScriptService.Main' },
-  ]);
-  assert.equal(once.result, '✓ read_script · ServerScriptService.Main');
-  assert.equal(once.target, undefined, 'the subject is drawn twice');
-  assert.match(THINKING, /row\.target\) facts\.push\(\{[^}]*className: 'apple-reasoning__target'/, 'the row\'s target is not rendered');
-  assert.match(THINKING, /row\.result\) facts\.push\(\{[^}]*className: 'apple-reasoning__detail'/, 'the row\'s result is not rendered');
+test('the subject reaches the one live line as plain words, never as the raw argument', () => {
+  //[[ RESTATED 2026-09-24 (owner decision D-THINK-1). This held execution-model.ts's tool rows
+  //   (their `target` and `result` facts) and the trace that drew them. The trace is gone: the owner
+  //   asked for no technical detail. A field the reducer fills and nobody renders is still no field,
+  //   so the property now is that the subject the step reported names the thing in the live line —
+  //   "Editing the stall" — as words, and the path it arrived as is not what is said. ]]
+  const run = (tool, target) => reduceActivity({ events: [{ type: 'tool_start', at: T0, toolId: 't1', tool, summary: tool, target }], now: T0 + 500, streaming: true });
+  assert.equal(livePhrase(run('set_properties', 'game.Workspace.Market.Stall1')), 'Editing the stall');
+  assert.equal(livePhrase(run('read_script', 'ServerScriptService.CoinScript')), 'Reading the coin script');
+  assert.equal(livePhrase(run('set_properties', 'game.Workspace')), TOOL.set_properties.live, 'a container is not a name');
 });

@@ -50,9 +50,11 @@ const { creditsPerBuild } = Astro.props;
     display: grid;
     grid-template-columns: 1fr 1fr;
     padding: 3px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-sm);
-    background: var(--surface);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
 
   .pswitch__pill {

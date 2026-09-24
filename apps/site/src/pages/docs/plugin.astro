@@ -249,9 +249,11 @@ const decided = refusal
     align-items: center;
     gap: 10px;
     padding: 8px 12px;
-    border: 1px solid var(--hairline);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-sm);
-    background: var(--surface);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     color: var(--ink-2);
     transition: border-color var(--t-base) var(--ease-out);
   }

@@ -14,9 +14,11 @@
   gap: clamp(40px, 9vw, 140px);
   align-items: center;
   padding: 28px clamp(16px, 3vw, 32px);
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--glass-line);
   border-radius: var(--r-lg);
-  background: var(--surface);
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .beam-col {

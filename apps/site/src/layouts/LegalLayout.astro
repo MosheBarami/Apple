@@ -78,8 +78,10 @@ const { title, description, heading, updated } = Astro.props;
   }
 
   .prose :global(.callout) {
-    background: var(--surface);
-    border: 1px solid var(--line);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-lg);
     padding: 16px 20px;
     margin: 24px 0;

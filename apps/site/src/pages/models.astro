@@ -133,9 +133,11 @@ const otherRows = others.map((m) => ({
     gap: 14px;
     align-items: flex-start;
     padding: 20px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-lg);
-    background: var(--surface);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
 
   .mname {
@@ -194,9 +196,11 @@ const otherRows = others.map((m) => ({
     place-items: center;
     width: 32px;
     height: 32px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-xs);
-    background: var(--surface);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     color: var(--ink);
   }
 

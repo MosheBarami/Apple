@@ -51,9 +51,11 @@ const id = `folder-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
     gap: 12px 28px;
     margin: 20px 0 24px;
     padding: 22px 24px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-md);
-    background: var(--surface);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
 
   .fold__btn {

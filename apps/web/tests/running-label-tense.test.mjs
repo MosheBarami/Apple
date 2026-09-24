@@ -1,43 +1,34 @@
-// The one row that is running reads as happening now — all of it.
+// The line that says what is running reads as happening now — all of it.
 //
-// The activity table is written in the past tense and `presentTense` turns a label into its running
-// form. It used to move only the first verb, so the running playtest row read "Running the game and
-// checked it": half now, half over, on the row whose whole job is to say what is happening. Found on
-// the chat specimen (routes/studio-preview.tsx), not by any test.
+//[[ RESTATED 2026-09-24 (owner decision D-THINK-1). This held execution-model.ts's `presentTense`,
+//   which turned the past-tense activity labels into a running row's label; it once moved only the
+//   first verb, so the running playtest row read "Running the game and checked it". That model is
+//   gone with the trace it fed: the live line now speaks each tool's own `live` / `on` phrase from
+//   tool-vocabulary.ts. Same property, on the phrases actually shown: no clause is in the past. ]]
 //
-// DERIVED, NOT LISTED: the labels come from the tool vocabulary itself and the verbs from the tense
-// table, so a tool added tomorrow with a compound label is held to the same rule without anyone
-// remembering this file.
+// DERIVED, NOT LISTED: the phrases come from the tool vocabulary itself, so a tool added tomorrow
+// with a compound phrase is held to the same rule without anyone remembering this file.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const SRC = join(import.meta.dirname, '..', 'src');
-const { presentTense, PAST_VERBS } = await import(pathToFileURL(join(SRC, 'components/ws/execution-model.ts')).href);
 const { TOOL } = await import(pathToFileURL(join(SRC, 'components/ws/tool-vocabulary.ts')).href);
 
-const labels = Object.values(TOOL).map((entry) => entry.label);
-const pastWords = new Set(PAST_VERBS.filter((verb) => !verb.includes(' ')).map((verb) => verb.toLowerCase()));
+const phrases = Object.values(TOOL).flatMap((entry) => [entry.live, entry.on].filter(Boolean));
+const clauses = (phrase) => phrase.split(/, | and | or /);
 
-test('the derivations found something to check', () => {
-  assert.ok(labels.length > 50, `only ${labels.length} tool labels were read`);
-  assert.ok(pastWords.size > 20, `only ${pastWords.size} past-tense verbs were read`);
-  assert.ok(labels.some((label) => / and | or |, /.test(label)), 'no compound label exists, so the property below is untested');
+test('the derivation found something to check', () => {
+  assert.ok(phrases.length > 50, `only ${phrases.length} live phrases were read`);
+  assert.ok(phrases.some((phrase) => clauses(phrase).length > 1), 'no compound phrase exists, so the property below is untested');
 });
 
-test('a running label keeps no past-tense verb from the table, in any clause', () => {
+test('a running phrase opens no clause with a past-tense verb', () => {
   const stale = [];
-  for (const label of labels) {
-    const running = presentTense(label);
-    // Only the words that open a clause are verbs here; "Set properties" must not trip on a noun.
-    const openers = running.split(/, | and | or /).map((clause) => clause.split(' ')[0].toLowerCase());
-    for (const word of openers) if (pastWords.has(word)) stale.push(`${label} -> ${running}`);
+  for (const phrase of phrases) {
+    for (const clause of clauses(phrase)) if (/^[A-Za-z]+ed\b/.test(clause)) stale.push(phrase);
   }
   assert.deepEqual(stale, []);
-});
-
-test('a clause that is not a verb is left exactly as written', () => {
-  assert.equal(presentTense('Checked composition and intent'), 'Checking composition and intent');
-  assert.equal(presentTense('Ran the game and checked it'), 'Running the game and checking it');
+  assert.equal(/^[A-Za-z]+ed\b/.test('Ran the game and checked it'.split(/ and /)[1]), true, 'the check would miss the defect it is for');
 });

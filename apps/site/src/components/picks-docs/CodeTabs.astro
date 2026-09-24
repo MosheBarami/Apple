@@ -99,9 +99,11 @@ function highlight(code: string, lang: Tab['lang'] = 'text'): string {
     position: relative;
     margin: 20px 0;
     padding: 4px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-md);
-    background: var(--surface);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
 
   .ct__tabs {
@@ -217,9 +219,11 @@ function highlight(code: string, lang: Tab['lang'] = 'text'): string {
     place-items: center;
     width: 32px;
     height: 32px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--glass-line);
     border-radius: var(--r-xs);
-    background: var(--surface);
+    background: var(--glass-fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     color: var(--muted);
     cursor: pointer;
     transition: color var(--t-fast) var(--ease-out);

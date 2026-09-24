@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { WEB, bundle, count, decomment, element, renderWith, text } from './ui-bundle.mjs';
+import { WEB, bundle, decomment, renderWith } from './ui-bundle.mjs';
 
 const SRC = join(WEB, 'src');
 const { docSourcesFromTools, DOC_SEARCH_TOOL } = await import(pathToFileURL(join(SRC, 'lib/doc-sources.ts')).href);
@@ -98,15 +98,14 @@ const renderTurn = (tools) => renderWith(ui.renderToStaticMarkup, ui.h(ui.Turn, 
   isLast: false,
 }));
 
-test('a reply that searched shows those pages under it as AI Elements Sources', () => {
-  const html = renderTurn([search([hit(), hit({ title: 'Tweens', url: 'https://create.roblox.com/docs/ui/animation' }), hit({ url: 'javascript:alert(1)' })])]);
-  const sources = element(html, /<div[^>]*class="[^"]*\bai-sources\b/);
-  assert.ok(sources, 'no Sources under the reply');
-  assert.match(text(sources), /^2 documentation pages/, 'the count is what the search returned, and says nothing about "used"');
-  const links = [...sources.matchAll(/<a[^>]*href="([^"]+)"[^>]*>/g)].map((m) => m[1]);
-  assert.deepEqual(links, ['https://create.roblox.com/docs/reference/engine/classes/TweenService', 'https://create.roblox.com/docs/ui/animation']);
-  assert.equal(count(sources, 'rel="noreferrer"'), 2);
-  assert.equal(html.includes('EXCERPT_CANARY') || html.includes('javascript:'), false);
+//[[ RESTATED 2026-09-24 (owner decision D-THINK-1). This showed the searched pages under the reply
+//   as AI Elements Sources. The owner asked that no technical detail be visible, and a list of
+//   documentation links under a reply to a young creator is exactly that. The property now: a reply
+//   that searched shows no page, no link and no excerpt; the reader above is kept for when a
+//   surface wants it again. ]]
+test('a reply that searched shows no documentation list, link or excerpt (D-THINK-1)', () => {
+  const html = renderTurn([search([hit(), hit({ title: 'Tweens', url: 'https://create.roblox.com/docs/ui/animation' })])]);
+  assert.doesNotMatch(html, /ai-sources|create\.roblox\.com|documentation page|EXCERPT_CANARY|Tweens/);
 });
 
 test('a reply that did not search has no Sources at all', () => {

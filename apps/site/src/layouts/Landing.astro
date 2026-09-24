@@ -3,6 +3,7 @@
 // front page's structure on top of it. The reverse order is what forced 117 `!important`s.
 import '../styles/apple-minimal.css';
 import '../styles/landing.css';
+import Aura from '../components/picks/Aura.astro';
 
 interface Props {
   title: string;
@@ -79,6 +80,7 @@ const ogImage = new URL('/og.png', site);
     </script>
   </head>
   <body>
+    <Aura />
     <slot />
 
 

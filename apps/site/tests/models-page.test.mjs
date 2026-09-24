@@ -142,7 +142,9 @@ test('THE PAGE SPENDS NO COLOUR OF ITS OWN: tokens only, no status green, no vio
   assert.ok(css.length > 500, 'models.astro has no style block to read');
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i, 'a colour literal in /models');
   assert.doesNotMatch(css, /var\(--(good|autonomous[a-z-]*)\)/, '/models spends the status green or the Autonomous violet');
-  assert.doesNotMatch(css, /\boutline\s*:|box-shadow\s*:|text-shadow\s*:|filter\s*:/, '/models draws its own ring, shadow or glow');
+  // backdrop-filter blurs the shared glass surface; the page must still avoid its own visual
+  // effects. A word-boundary on `filter` also matched `backdrop-filter` and rejected that token.
+  assert.doesNotMatch(css, /\boutline\s*:|box-shadow\s*:|text-shadow\s*:|(?<![\w-])filter\s*:/, '/models draws its own ring, shadow or glow');
 });
 
 // ------------------------------------------------------------------ rendered
