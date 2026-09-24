@@ -1,7 +1,8 @@
 # OWNER QUEUE
 
 Only the actions that stay human-only (payments, account creation, passwords/2FA, CAPTCHAs, security
-settings of an account) — see `.claude/skills/apple-owner-autonomy/references/human-only.md`. Everything
+settings of an account, or a signed-in Studio publish when Studio is unavailable to the agent) — see
+`.claude/skills/apple-owner-autonomy/references/human-only.md`. Everything
 else is done by the agent without asking. Each item is one step; the product is built to switch on by
 itself when the step is done.
 
@@ -26,3 +27,4 @@ Line format (read by `.claude/hooks/autonomy_stop_gate.py`):
 - [open] Q-016: sign up once at https://apple.moshe-barami111.workers.dev with a second email of yours (a test account, not your owner account) and tell the agent that email — why: the Stripe test subscription must land on an account that is not on the owner/enterprise plan, or it would replace it; the agent cannot create accounts — Blocks findings: none
 - [open] Q-017: GitHub → the Apple repository → Settings → Code security → turn ON "Secret scanning" and "Push protection" — why: the repo is public now and both are off; with push protection GitHub refuses a push that contains a key before it becomes public (the agent may not change security settings) — Blocks findings: none
 - [open] Q-018: (optional) GitHub → the Apple repository → Settings → Secrets and variables → Actions → delete CLOUDFLARE_API_TOKEN, then in the Cloudflare dashboard → My Profile → API Tokens revoke that token — why: no workflow uses it (checked .github/ on 2026-09-24), and an unused deploy token on a public repo is only risk — Blocks findings: none
+- [open] Q-019: In Roblox Studio signed in as Shahar474, drag `apps/apple-plugin/release/apple-studio-1.4.0.rbxm` into Explorer → Publish as Plugin → Overwrite **Apple Studio (107230158271368)**; do not make a new asset — why: the 1.4.0 artifact passed 58 tests and binary inspection (sha256 `50fc250291fac769a972b3314b7094939dd42cbb8e5250b8ea5305b0388bf649`), and the GitHub release build passed, but no Studio application is available to this session; the Creator Store still serves the 2026-09-23 upload. This is the remaining step before a Studio-installed user can answer the asset-source question and the agent can verify F-059 live — Blocks findings: F-059

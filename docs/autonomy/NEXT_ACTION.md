@@ -1,6 +1,6 @@
 # NEXT ACTION
 
-**Gauntlet round 8, once the Studio asset-source question ships (F-059 root cause).**
+**Gauntlet round 8, after Apple Studio 1.4.0 reaches the Creator Store.**
 
 Round 7 (project f199a2a8) was stopped by hand at step 357. Findings from its toolTrace:
 - F-068 is closed: the longest successful terrain streak was 22 (cap 24), then the run went to props.
@@ -8,23 +8,31 @@ Round 7 (project f199a2a8) was stopped by hand at step 357. Findings from its to
   are only asked in the web app, so a Studio-started build never has an answer. The run then hand-built
   157 create_instances plus 151 transform_instances.
 
-In flight (2026-09-24):
-- workflow f059-plugin-asset-sources: the plugin asks the same question, and the refusal puts it to the person;
-- workflow friendly-thinking-and-glass: the owner's redesign (a single morphing step line with no technical
-  details, and glassy matte animated app and site);
-- train-forever (packages/training/src/train-forever.mjs): nonstop training v6 onwards, HF upload, and
-  #model-updates posts.
+Measured 2026-09-25:
+- The worker is serving `08cdfcf`; 4,165 clean-export worker tests passed, none failed. The app and site
+  were also deployed from clean exports and their served bytes checked. The site suite passed 316/316,
+  and `/discord` has one main landmark and the community invite.
+- The UI embedding index is current again: 30 rows, built locally from the pinned MIT BGE model with no
+  Workers AI spend. The 18 known-positive UI lookups stayed 17/18 top-1 and 18/18 top-5 under local
+  queries. The clean-export worker suite passed; see `docs/evidence/local-ui-embedding-refresh-2026-09-25.md`.
+- The plugin 1.4.0 artifact passed 58/58 tests and byte inspection. Local artifact:
+  `apps/apple-plugin/release/apple-studio-1.4.0.rbxm`, sha256 `50fc250291fac769a972b3314b7094939dd42cbb8e5250b8ea5305b0388bf649`.
+  GitHub Plugin release run `36060591975` passed. The Store probe still shows the 2026-09-23 upload;
+  Studio was not available to this session. Q-019 records the exact overwrite step.
+- The local training supervisor runs versions in order. v10 was truncated by the Metal watchdog; v11
+  completed 400 training steps and is evaluating. The best fully measured model remains v5, 20/38.
+- The thinking/glass workflow did not complete: its Claude agents were refused by organisation access.
 
 Then:
-1. deploy the worker and web, then release the plugin;
+1. confirm that the Creator Store serves plugin 1.4.0; then bump `LATEST_PLUGIN_VERSION` and do a
+   logged-out install check;
 2. run round 8 (Apple MAX, Agent, Autonomous) and answer the source question with both sources;
 3. verify that library props are inserted, that F-064 does not end the run with listed parts unbuilt, and that
    Stop ends the run within one step (F-069);
 4. run the blind critic.
 
-Known red: the worker test "UI construction corpus has not moved since the embedding index was built" fails
-because the corpus changed after 4204ea0. The rebuild uses Workers AI, which is over its free allowance, so it
-waits for the owner's credits (D-COST-1).
+The next CI run must complete before claiming the repository green. Finish the requested friendly,
+single-step thinking animation and glassy app/site design with no technical-detail disclosure.
 
 ## Previous: round 7 plan
 
