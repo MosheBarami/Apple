@@ -147,7 +147,7 @@ const SELECT = {
 };
 
 /** Rewrites TRAIN rows only; valid/test are copied untouched so val loss and the eval stay comparable. */
-export function transformTrainRows(rows, ops) {
+export function transformTrainRows(rows, ops, verifiedShards = {}) {
   let out = [...rows];
   for (const op of ops) {
     if (op.op === 'upweight') {
@@ -158,11 +158,58 @@ export function transformTrainRows(rows, ops) {
     } else if (op.op === 'dropFamilies') {
       const drop = new Set(op.families);
       out = out.filter((r) => !drop.has(r.meta?.family));
+    } else if (op.op === 'appendVerified') {
+      const addition = verifiedShards[op.source];
+      if (!Array.isArray(addition) || addition.length === 0) throw new Error(`verified shard unavailable: ${op.source}`);
+      const ids = new Set(out.map((r) => r.meta?.id).filter(Boolean));
+      for (const r of addition) {
+        if (r.meta?.kind !== 'game-logic' || !r.meta?.id || ids.has(r.meta.id)) {
+          throw new Error(`duplicate or invalid verified game-logic id: ${r.meta?.id ?? '(missing)'}`);
+        }
+        ids.add(r.meta.id);
+        out.push(r);
+      }
     } else {
       throw new Error(`unknown data op: ${op.op}`);
     }
   }
   return out;
+}
+
+/** Re-execute every answer and verify provenance before a new shard enters the training split. */
+export async function readVerifiedShard(source, expectedSha256) {
+  const path = resolve(TRAINING, source);
+  if (!path.startsWith(join(TRAINING, 'data') + '/') || !/^[a-f0-9]{64}$/.test(expectedSha256)) {
+    throw new Error('verified shard path or digest is invalid');
+  }
+  if (sha256File(path) !== expectedSha256) throw new Error(`verified shard changed: ${source}`);
+  const heldout = new Set(readFileSync(join(TRAINING, EVAL_SET), 'utf8').split('\n')
+    .filter(Boolean).map((line) => JSON.parse(line).meta?.family).filter(Boolean));
+  const { checkCandidate } = await import('./evaluate-game-logic.mjs');
+  const rows = [];
+  const ids = new Set();
+  for (const line of readFileSync(path, 'utf8').split('\n').filter(Boolean)) {
+    const r = JSON.parse(line);
+    const meta = r.meta ?? {};
+    const answer = r.messages?.at(-1)?.content;
+    const sourceCode = /^```luau\n([\s\S]*)\n```$/.exec(answer ?? '')?.[1];
+    if (!sourceCode || !meta.id || ids.has(meta.id) || !meta.family || heldout.has(meta.family)
+      || meta.origin !== 'first-party-authored-synthetic'
+      || meta.rights !== 'private-project-source-not-publicly-licensed'
+      || meta.evidence?.behaviorPassed !== true || meta.evidence?.mutationRejected !== true
+      || meta.evidence?.studioVerified !== false || typeof meta.checks !== 'string'
+      || createHash('sha256').update(sourceCode).digest('hex') !== meta.evidence?.sourceSha256
+      || createHash('sha256').update(meta.checks).digest('hex') !== meta.evidence?.checksSha256) {
+      throw new Error(`verified shard row invalid or overlaps holdout: ${meta.id ?? '(missing)'}`);
+    }
+    const checked = await checkCandidate({ checks: meta.checks }, answer);
+    if (!checked.passed) throw new Error(`verified shard answer failed execution: ${meta.id}`);
+    ids.add(meta.id);
+    const { checks, ...safeMeta } = meta;
+    rows.push({ messages: r.messages, meta: { ...safeMeta, kind: 'game-logic' } });
+  }
+  if (rows.length === 0) throw new Error('verified shard is empty');
+  return rows;
 }
 
 // ---------------------------------------------------------------- log parsing (pure)
@@ -644,10 +691,12 @@ print(json.dumps({"rows": n, "bad": len(bad), "examples": bad[:5]}))
 sys.exit(3 if bad else 0)
 `;
 
-function writeDerivedData(srcDir, dstDir, ops) {
-  mkdirSync(dstDir, { recursive: true });
+async function writeDerivedData(srcDir, dstDir, ops) {
   const rows = readFileSync(join(srcDir, 'train.jsonl'), 'utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
-  const out = transformTrainRows(rows, ops);
+  const shards = {};
+  for (const op of ops) if (op.op === 'appendVerified') shards[op.source] = await readVerifiedShard(op.source, op.sha256);
+  const out = transformTrainRows(rows, ops, shards);
+  mkdirSync(dstDir, { recursive: true });
   writeFileSync(join(dstDir, 'train.jsonl'), out.map((r) => JSON.stringify(r)).join('\n') + '\n');
   for (const f of ['valid.jsonl', 'test.jsonl']) if (existsSync(join(srcDir, f))) copyFileSync(join(srcDir, f), join(dstDir, f));
   writeFileSync(join(dstDir, 'derivation.json'), JSON.stringify({ from: rel(srcDir), ops, trainRows: { before: rows.length, after: out.length } }, null, 2) + '\n');
@@ -707,7 +756,7 @@ async function runVersion(ctx, entry) {
   // 1. config (+ derived data)
   let dataPath;
   if (lever.data?.length) {
-    const counts = writeDerivedData(resolve(TRAINING, base.data), L.data(v), lever.data);
+    const counts = await writeDerivedData(resolve(TRAINING, base.data), L.data(v), lever.data);
     dataPath = rel(L.data(v));
     say(`v${v}: derived ${dataPath} from ${base.data} (train rows ${counts.before} -> ${counts.after})`);
   }

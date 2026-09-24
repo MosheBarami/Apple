@@ -12,6 +12,7 @@ import {
   applyDryOverrides,
   classifyTraining,
   transformTrainRows,
+  readVerifiedShard,
   parseTrainLog,
   hasTurned,
   pickBestCheckpoint,
@@ -98,6 +99,29 @@ test('data ops upweight the selected track and drop families', () => {
   const dropped = transformTrainRows(rows, [{ op: 'dropFamilies', families: ['ui-x'] }]);
   assert.deepEqual(dropped.map((r) => r.meta.family), ['a', 'b', 'c']);
   assert.throws(() => transformTrainRows(rows, [{ op: 'nope' }]), /unknown data op/);
+});
+
+test('a verified shard adds new game-logic rows to train only and refuses duplicate ids', () => {
+  const rows = [row('game-logic', 'old')];
+  rows[0].meta.id = 'old-1';
+  const added = { ...row('game-logic', 'new'), meta: { id: 'new-1', family: 'new', kind: 'game-logic' } };
+  const op = { op: 'appendVerified', source: 'data/game-logic-seeds-v4/shard-3.jsonl', sha256: 'a'.repeat(64) };
+  assert.deepEqual(transformTrainRows(rows, [op], { [op.source]: [added] }).map((r) => r.meta.id), ['old-1', 'new-1']);
+  assert.equal(rows.length, 1, 'the source training split was mutated');
+  assert.throws(() => transformTrainRows(rows, [op], { [op.source]: [{ ...added, meta: { ...added.meta, id: 'old-1' } }] }), /duplicate/);
+});
+
+test('the new 51-row logic shard still matches its pinned bytes and passes Luau', async () => {
+  const rows = await readVerifiedShard(
+    'data/game-logic-seeds-v4/shard-3.jsonl',
+    'bf46d88962778c37bf7a89a8a4b7d9902e290cd051392f0ada73e9c7e487863a',
+  );
+  assert.equal(rows.length, 51);
+  assert.ok(rows.every((r) => r.meta.kind === 'game-logic' && !Object.hasOwn(r.meta, 'checks')));
+  await assert.rejects(
+    readVerifiedShard('data/game-logic-seeds-v4/shard-3.jsonl', '0'.repeat(64)),
+    /changed/,
+  );
 });
 
 // ---------- log parsing ----------
