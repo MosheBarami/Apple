@@ -6,11 +6,11 @@ import { DISCORD_INVITE_URL } from '../lib/community';
 ---
 
 <Base title="Apple on Discord" description="Join the Apple community server on Discord: help, the changelog, and games people built with Apple." noindex>
-  <main class="wrap discord-hop">
+  <div class="wrap discord-hop">
     <h1>Apple on Discord</h1>
     <p>Opening the Apple community server…</p>
     <p><a class="btn" href={DISCORD_INVITE_URL} rel="noopener">Join the server</a></p>
-  </main>
+  </div>
   <script is:inline define:vars={{ url: DISCORD_INVITE_URL }}>location.replace(url);</script>
 </Base>
 
