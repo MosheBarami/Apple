@@ -50,14 +50,18 @@ const DIST = 'apps/site/dist';
 //   The scripts are now subtracted from that figure and billed to their own line, so the number
 //   the label promises is the number being compared: markup 9,200 B gzip + stylesheet 7,524 B
 //   gzip = 16,724 B. The budget is re-based on that measurement with headroom, NOT raised to
-//   cover the old conflated total — 28,225 would have bought silence; 19,000 buys a live gate on
+//   cover the old conflated total — 28,225 would have bought silence; 19,000 bought a live gate on
 //   a quantity that is now what its label says.
 //
 //   Both numbers below are deliberately tight. The 12,000/4,662 pair carried 2.6x of headroom and
 //   that headroom is most of how the page drifted this far without a single red build attributable
 //   to the growth. gzip does not vary by more than a fraction of a percent on a rounding change,
 //   so ~14% is room for a real edit and not room for a second set of demos. ]]
-const BUDGET_GZIP_BYTES = 19_000; // markup + stylesheets only; measured 16,724 on 2026-09-21
+// The owner's 2026-09-24 glass and motion redesign added 841 B gzip to the built landing (18,984
+// -> 19,825); the old threshold had only 16 B of headroom before that explicit product change.
+// Rebased by 1 KB, keeping 175 B of headroom and the measurement itself unchanged. See
+// docs/evidence/landing-glass-payload-2026-09-25.md. JS and image budgets remain unchanged.
+const BUDGET_GZIP_BYTES = 20_000; // markup + stylesheets only; measured 19,825 on 2026-09-25
 const BUDGET_JS_BYTES = 36_000; // measured 32,079 raw across 7 inline blocks on 2026-09-21
 
 //[[ IMAGES WERE INVISIBLE TO THIS FILE UNTIL 2026-09-21, AND ON THAT DAY THEY STOPPED BEING ZERO.
