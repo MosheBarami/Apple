@@ -1,5 +1,33 @@
 # NEXT ACTION
 
+**Gauntlet round 8, once the Studio asset-source question ships (F-059 root cause).**
+
+Round 7 (project f199a2a8) was stopped by hand at step 357. Findings from its toolTrace:
+- F-068 is closed: the longest successful terrain streak was 22 (cap 24), then the run went to props.
+- F-059 root cause: the library search worked, but both insert_library_model calls were refused. Asset sources
+  are only asked in the web app, so a Studio-started build never has an answer. The run then hand-built
+  157 create_instances plus 151 transform_instances.
+
+In flight (2026-09-24):
+- workflow f059-plugin-asset-sources: the plugin asks the same question, and the refusal puts it to the person;
+- workflow friendly-thinking-and-glass: the owner's redesign (a single morphing step line with no technical
+  details, and glassy matte animated app and site);
+- train-forever (packages/training/src/train-forever.mjs): nonstop training v6 onwards, HF upload, and
+  #model-updates posts.
+
+Then:
+1. deploy the worker and web, then release the plugin;
+2. run round 8 (Apple MAX, Agent, Autonomous) and answer the source question with both sources;
+3. verify that library props are inserted, that F-064 does not end the run with listed parts unbuilt, and that
+   Stop ends the run within one step (F-069);
+4. run the blind critic.
+
+Known red: the worker test "UI construction corpus has not moved since the embedding index was built" fails
+because the corpus changed after 4204ea0. The rebuild uses Workers AI, which is over its free allowance, so it
+waits for the owner's credits (D-COST-1).
+
+## Previous: round 7 plan
+
 **Gauntlet round 7 (the same simulator prompt), started right after the 00:00 UTC capacity reset.**
 
 Round 6 (2026-09-23) built no game. Apple MAX made 951 edit_terrain calls in a row until the day's shared
