@@ -229,16 +229,17 @@ export async function verifyStripeSignature(
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!header) return { ok: false, reason: 'missing signature header' };
 
-  const parts = Object.fromEntries(
-    header.split(',').map((p) => {
-      const i = p.indexOf('=');
-      return [p.slice(0, i).trim(), p.slice(i + 1).trim()];
-    }),
-  ) as Record<string, string>;
+  const pairs = header.split(',').map((p) => {
+    const i = p.indexOf('=');
+    return [p.slice(0, i).trim(), p.slice(i + 1).trim()] as const;
+  });
+  const parts = Object.fromEntries(pairs) as Record<string, string>;
 
   const timestamp = Number(parts['t']);
-  const signature = parts['v1'];
-  if (!Number.isFinite(timestamp) || !signature) return { ok: false, reason: 'malformed signature header' };
+  // EVERY `v1`, not the last one. While a rolled signing secret overlaps, Stripe signs once per
+  // live secret; keeping one entry refused every delivery signed for the secret this worker holds.
+  const signatures = pairs.filter(([k, v]) => k === 'v1' && v.length > 0).map(([, v]) => v);
+  if (!Number.isFinite(timestamp) || signatures.length === 0) return { ok: false, reason: 'malformed signature header' };
 
   // Replay window. Without this, a signature stays valid forever and a captured webhook can be
   // resent to re-grant an entitlement that was later cancelled.
@@ -254,7 +255,8 @@ export async function verifyStripeSignature(
     ['sign'],
   );
   const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${rawBody}`));
-  return timingSafeEqual(hex(mac), signature) ? { ok: true } : { ok: false, reason: 'signature mismatch' };
+  const expected = hex(mac);
+  return signatures.some((s) => timingSafeEqual(expected, s)) ? { ok: true } : { ok: false, reason: 'signature mismatch' };
 }
 
 // ---------------------------------------------------------------------------
@@ -351,6 +353,11 @@ export function interpretStripeEvent(event: unknown, env?: Env): BillingOutcome 
        * not recognise (a legacy one, a test-mode id) must not silently demote a paying customer.
        */
       const plan: PlanId = deleted ? 'free' : planOfStripeSubscription(obj, env);
+      const currentPeriodEnd = periodEndOfSubscription(obj);
+      // Flexible billing mode (Stripe's default since 2025-09-30.clover) cancels from the portal by
+      // setting `cancel_at` and leaving `cancel_at_period_end` false. A cancel date inside the current
+      // period means it does not renew, which is what this field has always meant.
+      const cancelAt = typeof obj['cancel_at'] === 'number' ? obj['cancel_at'] : null;
       return {
         userId,
         eventId,
@@ -360,8 +367,9 @@ export function interpretStripeEvent(event: unknown, env?: Env): BillingOutcome 
           subscriptionId: typeof obj['id'] === 'string' ? obj['id'] : null,
           itemId: itemIdOfSubscription(obj),
           status: deleted ? 'canceled' : status,
-          currentPeriodEnd: typeof obj['current_period_end'] === 'number' ? obj['current_period_end'] : null,
-          cancelAtPeriodEnd: obj['cancel_at_period_end'] === true,
+          currentPeriodEnd,
+          cancelAtPeriodEnd: obj['cancel_at_period_end'] === true
+            || (cancelAt !== null && currentPeriodEnd !== null && cancelAt <= currentPeriodEnd),
         },
       };
     }
@@ -508,6 +516,21 @@ export function itemIdOfSubscription(obj: Record<string, unknown>): string | nul
   if (!first || typeof first !== 'object') return null;
   const id = (first as Record<string, unknown>)['id'];
   return typeof id === 'string' && id.length > 0 ? id : null;
+}
+
+/**
+ * When the current period ends, in Unix seconds, on either side of Stripe's 2025-03-31.basil change.
+ *
+ * Basil removed `current_period_end` from the Subscription and put it on each item. Nothing here
+ * pins `Stripe-Version`, so the account's version decides the shape; reading only the top level
+ * made this null on every current subscription, and `entitlementFor` then never lapsed a period.
+ */
+function periodEndOfSubscription(obj: Record<string, unknown>): number | null {
+  if (typeof obj['current_period_end'] === 'number') return obj['current_period_end'];
+  const items = obj['items'] as { data?: unknown[] } | undefined;
+  const first = Array.isArray(items?.data) ? items.data[0] : null;
+  const end = first && typeof first === 'object' ? (first as Record<string, unknown>)['current_period_end'] : null;
+  return typeof end === 'number' ? end : null;
 }
 
 // --- what a tier change costs, before the user commits to it -------------------------------------

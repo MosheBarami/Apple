@@ -87,7 +87,10 @@ function userIdOf(obj: Record<string, unknown>): string | null {
     const v = (own as Record<string, string>)['userId'];
     if (typeof v === 'string' && v.length > 0) return v;
   }
-  const details = obj['subscription_details'];
+  // Stripe's 2025-03-31.basil moved it under `parent`; older API versions keep it at the top level.
+  const parent = obj['parent'];
+  const details = obj['subscription_details']
+    ?? (parent && typeof parent === 'object' ? (parent as Record<string, unknown>)['subscription_details'] : null);
   if (details && typeof details === 'object') {
     const meta = (details as Record<string, unknown>)['metadata'];
     if (meta && typeof meta === 'object' && typeof (meta as Record<string, unknown>)['userId'] === 'string') {
