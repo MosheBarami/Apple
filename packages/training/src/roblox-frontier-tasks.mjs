@@ -193,10 +193,14 @@ platform.Name = "Platform"
 platform.Anchored = true
 platform.Parent = workspace
 `,
+    // 90 frames (1.5 s) are stepped first, because a mover driven from Heartbeat does nothing
+    // until a frame runs. "Moves" is then more than one DISTINCT position, not more than one write:
+    // `platform.CFrame = platform.CFrame` every frame writes 90 times and never moves.
     probe: `
 __APPLE.setPhase("probe")
 local platform = __APPLE.findAny("Platform")
-__APPLE.fact("platformWrites", (__APPLE.writeCount(platform, "Position") + __APPLE.writeCount(platform, "CFrame")) > 1)
+__APPLE.runFrames(90)
+__APPLE.fact("distinctPositions", __APPLE.distinctPositions(platform))
 __APPLE.fact("tweensCreated", __APPLE.calledMethodOn("TweenService", "Create"))
 `,
     checks: [
@@ -208,7 +212,7 @@ __APPLE.fact("tweensCreated", __APPLE.calledMethodOn("TweenService", "Create"))
           || createdCount(t, 'AlignPosition') > 0
           || createdCount(t, 'LinearVelocity') > 0
           || createdCount(t, 'PrismaticConstraint') > 0
-          || Boolean(fact(t, 'platformWrites'))),
+          || Number(fact(t, 'distinctPositions')) > 1),
     ],
   },
   {
@@ -478,9 +482,12 @@ __APPLE.fact("afterSpam", coins.Value)
       + 'a RemoteEvent named "RenamePet" in ReplicatedStorage with the new name, and the server stores it in a '
       + 'StringValue named "PetName" inside the Player. Other players see this name above the pet. Create the '
       + 'RemoteEvent and the StringValue in the script. Reply with one fenced luau code block and nothing else.',
+    // The player JOINS before renaming: an answer that creates the StringValue in PlayerAdded (where
+    // nearly every recorded production answer creates it) otherwise has no value to write into.
     probe: `
 __APPLE.setPhase("probe")
 local p = __APPLE.player("Owner")
+__APPLE.firePlayerAdded(p)
 __APPLE.fireRemote("RenamePet", p, "Rex")
 local nameValue = p:FindFirstChild("PetName") or __APPLE.findAny("PetName")
 __APPLE.fact("afterLegit", nameValue and nameValue.Value or nil)
@@ -492,8 +499,10 @@ __APPLE.fireRemote("RenamePet", p, 12)
 __APPLE.fact("filtered", __APPLE.calledMethodOn("TextService", "FilterStringAsync"))
 `,
     checks: [
+      // The name the player ASKED FOR, exactly. "Some PetName has a value" also passes a script that
+      // gives every pet a default name on join and never renames anything.
       check('legit-rename-works', 'a plain name has to land',
-        (t) => fact(t, 'afterLegit') !== null && fact(t, 'afterLegit') !== undefined),
+        (t) => fact(t, 'afterLegit') === 'Rex'),
       check('length-is-bounded', 'a 5,000-character name is a DataStore entry, a replicated string and a BillboardGui, all at once',
         (t) => Number(fact(t, 'lengthAfterHuge')) <= 200),
       check('survives-hostile-arguments', 'nil, a table and a number sent as the new name',
@@ -797,7 +806,13 @@ export const UI_RULE_D_UIONLY_1 =
 // It bears on none of the scored items, which are all game logic; the four rules below are the intervention.
 export const HOUSE_RULES_PLUS_SYSTEM = HOUSE_RULES_SYSTEM.replace(UI_RULE_BEFORE, UI_RULE_D_UIONLY_1).replace(
   '\n\nAnswer with ONE fenced',
-  '\n- Player-authored text that another player will see goes through TextService:FilterStringAsync\n'
+  '\n- Sounds and particle effects come ONLY from the stored library (D-FXLIB-1): insert_sound(query or assetId,\n'
+  + '  parent, looped, volume) adds a real Roblox audio Sound (find_sound searches; play_library_sound lets the user\n'
+  + '  hear one); insert_vfx(preset, target) adds a finished ParticleEmitter/Beam/Trail/Highlight effect (find_vfx\n'
+  + '  lists them). Never create Sound/ParticleEmitter/Beam/Trail/Fire/Smoke/Sparkles by hand or Instance.new them in\n'
+  + '  a script; those calls are refused. Scripts :Play() or :Clone() an inserted Sound, and fire a one-shot effect\n'
+  + '  with emitter:Emit(emitter:GetAttribute("AppleEmitCount")).\n'
+  + '- Player-authored text that another player will see goes through TextService:FilterStringAsync\n'
   + '  before it is stored, replicated or shown. Filtering is a platform requirement, not a style choice.\n'
   + '- DataStore calls THROW. pcall is the floor, not the plan: retry a failed read or write a bounded\n'
   + '  number of times with a pause between attempts, and treat a call that never succeeded as unsaved.\n'

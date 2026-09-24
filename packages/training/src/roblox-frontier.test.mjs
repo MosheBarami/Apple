@@ -23,7 +23,7 @@ import assert from 'node:assert/strict';
 import { FRONTIER_ITEMS, ALL_CHECK_IDS, AXES, ARMS, UI_RULE_BEFORE, UI_RULE_D_UIONLY_1 } from './roblox-frontier-tasks.mjs';
 import { CONTROLS } from './roblox-frontier-controls.mjs';
 import { scoreFrontierItem, tally } from './score-roblox-frontier.mjs';
-import { resolveSettings } from './production-settings.mjs';
+import { PRODUCT_MODES, resolveMode, resolveSettings } from './production-settings.mjs';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -131,7 +131,7 @@ for (const item of FRONTIER_ITEMS) {
 //
 //   docs/frontier-for-roblox.md §6 and §8.8 both said "nothing here supports or refutes a claim
 //   about MAX", because every arm ran the `apple` lane. §10 retires that, without a single neuron,
-//   on one fact: at this endpoint the two lanes send the SAME REQUEST. The bench posts
+//   on one fact: in AGENT mode the two lanes send the SAME REQUEST. The bench posts
 //   `{ model: settings.gateway, prompt, system, maxTokens: settings.requestedTokens }`, and for
 //   agent mode all four fields are equal across the lanes. `lane` and `productMode` differ and are
 //   not sent.
@@ -139,22 +139,60 @@ for (const item of FRONTIER_ITEMS) {
 //   IF THIS GOES RED, THE FIX IS NOT TO PUT THE LANES BACK. Differentiating them is a legitimate
 //   product change. What must happen is that §10's claim is retracted and the MAX lane is measured
 //   on its own — which is exactly what this guard exists to force rather than let drift silently.
+//
+//[[ 2026-09-22 — THE LANE STOPPED ROUTING, SO THE PLACE THE LANES DIFFER MOVED, AND IT IS NAMED.
+//
+//   This test used to end with `--mode super-agent` resolving to `rune`: the one mode where the
+//   paid lane reached a different gateway, kept as the named exception so it could not be mistaken
+//   for coverage. Super Agent is retired and `gatewayModelFor` now voids its `productModel`
+//   argument for EVERY mode, so the gateway can no longer be what separates the lanes. That makes
+//   §10's claim stronger rather than weaker, and the stronger form is what is asserted below.
+//
+//   What survives is the entitlement floor, and it is visible in exactly one place. Agent's `high`
+//   baseline already exceeds the free lane's `low` floor, so both lanes ask for the same room. Plan's
+//   `low` baseline does not, so apple-max raises it to `high` and the two lanes send a DIFFERENT
+//   `maxTokens` — with the same gateway, the same model and the same ceiling. Naming that here is
+//   what stops a later reader concluding the lanes are interchangeable in every mode, which §10 does
+//   not claim and this page must not imply. ]]
 test('the MAX Agent lane and the Apple Agent lane send a byte-identical request, which is what §10 rests on', () => {
   const arm = ARMS['house-rules-plus'];
-  const body = (lane) => {
-    const s = resolveSettings({ lane, mode: 'agent' });
+  const body = (lane, mode) => {
+    const s = resolveSettings({ lane, mode });
     return JSON.stringify({ model: s.gateway, prompt: 'PROMPT', system: arm.system, maxTokens: s.requestedTokens });
   };
-  assert.equal(body('apple'), body('apple-max'),
+  assert.equal(body('apple', 'agent'), body('apple-max', 'agent'),
     'apple and apple-max no longer resolve to the same request in Agent mode. docs/frontier-for-roblox.md '
     + '§10 says the 87.5% covers MAX because the request is identical; that claim is now false and '
     + 'must be retracted or re-measured on the MAX lane.');
-  // And the one place they genuinely differ, named so it is not mistaken for coverage.
-  const superAgent = resolveSettings({ lane: 'apple-max', mode: 'super-agent' });
-  assert.equal(superAgent.gateway, 'rune', 'Super Agent no longer resolves to rune');
-  assert.notEqual(superAgent.requestedTokens, resolveSettings({ lane: 'apple', mode: 'agent' }).requestedTokens);
-  assert.equal(superAgent.effectiveTokens, resolveSettings({ lane: 'apple', mode: 'agent' }).effectiveTokens,
-    'the same ceiling no longer erases the difference between rune and stone; §10 says it does');
+
+  // The lane is no longer an input to the routing decision at all, in either mode.
+  for (const mode of PRODUCT_MODES) {
+    assert.equal(resolveSettings({ lane: 'apple', mode }).gateway,
+      resolveSettings({ lane: 'apple-max', mode }).gateway,
+      `${mode}: the lane still changes the gateway, so §10 must be re-derived`);
+  }
+
+  // The difference that survives, located precisely. Plan is where it is visible, and it is the
+  // requested budget alone.
+  const freePlan = resolveSettings({ lane: 'apple', mode: 'plan' });
+  const paidPlan = resolveSettings({ lane: 'apple-max', mode: 'plan' });
+  assert.equal(freePlan.gateway, paidPlan.gateway, 'the gateway is no longer what differs');
+  assert.equal(freePlan.modelId, paidPlan.modelId, 'and neither is the model');
+  assert.equal(freePlan.gatewayCeiling, paidPlan.gatewayCeiling, 'and neither is the ceiling');
+  assert.equal(freePlan.effort, 'low');
+  assert.equal(paidPlan.effort, 'high');
+  assert.notEqual(freePlan.requestedTokens, paidPlan.requestedTokens,
+    'the entitlement floor no longer reaches the request in Plan mode. If the lanes are truly '
+    + 'interchangeable in every mode, docs/frontier-for-roblox.md §10 should say that about Plan too '
+    + '— it currently says it only about Agent, and this guard is what keeps that honest.');
+  assert.notEqual(body('apple', 'plan'), body('apple-max', 'plan'),
+    'Plan is the mode where the two lanes are NOT the same request');
+
+  // Non-vacuity for the re-aim: the mode that used to carry the exception is gone, so a reader
+  // cannot find the old difference by looking for it.
+  assert.deepEqual([...PRODUCT_MODES], ['plan', 'agent'], 'the product offers exactly two modes');
+  assert.throws(() => resolveMode('super-agent'), /is retired/,
+    'Super Agent is back — §10 and the mode contract both need re-reading');
 });
 
 //[[ A RE-SCORED RUN MUST NOT CARRY A HASH OF THE FILE THAT JUDGED THE VERSION BEFORE IT.
@@ -280,16 +318,22 @@ test('house-rules-plus is house-rules plus four sentences, and nothing else move
   assert.ok(plusRules.startsWith(control), 'the plus arm must OPEN with its control (UI rule swapped), byte for byte');
 
   const added = plusRules.slice(control.length);
-  const bullets = added.split('\n').filter((l) => l.startsWith('- '));
+  // D-FXLIB-1 entered production after the four-rule intervention was designed. It is part of
+  // today's production prompt, so the verbatim mirror above covers it, but it is not evidence
+  // for any of the four game-logic checks this test attributes to the intervention.
+  assert.ok(added.startsWith('\n- Sounds and particle effects come ONLY from the stored library'));
+  const intervention = added.slice(added.indexOf('\n- Player-authored text'));
+  assert.ok(intervention.startsWith('\n- Player-authored text'));
+  const bullets = intervention.split('\n').filter((l) => l.startsWith('- '));
   assert.equal(bullets.length, 4, 'four rules were added for four permanently-failing checks; a fifth has no check behind it');
   // Each added rule names the API or the hazard of the check it was written for. A rule with no
   // failing check behind it is a rule nobody can attribute a gain to.
   for (const needle of ['FilterStringAsync', 'retry', 'UpdateAsync', 'failed load']) {
-    assert.ok(added.includes(needle), `the added block does not mention "${needle}", so one failing check has no rule`);
+    assert.ok(intervention.includes(needle), `the added block does not mention "${needle}", so one failing check has no rule`);
   }
   // And it must NOT quietly address shop-debit, whose failure is a string-matching artefact of the
   // probe rather than a Roblox lapse. A rule about that would measure the benchmark's phrasing.
-  assert.ok(!/case|lower|upper|spelling/i.test(added), 'the added block addresses shop-debit, which is a phrasing artefact and not a Roblox failure');
+  assert.ok(!/case|lower|upper|spelling/i.test(intervention), 'the added block addresses shop-debit, which is a phrasing artefact and not a Roblox failure');
 });
 
 //[[ THE RE-AIM OF `reported-total-is-real` MUST NOT HAVE LET ANYTHING NEW THROUGH.
