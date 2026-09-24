@@ -1,6 +1,17 @@
 # NEXT ACTION
 
-**Gauntlet round 8, after Apple Studio 1.4.0 reaches the Creator Store.**
+**Gauntlet round 8, after Apple Studio 1.4.0 is publicly distributed and installable.**
+
+2026-09-24 ~22:23 UTC: Studio reported **Successfully submitted!** for the existing asset
+`107230158271368` using the verified 1.4.0 file. The public Store page and details endpoint then
+returned 404, while two listed controls returned 200. Treat this as uploaded, **not distributed**.
+Recheck the public listing; when it returns, install that listing and verify 1.4.0 in Studio before
+changing `LATEST_PLUGIN_VERSION` or starting round 8. Q-019 records the completed upload;
+`docs/evidence/plugin-1.4-upload-2026-09-25.md` records the boundary check.
+
+The CPU training supervisor is running v20 with 51 new verified game-logic training rows. Its first
+validation and the first 20 train steps completed without the Metal watchdog; it has no eval score
+yet. The valid leader remains v5 (20/38). CI run 36066064213 passed all six job groups.
 
 Round 7 (project f199a2a8) was stopped by hand at step 357. Findings from its toolTrace:
 - F-068 is closed: the longest successful terrain streak was 22 (cap 24), then the run went to props.
@@ -17,11 +28,13 @@ Measured 2026-09-25:
   queries. The clean-export worker suite passed; see `docs/evidence/local-ui-embedding-refresh-2026-09-25.md`.
 - The plugin 1.4.0 artifact passed 58/58 tests and byte inspection. Local artifact:
   `apps/apple-plugin/release/apple-studio-1.4.0.rbxm`, sha256 `50fc250291fac769a972b3314b7094939dd42cbb8e5250b8ea5305b0388bf649`.
-  GitHub Plugin release run `36060591975` passed. The Store probe still shows the 2026-09-23 upload;
-  Studio was not available to this session. Q-019 records the exact overwrite step.
-- The local training supervisor runs versions in order. v10 was truncated by the Metal watchdog; v11
-  completed 400 training steps and is evaluating. The best fully measured model remains v5, 20/38.
-- The thinking/glass workflow did not complete: its Claude agents were refused by organisation access.
+  GitHub Plugin release run `36060591975` passed. The Studio overwrite was performed; the public
+  distribution check above is now the release blocker.
+- The local training supervisor runs versions in order. v11 completed 400 steps but its evaluation
+  was invalid because the paired base result drifted. GPU runs v12–v19 were mostly truncated by
+  Metal; v20 is now training on CPU. The best valid model remains v5, 20/38.
+- The friendly thinking and glass redesign was implemented directly, deployed, and checked in the
+  browser. CI run 36066064213 passed all six groups.
 
 Then:
 1. confirm that the Creator Store serves plugin 1.4.0; then bump `LATEST_PLUGIN_VERSION` and do a
@@ -31,8 +44,8 @@ Then:
    Stop ends the run within one step (F-069);
 4. run the blind critic.
 
-The next CI run must complete before claiming the repository green. Finish the requested friendly,
-single-step thinking animation and glassy app/site design with no technical-detail disclosure.
+The upload success is not a Store availability signal. Keep the release in progress until the public
+listing and fresh Studio installation are observed.
 
 ## Previous: round 7 plan
 
