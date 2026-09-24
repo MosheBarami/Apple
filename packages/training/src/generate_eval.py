@@ -60,6 +60,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="unsloth/Llama-3.2-3B-Instruct")
     ap.add_argument("--adapter", required=True)
+    ap.add_argument("--best-adapter", default=None,
+                    help="Generate the current best in this same process for a paired comparison")
     ap.add_argument("--data", default="mlxdata-apple-v4/test.jsonl")
     ap.add_argument("--out", required=True)
     ap.add_argument("--max-tokens", type=int, default=600)
@@ -73,7 +75,10 @@ def main():
 
     results = {r["id"]: {"family": r["family"], "kind": r["kind"], "reference": r["reference"]} for r in rows}
 
-    for label, adapter in (("base", None), ("adapter", args.adapter)):
+    sides = [("base", None), ("adapter", args.adapter)]
+    if args.best_adapter:
+        sides.append(("best", args.best_adapter))
+    for label, adapter in sides:
         started = time.time()
         print(f"loading {label}...", file=sys.stderr)
         model, tokenizer = load(args.model, adapter_path=adapter)
@@ -86,7 +91,10 @@ def main():
 
     out_path = pathlib.Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps({"model": args.model, "adapter": args.adapter, "rows": results}, indent=1))
+    report = {"model": args.model, "adapter": args.adapter, "rows": results}
+    if args.best_adapter:
+        report["best_adapter"] = args.best_adapter
+    out_path.write_text(json.dumps(report, indent=1))
     print(f"wrote {out_path}", file=sys.stderr)
     return 0
 

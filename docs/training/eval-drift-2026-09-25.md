@@ -16,3 +16,14 @@ Before accepting v20 or later, evaluate the candidate and current best on the **
 model runtime and scorer** near one another. Check that their base answers match; if they do not,
 the comparison is invalid and the cause needs diagnosis. Keep the pinned holdout out of training
 and report per-track counts rather than calling 20/38 a frontier result.
+
+The paired measurement tool is `packages/training/src/paired-eval.mjs`. After v20 finishes and its
+best checkpoint exists, run it from `packages/training` with:
+
+```sh
+npm run eval-paired -- --candidate adapters/apple-v20-best --best adapters/apple-v5-best --out runs/eval-v20-paired.json
+```
+
+It generates base, candidate and v5 answers in one process, scores candidate and v5 through the
+same executable checker, verifies the pinned set and counts, and writes a report. It does not
+promote or upload a model. This command has **not** been run on v20 yet.
