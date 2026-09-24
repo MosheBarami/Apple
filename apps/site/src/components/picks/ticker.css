@@ -54,7 +54,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-pill);
   background: var(--control-fill);
-  color: var(--muted);
+  color: var(--ink-2);
   font: inherit;
   font-size: 13px;
   line-height: 1;

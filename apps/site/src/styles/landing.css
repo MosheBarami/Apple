@@ -44,6 +44,7 @@ a {
 
 .hero-eyebrow {
   margin: 0 0 20px;
+  color: var(--ink-2);
 }
 
 /* Calm, not loud: the room around the headline carries it, not the size of its glyphs.
@@ -240,7 +241,7 @@ a {
 
 .availability {
   margin: 22px 0 0;
-  color: var(--muted);
+  color: var(--ink-2);
   font-size: 13px;
   line-height: 20px;
   text-wrap: balance;

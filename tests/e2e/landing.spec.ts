@@ -5,6 +5,7 @@ import { join } from 'node:path';
 // rendered href against the constant — rather than against a pasted URL — is what stops the landing
 // and the shared package drifting apart.
 import {
+  MODEL_REGISTRY,
   PLAN_COPY,
   PLAN_IDS,
   PRODUCT_MODELS,
@@ -16,6 +17,7 @@ import {
   STUDIO_PLUGIN_URL,
   canUseProductModel,
 } from '../../packages/shared/src/index';
+import { strayCanvases } from './owner-picks';
 
 /**
  * The landing page's invariants, restated 2026-09-22 against the calm redesign.
@@ -34,13 +36,17 @@ import {
  *   - every nav destination resolves, and no link anywhere on the site is dead (/showcase is
  *     published by infra/deploy-showcase.mjs, not by Astro, so it is resolved against its
  *     publisher rather than fetched from this preview — see WORKER_SERVED)
- *   - no 3D and no canvas; no model-provider branding; Credits capitalised
+ *   - no 3D, and a canvas only where an owner pick draws one; no model maker the product does not
+ *     offer, and never what Apple's own models run on; Credits capitalised (these two, and the
+ *     composer ghost's "nothing runs forever", RESTATED 2026-09-24 to the owner's picks, commit
+ *     3940085, and to D-VISION-1 — each says why where it is asserted)
  *   - the primary action reaches registration and sign-in reaches sign-in
  *   - the install link is whatever the shared constant says, with external-link attributes when it
  *     leaves the site; no undistributable store link and no install promise while the store is shut
  *   - keyboard reachable, with a visible focus ring — now also on the composer, which had none
  *   - text enlargement scrolls rather than clipping; every text element clears WCAG AA against the
- *     pixels actually behind it, in BOTH themes now
+ *     pixels actually behind it, in BOTH themes now, read off one held frame (RESTATED 2026-09-24:
+ *     the owner's picks move, and a box and its pixels must come from the same picture)
  *
  * ONE ASSERTION IS INVERTED: "claims no second model" forbade the words "apple max". Apple MAX is a
  * real model today (PRODUCT_MODELS), so the property it protected — no capability claim without a
@@ -196,7 +202,7 @@ test('holds the composition: the sections the nav names, the shared header, a vi
   expect(display.size, `the headline is ${display.size}px — the hero is oversized again`).toBeLessThanOrEqual(56);
 });
 
-test('ships no webfont to fail, no 3D and no canvas', async ({ page }) => {
+test('ships no webfont to fail, no 3D, and a canvas only where an owner pick draws one', async ({ page }) => {
   // The design uses the system stack on purpose (the app's own), so there is no webfont whose
   // failure would make every other check in this file pass over a page that looks wrong.
   const fonts: string[] = [];
@@ -208,7 +214,9 @@ test('ships no webfont to fail, no 3D and no canvas', async ({ page }) => {
   await page.goto('/', { waitUntil: 'networkidle' });
   expect(fonts, `unexpected webfont requests: ${fonts.join(', ')}`).toEqual([]);
   expect(scripts.filter((s) => /three|webgl|babylon/i.test(s)), 'a 3D library is loading on the landing').toEqual([]);
-  await expect(page.locator('canvas')).toHaveCount(0);
+  // RESTATED 2026-09-24: the owner's picks (commit 3940085) draw the landing's grounds on <canvas>.
+  // What may not happen is a canvas that is not a pick's decoration (see ./owner-picks.ts).
+  expect(await strayCanvases(page), 'a <canvas> on the landing is not an owner pick\'s decoration').toEqual([]);
 });
 
 test('every nav destination resolves', async ({ page }) => {
@@ -249,10 +257,21 @@ test('every nav destination resolves', async ({ page }) => {
   }
 });
 
-test('shows no model-provider branding', async ({ page }) => {
+test('names no model maker the product does not offer, and never what Apple itself runs on', async ({ page }) => {
+  // RESTATED 2026-09-24 (D-VISION-1): the product now offers other makers' models by name, so those
+  // names may appear — read from MODEL_REGISTRY, not typed here. Two things stay off the page: a
+  // maker or model the registry does not offer, and the foundation under Apple's own models, which
+  // the registry records in providerModelId ('@cf/<org>/<family>-…') and the page never repeats.
   await page.goto('/');
   const text = ((await page.locator('body').textContent()) ?? '').toLowerCase();
-  for (const brand of ['glm', 'gpt', 'openai', 'gemini', 'deepseek', 'anthropic', 'claude']) {
+  const offered = MODEL_REGISTRY.map((m) => `${m.vendor} ${m.displayName}`).join(' ').toLowerCase();
+  const underApple = MODEL_REGISTRY.filter((m) => m.vendor === 'Apple').flatMap((m) => {
+    const [org, model] = m.providerModelId.split('/').slice(-2);
+    return [org.replace(/-org$/, ''), model.split('-')[0]];
+  });
+  expect(underApple.length, 'the registry has no Apple model, so this check would pass over nothing').toBeGreaterThan(0);
+  const notOffered = ['glm', 'gpt', 'openai', 'gemini', 'deepseek', 'anthropic', 'claude'].filter((b) => !offered.includes(b));
+  for (const brand of new Set([...notOffered, ...underApple])) {
     expect(text, `landing must not mention "${brand}"`).not.toContain(brand);
   }
 });
@@ -417,9 +436,13 @@ test('one focus ring at a time: the field rings the composer, Build rings itself
 // nothing else — never an empty box.
 test('the composer ghost plays one pass and comes to rest on a readable example', async ({ page }) => {
   await page.goto('/');
+  // RESTATED 2026-09-24: the owner's picks loop on purpose (the beams, while on screen), so the
+  // page-wide "nothing runs forever" is now atmosphere-on-every-route.spec.ts's contract. Here:
+  // nothing in the composer's field — the ghost, or a caret beside it — runs forever.
   const endless = await page.evaluate(() =>
-    document.getAnimations().filter((a) => a.effect?.getTiming().iterations === Infinity).length);
-  expect(endless, 'an animation on the landing runs forever').toBe(0);
+    document.getAnimations().filter((a) => a.effect?.getTiming().iterations === Infinity
+      && ((a.effect as KeyframeEffect | null)?.target as Element | null)?.closest('.composer-field')).length);
+  expect(endless, 'an animation in the composer runs forever').toBe(0);
   const ran = await page.evaluate(() => {
     const mine = document.getAnimations().filter((a) =>
       ((a.effect as KeyframeEffect | null)?.target as Element | null)?.classList.contains('composer-line'));
@@ -464,6 +487,17 @@ for (const theme of ['dark', 'light'] as const) {
     await page.goto('/');
     // Reveals finish (their failsafe is 2.6s) before boxes are measured.
     await page.waitForTimeout(2900);
+    // ONE FRAME, HELD (RESTATED 2026-09-24 to the owner's picks, commit 3940085). The idea row now
+    // slides 36px a second and the threads drift, so boxes measured here and pixels shot a second
+    // later were two different pictures: a chip's stale box caught the next chip's hairline border
+    // (measured: the row had moved 28px), a failure no reader can see. Ending every frame chain and
+    // pausing every animation keeps the page on the frame it was just showing, and the letters and
+    // what is behind them are then read off the same picture.
+    await page.evaluate(async () => {
+      window.requestAnimationFrame = () => 0;
+      for (const a of document.getAnimations()) a.pause();
+      await new Promise((r) => setTimeout(r, 100));
+    });
     const boxes = await page.evaluate(() => {
       type Rect = { x: number; y: number; w: number; h: number };
       const out: { label: string; color: string; size: number; bold: boolean; rects: Rect[]; holes: Rect[] }[] = [];

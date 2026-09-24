@@ -1,7 +1,21 @@
 import { expect, test } from '@playwright/test';
+import { strayCanvases } from './owner-picks';
 
 /**
  * THE SITE IS CALM ON EVERY ROUTE — IN A REAL BROWSER.
+ *
+ * RESTATED 2026-09-24 TO THE OWNER'S PICKS (commit 3940085). A day after the inversion below, the
+ * owner chose the components the site is now built from, and several move on purpose: noise
+ * grounds and a particle word drawn on <canvas>, a ticker of ideas, beams, a light running round
+ * a button. "No canvas, nothing moves, no animation frame at idle" failed the owner's own choices
+ * on every route, so what is checked now is the contract those picks promise
+ * (apps/site/src/components/picks/motion.ts), in a real browser:
+ *   - a <canvas> appears only in a pick's own host, always aria-hidden — the hosts are read from
+ *     the pick components by ./owner-picks.ts, never listed here;
+ *   - under prefers-reduced-motion nothing moves: two screenshots a second apart are the same
+ *     picture, no animation frame is requested at idle and no animation loops;
+ *   - off screen nothing draws: an element out of view is neither drawn into nor looped.
+ * The ambient-layer ban, the one header, the blue accent and the pixel-diff helper are unchanged.
  *
  * INVERTED 2026-09-22, AND THE HISTORY IS WHY IT IS STILL HERE RATHER THAN DELETED.
  *
@@ -88,17 +102,31 @@ async function pixelsDiffering(
 }
 
 /**
- * What may animate forever on its own. EMPTY since 2026-09-22: the landing composer's example
- * sentences used to cycle endlessly with a blinking caret, and were the one exemption. They now play
- * one pass and stop, so nothing on any route is allowed to loop at idle.
+ * Installed before any page script: every 2D-canvas draw and every style or class write is stamped,
+ * per element, with the 100ms slot it happened in — so a test can ask what was drawn, and where.
  */
-const ALLOWED_MOTION: string[] = [];
+function recordDrawing() {
+  const drawn = new Map<Element, Set<number>>();
+  (window as unknown as { __drawn: typeof drawn }).__drawn = drawn;
+  const stamp = (el: Element | null) => {
+    if (!el) return;
+    if (!drawn.has(el)) drawn.set(el, new Set());
+    drawn.get(el)!.add(Math.floor(performance.now() / 100));
+  };
+  const ctx = CanvasRenderingContext2D.prototype as unknown as Record<string, (...args: unknown[]) => unknown>;
+  for (const name of ['clearRect', 'fillRect', 'strokeRect', 'fill', 'stroke', 'fillText', 'drawImage', 'putImageData']) {
+    const real = ctx[name];
+    ctx[name] = function (this: CanvasRenderingContext2D, ...args: unknown[]) { stamp(this.canvas); return real.apply(this, args); };
+  }
+  new MutationObserver((records) => { for (const r of records) stamp(r.target as Element); })
+    .observe(document, { subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+}
 
 test.describe('the calm site', () => {
   for (const route of ROUTES) {
-    test(`${route} has no atmosphere layer: no canvas, no ambient scene`, async ({ page }) => {
+    test(`${route} draws a canvas only where an owner pick does, and no ambient scene`, async ({ page }) => {
       await page.goto(route);
-      await expect(page.locator('canvas'), `${route} renders a <canvas>`).toHaveCount(0);
+      expect(await strayCanvases(page), `${route} renders a <canvas> that is not an owner pick's decoration`).toEqual([]);
       const ambient = await page.evaluate(() =>
         [...document.querySelectorAll('[class]')]
           .map((el) => String((el as HTMLElement).className))
@@ -107,22 +135,22 @@ test.describe('the calm site', () => {
       expect(ambient, `${route} carries an ambient/decorative layer`).toEqual([]);
     });
 
-    test(`${route} is still: two screenshots a second apart are the same picture`, async ({ page }) => {
+    test(`${route} is still under reduced motion: two screenshots a second apart are the same picture`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.goto(route);
       await settle(page);
-      // Masked, so that anything ELSE moving is what this measures: the landing's example line (the
-      // one sanctioned motion) and /status's live readouts (a countdown is information, not decor).
-      // The whole field is masked, not the ghost's own box: each sentence drifts 4px as it fades, so
-      // its last faint pixels leave a mask drawn to the box and read as a 1-pixel "change".
-      const mask = [page.locator('.composer-field'), page.locator('#status-checked'), page.locator('#status-next')];
+      // Masked: /status's live readouts (a countdown is information, not decor). Nothing else is —
+      // under reduced motion even the landing composer's example line holds still.
+      const mask = [page.locator('#status-checked'), page.locator('#status-next')];
       const a = await page.screenshot({ mask });
       await page.waitForTimeout(1200);
       const b = await page.screenshot({ mask });
       const n = await pixelsDiffering(page, a, b);
-      expect(n, `${route}: ${n} pixels changed in 1.2s with nobody touching the page`).toBe(0);
+      expect(n, `${route}: ${n} pixels changed in 1.2s under reduced motion with nobody touching the page`).toBe(0);
     });
 
-    test(`${route} runs no animation-frame loop at idle and loops nothing forever`, async ({ page }) => {
+    test(`${route} requests no animation frame at idle under reduced motion, and loops nothing`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.addInitScript(() => {
         const w = window as unknown as { __raf: number };
         w.__raf = 0;
@@ -134,18 +162,46 @@ test.describe('the calm site', () => {
       const before = await page.evaluate(() => (window as unknown as { __raf: number }).__raf);
       await page.waitForTimeout(1500);
       const after = await page.evaluate(() => (window as unknown as { __raf: number }).__raf);
-      expect(after - before, `${route} requested ${after - before} animation frames while idle`).toBe(0);
+      expect(after - before, `${route} requested ${after - before} animation frames while idle under reduced motion`).toBe(0);
 
-      const looping = await page.evaluate((allowed) =>
+      const looping = await page.evaluate(() =>
         document.getAnimations()
           .filter((a) => a.playState === 'running' && a.effect?.getTiming().iterations === Infinity)
-          .map((a) => {
-            const target = (a.effect as KeyframeEffect | null)?.target as Element | null;
-            return target ? String(target.className) : '?';
-          })
-          .filter((cls) => !allowed.some((ok: string) => cls.includes(ok))),
-      ALLOWED_MOTION);
-      expect(looping, `${route} loops an animation forever`).toEqual([]);
+          .map((a) => ((a.effect as KeyframeEffect | null)?.target as Element | null)?.getAttribute('class') ?? '?'));
+      expect(looping, `${route} loops an animation forever under reduced motion`).toEqual([]);
+    });
+
+    test(`${route} draws nothing off screen: a loop idles while its element is out of view`, async ({ page }) => {
+      await page.addInitScript(recordDrawing);
+      await page.goto(route);
+      await settle(page);
+      const moving: string[] = [];
+      for (const end of ['top', 'bottom'] as const) {
+        await page.evaluate((e) => window.scrollTo({ top: e === 'top' ? 0 : document.documentElement.scrollHeight, behavior: 'instant' }), end);
+        await page.waitForTimeout(600); // the visibility observers report, and every "off" has run
+        const from = await page.evaluate(() => Math.floor(performance.now() / 100));
+        await page.waitForTimeout(1500);
+        moving.push(...await page.evaluate(([from, end]) => {
+          // Out of view by more than the widest margin a pick's observer uses (120px, motion.ts).
+          const out = (el: Element) => { const r = el.getBoundingClientRect(); return r.bottom < -120 || r.top > innerHeight + 120; };
+          const name = (el: Element) => `${end}: <${el.tagName.toLowerCase()} class="${el.getAttribute('class') ?? ''}">`;
+          const found: string[] = [];
+          // A loop writes every frame; five of the fifteen slots rules out a one-off (a reveal, a
+          // loop's last still frame) and still catches anything that runs.
+          for (const [el, slots] of (window as unknown as { __drawn: Map<Element, Set<number>> }).__drawn) {
+            const n = [...slots].filter((s) => s >= from).length;
+            if (n >= 5 && el.isConnected && out(el)) found.push(`${name(el)} was drawn in ${n} of 15 slots`);
+          }
+          for (const a of document.getAnimations()) {
+            const target = (a.effect as KeyframeEffect | null)?.target;
+            if (a.playState === 'running' && a.effect?.getTiming().iterations === Infinity && target && out(target)) {
+              found.push(`${name(target)} runs ${(a as CSSAnimation).animationName ?? 'an animation'} forever`);
+            }
+          }
+          return found;
+        }, [from, end] as const));
+      }
+      expect(moving, `${route} moves where nobody can see it`).toEqual([]);
     });
 
     test(`${route} has one header design and a blue, not green, accent`, async ({ page }) => {
