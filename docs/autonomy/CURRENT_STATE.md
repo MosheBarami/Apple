@@ -2,19 +2,22 @@
 
 Directly measured facts only. Re-measure at the start of every session; this file is a snapshot.
 
-**Measured:** 2026-09-25 ~01:25 IDT. Older snapshots below are historical.
+**Measured:** 2026-09-25 ~02:03 IDT. Older snapshots below are historical.
 
 ## Current boundary checks
 
-- GitHub Actions run `36066064213` passed all six job groups. The live worker serves `08cdfcf`;
-  the site and app were deployed from clean exports, with served bytes checked.
+- GitHub Actions run `36069966833` for `9538599` passed all six job groups.
+  The live worker serves `9538599`; the site and app were deployed from clean exports, with served bytes checked.
+  F-037 socket recovery and presence fixes are live, with a browser reconnect check still owed.
 - Apple Studio 1.4.0, SHA-256 `50fc250291fac769a972b3314b7094939dd42cbb8e5250b8ea5305b0388bf649`,
   was submitted in Studio over the existing plugin asset `107230158271368`. Studio reported success.
   The public Store page and toolbox details API returned 404 immediately afterward; distribution
   and logged-out installation are unverified. See `docs/evidence/plugin-1.4-upload-2026-09-25.md`.
-- The local CPU training supervisor is running v20. Validation at step 1 and training through step
-  20 completed without the Metal watchdog. No v20 evaluation exists yet; v5 remains the best valid
+- The local CPU training supervisor is running v20. Validation through step 125 and training through
+  step 140 completed without the Metal watchdog. No v20 evaluation exists yet; v5 remains the best valid
   measured LoRA at 20/38. A 51-row verified Luau game-logic shard is private on Hugging Face.
+  Historical v5/v11 base answers differ on 19/38 pinned rows, so the next comparison must re-evaluate
+  the best nearby; see `docs/training/eval-drift-2026-09-25.md`.
 - Acceptance still needs three fresh independent reviews and live checks for F-059, F-064 and F-069.
 
 ## Historical snapshot (2026-09-23 ~07:55 IDT)

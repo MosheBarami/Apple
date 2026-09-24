@@ -9,9 +9,13 @@ Recheck the public listing; when it returns, install that listing and verify 1.4
 changing `LATEST_PLUGIN_VERSION` or starting round 8. Q-019 records the completed upload;
 `docs/evidence/plugin-1.4-upload-2026-09-25.md` records the boundary check.
 
-The CPU training supervisor is running v20 with 51 new verified game-logic training rows. Its first
-validation and the first 20 train steps completed without the Metal watchdog; it has no eval score
-yet. The valid leader remains v5 (20/38). CI run 36066064213 passed all six job groups.
+The CPU training supervisor is running v20 with 51 new verified game-logic training rows. Validation
+through step 125 and training through step 140 completed without the Metal watchdog; it has no eval
+score yet. The valid leader remains v5 (20/38). The historical base answers differ on 19/38 pinned
+rows, so v20 must be compared with a fresh v5 evaluation under the same runtime
+(docs/training/eval-drift-2026-09-25.md). CI run 36069966833 for corrected build 9538599 passed
+all six job groups. F-037 recovery is deployed in the web app and worker,
+with a live browser reconnect check still owed (docs/evidence/f037-socket-recovery-2026-09-25.md).
 
 Round 7 (project f199a2a8) was stopped by hand at step 357. Findings from its toolTrace:
 - F-068 is closed: the longest successful terrain streak was 22 (cap 24), then the run went to props.
