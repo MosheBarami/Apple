@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-24T22:24:15Z",
-  "now": "האתר והאפליקציה באוויר וכל שש קבוצות ה־CI עברו. תוסף Studio 1.4.0 הועלה לנכס החנות הקיים, אך הדף הציבורי מחזיר כעת 404 ולכן ההפצה טרם אומתה. אימון v20 ממשיך מקומית על CPU; עדיין אין לה ציון. v5 נשארה המובילה התקפה עם 20 מתוך 38. 51 דוגמאות לוגיקת משחק אומתו והועלו ל־Hugging Face הפרטי.",
-  "nextStep": "לבדוק מתי התוסף חוזר להיות זמין בחנות ולהתקין אותו מאותה רשומה, ואז לבצע סבב 8 ב־Studio. במקביל להשלים אימון והערכה תקפה ל־v20.",
+  "updatedAt": "2026-09-24T22:37:11Z",
+  "now": "האתר והאפליקציה באוויר, וכל שש בדיקות ה־CI האחרונות עברו. ב־Studio המקומי נטענה גרסת התוסף 1.4.0; הפרסום לנכס הקיים הצליח, אך החנות הציבורית עדיין מחזירה 404. כרטיס פרויקט של מקום שטרם פורסם מציג כעת את שם המקום בפועל (F-008 נסגר). אימון v20 ממשיך על CPU; עד שתתקבל הערכה תקפה, v5 היא המובילה עם 20 מתוך 38.",
+  "nextStep": "לאמת שהחנות מפיצה שוב את התוסף ולהתקין אותו ממנה; לאחר מכן לבדוק ב־Studio את שאלת הנכסים, העצירה והשלמת המשחק בסבב 8. במקביל להמשיך את אימון v20 והבדיקה שלו.",
   "items": [
     {
       "id": "models",
