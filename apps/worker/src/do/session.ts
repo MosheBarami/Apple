@@ -83,7 +83,7 @@ import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, afterDuplicateStreak, UNSTICK_STEER, type RetuneAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
@@ -250,8 +250,6 @@ interface AgentState {
   duplicateStreak?: number;
   /** Times this run was moved on from a duplicate streak instead of ended (run-idle.ts afterDuplicateStreak). */
   unstucks?: number;
-  /** Open plan steps, game gaps and requested parts at the last move-on (run-idle.ts unstucksAfterProgress). */
-  unstuckOpen?: number;
   /** The next step is offered only tools that change the place — set by an unstick, cleared when offered. */
   readsWithheldOnce?: boolean;
   /** A verifier passed after the latest change to the place. Cleared by the next change. */
@@ -2668,10 +2666,6 @@ export class SessionDO extends DurableObject<Env> {
         queuedOps: this.opQueue.length,
         // The same record the owner sees at /studio/diagnostics, so the two views cannot drift.
         link: await this.linkSummary(),
-        // And what Studio says it has open, as diagnostics reports it: link.place is the binding, null
-        // for a place never saved to Roblox, which is not Studio naming nothing (F-008).
-        openPlace: await this.ctx.storage.get<StudioEventState>('pluginState').then((s) =>
-          s ? { placeName: s.placeName, placeId: s.placeId, gameId: s.gameId, isRunMode: s.isRunMode } : null),
         // WHETHER THE SOCKETS ARE HEARD. A stop pressed in the browser crosses only this path, and
         // a socket that opens, says hello and is then never delivered a frame looks healthy from
         // both ends. Counted in memory: a restart zeroes it, which reads as "none since restart".
@@ -4480,24 +4474,15 @@ export class SessionDO extends DurableObject<Env> {
     const planOpen = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
     const streakGaps = gameGaps(agent.request, agent, allowed.has('play_check'));
     const streakParts = agent.duplicateStreak >= MAX_DUPLICATE_STREAK ? openParts(agent) : [];
-    // Open work at the wall. Less than at the last move-on means the run built something in between.
-    const streakOpen = agent.duplicateStreak >= MAX_DUPLICATE_STREAK
-      ? (agent.plan ? settlePlan(agent.plan, agent.trace).steps.filter((s) => s.status === 'pending').length : 0) +
-        streakGaps.length + streakParts.length
-      : 0;
-    const unstucks = agent.duplicateStreak >= MAX_DUPLICATE_STREAK
-      ? unstucksAfterProgress(agent.unstucks ?? 0, agent.unstuckOpen, streakOpen)
-      : agent.unstucks ?? 0;
     const streak = afterDuplicateStreak({
       streak: agent.duplicateStreak,
       limit: MAX_DUPLICATE_STREAK,
       building: agent.mode === 'agent' && canBuild,
-      unstucks,
+      unstucks: agent.unstucks ?? 0,
       workOpen: planOpen !== undefined || streakGaps.length > 0 || streakParts.length > 0,
     });
     if (streak === 'unstick') {
-      agent.unstucks = unstucks + 1;
-      agent.unstuckOpen = streakOpen;
+      agent.unstucks = (agent.unstucks ?? 0) + 1;
       agent.duplicateStreak = 0;
       agent.readsWithheldOnce = true;
       const next = planOpen ? ` Your plan's next step is "${fenceForQuote(planOpen.title)}" (${planOpen.tool}).` : '';
