@@ -1,19 +1,23 @@
 # NEXT ACTION
 
-**Gauntlet round 8, after Apple Studio 1.4.0 is publicly distributed and installable.**
+**Gauntlet round 8: test the local Apple Studio 1.4.0 plugin after free AI capacity resets;
+verify public Creator Store distribution separately.**
 
 2026-09-24 ~22:23 UTC: Studio reported **Successfully submitted!** for the existing asset
 `107230158271368` using the verified 1.4.0 file. The public Store page and details endpoint then
 returned 404, while two listed controls returned 200. Treat this as uploaded, **not distributed**.
-Recheck the public listing; when it returns, install that listing and verify 1.4.0 in Studio before
-changing `LATEST_PLUGIN_VERSION` or starting round 8. Q-019 records the completed upload;
+The publisher account installed the asset from its own inventory, but another account still sees
+404. Roblox's distribution setting in the publisher's Creator Dashboard has not been inspected
+(Q-020). Recheck the public listing; when it returns, install that listing and verify 1.4.0 in
+Studio before changing `LATEST_PLUGIN_VERSION`. A local 1.4.0 behavior test can precede this
+public release check. Q-019 records the completed upload;
 `docs/evidence/plugin-1.4-upload-2026-09-25.md` records the boundary check.
 
 The CPU training supervisor is running v20 with 51 new verified game-logic training rows. Validation
-through step 125 and training through step 140 completed without the Metal watchdog; it has no eval
+through step 250 and training through step 270 completed without the Metal watchdog; it has no eval
 score yet. The valid leader remains v5 (20/38). The historical base answers differ on 19/38 pinned
 rows, so v20 must be compared with a fresh v5 evaluation under the same runtime
-(docs/training/eval-drift-2026-09-25.md). CI run 36069966833 for corrected build 9538599 passed
+(docs/training/eval-drift-2026-09-25.md). CI run 36073895590 for f202c6e passed
 all six job groups. F-037 recovery is deployed in the web app and worker,
 with a live browser reconnect check still owed (docs/evidence/f037-socket-recovery-2026-09-25.md).
 
@@ -21,10 +25,12 @@ Round 7 (project f199a2a8) was stopped by hand at step 357. Findings from its to
 - F-068 is closed: the longest successful terrain streak was 22 (cap 24), then the run went to props.
 - F-059 root cause: the library search worked, but both insert_library_model calls were refused. Asset sources
   are only asked in the web app, so a Studio-started build never has an answer. The run then hand-built
-  157 create_instances plus 151 transform_instances.
+  157 create_instances plus 151 transform_instances. Worker f202c6e now refuses that parts fallback
+  even if permission is owed or insertion fails; all 4,184 worker tests passed. Live proof is owed.
 
 Measured 2026-09-25:
-- The worker is serving `08cdfcf`; 4,165 clean-export worker tests passed, none failed. The app and site
+- The worker is serving `f202c6e`; 4,184 working-tree worker tests and 43 focused clean-export
+  tests passed, none failed. The app and site
   were also deployed from clean exports and their served bytes checked. The site suite passed 316/316,
   and `/discord` has one main landmark and the community invite.
 - The UI embedding index is current again: 30 rows, built locally from the pinned MIT BGE model with no
@@ -41,12 +47,13 @@ Measured 2026-09-25:
   browser. CI run 36066064213 passed all six groups.
 
 Then:
-1. confirm that the Creator Store serves plugin 1.4.0; then bump `LATEST_PLUGIN_VERSION` and do a
-   logged-out install check;
-2. run round 8 (Apple MAX, Agent, Autonomous) and answer the source question with both sources;
-3. verify that library props are inserted, that F-064 does not end the run with listed parts unbuilt, and that
+1. after the free Workers AI allowance resets, run round 8 with the locally loaded 1.4.0 plugin
+   (Apple MAX, Agent, Autonomous) and answer the source question with both sources;
+2. verify that library props are inserted, that F-064 does not end the run with listed parts unbuilt, and that
    Stop ends the run within one step (F-069);
-4. run the blind critic.
+3. run the blind critic;
+4. independently confirm that the Creator Store serves plugin 1.4.0; then bump
+   `LATEST_PLUGIN_VERSION` and do an install check from another account.
 
 The upload success is not a Store availability signal. Keep the release in progress until the public
 listing and fresh Studio installation are observed.
