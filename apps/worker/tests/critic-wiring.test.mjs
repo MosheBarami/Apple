@@ -12,7 +12,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -142,9 +142,14 @@ test('untouched Roblox lighting is recognised as untouched', () => {
 test('there is exactly ONE default-lighting table in the worker', () => {
   // The defect this replaced: vision.ts and critic-input.ts each carried their own, disagreeing,
   // and both decided the same question — has anyone lit this scene? Two answers for one scene.
-  const files = execFileSync('git', ['grep', '-l', 'clockTime: 14', '--', 'apps/worker/src'], {
-    cwd: join(WORKER, '..', '..'), encoding: 'utf8',
-  }).split('\n').filter(Boolean);
+  // Inspect the source itself: release builds are clean exports with no .git directory.
+  const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    return entry.isDirectory() ? walk(path) : entry.name.endsWith('.ts') ? [path] : [];
+  });
+  const files = walk(join(WORKER, 'src'))
+    .filter((path) => /export const ROBLOX_DEFAULT_LIGHTING\s*=/.test(readFileSync(path, 'utf8')))
+    .map((path) => path.slice(join(WORKER, '..', '..').length + 1));
   assert.deepEqual(files, ['apps/worker/src/roblox-defaults.ts'], `defaults are defined in ${files.length} places`);
 });
 
