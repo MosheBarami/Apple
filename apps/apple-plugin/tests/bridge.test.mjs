@@ -272,6 +272,7 @@ do
 
     queueFailure("temporary network failure")
     assert(tick(), "poll after the operation should retry")
+    assert(string.find(statuses[#statuses], "hiccup", 1, true) ~= nil, "a failed poll says it is retrying")
     local failedDelivery = requests[#requests]
     assert(failedDelivery.body.results[1].id == "op-1", "the failed poll still carried the result")
 
@@ -282,6 +283,9 @@ do
     queueResponse({ ops = {}, waitMs = 1 })
     assert(tick())
     assert(#statuses > 0 and bridge:isConnected())
+    -- Round 7, 2026-09-24: one failed poll left the dock reading "Connection hiccup — retrying…" for
+    -- the rest of a live build while every op still landed. A poll that succeeds again says so.
+    assert(statuses[#statuses] == "Connected · Retry", "recovered, the dock must not keep a stale hiccup: " .. tostring(statuses[#statuses]))
     bridge:disconnect()
     assert(not executed[1].stillCurrent(), "a stored operation fence retires with its connection")
     assert(tick(), "retired retry generation should finish cooperatively")

@@ -61,6 +61,7 @@ type Session = {
 	nextEventSequence: number,
 	capabilities: any?,
 	capabilitiesPending: boolean,
+	retrying: boolean?,
 }
 
 type BridgeObject = {
@@ -545,6 +546,7 @@ local function pollLoop(self: BridgeObject, session: Session)
 			end
 				if not ok or type(body) ~= "table" then
 				releaseEvents(session, sentEventSequences)
+				session.retrying = true
 				callStatus(self.config, "Connection hiccup — retrying…")
 			task.wait(RETRY_WAIT_SECONDS)
 			if not current(self, session) then return end
@@ -556,6 +558,12 @@ local function pollLoop(self: BridgeObject, session: Session)
 			-- at terminal flags: a server may have accepted the result and then requested a detach.
 			acknowledged(session, sentCount)
 			acknowledgeEvents(session, sentEventSequences)
+		if session.retrying then
+			-- The hiccup text is otherwise the last word for the rest of the session (round 7).
+			session.retrying = false
+			callStatus(self.config, "Connected · " .. session.projectName)
+			if not current(self, session) then return end
+		end
 		local terminal, terminalMessage = isTerminalResponse(body, session.token)
 		if terminal then
 			self:_end(terminalMessage or "Session ended")
