@@ -127,6 +127,11 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
 - The `Workflow` tool leaves the D-COST-1 deny list in `.claude/settings.json`. New parallel work runs as scripted workflows (fan-out, adversarial verify, completeness critic) instead of separately spawned agents. The seven agents already mid-edit in the shared checkout finish their work rather than being killed half-way.
 - Reverse: put `"Workflow"` back in `permissions.deny`.
 
+## D-SEC-LOAD-1 — The leaked load-test accounts are banned, not deleted (2026-09-23, before the repo went public)
+- The publication scan found the load-test password in git history. Changing a password is the owner's (human-only), so the 30 accounts `load*@golem.internal` were banned instead (`auth.users.banned_until = infinity`): a leaked password now signs in to nothing. Measured 2026-09-24T00:31Z: 30 of 30 banned, earliest ban end `infinity`.
+- Deleting them was rejected: it is irreversible and the load harness needs them back once the owner sets a new password (Q-011).
+- Reverse: `update auth.users set banned_until = null where email like 'load%@golem.internal'` — only after Q-011 changes the password.
+
 ## D-AUT-2 — Fresh reviews run beside the interactive session (2026-09-23, owner: "you don't leave this session until the product is ready; fix what contradicts that")
 - D-AUT-1's Product-Owner lock made the supervisor refuse while this session runs, so the three fresh reviews could only happen after the session ended — contradicting the owner's instruction. `scripts/autonomy-supervisor.py --reviews-only` now runs reviewer sessions only, ignores the lock (reviewers use the product and append findings; they do not build), and still keeps the streak in the supervisor, never in the session. Exit 0 at the required streak, 6 at the first MATERIAL_FINDINGS. Tests: tests/autonomy-harness.test.mjs. Reverse: drop the flag.
 
