@@ -1,5 +1,14 @@
 # Making the Discord bot live
 
+> **Status 2026-09-24: live.** Application `AppleAI` (id 1549354044122865806) exists and its bot sits
+> in the Apple server (1549352480658169866) with Administrator. The worker has `DISCORD_PUBLIC_KEY`
+> and `DISCORD_BOT_TOKEN`; the interactions endpoint is
+> `https://apple.moshe-barami111.workers.dev/api/discord/interactions` (Discord verified it);
+> `/link /unlink /build /status /credits` are registered. The server itself (Community, roles,
+> channels, forums, AutoMod, onboarding, webhooks, the permanent invite https://discord.gg/SjKr6dyG8X)
+> is built by `infra/discord-server.mjs` — idempotent, rerun it after editing its declaration.
+> The steps below are kept for rebuilding from nothing.
+
 The code is already written and deployed. What is missing is a Discord application, which only
 exists once someone with a Discord account creates one. That is this page.
 

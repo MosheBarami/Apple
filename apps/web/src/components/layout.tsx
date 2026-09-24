@@ -52,6 +52,7 @@ import { restartTour, writeProgress } from '../lib/onboarding';
 import { RailChats, useScrollEdges } from './picks/chat/rail-chats';
 import { DockHighlights } from './picks/chat/dock-highlights';
 import { AnimatedIcon } from './picks/chat/animated-icon';
+import { DISCORD_INVITE_URL } from '../lib/community';
 import './layout.css';
 
 /** How many conversations the rail lists before deferring to "View all chats". */
@@ -138,6 +139,14 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
           <a className="gx-pop__item" role="menuitem" href="/docs" target="_blank" rel="noopener noreferrer">
             <Icon d={PATH.docs} size={15} />
             Docs
+            <span aria-hidden="true" style={{ marginLeft: 'auto', opacity: 0.5 }}>
+              ↗
+            </span>
+            <span className="gx-sr">(opens in a new tab)</span>
+          </a>
+          <a className="gx-pop__item" role="menuitem" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">
+            <Icon d={PATH.people} size={15} />
+            Discord community
             <span aria-hidden="true" style={{ marginLeft: 'auto', opacity: 0.5 }}>
               ↗
             </span>

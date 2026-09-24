@@ -20,6 +20,7 @@ import { MOCK_MODE, mockProfile } from '../lib/mock';
 import { getAccessToken, supabase, type ProfileRow } from '../lib/supabase';
 import { captchaOptions, turnstileToken } from '../lib/turnstile';
 import { createDiscordCode, disconnectDiscord, fetchDiscordLink } from '../lib/api';
+import { DISCORD_INVITE_URL } from '../lib/community';
 import { countdownTo } from '../lib/format';
 import { Failure } from '../components/failure';
 import { ApiKeysPanel } from '../components/api-keys-panel';
@@ -683,6 +684,13 @@ function DiscordCard({ userId }: { userId: string }) {
   return (
     <>
       <h3 className="settings-sub">Discord</h3>
+      <p className="settings-note">
+        Join the{' '}
+        <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">
+          Apple Discord server
+        </a>{' '}
+        for help, the changelog and to show what you built.
+      </p>
       {/* Four situations, four sentences, and each carries its own tone: a request in flight is
           neutral with a working dot, a request that never answered is a caution (nothing about
           the connection has changed, so red would say something untrue), and the two settled
