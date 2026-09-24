@@ -2,6 +2,7 @@
 // Deploy the worker with BUILD_SHA stamped from the commit being deployed.
 //
 //   node infra/deploy-worker.mjs [apple|golem] [--secrets-file <ignored JSON or .env file>]
+//   node infra/deploy-worker.mjs apple --build-sha <git-archive source SHA>
 //
 // WHY THIS EXISTS. `BUILD_SHA` is a plain var in wrangler.*.jsonc, edited by hand before a deploy.
 // It went stale the first time anyone deployed without remembering — including me, an hour ago:
@@ -36,12 +37,20 @@ if (target !== 'apple' && target !== 'golem') {
 // be silently ignored and turn a configuration request into an unintended deployment.
 const extras = process.argv.slice(3);
 let secretsFile = null;
-if (extras.length) {
-  if (extras.length !== 2 || extras[0] !== '--secrets-file' || !extras[1]) {
-    console.error('deploy-worker: use [apple|golem] [--secrets-file <ignored JSON or .env file>]');
+let suppliedSha = null;
+if (extras.length % 2 !== 0) {
+  console.error('deploy-worker: options need values');
+  process.exit(2);
+}
+for (let i = 0; i < extras.length; i += 2) {
+  if (extras[i] === '--secrets-file' && !secretsFile) secretsFile = resolve(ROOT, extras[i + 1]);
+  else if (extras[i] === '--build-sha' && !suppliedSha && /^[0-9a-f]{7,40}$/.test(extras[i + 1])) suppliedSha = extras[i + 1];
+  else {
+    console.error('deploy-worker: use [apple|golem] [--build-sha <hex SHA>] [--secrets-file <ignored file>]');
     process.exit(2);
   }
-  secretsFile = resolve(ROOT, extras[1]);
+}
+if (secretsFile) {
   try {
     if (!statSync(secretsFile).isFile()) throw new Error('not a file');
     // A release secret file must never become an accidental tracked artifact.
@@ -53,8 +62,10 @@ if (extras.length) {
 }
 
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
-const sha = git('rev-parse', '--short', 'HEAD');
-const dirty = git('status', '--porcelain').length > 0;
+// A git archive intentionally has no .git directory. Its caller supplies the SHA it archived;
+// using the checkout's working tree here would bundle unrelated in-progress edits.
+const sha = suppliedSha ?? git('rev-parse', '--short', 'HEAD');
+const dirty = suppliedSha ? false : git('status', '--porcelain').length > 0;
 const stamp = dirty ? `${sha}-dirty` : sha;
 
 console.log(`deploying ${target} as BUILD_SHA=${stamp}`);
