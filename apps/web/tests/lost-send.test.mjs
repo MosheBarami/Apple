@@ -73,3 +73,14 @@ test('a socket that stops answering pings is closed so it reconnects and resumes
   assert.match(abandonFn, /\.close\(/);
   assert.match(abandonFn, /onclose\?\.call\(/);
 });
+
+test('F-037: a socket stuck in CLOSING is handed over promptly without extra pings', () => {
+  const onOpen = between(HOOK, 'ws.onopen = () => {', 'ws.onmessage');
+  const tick = HOOK.match(/const SOCKET_WATCH_TICK_MS = ([\d_]+);/);
+  assert.ok(tick, 'the connection-state watch has a named interval');
+  assert.ok(Number(tick[1].replace(/_/g, '')) <= 5_000, 'a closing socket is noticed within five seconds');
+  assert.match(onOpen, /ws\.readyState !== WebSocket\.OPEN[\s\S]*?abandon\(ws, 'closing'\)/,
+    'CLOSING hands over to reconnect even if the browser never fires onclose');
+  assert.match(onOpen, /Date\.now\(\) - lastPing >= 25_000[\s\S]*?ws\.send\(/,
+    'the faster state watch must not send pings more often');
+});

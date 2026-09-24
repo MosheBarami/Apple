@@ -355,6 +355,8 @@ function mockHistory(): ChatItem[] {
 const CHAT_ACK_DEADLINE_MS = 30_000;
 /** A socket that has heard nothing, not even a pong, for this long is presumed dead and replaced. */
 const SOCKET_SILENCE_MS = 60_000;
+/** Check local socket state more often than we send a network ping. */
+const SOCKET_WATCH_TICK_MS = 5_000;
 
 /**
  * Give up on a socket now. close() alone waits for a closing handshake the dead far end will never
@@ -362,7 +364,7 @@ const SOCKET_SILENCE_MS = 60_000;
  * the socket already replaced and does nothing.
  */
 function abandon(ws: WebSocket, reason: string) {
-  ws.close(4000, reason);
+  try { ws.close(4000, reason); } catch { /* it may already be closing */ }
   ws.onclose?.call(ws, new CloseEvent('close', { code: 4000, reason }));
 }
 
@@ -1023,8 +1025,15 @@ export function useProjectSocket(
       attemptsRef.current = 0;
       setConn('open');
       lastHeard.current = Date.now();
+      let lastPing = Date.now();
       if (pingTimer.current) window.clearInterval(pingTimer.current);
       pingTimer.current = window.setInterval(() => {
+        // Some browser-initiated closes stay in CLOSING without an onclose event (F-037).
+        // Hand over now rather than leaving the run UI attached to that dead socket.
+        if (ws.readyState !== WebSocket.OPEN) {
+          abandon(ws, 'closing');
+          return;
+        }
         // A half-open socket never fires onclose: the owner's page sat on step 11 for six minutes while
         // the run reached step 23. Closing it hands over to the reconnect, whose resume replays the run.
         if (Date.now() - lastHeard.current > SOCKET_SILENCE_MS) {
@@ -1033,8 +1042,11 @@ export function useProjectSocket(
         }
         // `t` is this browser's clock, echoed back untouched on the pong so the round trip is
         // measured in one clock domain. See the 'pong' case.
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping', t: Date.now() } satisfies ClientMsg));
-      }, 25_000);
+        if (Date.now() - lastPing >= 25_000) {
+          lastPing = Date.now();
+          ws.send(JSON.stringify({ type: 'ping', t: Date.now() } satisfies ClientMsg));
+        }
+      }, SOCKET_WATCH_TICK_MS);
     };
 
     ws.onmessage = (ev) => {
