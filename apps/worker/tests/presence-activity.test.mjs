@@ -216,3 +216,40 @@ test('THE SERVER WITHDRAWS `building` WHEN THE RUN ENDS — helper behavior plus
   assert.match(body, /activity: 'viewing'/);
   assert.equal(/activity: 'typing'/.test(body), false);
 });
+
+test('F-037: A SOCKET THAT CLOSED IS NOT LISTED AS PRESENT in the frame its close sends', async () => {
+  // Measured 2026-09-24 in local workerd (compat 2026-08-01): inside webSocketClose the closing
+  // socket reads readyState 2 and getWebSockets() STILL returns it, even after the reciprocal
+  // close. So the one broadcast whose whole job is "somebody left" listed the leaver as present,
+  // and the room kept showing them until the 45 s presence TTL.
+  for (const readyState of [2, 1]) {
+    // 1 as well: which state a runtime reports at entry is not a contract, and the frame must not
+    // depend on it.
+    const leaving = socket(MEMBER, 'editor');
+    const staying = socket(OWNER, 'owner');
+    const closes = [];
+    leaving.ws.readyState = readyState;
+    leaving.ws.close = (code) => closes.push(code);
+    const s = session([leaving, staying]);
+    await s.runtime.webSocketClose(leaving.ws, 1005, '');
+    const frame = staying.sent.filter((m) => m.type === 'presence').at(-1);
+    assert.ok(frame, 'the room was told that the room changed');
+    assert.ok(frame.present.some((p) => p.userId === OWNER), 'CONTROL: the frame lists who is still here');
+    assert.equal(frame.present.some((p) => p.userId === MEMBER), false, `the leaver is not present (readyState ${readyState})`);
+    assert.equal(closes.length, 1, 'the close handshake is still reciprocated');
+    assert.ok(closes[0] >= 1000 && closes[0] !== 1005 && closes[0] !== 1006, 'with a code a peer may legally send');
+  }
+});
+
+test('F-037: a socket already CLOSING or CLOSED drops out of every presence frame, not only the close one', async () => {
+  const gone = socket(MEMBER, 'editor');
+  const here = socket(OWNER, 'owner');
+  const s = session([gone, here]);
+  for (const readyState of [2, 3]) {
+    gone.ws.readyState = readyState;
+    await s.say(here, { type: 'presence', activity: 'typing' });
+    const frame = here.sent.filter((m) => m.type === 'presence').at(-1);
+    assert.equal(frame.present.some((p) => p.userId === MEMBER), false, `readyState ${readyState} is not present`);
+    assert.ok(frame.present.some((p) => p.userId === OWNER), 'CONTROL: the sender still is');
+  }
+});

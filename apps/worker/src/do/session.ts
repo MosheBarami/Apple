@@ -83,7 +83,7 @@ import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, afterDuplicateStreak, UNSTICK_STEER, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
@@ -250,6 +250,8 @@ interface AgentState {
   duplicateStreak?: number;
   /** Times this run was moved on from a duplicate streak instead of ended (run-idle.ts afterDuplicateStreak). */
   unstucks?: number;
+  /** Open plan steps, game gaps and requested parts at the last move-on (run-idle.ts unstucksAfterProgress). */
+  unstuckOpen?: number;
   /** The next step is offered only tools that change the place — set by an unstick, cleared when offered. */
   readsWithheldOnce?: boolean;
   /** A verifier passed after the latest change to the place. Cleared by the next change. */
@@ -1186,9 +1188,12 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   /** What each attached socket last told us about itself. Survives hibernation with the socket. */
-  private presenceBeats(): unknown[] {
+  private presenceBeats(leaving?: WebSocket): unknown[] {
     const out: unknown[] = [];
     for (const ws of this.ctx.getWebSockets('client')) {
+      // A socket that is CLOSING (2) or CLOSED (3) has left. getWebSockets() still returns it inside its
+      // own webSocketClose, after the reciprocal close too (measured in workerd, F-037).
+      if (ws === leaving || ws.readyState >= 2) continue;
       try {
         const att = ws.deserializeAttachment() as unknown;
         if (att) out.push(att);
@@ -1501,8 +1506,8 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   /** Tell everyone who is here. Called on connect, on heartbeat and on close. */
-  private broadcastPresence() {
-    const snap = presenceSnapshot(this.presenceBeats(), Date.now());
+  private broadcastPresence(leaving?: WebSocket) {
+    const snap = presenceSnapshot(this.presenceBeats(leaving), Date.now());
     this.broadcast({ type: 'presence', present: snap.present });
   }
 
@@ -2663,6 +2668,10 @@ export class SessionDO extends DurableObject<Env> {
         queuedOps: this.opQueue.length,
         // The same record the owner sees at /studio/diagnostics, so the two views cannot drift.
         link: await this.linkSummary(),
+        // And what Studio says it has open, as diagnostics reports it: link.place is the binding, null
+        // for a place never saved to Roblox, which is not Studio naming nothing (F-008).
+        openPlace: await this.ctx.storage.get<StudioEventState>('pluginState').then((s) =>
+          s ? { placeName: s.placeName, placeId: s.placeId, gameId: s.gameId, isRunMode: s.isRunMode } : null),
         // WHETHER THE SOCKETS ARE HEARD. A stop pressed in the browser crosses only this path, and
         // a socket that opens, says hello and is then never delivered a frame looks healthy from
         // both ends. Counted in memory: a restart zeroes it, which reads as "none since restart".
@@ -3037,17 +3046,19 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string) {
-    // Reciprocate the close. The runtime does it itself on this compatibility date, and Cloudflare
-    // documents the call as safe either way; measured 2026-09-23, a browser that closed its socket
-    // still sat in CLOSING 27 s later, so the handshake is completed explicitly rather than assumed.
+    // Reciprocate the close. This call is load-bearing: measured 2026-09-24 in local workerd (compat
+    // 2026-08-01), web_socket_auto_reply_to_close answers for accept()-ed sockets only. A hibernatable
+    // socket whose handler does not reply leaves the browser in CLOSING until it gives up about 10 s
+    // later with 1006. With the reply the browser closes cleanly within milliseconds, once this handler
+    // runs, which waits for any work that holds the object's input gate (F-037).
     try {
       ws.close(code === 1005 || code === 1006 ? 1000 : code, reason);
     } catch {
       /* already closed */
     }
     // The room has changed, and presence is derived from the sockets that are still attached, so
-    // the people left behind need to be told.
-    this.broadcastPresence();
+    // the people left behind need to be told. The closing socket is still attached here.
+    this.broadcastPresence(ws);
   }
 
   // ------------------------------------------------------------------ agent run
@@ -4469,15 +4480,24 @@ export class SessionDO extends DurableObject<Env> {
     const planOpen = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
     const streakGaps = gameGaps(agent.request, agent, allowed.has('play_check'));
     const streakParts = agent.duplicateStreak >= MAX_DUPLICATE_STREAK ? openParts(agent) : [];
+    // Open work at the wall. Less than at the last move-on means the run built something in between.
+    const streakOpen = agent.duplicateStreak >= MAX_DUPLICATE_STREAK
+      ? (agent.plan ? settlePlan(agent.plan, agent.trace).steps.filter((s) => s.status === 'pending').length : 0) +
+        streakGaps.length + streakParts.length
+      : 0;
+    const unstucks = agent.duplicateStreak >= MAX_DUPLICATE_STREAK
+      ? unstucksAfterProgress(agent.unstucks ?? 0, agent.unstuckOpen, streakOpen)
+      : agent.unstucks ?? 0;
     const streak = afterDuplicateStreak({
       streak: agent.duplicateStreak,
       limit: MAX_DUPLICATE_STREAK,
       building: agent.mode === 'agent' && canBuild,
-      unstucks: agent.unstucks ?? 0,
+      unstucks,
       workOpen: planOpen !== undefined || streakGaps.length > 0 || streakParts.length > 0,
     });
     if (streak === 'unstick') {
-      agent.unstucks = (agent.unstucks ?? 0) + 1;
+      agent.unstucks = unstucks + 1;
+      agent.unstuckOpen = streakOpen;
       agent.duplicateStreak = 0;
       agent.readsWithheldOnce = true;
       const next = planOpen ? ` Your plan's next step is "${fenceForQuote(planOpen.title)}" (${planOpen.tool}).` : '';
