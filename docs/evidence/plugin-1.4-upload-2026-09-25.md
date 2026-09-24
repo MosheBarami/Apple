@@ -24,3 +24,8 @@ installed build's internal version, nor prove distribution to a different accoun
 Plugin Management → Details opened the public Creator Store URL in Chrome signed in as another
 account; it still rendered **404 Page Not Found**. At the same time the unauthenticated toolbox
 details endpoint still returned 404 for this asset and 200 for the listed Rojo control.
+
+After that check, the inventory-installed Apple Studio entry was turned off in Plugin Management
+to avoid two Apple sessions in the same place. It remains installed in the owner's inventory; the
+local 1.4.0 preview stayed enabled and its dock remained visible. This was a local Studio toggle,
+not a Store release or a test from a different account.
