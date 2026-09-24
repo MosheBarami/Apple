@@ -530,6 +530,7 @@ local function pollLoop(self: BridgeObject, session: Session)
 				local outbound: { [any]: any } = {
 					results = session.pendingResults,
 					state = state,
+					assetSourcesPrompt = true,
 				}
 				if session.capabilitiesPending and session.capabilities ~= nil then
 					outbound.capabilities = session.capabilities

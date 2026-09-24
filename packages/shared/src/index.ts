@@ -666,6 +666,8 @@ export interface PluginPollRequest {
   capabilities?: PluginCapabilityReportV1;
   /** The dock's answer to the asset-source question (F-059): the choices the person picked. */
   assetSourcesAnswer?: { allow: string[] };
+  /** Present only when this Studio build can display and answer that question. */
+  assetSourcesPrompt?: true;
 }
 export interface PluginPollResponse {
   ops: PendingOp[];

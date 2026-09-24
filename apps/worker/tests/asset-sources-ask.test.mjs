@@ -97,6 +97,8 @@ test('the session asks the people who are here, and both surfaces hear it', () =
   assert.ok(ask.length > 100, 'askAssetSources was not found');
   assert.match(ask, /getWebSockets\('client'\)/, 'a browser is not counted as somebody to ask');
   assert.match(ask, /pluginConnectedNow\(\)/, 'Studio is not counted as somebody to ask');
+  assert.match(ask, /beatOf\(ws\)\?\.role === 'owner'/, 'a collaborator is mistaken for someone who can save the answer');
+  assert.match(ask, /studioCanAnswerAssetSources/, 'an older plugin is mistaken for one that can show the question');
   assert.match(ask, /return false/, 'nobody reachable must not read as asked');
   assert.match(ask, /type: 'asset_sources_owed', owed: true/, 'the browsers are not told');
   assert.match(ask, /storage\.put\('assetSourcesAsked'/, 'the question does not survive an eviction');
@@ -104,6 +106,9 @@ test('the session asks the people who are here, and both surfaces hear it', () =
   const poll = session.slice(session.indexOf('private async handlePluginPoll('), session.indexOf('// ------------------------------------------------------------------ search'));
   assert.match(poll, /body\.assetSourcesAnswer/, 'the poll ignores an answer from Studio');
   assert.match(poll, /res\.assetSources = /, 'the poll never tells Studio the answer is owed');
+  assert.match(poll, /body\.assetSourcesPrompt === true/, 'the plugin does not prove it can show the question');
+  const finish = session.slice(session.indexOf('private async finishRun('), session.indexOf('private async finishRun(') + 4000);
+  assert.match(finish, /storage\.delete\('assetSourcesAsked'\)/, 'a completed run leaves a stale question in Studio');
 });
 
 test('a Studio answer is stored where the web stores it, and reaches the running build', () => {
