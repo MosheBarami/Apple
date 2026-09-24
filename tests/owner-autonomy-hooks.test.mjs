@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readFileSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -55,10 +55,10 @@ test('agent-doable work remains → the stop is blocked with the list', () => {
   assert.match(r.stdout, /Do not ask the owner/);
 });
 
-test('only owner-blocked findings remain → the stop is allowed', () => {
+test('owner-blocked findings still keep the gate active until acceptance', () => {
   const dir = fixture({ acceptance: PASSING, findings: CLOSED + '- [open][critical] F-017: needs a dashboard toggle — evidence: x\n',
     queue: '- [open] Q-003: turn on leaked-password protection — why: F-017 — Blocks findings: F-017\n' });
-  assert.equal(blocked(run('autonomy_stop_gate.py', dir)), false);
+  assert.ok(blocked(run('autonomy_stop_gate.py', dir)));
 });
 
 test('a DONE queue item no longer excuses its finding', () => {
@@ -67,13 +67,11 @@ test('a DONE queue item no longer excuses its finding', () => {
   assert.ok(blocked(run('autonomy_stop_gate.py', dir)));
 });
 
-test('no progress across two blocks → the gate stands down; progress re-arms it', () => {
+// 2026-09-24, owner: the hook forces work all the time, without a break. A stop with no change in the
+// repository is blocked like any other; only .autonomy/STOP (the owner's switch) or a passing gate end it.
+test('no progress never stands the gate down: every stop is blocked while work remains', () => {
   const dir = fixture({ acceptance: { ...PASSING, mobile_qa: false }, findings: CLOSED });
-  assert.ok(blocked(run('autonomy_stop_gate.py', dir)), 'first stop blocked');
-  assert.ok(blocked(run('autonomy_stop_gate.py', dir)), 'second stop, still no change: blocked once more');
-  assert.equal(blocked(run('autonomy_stop_gate.py', dir)), false, 'third stop with nothing changed: allowed — no burn loop');
-  writeFileSync(join(dir, 'progress.txt'), 'work happened');
-  assert.ok(blocked(run('autonomy_stop_gate.py', dir)), 'a change in the repository re-arms the gate');
+  for (let i = 1; i <= 5; i++) assert.ok(blocked(run('autonomy_stop_gate.py', dir)), `stop ${i} with nothing changed: blocked`);
 });
 
 test('.autonomy/STOP lifts every hook', () => {
@@ -101,26 +99,26 @@ test('the hooks are wired in the project settings', () => {
   assert.ok(cmds('PreToolUse').some((c) => c.startsWith('AskUserQuestion ') && c.includes('autonomy_no_questions.py')));
 });
 
-// 2026-09-23: background agents keep editing the tree, so the idle rule never fires while the agent is
-// correctly waiting on them, and every blocked stop was a paid no-op. A WAITING marker allows the stop —
-// only while it names what is awaited, and never for longer than 20 minutes after it was written.
-test('a fresh WAITING marker allows the stop; an expired, empty or overlong one does not', async () => {
-  const { utimesSync } = await import('node:fs');
+// 2026-09-24, owner: no waiting either. A WAITING marker (fresh, expired, or written with an ISO `until`
+// the gate once crashed on, which let every stop through) never excuses a stop, and the gate never crashes.
+test('a WAITING marker of any shape never excuses the stop, and never crashes the gate', () => {
   const doable = { acceptance: { ...PASSING, mobile_qa: false }, findings: CLOSED };
-  const mark = (dir, body, ageSeconds = 0) => {
-    mkdirSync(join(dir, '.autonomy'), { recursive: true });
-    const f = join(dir, '.autonomy', 'WAITING');
-    writeFileSync(f, JSON.stringify(body));
-    const t = Date.now() / 1000 - ageSeconds;
-    utimesSync(f, t, t);
-  };
   const now = Date.now() / 1000;
-  let dir = fixture(doable); mark(dir, { until: now + 600, on: 'workflow wf_x' });
-  assert.equal(blocked(run('autonomy_stop_gate.py', dir)), false, 'waiting on named work is not stopping');
-  dir = fixture(doable); mark(dir, { until: now - 5, on: 'workflow wf_x' });
-  assert.ok(blocked(run('autonomy_stop_gate.py', dir)), 'an expired wait no longer excuses the stop');
-  dir = fixture(doable); mark(dir, { until: now + 600, on: '' });
-  assert.ok(blocked(run('autonomy_stop_gate.py', dir)), 'a wait that names nothing excuses nothing');
-  dir = fixture(doable); mark(dir, { until: now + 86400, on: 'workflow wf_x' }, 21 * 60);
-  assert.ok(blocked(run('autonomy_stop_gate.py', dir)), 'a marker older than 20 minutes is ignored whatever it claims');
+  for (const body of [{ until: now + 600, on: 'workflow wf_x' }, { until: '2026-09-23T13:02:03Z', on: 'build lanes' }, 'not json']) {
+    const dir = fixture(doable);
+    mkdirSync(join(dir, '.autonomy'), { recursive: true });
+    writeFileSync(join(dir, '.autonomy', 'WAITING'), typeof body === 'string' ? body : JSON.stringify(body));
+    const r = run('autonomy_stop_gate.py', dir);
+    assert.equal(r.status, 0, `the gate crashed: ${r.stderr}`);
+    assert.ok(blocked(r), `WAITING ${JSON.stringify(body)} let the stop through`);
+  }
+});
+
+test('an unreadable acceptance gate blocks until repaired', () => {
+  const dir = fixture({ acceptance: PASSING, findings: CLOSED });
+  unlinkSync(join(dir, 'scripts', 'autonomy-review-gate.py'));
+  const r = run('autonomy_stop_gate.py', dir);
+  assert.equal(r.status, 0);
+  assert.ok(blocked(r));
+  assert.match(r.stdout, /missing or unreadable/);
 });
