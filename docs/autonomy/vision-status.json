@@ -1,6 +1,6 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-24T00:30:00Z",
+  "updatedAt": "2026-09-24T00:37:00Z",
   "now": "סבב 7 של המבחן רץ: Apple MAX בונה משחק גינה מאפס בסטודיו. במקביל מתקנים את סביבת מבחן ה-frontier",
   "nextStep": "לסיים את סבב 7, לתת לשופט עיוור לדרג אותו, ולתקן את הבנייה מקוביות: אביזרים יגיעו מספריית המודלים",
   "items": [
@@ -47,7 +47,7 @@
       "id": "uiLibraries",
       "he": "ספריות UI ואייקונים חינמיות וחוקיות, אלפי פריטים, לסוכן ולאתר",
       "status": "done",
-      "detail": "5,277 אייקונים ורכיבי UI חינמיים (CC0) באוויר, בגלריה באתר ולסוכן"
+      "detail": "באוויר לסוכן: 77,076 תמונות UI חינמיות מה-Creator Store של רובלוקס (חיפוש לפי ז'אנר ותפקיד) ועוד 5,277 אייקונים ורכיבי UI חינמיים (CC0) בגלריה באתר"
     },
     {
       "id": "agentTools",
