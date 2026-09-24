@@ -54,6 +54,21 @@ test('create_instances refuses every hand-made prop shape, sends nothing, and na
   }
 });
 
+test('the prop ban holds while asset consent is owed or the library tool is unavailable', async () => {
+  for (const assetSources of [undefined, { allow: [] }, { allow: ['from_scratch'] }]) {
+    for (const offeredTools of [undefined, new Set(['create_instances'])]) {
+      const s = studio();
+      s.ctx.assetSources = assetSources;
+      s.ctx.offeredTools = offeredTools;
+      const r = await T.TOOLS.create_instances.run(s.ctx, {
+        items: [{ className: 'Part', name: 'AppleTree', parent: 'game.Workspace' }],
+      });
+      assert.ok(refused(r), `a prop reached Studio without a library source: ${JSON.stringify({ assetSources, offeredTools: [...(offeredTools ?? [])], r })}`);
+      assert.equal(s.calls.length, 0, 'a hand-built prop reached Studio');
+    }
+  }
+});
+
 test('create_instances still lays plain structure and functional parts', async () => {
   for (const items of [
     [{ className: 'Part', name: 'Floor', props: { Size: { t: 'Vector3', v: [200, 1, 200] } } }],

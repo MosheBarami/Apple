@@ -1,5 +1,5 @@
 /**
- * THE 3D MODEL LIBRARY (D-MODELLIB-1): EVERY ROW IS REAL, PROPS COME FROM IT, PARTS ARE THE FALLBACK.
+ * THE 3D MODEL LIBRARY (D-MODELLIB-1/2): EVERY ROW IS REAL; PROPS COME FROM IT.
  *
  * packages/asset-library/models is derived by build.mjs from the files in models-store/ (gitignored)
  * and from the Creator Store harvest. This holds:
@@ -9,8 +9,8 @@
  *   - the bundled index holds only insertable rows, and each one is a manifest row;
  *   - find_library_model is a read-only lookup; insert_library_model mutates and needs Studio;
  *   - create_instances refuses a multi-part Model named after a thing the library holds, sends
- *     nothing, and still builds terrain/baseplate/path/zone parts, single parts, anything when the
- *     project's source policy forbids the library, and a prop the library failed to deliver;
+ *     nothing, and still builds terrain/baseplate/path/zone parts; missing permission or a failed
+ *     library insert never permits a hand-built prop;
  *   - insert_library_model inserts a Creator Store row by its id through the scan, then places it;
  *   - a file row is uploaded as a Model into the user's own account, at price 0, and never without
  *     a user and a key with asset:write.
@@ -189,8 +189,7 @@ test('parts stay allowed for terrain, baseplates, paths and zones, and for a sin
   }
 });
 
-// D-MODELLIB-2 removed the "already failed for that prop" fallback: a miss means search again, never parts.
-test('the guard stands down only when the library is switched off or not offered', async () => {
+test('a missing source or insert tool never permits a hand-built prop', async () => {
   const s = sample(() => true);
   const name = s.word[0].toUpperCase() + s.word.slice(1);
   for (const over of [
@@ -199,9 +198,24 @@ test('the guard stands down only when the library is switched off or not offered
   ]) {
     const { ctx, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }), over);
     const res = await run(ctx, 'create_instances', { items: [twoParts(name)] });
-    assert.equal(res.error, undefined, res.error);
-    assert.equal(created(ops), 1);
+    assert.match(res.error, /D-MODELLIB-2/);
+    assert.equal(created(ops), 0);
   }
+});
+
+test('a failed library insert never permits a hand-built replacement', async () => {
+  const s = INDEX.rows
+    .map((r) => M.tokensOf(r[1]).find((w) => w.length >= 4 && !/\d/.test(w)))
+    .find((w) => w && M.handBuiltPropRefusal([twoParts(w)]));
+  assert.ok(s, 'the bundled library has a prop for this guard');
+  const name = s[0].toUpperCase() + s.slice(1);
+  assert.match(M.handBuiltPropRefusal([twoParts(name)]), /prop the model library/);
+  assert.match(M.handBuiltPropRefusal([twoParts(name)], new Set([s])), /prop the model library/);
+  const { ctx, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }));
+  ctx.libraryMisses = new Set([s]);
+  const res = await run(ctx, 'create_instances', { items: [twoParts(name)] });
+  assert.match(res.error, /D-MODELLIB-2|prop the model library/);
+  assert.equal(created(ops), 0);
 });
 
 /* ---------------------------------------------------------------- insert --- */

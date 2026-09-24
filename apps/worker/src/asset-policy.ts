@@ -120,20 +120,20 @@ export function sourceRefusal(
   // NEVER ANSWERED and DELIBERATELY TURNED OFF are different facts with different fixes: one
   // person needs to answer a dialog, the other needs to change their mind.
   if (answerOwed(policy)) {
-    // F-059: told to "build from parts for now", round 7 hand-built 150+ props out of Parts while
-    // the library had every one of them. With somebody there to answer, the question goes to them
-    // and the agent is told to get on with work that needs no assets.
+    // F-059: the old fallback told the agent to build from parts while the library had every prop.
+    // Asking is not permission to substitute another source, even if the person never answers.
     if (ask?.() === true) {
       return `this project has not said yet which asset sources Apple may use, so ${name} is not `
         + 'available yet. Apple has just asked the person (the question is showing in the Apple web app '
         + 'and in the Studio dock), and their answer applies to this run as soon as they give it. Do not '
-        + 'hand-build a replacement for this. Carry on with the parts that need no assets (scripts, UI, '
-        + 'terrain, layout) and try this again in a few steps; build it from parts only if they still '
-        + 'have not answered once everything else is done.';
+        + 'hand-build a replacement for this. Continue with work that needs no assets (scripts, '
+        + 'library UI, terrain, layout), and try this again after the person answers. If no answer '
+        + 'arrives by the end of the run, leave it unbuilt and explain which choice is missing.';
     }
     return `this project has not been asked which asset sources it may use, so ${name} is not `
-      + 'available yet. Apple asks before the first build, and the answer is kept in Settings under '
-      + 'Connections. Build from parts for now, or ask the person to pick their sources.';
+      + 'available yet. Nobody connected can answer the source question right now. The answer can '
+      + 'be set in Settings under Connections. Do not substitute parts or another source; continue '
+      + 'with work that needs no assets, leave it unbuilt and explain which choice is missing.';
   }
 
   const rest = allowed.length

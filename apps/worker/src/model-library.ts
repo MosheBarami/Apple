@@ -144,11 +144,10 @@ function partCount(item: PlannedItem): number {
  * Why create_instances must not build this batch, or null when it may.
  *
  * Refused: a Model (or Folder) of two or more parts whose own name is a thing the library holds —
- * a tree, a car, a house, a crate — and is not a structural surface. Allowed: single parts,
- * structural names, any prop the library has nothing for, and any prop insert_library_model already
- * failed to deliver in this run (the fallback the prompt describes).
+ * a tree, a car, a house, a crate — and is not a structural surface. Allowed: single parts and
+ * structural names. An insertion failure never licenses a hand-built replacement.
  */
-export function handBuiltPropRefusal(items: readonly unknown[], misses?: ReadonlySet<string>): string | null {
+export function handBuiltPropRefusal(items: readonly unknown[]): string | null {
   for (const raw of items) {
     if (!raw || typeof raw !== 'object') continue;
     const item = raw as PlannedItem;
@@ -158,13 +157,11 @@ export function handBuiltPropRefusal(items: readonly unknown[], misses?: Readonl
     const words = tokensOf(name);
     if (!words.length || STRUCTURAL.test(words.join(' '))) continue;
     if (partCount(item) < 2) continue;
-    // insert_library_model already failed for this thing in this run: parts are the fallback now.
-    if (misses && words.some((w) => misses.has(w))) continue;
     const hit = findLibraryModels({ query: words.filter((w) => !/^\d+$/.test(w)).join(' '), limit: 3 });
     // All the name's words, or all but one (a colour or an adjective the library has no tag for).
     if (!hit.results.length || !('matchedWords' in hit) || hit.matchedWords < Math.max(1, hit.ofWords - 1)) continue;
     const ids = hit.results.map((r) => r.id).join(', ');
-    return `"${name}" is a prop the model library already holds (${ids}). Insert it with insert_library_model instead of assembling it from parts — library models are real, detailed assets and a stack of blocks is not. Parts stay the right tool for terrain, baseplates, paths, walls, platforms and zones. If insert_library_model fails for it, this guard stands down and the part-built version is accepted.`;
+    return `"${name}" is a prop the model library already holds (${ids}). Insert it with insert_library_model instead of assembling it from parts. Parts stay the right tool for terrain, baseplates, paths, walls, platforms and zones. If insertion fails, search for another library model or leave this prop unbuilt; never substitute hand-built parts.`;
   }
   return null;
 }

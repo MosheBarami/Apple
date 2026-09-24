@@ -50,9 +50,11 @@ test('when a person was asked, the refusal says so and does not send the agent o
   assert.match(asked, /asked|question/i, 'the agent is not told the question was put to the person');
   assert.match(asked, /this run|as soon as/i, 'the agent is not told the answer applies to the running build');
   assert.doesNotMatch(asked, /Build from parts for now/i, 'the agent is still told to hand-build straight away');
+  assert.match(asked, /leave it unbuilt/i, 'an unanswered asset must stay unbuilt, not become a hand-built prop');
   // The unasked wording stays for a project nobody can be asked about right now.
   const alone = P.sourceRefusal(null, 'creator_store', () => false);
   assert.notEqual(alone, asked, 'nobody reachable and somebody asked read the same');
+  assert.match(alone, /leave it unbuilt/i, 'no reachable owner must not become permission to hand-build');
   // The provenance path carries the same question.
   assert.equal(P.provenanceRefusal(null, 'search_result', () => true), asked);
 });
@@ -81,12 +83,12 @@ test('a Studio answer becomes the same remembered project policy the web dialog 
 
 test('every tool refusal that returns to the agent can ask; the silent capability check cannot', () => {
   const calls = [...tools.matchAll(/(!?)(sourceRefusal|provenanceRefusal)\(ctx\.assetSources,[^)]*\)/g)];
-  assert.ok(calls.length >= 5, `found ${calls.length} policy calls in tools.ts — this checks nothing`);
+  assert.ok(calls.length >= 4, `found ${calls.length} policy calls in tools.ts — this checks nothing`);
   const refusals = calls.filter((m) => m[1] === '');
   const checks = calls.filter((m) => m[1] === '!');
-  assert.ok(refusals.length >= 4 && checks.length >= 1, 'the refusal/check split moved');
+  assert.ok(refusals.length >= 4, 'a model-facing refusal no longer asks for the answer');
   for (const m of refusals) assert.match(m[0], /ctx\.askAssetSources/, `a refusal cannot ask: ${m[0]}`);
-  for (const m of checks) assert.doesNotMatch(m[0], /askAssetSources/, `a capability check asks the person: ${m[0]}`);
+  for (const m of checks) assert.doesNotMatch(m[0], /askAssetSources/, `a silent capability check asks the person: ${m[0]}`);
   const iface = tools.slice(tools.indexOf('export interface AgentCtx'), tools.indexOf('\n}', tools.indexOf('export interface AgentCtx')));
   assert.match(iface, /askAssetSources\?: \(\) => boolean/);
 });

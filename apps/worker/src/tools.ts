@@ -73,7 +73,7 @@ import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
 import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau } from './model-rule';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
-import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, MAX_UPLOADS_PER_RUN, placeInserted, tokensOf as libraryTokens, uploadLibraryModel } from './model-library';
+import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, MAX_UPLOADS_PER_RUN, placeInserted, uploadLibraryModel } from './model-library';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
@@ -212,11 +212,9 @@ export interface AgentCtx {
   /**
    * The model library (D-MODELLIB-1), per run: the Roblox id each library FILE row was uploaded
    * as, so a second insert of the same row reuses it instead of creating another permanent asset in
-   * the user's account; and the name words insert_library_model failed for, so create_instances'
-   * library-first guard stands down for a prop the library could not deliver.
+   * the user's account.
    */
   libraryUploads?: Map<string, number>;
-  libraryMisses?: Set<string>;
   /**
    * Outbound HTTP for the web-facing tools.
    *
@@ -2145,13 +2143,12 @@ export const TOOLS: Record<string, ToolImpl> = {
           error: `Nothing was created. ${pass.refusals.length === 1 ? 'One property' : `${pass.refusals.length} properties`} could not be read, and the rest were left alone rather than half-building the set: ${pass.refusals.map((r) => r.message).join(' ')}`,
         });
       }
-      // D-MODELLIB-1: a prop the model library holds comes from the library, not from parts.
-      // It stands down when this run was not offered insert_library_model (a plugin without spatial_query).
-      if (!sourceRefusal(ctx.assetSources, 'creator_store') && (!ctx.offeredTools || ctx.offeredTools.has('insert_library_model'))) {
-        // D-MODELLIB-2: and no prop is ever made from parts, whether the library matched it or not.
-        const handMadeModel = LIBRARY_BUILT.has(a.items as object) ? null : refuseHandMadeModel(a.items);
+      // D-MODELLIB-2: a prop never becomes hand-built because consent is still owed or a plugin
+      // cannot insert from the library. Keep it unbuilt and report the missing capability instead.
+      if (!LIBRARY_BUILT.has(a.items as object)) {
+        const handMadeModel = refuseHandMadeModel(a.items);
         if (handMadeModel) return Promise.resolve(handMadeModel);
-        const handBuilt = handBuiltPropRefusal(Array.isArray(a.items) ? a.items : [], ctx.libraryMisses);
+        const handBuilt = handBuiltPropRefusal(Array.isArray(a.items) ? a.items : []);
         if (handBuilt) return Promise.resolve({ error: `Nothing was created. ${handBuilt}` });
       }
       return op(ctx, { op: 'create_instances', items: (pass.items as never[]) ?? [] });
@@ -4521,8 +4518,8 @@ export const TOOLS: Record<string, ToolImpl> = {
   },
   // The 3D model library (D-MODELLIB-1): script-free Creator Store models that Roblox itself owns,
   // inserted by id, plus CC0/CC-BY/MIT files (Kenney, KayKit, GitHub .rbxm with every
-  // script stripped) uploaded once into the USER'S OWN account. Library first; parts are the
-  // fallback for props, and stay the tool for terrain, baseplates, paths and zones.
+  // script stripped) uploaded once into the USER'S OWN account. Props always come from the
+  // library; parts stay the tool for terrain, baseplates, paths and zones.
   find_library_model: {
     def: {
       name: 'find_library_model',
@@ -4551,7 +4548,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_library_model',
       description:
-        "Insert ONE model from Apple's model library into the place, scaled and standing on `position`. Pass `id` from find_library_model, or `query` (plus optional genre/kind) to take the best match. A Creator Store row is inserted by id; a file row is first uploaded as a Model into the USER'S OWN Roblox account with their connected key (asset:write) — once per run, reused after. Every insert is scanned in the place and any script is removed before it counts. Use this for props, buildings, nature, vehicles, pets and characters before building anything from parts. To place many copies, insert one and clone_instances it.",
+        "Insert ONE model from Apple's model library into the place, scaled and standing on `position`. Pass `id` from find_library_model, or `query` (plus optional genre/kind) to take the best match. A Creator Store row is inserted by id; a file row is first uploaded as a Model into the USER'S OWN Roblox account with their connected key (asset:write) — once per run, reused after. Every insert is scanned in the place and any script is removed before it counts. Use this for props, buildings, nature, vehicles, pets and characters. If insertion fails, search again or leave the prop unbuilt. To place many copies, insert one and clone_instances it.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },
@@ -4576,13 +4573,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const pick = a.id
         ? libraryModel(String(a.id))
         : findLibraryModels({ query: String(a.query ?? ''), genre: a.genre ? String(a.genre) : undefined, kind: a.kind ? String(a.kind) : undefined, limit: 1 }).results[0] ?? null;
-      const missed = (why: unknown) => {
-        const words = libraryTokens(String(a.query ?? pick?.name ?? a.id ?? ''));
-        ctx.libraryMisses = ctx.libraryMisses ?? new Set();
-        for (const w of words) if (w.length >= 3) ctx.libraryMisses.add(w);
-        return why;
-      };
-      if (!pick) return missed({ error: a.id ? `${String(a.id)} is not a library id. Call find_library_model and pass one of its ids unchanged.` : 'Nothing in the model library matched. Build it from parts with create_instances.' });
+      if (!pick) return { error: a.id ? `${String(a.id)} is not a library id. Call find_library_model and pass one of its ids unchanged.` : 'Nothing in the model library matched. Search for another library model or leave the prop unbuilt.' };
       const pos = a.position === undefined ? [0, 0, 0] : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
       if (!Array.isArray(pos)) return pos;
       const scale = a.scale === undefined ? undefined : Number(a.scale);
@@ -4597,13 +4588,13 @@ export const TOOLS: Record<string, ToolImpl> = {
           return { error: `This run already uploaded ${MAX_UPLOADS_PER_RUN} library files into the user's account, the most one run may. Reuse (clone_instances) a model already in the place, or pick a Creator Store row from find_library_model.` };
         }
         const up = await uploadLibraryModel(ctx.env, ctx.userId, pick);
-        if ('error' in up) return missed({ error: up.error, stage: up.stage, library: pick.id });
+        if ('error' in up) return { error: up.error, stage: up.stage, library: pick.id };
         if ('pending' in up) return { pending: true, operationId: up.operationId, library: pick.id, note: "Uploaded to the user's Roblox account; Roblox is still processing it, so nothing was inserted yet. Do not claim it is in the place." };
         assetId = up.assetId;
         ctx.libraryUploads.set(pick.id, assetId);
       }
       const placed = rec(await insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace')));
-      if ('error' in placed) return missed({ ...placed, library: pick.id });
+      if ('error' in placed) return { ...placed, library: pick.id };
       let paths = (Array.isArray(placed.inserted) ? placed.inserted : []).filter((p): p is string => typeof p === 'string');
       if (paths.length > 1) {
         const grouped = await ctx.execStudioOp({ op: 'group_instances', paths, name: pick.name.replace(/[^A-Za-z0-9 _-]+/g, '').slice(0, 50) || 'LibraryModel' }, 20_000);
