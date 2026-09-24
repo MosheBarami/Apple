@@ -46,7 +46,7 @@ import { scoreGameLogic, fencedLuau } from './score-eval.mjs';
 import { detectContextDependencies } from './audit-dataset.mjs';
 import { runSpecCase } from './tool-trajectory-verify.mjs';
 import { CUSTOMER_QUERIES } from './customer-queries.mjs';
-import { resolveSettings } from './production-settings.mjs';
+import { GATEWAY_MODEL_ID, resolveSettings } from './production-settings.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -102,13 +102,45 @@ const BASELINE_SYSTEM =
 //   measured at. Both exist; this names the current one, and §4 names the other.
 const FIDELITY_SOURCE = resolve(RUNS_DIR, 'eval-production-apple-agent-armA-shipped-2026-09-21.json');
 
+//[[ THE GATEWAY KEY RENAMED ON 2026-09-22 AND THE MODEL BEHIND IT DID NOT, SO THE GATE COMPARES THE
+//   MODEL.
+//
+//   The recorded baseline stores `settings.gateway: "stone"` — the internal DEFAULT_MODELS key at
+//   the time. The worker renamed that key to `agent` when the product contract settled on
+//   Plan/Agent, and `@cf/zai-org/glm-5.3-flash` did not change: same model, same 6500 ceiling, same
+//   8800 requested. So comparing the KEY NAME would report a different experiment where the request
+//   the provider receives is byte-identical, and the honest fix is not to re-record (that spends
+//   neurons re-measuring the same request) but to compare the thing that decides the experiment.
+//
+//   The rename map is read-only history: it lets a current gateway key be matched against a key
+//   that no longer exists. It is NOT a resolution path — nothing resolves a mode through it — and
+//   production-settings.mjs's RETIRED_MODES is what refuses those names at the CLI.
+// `clay` used Qwen before Plan moved to GLM; it is comparable to today's memory model,
+// not to today's Plan model. Only stone/rune kept their model through the rename.
+const RECORDED_GATEWAY_RENAMES = Object.freeze({ clay: 'memory', stone: 'agent', rune: 'agent' });
+
+/** The model a recorded settings block was actually sent to, read through today's table. */
+function recordedModelId(recordedKey) {
+  if (typeof recordedKey !== 'string') return null;
+  return GATEWAY_MODEL_ID[RECORDED_GATEWAY_RENAMES[recordedKey] ?? recordedKey] ?? null;
+}
+
 function fidelityGate({ system = BASELINE_SYSTEM, gateway = GATEWAY, tokens = EFFECTIVE_TOKENS, file = FIDELITY_SOURCE } = {}) {
   let recorded;
   try { recorded = JSON.parse(readFileSync(file, 'utf8')); }
   catch (e) { return { ok: false, why: `cannot read ${file}: ${e.message}` }; }
   const problems = [];
   if (recorded.system !== system) problems.push('system prompt differs from the recorded shipped run');
-  if (recorded.settings?.gateway !== gateway) problems.push(`gateway ${recorded.settings?.gateway} != ${gateway}`);
+  //[[ COMPARE THE MODEL, NOT THE KEY. A renamed key naming the same model is the same measurement;
+  //   a different model is a different one, and the message names both so the reader does not have
+  //   to hold the rename table in their head. ]]
+  const wasModelId = recordedModelId(recorded.settings?.gateway);
+  const nowModelId = GATEWAY_MODEL_ID[gateway] ?? null;
+  if (wasModelId !== nowModelId) {
+    problems.push(
+      `gateway ${recorded.settings?.gateway} (${wasModelId ?? 'unknown model'}) != ${gateway} (${nowModelId ?? 'unknown model'})`,
+    );
+  }
   //[[ A DRIFT HERE IS NOT A TYPO, IT IS A DIFFERENT EXPERIMENT. The recorded run is the thing every
   //   arm is compared against; if production now sends a different output budget, a new arm and the
   //   recorded arms did not answer the same question and the difference between them is not the

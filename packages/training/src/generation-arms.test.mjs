@@ -67,7 +67,17 @@ test('the fidelity gate goes red when the baseline system prompt drifts', () => 
   assert.equal(drifted.ok, false);
   assert.match(drifted.why, /system prompt differs/);
   assert.equal(fidelityGate({ tokens: 4400 }).ok, false, 'a budget that is not production is not a baseline');
-  assert.equal(fidelityGate({ gateway: 'rune' }).ok, false, 'a different gateway is a different measurement');
+  //[[ A DIFFERENT MODEL IS A DIFFERENT MEASUREMENT, AND THE NEGATIVE CONTROL HAS TO BE A KEY THAT
+  //   STILL NAMES A DIFFERENT MODEL.
+  //
+  //   This used to pass `'rune'`, which is retired — so it went red for the wrong reason (an absent
+  //   key resolving to `undefined`), not because a different model was chosen. `memory` is the one
+  //   live gateway key whose model genuinely differs from the recorded baseline's, so it is the
+  //   only control that still tests the property. `plan` would NOT work as a control: plan and agent
+  //   are the same model now, and a control that cannot go red is not a control. ]]
+  assert.equal(fidelityGate({ gateway: 'memory' }).ok, false, 'a different model is a different measurement');
+  assert.match(fidelityGate({ gateway: 'memory' }).why, /qwen3-30b-a3b-fp8/,
+    'the message names the model it actually disagreed about');
 });
 
 //[[ A TRIPWIRE, NOT A PIN — it is meant to fire on ANY change, because each one needs reviewing.
