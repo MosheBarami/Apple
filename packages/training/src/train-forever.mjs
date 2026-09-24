@@ -183,8 +183,16 @@ export async function readVerifiedShard(source, expectedSha256) {
     throw new Error('verified shard path or digest is invalid');
   }
   if (sha256File(path) !== expectedSha256) throw new Error(`verified shard changed: ${source}`);
-  const heldout = new Set(readFileSync(join(TRAINING, EVAL_SET), 'utf8').split('\n')
-    .filter(Boolean).map((line) => JSON.parse(line).meta?.family).filter(Boolean));
+  const heldoutRows = readFileSync(join(TRAINING, EVAL_SET), 'utf8').split('\n')
+    .filter(Boolean).map((line) => JSON.parse(line));
+  const heldout = new Set(heldoutRows.map((r) => r.meta?.family).filter(Boolean));
+  const shingles = (text) => {
+    const words = String(text ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/);
+    return words.length < 8 ? [] : words.slice(0, -7).map((_, i) => words.slice(i, i + 8).join(' '));
+  };
+  const heldoutPhrases = new Set(heldoutRows.flatMap((r) => r.messages ?? [])
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .flatMap((m) => shingles(m.content)));
   const { checkCandidate } = await import('./evaluate-game-logic.mjs');
   const rows = [];
   const ids = new Set();
@@ -192,8 +200,10 @@ export async function readVerifiedShard(source, expectedSha256) {
     const r = JSON.parse(line);
     const meta = r.meta ?? {};
     const answer = r.messages?.at(-1)?.content;
+    const prompt = r.messages?.find((m) => m.role === 'user')?.content;
     const sourceCode = /^```luau\n([\s\S]*)\n```$/.exec(answer ?? '')?.[1];
-    if (!sourceCode || !meta.id || ids.has(meta.id) || !meta.family || heldout.has(meta.family)
+    if (!sourceCode || !prompt || shingles(prompt).some((phrase) => heldoutPhrases.has(phrase))
+      || !meta.id || ids.has(meta.id) || !meta.family || heldout.has(meta.family)
       || meta.origin !== 'first-party-authored-synthetic'
       || meta.rights !== 'private-project-source-not-publicly-licensed'
       || meta.evidence?.behaviorPassed !== true || meta.evidence?.mutationRejected !== true
