@@ -88,6 +88,12 @@ test('flags may precede the command', () => {
   assert.equal(parsed.flags.json, true);
 });
 
+test('chat accepts Autonomous as a boolean capability flag', () => {
+  const parsed = parseArgs(['chat', PROJECT, 'build it', '--mode', 'agent', '--autonomous']);
+  assert.equal(parsed.flags.mode, 'agent');
+  assert.equal(parsed.flags.autonomous, true);
+});
+
 // ----------------------------------------------------------------- process
 
 test('health prints the worker payload and exits 0', async () => {

@@ -111,7 +111,7 @@ export async function run(argv, env = process.env) {
         break;
       }
       case 'chat': {
-        const mode = parsed.flags.mode ?? 'stone';
+        const mode = parsed.flags.mode ?? 'agent';
         if (!MODES.includes(mode)) {
           process.stderr.write(`--mode must be one of ${MODES.join(', ')}\n`);
           return EXIT_USAGE;
@@ -126,7 +126,7 @@ export async function run(argv, env = process.env) {
           stream.on('open', resolve);
           stream.on('gave_up', () => reject(new ApiError('could not open the session socket', 0)));
         });
-        stream.sendChat(b, mode);
+        stream.sendChat(b, mode, parsed.flags.autonomous === true);
         const result = await finished;
         stream.close();
         print(parsed.flags.json ? result : result.text, parsed.flags);

@@ -38,7 +38,7 @@ const client = new AppleClient({ token: process.env.APPLE_TOKEN });
 const { messages } = await client.messages(projectId, { limit: 20 });
 
 const stream = new SessionStream({ baseUrl: client.baseUrl, projectId, token }).connect();
-stream.sendChat('build a door on the north wall', 'stone');
+stream.sendChat('build a door on the north wall', 'agent');
 const run = await stream.waitForRun();
 console.log(run.text, run.creditsSpent);
 ```

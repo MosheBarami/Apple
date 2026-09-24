@@ -19,7 +19,7 @@ export const wrongLimit = client.messages('id', { limit: 'twenty' });
 // ERROR: there is no such method.
 export const noSuchMethod = client.deleteEverything();
 
-// ERROR: 'granite' is not a GolemMode.
+// ERROR: 'granite' is not a ProductMode.
 export const wrongMode = new SessionStream({ baseUrl: 'x', projectId: 'y', token: 'z' }).sendChat('hi', 'granite');
 
 // ERROR: a SessionStream needs a token.

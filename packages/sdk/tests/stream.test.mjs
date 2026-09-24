@@ -103,10 +103,30 @@ test('a session with no token refuses to open rather than connecting unauthentic
 
 test('a message sent before the socket is open is reported false, not thrown away silently', () => {
   const { stream, sockets } = connected();
-  assert.equal(stream.sendChat('build a door', 'stone'), false, 'not open yet');
+  assert.equal(stream.sendChat('build a door', 'agent'), false, 'not open yet');
   sockets[0].open();
-  assert.equal(stream.sendChat('build a door', 'stone'), true);
-  assert.deepEqual(sockets[0].sent, [{ type: 'chat', text: 'build a door', mode: 'stone' }]);
+  assert.equal(stream.sendChat('build a door', 'agent'), true);
+  assert.deepEqual(sockets[0].sent, [{ type: 'chat', text: 'build a door', mode: 'agent' }]);
+});
+
+test('Autonomous is an Agent capability on the wire, not a third mode', () => {
+  const { stream, sockets } = connected();
+  sockets[0].open();
+  assert.equal(stream.sendChat('build the whole feature', 'agent', true), true);
+  assert.deepEqual(sockets[0].sent.at(-1), {
+    type: 'chat',
+    text: 'build the whole feature',
+    mode: 'agent',
+    autonomous: true,
+  });
+  assert.throws(
+    () => validateClientMsg({ type: 'chat', text: 'just inspect', mode: 'plan', autonomous: true }),
+    /only valid in agent mode/,
+  );
+  assert.throws(
+    () => validateClientMsg({ type: 'chat', text: 'x', mode: 'agent', autonomous: 'yes' }),
+    /must be a boolean/,
+  );
 });
 
 test('an unknown mode is refused at the client, not sent for the server to reject', () => {
@@ -116,10 +136,10 @@ test('an unknown mode is refused at the client, not sent for the server to rejec
   // flag or a Python caller, neither of which the compiler ever sees.
   // `undefined` is absent from this list on purpose: it selects the parameter default,
   // which is a real mode. `null` does not, and must be refused like any other wrong value.
-  for (const bad of ['banana', 'CLAY', '', null, 1]) {
+  for (const bad of ['banana', 'SUPER', '', null, 1]) {
     assert.throws(() => stream.sendChat('x', bad), TypeError, `${String(bad)} was accepted`);
   }
-  assert.throws(() => stream.sendChat('   ', 'clay'), TypeError, 'an empty prompt is not a turn');
+  assert.throws(() => stream.sendChat('   ', 'plan'), TypeError, 'an empty prompt is not a turn');
   assert.equal(sockets[0].sent.length, 0);
 });
 
@@ -139,7 +159,7 @@ test('a presence activity outside the allowlist is refused', () => {
 
 test('an unknown client message type is refused', () => {
   assert.throws(() => validateClientMsg({ type: 'delete_everything' }), TypeError);
-  assert.throws(() => validateClientMsg({ type: 'edit_resend', text: 'x', mode: 'clay' }), TypeError, 'no messageId');
+  assert.throws(() => validateClientMsg({ type: 'edit_resend', text: 'x', mode: 'plan' }), TypeError, 'no messageId');
   assert.throws(() => validateClientMsg({ type: 'checkpoint_restore' }), TypeError, 'no checkpointId');
   assert.deepEqual(validateClientMsg({ type: 'ping' }), { type: 'ping' });
 });
@@ -159,7 +179,7 @@ test('an unreadable frame is announced as unreadable and never folded into the r
 
 test('deltas accumulate into the assistant turn, and a foreign delta is counted not merged', () => {
   let run = emptyRun();
-  run = applyServerMsg(run, { type: 'msg_start', msgId: 'm1', role: 'assistant', mode: 'stone' });
+  run = applyServerMsg(run, { type: 'msg_start', msgId: 'm1', role: 'assistant', mode: 'agent' });
   run = applyServerMsg(run, { type: 'delta', msgId: 'm1', text: 'Buil' });
   run = applyServerMsg(run, { type: 'delta', msgId: 'm1', text: 'ding' });
   assert.equal(run.text, 'Building');
@@ -168,6 +188,14 @@ test('deltas accumulate into the assistant turn, and a foreign delta is counted 
   run = applyServerMsg(run, { type: 'delta', msgId: 'm-other', text: ' ELSEWHERE' });
   assert.equal(run.text, 'Building');
   assert.equal(run.orphanDeltas, 1);
+});
+
+test('msg_start preserves the run autonomy flag', () => {
+  const run = applyServerMsg(emptyRun(), {
+    type: 'msg_start', msgId: 'm-auto', role: 'assistant', mode: 'agent', autonomous: true,
+  });
+  assert.equal(run.mode, 'agent');
+  assert.equal(run.autonomous, true);
 });
 
 test('tool_end lands on the tool it names, and an unknown toolId changes nothing', () => {
@@ -212,7 +240,7 @@ test('waitForRun resolves with the assembled turn', async () => {
   const { stream, sockets } = connected();
   sockets[0].open();
   const finished = stream.waitForRun();
-  sockets[0].deliver({ type: 'msg_start', msgId: 'm1', role: 'assistant', mode: 'clay' });
+  sockets[0].deliver({ type: 'msg_start', msgId: 'm1', role: 'assistant', mode: 'plan' });
   sockets[0].deliver({ type: 'delta', msgId: 'm1', text: 'done.' });
   sockets[0].deliver({ type: 'msg_end', msgId: 'm1', stopReason: 'done', creditsSpent: 4 });
   const run = await finished;

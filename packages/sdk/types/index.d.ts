@@ -17,7 +17,7 @@
 import type {
   CheckpointMeta,
   ClientMsg,
-  GolemMode,
+  ProductMode,
   MessageDto,
   OpResult,
   PairingCodeDto,
@@ -30,7 +30,7 @@ import type {
   StudioEventState,
 } from '@golem/shared';
 
-export type { CheckpointMeta, ClientMsg, GolemMode, MessageDto, PlanId, QuotaState, ServerMsg };
+export type { CheckpointMeta, ClientMsg, ProductMode, MessageDto, PlanId, QuotaState, ServerMsg };
 
 // ------------------------------------------------------------------- numbers
 
@@ -79,7 +79,7 @@ export function messageFromBody(body: unknown, status: number): string;
 export const WS_SUBPROTOCOL: 'golem.v1';
 export const WS_JWT_PREFIX: 'golem.jwt.';
 export const DEFAULT_BASE_URL: string;
-export const MODES: readonly GolemMode[];
+export const MODES: readonly ProductMode[];
 export const PRESENCE_ACTIVITIES: readonly ('viewing' | 'typing' | 'building')[];
 export const CLIENT_MSG_TYPES: readonly ClientMsg['type'][];
 export const HEADERS: Readonly<{
@@ -264,7 +264,8 @@ export interface RunTool {
 
 export interface Run {
   msgId: string | null;
-  mode: GolemMode | null;
+  mode: ProductMode | null;
+  autonomous?: boolean;
   text: string;
   tools: RunTool[];
   phase: string | null;
@@ -312,8 +313,8 @@ export class SessionStream {
   on(type: string, handler: (payload: never, type?: string) => void): () => void;
   off(type: string, handler: (payload: never, type?: string) => void): void;
   send(msg: ClientMsg): boolean;
-  sendChat(text: string, mode?: GolemMode): boolean;
-  editAndResend(messageId: string, text: string, mode?: GolemMode): boolean;
+  sendChat(text: string, mode?: ProductMode, autonomous?: boolean): boolean;
+  editAndResend(messageId: string, text: string, mode?: ProductMode, autonomous?: boolean): boolean;
   stop(): boolean;
   resume(): boolean;
   ping(): boolean;

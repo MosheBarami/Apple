@@ -30,8 +30,8 @@ export const HEADERS = Object.freeze({
   pluginProtocol: 'X-Golem-Plugin-Protocol',
 });
 
-/** Modes the agent protocol accepts. Mirrors `GolemMode` in @golem/shared. */
-export const MODES = Object.freeze(['clay', 'stone', 'rune']);
+/** Modes the agent protocol accepts. Mirrors `ProductMode` in @golem/shared. */
+export const MODES = Object.freeze(['plan', 'agent']);
 
 /**
  * Client message types the session socket accepts. Mirrors `ClientMsg` in @golem/shared.

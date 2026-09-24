@@ -6,13 +6,12 @@
 // mode that arrived from a CLI flag or from Python.
 //
 // WHY THIS TEST EXISTS. A copy nothing checks is drift with a delay on it. Adding a fourth
-// mode to `GolemMode`, or a `pause` variant to `ClientMsg`, would leave this SDK rejecting a
+// mode to `ProductMode`, or a `pause` variant to `ClientMsg`, would leave this SDK rejecting a
 // message the server accepts — and the SDK's own tests would stay green, because they only
 // ever ask the SDK about itself.
 //
 // EVERY ASSERTION IS ANCHORED TO ONE DECLARATION, never to "this string appears in the file".
-// `'clay'` occurs in several places in shared/index.ts; a search would be satisfied by any of
-// them and would never go red.
+// The mode names also occur in product copy, so the assertion is anchored to the exported union.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -38,8 +37,8 @@ function declaration(header) {
 
 const quoted = (text) => [...text.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 
-test('MODES is exactly the GolemMode union', () => {
-  const declared = quoted(declaration('export type GolemMode ='));
+test('MODES is exactly the ProductMode union', () => {
+  const declared = quoted(declaration('export type ProductMode ='));
   assert.ok(declared.length >= 2, 'the union was not parsed — fix this test before trusting it');
   assert.deepEqual([...MODES].sort(), [...declared].sort());
 });
@@ -47,7 +46,7 @@ test('MODES is exactly the GolemMode union', () => {
 test('CLIENT_MSG_TYPES is exactly the set of ClientMsg variants', () => {
   const body = declaration('export type ClientMsg =');
   // Each variant is `{ type: 'name'; ... }`. Anchored to the `type:` field so that a
-  // `mode: 'clay'` or a comment elsewhere in the union cannot satisfy the match.
+  // A mode literal or a comment elsewhere in the union cannot satisfy the match.
   const declared = [...body.matchAll(/\{\s*type:\s*'([a-z_]+)'/g)].map((m) => m[1]);
   assert.ok(declared.length >= 5, `parsed only ${declared.length} variants — the shape changed`);
   assert.deepEqual([...CLIENT_MSG_TYPES].sort(), [...new Set(declared)].sort());
@@ -162,7 +161,7 @@ test('every SDK client defaults to the canonical origin, never the legacy host',
  * stored session's `mode: AppleMode` meaning the same thing". There is no AppleMode. The sentences
  * are not decoration — they exist to tell the next person WHICH DECLARATION is load-bearing before
  * they rename it, and they pointed at a declaration that could not be found, so the warning was
- * unactionable. The type is `GolemMode`, and it is on the wire and in the Durable Object's SQLite.
+ * unactionable. The type is `ProductMode`, and it is on the wire and in the Durable Object's SQLite.
  *
  * This lives in the SDK suite because packages/shared is exempt from `pnpm -r test` by
  * scripts/check-workspace-coverage.mjs ("no runtime behaviour of its own"), and this file already
@@ -182,10 +181,10 @@ test('every backticked *Mode name in @golem/shared is a type that exists', () =>
   assert.deepEqual(modeNamesIn('still carries `mode: AppleMode`, the DO persists it'), ['AppleMode'],
     'the extractor no longer sees the form this defect took — re-aim it before trusting the result');
   const named = modeNamesIn(source);
-  assert.ok(named.includes('GolemMode'),
-    `the scan of shared found ${JSON.stringify(named)} and not GolemMode — re-aim this test`);
+  assert.ok(named.includes('ProductMode'),
+    `the scan of shared found ${JSON.stringify(named)} and not ProductMode — re-aim this test`);
   const declared = new Set([...source.matchAll(/export type ([A-Za-z]*Mode)\b/g)].map((m) => m[1]));
-  assert.ok(declared.has('GolemMode'), 'GolemMode is no longer declared — re-aim this test');
+  assert.ok(declared.has('ProductMode'), 'ProductMode is no longer declared — re-aim this test');
   const invented = named.filter((n) => !declared.has(n));
   assert.deepEqual(invented, [],
     `these comments name types that do not exist: ${invented.join(', ')} (declared: ${[...declared].join(', ')})`);

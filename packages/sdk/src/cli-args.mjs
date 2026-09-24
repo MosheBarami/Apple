@@ -36,7 +36,7 @@ export const COMMANDS = Object.freeze({
   },
   chat: {
     args: ['projectId', 'text'],
-    flags: { mode: 'string', timeout: 'number' },
+    flags: { mode: 'string', timeout: 'number', autonomous: 'boolean' },
     describe: 'send one turn over the session socket and print the reply',
   },
   purge: { args: ['projectId'], destructive: true, describe: 'delete a project session and its history' },

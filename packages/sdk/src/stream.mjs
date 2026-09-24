@@ -41,6 +41,7 @@ export function emptyRun() {
   return {
     msgId: null,
     mode: null,
+    autonomous: false,
     text: '',
     tools: [],
     phase: null,
@@ -72,7 +73,12 @@ export function applyServerMsg(run, msg) {
   if (!msg || typeof msg.type !== 'string') return run;
   switch (msg.type) {
     case 'msg_start':
-      return { ...emptyRun(), msgId: msg.msgId ?? null, mode: msg.mode ?? null };
+      return {
+        ...emptyRun(),
+        msgId: msg.msgId ?? null,
+        mode: msg.mode ?? null,
+        autonomous: msg.autonomous === true,
+      };
     case 'delta': {
       if (typeof msg.text !== 'string') return run;
       // An id-less delta belongs to the live run by definition — there is nothing to
@@ -131,6 +137,12 @@ export function validateClientMsg(msg) {
     // CLI flag or a Python caller. The server would take an unknown mode and reach the
     // ingress guard with it; refusing here names the mistake where it was made.
     if (!MODES.includes(msg.mode)) throw new TypeError(`mode must be one of ${MODES.join(', ')}`);
+    if (msg.autonomous !== undefined && typeof msg.autonomous !== 'boolean') {
+      throw new TypeError('autonomous must be a boolean when provided');
+    }
+    if (msg.mode !== 'agent' && msg.autonomous === true) {
+      throw new TypeError('autonomous is only valid in agent mode');
+    }
   }
   if (msg.type === 'edit_resend' && (typeof msg.messageId !== 'string' || msg.messageId === '')) {
     throw new TypeError('edit_resend needs a messageId');
@@ -259,12 +271,12 @@ export class SessionStream {
     return true;
   }
 
-  sendChat(text, mode = 'stone') {
-    return this.send({ type: 'chat', text, mode });
+  sendChat(text, mode = 'agent', autonomous = false) {
+    return this.send({ type: 'chat', text, mode, ...(mode === 'agent' && autonomous ? { autonomous: true } : {}) });
   }
 
-  editAndResend(messageId, text, mode = 'stone') {
-    return this.send({ type: 'edit_resend', messageId, text, mode });
+  editAndResend(messageId, text, mode = 'agent', autonomous = false) {
+    return this.send({ type: 'edit_resend', messageId, text, mode, ...(mode === 'agent' && autonomous ? { autonomous: true } : {}) });
   }
 
   stop() {
