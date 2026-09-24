@@ -28,7 +28,17 @@ import {
   versionsIn,
   tryLock,
   run,
+  trainingInvocation,
 } from './train-forever.mjs';
+
+test('CPU training uses the local CPU wrapper and enough time for the same full config', () => {
+  const gpu = trainingInvocation(false, 'lora-apple-v19.yaml', 400);
+  const cpu = trainingInvocation(true, 'lora-apple-v19.yaml', 400);
+  assert.deepEqual(gpu.args, ['-m', 'mlx_lm', 'lora', '--config', 'lora-apple-v19.yaml']);
+  assert.deepEqual(cpu.args, ['src/mlx_lora_cpu.py', '--config', 'lora-apple-v19.yaml']);
+  assert.ok(cpu.timeoutMs > gpu.timeoutMs);
+  assert.equal(cpu.device, 'cpu');
+});
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const V5_YAML = readFileSync(join(HERE, '../lora-apple-v5.yaml'), 'utf8');

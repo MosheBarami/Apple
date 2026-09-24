@@ -56,6 +56,11 @@ const MIN = 60000;
 const TRAIN_SEC_PER_ITER = 4; // measured on v6: 75 iters incl. load and 4 val passes in 4.7 min
 const TIMEOUT = { template: 15 * MIN, eval: 240 * MIN, score: 30 * MIN, convert: 10 * MIN, hf: 30 * MIN };
 const trainTimeout = (iters) => 10 * MIN + 3 * iters * TRAIN_SEC_PER_ITER * 1000;
+export function trainingInvocation(cpu, configPath, iters) {
+  return cpu
+    ? { args: ['src/mlx_lora_cpu.py', '--config', configPath], timeoutMs: 8 * 60 * MIN, device: 'cpu' }
+    : { args: ['-m', 'mlx_lm', 'lora', '--config', configPath], timeoutMs: trainTimeout(iters), device: 'gpu' };
+}
 const FOREVER_CMD = /train-forever\.mjs/;
 const GPU_JOB = /^\S*[Pp]ython[\d.]*\s+(?:-m\s+mlx_lm\b|\S*(?:generate_eval|mlx_to_peft)\.py|\S*\/mlx_lm[.\w]*)/;
 
@@ -800,12 +805,13 @@ async function runVersion(ctx, entry) {
   if (!(await acquireGpu())) { entry.status = 'stopped'; return; }
   const logPath = join(L.out, `v${v}-train.log`);
   entry.trainLog = rel(logPath);
-  say(`v${v}: training (${cfg.iters} iters) -> ${entry.trainLog}`);
+  const training = trainingInvocation(ctx.cpu, rel(cfgPath), cfg.iters);
+  say(`v${v}: training (${cfg.iters} iters, ${training.device}) -> ${entry.trainLog}`);
   mkdirSync(adapterDir, { recursive: true });
-  const tr = await run(PY, ['-m', 'mlx_lm', 'lora', '--config', rel(cfgPath)], { log: logPath, timeoutMs: trainTimeout(cfg.iters) });
+  const tr = await run(PY, training.args, { log: logPath, timeoutMs: training.timeoutMs });
   if (tr.stopped) { entry.status = 'stopped'; return; }
   const result = parseTrainLog(readFileSync(logPath, 'utf8'));
-  entry.train = { completed: result.completed, watchdog: result.watchdog, crashed: result.crashed, timedOut: tr.timedOut, lastIter: result.lastIter, exitCode: tr.code, vals: result.vals };
+  entry.train = { device: training.device, completed: result.completed, watchdog: result.watchdog, crashed: result.crashed, timedOut: tr.timedOut, lastIter: result.lastIter, exitCode: tr.code, vals: result.vals };
   const verdict = classifyTraining(result, cfg.iters);
   const cause = result.watchdog ? 'Metal watchdog' : tr.timedOut ? 'timeout' : result.crashed ? 'crashed' : null;
   entry.trainNote = verdict.note && [verdict.note, cause].filter(Boolean).join(', ');
@@ -948,7 +954,7 @@ async function backoff(ctx, failures, why) {
 
 async function main() {
   const args = new Set(process.argv.slice(2));
-  const ctx = { dry: args.has('--dry-run'), once: args.has('--once'), publish: args.has('--publish'), post: args.has('--post') };
+  const ctx = { dry: args.has('--dry-run'), once: args.has('--once'), publish: args.has('--publish'), post: args.has('--post'), cpu: args.has('--cpu') };
   L = layout(ctx.dry);
   for (const d of new Set([L.out, dirname(L.gpuLock)])) {
     mkdirSync(d, { recursive: true });
