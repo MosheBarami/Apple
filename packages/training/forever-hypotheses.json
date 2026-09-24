@@ -1,0 +1,60 @@
+{
+  "$comment": "Ordered one-lever changes for src/train-forever.mjs, each applied to the CURRENT best config (v5 at first). 'set' keys are lora YAML keys (dotted for nested: lora_parameters.rank); 'lr_schedule': 'cosine' is computed from the derived lr/iters/accumulation. 'data' ops rewrite train.jsonl only (valid/test copied untouched, so val loss and the pinned eval stay comparable). Grounding: v4 (docs/evidence/apple-v4-evaluation-2026-09-19.md) learned tool calling, not game logic (0/8), val bottomed at iter 100 of 300; v5 (lora-apple-v5.yaml, commit 9ba222f) trajectory 17/23 but finish fell 6/7 -> 3/7 (invents tools where it should report), game logic still 0/8, val bottomed at 225 then the Metal watchdog killed it at 250. There are no unused verified sources: every row of data/game-logic-seeds-*, data/tool-trajectories-v1 and game-logic-synth-v1 is already in mlxdata-apple-v5 or in a held-out family; data/train.jsonl is the harvested NOT_READY set and is excluded on purpose.",
+  "hypotheses": [
+    {
+      "id": "finish-x3",
+      "why": "v5 finish fell to 3/7 from v4's 6/7: it calls invented tools where it should stop and report. Only 35 of 252 train rows are wrap-up (prose) turns; tripling them targets the regression directly.",
+      "data": [{ "op": "upweight", "select": "finish", "factor": 3 }]
+    },
+    {
+      "id": "mask-prompt",
+      "why": "v5 takes loss on the whole row, and the system prompt plus tool schemas are most of every trajectory row's tokens. Masking the prompt spends all gradient on the answer span. Safe for Llama: mlx_lm's mask offset uses the same add_generation_prompt prefix as generate_eval.py (pre-flight checks it).",
+      "set": { "mask_prompt": true }
+    },
+    {
+      "id": "cosine-lr",
+      "why": "Both runs overfit after a mid-run minimum (v4 at 100, v5 at 225) at a constant lr. A short warmup plus cosine decay to lr/10 lowers the late-run step size where the val curve turned.",
+      "set": { "lr_schedule": "cosine" }
+    },
+    {
+      "id": "lr-2e-5",
+      "why": "Gentler updates may keep the base's finishing behaviour (base finish 4/7) while still learning calls. Change only the rate to isolate its effect on the pinned evaluation.",
+      "set": { "learning_rate": 2e-5 }
+    },
+    {
+      "id": "iters-800",
+      "why": "The best validation checkpoint may appear after v5's 400 iterations. Double only the training horizon to test that possibility without changing the learning rate.",
+      "set": { "iters": 800 }
+    },
+    {
+      "id": "lr-1e-4",
+      "why": "Game logic has not moved at 5e-5 in two runs (0/8, 0/8). A larger step tests whether the logic track is under-trained rather than out of reach; best-val selection guards against the overshoot.",
+      "set": { "learning_rate": 1e-4 }
+    },
+    {
+      "id": "game-logic-x2",
+      "why": "v4's miss analysis: the model copies what the modules LOOK like, not what they COMPUTE. 69 logic rows against 183 trajectory rows; doubling the logic rows shifts the mix toward the checks without new data.",
+      "data": [{ "op": "upweight", "select": "game-logic", "factor": 2 }]
+    },
+    {
+      "id": "drop-batch-c",
+      "why": "Batch C (16 visual-craft families) arrived in v5 together with the finish regression, and teaches hand-built UI that D-UIONLY-1 now refuses (commit 9ba222f). Dropping it isolates whether it caused the finish loss.",
+      "data": [{ "op": "dropFamilies", "families": ["ui-restyle-outline-gradient", "ui-currency-pill-hud", "ui-round-side-buttons", "ui-scroll-card-grid", "ui-safe-icon-glyphs", "ui-button-depth", "ui-reward-popup", "map-layered-landform", "map-paths-plaza", "map-vegetation-scatter", "map-fence-line", "props-lowpoly-pine", "props-lamp-post", "props-market-stall", "lighting-bright-stylized", "lighting-golden-warm"] }]
+    },
+    {
+      "id": "layers-all",
+      "why": "v5 adapts only the last 16 of 28 layers. Computing the right arithmetic (the game-logic gap) may need the earlier layers; rank-8 on all 28 is still ~49MB, well under the 300MB serving cap.",
+      "set": { "num_layers": -1 }
+    },
+    {
+      "id": "layers-8",
+      "why": "The opposite direction: fewer adapted layers disturb the base less, which may restore finishing (base 4/7) and reduce overfitting on 252 rows.",
+      "set": { "num_layers": 8 }
+    },
+    {
+      "id": "dropout-0.05",
+      "why": "252 rows at ~6 epochs overfit (val turns mid-run in v4 and v5). LoRA dropout 0.05 is the cheapest regulariser that changes nothing else.",
+      "set": { "lora_parameters.dropout": 0.05 }
+    }
+  ]
+}
