@@ -128,6 +128,12 @@ export interface AgentCtx {
    */
   assetSources?: AssetSourcePolicy;
   /**
+   * Put the asset-source question to whoever is here, and say whether anybody was (F-059). Called
+   * by a refusal only while the answer is owed; it never allows anything. Absent in the eval
+   * harness, which then gets the unasked refusal.
+   */
+  askAssetSources?: () => boolean;
+  /**
    * The user the run acts for: the project owner (`bind.ownerId`, recorded on the run as `userId`).
    * `generate_model_external` creates its Model in this user's own Roblox account with their
    * connected key. Optional because the eval harness and the admin route have no run and no user;
@@ -3904,7 +3910,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const usable = chosen.filter((c) => allowed.includes(c.source));
       if (usable.length) return usable;
       return {
-        error: sourceRefusal(ctx.assetSources, chosen[0]?.source ?? 'procedural')
+        error: sourceRefusal(ctx.assetSources, chosen[0]?.source ?? 'procedural', ctx.askAssetSources)
           ?? 'no asset source is available for this need',
         // The unusable list is returned too: a model told only "no" cannot explain to the person
         // what it would have done, and that explanation is what makes the setting make sense.
@@ -4140,7 +4146,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
-      const refused = sourceRefusal(ctx.assetSources, 'creator_store');
+      const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources);
       // BEFORE the search, never after. An empty result would read as "the Creator Store has
       // nothing like that" — a claim about a catalogue this caller was never allowed to look in.
       if (refused) return { error: refused };
@@ -4205,7 +4211,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       // avoids above. `user_supplied` is never refused here — see
       // `PROVENANCE_SOURCE` in asset-policy.ts for why a pasted id is the customer's own choice, not
       // Apple's, and still faces the full gate immediately below regardless.
-      const sourceRefused = provenanceRefusal(ctx.assetSources, provenance);
+      const sourceRefused = provenanceRefusal(ctx.assetSources, provenance, ctx.askAssetSources);
       if (sourceRefused) return { error: sourceRefused };
 
       const integrity: DetailsIntegrity = { missing: [] };
@@ -4565,7 +4571,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     // A refusal or a still-processing upload changed nothing in the place.
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
     run: async (ctx, a) => {
-      const refused = sourceRefusal(ctx.assetSources, 'creator_store');
+      const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources);
       if (refused) return { error: refused };
       const pick = a.id
         ? libraryModel(String(a.id))

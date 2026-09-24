@@ -341,6 +341,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     frames,
     playtest,
     presence,
+    assetSourcesOwed,
     sendChat,
     signalPresence,
     editAndResend,
@@ -496,6 +497,20 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
       );
     }
   };
+  // F-059: a running build needed an asset source nobody has chosen, and the worker says so. The
+  // same dialog opens, holding no message — the build is already running and the answer reaches it.
+  // Answered in Studio instead: read the stored policy again and close a dialog that holds nothing.
+  const wasOwed = useRef(false);
+  useEffect(() => {
+    if (assetSourcesOwed) {
+      wasOwed.current = true;
+      if (owesAnswer(sourcePolicy)) setSourceAsk((cur) => cur ?? { held: null });
+    } else if (wasOwed.current) {
+      wasOwed.current = false;
+      void qc.invalidateQueries({ queryKey: ['personalisation', projectId] });
+      setSourceAsk((cur) => (cur && cur.held === null ? null : cur));
+    }
+  }, [assetSourcesOwed]); // eslint-disable-line react-hooks/exhaustive-deps
   const selfUserId = session?.user?.id ?? null;
 
   const projectNameRef = useRef('this project');

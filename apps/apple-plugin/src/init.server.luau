@@ -195,6 +195,41 @@ text("Your place. Your control.", 15, true)
 -- Studio ends the pairing; say so before the customer finds out from a code that no longer works.
 local status = text("Not connected. A pairing lasts until Studio closes; after a restart, enter a new code from your Apple project.", 17, false)
 local place = text(game.Name, 13, true)
+
+-- F-059, 2026-09-24: WHERE ASSETS MAY COME FROM, asked here as well as on the web. A build refused the
+-- Creator Store because nobody had answered, and a person working in Studio had nowhere to answer.
+-- The same two choices in the same words as the web dialog (apps/web/src/lib/asset-sources.ts; the
+-- entry test fails if they drift), shown only while the worker says a build is waiting on it. The
+-- answer is the same project preference the web saves, and the running build reads it on its next step.
+local SOURCE_CHOICES = {
+	{ choice = "creator_store", title = "The Roblox Creator Store", does = "Apple searches the free Creator Store and references what it finds directly in your place.", ticked = true },
+	{ choice = "from_scratch", title = "Make it from scratch", does = "Apple builds the geometry in your place out of parts, so nothing comes from anywhere else.", ticked = false },
+}
+local sourcesHeading = text("Where should Apple get assets from?", 20, false)
+sourcesHeading.Font = Enum.Font.SourceSansSemibold
+local sourceItems: { any } = { sourcesHeading, text("A build is waiting on this. Pick as many as you like. This is remembered for this project.", 14, true) }
+local sourceButtons = {}
+local function drawSource(entry: any, button: TextButton)
+	button.Text = (if entry.ticked then "✓  " else "○  ") .. entry.title
+end
+for _, entry in SOURCE_CHOICES do
+	local button = control("")
+	drawSource(entry, button)
+	sourceButtons[entry] = button
+	table.insert(sourceItems, button)
+	table.insert(sourceItems, text(entry.does, 13, true))
+end
+local sourcesSave = control("Use these sources")
+table.insert(sourceItems, sourcesSave)
+local sourcesNote = text("", 13, false)
+sourcesNote.Visible = false
+local function showSources(owed: boolean, message: string?)
+	for _, item in sourceItems do item.Visible = owed end
+	sourcesNote.Text = message or ""
+	sourcesNote.Visible = message ~= nil
+	if owed then widget.Enabled = true end
+end
+showSources(false, nil)
 		text("Pair with a project at apple.moshe-barami111.workers.dev. While connected, Apple may read this place’s objects and scripts, the current selection, Studio Output messages, and snapshots of the active 3D viewport over HTTPS.", 14, true)
 
 order += 1
@@ -229,6 +264,7 @@ local function refreshAccess()
 		allowEdits = false
 		confirmingEdits = false
 		appleRunActive = false
+		showSources(false, nil)
 	end
 	permission.Text = if allowEdits and not editModeActive() then "Access: edits paused while Studio is testing"
 		elseif allowEdits then "Access: edits allowed for this connection" else "Access: inspect only"
@@ -311,7 +347,29 @@ bridge = Bridge.new({
 	onActivity = function(message: string)
 		if not disposed then activity.Text = string.sub(message, 1, 240) end
 	end,
+	onAssetSources = function(value: any)
+		if disposed or type(value) ~= "table" then return end
+		showSources(value.owed == true, if type(value.message) == "string" then value.message else nil)
+	end,
 })
+
+for entry, button in sourceButtons do
+	table.insert(connections, button.Activated:Connect(function()
+		entry.ticked = not entry.ticked
+		drawSource(entry, button)
+	end))
+end
+table.insert(connections, sourcesSave.Activated:Connect(function()
+	if disposed then return end
+	local picked = {}
+	for _, entry in SOURCE_CHOICES do
+		if entry.ticked then table.insert(picked, entry.choice) end
+	end
+	local sent = #picked > 0 and bridge:answerAssetSources(picked)
+	sourcesNote.Text = if #picked == 0 then "With none of these, Apple can only place plain parts. Pick at least one."
+		elseif sent then "Saving…" else "Connect to Apple first."
+	sourcesNote.Visible = true
+end))
 
 table.insert(connections, connect.Activated:Connect(function()
 	if disposed or connecting then return end

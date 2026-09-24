@@ -137,8 +137,9 @@ import {
   normaliseMemory,
   type MemoryMode,
 } from '../memory';
-import { memoryAccessFor } from '../memory-store';
-import { EMPTY_PERSONALISATION, applyToolPermissions, deniedTools, memoryModeOf, personalisationForProject } from '../preferences';
+import { memoryAccessFor, putMemoryEntry } from '../memory-store';
+import { answerOwed, policyFromStudioAnswer } from '../asset-policy';
+import { EMPTY_PERSONALISATION, applyToolPermissions, deniedTools, memoryModeOf, personalisationForProject, preferencesToEntries } from '../preferences';
 import { allModels } from '../providers/registry';
 import { recordEvent, type BuildOutcome } from '../analytics';
 import { flushEvents } from '../analytics-sink';
@@ -3554,6 +3555,9 @@ export class SessionDO extends DurableObject<Env> {
     //
     //   The run's own state carries the id across the eviction, so it is taken from there. ]]
     this.currentMsgId = agent.msgId;
+    // F-059: an answer given while the question is open (web or Studio) applies from this step, and
+    // an eviction's lost policy is read back rather than refused as "never asked".
+    if (this.pinnedPrefs === null || (await this.assetSourcesAskedNow())) await this.refreshPinnedPrefs();
     if (agent.step >= MAX_RUN_STEPS) {
       agent.finalText = agent.finalText || `I reached the ${MAX_RUN_STEPS}-step ceiling for this message. Work already applied to the project is saved.`;
       await this.finishRun(agent, 'incomplete', undefined, undefined, 'step_limit');
@@ -5230,6 +5234,82 @@ export class SessionDO extends DurableObject<Env> {
    */
   private pinnedPrefs: { memory_mode?: MemoryMode; asset_sources?: AssetSourcePolicy } | null = null;
 
+  //[[ F-059: THE ASSET-SOURCE QUESTION, PUT TO WHOEVER IS HERE WHEN A BUILD FIRST NEEDS IT.
+  //
+  //   The web asks before the first build; Studio had no question at all, so a build started
+  //   without the web could never use the library and hand-built every prop out of Parts. A
+  //   refusal whose answer is owed calls `askAssetSources`: the browsers get `asset_sources_owed`
+  //   and the Studio dock gets `assetSources.owed` on its poll. Either surface saves the same
+  //   project `asset_sources` preference, and while the question is open every step re-reads it,
+  //   so the answer reaches THIS run. Asking never allows anything. ]]
+  private assetSourcesAsked: boolean | null = null;
+
+  private async assetSourcesAskedNow(): Promise<boolean> {
+    if (this.assetSourcesAsked === null) this.assetSourcesAsked = (await this.ctx.storage.get<boolean>('assetSourcesAsked')) === true;
+    return this.assetSourcesAsked;
+  }
+
+  /** Synchronous because a tool's refusal is; the storage write is ordered by the output gate. */
+  private askAssetSources(): boolean {
+    const browser = this.ctx.getWebSockets('client').some((ws) => ws.readyState === 1);
+    if (!browser && !this.pluginConnectedNow()) return false;
+    this.assetSourcesAsked = true;
+    void this.ctx.storage.put('assetSourcesAsked', true);
+    this.broadcast({ type: 'asset_sources_owed', owed: true });
+    return true;
+  }
+
+  /**
+   * Re-resolve the pinned preferences through the same layers a run start does. Used while the
+   * question is open and after an eviction, which drops the pinned copy — and an absent policy
+   * reads as "never asked", which is how an answered project could still refuse the library.
+   */
+  private async refreshPinnedPrefs(): Promise<void> {
+    const bind = await this.bind();
+    if (!bind) return;
+    try {
+      const access = await memoryAccessFor(this.env, bind.ownerId, [bind.projectId]);
+      const fresh = await personalisationForProject(this.env, access, { projectId: bind.projectId }, crypto.randomUUID().slice(0, 8), {
+        knownModelIds: allModels().map((m) => m.id),
+        knownToolNames: toolNames(),
+      });
+      this.pinnedPrefs = fresh.prefs;
+    } catch {
+      return;
+    }
+    if (!answerOwed(this.pinnedPrefs?.asset_sources) && (await this.assetSourcesAskedNow())) {
+      this.assetSourcesAsked = false;
+      await this.ctx.storage.delete('assetSourcesAsked');
+      this.broadcast({ type: 'asset_sources_owed', owed: false });
+    }
+  }
+
+  /**
+   * Store the Studio dock's answer where the web dialog stores its own: the project-scoped
+   * `asset_sources` preference, written as the project owner. Returns what the dock should say
+   * when it did not take, or null when it did.
+   */
+  private async answerAssetSourcesFromStudio(value: unknown): Promise<string | null> {
+    const policy = policyFromStudioAnswer(value);
+    if (!policy) return 'Pick at least one source.';
+    const bind = await this.bind();
+    if (!bind) return 'This project is not ready yet. Try again in a moment.';
+    try {
+      const access = await memoryAccessFor(this.env, bind.ownerId, [bind.projectId]);
+      const [row] = preferencesToEntries({ asset_sources: policy }, 'project', bind.projectId);
+      const put = row ? await putMemoryEntry(this.env, access, { ...row, source: 'user' }) : null;
+      if (!put?.ok) return 'Apple could not save that. Try again.';
+    } catch {
+      return 'Apple could not save that. Try again.';
+    }
+    await this.refreshPinnedPrefs();
+    // The same outcome the web dialog refuses: a higher layer narrowed the answer to nothing.
+    if (answerOwed(this.pinnedPrefs?.asset_sources)) {
+      return 'Your account or organisation does not allow the sources you picked. Change it in Settings under Connections.';
+    }
+    return null;
+  }
+
   private async updateMemory(agent?: AgentState) {
     const mode = agent ? this.memoryModeOn(agent) : memoryModeOf(this.pinnedPrefs);
     if (!memoryWritable(mode)) return;
@@ -5304,6 +5384,7 @@ export class SessionDO extends DurableObject<Env> {
       // the user's own account (generate_model_external) needs it. No run, no user.
       userId: agent?.userId,
       assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
+      askAssetSources: () => this.askAssetSources(),
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
       // "can you build right now" is no. The connection half now comes from the same rule the
       // header and the status broadcast use.
@@ -5850,6 +5931,8 @@ export class SessionDO extends DurableObject<Env> {
     if (body.state) {
       await this.ctx.storage.put('pluginState', body.state);
     }
+    // F-059: the dock's answer to the asset-source question rides on the poll it was given on.
+    const sourcesNote = body.assetSourcesAnswer !== undefined ? await this.answerAssetSourcesFromStudio(body.assetSourcesAnswer) : null;
 
     //[[ IS THIS THE PLACE THIS PROJECT IS PAIRED TO?
     //
@@ -6063,6 +6146,11 @@ export class SessionDO extends DurableObject<Env> {
     // Omitted entirely when there is nothing to say, which is the common case. An
     // older plugin that does not read this field is unaffected either way.
     if (notice) res.client = notice;
+    // Owed only while a build has asked; answered is said once, to the dock that answered.
+    const owed = await this.assetSourcesAskedNow();
+    if (owed || body.assetSourcesAnswer !== undefined) {
+      res.assetSources = { owed, ...(sourcesNote ? { message: sourcesNote } : {}) };
+    }
     return json(res);
   }
 

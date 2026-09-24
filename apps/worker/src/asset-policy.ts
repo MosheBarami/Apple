@@ -7,7 +7,7 @@
 // PURE ON PURPOSE. No env, no D1, no DO. The policy is resolved once where the user is known and
 // handed here as a value, which is what lets the decision be tested without standing up a Durable
 // Object — and what stops a per-call lookup appearing in the hot path of every tool.
-import type { AssetSourceChoice, AssetSourcePolicy } from '@golem/shared';
+import { ASSET_SOURCE_CHOICES, type AssetSourceChoice, type AssetSourcePolicy } from '@golem/shared';
 import { ASSET_SOURCES, type AssetSource, type AssetProvenanceSource } from './assets';
 
 // Re-exported so a test in this module's own suite can walk the real engine-source list rather
@@ -87,15 +87,29 @@ export function allowedSources(policy: AssetSourcePolicy | null | undefined): As
 }
 
 /**
+ * Does this project still owe the answer? No policy, or one that allows nothing — the same two
+ * states the web dialog treats as unanswered (`owesAnswer`, apps/web/src/lib/asset-sources.ts).
+ * Owing the answer allows NOTHING; this only decides whether somebody should be asked.
+ */
+export function answerOwed(policy: AssetSourcePolicy | null | undefined): boolean {
+  return !policy || !Array.isArray(policy.allow) || policy.allow.length === 0;
+}
+
+/**
  * Why this source may not be used, or null when it may.
  *
  * The sentence names the switch AND what is still available, because the reader is an agent: told
  * only "not allowed", it reports a capability gap that is really a preference, and the person
  * reading the transcript concludes the product cannot do something it can.
+ *
+ * `ask` puts the question to whoever is here (F-059) and says whether anybody was. It is called
+ * only when the answer is OWED — a person who switched a source off has answered — and asking
+ * changes nothing about what is allowed.
  */
 export function sourceRefusal(
   policy: AssetSourcePolicy | null | undefined,
   source: AssetSource,
+  ask?: () => boolean,
 ): string | null {
   const allowed = allowedSources(policy);
   if (allowed.includes(source)) return null;
@@ -105,7 +119,18 @@ export function sourceRefusal(
 
   // NEVER ANSWERED and DELIBERATELY TURNED OFF are different facts with different fixes: one
   // person needs to answer a dialog, the other needs to change their mind.
-  if (!policy || policy.allow.length === 0) {
+  if (answerOwed(policy)) {
+    // F-059: told to "build from parts for now", round 7 hand-built 150+ props out of Parts while
+    // the library had every one of them. With somebody there to answer, the question goes to them
+    // and the agent is told to get on with work that needs no assets.
+    if (ask?.() === true) {
+      return `this project has not said yet which asset sources Apple may use, so ${name} is not `
+        + 'available yet. Apple has just asked the person (the question is showing in the Apple web app '
+        + 'and in the Studio dock), and their answer applies to this run as soon as they give it. Do not '
+        + 'hand-build a replacement for this. Carry on with the parts that need no assets (scripts, UI, '
+        + 'terrain, layout) and try this again in a few steps; build it from parts only if they still '
+        + 'have not answered once everything else is done.';
+    }
     return `this project has not been asked which asset sources it may use, so ${name} is not `
       + 'available yet. Apple asks before the first build, and the answer is kept in Settings under '
       + 'Connections. Build from parts for now, or ask the person to pick their sources.';
@@ -116,6 +141,23 @@ export function sourceRefusal(
     : 'Nothing else is allowed either.';
   return `${name} is switched off for this project, so it cannot be used. It can be turned back `
     + `on in Settings under Connections. ${rest}`;
+}
+
+/**
+ * The policy a Studio dock answer stands for, or null when it is not an answer.
+ *
+ * The same thing the web dialog saves when "Remember this and stop asking" is ticked: the picked
+ * choices, remembered. Anything outside the live vocabulary is dropped, and nothing picked is not
+ * an answer — storing it would leave the project still owing one.
+ */
+export function policyFromStudioAnswer(value: unknown): AssetSourcePolicy | null {
+  const allow = (value as { allow?: unknown } | null)?.allow;
+  if (!Array.isArray(allow)) return null;
+  const out: AssetSourceChoice[] = [];
+  for (const c of allow) {
+    if ((ASSET_SOURCE_CHOICES as readonly unknown[]).includes(c) && !out.includes(c as AssetSourceChoice)) out.push(c as AssetSourceChoice);
+  }
+  return out.length ? { mode: 'remember', allow: out } : null;
 }
 
 /**
@@ -156,8 +198,9 @@ export const PROVENANCE_SOURCE: Readonly<Record<AssetProvenanceSource, AssetSour
 export function provenanceRefusal(
   policy: AssetSourcePolicy | null | undefined,
   provenance: AssetProvenanceSource,
+  ask?: () => boolean,
 ): string | null {
   const source = PROVENANCE_SOURCE[provenance];
   if (source === null) return null;
-  return sourceRefusal(policy, source);
+  return sourceRefusal(policy, source, ask);
 }

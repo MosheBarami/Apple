@@ -47,6 +47,8 @@ type Config = {
 	capabilities: (() -> any)?,
 	onStatus: (string) -> (),
 	onActivity: (string) -> (),
+	-- F-059: told { owed, message? } when the worker's asset-source question opens or settles.
+	onAssetSources: ((any) -> ())?,
 }
 
 type Session = {
@@ -62,6 +64,8 @@ type Session = {
 	capabilities: any?,
 	capabilitiesPending: boolean,
 	retrying: boolean?,
+	assetSourcesAnswer: any?,
+	assetSourcesOwed: boolean,
 }
 
 type BridgeObject = {
@@ -76,6 +80,7 @@ type BridgeObject = {
 	destroy: (BridgeObject) -> (),
 	isConnected: (BridgeObject) -> boolean,
 	pushEvent: (BridgeObject, any) -> boolean,
+	answerAssetSources: (BridgeObject, any) -> boolean,
 	_end: (BridgeObject, string?) -> (),
 }
 
@@ -506,6 +511,7 @@ local function newSession(token: string, projectName: string, generation: number
 		nextEventSequence = 0,
 		capabilities = capabilities,
 		capabilitiesPending = capabilities ~= nil,
+		assetSourcesOwed = false,
 	}
 end
 
@@ -529,6 +535,9 @@ local function pollLoop(self: BridgeObject, session: Session)
 					outbound.capabilities = session.capabilities
 				end
 				local sentCount = #session.pendingResults
+				-- The person's asset-source answer rides every poll until one is acknowledged.
+				local sentAnswer = session.assetSourcesAnswer
+				if sentAnswer ~= nil then outbound.assetSourcesAnswer = sentAnswer end
 			local sentEvents, sentEventSequences = eventsForPoll(session)
 			if #sentEvents > 0 then outbound.events = sentEvents end
 
@@ -553,6 +562,7 @@ local function pollLoop(self: BridgeObject, session: Session)
 					continue
 				end
 				session.capabilitiesPending = false
+				if session.assetSourcesAnswer == sentAnswer then session.assetSourcesAnswer = nil end
 
 				-- HTTP success is the acknowledgement for the result prefix.  This happens before looking
 			-- at terminal flags: a server may have accepted the result and then requested a detach.
@@ -568,6 +578,19 @@ local function pollLoop(self: BridgeObject, session: Session)
 		if terminal then
 			self:_end(terminalMessage or "Session ended")
 			return
+		end
+
+		-- F-059: the worker says whether a build is waiting on the asset-source answer. The dock hears
+		-- only a change, or a sentence about an answer it could not store.
+		local sources = body.assetSources
+		local owed = type(sources) == "table" and sources.owed == true
+		local note = if type(sources) == "table" and sources.message ~= nil
+			then safeRemoteMessage(sources.message, session.token, "Apple could not save that answer. Try again.")
+			else nil
+		if (owed ~= session.assetSourcesOwed or note ~= nil) and type(self.config.onAssetSources) == "function" then
+			session.assetSourcesOwed = owed
+			pcall(self.config.onAssetSources :: any, { owed = owed, message = note })
+			if not current(self, session) then return end
 		end
 
 		local ops = body.ops
@@ -768,6 +791,21 @@ function Bridge:pushEvent(value: any): boolean
 	local event = safeEvent(value)
 	if not event then return false end
 	return queueEvent(session, event)
+end
+
+-- The person's answer to "Where should Apple get assets from?", sent on the next poll. Only a
+-- bounded list of names crosses; the worker keeps the choices it knows and refuses the rest.
+function Bridge:answerAssetSources(allow: any): boolean
+	local session = self.session
+	if not session or not current(self, session) then return false end
+	if type(allow) ~= "table" or #allow == 0 or #allow > 8 then return false end
+	local picked = {}
+	for _, choice in allow do
+		if type(choice) ~= "string" or #choice == 0 or #choice > 64 then return false end
+		table.insert(picked, choice)
+	end
+	session.assetSourcesAnswer = { allow = picked }
+	return true
 end
 
 return Bridge

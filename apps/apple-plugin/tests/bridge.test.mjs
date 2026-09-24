@@ -391,6 +391,57 @@ do
     assert(string.find(statuses[#statuses], "too many", 1, true) ~= nil)
 end
 
+-- F-059, 2026-09-24: a build that needed the Creator Store while nobody had said which asset sources
+-- the project may use was refused, and Studio had no way to ask. The worker now says on the poll that
+-- the answer is owed; the dock hears it, and the person's answer rides the next poll until one lands.
+do
+    local heard = {}
+    local config = {
+        plugin = plugin,
+        execute = function(id) return { id = id, ok = true } end,
+        state = state,
+        onStatus = function() end,
+        onActivity = function() end,
+        onAssetSources = function(value) table.insert(heard, value) end,
+    }
+    local bridge = Bridge.new(config)
+    assert(not bridge:answerAssetSources({ "creator_store" }), "an answer with no pairing has nowhere to go")
+    queueResponse({ token = "sources.secret", projectId = "sources-project", projectName = "Sources" })
+    assert(bridge:connect("SRC123"))
+    queueResponse({ ops = {}, waitMs = 1, assetSources = { owed = true } })
+    assert(tick())
+    assert(#heard == 1 and heard[1].owed == true, "the dock is not told the answer is owed")
+    queueResponse({ ops = {}, waitMs = 1, assetSources = { owed = true } })
+    assert(tick())
+    assert(#heard == 1, "an unchanged question is announced again on every poll")
+
+    assert(not bridge:answerAssetSources({}), "nothing picked is not an answer")
+    assert(not bridge:answerAssetSources("creator_store"), "only a list is an answer")
+    assert(bridge:answerAssetSources({ "creator_store", "from_scratch" }))
+    queueFailure("offline")
+    assert(tick())
+    local sent = requests[#requests].body.assetSourcesAnswer
+    assert(type(sent) == "table" and sent.allow[1] == "creator_store" and sent.allow[2] == "from_scratch", "the answer never left Studio")
+    queueResponse({ ops = {}, waitMs = 1, assetSources = { owed = false } })
+    assert(tick())
+    assert(requests[#requests].body.assetSourcesAnswer ~= nil, "a failed poll dropped the answer")
+    assert(#heard == 2 and heard[2].owed == false, "the dock is not told the question is settled")
+    queueResponse({ ops = {}, waitMs = 1 })
+    assert(tick())
+    assert(requests[#requests].body.assetSourcesAnswer == nil, "an acknowledged answer is sent again")
+    assert(#heard == 2, "a settled question with nothing new is announced again")
+
+    -- A refusal to store the answer comes back as a bounded sentence, never raw text with the token.
+    queueResponse({ ops = {}, waitMs = 1, assetSources = { owed = true, message = "Pick at least one source." } })
+    assert(tick())
+    assert(heard[3].owed == true and heard[3].message == "Pick at least one source.")
+    queueResponse({ ops = {}, waitMs = 1, assetSources = { owed = true, message = "leak sources.secret" } })
+    assert(tick())
+    assert(heard[4].message ~= nil and not string.find(heard[4].message, "sources.secret", 1, true), "the token reached the dock")
+    bridge:disconnect()
+    assert(tick())
+end
+
 -- A missing state observation fails closed before claim, and before a later poll can receive ops.
 do
     local bridge, statuses, _, executed, setState = makeBridge()

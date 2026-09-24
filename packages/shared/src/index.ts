@@ -664,6 +664,8 @@ export interface PluginPollRequest {
   state?: StudioEventState;
   /** Optional so legacy plugins keep the exact poll contract they already use. */
   capabilities?: PluginCapabilityReportV1;
+  /** The dock's answer to the asset-source question (F-059): the choices the person picked. */
+  assetSourcesAnswer?: { allow: string[] };
 }
 export interface PluginPollResponse {
   ops: PendingOp[];
@@ -675,6 +677,11 @@ export interface PluginPollResponse {
    * and NO ops are served while this is present.
    */
   placeMismatch?: { expected: StudioPlace; openPlaceId: number; openPlaceName: string; message: string };
+  /**
+   * Present while a build is waiting on the asset-source answer, and once after the dock answers
+   * (F-059). `owed` shows or hides the question; `message` says why an answer did not take.
+   */
+  assetSources?: { owed: boolean; message?: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -1261,6 +1268,11 @@ export type ServerMsg =
    * repeat of the selection it last reported, so this is an event rather than a heartbeat.
    */
   | { type: 'studio_selection'; selection: StudioEventSelection }
+  /**
+   * A build needs the asset-source answer and nobody has given it (F-059): `owed` true shows the
+   * question on every surface, false says it has been answered — here or in Studio.
+   */
+  | { type: 'asset_sources_owed'; owed: boolean }
   //[[ `userMsgId` NAMES THE ROW THE USER'S OWN MESSAGE WAS STORED UNDER.
   //
   //   The client appends its own message optimistically under a locally minted id — the send is

@@ -223,6 +223,8 @@ export interface ProjectSocket {
    * been told about yet.
    */
   presence: PresenceState[];
+  /** A build is waiting on the asset-source answer (F-059); the worker says when it is given. */
+  assetSourcesOwed: boolean;
   agentStatus: AgentStatus | null;
   /**
    * Every distinct `agent_status.phase` this client has seen on the CURRENT
@@ -392,6 +394,7 @@ export function useProjectSocket(
   });
   const [quota, setQuota] = useState<QuotaState | null>(null);
   const [presence, setPresence] = useState<PresenceState[]>([]);
+  const [assetSourcesOwed, setAssetSourcesOwed] = useState(false);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   const [phaseMarks, setPhaseMarks] = useState<PhaseMark[]>([]);
   const [running, setRunning] = useState(false);
@@ -551,6 +554,9 @@ export function useProjectSocket(
         // the complete truth about what is selected. Merging would leave a deselected part on
         // screen as something the user could still point at.
         setStudio((s) => ({ ...s, selection: msg.selection }));
+        break;
+      case 'asset_sources_owed':
+        setAssetSourcesOwed(msg.owed);
         break;
       case 'msg_start':
         setRunning(true);
@@ -1241,6 +1247,7 @@ export function useProjectSocket(
     studio,
     quota,
     presence,
+    assetSourcesOwed,
     agentStatus,
     phaseMarks,
     running,
