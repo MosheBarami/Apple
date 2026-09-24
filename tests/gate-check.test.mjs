@@ -577,7 +577,7 @@ test('a warning in a gate\'s output does not change the fingerprint, but its TEX
   const childEnv = { ...process.env };
   delete childEnv.NODE_TEST_CONTEXT;
   const probe = spawnSync('node', ['--test', one], { encoding: 'utf8', timeout: 60_000, env: childEnv });
-  assert.match(`${probe.stdout ?? ''}${probe.stderr ?? ''}`, /^\(node:\d+\) Warning: stalefixture/m,
+  assert.match(`${probe.stdout ?? ''}${probe.stderr ?? ''}`, /^(?:# )?\(node:\d+\) Warning: stalefixture/m,
     'the fixture emitted no pid-prefixed warning, so this test would pass over nothing');
 
   const g = (spec) => `- [ ] G1: warned\n    CHECK: node --test ${spec}\n    EXPECT: pass 1\n`;

@@ -19,6 +19,30 @@ exist is DELETE with a dated owner statement, per §6.6.
 
 ---
 
+## Thinking redesign dispositions — DELETE, owner direction 2026-09-24
+
+The owner directed that thinking show one friendly changing step and offer no way to inspect
+technical details. The new `ws/thinking.tsx` implements that surface. These formerly reachable
+modules became dead ends when the old disclosure and accumulated step UI were removed:
+
+- `apps/web/src/components/ai-elements/chain-of-thought.tsx` — DELETE; the expandable reasoning tree contradicts the new surface.
+- `apps/web/src/components/ai-elements/reasoning.tsx` — DELETE; the reasoning disclosure is no longer rendered.
+- `apps/web/src/components/ai-elements/tool.tsx` — DELETE; its only importer is a test of the retired tool-step display.
+- `apps/web/src/components/picks/chat/source-preview.tsx` — DELETE; the detailed source preview has no product caller.
+- `apps/web/src/components/picks/chat/turn-checkpoint.tsx` — DELETE; the retired per-turn step UI has no caller.
+- `apps/web/src/components/picks/thinking/lattice-glyph.tsx` — DELETE; the new single-line status uses its own visual treatment.
+- `apps/web/src/components/picks/thinking/skeleton.tsx` — DELETE; the retired thinking placeholder has no caller.
+
+Two other modules exposed by the same import-graph pass have different destinations:
+
+- `apps/web/src/components/ws/playtest-card.tsx` — WIRE; the game review surface needs a friendly playtest result after a Studio run, outside the thinking line. It is not evidence that a playtest has run.
+- `apps/web/src/lib/doc-sources.ts` — WIRE; citation labels belong with user-facing help answers, outside the thinking line. The current module has no product caller.
+
+This is a dated disposition, not a deletion of the files. Their removal or wiring remains work;
+the checker continues to report them as dead ends until that work lands.
+
+---
+
 ## apps/web/src/components/ai-elements/task.tsx — WIRE, 2026-09-23
 
 **Found:** imported by nothing after the BYOK/short-replies track (workflow wf_46d0bb34-725).
