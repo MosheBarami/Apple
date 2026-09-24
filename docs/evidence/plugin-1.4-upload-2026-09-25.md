@@ -14,3 +14,13 @@ with the verified 1.4.0 artifact. After quitting and relaunching Studio, the App
 `Apple Studio · 1.4.0 · independent preview`. This proves that Studio loaded the local 1.4.0 plugin;
 it does not prove that customers can install 1.4.0 from the Creator Store. The public details
 endpoint still returned 404 at about 22:38 UTC while listed control assets returned 200.
+
+Owner-inventory check, 2026-09-24 about 23:28 UTC: Studio's Toolbox → Inventory → My Plugins
+showed **Apple Studio** by **Shahar474** with an Install button. Installing it changed the button
+to **Installed**, added a second Apple Studio entry to Studio's Plugins menu, and Plugin Management
+showed Apple Studio as enabled, “Up to date,” last updated **9/25/2026**. This proves that the
+publishing account can install its own asset through its inventory. It does **not** identify the
+installed build's internal version, nor prove distribution to a different account. Clicking
+Plugin Management → Details opened the public Creator Store URL in Chrome signed in as another
+account; it still rendered **404 Page Not Found**. At the same time the unauthenticated toolbox
+details endpoint still returned 404 for this asset and 200 for the listed Rojo control.
