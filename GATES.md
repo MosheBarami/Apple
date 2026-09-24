@@ -256,9 +256,15 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-BACKLOG-1; path=6765c31f4f12/53 entries; git-sha=f822661; tree-clean=yes; deps-clean=yes; break-sha=f822661; EXPECT=unmatched; output-sha256=4445194edab4518db50eb6bca1ba7e58c623a55d5bc7a4d58eb38fcd736415de; output-bytes=196; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=2d36ee1251b233b5703d6e5b; at=2026-09-14T23:25:50.966Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=76553bef18d4b6390b1419d9262faad085b266cbd5f1a7ad0d9b593ab913c7a3; output-bytes=224; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=89; deps-sha=0cf10d874d5ebd238d449f54; at=2026-09-15T00:25:13.163Z
 
-- [x] G-S1: A stranger's browser gets a page with no Golem, no forbidden promise, and the real free quota
+- [ ] G-S1: A stranger's browser gets a page with no Golem, no forbidden promise, and the real free quota
     STATION: S1
     CHECK: node scripts/probe-s1.mjs
+    UNTICKED AGAIN 2026-09-24. Commit 6812628 re-ticked this on an EVIDENCE line in the short
+    shape (exit / shell / cwd / path / EXPECT / output-sha256 / output-bytes) with no git-sha=,
+    tree-clean= or at=, so `gate-check --lint`, the CI step "Ledger is well-formed", rejects it.
+    The recorder disagreement described under G90 is still open. THIS IS NOT A CLAIM THAT THE
+    GATE FAILS. Re-tick it from a clean committed tree with `node scripts/gate-check.mjs --approve`,
+    whose line carries all three fields.
     UNTICKED 2026-09-21. Its EVIDENCE line records `tree-clean=no`, so the run it describes
     measured a working tree, not a commit — there is no commit anyone can check out that the
     number belongs to. `gate-check --lint` is a CI step and it rejects exactly that, which is the
@@ -279,9 +285,15 @@ sha alone, because the break changes the probe while the thing probed lives else
 rbxai-04, who ran the probe independently and declined to write the evidence line on the grounds
 that the run which records a gate should be the one that proves it.
 
-- [x] G-SEC-1: Two tenants cannot read, write or plant rows in each other's data
+- [ ] G-SEC-1: Two tenants cannot read, write or plant rows in each other's data
     CHECK: node infra/supabase/tests/rls-isolation.mjs
     EXPECT: RLS ISOLATION HOLDS
+    UNTICKED AGAIN 2026-09-24. Commit 6812628 re-ticked this on an EVIDENCE line in the short
+    shape (exit / shell / cwd / path / EXPECT / output-sha256 / output-bytes) with no git-sha=,
+    tree-clean= or at=, so `gate-check --lint`, the CI step "Ledger is well-formed", rejects it.
+    The recorder disagreement described under G90 is still open. THIS IS NOT A CLAIM THAT THE
+    GATE FAILS. Re-tick it from a clean committed tree with `node scripts/gate-check.mjs --approve`,
+    whose line carries all three fields.
     UNTICKED 2026-09-21. Its EVIDENCE line records `tree-clean=no`, so the run it describes
     measured a working tree, not a commit — there is no commit anyone can check out that the
     number belongs to. `gate-check --lint` is a CI step and it rejects exactly that, which is the
@@ -310,9 +322,15 @@ the deployed schema against the migrations — G-S1 does that for the site's ORI
 it for the DATABASE. Recorded in BLOCKERS.md §D, because the hole is hidden by this gate looking
 like it covers it.
 
-- [x] G-ORACLE-7: Every pixel rule fires, and the drift rule says which build it compared
+- [ ] G-ORACLE-7: Every pixel rule fires, and the drift rule says which build it compared
     CHECK: node scripts/assert-tests.mjs --floor 12 --label G-ORACLE-7 -- node --test tests/check-pixels.test.mjs
     EXPECT: G-ORACLE-7 OK
+    UNTICKED AGAIN 2026-09-24. Commit 6812628 re-ticked this on an EVIDENCE line in the short
+    shape (exit / shell / cwd / path / EXPECT / output-sha256 / output-bytes) with no git-sha=,
+    tree-clean= or at=, so `gate-check --lint`, the CI step "Ledger is well-formed", rejects it.
+    The recorder disagreement described under G90 is still open. THIS IS NOT A CLAIM THAT THE
+    GATE FAILS. Re-tick it from a clean committed tree with `node scripts/gate-check.mjs --approve`,
+    whose line carries all three fields.
     UNTICKED 2026-09-21. Its EVIDENCE line records `tree-clean=no`, so the run it describes
     measured a working tree, not a commit — there is no commit anyone can check out that the
     number belongs to. `gate-check --lint` is a CI step and it rejects exactly that, which is the
@@ -354,9 +372,15 @@ like it covers it.
 
 ## Whole-product gates
 
-- [x] G90: The full suite passes
+- [ ] G90: The full suite passes
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
+    UNTICKED AGAIN 2026-09-24. Commit 6812628 re-ticked this on an EVIDENCE line in the short
+    shape (exit / shell / cwd / path / EXPECT / output-sha256 / output-bytes) with no git-sha=,
+    tree-clean= or at=, so `gate-check --lint`, the CI step "Ledger is well-formed", rejects it.
+    The recorder disagreement described under G90 is still open. THIS IS NOT A CLAIM THAT THE
+    GATE FAILS. Re-tick it from a clean committed tree with `node scripts/gate-check.mjs --approve`,
+    whose line carries all three fields.
     UNTICKED 2026-09-21, for the second time, for the same reason the paragraph below describes.
     CORRECTED 2026-09-21, an hour after the first version of this note, which asserted the line
     below was hand-written. IT IS NOT, and I had not read far enough to say so. scripts/
