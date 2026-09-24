@@ -260,6 +260,10 @@ test('a lever is used up only by a done run or a second failed attempt', () => {
   const st = (...statuses) => ({ history: statuses.map((status, i) => ({ version: 6 + i, lever, status })) });
   assert.equal(triedIds(st('eval_failed')).has(lever.id), false);
   assert.equal(triedIds(st('truncated')).has(lever.id), false);
+  assert.equal(triedIds(st('truncated', 'truncated')).has(lever.id), false,
+    'Metal watchdog truncations do not measure the lever');
+  assert.equal(triedIds(st('error', 'truncated')).has(lever.id), false,
+    'a code error followed by a watchdog truncation does not exhaust a lever');
   assert.equal(triedIds(st('failed_training', 'timeout')).has(lever.id), true);
   assert.equal(triedIds(st('done')).has(lever.id), true);
   assert.equal(triedIds(st('interrupted', 'stopped', 'eval_invalid', 'interrupted')).has(lever.id), false);

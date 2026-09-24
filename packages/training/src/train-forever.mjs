@@ -322,9 +322,9 @@ export function shouldPromote(candidate, bestTotal, margin) {
 
 // ---------------------------------------------------------------- hypotheses (pure)
 
-// Statuses that say nothing about the lever: the run was cut off from outside, or the measurement
-// itself was broken (the eval set, the scorer's harness, or the base side moved).
-const NO_ATTEMPT = new Set(['started', 'interrupted', 'stopped', 'eval_invalid']);
+// These runs did not measure the lever: the run was cut off, the code/environment failed,
+// or the pinned evaluation was invalid. Backoff still applies to repeated failures.
+const NO_ATTEMPT = new Set(['started', 'interrupted', 'stopped', 'eval_invalid', 'truncated', 'error']);
 
 /** A lever is used up by one `done` run or by MAX_ATTEMPTS failed ones. */
 export function triedIds(state) {
