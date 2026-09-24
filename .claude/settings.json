@@ -25,7 +25,6 @@
       "Edit(~/.ssh/**)",
       "Edit(~/Library/Keychains/**)",
       "Artifact",
-      "Workflow",
       "ScheduleWakeup",
       "ReportFindings",
       "ListAgents",
