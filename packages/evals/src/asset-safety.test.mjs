@@ -1293,6 +1293,11 @@ test('NO NETWORK: every request this section made went to the injected stub, and
 // These tests pin BOTH halves of the trade. The refusals are worthless if the tool stops being
 // useful, so the allow cases below are real building Luau — loops, Instance.new, materials — and
 // they are as load-bearing as the refusals.
+//
+// D-MODELLIB-2 runs first in run_luau: a hand-made MeshPart or a Model of parts is refused before
+// this scan is reached, with no `blocked` list. So these fixtures carry their asset id on a Decal
+// and group plain parts in a Folder; otherwise the model rule answers and this section measures
+// nothing about asset ingress.
 // ==============================================================================================
 
 /**
@@ -1330,7 +1335,7 @@ const INGRESS = [
   ['game:GetObjects', 'local objs = game:GetObjects("rbxassetid://12345")\nobjs[1].Parent = workspace', 'get_objects'],
   ['InsertService:LoadAsset', 'local m = game:GetService("InsertService"):LoadAsset(12345)\nm.Parent = workspace', 'insert_service'],
   ['InsertService:LoadAssetVersion', 'local m = game:GetService("InsertService"):LoadAssetVersion(999)\nm.Parent = workspace', 'insert_service'],
-  ['an rbxassetid:// literal', 'local p = Instance.new("MeshPart")\np.MeshId = "rbxassetid://12345"\np.Parent = workspace', 'asset_uri'],
+  ['an rbxassetid:// literal', 'local d = Instance.new("Decal")\nd.Texture = "rbxassetid://12345"\nd.Parent = workspace', 'asset_uri'],
   ['an rbxthumb:// literal', 'local d = Instance.new("Decal")\nd.Texture = "rbxthumb://type=Asset&id=12345&w=420&h=420"\nd.Parent = workspace', 'asset_uri'],
   ['Content.fromAssetId', 'local c = Content.fromAssetId(12345)\nlocal p = AssetService:CreateMeshPartAsync(c)', 'content_from_asset'],
   ['require of an asset id', 'local lib = require(3163717554)\nlib.load(game, "owner")', 'require_asset_id'],
@@ -1354,18 +1359,18 @@ test('THE OBVIOUS EVASIONS: concatenation, string.char and escapes all resolve t
   assert.ok(concat.result.blocked.includes('get_objects'));
 
   // string.char assembly of "rbxassetid://", with no GetObjects to fall back on.
-  const chars = 'local p = Instance.new("MeshPart")\np.MeshId = string.char(114,98,120,97,115,115,101,116,105,100,58,47,47) .. "12345"';
+  const chars = 'local d = Instance.new("Decal")\nd.Texture = string.char(114,98,120,97,115,115,101,116,105,100,58,47,47) .. "12345"';
   const built = await luau(chars);
   assert.equal(built.ok, false);
   assert.deepEqual(built.result.blocked, ['asset_uri']);
 
   // A decimal escape inside the literal.
-  const escaped = await luau('local p = Instance.new("MeshPart")\np.MeshId = "\\114bxassetid://12345"');
+  const escaped = await luau('local d = Instance.new("Decal")\nd.Texture = "\\114bxassetid://12345"');
   assert.equal(escaped.ok, false);
   assert.deepEqual(escaped.result.blocked, ['asset_uri']);
 
   // Splitting the URI across two literals.
-  const split = await luau('local p = Instance.new("MeshPart")\np.MeshId = "rbxasset" .. "id://12345"');
+  const split = await luau('local d = Instance.new("Decal")\nd.Texture = "rbxasset" .. "id://12345"');
   assert.equal(split.ok, false);
   assert.deepEqual(split.result.blocked, ['asset_uri']);
 
@@ -1407,7 +1412,7 @@ test('a require by PATH is allowed; a require of anything unreadable is not', as
 
 // The other half of the trade: the tool still has to be worth having.
 const ORDINARY_LUAU = {
-  'a ring of parts': `local M = Instance.new("Model")
+  'a ring of parts': `local M = Instance.new("Folder")
 M.Name = "Colonnade"
 for i = 1, 12 do
 	local p = Instance.new("Part")
