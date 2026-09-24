@@ -37,6 +37,17 @@ test('stop is reachable from the workspace, not only from the plugin', () => {
   assert.match(composer, /\bstop\(\)[;.]/, 'the allowed path no longer reaches the stop action');
 });
 
+// F-069. `disabled` on the composer means "the socket is not open" — and a socket that is not open
+// is exactly when Stop has to work, because Stop also goes over HTTP (POST /projects/:id/stop). The
+// Stop control must not inherit that flag; permission is already checked in the workspace's onStop.
+test('Stop stays pressable while the socket is down (F-069)', () => {
+  const src = stripComments(COMPOSER);
+  const at = src.indexOf('className="gx-send is-stop"');
+  assert.ok(at > 0, 'the Stop control moved; point this test at it');
+  const stopEl = src.slice(src.lastIndexOf('<PromptInputSubmit', at), src.indexOf('/>', at));
+  assert.doesNotMatch(stopEl, /disabled=\{[^}]*\bdisabled\b/, 'Stop is disabled whenever the socket is not open');
+});
+
 // ------------------------------------------------------------------- retry ---
 
 test('a failed run offers to run again', () => {

@@ -1112,7 +1112,8 @@ export function Composer({
                 className="gx-send is-stop"
                 status="streaming"
                 onStop={onStop}
-                disabled={disabled}
+                // Never `disabled`: that flag means the socket is down, and Stop also goes over HTTP
+                // (F-069). Who may stop is checked by the workspace's onStop.
                 title="Stop this run"
                 aria-label="Stop this run"
                 data-fx="press squish ripple"
