@@ -5,6 +5,8 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { scoreGameLogic } from './score-eval.mjs';
 
+export const HOLDOUT_SHA256 = '898a4eb9b2dd18033846558575a50f33059a123af637c4e32517b0a9af41c5cd';
+
 export const STORAGE_TRANSFER = [
   {
     id: 'season-medal-read-state',
@@ -136,14 +138,23 @@ export function scoreTransfer(raw) {
   const got = Object.keys(raw?.rows ?? {});
   const want = STORAGE_TRANSFER.map((x) => x.id);
   if (got.length !== want.length || want.some((id) => !got.includes(id))) throw new Error('holdout row IDs changed');
+  const withBest = typeof raw.best_adapter === 'string' && raw.best_adapter.length > 0;
+  const references = new Map(holdoutRows().map((x) => [x.meta.id, x]));
   const rows = want.map((id) => {
     const row = raw.rows[id];
     const item = STORAGE_TRANSFER.find((x) => x.id === id);
-    if (typeof row.base !== 'string' || typeof row.adapter !== 'string') throw new Error(`missing paired answer: ${id}`);
-    return { id, base: scoreGameLogic(item, row.base), adapter: scoreGameLogic(item, row.adapter) };
+    const expected = references.get(id);
+    if (row.family !== expected.meta.family || row.kind !== expected.meta.kind
+        || row.reference?.content !== expected.messages.at(-1).content) throw new Error(`holdout reference changed: ${id}`);
+    if (typeof row.base !== 'string' || typeof row.adapter !== 'string'
+        || (withBest && typeof row.best !== 'string')) throw new Error(`missing paired answer: ${id}`);
+    return { id, base: scoreGameLogic(item, row.base), adapter: scoreGameLogic(item, row.adapter),
+      ...(withBest ? { best: scoreGameLogic(item, row.best) } : {}) };
   });
-  return { kind: 'diagnostic-storage-transfer-not-promotion', adapter: raw.adapter,
+  return { kind: 'diagnostic-storage-transfer-not-promotion', holdoutSha256: HOLDOUT_SHA256,
+    adapter: raw.adapter, bestAdapter: withBest ? raw.best_adapter : null,
     base: rows.filter((x) => x.base.ok).length, candidate: rows.filter((x) => x.adapter.ok).length,
+    best: withBest ? rows.filter((x) => x.best.ok).length : null,
     n: rows.length, rows };
 }
 
@@ -153,6 +164,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   } else if (process.argv[2] === '--score' && process.argv.length === 5) {
     const result = scoreTransfer(JSON.parse(readFileSync(process.argv[3], 'utf8')));
     writeFileSync(process.argv[4], JSON.stringify(result, null, 2) + '\n', { flag: 'wx' });
-    console.log(JSON.stringify({ base: result.base, candidate: result.candidate, n: result.n }));
+    console.log(JSON.stringify({ base: result.base, best: result.best, candidate: result.candidate, n: result.n }));
   } else throw new Error('usage: storage-transfer-holdout.mjs --emit NEW.jsonl | --score RAW.json NEW-score.json');
 }

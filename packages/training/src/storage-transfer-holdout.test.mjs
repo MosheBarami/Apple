@@ -46,12 +46,26 @@ test('holdout prompts share no eight-word run with training or pinned promotion 
 });
 
 test('transfer scorer requires exactly the frozen rows and both generated sides', () => {
-  const rows = Object.fromEntries(STORAGE_TRANSFER.map((x) => [x.id, { base: 'no code', adapter: fence(x.answer) }]));
+  const rows = Object.fromEntries(holdoutRows().map((x) => [x.meta.id, {
+    family: x.meta.family, kind: x.meta.kind, reference: x.messages.at(-1),
+    base: 'no code', adapter: x.messages.at(-1).content,
+  }]));
   const result = scoreTransfer({ adapter: 'candidate', rows });
   assert.deepEqual([result.base, result.candidate, result.n], [0, 3, 3]);
   assert.equal(result.kind, 'diagnostic-storage-transfer-not-promotion');
+  assert.equal(result.holdoutSha256, '898a4eb9b2dd18033846558575a50f33059a123af637c4e32517b0a9af41c5cd');
   assert.throws(() => scoreTransfer({ rows: { [STORAGE_TRANSFER[0].id]: rows[STORAGE_TRANSFER[0].id] } }), /row IDs changed/);
   const bad = structuredClone(rows);
   delete bad[STORAGE_TRANSFER[1].id].adapter;
   assert.throws(() => scoreTransfer({ rows: bad }), /missing paired answer/);
+  const switched = structuredClone(rows);
+  switched[STORAGE_TRANSFER[1].id].reference.content = 'changed question';
+  assert.throws(() => scoreTransfer({ rows: switched }), /reference changed/);
+  const threeWay = Object.fromEntries(Object.entries(rows).map(([id, row]) => [id, { ...row, best: row.reference.content }]));
+  const paired = scoreTransfer({ adapter: 'candidate', best_adapter: 'incumbent', rows: threeWay });
+  assert.equal(paired.best, 3);
+  assert.equal(paired.bestAdapter, 'incumbent');
+  const missingBest = structuredClone(threeWay);
+  delete missingBest[STORAGE_TRANSFER[0].id].best;
+  assert.throws(() => scoreTransfer({ adapter: 'candidate', best_adapter: 'incumbent', rows: missingBest }), /missing paired answer/);
 });
