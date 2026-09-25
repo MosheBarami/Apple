@@ -1,11 +1,18 @@
 # NEXT ACTION
 
+2026-09-25 05:29 UTC: CI for the new verified UI shard passed the training tests but
+failed the root dead-end gate because the one-shot builder had no disposition. The
+builder's generated shard is consumed by training; this was recorded in
+`docs/backlog/DEADENDS.md`. The local gate, 15 focused tests and 555 root tests now pass. Rerun
+CI after committing the ledger, and keep v23's active CPU process untouched.
+
 2026-09-25 05:18 UTC: nine first-party UI-state Luau examples were locally executed,
 mutation-tested, checked against the fixed held-out set and queued as a single future
 training lever. A read-only derivation appended them to v22's 303 training rows without
 changing validation or test data. Focused shard tests passed 2/2 and the training package
-passed 655/655. No new model score exists yet. v23 was still running at step 290/400;
-keep its process alive through evaluation. Evidence:
+passed 655/655. The shard and card are also in the private Hugging Face dataset, and a
+forced download matched the local bytes. No new model score exists yet. v23 was still
+running at step 290/400; keep its process alive through evaluation. Evidence:
 `docs/training/ui-logic-shard-2026-09-25.md`.
 CI run 36097470609 for the Stop-route and dashboard updates passed all six groups.
 

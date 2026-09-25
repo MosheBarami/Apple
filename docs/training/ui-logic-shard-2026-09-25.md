@@ -21,3 +21,15 @@ panel stacks, help-tour state, title validation, keybinding conflicts and quest 
 
 Focused shard tests passed 2/2. The full training package passed 655/655 after updating the
 queue-size test, whose former upper bound of 12 rejected a legitimate new hypothesis.
+
+The same shard and its card were uploaded atomically to the existing **private** Hugging Face
+dataset `moshebarami/apple-roblox-corpus` at revision `2bad31d64845`. A forced download
+matched the local shard byte-for-byte (the SHA-256 above), the card mentioned its path once,
+and the repository still reported private visibility. This is a dataset update, not an
+adapter upload or a new model score.
+
+CI for the first shard commit found that the one-shot builder lacked a disposition in the
+repository's dead-end ledger. The ledger now records that its generated, digest-pinned
+training shard is the consumed artifact. The local dead-end gate and all 15 focused tests
+passed after that correction; the full root suite passed 555/555. The next CI run must
+confirm the whole repository.

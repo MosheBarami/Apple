@@ -737,6 +737,20 @@ STRUCTURALLY-BLOCKED reasoning given there no longer holds for the MLX dataset.
 clears if `loadExtraCurricula` takes static imports, which is an edit to `packages/training`, the
 knowledge lane's package.
 
+## packages/training/src/build-ui-logic-shard.mjs — WIRE, 2026-09-25
+
+**Found:** imported only by `packages/training/src/ui-logic-curriculum-f.test.mjs`.
+
+**The operator ran this one-shot builder.** It generated the committed, digest-pinned
+`packages/training/data/ui-logic-seeds-v1/shard-1.jsonl`. The training supervisor does not call
+the builder; it reads the verified shard through `appendVerified`, re-executes all answers and
+checks the pinned SHA-256 before using it. The output was also uploaded to the private Hugging
+Face dataset and read back byte-for-byte. This is a provenance tool, not a runtime capability.
+
+**Caller being added:** none. The generated training shard is the reachable artifact; the
+builder remains available for reproducing its origin in a fresh workspace, where its output
+directory does not yet exist.
+
 ## packages/asset-library/build-ui-components.mjs — WIRE, 2026-09-24
 
 **Found:** reported as imported only by `packages/asset-library/ui-components.test.mjs`.
