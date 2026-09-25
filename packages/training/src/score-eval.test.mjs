@@ -95,4 +95,6 @@ test('scoreFinish passes a prose wrap-up and fails an invented call', async () =
   const { scoreFinish } = await import('./score-eval.mjs');
   assert.deepEqual(scoreFinish('SideRail is on the left edge, vertically centred.'), { ok: true });
   assert.equal(scoreFinish('{"name": "get_screenshot", "parameters": {}}').reason, 'called_a_tool_instead_of_finishing');
+  assert.deepEqual(scoreFinish(' \n\t '), { ok: false, reason: 'empty_finish' },
+    'a silent model did not tell the creator that the build finished');
 });

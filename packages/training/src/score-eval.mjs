@@ -101,6 +101,7 @@ export function scoreTrajectory(call, registry) {
 
 /** A wrap-up turn is right when it answers in prose; any call there is the model not finishing. */
 export function scoreFinish(answer) {
+  if (!String(answer ?? '').trim()) return { ok: false, reason: 'empty_finish' };
   return extractToolCall(answer) ? { ok: false, reason: 'called_a_tool_instead_of_finishing' } : { ok: true };
 }
 
