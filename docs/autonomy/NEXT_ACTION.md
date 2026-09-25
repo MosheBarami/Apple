@@ -1,5 +1,15 @@
 # NEXT ACTION
 
+2026-09-25 06:05 UTC: a saved rep15 frontier answer was scored against a shop
+with no sword stock, so its safe refund looked like a failed purchase. The
+benchmark now supplies a Tool before the handler starts. A real-answer test
+failed before the fix and passed after; 87/87 frontier controls passed. Scratch
+rescoring changed only rep15 from 12/16 to 13/16. Four full Apple MAX code reps
+are now 61/64 (95.3%), not 100%; the three remaining rep15 failures are real
+under the local harness. No model call was made. Evidence:
+`docs/training/frontier-shop-stock-2026-09-25.md`. v23 completed training and
+is in a paired held-out evaluation; do not promote it before row-level review.
+
 2026-09-25 05:50 UTC: CI run 36099703453 for the isolated copy-guard test
 passed all six groups, including root tests and Playwright. The verified UI
 training shard and its Hugging Face dataset upload are now backed by a green

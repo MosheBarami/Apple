@@ -321,6 +321,14 @@ __APPLE.fact("legacyRaycast", __APPLE.calledMethodOn("Workspace", "FindPartOnRay
       + 'coins are an IntValue named "Coins" inside a Folder named "leaderstats" inside the Player. The client '
       + 'fires a RemoteEvent named "BuyItem" in ReplicatedStorage with the name of the item they want. Create '
       + 'the RemoteEvent in the script and handle the purchase. Reply with one fenced luau code block and nothing else.',
+    // A real shop has a sword to deliver. Without stock, a safe handler that checks delivery and
+    // refunds an unavailable Tool fails the debit check even though its purchase logic is sound.
+    // Put the stock in setup so handlers that cache it when the Script starts can also see it.
+    setup: `
+local sword = Instance.new("Tool")
+sword.Name = "Sword"
+sword.Parent = game:GetService("ReplicatedStorage")
+`,
     // THE PROMPT NAMES THE ITEM IN ENGLISH AND NEVER FIXES ITS IDENTIFIER, SO THE PROBE MUST NOT
     // INVENT ONE. 2026-09-21: `refuses-when-unaffordable` had failed in all nine recorded samples
     // of all three arms and had never once passed against a real answer -- the same shape that

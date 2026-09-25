@@ -97,6 +97,17 @@ test('a buyer who already owns the sword does not mask the affordability check',
     'a separate buyer with 50 coins must test affordability without the first buyer owning a sword');
 });
 
+test('the shop fixture stocks the sword before judging a safe purchase', () => {
+  const run = JSON.parse(readFileSync(resolve(HERE, '../runs/roblox-frontier-apple-max-agent-house-rules-plus-library-ui-20260925-rep15.json'), 'utf8'));
+  const answer = run.rows.find((row) => row.id === 'shop-debit')?.answer;
+  assert.ok(answer, 'the recorded, real model answer is required');
+  const item = FRONTIER_ITEMS.find((candidate) => candidate.id === 'shop-debit');
+  const result = scoreFrontierItem(item, answer);
+  assert.equal(result.outcome, 'checked', result.detail ?? 'the candidate must run');
+  assert.equal(result.checks.find((check) => check.id === 'legit-purchase-works')?.pass, true,
+    'the fixture has no sword to deliver, so a safe handler refunds an otherwise valid purchase');
+});
+
 test('task.spawn returns a thread for a shutdown save to await', () => {
   const run = JSON.parse(readFileSync(resolve(HERE, '../runs/roblox-frontier-apple-max-agent-house-rules-plus-library-ui-20260925-rep14.json'), 'utf8'));
   const answer = run.rows.find((row) => row.id === 'shutdown-save')?.answer;
