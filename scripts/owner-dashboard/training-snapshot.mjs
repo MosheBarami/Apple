@@ -1,5 +1,5 @@
 /** A small, factual view of the local LoRA supervisor's state for the owner dashboard. */
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const LABEL = {
@@ -27,6 +27,25 @@ function score(scores) {
   return passed === scores.total && total > 0 ? { passed, total } : null;
 }
 
+/** A recent local training log is evidence of steps, never of model quality or completion. */
+function reportedStep(repo, version) {
+  try {
+    const root = join(repo, 'packages/training');
+    const log = join(root, `runs/forever/v${version}-train.log`);
+    const { mtimeMs, size } = statSync(log);
+    const age = Date.now() - mtimeMs;
+    if (age < -60_000 || age > 15 * 60_000 || size > 2_000_000) return null;
+    const config = readFileSync(join(root, `lora-apple-v${version}.yaml`), 'utf8');
+    const iters = Number(/^iters:\s*(\d+)\s*$/m.exec(config)?.[1]);
+    if (!Number.isInteger(iters) || iters < 1) return null;
+    const lines = readFileSync(log, 'utf8');
+    const steps = [...lines.matchAll(/\bIter (\d+): (?:Train loss|Val loss|Saved adapter weights)/g)]
+      .map((match) => Number(match[1]));
+    const step = Math.max(0, ...steps);
+    return step > 0 && step <= iters ? { step, iters } : null;
+  } catch { return null; }
+}
+
 export function trainingSnapshot(repo) {
   let state;
   try {
@@ -43,13 +62,15 @@ export function trainingSnapshot(repo) {
     .filter((row) => Number.isInteger(row?.version) && typeof row.status === 'string')
     .map((row) => {
       const measured = row.status === 'done' || row.status === 'seed' ? score(row.scores) : null;
+      const progress = row.status === 'started' && !row.adapterPath ? reportedStep(repo, row.version) : null;
       return {
         version: row.version,
         status: row.status,
         label: row.status === 'started' && typeof row.adapterPath === 'string' && row.adapterPath.length > 0
           && Number.isFinite(row.valLoss)
           ? 'האימון הסתיים, ציון בהמתנה'
-          : LABEL[row.status] ?? 'מצב לא ידוע',
+          : progress ? `דווח צעד ${progress.step} מתוך ${progress.iters}; הציון טרם נמדד`
+            : LABEL[row.status] ?? 'מצב לא ידוע',
         passed: measured?.passed ?? null,
         total: measured?.total ?? null,
         promoted: row.promoted === true && row.status === 'done',

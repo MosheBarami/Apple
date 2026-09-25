@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { trainingSnapshot } from './training-snapshot.mjs';
@@ -54,4 +54,28 @@ test('a missing or malformed supervisor state is unknown, never an invented zero
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'state.json'), '{broken');
   assert.equal(trainingSnapshot(repo), null);
+});
+
+test('an active training version shows its last fresh step, never a benchmark score', () => {
+  const repo = mkdtempSync(join(tmpdir(), 'apple-training-view-'));
+  const dir = join(repo, 'packages/training/runs/forever');
+  mkdirSync(dir, { recursive: true });
+  const state = {
+    best: { version: 5, scores: stateBestScore() },
+    history: [
+      { version: 5, status: 'seed', promoted: true, scores: stateBestScore() },
+      { version: 23, status: 'started' },
+    ],
+  };
+  writeFileSync(join(dir, 'state.json'), JSON.stringify(state));
+  writeFileSync(join(repo, 'packages/training/lora-apple-v23.yaml'), 'iters: 400\n');
+  const log = join(dir, 'v23-train.log');
+  writeFileSync(log, 'Iter 10: Train loss 1.0\nIter 125: Val loss 0.88\nIter 130: Train loss 0.45\n');
+  const current = trainingSnapshot(repo).versions[0];
+  assert.equal(current.label, 'דווח צעד 130 מתוך 400; הציון טרם נמדד');
+  assert.equal(current.passed, null);
+
+  const old = new Date(Date.now() - 20 * 60_000);
+  utimesSync(log, old, old);
+  assert.equal(trainingSnapshot(repo).versions[0].label, 'התחילה, טרם נמדדה');
 });
