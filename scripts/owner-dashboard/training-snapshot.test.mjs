@@ -28,6 +28,13 @@ test('the training view distinguishes a valid best, unfinished work and invalid 
   assert.equal(view.versions[1].label, 'מדידה לא תקפה');
   assert.equal(view.versions[2].label, 'נמדדה');
 
+  state.history[2].adapterPath = 'adapters/apple-v22-best';
+  state.history[2].valLoss = 0.807;
+  writeFileSync(join(dir, 'state.json'), JSON.stringify(state));
+  const trained = trainingSnapshot(repo).versions[0];
+  assert.equal(trained.label, 'האימון הסתיים, ציון בהמתנה');
+  assert.equal(trained.passed, null, 'a validation loss is not a benchmark score');
+
   state.best = { version: 20, scores: { trajectory: 20, gameLogic: 1, finish: 3, total: 24,
     n: { trajectory: 23, gameLogic: 8, finish: 7 } } };
   writeFileSync(join(dir, 'state.json'), JSON.stringify(state));

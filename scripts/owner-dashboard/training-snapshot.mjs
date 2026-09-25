@@ -46,7 +46,10 @@ export function trainingSnapshot(repo) {
       return {
         version: row.version,
         status: row.status,
-        label: LABEL[row.status] ?? 'מצב לא ידוע',
+        label: row.status === 'started' && typeof row.adapterPath === 'string' && row.adapterPath.length > 0
+          && Number.isFinite(row.valLoss)
+          ? 'האימון הסתיים, ציון בהמתנה'
+          : LABEL[row.status] ?? 'מצב לא ידוע',
         passed: measured?.passed ?? null,
         total: measured?.total ?? null,
         promoted: row.promoted === true && row.status === 'done',
