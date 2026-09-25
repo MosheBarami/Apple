@@ -1,5 +1,18 @@
 # CURRENT STATE
 
+2026-09-25 06:14 UTC update: the live owner dashboard was read back and shows
+Apple MAX 61/64 (95.3%, four full code-harness runs) and Apple 15/16 (93.8%, one
+run), both current under the corrected shop-stock fixture. The saved model
+answers and requests did not change. The v23 CPU adapter completed 400 steps but
+scored 14/38 versus v22's 24/38 in a valid paired evaluation, so v22 remains
+the best local adapter. Both sides of the v22 and v23 comparisons were verified
+in the private Hugging Face model repository. v24 started automatically with
+nine verified UI examples; it has not finished. The public plugin still returns
+404 and round 8 in Studio has not been observed. Acceptance remains unmet:
+0/3 fresh reviews and open high F-059, F-064 and F-069. Evidence:
+`docs/training/frontier-shop-stock-2026-09-25.md` and
+`docs/training/v23-paired-result-2026-09-25.md`.
+
 2026-09-25 04:20 UTC update: v23 remains alive on CPU and has passed iteration 100/400.
 Commit `3f97d9f` adds a fail-closed, row-by-row identity and base-outcome check before a
 future LoRA promotion. Its new test failed on the old guard, then 33/33 supervisor tests

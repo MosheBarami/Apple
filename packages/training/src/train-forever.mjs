@@ -1019,6 +1019,9 @@ async function publish(ctx, entry, cfg) {
     const conv = await run(PY, ['src/mlx_to_peft.py', entry.adapterPath, rel(pubDir), '--base', cfg.model], { log, timeoutMs: TIMEOUT.convert });
     if (conv.code !== 0) { entry.publish = `convert_failed (exit ${conv.code}${conv.timedOut ? ', timeout' : ''}) — NOT servable, see ${rel(log)}`; say(`v${v}: ${entry.publish}`); return; }
     copyFileSync(resolve(TRAINING, entry.eval), join(pubDir, `eval-v${v}-on-v5set-scored.json`));
+    // A promotion is decided against the best model on this same batch. Keep both sides of that
+    // comparison beside the adapter so its published score can be independently checked.
+    if (entry.bestEval) copyFileSync(resolve(TRAINING, entry.bestEval), join(pubDir, `eval-v${v}-on-v5set-best-scored.json`));
     if (ctx.dry && !ctx.publish) { entry.publish = `converted to ${rel(pubDir)}; upload skipped (dry run)`; say(`v${v}: ${entry.publish}`); return; }
     const dest = `${L.hfPrefix}v${v}`;
     const up = await run('hf', ['upload', HF_REPO, pubDir, dest, '--repo-type', 'model', '--commit-message', `apple v${v}: ${entry.lever.id} (${entry.scores.total}${entry.promoted ? ', promoted' : ''})`], { log, append: true, timeoutMs: TIMEOUT.hf });

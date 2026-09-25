@@ -1,5 +1,24 @@
 # NEXT ACTION
 
+2026-09-25 06:11 UTC: the five tracked full frontier runs were rescored in place
+after the shop-stock correction, without changing saved model answers, requests or
+measurement times. The owner dashboard was read back from `/api/project`: Apple MAX
+61/64 (95.3%, four runs), Apple 15/16 (93.8%, one run), both current and using an
+identical model request. Dashboard tests passed 262/262; frontier controls passed
+87/87. These are local code-harness scores, not a claim of a 100% frontier model.
+The paired v23 evaluation finished: 14/38 versus the v22 leader's 24/38 on the
+same 38 rows. Independent row comparison found no identity, base-result or harness
+problems. v23 was correctly not promoted; its experimental adapter and score are
+present in the private Hugging Face model repository, Discord was posted, and v24
+started automatically with the verified nine-row UI shard. v24 has no score yet.
+Both sides of the v22 and v23 paired evaluations were uploaded to the private
+model repository and downloaded back byte-for-byte. The updated publication
+code includes the paired best-side score alongside the candidate score once a
+new supervisor process loads it. The already-running v24 process still uses the
+older code; backfill its paired file after its result is valid, without stopping it.
+Keep the single CPU supervisor running. CI run 36101681663 for the saved-run
+rescore passed all six groups, including Playwright and root tests.
+
 2026-09-25 06:05 UTC: a saved rep15 frontier answer was scored against a shop
 with no sword stock, so its safe refund looked like a failed purchase. The
 benchmark now supplies a Tool before the handler starts. A real-answer test
