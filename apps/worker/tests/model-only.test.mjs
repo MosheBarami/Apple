@@ -40,6 +40,7 @@ test('create_instances refuses every hand-made prop shape, sends nothing, and na
   for (const items of [
     [{ className: 'Model', name: 'Thing', children: [{ className: 'Part', name: 'A' }, { className: 'Part', name: 'B' }] }],
     [{ className: 'Part', name: 'PalmTree_3' }],
+    [{ className: 'Part', name: 'Carrot' }],
     [{ className: 'WedgePart', name: 'Roof', parent: 'game.Workspace' }],
     [{ className: 'Part', name: 'Plank', parent: 'game.Workspace.Fences' }],
     [{ className: 'Folder', name: 'MarketStalls', children: [{ className: 'Part', name: 'Top' }] }],
@@ -76,6 +77,7 @@ test('create_instances still lays plain structure and functional parts', async (
     [{ className: 'Folder', name: 'Obby', children: [{ className: 'Part', name: 'Stage1' }, { className: 'Part', name: 'Stage2' }, { className: 'SpawnLocation', name: 'Spawn' }] }],
     [{ className: 'Part', name: 'ShopTrigger', parent: 'game.Workspace.ShopBuilding' }],
     [{ className: 'Part', name: 'CoinPad' }],
+    [{ className: 'Part', name: 'CarrotPad' }],
     [{ className: 'Part', name: 'Path', props: { Shape: { t: 'enum', v: 'Enum.PartType.Cylinder' } } }],
     [{ className: 'PointLight', name: 'Glow', parent: 'game.Workspace.Lamp' }],
   ]) {
@@ -90,6 +92,7 @@ test('run_luau refuses Luau that assembles a prop, and lets plain structure and 
   for (const code of [
     'local m = Instance.new("Model")\nlocal p = Instance.new("Part")\np.Parent = m',
     'local p = Instance.new("Part")\np.Name = "OakTree"',
+    'local p = Instance.new("Part")\np.Name = "Carrot"',
     "local p = Instance.new('Part')\np.Shape = Enum.PartType.Ball",
     'local m = Instance.new("MeshPart")',
   ]) {
@@ -106,6 +109,47 @@ test('run_luau refuses Luau that assembles a prop, and lets plain structure and 
     const r = await T.TOOLS.run_luau.run(s.ctx, { code });
     assert.ok(!refused(r), `${code}\n${JSON.stringify(r)}`);
   }
+});
+
+test('edit_script refuses a newly hand-built crop model but allows a library clone', async () => {
+  const existing = 'print("garden")\n';
+  const handmade = 'local crop = Instance.new("Model")\ncrop.Name = "CropVisual"\nlocal body = Instance.new("Part")\nbody.Parent = crop\n';
+  const scriptStudio = (before) => {
+    const calls = [];
+    return {
+      calls,
+      ctx: {
+        env: {},
+        execStudioOp: async (operation) => {
+          calls.push(operation);
+          return { id: 'x', ok: true, data: operation.op === 'read_script' ? { source: before } : { ok: true } };
+        },
+      },
+    };
+  };
+  for (const args of [
+    { source: existing + handmade },
+    { edits: [{ find: existing, replace: existing + handmade }] },
+  ]) {
+    const s = scriptStudio(existing);
+    const result = await T.TOOLS.edit_script.run(s.ctx, { path: 'game.ServerScriptService.GardenMain', ...args });
+    assert.ok(refused(result), JSON.stringify(result));
+    assert.ok(namesLibrary(result), result.error);
+    assert.equal(s.calls.filter((call) => call.op === 'edit_script').length, 0);
+  }
+  const legacy = scriptStudio(handmade);
+  const legacyEdit = await T.TOOLS.edit_script.run(legacy.ctx, {
+    path: 'game.ServerScriptService.GardenMain', source: handmade + 'print("kept legacy code")\n',
+  });
+  assert.ok(!refused(legacyEdit), JSON.stringify(legacyEdit));
+  assert.equal(legacy.calls.filter((call) => call.op === 'edit_script').length, 1);
+  const clone = scriptStudio(existing);
+  const allowed = await T.TOOLS.edit_script.run(clone.ctx, {
+    path: 'game.ServerScriptService.GardenMain',
+    source: existing + 'local crop = game.ServerStorage.Crop:Clone()\ncrop.Parent = workspace\n',
+  });
+  assert.ok(!refused(allowed), JSON.stringify(allowed));
+  assert.equal(clone.calls.filter((call) => call.op === 'edit_script').length, 1);
 });
 
 test('generate_model and generate_model_external refuse, send nothing, and point at the library', async () => {

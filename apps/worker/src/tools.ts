@@ -70,7 +70,7 @@ import { generateImage as hfGenerateImage, isHfConfigured, HF_IMAGE_MODEL } from
 import { findUiAssets, uploadLibraryAsset } from './asset-library';
 import { findUiStoreImages, UI_STORE_COUNT, UI_STORE_GENRES } from './ui-store-search';
 import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
-import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau } from './model-rule';
+import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, refuseNewHandMadeModelLuau } from './model-rule';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
@@ -1740,7 +1740,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       name: 'edit_script',
       description:
         'Create or edit a script. Provide exactly one of `source` (full new content), `edits` (find/replace list, exact match), or `source_file` (an exact saved .lua/.luau workspace version). To create a new script set `create_class` + `create_parent`. ' +
-        'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
+        'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. A script that newly builds detailed props from Parts is also refused: use a verified model, and leave it unbuilt when none is available. Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
       parameters: S(
         {
           path: { type: 'string', description: 'Full path, e.g. game.ServerScriptService.RoundManager' },
@@ -1889,6 +1889,12 @@ export const TOOLS: Record<string, ToolImpl> = {
         const ingress = refuseLuauIngress(after);
         if (ingress) return ingress;
       }
+      // D-MODELLIB-2 also applies to scripts that create visual props at runtime. This caught a
+      // garden crop assembled from Parts after a Creator Store search returned no model.
+      const handMadeModel = refuseNewHandMadeModelLuau(
+        luauScanVariants(after), before === null ? undefined : luauScanVariants(before),
+      );
+      if (handMadeModel) return handMadeModel;
       // D-UIONLY-1: a script may use inserted UI but not make more UI than it already did.
       const handMadeUi = refuseLibraryLuau(luauScanVariants(after), UI_RULE, before === null ? undefined : luauScanVariants(before));
       if (handMadeUi) return handMadeUi;
@@ -4184,7 +4190,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_asset',
       description:
-        'Insert an asset by numeric assetId. Use an id from find_verified_asset, or one the USER gave you — never one you produced yourself: a made-up id resolves to something random or to nothing. Where the id came from does not decide whether it is checked. EVERY id is resolved against the Creator Store and must pass the full gate (free, publicly visible, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget), and every insertion is then scanned INSIDE the place: Luau that arrived with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. To create objects, build them from Parts with create_instances instead.',
+        'Insert an asset by numeric assetId. Use an id from find_verified_asset, or one the USER gave you — never one you produced yourself: a made-up id resolves to something random or to nothing. Where the id came from does not decide whether it is checked. EVERY id is resolved against the Creator Store and must pass the full gate (free, publicly visible, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget), and every insertion is then scanned INSIDE the place: Luau that arrived with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. Parts are for simple structure only; detailed props come from verified models, and an unavailable prop remains unbuilt.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,

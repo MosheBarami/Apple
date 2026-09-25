@@ -10,8 +10,9 @@
 //   1. a Model assembled from Parts in one create_instances batch (a prop is a group of parts);
 //   2. a part, Folder or Model NAMED as a prop, or inside one named as a prop;
 //   3. a ball-shaped part, a MeshPart or a SpecialMesh: none of them is floor, wall or path.
-// Luau is held to the same rule on its creations (run_luau only: a game script that spawns a
-// projectile or clones a template at runtime is gameplay, not modelling).
+// Luau is held to the same rule on its creations. run_luau is checked in full; edit_script is
+// checked for NEW hand-built props, so unrelated edits to a legacy script still work. Cloning a
+// verified template at runtime remains gameplay, not modelling.
 
 export const MODEL_DECISION = 'D-MODELLIB-2';
 
@@ -21,6 +22,7 @@ const HAND_MESH = new Set(['MeshPart', 'SpecialMesh', 'BlockMesh', 'CylinderMesh
 /** Things that are props, never plain structure. Singular; plurals are folded before the lookup. */
 const PROP_WORDS = new Set([
   'tree', 'trunk', 'leaf', 'leave', 'foliage', 'canopy', 'branch', 'bush', 'shrub', 'hedge', 'flower', 'plant', 'mushroom', 'cactus',
+  'crop', 'carrot', 'tomato', 'pumpkin', 'vegetable', 'fruit',
   'palm', 'pine', 'oak', 'rock', 'boulder', 'pebble', 'cliff', 'log', 'stump', 'cloud',
   'fence', 'railing', 'gate', 'stall', 'booth', 'kiosk', 'shop', 'store', 'house', 'building', 'hut', 'cabin', 'tower', 'castle',
   'roof', 'chimney', 'awning', 'canopy', 'door', 'window', 'lamp', 'lamppost', 'streetlight', 'lantern', 'torch', 'light', 'bench', 'chair',
@@ -128,6 +130,31 @@ export function refuseHandMadeModelLuau(variants: readonly string[]): ModelRefus
     if (found.length) return refusal(found);
   }
   return null;
+}
+
+/** Preserve legacy script edits, while refusing newly introduced procedural props. */
+export function refuseNewHandMadeModelLuau(after: readonly string[], before: readonly string[] = []): ModelRefusal | null {
+  const unsafe = refuseHandMadeModelLuau(after);
+  if (!unsafe) return null;
+  const counts = (variants: readonly string[]) => {
+    const high = { assembled: 0, mesh: 0, ball: 0, namedProp: 0 };
+    for (const code of variants) {
+      const made = [...code.matchAll(NEW_CLASS)].map((m) => m[3] ?? m[5] ?? '');
+      const parts = made.filter((c) => BASEPARTS.has(c)).length;
+      const models = made.filter((c) => c === 'Model').length;
+      const meshes = made.filter((c) => HAND_MESH.has(c)).length;
+      const balls = [...code.matchAll(new RegExp(BALL.source, 'g'))].length;
+      const propNames = [...code.matchAll(NAME_SET)].filter((m) => propWordIn(m[2]) !== null).length;
+      high.assembled = Math.max(high.assembled, Math.min(models, parts));
+      high.mesh = Math.max(high.mesh, meshes);
+      high.ball = Math.max(high.ball, Math.min(parts, balls));
+      high.namedProp = Math.max(high.namedProp, Math.min(parts, propNames));
+    }
+    return high;
+  };
+  const next = counts(after);
+  const had = counts(before);
+  return (Object.keys(next) as (keyof typeof next)[]).some((key) => next[key] > had[key]) ? unsafe : null;
 }
 
 /** The AI 3D generators are closed to the agent: 3D comes from the library. */
