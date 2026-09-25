@@ -4,6 +4,15 @@ Directly measured facts only. Re-measure at the start of every session; this fil
 
 **Measured:** 2026-09-25 ~04:23 IDT. Older snapshots below are historical.
 
+2026-09-25 03:14 UTC update: the live Apple worker reported build `f14733d` after a clean
+archive deployment. The Studio asset-source answer protocol now distinguishes retryable storage
+failures from a lasting policy refusal. Clean worker tests passed 4,176/4,176, Studio plugin tests
+58/58, and CI run 36089011844 passed all six jobs. The public plugin details endpoint remains
+404 while Rojo and Moon Animator controls return 200; no Studio round 8 run has occurred, so
+F-059, F-064 and F-069 remain open. The CPU LoRA supervisor was still training v22 at iteration
+370/400; no valid new score or promotion exists. Evidence:
+`docs/evidence/f059-studio-answer-retry-2026-09-25.md`.
+
 2026-09-25 ~04:45 IDT update: the v22 CPU training supervisor and its child were alive at
 iteration 140; no promotion verdict exists. A scoring guard now refuses empty final replies
 (`62abc55`, 15 focused tests passed; stored v4/v5/v20 finish answers had zero blanks).

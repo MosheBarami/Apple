@@ -5,6 +5,17 @@ distribution separately.** The free Workers AI allowance reset on 2026-09-25. Th
 plugin is visible in Studio, but a clean editable test place has not yet been reached through the
 window controller, so no round 8 run or F-059/F-064/F-069 live verdict has been recorded.
 
+2026-09-25 03:14 UTC: a Studio answer was dropped after an HTTP 200 response that said its
+preference could not be saved. Commits `56032a6` and `666ec60` make the dock retry a transient
+failure and wait for a new choice after a permanent policy refusal. Clean worker build `f14733d`
+was deployed and verified, 4,176/4,176 clean worker tests and 58/58 plugin tests passed, and CI
+run 36089011844 passed all six jobs. This does not establish a live Studio verdict: the local
+1.4.0 plugin has not been rebuilt with this change, and the public asset still returned 404 while
+two listed controls returned 200. Evidence: `docs/evidence/f059-studio-answer-retry-2026-09-25.md`.
+The next concrete test remains round 8 with an actual clean Studio place and a capable dock.
+The CPU v22 trainer was alive at iteration 370/400; wait for its paired 38-row evaluation and
+automatic v23 transition before changing the model claim.
+
 2026-09-25 01:45 UTC: Studio's New Experience began opening a Baseplate, but the window controller
 then bound to a floating Lemonade window from the other Roblox Studio installation. Do not act
 on that unrelated window or claim a round 8 test. The Apple-Plugin-Release.rbxl place was closed
