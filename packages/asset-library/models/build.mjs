@@ -11,8 +11,10 @@
 //                  creator). Committed.
 //   SUMMARY.md     the counts by genre, kind, licence and source. Committed.
 //
-// File rows are read from ../models-store (gitignored): a file that is not on disk is not in the
-// manifest, whatever the catalog says. Triangle counts and bounding sizes are measured from the
+// File rows are read from ../models-store (gitignored) only when the source pack explicitly
+// documents that it was built for Roblox. A generic game-ready model is not a Roblox model.
+// A file that is not on disk is not in the manifest, whatever the catalog says.
+// Triangle counts and bounding sizes are measured from the
 // glTF accessors and OBJ vertices; FBX is not parsed, so those rows say null rather than a guess.
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -127,7 +129,9 @@ for (const src of existsSync(STORE) ? readdirSync(STORE, { withFileTypes: true }
     if (!packDir.isDirectory()) continue;
     const pack = packs.get(packDir.name);
     const root = join(STORE, src.name, packDir.name);
-    if (!pack || !existsSync(join(root, '.done'))) continue;
+    // The owner's Roblox-only rule is fail-closed. A conversion to .glb/.rbxm does not prove
+    // that the source model was purpose-built for Roblox.
+    if (!pack || pack.robloxSpecific !== true || !existsSync(join(root, '.done'))) continue;
     for (const f of walk(root)) {
       const ext = extname(f).toLowerCase();
       if (!MODEL_EXT.has(ext)) continue;

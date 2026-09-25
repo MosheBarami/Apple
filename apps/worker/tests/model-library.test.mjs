@@ -76,9 +76,9 @@ const indexed = M.findLibraryModels; // bound for readability below
 
 /* ---------------------------------------------------------------- the manifest --- */
 
-test('the manifest is not empty and holds both downloaded files and Creator Store ids', () => {
+test('the manifest contains Roblox Creator Store ids and no unproven general-purpose file', () => {
   assert.ok(MANIFEST.rows.length >= 1000, `only ${MANIFEST.rows.length} rows`);
-  assert.ok(fileRows.length >= 100, `only ${fileRows.length} downloaded model files`);
+  assert.equal(fileRows.length, 0, 'a file pack needs an explicit Roblox-specific provenance before inclusion');
   assert.ok(csRows.length >= 100, `only ${csRows.length} Creator Store ids`);
   assert.equal(MANIFEST.totals.rows, MANIFEST.rows.length, 'totals are derived from the rows');
 });
@@ -152,9 +152,9 @@ test('find_library_model answers from the bundle with ids insert_library_model t
   assert.equal(ops.length, 0, 'a lookup sends no Studio op');
 });
 
-test('Creator Store consent never authorises a downloaded file upload', async () => {
+test('Creator Store consent never authorises a downloaded file upload', async (t) => {
   const file = INDEX.rows.find((r) => typeof r[5] === 'string');
-  assert.ok(file, 'the index has no downloaded row, so this gate would check nothing');
+  if (!file) return t.skip('no Roblox-specific downloaded model pack has been admitted yet');
   const { ctx, ops } = ctxWith(undefined, { assetSources: { mode: 'remember', allow: ['creator_store'] } });
   const refused = await run(ctx, 'insert_library_model', { id: file[0] });
   assert.match(refused.error, /Creator Store|source choice/i);
@@ -286,8 +286,9 @@ test('after rejecting trees the model cannot offer an unrelated flower', async (
   assert.equal(ctx.uiDetail, undefined, 'no unrelated preview card may be offered');
 });
 
-test('the upload cap refuses before any byte is read or sent', async () => {
+test('the upload cap refuses before any byte is read or sent', async (t) => {
   const s = sample((r) => typeof r[5] === 'string');
+  if (!s) return t.skip('no Roblox-specific downloaded model pack has been admitted yet');
   const full = new Map(Array.from({ length: M.MAX_UPLOADS_PER_RUN }, (_, i) => [`x${i}`, i + 1]));
   // Any read of env (the credential store, the static store) would mean the upload path started.
   const touched = [];
@@ -306,8 +307,8 @@ test('the upload cap refuses before any byte is read or sent', async () => {
 });
 
 test('a file row is uploaded as a Model into the user\'s own account at price 0, and only with a key', async () => {
-  const s = sample((r) => typeof r[5] === 'string' && /\.glb$/.test(r[5]));
-  const m = M.libraryModel(s.id);
+  // Pure upload-path fixture: this file is deliberately not present in Apple's searchable index.
+  const m = { id: 'fixture/roblox-prop', name: 'Roblox prop', file: 'fixture/roblox-prop.glb', licence: 'CC0-1.0', attribution: null };
   const sent = [];
   const deps = (scopes) => ({
     describeCredential: async () => ({ scopes }),

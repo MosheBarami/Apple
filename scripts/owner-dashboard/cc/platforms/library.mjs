@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { REPO, cached, fetchJson } from '../http.mjs';
 
@@ -138,7 +139,7 @@ function modelRow(r, cs) {
   return { k: r.id, name: r.name, source: src, kind: r.kind ?? null, genres: arr(r.genres), licence: r.licence ?? (r.assetId ? cs?.licence ?? null : null),
     creator: r.creator ?? null, assetId: r.assetId ?? null, format: r.format ?? null, triangles: r.triangles ?? null,
     page: r.page ?? (r.assetId && cs?.page ? cs.page.replace('<assetId>', r.assetId) : null), file: r.path ? media(r.path) : null,
-    bytes: r.bytes ?? null, clean: r.scan ? r.scan.clean !== false : null, scripts: r.scan?.scriptsFound ?? r.scriptCount ?? null,
+    bytes: r.bytes ?? null, local: localFact(r.path, r.bytes, r.sha256), clean: r.scan ? r.scan.clean !== false : null, scripts: r.scan?.scriptsFound ?? r.scriptCount ?? null,
     attribution: r.attribution ?? null, stars: r.stars ?? null, use: r.use ?? null, download: r.download ?? null };
 }
 async function models(query) {
@@ -162,7 +163,7 @@ async function models(query) {
 }
 
 // ---------------------------------------------------------------- SFX
-const SFX_SOURCES = ['kenney-audio', 'opengameart-audio', 'sonniss', 'freesound', 'roblox-audio'];
+const SFX_SOURCES = ['kenney-audio', 'opengameart-audio', 'opengameart-cc0-ui', 'sonniss', 'freesound', 'roblox-audio'];
 let cat = null;
 async function categories() {
   if (!cat) cat = await import(pathToFileURL(path.join(LIB, 'fx-categories.mjs')).href);
@@ -177,7 +178,8 @@ async function sfxRows() {
       return { k: r.id ?? `${r.source}:${r.assetId}`, name: r.name, source: r.source, dur: r.durationSec ?? null,
         category: sfxCategory({ name: String(r.name ?? ''), tags: arr(r.tags), query: r.query ?? '', music }),
         license: r.license ?? (r.source === 'roblox' ? `roblox-${r.tier || 'community'}` : null), author: r.author ?? r.creator ?? null, pack: r.pack ?? null,
-        file: r.file ? media(r.file) : null, bytes: r.bytes ?? null, sourceUrl: r.sourceUrl ?? (r.assetId ? `https://create.roblox.com/store/asset/${r.assetId}` : null),
+        file: r.file ? media(r.file) : null, local: localFact(r.file, r.bytes, r.sha256), bytes: r.bytes ?? null,
+        sha256: r.sha256 ?? null, fileUrl: r.fileUrl ?? null, sourceUrl: r.sourceUrl ?? (r.assetId ? `https://create.roblox.com/store/asset/${r.assetId}` : null),
         assetId: r.assetId ?? null, use: r.use ?? (r.assetId ? 'by-id' : null) };
     })) || [];
     for (const r of rows) out.push(r);
@@ -187,13 +189,112 @@ async function sfxRows() {
 async function sfx(query) {
   const all = await sfxRows();
   const source = query.get('source') || 'local'; const category = query.get('category'); const q = has(query.get('q'));
-  const inSrc = (r) => (source === 'all' ? true : source === 'local' ? !!r.file : r.source === source);
+  const inSrc = (r) => (source === 'all' ? true : source === 'local' ? ['present', 'verified'].includes(r.local.state) : r.source === source);
   const scoped = all.filter(inSrc);
   const rows = scoped.filter((r) => (!category || r.category === category) && (!q || q(r.name, r.pack, r.author)));
   const man = json('sfx/manifest.json');
-  return { total: all.length, local: all.filter((r) => r.file).length, bySource: tally(all, (r) => r.source), categories: tally(scoped, (r) => r.category),
+  return { total: all.length, local: all.filter((r) => ['present', 'verified'].includes(r.local.state)).length, bySource: tally(all, (r) => r.source), categories: tally(scoped, (r) => r.category),
     packs: arr(man?.packs).map((p) => ({ id: p.id, license: p.license, files: p.files })), page: paged(rows, query, 200),
     source: `${LIB_REL}/sfx/sources/*.jsonl` };
+}
+
+// Inventory is deliberately stricter than the catalogues. A row with a path is only a claim;
+// the file, byte count and optional SHA-256 are checked from disk before calling it downloaded.
+function localFact(rel, expectedBytes, expectedSha, verifyHash = true) {
+  if (typeof rel !== 'string' || !rel || rel.startsWith('/') || rel.split('/').some((s) => !s || s === '.' || s === '..')) return { state: 'missing' };
+  const abs = path.resolve(LIB, rel);
+  if (!abs.startsWith(LIB + path.sep)) return { state: 'missing' };
+  try {
+    const real = fs.realpathSync(abs);
+    if (!real.startsWith(LIB + path.sep)) return { state: 'missing' };
+    const st = fs.statSync(real);
+    if (!st.isFile() || (Number.isFinite(expectedBytes) && st.size !== expectedBytes)) return { state: 'mismatch', bytes: st.size };
+    if (expectedSha && verifyHash) {
+      const actual = createHash('sha256').update(fs.readFileSync(real)).digest('hex');
+      if (actual !== expectedSha) return { state: 'mismatch', bytes: st.size };
+      return { state: 'verified', bytes: st.size, sha256: actual };
+    }
+    return { state: 'present', bytes: st.size };
+  } catch { return { state: 'missing' }; }
+}
+
+async function storedPaths() {
+  const base = process.env.API_BASE; const key = process.env.GOLEM_ADMIN_KEY;
+  if (!base || !key) return null;
+  try {
+    const rows = await cached('library:stored-paths', () => fetchJson(`${base}/api/admin/static-list`,
+      { label: 'Apple', what: 'רשימת קבצים בשרת', headers: { 'X-Admin-Key': key } }), 60000);
+    return new Set(arr(rows).map((r) => r.path));
+  } catch { return null; }
+}
+
+function receiptRows() {
+  const out = [];
+  const packs = new Map(jsonl('sources/models-packs.jsonl').map((p) => [p.id, p]));
+  for (const r of arr(json('models/manifest.json')?.rows)) if (r.path) {
+    const p = packs.get(r.pack);
+    out.push({ k: r.id, category: 'model', name: r.name, source: r.source ?? p?.source ?? null,
+      sourceUrl: r.page ?? p?.page ?? null, file: r.path, expectedBytes: r.bytes, expectedSha: r.sha256,
+      license: r.licence ?? p?.licence ?? null, download: { method: p?.downloadKind ?? 'not-recorded', url: p?.download ?? null },
+      backendPath: `/model-library/${r.path}`, use: r.use ?? null });
+  }
+  for (const s of SFX_SOURCES) for (const r of jsonl(`sfx/sources/${s}.jsonl`)) if (r.file) {
+    out.push({ k: r.id, category: 'sfx', name: r.name, source: r.source, sourceUrl: r.sourceUrl ?? null,
+      file: r.file, expectedBytes: r.bytes, expectedSha: r.sha256, license: r.license ?? null,
+      download: { method: r.fileUrl ? 'source-archive' : 'not-recorded', url: r.fileUrl ?? null },
+      backendPath: r.file.startsWith('sfx-store/opengameart/') ? `/private-library/sfx/${r.file.slice('sfx-store/'.length)}` : null,
+      use: r.use ?? null });
+  }
+  const ix = assetRows(); const packsUi = new Map(arr(json('manifest.json')?.packs).map((p) => [p.id, p]));
+  for (const r of arr(ix?.rows)) {
+    const p = packsUi.get(r.p); const file = `packs/${[r.p, r.f, r.s].filter(Boolean).join('/')}.png`;
+    out.push({ k: file, category: 'ui', name: r.s, source: r.p, sourceUrl: p?.source ?? null,
+      file, expectedBytes: null, expectedSha: null, license: p?.license ?? null,
+      download: { method: 'pack-extract', url: null }, backendPath: null, use: p?.forAgent ? 'agent-index' : 'reference' });
+  }
+  for (const r of arr(json('vfx/manifest.json')?.rows)) if (r.file) {
+    out.push({ k: r.id, category: 'vfx', name: r.name, source: r.source, sourceUrl: r.sourceUrl ?? null,
+      file: r.file, expectedBytes: r.bytes, expectedSha: r.sha256, license: r.license ?? null,
+      download: { method: 'pack-extract', url: null }, backendPath: null, use: r.use ?? null });
+  }
+  return out;
+}
+
+async function intake(query) {
+  const view = query.get('view') === 'files' ? 'files' : 'sources';
+  const q = has(query.get('q')); const category = query.get('category'); const state = query.get('state');
+  const ownerSources = jsonl('sources/owner-priority.jsonl');
+  const receipts = receiptRows();
+  const inScopeSources = ownerSources.filter((r) => r.state !== 'out-of-scope-not-roblox');
+  const exact = new Set(inScopeSources.map((r) => r.url));
+  const portals = new Set(inScopeSources.filter((r) => r.category === 'source_portal').map((r) => {
+    try { return new URL(r.url).hostname.replace(/^www\./, ''); } catch { return null; }
+  }).filter(Boolean));
+  const measured = receipts.map((r) => {
+    let hostname = null; try { hostname = new URL(r.sourceUrl).hostname.replace(/^www\./, ''); } catch {}
+    return { ...r, ownerListed: exact.has(r.sourceUrl) || (hostname && portals.has(hostname)) || false,
+      local: localFact(r.file, r.expectedBytes, r.expectedSha, false) };
+  });
+  const files = measured.filter((r) => (!category || r.category === category) && (query.get('owner') !== '1' || r.ownerListed)
+    && (!q || q(r.name, r.source, r.sourceUrl, r.file)));
+  const present = measured.filter((r) => r.local.state === 'present' || r.local.state === 'verified');
+  const stored = view === 'files' ? await storedPaths() : null;
+  const filePage = paged(state ? files.filter((r) => r.local.state === state) : files, query, 120);
+  filePage.rows = filePage.rows.map((r) => ({ ...r, local: localFact(r.file, r.expectedBytes, r.expectedSha),
+    backend: { state: !r.backendPath ? 'not-supported' : !stored ? 'not-checked' : stored.has(r.backendPath) ? 'stored' : 'not-stored' } }));
+  const sourceRows = ownerSources.filter((r) => (!category || r.category === category) && (!state || r.state === state) && (!q || q(r.url, r.category)));
+  const sourcePage = paged(sourceRows, query, 120);
+  sourcePage.rows = sourcePage.rows.map((r) => ({ ...r, acquired: r.state === 'out-of-scope-not-roblox' ? 0 : r.category === 'source_portal' ? present.filter((f) => {
+    try { return new URL(f.sourceUrl).hostname.replace(/^www\./, '') === new URL(r.url).hostname.replace(/^www\./, ''); } catch { return false; }
+  }).length : present.filter((f) => f.sourceUrl === r.url).length,
+    review: r.reviewFile ? localFact(r.reviewFile, r.reviewBytes, r.reviewSha256) : null }));
+  return { view, sources: { total: ownerSources.length, excluded: ownerSources.length - inScopeSources.length, page: sourcePage },
+    files: { total: receipts.length, local: present.length, fromOwner: present.filter((r) => r.ownerListed).length,
+      reviewOnly: ownerSources.filter((r) => r.reviewFile && ['verified', 'present'].includes(localFact(r.reviewFile, r.reviewBytes, r.reviewSha256).state)).length,
+      hashRecorded: present.filter((r) => !!r.expectedSha).length },
+    page: view === 'sources' ? sourcePage : filePage,
+    categories: tally(view === 'sources' ? ownerSources : measured, (r) => r.category), backendChecked: !!stored,
+    note: 'רק מודלים שנוצרו ל־Roblox נספרים כספריית המודלים. אתרי מודלים כלליים סומנו מחוץ לתחום; קובץ ישן שלהם אינו התקדמות. רשומה בקטלוג אינה הורדה. מצב השרת נבדק בנפרד.' };
 }
 
 // ---------------------------------------------------------------- VFX
@@ -247,7 +348,7 @@ function counts() {
     { id: 'ui', label: 'רכיבי UI', n: pairs, sub: `${arr(u?.components).length} רכיבים × ${Object.keys(u?.skins || {}).length} סגנונות`, file: 'ui-components.json' },
     { id: 'assets', label: 'אייקונים ותמונות', n: assetRows()?.rows.length ?? 0, sub: `${arr(man?.packs).length} חבילות`, file: 'index.json' },
     { id: 'models', label: 'מודלים וערכות 3D', n: mm?.totals?.rows ?? 0, sub: `${mm?.totals?.insertable ?? 0} מוכנים להכנסה, ${mm?.totals?.creatorStoreIds ?? 0} מזהי Creator Store`, file: 'models/manifest.json' },
-    { id: 'sfx', label: 'צלילים (SFX)', n: sfxN.reduce((t, x) => t + x.n, 0), sub: `${sfxN.reduce((t, x) => t + x.f, 0)} עם קובץ מקומי להשמעה`, file: 'sfx/sources/*.jsonl' },
+    { id: 'sfx', label: 'צלילים (SFX)', n: sfxN.reduce((t, x) => t + x.n, 0), sub: `${sfxN.reduce((t, x) => t + x.f, 0)} מציינים נתיב קובץ; הזמינות נבדקת בלשונית הקליטה`, file: 'sfx/sources/*.jsonl' },
     { id: 'vfx', label: 'אפקטים (VFX)', n: arr(vx?.rows).length, sub: `${arr(vx?.presets).length} פריסטים מוכנים`, file: 'vfx/manifest.json' },
   ];
 }
@@ -285,7 +386,7 @@ async function summary() {
   return { counts: counts(), growth: await growth(), note: 'נקרא מהקבצים בכל בקשה (מטמון לפי זמן שינוי הקובץ). "עכשיו" = עץ העבודה, גם לפני קומיט.' };
 }
 
-const TABS = { summary, ui, assets, models, sfx, vfx };
+const TABS = { summary, ui, assets, models, sfx, vfx, intake };
 export async function library(query = new URLSearchParams()) {
   const tab = TABS[query.get('tab')] ? query.get('tab') : 'summary';
   const out = await TABS[tab](query);

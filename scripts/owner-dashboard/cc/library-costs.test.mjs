@@ -48,6 +48,24 @@ test('models, sfx and vfx have real rows; sfx defaults to files that can be play
   assert.ok(v.presets.every((p) => Array.isArray(p.parts)));
 });
 
+test('owner acquisition view separates listed sources, local bytes and backend status', async () => {
+  const d = await library(q({ tab: 'intake', view: 'sources', limit: '10' }));
+  assert.ok(d.sources.total >= 140, 'the owner-provided source queue must be visible');
+  assert.ok(d.sources.page.rows.some((r) => r.url.includes('zerodev.tools')));
+  assert.equal(d.sources.excluded, 11, 'the general-purpose 3D portals are excluded from Roblox model intake');
+  assert.ok(d.files.total > 0);
+  assert.ok(d.files.local > 0);
+  assert.equal(d.files.fromOwner, 0, 'general-purpose model downloads do not count toward the owner request');
+  const onlyOwner = await library(q({ tab: 'intake', view: 'files', owner: '1', limit: '10' }));
+  assert.equal(onlyOwner.page.rows.length, 0, 'no Roblox-specific pack from the requested list has been admitted yet');
+  const files = await library(q({ tab: 'intake', view: 'files', q: 'Wooden Crate 01', limit: '10' }));
+  assert.ok(files.page.rows.every((r) => r.source !== 'polyhaven'), 'generic Poly Haven files must not be presented as Apple models');
+  const excluded = await library(q({ tab: 'intake', view: 'sources', off: '133', limit: '11' }));
+  assert.ok(excluded.page.rows.every((r) => r.state === 'out-of-scope-not-roblox' && r.acquired === 0));
+  const sound = await library(q({ tab: 'sfx', source: 'opengameart', q: 'Ability Learn', limit: '40' }));
+  assert.ok(sound.page.rows.some((r) => r.file && r.local.state === 'verified'), '35 downloaded sounds must show as files');
+});
+
 test('summary counts every library and has a growth series from git', async () => {
   const d = await library(q({ tab: 'summary' }));
   const by = Object.fromEntries(d.counts.map((c) => [c.id, c.n]));

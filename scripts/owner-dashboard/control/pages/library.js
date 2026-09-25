@@ -8,8 +8,8 @@ import { icon } from '../logos.js';
 import { spark } from '../fx.js';
 import { stat, sec, note, extBtn } from './kit.js';
 
-const TABS = [['summary', 'סקירה'], ['ui', 'רכיבי UI'], ['assets', 'אייקונים ותמונות'], ['models', 'מודלים וערכות'], ['sfx', 'צלילים'], ['vfx', 'אפקטים']];
-const PER = { models: 60, sfx: 60, vfx: 60 };
+const TABS = [['intake', 'קליטת נכסים'], ['summary', 'סקירה'], ['ui', 'רכיבי UI'], ['assets', 'אייקונים ותמונות'], ['models', 'מודלים וערכות'], ['sfx', 'צלילים'], ['vfx', 'אפקטים']];
+const PER = { intake: 60, models: 60, sfx: 60, vfx: 60 };
 const st = { tab: 'summary', f: {}, off: 0, q: '', tq: null };
 const media = (p) => (p ? `/api/cc/media?p=${encodeURIComponent(p)}` : '');
 const GENRE = { 'Shooter/Fighting': 'יריות וקרבות', 'City/Roleplay': 'עיר ומשחק תפקידים', Nature: 'טבע', 'Horror/Adventure': 'אימה והרפתקה', 'Simulator/Tycoon': 'סימולטור וטייקון', Obby: 'אובי', '(none)': 'ללא ז׳אנר' };
@@ -58,6 +58,42 @@ function summary(d) {
         </tbody></table></div>`;
     })}</div>
     ${d.note ? note('info', 'מאיפה המספרים', d.note) : ''}</div>`;
+}
+
+// Owner-only, read-only intake ledger. Every label says what was measured; a catalogue entry is
+// never presented as a downloaded byte or as a Roblox asset.
+const INTAKE_STATE = { 'rights-review-pending': 'ממתין לבדיקת זכויות', 'local-review-only': 'עותק לבדיקה בלבד',
+  'out-of-scope-not-roblox': 'מחוץ לתחום — לא נוצר ל־Roblox', verified: 'קובץ וגיבוב אומתו', present: 'קובץ קיים, ללא גיבוב רשום',
+  missing: 'אין קובץ מקומי', mismatch: 'אי התאמה בקובץ', stored: 'נמצא בשרת', 'not-stored': 'טרם הועלה לשרת',
+  'not-checked': 'השרת לא נבדק', 'not-supported': 'אין מסלול העלאה מאומת' };
+const intakeLabel = (s) => INTAKE_STATE[s] || s || 'לא ידוע';
+function intake(d) {
+  const view = filt('view') || 'sources'; const rows = arr(d.page?.rows);
+  return html`<div class="ow-panel">
+    <div class="g g4">${stat({ key: 'in-sources', label: 'מקורות ברשימה שלך', value: d.sources?.total, sub: `${num(d.sources?.excluded)} אתרי מודלים כלליים הוצאו מהתוכנית` })}
+      ${stat({ key: 'in-owner', label: 'קבצים מהרשימה שלך בדיסק', value: d.files?.fromOwner, sub: `${num(d.files?.reviewOnly)} עותקים נוספים לבדיקה בלבד` })}
+      ${stat({ key: 'in-local', label: 'קבצים מוצגים בדיסק', value: d.files?.local, sub: 'ללא קובצי המודלים הכלליים שהוצאו' })}
+      ${stat({ key: 'in-hashes', label: 'קבצים עם גיבוב צפוי', value: d.files?.hashRecorded, sub: 'ההתאמה נבדקת בכל עמוד שנפתח' })}</div>
+    ${note('info', 'מה באמת הושלם', d.note)}
+    <div class="ow-bar"><div class="seg" role="group" aria-label="תצוגת קליטה">
+      <button class="seg-b ${view === 'sources' ? 'on' : ''}" data-act="intakeview" data-v="sources">${num(d.sources?.total)} המקורות שביקשת</button>
+      <button class="seg-b ${view === 'files' ? 'on' : ''}" data-act="intakeview" data-v="files">כל קובץ בנפרד</button></div>
+      ${search(view === 'sources' ? 'חיפוש מקור או חבילה' : 'חיפוש נכס, מקור או קובץ')}
+      ${sel('category', 'סוג', arr(d.categories).map((c) => [c.k, c.k, c.n]))}
+      ${view === 'files' ? sel('owner', 'המקורות שלך', [['1', 'רק מהרשימה שלך']]) : ''}</div>
+    ${view === 'sources' ? html`<div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>עדיפות</th><th>המקור שביקשת</th><th>סוג</th><th>מצב אמיתי</th><th>קבצים שנקלטו</th></tr></thead><tbody>
+      ${rows.map((r) => html`<tr data-k="src-${r.priority}"><td>${num(r.priority)}</td><td dir="auto"><a href="${r.url}" target="_blank" rel="noopener noreferrer">${r.url}</a>
+        ${r.rights ? html`<br><small class="dim">${r.rights}</small>` : ''}</td><td>${r.category}</td>
+        <td>${intakeLabel(r.state)}${r.review ? html` · ${intakeLabel(r.review.state)}${r.review.bytes ? ` (${bytes(r.review.bytes)})` : ''}` : ''}</td>
+        <td class="n">${num(r.acquired || 0)}</td></tr>`)}</tbody></table></div></div>`
+      : html`<div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>נכס</th><th>סוג / מקור / רישיון</th><th>הורדה</th><th>קובץ בדיסק</th><th>שרת Apple</th></tr></thead><tbody>
+      ${rows.map((r) => html`<tr data-k="file-${r.k}"><td dir="auto"><b>${r.name}</b><br><small class="dim">${ltr(r.file)}</small></td>
+        <td>${r.category} · ${r.source || '—'}<br><small>${ltr(r.license || 'רישיון לא נרשם')}</small>${r.sourceUrl ? html`<br><a href="${r.sourceUrl}" target="_blank" rel="noopener noreferrer">עמוד המקור ↗</a>` : ''}</td>
+        <td>${r.download?.method || 'לא נרשם'}${r.download?.url ? html`<br><a href="${r.download.url}" target="_blank" rel="noopener noreferrer">כתובת ההורדה ↗</a>` : ''}</td>
+        <td>${intakeLabel(r.local?.state)}${isNum(r.local?.bytes) ? html`<br><small>${bytes(r.local.bytes)}</small>` : ''}${r.local?.sha256 ? html`<br><small class="mono" title="SHA-256">${r.local.sha256.slice(0, 16)}…</small>` : ''}</td>
+        <td>${intakeLabel(r.backend?.state)}</td></tr>`)}</tbody></table></div></div>`}
+    ${rows.length ? '' : html`<p class="empty">לא נמצאו פריטים בסינון הזה.</p>`}
+    ${pager(d.page)}<p class="ow-count">העמוד מתרענן כל 15 שניות. מצב השרת: ${d.backendChecked ? 'נבדק כעת' : 'לא נבדק'}.</p></div>`;
 }
 
 // ---------------------------------------------------------------- UI pairs
@@ -134,7 +170,7 @@ function models(d) {
   const t = d.totals || {}; const gh = filt('source') === 'github'; const rows = arr(d.page?.rows);
   return html`<div class="ow-panel">
     <div class="g g4">${stat({ key: 'md-n', label: 'מודלים בקטלוג', value: t.rows })}${stat({ key: 'md-cs', label: 'עם מזהה Creator Store', value: t.creatorStoreIds })}
-      ${stat({ key: 'md-f', label: 'קבצים בריפו (CC0)', value: t.files, sub: isNum(t.storeBytes) ? bytes(t.storeBytes) : '' })}${stat({ key: 'md-gh', label: 'קטלוג GitHub / ערכות', text: `${compact(d.github)} / ${compact(d.kits)}`, sub: 'מאגרי קוד וערכות רשמיות, לעיון' })}</div>
+      ${stat({ key: 'md-f', label: 'קובצי מודלים ייעודיים ל־Roblox', value: t.files, sub: 'חבילה חייבת הוכחת מקור ייעודי ל־Roblox' })}${stat({ key: 'md-gh', label: 'קטלוג GitHub / ערכות', text: `${compact(d.github)} / ${compact(d.kits)}`, sub: 'מאגרי קוד וערכות רשמיות, לעיון' })}</div>
     <div class="ow-bar">${search('חיפוש מודל (למשל car, sword)')}
       <div class="seg" role="group" aria-label="מקור"><button class="seg-b ${gh ? '' : 'on'}" data-act="src" data-v="">הקטלוג הראשי</button><button class="seg-b ${gh ? 'on' : ''}" data-act="src" data-v="github">קטלוג GitHub</button></div>
       ${gh ? '' : html`${sel('kind', 'סוג', Object.entries(t.byKind || {}).map(([k, n]) => [k, he(KIND, k), n]))}${sel('genre', 'ז׳אנר', Object.entries(t.byGenre || {}).filter(([k]) => k !== '(none)').map(([k, n]) => [k, he(GENRE, k), n]))}`}</div>
@@ -143,6 +179,7 @@ function models(d) {
       <div class="ow-b"><b dir="auto">${m.name}</b><p>${[he(KIND, m.kind), arr(m.genres).map((g) => he(GENRE, g)).join(', ')].filter(Boolean).join(' · ') || '—'}</p>
         <p>${m.creator ? html`יוצר: ${ltr(m.creator)} · ` : ''}רישיון ${ltr(m.licence || m.license || '—')}${isNum(m.stars) ? html` · ★ ${num(m.stars)}` : ''}</p>
         <div class="ow-chips">${m.source ? chip(m.source) : ''}${m.assetId ? chip(html`ID ${ltr(m.assetId, 'mono')}`, 'chip-ok') : ''}
+          ${m.file ? chip(intakeLabel(m.local?.state), m.local?.state === 'verified' ? 'chip-ok' : 'chip-warn') : ''}
           ${m.scripts ? chip(`${num(m.scripts)} סקריפטים`, 'chip-warn') : m.clean ? chip('נקי מסקריפטים', 'chip-ok') : ''}
           ${m.page ? html`<a class="chip chip-sm chip-btn" href="${m.page}" target="_blank" rel="noopener noreferrer">פתיחה ${icon('ext', 11)}</a>` : ''}</div></div></article>`)}</div>`
       : html`<p class="empty">אין מודל שמתאים לסינון.</p>`}
@@ -161,7 +198,7 @@ function sfx(d) {
         ${arr(d.bySource).map((s) => html`<option value="${s.k}" ${src === s.k ? 'selected' : ''}>${s.k} (${num(s.n)})</option>`)}</select></label>
       ${sel('category', 'קטגוריה', arr(d.categories).map((c) => [c.k, c.k, c.n]))}</div>
     <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th></th><th>שם</th><th>קטגוריה</th><th class="n">משך</th><th>מקור ורישיון</th><th></th></tr></thead><tbody>
-    ${rows.map((r) => html`<tr data-k="${r.k}"><td><button class="ow-play ${player.key === r.k ? 'on' : ''}" data-act="play" data-src="${r.file || ''}" data-id="${r.k}" ${r.file ? '' : 'disabled'} aria-label="${r.file ? `ניגון ${r.name}` : 'אין קובץ מקומי לנגן'}" title="${r.file ? 'ניגון' : 'אין קובץ בריפו: רק מזהה'}">${icon(player.key === r.k ? 'pause' : 'play', 14)}</button></td>
+    ${rows.map((r) => html`<tr data-k="${r.k}"><td><button class="ow-play ${player.key === r.k ? 'on' : ''}" data-act="play" data-src="${r.file || ''}" data-id="${r.k}" ${['present', 'verified'].includes(r.local?.state) ? '' : 'disabled'} aria-label="${r.file ? `ניגון ${r.name}` : 'אין קובץ מקומי לנגן'}" title="${r.file ? 'ניגון' : 'אין קובץ בריפו: רק מזהה'}">${icon(player.key === r.k ? 'pause' : 'play', 14)}</button></td>
       <td dir="auto"><b>${r.name}</b>${r.pack ? html`<br><small class="dim">${r.pack}</small>` : ''}</td><td>${r.category || '—'}</td><td class="n">${isNum(r.dur) ? `${num(r.dur, 1)} ש׳` : '—'}</td>
       <td><small>${r.source} · ${ltr(r.license || '—')}${r.author ? html` · ${r.author}` : ''}</small></td>
       <td>${r.assetId ? html`<a class="chip chip-sm chip-btn" href="https://create.roblox.com/store/asset/${r.assetId}" target="_blank" rel="noopener noreferrer">${ltr(r.assetId, 'mono')} ${icon('ext', 11)}</a>` : r.sourceUrl ? extBtn(r.sourceUrl, 'המקור', 'btn-sm btn-ghost') : ''}</td></tr>`)}
@@ -190,7 +227,7 @@ function vfx(d) {
     ${pager(d.page)}<p class="ow-count">מקור: ${ltr(d.source || 'packages/asset-library/vfx/manifest.json')}</p></div>`;
 }
 
-const BODY = { summary, ui: uiTab, assets, models, sfx, vfx };
+const BODY = { intake, summary, ui: uiTab, assets, models, sfx, vfx };
 function tabs() {
   return html`<div class="ow-tabs" role="tablist" aria-label="הספריות">${TABS.map(([k, l]) => html`<button class="ow-tab ${st.tab === k ? 'on' : ''}" role="tab" id="lib-t-${k}"
     aria-selected="${st.tab === k}" aria-controls="lib-panel" tabindex="${st.tab === k ? '0' : '-1'}" data-act="tab" data-key="tabkey" data-t="${k}">${l}</button>`)}</div>`;
@@ -199,7 +236,7 @@ const setTab = (t, ctx) => { st.tab = t; st.off = 0; st.q = ''; ctx.refresh(); }
 
 export default {
   id: 'library', title: 'הספריות', nav: 'הספריות', glyph: 'library',
-  sub: 'כל מה שהבונה יכול להשתמש בו: רכיבי UI, אייקונים, מודלים, צלילים ואפקטים. נקרא מהקטלוגים בריפו בכל טעינה',
+  sub: 'קטלוגים לצד קליטת קבצים בפועל: מקור, רישיון, הורדה, אימות והימצאות בשרת. לא כל רשומה זמינה לבונה.',
   load: (ctx) => ctx.api.get(`/api/cc/library?${query()}`),
   render(d) {
     if (d?.ok === false) return failCard(d.reason, { retry: true, title: 'לא הצלחנו לקרוא את הספריות' });
@@ -207,13 +244,16 @@ export default {
     return html`${tabs()}<div id="lib-panel" role="tabpanel" aria-labelledby="lib-t-${st.tab}" data-k="lib-${st.tab}">${body}</div>`;
   },
   after(root, ctx) {
+    if (st.tab === 'intake' && !st.intakeTimer) st.intakeTimer = setInterval(() => ctx.refresh(), 15000);
+    if (st.tab !== 'intake' && st.intakeTimer) { clearInterval(st.intakeTimer); st.intakeTimer = null; }
     const host = root.querySelector('.ow-vgrid');
     if (host && (host !== VG.host || host.dataset.keep !== VG.key)) vgInit(host, ctx.data || {});
     else if (host) vgDraw();
   },
-  unmount() { player.audio?.pause(); player.key = null; VG.host = null; clearTimeout(st.tq); },
+  unmount() { player.audio?.pause(); player.key = null; VG.host = null; clearTimeout(st.tq); clearInterval(st.intakeTimer); st.intakeTimer = null; },
   actions: {
     tab(el, ctx) { setTab(el.dataset.t, ctx); },
+    intakeview(el, ctx) { (st.f.intake ||= {}).view = el.dataset.v; st.off = 0; ctx.refresh(); },
     tabkey(el, ctx, e) {
       const i = TABS.findIndex(([k]) => k === el.dataset.t); const step = e.key === 'ArrowLeft' ? 1 : e.key === 'ArrowRight' ? -1 : 0; // RTL: left is next
       if (!step) return; e.preventDefault(); setTab(TABS[(i + step + TABS.length) % TABS.length][0], ctx);
