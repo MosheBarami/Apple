@@ -2026,15 +2026,17 @@ export const CREDIT_PURCHASE_LIVE: boolean = false;
  *
  * `STUDIO_PLUGIN_STORE_LIVE = false` says the install path does not work. It does not say whether
  * that is a step nobody has taken, a queue, or a decision, and for a year of copy the product let
- * readers assume the first. It is the third. A reader deciding whether to wait deserves the
- * difference, and so does the next agent, who would otherwise go looking for a checkbox.
+ * readers assume the first. Roblox made a moderation decision in September, and the public
+ * installation path is again unavailable on 2026-09-25. The current cause is unknown (Q-020),
+ * so a reader deciding whether to wait deserves that distinction.
  *
  * `null` would mean "not refused". A non-null value is a recorded moderation decision, sourced from
  * roblox.com/report-appeals for this asset id — not from the dashboard banner, which names no rule.
  *
- * It is `null` from 2026-09-22 because the listing is distributed again (STUDIO_PLUGIN_STORE_LIVE).
- * It is set again from 2026-09-23 — version 2 was removed for the same rule (see below).
- * The decision it used to carry is kept here as history, not as state: 'Misusing Roblox Systems',
+ * It was `null` from 2026-09-22 while the listing resolved publicly. It was set again on
+ * 2026-09-23 when version 2 was removed for the same rule (see below). It remains `null` now
+ * because the 2026-09-25 public 404 does not establish a new moderation decision.
+ * The earlier decision is kept here as history, not as state: 'Misusing Roblox Systems',
  * decided 2026-09-19T21:26+03:00, appeal 3JYeMPD1jVZIh8wYJV521ooFrHw sent 2026-09-19T22:04+03:00.
  */
 export interface StudioPluginStoreRefusal {
@@ -2053,8 +2055,8 @@ export interface StudioPluginStoreRefusal {
 // 3JhaXRZAqvmSw5iIhea5QZgT67R. Per the owner (docs/autonomy/DECISIONS.md D-STORE-2) the appeal was sent
 // with the product's final plugin build: removal 3Jj4h4hPWRTA3QPDRlNRmejqPrP (2026-09-23 14:00 IDT,
 // 'Misusing Roblox Systems'), appealed 14:02 IDT.
-// null again from 2026-09-24: that appeal was upheld and the final build is distributed (see
-// STUDIO_PLUGIN_STORE_LIVE). The removal above is history, not state.
+// null again from 2026-09-24: that appeal was upheld and the final build resolved publicly then.
+// The 2026-09-25 public 404 does not establish a new refusal (Q-020).
 export const STUDIO_PLUGIN_STORE_REFUSAL: StudioPluginStoreRefusal | null = null;
 
 /**
@@ -2064,8 +2066,8 @@ export const STUDIO_PLUGIN_STORE_REFUSAL: StudioPluginStoreRefusal | null = null
  * that 404s". A button pointing straight at the store while the asset is not
  * distributable does exactly that: the reader arrives at a page with nothing to
  * get and no explanation. So until the probe returns 200, every install
- * affordance goes to `/docs/plugin`, which states plainly that the plugin is not
- * published yet and becomes a working install guide the moment it is.
+ * affordance goes to `/docs/plugin`, which states plainly that public installation is
+ * unavailable and becomes a working install guide the moment distribution is verified.
  *
  * When STUDIO_PLUGIN_STORE_LIVE flips, this becomes the store URL everywhere at
  * once. Use STUDIO_PLUGIN_STORE_LIVE to decide whether the link is external

@@ -25,5 +25,12 @@ therefore lead to `/docs/plugin` instead of a broken Store URL, and `/status`
 reopens “Studio plugin installation is unavailable.” The test that ties the
 flag to the known issue failed before reopening the issue and passed afterward.
 The site build and all 316 site tests passed; web TypeScript and all 2,428 web
-tests passed. A clean export deployment and served-page check are still
-required before claiming that visitors see this correction.
+tests passed. Commit `95dcd65` was built from a clean Git export and deployed
+with `infra/deploy-static.mjs --only site` and `--only web`. The deployer checked
+all 115 site files and 38 app files against the bytes served by the worker.
+At about 08:48 UTC, a fresh browser visit to the live homepage showed a
+"Plugin availability" link to `/docs/plugin`; that page showed "Public
+installation is unavailable right now"; and `/status` listed "Studio plugin
+installation is unavailable" as open since 25 September. The app routes to
+the same availability path through the shared flag; this was covered by the
+web build/tests and byte verification, not an authenticated browser session.

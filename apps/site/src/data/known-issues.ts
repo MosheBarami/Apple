@@ -61,7 +61,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       + 'connection, the browser cannot distinguish an uninstalled plugin from a closed or disconnected Studio.',
     workaround:
       'Open Studio and its Apple panel, then connect it to your project. If there is no Apple button '
-      + 'in the Plugins tab, the plugin is not installed yet — get Apple Studio from the Creator Store first.',
+      + 'in the Plugins tab, check the plugin availability page before trying to install it.',
     links: [
       { label: 'Troubleshoot a missing panel', href: '/docs/troubleshooting' },
       { label: 'Install the plugin', href: '/docs/plugin' },
