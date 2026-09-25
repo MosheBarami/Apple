@@ -5,6 +5,15 @@ distribution separately.** The free Workers AI allowance reset on 2026-09-25. Th
 plugin is visible in Studio, but a clean editable test place has not yet been reached through the
 window controller, so no round 8 run or F-059/F-064/F-069 live verdict has been recorded.
 
+2026-09-25 01:45 UTC: Studio's New Experience began opening a Baseplate, but the window controller
+then bound to a floating Lemonade window from the other Roblox Studio installation. Do not act
+on that unrelated window or claim a round 8 test. The Apple-Plugin-Release.rbxl place was closed
+without saving its in-memory state during the transition; the file on disk was not modified
+(186,602 bytes, last modified 2026-09-23 16:43 local). Find a way to bind the actual Baseplate
+window before starting a run. Model scoring commit `62abc55` also rejects an empty final reply;
+the new test failed before the fix and 15 focused tests passed afterward. Stored v4/v5/v20
+evals contained no empty finish answers, so those reported scores do not change from this fix.
+
 2026-09-25 01:23 UTC: F-064's progress-sensitive duplicate-streak recovery was committed as
 `e1453fa` and deployed from a clean archive. CI passed all six jobs; the release verifier and an
 independent `/api/health` read both observed build `e1453fa`. The old worker failed the new real

@@ -4,6 +4,14 @@ Directly measured facts only. Re-measure at the start of every session; this fil
 
 **Measured:** 2026-09-25 ~04:23 IDT. Older snapshots below are historical.
 
+2026-09-25 ~04:45 IDT update: the v22 CPU training supervisor and its child were alive at
+iteration 140; no promotion verdict exists. A scoring guard now refuses empty final replies
+(`62abc55`, 15 focused tests passed; stored v4/v5/v20 finish answers had zero blanks).
+The local Studio controller began opening a clean Baseplate but selected an unrelated Lemonade
+floating window before the viewport could be inspected; round 8 remains untested. The
+Apple-Plugin-Release.rbxl place was closed without saving in-memory state; its disk file was
+unchanged. The latest CI run for the dashboard update was in progress at this measurement.
+
 ## Current boundary checks
 
 - GitHub Actions runs `36077908319` for `b529ffe`, `36078577416` for `6216ec1`,
