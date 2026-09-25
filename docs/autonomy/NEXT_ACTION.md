@@ -1,5 +1,7 @@
 # NEXT ACTION
 
+2026-09-25 08:34 UTC: the six-job CI for the live activity redesign is green. Keep the one v24 CPU process running until its paired 38-row result is valid and the next version starts automatically; do not infer a score from loss alone. Continue the isolated Studio verification and public Store check, then obtain three independent reviews only after F-059/F-064/F-069 are verified closed.
+
 2026-09-25 08:30 UTC: watch CI run 36112964038 through all six jobs and fix any real failure before calling the commit green. Keep the existing v24 CPU supervisor alone through 400/400, paired evaluation, publication and automatic v25 start. The new transfer holdout has no model result yet. Continue the isolated Studio gauntlet and public Store verification; F-059/F-064/F-069 and 0/3 fresh reviews remain open.
 
 2026-09-25 08:24 UTC: commit the marketing activity change and the transfer-holdout dead-end disposition with explicit paths, push once, and wait for full CI. Build and deploy the site from a clean committed export, then verify the served activity illustration visually and by its bytes. Keep the single v24 CPU supervisor alive through its held-out evaluation and let it start the next version automatically. The transfer holdout remains a diagnostic with no model answers. F-059/F-064/F-069 and 0/3 fresh reviews remain open.
