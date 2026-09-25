@@ -121,6 +121,7 @@ import { zipStoredStream } from './zip-write';
 import { auditCitations, corpusCensus, renderCitedContext, searchDocsDetailed } from './rag';
 import type { Citation, RetrievalOutcome } from './retrieval';
 import { serveStatic, ensureStaticTables } from './static';
+import { robloxThumbnailUrl } from './library-preview';
 import {
   handleDiscordRequest,
   editOriginal,
@@ -816,6 +817,23 @@ app.get('/api/health', async (c) => {
     buildSha: c.env.BUILD_SHA ?? 'unknown',
     time: new Date().toISOString(),
   });
+});
+
+// A visual choice has to show Roblox's actual thumbnail, never a stock illustration. The only
+// caller-controlled value is a safe integer; the upstream host and redirect target are fixed.
+app.get('/api/library-preview/:assetId', async (c) => {
+  const id = Number(c.req.param('assetId'));
+  if (!Number.isSafeInteger(id) || id <= 0) return c.text('Not found', 404);
+  const upstream = new URL('https://thumbnails.roblox.com/v1/assets');
+  upstream.searchParams.set('assetIds', String(id));
+  upstream.searchParams.set('size', '420x420');
+  upstream.searchParams.set('format', 'Png');
+  upstream.searchParams.set('isCircular', 'false');
+  const response = await fetch(upstream, { signal: AbortSignal.timeout(5000) }).catch(() => null);
+  if (!response?.ok) return c.text('Preview unavailable', 404);
+  const image = robloxThumbnailUrl(await response.json().catch(() => null), id);
+  if (!image) return c.text('Preview unavailable', 404);
+  return c.redirect(image, 302);
 });
 
 // ---------------------------------------------------------------- project session routes
