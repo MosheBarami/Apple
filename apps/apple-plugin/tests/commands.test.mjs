@@ -233,29 +233,33 @@ spec("handler-level refusals carry the remedy the product wrote for them", funct
     c:destroy()
 end)
 
-spec("third-party free models load only when Studio has already enabled that setting", function()
+spec("the engine gates third-party loading even when its setting cannot be read", function()
     local calls = 0
+    local allow = false
     services.InsertService = { LoadAsset = function() error("not owned by this place") end }
-    services.AssetService = {
-        AllowInsertFreeAssets = false,
+    services.AssetService = setmetatable({
         LoadAssetAsync = function(_, _)
             calls += 1
+            if not allow then error("third-party loading is disabled") end
             local model = Instance.new("Model")
             local part = Instance.new("Part"); part.Name = "CartoonTree"; part.Parent = model
             return model
         end,
-    }
+    }, { __index = function(_, key)
+        if key == "AllowInsertFreeAssets" then error("lacking capability RobloxScript") end
+        return nil
+    end })
     local c = newCommands()
     local op = { op = "insert_asset", assetId = 123456, parent = "game.Workspace" }
     local shut = run(c, "third-party-disabled", op, true)
     eq(shut.ok, false, "disabled third-party loading must refuse")
-    eq(calls, 0, "the plugin must never try the modern loader while the setting is off")
+    eq(calls, 1, "the engine refuses loading when the setting is off")
 
-    services.AssetService.AllowInsertFreeAssets = true
+    allow = true
     local allowed = run(c, "third-party-enabled", op, true)
     eq(allowed.ok, true, "a free model may load when the person already enabled Studio's setting")
     eq(allowed.data.count, 1)
-    eq(calls, 1)
+    eq(calls, 2)
 
     services.InsertService.LoadAsset = function(_, _)
         local model = Instance.new("Model")
@@ -264,7 +268,7 @@ spec("third-party free models load only when Studio has already enabled that set
     end
     local official = run(c, "official-still-first", { op = "insert_asset", assetId = 123458, parent = "game.Workspace" }, true)
     eq(official.ok, true, "Roblox-owned assets still use the existing loader")
-    eq(calls, 1, "the modern loader is only a fallback")
+    eq(calls, 2, "the modern loader is only a fallback")
     services.InsertService.LoadAsset = function() error("not owned by this place") end
 
     services.AssetService.LoadAssetAsync = function(_, _)
@@ -276,7 +280,7 @@ spec("third-party free models load only when Studio has already enabled that set
     local scripted = run(c, "third-party-scripted", { op = "insert_asset", assetId = 123457, parent = "game.Workspace" }, true)
     eq(scripted.ok, false, "a third-party model with code must still be refused")
     eq(scripted.remedy, "choose_scriptless_asset")
-    eq(calls, 2)
+    eq(calls, 3)
     c:destroy()
     services.InsertService = nil; services.AssetService = nil
 end)
