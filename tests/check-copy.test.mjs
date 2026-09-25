@@ -4,20 +4,34 @@
 // say the opposite. The first version of this rule set said CLEAN on a tree where all five prose
 // shapes had been injected — because it stripped Astro frontmatter, which is where a third of the
 // page's words live. So the cases below inject each shape and require the checker to name it.
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SCRIPT = join(ROOT, 'scripts', 'check-copy.mjs');
-const VICTIM = join(ROOT, 'apps', 'site', 'src', 'pages', 'pricing.astro');
+// Root test files run in parallel. Injecting copy into the checkout's pricing page raced the
+// credit-figure guard in CI, which sometimes read our temporary line instead of the real page.
+// Copy only the trees the checker walks; the mutation stays inside this test's private fixture.
+const FIXTURE = mkdtempSync(join(tmpdir(), 'check-copy-'));
+for (const path of ['scripts/check-copy.mjs', 'apps/site/src', 'apps/web/src', 'apps/web/index.html', 'apps/site/index.html']) {
+  const from = join(ROOT, path);
+  if (!existsSync(from)) continue;
+  const to = join(FIXTURE, path);
+  mkdirSync(dirname(to), { recursive: true });
+  cpSync(from, to, { recursive: true });
+}
+after(() => rmSync(FIXTURE, { recursive: true, force: true }));
+const SCRIPT = join(FIXTURE, 'scripts', 'check-copy.mjs');
+const VICTIM = join(FIXTURE, 'apps', 'site', 'src', 'pages', 'pricing.astro');
+const SOURCE_VICTIM = join(ROOT, 'apps', 'site', 'src', 'pages', 'pricing.astro');
 
 function run() {
   try {
-    return { code: 0, out: execFileSync('node', [SCRIPT], { cwd: ROOT, encoding: 'utf8' }) };
+    return { code: 0, out: execFileSync('node', [SCRIPT], { cwd: FIXTURE, encoding: 'utf8' }) };
   } catch (e) {
     return { code: e.status ?? 1, out: String(e.stdout ?? '') + String(e.stderr ?? '') };
   }
@@ -48,6 +62,14 @@ test('it reads every page, not the one somebody was looking at', () => {
   const r = run();
   const pages = Number(/(\d+) pages/.exec(r.out)?.[1] ?? 0);
   assert.ok(pages > 40, `only ${pages} pages scanned — the walk is missing a directory`);
+});
+
+test('copy injection never edits the shared checkout', () => {
+  const original = readFileSync(SOURCE_VICTIM, 'utf8');
+  withCopy('Create your dream game in minutes', () => {
+    assert.equal(readFileSync(SOURCE_VICTIM, 'utf8'), original,
+      'the copy test changed pricing.astro while other root tests were reading it');
+  });
 });
 
 for (const [line, rule] of [

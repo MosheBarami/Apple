@@ -1,5 +1,12 @@
 # NEXT ACTION
 
+2026-09-25 05:42 UTC: CI run 36098984126 passed five groups but Root tests failed
+because `tests/check-copy.test.mjs` temporarily edited the real pricing page while
+`check-credit-figures.test.mjs` read it in parallel. A new test reproduced the
+shared-checkout mutation before the fix. The copy tests now inject into a private
+temporary source tree; both affected suites passed 12/12 and the full root suite
+passed 556/556 locally. Commit and rerun CI before calling the lane green.
+
 2026-09-25 05:29 UTC: CI for the new verified UI shard passed the training tests but
 failed the root dead-end gate because the one-shot builder had no disposition. The
 builder's generated shard is consumed by training; this was recorded in
