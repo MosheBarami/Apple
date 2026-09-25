@@ -803,8 +803,8 @@ function Bridge:pushEvent(value: any): boolean
 	return queueEvent(session, event)
 end
 
--- The person's answer to "Where should Apple get assets from?", sent on the next poll. Only a
--- bounded list of names crosses; the worker keeps the choices it knows and refuses the rest.
+-- The person's explicit consent to add free Roblox assets, sent on the next poll. Only a bounded
+-- list of source names crosses; the worker keeps the choices it knows and refuses the rest.
 function Bridge:answerAssetSources(allow: any): boolean
 	local session = self.session
 	if not session or not current(self, session) then return false end
