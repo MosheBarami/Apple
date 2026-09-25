@@ -564,7 +564,13 @@ local function pollLoop(self: BridgeObject, session: Session)
 					continue
 				end
 				session.capabilitiesPending = false
-				if session.assetSourcesAnswer == sentAnswer then session.assetSourcesAnswer = nil end
+				-- A successful poll is not necessarily a saved answer. The worker can return 200
+				-- with owed=true when preference storage failed; keep sending until it settles.
+				local sourcesReply = body.assetSources
+				local answerStillOwed = type(sourcesReply) == "table" and sourcesReply.owed == true
+				if not answerStillOwed and session.assetSourcesAnswer == sentAnswer then
+					session.assetSourcesAnswer = nil
+				end
 
 				-- HTTP success is the acknowledgement for the result prefix.  This happens before looking
 			-- at terminal flags: a server may have accepted the result and then requested a detach.

@@ -431,13 +431,25 @@ do
     assert(requests[#requests].body.assetSourcesAnswer == nil, "an acknowledged answer is sent again")
     assert(#heard == 2, "a settled question with nothing new is announced again")
 
+    -- A 200 response can still mean the worker failed to save the answer. Retry that answer.
+    assert(bridge:answerAssetSources({ "creator_store" }))
+    queueResponse({ ops = {}, waitMs = 1, assetSources = { owed = true, message = "Apple could not save that. Try again." } })
+    assert(tick())
+    assert(requests[#requests].body.assetSourcesAnswer ~= nil, "the save attempt never reached the worker")
+    queueResponse({ ops = {}, waitMs = 1, assetSources = { owed = false } })
+    assert(tick())
+    assert(requests[#requests].body.assetSourcesAnswer ~= nil, "a rejected answer was not retried")
+    queueResponse({ ops = {}, waitMs = 1 })
+    assert(tick())
+    assert(requests[#requests].body.assetSourcesAnswer == nil, "a saved answer was retried")
+
     -- A refusal to store the answer comes back as a bounded sentence, never raw text with the token.
     queueResponse({ ops = {}, waitMs = 1, assetSources = { owed = true, message = "Pick at least one source." } })
     assert(tick())
-    assert(heard[3].owed == true and heard[3].message == "Pick at least one source.")
+    assert(heard[5].owed == true and heard[5].message == "Pick at least one source.")
     queueResponse({ ops = {}, waitMs = 1, assetSources = { owed = true, message = "leak sources.secret" } })
     assert(tick())
-    assert(heard[4].message ~= nil and not string.find(heard[4].message, "sources.secret", 1, true), "the token reached the dock")
+    assert(heard[6].message ~= nil and not string.find(heard[6].message, "sources.secret", 1, true), "the token reached the dock")
     bridge:disconnect()
     assert(tick())
 end
