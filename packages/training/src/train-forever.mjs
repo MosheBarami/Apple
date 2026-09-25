@@ -327,6 +327,29 @@ export function pairedComparison(candidateScored, bestScored, n) {
     ...evalProblems(candidateScored, { n }).map((p) => `candidate: ${p}`),
     ...evalProblems(bestScored, { n }).map((p) => `best: ${p}`),
   ];
+  const candidateRows = candidateScored?.perRow;
+  const bestRows = bestScored?.perRow;
+  const expectedRows = n ? Object.values(n).reduce((sum, count) => sum + count, 0) : null;
+  if (!Array.isArray(candidateRows) || !Array.isArray(bestRows)
+    || candidateRows.length !== bestRows.length
+    || (expectedRows !== null && (candidateRows.length !== expectedRows || bestRows.length !== expectedRows))) {
+    problems.push('paired row count differs or per-row evidence is missing');
+  } else if ([...candidateRows, ...bestRows].some((row) => !row || typeof row !== 'object'
+    || !row.base || typeof row.base !== 'object')) {
+    problems.push('paired row evidence is malformed');
+  } else {
+    const identity = (row) => [row.id, row.family, row.kind];
+    const ids = candidateRows.map((row) => row.id);
+    if (ids.some((id) => typeof id !== 'string' || !id) || new Set(ids).size !== ids.length) {
+      problems.push('paired row IDs are empty or duplicated');
+    }
+    if (!isDeepStrictEqual(candidateRows.map(identity), bestRows.map(identity))) {
+      problems.push('paired row identities differ');
+    }
+    if (!isDeepStrictEqual(candidateRows.map((row) => row.base), bestRows.map((row) => row.base))) {
+      problems.push('base row outcomes differ inside the paired run');
+    }
+  }
   if (!isDeepStrictEqual(candidateScored?.tally?.base, bestScored?.tally?.base)) {
     problems.push('base scores differ inside the paired run');
   }

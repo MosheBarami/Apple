@@ -24,6 +24,7 @@ import {
   triedIds,
   formatLogLine,
   evalProblems,
+  pairedComparison,
   promotionMargin,
   configKey,
   versionsIn,
@@ -238,6 +239,34 @@ test('evalProblems: the real v5 eval is valid; n drift, base drift and harness m
   const baseMoved = structuredClone(V5_SCORED);
   baseMoved.tally.base.finish.ok = 5;
   assert.match(evalProblems(baseMoved, { base: V5_SCORED.tally.base }).join(), /base finish 5 != 4/);
+});
+
+test('paired promotion requires the same held-out rows and base outcomes, not only equal totals', () => {
+  const candidate = structuredClone(V5_SCORED);
+  const best = structuredClone(V5_SCORED);
+  assert.deepEqual(pairedComparison(candidate, best, PINNED_N).problems, []);
+
+  best.perRow[0].id = 'a-different-task';
+  assert.match(pairedComparison(candidate, best, PINNED_N).problems.join('; '), /row|task|id/i);
+  best.perRow[0].id = candidate.perRow[0].id;
+
+  best.perRow[0].base = { ...best.perRow[0].base, ok: !best.perRow[0].base.ok };
+  assert.match(pairedComparison(candidate, best, PINNED_N).problems.join('; '), /base.*row|row.*base/i);
+});
+
+test('paired promotion refuses missing, duplicate and malformed row evidence', () => {
+  const candidate = structuredClone(V5_SCORED);
+  const best = structuredClone(V5_SCORED);
+  best.perRow = best.perRow.slice(1);
+  assert.match(pairedComparison(candidate, best, PINNED_N).problems.join('; '), /row count/i);
+
+  best.perRow = structuredClone(candidate.perRow);
+  best.perRow[1].id = best.perRow[0].id;
+  assert.match(pairedComparison(candidate, best, PINNED_N).problems.join('; '), /row identities/i);
+
+  best.perRow = structuredClone(candidate.perRow);
+  best.perRow[0] = null;
+  assert.match(pairedComparison(candidate, best, PINNED_N).problems.join('; '), /row evidence/i);
 });
 
 test('promotion needs the rescored best + margin; ties, reseeds and rank > 8 never promote', () => {
