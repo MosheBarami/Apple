@@ -95,10 +95,15 @@ build-blind ones.
 raised on purpose, because at the old cap the service was refusing every build. What has not
 changed is that it is a hard cap: beyond it the caps refuse generation rather than spending more.
 
-The identified, quantified saving not yet taken: the art-direction brief is 7,406 of those 13,894
-characters and is re-sent on every step of a run. Moving it behind a tool the agent calls once while
-planning would convert ~2,100 tokens/step into ~2,100 tokens/run — about **430 neurons (19%) off
-every build**. Deliberately not applied mid-measurement.
+**Art-direction prompt saving, re-measured 2026-09-25.** The older 7,406-character brief and its
+proposed 430-neuron saving were a historical estimate, not a current reduction. Moving the brief
+behind a tool would not save repeated input: the tool result is re-sent with the transcript. The
+product now sends the visual brief initially, then replaces it with a short reminder after the first
+successful mutating step. In a reproducible Agent prompt fixture from the committed source, the full
+system prompt is 23,341 characters (89 estimated GLM-5.3-flash input neurons), the art block is 5,194
+characters, and the collapsed prompt is 18,440 characters (70 estimated input neurons). That is **19 neurons saved per
+subsequent step**, or about **190** if ten later steps run. These are prompt-input estimates, not
+measured end-to-end build savings; the number of later steps varies.
 
 ### Reasoning effort: a measured surprise
 
