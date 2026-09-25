@@ -27,6 +27,8 @@ modules became dead ends when the old disclosure and accumulated step UI were re
 
 - `apps/web/src/components/ai-elements/chain-of-thought.tsx` — DELETE; the expandable reasoning tree contradicts the new surface.
 - `apps/web/src/components/ai-elements/reasoning.tsx` — DELETE; the reasoning disclosure is no longer rendered.
+- `apps/web/src/components/ai-elements/stack-trace.tsx` — DELETE; the Studio history no longer opens raw failure traces for customers.
+- `apps/web/src/components/ai-elements/terminal.tsx` — DELETE; the Studio history no longer offers its internal operation log.
 - `apps/web/src/components/ai-elements/tool.tsx` — DELETE; its only importer is a test of the retired tool-step display.
 - `apps/web/src/components/picks/chat/source-preview.tsx` — DELETE; the detailed source preview has no product caller.
 - `apps/web/src/components/picks/chat/turn-checkpoint.tsx` — DELETE; the retired per-turn step UI has no caller.
