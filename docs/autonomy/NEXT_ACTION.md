@@ -1,5 +1,7 @@
 # NEXT ACTION
 
+2026-09-25 07:53 UTC: Studio's main viewport is now accessible after closing the Lemonade floating window. Verify the active Apple dock's version and the open place's identity before changing the place; Plugin Management shows Shahar474's Apple Studio off, which may differ from the visible local dock. Then pair only an isolated scratch place and test F-059/F-064/F-069 when the free Workers AI allowance permits a real run. Do not infer a passing round 8 from the visible dock. Continue the one live v24 CPU supervisor and check CI run 36109370549; the latter is still in progress.
+
 2026-09-25 07:45 UTC: commit the provenance disposition and private dataset-card evidence, then rerun the full CI; the previous run's only failed test was `--gate passes only when every entry carries a disposition`, reproduced red in CI and now green locally (15/15). Continue the single v24 CPU process unchanged and wait for its real paired score before promoting anything.
 
 2026-09-25 07:35 UTC: let the single v24 CPU process finish and score against the unchanged 38-row set. The next eligible version can read the pinned `storage-outcome-verified-shard` from the ordered queue; watch its training, paired evaluation, HF upload and Discord post without starting a second supervisor. A gain on the known first-save failure alone is not independent frontier evidence; use fresh unseen storage tasks and a Studio run. The shard evidence is `docs/training/storage-outcome-shard-2026-09-25.md`. Gate still needs 3 reviews and live closure of F-059/F-064/F-069.
