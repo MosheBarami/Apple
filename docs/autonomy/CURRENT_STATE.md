@@ -2,12 +2,13 @@
 
 Directly measured facts only. Re-measure at the start of every session; this file is a snapshot.
 
-**Measured:** 2026-09-25 ~03:51 IDT. Older snapshots below are historical.
+**Measured:** 2026-09-25 ~03:56 IDT. Older snapshots below are historical.
 
 ## Current boundary checks
 
-- GitHub Actions run `36077908319` for `b529ffe` passed all six job groups. Run `36078577416`
-  for `6216ec1` is in progress. `/api/health` returned 200 with live worker build `f202c6e`.
+- GitHub Actions runs `36077908319` for `b529ffe` and `36078577416` for `6216ec1`
+  passed all six job groups. Run `36079514972` for `46d40b2` is in progress.
+  `/api/health` returned 200 with live worker build `f202c6e`.
   The site and app were previously deployed from clean exports, with served bytes checked.
   F-037 socket recovery and presence fixes are live, with a browser reconnect check still owed.
 - Apple Studio 1.4.0, SHA-256 `50fc250291fac769a972b3314b7094939dd42cbb8e5250b8ea5305b0388bf649`,
@@ -16,10 +17,13 @@ Directly measured facts only. Re-measure at the start of every session; this fil
   and logged-out installation are unverified. See `docs/evidence/plugin-1.4-upload-2026-09-25.md`.
 - The local CPU training supervisor finished all 400 steps of v20 without the Metal watchdog.
   Its adapter scored 24/38, but promotion was invalid: the base trajectory score changed from the
-  historical 0/23 to 1/23. v21 started automatically; v5 remains the best valid measured LoRA at
-  20/38. A 51-row verified Luau game-logic shard is private on Hugging Face. The supervisor's new
-  paired comparison will regenerate candidate and best in the same batch after a controlled restart;
-  see `docs/training/eval-drift-2026-09-25.md`.
+  historical 0/23 to 1/23. The supervisor was restarted with the new paired comparison and is
+  training v22 on CPU (processes 35962 and 36313 at 00:56 UTC); v21 was stopped for that restart.
+  v5 remains the best valid measured LoRA at 20/38. A 51-row verified Luau game-logic shard is
+  private on Hugging Face. The private `moshebarami/apple-lora/v20-experimental/` directory now
+  holds a converted v20 PEFT adapter and an explicit non-promotion note, verified by listing the
+  Hub files at revision `369d777e`. The new supervisor will regenerate candidate and best in the
+  same batch when v22 finishes; see `docs/training/eval-drift-2026-09-25.md`.
 - Acceptance still needs three fresh independent reviews and live checks for F-059, F-064 and F-069.
 - The current code-task benchmark shows Apple MAX 60/64 (93.8%) across four full runs and Apple
   15/16 (93.8%) in one. The newest Apple MAX run alone was 12/16, so the earlier 16/16 results do

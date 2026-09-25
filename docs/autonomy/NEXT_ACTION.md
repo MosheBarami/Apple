@@ -5,6 +5,14 @@ distribution separately.** The free Workers AI allowance reset on 2026-09-25. Th
 plugin is visible in Studio, but a clean editable test place has not yet been reached through the
 window controller, so no round 8 run or F-059/F-064/F-069 live verdict has been recorded.
 
+2026-09-25 00:56 UTC: the CPU supervisor was restarted on the paired-evaluation code in `46d40b2`;
+v21 was stopped at the version boundary and v22 is training (supervisor 35962, child 36313 at
+measurement). Do not relaunch a duplicate. Watch `packages/training/runs/forever/daemon.log` and
+`v22-train.log`; at evaluation, verify that v22 and the current best v5 use the same batch and scorer
+before promotion. The v20 adapter was converted to PEFT, delta-W checked on 112 projections, and
+uploaded to the existing private HF model under `v20-experimental/` (revision `369d777e`). It is
+explicitly unpromoted; the 24/38 standalone score remains non-comparable with the saved v5 score.
+
 2026-09-25 00:44 UTC: the corrected 16-item Luau code judge passed 86/86 guard tests. Re-scoring
 unchanged saved answers gave Apple MAX 16/16 in each of three earlier runs, but a newly generated
 run scored 12/16. The honest pooled Apple MAX number is **60/64 (93.8%)**, range 75–100%; regular
