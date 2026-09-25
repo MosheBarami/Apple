@@ -1,5 +1,7 @@
 # NEXT ACTION
 
+2026-09-25 08:30 UTC: watch CI run 36112964038 through all six jobs and fix any real failure before calling the commit green. Keep the existing v24 CPU supervisor alone through 400/400, paired evaluation, publication and automatic v25 start. The new transfer holdout has no model result yet. Continue the isolated Studio gauntlet and public Store verification; F-059/F-064/F-069 and 0/3 fresh reviews remain open.
+
 2026-09-25 08:24 UTC: commit the marketing activity change and the transfer-holdout dead-end disposition with explicit paths, push once, and wait for full CI. Build and deploy the site from a clean committed export, then verify the served activity illustration visually and by its bytes. Keep the single v24 CPU supervisor alive through its held-out evaluation and let it start the next version automatically. The transfer holdout remains a diagnostic with no model answers. F-059/F-064/F-069 and 0/3 fresh reviews remain open.
 
 2026-09-25 08:07 UTC: after v24 finishes and the queued storage-outcome lever trains, run `generate_eval.py` once with base, current valid best and candidate on the new three-row `holdouts/storage-transfer-v1.jsonl`, then score with `src/storage-transfer-holdout.mjs --score`. Keep the original 38-row promotion score unchanged and report the three-row result only as transfer evidence. The holdout's local references and mutations passed; no model result exists yet. CI run 36110087329 passed all six groups; latest documentation commit may trigger another run.
