@@ -16,7 +16,10 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
 ## Per-run protocol
 
 1. Record the exact live build SHA, model route, plan, mode, prompt, project ID, place baseline hash,
-   time and run ID. Use a fresh, isolated Baseplate. Do not clear a customer's existing place.
+   time and run ID. Use a fresh, isolated Baseplate. `node make-baseplate.mjs` produces a local
+   `.rbxlx` plus a SHA-256 baseline manifest with only Workspace, Baseplate and SpawnLocation;
+   open that file in Studio and verify the active place before pairing. Do not clear a customer's
+   existing place. The generator itself does not open or publish anything.
 2. Submit the fixed prompt once with Agent and Autonomous enabled. Allow at most three normal
    asset/style preview approvals; a human code edit, hint or manual place repair invalidates the run.
 3. Persist the worker's tool trace with run ID. It must contain successful asset insertion,
