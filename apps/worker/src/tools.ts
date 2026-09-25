@@ -2309,7 +2309,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
   },
   delete_instances: {
-    def: { name: 'delete_instances', description: 'Delete instances by path.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
+    def: { name: 'delete_instances', description: 'Delete instances by path only when the user asked for removal or after a replacement is already verified in Studio. A duplicate-name create error means the existing object should be inspected and edited or renamed; never delete working paths or props to make that name available.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
     studio: true,
     studioOps: ['delete_instances'],
     mutatesProject: true,
