@@ -16,7 +16,8 @@
  * `truncated`: not evaluated, and the lever gets a second attempt in a later version.
  *
  * Every version first passes a pre-flight (>= 10 GB free, the pinned eval set unchanged, the best's
- * eval rescoring cleanly); a failing pre-flight waits instead of spending a version. Every child has
+ * eval rescoring cleanly) and a chat-template check. A failed template check cannot silently start
+ * a long training job or use up a lever. Every child has
  * a timeout. Training and eval hold runs/forever/gpu.lock (shared by real and dry runs) and wait for
  * any other MLX job to finish first.
  *
@@ -63,6 +64,13 @@ export function trainingInvocation(cpu, configPath, iters) {
   return cpu
     ? { args: ['src/mlx_lora_cpu.py', '--config', configPath], timeoutMs: 8 * 60 * MIN, device: 'cpu' }
     : { args: ['-m', 'mlx_lm', 'lora', '--config', configPath], timeoutMs: trainTimeout(iters), device: 'gpu' };
+}
+
+/** A failed chat-template probe is an unmeasured version, never permission to train anyway. */
+export function classifyTemplateCheck({ code, stopped }) {
+  if (stopped) return 'stopped';
+  if (code === 0) return null;
+  return code === 3 ? 'template_mismatch' : 'template_failed';
 }
 const FOREVER_CMD = /train-forever\.mjs/;
 const GPU_JOB = /^\S*[Pp]ython[\d.]*\s+(?:-m\s+mlx_lm\b|\S*(?:generate_eval|mlx_to_peft)\.py|\S*\/mlx_lm[.\w]*)/;
@@ -351,7 +359,7 @@ export function shouldPromote(candidate, bestTotal, margin) {
 
 // These runs did not measure the lever: the run was cut off, the code/environment failed,
 // or the pinned evaluation was invalid. Backoff still applies to repeated failures.
-const NO_ATTEMPT = new Set(['started', 'interrupted', 'stopped', 'eval_invalid', 'truncated', 'error']);
+const NO_ATTEMPT = new Set(['started', 'interrupted', 'stopped', 'eval_invalid', 'truncated', 'error', 'template_failed']);
 
 /** A lever is used up by one `done` run or by MAX_ATTEMPTS failed ones. */
 export function triedIds(state) {
@@ -819,9 +827,15 @@ async function runVersion(ctx, entry) {
   const trainFile = join(resolve(TRAINING, cfg.data), 'train.jsonl');
   const tplLog = join(L.out, `v${v}-template-check.log`);
   const tpl = await run(PY, ['-c', TEMPLATE_CHECK, cfg.model, rel(trainFile)], { log: tplLog, timeoutMs: TIMEOUT.template });
-  if (tpl.stopped) { entry.status = 'stopped'; return; }
-  if (tpl.code === 3) { entry.status = 'template_mismatch'; say(`v${v}: chat-template prefix mismatch, see ${rel(tplLog)}`); return; }
-  if (tpl.code !== 0) say(`v${v}: template pre-flight could not run (exit ${tpl.code}${tpl.timedOut ? ', timeout' : ''}, ${rel(tplLog)}); continuing`);
+  const templateStatus = classifyTemplateCheck(tpl);
+  if (templateStatus) {
+    entry.status = templateStatus;
+    if (templateStatus !== 'stopped') {
+      entry.templateLog = rel(tplLog);
+      say(`v${v}: chat-template check ${templateStatus} (exit ${tpl.code}${tpl.timedOut ? ', timeout' : ''}); training not started; see ${entry.templateLog}`);
+    }
+    return;
+  }
 
   // 3. train, alone on the GPU
   if (!(await acquireGpu())) { entry.status = 'stopped'; return; }

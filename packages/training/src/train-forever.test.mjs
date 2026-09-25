@@ -11,6 +11,7 @@ import {
   deriveConfig,
   applyDryOverrides,
   classifyTraining,
+  classifyTemplateCheck,
   transformTrainRows,
   readVerifiedShard,
   parseTrainLog,
@@ -38,6 +39,14 @@ test('CPU training uses the local CPU wrapper and enough time for the same full 
   assert.deepEqual(cpu.args, ['src/mlx_lora_cpu.py', '--config', 'lora-apple-v19.yaml']);
   assert.ok(cpu.timeoutMs > gpu.timeoutMs);
   assert.equal(cpu.device, 'cpu');
+});
+
+test('template preflight must pass before a version spends CPU or GPU time', () => {
+  assert.equal(classifyTemplateCheck({ code: 0 }), null);
+  assert.equal(classifyTemplateCheck({ code: 3 }), 'template_mismatch');
+  assert.equal(classifyTemplateCheck({ code: 1 }), 'template_failed');
+  assert.equal(classifyTemplateCheck({ code: null, timedOut: true }), 'template_failed');
+  assert.equal(classifyTemplateCheck({ code: null, stopped: true }), 'stopped');
 });
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -274,6 +283,8 @@ test('a lever is used up only by a done run or a second failed attempt', () => {
     'Metal watchdog truncations do not measure the lever');
   assert.equal(triedIds(st('error', 'truncated')).has(lever.id), false,
     'a code error followed by a watchdog truncation does not exhaust a lever');
+  assert.equal(triedIds(st('template_failed', 'template_failed')).has(lever.id), false,
+    'a broken preflight cannot consume an untrained lever');
   assert.equal(triedIds(st('failed_training', 'timeout')).has(lever.id), true);
   assert.equal(triedIds(st('done')).has(lever.id), true);
   assert.equal(triedIds(st('interrupted', 'stopped', 'eval_invalid', 'interrupted')).has(lever.id), false);
