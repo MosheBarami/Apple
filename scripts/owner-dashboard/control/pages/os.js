@@ -1,7 +1,12 @@
 import { html, num } from '../ui.js';
 
 const state = (v) => v === 'ready' ? 'פעיל' : 'בתכנון';
-const sources = { 'exact-local-command': 'פקודה מקומית מדויקת', 'conservative-local-rule': 'כלל ניתוב מקומי', jev: 'Jev' };
+const sources = { 'exact-local-command': 'פקודה מקומית מדויקת', 'conservative-local-rule': 'כלל ניתוב מקומי',
+  jev: 'Jev הרשמי', 'hf-open-jev': 'open Jev מקומי מ־Hugging Face' };
+const fallbacks = { 'open-jev-english-only': 'המודל הפתוח תומך באנגלית בלבד; עברית נותבה מקומית',
+  'hf-open-jev-unavailable': 'המודל המקומי אינו זמין כרגע',
+  'hf-open-jev-low-or-invalid-confidence': 'המודל לא החזיר החלטה בטוחה',
+  'write-rule-overrides-jev': 'בקשת שינוי נשארת אצל סוכן עם כלים' };
 const topics = { security: 'אבטחה', training: 'אימון', studio: 'Studio', visual: 'עיצוב וחזות', owner: 'ניהול', release: 'שחרור' };
 const work = { query: '', busy: false, result: null, kind: null };
 async function ask(kind, ctx) {
@@ -9,7 +14,7 @@ async function ask(kind, ctx) {
   work.query = query;
   if (!query) { work.result = { ok: false, reason: 'כתבו בקשה או מילות חיפוש.' }; work.kind = kind; ctx.rerender(); return; }
   work.busy = true; work.kind = kind; ctx.rerender();
-  work.result = await ctx.api.post('/api/cc/os/action', kind === 'route' ? { kind, text: query, executeExact: true } : { kind, query });
+  work.result = await ctx.api.post('/api/cc/os/action', kind === 'route' ? { kind, text: query, executeExact: true, useJev: 'hf' } : { kind, query });
   work.busy = false; ctx.rerender();
 }
 function result() {
@@ -19,7 +24,8 @@ function result() {
   if (work.kind === 'search') return html`<div role="status"><h3>נמצאו ${num(r.hits?.length)} שורות</h3>${r.hits?.length ? html`<ul class="flist">${r.hits.map((h) => html`<li><bdi dir="ltr">${h.path}:${h.line}</bdi><span dir="auto">${h.text}</span></li>`)}</ul>` : html`<p>אין התאמה במאגר המקומי.</p>`}</div>`;
   const d = r.decision || {};
   const x = r.execution;
-  return html`<div role="status"><p><b>נתיב ${d.tier || '—'}</b> · ${d.tier === 1 ? 'פעולה מקומית ללא מודל' : d.tier === 2 ? 'שאלה לסוכן עונה' : 'עבודה לסוכן Codex'} · מקור: ${sources[d.source] || d.source || 'לא ידוע'}${d.fallback ? ` · סיבה לגיבוי: ${d.fallback}` : ''}.${d.tier !== 1 ? ' הסיווג מוצג; עבודת הסוכן עדיין לא מופעלת מהדף.' : ''}</p>
+  return html`<div role="status"><p><b>נתיב ${d.tier || '—'}</b> · ${d.tier === 1 ? 'פעולה מקומית ללא מודל' : d.tier === 2 ? 'שאלה לסוכן עונה' : 'עבודה לסוכן Codex'} · מקור: ${sources[d.source] || d.source || 'לא ידוע'}${d.fallback ? ` · ${fallbacks[d.fallback] || d.fallback}` : ''}.${d.tier !== 1 ? ' הסיווג מוצג; עבודת הסוכן עדיין לא מופעלת מהדף.' : ''}</p>
+    ${d.modelSuggestion ? html`<p>הצעת open Jev מ־Hugging Face: נתיב ${d.modelSuggestion.tier} (${Math.round(d.modelSuggestion.confidence * 100)}% ביטחון). זהו שחזור פתוח שעדיין לא אומת על בקשות Apple, ולכן ההצעה אינה משנה את הנתיב המחייב.</p>` : ''}
     ${x?.kind === 'brief' ? html`<p class="os-path" dir="ltr">${x.path || x.message}</p>${x.text ? html`<pre class="os-brief" dir="auto">${x.text}</pre>` : ''}` : ''}
     ${x?.kind === 'training' ? html`<p>הטוב המאומת: ${x.training?.best ? `v${x.training.best.version} · ${x.training.best.passed}/${x.training.best.total}` : 'אין נתון'}. אחרון: ${x.training?.latest?.label || 'אין נתון'}.</p>` : ''}</div>`;
 }
@@ -33,9 +39,9 @@ export default {
       <div class="g g3">
         <article class="card tile"><h2>קבלת מוצר</h2><p class="tile-v"><b>${num(a.reviews)}/${num(a.requiredReviews)}</b><span>ביקורות עצמאיות</span></p><p class="explain">${num(a.high)} ממצאים גבוהים פתוחים · מדידה מקומית ${f.measuredAt || 'לא זמינה'}</p></article>
         <article class="card tile"><h2>מודל מקומי</h2><p class="tile-v"><b>${t.best ? `v${t.best.version} · ${t.best.passed}/${t.best.total}` : '—'}</b><span>הטוב המאומת</span></p><p class="explain">${t.latest ? `גרסה אחרונה v${t.latest.version}: ${t.latest.label}` : 'אין מצב אימון זמין'} · ציון קוד בלבד</p></article>
-        <article class="card tile"><h2>חיבורים</h2><p>Whisper: ${d.voice?.whisper ? 'מקומי וזמין' : 'לא זמין'}</p><p>קול יוצא: ${d.voice?.kokoro ? 'Kokoro לאנגלית; קול המחשב לעברית' : d.voice?.speechOutput ? 'קול המחשב המקומי' : 'לא זמין'}</p><p>Kokoro: ${d.voice?.kokoro ? 'זמין' : 'טרם חובר'} · Jev: ${d.jevConfigured ? 'מפתח מוגדר' : 'טרם חובר'}</p></article>
+        <article class="card tile"><h2>חיבורים</h2><p>Whisper: ${d.voice?.whisper ? 'מקומי וזמין' : 'לא זמין'}</p><p>קול יוצא: ${d.voice?.kokoro ? 'Kokoro לאנגלית; קול המחשב לעברית' : d.voice?.speechOutput ? 'קול המחשב המקומי' : 'לא זמין'}</p><p>open Jev מ־Hugging Face: ${d.openJev?.ready ? 'מקומי ופעיל; המלצה בלבד (אנגלית)' : d.openJev?.installed ? 'מותקן, השירות אינו פעיל' : 'טרם הותקן'}</p><p>Jev הרשמי: ${d.jevConfigured ? 'מפתח TypeSafe מוגדר' : 'לא חובר'}</p></article>
       </div>
-      <section class="card"><h2>בקשה או חיפוש</h2><p class="explain">כתבו מה צריך. בקשה מדויקת להצגת הדוח או מצב האימון מתבצעת מיד מהמחשב הזה; בקשות אחרות מקבלות סיווג בלבד. ״חפש״ קורא את מאגר הידע המקומי. אין כאן בנייה או פריסה.</p>
+      <section class="card"><h2>בקשה או חיפוש</h2><p class="explain">כתבו מה צריך. בקשה מדויקת להצגת הדוח או מצב האימון מתבצעת מיד מהמחשב הזה. open Jev המקומי מ־Hugging Face מציע סיווג לבקשות באנגלית; הבקשות בעברית נשארות בכלל המקומי כי המודל אומן באנגלית. ההצעה מוצגת בנפרד מהנתיב המחייב. הטקסט לא נשלח לשירות חיצוני. ״חפש״ קורא את מאגר הידע המקומי. אין כאן בנייה או פריסה.</p>
         <div class="g g21"><input class="os-query" id="os-query" aria-label="בקשה ל־Apple OS" maxlength="4000" value="${work.query}" placeholder="למשל: הצג את דוח הבעלים האחרון" dir="auto">
           <div class="os-actions"><button class="btn btn-ok" data-act="route" ${work.busy ? 'disabled' : ''}>נתב בקשה</button> <button class="btn" data-act="search" ${work.busy ? 'disabled' : ''}>חפש בידע</button></div></div>
         ${work.busy ? html`<p role="status">בודק…</p>` : result()}

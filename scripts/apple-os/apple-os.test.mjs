@@ -42,6 +42,39 @@ test('exact read command has no model; implementation cannot be downgraded by Je
   assert.equal(low.source, 'conservative-local-rule');
 });
 
+test('the Hugging Face open-Jev model is called locally and remains advisory', async () => {
+  let calls = 0;
+  const fetchImpl = async (url, req) => {
+    calls++;
+    assert.equal(url, 'http://127.0.0.1:4778/decide');
+    assert.equal(req.headers.authorization, undefined);
+    const body = JSON.parse(req.body);
+    assert.equal(body.state, 'What is the latest model score?');
+    assert.equal(body.options.length, 2);
+    return new Response(JSON.stringify({ answer: { choice: body.options[1], confidence: 0.68 } }), { status: 200 });
+  };
+  const read = await routeRequest('What is the latest model score?',
+    { apiKey: null, openJevUrl: 'http://127.0.0.1:4778', fetchImpl });
+  assert.equal(read.tier, 2);
+  assert.equal(read.source, 'conservative-local-rule');
+  assert.deepEqual(read.modelSuggestion, { tier: 3, confidence: 0.68,
+    model: 'com-kotobalabs/open-jev-deberta-v3-large' });
+  assert.equal(read.modelAttempted, true);
+  assert.equal(calls, 1);
+  const hebrew = await routeRequest('מה מצב האימון?',
+    { apiKey: null, openJevUrl: 'http://127.0.0.1:4778', fetchImpl });
+  assert.equal(hebrew.fallback, 'open-jev-english-only');
+  assert.equal(calls, 1);
+  assert.equal((await routeRequest('show latest brief',
+    { apiKey: null, openJevUrl: 'http://127.0.0.1:4778', fetchImpl })).tier, 1);
+  assert.equal(calls, 1);
+  const unavailable = await routeRequest('What is the latest model score?',
+    { apiKey: null, openJevUrl: 'http://127.0.0.1:4778', fetchImpl: async () => new Response('{}', { status: 503 }) });
+  assert.equal(unavailable.tier, 2);
+  assert.equal(unavailable.fallback, 'hf-open-jev-http-503');
+  assert.equal(unavailable.modelAttempted, true);
+});
+
 test('brief reads current sources and writes a dated local artifact without changing the repo', () => {
   const root = mkdtempSync(join(tmpdir(), 'apple-os-test-'));
   try {
