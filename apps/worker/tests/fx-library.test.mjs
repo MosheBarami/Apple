@@ -399,10 +399,11 @@ test('set_properties refuses a SoundId from nowhere and accepts a library or dis
   assert.ok(!refused(await T.TOOLS.set_properties.run(sound().ctx, { path: 'game.SoundService.Coin', props: { Volume: { t: 'number', v: 0.2 } } })));
 });
 
-test('a vetted kit built in the worker still places its own emitter', async () => {
+test('a terrain kit does not hand-build a particle effect', async () => {
   const s = studio((op) => (op.op === 'get_tree' ? { root: { path: 'game.Workspace', class: 'Workspace', children: [] } } : { ok: true, created: ['x'] }));
   const r = await T.TOOLS.build_scene.run(s.ctx, { kit: 'floating_island' });
   const creates = s.calls.filter((c) => c.op === 'create_instances');
-  assert.ok(creates.length > 0, JSON.stringify(r));
-  assert.ok(creates.some((c) => walk(c.items).some((i) => i.className === 'ParticleEmitter')), 'the kit mist was refused');
+  const detailed = creates.flatMap((c) => walk(c.items)).filter((item) => ['Part', 'Model', 'ParticleEmitter'].includes(item.className));
+  assert.equal(detailed.length, 0, JSON.stringify(r));
+  assert.match(r.next, /insert_vfx/);
 });

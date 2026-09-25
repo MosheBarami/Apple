@@ -952,8 +952,6 @@ async function dumpScripts(
  */
 /** The Studio channel as phase-a-tools.ts sees it: the same `op`, bound to this run. */
 const studioCall = (ctx: AgentCtx): OpCall => (studioOp, timeoutMs) => op(ctx, studioOp, timeoutMs);
-/** Item arrays a vetted kit in this file built (D-FXLIB-1): create_instances lets their emitters through. Arguments the model writes are never in it. */
-const LIBRARY_BUILT = new WeakSet<object>();
 
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
@@ -2133,9 +2131,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-UIONLY-1: UI classes come from insert_ui_component only.
       const handMadeUi = refuseLibraryItems(a.items, UI_RULE);
       if (handMadeUi) return Promise.resolve(handMadeUi);
-      // D-FXLIB-1: Sounds and particle effects come from insert_sound / insert_vfx. A vetted kit
-      // built in this file (LIBRARY_BUILT) is the library too.
-      const handMadeFx = LIBRARY_BUILT.has(a.items as object) ? null : refuseLibraryItems(a.items, FX_RULE);
+      // D-FXLIB-1: Sounds and particle effects come from insert_sound / insert_vfx.
+      const handMadeFx = refuseLibraryItems(a.items, FX_RULE);
       if (handMadeFx) return Promise.resolve(handMadeFx);
       const pass = normaliseItems(a.items);
       if (pass.refusals.length > 0) {
@@ -2145,12 +2142,10 @@ export const TOOLS: Record<string, ToolImpl> = {
       }
       // D-MODELLIB-2: a prop never becomes hand-built because consent is still owed or a plugin
       // cannot insert from the library. Keep it unbuilt and report the missing capability instead.
-      if (!LIBRARY_BUILT.has(a.items as object)) {
-        const handMadeModel = refuseHandMadeModel(a.items);
-        if (handMadeModel) return Promise.resolve(handMadeModel);
-        const handBuilt = handBuiltPropRefusal(Array.isArray(a.items) ? a.items : []);
-        if (handBuilt) return Promise.resolve({ error: `Nothing was created. ${handBuilt}` });
-      }
+      const handMadeModel = refuseHandMadeModel(a.items);
+      if (handMadeModel) return Promise.resolve(handMadeModel);
+      const handBuilt = handBuiltPropRefusal(Array.isArray(a.items) ? a.items : []);
+      if (handBuilt) return Promise.resolve({ error: `Nothing was created. ${handBuilt}` });
       return op(ctx, { op: 'create_instances', items: (pass.items as never[]) ?? [] });
     },
   },
@@ -2270,8 +2265,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'build_scene',
       description:
-        'Build a whole ready-made environment in ONE call, then add to it. kit "floating_island": a Terrain island with a flat grassy top and a rock underside tapering to a point, a stream that pours off the edge as a waterfall with mist, 2-6 stylised trees (30-45 studs), 1-5 glowing crystal clusters, the golden-hour mood, the Baseplate hidden and the SpawnLocation moved onto the island. ' +
-        'Use it for any floating / sky island request instead of building those pieces yourself — their shapes are tested; yours have not looked right. It returns surfaceY and usableRadius: place anything extra on that height. Everything lands in Workspace.SkyIsland.',
+        'Lay the PLAIN TERRAIN foundation for a floating island: grassy top, rock underside, stream and waterfall terrain, lighting and spawn. This is deliberately incomplete. Find and insert ready-made library models for trees, crystals and other detailed props, and use insert_vfx for mist. Never hand-build those from parts or call the scene finished from this terrain result. Returns surfaceY and usableRadius for placement.',
       parameters: S({
         kit: { type: 'string', enum: ['floating_island'] },
         center: { type: 'array', items: { type: 'number' }, description: 'Island centre, default [0, 150, 0]' },
@@ -2281,6 +2275,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       }, ['kit']),
     },
     studio: true,
+    // set_mood below still reads/replaces Lighting effects through these Studio operations.
     studioOps: ['terrain_edit', 'create_instances', 'get_tree', 'delete_instances', 'set_props', 'set_visible'],
     mutatesProject: true,
     run: async (ctx, a) => {
@@ -2289,18 +2284,19 @@ export const TOOLS: Record<string, ToolImpl> = {
       if ('error' in kit) return kit;
       const terrain = await runTerrainEdits(ctx, { operations: kit.terrain });
       if (toolError(terrain)) return { ...(terrain as Record<string, unknown>), note: 'Only part of the island terrain was built; nothing else was added.' };
-      const built = ['island terrain, stream and waterfall'];
-      LIBRARY_BUILT.add(kit.items);
-      const made = await TOOLS.create_instances!.run(ctx, { items: kit.items });
-      if (toolError(made)) return { ...(made as Record<string, unknown>), built, projectMutated: true, note: 'The terrain is in place; the trees and crystals were not created.' };
-      built.push(`${kit.facts.trees} trees, ${kit.facts.crystals} crystal clusters and waterfall mist`);
+      const built = ['island terrain, stream and waterfall terrain'];
       const mood = await TOOLS.set_mood!.run(ctx, { mood: 'golden' });
       if (!toolError(mood)) built.push('golden-hour lighting');
       const hidden = await op(ctx, { op: 'set_visible', paths: ['game.Workspace.Baseplate'], visible: false });
       if (!toolError(hidden)) built.push('Baseplate hidden');
       const spawn = await op(ctx, { op: 'set_props', path: 'game.Workspace.SpawnLocation', props: { Position: { t: 'Vector3', v: kit.spawn } } as never });
       if (!toolError(spawn)) built.push('SpawnLocation moved onto the island');
-      return { built, ...kit.facts, projectMutated: true, next: 'The scene is finished and its pieces are kept for this run. If the request asks for something it does not have, add only that (on surfaceY). Otherwise reply now in two or three short, simple sentences for a young player — no numbers, sizes or part names.' };
+      const { trees, crystals, ...terrainFacts } = kit.facts;
+      return {
+        built, ...terrainFacts, projectMutated: true, complete: false,
+        pending: [`${trees} ready-made library trees`, `${crystals} ready-made library crystal props`, 'library waterfall mist VFX'],
+        next: 'The terrain is only a foundation. Use find_library_model and insert_library_model for detailed trees and crystals; use insert_vfx for mist. If a matching verified asset is unavailable, leave it unbuilt and report that gap. Never hand-build a substitute or call this a finished scene.',
+      };
     },
   },
   delete_instances: {

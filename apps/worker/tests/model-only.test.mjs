@@ -8,7 +8,8 @@
  *     library tools;
  *   - run_luau refuses the same shapes in Luau; comments are not code;
  *   - generate_model and generate_model_external refuse and send nothing;
- *   - plain structure, functional parts (ShopTrigger, CoinPad) and the vetted scene kit still pass.
+ *   - plain structure and functional parts (ShopTrigger, CoinPad) pass; the scene kit lays terrain
+ *     and leaves detailed props to verified library assets.
  *
  * Run with:  node --test tests/model-only.test.mjs      (from apps/worker)
  */
@@ -117,8 +118,11 @@ test('generate_model and generate_model_external refuse, send nothing, and point
   }
 });
 
-test('the vetted floating-island kit still builds through build_scene', async () => {
+test('the floating-island tool builds only plain terrain and leaves detailed props to the library', async () => {
   const s = studio();
   const r = await T.TOOLS.build_scene.run(s.ctx, { kit: 'floating_island', center: [0, 150, 0] });
   assert.ok(!refused(r), JSON.stringify(r).slice(0, 400));
+  assert.equal(r.complete, false);
+  assert.match(r.next, /find_library_model/);
+  assert.equal(s.calls.filter((call) => call.op === 'create_instances').length, 0, 'the kit hand-built a prop');
 });
