@@ -1,6 +1,8 @@
 # Cartoon garden Studio continuation — 2026-09-25
 
-This was a continuation of an existing, rejected garden place, **not** a fresh cartoon-v2 benchmark attempt. It must not increase the 1/36 measured count or the 0 passing count.
+This was a continuation of an existing, rejected garden place, **not** a fresh
+cartoon-v2 benchmark attempt. The original bank has 1/36 measured and zero
+passing; cartoon-v2 has 0/36 measured. This continuation changes neither count.
 
 ## Boundary and setup
 
