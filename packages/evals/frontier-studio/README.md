@@ -22,8 +22,9 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
    existing place. The generator itself does not open or publish anything.
 2. Submit the fixed prompt once with Agent and Autonomous enabled. Allow at most three normal
    asset/style preview approvals; a human code edit, hint or manual place repair invalidates the run.
-3. Persist the worker's tool trace with run ID. It must contain successful asset insertion,
-   `play_check` and `inspect_visually` calls. A refused or disconnected tool is not a success.
+3. Persist the worker's tool trace with run ID. It must show a successful `propose_plan`, then
+   `find_library_model` or `find_verified_asset`, then insertion, then `play_check` or
+   `play_check_ui` and `inspect_visually`. A refused or disconnected tool is not a success.
 4. Independently read the Studio place back. For each asset role, identify the Roblox-specific
    source, rights, why it fits the brief, the inserted instance and its placement. Audit that
    complex models and UI came from the approved Roblox library, while only simple geometry was
@@ -68,7 +69,9 @@ directory. A minimal bundle has the shape below; every `criteriaFor(task)` key n
 }
 ```
 
-`trace.json` must be `{ "runId": "real-run-id", "tools": [{"tool":"...","ok":true}, ...] }`.
+`trace.json` must be `{ "runId": "real-run-id", "tools": [{"tool":"...","ok":true}, ...] }`
+in actual call order. This checks the agentic route from a plan through discovery and placement
+to functional and visual verification; the trace alone does not prove the game works.
 Each `asset:<role>` proof additionally needs
 `asset: {source: "library"|"creator-store", sourceRef: "Roblox asset ID or library row",
 rightsUrl: "https://…", robloxSpecific: true, rightsVerified: true, placed: true,
@@ -86,7 +89,7 @@ bank with new customer failure types and reserve unseen tasks for a later holdou
 
 ## Current state
 
-The protocol and ten falsifiable scorer tests are implemented. **0 of 36 Studio missions have
+The protocol and eleven falsifiable scorer tests are implemented. **0 of 36 Studio missions have
 been measured under this new protocol.** Do not display 0% or 100% as a model score from this bank.
 The next real step is to run the first mission in a fresh isolated, paired Studio place and attach
 the readback, Play-mode checks and blind screenshots. The owner's latest visual rejection is an

@@ -12,6 +12,7 @@ const body = Buffer.from('synthetic fixture: not a real Studio observation');
 writeFileSync(join(root, 'fixture.txt'), body);
 const digest = createHash('sha256').update(body).digest('hex');
 const traceBody = Buffer.from(JSON.stringify({ runId: 'synthetic-run', tools: [
+  { tool: 'propose_plan', ok: true }, { tool: 'find_library_model', ok: true },
   { tool: 'insert_library_model', ok: true }, { tool: 'play_check', ok: true },
   { tool: 'inspect_visually', ok: true },
 ] }));
@@ -82,6 +83,7 @@ test('a full-game pass requires recorded asset insertion, play check and visual 
   for (const tool of ['insert_library_model', 'play_check', 'inspect_visually']) {
     const bundle = complete();
     const altered = JSON.stringify({ runId: 'synthetic-run', tools: [
+      { tool: 'propose_plan', ok: true }, { tool: 'find_library_model', ok: true },
       { tool: 'insert_library_model', ok: true }, { tool: 'play_check', ok: true },
       { tool: 'inspect_visually', ok: true },
     ].filter((x) => x.tool !== tool) });
@@ -91,6 +93,21 @@ test('a full-game pass requires recorded asset insertion, play check and visual 
     bundle.proofs.run.sha256 = createHash('sha256').update(altered).digest('hex');
     assert.equal(gradeMission(task, bundle, root).status, 'unmeasured');
   }
+});
+
+test('the agent must plan and discover a verified asset before insertion, then verify the result', () => {
+  const bundle = complete();
+  const outOfOrder = JSON.stringify({ runId: 'synthetic-run', tools: [
+    { tool: 'insert_library_model', ok: true }, { tool: 'find_library_model', ok: true },
+    { tool: 'propose_plan', ok: true }, { tool: 'inspect_visually', ok: true },
+    { tool: 'play_check', ok: true },
+  ] });
+  writeFileSync(join(root, 'out-of-order.json'), outOfOrder);
+  bundle.proofs.run.artifact = 'out-of-order.json';
+  bundle.proofs.run.sha256 = createHash('sha256').update(outOfOrder).digest('hex');
+  const result = gradeMission(task, bundle, root);
+  assert.equal(result.status, 'unmeasured');
+  assert.ok(result.missing.includes('run'));
 });
 
 test('a generic converted model cannot satisfy a Roblox asset requirement', () => {

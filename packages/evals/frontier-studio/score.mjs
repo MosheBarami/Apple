@@ -53,9 +53,13 @@ function traceValid(root, proof, runId) {
   try {
     const trace = JSON.parse(readFileSync(path, 'utf8'));
     if (trace.runId !== runId || !Array.isArray(trace.tools)) return false;
-    const did = (name) => trace.tools.some((x) => x.tool === name && x.ok === true);
-    return (did('insert_library_model') || did('insert_asset'))
-      && did('play_check') && did('inspect_visually');
+    const after = (position, ...names) => trace.tools.findIndex((x, i) => i > position && x.ok === true && names.includes(x.tool));
+    const plan = after(-1, 'propose_plan');
+    const find = after(plan, 'find_library_model', 'find_verified_asset');
+    const insert = after(find, 'insert_library_model', 'insert_asset');
+    const play = after(insert, 'play_check', 'play_check_ui');
+    const visual = after(insert, 'inspect_visually');
+    return plan >= 0 && find > plan && insert > find && play > insert && visual > insert;
   } catch { return false; }
 }
 
