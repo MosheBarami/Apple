@@ -372,11 +372,12 @@ async function datasetsOf(repo) {
   const hf = readJson(D('hf/REJECTED.json'));
   const gl = (() => { try { return fs.readdirSync(D('.')).filter((n) => n.startsWith('game-logic')); } catch { return []; } })();
   const synth = readJson(D('game-logic-synth-v1/examples.json')), rej = readJson(D('game-logic-synth-v1/rejects.json'));
+  const verifiedV4 = await lines(D('game-logic-seeds-v4/shard-3.jsonl'));
   const gate = await split('.');
   return [
     { id: 'gate', name: 'סט האימון הנקי', what: 'קוד Luau מתוך מאגרים פתוחים עם רישיון שמתיר אימון', rows: (gate.train ?? 0) + (gate.val ?? 0) + (gate.test ?? 0), split: gate, source: 'GitHub', usedIn: 'v1–v4' },
     { id: 'trajectories', name: 'הדגמות שימוש בכלים', what: 'איך סוכן טוב משתמש בכלים צעד אחרי צעד', ...(await (async () => { const s = await split('tool-trajectories-v1'); return { rows: (s.train ?? 0) + (s.val ?? 0) + (s.test ?? 0), split: s }; })()), source: 'מקומי', usedIn: 'v4' },
-    { id: 'gameLogic', name: 'לוגיקת משחק', what: 'בעיות לוגיקה (מטבעות, מלאי, זמנים) עם בדיקות שמריצות את הקוד', rows: gl.length, unit: 'אוספים', extra: synth ? `${Array.isArray(synth) ? synth.length : synth.examples?.length ?? '?'} דוגמאות סינתטיות שעברו בדיקה, ${Array.isArray(rej) ? rej.length : rej?.rejects?.length ?? '?'} נדחו` : null, source: 'מקומי', usedIn: 'v5 וניסויים מאוחרים יותר' },
+    { id: 'gameLogic', name: 'לוגיקת משחק', what: 'בעיות לוגיקה (מטבעות, מלאי, זמנים) עם בדיקות שמריצות את הקוד', rows: gl.length, unit: 'אוספים', extra: [synth ? `${Array.isArray(synth) ? synth.length : synth.examples?.length ?? '?'} דוגמאות סינתטיות שעברו בדיקה, ${Array.isArray(rej) ? rej.length : rej?.rejects?.length ?? '?'} נדחו` : null, verifiedV4 != null ? `${verifiedV4} דוגמאות Luau מאומתות נוספו לאימון v22` : null].filter(Boolean).join(' · ') || null, source: 'מקומי', usedIn: 'v5; אוסף מאומת נוסף ב-v22' },
     { id: 'github', name: 'מאגר GitHub הגדול', what: 'קוד רובלוקס מ-1,035 מאגרים', rows: await lines(D('roblox-github-v1/rows.jsonl')), extra: `${(await lines(D('roblox-github-v1/repos.jsonl'))) ?? '?'} מאגרים`, source: 'GitHub', usedIn: 'עוד לא' },
     { id: 'research', name: 'מאגר המחקר', what: 'קוד, דוגמאות אימון וידע מ-6 מקורות', rows: null, parts: { code: await sumDir(`${R}/code_candidates`), sft: await sumDir(`${R}/sft_candidates`), knowledge: await lines(D(`${R}/../release/knowledge/references.jsonl`)) }, source: 'GitHub, תיעוד, Hugging Face', usedIn: 'עוד לא (מחכה לאישור רישיונות)' },
     { id: 'hf', name: 'מאגרים מ-Hugging Face', what: 'מאגרים ציבוריים שנבדקו לרישיון ולאיכות', rows: Array.isArray(hf?.admitted) ? hf.admitted.length : null, unit: 'אושרו', extra: Array.isArray(hf?.rejected) ? `${hf.rejected.length} נדחו` : null, source: 'Hugging Face', usedIn: 'מבחנים' },
