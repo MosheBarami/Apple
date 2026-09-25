@@ -2,15 +2,19 @@
 
 Directly measured facts only. Re-measure at the start of every session; this file is a snapshot.
 
-**Measured:** 2026-09-25 ~03:56 IDT. Older snapshots below are historical.
+**Measured:** 2026-09-25 ~04:23 IDT. Older snapshots below are historical.
 
 ## Current boundary checks
 
-- GitHub Actions runs `36077908319` for `b529ffe` and `36078577416` for `6216ec1`
-  passed all six job groups. Run `36079514972` for `46d40b2` is in progress.
-  `/api/health` returned 200 with live worker build `f202c6e`.
+- GitHub Actions runs `36077908319` for `b529ffe`, `36078577416` for `6216ec1`,
+  `36079960470` for `a56e7bf`, and `36081078529` for `e1453fa` passed all six job groups.
+  `/api/health` returned 200 with live worker build `e1453fa` after a clean-export deploy.
   The site and app were previously deployed from clean exports, with served bytes checked.
   F-037 socket recovery and presence fixes are live, with a browser reconnect check still owed.
+- F-064's renewed move-on bound is live in `e1453fa`. A clean old-code archive with the new
+  integration test failed 1/30 because it ended a run that had built requested parts; the clean
+  patched archive passed 39/39 focused tests, TypeScript typecheck, and 4,173 worker tests with
+  zero failures. A fresh Studio run is still required to close F-064.
 - Apple Studio 1.4.0, SHA-256 `50fc250291fac769a972b3314b7094939dd42cbb8e5250b8ea5305b0388bf649`,
   was submitted in Studio over the existing plugin asset `107230158271368`. Studio reported success.
   The public Store page and toolbox details API returned 404 immediately afterward; distribution

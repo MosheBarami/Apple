@@ -5,6 +5,14 @@ distribution separately.** The free Workers AI allowance reset on 2026-09-25. Th
 plugin is visible in Studio, but a clean editable test place has not yet been reached through the
 window controller, so no round 8 run or F-059/F-064/F-069 live verdict has been recorded.
 
+2026-09-25 01:23 UTC: F-064's progress-sensitive duplicate-streak recovery was committed as
+`e1453fa` and deployed from a clean archive. CI passed all six jobs; the release verifier and an
+independent `/api/health` read both observed build `e1453fa`. The old worker failed the new real
+SessionDO integration test (29/30), and the clean patched tree passed 39 focused tests and 4,173
+worker tests with zero failures. This is a deployed source fix, not a live Studio verdict; run
+round 8 and confirm the requested parts are built before marking F-064 closed. Evidence:
+`docs/evidence/f064-progress-between-streaks-2026-09-25.md`.
+
 2026-09-25 00:56 UTC: the CPU supervisor was restarted on the paired-evaluation code in `46d40b2`;
 v21 was stopped at the version boundary and v22 is training (supervisor 35962, child 36313 at
 measurement). Do not relaunch a duplicate. Watch `packages/training/runs/forever/daemon.log` and
