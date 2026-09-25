@@ -448,7 +448,7 @@ export const REFUSAL_REMEDIES = {
   /** Studio is running a test, so the plugin will not write. */
   leave_test_mode: 'Stop the running test in Studio (the ⏹ Stop button) and ask again — Apple only edits in edit mode.',
   /** The asset is not in the signed-in user's inventory. */
-  take_asset_first: 'Open that asset on the Creator Store and take it into your inventory, then ask again. Roblox only lets a plugin load assets the signed-in account owns.',
+  take_asset_first: 'Apple could not load this model. Choose another one, or add it to your Roblox inventory and try again.',
   /** The requested target is outside the scope the plugin will write to. */
   choose_allowed_target: 'Ask for a target inside the place Apple may write to — Workspace, ServerStorage, ServerScriptService, ReplicatedStorage, StarterGui, StarterPack or StarterPlayer.',
   /** The asset carried code, which this product will not insert on anyone's behalf. */
