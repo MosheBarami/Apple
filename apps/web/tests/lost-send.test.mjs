@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runVisible } from '../src/lib/run-visibility.ts';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const HOOK = readFileSync(join(SRC, 'lib', 'use-project-socket.ts'), 'utf8');
@@ -28,6 +29,23 @@ test('if the socket closes first, the prompt is handed back and its bubble remov
   assert.match(onClose, /const lost = unackedChat\.current;/);
   assert.match(onClose, /setMessages\(\(list\) => list\.filter\(\(m\) => m\.id !== lost\.localId\)\);/);
   assert.match(onClose, /setLostChat\(\{ text: lost\.text/);
+});
+
+// Live Studio run, 2026-09-25: the worker was still running and the assistant card still
+// showed its active step, but the local running flag had fallen false and Stop vanished.
+// The active assistant turn is a second piece of run evidence until msg_end or run_state
+// settles it. In that state Stop must remain available through its HTTP path.
+test('an active assistant turn keeps Stop available when the local running flag drifts', () => {
+  assert.equal(runVisible(false, [{ role: 'assistant', streaming: true }]), true);
+  assert.equal(runVisible(true, []), true);
+  assert.equal(runVisible(false, [{ role: 'assistant', streaming: false }]), false);
+  assert.equal(runVisible(false, [{ role: 'user', streaming: true }]), false);
+  const result = between(HOOK, '  return {\n    conn,', '\n  };\n}');
+  assert.match(result, /running:\s*runVisible\(running, messages\)/, 'the workspace must receive the reconciled run state');
+  const end = between(HOOK, "case 'msg_end':", "case 'run_state':");
+  assert.match(end, /streaming:\s*false/);
+  const noRun = between(HOOK, "if (!msg.run) {", 'const run = msg.run;');
+  assert.match(noRun, /m\.streaming\s*\?\s*\{\s*\.\.\.m,\s*streaming:\s*false/);
 });
 
 test('the workspace puts it back in the box and says so, and never resends it by itself', () => {

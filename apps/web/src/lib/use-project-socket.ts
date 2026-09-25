@@ -2,6 +2,7 @@
 // SessionDO: WebSocket with subprotocol auth, exponential-backoff reconnect,
 // message history hydration, and typed ServerMsg fan-out into React state.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { runVisible } from './run-visibility.ts';
 import type {
   AgentPhase,
   ChatAttachment,
@@ -1262,7 +1263,10 @@ export function useProjectSocket(
     assetSourcesOwed,
     agentStatus,
     phaseMarks,
-    running,
+    // A live assistant card is evidence of an active run even if a late socket frame
+    // briefly clears the local flag. Keep Stop available over HTTP until a terminal
+    // frame or a fresh no-run snapshot settles that card.
+    running: runVisible(running, messages),
     logs,
     frames,
     playtest,
