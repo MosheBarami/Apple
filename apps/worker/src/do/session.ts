@@ -5505,6 +5505,9 @@ export class SessionDO extends DurableObject<Env> {
       // header and the status broadcast use.
       studioConnected: () => this.opQueue.length < 100 && this.pluginConnectedNow(),
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs, agent),
+      // Read the run by reference: create_instances and delete_instances can arrive in one LLM
+      // response, and a flag captured when the context was constructed would miss the conflict.
+      blockDirectDeletion: () => agent?.blockDeletesAfterCreateConflict === true,
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind, {}, agent),
       restoreCheckpoint: (id: string) => this.restoreCheckpoint(id, agent),
       // Frames go to the browser and nowhere else. They are deliberately not
@@ -5770,16 +5773,6 @@ export class SessionDO extends DurableObject<Env> {
         await this.dropOpsForRun(run.msgId);
         void this.ctx.storage.setAlarm(Date.now() + 1);
         return { id: 'none', ok: false, error: verdict.message, failure: WORKER_FAILURES.runEnded };
-      }
-      // A failed create is atomic in Studio. A name conflict therefore gives no evidence that
-      // an existing path is disposable. Round 8C deleted four saved paths to make room for one
-      // duplicate name. Fence every delete in this run; a fresh request can explicitly remove
-      // something later, while this run can inspect, rename or edit what is already there.
-      if (run.blockDeletesAfterCreateConflict && studioOp.op === 'delete_instances') {
-        return {
-          id: 'none', ok: false, failure: 'refused',
-          error: 'A create name conflict occurred in this run. Existing saved instances were not deleted. Inspect, edit or rename the existing path instead.',
-        };
       }
     }
     this.seq += 1;

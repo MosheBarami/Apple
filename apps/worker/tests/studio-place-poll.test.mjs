@@ -31,6 +31,11 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
    '--alias:cloudflare:workers=' + join(WORKER, 'tests', 'stubs', 'cloudflare-workers.mjs'),
    '--outfile=' + OUT], { cwd: WORKER, stdio: 'pipe' });
 const { SessionDO } = await import(`file://${OUT}`);
+const TOOLS_OUT = join(mkdtempSync(join(tmpdir(), 'golem-safety-tools-')), 'tools.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
+  [join(WORKER, 'src', 'tools.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + TOOLS_OUT],
+  { cwd: WORKER, stdio: 'pipe' });
+const { TOOLS } = await import(`file://${TOOLS_OUT}`);
 
 const TOKEN = 'proj.' + 'a'.repeat(48);
 const hex = async (s) =>
@@ -110,14 +115,21 @@ test('a create name conflict cannot be followed by deleting saved geometry in th
   assert.equal((await create).failure, 'conflict');
 
   const queued = o.opQueue.length;
-  const deletion = await o.execStudioOp({ op: 'delete_instances', paths: [
+  const deletion = await TOOLS.delete_instances.run(o.agentCtx(run), { paths: [
     'game.Workspace.PathNetwork.MainPath', 'game.Workspace.PathNetwork.PathEast',
-  ] }, 1000, run);
-  assert.equal(deletion.ok, false);
-  assert.equal(deletion.failure, 'refused');
+  ] });
   assert.match(deletion.error, /existing|saved|conflict/i);
   assert.equal(o.opQueue.length, queued, 'the delete reached the Studio queue');
   assert.equal(map.get('agent')?.blockDeletesAfterCreateConflict, true, 'the fence must survive DO eviction');
+
+  // Internal cleanup must remain available: an asset insertion may need to remove a scripted
+  // model after its scan. The broad execStudioOp fence must not leave that model in the place.
+  const cleanup = o.execStudioOp({ op: 'delete_instances', paths: ['game.Workspace.UnsafeImport'] }, 1000, run);
+  await new Promise((resolve) => setImmediate(resolve));
+  const [cleanupId, cleanupReply] = [...o.opWaiters.entries()].at(-1) ?? [];
+  assert.ok(cleanupReply, 'the internal cleanup did not reach the Studio queue');
+  cleanupReply({ id: cleanupId, ok: true, data: { deleted: 1 } });
+  assert.equal((await cleanup).ok, true);
 
   const inspect = o.execStudioOp({ op: 'get_instance', path: 'game.Workspace.PathNetwork.PathEast' }, 1000, run);
   await new Promise((resolve) => setImmediate(resolve));

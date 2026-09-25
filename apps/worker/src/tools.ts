@@ -151,6 +151,8 @@ export interface AgentCtx {
   userId?: string;
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
+  /** Live run fence: direct model deletion is refused after a create name conflict. */
+  blockDirectDeletion?: () => boolean;
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
   /** Roll the place back to a checkpoint. Optional so an older caller still satisfies this type. */
   restoreCheckpoint?(id: string): Promise<{ ok: boolean; error?: string }>;
@@ -2313,7 +2315,9 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['delete_instances'],
     mutatesProject: true,
-    run: (ctx, a) => op(ctx, { op: 'delete_instances', paths: (a.paths as string[]) ?? [] }),
+    run: (ctx, a) => ctx.blockDirectDeletion?.()
+      ? Promise.resolve({ error: 'A create name conflict occurred in this run. Existing saved instances were not deleted. Inspect, edit or rename the existing path instead.' })
+      : op(ctx, { op: 'delete_instances', paths: (a.paths as string[]) ?? [] }),
   },
   move_instances: {
     def: {
