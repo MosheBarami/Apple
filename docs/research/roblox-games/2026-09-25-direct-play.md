@@ -335,6 +335,54 @@ benchmark should verify the action and the transition in Studio Play, not just
 the presence of a tutorial label or colorful props. No game art, map, UI,
 sound or code from this title was copied into Apple or its training data.
 
+## Race for Eggs — cartoon race and pet economy (launched in app)
+
+I selected Race for Eggs from Roblox Home and launched Play from its native
+detail page. It showed a 98% rating and about 12,000 active players at the
+time; neither figure measures Apple's quality. This pass used only the Roblox
+desktop app, not a website launch.
+
+### What I saw and completed
+
+- A branded xFrozen Studios splash led to a short character cutscene in a red
+  studded bedroom, then to a neon-green studded hub. The HUD grouped Sell,
+  Race and Buy across the top, Pets/Eggs and Auto Race on the left, and
+  Index/Shop/Rebirth/Ready/Event Pass on the right. Shop and Upgrade stalls,
+  an event timer, and a purple world gate gave the flat field destinations.
+  The HUD was visually coherent but crowded; that tradeoff belongs in review.
+- I used Roblox's keyboard UI navigation to activate the winged Race control.
+  The avatar moved to a glowing Race pad. Later a ranking panel showed six
+  positions with character portraits, times and egg previews; the player was
+  sixth at 60.00 seconds with no egg. I did not control or time the actual
+  race motion, so this proves an entry/result transition, not a complete
+  race mechanic. Keyboard navigation reached OK and returned to the hub.
+- A seven-day Daily Rewards panel offered a free day-one claim. Activating it
+  showed a checkmark and changed the visible cash balance from $0 to $100.
+- A separate Playtime Rewards panel showed three available rewards among
+  timed future cards. I activated the free $2.5K cash card, the Frog card and
+  the $100 cash card. Each changed to a checkmark. The visible balance moved
+  from $100 to about $2.6K and then $2.7K; the Frog appeared in hotbar slot 2.
+- The Pets panel initially read `Pets Active (0/10)`. Activating `EQUIP BEST`
+  changed it to `(1/10)` and showed Frog with `$100/s` and `UNEQUIP`. The cash
+  display subsequently rose from about $2.7K to $8.1K while repeated `+100$`
+  labels appeared. This verifies a free reward → owned pet → equip → ongoing
+  currency feedback loop. I did not verify server persistence, rebirth,
+  hatching, shop purchases, offline earnings, or any paid feature.
+- `Growing Eggs` opened an empty, blurred panel. That is consistent with no egg
+  currently growing; it does not prove the egg workflow succeeds or fails.
+
+### Apple acceptance implication
+
+A cartoon simulator should be tested through at least one **causal chain**:
+an in-world or HUD action changes state; a reward is granted exactly once;
+the reward appears in inventory; equipping it changes an active count and
+rate; and the displayed economy changes at that rate. The interface must
+make each transition visible and permit dismissing overlays. For the garden
+gauntlet, the corresponding original chain is buy seed → plant → grow →
+harvest → sell → updated currency and inventory. A screenshot of colorful
+props or a list of scripts does not pass this requirement. No art, UI, map,
+sound or code from Race for Eggs was copied or placed in training data.
+
 ## Product and benchmark implications — hypotheses, not pass claims
 
 1. A playable opening needs a safe spawn, a readable objective and a route to
@@ -366,14 +414,19 @@ sound or code from this title was copied into Apple or its training data.
 10. Ride A Pet demonstrates a verifiable onboarding chain: highlight one
     action, observe a functional avatar and UI change, then present a routed
     objective with a live distance. Each link should be checked separately.
+11. Race for Eggs demonstrates a measurable reward-to-economy chain: free claim,
+    owned item, equip state, per-second feedback and visible currency increase.
+    It also shows why a result screen should be judged after gameplay rather
+    than counted as proof that the race itself was playable.
 
 ## Coverage and next observation
 
-Seven popular games entered; Command An Army, Ball VS Ball, Merge & Dig
+Eight popular games entered; Command An Army, Ball VS Ball, Merge & Dig
 Simulator! and the Steal An Egg revisit were launched from the Roblox app
-itself, as was Ride A Pet. One simulation/tycoon opening, one shooter live
+itself, as were Ride A Pet and Race for Eggs. One simulation/tycoon opening,
+one shooter live
 round, one RPG opening, one toy-soldier opening, one cartoon arena opening and
-two other simulator openings were inspected. This is **not** yet hundreds of
+three other simulator openings were inspected. This is **not** yet hundreds of
 verified aspects, full gameplay coverage, a representative sample, or model
 training. Next: inspect
 active interactions and menus in app-launched colorful cartoon games, then a
