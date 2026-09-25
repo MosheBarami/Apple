@@ -368,6 +368,11 @@ desktop app, not a website launch.
   labels appeared. This verifies a free reward → owned pet → equip → ongoing
   currency feedback loop. I did not verify server persistence, rebirth,
   hatching, shop purchases, offline earnings, or any paid feature.
+- Activating the top Buy control moved the avatar and camera to paired Shop and
+  Upgrade stalls. Each had a striped awning, prominent sign and vendor figure;
+  giant tire props framed the Upgrade area. This was an observed navigation
+  transition and a closer view of authored destination dressing. I did not
+  activate a vendor or purchase an upgrade.
 - `Growing Eggs` opened an empty, blurred panel. That is consistent with no egg
   currently growing; it does not prove the egg workflow succeeds or fails.
 
