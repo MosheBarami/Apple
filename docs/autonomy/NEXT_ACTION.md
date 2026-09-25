@@ -1,5 +1,12 @@
 # NEXT ACTION
 
+2026-09-25 03:42 UTC: v22 was validly promoted after a paired 38-row evaluation against v5
+(24/38 versus 18/38 in the same run; identical row IDs and base results, no known harness
+errors). Game logic is still 1/8. The private Hugging Face v22 adapter and score files were
+verified, Discord was posted, and v23 started immediately on CPU. Keep the supervisor running;
+score v23 against v22 in the same way. The local adapter is not the served Apple/Apple MAX model.
+Continue the Studio round 8 and public plugin distribution checks below.
+
 **Gauntlet round 8: test the local Apple Studio 1.4.0 plugin; verify public Creator Store
 distribution separately.** The free Workers AI allowance reset on 2026-09-25. The local preview
 plugin is visible in Studio, but a clean editable test place has not yet been reached through the

@@ -1,5 +1,14 @@
 # CURRENT STATE
 
+2026-09-25 03:42 UTC update: local LoRA v22 completed 400/400 CPU steps and was scored
+on the same 38 held-out rows and runtime as v5: 24/38 versus 18/38. The row IDs, base outcomes
+and base tally matched exactly; neither score included known harness-unavailable or
+out-of-curriculum reasons. v22's tracks were trajectory 17/23, game logic 1/8, finish 6/7.
+The supervisor promoted v22, posted to Discord, and the private Hugging Face model repo was
+independently checked for its adapter config, weights and scored evaluation. v23 started
+immediately and is training on CPU. This is a local code evaluation, not a full Roblox Studio
+build or proof that the served Apple models are frontier. F-059, F-064 and F-069 remain open.
+
 Directly measured facts only. Re-measure at the start of every session; this file is a snapshot.
 
 **Measured:** 2026-09-25 ~04:23 IDT. Older snapshots below are historical.
