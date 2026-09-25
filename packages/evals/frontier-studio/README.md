@@ -7,7 +7,15 @@ full-game runs per product lane**. Each run names eight genre-specific gameplay 
 four or five purpose-built Roblox asset roles, plus eleven cross-cutting gates. A pretty blockout,
 passing Luau, or a chat reply saying “done” cannot pass it.
 
-The bank is in `missions.mjs`. Keep its prompts out of training, RAG, system prompts and
+The original bank is frozen in `missions.mjs`. After the owner narrowed Apple to
+colorful cartoon games on 2026-09-25, a distinct bank was frozen in
+`missions-cartoon-v2.mjs`: twelve cartoon game genres, three fresh-place attempts
+each. Its visual-style gate needs an independent blind verdict that the finished
+world and UI are colorful, coherent and commercially polished. A code pass or
+asset thumbnail cannot supply that verdict. Score it with
+`node score.mjs evidence-bundles.json cartoon-v2`; the default remains the original
+bank, and the output identifies which bank was scored. Keep both banks' prompts
+out of training, RAG, system prompts and
 demonstrations. Do not edit a prompt after looking at its score; version the bank and start a new
 series. Repeating the same prompt three times on independent fresh Baseplates measures stability,
 not three different questions. Also run the existing `roblox-frontier-bench.mjs` for executable
@@ -45,7 +53,8 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
 6. Take 4–8 final Studio shots with neutral filenames. Give **only** those images to an independent
    blind visual critic using `docs/gauntlet/visual/BLIND_CRITIC.md`. Separately audit feature
    completeness against the prompt, so blindness does not hide missing requested features.
-7. Grade the evidence with `node score.mjs evidence-bundles.json`. Every pass needs an independent
+7. Grade the evidence with `node score.mjs evidence-bundles.json cartoon-v2` for the
+   current product scope. Every pass needs an independent
    examiner, a run-bound proof record and SHA-256-matched nonempty artifact. Missing evidence is
    **unmeasured**, never a pass. A trace-proven run that ends before completion is a measured
    failure even though no finished-game Play or visual proof exists. Any observed failed
@@ -93,6 +102,13 @@ placementReason: "why this location serves gameplay", scriptDisposition: "no-scr
 "audited-and-tested" requires a real behavior probe. UI, world, playtest, security and
 persistence are separate gates.
 
+For `cartoon-v2`, `visual-style` is an additional `blind-review` proof. Its
+verdict must contain three booleans: `colorfulCartoon`, `coherentArtDirection`,
+and `commerciallyPolished`. All must be true for a pass; missing values leave
+the task unmeasured. Reviewers should inspect first spawn, a gameplay action,
+at least one UI interaction and the end-of-loop state at desktop and mobile
+sizes. Preserve the actual images and concrete observations, including rejections.
+
 The suite reports `passRate: null` until all 36 tasks have measured results. A complete 36/36
 pass is **a pass on this benchmark version**, not by itself proof of universal Roblox frontier
 ability. Report the exact lane, build, bank version, sample count, confidence limits, observed
@@ -106,8 +122,9 @@ and remains unmeasured; a terminal stop after all permitted choices have been tr
 
 ## Current state
 
-The protocol and eleven falsifiable scorer tests are implemented. **0 of 36 Studio missions have
-been measured under this new protocol.** Do not display 0% or 100% as a model score from this bank.
-The next real step is to run the first mission in a fresh isolated, paired Studio place and attach
-the readback, Play-mode checks and blind screenshots. The owner's latest visual rejection is an
-observed product failure; it is not relabeled as an unmeasured success.
+The original bank has **1 of 36** measured: `simulator-r1` ended without a complete
+game and failed on its persisted trace (`docs/evidence/frontier-studio/simulator-r1/report.md`).
+The current cartoon-v2 bank has **0 of 36** measured. Neither has a reportable
+pass rate yet. The next real step is a fresh isolated, paired Studio run from the
+cartoon bank, followed by readback, gameplay checks and blind screenshots. The
+owner's visual rejection remains a product failure, not an unmeasured success.

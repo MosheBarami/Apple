@@ -1108,7 +1108,7 @@ export function DashboardPage() {
         <EmptyState
           state="noProjects"
           illustration={<SummonIllustration />}
-          detail={<p className="es__body">Name a project, then describe the game you want — an obby, a tycoon, a story world. Apple writes the scripts and builds it in your Roblox place.</p>}
+          detail={<p className="es__body">Name a project, then describe your colorful cartoon game — an obby, a tycoon, a story world. Apple builds it in your Roblox place.</p>}
           action={
             <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
               Create a project

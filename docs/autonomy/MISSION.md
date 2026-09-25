@@ -9,8 +9,8 @@ A Roblox creator should be able to open Roblox Studio, describe what they want i
 and work with a professional AI that can understand, create, edit, inspect, test and improve a real
 Roblox game directly inside the creator's own Studio place.
 
-**The ambition:** a professional AI collaborator purpose-built for creating Roblox games directly in
-Roblox Studio.
+**The ambition:** a professional AI collaborator purpose-built for creating bright, colorful cartoon
+Roblox games directly in Roblox Studio. Gameplay genres can vary, but the visual specialty does not.
 
 ## Where the product is
 
@@ -22,7 +22,7 @@ Roblox Studio.
 ## Customer missions (each must succeed end to end in a real paired Studio place)
 
 1. Build a small gameplay loop starting from an empty baseplate.
-2. Build a visually ambitious environment.
+2. Build a visually ambitious, coherent cartoon environment with rights-verified Roblox assets.
 3. Add scripts, networking (RemoteEvents/RemoteFunctions) and UI to a real game.
 4. Modify an existing project rather than starting from zero.
 5. Debug a deliberately broken experience.
@@ -37,6 +37,8 @@ Autonomous on.
 
 - What Apple says it changed in Studio is what actually changed in Studio — verified by reading the
   place back, not by trusting the chat.
+- A game looks and plays like a polished, colorful cartoon Roblox game; working code or part counts
+  alone do not establish visual completion.
 - A creator who has never seen the product can complete the missions without someone explaining it.
 - When something goes wrong, the creator can recover naturally.
 - It works on a phone-width browser as well as a desktop.

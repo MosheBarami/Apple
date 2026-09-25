@@ -5,6 +5,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TASKS } from './missions.mjs';
+import { TASKS as CARTOON_TASKS, BANK as CARTOON_BANK } from './missions-cartoon-v2.mjs';
 import { criteriaFor, gradeMission, gradeSuite } from './score.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'apple-frontier-score-'));
@@ -36,6 +37,42 @@ test('the bank covers twelve game genres in three independent attempts', () => {
   assert.equal(new Set(TASKS.map((t) => t.id)).size, 36);
   assert.equal(new Set(TASKS.map((t) => t.genre)).size, 12);
   assert.ok(TASKS.every((t) => t.features.length >= 8 && t.assets.length >= 4));
+});
+
+test('cartoon v2 is a distinct fixed 36-run bank with a required visual-style verdict', () => {
+  assert.equal(CARTOON_TASKS.length, 36);
+  assert.equal(new Set(CARTOON_TASKS.map((t) => t.genre)).size, 12);
+  assert.ok(CARTOON_TASKS.every((t) => t.bank === CARTOON_BANK && t.prompt.includes('colorful cartoon')));
+  assert.ok(CARTOON_TASKS.every((t) => !TASKS.some((old) => old.id === t.id)));
+  assert.ok(criteriaFor(CARTOON_TASKS[0]).includes('visual-style'));
+  const summary = gradeSuite([], root, CARTOON_TASKS);
+  assert.equal(summary.total, 36);
+  assert.equal(summary.measured, 0);
+  assert.equal(summary.passRate, null);
+});
+
+test('cartoon visual style is unmeasured without review and fails when rejected', () => {
+  const cartoon = CARTOON_TASKS[0];
+  const bundle = complete();
+  bundle.taskId = cartoon.id;
+  bundle.run.promptSha256 = createHash('sha256').update(cartoon.prompt).digest('hex');
+  for (const key of criteriaFor(cartoon)) {
+    if (bundle.proofs[key]) continue;
+    bundle.proofs[key] = {
+      kind: key === 'visual-style' ? 'blind-review' : kind(key),
+      observer: 'independent-reviewer', runId: 'synthetic-run', artifact: 'fixture.txt',
+      sha256: digest, passed: true,
+      ...(key.startsWith('asset:') ? { asset: { source: 'creator-store', sourceRef: '123456789', rightsUrl: 'https://create.roblox.com/store/asset/123456789', robloxSpecific: true, rightsVerified: true, placed: true, instancePath: 'Workspace.SampleAsset', selectionReason: 'Fits the game role and style', placementReason: 'Placed at the player route entrance', scriptDisposition: 'no-scripts' } } : {}),
+    };
+  }
+  assert.equal(gradeMission(cartoon, bundle, root).status, 'unmeasured');
+  assert.ok(gradeMission(cartoon, bundle, root).missing.includes('visual-style'));
+  bundle.proofs['visual-style'].verdict = {
+    colorfulCartoon: false, coherentArtDirection: true, commerciallyPolished: true,
+  };
+  assert.equal(gradeMission(cartoon, bundle, root).status, 'failed');
+  bundle.proofs['visual-style'].verdict.colorfulCartoon = true;
+  assert.equal(gradeMission(cartoon, bundle, root).status, 'passed');
 });
 
 test('a full evidence bundle can pass but one broken gameplay feature fails the game', () => {

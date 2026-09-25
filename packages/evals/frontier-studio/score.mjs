@@ -6,17 +6,18 @@ import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TASKS } from './missions.mjs';
+import { TASKS as CARTOON_TASKS } from './missions-cartoon-v2.mjs';
 
-const TASK_BY_ID = new Map(TASKS.map((t) => [t.id, t]));
 const ONE = new Set(['run', 'studio', 'playtest', 'security', 'persistence', 'mobile', 'visual-world', 'visual-ui', 'no-errors', 'asset-policy', 'ui-source']);
 const KIND = {
   run: 'run-trace', studio: 'studio-readback', playtest: 'playtest',
   security: 'security-probe', persistence: 'playtest', mobile: 'mobile-capture',
   'visual-world': 'blind-review', 'visual-ui': 'blind-review', 'no-errors': 'studio-readback',
   'asset-policy': 'studio-readback', 'ui-source': 'studio-readback',
+  'visual-style': 'blind-review',
 };
 export function criteriaFor(task) {
-  return [...ONE, ...task.features.map((f) => `feature:${f}`), ...task.assets.map((a) => `asset:${a}`)];
+  return [...ONE, ...(task.visualScope === 'colorful-cartoon' ? ['visual-style'] : []), ...task.features.map((f) => `feature:${f}`), ...task.assets.map((a) => `asset:${a}`)];
 }
 
 function inside(root, p) {
@@ -127,16 +128,20 @@ export function gradeMission(task, bundle, root) {
       && artifactValid(root, p)
       && (key !== 'run' || traceValid(root, p, run?.id))
       && (!key.startsWith('asset:') || assetValid(p))
-      && (!key.startsWith('visual-') || (typeof p.verdict?.fitForRoblox === 'boolean' && typeof p.verdict?.amazing === 'boolean'));
+      && (key === 'visual-style'
+        ? (typeof p.verdict?.colorfulCartoon === 'boolean' && typeof p.verdict?.coherentArtDirection === 'boolean' && typeof p.verdict?.commerciallyPolished === 'boolean')
+        : !key.startsWith('visual-') || (typeof p.verdict?.fitForRoblox === 'boolean' && typeof p.verdict?.amazing === 'boolean'));
     if (!observed) { missing.push(key); continue; }
-    if (p.passed !== true || (key.startsWith('visual-') && (!p.verdict.fitForRoblox || !p.verdict.amazing))) failed.push(key);
+    if (p.passed !== true || (key === 'visual-style'
+      ? (!p.verdict.colorfulCartoon || !p.verdict.coherentArtDirection || !p.verdict.commerciallyPolished)
+      : key.startsWith('visual-') && (!p.verdict.fitForRoblox || !p.verdict.amazing))) failed.push(key);
   }
   const status = invalid.length || missing.length ? 'unmeasured' : failed.length ? 'failed' : 'passed';
   return { taskId: task?.id ?? bundle?.taskId ?? null, status, criteria: criteria.length, passed: criteria.length - missing.length - failed.length, missing, failed, invalid };
 }
 
 /** A headline rate is withheld until every fixed task has an independently observed result. */
-export function gradeSuite(bundles, root) {
+export function gradeSuite(bundles, root, tasks = TASKS) {
   const taskCounts = new Map();
   const projectTasks = new Map();
   const runTasks = new Map();
@@ -154,7 +159,7 @@ export function gradeSuite(bundles, root) {
     }
   }
   const byTask = new Map(bundles.map((b) => [b.taskId, b]));
-  const results = TASKS.map((t) => {
+  const results = tasks.map((t) => {
     const bundle = byTask.get(t.id);
     const result = gradeMission(t, bundle, root);
     if ((taskCounts.get(t.id) ?? 0) > 1) result.invalid.push('duplicate-task');
@@ -165,12 +170,13 @@ export function gradeSuite(bundles, root) {
   });
   const measured = results.filter((r) => r.status !== 'unmeasured');
   const passed = results.filter((r) => r.status === 'passed');
-  const allMeasured = measured.length === TASKS.length;
+  const allMeasured = measured.length === tasks.length;
   return {
-    total: TASKS.length, measured: measured.length, passed: passed.length,
+    bank: tasks === CARTOON_TASKS ? 'cartoon-v2' : 'original-v1',
+    total: tasks.length, measured: measured.length, passed: passed.length,
     // Never divide by only the easy measured subset and call it frontier.
-    passRate: allMeasured ? passed.length / TASKS.length : null,
-    benchmarkPass: allMeasured && passed.length === TASKS.length,
+    passRate: allMeasured ? passed.length / tasks.length : null,
+    benchmarkPass: allMeasured && passed.length === tasks.length,
     results,
   };
 }
@@ -178,12 +184,13 @@ export function gradeSuite(bundles, root) {
 const here = fileURLToPath(import.meta.url);
 if (process.argv[1] && resolve(process.argv[1]) === here) {
   const path = process.argv[2];
-  if (!path) { console.error('Usage: node score.mjs <evidence-bundles.json>'); process.exitCode = 2; }
+  const bank = process.argv[3] ?? 'original-v1';
+  if (!path || !['original-v1', 'cartoon-v2'].includes(bank)) { console.error('Usage: node score.mjs <evidence-bundles.json> [original-v1|cartoon-v2]'); process.exitCode = 2; }
   else {
     try {
       const bundles = JSON.parse(readFileSync(path, 'utf8'));
       if (!Array.isArray(bundles)) throw new Error('expected an array of evidence bundles');
-      const result = gradeSuite(bundles, dirname(resolve(path)));
+      const result = gradeSuite(bundles, dirname(resolve(path)), bank === 'cartoon-v2' ? CARTOON_TASKS : TASKS);
       console.log(JSON.stringify(result, null, 2));
       if (!result.benchmarkPass) process.exitCode = 1;
     } catch (e) { console.error(e.message); process.exitCode = 2; }
