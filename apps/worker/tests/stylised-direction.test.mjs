@@ -55,23 +55,19 @@ const PLOT_GAME = 'Build a farming tycoon with 6 plots';
 
 // --------------------------------------------------------------- the style ---
 
-test('the brief offers a stylised classic-Roblox style, and Plastic is part of it', () => {
+test('the brief uses a single colorful cartoon style, and Plastic is part of it', () => {
   const brief = worldBuildingBrief(PLOT_GAME);
   const style = section(brief, 'STYLE');
   assert.match(style, /STYLISED/);
   assert.match(style, /SmoothPlastic/);
-  assert.match(style, /REALISTIC/, 'the realistic style must still be on offer for showcases and horror');
+  assert.doesNotMatch(style, /REALISTIC|photorealistic/i);
 });
 
-test('no rule outside the realistic style bans Plastic or caps saturation', () => {
+test('the cartoon brief neither bans Plastic nor caps saturation', () => {
   const brief = worldBuildingBrief(PLOT_GAME);
   assert.doesNotMatch(section(brief, 'BANNED'), /Material=Plastic/, 'BANNED still bans Plastic for every style');
   assert.doesNotMatch(section(brief, 'SELF-CHECK'), /no Plastic/i, 'the self-check still demands no Plastic');
-  // Every sentence carrying the saturation cap must belong to the realistic style.
-  const sentences = brief.replace(/\n/g, ' ').split(/(?<=\.)\s+/);
-  const capped = sentences.filter((s) => /saturation\s*<=\s*0\.35/i.test(s));
-  assert.ok(capped.length > 0, 'the realistic saturation cap disappeared altogether');
-  for (const s of capped) assert.match(s, /realistic/i, `an unconditional saturation cap: "${s}"`);
+  assert.doesNotMatch(brief, /saturation\s*<=\s*0\.35/i);
 });
 
 test('a saturated palette and a clear bright mood exist for the stylised look', () => {

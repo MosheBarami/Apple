@@ -115,13 +115,21 @@ test('set_mood sends typed Lighting properties and typed effect instances, never
 
 test('each mood sends different typed Lighting values, so the choice is not cosmetic', async () => {
   const seen = new Map();
-  for (const mood of ['day', 'night', 'horror']) {
+  for (const mood of ['day', 'night', 'sunny']) {
     const { ctx, ops } = moodBridge();
     await T.TOOLS.set_mood.run(ctx, { mood });
     seen.set(mood, JSON.stringify(ops.find((op) => op.op === 'set_props').props));
   }
   assert.notEqual(seen.get('day'), seen.get('night'));
-  assert.notEqual(seen.get('night'), seen.get('horror'));
+  assert.notEqual(seen.get('night'), seen.get('sunny'));
+});
+
+test('the active mood tool refuses dark horror without touching Studio', async () => {
+  const { ctx, ops } = moodBridge();
+  const res = await T.TOOLS.set_mood.run(ctx, { mood: 'horror' });
+  assert.match(String(res.error), /colorful cartoon|unknown mood/i);
+  assert.equal(ops.length, 0);
+  assert.ok(!T.TOOLS.set_mood.def.parameters.properties.mood.enum.includes('horror'));
 });
 
 test('an unknown mood is refused BY NAME and reaches Studio not at all', async () => {

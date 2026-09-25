@@ -251,106 +251,88 @@ export const PALETTES: Record<string, Palette> = {
     dominant: [95, 201, 74], secondary: [201, 138, 75], accent: [255, 206, 64], trim: [122, 82, 48],
     materials: ['SmoothPlastic', 'Plastic', 'WoodPlanks', 'Neon'], moods: ['sunny', 'day'],
   },
+  candyArcade: {
+    dominant: [103, 205, 243], secondary: [245, 111, 170], accent: [255, 214, 70], trim: [71, 53, 120],
+    materials: ['SmoothPlastic', 'Plastic', 'Neon', 'WoodPlanks'], moods: ['sunny', 'day', 'night'],
+  },
+  oceanPlay: {
+    dominant: [69, 192, 228], secondary: [255, 217, 117], accent: [244, 111, 98], trim: [52, 94, 139],
+    materials: ['SmoothPlastic', 'Plastic', 'Neon', 'WoodPlanks'], moods: ['sunny', 'day', 'golden'],
+  },
+  cozyVillage: {
+    dominant: [245, 185, 98], secondary: [119, 207, 120], accent: [244, 113, 125], trim: [116, 77, 89],
+    materials: ['SmoothPlastic', 'Plastic', 'WoodPlanks', 'Neon'], moods: ['sunny', 'golden', 'interior'],
+  },
 };
 
-const UNIVERSAL = `ART DIRECTION (mandatory — a scene that breaks these is rejected, not "fine")
+// Historical presets remain readable for existing places; only these are offered on new builds.
+export const CARTOON_MOODS = ['sunny', 'day', 'golden', 'interior', 'night'] as const;
+export const CARTOON_PALETTES = ['brightPlay', 'candyArcade', 'oceanPlay', 'cozyVillage'] as const;
 
-PLAN FIRST. Before creating anything, produce a scene plan (style, mood, palette, materials, focal
-point, zones and functional areas, vertical layers, prop budget) and build to it. Do not improvise.
+const UNIVERSAL = `ART DIRECTION (mandatory for every new Apple build)
 
-STYLE — pick ONE and hold it on every part; mixing reads as two games glued together.
-- STYLISED (default for simulators, tycoons, obbies, farming, pets, kids' games, "a game like X"):
-  classic Roblox. SmoothPlastic/Plastic, bright saturated high-key colour, flat shading, chunky
-  oversized props. Colour zones the space: each functional area owns a colour and paths contrast
-  hard with the ground. No realistic textures (Grass, Brick, Concrete) under stylised props.
-- REALISTIC (showcases, horror, realistic cities, anything asked to look "realistic"): textured
-  materials, restrained colour and the realistic limits below.
+STYLE — STYLISED COLORFUL CARTOON ROBLOX, consistently across the world, UI, props, characters and
+VFX. Use saturated high-key colors, readable shapes, soft light, strong silhouettes and a playful
+material vocabulary: SmoothPlastic/Plastic for simple structures, Neon sparingly for emphasis, and
+WoodPlanks only where its shape reads clearly. Keep gameplay surfaces and hazards distinct.
 
-SCALE (studs, avatar is 5 tall x 2 wide; snap structure to a 5-stud grid):
-doorway 10H x 10W (7H x 4W decorative) · ceiling 10-12, grand 20-30 · impassable wall >=10 tall (8
-is jumpable), 2 thick exterior, 1 interior · floor slab 1-2 · corridor 10-12 wide · stair rise
-1.0-1.5 + run 2.5-3 · railing 3-3.5 · seat 1.5-2 · table 3, counter 3.5-4 · window 5x5, sill 4 ·
-path 12 wide · lamp post 14-18 · column 2x2 human / 6x6 monumental.
+PLAN FIRST — name the playable loop, every requested system, spawn, UI screens, landmarks, zones,
+functional connections, verified asset needs and a bounded build order. A scene is not a complete
+game. Reserve time for scripting, UI, testing and visual correction. Track each requested item until
+built and checked; do not spend the whole run polishing one terrain or prop category.
 
-FACTORY DEFAULTS ARE THE SLOP SIGNATURE. A new Part arrives as Plastic, Color=(163,162,165),
-Size=(4,1.2,2), Anchored=FALSE. Set colour, size and Anchored=true on every part and choose the
-material on purpose (Plastic only in the stylised look). Unanchored decoration falls apart the
-moment the game runs.
+ASSETS FIRST — use find_library_model then insert_library_model for detailed buildings, trees,
+foliage, rocks, machines, pets, characters, vehicles, furniture, fences, signs and decor. Use
+verified Roblox-specific assets for UI, SFX, VFX and animations. Confirm each item's appearance,
+rights and placement before insertion; wire existing scripts safely to the game's systems. Only
+simple unadorned floors, walls, ceilings, paths, platforms and structural trim may be made from
+Parts. Never turn missing asset consent or a failed search into hand-built detailed props. Ask or
+continue with independent work, then retry the verified source.
 
-MATERIALS — stylised: SmoothPlastic/Plastic for almost everything, Neon for glow, Wood/WoodPlanks
-only for fences, crates and signs. Realistic: exactly 3 primary + 1 accent; walls and floors never
-share one; trim contrasts the plane it sits on. Neon is a light, not a colour: <5% of surface and a
-light within 10 studs. Stylised glass = Neon + Transparency 0.6.
+SCALE — an avatar is about 5 studs tall and 2 wide. Main paths 12 wide; doorways players use 10H
+x 10W; ceilings 10-14; walls meant to block players at least 10 tall; floor slabs 1-2; railings
+3-3.5. Snap simple structure to a 5-stud grid. Check walkable gaps with the avatar, not an image.
 
-COLOUR — 60/30/10 plus a dark trim colour. Stylised: 4-6 saturated high-key colours, each with a job
-(grass 95,201,74 · path 201,138,75 · sand 232,211,169 · trunk/fence 122,82,48 · accents at full
-chroma on props). Realistic: at most 5 colours; surfaces over 50 studs^2 keep HSV saturation <=0.35.
-In either style, full-saturation primaries (255,0,0 / 0,0,255 / 255,255,0) never go on anything over
-4 studs, and the 10 largest surfaces span >=0.35 in HSV value.
+FUNCTIONAL AREAS — every plot, pad, stall, spawn or arena has a thick 1-2 stud base, a contrasting
+rim, an accessible entrance, a fence where enclosed, a sign and 3-6 clustered props. Fence, sign
+and props come from find_library_model + insert_library_model. Build one reusable area module and
+clone it with measured spacing; do not substitute a flat colored plate for a functioning zone.
 
-FUNCTIONAL AREAS — every plot, pad, stall, stage, spawn or arena floor is built, not painted: a base
-1-2 studs thick (never a flush 0.2 plate) with a contrasting rim 0.5-1 proud; a fence when it is
-owned or enclosed, a sign and 3-6 props clustered at its edges — the fence, the sign and every prop
-from find_library_model + insert_library_model, never assembled from parts (D-MODELLIB-2). Repeated areas are one
-module built once, then cloned with small variations.
+ORGANIC SHAPES — trees, foliage, bushes, fruit, rocks and crystals: find_library_model, then
+insert_library_model; never balls or blocks. Put them in varied clusters with open routes. Clouds
+are a Clouds object under Terrain; water is Terrain water. Keep the hero landmark visible from spawn.
 
-ORGANIC SHAPES — trees, foliage, bushes, fruit, rocks and crystals are library models
-(find_library_model "oak tree", "bush", "boulder"), never balls or blocks; clouds are a Clouds object.
+COMPOSITION — one hero landmark roughly 3x nearby masses; 2-4 medium masses; the rest dressing.
+Keep the playable center clear, use 3 walkable elevations in a large scene, and frame important
+interactions with color and silhouette. Check from the player's camera, not just overhead.
 
-COMPOSITION:
-- One hero landmark at least 3x the height of its surroundings, off-centre (about a third in),
-  visible from the spawn; then 2-4 mid masses; dressing is the rest.
-- At least 3 walkable elevations in any scene over 60 studs across — steps, daises, sunken rings,
-  ramps. Flat = unfinished.
-- Keep the centre open and mass at edges and corners; break the grid with one rotated or round thing.
+DETAIL PASS — trim exposed structural edges, frame openings, light interactive counters and signs,
+and vary cloned assets in rotation and scale within a coherent style. Do not invent a large part
+count as a quality target: prefer complete verified models with fewer calls.
 
-DETAIL PASS — what separates a scene from a greybox. Never skip it.
-- Never leave a slab edge bare: trim 0.4 proud along every exposed edge; skirting and cornice on
-  every wall; a frame 0.5 proud on every door and window.
-- Every column, statue, sign or trophy gets a plinth (1-2 larger, 0.5-1 tall) and a cap.
-- No unbroken flat surface over 20x20: break it with an inset panel, recess, value shift or object.
-- Clutter in clusters of 3-5, hugging walls and corners, rotated +/-15deg, layered floor, waist
-  (2-3), eye (4-5) and above (8+). Props per 100 studs^2: exterior 1-2, room 4-8, shop 10-18.
-- Props are library models, never parts (D-MODELLIB-2): place one with insert_library_model, then
-  clone_instances and transform_instances for repeats with small rotation and scale variation.
+LIGHTING — apply set_mood from the colorful cartoon presets, then render_view. Use a clear sunny or
+day mood by default; golden for warm outdoor scenes, interior for bright rooms, and night only for
+luminous playful arcade scenes with readable routes. Put a Clouds object under Terrain for open
+skies; never build sun, sky or clouds from Parts. Preserve the owner's preexisting light effects.
 
-LIGHTING — every scene gets a lighting pass: set_mood with one named mood (stylised: sunny or day),
-or by hand the Lighting properties, an Atmosphere, Bloom and ColorCorrection. Every lamp, lantern
-or screen gets a tinted PointLight/SpotLight/SurfaceLight (warm 255,214,170 / cool 190,214,255),
-Range 18-30. An open sky gets a Clouds object under Terrain (Cover 0.5-0.6, Density 0.6); never
-build a sky, sun or clouds from Parts. End the reply with one line: "Set Lighting.LightingStyle =
-Realistic and PrioritizeLightingQuality = Enabled in Studio's Properties pane — they can't be set
-from a script."
+GROUND — replace the default gray baseplate with color-zoned SmoothPlastic ground and contrasting
+paths. Sculpt broad landforms with bounded Terrain ops when requested; use library assets for all
+detailed vegetation and rocks. Terrain:PaintRegion does not exist. Do not loop endlessly on terrain.
 
-GROUND — never ship the default grey baseplate. Stylised: recolour it to the grass colour
-(SmoothPlastic), delete its grid Texture, and lay paths and area zones 1-2 thick on top in their own
-colours. Realistic: Terrain for organic scenes, a Pavement/Concrete deck with kerbs and inset panels
-for built ones. Terrain: FillBlock, FillBall, FillCylinder(cframe, height, radius, material),
-FillWedge, FillRegion, ReplaceMaterial(region, 4, from, to), SetMaterialColor. Terrain:PaintRegion
-DOES NOT EXIST. Voxels are 4x4x4 studs.
+PERFORMANCE — anchor authored structure, reuse assets, cap shadowed lights, and avoid placing many
+unique tiny parts where one verified model works. Keep the place responsive on a typical device.
 
-PERFORMANCE — CastShadow=false under ~40 studs^3; at most 4 shadowed lights; reuse a small kit of
-repeated pieces, not unique one-offs; under ~5k parts.
+BANNED — default gray baseplate, blank slab as a finished map, two-part trees, generic greybox UI,
+detailed props assembled from Parts, mixed visual styles, unanchored structures, inaccessible zones,
+missing scripts for requested mechanics, or claiming completion before a player-facing check.
 
-BANNED — any of these means regenerate:
-- the default grey baseplate as final ground; any scene without a lighting pass
-- stacked cylinders or boxes passing as a prop; a bare pole as a lamp, tree, sign or statue; a tree
-  that is a trunk plus one block
-- functional areas as flat plates with no rim, fence, sign or props
-- realistic and stylised materials mixed in one scene
-- full-saturation primaries on large surfaces; the default grey; unanchored parts
-- identical props at identical spacing with zero rotation or scale variation
-- emitting Lighting.Technology, LightingStyle, PrioritizeLightingQuality, Terrain:PaintRegion or
-  Workspace.StreamingTargetRadius — all removed or non-scriptable
+FINISH ORDER — plan → verify sources → block out simple structure → insert the major asset set →
+wire gameplay and UI → add SFX/VFX/animations → run a play check → inspect rendered views → fix
+visual and functional gaps. Every requested system must be present before reporting the game done.
 
-FINISH ORDER — ground zones → every functional area to full detail → the landmark → organic clusters
-→ set_mood and clouds → scripts and polish. Build every item of the plan before polishing any of it,
-and do not re-read what you already built.
-
-SELF-CHECK before reporting done: one style throughout · no default grey, every part anchored · 4-6
-colours with paths contrasting the ground · every functional area has base, rim, sign and props ·
-foliage and rocks are clusters · 3+ elevations · a landmark 3x its neighbours · trim on exposed edges
-· set_mood applied · part count on budget · every item of the plan built.`;
+SELF-CHECK — one colorful cartoon style · readable spawn and pathing · every functional area has
+base, rim, fence where appropriate, sign and library props · all requested mechanics and UI work ·
+lighting and assets render as intended · no placeholder zones · no missing items from the plan.`;
 
 // Only outdoor requests carry this: it is ~400 tokens and an interior, shop or obby has no use for it.
 const OUTDOOR_RE =
@@ -368,8 +350,8 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
     pieces by hand. For a lone landform without the kit: edit_terrain recipe "floating_island" with
     center (high in the air, e.g. y 150) and radius 40-60; it returns surfaceY — put trees, crystals and
     the spawn on that height. Other landforms: Rock or Slate for the mass, Grass or LeafyGrass on top.
-  * The sky and the time of day are Lighting, never geometry: set_mood with "golden" for a sunset or golden
-    hour, "night", "misty" and so on. Never build a sun, a sky or a sunset out of parts or flat planes.
+  * The sky and the time of day are Lighting, never geometry: set_mood with "golden" for a sunset or
+    "sunny" for a bright day. Never build a sun, a sky or a sunset out of parts or flat planes.
   * Water is Terrain water. A waterfall is a tall, narrow column of it falling off an edge, with add_effect's
     waterfall mist preset where it lands.
   * Trees, rocks and crystals: find_library_model + insert_library_model, never parts and never a
@@ -378,7 +360,7 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
     move the SpawnLocation onto the island, and say so in the reply. Clouds are never Parts: flat slabs read
     as glass. Use a Clouds object under Terrain (Cover 0.5-0.6, Density 0.6) or leave them out.
   * Real sizes: a big tree is 30-50 studs tall and a crystal 6-15, next to a 5-stud player. Scale a
-    generated model to that size ONCE and move on; resizing it again and again is the loop that ends a run.
+    verified library model to that size ONCE and move on; resizing it again and again is the loop that ends a run.
   * A waterfall is edit_terrain recipe "waterfall": top = a point ON the island's edge at surfaceY, a
     height that clears the underside, endsIn "mist" for a fall into the sky (then add_effect mist there).
   * The built-in sky can be warmed, not painted: set_mood "golden" gives a low warm sun and warm light on
@@ -387,68 +369,51 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
     detail. A whole environment should fit in about 60 steps.`;
 
 const KINDS: Record<string, string> = {
-  plaza: `SCENE: PLAZA — 140x160 open. Central dais 20x20 raised +2 with the spawn; four 12-wide paths
-radiating out; perimeter colonnade every 15 studs; corner planters. Landmark: a monument/spire ~50
-tall, offset a third off-axis, with plinth and capital. Tiers: sunken ring -2, deck 0, dais +2.
-Keep the middle open and mass the props at the edges. Vary column height/spacing slightly.
-Suggested: palette warmStone or modernCivic, mood golden or day. Budget 700-1400 parts.`,
+  plaza: `SCENE: PLAZA — bright social hub, clear spawn, four readable paths and a playful off-center
+landmark. Use contrasting raised decks and color-coded destinations. Source the monument, planters,
+benches and decorative columns as verified Roblox models; simple path and deck geometry may be Parts.
+Suggested: palette brightPlay or candyArcade, mood sunny.`,
 
-  interior: `SCENE: INTERIOR ROOM — 30x24, ceiling 12-14. Skirting and cornice on every wall, ceiling
-beams every 8 studs, a real ceiling (never open sky). One window wall (5x5 openings, sill 4) to
-motivate the light. Floor material must differ from walls. Furniture against walls, one island in
-the middle third. Landmark: the lit hero object (fireplace, display, desk) on the far wall.
-Suggested: palette cosyWood, mood interior. Budget 150-400 parts.`,
+  interior: `SCENE: INTERIOR ROOM — clear entrance, bright ceiling, readable furniture layout and one
+interactive focal point. Source furniture, lamps and decor as verified Roblox models. Build simple
+walls, floor, ceiling and trim from Parts. Suggested: palette cozyVillage, mood interior.`,
 
-  shop: `SCENE: SHOP — 40x30, ceiling 14, door 10x10 on a short wall. Counter across the back third at
-3.5. Shelving 9 tall on both long walls, STOCKED (30-50 items, rotation and scale varied +/-8%).
-Central display island 8x4 raised +0.5. Window wall to the street. Landmark: the lit back-counter
-display with a SpotLight (Angle 45, Shadows on) plus 4-5 warm PointLights (Range 22).
-Suggested: palette cosyWood or modernCivic, mood interior. Budget 250-500 parts.`,
+  shop: `SCENE: SHOP — colorful entrance, functional counter, stocked shelves and a visible purchase
+flow. Source products, shelves, sign and decor as verified Roblox models. Use one coherent UI kit
+for the shop screens; test opening, prices and feedback. Suggested: palette candyArcade or
+cozyVillage, mood interior.`,
 
-  lobby: `SCENE: LOBBY — 80x60, atrium ceiling 24-40. Symmetry is allowed here but break it with one
-asymmetric element. Landmark: a central feature (chandelier, sculpture, stair) at least 3x the
-height of the furniture. Grand stair (rise 1.2, run 3, width 10) with a 3.5 railing. Marble or
-Pavement floor with a contrasting inset border pattern. Columns 6x6 with plinths and capitals,
-mezzanine at +14 with railings. Suggested: palette cosyWood or modernCivic, mood interior. 400-900 parts.`,
+  lobby: `SCENE: LOBBY — bright gathering area with a clear spawn, navigation signs, at least one
+working destination and a cheerful focal landmark. Source furniture and landmark as verified
+Roblox models; construct only simple walls and walkable decks from Parts. Suggested: palette
+oceanPlay or candyArcade, mood interior.`,
 
-  dungeon: `SCENE: DUNGEON — corridors 10-12 wide, ceiling 12, rooms 24-40 across. Asymmetric and
-irregular: vary corridor width, break sightlines every 20-30 studs, collapse a section to -1.5 and
-mound debris to +2. Wall material patchy (Concrete over Plaster). 20-30 small rotated debris parts.
-Light is the design: few sources, warm practicals (torch PointLight Range 24, Brightness 1.6,
-Color 255,196,132, Shadows on) fighting a cold ambient. Suggested: palette coldHorror or
-fortressRuin, mood horror. Budget 300-700 parts.`,
+  dungeon: `SCENE: CARTOON QUEST — colorful fantasy chambers connected by readable paths, oversized
+playful props, safe contrast between routes and hazards, clear objectives and rewards. Source
+crystals, doors, creatures and decor as verified Roblox models; never use grim horror lighting.
+Suggested: palette candyArcade or oceanPlay, mood sunny.`,
 
-  obby: `SCENE: OBBY — readability is the art direction. Walkable surfaces get ONE consistent
-material+colour; hazards get a different, saturated accent; decoration must never be mistakeable
-for either. Platforms 8-12 across, gaps 8-14 (jump reach is ~7.2 up), rise between stages 4-6.
-Give every platform a trim edge 0.4 proud so its silhouette reads against the void, and a
-checkpoint landmark every 5-8 platforms. Build the surround (floating islands, a tower, terrain
-below) so it is not parts in empty sky. Suggested: palette brightPlay or sciFi, mood sunny or night.
-Budget 300-800 parts.`,
+  obby: `SCENE: OBBY — walkable platforms 8-12 across, clear hazard color and checkpoint landmark
+every 5-8 stages. Build simple platforms from Parts; use verified Roblox models for themed
+surroundings, decorations and rewards. Test jumps and respawns as a player. Suggested: palette
+candyArcade or brightPlay, mood sunny.`,
 
-  arena: `SCENE: ARENA — playfield 100x100 kept clear and flat, everything interesting on the perimeter.
-Tiered seating rising in 3-4 bands (each +6, depth 10), a canopy or ring beam overhead, two opposed
-gateways as secondary focal points. Landmark: a scoreboard/banner mass at least 3x the seating
-height on one side only. Ground: a bordered field with an inset centre circle, not a blank slab.
-Suggested: palette modernCivic or fortressRuin, mood day or night. Budget 600-1200 parts.`,
+  arena: `SCENE: ARENA — clear 100x100 playfield, two readable team entrances, colorful perimeter
+landmarks and a functioning scoreboard. Build the simple field and boundaries from Parts; source
+seating, banners and decorative structures as verified Roblox models. Suggested: palette brightPlay
+or oceanPlay, mood day.`,
 
-  natural: `SCENE: NATURAL — Terrain, not parts, for the ground: Terrain:FillBlock/FillBall/FillCylinder
-with Grass, Ground, Rock, Sand (voxels are 4x4x4, so size features in multiples of 4); blend edges
-with Terrain:ReplaceMaterial(region, 4, source, target) — PaintRegion does not exist.
-Sculpt at least 3 elevations with a 15-40 stud height range. Add a Clouds object on
-Terrain (Cover 0.6, Density 0.5). Landmark: one hero mass (rock outcrop, great tree, waterfall)
-3x its surroundings,
-off-centre. Scatter foliage in clusters of 3-5 with clearings between, never a uniform grid; vary
-scale +/-25% and rotate freely. Rocks are 3-5 intersecting rotated parts, never one sphere.
-Suggested: palette verdant, mood misty or golden. Budget 400-1000 parts.`,
+  natural: `SCENE: NATURAL — broad Terrain for hills and water, at least three readable elevations and
+one off-center hero landmark. Source trees, rocks, flowers and crystals as verified Roblox models;
+never assemble detailed nature from Parts. Keep paths and destinations visible from spawn. Add
+Clouds under Terrain and inspect the actual player camera. Suggested: palette brightPlay or
+oceanPlay, mood sunny or golden.`,
 
-  simulator: `SCENE: PLOT GAME (simulator, tycoon, farming) — a central hub (sand or plaza colour, 40-60
-across) with the spawn, shops or vendor stalls around it and one landmark; N identical player plots
-(default 6) in two rows or a ring off the hub, 30-40 across each, 12-16 apart, joined by 10-14 wide
-paths in a colour that contrasts the grass. Every plot is one module cloned: raised base, contrasting
-rim, fence with a gate gap facing the path, owner sign, 3-6 props, then its contents. Stalls are
-open-front booths with a counter, an awning in a bright accent and a big sign.
-Suggested: palette brightPlay, mood sunny. Budget 800-2000 parts.`,
+  simulator: `SCENE: PLOT GAME (simulator, tycoon, farming) — central colorful hub with spawn, working
+shop and one hero landmark; six player plots by default, connected by contrasting paths. Every
+plot has a raised base, rim, gate, owner sign and 3-6 verified library props. Clone a finished plot
+module with measured spacing. Wire currency, progression, shop, rewards and UI before calling the
+game complete. Suggested: palette brightPlay or cozyVillage, mood sunny.`,
 };
 
 const KIND_ALIASES: Record<string, string> = {
@@ -489,7 +454,7 @@ function resolveKind(kind: string): string | null {
 export function worldBuildingBrief(kind: string): string {
   const resolved = resolveKind(kind);
   const specific = resolved ? KINDS[resolved] : undefined;
-  const names = `Moods: ${Object.keys(MOODS).join(', ')}. Palettes: ${Object.keys(PALETTES).join(', ')}.`;
+  const names = `Moods: ${CARTOON_MOODS.join(', ')}. Palettes: ${CARTOON_PALETTES.join(', ')}.`;
   const base = OUTDOOR_RE.test(kind) ? `${UNIVERSAL}\n\n${OUTDOOR}` : UNIVERSAL;
   return specific ? `${base}\n\n${specific}\n\n${names}` : `${base}\n\n${names}`;
 }
@@ -568,29 +533,29 @@ const S = (props: Record<string, unknown>, required: string[] = []): Record<stri
 /** The plan the agent must produce (and follow) before placing a single part. */
 export const SCENE_PLAN_SCHEMA = S(
   {
-    kind: { type: 'string', description: 'Scene category: plaza, interior, obby, lobby, dungeon, shop, arena, natural…' },
-    style: { type: 'string', enum: ['stylised', 'realistic'], description: 'One art style held on every part (see STYLE).' },
-    mood: { type: 'string', enum: Object.keys(MOODS), description: 'Named lighting mood to apply verbatim.' },
+    kind: { type: 'string', description: 'Colorful cartoon scene category: plaza, interior, obby, lobby, shop, arena, natural, simulator or playful quest.' },
+    style: { type: 'string', enum: ['stylised'], description: 'A consistent colorful cartoon Roblox art direction.' },
+    mood: { type: 'string', enum: CARTOON_MOODS, description: 'Named colorful cartoon lighting mood to apply verbatim.' },
     palette: {
       type: 'string',
-      description: `Named palette from: ${Object.keys(PALETTES).join(', ')}. Use "custom" only with explicit colors below.`,
+      description: `Named cartoon palette from: ${CARTOON_PALETTES.join(', ')}. Use "custom" only with explicit colors below.`,
     },
     colors: S({
-      dominant: { type: 'string', description: 'RGB "r,g,b" — ~60% of surface; realistic: desaturated (S<=0.35), stylised: a saturated high-key colour' },
+      dominant: { type: 'string', description: 'RGB "r,g,b" — ~60% of surface; saturated high-key cartoon color' },
       secondary: { type: 'string', description: 'RGB "r,g,b" — ~30%' },
       accent: { type: 'string', description: 'RGB "r,g,b" — ~10%, the strongest colour' },
       trim: { type: 'string', description: 'RGB "r,g,b" — darkest, for edges/skirting/frames' },
     }, ['dominant', 'secondary', 'accent', 'trim']),
     materials: {
       type: 'array',
-      description: 'Enum.Material names: realistic exactly 3 primary + 1 accent; stylised SmoothPlastic/Plastic plus Neon and WoodPlanks. Never the default grey.',
+      description: 'Enum.Material names: SmoothPlastic/Plastic for simple structure, Neon accents, WoodPlanks where appropriate. Never default gray.',
       items: { type: 'string' },
     },
     focalPoint: S({
       what: { type: 'string', description: 'The single hero element the eye lands on.' },
       heightStuds: { type: 'number', description: 'Must be >=3x the height of its surroundings.' },
       position: { type: 'string', description: 'Approx "x,y,z"; place off-centre, about a third in.' },
-      partCount: { type: 'number', description: 'Hero props are 25-60 parts, never 2-3.' },
+      partCount: { type: 'number', description: 'Optional: number of simple structural Parts only; detailed hero props come from verified models.' },
     }, ['what', 'heightStuds', 'position']),
     landmarks: {
       type: 'array',
@@ -616,7 +581,7 @@ export const SCENE_PLAN_SCHEMA = S(
       heroProps: { type: 'number' },
       midProps: { type: 'number' },
       setDressing: { type: 'number' },
-      totalParts: { type: 'number', description: 'Room 150-400, plaza 600-1500. Under 100 is a blockout.' },
+      totalParts: { type: 'number', description: 'Budget for simple structural Parts; quality comes from complete verified models and working gameplay, not a large Part count.' },
     }, ['totalParts']),
     trimPlan: { type: 'string', description: 'Which edges get trim, skirting, cornice, frames, plinths.' },
     groundTreatment: { type: 'string', description: 'How the baseplate is replaced: terrain fill, or deck + kerbs + insets.' },

@@ -76,7 +76,7 @@ import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySou
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
-import { MOODS, PALETTES, type RGB } from './worldbuilding';
+import { MOODS, PALETTES, CARTOON_MOODS, CARTOON_PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
 import { auditCaptureFromTree, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
 import { formatPanelReport, runCriticPanel } from './critic';
@@ -3091,7 +3091,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         {
           mood: {
             type: 'string',
-            enum: Object.keys(MOODS),
+            enum: CARTOON_MOODS,
             description: 'One of the named moods. Each is a complete, art-directed lighting setup.',
           },
         },
@@ -3104,9 +3104,9 @@ export const TOOLS: Record<string, ToolImpl> = {
     run: async (ctx, a) => {
       let projectMutated = false;
       const mood = String(a.mood ?? '');
-      if (!Object.prototype.hasOwnProperty.call(MOODS, mood)) {
+      if (!(CARTOON_MOODS as readonly string[]).includes(mood)) {
         return {
-          error: `unknown mood "${mood}". Choose one of: ${Object.keys(MOODS).join(', ')}.`,
+          error: `unknown mood "${mood}" for colorful cartoon games. Choose one of: ${CARTOON_MOODS.join(', ')}.`,
         };
       }
       const tree = await op(ctx, { op: 'get_tree', root: 'game.Lighting', maxDepth: 1, maxNodes: 200 });
@@ -3161,9 +3161,9 @@ export const TOOLS: Record<string, ToolImpl> = {
       // Hand back the palettes this mood was art-directed alongside. The lighting is half of a
       // look; the materials and colours are the other half, and the model has no other way to
       // learn which of them were designed to sit under this light.
-      const palettes = Object.entries(PALETTES)
-        .filter(([, p]) => p.moods.includes(mood))
-        .map(([name, p]) => ({ name, materials: p.materials }));
+      const palettes = CARTOON_PALETTES
+        .filter((name) => PALETTES[name]?.moods.includes(mood))
+        .map((name) => ({ name, materials: PALETTES[name]!.materials }));
       const keptNote = kept.length
         ? `Left in place: ${kept.join(', ')} — the user put ${kept.length === 1 ? 'that' : 'those'} in Lighting, so ${kept.length === 1 ? 'it is' : 'they are'} still active and now combine with this mood. Tell them, and use remove_effect or ask before deleting ${kept.length === 1 ? 'it' : 'them'}.`
         : undefined;

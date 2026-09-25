@@ -28,7 +28,7 @@ const out = join(mkdtempSync(join(tmpdir(), 'wb-')), 'wb.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'worldbuilding.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out],
   { stdio: 'pipe' });
-const { worldBuildingBrief, moodLuau, MOODS, PALETTES } = await import(out);
+const { worldBuildingBrief, moodLuau, MOODS, PALETTES, CARTOON_MOODS, CARTOON_PALETTES, SCENE_PLAN_SCHEMA } = await import(out);
 
 const TMP = mkdtempSync(join(tmpdir(), 'wb-luau-'));
 function haveLuau() {
@@ -100,38 +100,16 @@ test('colours are emitted as Color3.fromRGB, not as raw arrays', () => {
 
 // ----------------------------------------------------------- the token budget --
 
-//[[ THE STATED BUDGET IS ALREADY EXCEEDED, and writing the test is how that surfaced.
-//
-//   worldbuilding.ts's header says "Token budget is a hard product constraint —
-//   worldBuildingBrief() must stay ~1.5k tokens". Measured at ~4 characters per token:
-//
-//     obby       7,529 chars  ~1,883 tokens
-//     tycoon     6,947 chars  ~1,737 tokens
-//     simulator  6,947 chars  ~1,737 tokens
-//     showcase   6,947 chars  ~1,737 tokens
-//     unknown    6,947 chars  ~1,737 tokens
-//
-//   So it is 16–26 % over the number it calls hard, on every build request. That is a
-//   product decision — trim the brief, or restate the budget — and not one to make
-//   silently inside a test file.
-//
-//   The threshold below is therefore a RATCHET at the current worst case plus a little
-//   room, not an endorsement of 2,000. It stops the brief growing further while the
-//   discrepancy is decided. Picking 2,200 so the test passes and saying nothing would
-//   have been the quiet version of the same choice. ]]
-test('the brief does not grow past where it already is', () => {
+// The cartoon-only brief now fits the module's stated ~1.5k token budget.
+test('the brief stays inside its stated token budget', () => {
   const measured = {};
   for (const kind of ['obby', 'tycoon', 'simulator', 'showcase', 'anything-else']) {
     const approxTokens = Math.ceil(worldBuildingBrief(kind).length / 4);
     measured[kind] = approxTokens;
-    assert.ok(approxTokens < 2000,
-      `worldBuildingBrief(${kind}) is ~${approxTokens} tokens. The module's header calls `
-      + '~1.5k a hard constraint and it is already past that; this ratchet stops it '
-      + 'growing further. Trim the brief, or change the stated budget deliberately.');
+    assert.ok(approxTokens < 1500,
+      `worldBuildingBrief(${kind}) is ~${approxTokens} tokens, above the ~1.5k budget.`);
   }
-  // Recorded so a reader sees the gap rather than only the ceiling.
-  assert.ok(measured.obby > 1500,
-    'obby is now inside the stated 1.5k budget — good news; tighten this test to match.');
+  assert.ok(measured.obby > 700, 'the prompt may have lost its art-direction rules');
 });
 
 // F-049: a sky island built out of Parts scored 2/10. Outdoor requests carry the Terrain/set_mood
@@ -146,12 +124,24 @@ test('outdoor requests get the natural-scene rules and indoor ones do not', () =
   }
 });
 
-test('the brief names the moods and palettes a model may choose from', () => {
-  // The model picks a mood by name. If the list is not in the prompt it invents one,
-  // moodLuau falls back to day, and every scene comes out looking the same.
+test('the active brief offers only colorful cartoon moods and palettes', () => {
   const brief = worldBuildingBrief('obby');
-  for (const mood of Object.keys(MOODS)) assert.ok(brief.includes(mood), `${mood} is not offered`);
-  for (const pal of Object.keys(PALETTES)) assert.ok(brief.includes(pal), `${pal} is not offered`);
+  assert.deepEqual(SCENE_PLAN_SCHEMA.properties.style.enum, ['stylised']);
+  assert.deepEqual(SCENE_PLAN_SCHEMA.properties.mood.enum, CARTOON_MOODS);
+  assert.ok(CARTOON_MOODS.includes('sunny'));
+  assert.ok(!CARTOON_MOODS.includes('horror'));
+  assert.ok(!CARTOON_MOODS.includes('overcast'));
+  assert.ok(!CARTOON_PALETTES.includes('coldHorror'));
+  assert.ok(!CARTOON_PALETTES.includes('modernCivic'));
+  for (const mood of CARTOON_MOODS) assert.ok(brief.includes(mood), `${mood} is not offered`);
+  for (const pal of CARTOON_PALETTES) {
+    assert.ok(brief.includes(pal), `${pal} is not offered`);
+    assert.ok(PALETTES[pal].materials.includes('SmoothPlastic'), `${pal} is not a cartoon palette`);
+  }
+  assert.doesNotMatch(brief, /- REALISTIC|palette coldHorror|mood horror|realistic cities/i);
+  assert.match(brief, /find_library_model/);
+  assert.match(brief, /insert_library_model/);
+  assert.match(brief, /simple.*parts/i);
 });
 
 test('an unknown kind still returns the universal guidance', () => {
