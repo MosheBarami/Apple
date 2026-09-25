@@ -39,8 +39,9 @@ const words = (text: string) => text.toLowerCase().split(/[^a-z0-9]+/).filter(Bo
 const stem = (word: string) => word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word;
 
 export function visualAssetAnchor(query: string, options: PendingAssetChoice['options']): string | null {
-  const names = options.flatMap((option) => words(option.name).map(stem));
-  const candidate = words(query).map(stem).filter((word) => !GENERIC.has(word) && names.includes(word));
+  // Anchor the requested object, not an accidentally retrieved adjective. A search for
+  // "wooden arch gate" must stay a gate search even if the index returns wooden plates.
+  const candidate = words(query).map(stem).filter((word) => !GENERIC.has(word));
   return candidate.at(-1) ?? words(options[0]?.name ?? '').map(stem).filter((word) => !GENERIC.has(word)).at(-1) ?? null;
 }
 

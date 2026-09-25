@@ -47,3 +47,8 @@ test('a rejected tree search cannot drift into flower previews', () => {
   assert.equal(matchesVisualAnchor('Flowers', anchor), false);
   assert.equal(visualAssetAnchor('Oak Tree', [options[0]]), 'tree');
 });
+
+test('an irrelevant first result cannot turn a gate search into a wooden-object search', () => {
+  const options = [{ id: 'plate', assetId: 101, name: 'Wooden Plate' }];
+  assert.equal(visualAssetAnchor('wooden arch gate', options), 'gate');
+});

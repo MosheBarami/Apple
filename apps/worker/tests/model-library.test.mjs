@@ -283,6 +283,14 @@ test('a rejected preview is not offered again in the next search', async () => {
   assert.ok(second.results.every((row) => row.assetId !== rejected));
 });
 
+test('a wooden arch gate search never previews unrelated wooden plates or wheels', async () => {
+  const { ctx } = ctxWith();
+  const result = await run(ctx, 'find_library_model', { query: 'wooden arch gate' });
+  assert.ok(result.results.every((row) => /\bgates?\b/i.test(row.name)),
+    `irrelevant preview choices: ${result.results.map((row) => row.name).join(', ')}`);
+  assert.ok((ctx.uiDetail?.options ?? []).every((row) => /\bgates?\b/i.test(row.name)));
+});
+
 test('after rejecting trees the model cannot offer an unrelated flower', async () => {
   assert.ok(M.findLibraryModels({ query: 'flowers', creatorStoreOnly: true }).results.length > 0,
     'the test needs a real flower row to exercise the boundary');

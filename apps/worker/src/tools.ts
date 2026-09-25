@@ -74,7 +74,7 @@ import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau } fr
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
-import { matchesVisualAnchor } from './asset-choice';
+import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
@@ -4538,15 +4538,20 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
+      const query = a.query === undefined ? undefined : String(a.query);
       const found = findLibraryModels({
-        query: a.query === undefined ? undefined : String(a.query),
+        query,
         genre: a.genre ? String(a.genre) : undefined,
         kind: a.kind ? String(a.kind) : undefined,
         limit: Math.max(10, a.limit === undefined ? 10 : Number(a.limit)),
         creatorStoreOnly: true,
       });
       const rejected = new Set(ctx.rejectedLibraryAssetIds ?? []);
-      found.results = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId) && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor)).slice(0, a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10)));
+      const requestedObject = visualAssetAnchor(query ?? '', []);
+      found.results = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId)
+        && matchesVisualAnchor(row.name, requestedObject ?? undefined)
+        && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor)).slice(0, a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10)));
+      if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Search a different plain noun or report the missing asset; do not substitute an unrelated preview or hand-built prop.`;
       const options = found.results.slice(0, 3);
       if (options.length && !options.some((row) => row.assetId === ctx.approvedLibraryAssetId)) ctx.uiDetail = {
         kind: 'asset_choices',
