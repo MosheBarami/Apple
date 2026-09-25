@@ -338,6 +338,15 @@ test('every catalogue recipe has a keyless rendering accepted by the current Stu
   }
 });
 
+test('keyless shop icons use the skin palette instead of an opaque black image pixel', () => {
+  const out = U.compileComponent({ component: 'shop_window', genre: 'simulator', colour: 'green' }, () => '');
+  assert.ok(!('error' in out));
+  const icons = [];
+  walk(out.item, (sp) => { if (sp.name === 'Icon' && sp.props?.BackgroundColor3) icons.push(sp); });
+  assert.ok(icons.length >= 3);
+  assert.ok(icons.every((sp) => sp.props.BackgroundColor3.v.some((n) => n > 0.1)), 'opaque black placeholder tiles are not a usable UI icon');
+});
+
 test('ids: shared and cached images work, while insert never starts a permanent upload', async () => {
   const kv = new Map([['ui-image:u1:kenney-ui-pack/red/button_round_depth_gloss.png', '222']]);
   const env = { KV: { get: async (k) => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); } } };

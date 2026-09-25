@@ -99,18 +99,25 @@ class Builder {
     return id ? `rbxassetid://${id}` : '';
   }
   native(asset: string): boolean { return this.idOf(asset) === ''; }
+  nativePaletteAsset(asset: string): string {
+    // A transparent icon can have a measured black centre despite a white card below it.
+    // Reuse this skin's stored icon-button colour rather than painting an opaque black tile.
+    const centre = L.images[asset]?.centre;
+    const isIcon = Object.values(L.icons).includes(asset);
+    return isIcon && centre?.every((n) => n < 32) ? this.role('button_icon') : asset;
+  }
   nativeCorner(asset: string): Spec {
-    const margin = L.images[asset]?.slice?.[0] ?? 8;
+    const margin = L.images[this.nativePaletteAsset(asset)]?.slice?.[0] ?? 8;
     return this.spec('UICorner', 'LibraryCorner', { CornerRadius: udim(0, Math.max(4, Math.min(16, margin))) });
   }
   nativeBorder(asset: string): Spec {
-    return this.spec('UIStroke', 'LibraryEdge', { Color: rgb(L.images[asset]!.edge), Thickness: num(1) });
+    return this.spec('UIStroke', 'LibraryEdge', { Color: rgb(L.images[this.nativePaletteAsset(asset)]!.edge), Thickness: num(1) });
   }
   picture(asset: string): P {
     this.assets.add(asset);
     if (this.native(asset)) return {
       Image: str(''), BackgroundTransparency: num(0), BorderSizePixel: num(0),
-      BackgroundColor3: rgb(L.images[asset]!.centre),
+      BackgroundColor3: rgb(L.images[this.nativePaletteAsset(asset)]!.centre),
     };
     return { Image: str(this.imageRef(asset)), BackgroundTransparency: num(1) };
   }
@@ -127,7 +134,7 @@ class Builder {
   fit(name: string, asset: string, place: P, children: Spec[] = [], button = false): Spec {
     const native = this.native(asset);
     const iconKey = native ? Object.entries(L.icons).find(([, file]) => file === asset)?.[0] : undefined;
-    const glyph = iconKey ? this.label('LibraryGlyph', iconKey === 'coin' || iconKey === 'dollar' ? '$' : iconKey === 'cross' ? '×' : iconKey === 'heart' ? '♥' : iconKey === 'star' ? '★' : iconKey.slice(0, 1).toUpperCase(), asset, box(0.5, 0.5, 0.7, 0.7, 0.5, 0.5), 24) : null;
+    const glyph = iconKey ? this.label('LibraryGlyph', iconKey === 'coin' || iconKey === 'dollar' ? '$' : iconKey === 'cross' ? '×' : iconKey === 'heart' ? '♥' : iconKey === 'star' || iconKey === 'gift' ? '★' : iconKey.slice(0, 1).toUpperCase(), this.nativePaletteAsset(asset), box(0.5, 0.5, 0.7, 0.7, 0.5, 0.5), 24) : null;
     return this.spec(button ? 'ImageButton' : 'ImageLabel', name, {
       ...place, ...this.picture(asset), ...(!native ? { ScaleType: enumItem('Enum.ScaleType.Fit') } : {}),
     }, native ? [...children, ...(glyph ? [glyph] : []), this.nativeCorner(asset), this.nativeBorder(asset)] : children);
