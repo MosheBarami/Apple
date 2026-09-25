@@ -117,6 +117,7 @@ import {
   MIN_QUERY,
   authorForRole,
   checkpointAuthor,
+  customerWorkSearchText,
   isSearchable,
   narrowing,
   parseSearchFilter,
@@ -6237,7 +6238,9 @@ export class SessionDO extends DurableObject<Env> {
     //       builds its artifact panels from. The message's own text need not mention the tool at
     //       all, so this is its own query rather than a pass over the rows above.
     {
-      const n = narrowing(filter, { columns: ['tool_trace'], require: ['tool_trace is not null'] });
+      // Customer-facing labels are derived after this read. Filtering by raw trace text would
+      // drop a result whose friendly label matches the query but whose internal name does not.
+      const n = narrowing(filter, { require: ['tool_trace is not null'] });
       const rows = this.sql
         .exec(
           `select id, tool_trace, created_at from messages ${n.where} order by created_at desc limit ?`,
@@ -6259,12 +6262,13 @@ export class SessionDO extends DurableObject<Env> {
         trace.forEach((entry, i) => {
           if (!entry || typeof entry.tool !== 'string') return;
           scanned += 1;
+          const text = customerWorkSearchText(entry.tool, typeof entry.summary === 'string' ? entry.summary : '', entry.ok);
           records.push({
             id: `${r.id}:${i}`,
             type: 'artifact',
             author: 'apple',
-            title: entry.tool,
-            body: typeof entry.summary === 'string' ? entry.summary : '',
+            title: text.title,
+            body: text.body,
             createdAt: r.created_at,
             messageId: r.id,
           });
@@ -6306,7 +6310,8 @@ export class SessionDO extends DurableObject<Env> {
     // ----- what was done to the place. The project's own operation history, which until now was
     //       readable only as the last 25 rows on the status payload.
     {
-      const n = narrowing(filter, { columns: ['summary', 'kind'] });
+      // The searchable operation label is not stored in SQL; keep only the date bounds here.
+      const n = narrowing(filter);
       const rows = this.sql
         .exec(
           `select id, kind, ok, summary, created_at, run_id from oplog ${n.where} order by created_at desc limit ?`,
@@ -6317,12 +6322,13 @@ export class SessionDO extends DurableObject<Env> {
       if (rows.length > SCAN_ROWS) truncated = true;
       for (const r of rows.slice(0, SCAN_ROWS)) {
         scanned += 1;
+        const text = customerWorkSearchText(r.kind ?? '', r.summary ?? '', r.ok === null ? undefined : r.ok === 1);
         records.push({
           id: `op:${r.id}`,
           type: 'activity',
           author: 'apple',
-          title: r.kind ?? null,
-          body: r.summary ?? '',
+          title: text.title,
+          body: text.body,
           createdAt: r.created_at,
           // The anchor back into the conversation. OMITTED, not nulled, for an op taken outside a
           // run: `messageId` present is what tells the workspace it has somewhere to go, and a

@@ -40,6 +40,7 @@ const {
   narrowing,
   DEFAULT_SEARCH_LIMIT,
   MAX_SEARCH_LIMIT,
+  customerWorkSearchText,
 } = await import(`file://${out}`);
 process.on('exit', () => rmSync(out, { force: true }));
 
@@ -549,6 +550,34 @@ test('every kind of record a project holds is gathered', () => {
   }
   assert.ok(gather.includes("type: 'artifact'"), 'tool steps are not searched');
   assert.ok(gather.includes("type: 'memory'"), 'what Apple remembers is not searched');
+});
+
+test('work search records use customer words and never raw tool names or operation errors', () => {
+  const scripted = customerWorkSearchText('edit_script', 'edit_script failed at ServerScriptService.Shop:17; stack trace');
+  assert.match(scripted.title, /script/i);
+  assert.doesNotMatch(JSON.stringify(scripted), /edit_script|ServerScriptService|stack trace|:17/);
+  const unknown = customerWorkSearchText('future_internal_tool', 'run_id=abc123 private diagnostic');
+  assert.ok(unknown.title && unknown.body, 'an unknown work type still has a friendly search label');
+  assert.doesNotMatch(JSON.stringify(unknown), /future_internal_tool|run_id|abc123/);
+  const safeRecord = REC({ type: 'artifact', title: scripted.title, body: scripted.body });
+  const visible = runSearch([safeRecord], FILTER('q=script'));
+  assert.equal(visible.results.length, 1, 'the friendly label remains searchable');
+  assert.doesNotMatch(JSON.stringify(visible), /edit_script|ServerScriptService|stack trace|:17/);
+  assert.equal(runSearch([safeRecord], FILTER('q=ServerScriptService')).results.length, 0);
+  const code = gather.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.equal((code.match(/customerWorkSearchText\(/g) ?? []).length, 2,
+    'both tool steps and Studio operations must use the customer-safe search text');
+});
+
+test('searching a friendly work label is not filtered out by raw SQL text', () => {
+  const code = gather.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const artifacts = code.slice(code.indexOf('const n = narrowing', code.indexOf("type: 'message'")), code.indexOf("type: 'artifact'"));
+  const activity = code.slice(code.indexOf('const n = narrowing', code.indexOf("type: 'checkpoint'")), code.indexOf("type: 'activity'"));
+  assert.ok(artifacts && activity, 'both work scans must still be located');
+  assert.doesNotMatch(artifacts, /columns:\s*\['tool_trace'\]/,
+    'friendly titles are derived after SQL reads the tool trace');
+  assert.doesNotMatch(activity, /columns:\s*\['summary', 'kind'\]/,
+    'friendly titles are derived after SQL reads the operation');
 });
 
 test('the type filter is NOT applied while gathering, so the facet counts can exist', () => {

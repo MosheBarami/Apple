@@ -183,6 +183,21 @@ export interface SearchRecord {
   messageId?: string;
 }
 
+/** Searchable work labels for customers. Tool traces and Studio operation summaries are internal
+ * records: searching their raw text would put method names, instance paths and errors in the UI.
+ * Unknown future tools deliberately fall back to a neutral label. */
+export function customerWorkSearchText(kind: string, _summary: string, ok?: boolean): { title: string; body: string } {
+  let title = 'Worked on your game';
+  if (/script|code/.test(kind)) title = 'Worked on a script';
+  else if (/terrain|landscape|world/.test(kind)) title = 'Shaped the world';
+  else if (/ui|interface|screen/.test(kind)) title = 'Worked on a screen';
+  else if (/model|asset|image|sound|audio|effect/.test(kind)) title = 'Worked with an item';
+  else if (/play|test|check|audit|inspect|verify/.test(kind)) title = 'Checked the game';
+  else if (/create|insert|add/.test(kind)) title = 'Added to your place';
+  else if (/transform|move|resize|rotate|update|edit/.test(kind)) title = 'Changed your place';
+  return { title, body: ok === false ? 'Apple could not complete this step.' : 'Apple worked on this step.' };
+}
+
 export interface SearchFilter {
   q: string;
   limit: number;

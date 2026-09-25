@@ -82,7 +82,8 @@ test('an activity search hit is anchored to the run that produced it', async () 
   const h = sessionHarness();
   h.session.currentMsgId = 'msg_search';
   await runStudioOp(h, { op: 'edit_script', path: 'x' }, { ok: false, error: 'the portal script would not compile' });
-  const res = await h.session.fetch(new Request('https://do/search?q=portal'));
+  // Customer search uses the visible work label; raw failure text stays private.
+  const res = await h.session.fetch(new Request('https://do/search?q=script'));
   const body = await res.json();
   const hit = body.results.find((r) => r.type === 'activity');
   assert.ok(hit, `no activity hit in ${JSON.stringify(body.results)}`);
@@ -95,7 +96,7 @@ test('an activity record with no run carries no messageId, so the UI can still s
   const h = sessionHarness();
   h.session.currentMsgId = undefined;
   await runStudioOp(h, { op: 'snapshot', root: 'game' }, { ok: false, error: 'the portal is too large to snapshot' });
-  const res = await h.session.fetch(new Request('https://do/search?q=portal'));
+  const res = await h.session.fetch(new Request('https://do/search?q=game'));
   const body = await res.json();
   const hit = body.results.find((r) => r.type === 'activity');
   assert.ok(hit);
