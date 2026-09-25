@@ -3121,15 +3121,20 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?, s
 		return self.game:GetService("InsertService"):LoadAsset(assetId)
 	end)
 	if not okLoad or typeof(loaded) ~= "Instance" then
-		-- WHY ONE REMEDY FOR EVERY WAY THIS CAN FAIL. LoadAsset refuses for several reasons and
-		-- Roblox says which only in prose we do not own, so the code cannot be picked by reading
-		-- the sentence. It is `take_asset_first` because ownership is the only cause the user can
-		-- act on, and because it is the cause in practice: the ownership evidence note dated
-		-- 2026-09-19 measured "User is not authorized" for a library id against an owned-asset
-		-- control that succeeded, and asset-library.ts reports that every live row of the library
-		-- needs taking. The over-promise is narrow and visible — a deleted or moderated asset sends
-		-- the user to a Creator Store page that is not there — and that beats the alternative,
-		-- which is the worker saying it does not know while the product has the answer written down.
+		-- Roblox's owned-asset loader refuses free Creator Store models from other creators.
+		-- The modern loader can read them only when this experience ALREADY allows third-party
+		-- assets. The RobloxScript-protected setting cannot be read by a plugin; the engine itself
+		-- refuses this call when disabled. Never set that security-sensitive Studio option here.
+		-- Both loaders feed the same detached scan and checks before anything is parented.
+		local okService, assetService = pcall(function() return self.game:GetService("AssetService") end)
+		if okService and assetService then
+			okLoad, loaded = pcall(function() return assetService:LoadAssetAsync(assetId) end)
+		end
+	end
+	if not okLoad or typeof(loaded) ~= "Instance" then
+		-- Roblox can refuse either loader for ownership, moderation, deletion or a transient error.
+		-- The remedy offers another model as well as taking this one into inventory; it does not
+		-- claim to know which Roblox-side cause fired or suggest changing a security setting.
 		return nil, "refused", "Roblox would not load asset " .. tostring(assetId) .. ": " .. tostring(loaded), "take_asset_first"
 	end
 

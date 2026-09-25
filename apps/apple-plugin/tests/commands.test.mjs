@@ -233,6 +233,58 @@ spec("handler-level refusals carry the remedy the product wrote for them", funct
     c:destroy()
 end)
 
+spec("the engine gates third-party loading even when its setting cannot be read", function()
+    local calls = 0
+    local allow = false
+    services.InsertService = { LoadAsset = function() error("not owned by this place") end }
+    services.AssetService = setmetatable({
+        LoadAssetAsync = function(_, _)
+            calls += 1
+            if not allow then error("third-party loading is disabled") end
+            local model = Instance.new("Model")
+            local part = Instance.new("Part"); part.Name = "CartoonTree"; part.Parent = model
+            return model
+        end,
+    }, { __index = function(_, key)
+        if key == "AllowInsertFreeAssets" then error("lacking capability RobloxScript") end
+        return nil
+    end })
+    local c = newCommands()
+    local op = { op = "insert_asset", assetId = 123456, parent = "game.Workspace" }
+    local shut = run(c, "third-party-disabled", op, true)
+    eq(shut.ok, false, "disabled third-party loading must refuse")
+    eq(calls, 1, "the engine refuses loading when the setting is off")
+
+    allow = true
+    local allowed = run(c, "third-party-enabled", op, true)
+    eq(allowed.ok, true, "a free model may load when the person already enabled Studio's setting")
+    eq(allowed.data.count, 1)
+    eq(calls, 2)
+
+    services.InsertService.LoadAsset = function(_, _)
+        local model = Instance.new("Model")
+        local part = Instance.new("Part"); part.Name = "OfficialCartoonTree"; part.Parent = model
+        return model
+    end
+    local official = run(c, "official-still-first", { op = "insert_asset", assetId = 123458, parent = "game.Workspace" }, true)
+    eq(official.ok, true, "Roblox-owned assets still use the existing loader")
+    eq(calls, 2, "the modern loader is only a fallback")
+    services.InsertService.LoadAsset = function() error("not owned by this place") end
+
+    services.AssetService.LoadAssetAsync = function(_, _)
+        calls += 1
+        local model = Instance.new("Model")
+        local script = Instance.new("Script"); script.Name = "Payload"; script.Parent = model
+        return model
+    end
+    local scripted = run(c, "third-party-scripted", { op = "insert_asset", assetId = 123457, parent = "game.Workspace" }, true)
+    eq(scripted.ok, false, "a third-party model with code must still be refused")
+    eq(scripted.remedy, "choose_scriptless_asset")
+    eq(calls, 3)
+    c:destroy()
+    services.InsertService = nil; services.AssetService = nil
+end)
+
 spec("typed creation and set_props commit a recording", function()
     local c = newCommands()
     local made = run(c, "create", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace", props = { Anchored = { t = "bool", v = true }, Size = { t = "Vector3", v = { 4, 2, 1 } } }, attributes = { Zone = { t = "string", v = "safe" } }, children = {{ className = "Folder", name = "Nested" }} }} }, true)

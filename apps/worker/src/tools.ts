@@ -4536,20 +4536,22 @@ export const TOOLS: Record<string, ToolImpl> = {
         displayName: a.displayName ? String(a.displayName) : undefined,
       }),
   },
-  // The 3D model library (D-MODELLIB-1): script-free Creator Store models that Roblox itself owns,
-  // inserted by id. Downloaded CC0/CC-BY/MIT files remain indexed but are not offered to the
+  // The 3D model library (D-MODELLIB-1): script-free Creator Store models, normally Roblox-owned.
+  // Trusted third-party models are explicitly optional because Studio may refuse their load.
+  // Downloaded CC0/CC-BY/MIT files remain indexed but are not offered to the
   // agent: the current source choice does not authorise a permanent upload into the user's
   // Roblox account. Props still come from the library; parts stay for terrain, paths and zones.
   find_library_model: {
     def: {
       name: 'find_library_model',
       description:
-        "Search insertable, script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any detailed object. Plain nouns work best; genre and kind narrow it. In Agent mode, Apple shows up to three real thumbnails and pauses for the project owner's visual choice. Nothing is inserted or uploaded by this call.",
+        "Search script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any detailed object. Plain nouns work best; genre and kind narrow it. By default only Roblox-owned models are returned. If those cannot cover the requested cartoon object, retry with includeThirdParty=true; this adds only free third-party models whose names explicitly describe a cartoon, stylized, low-poly or similar look. They are marked requiresThirdPartyLoading and may be refused by Studio unless the experience already permits third-party asset loading. Never claim they are guaranteed to load or visually suitable without inspecting the preview. In Agent mode, Apple shows up to three real thumbnails and pauses for the project owner's visual choice. Nothing is inserted or uploaded by this call.",
       parameters: S(
         {
           query: { type: 'string', description: 'Plain words for the object, e.g. "wooden crate" or "pine tree".' },
           genre: { type: 'string', enum: [...LIBRARY_GENRES], description: 'Optional game genre.' },
           kind: { type: 'string', enum: [...LIBRARY_KINDS], description: 'Optional kind of object.' },
+          includeThirdParty: { type: 'boolean', description: 'Optional, default false. Also search trusted free third-party models; Roblox may refuse insertion unless this experience already permits third-party loading.' },
           limit: { type: 'number', description: 'How many results, 1 to 40. Default 10.' },
         },
         [],
@@ -4564,6 +4566,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         kind: a.kind ? String(a.kind) : undefined,
         limit: Math.max(10, a.limit === undefined ? 10 : Number(a.limit)),
         creatorStoreOnly: true,
+        includeThirdParty: a.includeThirdParty === true,
       });
       const rejected = new Set(ctx.rejectedLibraryAssetIds ?? []);
       const requestedObject = visualAssetAnchor(query ?? '', []);
@@ -4574,7 +4577,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const options = found.results.slice(0, 3);
       if (options.length && !options.some((row) => row.assetId === ctx.approvedLibraryAssetId)) ctx.uiDetail = {
         kind: 'asset_choices',
-        options: options.map((row) => ({ id: row.id, assetId: row.assetId, name: row.name })),
+        options: options.map((row) => ({ id: row.id, assetId: row.assetId, name: row.requiresThirdPartyLoading ? `${row.name} · requires third-party asset loading` : row.name })),
       };
       return found;
     },
@@ -4583,7 +4586,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_library_model',
       description:
-        "Insert ONE verified Creator Store model after the project owner chose its real preview. Pass the exact library `id` that the owner selected. A query cannot silently choose the best match. Downloaded file rows are not insertable because uploading a new permanent Model needs separate authority. Every insertion is scanned inside the place; scripted assets are removed before they count. Use this for detailed props, buildings, nature, vehicles, pets and characters. If insertion fails, leave it unbuilt until another choice. To place many copies of the approved model, insert one and clone_instances it.",
+        "Insert ONE verified Creator Store model after the project owner chose its real preview. Pass the exact library `id` that the owner selected. A query cannot silently choose the best match. Third-party rows require the experience's Roblox third-party loading setting; a refusal leaves the place unchanged. Downloaded file rows are not insertable because uploading a new permanent Model needs separate authority. Every insertion is scanned inside the place; scripted assets are removed before they count. Use this for detailed props, buildings, nature, vehicles, pets and characters. If insertion fails, leave it unbuilt until another choice. To place many copies of the approved model, insert one and clone_instances it.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },

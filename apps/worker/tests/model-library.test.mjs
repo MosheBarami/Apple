@@ -121,7 +121,30 @@ test('the bundled index holds only verified manifest rows', () => {
     assert.notEqual(r.branded, true, `${r.id} names another company's property`);
     if (r.assetId !== undefined) assert.equal(r.trusted, true, `${r.id} is not from a trusted creator`);
     else assert.notEqual(r.format, 'obj', `${r.id}: Open Cloud does not take .obj`);
+    if (row[10] === true) {
+      assert.notEqual(r.source, 'roblox-official', `${r.id} is already loadable without the third-party setting`);
+      assert.ok((r.triangles ?? 0) <= 100_000, `${r.id} is too large for the optional catalog`);
+    }
   }
+});
+
+test('third-party cartoon models are opt-in search candidates, never claimed universally loadable', async () => {
+  const id = 10556335077; // Cartoony Tree (Low Poly), trusted and script-free in the recorded manifest.
+  const row = MANIFEST.rows.find((r) => r.assetId === id);
+  assert.equal(row?.trusted, true);
+  assert.equal(row?.scan.clean, true);
+  assert.equal(M.findLibraryModels({ query: 'cartoony tree' }).results.some((r) => r.assetId === id), false);
+  const optional = M.findLibraryModels({ query: 'cartoony tree', includeThirdParty: true }).results.find((r) => r.assetId === id);
+  assert.equal(optional?.requiresThirdPartyLoading, true);
+  const { ctx } = ctxWith();
+  const answer = await T.runTool(ctx, 'find_library_model', JSON.stringify({ query: 'cartoony tree', includeThirdParty: true }));
+  const found = JSON.parse(answer.resultForLlm);
+  assert.ok(found.results.some((r) => r.assetId === id && r.requiresThirdPartyLoading === true));
+  assert.ok(answer.detail?.options.some((r) => r.assetId === id && /third-party asset loading/i.test(r.name)));
+  assert.equal(M.findLibraryModels({ query: 'fountain' }).results.length, 0, 'a conditional-only prop became a default claim');
+  assert.equal(M.findLibraryModels({ query: 'fountain', includeThirdParty: true }).results.some((r) => r.assetId === 3241261980), false,
+    'the visually inspected gray realistic fountain was offered as a colorful cartoon candidate');
+  assert.equal(M.handBuiltPropRefusal([twoParts('Fountain')]), null, 'an optional model blocked a simple fallback before Studio proved it loadable');
 });
 
 /* ---------------------------------------------------------------- registration --- */
@@ -135,7 +158,7 @@ test('find_library_model is a read-only lookup; insert_library_model edits the p
 
 // A name the index is sure to answer for: the first word of a real indexed row.
 const sample = (pred) => {
-  const row = INDEX.rows.find((r) => pred(r) && M.tokensOf(r[1]).some((w) => w.length >= 4 && !/\d/.test(w)));
+  const row = INDEX.rows.find((r) => r[10] !== true && pred(r) && M.tokensOf(r[1]).some((w) => w.length >= 4 && !/\d/.test(w)));
   return row ? { id: row[0], word: M.tokensOf(row[1]).find((w) => w.length >= 4 && !/\d/.test(w)) } : null;
 };
 
