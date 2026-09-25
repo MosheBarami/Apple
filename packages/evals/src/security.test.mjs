@@ -2027,6 +2027,10 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
   //     from the request is an optional bearer token, verified, for D-PAY-2 (reviewed below). The facts it returns are already printed on the page it feeds. Asserted below, so
   //     the exemption cannot outlive that shape: if this handler ever starts reading a user or
   //     returning a secret, the test that guards it fails.
+  //   /api/library-preview/:assetId — an <img> cannot send an account JWT. The only accepted
+  //     input is a bounded numeric Roblox asset id; the route asks a fixed Roblox thumbnail host,
+  //     returns only a verified tr.rbxcdn.com redirect, and rate-limits each address. It never
+  //     reads a project, token or stored customer data.
   //
   // ADDING A LINE HERE IS THE REVIEW. The three entries above were added by other lanes and this
   // assertion is what forced them to be read rather than noticed later — which is the entire
@@ -2038,6 +2042,7 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
       '/api/billing/webhook',
       '/api/discord/interactions',
       '/api/health',
+      '/api/library-preview/:assetId',
       '/api/recovery-request',
       '/api/studio/claim',
       '/api/studio/poll',

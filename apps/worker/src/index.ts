@@ -663,10 +663,14 @@ app.use('/api/*', async (c, next) => {
 //   signed-off comment attached and no second look. Deleting it means that handler has to earn the
 //   line. The waitlist product itself is gone — see the notes in apps/web/src/routes/usage.tsx and
 //   apps/site/src/pages/pricing.astro — so there is nothing left for it to be the review OF. ]]
-const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request', '/api/billing/config'];
+const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request', '/api/billing/config', '/api/library-preview/:assetId'];
 app.use('/api/*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
-  if (AUTH_EXEMPT.includes(path) || path.startsWith('/api/admin/')) return next();
+  // A browser <img> cannot attach the account JWT. This one numeric, read-only route returns
+  // only Roblox's public thumbnail; unknown sibling paths stay behind the JWT gate.
+  if (AUTH_EXEMPT.includes(path) ||
+      (/^\/api\/library-preview\/[1-9][0-9]{0,15}$/.test(path) && AUTH_EXEMPT.includes('/api/library-preview/:assetId')) ||
+      path.startsWith('/api/admin/')) return next();
   const token = bearerToken(c.req.raw);
   if (!token) return c.json({ error: 'unauthorized' }, 401);
   const user = await verifyJwt(c.env, token);
@@ -824,6 +828,8 @@ app.get('/api/health', async (c) => {
 app.get('/api/library-preview/:assetId', async (c) => {
   const id = Number(c.req.param('assetId'));
   if (!Number.isSafeInteger(id) || id <= 0) return c.text('Not found', 404);
+  const ip = c.req.header('cf-connecting-ip') ?? 'unknown';
+  if (ipLimited(`library-preview:${ip}`, 120)) return c.text('Slow down', 429);
   const upstream = new URL('https://thumbnails.roblox.com/v1/assets');
   upstream.searchParams.set('assetIds', String(id));
   upstream.searchParams.set('size', '420x420');
@@ -833,6 +839,7 @@ app.get('/api/library-preview/:assetId', async (c) => {
   if (!response?.ok) return c.text('Preview unavailable', 404);
   const image = robloxThumbnailUrl(await response.json().catch(() => null), id);
   if (!image) return c.text('Preview unavailable', 404);
+  c.header('Cache-Control', 'public, max-age=300');
   return c.redirect(image, 302);
 });
 
