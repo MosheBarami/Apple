@@ -204,6 +204,9 @@
   /* training timeline */
   .tl { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; position: relative; }
   .tl::before { content: ''; position: absolute; top: 17px; inset-inline: 14px; height: 2px; background: linear-gradient(270deg, var(--accent), var(--violet)); opacity: .45; }
+  .tl--versions { grid-template-columns: repeat(auto-fit, minmax(265px, 1fr)); }
+  .tl--versions::before, .tl--versions .dt { display: none; }
+  .tl--versions .run { padding-top: 0; }
   @media (max-width: 860px) { .tl::before { display: none; } }
   .run { position: relative; padding-top: 38px; }
   .run .dt { position: absolute; top: 9px; inset-inline-start: 10px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent);
@@ -770,7 +773,7 @@ function renderEvals() {
     <div class="brow" style="padding:2px 0"><span class="faint">לפני האימון</span>${bar(k + 'b', frac(before), 'f')}<span class="v">${before ? `${before.ok}/${before.n}` : '—'}</span></div>
     <div class="brow" style="padding:2px 0"><span class="faint">אחרי האימון</span>${bar(k + 'a', frac(after), frac(after) > frac(before) ? 'g' : 'r')}<span class="v">${after ? `${after.ok}/${after.n}` : '—'}</span></div></div>`;
   const pr = e.production;
-  $('#evals').innerHTML = (e.v4 ? `<div class="grp">האימון האחרון (v4): מה השתפר</div>${pair('ev-tr', 'שימוש נכון בכלים של הסטודיו', e.v4.trajectory.base, e.v4.trajectory.adapter)}${pair('ev-gl', 'לוגיקת משחק (מטבעות, מלאי, זמנים)', e.v4.gameLogic.base, e.v4.gameLogic.adapter)}` : '')
+  $('#evals').innerHTML = (e.v4 ? `<div class="grp">בדיקת v4 ההיסטורית: מה השתפר אז</div>${pair('ev-tr', 'שימוש נכון בכלים של הסטודיו', e.v4.trajectory.base, e.v4.trajectory.adapter)}${pair('ev-gl', 'לוגיקת משחק (מטבעות, מלאי, זמנים)', e.v4.gameLogic.base, e.v4.gameLogic.adapter)}` : '')
     + (pr ? `<div class="grp">משימות אמיתיות באתר, כמו לקוח (${esc(pr.at || '')})</div>
       ${[['ev-p1', 'Apple · 24 המשימות הראשונות', pr.free1], ['ev-p2', 'Apple · 22 משימות נוספות', pr.free2], ['ev-p3', 'Apple MAX · 24 משימות', pr.max]].map(([k, l, x]) =>
         `<div class="brow"><span>${l}</span>${bar(k, frac(x))}<span class="v">${x ? `${pctTxt(frac(x))} (${x.ok}/${x.n})` : '—'}</span></div>`).join('')}` : '')
@@ -779,7 +782,22 @@ function renderEvals() {
 }
 
 function renderRuns() {
-  const ad = P.training?.adapters, v5 = P.training?.v5;
+  const ad = P.training?.adapters, v5 = P.training?.v5, forever = P.training?.forever;
+  if (forever?.versions?.length) {
+    const recent = forever.versions.slice(0, 12);
+    $('#runsTotal').textContent = `· ${forever.versions.length} גרסאות מתועדות${forever.versions.length > recent.length ? ' · 12 האחרונות מוצגות' : ''}`;
+    $('#runs').innerHTML = `<div class="para" style="margin:0 0 14px">${forever.best
+      ? `המובילה שנמדדה: <b>v${forever.best.version}</b> · <b>${forever.best.passed}/${forever.best.total}</b> במבחן הקוד. גרסה חדשה אינה מחליפה אותה לפני השוואה תקפה.`
+      : 'לא נמצאה מדידה תקפה לגרסה מובילה.'}</div>
+      <div class="tl tl--versions">${recent.map((r) => `<div class="run"><div class="box">
+        <div class="nm ltr" style="display:block;text-align:right">v${r.version}</div>
+        <div class="base">${esc(r.label)}</div>
+        <div class="base">${r.passed == null ? 'אין ציון תקף' : `מבחן קוד: ${r.passed}/${r.total}`}</div>
+        ${r.promoted ? `<div style="margin-top:8px">${chip('st-done', 'נבחרה כמובילה')}</div>` : ''}
+      </div></div>`).join('')}</div>
+      <div class="para" style="margin:14px 0 0">${esc(visItem('lora')?.detail || '')}</div>`;
+    return;
+  }
   if (!ad) { $('#runs').innerHTML = NM; return; }
   const runs = ad.filter((a) => !a.best);
   const hasBest = new Set(ad.filter((a) => a.best).map((a) => a.name.replace(/-best$/, '')));
@@ -792,10 +810,10 @@ function renderRuns() {
       <div class="brow" style="grid-template-columns:auto minmax(0,1fr) auto;padding:0 0 8px"><span class="faint" style="font-size:12px">צעדים</span>${bar('run-' + r.name, r.itersPlanned ? r.itersReached / r.itersPlanned : 0, 'v thin')}<span class="v" style="min-width:0;font-size:12px">${r.itersReached ?? '?'}/${r.itersPlanned ?? '?'}</span></div>
       <div class="kv"><span>משך</span><b>${r.minutes != null ? `${r.minutes} דק׳` : '—'}</b><span>נתונים</span><b class="ltr">${esc(r.data || '—')}</b><span>גודל</span><b>${r.sizeMb ?? '—'} MB</b><span>דרגה · שכבות</span><b>${r.rank ?? '?'} · ${r.layers ?? '?'}</b></div>
       ${hasBest.has(r.name) ? `<div style="margin-top:8px">${chip('st-done', 'נשמרה הגרסה הטובה ביותר')}</div>` : ''}</div></div>`).join('')}
-    ${v5 ? `<div class="run plan2"><span class="dt"></span><div class="box"><div class="nm ltr" style="display:block;text-align:right">v5</div>
-      <div class="base">${esc(short(v5.base))} · מתוכנן</div>
+    ${v5 ? `<div class="run${v5.trained ? '' : ' plan2'}"><span class="dt"></span><div class="box"><div class="nm ltr" style="display:block;text-align:right">v5</div>
+      <div class="base">${esc(short(v5.base))} · ${v5.trained ? 'אומן' : 'מתוכנן'}</div>
       <div class="kv"><span>צעדים מתוכננים</span><b>${v5.iters ?? '—'}</b><span>סט הנתונים</span><b>${v5.dataReady ? 'מוכן' : 'עוד לא נבנה'}</b><span>אומן</span><b>${v5.trained ? 'כן' : 'עוד לא'}</b></div>
-      <div class="para" style="margin:10px 0 0;font-size:13px">הצעד הבא באימון: לבנות סט נתונים שמלמד את מה שנכשל במבחנים (לוגיקת משחק ומראה), ואז להריץ.</div></div></div>` : ''}</div>
+      </div></div>` : ''}</div>
     <div class="para" style="margin:14px 0 0">${esc(visItem('lora')?.detail || '')}</div>`;
 }
 
