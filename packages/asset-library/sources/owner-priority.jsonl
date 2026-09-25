@@ -1,5 +1,5 @@
 {"priority": 1, "category": "ui", "url": "https://zerodev.tools/assets/ui-pack-plus", "state": "local-review-only", "reviewFile": "ui-store/zerodev/UIPackPlus.rbxm", "reviewBytes": 380365, "reviewSha256": "a94e11e7ebb4fef8c8602aa3bdca8cddf91532182e534434ed6a85a51e66a6b4", "rights": "game-use-only; redistribution in Apple prohibited", "licenseUrl": "https://zerodev.tools/license", "acquiredBy": "official site download"}
-{"priority": 2, "category": "ui", "url": "https://zxgly.itch.io/free-cartoony-roblox-ui-pack", "state": "rights-review-pending"}
+{"priority": 2, "category": "ui", "url": "https://zxgly.itch.io/free-cartoony-roblox-ui-pack", "state": "rights-reviewed-no-backend", "rights": "Commercial game use permitted; repackaging and standalone redistribution prohibited", "licenseUrl": "https://zxgly.itch.io/free-cartoony-roblox-ui-pack", "downloadStatus": "no-local-file-observed"}
 {"priority": 3, "category": "ui", "url": "https://zxgly.itch.io/roblox-fps-pack", "state": "rights-review-pending"}
 {"priority": 4, "category": "ui", "url": "https://rblx-essentials.itch.io/studded-ui", "state": "rights-review-pending"}
 {"priority": 5, "category": "ui", "url": "https://roservice.itch.io/free-interactive-roblox-menu-ui-pack", "state": "rights-review-pending"}
