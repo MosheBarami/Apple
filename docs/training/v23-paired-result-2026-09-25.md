@@ -37,3 +37,11 @@ the current best and lists v23 as a completed, unpromoted 14/38 experiment.
 Publication code now refreshes that private card after every successful real
 version upload; the already-running supervisor will use that change only after
 a safe process restart.
+
+At 2026-09-25 ~06:38 UTC, a regression test found that the model-card table also
+included v11 and v20: both had saved scores but were marked `eval_invalid`, so
+their totals are not comparable evidence. The renderer now includes only `seed`
+and `done` rows. The corrected private card names v22 as the best and v23 as a
+completed unpromoted experiment, omits the invalid rows, and was uploaded and
+force-downloaded with identical SHA-256 bytes (1,737 bytes). The publication
+commit message now says "record vN result" even when vN was not promoted.

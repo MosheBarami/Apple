@@ -524,7 +524,7 @@ were written by the first version of the supervisor.
 
 export function renderModelCard(state, model) {
   const b = state.best;
-  const rows = state.history.filter((h) => h.scores).map((h) => formatLogLine(h)).join('\n');
+  const rows = state.history.filter((h) => h.scores && (h.status === 'done' || h.status === 'seed')).map((h) => formatLogLine(h)).join('\n');
   return `---
 base_model: ${model}
 library_name: peft
@@ -547,7 +547,7 @@ The table includes completed experiments even when they were not promoted. Only 
 **Current best** is the selected local adapter; none of these folders is automatically the model
 serving Apple users. A candidate's promotion is decided against the previous best generated in
 the **same** evaluation batch. Its folder includes both scored sides when that paired comparison
-was available; older or invalid runs may lack paired evidence.
+was available; older runs may lack paired evidence. Invalid evaluations are excluded from this table.
 
 | version | lever | best val loss (iter) | trajectory | game-logic | finish | total | promoted | status |
 |---|---|---|---|---|---|---|---|---|
@@ -1037,7 +1037,7 @@ async function publish(ctx, entry, cfg) {
     if (up.code === 0 && !ctx.dry) {
       const card = join(pubRoot, 'README.md');
       writeFileSync(card, renderModelCard(ctx.state, cfg.model));
-      const rc = await run('hf', ['upload', HF_REPO, card, `${L.hfPrefix}README.md`, '--repo-type', 'model', '--commit-message', `model card: v${v} is the best`], { log, append: true, timeoutMs: TIMEOUT.hf });
+      const rc = await run('hf', ['upload', HF_REPO, card, `${L.hfPrefix}README.md`, '--repo-type', 'model', '--commit-message', `model card: record v${v} result`], { log, append: true, timeoutMs: TIMEOUT.hf });
       if (rc.code !== 0) entry.publish += `; README upload failed (exit ${rc.code})`;
     }
     if (up.code === 0 && entry.promoted && !ctx.dry) {

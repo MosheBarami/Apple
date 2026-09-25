@@ -1,5 +1,13 @@
 # NEXT ACTION
 
+2026-09-25 ~06:38 UTC: the private Hugging Face model card no longer displays
+invalid v11/v20 measurements as completed experiments. A new renderer test
+failed on the old behavior and passed with the status filter (34/34 focused
+tests). The corrected 1,737-byte card was uploaded and force-downloaded with
+an identical SHA-256 hash. It still names v22 as local best and v23 as a
+completed unpromoted 14/38 experiment. Keep v24's active single CPU process;
+the new publisher code will be loaded after a safe version boundary.
+
 2026-09-25 06:29 UTC: the private Hugging Face model card was updated from
 the recorded supervisor state and downloaded again byte-for-byte (1,923 bytes).
 It shows v22 as the selected local best and v23 as an unpromoted 14/38

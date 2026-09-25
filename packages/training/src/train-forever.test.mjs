@@ -23,6 +23,7 @@ import {
   pickHypothesis,
   triedIds,
   formatLogLine,
+  renderModelCard,
   evalProblems,
   pairedComparison,
   promotionMargin,
@@ -395,6 +396,23 @@ test('log line carries version, lever, val loss, three scores, promotion, and wh
   assert.match(t, /\| no \| truncated \(stopped at 30\/400\) \|$/);
   const n = formatLogLine({ version: 8, lever: { id: 'x' }, status: 'done', scores: { trajectory: 1, gameLogic: 0, finish: 0, total: 1, n: {} }, promoted: false, promoteWhy: '1 < bar 22' });
   assert.match(n, /\| no \| done; 1 < bar 22 \|$/);
+});
+
+test('model card shows the current best and completed unpromoted runs, excluding invalid measurements', () => {
+  const n = { trajectory: 23, gameLogic: 8, finish: 7 };
+  const score = (trajectory, gameLogic, finish) => ({ trajectory, gameLogic, finish, total: trajectory + gameLogic + finish, n });
+  const state = {
+    best: { version: 22, scores: score(18, 1, 5), valLoss: 0.807 },
+    history: [
+      { version: 22, status: 'done', lever: { id: 'logic' }, promoted: true, scores: score(18, 1, 5) },
+      { version: 23, status: 'done', lever: { id: 'ui' }, promoted: false, scores: score(10, 0, 4) },
+      { version: 24, status: 'eval_invalid', lever: { id: 'bad-eval' }, promoted: false, scores: score(23, 8, 7) },
+    ],
+  };
+  const card = renderModelCard(state, 'unsloth/Llama-3.2-3B-Instruct');
+  assert.match(card, /Current best: v22/);
+  assert.match(card, /\| v23 \| ui \|/);
+  assert.doesNotMatch(card, /\| v24 \| bad-eval \|/, 'a broken evaluation is not a completed experiment');
 });
 
 // ---------- runtime guards ----------
