@@ -90,18 +90,6 @@ const defects = [
 
 const critique = { score: 6, outOf: 10 };
 
-/* The activity figure. Every tool named here is one apps/worker/src/tools.ts registers
-   (tests/site-names-real-tools.test.mjs); the refused line is the point of the figure. */
-const activity = [
-  { text: 'get_project_tree game.Workspace           ok' },
-  { text: 'create_instances 4 parts                  refused', refused: true },
-  { text: '  writes require explicit edit consent', refused: true },
-  { text: 'create_instances 4 parts                  ok' },
-  { text: 'edit_script      ServerScriptService.Main ok' },
-  { text: 'render_view      eye · 288×180            ok' },
-  { text: `inspect_visually score ${critique.score}/${critique.outOf} · ${defects.length} defects   ok` },
-];
-
 /* The four capabilities. The titles and bodies are the page's long-standing copy; each carries the
    Roblox object it works on: the Workspace it reads, the Camera it renders through, the Script it
    writes and the MeshPart generation returns. */
@@ -301,11 +289,10 @@ const makerTiles = firstPerMaker
         <BeamFlow />
         <div class="sequence">
           <figure class="sequence-figure" data-reveal>
-            <figcaption class="figure-head micro">Studio · activity</figcaption>
-            <div class="activity">
-              {activity.map((line, i) => (
-                <div class={line.refused ? 'activity-line refused' : 'activity-line'} style={`--i:${i}`}>{line.text}</div>
-              ))}
+            <figcaption class="figure-head micro">Studio · while Apple works</figcaption>
+            <div class="activity" role="status" aria-live="off">
+              <span class="activity-orb" aria-hidden="true"></span>
+              <span class="activity-current" data-activity-current>Checking your place</span>
             </div>
           </figure>
           <div class="steps">
@@ -319,7 +306,7 @@ const makerTiles = firstPerMaker
             </article>
             <article class="step" data-reveal data-reveal-delay="120">
               <h3>Look at what it did</h3>
-              <p>Every operation is named as it happens, including the ones that were refused. The result is in your place, in Studio, where you can run it.</p>
+              <p>See what Apple is doing now as one clear step that gives way to the next. The result stays in your place, in Studio, where you can run it.</p>
             </article>
           </div>
         </div>
@@ -534,6 +521,33 @@ const makerTiles = firstPerMaker
     try { fn(); } catch (err) { console.error('landing stage failed: ' + name, err); }
   };
 
+  /* One calm phrase replaces the previous one. This is a demo, so it does not announce
+     every decorative change to a screen reader and it stays still under reduced motion. */
+  safely('activity', () => {
+    const line = document.querySelector('[data-activity-current]');
+    if (!line || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const phrases = ['Checking your place', 'Planning the next step', 'Placing your scene', 'Checking the result'];
+    let current = 0;
+    let timer = 0;
+    const advance = () => {
+      line.classList.add('is-changing');
+      window.setTimeout(() => {
+        current = (current + 1) % phrases.length;
+        line.textContent = phrases[current];
+        line.classList.remove('is-changing');
+      }, 220);
+    };
+    const start = () => { if (!timer && !document.hidden) timer = window.setInterval(advance, 3200); };
+    const stop = () => { if (timer) window.clearInterval(timer); timer = 0; };
+    let onscreen = false;
+    const observer = new IntersectionObserver(([entry]) => {
+      onscreen = entry.isIntersecting;
+      if (onscreen) start(); else stop();
+    }, { threshold: 0.1 });
+    observer.observe(line);
+    document.addEventListener('visibilitychange', () => { if (onscreen) { if (document.hidden) stop(); else start(); } });
+  });
+
   /* --------------------------------------------------------------------------- the tabs --- */
 
   /* Without scripting every panel is visible and the tab row is hidden (.no-js). With it, exactly
@@ -594,17 +608,16 @@ const makerTiles = firstPerMaker
     for (const node of nodes) {
       node.addEventListener('click', () => {
         const path = node.getAttribute('data-path') || '';
-        const kids = node.getAttribute('data-kids') || '0';
         read.add(path);
         node.setAttribute('aria-pressed', 'true');
 
-        log.textContent = 'get_project_tree  game.' + path + '  ok · ' + kids + ' ' + (kids === '1' ? 'child' : 'children');
+        log.textContent = ['Checking your place', 'Looking around your world', 'Getting ready to suggest a change'][Math.min(read.size - 1, 2)];
 
         const n = read.size;
         gate.setAttribute('data-read', String(Math.min(n, NEEDED)));
         gate.textContent = n >= NEEDED
-          ? 'checkpoint taken · a write may now be proposed'
-          : n + ' of ' + NEEDED + ' read · writes still shut';
+          ? 'Ready to suggest a change'
+          : 'Looking first · changes stay off';
       });
     }
   });

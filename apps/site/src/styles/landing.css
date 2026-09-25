@@ -433,21 +433,36 @@ a {
 }
 
 .activity {
-  padding: 18px;
-  overflow-x: auto;
+  min-height: 94px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  overflow: hidden;
 }
 
-.activity-line {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  line-height: 24px;
-  white-space: pre;
+.activity-orb {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 6px var(--accent-soft);
 }
 
-/* A refusal is a state the reader should notice, so it is the status tone — nothing louder. */
-.activity-line.refused {
-  color: var(--warn);
+.activity-current {
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 1.3vw, 1.25rem);
+  font-weight: 550;
+  line-height: 1.4;
+  transition: opacity 220ms ease, transform 220ms ease, filter 220ms ease;
+}
+
+.activity-current.is-changing {
+  opacity: 0;
+  transform: translateY(-7px);
+  filter: blur(4px);
 }
 
 .steps {
@@ -584,6 +599,7 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .activity-current { transition: none; }
   html:not(.no-js) [data-reveal] .cap-icon {
     opacity: 1;
     scale: 1;
@@ -1269,15 +1285,9 @@ html:not(.no-js) [data-reveal].is-in {
     border-top: 1px solid var(--hairline);
   }
 
-  /* The activity log is fixed-width columns; on a phone it is set a step smaller so a line of it
-     fits the panel instead of scrolling out of sight. */
   .activity {
-    padding: 14px;
-  }
-
-  .activity-line {
-    font-size: 10.5px;
-    line-height: 21px;
+    min-height: 80px;
+    padding: 18px;
   }
 
   .capabilities {

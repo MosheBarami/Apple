@@ -146,17 +146,19 @@ test('where two sheets declare the same token, they declare the same value', () 
     `set the same thing in different faces:\n  ${bad.join('\n  ')}`);
 });
 
-test('the mono token reaches the technical surfaces, and the sans reaches the body', () => {
+test('the mono token reaches technical surfaces while friendly activity uses the body face', () => {
   // The owner's instruction names monospace for technical content specifically. This asserts the
-  // token actually arrives there rather than merely existing: the activity log, the read log, the
-  // Luau panel and the tree are the four technical surfaces the landing ships.
+  // The landing's single activity phrase is plain-language copy, not a technical log.
+  // The read demo, Luau panel and tree retain their technical structure.
   const landing = SHEETS.find((s) => s.file.endsWith('landing.css'));
   assert.ok(landing, 'landing.css was not read');
   const css = strip(landing.css);
-  for (const hook of ['.activity-line', '.rd-node', '.rd-log', '.lu-out code']) {
+  for (const hook of ['.rd-node', '.rd-log', '.lu-out code']) {
     const rule = new RegExp(`${hook.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{[^}]*font-family\\s*:\\s*var\\(--font-mono\\)`);
     assert.match(css, rule, `${hook} does not take the mono token, so a technical surface is set in the body face`);
   }
+  assert.match(css, /\.activity-current\s*\{[^}]*font-family\s*:\s*var\(--font-body\)/,
+    'the friendly activity phrase does not use the body face');
   assert.match(css, /body\s*\{[^}]*font-family\s*:\s*var\(--font-body\)/,
     'the landing body does not take the body token');
 });

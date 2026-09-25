@@ -250,15 +250,15 @@ test('the harness runs the real script and every stage is wired, so nothing belo
   }
 });
 
-test('reading a node prints that node, and the write gate opens on the third read and not before', () => {
+test('reading a node shows a friendly step and the write gate opens on the third read', () => {
   const p = run();
   const nodes = p.root.querySelectorAll('.rd-node');
   const log = p.root.querySelector('.rd-log');
   const gate = p.root.querySelector('.rd-gate');
 
-  nodes[3].dispatch('click');                       // ServerScriptService, 1 child
-  assert.match(log.textContent, /ServerScriptService/, 'the log does not name the node that was read');
-  assert.match(log.textContent, /\b1\b/, 'the log does not report what the read found');
+  nodes[3].dispatch('click');
+  assert.match(log.textContent, /Checking your place/);
+  assert.doesNotMatch(log.textContent, /ServerScriptService|get_project_tree/, 'the step exposes technical detail');
   assert.equal(gate.getAttribute('data-read'), '1');
 
   // The same node twice is ONE read. A gate that counts clicks rather than nodes opens on one
@@ -268,11 +268,11 @@ test('reading a node prints that node, and the write gate opens on the third rea
 
   nodes[0].dispatch('click');
   assert.equal(gate.getAttribute('data-read'), '2');
-  assert.doesNotMatch(gate.textContent, /checkpoint/i, 'the gate opened before the third read');
+  assert.match(gate.textContent, /changes stay off/i, 'the gate opened before the third read');
 
   nodes[5].dispatch('click');
   assert.equal(gate.getAttribute('data-read'), '3');
-  assert.match(gate.textContent, /checkpoint/i, 'the gate did not open on the third read');
+  assert.match(gate.textContent, /Ready to suggest a change/i, 'the gate did not open on the third read');
 });
 
 test('selecting a defect turns exactly one marker on, from either the render or the list', () => {

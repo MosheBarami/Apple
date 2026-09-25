@@ -145,19 +145,9 @@ test('the guard has teeth', () => {
       'them have been rewritten, and this guard is now checking nothing',
   );
 
-  // 4. AND THE FIGURE THIS GUARD WAS BORN FROM IS STILL A FIGURE OF TOOL CALLS.
-  //
-  //    THIS ASSERTION WAS WRITTEN TWICE BECAUSE THE FIRST VERSION DID NOT FAIL. Emptying the
-  //    landing's activity array was tried as a mutation, and both "at least five real tool names on
-  //    the site" and "at least one on the landing" stayed green: /proof alone prints six, and the
-  //    proof band above the figure quotes `create_instances` out of the plugin's own refusal. Two
-  //    tripwires, neither of them covering the one element this file exists for. The figure could
-  //    have been replaced by a paragraph and this guard would have gone on reporting a clean site.
-  //
-  //    So it reads the figure. If the activity block is ever removed or renamed ON PURPOSE, this is
-  //    the line to change, and changing it should cost a sentence saying what replaced it — the
-  //    landing's depiction of a run is the only place on this site where a wrong tool name has
-  //    actually shipped.
+  // 4. The owner now wants one disappearing, friendly activity phrase on the landing. The
+  //    technical proof page keeps its accurate tool vocabulary; the run illustration must not
+  //    look like a log. Read the rendered figure so comments and unrelated proof copy cannot pass.
   const landing = readFileSync(join(DIST, 'index.html'), 'utf8');
   const figure = landing.match(/<div class="activity"[^>]*>([\s\S]*?)<\/div>\s*<\/figure>/);
   assert.ok(
@@ -166,8 +156,8 @@ test('the guard has teeth', () => {
       'would have stayed green over its absence',
   );
   const inFigure = [...new Set([...visible(figure[1]).matchAll(TOOLISH)].map((m) => m[1]))];
-  assert.ok(
-    inFigure.some((t) => tools.has(t)),
-    `the landing's activity figure no longer names a single registered tool (found: ${inFigure.join(', ') || 'nothing'})`,
-  );
+  assert.deepEqual(inFigure, [], `the landing's activity line exposes technical tool names: ${inFigure.join(', ')}`);
+  assert.equal((figure[1].match(/class="activity-current"/g) ?? []).length, 1, 'one replaceable activity phrase');
+  assert.match(visible(figure[1]), /Checking your place/);
+  assert.doesNotMatch(literalsIn(landing), /get_project_tree/, 'the interactive demo must not reveal a wire/tool name either');
 });
