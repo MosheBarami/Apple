@@ -93,6 +93,40 @@ test('cartoon visual style is unmeasured without review and fails when rejected'
   assert.equal(gradeMission(cartoon, bundle, root).status, 'unmeasured');
 });
 
+test('garden growth cannot pass from server state without visible crop stages', () => {
+  const garden = CARTOON_TASKS.find((candidate) => candidate.genre === 'garden-farming');
+  assert.ok(garden);
+  const bundle = complete();
+  bundle.taskId = garden.id;
+  bundle.run.promptSha256 = createHash('sha256').update(garden.prompt).digest('hex');
+  for (const key of criteriaFor(garden)) {
+    if (bundle.proofs[key]) continue;
+    bundle.proofs[key] = {
+      kind: key.startsWith('asset:') ? 'studio-readback' : key.startsWith('visual-') ? 'blind-review' : 'playtest',
+      observer: 'independent-reviewer', runId: 'synthetic-run', artifact: 'fixture.txt', sha256: digest, passed: true,
+      ...(key.startsWith('asset:') ? { asset: { source: 'creator-store', sourceRef: '123456789', rightsUrl: 'https://create.roblox.com/store/asset/123456789', robloxSpecific: true, rightsVerified: true, placed: true, instancePath: 'Workspace.SampleAsset', selectionReason: 'Fits the game role and style', placementReason: 'Placed at the player route entrance', scriptDisposition: 'no-scripts' } } : {}),
+      ...(key.startsWith('visual-') ? { verdict: { fitForRoblox: true, amazing: true, colorfulCartoon: true, coherentArtDirection: true, commerciallyPolished: true } } : {}),
+      ...(key === 'first-action' ? { firstAction: { input: 'Bought a seed', instructionVisible: true, activated: true, worldChanged: true, hudChanged: true, nextObjectiveVisible: true } } : {}),
+    };
+  }
+  assert.ok(gradeMission(garden, bundle, root).missing.includes('feature:grow'));
+  const frames = Object.fromEntries(['planted', 'ready', 'harvested'].map((stage) => {
+    const artifact = `crop-${stage}.txt`;
+    const bytes = Buffer.from(`synthetic ${stage} frame, not a real screenshot`);
+    writeFileSync(join(root, artifact), bytes);
+    return [stage, { artifact, sha256: createHash('sha256').update(bytes).digest('hex') }];
+  }));
+  bundle.proofs['feature:grow'].growthVisual = {
+    ...frames, visibleAtPlant: true, visibleAtReady: true, clearedOnHarvest: true,
+  };
+  assert.equal(gradeMission(garden, bundle, root).status, 'passed');
+  bundle.proofs['feature:grow'].growthVisual.visibleAtReady = false;
+  assert.ok(gradeMission(garden, bundle, root).failed.includes('feature:grow'));
+  bundle.proofs['feature:grow'].growthVisual.visibleAtReady = true;
+  bundle.proofs['feature:grow'].growthVisual.ready = frames.planted;
+  assert.ok(gradeMission(garden, bundle, root).missing.includes('feature:grow'));
+});
+
 test('a full evidence bundle can pass but one broken gameplay feature fails the game', () => {
   const bundle = complete();
   assert.equal(gradeMission(task, bundle, root).status, 'passed');

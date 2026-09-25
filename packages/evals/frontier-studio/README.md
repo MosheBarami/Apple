@@ -58,6 +58,10 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
    own Play session. If Apple shows a tutorial label but its button has no effect, fail the
    `first-action` proof; if the next objective or interface is unreadable, fail `visual-ui` too.
    Store the exact operations and observed outcomes, including failures.
+   For `garden-farming`, server crop state alone does not prove visible growth. Capture the same
+   pad after planting, when harvest-ready, and after harvesting. The independent examiner must
+   see a crop at planting and readiness and see it cleared after harvest; preserve the three
+   distinct images with the `feature:grow` proof.
 6. Take 4–8 final Studio shots with neutral filenames. Give **only** those images to an independent
    blind visual critic using `docs/gauntlet/visual/BLIND_CRITIC.md`. Separately audit feature
    completeness against the prompt, so blindness does not hide missing requested features.
@@ -124,6 +128,15 @@ The five observations are booleans and all must be true for a pass; a missing
 observation leaves the mission unmeasured. Its hashed artifact should be the
 examiner's timestamped first-ten-second report with before/after screenshots,
 the exact input and observed state changes. A tutorial label alone cannot pass.
+
+For `garden-farming`, the `feature:grow` playtest proof additionally carries
+`growthVisual: {planted, ready, harvested, visibleAtPlant, visibleAtReady,
+clearedOnHarvest}`. Each stage is `{artifact, sha256}` for a distinct, nonempty,
+hash-matched frame in the same run. The three observations are booleans recorded
+by an independent examiner. Missing frames or observations leave growth
+unmeasured; a visibly absent crop or uncleared harvested plot fails it. The
+scorer validates provenance and evidence structure, while the examiner judges
+the actual pixels.
 
 The suite reports `passRate: null` until all 36 tasks have measured results. A complete 36/36
 pass is **a pass on this benchmark version**, not by itself proof of universal Roblox frontier

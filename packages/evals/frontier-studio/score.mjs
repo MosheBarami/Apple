@@ -87,6 +87,15 @@ function firstActionValid(proof) {
       .every((key) => typeof action[key] === 'boolean');
 }
 
+function growthVisualValid(root, proof) {
+  const visual = proof?.growthVisual;
+  if (!visual || !['visibleAtPlant', 'visibleAtReady', 'clearedOnHarvest']
+    .every((field) => typeof visual[field] === 'boolean')) return false;
+  const frames = ['planted', 'ready', 'harvested'].map((stage) => visual[stage]);
+  return frames.every((frame) => artifactValid(root, frame))
+    && new Set(frames.map((frame) => frame.sha256)).size === frames.length;
+}
+
 /** A proof is an observation by an independent examiner, with its bytes bound by SHA-256. */
 export function gradeMission(task, bundle, root) {
   const invalid = [];
@@ -137,6 +146,7 @@ export function gradeMission(task, bundle, root) {
       && (key !== 'run' || traceValid(root, p, run?.id))
       && (!key.startsWith('asset:') || assetValid(p))
       && (key !== 'first-action' || firstActionValid(p))
+      && (key !== 'feature:grow' || task?.genre !== 'garden-farming' || growthVisualValid(root, p))
       && (key === 'visual-style'
         ? (typeof p.verdict?.colorfulCartoon === 'boolean' && typeof p.verdict?.coherentArtDirection === 'boolean' && typeof p.verdict?.commerciallyPolished === 'boolean')
         : !key.startsWith('visual-') || (typeof p.verdict?.fitForRoblox === 'boolean' && typeof p.verdict?.amazing === 'boolean'));
@@ -146,6 +156,8 @@ export function gradeMission(task, bundle, root) {
         .every((field) => p.firstAction[field])
       : key === 'visual-style'
       ? (!p.verdict.colorfulCartoon || !p.verdict.coherentArtDirection || !p.verdict.commerciallyPolished)
+      : key === 'feature:grow' && task?.genre === 'garden-farming'
+      ? (!p.growthVisual.visibleAtPlant || !p.growthVisual.visibleAtReady || !p.growthVisual.clearedOnHarvest)
       : key.startsWith('visual-') && (!p.verdict.fitForRoblox || !p.verdict.amazing))) failed.push(key);
   }
   // A verified failed gate is conclusive even if other proofs are missing.
