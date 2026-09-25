@@ -4,8 +4,9 @@
 // WHAT IS BUNDLED. The worker cannot read the repository, so the compact index that
 // packages/asset-library/models/build.mjs derives from the files on disk and the Creator Store
 // harvest is compiled in. Two kinds of row:
-//   - a Creator Store asset id (number): free, script-free by Roblox's own details, owned by Roblox
-//     itself (LoadAsset refuses other creators' models, measured 2026-09-23). Inserted by id through the plugin's insert_asset, then re-scanned in the place.
+//   - a Creator Store asset id (number): free and script-free by Roblox's own details. Roblox-owned
+//     models use LoadAsset; a marked third-party model also requires the experience's Roblox setting
+//     to allow AssetService:LoadAssetAsync. Both are re-scanned in the place after loading.
 //   - a store path (string) to a CC0/CC-BY/MIT file (.glb, .fbx, .rbxm with every script already
 //     stripped by scan-rbx.luau). Its bytes live in the D1 static store at /model-library/<path>
 //     (packages/asset-library/models/upload.mjs). The agent does not offer or upload these files:
@@ -16,7 +17,7 @@ import { serveStatic } from './static';
 import { getUploadStatus, uploadAsset, type CreatorEnv, type Result, type UploadedAsset, type UploadAssetInput } from './creator-dashboard';
 import { describeRobloxCredential } from './user-credentials';
 
-type Row = [string, string, number, number, string, number | string, number, string | null, number | null, number[] | null];
+type Row = [string, string, number, number, string, number | string, number, string | null, number | null, number[] | null, boolean?];
 interface Index { genres: string[]; kinds: string[]; licences: string[]; rows: Row[] }
 const IDX = index as unknown as Index;
 
@@ -27,6 +28,8 @@ export interface LibraryModel {
   kind: string;
   /** Creator Store asset id, when the row is inserted by id. */
   assetId?: number;
+  /** Roblox may refuse this free model unless third-party loading is enabled for the experience. */
+  requiresThirdPartyLoading?: boolean;
   /** Store path, when the row is a downloaded file that is uploaded on first use. */
   file?: string;
   licence: string;
@@ -60,12 +63,13 @@ let entries: Entry[] | null = null;
 let byId: Map<string, Entry> | null = null;
 function all(): Entry[] {
   if (entries) return entries;
-  entries = IDX.rows.map(([id, name, genreBits, kind, tags, ref, lic, attribution, triangles, size]) => {
+  entries = IDX.rows.map(([id, name, genreBits, kind, tags, ref, lic, attribution, triangles, size, requiresThirdPartyLoading]) => {
     const m: LibraryModel = {
       id, name,
       genres: IDX.genres.filter((_, i) => genreBits & (1 << i)),
       kind: IDX.kinds[kind] ?? 'prop',
       ...(typeof ref === 'number' ? { assetId: ref } : { file: ref }),
+      ...(requiresThirdPartyLoading ? { requiresThirdPartyLoading: true } : {}),
       licence: IDX.licences[lic] ?? 'unknown',
       attribution, triangles, size,
     };
@@ -88,11 +92,12 @@ export function libraryModel(id: string): LibraryModel | null {
 export const LIBRARY_GENRES = IDX.genres;
 export const LIBRARY_KINDS = IDX.kinds;
 
-export function findLibraryModels(input: { query?: string; genre?: string; kind?: string; limit?: number; creatorStoreOnly?: boolean }) {
+export function findLibraryModels(input: { query?: string; genre?: string; kind?: string; limit?: number; creatorStoreOnly?: boolean; includeThirdParty?: boolean }) {
   const limit = Math.max(1, Math.min(40, Math.floor(Number(input.limit ?? 10)) || 10));
   const words = tokensOf(input.query ?? '');
   const genre = input.genre ? IDX.genres.find((g) => g.toLowerCase() === String(input.genre).toLowerCase()) : undefined;
   const pool = all().filter((e) => (!input.creatorStoreOnly || e.m.assetId !== undefined)
+    && (input.includeThirdParty === true || !e.m.requiresThirdPartyLoading)
     && (!genre || e.m.genres.includes(genre)) && (!input.kind || e.m.kind === input.kind));
   if (!words.length) {
     return { total: pool.length, results: [], genres: IDX.genres, kinds: IDX.kinds, note: 'Pass plain words for the object, e.g. "palm tree" or "police car".' };
