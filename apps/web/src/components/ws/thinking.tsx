@@ -76,20 +76,16 @@ export function Thinking({
   status,
   streaming,
   activity,
-  deniedTools,
 }: {
   status: AgentStatus | null;
   streaming: boolean;
   /** The ordered activity — see `activity-model.ts`. Only its running step is ever put into words. */
   activity: ActivityRun;
-  /** Tools this run was not given (`tools_denied`). Said as one sentence, never by name. */
+  /** Accepted from the run, but never shown as a second status line. */
   deniedTools?: string[];
 }) {
   const isLive = streaming && !activity.terminal;
   const phrase = useSteadyPhrase(isLive ? livePhrase(activity, status?.phase) : '');
-  const denied = (deniedTools ?? []).some((tool) => typeof tool === 'string' && tool.trim())
-    ? 'Some of Apple’s abilities are turned off in your settings, so it worked without them.'
-    : null;
 
   if (isLive) {
     const credits = status?.creditsSpent;
@@ -107,13 +103,12 @@ export function Thinking({
         </p>
         {/* Read once per change, politely; the morph itself is decoration. */}
         <span className="gx-sr" role="status">{phrase}</span>
-        {denied && <p className="apple-status__note">{denied}</p>}
       </div>
     );
   }
 
   const summary = doneSummary(activity);
-  if (!summary && !denied) return null;
+  if (!summary) return null;
   return (
     <div className="apple-status is-settled">
       {summary && (
@@ -124,7 +119,6 @@ export function Thinking({
           <span className="apple-status__done">{summary}</span>
         </p>
       )}
-      {denied && <p className="apple-status__note">{denied}</p>}
     </div>
   );
 }

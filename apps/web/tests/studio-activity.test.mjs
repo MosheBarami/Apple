@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { WEB as UI_WEB, bundle, renderWith, text } from './ui-bundle.mjs';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = join(WEB, '..', '..');
@@ -117,4 +118,58 @@ test('the drawer name is one this build will accept back out of storage', () => 
   const ws = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
   const list = ws.slice(ws.indexOf('const DRAWERS ='), ws.indexOf('const DRAWERS =') + 200);
   assert.match(list, /'history'/, 'DRAWERS must include every drawer the union has');
+});
+
+const ui = await bundle(`
+  export { createElement as h } from 'react';
+  export { renderToStaticMarkup } from 'react-dom/server';
+  export { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+  export { StudioActivity } from './src/components/ws/studio-activity';
+`, { name: 'studio-activity', resolveDir: UI_WEB });
+
+function renderHistory(recentOps) {
+  const client = new ui.QueryClient();
+  client.setQueryData(['studio-activity', 'project-1'], { recentOps, limit: 40, nextBefore: null });
+  return renderWith(ui.renderToStaticMarkup, ui.h(ui.QueryClientProvider, { client }, ui.h(ui.StudioActivity, { projectId: 'project-1', onOpenRun() {} })));
+}
+
+test('Studio history explains failures without exposing codes, traces, run ids or a full log', () => {
+  const html = renderHistory([
+    { op_id: 'op-secret-1', kind: 'edit_script', ok: 0, summary: 'ServerScriptService.Main:14: stack trace SECRET_TRACE', created_at: 1700000000000, failure: 'timeout', runId: 'run-secret-1' },
+    { op_id: 'op-secret-2', kind: 'create_instances', ok: 0, summary: 'SECRET_RAW_ERROR', created_at: 1700000000001, failure: 'refused', runId: null },
+    { op_id: 'op-secret-3', kind: 'snapshot', ok: 1, summary: '', created_at: 1700000000002, failure: null, runId: null },
+  ]);
+  assert.match(text(html), /check your place before trying again/i, 'a timeout must not invite an unsafe duplicate write');
+  assert.match(text(html), /Studio did not allow this step/i, 'a refusal still needs a useful explanation');
+  assert.match(text(html), /Saved a checkpoint/, 'successful history remains readable');
+  assert.match(html, /Open the run/, 'navigation can still use a run id internally');
+  assert.doesNotMatch(html, /SECRET_|ServerScriptService|Main:14|run-secret|op-secret|timeout|refused|Full log|<details\b|<pre\b/i);
+  assert.doesNotMatch(text(html), /Edited a script|Created objects/, 'failed attempts must not read as completed work');
+});
+
+test('an unknown Studio failure stays visible without exposing its code or raw message', () => {
+  const html = renderHistory([
+    { op_id: 'op-private', kind: 'edit_script', ok: 0, summary: 'SECRET_RAW_ERROR', created_at: 1700000000000, failure: 'new_private_failure', runId: null },
+  ]);
+  assert.match(text(html), /could not finish this step/i);
+  assert.match(text(html), /ask Apple to try another way/i);
+  assert.doesNotMatch(html, /SECRET_RAW_ERROR|new_private_failure|<details\b/);
+});
+
+test('a new wire op stays in history without exposing its raw name', () => {
+  const html = renderHistory([
+    { op_id: 'op-private', kind: 'future_internal_op', ok: 1, summary: '', created_at: 1700000000000, failure: null, runId: null },
+  ]);
+  assert.match(text(html), /Worked in Studio/);
+  assert.doesNotMatch(text(html), /future|internal|op/i);
+});
+
+test('a failed history request offers a retry without showing the server error', () => {
+  const client = new ui.QueryClient({ defaultOptions: { queries: { retryOnMount: false, refetchOnMount: false } } });
+  client.getQueryCache().build(client, { queryKey: ['studio-activity', 'project-1'], queryFn: () => Promise.reject(new Error('SECRET_SERVER_TRACE')) })
+    .setState({ data: undefined, error: new Error('SECRET_SERVER_TRACE'), status: 'error', fetchStatus: 'idle' });
+  const html = renderWith(ui.renderToStaticMarkup, ui.h(ui.QueryClientProvider, { client }, ui.h(ui.StudioActivity, { projectId: 'project-1' })));
+  assert.match(text(html), /could not load your Studio history/i);
+  assert.match(text(html), /Try again/);
+  assert.doesNotMatch(html, /SECRET_SERVER_TRACE|<details\b|<code\b/);
 });

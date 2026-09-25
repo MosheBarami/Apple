@@ -38,8 +38,6 @@ const MOUNTS = [
   ['ae-package-info', 'components/picks/tech/version-diff.tsx', 'ai-elements/package-info', ['PackageInfo', 'PackageInfoChangeType']],
   ['ae-schema-display', 'components/ws/files-panel.tsx', 'ai-elements/schema-display', ['SchemaDisplay']],
   ['ae-jsx-preview', 'components/ws/files-panel.tsx', 'ai-elements/jsx-preview', ['JSXPreview', 'JSXPreviewContent']],
-  ['ae-terminal', 'components/ws/studio-activity.tsx', 'ai-elements/terminal', ['Terminal']],
-  ['ae-stack-trace', 'components/ws/studio-activity.tsx', 'ai-elements/stack-trace', ['StackTrace']],
   ['ae-web-preview', 'components/ws/playtest-card.tsx', 'ai-elements/web-preview', ['WebPreview', 'WebPreviewNavigation', 'WebPreviewNavigationButton', 'WebPreviewUrl', 'WebPreviewBody']],
   ['ae-sandbox', 'components/ws/playtest-card.tsx', 'ai-elements/sandbox', ['Sandbox', 'SandboxHeader', 'SandboxTabsTrigger', 'SandboxTabContent']],
   ['ae-test-results', 'components/ws/playtest-card.tsx', 'ai-elements/test-results', ['TestResults', 'TestResultsProgress', 'Test']],

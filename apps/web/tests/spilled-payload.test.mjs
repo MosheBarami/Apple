@@ -75,3 +75,43 @@ test('a short lead-in before the payload is kept', () => {
   assert.equal(r.prose, 'Here are the platforms.');
   assert.ok(r.collapsed.startsWith('{"t": "Vector3"'));
 });
+
+test('a single standalone typed wire value is removed', () => {
+  const wire = '{"t":"Vector3","v":[4,1,4]}';
+  assert.deepEqual(splitSpilledPayload(wire), { prose: '', collapsed: wire });
+});
+
+test('a short properties-only wire object is removed', () => {
+  const wire = '{"props":{"Position":{"t":"Vector3","v":[4,1,4]}}}';
+  assert.deepEqual(splitSpilledPayload(wire), { prose: '', collapsed: wire });
+});
+
+test('one instance object between ordinary sentences leaves both sentences intact', () => {
+  const wire = '{"className":"Part","name":"MovingPlatform3","parent":"game.Workspace","props":{"Anchored":{"t":"bool","v":false}}}';
+  const prose = 'I built a moving platform.\nIt is ready to try.';
+  const result = splitSpilledPayload(`I built a moving platform.\n${wire}\nIt is ready to try.`);
+  assert.equal(result.prose, prose);
+  assert.equal(result.collapsed, wire);
+});
+
+test('a fenced wire example and prose mentioning wire syntax stay visible', () => {
+  const example = 'Here is the value format:\n```json\n{"t":"Vector3","v":[4,1,4]}\n```\nUse it for a position.';
+  assert.deepEqual(splitSpilledPayload(example), { prose: example, collapsed: null });
+  const inline = 'Position uses {"t":"Vector3","v":[4,1,4]} here.';
+  assert.deepEqual(splitSpilledPayload(inline), { prose: inline, collapsed: null });
+  const unrelated = '{"title":"Moving platform","size":[4,1,4]}';
+  assert.deepEqual(splitSpilledPayload(unrelated), { prose: unrelated, collapsed: null });
+});
+
+test('a dense fenced example with several wire shapes stays visible', () => {
+  const example = 'Example:\n```json\n{"className":"Part","props":{"Anchored":{"t":"bool","v":true}}}\n```\nThat is the structure.';
+  assert.deepEqual(splitSpilledPayload(example), { prose: example, collapsed: null });
+});
+
+test('two short standalone wire lines do not leave the second line visible', () => {
+  const first = '{"t":"Vector3","v":[4,1,4]}';
+  const second = '{"t":"Color3","v":[1,0.5,0]}';
+  const result = splitSpilledPayload(`Ready.\n${first}\n${second}\nTry it now.`);
+  assert.equal(result.prose, 'Ready.\nTry it now.');
+  assert.equal(result.collapsed, `${first}\n${second}`);
+});

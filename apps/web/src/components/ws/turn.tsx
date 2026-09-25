@@ -286,10 +286,10 @@ export function Turn({
      speak for this case: it is driven by `stopReason`, and a run that simply came back empty
      carries an ordinary one.
 
-     ALL FOUR CONDITIONS, because each one is a turn that is NOT empty and must not be labelled
-     as one: `streaming` is a reply still arriving, `tools` is work whose results are in View
-     results, `content` is the reply itself, and `outcome` already has its own sentence below. */
-  const silent = !item.content && !item.streaming && item.tools.length === 0 && !outcome;
+     A filtered wire-only message has no customer-facing reply either. Streaming, tools, generated
+     media, visible prose, and an outcome sentence each keep a turn from being labelled empty. */
+  const silent = !spilled.prose && replyDocs.media.length === 0 && !item.streaming && item.tools.length === 0 && !outcome;
+  const hadDeniedTools = !item.streaming && (item.deniedTools ?? []).some((tool) => typeof tool === 'string' && tool.trim());
 
   const retryControl =
     onRetry && item.stopReason !== 'quota' ? (
@@ -401,14 +401,18 @@ export function Turn({
           retryControl && <div className="gx-outcome gx-outcome--bare">{retryControl}</div>
         )}
 
+        {hadDeniedTools && (
+          <p className="gx-outcome__text">Some of Apple’s abilities are turned off in your settings, so it worked without them.</p>
+        )}
+
         {/* THE REPLY'S TOOLBAR — Copy, Share, and the same menu a right-click opens. It is AI
             Elements' MessageToolbar; on a pointer device it rises into view under the pointer or on
             focus, like a node toolbar, and on the newest reply it is simply there. */}
-        {item.content && !item.streaming && (
+        {spilled.prose && !item.streaming && (
           <MessageToolbar className={`gx-turn__tools${isLast ? ' is-last' : ''}`}>
             <div className="gx-turn__tools-main">
-              <CopyButton getText={() => spilled.prose || item.content} title="Copy this reply" />
-              <ShareButton getText={() => spilled.prose || item.content} />
+              <CopyButton getText={() => spilled.prose} title="Copy this reply" />
+              <ShareButton getText={() => spilled.prose} />
             </div>
             <button
               type="button"
@@ -430,8 +434,8 @@ export function Turn({
           label="Reply options"
           onClose={menu.close}
           items={[
-            ...(item.content
-              ? [{ id: 'copy', label: 'Copy text', onSelect: () => void navigator.clipboard?.writeText(spilled.prose || item.content).catch(() => undefined) }]
+            ...(spilled.prose
+              ? [{ id: 'copy', label: 'Copy text', onSelect: () => void navigator.clipboard?.writeText(spilled.prose).catch(() => undefined) }]
               : []),
             ...(onRetry && item.stopReason !== 'quota'
               ? [{ id: 'retry', label: outcome ? 'Try again' : 'Regenerate', onSelect: onRetry }]

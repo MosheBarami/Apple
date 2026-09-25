@@ -90,12 +90,15 @@ test('SETTLED: a failed or stopped run says nothing here — the outcome row say
   assert.equal(render({ activity: run([tool('create_instances')], { stopReason: 'stopped' }) }), '');
 });
 
-test('tools the run was not given: one plain sentence, never a tool name', () => {
+test('denied tools never add a second thinking line or a settled note', () => {
   clock = T0;
-  const html = render({ activity: run([tool('get_project_tree')], { stopReason: 'done' }), deniedTools: ['delete_instances', 'run_luau'] });
-  assert.match(text(html), /turned off in your settings/);
-  assert.doesNotMatch(text(html), /delete|luau|_/i);
-  assert.equal(render({ activity: run([tool('get_project_tree')], { stopReason: 'done' }), deniedTools: [] }), '', 'nothing withheld is no line');
+  const live = render({ streaming: true, activity: run([tool('edit_script', { done: false })], { streaming: true }), deniedTools: ['delete_instances', 'run_luau'] });
+  assert.equal(count(live, 'class="apple-status__line"'), 1);
+  assert.doesNotMatch(text(live), /turned off|delete|luau|_/i);
+  const done = render({ activity: run([tool('create_instances')], { stopReason: 'done' }), deniedTools: ['delete_instances'] });
+  assert.equal(count(done, 'class="apple-status__line"'), 1);
+  assert.doesNotMatch(text(done), /turned off|delete|_/i);
+  assert.equal(render({ activity: run([tool('get_project_tree')], { stopReason: 'error', error: 'failed' }), deniedTools: ['delete_instances'] }), '');
 });
 
 test('nothing outside ai-elements renders ToolInput or ToolOutput, which print JSON payloads', () => {

@@ -119,8 +119,6 @@
 .apple-status__tick path { fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .apple-status__done { color:var(--muted); }
 
-.apple-status__note { margin:6px 0 0; font-size:13px; line-height:20px; color:var(--muted); }
-
 /* ------------------------------------------------------------------ motion --- */
 
 @keyframes apple-status-arrive { from { opacity:0; transform:translateY(4px) scale(.98); } to { opacity:1; transform:none; } }

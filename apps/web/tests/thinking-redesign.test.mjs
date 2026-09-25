@@ -94,14 +94,11 @@ test('a playtest is said in words, not drawn as a card in the thinking surface',
   assert.doesNotMatch(CODE, /<PlaytestCard\b|ProjectStage|gx-stage\b/, 'a playtest card or stage is back in the thinking surface');
 });
 
-test('honesty: observed facts only, denied tools as one sentence, failures stay with the turn outcome', () => {
+test('honesty: observed facts only, no denied-tools note, failures stay with the turn outcome', () => {
   //[[ RESTATED 2026-09-24 (D-THINK-1): the gate list, planned-steps line and "Observed run activity"
-  //   region were detail and are gone. What stays: no placeholder for an unobserved run, the denied
-  //   note only from the worker's own list and never by name, one polite announcement of the live
-  //   line, and failure copy owned by the outcome row. ]]
-  assert.match(CODE, /if \(!summary && !denied\) return null;/, 'an unobserved or unfinished run must not receive placeholder UI');
-  assert.match(CODE, /const denied = \(deniedTools \?\? \[\]\)\.some\(/, 'the denied note comes only from the worker-supplied list');
-  assert.doesNotMatch(CODE, /deniedTools\.(?:join|map)|\{deniedTools\}/, 'a withheld tool is named');
+  //   region were detail and are gone. What stays: no placeholder for an unobserved run,
+  //   one polite announcement of the live line, and failure copy owned by the outcome row. ]]
+  assert.doesNotMatch(CODE, /apple-status__note|turned off in your settings/, 'no persistent notice belongs in thinking');
   assert.equal((CODE.match(/role="status"/g) ?? []).length, 1, 'the live line needs exactly one non-visual announcement');
 
   assert.doesNotMatch(CODE, /<ActivityTerminal\b|<Failure\b|is-fail|is-bad/,

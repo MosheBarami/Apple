@@ -110,3 +110,25 @@ test('a plan step shows what it does in words, never its wire name', () => {
   assert.doesNotMatch(plan, /\{step\.tool\}/);
   assert.match(plan, /labelForTool\(step\.tool\)/);
 });
+
+test('a wire-only assistant reply renders no payload or text sharing controls', () => {
+  const wire = '{"t":"Vector3","v":[4,1,4]}';
+  const item = {
+    id: 'wire-only', role: 'assistant', content: wire, tools: [], streaming: false,
+    createdAt: 1_700_000_000_000, stopReason: 'done',
+  };
+  const html = renderWith(ui.renderToStaticMarkup, ui.h(ui.Turn, { item, status: null, isLast: true }));
+  assert.doesNotMatch(text(html), /Vector3|\[4,1,4\]/, 'wire text reached the customer');
+  assert.doesNotMatch(html, /Copy this reply|Share this reply|More options for this reply/, 'an empty visible reply still offers raw text actions');
+  assert.match(text(html), /ended this turn without a reply/, 'the filtered reply should leave a useful explanation');
+});
+
+test('all assistant text sharing paths use the filtered reply', () => {
+  const turn = decomment(readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8'));
+  const replyActions = turn.slice(turn.indexOf('<MessageToolbar'), turn.indexOf('className="gx-turn__foot"'));
+  assert.ok(replyActions.length > 100, 'reply action section was not found');
+  assert.doesNotMatch(replyActions, /\b(?:item\.content|parsed\.rest)\b/, 'a reply text action can read raw content');
+  assert.match(replyActions, /<CopyButton\b/);
+  assert.match(replyActions, /<ShareButton\b/);
+  assert.match(replyActions, /label: 'Copy text'/, 'the context menu copy path is in this check');
+});

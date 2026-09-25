@@ -1,45 +1,23 @@
-/**
- * WHAT APPLE DID TO YOUR PLACE, AS A LIST.
- *
- * The worker has recorded every Studio op since the oplog existed — the op, whether it worked, the
- * typed failure kind when it did not, and the run that asked for it — and served the whole thing at
- * `/api/projects/:id/studio/diagnostics`. Nothing in this app had ever called that route. The only
- * way a user could reach a single oplog row was to search for a word from the error text of a
- * failure, which requires already knowing what went wrong.
- *
- * The one thing it must never do is claim to be complete when it is not. The worker now says
- * whether there is another page; when there is, this shows the button, and when the list truly ends
- * it says so. "Show more" quietly disappearing and "that is everything" are different sentences and
- * this panel keeps them apart.
- */
+/** A readable Studio history. Raw diagnostics stay out of the customer view. */
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchStudioOpLog, type StudioOpLog } from '../../lib/api';
 import { relativeTime } from '../../lib/format';
-import { Failure } from '../failure';
-import { StackTrace } from '../ai-elements/stack-trace';
-import { Terminal } from '../ai-elements/terminal';
-import '../picks/tech/tech-ui.css';
-import { activityRows, type ActivityRow, type OpLogRow } from './op-vocabulary';
+import { OP_LABEL, activityRows, type ActivityRow, type OpLogRow } from './op-vocabulary';
 import { StudioIcon } from '../studio-icon';
 import { classForOp } from '../studio-icon-model';
 
-/**
- * The raw record as a log, oldest first — what AI Elements' Terminal shows behind "Details". Every
- * field is the worker's own column; nothing here is a sentence the vocabulary wrote.
- */
-export function activityLog(rows: OpLogRow[]): string {
-  return [...rows]
-    .reverse()
-    .map((r) => {
-      const at = new Date(r.created_at);
-      const when = Number.isNaN(at.getTime()) ? '—' : at.toISOString().replace('T', ' ').slice(0, 19);
-      const result = r.ok === 1 ? 'ok  ' : 'FAIL';
-      const tail = [r.runId ? `run=${r.runId}` : null, r.failure ? `failure=${r.failure}` : null].filter(Boolean).join(' ');
-      const line = `${when}  ${result}  ${r.kind}${tail ? `  ${tail}` : ''}`;
-      return r.summary ? `${line}\n    ${r.summary.replace(/\n/g, '\n    ')}` : line;
-    })
-    .join('\n');
+/** A typed failure gives guidance without exposing the worker or Studio's raw text. */
+function failureGuidance(failure: string | null): string {
+  switch (failure) {
+    case 'transport': return 'This step did not reach Studio. Check the Studio connection, then ask Apple to try again.';
+    case 'timeout': return 'Studio did not confirm this step. Check your place before trying again; the change may already be there.';
+    case 'not_found': return 'Apple could not find what it needed. Check that it is still in your place, then ask Apple to try again.';
+    case 'conflict': return 'Your place changed before this step finished. Ask Apple to look again and adjust its plan.';
+    case 'refused': return 'Studio did not allow this step. Ask Apple what needs to change before trying again.';
+    case 'invalid': return 'Apple could not use this step as requested. Ask Apple to try another way.';
+    default: return 'Apple could not finish this step. Ask Apple to try another way.';
+  }
 }
 
 const PAGE = 40;
@@ -51,7 +29,7 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
   const [cursor, setCursor] = useState<number | null>(null);
   const [ended, setEnded] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [moreError, setMoreError] = useState<string | null>(null);
+  const [moreError, setMoreError] = useState(false);
 
   const first = useQuery<StudioOpLog>({
     queryKey: ['studio-activity', projectId],
@@ -65,7 +43,7 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
   const loadMore = useCallback(async () => {
     if (nextBefore === null) return;
     setLoadingMore(true);
-    setMoreError(null);
+    setMoreError(false);
     try {
       const page = await fetchStudioOpLog(projectId, { limit: PAGE, before: nextBefore });
       setOlder((list) => [...list, ...page.recentOps]);
@@ -74,16 +52,21 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
       // ends this list. Inferring the end from a short page would stop early on the day the
       // database returns fewer rows than asked for a different reason.
       if (page.nextBefore === null) setEnded(true);
-    } catch (e) {
+    } catch {
       // A page that failed to load must not look like the end of the history.
-      setMoreError(e instanceof Error ? e.message : 'Could not read more activity.');
+      setMoreError(true);
     } finally {
       setLoadingMore(false);
     }
   }, [nextBefore, projectId]);
 
   if (first.isPending) return <p className="gx-empty">Reading what Apple did in Studio…</p>;
-  if (first.isError) return <Failure error={first.error} onRetry={() => void first.refetch()} compact />;
+  if (first.isError) return (
+    <div role="alert">
+      <p>Apple could not load your Studio history. Your place has not been changed by opening this list.</p>
+      <button type="button" className="gx-btn gx-btn--outline" onClick={() => void first.refetch()}>Try again</button>
+    </div>
+  );
 
   const raw: OpLogRow[] = [...(first.data?.recentOps ?? []), ...older];
   const rows: ActivityRow[] = activityRows(raw);
@@ -106,24 +89,11 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
           <span className="gx-row__main">
             {/* The object the op acted on, as Studio draws it. An op on no object has none. */}
             {classForOp(r.kind) && <StudioIcon robloxClass={classForOp(r.kind)} />}
-            {r.sentence}
+            {r.ok ? (OP_LABEL[r.kind] ? r.sentence : 'Worked in Studio') : 'A Studio step could not be completed'}
             <span className="gx-row__meta">
               {relativeTime(r.at)}
-              {/* The typed failure kind, not a guess from the sentence. op-failure.ts is what
-                  decides whether something was refused, timed out or never left the worker, and
-                  that distinction is the difference between "try again" and "do not". */}
-              {!r.ok && ` · failed${r.failure ? ` (${r.failure})` : ''}`}
             </span>
-            {/* The error text is technical, so it waits behind Details: the kind of error in plain
-                words, then the script and line (AI Elements stack-trace, read as Luau). */}
-            {r.detail && (
-              <details className="tq-details">
-                <summary>Details</summary>
-                <div className="tq-details__body">
-                  <StackTrace trace={r.detail} />
-                </div>
-              </details>
-            )}
+            {!r.ok && <span className="gx-op__detail">{failureGuidance(r.failure)}</span>}
           </span>
           {/* Only when the row really belongs to a run. An op taken between runs — a manual
               checkpoint — belongs to no conversation, and a button that scrolls nowhere is worse
@@ -136,17 +106,9 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
         </div>
       ))}
 
-      {/* The whole record as it is stored, for the reader who wants the facts behind the sentences. */}
-      <details className="tq-details">
-        <summary>Details</summary>
-        <div className="tq-details__body">
-          <Terminal output={activityLog(raw)} label="Full log" aria-label="Studio activity log" />
-        </div>
-      </details>
-
       {moreError && (
         <p className="gx-pop__note" role="alert" style={{ padding: 0 }}>
-          {moreError} — the history is longer than what is shown.
+          Apple could not load older activity. Your history may be longer than what is shown. Try again.
         </p>
       )}
 
