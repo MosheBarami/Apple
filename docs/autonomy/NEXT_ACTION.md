@@ -1,5 +1,13 @@
 # NEXT ACTION
 
+2026-09-25 05:08 UTC: the registered HTTP Stop route was executed locally with owner,
+editor, viewer and outsider access; only the two allowed callers reached the project
+SessionDO's `/agent-stop`. Two focused integration tests and the full worker suite
+(4,189/4,189) passed. F-069 remains open until Stop is observed during a real Studio
+build. Evidence: `docs/evidence/f069-http-route-integration-2026-09-25.md`.
+CI run 36096391891 for the dashboard and training-Space commits passed all six groups.
+v23 remained live on CPU at step 260/400; do not restart the running supervisor.
+
 2026-09-25 04:47 UTC: v23 is training on CPU; the latest measured step is on the owner
 dashboard. Keep the current supervisor alive through its training, evaluation and publish.
 At a safe version boundary, restart it once to load template preflight `4ffea38`,
