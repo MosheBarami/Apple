@@ -6,7 +6,7 @@
 // Same shape as ../upload.mjs: it asks the store what it already holds and sends only what is
 // missing, so it is safe to re-run. Files are chunked with `append` like infra/deploy-static.mjs.
 //
-//   node packages/asset-library/models/upload.mjs [--force]
+//   node packages/asset-library/models/upload.mjs [--force] [--only-id <manifest-id>]
 // Env: API_BASE, GOLEM_ADMIN_KEY (read from the repo .env when present).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -25,12 +25,17 @@ const BASE = process.env.API_BASE;
 const KEY = process.env.GOLEM_ADMIN_KEY;
 if (!BASE || !KEY) throw new Error('API_BASE / GOLEM_ADMIN_KEY missing');
 const force = process.argv.includes('--force');
+const onlyIdAt = process.argv.indexOf('--only-id');
+const onlyId = onlyIdAt >= 0 ? process.argv[onlyIdAt + 1] : null;
+if (onlyIdAt >= 0 && !onlyId) throw new Error('--only-id needs a manifest id');
 
 const TYPES = { glb: 'model/gltf-binary', fbx: 'model/fbx', rbxm: 'model/x-rbxm' };
 const CHUNK = 700_000;
 
 const index = JSON.parse(readFileSync(join(HERE, 'index.json'), 'utf8'));
-const wanted = index.rows
+const selected = onlyId ? index.rows.filter((r) => r[0] === onlyId) : index.rows;
+if (onlyId && selected.length !== 1) throw new Error(`exactly one file row required for ${onlyId}`);
+const wanted = selected
   .map((r) => r[5])
   .filter((ref) => typeof ref === 'string')
   .map((ref) => ({ local: join(LIB, ref), remote: `/model-library/${ref}`, type: TYPES[ref.split('.').pop()] }))

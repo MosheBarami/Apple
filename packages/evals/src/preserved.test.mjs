@@ -1167,9 +1167,13 @@ test('B10 STATIC CHECK — the intent is derived once, persisted, and replayed',
   assert.match(session, /import \{ sceneSignature, shouldRebuild, semanticCheck, type PassRecord \} from '\.\.\/semantic';/);
   const runIntent = read('run-intent.ts');
   assert.match(runIntent, /import \{ intentCheck \} from '\.\/semantic';/, 'run-intent.ts must reach intentCheck');
-  // Derived at run start, on the same free/deterministic footing as the trait classifier.
-  assert.match(session, /const traits = classifyRequest\(text\);/);
-  assert.match(session, /const intent = runIntentFor\(text\);/, 'the intent must be derived at run start, from the request text');
+  // Both see the same effective request. On a visual-choice resume it contains the original
+  // brief plus the owner's choice; on an ordinary run it is the original text.
+  const traitsInput = session.match(/const traits = classifyRequest\((\w+)\);/)?.[1];
+  const intentInput = session.match(/const intent = runIntentFor\((\w+)\);/)?.[1];
+  assert.ok(traitsInput, 'run start must classify the request');
+  assert.equal(intentInput, traitsInput, 'intent and traits must derive from the same request');
+  assert.match(session, /const effectiveRequest = [\s\S]*?: text;/, 'the effective request must fall back to the original text');
   // Persisted on AgentState, so the rows are not lost when nobody is listening.
   assert.match(session, /intent: intent \?\? undefined,/, 'the intent must be written onto AgentState');
   assert.match(session, /if \(intent\) this\.broadcast\(\{ type: 'run_intent', msgId, intent \}\);/, 'exactly one broadcast, guarded');

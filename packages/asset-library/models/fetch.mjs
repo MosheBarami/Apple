@@ -80,6 +80,7 @@ function walk(d, out = []) {
 }
 
 export function refusal(row) {
+  if (row.downloadKind === 'polyhaven-api') return 'use ingest-polyhaven.mjs for verified dependencies';
   if (!row.download) return 'no direct download';
   if (row.use === 'reference-only') return 'reference-only row';
   if (!DOWNLOAD_LICENCES.test(String(row.licence ?? '').trim())) return `licence ${row.licence ?? 'unknown'} is not on the download allowlist`;
