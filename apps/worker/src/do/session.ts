@@ -4603,7 +4603,7 @@ export class SessionDO extends DurableObject<Env> {
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
       this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
-      await this.finishRun(agent, agent.mutated ? 'done' : 'incomplete');
+      await this.finishRun(agent, 'incomplete');
       return;
     }
     // Built and checked, then only reading: tell it to answer, and if it still does not, end on the

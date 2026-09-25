@@ -1052,7 +1052,7 @@ test('F-064 control: a run that changes things between streaks but builds nothin
     assert.equal(count(streamed(h), REPEAT), 1, 'a run stuck with nothing built between its walls must still end on the streak');
     assert.equal(stuckSteers(h).length, 2, 'moved on exactly the bounded number of times');
     assert.equal(h.ops.some((op) => JSON.stringify(op).includes('Tavern')), false, 'it ended before the scripted build');
-    assert.equal(lastEnd(h).stopReason, 'done', 'it changed the place, so it ends on what it built');
+    assert.equal(lastEnd(h).stopReason, 'incomplete', 'unbuilt requested work remains despite a place mutation');
   } finally {
     h.stop();
   }
