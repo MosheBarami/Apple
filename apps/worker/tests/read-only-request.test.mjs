@@ -34,6 +34,8 @@ test('the request that was violated is recognised as forbidding changes', () => 
     'Just inspect it, do not modify the place',
     'Read-only please: what does the leaderboard script do?',
     "Don't touch my game, only explain the lag",
+    'In the connected isolated garden place, establish a gameplay baseline. Run play_check, play_check_ui, and audit_build at most once each. Do not edit scripts, insert assets, upload anything, or change the saved place. Report the core loop steps actually observed.',
+    'Inspect the scripts, but do not change the saved place.',
   ]) assert.equal(R.forbidsChanges(t), true, t);
 });
 
@@ -45,6 +47,7 @@ test('a request FOR a change with a limit on it is never read as read-only', () 
     "Build a tower but don't touch my game's scripts",
     'Change the baseplate to grass',
     'Make a coin collecting game',
+    'Do not edit scripts, but change the saved place by adding a tree',
   ]) assert.equal(R.forbidsChanges(t), false, t);
 });
 

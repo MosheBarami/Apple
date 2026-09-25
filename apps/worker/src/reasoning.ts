@@ -141,11 +141,23 @@ const AMBIGUOUS_RE = /\b(something|anything|whatever|surprise me|you decide|make
  * change the colours", "without changing anything ELSE" and "don't touch my game's scripts" — all
  * requests FOR a change with a limit on it — never match.
  */
-const FORBIDS_CHANGES_RE =
-  /\b(?:do not|don['’]t|dont|never)\s+(?:change|modify|touch|edit|alter)\s+(?:anything|a thing|the place|my place|the game|my game)(?!\s+else)(?!['’]s)\b|\bwithout\s+(?:changing|modifying|touching|editing|altering)\s+(?:anything|the place|my place|the game|my game)(?!\s+else)(?!['’]s)\b|\bread[- ]only\b/i;
+const WHOLE_PLACE = String.raw`(?:anything|a thing|(?:(?:the|my|this|our)\s+)?(?:(?:saved|current|connected)\s+)?(?:place|game))(?!\s+else)(?!['’]s)\b`;
+const FORBIDS_CHANGES_RE = new RegExp(
+  String.raw`\b(?:do not|don['’]t|dont|never)\s+(?:change|modify|touch|edit|alter)\s+${WHOLE_PLACE}` +
+  String.raw`|\bwithout\s+(?:changing|modifying|touching|editing|altering)\s+${WHOLE_PLACE}` +
+  String.raw`|\bread[- ]only\b`, 'i',
+);
+const NEGATED_LIST_RE = /\b(?:do not|don['’]t|dont|never)\b/i;
+const WHOLE_PLACE_LAST_RE = new RegExp(String.raw`\b(?:or|nor)\s+(?:change|modify|touch|edit|alter)\s+${WHOLE_PLACE}`, 'i');
 
 export function forbidsChanges(text: string): boolean {
-  return FORBIDS_CHANGES_RE.test(text);
+  if (FORBIDS_CHANGES_RE.test(text)) return true;
+  // A test request can forbid several actions in one list: "Do not edit scripts, insert assets,
+  // upload anything, or change the saved place." The old direct-verb pattern missed that last
+  // whole-place prohibition and a live audit anchored parts despite the request. Keep the negation
+  // and the whole-place target in one clause; "but change the place" is a positive instruction.
+  return text.split(/[.!?;]/).some((clause) =>
+    NEGATED_LIST_RE.test(clause) && !/\bbut\b/i.test(clause) && WHOLE_PLACE_LAST_RE.test(clause));
 }
 
 /** Cheap request classification, so the policy gets signals without paying a model for them. */
