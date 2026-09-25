@@ -1,0 +1,21 @@
+# Round 8C: Studio source answer and same-run library insertion
+
+Measured 2026-09-25 09:36–09:46 UTC in the isolated local place `/private/tmp/apple-codex-gauntlet-place.rbxl`, using the signed-in owner's normal project pairing flow. The new project was `39bb14b9-64e3-43e6-97c0-4aaf5fd12023` (Gauntlet Round 8C). Studio showed Apple Studio 1.4.0 independent preview; edits were enabled for this connection only. This was not a public Creator Store plugin installation.
+
+The live Apple worker answered `/api/health` with build `0b84473d43f8c8daaeb37bc5760a05a2fa3620a5`, deployed from a clean committed export after TypeScript and 4,180/4,180 worker tests passed. The run started as Agent / Apple MAX with a bounded request for one `Tree - Small` from the verified Creator Store model library. An admin-gated start was used to test Studio's question inside an active agent run, because the web composer asks before starting.
+
+## F-059 observation
+
+The project initially had no `asset_sources` preference. The first `insert_library_model` call was refused, and the Studio dock visibly asked “Where should Apple get assets from?” with Creator Store selected and “Make it from scratch” unselected. I pressed “Use these sources”; Studio showed “Saving...” and the question closed. The *same run* then called `insert_library_model` again. Its persisted tool trace marks that second call `ok:true`. The Studio oplog includes a successful `insert_asset`, followed by successful `rename_instance`, `inspect_model`, `set_locked`, `focus_camera`, `inspect_visually` and `render_view` calls. In the Studio Explorer, `Workspace` contained both the original `ExistingTree` and a new `TreeSmall`; the viewport showed the new model beside the original place. The assistant identified its library row as `cs-56449132`, with a clean script scan. No downloaded file was uploaded into the Roblox account, and no hand-built tree was substituted.
+
+This verifies the specific source-question and same-run retry path. It does **not** prove that a full Grow-a-Garden game now looks like the reference. F-059 remains open for that visual outcome. The new tool policy refuses downloaded library files under Creator Store-only consent; the owner would need a distinct permanent-upload choice before those rows become insertable.
+
+## F-069 observation
+
+After commit `8d6c662` and its byte-verified web deploy, the running assistant turn kept a visible, enabled “Stop this run” control without a reload. I pressed it after the single tree was present, because the model continued inspection beyond the requested scope. `stopRequestedAt` became non-null, the worker settled to `agentStatus:"idle"`, and the oplog stayed at 20 entries. The persisted assistant turn recorded `stopReason:"stopped"`, `creditsSpent:108`, and 17 tool-trace calls. No further place operation arrived after Stop. This is a second live Stop result and the first after the visibility fix; together with the HTTP route's owner/editor authorization test and the red-first disabled-Stop regression, it closes the reported Stop failure. A deliberately disconnected browser socket was not simulated in this run.
+
+## Remaining behavior
+
+The agent did not finish the short request on its own. It made extra inspection calls after the tree was present, and the streamed text briefly asserted that consent was still missing even though the Studio question had closed and the later insert succeeded. A `set_properties_bulk` attempt on `TreeSmall.Anchored` failed because `Anchored` is a part property, not a model property; the subsequent `set_locked` succeeded. A bounded full-game Studio run and blind visual review are still required for F-059's original appearance claim and F-064's incomplete-work end path. No Frontier or public-plugin claim follows from this one-tree test.
+
+CI run `36119426292` caught an intentional security tripwire: adding the fixed source-answer steer made the reviewed user-role transcript-injection count 17, versus 16 before. The steer was reviewed as a fixed two-way message with no interpolation of policy, place, model or tool text. Commit `de406b3` records the seventeenth path and a malicious-choice test; the focused security suite passed 56/56 and worker asset-source/model-library suites 23/23. Full CI run `36120348913` passed all six jobs on 2026-09-25.
