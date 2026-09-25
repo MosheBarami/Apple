@@ -2617,7 +2617,22 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //   SIXTEEN — the skill-card steer (skill-cards.ts): a card from packages/corpus/data/skill-cards.json,
   //     bundled into the worker at build time and reviewed in git, never fetched or user-supplied; plus
   //     the fenced plan title. No tool output, web content, upload or Studio text reaches any of the six. ]]
-  assert.equal(userPushes.length, 16, 'a user-role transcript injection was added or removed — review it for injection risk');
+  // SEVENTEEN SINCE 2026-09-25 — the Studio asset-source answer steer. The pending marker is set
+  // only for the current run when Apple asks, and the policy is re-read after the owner answers.
+  // assetSourceAnswerSteer returns one of two fixed strings (or null); it never interpolates a
+  // policy value, model text, tool output, place content, or a Studio message into this user turn.
+  // The accepted source vocabulary is selected by allowedSources, not quoted into the steer.
+  assert.equal(userPushes.length, 17, 'a user-role transcript injection was added or removed — review it for injection risk');
+  const answerSteerSite = session.slice(session.indexOf("storage.get<string>('assetSourcesAwaitingRun')"), session.indexOf("storage.get<string>('assetSourcesAwaitingRun')") + 400);
+  assert.match(answerSteerSite, /const steer = assetSourceAnswerSteer\(this\.pinnedPrefs\?\.asset_sources\)/,
+    'the new user-role steer no longer comes from the reviewed source selector');
+  assert.match(answerSteerSite, /agent\.llm\.push\(\{ role: 'user', content: steer \}\)/,
+    'the source-answer steer moved; review its new transcript path');
+  const policyCode = readCode('asset-policy.ts');
+  const answerSteer = policyCode.slice(policyCode.indexOf('export function assetSourceAnswerSteer('), policyCode.indexOf('export function sourceRefusal('));
+  assert.ok(answerSteer.length > 300, 'the reviewed source selector was not found');
+  assert.doesNotMatch(answerSteer, /\$\{|policy\.allow\s*\[/,
+    'the source-answer steer must not quote owner, model or place strings as instructions');
   const dynamic = userPushes.filter((p) => /\$\{/.test(p));
   assert.equal(dynamic.length, 4, 'exactly four user-role injections should carry interpolated content');
   const unstick = dynamic.find((p) => /UNSTICK_STEER/.test(p));
