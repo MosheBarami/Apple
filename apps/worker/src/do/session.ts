@@ -239,6 +239,8 @@ interface AgentState {
   /** neurons this run has consumed, so Credits round once per run instead of once per call */
   neuronsUsed?: number;
   trace: ToolTraceEntry[];
+  /** A create_instances name conflict fences destructive recovery for the rest of this run. */
+  blockDeletesAfterCreateConflict?: boolean;
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
   /**
    * Identical calls whose last attempt failed in a way op-failure.ts classified as SAFE TO REPEAT
@@ -5769,6 +5771,16 @@ export class SessionDO extends DurableObject<Env> {
         void this.ctx.storage.setAlarm(Date.now() + 1);
         return { id: 'none', ok: false, error: verdict.message, failure: WORKER_FAILURES.runEnded };
       }
+      // A failed create is atomic in Studio. A name conflict therefore gives no evidence that
+      // an existing path is disposable. Round 8C deleted four saved paths to make room for one
+      // duplicate name. Fence every delete in this run; a fresh request can explicitly remove
+      // something later, while this run can inspect, rename or edit what is already there.
+      if (run.blockDeletesAfterCreateConflict && studioOp.op === 'delete_instances') {
+        return {
+          id: 'none', ok: false, failure: 'refused',
+          error: 'A create name conflict occurred in this run. Existing saved instances were not deleted. Inspect, edit or rename the existing path instead.',
+        };
+      }
     }
     this.seq += 1;
     // Tagged with the run that asked for it. A queued op outlives the request that made it —
@@ -5804,6 +5816,12 @@ export class SessionDO extends DurableObject<Env> {
         resolve(r);
       });
     });
+    if (run && studioOp.op === 'create_instances' && !result.ok && result.failure === 'conflict') {
+      run.blockDeletesAfterCreateConflict = true;
+      // Persist before the next tool call: a DO eviction must not clear a safety fence after
+      // Studio has already reported the conflict.
+      await this.persistAgent(run);
+    }
     // The FIRST refusal of the run wins: it is the one the user asked for, and a later refusal of a
     // recovery attempt describes the model's improvisation rather than their request.
     if (run && run.refusalRemedy === undefined && !result.ok && result.failure === 'refused' && isRefusalRemedyCode(result.remedy)) {

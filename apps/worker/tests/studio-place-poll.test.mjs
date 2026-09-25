@@ -97,6 +97,44 @@ async function session(seed = {}, { duplicateOplogFailureColumn = false } = {}) 
 
 const pending = (id) => ({ id, seq: 1, studioOp: { op: 'get_tree' }, runId: undefined });
 
+test('a create name conflict cannot be followed by deleting saved geometry in the same run', async () => {
+  const { o, map } = await session();
+  o.pluginConnected = async () => true;
+  o.runAccessVerdict = async () => ({ stop: false });
+  const run = { msgId: 'garden-run', status: 'running', llm: [], trace: [], finalText: '' };
+  const create = o.execStudioOp({ op: 'create_instances', items: [] }, 1000, run);
+  await new Promise((resolve) => setImmediate(resolve));
+  const [id, reply] = [...o.opWaiters.entries()][0] ?? [];
+  assert.ok(reply, 'the real SessionDO did not queue create_instances');
+  reply({ id, ok: false, failure: 'conflict', error: 'Workspace.PathNetwork already contains a child named PathEast' });
+  assert.equal((await create).failure, 'conflict');
+
+  const queued = o.opQueue.length;
+  const deletion = await o.execStudioOp({ op: 'delete_instances', paths: [
+    'game.Workspace.PathNetwork.MainPath', 'game.Workspace.PathNetwork.PathEast',
+  ] }, 1000, run);
+  assert.equal(deletion.ok, false);
+  assert.equal(deletion.failure, 'refused');
+  assert.match(deletion.error, /existing|saved|conflict/i);
+  assert.equal(o.opQueue.length, queued, 'the delete reached the Studio queue');
+  assert.equal(map.get('agent')?.blockDeletesAfterCreateConflict, true, 'the fence must survive DO eviction');
+
+  const inspect = o.execStudioOp({ op: 'get_instance', path: 'game.Workspace.PathNetwork.PathEast' }, 1000, run);
+  await new Promise((resolve) => setImmediate(resolve));
+  const [inspectId, inspectReply] = [...o.opWaiters.entries()].at(-1) ?? [];
+  assert.ok(inspectReply, 'the run must still be able to inspect the existing path');
+  inspectReply({ id: inspectId, ok: true, data: { name: 'PathEast' } });
+  assert.equal((await inspect).ok, true);
+
+  const freshRun = { msgId: 'different-run', status: 'running', llm: [], trace: [], finalText: '' };
+  const freshDelete = o.execStudioOp({ op: 'delete_instances', paths: ['game.Workspace.Unused'] }, 1000, freshRun);
+  await new Promise((resolve) => setImmediate(resolve));
+  const [freshId, freshReply] = [...o.opWaiters.entries()].at(-1) ?? [];
+  assert.ok(freshReply, 'a new run must still be able to perform an explicit deletion');
+  freshReply({ id: freshId, ok: true, data: { deleted: 1 } });
+  assert.equal((await freshDelete).ok, true);
+});
+
 async function paired(extra = {}) {
   return session({
     bind: { projectId: 'proj', projectName: 'Tower Defence', ownerId: 'owner-1' },
