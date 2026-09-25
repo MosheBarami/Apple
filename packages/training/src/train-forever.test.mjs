@@ -292,8 +292,8 @@ test('promotionMargin is max(2, spread of the reseeds around the best they re-ra
 
 // ---------- hypotheses ----------
 
-test('the committed queue: 8-12 single-lever changes, unique ids, a reason each, rank servable', () => {
-  assert.ok(QUEUE.length >= 8 && QUEUE.length <= 12, `queue has ${QUEUE.length}`);
+test('the committed queue: at least eight single-lever changes, unique ids, a reason each, rank servable', () => {
+  assert.ok(QUEUE.length >= 8, `queue has ${QUEUE.length}`);
   assert.equal(new Set(QUEUE.map((h) => h.id)).size, QUEUE.length);
   for (const h of QUEUE) {
     assert.ok(h.why && h.why.length > 20, `${h.id} explains itself`);

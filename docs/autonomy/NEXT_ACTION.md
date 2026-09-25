@@ -1,5 +1,14 @@
 # NEXT ACTION
 
+2026-09-25 05:18 UTC: nine first-party UI-state Luau examples were locally executed,
+mutation-tested, checked against the fixed held-out set and queued as a single future
+training lever. A read-only derivation appended them to v22's 303 training rows without
+changing validation or test data. Focused shard tests passed 2/2 and the training package
+passed 655/655. No new model score exists yet. v23 was still running at step 290/400;
+keep its process alive through evaluation. Evidence:
+`docs/training/ui-logic-shard-2026-09-25.md`.
+CI run 36097470609 for the Stop-route and dashboard updates passed all six groups.
+
 2026-09-25 05:08 UTC: the registered HTTP Stop route was executed locally with owner,
 editor, viewer and outsider access; only the two allowed callers reached the project
 SessionDO's `/agent-stop`. Two focused integration tests and the full worker suite

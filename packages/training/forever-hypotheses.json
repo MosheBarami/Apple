@@ -31,6 +31,17 @@
       }
     },
     {
+      "id": "ui-logic-verified-shard",
+      "why": "Add nine first-party executor-verified UI state modules across distinct families. The pinned 38-row evaluation has eight game-logic items and v22 passed only one; this tests whether broader UI reasoning examples help without using a held-out family or changing validation/test rows.",
+      "data": [
+        {
+          "op": "appendVerified",
+          "source": "data/ui-logic-seeds-v1/shard-1.jsonl",
+          "sha256": "8993bb021c65fa9508b1051042329cfe0b5ffb3d908448131c4d27ea9e7ccb46"
+        }
+      ]
+    },
+    {
       "id": "cosine-lr",
       "why": "Both runs overfit after a mid-run minimum (v4 at 100, v5 at 225) at a constant lr. A short warmup plus cosine decay to lr/10 lowers the late-run step size where the val curve turned.",
       "set": {
