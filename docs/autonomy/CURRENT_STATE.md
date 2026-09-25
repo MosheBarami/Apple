@@ -1,5 +1,16 @@
 # CURRENT STATE
 
+2026-09-25 04:20 UTC update: v23 remains alive on CPU and has passed iteration 100/400.
+Commit `3f97d9f` adds a fail-closed, row-by-row identity and base-outcome check before a
+future LoRA promotion. Its new test failed on the old guard, then 33/33 supervisor tests
+and 648/648 training package tests passed after the fix. The real v22 paired files still
+pass with 38 matching rows and 24/38 versus 18/38. The long-lived v23 supervisor loaded
+older source before the commit; adopt this guard and the earlier template preflight fix
+only at a safe version boundary. GitHub Actions run `36093092688` passed all six groups.
+The public Apple Studio Store page still shows 404, and a clean round 8 Studio run has
+not been observed. The acceptance gate remains at 0/3 fresh reviews and open high
+F-059, F-064, F-069.
+
 2026-09-25 03:42 UTC update: local LoRA v22 completed 400/400 CPU steps and was scored
 on the same 38 held-out rows and runtime as v5: 24/38 versus 18/38. The row IDs, base outcomes
 and base tally matched exactly; neither score included known harness-unavailable or

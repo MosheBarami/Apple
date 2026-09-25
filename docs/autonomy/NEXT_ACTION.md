@@ -1,5 +1,14 @@
 # NEXT ACTION
 
+2026-09-25 04:20 UTC: v23 is training on CPU past step 100/400. Keep the current
+supervisor alive through its training, evaluation and publish. At a safe version boundary,
+restart it once to load template preflight `4ffea38` and row-by-row paired-promotion
+guard `3f97d9f`; verify the next process runs the committed code and begins the next
+version without a duplicate. The guard was red-first and passed 33 focused tests, all
+648 training package tests, and the real 38-row v22 paired files. CI for the previous
+commit passed all six groups; CI for `3f97d9f` is running. The Creator Store still shows
+404 for the public plugin listing, and Studio round 8 remains unverified.
+
 2026-09-25 03:42 UTC: v22 was validly promoted after a paired 38-row evaluation against v5
 (24/38 versus 18/38 in the same run; identical row IDs and base results, no known harness
 errors). Game logic is still 1/8. The private Hugging Face v22 adapter and score files were
