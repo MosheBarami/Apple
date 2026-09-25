@@ -21,6 +21,7 @@ import { catalog, REG } from './actions.js';
 // shell's own pages; platform pages use their id (control/skins/<id>.css, base when missing).
 const PAGES = [
   { id: 'hq', title: 'מרכז הפיקוד', glyph: 'hq', skin: 'base' },
+  { id: 'os', title: 'Apple OS', glyph: 'bolt', skin: 'base' },
   { id: 'overview', title: 'סקירת AI', glyph: 'overview', skin: 'base' },
   { id: 'explorer', title: 'מפת הריפו', glyph: 'explorer', skin: 'base' },
   { id: 'repos', title: 'מאגרי GitHub', glyph: 'repos', skin: 'base' },
@@ -42,7 +43,7 @@ const PAGES = [
   { id: 'status', title: 'מצב הספקים', glyph: 'status', skin: 'base' },
 ];
 const GROUPS = [
-  ['מרכז', ['hq', 'overview', 'explorer', 'repos']],
+  ['מרכז', ['hq', 'os', 'overview', 'explorer', 'repos']],
   ['ריפו וידע', ['commits', 'models', 'design-history', 'studio-shots', 'repo-health']],
   ['מוצר ותשתית', ['apple', 'cloudflare', 'supabase', 'vercel', 'clerk', 'github']],
   ['AI ומודלים', ['hf', 'groq', 'langflow']],

@@ -154,6 +154,11 @@ body.is-dry .top { box-shadow: inset 0 -1px 0 var(--accent-ring); }
 .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .g21 { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
 .g12 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+.os-query { width: 100%; min-width: 0; min-height: 42px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+.os-query:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.os-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.os-brief { max-height: 380px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; font: inherit; font-size: 13px; }
+.os-path { overflow-wrap: anywhere; }
 .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
 .mb { margin-bottom: 14px; }

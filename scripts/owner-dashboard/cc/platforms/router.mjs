@@ -21,6 +21,7 @@ import { pulse } from './pulse.mjs';
 import { insights } from '../insights.mjs';
 import { stream } from '../stream.mjs';
 import { media } from '../media.mjs';
+import { os, osAction } from '../os.mjs';
 
 loadEnv();
 
@@ -47,7 +48,7 @@ const GETS = {
   overview: () => laneB('repo.mjs', 'overview'),
   tree: () => laneB('repo.mjs', 'tree'),
   repos: () => laneB('deps.mjs', 'repos'),
-  github, supabase, cloudflare, sentry, hf, extras, apple, groq, discord, roblox, status, connectors, langflow, pulse, insights,
+  github, supabase, cloudflare, sentry, hf, extras, apple, groq, discord, roblox, status, connectors, langflow, pulse, insights, os,
 };
 // Platforms whose module lives in platforms/<id>.mjs and is loaded lazily: GET → <id>(), POST → <id>Action(body).
 export const LAZY_PLATFORMS = ['vercel', 'clerk', 'resend', 'tests'];
@@ -66,6 +67,7 @@ const POSTS = {
   'connectors/action': connectorAction,
   'langflow/action': langflowAction,
   'apple/action': appleAction,
+  'os/action': osAction,
 };
 for (const id of LAZY_PLATFORMS) POSTS[`${id}/action`] = (b) => laneB(`platforms/${id}.mjs`, `${id}Action`, b);
 // ?fresh=1 on a GET drops that platform's cache first (the "refresh now" button). The keys match

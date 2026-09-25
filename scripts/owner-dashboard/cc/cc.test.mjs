@@ -98,7 +98,7 @@ test('path traversal under /control/ is refused', async () => {
   }
 });
 
-const GET_ROUTES = ['session', 'github', 'supabase', 'cloudflare', 'sentry', 'hf', 'extras', 'apple', 'groq', 'discord', 'roblox', 'status', 'connectors', 'langflow', 'pulse', 'insights', ...LAZY_PLATFORMS];
+const GET_ROUTES = ['session', 'github', 'supabase', 'cloudflare', 'sentry', 'hf', 'extras', 'apple', 'groq', 'discord', 'roblox', 'status', 'connectors', 'langflow', 'pulse', 'insights', 'os', ...LAZY_PLATFORMS];
 
 test('leak guard: no response ever contains a credential, whatever the upstream sends back', async () => {
   let redacted = 0;
