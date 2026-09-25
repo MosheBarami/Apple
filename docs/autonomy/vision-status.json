@@ -1,6 +1,6 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-25T12:46:18Z",
+  "updatedAt": "2026-09-25T13:42:00Z",
   "now": "נוסף יבוא אמיתי של שתי חבילות צלילי ממשק חופשיות: 35 צלילים אומתו ונשמרו בשרת הפרטי, לצד דגם Poly Haven שהורד קודם. Apple עדיין אינו מכניס את הקבצים האלה למשחק; יש להשלים תצוגה, אישור ופרסום בטוח לחשבון Roblox.",
   "nextStep": "לחבר דגמי קובץ ותוכן אודיו שהורד למסלול בחירה ואישור לפני העלאה לחשבון Roblox; להמשיך לבדוק ולהביא UI, מפות, VFX ואנימציות מהמקורות שהבעלים נתן רק כשהרישיון מתיר אחסון ושימוש במוצר; להוכיח תוצאה חזותית ב-Studio.",
   "items": [
@@ -122,6 +122,12 @@
       "he": "Apple MAX בונה משחק שנראה כמו המשחק האמיתי",
       "status": "progress",
       "detail": "בעל המוצר דחה את העולם והממשק של בדיקת Studio מבחינה חזותית, למרות שבוצעה פעולת Shop→Buy. F-059 ו-F-064 פתוחים. מסלול בחירה חזותית לדגמי תלת-ממד נפרס ונבדק כדוגמת UI, אך עוד לא נבחן בבניית Studio מלאה חדשה; תמונות העצים שנצפו פשוטות מדי. אין עדיין משחק מלא שנראה מסחרי או ביקורת עיוורת חדשה."
+    },
+    {
+      "id": "frontierStudio",
+      "he": "מדידת Frontier של משחקים שלמים ב־Studio",
+      "status": "progress",
+      "detail": "נבנה בנק קבוע של 36 ריצות: 12 סוגי משחקים, שלושה ניסיונות עצמאיים לכל סוג. כל ריצה דורשת משחקיות עובדת, נכסי Roblox ייעודיים, בדיקות Play, בדיקת אבטחה ושמירה, קריאה חוזרת של Studio וביקורת חזותית עיוורת. 0/36 ריצות נמדדו בפרוטוקול החדש; אין ממנו כרגע ציון Frontier."
     },
     {
       "id": "pluginStore",

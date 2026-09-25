@@ -19,6 +19,15 @@ exist is DELETE with a dated owner statement, per §6.6.
 
 ---
 
+## packages/asset-library/sfx/upload-cc0-ui.mjs — WIRE, 2026-09-25
+
+**Found:** the operational uploader was committed without a declared entry point, so CI's
+dead-end gate could not see a caller. The `upload:cc0-ui-sfx` package script now names it.
+It is an explicit, credentialed operations command; CI does not execute it. This records
+reachability, not a claim that any sound was uploaded.
+
+---
+
 ## Internal asset sourcing dispositions — DELETE, owner direction 2026-09-25
 
 The owner removed the customer-facing UI catalogue and the Creator Store versus scratch choice.

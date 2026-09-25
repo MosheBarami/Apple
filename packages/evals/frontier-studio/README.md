@@ -1,0 +1,86 @@
+# Roblox Frontier Studio benchmark
+
+This is a **product benchmark**, not a claim that a text model knows how to build a game. It asks
+Apple to take one ordinary customer prompt through its actual paired Studio plugin and complete a
+playable game. The first fixed bank has 12 genres × 3 independent fresh-place attempts = **36
+full-game runs per product lane**. Each run names eight genre-specific gameplay requirements and
+four or five purpose-built Roblox asset roles, plus eleven cross-cutting gates. A pretty blockout,
+passing Luau, or a chat reply saying “done” cannot pass it.
+
+The bank is in `missions.mjs`. Keep its prompts out of training, RAG, system prompts and
+demonstrations. Do not edit a prompt after looking at its score; version the bank and start a new
+series. Repeating the same prompt three times on independent fresh Baseplates measures stability,
+not three different questions. Also run the existing `roblox-frontier-bench.mjs` for executable
+Luau/API failures; its code-only score cannot stand in for this game benchmark.
+
+## Per-run protocol
+
+1. Record the exact live build SHA, model route, plan, mode, prompt, project ID, place baseline hash,
+   time and run ID. Use a fresh, isolated Baseplate. Do not clear a customer's existing place.
+2. Submit the fixed prompt once with Agent and Autonomous enabled. Allow at most three normal
+   asset/style preview approvals; a human code edit, hint or manual place repair invalidates the run.
+3. Persist the worker's tool trace with run ID. It must contain successful asset insertion,
+   `play_check` and `inspect_visually` calls. A refused or disconnected tool is not a success.
+4. Independently read the Studio place back. For each asset role, identify the Roblox-specific
+   source, rights, why it fits the brief, the inserted instance and its placement. Audit that
+   complex models and UI came from the approved Roblox library, while only simple geometry was
+   built from parts. A generic 3D pack converted to Roblox is out of scope. Test scripted assets for behavior and safety; a
+   thumbnail is not a working object.
+5. In Play mode, execute every feature from the task bank as a player. Probe money, persistence,
+   multiplayer isolation and remote authority where applicable. Capture server/client errors and
+   a phone-width UI view. Store the exact operations and observed outcomes, including failures.
+6. Take 4–8 final Studio shots with neutral filenames. Give **only** those images to an independent
+   blind visual critic using `docs/gauntlet/visual/BLIND_CRITIC.md`. Separately audit feature
+   completeness against the prompt, so blindness does not hide missing requested features.
+7. Grade the evidence with `node score.mjs evidence-bundles.json`. Every pass needs an independent
+   examiner, a run-bound proof record and SHA-256-matched nonempty artifact. Missing evidence is
+   **unmeasured**, never a pass or a model failure. Any observed failed requirement fails the game.
+
+`score.mjs` checks the envelope and proof inventory. It does **not** understand a screenshot or
+execute a Studio probe. An independent reviewer must inspect the cited artifacts and attest to
+each named requirement; the scorer cannot make a dishonest attestation true. For subjective visual
+gates, periodically calibrate the blind critic against separately labeled pass/fail screenshots;
+track its false-pass and false-fail rates, not only overall agreement. Keep those calibration
+images separate from benchmark shots.
+
+## Evidence bundle contract
+
+The CLI accepts an array of bundles in one JSON file. Artifact paths are relative to that file's
+directory. A minimal bundle has the shape below; every `criteriaFor(task)` key needs a proof:
+
+```json
+{
+  "taskId": "farming-r1",
+  "run": {
+    "id": "real-run-id", "projectId": "isolated-project-id", "buildSha": "deployed-sha",
+    "startedAt": "ISO timestamp", "endedAt": "ISO timestamp", "start": "fresh-baseplate",
+    "mode": "agent", "autonomous": true, "stopReason": "done", "interventions": []
+  },
+  "proofs": {
+    "run": {
+      "kind": "run-trace", "runId": "real-run-id", "observer": "independent-examiner",
+      "artifact": "trace.json", "sha256": "64 lowercase hex characters", "passed": true
+    }
+  }
+}
+```
+
+`trace.json` must be `{ "runId": "real-run-id", "tools": [{"tool":"...","ok":true}, ...] }`.
+Each `asset:<role>` proof additionally needs
+`asset: {source: "library"|"creator-store", robloxSpecific: true, rightsVerified: true,
+placed: true, selectionReason: "specific visual and functional fit"}`. The external artifact
+must substantiate those fields. UI, world, playtest, security and persistence are separate gates.
+
+The suite reports `passRate: null` until all 36 tasks have measured results. A complete 36/36
+pass is **a pass on this benchmark version**, not by itself proof of universal Roblox frontier
+ability. Report the exact lane, build, bank version, sample count, confidence limits, observed
+failures, blind-review calibration and cost. Publish failed runs alongside passes. Refresh the
+bank with new customer failure types and reserve unseen tasks for a later holdout.
+
+## Current state
+
+The protocol and eight falsifiable scorer tests are implemented. **0 of 36 Studio missions have
+been measured under this new protocol.** Do not display 0% or 100% as a model score from this bank.
+The next real step is to run the first mission in a fresh isolated, paired Studio place and attach
+the readback, Play-mode checks and blind screenshots. The owner's latest visual rejection is an
+observed product failure; it is not relabeled as an unmeasured success.

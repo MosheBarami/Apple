@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node build-manifest.mjs",
     "build:fx": "node build-fx-manifest.mjs",
+    "upload:cc0-ui-sfx": "node sfx/upload-cc0-ui.mjs",
     "typecheck": "node --check build-manifest.mjs && node --check upload.mjs",
     "test": "node --test"
   }
