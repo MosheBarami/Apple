@@ -17,7 +17,8 @@ Differences from the report's reference script, each forced by a measurement on 
   * --reviews-only runs reviewer sessions and nothing else, beside a live interactive Product Owner
     (owner, 2026-09-23: the interactive session stays until the product is ready). Reviewers only use
     the product and append findings, so the lock does not apply; the streak is still kept HERE. It
-    exits 0 once the required streak is reached and 6 at the first MATERIAL_FINDINGS.
+    exits 0 once the required streak is reached, 6 at MATERIAL_FINDINGS, and 7 for a review without
+    fresh evidence or a valid verdict.
   * Roles rotate. Customer-strangers and reviewers are given MISSION.md and the production URL only;
     DECISIONS.md, HANDOFF.md and the implementation rationale are withheld by construction.
   * The fresh-review counter in ACCEPTANCE.json is maintained HERE, from the reviewer's verdict, so the
@@ -32,6 +33,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -211,9 +213,12 @@ happened in Studio, creates substantial confusion, leaves a major required capab
 security/reliability problem, or would cause a reasonable target customer not to trust the product.
 
 Write your report to docs/autonomy/evidence/<UTC stamp>/reviewer.md with reproducible evidence for
-every finding, append material findings to docs/autonomy/CUSTOMER_FINDINGS.md in its exact line format,
-then write .autonomy/result.json with "review_verdict": "PASS" or "MATERIAL_FINDINGS", "status":
-"continue", "next_phase": "critic" (or "implementer" if you found nothing), and your evidence paths.
+every finding and a screenshot of the live product in the same directory. Name the production URL,
+what you tried and what you actually observed. Append material findings to
+docs/autonomy/CUSTOMER_FINDINGS.md in its exact line format. Then write .autonomy/result.json with
+"review_verdict": "PASS" or "MATERIAL_FINDINGS", "status": "continue", "next_phase": "critic"
+(or "implementer" if you found nothing), and both evidence paths. A PASS with no new report and
+image, or while a critical/high finding remains open, cannot advance the review streak.
 Do not grade effort. Grade the product.
 """
 
@@ -281,11 +286,49 @@ def record_review(verdict) -> None:
         return
     if verdict == "PASS":
         acc["fresh_reviews_without_material_blocker"] = int(acc.get("fresh_reviews_without_material_blocker", 0)) + 1
-    elif verdict == "MATERIAL_FINDINGS":
+    elif verdict in ("MATERIAL_FINDINGS", "INVALID_REVIEW"):
         acc["fresh_reviews_without_material_blocker"] = 0
     else:
         return
     save_json(ACCEPTANCE, acc)
+
+
+def valid_pass_evidence(result: dict, started_at: str) -> tuple[bool, str]:
+    """A bare verdict cannot certify a customer review or reuse an old screenshot."""
+    if result.get("status") != "continue":
+        return False, "reviewer did not finish the customer review"
+    try:
+        findings = (DOCS / "CUSTOMER_FINDINGS.md").read_text(encoding="utf-8")
+    except OSError:
+        return False, "findings ledger unreadable"
+    if re.search(r"^- \[open\]\[(?:critical|high)\] F-\d+:", findings, re.M):
+        return False, "critical or high customer finding still open"
+
+    paths = result.get("evidence")
+    if not isinstance(paths, list) or not paths or not all(isinstance(p, str) for p in paths):
+        return False, "reviewer supplied no evidence paths"
+    root = (DOCS / "evidence").resolve()
+    started = datetime.fromisoformat(started_at).timestamp()
+    report = False
+    screenshot = False
+    for name in paths:
+        try:
+            file = (ROOT / name).resolve(strict=True)
+            if not file.is_relative_to(root) or not file.is_file() or file.stat().st_mtime < started - 1:
+                return False, "evidence is outside the review directory, absent, or stale"
+            if file.name == "reviewer.md":
+                body = file.read_text(encoding="utf-8")
+                report = PRODUCTION_URL in body and len(body.strip()) >= 100
+            elif file.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+                with file.open("rb") as image:
+                    header = image.read(12)
+                screenshot = screenshot or (header.startswith(b"\x89PNG\r\n\x1a\n")
+                    or header.startswith(b"\xff\xd8\xff") or (header[:4] == b"RIFF" and header[8:12] == b"WEBP"))
+        except (OSError, UnicodeError, ValueError):
+            return False, "review evidence cannot be read"
+    if not report or not screenshot:
+        return False, "fresh report naming production and a readable screenshot are required"
+    return True, ""
 
 
 def next_role(current: str, result: dict) -> str:
@@ -381,14 +424,28 @@ def main() -> int:
                 "status": "continue", "summary": "No result file produced.",
                 "next_action": "Recover state and continue.", "human_blocker": None,
             })
-            (SESSIONS / f"iteration-{iteration}-result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+            verdict = result.get("review_verdict")
             if role == "reviewer":
-                record_review(result.get("review_verdict"))
+                if verdict == "PASS":
+                    valid, why = valid_pass_evidence(result, state["last_session_started_at"])
+                    if not valid:
+                        log(f"iteration {iteration}: PASS rejected: {why}")
+                        verdict = "INVALID_REVIEW"
+                        result["review_verdict"] = verdict
+                        result["review_evidence_error"] = why
+                record_review(verdict)
+            (SESSIONS / f"iteration-{iteration}-result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
             if reviews_only:
                 save_json(STATE_PATH, state)
-                if result.get("review_verdict") == "MATERIAL_FINDINGS":
+                if verdict == "INVALID_REVIEW":
+                    log(f"iteration {iteration}: reviewer did not supply valid live evidence; reviews-only run ends")
+                    return 7
+                if verdict == "MATERIAL_FINDINGS":
                     log(f"iteration {iteration}: reviewer found material findings; reviews-only run ends")
                     return 6
+                if verdict != "PASS":
+                    log(f"iteration {iteration}: reviewer returned no valid verdict; reviews-only run ends")
+                    return 7
                 acc = load_json(ACCEPTANCE, {})
                 if int(acc.get("fresh_reviews_without_material_blocker", 0)) >= int(acc.get("required_fresh_reviews_without_material_blocker", 3)):
                     log("reviews-only: required fresh-review streak reached")

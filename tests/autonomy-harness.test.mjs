@@ -119,6 +119,13 @@ writeFileSync(root + '/calls', String(n + 1));
 writeFileSync(root + '/prompt-' + (n + 1) + '.txt', process.argv[2] ?? '');
 const step = script[n] ?? { exit: 0, result: { status: 'human_blocked', human_blocker: 'script ran out' } };
 if (step.sleep) await new Promise((r) => setTimeout(r, step.sleep));
+if (step.reviewEvidence && step.result) {
+  const folder = 'docs/autonomy/evidence/review-' + (n + 1);
+  mkdirSync(root + '/' + folder, { recursive: true });
+  writeFileSync(root + '/' + folder + '/reviewer.md', '# Fresh customer review\\n\\nProduction URL: https://apple.moshe-barami111.workers.dev\\n\\nI opened the product, tried a creation request, and recorded the screen.');
+  writeFileSync(root + '/' + folder + '/screen.png', Buffer.from('89504e470d0a1a0a00000000', 'hex'));
+  step.result.evidence = [folder + '/reviewer.md', folder + '/screen.png'];
+}
 if (step.result) { mkdirSync(root + '/.autonomy', { recursive: true }); writeFileSync(root + '/.autonomy/result.json', JSON.stringify(step.result)); }
 process.exit(step.exit ?? 0);
 `;
@@ -131,7 +138,7 @@ function sandbox(script, { acceptance } = {}) {
   writeFileSync(join(root, 'docs', 'autonomy', 'OWNER_PROMPT.md'), 'OWNER PROMPT BODY: FORGET OWNER PREFERENCES AS PRODUCT EVIDENCE\n');
   writeFileSync(join(root, 'docs', 'autonomy', 'MISSION.md'), 'MISSION BODY\n');
   writeFileSync(join(root, 'docs', 'autonomy', 'ACCEPTANCE.json'), JSON.stringify(acceptance ?? { schema: 1, fresh_reviews_without_material_blocker: 0, required_fresh_reviews_without_material_blocker: 3 }));
-  writeFileSync(join(root, 'docs', 'autonomy', 'CUSTOMER_FINDINGS.md'), '- [open][critical] F-001: still broken — evidence: x\n');
+  writeFileSync(join(root, 'docs', 'autonomy', 'CUSTOMER_FINDINGS.md'), '- [closed][critical] F-001: historical finding — evidence: x\n');
   writeFileSync(join(root, 'script.json'), JSON.stringify(script));
   writeFileSync(join(root, 'fake-agent.mjs'), FAKE_AGENT);
   return root;
@@ -218,7 +225,7 @@ test('strangers and reviewers get the mission only; implementers get the owner p
   const r = supervise(sandbox([
     { exit: 0, result: { status: 'continue', next_phase: 'critic' } },
     { exit: 0, result: { status: 'continue', next_phase: 'reviewer' } },
-    { exit: 0, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'implementer' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'implementer' } },
     { exit: 0, result: { status: 'human_blocked', human_blocker: 'end' } },
   ]));
   assert.equal(r.calls, 4);
@@ -234,10 +241,10 @@ test('strangers and reviewers get the mission only; implementers get the owner p
 test('the review streak is kept by the supervisor: PASS counts, MATERIAL_FINDINGS resets', () => {
   const root = sandbox([
     { exit: 0, result: { status: 'continue', next_phase: 'reviewer' } },
-    { exit: 0, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'reviewer' } },
-    { exit: 0, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'reviewer' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'reviewer' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'reviewer' } },
     { exit: 0, result: { status: 'continue', review_verdict: 'MATERIAL_FINDINGS', next_phase: 'reviewer' } },
-    { exit: 0, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'critic' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'critic' } },
     { exit: 0, result: { status: 'human_blocked', human_blocker: 'end' } },
   ]);
   const r = supervise(root);
@@ -262,10 +269,10 @@ test('the supervisor refuses to run while an interactive Product Owner holds the
 // run beside the interactive session, and the streak is still kept by the supervisor, never the session.
 test('--reviews-only runs only reviewers beside a live Product Owner and stops at the required streak', () => {
   const root = sandbox([
-    { exit: 0, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'critic' } },
-    { exit: 0, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'implementer' } },
-    { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
-    { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'critic' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS', next_phase: 'implementer' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS' } },
   ]);
   mkdirSync(join(root, '.autonomy', 'locks'), { recursive: true });
   writeFileSync(join(root, '.autonomy', 'locks', 'product-owner.lock'), `${process.pid}\n`);
@@ -286,7 +293,7 @@ test('--reviews-only runs only reviewers beside a live Product Owner and stops a
 
 test('--reviews-only stops at the first material finding with the streak reset', () => {
   const root = sandbox([
-    { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS' } },
     { exit: 0, result: { status: 'continue', review_verdict: 'MATERIAL_FINDINGS' } },
     { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
   ]);
@@ -298,6 +305,52 @@ test('--reviews-only stops at the first material finding with the streak reset',
   assert.equal(Number(readFileSync(join(root, 'calls'), 'utf8')), 2);
   const acc = JSON.parse(readFileSync(join(root, 'docs', 'autonomy', 'ACCEPTANCE.json'), 'utf8'));
   assert.equal(acc.fresh_reviews_without_material_blocker, 0);
+});
+
+test('--reviews-only refuses a bare PASS with no fresh customer evidence', () => {
+  const root = sandbox([
+    { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
+    { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
+    { exit: 0, result: { status: 'continue', review_verdict: 'PASS' } },
+  ]);
+  writeFileSync(join(root, 'docs', 'autonomy', 'CUSTOMER_FINDINGS.md'), '- [closed][critical] F-001: historical finding\n');
+  const r = spawnSync('python3', [SUPERVISOR, '--reviews-only'], {
+    env: { ...process.env, AUTONOMY_ROOT: root, AUTONOMY_AGENT_CMD: JSON.stringify(['node', join(root, 'fake-agent.mjs'), '{PROMPT}']), AUTONOMY_BACKOFF: '0' },
+    encoding: 'utf8', timeout: 60_000,
+  });
+  assert.equal(r.status, 7, 'a verdict alone is not a review of the live product');
+  assert.equal(Number(readFileSync(join(root, 'calls'), 'utf8')), 1, 'stop before a bare PASS can build a streak');
+  const acc = JSON.parse(readFileSync(join(root, 'docs', 'autonomy', 'ACCEPTANCE.json'), 'utf8'));
+  assert.equal(acc.fresh_reviews_without_material_blocker, 0);
+});
+
+test('--reviews-only refuses PASS while a high customer finding remains open', () => {
+  const root = sandbox([
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS' } },
+  ]);
+  writeFileSync(join(root, 'docs', 'autonomy', 'CUSTOMER_FINDINGS.md'), '- [open][high] F-059: Studio build still needs verification\n');
+  const r = spawnSync('python3', [SUPERVISOR, '--reviews-only'], {
+    env: { ...process.env, AUTONOMY_ROOT: root, AUTONOMY_AGENT_CMD: JSON.stringify(['node', join(root, 'fake-agent.mjs'), '{PROMPT}']), AUTONOMY_BACKOFF: '0' },
+    encoding: 'utf8', timeout: 60_000,
+  });
+  assert.equal(r.status, 7, 'known material work must not receive a clean-review streak');
+  assert.equal(Number(readFileSync(join(root, 'calls'), 'utf8')), 1);
+  const acc = JSON.parse(readFileSync(join(root, 'docs', 'autonomy', 'ACCEPTANCE.json'), 'utf8'));
+  assert.equal(acc.fresh_reviews_without_material_blocker, 0);
+});
+
+test('--reviews-only stops when a child exits cleanly without a review verdict', () => {
+  const root = sandbox([
+    { exit: 0, result: { status: 'continue' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS' } },
+  ]);
+  const r = spawnSync('python3', [SUPERVISOR, '--reviews-only'], {
+    env: { ...process.env, AUTONOMY_ROOT: root, AUTONOMY_AGENT_CMD: JSON.stringify(['node', join(root, 'fake-agent.mjs'), '{PROMPT}']), AUTONOMY_BACKOFF: '0' },
+    encoding: 'utf8', timeout: 60_000,
+  });
+  assert.equal(r.status, 7);
+  assert.equal(Number(readFileSync(join(root, 'calls'), 'utf8')), 1, 'a silent child must not consume more reviewer sessions');
 });
 
 // ------------------------------------------------------------ the acceptance gate
