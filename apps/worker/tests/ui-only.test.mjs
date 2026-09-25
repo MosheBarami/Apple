@@ -285,7 +285,7 @@ test('bad arguments are refused before anything is sent', () => {
   assert.ok(!('error' in U.compileComponent({ component: 'shop_window', genre: 'Tycoon' })), 'genre aliases map to a skin');
 });
 
-test('insert: checks the name, builds nothing when an image has no id, and otherwise creates, then lays out', async () => {
+test('insert: checks the name, renders an unavailable library image from its stored palette, then lays out', async () => {
   const resolverWith = (missing) => async (assets) => ({ ids: Object.fromEntries(assets.filter((a) => !missing.includes(a)).map((a) => [a, idOf(a)])), missing: missing.map((asset) => ({ asset, why: 'no key' })) });
   const reply = (op) => op.op === 'query_instances' ? { matches: [] } : op.op === 'create_instances' ? { created: ['game.StarterGui.ShopGui'] } : { verdict: 'pass', issues: [] };
 
@@ -305,14 +305,40 @@ test('insert: checks the name, builds nothing when an image has no id, and other
   const plan = U.compileComponent({ component: 'shop_window', genre: 'simulator' });
   const m = studio(reply);
   const x = await U.insertUiComponent.run((op) => m.ctx.execStudioOp(op).then((y) => y.data), { component: 'shop_window', genre: 'simulator' }, resolverWith([plan.assets[0]]));
-  assert.ok(x.error && x.missing.includes(plan.assets[0]));
-  assert.ok(!m.calls.some((c) => c.op === 'create_instances'), 'a component with a missing image is not built');
+  assert.equal(x.inserted, 'game.StarterGui.ShopGui.ShopWindow', JSON.stringify(x));
+  assert.ok(x.nativeImages.includes(plan.assets[0]));
+  const native = m.calls.find((c) => c.op === 'create_instances');
+  assert.ok(native, 'the catalogue recipe is built without an upload');
+  const all = [];
+  walk(native.items[0], (sp) => all.push(sp));
+  assert.ok(all.some((sp) => sp.props?.Image?.v === '' && sp.props?.BackgroundColor3), 'a missing library image is rendered using its measured colour');
+  assert.ok(all.some((sp) => sp.className === 'UICorner'), 'a missing rounded library image keeps its shape');
 
   const w = await U.insertUiComponent.run(async () => ({}), { component: 'billboard_tag', genre: 'obby' }, resolverWith([]));
   assert.ok(w.error && /parent/.test(w.error), 'a world component needs its part');
 });
 
-test('ids: the shared table first, then the user cache, then an upload, and a failed upload is reported, not guessed', async () => {
+test('every catalogue recipe has a keyless rendering accepted by the current Studio plugin', () => {
+  const measured = new Set(Object.values(LIB.images).map((m) => m.centre.map((x) => Math.round((x / 255) * 1000) / 1000).join(',')));
+  for (const { c, skin, colour } of CASES) {
+    const out = U.compileComponent({ component: c.id, genre: skin, colour, parent: 'game.Workspace.P' }, () => '');
+    assert.ok(!('error' in out), `${c.id}/${skin}/${colour}: ${out.error}`);
+    walk(out.item, (sp) => {
+      const where = `${c.id}/${skin}/${colour} ${sp.className}.${sp.name}`;
+      assert.ok(ALLOW.classes.has(sp.className), `${where}: class`);
+      for (const [key, val] of Object.entries(sp.props ?? {})) {
+        assert.ok(ALLOW.props.has(key), `${where}: property ${key}`);
+        if (key === 'Image') assert.equal(val.v, '', `${where}: no guessed asset id`);
+        if (key === 'BackgroundColor3') assert.ok(measured.has(val.v.join(',')), `${where}: colour comes from the catalogue`);
+      }
+      for (const [key, val] of Object.entries(sp.attributes ?? {})) {
+        if (key === 'OnImage' || key === 'OffImage') assert.equal(val.v, '', `${where}: no guessed state image`);
+      }
+    });
+  }
+});
+
+test('ids: shared and cached images work, while insert never starts a permanent upload', async () => {
   const kv = new Map([['ui-image:u1:kenney-ui-pack/red/button_round_depth_gloss.png', '222']]);
   const env = { KV: { get: async (k) => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); } } };
   const uploads = [];
@@ -324,9 +350,9 @@ test('ids: the shared table first, then the user cache, then an upload, and a fa
   const resolve = U.uiImageResolver(env, 'u1', deps);
   const out = await resolve(['kenney-ui-pack/red/button_round_depth_gloss.png', 'kenney-ui-pack/blue/button_rectangle_depth_gloss.png']);
   assert.equal(out.ids['kenney-ui-pack/red/button_round_depth_gloss.png'], '222');
-  assert.equal(out.ids['kenney-ui-pack/blue/button_rectangle_depth_gloss.png'], '333');
-  assert.equal(uploads.length, 1);
-  assert.equal(kv.get('ui-image:u1:kenney-ui-pack/blue/button_rectangle_depth_gloss.png'), '333', 'an upload is cached for the next insert');
+  assert.ok(out.missing.some((m) => m.asset === 'kenney-ui-pack/blue/button_rectangle_depth_gloss.png'));
+  assert.equal(uploads.length, 0);
+  assert.equal(kv.has('ui-image:u1:kenney-ui-pack/blue/button_rectangle_depth_gloss.png'), false);
   const none = await U.uiImageResolver({}, undefined, {})(['kenney-ui-pack/blue/button_rectangle_depth_gloss.png']);
   assert.equal(none.missing.length, 1);
 });
