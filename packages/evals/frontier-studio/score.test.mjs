@@ -27,7 +27,7 @@ const kind = (key) => key.startsWith('feature:') ? 'playtest' : key.startsWith('
 })[key];
 const complete = () => ({
   taskId: task.id,
-  run: { id: 'synthetic-run', buildSha: 'abc123', projectId: 'synthetic-place', startedAt: '2026-09-25T00:00:00Z', endedAt: '2026-09-25T01:00:00Z', mode: 'agent', autonomous: true, start: 'fresh-baseplate', stopReason: 'done', interventions: [] },
+  run: { id: 'synthetic-run', buildSha: 'abc123', projectId: 'synthetic-place', promptSha256: createHash('sha256').update(task.prompt).digest('hex'), baselineSha256: 'a'.repeat(64), startedAt: '2026-09-25T00:00:00Z', endedAt: '2026-09-25T01:00:00Z', finalized: true, mode: 'agent', autonomous: true, start: 'fresh-baseplate', stopReason: 'done', interventions: [] },
   proofs: Object.fromEntries(criteriaFor(task).map((key) => [key, { kind: kind(key), observer: 'independent-reviewer', runId: 'synthetic-run', artifact: key === 'run' ? 'trace.json' : 'fixture.txt', sha256: key === 'run' ? traceDigest : digest, passed: true, ...(key.startsWith('asset:') ? { asset: { source: 'creator-store', sourceRef: '123456789', rightsUrl: 'https://create.roblox.com/store/asset/123456789', robloxSpecific: true, rightsVerified: true, placed: true, instancePath: 'Workspace.SampleAsset', selectionReason: 'Fits the game role and style', placementReason: 'Placed at the player route entrance', scriptDisposition: 'no-scripts' } } : {}), ...(key.startsWith('visual-') ? { verdict: { fitForRoblox: true, amazing: true } } : {}) }])),
 });
 
@@ -75,8 +75,37 @@ test('an unfinished or human-directed run cannot pass', () => {
   bundle.run.interventions = ['manual-code-edit'];
   const result = gradeMission(task, bundle, root);
   assert.equal(result.status, 'unmeasured');
-  assert.ok(result.invalid.includes('stop-reason'));
   assert.ok(result.invalid.includes('interventions'));
+  assert.equal(result.failureReason, 'stop-reason:incomplete');
+});
+
+test('normal preview rejection is a permitted bounded choice, not a manual hint', () => {
+  const bundle = complete();
+  bundle.run.interventions = ['preview-rejection'];
+  assert.equal(gradeMission(task, bundle, root).status, 'passed');
+});
+
+test('a trace-proven terminal stop is a measured failure even without finished-game proofs', () => {
+  const bundle = complete();
+  bundle.run.stopReason = 'incomplete';
+  bundle.run.interventions = ['preview-rejection'];
+  bundle.proofs = { run: bundle.proofs.run };
+  bundle.proofs.run.passed = false;
+  const result = gradeMission(task, bundle, root);
+  assert.equal(result.status, 'failed');
+  assert.ok(result.failed.includes('run'));
+  assert.equal(result.failureReason, 'stop-reason:incomplete');
+
+  delete bundle.proofs.run;
+  assert.equal(gradeMission(task, bundle, root).status, 'unmeasured');
+});
+
+test('a paused preview segment is unmeasured until the mission is truly finalized', () => {
+  const bundle = complete();
+  bundle.run.stopReason = 'incomplete';
+  bundle.run.finalized = false;
+  bundle.proofs = { run: { ...bundle.proofs.run, passed: false } };
+  assert.equal(gradeMission(task, bundle, root).status, 'unmeasured');
 });
 
 test('a full-game pass requires recorded asset insertion, play check and visual inspection', () => {
@@ -135,4 +164,28 @@ test('a visually rejected game cannot pass even if its code and play loop pass',
   const result = gradeMission(task, bundle, root);
   assert.equal(result.status, 'failed');
   assert.ok(result.failed.includes('visual-world'));
+});
+
+test('a different prompt, missing baseline or impossible run interval cannot pass', () => {
+  for (const mutation of [
+    (b) => { b.run.promptSha256 = createHash('sha256').update('easier prompt').digest('hex'); },
+    (b) => { delete b.run.baselineSha256; },
+    (b) => { b.run.endedAt = '2026-09-24T23:00:00Z'; },
+  ]) {
+    const bundle = complete(); mutation(bundle);
+    assert.equal(gradeMission(task, bundle, root).status, 'unmeasured');
+  }
+});
+
+test('duplicate task submissions or reused Studio projects cannot count as independent attempts', () => {
+  const duplicate = gradeSuite([complete(), complete()], root);
+  assert.equal(duplicate.measured, 0);
+  assert.ok(duplicate.results[0].invalid.includes('duplicate-task'));
+
+  const other = complete();
+  other.taskId = TASKS[1].id;
+  const reused = gradeSuite([complete(), other], root);
+  assert.equal(reused.measured, 0);
+  assert.ok(reused.results[0].invalid.includes('reused-project'));
+  assert.ok(reused.results[0].invalid.includes('reused-run'));
 });

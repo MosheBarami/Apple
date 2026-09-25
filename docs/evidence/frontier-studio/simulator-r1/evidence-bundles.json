@@ -1,0 +1,32 @@
+[
+  {
+    "taskId": "simulator-r1",
+    "run": {
+      "id": "c1f03769-b999-45b9-9639-1a069398a39f",
+      "projectId": "c5d2f90d-3dc5-445a-ba18-ef811b5b714a",
+      "buildSha": "3c98a2b1316accb7067b798ed5dea39bd0002cea",
+      "promptSha256": "deb0be935615900f60896fe9cf1e24f4223cb116a968cd1107474a83bf2ab7e7",
+      "baselineSha256": "b75332cb6bf1b2c1ac8379fcdefe8b0f6196786ccbcbe73a8def4dd8c504161f",
+      "startedAt": "2026-09-25T14:10:13.474Z",
+      "endedAt": "2026-09-25T14:18:33.883Z",
+      "start": "fresh-baseplate",
+      "mode": "agent",
+      "autonomous": true,
+      "stopReason": "incomplete",
+      "interventions": [
+        "preview-rejection"
+      ],
+      "finalized": true
+    },
+    "proofs": {
+      "run": {
+        "kind": "run-trace",
+        "runId": "c1f03769-b999-45b9-9639-1a069398a39f",
+        "observer": "Codex external evaluator",
+        "artifact": "trace.json",
+        "sha256": "e0f5b8d10ed0d6a9fbc3de292b72a0a7d4571773c43491fb885e340cc4f34b12",
+        "passed": false
+      }
+    }
+  }
+]

@@ -47,12 +47,13 @@ function expectedKind(key) {
   return KIND[key];
 }
 
-function traceValid(root, proof, runId) {
+function traceValid(root, proof, runId, requireCompleteRoute = true) {
   const path = inside(root, proof?.artifact);
   if (!path) return false;
   try {
     const trace = JSON.parse(readFileSync(path, 'utf8'));
-    if (trace.runId !== runId || !Array.isArray(trace.tools)) return false;
+    if (trace.runId !== runId || !Array.isArray(trace.tools) || !trace.tools.length) return false;
+    if (!requireCompleteRoute) return true;
     const after = (position, ...names) => trace.tools.findIndex((x, i) => i > position && x.ok === true && names.includes(x.tool));
     const plan = after(-1, 'propose_plan');
     const find = after(plan, 'find_library_model', 'find_verified_asset');
@@ -83,13 +84,38 @@ export function gradeMission(task, bundle, root) {
   if (!task || bundle?.taskId !== task.id) invalid.push('task-id');
   const run = bundle?.run;
   if (!run?.id || !run?.buildSha || !run?.projectId || !run?.startedAt || !run?.endedAt) invalid.push('run-identity');
+  const expectedPromptHash = task && createHash('sha256').update(task.prompt).digest('hex');
+  if (run?.promptSha256 !== expectedPromptHash) invalid.push('prompt-hash');
+  if (!/^[a-f0-9]{64}$/.test(run?.baselineSha256 ?? '')) invalid.push('baseline-hash');
+  const started = Date.parse(run?.startedAt ?? '');
+  const ended = Date.parse(run?.endedAt ?? '');
+  if (!Number.isFinite(started) || !Number.isFinite(ended) || ended <= started) invalid.push('run-interval');
+  if (run?.finalized !== true) invalid.push('finalization');
   if (run?.mode !== 'agent' || run?.autonomous !== true || run?.start !== task?.start) invalid.push('run-settings');
-  if (run?.stopReason !== 'done') invalid.push('stop-reason');
-  if (!Array.isArray(run?.interventions) || run.interventions.some((x) => x !== 'preview-approval') || run.interventions.length > 3) invalid.push('interventions');
+  if (typeof run?.stopReason !== 'string' || !run.stopReason) invalid.push('stop-reason');
+  if (!Array.isArray(run?.interventions) || run.interventions.some((x) => !['preview-approval', 'preview-rejection'].includes(x)) || run.interventions.length > 3) invalid.push('interventions');
 
   const missing = [];
   const failed = [];
   const criteria = task ? criteriaFor(task) : [];
+  // A terminal failure is already conclusive: demand a real run-bound trace, but do not
+  // require Play, UI and asset proofs for a game the agent never finished building.
+  if (run?.stopReason && run.stopReason !== 'done') {
+    const p = bundle?.proofs?.run;
+    const observed = p?.kind === 'run-trace' && p.passed === false
+      && typeof p.observer === 'string' && p.observer.trim().length >= 3
+      && !/^(apple|model|agent|self)$/i.test(p.observer.trim())
+      && p.runId === run.id && artifactValid(root, p)
+      && traceValid(root, p, run.id, false);
+    return {
+      taskId: task?.id ?? bundle?.taskId ?? null,
+      status: invalid.length || !observed ? 'unmeasured' : 'failed',
+      criteria: criteria.length, passed: 0,
+      missing: observed ? criteria.filter((key) => key !== 'run') : criteria,
+      failed: observed ? ['run'] : [], invalid,
+      failureReason: `stop-reason:${run.stopReason}`,
+    };
+  }
   for (const key of criteria) {
     const p = bundle?.proofs?.[key];
     // A model's own claim is not a measurement. A reviewer name alone is also not proof.
@@ -111,8 +137,32 @@ export function gradeMission(task, bundle, root) {
 
 /** A headline rate is withheld until every fixed task has an independently observed result. */
 export function gradeSuite(bundles, root) {
+  const taskCounts = new Map();
+  const projectTasks = new Map();
+  const runTasks = new Map();
+  for (const bundle of bundles) {
+    taskCounts.set(bundle?.taskId, (taskCounts.get(bundle?.taskId) ?? 0) + 1);
+    if (bundle?.run?.id) {
+      const tasks = runTasks.get(bundle.run.id) ?? new Set();
+      tasks.add(bundle.taskId);
+      runTasks.set(bundle.run.id, tasks);
+    }
+    if (bundle?.run?.projectId) {
+      const tasks = projectTasks.get(bundle.run.projectId) ?? new Set();
+      tasks.add(bundle.taskId);
+      projectTasks.set(bundle.run.projectId, tasks);
+    }
+  }
   const byTask = new Map(bundles.map((b) => [b.taskId, b]));
-  const results = TASKS.map((t) => gradeMission(t, byTask.get(t.id), root));
+  const results = TASKS.map((t) => {
+    const bundle = byTask.get(t.id);
+    const result = gradeMission(t, bundle, root);
+    if ((taskCounts.get(t.id) ?? 0) > 1) result.invalid.push('duplicate-task');
+    if (bundle?.run?.projectId && (projectTasks.get(bundle.run.projectId)?.size ?? 0) > 1) result.invalid.push('reused-project');
+    if (bundle?.run?.id && (runTasks.get(bundle.run.id)?.size ?? 0) > 1) result.invalid.push('reused-run');
+    if (result.invalid.length) result.status = 'unmeasured';
+    return result;
+  });
   const measured = results.filter((r) => r.status !== 'unmeasured');
   const passed = results.filter((r) => r.status === 'passed');
   const allMeasured = measured.length === TASKS.length;

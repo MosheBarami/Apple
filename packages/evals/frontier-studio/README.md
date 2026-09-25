@@ -21,7 +21,9 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
    open that file in Studio and verify the active place before pairing. Do not clear a customer's
    existing place. The generator itself does not open or publish anything.
 2. Submit the fixed prompt once with Agent and Autonomous enabled. Allow at most three normal
-   asset/style preview approvals; a human code edit, hint or manual place repair invalidates the run.
+   asset/style preview choices (`preview-approval` or `preview-rejection`); a human code edit,
+   freeform hint or manual place repair invalidates the run. A preview choice may continue the
+   same mission in another assistant turn: retain every segment's messages and tool trace.
 3. Persist the worker's tool trace with run ID. It must show a successful `propose_plan`, then
    `find_library_model` or `find_verified_asset`, then insertion, then `play_check` or
    `play_check_ui` and `inspect_visually`. A refused or disconnected tool is not a success.
@@ -30,6 +32,13 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
    complex models and UI came from the approved Roblox library, while only simple geometry was
    built from parts. A generic 3D pack converted to Roblox is out of scope. Test scripted assets for behavior and safety; a
    thumbnail is not a working object.
+   Save separate before/after place files and run Lune 0.10.5 with
+   `lune run packages/evals/frontier-studio/inspect-place.luau <place> <report>`
+   on each. The inspector deserializes without executing scripts and counts all services, including
+   `ServerScriptService` and `StarterGui`; record pre-existing editor helpers separately from new
+   game content. On this host use the actual binary under
+   `~/.rokit/tool-storage/lune-org/lune/0.10.5/lune`, since the `~/.rokit/bin/lune` shim has
+   no project manifest. It is structural evidence, not proof that a script works.
 5. In Play mode, execute every feature from the task bank as a player. Probe money, persistence,
    multiplayer isolation and remote authority where applicable. Capture server/client errors and
    a phone-width UI view. Store the exact operations and observed outcomes, including failures.
@@ -38,7 +47,9 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
    completeness against the prompt, so blindness does not hide missing requested features.
 7. Grade the evidence with `node score.mjs evidence-bundles.json`. Every pass needs an independent
    examiner, a run-bound proof record and SHA-256-matched nonempty artifact. Missing evidence is
-   **unmeasured**, never a pass or a model failure. Any observed failed requirement fails the game.
+   **unmeasured**, never a pass. A trace-proven run that ends before completion is a measured
+   failure even though no finished-game Play or visual proof exists. Any observed failed
+   requirement fails the game.
 
 `score.mjs` checks the envelope and proof inventory. It does **not** understand a screenshot or
 execute a Studio probe. An independent reviewer must inspect the cited artifacts and attest to
@@ -57,7 +68,8 @@ directory. A minimal bundle has the shape below; every `criteriaFor(task)` key n
   "taskId": "farming-r1",
   "run": {
     "id": "real-run-id", "projectId": "isolated-project-id", "buildSha": "deployed-sha",
-    "startedAt": "ISO timestamp", "endedAt": "ISO timestamp", "start": "fresh-baseplate",
+    "promptSha256": "SHA-256 of the exact task prompt", "baselineSha256": "SHA-256 of the fresh place before the run",
+    "startedAt": "ISO timestamp", "endedAt": "ISO timestamp", "finalized": true, "start": "fresh-baseplate",
     "mode": "agent", "autonomous": true, "stopReason": "done", "interventions": []
   },
   "proofs": {
@@ -86,6 +98,11 @@ pass is **a pass on this benchmark version**, not by itself proof of universal R
 ability. Report the exact lane, build, bank version, sample count, confidence limits, observed
 failures, blind-review calibration and cost. Publish failed runs alongside passes. Refresh the
 bank with new customer failure types and reserve unseen tasks for a later holdout.
+The scorer rejects altered prompts, missing place hashes, impossible time intervals, duplicate
+task submissions and reuse of a project or run ID across independent attempts.
+An intermediate `incomplete` assistant turn waiting for a preview choice has `finalized: false`
+and remains unmeasured; a terminal stop after all permitted choices have been tried has
+`finalized: true`, a failed run proof and a measured failure.
 
 ## Current state
 
