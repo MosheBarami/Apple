@@ -1,0 +1,92 @@
+{
+ "measuredAt": "2026-09-25T00:04:59.534Z",
+ "what": "the apple-max LANE in agent mode as a customer reaches it, through the real gateway, scored by running the Luau",
+ "lanesAreTheSameModel": "@cf/zai-org/glm-5.3-flash",
+ "settings": {
+  "lane": "apple-max",
+  "productMode": "agent",
+  "gateway": "agent",
+  "modelId": "@cf/zai-org/glm-5.3-flash",
+  "effort": "high",
+  "effortIsAFloor": true,
+  "baseTokens": 4400,
+  "requestedTokens": 8800,
+  "gatewayCeiling": 6500,
+  "effectiveTokens": 6500,
+  "clampedByCeiling": true
+ },
+ "replicate": 10,
+ "sentMaxTokens": 6491,
+ "arm": {
+  "id": "house-rules-plus",
+  "what": "production's written code rules TODAY, verbatim from prompts.ts IDENTITY — the control plus the four rules the work queue named",
+  "system": "You write modern, idiomatic Luau and follow current Roblox best practices:\n- task.wait/task.spawn/task.defer (never the deprecated global wait/spawn), no Instance.new parent argument,\n  use CFrame math correctly, prefer attributes over Value objects, RemoteEvents in ReplicatedStorage,\n  server logic in ServerScriptService, client logic in StarterPlayerScripts/StarterGui.\n- Scripts communicate via ModuleScripts and Remote events; never trust the client on the server.\n- UI comes ONLY from the stored UI library: insert_ui_component(component, parent, props, position, colour, genre)\n  places each HUD piece, button and window. Never create ScreenGui/Frame/TextLabel/ImageLabel/UIStroke/UICorner\n  by hand or Instance.new them in a script; those calls are refused. Edit an inserted piece's Text, Position and\n  Visible freely, and have scripts find it by path (player.PlayerGui:WaitForChild(\"<name>\")).\n- Sounds and particle effects come ONLY from the stored library (D-FXLIB-1): insert_sound(query or assetId,\n  parent, looped, volume) adds a real Roblox audio Sound (find_sound searches; play_library_sound lets the user\n  hear one); insert_vfx(preset, target) adds a finished ParticleEmitter/Beam/Trail/Highlight effect (find_vfx\n  lists them). Never create Sound/ParticleEmitter/Beam/Trail/Fire/Smoke/Sparkles by hand or Instance.new them in\n  a script; those calls are refused. Scripts :Play() or :Clone() an inserted Sound, and fire a one-shot effect\n  with emitter:Emit(emitter:GetAttribute(\"AppleEmitCount\")).\n- Player-authored text that another player will see goes through TextService:FilterStringAsync\n  before it is stored, replicated or shown. Filtering is a platform requirement, not a style choice.\n- DataStore calls THROW. pcall is the floor, not the plan: retry a failed read or write a bounded\n  number of times with a pause between attempts, and treat a call that never succeeded as unsaved.\n- A value two servers can change at once — currency, inventory, a shared counter — is written with\n  UpdateAsync and a transform that reads the CURRENT value. A GetAsync/SetAsync pair silently loses\n  the other server's write.\n- A failed load is not an empty account. Never write a default over a key whose read failed; skip\n  saving that session instead.\n\nAnswer with ONE fenced luau code block and nothing else — no prose before or after it. Write the complete script that was asked for, ready to paste into Studio."
+ },
+ "provenance": {
+  "harness": "c11b3250404eabe8",
+  "scorer": "ff0314bdf550c111",
+  "tasks": "39ca7bdc66df58b0",
+  "controls": "1c86dac61456a844",
+  "settingsMirror": "890de7822a7060db"
+ },
+ "items": 1,
+ "attempted": 1,
+ "measured": 1,
+ "passed": 1,
+ "pct": 100,
+ "notMeasured": 0,
+ "excludedFromDenominator": 0,
+ "errors": [],
+ "outcomes": {
+  "checked": 1
+ },
+ "byAxis": {
+  "modern-api": {
+   "measured": 1,
+   "passed": 1,
+   "attempted": 1,
+   "checksPassed": 3,
+   "checksTotal": 3
+  }
+ },
+ "axes": [
+  "modern-api",
+  "server-authority",
+  "datastore-safety"
+ ],
+ "failedChecks": [],
+ "neurons": 22,
+ "neuronsPerItem": 22,
+ "rows": [
+  {
+   "id": "ui-slide-in",
+   "axis": "modern-api",
+   "outcome": "checked",
+   "ok": true,
+   "checks": [
+    {
+     "id": "no-deprecated-gui-tween",
+     "pass": true
+    },
+    {
+     "id": "tween-runs-on-click",
+     "pass": true
+    },
+    {
+     "id": "uses-library-ui",
+     "pass": true
+    }
+   ],
+   "failed": [],
+   "unresolved": 0,
+   "detail": null,
+   "probeError": null,
+   "unresolvedReads": [],
+   "chars": 973,
+   "ms": 9389,
+   "finishReason": "stop",
+   "neurons": 22,
+   "answer": "```luau\nlocal TweenService = game:GetService(\"TweenService\")\n\nlocal player = game:GetService(\"Players\").LocalPlayer\nlocal playerGui = player:WaitForChild(\"PlayerGui\")\nlocal shopGui = playerGui:WaitForChild(\"ShopGui\")\nlocal shopButton = shopGui:WaitForChild(\"ShopButton\")\nlocal shopFrame = shopGui:WaitForChild(\"Shop\")\n\nlocal open = false\nlocal tweening = false\n\nlocal function slideShop()\n\tif tweening then\n\t\treturn\n\tend\n\ttweening = true\n\topen = not open\n\n\tlocal goalPosition = open\n\t\tand UDim2.new(shopFrame.Position.X.Scale, shopFrame.Position.X.Offset, 0.5, shopFrame.Position.Y.Offset)\n\t\tor UDim2.new(shopFrame.Position.X.Scale, shopFrame.Position.X.Offset, 1.5, shopFrame.Position.Y.Offset)\n\n\tlocal tween = TweenService:Create(\n\t\tshopFrame,\n\t\tTweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),\n\t\t{ Position = goalPosition }\n\t)\n\ttween:Play()\n\ttween.Completed:Connect(function()\n\t\ttweening = false\n\tend)\nend\n\nshopButton.Activated:Connect(slideShop)\n```"
+  }
+ ]
+}

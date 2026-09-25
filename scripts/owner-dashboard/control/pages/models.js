@@ -2,7 +2,7 @@
 // the repository (GET /api/cc/models): the model registry with plan gating (packages/shared), every
 // LoRA run (config, dataset, adapters, training log), the before/after evals, the production and
 // frontier measurements, the RAG index and the skill cards. A fact no file records says "לא מתועד".
-import { html, num, pct } from '../ui.js';
+import { html, num } from '../ui.js';
 import { stat } from './kit.js';
 import { nd, or, day, stamp, path } from './repo-kit.js';
 
@@ -15,6 +15,23 @@ const REASON_HE = {
 };
 const demd = (s) => String(s || '').replace(/\*\*|`/g, '');
 const firstLine = (s) => String(s || '').split('\n')[0];
+
+// d.frontier from frontier.mjs: per lane, the production arm's figure per mode, judged by the current
+// benchmark files or labelled as older; the percentage is the bench's own and is printed as is.
+const LANE_HE = { 'apple-max': 'Apple MAX', apple: 'Apple' };
+const ARM_HE = { 'house-rules-plus': 'הכללים שלנו, כמו בייצור', 'house-rules': 'הכללים הישנים (לפני 21.9)', neutral: 'המודל לבד, בלי הנחיות' };
+const MARK = { met: ['chip-ok', 'עומד ביעד'], below: ['chip-bad', 'עוד לא'], old: ['chip-warn', 'עוד לא: נמדד בגרסה ישנה, צריך לשפוט מחדש'] };
+const judged = (g) => (g.current ? 'גרסת הבחינה הנוכחית' : 'גרסה ישנה של הבחינה');
+const facts = (g) => `${g.passed}/${g.measured} עברו · ${g.runs.length} הרצות · טווח ${g.min}%–${g.max}% · ${day(g.last)} · ${judged(g)}`;
+function frontierCard(f) {
+  const same = (f.same || []).find((s) => s.identical);
+  return html`<ol class="md-arms">${f.lanes.map((l, i) => html`<li style="--i:${i}">
+      <p><b>${LANE_HE[l.lane] || l.lane} <small class="faint">· היעד ${l.target >= 100 ? '100%' : `${l.target}% ומעלה`}</small></b>${l.headlines.length ? '' : html`<span class="faint">עוד אין הרצות</span>`}</p>
+      ${l.headlines.map((h) => html`<p><span>מצב ${h.mode} · ${ARM_HE[h.arm] || h.arm} <span class="chip chip-sm ${MARK[h.status][0]}">${MARK[h.status][1]}</span></span><bdi dir="ltr">${h.pct}%</bdi></p>
+        <span class="md-bar a"><i style="width:${h.pct}%"></i></span><p class="md-why" dir="auto">${facts(h)}</p>`)}</li>`)}</ol>
+    ${same ? html`<p class="md-why" dir="auto">במצב ${same.mode}, Apple MAX ו-Apple הם כרגע אותו מודל (<bdi dir="ltr">${String(same.model).split('/').pop()}</bdi>) שקיבל אותה בקשה, כך שההבדל ביניהם הוא בין דגימות של אותו מודל.</p>` : ''}
+    ${f.groups?.length ? html`<details class="md-d"><summary>כל המדידות (${num(f.groups.length)})</summary><ul>${f.groups.map((g) => html`<li dir="auto">${LANE_HE[g.lane] || g.lane} · ${g.mode} · ${ARM_HE[g.arm] || g.arm}: <bdi dir="ltr">${g.pct}%</bdi> · ${facts(g)}</li>`)}</ul></details>` : ''}`;
+}
 
 function registry(r) {
   if (!r?.models?.length) return html`<div class="card">${nd('packages/shared/src/models.ts לא נקרא')}</div>`;
@@ -119,9 +136,8 @@ export default {
           <dl class="md-head">${Object.entries(prod.headline || {}).map(([k, v]) => html`<div><dt>${{ freeLaneAgentPrompts1to24: 'מסלול חינם, בקשות 1–24', freeLaneAgentPrompts25to48: 'מסלול חינם, בקשות 25–48', maxSuperAgentPrompts25to48: 'MAX, בקשות 25–48', pairedLaneComparison: 'השוואה זוגית', seenVersusUnseen: 'מוכר מול חדש', failureMode: 'איך נכשל' }[k] || k}</dt><dd dir="auto">${v}</dd></div>`)}</dl>
           ${prod.caveats?.length ? html`<details class="md-d"><summary>${num(prod.caveats.length)} הסתייגויות</summary><ul>${prod.caveats.map((c) => html`<li dir="auto">${c}</li>`)}</ul></details>` : ''}
           <p class="md-src">${path(prod.file)}</p>` : nd()}</section>
-      <section class="card md-front"><h2>חוקי הבית מול המודל לבדו <small>אותן שאלות, שלוש הנחיות מערכת</small></h2>
-        ${d.frontier?.length ? html`<ol class="md-arms">${d.frontier.map((a, i) => html`<li style="--i:${i}"><p><b>${{ 'house-rules-plus': 'חוקי הבית + ארבעה חוקים חסרים', 'house-rules': 'חוקי הבית כפי שהם בייצור', neutral: 'בלי הנחיות Roblox' }[a.id] || a.id}</b><span>${pct(a.pct)}</span></p>
-          <span class="md-bar a"><i style="width:${(a.pct * 100).toFixed(1)}%"></i></span><p class="md-why" dir="auto">${a.passed}/${a.measured} עברו · ${num(a.runs)} ריצות · ${a.what}</p></li>`)}</ol>` : nd()}</section>
+      <section class="card md-front"><h2>כמה Apple קרוב ל-100% Frontier <small>הבחינה מריצה את הקוד · 100% = כל התשובות עוברות</small></h2>
+        ${d.frontier?.lanes ? frontierCard(d.frontier) : nd()}</section>
     </div>
 
     <div class="g g2 md-two">

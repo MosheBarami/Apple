@@ -178,6 +178,8 @@
   .hbar.w i { background: linear-gradient(270deg, #f5896c, #fcd34d); }
   .hbar.r i { background: linear-gradient(270deg, #ef4444, #fb7185); }
   .hbar.f i { background: #2a3452; }
+  .hbar.tgt { position: relative; }
+  .hbar .tg { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--text); opacity: .75; }
   .brow { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) auto; gap: 12px; align-items: center; padding: 7px 0; font-size: 14px; }
   .brow .v { font: 600 13px var(--mono); min-width: 76px; text-align: end; }
   .para { color: var(--dim); font-size: 14px; line-height: 1.6; margin-bottom: 14px; }
@@ -579,7 +581,9 @@ function ring(k, f1, f2, grad, center, small) {
 const BLURB_HE = { 'Apple': 'מהיר וזול, לשינויים קטנים', 'Apple MAX': 'הבנאי המלא, למשחקים שלמים והרבה קבצים', 'Gemini 3.8 Flash': 'המודל המהיר של Google, זוכר פרויקטים גדולים מאוד', 'GPT-5.6': 'מודל הדגל של OpenAI, לבניות הכי קשות', 'GPT-5.6 Luna': 'גרסה חסכונית של GPT-5.6' };
 const STATUS_HE = { done: 'הושלם', partial: 'חלקית', progress: 'בעבודה עכשיו', blocked: 'מחכה', todo: 'עוד לא התחיל' };
 const SEV_HE = { critical: 'קריטי', high: 'חמור', medium: 'בינוני', low: 'קל' };
-const ARM_HE = { neutral: 'המודל לבד, בלי הדרכה', 'house-rules': 'עם הכללים שלנו (מה שבאוויר היום)', 'house-rules-plus': 'עם 4 כללים נוספים (ניסוי)' };
+const ARM_HE = { neutral: 'המודל לבד, בלי הדרכה', 'house-rules': 'הכללים הישנים שלנו (לפני 21.9)', 'house-rules-plus': 'הכללים שלנו, כמו בייצור' };
+const LANE_HE = { 'apple-max': 'Apple MAX', apple: 'Apple' };
+const MODE_HE = (m) => m ? m[0].toUpperCase() + m.slice(1) : '—';
 const AXIS_HE = { 'modern-api': 'שימוש ב-API העדכני של רובלוקס', 'server-authority': 'השרת מחליט, לא השחקן (נגד רמאות)', 'datastore-safety': 'שמירת נתונים בלי לאבד התקדמות' };
 const DOMAIN_HE = { ui: 'ממשק ומסכים', input: 'שליטה וקלט', client_server: 'לקוח ושרת', data: 'שמירת נתונים', gameplay: 'משחקיות', worldbuilding: 'בניית עולם', performance: 'ביצועים', security: 'אבטחה', genre_pattern: "דפוסים לפי ז'אנר" };
 const KIT_HE = { horror: 'אימה', obby: 'אובי', tycoon: 'טייקון', simulator: 'סימולטור', racing: 'מרוצים', roleplay: 'משחק תפקידים', tower_defense: 'הגנת מגדלים', fps_arena: 'יריות', anime_battle: 'קרבות אנימה', survival: 'הישרדות', adventure: 'הרפתקאות' };
@@ -629,16 +633,17 @@ function renderProject() {
 
 function renderRings() {
   const a = P.acceptance, fr = P.training?.frontier, vs = P.vision?.items || [], g = P.gauntlet;
-  const prodArm = fr?.arms?.find((x) => x.id === 'house-rules') || fr?.best;
-  const best = fr?.best, neutral = fr?.arms?.find((x) => x.id === 'neutral');
+  const hl = (id) => fr?.lanes?.find((l) => l.lane === id)?.headlines?.[0];
+  const mx = hl('apple-max'), ap = hl('apple');
+  const frSub = (h, id) => `<span style="white-space:nowrap">${LANE_HE[id]} ${h ? `<span class="ltr">${h.pct}%</span>${h.current ? '' : ' (גרסה ישנה)'}` : 'עוד אין הרצות'}</span>`;
   const n = (st) => vs.filter((i) => i.status === st).length;
   const done = n('done'), moving = n('partial') + n('progress'), waiting = n('blocked');
   const rounds = g?.rounds?.length || 0;
   const cards = [
     { tab: 'hundred', title: 'המוצר מוכן ל-100%', html: ring('r-acc', a ? a.done / a.total : 0, null, 'gA', a ? pctTxt(a.done / a.total) : '—', 'מוכן'),
       sub: a ? `${a.done} מתוך ${a.total} התנאים מתקיימים` : NM },
-    { tab: 'model', title: 'הקוד של Apple מול ה-Frontier', html: ring('r-fr', prodArm?.pct, best?.pct, 'gG', prodArm ? pctTxt(prodArm.pct) : '—', 'היום'),
-      sub: prodArm ? `בניסוי ${pctTxt(best?.pct)} · המודל לבד ${pctTxt(neutral?.pct)}` : NM },
+    { tab: 'model', title: 'Apple MAX ו-Apple מול 100% Frontier', html: ring('r-fr', mx ? mx.pct / 100 : 0, ap ? ap.pct / 100 : null, 'gG', mx ? `${mx.pct}%` : '—', 'Apple MAX'),
+      sub: fr?.lanes ? `${frSub(mx, 'apple-max')} · ${frSub(ap, 'apple')}` : NM },
     { tab: 'hundred', title: 'החזון שלך', html: ring('r-vis', vs.length ? done / vs.length : 0, vs.length ? (done + moving) / vs.length : 0, 'gV', `${done}/${vs.length}`, 'הושלמו'),
       sub: `${moving} בעבודה · ${waiting} מחכים למישהו אחר` },
     { tab: 'changes', title: 'מבחן המראה מול המשחק האמיתי', html: ring('r-g', rounds ? (g.passes || 0) / rounds : 0, null, 'gW', `${g?.passes ?? 0}/${rounds}`, 'סבבים עברו'),
@@ -707,19 +712,54 @@ function renderPlans() {
   }).join('');
 }
 
+// P.training.frontier comes from frontier.mjs: per lane, the production arm's figure per mode, and
+// every other measurement as its own row. The percentage is the bench's own (tally() in
+// score-roblox-frontier.mjs), printed as the bench prints it, never recomputed here.
 function renderFrontier() {
   const fr = P.training?.frontier;
-  if (!fr?.arms?.length) { $('#frontier').innerHTML = NM; return; }
-  const axes = Object.keys(fr.arms[0].axes || {});
-  const cls = { neutral: 'f', 'house-rules': '', 'house-rules-plus': 'g' };
-  const when = Math.max(...fr.arms.map((a) => a.last || 0));
-  $('#frontier').innerHTML = `<div class="para"><b>Frontier</b> = מה שהמודלים הכי טובים בעולם כותבים לרובלוקס. הבחינה מריצה <b>${fr.arms[0].measured / Math.max(1, fr.arms[0].runs)}</b> בדיקות קוד בשלושה תחומים, כמה פעמים לכל מצב. <b>100%</b> = כל הבדיקות עוברות בכל פעם.</div>
-    ${fr.arms.map((a) => `<div class="brow"><span>${esc(ARM_HE[a.id] || a.id)}</span>${bar('fr-' + a.id, a.pct, cls[a.id] ?? '')}<span class="v">${pctTxt(a.pct)} <span class="faint">(${a.passed}/${a.measured})</span></span></div>`).join('')}
-    <div class="grp" style="margin-top:18px">לפי תחום</div>
+  if (!fr?.lanes) { $('#frontier').innerHTML = NM; return; }
+  const judge = (g) => g.current ? chip('st-done', 'גרסת הבחינה הנוכחית') : chip('st-todo', 'נמדד בגרסה ישנה של הבחינה');
+  const tgt = (t) => t >= 100 ? '100%' : `${t}% ומעלה`;
+  const MARK = { met: ['st-done', 'עומד ביעד'], below: ['st-blocked', 'עוד לא'], old: ['st-todo', 'עוד לא'] };
+  const why = (h, t) => h.status === 'met' ? `${h.pct}% עומד ביעד ${tgt(t)}.`
+    : h.status === 'below' ? (t >= 100 ? `${h.measured - h.passed} מתוך ${h.measured} התשובות עוד נכשלות, ו-100% פירושו שכולן עוברות.` : `${h.pct}% מתחת ל-${t}%.`)
+    : 'המספר נמדד בגרסה ישנה של הבחינה, ולכן לא נספר מול היעד. צריך לשפוט את ההרצות מחדש או להריץ שוב.';
+  const spread = (g) => g.min === g.max ? `<span class="ltr">${g.min}%</span> בכל הרצה` : `טווח <span class="ltr">${g.min}%–${g.max}%</span>`;
+  const facts = (g) => `${g.runs.length} ${g.runs.length === 1 ? 'הרצה' : 'הרצות'} · ${spread(g)} · הרצה אחרונה ${g.last ? heDay(g.last) : '—'}`
+    + (g.asked > g.measured ? ` · נשפטו ${g.measured} מתוך ${g.asked} תשובות (שגיאת ריצה לא נספרת)` : '')
+    + (g.rescoredAt ? ` · נשפט מחדש ${heDay(g.rescoredAt)}` : '');
+  const lane = (l) => `<div style="padding:12px 0;border-top:1px solid var(--line)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px"><b style="font-size:15px">${LANE_HE[l.lane] || esc(l.lane)} <span class="faint" style="font-weight:400;font-size:13px">· היעד: ${tgt(l.target)}</span></b>
+        ${l.headlines.length ? '' : chip('st-todo', 'עוד לא')}</div>
+      ${l.headlines.length ? l.headlines.map((h) => { const [c, t] = MARK[h.status];
+        return `<div class="brow"><span>מצב ${esc(MODE_HE(h.mode))} · ${esc(ARM_HE[h.arm] || h.arm)}</span>
+          <span class="hbar tgt ${h.status === 'met' ? 'g' : h.status === 'old' ? 'f' : ''}"><i data-k="fr-${l.lane}-${h.mode}" data-w="${h.pct.toFixed(2)}"></i>${l.target < 100 ? `<b class="tg" style="inset-inline-start:calc(${l.target}% - 1px)"></b>` : ''}</span>
+          <span class="v">${h.pct}% <span class="faint">(${h.passed}/${h.measured})</span></span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0 4px">${chip(c, t)}${judge(h)}</div>
+          <div class="faint" style="font-size:12.5px">${why(h, l.target)}<br>${facts(h)}</div>`; }).join('')
+        : '<div class="faint" style="font-size:13px">עוד אין הרצות</div>'}</div>`;
+  const model = (m) => `<span class="ltr">${esc(String(m || '—').split('/').pop())}</span>`;
+  const DIFF_HE = { gateway: 'שם הערוץ בשער', model: 'המודל', system: 'נוסח ההנחיות למודל', maxTokens: 'תקציב האורך שהתבקש', tasks: 'גרסת שאלות הבחינה' };
+  const pair = (mode) => fr.lanes.map((l) => l.headlines.find((h) => h.mode === mode));
+  const same = (s) => { const [m, a] = pair(s.mode);
+    const bust = s.sent && s.sent[0] !== s.sent[1] ? ` ההבדל היחיד בגוף הבקשה: כדי לעקוף את המטמון, כל חזרה של הבחינה מבקשת כמה טוקנים פחות (<span class="ltr">${s.sent[0]}–${s.sent[1]}</span>).` : '';
+    return s.identical ? `<div class="para" style="margin:12px 0 0">במצב ${esc(MODE_HE(s.mode))}, <b>Apple MAX ו-Apple הם כרגע אותו מודל</b> (${model(s.model)}) שקיבל אותה בקשה: אותן הנחיות, אותן שאלות, אותו תקציב אורך. לכן ההבדל בין <span class="ltr">${m.pct}%</span> ל-<span class="ltr">${a.pct}%</span> הוא בין דגימות של אותו מודל, לא בין שני מודלים.${bust}</div>`
+      : `<div class="para" style="margin:12px 0 0">במצב ${esc(MODE_HE(s.mode))}, ${s.model ? `שני המסלולים הגיעו לאותו מודל (${model(s.model)}), אבל` : `Apple MAX הוא ${model(s.models['apple-max'])} ו-Apple הוא ${model(s.models.apple)}, ו`}הבקשות לא היו זהות: ${s.differs.map((k) => DIFF_HE[k] || k).join(', ')}.</div>`; };
+  const heads = fr.lanes.flatMap((l) => l.headlines.map((h) => ({ ...h, name: `${LANE_HE[l.lane]} · ${MODE_HE(h.mode)}` })));
+  const axes = [...new Set(heads.flatMap((h) => Object.keys(h.axes || {})))];
+  $('#frontier').innerHTML = `<div class="para"><b>מה האחוז אומר:</b> הבחינה נותנת למודל משימות קוד של רובלוקס, <b>מריצה</b> את הקוד שהוא כותב ובודקת אותו. האחוז = כמה מהתשובות עברו את כל הבדיקות. <b>100%</b> = כל התשובות עוברות, וזה אפשרי: תשובות נכונות שנכתבו ביד מקבלות 100%. עוד לא הורץ על הבחינה הזו מודל Frontier חיצוני, כך שזה ציון מוחלט ולא השוואה למודל אחר.</div>
+    ${fr.lanes.map(lane).join('')}
+    ${(fr.same || []).map(same).join('')}
+    ${axes.length ? `<div class="grp" style="margin-top:18px">לפי תחום</div>
     ${axes.map((ax) => `<div style="padding:8px 0;border-top:1px solid var(--line)"><div style="font-size:14px;margin-bottom:6px">${esc(AXIS_HE[ax] || ax)}</div>
-      ${fr.arms.map((a) => { const v = a.axes[ax]; const f = v?.measured ? v.passed / v.measured : 0;
-        return `<div class="brow" style="padding:3px 0;font-size:12.5px"><span class="faint">${esc(ARM_HE[a.id] || a.id)}</span>${bar(`fr-${a.id}-${ax}`, f, 'thin ' + (cls[a.id] ?? ''))}<span class="v" style="font-size:12px">${pctTxt(f)}</span></div>`; }).join('')}</div>`).join('')}
-    <div class="faint" style="font-size:12px;margin-top:10px">נמדד ${when ? heDay(when) : '—'}</div>`;
+      ${heads.map((h) => { const v = h.axes[ax]; const f = v?.measured ? v.passed / v.measured : null;
+        return `<div class="brow" style="padding:3px 0;font-size:12.5px"><span class="faint">${esc(h.name)}${h.current ? '' : ' (ישן)'}</span>${bar(`fr-${h.lane}-${h.mode}-${ax}`, f ?? 0, 'thin ' + (h.current ? 'g' : 'f'))}<span class="v" style="font-size:12px">${f == null ? '—' : `${v.passed}/${v.measured}`}</span></div>`; }).join('')}</div>`).join('')}` : ''}
+    ${fr.groups?.length ? `<div class="grp" style="margin-top:18px">כל המדידות</div>
+    <table><thead><tr><th>מה נמדד</th><th class="r">תוצאה</th><th>הרצות</th><th>גרסת הבחינה</th></tr></thead><tbody>
+      ${fr.groups.map((g) => `<tr><td>${LANE_HE[g.lane] || esc(g.lane)} · ${esc(MODE_HE(g.mode))}<div class="faint" style="font-size:12px">${esc(ARM_HE[g.arm] || g.arm)}</div></td>
+        <td class="r"><span class="ltr">${g.pct}%</span><div class="faint ltr" style="font-size:12px">${g.passed}/${g.measured}</div></td>
+        <td style="font-size:12.5px">${g.runs.length} · ${spread(g)}<div class="faint" style="font-size:12px">${g.last ? heDay(g.last) : '—'}</div></td>
+        <td>${judge(g)}</td></tr>`).join('')}</tbody></table>` : ''}`;
 }
 
 function renderEvals() {

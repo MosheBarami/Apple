@@ -121,6 +121,8 @@ test('models: registry with plan gating, every LoRA run, evals and skills', asyn
   assert.ok(d.evals.length > 0 && d.evals.some((e) => e.tracks.some((t) => t.adapter.n > 0)));
   assert.ok(d.rag.chunks > 0);
   assert.ok(d.skills.cards.length > 0);
+  // The frontier card is per product lane (frontier.mjs), not one pool of every lane's runs.
+  assert.deepEqual(d.frontier.lanes.map((l) => l.lane), ['apple-max', 'apple']);
 });
 
 test('design-history: design commits since Golem, dated screenshots, decisions', { timeout: 120000 }, async () => {

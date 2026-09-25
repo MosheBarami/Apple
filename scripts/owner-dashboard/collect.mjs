@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
+import { frontierOf } from './frontier.mjs';
 
 export const MEDIA_ROOTS = {
   gauntlet: 'docs/gauntlet/visual',
@@ -379,28 +380,6 @@ async function datasetsOf(repo) {
     { id: 'research', name: 'מאגר המחקר', what: 'קוד, דוגמאות אימון וידע מ-6 מקורות', rows: null, parts: { code: await sumDir(`${R}/code_candidates`), sft: await sumDir(`${R}/sft_candidates`), knowledge: await lines(D(`${R}/../release/knowledge/references.jsonl`)) }, source: 'GitHub, תיעוד, Hugging Face', usedIn: 'עוד לא (מחכה לאישור רישיונות)' },
     { id: 'hf', name: 'מאגרים מ-Hugging Face', what: 'מאגרים ציבוריים שנבדקו לרישיון ולאיכות', rows: Array.isArray(hf?.admitted) ? hf.admitted.length : null, unit: 'אושרו', extra: Array.isArray(hf?.rejected) ? `${hf.rejected.length} נדחו` : null, source: 'Hugging Face', usedIn: 'מבחנים' },
   ];
-}
-
-function frontierOf(repo) {
-  const dir = path.join(repo, 'packages/training/runs');
-  let fl = [];
-  try { fl = fs.readdirSync(dir).filter((n) => /^roblox-frontier-.*\.json$/.test(n) && !/probe/.test(n)); } catch { return null; }
-  const arms = new Map();
-  for (const n of fl) {
-    const j = readJson(path.join(dir, n));
-    if (!j || typeof j.passed !== 'number') continue;
-    const id = j.arm?.id || 'unknown';
-    const a = arms.get(id) || { id, what: j.arm?.what ?? null, runs: 0, passed: 0, measured: 0, axes: {}, first: null, last: null };
-    a.runs++; a.passed += j.passed; a.measured += j.measured;
-    const t = Date.parse(j.measuredAt); if (t) { a.first = Math.min(a.first ?? t, t); a.last = Math.max(a.last ?? t, t); }
-    for (const [ax, v] of Object.entries(j.byAxis || {})) {
-      const e = (a.axes[ax] ||= { passed: 0, measured: 0 });
-      e.passed += v.passed; e.measured += v.measured;
-    }
-    arms.set(id, a);
-  }
-  const list = [...arms.values()].map((a) => ({ ...a, pct: a.measured ? a.passed / a.measured : null })).sort((x, y) => (y.pct ?? 0) - (x.pct ?? 0));
-  return { arms: list, best: list[0] ?? null };
 }
 
 function evalsOf(repo) {

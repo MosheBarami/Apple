@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { REPO, cached } from '../http.mjs';
+import { frontierOf } from '../../frontier.mjs';
 
 const R = (...p) => path.join(REPO, ...p);
 const T = (...p) => R('packages/training', ...p);
@@ -110,19 +111,6 @@ function production() {
     headline: j.headline ?? null, caveats: Array.isArray(j.caveats) ? j.caveats : [], runs: Array.isArray(j.runs) ? j.runs.length : null };
 }
 
-// roblox-frontier-*.json: each arm's pass rate across its runs.
-function frontier() {
-  const arms = new Map();
-  for (const n of ls(T('runs')).filter((f) => /^roblox-frontier-.*\.json$/.test(f) && !/probe/.test(f))) {
-    const j = readJson(T('runs', n)); if (!j || typeof j.passed !== 'number') continue;
-    const id = j.arm?.id || n.replace(/^roblox-frontier-|\.json$/g, '');
-    const a = arms.get(id) || { id, what: j.arm?.what ?? null, runs: 0, passed: 0, measured: 0, last: null };
-    a.runs++; a.passed += j.passed; a.measured += j.measured || 0; if (j.measuredAt && (!a.last || j.measuredAt > a.last)) a.last = j.measuredAt;
-    arms.set(id, a);
-  }
-  return [...arms.values()].map((a) => ({ ...a, pct: a.measured ? a.passed / a.measured : null })).sort((x, y) => (y.pct ?? 0) - (x.pct ?? 0));
-}
-
 function rag() {
   const C = (p) => R('packages/corpus/data', p);
   const kinds = {}; let chunks = 0; const docs = new Set();
@@ -171,6 +159,6 @@ function modelDocs() {
 export async function models() {
   return cached('repo:models', async () => {
     const [reg] = await Promise.all([registry().catch(() => null)]);
-    return { registry: reg, lora: loraRuns(), evals: scoredEvals(), production: production(), frontier: frontier(), rag: rag(), skills: skillCards(), docs: modelDocs() };
+    return { registry: reg, lora: loraRuns(), evals: scoredEvals(), production: production(), frontier: frontierOf(REPO), rag: rag(), skills: skillCards(), docs: modelDocs() };
   }, 60000);
 }
