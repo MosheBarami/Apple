@@ -13,8 +13,8 @@
  "production_error_reviewed": true,
  "fresh_reviews_without_material_blocker": 0,
  "required_fresh_reviews_without_material_blocker": 3,
- "open_critical_findings": 2,
- "open_high_findings": 10,
+ "open_critical_findings": 0,
+ "open_high_findings": 3,
  "candidate_complete": false,
  "missions": {
   "gameplay_loop_from_baseplate": true,
@@ -83,5 +83,6 @@
   ]
  },
  "_notes": "Every true flag and every true mission must have at least one existing path under evidence[<key>]; scripts/autonomy-review-gate.py refuses a true without evidence. fresh_reviews_without_material_blocker counts CONSECUTIVE fresh-context reviews that returned PASS; any MATERIAL_FINDINGS resets it to 0. open_*_findings are counted from CUSTOMER_FINDINGS.md open items, not typed by hand.",
- "_status_2026_09_23": "NOT candidate-complete. Open: 2 critical (F-020, F-034 — fixed in the local plugin build, reach customers only after the owner publishes it to the Creator Store), 10 high (web F-002/F-003 await the web deploy; cost/wander F-019/F-023/F-030/F-033/F-036; model quality F-025/F-028/F-029). Missions not passed: gameplay loop and debug (the coin game still cannot score), visually ambitious, scripts/networking/UI, playtest-inspect-repair (playtest works, repair did not). Deterministic gates: CI cannot run (GitHub billing); local gate suite pending the web lane."
+ "_status_2026_09_23": "NOT candidate-complete. Open: 2 critical (F-020, F-034 — fixed in the local plugin build, reach customers only after the owner publishes it to the Creator Store), 10 high (web F-002/F-003 await the web deploy; cost/wander F-019/F-023/F-030/F-033/F-036; model quality F-025/F-028/F-029). Missions not passed: gameplay loop and debug (the coin game still cannot score), visually ambitious, scripts/networking/UI, playtest-inspect-repair (playtest works, repair did not). Deterministic gates: CI cannot run (GitHub billing); local gate suite pending the web lane.",
+ "_status_2026_09_25": "NOT candidate-complete. The findings ledger has 0 open critical and 3 open high findings (F-059, F-064, F-069). Fresh independent reviews: 0 of 3. The live Studio round 8 and public Creator Store distribution remain unverified; the plugin details endpoint returned 404 while two listed controls returned 200. The local LoRA v22 paired code evaluation was 24/38 versus v5 18/38 in the same run, but this is neither the served model nor a full Roblox game or frontier proof. Do not mark complete until the acceptance gate passes on fresh evidence."
 }
