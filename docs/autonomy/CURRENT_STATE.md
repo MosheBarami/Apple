@@ -1,5 +1,7 @@
 # CURRENT STATE
 
+2026-09-25 07:01 UTC update: a new full Apple MAX Agent code run (rep16) answered all 16 items using 444 Workers AI neurons from the free allowance. One initial miss was a local UDim2 arithmetic gap. A red-first saved-answer regression and a component arithmetic test now pass, along with all 88 frontier controls. Rescoring six saved full runs changed only rep16 UI: 14/16 to 15/16; the new Apple MAX pool is 76/80 (95.0%) across five runs, while Apple remains 15/16 (93.8%). The dashboard live API reports both groups current and the Agent requests identical. Rep16 still fails its first-save task for a new player. v24 CPU training is alive past iteration 130/400; no held-out result yet. Full Studio and public plugin verification remain blocked, so acceptance is not met. Evidence: `docs/training/frontier-udim2-rep16-2026-09-25.md`.
+
 2026-09-25 06:46 UTC update: the private Hugging Face model card was corrected
 after a red-first test found that it listed v11/v20 even though both evaluations
 were marked invalid. The 1,737-byte replacement was uploaded and downloaded back

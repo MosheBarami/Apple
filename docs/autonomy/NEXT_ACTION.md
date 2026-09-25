@@ -1,5 +1,7 @@
 # NEXT ACTION
 
+2026-09-25 07:01 UTC: a new full Apple MAX Agent code run (rep16) answered 16/16 items at a cost of 444 free-allowance Workers AI neurons. It initially scored 14/16. The UI miss was a harness gap: Roblox supports UDim2 subtraction, but the local table shim did not. A saved-answer test failed before the arithmetic fix and passed after it; the full frontier suite passed 88/88. Scratch rescoring of five Apple MAX runs and one Apple run changed only that UI verdict. The dashboard now reads Apple MAX 76/80 (95.0%, five runs) and Apple 15/16 (93.8%, one run) with a current judge and identical Agent model requests. The remaining rep16 first-save failure is real. v24 CPU training continued past iteration 130/400. Evidence: `docs/training/frontier-udim2-rep16-2026-09-25.md`. The full Studio product is not certified.
+
 2026-09-25 06:46 UTC: a byte-identical scratch Studio place acquired a lock
 file, but the available computer controller could capture only the unrelated
 Lemonade floating window, not an editable viewport. Do not infer a round-8

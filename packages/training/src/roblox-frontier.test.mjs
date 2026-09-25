@@ -22,7 +22,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FRONTIER_ITEMS, ALL_CHECK_IDS, AXES, ARMS, UI_RULE_BEFORE, UI_RULE_D_UIONLY_1 } from './roblox-frontier-tasks.mjs';
 import { CONTROLS } from './roblox-frontier-controls.mjs';
-import { scoreFrontierItem, tally } from './score-roblox-frontier.mjs';
+import { scoreFrontierItem, tally, runUnderHarness } from './score-roblox-frontier.mjs';
 import { PRODUCT_MODES, resolveMode, resolveSettings } from './production-settings.mjs';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -70,6 +70,31 @@ test('the preinserted Shop UI item rejects a script that constructs another Fram
   assert.equal(result.outcome, 'checked', result.detail ?? 'the candidate must run');
   assert.equal(result.checks.find((check) => check.id === 'uses-library-ui')?.pass, false,
     'creating UI in the script must not satisfy a library-only UI task');
+});
+
+test('a saved Shop UI answer may subtract UDim2 values before tweening', () => {
+  const run = JSON.parse(readFileSync(resolve(HERE, '../runs/roblox-frontier-apple-max-agent-house-rules-plus-library-ui-20260925-rep16.json'), 'utf8'));
+  const answer = run.rows.find((row) => row.id === 'ui-slide-in')?.answer;
+  assert.ok(answer, 'the recorded model answer is required');
+  const item = FRONTIER_ITEMS.find((candidate) => candidate.id === 'ui-slide-in');
+  const result = scoreFrontierItem(item, answer);
+  assert.equal(result.outcome, 'checked', result.detail ?? 'the answer must run');
+  assert.equal(result.checks.find((check) => check.id === 'tween-runs-on-click')?.pass, true,
+    'UDim2 subtraction is valid Roblox arithmetic and must reach TweenService:Create');
+});
+
+test('UDim2 addition and subtraction preserve each scale and offset component', () => {
+  const result = runUnderHarness(`
+local a = UDim2.new(0.5, 12, 0.75, 30)
+local b = UDim2.new(0.25, 4, 0.5, 10)
+local sum, difference = a + b, a - b
+__APPLE.fact("sum", {sum.X.Scale, sum.X.Offset, sum.Y.Scale, sum.Y.Offset})
+__APPLE.fact("difference", {difference.Width.Scale, difference.Width.Offset, difference.Height.Scale, difference.Height.Offset})
+`, '', 'script');
+  assert.equal(result.ran, true, result.reason);
+  assert.equal(result.compiled, true, result.detail);
+  assert.deepEqual(result.trace.facts.sum, [0.75, 16, 1.25, 40]);
+  assert.deepEqual(result.trace.facts.difference, [0.25, 8, 0.25, 20]);
 });
 
 test('a platform may move along the documented CFrame.RightVector', () => {

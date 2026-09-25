@@ -161,10 +161,22 @@ function vec3(x, y, z) return setmetatable({ __k = "Vector3", X = x or 0, Y = y 
 local function vec2(x, y) return setmetatable({ __k = "Vector2", X = x or 0, Y = y or 0 }, { __index = function() return 0 end, __tostring = function() return "Vector2" end }) end
 
 local function udim(s, o) return setmetatable({ __k = "UDim", Scale = s or 0, Offset = o or 0 }, { __tostring = function() return "UDim" end }) end
+local UDim2MT
 local function udim2(xs, xo, ys, yo)
-	return setmetatable({ __k = "UDim2", X = udim(xs, xo), Y = udim(ys, yo), Width = udim(xs, xo), Height = udim(ys, yo) },
-		{ __tostring = function() return "UDim2" end })
+	local x, y = udim(xs, xo), udim(ys, yo)
+	return setmetatable({ __k = "UDim2", X = x, Y = y, Width = x, Height = y }, UDim2MT)
 end
+UDim2MT = {
+	__add = function(a, b)
+		assert(kindOf(a) == "UDim2" and kindOf(b) == "UDim2", "UDim2 addition requires two UDim2 values")
+		return udim2(a.X.Scale + b.X.Scale, a.X.Offset + b.X.Offset, a.Y.Scale + b.Y.Scale, a.Y.Offset + b.Y.Offset)
+	end,
+	__sub = function(a, b)
+		assert(kindOf(a) == "UDim2" and kindOf(b) == "UDim2", "UDim2 subtraction requires two UDim2 values")
+		return udim2(a.X.Scale - b.X.Scale, a.X.Offset - b.X.Offset, a.Y.Scale - b.Y.Scale, a.Y.Offset - b.Y.Offset)
+	end,
+	__tostring = function() return "UDim2" end,
+}
 
 local function color3(r, g, b) return setmetatable({ __k = "Color3", R = r or 0, G = g or 0, B = b or 0 }, { __index = function() return 0 end }) end
 
