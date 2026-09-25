@@ -142,6 +142,7 @@ export function gradeMission(task, bundle, root) {
 
 /** A headline rate is withheld until every fixed task has an independently observed result. */
 export function gradeSuite(bundles, root, tasks = TASKS) {
+  if (tasks !== TASKS && tasks !== CARTOON_TASKS) throw new Error('unknown fixed task bank');
   const taskCounts = new Map();
   const projectTasks = new Map();
   const runTasks = new Map();

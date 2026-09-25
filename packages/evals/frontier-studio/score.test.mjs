@@ -104,6 +104,7 @@ test('a partial suite with one easy pass never reports a frontier rate', () => {
   assert.equal(result.measured, 1);
   assert.equal(result.passRate, null);
   assert.equal(result.benchmarkPass, false);
+  assert.throws(() => gradeSuite([complete()], root, [task]), /unknown fixed task bank/);
 });
 
 test('an unfinished or human-directed run cannot pass', () => {
