@@ -13,8 +13,12 @@ run 36089011844 passed all six jobs. This does not establish a live Studio verdi
 1.4.0 plugin has not been rebuilt with this change, and the public asset still returned 404 while
 two listed controls returned 200. Evidence: `docs/evidence/f059-studio-answer-retry-2026-09-25.md`.
 The next concrete test remains round 8 with an actual clean Studio place and a capable dock.
-The CPU v22 trainer was alive at iteration 370/400; wait for its paired 38-row evaluation and
-automatic v23 transition before changing the model claim.
+The CPU v22 trainer finished 400/400 steps at 03:20 UTC. Its best saved validation loss was 0.807
+at step 300; this is not a game-logic score. The paired 38-row evaluation of v22 and v5 is running
+on CPU. Wait for that verdict and the automatic v23 transition before changing the model claim.
+A clean export also built the updated local plugin preview (SHA-256
+`628980506fab75c8d8bc774384896641d725233f3e9b0d2b525485496579171c`); it is verified
+on disk but not installed or distributed.
 
 2026-09-25 01:45 UTC: Studio's New Experience began opening a Baseplate, but the window controller
 then bound to a floating Lemonade window from the other Roblox Studio installation. Do not act

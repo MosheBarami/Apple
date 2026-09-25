@@ -16,4 +16,5 @@ Commits: `56032a6` (initial retry), `666ec60` (explicit retryable contract and p
 - The worker's asset-source suite passed **7/7**. Worker and web TypeScript checks passed.
 - A clean archive of `f14733d` passed **4,176/4,176** worker tests before deployment.
 - GitHub Actions run [36089011844](https://github.com/MosheBarami/Apple/actions/runs/36089011844) passed all six jobs for `f14733d`, including the plugin build, typecheck, tests and Playwright smoke.
+- A clean export built and verified the local 1.4.0 preview at `apps/apple-plugin/release/apple-studio-1.4.0-asset-retry-preview.rbxm` (182,933 bytes; SHA-256 `628980506fab75c8d8bc774384896641d725233f3e9b0d2b525485496579171c`). It has not been installed in Studio or uploaded to Roblox.
 - The public Creator Store installation and a new Studio game run are still unverified. This source and deployment check does not close F-059.
