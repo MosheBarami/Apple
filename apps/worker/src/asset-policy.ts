@@ -95,6 +95,20 @@ export function answerOwed(policy: AssetSourcePolicy | null | undefined): boolea
   return !policy || !Array.isArray(policy.allow) || policy.allow.length === 0;
 }
 
+/** One internal run steer after the owner answers an outstanding source question. */
+export function assetSourceAnswerSteer(policy: AssetSourcePolicy | null | undefined): string | null {
+  if (answerOwed(policy)) return null;
+  if (allowedSources(policy).includes('creator_store')) {
+    return 'Apple status update: The owner answered the asset-source question during this run. '
+      + 'The Roblox Creator Store is now allowed. Retry any pending insert_library_model with '
+      + 'a Creator Store id returned by find_library_model. Do not keep re-reading the place '
+      + 'instead of attempting the pending insert; do not build a parts substitute.';
+  }
+  return 'Apple status update: The owner answered the asset-source question during this run. '
+    + 'The Roblox Creator Store is not allowed. Do not retry its inserts or build a parts '
+    + 'substitute; leave that prop unbuilt and explain the choice.';
+}
+
 /**
  * Why this source may not be used, or null when it may.
  *

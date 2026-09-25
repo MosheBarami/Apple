@@ -6,14 +6,14 @@
  *   - the manifest is not empty, and every row points at a file that exists (when the store is on
  *     this machine) or at a numeric Creator Store id; every file's sha256 matches; every Roblox file
  *     row was scanned clean; every downloaded file carries an allowlisted licence;
- *   - the bundled index holds only insertable rows, and each one is a manifest row;
+ *   - the bundled index holds verified library rows, and each one is a manifest row;
  *   - find_library_model is a read-only lookup; insert_library_model mutates and needs Studio;
  *   - create_instances refuses a multi-part Model named after a thing the library holds, sends
  *     nothing, and still builds terrain/baseplate/path/zone parts; missing permission or a failed
  *     library insert never permits a hand-built prop;
  *   - insert_library_model inserts a Creator Store row by its id through the scan, then places it;
- *   - a file row is uploaded as a Model into the user's own account, at price 0, and never without
- *     a user and a key with asset:write.
+ *   - the agent offers only Creator Store rows; a downloaded file is refused because the
+ *     current source choice does not authorise a permanent upload into the user's account.
  *
  * Run with:  node --test tests/model-library.test.mjs      (from apps/worker)
  */
@@ -104,7 +104,7 @@ test('downloaded files carry an allowlisted licence, and every Roblox file was s
   }
 });
 
-test('the bundled index holds only insertable manifest rows', () => {
+test('the bundled index holds only verified manifest rows', () => {
   const byId = new Map(MANIFEST.rows.map((r) => [r.id, r]));
   assert.ok(INDEX.rows.length > 0);
   for (const row of INDEX.rows) {
@@ -150,6 +150,20 @@ test('find_library_model answers from the bundle with ids insert_library_model t
   assert.ok(res.results.length > 0, `nothing for "${s.word}"`);
   for (const r of res.results) assert.ok(M.libraryModel(r.id), `${r.id} does not resolve`);
   assert.equal(ops.length, 0, 'a lookup sends no Studio op');
+});
+
+test('Creator Store consent never authorises a downloaded file upload', async () => {
+  const file = INDEX.rows.find((r) => typeof r[5] === 'string');
+  assert.ok(file, 'the index has no downloaded row, so this gate would check nothing');
+  const { ctx, ops } = ctxWith(undefined, { assetSources: { mode: 'remember', allow: ['creator_store'] } });
+  const refused = await run(ctx, 'insert_library_model', { id: file[0] });
+  assert.match(refused.error, /Creator Store|source choice/i);
+  assert.doesNotMatch(refused.error, /Connect a Roblox Open Cloud key/i, 'an upload path was reached without upload consent');
+  assert.equal(ops.length, 0, 'the place was touched before the unsupported source was refused');
+
+  const found = await run(ctx, 'find_library_model', { query: 'small tree', limit: 40 });
+  assert.ok(found.results.some((r) => r.assetId !== undefined), 'the permitted Creator Store result vanished');
+  assert.ok(found.results.every((r) => r.assetId !== undefined), 'a file was offered as an insertable result');
 });
 
 /* ---------------------------------------------------------------- the guard --- */

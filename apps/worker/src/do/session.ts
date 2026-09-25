@@ -140,7 +140,7 @@ import {
   type MemoryMode,
 } from '../memory';
 import { memoryAccessFor, putMemoryEntry } from '../memory-store';
-import { answerOwed, policyFromStudioAnswer } from '../asset-policy';
+import { answerOwed, assetSourceAnswerSteer, policyFromStudioAnswer } from '../asset-policy';
 import { EMPTY_PERSONALISATION, applyToolPermissions, deniedTools, memoryModeOf, personalisationForProject, preferencesToEntries } from '../preferences';
 import { allModels } from '../providers/registry';
 import { recordEvent, type BuildOutcome } from '../analytics';
@@ -2670,6 +2670,10 @@ export class SessionDO extends DurableObject<Env> {
         queuedOps: this.opQueue.length,
         // The same record the owner sees at /studio/diagnostics, so the two views cannot drift.
         link: await this.linkSummary(),
+        // And what Studio says it has open, as diagnostics reports it: link.place is the binding, null
+        // for a place never saved to Roblox, which is not Studio naming nothing (F-008).
+        openPlace: await this.ctx.storage.get<StudioEventState>('pluginState').then((s) =>
+          s ? { placeName: s.placeName, placeId: s.placeId, gameId: s.gameId, isRunMode: s.isRunMode } : null),
         // WHETHER THE SOCKETS ARE HEARD. A stop pressed in the browser crosses only this path, and
         // a socket that opens, says hello and is then never delivered a frame looks healthy from
         // both ends. Counted in memory: a restart zeroes it, which reads as "none since restart".
@@ -3567,6 +3571,16 @@ export class SessionDO extends DurableObject<Env> {
     // F-059: an answer given while the question is open (web or Studio) applies from this step, and
     // an eviction's lost policy is read back rather than refused as "never asked".
     if (this.pinnedPrefs === null || (await this.assetSourcesAskedNow())) await this.refreshPinnedPrefs();
+    // The Studio poll may have saved the answer and cleared assetSourcesAsked before this alarm
+    // woke. The run marker survives that poll and an eviction, so the model hears the answer
+    // exactly once and can retry its pending Creator Store insert instead of rereading forever.
+    if ((await this.ctx.storage.get<string>('assetSourcesAwaitingRun')) === agent.msgId) {
+      const steer = assetSourceAnswerSteer(this.pinnedPrefs?.asset_sources);
+      if (steer) {
+        agent.llm.push({ role: 'user', content: steer });
+        await this.ctx.storage.delete('assetSourcesAwaitingRun');
+      }
+    }
     if (agent.step >= MAX_RUN_STEPS) {
       agent.finalText = agent.finalText || `I reached the ${MAX_RUN_STEPS}-step ceiling for this message. Work already applied to the project is saved.`;
       await this.finishRun(agent, 'incomplete', undefined, undefined, 'step_limit');
@@ -4846,6 +4860,7 @@ export class SessionDO extends DurableObject<Env> {
       await this.ctx.storage.delete('assetSourcesAsked');
       this.broadcast({ type: 'asset_sources_owed', owed: false });
     }
+    await this.ctx.storage.delete('assetSourcesAwaitingRun');
     // Nothing this run queued may still be applied to the place now that it has ended.
     const abandoned = await this.dropOpsForEndedRuns(undefined);
     // A regrant that arrived while this run was still live is deliberately deferred until now.
@@ -5280,6 +5295,7 @@ export class SessionDO extends DurableObject<Env> {
     if (!browser && !(this.pluginConnectedNow() && this.studioCanAnswerAssetSources)) return false;
     this.assetSourcesAsked = true;
     void this.ctx.storage.put('assetSourcesAsked', true);
+    if (this.currentMsgId) void this.ctx.storage.put('assetSourcesAwaitingRun', this.currentMsgId);
     this.broadcast({ type: 'asset_sources_owed', owed: true });
     return true;
   }

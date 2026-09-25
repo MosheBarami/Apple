@@ -73,7 +73,7 @@ import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
 import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau } from './model-rule';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
-import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, MAX_UPLOADS_PER_RUN, placeInserted, uploadLibraryModel } from './model-library';
+import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
@@ -2861,7 +2861,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'play_check',
       description:
-        "Playtest AS A PLAYER: starts a real Studio Test session with one player, waits `seconds`, optionally walks the character onto each `touch` part (e.g. a coin), then reports what the player's screen actually shows (every ScreenGui in PlayerGui, enabled or not, and its visible text), the player's leaderstats before and after, and the errors from BOTH the client (LocalScripts) and the server. Use it before you say a counter, HUD, button or other on-screen UI works — run_and_check has no player and cannot see the screen or any LocalScript. The session runs on a copy of the place; its temporary check scripts are removed afterwards. It takes Studio over for up to about a minute.",
+        "Playtest AS A PLAYER: starts a real Studio Test session with one player, waits `seconds`, optionally walks the character onto each `touch` part (e.g. a coin), then reports what the player's screen actually shows (every ScreenGui in PlayerGui, enabled or not, and its visible text), the player's leaderstats before and after, and the errors from BOTH the client (LocalScripts) and the server. Use it before you say a counter, HUD, button or other on-screen UI works — run_and_check has no player and cannot see the screen or any LocalScript. It does not press buttons: to prove a button flow (Shop → Buy) use play_check_ui, which clicks each button and reports what the click changed. The session runs on a copy of the place; its temporary check scripts are removed afterwards. It takes Studio over for up to about a minute.",
       parameters: S({
         seconds: { type: 'number', description: '3-15, default 5: how long the player stays in before the touches and the screen read' },
         touch: {
@@ -4517,14 +4517,14 @@ export const TOOLS: Record<string, ToolImpl> = {
       }),
   },
   // The 3D model library (D-MODELLIB-1): script-free Creator Store models that Roblox itself owns,
-  // inserted by id, plus CC0/CC-BY/MIT files (Kenney, KayKit, GitHub .rbxm with every
-  // script stripped) uploaded once into the USER'S OWN account. Props always come from the
-  // library; parts stay the tool for terrain, baseplates, paths and zones.
+  // inserted by id. Downloaded CC0/CC-BY/MIT files remain indexed but are not offered to the
+  // agent: the current source choice does not authorise a permanent upload into the user's
+  // Roblox account. Props still come from the library; parts stay for terrain, paths and zones.
   find_library_model: {
     def: {
       name: 'find_library_model',
       description:
-        "Search Apple's 3D model library for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit: script-free Creator Store models that Roblox itself published, and openly licensed low-poly packs. Call it BEFORE building any object out of parts. Plain nouns work best (\"palm tree\", \"police car\", \"crate\", \"shop\"); `genre` and `kind` narrow it. Returns ids for insert_library_model. Nothing is inserted or uploaded by this call.",
+        "Search insertable, script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any object out of parts. Plain nouns work best (\"palm tree\", \"police car\", \"crate\", \"shop\"); `genre` and `kind` narrow it. Returns ids for insert_library_model. Nothing is inserted or uploaded by this call.",
       parameters: S(
         {
           query: { type: 'string', description: 'Plain words for the object, e.g. "wooden crate" or "pine tree".' },
@@ -4542,13 +4542,14 @@ export const TOOLS: Record<string, ToolImpl> = {
         genre: a.genre ? String(a.genre) : undefined,
         kind: a.kind ? String(a.kind) : undefined,
         limit: a.limit === undefined ? undefined : Number(a.limit),
+        creatorStoreOnly: true,
       }),
   },
   insert_library_model: {
     def: {
       name: 'insert_library_model',
       description:
-        "Insert ONE model from Apple's model library into the place, scaled and standing on `position`. Pass `id` from find_library_model, or `query` (plus optional genre/kind) to take the best match. A Creator Store row is inserted by id; a file row is first uploaded as a Model into the USER'S OWN Roblox account with their connected key (asset:write) — once per run, reused after. Every insert is scanned in the place and any script is removed before it counts. Use this for props, buildings, nature, vehicles, pets and characters. If insertion fails, search again or leave the prop unbuilt. To place many copies, insert one and clone_instances it.",
+        "Insert ONE verified Creator Store model from Apple's model library into the place, scaled and standing on `position`. Pass a Creator Store `id` from find_library_model, or `query` (plus optional genre/kind) to take the best match. Downloaded file rows are not insertable: the current source choice does not authorise uploading a new permanent Model into the person's Roblox account. Every insert is scanned in the place and any scripted asset is removed before it counts. Use this for props, buildings, nature, vehicles, pets and characters. If insertion fails, search again or leave the prop unbuilt. To place many copies, insert one and clone_instances it.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },
@@ -4556,7 +4557,7 @@ export const TOOLS: Record<string, ToolImpl> = {
           genre: { type: 'string', enum: [...LIBRARY_GENRES] },
           kind: { type: 'string', enum: [...LIBRARY_KINDS] },
           position: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' }, description: 'Where the bottom-centre lands, in studs. Default [0,0,0].' },
-          height: { type: 'number', description: 'Target height in studs (the model is scaled uniformly). Default: its own size for Creator Store rows, a size for its kind for file rows.' },
+          height: { type: 'number', description: 'Target height in studs (the model is scaled uniformly).' },
           scale: { type: 'number', minimum: 0.001, maximum: 1000, description: 'Uniform scale factor instead of height.' },
           parent: { type: 'string', description: 'Default game.Workspace.' },
         },
@@ -4565,15 +4566,16 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
-    // A refusal or a still-processing upload changed nothing in the place.
+    // A refusal changed nothing in the place.
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
     run: async (ctx, a) => {
-      const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources);
-      if (refused) return { error: refused };
       const pick = a.id
         ? libraryModel(String(a.id))
-        : findLibraryModels({ query: String(a.query ?? ''), genre: a.genre ? String(a.genre) : undefined, kind: a.kind ? String(a.kind) : undefined, limit: 1 }).results[0] ?? null;
+        : findLibraryModels({ query: String(a.query ?? ''), genre: a.genre ? String(a.genre) : undefined, kind: a.kind ? String(a.kind) : undefined, limit: 1, creatorStoreOnly: true }).results[0] ?? null;
       if (!pick) return { error: a.id ? `${String(a.id)} is not a library id. Call find_library_model and pass one of its ids unchanged.` : 'Nothing in the model library matched. Search for another library model or leave the prop unbuilt.' };
+      if (pick.assetId === undefined) return { error: 'This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.' };
+      const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources);
+      if (refused) return { error: refused };
       const pos = a.position === undefined ? [0, 0, 0] : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
       if (!Array.isArray(pos)) return pos;
       const scale = a.scale === undefined ? undefined : Number(a.scale);
@@ -4581,18 +4583,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const height = a.height === undefined ? undefined : Number(a.height);
       if (height !== undefined && !(height > 0 && height <= 2000)) return { error: 'height must be between 0 and 2000 studs' };
 
-      let assetId = pick.assetId ?? ctx.libraryUploads?.get(pick.id);
-      if (assetId === undefined) {
-        ctx.libraryUploads = ctx.libraryUploads ?? new Map();
-        if (ctx.libraryUploads.size >= MAX_UPLOADS_PER_RUN) {
-          return { error: `This run already uploaded ${MAX_UPLOADS_PER_RUN} library files into the user's account, the most one run may. Reuse (clone_instances) a model already in the place, or pick a Creator Store row from find_library_model.` };
-        }
-        const up = await uploadLibraryModel(ctx.env, ctx.userId, pick);
-        if ('error' in up) return { error: up.error, stage: up.stage, library: pick.id };
-        if ('pending' in up) return { pending: true, operationId: up.operationId, library: pick.id, note: "Uploaded to the user's Roblox account; Roblox is still processing it, so nothing was inserted yet. Do not claim it is in the place." };
-        assetId = up.assetId;
-        ctx.libraryUploads.set(pick.id, assetId);
-      }
+      const assetId = pick.assetId;
       const placed = rec(await insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace')));
       if ('error' in placed) return { ...placed, library: pick.id };
       let paths = (Array.isArray(placed.inserted) ? placed.inserted : []).filter((p): p is string => typeof p === 'string');

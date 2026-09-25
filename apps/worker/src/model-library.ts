@@ -8,8 +8,8 @@
 //     itself (LoadAsset refuses other creators' models, measured 2026-09-23). Inserted by id through the plugin's insert_asset, then re-scanned in the place.
 //   - a store path (string) to a CC0/CC-BY/MIT file (.glb, .fbx, .rbxm with every script already
 //     stripped by scan-rbx.luau). Its bytes live in the D1 static store at /model-library/<path>
-//     (packages/asset-library/models/upload.mjs); insert_library_model uploads that ONE file as a
-//     Model into the user's own Roblox account with their key, then inserts the new id.
+//     (packages/asset-library/models/upload.mjs). The agent does not offer or upload these files:
+//     the current source question cannot authorise a permanent Model upload into the user's account.
 import index from '../../../packages/asset-library/models/index.json';
 import type { Env } from './env';
 import { serveStatic } from './static';
@@ -88,11 +88,12 @@ export function libraryModel(id: string): LibraryModel | null {
 export const LIBRARY_GENRES = IDX.genres;
 export const LIBRARY_KINDS = IDX.kinds;
 
-export function findLibraryModels(input: { query?: string; genre?: string; kind?: string; limit?: number }) {
+export function findLibraryModels(input: { query?: string; genre?: string; kind?: string; limit?: number; creatorStoreOnly?: boolean }) {
   const limit = Math.max(1, Math.min(40, Math.floor(Number(input.limit ?? 10)) || 10));
   const words = tokensOf(input.query ?? '');
   const genre = input.genre ? IDX.genres.find((g) => g.toLowerCase() === String(input.genre).toLowerCase()) : undefined;
-  const pool = all().filter((e) => (!genre || e.m.genres.includes(genre)) && (!input.kind || e.m.kind === input.kind));
+  const pool = all().filter((e) => (!input.creatorStoreOnly || e.m.assetId !== undefined)
+    && (!genre || e.m.genres.includes(genre)) && (!input.kind || e.m.kind === input.kind));
   if (!words.length) {
     return { total: pool.length, results: [], genres: IDX.genres, kinds: IDX.kinds, note: 'Pass plain words for the object, e.g. "palm tree" or "police car".' };
   }

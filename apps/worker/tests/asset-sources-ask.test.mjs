@@ -68,6 +68,16 @@ test('a settled answer is never re-asked — allowed or deliberately switched of
   assert.equal(calls, 0, 'a person who chose is asked again');
 });
 
+test('the running agent is told which source answer arrived and what to retry', () => {
+  assert.equal(P.assetSourceAnswerSteer(null), null);
+  assert.match(P.assetSourceAnswerSteer(policy(['creator_store'])), /answered[\s\S]*Creator Store[\s\S]*retry/i);
+  assert.match(P.assetSourceAnswerSteer(policy(['from_scratch'])), /Creator Store[\s\S]*not allowed/i);
+  const ask = session.slice(session.indexOf('private askAssetSources('), session.indexOf('private askAssetSources(') + 1000);
+  assert.match(ask, /assetSourcesAwaitingRun/, 'the pending answer is not tied to the current run');
+  const step = session.slice(session.indexOf('private async runStep('), session.indexOf('private async runStep(') + 3500);
+  assert.match(step, /assetSourceAnswerSteer/, 'a saved choice does not reach the running model');
+});
+
 test('a Studio answer becomes the same remembered project policy the web dialog saves', () => {
   assert.equal(typeof P.policyFromStudioAnswer, 'function');
   assert.deepEqual(P.policyFromStudioAnswer({ allow: ['creator_store'] }), policy(['creator_store']));
