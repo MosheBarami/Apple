@@ -302,25 +302,25 @@ export const TOOL_TRAJECTORY_CURRICULUM = [
   },
 
   {
-    id: 'night-mood-for-horror',
+    id: 'bright-mood-for-cartoon-simulator',
     family: 'atmosphere',
-    prompt: 'make it look scary, its supposed to be a horror game',
+    prompt: 'make my cartoon simulator hub feel cheerful and colorful',
     trajectory: [
       {
         tool: 'propose_plan',
         args: {
           steps: [
-            { title: 'How horror maps are usually lit', detail: 'Pull the horror genre kit before choosing values.', tool: 'get_genre_kit' },
-            { title: 'Lighting that actually reads as horror', detail: 'Apply the horror mood preset.', tool: 'set_mood' },
+            { title: 'A bright cartoon reference', detail: 'Pull the simulator genre kit before choosing values.', tool: 'get_genre_kit' },
+            { title: 'Cheerful, readable lighting', detail: 'Apply the day mood preset.', tool: 'set_mood' },
             { title: 'Look at the result', detail: 'Render the workspace and critique it against the request.', tool: 'inspect_visually' },
           ],
         },
       },
-      { tool: 'get_genre_kit', args: { genre: 'horror' } },
-      { tool: 'set_mood', args: { mood: 'horror' } },
-      { tool: 'inspect_visually', args: { intent: 'make the place look scary for a horror game' } },
+      { tool: 'get_genre_kit', args: { genre: 'simulator' } },
+      { tool: 'set_mood', args: { mood: 'day' } },
+      { tool: 'inspect_visually', args: { intent: 'make the cartoon simulator hub cheerful and colorful' } },
     ],
-    reply: 'I pulled the horror kit first rather than guessing at values, then applied the horror lighting mood — low ambient, cold fog, and a short falloff so you cannot see what is coming. Then I actually looked at it: the critique is judged against your own words, not against a checklist.',
+    reply: 'I pulled the simulator kit before choosing lighting values, then applied the bright day mood. I inspected the result for a cheerful, readable cartoon look; the visual critique is tied to your request rather than a generic checklist.',
     mutation: { step: 2, path: 'mood', value: 'scary' },
   },
 
