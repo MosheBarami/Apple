@@ -59,7 +59,7 @@ import {
 } from '../frame-bus';
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
-import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, type PendingAssetChoice } from '../asset-choice';
+import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, visualAssetAnchor, type PendingAssetChoice } from '../asset-choice';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
@@ -214,6 +214,8 @@ interface AgentState {
   /** Owner-approved Creator Store model for this run, selected from a shown preview. */
   approvedLibraryAssetId?: number;
   rejectedLibraryAssetIds?: number[];
+  assetChoiceAnchor?: string;
+  assetChoiceMisses?: number;
   msgId: string;
   llm: GatewayRequest['messages'];
   step: number;
@@ -3314,6 +3316,7 @@ export class SessionDO extends DurableObject<Env> {
       llm: [{ role: 'system', content: skills.block ? `${sys}\n\n${skills.block}` : sys }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
+      ...(rejectedChoice && pendingChoice?.anchor ? { assetChoiceAnchor: pendingChoice.anchor } : {}),
       ...(skills.ids.length > 0 ? { skillCardsShown: skills.ids } : {}),
       ...(mode === 'agent' && forbidsChanges(text) ? { readOnly: true } : {}),
       ...(mode === 'agent' && isLightingOnlyRequest(text) ? { lightingOnly: true } : {}),
@@ -4508,12 +4511,19 @@ export class SessionDO extends DurableObject<Env> {
               typeof option.name === 'string' && option.name.length <= 120).slice(0, 3)
           : [];
         if (options.length) {
+          let query = '';
+          try {
+            const args = JSON.parse(call.arguments || '{}') as { query?: unknown };
+            if (typeof args.query === 'string') query = args.query;
+          } catch { /* The tool already refused malformed input. */ }
+          const anchor = agent.assetChoiceAnchor ?? visualAssetAnchor(query, options);
           const pending: PendingAssetChoice = {
             request: agent.request ?? '',
             mode: agent.mode,
             ...(agent.productModel ? { productModel: agent.productModel } : {}),
             autonomous: agent.autonomous === true,
             ...(agent.rejectedLibraryAssetIds?.length ? { rejectedAssetIds: agent.rejectedLibraryAssetIds } : {}),
+            ...(anchor ? { anchor } : {}),
             options: options.map((option) => ({
               id: option.id,
               assetId: option.assetId,
@@ -4522,6 +4532,13 @@ export class SessionDO extends DurableObject<Env> {
           };
           await this.ctx.storage.put('pendingAssetChoice', pending);
           await this.finishRun(agent, 'incomplete', undefined, 'Choose the model that looks right. Apple will continue after your choice.');
+          return;
+        }
+      }
+      if (agent.mode === 'agent' && call.name === 'find_library_model' && out.ok && agent.assetChoiceAnchor) {
+        agent.assetChoiceMisses = (agent.assetChoiceMisses ?? 0) + 1;
+        if (agent.assetChoiceMisses >= 3) {
+          await this.finishRun(agent, 'incomplete', undefined, 'I could not find another fitting model. I left the place unchanged rather than use the options you rejected.');
           return;
         }
       }
@@ -5479,6 +5496,7 @@ export class SessionDO extends DurableObject<Env> {
       assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
       approvedLibraryAssetId: agent?.approvedLibraryAssetId,
       rejectedLibraryAssetIds: agent?.rejectedLibraryAssetIds,
+      assetChoiceAnchor: agent?.assetChoiceAnchor,
       askAssetSources: () => this.askAssetSources(),
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
       // "can you build right now" is no. The connection half now comes from the same rule the

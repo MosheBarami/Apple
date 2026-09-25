@@ -276,6 +276,16 @@ test('a rejected preview is not offered again in the next search', async () => {
   assert.ok(second.results.every((row) => row.assetId !== rejected));
 });
 
+test('after rejecting trees the model cannot offer an unrelated flower', async () => {
+  assert.ok(M.findLibraryModels({ query: 'flowers', creatorStoreOnly: true }).results.length > 0,
+    'the test needs a real flower row to exercise the boundary');
+  const { ctx } = ctxWith();
+  ctx.assetChoiceAnchor = 'tree';
+  const result = await run(ctx, 'find_library_model', { query: 'flowers' });
+  assert.deepEqual(result.results, []);
+  assert.equal(ctx.uiDetail, undefined, 'no unrelated preview card may be offered');
+});
+
 test('the upload cap refuses before any byte is read or sent', async () => {
   const s = sample((r) => typeof r[5] === 'string');
   const full = new Map(Array.from({ length: M.MAX_UPLOADS_PER_RUN }, (_, i) => [`x${i}`, i + 1]));

@@ -74,6 +74,7 @@ import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau } fr
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
+import { matchesVisualAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
@@ -130,6 +131,7 @@ export interface AgentCtx {
   /** The one library model the project owner selected from a visual preview for this run. */
   approvedLibraryAssetId?: number;
   rejectedLibraryAssetIds?: number[];
+  assetChoiceAnchor?: string;
   /**
    * Put the asset-source question to whoever is here, and say whether anybody was (F-059). Called
    * by a refusal only while the answer is owed; it never allows anything. Absent in the eval
@@ -4544,7 +4546,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         creatorStoreOnly: true,
       });
       const rejected = new Set(ctx.rejectedLibraryAssetIds ?? []);
-      found.results = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId)).slice(0, a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10)));
+      found.results = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId) && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor)).slice(0, a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10)));
       const options = found.results.slice(0, 3);
       if (options.length && !options.some((row) => row.assetId === ctx.approvedLibraryAssetId)) ctx.uiDetail = {
         kind: 'asset_choices',

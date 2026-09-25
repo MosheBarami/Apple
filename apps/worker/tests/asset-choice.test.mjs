@@ -11,7 +11,7 @@ const out = join(mkdtempSync(join(tmpdir(), 'asset-choice-')), 'p.mjs');
 execFileSync(join(root, 'node_modules', '.bin', 'esbuild'),
   [join(root, 'src/asset-choice.ts'), '--bundle', '--format=esm', '--target=es2022', '--platform=neutral', '--outfile=' + out],
   { cwd: root, stdio: 'pipe' });
-const { rejectedLibraryAssets, selectedLibraryAsset } = await import(`file://${out}`);
+const { matchesVisualAnchor, rejectedLibraryAssets, selectedLibraryAsset, visualAssetAnchor } = await import(`file://${out}`);
 
 test('a choice admits only the project owner and a current server-side candidate', () => {
   const pending = { request: 'Build a forest', options: [{ id: 'tree-a', assetId: 101, name: 'Oak' }] };
@@ -34,4 +34,16 @@ test('rejected visual options accumulate across previews and never reappear', ()
     ],
   };
   assert.deepEqual(rejectedLibraryAssets(second), [101, 102, 103]);
+});
+
+test('a rejected tree search cannot drift into flower previews', () => {
+  const options = [
+    { id: 'oak', assetId: 101, name: 'Oak Tree' },
+    { id: 'small', assetId: 102, name: 'Tree - Small' },
+  ];
+  const anchor = visualAssetAnchor('cartoon tree', options);
+  assert.equal(anchor, 'tree');
+  assert.equal(matchesVisualAnchor('Tree - Large', anchor), true);
+  assert.equal(matchesVisualAnchor('Flowers', anchor), false);
+  assert.equal(visualAssetAnchor('Oak Tree', [options[0]]), 'tree');
 });

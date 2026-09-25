@@ -7,6 +7,8 @@ export interface PendingAssetChoice {
   options: { id: string; assetId: number; name: string }[];
   /** Choices rejected earlier in this same visual search, across multiple previews. */
   rejectedAssetIds?: number[];
+  /** Main object named by the first search, so rejection cannot drift to another category. */
+  anchor?: string;
 }
 
 export const ASSET_CHOICE_MESSAGE = /^Use visual option ([123]) and continue\.$/;
@@ -30,4 +32,18 @@ export function rejectedLibraryAssets(pending: PendingAssetChoice): number[] {
     ...(pending.rejectedAssetIds ?? []),
     ...pending.options.map((option) => option.assetId),
   ].filter((id) => Number.isSafeInteger(id) && id > 0))];
+}
+
+const GENERIC = new Set(['a', 'the', 'free', 'roblox', 'model', 'asset', 'cartoon', 'stylized', 'low', 'poly', 'small', 'medium', 'large']);
+const words = (text: string) => text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+const stem = (word: string) => word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word;
+
+export function visualAssetAnchor(query: string, options: PendingAssetChoice['options']): string | null {
+  const names = options.flatMap((option) => words(option.name).map(stem));
+  const candidate = words(query).map(stem).filter((word) => !GENERIC.has(word) && names.includes(word));
+  return candidate.at(-1) ?? words(options[0]?.name ?? '').map(stem).filter((word) => !GENERIC.has(word)).at(-1) ?? null;
+}
+
+export function matchesVisualAnchor(name: string, anchor: string | undefined): boolean {
+  return !anchor || words(name).some((word) => stem(word) === anchor);
 }
