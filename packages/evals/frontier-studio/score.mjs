@@ -148,7 +148,9 @@ export function gradeMission(task, bundle, root) {
       ? (!p.verdict.colorfulCartoon || !p.verdict.coherentArtDirection || !p.verdict.commerciallyPolished)
       : key.startsWith('visual-') && (!p.verdict.fitForRoblox || !p.verdict.amazing))) failed.push(key);
   }
-  const status = invalid.length || missing.length ? 'unmeasured' : failed.length ? 'failed' : 'passed';
+  // A verified failed gate is conclusive even if other proofs are missing.
+  // Invalid run identity still cannot be scored.
+  const status = invalid.length ? 'unmeasured' : failed.length ? 'failed' : missing.length ? 'unmeasured' : 'passed';
   return { taskId: task?.id ?? bundle?.taskId ?? null, status, criteria: criteria.length, passed: criteria.length - missing.length - failed.length, missing, failed, invalid };
 }
 

@@ -102,6 +102,17 @@ test('a full evidence bundle can pass but one broken gameplay feature fails the 
   assert.deepEqual(result.failed, [`feature:${task.features[0]}`]);
 });
 
+test('a conclusive observed failure remains a failure when other proofs are missing', () => {
+  const bundle = complete();
+  const absent = `feature:${task.features[1]}`;
+  bundle.proofs['visual-ui'].verdict.amazing = false;
+  delete bundle.proofs[absent];
+  const result = gradeMission(task, bundle, root);
+  assert.equal(result.status, 'failed');
+  assert.ok(result.failed.includes('visual-ui'));
+  assert.ok(result.missing.includes(absent));
+});
+
 test('missing, self-attested, wrong-run or fabricated artifacts do not become scores', () => {
   for (const mutation of [
     (b) => { delete b.proofs['visual-ui']; },

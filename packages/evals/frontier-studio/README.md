@@ -66,7 +66,9 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
    examiner, a run-bound proof record and SHA-256-matched nonempty artifact. Missing evidence is
    **unmeasured**, never a pass. A trace-proven run that ends before completion is a measured
    failure even though no finished-game Play or visual proof exists. Any observed failed
-   requirement fails the game.
+   requirement fails the game, even when other proofs remain missing. The report retains the
+   missing list so the reviewer can see what was not checked. Invalid run identity or altered
+   prompts remain unmeasured.
 
 `score.mjs` checks the envelope and proof inventory. It does **not** understand a screenshot or
 execute a Studio probe. An independent reviewer must inspect the cited artifacts and attest to
