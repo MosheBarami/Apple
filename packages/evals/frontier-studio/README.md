@@ -49,7 +49,15 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
    no project manifest. It is structural evidence, not proof that a script works.
 5. In Play mode, execute every feature from the task bank as a player. Probe money, persistence,
    multiplayer isolation and remote authority where applicable. Capture server/client errors and
-   a phone-width UI view. Store the exact operations and observed outcomes, including failures.
+   a phone-width UI view. For the colorful-cartoon bank, also record the first ten seconds and
+   the first guided action as a sequence: the instruction is visible, the player can activate
+   its highlighted control, the world and HUD respond, and a legible next objective appears.
+   Record the before/after images, actual input, and changed state. The native Roblox Player
+   observation of Ride A Pet documented this chain, but its art and mechanics are reference
+   observations only; the Apple benchmark must use original work and independently verify its
+   own Play session. If Apple shows a tutorial label but its button has no effect, fail the
+   `playtest` proof; if the next objective or interface is unreadable, fail `visual-ui` too.
+   Store the exact operations and observed outcomes, including failures.
 6. Take 4–8 final Studio shots with neutral filenames. Give **only** those images to an independent
    blind visual critic using `docs/gauntlet/visual/BLIND_CRITIC.md`. Separately audit feature
    completeness against the prompt, so blindness does not hide missing requested features.
