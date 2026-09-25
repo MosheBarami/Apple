@@ -30,3 +30,10 @@ sides for future runs after a new supervisor process loads it; the process
 training v24 was already running the old code. Discord received the v23 result,
 and the supervisor started v24 at 06:10:11 UTC with the nine verified UI-state
 training examples. v24 has no held-out score yet.
+
+At 2026-09-25 06:29 UTC, the private model card was regenerated from the recorded
+state and uploaded. A forced download matched all 1,923 bytes. It names v22 as
+the current best and lists v23 as a completed, unpromoted 14/38 experiment.
+Publication code now refreshes that private card after every successful real
+version upload; the already-running supervisor will use that change only after
+a safe process restart.

@@ -1,5 +1,13 @@
 # NEXT ACTION
 
+2026-09-25 06:29 UTC: the private Hugging Face model card was updated from
+the recorded supervisor state and downloaded again byte-for-byte (1,923 bytes).
+It shows v22 as the selected local best and v23 as an unpromoted 14/38
+experiment. The publisher now refreshes the private card after every successful
+real version upload, including non-promotions; the active v24 process predates
+this change and must not be interrupted. It was verified alive with its CPU
+child at iteration 40/400. Future source adoption waits for a safe boundary.
+
 2026-09-25 06:11 UTC: the five tracked full frontier runs were rescored in place
 after the shop-stock correction, without changing saved model answers, requests or
 measurement times. The owner dashboard was read back from `/api/project`: Apple MAX

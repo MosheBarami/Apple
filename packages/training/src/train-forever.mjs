@@ -522,7 +522,7 @@ were written by the first version of the supervisor.
 |---|---|---|---|---|---|---|---|---|
 `;
 
-function renderModelCard(state, model) {
+export function renderModelCard(state, model) {
   const b = state.best;
   const rows = state.history.filter((h) => h.scores).map((h) => formatLogLine(h)).join('\n');
   return `---
@@ -543,6 +543,11 @@ finish ${frac(b.scores, 'finish')} (total ${b.scores.total}), val loss ${b.valLo
 
 Held-out set: 38 rows (families disjoint from training), greedy decoding, scored by execution
 (Luau modules run against their own checks; tool calls validated against the product's registry).
+The table includes completed experiments even when they were not promoted. Only the version named
+**Current best** is the selected local adapter; none of these folders is automatically the model
+serving Apple users. A candidate's promotion is decided against the previous best generated in
+the **same** evaluation batch. Its folder includes both scored sides when that paired comparison
+was available; older or invalid runs may lack paired evidence.
 
 | version | lever | best val loss (iter) | trajectory | game-logic | finish | total | promoted | status |
 |---|---|---|---|---|---|---|---|---|
@@ -1027,7 +1032,9 @@ async function publish(ctx, entry, cfg) {
     const up = await run('hf', ['upload', HF_REPO, pubDir, dest, '--repo-type', 'model', '--commit-message', `apple v${v}: ${entry.lever.id} (${entry.scores.total}${entry.promoted ? ', promoted' : ''})`], { log, append: true, timeoutMs: TIMEOUT.hf });
     entry.publish = up.code === 0 ? `https://huggingface.co/${HF_REPO}/tree/main/${dest}` : `upload_failed (exit ${up.code}${up.timedOut ? ', timeout' : ''}), see ${rel(log)}`;
     if (up.code === 0) rmSync(pubDir, { recursive: true, force: true }); // 27 MB a version; HF has it now
-    if (up.code === 0 && entry.promoted) {
+    // The card is the experiment ledger, not just an announcement of promotions. Keep it current
+    // after every real successful upload, while the private Space still updates on promotions only.
+    if (up.code === 0 && !ctx.dry) {
       const card = join(pubRoot, 'README.md');
       writeFileSync(card, renderModelCard(ctx.state, cfg.model));
       const rc = await run('hf', ['upload', HF_REPO, card, `${L.hfPrefix}README.md`, '--repo-type', 'model', '--commit-message', `model card: v${v} is the best`], { log, append: true, timeoutMs: TIMEOUT.hf });
