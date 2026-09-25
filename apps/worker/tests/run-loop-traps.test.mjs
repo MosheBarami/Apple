@@ -945,3 +945,114 @@ test('F-064 control: a run whose listed parts are all built still ends on the id
     h.stop();
   }
 });
+
+// F-064 round 4 (run a933ac87, Apple MAX, Autonomous OFF): three all-duplicate steps ended a run while
+// the plan's "Audit and light the scene" was still open. Driven here through the real alarm loop, with
+// Autonomous off, rather than only through afterDuplicateStreak.
+const isStuckSteer = (m) => m.role === 'user' && /you are stuck/i.test(String(m.content));
+/** Every move-on the run was given, off the longest transcript the provider saw (the same text can recur). */
+const stuckSteers = (h) => h.chatCalls.map((c) => (c.req.messages ?? []).filter(isStuckSteer).map((m) => String(m.content)))
+  .reduce((a, b) => (b.length > a.length ? b : a), []);
+const offered = (call) => (call.req.tools ?? []).map((t) => t.name ?? t.function?.name);
+const sameRead = () => calls(['get_project_tree', { root: 'game.Workspace.Harbour' }]);
+const streakOf = (n = 4) => Array.from({ length: n }, sameRead); // one runs, three are refused as repeats
+const build = (...names) => calls(['create_instances', { items: names.map((name) => ({ className: 'Model', name, parent: 'Workspace' })) }]);
+
+test('F-064: a duplicate streak moves an Autonomous-OFF run on to its open plan step instead of ending it', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: builtTree,
+    responses: [
+      calls(['propose_plan', { steps: [
+        { title: 'Build the lighthouse and pier', tool: 'create_instances' },
+        { title: 'Audit and light the scene', tool: 'set_properties' },
+      ] }]),
+      build('Lighthouse', 'WoodenPier'),
+      ...streakOf(),
+      calls(['set_properties', { path: 'game.Lighting', props: { ClockTime: 18 } }]),
+      answer({ text: 'Built the harbour and lit it.' }),
+      answer({ text: 'Built the harbour and lit it.' }),
+      answer({ text: 'Built the harbour and lit it.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'build a small harbour with a lighthouse and a pier, then light it for the evening' });
+    for (let i = 0; i < 20 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended');
+    assert.equal(count(streamed(h), REPEAT), 0, 'the run was ended on the duplicate streak with a plan step open');
+    const steers = stuckSteers(h);
+    assert.equal(steers.length, 1, `expected exactly one move-on, got ${steers.length}`);
+    assert.match(steers[0], /Audit and light the scene/, 'the move-on did not name the open plan step');
+    // The step after the move-on: the first one offered no reads. It must carry the move-on, offer
+    // changes, and be the only such step.
+    const withheld = h.chatCalls.map((c, i) => (offered(c).length && !offered(c).includes('get_project_tree') ? i : -1)).filter((i) => i >= 0);
+    assert.equal(withheld.length, 1, `reads must be withheld for exactly one step, were for ${withheld.length}`);
+    const next = h.chatCalls[withheld[0]];
+    assert.ok((next.req.messages ?? []).some(isStuckSteer), 'the step offered no reads is not the one after the move-on');
+    assert.ok(offered(next).includes('set_properties'), 'CONTROL: the step after the move-on is still offered changes');
+    assert.ok(h.ops.some((op) => JSON.stringify(op).includes('ClockTime')), 'the plan step the run was moved on to never reached Studio');
+  } finally {
+    h.stop();
+  }
+});
+
+test('F-064: progress between two streaks renews the move-on, so a run that keeps building is not ended on its third wall', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: builtTree,
+    responses: [
+      build('Lighthouse'),
+      ...streakOf(),
+      build('WoodenPier'),
+      ...streakOf(),
+      build('FishingBoat'),
+      ...streakOf(),
+      build('Tavern', 'MarketSquare', 'Stall'),
+      answer({ text: 'Built the harbour.' }),
+      answer({ text: 'Built the harbour.' }),
+      answer({ text: 'Built the harbour.' }),
+    ],
+  });
+  try {
+    await start(h, { text: LISTED });
+    for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended');
+    assert.ok(stuckSteers(h).length >= 3 || h.chatCalls.length >= 16,
+      `the fixture never reached the third streak (${h.chatCalls.length} model calls)`);
+    assert.equal(count(streamed(h), REPEAT), 0, 'a run that built a requested part between every streak was ended as stuck');
+    assert.ok(h.ops.some((op) => JSON.stringify(op).includes('Tavern')), 'the part after the third streak never reached Studio');
+  } finally {
+    h.stop();
+  }
+});
+
+test('F-064 control: a run that changes things between streaks but builds nothing still left open ends after the bounded move-ons', async () => {
+  // The real stop the guard exists for: each wall is met with a change that names no requested part,
+  // so no open work closes and the allowance is not renewed.
+  const tweak = (t) => calls(['set_properties', { path: 'game.Lighting', props: { ClockTime: t } }]);
+  const h = await makeSession({
+    connected: true,
+    answerOp: builtTree,
+    responses: [
+      build('Lighthouse'),
+      ...streakOf(),
+      tweak(10),
+      ...streakOf(),
+      tweak(11),
+      ...streakOf(),
+      build('Tavern', 'MarketSquare', 'Stall'),
+      answer({ text: 'Built the harbour.' }),
+    ],
+  });
+  try {
+    await start(h, { text: LISTED });
+    for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended');
+    assert.equal(count(streamed(h), REPEAT), 1, 'a run stuck with nothing built between its walls must still end on the streak');
+    assert.equal(stuckSteers(h).length, 2, 'moved on exactly the bounded number of times');
+    assert.equal(h.ops.some((op) => JSON.stringify(op).includes('Tavern')), false, 'it ended before the scripted build');
+    assert.equal(lastEnd(h).stopReason, 'done', 'it changed the place, so it ends on what it built');
+  } finally {
+    h.stop();
+  }
+});

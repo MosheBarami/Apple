@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { afterDuplicateStreak, UNSTICKS_PER_RUN, UNSTICK_STEER } from '../src/run-idle.ts';
+import { afterDuplicateStreak, unstucksAfterProgress, UNSTICKS_PER_RUN, UNSTICK_STEER } from '../src/run-idle.ts';
 
 const SESSION = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'do', 'session.ts'), 'utf8')
   .replace(/\/\/\[\[[\s\S]*?\]\]/g, '')
@@ -58,4 +58,16 @@ test('the session uses the decision, withholds reads for the next step, and says
   assert.match(SESSION, /readsWithheldOnce/);
   // the withheld set only removes tools, and only the non-mutating ones
   assert.match(SESSION, /readsWithheldOnce[\s\S]{0,400}READ_ONLY_WITHHELD\.has\(/);
+});
+
+// F-064: the per-run allowance treated a run that built a part between two walls like one that looped
+// on the same wall, and ended it at its third. Work that closed in between renews it; nothing closed
+// keeps it spent, which is the real stop.
+test('the move-on allowance renews only when less work is open than at the last move-on', () => {
+  assert.equal(unstucksAfterProgress(UNSTICKS_PER_RUN, 4, 3), 0, 'a part got built in between');
+  assert.equal(unstucksAfterProgress(UNSTICKS_PER_RUN, 4, 4), UNSTICKS_PER_RUN, 'nothing closed: still spent');
+  assert.equal(unstucksAfterProgress(UNSTICKS_PER_RUN, 4, 5), UNSTICKS_PER_RUN, 'more open work is not progress');
+  assert.equal(unstucksAfterProgress(1, undefined, 0), 1, 'no move-on yet: nothing to compare');
+  assert.equal(at({ unstucks: unstucksAfterProgress(UNSTICKS_PER_RUN, 4, 4) }), 'end');
+  assert.equal(at({ unstucks: unstucksAfterProgress(UNSTICKS_PER_RUN, 4, 3) }), 'unstick');
 });

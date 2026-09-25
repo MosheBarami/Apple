@@ -226,3 +226,13 @@ export function afterDuplicateStreak(f: {
   if (f.streak < f.limit) return 'continue';
   return f.building && f.workOpen && f.unstucks < UNSTICKS_PER_RUN ? 'unstick' : 'end';
 }
+
+/**
+ * The move-on allowance to use at this streak. It renews when less work is open than at the last move-on:
+ * a run that built a part or finished a plan step between two walls was not stuck, it met a new one
+ * (F-064). Nothing closed in between, and the run still ends after UNSTICKS_PER_RUN. Strictly less,
+ * so renewals are bounded by the work that is open.
+ */
+export function unstucksAfterProgress(unstucks: number, openAtLastUnstick: number | undefined, openNow: number): number {
+  return openAtLastUnstick !== undefined && openNow < openAtLastUnstick ? 0 : unstucks;
+}
