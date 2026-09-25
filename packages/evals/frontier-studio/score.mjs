@@ -63,8 +63,14 @@ function assetValid(proof) {
   const asset = proof?.asset;
   return (asset?.source === 'library' || asset?.source === 'creator-store')
     && asset.robloxSpecific === true && asset.rightsVerified === true
-    && asset.placed === true && typeof asset.selectionReason === 'string'
-    && asset.selectionReason.trim().length >= 12;
+    && asset.placed === true
+    && (asset.source === 'creator-store' ? /^\d{5,20}$/.test(String(asset.sourceRef ?? ''))
+      : typeof asset.sourceRef === 'string' && asset.sourceRef.trim().length >= 5)
+    && typeof asset.rightsUrl === 'string' && /^https:\/\//.test(asset.rightsUrl)
+    && typeof asset.instancePath === 'string' && /^(Workspace|ReplicatedStorage|StarterGui|ServerStorage|SoundService)\.[^\s]/.test(asset.instancePath)
+    && typeof asset.selectionReason === 'string' && asset.selectionReason.trim().length >= 12
+    && typeof asset.placementReason === 'string' && asset.placementReason.trim().length >= 12
+    && ['no-scripts', 'audited-and-tested', 'stripped'].includes(asset.scriptDisposition);
 }
 
 /** A proof is an observation by an independent examiner, with its bytes bound by SHA-256. */

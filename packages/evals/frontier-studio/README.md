@@ -70,9 +70,13 @@ directory. A minimal bundle has the shape below; every `criteriaFor(task)` key n
 
 `trace.json` must be `{ "runId": "real-run-id", "tools": [{"tool":"...","ok":true}, ...] }`.
 Each `asset:<role>` proof additionally needs
-`asset: {source: "library"|"creator-store", robloxSpecific: true, rightsVerified: true,
-placed: true, selectionReason: "specific visual and functional fit"}`. The external artifact
-must substantiate those fields. UI, world, playtest, security and persistence are separate gates.
+`asset: {source: "library"|"creator-store", sourceRef: "Roblox asset ID or library row",
+rightsUrl: "https://…", robloxSpecific: true, rightsVerified: true, placed: true,
+instancePath: "Workspace.ActualInstance", selectionReason: "specific visual and functional fit",
+placementReason: "why this location serves gameplay", scriptDisposition: "no-scripts"|
+"audited-and-tested"|"stripped"}`. The external artifact must substantiate those fields;
+"audited-and-tested" requires a real behavior probe. UI, world, playtest, security and
+persistence are separate gates.
 
 The suite reports `passRate: null` until all 36 tasks have measured results. A complete 36/36
 pass is **a pass on this benchmark version**, not by itself proof of universal Roblox frontier
@@ -82,7 +86,7 @@ bank with new customer failure types and reserve unseen tasks for a later holdou
 
 ## Current state
 
-The protocol and eight falsifiable scorer tests are implemented. **0 of 36 Studio missions have
+The protocol and ten falsifiable scorer tests are implemented. **0 of 36 Studio missions have
 been measured under this new protocol.** Do not display 0% or 100% as a model score from this bank.
 The next real step is to run the first mission in a fresh isolated, paired Studio place and attach
 the readback, Play-mode checks and blind screenshots. The owner's latest visual rejection is an

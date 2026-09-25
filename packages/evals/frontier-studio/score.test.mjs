@@ -27,7 +27,7 @@ const kind = (key) => key.startsWith('feature:') ? 'playtest' : key.startsWith('
 const complete = () => ({
   taskId: task.id,
   run: { id: 'synthetic-run', buildSha: 'abc123', projectId: 'synthetic-place', startedAt: '2026-09-25T00:00:00Z', endedAt: '2026-09-25T01:00:00Z', mode: 'agent', autonomous: true, start: 'fresh-baseplate', stopReason: 'done', interventions: [] },
-  proofs: Object.fromEntries(criteriaFor(task).map((key) => [key, { kind: kind(key), observer: 'independent-reviewer', runId: 'synthetic-run', artifact: key === 'run' ? 'trace.json' : 'fixture.txt', sha256: key === 'run' ? traceDigest : digest, passed: true, ...(key.startsWith('asset:') ? { asset: { source: 'creator-store', robloxSpecific: true, rightsVerified: true, placed: true, selectionReason: 'Fits the game role and style' } } : {}), ...(key.startsWith('visual-') ? { verdict: { fitForRoblox: true, amazing: true } } : {}) }])),
+  proofs: Object.fromEntries(criteriaFor(task).map((key) => [key, { kind: kind(key), observer: 'independent-reviewer', runId: 'synthetic-run', artifact: key === 'run' ? 'trace.json' : 'fixture.txt', sha256: key === 'run' ? traceDigest : digest, passed: true, ...(key.startsWith('asset:') ? { asset: { source: 'creator-store', sourceRef: '123456789', rightsUrl: 'https://create.roblox.com/store/asset/123456789', robloxSpecific: true, rightsVerified: true, placed: true, instancePath: 'Workspace.SampleAsset', selectionReason: 'Fits the game role and style', placementReason: 'Placed at the player route entrance', scriptDisposition: 'no-scripts' } } : {}), ...(key.startsWith('visual-') ? { verdict: { fitForRoblox: true, amazing: true } } : {}) }])),
 });
 
 test('the bank covers twelve game genres in three independent attempts', () => {
@@ -99,6 +99,17 @@ test('a generic converted model cannot satisfy a Roblox asset requirement', () =
   const result = gradeMission(task, bundle, root);
   assert.equal(result.status, 'unmeasured');
   assert.ok(result.missing.includes(`asset:${task.assets[0]}`));
+});
+
+test('an asset is unmeasured without a concrete source, placed instance and script disposition', () => {
+  const key = `asset:${task.assets[0]}`;
+  for (const erase of ['sourceRef', 'rightsUrl', 'instancePath', 'placementReason', 'scriptDisposition']) {
+    const bundle = complete();
+    delete bundle.proofs[key].asset[erase];
+    const result = gradeMission(task, bundle, root);
+    assert.equal(result.status, 'unmeasured', erase);
+    assert.ok(result.missing.includes(key), erase);
+  }
 });
 
 test('a visually rejected game cannot pass even if its code and play loop pass', () => {
