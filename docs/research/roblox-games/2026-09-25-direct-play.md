@@ -273,6 +273,45 @@ first objective is visually unambiguous, and whether a real action changes
 world and HUD state. Do not train on or copy this game's images, map, UI or
 code; write original, licence-safe training and benchmark examples.
 
+## Ride A Pet — cartoon pet simulator (launched in app)
+
+I selected the recommended game with Roblox's keyboard navigation and pressed
+Play on its native detail page. The page displayed 97% positive and about 132K
+active at that moment. These are Roblox's displayed figures, not an Apple
+quality measure. Its description says the loop is to find eggs, hatch faster
+pets, and mutate them; I did not verify those later mechanics.
+
+- The first live frame already had a themed fenced dirt enclosure, dense
+  broad-canopy trees, bright grass, a visible pet and a layered HUD. The
+  landscape combined warm brown paths, vivid green vegetation, stylized
+  foliage and oversized outlined lettering. The pet and avatar were prominent,
+  although the oversized pet initially hid much of the character.
+- A branded title briefly covered the centre. The tutorial then darkened the
+  world and isolated a single yellow `Ride Pet` button under a wooden heading,
+  `Ride Pet To Go Faster`. This made the first action unmistakable even with
+  the full HUD present behind it.
+- Pointer clicks only hovered the button in this session. Roblox UI navigation
+  (`backslash`, then Up and Return) **did** activate `Ride Pet`: the avatar
+  mounted the pet, the button became `Dismount`, the dimming disappeared and
+  the tutorial advanced to `Go To Gear Shop 145m Away`. A large green ground
+  arrow pointed toward that objective. This is a verified state transition,
+  not just a decorative button.
+- The visible HUD carried a currency counter (`50`), friend boost, egg and pet
+  buttons, a bottom backpack slot, a weather/event countdown and an income
+  label on the pet (`$3/s`). The countdown changed while observed; the
+  currency counter did not visibly change during this short pass.
+  I did not verify an egg hatch, shop transaction, mutation or save/return.
+- Brief repeated `W` key presses moved the objective distance from 145m to
+  146m, but did not establish a traversed route to the gear shop. The game's
+  movement and complete economy loop are therefore still unverified here.
+
+For Apple, the reusable benchmark is an *original* first-action scene that
+gates attention to one operable control, confirms the action changes avatar and
+UI state, then exposes a destination and a live distance indicator. The
+benchmark should verify the action and the transition in Studio Play, not just
+the presence of a tutorial label or colorful props. No game art, map, UI,
+sound or code from this title was copied into Apple or its training data.
+
 ## Product and benchmark implications — hypotheses, not pass claims
 
 1. A playable opening needs a safe spawn, a readable objective and a route to
@@ -301,15 +340,19 @@ code; write original, licence-safe training and benchmark examples.
    opening reward can be accepted or dismissed, the main objective remains
    legible, and the player can reach the first action without stacked modal
    dead ends. Apple needs this check even when its screenshot looks colorful.
+10. Ride A Pet demonstrates a verifiable onboarding chain: highlight one
+    action, observe a functional avatar and UI change, then present a routed
+    objective with a live distance. Each link should be checked separately.
 
 ## Coverage and next observation
 
-Six popular games entered; Command An Army, Ball VS Ball, Merge & Dig
+Seven popular games entered; Command An Army, Ball VS Ball, Merge & Dig
 Simulator! and the Steal An Egg revisit were launched from the Roblox app
-itself. One simulation/tycoon opening, one shooter live round, one RPG opening,
-one toy-soldier opening, one cartoon arena opening and a second simulator
-opening were inspected. This is **not** yet hundreds of verified aspects, full
-gameplay coverage, a representative sample, or model training. Next: inspect
+itself, as was Ride A Pet. One simulation/tycoon opening, one shooter live
+round, one RPG opening, one toy-soldier opening, one cartoon arena opening and
+two other simulator openings were inspected. This is **not** yet hundreds of
+verified aspects, full gameplay coverage, a representative sample, or model
+training. Next: inspect
 active interactions and menus in app-launched colorful cartoon games, then a
 cartoon adventure/RPG and a roleplay game. Record reproducible screenshots and
 side-by-side Apple failures, expand
