@@ -4667,7 +4667,7 @@ export class SessionDO extends DurableObject<Env> {
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
       this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
-      await this.finishRun(agent, 'done');
+      await this.finishRun(agent, 'incomplete');
       return;
     }
     if (retuneThisStep === 'nudge') {

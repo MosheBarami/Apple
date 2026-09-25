@@ -145,7 +145,7 @@ test('the same target changed again and again is told to stop tuning, then ended
 
 test('the run loop counts each successful change by its target and acts on the answer', () => {
   assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;\s*const retune = afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{aim\(call\.arguments\)\}`\);/);
-  assert.match(SESSION, /if \(retuneThisStep === 'finish'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'done'\);/);
+  assert.match(SESSION, /if \(retuneThisStep === 'finish'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'incomplete'\);/);
   assert.match(SESSION, /if \(retuneThisStep === 'nudge'\) \{\s*agent\.llm\.push\(/);
 });
 

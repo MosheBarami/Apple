@@ -722,6 +722,7 @@ test('a run that keeps changing the same thing is ended at the retune limit, on 
     assert.ok(sets <= 12, `changed the same target ${sets} times before stopping`);
     const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
     assert.match(text, /changed the same thing many times in a row/);
+    assert.equal(lastEnd(h).stopReason, 'incomplete', 'a retune guard is a stopped build, not a completed game');
   } finally {
     h.stop();
   }
