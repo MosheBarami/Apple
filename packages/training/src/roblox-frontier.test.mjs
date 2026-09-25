@@ -86,6 +86,28 @@ platform.CFrame = origin
   assert.equal(result.checks.find((check) => check.id === 'actually-moves-it')?.pass, true);
 });
 
+test('a buyer who already owns the sword does not mask the affordability check', () => {
+  const run = JSON.parse(readFileSync(resolve(HERE, '../runs/roblox-frontier-apple-max-agent-house-rules-plus-library-ui-20260925-rep13.json'), 'utf8'));
+  const answer = run.rows.find((row) => row.id === 'shop-debit')?.answer;
+  assert.ok(answer, 'the recorded, real model answer is required');
+  const item = FRONTIER_ITEMS.find((candidate) => candidate.id === 'shop-debit');
+  const result = scoreFrontierItem(item, answer);
+  assert.equal(result.outcome, 'checked', result.detail ?? 'the candidate must run');
+  assert.equal(result.checks.find((check) => check.id === 'refuses-when-unaffordable')?.pass, true,
+    'a separate buyer with 50 coins must test affordability without the first buyer owning a sword');
+});
+
+test('task.spawn returns a thread for a shutdown save to await', () => {
+  const run = JSON.parse(readFileSync(resolve(HERE, '../runs/roblox-frontier-apple-max-agent-house-rules-plus-library-ui-20260925-rep14.json'), 'utf8'));
+  const answer = run.rows.find((row) => row.id === 'shutdown-save')?.answer;
+  assert.ok(answer, 'the recorded, real model answer is required');
+  const item = FRONTIER_ITEMS.find((candidate) => candidate.id === 'shutdown-save');
+  const result = scoreFrontierItem(item, answer);
+  assert.equal(result.outcome, 'checked', result.detail ?? 'the candidate must run');
+  assert.equal(result.checks.find((check) => check.id === 'shutdown-saves-everyone')?.pass, true);
+  assert.equal(result.checks.find((check) => check.id === 'shutdown-path-does-not-throw')?.pass, true);
+});
+
 //[[ THE EXPENSIVE HALF. Each control is compiled and RUN under the harness, through the same
 //   scorer a model's answer goes through — not a mock of it. About 70 Luau processes; a few
 //   seconds. Worth every one of them, because this is the only thing standing between a number in

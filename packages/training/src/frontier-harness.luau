@@ -866,8 +866,13 @@ nodeOf(service("Players")).props.LocalPlayer = localPlayer
 -- Every spawned function is its own thread (see asThread). A real error is recorded under the entry
 -- point that ran it; reaching the loop budget is how a steady-state loop ends, and is not an error.
 local function spawned(label, fn, ...)
+	-- Roblox task.spawn returns a thread. The harness runs work synchronously in its own virtual
+	-- thread, so return a completed coroutine handle that callers can store or close afterward.
+	local handle = coroutine.create(function() end)
+	coroutine.resume(handle)
 	local ok, err = asThread(fn, ...)
 	if not ok then handlerErrors[#handlerErrors + 1] = label .. ": " .. tostring(err) end
+	return handle
 end
 -- A delayed function starts `t` virtual seconds into its own thread.
 local function afterDelay(t, fn)
@@ -880,9 +885,9 @@ end
 task = {
 	-- Roblox resumes a task.wait no sooner than the next frame, and returns the time that passed.
 	wait = function(t) local dt = math.max(tonumber(t) or 0, 1 / 60) yieldFor("task.wait", dt) return dt end,
-	spawn = function(fn, ...) bump(globalCalls, "task.spawn") spawned("task.spawn", fn, ...) end,
-	defer = function(fn, ...) bump(globalCalls, "task.defer") spawned("task.defer", fn, ...) end,
-	delay = function(t, fn, ...) bump(globalCalls, "task.delay") spawned("task.delay", afterDelay(t, fn), ...) end,
+	spawn = function(fn, ...) bump(globalCalls, "task.spawn") return spawned("task.spawn", fn, ...) end,
+	defer = function(fn, ...) bump(globalCalls, "task.defer") return spawned("task.defer", fn, ...) end,
+	delay = function(t, fn, ...) bump(globalCalls, "task.delay") return spawned("task.delay", afterDelay(t, fn), ...) end,
 	cancel = function() bump(globalCalls, "task.cancel") end,
 	synchronize = function() end,
 	desynchronize = function() end,

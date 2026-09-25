@@ -23,17 +23,17 @@
   "system": "You write modern, idiomatic Luau and follow current Roblox best practices:\n- task.wait/task.spawn/task.defer (never the deprecated global wait/spawn), no Instance.new parent argument,\n  use CFrame math correctly, prefer attributes over Value objects, RemoteEvents in ReplicatedStorage,\n  server logic in ServerScriptService, client logic in StarterPlayerScripts/StarterGui.\n- Scripts communicate via ModuleScripts and Remote events; never trust the client on the server.\n- UI comes ONLY from the stored UI library: insert_ui_component(component, parent, props, position, colour, genre)\n  places each HUD piece, button and window. Never create ScreenGui/Frame/TextLabel/ImageLabel/UIStroke/UICorner\n  by hand or Instance.new them in a script; those calls are refused. Edit an inserted piece's Text, Position and\n  Visible freely, and have scripts find it by path (player.PlayerGui:WaitForChild(\"<name>\")).\n- Sounds and particle effects come ONLY from the stored library (D-FXLIB-1): insert_sound(query or assetId,\n  parent, looped, volume) adds a real Roblox audio Sound (find_sound searches; play_library_sound lets the user\n  hear one); insert_vfx(preset, target) adds a finished ParticleEmitter/Beam/Trail/Highlight effect (find_vfx\n  lists them). Never create Sound/ParticleEmitter/Beam/Trail/Fire/Smoke/Sparkles by hand or Instance.new them in\n  a script; those calls are refused. Scripts :Play() or :Clone() an inserted Sound, and fire a one-shot effect\n  with emitter:Emit(emitter:GetAttribute(\"AppleEmitCount\")).\n- Player-authored text that another player will see goes through TextService:FilterStringAsync\n  before it is stored, replicated or shown. Filtering is a platform requirement, not a style choice.\n- DataStore calls THROW. pcall is the floor, not the plan: retry a failed read or write a bounded\n  number of times with a pause between attempts, and treat a call that never succeeded as unsaved.\n- A value two servers can change at once — currency, inventory, a shared counter — is written with\n  UpdateAsync and a transform that reads the CURRENT value. A GetAsync/SetAsync pair silently loses\n  the other server's write.\n- A failed load is not an empty account. Never write a default over a key whose read failed; skip\n  saving that session instead.\n\nAnswer with ONE fenced luau code block and nothing else — no prose before or after it. Write the complete script that was asked for, ready to paste into Studio."
  },
  "provenance": {
-  "harness": "917be42c0c8a998b",
+  "harness": "5809058596824e7e",
   "scorer": "ff0314bdf550c111",
-  "tasks": "39ca7bdc66df58b0",
+  "tasks": "f668b3ffebe5b574",
   "controls": "1c86dac61456a844",
   "settingsMirror": "890de7822a7060db"
  },
  "items": 16,
  "attempted": 16,
  "measured": 16,
- "passed": 15,
- "pct": 93.8,
+ "passed": 16,
+ "pct": 100,
  "notMeasured": 0,
  "excludedFromDenominator": 0,
  "errors": [],
@@ -50,9 +50,9 @@
   },
   "server-authority": {
    "measured": 5,
-   "passed": 4,
+   "passed": 5,
    "attempted": 5,
-   "checksPassed": 18,
+   "checksPassed": 19,
    "checksTotal": 19
   },
   "datastore-safety": {
@@ -68,14 +68,7 @@
   "server-authority",
   "datastore-safety"
  ],
- "failedChecks": [
-  {
-   "item": "shop-debit",
-   "axis": "server-authority",
-   "check": "refuses-when-unaffordable",
-   "why": "the third and fourth attempts are made with 50 coins against a 100 coin price; a handler that debits anyway mints negative money"
-  }
- ],
+ "failedChecks": [],
  "neurons": 369,
  "neuronsPerItem": 23.1,
  "rows": [
@@ -253,7 +246,7 @@
    "id": "shop-debit",
    "axis": "server-authority",
    "outcome": "checked",
-   "ok": false,
+   "ok": true,
    "checks": [
     {
      "id": "legit-purchase-works",
@@ -261,7 +254,7 @@
     },
     {
      "id": "refuses-when-unaffordable",
-     "pass": false
+     "pass": true
     },
     {
      "id": "survives-hostile-arguments",
@@ -272,9 +265,7 @@
      "pass": true
     }
    ],
-   "failed": [
-    "refuses-when-unaffordable"
-   ],
+   "failed": [],
    "unresolved": 0,
    "detail": null,
    "probeError": null,
@@ -576,10 +567,10 @@
    "answer": "```luau\n-- ServerScriptService/PlayerCoins.server.luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function getKey(player: Player): string\n\treturn \"Player_\" .. player.UserId\nend\n\nlocal function loadCoins(player: Player): (number?, boolean)\n\tlocal key = getKey(player)\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, result = pcall(function()\n\t\t\treturn store:GetAsync(key)\n\t\tend)\n\t\tif ok then\n\t\t\t-- nil means a brand-new player; a number is their saved coins\n\t\t\tif typeof(result) == \"number\" then\n\t\t\t\treturn result, true\n\t\t\tend\n\t\t\treturn 0, true\n\t\tend\n\t\twarn((\"Failed to load coins for %s (attempt %d/%d): %s\"):format(player.Name, attempt, MAX_RETRIES, tostring(result)))\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY * attempt)\n\t\tend\n\tend\n\treturn nil, false -- never succeeded; treat as unsaved, not a new account\nend\n\nlocal function saveCoins(player: Player, coins: number): boolean\n\tlocal key = getKey(player)\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, err = pcall(function()\n\t\t\t-- UpdateAsync so a concurrent write from another server isn't lost\n\t\t\tstore:UpdateAsync(key, function(old)\n\t\t\t\tif typeof(old) == \"number\" and old > coins then\n\t\t\t\t\treturn old -- never let a stale write reduce someone's coins\n\t\t\t\tend\n\t\t\t\treturn coins\n\t\t\tend)\n\t\tend)\n\t\tif ok then\n\t\t\treturn true\n\t\tend\n\t\twarn((\"Failed to save coins for %s (attempt %d/%d): %s\"):format(player.Name, attempt, MAX_RETRIES, tostring(err)))\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY * attempt)\n\t\tend\n\tend\n\treturn false\nend\n\nlocal function onPlayerAdded(player: Player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coinsValue = Instance.new(\"IntValue\")\n\tcoinsValue.Name = \"Coins\"\n\tcoinsValue.Parent = leaderstats\n\n\tlocal coins, loaded = loadCoins(player)\n\tif loaded then\n\t\tcoinsValue.Value = coins :: number\n\telse\n\t\t-- Load failed: start at 0 for display, but DO NOT save this session\n\t\t-- so we never overwrite their real data with a default.\n\t\tcoinsValue.Value = 0\n\t\tcoinsValue:SetAttribute(\"SaveBlocked\", true)\n\t\twarn((\"Skipping save for %s this session because their data failed to load.\"):format(player.Name))\n\tend\nend\n\nlocal function onPlayerRemoving(player: Player)\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coinsValue = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif not coinsValue then\n\t\treturn\n\tend\n\tif coinsValue:GetAttribute(\"SaveBlocked\") then\n\t\treturn -- their load failed; don't overwrite real data with a default\n\tend\n\tsaveCoins(player, coinsValue.Value)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)\nPlayers.PlayerRemoving:Connect(onPlayerRemoving)\n\n-- Handle players who joined before this script ran\nfor _, player in Players:GetPlayers() do\n\ttask.spawn(onPlayerAdded, player)\nend\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\t\tlocal coinsValue = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\t\tif coinsValue and not coinsValue:GetAttribute(\"SaveBlocked\") then\n\t\t\tsaveCoins(player, coinsValue.Value)\n\t\tend\n\tend\nend)\n```"
   }
  ],
- "rescoredAt": "2026-09-25T00:23:24.940Z",
+ "rescoredAt": "2026-09-25T00:34:56.520Z",
  "rescoredFrom": {
-  "measured": 15,
-  "passed": 14,
-  "pct": 93.3
+  "measured": 16,
+  "passed": 15,
+  "pct": 93.8
  }
 }

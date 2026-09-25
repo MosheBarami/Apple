@@ -360,22 +360,26 @@ __APPLE.fact("afterOne", coins.Value)
 local key = accepted or "sword"
 __APPLE.fireRemote("BuyItem", p, key)
 __APPLE.fact("afterTwo", coins.Value)
--- The player can no longer afford it. A handler that debits anyway goes negative.
-__APPLE.fireRemote("BuyItem", p, key)
-__APPLE.fireRemote("BuyItem", p, key)
-__APPLE.fact("afterBroke", coins.Value)
+-- Use another buyer: a handler may correctly refuse a second sword because the first buyer
+-- already owns one. That refusal says nothing about whether it checks the price.
+local poor = __APPLE.player("BuyerWithoutFunds")
+local poorStats = Instance.new("Folder") poorStats.Name = "leaderstats" poorStats.Parent = poor
+local poorCoins = Instance.new("IntValue") poorCoins.Name = "Coins" poorCoins.Value = 50 poorCoins.Parent = poorStats
+__APPLE.fireRemote("BuyItem", poor, key)
+__APPLE.fireRemote("BuyItem", poor, key)
+__APPLE.fact("afterBroke", poorCoins.Value)
 -- Hostile shapes an exploiter sends for free.
-__APPLE.fireRemote("BuyItem", p, nil)
-__APPLE.fireRemote("BuyItem", p, {})
-__APPLE.fireRemote("BuyItem", p, 1e9)
-__APPLE.fireRemote("BuyItem", p, -500)
-__APPLE.fireRemote("BuyItem", p, string.rep("x", 4000))
-__APPLE.fact("afterHostile", coins.Value)
+__APPLE.fireRemote("BuyItem", poor, nil)
+__APPLE.fireRemote("BuyItem", poor, {})
+__APPLE.fireRemote("BuyItem", poor, 1e9)
+__APPLE.fireRemote("BuyItem", poor, -500)
+__APPLE.fireRemote("BuyItem", poor, string.rep("x", 4000))
+__APPLE.fact("afterHostile", poorCoins.Value)
 `,
     checks: [
       check('legit-purchase-works', 'a benchmark that only rewards refusal is passed by a handler that refuses everything',
         (t) => fact(t, 'afterOne') === 150),
-      check('refuses-when-unaffordable', 'the third and fourth attempts are made with 50 coins against a 100 coin price; a handler that debits anyway mints negative money',
+      check('refuses-when-unaffordable', 'a different buyer has 50 coins against a 100 coin price and owns no sword; a handler that debits anyway mints negative money',
         (t) => fact(t, 'afterBroke') === 50),
       check('survives-hostile-arguments', 'nil, a table, a number, a negative number and a 4,000-character string are what an exploiter sends first; a handler that indexes them without checking throws and takes the connection down',
         (t) => handlerErrors(t).length === 0),
