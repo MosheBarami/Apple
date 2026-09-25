@@ -25,6 +25,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = join(WORKER, '..', '..');
@@ -46,6 +47,11 @@ const T = await import(`file://${bundle('tools.ts', 'tools')}`);
 const M = await import(`file://${bundle('model-library.ts', 'model-library')}`);
 const MANIFEST = JSON.parse(readFileSync(join(LIB, 'models/manifest.json'), 'utf8'));
 const INDEX = JSON.parse(readFileSync(join(LIB, 'models/index.json'), 'utf8'));
+const PACKS = new Map((readFileSync(join(LIB, 'sources/models-packs.jsonl'), 'utf8')
+  + gunzipSync(readFileSync(join(LIB, 'sources/models-github.jsonl.gz'))).toString('utf8')).split('\n').filter(Boolean).map((line) => {
+  const pack = JSON.parse(line);
+  return [pack.id, pack];
+}));
 const STORE_PRESENT = existsSync(join(LIB, 'models-store'));
 const DOWNLOAD_LICENCES = /^(CC0|CC0-1\.0|Public ?Domain|CC-BY-[34]\.0|CC-BY|MIT|Apache-2\.0|BSD-[23]-Clause|Unlicense|ISC|0BSD|Zlib)$/i;
 
@@ -78,7 +84,8 @@ const indexed = M.findLibraryModels; // bound for readability below
 
 test('the manifest contains Roblox Creator Store ids and no unproven general-purpose file', () => {
   assert.ok(MANIFEST.rows.length >= 1000, `only ${MANIFEST.rows.length} rows`);
-  assert.equal(fileRows.length, 0, 'a file pack needs an explicit Roblox-specific provenance before inclusion');
+  assert.equal(MANIFEST.totals.files, fileRows.length);
+  for (const row of fileRows) assert.equal(PACKS.get(row.pack)?.robloxSpecific, true, `${row.id} lacks Roblox-specific provenance`);
   assert.ok(csRows.length >= 100, `only ${csRows.length} Creator Store ids`);
   assert.equal(MANIFEST.totals.rows, MANIFEST.rows.length, 'totals are derived from the rows');
 });

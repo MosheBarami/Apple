@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 
 const root = new URL('../packages/asset-library/', import.meta.url);
 const read = (file) => readFileSync(new URL(file, root), 'utf8');
 const manifest = JSON.parse(read('models/manifest.json'));
 const index = JSON.parse(read('models/index.json'));
-const packs = new Map(read('sources/models-packs.jsonl').split('\n').filter(Boolean).map((line) => {
+const packLines = read('sources/models-packs.jsonl') + gunzipSync(readFileSync(new URL('sources/models-github.jsonl.gz', root))).toString('utf8');
+const packs = new Map(packLines.split('\n').filter(Boolean).map((line) => {
   const pack = JSON.parse(line);
   return [pack.id, pack];
 }));

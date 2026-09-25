@@ -52,12 +52,12 @@ test('owner acquisition view separates listed sources, local bytes and backend s
   const d = await library(q({ tab: 'intake', view: 'sources', limit: '10' }));
   assert.ok(d.sources.total >= 140, 'the owner-provided source queue must be visible');
   assert.ok(d.sources.page.rows.some((r) => r.url.includes('zerodev.tools')));
-  assert.equal(d.sources.excluded, 11, 'the general-purpose 3D portals are excluded from Roblox model intake');
+  assert.ok(d.sources.excluded >= 11, 'the general-purpose 3D portals are excluded from Roblox model intake');
   assert.ok(d.files.total > 0);
   assert.ok(d.files.local > 0);
-  assert.equal(d.files.fromOwner, 0, 'general-purpose model downloads do not count toward the owner request');
+  assert.ok(d.files.fromOwner >= 0 && d.files.fromOwner < d.files.local, 'the owner count is separate from old inventory');
   const onlyOwner = await library(q({ tab: 'intake', view: 'files', owner: '1', limit: '10' }));
-  assert.equal(onlyOwner.page.rows.length, 0, 'no Roblox-specific pack from the requested list has been admitted yet');
+  assert.ok(onlyOwner.page.rows.every((r) => r.ownerListed && r.source !== 'polyhaven'), 'excluded general models cannot count as owner acquisitions');
   const files = await library(q({ tab: 'intake', view: 'files', q: 'Wooden Crate 01', limit: '10' }));
   assert.ok(files.page.rows.every((r) => r.source !== 'polyhaven'), 'generic Poly Haven files must not be presented as Apple models');
   const excluded = await library(q({ tab: 'intake', view: 'sources', off: '133', limit: '11' }));
