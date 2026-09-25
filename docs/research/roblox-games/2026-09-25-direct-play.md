@@ -223,6 +223,56 @@ can reroll mid-battle, win coins, and unlock balls in a shop. A 2v2 event card
 was visible on the detail page. None of those mechanics was verified through
 active play in this observation.
 
+## Merge & Dig Simulator! — cartoon simulator opening (launched in app)
+
+Roblox Home recommended this game in the native desktop app. I navigated its
+card with the app's keyboard focus, opened its detail page, focused Play, and
+entered the live game. The detail page showed a 95% rating and about 2.3k
+active players at observation time. These are context, not quality scores for
+Apple.
+
+### Observed in the desktop player
+
+- Loading moved from a numeric percentage on a dark field to an xFrozen Studios
+  title. A scripted opening used a red studded room, framed art, low-poly
+  plants, a television showing the game's colorful blocks and pickaxe motif,
+  and a close shot of a character. The first seconds therefore had deliberate
+  camera staging and branded visual continuity before the normal play view.
+- A Daily Rewards overlay appeared immediately. Seven day cards included a
+  free day-one claim (50 coins), a pet, currency amounts, a potion pack, and a
+  large day-seven bonus. Bold pixel-like lettering, item illustrations,
+  distinct card colors, and a darkened world behind it made the reward state
+  legible. The free claim was visible; I did not verify it was awarded.
+- Roblox's backslash UI-navigation mode could focus the overlay's Exit control;
+  pressing Return closed the overlay and revealed the world. Coordinate clicks
+  merely moved or hovered the pointer in this session and did not prove a UI
+  action. This is a verified path to dismiss the opening modal by keyboard.
+- The first world view was nearly top-down: a narrow green studded path with
+  orange borders cut through broad blue studded ground and pointed into a
+  large green ENTER zone. Large white arrows pointed from the avatar toward
+  that zone. The environment used simple geometry, but deliberate color
+  blocking and oversized directional signs made the first objective obvious.
+- The HUD was dense yet organized by task. BASE and DIG! tabs sat top-center;
+  a zero-coin counter was top-right. Starter Pack, Evolution, Rebirth, a ready
+  gift, Shop, Event Pass, and Pets were on the left. A timed pet offer, damage
+  boost offer, and AUTO-DIG OFF were on the right. The products and offers were
+  visible, but no purchase or paid action was taken.
+- Repeated brief movement-key presses changed the avatar's orientation but did
+  not confirm travel to ENTER or any digging, merge, economy, pet, upgrade or
+  persistence mechanics. Those systems remain unverified in this observation.
+
+### Apple comparison and test implication
+
+The user's isolated Apple garden place currently shows a broad empty green
+field, three tiny blocky trees, thin white paths and plain Shop/Sell text. It
+does not show a similarly staged opening, a clear first-action path, or a
+coherent icon and reward system. The contrast is visual evidence, not a
+numeric quality percentage. A future cartoon-simulator gauntlet should check
+the first ten seconds, whether an opening modal can be dismissed, whether the
+first objective is visually unambiguous, and whether a real action changes
+world and HUD state. Do not train on or copy this game's images, map, UI or
+code; write original, licence-safe training and benchmark examples.
+
 ## Product and benchmark implications — hypotheses, not pass claims
 
 1. A playable opening needs a safe spawn, a readable objective and a route to
@@ -254,10 +304,11 @@ active play in this observation.
 
 ## Coverage and next observation
 
-Five popular games entered; Command An Army, Ball VS Ball and the Steal An Egg
-revisit were launched from the Roblox app itself. One simulation/tycoon opening, one shooter live round,
-one RPG opening, one toy-soldier opening and one cartoon arena opening were
-inspected. This is **not** yet hundreds of verified aspects, full
+Six popular games entered; Command An Army, Ball VS Ball, Merge & Dig
+Simulator! and the Steal An Egg revisit were launched from the Roblox app
+itself. One simulation/tycoon opening, one shooter live round, one RPG opening,
+one toy-soldier opening, one cartoon arena opening and a second simulator
+opening were inspected. This is **not** yet hundreds of verified aspects, full
 gameplay coverage, a representative sample, or model training. Next: inspect
 active interactions and menus in app-launched colorful cartoon games, then a
 cartoon adventure/RPG and a roleplay game. Record reproducible screenshots and
