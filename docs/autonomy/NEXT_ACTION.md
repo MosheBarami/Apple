@@ -1,5 +1,11 @@
 # NEXT ACTION
 
+2026-09-25 05:50 UTC: CI run 36099703453 for the isolated copy-guard test
+passed all six groups, including root tests and Playwright. The verified UI
+training shard and its Hugging Face dataset upload are now backed by a green
+clean-checkout build. v23 remains the active CPU training version; its held-out
+result, any promotion, HF publish and next version are still pending.
+
 2026-09-25 05:42 UTC: CI run 36098984126 passed five groups but Root tests failed
 because `tests/check-copy.test.mjs` temporarily edited the real pricing page while
 `check-credit-figures.test.mjs` read it in parallel. A new test reproduced the

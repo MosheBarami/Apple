@@ -31,5 +31,7 @@ adapter upload or a new model score.
 CI for the first shard commit found that the one-shot builder lacked a disposition in the
 repository's dead-end ledger. The ledger now records that its generated, digest-pinned
 training shard is the consumed artifact. The local dead-end gate and all 15 focused tests
-passed after that correction; the full root suite passed 555/555. The next CI run must
-confirm the whole repository.
+passed after that correction. A second CI run found a separate root-test race: the copy
+guard temporarily edited the shared pricing page while the price guard read it. That test
+now uses an isolated source copy; the full local root suite passed 556/556, and clean CI
+run 36099703453 passed all six groups, including root tests and Playwright.
