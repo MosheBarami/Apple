@@ -3,7 +3,8 @@
 This is a first-hand visual and interaction log from the signed-in Roblox desktop
 player, observed through Computer Use. The first three games were launched from
 their official web pages; **Command An Army and Ball VS Ball were selected and
-launched entirely inside the Roblox app**. The owner has since required app-only launches. This is
+launched entirely inside the Roblox app**, and Steal An Egg was subsequently
+revisited through the app's own search and Play flow. The owner has since required app-only launches. This is
 **not** a source-code inspection,
 asset licence, gameplay-completion claim, or permission to copy either game's
 artwork. Screens were observed in the task transcript; they are not yet archived
@@ -45,6 +46,36 @@ The page describes stealing and hatching eggs, pet income, treadmill/base
 upgrades, speed training, stealing from other players, and rarities/mutations.
 These are research targets for a later active-play pass; they are not recorded
 here as tested features.
+
+### Native-app revisit
+
+I opened Roblox's own search with `/`, searched for Steal An Egg, selected the
+verified By and Collect Rare Pets result and launched it from its native game
+page. The page showed 92% positive and about 2M active at that moment; these
+are the app's displayed figures, not a quality score for Apple. This was a
+fresh in-game spawn, not a website preview.
+
+- The spawn placed the avatar on a neon-green studded floor between brown
+  cross-braced plot fences. A high tan checkerboard perimeter and cyan sky
+  kept the palette deliberately simple. At the left edge a large dark creature
+  with orange fire gave the otherwise flat hub a distinct landmark.
+- The red arrows on the ground led the eye across the world, while a `$1K`
+  unlock sign and a `NEXT UPDATE` event board made the nearby gate legible as a
+  progression target. The event board displayed a live countdown and a
+  follow-event prompt; I did not activate either.
+- The persistent HUD kept Shop (with a red attention badge) and Index on the
+  left, egg and paw icons on the right, speed `10` and cash `$0` below, and two
+  numbered hotbar slots in the center. A short countdown remained at lower
+  right and server messages announced rare egg spawns across the top.
+- The coordinated typography, icons, outlines, color and directional signs
+  tie world and HUD together. The opening is still not perfect: a large red
+  arrow partly covers the avatar, the high wall limits the distant view, and
+  the central field looks sparse from this one camera angle. These are
+  observations, not defects proved across play.
+- Computer Use clicks on Shop moved the pointer without opening the menu. A
+  brief `W` key press showed no measurable avatar movement. I could not verify
+  purchasing, egg collection, hatching, pet income, upgrades or persistence.
+  The input issue may be with Computer Use; ordinary players may not face it.
 
 ## RIVALS — round-based shooter
 
@@ -223,8 +254,8 @@ active play in this observation.
 
 ## Coverage and next observation
 
-Five popular games entered; Command An Army and Ball VS Ball were launched from
-the Roblox app itself. One simulation/tycoon opening, one shooter live round,
+Five popular games entered; Command An Army, Ball VS Ball and the Steal An Egg
+revisit were launched from the Roblox app itself. One simulation/tycoon opening, one shooter live round,
 one RPG opening, one toy-soldier opening and one cartoon arena opening were
 inspected. This is **not** yet hundreds of verified aspects, full
 gameplay coverage, a representative sample, or model training. Next: inspect
