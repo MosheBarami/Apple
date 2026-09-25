@@ -5289,9 +5289,9 @@ export class SessionDO extends DurableObject<Env> {
    * question is open and after an eviction, which drops the pinned copy — and an absent policy
    * reads as "never asked", which is how an answered project could still refuse the library.
    */
-  private async refreshPinnedPrefs(): Promise<void> {
+  private async refreshPinnedPrefs(): Promise<boolean> {
     const bind = await this.bind();
-    if (!bind) return;
+    if (!bind) return false;
     try {
       const access = await memoryAccessFor(this.env, bind.ownerId, [bind.projectId]);
       const fresh = await personalisationForProject(this.env, access, { projectId: bind.projectId }, crypto.randomUUID().slice(0, 8), {
@@ -5300,13 +5300,14 @@ export class SessionDO extends DurableObject<Env> {
       });
       this.pinnedPrefs = fresh.prefs;
     } catch {
-      return;
+      return false;
     }
     if (!answerOwed(this.pinnedPrefs?.asset_sources) && (await this.assetSourcesAskedNow())) {
       this.assetSourcesAsked = false;
       await this.ctx.storage.delete('assetSourcesAsked');
       this.broadcast({ type: 'asset_sources_owed', owed: false });
     }
+    return true;
   }
 
   /**
@@ -5314,23 +5315,25 @@ export class SessionDO extends DurableObject<Env> {
    * `asset_sources` preference, written as the project owner. Returns what the dock should say
    * when it did not take, or null when it did.
    */
-  private async answerAssetSourcesFromStudio(value: unknown): Promise<string | null> {
+  private async answerAssetSourcesFromStudio(value: unknown): Promise<{ message: string; retryable: boolean } | null> {
     const policy = policyFromStudioAnswer(value);
-    if (!policy) return 'Pick at least one source.';
+    if (!policy) return { message: 'Pick at least one source.', retryable: false };
     const bind = await this.bind();
-    if (!bind) return 'This project is not ready yet. Try again in a moment.';
+    if (!bind) return { message: 'This project is not ready yet. Try again in a moment.', retryable: true };
     try {
       const access = await memoryAccessFor(this.env, bind.ownerId, [bind.projectId]);
       const [row] = preferencesToEntries({ asset_sources: policy }, 'project', bind.projectId);
       const put = row ? await putMemoryEntry(this.env, access, { ...row, source: 'user' }) : null;
-      if (!put?.ok) return 'Apple could not save that. Try again.';
+      if (!put?.ok) return { message: 'Apple could not save that. Try again.', retryable: true };
     } catch {
-      return 'Apple could not save that. Try again.';
+      return { message: 'Apple could not save that. Try again.', retryable: true };
     }
-    await this.refreshPinnedPrefs();
+    if (!(await this.refreshPinnedPrefs())) {
+      return { message: 'Apple could not confirm that answer. Try again.', retryable: true };
+    }
     // The same outcome the web dialog refuses: a higher layer narrowed the answer to nothing.
     if (answerOwed(this.pinnedPrefs?.asset_sources)) {
-      return 'Your account or organisation does not allow the sources you picked. Change it in Settings under Connections.';
+      return { message: 'Your account or organisation does not allow the sources you picked. Change it in Settings under Connections.', retryable: false };
     }
     return null;
   }
@@ -6176,7 +6179,7 @@ export class SessionDO extends DurableObject<Env> {
     // Owed only while a build has asked; answered is said once, to the dock that answered.
     const owed = await this.assetSourcesAskedNow();
     if (owed || body.assetSourcesAnswer !== undefined) {
-      res.assetSources = { owed, ...(sourcesNote ? { message: sourcesNote } : {}) };
+      res.assetSources = { owed, ...(sourcesNote ? sourcesNote : {}) };
     }
     return json(res);
   }

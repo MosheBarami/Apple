@@ -564,11 +564,12 @@ local function pollLoop(self: BridgeObject, session: Session)
 					continue
 				end
 				session.capabilitiesPending = false
-				-- A successful poll is not necessarily a saved answer. The worker can return 200
-				-- with owed=true when preference storage failed; keep sending until it settles.
+				-- A successful poll is not necessarily a saved answer. Retry only a transient
+				-- worker failure; a policy refusal needs a new choice from the person.
 				local sourcesReply = body.assetSources
-				local answerStillOwed = type(sourcesReply) == "table" and sourcesReply.owed == true
-				if not answerStillOwed and session.assetSourcesAnswer == sentAnswer then
+				local retryAnswer = type(sourcesReply) == "table" and sourcesReply.owed == true
+					and sourcesReply.retryable == true
+				if not retryAnswer and session.assetSourcesAnswer == sentAnswer then
 					session.assetSourcesAnswer = nil
 				end
 

@@ -682,8 +682,9 @@ export interface PluginPollResponse {
   /**
    * Present while a build is waiting on the asset-source answer, and once after the dock answers
    * (F-059). `owed` shows or hides the question; `message` says why an answer did not take.
+   * Only a transient save failure asks the dock to resend the same answer.
    */
-  assetSources?: { owed: boolean; message?: string };
+  assetSources?: { owed: boolean; message?: string; retryable?: boolean };
 }
 
 // ---------------------------------------------------------------------------
@@ -3013,4 +3014,3 @@ export function isSmallTalk(text: string): boolean {
   const trimmed = text.trim();
   return CONVERSATIONAL_RE.test(trimmed) || META_QUESTION_RE.test(trimmed);
 }
-
