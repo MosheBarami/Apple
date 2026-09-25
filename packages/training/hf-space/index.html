@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Apple · מדידת אימון</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff9f2;background:#131719}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 80% 0%,#804b38 0,transparent 42%),radial-gradient(circle at 0% 100%,#26473f 0,transparent 48%),#131719}
+    main{max-width:880px;margin:auto;padding:clamp(24px,5vw,64px) 20px 80px}
+    .eyebrow{color:#ffcfb9;font-size:.82rem;letter-spacing:.05em}h1{font-size:clamp(2rem,6vw,4.1rem);line-height:1.1;margin:.5rem 0 1rem}p{line-height:1.65;color:#d2d8d2}
+    .card{background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.17);border-radius:24px;padding:clamp(20px,4vw,32px);box-shadow:0 20px 60px #0005;backdrop-filter:blur(20px)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:24px 0}.stat{background:#ffffff0b;border-radius:18px;padding:20px}.stat b{font-size:2rem;display:block;margin:6px 0}.stat span{color:#d2d8d2}
+    .bar{height:11px;background:#ffffff20;border-radius:50px;overflow:hidden;margin:13px 0 4px}.bar i{display:block;height:100%;background:linear-gradient(90deg,#ffad7f,#ffd696);border-radius:50px}
+    .muted{color:#aeb9b2;font-size:.92rem}a{color:#ffd0aa;text-underline-offset:4px}a:hover{color:white}
+    .notice{border-inline-start:3px solid #ffb27d;padding:10px 18px;margin:26px 0;background:#ffffff0a;border-radius:12px}
+  </style>
+</head>
+<body><main>
+  <div class="eyebrow">APPLE · דוח מחקר פרטי · 25 בספטמבר 2026</div>
+  <h1>האימון מתקדם.<br>המבחן עדיין מאתגר.</h1>
+  <p>גרסת v22 נבחנה מול הגרסה המובילה הקודמת על אותן 38 משימות ובאותה הרצה. אלה תוצאות של מבחן קוד מקומי, לא משחק Roblox Studio מלא.</p>
+  <section class="card" aria-label="תוצאות המדידה">
+    <div class="grid">
+      <div class="stat"><span>Apple LoRA v22</span><b>24 / 38</b><div class="bar" aria-hidden="true"><i style="width:63.2%"></i></div><small class="muted">63.2% · קודמה למובילה המקומית</small></div>
+      <div class="stat"><span>v5 באותה הרצה</span><b>18 / 38</b><div class="bar" aria-hidden="true"><i style="width:47.4%"></i></div><small class="muted">47.4% · אותה בדיקה ואותו מודל בסיס</small></div>
+    </div>
+    <p>שימוש בכלים: <strong>17/23</strong> · לוגיקת משחק: <strong>1/8</strong> · סיום משימה: <strong>6/7</strong>.</p>
+    <div class="notice">זה אינו ציון Frontier ואינו המודל שפועל כרגע למשתמשי Apple. היכולת בלוגיקת משחק עדיין חלשה. v23 כבר מתאמנת ונמדדת רק אחרי שתסתיים.</div>
+    <p class="muted">אימות המדידה: אותם 38 מזהי משימות, אותן תוצאות בסיס בכל שורה, וללא שגיאות מתקן ידועות.</p>
+  </section>
+  <p>קובצי המתאם והמדידה נמצאים <a href="https://huggingface.co/moshebarami/apple-lora/tree/main/v22">במאגר המודל הפרטי</a>. דוח זה הוא תמונת מצב ואינו מתעדכן אוטומטית.</p>
+</main></body>
+</html>

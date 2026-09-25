@@ -32,6 +32,12 @@ floating window before the viewport could be inspected; round 8 remains untested
 Apple-Plugin-Release.rbxl place was closed without saving in-memory state; its disk file was
 unchanged. The latest CI run for the dashboard update was in progress at this measurement.
 
+2026-09-25 03:55 UTC update: a private static Hugging Face Space for the measured LoRA
+results was created at https://huggingface.co/spaces/moshebarami/apple-training-results.
+The API confirmed private visibility and static SDK, the runtime reported RUNNING, and the
+owner browser displayed the 24/38 versus 18/38 page. This is a results snapshot, not model
+inference or production deployment. The repo source lives in packages/training/hf-space/.
+
 ## Current boundary checks
 
 - GitHub Actions runs `36077908319` for `b529ffe`, `36078577416` for `6216ec1`,
