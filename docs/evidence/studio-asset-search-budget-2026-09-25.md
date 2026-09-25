@@ -1,0 +1,7 @@
+# Asset-search budget, connected Studio run, 2026-09-25
+
+The locally installed Apple Studio 1.4.1 dock visibly connected to the saved isolated garden place with edits allowed for that connection. In Apple MAX Agent mode, the owner asked for **at most two** plain-noun Creator Store searches, previews first, no insertion, no script edits, no uploads and no geometry from Parts. The run ended with 68 Credits spent and no Studio mutation.
+
+The persisted 10-entry tool trace contradicts the search limit: `find_library_model` ran five times (`carrot`, `vegetable plant`, `farm plant`, `pumpkin`, `flower`). All five returned zero results. Between the second and third searches, Apple read `GardenMain` and the fourth pad, and attempted `create_instances` for a detailed carrot assembled from Parts. The existing D-MODELLIB-2 guard refused that write. The final answer correctly said nothing was inserted, but it treated the additional searches as permitted.
+
+The repair parses an explicit search count from the current request and counts both `find_library_model` and `find_verified_asset` calls in that run's persisted trace. It stops before executing a search beyond the requested count and tells the owner the bound was reached. A focused test was red on the measured two-query wording and green afterward; Worker TypeScript passed and the full Worker suite passed **4,201**, failed **0**, skipped **4**. Live behavior must be checked after deployment. This does not create a fitting crop asset or make the garden visually complete; F-059 stays open.

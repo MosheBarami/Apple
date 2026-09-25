@@ -88,6 +88,7 @@ import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTIN
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
+import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
@@ -4294,6 +4295,19 @@ export class SessionDO extends DurableObject<Env> {
       const t0 = Date.now();
       const toolId = call.id;
       const sig = `${call.name}:${call.arguments}`;
+      // A user-specified search count is a run boundary, not a suggestion to the model. In the
+      // connected garden probe it made five library searches after being allowed only two, then
+      // tried to build a detailed crop from Parts. Stop before the third lookup costs anything.
+      if (assetSearchLimitReached(agent.request ?? '', agent.trace, call.name)) {
+        const limit = explicitAssetSearchLimit(agent.request ?? '');
+        const summary = `${call.name}: the owner's ${limit}-search limit was reached; this search was not run`;
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary });
+        agent.trace.push({ tool: call.name, summary, ok: false, durationMs: Date.now() - t0 });
+        await this.finishRun(agent, 'incomplete', undefined,
+          `The ${limit}-search limit in your request was reached. I stopped without making another asset search; review the options already found before continuing.`);
+        return;
+      }
       //[[ THE DUPLICATE GUARD, AND ITS TWO EXCEPTIONS.
       //
       //   An identical call is refused as "already done" — unless (a) its last attempt failed in a
