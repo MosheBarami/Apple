@@ -382,16 +382,23 @@ export function promotedSpaceSnapshot(entry, state, candidateScored, bestScored,
   };
 }
 
-/** max(floor, the widest spread seen between a best and its own reseeds). */
+/** Require a gain larger than observed run-to-run noise for an unchanged best. */
 export function promotionMargin(history, floor = PROMOTE_MARGIN) {
-  const groups = new Map();
+  const reseeds = new Map();
+  const pairedBest = new Map();
   for (const h of history) {
-    if (h.status !== 'done' || !h.scores || !h.lever?.id?.startsWith('reseed@') || h.bestTotalAtRun == null) continue;
-    const g = groups.get(h.bestVersionAtRun) ?? [h.bestTotalAtRun];
-    g.push(h.scores.total);
-    groups.set(h.bestVersionAtRun, g);
+    if (h.status !== 'done' || !h.scores || h.bestVersionAtRun == null || h.bestTotalAtRun == null) continue;
+    const bestRuns = pairedBest.get(h.bestVersionAtRun) ?? [];
+    bestRuns.push(h.bestTotalAtRun);
+    pairedBest.set(h.bestVersionAtRun, bestRuns);
+    if (h.lever?.id?.startsWith('reseed@')) {
+      const g = reseeds.get(h.bestVersionAtRun) ?? [h.bestTotalAtRun];
+      g.push(h.scores.total);
+      reseeds.set(h.bestVersionAtRun, g);
+    }
   }
-  return Math.max(floor, ...[...groups.values()].map((g) => Math.max(...g) - Math.min(...g)));
+  const spread = (runs) => Math.max(...runs) - Math.min(...runs);
+  return Math.max(floor, ...[...reseeds.values(), ...pairedBest.values()].map((runs) => spread(runs) + 1));
 }
 
 /** A tie never promotes, so val loss (not comparable across mask_prompt / data / seq-length levers) never decides. */

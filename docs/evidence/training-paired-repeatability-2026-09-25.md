@@ -1,0 +1,7 @@
+# Paired evaluation repeatability, 2026-09-25
+
+The v22 adapter was generated as the paired best in v23 through v28 on the pinned 38-row v5 holdout. The scored total was 24/38 in each v23–v27 run and 21/38 in v28. The v28 pair scored the candidate 21/38, so it was correctly not promoted.
+
+The change occurred in generated answers, before scoring: comparing `runs/eval-v27-on-v5set-best.json` with `runs/eval-v28-on-v5set-best.json`, the base answers differ on 19/38 rows and the same v22 adapter's answers differ on 17/38. The held-out file hash, `generate_eval.py`, installed `mlx_lm` code, cached base-model snapshot, and v22 adapter file were unchanged between these two runs. Both invocations requested temperature-zero decoding and 1200 tokens. The precise source of generation drift is **not established**. A paired score remains valid within each run, but a two-point promotion threshold is smaller than the three-point spread observed for the unchanged best.
+
+`promotionMargin` now also measures repeated paired scores for each best adapter and requires the candidate to beat the largest observed spread by at least one row. On the observed history this raises the margin from 2 to 4. This source change does not affect the already-running supervisor process until its next safe restart; no training was interrupted for it. A focused test was red before the change, then the full `train-forever.test.mjs` suite passed 35/35. The local 38-row result is not a Frontier claim.
