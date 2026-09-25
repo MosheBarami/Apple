@@ -42,6 +42,17 @@
       ]
     },
     {
+      "id": "storage-outcome-verified-shard",
+      "why": "Add four first-party, locally executed modules that distinguish a successful empty read from a failed read and forbid writeback after failure. This tests whether the model generalizes storage outcome handling without training on the frontier task wording or changing validation/test rows.",
+      "data": [
+        {
+          "op": "appendVerified",
+          "source": "data/storage-outcome-seeds-v1/shard-1.jsonl",
+          "sha256": "77350a388b3b1345a2274bcb0795087d3efd85cb282069f02c9c968aa566c46d"
+        }
+      ]
+    },
+    {
       "id": "cosine-lr",
       "why": "Both runs overfit after a mid-run minimum (v4 at 100, v5 at 225) at a constant lr. A short warmup plus cosine decay to lr/10 lowers the late-run step size where the val curve turned.",
       "set": {

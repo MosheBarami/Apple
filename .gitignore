@@ -193,6 +193,9 @@ packages/training/data/*/*
 # first-party-authored-synthetic, customerData false, and its own card says so.
 !packages/training/data/apple-max-contract-v4-preregistration-2026-09-18.json
 !packages/training/data/game-logic-seeds-v4-contract/*.jsonl
+# The four small, first-party storage outcome lessons are source evidence for the pinned
+# training lever. A clean clone must contain the exact bytes that the supervisor re-hashes.
+!packages/training/data/storage-outcome-seeds-v1/shard-1.jsonl
 # Same rule, same reason, for the Hugging Face harvest: `scripts/harvest-hf.mjs` writes its
 # REFUSALS to data/hf/REJECTED.json — seven rejected datasets with the measurement that killed each
 # one, and the served-or-not verdict on five Roblox models. That file is the entire evidence for
