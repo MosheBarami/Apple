@@ -38,3 +38,38 @@ tiles, and the game world was visibly sparse. A continuation Apple MAX run was
 started to wire UI to gameplay and test planting, buying, harvesting and
 selling. Passing the component tool does not prove the game is finished or
 visually competitive.
+
+## Follow-up game check, 10:49 UTC
+
+That continuation run ended after 108 tool calls and 527 credits. Its final
+message said it had changed the same thing many times; the last actions were
+repeated edits to `game.ServerScriptService.Leaderboard`. Its `stopReason` was
+`done`, but the game was unfinished, so F-064 remains open. The run inserted
+four UI components, two library models and edited scripts; `play_check` ran
+once and found a real client error in `GardenClient`.
+
+The main session repaired the isolated place's generated scripts: a failed
+DataStore read in local Studio now yields a temporary, never-save profile;
+Leaderboard's broken submit body was replaced with a bounded retry and an
+unpublished-place guard; the client no longer assigns a string to
+`Mouse.TargetFilter`; the currency and toast labels now point at their TextLabel
+children; shop item buttons pass real crop names to the server. New players
+start with 60 coins, and the client/server crop prices were aligned. The
+duplicate shop panel was hidden. None of these game-script edits are a product
+source change or a published Roblox place.
+
+A fresh `play_check` showed `Coins 60` in leaderstats and `$ 60` on screen.
+`play_check_ui` then pressed Shop and the first Buy button; both activated and
+the player's screen showed `$ 50` afterward. Its leaderstats summary still
+said `60 → 60`, so this proves the displayed purchase response, not durable
+data or every inventory state. The remaining test errors named the local
+`robloxstudio-mcp.rbxm` harness (`Failed to load plugin`, `loadstring()`, and an
+HTTP context error), not a game-script exception; the overall verdict still
+says `client_errors` and must not be relabelled as a clean pass.
+
+The plugin checkpoint tool refused to save because it could not capture
+`ManualWeld` and `SpecialMesh` objects exactly. Studio itself confirmed
+`Saved to '/private/tmp/apple-codex-gauntlet-place.rbxl'` after Cmd+S, giving
+the local run a disk copy. A third Apple MAX run was started to complete and
+verify planting, harvesting, selling and the sparse world. The acceptance
+findings remain open until those observations exist.
