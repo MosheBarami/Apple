@@ -63,6 +63,15 @@ test('every item has a control block, and every check has a fail control', () =>
   }
 });
 
+test('the preinserted Shop UI item rejects a script that constructs another Frame', () => {
+  const item = FRONTIER_ITEMS.find((candidate) => candidate.id === 'ui-slide-in');
+  const bad = `${CONTROLS['ui-slide-in'].pass}\nInstance.new("Frame").Parent = game:GetService("Players").LocalPlayer.PlayerGui`;
+  const result = scoreFrontierItem(item, fence(bad));
+  assert.equal(result.outcome, 'checked', result.detail ?? 'the candidate must run');
+  assert.equal(result.checks.find((check) => check.id === 'uses-library-ui')?.pass, false,
+    'creating UI in the script must not satisfy a library-only UI task');
+});
+
 //[[ THE EXPENSIVE HALF. Each control is compiled and RUN under the harness, through the same
 //   scorer a model's answer goes through — not a mock of it. About 70 Luau processes; a few
 //   seconds. Worth every one of them, because this is the only thing standing between a number in

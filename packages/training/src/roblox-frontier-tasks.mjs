@@ -245,10 +245,26 @@ __APPLE.fact("legacySetCore", __APPLE.calledMethodOn("StarterGui", "SetCore"))
     shape: 'script',
     cite: 'packages/training/src/score-ui.mjs DEPRECATED_MEMBERS — GuiObject:TweenPosition/TweenSize, source classes/GuiObject.yaml',
     prompt:
-      'Write a LocalScript for StarterPlayerScripts that builds, in code, a ScreenGui containing a '
-      + 'TextButton named "ShopButton" and a Frame named "Shop" that starts off the bottom of the screen. '
-      + 'Clicking the button slides the Shop frame into view over 0.4 seconds. '
+      'A verified UI kit has already been inserted into the local player\'s PlayerGui as a ScreenGui '
+      + 'named "ShopGui". It contains a TextButton named "ShopButton" and a Frame named "Shop" '
+      + 'that starts off the bottom of the screen. Write a LocalScript for StarterPlayerScripts '
+      + 'that uses this existing UI: clicking the button slides Shop into view over 0.4 seconds. '
+      + 'Do not create or insert any UI objects in the script. '
       + 'Reply with one fenced luau code block and nothing else.',
+    setup: `
+local player = game:GetService("Players").LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Name = "ShopGui"
+gui.Parent = player:WaitForChild("PlayerGui")
+local button = Instance.new("TextButton")
+button.Name = "ShopButton"
+button.Parent = gui
+local shop = Instance.new("Frame")
+shop.Name = "Shop"
+shop.Position = UDim2.fromScale(0.5, 1)
+shop.Parent = gui
+__APPLE.fact("uiCreatedBefore", (__APPLE.created.ScreenGui or 0) + (__APPLE.created.TextButton or 0) + (__APPLE.created.Frame or 0))
+`,
     probe: `
 __APPLE.setPhase("probe")
 local btn = __APPLE.find("TextButton", "ShopButton") or __APPLE.findAny("ShopButton")
@@ -258,6 +274,7 @@ if btn then
 end
 __APPLE.fact("tweenCreated", __APPLE.calledMethodOn("TweenService", "Create"))
 __APPLE.fact("tweenPlayed", __APPLE.calledMethodOn("Tween", "Play"))
+__APPLE.fact("uiCreatedAfter", (__APPLE.created.ScreenGui or 0) + (__APPLE.created.TextButton or 0) + (__APPLE.created.Frame or 0))
 `,
     checks: [
       check('no-deprecated-gui-tween', 'GuiObject:TweenPosition/:TweenSize are deprecated in favour of TweenService:Create and cannot be cancelled or composed',
@@ -265,6 +282,9 @@ __APPLE.fact("tweenPlayed", __APPLE.calledMethodOn("Tween", "Play"))
           && !calledOn(t, 'Frame', 'TweenSizeAndPosition') && !calledOn(t, 'TextButton', 'TweenPosition')),
       check('tween-runs-on-click', 'the tween has to be created AND played, from inside the click handler — a tween built at load and never played is a panel that never moves',
         (t) => calledOn(t, 'TweenService', 'Create') && calledOn(t, 'Tween', 'Play')),
+      check('uses-library-ui', 'the UI kit is already inserted; the script must animate its existing objects instead of creating replacements',
+        (t) => typeof t.facts?.uiCreatedBefore === 'number'
+          && t.facts?.uiCreatedAfter === t.facts.uiCreatedBefore),
     ],
   },
   {

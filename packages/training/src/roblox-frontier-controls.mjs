@@ -98,23 +98,9 @@ const UI_HEAD = `
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
-local gui = Instance.new("ScreenGui")
-gui.Name = "ShopGui"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
-local button = Instance.new("TextButton")
-button.Name = "ShopButton"
-button.AnchorPoint = Vector2.new(0.5, 0)
-button.Position = UDim2.fromScale(0.5, 0.02)
-button.Size = UDim2.fromScale(0.2, 0.08)
-button.Text = "Shop"
-button.Parent = gui
-local shop = Instance.new("Frame")
-shop.Name = "Shop"
-shop.AnchorPoint = Vector2.new(0.5, 0)
-shop.Position = UDim2.fromScale(0.5, 1)
-shop.Size = UDim2.fromScale(0.6, 0.6)
-shop.Parent = gui
+local gui = player:WaitForChild("PlayerGui"):WaitForChild("ShopGui")
+local button = gui:WaitForChild("ShopButton")
+local shop = gui:WaitForChild("Shop")
 `;
 
 const RAYCAST_PASS = `
@@ -502,6 +488,15 @@ local info = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local tween = TweenService:Create(shop, info, { Position = UDim2.fromScale(0.5, 0.2) })
 button.Activated:Connect(function()
 	print("clicked")
+end)
+`,
+      'uses-library-ui': `${UI_HEAD}
+local replacement = Instance.new("Frame")
+replacement.Name = "ShopReplacement"
+replacement.Parent = gui
+button.Activated:Connect(function()
+	local info = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(shop, info, { Position = UDim2.fromScale(0.5, 0.2) }):Play()
 end)
 `,
     },
