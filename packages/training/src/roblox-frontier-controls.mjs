@@ -74,6 +74,111 @@ local tween = TweenService:Create(platform, info, { Position = startPosition + V
 tween:Play()
 `;
 
+/*
+ * SECOND CORRECT ANSWERS FOR THE THREE MODERN-API ITEMS (2026-09-24). Each is the shape a recorded
+ * production answer took and was marked down for, rewritten by hand, and each failed under the
+ * harness as it stood — for a reason that was the harness's:
+ *   - ANIM_PASS_2 connects the track's Stopped and Ended events. The shim had no AnimationTrack
+ *     events, `track.Stopped` read as nil, and the handler died one line before `track:Play()`.
+ *   - COUNTDOWN_PASS_2 counts down against a deadline on os.clock, polling every tenth of a second.
+ *     The shim's clock did not move when a script waited, so the poll never reached its deadline.
+ *   - PLATFORM_PASS_2 moves the platform from a Heartbeat connection. Nothing ever stepped a frame.
+ * See SHOP_PASS_2 below for why a second answer is the audit.
+ */
+const ANIM_PASS_2 = `
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local EMOTE_ID = "rbxassetid://507771019"
+local player = Players.LocalPlayer
+local playing = nil
+
+local function onInput(input, gameProcessed)
+	if gameProcessed or input.KeyCode ~= Enum.KeyCode.E then
+		return
+	end
+	local character = player.Character or player.CharacterAdded:Wait()
+	local humanoid = character:WaitForChild("Humanoid")
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if animator == nil then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+	if playing then
+		playing:Stop()
+	end
+	local emote = Instance.new("Animation")
+	emote.AnimationId = EMOTE_ID
+	local track = animator:LoadAnimation(emote)
+	track.Priority = Enum.AnimationPriority.Action
+	track.Stopped:Connect(function()
+		if playing == track then
+			playing = nil
+		end
+	end)
+	track.Ended:Connect(function()
+		emote:Destroy()
+	end)
+	playing = track
+	track:Play()
+end
+
+UserInputService.InputBegan:Connect(onInput)
+`;
+
+const COUNTDOWN_PASS_2 = `
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local ROUND_SECONDS = 10
+
+local roundOver = Instance.new("RemoteEvent")
+roundOver.Name = "RoundOver"
+roundOver.Parent = ReplicatedStorage
+
+local timeLeft = Instance.new("IntValue")
+timeLeft.Name = "TimeLeft"
+timeLeft.Parent = ReplicatedStorage
+
+-- Against a deadline, so a slow frame cannot stretch the round.
+local function runRound()
+	local deadline = os.clock() + ROUND_SECONDS
+	while true do
+		local remaining = math.max(0, math.ceil(deadline - os.clock()))
+		timeLeft.Value = remaining
+		if remaining == 0 then
+			break
+		end
+		task.wait(0.1)
+	end
+	roundOver:FireAllClients()
+end
+
+task.spawn(function()
+	while true do
+		runRound()
+		task.wait(5)
+	end
+end)
+`;
+
+const PLATFORM_PASS_2 = `
+local RunService = game:GetService("RunService")
+
+local platform = workspace:WaitForChild("Platform")
+local origin = platform.CFrame
+local offset = Vector3.new(8, 0, 0)
+local LEG_SECONDS = 3
+
+local elapsed = 0
+RunService.Heartbeat:Connect(function(dt)
+	elapsed += dt
+	local leg = (elapsed % (LEG_SECONDS * 2)) / LEG_SECONDS
+	local alpha = if leg <= 1 then leg else 2 - leg
+	alpha = (1 - math.cos(alpha * math.pi)) / 2
+	platform.CFrame = origin + offset * alpha
+end)
+`;
+
 const CHAT_PASS = `
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextChatService = game:GetService("TextChatService")
@@ -285,6 +390,66 @@ local function petNameValue(player)
 end
 `;
 
+/*
+ * The second correct pet-rename answer creates the StringValue when the player joins, which is
+ * where nearly every recorded production answer creates it. The probe's player joined without
+ * PlayerAdded ever firing, so this answer found no value to write, returned before it filtered, and
+ * was marked "unfiltered" and "rename does not land" — for a join the harness never announced.
+ */
+const PET_PASS_2 = `
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextService = game:GetService("TextService")
+
+local MAX_LENGTH = 24
+
+local renamePet = Instance.new("RemoteEvent")
+renamePet.Name = "RenamePet"
+renamePet.Parent = ReplicatedStorage
+
+local function giveName(player)
+	local petName = Instance.new("StringValue")
+	petName.Name = "PetName"
+	petName.Value = "Pet"
+	petName.Parent = player
+end
+
+Players.PlayerAdded:Connect(giveName)
+for _, player in Players:GetPlayers() do
+	giveName(player)
+end
+
+local function cleanName(raw)
+	if type(raw) ~= "string" then
+		return nil
+	end
+	local trimmed = raw:match("^%s*(.-)%s*$")
+	local length = utf8.len(trimmed)
+	if length == nil or length < 1 or length > MAX_LENGTH then
+		return nil
+	end
+	return trimmed
+end
+
+renamePet.OnServerEvent:Connect(function(player, requested)
+	local name = cleanName(requested)
+	if name == nil then
+		return
+	end
+	local petName = player:FindFirstChild("PetName")
+	if petName == nil then
+		return
+	end
+	local ok, filtered = pcall(function()
+		local result = TextService:FilterStringAsync(name, player.UserId)
+		return result:GetNonChatStringForBroadcastAsync()
+	end)
+	if ok and filtered then
+		petName.Value = filtered
+	end
+end)
+`;
+
 // ------------------------------------------------------------------------------------------------
 // datastore safety
 // ------------------------------------------------------------------------------------------------
@@ -423,6 +588,7 @@ end)
 export const CONTROLS = {
   'anim-emote': {
     pass: ANIM_PASS,
+    pass2: ANIM_PASS_2,
     fail: {
       'loads-through-animator': ANIM_HUMANOID,
       'not-humanoid-loadanimation': ANIM_HUMANOID,
@@ -434,6 +600,7 @@ export const CONTROLS = {
 
   'round-countdown': {
     pass: COUNTDOWN_PASS,
+    pass2: COUNTDOWN_PASS_2,
     fail: {
       'no-legacy-scheduler': COUNTDOWN_PASS.replace('task.wait(1)', 'wait(1)'),
       'uses-task-scheduler': COUNTDOWN_PASS.replace('\ttask.wait(1)\n', ''),
@@ -443,6 +610,7 @@ export const CONTROLS = {
 
   'platform-mover': {
     pass: PLATFORM_PASS,
+    pass2: PLATFORM_PASS_2,
     fail: {
       'no-legacy-body-movers': `
 local platform = workspace:WaitForChild("Platform")
@@ -643,8 +811,19 @@ remote.OnServerEvent:Connect(function(player, newName)
 	petNameValue(player).Value = result:GetNonChatStringForBroadcastAsync()
 end)
 `,
+    pass2: PET_PASS_2,
     fail: {
+      // Gives every player a default name on join — the way PET_PASS_2 does — and never renames it.
+      // A probe that only asks "is there a PetName with a value" passes this; the check must ask
+      // whether the name the player asked for is the one that landed.
       'legit-rename-works': `${PET_HEAD}
+local Players = game:GetService("Players")
+Players.PlayerAdded:Connect(function(player)
+	petNameValue(player).Value = "Pet"
+end)
+for _, player in Players:GetPlayers() do
+	petNameValue(player).Value = "Pet"
+end
 remote.OnServerEvent:Connect(function(player, newName)
 	do return end
 end)

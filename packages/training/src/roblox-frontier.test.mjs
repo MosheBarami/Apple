@@ -72,6 +72,20 @@ test('the preinserted Shop UI item rejects a script that constructs another Fram
     'creating UI in the script must not satisfy a library-only UI task');
 });
 
+test('a platform may move along the documented CFrame.RightVector', () => {
+  const item = FRONTIER_ITEMS.find((candidate) => candidate.id === 'platform-mover');
+  const answer = `\`\`\`luau
+local platform = workspace:WaitForChild("Platform")
+local origin = platform.CFrame
+local sideways = origin.RightVector * 8
+platform.CFrame = origin + sideways
+platform.CFrame = origin
+\`\`\``;
+  const result = scoreFrontierItem(item, answer);
+  assert.equal(result.outcome, 'checked', result.detail ?? 'RightVector is a Vector3 in Roblox');
+  assert.equal(result.checks.find((check) => check.id === 'actually-moves-it')?.pass, true);
+});
+
 //[[ THE EXPENSIVE HALF. Each control is compiled and RUN under the harness, through the same
 //   scorer a model's answer goes through — not a mock of it. About 70 Luau processes; a few
 //   seconds. Worth every one of them, because this is the only thing standing between a number in

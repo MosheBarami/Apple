@@ -27,9 +27,17 @@
       verbatim under `status = "error"` so a failure of the harness cannot be counted as a failure
       of the model without a person reading the sentence. This is the repository's observation-
       failure rule: a failure to observe must not render as an observation.
-    - A STEADY-STATE LOOP never returns. After LOOP_BUDGET yields the shim raises a marker, the top
-      level catches it, and the recording is emitted anyway — a script that reached its update loop
-      finished building.
+    - A STEADY-STATE LOOP never returns. Every thread (the top-level body, each task.spawn/defer/
+      delay, each handler the harness fires) has its OWN budget: after LOOP_BUDGET yields, or once
+      the virtual clock is LOOP_HORIZON seconds past the thread's start, the shim raises a marker
+      and the thread ends there. That is a normal end, not an error: a script that reached its
+      update loop finished building. (2026-09-24: this was one GLOBAL budget of 96 yields shared by
+      everything, and a spawned loop that hit it was recorded as a `task.spawn` error.)
+    - TIME IS VIRTUAL. `now` starts at 0 and only a yield moves it: task.wait(t) by t (at least one
+      1/60 frame), wait(t) by t (at least 0.03), Signal:Wait by one frame, task.delay by its delay.
+      tick() is EPOCH + now, time() and os.clock() are now, os.time() is EPOCH + now. A spawned
+      thread runs to its end synchronously and `now` is put back when it returns, so its waits do
+      not delay its parent. __APPLE.runFrames(n) steps RunService's per-frame events.
     - DEPRECATED CALLS ANSWER RATHER THAN THROW. `Humanoid:LoadAnimation`, `wait()`, `BodyVelocity`
       and `FindPartOnRay` all work here, and are recorded. A model that reaches for them must reach
       the end of its own script and be marked down by a check that names the call — not die at the
@@ -49,9 +57,13 @@
 
 local LOOP_MARKER = "__APPLE_FRONTIER_LOOP__"
 local OUT_MARKER = "__APPLE_FRONTIER__"
-local LOOP_BUDGET = 96
+local LOOP_BUDGET = 1000     -- yields per thread
+local LOOP_HORIZON = 60      -- virtual seconds per thread
+local EPOCH = 1790208000     -- 2026-09-24T00:00:00Z, what tick() and os.time() count from
 
-local yields = 0
+local now = 0
+-- The running thread is the top of this stack; the root entry is the top-level body.
+local threads = { { yields = 0, start = 0 } }
 local nodes = {}
 local nextId = 0
 
@@ -75,7 +87,7 @@ end
 
 local inTransform = false
 local transformYields = 0
-local function countYield(which)
+local function yieldFor(which, dt)
 	bump(globalCalls, which)
 	--[[ ROBLOX'S OWN RULE, NOT A STYLE OPINION: the transform passed to UpdateAsync MAY NOT YIELD.
 	     roblox-datastores/references/core-operations-and-patterns.md:37 — "calls your transform
@@ -89,19 +101,62 @@ local function countYield(which)
 		transformYields += 1
 		error(("Cannot yield inside of an UpdateAsync transform function (attempted %s)"):format(which), 0)
 	end
-	yields += 1
-	if yields > LOOP_BUDGET then error(LOOP_MARKER, 0) end
+	local thread = threads[#threads]
+	thread.yields += 1
+	now += dt or 0
+	if thread.yields > LOOP_BUDGET or now - thread.start > LOOP_HORIZON then error(LOOP_MARKER, 0) end
+end
+
+--[[ RUN fn AS ITS OWN THREAD. Its own budget and horizon, synchronously, and `now` restored on
+     return so a spawned thread's waits do not delay its parent. Reaching the budget is the thread
+     ending in its steady state, so it returns true; only a real error returns false, err. ]]
+local function asThread(fn, ...)
+	local entry = now
+	threads[#threads + 1] = { yields = 0, start = now }
+	local ok, err = pcall(fn, ...)
+	threads[#threads] = nil
+	now = entry
+	if not ok and tostring(err):find(LOOP_MARKER, 1, true) == nil then return false, err end
+	return true
 end
 
 -- ---------------------------------------------------------------- datatypes
 
-local function vec3(x, y, z) return setmetatable({ __k = "Vector3", X = x or 0, Y = y or 0, Z = z or 0, Magnitude = 0, Unit = nil }, {
-	__index = function() return 0 end,
+--[[ TRANSLATION ARITHMETIC IS REAL; ROTATION IS NOT MODELLED. A mover's positions have to come out
+     of its own arithmetic (`origin + offset * alpha`, `a:Lerp(b, t)`), or "did the platform take
+     more than one position" is decided by this file's constants. A CFrame here carries a position
+     and no rotation, so CFrame * CFrame adds translations, which is exact for every CFrame this
+     shim can build. ]]
+local function kindOf(v) return type(v) == "table" and rawget(v, "__k") or nil end
+local vec3
+local Vector3MT = {
+	__index = function(v, k)
+		if k == "Magnitude" then return math.sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z) end
+		if k == "Unit" then
+			local m = math.sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z)
+			if m == 0 then return vec3(0, 0, 0) end
+			return vec3(v.X / m, v.Y / m, v.Z / m)
+		end
+		if k == "Lerp" then return function(a, b, t) return a + (b - a) * t end end
+		return 0
+	end,
 	__add = function(a, b) return vec3((a.X or 0) + (b.X or 0), (a.Y or 0) + (b.Y or 0), (a.Z or 0) + (b.Z or 0)) end,
 	__sub = function(a, b) return vec3((a.X or 0) - (b.X or 0), (a.Y or 0) - (b.Y or 0), (a.Z or 0) - (b.Z or 0)) end,
-	__mul = function(a, b) if type(b) == "number" then return vec3(a.X * b, a.Y * b, a.Z * b) end return vec3(0, 0, 0) end,
+	__mul = function(a, b)
+		if type(a) == "number" then a, b = b, a end
+		if type(b) == "number" then return vec3(a.X * b, a.Y * b, a.Z * b) end
+		if kindOf(b) == "Vector3" then return vec3(a.X * b.X, a.Y * b.Y, a.Z * b.Z) end
+		return vec3(0, 0, 0)
+	end,
+	__div = function(a, b)
+		if type(b) == "number" then return vec3(a.X / b, a.Y / b, a.Z / b) end
+		if kindOf(b) == "Vector3" then return vec3(a.X / b.X, a.Y / b.Y, a.Z / b.Z) end
+		return vec3(0, 0, 0)
+	end,
+	__unm = function(a) return vec3(-a.X, -a.Y, -a.Z) end,
 	__tostring = function() return "Vector3" end,
-}) end
+}
+function vec3(x, y, z) return setmetatable({ __k = "Vector3", X = x or 0, Y = y or 0, Z = z or 0 }, Vector3MT) end
 
 local function vec2(x, y) return setmetatable({ __k = "Vector2", X = x or 0, Y = y or 0 }, { __index = function() return 0 end, __tostring = function() return "Vector2" end }) end
 
@@ -115,17 +170,35 @@ local function color3(r, g, b) return setmetatable({ __k = "Color3", R = r or 0,
 
 local CFrameMT
 local function cframe(x, y, z)
+	if kindOf(x) == "Vector3" then x, y, z = x.X, x.Y, x.Z end -- CFrame.new(pos [, lookAt])
 	local c = { __k = "CFrame", X = x or 0, Y = y or 0, Z = z or 0, Position = vec3(x, y, z), LookVector = vec3(0, 0, -1), p = vec3(x, y, z) }
 	return setmetatable(c, CFrameMT)
 end
 CFrameMT = {
 	__index = function(t, k)
 		if k == "Position" or k == "p" then return vec3(rawget(t, "X"), rawget(t, "Y"), rawget(t, "Z")) end
+		-- This harness models translation with identity orientation. Direction properties are
+		-- Vector3 values in Roblox, never methods; returning the fallback function here made
+		-- a valid platform mover throw before its first movement.
+		if k == "RightVector" or k == "XVector" then return vec3(1, 0, 0) end
+		if k == "UpVector" or k == "YVector" then return vec3(0, 1, 0) end
+		if k == "ZVector" then return vec3(0, 0, 1) end
+		if k == "Lerp" then return function(a, b, alpha) return cframe(a.Position:Lerp(b.Position, alpha)) end end
 		return function() return cframe(0, 0, 0) end
 	end,
-	__mul = function(a) return cframe(a.X or 0, a.Y or 0, a.Z or 0) end,
-	__add = function(a) return cframe(a.X or 0, a.Y or 0, a.Z or 0) end,
-	__sub = function(a) return cframe(a.X or 0, a.Y or 0, a.Z or 0) end,
+	__mul = function(a, b)
+		if kindOf(b) == "CFrame" then return cframe(a.X + b.X, a.Y + b.Y, a.Z + b.Z) end
+		if kindOf(b) == "Vector3" then return vec3(a.X + b.X, a.Y + b.Y, a.Z + b.Z) end
+		return cframe(a.X or 0, a.Y or 0, a.Z or 0)
+	end,
+	__add = function(a, b)
+		if kindOf(b) == "Vector3" then return cframe(a.X + b.X, a.Y + b.Y, a.Z + b.Z) end
+		return cframe(a.X or 0, a.Y or 0, a.Z or 0)
+	end,
+	__sub = function(a, b)
+		if kindOf(b) == "Vector3" then return cframe(a.X - b.X, a.Y - b.Y, a.Z - b.Z) end
+		return cframe(a.X or 0, a.Y or 0, a.Z or 0)
+	end,
 	__tostring = function() return "CFrame" end,
 }
 
@@ -201,6 +274,11 @@ Font = setmetatable({ new = function() return { __k = "Font" } end, fromEnum = f
 
 -- ---------------------------------------------------------------- signals
 
+-- RunService's per-frame events, in the order the engine fires them within a frame.
+local FRAME_ORDER = { "PreRender", "RenderStepped", "PreAnimation", "PreSimulation", "Stepped", "PostSimulation", "Heartbeat" }
+local FRAME_EVENTS = {}
+for _, n in ipairs(FRAME_ORDER) do FRAME_EVENTS[n] = true end
+
 local function newSignal(owner, name)
 	local s = { __k = "Signal", handlers = {}, owner = owner, name = name }
 	s.Connect = function(_, fn)
@@ -209,8 +287,13 @@ local function newSignal(owner, name)
 	end
 	s.ConnectParallel = s.Connect
 	s.Once = s.Connect
+	-- One frame. The per-frame events hand back what Roblox passes them, so `local dt =
+	-- RunService.Heartbeat:Wait()` integrates; CharacterAdded hands back the character.
 	s.Wait = function()
-		countYield("Signal:Wait")
+		yieldFor("Signal:Wait", 1 / 60)
+		if name == "Stepped" then return now, 1 / 60 end
+		if FRAME_EVENTS[name] then return 1 / 60 end
+		if name == "CharacterAdded" and owner and owner.props.Character then return owner.props.Character end
 		return 0
 	end
 	return setmetatable(s, { __index = function() return function() end end })
@@ -230,6 +313,7 @@ local EVENT_NAMES = {
 	Activated = true, MouseButton1Click = true, MouseButton1Down = true, MouseButton1Up = true,
 	MouseEnter = true, MouseLeave = true, InputBegan = true, InputChanged = true, InputEnded = true,
 	TouchTap = true, Heartbeat = true, RenderStepped = true, Stepped = true, PostSimulation = true, PreRender = true,
+	PreSimulation = true, PreAnimation = true, Stopped = true, Ended = true, DidLoop = true, KeyframeReached = true,
 	Completed = true, Triggered = true, ClickDetectorClicked = true, PromptGamePassPurchaseFinished = true,
 	PromptProductPurchaseFinished = true, MessageReceived = true, SelectionChanged = true, FocusLost = true,
 	Equipped = true, Unequipped = true, StateChanged = true, Seated = true, HealthChanged = true,
@@ -279,6 +363,27 @@ local function descendants(d, out)
 end
 
 local CLASS_METHODS = {}
+
+--[[ "DID IT MOVE" MEANS IT TOOK MORE THAN ONE POSITION, NOT THAT IT WAS WRITTEN TWICE.
+     `platform.CFrame = platform.CFrame` every frame is a write count in the hundreds and a platform
+     that never moves. So every Vector3/CFrame written to a node's Position or CFrame (or handed to
+     PivotTo) is kept as a rounded fingerprint and the distinct ones are counted. Position and CFrame
+     are one property in the engine, so each write updates the other: a script that reads Position
+     and writes CFrame reads back its own last write. ]]
+local function placeAt(d, v)
+	local k = kindOf(v)
+	if k ~= "Vector3" and k ~= "CFrame" then return end
+	local spot = ("%.4f,%.4f,%.4f"):format(tonumber(v.X) or 0, tonumber(v.Y) or 0, tonumber(v.Z) or 0)
+	if not d.spots[spot] then
+		d.spots[spot] = true
+		d.spotCount += 1
+	end
+	if k == "CFrame" then
+		d.props.CFrame, d.props.Position = v, v.Position
+	else
+		d.props.Position, d.props.CFrame = v, cframe(v)
+	end
+end
 
 local METHODS = {
 	FindFirstChild = function(d, name) return childNamed(d, name) end,
@@ -331,7 +436,7 @@ local METHODS = {
 	MakeJoints = function() end,
 	BreakJoints = function() end,
 	ApplyImpulse = function() end,
-	PivotTo = function() end,
+	PivotTo = function(d, cf) placeAt(d, cf) end,
 	GetPivot = function() return cframe(0, 0, 0) end,
 	SetPrimaryPartCFrame = function() end,
 	MoveTo = function() end,
@@ -348,7 +453,7 @@ local RECORDED_ANY = { LoadAnimation = true, TweenPosition = true, TweenSize = t
 
 function newInstance(class, parentProxy, name)
 	nextId += 1
-	local d = { id = nextId, class = class, props = { Name = name or class }, children = {}, parent = nil, attrs = {}, signals = {}, writes = {}, methods = {} }
+	local d = { id = nextId, class = class, props = { Name = name or class }, children = {}, parent = nil, attrs = {}, signals = {}, writes = {}, methods = {}, spots = {}, spotCount = 0 }
 	bump(created, class)
 	local mt = {}
 	mt.__node = d
@@ -397,6 +502,7 @@ function newInstance(class, parentProxy, name)
 		if k == "Parent" then setParent(d, v) return end
 		bump(d.writes, k)
 		d.props[k] = v
+		if k == "CFrame" or k == "Position" then placeAt(d, v) end
 		-- A function assigned to an event-shaped key is a callback the probe may want to fire.
 		if type(v) == "function" then d.signals[k] = d.signals[k] or newSignal(d, k) end
 	end
@@ -448,7 +554,7 @@ local function storeCall(storeName, op, key)
 		failNext -= 1
 		error(("%s: 502: API Services rejected request with status code 429 (Too many requests)"):format(op), 0)
 	end
-	countYield("DataStore:" .. op)
+	yieldFor("DataStore:" .. op)
 end
 
 local function makeStore(storeName)
@@ -569,13 +675,13 @@ CLASS_METHODS.HttpService = {
 	JSONEncode = function(_, v) return type(v) == "table" and "{}" or tostring(v) end,
 	JSONDecode = function() return {} end,
 	GenerateGUID = function() return "{00000000-0000-0000-0000-000000000000}" end,
-	RequestAsync = function() countYield("HttpService:RequestAsync") return { Success = true, StatusCode = 200, Body = "{}" } end,
-	GetAsync = function() countYield("HttpService:GetAsync") return "{}" end,
-	PostAsync = function() countYield("HttpService:PostAsync") return "{}" end,
+	RequestAsync = function() yieldFor("HttpService:RequestAsync") return { Success = true, StatusCode = 200, Body = "{}" } end,
+	GetAsync = function() yieldFor("HttpService:GetAsync") return "{}" end,
+	PostAsync = function() yieldFor("HttpService:PostAsync") return "{}" end,
 }
 CLASS_METHODS.MarketplaceService = {
-	GetProductInfo = function() countYield("MarketplaceService:GetProductInfo") return { Name = "Item", PriceInRobux = 100 } end,
-	UserOwnsGamePassAsync = function() countYield("MarketplaceService:UserOwnsGamePassAsync") return false end,
+	GetProductInfo = function() yieldFor("MarketplaceService:GetProductInfo") return { Name = "Item", PriceInRobux = 100 } end,
+	UserOwnsGamePassAsync = function() yieldFor("MarketplaceService:UserOwnsGamePassAsync") return false end,
 	PromptPurchase = function() end,
 	PromptGamePassPurchase = function() end,
 	PromptProductPurchase = function() end,
@@ -587,8 +693,8 @@ CLASS_METHODS.Players = {
 		for _, c in ipairs(d.children) do if c.props.Character == (n and n.proxy) then return c.proxy end end
 		return nil
 	end,
-	GetUserIdFromNameAsync = function() countYield("Players:GetUserIdFromNameAsync") return 1 end,
-	GetNameFromUserIdAsync = function() countYield("Players:GetNameFromUserIdAsync") return "Player" end,
+	GetUserIdFromNameAsync = function() yieldFor("Players:GetUserIdFromNameAsync") return 1 end,
+	GetNameFromUserIdAsync = function() yieldFor("Players:GetNameFromUserIdAsync") return "Player" end,
 	CreateHumanoidModelFromUserId = function() return newInstance("Model", nil, "Rig") end,
 }
 CLASS_METHODS.RunService = {
@@ -606,10 +712,10 @@ CLASS_METHODS.Player = {
 }
 CLASS_METHODS.UserInputService = { GetMouseLocation = function() return vec2(0, 0) end, GetLastInputType = function() return enumItem("UserInputType", "MouseButton1") end, IsKeyDown = function() return false end }
 CLASS_METHODS.CollectionService = { GetTagged = function() return {} end, AddTag = function() end, RemoveTag = function() end, GetInstanceAddedSignal = function() return newSignal() end }
-CLASS_METHODS.ContentProvider = { PreloadAsync = function() countYield("ContentProvider:PreloadAsync") end }
+CLASS_METHODS.ContentProvider = { PreloadAsync = function() yieldFor("ContentProvider:PreloadAsync") end }
 CLASS_METHODS.Debris = { AddItem = function() end }
 CLASS_METHODS.PhysicsService = { RegisterCollisionGroup = function() end, CollisionGroupSetCollidable = function() end, SetPartCollisionGroup = function() end }
-CLASS_METHODS.TeleportService = { TeleportAsync = function() countYield("TeleportService:TeleportAsync") return nil end, ReserveServer = function() return "code", "id" end }
+CLASS_METHODS.TeleportService = { TeleportAsync = function() yieldFor("TeleportService:TeleportAsync") return nil end, ReserveServer = function() return "code", "id" end }
 CLASS_METHODS.TextService = {
 	--[[ THE FILTERED RESULT MUST CARRY THE TEXT BACK, NOT A CONSTANT.
 	     This returned the literal "filtered" for every input, so a 5,000-character pet name came
@@ -617,7 +723,7 @@ CLASS_METHODS.TextService = {
 	     all. The control test caught it before any model was scored. A real TextFilterResult hands
 	     back a string of roughly the input's length, so the shim does too. ]]
 	FilterStringAsync = function(_, text)
-		countYield("TextService:FilterStringAsync")
+		yieldFor("TextService:FilterStringAsync")
 		local filtered = tostring(text)
 		return setmetatable({ __k = "TextFilterResult" }, { __index = function() return function() return filtered end end })
 	end,
@@ -632,8 +738,8 @@ CLASS_METHODS.TextChannel = { DisplaySystemMessage = function() end, SendAsync =
 CLASS_METHODS.Chat = {
 	-- The legacy service. Answers, and is recorded.
 	Chat = function() end,
-	FilterStringForBroadcast = function() countYield("Chat:FilterStringForBroadcast") return "filtered" end,
-	FilterStringAsync = function() countYield("Chat:FilterStringAsync") return "filtered" end,
+	FilterStringForBroadcast = function() yieldFor("Chat:FilterStringForBroadcast") return "filtered" end,
+	FilterStringAsync = function() yieldFor("Chat:FilterStringAsync") return "filtered" end,
 }
 CLASS_METHODS.StarterGui = {
 	-- SetCore("ChatMakeSystemMessage", ...) is the legacy path. Recorded with its first argument so
@@ -658,7 +764,7 @@ CLASS_METHODS.RemoteEvent = {
 }
 CLASS_METHODS.RemoteFunction = {
 	InvokeServer = function() return nil end,
-	InvokeClient = function() countYield("RemoteFunction:InvokeClient") return nil end,
+	InvokeClient = function() yieldFor("RemoteFunction:InvokeClient") return nil end,
 }
 CLASS_METHODS.Sound = { Play = function() end, Stop = function() end, Resume = function() end, Pause = function() end }
 CLASS_METHODS.AudioPlayer = { Play = function() end, Stop = function() end }
@@ -757,20 +863,35 @@ end
 local localPlayer = newPlayer("LocalPlayer")
 nodeOf(service("Players")).props.LocalPlayer = localPlayer
 
+-- Every spawned function is its own thread (see asThread). A real error is recorded under the entry
+-- point that ran it; reaching the loop budget is how a steady-state loop ends, and is not an error.
+local function spawned(label, fn, ...)
+	local ok, err = asThread(fn, ...)
+	if not ok then handlerErrors[#handlerErrors + 1] = label .. ": " .. tostring(err) end
+end
+-- A delayed function starts `t` virtual seconds into its own thread.
+local function afterDelay(t, fn)
+	return function(...)
+		now += math.max(tonumber(t) or 0, 0)
+		return fn(...)
+	end
+end
+
 task = {
-	wait = function(t) countYield("task.wait") return t or 0 end,
-	spawn = function(fn, ...) bump(globalCalls, "task.spawn") local ok, err = pcall(fn, ...) if not ok then handlerErrors[#handlerErrors + 1] = "task.spawn: " .. tostring(err) end end,
-	defer = function(fn, ...) bump(globalCalls, "task.defer") local ok, err = pcall(fn, ...) if not ok then handlerErrors[#handlerErrors + 1] = "task.defer: " .. tostring(err) end end,
-	delay = function(_, fn, ...) bump(globalCalls, "task.delay") local ok, err = pcall(fn, ...) if not ok then handlerErrors[#handlerErrors + 1] = "task.delay: " .. tostring(err) end end,
+	-- Roblox resumes a task.wait no sooner than the next frame, and returns the time that passed.
+	wait = function(t) local dt = math.max(tonumber(t) or 0, 1 / 60) yieldFor("task.wait", dt) return dt end,
+	spawn = function(fn, ...) bump(globalCalls, "task.spawn") spawned("task.spawn", fn, ...) end,
+	defer = function(fn, ...) bump(globalCalls, "task.defer") spawned("task.defer", fn, ...) end,
+	delay = function(t, fn, ...) bump(globalCalls, "task.delay") spawned("task.delay", afterDelay(t, fn), ...) end,
 	cancel = function() bump(globalCalls, "task.cancel") end,
 	synchronize = function() end,
 	desynchronize = function() end,
 }
-wait = function(t) countYield("wait") return t or 0 end
-spawn = function(fn, ...) bump(globalCalls, "spawn") local ok = pcall(fn, ...) return ok end
-delay = function(_, fn, ...) bump(globalCalls, "delay") local ok = pcall(fn, ...) return ok end
-tick = function() bump(globalCalls, "tick") return 0 end
-time = function() return 0 end
+wait = function(t) local dt = math.max(tonumber(t) or 0, 0.03) yieldFor("wait", dt) return dt, now end
+spawn = function(fn, ...) bump(globalCalls, "spawn") return (asThread(fn, ...)) end
+delay = function(t, fn, ...) bump(globalCalls, "delay") return (asThread(afterDelay(t, fn), ...)) end
+tick = function() bump(globalCalls, "tick") return EPOCH + now end
+time = function() return now end
 -- Roblox's `typeof` is a superset of `type`; a validating handler almost always reaches for it.
 typeof = function(v)
 	local t = type(v)
@@ -781,7 +902,17 @@ typeof = function(v)
 	end
 	return t
 end
--- `os` is readonly in Luau and already provides time/clock; do not shadow it.
+--[[ `os` IS SHADOWED, BECAUSE ITS CLOCK HAS TO BE THE VIRTUAL ONE. os.clock() is what most modern
+     Roblox code measures a deadline or a cooldown against, and the real one does not move when a
+     script waits, so a correct poll-until-deadline loop never reached its deadline here. The global
+     is assignable in this Luau; anything not listed falls through to the real library. ]]
+local realOs = os
+os = setmetatable({
+	clock = function() return now end,
+	time = function(t) if t then return realOs.time(t) end return EPOCH + math.floor(now) end,
+	date = realOs.date,
+	difftime = realOs.difftime,
+}, { __index = realOs })
 warn = function() end
 print = print
 require = function(target)
@@ -801,8 +932,8 @@ local function fireSignal(d, signalName, ...)
 	if sig then
 		for _, fn in ipairs(sig.handlers) do
 			fired += 1
-			local ok, err = pcall(fn, ...)
-			if not ok and tostring(err):find(LOOP_MARKER, 1, true) == nil then
+			local ok, err = asThread(fn, ...)
+			if not ok then
 				handlerErrors[#handlerErrors + 1] = ("%s.%s: %s"):format(d.props.Name or d.class, signalName, tostring(err))
 			end
 		end
@@ -811,8 +942,8 @@ local function fireSignal(d, signalName, ...)
 	local assigned = d.props[signalName]
 	if type(assigned) == "function" then
 		fired += 1
-		local ok, err = pcall(assigned, ...)
-		if not ok and tostring(err):find(LOOP_MARKER, 1, true) == nil then
+		local ok, err = asThread(assigned, ...)
+		if not ok then
 			handlerErrors[#handlerErrors + 1] = ("%s.%s: %s"):format(d.props.Name or d.class, signalName, tostring(err))
 		end
 	end
@@ -869,6 +1000,8 @@ __APPLE = {
 		return total
 	end,
 	writeCount = function(instProxy, prop) local d = nodeOf(instProxy) return d and (d.writes[prop] or 0) or 0 end,
+	-- How many DIFFERENT positions the instance was given (see placeAt).
+	distinctPositions = function(instProxy) local d = nodeOf(instProxy) return d and d.spotCount or 0 end,
 	findValue = function(name) local d = findValueNamed(name) return d and d.proxy or nil end,
 	valueOf = function(name) local d = findValueNamed(name) return d and d.props.Value or nil end,
 	attributeOf = function(instProxy, key) local d = nodeOf(instProxy) return d and d.attrs[key] or nil end,
@@ -889,12 +1022,25 @@ __APPLE = {
 		return fireSignal(d, signalName, ...)
 	end,
 	firePlayerAdded = function(p) return fireSignal(nodeOf(service("Players")), "PlayerAdded", p) end,
+	--[[ n FRAMES OF RunService, each one 1/60 s (or dt) later than the last, with the arguments the
+	     engine passes: Stepped(time, dt), every other per-frame event (dt). A mover driven from
+	     Heartbeat does nothing until a frame is stepped, and nothing else here steps one. ]]
+	runFrames = function(n, dt)
+		dt = dt or 1 / 60
+		local rs = nodeOf(service("RunService"))
+		for _ = 1, n do
+			now += dt
+			for _, name in ipairs(FRAME_ORDER) do
+				if name == "Stepped" then fireSignal(rs, name, now, dt) else fireSignal(rs, name, dt) end
+			end
+		end
+	end,
 	firePlayerRemoving = function(p) return fireSignal(nodeOf(service("Players")), "PlayerRemoving", p) end,
 	fireBindToClose = function()
 		local n = 0
 		for _, fn in ipairs(bindToClose) do
 			n += 1
-			local ok, err = pcall(fn)
+			local ok, err = asThread(fn)
 			if not ok then handlerErrors[#handlerErrors + 1] = "BindToClose: " .. tostring(err) end
 		end
 		return n
