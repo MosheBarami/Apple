@@ -766,6 +766,21 @@ first-party evidence, not as a runtime product feature.
 **Caller being added:** none. The training shard is the reachable artifact;
 the builder's test and CLI entry point establish its provenance.
 
+## packages/training/src/storage-transfer-holdout.mjs — WIRE, 2026-09-25
+
+**Found:** imported only by `packages/training/src/storage-transfer-holdout.test.mjs`.
+
+**The operator ran this diagnostic CLI and its tests.** It writes and scores a
+three-row, digest-pinned transfer holdout after a model evaluation. The local
+reference modules passed Luau execution and deliberate mutations failed. No
+trained model has answered these rows yet. The documented command in
+`docs/training/storage-transfer-holdout-2026-09-25.md` is the current caller;
+the CLI does not run on a customer request path and supplies no promotion score.
+
+**Caller being added:** the post-training diagnostic step for a valid v25
+result. Until that integration lands, this remains an explicit manual check
+rather than an automatically run frontier measure.
+
 ## packages/asset-library/build-ui-components.mjs — WIRE, 2026-09-24
 
 **Found:** reported as imported only by `packages/asset-library/ui-components.test.mjs`.
