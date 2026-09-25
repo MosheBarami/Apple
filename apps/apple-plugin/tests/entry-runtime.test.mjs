@@ -266,8 +266,8 @@ local function textContaining(value)
   for _,o in objects do if type(o.Text)=='string' and string.find(o.Text,value,1,true) then return o end end
   return nil
 end
-local heading = textContaining('Where should Apple get assets from?')
-assert(heading,'the dock has no asset-source question')
+local heading = textContaining('May Apple add free Roblox assets to this game?')
+assert(heading,'the dock has no asset consent question')
 assert(heading.Visible==false,'the question shows before anything owes it')
 local box
 for _,o in objects do if o.Name=='PairingCode' then box=o end end
@@ -280,27 +280,16 @@ assert(type(bridgeConfig.onAssetSources)=='function','the bridge is given nowher
 bridgeConfig.onAssetSources({owed=true})
 assert(heading.Visible==true,'an owed answer does not show the question')
 assert(dock.Enabled==true,'the dock stays closed while a build waits on the person')
-local store = textContaining('The Roblox Creator Store')
-local scratch = textContaining('Make it from scratch')
-assert(store and scratch and store.Visible and scratch.Visible,'both choices are not offered')
-local save = textContaining('Use these sources')
+assert(not textContaining('Make it from scratch'),'the dock still offers a from-scratch source choice')
+local save = textContaining('Allow assets and continue')
 assert(save and save.Visible,'there is no way to give the answer')
 save.Activated:Fire()
 local sent = bridgeInstance.answers[#bridgeInstance.answers]
-assert(sent and #sent==1 and sent[1]=='creator_store','the default pick is not the web default: '..tostring(sent and sent[1]))
-store.Activated:Fire()
-local before = #bridgeInstance.answers
-save.Activated:Fire()
-assert(#bridgeInstance.answers==before,'nothing picked was sent as an answer')
-store.Activated:Fire()
-scratch.Activated:Fire()
-save.Activated:Fire()
-sent = bridgeInstance.answers[#bridgeInstance.answers]
-assert(#sent==2 and table.find(sent,'creator_store') and table.find(sent,'from_scratch'),'the picked sources were not sent')
+assert(sent and #sent==1 and sent[1]=='creator_store','the consent must authorize only free Roblox assets')
 bridgeConfig.onAssetSources({owed=true,message='Pick at least one source.'})
 assert(heading.Visible==true and textContaining('Pick at least one source.'),'a refused answer is not explained, or the question closes')
 bridgeConfig.onAssetSources({owed=false})
-assert(heading.Visible==false and store.Visible==false and save.Visible==false,'a settled question stays open')
+assert(heading.Visible==false and save.Visible==false,'a settled question stays open')
 bridgeConfig.onAssetSources({owed=true})
 textContaining('Disconnect').Activated:Fire()
 assert(heading.Visible==false,'a question nobody can answer stays up after disconnecting')
@@ -341,29 +330,12 @@ print('missing StudioTestService fallback assertions passed')
   assert.match(fallbackOutput, /missing StudioTestService fallback assertions passed/);
 });
 
-// SAME QUESTION, SAME WORDS. The dock's choices are read against the web dialog's source of truth,
-// so renaming or re-explaining a source on one surface without the other fails here.
-test('the dock offers the same asset-source choices, in the same words, as the web dialog', () => {
+// The customer sees a single consent action, while the wire policy stays explicit and fail-closed.
+test('the Studio dock never exposes a Creator Store versus scratch selector', () => {
   const strip = (t) => t.replace(/--\[\[[\s\S]*?\]\]/g, '').replace(/--.*$/gm, '');
   const entry = strip(readFileSync(new URL('../src/init.server.luau', import.meta.url), 'utf8'));
-  const web = readFileSync(new URL('../../web/src/lib/asset-sources.ts', import.meta.url), 'utf8');
-  const dialog = readFileSync(new URL('../../web/src/components/asset-source-dialog.tsx', import.meta.url), 'utf8');
-  const shared = readFileSync(new URL('../../../packages/shared/src/index.ts', import.meta.url), 'utf8');
-  const choices = [...(shared.match(/ASSET_SOURCE_CHOICES = \[([^\]]*)\]/)?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
-  assert.ok(choices.length >= 2, 'the shared vocabulary was not found — this checks nothing');
-  const heading = dialog.match(/id="asrc-title">([^<]+)</)?.[1];
-  assert.ok(heading, 'the web dialog heading was not found');
-  assert.ok(entry.includes(`"${heading}"`), `the dock does not ask "${heading}"`);
-  const ticked = [...(web.match(/DEFAULT_TICKED[^=]*=\s*\[([^\]]*)\]/)?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
-  for (const choice of choices) {
-    const block = web.match(new RegExp(`choice: '${choice}',\\s*title: '([^']+)',\\s*does: '([^']+)'`));
-    assert.ok(block, `the web explains no ${choice}`);
-    const row = entry.match(new RegExp(`choice = "${choice}",\\s*title = "([^"]+)",\\s*does = "([^"]+)",\\s*ticked = (true|false)`));
-    assert.ok(row, `the dock does not offer ${choice}`);
-    assert.equal(row[1], block[1], `${choice} is titled differently in Studio`);
-    assert.equal(row[2], block[2], `${choice} is explained differently in Studio`);
-    assert.equal(row[3] === 'true', ticked.includes(choice), `${choice} starts ticked on one surface only`);
-  }
-  const offered = [...entry.matchAll(/choice = "([a-z_]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(offered.sort(), [...choices].sort(), 'the dock offers a source the product does not have, or misses one');
+  assert.match(entry, /May Apple add free Roblox assets to this game\?/);
+  assert.match(entry, /Allow assets and continue/);
+  assert.doesNotMatch(entry, /Make it from scratch|Pick as many as you like|SOURCE_CHOICES/);
+  assert.match(entry, /bridge:answerAssetSources\(\{ "creator_store" \}\)/);
 });

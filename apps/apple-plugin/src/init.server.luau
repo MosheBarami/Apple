@@ -196,30 +196,14 @@ text("Your place. Your control.", 15, true)
 local status = text("Not connected. A pairing lasts until Studio closes; after a restart, enter a new code from your Apple project.", 17, false)
 local place = text(game.Name, 13, true)
 
--- F-059, 2026-09-24: WHERE ASSETS MAY COME FROM, asked here as well as on the web. A build refused the
--- Creator Store because nobody had answered, and a person working in Studio had nowhere to answer.
--- The same two choices in the same words as the web dialog (apps/web/src/lib/asset-sources.ts; the
--- entry test fails if they drift), shown only while the worker says a build is waiting on it. The
--- answer is the same project preference the web saves, and the running build reads it on its next step.
-local SOURCE_CHOICES = {
-	{ choice = "creator_store", title = "The Roblox Creator Store", does = "Apple searches the free Creator Store and references what it finds directly in your place.", ticked = true },
-	{ choice = "from_scratch", title = "Make it from scratch", does = "Apple builds the geometry in your place out of parts, so nothing comes from anywhere else.", ticked = false },
-}
-local sourcesHeading = text("Where should Apple get assets from?", 20, false)
+-- A build that needs another creator's free asset asks for consent here. The owner removed the
+-- source selector from the customer experience: detailed props come from vetted Roblox assets,
+-- and only simple structure may be made from parts. The wire answer remains an explicit,
+-- authenticated creator_store policy; an unanswered question still permits no asset insertion.
+local sourcesHeading = text("May Apple add free Roblox assets to this game?", 20, false)
 sourcesHeading.Font = Enum.Font.SourceSansSemibold
-local sourceItems: { any } = { sourcesHeading, text("A build is waiting on this. Pick as many as you like. This is remembered for this project.", 14, true) }
-local sourceButtons = {}
-local function drawSource(entry: any, button: TextButton)
-	button.Text = (if entry.ticked then "✓  " else "○  ") .. entry.title
-end
-for _, entry in SOURCE_CHOICES do
-	local button = control("")
-	drawSource(entry, button)
-	sourceButtons[entry] = button
-	table.insert(sourceItems, button)
-	table.insert(sourceItems, text(entry.does, 13, true))
-end
-local sourcesSave = control("Use these sources")
+local sourceItems: { any } = { sourcesHeading, text("A build is waiting. Some free assets are made by other Roblox creators. No purchase or asset upload is needed; building still uses Credits. Roblox may block individual assets. Your answer is remembered for this project.", 14, true) }
+local sourcesSave = control("Allow assets and continue")
 table.insert(sourceItems, sourcesSave)
 local sourcesNote = text("", 13, false)
 sourcesNote.Visible = false
@@ -255,7 +239,7 @@ local permission = text("Access: inspect only", 15, false)
 local edits = control("Enable edits…")
 local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
 local activity = text("No actions yet", 13, true)
-local version = text("Apple Studio · 1.4.0 · independent preview", 12, true)
+local version = text("Apple Studio · 1.4.1 · independent preview", 12, true)
 version.LayoutOrder = 100
 
 local function refreshAccess()
@@ -335,7 +319,7 @@ bridge = Bridge.new({
 		return {
 			kind = "state", placeName = game.Name, placeId = game.PlaceId,
 			gameId = game.GameId, isRunMode = RunService:IsRunMode(),
-			selectionCount = #Selection:Get(), pluginVersion = "1.4.0",
+			selectionCount = #Selection:Get(), pluginVersion = "1.4.1",
 		}
 	end,
 	onStatus = function(message: string)
@@ -353,21 +337,10 @@ bridge = Bridge.new({
 	end,
 })
 
-for entry, button in sourceButtons do
-	table.insert(connections, button.Activated:Connect(function()
-		entry.ticked = not entry.ticked
-		drawSource(entry, button)
-	end))
-end
 table.insert(connections, sourcesSave.Activated:Connect(function()
 	if disposed then return end
-	local picked = {}
-	for _, entry in SOURCE_CHOICES do
-		if entry.ticked then table.insert(picked, entry.choice) end
-	end
-	local sent = #picked > 0 and bridge:answerAssetSources(picked)
-	sourcesNote.Text = if #picked == 0 then "With none of these, Apple can only place plain parts. Pick at least one."
-		elseif sent then "Saving…" else "Connect to Apple first."
+	local sent = bridge:answerAssetSources({ "creator_store" })
+	sourcesNote.Text = if sent then "Saving…" else "Connect to Apple first."
 	sourcesNote.Visible = true
 end))
 

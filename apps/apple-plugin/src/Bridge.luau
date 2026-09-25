@@ -20,9 +20,10 @@ local POLL_URL = APPLE_ORIGIN .. "/api/studio/poll"
 -- 1.2.0 (2026-09-23): an uploaded image id is writable on UI images/decals, a checkpoint holds its
 -- MeshParts (F-053), and the dock says a Studio restart needs a new pairing code (F-026).
 -- 1.3.0 (2026-09-23, D-FXLIB-1): a Sound may carry a library audio id, an effect may name an engine
--- 1.4.0 (2026-09-25, F-059): the dock can ask and answer which asset sources this project may use.
 -- particle texture, flipbook and Squash properties are writable, and preview_sound plays a sound here.
-local PLUGIN_VERSION = "1.4.0"
+-- 1.4.0 (2026-09-25, F-059): the dock can ask and answer which asset sources this project may use.
+-- 1.4.1 (2026-09-25): the dock asks once for free Roblox asset consent without a source selector.
+local PLUGIN_VERSION = "1.4.1"
 local PLUGIN_PROTOCOL = "1"
 
 -- The worker currently serves at most ten operations.  These limits are client-side guardrails
