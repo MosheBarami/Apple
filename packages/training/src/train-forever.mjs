@@ -42,6 +42,7 @@ import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { splitPairedRaw } from './paired-eval-raw.mjs';
+import { renderTrainingSpace } from './training-space.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TRAINING = resolve(HERE, '..');
@@ -354,6 +355,31 @@ export function pairedComparison(candidateScored, bestScored, n) {
     problems.push('base scores differ inside the paired run');
   }
   return { candidate: scoresFromScored(candidateScored), best: scoresFromScored(bestScored), problems };
+}
+
+export function promotedSpaceSnapshot(entry, state, candidateScored, bestScored, measuredAt = new Date().toISOString()) {
+  if (entry?.status !== 'done' || entry.promoted !== true ||
+      state?.best?.version !== entry.version ||
+      !Number.isSafeInteger(entry.bestVersionAtRun) || entry.bestVersionAtRun >= entry.version) {
+    throw new Error('Space update requires a recorded promotion to the current best');
+  }
+  const modelUrl = `https://huggingface.co/${HF_REPO}/tree/main/v${entry.version}`;
+  if (entry.publish !== modelUrl && !entry.publish?.startsWith(`${modelUrl};`)) {
+    throw new Error('promoted adapter must be published to the matching HF version');
+  }
+  const compared = pairedComparison(candidateScored, bestScored, state.evalSet?.n);
+  if (compared.problems.length ||
+      ['trajectory', 'gameLogic', 'finish', 'total'].some((k) => compared.candidate[k] !== entry.scores?.[k]) ||
+      compared.best.total !== entry.bestTotalAtRun) {
+    throw new Error(`Space update requires a valid paired evaluation: ${compared.problems.join('; ') || 'stored scores differ'}`);
+  }
+  return {
+    version: entry.version,
+    previousVersion: entry.bestVersionAtRun,
+    scores: compared.candidate,
+    previousScores: compared.best,
+    measuredAt,
+  };
 }
 
 /** max(floor, the widest spread seen between a best and its own reseeds). */
@@ -1004,10 +1030,51 @@ async function publish(ctx, entry, cfg) {
       const rc = await run('hf', ['upload', HF_REPO, card, `${L.hfPrefix}README.md`, '--repo-type', 'model', '--commit-message', `model card: v${v} is the best`], { log, append: true, timeoutMs: TIMEOUT.hf });
       if (rc.code !== 0) entry.publish += `; README upload failed (exit ${rc.code})`;
     }
+    if (up.code === 0 && entry.promoted && !ctx.dry) {
+      await publishTrainingSpace(ctx, entry, pubRoot);
+    }
     say(`v${v}: publish ${entry.publish}`);
   } catch (e) {
     entry.publish = `error: ${e.message}`;
     say(`v${v}: publish error ${e.message}`);
+  }
+}
+
+async function publishTrainingSpace(ctx, entry, pubRoot) {
+  const repo = 'moshebarami/apple-training-results';
+  const log = join(L.out, `v${entry.version}-space.log`);
+  try {
+    // The results page is deliberately private; never make an accidental public snapshot.
+    const privacy = await run(PY, ['-c',
+      'from huggingface_hub import HfApi; import sys; sys.exit(0 if HfApi().space_info(sys.argv[1]).private is True else 1)',
+      repo], { log, timeoutMs: MIN });
+    if (privacy.code !== 0) { entry.space = 'private-Space preflight failed; not uploaded'; return; }
+    const snapshot = promotedSpaceSnapshot(
+      entry, ctx.state,
+      readJson(resolve(TRAINING, entry.eval)),
+      readJson(resolve(TRAINING, entry.bestEval)),
+    );
+    const template = readFileSync(join(TRAINING, 'hf-space/index.html'), 'utf8');
+    const file = join(pubRoot, `space-index-v${entry.version}.html`);
+    writeFileSync(file, renderTrainingSpace(snapshot, template));
+    const upload = await run('hf',
+      ['upload', repo, file, 'index.html', '--repo-type', 'space',
+        '--commit-message', `apple v${entry.version}: paired training result`],
+      { log, append: true, timeoutMs: 2 * MIN });
+    if (upload.code !== 0) {
+      entry.space = `upload failed (exit ${upload.code}); see ${rel(log)}`;
+      return;
+    }
+    const verified = await run(PY, ['-c',
+      'from huggingface_hub import hf_hub_download; import hashlib,sys; p=hf_hub_download(sys.argv[1], "index.html", repo_type="space", force_download=True); digest=lambda x: hashlib.sha256(open(x,"rb").read()).digest(); sys.exit(0 if digest(p)==digest(sys.argv[2]) else 1)',
+      repo, file], { log, append: true, timeoutMs: MIN });
+    entry.space = verified.code === 0
+      ? `https://huggingface.co/spaces/${repo} (bytes verified)`
+      : `uploaded but remote bytes not verified; see ${rel(log)}`;
+    say(`v${entry.version}: Space ${entry.space}`);
+  } catch {
+    entry.space = `Space update failed; see ${rel(log)}`;
+    say(`v${entry.version}: ${entry.space}`);
   }
 }
 

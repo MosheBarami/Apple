@@ -18,18 +18,18 @@
   </style>
 </head>
 <body><main>
-  <div class="eyebrow">APPLE · דוח מחקר פרטי · 25 בספטמבר 2026</div>
+  <div class="eyebrow">APPLE · דוח מחקר פרטי · {{DATE}}</div>
   <h1>האימון מתקדם.<br>המבחן עדיין מאתגר.</h1>
-  <p>גרסת v22 נבחנה מול הגרסה המובילה הקודמת על אותן 38 משימות ובאותה הרצה. אלה תוצאות של מבחן קוד מקומי, לא משחק Roblox Studio מלא.</p>
+  <p>גרסת v{{VERSION}} נבחנה מול הגרסה המובילה הקודמת על אותן 38 משימות ובאותה הרצה. אלה תוצאות של מבחן קוד מקומי, לא משחק Roblox Studio מלא.</p>
   <section class="card" aria-label="תוצאות המדידה">
     <div class="grid">
-      <div class="stat"><span>Apple LoRA v22</span><b dir="ltr">24 / 38</b><div class="bar" aria-hidden="true"><i style="width:63.2%"></i></div><small class="muted">63.2% · קודמה למובילה המקומית</small></div>
-      <div class="stat"><span>v5 באותה הרצה</span><b dir="ltr">18 / 38</b><div class="bar" aria-hidden="true"><i style="width:47.4%"></i></div><small class="muted">47.4% · אותה בדיקה ואותו מודל בסיס</small></div>
+      <div class="stat"><span>Apple LoRA v{{VERSION}}</span><b dir="ltr">{{TOTAL}} / 38</b><div class="bar" aria-hidden="true"><i style="width:{{PERCENT}}%"></i></div><small class="muted">{{PERCENT}}% · קודמה למובילה המקומית</small></div>
+      <div class="stat"><span>v{{PREVIOUS_VERSION}} באותה הרצה</span><b dir="ltr">{{PREVIOUS_TOTAL}} / 38</b><div class="bar" aria-hidden="true"><i style="width:{{PREVIOUS_PERCENT}}%"></i></div><small class="muted">{{PREVIOUS_PERCENT}}% · אותה בדיקה ואותו מודל בסיס</small></div>
     </div>
-    <p>שימוש בכלים: <strong dir="ltr">17/23</strong> · לוגיקת משחק: <strong dir="ltr">1/8</strong> · סיום משימה: <strong dir="ltr">6/7</strong>.</p>
-    <div class="notice">זה אינו ציון Frontier ואינו המודל שפועל כרגע למשתמשי Apple. היכולת בלוגיקת משחק עדיין חלשה. v23 כבר מתאמנת ונמדדת רק אחרי שתסתיים.</div>
+    <p>שימוש בכלים: <strong dir="ltr">{{TRAJECTORY}}/23</strong> · לוגיקת משחק: <strong dir="ltr">{{GAME_LOGIC}}/8</strong> · סיום משימה: <strong dir="ltr">{{FINISH}}/7</strong>.</p>
+    <div class="notice">זה אינו ציון Frontier ואינו המודל שפועל כרגע למשתמשי Apple. גרסאות חדשות נמדדות רק אחרי שהאימון והבדיקה שלהן מסתיימים.</div>
     <p class="muted">אימות המדידה: אותם 38 מזהי משימות, אותן תוצאות בסיס בכל שורה, וללא שגיאות מתקן ידועות.</p>
   </section>
-  <p>קובצי המתאם והמדידה נמצאים <a href="https://huggingface.co/moshebarami/apple-lora/tree/main/v22">במאגר המודל הפרטי</a>. דוח זה הוא תמונת מצב ואינו מתעדכן אוטומטית.</p>
+  <p>קובצי המתאם והמדידה נמצאים <a href="https://huggingface.co/moshebarami/apple-lora/tree/main/v{{VERSION}}">במאגר המודל הפרטי</a>. דוח זה מתעדכן רק כשגרסה חדשה נמדדת ומקודמת באופן תקף.</p>
 </main></body>
 </html>
