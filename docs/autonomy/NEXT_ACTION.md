@@ -1,7 +1,18 @@
 # NEXT ACTION
 
-**Gauntlet round 8: test the local Apple Studio 1.4.0 plugin after free AI capacity resets;
-verify public Creator Store distribution separately.**
+**Gauntlet round 8: test the local Apple Studio 1.4.0 plugin; verify public Creator Store
+distribution separately.** The free Workers AI allowance reset on 2026-09-25. The local preview
+plugin is visible in Studio, but a clean editable test place has not yet been reached through the
+window controller, so no round 8 run or F-059/F-064/F-069 live verdict has been recorded.
+
+2026-09-25 00:44 UTC: the corrected 16-item Luau code judge passed 86/86 guard tests. Re-scoring
+unchanged saved answers gave Apple MAX 16/16 in each of three earlier runs, but a newly generated
+run scored 12/16. The honest pooled Apple MAX number is **60/64 (93.8%)**, range 75–100%; regular
+Apple is **15/16 (93.8%)** in one run. Both lanes use the same model and this is not a full-game
+or external frontier comparison. The four new failures and the exact judge corrections are in
+`docs/training/frontier-2026-09-25-library-ui.md`. The local dashboard was read back from
+`/api/project` and displayed these exact per-lane figures. Commit `6216ec1` carries the evidence;
+its CI run is in progress.
 
 2026-09-24 ~22:23 UTC: Studio reported **Successfully submitted!** for the existing asset
 `107230158271368` using the verified 1.4.0 file. The public Store page and details endpoint then
@@ -13,10 +24,11 @@ Studio before changing `LATEST_PLUGIN_VERSION`. A local 1.4.0 behavior test can 
 public release check. Q-019 records the completed upload;
 `docs/evidence/plugin-1.4-upload-2026-09-25.md` records the boundary check.
 
-The CPU training supervisor is running v20 with 51 new verified game-logic training rows. Validation
-through step 250 and training through step 270 completed without the Metal watchdog; it has no eval
-score yet. The valid leader remains v5 (20/38). The historical base answers differ on 19/38 pinned
-rows, so v20 must be compared with a fresh v5 evaluation under the same runtime
+The CPU training supervisor completed all 400 steps of v20 with 51 new verified game-logic training
+rows and no Metal watchdog death. Its adapter answered 24/38, but the run is **invalid for promotion**:
+the base trajectory score moved from the saved 0/23 to 1/23. v21 started automatically. The valid
+leader remains v5 (20/38). The historical base answers differed on 19/38 pinned
+rows earlier, so v20 needs a fresh v5 evaluation under the same runtime
 (docs/training/eval-drift-2026-09-25.md). CI run 36073895590 for f202c6e passed
 all six job groups. F-037 recovery is deployed in the web app and worker,
 with a live browser reconnect check still owed (docs/evidence/f037-socket-recovery-2026-09-25.md).
@@ -42,12 +54,13 @@ Measured 2026-09-25:
   distribution check above is now the release blocker.
 - The local training supervisor runs versions in order. v11 completed 400 steps but its evaluation
   was invalid because the paired base result drifted. GPU runs v12–v19 were mostly truncated by
-  Metal; v20 is now training on CPU. The best valid model remains v5, 20/38.
+  Metal; v20 completed training on CPU and its 24/38 adapter score was invalid for promotion because
+  the historical base comparator drifted. v21 started. The best valid model remains v5, 20/38.
 - The friendly thinking and glass redesign was implemented directly, deployed, and checked in the
   browser. CI run 36066064213 passed all six groups.
 
 Then:
-1. after the free Workers AI allowance resets, run round 8 with the locally loaded 1.4.0 plugin
+1. once a clean test place is reachable, run round 8 with the locally loaded 1.4.0 plugin
    (Apple MAX, Agent, Autonomous) and answer the source question with both sources;
 2. verify that library props are inserted, that F-064 does not end the run with listed parts unbuilt, and that
    Stop ends the run within one step (F-069);

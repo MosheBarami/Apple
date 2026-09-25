@@ -13,26 +13,15 @@ import { isDeepStrictEqual } from 'node:util';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { evalProblems, scoresFromScored } from './train-forever.mjs';
+import { splitPairedRaw } from './paired-eval-raw.mjs';
+
+export { splitPairedRaw } from './paired-eval-raw.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PINNED_DATA = 'runs/eval-set-v5.jsonl';
 const PY = join(ROOT, '.venv/bin/python');
 const scoredPath = (rawPath) => rawPath.replace(/\.json$/, '-scored.json');
 const digest = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
-
-export function splitPairedRaw(raw) {
-  if (!raw?.best_adapter || !raw?.rows || !Object.keys(raw.rows).length) {
-    throw new Error('paired raw answers need a best adapter and rows');
-  }
-  const rows = {};
-  for (const [id, row] of Object.entries(raw.rows)) {
-    if (typeof row?.base !== 'string' || typeof row?.adapter !== 'string' || typeof row?.best !== 'string') {
-      throw new Error(`paired row ${id} lacks a base, candidate or best answer`);
-    }
-    rows[id] = { ...row, adapter: row.best };
-  }
-  return { ...raw, adapter: raw.best_adapter, rows };
-}
 
 export function pairedEvalReport(candidateScored, bestScored, n) {
   const problems = [
