@@ -5,6 +5,8 @@ export interface PendingAssetChoice {
   productModel?: string;
   autonomous: boolean;
   options: { id: string; assetId: number; name: string }[];
+  /** Choices rejected earlier in this same visual search, across multiple previews. */
+  rejectedAssetIds?: number[];
 }
 
 export const ASSET_CHOICE_MESSAGE = /^Use visual option ([123]) and continue\.$/;
@@ -21,4 +23,11 @@ export function selectedLibraryAsset(
   return choice && Number.isSafeInteger(choice.assetId) && choice.assetId > 0
     ? choice
     : null;
+}
+
+export function rejectedLibraryAssets(pending: PendingAssetChoice): number[] {
+  return [...new Set([
+    ...(pending.rejectedAssetIds ?? []),
+    ...pending.options.map((option) => option.assetId),
+  ].filter((id) => Number.isSafeInteger(id) && id > 0))];
 }

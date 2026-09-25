@@ -59,7 +59,7 @@ import {
 } from '../frame-bus';
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
-import { ASSET_CHOICE_MESSAGE, selectedLibraryAsset, type PendingAssetChoice } from '../asset-choice';
+import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, type PendingAssetChoice } from '../asset-choice';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
@@ -3313,7 +3313,7 @@ export class SessionDO extends DurableObject<Env> {
       // trimTranscript documents — the agent kept working with no record of the task.
       llm: [{ role: 'system', content: skills.block ? `${sys}\n\n${skills.block}` : sys }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId } : {}),
-      ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: pendingChoice.options.map((o) => o.assetId) } : {}),
+      ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
       ...(skills.ids.length > 0 ? { skillCardsShown: skills.ids } : {}),
       ...(mode === 'agent' && forbidsChanges(text) ? { readOnly: true } : {}),
       ...(mode === 'agent' && isLightingOnlyRequest(text) ? { lightingOnly: true } : {}),
@@ -4513,6 +4513,7 @@ export class SessionDO extends DurableObject<Env> {
             mode: agent.mode,
             ...(agent.productModel ? { productModel: agent.productModel } : {}),
             autonomous: agent.autonomous === true,
+            ...(agent.rejectedLibraryAssetIds?.length ? { rejectedAssetIds: agent.rejectedLibraryAssetIds } : {}),
             options: options.map((option) => ({
               id: option.id,
               assetId: option.assetId,

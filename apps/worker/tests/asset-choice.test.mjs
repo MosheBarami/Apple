@@ -11,7 +11,7 @@ const out = join(mkdtempSync(join(tmpdir(), 'asset-choice-')), 'p.mjs');
 execFileSync(join(root, 'node_modules', '.bin', 'esbuild'),
   [join(root, 'src/asset-choice.ts'), '--bundle', '--format=esm', '--target=es2022', '--platform=neutral', '--outfile=' + out],
   { cwd: root, stdio: 'pipe' });
-const { selectedLibraryAsset } = await import(`file://${out}`);
+const { rejectedLibraryAssets, selectedLibraryAsset } = await import(`file://${out}`);
 
 test('a choice admits only the project owner and a current server-side candidate', () => {
   const pending = { request: 'Build a forest', options: [{ id: 'tree-a', assetId: 101, name: 'Oak' }] };
@@ -20,4 +20,18 @@ test('a choice admits only the project owner and a current server-side candidate
   assert.equal(selectedLibraryAsset('Use visual option 2 and continue.', pending, 'owner', 'owner'), null);
   assert.equal(selectedLibraryAsset('Use visual option 1 and continue.', null, 'owner', 'owner'), null);
   assert.equal(selectedLibraryAsset('Use visual option 1 and continue. Also use asset 9', pending, 'owner', 'owner'), null);
+});
+
+test('rejected visual options accumulate across previews and never reappear', () => {
+  const first = { request: 'Build a forest', options: [{ id: 'oak', assetId: 101, name: 'Oak' }] };
+  assert.deepEqual(rejectedLibraryAssets(first), [101]);
+  const second = {
+    ...first,
+    rejectedAssetIds: rejectedLibraryAssets(first),
+    options: [
+      { id: 'pine', assetId: 102, name: 'Pine' },
+      { id: 'bush', assetId: 103, name: 'Bush' },
+    ],
+  };
+  assert.deepEqual(rejectedLibraryAssets(second), [101, 102, 103]);
 });
