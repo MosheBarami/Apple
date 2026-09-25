@@ -2,8 +2,8 @@
 
 This is a first-hand visual and interaction log from the signed-in Roblox desktop
 player, observed through Computer Use. The first three games were launched from
-their official web pages; **Command An Army was selected and launched entirely
-inside the Roblox app**. The owner has since required app-only launches. This is
+their official web pages; **Command An Army and Ball VS Ball were selected and
+launched entirely inside the Roblox app**. The owner has since required app-only launches. This is
 **not** a source-code inspection,
 asset licence, gameplay-completion claim, or permission to copy either game's
 artwork. Screens were observed in the task transcript; they are not yet archived
@@ -145,6 +145,53 @@ pressing Space launched it. No website game page was used for this launch.
 This is a relevant colorful-cartoon reference for silhouette, palette and onboarding.
 It does not certify that Apple's equivalent mechanics or interface are complete.
 
+## Ball VS Ball — cartoon arena opening (launched in app)
+
+Roblox Home's recommended row was navigated inside the native app. The detail
+page opened there; keyboard navigation selected Play and Space launched the
+experience. No website game page was used for this launch. The detail page
+showed an 87% rating and about 36.2k active players at observation time;
+neither number measures Apple's quality.
+
+### Observed in the desktop player
+
+- The detail-page icon and artwork used glossy red and yellow character balls,
+  an exaggerated face, a cyan sky and a high-contrast collision flash. The
+  thumbnail communicated the central action with two silhouettes and one
+  impact rather than a text-heavy explanation.
+- A branded loading view showed red and blue circles on a black field, a large
+  progress bar and numeric percentage. It reached the playable world; this is
+  a confirmed native-app launch, not a page preview.
+- The first in-world view immediately stacked a Daily Rewards seven-day grid,
+  a separate three-card Ball Gacha gift popup, daily quests, a trade/player
+  panel, Store, Inventory and Emotes controls, two currency counters, and a
+  prominent green Play button. These were distinct systems visible at once,
+  with coin and gem iconography, collectible preview cards, lock states and
+  countdowns. Their integration into a working loop was not verified.
+- The reward presentation used a darkened world backdrop, blue outlined panels,
+  oversized outlined white lettering, glossy card illustrations and a clear
+  Claim action. The result was attention-grabbing, although the simultaneous
+  overlays obscured most of the world on first entry. This is an observed
+  onboarding readability tradeoff, not a recommendation to copy the UI.
+- The background showed blue sky and a bright arena with other moving players.
+  The trade panel exposed player levels, and the daily-quest list showed
+  goals such as wins and play count with coin rewards. I did not select or
+  contact another player.
+- Computer Use coordinate clicks on Claim and Close moved the visible pointer
+  or highlighted controls but produced no confirmed transition. Roblox's
+  backslash keyboard-navigation mode selected background controls rather than
+  the gift popup. I therefore did not verify opening the arena, rolling a ball,
+  combat, wins, earned coins, shops, rerolls, trading or persistence. The
+  blocked interaction may be a Computer Use input limitation; it is not
+  evidence that players cannot dismiss the popup normally.
+
+### Claims from the in-app description, not observed in play
+
+The description says balls appear randomly in the arena, players pick one,
+can reroll mid-battle, win coins, and unlock balls in a shop. A 2v2 event card
+was visible on the detail page. None of those mechanics was verified through
+active play in this observation.
+
 ## Product and benchmark implications — hypotheses, not pass claims
 
 1. A playable opening needs a safe spawn, a readable objective and a route to
@@ -169,12 +216,17 @@ It does not certify that Apple's equivalent mechanics or interface are complete.
    games and a reproducible image/video evidence path. Do not train on these
    games' copyrighted images, maps, weapons or UI bytes. Author new task and
    critique examples from the observations and use separately licensed assets.
+9. Ball VS Ball suggests a measurable first-session check: verify that every
+   opening reward can be accepted or dismissed, the main objective remains
+   legible, and the player can reach the first action without stacked modal
+   dead ends. Apple needs this check even when its screenshot looks colorful.
 
 ## Coverage and next observation
 
-Four popular games entered; only Command An Army was launched from the Roblox app
-itself. One simulation/tycoon opening, one shooter live round, one RPG opening
-and one toy-soldier opening were inspected. This is **not** yet hundreds of verified aspects, full
+Five popular games entered; Command An Army and Ball VS Ball were launched from
+the Roblox app itself. One simulation/tycoon opening, one shooter live round,
+one RPG opening, one toy-soldier opening and one cartoon arena opening were
+inspected. This is **not** yet hundreds of verified aspects, full
 gameplay coverage, a representative sample, or model training. Next: inspect
 active interactions and menus in app-launched colorful cartoon games, then a
 cartoon adventure/RPG and a roleplay game. Record reproducible screenshots and
