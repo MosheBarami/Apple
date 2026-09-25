@@ -3121,6 +3121,19 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?, s
 		return self.game:GetService("InsertService"):LoadAsset(assetId)
 	end)
 	if not okLoad or typeof(loaded) ~= "Instance" then
+		-- Roblox's owned-asset loader refuses free Creator Store models from other creators.
+		-- The modern loader can read them only when this experience ALREADY allows third-party
+		-- assets. Never set that security-sensitive Studio option here. Both loaders feed the
+		-- same detached script scan and destination checks below before anything is parented.
+		local okService, assetService = pcall(function() return self.game:GetService("AssetService") end)
+		if okService and assetService then
+			local okFlag, allowsFree = pcall(function() return assetService.AllowInsertFreeAssets end)
+			if okFlag and allowsFree == true then
+				okLoad, loaded = pcall(function() return assetService:LoadAssetAsync(assetId) end)
+			end
+		end
+	end
+	if not okLoad or typeof(loaded) ~= "Instance" then
 		-- WHY ONE REMEDY FOR EVERY WAY THIS CAN FAIL. LoadAsset refuses for several reasons and
 		-- Roblox says which only in prose we do not own, so the code cannot be picked by reading
 		-- the sentence. It is `take_asset_first` because ownership is the only cause the user can
