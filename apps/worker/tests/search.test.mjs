@@ -41,6 +41,7 @@ const {
   DEFAULT_SEARCH_LIMIT,
   MAX_SEARCH_LIMIT,
   customerWorkSearchText,
+  customerMessageSearchText,
 } = await import(`file://${out}`);
 process.on('exit', () => rmSync(out, { force: true }));
 
@@ -567,6 +568,18 @@ test('work search records use customer words and never raw tool names or operati
   const code = gather.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.equal((code.match(/customerWorkSearchText\(/g) ?? []).length, 2,
     'both tool steps and Studio operations must use the customer-safe search text');
+});
+
+test('assistant message search matches only the prose the customer can read', () => {
+  const wire = '{"className":"Part","name":"MovingPlatform3","parent":"game.Workspace","props":{"Anchored":{"t":"bool","v":false}}}';
+  const body = customerMessageSearchText('assistant', `I built a moving platform.\n${wire}\nTry it now.`);
+  assert.equal(body, 'I built a moving platform.\nTry it now.');
+  const record = REC({ body, author: 'apple' });
+  assert.equal(runSearch([record], FILTER('q=platform')).results.length, 1);
+  assert.equal(runSearch([record], FILTER('q=className')).results.length, 0);
+  assert.equal(customerMessageSearchText('user', wire), wire, 'the customer’s own text is not rewritten');
+  assert.match(gather, /body: customerMessageSearchText\(r\.role, r\.content\)/,
+    'the real message search path must use the same visible-prose rule');
 });
 
 test('searching a friendly work label is not filtered out by raw SQL text', () => {

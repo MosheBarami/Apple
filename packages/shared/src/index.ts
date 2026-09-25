@@ -2993,6 +2993,7 @@ export function isRunFailure(v: unknown): v is RunFailure {
 // ---------------------------------------------------------------------------
 export * from './attachments.ts';
 export * from './models.ts';
+export * from './spilled-payload.ts';
 
 /**
  * Talk, not work — a greeting, thanks, an acknowledgement, or a question about Apple itself.

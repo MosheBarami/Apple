@@ -117,6 +117,7 @@ import {
   MIN_QUERY,
   authorForRole,
   checkpointAuthor,
+  customerMessageSearchText,
   customerWorkSearchText,
   isSearchable,
   narrowing,
@@ -6227,7 +6228,7 @@ export class SessionDO extends DurableObject<Env> {
           type: 'message',
           author: authorForRole(r.role),
           title: null,
-          body: r.content,
+          body: customerMessageSearchText(r.role, r.content),
           createdAt: r.created_at,
           messageId: r.id,
         });

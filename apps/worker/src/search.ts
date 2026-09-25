@@ -11,6 +11,8 @@
 // is 4,000 characters in: the user sees a result list where nothing visibly matches what they
 // typed. The snippet has to be a window around the HIT.
 
+import { splitSpilledPayload } from '@golem/shared';
+
 /** Wildcards in a LIKE pattern belong to SQL, not to whoever typed the query. */
 export function escapeLike(query: string, escape = '\\'): string {
   return query.replace(/[\\%_]/g, (c) => escape + c);
@@ -196,6 +198,11 @@ export function customerWorkSearchText(kind: string, _summary: string, ok?: bool
   else if (/create|insert|add/.test(kind)) title = 'Added to your place';
   else if (/transform|move|resize|rotate|update|edit/.test(kind)) title = 'Changed your place';
   return { title, body: ok === false ? 'Apple could not complete this step.' : 'Apple worked on this step.' };
+}
+
+/** Match only text the transcript actually renders. Keep the person's own messages intact. */
+export function customerMessageSearchText(role: string, content: string): string {
+  return role === 'user' ? content : splitSpilledPayload(content).prose;
 }
 
 export interface SearchFilter {
