@@ -106,6 +106,10 @@ import {
   createRig, checkUiLayout, buildUi, playCheckUiOp, PLAY_CHECK_UI_DEF, type OpCall,
 } from './phase-a-tools';
 
+// The older catalogue keeps its horror reference for history. The active product
+// offers only kits compatible with bright cartoon games.
+const CARTOON_KIT_IDS = GENRE_KIT_IDS.filter((id) => id !== 'horror');
+
 export interface AgentCtx {
   env: Env;
   /**
@@ -4056,16 +4060,17 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'get_genre_kit',
       description:
-        'Ask for a genre by name and get the whole matched set at once: palette with the job each colour does, Lighting values, briefs for the UI/VFX/textures/props that genre needs and how to make each one, five sound-effect ids already chosen and checked for that genre, and what to build procedurally. Call this FIRST on any build that has a genre — one call replaces five separate decisions that are each defensible and do not belong in the same game. There is no asset catalogue to search; everything here is either made in the customer\u2019s own account or referenced by an id already pinned below.',
-      parameters: S({ genre: { type: 'string', enum: [...GENRE_KIT_IDS] } }, ['genre']),
+        'Ask for a colorful cartoon game genre and get its matched palette, lighting, UI/VFX/prop briefs and verified public sound ids. Call this before a genre build, then find rights-verified Roblox-specific assets for detailed objects and UI. Only simple structure may be built from primitive parts; do not generate complex replacements.',
+      parameters: S({ genre: { type: 'string', enum: [...CARTOON_KIT_IDS] } }, ['genre']),
     },
     studio: false,
     run: async (ctx, a) => {
+      if (a.genre === 'horror') return { error: 'Apple builds colorful cartoon games only. Use a bright adventure or party interpretation instead of the legacy dark horror kit.' };
       const kit = getGenreKit(String(a.genre ?? ''));
       if (!kit) {
         // Naming the ten is the whole answer: a model told only "unknown genre" guesses again, and
         // the second guess is no better informed than the first.
-        return { error: `there is no "${String(a.genre)}" kit. The kits are: ${GENRE_KIT_IDS.join(', ')}.` };
+        return { error: `there is no "${String(a.genre)}" kit. The cartoon-compatible kits are: ${CARTOON_KIT_IDS.join(', ')}.` };
       }
       const skillProfile = getGenreSkillProfile(kit.id);
 
@@ -4108,7 +4113,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         } : {}),
         palette: kit.palette,
         lighting: kit.lighting,
-        buildTheseYourself: kit.procedural,
+        buildTheseYourself: ['Only plain structure such as ground, floors, paths, walls, platforms and zones. Retrieve detailed models, UI and effects from verified Roblox-specific libraries.'],
         // THE KEY USED TO BE `searchTheLibraryFor`, AND THERE IS NO LIBRARY TO SEARCH.
         // It named a tool that no longer exists, so the model was being handed five queries and
         // no way to run them. The briefs themselves were never the library's — the `why` is the
@@ -4123,9 +4128,13 @@ export const TOOLS: Record<string, ToolImpl> = {
           how:
             s.need === 'sfx'
               ? 'use the ids under `sounds` — do not search for audio, they are already chosen for this genre'
-              : s.need === 'ui_icon' || s.need === 'particle' || s.need === 'texture'
-                ? `generate_image with target="${s.need === 'ui_icon' ? 'ui_icon' : s.need === 'particle' ? 'decal' : 'texture'}", subject as given, and the styleTags folded into the style fields`
-                : 'find_library_model with the subject as a plain noun, then insert_library_model; never parts or a generator (D-MODELLIB-2)',
+              : s.need === 'ui_icon'
+                ? 'find the matching Roblox UI library component, then insert_ui_component; never draw it yourself'
+                : s.need === 'particle'
+                  ? 'find_vfx for a verified preset, then insert_vfx; never hand-build particle effects'
+                  : s.need === 'texture'
+                    ? 'use a rights-verified Roblox-specific library or Creator Store texture; do not invent an asset id'
+                    : 'find_library_model with the subject as a plain noun, then insert_library_model; never parts or a generator (D-MODELLIB-2)',
         })),
         sounds: admitted,
         // Present even when empty is wrong — an empty key reads as "we checked and all were fine",

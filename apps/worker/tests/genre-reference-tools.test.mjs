@@ -66,3 +66,15 @@ test('the genre kit links to the same retrieval tool before model-context trunca
   assert.match(result.resultForLlm, /reference_only/);
   assert.match(result.resultForLlm, /read_creation_skill/);
 });
+
+test('the active genre kit tool cannot hand a dark horror palette to cartoon-only Apple', async () => {
+  const tool = TOOLS.get_genre_kit;
+  assert.ok(!tool.def.parameters.properties.genre.enum.includes('horror'));
+  const refused = await tool.run({}, { genre: 'horror' });
+  assert.match(refused.error, /colorful cartoon/i);
+  const available = await tool.run({}, { genre: 'simulator' });
+  assert.ok(Array.isArray(available.palette));
+  assert.ok(available.makeThese.length > 0);
+  assert.ok(available.makeThese.every((slot) => !/generate_image|build.*from parts/i.test(slot.how)));
+  assert.ok(available.buildTheseYourself.every((rule) => !/prop|model.*from parts/i.test(rule)));
+});

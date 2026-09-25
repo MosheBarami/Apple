@@ -985,7 +985,7 @@ const TOOL_ARGS = {
   get_ui_construction: { id: 'screen-shop' },
   get_verified_module: { id: 'cooldown-clock' },
 
-  get_genre_kit: { genre: 'horror' },
+  get_genre_kit: { genre: 'simulator' },
   find_verified_asset: { query: 'oak tree' },
   insert_asset: { assetId: 424242, parent: 'game.Workspace' },
   generate_model: { prompt: 'a lamp post', intent: 'lamp post' },
