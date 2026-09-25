@@ -70,9 +70,27 @@ test('cartoon visual style is unmeasured without review and fails when rejected'
   bundle.proofs['visual-style'].verdict = {
     colorfulCartoon: false, coherentArtDirection: true, commerciallyPolished: true,
   };
+  assert.ok(gradeMission(cartoon, bundle, root).failed.includes('visual-style'));
+  bundle.proofs['visual-style'].verdict.colorfulCartoon = true;
+  assert.equal(gradeMission(cartoon, bundle, root).status, 'unmeasured');
+  assert.ok(gradeMission(cartoon, bundle, root).missing.includes('first-action'));
+  bundle.proofs['first-action'] = {
+    kind: 'playtest', observer: 'independent-reviewer', runId: 'synthetic-run',
+    artifact: 'fixture.txt', sha256: digest, passed: true,
+    firstAction: {
+      input: 'Pressed the highlighted Ride control', instructionVisible: true,
+      activated: true, worldChanged: true, hudChanged: true, nextObjectiveVisible: true,
+    },
+  };
+  assert.equal(gradeMission(cartoon, bundle, root).status, 'passed');
+  bundle.proofs['visual-style'].verdict.colorfulCartoon = false;
   assert.equal(gradeMission(cartoon, bundle, root).status, 'failed');
   bundle.proofs['visual-style'].verdict.colorfulCartoon = true;
-  assert.equal(gradeMission(cartoon, bundle, root).status, 'passed');
+  bundle.proofs['first-action'].firstAction.activated = false;
+  assert.equal(gradeMission(cartoon, bundle, root).status, 'failed');
+  bundle.proofs['first-action'].firstAction.activated = true;
+  delete bundle.proofs['first-action'].firstAction.nextObjectiveVisible;
+  assert.equal(gradeMission(cartoon, bundle, root).status, 'unmeasured');
 });
 
 test('a full evidence bundle can pass but one broken gameplay feature fails the game', () => {

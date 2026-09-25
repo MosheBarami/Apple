@@ -15,9 +15,10 @@ const KIND = {
   'visual-world': 'blind-review', 'visual-ui': 'blind-review', 'no-errors': 'studio-readback',
   'asset-policy': 'studio-readback', 'ui-source': 'studio-readback',
   'visual-style': 'blind-review',
+  'first-action': 'playtest',
 };
 export function criteriaFor(task) {
-  return [...ONE, ...(task.visualScope === 'colorful-cartoon' ? ['visual-style'] : []), ...task.features.map((f) => `feature:${f}`), ...task.assets.map((a) => `asset:${a}`)];
+  return [...ONE, ...(task.visualScope === 'colorful-cartoon' ? ['visual-style', 'first-action'] : []), ...task.features.map((f) => `feature:${f}`), ...task.assets.map((a) => `asset:${a}`)];
 }
 
 function inside(root, p) {
@@ -79,6 +80,13 @@ function assetValid(proof) {
     && ['no-scripts', 'audited-and-tested', 'stripped'].includes(asset.scriptDisposition);
 }
 
+function firstActionValid(proof) {
+  const action = proof?.firstAction;
+  return typeof action?.input === 'string' && action.input.trim().length >= 3
+    && ['instructionVisible', 'activated', 'worldChanged', 'hudChanged', 'nextObjectiveVisible']
+      .every((key) => typeof action[key] === 'boolean');
+}
+
 /** A proof is an observation by an independent examiner, with its bytes bound by SHA-256. */
 export function gradeMission(task, bundle, root) {
   const invalid = [];
@@ -128,11 +136,15 @@ export function gradeMission(task, bundle, root) {
       && artifactValid(root, p)
       && (key !== 'run' || traceValid(root, p, run?.id))
       && (!key.startsWith('asset:') || assetValid(p))
+      && (key !== 'first-action' || firstActionValid(p))
       && (key === 'visual-style'
         ? (typeof p.verdict?.colorfulCartoon === 'boolean' && typeof p.verdict?.coherentArtDirection === 'boolean' && typeof p.verdict?.commerciallyPolished === 'boolean')
         : !key.startsWith('visual-') || (typeof p.verdict?.fitForRoblox === 'boolean' && typeof p.verdict?.amazing === 'boolean'));
     if (!observed) { missing.push(key); continue; }
-    if (p.passed !== true || (key === 'visual-style'
+    if (p.passed !== true || (key === 'first-action'
+      ? !['instructionVisible', 'activated', 'worldChanged', 'hudChanged', 'nextObjectiveVisible']
+        .every((field) => p.firstAction[field])
+      : key === 'visual-style'
       ? (!p.verdict.colorfulCartoon || !p.verdict.coherentArtDirection || !p.verdict.commerciallyPolished)
       : key.startsWith('visual-') && (!p.verdict.fitForRoblox || !p.verdict.amazing))) failed.push(key);
   }

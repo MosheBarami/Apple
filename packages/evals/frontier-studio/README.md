@@ -56,7 +56,7 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
    observation of Ride A Pet documented this chain, but its art and mechanics are reference
    observations only; the Apple benchmark must use original work and independently verify its
    own Play session. If Apple shows a tutorial label but its button has no effect, fail the
-   `playtest` proof; if the next objective or interface is unreadable, fail `visual-ui` too.
+   `first-action` proof; if the next objective or interface is unreadable, fail `visual-ui` too.
    Store the exact operations and observed outcomes, including failures.
 6. Take 4–8 final Studio shots with neutral filenames. Give **only** those images to an independent
    blind visual critic using `docs/gauntlet/visual/BLIND_CRITIC.md`. Separately audit feature
@@ -116,6 +116,12 @@ and `commerciallyPolished`. All must be true for a pass; missing values leave
 the task unmeasured. Reviewers should inspect first spawn, a gameplay action,
 at least one UI interaction and the end-of-loop state at desktop and mobile
 sizes. Preserve the actual images and concrete observations, including rejections.
+The separate `first-action` playtest proof must include `firstAction: {input,
+instructionVisible, activated, worldChanged, hudChanged, nextObjectiveVisible}`.
+The five observations are booleans and all must be true for a pass; a missing
+observation leaves the mission unmeasured. Its hashed artifact should be the
+examiner's timestamped first-ten-second report with before/after screenshots,
+the exact input and observed state changes. A tutorial label alone cannot pass.
 
 The suite reports `passRate: null` until all 36 tasks have measured results. A complete 36/36
 pass is **a pass on this benchmark version**, not by itself proof of universal Roblox frontier
