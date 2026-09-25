@@ -1,5 +1,27 @@
 # CURRENT STATE
 
+2026-09-25 06:46 UTC update: the private Hugging Face model card was corrected
+after a red-first test found that it listed v11/v20 even though both evaluations
+were marked invalid. The 1,737-byte replacement was uploaded and downloaded back
+with identical SHA-256 bytes; it shows v22 as local best and v23 as an unpromoted
+experiment. The dashboard live API returned the revised status at 06:38:39 UTC;
+training v24 was still alive at validation step 75/400, with no held-out score.
+CI runs 36103187726 and 36103885839 both passed all six groups, including the
+corrected model card's tests and Playwright (latest checked 06:47 UTC).
+
+To try the Studio gauntlet without altering a project file, a byte-identical
+scratch copy of `apps/apple-plugin/release/apple-studio-engine-proof.rbxl` was
+opened via Finder (`/private/tmp/apple-studio-window-probe.rbxl`, SHA-256
+`58944ee805fa17689e94552b6ca469a21b5dc6ca4a27ef5db8f2f47bbc145532`).
+A lock file appeared, but the computer controller exposes only a 300×200
+"Lemonade" floating window for the running Studio installation and cannot
+capture the editable viewport. No build, Stop, library insertion or visual
+round-8 verdict was observed. F-059, F-064 and F-069 remain open. The
+independent-review supervisor still defaults to Claude Code, whose organization
+subscription access is disabled; the acceptance counter remains 0/3. Codex CLI
+is installed and logged in, but has not been substituted for a genuine external
+product reviewer.
+
 2026-09-25 06:14 UTC update: the live owner dashboard was read back and shows
 Apple MAX 61/64 (95.3%, four full code-harness runs) and Apple 15/16 (93.8%, one
 run), both current under the corrected shop-stock fixture. The saved model

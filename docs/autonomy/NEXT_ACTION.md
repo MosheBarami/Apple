@@ -1,5 +1,15 @@
 # NEXT ACTION
 
+2026-09-25 06:46 UTC: a byte-identical scratch Studio place acquired a lock
+file, but the available computer controller could capture only the unrelated
+Lemonade floating window, not an editable viewport. Do not infer a round-8
+result from the lock; find an addressable Studio viewport before testing the
+asset-source dock, library insertion, open-work completion and Stop. The
+review supervisor's default Claude Code executable is unavailable under the
+organization subscription. Codex CLI is installed, but fresh reviewer credit
+must come from independent use of the real product with recorded evidence,
+never from a substituted command or self-certification alone.
+
 2026-09-25 ~06:38 UTC: the private Hugging Face model card no longer displays
 invalid v11/v20 measurements as completed experiments. A new renderer test
 failed on the old behavior and passed with the status filter (34/34 focused
