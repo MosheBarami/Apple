@@ -55,7 +55,8 @@ test('owner acquisition view separates listed sources, local bytes and backend s
   assert.ok(d.sources.excluded >= 11, 'the general-purpose 3D portals are excluded from Roblox model intake');
   const ownerMap = await library(q({ tab: 'intake', view: 'sources', q: 'free-low-poly-simulator-kit-and-map', limit: '2' }));
   assert.ok(ownerMap.page.rows.some((r) => r.state === 'roblox-inventory-only' && r.acquired === 0
-    && r.inventoryAssetIds.includes(6606406243)), 'claiming a Roblox asset does not invent a downloaded file');
+    && r.inventoryAssetIds.includes(6606406243) && r.inventoryAssetIds.includes(6606350916)),
+  'claiming Roblox assets does not invent downloaded files');
   assert.ok(d.files.total > 0);
   assert.ok(d.files.local > 0);
   assert.ok(d.files.fromOwner >= 0 && d.files.fromOwner < d.files.local, 'the owner count is separate from old inventory');
