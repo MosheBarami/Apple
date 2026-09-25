@@ -60,6 +60,8 @@ MISSION = DOCS / "MISSION.md"
 ACCEPTANCE = DOCS / "ACCEPTANCE.json"
 
 MAX_SESSION_SECONDS = int(os.environ.get("AUTONOMY_MAX_SESSION_SECONDS", str(2 * 60 * 60)))
+MAX_REVIEW_SESSIONS = int(os.environ.get("AUTONOMY_MAX_REVIEW_SESSIONS", "3"))
+MAX_REVIEW_SECONDS = int(os.environ.get("AUTONOMY_MAX_REVIEW_SECONDS", str(4 * 60 * 60)))
 BACKOFF_SECONDS = tuple(int(x) for x in os.environ.get("AUTONOMY_BACKOFF", "30,120,600").split(","))
 PRODUCTION_URL = "https://apple.moshe-barami111.workers.dev"
 
@@ -351,6 +353,8 @@ def ceilings_hit(state: dict):
 
 def main() -> int:
     reviews_only = "--reviews-only" in sys.argv[1:]
+    review_window_started = time.monotonic()
+    review_sessions = 0
     RUNTIME.mkdir(exist_ok=True)
     SESSIONS.mkdir(exist_ok=True)
     LOCKS.mkdir(exist_ok=True)
@@ -384,7 +388,18 @@ def main() -> int:
                 save_json(STATE_PATH, state)
                 log("STOP present: stopped")
                 return 0
-            hit = ceilings_hit(state)
+            # Review-only work is beside the long-lived owner, often days later. The owner's
+            # historical 72-hour/80-session ceiling must not prevent a new independent review;
+            # this invocation has its own smaller wall-clock and session ceilings instead.
+            if reviews_only:
+                if review_sessions >= MAX_REVIEW_SESSIONS:
+                    hit = f"max_review_sessions {MAX_REVIEW_SESSIONS} reached"
+                elif time.monotonic() - review_window_started >= MAX_REVIEW_SECONDS:
+                    hit = f"max_review_seconds {MAX_REVIEW_SECONDS} reached"
+                else:
+                    hit = None
+            else:
+                hit = ceilings_hit(state)
             if hit:
                 state["status"] = "ceiling_reached"
                 state["human_blocker"] = hit
@@ -393,6 +408,8 @@ def main() -> int:
                 return 5
 
             role = "reviewer" if reviews_only else (state.get("phase") if state.get("phase") in ROLES else ROLES[0])
+            if reviews_only:
+                review_sessions += 1
             iteration = int(state.get("iteration", 0)) + 1
             state["iteration"] = iteration
             state["last_session_started_at"] = utc_now()

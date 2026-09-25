@@ -353,6 +353,37 @@ test('--reviews-only stops when a child exits cleanly without a review verdict',
   assert.equal(Number(readFileSync(join(root, 'calls'), 'utf8')), 1, 'a silent child must not consume more reviewer sessions');
 });
 
+test('--reviews-only has a fresh bounded window after the owner supervisor ages out', () => {
+  const root = sandbox([
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS' } },
+    { exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS' } },
+  ]);
+  mkdirSync(join(root, '.autonomy'), { recursive: true });
+  writeFileSync(join(root, '.autonomy', 'state.json'), JSON.stringify({
+    started_at: '2025-01-01T00:00:00+00:00', iteration: 80,
+    max_sessions: 80, max_wall_clock_hours: 72,
+  }));
+  const r = spawnSync('python3', [SUPERVISOR, '--reviews-only'], {
+    env: { ...process.env, AUTONOMY_ROOT: root, AUTONOMY_AGENT_CMD: JSON.stringify(['node', join(root, 'fake-agent.mjs'), '{PROMPT}']), AUTONOMY_BACKOFF: '0' },
+    encoding: 'utf8', timeout: 60_000,
+  });
+  assert.equal(r.status, 0, 'old owner-session ceilings cannot make fresh reviews impossible');
+  assert.equal(Number(readFileSync(join(root, 'calls'), 'utf8')), 3);
+});
+
+test('--reviews-only still stops at its own session ceiling', () => {
+  const root = sandbox(Array.from({ length: 5 }, () => ({
+    exit: 0, reviewEvidence: true, result: { status: 'continue', review_verdict: 'PASS' },
+  })), { acceptance: { schema: 1, fresh_reviews_without_material_blocker: 0, required_fresh_reviews_without_material_blocker: 5 } });
+  const r = spawnSync('python3', [SUPERVISOR, '--reviews-only'], {
+    env: { ...process.env, AUTONOMY_ROOT: root, AUTONOMY_AGENT_CMD: JSON.stringify(['node', join(root, 'fake-agent.mjs'), '{PROMPT}']), AUTONOMY_BACKOFF: '0', AUTONOMY_MAX_REVIEW_SESSIONS: '3' },
+    encoding: 'utf8', timeout: 60_000,
+  });
+  assert.equal(r.status, 5);
+  assert.equal(Number(readFileSync(join(root, 'calls'), 'utf8')), 3, 'a review-only invocation is bounded');
+});
+
 // ------------------------------------------------------------ the acceptance gate
 
 const FLAGS = ['deterministic_gates_green', 'production_deployed', 'production_bytes_verified', 'signed_in_browser_qa',
