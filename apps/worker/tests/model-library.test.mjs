@@ -142,6 +142,8 @@ test('third-party cartoon models are opt-in search candidates, never claimed uni
   assert.ok(found.results.some((r) => r.assetId === id && r.requiresThirdPartyLoading === true));
   assert.ok(answer.detail?.options.some((r) => r.assetId === id && /third-party asset loading/i.test(r.name)));
   assert.equal(M.findLibraryModels({ query: 'fountain' }).results.length, 0, 'a conditional-only prop became a default claim');
+  assert.equal(M.findLibraryModels({ query: 'fountain', includeThirdParty: true }).results.some((r) => r.assetId === 3241261980), false,
+    'the visually inspected gray realistic fountain was offered as a colorful cartoon candidate');
   assert.equal(M.handBuiltPropRefusal([twoParts('Fountain')]), null, 'an optional model blocked a simple fallback before Studio proved it loadable');
 });
 
