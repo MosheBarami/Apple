@@ -1,5 +1,7 @@
 # NEXT ACTION
 
+2026-09-25 07:45 UTC: commit the provenance disposition and private dataset-card evidence, then rerun the full CI; the previous run's only failed test was `--gate passes only when every entry carries a disposition`, reproduced red in CI and now green locally (15/15). Continue the single v24 CPU process unchanged and wait for its real paired score before promoting anything.
+
 2026-09-25 07:35 UTC: let the single v24 CPU process finish and score against the unchanged 38-row set. The next eligible version can read the pinned `storage-outcome-verified-shard` from the ordered queue; watch its training, paired evaluation, HF upload and Discord post without starting a second supervisor. A gain on the known first-save failure alone is not independent frontier evidence; use fresh unseen storage tasks and a Studio run. The shard evidence is `docs/training/storage-outcome-shard-2026-09-25.md`. Gate still needs 3 reviews and live closure of F-059/F-064/F-069.
 
 2026-09-25 07:21 UTC: fresh independent reviews can now run in a separate three-session/four-hour window even after the owner supervisor's historical limit expires. This is tested but no real review has run; do not increment the 0/3 counter without a live product report and screenshot, and do not close F-059/F-064/F-069 without Studio evidence. Keep the single v24 training process alive and check the latest CI before further release work.

@@ -751,6 +751,21 @@ Face dataset and read back byte-for-byte. This is a provenance tool, not a runti
 builder remains available for reproducing its origin in a fresh workspace, where its output
 directory does not yet exist.
 
+## packages/training/src/build-storage-outcome-shard.mjs — WIRE, 2026-09-25
+
+**Found:** imported only by `packages/training/src/build-storage-outcome-shard.test.mjs`.
+
+**The operator ran this one-shot builder.** It produced the committed,
+SHA-256-pinned `packages/training/data/storage-outcome-seeds-v1/shard-1.jsonl`.
+The ordered `storage-outcome-verified-shard` training hypothesis reads that
+artifact through `appendVerified`; the supervisor checks its digest and
+re-executes every answer. The same bytes were uploaded to the private Hugging
+Face dataset and downloaded back. The builder is retained to reproduce the
+first-party evidence, not as a runtime product feature.
+
+**Caller being added:** none. The training shard is the reachable artifact;
+the builder's test and CLI entry point establish its provenance.
+
 ## packages/asset-library/build-ui-components.mjs — WIRE, 2026-09-24
 
 **Found:** reported as imported only by `packages/asset-library/ui-components.test.mjs`.

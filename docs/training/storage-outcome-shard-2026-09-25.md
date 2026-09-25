@@ -24,6 +24,11 @@ appends the four rows only to the training split, leaving validation and the
 fixed 38-row promotion set unchanged. Local focused tests passed 36/36 and the
 full training package passed 661/661.
 
+The private dataset README now names the shard and identifies v24 as still in
+training. Its uploaded copy was downloaded again and matched the edited card
+byte for byte (SHA-256
+`394fa2a3b4dc5b82e946b3d187fb7f313d2a6b1e11d208f49dca1ed8577cd5b9`).
+
 At this writing v24 is still training, and this shard has **not** produced a
 trained version or a score. A later gain on `failed-load-no-wipe` would be a
 diagnostic result after training on the concept, not an independent frontier
