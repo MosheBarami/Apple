@@ -25,7 +25,7 @@
  "provenance": {
   "harness": "5809058596824e7e",
   "scorer": "ff0314bdf550c111",
-  "tasks": "f668b3ffebe5b574",
+  "tasks": "e1ef12d227113b4f",
   "controls": "1c86dac61456a844",
   "settingsMirror": "890de7822a7060db"
  },
@@ -581,10 +581,10 @@
    "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function retry(fn)\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, result = pcall(fn)\n\t\tif ok then\n\t\t\treturn true, result\n\t\tend\n\t\twarn((\"DataStore attempt %d failed: %s\"):format(attempt, tostring(result)))\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn false, nil\nend\n\nlocal function loadCoins(player)\n\tlocal key = \"Player_\" .. player.UserId\n\tlocal ok, coins = retry(function()\n\t\treturn store:GetAsync(key)\n\tend)\n\tif not ok then\n\t\twarn((\"Failed to load data for %s; skipping save this session.\"):format(player.Name))\n\t\treturn nil\n\tend\n\treturn coins or 0\nend\n\nlocal function saveCoins(player, coins)\n\tlocal key = \"Player_\" .. player.UserId\n\tlocal ok = retry(function()\n\t\tstore:UpdateAsync(key, function(current)\n\t\t\treturn coins\n\t\tend)\n\tend)\n\tif not ok then\n\t\twarn((\"Failed to save coins for %s.\"):format(player.Name))\n\tend\nend\n\nPlayers.PlayerAdded:Connect(function(player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coinsValue = Instance.new(\"IntValue\")\n\tcoinsValue.Name = \"Coins\"\n\tcoinsValue.Parent = leaderstats\n\n\tlocal coins = loadCoins(player)\n\tif coins == nil then\n\t\t-- Load failed: don't overwrite a real account with a default.\n\t\tcoinsValue:SetAttribute(\"LoadFailed\", true)\n\t\tcoinsValue.Value = 0\n\t\treturn\n\tend\n\tcoinsValue.Value = coins\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coinsValue = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif not coinsValue then\n\t\treturn\n\tend\n\tif coinsValue:GetAttribute(\"LoadFailed\") then\n\t\twarn((\"Not saving for %s: data never loaded.\"):format(player.Name))\n\t\treturn\n\tend\n\tsaveCoins(player, coinsValue.Value)\nend)\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\t\tlocal coinsValue = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\t\tif coinsValue and not coinsValue:GetAttribute(\"LoadFailed\") then\n\t\t\tsaveCoins(player, coinsValue.Value)\n\t\tend\n\tend\nend)\n```"
   }
  ],
- "rescoredAt": "2026-09-25T00:34:55.901Z",
+ "rescoredAt": "2026-09-25T06:09:05.148Z",
  "rescoredFrom": {
   "measured": 16,
-  "passed": 14,
-  "pct": 87.5
+  "passed": 15,
+  "pct": 93.8
  }
 }

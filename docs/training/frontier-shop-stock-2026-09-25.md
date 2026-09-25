@@ -13,8 +13,9 @@ afterward. The full frontier control suite passed 87/87; it still proves that ea
 check has both passing and failing controls.
 
 Scratch copies of all available runs under the 2026-09-25 library/UI arm were
-re-executed by `rescore-roblox-frontier.mjs`. The source run files were not rewritten
-and no model or Workers AI call was made:
+re-executed by `rescore-roblox-frontier.mjs` first. After the verdicts were checked,
+the five tracked full-run files were rescored in place for the dashboard. No model
+or Workers AI call was made:
 
 | Run | Before | After |
 | --- | ---: | ---: |
@@ -24,10 +25,16 @@ and no model or Workers AI call was made:
 | rep14 | 16/16 | 16/16 |
 | rep15 | 12/16 | 13/16 |
 
+The separate Apple rep12 full run remained **15/16** after rescoring. The one-item
+rep10 preflight was checked in scratch only and is excluded from the dashboard pool.
+The dashboard collector now reads the saved answers as **Apple MAX 61/64 (95.3%)**
+and **Apple 15/16 (93.8%)**, with both judge-provenance groups marked current.
+Its request comparison records the same model and request for both lanes.
+
 The four complete reps now score **61/64 (95.3%)**, compared with 60/64 (93.8%)
 under the stockless fixture. The corrected last rep is **13/16 (81.3%)**. This is a
 correction to the measurement of stored answers, not a new improvement by the model.
-The Apple lane's separately recorded 15/16 was not rescored here.
+The Apple lane's separately recorded 15/16 was also rescored before collection.
 
 The three remaining rep15 misses are still observed failures, not fixture corrections:
 

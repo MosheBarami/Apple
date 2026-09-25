@@ -25,7 +25,7 @@
  "provenance": {
   "harness": "5809058596824e7e",
   "scorer": "ff0314bdf550c111",
-  "tasks": "f668b3ffebe5b574",
+  "tasks": "e1ef12d227113b4f",
   "controls": "1c86dac61456a844",
   "settingsMirror": "890de7822a7060db"
  },
@@ -565,10 +565,10 @@
    "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function retry(fn)\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, result = pcall(fn)\n\t\tif ok then\n\t\t\treturn true, result\n\t\tend\n\t\twarn((\"DataStore attempt %d/%d failed: %s\"):format(attempt, MAX_RETRIES, tostring(result)))\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn false, nil\nend\n\nlocal function loadCoins(player)\n\tlocal success, coins = retry(function()\n\t\treturn store:GetAsync(\"Player_\" .. player.UserId)\n\tend)\n\n\tif not success then\n\t\t-- Read failed: treat as unsaved session, skip saving later\n\t\tplayer:SetAttribute(\"DataLoadFailed\", true)\n\t\treturn 0\n\tend\n\n\treturn if typeof(coins) == \"number\" then coins else 0\nend\n\nlocal function saveCoins(player)\n\tif player:GetAttribute(\"DataLoadFailed\") then\n\t\twarn((\"Skipping save for %s: data never loaded successfully\"):format(player.Name))\n\t\treturn\n\tend\n\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coinsValue = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif not coinsValue then\n\t\treturn\n\tend\n\n\tlocal newCoins = coinsValue.Value\n\n\tlocal success = retry(function()\n\t\tstore:UpdateAsync(\"Player_\" .. player.UserId, function(oldCoins)\n\t\t\t-- Read the CURRENT stored value; default only if key truly absent\n\t\t\tif oldCoins == nil then\n\t\t\t\treturn newCoins\n\t\t\tend\n\t\t\treturn if typeof(oldCoins) == \"number\" then newCoins else newCoins\n\t\tend)\n\tend)\n\n\tif not success then\n\t\twarn((\"Failed to save coins for %s\"):format(player.Name))\n\tend\nend\n\nPlayers.PlayerAdded:Connect(function(player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coins = Instance.new(\"IntValue\")\n\tcoins.Name = \"Coins\"\n\tcoins.Value = loadCoins(player)\n\tcoins.Parent = leaderstats\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tsaveCoins(player)\nend)\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tsaveCoins(player)\n\tend\nend)\n```"
   }
  ],
- "rescoredAt": "2026-09-25T00:34:56.827Z",
+ "rescoredAt": "2026-09-25T06:09:04.552Z",
  "rescoredFrom": {
   "measured": 16,
-  "passed": 15,
-  "pct": 93.8
+  "passed": 16,
+  "pct": 100
  }
 }

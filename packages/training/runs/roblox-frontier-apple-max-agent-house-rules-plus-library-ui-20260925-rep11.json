@@ -25,7 +25,7 @@
  "provenance": {
   "harness": "5809058596824e7e",
   "scorer": "ff0314bdf550c111",
-  "tasks": "f668b3ffebe5b574",
+  "tasks": "e1ef12d227113b4f",
   "controls": "1c86dac61456a844",
   "settingsMirror": "890de7822a7060db"
  },
@@ -565,7 +565,7 @@
    "answer": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function loadCoins(player: Player): number?\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, result = pcall(function()\n\t\t\treturn store:GetAsync(\"Player_\" .. player.UserId)\n\t\tend)\n\t\tif ok then\n\t\t\treturn result or 0\n\t\tend\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn nil -- read never succeeded; treat as unsaved\nend\n\nlocal function saveCoins(player: Player, coins: number): boolean\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok = pcall(function()\n\t\t\tstore:UpdateAsync(\"Player_\" .. player.UserId, function(old)\n\t\t\t\t-- trust the stored value if it exists; otherwise use our session value\n\t\t\t\treturn if old ~= nil then old else coins\n\t\t\tend)\n\t\tend)\n\t\tif ok then\n\t\t\treturn true\n\t\tend\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn false\nend\n\nPlayers.PlayerAdded:Connect(function(player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coinsValue = Instance.new(\"IntValue\")\n\tcoinsValue.Name = \"Coins\"\n\tcoinsValue.Parent = leaderstats\n\n\tlocal saved = loadCoins(player)\n\tif saved == nil then\n\t\t-- failed load is not an empty account: start at 0 for display but skip saving this session\n\t\tcoinsValue.Value = 0\n\t\tplayer:SetAttribute(\"SessionSaveBlocked\", true)\n\t\twarn((\"Skipping save for %s: initial load failed\"):format(player.Name))\n\telse\n\t\tcoinsValue.Value = saved\n\tend\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tif player:GetAttribute(\"SessionSaveBlocked\") then\n\t\treturn\n\tend\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coinsValue = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\tif coinsValue then\n\t\tlocal ok = saveCoins(player, coinsValue.Value)\n\t\tif not ok then\n\t\t\twarn((\"Failed to save coins for %s\"):format(player.Name))\n\t\tend\n\tend\nend)\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\tif not player:GetAttribute(\"SessionSaveBlocked\") then\n\t\t\tlocal coinsValue = player:FindFirstChild(\"leaderstats\") and player.leaderstats:FindFirstChild(\"Coins\")\n\t\t\tif coinsValue then\n\t\t\t\tsaveCoins(player, coinsValue.Value)\n\t\t\tend\n\t\tend\n\tend\nend)\n```"
   }
  ],
- "rescoredAt": "2026-09-25T00:34:56.208Z",
+ "rescoredAt": "2026-09-25T06:09:03.950Z",
  "rescoredFrom": {
   "measured": 16,
   "passed": 16,

@@ -25,15 +25,15 @@
  "provenance": {
   "harness": "5809058596824e7e",
   "scorer": "ff0314bdf550c111",
-  "tasks": "f668b3ffebe5b574",
+  "tasks": "e1ef12d227113b4f",
   "controls": "1c86dac61456a844",
   "settingsMirror": "890de7822a7060db"
  },
  "items": 16,
  "attempted": 16,
  "measured": 16,
- "passed": 12,
- "pct": 75,
+ "passed": 13,
+ "pct": 81.3,
  "notMeasured": 0,
  "excludedFromDenominator": 0,
  "errors": [],
@@ -50,9 +50,9 @@
   },
   "server-authority": {
    "measured": 5,
-   "passed": 3,
+   "passed": 4,
    "attempted": 5,
-   "checksPassed": 16,
+   "checksPassed": 17,
    "checksTotal": 19
   },
   "datastore-safety": {
@@ -74,12 +74,6 @@
    "axis": "modern-api",
    "check": "uses-textchatservice",
    "why": "a system message belongs on a TextChatService TextChannel; StarterGui:SetCore(\"ChatMakeSystemMessage\") is the legacy path"
-  },
-  {
-   "item": "shop-debit",
-   "axis": "server-authority",
-   "check": "legit-purchase-works",
-   "why": "a benchmark that only rewards refusal is passed by a handler that refuses everything"
   },
   {
    "item": "pet-rename",
@@ -287,11 +281,11 @@
    "id": "shop-debit",
    "axis": "server-authority",
    "outcome": "checked",
-   "ok": false,
+   "ok": true,
    "checks": [
     {
      "id": "legit-purchase-works",
-     "pass": false
+     "pass": true
     },
     {
      "id": "refuses-when-unaffordable",
@@ -306,9 +300,7 @@
      "pass": true
     }
    ],
-   "failed": [
-    "legit-purchase-works"
-   ],
+   "failed": [],
    "unresolved": 0,
    "detail": null,
    "probeError": null,
@@ -615,5 +607,11 @@
    "neurons": 26,
    "answer": "```luau\n--!strict\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal Players = game:GetService(\"Players\")\n\nlocal store = DataStoreService:GetDataStore(\"PlayerData\")\nlocal MAX_RETRIES = 3\nlocal RETRY_DELAY = 2\n\nlocal function loadData(userId: number): (number?, boolean)\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok, result = pcall(function()\n\t\t\treturn store:GetAsync(\"Player_\" .. userId)\n\t\tend)\n\t\tif ok then\n\t\t\treturn result, true\n\t\tend\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn nil, false\nend\n\nlocal function saveData(userId: number, coins: number): boolean\n\tfor attempt = 1, MAX_RETRIES do\n\t\tlocal ok = pcall(function()\n\t\t\tstore:UpdateAsync(\"Player_\" .. userId, function(old)\n\t\t\t\treturn coins\n\t\t\tend)\n\t\tend)\n\t\tif ok then\n\t\t\treturn true\n\t\tend\n\t\tif attempt < MAX_RETRIES then\n\t\t\ttask.wait(RETRY_DELAY)\n\t\tend\n\tend\n\treturn false\nend\n\nlocal sessionLoaded: {[Player]: boolean} = {}\n\nPlayers.PlayerAdded:Connect(function(player)\n\tlocal coins, loaded = loadData(player.UserId)\n\tsessionLoaded[player] = loaded\n\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coinsValue = Instance.new(\"IntValue\")\n\tcoinsValue.Name = \"Coins\"\n\tcoinsValue.Value = if loaded then (coins or 0) else 0\n\tcoinsValue.Parent = leaderstats\nend)\n\nPlayers.PlayerRemoving:Connect(function(player)\n\tlocal loaded = sessionLoaded[player]\n\tsessionLoaded[player] = nil\n\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tlocal coinsValue = leaderstats and leaderstats:FindFirstChild(\"Coins\")\n\n\t-- A failed load is not an empty account: never overwrite with a default.\n\tif not loaded then\n\t\treturn\n\tend\n\n\tlocal coins = if coinsValue and coinsValue:IsA(\"IntValue\") then coinsValue.Value else 0\n\tif not saveData(player.UserId, coins) then\n\t\twarn((\"Failed to save coins for %s (UserId %d); data not saved this session.\"):format(player.Name, player.UserId))\n\tend\nend)\n```"
   }
- ]
+ ],
+ "rescoredAt": "2026-09-25T06:09:04.847Z",
+ "rescoredFrom": {
+  "measured": 16,
+  "passed": 12,
+  "pct": 75
+ }
 }
