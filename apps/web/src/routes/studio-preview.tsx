@@ -37,6 +37,7 @@ const SCENARIOS = [
   { id: 'messages', label: 'User messages' },
   { id: 'streaming', label: 'Streaming run' },
   { id: 'completed', label: 'Completed run' },
+  { id: 'asset-choice', label: 'Visual asset choice' },
   { id: 'history', label: 'Execution history' },
   { id: 'playtest', label: 'Playtest, fresh frame' },
   { id: 'playtest-stale', label: 'Playtest, stale frame' },
@@ -288,6 +289,7 @@ interface ScreenProps {
   playtest?: { run: PlaytestRun; frames: StudioFrame[] } | null;
   empty?: boolean;
   after?: ReactNode;
+  onChooseAsset?: (index: number | null) => void;
 }
 
 /**
@@ -295,7 +297,7 @@ interface ScreenProps {
  * the same compose region, in the same grid, so what is on screen is laid out by the workspace's
  * CSS rather than by a lookalike.
  */
-function Screen({ items, status = null, running = false, mode: initialMode = 'agent', autonomous: initialAuto = false, initialStaged, playtest = null, empty = false, after }: ScreenProps) {
+function Screen({ items, status = null, running = false, mode: initialMode = 'agent', autonomous: initialAuto = false, initialStaged, playtest = null, empty = false, after, onChooseAsset }: ScreenProps) {
   const [mode, setMode] = useState<ProductMode>(initialMode);
   const [autonomous, setAutonomous] = useState(initialAuto);
   const [model, setModel] = useState<ProductModel>('apple');
@@ -322,6 +324,7 @@ function Screen({ items, status = null, running = false, mode: initialMode = 'ag
                       frames={item.id === lastAssistant ? playtest?.frames : undefined}
                       playtest={item.id === lastAssistant ? playtest?.run ?? null : null}
                       studioConnected
+                      onChooseAsset={item.id === lastAssistant ? onChooseAsset : undefined}
                     />
                   </div>
                 ))}
@@ -367,6 +370,7 @@ function Scenario({ id }: { id: ScenarioId }) {
   const queryClient = useQueryClient();
   const [creditsOpen, setCreditsOpen] = useState(true);
   const [creditsSeeded, setCreditsSeeded] = useState(false);
+  const [visualChoice, setVisualChoice] = useState<number | null>(null);
 
   // The Credits drawer reads through react-query. The specimen answers that query itself, from the
   // same fixture mock mode uses, BEFORE the drawer mounts — mounted first, CreditsPanel would ask the
@@ -428,6 +432,26 @@ function Scenario({ id }: { id: ScenarioId }) {
 
     case 'completed':
       return <Screen items={[ask, settled()]} />;
+
+    case 'asset-choice': {
+      const options = [
+        { id: 'cs-56449099', assetId: 56449099, name: 'Autumn Tree' },
+        { id: 'cs-56449156', assetId: 56449156, name: 'Medium Tree' },
+        { id: 'cs-56449188', assetId: 56449188, name: 'Large Tree' },
+      ];
+      const found = tool('t1', 'find_library_model', 'Found three trees', t0 - 2_000, {
+        detail: { kind: 'asset_choices', options },
+      });
+      return <Screen
+        items={[user('u1', 'Add a tree that matches the forest.', t0 - 3_000), settled({
+          content: 'Choose the tree that looks right. I’ll continue after your choice.',
+          tools: [found],
+          stopReason: 'incomplete',
+        })]}
+        onChooseAsset={setVisualChoice}
+        after={visualChoice !== null && <p className="studio-specimen-choice">SPECIMEN: chose option {visualChoice}</p>}
+      />;
+    }
 
     case 'history': {
       const tools = settledTools(t0 - 60_000);

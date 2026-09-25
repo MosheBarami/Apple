@@ -1,0 +1,15 @@
+.gx-asset-choice { margin: 16px 0; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: color-mix(in srgb, var(--paper) 82%, transparent); backdrop-filter: blur(16px); }
+.gx-asset-choice__title { margin: 0 0 14px; color: var(--ink); font-size: 15px; font-weight: 650; }
+.gx-asset-choice__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.gx-asset-choice__option { appearance: none; border: 1px solid var(--line); border-radius: 14px; padding: 8px; background: color-mix(in srgb, var(--paper) 92%, transparent); color: var(--ink); text-align: left; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.gx-asset-choice__option:hover:not(:disabled), .gx-asset-choice__option:focus-visible { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 12px 30px rgba(0,0,0,.12); }
+.gx-asset-choice__option:disabled { cursor: default; opacity: .65; }
+.gx-asset-choice__image { display: block; aspect-ratio: 1; overflow: hidden; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, var(--paper)); }
+.gx-asset-choice__image img { width: 100%; height: 100%; object-fit: contain; }
+.gx-asset-choice__name, .gx-asset-choice__action { display: block; padding: 7px 3px 0; }
+.gx-asset-choice__name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gx-asset-choice__action { color: var(--accent); font-size: 12px; }
+.gx-asset-choice__reject { margin-top: 12px; border: 0; padding: 8px 2px; background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.gx-asset-choice__reject:hover, .gx-asset-choice__reject:focus-visible { color: var(--ink); }
+@media (max-width: 620px) { .gx-asset-choice__grid { grid-template-columns: 1fr; } .gx-asset-choice__option { display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 8px 12px; } .gx-asset-choice__image { grid-row: span 2; } }
+@media (prefers-reduced-motion: reduce) { .gx-asset-choice__option { transition: none; } }

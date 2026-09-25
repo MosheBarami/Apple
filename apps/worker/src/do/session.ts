@@ -59,6 +59,7 @@ import {
 } from '../frame-bus';
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
+import { ASSET_CHOICE_MESSAGE, selectedLibraryAsset, type PendingAssetChoice } from '../asset-choice';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
@@ -210,6 +211,9 @@ interface AgentState {
   autonomous?: boolean;
   /** The user's model entitlement, independent of Plan/Agent and the Autonomous toggle. */
   productModel?: ProductModel;
+  /** Owner-approved Creator Store model for this run, selected from a shown preview. */
+  approvedLibraryAssetId?: number;
+  rejectedLibraryAssetIds?: number[];
   msgId: string;
   llm: GatewayRequest['messages'];
   step: number;
@@ -3120,6 +3124,25 @@ export class SessionDO extends DurableObject<Env> {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
       return;
     }
+    const pendingChoice = await this.ctx.storage.get<PendingAssetChoice>('pendingAssetChoice') ?? null;
+    const selectedAsset = mode === 'agent' && pendingChoice?.mode === 'agent'
+      ? selectedLibraryAsset(text, pendingChoice, initiatedBy, bind.ownerId)
+      : null;
+    const rejectedChoice = text === 'None of these look right. Find different visual options.' &&
+      mode === 'agent' && pendingChoice?.mode === 'agent' && initiatedBy === bind.ownerId;
+    if (ASSET_CHOICE_MESSAGE.test(text) && !selectedAsset) {
+      this.refuseOne(origin, { type: 'error', code: 'forbidden', message: 'That visual choice is no longer available. Ask Apple to find fresh options.' });
+      return;
+    }
+    if (text === 'None of these look right. Find different visual options.' && !rejectedChoice) {
+      this.refuseOne(origin, { type: 'error', code: 'forbidden', message: 'Those visual options are no longer available. Ask Apple to search again.' });
+      return;
+    }
+    const effectiveRequest = selectedAsset && pendingChoice
+      ? `${pendingChoice.request}\n\nThe project owner selected the preview of the ready-made model "${selectedAsset.name}" (library id ${selectedAsset.id}). Continue the unfinished build and use insert_library_model with that exact id. Do not search for another model for this same item.`
+      : rejectedChoice && pendingChoice
+      ? `${pendingChoice.request}\n\nThe project owner rejected these visual options: ${pendingChoice.options.map((o) => o.name).join(', ')}. Search for visually different ready-made models. Do not insert any model until one is chosen.`
+      : text;
     const access = await this.runAccessVerdict({ initiatedBy, initiatorExpiresAt });
     if (access.stop) {
       this.refuseOne(origin, { type: 'error', code: 'forbidden', message: access.message });
@@ -3145,6 +3168,8 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     this.broadcast({ type: 'quota', quota: quota.state });
+    // One approval is scoped to one admitted run. A new unrelated message invalidates old cards.
+    await this.ctx.storage.delete('pendingAssetChoice');
     // Mark the socket only after entitlement and quota admission succeeded. A refused MAX request
     // must not leave a collaborator's presence claiming that a build is in flight.
     if (origin) this.touch(origin, 'building');
@@ -3192,11 +3217,11 @@ export class SessionDO extends DurableObject<Env> {
     const memory = normaliseMemory(await this.ctx.storage.get<unknown>('memory'));
     const studioConnected = await this.pluginConnected();
     const pluginState = await this.ctx.storage.get<StudioEventState>('pluginState');
-    const traits = classifyRequest(text);
+    const traits = classifyRequest(effectiveRequest);
     // Derived from the user's own words, on the same line as the trait classifier and for the
     // same reason: both are free, both are deterministic, and both are true of this request
     // before a single token has been spent. See runIntentFor.
-    const intent = runIntentFor(text);
+    const intent = runIntentFor(effectiveRequest);
     //[[ The run's fence id. Random per run, named in the system prompt, and used on every
     //   tool fence below, so a closing tag forged by tool content cannot match it. Tool output
     //   is NOT escaped — mangling it would corrupt the evidence the agent reasons from — so the
@@ -3253,13 +3278,13 @@ export class SessionDO extends DurableObject<Env> {
       memoryFacts: promptMemory.facts,
       // The art-direction brief is ~1,800 tokens on every step, so only visual requests pay for
       // it. The request text doubles as the scene-kind hint — resolveKind matches on substrings.
-      sceneKind: traits.visualDesignTask && mode === 'agent' ? text : undefined,
+      sceneKind: traits.visualDesignTask && mode === 'agent' ? effectiveRequest : undefined,
       //[[ Same gate as sceneKind, on the trait that means INTERFACE rather than place.
       //   `designBrief` returns null when the library has nothing useful for this
       //   request, and null is a real answer: the library covers a fraction of the
       //   style families §L asks for, and padding a thin match into a prompt would
       //   spend tokens on every step to tell the model what it did not need. ]]
-      uiBrief: traits.uiDesignTask && mode === 'agent' ? (designBrief(text)?.text ?? null) : null,
+      uiBrief: traits.uiDesignTask && mode === 'agent' ? (designBrief(effectiveRequest)?.text ?? null) : null,
       studioCapabilityNote: pluginCapabilityPromptNote(promptCapabilityFilter),
       // The same narrowed set the first step will offer, so the prompt never instructs a call to a
       // tool the run was not given (propose_plan with Studio disconnected was the shipped case).
@@ -3275,7 +3300,7 @@ export class SessionDO extends DurableObject<Env> {
       .slice(0, -1) // drop the message we just inserted; re-added below
       .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content.slice(0, 4000) }));
 
-    const skills = skillCardsForRun(text, mode === 'agent');
+    const skills = skillCardsForRun(effectiveRequest, mode === 'agent');
     const msgId = crypto.randomUUID();
     const agent: AgentState = {
       status: 'running',
@@ -3286,7 +3311,9 @@ export class SessionDO extends DurableObject<Env> {
       fenceId,
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
       // trimTranscript documents — the agent kept working with no record of the task.
-      llm: [{ role: 'system', content: skills.block ? `${sys}\n\n${skills.block}` : sys }, ...history, { role: 'user', content: text, pinned: true }],
+      llm: [{ role: 'system', content: skills.block ? `${sys}\n\n${skills.block}` : sys }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
+      ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId } : {}),
+      ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: pendingChoice.options.map((o) => o.assetId) } : {}),
       ...(skills.ids.length > 0 ? { skillCardsShown: skills.ids } : {}),
       ...(mode === 'agent' && forbidsChanges(text) ? { readOnly: true } : {}),
       ...(mode === 'agent' && isLightingOnlyRequest(text) ? { lightingOnly: true } : {}),
@@ -3312,7 +3339,7 @@ export class SessionDO extends DurableObject<Env> {
       // design work, systems work, or an under-specified request that needs interpreting.
       traits,
       forcedEffort,
-      request: text,
+      request: effectiveRequest,
       toolPermissions: personalisation.prefs.tool_permissions,
       memoryMode: personalisation.memoryMode,
       // Persisted with the run, not just broadcast: a browser that refreshes mid-build replays
@@ -4471,6 +4498,32 @@ export class SessionDO extends DurableObject<Env> {
         toolCallId: call.id,
         name: call.name,
       });
+      if (agent.mode === 'agent' && call.name === 'find_library_model' && out.ok && ctx.userId && out.detail && typeof out.detail === 'object') {
+        const detail = out.detail as { kind?: unknown; options?: unknown };
+        const options = detail.kind === 'asset_choices' && Array.isArray(detail.options)
+          ? detail.options.filter((option): option is { id: string; assetId: number; name: string } =>
+              option !== null && typeof option === 'object' &&
+              typeof option.id === 'string' && option.id.length <= 160 &&
+              Number.isSafeInteger(option.assetId) && option.assetId > 0 &&
+              typeof option.name === 'string' && option.name.length <= 120).slice(0, 3)
+          : [];
+        if (options.length) {
+          const pending: PendingAssetChoice = {
+            request: agent.request ?? '',
+            mode: agent.mode,
+            ...(agent.productModel ? { productModel: agent.productModel } : {}),
+            autonomous: agent.autonomous === true,
+            options: options.map((option) => ({
+              id: option.id,
+              assetId: option.assetId,
+              name: option.name,
+            })),
+          };
+          await this.ctx.storage.put('pendingAssetChoice', pending);
+          await this.finishRun(agent, 'incomplete', undefined, 'Choose the model that looks right. Apple will continue after your choice.');
+          return;
+        }
+      }
       if (await stopRequested(this.ctx.storage)) {
         agent.status = 'stopping';
         break;
@@ -5423,6 +5476,8 @@ export class SessionDO extends DurableObject<Env> {
       // the user's own account (generate_model_external) needs it. No run, no user.
       userId: agent?.userId,
       assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
+      approvedLibraryAssetId: agent?.approvedLibraryAssetId,
+      rejectedLibraryAssetIds: agent?.rejectedLibraryAssetIds,
       askAssetSources: () => this.askAssetSources(),
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
       // "can you build right now" is no. The connection half now comes from the same rule the

@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const out = join(mkdtempSync(join(tmpdir(), 'asset-choice-')), 'p.mjs');
+execFileSync(join(root, 'node_modules', '.bin', 'esbuild'),
+  [join(root, 'src/asset-choice.ts'), '--bundle', '--format=esm', '--target=es2022', '--platform=neutral', '--outfile=' + out],
+  { cwd: root, stdio: 'pipe' });
+const { selectedLibraryAsset } = await import(`file://${out}`);
+
+test('a choice admits only the project owner and a current server-side candidate', () => {
+  const pending = { request: 'Build a forest', options: [{ id: 'tree-a', assetId: 101, name: 'Oak' }] };
+  assert.deepEqual(selectedLibraryAsset('Use visual option 1 and continue.', pending, 'owner', 'owner'), pending.options[0]);
+  assert.equal(selectedLibraryAsset('Use visual option 1 and continue.', pending, 'guest', 'owner'), null);
+  assert.equal(selectedLibraryAsset('Use visual option 2 and continue.', pending, 'owner', 'owner'), null);
+  assert.equal(selectedLibraryAsset('Use visual option 1 and continue.', null, 'owner', 'owner'), null);
+  assert.equal(selectedLibraryAsset('Use visual option 1 and continue. Also use asset 9', pending, 'owner', 'owner'), null);
+});

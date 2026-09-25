@@ -1121,6 +1121,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               onBuildPlan={item.id === lastAssistantId && item.mode === 'plan' && !running && chatAllowed
                 ? () => { setMode('agent'); setBuildQueued(true); }
                 : undefined}
+              onChooseAsset={item.id === lastAssistantId && !running && chatAllowed && conn === 'open' && mode === 'agent'
+                ? (index) => { send(index === null ? 'None of these look right. Find different visual options.' : `Use visual option ${index} and continue.`); }
+                : undefined}
             />
             </div>
           ))}

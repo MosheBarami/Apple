@@ -34,6 +34,7 @@
   font:inherit;
 }
 .spec-bar__theme { height:32px; }
+.studio-specimen-choice { position: absolute; right: 20px; bottom: 90px; padding: 8px 12px; border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 12px; }
 @media (max-width:680px) {
   .spec-bar { padding:10px 16px; gap:8px; }
   .spec-bar__note { display:none; }

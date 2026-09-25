@@ -37,6 +37,8 @@ import { RollingNumber } from '../picks/chat/rolling-number';
 import { useWordReveal } from '../picks/chat/word-reveal';
 import { PlanCard } from '../picks/chat/plan-card';
 import { ExpandableImages } from '../picks/chat/expandable-images';
+import { AssetChoice } from './asset-choice';
+import { visualOptions } from './asset-choice-model';
 import './turn.css';
 
 function useNow(active: boolean): number {
@@ -89,6 +91,7 @@ export function Turn({
   onRetry,
   onShowRevisions,
   onBuildPlan,
+  onChooseAsset,
 }: {
   item: ChatItem;
   status: AgentStatus | null;
@@ -130,6 +133,8 @@ export function Turn({
    * this is given — a button that is present and does nothing is worse than no button.
    */
   onBuildPlan?: () => void;
+  /** Offered only on the latest settled turn with owner edit access. */
+  onChooseAsset?: (index: number | null) => void;
 }) {
   // Right-click (or the reply's More button) opens this turn's menu — picks/chat/context-menu.
   const menu = useContextMenu();
@@ -165,6 +170,7 @@ export function Turn({
         .filter((p): p is NonNullable<typeof p> => p !== null),
     [item.tools, item.id, item.createdAt],
   );
+  const assetOptions = useMemo(() => visualOptions(item.tools), [item.tools]);
 
   // The steps a validated build_plan announced feed the activity reducer — never the raw tool payload.
   const validated = useMemo<ValidatedDoc[]>(() => panels.map((p) => ({ id: p.id, doc: p.doc })), [panels]);
@@ -292,7 +298,7 @@ export function Turn({
   const hadDeniedTools = !item.streaming && (item.deniedTools ?? []).some((tool) => typeof tool === 'string' && tool.trim());
 
   const retryControl =
-    onRetry && item.stopReason !== 'quota' ? (
+    onRetry && item.stopReason !== 'quota' && assetOptions.length === 0 ? (
       <MessageActions className="gx-outcome__actions">
         <MessageAction
           size="sm"
@@ -359,6 +365,11 @@ export function Turn({
         )}
 
         <ReplyMedia docs={replyDocs.media} />
+        {item.mode === 'agent' && assetOptions.length > 0 && <AssetChoice
+          options={assetOptions}
+          disabled={!onChooseAsset || item.streaming}
+          onChoose={(index) => onChooseAsset?.(index)}
+        />}
 
         {outcome ? (
           <div className={`gx-outcome${outcome.tone === 'bad' ? ' is-bad' : ''}`}>

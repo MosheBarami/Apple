@@ -127,6 +127,9 @@ export interface AgentCtx {
    * permissive one by omission.
    */
   assetSources?: AssetSourcePolicy;
+  /** The one library model the project owner selected from a visual preview for this run. */
+  approvedLibraryAssetId?: number;
+  rejectedLibraryAssetIds?: number[];
   /**
    * Put the asset-source question to whoever is here, and say whether anybody was (F-059). Called
    * by a refusal only while the answer is owed; it never allows anything. Absent in the eval
@@ -4520,7 +4523,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_library_model',
       description:
-        "Search insertable, script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any object out of parts. Plain nouns work best (\"palm tree\", \"police car\", \"crate\", \"shop\"); `genre` and `kind` narrow it. Returns ids for insert_library_model. Nothing is inserted or uploaded by this call.",
+        "Search insertable, script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any detailed object. Plain nouns work best; genre and kind narrow it. In Agent mode, Apple shows up to three real thumbnails and pauses for the project owner's visual choice. Nothing is inserted or uploaded by this call.",
       parameters: S(
         {
           query: { type: 'string', description: 'Plain words for the object, e.g. "wooden crate" or "pine tree".' },
@@ -4532,32 +4535,38 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: false,
-    run: async (_ctx, a) =>
-      findLibraryModels({
+    run: async (ctx, a) => {
+      const found = findLibraryModels({
         query: a.query === undefined ? undefined : String(a.query),
         genre: a.genre ? String(a.genre) : undefined,
         kind: a.kind ? String(a.kind) : undefined,
-        limit: a.limit === undefined ? undefined : Number(a.limit),
+        limit: Math.max(10, a.limit === undefined ? 10 : Number(a.limit)),
         creatorStoreOnly: true,
-      }),
+      });
+      const rejected = new Set(ctx.rejectedLibraryAssetIds ?? []);
+      found.results = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId)).slice(0, a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10)));
+      const options = found.results.slice(0, 3);
+      if (options.length && !options.some((row) => row.assetId === ctx.approvedLibraryAssetId)) ctx.uiDetail = {
+        kind: 'asset_choices',
+        options: options.map((row) => ({ id: row.id, assetId: row.assetId, name: row.name })),
+      };
+      return found;
+    },
   },
   insert_library_model: {
     def: {
       name: 'insert_library_model',
       description:
-        "Insert ONE verified Creator Store model from Apple's model library into the place, scaled and standing on `position`. Pass a Creator Store `id` from find_library_model, or `query` (plus optional genre/kind) to take the best match. Downloaded file rows are not insertable: the current source choice does not authorise uploading a new permanent Model into the person's Roblox account. Every insert is scanned in the place and any scripted asset is removed before it counts. Use this for props, buildings, nature, vehicles, pets and characters. If insertion fails, search again or leave the prop unbuilt. To place many copies, insert one and clone_instances it.",
+        "Insert ONE verified Creator Store model after the project owner chose its real preview. Pass the exact library `id` that the owner selected. A query cannot silently choose the best match. Downloaded file rows are not insertable because uploading a new permanent Model needs separate authority. Every insertion is scanned inside the place; scripted assets are removed before they count. Use this for detailed props, buildings, nature, vehicles, pets and characters. If insertion fails, leave it unbuilt until another choice. To place many copies of the approved model, insert one and clone_instances it.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },
-          query: { type: 'string', description: 'Instead of id: plain words; the best match is inserted.' },
-          genre: { type: 'string', enum: [...LIBRARY_GENRES] },
-          kind: { type: 'string', enum: [...LIBRARY_KINDS] },
           position: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' }, description: 'Where the bottom-centre lands, in studs. Default [0,0,0].' },
           height: { type: 'number', description: 'Target height in studs (the model is scaled uniformly).' },
           scale: { type: 'number', minimum: 0.001, maximum: 1000, description: 'Uniform scale factor instead of height.' },
           parent: { type: 'string', description: 'Default game.Workspace.' },
         },
-        [],
+        ['id'],
       ),
     },
     studio: true,
@@ -4565,11 +4574,12 @@ export const TOOLS: Record<string, ToolImpl> = {
     // A refusal changed nothing in the place.
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
     run: async (ctx, a) => {
-      const pick = a.id
-        ? libraryModel(String(a.id))
-        : findLibraryModels({ query: String(a.query ?? ''), genre: a.genre ? String(a.genre) : undefined, kind: a.kind ? String(a.kind) : undefined, limit: 1, creatorStoreOnly: true }).results[0] ?? null;
-      if (!pick) return { error: a.id ? `${String(a.id)} is not a library id. Call find_library_model and pass one of its ids unchanged.` : 'Nothing in the model library matched. Search for another library model or leave the prop unbuilt.' };
+      const pick = libraryModel(String(a.id ?? ''));
+      if (!pick) return { error: `${String(a.id ?? '')} is not a library id. Call find_library_model and pass one of its ids unchanged.` };
       if (pick.assetId === undefined) return { error: 'This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.' };
+      if (ctx.approvedLibraryAssetId !== pick.assetId) {
+        return { error: 'The person must see the model preview and choose it before insertion. Search with find_library_model and wait for their choice. Nothing was inserted.' };
+      }
       const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources);
       if (refused) return { error: refused };
       const pos = a.position === undefined ? [0, 0, 0] : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);

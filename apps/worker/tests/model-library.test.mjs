@@ -248,6 +248,7 @@ test('a Creator Store row is inserted by its own id, scanned, then stood on the 
     if (op.op === 'transform_instances') { if (op.move) centre = centre.map((c, i) => c + op.move[i]); return { ok: true, data: {} }; }
     return { ok: false, error: `unexpected ${op.op}` };
   });
+  ctx.approvedLibraryAssetId = want.assetId;
   const res = await run(ctx, 'insert_library_model', { id: s.id, position: [0, 0, 20] });
   assert.equal(res.error, undefined, res.error);
   const insert = ops.find((o) => o.op === 'insert_asset');
@@ -255,6 +256,24 @@ test('a Creator Store row is inserted by its own id, scanned, then stood on the 
   assert.ok(ops.some((o) => o.op === 'list_scripts'), 'the insert is scanned in the place');
   assert.deepEqual([centre[0], centre[1] - size[1] / 2, centre[2]], [0, 0, 20], 'bottom-centre lands on position');
   assert.equal(ops.filter((o) => o.op === 'transform_instances' && o.scale).length, 0, 'a Creator Store row keeps its own scale unless asked');
+});
+
+test('a detailed model cannot be inserted before the owner selects its preview', async () => {
+  const s = sample((r) => typeof r[5] === 'number');
+  const { ctx, ops } = ctxWith();
+  const result = await run(ctx, 'insert_library_model', { id: s.id });
+  assert.match(result.error, /preview and choose/);
+  assert.equal(ops.length, 0, 'an unapproved option must never reach Studio');
+});
+
+test('a rejected preview is not offered again in the next search', async () => {
+  const { ctx } = ctxWith();
+  const first = await run(ctx, 'find_library_model', { query: 'tree', limit: 10 });
+  assert.ok(first.results.length > 0);
+  const rejected = first.results[0].assetId;
+  ctx.rejectedLibraryAssetIds = [rejected];
+  const second = await run(ctx, 'find_library_model', { query: 'tree', limit: 10 });
+  assert.ok(second.results.every((row) => row.assetId !== rejected));
 });
 
 test('the upload cap refuses before any byte is read or sent', async () => {
