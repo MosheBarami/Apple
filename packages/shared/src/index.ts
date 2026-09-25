@@ -1989,10 +1989,16 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  * Configure page no longer shows the violation notice. Evidence:
  * docs/autonomy/evidence/20260924T0000Z-store-listed-again/README.md.
  *
+ * FLIPPED BACK 2026-09-25: the 1.4.0 overwrite was accepted in Studio, but a separate
+ * Herobrine583522 browser still renders the asset page as 404. The toolbox details probe
+ * returns 404 for this id and the retired id, while Rojo 7 and Moon Animator 2 both return
+ * 200 in the same check. This proves the public install path is unavailable; it does not
+ * establish whether moderation or a distribution setting caused it (Q-020).
+ *
  * Typed `boolean` rather than the literal `false` on purpose: consumers branch
  * on it, and a literal type would make the live branch look unreachable.
  */
-export const STUDIO_PLUGIN_STORE_LIVE: boolean = true;
+export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;
 
 /**
  * Can a customer buy Credits today? No, and three surfaces used to say otherwise.

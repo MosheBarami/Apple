@@ -37,21 +37,21 @@ export interface KnownIssue {
 
 export const KNOWN_ISSUES: KnownIssue[] = [
   {
-    // REOPENED 2026-09-23. Closed on 2026-09-22 when the listing resolved publicly again; the
-    // 2026-09-23 update was removed by Roblox ("Misusing Roblox Systems") and the listing no longer
-    // resolves (toolbox details 404 beside healthy controls). packages/shared flipped
-    // STUDIO_PLUGIN_STORE_LIVE back to false; tests/known-issues.test.mjs holds this entry to it.
+    // REOPENED 2026-09-25. Studio accepted the 1.4.0 overwrite, but the public
+    // listing and toolbox details are 404 beside two healthy plugin controls.
+    // The cause is not yet established (Q-020). The shared store flag and this
+    // issue are held to each other by tests/known-issues.test.mjs.
     id: 'plugin-not-in-creator-store',
     title: 'Studio plugin installation is unavailable',
     impact:
       'The Apple Studio plugin cannot be installed from the Roblox Creator Store right now, so new '
       + 'customers can chat and plan but cannot build inside Studio yet.',
     workaround:
-      'Plan your game in the chat meanwhile. We are sending Roblox an appeal together with the next '
-      + 'plugin release; this page changes the day it is back.',
+      'Plan your game in the chat meanwhile. If Apple Studio was already installed, it may still '
+      + 'work in Studio; new public installs are unavailable while we check the Creator Store setting.',
     links: [{ label: 'Plugin availability', href: '/docs/plugin' }],
-    openedAt: '2026-09-23',
-    resolvedAt: '2026-09-24',
+    openedAt: '2026-09-25',
+    resolvedAt: null,
   },
   {
     id: 'plugin-presence-not-detectable',
