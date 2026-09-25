@@ -440,6 +440,17 @@ async function vectorizeOf(repo) {
 }
 
 // ---- The whole snapshot ----------------------------------------------------------------------------
+export function decorateVisionTools(vision, libraries) {
+  const item = vision?.items?.find((entry) => entry.id === 'agentTools');
+  if (!item || typeof item.detail !== 'string') return vision;
+  const count = libraries?.find((entry) => entry.id === 'tools')?.count;
+  const description = item.detail.replace(/^(?:\d+ כלים פעילים|מספר הכלים עדיין לא נמדד)\.\s*/, '');
+  item.detail = Number.isSafeInteger(count) && count > 0
+    ? `${count} כלים פעילים. ${description}`
+    : `מספר הכלים עדיין לא נמדד. ${description}`;
+  return vision;
+}
+
 export async function collectProject(repo, hooks = {}) {
   onLate = hooks.onLate ?? onLate;
   const findings = findingsOf(repo);
@@ -450,6 +461,7 @@ export async function collectProject(repo, hooks = {}) {
     const f = vision.items.find((i) => i.status === 'live' && i.id === 'findings');
     if (f) { f.status = findings.open.length ? 'partial' : 'done'; f.detail = `${findings.closed} מתוך ${findings.total} תקלות נסגרו, ${findings.open.length} פתוחות`; }
   }
+  decorateVisionTools(vision, libs);
   return {
     collectedAt: Date.now(),
     gate: gateR,

@@ -1,13 +1,16 @@
 # NEXT ACTION
 
-2026-09-25 04:20 UTC: v23 is training on CPU past step 100/400. Keep the current
-supervisor alive through its training, evaluation and publish. At a safe version boundary,
-restart it once to load template preflight `4ffea38` and row-by-row paired-promotion
-guard `3f97d9f`; verify the next process runs the committed code and begins the next
-version without a duplicate. The guard was red-first and passed 33 focused tests, all
-648 training package tests, and the real 38-row v22 paired files. CI for the previous
-commit passed all six groups; CI for `3f97d9f` is running. The Creator Store still shows
-404 for the public plugin listing, and Studio round 8 remains unverified.
+2026-09-25 04:47 UTC: v23 is training on CPU; the latest measured step is on the owner
+dashboard. Keep the current supervisor alive through its training, evaluation and publish.
+At a safe version boundary, restart it once to load template preflight `4ffea38`,
+row-by-row paired-promotion guard `3f97d9f`, and guarded private Hugging Face Space
+updates `dc9fa06`; verify the next process runs the committed code and begins the next
+version without a duplicate. The Space currently shows v22's valid 24/38 versus 18/38;
+its rendered file was downloaded from the private repo and matched byte-for-byte.
+Future Space updates require a measured paired promotion and a matching model upload.
+The new Space renderer passed four focused tests and the training package passed 653/653;
+CI for `074bfc7` passed all six groups. The Creator Store still shows 404 for the public
+plugin listing, and Studio round 8 remains unverified.
 
 2026-09-25 03:42 UTC: v22 was validly promoted after a paired 38-row evaluation against v5
 (24/38 versus 18/38 in the same run; identical row IDs and base results, no known harness
