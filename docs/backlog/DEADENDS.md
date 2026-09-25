@@ -19,6 +19,18 @@ exist is DELETE with a dated owner statement, per §6.6.
 
 ---
 
+## Internal asset sourcing dispositions — DELETE, owner direction 2026-09-25
+
+The owner removed the customer-facing UI catalogue and the Creator Store versus scratch choice.
+Both routes are now absent from the shipped app, and the worker refuses the old catalogue URL.
+These source files remain only for legacy tests and must be removed with those tests in a separate
+cleanup; reconnecting either to the customer app would reverse the owner's direction.
+
+- `apps/web/src/components/asset-source-dialog.tsx` — DELETE; the choice is internal to Apple.
+- `apps/web/src/routes/library.tsx` — DELETE; the catalogue is backend-only.
+
+---
+
 ## Thinking redesign dispositions — DELETE, owner direction 2026-09-24
 
 The owner directed that thinking show one friendly changing step and offer no way to inspect
