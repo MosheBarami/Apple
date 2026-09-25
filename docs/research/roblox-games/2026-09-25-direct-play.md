@@ -305,6 +305,29 @@ pets, and mutate them; I did not verify those later mechanics.
   146m, but did not establish a traversed route to the gear shop. The game's
   movement and complete economy loop are therefore still unverified here.
 
+### Second native-app pass
+
+I re-entered Ride A Pet from its Roblox-app detail page and repeated the
+highlighted action with keyboard UI navigation. `Ride Pet` again changed to
+`Dismount` and the objective again became `Go To Gear Shop 145m Away`, with the
+large green ground arrow. This confirms the opening transition was repeatable
+in the observed client; it does not prove travel or shop completion.
+
+The scene had moving rain streaks, a weather countdown, a separate short egg
+timer and a long event countdown behind the fence. These overlapping rhythms
+kept the opening from looking static, though they also crowded the HUD. The
+pet's `$3/s` label remained visible, while the currency display stayed `50` in
+this short pass; I did not observe a payment tick.
+
+Using keyboard navigation, I opened the pink paw control. A right-side panel
+animated from a dark placeholder to a wood-framed parchment surface with
+`0/5` capacity and a green `Place Best` action. It showed no pet cards during
+the observation. That is evidence of a themed inventory surface and its open
+transition, not evidence that placing or equipping a pet works. Brief movement
+key presses again failed to reduce the 145m shop distance, so the route and
+later loop remain unverified. I left through Roblox's in-game menu; no purchase
+or account setting was changed.
+
 For Apple, the reusable benchmark is an *original* first-action scene that
 gates attention to one operable control, confirms the action changes avatar and
 UI state, then exposes a destination and a live distance indicator. The
