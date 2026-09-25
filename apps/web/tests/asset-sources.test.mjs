@@ -1,4 +1,4 @@
-// Where Apple may get assets from — asked once, and the asking has to be real.
+// Legacy source-policy pure helpers and the customer-facing send boundary.
 //
 // The owner asked for this dialog by name. The part worth testing is not that it renders: it is
 // that it cannot be turned into a yes by the cheapest gesture available, and that a dismissed
@@ -234,70 +234,11 @@ test('the dialog disables what the ceiling forbids rather than letting it be swa
   assert.match(DIALOG, /cleanSelection\(chosen\)\.filter\(\(c\) => open\.includes\(c\)\)/);
 });
 
-/* ----------------------------------------------------- remembered, for THIS project --- */
-//
-// The owner asked for the answer to be remembered and changeable. It was remembered on the
-// ACCOUNT, which is a different feature: answering once in one project silently settled the
-// question for every project that person would ever open. A game built entirely from parts and a
-// game assembled out of the Creator Store are the same person making two different decisions.
+/* --------------------------------------------------- customer-facing path is retired --- */
 
-/** The body of `saveSources`, so a match cannot be satisfied by some other call elsewhere. */
-function saveSourcesBody() {
-  const start = WS.indexOf('const saveSources = async');
-  assert.notEqual(start, -1, 'saveSources moved or was renamed');
-  const end = WS.indexOf('\n  };', start);
-  assert.notEqual(end, -1, 'could not find the end of saveSources');
-  return WS.slice(start, end);
-}
-
-test('THE ANSWER IS STORED AGAINST THE PROJECT, NOT THE ACCOUNT', () => {
-  const body = saveSourcesBody();
-  assert.match(body, /savePreferences\('project', projectId,/, 'it must write the project scope');
-  assert.equal(
-    /savePreferences\('user'/.test(body),
-    false,
-    'writing the user scope settles the question for every project this person will ever open',
-  );
-});
-
-test('AND IT KEEPS THE PROJECT\'S OTHER PREFERENCES — the PUT deletes what it is not sent', () => {
-  // PUT /preferences treats the body as the whole scope: a key it does not receive is DELETED.
-  // Posting `{ asset_sources }` alone therefore wiped every other preference on that scope. The
-  // read has to be fresh rather than a held query, or a stale copy restores settings somebody
-  // changed in another tab.
-  const body = saveSourcesBody();
-  assert.match(body, /fetchScopeMemory\('project', projectId\)/, 'it must read what is stored first');
-  assert.match(body, /\.\.\.stored\.preferences\.prefs/, 'and send it back alongside the new key');
-});
-
-test('AND IT REFUSES TO START A BUILD ON AN ANSWER THAT WAS SWALLOWED', () => {
-  // The layers narrow, so an org or account layer can strip what was ticked and leave nothing
-  // allowed — which is also the state that means "still owes an answer". Closing the dialog then
-  // would reopen it on the very next send, forever. Throwing keeps it open and says so once.
-  const body = saveSourcesBody();
-  // ANCHORED TO THE WHOLE GUARD, not to the name `owesAnswer`. A condition can be added and then
-  // silently disarmed — `if (false && owesAnswer(...))` still contains the call, and a match on the
-  // token alone stays green while the check does nothing. This pins the shape of the `if` itself.
-  assert.match(
-    body,
-    /if \(owesAnswer\(after\.preferences\.asset_sources \?\? null\)\) \{/,
-    'the check must be the condition, not merely present in the file',
-  );
-  assert.match(body, /throw new Error\(/, 'and refuse rather than close over a policy that allows nothing');
-});
-
-test('THE QUESTION IS ASKED BEFORE THE MESSAGE LEAVES, and the words are not lost', () => {
-  // A build that has already started has already decided. `send` returns false so the composer
-  // keeps what was typed, and the held text goes on its own once the policy is stored.
-  const send = WS.slice(WS.indexOf('const askFirst ='), WS.indexOf('const lastAssistantId'));
-  assert.match(send, /if \(askFirst\(text\b[^)]*\)\) return false/, 'the send must be held, not allowed through');
-  assert.match(send, /if \(!owesAnswer\(sourcePolicy\)\) return false/, 'and held only when an answer is owed');
-});
-
-test('A SETTLED ANSWER IS STILL CHANGEABLE — "and configurable" was the other half of the ask', () => {
-  // The dialog only ever opened on a build that owed an answer. Remembering it per project without
-  // this would mean a project could be answered once and never revisited.
-  assert.match(WS, /id: 'ws-asset-sources'/, 'there must be a way back to the dialog');
-  assert.match(WS, /run: \(\) => setSourceAsk\(\{ held: null \}\)/, 'opened with nothing held — no message to release');
-  assert.match(WS, /ceiling=\{sourceCeiling\}/, 'and the dialog must be told what the layers above allow');
+test('a customer send no longer waits for a source-selection dialog', () => {
+  const send = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
+  assert.ok(send.length > 80, 'send path was not found');
+  assert.match(send, /sendChat\(text, mode, attachments, productModel, autonomous\)/);
+  assert.doesNotMatch(send, /askFirst|setSourceAsk|AssetSourceDialog/);
 });

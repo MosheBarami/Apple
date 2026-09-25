@@ -27,6 +27,22 @@ const P = await import(`file://${out}`);
 
 const pol = (mode, allow) => ({ mode, allow });
 
+test('new projects use the internal asset pipeline without a customer source prompt', () => {
+  const base = P.mergePreferences({}).prefs.asset_sources;
+  assert.deepEqual(base, pol('remember', ['creator_store', 'from_scratch']));
+  const restricted = P.mergePreferences({ org: { asset_sources: pol('remember', ['from_scratch']) } }).prefs.asset_sources;
+  assert.deepEqual(restricted, pol('remember', ['from_scratch']), 'an explicit organisation limit still narrows the product default');
+});
+
+test('legacy ask rows do not strand an existing project behind the removed chooser', () => {
+  const oldUnanswered = P.mergePreferences({ project: { asset_sources: pol('ask', []) } });
+  assert.deepEqual(oldUnanswered.prefs.asset_sources, pol('remember', ['creator_store', 'from_scratch']));
+  const oldSubset = P.mergePreferences({ user: { asset_sources: pol('ask', ['creator_store']) } });
+  assert.deepEqual(oldSubset.prefs.asset_sources, pol('remember', ['creator_store']));
+  const explicitBan = P.mergePreferences({ org: { asset_sources: pol('remember', []) } });
+  assert.deepEqual(explicitBan.prefs.asset_sources, pol('remember', []));
+});
+
 /* ------------------------------------------------------------------------- the vocabulary --- */
 
 //[[ THERE WERE THREE AND NOW THERE ARE TWO.
@@ -62,13 +78,10 @@ test('a malformed policy is refused rather than repaired', () => {
   }
 });
 
-test('THE DEFAULT ASKS AND ALLOWS NOTHING — the pop-up is not there to be dismissed', () => {
-  // If the default allowed everything, the dialog would be a formality: the build would already
-  // have permission before the person saw the question. Nothing is permitted until answered.
-  assert.equal(P.ASSET_SOURCE_DEFAULT.mode, 'ask');
-  assert.deepEqual(P.ASSET_SOURCE_DEFAULT.allow, []);
-  assert.equal(P.narrowAssetSources(undefined, undefined).allow.length, 0);
-  assert.equal(P.narrowAssetSources(undefined, undefined).mode, 'ask');
+test('the product default uses sources internally and never grants an upload key', () => {
+  assert.equal(P.ASSET_SOURCE_DEFAULT.mode, 'remember');
+  assert.deepEqual(P.ASSET_SOURCE_DEFAULT.allow, ['creator_store', 'from_scratch']);
+  assert.deepEqual(P.narrowAssetSources(undefined, undefined), P.ASSET_SOURCE_DEFAULT);
 });
 
 /* ---------------------------------------------------------------------------- normalising --- */
@@ -117,12 +130,12 @@ test('an organisation that allows nothing leaves nothing for any layer below it'
   assert.deepEqual(merged.prefs.asset_sources.allow, []);
 });
 
-test('ASK BEATS REMEMBER, because being asked is the state where nothing happens by default', () => {
+test('a legacy ask restriction still narrows sources without showing a chooser', () => {
   const merged = P.mergePreferences({
     org: { asset_sources: pol('ask', ['creator_store']) },
     user: { asset_sources: pol('remember', ['creator_store']) },
   });
-  assert.equal(merged.prefs.asset_sources.mode, 'ask');
+  assert.deepEqual(merged.prefs.asset_sources, pol('remember', ['creator_store']));
 });
 
 test('remember only survives when every layer that spoke said remember', () => {
@@ -138,7 +151,7 @@ test('the panel is told WHICH layer decided, so it can say so instead of showing
   // The same reason memory_mode records its source: a control that silently does nothing because
   // a layer above already refused is worse than one that explains itself.
   const merged = P.mergePreferences({
-    org: { asset_sources: pol('ask', []) },
+    org: { asset_sources: pol('remember', []) },
     project: { asset_sources: pol('remember', ['from_scratch']) },
   });
   assert.equal(merged.sources.asset_sources, 'org', 'the org is what actually decided here');

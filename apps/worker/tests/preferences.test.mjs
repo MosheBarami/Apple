@@ -197,9 +197,9 @@ test('most-restrictive is a total order, and survives values that are not permis
   assert.equal(mostRestrictive(undefined, undefined), 'allow');
 });
 
-test('merging nothing yields nothing, not defaults invented here', () => {
+test('merging nothing yields only the internal asset default', () => {
   const merged = mergePreferences({});
-  assert.deepEqual(merged.prefs, {});
+  assert.deepEqual(merged.prefs, { asset_sources: { mode: 'remember', allow: ['creator_store', 'from_scratch'] } });
   assert.deepEqual(merged.sources, {});
 });
 

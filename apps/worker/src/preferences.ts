@@ -436,11 +436,17 @@ export function mergePreferences(layers: Partial<Record<MemoryScope, Preferences
   for (const scope of order) {
     const v = layers[scope]?.asset_sources;
     if (v === undefined) continue;
-    const next = narrowAssetSources(assets, v);
+    // The retired customer chooser left `ask` rows behind. An empty one meant unanswered,
+    // not an explicit ban; a nonempty one still narrows the sources, without reopening UI.
+    if (v.mode === 'ask' && v.allow.length === 0) continue;
+    const effective = v.mode === 'ask' ? { mode: 'remember' as const, allow: v.allow } : v;
+    const next = narrowAssetSources(assets, effective);
     if (JSON.stringify(next) !== JSON.stringify(assets)) sources.asset_sources = scope;
     assets = next;
   }
-  if (assets !== undefined) prefs.asset_sources = assets;
+  // New projects use the owner's internal asset pipeline without a customer-facing source choice.
+  // A stored org, user or project policy still narrows it in the loop above.
+  prefs.asset_sources = assets ?? ASSET_SOURCE_DEFAULT;
 
   //[[ `analytics_opt_out` NARROWS, and the narrowing is a one-way door: any layer's `true` wins.
   //

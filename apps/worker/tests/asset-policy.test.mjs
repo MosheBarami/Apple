@@ -91,7 +91,7 @@ test('with nothing answered, the refusal says so rather than blaming a setting',
   // Never answered and deliberately turned off are different facts, and the fix differs: one
   // person needs to answer a dialog, the other to change their mind.
   const r = P.sourceRefusal(null, 'creator_store');
-  assert.match(r, /has not chosen|not been asked|no asset sources/i);
+  assert.match(r, /no permitted source/i);
   assert.equal(/turned off|disabled/i.test(r), false, 'nobody turned anything off');
 });
 

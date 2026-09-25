@@ -2577,9 +2577,8 @@ export function isRobloxScope(v: unknown): v is RobloxScope {
  *
  * A STORED POLICY THAT STILL NAMES IT IS NOW INVALID, and that is the intended degradation rather
  * than an oversight. `isAssetSourcePolicy` (worker preferences.ts) rejects a policy containing an
- * unknown choice outright, so such a row falls back to `ASSET_SOURCE_DEFAULT` — `ask`, allowing
- * nothing — and the person is asked again. Silently dropping the dead member instead would leave
- * `remember` set on an answer they never gave.
+ * unknown choice outright, so such a row falls back to the current product default. An explicit
+ * organisation or project restriction still narrows that default.
  */
 export const ASSET_SOURCE_CHOICES = ['creator_store', 'from_scratch'] as const;
 export type AssetSourceChoice = (typeof ASSET_SOURCE_CHOICES)[number];
@@ -2587,16 +2586,16 @@ export type AssetSourceChoice = (typeof ASSET_SOURCE_CHOICES)[number];
 /**
  * `ask` shows the dialog before a build. `remember` uses `allow` without asking.
  *
- * The default is `ask` with an EMPTY allow list, and the two together are deliberate: a person who
- * has never answered must be asked, and until they answer nothing is permitted. An empty list that
- * defaulted to "everything" would mean the dialog existed only to be dismissed.
+ * The product now chooses its verified library and plain structural work internally. This is the
+ * starting policy for a new project, not permission to upload a permanent asset to an account.
+ * Explicit organisation, account and project policies remain narrowing restrictions.
  */
 export interface AssetSourcePolicy {
   mode: 'ask' | 'remember';
   allow: AssetSourceChoice[];
 }
 
-export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'ask', allow: [] };
+export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'remember', allow: ['creator_store', 'from_scratch'] };
 
 // ---------------------------------------------------------------------------------------------
 // What Apple is ALLOWED TO DO

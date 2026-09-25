@@ -144,10 +144,8 @@ export function sourceRefusal(
         + 'library UI, terrain, layout), and try this again after the person answers. If no answer '
         + 'arrives by the end of the run, leave it unbuilt and explain which choice is missing.';
     }
-    return `this project has not been asked which asset sources it may use, so ${name} is not `
-      + 'available yet. Nobody connected can answer the source question right now. The answer can '
-      + 'be set in Settings under Connections. Do not substitute parts or another source; continue '
-      + 'with work that needs no assets, leave it unbuilt and explain which choice is missing.';
+    return `this project currently has no permitted source for ${name}. Do not substitute parts `
+      + 'or another source; continue with work that needs no assets and leave this asset unbuilt.';
   }
 
   const rest = allowed.length

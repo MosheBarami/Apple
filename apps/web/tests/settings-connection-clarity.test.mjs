@@ -40,13 +40,6 @@ test('privacy copy states the promise outright, with no control beside it', () =
   assert.doesNotMatch(settings, /name="trainingOptIn"/, 'a control here would contradict the sentence above it');
 });
 
-test('asset preferences cannot render an empty answer before they have loaded', () => {
-  const component = settings.slice(settings.indexOf('function AssetSourceSettings('), settings.indexOf('function NotificationSettings('));
-  const guard = component.indexOf('if (!stored.data || stored.isError)');
-  assert.ok(guard >= 0 && guard < component.indexOf('summarise(policy)'), 'unread preferences must exit before rendering the answer');
-  assert.match(component, /Loading asset sources/);
-  assert.match(component, /Could not load asset sources/);
-  assert.match(component, /stored\.refetch\(/);
-  assert.match(component, /checked=\{displayedChosen\.includes\(e.choice\)\}/);
-  assert.match(component, /const displayedChosen = dirty \? chosen : policy\?\.allow \?\? \[\]/);
+test('asset-source choices are absent from customer settings', () => {
+  assert.doesNotMatch(settings, /AssetSourceSettings|Save asset sources|Where Apple gets assets/);
 });

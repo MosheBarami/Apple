@@ -95,7 +95,7 @@ test('AN ANSWER IS REMEMBERED FOR THE PROJECT IT WAS GIVEN IN — it survives th
   }
 });
 
-test('AND IT IS NOT REMEMBERED FOR EVERY OTHER PROJECT — B still owes the question', async () => {
+test('a project restriction does not carry to another project', async () => {
   // The bug this replaces: the dialog wrote the `user` scope, so answering in A silently settled B
   // too. A game built from scratch and a game assembled from the Creator Store are the same person
   // making two different decisions.
@@ -111,7 +111,7 @@ test('AND IT IS NOT REMEMBERED FOR EVERY OTHER PROJECT — B still owes the ques
     );
 
     const b = await read(env, access, B);
-    assert.equal(b.prefs.asset_sources, undefined, "B inherited A's answer");
+    assert.deepEqual(b.prefs.asset_sources, pol('remember', ['creator_store', 'from_scratch']), "B inherited A's restriction");
   } finally {
     close();
   }
@@ -163,7 +163,7 @@ test('an organisation narrows the ceiling, so a project is never offered what it
   }
 });
 
-test('NO CEILING WHEN NOBODY ABOVE HAS AN OPINION — absent is not "nothing is allowed"', async () => {
+test('the internal default is the ceiling when no higher layer restricts it', async () => {
   // The ordinary case, and the one where getting the default backwards would be worst: a ceiling
   // of `{allow: []}` here would grey out all three boxes for every project that ever existed.
   const { env, access, close } = await db();
@@ -171,7 +171,7 @@ test('NO CEILING WHEN NOBODY ABOVE HAS AN OPINION — absent is not "nothing is 
     await writePrefs(env, access, 'project', A, { asset_sources: pol('remember', ['from_scratch']) });
 
     const p = await read(env, access, A);
-    assert.equal(p.assetSourceCeiling, undefined, 'a project-only answer must leave the ceiling unset');
+    assert.deepEqual(p.assetSourceCeiling, pol('remember', ['creator_store', 'from_scratch']));
   } finally {
     close();
   }

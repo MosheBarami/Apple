@@ -5282,7 +5282,6 @@ export class SessionDO extends DurableObject<Env> {
   //   project `asset_sources` preference, and while the question is open every step re-reads it,
   //   so the answer reaches THIS run. Asking never allows anything. ]]
   private assetSourcesAsked: boolean | null = null;
-  private studioCanAnswerAssetSources = false;
 
   private async assetSourcesAskedNow(): Promise<boolean> {
     if (this.assetSourcesAsked === null) this.assetSourcesAsked = (await this.ctx.storage.get<boolean>('assetSourcesAsked')) === true;
@@ -5291,13 +5290,9 @@ export class SessionDO extends DurableObject<Env> {
 
   /** Synchronous because a tool's refusal is; the storage write is ordered by the output gate. */
   private askAssetSources(): boolean {
-    const browser = this.ctx.getWebSockets('client').some((ws) => ws.readyState === 1 && this.beatOf(ws)?.role === 'owner');
-    if (!browser && !(this.pluginConnectedNow() && this.studioCanAnswerAssetSources)) return false;
-    this.assetSourcesAsked = true;
-    void this.ctx.storage.put('assetSourcesAsked', true);
-    if (this.currentMsgId) void this.ctx.storage.put('assetSourcesAwaitingRun', this.currentMsgId);
-    this.broadcast({ type: 'asset_sources_owed', owed: true });
-    return true;
+    // Sources are an internal product decision. A stored restriction still narrows the run,
+    // but no browser or Studio dock asks the customer to choose an implementation source.
+    return false;
   }
 
   /**
@@ -6003,7 +5998,6 @@ export class SessionDO extends DurableObject<Env> {
       : null;
     await this.mirrorPlaceToRegistry(this.boundPlace ?? unsavedOpen);
     this.placeMismatch = admission.verdict === 'mismatch' ? admission : null;
-    this.studioCanAnswerAssetSources = body.assetSourcesPrompt === true && servesOps(admission);
     if (!servesOps(admission) && admission.verdict === 'mismatch') {
       // The link is alive and the plugin is welcome to keep polling — the user may simply switch
       // back — but it is handed NO ops, and every browser watching is told why rather than being
@@ -6192,7 +6186,14 @@ export class SessionDO extends DurableObject<Env> {
     // Omitted entirely when there is nothing to say, which is the common case. An
     // older plugin that does not read this field is unaffected either way.
     if (notice) res.client = notice;
-    // Owed only while a build has asked; answered is said once, to the dock that answered.
+    // Older sessions may retain an outstanding question from the retired customer control.
+    // Clear it before responding so even an already-installed plugin hides its old dock prompt.
+    if (await this.assetSourcesAskedNow()) {
+      this.assetSourcesAsked = false;
+      await this.ctx.storage.delete('assetSourcesAsked');
+      await this.ctx.storage.delete('assetSourcesAwaitingRun');
+      this.broadcast({ type: 'asset_sources_owed', owed: false });
+    }
     const owed = await this.assetSourcesAskedNow();
     if (owed || body.assetSourcesAnswer !== undefined) {
       res.assetSources = { owed, ...(sourcesNote ? sourcesNote : {}) };

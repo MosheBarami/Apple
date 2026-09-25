@@ -89,8 +89,6 @@ import {
   type DigestMode,
   type NotificationEventPrefs,
 } from '../lib/notification-prefs.ts';
-import { SOURCE_EXPLANATIONS, cleanSelection, summarise } from '../lib/asset-sources';
-import type { AssetSourceChoice, AssetSourcePolicy } from '@golem/shared';
 import {
   codeProblem,
   enrollment,
@@ -98,11 +96,6 @@ import {
   normaliseCode,
   type Enrollment,
 } from '../lib/mfa';
-// The asset-sources section below renders asset-source-dialog.tsx's own markup — `.asrc__choice`,
-// `.asrc__cost`, `.asrc__reach` — so it needs that component's sheet as well as this route's. It
-// happens to be loaded anyway today, because workspace.tsx is eager and shares this bundle; naming
-// it here is what keeps the cost line styled if either route is ever made lazy.
-import '../components/asset-source-dialog.css';
 import './settings.css';
 import './nonworkspace-minimal.css';
 // The owner's picked account-screen components (apps/web/src/components/picks/settings).
@@ -885,7 +878,6 @@ const SECTION_INDEX = [
     fields: ['email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history'],
   },
   { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-key', 'api-keys', 'discord'] },
-  { group: 'Building', id: 'assets', label: 'Assets', fields: ['asset-sources'] },
   {
     group: 'Building',
     id: 'notifications',
@@ -1073,175 +1065,6 @@ const HOUR_NAMES: Record<HourCycle, string> = {
  *     browser resolves it at render time. This one is read on the server, where there is no device
  *     to ask.
  */
-
-/**
- * Where Apple may take assets from — the same answer the build dialog asks for, changeable here.
- *
- * THE OWNER'S REQUEST WAS TWO HALVES and only one was built: "a pop-up before building asking
- * whether it may use the Apple library, the Creator Store, or build from scratch — AND
- * configurable". The dialog exists and gates the first build; until now the only way to change the
- * answer was to clear it and be asked again.
- *
- * IT READS AND WRITES THE SAME KEY THE DIALOG DOES, `asset_sources` — but at a DIFFERENT LAYER, and
- * the difference is the feature rather than an inconsistency. The dialog answers for one project,
- * because the right answer genuinely differs between a game built out of parts and a game assembled
- * from the Creator Store. This panel answers for the ACCOUNT, and because `asset_sources` narrows
- * downwards (apps/worker/src/preferences.ts) that answer is a ceiling: switching a source off here
- * switches it off in every project, and no project can turn it back on. The dialog greys out what
- * this panel forbids rather than accepting a tick that would be swallowed — see `availableChoices`.
- *
- * Two surfaces for one stored preference is fine; two representations of it is how they come to
- * disagree, so `summarise`, `cleanSelection` and SOURCE_EXPLANATIONS are the workspace's own — not a
- * second copy of the same words with different punctuation.
- */
-function AssetSourceSettings({
-  userId,
-  shows,
-  sectionShows,
-}: {
-  userId: string;
-  shows: (id: string) => boolean;
-  sectionShows: (...ids: string[]) => boolean;
-}) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-
-  const stored = useQuery({
-    queryKey: ['scope-memory', 'user', userId],
-    queryFn: () => fetchScopeMemory('user', userId),
-    enabled: userId.length > 0,
-  });
-
-  const policy = (stored.data?.preferences.prefs.asset_sources ?? null) as AssetSourcePolicy | null;
-  const [dirty, setDirty] = useState(false);
-  const [chosen, setChosen] = useState<AssetSourceChoice[]>([]);
-  const [ask, setAsk] = useState(false);
-  const displayedChosen = dirty ? chosen : policy?.allow ?? [];
-  const displayedAsk = dirty ? ask : policy?.mode === 'ask';
-
-  useEffect(() => {
-    if (dirty || !stored.data) return;
-    setChosen(policy?.allow ? [...policy.allow] : []);
-    setAsk(policy?.mode === 'ask');
-  }, [stored.data, dirty]);
-
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!stored.data || stored.isError) throw new Error('Load your asset sources before saving.');
-      // Everything already stored plus the one key this section owns: what is not sent is deleted.
-      const base = stored.data?.preferences.prefs ?? {};
-      return savePreferences('user', userId, {
-        ...base,
-        asset_sources: { mode: ask ? 'ask' : 'remember', allow: cleanSelection(chosen) },
-      });
-    },
-    onSuccess: (out) => {
-      qc.setQueryData<Awaited<ReturnType<typeof fetchScopeMemory>>>(['scope-memory', 'user', userId], (current) =>
-        current ? { ...current, preferences: { ...current.preferences, prefs: out.preferences } } : current,
-      );
-      setDirty(false);
-      // What came back, not what was sent — a value the server refused has already been replaced,
-      // and showing the submission would be this page lying about what is stored.
-      const back = (out.preferences.asset_sources ?? null) as AssetSourcePolicy | null;
-      setChosen(back?.allow ? [...back.allow] : []);
-      setAsk(back?.mode === 'ask');
-      toast('Asset sources saved', 'success');
-      void qc.invalidateQueries({ queryKey: ['scope-memory', 'user', userId] });
-    },
-    onError: (e: unknown) => toast(e instanceof Error ? e.message : 'Could not save', 'error'),
-  });
-
-  const toggle = (c: AssetSourceChoice) => {
-    if (!stored.data || stored.isError || save.isPending) return;
-    setAsk(displayedAsk);
-    setDirty(true);
-    setChosen(displayedChosen.includes(c) ? displayedChosen.filter((x) => x !== c) : [...displayedChosen, c]);
-  };
-
-  if (!sectionShows('asset-sources')) return null;
-  if (!stored.data || stored.isError) {
-    return (
-      <Section id="assets" title="Where Apple gets assets" visible>
-        {/* A caution and not a refusal. The sentence says nothing stored has changed, and red
-            beside that copy would contradict it — the same call api-keys-panel.css writes down
-            for its own failed lookup. */}
-        <p className={stored.isError ? 'settings-note settings-note-warn' : 'settings-note settings-note-busy'} role="status">
-          {stored.isError
-            ? 'Could not load asset sources. Your saved choices have not changed.'
-            : 'Loading asset sources…'}
-        </p>
-        {stored.isError && <button type="button" className="btn" onClick={() => { void stored.refetch(); }}>Try again</button>}
-      </Section>
-    );
-  }
-
-  return (
-    <Section id="assets" title="Where Apple gets assets" visible>
-      <p className="settings-note">{summarise(policy).line}</p>
-
-      {/* ONE SOURCE PER ROW, and the switch on the shared right edge.
-          This used to be a stack of far-left square checkboxes whose descriptions ran to the full
-          width of the card underneath them, so there was no column to scan and no way to see at a
-          glance which sources were on. Each source is now the same two-column unit as every other
-          setting on this page: name and what it costs on the left, the switch on the right. The
-          whole group is one `data-setting`, because that is what search registers. */}
-      <Row id="asset-sources" visible={shows('asset-sources')}>
-        <div className="settings-switchlist">
-          {SOURCE_EXPLANATIONS.map((e) => (
-            <label key={e.choice} className="settings-switchrow">
-              <span className="settings-switchrow__text">
-                <span className="settings-switchrow__name">{e.title}</span>
-                <span className="settings-switchrow__does">{e.does}</span>
-                <span className="asrc__meta">
-                  <span className="asrc__cost">{e.costs}</span>
-                  <span className="asrc__reach">{e.reach}</span>
-                </span>
-              </span>
-              <Switch
-                disabled={save.isPending}
-                checked={displayedChosen.includes(e.choice)}
-                onChange={() => toggle(e.choice)}
-              />
-            </label>
-          ))}
-
-          <label className="settings-switchrow">
-            <span className="settings-switchrow__text">
-              <span className="settings-switchrow__name">Ask me again before each build</span>
-              <span className="settings-switchrow__does">
-                Off, and Apple remembers this choice and gets on with it.
-              </span>
-            </span>
-            <Switch
-              disabled={save.isPending}
-              checked={displayedAsk}
-              onChange={() => { setChosen([...displayedChosen]); setDirty(true); setAsk(!displayedAsk); }}
-            />
-          </label>
-        </div>
-
-        <div className="settings-commit">
-          {displayedChosen.length === 0 && (
-            <p className="form-error" role="alert">
-              {/* The same sentence the dialog uses. An empty allow list is not a setting, it is a
-                  build that can only place plain parts — and the person should hear it here too. */}
-              With none of these, Apple can only place plain parts.
-            </p>
-          )}
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={save.isPending || !dirty}
-            title={!save.isPending && !dirty ? 'Nothing has changed yet' : undefined}
-            onClick={() => save.mutate()}
-          >
-            {save.isPending ? 'Saving…' : 'Save asset sources'}
-          </button>
-        </div>
-      </Row>
-    </Section>
-  );
-}
 
 function NotificationSettings({
   userId,
@@ -2485,7 +2308,6 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <AssetSourceSettings userId={userId} shows={shows} sectionShows={sectionShows} />
       <NotificationSettings userId={userId} shows={shows} sectionShows={sectionShows} />
 
       <Section id="appearance" title="Appearance" visible={sectionShows('appearance', 'motion')}>

@@ -42,6 +42,10 @@ export async function serveStatic(env: Env, req: Request): Promise<Response> {
   if (/[\u0000-\u001f\u007f]/.test(path) || path.includes('..') || path.length > 512) {
     return new Response('bad request', { status: 400 });
   }
+  // The catalogue is an internal agent resource. Reject even old D1 rows and cache entries.
+  if (path === '/asset-library' || path.startsWith('/asset-library/')) {
+    return new Response('not found', { status: 404 });
+  }
   if (path.endsWith('/')) path += 'index.html';
 
   const cache = caches.default;

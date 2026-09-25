@@ -66,14 +66,6 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     keywords: ['roblox', 'open cloud', 'api key', 'connect', 'upload', 'creator', 'credential', 'account'],
   },
   {
-    id: 'asset-sources',
-    title: 'Where Apple gets assets',
-    section: 'Building',
-    // Nobody types "asset source policy". They type the thing they are worried about — that it is
-    // using other people's work, or that it is spending credits making its own.
-    keywords: ['assets', 'creator store', 'from scratch', 'licence', 'credits', 'where', 'models', 'textures', 'sources', 'pop up', 'ask me'],
-  },
-  {
     id: 'api-keys',
     title: 'API keys',
     section: 'Connections',

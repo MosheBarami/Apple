@@ -54,7 +54,7 @@ test('when a person was asked, the refusal says so and does not send the agent o
   // The unasked wording stays for a project nobody can be asked about right now.
   const alone = P.sourceRefusal(null, 'creator_store', () => false);
   assert.notEqual(alone, asked, 'nobody reachable and somebody asked read the same');
-  assert.match(alone, /leave it unbuilt/i, 'no reachable owner must not become permission to hand-build');
+  assert.match(alone, /leave this asset unbuilt/i, 'a restricted source must not become permission to hand-build');
   // The provenance path carries the same question.
   assert.equal(P.provenanceRefusal(null, 'search_result', () => true), asked);
 });
@@ -77,8 +77,8 @@ test('the running agent is told which source answer arrived and what to retry', 
     P.assetSourceAnswerSteer(policy(['creator_store'])),
     'an invalid choice must never be quoted into an internal user-role steer',
   );
-  const ask = session.slice(session.indexOf('private askAssetSources('), session.indexOf('private askAssetSources(') + 1000);
-  assert.match(ask, /assetSourcesAwaitingRun/, 'the pending answer is not tied to the current run');
+  const ask = session.slice(session.indexOf('private askAssetSources('), session.indexOf('private askAssetSources(') + 350);
+  assert.match(ask, /return false/, 'an old refusal must not open a customer source chooser');
   const step = session.slice(session.indexOf('private async runStep('), session.indexOf('private async runStep(') + 3500);
   assert.match(step, /assetSourceAnswerSteer/, 'a saved choice does not reach the running model');
 });
@@ -108,22 +108,14 @@ test('every tool refusal that returns to the agent can ask; the silent capabilit
   assert.match(iface, /askAssetSources\?: \(\) => boolean/);
 });
 
-test('the session asks the people who are here, and both surfaces hear it', () => {
-  assert.match(session, /askAssetSources: \(\) => this\.askAssetSources\(\)/, 'agentCtx does not hand tools the ask');
-  const ask = session.slice(session.indexOf('private askAssetSources('), session.indexOf('private askAssetSources(') + 900);
-  assert.ok(ask.length > 100, 'askAssetSources was not found');
-  assert.match(ask, /getWebSockets\('client'\)/, 'a browser is not counted as somebody to ask');
-  assert.match(ask, /pluginConnectedNow\(\)/, 'Studio is not counted as somebody to ask');
-  assert.match(ask, /beatOf\(ws\)\?\.role === 'owner'/, 'a collaborator is mistaken for someone who can save the answer');
-  assert.match(ask, /studioCanAnswerAssetSources/, 'an older plugin is mistaken for one that can show the question');
-  assert.match(ask, /return false/, 'nobody reachable must not read as asked');
-  assert.match(ask, /type: 'asset_sources_owed', owed: true/, 'the browsers are not told');
-  assert.match(ask, /storage\.put\('assetSourcesAsked'/, 'the question does not survive an eviction');
-  // Studio hears it on its poll, and can answer on the same poll.
+test('the session never asks for asset sources and clears a stale Studio question', () => {
+  const ask = session.slice(session.indexOf('private askAssetSources('), session.indexOf('private async refreshPinnedPrefs('));
+  assert.match(ask, /return false/);
+  assert.doesNotMatch(ask, /storage\.put\('assetSourcesAsked'|owed: true/);
   const poll = session.slice(session.indexOf('private async handlePluginPoll('), session.indexOf('// ------------------------------------------------------------------ search'));
-  assert.match(poll, /body\.assetSourcesAnswer/, 'the poll ignores an answer from Studio');
-  assert.match(poll, /res\.assetSources = /, 'the poll never tells Studio the answer is owed');
-  assert.match(poll, /body\.assetSourcesPrompt === true/, 'the plugin does not prove it can show the question');
+  assert.match(poll, /storage\.delete\('assetSourcesAsked'\)/, 'an old outstanding question reaches Studio');
+  assert.match(poll, /storage\.delete\('assetSourcesAwaitingRun'\)/, 'an old pending run is retained');
+  assert.match(poll, /res\.assetSources = /, 'the old dock cannot be dismissed');
   const finish = session.slice(session.indexOf('private async finishRun('), session.indexOf('private async finishRun(') + 4000);
   assert.match(finish, /storage\.delete\('assetSourcesAsked'\)/, 'a completed run leaves a stale question in Studio');
 });
