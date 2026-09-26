@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { explicitToolSequence, sequenceProgress } from '../src/tool-sequence.ts';
+import { explicitToolSequence, sequenceProgress, sequenceStepMessages } from '../src/tool-sequence.ts';
 
 const known = new Set(['read_script', 'edit_script', 'get_instance', 'inspect_visually']);
 const repair = 'Measured repair only, GardenMain. No plan, no searches, no tree, no render/inspect, no Play. Exactly read_script then edit_script then finish. Stop on any error; do not retry.';
@@ -57,4 +57,25 @@ test('single-call placement correction cannot fall through to autonomous checks'
     'Make exactly ONE read_script call with {bad json}. Then finish.',
     'Exactly read_script then finish. Make exactly ONE edit_script call. Then finish.',
   ]) assert.equal(explicitToolSequence(unsafe, known), null, unsafe);
+});
+
+test('a new finite request cannot replay old completion; current tool evidence survives', () => {
+  const done = 'The tool sequence you requested is complete. No further checks were run; gameplay remains unverified.';
+  const messages = [
+    { role: 'system', content: 'Safety rules' },
+    { role: 'user', content: 'Prior request' },
+    { role: 'assistant', content: done + '\nRefund note' },
+    { role: 'assistant', content: 'Measured fence minimum Y is 1.2' },
+    { role: 'user', content: 'Exactly read_script then edit_script then finish.', pinned: true },
+    { role: 'assistant', content: '', toolCalls: [{ id: 'read1', name: 'read_script' }] },
+    { role: 'tool', content: 'Verified source bytes', toolCallId: 'read1' },
+  ];
+  const next = sequenceStepMessages(messages, 'edit_script');
+  assert.equal(next.some(m => m.role === 'assistant' && m.content.includes(done)), false);
+  assert.deepEqual(next.slice(1), messages.filter((_, i) => i > 0 && i !== 2));
+  assert.match(next[0].content, /Next required action: edit_script/);
+  assert.equal(messages[0].content, 'Safety rules');
+  assert.equal(messages.length, 7);
+  const current = [messages[0], { role: 'user', content: done, pinned: true }, { role: 'assistant', content: done }];
+  assert.deepEqual(sequenceStepMessages(current, 'read_script').slice(1), current.slice(1));
 });

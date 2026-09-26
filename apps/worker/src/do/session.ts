@@ -89,7 +89,7 @@ import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, par
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
 import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
-import { explicitToolSequence, sequenceProgress } from '../tool-sequence';
+import { explicitToolSequence, sequenceProgress, sequenceStepMessages } from '../tool-sequence';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
@@ -3856,9 +3856,7 @@ export class SessionDO extends DurableObject<Env> {
     // Historical assistant replies can include unsupported completion claims. State the current
     // required action at the provider boundary, using only validated registry names.
     const stepMessages = sequenceStep?.state === 'next'
-      ? agent.llm.map((message, index) => index === 0 && message.role === 'system'
-        ? { ...message, content: `${message.content}\n\nNext required action: ${sequenceStep.tool}. Call that tool now using the latest user request and verified results from this run. Do not claim changes based on earlier messages. No additional tools are authorized by this workflow.` }
-        : message)
+      ? sequenceStepMessages(agent.llm, sequenceStep.tool)
       : agent.llm;
     const res = await llmChat(
       this.env,

@@ -30,3 +30,20 @@ export function sequenceProgress(sequence: readonly string[], trace: readonly { 
     ? { state: 'complete' }
     : { state: 'next', tool: sequence[trace.length]! };
 }
+
+/** Build the provider transcript for the next finite action. */
+export function sequenceStepMessages<T extends { role: string; content: unknown; pinned?: boolean; toolCalls?: unknown[] }>(messages: readonly T[], tool: string): T[] {
+  // In two live runs the model copied an earlier run's canned completion verbatim and
+  // returned no tool call. Remove only that historical terminal prose; user facts,
+  // real tool results and the pinned current request remain unchanged. No paid retry.
+  let current = -1;
+  messages.forEach((message, index) => { if (message.role === 'user' && message.pinned === true) current = index; });
+  const kept = messages.filter((message, index) => !(
+    current >= 0 && index < current && message.role === 'assistant' &&
+    !message.toolCalls?.length && typeof message.content === 'string' &&
+    message.content.startsWith('The tool sequence you requested is complete.')
+  ));
+  return kept.map((message, index) => index === 0 && message.role === 'system'
+    ? { ...message, content: `${message.content}\n\nNext required action: ${tool}. Call that tool now using the latest user request and verified results from this run. Do not claim changes based on earlier messages. No additional tools are authorized by this workflow.` }
+    : message);
+}
