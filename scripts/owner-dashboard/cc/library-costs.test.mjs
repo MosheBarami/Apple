@@ -105,6 +105,19 @@ test('two tycoon place files retain their distinct author download URLs', async 
   assert.ok(files.page.rows.every((r) => r.local.state === 'verified' && r.backend.state === 'not-supported'));
 });
 
+test('Roblox icon archive files retain extraction provenance and remain review-only', async () => {
+  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'owner-36', limit: '250' }));
+  assert.equal(files.page.total, 202);
+  const second = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'owner-36', off: '120', limit: '120' }));
+  const rows = [...files.page.rows, ...second.page.rows];
+  const archive = rows.find((r) => r.name.endsWith('.zip'));
+  const extracted = rows.filter((r) => r.file.includes('/extracted/'));
+  assert.equal(extracted.length, 201);
+  assert.equal(archive.download.method, 'Official itch.io free ZIP download via anonymous public form');
+  assert.ok(extracted.every((r) => r.download.method === 'Extracted from verified Icon Pack @Streeteenk.zip'));
+  assert.ok(rows.every((r) => r.backend.state === 'not-supported' && r.use === 'review-only'));
+});
+
 test('summary counts every library and has a growth series from git', async () => {
   const d = await library(q({ tab: 'summary' }));
   const by = Object.fromEntries(d.counts.map((c) => [c.id, c.n]));
