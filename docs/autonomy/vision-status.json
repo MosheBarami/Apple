@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T07:20:32.198776+00:00",
-  "now": "Apple MAX תיקן את פריסת החנות לאורך בקריאה אחת ועריכה אחת, 16 Credits. Play אישר קנייה 60→50, גלילה לכרטיס השלישי, סגירה וחזרה לשלוש עמודות ברוחב. מקור 35: 48 אייקוני PNG הורדו ואומתו.",
-  "nextStep": "השלמת נכסי Tomato/Pumpkin מהמקורות ברשימה, שיפור העולם ובדיקת משחק מלאה. הורדות מקומיות עדיין אינן נכסי backend מוכנים. F-059/F-064 ו־0/3 ביקורות פתוחים.",
+  "updatedAt": "2026-09-26T08:43:52.704855+00:00",
+  "now": "Apple העביר את קטלוג הרפרנס לאחסון הפנימי בפעולה אחת וב־3 Credits. כל 48 האובייקטים נשמרו; בגינה הפעילה 138 חלקים מעוגנים וללא חלקים מתפזרים ב־Play. מגבלת הפעולה הבודדת נפרסה ואומתה חיה. CI 7449f61 עבר 6/6.",
+  "nextStep": "להשלים שילוב גידולים קרטוניים מוכנים ושיפור סידור העולם, ואז לבדוק משחק שלם. הגינה עדיין דלילה ויש אביזרים מרחפים. F-059/F-064 ו־0/3 ביקורות נשארים פתוחים; יבוא ידני אינו הוכחה להכנסה אוטומטית.",
   "items": [
     {
       "id": "productScope",
