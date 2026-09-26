@@ -1,5 +1,7 @@
 # CURRENT STATE
 
+2026-09-26 04:00 UTC: Source107 exact Store11716741511 manually imported via Studio Toolbox, exported/hash verified 67508 bytes;48 components,84 anchored MeshParts,0 scripts. Undo/save restored all169 prior part signatures. Live427 review receipts/0 owner-listed builder-ready; Apple-agent placement/integration remains unproven. SoleCPU35962 v31 at75/400. F059/F064 and0/3 open.
+
 2026-09-26 03:52 UTC: Owner119 all15 WAVs downloaded/hash verified and fully decoded;131 all4 previous RBXM releases acquired/one script each stripped in separate copies;132 original8CurveAnimation file/0 scripts;105 original Blender source acquired/no conversion.21 originals6294206 bytes. Catalogue identities13 are not downloads;120/121 official Drive files nonexistent. Live426 review-only/0 builder-ready;13/13tests. SoleCPU35962 v31 at50/400. CIb44cb38 run36215711279 passed; F059/F064/0of3 unmet.
 
 2026-09-26 03:43 UTC: Owner59 full253-member repository and RBXL, owner60 full126-member repository and RBXL, owner67 Obby RBXL downloaded/hash verified; all3 whole DataModels audited without code execution. Four original downloads8610407 bytes, six additional review receipts; live405 review-only/0 builder-ready;13/13 library tests. SoleCPU35962 v31 remains active. CI36215288248 pending last check. Acceptance remains F059/F064 and0/3. Evidence: docs/evidence/owner-game-kits-download-2026-09-26.md.
