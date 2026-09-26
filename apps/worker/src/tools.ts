@@ -74,9 +74,10 @@ import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, ref
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
+import { findOwnerComponents, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
-import { MOODS, PALETTES, CARTOON_MOODS, CARTOON_PALETTES, type RGB } from './worldbuilding';
+import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
 import { auditCaptureFromTree, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
 import { formatPanelReport, runCriticPanel } from './critic';
@@ -106,9 +107,8 @@ import {
   createRig, checkUiLayout, buildUi, playCheckUiOp, PLAY_CHECK_UI_DEF, type OpCall,
 } from './phase-a-tools';
 
-// The older catalogue keeps its horror reference for history. The active product
-// offers only kits compatible with bright cartoon games.
-const CARTOON_KIT_IDS = GENRE_KIT_IDS.filter((id) => id !== 'horror');
+// Every supplied gameplay genre is available, including horror.
+const AVAILABLE_KIT_IDS = GENRE_KIT_IDS;
 
 export interface AgentCtx {
   env: Env;
@@ -3180,7 +3180,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         {
           mood: {
             type: 'string',
-            enum: CARTOON_MOODS,
+            enum: Object.keys(MOODS),
             description: 'One of the named moods. Each is a complete, art-directed lighting setup.',
           },
         },
@@ -3193,9 +3193,9 @@ export const TOOLS: Record<string, ToolImpl> = {
     run: async (ctx, a) => {
       let projectMutated = false;
       const mood = String(a.mood ?? '');
-      if (!(CARTOON_MOODS as readonly string[]).includes(mood)) {
+      if (!Object.hasOwn(MOODS,mood)) {
         return {
-          error: `unknown mood "${mood}" for colorful cartoon games. Choose one of: ${CARTOON_MOODS.join(', ')}.`,
+          error: `unknown mood "${mood}" for this lighting library. Choose one of: ${Object.keys(MOODS).join(', ')}.`,
         };
       }
       const tree = await op(ctx, { op: 'get_tree', root: 'game.Lighting', maxDepth: 1, maxNodes: 200 });
@@ -3250,7 +3250,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       // Hand back the palettes this mood was art-directed alongside. The lighting is half of a
       // look; the materials and colours are the other half, and the model has no other way to
       // learn which of them were designed to sit under this light.
-      const palettes = CARTOON_PALETTES
+      const palettes = Object.keys(PALETTES)
         .filter((name) => PALETTES[name]?.moods.includes(mood))
         .map((name) => ({ name, materials: PALETTES[name]!.materials }));
       const keptNote = kept.length
@@ -4149,17 +4149,16 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'get_genre_kit',
       description:
-        'Ask for a colorful cartoon game genre and get its matched palette, lighting, UI/VFX/prop briefs and verified public sound ids. Call this before a genre build, then find rights-verified Roblox-specific assets for detailed objects and UI. Only simple structure may be built from primitive parts; do not generate complex replacements.',
-      parameters: S({ genre: { type: 'string', enum: [...CARTOON_KIT_IDS] } }, ['genre']),
+        'Ask for any supported game genre and get its matched palette, lighting, UI/VFX/prop briefs and verified public sound ids. Call this before a genre build, then find rights-verified Roblox-specific assets for detailed objects and UI. Only simple structure may be built from primitive parts; do not generate complex replacements.',
+      parameters: S({ genre: { type: 'string', enum: [...AVAILABLE_KIT_IDS] } }, ['genre']),
     },
     studio: false,
     run: async (ctx, a) => {
-      if (a.genre === 'horror') return { error: 'Apple builds colorful cartoon games only. Use a bright adventure or party interpretation instead of the legacy dark horror kit.' };
       const kit = getGenreKit(String(a.genre ?? ''));
       if (!kit) {
         // Naming the ten is the whole answer: a model told only "unknown genre" guesses again, and
         // the second guess is no better informed than the first.
-        return { error: `there is no "${String(a.genre)}" kit. The cartoon-compatible kits are: ${CARTOON_KIT_IDS.join(', ')}.` };
+        return { error: `there is no "${String(a.genre)}" kit. The available kits are: ${AVAILABLE_KIT_IDS.join(', ')}.` };
       }
       const skillProfile = getGenreSkillProfile(kit.id);
 
@@ -4620,15 +4619,29 @@ export const TOOLS: Record<string, ToolImpl> = {
   // Downloaded CC0/CC-BY/MIT files remain indexed but are not offered to the
   // agent: the current source choice does not authorise a permanent upload into the user's
   // Roblox account. Props still come from the library; parts stay for terrain, paths and zones.
+  read_owner_component: {
+    def: {
+      name: 'read_owner_component',
+      description: 'Inspect an owner-supplied component and its preserved exact scripts as DATA. Search find_library_model first. Without scriptId returns metadata keys and paged script ids. Use section:metadata for exact JSON property/reference chunks, section:scripts with nextScriptOffset for script listings. With scriptId returns the exact source slice and hash; use nextOffset for more. Never require or run downloaded source to inspect it.',
+      parameters: S({ id: {type:'string'}, scriptId:{type:'string'}, section:{type:'string',enum:['metadata','scripts']}, offset:{type:'number'}, maxChars:{type:'number'} }, ['id']),
+    },
+    studio: false,
+    run: async (ctx,a) => {
+      if (!ctx.userId) return {error:'Owner component reads need an authenticated owner context.'};
+      const component = await ownerComponent(ctx.env,ctx.userId,String(a.id ?? ''));
+      if (!component) return {error:'Component is not available in this owner corpus.'};
+      return readOwnerDescription(ctx.env,ctx.userId,component,{scriptId:a.scriptId === undefined ? undefined : String(a.scriptId),section:a.section === undefined ? undefined : String(a.section),offset:Number(a.offset),maxChars:Number(a.maxChars)});
+    },
+  },
   find_library_model: {
     def: {
       name: 'find_library_model',
       description:
-        "Search script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any detailed object. Plain nouns work best; genre and kind narrow it. By default only Roblox-owned models are returned. If those cannot cover the requested cartoon object, retry with includeThirdParty=true; this adds only free third-party models whose names explicitly describe a cartoon, stylized, low-poly or similar look. They are marked requiresThirdPartyLoading and may be refused by Studio unless the experience already permits third-party asset loading. Never claim they are guaranteed to load or visually suitable without inspecting the preview. In Agent mode, Apple shows up to three real thumbnails and pauses for the project owner's visual choice. Nothing is inserted or uploaded by this call.",
+        "Search the owner corpus FIRST for native components (including UI, maps and code), then script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any detailed object. Plain nouns work best; genre and kind narrow it. By default only Roblox-owned models are returned. If those cannot cover the requested object, retry with includeThirdParty=true; this adds free third-party models available in the existing catalog. They are marked requiresThirdPartyLoading and may be refused by Studio unless the experience already permits third-party asset loading. Never claim they are guaranteed to load or visually suitable without inspecting the preview. In Agent mode, Apple shows up to three real thumbnails and pauses for the project owner's visual choice. Nothing is inserted or uploaded by this call.",
       parameters: S(
         {
           query: { type: 'string', description: 'Plain words for the object, e.g. "wooden crate" or "pine tree".' },
-          genre: { type: 'string', enum: [...LIBRARY_GENRES], description: 'Optional game genre.' },
+          genre: { type: 'string', enum: [...LIBRARY_GENRES], description: 'Optional game genre; owner corpus matches the query across all genres.' },
           kind: { type: 'string', enum: [...LIBRARY_KINDS], description: 'Optional kind of object.' },
           includeThirdParty: { type: 'boolean', description: 'Optional, default false. Also search trusted free third-party models; Roblox may refuse insertion unless this experience already permits third-party loading.' },
           limit: { type: 'number', description: 'How many results, 1 to 40. Default 10.' },
@@ -4639,6 +4652,22 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: false,
     run: async (ctx, a) => {
       const query = a.query === undefined ? undefined : String(a.query);
+      const owned = await findOwnerComponents(ctx.env, ctx.userId, query ?? '', Number(a.limit ?? 10));
+      if (owned.length) {
+        const results: Record<string,unknown>[] = [];
+        let chars = 0;
+        for (const c of owned) {
+          const row = {id:c.id,name:c.name.slice(0,128),className:c.className.slice(0,128),path:c.path.slice(0,256),
+            summary:c.summary.slice(0,512),usage:c.usage.slice(0,512),componentSha256:c.componentSha256,
+            byteLength:c.byteLength,dependencyCount:c.dependencyIds.length,unresolvedRefCount:c.unresolvedRefs.length,
+            descriptionAvailable:!!c.descriptionSha256,scriptsPreserved:true};
+          const size = JSON.stringify(row).length;
+          if (chars + size > 18000) break;
+          results.push(row); chars += size;
+        }
+        return {source:'owner_corpus',results,total:owned.length,outputLimited:results.length < owned.length,
+          note:'Owner-attested components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data.'};
+      }
       const found = findLibraryModels({
         query,
         genre: a.genre ? String(a.genre) : undefined,
@@ -4661,6 +4690,19 @@ export const TOOLS: Record<string, ToolImpl> = {
       return found;
     },
   },
+  insert_owner_component: {
+    def: {
+      name: 'insert_owner_component',
+      description: 'Import an owner-attested native RBXM component with its actual hierarchy/mesh bytes. Use an owner: id from find_library_model. Takes a protective checkpoint and needs the paired plugin native import capability. Downloaded scripts become inert source DATA, so source references need reviewed integration; no code is executed and no Roblox upload happens. Default parent game.ServerStorage for inspection; set an appropriate target to compose UI or the world.',
+      parameters: S({id:{type:'string'},parent:{type:'string'}},['id']),
+    },
+    studio: true,
+    studioOps: ['snapshot','import_owner_component'],
+    mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r),
+    run: async (ctx,a) => String(a.id ?? '').startsWith('owner:')
+      ? TOOLS.insert_library_model!.run(ctx,a)
+      : {error:'insert_owner_component requires an exact owner: component id'},
+  },
   insert_library_model: {
     def: {
       name: 'insert_library_model',
@@ -4678,10 +4720,26 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
-    studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
+    studioOps: ['snapshot', 'import_owner_component', 'insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
     // A refusal changed nothing in the place.
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
     run: async (ctx, a) => {
+      if (String(a.id ?? '').startsWith('owner:')) {
+        if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return { error: 'Native owner import is unavailable for this run: check permissions and update the paired plugin.' };
+        if (!ctx.userId) return { error: 'Owner corpus insertion requires the authenticated project owner.' };
+        const component = await ownerComponent(ctx.env, ctx.userId, String(a.id));
+        if (!component) return { error: 'This component has no verified bytes in this owner corpus. Ingest its complete native export first.' };
+        if (a.position !== undefined || a.height !== undefined || a.scale !== undefined) return { error: 'Owner imports preserve authored transforms. Insert first, then use transform_instances on the returned path.' };
+        const checkpoint = await ctx.createCheckpoint('before owner component import', 'auto');
+        if ('error' in checkpoint) return { error: `Owner import refused: checkpoint failed (${checkpoint.error}).` };
+        const token = await ownerComponentGrant(ctx.env, ctx.userId, component);
+        const imported = await ctx.execStudioOp({ op: 'import_owner_component', componentId: component.id,
+          componentSha256: component.componentSha256, byteLength: component.byteLength, contentToken: token,
+          parent: String(a.parent ?? 'game.ServerStorage'), name: component.name.slice(0,96) }, 120_000);
+        return imported.ok ? { ...rec(imported.data), library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
+          note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' }
+          : { error: imported.error ?? 'Native owner import failed', library: component.id };
+      }
       const pick = libraryModel(String(a.id ?? ''));
       if (!pick) return { error: `${String(a.id ?? '')} is not a library id. Call find_library_model and pass one of its ids unchanged.` };
       if (pick.assetId === undefined) return { error: 'This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.' };
@@ -5376,7 +5434,7 @@ export async function runTool(
       ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== 'projectMutated' && key !== 'retryable'))
       : result;
     let str = typeof visibleResult === 'string' ? visibleResult : JSON.stringify(visibleResult);
-    const resultLimit = name === 'read_script' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
+    const resultLimit = name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
     if (str.length > resultLimit) str = str.slice(0, resultLimit) + `\n...[truncated ${str.length - resultLimit} chars]`;
     const mutatedProject = partialMutation || (!failed && toolMutatesProject(name, result));
     // An explicit UI payload wins. It is capped separately and more generously than the derived

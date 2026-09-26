@@ -132,6 +132,8 @@ export type StudioOp =
   | { op: 'snapshot'; root: string; includeScripts?: boolean; checkpointId?: string } // serialize subtree; new checkpoints bind their identity
   | { op: 'restore'; root: string; snapshot: unknown; checkpointId?: string } // optional for legacy senders; SessionDO always binds it
   | { op: 'insert_asset'; assetId: number; parent: string }
+  | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
+      contentToken: string; parent: string; name: string }
   // Roblox-native text-to-3D. Free, ~20s, 10 req/min. Output is SESSION-SCOPED: it does not
   // survive save/publish. The result always carries a QC verdict — generation succeeding is not
   // evidence the model is good.
@@ -938,6 +940,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'set_visible':
     case 'insert_asset':
     // D-MODELLIB-1: puts a library model into the place, the same act as insert_asset.
+    case 'insert_owner_component':
     case 'insert_library_model':
     case 'generate_model':
     case 'generate_model_external':
@@ -2778,6 +2781,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'insert_asset',
     label: 'Insert assets from the Creator Store',
     why: 'Brings third-party models into your place.',
+    group: 'changes',
+  },
+  {
+    name: 'insert_owner_component',
+    label: 'Import owner-supplied components',
+    why: 'Inserts private native components, preserving downloaded source as inert data.',
     group: 'changes',
   },
   {

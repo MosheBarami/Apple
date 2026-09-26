@@ -53,6 +53,7 @@ import {
 } from './erasure';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
+import { ownerCorpusRoutes } from './owner-corpus-routes';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
 import { parseSupportSubmission } from './support';
 import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type MembershipAccessChange, type ShareResource } from './collab';
@@ -669,6 +670,7 @@ app.use('/api/*', async (c, next) => {
   // A browser <img> cannot attach the account JWT. This one numeric, read-only route returns
   // only Roblox's public thumbnail; unknown sibling paths stay behind the JWT gate.
   if (AUTH_EXEMPT.includes(path) ||
+      /^\/api\/owner-corpus\/content\/[a-f0-9]{64}$/.test(path) ||
       (/^\/api\/library-preview\/[1-9][0-9]{0,15}$/.test(path) && AUTH_EXEMPT.includes('/api/library-preview/:assetId')) ||
       path.startsWith('/api/admin/')) return next();
   const token = bearerToken(c.req.raw);
@@ -680,6 +682,8 @@ app.use('/api/*', async (c, next) => {
   c.set('user', user);
   return next();
 });
+
+app.route('/api/owner-corpus', ownerCorpusRoutes);
 
 /**
  * Compare two secrets without leaking their contents through timing.

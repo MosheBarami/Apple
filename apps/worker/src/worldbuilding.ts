@@ -271,10 +271,10 @@ export const CARTOON_PALETTES = ['brightPlay', 'candyArcade', 'oceanPlay', 'cozy
 
 const UNIVERSAL = `ART DIRECTION (mandatory for every new Apple build)
 
-STYLE — STYLISED COLORFUL CARTOON ROBLOX, consistently across the world, UI, props, characters and
-VFX. Use saturated high-key colors, readable shapes, soft light, strong silhouettes and a playful
-material vocabulary: SmoothPlastic/Plastic for simple structures, Neon sparingly for emphasis, and
-WoodPlanks only where its shape reads clearly. Keep gameplay surfaces and hazards distinct.
+STYLE — follow the user's requested Roblox genre and art direction across world, UI, props,
+characters and VFX. Owner-supplied components are the first source. Use coherent materials,
+readable silhouettes and lighting appropriate to the requested mood, including dark horror,
+realistic or colorful styles. Keep gameplay surfaces and hazards distinct.
 
 PLAN FIRST — name the playable loop, every requested system, spawn, UI screens, landmarks, zones,
 functional connections, verified asset needs and a bounded build order. A scene is not a complete
@@ -330,7 +330,7 @@ FINISH ORDER — plan → verify sources → block out simple structure → inse
 wire gameplay and UI → add SFX/VFX/animations → run a play check → inspect rendered views → fix
 visual and functional gaps. Every requested system must be present before reporting the game done.
 
-SELF-CHECK — one colorful cartoon style · readable spawn and pathing · every functional area has
+SELF-CHECK — one coherent requested style · readable spawn and pathing · every functional area has
 base, rim, fence where appropriate, sign and library props · all requested mechanics and UI work ·
 lighting and assets render as intended · no placeholder zones · no missing items from the plan.`;
 
@@ -388,9 +388,9 @@ working destination and a cheerful focal landmark. Source furniture and landmark
 Roblox models; construct only simple walls and walkable decks from Parts. Suggested: palette
 oceanPlay or candyArcade, mood interior.`,
 
-  dungeon: `SCENE: CARTOON QUEST — colorful fantasy chambers connected by readable paths, oversized
+  dungeon: `SCENE: QUEST — colorful fantasy chambers connected by readable paths, oversized
 playful props, safe contrast between routes and hazards, clear objectives and rewards. Source
-crystals, doors, creatures and decor as verified Roblox models; never use grim horror lighting.
+crystals, doors, creatures and decor as verified Roblox models; use lighting appropriate to the requested genre.
 Suggested: palette candyArcade or oceanPlay, mood sunny.`,
 
   obby: `SCENE: OBBY — walkable platforms 8-12 across, clear hazard color and checkpoint landmark
@@ -454,7 +454,7 @@ function resolveKind(kind: string): string | null {
 export function worldBuildingBrief(kind: string): string {
   const resolved = resolveKind(kind);
   const specific = resolved ? KINDS[resolved] : undefined;
-  const names = `Moods: ${CARTOON_MOODS.join(', ')}. Palettes: ${CARTOON_PALETTES.join(', ')}.`;
+  const names = `Moods: ${Object.keys(MOODS).join(', ')}. Palettes: ${Object.keys(PALETTES).join(', ')}. These are presets; the user chooses the art direction.`;
   const base = OUTDOOR_RE.test(kind) ? `${UNIVERSAL}\n\n${OUTDOOR}` : UNIVERSAL;
   return specific ? `${base}\n\n${specific}\n\n${names}` : `${base}\n\n${names}`;
 }
@@ -533,15 +533,15 @@ const S = (props: Record<string, unknown>, required: string[] = []): Record<stri
 /** The plan the agent must produce (and follow) before placing a single part. */
 export const SCENE_PLAN_SCHEMA = S(
   {
-    kind: { type: 'string', description: 'Colorful cartoon scene category: plaza, interior, obby, lobby, shop, arena, natural, simulator or playful quest.' },
-    style: { type: 'string', enum: ['stylised'], description: 'A consistent colorful cartoon Roblox art direction.' },
-    mood: { type: 'string', enum: CARTOON_MOODS, description: 'Named colorful cartoon lighting mood to apply verbatim.' },
+    kind: { type: 'string', description: 'Requested scene category: plaza, interior, obby, lobby, shop, arena, natural, simulator, horror or quest.' },
+    style: { type: 'string', description: 'Consistent art direction matching the requested genre: realistic, stylised, horror, colorful or custom.' },
+    mood: { type: 'string', enum: Object.keys(MOODS), description: 'Named lighting mood to apply verbatim.' },
     palette: {
       type: 'string',
-      description: `Named cartoon palette from: ${CARTOON_PALETTES.join(', ')}. Use "custom" only with explicit colors below.`,
+      description: `Named palette from: ${Object.keys(PALETTES).join(', ')}. Use "custom" only with explicit colors below.`,
     },
     colors: S({
-      dominant: { type: 'string', description: 'RGB "r,g,b" — ~60% of surface; saturated high-key cartoon color' },
+      dominant: { type: 'string', description: 'RGB "r,g,b" — ~60% of surface; matches requested art direction' },
       secondary: { type: 'string', description: 'RGB "r,g,b" — ~30%' },
       accent: { type: 'string', description: 'RGB "r,g,b" — ~10%, the strongest colour' },
       trim: { type: 'string', description: 'RGB "r,g,b" — darkest, for edges/skirting/frames' },

@@ -116,6 +116,10 @@ test('the worker MUTATING set matches the plugin table that opens undo recording
   const table = luau.slice(start, luau.indexOf('\n}', start));
   const pluginSet = new Set([...table.matchAll(/(\w+)\s*=\s*true/g)].map((m) => m[1]));
   assert.ok(pluginSet.size >= 15, `parsed ${pluginSet.size} mutating ops from the plugin — parser check`);
+  // The native owner import is a shipped op family; legacy fixtures never installed it.
+  const ownerFamily = readFileSync(join(ROOT, 'apps/apple-plugin/src/ops/OwnerCorpus.luau'), 'utf8');
+  const ownerMutating = ownerFamily.match(/mutating\s*=\s*\{([^}]*)\}/)?.[1] ?? '';
+  for (const [, name] of ownerMutating.matchAll(/(\w+)\s*=\s*true/g)) pluginSet.add(name);
   const here = new Set(MUTATING_OPS);
   assert.deepEqual([...pluginSet].filter((o) => !here.has(o)).sort(), [], 'the plugin mutates ops this module does not know about');
   assert.deepEqual([...here].filter((o) => !pluginSet.has(o)).sort(), [], 'this module believes ops mutate that the plugin does not record');

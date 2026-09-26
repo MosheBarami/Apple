@@ -5081,7 +5081,7 @@ function Commands.new(options: any?): any
 		-- three values is unchanged; the ones that know the answer can now give it.
 		if not MUTATING[name] then
 			local ok, data, kind, message, remedy = pcall(function()
-				local result, resultKind, resultMessage, resultRemedy = handler(self, op)
+				local result, resultKind, resultMessage, resultRemedy = handler(self, op, stillCurrent)
 				return result, resultKind, resultMessage, resultRemedy
 			end)
 			if not ok then
@@ -5105,7 +5105,7 @@ function Commands.new(options: any?): any
 					end
 					return result, resultKind, resultMessage
 				end
-				local result, resultKind, resultMessage, resultRemedy = handler(self, op)
+				local result, resultKind, resultMessage, resultRemedy = handler(self, op, stillCurrent)
 			return result, resultKind, resultMessage, resultRemedy
 		end)
 		if not ok then
