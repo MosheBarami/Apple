@@ -1,0 +1,198 @@
+{
+  "added": 0,
+  "changed": [
+    {
+      "anchoredSame": true,
+      "delta": [
+        0,
+        0,
+        42
+      ],
+      "ordinal": 1,
+      "path": "Workspace.PlazaFence.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        0,
+        0,
+        42
+      ],
+      "ordinal": 2,
+      "path": "Workspace.PlazaFence.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        0,
+        0,
+        42
+      ],
+      "ordinal": 3,
+      "path": "Workspace.PlazaFence.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        0,
+        0,
+        42
+      ],
+      "ordinal": 1,
+      "path": "Workspace.PlazaFence.Part1",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        4,
+        0,
+        -32
+      ],
+      "ordinal": 1,
+      "path": "Workspace.LowPolyTree.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        4,
+        0,
+        -32
+      ],
+      "ordinal": 2,
+      "path": "Workspace.LowPolyTree.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        4,
+        0,
+        -32
+      ],
+      "ordinal": 3,
+      "path": "Workspace.LowPolyTree.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        4,
+        0,
+        -32
+      ],
+      "ordinal": 4,
+      "path": "Workspace.LowPolyTree.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        4,
+        0,
+        -32
+      ],
+      "ordinal": 5,
+      "path": "Workspace.LowPolyTree.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        4,
+        0,
+        -32
+      ],
+      "ordinal": 6,
+      "path": "Workspace.LowPolyTree.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        4,
+        0,
+        -32
+      ],
+      "ordinal": 7,
+      "path": "Workspace.LowPolyTree.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        4,
+        0,
+        -32
+      ],
+      "ordinal": 8,
+      "path": "Workspace.LowPolyTree.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        4,
+        0,
+        -32
+      ],
+      "ordinal": 9,
+      "path": "Workspace.LowPolyTree.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        4,
+        0,
+        -32
+      ],
+      "ordinal": 10,
+      "path": "Workspace.LowPolyTree.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        0,
+        0,
+        42
+      ],
+      "ordinal": 1,
+      "path": "Workspace.PlazaFence.Part3",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": true,
+      "delta": [
+        0,
+        0,
+        42
+      ],
+      "ordinal": 1,
+      "path": "Workspace.PlazaFence.Part2",
+      "rotationSame": true,
+      "sizeSame": true
+    }
+  ],
+  "missing": 0
+}

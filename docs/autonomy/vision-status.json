@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T09:56:32.398512+00:00",
-  "now": "בדיקה חדשה במחשב: תצוגות Tulip ו־Pumpkin ושלוש עמודות נשמרו אחרי תיקון הטלפון; קניית דלעת 60→0. נמצאו 27 חלקי עגבנייה בקובץ CityRush שכבר הורד, אך התאמתם ורשות השימוש בהם לא הוכחו ולא בוצעה הכנסה.",
-  "nextStep": "למצוא עגבנייה מתאימה עם רשות שימוש מוכחת או לעדכן את מבחר הגידולים, לשפר את המפה הדלילה ולבצע ביקורת נראות ומשחק עצמאית. F059/F064 ו־0/3 פתוחים.",
+  "updatedAt": "2026-09-26T10:00:39.349663+00:00",
+  "now": "Apple העביר עץ וגדר קיימים ליד אזור השתילה בשתי פעולות: 5 Credits ו־124 neurons. השמירה הוכיחה 16 חלקים שהוזזו בלבד והמשחק הציג אותם; המפה עדיין דלילה והעצים הגושיים אינם עומדים ברף הנראות.",
+  "nextStep": "לשלב עצי MeshPart קרטוניים מהחבילה המקורית שכבר נשמרה, להשלים עגבנייה עם רשות שימוש מוכחת, ולבצע ביקורת נראות ומשחק עצמאית. גרסה32 בהערכה; F059/F064 ו־0/3 פתוחים.",
   "items": [
     {
       "id": "productScope",
