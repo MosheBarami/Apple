@@ -264,7 +264,8 @@ function reviewReceiptRows(sources) {
   return sources.flatMap((source) => [
     [source.reviewFile, source.reviewBytes, source.reviewSha256],
     [source.additionalReviewFile, source.additionalReviewBytes, source.additionalReviewSha256],
-  ].filter(([file]) => file).map(([file, expectedBytes, expectedSha]) => ({
+    ...arr(source.reviewFiles).map((r) => [r?.file, r?.bytes, r?.sha256]),
+  ].filter(([file]) => typeof file === 'string' && file.startsWith('review/') && !file.includes('..')).map(([file, expectedBytes, expectedSha]) => ({
     k: `review-${source.priority}-${file}`, category: source.category, name: path.basename(file),
     source: `#${source.priority}`, sourceUrl: source.url, priority: source.priority,
     file, expectedBytes, expectedSha, license: source.rights ?? null,
