@@ -23,7 +23,8 @@ local POLL_URL = APPLE_ORIGIN .. "/api/studio/poll"
 -- particle texture, flipbook and Squash properties are writable, and preview_sound plays a sound here.
 -- 1.4.0 (2026-09-25, F-059): the dock can ask and answer which asset sources this project may use.
 -- 1.4.1 (2026-09-25): the dock asks once for free Roblox asset consent without a source selector.
-local PLUGIN_VERSION = "1.4.1"
+-- 1.4.2 (2026-09-26): duplicate-name read references retain object identity without write authority.
+local PLUGIN_VERSION = "1.4.2"
 local PLUGIN_PROTOCOL = "1"
 
 -- The worker currently serves at most ten operations.  These limits are client-side guardrails

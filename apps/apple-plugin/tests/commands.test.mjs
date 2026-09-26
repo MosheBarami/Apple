@@ -1367,6 +1367,84 @@ spec("history refusal and destroy are visible", function()
     eq(run(c, "dead", { op = "ping" }, false).ok, false)
 end)
 
+
+spec("read references distinguish duplicate siblings without renaming or authorizing writes", function()
+    local folder = Instance.new("Folder"); folder.Name = "ReadRefPack"; folder.Parent = services.Workspace
+    local a = Instance.new("Part"); a.Name = "Rock"; a.Anchored = false; a.Position = v3(1,2,3); a.Parent = folder
+    local b = Instance.new("Part"); b.Name = "Rock"; b.Position = v3(8,9,10); b.Parent = folder
+    local c = newCommands()
+    local tree = run(c,"refs-tree",{op="get_tree",root="game.Workspace.ReadRefPack"},false)
+    eq(tree.ok,true)
+    local ra = tree.data.root.children[1].readRef
+    local rb = tree.data.root.children[2].readRef
+    eq(type(ra),"string","duplicate target must have readRef")
+    eq(type(rb),"string"); eq(ra == rb,false)
+    local first = run(c,"refs-a",{op="get_instance",path=ra},false)
+    eq(first.ok,true); eq(first.data.props.Position.v[1],1)
+    a.Parent = nil; a.Parent = folder -- reorder the same objects, never select by sibling ordinal
+    eq(run(c,"refs-after-reorder",{op="get_instance",path=ra},false).data.props.Position.v[1],1)
+    local write = run(c,"refs-write",{op="set_props",path=ra,props={Anchored={t="bool",v=true}}},true)
+    eq(write.ok,false); eq(a.Anchored,false,"read reference must not authorize a write")
+    eq(a.Name,"Rock"); eq(b.Name,"Rock")
+    local other = newCommands()
+    eq(run(other,"refs-other-engine",{op="get_instance",path=ra},false).ok,false)
+    other:destroy()
+    a:Destroy()
+    eq(run(c,"refs-destroyed",{op="get_instance",path=ra},false).ok,false)
+    local hidden = Instance.new("Folder"); hidden.Name="OutsideReadScope"; hidden.Parent=game
+    b.Parent=hidden
+    eq(run(c,"refs-moved-outside",{op="get_instance",path=rb},false).ok,false)
+    c:destroy(); folder:Destroy(); hidden:Destroy()
+end)
+
+spec("read references expire and reject a fake allowlisted service name", function()
+    local folder=Instance.new("Folder"); folder.Name="RefScopePack"; folder.Parent=services.Workspace
+    local a=Instance.new("Part"); a.Name="Same"; a.Parent=folder
+    local b=Instance.new("Part"); b.Name="Same"; b.Parent=folder
+    local c=newCommands()
+    local tree=run(c,"scope-tree",{op="get_tree",root="game.Workspace.RefScopePack"},false)
+    local ra=tree.data.root.children[1].readRef; local rb=tree.data.root.children[2].readRef
+    c.readRefs[ra].issued -= 601
+    eq(run(c,"expired-ref",{op="get_instance",path=ra},false).ok,false)
+    local fake=Instance.new("Folder"); fake.Name="Workspace"; fake.Parent=game
+    b.Parent=fake
+    eq(run(c,"spoofed-service",{op="get_instance",path=rb},false).ok,false)
+    c:destroy(); eq(next(c.readRefs),nil,"destroy clears references")
+    folder:Destroy(); fake:Destroy()
+end)
+
+spec("read references propagate through duplicate parents and have a fixed memory bound", function()
+    local folder=Instance.new("Folder"); folder.Name="BoundedRefs"; folder.Parent=services.Workspace
+    for i=1,700 do
+        local model=Instance.new("Model"); model.Name="Duplicate"; model.Parent=folder
+        local child=Instance.new("Part"); child.Name="UniqueChild"; child.Parent=model
+    end
+    local c=newCommands()
+    local tree=run(c,"bounded-tree-1",{op="get_tree",root="game.Workspace.BoundedRefs",maxDepth=2,maxNodes=800},false)
+    eq(tree.ok,true)
+    local old=tree.data.root.children[1].readRef
+    local descendant=tree.data.root.children[1].children[1].readRef
+    eq(type(descendant),"string","ambiguous ancestor must give descendants references")
+    eq(run(c,"descendant-ref",{op="get_instance",path=descendant},false).ok,true)
+    for i=2,4 do eq(run(c,"bounded-tree-"..i,{op="get_tree",root="game.Workspace.BoundedRefs",maxDepth=2,maxNodes=800},false).ok,true) end
+    local count=0; for _ in c.readRefs do count += 1 end
+    eq(count,2048)
+    eq(run(c,"evicted-ref",{op="get_instance",path=old},false).ok,false)
+    c:destroy(); folder:Destroy()
+end)
+
+spec("a missing GUID provider fails closed without breaking ordinary tree reads", function()
+    local folder=Instance.new("Folder"); folder.Name="NoRefProvider"; folder.Parent=services.Workspace
+    for i=1,2 do local p=Instance.new("Part"); p.Name="Same"; p.Parent=folder end
+    local original=services.HttpService.GenerateGUID
+    services.HttpService.GenerateGUID=function() error("unavailable") end
+    local c=newCommands()
+    services.HttpService.GenerateGUID=original
+    local r=run(c,"no-guid-tree",{op="get_tree",root="game.Workspace.NoRefProvider"},false)
+    eq(r.ok,true); eq(r.data.root.children[1].readRef,nil)
+    c:destroy(); folder:Destroy()
+end)
+
 report()
 `;
 

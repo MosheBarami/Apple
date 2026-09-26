@@ -738,6 +738,7 @@ function decodeTagged(value: unknown): unknown {
 }
 
 type StudioTreeNode = {
+  readRef?: string;
   path?: string;
   name?: string;
   class?: string;
@@ -827,7 +828,7 @@ function treeOutline(data: unknown, budget = MAX_RESULT_CHARS - 300): Record<str
     total += 1;
     const name = node.name ?? node.path?.split('.').pop() ?? '?';
     const unfetched = Number((node as { moreChildren?: unknown }).moreChildren) || 0;
-    const line = `${'  '.repeat(depth)}${name} (${node.class ?? '?'})${siblings > 1 ? ` [ambiguous: ${siblings} siblings named ${name}; this path cannot select one]` : ''}${spatial(node)}${unfetched > 0 ? ` +${unfetched} more children not fetched` : ''}`;
+    const line = `${'  '.repeat(depth)}${name} (${node.class ?? '?'})${siblings > 1 ? ` [ambiguous: ${siblings} siblings named ${name}; this path cannot select one]` : ''}${typeof node.readRef === 'string' && /^read-ref:[0-9a-f-]{36}:\d+$/.test(node.readRef) ? ` readRef=${node.readRef} (get_instance reads only)` : ''}${spatial(node)}${unfetched > 0 ? ` +${unfetched} more children not fetched` : ''}`;
     if (used + line.length + 1 <= budget) {
       lines.push(line);
       used += line.length + 1;
@@ -2556,7 +2557,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'get_instance',
       description:
-        'Read one instance back: its class, child count, common properties and attributes. Use it to VERIFY a change you just made, and quote what you actually saw rather than what you intended. Cheaper and more reliable than a run_luau that returns the same value.',
+        'Read one instance back: its class, child count, common properties and attributes. Use it to VERIFY a change you just made, and quote what you actually saw rather than what you intended. Cheaper and more reliable than a run_luau that returns the same value. When a tree provides readRef for a duplicate-named instance, pass that exact readRef as path to read it; references expire and cannot authorize writes.',
       parameters: S({ path: { type: 'string', description: 'Full path, e.g. game.Workspace.Lobby.Floor' } }, ['path']),
     },
     studio: true,
