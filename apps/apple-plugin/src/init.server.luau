@@ -322,7 +322,9 @@ bridge = Bridge.new({
 			-- retained per-connection consent authorizes those controls; ordinary writes still receive
 			-- consentStillCurrent() and remain blocked until Studio returns to edit mode.
 			local authorized = if runAction ~= nil then pairingStillCurrent() and allowEdits else consentStillCurrent()
-			local readFence = if type(op) == "table" and (op.op == "query_owner_local" or op.op == "query_owner_exact") then pairingStillCurrent else consentStillCurrent
+			-- Pairing already consents to active viewport snapshots. This operation reads
+			-- native pixels without camera/place writes; StudioCapture also fences edit mode.
+			local readFence = if type(op) == "table" and (op.op == "query_owner_local" or op.op == "query_owner_exact" or op.op == "query_owner_assembly" or op.op == "query_owner_media" or op.op == "capture_studio_viewport") then pairingStillCurrent else consentStillCurrent
 			local result = commands:execute(id, op, authorized, readFence)
 			if runAction ~= nil then
 				if result.ok ~= true then

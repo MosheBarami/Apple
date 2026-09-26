@@ -86,7 +86,7 @@ const reasons = {
 
 function currentAuthoringReport() {
   const supported = [
-    'ping', 'render_view', 'screenshot', 'capture_studio_viewport', 'import_owner_component', 'query_owner_local', 'query_owner_exact', 'import_owner_local',
+    'ping', 'render_view', 'screenshot', 'capture_studio_viewport', 'import_owner_component', 'query_owner_local', 'query_owner_exact', 'query_owner_assembly', 'query_owner_media', 'import_owner_local',
     'get_tree', 'get_instance', 'list_scripts', 'read_script', 'dump_scripts', 'search_scripts',
     'get_logs', 'get_selection', 'viewport_info', 'select', 'camera_focus', 'create_instances',
     'set_props', 'delete_instances', 'move_instances', 'transform_instances', 'clone_instances',
@@ -211,6 +211,7 @@ test('only explicitly unsupported operations withhold their dependent tools', ()
     'get_project_tree', 'get_instance', 'read_script', 'edit_script', 'create_instances',
     'set_properties', 'create_checkpoint', 'get_output_logs', 'insert_asset', 'render_view',
     'compose_thumbnail', 'inspect_visually', 'generate_model', 'run_and_check', 'inspect_model',
+    'query_owner_assembly', 'read_owner_media',
   ]) {
     assert.equal(filtered.allowed.has(tool), true, `${tool} should remain executable through typed Studio operations`);
   }

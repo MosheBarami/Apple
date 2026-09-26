@@ -78,8 +78,11 @@ export async function listOwnerOriginalStrings(ctx:AgentCtx,a:Record<string,unkn
   const limit=a.limit ?? 5;
   if(!Number.isInteger(limit) || Number(limit)<1 || Number(limit)>10) return {error:'Original listing limit must be 1..10.'};
   if(sourceSHA!==undefined && (typeof sourceSHA!=='string' || !SHA.test(sourceSHA))) return {error:'Use an original source SHA, not a normalized node ID.'};
-  const after=a.after ?? (sourceSHA===undefined ? '' : 0);
-  if(sourceSHA===undefined ? typeof after!=='string' || after!=='' && !SHA.test(after) : !cursor(after)) return {error:'Sources use an exclusive SHA cursor; strings use an inclusive numeric sequence cursor.'};
+  const requestedAfter=a.after ?? (sourceSHA===undefined ? '' : 0);
+  // The tool schema accepts strings for source registry SHA cursors. Only source-scoped
+  // canonical decimal sequence strings may become numbers; preserve the selected cursor.
+  const after=sourceSHA!==undefined && typeof requestedAfter==='string' && /^(0|[1-9]\d{0,9})$/.test(requestedAfter) ? Number(requestedAfter) : requestedAfter;
+  if(sourceSHA===undefined ? typeof after!=='string' || after!=='' && !SHA.test(after) : !cursor(after)) return {error:'Sources use an exclusive SHA cursor; strings use an inclusive numeric sequence cursor (canonical decimal strings accepted). Keep the requested sequence; do not reset to zero.'};
   const data=await exactQuery(ctx,{action:sourceSHA===undefined?'sources':'strings',sourceSHA:sourceSHA as string|undefined,limit:Number(limit),after:after as string|number});
   if('error' in data) return data;
   return {...data,normalizedNodeMappingProved:false,sourceExecuted:false,provenance:exactProvenance,note:EXACT_NOTE+' Follow nextAfter unchanged. A record is selected by its binary identity PLUS seq (one instance may have multiple string properties). Unavailable/paused sidecars are not normalized-node coverage.'};

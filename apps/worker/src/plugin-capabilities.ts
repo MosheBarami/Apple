@@ -45,7 +45,7 @@ export interface PluginToolFilter {
  * only when the plugin says, explicitly, `supported` — including in compatibility mode.
  */
 export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName>([
-  'query_owner_local', 'query_owner_exact', 'import_owner_local',
+  'query_owner_local', 'query_owner_exact', 'query_owner_assembly', 'query_owner_media', 'import_owner_local',
   'import_owner_component',
   'capture_studio_viewport',
   'play_check',

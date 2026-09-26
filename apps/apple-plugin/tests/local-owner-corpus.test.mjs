@@ -18,7 +18,7 @@ local id,childId,jobId = "${id}","${child}","${job}"
 local nativeBytes = "${bytes}"
 local codeBytes = ${JSON.stringify(code)}
 local expectedHash = "${hex(bytes)}"
-local hashes = {[nativeBytes]=${luaBytes(digest(bytes))},[id]=${luaBytes(digest(id))},[childId]=${luaBytes(digest(child))},[codeBytes]=${luaBytes(digest(code))}}
+local hashes = {["{}"]= ${luaBytes(digest("{}"))},[nativeBytes]=${luaBytes(digest(bytes))},[id]=${luaBytes(digest(id))},[childId]=${luaBytes(digest(child))},[codeBytes]=${luaBytes(digest(code))}}
 local requests,loads = 0,0
 local revoked,tamper,residue=false,false,false
 local rootClass="Model"
@@ -32,6 +32,11 @@ function http:RequestAsync(request)
  return {Success=true,Body=request.Url}
 end
 function http:JSONDecode(url)
+ if string.find(url,"/v1/media?",1,true) or string.find(url,"/v1/assembly-code?",1,true) then
+  if originalRevoke then config=nil end
+  return {encoding="base64",data="code",offset=0,totalBytes=#codeBytes,sha256="${hex(code)}",chunkSha256=tamper and string.rep("f",64) or "${hex(code)}",execution="never"}
+ end
+ if string.find(url,"/v1/assembly?",1,true) then return {sources={{name="owner",sourceSHA=string.sub(id,1,64)}},keyFile="/PRIVATE",normalizedNodeMappingProved=false} end
  if string.find(url,"/v1/exact-sources?",1,true) then return {items={{sourceSHA=string.sub(id,1,64),status="complete",stringValues=9,endpoint="http://127.0.0.1/PRIVATE",reason="/PRIVATE",normalizedNodeMappingProved=false}},nextAfter=string.sub(id,1,64)} end
  if string.find(url,"/v1/exact-strings?",1,true) then return {status="complete",items={{seq=17,identity=string.sub(id,1,64)..":binary:42",sourceSHA=string.sub(id,1,64),rawReferent=42,property="Source",rawSHA="${hex(code)}",bytes=#codeBytes,casPath="/PRIVATE/objects/code"}},nextAfter=18} end
  if string.find(url,"/v1/exact-string?",1,true) then
@@ -49,7 +54,7 @@ function http:JSONDecode(url)
  if string.find(url,"/v1/search?",1,true) then return {items={{id=id,name="Waterfall",source={path="/private/DO_NOT_EXPOSE"}}},nextAfter=id} end
  error("unexpected gateway request")
 end
-local encoding={Base64Decode=function(_,value)return buffer.fromstring(buffer.tostring(value)=="code" and codeBytes or nativeBytes) end,ComputeBufferHash=function(_,value) return buffer.fromstring(assert(hashes[buffer.tostring(value)])) end}
+local encoding={Base64Encode=function(_,value) assert(buffer.tostring(value)=="{}");return buffer.fromstring("context") end,Base64Decode=function(_,value)return buffer.fromstring(buffer.tostring(value)=="context" and "{}" or (buffer.tostring(value)=="code" and codeBytes or nativeBytes)) end,ComputeBufferHash=function(_,value) return buffer.fromstring(assert(hashes[buffer.tostring(value)])) end}
 local lastRoot
 local serializer={DeserializeInstancesAsync=function(_,value)
  loads += 1
@@ -120,6 +125,25 @@ originalOp.identity=id
 assert(c:execute("exactWrongNamespace",originalOp,false,current).ok==false and requests==beforeExact)
 local described=c:execute("description",{op="query_owner_local",action="describe",id=id},false,current)
 assert(described.ok==true and described.data.source.exactStrings.status=="complete" and described.data.source.path==nil and described.data.source.exactStrings.endpoint==nil,"exact availability metadata lost or private data leaked")
+local assemblyOp={op="query_owner_assembly",action="code",sourceSHA=sourceSHA,codeSHA="${hex(code)}",offset=0,limit=3000}
+local assembled=c:execute("assemblyCode",assemblyOp,false,current)
+assert(assembled.ok==true and assembled.data.text==codeBytes and assembled.data.execution=="never","assembly original bytes not readable")
+local contextRecord=c:execute("assemblyRecord",{op="query_owner_assembly",action="record",sourceSHA=sourceSHA,offset=0,limit=3000},false,current)
+assert(contextRecord.ok==true and contextRecord.data.text=="{}" and contextRecord.data.totalBytes==2 and contextRecord.data.nextOffset==nil and contextRecord.data.execution=="never","full assembly context record not readable or cursor invalid")
+local mediaOp={op="query_owner_media",id=id,property="TextureContent",offset=0,limit=3000}
+assert(c:execute("ownerMedia",mediaOp,false,current).ok==true,"actual media bytes unavailable")
+tamper=true
+assert(c:execute("mediaTamper",mediaOp,false,current).ok==false,"tampered owner media admitted")
+assert(c:execute("assemblyTamper",assemblyOp,false,current).ok==false,"tampered assembly source admitted")
+tamper=false;originalRevoke=true
+assert(c:execute("assemblyRetired",assemblyOp,false,current).ok==false,"retired assembly session admitted")
+originalRevoke=false;config={port=63747,key=string.rep("k",43)}
+local beforeEvidence=requests
+assert(c:execute("mediaNoFence",mediaOp,false).ok==false and requests==beforeEvidence,"missing owner fence reached media HTTP")
+mediaOp.id=sourceSHA..":binary:42"
+assert(c:execute("mediaBinary",mediaOp,false,current).ok==false and requests==beforeEvidence,"binary referent consumed as normalized media")
+local assemblyList=c:execute("assemblyList",{op="query_owner_assembly",action="recipes",limit=1},false,current)
+assert(assemblyList.ok==true and assemblyList.data.keyFile==nil,"local key/path metadata leaked")
 print("executed local owner bridge boundary passed")
 `;
 function run(source=family) {
@@ -145,4 +169,8 @@ test('original binary chunk integrity proof fails when its hash guard is disable
  const anchor='if hash ~= raw.chunkSHA or (offset==0 and raw.nextOffset==nil and hash ~= raw.rawSHA) then';
  assert.equal(family.split(anchor).length-1,1);
  const result=run(family.replace(anchor,'if false then'));assert.notEqual(result.status,0);assert.match(result.output,/tampered original bytes admitted/);
+});
+
+test('new media/assembly byte checks are behaviorally falsified when disabled',()=>{
+ const anchor='if hash~=raw.chunkSha256 or offset==0 and raw.nextOffset==nil and hash~=raw.sha256 then';assert.ok(family.includes(anchor));const result=run(family.replace(anchor,'if false then'));assert.notEqual(result.status,0);assert.match(result.output,/tampered owner media admitted/);
 });

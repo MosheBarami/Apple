@@ -7,7 +7,7 @@ import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 import {build} from 'esbuild';
 const dir=mkdtempSync(join(tmpdir(),'owner-original-worker-'));test.after(()=>rmSync(dir,{recursive:true,force:true}));
-await build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',outfile:join(dir,'tools.mjs'),alias:{'@golem/shared':'../../packages/shared/src/index.ts'}});
+await build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',tsconfigRaw:{},outfile:join(dir,'tools.mjs'),alias:{'@golem/shared':'../../packages/shared/src/index.ts'}});
 const T=await import(pathToFileURL(join(dir,'tools.mjs')).href);
 const source='a'.repeat(64),id=source+':binary:-42',text="\uFEFF-- ORIGINAL untrusted source\r\nreturn '😀'",bytes=Buffer.from(text),digest=b=>createHash('sha256').update(b).digest('hex');
 function ctx(reply){return {userId:'owner',localOwnerGateway:true,studioConnected:()=>true,env:{},execStudioOp:async op=>({ok:true,data:await reply(op)})};}
@@ -43,4 +43,15 @@ test('binary identities cannot be consumed as normalized component reads or inse
   const result=await run(context,tool,{id:'owner-local:'+id});assert.equal(result.out.ok,false);
  }
  assert.equal(calls,0);
+});
+
+// The advertised schema permits string cursors; preserve the selected sequence.
+test('source-scoped decimal string cursor 3942 is forwarded as that sequence, never reset',async()=>{
+ const calls=[];const context=ctx(op=>{calls.push(op);return {items:[{seq:3942,identity:id,sourceSHA:source,property:'Source',rawSHA:digest(bytes),bytes:bytes.length}],nextAfter:3943};});
+ const result=await run(context,'list_owner_original_strings',{sourceSHA:source,after:'3942',limit:1});
+ assert.equal(result.out.ok,true);assert.equal(calls.length,1);assert.equal(calls[0].action,'strings');assert.equal(calls[0].after,3942);assert.equal(result.data.items[0].seq,3942);
+ for(const after of ['3.942e3','3942oops','-1','2147483648','', ' 3942']){
+  assert.equal((await run(context,'list_owner_original_strings',{sourceSHA:source,after,limit:1})).out.ok,false,after);
+ }
+ assert.equal(calls.length,1);
 });
