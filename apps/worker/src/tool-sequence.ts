@@ -6,7 +6,7 @@ export function explicitToolSequence(request: string, known: ReadonlySet<string>
   const matches = [...prose.matchAll(/(?:^|[.!?\n])\s*Exactly\s+([a-z][a-z_]*(?:\s+then\s+[a-z][a-z_]*)*)\s+then\s+finish\s*(?=[.!?\n]|$)/gi)];
   // Natural single-call wording must also close the allowance. The optional inline
   // payload is validated as JSON so examples or intervening instructions cannot bind it.
-  const single = [...prose.matchAll(/(?:^|[.!?\n])\s*Make\s+exactly\s+(?:one|1)\s+([a-z][a-z_]*)\s+call(?:\s+with\s+(\{[^\n]*\}))?\s*\.\s*Then\s+finish\s*(?=[.!?\n]|$)/gi)];
+  const single = [...prose.matchAll(/(?:^|[.!?\n])\s*(?:Make|Execute)\s+exactly\s+(?:one|1)\s+([a-z][a-z_]*)\s+call(?:\s+with\s+(\{[^\n]*\}))?\s*(?:\.\s*Then|,\s*then)\s+finish(?:\s+immediately)?\s*(?=[.!?\n]|$)/gi)];
   if (matches.length + single.length !== 1) return null;
   if (single.length) {
     const match = single[0]!;

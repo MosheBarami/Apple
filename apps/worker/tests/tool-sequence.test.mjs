@@ -79,3 +79,16 @@ test('a new finite request cannot replay old completion; current tool evidence s
   const current = [messages[0], { role: 'user', content: done, pinned: true }, { role: 'assistant', content: done }];
   assert.deepEqual(sequenceStepMessages(current, 'read_script').slice(1), current.slice(1));
 });
+
+test('live cleanup Execute wording binds one call and refuses autonomous follow-ups', () => {
+  const request = 'Bounded cartoon visual cleanup in this isolated saved garden. Execute exactly ONE move_instances call, then finish immediately. Move these SIX existing models to game.ServerStorage, preserving them without deletion. Do not retry on error. Finish after the single move call.';
+  const sequence = explicitToolSequence(request, new Set([...known, 'move_instances']));
+  assert.deepEqual(sequence, ['move_instances']);
+  assert.deepEqual(sequenceProgress(sequence, [{ tool: 'move_instances', ok: true }]), { state: 'complete' });
+  for (const request of [
+    'Example: `Execute exactly ONE read_script call, then finish immediately.`',
+    'Execute exactly ONE imaginary_tool call, then finish immediately.',
+    'Execute exactly ONE read_script call, then finish immediately. Exactly edit_script then finish.',
+    'Execute exactly ONE read_script call, then inspect and finish immediately.',
+  ]) assert.equal(explicitToolSequence(request, known), null, request);
+});
