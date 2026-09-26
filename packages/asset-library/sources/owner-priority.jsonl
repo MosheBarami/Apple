@@ -11,7 +11,7 @@
 {"priority": 11, "category": "ui", "url": "https://devforum.roblox.com/t/cartoony-ui-pack-free/579376", "state": "rights-review-pending"}
 {"priority": 12, "category": "ui", "url": "https://devforum.roblox.com/t/free-cartoon-themed-guis/1754465", "state": "rights-review-pending"}
 {"priority": 13, "category": "ui", "url": "https://devforum.roblox.com/t/mrnoobiedks-cartoony-ui-pack-2021-psd/1283283", "state": "rights-review-pending"}
-{"priority": 14, "category": "ui", "url": "https://devforum.roblox.com/t/small-gui-pack-open-source/1727639", "state": "rights-review-pending"}
+{"priority": 14, "category": "ui", "url": "https://devforum.roblox.com/t/small-gui-pack-open-source/1727639", "state": "visual-rejected", "visualNotes": "Author calls it a learning pack; forum screenshot shows flat neon-green inventory with placeholder images and a reported resize break. Not suitable as a polished cartoon game UI.", "evidenceUrl": "https://devforum.roblox.com/t/small-gui-pack-open-source/1727639/9", "rights": "Open Source title and game-use invitation, but no explicit Apple redistribution licence; author says No Scripts yet replies identify visual-effect scripts", "downloadStatus": "no-local-file"}
 {"priority": 15, "category": "ui", "url": "https://devforum.roblox.com/t/free-user-interface-pack/695357", "state": "rights-review-pending"}
 {"priority": 16, "category": "ui", "url": "https://devforum.roblox.com/t/easy-gui-buttons-pack/3272514", "state": "rights-review-pending"}
 {"priority": 17, "category": "ui", "url": "https://devforum.roblox.com/t/free-storeui-an-animated-modern-gamepass-store-ui/632073", "state": "rights-review-pending"}
