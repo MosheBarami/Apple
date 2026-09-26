@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T03:14:37Z",
-  "now": "חבילה #86 מהרשימה התקבלה והוכנסה ידנית דרך Toolbox הרשמי; נשמר RBXM מקומי של 29,674 בתים עם 64 MeshParts ואפס סקריפטים. הייבוא הצף בוטל והגינה נשמרה. 288 קבצי סקירה, אפס נכסים מהרשימה שמוכנים לשילוב דרך Apple. v30 סיים 400/400 ב־03:07 UTC והתחיל הערכה; תהליך CPU יחיד. כל שש בדיקות CI על 9a2de78 עברו. משחק מלא ואיכות חזותית עדיין לא הוכחו.",
-  "nextStep": "להמשיך קבלה רשמית והורדת חבילות Roblox מהרשימה, כולל מודלים דרך Toolbox; להוכיח שילוב ומיקום דרך Apple, ולאמת ציון זוגי38 שורות/העלאה פרטית/תחילת גרסה הבאה של v30.",
+  "updatedAt": "2026-09-26T03:24:44Z",
+  "now": "החבילה של Inno ירדה עם 156 MeshParts; חבילת לבנים נוספת ירדה אך הסריקה שלה נכשלה. בדשבורד 293 קבצי סקירה מאומתים, 0 זמינים לבונה. v30 בהערכה; האיכות החזותית עדיין לא הוכחה.",
+  "nextStep": "להמשיך בהורדות מהרשימה, לפתור תאימות סריקת הלבנים ולהוכיח מיקום נכסים דרך Apple בסטודיו.",
   "items": [
     {
       "id": "productScope",
