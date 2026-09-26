@@ -1068,7 +1068,7 @@ async function renderViews(
   if (!res.ok) return { error: res.error ?? 'render failed' };
   const data = res.data as RenderViewResult & { error?: string };
   if (data?.error) return { error: data.error };
-  if (!data?.views?.length) return { error: 'the renderer returned no views' };
+  if (!data?.views?.length && !data?.studioViewport?.rgbBase64) return { error: 'the renderer returned no views or native viewport pixels' };
   // Push the pixels to the browser as they arrive. This is the only path by
   // which a frame reaches the user; the tool result below still strips them.
   if (ctx.emitFrame) {
@@ -3015,11 +3015,24 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOps: ['get_logs'],
     run: (ctx) => op(ctx, { op: 'get_logs', maxEntries: 120 }),
   },
+  capture_studio_viewport: {
+    def: {name:'capture_studio_viewport',description:'Capture native PNG pixels of the active Studio viewport, including engine effects, materials and visible UI. Costs no vision/model call. Honors Roblox screenshot permission; does not frame a target, change camera, or start Play. Current camera must already show the subject. Capturing pixels does not establish target visibility or visual quality.',parameters:S({})},
+    studio:true,
+    studioOps:['capture_studio_viewport'],
+    run:async ctx => {
+      const result=await ctx.execStudioOp({op:'capture_studio_viewport'},45_000);
+      if (!result.ok) return {error:result.error ?? 'Native viewport capture refused'};
+      const frame=result.data as StudioFrame;
+      if(frame?.source !== 'studio_viewport' || frame.encoding !== 'png' || !frame.rgbBase64) return {error:'Plugin returned no native viewport PNG; no software substitute accepted.'};
+      ctx.emitFrame?.(frame);
+      return {captured:true,source:frame.source,encoding:frame.encoding,width:frame.width,height:frame.height,subject:'game.Workspace',targetFramed:false,judged:false,note:'Active Studio camera only. Target visibility and quality have not been judged.'};
+    },
+  },
   render_view: {
     def: {
       name: 'render_view',
       description:
-        'Render the scene to real images from one or more camera angles and report what is actually visible. Use this to SEE your work — object properties cannot tell you whether a scene looks good.',
+        'Produce software geometry views and, when permitted, native pixels of the active Studio viewport. Software views approximate parts and omit effects such as Beams. Native viewport pixels use the current camera and do not prove requested-target visibility. Use focus_camera then capture_studio_viewport to inspect engine effects without a paid critique.',
       parameters: S({
         target: { type: 'string', description: 'instance path to frame, e.g. game.Workspace.Plaza. Omit for the whole workspace.' },
         view: { type: 'string', enum: [...RENDER_VIEWS, 'all'], description: 'camera preset; "all" renders every angle' },
@@ -3033,7 +3046,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       // The images themselves never enter the transcript — they are ~60KB each and tool results
       // are re-sent on every later step. inspect_visually is what actually shows them to a model.
       ctx.lastRender = res;
-      return { subject: res.subject, boundsSizeStuds: res.boundsSize, views: res.views.map((v) => ({ view: v.name, ...v.meta })) };
+      return { subject: res.subject, boundsSizeStuds: res.boundsSize, views: res.views.map((v) => ({ view: v.name, ...v.meta })), nativeViewportCaptured:!!res.studioViewport, targetFramed:res.views.length > 0, softwareRenderError:res.softwareRenderError, note:res.views.length ? 'Software geometry views are approximations; native capture is the active Studio camera.' : 'Native active viewport captured; requested target visibility is not established. No software geometry views or quality score.' };
     },
   },
   /**
@@ -3881,6 +3894,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       if ('error' in res) return res;
       ctx.lastRender = res;
       const intent = String(a.intent ?? 'a well-built Roblox scene');
+      if (!res.views.length) return {judged:false,nativeViewportCaptured:!!res.studioViewport,targetFramed:false,
+        reason:'Native active viewport pixels were captured, but no target-framed software geometry views exist. Target visibility and quality are unverified; no vision model was called. Use capture_studio_viewport with the subject already in view.',softwareRenderError:res.softwareRenderError};
       // A CHECK THAT CANNOT SEE THE SCENE DOES NOT SCORE IT (2026-09-23). The connected plugin's renderer
       // draws no Terrain, so an outdoor scene's island, rock and water are absent from the images. Scored
       // anyway, it said "a flat slab with no underside" (1/10) about an island that had one, and the model

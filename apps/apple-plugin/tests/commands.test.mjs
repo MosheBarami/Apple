@@ -1535,7 +1535,7 @@ test('every dispatcher branch binds the handler remedy, including Studio-state c
   // condition the three unreachable remedies grew in: a slot nobody could observe, discovered only
   // when a refusal arrived with nothing in it. So the shape is pinned here until a read-side remedy
   // exists to pin it behaviourally, and the failure message says which branch lost the value.
-  const branches = SOURCE.match(/local result, resultKind, resultMessage(, resultRemedy)? = handler\(self, op\)/g) ?? [];
+  const branches = SOURCE.match(/local result, resultKind, resultMessage(, resultRemedy)? = handler\(self, op\b[^)]*\)/g) ?? [];
   assert.equal(branches.length, 3, 'execute should call the handler in exactly three branches');
   for (const branch of branches) {
     assert.match(branch, /resultRemedy/, 'a dispatcher branch stopped binding the handler remedy: ' + branch);

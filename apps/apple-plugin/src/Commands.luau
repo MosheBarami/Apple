@@ -4465,10 +4465,12 @@ local function renderCapture(self: any, op: any, view: string, width: number, he
 	end)
 	if not ok then return nil, "internal", tostring(result) end
 	if type(result) ~= "table" then return nil, "internal", "the renderer returned no result" end
-	-- The renderer reports "nothing renderable found under ..." as data rather than raising. That
-	-- is a real answer about the place, not a fault, and it is returned as a NAMED failure so the
-	-- agent is told the frame is empty instead of being handed a picture of the sky.
-	if type(result.error) == "string" then return nil, "not_found", result.error end
+	-- No software-renderable parts does not mean the native scene is empty: Beams, UI and other
+	-- engine surfaces may still be visible. Keep this limitation separate and attempt native pixels.
+	local softwareError = if type(result.error) == "string" then result.error else nil
+	if softwareError then
+		result = { subject = subject, views = {}, softwareRenderError = softwareError, targetFramed = false }
+	end
 	-- Native viewport capture is additive. Software views remain the multi-angle, target-framed
 	-- critique surface; StudioCaptureService contributes what the person is actually seeing in the
 	-- active 3D viewport. Failure here must not erase a valid software observation.
@@ -4493,6 +4495,9 @@ local function renderCapture(self: any, op: any, view: string, width: number, he
 	elseif type(self.captureError) == "string" then
 		result.studioViewportError = string.sub(self.captureError, 1, 240)
 	end
+	if softwareError and not result.studioViewport then
+		return nil, if self.capture then "refused" else "not_found", softwareError .. "; native viewport unavailable: " .. tostring(result.studioViewportError or "capture adapter unavailable")
+	end
 	return result, nil
 end
 
@@ -4503,9 +4508,21 @@ local function handleRenderView(self: any, op: any): (any?, string?, string?)
 end
 
 local function handleScreenshot(self: any, op: any): (any?, string?, string?)
-	-- Kept for compatibility with senders older than the multi-view protocol: one hero frame at the
-	-- default size. It is the same code path, not a second one.
 	return renderCapture(self, op, "hero", nil, nil)
+end
+
+local function handleNativeViewport(self: any, _op: any): (any?, string?, string?)
+	-- Native current-camera pixels, independent of software geometry. No camera or place writes.
+	if not self.capture then return nil, "refused", self.captureError or "native viewport capture is unavailable" end
+	local ok, frame, err = pcall(function() return self.capture:capture(320,240) end)
+	if not ok then return nil, "refused", tostring(frame) end
+	if type(frame) ~= "table" or frame.encoding ~= "png" or frame.source ~= "studio_viewport" or type(frame.rgbBase64) ~= "string" or #frame.rgbBase64 == 0 then
+		return nil, "refused", err or "native viewport returned no PNG"
+	end
+	frame.view = "viewport"
+	frame.subject = "game.Workspace"
+	frame.targetFramed = false
+	return frame, nil
 end
 
 function runModeState(runService: any): (any?, string?)
@@ -4767,6 +4784,7 @@ HANDLERS = {
 	ping = function(_, _) return opPing() end,
 	render_view = handleRenderView,
 	screenshot = handleScreenshot,
+	capture_studio_viewport = handleNativeViewport,
 	run_mode = handleRunMode,
 	inspect_model = handleInspectModel,
 	project_census = handleProjectCensus,
@@ -5210,6 +5228,10 @@ function Commands.capabilities(engine: any): any
 		local reason = capabilityReason(engine and engine.renderError, "the bounded software renderer is not bundled in this build")
 		byName.render_view = { op = "render_view", status = "unsupported", reason = reason }
 		byName.screenshot = { op = "screenshot", status = "unsupported", reason = reason }
+	end
+
+	if engine == nil or engine.capture == nil then
+		byName.capture_studio_viewport = { op = "capture_studio_viewport", status = "unsupported", reason = capabilityReason(engine and engine.captureError, "native Studio viewport capture is unavailable") }
 	end
 
 	-- `execute` checks UNSUPPORTED before every other dispatch path, so an explicit refusal wins if

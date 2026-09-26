@@ -46,6 +46,7 @@ export interface PluginToolFilter {
  */
 export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName>([
   'import_owner_component',
+  'capture_studio_viewport',
   'play_check',
   // D-VISION-1 Phase A: the op families in apps/apple-plugin/src/ops. No plugin before them had any.
   'query_instances', 'set_props_bulk', 'spatial_query', 'scatter', 'collision_groups', 'collision_groups_list',

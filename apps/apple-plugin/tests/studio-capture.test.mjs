@@ -14,7 +14,7 @@ function run(spec) {
 Vector2 = { new = function(x,y) return { X=x, Y=y } end }
 Enum = {
   StudioCaptureScreenshotFormat = { PNG = "PNG" },
-  UICaptureMode = { None = "None" },
+  UICaptureMode = { All = "All" },
   ResamplerMode = { Default = "Default" },
 }
 task = { wait = function(_) end }
@@ -56,7 +56,7 @@ spec("native png", function()
   local frame, err = adapter:capture(160,100)
   eq(err,nil); eq(frame.source,"studio_viewport"); eq(frame.encoding,"png"); eq(frame.rgbBase64,"PNGBASE64")
   eq(frame.width,160); eq(frame.height,90); eq(captureService.requests,1); eq(captureService.captures,1)
-  eq(captureService.options.Format,"PNG"); eq(captureService.options.UICaptureMode,"None")
+  eq(captureService.options.Format,"PNG"); eq(captureService.options.UICaptureMode,"All")
   eq(captureService.options.Position.X,0); eq(captureService.options.Position.Y,0)
   eq(captureService.options.CaptureSize.X,1280); eq(captureService.options.CaptureSize.Y,720)
   eq(captureService.options.OutputSize.X,160); eq(captureService.options.OutputSize.Y,90)
@@ -94,7 +94,7 @@ test('StudioCapture source contains no upload, HTTP, publication or DataModel wr
     assert.equal(SOURCE.includes(forbidden), false, `capture adapter contains forbidden surface: ${forbidden}`);
   }
   assert.match(SOURCE, /StudioCaptureScreenshotFormat\.PNG/);
-  assert.match(SOURCE, /UICaptureMode\.None/);
+  assert.match(SOURCE, /UICaptureMode\.All/);
   assert.match(SOURCE, /CaptureSize/);
   assert.match(SOURCE, /ResamplerMode\.Default/);
   assert.match(SOURCE, /MAX_PNG_BYTES/);

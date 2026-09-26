@@ -128,6 +128,7 @@ export type StudioOp =
   // Studio gives plugins no viewport readback, so the plugin rasterises the scene itself and
   // returns real pixels. `view` picks a camera preset; `target` frames one instance's subtree.
   | { op: 'render_view'; target?: string; view?: RenderViewName | 'all'; width?: number; height?: number }
+  | { op: 'capture_studio_viewport' }
   | { op: 'screenshot'; target?: string } // hero view at default size; kept for compatibility
   | { op: 'snapshot'; root: string; includeScripts?: boolean; checkpointId?: string } // serialize subtree; new checkpoints bind their identity
   | { op: 'restore'; root: string; snapshot: unknown; checkpointId?: string } // optional for legacy senders; SessionDO always binds it
@@ -363,6 +364,9 @@ export interface RenderViewResult {
   subject: string;
   boundsSize: [number, number, number];
   views: RenderedView[];
+  /** Native active viewport may exist without any software-renderable geometry. */
+  softwareRenderError?: string;
+  targetFramed?: boolean;
   lighting?: SceneLighting;
   layout?: SceneLayout;
   /** Active Studio 3D viewport capture when the user granted screenshot permission. */

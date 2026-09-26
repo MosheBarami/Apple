@@ -111,7 +111,7 @@ function StudioCapture.new(options: any?): any
 			if ok then enumRef = value end
 		end
 		local format = enumRef and enumRef.StudioCaptureScreenshotFormat and enumRef.StudioCaptureScreenshotFormat.PNG or nil
-		local uiMode = enumRef and enumRef.UICaptureMode and enumRef.UICaptureMode.None or nil
+		local uiMode = enumRef and enumRef.UICaptureMode and enumRef.UICaptureMode.All or nil
 		if format == nil then return nil, "PNG viewport capture is unavailable in this Studio build" end
 		local sourceW, sourceH = activeViewportSize(gameRef)
 		if sourceW == nil or sourceH == nil then
