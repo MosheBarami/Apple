@@ -19,3 +19,9 @@ The originals and separate stripped copies remain ignored local review files. On
 [Source 54 Forest/Beach](https://kwstudio.org/b/free-forest-beach-map) preview shows realistic forest vegetation, grass and subdued beach terrain. [Source 55 Island Battle](https://kwstudio.org/b/island-battle-map) shows muted stone fortress scenery, realistic vegetation, fog and sea. Both are outside the owner’s colorful cartoon specialization; neither was downloaded.
 
 The [KW license](https://kwstudio.org/digital-asset-license), effective June 29, 2026, was read without accepting it. It permits integrated commercial Roblox games and client project delivery, including Studio projects; prohibits standalone asset libraries, rehosting, mirroring and raw redistribution. Those client-use permissions must not be inaccurately reported as a blanket ban on all client projects.
+
+## Source84 Retro Stud Pack
+
+[Official source](https://ta1p1.itch.io/retro-stud-pack) free RBXM was downloaded anonymously: **56360 bytes**, SHA256 `a1b4d5e39dd0b6d047720ed55d003f4c4e04e365d5679b049300510b39bcbe9a`. Exact local path: `review/owner-84-retro-stud/Assetpack_full.rbxm`. Scanner deserialized 781 instances, 524 BaseParts, 0 MeshParts; 0 scripts removed and 0 remain. No contained code executed.
+
+Preview inspected: classic studded walls, trees, crates, barrels and ramps in several colors. Author advertises40+ assets; unique asset count and live Studio appearance are not verified. Expanded source information contains no explicit standalone redistribution or training license. Local review only. Dashboard now287 verified owner review files; this does not represent287 unique usable assets.
