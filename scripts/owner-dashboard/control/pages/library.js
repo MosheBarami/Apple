@@ -63,7 +63,9 @@ function summary(d) {
 // Owner-only, read-only intake ledger. Every label says what was measured; a catalogue entry is
 // never presented as a downloaded byte or as a Roblox asset.
 const INTAKE_STATE = { 'rights-review-pending': 'ממתין לבדיקת זכויות', 'rights-reviewed-no-backend': 'מותר במשחק · אסור להפיץ כחבילה', 'local-review-only': 'עותק לבדיקה בלבד', 'visual-rejected': 'נדחה בבדיקה חזותית',
-  'out-of-scope-not-roblox': 'מחוץ לתחום — לא נוצר ל־Roblox', 'roblox-inventory-only': 'במלאי Roblox בלבד — אין קובץ מקומי',
+  'out-of-scope-not-roblox': 'מחוץ לתחום — לא נוצר ל־Roblox', 'out-of-scope-not-cartoon': 'מחוץ לתחום — לא משחק קרטוני צבעוני',
+  'roblox-inventory-only': 'במלאי Roblox בלבד — אין קובץ מקומי', 'external-experience-only': 'משחק לצפייה בלבד — אין קובץ להורדה',
+  'source-unavailable': 'המקור אינו זמין כרגע', 'license-restricts-backend': 'הרישיון אוסר הפצה כחבילת נכסים',
   verified: 'קובץ וגיבוב אומתו', present: 'קובץ קיים, ללא גיבוב רשום',
   missing: 'אין קובץ מקומי', mismatch: 'אי התאמה בקובץ', stored: 'נמצא בשרת', 'not-stored': 'טרם הועלה לשרת',
   'not-checked': 'השרת לא נבדק', 'not-supported': 'אין מסלול העלאה מאומת' };
