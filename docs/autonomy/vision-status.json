@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T10:25:22.168235+00:00",
-  "now": "תיקון ההגבלה אומת ב־Studio: Apple העביר ספסל קיים בפעולה אחת ועצר, 5 Credits ו־138 neurons. 14 חלקי הספסל נשמרו בשלמותם; הספסל בגינה ו־13 חלקי העצים לא השתנו. איכות המפה עדיין לא עברה ביקורת.",
-  "nextStep": "לשפר קומפוזיציה ורקע בגינה בעזרת נכסים מורשים, ואז למדוד נראות ומשחקיות בבדיקה מוגבלת. v33 באימון; F059/F064 ו־0/3 ביקורות מלאות עדיין פתוחים.",
+  "updatedAt": "2026-09-26T10:38:55.155811+00:00",
+  "now": "נוספו שישה עצים קרטוניים מקוריים ב־Studio ו־39 חלקים; סמל ה־Spawn מוסתר. קניית Tulip נבדקה: 60→50. לולאת כפילויות שעלתה 28 Credits תוקנה; בדיקת ההמשך סיימה ארבע פעולות בדיוק ב־8 Credits. ביקורת עצמאית עדיין דוחה את איכות המפה.",
+  "nextStep": "ליצור מרכז גינה מגובש: שביל רציף וערוגות תחומות ומלאות בפרחים מקוריים מורשים, ולצמצם עצים דומיננטיים. לשמור על מפקח CPU יחיד באימון v33; F-059/F-064 ו־0/3 ביקורות מלאות פתוחים.",
   "items": [
     {
       "id": "productScope",

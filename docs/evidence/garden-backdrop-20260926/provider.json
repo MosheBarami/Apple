@@ -1,0 +1,139 @@
+[
+  {
+    "runId": "e2e4e193-080f-4b2e-b04a-eeea0d4b5b40",
+    "modelCalls": 17,
+    "neurons": 836,
+    "gatewayReportedCostUsd": 0.009124656454086303,
+    "costAssociation": "nearest unique matching model/timestamp log within1second; reported log cost, not invoice",
+    "matchedLogs": [
+      {
+        "gatewayLogId": "01M3EM3F3FK6GH88QJZNEATH1V",
+        "deltaMs": 82,
+        "reportedCostUsd": 0.0023459499053955076
+      },
+      {
+        "gatewayLogId": "01M3EM4BX02FSZ6QAQBGXFKCHS",
+        "deltaMs": 62,
+        "reportedCostUsd": 0.001129649948120117
+      },
+      {
+        "gatewayLogId": "01M3EM4E3CE0HDJM9G49NANS35",
+        "deltaMs": 60,
+        "reportedCostUsd": 0.0011290999145507812
+      },
+      {
+        "gatewayLogId": "01M3EM4FHM5KP72XN504FY1FEQ",
+        "deltaMs": 55,
+        "reportedCostUsd": 0.0007470598907470703
+      },
+      {
+        "gatewayLogId": "01M3EM4M913ACYDQNNMKS7HPK6",
+        "deltaMs": 33,
+        "reportedCostUsd": 0.00032931978034973146
+      },
+      {
+        "gatewayLogId": "01M3EM4WXT3R4WKP6KGP0JJBC8",
+        "deltaMs": 48,
+        "reportedCostUsd": 0.0003094397678375244
+      },
+      {
+        "gatewayLogId": "01M3EM5157X42EFFEHYTFNEJC6",
+        "deltaMs": 77,
+        "reportedCostUsd": 0.000270379768371582
+      },
+      {
+        "gatewayLogId": "01M3EM53BCRTQ03H4XCXWTM13B",
+        "deltaMs": 78,
+        "reportedCostUsd": 0.0002764997520446777
+      },
+      {
+        "gatewayLogId": "01M3EM54M44NQKZR3B66XSWGTC",
+        "deltaMs": 67,
+        "reportedCostUsd": 0.00027493976402282713
+      },
+      {
+        "gatewayLogId": "01M3EM55VTY7W3RKVEH54TCS7V",
+        "deltaMs": 98,
+        "reportedCostUsd": 0.00028105976867675783
+      },
+      {
+        "gatewayLogId": "01M3EM5754M4CA2R4NRREX9M4D",
+        "deltaMs": 67,
+        "reportedCostUsd": 0.00027949975967407224
+      },
+      {
+        "gatewayLogId": "01M3EM58K9X900V1AFW1P16WVH",
+        "deltaMs": 91,
+        "reportedCostUsd": 0.000285619743347168
+      },
+      {
+        "gatewayLogId": "01M3EM5AEDVG4ZENE86MCNCKXP",
+        "deltaMs": 65,
+        "reportedCostUsd": 0.00028405973434448244
+      },
+      {
+        "gatewayLogId": "01M3EM5CC694X94YVE7BAWN2TY",
+        "deltaMs": 56,
+        "reportedCostUsd": 0.0002901797389984131
+      },
+      {
+        "gatewayLogId": "01M3EM5DPP4E2PNAEQQ75EVQV5",
+        "deltaMs": 72,
+        "reportedCostUsd": 0.00029629974365234373
+      },
+      {
+        "gatewayLogId": "01M3EM5F6N4C0CJDEX0NE3N8VN",
+        "deltaMs": 68,
+        "reportedCostUsd": 0.0002947397346496582
+      },
+      {
+        "gatewayLogId": "01M3EM5GFH06WHM7DZ158XS40V",
+        "deltaMs": 45,
+        "reportedCostUsd": 0.00030085973930358883
+      }
+    ]
+  },
+  {
+    "runId": "dac29b52-cc96-45fb-88ae-7faea39425f9",
+    "modelCalls": 4,
+    "neurons": 228,
+    "gatewayReportedCostUsd": 0.002491189420700073,
+    "costAssociation": "nearest unique matching model/timestamp log within1second; reported log cost, not invoice",
+    "matchedLogs": [
+      {
+        "gatewayLogId": "01M3EMG35TTQRTNNGT6GJXQ4HN",
+        "deltaMs": 118,
+        "reportedCostUsd": 0.001241999885559082
+      },
+      {
+        "gatewayLogId": "01M3EMG7HC15ZJFEAS0B2Y78Z0",
+        "deltaMs": 84,
+        "reportedCostUsd": 0.0004907698860168457
+      },
+      {
+        "gatewayLogId": "01M3EMG95N1DEJ77BR8V4M1WJ2",
+        "deltaMs": 72,
+        "reportedCostUsd": 0.0004983498420715332
+      },
+      {
+        "gatewayLogId": "01M3EMGANWJWP5Y7MX9R6PAX6V",
+        "deltaMs": 49,
+        "reportedCostUsd": 0.0002600698070526123
+      }
+    ]
+  },
+  {
+    "runId": "aa690b8d-1357-4918-848d-165ed61a78fa",
+    "modelCalls": 1,
+    "neurons": 148,
+    "gatewayReportedCostUsd": 0.0016182497863769531,
+    "costAssociation": "nearest unique matching model/timestamp log within1second; reported log cost, not invoice",
+    "matchedLogs": [
+      {
+        "gatewayLogId": "01M3EMHD9FC62V4KVSM35X248Q",
+        "deltaMs": 65,
+        "reportedCostUsd": 0.0016182497863769531
+      }
+    ]
+  }
+]
