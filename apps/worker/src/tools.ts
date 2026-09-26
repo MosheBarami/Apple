@@ -919,6 +919,8 @@ function round2(n: number): string {
 //   it from here. The deleted check-harvest-licences learned the same lesson the expensive way: its
 //   first version restated the rules it was checking and got one wrong immediately. ]]
 export const MAX_RESULT_CHARS = 3000; // tool output is re-sent every later step, so keep it tight
+// Script edits require source beyond the generic outline budget. Reads page before this cap.
+export const MAX_SCRIPT_RESULT_CHARS = 24_000;
 
 /** Errors before warnings before anything else, so a size cap never truncates away the errors. */
 function severityRank(severity: string): number {
@@ -1746,12 +1748,46 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'read_script',
       description:
-        'Read full source of a script by path. The reply carries `baseHash`: pass it back as `base_hash` on edit_script and the write is refused rather than overwriting a change someone made in Studio in between.',
-      parameters: S({ path: { type: 'string' } }, ['path']),
+        'Read script source by path. Normal scripts are returned completely; large scripts return an explicit line page with nextStartLine. Follow it with start_line until null before replacing the whole script. complete means this response contains the entire script. Every page carries the whole-file baseHash: pass it as base_hash on edit_script to reject concurrent edits.',
+      parameters: S({
+        path: { type: 'string' },
+        start_line: { type: 'integer', minimum: 1, description: 'First line, one-based; follow nextStartLine when the source is paged.' },
+        max_lines: { type: 'integer', minimum: 1, maximum: 1000 },
+      }, ['path']),
     },
     studio: true,
     studioOps: ['read_script'],
-    run: (ctx, a) => op(ctx, { op: 'read_script', path: String(a.path ?? '') }),
+    run: async (ctx, a) => {
+      const startLine = a.start_line ?? 1;
+      const maxLines = a.max_lines ?? 1000;
+      if (!Number.isInteger(startLine) || Number(startLine) < 1 ||
+          !Number.isInteger(maxLines) || Number(maxLines) < 1 || Number(maxLines) > 1000) {
+        return { error: 'start_line must be a positive integer; max_lines must be 1..1000' };
+      }
+      const raw = await op(ctx, { op: 'read_script', path: String(a.path ?? '') });
+      if (!raw || typeof raw !== 'object' || 'error' in raw) return raw;
+      const read = raw as Record<string, unknown>;
+      if (typeof read.source !== 'string') return { error: 'Studio did not return script source' };
+      const lines = read.source.split('\n');
+      if (Number(startLine) > lines.length) return { error: 'start_line is beyond the script', totalLines: lines.length };
+      const page: string[] = [];
+      const payload = (endLine: number) => ({
+        ...read, source: page.join('\n'), startLine, endLine, totalLines: lines.length,
+        complete: startLine === 1 && endLine === lines.length,
+        nextStartLine: endLine < lines.length ? endLine + 1 : null,
+      });
+      let endLine = Number(startLine) - 1;
+      for (let i = endLine; i < Math.min(lines.length, Number(startLine) - 1 + Number(maxLines)); i++) {
+        page.push(lines[i]!);
+        if (JSON.stringify(payload(i + 1)).length > MAX_SCRIPT_RESULT_CHARS) {
+          page.pop();
+          if (!page.length) return { error: `script line ${i + 1} is too large for one bounded read`, baseHash: read.baseHash };
+          break;
+        }
+        endLine = i + 1;
+      }
+      return payload(endLine);
+    },
   },
   edit_script: {
     def: {
@@ -5315,7 +5351,8 @@ export async function runTool(
       ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== 'projectMutated' && key !== 'retryable'))
       : result;
     let str = typeof visibleResult === 'string' ? visibleResult : JSON.stringify(visibleResult);
-    if (str.length > MAX_RESULT_CHARS) str = str.slice(0, MAX_RESULT_CHARS) + `\n...[truncated ${str.length - MAX_RESULT_CHARS} chars]`;
+    const resultLimit = name === 'read_script' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
+    if (str.length > resultLimit) str = str.slice(0, resultLimit) + `\n...[truncated ${str.length - resultLimit} chars]`;
     const mutatedProject = partialMutation || (!failed && toolMutatesProject(name, result));
     // An explicit UI payload wins. It is capped separately and more generously than the derived
     // one: this socket already carries 200KB playtest frames, so a single ~25KB evidence panel per
