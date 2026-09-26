@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "python": "3.12.13",
+  "platform": "macOS-26.3.1-arm64-arm-64bit",
+  "runtimeDevice": "Device(gpu, 0)",
+  "packages": {
+    "mlx": "0.32.2",
+    "mlx-lm": "0.31.3",
+    "transformers": "5.17.0",
+    "tokenizers": "0.23.2",
+    "huggingface-hub": "1.31.0"
+  },
+  "dataSha256": "65ad19abfe6ecf6a0e7cbe4ddba66c2b1fdee48b4af43392fb0228e61bf9c704",
+  "generatorSha256": "58da3916b2777e5f92e517256f0565d3c90313715018fef9a6504477cd159fe1",
+  "modelSnapshot": "006f5dcd1393c3add266de40994ba96225e9689d",
+  "modelFiles": {
+    "config.json": "eadff796b79b82cefa0537004668d70a1dd099fd4986b91ef88398ed91b26311",
+    "generation_config.json": "8bab06a398ca622f8b941eb0b5f425d71d007080436cfa4f37d6c03c23b756a9",
+    "tokenizer.json": "6b9e4e7fb171f92fd137b777cc2714bf87d11576700a1dcd7a399e7bbe39537b",
+    "tokenizer_config.json": "9ddd255c19fe319c8d4e891163540382e9fbda99f394674f2a929efc47d57458",
+    "special_tokens_map.json": "94e708c3f5e64acf85bbe5ad01467a1248faadb73e83b41793087ecced586e8f",
+    "chat_template.jinja": "5816fce10444e03c2e9ee1ef8a4a1ea61ae7e69e438613f3b17b69d0426223a4",
+    "model.safetensors.index.json": "0a57c30afc07c81610ae7fe013bea3b9d50365f9a8145ae98e8714220f3d7c7c"
+  },
+  "weightFiles": {
+    "model-00001-of-00002.safetensors": {
+      "bytes": 4965799096
+    },
+    "model-00002-of-00002.safetensors": {
+      "bytes": 1459729952
+    }
+  },
+  "adapterFiles": {
+    "adapter": {
+      "adapter_config.json": "fa6ac875dda95b75dee28749f863e99d88d9a0183f07b42382baa9ef3902ef61",
+      "adapters.safetensors": "58b9150beb346178226832333cf68f34dfed59f35ba69a94fc0d7abd7230bc3b"
+    }
+  },
+  "decoding": {
+    "temperature": 0.0,
+    "maxTokens": 1200
+  },
+  "baseWeightHashesVerified": false,
+  "probeType": "offline metadata only; no load/generate"
+}

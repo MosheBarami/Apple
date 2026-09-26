@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T11:25:48.771165+00:00",
-  "now": "Apple תיקנה את הממשק בשמונה פעולות והסתיימה אוטומטית:23 Credits ו685 neurons. Play אמיתי עבר קנייה60→50, גידול, קציר ומכירה50→68. הכפתורים אחידים ומד הכסף הכפול נשמר מחוץ לממשק. CIeb86c88 עבר6/6; הביקורת החזותית עדיין דורשת סביבת משחק מלאה.",
-  "nextStep": "מנגנון בעל המשימה עבר62 בדיקות וביקורת טכנית; הפעלה אמיתית ממתינה לגישה הקיימת לClaude. ממשיכים סביבת משחק וביקורת חזותית; מפקחCPU יחיד נשמר.",
+  "updatedAt": "2026-09-26T11:34:55.717535+00:00",
+  "now": "תיקון רציפות הבעלים עבר62 בדיקות וCI6/6. תיעוד ההערכות תוקן ועבר652 בדיקות,0כשלונות,14דילוגים; סיבת סטייתv22 עדיין לא הוכחה. מפקחCPU יחיד35962 ממשיךv33; איכות המשחק והביקורות המלאות נשארו פתוחות.",
+  "nextStep": "לאמת טביעת הרצה בהערכה הבאה ובהעלאה הפרטית; לשחזר תצפיתStudio אמינה ולהמשיך סביבת משחק וביקורת חזותית. הפעלתClaude ממתינה לגישה הקיימת לחשבון.",
   "items": [
     {
       "id": "productScope",

@@ -10,5 +10,5 @@ export function splitPairedRaw(raw) {
     }
     rows[id] = { ...row, adapter: row.best };
   }
-  return { ...raw, adapter: raw.best_adapter, rows };
+  return { ...raw, adapter: raw.best_adapter, adapterSide: 'best', rows };
 }
