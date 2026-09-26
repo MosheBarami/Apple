@@ -116,7 +116,7 @@ export function livePhrase(run: ActivityRun, phase?: string): string {
 /** Past-tense words for work a creator would recognise in their game, in the order they are said. */
 const DONE_WORD: Partial<Record<ActivityKind, string>> = {
   building: 'built',
-  editing: 'polished',
+  editing: 'edited',
   writing_luau: 'scripted',
   playtesting: 'playtested',
   critiquing: 'checked',
