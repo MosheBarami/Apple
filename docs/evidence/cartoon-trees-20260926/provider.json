@@ -1,0 +1,26 @@
+[
+  {
+    "runId": "8591ab34-bd17-4928-93b2-2a78b60e9bc3",
+    "neurons": 133,
+    "at": 1790416984170,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  },
+  {
+    "runId": "8591ab34-bd17-4928-93b2-2a78b60e9bc3",
+    "neurons": 109,
+    "at": 1790416998528,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  },
+  {
+    "runId": "8591ab34-bd17-4928-93b2-2a78b60e9bc3",
+    "neurons": 76,
+    "at": 1790417001608,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  },
+  {
+    "runId": "8591ab34-bd17-4928-93b2-2a78b60e9bc3",
+    "neurons": 29,
+    "at": 1790417007357,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  }
+]

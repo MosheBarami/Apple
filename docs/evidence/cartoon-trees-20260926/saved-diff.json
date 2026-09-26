@@ -1,0 +1,162 @@
+{
+  "added": 0,
+  "changed": [
+    {
+      "anchoredSame": false,
+      "delta": [
+        -32.580657958984375,
+        -4.47095251083374,
+        -35.3854866027832
+      ],
+      "ordinal": 1,
+      "path": "Workspace.GardenMeshTrees.GardenTreeA.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -32.58065700531006,
+        -4.47095251083374,
+        -35.3854866027832
+      ],
+      "ordinal": 2,
+      "path": "Workspace.GardenMeshTrees.GardenTreeA.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -32.580657958984375,
+        -4.47095251083374,
+        -35.3854866027832
+      ],
+      "ordinal": 3,
+      "path": "Workspace.GardenMeshTrees.GardenTreeA.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -32.580657958984375,
+        -4.470952033996582,
+        -35.3854866027832
+      ],
+      "ordinal": 4,
+      "path": "Workspace.GardenMeshTrees.GardenTreeA.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -32.580657958984375,
+        -4.470952987670898,
+        -35.3854866027832
+      ],
+      "ordinal": 5,
+      "path": "Workspace.GardenMeshTrees.GardenTreeA.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -32.580657958984375,
+        -4.470952033996582,
+        -35.3854866027832
+      ],
+      "ordinal": 6,
+      "path": "Workspace.GardenMeshTrees.GardenTreeA.Part",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -13.659120559692383,
+        -4.470952987670898,
+        -46.634185791015625
+      ],
+      "ordinal": 1,
+      "path": "Workspace.GardenMeshTrees.GardenTreeB.Meshes/Horns_Icosphere.004",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -13.659120559692383,
+        -4.470952987670898,
+        -46.634185791015625
+      ],
+      "ordinal": 1,
+      "path": "Workspace.GardenMeshTrees.GardenTreeB.Meshes/Horns_Icosphere.006",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -13.659120559692383,
+        -4.470952987670898,
+        -46.634185791015625
+      ],
+      "ordinal": 1,
+      "path": "Workspace.GardenMeshTrees.GardenTreeB.Meshes/Horns_Icosphere.001",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -13.659120559692383,
+        -4.470952987670898,
+        -46.634185791015625
+      ],
+      "ordinal": 1,
+      "path": "Workspace.GardenMeshTrees.GardenTreeB.Meshes/Horns_Icosphere",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -13.659120559692383,
+        -4.470952987670898,
+        -46.634185791015625
+      ],
+      "ordinal": 1,
+      "path": "Workspace.GardenMeshTrees.GardenTreeB.Meshes/Horns_Icosphere.005",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -13.659120559692383,
+        -4.470952987670898,
+        -46.634185791015625
+      ],
+      "ordinal": 1,
+      "path": "Workspace.GardenMeshTrees.GardenTreeB.Meshes/Horns_Icosphere.002",
+      "rotationSame": true,
+      "sizeSame": true
+    },
+    {
+      "anchoredSame": false,
+      "delta": [
+        -13.659120559692383,
+        -4.47095251083374,
+        -46.634185791015625
+      ],
+      "ordinal": 1,
+      "path": "Workspace.GardenMeshTrees.GardenTreeB.Meshes/Horns_Cylinder.011",
+      "rotationSame": true,
+      "sizeSame": true
+    }
+  ],
+  "missing": 0
+}
