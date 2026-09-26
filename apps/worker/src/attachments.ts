@@ -19,6 +19,7 @@ import type { Env } from './env';
 import {
   MAX_ATTACHMENTS_PER_MESSAGE,
   MAX_ATTACHMENT_BYTES,
+  attachmentImageInfo,
   cleanAttachmentName,
   decodeAttachmentText,
   foldAttachmentsIntoPrompt,
@@ -174,6 +175,10 @@ export async function promptWithAttachments(env: Env, projectId: string, text: s
     const found = id ? await readAttachment(env, projectId, id) : null;
     if (!found) {
       rows.push({ name: claimedName, mime: 'text/plain', text: null });
+      continue;
+    }
+    if (found.meta.mime.startsWith('image/') && attachmentImageInfo(found.bytes)) {
+      rows.push({ name: found.meta.name, mime: found.meta.mime, text: null, imageAttachmentId: id });
       continue;
     }
     // Belt and braces with the upload check: a value stored before a rule changed must not be

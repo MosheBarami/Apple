@@ -104,6 +104,7 @@ import {
 import { checkWorkspacePath, kvWorkspace, runWebTool, webToolDef, WORKSPACE_MAX_BYTES, type WebToolCtx, type WorkspaceStore } from './webtools';
 import type { WebFetchLike } from './net-policy';
 import { chat } from './gateway';
+import { inspectAttachmentImage } from './attachment-vision';
 import {
   searchInstances, setPropertiesBulk, spatialQuery, scatterInstances, collisionGroups, shapeTerrain, readTerrain,
   createRig, checkUiLayout, buildUi, playCheckUiOp, PLAY_CHECK_UI_DEF, type OpCall,
@@ -4440,6 +4441,23 @@ export const TOOLS: Record<string, ToolImpl> = {
    * hour" and that one is TRUE: it writes through `storeImage`, which is KV with IMAGE_TTL_SECONDS.
    * Two tools, two stores, two different honest sentences.
    */
+  inspect_attachment_image: {
+    def: {
+      name: 'inspect_attachment_image',
+      description: 'Inspect actual pixels in a private PNG or JPEG attached to this project. Call this before claiming to see an attached image. Optionally compare against another attached reference image. Returns detailed visible defects, repair needs, image hashes and uncertainty. A still image does not prove gameplay, native insertion or commercial readiness.',
+      parameters: S({
+        attachmentId: { type: 'string', description: 'Attachment id supplied with the message.' },
+        referenceAttachmentId: { type: 'string', description: 'Optional reference PNG or JPEG attachment in this same project.' },
+        focus: { type: 'string', description: 'Visual requirements and repair questions.' },
+      }, ['attachmentId']),
+    },
+    studio: false,
+    run: async (ctx, a) => inspectAttachmentImage(ctx.env, ctx.projectId, {
+      attachmentId: String(a.attachmentId ?? ''),
+      referenceAttachmentId: typeof a.referenceAttachmentId === 'string' ? a.referenceAttachmentId : undefined,
+      focus: typeof a.focus === 'string' ? a.focus : undefined,
+    }),
+  },
   generate_image: {
     def: {
       name: 'generate_image',

@@ -306,7 +306,7 @@ import {
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
 import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@golem/shared';
 import { canUseProductModel, isModelId, isPlanId, MODEL_IDS, modelListing, modelRefusal, PRICE_CURRENCY, type ProductModel } from '@golem/shared';
-import { MAX_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
+import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
 
 /**
  * The refusals that mean "this kind of file will never work here", as opposed to "this particular
@@ -1068,8 +1068,8 @@ app.post('/api/projects/:id/attachments', async (c) => {
   // Checked first only to avoid buffering a body that has already announced itself as too big. The
   // real check is on the bytes below, and a request that lies about its length meets that one.
   const declaredLength = Number(c.req.header('Content-Length') ?? '');
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_ATTACHMENT_BYTES) {
-    return c.json({ error: attachmentRefusalMessage('too_large'), reason: 'too_large' }, 413);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_IMAGE_ATTACHMENT_BYTES) {
+    return c.json({ error: attachmentRefusalMessage('too_large', { maxBytes: MAX_IMAGE_ATTACHMENT_BYTES }), reason: 'too_large' }, 413);
   }
 
   const bytes = new Uint8Array(await c.req.arrayBuffer());
