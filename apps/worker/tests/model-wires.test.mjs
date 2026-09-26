@@ -262,3 +262,22 @@ test('without AI_GATEWAY_ID a Sol step never reaches the binding, and its hold i
   assert.equal(seen.settled.length, 0, 'a call that never ran was charged');
   assert.equal(seen.released.length, seen.reserved.length, 'the hold was not released');
 });
+
+test('finite GLM action requests native named tool choice through the metered gateway', async () => {
+  G.resetModelCache();
+  const tools = [{ name: 'move_instances', description: 'Reparent', parameters: { type: 'object' } }];
+  const { env, seen } = fakeEnv({ response: '', tool_calls: [{ name: 'move_instances', arguments: { moves: [] } }], usage: { prompt_tokens: 20, completion_tokens: 10 } });
+  await G.chat(env, { model: 'agent', messages: [{ role: 'user', content: 'Move the bench' }], tools, requiredTool: 'move_instances' });
+  assert.deepEqual(seen.runs[0].payload.tool_choice, { type: 'function', function: { name: 'move_instances' } });
+  assert.equal(seen.reserved.length, 1);
+  assert.equal(seen.settled.length, 1);
+});
+
+test('named choice cannot add a withheld tool or change ordinary chat', () => {
+  const model = '@cf/zai-org/glm-5.3-flash';
+  assert.equal(encode(model).tool_choice, undefined);
+  assert.equal(encode(model, { requiredTool: 'move_instances' }).tool_choice, undefined);
+  assert.equal(encode(model, { tools: [], requiredTool: 'run_luau' }).tool_choice, undefined);
+  assert.equal(encode('@cf/qwen/qwen3-30b-a3b-fp8', { requiredTool: 'run_luau' }).tool_choice, undefined);
+  assert.equal(encode(SOL.providerModelId, { requiredTool: 'run_luau' }).tool_choice, undefined);
+});

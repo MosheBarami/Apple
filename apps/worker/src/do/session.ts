@@ -3864,6 +3864,8 @@ export class SessionDO extends DurableObject<Env> {
         model: gatewayModel,
         messages: stepMessages,
         tools: talkOnly ? [] : toolDefs(offerStudio, offeredAllowed),
+        ...(sequenceStep?.state === 'next' && offeredAllowed.has(sequenceStep.tool)
+          ? { requiredTool: sequenceStep.tool } : {}),
         reasoningEffort: choice.effort,
         maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),
       },

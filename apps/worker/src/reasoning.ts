@@ -141,7 +141,7 @@ const AMBIGUOUS_RE = /\b(something|anything|whatever|surprise me|you decide|make
  * change the colours", "without changing anything ELSE" and "don't touch my game's scripts" — all
  * requests FOR a change with a limit on it — never match.
  */
-const WHOLE_PLACE = String.raw`(?:anything|a thing|(?:(?:the|my|this|our)\s+)?(?:(?:saved|current|connected)\s+)?(?:place|game))(?!\s+else)(?!['’]s)\b`;
+const WHOLE_PLACE = String.raw`(?:anything|a thing|(?:(?:the|my|this|our)\s+)?(?:(?:saved|current|connected)\s+)?(?:place|game))(?!\s+else)(?!['’]s)\b(?!\.[A-Za-z_]|\[)`;
 const FORBIDS_CHANGES_RE = new RegExp(
   String.raw`\b(?:do not|don['’]t|dont|never)\s+(?:change|modify|touch|edit|alter)\s+${WHOLE_PLACE}` +
   String.raw`|\bwithout\s+(?:changing|modifying|touching|editing|altering)\s+${WHOLE_PLACE}` +

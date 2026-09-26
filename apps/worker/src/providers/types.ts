@@ -139,6 +139,8 @@ export interface NormalizedRequest {
    * has to know about it.
    */
   tools?: GatewayToolDef[];
+  /** Narrow a native finite workflow to an already offered tool. */
+  requiredTool?: string;
   maxTokens: number;
   temperature: number;
   reasoningEffort?: 'low' | 'medium' | 'high';

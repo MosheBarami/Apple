@@ -78,3 +78,10 @@ test('an unfinished read-only run does not apologise for an edit nobody asked fo
   assert.ok(ro > 0 && edit > ro, 'the read-only reply must be chosen before the "never made the edit" one');
   assert.match(block.slice(ro, edit), /Nothing was changed, as you asked/);
 });
+
+test('excluding named instance paths does not forbid the explicitly requested move', () => {
+  assert.equal(R.forbidsChanges('Move game.Workspace.Bench to game.ServerStorage. Do not touch game.Workspace.Garden.Bench or GardenMeshTrees.'), false);
+  assert.equal(R.forbidsChanges('Move a bench. Do not touch game["Workspace"].Garden.'), false);
+  assert.equal(R.forbidsChanges('Do not touch my game. Explain only.'), true);
+  assert.equal(R.forbidsChanges('Do not touch the saved place, only explain.'), true);
+});
