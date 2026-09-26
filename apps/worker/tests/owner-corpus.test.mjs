@@ -42,6 +42,17 @@ async function ingested(e,over={}) {
   await C.ingestOwnerBlob(e,'owner-a',c.componentSha256,bytes.buffer);
   return {...c,id:C.ownerComponentId(c.id)};
 }
+test('table initialization sends complete statements on each D1 exec line',async()=>{
+  const e=env(),exec=e.CORPUS.exec.bind(e.CORPUS);
+  e.CORPUS.exec=async sql=>{
+    for(const line of sql.split('\n').filter(s=>s.trim())) await exec(line);
+    return {count:3,duration:0};
+  };
+  await C.ownerCorpusTables(e);
+  const c=await ingested(e);
+  assert.equal((await C.ownerComponent(e,'owner-a',c.id)).id,c.id);
+  e.db.close();
+});
 function ctx(e,over={}) {return {env:e,userId:'owner-a',studioConnected:()=>true,execStudioOp:async()=>{throw new Error('unexpected Studio call');},
   createCheckpoint:async()=>({id:'cp'}),addMemoryFact:async()=>'',...over};}
 

@@ -13,11 +13,10 @@ export interface OwnerComponent {
 const key = (ownerId: string, sha: string) => `owner-corpus/${encodeURIComponent(ownerId)}/${sha}.rbxm`;
 export const ownerComponentId = (id: string) => id.startsWith('owner:') ? id : `owner:${id}`;
 export async function ownerCorpusTables(env: Env) {
-  await env.CORPUS.exec(`CREATE TABLE IF NOT EXISTS owner_corpus_components (
-    owner_id TEXT NOT NULL, id TEXT NOT NULL, sha TEXT NOT NULL, metadata TEXT NOT NULL,
-    blob_ready INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(owner_id,id));
-    CREATE INDEX IF NOT EXISTS owner_corpus_hash ON owner_corpus_components(owner_id,sha);
-    CREATE VIRTUAL TABLE IF NOT EXISTS owner_corpus_fts USING fts5(owner_id UNINDEXED,id UNINDEXED,text);`);
+  // D1 exec splits statements on newlines: each complete statement must occupy one line.
+  await env.CORPUS.exec(`CREATE TABLE IF NOT EXISTS owner_corpus_components (owner_id TEXT NOT NULL, id TEXT NOT NULL, sha TEXT NOT NULL, metadata TEXT NOT NULL, blob_ready INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(owner_id,id));
+CREATE INDEX IF NOT EXISTS owner_corpus_hash ON owner_corpus_components(owner_id,sha);
+CREATE VIRTUAL TABLE IF NOT EXISTS owner_corpus_fts USING fts5(owner_id UNINDEXED,id UNINDEXED,text);`);
 }
 export function parseOwnerManifest(body: unknown): OwnerComponent[] {
   const b = body as { ownerAttested?: unknown; components?: unknown } | null;
