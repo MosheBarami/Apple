@@ -136,6 +136,8 @@ export type StudioOp =
   | { op: 'query_owner_local'; action: 'search' | 'describe' | 'record' | 'children' | 'relations' | 'plan' | 'materialize' | 'job' | 'native-map';
       id?: string; query?: string; jobId?: string; className?: string; kind?: string; scope?: string; limit?: number;
       offset?: number; after?: string | number; afterOrdinal?: number; afterId?: string }
+  | { op: 'query_owner_exact'; action: 'sources' | 'strings' | 'string'; sourceSHA?: string; identity?: string;
+      seq?: number; offset?: number; limit?: number; after?: string | number }
   | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
       nativeInstances: number; parent: string }
   | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;

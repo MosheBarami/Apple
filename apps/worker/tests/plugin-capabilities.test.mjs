@@ -86,7 +86,7 @@ const reasons = {
 
 function currentAuthoringReport() {
   const supported = [
-    'ping', 'render_view', 'screenshot', 'capture_studio_viewport', 'import_owner_component', 'query_owner_local', 'import_owner_local',
+    'ping', 'render_view', 'screenshot', 'capture_studio_viewport', 'import_owner_component', 'query_owner_local', 'query_owner_exact', 'import_owner_local',
     'get_tree', 'get_instance', 'list_scripts', 'read_script', 'dump_scripts', 'search_scripts',
     'get_logs', 'get_selection', 'viewport_info', 'select', 'camera_focus', 'create_instances',
     'set_props', 'delete_instances', 'move_instances', 'transform_instances', 'clone_instances',
@@ -159,7 +159,7 @@ test('legacy, missing, malformed and unknown-schema clients preserve the existin
   // offering it on "unknown" would hand the model a check that is refused on its first call.
   const optIn = candidates.filter((name) => requirements[name].some((op) => C.OPT_IN_OPERATIONS.has(op)));
   // D-MODELLIB-1: insert_library_model stands its model on the spot through spatial_query, so it is opt-in too.
-  for (const name of ['play_check','insert_owner_component','capture_studio_viewport']) assert.ok(optIn.includes(name), `${name} must remain opt-in`);
+  for (const name of ['play_check','insert_owner_component','capture_studio_viewport','list_owner_original_strings','read_owner_original_string']) assert.ok(optIn.includes(name), `${name} must remain opt-in`);
   for (const raw of [
     undefined,
     null,

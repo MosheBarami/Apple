@@ -22,6 +22,7 @@ local hashes = {[nativeBytes]=${luaBytes(digest(bytes))},[id]=${luaBytes(digest(
 local requests,loads = 0,0
 local revoked,tamper,residue=false,false,false
 local rootClass="Model"
+local originalRevoke=false
 local config={port=63747,key=string.rep("k",43)}
 local http={UrlEncode=function(_,text) return text end,JSONEncode=function()return "{}" end}
 function http:RequestAsync(request)
@@ -31,6 +32,13 @@ function http:RequestAsync(request)
  return {Success=true,Body=request.Url}
 end
 function http:JSONDecode(url)
+ if string.find(url,"/v1/exact-sources?",1,true) then return {items={{sourceSHA=string.sub(id,1,64),status="complete",stringValues=9,endpoint="http://127.0.0.1/PRIVATE",reason="/PRIVATE",normalizedNodeMappingProved=false}},nextAfter=string.sub(id,1,64)} end
+ if string.find(url,"/v1/exact-strings?",1,true) then return {status="complete",items={{seq=17,identity=string.sub(id,1,64)..":binary:42",sourceSHA=string.sub(id,1,64),rawReferent=42,property="Source",rawSHA="${hex(code)}",bytes=#codeBytes,casPath="/PRIVATE/objects/code"}},nextAfter=18} end
+ if string.find(url,"/v1/exact-string?",1,true) then
+  if originalRevoke then config=nil end
+  return {rawSHA="${hex(code)}",totalBytes=#codeBytes,offset=0,bytes=#codeBytes,chunkSHA=tamper and string.rep("f",64) or "${hex(code)}",rawBase64="code",sourceExecuted=false}
+ end
+ if string.find(url,"/v1/describe?",1,true) then return {id=id,source={path="/PRIVATE",exactStrings={status="complete",stringValues=9,endpoint="/PRIVATE",normalizedNodeMappingProved=false}}} end
  if string.find(url,"/v1/record?",1,true) then return {kind="inert-script",encoding="base64",data="code",offset=0,totalBytes=#codeBytes,nextOffset=nil,sha256="${hex(code)}",chunkSha256="${hex(code)}",execution="never"} end
  if string.find(url,"/v1/job?",1,true) then return {status="ready",jobId=jobId,nodeId=id,nativeSha256=expectedHash,nativeBytes=#nativeBytes,nativeInstances=2,policy="owner-loopback-scriptfree-v1",nativeScripts=0} end
  if string.find(url,"/v1/artifact?",1,true) then
@@ -90,6 +98,28 @@ op.parent="game.StarterGui.ExistingGui"
 local hosted=c:execute("hosted",op,true,current)
 assert(hosted.ok==true and hosted.data.roots[1].uiMount=="gui_host_present")
 assert(hosted.data.visualVerified==false,"GUI host is not rendered-pixel verification")
+local sourceSHA=string.sub(id,1,64)
+local listed=c:execute("exactSources",{op="query_owner_exact",action="sources",limit=5},false,current)
+assert(listed.ok==true,listed.error)
+assert(listed.data.items[1].sourceSHA==sourceSHA and listed.data.items[1].endpoint==nil and listed.data.items[1].reason==nil,"private source metadata leaked")
+local originals=c:execute("exactStrings",{op="query_owner_exact",action="strings",sourceSHA=sourceSHA,after=17,limit=5},false,current)
+assert(originals.ok==true and originals.data.items[1].identity==sourceSHA..":binary:42" and originals.data.items[1].casPath==nil)
+assert(originals.data.normalizedNodeMappingProved==false and originals.data.nextAfter==18)
+local originalOp={op="query_owner_exact",action="string",sourceSHA=sourceSHA,identity=sourceSHA..":binary:42",seq=17,offset=0,limit=3000}
+local original=c:execute("exactCode",originalOp,false,current)
+assert(original.ok==true,original.error)
+assert(original.data.text==codeBytes and original.data.sourceExecuted==false and original.data.normalizedNodeMappingProved==false,"original code is not readable inert data")
+tamper=true
+assert(c:execute("exactTamper",originalOp,false,current).ok==false,"tampered original bytes admitted")
+tamper=false;originalRevoke=true
+assert(c:execute("exactRetired",originalOp,false,current).ok==false,"retired exact session disclosed source")
+originalRevoke=false;config={port=63747,key=string.rep("k",43)}
+local beforeExact=requests
+assert(c:execute("exactNoFence",originalOp,false).ok==false and requests==beforeExact)
+originalOp.identity=id
+assert(c:execute("exactWrongNamespace",originalOp,false,current).ok==false and requests==beforeExact)
+local described=c:execute("description",{op="query_owner_local",action="describe",id=id},false,current)
+assert(described.ok==true and described.data.source.exactStrings.status=="complete" and described.data.source.path==nil and described.data.source.exactStrings.endpoint==nil,"exact availability metadata lost or private data leaked")
 print("executed local owner bridge boundary passed")
 `;
 function run(source=family) {
@@ -109,4 +139,10 @@ test('prior build without the local family cannot pass this real insertion proof
 test('chunk integrity proof fails if hash checking is removed',()=>{
  const anchor=' or hash(chunk) ~= part.chunkSha256';
  assert.ok(family.includes(anchor));const result=run(family.replace(anchor,''));assert.notEqual(result.status,0);assert.match(result.output,/tampered chunk reached native deserializer/);
+});
+
+test('original binary chunk integrity proof fails when its hash guard is disabled',()=>{
+ const anchor='if hash ~= raw.chunkSHA or (offset==0 and raw.nextOffset==nil and hash ~= raw.rawSHA) then';
+ assert.equal(family.split(anchor).length-1,1);
+ const result=run(family.replace(anchor,'if false then'));assert.notEqual(result.status,0);assert.match(result.output,/tampered original bytes admitted/);
 });
