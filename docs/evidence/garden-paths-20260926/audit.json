@@ -1,0 +1,64 @@
+{
+  "palette": [
+    {
+      "color": "0.91764706, 0.75686276, 0.46666667",
+      "material": "Enum.Material.Sand",
+      "path": "Workspace.PathNetwork.MainPath"
+    },
+    {
+      "color": "0.91764706, 0.75686276, 0.46666667",
+      "material": "Enum.Material.Sand",
+      "path": "Workspace.PathNetwork.CrossPath"
+    },
+    {
+      "color": "0.91764706, 0.75686276, 0.46666667",
+      "material": "Enum.Material.Sand",
+      "path": "Workspace.GardenPaths.Path1"
+    },
+    {
+      "color": "0.91764706, 0.75686276, 0.46666667",
+      "material": "Enum.Material.Sand",
+      "path": "Workspace.GardenPaths.Path2"
+    },
+    {
+      "color": "0.91764706, 0.75686276, 0.46666667",
+      "material": "Enum.Material.Sand",
+      "path": "Workspace.GardenPaths.Path3"
+    },
+    {
+      "color": "0.91764706, 0.75686276, 0.46666667",
+      "material": "Enum.Material.Sand",
+      "path": "Workspace.GardenPaths.Path4"
+    },
+    {
+      "color": "0.91764706, 0.75686276, 0.46666667",
+      "material": "Enum.Material.Sand",
+      "path": "Workspace.GardenPaths.Path5"
+    },
+    {
+      "color": "0.91764706, 0.75686276, 0.46666667",
+      "material": "Enum.Material.Sand",
+      "path": "Workspace.GardenPaths.Plaza"
+    },
+    {
+      "color": "0.91764706, 0.75686276, 0.46666667",
+      "material": "Enum.Material.Sand",
+      "path": "Workspace.SpawnLocation"
+    }
+  ],
+  "preservedPaths": [
+    {
+      "active": false,
+      "inStorage": true,
+      "name": "PathEast"
+    },
+    {
+      "active": false,
+      "inStorage": true,
+      "name": "PathWest"
+    }
+  ],
+  "scriptChanges": 0,
+  "treeMismatch": 0,
+  "treeParts": 6
+}
