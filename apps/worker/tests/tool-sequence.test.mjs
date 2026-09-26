@@ -42,3 +42,19 @@ test('an explicit sequence can include its own verifier without implicit checks'
   assert.deepEqual(sequence, ['read_script', 'edit_script', 'inspect_visually']);
   assert.deepEqual(sequenceProgress(sequence, [{ tool: 'read_script', ok: true }, { tool: 'edit_script', ok: true }]), { state: 'next', tool: 'inspect_visually' });
 });
+
+
+test('single-call placement correction cannot fall through to autonomous checks', () => {
+  const payload = JSON.stringify({ paths: ['game.Workspace["PetPack by Aziuus"].Cat'], move: [0, 0, 12] });
+  const request = `The static Cat placement overlaps a lamp. Make exactly ONE transform_instances call with ${payload}. Then finish. No other tools or retries.`;
+  const sequence = explicitToolSequence(request, new Set([...known, 'transform_instances']));
+  assert.deepEqual(sequence, ['transform_instances']);
+  assert.deepEqual(sequenceProgress(sequence, [{ tool: 'transform_instances', ok: true }]), { state: 'complete' });
+  for (const unsafe of [
+    'Make exactly ONE imaginary_tool call. Then finish.',
+    'Make exactly TWO read_script calls. Then finish.',
+    'Example: `Make exactly ONE read_script call. Then finish.`',
+    'Make exactly ONE read_script call with {bad json}. Then finish.',
+    'Exactly read_script then finish. Make exactly ONE edit_script call. Then finish.',
+  ]) assert.equal(explicitToolSequence(unsafe, known), null, unsafe);
+});

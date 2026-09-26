@@ -4,7 +4,18 @@ export function explicitToolSequence(request: string, known: ReadonlySet<string>
   // a game, or tool names inside a quoted/code example, must not turn off normal autonomy.
   const prose = request.replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '');
   const matches = [...prose.matchAll(/(?:^|[.!?\n])\s*Exactly\s+([a-z][a-z_]*(?:\s+then\s+[a-z][a-z_]*)*)\s+then\s+finish\s*(?=[.!?\n]|$)/gi)];
-  if (matches.length !== 1) return null;
+  // Natural single-call wording must also close the allowance. The optional inline
+  // payload is validated as JSON so examples or intervening instructions cannot bind it.
+  const single = [...prose.matchAll(/(?:^|[.!?\n])\s*Make\s+exactly\s+(?:one|1)\s+([a-z][a-z_]*)\s+call(?:\s+with\s+(\{[^\n]*\}))?\s*\.\s*Then\s+finish\s*(?=[.!?\n]|$)/gi)];
+  if (matches.length + single.length !== 1) return null;
+  if (single.length) {
+    const match = single[0]!;
+    if (match[2]) {
+      try { JSON.parse(match[2]); } catch { return null; }
+    }
+    const tool = match[1]!.toLowerCase();
+    return known.has(tool) ? [tool] : null;
+  }
   const tools = matches[0]![1]!.toLowerCase().split(/\s+then\s+/);
   return tools.length <= 8 && tools.every((tool) => known.has(tool)) ? tools : null;
 }
