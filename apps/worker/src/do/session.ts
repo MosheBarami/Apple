@@ -59,7 +59,7 @@ import {
 } from '../frame-bus';
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
-import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, visualAssetAnchor, type PendingAssetChoice } from '../asset-choice';
+import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, selectedInsertionCalls, visualAssetAnchor, type PendingAssetChoice, type SelectedAssetInsertion } from '../asset-choice';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
@@ -215,6 +215,7 @@ interface AgentState {
   productModel?: ProductModel;
   /** Owner-approved Creator Store model for this run, selected from a shown preview. */
   approvedLibraryAssetId?: number;
+  selectedAssetInsertion?: SelectedAssetInsertion;
   rejectedLibraryAssetIds?: number[];
   assetChoiceAnchor?: string;
   assetChoiceMisses?: number;
@@ -3319,7 +3320,7 @@ export class SessionDO extends DurableObject<Env> {
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
       // trimTranscript documents — the agent kept working with no record of the task.
       llm: [{ role: 'system', content: skills.block ? `${sys}\n\n${skills.block}` : sys }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
-      ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId } : {}),
+      ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
       ...(rejectedChoice && pendingChoice?.anchor ? { assetChoiceAnchor: pendingChoice.anchor } : {}),
       ...(skills.ids.length > 0 ? { skillCardsShown: skills.ids } : {}),
@@ -4023,6 +4024,17 @@ export class SessionDO extends DurableObject<Env> {
     // step, so the value on the log is the last thing the provider said about this run — which is
     // the response the run ended on.
     agent.lastFinishReason = finishReason;
+    if (agent.selectedAssetInsertion && !agent.selectedAssetInsertion.attempted &&
+        (res.toolCalls.length > 0 || finishReason === 'stop')) {
+      // This schedules the selected tool through the normal execution path below. It grants no
+      // permissions, skips no access checks, and a refused insertion remains a failed result.
+      const preparations = new Set(toolNames().filter((name) =>
+        !READ_ONLY_WITHHELD.has(name) &&
+        (/^(get_|read_|list_|query_)/.test(name) || name === 'create_checkpoint' || name === 'search_docs' || name === 'propose_plan')));
+      res.toolCalls = selectedInsertionCalls(agent.selectedAssetInsertion, res.toolCalls, preparations, `selected_${agent.step}`);
+      res.text = ''; // Model prose is not evidence that the selected insertion happened.
+      agent.lastCalls = res.toolCalls.slice(-8);
+    }
     if (!res.toolCalls.length && finishReason === 'length') {
       // A finite user workflow authorizes the named calls, not an unlimited series
       // of paid reasoning-only retries. Preserve the trace and end without a write.
@@ -4557,6 +4569,17 @@ export class SessionDO extends DurableObject<Env> {
         toolCallId: call.id,
         name: call.name,
       });
+      if (agent.selectedAssetInsertion && !agent.selectedAssetInsertion.attempted && call.name === 'insert_library_model') {
+        agent.selectedAssetInsertion.attempted = true;
+        await this.persistAgent(agent);
+        if (!out.ok) {
+          await this.finishRun(agent, 'incomplete', undefined,
+            'The selected model could not be inserted. Review the insertion result before choosing another model or continuing.');
+          return;
+        }
+        // Wait for a new step with the actual result before allowing unrelated work.
+        break;
+      }
       if (sequence) {
         const progress = sequenceProgress(sequence, agent.trace);
         if (progress.state !== 'next') {

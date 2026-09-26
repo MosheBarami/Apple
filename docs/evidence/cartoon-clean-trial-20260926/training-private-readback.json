@@ -1,0 +1,34 @@
+{
+  "repository": "moshebarami/apple-lora",
+  "private": true,
+  "pairs": [
+    {
+      "version": 33,
+      "rows": 38,
+      "candidate": 21,
+      "pairedBest": 23,
+      "promoted": false,
+      "comparatorSha256": "b97a83e982baf2523407590c067ce2418d807f83fe60c624ef76bf21717e5ed3"
+    },
+    {
+      "version": 34,
+      "rows": 38,
+      "candidate": 26,
+      "pairedBest": 23,
+      "promoted": true,
+      "comparatorSha256": "c1969fc21e57b03f80897432697eb1593ece187916fbcdd0dd4f4f8dc0887d71"
+    }
+  ],
+  "comparisonChecks": [
+    "38 matching row IDs",
+    "identical base outcomes",
+    "private repository readback",
+    "comparator downloaded and hash identical"
+  ],
+  "publicationRepair": "Cached supervisor omitted comparator files; restored both without restart",
+  "nextVersion": 35,
+  "soleSupervisorPid": 35962,
+  "trainingChildPid": 39362,
+  "frontierClaim": false,
+  "recordedAt": "2026-09-26T17:52:52.742027+00:00"
+}
