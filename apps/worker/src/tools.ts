@@ -71,7 +71,7 @@ import { findUiAssets, uploadLibraryAsset } from './asset-library';
 import { findUiStoreImages, UI_STORE_COUNT, UI_STORE_GENRES } from './ui-store-search';
 import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
 import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, refuseNewHandMadeModelLuau } from './model-rule';
-import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
+import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScreenGuiHost } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner } from './local-owner-corpus';
@@ -2230,7 +2230,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     //   the same turn: no round trip, no failed op, nothing touched in the place. ]]
     run: (ctx, a) => {
       // D-UIONLY-1: UI classes come from insert_ui_component only.
-      const handMadeUi = refuseLibraryItems(a.items, UI_RULE);
+      const handMadeUi = refuseLibraryItems(Array.isArray(a.items) ? a.items.filter(item => !isEmptyScreenGuiHost(item)) : a.items, UI_RULE);
       if (handMadeUi) return Promise.resolve(handMadeUi);
       // D-FXLIB-1: Sounds and particle effects come from insert_sound / insert_vfx.
       const handMadeFx = refuseLibraryItems(a.items, FX_RULE);

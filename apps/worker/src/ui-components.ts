@@ -790,6 +790,16 @@ export const UI_LOOK_PROPS: ReadonlySet<string> = new Set([
 ]);
 const STYLE_CLASSES = new Set(['UIStroke', 'UICorner', 'UIGradient']);
 
+/** A structural host for authored owner UI, with no drawn content or styling. */
+export function isEmptyScreenGuiHost(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const item = value as Record<string,unknown>;
+  if (item.className !== 'ScreenGui' || item.parent !== 'game.StarterGui') return false;
+  if (item.children !== undefined && (!Array.isArray(item.children) || item.children.length !== 0)) return false;
+  if (item.props !== undefined && (!item.props || typeof item.props !== 'object' || Array.isArray(item.props))) return false;
+  return Object.keys((item.props ?? {}) as object).every(key => ['Enabled','ResetOnSpawn','IgnoreGuiInset','DisplayOrder','ZIndexBehavior'].includes(key));
+}
+
 /** A set_properties / set_properties_bulk that restyles UI by hand, or null. `className` when it is known. */
 export function refuseUiLook(props: unknown, className?: string): { error: string } | null {
   if (!props || typeof props !== 'object') return null;

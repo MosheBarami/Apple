@@ -4,6 +4,13 @@ import type { StudioOp } from '@golem/shared';
 export const LOCAL_OWNER_PREFIX = 'owner-local:';
 const ID = /^[a-f0-9]{64}:[^\x00-\x1f\x7f]{1,400}$/;
 const SHA = /^[a-f0-9]{64}$/;
+function localSelectors(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(localSelectors);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value).map(([key,child]) => [key,
+    ['id','parent_id','node_id','target_id'].includes(key) && typeof child === 'string' && ID.test(child)
+      ? LOCAL_OWNER_PREFIX+child : localSelectors(child)]));
+}
 export function localNodeId(id: string): string {
   const raw = id.startsWith(LOCAL_OWNER_PREFIX) ? id.slice(LOCAL_OWNER_PREFIX.length) : id;
   if (!ID.test(raw)) throw new Error('Invalid local owner node identity');
@@ -24,7 +31,7 @@ export async function readLocalOwner(ctx: AgentCtx, a: Record<string,unknown>) {
     after:Number(a.after ?? 0),afterOrdinal:a.afterOrdinal === undefined ? undefined : Number(a.afterOrdinal),afterId:a.afterId === undefined ? undefined : localNodeId(String(a.afterId)),scope:a.scope === 'subtree' ? 'subtree' : 'node'});
   if ('error' in result) return result;
   const provenance={nodeId:id,sourceSha256:id.slice(0,64),permission:'owner-attested',execution:'never',untrustedData:true};
-  if (action !== 'record') return {...result,provenance};
+  if (action !== 'record') return {...localSelectors(result) as Record<string,unknown>,provenance};
   // Verify the actual returned page. UTF-8 text is a convenience; byte/base64 data is authoritative
   // when a page cuts a multibyte character. No original code enters an executable operation.
   if (result.encoding !== 'base64' || result.execution !== 'never' || typeof result.data !== 'string' || result.data.length>4000 ||

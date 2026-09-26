@@ -45,3 +45,39 @@ test('tampered inert source page is refused before the model sees code',async()=
  const ctx=context(async()=>({ok:true,data:{encoding:'base64',data:'ZXJyb3IoKQ==',offset:0,nextOffset:null,sha256:sha,chunkSha256:sha,execution:'never'}}));
  const {out,data}=await run(ctx,'read_owner_component',{id,section:'script'});assert.equal(out.ok,false);assert.match(data.error,/hash mismatch/);
 });
+
+test('returned child IDs route directly back to local owner reads without a cloud lookup',async()=>{
+ const childRaw='a'.repeat(64)+':44',calls=[];
+ const ctx=context(async op=>{calls.push(op);return {ok:true,data:op.action==='children'?{items:[{id:childRaw,class:'LocalScript',parent_id:raw}],next:{afterOrdinal:3,afterId:childRaw}}:{id:childRaw,class:'LocalScript',code:{sha256:sha,execution:'inert-review-data'}}};});
+ const children=await run(ctx,'read_owner_component',{id,section:'children'});
+ assert.equal(children.data.items[0].id,'owner-local:'+childRaw);
+ const described=await run(ctx,'read_owner_component',{id:children.data.items[0].id});
+ assert.equal(described.out.ok,true);assert.equal(calls[1].id,childRaw);assert.equal(described.data.id,'owner-local:'+childRaw);
+ assert.equal(described.data.provenance.nodeId,childRaw);
+});
+
+test('real agent context carries run owner into reads; admin context cannot impersonate that owner',async()=>{
+ const sessionOut=join(dir,'session.mjs');
+ await esbuild.build({entryPoints:['src/do/session.ts'],bundle:true,format:'esm',platform:'node',outfile:sessionOut,
+  alias:{'@golem/shared':'../../packages/shared/src/index.ts','cloudflare:workers':'./tests/stubs/cloudflare-workers.mjs'}});
+ const {SessionDO}=await import(pathToFileURL(sessionOut).href);
+ let calls=0;
+ const host={env:{},boundProjectId:'project',pinnedPrefs:null,opQueue:[],pluginConnectedNow:()=>true,playtestBus:()=>undefined,
+  pluginCapabilityReport:{operations:[{op:'query_owner_local',status:'supported'}]},execStudioOp:async()=>{calls++;return {ok:true,data:{id:raw,class:'Frame'}};}};
+ const agentCtx=SessionDO.prototype.agentCtx.call(host,{userId:'actual-run-owner'});
+ const allowed=await run(agentCtx,'read_owner_component',{id});assert.equal(allowed.out.ok,true);assert.equal(agentCtx.userId,'actual-run-owner');
+ const adminCtx=SessionDO.prototype.agentCtx.call(host);
+ const denied=await run(adminCtx,'read_owner_component',{id});assert.equal(denied.out.ok,false);assert.match(denied.data.error,/authenticated owner/);assert.equal(calls,1);
+});
+
+test('empty ScreenGui host admits authored UI mounting without admitting hand-built content or styling',async()=>{
+ const calls=[],ctx=context(async op=>{calls.push(op);return {ok:true,data:{created:['game.StarterGui.OwnerUIHost']}};});
+ const good=await run(ctx,'create_instances',{items:[{className:'ScreenGui',name:'OwnerUIHost',parent:'game.StarterGui',props:{ResetOnSpawn:{t:'bool',v:false}}}]});
+ assert.equal(good.out.ok,true);assert.equal(calls.length,1);assert.equal(calls[0].items[0].className,'ScreenGui');
+ for(const item of [
+  {className:'ScreenGui',name:'HandBuilt',parent:'game.StarterGui',children:[{className:'Frame',name:'Generic'}]},
+  {className:'ScreenGui',name:'Styled',parent:'game.StarterGui',props:{BackgroundColor3:{t:'Color3',v:[1,0,0]}}},
+  {className:'Frame',name:'Generic',parent:'game.StarterGui.OwnerUIHost'},
+ ]) {const denied=await run(ctx,'create_instances',{items:[item]});assert.equal(denied.out.ok,false);}
+ assert.equal(calls.length,1,'generic UI construction escaped the empty-container exception');
+});

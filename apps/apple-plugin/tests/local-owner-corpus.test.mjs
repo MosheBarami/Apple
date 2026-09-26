@@ -21,6 +21,7 @@ local expectedHash = "${hex(bytes)}"
 local hashes = {[nativeBytes]=${luaBytes(digest(bytes))},[id]=${luaBytes(digest(id))},[childId]=${luaBytes(digest(child))},[codeBytes]=${luaBytes(digest(code))}}
 local requests,loads = 0,0
 local revoked,tamper,residue=false,false,false
+local rootClass="Model"
 local config={port=63747,key=string.rep("k",43)}
 local http={UrlEncode=function(_,text) return text end,JSONEncode=function()return "{}" end}
 function http:RequestAsync(request)
@@ -36,7 +37,7 @@ function http:JSONDecode(url)
   if revoked then config=nil end
   return {kind="script-free-native-rbxm",encoding="base64",data="encoded",offset=0,totalBytes=#nativeBytes,nextOffset=nil,sha256=expectedHash,chunkSha256=tamper and string.rep("f",64) or expectedHash,execution="never"}
  end
- if string.find(url,"/v1/native-map?",1,true) then return {items={{node_id=id,class="Model",nativeChildIndices={0},namespace="R${hex(id)}"},{node_id=childId,class="MeshPart",nativeChildIndices={0,0},namespace="R${hex(child)}"}},nextAfter=nil} end
+ if string.find(url,"/v1/native-map?",1,true) then return {items={{node_id=id,class=rootClass,nativeChildIndices={0},namespace="R${hex(id)}"},{node_id=childId,class="MeshPart",nativeChildIndices={0,0},namespace="R${hex(child)}"}},nextAfter=nil} end
  if string.find(url,"/v1/search?",1,true) then return {items={{id=id,name="Waterfall",source={path="/private/DO_NOT_EXPOSE"}}},nextAfter=id} end
  error("unexpected gateway request")
 end
@@ -45,7 +46,7 @@ local lastRoot
 local serializer={DeserializeInstancesAsync=function(_,value)
  loads += 1
  assert(buffer.tostring(value)==nativeBytes)
- local root=Instance.new("Model");root.Name="Native"
+ local root=Instance.new(rootClass);root.Name="Native";if rootClass=="Frame" then root.Visible=false end
  local child=Instance.new(residue and "ModuleScript" or "MeshPart");child.Name="Original";child.MeshId="actual-original-mesh";child.Parent=root
  lastRoot=root;return {root}
 end}
@@ -78,6 +79,17 @@ assert(inserted and inserted:GetAttribute("AppleOwnerNodeId")==id,"global native
 local mesh=inserted:FindFirstChild("Original")
 assert(mesh.MeshId=="actual-original-mesh" and mesh:GetAttribute("AppleOwnerNodeId")==childId)
 assert(good.data.instances==2 and good.data.scriptsExecuted==0 and good.data.visualVerified==false)
+assert(good.data.roots[1].path=="game.ServerStorage.Native.Native" and good.data.roots[1].sourceNodeId==id,"native root selector unavailable")
+rootClass="Frame";op.parent="game.StarterGui"
+local frameOnly=c:execute("frameOnly",op,true,current)
+assert(frameOnly.ok==true and frameOnly.data.roots[1].uiMount=="requires_gui_host","bare Frame insertion must not claim mounted UI")
+local exactFrame=game:GetService("StarterGui"):FindFirstChild("Native"):FindFirstChild("Native")
+assert(exactFrame.Visible==false,"authored visibility was changed for preview")
+local host=Instance.new("ScreenGui");host.Name="ExistingGui";host.Parent=game:GetService("StarterGui")
+op.parent="game.StarterGui.ExistingGui"
+local hosted=c:execute("hosted",op,true,current)
+assert(hosted.ok==true and hosted.data.roots[1].uiMount=="gui_host_present")
+assert(hosted.data.visualVerified==false,"GUI host is not rendered-pixel verification")
 print("executed local owner bridge boundary passed")
 `;
 function run(source=family) {

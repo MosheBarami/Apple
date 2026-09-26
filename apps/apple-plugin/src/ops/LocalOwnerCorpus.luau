@@ -208,7 +208,17 @@ function LocalOwnerCorpus.build(api)
 		if not placed then cleanup(); return nil,"refused","local native insertion failed" end
 		local path,pathErr = api.fullPath(self.game,wrapper)
 		if not path then cleanup(); return nil,"internal",pathErr end
-		return {inserted={path},instances=count,nativeSha256=op.nativeSha256,sourceNodeId=op.nodeId,scriptsExecuted=0,
+		local rootDetails = {}
+		for index=1,math.min(#roots,10) do
+			local root = roots[index]
+			local host = root.Parent
+			while host and host ~= self.game and host.ClassName ~= "ScreenGui" and host.ClassName ~= "SurfaceGui" and host.ClassName ~= "BillboardGui" do host = host.Parent end
+			local uiMount = if root.ClassName == "ScreenGui" or root.ClassName == "SurfaceGui" or root.ClassName == "BillboardGui" then "native_layer_collector"
+				elseif root:IsA("GuiObject") then (if host and host ~= self.game then "gui_host_present" else "requires_gui_host") else "not_screen_ui"
+			table.insert(rootDetails,{path=api.fullPath(self.game,root),className=root.ClassName,sourceNodeId=root:GetAttribute("AppleOwnerNodeId"),uiMount=uiMount})
+		end
+		return {inserted={path},roots=rootDetails,totalRoots=#roots,instances=count,nativeSha256=op.nativeSha256,sourceNodeId=op.nodeId,scriptsExecuted=0,
+			uiGuidance="Use exact root paths. A Frame under a StarterGui Folder requires an existing ScreenGui host; create only an empty host if missing, then move the original Frame. Authored visibility is unchanged. A mount is not rendered-pixel proof.",
 			crossChunkRefs="not automatically repaired; inspect dependency records",externalMedia="not verified loaded",visualVerified=false,gameplayVerified=false}
 	end
 	return {handlers={query_owner_local=query,import_owner_local=import},mutating={import_owner_local=true}}
