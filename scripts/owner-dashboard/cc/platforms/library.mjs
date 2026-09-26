@@ -262,16 +262,16 @@ function receiptRows() {
 
 function reviewReceiptRows(sources) {
   return sources.flatMap((source) => [
-    [source.reviewFile, source.reviewBytes, source.reviewSha256],
-    [source.additionalReviewFile, source.additionalReviewBytes, source.additionalReviewSha256],
-    ...arr(source.reviewFiles).map((r) => [r?.file, r?.bytes, r?.sha256]),
-  ].filter(([file]) => typeof file === 'string' && file.startsWith('review/') && !file.includes('..')).map(([file, expectedBytes, expectedSha]) => ({
-    k: `review-${source.priority}-${file}`, category: source.category, name: path.basename(file),
+    { file: source.reviewFile, bytes: source.reviewBytes, sha256: source.reviewSha256 },
+    { file: source.additionalReviewFile, bytes: source.additionalReviewBytes, sha256: source.additionalReviewSha256 },
+    ...arr(source.reviewFiles),
+  ].filter((r) => typeof r?.file === 'string' && r.file.startsWith('review/') && !r.file.includes('..')).map((r) => ({
+    k: `review-${source.priority}-${r.file}`, category: source.category, name: path.basename(r.file),
     source: `#${source.priority}`, sourceUrl: source.url, priority: source.priority,
-    file, expectedBytes, expectedSha, license: source.rights ?? null,
-    download: { method: source.acquiredBy ?? 'not-recorded', url: source.downloadUrl ?? source.url },
+    file: r.file, expectedBytes: r.bytes, expectedSha: r.sha256, license: source.rights ?? null,
+    download: { method: source.acquiredBy ?? 'not-recorded', url: r.downloadUrl ?? source.downloadUrl ?? source.url },
     backendPath: null, use: 'review-only', ownerListed: true,
-    local: localFact(file, expectedBytes, expectedSha),
+    local: localFact(r.file, r.bytes, r.sha256),
   })));
 }
 

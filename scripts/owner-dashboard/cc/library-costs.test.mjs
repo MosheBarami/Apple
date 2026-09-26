@@ -96,6 +96,15 @@ test('GitHub dialogue kit review files retain the actual archive download URL', 
   assert.ok(files.page.rows.every((r) => r.download.url === 'https://github.com/arakoDev/MrDialogue/archive/refs/heads/main.zip'));
 });
 
+test('two tycoon place files retain their distinct author download URLs', async () => {
+  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'owner-44', limit: '10' }));
+  assert.equal(files.page.total, 2);
+  const byName = Object.fromEntries(files.page.rows.map((r) => [r.name, r]));
+  assert.equal(byName['Tycoon-Map.rbxl'].download.url, 'https://devforum.roblox.com/uploads/short-url/qIW7OQlP0Opv6HQq1yRERoOdDHO.rbxl');
+  assert.equal(byName['Tycoon-Assets.rbxl'].download.url, 'https://devforum.roblox.com/uploads/short-url/mKiIQYOa4lxiKkSty7tNXXk4t2p.rbxl');
+  assert.ok(files.page.rows.every((r) => r.local.state === 'verified' && r.backend.state === 'not-supported'));
+});
+
 test('summary counts every library and has a growth series from git', async () => {
   const d = await library(q({ tab: 'summary' }));
   const by = Object.fromEntries(d.counts.map((c) => [c.id, c.n]));
