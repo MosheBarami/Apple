@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
   "updatedAt": "2026-09-26T10:47:51.344252+00:00",
-  "now": "השבילים והרחבה קיבלו גוון חולי; שני שבילים כפולים נשמרו באחסון ועץ פונה מהרחבה. Play נצפה. ביקורת עצמאית עדיין דוחה את הערוגות הדלילות. בקשה אחרי נקודתיים חרגה מהרצף ועלתה31 Credits עד Stop; תיקון707eea2 עבר בדיקות, הוכחה חיה עוד נדרשת.",
-  "nextStep": "לאמת שרצף כלים אחרי נקודתיים מסתיים מעצמו; להוסיף קומפוזיציית פרחים מקוריים מורשים סביב השביל. מפקחCPU יחיד35962 באימוןv33; F059/F064 ו0/3 פתוחים.",
+  "now": "השבילים והרחבה קיבלו גוון חולי; שני שבילים כפולים נשמרו באחסון ועץ פונה מהרחבה. Play נצפה. ביקורת עצמאית עדיין דוחה את הערוגות הדלילות. בקשה אחרי נקודתיים חרגה מהרצף ועלתה31 Credits עד Stop; תיקון707eea2 נפרס ואומת: קריאה אחת וסיום אוטומטי ב4 Credits.",
+  "nextStep": "להוסיף קומפוזיציית פרחים מקוריים מורשים וערוגות תחומות סביב השביל; לבדוק Play ונראות עצמאית. מפקחCPU יחיד35962 באימוןv33; F059/F064 ו0/3 פתוחים.",
   "items": [
     {
       "id": "productScope",
