@@ -15,3 +15,17 @@ The compact tree now includes only measured finite Position/Size vectors and an 
 The new spatial test failed against the previous implementation, then passed. All five tree-outline tests pass, worker TypeScript passes, and the complete isolated worker suite passes 4,203 tests with four skips (4,207 total). This does not yet prove deployed agent placement. A deployment and bounded live repeat remain required.
 
 Manual local Monk import was proved separately in [the import evidence](owner-monk-local-studio-import-2026-09-26.md). Apple-agent insertion, appropriate placement, visual game quality and full-game completion remain unproven. F-059/F-064 and three fresh independent reviews remain open.
+
+## Deployed live repeat
+
+`infra/deploy-worker.mjs` deployed committed archive `ef09038` and verified that exact live health stamp (Cloudflare version `b98673db-7ee3-4601-a74d-231d5134cbdb`). Run `b0b6232a-da14-4cec-9581-e3408c88b536` then completed after exactly two successful tree reads, no mutation tools and no failed calls. Visible charge: 14 Credits. Build and model-call logs agree on 407 neurons; these are recorded consumption, not a provider invoice.
+
+Apple reported measured MeshPart coordinates matching the persisted full Studio tree, rounded to one decimal:
+
+| Node in the snapshot | Position | Size | Anchored | Unique path? |
+| --- | --- | --- | --- | --- |
+| First Stone.Stone | 68.0, 6.6, 3.1 | 7.5, 8.2, 6.9 | false | No: two Stone sibling Models |
+| First Rock.Rock | 87.8, 6.8, 3.3 | 6.4, 5.2, 5.4 | false | No: two Rock sibling Models |
+| GardenPaths.Path1 | 0, 0.25, -11 | 10, 0.5, 6 | true | Yes |
+
+The response correctly warned that both asset paths are ambiguous, did not call get_instance on them, and did not pretend to have placed them. This proves the spatial-read repair at the deployed product boundary. Resolving stable identity for same-named imported siblings, safe placement/anchoring, and visual/gameplay quality remain separate work.
