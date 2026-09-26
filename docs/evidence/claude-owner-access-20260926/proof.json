@@ -1,0 +1,17 @@
+{
+  "claudeVersion": "2.1.280",
+  "requestedModel": "claude-opus-5-5",
+  "nativeGoalRecognized": true,
+  "actualModelResponse": false,
+  "modelUsage": {},
+  "reportedCostUsd": 0,
+  "providerError": "Your organization has disabled Claude subscription access for Claude Code \u00b7 Use an Anthropic API key instead, or ask your admin to enable access",
+  "authRoute": "claude.ai firstParty",
+  "browserPlan": "Free",
+  "cliCachedPlan": "max",
+  "sameAccountConfirmed": true,
+  "renewalOrUpgradePerformed": false,
+  "accessRootCause": "subscription entitlement mismatch; precise provider cause unverified",
+  "browserBillingPlan": "Free plan",
+  "ownerQuestion": "whether another existing active Claude account should be used"
+}
