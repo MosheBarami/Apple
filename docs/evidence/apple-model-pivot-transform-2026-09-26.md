@@ -48,7 +48,8 @@ The proof windows were closed without saving their disposable edits.
 ## Limits
 
 This is a local engine proof and local plugin update, not a Creator Store release, live Apple
-agent insertion, full game completion or commercial visual review. The previous active garden
-connection used 1.4.2; a fresh paired 1.4.3 product run is a separate required observation.
+agent insertion, full game completion or commercial visual review. After reopening the saved isolated garden, the dock visibly showed 1.4.3 and Connected,
+with access inspect-only. The worker session-info independently reported connected=true,
+pluginVersion=1.4.3, idle and queuedOps=0. A fresh agent transform run remains separate.
 F-059/F-064 and independent reviews remain open. CI for previous head 5403c97 passed;
 this change requires its own CI result.

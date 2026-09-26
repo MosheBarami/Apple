@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T04:21:20.781403Z",
-  "now": "429 קבצי סקירה מאומתים. Apple מיקם פרח קרטוני מהערכה שסיפקת: שלושה חלקים בלבד זזו, ונצפו על הערוגה. הניסוי הוחזר; 52 Credits. הכנסה אוטומטית וספרייה זמינה לסוכן עדיין לא הוכחו.",
-  "nextStep": "לשלב נכס קיים בלולאת הצמיחה בפועל, לתקן מיקום pivot אחרי תרגום ולהמשיך בהורדות מהרשימה; אימון CPU יחיד v31 ממשיך.",
+  "updatedAt": "2026-09-26T04:40:41.177165+00:00",
+  "now": "429 קבצי סקירה מאומתים. Apple מיקם פרח קרטוני קיים בניסוי שהוחזר למצב המקורי. תוסף מקומי 1.4.3 מחובר: תיקון pivot עבר סיבוב, הגדלה ו־Undo/Redo בתוך Studio. הכנסה אוטומטית וספרייה זמינה לסוכן עדיין לא הוכחו.",
+  "nextStep": "לשלב את הפרח הקיים בלולאת צמיחה וקציר ולבדוק אותה חזותית; להמשיך הורדות מהרשימה. אימון CPU יחיד v31 ממשיך.",
   "items": [
     {
       "id": "productScope",
@@ -139,7 +139,7 @@
       "id": "pluginStore",
       "he": "התוסף בחנות של רובלוקס",
       "status": "progress",
-      "detail": "חלונית Apple Studio בתוך Roblox Studio המקומי הציגה 1.4.1 ו־independent preview אחרי התקנת קובץ שאומת מבניית מקור נקייה. החלונית חוברה מחדש לפרויקט המשחק המבודד והרשאת עריכה ניתנה לחיבור זה; טעינת מודל של יוצר אחר והמשחק החזותי טרם אומתו. הנכס הקיים 107230158271368 נחסם להפצה ציבורית על ידי Roblox בעקבות החלטת ניהול תוכן על גרסה 4 מ־25 בספטמבר; חשבון מפרסם רואה Not distributed on Creator Store וה־API הציבורי מחזיר 404. ערעור נכתב אך לא נשלח; נדרש אישור מפורש לפני שליחתו (Q-023).",
+      "detail": "Apple Studio המקומי מציג 1.4.3 ומחובר לגינה המבודדת עם גישה לצפייה בלבד. תיקון מיקום pivot אומת בתוך Studio בסיבוב, הגדלה ו־Undo/Redo; הכנסה אוטומטית של מודל צד שלישי טרם הוכחה. התוסף הציבורי עדיין אינו מופץ בחנות; הערעור נשאר טיוטה שלא נשלחה (Q-023).",
       "blockedBy": "Q-023"
     },
     {
