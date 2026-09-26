@@ -106,3 +106,13 @@ export async function readOwnerOriginalString(ctx:AgentCtx,a:Record<string,unkno
   try{text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);}catch{/* Exact invalid/split UTF-8 remains base64 data. */}
   return {...data,text,normalizedNodeMappingProved:false,provenance:{...exactProvenance,sourceSHA:match[1],binaryIdentity:a.id,seq:a.seq},note:EXACT_NOTE+' Page hash verified; whole raw hash verified only when this page contains the complete record. Follow byte nextOffset for the remaining original bytes.'};
 }
+
+/** Bounded source discovery over the paired owner's entire current index. No cloud mirror. */
+export async function queryOwnerCatalog(ctx:AgentCtx,a:Record<string,unknown>) {
+ if (!ctx.userId) return {error:'Owner catalogue reads need an authenticated owner context.'};
+ const action=a.section ?? 'sources',limit=a.limit ?? 5,after=a.after ?? '';
+ if (!['sources','health'].includes(String(action)) || !Number.isInteger(limit) || Number(limit)<1 || Number(limit)>10 || typeof after!=='string' || after!=='' && !SHA.test(after)) return {error:'Use section sources/health, limit 1..10 and the exclusive source SHA cursor.'};
+ const data=await localOwnerQuery(ctx,{action:action as 'sources'|'health',limit:Number(limit),after:after||undefined});
+ if ('error' in data) return data;
+ return {...data,scope:'all-indexed-owner-library',sourceExecuted:false,untrustedData:true,visualEvidence:'unverified',note:'Source IDs are original SHA identities, not component selectors. Search find_library_model with sourceSHA and plain words, page nextAfter unchanged. Read exact owner-local node context/bytes on demand. Import only script-free native subtrees through checkpoint and edit consent. Native capture and actual pixel critique are required before visual approval; source names, index matches and decoded bytes are not visual or gameplay proof.'};
+}

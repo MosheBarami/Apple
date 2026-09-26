@@ -14,13 +14,23 @@ local function exactMetadata(value)
  return {status=type(value.status)=="string" and string.sub(value.status,1,80) or "unknown",stringValues=value.stringValues,
   binaryReferentsOnly=true,identityNamespace="sourceSHA:binary:rawReferent",normalizedNodeMappingProved=false}
 end
+local function sourceMetadata(value)
+ if type(value) ~= "table" then return nil end
+ local out={}
+ for _,key in {"id","status","bytes","normalized_sha","nodes","scripts"} do
+  if type(value[key])=="number" or type(value[key])=="string" and not string.find(value[key],"[%c]") then out[key]=value[key] end
+ end
+ if type(value.path)=="string" then out.name=string.sub(string.match(value.path,"[^/\\]+$") or "owner source",1,160) end
+ out.exactStrings=exactMetadata(value.exactStrings)
+ return out
+end
 local function sanitize(value)
 	if type(value) ~= "table" then return value end
 	local out = {}
 	for key, child in value do
 		-- source contains a filesystem path. Exact properties/source are fetched only by record.
 		if key == "source" and type(child) == "table" and type(child.exactStrings) == "table" then
-			out.source = {exactStrings=exactMetadata(child.exactStrings)}
+			out.source = sourceMetadata(child)
 		elseif key ~= "source" and key ~= "propertiesXml" and key ~= "error" and key ~= "identity"
 			and not string.find(tostring(key),"Endpoint$") and key ~= "output" and key ~= "nativeXmlPath" and key ~= "key" and key ~= "keyFile" and key ~= "casPath" and key ~= "codePath" and key ~= "cache" then
 			out[key] = sanitize(child)
@@ -59,18 +69,21 @@ function LocalOwnerCorpus.build(api)
 	local function query(self,op,stillCurrent)
 		local config, err = connection(self,stillCurrent)
 		if not config then return nil,"refused",err end
-		local paths = {search="/v1/search",describe="/v1/describe",children="/v1/children",relations="/v1/relations",record="/v1/record",plan="/v1/plan",materialize="/v1/materialize",job="/v1/job",["native-map"]="/v1/native-map"}
+		local paths = {health="/v1/health",sources="/v1/sources",search="/v1/search",describe="/v1/describe",children="/v1/children",relations="/v1/relations",record="/v1/record",plan="/v1/plan",materialize="/v1/materialize",job="/v1/job",["native-map"]="/v1/native-map"}
 		local path = paths[op.action]
 		if not path then return nil,"invalid","unsupported local query" end
-		if op.action ~= "search" and op.action ~= "job" and op.action ~= "native-map" and not nodeId(op.id) then return nil,"invalid","exact local node ID required" end
+		if op.action ~= "health" and op.action ~= "sources" and op.action ~= "search" and op.action ~= "job" and op.action ~= "native-map" and not nodeId(op.id) then return nil,"invalid","exact local node ID required" end
 		if (op.action == "job" or op.action == "native-map") and not sha(op.jobId) then return nil,"invalid","exact local job ID required" end
 		local http = api.serviceFrom(self.game,self.options.services,"HttpService")
 		local params = {}
 		local function add(key,value) if value ~= nil then table.insert(params,key.."="..http:UrlEncode(tostring(value))) end end
 		add("id",op.id); add("jobId",op.jobId)
-		if op.action == "search" then
+		if op.action == "sources" then
+   if op.after ~= nil then if not sha(op.after) then return nil,"invalid","invalid source SHA cursor" end; add("after",op.after) end
+  elseif op.action == "search" then
 			if type(op.query) ~= "string" or #op.query < 1 or #op.query > 256 then return nil,"invalid","bounded local search query required" end
 			add("q",op.query)
+   if op.sourceSHA ~= nil then if not sha(op.sourceSHA) then return nil,"invalid","invalid source SHA filter" end; add("source",op.sourceSHA) end
 			if op.after ~= nil then if not nodeId(op.after) then return nil,"invalid","invalid search cursor" end; add("after",op.after) end
 			add("class",op.className)
 		else
@@ -94,7 +107,11 @@ function LocalOwnerCorpus.build(api)
 		local fetched, data = pcall(function() return request(self,config,path.."?"..table.concat(params,"&"),op.action == "materialize" and {id=op.id} or nil,200000) end)
 		if not fetched then return nil,"refused","local gateway read failed; check the configured session and operation bounds" end
 		if not same(self,config,stillCurrent) then return nil,"refused","paired gateway session ended during read" end
-		data = sanitize(data)
+		if op.action == "sources" then
+   local items={}; for _,row in data.items or {} do table.insert(items,sourceMetadata(row)) end
+   data={items=items,nextAfter=data.nextAfter}
+  elseif op.action == "health" then data={scope=data.scope,sourceStatuses=data.sourceStatuses,policy=data.policy,scripts=data.scripts,ok=data.ok} end
+  data = sanitize(data)
 		if op.action == "record" then
 			local encoding = api.serviceFrom(self.game,self.options.services,"EncodingService")
 			local hashEnum = self.enum and self.enum.HashAlgorithm and self.enum.HashAlgorithm.Sha256

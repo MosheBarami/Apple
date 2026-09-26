@@ -4,7 +4,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import * as esbuild from 'esbuild';
+const esbuild=await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 import {createHash} from 'node:crypto';
 const dir=mkdtempSync(join(tmpdir(),'owner-local-worker-'));
 test.after(()=>rmSync(dir,{recursive:true,force:true}));
@@ -80,4 +80,17 @@ test('empty ScreenGui host admits authored UI mounting without admitting hand-bu
   {className:'Frame',name:'Generic',parent:'game.StarterGui.OwnerUIHost'},
  ]) {const denied=await run(ctx,'create_instances',{items:[item]});assert.equal(denied.out.ok,false);}
  assert.equal(calls.length,1,'generic UI construction escaped the empty-container exception');
+});
+
+test('paged full source catalogue is paired, authenticated and keeps SHA cursors distinct from nodes',async()=>{
+ const calls=[],ctx=context(async op=>{calls.push(op);return {ok:true,data:{items:[{id:sha,name:'nonseed.rbxl',status:'indexed'}],nextAfter:sha}};});
+ const page=await run(ctx,'query_owner_catalog',{section:'sources',after:sha,limit:2});
+ assert.equal(page.out.ok,true);assert.equal(calls[0].action,'sources');assert.equal(calls[0].after,sha);assert.equal(page.data.items[0].id,sha);assert.equal(page.data.visualEvidence,'unverified');assert.equal(page.out.detail,undefined);
+ const denied=await run({...ctx,userId:undefined},'query_owner_catalog',{});assert.equal(denied.out.ok,false);assert.equal(calls.length,1);
+ const bad=await run(ctx,'query_owner_catalog',{after:id});assert.equal(bad.out.ok,false);assert.equal(calls.length,1);
+});
+test('owner-first component search scopes full SQLite index by selected original source SHA',async()=>{
+ let op;const ctx=context(async v=>{op=v;return {ok:true,data:{items:[{id:raw,name:'NonSeed',class:'Model'}],nextAfter:null}};});
+ const got=await run(ctx,'find_library_model',{query:'NonSeed',sourceSHA:sha});assert.equal(got.out.ok,true);assert.equal(op.sourceSHA,sha);assert.equal(got.data.source,'owner_local');assert.equal(got.data.results[0].preview.visualApproved,false);
+ const refused=await run(ctx,'find_library_model',{sourceSHA:sha});assert.equal(refused.out.ok,false);
 });

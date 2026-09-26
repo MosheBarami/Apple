@@ -43,6 +43,8 @@ function http:JSONDecode(url)
   if originalRevoke then config=nil end
   return {rawSHA="${hex(code)}",totalBytes=#codeBytes,offset=0,bytes=#codeBytes,chunkSHA=tamper and string.rep("f",64) or "${hex(code)}",rawBase64="code",sourceExecuted=false}
  end
+ if string.find(url,"/v1/sources?",1,true) then return {items={{id=string.sub(id,1,64),path="/PRIVATE/nonseed.rbxl",status="indexed",keyFile="/SECRET"}},nextAfter=string.sub(id,1,64)} end
+ if string.find(url,"/v1/health?",1,true) then return {ok=true,sourceStatuses={indexed=438},bind="127.0.0.1",cache="/PRIVATE"} end
  if string.find(url,"/v1/describe?",1,true) then return {id=id,source={path="/PRIVATE",exactStrings={status="complete",stringValues=9,endpoint="/PRIVATE",normalizedNodeMappingProved=false}}} end
  if string.find(url,"/v1/record?",1,true) then return {kind="inert-script",encoding="base64",data="code",offset=0,totalBytes=#codeBytes,nextOffset=nil,sha256="${hex(code)}",chunkSha256="${hex(code)}",execution="never"} end
  if string.find(url,"/v1/job?",1,true) then return {status="ready",jobId=jobId,nodeId=id,nativeSha256=expectedHash,nativeBytes=#nativeBytes,nativeInstances=2,policy="owner-loopback-scriptfree-v1",nativeScripts=0} end
@@ -69,6 +71,16 @@ local read={op="query_owner_local",action="search",query="Waterfall",limit=5}
 local result=c:execute("read",read,false,current)
 assert(result.ok==true,result.error)
 assert(result.data.items[1].source==nil,"private filesystem metadata escaped")
+local catalog=c:execute("catalog",{op="query_owner_local",action="sources",after=string.sub(id,1,64),limit=2},false,current)
+assert(catalog.ok==true,catalog.error)
+assert(catalog.data.items[1].name=="nonseed.rbxl" and catalog.data.items[1].id==string.sub(id,1,64))
+assert(catalog.data.items[1].path==nil and catalog.data.items[1].keyFile==nil,"source filesystem/secret leaked")
+local health=c:execute("health",{op="query_owner_local",action="health"},false,current)
+assert(health.ok and health.data.sourceStatuses.indexed==438 and health.data.bind==nil and health.data.cache==nil)
+local scoped=c:execute("scoped",{op="query_owner_local",action="search",query="Waterfall",sourceSHA=string.sub(id,1,64)},false,current)
+assert(scoped.ok==true)
+local badCursor=c:execute("badcursor",{op="query_owner_local",action="sources",after=id},false,current)
+assert(badCursor.ok==false)
 local sourceRead=c:execute("source",{op="query_owner_local",action="record",id=id,kind="script",offset=0,limit=3000},false,current)
 assert(sourceRead.ok==true and sourceRead.data.text==codeBytes,"exact source is not readable by the agent")
 assert(sourceRead.data.untrustedData==true and sourceRead.data.execution=="never")
@@ -173,4 +185,9 @@ test('original binary chunk integrity proof fails when its hash guard is disable
 
 test('new media/assembly byte checks are behaviorally falsified when disabled',()=>{
  const anchor='if hash~=raw.chunkSha256 or offset==0 and raw.nextOffset==nil and hash~=raw.sha256 then';assert.ok(family.includes(anchor));const result=run(family.replace(anchor,'if false then'));assert.notEqual(result.status,0);assert.match(result.output,/tampered owner media admitted/);
+});
+
+test('whole catalogue proof fails when the source-page route is absent',()=>{
+ const anchor='sources="/v1/sources",';assert.equal(family.split(anchor).length-1,1);
+ const result=run(family.replace(anchor,''));assert.notEqual(result.status,0);assert.match(result.output,/unsupported local query/);
 });
