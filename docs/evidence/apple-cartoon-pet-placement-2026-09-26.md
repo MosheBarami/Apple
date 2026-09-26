@@ -23,3 +23,7 @@ Native local Play showed the anchored Cat intact beside spawn. Other unanchored 
 ## Gates
 
 Source stays local-review-only: backend redistribution/training rights and Apple insertion unavailable. F059/F064,0/3 independent reviews remain open. No permanent Roblox upload,Q022 setting change,appeal,credit purchase/reset,downloaded-code execution or CPU interruption. Sole supervisor35962 alive. CI9334e50 passed; subsequent repair CI must be followed.
+
+## Deployed guard proof,08:33 UTC
+
+Committed repair3df7bc9 deployed through infra/deploy-worker.mjs from git-archive source; health verified serving3df7bc9. Same natural single-call wording with get_instance on SpawnLocation,inspect-only,ended done automatically with exactly1 successful tool and no implicit visual/tree checks. Run2931f266-6c09-4000-b0f7-df2fa73a28d2:10 Credits,2 model calls,350 neurons;idle,connected,queuedOps0 verified. This is live finite-workflow proof,not a repeat mutation or game-quality proof. Total bounded runs89 Credits,2716 neurons. CI36230037849 currently3 jobs passed,3 running.
