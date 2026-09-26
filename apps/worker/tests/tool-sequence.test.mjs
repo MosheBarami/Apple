@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { explicitToolSequence, sequenceProgress, sequenceStepMessages } from '../src/tool-sequence.ts';
+import { explicitToolSequence, sequenceProgress, sequenceStepMessages, sequenceCallSignature } from '../src/tool-sequence.ts';
 
 const known = new Set(['read_script', 'edit_script', 'get_instance', 'inspect_visually']);
 const repair = 'Measured repair only, GardenMain. No plan, no searches, no tree, no render/inspect, no Play. Exactly read_script then edit_script then finish. Stop on any error; do not retry.';
@@ -91,4 +91,20 @@ test('live cleanup Execute wording binds one call and refuses autonomous follow-
     'Execute exactly ONE read_script call, then finish immediately. Exactly edit_script then finish.',
     'Execute exactly ONE read_script call, then inspect and finish immediately.',
   ]) assert.equal(explicitToolSequence(request, known), null, request);
+});
+
+test('identical clones explicitly authorized at later sequence positions are not duplicates', () => {
+  const args = JSON.stringify({ paths: ['game.Workspace.Tree'], parent: 'game.Workspace' });
+  const seen = new Set([sequenceCallSignature('clone_instances', args, 0)]);
+  assert.equal(seen.has(sequenceCallSignature('clone_instances', args, 2)), false);
+  assert.equal(seen.has(sequenceCallSignature('clone_instances', args, 0)), true);
+  assert.equal(sequenceCallSignature('clone_instances', args), 'clone_instances:' + args);
+});
+
+test('a finite sequence cannot pay for another step after executing nothing', () => {
+  const sequence = ['clone_instances', 'transform_instances', 'clone_instances'];
+  const trace = [{ tool: 'clone_instances', ok: true }, { tool: 'transform_instances', ok: true }];
+  assert.deepEqual(sequenceProgress(sequence, trace), { state: 'next', tool: 'clone_instances' });
+  assert.deepEqual(sequenceProgress(sequence, trace, 0), { state: 'failed' });
+  assert.deepEqual(sequenceProgress(sequence, trace, 1), { state: 'next', tool: 'clone_instances' });
 });

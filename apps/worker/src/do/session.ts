@@ -89,7 +89,7 @@ import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, par
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
 import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
-import { explicitToolSequence, sequenceProgress, sequenceStepMessages } from '../tool-sequence';
+import { explicitToolSequence, sequenceProgress, sequenceStepMessages, sequenceCallSignature } from '../tool-sequence';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
@@ -4334,7 +4334,7 @@ export class SessionDO extends DurableObject<Env> {
       }
       const t0 = Date.now();
       const toolId = call.id;
-      const sig = `${call.name}:${call.arguments}`;
+      const sig = sequenceCallSignature(call.name, call.arguments, sequence ? agent.trace.length : undefined);
       // A user-specified search count is a run boundary, not a suggestion to the model. In the
       // connected garden probe it made five library searches after being allowed only two, then
       // tried to build a detailed crop from Parts. Stop before the third lookup costs anything.
@@ -4631,6 +4631,13 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     if (sequence) {
+      // Refused/duplicate calls are not trace progress. Never let a finite allowance
+      // turn into paid retries at the same sequence position.
+      if (sequenceProgress(sequence, agent.trace, executedThisStep).state === 'failed') {
+        await this.finishRun(agent, 'incomplete', undefined,
+          'The requested action could not be executed. I stopped without retrying or adding other actions.');
+        return;
+      }
       await this.persistAgent(agent);
       await this.ctx.storage.setAlarm(Date.now() + 10);
       return;

@@ -532,3 +532,29 @@ test('an explicit finite workflow stops on reasoning-only truncation without buy
   await h.session.alarm();
   assert.equal(h.chatCalls.length, calls, 'a later alarm must not purchase another provider call');
 });
+
+test('explicitly repeated actions execute at each finite workflow position then stop', async () => {
+  const call = { name: 'search_creation_skills', arguments: JSON.stringify({ query: 'street lamp' }) };
+  const step = (id) => gatewayResponse({ finishReason: 'tool_calls', text: '', neurons: 30, toolCalls: [{ id, ...call }] });
+  const h = makeSession({ responses: [step('finite1'), step('finite2'), step('finite3')] });
+  await start(h, 'Exactly search_creation_skills then search_creation_skills then search_creation_skills then finish.');
+  for (let i = 0; i < 5 && !lastEnd(h); i++) await h.session.alarm();
+  assert.equal(lastEnd(h)?.stopReason, 'done');
+  assert.equal(h.chatCalls.filter(c => c.req.requiredTool).length, 3, 'three action calls; any no-build recap is separate');
+  assert.equal(h.store.get('agent').trace.length, 3);
+  assert.ok(h.store.get('agent').trace.every(x => x.ok));
+});
+
+test('a duplicate at the same finite position stops without another paid model step', async () => {
+  const args = JSON.stringify({ query: 'street lamp' });
+  const h = makeSession({ responses: [gatewayResponse({ finishReason: 'tool_calls', text: '', neurons: 30,
+    toolCalls: [{ id: 'finite-duplicate', name: 'search_creation_skills', arguments: args }] })] });
+  const agent = await start(h, 'Exactly search_creation_skills then finish.');
+  agent.seenCalls = ['finite:0:search_creation_skills:' + args];
+  h.store.set('agent', structuredClone(agent));
+  await h.session.alarm();
+  assert.equal(lastEnd(h)?.stopReason, 'incomplete');
+  assert.equal(h.store.get('agent').trace.length, 0);
+  await h.session.alarm();
+  assert.equal(h.chatCalls.length, 1);
+});

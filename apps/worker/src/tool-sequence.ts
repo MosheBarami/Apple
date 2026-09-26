@@ -21,9 +21,9 @@ export function explicitToolSequence(request: string, known: ReadonlySet<string>
 }
 
 /** Persisted trace is the authority, so eviction cannot reset the workflow allowance. */
-export function sequenceProgress(sequence: readonly string[], trace: readonly { tool: string; ok: boolean }[]):
+export function sequenceProgress(sequence: readonly string[], trace: readonly { tool: string; ok: boolean }[], executedThisStep?: number):
   { state: 'next'; tool: string } | { state: 'complete' | 'failed' } {
-  if (trace.length > sequence.length || trace.some((entry, i) => !entry.ok || entry.tool !== sequence[i])) {
+  if (executedThisStep === 0 || trace.length > sequence.length || trace.some((entry, i) => !entry.ok || entry.tool !== sequence[i])) {
     return { state: 'failed' };
   }
   return trace.length === sequence.length
@@ -46,4 +46,9 @@ export function sequenceStepMessages<T extends { role: string; content: unknown;
   return kept.map((message, index) => index === 0 && message.role === 'system'
     ? { ...message, content: `${message.content}\n\nNext required action: ${tool}. Call that tool now using the latest user request and verified results from this run. Do not claim changes based on earlier messages. No additional tools are authorized by this workflow.` }
     : message);
+}
+
+/** Calls at different explicitly authorized sequence positions are distinct work. */
+export function sequenceCallSignature(name: string, args: string, position?: number): string {
+  return position === undefined ? `${name}:${args}` : `finite:${position}:${name}:${args}`;
 }
