@@ -74,3 +74,32 @@ test('invalid native PNG fails before model or budget invocation',async()=>{
  const judged=await T.TOOLS.inspect_visually.run(context,{intent:'Waterfall'});
  assert.equal(mock.calls.length,0);assert.equal(judged.score,null);assert.equal(judged.passed,false);
 });
+
+// Native callback capture supplies engine RGB; the worker owns the PNG encoding.
+test('native RGB is encoded as PNG before GLM and never treated as software geometry',async()=>{
+ const rgbFrame={...frame,encoding:'rgb24',rgbBase64:PNG.bytesToBase64(new Uint8Array(160*90*3).fill(128)),captureMethod:'capture_service',nativeWidth:1213,nativeHeight:793,resampled:true};
+ const context=ctx({subject:'game.StarterGui.OwnerItemShopNative.Frame',views:[],studioViewport:rgbFrame});
+ const mock=visionEnv(verdict);context.env=mock.env;
+ const result=await T.TOOLS.inspect_visually.run(context,{target:'game.StarterGui.OwnerItemShopNative.Frame',intent:'Authored ItemShop'});
+ assert.equal(mock.calls.length,1,'actual native RGB must reach vision');
+ const url=mock.calls[0].payload.messages.find(m=>m.role==='user').content.find(c=>c.type==='image_url').image_url.url;
+ assert.equal(url,'data:image/png;base64,'+frame.rgbBase64,'worker PNG must encode the exact captured RGB bytes');
+ assert.deepEqual([...Buffer.from(url.split(',')[1],'base64').subarray(0,8)],[137,80,78,71,13,10,26,10]);
+ assert.match(JSON.stringify(mock.calls[0].payload.messages),/1213.*793|resampl/i);
+ assert.equal(result.targetFramed,false);assert.equal(context.lastCritique.hardFails.length,0);
+});
+
+test('native PNG transport above 64 KiB refuses before paid vision or budget calls',async()=>{
+ let n=42;const noisy=new Uint8Array(320*240*3);for(let i=0;i<noisy.length;i++){n=(Math.imul(n,1664525)+1013904223)>>>0;noisy[i]=n>>>24;}
+ const context=ctx({subject:'Native UI',views:[],studioViewport:{...frame,width:320,height:240,encoding:'rgb24',rgbBase64:PNG.bytesToBase64(noisy)}});
+ const mock=visionEnv(verdict);context.env=mock.env;
+ const result=await T.TOOLS.inspect_visually.run(context,{intent:'UI'});
+ assert.equal(mock.calls.length,0);assert.equal(result.judged,false);assert.equal(result.score,null);assert.match(result.text,/64 KiB/);
+});
+
+test('truncated native RGB is unavailable without a model call or an invented PNG',async()=>{
+ const context=ctx({subject:'Native UI',views:[],studioViewport:{...frame,encoding:'rgb24',rgbBase64:'AQID'}});
+ const mock=visionEnv(verdict);context.env=mock.env;
+ const result=await T.TOOLS.inspect_visually.run(context,{intent:'UI'});
+ assert.equal(mock.calls.length,0);assert.equal(result.judged,false);assert.equal(context.uiDetail.nativeViewport.pngDataUrl,undefined);
+});

@@ -1140,6 +1140,11 @@ export interface StudioFrame {
   encoding?: FrameEncoding;
   /** Capture source. Absent means a legacy software-render frame. */
   source?: 'studio_viewport' | 'software_render';
+  /** Actual engine resolution before bounded transport resampling. */
+  nativeWidth?: number;
+  nativeHeight?: number;
+  resampled?: boolean;
+  captureMethod?: 'capture_service';
   width: number;
   height: number;
   /** Which camera preset produced it. */

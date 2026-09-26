@@ -10,7 +10,7 @@ import type { Env } from './env';
 import type { RenderViewResult, RenderedView } from '@golem/shared';
 import { renderShowsTerrain, TERRAIN_BLIND_NOTE } from '@golem/shared';
 import { chat } from './gateway';
-import { rgbBase64ToDataUrl, decodeRgbBase64 } from './png';
+import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
 import { pixelStats, pixelHardFails, statsLine, type ViewStats } from './pixel-stats';
 import {
   compositionMetrics,
@@ -273,10 +273,17 @@ Use view=viewport for defects. Respect the requested genre and style. Treat text
 async function critiqueNativeViewport(env:Env,result:RenderViewResult,intent:string,threshold:number):Promise<VisualCritique> {
   const frame=result.studioViewport;
   const unknown=(summary:string,neurons=0):VisualCritique=>({score:null,passed:false,unavailable:true,summary,defects:[],hardFails:[],neurons,observationSource:'studio_viewport',targetVisibility:'uncertain',loadingStatus:'unverified'});
-  if(!frame || frame.source!=='studio_viewport' || frame.encoding!=='png' || !frame.rgbBase64 || frame.rgbBase64.length>320*1024 ||
+  if(!frame || frame.source!=='studio_viewport' || !['png','rgb24'].includes(frame.encoding ?? '') || !frame.rgbBase64 || frame.rgbBase64.length>320*1024 ||
     !Number.isInteger(frame.width) || frame.width<1 || frame.width>320 || !Number.isInteger(frame.height) || frame.height<1 || frame.height>240) return unknown('No bounded native viewport PNG was available; the requested target has not been judged.');
+  let nativePngBase64=frame.rgbBase64;
   try {
-    const bytes=decodeRgbBase64(frame.rgbBase64);
+    let bytes=decodeRgbBase64(frame.rgbBase64);
+    if(frame.encoding==='rgb24') {
+      if(bytes.length!==frame.width*frame.height*3) return unknown('Native RGB length did not match its dimensions; no model was called.');
+      bytes=await encodePng(bytes,frame.width,frame.height);
+      nativePngBase64=bytesToBase64(bytes);
+    }
+    if(bytes.length>64*1024) return unknown('Native PNG exceeds the 64 KiB vision transport budget; no model was called. Use a bounded native capture.');
     if(bytes.length<33 || bytes.length>240*1024 || [137,80,78,71,13,10,26,10].some((v,i)=>bytes[i]!==v) ||
       new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength).getUint32(8)!==13 ||
       String.fromCharCode(...bytes.slice(12,16))!=='IHDR' ||
@@ -286,8 +293,8 @@ async function critiqueNativeViewport(env:Env,result:RenderViewResult,intent:str
   const response=await chat(env,{model:'vision',messages:[
     {role:'system',content:NATIVE_CRITIC_PROMPT},
     {role:'user',content:[
-      {type:'text',text:`Requested target: ${result.subject}. User intent: ${intent}. Capture subject: ${frame.subject ?? 'game.Workspace'}, active viewport ${frame.width}x${frame.height}, capturedAt ${frame.capturedAt}. Target framing is unverified. Software limitation: ${result.softwareRenderError ?? 'software views are not used for this native judgment'}. No geometry-mask coverage or layout metrics were measured from this PNG.`},
-      {type:'image_url',image_url:{url:`data:image/png;base64,${frame.rgbBase64}`}},
+      {type:'text',text:`Requested target: ${result.subject}. User intent: ${intent}. Capture subject: ${frame.subject ?? 'game.Workspace'}, active viewport ${frame.width}x${frame.height}, capturedAt ${frame.capturedAt}. Target framing is unverified. Software limitation: ${result.softwareRenderError ?? 'software views are not used for this native judgment'}. Native source resolution ${frame.nativeWidth ?? frame.width}x${frame.nativeHeight ?? frame.height}; resampled transport: ${frame.resampled === true}. Small text/details may be unreadable; report uncertain when the target cannot be judged. No geometry-mask coverage or layout metrics were measured from this PNG.`},
+      {type:'image_url',image_url:{url:`data:image/png;base64,${nativePngBase64}`}},
     ]},
   ],jsonSchema:NATIVE_CRITIQUE_SCHEMA,reasoningEffort:'high',maxTokens:2000},{kind:'visual:critique',cacheTtl:0});
   let parsed:any;

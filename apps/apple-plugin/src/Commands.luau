@@ -4218,7 +4218,7 @@ function loadStudioCaptureAdapter(options: any, gameRef: any): (any?, string?)
 		return nil, "the StudioCapture adapter is not bundled in this build"
 	end
 	local created, adapter = pcall(function()
-		return module.new({ game = gameRef, services = options.services, enum = options.enum })
+		return module.new({ game = gameRef, services = options.services, enum = options.enum, isEdit = options.isEdit })
 	end)
 	if not created or type(adapter) ~= "table" or type(adapter.capture) ~= "function" then
 		return nil, "StudioCaptureService could not be initialised"
@@ -4436,7 +4436,7 @@ end
 ]]
 local RENDER_VIEWS = { hero = true, front = true, side = true, top = true, eye = true, all = true }
 
-local function renderCapture(self: any, op: any, view: string, width: number, height: number): (any?, string?, string?)
+local function renderCapture(self: any, op: any, view: string, width: number, height: number, stillCurrent: any?): (any?, string?, string?)
 	if not self.render then
 		return nil, "refused", self.renderError or "the bounded software renderer is unavailable"
 	end
@@ -4475,12 +4475,14 @@ local function renderCapture(self: any, op: any, view: string, width: number, he
 	-- critique surface; StudioCaptureService contributes what the person is actually seeing in the
 	-- active 3D viewport. Failure here must not erase a valid software observation.
 	if self.capture and type(self.capture.capture) == "function" then
-		local nativeOk, native, nativeErr = pcall(function() return self.capture:capture(w :: number, h :: number) end)
+		local nativeOk, native, nativeErr = pcall(function() return self.capture:capture(320,240,stillCurrent) end)
 		if nativeOk and type(native) == "table" and type(native.rgbBase64) == "string" and #native.rgbBase64 > 0 then
 			result.studioViewport = {
 				rgbBase64 = native.rgbBase64,
-				encoding = "png",
+				encoding = native.encoding,
 				source = "studio_viewport",
+				nativeWidth = native.nativeWidth, nativeHeight = native.nativeHeight,
+				resampled = native.resampled, captureMethod = native.captureMethod,
 				width = native.width,
 				height = native.height,
 				capturedAt = native.capturedAt,
@@ -4501,23 +4503,23 @@ local function renderCapture(self: any, op: any, view: string, width: number, he
 	return result, nil
 end
 
-local function handleRenderView(self: any, op: any): (any?, string?, string?)
+local function handleRenderView(self: any, op: any, stillCurrent: any?): (any?, string?, string?)
 	local view = if op.view == nil then "hero" else op.view
 	if type(view) ~= "string" then return nil, "invalid", "view must be a string" end
-	return renderCapture(self, op, view, op.width, op.height)
+	return renderCapture(self, op, view, op.width, op.height, stillCurrent)
 end
 
-local function handleScreenshot(self: any, op: any): (any?, string?, string?)
-	return renderCapture(self, op, "hero", nil, nil)
+local function handleScreenshot(self: any, op: any, stillCurrent: any?): (any?, string?, string?)
+	return renderCapture(self, op, "hero", nil, nil, stillCurrent)
 end
 
-local function handleNativeViewport(self: any, _op: any): (any?, string?, string?)
+local function handleNativeViewport(self: any, _op: any, stillCurrent: any?): (any?, string?, string?)
 	-- Native current-camera pixels, independent of software geometry. No camera or place writes.
 	if not self.capture then return nil, "refused", self.captureError or "native viewport capture is unavailable" end
-	local ok, frame, err = pcall(function() return self.capture:capture(320,240) end)
+	local ok, frame, err = pcall(function() return self.capture:capture(320,240,stillCurrent) end)
 	if not ok then return nil, "refused", tostring(frame) end
-	if type(frame) ~= "table" or frame.encoding ~= "png" or frame.source ~= "studio_viewport" or type(frame.rgbBase64) ~= "string" or #frame.rgbBase64 == 0 then
-		return nil, "refused", err or "native viewport returned no PNG"
+	if type(frame) ~= "table" or (frame.encoding ~= "png" and frame.encoding ~= "rgb24") or frame.source ~= "studio_viewport" or type(frame.rgbBase64) ~= "string" or #frame.rgbBase64 == 0 then
+		return nil, "refused", err or "native viewport returned no pixels"
 	end
 	frame.view = "viewport"
 	frame.subject = "game.Workspace"

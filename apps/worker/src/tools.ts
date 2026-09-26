@@ -3021,16 +3021,16 @@ export const TOOLS: Record<string, ToolImpl> = {
     run: (ctx) => op(ctx, { op: 'get_logs', maxEntries: 120 }),
   },
   capture_studio_viewport: {
-    def: {name:'capture_studio_viewport',description:'Capture native PNG pixels of the active Studio viewport, including engine effects, materials and visible UI. Costs no vision/model call. Honors Roblox screenshot permission; does not frame a target, change camera, or start Play. Current camera must already show the subject. Capturing pixels does not establish target visibility or visual quality.',parameters:S({})},
+    def: {name:'capture_studio_viewport',description:'Capture bounded native pixels of the active Studio viewport, including engine effects, materials and visible UI. Costs no vision/model call. Honors Roblox screenshot permission; does not frame a target, change camera, or start Play. Current camera must already show the subject. Capturing pixels does not establish target visibility or visual quality.',parameters:S({})},
     studio:true,
     studioOps:['capture_studio_viewport'],
     run:async ctx => {
       const result=await ctx.execStudioOp({op:'capture_studio_viewport'},45_000);
       if (!result.ok) return {error:result.error ?? 'Native viewport capture refused'};
       const frame=result.data as StudioFrame;
-      if(frame?.source !== 'studio_viewport' || frame.encoding !== 'png' || !frame.rgbBase64) return {error:'Plugin returned no native viewport PNG; no software substitute accepted.'};
+      if(frame?.source !== 'studio_viewport' || !['png','rgb24'].includes(frame.encoding ?? '') || !frame.rgbBase64) return {error:'Plugin returned no native viewport pixels; no software substitute accepted.'};
       ctx.emitFrame?.(frame);
-      return {captured:true,source:frame.source,encoding:frame.encoding,width:frame.width,height:frame.height,subject:'game.Workspace',targetFramed:false,judged:false,note:'Active Studio camera only. Target visibility and quality have not been judged.'};
+      return {captured:true,source:frame.source,encoding:frame.encoding,width:frame.width,height:frame.height,subject:'game.Workspace',nativeWidth:frame.nativeWidth,nativeHeight:frame.nativeHeight,resampled:frame.resampled,targetFramed:false,judged:false,note:'Active Studio camera only. Target visibility and quality have not been judged.'};
     },
   },
   render_view: {
@@ -3902,10 +3902,14 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (res.studioViewport) {
         const critique=await critiqueViews(ctx.env,res,intent);
         ctx.lastCritique=critique;
-        ctx.uiDetail={nativeViewport:{source:'studio_viewport',encoding:'png',pngDataUrl:`data:image/png;base64,${res.studioViewport.rgbBase64}`,
-          width:res.studioViewport.width,height:res.studioViewport.height,targetFramed:false},critique};
+        const native=res.studioViewport;
+        let pngDataUrl:string|undefined;
+        try { pngDataUrl=native.encoding==='png' ? `data:image/png;base64,${native.rgbBase64}` : await rgbBase64ToDataUrl(native.rgbBase64,native.width,native.height); } catch { /* Invalid native bytes remain an unavailable observation. */ }
+        ctx.uiDetail={nativeViewport:{source:'studio_viewport',encoding:'png',pngDataUrl,
+          width:native.width,height:native.height,nativeWidth:native.nativeWidth,nativeHeight:native.nativeHeight,resampled:native.resampled,targetFramed:false},critique};
         return {text:critiqueToText(critique),score:critique.score,passed:critique.passed,judged:!critique.unavailable,
           observationSource:critique.observationSource,targetFramed:false,targetVisibility:critique.targetVisibility,
+          nativeCapture:{width:native.width,height:native.height,nativeWidth:native.nativeWidth ?? native.width,nativeHeight:native.nativeHeight ?? native.height,resampled:native.resampled === true},
           loadingStatus:critique.loadingStatus,loadingEvidence:critique.loadingEvidence};
       }
       // A CHECK THAT CANNOT SEE THE SCENE DOES NOT SCORE IT (2026-09-23). The connected plugin's renderer
