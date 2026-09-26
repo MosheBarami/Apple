@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T03:24:44Z",
-  "now": "החבילה של Inno ירדה עם 156 MeshParts; חבילת לבנים נוספת ירדה אך הסריקה שלה נכשלה. בדשבורד 293 קבצי סקירה מאומתים, 0 זמינים לבונה. v30 בהערכה; האיכות החזותית עדיין לא הוכחה.",
-  "nextStep": "להמשיך בהורדות מהרשימה, לפתור תאימות סריקת הלבנים ולהוכיח מיקום נכסים דרך Apple בסטודיו.",
+  "updatedAt": "2026-09-26T03:35:13Z",
+  "now": "399 קבצי סקירה מאומתים: כל 82 הסאונדים, 7 תבניות אפקטים ו־21 רצפי אנימציה נאספו. v30 ירד ל־17/38 ולא קודם; העלאה פרטית ושני קובצי הניקוד אומתו, v31 התחיל אוטומטית.",
+  "nextStep": "להמשיך בנכסים מהרשימה ולהוכיח שילוב ומיקום דרך Apple ואיכות חזותית במשחק; לשמור על אימון יחיד.",
   "items": [
     {
       "id": "productScope",
