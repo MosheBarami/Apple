@@ -17,4 +17,17 @@ These references are read-only. Mutation tools still require ordinary unambiguou
 - Executable Luau checks cover identity after reorder, cross-engine isolation, expiry, deletion, scope escape, spoofed service ancestry, bounded retention and absent GUID provider.
 - Official API checked: https://create.roblox.com/docs/reference/engine/classes/HttpService#GenerateGUID
 
-Live deployment, local plugin reload and the bounded real Apple read probe are pending. Public Creator Store release is not part of this change. F-059/F-064 and 0/3 independent reviews remain open.
+## Live verification
+Worker c4a9f3f deployed from a committed archive; deploy wrapper verified `/api/health`. Cloudflare version: 0af36fe7-f29e-4b1b-8228-2ebb896763d1.
+
+Local plugin was installed and Studio reopened the saved isolated place. The new connection remained inspect-only. Run f65900b4-8eff-4754-a0e7-d0eecd64c034 ended done: exactly one get_project_tree and two successful get_instance calls using distinct returned read references, zero mutation tools. Cost: 17 Credits and 494 recorded provider neurons (322 + 79 + 93). Both actual parts were unanchored.
+
+| Read | Position | Size |
+|---|---|---|
+| first Stone MeshPart | 68.03, 6.62, 3.14 | 7.47, 8.16, 6.88 |
+| first Rock MeshPart | 87.75, 6.78, 3.26 | 6.36, 5.23, 5.37 |
+
+This proves successful read identity on imported objects; mutation identity and placement remain pending.
+
+## Follow-up version consistency
+The visible dock and presence literal still said 1.4.1 although transport/source was 1.4.2. CI 36212830581 caught this in the existing plugin-version test. Both literals were corrected. A dock/package/Bridge parity regression failed before correction and passed after it. Full plugin suite now passes 59/59. Rebuilt local artifact SHA-256: 6fc1cdd437caaef9670219c5837619ea895f73e7a1512677d8b151222d1a32d7. Version-corrected artifact has been copied locally; its subsequent reload is pending. Public Creator Store release is not part of this change. F-059/F-064 and 0/3 independent reviews remain open.

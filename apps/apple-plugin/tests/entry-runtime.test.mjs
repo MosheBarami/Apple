@@ -339,3 +339,13 @@ test('the Studio dock never exposes a Creator Store versus scratch selector', ()
   assert.doesNotMatch(entry, /Make it from scratch|Pick as many as you like|SOURCE_CHOICES/);
   assert.match(entry, /bridge:answerAssetSources\(\{ "creator_store" \}\)/);
 });
+
+ test('dock and presence version match Bridge and package version', () => {
+  const entry = readFileSync(new URL('../src/init.server.luau', import.meta.url), 'utf8');
+  const bridge = readFileSync(new URL('../src/Bridge.luau', import.meta.url), 'utf8');
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const version = bridge.match(/local PLUGIN_VERSION = "([^"]+)"/)[1];
+  assert.equal(pkg.version, version);
+  assert.ok(entry.includes(`Apple Studio · ${version} · independent preview`));
+  assert.ok(entry.includes(`pluginVersion = "${version}"`));
+});
