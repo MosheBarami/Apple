@@ -89,6 +89,13 @@ test('multi-screen Roblox UI kit lists every JSON and Luau export separately', a
   assert.ok(files.page.rows.every((r) => r.local.state === 'verified' && r.backend.state === 'not-supported' && r.use === 'review-only'));
 });
 
+test('GitHub dialogue kit review files retain the actual archive download URL', async () => {
+  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'owner-32', limit: '10' }));
+  assert.equal(files.page.total, 2);
+  assert.ok(files.page.rows.every((r) => r.local.state === 'verified' && r.backend.state === 'not-supported'));
+  assert.ok(files.page.rows.every((r) => r.download.url === 'https://github.com/arakoDev/MrDialogue/archive/refs/heads/main.zip'));
+});
+
 test('summary counts every library and has a growth series from git', async () => {
   const d = await library(q({ tab: 'summary' }));
   const by = Object.fromEntries(d.counts.map((c) => [c.id, c.n]));

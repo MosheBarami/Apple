@@ -269,7 +269,7 @@ function reviewReceiptRows(sources) {
     k: `review-${source.priority}-${file}`, category: source.category, name: path.basename(file),
     source: `#${source.priority}`, sourceUrl: source.url, priority: source.priority,
     file, expectedBytes, expectedSha, license: source.rights ?? null,
-    download: { method: source.acquiredBy ?? 'not-recorded', url: source.url },
+    download: { method: source.acquiredBy ?? 'not-recorded', url: source.downloadUrl ?? source.url },
     backendPath: null, use: 'review-only', ownerListed: true,
     local: localFact(file, expectedBytes, expectedSha),
   })));
