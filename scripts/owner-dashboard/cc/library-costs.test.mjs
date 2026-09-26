@@ -70,6 +70,16 @@ test('owner acquisition view separates listed sources, local bytes and backend s
   assert.ok(sound.page.rows.some((r) => r.file && r.local.state === 'verified'), '35 downloaded sounds must show as files');
 });
 
+test('each owner review download appears as a separate verified file without backend access', async () => {
+  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'GwiddysEasyUI', limit: '10' }));
+  assert.equal(files.page.total, 2);
+  assert.deepEqual(files.page.rows.map((r) => r.file.split('/').at(-1)).sort(), ['GwiddysEasyUI.psd', 'GwiddysEasyUI.zip']);
+  assert.ok(files.page.rows.every((r) => r.local.state === 'verified' && r.backend.state === 'not-supported' && r.use === 'review-only'));
+  const source = await library(q({ tab: 'intake', view: 'sources', q: 'easy-gui-buttons-pack/3272514' }));
+  assert.equal(source.sources.page.rows[0].reviewFiles.length, 2);
+  assert.ok(source.sources.page.rows[0].reviewFiles.every((r) => r.local.state === 'verified'));
+});
+
 test('summary counts every library and has a growth series from git', async () => {
   const d = await library(q({ tab: 'summary' }));
   const by = Object.fromEntries(d.counts.map((c) => [c.id, c.n]));

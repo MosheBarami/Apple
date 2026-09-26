@@ -260,11 +260,26 @@ function receiptRows() {
   return out;
 }
 
+function reviewReceiptRows(sources) {
+  return sources.flatMap((source) => [
+    [source.reviewFile, source.reviewBytes, source.reviewSha256],
+    [source.additionalReviewFile, source.additionalReviewBytes, source.additionalReviewSha256],
+  ].filter(([file]) => file).map(([file, expectedBytes, expectedSha]) => ({
+    k: `review-${source.priority}-${file}`, category: source.category, name: path.basename(file),
+    source: `#${source.priority}`, sourceUrl: source.url, priority: source.priority,
+    file, expectedBytes, expectedSha, license: source.rights ?? null,
+    download: { method: source.acquiredBy ?? 'not-recorded', url: source.url },
+    backendPath: null, use: 'review-only', ownerListed: true,
+    local: localFact(file, expectedBytes, expectedSha),
+  })));
+}
+
 async function intake(query) {
   const view = query.get('view') === 'files' ? 'files' : 'sources';
   const q = has(query.get('q')); const category = query.get('category'); const state = query.get('state');
   const ownerSources = jsonl('sources/owner-priority.jsonl');
   const receipts = receiptRows();
+  const reviews = reviewReceiptRows(ownerSources);
   const inScopeSources = ownerSources.filter((r) => r.state !== 'out-of-scope-not-roblox');
   const exact = new Set(inScopeSources.map((r) => r.url));
   const portals = new Set(inScopeSources.filter((r) => r.category === 'source_portal').map((r) => {
@@ -275,9 +290,11 @@ async function intake(query) {
     return { ...r, ownerListed: exact.has(r.sourceUrl) || (hostname && portals.has(hostname)) || false,
       local: localFact(r.file, r.expectedBytes, r.expectedSha, false) };
   });
-  const files = measured.filter((r) => (!category || r.category === category) && (query.get('owner') !== '1' || r.ownerListed)
+  const visibleFiles = [...measured, ...reviews];
+  const files = visibleFiles.filter((r) => (!category || r.category === category) && (query.get('owner') !== '1' || r.ownerListed)
     && (!q || q(r.name, r.source, r.sourceUrl, r.file)));
   const present = measured.filter((r) => r.local.state === 'present' || r.local.state === 'verified');
+  const reviewPresent = reviews.filter((r) => r.local.state === 'present' || r.local.state === 'verified');
   const stored = view === 'files' ? await storedPaths() : null;
   const filePage = paged(state ? files.filter((r) => r.local.state === state) : files, query, 120);
   filePage.rows = filePage.rows.map((r) => ({ ...r, local: localFact(r.file, r.expectedBytes, r.expectedSha),
@@ -287,13 +304,13 @@ async function intake(query) {
   sourcePage.rows = sourcePage.rows.map((r) => ({ ...r, acquired: r.state === 'out-of-scope-not-roblox' ? 0 : r.category === 'source_portal' ? present.filter((f) => {
     try { return new URL(f.sourceUrl).hostname.replace(/^www\./, '') === new URL(r.url).hostname.replace(/^www\./, ''); } catch { return false; }
   }).length : present.filter((f) => f.sourceUrl === r.url).length,
-    review: r.reviewFile ? localFact(r.reviewFile, r.reviewBytes, r.reviewSha256) : null }));
+    reviewFiles: reviews.filter((f) => f.priority === r.priority).map((f) => ({ file: f.file, local: localFact(f.file, f.expectedBytes, f.expectedSha) })) }));
   return { view, sources: { total: ownerSources.length, excluded: ownerSources.length - inScopeSources.length, page: sourcePage },
-    files: { total: receipts.length, local: present.length, fromOwner: present.filter((r) => r.ownerListed).length,
-      reviewOnly: ownerSources.filter((r) => r.reviewFile && ['verified', 'present'].includes(localFact(r.reviewFile, r.reviewBytes, r.reviewSha256).state)).length,
-      hashRecorded: present.filter((r) => !!r.expectedSha).length },
+    files: { total: visibleFiles.length, local: present.length + reviewPresent.length, fromOwner: present.filter((r) => r.ownerListed).length,
+      reviewOnly: reviewPresent.length,
+      hashRecorded: present.filter((r) => !!r.expectedSha).length + reviewPresent.filter((r) => !!r.expectedSha).length },
     page: view === 'sources' ? sourcePage : filePage,
-    categories: tally(view === 'sources' ? ownerSources : measured, (r) => r.category), backendChecked: !!stored,
+    categories: tally(view === 'sources' ? ownerSources : visibleFiles, (r) => r.category), backendChecked: !!stored,
     note: 'רק מודלים שנוצרו ל־Roblox נספרים כספריית המודלים. אתרי מודלים כלליים סומנו מחוץ לתחום; קובץ ישן שלהם אינו התקדמות. רשומה בקטלוג אינה הורדה. מצב השרת נבדק בנפרד.' };
 }
 
