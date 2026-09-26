@@ -27,3 +27,21 @@ npm run eval-paired -- --candidate adapters/apple-v20-best --best adapters/apple
 It generates base, candidate and v5 answers in one process, scores candidate and v5 through the
 same executable checker, verifies the pinned set and counts, and writes a report. It does not
 promote or upload a model. This command has **not** been run on v20 yet.
+
+## Later paired runs of v22 (2026-09-25)
+
+The v22 answer was identical in the saved v22, v23, v24, v25, v26 and v27
+38-row evaluations, and the paired v22 score was 24/38 in v23–v27. In v28,
+the same named v22 adapter scored 21/38 (trajectory 14/23 instead of 17/23),
+while the base-model text changed on 19/38 rows. The v22 adapter text changed
+on 17/38 rows. Each compared file contains the same row IDs, and v28's
+candidate and v22 were generated and scored in the same batch. This is
+measured generation drift, not proof that v22 lost learned ability.
+
+The local base cache has a single snapshot `006f5dcd1393c3add266de40994ba96225e9689d`;
+the MLX and tokenizer package directories predate v22. Neither observation
+establishes the cause. A future promotion must exceed the paired best by
+more than the observed repeated-best spread; commit `5d17448` implements that
+margin, but the already-running supervisor loaded older code. Until it safely
+restarts, independently audit any promotion it announces. Do not compare a
+later absolute score with 24/38 as if the runtime were deterministic.
