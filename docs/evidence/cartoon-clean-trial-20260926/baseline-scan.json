@@ -1,0 +1,47 @@
+{
+  "classes": {
+    "Part": 1,
+    "SpawnLocation": 1
+  },
+  "file": "/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/apple-frontier-baseplate-Gmkpd1/AppleFrontierFreshBaseplate.rbxlx",
+  "instances": 2,
+  "meshParts": 0,
+  "parts": 2,
+  "remoteEvents": 0,
+  "remoteFunctions": 0,
+  "screenGuis": 0,
+  "scripts": 0,
+  "services": {
+    "Workspace": {
+      "instances": 2,
+      "parts": 2,
+      "roots": [
+        {
+          "class": "Part",
+          "name": "Baseplate"
+        },
+        {
+          "class": "SpawnLocation",
+          "name": "SpawnLocation"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    }
+  },
+  "spawnLocations": [
+    {
+      "name": "SpawnLocation",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        6,
+        1,
+        6
+      ]
+    }
+  ]
+}

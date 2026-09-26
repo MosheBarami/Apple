@@ -157,3 +157,20 @@ The current cartoon-v2 bank has **0 of 36** measured. Neither has a reportable
 pass rate yet. The next real step is a fresh isolated, paired Studio run from the
 cartoon bank, followed by readback, gameplay checks and blind screenshots. The
 owner's visual rejection remains a product failure, not an unmeasured success.
+
+## Read-only live observation
+
+`node observe-run.mjs init <private-manifest.json> <project-UUID> <fresh-baseline>`
+records the unchanged cartoon garden-r1 brief, baseline bytes/hash and monitoring bounds.
+`GOLEM_ADMIN_KEY` must be provided privately to `node observe-run.mjs observe <manifest>`;
+never put the key in a command argument, artifact or commit. Reads use the approved Apple origin
+and refuse redirects. This observer does not submit prompts, pair Studio, mutate a game or stop it.
+It cannot enforce a server spending cap. Completed-turn Credits and retained provider neurons are
+lower bounds; active-turn spend is unavailable. Message coverage and provider-log truncation are
+explicit, including unresolved timestamp ties. A missing message window flags a running trial for
+Stop. A completed assistant response remains unmeasured until independent gameplay/visual proof.
+
+Before starting, verify the actual active native place and capture its saved baseline, including
+pre-existing editor helpers. The generator's two-part/zero-script file inventory does not prove
+that other local plugins injected no helpers after Studio opened it. Preparation-only messages
+cannot start a trial; initiation requires the exact frozen brief, with its timestamp persisted.

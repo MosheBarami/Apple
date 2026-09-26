@@ -1,0 +1,22 @@
+{
+  "observedAt": "2026-09-26T12:06:14.864Z",
+  "projectId": "474abb3f-0f0f-4d97-954e-934b50048857",
+  "connected": false,
+  "agentStatus": "idle",
+  "queuedOps": 0,
+  "startedAt": null,
+  "status": "not-started",
+  "recordedCredits": 0,
+  "activeTurnSpendAvailable": false,
+  "recordedNeurons": 0,
+  "providerCalls": 0,
+  "elapsedMs": 0,
+  "needsStop": false,
+  "turns": [],
+  "provider": [],
+  "coverage": {
+    "messagesTruncated": false,
+    "providerLogsTruncated": true
+  },
+  "acceptance": "unmeasured"
+}

@@ -1,7 +1,7 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T11:53:45.832196+00:00",
-  "now": "Apple שילב Daisy ו־Sunflower מקוריים בארבע פעולות:11 Credits ו־301 נוירונים. הקובץ השמור מוכיח שישה חלקים מקוריים נוספו, שני פרחים ישנים נשמרו ו־0 סקריפטים השתנו. ביקורת חזותית עדיין דוחה איכות מסחרית. CI f2b5145 עבר6/6; CPU יחידv33 ב־300/400.",
+  "updatedAt": "2026-09-26T12:06:47.244202+00:00",
+  "now": "הביקורת העצמאית העבירה את העדיפות למבחן משחק מלא מתוך בקשת תוצאה בלבד. המקום החדש אומת ב־Studio, אך שדה החיבור עדיין חסום ללחיצות: המבחן לא התחיל, ללא עלות שנרשמה. מעקב מוגבל עבר 7 בדיקות ומסמן חיתוך ביומני הספק. CI52847a8 עבר6/6; CPU יחידv33 ב־350/400. F059/F064 ו־0/3 עדיין פתוחים.",
   "nextStep": "למסגר ערוגות וכניסה מנכסים מקוריים, לצמצם דומיננטיות עצים ולהוכיח משחק מלא. לאמת הערכה זוגית והעלאה פרטית; Claude ממתין לגישה קיימת.",
   "items": [
     {
