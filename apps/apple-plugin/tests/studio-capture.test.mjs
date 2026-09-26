@@ -75,6 +75,30 @@ spec("denied permission", function()
   eq(frame,nil); eq(type(err),"string")
 end)
 
+spec("permission API errors retain their actual cause", function()
+  local captureService = {requests=0}
+  function captureService:CanCaptureScreenshot() return false end
+  function captureService:RequestScreenshotPermissionAsync() self.requests+=1; error("actual plugin identity refusal") end
+  function captureService:CaptureScreenshot() error("must not bypass refusal") end
+  local encoding={};function encoding:Base64Encode(v)return v end
+  local adapter=StudioCapture.new({captureService=captureService,encodingService=encoding,enum=Enum})
+  local frame,err=adapter:capture(100,80)
+  eq(frame,nil);eq(string.find(err,"actual plugin identity refusal",1,true)~=nil,true)
+  local _,again=adapter:capture(100,80)
+  eq(again,err);eq(captureService.requests,1)
+end)
+
+spec("an unexpected permission return shape is not accepted as consent", function()
+  local captureService = {}
+  function captureService:CanCaptureScreenshot() return false end
+  function captureService:RequestScreenshotPermissionAsync() return "Granted" end
+  function captureService:CaptureScreenshot() error("must not coerce consent") end
+  local encoding={};function encoding:Base64Encode(v)return v end
+  local adapter=StudioCapture.new({captureService=captureService,encodingService=encoding,enum=Enum})
+  local frame,err=adapter:capture(100,80)
+  eq(frame,nil);eq(string.find(err,"unexpected string",1,true)~=nil,true)
+end)
+
 spec("missing viewport size falls back honestly", function()
   local captureService = { allowed=true, captures=0 }
   function captureService:CanCaptureScreenshot() return true end
@@ -86,7 +110,7 @@ spec("missing viewport size falls back honestly", function()
   eq(frame,nil); eq(type(err),"string"); eq(captureService.captures,0)
 end)
 `);
-  assert.match(output, /^capture: 3 passed$/m, output);
+  assert.match(output, /^capture: 5 passed$/m, output);
 });
 
 test('StudioCapture source contains no upload, HTTP, publication or DataModel write path', () => {

@@ -86,7 +86,7 @@ function StudioCapture.new(options: any?): any
 	if captureService == nil then error("StudioCaptureService is unavailable") end
 	if encodingService == nil or type(encodingService.Base64Encode) ~= "function" then error("EncodingService.Base64Encode is unavailable") end
 
-	local self: any = { permissionAsked = false }
+	local self: any = { permissionAsked = false, permissionFailure = nil }
 
 	function self:capture(width: number, height: number): (any?, string?)
 		local maxW = math.clamp(math.floor(width), 1, MAX_WIDTH)
@@ -96,14 +96,27 @@ function StudioCapture.new(options: any?): any
 		end
 
 		local canOk, canCapture = pcall(function() return captureService:CanCaptureScreenshot() end)
-		if not canOk then return nil, "Studio could not query viewport screenshot availability" end
-		if canCapture ~= true and not self.permissionAsked and type(captureService.RequestScreenshotPermissionAsync) == "function" then
-			self.permissionAsked = true
-			local permissionOk, allowed = pcall(function() return captureService:RequestScreenshotPermissionAsync() end)
-			if not permissionOk or allowed ~= true then return nil, "Studio viewport screenshot permission was not granted" end
-			canOk, canCapture = pcall(function() return captureService:CanCaptureScreenshot() end)
+		if not canOk then return nil, "CanCaptureScreenshot failed: " .. string.sub(tostring(canCapture),1,240) end
+		if type(canCapture) ~= "boolean" then return nil, "CanCaptureScreenshot returned unexpected " .. typeof(canCapture) .. ": " .. string.sub(tostring(canCapture),1,120) end
+		if not canCapture then
+			if self.permissionFailure then return nil,self.permissionFailure end
+			if type(captureService.RequestScreenshotPermissionAsync) ~= "function" then return nil,"CanCaptureScreenshot returned false; RequestScreenshotPermissionAsync is unavailable" end
+			if not self.permissionAsked then
+				self.permissionAsked = true
+				local permissionOk, allowed = pcall(function() return captureService:RequestScreenshotPermissionAsync() end)
+				if not permissionOk then
+					self.permissionFailure = "RequestScreenshotPermissionAsync failed: " .. string.sub(tostring(allowed),1,240)
+				elseif type(allowed) ~= "boolean" then
+					self.permissionFailure = "RequestScreenshotPermissionAsync returned unexpected " .. typeof(allowed) .. ": " .. string.sub(tostring(allowed),1,120)
+				elseif not allowed then
+					self.permissionFailure = "RequestScreenshotPermissionAsync returned false; CanCaptureScreenshot was false. Screenshot permission was not granted. Roblox supplied no denial reason; global screenshot setting and remembered plugin permission are unknown. No settings changed."
+				end
+				if self.permissionFailure then return nil,self.permissionFailure end
+				canOk, canCapture = pcall(function() return captureService:CanCaptureScreenshot() end)
+				if not canOk then return nil,"CanCaptureScreenshot failed after permission was granted: " .. string.sub(tostring(canCapture),1,240) end
+			end
 		end
-		if not canOk or canCapture ~= true then return nil, "Studio viewport screenshots are unavailable in this session" end
+		if canCapture ~= true then return nil,"Screenshot permission was granted, but CanCaptureScreenshot is not true; active viewport capture remains unavailable" end
 
 		local enumRef = opts.enum
 		if enumRef == nil then

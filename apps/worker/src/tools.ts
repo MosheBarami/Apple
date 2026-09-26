@@ -3878,7 +3878,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'inspect_visually',
       description:
-        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing, until it passes. It renders and calls a vision model, so it costs Credits — run audit_build FIRST, which is free, checks geometry and the Lighting configuration, and finds a different class of defect. Use this for what only an image can show: whether the thing reads.',
+        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing, until it passes. It renders and calls a vision model, so it costs Credits — run audit_build FIRST, which is free, checks geometry and the Lighting configuration, and finds a different class of defect. Uses native PNG pixels when available and reports target visibility plus possible appearance/loading artifacts. The active viewport is not guaranteed to frame the target; this snapshot does not verify the whole map or gameplay. Use this for what only an image can show: whether the thing reads.',
       parameters: S(
         {
           target: { type: 'string', description: 'instance path to inspect. Omit for the whole workspace.' },
@@ -3894,8 +3894,15 @@ export const TOOLS: Record<string, ToolImpl> = {
       if ('error' in res) return res;
       ctx.lastRender = res;
       const intent = String(a.intent ?? 'a well-built Roblox scene');
-      if (!res.views.length) return {judged:false,nativeViewportCaptured:!!res.studioViewport,targetFramed:false,
-        reason:'Native active viewport pixels were captured, but no target-framed software geometry views exist. Target visibility and quality are unverified; no vision model was called. Use capture_studio_viewport with the subject already in view.',softwareRenderError:res.softwareRenderError};
+      if (res.studioViewport) {
+        const critique=await critiqueViews(ctx.env,res,intent);
+        ctx.lastCritique=critique;
+        ctx.uiDetail={nativeViewport:{source:'studio_viewport',encoding:'png',pngDataUrl:`data:image/png;base64,${res.studioViewport.rgbBase64}`,
+          width:res.studioViewport.width,height:res.studioViewport.height,targetFramed:false},critique};
+        return {text:critiqueToText(critique),score:critique.score,passed:critique.passed,judged:!critique.unavailable,
+          observationSource:critique.observationSource,targetFramed:false,targetVisibility:critique.targetVisibility,
+          loadingStatus:critique.loadingStatus,loadingEvidence:critique.loadingEvidence};
+      }
       // A CHECK THAT CANNOT SEE THE SCENE DOES NOT SCORE IT (2026-09-23). The connected plugin's renderer
       // draws no Terrain, so an outdoor scene's island, rock and water are absent from the images. Scored
       // anyway, it said "a flat slab with no underside" (1/10) about an island that had one, and the model
@@ -5449,7 +5456,7 @@ export async function runTool(
       ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== 'projectMutated' && key !== 'retryable'))
       : result;
     let str = typeof visibleResult === 'string' ? visibleResult : JSON.stringify(visibleResult);
-    const resultLimit = name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
+    const resultLimit = name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' || name === 'inspect_visually' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
     if (str.length > resultLimit) str = str.slice(0, resultLimit) + `\n...[truncated ${str.length - resultLimit} chars]`;
     const mutatedProject = partialMutation || (!failed && toolMutatesProject(name, result));
     // An explicit UI payload wins. It is capped separately and more generously than the derived
