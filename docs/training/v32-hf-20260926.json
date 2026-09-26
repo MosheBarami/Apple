@@ -1,0 +1,31 @@
+{
+  "private": true,
+  "revision": "e50156765402a12aaf4ed9a05fbeb55ece473613",
+  "files": [
+    {
+      "file": "eval-v32-on-v5set-scored.json",
+      "verified": true,
+      "sha256": "83d6ce2f4a7f0562a6497daf6a25d9400014ead7c898b9570aff16e2c8d6f56d",
+      "bytes": 10016
+    },
+    {
+      "file": "eval-v32-on-v5set-best-scored.json",
+      "verified": true,
+      "sha256": "19dc38dc89e4cc4813dc1ca2d5d3f1c886a959a3142b615303b3fbd3c5d2d168",
+      "bytes": 9954,
+      "uploadedBy": "owner follow-up; supervisor predated paired-upload change"
+    },
+    {
+      "file": "adapter_config.json",
+      "bytes": 374,
+      "sha256": "c437702c33520e26e025dc1649d6356f0142d7cdac3273b3f1911daa47ee6392",
+      "lfsMatches": null
+    },
+    {
+      "file": "adapter_model.safetensors",
+      "bytes": 48679320,
+      "sha256": "8718192db32bc04ffec0d9700fe6b698d2f43a1cbe19ba26f599af042200f195",
+      "lfsMatches": true
+    }
+  ]
+}
