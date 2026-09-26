@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T10:47:51.344252+00:00",
-  "now": "השבילים והרחבה קיבלו גוון חולי; שני שבילים כפולים נשמרו באחסון ועץ פונה מהרחבה. Play נצפה. ביקורת עצמאית עדיין דוחה את הערוגות הדלילות. בקשה אחרי נקודתיים חרגה מהרצף ועלתה31 Credits עד Stop; תיקון707eea2 נפרס ואומת: קריאה אחת וסיום אוטומטי ב4 Credits.",
-  "nextStep": "להוסיף קומפוזיציית פרחים מקוריים מורשים וערוגות תחומות סביב השביל; לבדוק Play ונראות עצמאית. מפקחCPU יחיד35962 באימוןv33; F059/F064 ו0/3 פתוחים.",
+  "updatedAt": "2026-09-26T10:59:21.572164+00:00",
+  "now": "Apple הוסיפה שמונה פרחים ושמונה שיחים מקוריים לצד השביל. שלוש ריצות מוגבלות הסתיימו אוטומטית ב23 Credits; 32 MeshParts חדשים, 0 שינוי לסקריפטים. Play נצפה, אך ביקורת עצמאית עדיין דורשת ערוגות מלאות, קצוות מסודרים וממשק אחיד. CI30815c2 עבר6/6.",
+  "nextStep": "לשלב ערוגות וגבולות מלאים וממשק אחיד מנכסים מקוריים ברשימת הבעלים; להשלים בדיקת משחק אמיתית וביקורת עצמאית. מפקחCPU יחיד35962 ממשיךv33; F059/F064 ו0/3 פתוחים.",
   "items": [
     {
       "id": "productScope",

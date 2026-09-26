@@ -1,0 +1,296 @@
+{
+  "added": 40,
+  "changedExisting": {},
+  "missing": {},
+  "newParts": [
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": true,
+      "color": "0.27058825, 0.49019608, 0.09803922",
+      "path": "Workspace.Garden.Cube (4) (2)",
+      "pos": "7, 0.53761005, -47",
+      "size": "4.851857, 1.0752198, 4.851857"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": true,
+      "color": "0.27058825, 0.49019608, 0.09803922",
+      "path": "Workspace.Garden.Cube (3) (2)",
+      "pos": "-9, 0.53761005, -47",
+      "size": "4.851857, 1.0752198, 4.851857"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": true,
+      "color": "0.27058825, 0.49019608, 0.09803922",
+      "path": "Workspace.Garden.Cube (2) (2)",
+      "pos": "7, 0.53761005, -38",
+      "size": "4.851857, 1.0752198, 4.851857"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": true,
+      "color": "0.27058825, 0.49019608, 0.09803922",
+      "path": "Workspace.Garden.Cube (5)",
+      "pos": "-9, 0.53761005, -38",
+      "size": "4.851857, 1.0752198, 4.851857"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": true,
+      "color": "0.27058825, 0.49019608, 0.09803922",
+      "path": "Workspace.Garden.Cube (4)",
+      "pos": "7, 0.53761005, -29",
+      "size": "4.851857, 1.0752198, 4.851857"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": true,
+      "color": "0.27058825, 0.49019608, 0.09803922",
+      "path": "Workspace.Garden.Cube (3)",
+      "pos": "-9, 0.53761005, -29",
+      "size": "4.851857, 1.0752198, 4.851857"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": true,
+      "color": "0.27058825, 0.49019608, 0.09803922",
+      "path": "Workspace.Garden.Cube (2)",
+      "pos": "7, 0.53761005, -20",
+      "size": "4.851857, 1.0752198, 4.851857"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": true,
+      "color": "0.27058825, 0.49019608, 0.09803922",
+      "path": "Workspace.Garden.Cube",
+      "pos": "-9, 0.53761005, -20",
+      "size": "4.851857, 1.0752198, 4.851857"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.29411766, 0.5921569, 0.29411766",
+      "path": "Workspace.Garden.GardenTulipTemplate (4) (2).Meshes/stemsfixed.",
+      "pos": "8, 1.5994048, -45",
+      "size": "1.5877732, 3.1988091, 0.36590564"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.972549, 0.8509804, 0.42745098",
+      "path": "Workspace.Garden.GardenTulipTemplate (4) (2).Meshes/middleflowerpart",
+      "pos": "7.9748535, 3.0240946, -45.260986",
+      "size": "0.9576721, 0.957672, 0.20998827"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.83137256, 0.5647059, 0.7411765",
+      "path": "Workspace.Garden.GardenTulipTemplate (4) (2).Meshes/pedals",
+      "pos": "7.961914, 3.0697966, -45.260986",
+      "size": "2.9609804, 2.9962847, 0.08092062"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.29411766, 0.5921569, 0.29411766",
+      "path": "Workspace.Garden.GardenTulipTemplate (3) (2).Meshes/stemsfixed.",
+      "pos": "-8, 1.5994048, -45",
+      "size": "1.5877732, 3.1988091, 0.36590564"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.972549, 0.8509804, 0.42745098",
+      "path": "Workspace.Garden.GardenTulipTemplate (3) (2).Meshes/middleflowerpart",
+      "pos": "-8.0251465, 3.0240946, -45.260986",
+      "size": "0.9576721, 0.957672, 0.20998827"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.83137256, 0.5647059, 0.7411765",
+      "path": "Workspace.Garden.GardenTulipTemplate (3) (2).Meshes/pedals",
+      "pos": "-8.038086, 3.0697966, -45.260986",
+      "size": "2.9609804, 2.9962847, 0.08092062"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.29411766, 0.5921569, 0.29411766",
+      "path": "Workspace.Garden.GardenTulipTemplate (2) (2).Meshes/stemsfixed.",
+      "pos": "8, 1.5994048, -36",
+      "size": "1.5877732, 3.1988091, 0.36590564"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.972549, 0.8509804, 0.42745098",
+      "path": "Workspace.Garden.GardenTulipTemplate (2) (2).Meshes/middleflowerpart",
+      "pos": "7.9748535, 3.0240946, -36.260986",
+      "size": "0.9576721, 0.957672, 0.20998827"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.83137256, 0.5647059, 0.7411765",
+      "path": "Workspace.Garden.GardenTulipTemplate (2) (2).Meshes/pedals",
+      "pos": "7.961914, 3.0697966, -36.260986",
+      "size": "2.9609804, 2.9962847, 0.08092062"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.29411766, 0.5921569, 0.29411766",
+      "path": "Workspace.Garden.GardenTulipTemplate (5).Meshes/stemsfixed.",
+      "pos": "-8, 1.5994048, -36",
+      "size": "1.5877732, 3.1988091, 0.36590564"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.972549, 0.8509804, 0.42745098",
+      "path": "Workspace.Garden.GardenTulipTemplate (5).Meshes/middleflowerpart",
+      "pos": "-8.0251465, 3.0240946, -36.260986",
+      "size": "0.9576721, 0.957672, 0.20998827"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.83137256, 0.5647059, 0.7411765",
+      "path": "Workspace.Garden.GardenTulipTemplate (5).Meshes/pedals",
+      "pos": "-8.038086, 3.0697966, -36.260986",
+      "size": "2.9609804, 2.9962847, 0.08092062"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.29411766, 0.5921569, 0.29411766",
+      "path": "Workspace.Garden.GardenTulipTemplate (4).Meshes/stemsfixed.",
+      "pos": "8, 1.5994048, -27",
+      "size": "1.5877732, 3.1988091, 0.36590564"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.972549, 0.8509804, 0.42745098",
+      "path": "Workspace.Garden.GardenTulipTemplate (4).Meshes/middleflowerpart",
+      "pos": "7.9748535, 3.0240946, -27.260986",
+      "size": "0.9576721, 0.957672, 0.20998827"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.83137256, 0.5647059, 0.7411765",
+      "path": "Workspace.Garden.GardenTulipTemplate (4).Meshes/pedals",
+      "pos": "7.961914, 3.0697966, -27.260986",
+      "size": "2.9609804, 2.9962847, 0.08092062"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.29411766, 0.5921569, 0.29411766",
+      "path": "Workspace.Garden.GardenTulipTemplate (3).Meshes/stemsfixed.",
+      "pos": "-8, 1.5994048, -27",
+      "size": "1.5877732, 3.1988091, 0.36590564"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.972549, 0.8509804, 0.42745098",
+      "path": "Workspace.Garden.GardenTulipTemplate (3).Meshes/middleflowerpart",
+      "pos": "-8.0251465, 3.0240946, -27.260986",
+      "size": "0.9576721, 0.957672, 0.20998827"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.83137256, 0.5647059, 0.7411765",
+      "path": "Workspace.Garden.GardenTulipTemplate (3).Meshes/pedals",
+      "pos": "-8.038086, 3.0697966, -27.260986",
+      "size": "2.9609804, 2.9962847, 0.08092062"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.29411766, 0.5921569, 0.29411766",
+      "path": "Workspace.Garden.GardenTulipTemplate (2).Meshes/stemsfixed.",
+      "pos": "8, 1.5994048, -18",
+      "size": "1.5877732, 3.1988091, 0.36590564"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.972549, 0.8509804, 0.42745098",
+      "path": "Workspace.Garden.GardenTulipTemplate (2).Meshes/middleflowerpart",
+      "pos": "7.9748535, 3.0240946, -18.260986",
+      "size": "0.9576721, 0.957672, 0.20998827"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.83137256, 0.5647059, 0.7411765",
+      "path": "Workspace.Garden.GardenTulipTemplate (2).Meshes/pedals",
+      "pos": "7.961914, 3.0697966, -18.260986",
+      "size": "2.9609804, 2.9962847, 0.08092062"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.29411766, 0.5921569, 0.29411766",
+      "path": "Workspace.Garden.GardenTulipTemplate.Meshes/stemsfixed.",
+      "pos": "-8, 1.5994048, -18",
+      "size": "1.5877732, 3.1988091, 0.36590564"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.972549, 0.8509804, 0.42745098",
+      "path": "Workspace.Garden.GardenTulipTemplate.Meshes/middleflowerpart",
+      "pos": "-8.0251465, 3.0240946, -18.260986",
+      "size": "0.9576721, 0.957672, 0.20998827"
+    },
+    {
+      "anchored": true,
+      "class": "MeshPart",
+      "collide": false,
+      "color": "0.83137256, 0.5647059, 0.7411765",
+      "path": "Workspace.Garden.GardenTulipTemplate.Meshes/pedals",
+      "pos": "-8.038086, 3.0697966, -18.260986",
+      "size": "2.9609804, 2.9962847, 0.08092062"
+    }
+  ],
+  "scriptChanges": 0
+}
