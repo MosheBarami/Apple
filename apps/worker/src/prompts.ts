@@ -388,6 +388,8 @@ export function pluginInstallGuidance(storeLive: boolean, storeUrl: string): str
 export function systemPrompt(opts: {
   mode: ProductMode;
   autonomous?: boolean;
+  /** Validated owner-requested finite tool workflow; does not expand permissions. */
+  toolSequence?: readonly string[];
   studioConnected: boolean;
   placeName: string | null;
   projectName: string;
@@ -488,8 +490,14 @@ export function systemPrompt(opts: {
   return [
     IDENTITY,
     untrustedContentRule(opts.fenceId),
-    MODE_RULES[opts.mode](opts.offeredTools ?? defaultOffered(opts.mode, opts.studioConnected)),
-    opts.mode === 'agent' && opts.autonomous ? AUTONOMOUS_RULES : '',
+    opts.mode === 'agent' && opts.toolSequence?.length
+      ? `Mode: Agent, explicitly bounded workflow. Carry out only this ordered sequence: ${opts.toolSequence.join(' then ')}.
+The worker offers one next tool at a time and ends the run after the final successful action.
+Do not add a plan, verification, retry, or any action outside this sequence. The automatic rollback checkpoint is handled by the worker.
+Only results from tools in THIS run establish completion. Do not claim changes based on earlier messages.
+If the next tool is unavailable or fails, report that boundary; never claim the sequence completed.`
+      : MODE_RULES[opts.mode](opts.offeredTools ?? defaultOffered(opts.mode, opts.studioConnected)),
+    opts.mode === 'agent' && opts.autonomous && !opts.toolSequence?.length ? AUTONOMOUS_RULES : '',
     opts.sceneKind ? BRIEF_START + worldBuildingBrief(opts.sceneKind) + BRIEF_END : '',
     opts.uiBrief ? UI_BRIEF_START + '\n' + opts.uiBrief + UI_BRIEF_END : '',
     `Project: "${opts.projectName}". ${studio}`,

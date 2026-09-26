@@ -3267,6 +3267,7 @@ export class SessionDO extends DurableObject<Env> {
     const sys = systemPrompt({
       mode,
       autonomous: runAutonomous,
+      toolSequence: mode === 'agent' ? explicitToolSequence(text, new Set(toolNames())) ?? undefined : undefined,
       studioConnected,
       placeName: pluginState?.placeName ?? null,
       projectName: bind.projectName,
@@ -3851,12 +3852,19 @@ export class SessionDO extends DurableObject<Env> {
     // on the run's first step, gets no tool definitions: they are 69 tools and ~67k characters, about
     // 80% of the input of every call, and "hi" needs none of them. CONVERSATIONAL_RE is anchored to the
     // whole message, so "hi, build me a tower" is not talk. Any later step is offered the normal set.
-    const talkOnly = agent.traits?.conversational === true && agent.step === 1 && !agent.mutated;
+    const talkOnly = !sequence && agent.traits?.conversational === true && agent.step === 1 && !agent.mutated;
+    // Historical assistant replies can include unsupported completion claims. State the current
+    // required action at the provider boundary, using only validated registry names.
+    const stepMessages = sequenceStep?.state === 'next'
+      ? agent.llm.map((message, index) => index === 0 && message.role === 'system'
+        ? { ...message, content: `${message.content}\n\nNext required action: ${sequenceStep.tool}. Call that tool now using the latest user request and verified results from this run. Do not claim changes based on earlier messages. No additional tools are authorized by this workflow.` }
+        : message)
+      : agent.llm;
     const res = await llmChat(
       this.env,
       {
         model: gatewayModel,
-        messages: agent.llm,
+        messages: stepMessages,
         tools: talkOnly ? [] : toolDefs(offerStudio, offeredAllowed),
         reasoningEffort: choice.effort,
         maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),

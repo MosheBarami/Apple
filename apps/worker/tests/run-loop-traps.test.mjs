@@ -1100,3 +1100,38 @@ test('A FAILED REQUESTED TOOL ENDS WITHOUT RETRY OR WHOLE-GAME STEERS', async ()
     assert.equal(h.chatCalls.length, 1, 'an ended failed sequence resumed');
   } finally { h.stop(); }
 });
+
+
+test('EXPLICIT WORKFLOW PROMPT NAMES ONLY ITS AVAILABLE NEXT ACTION', async () => {
+  const h = await makeSession({ connected: true, responses: [answer({ text: 'Both changes are in and verified.' })] });
+  try {
+    await start(h, { text: SEQUENCE_REQUEST, autonomous: true });
+    await h.session.alarm();
+    const req = h.chatCalls[0].req;
+    const systems = req.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
+    assert.doesNotMatch(systems, /Your FIRST call is propose_plan/, 'the prompt requires a withheld planner');
+    assert.match(systems, /Next required action: read_script/);
+    assert.match(systems, /Do not claim changes based on earlier messages/);
+    assert.equal(lastEnd(h)?.stopReason, 'incomplete');
+    assert.doesNotMatch(assistantRow(h).content, /Both changes are in/, 'an unsupported completion claim was persisted');
+    assert.deepEqual(h.ops.filter((op) => op.op !== 'snapshot'), []);
+  } finally { h.stop(); }
+});
+
+test('RESUMED WORKFLOW PROMPT ADVANCES TO EDIT WITHOUT REPLAYING READ', async () => {
+  const h = await makeSession({ connected: true, responses: [answer({ text: 'Cannot complete the edit.' })] });
+  try {
+    await start(h, { text: SEQUENCE_REQUEST, autonomous: true });
+    const agent = h.store.get('agent');
+    agent.trace = [{ tool: 'read_script', ok: true }];
+    agent.step = 1;
+    h.store.set('agent', structuredClone(agent));
+    await h.session.alarm();
+    const req = h.chatCalls[0].req;
+    assert.deepEqual(req.tools.map((t) => t.name), ['edit_script']);
+    const systems = req.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
+    assert.match(systems, /Next required action: edit_script/);
+    assert.doesNotMatch(systems, /Next required action: read_script/);
+    assert.equal(lastEnd(h)?.stopReason, 'incomplete');
+  } finally { h.stop(); }
+});
