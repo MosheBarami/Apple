@@ -22,3 +22,9 @@ No new full-game or visual pass. F-059/F-064 and independent product reviews 0/3
 Evidence: `cartoon-clean-trial-20260926/fresh-place.png`, `observation.json`, `baseline-scan.json`. Private manifest: `/private/tmp/apple-cartoon-clean-trial/manifest.json` (contains the frozen holdout prompt; not a game completion result).
 
 Follow-up review found timestamp boundary ties; overlapping pagination now deduplicates IDs and explicitly marks an unresolved 100-message tie as incomplete. The seventh regression covers 101 messages sharing a timestamp. Studio startup logs show other local editor plugins; the generated zero-script baseline is a file inventory, not a claim about the loaded DataModel. Save and audit the actual loaded place before any trial run.
+
+## Loaded native baseline checkpoint
+At 12:08 UTC, native read-only inventory and Save to File As captured the loaded place. The Save As name field interpreted an absolute path as a colon-containing filename; the actual reported saved path is retained in `loaded-checkpoint.json`, with a byte-identical review copy at `/private/tmp/apple-cartoon-clean-trial/before-loaded.rbxl`. Native file: 50,570 bytes, SHA256 `d567475902f5e6f0a82d52e6b4fd74903353970ec061df339db781db340757f4`.
+
+Data-only audit: two saved parts (Baseplate/SpawnLocation), one pre-existing `TestService.LuauLSP_Settings` ModuleScript, zero ScreenGuis/remotes. `ServerStorage.__PanicGitFastV5` is an editor checkpoint folder. These are baseline helpers, not game content or an Apple mutation. In-memory whole-DataModel counts include editor UI (15 BaseParts/one script/eight ScreenGuis); canonical gameplay services had zero scripts/ScreenGuis. Full saved inventory provides the authoritative before comparison. No imported script was executed by the inspector. Trial remains unpaired/not-started.
+Latest CI for new observer commit `1dbf95f` is run36240954658, in progress at last check; previous52847a8 passed all six jobs.

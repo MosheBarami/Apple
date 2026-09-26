@@ -1,0 +1,132 @@
+{
+  "classes": {
+    "BubbleChatConfiguration": 1,
+    "ChannelTabsConfiguration": 1,
+    "ChatInputBarConfiguration": 1,
+    "ChatWindowConfiguration": 1,
+    "Folder": 2,
+    "ModuleScript": 1,
+    "Part": 1,
+    "SpawnLocation": 1,
+    "StarterCharacterScripts": 1,
+    "StarterPlayerScripts": 1,
+    "StringValue": 1
+  },
+  "file": "/private/tmp/apple-cartoon-clean-trial/before-loaded.rbxl",
+  "instances": 12,
+  "meshParts": 0,
+  "parts": 2,
+  "remoteEvents": 0,
+  "remoteFunctions": 0,
+  "screenGuis": 0,
+  "scripts": 1,
+  "services": {
+    "InsertService": {
+      "instances": 1,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "StringValue",
+          "name": "InsertionHash"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    },
+    "ServerStorage": {
+      "instances": 2,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "Folder",
+          "name": "__PanicGitFastV5"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    },
+    "StarterPlayer": {
+      "instances": 2,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "StarterPlayerScripts",
+          "name": "StarterPlayerScripts"
+        },
+        {
+          "class": "StarterCharacterScripts",
+          "name": "StarterCharacterScripts"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    },
+    "TestService": {
+      "instances": 1,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "ModuleScript",
+          "name": "LuauLSP_Settings"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 1
+    },
+    "TextChatService": {
+      "instances": 4,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "ChatWindowConfiguration",
+          "name": "ChatWindowConfiguration"
+        },
+        {
+          "class": "ChatInputBarConfiguration",
+          "name": "ChatInputBarConfiguration"
+        },
+        {
+          "class": "BubbleChatConfiguration",
+          "name": "BubbleChatConfiguration"
+        },
+        {
+          "class": "ChannelTabsConfiguration",
+          "name": "ChannelTabsConfiguration"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    },
+    "Workspace": {
+      "instances": 2,
+      "parts": 2,
+      "roots": [
+        {
+          "class": "Part",
+          "name": "Baseplate"
+        },
+        {
+          "class": "SpawnLocation",
+          "name": "SpawnLocation"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    }
+  },
+  "spawnLocations": [
+    {
+      "name": "SpawnLocation",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        6,
+        1,
+        6
+      ]
+    }
+  ]
+}
