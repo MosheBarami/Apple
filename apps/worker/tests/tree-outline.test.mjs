@@ -52,3 +52,26 @@ test('a tree too big for one reply says how much it left out and how to read a b
   assert.match(body.notShown, /root set to a branch such as game\.Workspace\.Block\d+/);
   assert.doesNotMatch(res.resultForLlm, /\[truncated/);
 });
+
+// A real owner-imported pack exposed duplicate Tree names and hidden transforms.
+test('the agent receives measured spatial fields and ambiguous sibling warnings', async () => {
+  const tree = {root:{path:'game.Workspace.Pack',name:'Pack',class:'Folder',children:[
+    {...part('game.Workspace.Pack','Tree'),class:'MeshPart',props:{...part('x','x').props,Anchored:{t:'bool',v:false}}},
+    {...part('game.Workspace.Pack','Tree'),class:'MeshPart'},
+  ]}};
+  const res=await T.runTool(ctxFor(tree),'get_project_tree',JSON.stringify({root:'game.Workspace.Pack'}));
+  const body=JSON.parse(res.resultForLlm);
+  assert.match(body.outline,/position=\[1.25,7.5,-3.125\]/);
+  assert.match(body.outline,/size=\[0.8,12,0.8\]/);
+  assert.match(body.outline,/anchored=false/);
+  assert.match(body.outline,/ambiguous: 2 siblings named Tree/);
+  assert.ok(res.resultForLlm.length <= T.MAX_RESULT_CHARS);
+});
+
+test('spatial outline omits invalid vectors and does not invent model positions', async () => {
+  const tree={root:{path:'game.Workspace.Pack',name:'Pack',class:'Model',children:[
+    {...part('game.Workspace.Pack','Bad'),props:{Position:{t:'Vector3',v:[1,'2',3]},Size:{t:'Vector3',v:[1,2]}}},
+  ]}};
+  const res=await T.runTool(ctxFor(tree),'get_project_tree','{}');
+  assert.doesNotMatch(JSON.parse(res.resultForLlm).outline,/position=|size=|anchored=/);
+});

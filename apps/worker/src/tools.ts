@@ -808,18 +808,35 @@ function treeOutline(data: unknown, budget = MAX_RESULT_CHARS - 300): Record<str
   let used = 0;
   let total = 0;
   let firstHidden: string | undefined;
-  const walk = (node: StudioTreeNode, depth: number) => {
+  // Keep the geometry needed for placement without returning every typed property.
+  // Only measured finite vectors are shown; Models without these fields get none.
+  const spatial = (node: StudioTreeNode) => {
+    const fields: string[] = [];
+    for (const [key, label] of [['Position', 'position'], ['Size', 'size']] as const) {
+      const prop = node.props?.[key] as { t?: unknown; v?: unknown } | undefined;
+      if (prop?.t === 'Vector3' && Array.isArray(prop.v) && prop.v.length === 3
+        && prop.v.every((v) => typeof v === 'number' && Number.isFinite(v))) {
+        fields.push(`${label}=${JSON.stringify(prop.v)}`);
+      }
+    }
+    const anchored = node.props?.Anchored as { t?: unknown; v?: unknown } | undefined;
+    if (anchored?.t === 'bool' && typeof anchored.v === 'boolean') fields.push(`anchored=${anchored.v}`);
+    return fields.length ? ` ${fields.join(' ')}` : '';
+  };
+  const walk = (node: StudioTreeNode, depth: number, siblings = 1) => {
     total += 1;
     const name = node.name ?? node.path?.split('.').pop() ?? '?';
     const unfetched = Number((node as { moreChildren?: unknown }).moreChildren) || 0;
-    const line = `${'  '.repeat(depth)}${name} (${node.class ?? '?'})${unfetched > 0 ? ` +${unfetched} more children not fetched` : ''}`;
+    const line = `${'  '.repeat(depth)}${name} (${node.class ?? '?'})${siblings > 1 ? ` [ambiguous: ${siblings} siblings named ${name}; this path cannot select one]` : ''}${spatial(node)}${unfetched > 0 ? ` +${unfetched} more children not fetched` : ''}`;
     if (used + line.length + 1 <= budget) {
       lines.push(line);
       used += line.length + 1;
     } else if (!firstHidden) {
       firstHidden = node.path ?? name;
     }
-    for (const child of node.children ?? []) walk(child, depth + 1);
+    const counts = new Map<string | undefined, number>();
+    for (const child of node.children ?? []) counts.set(child.name, (counts.get(child.name) ?? 0) + 1);
+    for (const child of node.children ?? []) walk(child, depth + 1, counts.get(child.name));
   };
   walk(root, 0);
   // Fit on the SERIALISED reply, which is what the cap measures: JSON escapes every newline and quote,
@@ -1700,7 +1717,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
       name: 'get_project_tree',
-      description: 'Snapshot of the game instance tree (names, classes, child counts). Start here to understand a project.',
+      description: 'Snapshot of the game instance tree with names, classes, measured part positions/sizes/anchoring when available, and duplicate-name warnings. Start here to understand a project. Ambiguous sibling paths cannot target a single instance; do not guess which sibling is intended.',
       parameters: S({
         root: { type: 'string', description: 'Path to start from, e.g. "game.Workspace". Default: whole game (key services).' },
         maxDepth: { type: 'number', description: 'Depth limit, default 4' },
