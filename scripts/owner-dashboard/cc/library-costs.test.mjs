@@ -54,9 +54,12 @@ test('owner acquisition view separates listed sources, local bytes and backend s
   assert.ok(d.sources.page.rows.some((r) => r.url.includes('zerodev.tools')));
   assert.ok(d.sources.excluded >= 11, 'the general-purpose 3D portals are excluded from Roblox model intake');
   const ownerMap = await library(q({ tab: 'intake', view: 'sources', q: 'free-low-poly-simulator-kit-and-map', limit: '2' }));
-  assert.ok(ownerMap.page.rows.some((r) => r.state === 'roblox-inventory-only' && r.acquired === 0
-    && r.inventoryAssetIds.includes(6606406243) && r.inventoryAssetIds.includes(6606350916)),
-  'claiming Roblox assets does not invent downloaded files');
+  const listedMap = ownerMap.page.rows.find((r) => r.inventoryAssetIds?.includes(6606406243)
+    && r.inventoryAssetIds.includes(6606350916));
+  assert.ok(listedMap && listedMap.acquired === 0, 'manual review imports do not invent builder-ready assets');
+  assert.equal(listedMap.reviewFiles.length, 2);
+  assert.ok(listedMap.reviewFiles.every((r) => r.local.state === 'verified'),
+    'each actually acquired map and kit export must match its recorded bytes and hash');
   assert.ok(d.files.total > 0);
   assert.ok(d.files.local > 0);
   assert.ok(d.files.fromOwner >= 0 && d.files.fromOwner < d.files.local, 'the owner count is separate from old inventory');
@@ -84,7 +87,7 @@ test('multi-screen Roblox UI kit lists every JSON and Luau export separately', a
   const source = await library(q({ tab: 'intake', view: 'sources', q: 'robloxguimaker.app/kits/simulator-kit' }));
   assert.equal(source.sources.page.rows[0].reviewFiles.length, 10);
   assert.ok(source.sources.page.rows[0].reviewFiles.every((r) => r.local.state === 'verified'));
-  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'simulator-', limit: '20' }));
+  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'robloxguimaker.app/kits/simulator-kit', limit: '20' }));
   assert.equal(files.page.total, 10);
   assert.ok(files.page.rows.every((r) => r.local.state === 'verified' && r.backend.state === 'not-supported' && r.use === 'review-only'));
 });
