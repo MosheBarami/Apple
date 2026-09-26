@@ -1,0 +1,19 @@
+{
+  "added": 17,
+  "changedExisting": {},
+  "missing": [
+    "StarterGui.GardenCoins.GardenCoins",
+    "StarterGui.GardenCoins.GardenCoins.LibraryCorner",
+    "StarterGui.GardenCoins.GardenCoins.Icon.LibraryCorner",
+    "StarterGui.GardenCoins.GardenCoins.LibraryEdge",
+    "StarterGui.GardenCoins.GardenCoins.Value",
+    "StarterGui.GardenCoins.GardenCoins.Icon.LibraryGlyph",
+    "StarterGui.GardenCoins.GardenCoins.Aspect",
+    "StarterGui.GardenCoins.GardenCoins.Icon.LibraryGlyph.TextLimit",
+    "StarterGui.GardenCoins.GardenCoins.Value.TextLimit",
+    "StarterGui.GardenCoins.GardenCoins.Icon.LibraryEdge",
+    "StarterGui.GardenCoins.GardenCoins.Icon"
+  ],
+  "newParts": {},
+  "scriptChanges": 0
+}

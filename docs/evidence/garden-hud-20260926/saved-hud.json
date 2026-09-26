@@ -1,0 +1,166 @@
+[
+  {
+    "anchor": "0, 0",
+    "background": "0, 0, 0",
+    "backgroundTransparency": 0,
+    "class": "ImageLabel",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD",
+    "pos": "0, 20, 0, 20",
+    "size": "0, 180, 0, 44",
+    "zindex": 1
+  },
+  {
+    "class": "UIAspectRatioConstraint",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD.Aspect"
+  },
+  {
+    "class": "UIStroke",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD.LibraryEdge"
+  },
+  {
+    "class": "UICorner",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD.LibraryCorner"
+  },
+  {
+    "anchor": "0, 0.5",
+    "background": "0.6392157, 0.63529414, 0.64705884",
+    "backgroundTransparency": 1,
+    "class": "TextLabel",
+    "font": "rbxasset://fonts/families/FredokaOne.json, Regular, Normal",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD.Value",
+    "pos": "0.32, 0, 0.5, 0",
+    "scaled": true,
+    "size": "0.64, 0, 0.7, 0",
+    "strokeTransparency": 0,
+    "text": "0",
+    "textColor": "1, 1, 1",
+    "textSize": 8,
+    "zindex": 1
+  },
+  {
+    "anchor": "0, 0.5",
+    "background": "1, 1, 1",
+    "backgroundTransparency": 0,
+    "class": "ImageLabel",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD.Icon",
+    "pos": "0.04, 0, 0.5, 0",
+    "size": "0.26, 0, 0.8, 0",
+    "zindex": 1
+  },
+  {
+    "class": "UITextSizeConstraint",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD.Value.TextLimit"
+  },
+  {
+    "class": "UIStroke",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD.Icon.LibraryEdge"
+  },
+  {
+    "class": "UICorner",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD.Icon.LibraryCorner"
+  },
+  {
+    "anchor": "0.5, 0.5",
+    "background": "0.6392157, 0.63529414, 0.64705884",
+    "backgroundTransparency": 1,
+    "class": "TextLabel",
+    "font": "rbxasset://fonts/families/FredokaOne.json, Regular, Normal",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD.Icon.LibraryGlyph",
+    "pos": "0.5, 0, 0.5, 0",
+    "scaled": true,
+    "size": "0.7, 0, 0.7, 0",
+    "strokeTransparency": 1,
+    "text": "$",
+    "textColor": "0, 0, 0",
+    "textSize": 8,
+    "zindex": 1
+  },
+  {
+    "class": "UITextSizeConstraint",
+    "path": "StarterGui.GardenCoins.GardenCoinsHUD.Icon.LibraryGlyph.TextLimit"
+  },
+  {
+    "anchor": "1, 0",
+    "background": "0.086, 0.733, 0.467",
+    "backgroundTransparency": 0,
+    "class": "ImageButton",
+    "path": "StarterGui.GardenShopButton.GardenShopButton",
+    "pos": "1, -20, 0, 20",
+    "size": "0, 156, 0, 44",
+    "zindex": 1
+  },
+  {
+    "class": "UIAspectRatioConstraint",
+    "path": "StarterGui.GardenShopButton.GardenShopButton.Aspect"
+  },
+  {
+    "class": "UIStroke",
+    "path": "StarterGui.GardenShopButton.GardenShopButton.LibraryEdge"
+  },
+  {
+    "class": "UICorner",
+    "path": "StarterGui.GardenShopButton.GardenShopButton.LibraryCorner"
+  },
+  {
+    "anchor": "0.5, 0.5",
+    "background": "0.6392157, 0.63529414, 0.64705884",
+    "backgroundTransparency": 1,
+    "class": "TextLabel",
+    "font": "rbxasset://fonts/families/FredokaOne.json, Regular, Normal",
+    "path": "StarterGui.GardenShopButton.GardenShopButton.Label",
+    "pos": "0.5, 0, 0.5, 0",
+    "scaled": true,
+    "size": "0.86, 0, 0.62, 0",
+    "strokeTransparency": 0,
+    "text": "Shop",
+    "textColor": "1, 1, 1",
+    "textSize": 8,
+    "zindex": 1
+  },
+  {
+    "class": "UITextSizeConstraint",
+    "path": "StarterGui.GardenShopButton.GardenShopButton.Label.TextLimit"
+  },
+  {
+    "anchor": "1, 0",
+    "background": "0.086, 0.733, 0.467",
+    "backgroundTransparency": 0,
+    "class": "ImageButton",
+    "path": "StarterGui.GardenSellButton.GardenSellButton",
+    "pos": "1, -20, 0, 76",
+    "size": "0, 156, 0, 44",
+    "zindex": 1
+  },
+  {
+    "class": "UIAspectRatioConstraint",
+    "path": "StarterGui.GardenSellButton.GardenSellButton.Aspect"
+  },
+  {
+    "class": "UIStroke",
+    "path": "StarterGui.GardenSellButton.GardenSellButton.LibraryEdge"
+  },
+  {
+    "class": "UICorner",
+    "path": "StarterGui.GardenSellButton.GardenSellButton.LibraryCorner"
+  },
+  {
+    "anchor": "0.5, 0.5",
+    "background": "0.6392157, 0.63529414, 0.64705884",
+    "backgroundTransparency": 1,
+    "class": "TextLabel",
+    "font": "rbxasset://fonts/families/FredokaOne.json, Regular, Normal",
+    "path": "StarterGui.GardenSellButton.GardenSellButton.Label",
+    "pos": "0.5, 0, 0.5, 0",
+    "scaled": true,
+    "size": "0.86, 0, 0.62, 0",
+    "strokeTransparency": 0,
+    "text": "Sell",
+    "textColor": "1, 1, 1",
+    "textSize": 8,
+    "zindex": 1
+  },
+  {
+    "class": "UITextSizeConstraint",
+    "path": "StarterGui.GardenSellButton.GardenSellButton.Label.TextLimit"
+  }
+]
