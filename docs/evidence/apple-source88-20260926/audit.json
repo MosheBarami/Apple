@@ -1,0 +1,375 @@
+{
+  "assetId": 6985721571,
+  "classes": {
+    "Attachment": 56,
+    "Beam": 2,
+    "Decal": 2,
+    "Humanoid": 2,
+    "MeshPart": 1043,
+    "Model": 283,
+    "Motor6D": 22,
+    "Part": 8,
+    "RopeConstraint": 3,
+    "Script": 5,
+    "SpecialMesh": 1,
+    "SurfaceAppearance": 7,
+    "SurfaceLight": 2,
+    "Texture": 17,
+    "Vector3Value": 62,
+    "Weld": 9,
+    "WeldConstraint": 6
+  },
+  "codeExecuted": false,
+  "containers": {
+    "AbandonedWoodenLampPost": 1,
+    "AnimatedWater": 1,
+    "AnimatedWaterfall": 1,
+    "Banner": 1,
+    "Barrel": 2,
+    "BasicCoffin": 1,
+    "Baubel": 4,
+    "BeachBall": 4,
+    "BeachPack": 1,
+    "BeachUmbrella": 4,
+    "Bin": 1,
+    "BlueChristmasLight": 11,
+    "BlueSnowman": 1,
+    "BorderPack": 1,
+    "BottomWater": 1,
+    "Box": 1,
+    "Bucket": 4,
+    "BuoyancyRing": 1,
+    "BurntTree1": 1,
+    "BurntTree2": 1,
+    "BurntTree3": 1,
+    "CT-4": 1,
+    "CandyCane": 2,
+    "CandyPack": 1,
+    "CardboardBox": 1,
+    "CargoTransporter": 1,
+    "CartoonBorder": 1,
+    "Chain": 1,
+    "Chest": 1,
+    "ChristmasLights": 2,
+    "ChristmasPack": 1,
+    "ChristmasWoodenLampPost": 1,
+    "Cone": 1,
+    "ConstructionPack": 1,
+    "ContainerPack": 1,
+    "Crane": 1,
+    "Crate": 1,
+    "CrossCoffin": 1,
+    "Crown": 1,
+    "DamagedBarrier": 1,
+    "DamagedBorder": 1,
+    "DefaultBorder": 2,
+    "DefaultIsland": 1,
+    "DesertPack": 1,
+    "DirtIsland1": 1,
+    "DirtIsland2": 1,
+    "DrinkingBarrel": 1,
+    "Dummy": 1,
+    "FlagsAndBannersPack": 1,
+    "FloatingIslandsPack": 1,
+    "Fountain": 1,
+    "Gate": 1,
+    "GraveyardFence": 1,
+    "GreenChristmasLight": 9,
+    "HalloweenPack": 1,
+    "HeavyDamageBanner": 1,
+    "HellChain": 1,
+    "HellPack": 1,
+    "HellPortal": 1,
+    "HellRocks": 1,
+    "HellTree1": 1,
+    "HellTree2": 1,
+    "HellTree3": 1,
+    "HighPolySnowStack": 1,
+    "HighPolySnowWall": 1,
+    "HolographicCrate": 1,
+    "HolographicTable": 1,
+    "HolographicTree1": 1,
+    "HolographicTree2": 1,
+    "HolographicTree3": 1,
+    "LargeCandle": 1,
+    "LargeHellCandle": 1,
+    "Leaderboard": 1,
+    "Lid": 5,
+    "LightDamageBanner": 1,
+    "LightingPack": 1,
+    "Log1": 1,
+    "Log2": 1,
+    "Lollipop": 4,
+    "LongPanel": 1,
+    "LowPolyCandle": 3,
+    "LowPolyHellCandle": 1,
+    "LowPolySnowStack": 1,
+    "LowPolySnowWall": 1,
+    "MagnetAttachment": 1,
+    "MediumCandle": 1,
+    "MediumHellCandle": 1,
+    "MiddleWater": 1,
+    "MossRocks": 1,
+    "Mountain": 1,
+    "Mushroom": 20,
+    "MythicalPack": 1,
+    "NaturePack": 1,
+    "NozzleHead": 1,
+    "OldLampPost": 1,
+    "OpenBarrel": 1,
+    "OpenCardboardBox": 1,
+    "OrangePanel": 1,
+    "Paddleboard": 3,
+    "PalmTree1": 1,
+    "PalmTree2": 1,
+    "PalmTree3": 1,
+    "Panel": 1,
+    "PanelAttachment": 1,
+    "PhysicsAbandonedWoodenLampPost": 1,
+    "PhysicsChristmasWoodenLampPost": 1,
+    "PhysicsWoodenLampPost": 1,
+    "PineTree1": 1,
+    "PineTree2": 1,
+    "PineTree3": 1,
+    "Podium": 3,
+    "Portal1": 1,
+    "Portal2": 1,
+    "Portal3": 1,
+    "Portals": 1,
+    "Present": 9,
+    "RedChristmasLight": 11,
+    "RedSnowman": 1,
+    "RegularCoffin": 1,
+    "RoboticArm": 1,
+    "RockIsland1": 1,
+    "RockIsland2": 1,
+    "Rocks": 1,
+    "RocksPack": 1,
+    "RoundPresent": 8,
+    "RuneStone": 8,
+    "RuneStones": 1,
+    "SawHead": 1,
+    "SciFiCrate": 4,
+    "SciFiIsland": 1,
+    "SciFiPack": 1,
+    "SealedCoffin": 1,
+    "Sign": 2,
+    "SimulatorPack": 1,
+    "Sleigh": 1,
+    "SmallCandle": 1,
+    "SmallHellCandle": 1,
+    "SmoothBorder": 1,
+    "SmoothLollipop": 4,
+    "SnowPineTree1": 1,
+    "SnowPineTree2": 1,
+    "SnowPineTree3": 1,
+    "SnowRocks": 1,
+    "SnowTree1": 1,
+    "SnowTree2": 1,
+    "SnowTree3": 1,
+    "Spade": 4,
+    "SquareFlag": 1,
+    "SteelBeamStack": 1,
+    "StorageContainer": 1,
+    "SwampTree1": 1,
+    "SwampTree2": 1,
+    "SwampTree3": 1,
+    "TerrainPack": 1,
+    "TerrainPart": 2,
+    "TopWater": 1,
+    "Tree1": 1,
+    "Tree2": 1,
+    "Tree3": 1,
+    "TreePack": 1,
+    "TriangularFlag": 1,
+    "UnwrappedChocolate": 1,
+    "VinesBorder": 1,
+    "VinesChain": 1,
+    "VinesHellChain": 1,
+    "VinesLog1": 1,
+    "VinesLog2": 1,
+    "Volcano1": 1,
+    "Volcano2": 1,
+    "Water": 1,
+    "WaterPack": 1,
+    "Well": 1,
+    "WoodenLampPost": 1,
+    "WrappedChocolate": 1
+  },
+  "cropNameMatches": [
+    {
+      "class": "MeshPart",
+      "path": "Workspace.Dxrksyde's ultra asset pack.HalloweenPack.Pumpkin",
+      "term": "pumpkin"
+    },
+    {
+      "class": "MeshPart",
+      "path": "Workspace.Dxrksyde's ultra asset pack.HalloweenPack.Pumpkin",
+      "term": "pumpkin"
+    },
+    {
+      "class": "MeshPart",
+      "path": "Workspace.Dxrksyde's ultra asset pack.HalloweenPack.PumpkinStem",
+      "term": "pumpkin"
+    },
+    {
+      "class": "MeshPart",
+      "path": "Workspace.Dxrksyde's ultra asset pack.HalloweenPack.PumpkinStem",
+      "term": "pumpkin"
+    },
+    {
+      "class": "MeshPart",
+      "path": "Workspace.Dxrksyde's ultra asset pack.HalloweenPack.Pumpkin",
+      "term": "pumpkin"
+    },
+    {
+      "class": "MeshPart",
+      "path": "Workspace.Dxrksyde's ultra asset pack.HalloweenPack.PumpkinStem",
+      "term": "pumpkin"
+    }
+  ],
+  "groups": [
+    {
+      "class": "Model",
+      "descendants": 2,
+      "name": "Mountain"
+    },
+    {
+      "class": "Model",
+      "descendants": 32,
+      "name": "CandyPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 20,
+      "name": "FloatingIslandsPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 30,
+      "name": "Portals"
+    },
+    {
+      "class": "Model",
+      "descendants": 135,
+      "name": "LightingPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 21,
+      "name": "FlagsAndBannersPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 29,
+      "name": "WaterPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 70,
+      "name": "RocksPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 18,
+      "name": "TerrainPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 56,
+      "name": "SimulatorPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 20,
+      "name": "DesertPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 31,
+      "name": "MythicalPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 19,
+      "name": "BorderPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 153,
+      "name": "ChristmasPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 111,
+      "name": "NaturePack"
+    },
+    {
+      "class": "Model",
+      "descendants": 124,
+      "name": "BeachPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 52,
+      "name": "ContainerPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 136,
+      "name": "SciFiPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 34,
+      "name": "HellPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 234,
+      "name": "TreePack"
+    },
+    {
+      "class": "Model",
+      "descendants": 79,
+      "name": "HalloweenPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 47,
+      "name": "ConstructionPack"
+    },
+    {
+      "class": "Model",
+      "descendants": 24,
+      "name": "Sign"
+    },
+    {
+      "class": "Model",
+      "descendants": 24,
+      "name": "Sign"
+    }
+  ],
+  "scriptContainersRemoved": [
+    {
+      "path": "Workspace.Dxrksyde's ultra asset pack.Instructions",
+      "sourceBytes": 16503
+    },
+    {
+      "path": "Workspace.Dxrksyde's ultra asset pack.LightingPack.PhysicsChristmasWoodenLampPost.LampPhysics",
+      "sourceBytes": 83
+    },
+    {
+      "path": "Workspace.Dxrksyde's ultra asset pack.LightingPack.PhysicsWoodenLampPost.LampPhysics",
+      "sourceBytes": 83
+    },
+    {
+      "path": "Workspace.Dxrksyde's ultra asset pack.LightingPack.PhysicsAbandonedWoodenLampPost.LampPhysics",
+      "sourceBytes": 83
+    },
+    {
+      "path": "Workspace.Dxrksyde's ultra asset pack.SciFiPack.HolographicTable.HologramCone.Rotation",
+      "sourceBytes": 140
+    }
+  ]
+}

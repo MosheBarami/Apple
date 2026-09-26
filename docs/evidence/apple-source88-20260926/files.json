@@ -1,0 +1,50 @@
+[
+  {
+    "file": "review/owner-88/Dxrksyde-original.rbxm",
+    "bytes": 2185678,
+    "sha256": "666c239829cefe4c86bca416db178a7c0095d2525315e4d09f3b02cf69c64681",
+    "downloadUrl": "https://create.roblox.com/store/asset/6985721571/Dxrksydes-ultra-asset-pack",
+    "acquiredBy": "Original Creator Store acquisition, official Studio inventory import, trusted data-only export",
+    "scripts": 5
+  },
+  {
+    "file": "review/owner-88/Dxrksyde-script-stripped.rbxm",
+    "bytes": 2179699,
+    "sha256": "c8d6dbf7ffd37789551f6b728f78b5bead2a9e0d907273dc3ca7fbf0e157139f",
+    "downloadUrl": "https://create.roblox.com/store/asset/6985721571/Dxrksydes-ultra-asset-pack",
+    "acquiredBy": "Original Creator Store acquisition, official Studio inventory import, trusted data-only export",
+    "scripts": 0
+  },
+  {
+    "file": "review/owner-88/GardenPumpkinTemplate.rbxm",
+    "bytes": 10842,
+    "sha256": "062045e18579ba82e3b6b02dbd2030e0dd0e713cc75c3d6c0569ad2f29c39c35",
+    "downloadUrl": "https://create.roblox.com/store/asset/6985721571/Dxrksydes-ultra-asset-pack",
+    "acquiredBy": "Original Creator Store acquisition, official Studio inventory import, trusted data-only export",
+    "scripts": 0
+  },
+  {
+    "file": "review/owner-88/PumpkinSource1.rbxm",
+    "bytes": 10835,
+    "sha256": "6b980c08723bc17db2cbf90569561b566eb7cfd56f9ca56665cea69fd62d7a8e",
+    "downloadUrl": "https://create.roblox.com/store/asset/6985721571/Dxrksydes-ultra-asset-pack",
+    "acquiredBy": "Original Creator Store acquisition, official Studio inventory import, trusted data-only export",
+    "scripts": 0
+  },
+  {
+    "file": "review/owner-88/PumpkinSource2.rbxm",
+    "bytes": 12178,
+    "sha256": "ad7c946b08e62992e24cc2eef1de1dcc25b2015cee5a1d6a0639a26eb3417dfe",
+    "downloadUrl": "https://create.roblox.com/store/asset/6985721571/Dxrksydes-ultra-asset-pack",
+    "acquiredBy": "Original Creator Store acquisition, official Studio inventory import, trusted data-only export",
+    "scripts": 0
+  },
+  {
+    "file": "review/owner-88/PumpkinSource3.rbxm",
+    "bytes": 12078,
+    "sha256": "081143ed85ae28d398c33e8e2132f90b713ae37763f0355423fe5cf7434a7203",
+    "downloadUrl": "https://create.roblox.com/store/asset/6985721571/Dxrksydes-ultra-asset-pack",
+    "acquiredBy": "Original Creator Store acquisition, official Studio inventory import, trusted data-only export",
+    "scripts": 0
+  }
+]
