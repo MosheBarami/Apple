@@ -1793,12 +1793,16 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'edit_script',
       description:
-        'Create or edit a script. Provide exactly one of `source` (full new content), `edits` (find/replace list, exact match), or `source_file` (an exact saved .lua/.luau workspace version). To create a new script set `create_class` + `create_parent`. ' +
+        'Create or edit a script. Provide exactly one of `source` (full new content), `edits` (find/replace list, exact match), or `source_file` (an exact saved .lua/.luau workspace version). For a single exact edit use edits:[{find:"exact old text",replace:"new text"}]; top-level find + replace is an equivalent shorthand, never combine it with another input. To create a new script set `create_class` + `create_parent`. ' +
         'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. A script that newly builds detailed props from Parts is also refused: use a verified model, and leave it unbuilt when none is available. Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
       parameters: S(
         {
           path: { type: 'string', description: 'Full path, e.g. game.ServerScriptService.RoundManager' },
           source: { type: 'string' },
+          find: { type: 'string', description: 'Single-edit shorthand: non-empty exact old text. Requires replace; omit source, edits and source_file.' },
+          replace: { type: 'string', description: 'Single-edit shorthand: replacement text, including an empty string for deletion. Requires find.' },
+          all: { type: 'boolean', description: 'For the single-edit shorthand only: replace all exact occurrences.' },
+          baseHash: { type: 'string', description: 'Alias for base_hash returned by read_script. If both are provided they must match.' },
           edits: {
             type: 'array',
             items: S({ find: { type: 'string' }, replace: { type: 'string' }, all: { type: 'boolean' } }, ['find', 'replace']),
@@ -1825,6 +1829,27 @@ export const TOOLS: Record<string, ToolImpl> = {
     mutatesProject: true,
     run: async (ctx, a) => {
       const path = String(a.path ?? '');
+      // Live provider output used flat find/replace and read_script's baseHash spelling.
+      // Normalise only this explicit equivalent shape; never infer an edit from prose,
+      // pick between payloads, or discard a read hash to make a mutation succeed.
+      const owns = (key: string) => Object.prototype.hasOwnProperty.call(a, key);
+      if (owns('find') || owns('replace')) {
+        if (owns('source') || owns('edits') || owns('source_file')) {
+          return { error: 'single-edit find/replace cannot be combined with source, edits, or source_file' };
+        }
+        if (typeof a.find !== 'string' || a.find.length === 0 || typeof a.replace !== 'string') {
+          return { error: 'single-edit shorthand requires non-empty find text and string replace text' };
+        }
+        if (owns('all') && typeof a.all !== 'boolean') return { error: '`all` must be a boolean' };
+        a = { ...a, edits: [{ find: a.find, replace: a.replace, ...(owns('all') ? { all: a.all } : {}) }] };
+      }
+      if (owns('baseHash')) {
+        if (typeof a.baseHash !== 'string' || !a.baseHash.trim()) return { error: '`baseHash` must be a non-empty string' };
+        if (owns('base_hash') && (typeof a.base_hash !== 'string' || a.base_hash.trim().toLowerCase() !== a.baseHash.trim().toLowerCase())) {
+          return { error: '`baseHash` and `base_hash` conflict; nothing was written' };
+        }
+        a = { ...a, base_hash: a.baseHash };
+      }
       const hasSourceArg = Object.prototype.hasOwnProperty.call(a, 'source');
       const hasEditsArg = Object.prototype.hasOwnProperty.call(a, 'edits');
       const hasSourceFileArg = Object.prototype.hasOwnProperty.call(a, 'source_file');
