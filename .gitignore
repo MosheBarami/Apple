@@ -9,6 +9,8 @@ build/
 .wrangler/
 .astro/
 *.rbxm
+# Owner-listed third-party packs retained locally for read-only review.
+packages/asset-library/review/
 !apps/plugin/release/*.rbxm
 .dev.vars
 secrets/
