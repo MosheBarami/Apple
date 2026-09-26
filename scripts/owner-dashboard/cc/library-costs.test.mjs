@@ -69,8 +69,17 @@ test('owner acquisition view separates listed sources, local bytes and backend s
   assert.ok(files.page.rows.every((r) => r.source !== 'polyhaven'), 'generic Poly Haven files must not be presented as Apple models');
   const excluded = await library(q({ tab: 'intake', view: 'sources', off: '133', limit: '11' }));
   assert.ok(excluded.page.rows.every((r) => r.state === 'out-of-scope-not-roblox' && r.acquired === 0));
-  const sound = await library(q({ tab: 'sfx', source: 'opengameart', q: 'Ability Learn', limit: '40' }));
-  assert.ok(sound.page.rows.some((r) => r.file && r.local.state === 'verified'), '35 downloaded sounds must show as files');
+  // Verify an owner-listed Roblox acquisition; an unrelated legacy audio pack is not required inventory.
+  const pack = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'owner-108', limit: '10' }));
+  assert.equal(pack.page.total, 1, 'components within a pack must not count as independent downloads');
+  const receipt = pack.page.rows[0];
+  assert.equal(receipt.local.state, 'verified', 'the acquired Roblox pack must match recorded bytes and hash');
+  assert.ok(receipt.local.bytes > 0);
+  assert.match(receipt.local.sha256, /^[a-f0-9]{64}$/);
+  assert.equal(receipt.download.url, 'https://create.roblox.com/store/asset/6876053362/Kayras2s-Low-Poly-Asset-Pack');
+  assert.equal(receipt.use, 'review-only');
+  assert.equal(receipt.backendPath, null, 'a local review export cannot invent backend insertion support');
+  assert.equal(receipt.backend.state, 'not-supported');
 });
 
 test('each owner review download appears as a separate verified file without backend access', async () => {

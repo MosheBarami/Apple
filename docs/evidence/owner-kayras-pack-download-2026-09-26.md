@@ -24,3 +24,5 @@ Native Undo and local Save removed pack. Data-only comparison proves target abse
 CI for prior a1947cd completed successfully (36226523711). F059/F064 and0/3 independent reviews remain open. This pack does not close the missing cartoon crop or full-game quality gaps.
 
 Live intake endpoint verified the new file's bytes/hash and review-only backend state;479 review receipts,0 owner-listed builder-ready. Local dashboard suite12/13: legacy OpenGameArt Ability Learn file assertion fails against current local inventory. No OpenGameArt download was performed to satisfy that assertion.
+
+Follow-up: replaced the obsolete OpenGameArt requirement with owner108 receipt verification (one file, verified local bytes/hash, exact official acquisition URL, review-only and no backend support). The new assertion failed while the isolated checkout lacked the payload, then all13 tests passed after copying the already acquired review file into that checkout. No new download/count from that copy; binary remains untracked.
