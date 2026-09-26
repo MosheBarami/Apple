@@ -1,0 +1,20 @@
+{
+  "runId": "a9f9571e-6625-4874-b506-a621aa18c460",
+  "createdAt": "2026-09-26T10:21:46.942Z",
+  "creditsSpent": 5,
+  "stopReason": "done",
+  "toolTrace": [
+    {
+      "tool": "move_instances",
+      "summary": "\u2713 move_instances",
+      "ok": true,
+      "durationMs": 174,
+      "detail": {
+        "count": 1,
+        "moved": [
+          "game.ServerStorage.Bench"
+        ]
+      }
+    }
+  ]
+}

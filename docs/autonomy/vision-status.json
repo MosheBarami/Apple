@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T10:13:48.714230+00:00",
-  "now": "שישה אביזרים לא מתאימים נשמרו באחסון ויצאו מהזירה; 45 חלקים ללא שינוי. הריצה חרגה והופסקה ב־50 Credits. תיקון ההגבלה הועלה: שתי בדיקות נוספות נעצרו בלי פעולה והחזירו Credits; הצלחת ביצוע טרם הוכחה. ביקורת נראות עצמאית דחתה את המפה.",
-  "nextStep": "לפתור את חוסר הביצוע בבקשות המוגבלות בלי ריצות חוזרות מבוזבזות, ולשפר את הרקע וקומפוזיציית הגינה עם נכסים מורשים. v32 בהערכה; F059/F064 ו־0/3 פתוחים.",
+  "updatedAt": "2026-09-26T10:23:21.583877+00:00",
+  "now": "תיקון ההגבלה אומת ב־Studio: Apple העביר ספסל קיים בפעולה אחת ועצר, 5 Credits ו־138 neurons. 14 חלקי הספסל נשמרו בשלמותם; הספסל בגינה ו־13 חלקי העצים לא השתנו. איכות המפה עדיין לא עברה ביקורת.",
+  "nextStep": "לשפר קומפוזיציה ורקע בגינה בעזרת נכסים מורשים, ואז למדוד נראות ומשחקיות בבדיקה מוגבלת. v32 בהערכה; F059/F064 ו־0/3 ביקורות מלאות עדיין פתוחים.",
   "items": [
     {
       "id": "productScope",

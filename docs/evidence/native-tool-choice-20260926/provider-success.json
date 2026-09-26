@@ -1,0 +1,42 @@
+{
+  "runId": "a9f9571e-6625-4874-b506-a621aa18c460",
+  "gatewayLogId": "01M3EKR8ZM01WXKRF13DTVKAVG",
+  "model": "@cf/zai-org/glm-5.3-flash",
+  "offeredTools": [
+    "move_instances"
+  ],
+  "toolChoice": {
+    "type": "function",
+    "function": {
+      "name": "move_instances"
+    }
+  },
+  "choices": [
+    {
+      "finishReason": "tool_calls",
+      "toolCalls": [
+        {
+          "function": {
+            "arguments": "{\"moves\": [{\"newParent\": \"game.ServerStorage\", \"path\": \"game.Workspace.Bench\"}]}",
+            "name": "move_instances"
+          },
+          "id": "call_3edad35783864fef9c9e8625",
+          "type": "function"
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 9898,
+    "completion_tokens": 177,
+    "total_tokens": 10075,
+    "prompt_tokens_details": {
+      "cached_tokens": 512
+    },
+    "neurons": 137.43270874023438
+  },
+  "recordedNeurons": 138,
+  "gatewayReportedCostUsd": 0.0015117597961425782,
+  "requestSha256": "6a150ef096ba181f46e323081db5ecb3e0c6cff0052f754618e4716fd6064ca3",
+  "responseSha256": "120df49ed45ad60a561f53e7c2a13376855ee4e12fba4cbf7730d690095b8041"
+}
