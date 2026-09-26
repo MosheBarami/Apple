@@ -12,6 +12,16 @@ Both no-tool responses copied the exact prior terminal message: “The tool sequ
 
 The next finite provider transcript omits only old assistant prose beginning with that terminal sentence, before the pinned current request. User facts, real structured tool calls/results and current-run messages remain. Ordinary autonomous requests are unaffected. No additional retries, permissions or tool allowance are introduced.
 
-Regression reproduced the old completion remaining in the transcript (red); after the filter all six finite workflow tests passed. Worker suite: 4222 passed, 4 skipped, 0 failed; TypeScript passed. Deployment and bounded live proof pending at this commit.
+Regression reproduced the old completion remaining in the transcript (red); after the filter all six finite workflow tests passed. Worker suite: 4222 passed, 4 skipped, 0 failed; TypeScript passed. Worker 3343da7 deployed via a clean archive and infra/deploy-worker.mjs; live health verified that exact stamp.
 
 No Roblox publication, uploads, new assets, setting Q-022 change or appeal submission. F-059/F-064 and 0/3 independent reviews remain.
+
+## Bounded live proof
+
+Native Studio was connected to the saved isolated garden, edits explicitly allowed in the plugin. Run `9e5970e5-18ed-4e37-872f-573d009f4ff2` completed one successful transform_instances, 2 Credits, 58 neurons and one provider call. AI Gateway billed USD 0.0006350698585510253. Complete provider request head had **zero historical completion replies**, and offered only transform_instances. Complete response returned that exact tool with paths game.Workspace.PlazaFence and move [0,-1.1999082565307617,0].
+
+After native Save, a data-only Lune before/after comparison found exactly six changed BaseParts, all Y deltas -1.1999082565307617; zero added/missing parts or scripts. Sizes and anchoring preserved. PlazaFence world minimum Y now 0, maximum Y 4.000001907348633. No downloaded Source executed by the audit.
+
+Native Play loaded the player and retained the garden/fence; screenshot is a distant spawn view, **not a blind quality review**. Play was stopped and plugin returned to inspect only. Screenshot fence-after.png shows the closer edit view. Sparse world, floating barrel appearance and missing Tomato/Pumpkin visuals remain. This one successful probe demonstrates the changed boundary and placement; it does not establish a general reliability rate.
+
+CI 928f728 passed all six jobs. CI for code head 3343da7 was still in progress when recording this observation. Exactly one CPU supervisor PID 35962 remained alive; v32 iteration 310, no interruption.

@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T08:59:36.906075+00:00",
-  "now": "Apple הוריד עציץ מרחף לקרקע בפעולה אחת וב־4 Credits; שני החלקים בלבד הוזזו וגבול התחתית נמדד בגובה 0. שתי בקשות אחרות הסתיימו ללא פעולות והוחזרו הקרדיטים; הגדר עדיין מרחפת. CI fa4c212 עבר 6/6.",
-  "nextStep": "לברר מדוע בקשות קצרות מסוימות מסתיימות ללא פעולה למרות חיבור והרשאת עריכה, לתקן את הגדר ולשלב גידולים מתאימים. המשחק עדיין לא עבר בדיקת איכות מלאה; F-059/F-064 ו־0/3 ביקורות פתוחים.",
+  "updatedAt": "2026-09-26T09:12:38.955645+00:00",
+  "now": "תוקנה העתקת הודעת סיום ישנה בבקשות מוגבלות. בבדיקה חיה Apple הזיז רק את ששת חלקי הגדר לקרקע: תחתית 0, פעולה אחת, 2 Credits ו־58 neurons. נבדק הקובץ השמור ו־Play; משחק הגן עדיין דל וחסרים גידולים מתאימים.",
+  "nextStep": "להשלים גידולי Tomato/Pumpkin באמצעות נכסי Roblox מתאימים עם מקור ורישיון מאומתים, ולבדוק איכות משחק אמיתית. לעקוב אחרי CI 3343da7 ואימון v32; F-059/F-064 ו־0/3 ביקורות נשארים פתוחים.",
   "items": [
     {
       "id": "productScope",
