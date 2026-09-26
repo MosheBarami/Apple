@@ -3,10 +3,10 @@ export function explicitToolSequence(request: string, known: ReadonlySet<string>
   // Require a standalone instruction, named tools and an explicit ending. Ordinary prose about
   // a game, or tool names inside a quoted/code example, must not turn off normal autonomy.
   const prose = request.replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '');
-  const matches = [...prose.matchAll(/(?:^|[.!?\n])\s*Exactly\s+([a-z][a-z_]*(?:\s+then\s+[a-z][a-z_]*)*)\s+then\s+finish\s*(?=[.!?\n]|$)/gi)];
+  const matches = [...prose.matchAll(/(?:^|[.!?:\n])\s*Exactly\s+([a-z][a-z_]*(?:\s+then\s+[a-z][a-z_]*)*)\s+then\s+finish\s*(?=[.!?\n]|$)/gi)];
   // Natural single-call wording must also close the allowance. The optional inline
   // payload is validated as JSON so examples or intervening instructions cannot bind it.
-  const single = [...prose.matchAll(/(?:^|[.!?\n])\s*(?:Make|Execute)\s+exactly\s+(?:one|1)\s+([a-z][a-z_]*)\s+call(?:\s+with\s+(\{[^\n]*\}))?\s*(?:\.\s*Then|,\s*then)\s+finish(?:\s+immediately)?\s*(?=[.!?\n]|$)/gi)];
+  const single = [...prose.matchAll(/(?:^|[.!?:\n])\s*(?:Make|Execute)\s+exactly\s+(?:one|1)\s+([a-z][a-z_]*)\s+call(?:\s+with\s+(\{[^\n]*\}))?\s*(?:\.\s*Then|,\s*then)\s+finish(?:\s+immediately)?\s*(?=[.!?\n]|$)/gi)];
   if (matches.length + single.length !== 1) return null;
   if (single.length) {
     const match = single[0]!;

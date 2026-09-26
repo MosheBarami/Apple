@@ -108,3 +108,11 @@ test('a finite sequence cannot pay for another step after executing nothing', ()
   assert.deepEqual(sequenceProgress(sequence, trace, 0), { state: 'failed' });
   assert.deepEqual(sequenceProgress(sequence, trace, 1), { state: 'next', tool: 'clone_instances' });
 });
+
+
+test('an explicit workflow after a colon remains bounded', () => {
+  const sequence = explicitToolSequence('Corrected remaining work only: Exactly read_script then edit_script then finish. No other tools.', known);
+  assert.deepEqual(sequence, ['read_script', 'edit_script']);
+  assert.deepEqual(sequenceProgress(sequence, [{ tool: 'read_script', ok: true }, { tool: 'edit_script', ok: true }]), { state: 'complete' });
+  assert.equal(explicitToolSequence('Example: `Exactly read_script then edit_script then finish.`', known), null);
+});
