@@ -1,19 +1,622 @@
 {
-  "observedAt": "2026-09-26T12:06:14.864Z",
+  "observedAt": "2026-09-26T12:24:29.505Z",
   "projectId": "474abb3f-0f0f-4d97-954e-934b50048857",
-  "connected": false,
+  "connected": true,
   "agentStatus": "idle",
   "queuedOps": 0,
-  "startedAt": null,
-  "status": "not-started",
-  "recordedCredits": 0,
+  "startedAt": "2026-09-26T12:14:40.104Z",
+  "status": "awaiting-independent-verification",
+  "recordedCredits": 267,
   "activeTurnSpendAvailable": false,
-  "recordedNeurons": 0,
-  "providerCalls": 0,
-  "elapsedMs": 0,
+  "recordedNeurons": 8007,
+  "providerUsageLowerBound": true,
+  "providerCalls": 56,
+  "elapsedMs": 589401,
   "needsStop": false,
-  "turns": [],
-  "provider": [],
+  "turns": [
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "createdAt": "2026-09-26T12:18:34.975Z",
+      "creditsSpent": 152,
+      "stopReason": "incomplete",
+      "tools": [
+        {
+          "tool": "propose_plan",
+          "ok": true
+        },
+        {
+          "tool": "get_project_tree",
+          "ok": true
+        },
+        {
+          "tool": "find_mechanic",
+          "ok": true
+        },
+        {
+          "tool": "create_checkpoint",
+          "ok": true
+        },
+        {
+          "tool": "install_module",
+          "ok": true
+        },
+        {
+          "tool": "shape_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "read_terrain",
+          "ok": true
+        },
+        {
+          "tool": "spatial_query",
+          "ok": true
+        },
+        {
+          "tool": "spatial_query",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "spatial_query",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "spatial_query",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "spatial_query",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "spatial_query",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "spatial_query",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "spatial_query",
+          "ok": true
+        },
+        {
+          "tool": "edit_terrain",
+          "ok": true
+        },
+        {
+          "tool": "spatial_query",
+          "ok": true
+        },
+        {
+          "tool": "create_instances",
+          "ok": true
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "createdAt": "2026-09-26T12:24:05.844Z",
+      "creditsSpent": 115,
+      "stopReason": "incomplete",
+      "tools": [
+        {
+          "tool": "propose_plan",
+          "ok": true
+        },
+        {
+          "tool": "get_project_tree",
+          "ok": true
+        },
+        {
+          "tool": "read_script",
+          "ok": true
+        },
+        {
+          "tool": "list_scripts",
+          "ok": true
+        },
+        {
+          "tool": "create_checkpoint",
+          "ok": true
+        },
+        {
+          "tool": "set_properties",
+          "ok": true
+        },
+        {
+          "tool": "set_properties",
+          "ok": true
+        },
+        {
+          "tool": "set_properties_bulk",
+          "ok": true
+        },
+        {
+          "tool": "create_instances",
+          "ok": false
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        },
+        {
+          "tool": "create_instances",
+          "ok": false
+        },
+        {
+          "tool": "find_library_model",
+          "ok": true
+        }
+      ]
+    }
+  ],
+  "provider": [
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790424899442,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 524
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790424903011,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 106
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790424989175,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 351
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790424998250,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 306
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425000955,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 100
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425007450,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 101
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425014028,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 102
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425016711,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 102
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425019407,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 101
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425021559,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 100
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425023367,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 100
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425025730,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 102
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425028180,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 103
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425030186,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 102
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425032228,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 101
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425034430,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 103
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425036971,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 103
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425039338,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 102
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425041753,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 104
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425044548,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 104
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425047099,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 103
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425051406,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 105
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425054427,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 105
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425074745,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 105
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425077260,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 106
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425081099,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 106
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425083020,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 105
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425085232,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 107
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425087442,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 107
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425089629,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 106
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425091843,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 108
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425094136,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 108
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425095815,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 108
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425111905,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 138
+    },
+    {
+      "runId": "20f2ca9c-a7e5-4687-9740-a1fe4386f20e",
+      "at": 1790425114954,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 125
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425167305,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 334
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425168709,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 107
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425266273,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 401
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425270725,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 109
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425362062,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 440
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425380310,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 160
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425388634,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 133
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425391563,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 179
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425396860,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 176
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425408239,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 141
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425410500,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 116
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425411922,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 109
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425413381,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 109
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425415168,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 109
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425416798,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 109
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425418962,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 110
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425420630,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 110
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425424614,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 110
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425429091,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 111
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425443136,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 153
+    },
+    {
+      "runId": "07c4d292-8229-463d-9998-927e1116d07f",
+      "at": 1790425445822,
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "neurons": 122
+    }
+  ],
   "coverage": {
     "messagesTruncated": false,
     "providerLogsTruncated": true

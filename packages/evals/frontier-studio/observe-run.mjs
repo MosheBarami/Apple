@@ -12,9 +12,13 @@ export function summarize(manifest, info, messages, events, now = Date.now(), co
   const rows = messages.filter(m => Date.parse(m.createdAt) >= Date.parse(manifest.createdAt));
   const first = rows.find(m => m.role === 'user' && m.content === manifest.prompt);
   const startedAt = manifest.startedAt ?? first?.createdAt;
-  const trialRows = startedAt ? rows.filter(m => Date.parse(m.createdAt) >= Date.parse(startedAt)) : [];
-  const ids = new Set(trialRows.filter(m => m.role === 'assistant').map(m => m.id));
-  const provider = events.filter(e => e.projectId === manifest.projectId && ids.has(e.runId))
+  const startMs = startedAt ? Date.parse(startedAt) : NaN;
+  const endMs = manifest.endedAt ? Date.parse(manifest.endedAt) : Infinity;
+  if (manifest.endedAt && !Number.isFinite(endMs)) throw Error('Invalid trial end timestamp');
+  const trialRows = startedAt ? rows.filter(m => Date.parse(m.createdAt) >= startMs && Date.parse(m.createdAt) <= endMs) : [];
+  // Active calls can precede the persisted assistant message. Logs use epoch milliseconds.
+  const provider = events.filter(e => e.projectId === manifest.projectId &&
+    Number.isFinite(e.at) && e.at >= startMs && e.at <= endMs)
     .map(e => ({ runId: e.runId, at: e.at, model: e.model, neurons: e.neurons }));
   const turns = trialRows.filter(m => m.role === 'assistant').map(m => ({
     runId: m.id, createdAt: m.createdAt, creditsSpent: m.creditsSpent ?? null,
@@ -34,6 +38,8 @@ export function summarize(manifest, info, messages, events, now = Date.now(), co
     // Persisted completed-turn spend is a lower bound during an active turn.
     recordedCredits: credits, activeTurnSpendAvailable: false,
     recordedNeurons: provider.reduce((n, e) => n + (e.neurons ?? 0), 0),
+    // Logs may be delayed, truncated, or outside the fetched retention window.
+    providerUsageLowerBound: true,
     providerCalls: provider.length, elapsedMs, needsStop, turns, provider,
     coverage: { messagesTruncated: coverage.messagesTruncated === true, providerLogsTruncated: coverage.providerLogsTruncated === true },
     acceptance: 'unmeasured',

@@ -1,5 +1,9 @@
 # NEXT ACTION
 
+Repair selected-preview continuation so exact selected asset receives an insertion attempt before unrelated asset searching; behavioral tests, review, deploy and bounded real Studio proof on a fresh run. Keep soleCPU35962 uninterrupted; inspect v35 paired evaluation/private publication/autonext when complete. Full-game acceptance remains unproven.
+
+Previous context (historical):
+
 Repair actual Studio pointer/pairing in verified fresh baseline, then submit frozen garden-r1 prompt once with Agent/Autonomous and monitor ten-minute/300Credit bounds, actual tool trace and spend; Stop at the bound or a search-without-building loop. Do not provide asset imports, coordinates or construction hints after start. Preserve soleCPU v33 paired38/privateHF/nextversion and no Q022/uploads/purchases/appeal.
 
 2026-09-26T11:18:07.157658+00:00: Complete deterministic strategic-owner lifecycle verification and inactive configuration; real activation awaits Q024 existing subscription access. Continue original garden composition and blind review; preserve soleCPU35962 v33 and latestCI7739875.

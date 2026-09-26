@@ -1,0 +1,17 @@
+{
+  "taskId": "cartoon-v2-garden-farming-r1",
+  "startedAt": "2026-09-26T12:14:40.104Z",
+  "endedAt": "2026-09-26T12:24:40.104Z",
+  "disposition": "incomplete-paused-at-trial-bound",
+  "ordinaryPreviewChoices": 1,
+  "chosenAsset": "Oak Tree",
+  "insertLibraryModelAttempts": 0,
+  "credits": 267,
+  "retainedNeurons": 8007,
+  "providerCalls": 56,
+  "providerUsageLowerBound": true,
+  "afterBytes": 82251,
+  "afterSha256": "ab5bc8e72e369751d5f7a567aaa95742e427c7744d8ab2d2d932a850107a57f5",
+  "fullGameAcceptance": "failed",
+  "independentReleasePasses": 0
+}

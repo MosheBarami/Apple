@@ -1,0 +1,164 @@
+{
+  "classes": {
+    "BubbleChatConfiguration": 1,
+    "ChannelTabsConfiguration": 1,
+    "ChatInputBarConfiguration": 1,
+    "ChatWindowConfiguration": 1,
+    "Folder": 2,
+    "ModuleScript": 2,
+    "Part": 6,
+    "SpawnLocation": 1,
+    "StarterCharacterScripts": 1,
+    "StarterPlayerScripts": 1,
+    "StringValue": 1
+  },
+  "file": "/private/tmp/apple-cartoon-clean-trial/after-paused.rbxl",
+  "instances": 18,
+  "meshParts": 0,
+  "parts": 7,
+  "remoteEvents": 0,
+  "remoteFunctions": 0,
+  "screenGuis": 0,
+  "scripts": 2,
+  "services": {
+    "InsertService": {
+      "instances": 1,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "StringValue",
+          "name": "InsertionHash"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    },
+    "ServerScriptService": {
+      "instances": 1,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "ModuleScript",
+          "name": "Profile"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 1
+    },
+    "ServerStorage": {
+      "instances": 2,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "Folder",
+          "name": "__PanicGitFastV5"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    },
+    "StarterPlayer": {
+      "instances": 2,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "StarterPlayerScripts",
+          "name": "StarterPlayerScripts"
+        },
+        {
+          "class": "StarterCharacterScripts",
+          "name": "StarterCharacterScripts"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    },
+    "TestService": {
+      "instances": 1,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "ModuleScript",
+          "name": "LuauLSP_Settings"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 1
+    },
+    "TextChatService": {
+      "instances": 4,
+      "parts": 0,
+      "roots": [
+        {
+          "class": "ChatWindowConfiguration",
+          "name": "ChatWindowConfiguration"
+        },
+        {
+          "class": "ChatInputBarConfiguration",
+          "name": "ChatInputBarConfiguration"
+        },
+        {
+          "class": "BubbleChatConfiguration",
+          "name": "BubbleChatConfiguration"
+        },
+        {
+          "class": "ChannelTabsConfiguration",
+          "name": "ChannelTabsConfiguration"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    },
+    "Workspace": {
+      "instances": 7,
+      "parts": 7,
+      "roots": [
+        {
+          "class": "Part",
+          "name": "Baseplate"
+        },
+        {
+          "class": "SpawnLocation",
+          "name": "SpawnLocation"
+        },
+        {
+          "class": "Part",
+          "name": "Plaza"
+        },
+        {
+          "class": "Part",
+          "name": "PathSpawn"
+        },
+        {
+          "class": "Part",
+          "name": "PathShop"
+        },
+        {
+          "class": "Part",
+          "name": "PathSell"
+        },
+        {
+          "class": "Part",
+          "name": "PathPlots"
+        }
+      ],
+      "screenGuis": 0,
+      "scripts": 0
+    }
+  },
+  "spawnLocations": [
+    {
+      "name": "SpawnLocation",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        6,
+        1,
+        6
+      ]
+    }
+  ]
+}
