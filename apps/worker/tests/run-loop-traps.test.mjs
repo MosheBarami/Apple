@@ -1057,3 +1057,46 @@ test('F-064 control: a run that changes things between streaks but builds nothin
     h.stop();
   }
 });
+
+const SEQUENCE_REQUEST = 'Repair the garden script only. Exactly read_script then edit_script then finish. No Play or visual inspection.';
+test('AN EXPLICIT COMPLETED TOOL SEQUENCE DOES NOT BUY ANOTHER MODEL CALL OR AUTO-INSPECTION', async () => {
+  const h = await makeSession({ connected: true });
+  try {
+    await start(h, { text: SEQUENCE_REQUEST, autonomous: true });
+    const agent = h.store.get('agent');
+    agent.trace = [{ tool: 'read_script', ok: true }, { tool: 'edit_script', ok: true }];
+    agent.mutated = true;
+    agent.traits = { ...agent.traits, visualDesignTask: true };
+    h.store.set('agent', structuredClone(agent));
+    await h.session.alarm();
+    assert.equal(h.chatCalls.length, 0, 'a completed persisted workflow called the provider');
+    assert.deepEqual(h.ops.filter((op) => op.op !== 'snapshot'), [], 'only the automatic rollback checkpoint may reach Studio');
+    assert.equal(lastEnd(h)?.stopReason, 'done');
+    assert.match(assistantRow(h).content, /gameplay remains unverified/);
+  } finally { h.stop(); }
+});
+
+test('AN OUT-OF-SEQUENCE CALL IS STOPPED BEFORE STUDIO', async () => {
+  const h = await makeSession({ connected: true, responses: [calls(['get_instance', { path: 'game.Workspace' }])] });
+  try {
+    await start(h, { text: SEQUENCE_REQUEST, autonomous: true });
+    await h.session.alarm();
+    assert.deepEqual(h.chatCalls[0].req.tools.map((t) => t.name), ['read_script']);
+    assert.deepEqual(h.ops.filter((op) => op.op !== 'snapshot'), [], 'only the automatic rollback checkpoint may reach Studio');
+    assert.equal(lastEnd(h)?.stopReason, 'incomplete');
+    assert.match(assistantRow(h).content, /outside the tool sequence/);
+  } finally { h.stop(); }
+});
+
+test('A FAILED REQUESTED TOOL ENDS WITHOUT RETRY OR WHOLE-GAME STEERS', async () => {
+  const h = await makeSession({ connected: true, responses: [calls(['read_script', { path: 'game.ServerScriptService.Missing' }])] });
+  try {
+    await start(h, { text: SEQUENCE_REQUEST, autonomous: true });
+    await h.session.alarm();
+    assert.equal(h.chatCalls.length, 1);
+    assert.equal(lastEnd(h)?.stopReason, 'incomplete');
+    assert.match(assistantRow(h).content, /without retrying/);
+    await h.session.alarm();
+    assert.equal(h.chatCalls.length, 1, 'an ended failed sequence resumed');
+  } finally { h.stop(); }
+});

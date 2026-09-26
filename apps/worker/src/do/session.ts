@@ -89,6 +89,7 @@ import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, par
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
 import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
+import { explicitToolSequence, sequenceProgress } from '../tool-sequence';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
@@ -3748,8 +3749,19 @@ export class SessionDO extends DurableObject<Env> {
       ? base
       : applyToolPermissions(base, agent.toolPermissions);
     const offeredCapabilityFilter = this.pluginToolFilter(userAllowed);
-    const offeredAllowed = offeredCapabilityFilter.allowed;
     const knownTools = new Set(toolNames());
+    const sequence = explicitToolSequence(agent.request ?? '', knownTools);
+    const sequenceStep = sequence ? sequenceProgress(sequence, agent.trace) : null;
+    if (sequenceStep && sequenceStep.state !== 'next') {
+      await this.finishRun(agent, sequenceStep.state === 'complete' ? 'done' : 'incomplete', undefined,
+        sequenceStep.state === 'complete'
+          ? 'The tool sequence you requested is complete. No further checks were run; gameplay remains unverified.'
+          : 'The tool sequence stopped after a failed or unexpected action. Review the recorded changes before continuing.');
+      return;
+    }
+    const offeredAllowed = sequenceStep?.state === 'next'
+      ? new Set([...offeredCapabilityFilter.allowed].filter((tool) => tool === sequenceStep.tool))
+      : offeredCapabilityFilter.allowed;
 
     //[[ AND SAY WHAT WAS TAKEN.
     //
@@ -4074,6 +4086,11 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (!res.toolCalls.length) {
+      if (sequence) {
+        await this.finishRun(agent, 'incomplete', undefined,
+          'The requested tool sequence was not completed. I stopped without adding other actions.');
+        return;
+      }
       agent.llm.push({ role: 'assistant', content: res.text });
       //[[ THE STEER GETS ITS TURN — BOUNDED.
       //
@@ -4292,6 +4309,14 @@ export class SessionDO extends DurableObject<Env> {
     let verifiedThisStep = false;
     for (const call of res.toolCalls.slice(0, 4)) {
       if (await this.stopForAccess(agent)) return;
+      if (sequence) {
+        const next = sequenceProgress(sequence, agent.trace);
+        if (next.state !== 'next' || call.name !== next.tool) {
+          await this.finishRun(agent, 'incomplete', undefined,
+            'Apple attempted an action outside the tool sequence you requested. That action was not run.');
+          return;
+        }
+      }
       const t0 = Date.now();
       const toolId = call.id;
       const sig = `${call.name}:${call.arguments}`;
@@ -4517,6 +4542,23 @@ export class SessionDO extends DurableObject<Env> {
         toolCallId: call.id,
         name: call.name,
       });
+      if (sequence) {
+        const progress = sequenceProgress(sequence, agent.trace);
+        if (progress.state !== 'next') {
+          if (await stopRequested(this.ctx.storage)) {
+            await this.finishRun(agent, 'stopped');
+          } else {
+            await this.finishRun(agent, progress.state === 'complete' ? 'done' : 'incomplete', undefined,
+              progress.state === 'complete'
+                ? 'The tool sequence you requested is complete. No further checks were run; gameplay remains unverified.'
+                : 'The requested tool failed. I stopped without retrying or adding other actions.');
+          }
+          return;
+        }
+        // Only the next explicitly requested tool may follow; generic whole-game/visual steers
+        // would enlarge this finite workflow and caused the measured 27-call repair loop.
+        continue;
+      }
       if (agent.mode === 'agent' && call.name === 'find_library_model' && out.ok && ctx.userId && out.detail && typeof out.detail === 'object') {
         const detail = out.detail as { kind?: unknown; options?: unknown };
         const options = detail.kind === 'asset_choices' && Array.isArray(detail.options)
@@ -4571,6 +4613,11 @@ export class SessionDO extends DurableObject<Env> {
     if (agent.status === 'stopping' || (await stopRequested(this.ctx.storage))) {
       agent.status = 'stopping';
       await this.finishRun(agent, 'stopped');
+      return;
+    }
+    if (sequence) {
+      await this.persistAgent(agent);
+      await this.ctx.storage.setAlarm(Date.now() + 10);
       return;
     }
     // A step whose every call was refused as a duplicate made no progress and was still paid for.
