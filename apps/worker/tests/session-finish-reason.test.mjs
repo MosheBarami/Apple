@@ -516,3 +516,19 @@ test('Stop pressed while inference is in flight wins before any returned tool ca
   assert.equal(h.store.get('agent').trace.length, 0, 'a tool returned after Stop must not run even once');
   assert.deepEqual(h.spends, [1, 1], 'the already-consumed inference remains settled; Stop is not a refund');
 });
+
+test('an explicit finite workflow stops on reasoning-only truncation without buying a retry', async () => {
+  const h = makeSession({ responses: [gatewayResponse({ finishReason: 'length', neurons: 600 })] });
+  const agent = await start(h, 'Exactly read_script then edit_script then finish. Stop on error.');
+  agent.step = 1;
+  agent.trace = [{ tool: 'read_script', summary: 'read the target', ok: true, durationMs: 1 }];
+  h.store.set('agent', structuredClone(agent));
+  await h.session.alarm();
+  assert.equal(h.store.get('agent').status, 'idle');
+  assert.equal(lastEnd(h).stopReason, 'incomplete');
+  assert.match(assistantRow(h).content, /output limit/i);
+  assert.equal(h.store.get('agent').trace.length, 1, 'no write followed the truncated response');
+  const calls = h.chatCalls.length;
+  await h.session.alarm();
+  assert.equal(h.chatCalls.length, calls, 'a later alarm must not purchase another provider call');
+});

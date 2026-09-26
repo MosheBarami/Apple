@@ -4024,6 +4024,13 @@ export class SessionDO extends DurableObject<Env> {
     // the response the run ended on.
     agent.lastFinishReason = finishReason;
     if (!res.toolCalls.length && finishReason === 'length') {
+      // A finite user workflow authorizes the named calls, not an unlimited series
+      // of paid reasoning-only retries. Preserve the trace and end without a write.
+      if (sequence) {
+        await this.finishRun(agent, 'incomplete', undefined,
+          'The model reached its output limit before completing the requested tool. I stopped without retrying or adding other actions.');
+        return;
+      }
       // Output ceilings are a provider-call boundary, not a customer-run boundary. The old path
       // printed partial JSON/prose, ended the run and told the user to send another message. Keep
       // the durable tool/results history, discard the unusable partial assistant payload, and ask
