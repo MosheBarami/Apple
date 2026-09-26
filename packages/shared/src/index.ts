@@ -133,6 +133,11 @@ export type StudioOp =
   | { op: 'snapshot'; root: string; includeScripts?: boolean; checkpointId?: string } // serialize subtree; new checkpoints bind their identity
   | { op: 'restore'; root: string; snapshot: unknown; checkpointId?: string } // optional for legacy senders; SessionDO always binds it
   | { op: 'insert_asset'; assetId: number; parent: string }
+  | { op: 'query_owner_local'; action: 'search' | 'describe' | 'record' | 'children' | 'relations' | 'plan' | 'materialize' | 'job' | 'native-map';
+      id?: string; query?: string; jobId?: string; className?: string; kind?: string; scope?: string; limit?: number;
+      offset?: number; after?: string | number; afterOrdinal?: number; afterId?: string }
+  | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
+      nativeInstances: number; parent: string }
   | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
       contentToken: string; parent: string; name: string }
   // Roblox-native text-to-3D. Free, ~20s, 10 req/min. Output is SESSION-SCOPED: it does not

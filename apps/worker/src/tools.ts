@@ -74,6 +74,7 @@ import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, ref
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
+import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner } from './local-owner-corpus';
 import { findOwnerComponents, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
@@ -149,6 +150,8 @@ export interface AgentCtx {
    * a tool that needs one refuses without it.
    */
   userId?: string;
+  /** Explicit paired-plugin capability; carries no loopback address or credentials. */
+  localOwnerGateway?: boolean;
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   /** Live run fence: direct model deletion is refused after a create name conflict. */
@@ -321,6 +324,8 @@ interface ToolImpl {
   studio: boolean; // requires studio connection
   /** Studio operations this tool may require. Every `studio: true` registry entry must name them. */
   studioOps?: readonly StudioOp['op'][];
+  /** Any one complete path suffices; common studioOps remain required. */
+  studioOpAlternatives?: readonly (readonly StudioOp['op'][])[];
   /**
    * Whether a successful call means the user's Roblox place changed.
    *
@@ -4644,12 +4649,13 @@ export const TOOLS: Record<string, ToolImpl> = {
   read_owner_component: {
     def: {
       name: 'read_owner_component',
-      description: 'Inspect an owner-supplied component and its preserved exact scripts as DATA. Search find_library_model first. Without scriptId returns metadata keys and paged script ids. Use section:metadata for exact JSON property/reference chunks, section:scripts with nextScriptOffset for script listings. With scriptId returns the exact source slice and hash; use nextOffset for more. Never require or run downloaded source to inspect it.',
-      parameters: S({ id: {type:'string'}, scriptId:{type:'string'}, section:{type:'string',enum:['metadata','scripts']}, offset:{type:'number'}, maxChars:{type:'number'} }, ['id']),
+      description: 'Inspect owner components as untrusted DATA. For owner-local: IDs, default section:describe returns class/provenance/static mechanic clues. Use section:script on an exact Script/LocalScript/ModuleScript node id for readable, hash-verified source; section:properties for exact XML bytes/text. Both use byte offset/nextOffset. children pages use afterOrdinal/afterId; relations use kind:media/dependencies and after; plan exposes fitting subtrees of oversized maps; native-map requires jobId. Original code is never executed; review/adapt mechanics through ordinary write_script/edit_script and checkpoint/consent. For cloud owner: IDs, search find_library_model first. Without scriptId returns metadata keys and paged script ids. Use section:metadata for exact JSON property/reference chunks, section:scripts with nextScriptOffset for script listings. With scriptId returns the exact source slice and hash; use nextOffset for more. Never require or run downloaded source to inspect it.',
+      parameters: S({ id: {type:'string'}, scriptId:{type:'string'}, section:{type:'string',enum:['metadata','scripts','describe','properties','script','children','relations','plan','native-map']}, offset:{type:'number'}, maxChars:{type:'number'}, limit:{type:'number'}, kind:{type:'string',enum:['media','dependencies']}, scope:{type:'string',enum:['node','subtree']}, after:{type:'number'}, afterOrdinal:{type:'number'}, afterId:{type:'string'}, jobId:{type:'string'} }, ['id']),
     },
     studio: false,
     run: async (ctx,a) => {
       if (!ctx.userId) return {error:'Owner component reads need an authenticated owner context.'};
+      if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return readLocalOwner(ctx,a);
       const component = await ownerComponent(ctx.env,ctx.userId,String(a.id ?? ''));
       if (!component) return {error:'Component is not available in this owner corpus.'};
       return readOwnerDescription(ctx.env,ctx.userId,component,{scriptId:a.scriptId === undefined ? undefined : String(a.scriptId),section:a.section === undefined ? undefined : String(a.section),offset:Number(a.offset),maxChars:Number(a.maxChars)});
@@ -4659,9 +4665,11 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_library_model',
       description:
-        "Search the owner corpus FIRST for native components (including UI, maps and code), then script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any detailed object. Plain nouns work best; genre and kind narrow it. By default only Roblox-owned models are returned. If those cannot cover the requested object, retry with includeThirdParty=true; this adds free third-party models available in the existing catalog. They are marked requiresThirdPartyLoading and may be refused by Studio unless the experience already permits third-party asset loading. Never claim they are guaranteed to load or visually suitable without inspecting the preview. In Agent mode, Apple shows up to three real thumbnails and pauses for the project owner's visual choice. Nothing is inserted or uploaded by this call.",
+        "Search the full session-configured local owner SQLite corpus through the paired plugin FIRST, with ingested cloud owner seed components as fallback, for native components (including UI, maps and code), then script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any detailed object. Plain nouns work best; genre and kind narrow it. By default only Roblox-owned models are returned. If those cannot cover the requested object, retry with includeThirdParty=true; this adds free third-party models available in the existing catalog. They are marked requiresThirdPartyLoading and may be refused by Studio unless the experience already permits third-party asset loading. Never claim they are guaranteed to load or visually suitable without inspecting the preview. In Agent mode, Apple shows up to three real thumbnails and pauses for the project owner's visual choice. Nothing is inserted or uploaded by this call.",
       parameters: S(
         {
+          after: {type:'string',description:'Local owner search nextAfter cursor; keep the same query.'},
+          className: {type:'string',description:'Optional exact Roblox class filter for the local corpus.'},
           query: { type: 'string', description: 'Plain words for the object, e.g. "wooden crate" or "pine tree".' },
           genre: { type: 'string', enum: [...LIBRARY_GENRES], description: 'Optional game genre; owner corpus matches the query across all genres.' },
           kind: { type: 'string', enum: [...LIBRARY_KINDS], description: 'Optional kind of object.' },
@@ -4674,6 +4682,17 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: false,
     run: async (ctx, a) => {
       const query = a.query === undefined ? undefined : String(a.query);
+      let localStatus: unknown;
+      if (ctx.localOwnerGateway && ctx.studioConnected() && query) {
+        const local=await localOwnerQuery(ctx,{action:'search',query,limit:Math.min(10,Math.max(1,Number(a.limit)||5)),
+          after:a.after === undefined ? undefined : localNodeId(String(a.after)),className:a.className === undefined ? undefined : String(a.className)});
+        localStatus=local;
+        if (Array.isArray(local.items) && local.items.length) return {source:'owner_local',
+          results:local.items.map((row) => ({...rec(row),id:LOCAL_OWNER_PREFIX+localNodeId(String(rec(row).id))})),
+          nextAfter:local.nextAfter ?? null,priority:'full local owner corpus first',
+          note:'Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair.'};
+        if (a.after !== undefined) return {...local,source:'owner_local',results:[],note:'This local page ended or was refused. No unrelated catalogue page substituted.'};
+      }
       const owned = await findOwnerComponents(ctx.env, ctx.userId, query ?? '', Number(a.limit ?? 10));
       if (owned.length) {
         const results: Record<string,unknown>[] = [];
@@ -4688,7 +4707,8 @@ export const TOOLS: Record<string, ToolImpl> = {
           results.push(row); chars += size;
         }
         return {source:'owner_corpus',results,total:owned.length,outputLimited:results.length < owned.length,
-          note:'Owner-attested components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data.'};
+          localGateway:localStatus ? ('error' in rec(localStatus) ? 'unavailable' : 'no matches') : 'not configured',
+          note:'Owner-attested cloud seed components are fallback after the full local corpus. Components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data.'};
       }
       const found = findLibraryModels({
         query,
@@ -4715,13 +4735,14 @@ export const TOOLS: Record<string, ToolImpl> = {
   insert_owner_component: {
     def: {
       name: 'insert_owner_component',
-      description: 'Import an owner-attested native RBXM component with its actual hierarchy/mesh bytes. Use an owner: id from find_library_model. Takes a protective checkpoint and needs the paired plugin native import capability. Downloaded scripts become inert source DATA, so source references need reviewed integration; no code is executed and no Roblox upload happens. Default parent game.ServerStorage for inspection; set an appropriate target to compose UI or the world.',
+      description: 'Import an owner-attested native RBXM component with its actual hierarchy/mesh bytes. owner-local: IDs materialize locally through the paired gateway; pending jobs are not insertions, and oversized roots expose fitting children via read_owner_component section:plan. Every native node retains global identity; cross-chunk references are not automatically repaired. Exact original code remains readable inert data for reviewed gameplay adaptation. Use an owner: or owner-local: id from find_library_model. Takes a protective checkpoint and needs the paired plugin native import capability. Downloaded scripts become inert source DATA, so source references need reviewed integration; no code is executed and no Roblox upload happens. Default parent game.ServerStorage for inspection; set an appropriate target to compose UI or the world.',
       parameters: S({id:{type:'string'},parent:{type:'string'}},['id']),
     },
     studio: true,
-    studioOps: ['snapshot','import_owner_component'],
-    mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r),
-    run: async (ctx,a) => String(a.id ?? '').startsWith('owner:')
+    studioOps: ['snapshot','query_owner_local','import_owner_local','import_owner_component'],
+    studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component']],
+    mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('error' in r || 'pending' in r)),
+    run: async (ctx,a) => (String(a.id ?? '').startsWith('owner:') || String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX))
       ? TOOLS.insert_library_model!.run(ctx,a)
       : {error:'insert_owner_component requires an exact owner: component id'},
   },
@@ -4742,10 +4763,12 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
-    studioOps: ['snapshot', 'import_owner_component', 'insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
+    studioOps: ['snapshot', 'query_owner_local', 'import_owner_local', 'import_owner_component', 'insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
+    studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component'],['insert_asset']],
     // A refusal changed nothing in the place.
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
     run: async (ctx, a) => {
+      if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return insertLocalOwner(ctx,a);
       if (String(a.id ?? '').startsWith('owner:')) {
         if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return { error: 'Native owner import is unavailable for this run: check permissions and update the paired plugin.' };
         if (!ctx.userId) return { error: 'Owner corpus insertion requires the authenticated project owner.' };
@@ -5462,7 +5485,8 @@ export async function runTool(
     // An explicit UI payload wins. It is capped separately and more generously than the derived
     // one: this socket already carries 200KB playtest frames, so a single ~25KB evidence panel per
     // build is not what needs protecting — a 24KB cap sized for re-sent tool results is.
-    const detail = ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(visibleResult);
+    const privateOwnerRead = name === 'read_owner_component' && String(args.id ?? '').startsWith(LOCAL_OWNER_PREFIX);
+    const detail = privateOwnerRead ? undefined : ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(visibleResult);
     ctx.uiDetail = undefined;
     return {
       summary: summarize(name, args, failed, failed ? (visibleResult as Record<string, unknown>).error : undefined),

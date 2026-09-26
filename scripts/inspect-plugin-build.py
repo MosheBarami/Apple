@@ -226,6 +226,7 @@ ALLOW = re.compile(
 ALLOWED_HOSTS = {
     "golem.moshe-barami111.workers.dev",  # the production worker; DEFAULT_API
     "apple.moshe-barami111.workers.dev",  # verified Apple production origin
+    "127.0.0.1",  # session-configured owner gateway; plugin hard-codes this exact loopback IP
 }
 
 URL_RE = re.compile(rb"https?://([A-Za-z0-9._:-]+)")
@@ -277,12 +278,15 @@ MUST_FLAG = [
     ('token = "' + "3f2504e0-4f89-11d3-9a0c-0305e82c3301" + "." + _HEX48 + '"').encode(),
     ("/Users/" + 'somedev/Desktop/RbxAI/apps/plugin').encode(),
     ("https://" + "evil-staging.internal-host.test/api").encode(),
+    ("http://" + "127.0.0.2:63747/v1/search").encode(),
+    ("http://" + "127.0.0.1.evil.test/v1/search").encode(),
     ("pass" + 'word = "s3cr3tpassword"').encode(),
     ("-----BEGIN " + "RSA PRIVATE KEY-----").encode(),
 ]
 MUST_NOT_FLAG = [
     b'local DEFAULT_API = "https://golem.moshe-barami111.workers.dev"',
     b'local APPLE_ORIGIN = "https://apple.moshe-barami111.workers.dev"',
+    b'local gateway = "http://127.0.0.1:63747/v1/search"',
     b'codeBox.PlaceholderText = "Pairing code (e.g. K7M3QP)"',
     b'plugin:SetSetting("golem_session", HttpService:JSONEncode(session))',
     b'["X-Golem-Token"] = token or "",',

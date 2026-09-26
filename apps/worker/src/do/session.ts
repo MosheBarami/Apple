@@ -5609,6 +5609,7 @@ export class SessionDO extends DurableObject<Env> {
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
       // "can you build right now" is no. The connection half now comes from the same rule the
       // header and the status broadcast use.
+      localOwnerGateway: this.pluginCapabilityReport?.operations.some(op => op.op === 'query_owner_local' && op.status === 'supported') === true,
       studioConnected: () => this.opQueue.length < 100 && this.pluginConnectedNow(),
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs, agent),
       // Read the run by reference: create_instances and delete_instances can arrive in one LLM
@@ -5965,7 +5966,8 @@ export class SessionDO extends DurableObject<Env> {
 
   /** Capability narrowing is always the last narrowing layer: mode, user preference, then plugin. */
   private pluginToolFilter(candidates: ReadonlySet<string>): PluginToolFilter {
-    return filterToolsForPlugin(candidates, STUDIO_TOOL_REQUIREMENTS, this.pluginCapabilityReport);
+    return filterToolsForPlugin(candidates, STUDIO_TOOL_REQUIREMENTS, this.pluginCapabilityReport,
+      Object.fromEntries(Object.entries(TOOLS).map(([name,tool]) => [name,tool.studioOpAlternatives ?? []])));
   }
 
   /**

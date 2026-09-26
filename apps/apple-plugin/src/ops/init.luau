@@ -22,5 +22,6 @@ load(function() return require(script.Rig) end)
 load(function() return require(script.Ui) end)
 load(function() return require(script.Fx) end)
 load(function() return require(script.OwnerCorpus) end)
+load(function() return require(script.LocalOwnerCorpus) end)
 
 return families
