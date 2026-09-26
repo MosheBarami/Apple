@@ -140,6 +140,58 @@ function Proof.run(): any
 		return { undoName = tostring(undoName), redoName = tostring(redoName), recreated = true }
 	end)
 
+	measure(report, "model_transform_pivots_rotation_scale_undo_redo", function()
+		local fixture = Workspace:FindFirstChild(FIXTURE_NAME)
+		expect(fixture ~= nil, "transform fixture parent is missing")
+		local setup = ChangeHistoryService:TryBeginRecording("Pivot fixture", "Pivot fixture")
+		expect(setup ~= nil, "could not record pivot fixture")
+		local model = Instance.new("Model"); model.Name = "PivotAssembly"; model.Parent = fixture
+		local nested = Instance.new("Model"); nested.Name = "Nested"; nested.Parent = model
+		local part = Instance.new("Part"); part.Anchored = true; part.Size = Vector3.new(2, 4, 6)
+		part.CFrame = CFrame.new(10, 20, 30) * CFrame.Angles(0.2, 0.4, 0.6); part.Parent = nested
+		model.WorldPivot = CFrame.new(12, 23, 34) * CFrame.Angles(0.1, 0.3, 0.5)
+		nested.WorldPivot = CFrame.new(9, 18, 27) * CFrame.Angles(0.4, 0.2, 0.1)
+		local primaryModel = Instance.new("Model"); primaryModel.Name = "Primary"; primaryModel.Parent = model
+		local primary = part:Clone(); primary.Parent = primaryModel; primaryModel.PrimaryPart = primary
+		primary.PivotOffset = CFrame.new(0.25, 0.5, 0.75)
+		local sibling = Instance.new("Model"); sibling.Name = "Unselected"; sibling.Parent = fixture
+		sibling.WorldPivot = CFrame.new(80, 80, 80)
+		ChangeHistoryService:FinishRecording(setup :: string, Enum.FinishRecordingOperation.Commit)
+		local origin = model:GetBoundingBox().Position
+		local oldPart, oldRoot, oldNested, oldPrimary = part.CFrame, model:GetPivot(), nested:GetPivot(), primaryModel:GetPivot()
+		local oldSize = part.Size
+		local rotation = CFrame.Angles(math.rad(20), math.rad(40), math.rad(60))
+		local move = Vector3.new(2, 3, 4)
+		local function transformed(frame: CFrame): CFrame
+			local position = origin + rotation:VectorToWorldSpace(frame.Position - origin) * 2 + move
+			return CFrame.new(position) * rotation * frame.Rotation
+		end
+		local function closeFrame(actual: CFrame, expected: CFrame, label: string)
+			local a, b = { actual:GetComponents() }, { expected:GetComponents() }
+			for index = 1, 12 do expect(math.abs(a[index] - b[index]) < 0.001, label .. " component " .. tostring(index)) end
+		end
+		local result = commands:execute("proof-transform-pivots", {
+			op = "transform_instances", paths = { "game.Workspace." .. FIXTURE_NAME .. ".PivotAssembly" },
+			move = { 2, 3, 4 }, rotate = { 20, 40, 60 }, scale = 2,
+		}, true)
+		expect(result.ok == true, tostring(result.error))
+		expect(result.data.parts == 2 and result.data.pivots == 2, "incorrect part or pivot count")
+		closeFrame(part.CFrame, transformed(oldPart), "part transform")
+		closeFrame(model:GetPivot(), transformed(oldRoot), "root pivot")
+		closeFrame(nested:GetPivot(), transformed(oldNested), "nested pivot")
+		-- PrimaryPart PivotOffset remains unchanged by the existing size transform.
+		closeFrame(primaryModel:GetPivot(), transformed(oldPart) * primary.PivotOffset, "PrimaryPart pivot")
+		expect((part.Size - oldSize * 2).Magnitude < 0.001, "part size did not scale")
+		closeFrame(sibling:GetPivot(), CFrame.new(80, 80, 80), "unselected sibling")
+		ChangeHistoryService:Undo(); oneFrame()
+		closeFrame(part.CFrame, oldPart, "undo part"); closeFrame(model:GetPivot(), oldRoot, "undo root pivot")
+		closeFrame(nested:GetPivot(), oldNested, "undo nested pivot"); closeFrame(primaryModel:GetPivot(), oldPrimary, "undo primary pivot")
+		ChangeHistoryService:Redo(); oneFrame()
+		closeFrame(part.CFrame, transformed(oldPart), "redo part"); closeFrame(model:GetPivot(), transformed(oldRoot), "redo root pivot")
+		closeFrame(nested:GetPivot(), transformed(oldNested), "redo nested pivot")
+		return { parts = result.data.parts, pivots = result.data.pivots, rotationDegrees = { 20, 40, 60 }, scale = 2, undoRedo = true, unselectedUnchanged = true }
+	end)
+
 	measure(report, "source_hash_conflict_preserves_studio_edit", function()
 		local target = ServerScriptService:FindFirstChild("AppleSourceHashTarget")
 		expect(target ~= nil and target:IsA("ModuleScript"), "source-hash target ModuleScript is missing")

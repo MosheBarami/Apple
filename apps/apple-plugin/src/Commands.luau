@@ -3486,6 +3486,7 @@ local function handleTransform(self: any, op: any): (any?, string?, string?, str
 	if not okFrames then return nil, "internal", "could not construct the requested transform" end
 
 	local changes = {}
+	local pivots = {}
 	local seenParts = {}
 	for _, target in targets do
 		local origin, parts, spatialErr = spatialBody(target.inst)
@@ -3507,6 +3508,31 @@ local function handleTransform(self: any, op: any): (any?, string?, string?, str
 				table.insert(changes, change)
 			end
 		end
+		if isA(target.inst, "Model") then
+			local descendants, descendantsErr = descendantsOf(target.inst)
+			if not descendants then return nil, "internal", descendantsErr end
+			local models = { target.inst }
+			for _, descendant in descendants do
+				if isA(descendant, "Model") then
+					if #models >= MAX_AFFECTED_PARTS then return nil, "invalid", "transform exceeds the model-pivot limit" end
+					table.insert(models, descendant)
+				end
+			end
+			for _, model in models do
+				if #pivots >= MAX_AFFECTED_PARTS then return nil, "invalid", "transform exceeds the model-pivot limit" end
+				local okPivot, change = pcall(function()
+					-- A PrimaryPart carries its model pivot with the part transform.
+					-- WorldPivot only needs a separate write for models without one.
+					if model.PrimaryPart ~= nil then return nil end
+					local current = model:GetPivot()
+					local nextPosition = origin + rotation:VectorToWorldSpace(current.Position - origin) * scale + moveVector
+					local turned = rotation * current
+					return { model = model, cframe = turned + (nextPosition - turned.Position) }
+				end)
+				if not okPivot then return nil, "internal", "could not calculate model pivot transform: " .. tostring(change) end
+				if change then table.insert(pivots, change) end
+			end
+		end
 	end
 	for _, change in changes do
 		local ok, setErr = pcall(function()
@@ -3515,7 +3541,11 @@ local function handleTransform(self: any, op: any): (any?, string?, string?, str
 		end)
 		if not ok then return nil, "internal", "Studio refused part transform: " .. tostring(setErr) end
 	end
-	return { transformed = #targets, parts = #changes, moved = moved, rotated = rotated, scaled = scaled }, nil
+	for _, change in pivots do
+		local ok, setErr = pcall(function() change.model.WorldPivot = change.cframe end)
+		if not ok then return nil, "internal", "Studio refused model pivot transform: " .. tostring(setErr) end
+	end
+	return { transformed = #targets, parts = #changes, pivots = #pivots, moved = moved, rotated = rotated, scaled = scaled }, nil
 end
 
 local function handleClone(self: any, op: any): (any?, string?, string?, string?)

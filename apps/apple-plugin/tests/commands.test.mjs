@@ -820,6 +820,34 @@ spec("transform_instances moves and scales through one recorded plan", function(
     c:destroy()
 end)
 
+spec("model transforms preserve offset pivots and nested model pivots", function()
+    local model = Instance.new("Model"); model.Name = "PivotAssembly"; model.Parent = workspace
+    local nested = Instance.new("Model"); nested.Name = "Nested"; nested.Parent = model
+    local part = Instance.new("Part"); part.CFrame = CFrame.new(10, 20, 30); part.Parent = nested
+    model.WorldPivot = CFrame.new(12, 23, 34)
+    nested.WorldPivot = CFrame.new(9, 18, 27)
+    model.GetPivot = function(self) return self.WorldPivot end
+    nested.GetPivot = function(self) return self.WorldPivot end
+    local primaryModel = Instance.new("Model"); primaryModel.Name = "Primary"; primaryModel.Parent = model
+    local primary = Instance.new("Part"); primary.CFrame = CFrame.new(10, 20, 30); primary.Parent = primaryModel
+    primaryModel.PrimaryPart = primary; primaryModel.WorldPivot = CFrame.new(100, 100, 100)
+    local sibling = Instance.new("Model"); sibling.Name = "PivotSibling"; sibling.WorldPivot = CFrame.new(80, 80, 80); sibling.Parent = workspace
+    local c = newCommands()
+    local r = run(c, "model-pivots", { op = "transform_instances", paths = { "game.Workspace.PivotAssembly" }, move = { 2, 3, 4 }, scale = 2 }, true)
+    eq(r.ok, true, tostring(r.error)); eq(r.data.parts, 2)
+    eq(part.Position.X, 12); eq(part.Position.Y, 23); eq(part.Position.Z, 34)
+    eq(model.WorldPivot.Position.X, 16, "offset pivot follows the geometry transform")
+    eq(model.WorldPivot.Position.Y, 29); eq(model.WorldPivot.Position.Z, 42)
+    eq(nested.WorldPivot.Position.X, 10); eq(nested.WorldPivot.Position.Y, 19); eq(nested.WorldPivot.Position.Z, 28)
+    eq(primary.Position.X, 12); eq(primaryModel.WorldPivot.Position.X, 100, "PrimaryPart owns its model pivot")
+    eq(sibling.WorldPivot.Position.X, 80, "unselected model is unchanged")
+    nested.GetPivot = function() error("pivot unreadable") end
+    local failed = run(c, "pivot-preflight", { op = "transform_instances", paths = { "game.Workspace.PivotAssembly" }, move = { 1, 0, 0 } }, true)
+    eq(failed.ok, false); eq(part.Position.X, 12, "pivot preflight precedes geometry writes")
+    eq(model.WorldPivot.Position.X, 16); eq(history.recording, nil)
+    c:destroy(); model:Destroy(); sibling:Destroy()
+end)
+
 spec("multi-target structural failures happen before the first mutation", function()
     local survivor = Instance.new("Part"); survivor.Name = "PreflightSurvivor"; survivor.Parent = workspace
     local c = newCommands()

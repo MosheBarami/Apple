@@ -239,7 +239,7 @@ local permission = text("Access: inspect only", 15, false)
 local edits = control("Enable edits…")
 local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
 local activity = text("No actions yet", 13, true)
-local version = text("Apple Studio · 1.4.2 · independent preview", 12, true)
+local version = text("Apple Studio · 1.4.3 · independent preview", 12, true)
 version.LayoutOrder = 100
 
 local function refreshAccess()
@@ -319,7 +319,7 @@ bridge = Bridge.new({
 		return {
 			kind = "state", placeName = game.Name, placeId = game.PlaceId,
 			gameId = game.GameId, isRunMode = RunService:IsRunMode(),
-			selectionCount = #Selection:Get(), pluginVersion = "1.4.2",
+			selectionCount = #Selection:Get(), pluginVersion = "1.4.3",
 		}
 	end,
 	onStatus = function(message: string)
