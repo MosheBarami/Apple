@@ -15,15 +15,12 @@ import {
   PLAN_COPY,
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
-  PRODUCT_MODES,
-  PRODUCT_MODE_INFO,
+  MODE_INFO,
   formatMoney,
   isPlanId,
   type PlanId,
-  type ProductMode,
 } from '@golem/shared';
 import { ModelMark } from '../components/ws/model-mark';
-import { ComparisonTable } from '../components/aicss/comparison-table';
 import {
   billingChangeLine,
   billingDetailsSaveLine,
@@ -66,14 +63,6 @@ import '../components/picks/settings/account-buttons.css';
 // The one engine (V3 gate G01): every plan uses Apple; plans differ only in their allowance.
 const MODELS = PRODUCT_MODELS;
 
-const RUN_MODE_COMPARISON = [
-  { label: 'Inspect the open project', values: [true, true] },
-  { label: 'Search Roblox docs and references', values: [true, true] },
-  { label: 'Change the Studio place', values: [false, true] },
-  { label: 'Run and inspect playtests', values: [false, true] },
-  { label: 'Use Autonomous tool access', values: [false, true] },
-];
-
 /* ===== WHAT THE NEXT REQUEST COSTS: BEGIN — executed by tests/next-request-cost.test.mjs ===== */
 
 /**
@@ -86,34 +75,30 @@ const RUN_MODE_COMPARISON = [
  * literal that nothing rendered; the only place a customer could read a per-request figure was
  * /pricing and /docs/credits-and-limits, which are pages you leave the app to reach.
  *
- * DERIVED, NEVER RESTATED. `PRODUCT_MODE_INFO` is the shared product-mode table, so this page reads
- * the exact Plan/Agent cost range published everywhere else rather than keeping another price list.
+ * DERIVED, NEVER RESTATED. `MODE_INFO.agent` is the shared per-request figure, so this page reads
+ * the exact cost range published everywhere else rather than keeping another price list. There is
+ * one figure because there is one behaviour: no customer modes (V3 G01).
  *
  * An unparseable figure produces NO LINE rather than a wrong one. A missing price is a gap; a
  * price rendered as NaN Credits is a lie with a number in it.
  */
 interface RequestCost {
-  mode: ProductMode;
-  name: string;
   /** The published figure, en-dashed for reading: "2", "4–18". */
   published: string;
   low: number;
   high: number;
 }
 
-const REQUEST_COSTS: RequestCost[] = PRODUCT_MODES.map((m) => {
-  const published = String(PRODUCT_MODE_INFO[m].typicalCredits);
+function requestCost(): RequestCost | null {
+  const published = String(MODE_INFO.agent.typicalCredits);
   const parts = published.split('-').map((piece) => Number(piece.trim()));
   const low = parts[0] ?? NaN;
   const high = parts.length === 2 ? (parts[1] ?? NaN) : low;
-  return {
-    mode: m,
-    name: PRODUCT_MODE_INFO[m].name,
-    published: published.replace('-', '–'),
-    low,
-    high,
-  };
-}).filter((c) => Number.isFinite(c.low) && Number.isFinite(c.high) && c.low > 0 && c.high >= c.low);
+  if (!(Number.isFinite(low) && Number.isFinite(high) && low > 0 && high >= low)) return null;
+  return { published: published.replace('-', '–'), low, high };
+}
+
+const REQUEST_COST = requestCost();
 
 /**
  * How many more of these the balance buys.
@@ -151,11 +136,6 @@ export function requestsLeftLine(spendable: number, low: number, high: number, p
   if (fewest === 0) return `up to ${formatNumber(most)} more ${window}`;
   if (most >= CEILING) return `at least ${formatNumber(fewest)} more ${window}`;
   return `between ${formatNumber(fewest)} and ${formatNumber(most)} more ${window}`;
-}
-
-/** "A Plan request" / "An Agent request" — the article the mode's own name takes. */
-export function articleFor(name: string): string {
-  return /^[aeiou]/i.test(name) ? 'An' : 'A';
 }
 
 /* ===== WHAT THE NEXT REQUEST COSTS: END ===== */
@@ -841,19 +821,16 @@ export function UsagePage() {
             {/* The second half of "sees credits left, and what the next request will cost". The
                 balance above is what is left; these are what spending it costs, beside it rather
                 than on a marketing page the user would have to leave the app to read. */}
-            {REQUEST_COSTS.length > 0 && (
+            {REQUEST_COST && (
               <>
                 <h3 className="spend-kinds__head">What your next request costs</h3>
-                {REQUEST_COSTS.map((c) => (
-                  <p className="credits-credits" key={c.mode}>
-                    {articleFor(c.name)} <strong>{c.name}</strong> request typically costs{' '}
-                    <strong>{c.published} Credits</strong>
-                    <span className="muted">
-                      {' \u2014 '}
-                      {requestsLeftLine(view.allowanceRemaining + view.credits, c.low, c.high, view.period)}
-                    </span>
-                  </p>
-                ))}
+                <p className="credits-credits">
+                  A request typically costs <strong>{REQUEST_COST.published} Credits</strong>
+                  <span className="muted">
+                    {' \u2014 '}
+                    {requestsLeftLine(view.allowanceRemaining + view.credits, REQUEST_COST.low, REQUEST_COST.high, view.period)}
+                  </span>
+                </p>
               </>
             )}
             <ul className="mode-cost-list">
@@ -891,12 +868,6 @@ export function UsagePage() {
                   <ActivityCalendar days={usage.data.days} />
                 </>
               ))}
-          </div>
-
-          <div className="card mode-compare-card">
-            <h2>Plan or Agent</h2>
-            <p className="muted">Autonomous is an Agent option, not a third mode.</p>
-            <ComparisonTable plans={['Plan', 'Agent']} features={RUN_MODE_COMPARISON} />
           </div>
 
         </div>

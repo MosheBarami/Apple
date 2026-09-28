@@ -13,11 +13,12 @@ const base = {
   fenceId: 'cartoon-scope-test',
 };
 
-test('every product mode carries the owner-directed all-genre scope', () => {
+test('every request carries the owner-directed all-genre scope', () => {
   assert.equal(PRODUCT_VISUAL_SCOPE.kind, 'all-roblox-genres');
-  for (const mode of ['plan', 'agent']) {
-    const prompt = systemPrompt({ ...base, mode });
-    assert.ok(prompt.includes(PRODUCT_VISUAL_SCOPE.instruction), `${mode} lost the product scope`);
+  // One behaviour (V3 G01), paired or not.
+  for (const studioConnected of [true, false]) {
+    const prompt = systemPrompt({ ...base, mode: 'agent', studioConnected });
+    assert.ok(prompt.includes(PRODUCT_VISUAL_SCOPE.instruction), `studioConnected=${studioConnected} lost the product scope`);
   }
 });
 

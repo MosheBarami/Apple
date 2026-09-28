@@ -35,7 +35,6 @@ import {
 import {
   DORMANT_NOTE,
   LIMITS,
-  MODE_CHOICES,
   blankDraft,
   creditLabel,
   draftFrom,
@@ -215,23 +214,6 @@ function Editor({
         />
       </label>
       <FieldError on="description" rejection={rejection} />
-
-      <label className="field">
-        <span className="field-label">Mode</span>
-        <select
-          className="mem__fact"
-          value={draft.mode}
-          onChange={(e) => setDraft({ ...draft, mode: e.target.value as AutomationDraft['mode'] })}
-        >
-          {MODE_CHOICES.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className="mem__note mem__note--quiet">{MODE_CHOICES.find((m) => m.id === draft.mode)?.blurb}</p>
-      <FieldError on="mode" rejection={rejection} />
 
       <label className="field">
         <span className="field-label">Most runs in a day</span>

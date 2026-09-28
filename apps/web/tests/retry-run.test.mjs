@@ -123,10 +123,9 @@ test('retry goes through edit_resend rather than a second re-run path', () => {
   // The server behaviour a retry needs — drop the failed turn, run the prompt again — is exactly
   // what an edit does. A second endpoint would be a second definition of re-running.
   const fn = WS.slice(WS.indexOf('const retryLast'), WS.indexOf('const [editing'));
-  // RESTATED 2026-09-23: the call gained a sixth argument, the model on the customer's own key
-  // (D-BYOK-1). The property is that the attachments, mode, model and autonomy all still ride on it,
-  // not that it ends after `autonomous`.
-  assert.match(fn, /editAndResend\(lastUser\.id, lastUser\.content, mode, productModel, autonomous\b/);
+  // RESTATED 2026-09-29 (V3 G01): there is no mode or Autonomous grant to carry any more, so the
+  // retry is the prompt and the engine, and nothing else.
+  assert.match(fn, /editAndResend\(lastUser\.id, lastUser\.content, productModel\)/);
 });
 
 test('it resends the last USER message, not the failed assistant turn', () => {
@@ -147,12 +146,9 @@ test('the text is sent unchanged — a retry is not an edit', () => {
   assert.equal(/\.trim\(\)|prompt\(|setEditing/.test(fn), false, 'retry must not alter or re-ask for the text');
 });
 
-test('the public mode and autonomy reach retry unchanged', () => {
+test('a retry carries no mode and no Autonomous grant (V3 G01)', () => {
   const fn = WS.slice(WS.indexOf('const retryLast'), WS.indexOf('const [editing'));
-  // RESTATED 2026-09-23: the call gained a sixth argument, the model on the customer's own key
-  // (D-BYOK-1). The property is that the attachments, mode, model and autonomy all still ride on it,
-  // not that it ends after `autonomous`.
-  assert.match(fn, /editAndResend\([^;]+mode, productModel, autonomous\b/);
+  assert.doesNotMatch(fn, /\bmode\b|autonomous/);
 });
 
 // ----------------------------------------------------------------- the shape ---

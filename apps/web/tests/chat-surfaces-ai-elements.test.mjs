@@ -54,18 +54,19 @@ test('no chat, thinking or workspace file imports an AICSS component', () => {
   const offenders = files.flatMap((file) => specifiers(file).filter(isAicss).map((spec) => `${relative(SRC, file)} imports ${spec}`));
   assert.deepEqual(offenders, []);
 
-  // The reader is not blind: it sees the two AICSS imports that remain, where they are allowed.
-  const allowed = ['routes/admin.tsx', 'routes/usage.tsx'].flatMap((rel) => specifiers(join(SRC, rel)).filter(isAicss));
-  assert.equal(allowed.length, 2, `expected the admin and usage AICSS imports, found ${allowed}`);
+  // The reader is not blind: it sees the one AICSS import that remains, where it is allowed. The
+  // usage page's comparison table left with the Plan/Agent modes it compared (V3 G01).
+  const allowed = ['routes/admin.tsx'].flatMap((rel) => specifiers(join(SRC, rel)).filter(isAicss));
+  assert.equal(allowed.length, 1, `expected the admin AICSS import, found ${allowed}`);
 });
 
-test('AICSS remains only for the admin data table and the usage comparison table', () => {
+test('AICSS remains only for the admin data table', () => {
   const users = walk(SRC)
     .filter((file) => !relative(SRC, file).startsWith(join('components', 'aicss')))
     .filter((file) => specifiers(file).some(isAicss))
     .map((file) => relative(SRC, file))
     .sort();
-  assert.deepEqual(users, ['routes/admin.tsx', 'routes/usage.tsx']);
+  assert.deepEqual(users, ['routes/admin.tsx']);
 });
 
 // ---------------------------------------------------------------- 2. diffs ---

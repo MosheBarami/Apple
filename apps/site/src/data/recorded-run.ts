@@ -36,9 +36,8 @@
  *     run is not what the page is for.
  *   The place id and the Studio instance id. Both are in the record. Neither tells a visitor
  *     anything, and both are identifiers for somebody's account.
- *   The internal mode name the transcript opens with. The product's modes are named for a reader
- *     elsewhere on the site, out of the shared contract; a second, internal spelling of one of
- *     them on a public page is how the two drift.
+ *   The internal mode name the transcript opens with. The product offers the customer no mode, so
+ *     an internal mode name on a public page would present one.
  *
  * WHITESPACE: the guard compares runs of whitespace as equal, on both sides, because the record
  * wraps its prose at 90 columns and a quote that spans two lines there is one sentence here. It

@@ -133,14 +133,6 @@ export function SuggestionPanel({
                   )}
                   <button
                     type="button"
-                    className="btn btn-sm btn-quiet"
-                    disabled={cardBusy !== null}
-                    onClick={() => onBrief(s.id, 'plan')}
-                  >
-                    {cardBusy === 'plan' ? 'Reading…' : 'Plan'}
-                  </button>
-                  <button
-                    type="button"
                     className="btn btn-sm btn-primary"
                     disabled={cardBusy !== null}
                     onClick={() => onBrief(s.id, 'build')}

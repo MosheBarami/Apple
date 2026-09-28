@@ -73,7 +73,7 @@ test('the hero is product UI rather than a decorative scene', () => {
 const APP = readFileSync(join(SITE, '..', 'web', 'src', 'design', 'apple-minimal.css'), 'utf8');
 const SHARED_TOKENS = [
   'paper', 'paper-2', 'surface', 'surface-2', 'surface-3', 'ink', 'muted', 'line', 'line-strong',
-  'accent', 'accent-soft', 'accent-ring', 'autonomous', 'autonomous-soft', 'autonomous-ring',
+  'accent', 'accent-soft', 'accent-ring',
 ];
 const RADII = ['r-xs', 'r-sm', 'r-md', 'r-lg', 'r-xl'];
 
@@ -119,7 +119,8 @@ test('the minimal palette and composer contract are explicit', () => {
     assert.equal(siteRoot[r], appRoot[r], `--${r} is ${siteRoot[r]} on the site and ${appRoot[r]} in the app`);
     compared += 1;
   }
-  assert.ok(compared >= 30, `only ${compared} token pairs were compared — the extraction has gone blind`);
+  // 35 pairs until the three violet Autonomous tokens left with the switch (V3 G01); 29 now.
+  assert.ok(compared >= 24, `only ${compared} token pairs were compared — the extraction has gone blind`);
 
   const landingCss = withoutComments(read('src', 'styles', 'landing.css'));
   const composer = /\.composer\s*\{([^}]*)\}/.exec(landingCss);
@@ -136,7 +137,10 @@ test('the minimal palette and composer contract are explicit', () => {
 //   exact treatment the owner rejected ("blue for ordinary active state, violet ONLY when Autonomous
 //   is active"). The property is now asserted over every stylesheet and component style the site
 //   ships: a rule that spends a violet token must be the active Autonomous state, no rule paints a
-//   gradient background or a coloured glow, and no page types a violet hex into its markup. ]]
+//   gradient background or a coloured glow, and no page types a violet hex into its markup.
+//
+//   RESTATED AGAIN for V3 gate G01: the customer picks no mode, so the site depicts no Autonomous
+//   toggle and no rule may spend violet at all. The violet tokens are gone from both palettes. ]]
 function siteStyles() {
   const out = [];
   const walk = (dir) => {
@@ -157,30 +161,23 @@ function siteStyles() {
 const rules = (css) => [...withoutComments(css).replace(/@media[^{]*\{/g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
   .map((m) => ({ selector: m[1].trim(), body: m[2] }));
 
-test('purple and blue are reserved for Autonomous state selectors', () => {
+test('no rule spends the violet tokens, and nothing glows or grades', () => {
   const sheets = siteStyles();
   assert.ok(sheets.length >= 8, `only ${sheets.length} style sources found — the walk has drifted`);
-  let violetRules = 0;
   const wrong = [];
   for (const [file, css] of sheets) {
     for (const { selector, body } of rules(css)) {
-      if (/var\(--autonomous/.test(body)) {
-        violetRules += 1;
-        const everyPart = selector.split(',').every((part) => /\[data-mode='autonomous'\]\[aria-pressed='true'\]/.test(part));
-        if (!everyPart) wrong.push(`${file.replace(SITE, '')}: ${selector.slice(0, 80)}`);
-      }
+      if (/var\(--autonomous/.test(body)) wrong.push(`${file.replace(SITE, '')}: ${selector.slice(0, 80)}`);
       if (/background(?:-image)?\s*:[^;]*gradient\(/.test(body)) wrong.push(`${file.replace(SITE, '')}: gradient background on ${selector.slice(0, 60)}`);
       if (/box-shadow\s*:\s*0\s+0\s+\d+px\s+(?:rgba?\(|var\(--(?:accent|autonomous))/.test(body)) wrong.push(`${file.replace(SITE, '')}: coloured glow on ${selector.slice(0, 60)}`);
     }
   }
-  assert.ok(violetRules >= 1, 'no rule spends a violet token — the Autonomous state has no picture and this check is vacuous');
-  assert.deepEqual(wrong, [], `violet outside an active Autonomous state, or a gradient/glow:\n  ${wrong.join('\n  ')}`);
+  assert.deepEqual(wrong, [], `violet spent, or a gradient/glow:\n  ${wrong.join('\n  ')}`);
 
   const tokens = withoutComments(minimal);
-  assert.match(tokens, /--autonomous:\s*#8b5cf6;/i, 'the dark Autonomous violet is not the app value');
+  // The Autonomous violet left with the Autonomous switch (V3 G01): no violet token is declared.
+  assert.doesNotMatch(tokens, /--autonomous/i, 'a violet token outlived the Autonomous switch');
   assert.match(tokens, /--accent:\s*#5b7cfa;/i, 'the dark accent is not the app blue');
   assert.doesNotMatch(withoutComments(page), /#8b5cf6|#7550de|#7657ff|#4f7cff/i,
-    'an Autonomous colour was hard-coded into page markup instead of being state-driven');
-  assert.match(withoutComments(page), /data-mode="autonomous"[^>]*aria-pressed="false"/,
-    'the landing no longer depicts the Autonomous toggle, or depicts it switched ON at rest');
+    'a violet or retired accent colour was hard-coded into page markup');
 });

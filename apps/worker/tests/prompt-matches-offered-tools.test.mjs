@@ -7,9 +7,9 @@
  * is not one — so the first instruction of every offline Agent run was a call the model could not
  * make, and each attempt cost a paid step. The tool existed; this run did not have it.
  *
- * The property here is one level stronger: in every combination of mode, Studio connection,
- * Autonomous, tool permissions and plugin capability report, the MODE RULES (and the Autonomous
- * block) name only tools that run was offered. The offered set is computed by the real narrowing
+ * The property here is one level stronger: in every combination of Studio connection, tool
+ * permissions and plugin capability report, the builder rules (and the finish-the-work block every
+ * run now carries, V3 G01) name only tools that run was offered. The offered set is computed by the real narrowing
  * functions in the order runStep applies them.
  *
  * WHAT THIS DOES NOT COVER, measured 2026-09-22: the shared build guidance ahead of the mode rules
@@ -54,23 +54,27 @@ const report = (...unsupported) => ({
   operations: unsupported.map((op) => ({ op, status: 'unsupported', reason: `${op} unavailable` })),
 });
 
-function offeredFor({ mode, connected, autonomous, perms, capabilities }) {
+function offeredFor({ mode, connected, perms, capabilities }) {
   const base = T.toolsForMode(mode, connected, T.toolNames());
-  const user = mode === 'agent' && autonomous ? base : T.applyToolPermissions(base, perms);
+  // Denials always apply: there is no Autonomous bypass (V3 UI13).
+  const user = T.applyToolPermissions(base, perms);
   return T.filterToolsForPlugin(user, REQUIREMENTS, capabilities).allowed;
 }
 
 const BASE = { fenceId: 'f3c0d91a', placeName: 'Test Place', projectName: 'Test', memorySummary: null, memoryFacts: [] };
 const toolish = (text) => [...new Set([...text.matchAll(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g)].map((m) => m[0]))];
 
-/** The mode block and, when present, the Autonomous block: the parts that direct tool calls. */
+const RULES_START = 'You are the builder.';
+const FINISH_START = 'The user asked for this whole request';
+
+/** The builder rules and the finish-the-work block: the parts that direct tool calls. */
 function directingBlocks(prompt) {
-  const from = prompt.indexOf('Mode: ');
-  assert.ok(from >= 0, 'the prompt has no mode block');
-  const ends = ['\n\nAutonomous is ON', '<<<ART_DIRECTION>>>', '<<<UI_GRAMMAR>>>', '\n\nProject: "']
+  const from = prompt.indexOf(RULES_START);
+  assert.ok(from >= 0, 'the prompt has no builder rules block');
+  const ends = [`\n\n${FINISH_START}`, '<<<ART_DIRECTION>>>', '<<<UI_GRAMMAR>>>', '\n\nProject: "']
     .map((m) => prompt.indexOf(m, from)).filter((i) => i > from);
   const blocks = [prompt.slice(from, Math.min(...ends))];
-  const auto = prompt.indexOf('Autonomous is ON');
+  const auto = prompt.indexOf(FINISH_START);
   if (auto >= 0) blocks.push(prompt.slice(auto, prompt.indexOf('\n\n', auto) === -1 ? undefined : prompt.indexOf('\n\n', auto)));
   return blocks;
 }
@@ -78,13 +82,10 @@ function directingBlocks(prompt) {
 function* combinations() {
   const perms = [undefined, { propose_plan: 'deny' }, Object.fromEntries(T.VERIFIER_TOOLS.map((v) => [v, 'deny']))];
   const caps = [null, report('render_view', 'run_code'), report('render_view', 'run_code', 'get_tree', 'project_census')];
-  for (const mode of ['plan', 'agent']) {
-    for (const connected of [true, false]) {
-      for (const autonomous of [false, true]) {
-        for (const p of perms) {
-          for (const c of caps) yield { mode, connected, autonomous, perms: p, capabilities: c };
-        }
-      }
+  // One behaviour (V3 G01): no Plan mode and no Autonomous switch left to combine.
+  for (const connected of [true, false]) {
+    for (const p of perms) {
+      for (const c of caps) yield { mode: 'agent', connected, perms: p, capabilities: c };
     }
   }
 }
@@ -99,7 +100,6 @@ test('IN EVERY COMBINATION, THE MODE RULES DIRECT CALLS ONLY TO TOOLS THAT RUN W
     const prompt = T.systemPrompt({
       ...BASE,
       mode: combo.mode,
-      autonomous: combo.mode === 'agent' && combo.autonomous,
       studioConnected: combo.connected,
       offeredTools: offered,
     });
@@ -118,10 +118,11 @@ test('IN EVERY COMBINATION, THE MODE RULES DIRECT CALLS ONLY TO TOOLS THAT RUN W
     checked += 1;
   }
   // Non-vacuity: both branches were exercised, and the blocks really did name tools.
-  assert.equal(checked, 72);
+  assert.equal(checked, 18);
   assert.ok(plannerOffered > 0 && plannerWithheld > 0, 'one branch of the planner rule was never exercised');
-  // 50 when written (2026-09-22). A floor, not a tripwire: it only has to prove the scan saw tools.
-  assert.ok(namedTools > 20, `the directing blocks named only ${namedTools} tools across all combinations`);
+  // 50 when written (2026-09-22) over 72 combinations; 20 over the 18 left once the Plan mode and
+  // the Autonomous switch were removed. A floor, not a tripwire: it only has to prove the scan saw tools.
+  assert.ok(namedTools > 10, `the directing blocks named only ${namedTools} tools across all combinations`);
 });
 
 test('the historic case: offline Agent is not told to call propose_plan, even with no offered set passed', () => {
@@ -133,14 +134,14 @@ test('the historic case: offline Agent is not told to call propose_plan, even wi
 });
 
 test('CONTROL: a paired Agent with nothing narrowed is still told to plan and to check', () => {
-  const offered = offeredFor({ mode: 'agent', connected: true, autonomous: false });
+  const offered = offeredFor({ mode: 'agent', connected: true });
   const prompt = T.systemPrompt({ ...BASE, mode: 'agent', studioConnected: true, offeredTools: offered });
   assert.match(prompt, /FIRST call is propose_plan/);
   for (const v of T.VERIFIER_TOOLS) assert.match(prompt, new RegExp(`\\b${v}\\b`), `${v} is offered and not named`);
 });
 
 test('with no verifier offered the Agent is told to say so, not to plan a check it cannot run', () => {
-  const offered = offeredFor({ mode: 'agent', connected: true, autonomous: false, perms: Object.fromEntries(T.VERIFIER_TOOLS.map((v) => [v, 'deny'])) });
+  const offered = offeredFor({ mode: 'agent', connected: true, perms: Object.fromEntries(T.VERIFIER_TOOLS.map((v) => [v, 'deny'])) });
   const prompt = T.systemPrompt({ ...BASE, mode: 'agent', studioConnected: true, offeredTools: offered });
   assert.match(prompt, /no verification tool is offered in this session/);
   for (const v of T.VERIFIER_TOOLS) {

@@ -8,7 +8,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { PRODUCT_MODES, type ProductMode, type ProductModel } from '@golem/shared';
+import type { ProductModel } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
@@ -185,11 +185,6 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     },
     [projectId],
   );
-  const [mode, setMode] = useState<ProductMode>('agent');
-  // OFF until the person turns it on, per run of the page (F-009). Autonomous lifts the per-tool
-  // permissions and lets a run take up to 1000 steps; measured 2026-09-22, single ordinary requests
-  // cost 105-450 Credits against a 100-Credit free day. Nobody should start that without choosing to.
-  const [autonomous, setAutonomous] = useState(false);
   // One engine (V3 gate G01): every message is sent as Apple, on every plan.
   const productModel: ProductModel = 'apple';
   const [seed, setSeed] = useState<string | undefined>(undefined);
@@ -439,8 +434,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     if (running || !chatAllowed) return;
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
     if (!lastUser) return;
-    editAndResend(lastUser.id, lastUser.content, mode, productModel, autonomous);
-  }, [messages, running, editAndResend, mode, productModel, autonomous, chatAllowed]);
+    editAndResend(lastUser.id, lastUser.content, productModel);
+  }, [messages, running, editAndResend, productModel, chatAllowed]);
 
   // Which of my own messages is being edited, if any.
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
@@ -685,17 +680,14 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
    * It is consumed once and then cleared. Router state outlives a reload and is
    * restored by a Back that lands here again, so leaving it in place would keep
    * refilling the composer with a request the user may have deliberately
-   * abandoned — and would pin the mode chip to a choice they could not undo by
-   * navigating. Replacing the history entry is what makes this a handoff rather
+   * abandoned. Replacing the history entry is what makes this a handoff rather
    * than a state the route can never leave.
    */
   useEffect(() => {
-    const handoff = location.state as { seed?: unknown; mode?: unknown } | null;
+    // A legacy `mode` in the handoff is ignored: there is no mode to choose (V3 G01).
+    const handoff = location.state as { seed?: unknown } | null;
     if (!handoff) return;
     if (typeof handoff.seed === 'string' && handoff.seed.trim() !== '') setSeed(handoff.seed);
-    // Anything at all can be pushed into router state, so the mode is checked
-    // against the shared vocabulary instead of being trusted into a typed setter.
-    if (PRODUCT_MODES.includes(handoff.mode as ProductMode)) setMode(handoff.mode as ProductMode);
     navigate(location.pathname, { replace: true, state: null });
   }, [location, navigate]);
 
@@ -730,22 +722,13 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     // Sending re-arms following: you have just added to the conversation, so you want to watch it.
     void conversation.current?.scrollToBottom();
     setSeed(undefined);
-    if (!sendChat(text, mode, attachments, productModel, autonomous)) {
+    if (!sendChat(text, attachments, productModel)) {
       toast('Not connected yet — hang on a moment. Your message is still in the box.', 'error');
       return false;
     }
     interfaceSound.play('send');
     return true;
   };
-
-  // The plan card's "Build it": switch to Agent — the mode allowed to change the place — and send once
-  // that mode is the one in state, so the message goes through send() exactly like a typed one.
-  const [buildQueued, setBuildQueued] = useState(false);
-  useEffect(() => {
-    if (!buildQueued || mode !== 'agent') return;
-    setBuildQueued(false);
-    send('Build this plan.');
-  }, [buildQueued, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const lastAssistantId = useMemo(
     () => [...messages].reverse().find((m) => m.role === 'assistant')?.id,
@@ -1081,12 +1064,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               frames={item.id === lastAssistantId ? frames : undefined}
               playtest={item.id === lastAssistantId ? playtest : null}
               studioConnected={studio.connected}
-              // The plan card's "Build it": the latest plan, only while idle, sent through the same
-              // path as any message but in Agent mode — the mode that is allowed to change the place.
-              onBuildPlan={item.id === lastAssistantId && item.mode === 'plan' && !running && chatAllowed
-                ? () => { setMode('agent'); setBuildQueued(true); }
-                : undefined}
-              onChooseAsset={item.id === lastAssistantId && !running && chatAllowed && conn === 'open' && mode === 'agent'
+              onChooseAsset={item.id === lastAssistantId && !running && chatAllowed && conn === 'open'
                 ? (index) => { send(index === null ? 'None of these look right. Find different visual options.' : `Use visual option ${index} and continue.`); }
                 : undefined}
             />
@@ -1139,13 +1117,6 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           onNotice={(m) => toast(m, 'error')}
           running={running}
           disabled={conn !== 'open' || !chatAllowed}
-          mode={mode}
-          onModeChange={(next) => {
-            setMode(next);
-            if (next === 'plan') setAutonomous(false);
-          }}
-          autonomous={autonomous}
-          onAutonomousChange={setAutonomous}
           seed={seed}
           selection={studio.selection}
           // The other faces in this project read "is typing" off this. The frame has been in the
@@ -1288,7 +1259,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               toast(`${chatWhy ?? 'You cannot edit messages in this project.'} Your edit is kept.`, 'error');
               return;
             }
-            editAndResend(editing.id, text, mode, productModel, autonomous);
+            editAndResend(editing.id, text, productModel);
             setEditing(null);
           }}
         />

@@ -112,9 +112,6 @@ export function DependencyMap({ stages, currentId, onBrief, busy, onShowInList }
           )}
           <div className="rm-map__detail-actions">
             <button type="button" className="tq-btn" onClick={() => onShowInList(node.id)}>Show in list</button>
-            <button type="button" className="tq-btn" disabled={busy !== null} onClick={() => onBrief(node.id, 'plan')}>
-              {busy?.id === node.id && busy.intent === 'plan' ? 'Reading…' : node.placed.readiness === 'landed' ? 'Plan changes' : 'Plan'}
-            </button>
             {node.placed.readiness !== 'landed' && (
               <button type="button" className="tq-btn tq-btn--primary" disabled={busy !== null} onClick={() => onBrief(node.id, 'build')}>
                 {busy?.id === node.id && busy.intent === 'build' ? 'Reading…' : 'Build'}

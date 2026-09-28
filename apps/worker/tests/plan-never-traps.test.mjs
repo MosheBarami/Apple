@@ -61,12 +61,12 @@ const report = (...unsupported) => ({
 });
 
 /**
- * The run's offered set: mode, then permissions (skipped when autonomous), then the plugin's
+ * The run's offered set: mode, then permissions (always applied, V3 UI13), then the plugin's
  * capability report — the order runStep narrows in. Every step is a real function from src/.
  */
-function offeredFor({ mode = 'agent', connected = true, autonomous = false, perms, capabilities } = {}) {
+function offeredFor({ mode = 'agent', connected = true, perms, capabilities } = {}) {
   const base = T.toolsForMode(mode, connected, T.toolNames());
-  const user = mode === 'agent' && autonomous ? base : T.applyToolPermissions(base, perms);
+  const user = T.applyToolPermissions(base, perms);
   return T.filterToolsForPlugin(user, REQUIREMENTS, capabilities).allowed;
 }
 
@@ -107,7 +107,6 @@ test('A PLAN WITH NO CHECK GETS A CHECK THE RUN WAS OFFERED — never a withheld
     ['render_view unsupported', NO_RENDER],
     ['render_view + get_tree unsupported', offeredFor({ capabilities: report('render_view', 'get_tree', 'run_code') })],
     ['inspect_visually denied by permission', offeredFor({ perms: { inspect_visually: 'deny' } })],
-    ['autonomous ignores the denial', offeredFor({ autonomous: true, perms: { inspect_visually: 'deny' } })],
   ];
   let appended = 0;
   for (const [label, offered] of scenarios) {

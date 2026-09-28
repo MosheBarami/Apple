@@ -11,7 +11,7 @@
 // would exercise none of the handling that exists for the unhealthy one.
 import { backoffMs } from './errors.mjs';
 import { finiteNumber } from './numbers.mjs';
-import { CLIENT_MSG_TYPES, MODES, PRESENCE_ACTIVITIES, socketProtocols, socketUrl } from './wire.mjs';
+import { CLIENT_MSG_TYPES, PRESENCE_ACTIVITIES, socketProtocols, socketUrl } from './wire.mjs';
 
 /** `stopReason` values this build knows. Mirrors `ServerMsg` msg_end in @golem/shared. */
 export const STOP_REASONS = Object.freeze(['done', 'stopped', 'error', 'quota', 'incomplete']);
@@ -41,7 +41,6 @@ export function emptyRun() {
   return {
     msgId: null,
     mode: null,
-    autonomous: false,
     text: '',
     tools: [],
     phase: null,
@@ -76,8 +75,8 @@ export function applyServerMsg(run, msg) {
       return {
         ...emptyRun(),
         msgId: msg.msgId ?? null,
-        mode: msg.mode ?? null,
-        autonomous: msg.autonomous === true,
+        // One kind of request (V3 G01): an older server's legacy mode still reads as agent.
+        mode: msg.mode == null ? null : 'agent',
       };
     case 'delta': {
       if (typeof msg.text !== 'string') return run;
@@ -133,16 +132,8 @@ export function validateClientMsg(msg) {
   }
   if (msg.type === 'chat' || msg.type === 'edit_resend') {
     if (typeof msg.text !== 'string' || msg.text.trim() === '') throw new TypeError('chat text must be a non-empty string');
-    // A TypeScript union does not exist at runtime, and this value routinely comes from a
-    // CLI flag or a Python caller. The server would take an unknown mode and reach the
-    // ingress guard with it; refusing here names the mistake where it was made.
-    if (!MODES.includes(msg.mode)) throw new TypeError(`mode must be one of ${MODES.join(', ')}`);
-    if (msg.autonomous !== undefined && typeof msg.autonomous !== 'boolean') {
-      throw new TypeError('autonomous must be a boolean when provided');
-    }
-    if (msg.mode !== 'agent' && msg.autonomous === true) {
-      throw new TypeError('autonomous is only valid in agent mode');
-    }
+    // `mode` and `autonomous` are not checked: there is one kind of request (V3 G01), and the
+    // server ignores a legacy value rather than refusing it.
   }
   if (msg.type === 'edit_resend' && (typeof msg.messageId !== 'string' || msg.messageId === '')) {
     throw new TypeError('edit_resend needs a messageId');
@@ -271,12 +262,14 @@ export class SessionStream {
     return true;
   }
 
-  sendChat(text, mode = 'agent', autonomous = false) {
-    return this.send({ type: 'chat', text, mode, ...(mode === 'agent' && autonomous ? { autonomous: true } : {}) });
+  // `mode: 'agent'` is the legacy wire value every request carries (V3 G01). Extra legacy
+  // arguments (a mode, an Autonomous flag) are ignored rather than refused.
+  sendChat(text) {
+    return this.send({ type: 'chat', text, mode: 'agent' });
   }
 
-  editAndResend(messageId, text, mode = 'agent', autonomous = false) {
-    return this.send({ type: 'edit_resend', messageId, text, mode, ...(mode === 'agent' && autonomous ? { autonomous: true } : {}) });
+  editAndResend(messageId, text) {
+    return this.send({ type: 'edit_resend', messageId, text, mode: 'agent' });
   }
 
   stop() {

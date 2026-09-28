@@ -21,7 +21,6 @@
  *   - selecting a defect turns exactly one marker on
  *   - the third ask produces the refusal, marked as refused
  *   - exactly one stage is shown at a time, and a tab click or an arrow key moves it
- *   - the Autonomous toggle's state is its own aria-pressed, off at rest
  *   - no STAGE runs an animation-frame loop (RESTATED 2026-09-22: the spinning wireframe mesh,
  *     and the two tests that proved it drew, went with the calm redesign). RESTATED AGAIN
  *     2026-09-23: the owner then picked canvas grounds and a particle wordmark for the front page
@@ -149,7 +148,7 @@ class El {
   querySelector(selector) { return this.querySelectorAll(selector)[0] ?? null; }
 }
 
-/** The page's three stages, their tabs and the Autonomous toggle, as the harness serves them. Kept
+/** The page's three stages and their tabs, as the harness serves them. Kept
     honest by the last test in this file. */
 function page() {
   const node = (path, kids) => new El('button', { class: 'rd-node', 'data-path': path, 'data-kids': String(kids), 'aria-pressed': 'false' });
@@ -193,10 +192,8 @@ function page() {
     out,
   );
 
-  const auto = new El('button', { class: 'auto-toggle', 'data-mode': 'autonomous', 'aria-pressed': 'false' });
-
   const root = new El('html');
-  const body = new El('body').append(new El('div', { class: 'demos' }).append(tabs, tree, eye, lu), auto);
+  const body = new El('body').append(new El('div', { class: 'demos' }).append(tabs, tree, eye, lu));
   root.append(body);
 
   const frames = [];
@@ -219,7 +216,7 @@ function page() {
     getComputedStyle: () => ({ getPropertyValue: () => '' }),
   };
 
-  return { root, body, tabs, tree, eye, lu, auto, out, code, document, window, frames, errors };
+  return { root, body, tabs, tree, eye, lu, out, code, document, window, frames, errors };
 }
 
 /** Run the real client script against a freshly built page. */
@@ -338,15 +335,6 @@ test('exactly one stage is shown at a time, and a tab click or an arrow key move
   assert.deepEqual(shown(), ['code']);
 });
 
-test('the Autonomous toggle is off at rest and its state is its own aria-pressed', () => {
-  const p = run();
-  assert.equal(p.auto.getAttribute('aria-pressed'), 'false', 'the toggle starts on, so the page is violet at rest');
-  p.auto.dispatch('click');
-  assert.equal(p.auto.getAttribute('aria-pressed'), 'true', 'a press did not turn it on');
-  p.auto.dispatch('click');
-  assert.equal(p.auto.getAttribute('aria-pressed'), 'false', 'a second press did not turn it off again');
-});
-
 test('the capability stages draw on no animation-frame loop, and the page script draws nothing', () => {
   const p = run();
   assert.equal(p.frames.length, 0, `the page script requested ${p.frames.length} animation frame(s) at start`);
@@ -414,8 +402,6 @@ test('one stage cannot take the others down with it', () => {
   const asks = p.root.querySelectorAll('.lu-ask');
   asks[2].dispatch('click');
   assert.equal(p.out.classList.contains('refused'), true, 'the Luau stage died with the tree stage');
-  p.auto.dispatch('click');
-  assert.equal(p.auto.getAttribute('aria-pressed'), 'true', 'the Autonomous toggle died with the tree stage');
   p.root.querySelectorAll('.stage-tab')[1].dispatch('click');
   assert.equal(p.root.querySelector('[data-demo="eye"]').hasAttribute('hidden'), false, 'the tabs died with the tree stage');
 });
@@ -427,7 +413,7 @@ test('every hook this harness serves is a hook the page actually renders', () =>
     'rd-node', 'rd-log', 'rd-gate', 'rd-tree',
     'cw-mark', 'cw-defect', 'cw-render', 'cw-defects',
     'lu-ask', 'lu-asks', 'lu-out',
-    'stage-tab', 'stage-tabs', 'demo-stage', 'auto-toggle',
+    'stage-tab', 'stage-tabs', 'demo-stage',
   ];
   for (const hook of hooks) {
     assert.ok(
@@ -439,7 +425,6 @@ test('every hook this harness serves is a hook the page actually renders', () =>
     assert.ok(MARKUP.includes(`s.demo === '${demo}'`) && SOURCE.includes(`demo: '${demo}'`),
       `the page renders no stage for data-demo="${demo}"`);
   }
-  assert.match(MARKUP, /data-mode="autonomous"/, 'the page renders no Autonomous toggle for the script to find');
   // The attributes the script reads off the markup rather than off its own constants.
   for (const attr of ['data-path', 'data-kids', 'data-defect', 'data-lines', 'data-refused', 'aria-controls', 'aria-selected']) {
     assert.ok(MARKUP.includes(attr), `the page writes no ${attr}, so the script reads nothing`);

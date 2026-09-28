@@ -13,8 +13,9 @@
  *   THE ARITHMETIC. "How many more today" from a cost that is a RANGE has a most and a fewest, and
  *   quoting only the most is the flattering reading of a spread presented as a fact.
  *
- *   THE DERIVATION. The figure must come from PRODUCT_MODE_INFO for the same Plan/Agent value the
- *   page renders. A literal typed into the app is a price free to drift from the shared contract.
+ *   THE DERIVATION. The figure must come from MODE_INFO.agent, the one per-request figure (there
+ *   are no customer modes, V3 G01). A literal typed into the app is a price free to drift from the
+ *   shared contract.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,10 +24,7 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import {
-  PRODUCT_MODES,
-  PRODUCT_MODE_INFO,
-} from '@golem/shared';
+import { MODE_INFO } from '@golem/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = join(WEB, '..', '..');
@@ -45,14 +43,14 @@ const dir = mkdtempSync(join(tmpdir(), 'reqcost-'));
 const src = join(dir, 'block.ts');
 writeFileSync(
   src,
-  `import { PRODUCT_MODES, PRODUCT_MODE_INFO } from ${JSON.stringify(join(ROOT, 'packages', 'shared', 'src', 'index.ts'))};\n` +
+  `import { MODE_INFO } from ${JSON.stringify(join(ROOT, 'packages', 'shared', 'src', 'index.ts'))};\n` +
     `import { formatNumber } from ${JSON.stringify(join(WEB, 'src', 'lib', 'format.ts'))};\n` +
     PAGE.slice(from, to) +
-    '\nexport { REQUEST_COSTS };\n',
+    '\nexport { REQUEST_COST };\n',
 );
 const out = join(dir, 'block.mjs');
 execFileSync(ESBUILD, [src, '--bundle', '--format=esm', '--platform=neutral', '--outfile=' + out], { stdio: 'pipe' });
-const { REQUEST_COSTS, requestsLeftLine, articleFor } = await import(`file://${out}`);
+const { REQUEST_COST, requestsLeftLine } = await import(`file://${out}`);
 
 /* ------------------------------------------------------------- the arithmetic --- */
 
@@ -76,48 +74,30 @@ test('a balance it cannot read produces a sentence, not a number', () => {
   assert.equal(requestsLeftLine(-1, 2, 2, 'day'), 'we could not read what is left today');
 });
 
-test('the article matches the mode name', () => {
-  assert.equal(articleFor('Plan'), 'A');
-  assert.equal(articleFor('Agent'), 'An');
-});
-
 /* -------------------------------------------------------------- the derivation --- */
 
-test('both product modes have a per-request figure, and it is the published one', () => {
-  assert.ok(REQUEST_COSTS.length > 0, 'the app shows no per-request cost at all');
-  assert.deepEqual(
-    REQUEST_COSTS.map((c) => c.mode),
-    [...PRODUCT_MODES],
-    'the app must price exactly Plan and Agent from the shared ProductMode list',
-  );
-  for (const c of REQUEST_COSTS) {
-    const published = String(PRODUCT_MODE_INFO[c.mode].typicalCredits);
-    assert.equal(c.published, published.replace('-', '–'), `${c.mode} quotes a figure PRODUCT_MODE_INFO does not`);
-    assert.equal(c.name, PRODUCT_MODE_INFO[c.mode].name);
-    assert.equal(c.low, Number(published.split('-')[0]));
-    assert.ok(Number.isFinite(c.low) && Number.isFinite(c.high) && c.low > 0 && c.high >= c.low, `${c.mode} has no usable range`);
-  }
-});
-
-test('Autonomous is not priced as a build mode', () => {
-  assert.equal(REQUEST_COSTS.some((c) => c.mode === 'autonomous'), false);
+test('there is one per-request figure, it is the published one, and it names no mode', () => {
+  assert.ok(REQUEST_COST, 'the app shows no per-request cost at all');
+  const published = String(MODE_INFO.agent.typicalCredits);
+  assert.equal(REQUEST_COST.published, published.replace('-', '–'), 'the page quotes a figure MODE_INFO does not');
+  assert.equal(REQUEST_COST.low, Number(published.split('-')[0]));
+  assert.ok(Number.isFinite(REQUEST_COST.low) && Number.isFinite(REQUEST_COST.high) && REQUEST_COST.low > 0 && REQUEST_COST.high >= REQUEST_COST.low);
+  assert.equal('mode' in REQUEST_COST, false);
+  assert.equal('name' in REQUEST_COST, false);
 });
 
 test('the figure is not a literal in the page — it is read from the table the site reads', () => {
   const block = PAGE.slice(from, to);
-  assert.match(block, /PRODUCT_MODE_INFO\[m\]\.typicalCredits/, 'the price must be derived from the direct mode');
-  assert.match(block, /PRODUCT_MODES\.map\(\(m\)/, 'the shared ProductMode list must drive the rows directly');
+  assert.match(block, /MODE_INFO\.agent\.typicalCredits/, 'the price must be derived from the shared figure');
   // Commentary stripped first: a comment explaining what "2" means is not the number being
   // typed in, and this file's first run failed on its own doc comment saying exactly that.
   const code = block.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-  for (const m of PRODUCT_MODES) {
-    const published = String(PRODUCT_MODE_INFO[m].typicalCredits);
-    assert.equal(
-      new RegExp(`['"\`]${published.replace('-', '[-–]')}['"\` ]`).test(code),
-      false,
-      `${published} is typed into usage.tsx as a literal and will drift from PRODUCT_MODE_INFO`,
-    );
-  }
+  const published = String(MODE_INFO.agent.typicalCredits);
+  assert.equal(
+    new RegExp(`['"\`]${published.replace('-', '[-–]')}['"\` ]`).test(code),
+    false,
+    `${published} is typed into usage.tsx as a literal and will drift from MODE_INFO`,
+  );
 });
 
 /* ------------------------------------------------------------------ the screen --- */
@@ -127,8 +107,8 @@ test('the credits card renders the figure and what is left, beside the balance',
   assert.ok(at > 0, 'the credits card is gone');
   const card = PAGE.slice(at, PAGE.indexOf('<div className="card bars-card">', at));
   assert.match(card, /What your next request costs/, 'the card must say what the block is');
-  assert.match(card, /REQUEST_COSTS\.map/, 'the figures are computed and never rendered — the defect this fixes');
-  assert.match(card, /\{c\.published\} Credits/, 'the published figure has to reach the screen');
+  assert.match(card, /\{REQUEST_COST\.published\} Credits/, 'the published figure has to reach the screen');
+  assert.doesNotMatch(card, /Plan|Agent|Autonomous/, 'the cost names no mode (V3 G01)');
   assert.match(card, /requestsLeftLine\(view\.allowanceRemaining \+ view\.credits/, 'what is left must include purchased credits');
 });
 

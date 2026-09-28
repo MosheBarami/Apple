@@ -3,7 +3,7 @@
  * The component keeps upstream's Tailwind strings, which nothing here generates; these rules give
  * each part the layout those strings describe, in the app's tokens only — no raw colour, no radius or
  * shadow outside the lock (docs/DESIGN-LOCK.md). The look of the one composer that uses it (the
- * card, the chips, Send, the Autonomous switch) is components/ws/composer.css's to decide; this sheet
+ * card, the chips, Send) is components/ws/composer.css's to decide; this sheet
  * is the neutral shape any PromptInput would have.
  */
 

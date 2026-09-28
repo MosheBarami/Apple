@@ -19,7 +19,7 @@ export const wrongLimit = client.messages('id', { limit: 'twenty' });
 // ERROR: there is no such method.
 export const noSuchMethod = client.deleteEverything();
 
-// ERROR: 'granite' is not a ProductMode.
+// ERROR: sendChat takes no mode; there is one kind of request (V3 G01).
 export const wrongMode = new SessionStream({ baseUrl: 'x', projectId: 'y', token: 'z' }).sendChat('hi', 'granite');
 
 // ERROR: a SessionStream needs a token.

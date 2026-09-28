@@ -13,7 +13,6 @@ import './roadmap.css';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { ProductMode } from '@golem/shared';
 import { EmptyState } from '../components/empty-state';
 import { ApiError, fetchMilestoneBrief, fetchNextMilestones, fetchRoadmap } from '../lib/api';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
@@ -128,9 +127,9 @@ export function RoadmapPage() {
    * the whole instruction in the address bar and the browser history.
    */
   const openConversation = useCallback(
-    (request: string, mode: ProductMode) => {
+    (request: string) => {
       setBrief(null);
-      navigate(`/projects/${projectId}`, { state: { seed: request, mode } });
+      navigate(`/projects/${projectId}`, { state: { seed: request } });
     },
     [navigate, projectId],
   );
@@ -372,7 +371,6 @@ export function RoadmapPage() {
       {brief && (
         <BriefDialog
           brief={brief.brief}
-          intent={brief.intent}
           onClose={() => setBrief(null)}
           onOpenConversation={openConversation}
         />

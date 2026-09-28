@@ -116,28 +116,21 @@ function neuronsFor(label) {
   return numbers.length ? Math.max(...numbers) : null;
 }
 
-// ProductMode is the only run-mode contract. Read the two keys and their published values directly
-// from MODE_INFO; there is no specialist translation layer and Autonomous is not a third mode.
-const productModes = /export const PRODUCT_MODES: readonly ProductMode\[\] = \[([^\]]*)\]/.exec(shared_)?.[1];
+// There is one kind of request (V3 G01): MODE_INFO has a single `agent` entry, read directly.
 const modeInfoAt = shared_.indexOf('export const MODE_INFO');
 const modeInfoEnd = modeInfoAt >= 0 ? shared_.indexOf('\n};', modeInfoAt) : -1;
 const modeInfo = modeInfoAt >= 0 && modeInfoEnd > modeInfoAt ? shared_.slice(modeInfoAt, modeInfoEnd + 3) : '';
-if (!productModes || !modeInfo) {
-  console.error('check-credit-figures: could not read PRODUCT_MODES or MODE_INFO from packages/shared/src/index.ts. One of them moved; follow it.');
+if (!modeInfo) {
+  console.error('check-credit-figures: could not read MODE_INFO from packages/shared/src/index.ts. One of them moved; follow it.');
   process.exit(1);
 }
 const modeField = (key, field) =>
   new RegExp(`\\n  ${key}: \\{[\\s\\S]*?\\b${field}: '([^']+)'`).exec(modeInfo)?.[1] ?? null;
 const ROW_FOR = {
-  plan: 'Plan question (Studio attached)',
   agent: 'Agent, targeted edit + read-back verify in Studio',
 };
-const MODES = [...productModes.matchAll(/'(plan|agent)'/g)].map((m) => ({
-  key: m[1],
-  mode: modeField(m[1], 'name'),
-  row: ROW_FOR[m[1]],
-}));
-if (MODES.length !== 2 || MODES.some((m) => !m.mode || !m.row)) {
+const MODES = [{ key: 'agent', mode: modeField('agent', 'name'), row: ROW_FOR.agent }];
+if ( MODES.some((m) => !m.mode || !m.row)) {
   console.error(`check-credit-figures: could not resolve every ProductMode to a COST-MODEL row: ${JSON.stringify(MODES)}`);
   process.exit(1);
 }
@@ -158,10 +151,10 @@ for (const { key, mode, row } of MODES) {
       problems.push(`MODE_INFO.${key}.typicalCredits starts at ${low} for ${mode}; ${neurons} neurons / ${perCredit} = ${expected}`);
     }
   }
-  if (!/PRODUCT_MODES\.map/.test(page) || !/const info = MODE_INFO\[mode\]/.test(page)) {
-    problems.push('pricing.astro no longer derives its ProductMode rows from PRODUCT_MODES + MODE_INFO');
+  if (!/const requestInfo = MODE_INFO\.agent/.test(page)) {
+    problems.push('pricing.astro no longer derives its request row from MODE_INFO.agent');
   }
-  if (!/perDay: perFreeDay\(r\.cost\)/.test(page)) {
+  if (!/perDay: perFreeDay\(requestCost\)/.test(page)) {
     problems.push('pricing.astro no longer derives requests-per-free-day from the same mode cost');
   } else {
     derived += 1;
@@ -246,7 +239,6 @@ for (const file of PROSE) {
 const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 const shared = stripComments(read('packages/shared/src/index.ts'));
 const RANGE = {
-  plan: ['Plan question (Studio attached)'],
   agent: [
     'Agent, targeted edit + read-back verify in Studio',
     'Agent, full build + edit + verify in Studio',
@@ -290,7 +282,7 @@ if (!rangeFn || rangeFn === shared) {
   // limitation is stated rather than papered over: a hard-coded '2' here would not be caught by
   // this line, and mileagent-credits.test.mjs is what would catch the wrong answer it produced.
   const published = new Set();
-  for (const mode of ['plan', 'agent', 'agent']) {
+  for (const mode of ['agent']) {
     const line = new RegExp(`${mode}: \\{[^}]*typicalCredits: '([^']+)'`).exec(shared);
     for (const n of (line?.[1] ?? '').split('-')) if (n.trim().length >= 2) published.add(n.trim());
   }
@@ -377,10 +369,10 @@ if (unitsChecked === 0) {
 // gets left behind by the next repricing, which is how "30 / 15 / up to 6" survived a fourfold
 // change to the free tier.
 const pageSrc = stripComments(page);
-if (!/const info = MODE_INFO\[mode\]/.test(pageSrc) || !/unit: info\.entryUnit/.test(pageSrc)) {
+if (!/const requestInfo = MODE_INFO\.agent/.test(pageSrc) || !/unit: requestInfo\.entryUnit/.test(pageSrc)) {
   problems.push('pricing.astro does not read MODE_INFO.entryUnit — the per-request table states a price and a per-day count with no unit between them');
 }
-if (!/\{r\.unit\}/.test(pageSrc)) {
+if (!/\{requestRow\.unit\}/.test(pageSrc)) {
   problems.push('pricing.astro reads entryUnit and never renders it — the disclosure ships to nobody');
 }
 if (!/buildsPerDay\('free'\)/.test(pageSrc) || !/CREDITS_PER_BUILD/.test(pageSrc)) {

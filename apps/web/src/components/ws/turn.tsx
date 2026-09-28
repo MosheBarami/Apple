@@ -35,7 +35,6 @@ import { ShareButton } from '../picks/chat/share-button';
 import { ContextMenu, useContextMenu, type MenuItem } from '../picks/chat/context-menu';
 import { RollingNumber } from '../picks/chat/rolling-number';
 import { useWordReveal } from '../picks/chat/word-reveal';
-import { PlanCard } from '../picks/chat/plan-card';
 import { ExpandableImages } from '../picks/chat/expandable-images';
 import { AssetChoice } from './asset-choice';
 import { visualOptions } from './asset-choice-model';
@@ -90,7 +89,6 @@ export function Turn({
   editable,
   onRetry,
   onShowRevisions,
-  onBuildPlan,
   onChooseAsset,
 }: {
   item: ChatItem;
@@ -128,11 +126,6 @@ export function Turn({
    */
   phaseMarks?: PhaseMark[];
   isLast: boolean;
-  /**
-   * Send a Plan-mode reply's plan to be built. The Plan card draws its "Build it" button only when
-   * this is given — a button that is present and does nothing is worse than no button.
-   */
-  onBuildPlan?: () => void;
   /** Offered only on the latest settled turn with owner edit access. */
   onChooseAsset?: (index: number | null) => void;
 }) {
@@ -350,15 +343,7 @@ export function Turn({
             {spilled.prose && (
               // The wrapper is what the word reveal reads; it draws nothing (display:contents).
               <div ref={replyRef} className="gx-turn__reply">
-                {item.mode === 'plan' ? (
-                  // A Plan-mode reply is a plan: a card with its first line showing and the steps
-                  // folded inside (picks/chat/plan-card).
-                  <PlanCard content={spilled.prose} streaming={item.streaming} onBuild={onBuildPlan}>
-                    <MessageResponse className="gx-prose" dir="auto">{spilled.prose}</MessageResponse>
-                  </PlanCard>
-                ) : (
-                  <MessageResponse className="gx-prose" dir="auto">{spilled.prose}</MessageResponse>
-                )}
+                <MessageResponse className="gx-prose" dir="auto">{spilled.prose}</MessageResponse>
               </div>
             )}
           </>

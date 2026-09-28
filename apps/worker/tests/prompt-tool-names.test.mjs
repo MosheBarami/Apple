@@ -55,7 +55,6 @@ function everyPrompt() {
   return [
     systemPrompt(BASE),
     systemPrompt({ ...BASE, studioConnected: false }),
-    systemPrompt({ ...BASE, mode: 'plan' }),
     systemPrompt({ ...BASE, mode: 'agent' }),
     systemPrompt({ ...BASE, sceneKind: 'plaza' }),
     systemPrompt({ ...BASE, uiBrief: 'RULE ONE' }),
@@ -69,7 +68,7 @@ const toolishTokens = (text) =>
 
 test('the prompt was actually built, so nothing below passes vacuously', () => {
   const prompts = everyPrompt();
-  assert.equal(prompts.length, 7);
+  assert.equal(prompts.length, 6); // the Plan variant went with the Plan mode (V3 G01)
   for (const p of prompts) assert.ok(p.length > 500, `a variant came back ${p.length} chars long`);
   assert.ok(toolishTokens(prompts[0]).length >= 5, 'and it names some tools');
 });
@@ -200,7 +199,7 @@ test('an unknown mode is REFUSED, not silently stripped of its rules', () => {
   // the whole verification policy, and shipped a prompt that read as valid. The run still started
   // and still spent tokens. `ProductMode` is a compile-time type over a `JSON.parse(...) as` wire,
   // so nothing but a runtime check can catch it.
-  for (const retired of ['stone', 'clay', 'rune', 'super-agent']) {
+  for (const retired of ['stone', 'clay', 'rune', 'super-agent', 'plan']) {
     assert.throws(
       () => systemPrompt({ ...BASE, mode: retired }),
       /unknown mode/,
@@ -208,9 +207,9 @@ test('an unknown mode is REFUSED, not silently stripped of its rules', () => {
     );
   }
   // And the refusal must name the real set, so the message is actionable rather than merely loud.
-  assert.throws(() => systemPrompt({ ...BASE, mode: 'stone' }), /plan \/ agent/);
-  // Non-vacuity: the two live modes still build.
-  for (const mode of ['plan', 'agent']) {
+  assert.throws(() => systemPrompt({ ...BASE, mode: 'stone' }), /the product has agent$/);
+  // Non-vacuity: the one behaviour (V3 G01) still builds.
+  for (const mode of ['agent']) {
     assert.ok(systemPrompt({ ...BASE, mode }).length > 500, `${mode} must still compose`);
   }
 });
@@ -304,8 +303,6 @@ test('the base prompt names all three knowledge libraries, in every mode and bot
   const variants = [
     ['agent, paired', systemPrompt(BASE)],
     ['agent, unpaired', systemPrompt({ ...BASE, studioConnected: false })],
-    ['plan, paired', systemPrompt({ ...BASE, mode: 'plan' })],
-    ['plan, unpaired', systemPrompt({ ...BASE, mode: 'plan', studioConnected: false })],
   ];
   const registered = new Set(T.toolNames());
   for (const tool of ['get_verified_module', 'get_ui_construction', 'install_module']) {
@@ -336,7 +333,7 @@ test('the base prompt names all three knowledge libraries, in every mode and bot
 //   of that list is a second thing to keep in step with the composer.
 test('EVERY COMPOSED VARIANT CARRIES THE FOUR MEASURED ROBLOX RULES', () => {
   const prompts = everyPrompt();
-  assert.ok(prompts.length >= 7, 'the variant list shrank; a branch may now be untested');
+  assert.ok(prompts.length >= 6, 'the variant list shrank; a branch may now be untested');
   const rules = [
     ['text filtering', 'TextService:FilterStringAsync'],
     ['bounded DataStore retry', 'pcall is the floor, not the plan'],

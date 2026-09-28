@@ -30,8 +30,11 @@ export const HEADERS = Object.freeze({
   pluginProtocol: 'X-Golem-Plugin-Protocol',
 });
 
-/** Modes the agent protocol accepts. Mirrors `ProductMode` in @golem/shared. */
-export const MODES = Object.freeze(['plan', 'agent']);
+/**
+ * Mirrors `ProductMode` in @golem/shared. There is one kind of request (V3 G01); `agent` is only
+ * the wire value a chat frame still carries, and the server normalizes any legacy value to it.
+ */
+export const MODES = Object.freeze(['agent']);
 
 /**
  * Client message types the session socket accepts. Mirrors `ClientMsg` in @golem/shared.

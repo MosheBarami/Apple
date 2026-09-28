@@ -19,7 +19,7 @@
 // task) that consumes the whole output budget before it writes a word. `high` reasons briefly and
 // decisively — 161 characters — and costs 2.8% more than `low` while returning a better answer.
 // So escalating to `high` is nearly free, and `medium` is a trap.
-import { PRODUCT_MODE_INFO, CONVERSATIONAL_RE, META_QUESTION_RE } from '@golem/shared';
+import { CONVERSATIONAL_RE, META_QUESTION_RE } from '@golem/shared';
 import type { ProductMode } from '@golem/shared';
 
 /** `medium` exists in the provider's API but is never selected — see the table above. */
@@ -171,22 +171,12 @@ export function classifyRequest(
 }
 
 /**
- * Baseline effort per mode, before escalation.
- *   Plan  — inspection, architecture reasoning and proposals, with no mutating tools. Low is
- *           the BASELINE, not the ceiling: a planning request that needs real judgement —
- *           architecture, layout, an under-specified ask — escalates to `high` through the signals
- *           below, and those signals fire on exactly the language such requests use. What the
- *           baseline actually governs is the rest: "what does this script do", "where is X
- *           defined". On lookups `high` has nothing to think about and buys nothing.
- *           Note the older rationale here — that low keeps Plan feeling instant — does not survive
- *           the table above: on the trivial probe `high` was FASTER (1.3s against 17.6s). Latency
- *           is not the argument; having nothing to deliberate about is.
- *           `irreversibleChange` never fires in this mode, because the mode cannot make one.
- *   Agent — the builder. High: this is where design judgement happens, and on the design
- *           probe `high` cost 40.8 neurons against `low`'s 39.7 for a better answer. That is the
- *           whole argument — good judgement here is essentially free.
+ * Baseline effort, before escalation. There is one behaviour (V3 G01), the builder: high, because
+ * this is where design judgement happens, and on the design probe `high` cost 40.8 neurons against
+ * `low`'s 39.7 for a better answer. That is the whole argument — good judgement here is essentially
+ * free.
  */
-const BASELINE: Record<ProductMode, Effort> = { plan: 'low', agent: 'high' };
+const BASELINE: Record<ProductMode, Effort> = { agent: 'high' };
 
 export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   // Talk costs `low`, in every mode, with no escalation path. A greeting has nothing to deliberate
@@ -213,8 +203,7 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   }
 
   let effort = BASELINE[s.mode];
-  const spoken = PRODUCT_MODE_INFO[s.mode].name;
-  const reasons: string[] = [`${spoken} baseline`];
+  const reasons: string[] = ['baseline'];
 
   const raise = (to: Effort, why: string) => {
     if (RANK[to] > RANK[effort]) {

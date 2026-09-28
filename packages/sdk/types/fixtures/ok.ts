@@ -11,7 +11,7 @@ import {
   type Memory,
   type Run,
 } from '../index';
-import type { ProductMode, MessageDto } from '@golem/shared';
+import type { MessageDto } from '@golem/shared';
 
 const client = new AppleClient({ baseUrl: 'https://api.test', token: 'jwt' });
 
@@ -33,9 +33,8 @@ export async function main(projectId: string): Promise<string> {
   const poll = await studio.poll({ results: [], events: [] });
   const wait: number = pollWaitMs(poll);
 
-  const mode: ProductMode = 'agent';
   const stream = new SessionStream({ baseUrl: 'https://api.test', projectId, token: 'jwt' }).connect();
-  stream.sendChat('build a door', mode, true);
+  stream.sendChat('build a door');
   const run: Run = applyServerMsg(emptyRun(), { type: 'delta', msgId: 'm1', text: 'hi' });
   stream.close();
 

@@ -117,17 +117,14 @@ test('DENYING A GOVERNED TOOL ACTUALLY REMOVES IT FROM THE RUN', () => {
   }
 });
 
-test('Autonomous Agent bypasses user tool-preference narrowing for that run only', () => {
+test('a denial is respected on every run: there is no Autonomous bypass any more (V3 UI13)', () => {
   const base = R.toolsForMode('agent', true, T.toolNames());
   const denied = { run_luau: 'deny', delete_instances: 'deny' };
   const normal = P.applyToolPermissions(base, denied);
-  assert.equal(normal.has('run_luau'), false, 'normal Agent must still honour the stored preference');
-  assert.equal(base.has('run_luau'), true, 'the full Agent toolset must contain run_luau');
-  assert.match(
-    SESSION,
-    /agent\.mode === 'agent' && agent\.autonomous\s*\?\s*base\s*:\s*applyToolPermissions\(base, agent\.toolPermissions\)/,
-    'SessionDO is not using the full Agent toolset when the per-message Autonomous flag is on',
-  );
+  assert.equal(normal.has('run_luau'), false, 'the stored preference must be honoured');
+  assert.equal(base.has('run_luau'), true, 'the full toolset must contain run_luau, or this measures nothing');
+  assert.match(SESSION, /const userAllowed = applyToolPermissions\(base, agent\.toolPermissions\);/);
+  assert.doesNotMatch(SESSION, /agent\.autonomous\b/, 'no run-level flag may skip the stored denials');
 });
 
 test('and denying one leaves the read-only tools alone', () => {

@@ -228,9 +228,9 @@ const calls = (...list) => answer({
 const REFUSED = { __refuse: true };
 const TRANSIENT = { __transient: true };
 
-async function start(h, { text = 'build me a spawn platform', mode = 'agent', autonomous } = {}) {
+async function start(h, { text = 'build me a spawn platform', mode = 'agent' } = {}) {
   const res = await h.session.fetch(new Request('https://do/agent-run', {
-    method: 'POST', body: JSON.stringify({ text, mode, productModel: 'apple', ...(autonomous ? { autonomous: true } : {}) }),
+    method: 'POST', body: JSON.stringify({ text, mode, productModel: 'apple' }),
   }));
   assert.equal(res.status, 200, await res.text());
 }
@@ -440,9 +440,9 @@ test('CONSECUTIVE propose_plan REFUSALS NEVER EXCEED TWO IN A REAL RUN — ident
 
 /** The snake_case words in the part of the prompt that tells the model which tools to CALL. */
 function modeBlockTools(system) {
-  const from = system.indexOf('Mode: ');
-  assert.ok(from >= 0, 'the prompt has no mode block');
-  const ends = ['\n\nAutonomous is ON', '<<<ART_DIRECTION>>>', '<<<UI_GRAMMAR>>>', '\n\nProject: "']
+  const from = system.indexOf('You are the builder.');
+  assert.ok(from >= 0, 'the prompt has no builder rules block');
+  const ends = ['\n\nThe user asked for this whole request', '<<<ART_DIRECTION>>>', '<<<UI_GRAMMAR>>>', '\n\nProject: "']
     .map((m) => system.indexOf(m, from)).filter((i) => i > from);
   const block = system.slice(from, Math.min(...ends));
   return [...new Set([...block.matchAll(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g)].map((m) => m[0]))];
@@ -910,12 +910,12 @@ const builtTree = (op) => (op.op === 'get_tree'
 const steersSent = (h) => [...new Set(h.chatCalls.flatMap((c) => c.req.messages ?? [])
   .filter((m) => m.role === 'user' && /not finished/i.test(String(m.content))).map((m) => String(m.content)))];
 
-for (const autonomous of [false, true]) {
-  test(`F-064: a run whose request lists parts it has not built is steered to the next one, not ended after its check (Autonomous ${autonomous ? 'on, continues spent' : 'off'})`, async () => {
+for (const spent of [false, true]) {
+  test(`F-064: a run whose request lists parts it has not built is steered to the next one, not ended after its check (finish continues ${spent ? 'spent' : 'available'})`, async () => {
     const h = await makeSession({ connected: true, answerOp: builtTree, responses: listedRun() });
     try {
-      await start(h, { text: LISTED, autonomous });
-      if (autonomous) h.store.set('agent', structuredClone({ ...h.store.get('agent'), autonomousContinues: 99 }));
+      await start(h, { text: LISTED });
+      if (spent) h.store.set('agent', structuredClone({ ...h.store.get('agent'), autonomousContinues: 99 }));
       for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
       assert.ok(lastEnd(h), 'the run never ended');
       assert.ok(h.chatCalls.length >= 11, `the fixture never reached the idle bound (${h.chatCalls.length} model calls)`);
@@ -939,6 +939,9 @@ test('F-064 control: a run whose listed parts are all built still ends on the id
   const h = await makeSession({ connected: true, answerOp: builtTree, responses: built });
   try {
     await start(h, { text: LISTED });
+    // Every run now carries the bounded finish continues (V3 G01 folded Autonomous in), so the
+    // idle-bound end is the one reached once they are spent.
+    h.store.set('agent', structuredClone({ ...h.store.get('agent'), autonomousContinues: 99 }));
     for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
     assert.match(streamed(h), /only re-reading the place/);
     assert.equal(steersSent(h).length, 0);
@@ -1062,7 +1065,7 @@ const SEQUENCE_REQUEST = 'Repair the garden script only. Exactly read_script the
 test('AN EXPLICIT COMPLETED TOOL SEQUENCE DOES NOT BUY ANOTHER MODEL CALL OR AUTO-INSPECTION', async () => {
   const h = await makeSession({ connected: true });
   try {
-    await start(h, { text: SEQUENCE_REQUEST, autonomous: true });
+    await start(h, { text: SEQUENCE_REQUEST });
     const agent = h.store.get('agent');
     agent.trace = [{ tool: 'read_script', ok: true }, { tool: 'edit_script', ok: true }];
     agent.mutated = true;
@@ -1079,7 +1082,7 @@ test('AN EXPLICIT COMPLETED TOOL SEQUENCE DOES NOT BUY ANOTHER MODEL CALL OR AUT
 test('AN OUT-OF-SEQUENCE CALL IS STOPPED BEFORE STUDIO', async () => {
   const h = await makeSession({ connected: true, responses: [calls(['get_instance', { path: 'game.Workspace' }])] });
   try {
-    await start(h, { text: SEQUENCE_REQUEST, autonomous: true });
+    await start(h, { text: SEQUENCE_REQUEST });
     await h.session.alarm();
     assert.deepEqual(h.chatCalls[0].req.tools.map((t) => t.name), ['read_script']);
     assert.deepEqual(h.ops.filter((op) => op.op !== 'snapshot'), [], 'only the automatic rollback checkpoint may reach Studio');
@@ -1091,7 +1094,7 @@ test('AN OUT-OF-SEQUENCE CALL IS STOPPED BEFORE STUDIO', async () => {
 test('A FAILED REQUESTED TOOL ENDS WITHOUT RETRY OR WHOLE-GAME STEERS', async () => {
   const h = await makeSession({ connected: true, responses: [calls(['read_script', { path: 'game.ServerScriptService.Missing' }])] });
   try {
-    await start(h, { text: SEQUENCE_REQUEST, autonomous: true });
+    await start(h, { text: SEQUENCE_REQUEST });
     await h.session.alarm();
     assert.equal(h.chatCalls.length, 1);
     assert.equal(lastEnd(h)?.stopReason, 'incomplete');
@@ -1105,7 +1108,7 @@ test('A FAILED REQUESTED TOOL ENDS WITHOUT RETRY OR WHOLE-GAME STEERS', async ()
 test('EXPLICIT WORKFLOW PROMPT NAMES ONLY ITS AVAILABLE NEXT ACTION', async () => {
   const h = await makeSession({ connected: true, responses: [answer({ text: 'Both changes are in and verified.' })] });
   try {
-    await start(h, { text: SEQUENCE_REQUEST, autonomous: true });
+    await start(h, { text: SEQUENCE_REQUEST });
     await h.session.alarm();
     const req = h.chatCalls[0].req;
     const systems = req.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');
@@ -1121,7 +1124,7 @@ test('EXPLICIT WORKFLOW PROMPT NAMES ONLY ITS AVAILABLE NEXT ACTION', async () =
 test('RESUMED WORKFLOW PROMPT ADVANCES TO EDIT WITHOUT REPLAYING READ', async () => {
   const h = await makeSession({ connected: true, responses: [answer({ text: 'Cannot complete the edit.' })] });
   try {
-    await start(h, { text: SEQUENCE_REQUEST, autonomous: true });
+    await start(h, { text: SEQUENCE_REQUEST });
     const agent = h.store.get('agent');
     agent.trace = [{ tool: 'read_script', ok: true }];
     agent.step = 1;

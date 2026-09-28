@@ -3,7 +3,6 @@ export interface PendingAssetChoice {
   request: string;
   mode: 'plan' | 'agent';
   productModel?: string;
-  autonomous: boolean;
   options: { id: string; assetId: number; name: string }[];
   /** Choices rejected earlier in this same visual search, across multiple previews. */
   rejectedAssetIds?: number[];

@@ -44,22 +44,6 @@ test('THE PLUGIN VERSION THE DOCS NAME IS THE ONE THE PLUGIN PRINTS', () => {
   }
 });
 
-test('THE MODES GUIDE NAMES THE ProductMode CONTRACT DIRECTLY', () => {
-  const shared = readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
-  const type = /export type ProductMode\s*=\s*([^;]+);/.exec(shared);
-  assert.ok(type, 'ProductMode moved — re-aim this test');
-  const productModes = [...type[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
-  assert.deepEqual(productModes, ['plan', 'agent']);
-
-  const modes = text('modes.astro');
-  for (const mode of productModes) {
-    const display = mode[0].toUpperCase() + mode.slice(1);
-    assert.match(modes, new RegExp(`\\b${display}\\b`), `modes.astro does not name ${display}`);
-  }
-  assert.match(modes, /Autonomous is a toggle on Agent, not another mode/i,
-    'modes.astro no longer explains that Autonomous is an Agent option');
-});
-
 test('NO PAGE INVENTS A PLAN, and the three that exist are the three that are named', () => {
   const shared = readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
   // The declared plan ids. Two earlier versions of this parse were wrong and the assertion below

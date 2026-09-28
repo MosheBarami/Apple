@@ -20,11 +20,7 @@ const rule = (src, selector) => {
   return src.slice(at, src.indexOf('}', at));
 };
 
-test('the comparison table on the usage page ticks in the product accent, not the vendor green', () => {
-  // The vendored ComparisonTable is byte-pinned (aicss-vendor.test.mjs), so the page overrides its
-  // custom property rather than editing it.
-  assert.match(rule(css('routes', 'usage.css'), '.usage-page'), /--tbl-yes:\s*var\(--accent\)/);
-});
+// The usage page's Plan/Agent comparison table (the first case here) left with the modes, V3 G01.
 
 test('the "Studio connected" tick is the accent — it sits beside a blue primary button', () => {
   const icon = rule(css('components', 'pairing-dialog.css'), '.pairing-success-icon');

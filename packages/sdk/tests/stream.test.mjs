@@ -103,44 +103,25 @@ test('a session with no token refuses to open rather than connecting unauthentic
 
 test('a message sent before the socket is open is reported false, not thrown away silently', () => {
   const { stream, sockets } = connected();
-  assert.equal(stream.sendChat('build a door', 'agent'), false, 'not open yet');
+  assert.equal(stream.sendChat('build a door'), false, 'not open yet');
   sockets[0].open();
-  assert.equal(stream.sendChat('build a door', 'agent'), true);
+  assert.equal(stream.sendChat('build a door'), true);
   assert.deepEqual(sockets[0].sent, [{ type: 'chat', text: 'build a door', mode: 'agent' }]);
 });
 
-test('Autonomous is an Agent capability on the wire, not a third mode', () => {
+test('a legacy mode or Autonomous argument is ignored, never refused, and never sent (V3 G01)', () => {
   const { stream, sockets } = connected();
   sockets[0].open();
-  assert.equal(stream.sendChat('build the whole feature', 'agent', true), true);
-  assert.deepEqual(sockets[0].sent.at(-1), {
-    type: 'chat',
-    text: 'build the whole feature',
-    mode: 'agent',
-    autonomous: true,
-  });
-  assert.throws(
-    () => validateClientMsg({ type: 'chat', text: 'just inspect', mode: 'plan', autonomous: true }),
-    /only valid in agent mode/,
-  );
-  assert.throws(
-    () => validateClientMsg({ type: 'chat', text: 'x', mode: 'agent', autonomous: 'yes' }),
-    /must be a boolean/,
-  );
-});
-
-test('an unknown mode is refused at the client, not sent for the server to reject', () => {
-  const { stream, sockets } = connected();
-  sockets[0].open();
-  // A TypeScript union is a compile-time promise. This value routinely arrives from a CLI
-  // flag or a Python caller, neither of which the compiler ever sees.
-  // `undefined` is absent from this list on purpose: it selects the parameter default,
-  // which is a real mode. `null` does not, and must be refused like any other wrong value.
-  for (const bad of ['banana', 'SUPER', '', null, 1]) {
-    assert.throws(() => stream.sendChat('x', bad), TypeError, `${String(bad)} was accepted`);
+  for (const legacy of ['plan', 'agent', 'banana', null]) {
+    assert.equal(stream.sendChat('build the whole feature', legacy, true), true);
+    assert.deepEqual(sockets[0].sent.at(-1), { type: 'chat', text: 'build the whole feature', mode: 'agent' });
   }
-  assert.throws(() => stream.sendChat('   ', 'plan'), TypeError, 'an empty prompt is not a turn');
-  assert.equal(sockets[0].sent.length, 0);
+  assert.equal(stream.editAndResend('m1', 'try again', 'plan', true), true);
+  assert.deepEqual(sockets[0].sent.at(-1), { type: 'edit_resend', messageId: 'm1', text: 'try again', mode: 'agent' });
+  // A hand-built legacy frame still validates: the server normalizes it to the one behaviour.
+  const legacyFrame = { type: 'chat', text: 'just inspect', mode: 'plan', autonomous: true };
+  assert.equal(validateClientMsg(legacyFrame), legacyFrame);
+  assert.throws(() => stream.sendChat('   '), TypeError, 'an empty prompt is not a turn');
 });
 
 test('a presence activity outside the allowlist is refused', () => {
@@ -190,12 +171,12 @@ test('deltas accumulate into the assistant turn, and a foreign delta is counted 
   assert.equal(run.orphanDeltas, 1);
 });
 
-test('msg_start preserves the run autonomy flag', () => {
+test('msg_start from an older server with a legacy mode or autonomy flag reads as the one behaviour', () => {
   const run = applyServerMsg(emptyRun(), {
-    type: 'msg_start', msgId: 'm-auto', role: 'assistant', mode: 'agent', autonomous: true,
+    type: 'msg_start', msgId: 'm-auto', role: 'assistant', mode: 'plan', autonomous: true,
   });
   assert.equal(run.mode, 'agent');
-  assert.equal(run.autonomous, true);
+  assert.equal('autonomous' in run, false);
 });
 
 test('tool_end lands on the tool it names, and an unknown toolId changes nothing', () => {

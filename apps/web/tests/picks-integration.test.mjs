@@ -6,10 +6,8 @@ import { readFileSync } from 'node:fs';
 const WS = readFileSync(new URL('../src/routes/workspace.tsx', import.meta.url), 'utf8');
 const LAYOUT = readFileSync(new URL('../src/components/layout.tsx', import.meta.url), 'utf8');
 
-test('the plan card can be built: the latest plan, while idle, sent in Agent mode through send()', () => {
-  assert.match(WS, /onBuildPlan=\{item\.id === lastAssistantId && item\.mode === 'plan' && !running/);
-  assert.match(WS, /\? \(\) => \{ setMode\('agent'\); setBuildQueued\(true\); \}/);
-  assert.match(WS, /if \(!buildQueued \|\| mode !== 'agent'\) return;\s*setBuildQueued\(false\);\s*send\('Build this plan\.'\);/, 'the build is sent only once Agent is the mode in state');
+test('there is no Plan card to build: no mode switch-over, no "Build this plan" (V3 G01)', () => {
+  assert.doesNotMatch(WS, /onBuildPlan|setMode|buildQueued|Build this plan/);
 });
 
 test('the account menu opens on the picked user-button header', () => {

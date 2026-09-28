@@ -5296,9 +5296,6 @@ app.get('/v1/projects/:id/messages', async (c) => {
   return c.json({ object: 'list', data: out.messages ?? [] });
 });
 
-/** Public run modes. Plan and Agent are the complete run-mode vocabulary. */
-const PUBLIC_RUN_MODES: Record<string, 'plan' | 'agent'> = { plan: 'plan', agent: 'agent' };
-
 /** The additive `productModel` field on API runs. Any value, retired ids included, is Apple. */
 function asProductModel(value: unknown): ProductModel | undefined {
   if (value === undefined || value === null) return undefined;
@@ -5315,7 +5312,8 @@ app.post('/v1/projects/:id/runs', async (c) => {
   // sent — re-serialising a parsed object would make two byte-different requests with the same
   // meaning share a key, which is the opposite of the guarantee.
   const bodyText = await c.req.text();
-  type RunBody = { input?: unknown; mode?: unknown; productModel?: unknown; autonomous?: unknown };
+  // A legacy `mode` or `autonomous` is ignored, never refused: every run is the one behaviour (V3 G01).
+  type RunBody = { input?: unknown; productModel?: unknown };
   let body: RunBody | null;
   try {
     body = JSON.parse(bodyText || 'null') as RunBody | null;
@@ -5325,17 +5323,6 @@ app.post('/v1/projects/:id/runs', async (c) => {
   const input = typeof body?.input === 'string' ? body.input.trim() : '';
   if (!input) return c.json(errorBody(400, 'invalid_request_error', "'input' is required.", requestId, 'input'), 400);
 
-  const wanted = body?.mode === undefined || body?.mode === null ? 'agent' : body.mode;
-  // `Object.hasOwn`, not a bare index: `PUBLIC_RUN_MODES['constructor']` is truthy through the
-  // prototype chain and would send `undefined` to the session as a mode.
-  if (typeof wanted !== 'string' || !Object.hasOwn(PUBLIC_RUN_MODES, wanted)) {
-    return c.json(
-      errorBody(400, 'invalid_request_error', `'mode' must be one of ${Object.keys(PUBLIC_RUN_MODES).join(', ')}.`, requestId, 'mode'),
-      400,
-    );
-  }
-  const mode = PUBLIC_RUN_MODES[wanted]!;
-  const autonomous = mode === 'agent' && body?.autonomous === true;
   const productModel = asProductModel(body?.productModel);
 
   //[[ THE HEADER THE ROUTE TABLE ALREADY PROMISED.
@@ -5410,8 +5397,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
       status: 'simulated',
       sandbox: true,
       project: id,
-      mode: wanted,
-      autonomous,
+      mode: 'agent',
       ...(productModel ? { productModel } : {}),
       note: 'Test-mode key: no run was started and nothing in the place was touched.',
     };
@@ -5421,7 +5407,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
 
   const res = await stub.fetch('https://do/agent-run', traced(c, {
     method: 'POST',
-    body: JSON.stringify({ text: input.slice(0, 8000), mode, autonomous, ...(productModel ? { productModel } : {}) }),
+    body: JSON.stringify({ text: input.slice(0, 8000), ...(productModel ? { productModel } : {}) }),
   }));
   const out = (await res.json()) as { ok?: boolean; error?: string; code?: string };
   if (!res.ok || out.ok === false) {
@@ -5429,7 +5415,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
     return c.json(errorBody(status, 'run_not_started', out.error ?? 'The run could not be started.', requestId), status as 409);
   }
   void count(c.env, 'api_run_started');
-  const started = { id: `run_${id}`, object: 'run', status: 'running', project: id, mode: wanted, autonomous, ...(productModel ? { productModel } : {}) };
+  const started = { id: `run_${id}`, object: 'run', status: 'running', project: id, mode: 'agent', ...(productModel ? { productModel } : {}) };
   await remember(started);
   return c.json(started, 202);
 });

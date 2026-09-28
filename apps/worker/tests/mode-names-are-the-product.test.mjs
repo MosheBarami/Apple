@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { MODE_INFO } from '@golem/shared';
 import { systemPrompt } from '../src/prompts.ts';
+
+// V3 G01 / Q25: there are no Plan, Agent or Autonomous modes. One behaviour answers every request,
+// and `agent` survives only as the wire value of that behaviour.
 
 const base = {
   studioConnected: true,
@@ -11,22 +15,29 @@ const base = {
   fenceId: 'f1xtur3a',
 };
 
-const PRODUCT_NAME = { plan: 'Plan', agent: 'Agent' };
+test('shared carries one request kind and no mode vocabulary', async () => {
+  const shared = await import('@golem/shared');
+  assert.deepEqual(Object.keys(MODE_INFO), ['agent']);
+  assert.equal('PRODUCT_MODES' in shared, false);
+  assert.equal('PRODUCT_MODE_INFO' in shared, false);
+});
 
-test('the system prompt introduces exactly the selected product mode', () => {
-  for (const [mode, product] of Object.entries(PRODUCT_NAME)) {
-    const prompt = systemPrompt({ ...base, mode });
-    const line = /^Mode: .*$/m.exec(prompt);
-    assert.ok(line, `${mode}: the prompt has no Mode line`);
-    assert.ok(line[0].startsWith(`Mode: ${product}`), `${mode}: wrong mode line: ${line[0]}`);
+test('the system prompt names no mode, and every request gets the finish-the-work rules', () => {
+  for (const studioConnected of [true, false]) {
+    const prompt = systemPrompt({ ...base, studioConnected, mode: 'agent' });
+    assert.doesNotMatch(prompt, /^Mode: /m, 'no Mode line');
+    assert.doesNotMatch(prompt, /\b(Plan|Agent|Autonomous) mode\b/, 'no product mode is named');
+    assert.doesNotMatch(prompt, /Autonomous is ON/);
+    assert.match(prompt, /carry the requested work to a\s+finished, verified state/);
   }
 });
 
-test('Autonomous changes Agent instructions without becoming another mode', () => {
-  const normal = systemPrompt({ ...base, mode: 'agent', autonomous: false });
-  const autonomous = systemPrompt({ ...base, mode: 'agent', autonomous: true });
-  const plan = systemPrompt({ ...base, mode: 'plan', autonomous: true });
-  assert.doesNotMatch(normal, /Autonomous is ON/);
-  assert.match(autonomous, /Autonomous is ON/);
-  assert.doesNotMatch(plan, /Autonomous is ON/, 'Plan must ignore the Agent-only autonomy flag');
+test('a legacy autonomous option cannot change the prompt', () => {
+  const plain = systemPrompt({ ...base, mode: 'agent' });
+  assert.equal(systemPrompt({ ...base, mode: 'agent', autonomous: true }), plain);
+  assert.equal(systemPrompt({ ...base, mode: 'agent', autonomous: false }), plain);
+});
+
+test('a mode the prompt does not know is still a programmer error, not a silent default', () => {
+  assert.throws(() => systemPrompt({ ...base, mode: 'plan' }));
 });

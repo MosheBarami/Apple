@@ -64,7 +64,6 @@ const ROUTES = [
   '/docs/getting-started/',
   '/docs/plugin/',
   '/docs/connect/',
-  '/docs/modes/',
   '/docs/credits-and-limits/',
   '/docs/billing/',
   '/docs/updating/',

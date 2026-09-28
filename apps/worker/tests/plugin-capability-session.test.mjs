@@ -286,6 +286,8 @@ test('visual auto-inspection stays off when render_view is explicitly unsupporte
     llm: [{ role: 'system', content: 'system' }, { role: 'user', content: 'Make the lobby beautiful', pinned: true }],
     step: 0, maxSteps: 4, creditsSpent: 1, trace: [], finalText: '', startedAt: now, lastStepAt: now,
     userId: 'u-owner', traits: { conversational: false, visualDesignTask: true }, request: 'Make the lobby beautiful', mutated: true,
+    // Every run carries the bounded finish continues now (V3 G01); spent, so this step reaches its end.
+    autonomousContinues: 99,
   };
 
   await h.session.runStep(agent);

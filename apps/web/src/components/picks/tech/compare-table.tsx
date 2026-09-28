@@ -1,7 +1,7 @@
 // A side-by-side comparison table.
 //
-// Adapted from AICSS `comparison-table` (MIT, https://github.com/kvnkld/aicss, vendored unchanged
-// at components/aicss/comparison-table): the same shape — a quiet header row of column names over
+// Adapted from AICSS `comparison-table` (MIT, https://github.com/kvnkld/aicss, vendored at
+// components/aicss/comparison-table until V3 G01 removed its one user): the same shape — a quiet header row of column names over
 // a raised body of hairline-divided rows, with the label column first. Two changes, both for this
 // product: cells hold short text rather than only a yes/no tick (the vendored module can only say
 // true or false), and the colours are this app's tokens with no green for "yes".

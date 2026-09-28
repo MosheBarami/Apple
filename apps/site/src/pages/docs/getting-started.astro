@@ -1,15 +1,12 @@
 ---
-import { MODE_INFO, PLAN_LIMITS, PRODUCT_MODES } from '@golem/shared';
+import { PLAN_LIMITS } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import Folder from '../../components/picks-docs/Folder.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
-// Mode names and the free allowance are read from the shared product contract so this guide cannot
-// outlive a mode or quota change independently.
-const modeNames = new Intl.ListFormat('en', { type: 'disjunction' }).format(
-  PRODUCT_MODES.map((m) => MODE_INFO[m].name),
-);
+// The free allowance is read from the shared product contract so this guide cannot outlive a quota
+// change independently.
 /*
  * THE BODY WAS GATED AND THE METADATA WAS NOT, WHICH IS THE HALF PEOPLE ACTUALLY SHARE.
  *
@@ -55,7 +52,7 @@ const free = PLAN_LIMITS.free;
     label="What a project keeps"
     items={[
       { name: 'Chat', text: 'everything you and Apple have said about this place.' },
-      { name: 'Checkpoints', text: 'saved copies of your place from before each Agent run.' },
+      { name: 'Checkpoints', text: 'saved copies of your place from before each run.' },
       { name: 'Memory', text: 'what you have built together, so Apple remembers next time.' },
     ]}
   />
@@ -85,12 +82,9 @@ const free = PLAN_LIMITS.free;
     you allow them for that connection — see <a href="/docs/connect">Connect a project</a>.
   </p>
 
-  <h2>5. Choose a mode and ask for your first build</h2>
+  <h2>5. Ask for your first build</h2>
   <p>
-    Choose <strong>Plan</strong> when you want Apple to inspect and design the work without changing
-    the place, or <strong>Agent</strong> when you want it to build. Agent also has an optional
-    <strong>Autonomous</strong> toggle when you want it to keep taking its own next step until the
-    task is finished or a real stop condition is reached. Then describe what you want:
+    Describe what you want. Apple shows a short plan and then builds it:
   </p>
   <ul>
     <li>“make a lobby with a spinning obby door”</li>
@@ -120,7 +114,6 @@ const free = PLAN_LIMITS.free;
 
   <h2>Where next</h2>
   <ul>
-    <li><a href="/docs/modes">Modes</a> — when to use {modeNames}, and what Autonomous changes.</li>
     <li><a href="/docs/credits-and-limits">Credits &amp; limits</a> — how far {free.creditsPerDay} Credits goes.</li>
     <li><a href="/docs/updating">Updating the plugin</a> — Roblox will not do it for you.</li>
     <li><a href="/docs/troubleshooting">Troubleshooting</a> — when the panel says something you didn't expect.</li>

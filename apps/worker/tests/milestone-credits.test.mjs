@@ -76,10 +76,10 @@ test('CONTROL: the chain is live and the catalogue really does vary `runs`', () 
   assert.match(src, /runs: 2,/, 'every milestone is one run, so multiplying by runs proves nothing');
 });
 
-test('a mode with a single published figure yields a range of one number', () => {
-  // Plan is published as "2", not "2-2". Fabricating a spread would be as dishonest as
-  // collapsing one.
-  assert.deepEqual(S.creditRangeForRuns('plan', 1), { low: 2, high: 2 });
+test('the retired Plan mode has no published figure, so it gets none rather than a borrowed one', () => {
+  // Plan was published as "2" until V3 G01 removed the mode. The single-figure branch of the
+  // helper is unreachable through MODE_INFO now; a stale caller must get no figure, not Agent's.
+  assert.equal(S.creditRangeForRuns('plan', 1), null);
 });
 
 test('a mode with a published spread keeps both ends', () => {

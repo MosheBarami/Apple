@@ -706,11 +706,16 @@ export interface PluginPollResponse {
 // Agent + chat protocol (web <-> DO over WebSocket)
 // ---------------------------------------------------------------------------
 
-/** The only run modes on the wire. Autonomy is a per-message Agent option, not a third mode. */
-export type ProductMode = 'plan' | 'agent';
+/**
+ * There are no customer modes (V3 gate G01: no Plan/Agent/Autonomous selector): every request runs
+ * the one Apple behaviour. `mode: 'agent'` stays on the wire only as a compatibility bridge for
+ * clients and workers that still send or require it; the server ignores the value it receives
+ * (legacy `plan`, `autonomous` included) and stored `plan` rows are read back as `agent`.
+ */
+export type ProductMode = 'agent';
 
 /**
- * The engine a request ran on, deliberately separate from `ProductMode` (Plan or Agent behaviour).
+ * The engine a request ran on, deliberately separate from `ProductMode` (the legacy wire field).
  * There is one, Apple (./models.ts, V3 gate G01); the name is kept because `productModel` is a wire
  * field. Values from older clients and stored rows are normalized
  * to Apple by `normalizeModelId`, never refused.
@@ -770,7 +775,7 @@ export interface ChatAttachment {
 }
 
 export type ClientMsg =
-  | { type: 'chat'; text: string; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel; attachments?: ChatAttachment[] }
+  | { type: 'chat'; text: string; mode: ProductMode; productModel?: ProductModel; attachments?: ChatAttachment[] }
   /**
    * Correct an earlier prompt and run again from there.
    *
@@ -782,7 +787,7 @@ export type ClientMsg =
    * work is not. Checkpoints are the tool for that, and the two are deliberately separate — a
    * wording fix should not silently revert a working door.
    */
-  | { type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel }
+  | { type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; productModel?: ProductModel }
   | { type: 'stop' } // interrupt agent
   | { type: 'resume' }
   /**
@@ -1092,8 +1097,6 @@ export interface RunIntent {
 export interface RunSnapshot {
   msgId: string;
   mode: ProductMode;
-  /** True only for an Agent request whose per-message Autonomous toggle was enabled. */
-  autonomous?: boolean;
   /** The selected model, when the run came from a model-aware client. */
   productModel?: ProductModel;
   phase: AgentPhase;
@@ -1307,7 +1310,7 @@ export type ServerMsg =
   //   run, after the user row is inserted, and already carries the run's other id. OPTIONAL
   //   because the worker and the web app deploy separately: a client that required it would be
   //   describing a worker that may not be live yet. See web/src/lib/message-identity.ts. ]]
-  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: ProductMode; autonomous?: boolean; productModel?: ProductModel; userMsgId?: string }
+  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: ProductMode; productModel?: ProductModel; userMsgId?: string }
   | { type: 'delta'; msgId: string; text: string }
   //[[ `target` is WHICH THING this step is about — the script path, the instance paths, the URL —
   //   read from the call's arguments BEFORE it runs. `summary` at this point is only the tool's
@@ -1589,8 +1592,6 @@ export interface MessageDto {
   id: string;
   role: 'user' | 'assistant' | 'system';
   mode: ProductMode | null;
-  /** Whether this Agent turn ran with the Autonomous capability policy. */
-  autonomous?: boolean;
   /** The selected model, when this message was created by a model-aware client. */
   productModel?: ProductModel;
   content: string;
@@ -1768,12 +1769,6 @@ export const MODE_INFO: Record<
   ProductMode,
   { name: string; blurb: string; typicalCredits: string; entryUnit: string }
 > = {
-  plan: {
-    name: 'Plan',
-    blurb: 'Inspects the project and designs the work without changing it',
-    typicalCredits: '2',
-    entryUnit: 'one question, with Studio attached',
-  },
   agent: {
     name: 'Agent',
     blurb: 'Builds features across your project',
@@ -1815,35 +1810,6 @@ export function creditRangeForRuns(mode: ProductMode, runs: number): { low: numb
   if (high < low) return null;
   return { low: low * runs, high: high * runs };
 }
-
-// ---------------------------------------------------------------------------
-// Product modes — the only mode concept the product uses. Autonomous is an Agent run flag.
-// ---------------------------------------------------------------------------
-export const PRODUCT_MODES: readonly ProductMode[] = ['plan', 'agent'];
-
-/**
- * User-facing copy and cost for each product mode.
- *
- * The Credit figure is NOT restated here — it is read directly from MODE_INFO, so the
- * product-mode number cannot drift. It is `typicalCredits`, a range measured in
- * docs/COST-MODEL.md, not a price the client enforces. The worker takes one credit upfront
- * whatever the mode and settles the rest from the neurons actually used.
- */
-export const PRODUCT_MODE_INFO: Record<
-  ProductMode,
-  { name: string; blurb: string; typicalCredits: string }
-> = {
-  plan: {
-    name: 'Plan',
-    blurb: 'Inspects your project and designs the work. Proposes; does not change anything.',
-    typicalCredits: MODE_INFO.plan.typicalCredits,
-  },
-  agent: {
-    name: 'Agent',
-    blurb: 'Builds, tests and repairs. The normal way to work.',
-    typicalCredits: MODE_INFO.agent.typicalCredits,
-  },
-};
 
 export const PROTOCOL_VERSION = 1;
 
@@ -2448,18 +2414,6 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
     label: 'Quality-gated builds a month',
     note: 'The same allowance in the unit people think in.',
     values: everyPlan((p) => `About ${buildsPerMonth(p)}`),
-  },
-  {
-    /*
-     * COUNTED AND NAMED FROM PRODUCT_MODES, not typed here.
-     *
-     * This sentence is derived from PRODUCT_MODES so the pricing page and runtime cannot
-     * drift to different mode counts.
-     */
-    id: 'modes',
-    label: `All ${PRODUCT_MODES.length === 2 ? 'two' : String(PRODUCT_MODES.length)} build modes`,
-    note: `${PRODUCT_MODES.map((m) => PRODUCT_MODE_INFO[m].name).join(' and ')}. Neither is held back for a paid tier.`,
-    values: everyPlan(() => true),
   },
   { id: 'projects', label: 'Unlimited projects', values: everyPlan(() => true) },
   { id: 'checkpoints', label: 'Checkpoints and rollback', values: everyPlan(() => true) },

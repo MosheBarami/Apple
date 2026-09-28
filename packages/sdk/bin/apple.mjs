@@ -14,7 +14,7 @@ import { AppleClient } from '../src/client.mjs';
 import { SessionStream } from '../src/stream.mjs';
 import { ApiError } from '../src/errors.mjs';
 import { UsageError, helpText, parseArgs } from '../src/cli-args.mjs';
-import { DEFAULT_BASE_URL, MODES } from '../src/wire.mjs';
+import { DEFAULT_BASE_URL } from '../src/wire.mjs';
 import { SDK_VERSION } from '../src/index.mjs';
 
 const EXIT_OK = 0;
@@ -111,11 +111,6 @@ export async function run(argv, env = process.env) {
         break;
       }
       case 'chat': {
-        const mode = parsed.flags.mode ?? 'agent';
-        if (!MODES.includes(mode)) {
-          process.stderr.write(`--mode must be one of ${MODES.join(', ')}\n`);
-          return EXIT_USAGE;
-        }
         if (!token) {
           process.stderr.write('chat needs an access token (--token, APPLE_TOKEN)\n');
           return EXIT_USAGE;
@@ -126,7 +121,7 @@ export async function run(argv, env = process.env) {
           stream.on('open', resolve);
           stream.on('gave_up', () => reject(new ApiError('could not open the session socket', 0)));
         });
-        stream.sendChat(b, mode, parsed.flags.autonomous === true);
+        stream.sendChat(b);
         const result = await finished;
         stream.close();
         print(parsed.flags.json ? result : result.text, parsed.flags);

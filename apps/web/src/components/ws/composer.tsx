@@ -7,14 +7,14 @@
 // PromptInputButton, PromptInputSubmit and PromptInputActionMenu are the bar. What stays HERE is what
 // this product decides: which key sends (the person's preference), what a file is allowed to be and
 // where it goes (uploaded to the project as it is staged), when a send is refused and that the
-// refusal keeps the draft, the @-mention picker, Plan or Agent and the Autonomous switch.
+// refusal keeps the draft and the @-mention picker. There is no mode switch (V3 G01): every message
+// runs the one Apple behaviour.
 import { useEffect, useReducer, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import {
   ATTACHMENT_ACCEPT,
   MESSAGE_MAX_CHARS,
   MESSAGE_WARN_CHARS,
   type ChatAttachment,
-  type ProductMode,
   type StudioEventSelection,
 } from '@golem/shared';
 import { Icon, PATH } from './primitives';
@@ -72,8 +72,7 @@ import { CREATION_INTENTS, creationMessage, type CreationIntent } from '../../li
 //     the card        Border Glow (the edge that lights toward the pointer), CSSPlugin focus ring
 //                     and hairline wipe, the File Upload + Chat Form Dropzone drop picture
 //     the empty box   Typing Text + Text Type (examples typed as the placeholder)
-//     the bar         Toggle Group + Highlight (Plan | Agent), Toggle + Rotating Gradient
-//                     (Autonomous), Folder Float + Inertia + utils.random (Ideas), Multi Selector
+//     the bar         Folder Float + Inertia + utils.random (Ideas), Multi Selector
 //                     (Files), Create Button (the Create menu), Radix Tooltip (one tip for all)
 //     the tools       Context + Sliding Number (Credits), speech-input + Voice Pill +
 //                     transcription + mic-selector (talk), Magnetic Dock (the swell), and on Send
@@ -82,7 +81,6 @@ import { CREATION_INTENTS, creationMessage, type CreationIntent } from '../../li
 import { usePressFx } from '../picks/composer/press-fx';
 import { useMagneticDock } from '../picks/composer/magnetic-dock';
 import { TipGroup } from '../picks/composer/tip-group';
-import { ModeSwitch } from '../picks/composer/mode-switch';
 import { BorderGlow } from '../picks/composer/border-glow';
 import { TypingPlaceholder } from '../picks/composer/typing-placeholder';
 import { DropHint } from '../picks/composer/drop-hint';
@@ -121,24 +119,6 @@ interface Props {
   running: boolean;
   studioConnected?: boolean;
   disabled?: boolean;
-  /**
-   * PLAN OR AGENT — the choice between looking and building, made by the person sending the
-   * message.
-   *
-   * It was never a missing feature. `PRODUCT_MODE_INFO` has named both since the vocabulary was
-   * written, `workspace.tsx` has held the state and sent it with every message, and the worker
-   * routes it: Plan uses the read-only planning toolset — no `edit_script`, no
-   * `create_instances`, no `run_luau` — and whose system prompt says "the user chose this mode
-   * because they want thinking, not changes". All of that shipped with no control anywhere in the
-   * chat to reach it, so the only people who could choose were the ones filling in an Automation
-   * form. The composer is where a person decides what this message is going to do, so the choice
-   * belongs here.
-   */
-  mode: ProductMode;
-  onModeChange: (mode: ProductMode) => void;
-  /** Agent-only per-message capability grant. Plan never sends autonomous=true. */
-  autonomous: boolean;
-  onAutonomousChange: (enabled: boolean) => void;
   seed?: string;
   /**
    * Bumped by the parent when a message this composer handed over, and was told had NOT left (a
@@ -210,10 +190,6 @@ export function Composer({
   running,
   studioConnected = false,
   disabled,
-  mode,
-  onModeChange,
-  autonomous,
-  onAutonomousChange,
   seed,
   sentLater = 0,
   placeholder,
@@ -724,10 +700,9 @@ export function Composer({
   };
 
   const showCount = text.length >= MESSAGE_WARN_CHARS;
-  const autonomousOn = autonomous && mode === 'agent';
 
   return (
-    <div className={`gx-composer${running ? ' is-running' : ''}${autonomousOn ? ' is-autonomous' : ''}`} ref={panel}>
+    <div className={`gx-composer${running ? ' is-running' : ''}`} ref={panel}>
       <PromptInput
         className={`gx-composer__inner${dropping ? ' is-dropping' : ''}`}
         accept={ATTACHMENT_ACCEPT}
@@ -897,41 +872,6 @@ export function Composer({
 
         <PromptInputFooter className="gx-composer__bar">
           <PromptInputTools className="gx-composer__options">
-            {/*[[ ---------------------------------------- plan or agent ----
-                FIRST IN THE BAR, because it is the only control here that decides whether this
-                message CHANGES the place. It picks whether work happens at all, and a person who
-                wants to be told what is wrong before anything is touched has no other way to ask
-                for that.
-
-                Both entries are always selectable. Neither is gated on a plan, a subscription or a
-                Studio connection — Plan maps to the same free specialist a free account already
-                runs, so an entry that looked choosable and was not would repeat the defect the MAX
-                row once had. ]]*/}
-            {/* Plan | Agent, both on screen, one tap each — components/picks/composer/mode-switch.tsx.
-                It replaced a menu whose closed face showed only the current word. Each side's tip is
-                the shared vocabulary's own sentence about what that mode does. */}
-            <ModeSwitch mode={mode} onModeChange={onModeChange} />
-
-            {/* AUTONOMOUS: A CAPABILITY OF AGENT, NEVER A THIRD MODE. The only violet in the product,
-                and only while it is on. */}
-            <PromptInputButton
-              className={`gx-autonomous${autonomousOn ? ' is-on' : ''}`}
-              size="sm"
-              role="switch"
-              aria-checked={autonomous && mode === 'agent'}
-              disabled={running || mode === 'plan'}
-              // Why it is off goes in the native title (a disabled button gets no pointer events for
-              // the bar's tip to answer); what it does, while it can be pressed, is the bar's tip.
-              title={mode === 'plan' ? 'Autonomous is available in Agent mode' : undefined}
-              data-tip={mode === 'plan' ? undefined : 'Let Apple use all available project tools and continue through up to 1000 steps'}
-              // Animate UI's Toggle: the switch gives under the press; on, its edge turns (composer-fx.css).
-              data-fx="press"
-              onClick={() => onAutonomousChange(!(autonomous && mode === 'agent'))}
-            >
-              <span className="gx-autonomous__switch" aria-hidden="true" />
-              <span className="gx-autonomous__label">Autonomous</span>
-            </PromptInputButton>
-
             {/* THE ASSET BROWSER IS GONE, on the owner's instruction of 2026-09-19, and what it means
                 is a change of who does the looking. The customer describes what the place needs and
                 Apple finds it; they do not shop in a catalogue. The agent's own path to the library

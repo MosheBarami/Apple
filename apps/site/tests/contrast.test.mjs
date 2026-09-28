@@ -94,7 +94,8 @@ const SURFACES = Object.keys(THEMES.dark.raw).filter((n) => /^(paper|surface)(-\
 
 test('the derivations found real tokens, so nothing below is vacuous', () => {
   assert.ok(STYLES.length >= 8, `only ${STYLES.length} style sources read — the walk has drifted`);
-  assert.ok(TEXT.length >= 5, `only ${TEXT.length} text tokens found (${TEXT.join(', ')}) — the use scan is blind`);
+  // 4, not 5: --autonomous-ink left with the landing's Autonomous toggle (V3 gate G01, no mode surface).
+  assert.ok(TEXT.length >= 4, `only ${TEXT.length} text tokens found (${TEXT.join(', ')}) — the use scan is blind`);
   for (const must of ['ink', 'muted', 'faint']) assert.ok(TEXT.includes(must), `--${must} is not spent as text anywhere; re-check the scan`);
   assert.ok(SURFACES.length >= 5, `only ${SURFACES.length} surfaces found (${SURFACES.join(', ')})`);
 });
@@ -114,7 +115,7 @@ for (const [name, t] of Object.entries(THEMES)) {
         if (r < 4.5) bad.push(`--${ink} ${fg} on --${surface} ${bg} is ${r.toFixed(2)}:1`);
       }
     }
-    assert.ok(pairs >= 25, `only ${pairs} pairs measured`);
+    assert.ok(pairs >= 20, `only ${pairs} pairs measured`);
     assert.deepEqual(bad, [], `${name}: text below 4.5:1:\n  ${bad.join('\n  ')}`);
   });
 

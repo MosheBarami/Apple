@@ -16,8 +16,6 @@ import {
   BUILD_NEURONS,
   fullRateDays,
   monthlyCeilingBitesFirst,
-  PRODUCT_MODES,
-  PRODUCT_MODE_INFO,
   PRODUCT_MODEL_INFO,
   MODE_INFO,
   CREDIT_PURCHASE_LIVE as SHARED_CREDIT_PURCHASE_LIVE } from '@golem/shared';
@@ -45,7 +43,7 @@ const serviceCreditsPerDay = Math.floor(DAILY_NEURON_CEILING / NEURONS_PER_CREDI
  *
  * STUDIO_PLUGIN_STORE_LIVE says whether the Creator Store install path works. While it does, the
  * shared plugin row is `true` for every plan and prints once, as a universal bullet (see
- * cardLabel below) — so there is no second Studio line to disagree with it. While it does not,
+ * UNIVERSAL_BULLETS below) — so there is no second Studio line to disagree with it. While it does not,
  * this bullet says so on every card, in the one sentence the rest of the site uses.
  */
 const studioBullet = STUDIO_PLUGIN_STORE_LIVE ? null : 'Roblox Studio plugin · public installation unavailable';
@@ -108,21 +106,16 @@ const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMont
  * made. The void closes because the cards now say what they actually include, not because
  * something was padded.
  */
-/* A universal row's label as a card bullet. The comparison table keeps the shared label; on a card
-   the modes read better by their names (derived, so a third mode could not hide). */
-const cardLabel = (f: (typeof PLAN_FEATURES)[number]) =>
-  f.id === 'modes' ? `${PRODUCT_MODES.map((m) => PRODUCT_MODE_INFO[m].name).join(' and ')} modes` : f.label;
-
 /* THE SUPPORT LINE ON A CARD NAMES THE KIND OF SUPPORT, NOT THE MAILBOX (2026-09-22). Each card used
    to end on "Email <address>", which is a contact detail set as a plan feature. The address is
    printed once, in the support note under the cards, beside what PLAN_SUPPORT promises. */
 const supportBullet = (id: PlanId) =>
   id === 'free' ? 'Email support, read by a person' : 'Email support, answered before Free';
 
-/* Autonomous is a toggle on Agent on every plan, with the same step ceiling; it is one bullet on
-   every card rather than a Free-only line that made the paid cards look as if they lacked it. */
-const autonomousBullet = `Autonomous on ${PRODUCT_MODE_INFO.agent.name} · up to 1000 steps a message`;
-const UNIVERSAL_BULLETS = PLAN_FEATURES.filter((f) => PLAN_IDS.every((id) => f.values[id] === true)).map(cardLabel);
+/* Every run has the same step ceiling on every plan; it is one bullet on every card rather than a
+   Free-only line that made the paid cards look as if they lacked it. */
+const stepsBullet = 'Up to 1000 steps a message';
+const UNIVERSAL_BULLETS = PLAN_FEATURES.filter((f) => PLAN_IDS.every((id) => f.values[id] === true)).map((f) => f.label);
 
 /* ONE ENGINE ON EVERY PLAN (V3 gate G01). Free, Builder, Studio and Enterprise are plans and differ
    only in their allowance; every one of them uses Apple, the only engine there is. */
@@ -174,9 +167,7 @@ const promoted: PlanId = paid.find((id) => canBuy(id)) ?? 'free';
 // which went on offering "Add credits" at the moment a customer's allowance ran out. One fact, one
 // home: packages/shared/src/index.ts.
 const CREDIT_PURCHASE_LIVE = SHARED_CREDIT_PURCHASE_LIVE;
-/* The shared `modes` label reads "All two build modes"; on this page the row names them, the same
-   words the cards use (cardLabel). */
-const planFeatures = PLAN_FEATURES.map((f) => (f.id === 'modes' ? { ...f, label: cardLabel(f) } : f)).map((f) =>
+const planFeatures = PLAN_FEATURES.map((f) =>
   f.id === 'credits' && !CREDIT_PURCHASE_LIVE
     ? {
         ...f,
@@ -238,34 +229,29 @@ const perFreeDay = (cost: string, prefix = ''): string => {
 };
 
 /*
- * THE TABLE READS THE PRODUCT, NOT A LIST TYPED BESIDE IT.
+ * THE TABLE READS THE PRODUCT, NOT A FIGURE TYPED BESIDE IT.
  *
- * ProductMode is the contract. PRODUCT_MODES is exactly Plan and Agent, and MODE_INFO is keyed by
- * that same type. There is no translation layer here and no third pricing row for Autonomous:
- * Autonomous is an Agent continuation toggle, not another mode.
+ * There is one kind of request, so there is one row, read from MODE_INFO.agent in packages/shared.
  */
-const modeRows = PRODUCT_MODES.map((mode) => {
-  const info = MODE_INFO[mode];
-  const credits = info.typicalCredits;
-  // "2" and "4-18" both arrive here; the table quotes the entry price, which is what the row is
-  // comparing. A range's own upper bound is explained by the footnote under the table.
-  const cost = `${String(credits).split('-')[0]} Credits`;
-  return {
-    mode: info.name,
-    cost,
-    does: info.blurb,
-    /*
-     * WHAT THAT PRICE BOUGHT, beside the price.
-     *
-     * The cost column and the per-day column are useless to a buyer without the unit between them,
-     * and leaving it out is how this table came to say "Apple Max builds features across your
-     * project · 4 credits · ~57 a free day" on a page whose plan cards say a build is 77 Credits
-     * and three a free day. The blurb describes the MODE; this describes the REQUEST that was
-     * measured. See MODE_INFO.entryUnit in packages/shared.
-     */
-    unit: info.entryUnit,
-  };
-}).map((r) => ({ ...r, perDay: perFreeDay(r.cost) }));
+const requestInfo = MODE_INFO.agent;
+// "4-18" arrives here; the table quotes the entry price. The range's own upper bound is explained
+// by the footnote under the table.
+const requestCost = `${String(requestInfo.typicalCredits).split('-')[0]} Credits`;
+const requestRow = {
+  cost: requestCost,
+  does: requestInfo.blurb,
+  /*
+   * WHAT THAT PRICE BOUGHT, beside the price.
+   *
+   * The cost column and the per-day column are useless to a buyer without the unit between them,
+   * and leaving it out is how this table came to say "Apple Max builds features across your
+   * project · 4 credits · ~57 a free day" on a page whose plan cards say a build is 77 Credits
+   * and three a free day. The blurb describes the work; this describes the REQUEST that was
+   * measured. See MODE_INFO.entryUnit in packages/shared.
+   */
+  unit: requestInfo.entryUnit,
+  perDay: perFreeDay(requestCost),
+};
 
 const limitFaq = [
   {
@@ -304,7 +290,7 @@ const limitFaq = [
   //   protocol still has nothing to carry it.
   {
     q: 'Can one request cost more than the price in the table?',
-    a: `<p>Yes, and it is metered transparently. The table quotes what a request starts at; an Agent build settles against the compute it actually used, so a long one costs more. You see the running total live in the workspace while it climbs, and if a run reaches the end of your Credits it stops there and says so — everything it finished by then is saved, and the allowance refills at midnight UTC.</p>`,
+    a: `<p>Yes, and it is metered transparently. The table quotes what a request starts at; a build settles against the compute it actually used, so a long one costs more. You see the running total live in the workspace while it climbs, and if a run reaches the end of your Credits it stops there and says so — everything it finished by then is saved, and the allowance refills at midnight UTC.</p>`,
   },
   {
     q: 'What is a Credit, underneath?',
@@ -363,7 +349,7 @@ const limitFaq = [
             <li><strong>{free.creditsPerDay.toLocaleString()} Credits</strong> per day · {free.creditsPerMonth.toLocaleString()} a month</li>
             <li>About {buildsPerMonth('free')} quality-gated builds a month</li>
             <li>Built by {engineName}</li>
-            <li>{autonomousBullet}</li>
+            <li>{stepsBullet}</li>
             {UNIVERSAL_BULLETS.map((b) => <li>{b}</li>)}
             {studioBullet && <li>{studioBullet}</li>}
             {/* Published for every plan, including this one. Three of the four tiers said nothing
@@ -426,7 +412,7 @@ const limitFaq = [
                 </li>
                 <li>About {buildsPerMonth(id)} quality-gated builds a month</li>
                 <li>Built by {engineName}</li>
-                <li>{autonomousBullet}</li>
+                <li>{stepsBullet}</li>
                 {/* The same gap as the `credits` row below, one surface earlier. Builder's
                     highlights include "Buy credits when you need more", and leaving it beside a
                     comparison row that now reads "Unavailable" would make the page disagree with
@@ -638,59 +624,44 @@ const limitFaq = [
   </section>
 
 
-  <!-- ==================================================== per-mode -->
+  <!-- ==================================================== per-request -->
   <section class="section" aria-labelledby="credits-title">
     <div class="wrap">
       <header class="sechead">
         <p class="eyebrow" data-reveal>Per request</p>
         <h2 id="credits-title" data-reveal class="carved">What a Credit buys</h2>
         <p class="lede lede-wide" data-reveal>
-          Plan and Agent are the two product modes. Autonomous is an Agent toggle, not another
-          mode or another price. Final usage depends on the work performed.
+          Every request starts at the same entry price. Final usage depends on the work performed.
         </p>
       </header>
 
       <div class="table-scroll stack-sm" data-reveal>
-        <table class="modes-table">
-          <caption class="visually-hidden">Credit cost per request by mode</caption>
+        <table>
+          <caption class="visually-hidden">Credit cost per request</caption>
           <thead>
             <tr>
-              <th scope="col">Mode</th>
               <th scope="col">Cost per request</th>
               <th scope="col">What it does</th>
               <th scope="col">≈ requests / free day</th>
             </tr>
           </thead>
           <tbody>
-            {
-              modeRows.map((r) => (
-                <tr>
-                  <td class="mode-cell">
-                    {r.mode}
-                  </td>
-                  <td data-label="Cost per request">
-                    <code>{r.cost}</code>
-                    <span class="tx">for {r.unit}</span>
-                  </td>
-                  <td data-label="What it does">{r.does}</td>
-                  <td class="num" data-label="≈ requests / free day">{r.perDay}</td>
-                </tr>
-              ))
-            }
+            <tr>
+              <td data-label="Cost per request">
+                <code>{requestRow.cost}</code>
+                <span class="tx">for {requestRow.unit}</span>
+              </td>
+              <td data-label="What it does">{requestRow.does}</td>
+              <td class="num" data-label="≈ requests / free day">{requestRow.perDay}</td>
+            </tr>
           </tbody>
         </table>
       </div>
 
       <p class="tfoot" data-reveal>
-        An Agent request settles against the work it actually did, so a long build costs more than
+        A request settles against the work it actually did, so a long build costs more than
         the entry price above — the workspace counts what the run has spent while it runs. Apple&rsquo;s own
         housekeeping does not count against your quota.
-      </p>
-      <p class="tfoot" data-reveal>
-        <strong>Autonomous does not add a mode.</strong> Turn it on while using Agent when you want
-        Agent to keep scheduling its own next step until the task is finished, you stop it, access
-        changes, the account reaches a Credits or service-capacity limit, or that message reaches
-        the 1000 steps ceiling.
       </p>
 
       {/*[[ THE TWO UNITS, RECONCILED WHERE THE READER MEETS THEM.
@@ -1083,12 +1054,6 @@ const limitFaq = [
 
     .compare :global(th[scope='row']) {
       grid-column: 1 / -1;
-    }
-
-    .mode-cell {
-      color: var(--ink);
-      font-size: 15px;
-      font-weight: 500;
     }
   }
 

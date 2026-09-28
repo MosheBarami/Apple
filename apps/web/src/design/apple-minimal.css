@@ -4,7 +4,7 @@
  * The interaction bar was measured directly in the browser against the reference product:
  * black page, #0a0a0a card, #2e2e2e border, #fafafa foreground, #a6a6a6 muted text, 24px
  * composer radius, 24px backdrop blur and a soft 25/50 shadow. We reuse the grammar, not its
- * code/assets/copy. Apple keeps blue for normal action and violet only for Autonomous.
+ * code/assets/copy. Apple keeps blue for normal action; violet is not spent on any control.
  */
 
 :root {
@@ -33,10 +33,6 @@
   --accent-soft:rgba(91,124,250,.10);
   --accent-ring:rgba(91,124,250,.32);
   --accent-glow:rgba(91,124,250,.12);
-  --autonomous:#8b5cf6;
-  --autonomous-light:#b49aff;
-  --autonomous-soft:rgba(139,92,246,.13);
-  --autonomous-ring:rgba(139,92,246,.38);
   --r-xs:8px;
   --r-sm:10px;
   --r-md:12px;
@@ -69,10 +65,6 @@
   --accent-soft:rgba(69,104,232,.09);
   --accent-ring:rgba(69,104,232,.25);
   --accent-glow:rgba(69,104,232,.10);
-  --autonomous:#7550de;
-  --autonomous-light:#6845ce;
-  --autonomous-soft:rgba(117,80,222,.10);
-  --autonomous-ring:rgba(117,80,222,.26);
   --shadow-pop:0 16px 44px rgba(31,41,55,.11);
   --shadow-modal:0 28px 70px rgba(31,41,55,.16);
 }
@@ -405,7 +397,7 @@ body {
      band above the composer on the white page. */
   background:linear-gradient(to top,var(--paper) 54%,color-mix(in srgb,var(--paper) 92%,transparent) 76%,transparent);
 }
-/* The composer itself — the card, the textarea, the bar, its chips, the Autonomous switch and
+/* The composer itself — the card, the textarea, the bar, its chips and
    Send — is drawn by components/ws/composer.css over the AI Elements PromptInput sheets
    (components/ai-elements/prompt-input.css, attachments.css, ui/ui.css), in tokens only. The rules
    that used to sit here carried four raw greys and fought that sheet on specificity; there is one
@@ -528,7 +520,7 @@ body {
 .st--warn { color:var(--warn); }
 .st--info { color:var(--accent-light); }
 .st--muted { color:var(--faint); }
-/* Not violet: violet is spent on Autonomous-on and nowhere else (tests/ai-elements-composer). */
+/* Not violet: no control spends violet (tests/ai-elements-composer). */
 .st--future { color:var(--muted); }
 .st--spin { animation:minimal-status-turn 1.2s linear infinite; }
 @keyframes minimal-status-turn { to { transform:rotate(360deg); } }

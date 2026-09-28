@@ -4,10 +4,8 @@ import {
   PLAN_COPY,
   PLAN_IDS,
   PLAN_LIMITS,
-  PRODUCT_MODES,
   fullRateDays,
   monthlyCeilingBitesFirst,
-  type ProductMode,
 } from '@golem/shared';
 
 // Read, never restated: this page explains the quota, so a stale copy of it here would be the
@@ -18,41 +16,20 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_COUNT } from '../../../../worker/src/generated-image-limits';
 
-/*
- * ProductMode is the whole mode surface: Plan and Agent. MODE_INFO is keyed directly by it, so
- * pricing and advice have no compatibility mapping to drift through. Autonomous is an Agent toggle
- * and therefore does not get its own row or Credit figure.
- */
-const modes = PRODUCT_MODES.map((mode) => {
-  // "4-18" quotes 4. What a request STARTS at is the comparable number; the paragraph under the
-  // list is where the rest of the range is explained, rather than in a figure that looks like two.
-  const published = MODE_INFO[mode].typicalCredits;
-  const credits = Number(String(published).split('-')[0]);
-  if (!Number.isFinite(credits) || credits <= 0) {
-    throw new Error(`credits-and-limits.astro: "${published}" does not start with a Credit count`);
-  }
-  return {
-    name: MODE_INFO[mode].name,
-    credits,
-    perFreeDay: Math.floor(free.creditsPerDay / credits),
-  };
-});
-
-/** Keyed, so a clause about a mode nobody is offered cannot be rendered by accident. */
-const THRIFT: Record<ProductMode, string> = {
-  plan: 'design the build in Plan before you run it — a question costs a fraction of a wrong build',
-  agent: 'give Agent specific requests (“the door in Workspace.Lobby”) rather than vague ones',
-};
-const thrift = PRODUCT_MODES.map((m) => THRIFT[m]).join('; ');
-
-const sessionShape = modes
-  .map((m) => `about ${m.perFreeDay} ${m.name} requests`)
-  .join(', or ');
+/* There is one kind of request, so there is one entry price, read from MODE_INFO.agent. */
+// "4-18" quotes 4. What a request STARTS at is the comparable number; the paragraph under the
+// list is where the rest of the range is explained, rather than in a figure that looks like two.
+const published = MODE_INFO.agent.typicalCredits;
+const requestCredits = Number(String(published).split('-')[0]);
+if (!Number.isFinite(requestCredits) || requestCredits <= 0) {
+  throw new Error(`credits-and-limits.astro: "${published}" does not start with a Credit count`);
+}
+const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
 ---
 
 <DocsLayout
   title="Credits & limits — Apple Docs"
-  description={`How Apple's Credits quota works: ${free.creditsPerDay} per day free, per-mode costs, live metering, daily reset, and exactly what happens when you run out.`}
+  description={`How Apple's Credits quota works: ${free.creditsPerDay} per day free, per-request costs, live metering, daily reset, and exactly what happens when you run out.`}
   heading="Credits &amp; limits"
 >
   <p>
@@ -68,14 +45,12 @@ const sessionShape = modes
     {paid.map((id) => (
       <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_LIMITS[id].creditsPerDay} Credits per day · {PLAN_LIMITS[id].creditsPerMonth.toLocaleString()} a month.</li>
     ))}
-    {modes.map((m) => (
-      <li><strong>{m.name}:</strong> from {m.credits} Credits per request.</li>
-    ))}
+    <li><strong>Each request:</strong> from {requestCredits} Credits.</li>
   </ul>
   <p>
     Those are starting prices, not ceilings: a request settles against the compute it actually
     used, so a short question lands on its figure and a long build climbs past it. In practice the
-    free allowance is a solid daily session — {sessionShape}, or, far more usually, a mix.
+    free allowance is a solid daily session — about {requestsPerFreeDay} requests.
   </p>
 
   {/*
@@ -138,7 +113,7 @@ const sessionShape = modes
   <p>
     Your balance is one click away in the workspace: the dock down the left edge carries a
     <strong>Usage and Credits</strong> row, and it opens a page with the figure, the last thirty
-    days, and what your next request costs in each mode. The left navigation is closed when the
+    days, and what your next request costs. The left navigation is closed when the
     workspace loads, so the meter itself is not on screen until you open it — once you do, it sits
     in the footer of the left rail beside your account, reading what is left, what your allowance is
     and when it resets. Either surface is read when the page loads and does not refresh itself while
@@ -255,7 +230,7 @@ const sessionShape = modes
 
   <div class="callout">
     <p>
-      <strong>Making Credits go further:</strong> {thrift}. Nothing else moves the number much —
+      <strong>Making Credits go further:</strong> give Apple specific requests (“the door in Workspace.Lobby”) rather than vague ones. Nothing else moves the number much —
       the expensive request is almost always the one that had to be sent twice.
     </p>
   </div>

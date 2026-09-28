@@ -28,8 +28,6 @@ import ObjectIcon from '../components/ObjectIcon.astro';
 import {
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
-  PRODUCT_MODES,
-  PRODUCT_MODE_INFO,
 } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 
@@ -37,7 +35,7 @@ import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/stu
  * THE FRONT PAGE, REBUILT TO THE FINAL DIRECTION (2026-09-22).
  *
  * Near-black and matte, one type family, hairlines instead of shadows, blue only for an ordinary
- * active state and violet only while Autonomous is on. Every section is the same three things in
+ * active state. Every section is the same three things in
  * the same order: a title, one muted line, then the thing itself. The header and footer are the
  * shared components every other route renders, so the site has one header design.
  *
@@ -50,9 +48,8 @@ import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/stu
  * typed (scripts/check-proof-figures.mjs); and the install line asks the shared constant.
  */
 
-/* The composer's chips name the mode and the model that would answer, read from the same
-   constants the app's own composer reads, so the picture cannot disagree with the product. */
-const composerMode = PRODUCT_MODE_INFO.agent.name;
+/* The composer's chip names the engine that would answer, read from the same constants the app's
+   own composer reads, so the picture cannot disagree with the product. */
 const composerModel = PRODUCT_MODEL_INFO[PRODUCT_MODELS[0]].name;
 
 /* THE THREE SENTENCES THE EMPTY FIELD CYCLES THROUGH. Examples of what a reader would TYPE — the
@@ -219,7 +216,6 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
           </div>
           <div class="composer-bar">
             <div class="composer-chips">
-              <span class="chip">{composerMode}</span>
               <span class="chip chip-model">{composerModel}</span>
             </div>
             <button class="composer-send" type="submit">Build</button>
@@ -396,46 +392,21 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
     <section class="band" id="models" aria-labelledby="plans-title">
       <div class="shell">
         <div class="band-head" data-reveal>
-          <h2 id="plans-title" class="section-title">Modes and engine</h2>
-          <p class="section-sub">The mode decides what a request may do to your place. Apple answers every request, on every plan. Plans and Credits are on the <a href="/pricing">pricing page</a>.</p>
+          <h2 id="plans-title" class="section-title">One engine</h2>
+          <p class="section-sub">Describe the game; Apple shows a short plan and builds it. Apple answers every request, on every plan. Plans and Credits are on the <a href="/pricing">pricing page</a>.</p>
         </div>
 
-        <div class="choices">
-          <div class="choice-group" data-reveal>
-            <h3 class="micro choice-label">Modes</h3>
-            <ul class="mode-list" role="list">
-              {PRODUCT_MODES.map((mode) => (
-                <li class="mode-row">
-                  <p class="mode-name">{PRODUCT_MODE_INFO[mode].name}</p>
-                  <p class="mode-blurb">{PRODUCT_MODE_INFO[mode].blurb}</p>
-                </li>
-              ))}
-            </ul>
-            {/* AUTONOMOUS IS A TOGGLE ON AGENT, NOT A THIRD MODE, and this is the one place the
-                site shows it. It is a real control with a real state: violet only while it is on,
-                exactly as the app draws it. It changes nothing but its own picture — the sentence
-                beside it says what the real one does. */}
-            <div class="auto-row">
-              <button type="button" class="auto-toggle" data-mode="autonomous" aria-pressed="false">
-                <span class="auto-switch" aria-hidden="true"></span>
-                <span>Autonomous</span>
-              </button>
-              <p class="auto-note">A toggle on {PRODUCT_MODE_INFO.agent.name}, not a third mode. While it is on, {PRODUCT_MODE_INFO.agent.name} keeps choosing its own next step until the task is done or you stop it.</p>
-            </div>
-          </div>
-
-          <div class="choice-group" data-reveal data-reveal-delay="80">
-            <h3 class="micro choice-label">Engine</h3>
-            <ul class="model-grid" role="list">
-              {PRODUCT_MODELS.map((model) => (
-                <li class="model-card">
-                  <p class="model-name">{PRODUCT_MODEL_INFO[model].name}</p>
-                  <p class="model-blurb">{PRODUCT_MODEL_INFO[model].blurb}</p>
-                  <p class="micro model-plans">Included with every plan, Free too</p>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div class="choice-group" data-reveal>
+          <h3 class="micro choice-label">Engine</h3>
+          <ul class="model-grid" role="list">
+            {PRODUCT_MODELS.map((model) => (
+              <li class="model-card">
+                <p class="model-name">{PRODUCT_MODEL_INFO[model].name}</p>
+                <p class="model-blurb">{PRODUCT_MODEL_INFO[model].blurb}</p>
+                <p class="micro model-plans">Included with every plan, Free too</p>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>
@@ -453,7 +424,7 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
 
 <script>
   /*
-   * THE STAGES, THE TABS THAT HOLD THEM, AND THE AUTONOMOUS TOGGLE. One script, independent set-ups.
+   * THE STAGES AND THE TABS THAT HOLD THEM. One script, independent set-ups.
    *
    * `document.querySelector`, NEVER `document.currentScript`: Astro bundles this as a module and
    * `currentScript` is null in every module script by specification — that spelling once shipped a
@@ -613,17 +584,6 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
         out.classList.toggle('refused', ask.getAttribute('data-refused') === 'true');
       });
     }
-  });
-
-  /* ------------------------------------------------------------------------- Autonomous --- */
-
-  /* The picture of the toggle. Violet is drawn by apple-minimal.css from aria-pressed alone. */
-  safely('autonomous', () => {
-    const toggle = document.querySelector('[data-mode="autonomous"]');
-    if (!toggle) return;
-    toggle.addEventListener('click', () => {
-      toggle.setAttribute('aria-pressed', String(toggle.getAttribute('aria-pressed') !== 'true'));
-    });
   });
 </script>
 

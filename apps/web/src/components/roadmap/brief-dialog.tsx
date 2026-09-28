@@ -1,8 +1,8 @@
 // §33: what Apple would actually be asked to do, before it is asked.
 //
 // The worker builds the brief from a fresh scan and returns the exact request
-// text. Showing that text is the whole point of this dialog: the roadmap's Plan
-// and Build buttons hand work to the agent, and a button that silently composes
+// text. Showing that text is the whole point of this dialog: the roadmap's Build
+// button hands work to the agent, and a button that silently composes
 // an instruction on the user's behalf is the kind of thing that should be
 // readable before it runs, not afterwards in the transcript.
 //
@@ -11,30 +11,18 @@
 // the copy button is what the user falls back to if they would rather paste it
 // themselves.
 import { useState } from 'react';
-import { PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
 import { Modal } from '../modal';
 import type { MilestoneBrief } from './model';
-import type { BriefIntent } from './milestone-card';
 import './brief-dialog.css';
 
 interface Props {
   brief: MilestoneBrief;
-  intent: BriefIntent;
   onClose: () => void;
-  onOpenConversation: (request: string, mode: ProductMode) => void;
+  onOpenConversation: (request: string) => void;
 }
 
-/**
- * Plan always means Plan. Build uses the public mode already returned by the worker.
- */
-export function modeForIntent(brief: MilestoneBrief, intent: BriefIntent): ProductMode {
-  if (intent === 'plan') return 'plan';
-  return brief.mode;
-}
-
-export function BriefDialog({ brief, intent, onClose, onOpenConversation }: Props) {
+export function BriefDialog({ brief, onClose, onOpenConversation }: Props) {
   const [copied, setCopied] = useState(false);
-  const mode = modeForIntent(brief, intent);
 
   const copy = async () => {
     try {
@@ -50,8 +38,7 @@ export function BriefDialog({ brief, intent, onClose, onOpenConversation }: Prop
   return (
     <Modal title={brief.title} onClose={onClose} wide>
       <p className="rm-brief__lead">
-        This is the request Apple would work from, in <strong>{PRODUCT_MODE_INFO[mode].name}</strong> mode.{' '}
-        {PRODUCT_MODE_INFO[mode].blurb}
+        This is the request Apple would work from.
       </p>
 
       {!brief.ready && brief.blockedBy.length > 0 && (
@@ -111,7 +98,7 @@ export function BriefDialog({ brief, intent, onClose, onOpenConversation }: Prop
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => onOpenConversation(brief.request, mode)}
+          onClick={() => onOpenConversation(brief.request)}
         >
           Open the conversation
         </button>

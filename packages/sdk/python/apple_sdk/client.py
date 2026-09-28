@@ -31,9 +31,9 @@ from .numbers import finite_int
 #: ``packages/sdk/src/wire.mjs``; ``protocol-parity.test.mjs`` asserts the two agree.
 DEFAULT_BASE_URL = "https://apple.moshe-barami111.workers.dev"
 
-#: Mirrors ``ProductMode`` in packages/shared. A runtime list, because a TypeScript union
-#: is not one and this value routinely arrives from a config file or a command line.
-MODES = ("plan", "agent")
+#: Mirrors ``ProductMode`` in packages/shared. There is one kind of request (V3 G01); ``agent``
+#: is only the wire value a chat frame still carries, and the server normalizes a legacy value.
+MODES = ("agent",)
 
 #: Mirrors ``PLAN_IDS`` in packages/shared.
 PLAN_IDS = ("free", "builder", "studio", "enterprise")

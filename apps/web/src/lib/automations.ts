@@ -27,12 +27,6 @@
 //
 // The daily cap IS offered, because `startVerdict` refuses `daily_cap` against `firesSince` and
 // the live route test drives it. That is the difference between a setting and a control.
-import {
-  PRODUCT_MODES,
-  PRODUCT_MODE_INFO,
-  type ProductMode,
-} from '@golem/shared';
-
 /**
  * The limits the counters are drawn against.
  *
@@ -59,22 +53,13 @@ export interface AutomationDraft {
   name: string;
   description: string;
   prompt: string;
-  /** The run mode the person picks. Autonomous is a separate per-run option, not another mode. */
-  mode: ProductMode;
   maxRunsPerDay: number;
 }
 
-/** A fresh editor. `agent` is the normal way to work, so it is what a new automation does. */
+/** A fresh editor. There is no run mode to pick (V3 G01). */
 export function blankDraft(): AutomationDraft {
-  return { name: '', description: '', prompt: '', mode: 'agent', maxRunsPerDay: 4 };
+  return { name: '', description: '', prompt: '', maxRunsPerDay: 4 };
 }
-
-/** The two product-mode choices, read from the shared source of truth. */
-export const MODE_CHOICES: readonly { id: ProductMode; name: string; blurb: string }[] = PRODUCT_MODES.map((id) => ({
-  id,
-  name: PRODUCT_MODE_INFO[id].name,
-  blurb: PRODUCT_MODE_INFO[id].blurb,
-}));
 
 /**
  * The request body.
@@ -92,7 +77,8 @@ export function draftToBody(draft: AutomationDraft): Record<string, unknown> {
     name: draft.name,
     ...(description === '' ? {} : { description: draft.description }),
     prompt: draft.prompt,
-    mode: draft.mode,
+    // Not a choice (V3 G01): the one value the wire accepts, kept for a worker that still reads it.
+    mode: 'agent',
     trigger: 'manual',
     // Always sent, because the server refuses an unknown zone rather than defaulting, and a
     // manual automation's zone is still what its daily cap is counted in.
@@ -118,20 +104,17 @@ export function localZone(): string {
   }
 }
 
-/** Fill the draft from a stored row. Unknown future values fall back to Agent rather than guessing. */
+/** Fill the draft from a stored row. A stored run mode is not carried: there is none to choose. */
 export function draftFrom(a: {
   name: string;
   description: string | null;
   prompt: string;
-  mode: string;
   budget: { maxRunsPerDay: number };
 }): AutomationDraft {
-  const mode = (PRODUCT_MODES as readonly string[]).includes(a.mode) ? (a.mode as ProductMode) : 'agent';
   return {
     name: a.name,
     description: a.description ?? '',
     prompt: a.prompt,
-    mode,
     maxRunsPerDay: a.budget.maxRunsPerDay,
   };
 }
@@ -145,7 +128,7 @@ export function overBy(value: string, limit: number): number {
 // refusals
 // ---------------------------------------------------------------------------------------------
 
-export type RefusalField = 'name' | 'description' | 'prompt' | 'mode' | 'maxRunsPerDay' | null;
+export type RefusalField = 'name' | 'description' | 'prompt' | 'maxRunsPerDay' | null;
 
 export interface Refusal {
   /** The field to put the message on, or null when no field caused it. */
@@ -168,7 +151,6 @@ const SAVE_REFUSALS: Record<string, { field: RefusalField; message: string }> = 
   bad_name: { field: 'name', message: `A name is required, and must be ${LIMITS.name} characters or fewer.` },
   bad_description: { field: 'description', message: `The description must be ${LIMITS.description} characters or fewer.` },
   bad_prompt: { field: 'prompt', message: `Say what to do, in ${LIMITS.prompt} characters or fewer.` },
-  bad_mode: { field: 'mode', message: 'That is not a mode this project can run.' },
   bad_trigger: { field: null, message: 'That is not a way an automation can start.' },
   bad_schedule: { field: null, message: 'That schedule is not one the server can read.' },
   unknown_timezone: {

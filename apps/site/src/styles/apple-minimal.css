@@ -50,12 +50,6 @@
   --accent-soft: rgba(91, 124, 250, 0.1);
   --accent-ring: rgba(91, 124, 250, 0.32);
 
-  /* Violet: Autonomous, when it is ON. Nothing else on the site may spend these. */
-  --autonomous: #8b5cf6;
-  --autonomous-ink: #b49aff;
-  --autonomous-soft: rgba(139, 92, 246, 0.13);
-  --autonomous-ring: rgba(139, 92, 246, 0.38);
-
   /* Status, for a state a reader must act on. Never decoration. */
   --good: #7cc49a;
   --warn: #e6a95a;
@@ -110,11 +104,6 @@
   --accent: #4568e8;
   --accent-soft: rgba(69, 104, 232, 0.09);
   --accent-ring: rgba(69, 104, 232, 0.25);
-
-  --autonomous: #7550de;
-  --autonomous-ink: #6845ce;
-  --autonomous-soft: rgba(117, 80, 222, 0.1);
-  --autonomous-ring: rgba(117, 80, 222, 0.26);
 
   --good: #23724a;
   --warn: #8a5a13;
@@ -380,16 +369,6 @@ svg {
   box-shadow: var(--glass-shadow);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-}
-
-/* ------------------------------------------------------------------ Autonomous */
-
-/* The single place violet is spent: an Autonomous control while it is ON. Off, it is an ordinary
-   quiet control. */
-[data-mode='autonomous'][aria-pressed='true'] {
-  border-color: var(--autonomous-ring);
-  background: var(--autonomous-soft);
-  color: var(--autonomous-ink);
 }
 
 /* ------------------------------------------------------------------ reduced motion */

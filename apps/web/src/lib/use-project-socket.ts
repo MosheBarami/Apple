@@ -76,8 +76,6 @@ export interface ChatItem {
   id: string;
   role: 'user' | 'assistant' | 'system';
   mode: ProductMode | null;
-  /** Whether this Agent run was granted the Autonomous tool policy. */
-  autonomous?: boolean;
   productModel?: ProductModel;
   content: string;
   tools: ToolEvent[];
@@ -260,7 +258,8 @@ export interface ProjectSocket {
    * that never received the frame.
    */
   restoreStatus: RestoreStatus | null;
-  sendChat: (text: string, mode: ProductMode, attachments?: ChatAttachment[], productModel?: ProductModel, autonomous?: boolean) => boolean;
+  /** There is no mode to choose (V3 G01): the frame carries `mode: 'agent'` only as the wire's compatibility bridge. */
+  sendChat: (text: string, attachments?: ChatAttachment[], productModel?: ProductModel) => boolean;
   /**
    * "I am still here, and this is what I am doing."
    *
@@ -271,7 +270,7 @@ export interface ProjectSocket {
    */
   signalPresence: (activity: 'viewing' | 'typing' | 'building') => boolean;
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
-  editAndResend: (messageId: string, text: string, mode: ProductMode, productModel?: ProductModel, autonomous?: boolean) => boolean;
+  editAndResend: (messageId: string, text: string, productModel?: ProductModel) => boolean;
   /** Resolves false only when neither the socket nor the HTTP stop reached the worker. */
   stop: () => Promise<boolean>;
   /** @param description what the snapshot contains or why it was taken. Optional — see ClientMsg. */
@@ -580,7 +579,7 @@ export function useProjectSocket(
             // `run_intent` may have created the shell first; fill in the mode
             // it did not know, and keep the intent it did.
             const next = [...list];
-            next[existing] = { ...list[existing]!, mode: msg.mode, autonomous: msg.autonomous, productModel: msg.productModel, streaming: true };
+            next[existing] = { ...list[existing]!, mode: msg.mode, productModel: msg.productModel, streaming: true };
             return next;
           }
           return [
@@ -589,7 +588,6 @@ export function useProjectSocket(
               id: msg.msgId,
               role: 'assistant',
               mode: msg.mode,
-              autonomous: msg.autonomous,
               productModel: msg.productModel,
               content: '',
               tools: [],
@@ -1152,11 +1150,11 @@ export function useProjectSocket(
    * message id that has already gone, finds nothing, and changes nothing.
    */
   const editAndResend = useCallback(
-    (messageId: string, text: string, mode: ProductMode, productModel?: ProductModel, autonomous = false): boolean => {
-      const enabled = mode === 'agent' && autonomous;
+    (messageId: string, text: string, productModel?: ProductModel): boolean => {
+      const mode = 'agent';
       // `model` only for a model on the customer's own key: an Apple run stays byte-identical on the
       // wire to every run before the picker existed (the worker reads `productModel` then).
-      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(enabled ? { autonomous: true } : {}), ...(productModel ? { productModel } : {}) });
+      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(productModel ? { productModel } : {}) });
       if (ok) {
         setRunning(true);
         setMessages((list) => {
@@ -1172,7 +1170,7 @@ export function useProjectSocket(
             edited && recordsRevision(edited.content, text) ? (carried ?? 0) + 1 : carried;
           return [
             ...kept,
-            { id: localId(), role: 'user', mode, autonomous: enabled, productModel, content: text, tools: [], streaming: false, createdAt: Date.now(), revisions },
+            { id: localId(), role: 'user', mode, productModel, content: text, tools: [], streaming: false, createdAt: Date.now(), revisions },
           ];
         });
       }
@@ -1182,12 +1180,12 @@ export function useProjectSocket(
   );
 
   const sendChat = useCallback(
-    (text: string, mode: ProductMode, attachments: ChatAttachment[] = [], productModel?: ProductModel, autonomous = false): boolean => {
+    (text: string, attachments: ChatAttachment[] = [], productModel?: ProductModel): boolean => {
       // The field has been on this frame since the protocol was written and nothing ever set it.
       // Omitted entirely when there are none, so a message with no files is byte-identical on the
       // wire to every message this product has ever sent.
-      const enabled = mode === 'agent' && autonomous;
-      const ok = sendRaw({ type: 'chat', text, mode, ...(enabled ? { autonomous: true } : {}), ...(productModel ? { productModel } : {}), ...(attachments.length ? { attachments } : {}) });
+      const mode = 'agent';
+      const ok = sendRaw({ type: 'chat', text, mode, ...(productModel ? { productModel } : {}), ...(attachments.length ? { attachments } : {}) });
       if (ok) {
         setRunning(true);
         const id = localId();
@@ -1204,7 +1202,6 @@ export function useProjectSocket(
             id,
             role: 'user',
             mode,
-            autonomous: enabled,
             productModel,
             content: text,
             tools: [],

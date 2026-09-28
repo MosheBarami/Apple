@@ -90,36 +90,7 @@ div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; 
 /* A creation intent is chosen: an ordinary active state, so the ordinary blue. */
 .gx-composer .gx-composer__bar .gx-chip.gx-chip--create[data-active] { color:var(--accent-light); background:var(--accent-soft); }
 .gx-composer .gx-composer__bar .gx-chip.gx-chip--selection { max-inline-size:min(220px,40vw); }
-/* Mode leads the bar: the icon a little closer to its word, which is the one that decides whether
-   this message changes the place. */
-.gx-composer .gx-composer__bar .gx-chip.gx-chip--mode { gap:5px; padding-inline-start:7px; }
 
-/* ------------------------------------------------------------- autonomous --- */
-/* THE ONE VIOLET CONTROL. At rest it is a chip like the others with a small neutral track; on, and
-   only on, it takes --autonomous. Off in Plan, and it says why in its title. */
-.gx-composer .gx-composer__bar .gx-autonomous {
-  display:inline-flex; flex:none; align-items:center; gap:7px; min-height:var(--h-xs); height:var(--h-xs); padding:0 9px 0 7px;
-  border:1px solid transparent; border-radius:var(--r-xs); background:transparent; box-shadow:none;
-  color:var(--muted); font-size:12.5px; line-height:1; white-space:nowrap;
-  transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out);
-}
-.gx-composer .gx-composer__bar .gx-autonomous:hover:not(:disabled) { background:var(--control-fill); color:var(--ink); }
-.gx-composer .gx-autonomous__label { white-space:nowrap; }
-.gx-composer .gx-composer__bar .gx-autonomous:disabled { opacity:.48; cursor:not-allowed; }
-.gx-composer .gx-autonomous__switch {
-  position:relative; flex:none; box-sizing:border-box; width:22px; height:12px; border:1px solid var(--control-line);
-  border-radius:var(--r-pill); background:var(--surface-3);
-  transition:background-color var(--t-fast) var(--ease-out);
-}
-.gx-composer .gx-autonomous__switch::after {
-  content:''; position:absolute; top:1px; inset-inline-start:1px; width:8px; height:8px; border-radius:50%;
-  background:var(--muted); transition:transform var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out);
-}
-.gx-composer .gx-composer__bar .gx-autonomous.is-on { color:var(--autonomous-light); background:var(--autonomous-soft); border-color:var(--autonomous-ring); }
-.gx-composer .gx-composer__bar .gx-autonomous.is-on:hover:not(:disabled) { color:var(--autonomous-light); background:var(--autonomous-soft); }
-.gx-composer .gx-autonomous.is-on .gx-autonomous__switch { background:var(--autonomous); border-color:var(--autonomous); }
-.gx-composer .gx-autonomous.is-on .gx-autonomous__switch::after { transform:translateX(10px); background:var(--accent-on-fill); }
-:root[dir='rtl'] .gx-composer .gx-autonomous.is-on .gx-autonomous__switch::after { transform:translateX(-10px); }
 
 /* ------------------------------------------------------------ attach, send --- */
 .gx-composer .gx-composer__tools .gx-composer__attach {
@@ -212,7 +183,7 @@ div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; 
      accessible label (and a chosen creation intent still tints the chip and has its note). */
   .gx-composer .gx-composer__bar .gx-chip--create .gx-chip__label,
   .gx-composer .gx-composer__bar .gx-chip .gx-chip__caret { display:none; }
-  .gx-composer .gx-composer__bar .gx-chip,.gx-composer .gx-composer__bar .gx-autonomous { padding-inline:7px; }
+  .gx-composer .gx-composer__bar .gx-chip { padding-inline:7px; }
   .gx-composer .gx-attach .gx-attach__row .ai-attachment__info { max-width:150px; }
   /* A failed chip on a phone is two lines: the file, Retry and Remove on the first, the reason on
      the second. Squeezed into one line the reason wrapped into a three-line column between them. */
@@ -225,7 +196,6 @@ div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; 
 @media (prefers-reduced-motion:reduce) {
   .gx-composer .gx-composer__inner,
   .gx-composer .gx-composer__bar .gx-chip,.gx-composer .gx-composer__bar .gx-chip .gx-chip__caret,
-  .gx-composer .gx-composer__bar .gx-autonomous,.gx-composer .gx-autonomous__switch,.gx-composer .gx-autonomous__switch::after,
   .gx-composer .gx-composer__tools .gx-composer__attach,.gx-composer .gx-composer__tools .gx-send,
   .gx-composer .gx-attach__fill { transition:none; }
 }

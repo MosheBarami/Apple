@@ -11,9 +11,11 @@
  * omitted `uiDesignTask` while the assignment wrote the whole classification, so the value existed
  * in storage and did not exist in the type — which is why no reader was ever written against it.
  *
- * WHERE THIS IS OBSERVABLE, and therefore what these tests fix: Plan mode on non-MAX Apple. Every
- * other lane's baseline or entitlement floor is already `high`, so the signal changes nothing there
- * and a test that asserted on Agent/MAX would pass with the defect fully present.
+ * WHERE THIS WAS OBSERVABLE: Plan mode on non-MAX Apple, the one lane whose baseline was `low`.
+ * V3 G01 removed Plan mode, so every request now runs the builder baseline, which is already
+ * `high`; the escalation the signal buys is not observable through `chooseEffort` any more. What is
+ * still asserted: the classification, the resulting effort, that talk stays cheap, and the type
+ * contract. If a lower baseline ever returns, re-isolate the signal against it.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -34,10 +36,10 @@ execFileSync(
 );
 const R = await import(pathToFileURL(OUT).href);
 
-/** One step of a real run, in the one lane where the baseline is not already `high`. */
+/** One step of a real run. */
 const planStep = (text, over = {}) =>
   R.chooseEffort({
-    mode: 'plan',
+    mode: 'agent',
     productModel: 'apple',
     step: 1,
     highEffortUsed: 0,
@@ -45,11 +47,9 @@ const planStep = (text, over = {}) =>
     ...over,
   });
 
-test('the lane under test really is the cheap one, or this proves nothing', () => {
-  // A request with no design signal at all must still be `low` here. If this were already `high`
-  // the assertions below would be satisfied by the baseline rather than by the fix.
+test('the one baseline is already high, so the escalation below is not isolated (see header)', () => {
   const plain = planStep('what is the id of this place');
-  assert.equal(plain.effort, 'low', `the Plan/Apple baseline is ${plain.effort}; this test no longer isolates the signal`);
+  assert.equal(plain.effort, 'high', `the baseline is ${plain.effort}; if it is lower again, re-isolate the signal`);
 });
 
 test('a UI request is classified as UI and thought about accordingly', () => {
@@ -63,7 +63,6 @@ test('a UI request is classified as UI and thought about accordingly', () => {
     assert.equal(traits.uiDesignTask, true, `"${text}" was not classified as interface work`);
     const choice = planStep(text);
     assert.equal(choice.effort, 'high', `"${text}" was thought about at ${choice.effort}`);
-    assert.match(choice.reason, /interface design work|visual or spatial design work/);
   }
 });
 
@@ -95,7 +94,7 @@ test('the signal survives the type contract as well as the storage round trip', 
   // And the round trip itself: a persisted traits object spread back into the signals still raises.
   const restored = JSON.parse(JSON.stringify(R.classifyRequest('restyle the shop panel')));
   assert.equal(
-    R.chooseEffort({ mode: 'plan', productModel: 'apple', step: 1, highEffortUsed: 0, ...restored }).effort,
+    R.chooseEffort({ mode: 'agent', productModel: 'apple', step: 1, highEffortUsed: 0, ...restored }).effort,
     'high',
   );
 });

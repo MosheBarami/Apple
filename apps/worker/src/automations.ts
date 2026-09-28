@@ -78,8 +78,11 @@ export type OverlapPolicy = (typeof OVERLAP_POLICIES)[number];
 export const MISSED_RUN_POLICIES = ['skip', 'catch_up'] as const;
 export type MissedRunPolicy = (typeof MISSED_RUN_POLICIES)[number];
 
-/** Build modes an automation may ask for, as the wire spells them. */
-export const AUTOMATION_MODES = ['plan', 'agent', 'agent'] as const;
+/**
+ * The one behaviour an automation runs (V3 G01: no modes). A legacy `mode` in the input or a stored
+ * `plan` row is read as `agent`, never refused.
+ */
+export const AUTOMATION_MODES = ['agent'] as const;
 export type AutomationMode = (typeof AUTOMATION_MODES)[number];
 
 const inList = <T extends readonly string[]>(list: T, v: unknown): v is T[number] =>
@@ -90,7 +93,6 @@ export const isAutomationEvent = (v: unknown): v is AutomationEvent => inList(AU
 export const isScheduleEvery = (v: unknown): v is ScheduleEvery => inList(SCHEDULE_EVERY, v);
 export const isOverlapPolicy = (v: unknown): v is OverlapPolicy => inList(OVERLAP_POLICIES, v);
 export const isMissedRunPolicy = (v: unknown): v is MissedRunPolicy => inList(MISSED_RUN_POLICIES, v);
-export const isAutomationMode = (v: unknown): v is AutomationMode => inList(AUTOMATION_MODES, v);
 
 // ---------------------------------------------------------------------------------------------
 // limits
@@ -160,7 +162,6 @@ export const AUTOMATION_REJECTS = [
   'bad_name',
   'bad_description',
   'bad_prompt',
-  'bad_mode',
   'bad_trigger',
   'bad_schedule',
   'unknown_timezone',
@@ -264,8 +265,7 @@ export function normaliseAutomation(
   const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
   if (prompt.length === 0 || prompt.length > PROMPT_MAX) return { ok: false, reason: 'bad_prompt' };
 
-  const mode = input.mode === undefined ? 'agent' : input.mode;
-  if (!isAutomationMode(mode)) return { ok: false, reason: 'bad_mode' };
+  const mode: AutomationMode = 'agent';
 
   const trigger = input.trigger === undefined ? 'manual' : input.trigger;
   if (!isAutomationTrigger(trigger)) return { ok: false, reason: 'bad_trigger' };

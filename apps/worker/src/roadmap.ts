@@ -901,7 +901,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     title: 'Sound where the player is',
     why: 'Silence makes a place feel empty even when it looks full.',
     impact: 'The world sounds inhabited and actions have weight.',
-    complexity: 'small', mode: 'plan', runs: 1, priority: 55,
+    complexity: 'small', mode: 'agent', runs: 1, priority: 55,
     dependsOn: ['mood_pass'], genres: ['any'], satisfiedBy: ['sound'],
     build: [
       'Add ambient sound to the main area with insert_sound({"query":"<the place, e.g. forest ambience>","parent":"<a part there>","looped":true}), and a short sound for the core action with insert_sound into game.SoundService — every Sound comes from the stored library, never Instance.new (D-FXLIB-1).',
@@ -1602,14 +1602,13 @@ export interface Roadmap {
 export const MAX_SUGGESTIONS = 3;
 
 /**
- * The effort line is user-visible, so it names the product mode directly.
+ * The effort line is user-visible. There are no modes to name (V3 G01), so it counts runs.
  *
- * Mapped here rather than in the client because the string is composed here: a
+ * Composed here rather than in the client because the string is composed here: a
  * client-side scrub can only repair what the worker already got wrong.
  */
 function effortLine(spec: MilestoneSpec): string {
-  const mode = spec.mode === 'plan' ? 'Plan' : 'Agent';
-  return spec.runs === 1 ? `about one ${mode} run` : `about ${spec.runs} ${mode} runs`;
+  return spec.runs === 1 ? 'about one run' : `about ${spec.runs} runs`;
 }
 
 function specsForGenre(genre: Genre): MilestoneSpec[] {

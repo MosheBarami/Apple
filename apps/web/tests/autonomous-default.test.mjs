@@ -1,7 +1,6 @@
 // F-009, measured 2026-09-22: a new project — and every reload of an existing one — started with
-// Autonomous switched ON, although every run in the session had been sent with it off. Autonomous lifts
-// the per-tool permissions and lets a run take up to 1000 steps; single ordinary requests measured
-// 105-450 Credits that day against a 100-Credit free allowance. It starts off.
+// Autonomous switched ON. Autonomous lifted the per-tool permissions. V3 G01 then removed the switch
+// altogether, so the property is now that there is no Autonomous state to start in at all.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -10,10 +9,9 @@ import { fileURLToPath } from 'node:url';
 
 const WS = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'routes', 'workspace.tsx'), 'utf8');
 
-test('the workspace starts every visit with Autonomous off', () => {
-  const decl = /const \[autonomous, setAutonomous\] = useState(?:<[^>]*>)?\(([^)]*)\);/.exec(WS);
-  assert.ok(decl, 'the Autonomous state was not found — this test would check nothing');
-  assert.equal(decl[1].trim(), 'false', `Autonomous starts as ${decl[1]}`);
+test('the workspace holds no Autonomous state to start a visit in (V3 G01)', () => {
+  assert.ok(WS.length > 1000, 'workspace.tsx was not read — this test would check nothing');
+  assert.doesNotMatch(WS, /autonomous/i);
 });
 
 // Measured 2026-09-22 in production at a 500px window: with the Studio pill in the topbar, the

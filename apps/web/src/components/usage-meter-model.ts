@@ -38,7 +38,7 @@
 //    plenty". Both are claims this file cannot support. credits-model.ts set this precedent for
 //    the attribution ledger — an empty ledger is never drawn as a clearance — and it is the same
 //    mistake in a different subsystem.
-import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, PRODUCT_MODE_INFO, isPlanId, type ProductMode, type QuotaState, CREDIT_PURCHASE_LIVE } from '@golem/shared';
+import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, isPlanId, type QuotaState, CREDIT_PURCHASE_LIVE } from '@golem/shared';
 
 export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
 
@@ -324,18 +324,18 @@ export interface SpendSlice {
  * admission and the settlement when the run finishes — so they share a bucket. Printing them as two
  * categories would invite the reader to conclude they had been charged twice for one run.
  *
- * AN UNRECOGNISED RUN MODE IS NOT PROMOTED INTO THE PRODUCT VOCABULARY. The only named run buckets
- * are Plan and Agent. Any other `chat_*` / `usage_*` value is still counted, under one generic
- * "Other usage" bucket, so the totals remain honest without reintroducing retired mode names.
+ * THERE ARE NO CUSTOMER MODES (V3 G01), so rows written under the retired `plan` suffix and the
+ * `agent` suffix every run still carries are one "Requests" bucket, named without a mode. Any other
+ * `chat_*` / `usage_*` value is still counted, under one generic "Other usage" bucket, so the
+ * totals remain honest without reintroducing retired mode names.
  */
-function ledgerMode(kind: string): ProductMode | undefined {
+function isRequestKind(kind: string): boolean {
   const raw = /^(?:chat|usage)_(.+)$/.exec(kind)?.[1];
-  return raw === 'plan' || raw === 'agent' ? raw : undefined;
+  return raw === 'plan' || raw === 'agent';
 }
 
 export function usageKindLabel(kind: string): string {
-  const mode = ledgerMode(kind);
-  if (mode) return PRODUCT_MODE_INFO[mode].name;
+  if (isRequestKind(kind)) return 'Requests';
   if (/^(?:chat|usage)_/.test(kind)) return 'Other usage';
   if (kind.startsWith('api_')) return 'API';
   if (kind === 'docs_search') return 'Search';
@@ -346,8 +346,7 @@ export function usageKindLabel(kind: string): string {
 
 /** The bucket a kind falls in. Two instalments of one run share it; everything else is itself. */
 function bucketKey(kind: string): string {
-  const mode = ledgerMode(kind);
-  if (mode) return `mode:${mode}`;
+  if (isRequestKind(kind)) return 'requests';
   if (/^(?:chat|usage)_/.test(kind)) return 'kind:other-usage';
   if (kind.startsWith('api_')) return 'api';
   return `kind:${kind}`;
@@ -357,8 +356,7 @@ function bucketKey(kind: string): string {
  * Every day's breakdown collapsed into one list, biggest first.
  *
  * A worker that sends no `kinds` produces an empty list and the page renders nothing. "Other usage"
- * appears only for concrete ledger rows whose run-mode suffix is outside the current ProductMode
- * contract; it never backfills an unobserved day's total.
+ * appears only for concrete ledger rows whose run-mode suffix is neither `plan` nor `agent`; it never backfills an unobserved day's total.
  */
 export function spendByKind(days: readonly UsageDayRow[] | null | undefined): SpendSlice[] {
   if (!Array.isArray(days)) return [];

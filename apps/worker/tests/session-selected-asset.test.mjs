@@ -247,7 +247,7 @@ const selected = { id: 'roblox:oak', assetId: 101, name: 'OakTree' };
 const call = (name, args = {}) => ({ id: name + '-1', name, arguments: JSON.stringify(args) });
 async function chosen(h) {
   h.store.set('pendingAssetChoice', {
-    request: 'Build a colorful garden with trees and flowers', mode: 'agent', autonomous: false,
+    request: 'Build a colorful garden with trees and flowers', mode: 'agent',
     options: [selected],
   });
   h.session.pluginConnected = async () => true;
@@ -390,15 +390,17 @@ test('real insertion still refuses missing source consent before any Studio oper
   assert.match(h.store.get('agent').llm.findLast(m => m.role === 'tool').content, /permitted source/i);
 });
 
-test('Plan mode and stale cards cannot create an insertion obligation', async () => {
+test('a stale card cannot create an insertion obligation; a legacy Plan frame picks like any other (V3 G01)', async () => {
   const h = makeSession();
   h.store.set('pendingAssetChoice', { request: 'Build a forest', mode: 'agent', options: [selected] });
   const res = await h.session.fetch(new Request('https://do/agent-run', { method: 'POST',
     body: JSON.stringify({ text: 'Use visual option 1 and continue.', mode: 'plan', productModel: 'apple' }),
   }));
   assert.equal(res.status, 200);
-  assert.equal(h.store.get('agent'), undefined);
-  assert.equal(h.sent.at(-1).code, 'forbidden');
+  // There is no Plan mode: the legacy value is ignored and the live card's pick runs the one behaviour.
+  assert.equal(h.store.get('agent')?.mode, 'agent');
+  assert.equal(h.store.get('agent')?.approvedLibraryAssetId, selected.assetId);
+  h.store.delete('agent');
   h.store.delete('pendingAssetChoice');
   await start(h, 'Use visual option 1 and continue.');
   assert.equal(h.store.get('agent'), undefined);

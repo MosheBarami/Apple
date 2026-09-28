@@ -183,15 +183,17 @@ test('an Autonomous reply that names owed work or asks leave to continue is reco
   assert.ok(!leavesWorkOpen(''));
 });
 
-test('the run loop hands an Autonomous run its owed work back, bounded, instead of ending on a question', async () => {
+test('the run loop hands every run its owed work back, bounded, instead of ending on a question', async () => {
+  // V3 G01 folded the Autonomous "finish without asking" policy into every run: no flag gates it.
   const { AUTONOMOUS_CONTINUES } = await import('../src/run-idle.ts');
   assert.ok(AUTONOMOUS_CONTINUES >= 1 && AUTONOMOUS_CONTINUES <= 5, 'unbounded or disabled');
-  // prose ending: autonomous + changed + can build + reply leaves work open -> steer, not finishRun
-  assert.match(SESSION, /agent\.autonomous && agent\.mutated && canBuild[\s\S]{0,200}leavesWorkOpen\(res\.text\)[\s)]*\{[\s\S]{0,200}AUTONOMOUS_CONTINUE_STEER[\s\S]{0,200}setAlarm[\s\S]{0,30}return;/);
-  // idle bound: autonomous runs are steered before the finish branch can end them
-  assert.match(SESSION, /if \(idle\.action === 'finish' && agent\.autonomous && \(agent\.autonomousContinues \?\? 0\) < AUTONOMOUS_CONTINUES\) \{[\s\S]{0,400}AUTONOMOUS_IDLE_STEER[\s\S]{0,40}\} else if \(idle\.action === 'finish'\)/);
-  // the nudge must not tell an Autonomous run to "reply to the user now"
-  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(\{\s*role: 'user',\s*content: agent\.autonomous \? AUTONOMOUS_IDLE_STEER/);
+  assert.doesNotMatch(SESSION, /agent\.autonomous\b/, 'a run-level Autonomous flag gates the policy again');
+  // prose ending: changed + can build + reply leaves work open -> steer, not finishRun
+  assert.match(SESSION, /agent\.mutated && canBuild && !owesWork &&[\s\S]{0,200}leavesWorkOpen\(res\.text\)[\s)]*\{[\s\S]{0,200}AUTONOMOUS_CONTINUE_STEER[\s\S]{0,200}setAlarm[\s\S]{0,30}return;/);
+  // idle bound: a run is steered, bounded, before the finish branch can end it
+  assert.match(SESSION, /if \(idle\.action === 'finish' && \(agent\.autonomousContinues \?\? 0\) < AUTONOMOUS_CONTINUES\) \{[\s\S]{0,400}AUTONOMOUS_IDLE_STEER[\s\S]{0,40}\} else if \(idle\.action === 'finish'\)/);
+  // the nudge must not tell a run to "reply to the user now"
+  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(\{\s*role: 'user',\s*content: AUTONOMOUS_IDLE_STEER/);
 });
 
 test('a built game with nothing on screen or an unplayed loop is not finished; other requests owe nothing', async () => {

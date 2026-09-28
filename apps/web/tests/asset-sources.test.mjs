@@ -239,6 +239,6 @@ test('the dialog disables what the ceiling forbids rather than letting it be swa
 test('a customer send no longer waits for a source-selection dialog', () => {
   const send = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
   assert.ok(send.length > 80, 'send path was not found');
-  assert.match(send, /sendChat\(text, mode, attachments, productModel, autonomous\)/);
+  assert.match(send, /sendChat\(text, attachments, productModel\)/);
   assert.doesNotMatch(send, /askFirst|setSourceAsk|AssetSourceDialog/);
 });

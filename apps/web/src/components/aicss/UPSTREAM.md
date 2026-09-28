@@ -67,12 +67,13 @@ rather than kept as unused vendored code. What replaced each one:
 | `thinking-reasoning` | none (never used) | — |
 | `file-diff` (with the local `FileDiff.runtime.js` + `.d.ts`) | `lib/generative-ui/render.tsx` `code_diff` | AI Elements `CodeBlock` in the `diff` language |
 | `inline-citations` | `ws/credits-panel.tsx` source credits | AI Elements `Sources` / `Source` |
+| `comparison-table` (removed 2026-09-29) | `routes/usage.tsx` Plan or Agent card | nothing: V3 gate G01 removed the Plan/Agent modes the card compared |
 
 Their pinned Git blob ids and registry SHA-256 values are kept in
 `tests/aicss-vendor.test.mjs` as the record of exactly what was vendored, and
 that test asserts every one of these directories is absent, is listed here,
 and is imported by no file in `src/`.
 
-Still vendored and still in use: `data-table` (`routes/admin.tsx`) and
-`comparison-table` (`routes/usage.tsx`), with `css.d.ts` for their CSS Modules.
+Still vendored and still in use: `data-table` (`routes/admin.tsx`), with
+`css.d.ts` for its CSS Modules.
 

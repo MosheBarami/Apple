@@ -7,15 +7,15 @@
  *
  *   * one textarea, the one the product and the tour address (id, data-tour, dir=auto);
  *   * one file input — PromptInput's, hidden, outside the form, carrying the shared allowlist;
- *   * Autonomous is a switch that is on only when it is really on (Agent and chosen), and the
- *     only place a violet class is ever applied;
+ *   * there is no mode switch and no Autonomous switch (V3 G01): every message runs the one
+ *     behaviour, so the bar offers no choice about how;
  *   * Send is a submit named "Send"; while a run is live the same slot is a plain button named
  *     "Stop this run", and there is no submit to press;
- *   * Mode is a radio switch and Create a menu trigger, and there is no model control (V3 G01: one
- *     engine); a menu's radio rows carry aria-checked from the group's value, and a row can be
+ *   * Create is a menu trigger, and there is no model control (V3 G01: one engine); a menu's
+ *     radio rows carry aria-checked from the group's value, and a row can be
  *     aria-disabled yet reachable.
  *
- * And the sheets: violet is spent only under `.is-on`; the composer's and the vendored components'
+ * And the sheets: no violet token is declared or spent; the composer's and the vendored components'
  * stylesheets carry no raw colour; every transition in composer.css has a reduced-motion opt-out.
  * Each list below is derived (from the markup, from a directory walk, from the rules themselves) and
  * asserts it found something.
@@ -57,10 +57,6 @@ function composer(overrides = {}) {
       onSend: () => true,
       onStop: noop,
       running: false,
-      mode: 'agent',
-      onModeChange: noop,
-      autonomous: false,
-      onAutonomousChange: noop,
       projectId: 'p-test',
       ...overrides,
     }),
@@ -112,39 +108,16 @@ test('the measured outer panel wraps the form, so the published height includes 
   assert.match(panel, /class="gx-composer__note"/);
 });
 
-// ------------------------------------------------------------- autonomous ---
+// ------------------------------------------------------------- no modes ---
 
-function autonomousSwitch(html) {
-  const switches = tags(html, 'button').filter((t) => attr(t, 'role') === 'switch');
-  assert.equal(switches.length, 1, `expected one switch, found ${switches.length}`);
-  return switches[0];
-}
-
-test('Autonomous is on ONLY when it is chosen and the mode is Agent', () => {
-  const cases = [
-    { mode: 'agent', autonomous: false, on: false },
-    { mode: 'agent', autonomous: true, on: true },
-    { mode: 'plan', autonomous: true, on: false },
-    { mode: 'plan', autonomous: false, on: false },
-  ];
-  for (const c of cases) {
-    const html = composer({ mode: c.mode, autonomous: c.autonomous });
-    const sw = autonomousSwitch(html);
-    const label = `${c.mode}/${c.autonomous}`;
-    assert.equal(attr(sw, 'aria-checked'), String(c.on), `${label}: aria-checked`);
-    assert.equal(classes(sw).includes('is-on'), c.on, `${label}: the violet class`);
-    // The panel carries it too, and only then.
-    const panel = tags(html, 'div').find((t) => classes(t).includes('gx-composer'));
-    assert.equal(classes(panel).includes('is-autonomous'), c.on, `${label}: the panel class`);
-    // Plan cannot grant it: the switch is off AND inert there.
-    assert.equal(has(sw, 'disabled'), c.mode === 'plan', `${label}: disabled`);
+test('there is no mode switch and no Autonomous switch, whatever a caller still passes', () => {
+  // V3 G01 / UI contract: no Plan/Agent/Autonomous selector. Legacy props are ignored, not drawn.
+  for (const legacy of [{}, { mode: 'plan', autonomous: true }, { mode: 'agent', autonomous: true, running: true }]) {
+    const html = composer(legacy);
+    assert.equal(tags(html, 'button').filter((t) => attr(t, 'role') === 'switch').length, 0, 'a switch is on the bar');
+    assert.equal(tags(html, 'div').filter((t) => attr(t, 'role') === 'radiogroup').length, 0, 'a radio group is on the bar');
+    assert.doesNotMatch(html, /Autonomous|>Plan<|>Agent<|gx-autonomous|is-autonomous/);
   }
-});
-
-test('a live run locks the switch as it stands', () => {
-  const sw = autonomousSwitch(composer({ autonomous: true, running: true }));
-  assert.equal(attr(sw, 'aria-checked'), 'true');
-  assert.ok(has(sw, 'disabled'));
 });
 
 // --------------------------------------------------------------- send/stop ---
@@ -178,26 +151,18 @@ test('the paperclip is off, with the reason, where there is no project to upload
 
 // ------------------------------------------------------------------ menus ---
 
-test('Mode and Create are named by what they hold, and there is no model control', () => {
+test('Create is named by what it holds, and there is no mode or model control', () => {
   //[[ RESTATED for V3 gate G01. Apple is the only engine, so the model chip and its picker are
   //   gone: nothing in the composer names or chooses a model. The property is unchanged for what
   //   remains: each control says what it currently holds. ]]
   //[[ RESTATED 2026-09-23 (composer picks). Mode is no longer a menu either: it is a two-way radio
   //   switch, so both words are on screen. It still says what it holds — its checked radio is the
   //   current mode — so the menu triggers are Create alone. ]]
-  const html = composer({ mode: 'plan' });
+  const html = composer();
   const triggers = tags(html, 'button').filter((t) => attr(t, 'aria-haspopup') === 'menu');
   const names = triggers.map((t) => attr(t, 'aria-label'));
   assert.deepEqual(names, ['Create']);
   for (const t of triggers) assert.equal(attr(t, 'aria-expanded'), 'false');
-  const group = tags(html, 'div').filter((t) => attr(t, 'role') === 'radiogroup' && attr(t, 'aria-label') === 'Mode');
-  assert.equal(group.length, 1, 'exactly one Mode switch');
-  const at = html.indexOf(group[0]);
-  const radios = html.slice(at, html.indexOf('</div>', at)).match(/<button\b[^>]*role="radio"[^>]*>[\s\S]*?<\/button>/g) ?? [];
-  assert.equal(radios.length, 2, 'Plan and Agent, both on screen');
-  const checked = radios.filter((r) => /aria-checked="true"/.test(r));
-  assert.equal(checked.length, 1, 'exactly one mode is chosen');
-  assert.match(checked[0], />Plan</, 'the chosen radio is the current mode');
   assert.equal(tags(html, 'button').some((t) => /^Model\b/.test(attr(t, 'aria-label') ?? '')), false, 'a model control is back');
   assert.doesNotMatch(html, /gx-chip--model/);
 });
@@ -257,20 +222,14 @@ function rules(css) {
   return out;
 }
 
-test('VIOLET IS SPENT ONLY ON AUTONOMOUS-ON — every use of an --autonomous token is under .is-on', () => {
-  let uses = 0;
+test('NO VIOLET: the Autonomous tokens left with the Autonomous switch, and nothing spends them', () => {
+  const found = sheets();
+  assert.ok(found.length >= 3, `only ${found.length} sheets found — the reader is not reading`);
   const offenders = [];
-  for (const file of sheets()) {
-    for (const r of rules(readFileSync(file, 'utf8'))) {
-      if (!/var\(--autonomous/.test(r.body)) continue;
-      // The token definitions themselves are not a use.
-      if (/^:root/.test(r.selector) && !/var\(--autonomous[^)]*\)/.test(r.body.replace(/--autonomous[\w-]*\s*:[^;]*;/g, ''))) continue;
-      uses += 1;
-      for (const sel of r.selector.split(',')) if (!/\.is-on\b/.test(sel)) offenders.push(`${relative(SRC, file)}: ${sel.trim()}`);
-    }
+  for (const file of found) {
+    if (/--autonomous/.test(readFileSync(file, 'utf8'))) offenders.push(relative(SRC, file));
   }
-  assert.ok(uses >= 3, `only ${uses} use(s) of the violet tokens found — the reader is not reading`);
-  assert.deepEqual(offenders, [], 'violet outside the on state');
+  assert.deepEqual(offenders, [], 'a violet token is declared or spent');
 });
 
 test('the composer’s and the vendored components’ sheets carry no raw colour', () => {

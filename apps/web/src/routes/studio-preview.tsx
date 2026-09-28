@@ -17,7 +17,7 @@
 // not drawn as a failure.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { type PlaytestRun, type ProductMode, type StudioFrame } from '@golem/shared';
+import { type PlaytestRun, type StudioFrame } from '@golem/shared';
 import { Turn } from '../components/ws/turn';
 import { ChatWelcome } from '../components/ws/chat-welcome';
 import { Composer } from '../components/ws/composer';
@@ -46,7 +46,7 @@ const SCENARIOS = [
   { id: 'diff', label: 'Generated diff' },
   { id: 'credits', label: 'Sources in Credits' },
   { id: 'failure', label: 'Final failure' },
-  { id: 'plan', label: 'Composer · Plan + files' },
+  { id: 'files', label: 'Composer · files' },
 ] as const;
 type ScenarioId = typeof SCENARIOS[number]['id'];
 
@@ -277,8 +277,6 @@ interface ScreenProps {
   items: ChatItem[];
   status?: AgentStatus | null;
   running?: boolean;
-  mode?: ProductMode;
-  autonomous?: boolean;
   initialStaged?: StagedAttachment[];
   playtest?: { run: PlaytestRun; frames: StudioFrame[] } | null;
   empty?: boolean;
@@ -291,9 +289,7 @@ interface ScreenProps {
  * the same compose region, in the same grid, so what is on screen is laid out by the workspace's
  * CSS rather than by a lookalike.
  */
-function Screen({ items, status = null, running = false, mode: initialMode = 'agent', autonomous: initialAuto = false, initialStaged, playtest = null, empty = false, after, onChooseAsset }: ScreenProps) {
-  const [mode, setMode] = useState<ProductMode>(initialMode);
-  const [autonomous, setAutonomous] = useState(initialAuto);
+function Screen({ items, status = null, running = false, initialStaged, playtest = null, empty = false, after, onChooseAsset }: ScreenProps) {
   const [seed, setSeed] = useState<string | undefined>();
   const lastAssistant = [...items].reverse().find((item) => item.role === 'assistant')?.id;
   return (
@@ -332,13 +328,6 @@ function Screen({ items, status = null, running = false, mode: initialMode = 'ag
           onStop={() => undefined}
           running={running}
           studioConnected
-          mode={mode}
-          onModeChange={(next) => {
-            setMode(next);
-            if (next === 'plan') setAutonomous(false);
-          }}
-          autonomous={autonomous}
-          onAutonomousChange={setAutonomous}
           seed={seed}
           projectId={SPECIMEN_PROJECT}
           initialStaged={initialStaged}
@@ -413,9 +402,8 @@ function Scenario({ id }: { id: ScenarioId }) {
       tools.push(tool('t5', 'edit_script', 'Writing PortalService', t0 - 1_200, { done: false, target: 'ServerScriptService.PortalService' }));
       return <Screen
         running
-        autonomous
         status={{ phase: 'writing_luau', creditsSpent: 2 }}
-        items={[ask, { id: 'a1', role: 'assistant', mode: 'agent', autonomous: true, content: '', tools, streaming: true, createdAt: t0 - 9_500 }]}
+        items={[ask, { id: 'a1', role: 'assistant', mode: 'agent', content: '', tools, streaming: true, createdAt: t0 - 9_500 }]}
       />;
     }
 
@@ -512,8 +500,8 @@ function Scenario({ id }: { id: ScenarioId }) {
       })]} />;
     }
 
-    case 'plan':
-      return <Screen mode="plan" initialStaged={staged()} items={[ask, settled()]} />;
+    case 'files':
+      return <Screen initialStaged={staged()} items={[ask, settled()]} />;
   }
 }
 

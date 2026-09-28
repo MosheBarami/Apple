@@ -297,10 +297,11 @@ test('THE TWO LEDGER ROWS FOR ONE ACTIVITY ARE ONE LINE', () => {
   // activity charged in two instalments, and printing them as two categories would invite the
   // reader to conclude they were charged twice.
   const rows = spendByKind(DAYS);
-  const agent = rows.filter((r) => r.key === 'mode:agent');
-  assert.equal(agent.length, 1, `Agent must be one row, got ${JSON.stringify(rows)}`);
-  assert.equal(agent[0].credits, 9, '8 settled plus the 1 charged on admission');
-  assert.equal(rows.length, 3, 'Plan, Agent and Search — three buckets, not four rows');
+  // There are no customer modes (V3 G01): a legacy `plan` row joins the same one request bucket.
+  const requests = rows.filter((r) => r.key === 'requests');
+  assert.equal(requests.length, 1, `requests must be one row, got ${JSON.stringify(rows)}`);
+  assert.equal(requests[0].credits, 29, '8 settled plus the 1 charged on admission, plus the legacy Plan 20');
+  assert.equal(rows.length, 2, 'Requests and Search — two buckets, not four rows');
 });
 
 test('a concrete ledger row with a non-ProductMode suffix stays counted without becoming a new mode', () => {
@@ -323,7 +324,7 @@ test('an aggregate extra balance does not claim it was purchased rather than gra
 test('THE BIGGEST SPEND IS FIRST, because that is the one worth knowing about', () => {
   const rows = spendByKind(DAYS);
   for (let i = 1; i < rows.length; i++) assert.ok(rows[i - 1].credits >= rows[i].credits, JSON.stringify(rows));
-  assert.equal(rows[0].key, 'mode:plan', 'the 20-Credit day leads');
+  assert.equal(rows[0].key, 'requests', 'the 29-Credit request bucket leads');
 });
 
 test('A KIND THIS PAGE HAS NEVER SEEN IS SHOWN, not dropped and not guessed at', () => {
@@ -379,9 +380,9 @@ test('A GENUINE ZERO LAST MONTH IS A COMPARISON; an unknown one is not', () => {
   assert.equal(periodComparisonLine(50, null), null);
 });
 
-test('the labels are the product’s own words for the modes', () => {
-  assert.equal(usageKindLabel('chat_plan'), 'Plan');
-  assert.equal(usageKindLabel('usage_agent'), 'Agent');
+test('the labels are the product’s own words, and name no mode', () => {
+  assert.equal(usageKindLabel('chat_plan'), 'Requests');
+  assert.equal(usageKindLabel('usage_agent'), 'Requests');
   assert.equal(usageKindLabel('usage_retired_mode'), 'Other usage');
   assert.match(usageKindLabel('api_chat'), /api/i);
   assert.match(usageKindLabel('docs_search'), /search/i);

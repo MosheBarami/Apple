@@ -136,11 +136,11 @@ export function builtSummary(trace: readonly { tool: string; ok: boolean }[], mu
 }
 
 /**
- * Autonomous runs that stop to ask. Measured 2026-09-23 (gauntlet round 2, Apple MAX, "make the full
+ * Runs that stop to ask. Measured 2026-09-23 (gauntlet round 2, Apple MAX, "make the full
  * game"): the run placed a landmark, passed check_composition, then wrote "audit_build still reports
  * one real defect I have not fixed yet … the full loop has not been playtested … Want me to fix the
- * z-fighting next, then run the playtest?" and the idle bound ended it. Autonomous means the person
- * already said yes, so a reply that names owed work or asks leave to continue is handed back as work,
+ * z-fighting next, then run the playtest?" and the idle bound ended it. The person asked for the whole
+ * request (V3: proceed automatically, no routine approval gate), so a reply that names owed work or asks leave to continue is handed back as work,
  * at most AUTONOMOUS_CONTINUES times per run; MAX_RUN_STEPS, Credits and Stop still end it.
  */
 export const AUTONOMOUS_CONTINUES = 3;
@@ -155,14 +155,14 @@ export function leavesWorkOpen(text: string | null | undefined): boolean {
 }
 
 export const AUTONOMOUS_CONTINUE_STEER =
-  'Autonomous is ON: the user already approved finishing this request, so do not ask them anything. ' +
+  'The user already asked for this whole request to be finished, so do not ask them anything. ' +
   'Your last reply names work that is still missing, broken or unverified. Do that work now with tool ' +
   'calls — fix the defects your checks reported, then playtest the game loop the request asked for. ' +
   'Reply to the user only when nothing the request needs is left, and end that reply with a statement, not a question.';
 
-/** For an Autonomous run the idle bound would end: finishing is the model's call, reading is not. */
+/** For a run the idle bound would end: finishing is the model's call, reading is not. */
 export const AUTONOMOUS_IDLE_STEER =
-  'Autonomous is ON, and you have only been reading since your last check passed. If anything the request ' +
+  'You have only been reading since your last check passed. If anything the request ' +
   'needs is still missing, broken or unverified (defects your checks reported, a game loop nobody has ' +
   'playtested), make that change now. If nothing is left, reply to the user with the final summary and no ' +
   'tool calls, ending with a statement, not a question.';
@@ -197,7 +197,7 @@ export function gameGapSteer(gaps: readonly ('hud' | 'playtest')[]): string {
     owed.push('Nobody has played the game loop yet. Run play_check as a real player through the loop the request ' +
       'asks for (earn, spend, grow, win — whatever it is), touching the parts that drive it, and fix what it reports.');
   }
-  return `Autonomous is ON and this is a game a player will open. ${owed.join(' ')} ` +
+  return `This is a game a player will open. ${owed.join(' ')} ` +
     'Then reply with the final summary, ending with a statement, not a question.';
 }
 
@@ -218,7 +218,7 @@ export const UNSTICK_STEER =
 export function afterDuplicateStreak(f: {
   streak: number;
   limit: number;
-  /** An Agent-mode run that can change the place — Autonomous or not (gauntlet round 4, run a933ac87). */
+  /** A run that can change the place (gauntlet round 4, run a933ac87). */
   building: boolean;
   unstucks: number;
   workOpen: boolean;

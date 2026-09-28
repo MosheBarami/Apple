@@ -76,15 +76,6 @@ test('the disclosure guard rejects a connect page that hides availability', () =
   assert.throws(() => assertDisclosure(stripped, live, ASSET[1]));
 });
 
-test('the modes guide keeps the one engine separate from ProductMode', () => {
-  const content = text(page('docs/modes'));
-  // RESTATED for V3 gate G01: there is no model choice any more; Apple is the engine on every plan.
-  assert.match(content, /Apple is the only engine/i);
-  assert.doesNotMatch(content, /Apple MAX|model choices?/i);
-  assert.match(content, /Plan and Agent/i);
-  assert.match(content, /Autonomous is a toggle on Agent, not another mode/i);
-});
-
 /*
  * THE DISCLOSURE STAYED; THE THING BEING DISCLOSED CHANGED.
  *

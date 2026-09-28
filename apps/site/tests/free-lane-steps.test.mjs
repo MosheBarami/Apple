@@ -1,6 +1,6 @@
 /**
- * ProductMode is the work-mode contract. It has exactly Plan and Agent; Autonomous is a boolean
- * option on Agent runs and must never grow into a third mode or a fixed step budget in site copy.
+ * The customer picks no work mode (V3 gate G01). Autonomy never becomes a ProductMode, and the one
+ * step ceiling every run has is disclosed on /pricing — never a fixed step budget per tier or mode.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,7 +17,6 @@ const stripTs = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])
 const session = stripTs(readFileSync(join(ROOT, 'apps', 'worker', 'src', 'do', 'session.ts'), 'utf8'));
 const shared = stripTs(readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8'));
 const pricing = readFileSync(join(SITE, 'src', 'pages', 'pricing.astro'), 'utf8');
-const modesPage = readFileSync(join(SITE, 'src', 'pages', 'docs', 'modes.astro'), 'utf8');
 
 function productModes() {
   const match = /export type ProductMode\s*=\s*([^;]+);/.exec(shared);
@@ -27,14 +26,12 @@ function productModes() {
   return values;
 }
 
-test('ProductMode is exactly Plan and Agent, with autonomy outside the union', () => {
-  assert.deepEqual(productModes(), ['plan', 'agent']);
+test('autonomy stays outside the ProductMode union', () => {
+  assert.ok(!productModes().includes('autonomous'), 'Autonomous became a ProductMode');
   assert.doesNotMatch(shared, /GolemMode/, 'the retired mode alias has returned');
-  assert.match(shared, /autonomous\?:\s*boolean/,
-    'autonomy is no longer represented as a separate boolean option');
 });
 
-test('autonomous Agent runs have exactly the requested 1000-step ceiling and no wall-clock cutoff', () => {
+test('every run has exactly the requested 1000-step ceiling and no wall-clock cutoff', () => {
   assert.doesNotMatch(session, /STEP_LIMITS/);
   assert.doesNotMatch(session, /maxStepsFor/);
   assert.doesNotMatch(session, /RUN_WALL_MS/);
@@ -42,17 +39,10 @@ test('autonomous Agent runs have exactly the requested 1000-step ceiling and no 
   assert.match(session, /agent\.step\s*>=\s*MAX_RUN_STEPS/);
 });
 
-test('pricing and docs describe the two modes and Autonomous as an Agent toggle', () => {
-  for (const [name, src] of [['pricing.astro', pricing], ['docs/modes.astro', modesPage]]) {
-    const text = visibleText(src);
-    for (const mode of productModes()) {
-      const display = mode[0].toUpperCase() + mode.slice(1);
-      assert.match(text, new RegExp(`\\b${display}\\b`), `${name} does not name ${display}`);
-    }
-    assert.match(text, /Autonomous\s+is\s+(?:an\s+Agent\s+toggle|a\s+toggle\s+on\s+Agent)/i,
-      `${name} does not make Autonomous an Agent toggle`);
-    assert.match(text, /\b1000\s+steps?\b/i, `${name} does not disclose the 1000-step ceiling`);
-  }
+test('pricing discloses the one 1000-step ceiling and offers no Autonomous option', () => {
+  const text = visibleText(pricing);
+  assert.match(text, /\b1000\s+steps?\b/i, 'pricing.astro does not disclose the 1000-step ceiling');
+  assert.doesNotMatch(text, /\bAutonomous\b/, 'pricing.astro offers Autonomous as a customer option');
 });
 
 test('the step-ceiling guard has teeth', () => {

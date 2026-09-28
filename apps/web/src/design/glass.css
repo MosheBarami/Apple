@@ -36,7 +36,7 @@
 /* ------------------------------------------------------------------ tokens --- */
 
 :root {
-  /* The aurora: brand blue (--accent-deep), brand violet (--autonomous), and the light accent tint.
+  /* The aurora: brand blue (--accent-deep), brand violet, and the light accent tint.
      The deeper blue carries more colour per unit of brightness, so --faint keeps its 4.5:1. */
   --aurora-1:rgba(66,100,232,.18);
   --aurora-2:rgba(139,92,246,.12);

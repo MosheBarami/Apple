@@ -23,15 +23,13 @@ const UPSTREAM_BLOBS = {
 // The newer free components are public through the unauthenticated AICSS
 // registry rather than this Git snapshot. These SHA-256 values pin the exact
 // TSX/CSS bytes returned by the live registry on 2026-09-22.
-const PUBLIC_REGISTRY_SHA256 = {
-  'comparison-table/ComparisonTable.tsx': 'df562b23d9ea26e790896a37321fce65f7cb267eb1f0576acc233d82f9415808',
-  'comparison-table/ComparisonTable.module.css': '7c843ce59ad0f0d82b4e7fe14bcda1fb329d7e26f3abccd55c506c74a003baf3',
-};
+// None is vendored now: comparison-table, the last, left with the Plan or Agent card (below).
+const PUBLIC_REGISTRY_SHA256 = {};
 
 // THE COMPONENTS THAT ARE STILL VENDORED, derived from what the app still imports rather than
 // listed twice: every directory here must be imported by some file under src/, and every
 // directory on disk must be here (the test below checks both directions).
-const COMPONENT_DIRS = ['comparison-table', 'data-table'];
+const COMPONENT_DIRS = ['data-table'];
 
 // REMOVED 2026-09-22, when the chat, thinking and workspace surfaces moved to Vercel AI Elements
 // and these became imported by nothing (UPSTREAM.md, "Removed on 2026-09-22"). The pins are kept
@@ -77,6 +75,12 @@ const REMOVED = {
     'InlineCitations.tsx': 'a0919aecd8b111bb8305e40d54cce18a73bae406a081545f4b7297fca2596ca5',
     'InlineCitations.module.css': '27fd8824d5dd5b3bdc3f3b3de9c73ebe22e09e2bf109eaa2f2752c41f0671e2e',
   },
+  // Removed 2026-09-29: its one user was the usage page's Plan or Agent card, and V3 gate G01
+  // removed the modes it compared.
+  'comparison-table': {
+    'ComparisonTable.tsx': 'df562b23d9ea26e790896a37321fce65f7cb267eb1f0576acc233d82f9415808',
+    'ComparisonTable.module.css': '7c843ce59ad0f0d82b4e7fe14bcda1fb329d7e26f3abccd55c506c74a003baf3',
+  },
 };
 
 const REQUESTED_LICENSE_BLOCKED = ['ai-agent-input', 'image-generation', 'task-list'];
@@ -107,7 +111,7 @@ test('vendored AICSS source is byte-for-byte the pinned public package source', 
     }
   };
   collect(VENDOR);
-  assert.ok(onDisk.length >= 8, `only ${onDisk.length} vendored file(s) found — the walk is not reading`);
+  assert.ok(onDisk.length >= 5, `only ${onDisk.length} vendored file(s) found — the walk is not reading`);
   for (const rel of onDisk) {
     if (rel in UPSTREAM_BLOBS || rel in PUBLIC_REGISTRY_SHA256) continue;
     // A registry component's index.ts is local (UPSTREAM.md: "only re-export the copied
@@ -169,7 +173,7 @@ test('every removed AICSS component is absent, recorded, and imported by nothing
   const removal = upstream.slice(upstream.indexOf('## Removed on 2026-09-22'));
   assert.ok(removal.length > 100, 'UPSTREAM.md does not record the removal');
   const names = Object.keys(REMOVED);
-  assert.equal(names.length, 8, 'the record of removed directories changed — review it rather than editing the count');
+  assert.equal(names.length, 9, 'the record of removed directories changed — review it rather than editing the count');
   const imported = importedAicssDirs();
   for (const dir of names) {
     assert.equal(existsSync(join(VENDOR, dir)), false, `${dir} was removed and has come back`);

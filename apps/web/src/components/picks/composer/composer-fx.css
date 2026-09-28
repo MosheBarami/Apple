@@ -1,4 +1,4 @@
-/* THE PICKS ON THE COMPOSER'S EXISTING PARTS — Send, Autonomous, the card's focus, the round tools
+/* THE PICKS ON THE COMPOSER'S EXISTING PARTS — Send, the card's focus, the round tools
    and the Create menu. composer.css draws those parts; this sheet adds what the owner picked on top
    of them, one class more specific than the rule it extends so the order the sheets load in never
    decides the look. Tokens only. Everything that moves stops under prefers-reduced-motion. */
@@ -21,24 +21,6 @@
 .gx-composer .gx-composer__tools .gx-send.pk-send:is(:hover,:focus-visible):not(:disabled) { gap:6px; padding-inline:13px 10px; }
 .gx-composer .gx-composer__tools .gx-send.pk-send:is(:hover,:focus-visible):not(:disabled) .pk-send__label { max-inline-size:4em; opacity:1; }
 
-/* ------------------------------------------------ Autonomous: the violet, alive ---
-   Animate UI "Toggle": switching on fades the highlight in behind it. UI Layouts "Button Rotating
-   Gradient" (MIT): while on, a conic band of the violet turns slowly round its edge — the one
-   thing on the bar that is allowed to keep moving, because it is the one that says Apple is
-   working on its own. Every rule that spends violet is under .is-on. */
-.gx-composer .gx-composer__bar .gx-autonomous.is-on { position:relative; isolation:isolate; overflow:hidden; border-color:transparent; background:transparent; }
-.gx-composer .gx-composer__bar .gx-autonomous.is-on::before {
-  content:''; position:absolute; inset:-300%; z-index:-2;
-  background:conic-gradient(from 90deg,var(--autonomous-ring),var(--autonomous) 25%,var(--autonomous-ring) 50%,var(--autonomous) 75%,var(--autonomous-ring));
-  animation:pk-spin 3.2s linear infinite;
-}
-.gx-composer .gx-composer__bar .gx-autonomous.is-on::after {
-  content:''; position:absolute; inset:1px; z-index:-1; border-radius:calc(var(--r-xs) - 1px);
-  background:linear-gradient(var(--autonomous-soft),var(--autonomous-soft)),var(--surface);
-  animation:pk-fade-in 200ms var(--ease-out) both;
-}
-@keyframes pk-spin { to { rotate:360deg; } }
-@keyframes pk-fade-in { from { opacity:0; } to { opacity:1; } }
 
 /* ------------------------------------------------ the card takes focus ---
    GSAP "CSSPlugin" (the composer focusing): the edge turns to the accent (composer.css), a soft
@@ -91,7 +73,6 @@
 @media (prefers-reduced-motion:reduce) {
   .gx-composer .gx-composer__tools .gx-send.pk-send,.pk-send__label,
   .gx-composer .gx-composer__inner .gx-composer__bar { transition:none; }
-  .gx-composer .gx-composer__bar .gx-autonomous.is-on::before,.gx-composer .gx-composer__bar .gx-autonomous.is-on::after,
   .ai-menu.gx-menu.gx-menu--create,.ai-menu.gx-menu.gx-menu--create > * { animation:none; }
   .gx-composer .gx-composer__tools [data-dock] { transform:none; }
 }

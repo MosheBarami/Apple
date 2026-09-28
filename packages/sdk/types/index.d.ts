@@ -265,7 +265,6 @@ export interface RunTool {
 export interface Run {
   msgId: string | null;
   mode: ProductMode | null;
-  autonomous?: boolean;
   text: string;
   tools: RunTool[];
   phase: string | null;
@@ -313,8 +312,8 @@ export class SessionStream {
   on(type: string, handler: (payload: never, type?: string) => void): () => void;
   off(type: string, handler: (payload: never, type?: string) => void): void;
   send(msg: ClientMsg): boolean;
-  sendChat(text: string, mode?: ProductMode, autonomous?: boolean): boolean;
-  editAndResend(messageId: string, text: string, mode?: ProductMode, autonomous?: boolean): boolean;
+  sendChat(text: string): boolean;
+  editAndResend(messageId: string, text: string): boolean;
   stop(): boolean;
   resume(): boolean;
   ping(): boolean;

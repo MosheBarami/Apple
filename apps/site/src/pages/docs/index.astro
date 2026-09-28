@@ -1,10 +1,8 @@
 ---
-import { MODE_INFO, PRODUCT_MODES } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
-// The two ProductMode values are named from the shared contract rather than repeated here.
 /*
  * THE BODY WAS GATED AND THE METADATA WAS NOT, WHICH IS THE HALF PEOPLE ACTUALLY SHARE.
  *
@@ -14,21 +12,18 @@ import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
  * promise reached the reader BEFORE the correction did, and the correction only arrived if they
  * clicked. Same constant, same answer, one sentence earlier.
  */
-const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
-  PRODUCT_MODES.map((m) => MODE_INFO[m].name),
-);
 ---
 
 <DocsLayout
   title="Documentation — Apple"
   description={STUDIO_PLUGIN_STORE_LIVE
-    ? `Everything you need to build with Apple: getting started, installing and connecting the Studio plugin, ${modeNames}, Credits, and how your data is handled.`
-    : `Everything you need to build with Apple: getting started, ${modeNames}, Credits, and how your data is handled. Public Studio installation is unavailable right now.`}
+    ? `Everything you need to build with Apple: getting started, installing and connecting the Studio plugin, Credits, and how your data is handled.`
+    : `Everything you need to build with Apple: getting started, Credits, and how your data is handled. Public Studio installation is unavailable right now.`}
   heading="Apple documentation"
 >
   <p>
     Apple turns plain-language descriptions into real changes inside Roblox Studio. These docs cover
-    the whole journey: installing the plugin, connecting it to a project, choosing a mode,
+    the whole journey: installing the plugin, connecting it to a project,
     understanding Credits, and knowing exactly what happens to your data.
   </p>
 
@@ -52,10 +47,6 @@ const modeNames = new Intl.ListFormat('en', { type: 'conjunction' }).format(
 
   <h2>Using Apple</h2>
   <ul>
-    <li>
-      <strong><a href="/docs/modes">Modes</a></strong> — {modeNames}, plus when to turn on
-      Autonomous for Agent.
-    </li>
     <li>
       <strong><a href="/docs/credits-and-limits">Credits &amp; limits</a></strong> — how the daily
       quota works and what happens at the edges.

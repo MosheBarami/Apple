@@ -39,7 +39,8 @@ const quoted = (text) => [...text.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 
 test('MODES is exactly the ProductMode union', () => {
   const declared = quoted(declaration('export type ProductMode ='));
-  assert.ok(declared.length >= 2, 'the union was not parsed — fix this test before trusting it');
+  // One kind of request (V3 G01): the union is the single legacy wire value `agent`.
+  assert.ok(declared.length >= 1, 'the union was not parsed — fix this test before trusting it');
   assert.deepEqual([...MODES].sort(), [...declared].sort());
 });
 

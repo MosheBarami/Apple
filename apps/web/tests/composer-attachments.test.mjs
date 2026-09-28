@@ -182,11 +182,11 @@ test('the message carries the attachments all the way to the socket frame', () =
   // written and nothing ever set it.
   assert.match(CODE, /readyAttachments\(/);
   assert.match(COMPOSER, /onSend: \(text: string, attachments: ChatAttachment\[\]\) => boolean/);
-  // Mode, model and autonomy metadata must not invalidate the attachment boundary.
+  // Model metadata must not invalidate the attachment boundary.
   // RESTATED 2026-09-23: the call gained a sixth argument, the model on the customer's own key
-  // (D-BYOK-1). The property is that the attachments, mode, model and autonomy all still ride on it,
-  // not that it ends after `autonomous`.
-  assert.match(WORKSPACE, /sendChat\(text, mode, attachments, productModel, autonomous\b/);
+  // (D-BYOK-1). RESTATED 2026-09-29 (V3 G01): the mode and the Autonomous grant are gone; the
+  // attachments and the model still ride on it.
+  assert.match(WORKSPACE, /sendChat\(text, attachments, productModel\)/);
   assert.match(SOCKET, /sendRaw\(\{ type: 'chat'[^\n]+attachments/);
 });
 

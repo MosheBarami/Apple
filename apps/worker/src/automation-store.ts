@@ -24,7 +24,6 @@ import type { Env } from './env';
 import { oncePerIsolate } from './schema-once';
 import {
   isAutomationEvent,
-  isAutomationMode,
   isAutomationTrigger,
   isMissedRunPolicy,
   isOverlapPolicy,
@@ -130,7 +129,7 @@ export interface StoredAutomation extends Automation {
  * is dropped rather than taking the dispatcher down for everybody.
  */
 export function fromRow(r: Row): StoredAutomation | null {
-  if (!isAutomationMode(r.mode) || !isAutomationTrigger(r.trigger_kind)) return null;
+  if (!isAutomationTrigger(r.trigger_kind)) return null;
   if (!isOverlapPolicy(r.overlap) || !isMissedRunPolicy(r.missed_runs)) return null;
   let schedule: Schedule | null = null;
   if (r.schedule_json) {
@@ -162,7 +161,7 @@ export function fromRow(r: Row): StoredAutomation | null {
     name: r.name,
     description: r.description,
     prompt: r.prompt,
-    mode: r.mode,
+    mode: 'agent',
     trigger: r.trigger_kind,
     schedule,
     timezone: r.timezone,

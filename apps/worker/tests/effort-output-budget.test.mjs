@@ -38,7 +38,7 @@ function modeBases() {
   assert.ok(m, 'MODE_BASE_TOKENS could not be read out of session.ts — this test knows no budgets, '
     + 'so it has verified nothing. Do not read a pass here as a pass.');
   const bases = [...m[1].matchAll(/(\w+)\s*:\s*([0-9_]+)/g)].map(([, k, v]) => [k, Number(v.replace(/_/g, ''))]);
-  assert.equal(bases.length, 2, `expected exactly Plan and Agent budgets, parsed ${bases.length}`);
+  assert.equal(bases.length, 1, `expected exactly the one request budget (V3 G01), parsed ${bases.length}`);
   return bases;
 }
 

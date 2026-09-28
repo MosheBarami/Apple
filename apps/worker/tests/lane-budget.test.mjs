@@ -25,9 +25,10 @@ function sessionBudgets() {
 
 const HIGH_MULTIPLIER = 1.25;
 
-test('the provider and session tables contain exactly Plan and Agent', () => {
-  assert.deepEqual(Object.keys(gatewayLanes()).sort(), ['agent', 'plan']);
-  assert.deepEqual(Object.keys(sessionBudgets()).sort(), ['agent', 'plan']);
+test('the session budgets one request kind; the gateway still routes it', () => {
+  // V3 G01: one behaviour. The gateway's `plan` key is an internal lane left for later cleanup.
+  assert.ok(gatewayLanes().agent, 'the gateway has no lane for the one request kind');
+  assert.deepEqual(Object.keys(sessionBudgets()), ['agent']);
 });
 
 test('no product run mode asks for more output than its provider route allows', () => {

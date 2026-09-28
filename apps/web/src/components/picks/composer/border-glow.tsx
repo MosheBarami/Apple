@@ -7,7 +7,7 @@
 // and `--pk-angle` (which way round), and the sheet draws a conic ring masked to the border from
 // those. The sweep is the same two properties driven by requestAnimationFrame.
 //
-// Blue only: the one violet in the product is Autonomous-on, and a violet edge here would spend it.
+// Blue only: no control in the product spends violet.
 // Nothing at all under prefers-reduced-motion or on touch, and nothing while the box is disabled.
 import { useEffect, useRef, type RefObject } from 'react';
 import { finePointer, reducedMotion } from './motion';

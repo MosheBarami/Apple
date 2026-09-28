@@ -207,9 +207,8 @@ interface AgentState {
   refusalRemedy?: RefusalRemedyCode;
   /** the run's unforgeable fence id; optional so a run persisted by an older deploy still loads */
   fenceId?: string;
+  /** Always `agent` for a new run; a run persisted by an older build may hold `plan` (see runStep). */
   mode: ProductMode;
-  /** Per-message autonomy switch. It is meaningful only when mode === 'agent'. */
-  autonomous?: boolean;
   /** The engine the run is on: always Apple. A run persisted by an older build may hold a retired id. */
   productModel?: ProductModel;
   /** Owner-approved Creator Store model for this run, selected from a shown preview. */
@@ -277,7 +276,7 @@ interface AgentState {
   idleAfterVerify?: number;
   /** Consecutive read-only steps since the last change or check, in a run that can build (run-idle.ts). */
   readsSinceChange?: number;
-  /** Times an Autonomous run that was about to stop was handed its owed work back (run-idle). */
+  /** Times a run that was about to stop was handed its owed work back (run-idle). */
   autonomousContinues?: number;
   /** This run built something the player sees on screen (a ScreenGui, the ui_kit, build_ui). */
   hudBuilt?: boolean;
@@ -489,7 +488,6 @@ const accessClearPendingKey = (userId: string): string => `accessClearPending:${
 // The hard step ceiling is a direct cost multiplier: every accepted step is a full priced inference
 // call. The previous small mode-specific ceilings cut visual loops off mid-work; the current product
 // contract gives every message one explicit long-horizon ceiling instead.
-const VALID_MODES = new Set<ProductMode>(['plan', 'agent']);
 /** Latest product contract: one message may execute at most 1000 accepted work steps. */
 export const MAX_RUN_STEPS = 1000;
 
@@ -536,41 +534,8 @@ const KIT_KEPT =
 const spaced = (t: string): string => (t ? `${t} ` : '');
 /** Consecutive steps a tool-call-written-as-text steer may be given before the ordinary ending decides. */
 const MAX_TEXT_CALL_STEERS = 2;
-const MODE_BASE_TOKENS: Record<ProductMode, number> = { plan: 4400, agent: 4400 };
+const MODE_BASE_TOKENS: Record<ProductMode, number> = { agent: 4400 };
 
-/**
- * The runtime mode allowlist. `ProductMode` is a COMPILE-TIME type and `JSON.parse(raw) as ClientMsg`
- * is an assertion, not a check — so before this, whatever the client put in `mode` was used as a
- * key directly.
- *
- * Only Plan and Agent are valid run modes. Autonomous is a separate boolean on Agent.
- */
-function asProductMode(x: unknown): ProductMode | null {
-  if (typeof x !== 'string') return null;
-  const mode = x as ProductMode;
-  return VALID_MODES.has(mode) && Object.prototype.hasOwnProperty.call(MODE_BASE_TOKENS, x) ? mode : null;
-}
-
-/**
- * The refusal a chat frame gets when its `mode` is not one this build knows.
- *
- * MEASURED 2026-09-22. The product renamed its run modes — the wire carried `clay`/`stone`/`rune`
- * and carries `plan`/`agent` now — and a browser tab keeps the bundle it loaded until it reloads.
- * There is no way to update a web SPA atomically, so during any such rename there is a window in
- * which a live tab asks for a mode this build has never heard of. The old message ("Unknown mode
- * for this request") was true and useless: the person reading it had done nothing wrong and had no
- * way to know that a reload fixes it, so the product read as broken rather than as stale.
- *
- * The wording is the one this file already uses for a stale socket — `me === null`, a client from
- * before the socket carried an identity. Same cause, same remedy, so the same sentence.
- *
- * THE CODE STAYS `bad_mode`, and that is load-bearing in two places. The browser maps the code to a
- * field-level error on the composer (`refusalFor('bad_mode').field === 'mode'`), and
- * tests/mode-ingress.test.mjs asserts on the code and on `terminal: true`. Changing the prose
- * therefore cannot loosen the security property: an unrecognised mode still creates no run, and a
- * hostile one still gets a terminal refusal.
- */
-const MODE_SKEW_REFUSAL = 'This connection is out of date — reload the page to keep building.';
 /** A restore refused because a run is still changing the place. Plain words: the reader may be young. */
 const RESTORE_WHILE_RUNNING = 'Apple is still building. Press Stop first, then restore.';
 
@@ -584,7 +549,7 @@ function asProductModel(x: unknown): ProductModel | undefined {
   return normalizeModelId(x);
 }
 
-// Apple is the one engine, so the gateway key is the run mode (plan/agent), both GLM 5.3 Flash.
+// Apple is the one engine, so the gateway key is the run mode (`agent`; a legacy persisted run may say `plan`).
 export function gatewayModelFor(mode: ProductMode): string {
   return mode;
 }
@@ -2095,7 +2060,8 @@ export class SessionDO extends DurableObject<Env> {
         messages: rows.reverse().map((r) => ({
           id: r.id,
           role: r.role,
-          mode: r.mode,
+          // A row written in the retired Plan mode reads back as the one behaviour (V3 G01).
+          mode: r.mode === null ? null : 'agent',
           ...(productModels.get(r.id) ?? {}),
           ...(terminal.get(r.id) ?? {}),
           content: r.content,
@@ -2272,7 +2238,8 @@ export class SessionDO extends DurableObject<Env> {
         messages: kept.map((r) => ({
           id: r.id,
           role: r.role,
-          mode: r.mode,
+          // A row written in the retired Plan mode reads back as the one behaviour (V3 G01).
+          mode: r.mode === null ? null : 'agent',
           ...(productModels.get(r.id) ?? {}),
           ...(terminal.get(r.id) ?? {}),
           content: r.content,
@@ -2343,12 +2310,11 @@ export class SessionDO extends DurableObject<Env> {
     // regression run. It takes exactly the path a chat message takes — same startRun, same tools,
     // same quota, same budget — so what it measures is the real agent, not a test harness.
     if (path === '/agent-run' && req.method === 'POST') {
-      const { text, mode, effort, productModel, autonomous } = (await req.json()) as {
+      // A legacy `mode` or `autonomous` in the body is ignored: every request runs the one behaviour.
+      const { text, effort, productModel } = (await req.json()) as {
         text: string;
-        mode?: ProductMode;
         effort?: Effort;
         productModel?: unknown;
-        autonomous?: unknown;
       };
       if (!text?.trim()) return json({ ok: false, error: 'text required' }, 400);
       const agent = await this.ctx.storage.get<AgentState>('agent');
@@ -2356,12 +2322,9 @@ export class SessionDO extends DurableObject<Env> {
       // `effort` pins the reasoning tier for the whole run, overriding the adaptive policy. It
       // exists so the policy itself can be A/B tested against real builds rather than against
       // text-only probes — the measurement that missed the tool-calling regression.
-      const runMode = mode === undefined || mode === null ? 'agent' : asProductMode(mode);
-      if (!runMode) return json({ ok: false, error: `unknown mode` }, 400);
-      const runAutonomous = runMode === 'agent' && autonomous === true;
       const selectedModel = asProductModel(productModel);
-      await this.startRun(bind, text.slice(0, MESSAGE_MAX_CHARS), runMode, effort, undefined, undefined, selectedModel, runAutonomous, bind.ownerId);
-      return json({ ok: true, started: true, mode: runMode, autonomous: runAutonomous, ...(selectedModel ? { productModel: selectedModel } : {}), effort: effort ?? 'adaptive' });
+      await this.startRun(bind, text.slice(0, MESSAGE_MAX_CHARS), 'agent', effort, undefined, undefined, selectedModel, bind.ownerId);
+      return json({ ok: true, started: true, mode: 'agent', ...(selectedModel ? { productModel: selectedModel } : {}), effort: effort ?? 'adaptive' });
     }
 
     // Run one Studio op directly, with no agent loop and no inference. The visual eval harness
@@ -2683,7 +2646,6 @@ export class SessionDO extends DurableObject<Env> {
     return {
       msgId: agent.msgId,
       mode: agent.mode,
-      ...(agent.autonomous ? { autonomous: true } : {}),
       ...(agent.productModel ? { productModel: normalizeModelId(agent.productModel) } : {}),
       phase: agent.phase ?? 'planning',
       step: agent.step,
@@ -2797,12 +2759,8 @@ export class SessionDO extends DurableObject<Env> {
             );
             return;
           }
-          const mode = asProductMode(msg.mode);
-          if (!mode) {
-            this.refuseOne(ws, { type: 'error', code: 'bad_mode', message: MODE_SKEW_REFUSAL });
-            return;
-          }
-          const autonomous = mode === 'agent' && msg.autonomous === true;
+          // `msg.mode` (and a legacy `autonomous`) is not read: there are no modes (V3 G01), so an
+          // older client's `plan` runs the same one behaviour instead of being refused.
           const productModel = asProductModel(msg.productModel);
           const text = msg.text.slice(0, MESSAGE_MAX_CHARS);
           //[[ THE SAME BUILD, ASKED AGAIN.
@@ -2838,12 +2796,11 @@ export class SessionDO extends DurableObject<Env> {
           await this.startRun(
             bind,
             withFiles,
-            mode,
+            'agent',
             undefined,
             ws,
             undefined,
             productModel,
-            autonomous,
             me?.userId,
             me?.grantExpiresAt ?? undefined,
           );
@@ -2874,12 +2831,7 @@ export class SessionDO extends DurableObject<Env> {
           );
           return;
         }
-        const mode = asProductMode(msg.mode);
-        if (!mode) {
-          this.refuseOne(ws, { type: 'error', code: 'bad_mode', message: MODE_SKEW_REFUSAL });
-          return;
-        }
-        const autonomous = mode === 'agent' && msg.autonomous === true;
+        // As for `chat`: a legacy `mode`/`autonomous` is ignored, never refused.
         const productModel = asProductModel(msg.productModel);
         const agent = await this.ctx.storage.get<AgentState>('agent');
         if (agent && agent.status !== 'idle') {
@@ -2939,7 +2891,7 @@ export class SessionDO extends DurableObject<Env> {
           await this.startRun(
             bind,
             text,
-            mode,
+            'agent',
             undefined,
             ws,
             {
@@ -2948,7 +2900,6 @@ export class SessionDO extends DurableObject<Env> {
               at: row.created_at,
             },
             productModel,
-            autonomous,
             me?.userId,
             me?.grantExpiresAt ?? undefined,
           );
@@ -3049,12 +3000,11 @@ export class SessionDO extends DurableObject<Env> {
     origin?: WebSocket,
     carryRevisionsFrom?: CarriedRevisions,
     productModel?: ProductModel,
-    autonomous = false,
     initiatedBy?: string,
     initiatorExpiresAt?: string | number,
   ) {
     const attempt = await this.startGate(() =>
-      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, autonomous, initiatedBy, initiatorExpiresAt),
+      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, initiatedBy, initiatorExpiresAt),
     );
     if (!attempt.ran) {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
@@ -3069,7 +3019,6 @@ export class SessionDO extends DurableObject<Env> {
     origin?: WebSocket,
     carryRevisionsFrom?: CarriedRevisions,
     productModel?: ProductModel,
-    autonomous = false,
     initiatedBy?: string,
     initiatorExpiresAt?: string | number,
   ) {
@@ -3202,14 +3151,10 @@ export class SessionDO extends DurableObject<Env> {
     this.pinnedPrefs = personalisation.prefs;
     const promptMemory = memoryForPrompt(memory, personalisation.memoryMode);
     const promptBaseTools = toolsForMode(mode, studioConnected, toolNames());
-    const runAutonomous = mode === 'agent' && autonomous;
-    const promptUserTools = runAutonomous
-      ? promptBaseTools
-      : applyToolPermissions(promptBaseTools, personalisation.prefs.tool_permissions);
+    const promptUserTools = applyToolPermissions(promptBaseTools, personalisation.prefs.tool_permissions);
     const promptCapabilityFilter = this.pluginToolFilter(promptUserTools);
     const sys = systemPrompt({
       mode,
-      autonomous: runAutonomous,
       toolSequence: mode === 'agent' ? explicitToolSequence(text, new Set(toolNames())) ?? undefined : undefined,
       studioConnected,
       placeName: pluginState?.placeName ?? null,
@@ -3255,7 +3200,6 @@ export class SessionDO extends DurableObject<Env> {
     const agent: AgentState = {
       status: 'running',
       mode,
-      autonomous: runAutonomous,
       productModel: selectedProductModel,
       msgId,
       fenceId,
@@ -3303,11 +3247,11 @@ export class SessionDO extends DurableObject<Env> {
     // server had never heard of, and Edit / Try again / Regenerate — all of which resolve that id
     // against the messages table — answered "That message is no longer in the conversation" until
     // the page was reloaded. See web/src/lib/message-identity.ts.
-    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, ...(runAutonomous ? { autonomous: true } : {}), productModel: selectedProductModel, userMsgId });
+    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, productModel: selectedProductModel, userMsgId });
     // Exactly once per run, and only after msg_start so the client has a message to attach it to.
     if (intent) this.broadcast({ type: 'run_intent', msgId, intent });
     this.currentMsgId = agent.msgId;
-    agent.phase = mode === 'plan' ? 'understanding' : 'planning';
+    agent.phase = 'planning';
     this.broadcast({ type: 'agent_status', phase: agent.phase });
 
     // Auto-checkpoint before builder modes touch the project.
@@ -3527,6 +3471,12 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   private async runStep(agent: AgentState) {
+    // A run persisted by a build that still had Plan mode finishes as the one behaviour, keeping
+    // Plan's promise not to change the place (V3 G01: legacy values normalized, never refused).
+    if ((agent.mode as string) !== 'agent') {
+      agent.mode = 'agent';
+      agent.readOnly = true;
+    }
     // The RESULT is unused; the call is kept because reading the binding refreshes
     // `boundProjectId` on an instance revived mid-run. The constructor restores it too,
     // so this is belt and braces rather than the only path — see the note there.
@@ -3645,7 +3595,7 @@ export class SessionDO extends DurableObject<Env> {
     // ordered rebuild keeps 'rebuilding' — that is what the model is doing.
     agent.phase =
       agent.step === 1
-        ? agent.mode === 'plan' ? 'understanding' : 'planning'
+        ? 'planning'
         : agent.phase === 'rebuilding' ? 'rebuilding' : 'composing';
     this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, creditsSpent: agent.creditsSpent });
 
@@ -3675,9 +3625,7 @@ export class SessionDO extends DurableObject<Env> {
         ? new Set([...modeBase].filter((name) => READ_ONLY_WITHHELD.has(name) || name === 'propose_plan'))
         : modeBase;
     agent.readsWithheldOnce = false;
-    const userAllowed = agent.mode === 'agent' && agent.autonomous
-      ? base
-      : applyToolPermissions(base, agent.toolPermissions);
+    const userAllowed = applyToolPermissions(base, agent.toolPermissions);
     const offeredCapabilityFilter = this.pluginToolFilter(userAllowed);
     const knownTools = new Set(toolNames());
     const sequence = explicitToolSequence(agent.request ?? '', knownTools);
@@ -3709,7 +3657,7 @@ export class SessionDO extends DurableObject<Env> {
     //   The audit event is per TOOL rather than per run: `subject` is one name in analytics.ts, and
     //   a comma-joined list in that field would be a record nothing can query by tool. ]]
     if (agent.deniedTools === undefined) {
-      const denied = agent.mode === 'agent' && agent.autonomous ? [] : deniedTools(base, agent.toolPermissions);
+      const denied = deniedTools(base, agent.toolPermissions);
       agent.deniedTools = denied;
       if (denied.length) {
         for (const tool of denied) {
@@ -3868,7 +3816,7 @@ export class SessionDO extends DurableObject<Env> {
 
     // A generated-image/model claim needs evidence from THIS run, not an invented ID
     // copied into prose. Hold replies until the requested artifact tool succeeds.
-    const artifact = artifactCompletion(agent.mode === 'plan' ? undefined : agent.request, agent.trace);
+    const artifact = artifactCompletion(agent.request, agent.trace);
     if (artifact.missing) {
       res.text = '';
       agent.finalText = '';
@@ -4207,11 +4155,12 @@ export class SessionDO extends DurableObject<Env> {
         agent.streamedText = prior ? `${prior}\n\n${note}` : note;
         this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
       }
-      // Autonomous: the person already said yes, so "want me to…?" or "not fixed yet" is work, not an ending,
+      // The person already asked for the whole request (V3: proceed automatically, no routine approval), so
+      // "want me to…?" or "not fixed yet" is work, not an ending,
       // and a game with nothing on screen or a loop nobody played is not finished either.
       const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
       // …nor is a request whose own list still names a part nothing built is named for (run-parts.ts).
-      const partNext = agent.autonomous && agent.mutated && canBuild && !owesWork ? steerToPart(agent) : null;
+      const partNext = agent.mutated && canBuild && !owesWork ? steerToPart(agent) : null;
       if (partNext) {
         agent.llm.push({ role: 'user', content: partNext });
         await this.persistAgent(agent);
@@ -4219,7 +4168,7 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
       if (
-        agent.autonomous && agent.mutated && canBuild && !owesWork &&
+        agent.mutated && canBuild && !owesWork &&
         (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES && (gaps.length > 0 || leavesWorkOpen(res.text))
       ) {
         agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
@@ -4539,7 +4488,6 @@ export class SessionDO extends DurableObject<Env> {
             request: agent.request ?? '',
             mode: agent.mode,
             ...(agent.productModel ? { productModel: normalizeModelId(agent.productModel) } : {}),
-            autonomous: agent.autonomous === true,
             ...(agent.rejectedLibraryAssetIds?.length ? { rejectedAssetIds: agent.rejectedLibraryAssetIds } : {}),
             ...(anchor ? { anchor } : {}),
             options: options.map((option) => ({
@@ -4648,7 +4596,7 @@ export class SessionDO extends DurableObject<Env> {
     agent.readsSinceChange = idle.readsSinceChange;
     // F-064 round 5 (run 2e381849): a bound that would end the run, or tell it to reply, while the
     // request's own list or the plan still names a part nothing built is named for, hands it that part
-    // instead — Autonomous or not, bounded by partSteerAllowed. Reads are withheld for one step when
+    // instead, bounded by partSteerAllowed. Reads are withheld for one step when
     // the run was about to end on reading.
     if ((idle.action === 'finish' || idle.action === 'stall' || idle.action === 'nudge') &&
         agent.mode === 'agent' && canBuild && !agent.lightingOnly && !agent.kitZone) {
@@ -4714,7 +4662,7 @@ export class SessionDO extends DurableObject<Env> {
           'already know. If a detail is missing, choose a sensible default instead of reading again.',
       });
     }
-    if (idle.action === 'finish' && agent.autonomous && (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES) {
+    if (idle.action === 'finish' && (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES) {
       agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
       agent.idleAfterVerify = 0;
       const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
@@ -4739,10 +4687,7 @@ export class SessionDO extends DurableObject<Env> {
     if (idle.action === 'nudge') {
       agent.llm.push({
         role: 'user',
-        content: agent.autonomous ? AUTONOMOUS_IDLE_STEER :
-          'The change is made and your check has run. Stop reading and reply to the user now: what you changed, ' +
-          'what the check showed, and anything that is still wrong or unverified. Only call another tool if you are ' +
-          'about to change something.',
+        content: AUTONOMOUS_IDLE_STEER,
       });
     }
     // If the model has spent several steps without changing anything, steer it. Mutation truth
@@ -4936,7 +4881,7 @@ export class SessionDO extends DurableObject<Env> {
      */
     buildOutcome?: BuildOutcome,
   ) {
-    const artifact = artifactCompletion(agent.mode === 'plan' ? undefined : agent.request, agent.trace);
+    const artifact = artifactCompletion(agent.request, agent.trace);
     if (reason === 'done' && artifact.missing) reason = 'incomplete';
     agent.status = 'idle';
     // Clear the run attribution before the first await: any later out-of-run Studio op must not

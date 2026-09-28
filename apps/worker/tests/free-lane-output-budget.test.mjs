@@ -68,7 +68,7 @@ test('the free Agent lane gets the full builder toolset — so this is not a Pla
 });
 
 test('every lane gets at least the budget its own toolset is sized for', () => {
-  for (const mode of ['plan', 'agent', 'agent']) {
+  for (const mode of ['agent']) {
     for (const productModel of ['apple', 'apple-max', undefined]) {
       const floor = S.baseTokensFor(mode);
       const got = budget(mode, productModel, 'high');
@@ -88,51 +88,22 @@ test('one engine, one output room: a retired id gets exactly what Apple gets (V3
   assert.equal(legacy, apple, 'a retired product model id is served by the same lane as Apple');
 });
 
-test('Plan mode asks for enough that its model can answer at all', () => {
-  //[[ THIS ASSERTED 2000 AND THE PREMISE UNDER IT WAS NEVER MEASURED.
+test('the one request kind asks for enough that its model can answer at all', () => {
+  //[[ THIS WAS "Plan mode asks for enough", MEASURED 2026-09-20: a reasoning model given 1600
+  //   output tokens returned finishReason "length" and ZERO characters; at 2000 one prompt in three
+  //   was answered; at 3000 it answered completely. The Plan mode is gone (V3 G01), the floor is not:
+  //   it now binds the one behaviour every request runs.
   //
-  //   It read: "the ceiling is a clamp, not a request — Plan mode's request is unchanged, so this
-  //   fix cannot have made a Plan answer more expensive." Keeping a request small to keep an answer
-  //   cheap is a sound instinct, and the number was chosen without asking what the model on the
-  //   other end does with it.
-  //
-  //   Measured on the deployed gateway, 2026-09-20: the former free route used a reasoning model
-  //   REASONING model that spends output budget thinking before it writes. At 1600 it returns
-  //   finishReason "length" and ZERO characters for 50 neurons. At 2000, one prompt in three is
-  //   answered. At 3000 it answers completely for 79 neurons.
-  //
-  //   So 2000 was not cheap. It was paying for compute and receiving nothing, which is the most
-  //   expensive thing a budget can do. The instinct this test defends — do not let Plan mode become
-  //   costly — is kept; what changes is the floor beneath it, which is now a measured number rather
-  //   than an assumed one.
-  const asked = R.tokensForEffort(S.baseTokensFor('plan'), 'high');
-  assert.ok(asked >= 3200, `Plan mode asks for ${asked}; below 3200 its model was measured returning nothing`);
-  //[[ RE-AIMED 2026-09-20. THE INSTINCT WAS RIGHT AND THE JUSTIFICATION WAS BACKWARDS.
-  //
-  //   This asserted `asked <= 6500`, reasoning that a request past the ceiling makes "our own
-  //   arithmetic the thing that truncates the reply". That has the causality inverted. gateway.ts
-  //   clamps with `Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)`, so a request ABOVE the
-  //   ceiling cannot truncate anything — it resolves to the ceiling. A request BELOW it is the only
-  //   way our arithmetic can shorten a reply, and that is precisely the defect that killed a real
-  //   16-step build on 2026-09-20: high effort asked 5,500 of a model configured for 6,500 and died
-  //   on "the model reached its output limit" at step 1 of 16, 30 Credits spent.
-  //
-  //   The instinct underneath — do not let Plan mode become expensive — is kept, and is now
-  //   asserted through the thing that actually delivers it. Cost is set by the RESERVATION, and the
-  //   reservation is computed from the clamped value: gateway.ts clamps at the line above the
-  //   `estimateNeurons(cfg.id, inputChars, maxTokens)` that reserves. So asking past the ceiling is
-  //   free, and what must never change is that ordering. tests/effort-output-budget.test.mjs
-  //   asserts it directly; this asserts what it buys here. ]]
-  //   The ceiling is READ from the model the lane actually routes to, never written as a literal.
-  //   The free lane routes Plan through the current Plan config, and a hardcoded number here
-  //   asserts against whichever model the author had in mind rather than the one that serves it.
-  const routed = G.DEFAULT_MODELS[S.gatewayModelFor('plan', 'apple')];
-  assert.ok(routed, 'the model Plan mode routes to could not be resolved; nothing was verified');
+  //   gateway.ts clamps with `Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)` before it
+  //   reserves, so asking past the ceiling is free and asking below it is the only way our own
+  //   arithmetic can cut a reply short. The ceiling is READ from the routed model, never a literal. ]]
+  const asked = R.tokensForEffort(S.baseTokensFor('agent'), 'high');
+  assert.ok(asked >= 3200, `a request asks for ${asked}; below 3200 its model was measured returning nothing`);
+  const routed = G.DEFAULT_MODELS[S.gatewayModelFor('agent', 'apple')];
+  assert.ok(routed, 'the model a request routes to could not be resolved; nothing was verified');
   assert.ok(asked >= routed.maxTokens,
-    `Plan mode asks for ${asked}, below the ${routed.maxTokens} its model is sized at — our own `
+    `a request asks for ${asked}, below the ${routed.maxTokens} its model is sized at — our own `
     + 'arithmetic, not the model, would be what cuts the reply short');
-  // What reaches the provider is the MINIMUM of the request and that ceiling, so the effect of
-  // asking past it is exactly the ceiling and nothing more.
-  assert.equal(budget('plan', 'apple', 'high'), routed.maxTokens,
+  assert.equal(budget('agent', 'apple', 'high'), routed.maxTokens,
     'the gateway clamp is no longer resolving the high-effort request to the model ceiling');
 });

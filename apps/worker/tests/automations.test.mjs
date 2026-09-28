@@ -301,7 +301,6 @@ test('each refusal is reached by spoiling exactly one field, so the reason is th
     ['bad_description', good({ description: 'x'.repeat(A.DESCRIPTION_MAX + 1) })],
     ['bad_prompt', good({ prompt: '' })],
     ['bad_prompt', good({ prompt: 'x'.repeat(A.PROMPT_MAX + 1) })],
-    ['bad_mode', good({ mode: 'diamond' })],
     ['bad_trigger', good({ trigger: 'telepathy' })],
     ['unknown_timezone', good({ timezone: 'Mars/Olympus_Mons' })],
     ['bad_schedule', good({ schedule: { every: 'fortnight', minute: 0 } })],
@@ -323,6 +322,14 @@ test('each refusal is reached by spoiling exactly one field, so the reason is th
   // The control: the unspoiled fixture is accepted, so every case above differs from an accepted
   // one in exactly the field it names.
   assert.equal(A.normaliseAutomation(good(), CTX).ok, true);
+});
+
+test('a legacy mode is normalized to the one behaviour, never refused (V3 G01)', () => {
+  for (const mode of ['plan', 'agent', 'diamond', 7, null, undefined]) {
+    const r = A.normaliseAutomation(good({ mode }), CTX);
+    assert.equal(r.ok, true, `mode ${JSON.stringify(mode)} was refused: ${r.reason}`);
+    assert.equal(r.automation.mode, 'agent');
+  }
 });
 
 test('an owner or a project the caller did not prove is refused before anything else is read', () => {

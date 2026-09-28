@@ -1,6 +1,7 @@
-// Per-mode capability. What this file decides TODAY is which
-// tools each mode may call — which makes it the place that ENFORCES Plan mode's read-only promise
-// to the user, not merely a token optimisation. Read the note on toolsForMode before changing it.
+// Per-mode capability. What this file decides TODAY is which tools a run may call. There is one
+// customer behaviour (`agent`, V3 G01); the read-only set below is what any other mode value —
+// a run persisted by a build that still had Plan — fails closed to. Read the note on toolsForMode
+// before changing it.
 //
 // The routing history below is kept because it explains why the toolsets are all that is left.
 //
@@ -33,6 +34,10 @@ import type { ProductMode } from '@golem/shared';
 
 /**
  * WHY PLAN'S TOOLSET IS READ-ONLY — read this before you add a tool to it.
+ *
+ * Plan is no longer a customer mode (V3 G01). This set survives as the fail-closed toolset for a
+ * mode value nobody defined, including a run persisted while Plan still existed, and the promise
+ * below is exactly what such a run was given.
  *
  * Plan's promise to the user is that it looks and thinks and does NOT touch
  * their project: they can point it at a place they care about, ask "what would you do here", and
@@ -154,8 +159,6 @@ export function toolsForMode(mode: ProductMode, studioConnected: boolean, allNam
     return new Set(allNames.filter((n) => allowed.includes(n)));
   }
   switch (mode) {
-    case 'plan':
-      return new Set(allNames.filter((n) => PLAN_TOOLS.includes(n)));
     // Agent is the builder, so it gets every registered tool; downstream project/account gates
     // remain authoritative for operations that require pairing, consent or separate approval.
     case 'agent':
@@ -168,8 +171,8 @@ export function toolsForMode(mode: ProductMode, studioConnected: boolean, allNam
       // one input the function did not understand. Same shape as the step ceiling in session.ts:
       // The mode union is a compile-time promise and the runtime must still fail closed.
       //
-      // session.ts now validates `mode` at all three ingresses, so nothing unrecognised should
-      // arrive here in the assembled product. This is the second line, and a second line that
+      // session.ts starts every run as `agent` and normalizes a legacy persisted `plan` run, so
+      // nothing unrecognised should arrive here in the assembled product. This is the second line, and a second line that
       // fails open is not one. The toolset is the guarantee, not a performance tweak.
       return new Set(allNames.filter((n) => PLAN_TOOLS.includes(n)));
   }

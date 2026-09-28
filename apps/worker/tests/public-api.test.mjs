@@ -567,9 +567,14 @@ test('a foundation-model id is refused by name rather than silently aliased', ()
 });
 
 test('the public model list is one engine: Apple as apple-chat, on the gateway key that runs GLM', () => {
-  // `apple-plan` is the read-only planner MODE on the same engine, not a second model.
-  assert.deepEqual(Object.values(P.PUBLIC_MODELS).filter((m) => m.productModel).length, 1);
-  assert.equal(P.PUBLIC_MODELS['apple-plan'].internal, 'plan');
+  assert.deepEqual(Object.keys(P.PUBLIC_MODELS), ['apple-chat']);
+  // `apple-plan` named the retired Plan mode (V3 G01). It is never listed, and a caller that still
+  // sends it is answered by Apple as apple-chat rather than refused.
+  const legacyPlan = P.parseChatCompletionRequest({ model: 'apple-plan', messages: [{ role: 'user', content: 'hi' }] });
+  assert.equal(legacyPlan.ok, true, 'apple-plan was refused');
+  assert.equal(legacyPlan.value.publicModel, 'apple-chat');
+  assert.equal(legacyPlan.value.productModel, 'apple');
+  assert.equal(JSON.stringify(P.publicModelList(0)).includes('apple-plan'), false, 'apple-plan is listed');
   const apple = P.PUBLIC_MODELS['apple-chat'];
   assert.equal(apple.productModel, 'apple');
   assert.ok(Object.hasOwn(GW.DEFAULT_MODELS, apple.internal), `apple-chat routes to '${apple.internal}', which the gateway does not configure`);
@@ -922,7 +927,7 @@ test('any productModel on a run, retired or unknown, runs as Apple on every plan
       });
       assert.equal(r.status, 202, `${productModel} on ${plan}: ${r.text.slice(0, 300)}`);
       assert.equal(r.json.productModel, 'apple');
-      assert.deepEqual(seen, [{ text: 'build a tower', mode: 'agent', autonomous: false, productModel: 'apple' }]);
+      assert.deepEqual(seen, [{ text: 'build a tower', productModel: 'apple' }]);
     }
   }
 });
@@ -1040,25 +1045,23 @@ test('a granted project is readable, and the transcript comes from that project\
   );
 });
 
-test('starting a run forwards Plan/Agent directly and refuses anything else', async () => {
+test('starting a run ignores a legacy mode or autonomous flag and never refuses it (V3 G01)', async () => {
   const bundle = makeEnv({ session: async ({ path }) => (path === '/agent-run' ? { ok: true, started: true } : { ok: true }) });
   const key = await seedKey(bundle, { scopes: [...K.API_SCOPES], projects: GRANTED });
 
-  const r = await call(`/v1/projects/${PROJECT_ID}/runs`, {
-    method: 'POST', key: key.key, env: bundle.env, body: { input: 'build a market stall', mode: 'plan' },
-  });
-  assert.equal(r.status, 202, r.text.slice(0, 200));
-  const started = bundle.trace.calls.find((c) => c.path === '/agent-run');
-  assert.ok(started, 'no run was started');
-  assert.equal(started.body.mode, 'plan', 'the public mode changed before reaching SessionDO');
-  assert.equal(started.body.text, 'build a market stall');
-  // Prototype keys and arbitrary values must not be accepted as run modes.
-  for (const mode of ['constructor', '__proto__', 'toString', 'memory', 'vision', 'nonsense', 7, {}]) {
-    const bad = await call(`/v1/projects/${PROJECT_ID}/runs`, {
-      method: 'POST', key: key.key, env: bundle.env, body: { input: 'x', mode },
+  // The retired Plan mode, the bridge value, prototype keys and arbitrary values: none is a routing
+  // key any more, so none reaches SessionDO and none is refused.
+  for (const mode of ['plan', 'agent', 'constructor', '__proto__', 'toString', 'memory', 'nonsense', 7, {}, undefined]) {
+    bundle.trace.calls.length = 0;
+    const r = await call(`/v1/projects/${PROJECT_ID}/runs`, {
+      method: 'POST', key: key.key, env: bundle.env, body: { input: 'build a market stall', mode, autonomous: true },
     });
-    assert.equal(bad.status, 400, `mode ${JSON.stringify(mode)} was accepted`);
-    assert.equal(bad.json.error.param, 'mode');
+    assert.equal(r.status, 202, `mode ${JSON.stringify(mode)}: ${r.text.slice(0, 200)}`);
+    assert.equal(r.json.mode, 'agent');
+    assert.equal('autonomous' in r.json, false);
+    const started = bundle.trace.calls.find((c) => c.path === '/agent-run');
+    assert.ok(started, 'no run was started');
+    assert.deepEqual(started.body, { text: 'build a market stall' }, 'a legacy field reached SessionDO');
   }
   const noInput = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, body: { input: '   ' } });
   assert.equal(noInput.status, 400);

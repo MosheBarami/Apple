@@ -83,7 +83,6 @@ test('the field a refusal lands on is the field that caused it', () => {
   assert.equal(web.refusalFor('bad_name').field, 'name');
   assert.equal(web.refusalFor('bad_description').field, 'description');
   assert.equal(web.refusalFor('bad_prompt').field, 'prompt');
-  assert.equal(web.refusalFor('bad_mode').field, 'mode');
   assert.equal(web.refusalFor('bad_budget').field, 'maxRunsPerDay');
   // `too_many` is the per-owner cap. It is nobody's field: retyping the name will not help.
   assert.equal(web.refusalFor('too_many').field, null);
@@ -106,22 +105,27 @@ test('a blank draft plus a name and a prompt is accepted by the worker unchanged
   assert.equal(r.automation.enabled, true);
 });
 
-test('the ProductMode crosses the wire unchanged', async () => {
-  const shared = await import('@golem/shared');
-  for (const product of shared.PRODUCT_MODES) {
-    const draft = { ...web.blankDraft(), name: 'n', prompt: 'p', mode: product };
-    const r = normalise(draft);
-    assert.equal(r.ok, true, `${product}: ${r.reason}`);
-    assert.equal(r.automation.mode, product);
-  }
+test('there is no run mode to choose: the draft carries none and the wire gets the one bridge value', () => {
+  // V3 G01: no Plan/Agent/Autonomous selector. The editor neither offers nor stores a mode.
+  assert.equal('mode' in web.blankDraft(), false);
+  assert.equal('MODE_CHOICES' in web, false);
+  const body = web.draftToBody({ ...web.blankDraft(), name: 'n', prompt: 'p' });
+  assert.equal(body.mode, 'agent', 'the compatibility bridge value a worker may still read');
+  assert.equal('autonomous' in body, false);
+  const r = normalise({ ...web.blankDraft(), name: 'n', prompt: 'p' });
+  assert.equal(r.ok, true, r.reason);
+  assert.equal(r.automation.mode, 'agent');
 });
 
-test('Autonomous is separate from automation mode', async () => {
-  const shared = await import('@golem/shared');
-  assert.deepEqual([...web.MODE_CHOICES].map((choice) => choice.id), [...shared.PRODUCT_MODES]);
-  assert.equal(web.MODE_CHOICES.some((choice) => choice.id === 'autonomous'), false);
-  const body = web.draftToBody({ ...web.blankDraft(), name: 'n', prompt: 'p' });
-  assert.equal('autonomous' in body, false);
+test('a stored legacy Plan automation opens without a mode, and the worker reads legacy input as agent', () => {
+  const draft = web.draftFrom({ name: 'n', description: null, prompt: 'p', mode: 'plan', budget: { maxRunsPerDay: 2 } });
+  assert.equal('mode' in draft, false);
+  for (const legacy of ['plan', 'autonomous', 'diamond']) {
+    const r = worker.normaliseAutomation({ ...web.draftToBody({ ...web.blankDraft(), name: 'n', prompt: 'p' }), mode: legacy },
+      { ownerId: OWNER, projectId: PROJECT, now: NOW });
+    assert.equal(r.ok, true, `${legacy}: ${r.reason}`);
+    assert.equal(r.automation.mode, 'agent', `${legacy} is normalised, never refused`);
+  }
 });
 
 test('an over-long name is sent WHOLE and refused by the server, never trimmed here', () => {

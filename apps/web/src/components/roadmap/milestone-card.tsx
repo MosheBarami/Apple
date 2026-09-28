@@ -11,8 +11,11 @@ import { COMPLEXITY, ComplexityMark, READINESS_LABEL, ReadinessNode } from './ma
 import { creditRangeLabel, effortLabel, type MilestoneRef, type PlacedMilestone } from './model';
 import './milestone-card.css';
 
-/** Which run the user is asking for. Both fetch the same brief. */
-export type BriefIntent = 'plan' | 'build';
+/**
+ * What the user is asking for. Only Build remains: Plan was a run mode, and there are no customer
+ * modes any more (V3 G01).
+ */
+export type BriefIntent = 'build';
 
 interface Props {
   placed: PlacedMilestone;
@@ -130,12 +133,8 @@ export function MilestoneCard({ placed, onJumpTo, onBrief, busy }: Props) {
 
         <span className="rm-card__spacer" />
 
-        {/* Both actions fetch the same brief; they differ in the run the brief
-            would be handed to. A landed milestone offers planning only —
-            "build" on something that already exists has no agreed meaning. */}
-        <button type="button" className="btn btn-sm" disabled={busy !== null} onClick={() => onBrief(m.id, 'plan')}>
-          {busy === 'plan' ? 'Reading…' : readiness === 'landed' ? 'Plan changes' : 'Plan'}
-        </button>
+        {/* A landed milestone offers no Build — "build" on something that already exists has no
+            agreed meaning. */}
         {readiness !== 'landed' && (
           <button
             type="button"

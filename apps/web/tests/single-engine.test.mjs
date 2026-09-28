@@ -42,11 +42,11 @@ test('the composer takes no model and gates nothing on one', () => {
   assert.match(composer, /Stop/);
 });
 
-test('the workspace sends Apple on every plan, beside the mode and the Autonomous grant', () => {
+test('the workspace sends Apple on every plan, with no mode and no Autonomous grant (V3 G01)', () => {
   const workspace = read('routes/workspace.tsx');
   assert.match(workspace, /const productModel: ProductModel = 'apple';/);
-  assert.match(workspace, /sendChat\(text, mode, attachments, productModel, autonomous\)/);
-  assert.match(workspace, /editAndResend\([^;]+mode, productModel, autonomous\)/);
+  assert.match(workspace, /sendChat\(text, attachments, productModel\)/);
+  assert.match(workspace, /editAndResend\([^;]+, productModel\)/);
   assert.doesNotMatch(workspace, /modelAllowed|chooseProductModel|fetchModels|productModel=\{/);
 });
 

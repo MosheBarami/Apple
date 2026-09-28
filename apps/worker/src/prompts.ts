@@ -213,51 +213,20 @@ Never fabricate results of tools. If Studio is not connected, say so and help wi
 Keep replies concise and concrete; the user sees your tool activity separately.`;
 
 /**
- * Plan is the only mode with a behavioural guarantee attached to it — it does not change the
- * user's project. The prompt below asks for that behaviour; `toolsForMode` in router.ts is what
- * actually enforces it by withholding every mutating tool. Both halves are load-bearing: keep them
- * in agreement.
+ * There is one behaviour (V3 G01: no Plan/Agent/Autonomous modes), keyed `agent` on the wire.
  *
- * EACH MODE'S RULES ARE A FUNCTION OF THE TOOLS THE RUN WAS OFFERED. The Agent block used to say
+ * THE RULES ARE A FUNCTION OF THE TOOLS THE RUN WAS OFFERED. The Agent block used to say
  * "Your FIRST call is propose_plan" as a constant, while an Agent run with Studio disconnected is
  * offered eight tools and propose_plan is not one of them — so the model's first instruction was to
  * call a tool it did not have, and every attempt cost a step. The instruction to call a tool now
  * exists only when that tool is in the offered set, and the verifiers it names are the ones offered.
  */
 const MODE_RULES: Record<ProductMode, (offered: ReadonlySet<string>) => string> = {
-  plan: () => `Mode: Plan. The user chose this mode because they want thinking, not changes. You inspect the
-project, reason about how it is built, and propose what should be done — and you change NOTHING.
-You have no editing tools here. That is deliberate: it is what makes this mode safe to point at
-work someone is in the middle of.
-
-This overrides the general rule about ending every request with something built. In Plan mode the
-plan IS the deliverable.
-
-How to plan:
-- Look before you form an opinion. Read the actual project — the tree, the scripts that bear on the
-  request, the code the user is asking about. A plan built on assumption is worse than no plan,
-  because it sounds just as confident.
-- Be specific about what exists. Name real paths, real instances, real functions. If you did not
-  read it, do not describe it.
-- Deliver an ordered roadmap. Each step should be small enough to hand to a builder and check off:
-  what to change, where, and what it achieves. Say which steps must come first and why.
-- State what you WOULD do, in the imperative: "Move the spawn logic into a ModuleScript at
-  ServerScriptService/Spawning and have both scripts require it", not "you might want to consider
-  possibly refactoring".
-- Say what you are unsure about and what you would verify first — but as a short, named list of
-  risks, not as hedging spread through every sentence.
-- Recommend ONE approach. Mention an alternative only when the choice genuinely changes the
-  outcome, and say which you would pick and why.
-- End by telling the user plainly that you have not changed anything in their project, and that
-  Agent will carry the plan out.
-
-Tone: a senior engineer giving a recommendation. Do not apologise for not building. Do not ask
-permission to have an opinion. Be confident about the proposal and honest about the unknowns.`,
   agent: agentRules,
 };
 
 function agentRules(offered: ReadonlySet<string>): string {
-  const head = `Mode: Agent (builder). Implement the requested feature end to end: inspect the project, make the
+  const head = `You are the builder. Implement the requested feature end to end: inspect the project, make the
 edits (scripts, instances, properties), then do a quick sanity check (read back what you changed, check
 output logs). Create an undo waypoint before your first change. Report what you changed and how to try it.`;
   const verifiers = VERIFIER_TOOLS.filter((v) => offered.has(v));
@@ -290,7 +259,7 @@ function defaultOffered(mode: ProductMode, studioConnected: boolean): ReadonlySe
   return toolsForMode(mode, studioConnected, [PLANNER_TOOL, ...VERIFIER_TOOLS]);
 }
 
-const AUTONOMOUS_RULES = `Autonomous is ON for this Agent request. Carry the requested work to a
+const AUTONOMOUS_RULES = `The user asked for this whole request, so carry the requested work to a
 finished, verified state without asking for routine permission, confirmation, or a "continue"
 message. Research, inspect, build, playtest, debug and repair as needed. Treat transient provider or
 tool failures as recoverable work: retry or change approach inside this run. Stop only when the run
@@ -404,7 +373,6 @@ export function pluginInstallGuidance(storeLive: boolean, storeUrl: string): str
 
 export function systemPrompt(opts: {
   mode: ProductMode;
-  autonomous?: boolean;
   /** Validated owner-requested finite tool workflow; does not expand permissions. */
   toolSequence?: readonly string[];
   studioConnected: boolean;
@@ -485,9 +453,8 @@ export function systemPrompt(opts: {
   //
   //   `ProductMode` is a COMPILE-TIME type and the wire is `JSON.parse(...) as ClientMsg` — an
   //   assertion, not a check — so the runtime caller is the only place this can be caught. Every
-  //   production path already refuses an unknown mode before it reaches here (`asProductMode` in
-  //   do/session.ts, then a `bad_mode` error), which is what makes refusing here a backstop rather
-  //   than a new failure mode. Same doctrine as the fence id above: refusing is what makes the
+  //   production path passes the literal `agent` (do/session.ts ignores the client's legacy `mode`),
+  //   which is what makes refusing here a backstop rather than a new failure mode. Same doctrine as the fence id above: refusing is what makes the
   //   wrong value unrepresentable instead of merely discouraged. ]]
   if (!Object.prototype.hasOwnProperty.call(MODE_RULES, opts.mode)) {
     throw new Error(
@@ -508,13 +475,13 @@ export function systemPrompt(opts: {
     IDENTITY,
     untrustedContentRule(opts.fenceId),
     opts.mode === 'agent' && opts.toolSequence?.length
-      ? `Mode: Agent, explicitly bounded workflow. Carry out only this ordered sequence: ${opts.toolSequence.join(' then ')}.
+      ? `Explicitly bounded workflow. Carry out only this ordered sequence: ${opts.toolSequence.join(' then ')}.
 The worker offers one next tool at a time and ends the run after the final successful action.
 Do not add a plan, verification, retry, or any action outside this sequence. The automatic rollback checkpoint is handled by the worker.
 Only results from tools in THIS run establish completion. Do not claim changes based on earlier messages.
 If the next tool is unavailable or fails, report that boundary; never claim the sequence completed.`
       : MODE_RULES[opts.mode](opts.offeredTools ?? defaultOffered(opts.mode, opts.studioConnected)),
-    opts.mode === 'agent' && opts.autonomous && !opts.toolSequence?.length ? AUTONOMOUS_RULES : '',
+    opts.mode === 'agent' && !opts.toolSequence?.length ? AUTONOMOUS_RULES : '',
     opts.sceneKind ? BRIEF_START + worldBuildingBrief(opts.sceneKind) + BRIEF_END : '',
     opts.uiBrief ? UI_BRIEF_START + '\n' + opts.uiBrief + UI_BRIEF_END : '',
     `Project: "${opts.projectName}". ${studio}`,

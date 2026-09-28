@@ -1,15 +1,16 @@
 /**
- * The mode a client sends, at the boundary where it becomes a table key.
+ * The mode a client sends, at the boundary where it used to become a table key.
  *
- * The run mode is a compile-time union, while the socket payload is untrusted JSON. session.ts does
- * `JSON.parse(raw) as ClientMsg`, which is an assertion and not a check, so whatever the client put
- * in `mode` must be validated before it becomes a routing key.
+ * V3 G01 removed the Plan, Agent and Autonomous modes: there is one behaviour for every request.
+ * The socket payload is untrusted JSON (`JSON.parse(raw) as ClientMsg` is an assertion, not a
+ * check), so the property is now that NOTHING the client puts in `mode` or `autonomous` reaches a
+ * routing key. The server ignores both and runs the one behaviour; a legacy frame from a stale tab
+ * or an old SDK is normalized, never refused (handoff line 28: "Keep legacy wire values only as a
+ * temporary, tested compatibility bridge").
  *
- * MEASURED by driving webSocketMessage before the fix — an ordinary authenticated project owner
- * sending {"type":"chat","text":"...","mode":"memory"}:
- *
- * An agent run used to be created for arbitrary strings. `memory` and `vision` are sharp cases
- * because they are real provider-model keys, so the gateway cannot be the run-mode validator.
+ * `memory` and `vision` stay in the fixture because they are real provider-model keys, and
+ * `__proto__`/`constructor` because they resolve to truthy prototype members: a regression that
+ * started reading `mode` again would route on them.
  *
  * The control fixture executes the real boundary so a dead harness cannot pass as a guard.
  *
@@ -39,7 +40,7 @@ const { SessionDO } = await import(`file://${out}`);
  * That reads exactly like "the ingress rejects everything", i.e. like the product being safe. The
  * control below exists so a dead harness cannot pass for a working guard.
  */
-function session() {
+function session({ rowsFor = () => [] } = {}) {
   const store = new Map([['bind', { projectId: 'p1', projectName: 'Proj', ownerId: 'u1' }]]);
   const sent = [];
   //[[ THE SOCKET NOW CARRIES AN IDENTITY, AND SO MUST THIS FIXTURE.
@@ -64,7 +65,7 @@ function session() {
       async put(a, b) { if (typeof a === 'object' && a !== null) for (const [k, v] of Object.entries(a)) store.set(k, v); else store.set(a, b); },
       async delete(k) { store.delete(k); }, async list() { return new Map(); },
       setAlarm() {}, getAlarm() { return null; },
-      sql: { exec: () => ({ toArray: () => [], one: () => null }) },
+      sql: { exec: (q) => ({ toArray: () => rowsFor(q), one: () => rowsFor(q)[0] ?? null }) },
     },
     blockConcurrencyWhile: (fn) => fn(),
     getWebSockets: () => [ws],
@@ -79,7 +80,7 @@ function session() {
   };
   const s = new SessionDO(ctx, env);
   return {
-    store, sent,
+    store, sent, s, ws,
     async chat(mode, text = 'build a house', autonomous = false) {
       try { await s.webSocketMessage(ws, JSON.stringify({ type: 'chat', text, mode, autonomous })); } catch { /* downstream stubs */ }
       return {
@@ -91,82 +92,110 @@ function session() {
   };
 }
 
-const VALID = ['plan', 'agent'];
-
-/** Anything a client can put in a JSON string field that is not a mode. */
-const HOSTILE = [
-  ['memory', 'memory'],       // a real DEFAULT_MODELS key, so the gateway guard never fires
+/** Every value a client can put in `mode`: the bridge value, retired names, and hostile keys. */
+const MODES = [
+  ['the bridge value agent', 'agent'],
+  ['the retired Plan mode', 'plan'],
+  ['a retired pre-rename name', 'stone'],
+  ['memory', 'memory'],       // a real DEFAULT_MODELS key
   ['vision', 'vision'],       // likewise
   ['__proto__', '__proto__'], // resolves to Object.prototype, which is truthy
   ['constructor', 'constructor'],
-  ['an unknown string', 'nonsense'],
   ['the empty string', ''],
   ['a number', 7],
   ['null', null],
-  ['an object', { toString: () => 'agent' }],
+  ['an object', { toString: () => 'plan' }],
+  ['no mode at all', undefined],
 ];
 
-test('CONTROL: every valid mode starts a run with the 1000-step ceiling', async () => {
-  for (const mode of VALID) {
+test('CONTROL: a chat frame starts a run with the 1000-step ceiling', async () => {
+  const { agent, errors } = await session().chat('agent');
+  assert.ok(agent, 'the harness must start a run, or every assertion below is vacuous');
+  assert.deepEqual(errors, []);
+  assert.equal(agent.maxSteps, 1000);
+});
+
+for (const [label, mode] of MODES) {
+  test(`a chat frame with ${label} as its mode runs the one behaviour, never refused (V3 G01)`, async () => {
     const { agent, errors } = await session().chat(mode);
-    assert.ok(agent, `mode "${mode}" must start a run`);
-    assert.deepEqual(errors, [], `mode "${mode}" must not be refused`);
-    assert.equal(agent.maxSteps, 1000, `mode "${mode}" must receive the message ceiling`);
-  }
-});
-
-test('Autonomous is a per-message Agent flag, never a third mode', async () => {
-  const on = await session().chat('agent', 'build a house', true);
-  assert.equal(on.agent?.autonomous, true);
-  const plan = await session().chat('plan', 'inspect this project', true);
-  assert.notEqual(plan.agent?.autonomous, true, 'Plan must ignore the Agent-only autonomy switch');
-});
-
-for (const [label, mode] of HOSTILE) {
-  test(`a chat frame with ${label} as its mode is refused by name`, async () => {
-    const { agent, errors, refusalFrames } = await session().chat(mode);
-    assert.equal(agent, undefined, 'no agent run may be created for an unrecognised mode');
-    assert.ok(errors.includes('bad_mode'), `expected a bad_mode refusal, got [${errors.join(',')}]`);
-    assert.equal(refusalFrames.at(-1)?.terminal, true, 'a refused request must say that it is terminal');
+    assert.ok(agent, `mode ${JSON.stringify(mode)} must still start a run`);
+    assert.equal(errors.includes('bad_mode'), false, 'a legacy mode is normalized, not refused');
+    assert.equal(agent.mode, 'agent', 'the client value never becomes the run mode');
+    assert.equal(agent.readOnly, undefined, 'the client value never makes a run read-only either');
+    assert.equal(agent.maxSteps, 1000);
   });
 }
 
-test('THE REFUSAL TELLS THE PERSON WHAT TO DO, because the common cause is a stale tab', async () => {
-  //[[ ADDED 2026-09-22, ON THE DAY THE RUN MODES WERE RENAMED.
-  //
-  //   The wire carried `clay`/`stone`/`rune` and carries `plan`/`agent` now. A browser tab keeps the
-  //   bundle it loaded until it reloads, and a web SPA cannot be updated atomically — so during any
-  //   such rename there is a window where a live tab asks for a mode the server has never heard of,
-  //   and the person is told "Unknown mode for this request". That is true and useless: they did
-  //   nothing wrong and have no way to learn that a reload fixes it.
-  //
-  //   The property is that the refusal is ACTIONABLE. It is asserted rather than left to prose
-  //   because it is the kind of sentence a refactor tidies into a shorter, deader one, and nothing
-  //   else in this file would notice. The code and the terminal flag are asserted above and are
-  //   unchanged: this adds a requirement, it does not relax one.
-  const { refusalFrames } = await session().chat('stone');
-  const message = refusalFrames.at(-1)?.message ?? '';
-  assert.match(message, /reload the page/i, `a refused mode must tell the user how to recover, got: ${message}`);
-  // And it must stay free of internals: no mode name the product retired, no provider key.
-  for (const leak of ['clay', 'stone', 'rune', 'memory', 'vision']) {
-    assert.equal(message.includes(leak), false, `the refusal leaks the internal name "${leak}"`);
+test('a legacy Autonomous flag is ignored: there is no Autonomous control and no run field for it', async () => {
+  for (const mode of ['agent', 'plan']) {
+    const { agent, errors } = await session().chat(mode, 'build a house', true);
+    assert.ok(agent);
+    assert.deepEqual(errors, []);
+    assert.equal(agent.mode, 'agent');
+    assert.equal('autonomous' in agent, false, 'the persisted run carries no autonomy flag');
   }
 });
 
-test('the 1000-step ceiling does not widen mode ingress', async () => {
-  for (const [, mode] of [...HOSTILE, ...VALID.map((m) => [m, m])]) {
-    const { agent } = await session().chat(mode);
-    if (VALID.includes(mode)) assert.ok(agent, `valid mode ${mode} was refused`);
-    else assert.equal(agent, undefined, `hostile mode ${JSON.stringify(mode)} entered an autonomous run`);
-  }
-});
-
-test('a refused mode does not consume the run slot', async () => {
-  // A refusal that left the session marked busy would be a denial of service dressed as a guard.
+test('successive legacy frames each run; nothing about a legacy value holds the run slot', async () => {
   const s = session();
   await s.chat('memory');
-  const { agent, errors } = await s.chat('agent');
-  assert.ok(agent, 'a valid mode must still start after a refused one');
-  assert.ok(errors.includes('bad_mode'), 'the earlier refusal is still reported');
+  const { agent, errors } = await s.chat('plan');
+  assert.ok(agent);
+  assert.equal(errors.includes('bad_mode'), false);
   assert.equal(agent.maxSteps, 1000);
+});
+
+test('/agent-run ignores a legacy mode and autonomous flag and runs the one behaviour', async () => {
+  for (const mode of ['plan', 'agent', 'nonsense']) {
+    const h = session();
+    const res = await h.s.fetch(new Request('https://do/agent-run', {
+      method: 'POST', body: JSON.stringify({ text: 'build a house', mode, autonomous: true }),
+    }));
+    assert.equal(res.status, 200, `mode ${mode}: ${await res.clone().text()}`);
+    const agent = h.store.get('agent');
+    assert.ok(agent, `mode ${mode} started no run`);
+    assert.equal(agent.mode, 'agent');
+    assert.equal('autonomous' in agent, false);
+  }
+});
+
+test('edit_resend with a legacy mode re-runs as the one behaviour, never refused', async () => {
+  const h = session({
+    rowsFor: (q) => (/from messages where id = \?/.test(q)
+      ? [{ id: 'msg-1', role: 'user', content: 'build a hut', created_at: 1 }]
+      : /count\(\*\) as n from messages/.test(q) ? [{ n: 1 }]
+      : /as next from message_revisions/.test(q) ? [{ next: 0 }] : []),
+  });
+  try {
+    await h.s.webSocketMessage(h.ws, JSON.stringify({ type: 'edit_resend', messageId: 'msg-1', text: 'build a house', mode: 'plan', autonomous: true }));
+  } catch { /* downstream stubs */ }
+  const errors = h.sent.filter((m) => m.type === 'error').map((m) => m.code);
+  assert.equal(errors.includes('bad_mode'), false);
+  const agent = h.store.get('agent');
+  assert.ok(agent, `edit_resend started no run (errors: ${errors.join(',')})`);
+  assert.equal(agent.mode, 'agent');
+  assert.equal('autonomous' in agent, false);
+});
+
+test('a stored Plan-mode message reads back as the one behaviour; a row with no mode stays null', async () => {
+  const h = session({
+    rowsFor: (q) => (/from messages where created_at < \?/.test(q)
+      ? [
+        { id: 'a', role: 'assistant', mode: 'plan', content: 'old plan answer', tool_trace: null, created_at: 2 },
+        { id: 'b', role: 'user', mode: null, content: 'hi', tool_trace: null, created_at: 1 },
+      ]
+      : []),
+  });
+  const res = await h.s.fetch(new Request('https://do/messages', { method: 'GET' }));
+  const body = await res.json();
+  const byId = Object.fromEntries(body.messages.map((m) => [m.id, m.mode]));
+  assert.deepEqual(byId, { a: 'agent', b: null });
+});
+
+test('a run persisted in the retired Plan mode resumes as the one behaviour and keeps its no-changes promise', async () => {
+  const h = session();
+  const agent = { status: 'running', mode: 'plan', msgId: 'm-legacy', step: 0, maxSteps: 1000, llm: [], trace: [] };
+  try { await h.s.runStep(agent); } catch { /* the rest of the step needs more stubs than this proves */ }
+  assert.equal(agent.mode, 'agent');
+  assert.equal(agent.readOnly, true, 'a legacy Plan run must not start changing the place');
 });

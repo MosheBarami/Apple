@@ -198,8 +198,14 @@ export function matchRoute(method: string, pathname: string): RouteMatch | undef
 const APPLE = registryModel('apple')!;
 export const PUBLIC_MODELS: Record<string, { internal: string; description: string; productModel?: ProductModel }> = {
   'apple-chat': { internal: 'plan', productModel: APPLE.id, description: `${APPLE.displayName}. ${APPLE.blurb}` },
-  'apple-plan': { internal: 'plan', description: 'The planner. Reasons about a place without proposing edits to it.' },
 };
+
+/**
+ * `apple-plan` named the retired Plan mode (V3 G01: no modes). A caller that still sends it is
+ * answered by Apple as `apple-chat`, the same lane it always ran on; it is never refused and never
+ * listed by GET /v1/models.
+ */
+const LEGACY_PUBLIC_IDS: readonly string[] = ['apple-plan'];
 
 /**
  * The compatibility bridge for callers that still name a retired model (LEGACY_MODEL_IDS): served
@@ -208,7 +214,7 @@ export const PUBLIC_MODELS: Record<string, { internal: string; description: stri
  */
 function publicModelId(id: string): string | undefined {
   if (Object.hasOwn(PUBLIC_MODELS, id)) return id;
-  return (LEGACY_MODEL_IDS as readonly string[]).includes(id) ? 'apple-chat' : undefined;
+  return (LEGACY_MODEL_IDS as readonly string[]).includes(id) || LEGACY_PUBLIC_IDS.includes(id) ? 'apple-chat' : undefined;
 }
 
 export function publicModelList(createdAt: number): Record<string, unknown> {

@@ -138,9 +138,11 @@ test('the way back stays reachable: the Checkpoints drawer restores', () => {
   assert.match(WS, /restoreCheckpoint\(/, 'the drawer can restore a checkpoint');
 });
 
-test('a Plan-mode reply is a plan card (ae-plan)', () => {
-  mounted(TURN, 'PlanCard', '../picks/chat/plan-card', 'turn');
-  assert.match(TURN, /item\.mode === 'plan'/);
+test('there is no Plan-mode reply card and no "Build it" approval (V3 G01, UI08)', () => {
+  // The public plan is the Thinking card's checklist, and the run proceeds on its own; the old
+  // ae-plan card wrapped a Plan-mode reply behind a "Build it" button, and Plan mode is gone.
+  assert.doesNotMatch(TURN, /PlanCard|onBuildPlan|item\.mode === 'plan'/);
+  assert.equal(existsSync(join(WEB, 'src', 'components', 'picks', 'chat', 'plan-card.tsx')), false);
 });
 
 test('an image Apple made opens larger (GSAP Flip expand + ae-image)', () => {
@@ -202,7 +204,7 @@ test('the dock: a sliding bed and marker (Animate UI Sidebar + Motion Shared lay
 });
 
 test('every pick sheet in the lane turns its motion off under reduced motion', () => {
-  const sheets = ['copy-button', 'context-menu', 'rail-chats', 'animated-icon', 'confirmation', 'dock-highlights', 'fuse-undo', 'plan-card', 'share-button', 'turn-checkpoint'];
+  const sheets = ['copy-button', 'context-menu', 'rail-chats', 'animated-icon', 'confirmation', 'dock-highlights', 'fuse-undo', 'share-button', 'turn-checkpoint'];
   for (const name of sheets) {
     const path = join(WEB, 'src', 'components', 'picks', 'chat', `${name}.css`);
     assert.ok(existsSync(path), `${name}.css is missing`);

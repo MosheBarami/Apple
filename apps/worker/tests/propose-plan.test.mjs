@@ -254,17 +254,19 @@ test('the plan prompt asks for the two things the tool refuses without', () => {
     'Agent would be refused for a plan with no check and not know why');
 });
 
-test('PLAN MODE IS NOT TOLD TO PROPOSE A STRUCTURED PLAN, because it cannot call the tool', () => {
-  // propose_plan is deliberately absent from PLAN_TOOLS in router.ts: Plan mode's whole deliverable
-  // is a prose roadmap. Instructing it to call a tool it will never be offered is the exact defect
+test('A RUN NOT OFFERED propose_plan IS NOT TOLD TO CALL IT', () => {
+  // There is no Plan mode any more (V3 G01), but a run can still lack the planner (offline, or a
+  // permission denial). Instructing it to call a tool it will never be offered is the exact defect
   // prompt-tool-names.test.mjs was written for, one level up.
-  assert.doesNotMatch(systemPrompt({ ...BASE, mode: 'plan' }), /FIRST call is propose_plan/,
-    'Plan mode is told to call a tool its toolset withholds');
+  const offered = new Set(['get_project_tree', 'read_script']);
+  assert.doesNotMatch(systemPrompt({ ...BASE, mode: 'agent', offeredTools: offered }), /FIRST call is propose_plan/,
+    'a run is told to call a tool its toolset withholds');
+  assert.throws(() => systemPrompt({ ...BASE, mode: 'plan' }), /unknown mode/, 'the retired Plan mode composes no prompt');
 });
 
 test('propose_plan needs no Studio and changes nothing in the project', async () => {
-  // It is a statement of intent. If it ever grows a side effect, Plan mode's toolset is not the
-  // thing that would catch it — propose_plan is deliberately not in PLAN_TOOLS.
+  // It is a statement of intent. If it ever grows a side effect, the read-only toolset is not the
+  // thing that would catch it — propose_plan is deliberately kept in a read-only run.
   const res = await call(GOOD, { studioConnected: () => false });
   assert.equal(res.ok, true, 'a plan could not be proposed without Studio attached');
 });

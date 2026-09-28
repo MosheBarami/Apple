@@ -110,19 +110,20 @@ test('a failed prior step still escalates even on a conversational turn', () => 
   // The conversational short-circuit must not swallow recovery: if the previous step errored,
   // something IS wrong and cheap thinking will not fix it.
   //
-  // Asserted in Plan, whose baseline is `low`, so the escalation is actually observable. Agent's
-  // baseline is already `high`, where `raise()` is a no-op and would prove nothing about recovery.
+  // There is one behaviour now (V3 G01), whose baseline is already `high`, so what is observable is
+  // that the conversational `low` short-circuit does not fire. Step 1, where the short-circuit is
+  // still live. (This used to be asserted at step 3 in the retired Plan mode, whose baseline was `low`.)
   const choice = R.chooseEffort({
-    mode: 'plan',
-    step: 3,
+    mode: 'agent',
+    step: 1,
     highEffortUsed: 0,
     priorStepFailed: true,
     ...R.classifyRequest('ok'),
   });
   assert.equal(choice.effort, 'high', 'recovery must outrank the conversational short-circuit');
-  assert.match(choice.reason, /failed step/);
+  assert.doesNotMatch(choice.reason, /conversational/);
 
-  // And without a failure, the same message in the same mode stays cheap.
-  const calm = R.chooseEffort({ mode: 'plan', step: 3, highEffortUsed: 0, ...R.classifyRequest('ok') });
+  // And without a failure, the same message at the same step stays cheap.
+  const calm = R.chooseEffort({ mode: 'agent', step: 1, highEffortUsed: 0, ...R.classifyRequest('ok') });
   assert.equal(calm.effort, 'low');
 });

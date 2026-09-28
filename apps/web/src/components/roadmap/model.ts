@@ -18,8 +18,8 @@
 // These mirror `apps/worker/src/roadmap.ts` exactly. Two omissions are
 // deliberate rather than accidental:
 //
-//   `mode`  — roadmap milestones themselves do not need a run mode. A generated brief does,
-//             and that brief carries the public ProductMode directly.
+//   `mode`  — roadmap milestones themselves do not need a run mode. A generated brief
+//             still carries the legacy wire value, which nothing here reads (V3 G01).
 //   `shape` — the scan's FULL feature map, which is not what is mirrored below.
 //             `RoadmapShape` takes three of its fields and no more: the counts,
 //             the named systems, and the scan's own limits. `features`,
@@ -134,7 +134,7 @@ export interface MilestoneBrief {
   milestoneId: string;
   title: string;
   request: string;
-  /** The public run mode the worker chose for this brief. */
+  /** Legacy wire value; there are no customer modes (V3 G01) and nothing here reads it. */
   mode: 'plan' | 'agent';
   context: string[];
   steps: string[];
@@ -477,9 +477,9 @@ export function progressLabel(p: RoadmapProgress): string {
 }
 
 /**
- * Effort already arrives in the public ProductMode vocabulary: Plan or Agent.
+ * Effort arrives already worded by the worker ("about one run").
  *
- * This helper now has one job: make a missing optional string render as nothing. It deliberately
+ * This helper has one job: make a missing optional string render as nothing. It deliberately
  * does not translate or infer modes; doing that here would recreate a second mode architecture in
  * the client and let the roadmap disagree with the worker again.
  */
