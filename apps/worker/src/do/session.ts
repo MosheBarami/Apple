@@ -156,6 +156,8 @@ import {
 } from '../plugin-capabilities';
 import { buildApproved } from '../owner-corpus.ts';
 
+const STOPPED_IN_FLIGHT = Symbol('stopped in flight');
+const STOP_POLL_MS = 250;
 const ACCOUNT_NOT_APPROVED = 'Apple is in private pre-launch: building is open to approved accounts only. Ask the owner to approve this account.';
 
 /**
@@ -1498,6 +1500,22 @@ export class SessionDO extends DurableObject<Env> {
    * G10: a run with no step in flight — paused for Studio, or sleeping until a provider retry —
    * would only see a Stop at its next alarm. Bring that alarm forward so the stop ends it now.
    */
+  /** Settles with the model call, or with STOPPED_IN_FLIGHT as soon as Stop is pressed during it. */
+  private async untilStopped<T>(call: Promise<T>): Promise<T | typeof STOPPED_IN_FLIGHT> {
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const stopped = new Promise<typeof STOPPED_IN_FLIGHT>((resolve) => {
+      timer = setInterval(() => {
+        void stopRequested(this.ctx.storage).then((yes) => yes && resolve(STOPPED_IN_FLIGHT));
+      }, STOP_POLL_MS);
+    });
+    call.catch(() => {}); // a call abandoned by Stop may still reject later
+    try {
+      return await Promise.race([call, stopped]);
+    } finally {
+      if (timer !== undefined) clearInterval(timer);
+    }
+  }
+
   private async hurryStop(agent: AgentState): Promise<void> {
     if (agent.pausedForStudio || (typeof agent.resumeAt === 'number' && agent.resumeAt > Date.now())) {
       await this.ctx.storage.setAlarm(Date.now());
@@ -2770,8 +2788,8 @@ export class SessionDO extends DurableObject<Env> {
       await requestStop(this.ctx.storage);
       await this.hurryStop(agent);
       // G10: answer when the run has ACTUALLY ended, so a browser whose socket is dead still gets
-      // the acknowledgement msg_end would have carried. Bounded: a model call already in flight
-      // ends the run only when it returns, and then this says "still stopping" instead of waiting.
+      // the acknowledgement msg_end would have carried. A model call in flight is abandoned within
+      // STOP_POLL_MS; a tool mid-execution still finishes first, and then this says "still stopping".
       const deadline = Date.now() + STOP_ACK_WAIT_MS;
       while (Date.now() < deadline) {
         const now = await this.ctx.storage.get<AgentState>('agent');
@@ -3945,7 +3963,7 @@ export class SessionDO extends DurableObject<Env> {
     const stepMessages = sequenceStep?.state === 'next'
       ? sequenceStepMessages(agent.llm, sequenceStep.tool)
       : agent.llm;
-    const res = await llmChat(
+    const raced = await this.untilStopped(llmChat(
       this.env,
       {
         model: gatewayModel,
@@ -3979,7 +3997,15 @@ export class SessionDO extends DurableObject<Env> {
       // paid work. See StepRefusedError.
       if (e instanceof RateLimitedError) throw new StepRefusedError(e.message);
       throw e;
-    });
+    }));
+    // G10: Stop pressed while the model is still thinking ends the run now instead of when the call
+    // returns. Nothing from that call is applied or charged: its answer, if it ever comes, is dropped.
+    if (raced === STOPPED_IN_FLIGHT) {
+      agent.status = 'stopping';
+      await this.finishRun(agent, 'stopped');
+      return;
+    }
+    const res = raced;
     // The burst this step was waiting on has cleared, so the next one starts from a full set of
     // waits. Per STEP, not per run: what bounds the total is PROVIDER_OUTAGE_MAX_MS of continuous
     // unavailability (there is no run wall clock).

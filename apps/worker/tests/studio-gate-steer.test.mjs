@@ -172,7 +172,8 @@ async function makeSession({ responses = [], connected = false, paired = connect
     __testChat: async (req, opts) => {
       chatCalls.push({ req, opts });
       assert.ok(queue.length > 0, 'the scripted provider was called more times than the fixture supplied');
-      return structuredClone(queue.shift());
+      const next = queue.shift();
+      return typeof next === 'function' ? next() : structuredClone(next);
     },
   };
   const session = new SessionDO(ctx, env);
@@ -497,6 +498,23 @@ test('G10: the same call failing the same way is stopped at the bound, even with
     const last = toolTexts(h.chatCalls[7].req).at(-1);
     assert.match(last, /failed every time/);
     assert.equal(h.ops.filter((op) => op.op === 'set_props').length, 3, 'the work between the failures was not kept');
+  } finally {
+    h.stop();
+  }
+});
+
+test('G10: Stop during an in-flight model call ends the run without waiting for the call', async () => {
+  const h = await makeSession({ connected: true, answerOp: ok, responses: [() => new Promise(() => {})] });
+  try {
+    await send(h, chat('build a castle'));
+    const step = h.session.alarm(); // never-returning provider call
+    await new Promise((r) => setTimeout(r, 20));
+    const t0 = Date.now();
+    const body = await (await h.session.fetch(new Request('https://do/agent-stop', { method: 'POST' }))).json();
+    await step;
+    assert.equal(body.ended, true, 'Stop was not acknowledged as ended');
+    assert.ok(Date.now() - t0 < 3000, 'Stop waited for the model call');
+    assert.equal(h.store.get('agent').status, 'idle');
   } finally {
     h.stop();
   }
