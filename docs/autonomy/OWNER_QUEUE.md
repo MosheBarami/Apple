@@ -2,11 +2,11 @@
 
 Only the actions that stay human-only (payments, account creation, passwords/2FA, CAPTCHAs, security
 settings of an account, or a signed-in Studio publish when Studio is unavailable to the agent) — see
-`.claude/skills/apple-owner-autonomy/references/human-only.md`. Everything
+the owner's consent rules. Everything
 else is done by the agent without asking. Each item is one step; the product is built to switch on by
 itself when the step is done.
 
-Line format (read by `.claude/hooks/autonomy_stop_gate.py`):
+Line format:
 `- [open|done] Q-NNN: <the step> — why: <what it unblocks> — Blocks findings: <ids or none>`
 
 - [done] Q-004: in a terminal run `claude auth login`, approve in the browser, and paste the code it shows back into the terminal — why: the unattended supervisor (scripts/autonomy-supervisor.py) runs fresh `claude -p` sessions and the CLI is logged out; the agent can open the page but must not type the authorization code — Blocks findings: none — done 2026-09-23: `claude auth status` → loggedIn true (claude.ai)

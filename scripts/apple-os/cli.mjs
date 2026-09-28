@@ -11,7 +11,7 @@ try {
   if (action === 'init') console.log(JSON.stringify(initVault(), null, 2));
   else if (action === 'brief') console.log(runBrief().path);
   else if (action === 'latest') console.log(latestBrief()?.text ?? 'No brief yet. Run: node scripts/apple-os/cli.mjs brief');
-  else if (action === 'status') console.log(JSON.stringify({ vault: vaultPath(), voice: voiceStatus(), jevConfigured: Boolean(process.env.TYPESAFE_API_KEY), facts: collectBriefFacts() }, null, 2));
+  else if (action === 'status') console.log(JSON.stringify({ vault: vaultPath(), voice: voiceStatus(), facts: collectBriefFacts() }, null, 2));
   else if (action === 'skills') console.log(JSON.stringify(SKILLS, null, 2));
   else if (action === 'discover') { const result = await discoverWorkflows(); console.log(JSON.stringify({ ...result, path: saveDiscovery(result) }, null, 2)); }
   else if (action === 'search') console.log(JSON.stringify(searchWiki(args.join(' ')), null, 2));

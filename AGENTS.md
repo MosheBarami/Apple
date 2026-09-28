@@ -6,8 +6,8 @@ with `.claude/skills/rbxai-working-rules/SKILL.md`, which is the **method** and 
 > **START HERE — `docs/autonomy/`.** The owner's locked product scope is **V3**
 > (`docs/autonomy/v3/Apple_RbxAI_HANDOFF_V3.md`, adopted 2026-09-28); it supersedes conflicting text in
 > this file and in `docs/autonomy/OWNER_PROMPT.md`. Read `docs/autonomy/README.md`, `MISSION.md`,
-> `CURRENT_STATE.md` and `NEXT_ACTION.md` before anything below. The hard safety envelope is enforced by
-> `.claude/hooks/autonomy_guard.py`; `touch .autonomy/STOP` freezes every mutating tool.
+> `CURRENT_STATE.md` and `NEXT_ACTION.md` before anything below. There are no hooks (removed 2026-09-28 at
+> owner instruction): ask the owner for consent on destructive, paid or external actions.
 
 Every number below was measured, not remembered — on 2026-09-16 unless the line gives another date.
 Where a number will drift, the command that produced it is beside it.

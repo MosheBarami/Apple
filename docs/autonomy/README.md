@@ -52,8 +52,8 @@ bash scripts/autonomy-gate.sh
 python3 scripts/autonomy-review-gate.py
 ```
 
-The hard safety envelope is enforced outside the model by `.claude/hooks/autonomy_guard.py`
-(PreToolUse, wired in `.claude/settings.json`), not by any sentence in a prompt.
+The hooks (`.claude/hooks/`) and the `apple-owner-autonomy` skill were removed on 2026-09-28 at owner
+instruction; `.autonomy/STOP` no longer blocks tools. Ask the owner for consent instead.
 
 ## How the current run is being executed (a recorded decision, not a default)
 

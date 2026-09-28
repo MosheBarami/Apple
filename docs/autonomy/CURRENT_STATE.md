@@ -6,14 +6,18 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
 
 ## Repository and production (FACT)
 
-- Checkout `/Users/moshe/Desktop/RbxAI`, branch `main`, remote `github.com/MosheBarami/apple`.
+- Checkout `/Users/moshe/Developer/RbxAI`, branch `main`, remote `github.com/MosheBarami/apple`.
+  2026-09-29: moved out of iCloud-synced `~/Desktop/RbxAI` (iCloud had evicted ~95k repo files and
+  the account quota is full, so git and tests hung). The Desktop copy is kept until its evicted bulk
+  data (`packages/corpus/raw`, `packages/training`, `packages/asset-library` stores) finishes
+  downloading; the list is in `.git/desktop-evicted-files.txt`.
 - Working tree: 329 dirty paths inherited from the Codex continuation (tracked edits across worker, web,
   plugin, training, infra; untracked `packages/owner-corpus/`, evidence, LoRA configs). Archived before
   any V3 change: `.autonomy/backups/codex-wip-2026-09-28/` (tracked.patch, untracked.tgz, HEAD).
 - Production `/api/health` 2026-09-28 14:48Z: `buildSha fcdd423-dirty` — that SHA is not in this
   checkout's history (deployed from elsewhere or from uncommitted state).
 - No training process is running; `packages/training/OWNER_DISABLED.json` (2026-09-26) blocks
-  `train-forever.mjs`. The only project launch agent is `com.moshe.apple-os.open-jev` (local Jev server).
+  `train-forever.mjs`. No project launch agent remains (the local Jev server and its code were removed 2026-09-29).
 - The local owner-corpus gateway (`packages/owner-corpus/gateway.py`) is running on the owner's Mac.
 - Codex desktop app is open but has written nothing in the repo in the last 2 hours.
 
