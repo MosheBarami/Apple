@@ -71,7 +71,6 @@ import { MCP_TOOL_NAMES } from '../mcp';
 import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { skillCardsForRun, skillSteerForStep } from '../skill-cards';
 import { refundSentence, refundVerdict } from '../run-refund';
-import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { recoverToolCall } from '../tool-recovery';
 import { notify } from '../notify';
@@ -93,7 +92,6 @@ import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
-import { sceneSignature, shouldRebuild, semanticCheck, type PassRecord } from '../semantic';
 import { runIntentFor } from '../run-intent';
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
 import { CollabStore, collabContext } from './collab-store.ts';
@@ -419,14 +417,8 @@ interface AgentState {
   memoryMode?: MemoryMode;
   /** how many times this run has been steered back to work after replying without acting */
   nudges?: number;
-  /** the user's request, kept so the automatic visual gate can judge against the actual intent */
+  /** the user's request, kept so completion checks judge against the actual intent */
   request?: string;
-  /** the visual gate has already run once this run — it is charged once, never in a loop */
-  autoCritiqued?: boolean;
-  /** one record per visual correction pass, so "patched forever" can be detected rather than felt */
-  passes?: PassRecord[];
-  /** a rebuild has already been ordered this run; ordering it twice would loop */
-  rebuildOrdered?: boolean;
   /**
    * Provider rate-limit waits already spent on the CURRENT step, and the earliest moment that step
    * may be attempted again. Reset once the step's model call gets through. These waits do not
@@ -4265,72 +4257,6 @@ export class SessionDO extends DurableObject<Env> {
       // any more (commit 384a4be removed MAX_NUDGES; MAX_NUDGE_LEVEL only clamps the counter): it
       // repeats on every step the model answers in prose without changing the project, and what
       // ends that is MAX_RUN_STEPS, Credits on a metered account, Stop or access revocation.
-      // VISUAL SELF-CORRECTION, as a production behaviour rather than a benchmark feature.
-      // If the run changed the world for a visual request and never looked at the result, look
-      // now. A failing gate is handed back as work to do, exactly as a user would hand it back.
-      // Charged once per run (`autoCritiqued`), so it can neither loop nor surprise the budget.
-      if (
-        agent.mode === 'agent' &&
-        agent.mutated &&
-        studioConnected &&
-        agent.traits?.visualDesignTask &&
-        allowed.has('inspect_visually') &&
-        !agent.autoCritiqued
-      ) {
-        agent.autoCritiqued = true;
-        // The worker's own check that the change came out right — not a tool the model chose.
-        agent.phase = 'verifying';
-        this.broadcast({
-          type: 'agent_status',
-          phase: 'verifying',
-          step: agent.step,
-          tool: 'inspect_visually',
-        });
-        const ctx2 = this.agentCtx(agent);
-        const out = await runTool(ctx2, 'inspect_visually', JSON.stringify({ intent: agent.request ?? 'the requested build' }));
-        this.captureProvenance(agent, ctx2);
-        agent.trace.push({ tool: 'inspect_visually', summary: out.summary, ok: out.ok, durationMs: 0 });
-        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId: `auto_${agent.step}`, ok: out.ok, summary: out.summary });
-        const critique = ctx2.lastCritique;
-        if (critique && !critique.passed && !critique.unavailable) {
-          agent.visualDefectsFound = true;
-
-          // REBUILD OR PATCH. Until now this always said "Do not start over", which is the wrong
-          // instruction exactly when it matters most: b4-interior was handed its own critique and
-          // returned a scene with the same part, material and light counts and the same defects,
-          // one for one. Patching had already failed and nothing could notice.
-          const layout = ctx2.lastRender?.layout?.parts;
-          agent.passes = [
-            ...(agent.passes ?? []),
-            { signature: sceneSignature(layout), score: critique.score, parts: layout?.length ?? 0 },
-          ];
-          const semantic = agent.request ? semanticCheck(agent.request, layout) : null;
-          const verdict = shouldRebuild(agent.passes, semantic?.failures.length ?? 0);
-          const rebuild = verdict.rebuild && !agent.rebuildOrdered;
-          if (rebuild) {
-            agent.rebuildOrdered = true;
-            agent.phase = 'rebuilding';
-            this.broadcast({ type: 'agent_status', phase: 'rebuilding', step: agent.step, creditsSpent: agent.creditsSpent });
-          }
-
-          agent.llm.push({
-            role: 'user',
-            content: rebuild
-              ? `A visual review of the render you just produced did not pass:\n\n${critiqueToText(critique)}\n\n` +
-                (semantic?.failures.length ? `${semantic.failures.join('\n')}\n\n` : '') +
-                `STOP PATCHING — ${verdict.reason}.\n` +
-                'Do not correct this in place and do not add more parts: that was measured and it does not work. ' +
-                'Create a checkpoint, delete the failed layout, and lay out a fundamentally different macro ' +
-                'composition from scratch. Keep any individual props that were good and reuse them. ' +
-                'Then call check_composition on the new blockout BEFORE adding any detail.'
-              : `A visual review of the render you just produced did not pass:\n\n${critiqueToText(critique)}\n\n` +
-                'Fix the blocking and major defects in what you already built. Do not start over.',
-          });
-          await this.persistAgent(agent);
-          await this.ctx.storage.setAlarm(Date.now() + 10);
-          return;
-        }
-      }
 
       // A run only OWES a mutation if the user asked for work. Without the conversational test
       // this fired on "hi": the greeting reached here unmutated, the nudge below told the model
