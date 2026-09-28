@@ -1,0 +1,348 @@
+{
+  "schema_version": 3,
+  "prepared_date": "2026-09-28",
+  "project": "Apple / RbxAI",
+  "scope": "Documentation-only owner-approved reset; historical evidence preserved; no live code/deployment/Studio validation in this revision.",
+  "authority": "Owner answers Q1-Q38 and final UI-LATEST in the current conversation supersede conflicting V1/V2 requirements.",
+  "implementation_status": "not_verified_against_v3",
+  "product_version": null,
+  "readiness_percent": null,
+  "active_contract": {
+    "public_engine": "Apple vX",
+    "generative_model": "@cf/zai-org/glm-5.3-flash",
+    "provider": "Cloudflare",
+    "jev_model_route_documented": "typesafe/jev",
+    "jev_role": "backend_structured_decision_support_only",
+    "jev_apple_integration_verified": false,
+    "training_enabled": false,
+    "lora_enabled": false,
+    "customer_modes": [],
+    "customer_model_selector": false,
+    "game_genres": "not limited to three templates; all within the approved product specialty",
+    "world_visual_style": "modern_colourful_studded",
+    "ui_theme_options": [
+      "cartoony",
+      "studded",
+      "none"
+    ],
+    "ui_none_means": "agent_chooses_UI_not_omit_UI",
+    "product_language": "English",
+    "one_project_one_game": true,
+    "arbitrary_customer_project_takeover": false,
+    "composer_requires_correct_studio_connection": true,
+    "server_side_gate_required": true,
+    "stop_independent_of_composer_lock": true,
+    "steering_while_running": true,
+    "reconnect_requires_explicit_continue": true,
+    "runtime_internet_research": false,
+    "developer_ingestion_internet_research": true,
+    "runtime_reference_critique_loop": false,
+    "targeted_execution_checks": true,
+    "developer_release_validation": true,
+    "full_scoped_source_extraction": true,
+    "all_microscopic_nodes_pre_rendered": false,
+    "cached_on_demand_detail": true,
+    "byte_identical_rebuilt_file_gate": false,
+    "source_preservation": true,
+    "reusable_rich_code_systems": true,
+    "typed_batched_executor": true,
+    "quality_families": [
+      "Steal a Brainrot",
+      "Grow a Garden",
+      "Arm Wrestle Simulator"
+    ],
+    "player_devices": [
+      "desktop",
+      "phone",
+      "tablet"
+    ],
+    "independent_delivered_game": true,
+    "generate_branding": {
+      "required": true,
+      "button": "Generate Branding",
+      "placement": "inside_project",
+      "sequence": "after_game",
+      "separate_window": true,
+      "outputs": [
+        "actual_images",
+        "names",
+        "descriptions"
+      ],
+      "persisted_editable": true,
+      "default_image_implementation": "game_capture_and_prepared_asset_compositing; no silently added model"
+    },
+    "customer_technical_details": "accessible_relevant_evidence_with_progressive_disclosure",
+    "private_reasoning_exposed": false,
+    "public_corpus_gallery": false,
+    "required_ui_components": [
+      "Reasoning",
+      "Shimmer",
+      "Sources",
+      "Suggestion",
+      "Task",
+      "Tool",
+      "Prompt Input",
+      "Plan",
+      "Message",
+      "Inline Citation",
+      "Conversation",
+      "Context",
+      "Confirmation",
+      "Checkpoint",
+      "Chain of Thought",
+      "Attachments",
+      "Agent",
+      "Code Block",
+      "Snippet",
+      "Image",
+      "Streaming Text",
+      "Data Table",
+      "File Tree"
+    ],
+    "scope_frozen": true,
+    "live_billing": "owner_deferred",
+    "public_plugin_distribution": "owner_deferred",
+    "prelaunch_access": "owner_and_approved_accounts",
+    "paid_cloudflare_usage_authorized": true,
+    "owner_numeric_budget_cap": null,
+    "economy_required": true,
+    "frozen_branches": [
+      "voice",
+      "additional Discord upgrades",
+      "expanded owner dashboard",
+      "multi-editor project collaboration",
+      "public galleries",
+      "separate general benchmark program"
+    ]
+  },
+  "historical_evidence": {
+    "primary_source": {
+      "file": "page-2026-09-28-00-28-15.md",
+      "sha256": "8743ea04816577cf220d549c2b21ab8e4ed8b524705b3a9580f84da7227633e1",
+      "bytes": 1191210,
+      "lines": 5801,
+      "type": "rendered shared-chat Markdown export",
+      "raw_codex_rollout_id": null
+    },
+    "source_layers": [
+      {
+        "layer": "earlier_claude",
+        "session_id": "97464f8d-2373-4986-8891-45b9c35e572d",
+        "drive_file_id": "1HPCrbkavtdEV1iiDuSNRHjl3BEMdMAwh",
+        "status": "historical stop superseded by continuation"
+      },
+      {
+        "layer": "continued_claude",
+        "session_id": "3c468a17-78dd-46d6-b07c-1366412d616c",
+        "status": "identified in carried context; included in new export"
+      },
+      {
+        "layer": "codex",
+        "share_id": "cx_6ab9af28b85c81918a11e0931191c32e",
+        "transition_text_line": 1465
+      },
+      {
+        "layer": "later_har",
+        "filename": "lemonade.gg(2).har",
+        "role": "additional requested flow reference, not demonstrated implemented"
+      }
+    ],
+    "stop_point": {
+      "last_substantive_message_lines": [
+        5787,
+        5791
+      ],
+      "last_diagnostic_line": 5789,
+      "last_edit_summary_line": 5783,
+      "last_known_files": [
+        "packages/owner-corpus/gateway.py",
+        "packages/owner-corpus/gateway_native_readiness.py",
+        "packages/owner-corpus/test_gateway_native_readiness.py"
+      ],
+      "unfinished": [
+        "Native-readiness gateway response/consumer incompatibility prevents plugin catalog read; background fix not shown completed",
+        "Residual exact reconstruction mismatch in a large map",
+        "Apple/Studio proof of new catalog integration and map path after plugin reload"
+      ],
+      "last_substantive_message_timestamp": null,
+      "last_raw_tool_call": null,
+      "last_timestamped_record": {
+        "line": 5801,
+        "utc": "2026-09-27T07:35:18.262Z",
+        "jerusalem": "2026-09-27T10:35:18.262+03:00",
+        "type": "quota-monitor instruction, not result"
+      },
+      "quota": {
+        "last_reported_weekly_used_pct": 99,
+        "source_line": 5779,
+        "explicit_exhaustion_event_in_export": false,
+        "reset_time": null,
+        "one_free_reset": "already_redeemed_2026-09-25_do_not_repeat"
+      },
+      "live_state_now": "not_checked"
+    },
+    "inventory": [
+      {
+        "label": "unique_sources",
+        "count": 438,
+        "line": 5151
+      },
+      {
+        "label": "binary_sources",
+        "count": 411,
+        "nodes": 9619989,
+        "line": 5363
+      },
+      {
+        "label": "XML_sources",
+        "count": 27,
+        "nodes": 194593,
+        "script_segments": 4458,
+        "line": 5157
+      },
+      {
+        "label": "media_references",
+        "count": 1069744,
+        "line": 5158,
+        "warning": "not downloaded media files"
+      },
+      {
+        "label": "retained_XML_component_files",
+        "count": 230,
+        "lines": [
+          5439,
+          5468
+        ]
+      },
+      {
+        "label": "native_readiness_model_components",
+        "count": 203,
+        "reviewed_files": 230,
+        "line": 5775,
+        "consumer_integration_verified": false
+      }
+    ],
+    "reported_proofs": [
+      {
+        "case": "ItemShop",
+        "nodes": 363,
+        "path": "Apple agent to Studio",
+        "visual_agent_review": true,
+        "gameplay": false,
+        "lines": [
+          5434,
+          5443
+        ]
+      },
+      {
+        "case": "map fragment",
+        "nodes": 2875,
+        "original_ids": 2875,
+        "duplicates": 0,
+        "scripts": 0,
+        "lines": [
+          5569,
+          5575
+        ]
+      },
+      {
+        "case": "Simulator",
+        "nodes": 244,
+        "properties_in_materialization": 14669,
+        "path": "Apple agent to Studio",
+        "visual_review": true,
+        "gameplay": false,
+        "lines": [
+          5573,
+          5608
+        ]
+      },
+      {
+        "case": "cross-part references",
+        "checked": 19,
+        "scope": "one checked page, not all game/corpus references",
+        "line": 5651,
+        "undo_sample": 3,
+        "undo_line": 5636
+      },
+      {
+        "case": "three-part batch",
+        "nodes": 2296,
+        "agent_calls": 1,
+        "duplicates": 0,
+        "line": 5684,
+        "savings_scope": "three calls to one for this task only"
+      },
+      {
+        "case": "Lobby",
+        "nodes": 832,
+        "physical_parts": 627,
+        "cameras": 9,
+        "path": "Studio tools, NOT yet Apple agent",
+        "terrain_world_gameplay_complete": false,
+        "lines": [
+          5731,
+          5735
+        ]
+      }
+    ],
+    "last_named_background_assignments": [
+      {
+        "name": "Mencius",
+        "task": "native readiness index",
+        "line": 5745,
+        "currently_running": null
+      },
+      {
+        "name": "Einstein",
+        "task": "resumable batch after interruption",
+        "line": 5746,
+        "currently_running": null
+      }
+    ],
+    "earlier_lanes_to_reconcile": [
+      "Epicurus: materialization/world properties",
+      "Huygens: Apple/plugin map integration",
+      "Mendel: 20-map batch processing"
+    ],
+    "historical_backlog": {
+      "F-069": "reported closed in Round 8C; do not restart original investigation without regression evidence",
+      "F-068": "reported closed after round 7 trace",
+      "F-059": "visual full-game quality not proven closed",
+      "F-064": "complete listed game parts not proven closed",
+      "independent_reviews": "last applicable full-product record 0/3; no later full acceptance pass shown",
+      "public_plugin": "later historical moderation/404 and unsent appeal; current availability not checked",
+      "Q-022": "historical third-party asset setting restriction; not changed by handoff work",
+      "Discord": "built and linked; further upgrade request not full completion proof",
+      "training": "history retained; not live production GLM training; cancelled latest"
+    },
+    "do_not_infer": [
+      "203 records means only 203 assets exist",
+      "438 indexed files means 438 playable games",
+      "original byte preservation means new serialization byte-equal",
+      "one map/one refs page proves whole corpus",
+      "model image critique proves gameplay",
+      "99% reported plus later monitor instructions gives exact quota exhaustion time",
+      "historical agent names mean live resumable processes",
+      "old heartbeat instructions override later direct owner instructions"
+    ]
+  },
+  "transition_actions": [
+    "Reconcile current relevant code, service, peer work and plugin",
+    "Replace active old instructions with V3; retire training safely",
+    "Verify single Flash route and bounded backend Jev path",
+    "Fix still-needed catalog consumer and functional materialization defects",
+    "Finish efficient scoped corpus/community ingestion and customer cloud delivery",
+    "Build full games by reusable systems and typed batch operations",
+    "Integrate the 23-component evidence-aware output and Generate Branding",
+    "Run the locked V3 acceptance; leave commercial launch holds explicit"
+  ],
+  "references": {
+    "handoff": "Apple_RbxAI_HANDOFF_V3.md",
+    "decisions": "Apple_RbxAI_DECISIONS_V3.md",
+    "ui": "Apple_RbxAI_UI_CONTRACT_V3.md",
+    "execution": "Apple_RbxAI_EXECUTION_V3.md",
+    "acceptance": "Apple_RbxAI_ACCEPTANCE_V3.json",
+    "history": "Apple_RbxAI_HISTORY_V3.md"
+  }
+}

@@ -3,10 +3,10 @@
 You are almost certainly an agent. This file is the map. Read it before the first edit, together
 with `.claude/skills/rbxai-working-rules/SKILL.md`, which is the **method** and loads automatically.
 
-> **START HERE — `docs/autonomy/`.** The most important artifact in this repository is the owner's
-> autonomy research (`docs/autonomy/RESEARCH-REPORT.md`) and the mission it ends in
-> (`docs/autonomy/OWNER_PROMPT.md`). Read `docs/autonomy/README.md`, `MISSION.md`, `CURRENT_STATE.md`
-> and `NEXT_ACTION.md` before anything below. The hard safety envelope is enforced by
+> **START HERE — `docs/autonomy/`.** The owner's locked product scope is **V3**
+> (`docs/autonomy/v3/Apple_RbxAI_HANDOFF_V3.md`, adopted 2026-09-28); it supersedes conflicting text in
+> this file and in `docs/autonomy/OWNER_PROMPT.md`. Read `docs/autonomy/README.md`, `MISSION.md`,
+> `CURRENT_STATE.md` and `NEXT_ACTION.md` before anything below. The hard safety envelope is enforced by
 > `.claude/hooks/autonomy_guard.py`; `touch .autonomy/STOP` freezes every mutating tool.
 
 Every number below was measured, not remembered — on 2026-09-16 unless the line gives another date.

@@ -91,6 +91,20 @@ test('questions to the owner are denied; the prompt carries the contract', () =>
   assert.match(c.hookSpecificOutput.additionalContext, /Decide instead of asking/);
 });
 
+// 2026-09-28, owner: "try to ask consent for the things that block you". A question whose every item is
+// headed "Consent" (permission for an action a rule blocked) reaches the owner; any other question is denied.
+test('consent questions for a blocked action reach the owner; product questions stay denied', () => {
+  const dir = fixture({ acceptance: PASSING, findings: CLOSED });
+  const ask = (headers) => spawnSync('python3', [join(HOOKS, 'autonomy_no_questions.py')], {
+    input: JSON.stringify({ tool_name: 'AskUserQuestion', tool_input: { questions: headers.map((header) => ({ header, question: 'q?' })) } }),
+    encoding: 'utf8', env: { ...process.env, AUTONOMY_ROOT: dir, CLAUDE_PROJECT_DIR: dir },
+  }).stdout.trim();
+  assert.equal(ask(['Consent']), '', 'a consent question is allowed');
+  assert.match(ask(['Theme']), /do not ask the owner/);
+  assert.match(ask(['Consent', 'Theme']), /do not ask the owner/, 'a product question cannot ride along');
+  assert.match(ask([]), /do not ask the owner/);
+});
+
 test('the hooks are wired in the project settings', () => {
   const s = JSON.parse(readFileSync(join(ROOT, '.claude', 'settings.json'), 'utf8'));
   const cmds = (ev) => (s.hooks[ev] ?? []).flatMap((e) => e.hooks.map((h) => `${e.matcher ?? ''} ${h.command}`));

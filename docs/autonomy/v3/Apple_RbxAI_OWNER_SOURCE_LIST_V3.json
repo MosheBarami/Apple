@@ -1,0 +1,897 @@
+{
+  "schema_version": 3,
+  "prepared_date": "2026-09-28",
+  "scope": "Historical links preserved with effective V3 ingestion policy. This revision did not discover/download new Roblox assets.",
+  "source_filename": "page-2026-09-28-00-28-15.md",
+  "source_sha256": "8743ea04816577cf220d549c2b21ab8e4ed8b524705b3a9580f84da7227633e1",
+  "effective_policy": {
+    "owner_corpus_first": true,
+    "all_owner_and_collected_sources_in_scope": true,
+    "research_actor": "development_agent_building_Apple",
+    "apple_runtime_web_research": false,
+    "eligible_new_assets": "free Roblox-specific community sources, dedicated repositories and forums",
+    "excluded_generic_sources": [
+      "OpenGameArt",
+      "Sketchfab",
+      "Poly Haven",
+      "Kenney",
+      "general-purpose asset catalogs"
+    ],
+    "source_assertion": "Owner states their supplied assets are commercially usable; preserve that assertion without presenting it as an independent legal audit or extending it to unrelated sources.",
+    "collection_finish": "finite locked official-release manifest with source/category/system coverage and explicit unresolved gaps",
+    "readiness_note": "A historical URL does not prove current availability, download, eligibility or product readiness."
+  },
+  "historical_priority_sources": [
+    {
+      "order": 1,
+      "source_line": 1811,
+      "url_as_provided": "https://zerodev.tools/assets/ui-pack-plus",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 2,
+      "source_line": 1812,
+      "url_as_provided": "https://zxgly.itch.io/free-cartoony-roblox-ui-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 3,
+      "source_line": 1813,
+      "url_as_provided": "https://zxgly.itch.io/roblox-fps-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 4,
+      "source_line": 1814,
+      "url_as_provided": "https://rblx-essentials.itch.io/studded-ui",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 5,
+      "source_line": 1815,
+      "url_as_provided": "https://roservice.itch.io/free-interactive-roblox-menu-ui-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 6,
+      "source_line": 1816,
+      "url_as_provided": "https://roservice.itch.io/roblox-currency-rewards-ui-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 7,
+      "source_line": 1817,
+      "url_as_provided": "https://roservice.itch.io/free-roblox-loading-screen-ui-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 8,
+      "source_line": 1818,
+      "url_as_provided": "https://developerplacebruno.itch.io/cartoon-ui-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 9,
+      "source_line": 1819,
+      "url_as_provided": "https://devforum.roblox.com/t/free-full-game-cartoon-ui-pack-v2-psd-roblox-file/900668",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 10,
+      "source_line": 1820,
+      "url_as_provided": "https://devforum.roblox.com/t/free-cartoon-ui-pack/219831",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 11,
+      "source_line": 1821,
+      "url_as_provided": "https://devforum.roblox.com/t/cartoony-ui-pack-free/579376",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 12,
+      "source_line": 1822,
+      "url_as_provided": "https://devforum.roblox.com/t/free-cartoon-themed-guis/1754465",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 13,
+      "source_line": 1823,
+      "url_as_provided": "https://devforum.roblox.com/t/mrnoobiedks-cartoony-ui-pack-2021-psd/1283283",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 14,
+      "source_line": 1824,
+      "url_as_provided": "https://devforum.roblox.com/t/small-gui-pack-open-source/1727639",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 15,
+      "source_line": 1825,
+      "url_as_provided": "https://devforum.roblox.com/t/free-user-interface-pack/695357",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 16,
+      "source_line": 1826,
+      "url_as_provided": "https://devforum.roblox.com/t/easy-gui-buttons-pack/3272514",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 17,
+      "source_line": 1827,
+      "url_as_provided": "https://devforum.roblox.com/t/free-storeui-an-animated-modern-gamepass-store-ui/632073",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 18,
+      "source_line": 1828,
+      "url_as_provided": "https://devforum.roblox.com/t/moons-main-menu-ui/2047644",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 19,
+      "source_line": 1829,
+      "url_as_provided": "https://devforum.roblox.com/t/inferno-menu-system/2485956",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 20,
+      "source_line": 1830,
+      "url_as_provided": "https://devforum.roblox.com/t/military-overhead-interface/2485958",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 21,
+      "source_line": 1831,
+      "url_as_provided": "https://devforum.roblox.com/t/oop-radial-inventory-inventory-ui-available-to-use/3786366",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 22,
+      "source_line": 1832,
+      "url_as_provided": "https://devforum.roblox.com/t/open-sourced-inventory-and-hotbar-system/1780963",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 23,
+      "source_line": 1833,
+      "url_as_provided": "https://devforum.roblox.com/t/free-front-end-backpack-hotbar-gui/3081889",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 24,
+      "source_line": 1834,
+      "url_as_provided": "https://devforum.roblox.com/t/health-gui-working-open-sourced/1443704",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 25,
+      "source_line": 1835,
+      "url_as_provided": "https://devforum.roblox.com/t/default-healthbar-display-gui/4140598",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 26,
+      "source_line": 1836,
+      "url_as_provided": "https://devforum.roblox.com/t/hudhelper-easy-clean-hud-for-your-game/1894252",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 27,
+      "source_line": 1837,
+      "url_as_provided": "https://devforum.roblox.com/t/gui-addon-for-the-default-vehicleseat-interface/841677",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 28,
+      "source_line": 1838,
+      "url_as_provided": "https://builtbybit.com/resources/tower-defense-ui.58820/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 29,
+      "source_line": 1839,
+      "url_as_provided": "https://robloxguimaker.app/kits/simulator-kit",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 30,
+      "source_line": 1840,
+      "url_as_provided": "https://devforum.roblox.com/t/open-source-horror-game-gui/1606871",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 31,
+      "source_line": 1841,
+      "url_as_provided": "https://devforum.roblox.com/t/dialogue-kit-v25-fast-easy-interactive-dialogues-and-events/3548230",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 32,
+      "source_line": 1842,
+      "url_as_provided": "https://devforum.roblox.com/t/mrdialogue-v100-build-complete-and-modular-branching-dialogues-with-conditions-actions-custom-uis-and-more/4884794",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 33,
+      "source_line": 1843,
+      "url_as_provided": "https://robloxguimaker.app/kits/quest-rpg-kit",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 34,
+      "source_line": 1844,
+      "url_as_provided": "https://devforum.roblox.com/t/techys-obby-system-all-your-obby-needs-in-one-includes-stage-selector/785271",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 35,
+      "source_line": 1845,
+      "url_as_provided": "https://zxgly.itch.io/vector-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 36,
+      "source_line": 1846,
+      "url_as_provided": "https://streeteenk.itch.io/generic-icon-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 37,
+      "source_line": 1847,
+      "url_as_provided": "https://builtbybit.com/resources/stud-themed-shop-ui.97904/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 38,
+      "source_line": 1848,
+      "url_as_provided": "https://builtbybit.com/resources/simple-setting-gui.63178/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 39,
+      "source_line": 1849,
+      "url_as_provided": "https://builtbybit.com/resources/simple-mainmenu-gui.53155/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 40,
+      "source_line": 1850,
+      "url_as_provided": "https://prohriday.gumroad.com/l/enksac",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 41,
+      "source_line": 1851,
+      "url_as_provided": "https://devforum.roblox.com/t/free-low-poly-simulator-kit-and-map/1147111",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 42,
+      "source_line": 1852,
+      "url_as_provided": "https://devforum.roblox.com/t/free-cartoonlow-poly-map/2393415",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 43,
+      "source_line": 1853,
+      "url_as_provided": "https://devforum.roblox.com/t/2-simulator-maps/1567893",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 44,
+      "source_line": 1854,
+      "url_as_provided": "https://devforum.roblox.com/t/tycoon-map-and-assets/2188535",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 45,
+      "source_line": 1855,
+      "url_as_provided": "https://devforum.roblox.com/t/open-sourced-island-tycoon/468290",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 46,
+      "source_line": 1856,
+      "url_as_provided": "https://devforum.roblox.com/t/open-source-tower-defense-harbor-map/1666640",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 47,
+      "source_line": 1857,
+      "url_as_provided": "https://devforum.roblox.com/t/open-sourced-horror-game-midnight-hours-23m-visits/2303050",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 48,
+      "source_line": 1858,
+      "url_as_provided": "https://kwstudio.org/b/anime-lobby-map",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 49,
+      "source_line": 1859,
+      "url_as_provided": "https://kwstudio.org/b/free-map-n2",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 50,
+      "source_line": 1860,
+      "url_as_provided": "https://kwstudio.org/b/free-palm-valley",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 51,
+      "source_line": 1861,
+      "url_as_provided": "https://kwstudio.org/b/free-medieval-map",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 52,
+      "source_line": 1862,
+      "url_as_provided": "https://kwstudio.org/b/medieval-map2",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 53,
+      "source_line": 1863,
+      "url_as_provided": "https://kwstudio.org/b/free-bronx-river-city",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 54,
+      "source_line": 1864,
+      "url_as_provided": "https://kwstudio.org/b/free-forest-beach-map",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 55,
+      "source_line": 1865,
+      "url_as_provided": "https://kwstudio.org/b/island-battle-map",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 56,
+      "source_line": 1866,
+      "url_as_provided": "https://builtbybit.com/resources/abandoned-hallways-horror-map.114448/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 57,
+      "source_line": 1867,
+      "url_as_provided": "https://builtbybit.com/resources/shattered-aether-map.114447/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 58,
+      "source_line": 1868,
+      "url_as_provided": "https://devforum.roblox.com/t/tower-defense-map/1650102",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 59,
+      "source_line": 1869,
+      "url_as_provided": "https://devforum.roblox.com/t/miners-haven-open-sourced-everything-you-need-to-make-your-own-factory-game/350767",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 60,
+      "source_line": 1870,
+      "url_as_provided": "https://devforum.roblox.com/t/seeking-collaboration-open-sourcing-my-roblox-game-code-with-advanced-features/2762548",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 61,
+      "source_line": 1871,
+      "url_as_provided": "https://builtbybit.com/resources/free-lowpoly-simulator-map.106427/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 62,
+      "source_line": 1872,
+      "url_as_provided": "https://builtbybit.com/resources/low-poly-stud-forest.105078/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 63,
+      "source_line": 1873,
+      "url_as_provided": "https://builtbybit.com/resources/free-fantasy-rpg-swamp-map.76690/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 64,
+      "source_line": 1874,
+      "url_as_provided": "https://builtbybit.com/resources/steal-a-___-map.99266/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 65,
+      "source_line": 1875,
+      "url_as_provided": "https://builtbybit.com/resources/steal-a-brainrot-map.117113/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 66,
+      "source_line": 1876,
+      "url_as_provided": "https://builtbybit.com/resources/low-poly-stylized-island-free.104075/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 67,
+      "source_line": 1877,
+      "url_as_provided": "https://devforum.roblox.com/t/resourcesobby-kit/946246",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 68,
+      "source_line": 1878,
+      "url_as_provided": "https://devforum.roblox.com/t/devcember-2023-mini-check-point-a-better-obby-kit/2729817",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 69,
+      "source_line": 1879,
+      "url_as_provided": "https://devforum.roblox.com/t/free-huge-terrain-map/814976",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 70,
+      "source_line": 1880,
+      "url_as_provided": "https://builtbybit.com/resources/free-infinity-castle-map.69745/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 71,
+      "source_line": 1881,
+      "url_as_provided": "https://builtbybit.com/resources/free-vallelunga-racetrack.97342/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 72,
+      "source_line": 1882,
+      "url_as_provided": "https://builtbybit.com/resources/free-highrise-apartment.92288/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 73,
+      "source_line": 1883,
+      "url_as_provided": "https://builtbybit.com/resources/free-1950s-hotel-lobby.92128/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 74,
+      "source_line": 1884,
+      "url_as_provided": "https://builtbybit.com/resources/free-frost-haven-lookout-map.60060/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 75,
+      "source_line": 1885,
+      "url_as_provided": "https://builtbybit.com/resources/free-one-floor-luxury-villa.78947/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 76,
+      "source_line": 1886,
+      "url_as_provided": "https://create.roblox.com/docs/resources/the-mystery-of-duvall-drive",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 77,
+      "source_line": 1887,
+      "url_as_provided": "https://create.roblox.com/docs/resources/beyond-the-dark",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 78,
+      "source_line": 1888,
+      "url_as_provided": "https://devforum.roblox.com/t/free-the-ultimate-low-poly-asset-pack-added-more-assets/1772603",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 79,
+      "source_line": 1889,
+      "url_as_provided": "https://devforum.roblox.com/t/mediterranean-nature-assets-free-low-poly-realistic/4296744",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 80,
+      "source_line": 1890,
+      "url_as_provided": "https://kwstudio.org/b/free-low-poly-simulator-assets",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 81,
+      "source_line": 1891,
+      "url_as_provided": "https://monkisrok.itch.io/low-poly-asset-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 82,
+      "source_line": 1892,
+      "url_as_provided": "https://monkeyyyyyyy.itch.io/free-monks-mini-low-poly-asset-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 83,
+      "source_line": 1893,
+      "url_as_provided": "https://ardathesmart.itch.io/roblox-small-asset-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 84,
+      "source_line": 1894,
+      "url_as_provided": "https://ta1p1.itch.io/retro-stud-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 85,
+      "source_line": 1895,
+      "url_as_provided": "https://devforum.roblox.com/t/free-low-poly-asset-pack/1846080",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 86,
+      "source_line": 1896,
+      "url_as_provided": "https://devforum.roblox.com/t/free-low-poly-asset-pack/2131239",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 87,
+      "source_line": 1897,
+      "url_as_provided": "https://devforum.roblox.com/t/low-poly-asset-pack/1945840",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 88,
+      "source_line": 1898,
+      "url_as_provided": "https://devforum.roblox.com/t/free-low-poly-asset-pack/1306599",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 89,
+      "source_line": 1899,
+      "url_as_provided": "https://devforum.roblox.com/t/innos-asset-pack/1299995",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 90,
+      "source_line": 1900,
+      "url_as_provided": "https://devforum.roblox.com/t/stylised-low-poly-nature-pack-update-v12/1097760",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 91,
+      "source_line": 1901,
+      "url_as_provided": "https://devforum.roblox.com/t/300-free-simulator-pets/692024",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 92,
+      "source_line": 1902,
+      "url_as_provided": "https://devforum.roblox.com/t/upgradings-pet-pack-148-pets-more/3067375",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 93,
+      "source_line": 1903,
+      "url_as_provided": "https://devforum.roblox.com/t/free-pet-pack-28-pets/958670",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 94,
+      "source_line": 1904,
+      "url_as_provided": "https://devforum.roblox.com/t/100-good-quality-simulator-pets/426398",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 95,
+      "source_line": 1905,
+      "url_as_provided": "https://devforum.roblox.com/t/free-pet-asset-pack-by-nobuser/2897099",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 96,
+      "source_line": 1906,
+      "url_as_provided": "https://devforum.roblox.com/t/fantasy-village-buildings-kit/3351486",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 97,
+      "source_line": 1907,
+      "url_as_provided": "https://devforum.roblox.com/t/free-innos-stylized-asset-pack/3107492",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 98,
+      "source_line": 1908,
+      "url_as_provided": "https://devforum.roblox.com/t/free-mini-medieval-town-kit/1546157",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 99,
+      "source_line": 1909,
+      "url_as_provided": "https://devforum.roblox.com/t/free-medieval-market-pack/2185470",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 100,
+      "source_line": 1910,
+      "url_as_provided": "https://devforum.roblox.com/t/studs-building-pack/3899139",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 101,
+      "source_line": 1911,
+      "url_as_provided": "https://devforum.roblox.com/t/free-low-poly-city-asset-pack/1877458",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 102,
+      "source_line": 1912,
+      "url_as_provided": "https://devforum.roblox.com/t/free-furniture-pack/1867247",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 103,
+      "source_line": 1913,
+      "url_as_provided": "https://devforum.roblox.com/t/justins-furniture-pack/2542000",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 104,
+      "source_line": 1914,
+      "url_as_provided": "https://devforum.roblox.com/t/free-modern-kitchen/913940",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 105,
+      "source_line": 1915,
+      "url_as_provided": "https://devforum.roblox.com/t/furniture-assets-v1-free-open-source/738315",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 106,
+      "source_line": 1916,
+      "url_as_provided": "https://devforum.roblox.com/t/15-free-simulator-assets/992496",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 107,
+      "source_line": 1917,
+      "url_as_provided": "https://devforum.roblox.com/t/50-low-poly-environment-assets/2069400",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 108,
+      "source_line": 1918,
+      "url_as_provided": "https://devforum.roblox.com/t/free-low-poly-cartoony-asset-pack/1261044",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 109,
+      "source_line": 1919,
+      "url_as_provided": "https://devforum.roblox.com/t/low-poly-bricks-a-few-extras/1508479",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 110,
+      "source_line": 1920,
+      "url_as_provided": "https://kwstudio.org/b/free-voxel-style-nature-asset-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 111,
+      "source_line": 1921,
+      "url_as_provided": "https://kwstudio.org/b/free-nature-decor-kit-roblox-environment-asset-pack",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 112,
+      "source_line": 1922,
+      "url_as_provided": "https://devforum.roblox.com/t/yuruzuus-open-source-vfx/1840021",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 113,
+      "source_line": 1923,
+      "url_as_provided": "https://create.roblox.com/store/asset/8621531267/Free-VFX-Pack-1-By-DogmathPan",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 114,
+      "source_line": 1924,
+      "url_as_provided": "https://builtbybit.com/resources/free-stylized-fire-vfx.57946/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 115,
+      "source_line": 1925,
+      "url_as_provided": "https://payhip.com/b/XU2RL",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 116,
+      "source_line": 1926,
+      "url_as_provided": "https://devforum.roblox.com/t/effect-designer-suite-%E2%80%94-vfx-tooling-assets-and-more/4754553",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 117,
+      "source_line": 1927,
+      "url_as_provided": "https://fancyducc.github.io/3D-Particle-System/templatelist/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 118,
+      "source_line": 1928,
+      "url_as_provided": "https://devforum.roblox.com/t/ultimate-8-bit-sfx-pack-free/2804202",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 119,
+      "source_line": 1929,
+      "url_as_provided": "https://devforum.roblox.com/t/free-sfx-for-you/1045528",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 120,
+      "source_line": 1930,
+      "url_as_provided": "https://devforum.roblox.com/t/lsfx-01-nature-ambiances-royalty-free-high-quality-sound-effects-made-for-roblox/632559",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 121,
+      "source_line": 1931,
+      "url_as_provided": "https://devforum.roblox.com/t/lsfx-02-civilisation-ambiances-royalty-free-high-quality-sound-effects-made-for-roblox/635704",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 122,
+      "source_line": 1932,
+      "url_as_provided": "https://devforum.roblox.com/t/halloween-sound-effects-and-music-ids-from-the-roblox-audio-catalog/3171258",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 123,
+      "source_line": 1933,
+      "url_as_provided": "https://devforum.roblox.com/t/r15-classic-roblox-animations-2010s/3162361",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 124,
+      "source_line": 1934,
+      "url_as_provided": "https://devforum.roblox.com/t/r15-animation-pack/2690333",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 125,
+      "source_line": 1935,
+      "url_as_provided": "https://devforum.roblox.com/t/r6-to-r15-animation-pack-all-r6-player-animations-remaked-into-r15/1896861",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 126,
+      "source_line": 1936,
+      "url_as_provided": "https://builtbybit.com/resources/free-dancing-animations.58862/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 127,
+      "source_line": 1937,
+      "url_as_provided": "https://builtbybit.com/resources/axe-pickaxe-animations-realistic.52826/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 128,
+      "source_line": 1938,
+      "url_as_provided": "https://builtbybit.com/resources/crouch-walk.81216/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 129,
+      "source_line": 1939,
+      "url_as_provided": "https://builtbybit.com/resources/crouching-animation.81214/",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 130,
+      "source_line": 1940,
+      "url_as_provided": "https://devforum.roblox.com/t/alternative-r6-animations/1684667",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 131,
+      "source_line": 1941,
+      "url_as_provided": "https://devforum.roblox.com/t/shotgun-utpsdsk-an-open-source-weapons-animations-for-developers/2038211",
+      "status": "user_provided_unverified_in_this_update"
+    },
+    {
+      "order": 132,
+      "source_line": 1942,
+      "url_as_provided": "https://devforum.roblox.com/t/ak74m-animations-open-source/2025217",
+      "status": "user_provided_unverified_in_this_update"
+    }
+  ],
+  "historical_additional_sources_not_automatically_authorized": [
+    {
+      "source_line": 1946,
+      "url_as_provided": "https://builtbybit.com/",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1948,
+      "url_as_provided": "https://polyhaven.com/models",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1949,
+      "url_as_provided": "https://www.freepik.com/3d-models",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1950,
+      "url_as_provided": "https://icons8.com/threedio",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1951,
+      "url_as_provided": "https://sketchfab.com/features/free-3d-models",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1952,
+      "url_as_provided": "https://www.cgtrader.com/free-3d-models",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1953,
+      "url_as_provided": "https://www.turbosquid.com/Search/3D-Models/free",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1954,
+      "url_as_provided": "https://www.fab.com/category/3d-model?q=models&sort_by=price",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1955,
+      "url_as_provided": "https://free3d.com/3d-models/obj",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1956,
+      "url_as_provided": "https://nasa3d.arc.nasa.gov/models",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1957,
+      "url_as_provided": "https://3dexport.com/",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1958,
+      "url_as_provided": "https://grabcad.com/library",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1960,
+      "url_as_provided": "https://kitsblox.com/",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1962,
+      "url_as_provided": "https://www.rhosgfx.com/https://rhosgfx.itch.io/",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    },
+    {
+      "source_line": 1964,
+      "url_as_provided": "https://itch.io/",
+      "status": "historical_additional_source; Roblox-only filter remains; owner uploads now first"
+    }
+  ],
+  "historical_owner_corpus_files": "The actual Roblox corpus is in the project environment referenced by the transcript, not embedded in this handoff package.",
+  "historical_rights_notes": "Owner assertion of commercial rights applies to their directly uploaded assets, not automatically to all external links."
+}

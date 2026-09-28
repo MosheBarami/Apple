@@ -55,24 +55,38 @@ def main() -> int:
             paths = [paths]
         return any((ROOT / p).exists() for p in paths)
 
-    for key in REQUIRED_FLAGS:
-        if acc.get(key) is not True:
-            problems.append(f"{key} is not true")
-        elif not has_evidence(key):
-            problems.append(f"{key} is true but names no existing evidence path")
-    missions = acc.get("missions") or {}
-    if not missions:
-        problems.append("no customer missions are defined")
-    for name, ok in missions.items():
-        if ok is not True:
-            problems.append(f"mission {name} has not succeeded")
-        elif not has_evidence(f"mission:{name}"):
-            problems.append(f"mission {name} is true but names no existing evidence path (evidence['mission:{name}'])")
+    if acc.get("schema_version") == 3:
+        # V3 (docs/autonomy/v3): every product gate G01..G16 must be "passed" with evidence on disk.
+        # Deferred launch gates (live billing, public plugin) are held by the owner and never required.
+        gates = acc.get("gates") or []
+        if not gates:
+            problems.append("no V3 product gates are defined")
+        for g in gates:
+            gid = g.get("id", "?")
+            paths = g.get("evidence") or []
+            if g.get("status") != "passed":
+                problems.append(f"{gid} {g.get('title', '')}: {g.get('status', 'no status')}")
+            elif not any(isinstance(x, str) and (ROOT / x).exists() for x in paths):
+                problems.append(f"{gid} is passed but names no existing evidence path")
+    else:
+        for key in REQUIRED_FLAGS:
+            if acc.get(key) is not True:
+                problems.append(f"{key} is not true")
+            elif not has_evidence(key):
+                problems.append(f"{key} is true but names no existing evidence path")
+        missions = acc.get("missions") or {}
+        if not missions:
+            problems.append("no customer missions are defined")
+        for name, ok in missions.items():
+            if ok is not True:
+                problems.append(f"mission {name} has not succeeded")
+            elif not has_evidence(f"mission:{name}"):
+                problems.append(f"mission {name} is true but names no existing evidence path (evidence['mission:{name}'])")
 
-    need = int(acc.get("required_fresh_reviews_without_material_blocker", 3))
-    have = int(acc.get("fresh_reviews_without_material_blocker", 0))
-    if have < need:
-        problems.append(f"fresh reviews without a material blocker: {have} of {need}")
+        need = int(acc.get("required_fresh_reviews_without_material_blocker", 3))
+        have = int(acc.get("fresh_reviews_without_material_blocker", 0))
+        if have < need:
+            problems.append(f"fresh reviews without a material blocker: {have} of {need}")
 
     try:
         total, crit, high = count_open(FINDINGS.read_text(encoding="utf-8"))

@@ -38,9 +38,6 @@ const DENIED_BASH = [
   'git checkout -- apps/web',
   'git switch other',
   'git restore apps/web/src/app.tsx',
-  'git add -A',
-  'git add .',
-  'git add -u apps/worker',
   'rm -rf ~',
   'rm -rf /',
   'security dump-keychain',
@@ -57,6 +54,7 @@ const ALLOWED_BASH = [
   'git diff --stat',
   'git commit -F /tmp/msg -- apps/web/src/app.tsx',
   'git add apps/web/src/app.tsx',
+  'git add -A', // owner removed the bulk-staging block on 2026-09-28 (DECISIONS.md)
   'git push origin main',
   'git log --oneline -5',
   'rm -rf /tmp/scratch-dir',
@@ -424,6 +422,31 @@ test('the acceptance gate refuses each way completion can be faked', () => {
     ['a findings file the parser cannot read any line of', gateRoot({ findings: 'nothing here\n' }), /no parseable finding lines/],
   ];
   for (const [what, root, expected] of cases) {
+    const r = gate(root);
+    assert.equal(r.status, 1, `gate passed despite ${what}`);
+    assert.match(r.stdout, expected, what);
+  }
+});
+
+test('the V3 acceptance gate requires every product gate passed with evidence and ignores held launch gates', () => {
+  const root = gateRoot();
+  const gates = [
+    { id: 'G01', title: 'one', status: 'passed', evidence: ['docs/autonomy/evidence/proof.md'] },
+    { id: 'G02', title: 'two', status: 'passed', evidence: ['docs/autonomy/evidence/proof.md'] },
+  ];
+  const write = (g) => writeFileSync(join(root, 'docs', 'autonomy', 'ACCEPTANCE.json'), JSON.stringify({
+    schema_version: 3, gates: g, deferred_launch_gates: [{ id: 'L01', status: 'owner_deferred' }],
+  }));
+  write(gates);
+  const ok = gate(root);
+  assert.equal(ok.status, 0, ok.stdout);
+  const cases = [
+    ['a gate not yet passed', [gates[0], { ...gates[1], status: 'not_evaluated_in_v3' }], /G02 two: not_evaluated_in_v3/],
+    ['a passed gate with no evidence on disk', [gates[0], { ...gates[1], evidence: ['docs/missing.md'] }], /G02 is passed but names no existing evidence/],
+    ['no gates at all', [], /no V3 product gates are defined/],
+  ];
+  for (const [what, g, expected] of cases) {
+    write(g);
     const r = gate(root);
     assert.equal(r.status, 1, `gate passed despite ${what}`);
     assert.match(r.stdout, expected, what);

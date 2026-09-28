@@ -1,0 +1,152 @@
+{
+  "schema_version": 3,
+  "prepared_date": "2026-09-28",
+  "artifact_type": "documentation_handoff",
+  "product_version_assigned": false,
+  "owner_questions_covered": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38
+  ],
+  "latest_ui_requirement_included": true,
+  "ui_component_count": 23,
+  "inputs": {
+    "Apple_RbxAI_HANDOFF_V2.zip": {
+      "bytes": 29783,
+      "sha256": "bf8b691953ae6ddbfc9a4c58573506df83aff47c72773dae8f0b6f6d99fda3ae"
+    },
+    "Apple_RbxAI_HANDOFF_V2_HE.md": {
+      "bytes": 23711,
+      "sha256": "14e9ebc213a2a1daf3f799c20e27ac9dca3e8cafbc12bcae596d86e374d99605"
+    },
+    "Apple_RbxAI_STOP_AND_DELTA_V2_HE.md": {
+      "bytes": 20410,
+      "sha256": "406b6e7f59cc1328d6e366ec8021808965462d286b41be17cb55864771f1c374"
+    },
+    "page-2026-09-28-00-28-15.md": {
+      "bytes": 1191210,
+      "sha256": "8743ea04816577cf220d549c2b21ab8e4ed8b524705b3a9580f84da7227633e1"
+    }
+  },
+  "documents": [
+    "Apple_RbxAI_ACCEPTANCE_V3.json",
+    "Apple_RbxAI_DECISIONS_V3.md",
+    "Apple_RbxAI_EXECUTION_V3.md",
+    "Apple_RbxAI_FLOW_V3.json",
+    "Apple_RbxAI_HANDOFF_V3.md",
+    "Apple_RbxAI_HISTORY_V3.md",
+    "Apple_RbxAI_OWNER_SOURCE_LIST_V3.json",
+    "Apple_RbxAI_STATE_V3.json",
+    "Apple_RbxAI_UI_CONTRACT_V3.md",
+    "Apple_RbxAI_UI_SOURCES_V3.json",
+    "CONTINUE_PROMPT.txt",
+    "START_HERE.md",
+    "evidence/README.md",
+    "evidence/lemonade_generated_ui.webp"
+  ],
+  "no_live_product_mutations": true,
+  "external_sources": "Apple_RbxAI_UI_SOURCES_V3.json",
+  "file_integrity": {
+    "Apple_RbxAI_ACCEPTANCE_V3.json": {
+      "bytes": 10510,
+      "sha256": "baf82066821c9fa941d3980b3b1c9627e40ba78d5ac8816140ffa40947f155e9"
+    },
+    "Apple_RbxAI_DECISIONS_V3.md": {
+      "bytes": 13331,
+      "sha256": "b553f73f0a167078396ecc98afd917de3661935fc15094525cfb641ad9fce805"
+    },
+    "Apple_RbxAI_EXECUTION_V3.md": {
+      "bytes": 10424,
+      "sha256": "2df973a3595bc4e2c7d332cbcb6325b0282c2ab75e23c621652ac545e42f2e6e"
+    },
+    "Apple_RbxAI_FLOW_V3.json": {
+      "bytes": 11698,
+      "sha256": "2468fc9c16d3163fa8857f23dd2d54fbc9628c780678319f3e6f34583fc0d61e"
+    },
+    "Apple_RbxAI_HANDOFF_V3.md": {
+      "bytes": 19023,
+      "sha256": "5aea3cc4d36d530d15d6572ce8ca0d5fb21c714dde60c33d9cb05631aefc4063"
+    },
+    "Apple_RbxAI_HISTORY_V3.md": {
+      "bytes": 8036,
+      "sha256": "307b17c4b9106c744932d134b23d0dcd6912e37c401727e5a078d05788f65a05"
+    },
+    "Apple_RbxAI_OWNER_SOURCE_LIST_V3.json": {
+      "bytes": 32606,
+      "sha256": "d3b0e95027e5822327691dfc5f39e3f3a0bf0a40f303ba377771d2d18d577499"
+    },
+    "Apple_RbxAI_STATE_V3.json": {
+      "bytes": 11386,
+      "sha256": "b4f974fd67b3b81712e7a8f7c692c55e022683a87a3c8956d78f9933c572a9b0"
+    },
+    "Apple_RbxAI_UI_CONTRACT_V3.md": {
+      "bytes": 15448,
+      "sha256": "18cac6ed9eefb36d405dff903d526f794c578fb6d5053de963b63339a0e1347a"
+    },
+    "Apple_RbxAI_UI_SOURCES_V3.json": {
+      "bytes": 16367,
+      "sha256": "7e602cf2bdee7cf1db1639203b776f58ecb728c9e9d5a9041b55a1bea439471f"
+    },
+    "CONTINUE_PROMPT.txt": {
+      "bytes": 1790,
+      "sha256": "a7d499876cb3c5436d14d6315fd1745bece6b27e3b2ee2df265612a646af7108"
+    },
+    "START_HERE.md": {
+      "bytes": 2344,
+      "sha256": "f2682ff1b8de03e8c8acb7002551acd68e1f1d555b4cfe2be60615f31a32375f"
+    },
+    "evidence/README.md": {
+      "bytes": 362,
+      "sha256": "247deafd6d5c0354f8345d3cb621877d4ecb477f1b4d8f2a5b7f2877f3bf8eb4"
+    },
+    "evidence/lemonade_generated_ui.webp": {
+      "bytes": 84958,
+      "sha256": "765a984b49a79e06422ecbfdbd06e323cfdddaf55a7d81f4d8bf845a9be9f441"
+    }
+  },
+  "quality_checks": {
+    "all_38_owner_answers": true,
+    "all_23_requested_components": true,
+    "official_component_pages_reviewed": 23,
+    "v2_observed_har_unchanged": true,
+    "new_acceptance_gates_passed": 0,
+    "local_document_links_resolve": true,
+    "historical_export_hash_verified": true,
+    "source_registry_installations_not_claimed": true
+  }
+}

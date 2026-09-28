@@ -4,6 +4,9 @@
 The owner delegated the product; a question hands work back to the one person who hired the agent so he
 would not have to do it. The agent decides, records the decision in docs/autonomy/DECISIONS.md, and
 continues. Human-only steps go to docs/autonomy/OWNER_QUEUE.md. `.autonomy/STOP` lifts the block.
+
+Exception (owner, 2026-09-28: "try to ask consent for the things that block you"): a question whose every
+item has the header "Consent" — permission for an action a rule or permission setting blocked — is allowed.
 """
 
 import json
@@ -14,11 +17,15 @@ from pathlib import Path
 ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR") or Path(__file__).resolve().parents[2])
 
 try:
-    json.load(sys.stdin)
+    event = json.load(sys.stdin)
 except Exception:
-    pass
+    event = {}
 
 if (ROOT / ".autonomy" / "STOP").exists():
+    sys.exit(0)
+
+questions = ((event or {}).get("tool_input") or {}).get("questions") or []
+if questions and all(isinstance(q, dict) and q.get("header") == "Consent" for q in questions):
     sys.exit(0)
 
 print(json.dumps({

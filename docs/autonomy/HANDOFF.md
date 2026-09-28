@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-09-28)** — historical session handoff. Current handoff: `docs/autonomy/v3/Apple_RbxAI_HANDOFF_V3.md`.
+
 # AUTONOMY HANDOFF
 
 Timestamp: 2026-09-22T18:46Z

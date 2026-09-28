@@ -1,50 +1,51 @@
-# MISSION
+# MISSION (V3, adopted 2026-09-28)
 
 This page is what a customer-stranger or a fresh reviewer receives. It contains no implementation
-rationale, on purpose.
+rationale, on purpose. The authoritative owner-approved scope is `docs/autonomy/v3/` (start with
+`Apple_RbxAI_HANDOFF_V3.md`); the previous mission is archived in `archive/pre-v3/MISSION.v1.md`.
 
-## The problem Apple exists to solve
+## The product
 
-A Roblox creator should be able to open Roblox Studio, describe what they want in natural language,
-and work with a professional AI that can understand, create, edit, inspect, test and improve a real
-Roblox game directly inside the creator's own Studio place.
+**Apple vX** turns even a rough one-line prompt into a complete, substantial Roblox game built inside
+the creator's own connected Roblox Studio place: world, gameplay systems, progression, economy,
+saving, onboarding, UI, models, animations, VFX and SFX working together.
 
-**The ambition:** a professional AI collaborator purpose-built for creating bright, colorful cartoon
-Roblox games directly in Roblox Studio. Gameplay genres can vary, but the visual specialty does not.
+- Speciality: modern, saturated, colourful **studded** Roblox games at the quality of Steal a Brainrot,
+  Grow a Garden and Arm Wrestle Simulator, with original variation. All genres may be built in that
+  visual direction.
+- Game UI theme: `cartoony | studded | none` (`none` = Apple chooses; never "no UI").
+- One engine, one name: Apple vX. No model tiers and no Plan / Agent / Autonomous modes.
+- All product-facing language is English.
+- One project is one game; returning to a project continues that game.
+- The delivered game runs and is editable without Apple, its models or a subscription.
+- After the game, **Generate Branding** produces saved, editable names, descriptions and real images.
 
 ## Where the product is
 
 - Production: https://apple.moshe-barami111.workers.dev
 - The app: https://apple.moshe-barami111.workers.dev/app
-- The Studio plugin: "Apple Studio" on the Roblox Creator Store
-  (https://create.roblox.com/store/asset/107230158271368)
+- Studio plugin: installed by approved accounts through the product's own install route. Public
+  distribution and live billing are held by the owner.
 
-## Customer missions (each must succeed end to end in a real paired Studio place)
+## The customer flow that must work end to end
 
-1. Build a small gameplay loop starting from an empty baseplate.
-2. Build a visually ambitious, coherent cartoon environment with rights-verified Roblox assets.
-3. Add scripts, networking (RemoteEvents/RemoteFunctions) and UI to a real game.
-4. Modify an existing project rather than starting from zero.
-5. Debug a deliberately broken experience.
-6. Follow up with "change what you just built".
-7. Playtest, inspect the result, and repair a discovered defect.
-
-Also exercised: terrain and environment work, lighting and effects, using assets, asking Apple to
-improve its own prior output, Plan (read-only) versus Agent (building), and running long work with
-Autonomous on.
+1. An approved account signs in, installs the plugin and pairs its own Studio place.
+2. The composer stays locked until the correct place is connected (Stop never is).
+3. A one-line prompt becomes a short public plan and then a complete game, automatically.
+4. The creator can steer mid-run, Stop (acknowledged by the server), and after a Studio disconnect
+   press Continue without anything being done twice.
+5. Checkpoints restore real content.
+6. Every response shows what Apple actually did: summaries, progress, files/systems, real sources,
+   expandable detail. No invented activity.
+7. Generate Branding after the game; results persist across logout/reopen.
 
 ## What counts as success
 
-- What Apple says it changed in Studio is what actually changed in Studio — verified by reading the
-  place back, not by trusting the chat.
-- A game looks and plays like a polished, colorful cartoon Roblox game; working code or part counts
-  alone do not establish visual completion.
-- A creator who has never seen the product can complete the missions without someone explaining it.
-- When something goes wrong, the creator can recover naturally.
-- It works on a phone-width browser as well as a desktop.
+The 16 product gates in `ACCEPTANCE.json` (G01–G16), each passed with evidence on disk. Live Stripe
+billing (L01) and public plugin distribution (L02) are held, not done.
 
 ## What is never acceptable
 
-- Claiming a Studio change that did not happen.
-- Showing a software reconstruction as if it were the real Studio viewport, or still frames as video.
-- Charging for a run that produced nothing usable.
+- Claiming a Studio change, file, source, tool action or progress that did not happen.
+- Declaring readiness from counts, unit tests or old percentages.
+- Charging customers or publishing the plugin before the owner's launch step.

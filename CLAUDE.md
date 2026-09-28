@@ -1,7 +1,8 @@
 # Apple (RbxAI)
 
-> **START HERE: `docs/autonomy/`.** Read `README.md`, `MISSION.md`, `CURRENT_STATE.md`, `NEXT_ACTION.md` there
-> (the mission ends `RESEARCH-REPORT.md` → `OWNER_PROMPT.md`). `.claude/hooks/autonomy_guard.py` enforces the safety
+> **START HERE: `docs/autonomy/`.** Read `README.md`, `MISSION.md`, `CURRENT_STATE.md`, `NEXT_ACTION.md` there.
+> The owner's locked scope is **V3**: `docs/autonomy/v3/Apple_RbxAI_HANDOFF_V3.md` (supersedes conflicting older
+> mission text, including `OWNER_PROMPT.md`); completion = `docs/autonomy/ACCEPTANCE.json` gates G01–G16. `.claude/hooks/autonomy_guard.py` enforces the safety
 > envelope; `touch .autonomy/STOP` freezes every mutating tool.
 > **Owner autonomy is enforced:** load `.claude/skills/apple-owner-autonomy/SKILL.md`. Decide instead of asking,
 > keep working until acceptance, route only payments, account creation, passwords/2FA and CAPTCHAs to

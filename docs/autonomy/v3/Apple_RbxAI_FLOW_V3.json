@@ -1,0 +1,349 @@
+{
+  "schema_version": 3,
+  "prepared_date": "2026-09-28",
+  "observed_har": {
+    "source": {
+      "filename": "lemonade.gg(2).har",
+      "sha256": "5571e502412cc6295aa3d0da49d05cac75f50fdf4c83bfb6df73b013d3c0642b",
+      "bytes": 27426708,
+      "http_entries": 265,
+      "websocket_frames": 332,
+      "start_utc": "2026-09-27T22:27:21.503Z",
+      "last_http_start_utc": "2026-09-27T22:53:20.811Z"
+    },
+    "scope": "Historical capture only. Observed protocol and publicly displayed activities, not a pixel-perfect reconstruction or a verified complete game.",
+    "privacy": "Constructed from an explicit field allowlist. Excludes headers, cookies, credentials, user/account/project/chat identifiers, script bodies and model reasoning.",
+    "history_not_new_actions": {
+      "rollback": "Rollback activity rows from earlier conversation history were received; this is not proof a new rollback happened during this capture."
+    },
+    "turns": [
+      {
+        "entry_index_zero_based": 208,
+        "label": "plan",
+        "started_utc": "2026-09-27T22:28:59.232Z",
+        "started_jerusalem": "2026-09-28T01:28:59.232000+03:00",
+        "http_duration_ms": 15475.254999994853,
+        "path": "/api/agent",
+        "message": "build me grow a garden full game with a classic studded ui",
+        "approvalAction": null,
+        "capturePlaytestGif_requested": true,
+        "phase": "planning",
+        "workflow": "plan-approval-required",
+        "outer_success": true,
+        "needsContinue": true,
+        "planningCompleted": true,
+        "plan_status": "pending",
+        "plan_item_count": 8,
+        "terminal": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 3,
+          "stop_reason": "tool_use"
+        },
+        "tool_counts": {
+          "list": 1,
+          "proposePlan": 1
+        }
+      },
+      {
+        "entry_index_zero_based": 216,
+        "label": "approved_execution",
+        "started_utc": "2026-09-27T22:29:18.208Z",
+        "started_jerusalem": "2026-09-28T01:29:18.208000+03:00",
+        "http_duration_ms": 807659.8280000035,
+        "path": "/api/agent",
+        "message": null,
+        "approvalAction": "approve",
+        "capturePlaytestGif_requested": true,
+        "phase": "execution",
+        "workflow": null,
+        "outer_success": true,
+        "needsContinue": false,
+        "planningCompleted": false,
+        "plan_status": null,
+        "plan_item_count": 0,
+        "terminal": {
+          "subtype": "success",
+          "is_error": false,
+          "num_turns": 30,
+          "stop_reason": "end_turn"
+        },
+        "tool_counts": {
+          "TodoWrite": 4,
+          "findIcons": 1,
+          "activateSkill": 2,
+          "toolboxSearch": 5,
+          "resolveImageIds": 3,
+          "createScript": 4,
+          "editScript": 2,
+          "visualCheck": 2,
+          "readScript": 3,
+          "grep": 1,
+          "list": 1,
+          "delete": 1
+        }
+      },
+      {
+        "entry_index_zero_based": 243,
+        "label": "repair_follow_up",
+        "started_utc": "2026-09-27T22:43:38.068Z",
+        "started_jerusalem": "2026-09-28T01:43:38.068000+03:00",
+        "http_duration_ms": 292490.60399999144,
+        "path": "/api/agent",
+        "message": "the ui is broken and there is no map",
+        "approvalAction": null,
+        "capturePlaytestGif_requested": true,
+        "phase": "execution",
+        "workflow": "direct-execute",
+        "outer_success": true,
+        "needsContinue": true,
+        "planningCompleted": false,
+        "plan_status": null,
+        "plan_item_count": 0,
+        "terminal": {
+          "subtype": "error_max_turns",
+          "is_error": true,
+          "num_turns": 36,
+          "stop_reason": "tool_use",
+          "errors": [
+            "Reached maximum number of turns (35)"
+          ]
+        },
+        "tool_counts": {
+          "createScript": 6,
+          "TodoWrite": 2,
+          "editScript": 8,
+          "playtest": 2,
+          "list": 1,
+          "readInstance": 1,
+          "updateInstance": 4,
+          "createInstance": 9,
+          "activateSkill": 1,
+          "delete": 1
+        }
+      }
+    ],
+    "live_queries": [
+      "executionState:getExecutionState",
+      "executionState:getAllExecutionSessions",
+      "agentMemory/queries:getChatMessagesPage",
+      "agentMemory/queries:getNewAgentSessionId",
+      "projects:getPluginConnectionData"
+    ],
+    "execution_state_fields": [
+      "cancelled",
+      "currentStep",
+      "executionSessionId",
+      "pastSteps",
+      "plan",
+      "planStatus"
+    ],
+    "activity_payload_fields": [
+      "activityType",
+      "status",
+      "activityId",
+      "toolMeta",
+      "readMeta",
+      "diff"
+    ],
+    "observed_activity_types": [
+      "creating",
+      "deleting",
+      "editing",
+      "executing",
+      "reading",
+      "rollback",
+      "screenshot",
+      "searching"
+    ],
+    "observed_activity_statuses": [
+      "completed",
+      "failed"
+    ],
+    "screenshot": {
+      "entry_index_zero_based": 235,
+      "scope": "Generated Roblox game UI, not website chrome",
+      "local_evidence_filename": "lemonade_generated_ui.webp"
+    }
+  },
+  "source_change_note": "The observed_har object is preserved unchanged from V2. Only Apple requirements and interpretation are revised.",
+  "implementation_status": "required_not_implemented_by_this_document_update",
+  "owner_contract": {
+    "public_engine": "Apple vX",
+    "generative_model": "@cf/zai-org/glm-5.3-flash",
+    "provider": "Cloudflare",
+    "jev_model_route_documented": "typesafe/jev",
+    "jev_role": "backend_structured_decision_support_only",
+    "jev_apple_integration_verified": false,
+    "training_enabled": false,
+    "lora_enabled": false,
+    "customer_modes": [],
+    "customer_model_selector": false,
+    "game_genres": "not limited to three templates; all within the approved product specialty",
+    "world_visual_style": "modern_colourful_studded",
+    "ui_theme_options": [
+      "cartoony",
+      "studded",
+      "none"
+    ],
+    "ui_none_means": "agent_chooses_UI_not_omit_UI",
+    "product_language": "English",
+    "one_project_one_game": true,
+    "arbitrary_customer_project_takeover": false,
+    "composer_requires_correct_studio_connection": true,
+    "server_side_gate_required": true,
+    "stop_independent_of_composer_lock": true,
+    "steering_while_running": true,
+    "reconnect_requires_explicit_continue": true,
+    "runtime_internet_research": false,
+    "developer_ingestion_internet_research": true,
+    "runtime_reference_critique_loop": false,
+    "targeted_execution_checks": true,
+    "developer_release_validation": true,
+    "full_scoped_source_extraction": true,
+    "all_microscopic_nodes_pre_rendered": false,
+    "cached_on_demand_detail": true,
+    "byte_identical_rebuilt_file_gate": false,
+    "source_preservation": true,
+    "reusable_rich_code_systems": true,
+    "typed_batched_executor": true,
+    "quality_families": [
+      "Steal a Brainrot",
+      "Grow a Garden",
+      "Arm Wrestle Simulator"
+    ],
+    "player_devices": [
+      "desktop",
+      "phone",
+      "tablet"
+    ],
+    "independent_delivered_game": true,
+    "generate_branding": {
+      "required": true,
+      "button": "Generate Branding",
+      "placement": "inside_project",
+      "sequence": "after_game",
+      "separate_window": true,
+      "outputs": [
+        "actual_images",
+        "names",
+        "descriptions"
+      ],
+      "persisted_editable": true,
+      "default_image_implementation": "game_capture_and_prepared_asset_compositing; no silently added model"
+    },
+    "customer_technical_details": "accessible_relevant_evidence_with_progressive_disclosure",
+    "private_reasoning_exposed": false,
+    "public_corpus_gallery": false,
+    "required_ui_components": [
+      "Reasoning",
+      "Shimmer",
+      "Sources",
+      "Suggestion",
+      "Task",
+      "Tool",
+      "Prompt Input",
+      "Plan",
+      "Message",
+      "Inline Citation",
+      "Conversation",
+      "Context",
+      "Confirmation",
+      "Checkpoint",
+      "Chain of Thought",
+      "Attachments",
+      "Agent",
+      "Code Block",
+      "Snippet",
+      "Image",
+      "Streaming Text",
+      "Data Table",
+      "File Tree"
+    ],
+    "scope_frozen": true,
+    "live_billing": "owner_deferred",
+    "public_plugin_distribution": "owner_deferred",
+    "prelaunch_access": "owner_and_approved_accounts",
+    "paid_cloudflare_usage_authorized": true,
+    "owner_numeric_budget_cap": null,
+    "economy_required": true,
+    "frozen_branches": [
+      "voice",
+      "additional Discord upgrades",
+      "expanded owner dashboard",
+      "multi-editor project collaboration",
+      "public galleries",
+      "separate general benchmark program"
+    ]
+  },
+  "states": [
+    "locked_disconnected",
+    "ready",
+    "planning",
+    "assembling",
+    "checking",
+    "paused_disconnected",
+    "awaiting_continue",
+    "completed",
+    "partial",
+    "failed",
+    "stopped"
+  ],
+  "flow": [
+    {
+      "stage": "identify_and_pair",
+      "behavior": "Authorized project/account and correct Studio; lock writing/build controls until connection and permissions are valid."
+    },
+    {
+      "stage": "persist_request",
+      "behavior": "Persist the request and identity once. Interpret intent; talk-only requests do not construct."
+    },
+    {
+      "stage": "plan_publicly_execute_autonomously",
+      "behavior": "Derive complete genre-specific feature/content plan; show a concise plan; no mandatory approval or user modes."
+    },
+    {
+      "stage": "retrieve_prepared_library",
+      "behavior": "Query prepared owned/approved source units and system contracts; no runtime external discovery."
+    },
+    {
+      "stage": "assemble_rich_units",
+      "behavior": "Typed batched assembly with source IDs, adapted code, dependencies, refs, world settings and reversible side effects."
+    },
+    {
+      "stage": "stream_evidence",
+      "behavior": "Persist readable public events and actual file/system/source/artifact references; render applicable requested components."
+    },
+    {
+      "stage": "verify_concrete_results",
+      "behavior": "Run short relevant execution checks and repair concrete errors; no automatic screenshot/reference-comparison/critic loop."
+    },
+    {
+      "stage": "steer_stop_pause_resume",
+      "behavior": "Steering at safe boundaries; independent Stop; pause on disconnection and require Continue after correct-place reconnection."
+    },
+    {
+      "stage": "deliver_game",
+      "behavior": "Report only verified results and open gaps, save the project, deliver an independent playable editable Roblox game."
+    },
+    {
+      "stage": "generate_branding_on_click",
+      "behavior": "Separate saved branding window for actual images/names/descriptions; no automatic publication or fresh game build."
+    }
+  ],
+  "har_behaviors_not_imported": [
+    "mandatory plan approval on every build",
+    "runtime web/asset search",
+    "automatic visual-reference/critic loop",
+    "outer HTTP success as game completion",
+    "hard turn-limit failure disguised as success",
+    "need to replace stack with competitor stack"
+  ],
+  "public_output_policy": "Codex-style documentation and inspectable file/system/source evidence; no private reasoning, secrets, unrelated source corpus or fake progress.",
+  "gates": {
+    "input": "studio_connected_and_correct_place_and_authorized",
+    "stop": "authorized_active_run_not_socket_or_composer_enabled",
+    "continue": "reconnected_correct_place_and_explicit_user_continue",
+    "completion": "required_feature_results_verified_not_model_assertion"
+  }
+}

@@ -281,3 +281,33 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   so a search costs no network call and no Workers AI neurons.
 - Reverse: drop the `store` branch in find_ui_asset's run and the `uiStoreImage` fallbacks in
   apps/worker/src/ui-components.ts (iconAsset, uiImageResolver).
+
+## D-GLASS-1 (2026-09-24): the app shell is frosted matte glass over a slow aurora
+- What: apps/web/src/design/glass.css, loaded last, puts a slow brand blue and violet aurora behind a
+  translucent rail, cards, menus, dialogs and toasts. Cards lift on hover, controls squish on press,
+  and menus, dialogs, toasts and project cards animate in. For the shell it replaces three DESIGN-LOCK
+  rules: glass only on the composer and top bar, "a card does not cast", and two radii.
+- Why: the owner said the app was not glassy, matte, friendly or animated, and was getting more
+  static. tests/glass-shell.test.mjs checks that text keeps 4.5:1 contrast, that reduced motion
+  stops the movement, and that no list item gets a blur.
+- Reverse: remove `import './design/glass.css'` from apps/web/src/main.tsx.
+- 2026-09-28 · Removed the guard's bulk-staging (git add -A/./-u) block at owner instruction ("delete the hook"); other guard rules and .autonomy/STOP kept. Reverse: restore the line in .claude/hooks/autonomy_guard.py FORBIDDEN_BASH.
+
+## D-V3-1 — Owner V3 scope adopted as the active contract (2026-09-28)
+
+- **Decision:** `docs/autonomy/v3/` (owner handoff V3, hash-verified against its MANIFEST) is the locked
+  scope. `ACCEPTANCE.json` is now the V3 gate list G01–G16 (all `not_evaluated`); the gate script judges
+  `schema_version: 3` by requiring each gate `passed` with evidence on disk, and never requires the
+  held launch gates L01 (live Stripe) / L02 (public plugin). `MISSION.md` rewritten; `OWNER_PROMPT.md`
+  and `HANDOFF.md` carry a supersession header; AGENTS.md / CLAUDE.md point at V3.
+- **Superseded as requirements (history kept):** Apple MAX / model tiers, Plan/Agent/Autonomous
+  selectors, training/LoRA and HF promotion, byte-identical rebuild gate, in-product visual-critic /
+  reference-comparison loop, runtime web research, mandatory 3-choice asset preview, "no technical
+  detail visible", the 3-fresh-review streak and the old seven-mission list (archived in
+  `archive/pre-v3/`). Any earlier D-* entry below that conflicts with these is historical.
+- **Kept:** open findings F-059 (garden visual quality) and F-064 (runs ending with planned parts
+  unbuilt) stay open — the defects are still real under V3 (G07), only their mode labels are obsolete.
+- **Recovery baseline:** the Codex working tree (329 dirty paths) was archived before any change in
+  `.autonomy/backups/codex-wip-2026-09-28/` (tracked.patch + untracked.tgz + HEAD).
+- **Reverse:** restore `archive/pre-v3/ACCEPTANCE.v1.json` and `MISSION.v1.md`; the v1 branch of the
+  gate script is unchanged.

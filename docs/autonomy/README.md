@@ -5,10 +5,11 @@ starts here, before AGENTS.md's map and before any code.
 
 | File | What it is | Who may read it |
 |---|---|---|
+| `v3/` | **The owner's locked V3 scope (2026-09-28).** `Apple_RbxAI_HANDOFF_V3.md` first; decisions Q1–Q38, UI contract, execution plan, acceptance source. Supersedes conflicting mission text below. | everyone |
 | `RESEARCH-REPORT.md` | The owner's research, verbatim (sha256 `f5abb6924b0a2007c7b58070e1550c516e69ff9874750ded6d4c437904b0655b`). The design this harness implements and the reasons for it. | everyone |
-| `OWNER_PROMPT.md` | **The mission.** The final takeover prompt from the report, verbatim. Every autonomous session is started from it. | everyone |
+| `OWNER_PROMPT.md` | The original takeover prompt (method still valid; scope superseded by `v3/`). The supervisor starts sessions from it. | everyone |
 | `MISSION.md` | The product problem in one page — what a customer-stranger or fresh reviewer is given. | everyone, including strangers and reviewers |
-| `ACCEPTANCE.json` | The objective completion contract. `scripts/autonomy-review-gate.py` reads it. | everyone |
+| `ACCEPTANCE.json` | The objective completion contract: V3 gates G01–G16 (pre-V3 copy in `archive/pre-v3/`). `scripts/autonomy-review-gate.py` reads it. | everyone |
 | `CURRENT_STATE.md` | Directly measured facts about the repository and production, re-measured every session. | implementers |
 | `NEXT_ACTION.md` | The single highest-value next action. | implementers |
 | `CUSTOMER_FINDINGS.md` | What actually happened when the real product was used. Observations, not fixes. | implementers, critics |

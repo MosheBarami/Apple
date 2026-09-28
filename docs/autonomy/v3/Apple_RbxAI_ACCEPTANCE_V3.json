@@ -1,0 +1,260 @@
+{
+  "schema_version": 3,
+  "prepared_date": "2026-09-28",
+  "product_identity": "Apple vX",
+  "product_version": null,
+  "kind": "owner-approved scope translated into proposed release acceptance checks",
+  "implementation_validation_performed_in_this_revision": false,
+  "readiness_percent": null,
+  "readiness_reason": "V3 scope is new and the repository/deployed product was not evaluated in this documentation update.",
+  "product_complete_rule": "Every G01-G16 must be passed with current evidence. Owner-approved scope changes require an explicit new revision. Do not inherit old benchmark or handoff percentages.",
+  "public_commercial_launch_rule": "Requires product_complete AND the separately approved live-billing and public-plugin-release gates. Both are currently held.",
+  "gates": [
+    {
+      "id": "G01",
+      "title": "Single-engine policy",
+      "requirement": "Only Apple vX is customer-facing; approved Flash and backend Jev routing; no training, old tiers or mode selectors.",
+      "owner_sources": [
+        7,
+        16,
+        17,
+        18,
+        25
+      ],
+      "evidence_required": "Inspect routes/config/migration and a real model request; verify no training-only job is active.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G02",
+      "title": "Onboarding and account boundaries",
+      "requirement": "Owner/approved accounts can register/sign in, install the authorized test package, pair their own place and access only their own projects.",
+      "owner_sources": [
+        1,
+        14,
+        24,
+        37
+      ],
+      "evidence_required": "Two approved accounts through the ordinary UI; cross-project request is denied.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G03",
+      "title": "Hard Studio gate and explicit resume",
+      "requirement": "No composer entry/submit before correct-place connection; disconnection pauses and reconnect requires Continue.",
+      "owner_sources": [
+        14,
+        28
+      ],
+      "evidence_required": "Keyboard/UI/server checks before pairing; disconnect/reconnect an active run without duplicated mutations.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G04",
+      "title": "One project, persistent game",
+      "requirement": "Creation, save, logout/reopen and subsequent instructions preserve the same game, chat and context.",
+      "owner_sources": [
+        26
+      ],
+      "evidence_required": "Reopen a real project and make a follow-up change without replacing its identity or prior completed content.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G05",
+      "title": "Complete scoped library",
+      "requirement": "All committed owner/collected sources are accounted for and extracted/indexed; useful systems and artifact delivery work efficiently; failures are not mislabelled ready.",
+      "owner_sources": [
+        4,
+        8,
+        10,
+        11,
+        12,
+        38
+      ],
+      "evidence_required": "Versioned source/category/system manifest, extraction integrity checks and representative rich-unit product use; no per-node screenshot prerequisite.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G06",
+      "title": "Cloud-to-customer Studio delivery",
+      "requirement": "The production library can serve an approved customer without the owner Mac/local gateway.",
+      "owner_sources": [
+        1,
+        14,
+        37
+      ],
+      "evidence_required": "A non-owner approved account obtains and inserts a prepared artifact using the deployed backend and its own connected Studio.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G07",
+      "title": "Complete game creation",
+      "requirement": "The ordinary product creates the planned gameplay/world/UI/assets/effects/content across the three target families with original variation.",
+      "owner_sources": [
+        2,
+        5,
+        10,
+        20,
+        21,
+        29,
+        30
+      ],
+      "evidence_required": "Three documented product-built cases, one per quality family, with a short original prompt/variation and a completed feature matrix; no manual final-game repair counted as Apple success.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G08",
+      "title": "Theme and English contract",
+      "requirement": "World direction is modern colourful studded; UI theme obeys cartoony/studded/none; all customer-facing output is English.",
+      "owner_sources": [
+        2,
+        6,
+        19,
+        36
+      ],
+      "evidence_required": "Inspect actual generated games, agent messages and UI for each theme; none still produces appropriate functional UI.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G09",
+      "title": "Player functionality and devices",
+      "requirement": "Core loop, progression, save/rejoin and genre-required multiplayer work on desktop/phone/tablet.",
+      "owner_sources": [
+        29,
+        30,
+        31
+      ],
+      "evidence_required": "Actual play checks on the generated cases, portrait/landscape UI and input, and multiplayer when the specification needs it.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G10",
+      "title": "Steering, Stop and safe failure",
+      "requirement": "Mid-run direction is applied safely; Stop remains usable with a dead socket; repeated unchanged failure is bounded and partial work recorded.",
+      "owner_sources": [
+        22,
+        27,
+        28
+      ],
+      "evidence_required": "Change direction, stop a real run, inject a concrete failure, check side-effect receipts and absence of duplicates.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G11",
+      "title": "Checkpoint and recovery",
+      "requirement": "Saved restore points can be restored correctly without data loss disguised as success or unauthorized overwrites.",
+      "owner_sources": [
+        22,
+        28
+      ],
+      "evidence_required": "Restore a real checkpoint and check actual project content, permission and subsequent continuation.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G12",
+      "title": "Evidence-aware output and all components",
+      "requirement": "All 23 specified component families render their applicable real data and evidence; technical details are accessible without exposing secrets or hidden thought.",
+      "owner_sources": [
+        24,
+        "UI-LATEST"
+      ],
+      "evidence_required": "Renderer fixture coverage for each component, then live event/file/source/checkpoint/usage/attachment persistence proof; no synthetic logs in production.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G13",
+      "title": "Independent delivered game",
+      "requirement": "The game remains playable/editable without Apple, GLM, Jev or an active Apple subscription.",
+      "owner_sources": [
+        33
+      ],
+      "evidence_required": "Run the delivered Roblox game with Apple disconnected; verify game scripts do not depend on model/Apple service calls.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G14",
+      "title": "Responsible missing assets and monetization",
+      "requirement": "Essential gaps are reported; high-quality alternatives are used where possible; unconfigured in-game purchases are clearly inactive.",
+      "owner_sources": [
+        32,
+        34
+      ],
+      "evidence_required": "A missing-essential-asset scenario plus inspection of game-owner purchase configuration and unchanged base gameplay.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G15",
+      "title": "Generate Branding",
+      "requirement": "The in-project action opens a separate English details window with actual images, names and descriptions, editable and persistently saved.",
+      "owner_sources": [
+        35,
+        36
+      ],
+      "evidence_required": "Generate actual branding after a game, edit/save/reopen it, and verify neither game rebuilding nor public publishing occurred.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    },
+    {
+      "id": "G16",
+      "title": "Release-scope and economy integrity",
+      "requirement": "The current version has no obsolete training/loop/mode prerequisites or newly invented goals; costs and blockers are factual; launch remains held.",
+      "owner_sources": [
+        9,
+        13,
+        21,
+        23,
+        38
+      ],
+      "evidence_required": "Final manifest and gate audit with evidence links, actual run costs where available, safe operational logs and explicit deferred launch tasks.",
+      "status": "not_evaluated_in_v3",
+      "evidence": []
+    }
+  ],
+  "deferred_launch_gates": [
+    {
+      "id": "L01",
+      "title": "Live Stripe payments and subscriptions",
+      "status": "owner_deferred",
+      "activation": "Explicit subsequent owner instruction/approved launch step; do not mark completed or charge now."
+    },
+    {
+      "id": "L02",
+      "title": "Public plugin distribution",
+      "status": "owner_deferred",
+      "activation": "Explicit subsequent owner instruction/approved launch step; local/approved installation must still work."
+    }
+  ],
+  "frozen_not_required_for_v3": [
+    "voice",
+    "additional Discord upgrades",
+    "expanded owner dashboard",
+    "multi-editor project collaboration",
+    "public galleries",
+    "separate general benchmark program"
+  ],
+  "removed_from_product_contract": [
+    "Apple MAX and model-tier split",
+    "Plan/Agent/Autonomous selectors",
+    "training and LoRA",
+    "byte-identical rebuilt-file gate",
+    "automatic in-product reference/visual-critic loop",
+    "runtime internet asset research",
+    "mandatory three-preview asset selection",
+    "arbitrary customer external-project takeover"
+  ],
+  "quality_family_note": "Names identify owner-selected target families. This is not a factual inventory of their current mechanics or a declaration of clone/parity performance.",
+  "method_note": "Focused tests and actual product execution remain; do not reinstate an endless model critique loop or remove real functional/security checks."
+}

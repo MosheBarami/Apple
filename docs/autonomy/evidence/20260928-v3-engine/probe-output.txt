@@ -1,0 +1,46 @@
+credential variable names present: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN, CLOUDFLARE_API_TOKEN_WRITE_ALL | token found: true
+{
+ "label": "glm-5.3-flash",
+ "http": 200,
+ "ms": 2683,
+ "result": {
+  "choices": [
+   {
+    "finish_reason": "length",
+    "index": 0,
+    "logprobs": null,
+    "message": {
+     "content": "",
+     "reasoning_content": "The user wants me to reply with exactly \"APPLE_VX_OK\". This is a simple instruction to output a specific string. There's nothing harmful about this — it appears to be some kind of test string, perhaps for verifying system functionality, testing whether a model can follow exact output instructions, or as part of an automated",
+     "role": "assistant"
+    }
+   }
+  ],
+  "created": 1790606896,
+  "id": "e893c4a6ae9a41d4a17581dc80e561cd",
+  "model": "@cf/zai-org/glm-5.3-flash",
+  "object": "chat.completion",
+  "usage": {
+   "prompt_tokens": 20,
+   "completion_tokens": 64,
+   "total_tokens": 84,
+   "prompt_tokens_details": {
+    "cached_tokens": 0
+   },
+   "neurons": 3.1818184852600098
+  }
+ },
+ "errors": []
+}
+{
+ "label": "typesafe/jev",
+ "http": 402,
+ "ms": 1574,
+ "result": {},
+ "errors": [
+  {
+   "message": "Insufficient balance; add money to your gateway or use BYOK",
+   "code": 2021
+  }
+ ]
+}
