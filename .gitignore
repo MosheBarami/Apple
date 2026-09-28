@@ -290,3 +290,9 @@ scripts/owner-dashboard/cc/review.json
 # are too large to commit) stay on this machine. Their manifests are committed; the files are not.
 packages/asset-library/sfx-store/
 packages/asset-library/vfx-store/
+
+# D-V3-3: the owner's private Roblox library (decoder/gateway code, its evidence) and training run
+# outputs stay on this machine. The repository is public; V3: "the full backend corpus is not a public gallery".
+packages/owner-corpus/
+docs/evidence/owner-corpus-*/
+packages/training/runs/

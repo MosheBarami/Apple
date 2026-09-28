@@ -319,3 +319,8 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   Q-025 withdrawn. The owner's local Apple-OS launch agent `com.moshe.apple-os.open-jev` is a separate
   tool outside the product and was left untouched.
 - **Reverse:** re-add Jev to G01 and fund the gateway.
+- 2026-09-28 D-V3-3: GitHub repo is PUBLIC, so the 435 private owner-library files Codex left uncommitted
+  (`packages/owner-corpus/`, `docs/evidence/owner-corpus-20260926/`, new `packages/training/runs/`) were
+  stripped from the unpushed WIP + merge commits before any push, kept on disk and gitignored. The unstripped
+  history is local-only at `refs/backup/private-wip-2026-09-28` (+ `.autonomy/backups/codex-wip-2026-09-28/`).
+  Reverse: `git show refs/backup/private-wip-2026-09-28` and commit to a private remote.
