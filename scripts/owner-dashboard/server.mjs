@@ -16,6 +16,8 @@ import { collectProject, MEDIA_ROOTS } from './collect.mjs';
 // The Executive Control Center: /api/cc/*, /control/* and "/" (when control/index.html exists; the
 // live page below is then at /live).
 import { route as ccRoute } from './cc/platforms/router.mjs';
+// The owner's rbxl games (/api/cc/games, /api/cc/games/<id>), read from what games.py wrote.
+import { gamesRoute } from './games-api.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../..');
@@ -342,7 +344,7 @@ function media(res, pathname) {
 }
 
 http.createServer((req, res) => {
-  if (ccRoute(req, res)) return;
+  if (gamesRoute(req, res) || ccRoute(req, res)) return;
   const { pathname } = new URL(req.url, 'http://localhost');
   if (pathname === '/events') {
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });

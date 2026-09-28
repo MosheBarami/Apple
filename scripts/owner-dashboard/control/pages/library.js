@@ -3,14 +3,14 @@
 // the growth of each library over git history, the UI pairs (component × skin), every icon in a
 // windowed grid, 3D models and kits, sound effects with play buttons, and VFX with their presets.
 // Images and audio come through /api/cc/media (repo-relative paths only).
-import { html, num, compact, arr, isNum, failCard, shortDay, ltr, bytes } from '../ui.js';
+import { html, num, compact, arr, isNum, failCard, shortDay, ltr, bytes, meter, fullDate } from '../ui.js';
 import { icon } from '../logos.js';
 import { spark } from '../fx.js';
 import { stat, sec, note, extBtn } from './kit.js';
 
-const TABS = [['intake', 'קליטת נכסים'], ['summary', 'סקירה'], ['ui', 'רכיבי UI'], ['assets', 'אייקונים ותמונות'], ['models', 'מודלים וערכות'], ['sfx', 'צלילים'], ['vfx', 'אפקטים']];
-const PER = { intake: 60, models: 60, sfx: 60, vfx: 60 };
-const st = { tab: 'summary', f: {}, off: 0, q: '', tq: null };
+const TABS = [['games', 'משחקי rbxl'], ['intake', 'קליטת נכסים'], ['summary', 'סקירה'], ['ui', 'רכיבי UI'], ['assets', 'אייקונים ותמונות'], ['models', 'מודלים וערכות'], ['sfx', 'צלילים'], ['vfx', 'אפקטים']];
+const PER = { games: 50, intake: 60, models: 60, sfx: 60, vfx: 60 };
+const st = { tab: 'games', gid: '', f: {}, off: 0, q: '', tq: null };
 const media = (p) => (p ? `/api/cc/media?p=${encodeURIComponent(p)}` : '');
 const GENRE = { 'Shooter/Fighting': 'יריות וקרבות', 'City/Roleplay': 'עיר ומשחק תפקידים', Nature: 'טבע', 'Horror/Adventure': 'אימה והרפתקה', 'Simulator/Tycoon': 'סימולטור וטייקון', Obby: 'אובי', '(none)': 'ללא ז׳אנר' };
 const KIND = { weapon: 'נשק', building: 'מבנה', nature: 'טבע', prop: 'חפץ', kit: 'ערכה', vehicle: 'רכב', pet: 'חיית מחמד', character: 'דמות', texture: 'טקסטורה', 'model-pack': 'חבילת מודלים', burst: 'פרץ', loop: 'לולאה' };
@@ -38,6 +38,89 @@ function pager(pg) {
 }
 const chip = (t, cls = '') => html`<span class="chip chip-sm ${cls}">${t}</span>`;
 const imgBox = (src, alt, extra = '') => html`<div class="ow-img">${src ? html`<img src="${src}" alt="${alt}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : html`<span class="ow-none">אין תמונה</span>`}${extra}</div>`;
+
+// ---------------------------------------------------------------- rbxl games
+// Every rbxl file the owner supplied, from /api/cc/games (the index: filtered and sorted here) and
+// /api/cc/games/<id> (one game, its components paged by the server). Route: #/library/games/<id>.
+const STAGE = { extracted: 'חולץ לרשומות', native: 'הומר לקובץ Roblox מקורי', inserted: 'הוכנס לסטודיו', visual: 'צולם ונבדק ויזואלית', gameplay: 'משחקיות אומתה', published: 'פורסם בספריית Apple' };
+const hashGame = () => { const m = location.hash.match(/^#\/library\/games\/(.+)$/); try { return m ? decodeURIComponent(m[1]) : ''; } catch { return ''; } };
+const gameHref = (id) => `#/library/games/${encodeURIComponent(id)}`;
+const p1 = (n) => `${num(n, 1)}%`;
+const pctCell = (n) => html`<span class="ow-count">${p1(n)}</span> <span class="meter" aria-hidden="true" style="width:70px"><i style="width:${Math.max(n > 0 ? 2 : 0, Math.min(100, n || 0))}%;background:var(--p-accent, var(--accent))"></i></span>`;
+const stageBars = (stages, order = Object.keys(STAGE)) => html`<div style="display:grid;grid-template-columns:minmax(180px,1fr) 2fr 64px;gap:8px 12px;align-items:center">
+  ${order.map((k) => html`<span>${STAGE[k] || k}</span>${meter(stages?.[k] || 0)}<b class="n">${p1((stages?.[k] || 0) * 100)}</b>`)}</div>`;
+const failBadge = (n) => (n ? chip(`${num(n)} כשלים`, 'chip-bad') : chip('ללא כשלים', 'chip-ok'));
+const SHOW = { failures: (g) => arr(g.failures).length > 0, native: (g) => (g.stages?.native || 0) > 0, missing: (g) => g.status === 'missing' };
+const GSORT = { percent: (a, b) => b.percent - a.percent, 'percent-asc': (a, b) => a.percent - b.percent, name: (a, b) => String(a.name).localeCompare(String(b.name)) };
+const gsel = (k, label, opts) => html`<label class="sel"><span>${label}</span><select data-change="filter" data-k="${k}" id="lib-f-games-${k}">
+  ${opts.map(([v, t]) => html`<option value="${v}" ${(filt(k) || opts[0][0]) === v ? 'selected' : ''}>${t}</option>`)}</select></label>`;
+
+function gamesList(d) {
+  const s = d.summary || {}; const q = st.q.trim().toLowerCase();
+  const rows = arr(d.games).filter((g) => (!SHOW[filt('show')] || SHOW[filt('show')](g)) && (!q || String(g.name).toLowerCase().includes(q)))
+    .sort(GSORT[filt('sort')] || GSORT.percent);
+  return html`<div class="ow-panel">
+    <div class="g g4" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+      ${stat({ key: 'gm-pct', label: 'השלמת ספריית Apple', text: p1(s.percent), sub: `ממוצע פשוט של המשחקים: ${p1(s.meanGamePercent)}`, tone: 'accent' })}
+      ${stat({ key: 'gm-games', label: 'משחקי rbxl', value: s.games, sub: `${num(s.files)} קבצים · ${num(s.indexed)} נקראו` })}
+      ${stat({ key: 'gm-comp', label: 'רכיבים', value: s.components, sub: `${num(s.instances)} מופעים` })}
+      ${stat({ key: 'gm-fail', label: 'משחקים עם כשלים', value: s.withFailures, sub: `${num(s.nativeGames)} משחקים עם המרה למקורי` })}</div>
+    ${sec('התקדמות הספרייה לפי שלב', 'חלק המופעים בכל המשחקים שהגיע לכל שלב')}
+    <div class="card">${stageBars(s.stages, arr(d.stageOrder))}</div>
+    ${note('info', 'איך מחושב האחוז', `רכיב הוא ילד ישיר של שירות עליון. כל רכיב עובר ${num(arr(d.stageOrder).length)} שלבים והאחוז שלו הוא ממוצע השלבים; אחוז משחק הוא ממוצע הרכיבים שלו משוקלל לפי מספר המופעים, ואחוז הספרייה כך גם בין המשחקים. שלב החילוץ מושלם תמיד, ולכן אין משחק מתחת ל־16.7%. נבנה ${fullDate(d.builtAt)}; לרענון: python3 scripts/owner-dashboard/games.py`)}
+    ${sec(`כל המשחקים (${num(rows.length)} מתוך ${num(arr(d.games).length)})`, 'לחיצה על משחק מראה אילו רכיבים חולצו ממנו ומה נכשל')}
+    <div class="ow-bar">${search('חיפוש משחק לפי שם')}
+      ${gsel('show', 'הצג', [['', 'הכול'], ['failures', 'עם כשלים'], ['native', 'עם המרה למקורי'], ['missing', 'קובץ חסר']])}
+      ${gsel('sort', 'מיון', [['percent', 'אחוז: גבוה קודם'], ['percent-asc', 'אחוז: נמוך קודם'], ['name', 'שם']])}</div>
+    <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>משחק</th><th>אחוז</th><th class="n">רכיבים</th><th class="n">מופעים</th><th>כשלים</th></tr></thead><tbody>
+    ${rows.map((g) => html`<tr data-k="g-${g.id}"><td dir="auto"><a href="${gameHref(g.id)}"><b>${g.name}</b></a>${g.status === 'missing' ? html` ${chip('קובץ חסר', 'chip-bad')}` : ''}</td>
+      <td>${pctCell(g.percent)}</td><td class="n">${num(g.componentCount)}</td><td class="n">${num(g.instances)}</td><td>${failBadge(arr(g.failures).length)}</td></tr>`)}
+    </tbody></table></div>${rows.length ? '' : html`<p class="empty" style="padding:14px 20px">אין משחק שמתאים לסינון.</p>`}</div></div>`;
+}
+
+function gameDetail(d) {
+  const rows = arr(d.page?.rows);
+  return html`<div class="ow-panel">
+    <p><a class="btn btn-sm" href="#/library">→ חזרה לכל המשחקים</a></p>
+    <div class="g g4" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+      ${stat({ key: 'gd-pct', label: d.name, text: p1(d.percent), sub: d.status === 'missing' ? 'קובץ חסר' : `${bytes(d.bytes)}`, tone: 'accent' })}
+      ${stat({ key: 'gd-comp', label: 'רכיבים', value: d.componentCount, sub: `${num(d.instances)} מופעים` })}
+      ${stat({ key: 'gd-fail', label: 'כשלים', value: arr(d.failures).length })}</div>
+    ${sec('נתיבי המקור')}
+    <div class="card">${arr(d.paths).length ? arr(d.paths).map((x) => html`<p>${ltr(x, 'mono')}</p>`) : html`<p class="empty">אין נתיב מקור.</p>`}</div>
+    ${sec('התקדמות לפי שלב')}<div class="card">${stageBars(d.stages)}</div>
+    ${sec('כשלים', 'מה לא חולץ או חולץ באופן חלקי')}
+    <div class="card">${arr(d.failures).length ? arr(d.failures).map((f) => (f.detail ? html`<details><summary dir="auto">${f.he}</summary><pre dir="ltr">${f.detail}</pre></details>` : html`<p dir="auto">${f.he}</p>`))
+      : html`<p class="empty">לא נרשמו כשלים למשחק הזה.</p>`}</div>
+    ${sec('לפי שירות', 'איפה במשחק נמצאים הרכיבים')}
+    <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>שירות</th><th class="n">רכיבים</th><th class="n">מופעים</th></tr></thead><tbody>
+    ${arr(d.services).map((x) => html`<tr><td>${ltr(x.service)}</td><td class="n">${num(x.components)}</td><td class="n">${num(x.instances)}</td></tr>`)}</tbody></table></div></div>
+    ${sec('כל הרכיבים', `${num(d.page?.total)} רכיבים מתאימים`)}
+    <div class="ow-bar">${search('חיפוש רכיב לפי שם או סוג')}
+      ${sel('service', 'שירות', arr(d.services).map((x) => [x.service, x.service, x.components]))}
+      ${gsel('sort', 'מיון', [['instances', 'מופעים'], ['percent', 'אחוז: גבוה קודם'], ['percent-asc', 'אחוז: נמוך קודם'], ['name', 'שם']])}</div>
+    <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>רכיב</th><th>סוג</th><th>שירות</th><th class="n">מופעים</th><th class="n">סקריפטים</th><th class="n">מדיה מאומתת</th><th>אחוז</th><th>בעיות</th></tr></thead><tbody>
+    ${rows.map((c) => html`<tr><td dir="auto"><b>${c.name}</b></td><td>${ltr(c.class)}</td><td>${ltr(c.service)}</td><td class="n">${num(c.instances)}</td><td class="n">${num(c.scripts)}</td>
+      <td class="n">${num(c.mediaVerified)}/${num(c.media)}</td><td>${pctCell(c.percent)}</td>
+      <td>${arr(c.issues).length ? html`<details><summary>${num(c.issues.length)}</summary>${c.issues.map((i) => html`<p dir="auto"><small>${i}</small></p>`)}</details>` : html`<span class="dim">—</span>`}</td></tr>`)}
+    </tbody></table></div>${rows.length ? '' : html`<p class="empty" style="padding:14px 20px">אין רכיב שמתאים לסינון.</p>`}</div>
+    ${pager(d.page)}</div>`;
+}
+const games = (d) => (d.view === 'detail' ? gameDetail(d) : gamesList(d));
+async function gamesLoad(ctx) {
+  st.gid = hashGame();
+  if (!st.gid) return { ...(await ctx.api.get('/api/cc/games')), tab: 'games', view: 'list' };
+  const p = new URLSearchParams({ limit: String(PER.games), off: String(st.off), sort: filt('sort') || 'instances' });
+  if (st.q) p.set('q', st.q);
+  if (filt('service')) p.set('service', filt('service'));
+  return { ...(await ctx.api.get(`/api/cc/games/${encodeURIComponent(st.gid)}?${p}`)), tab: 'games', view: 'detail' };
+}
+// A link between the list and a game changes only the hash: reset the view state and load the new one.
+window.addEventListener('hashchange', () => {
+  if (!st.ctx || !/^#\/library(\/|$)/.test(location.hash) || hashGame() === st.gid) return;
+  st.f.games = {}; st.q = ''; st.off = 0; st.gid = hashGame(); st.tab = 'games'; st.ctx.rerender(); st.ctx.refresh();
+});
+const localView = () => st.tab === 'ui' || (st.tab === 'games' && !st.gid); // filtered in the browser
 
 // ---------------------------------------------------------------- summary
 function summary(d) {
@@ -230,20 +313,28 @@ function vfx(d) {
     ${pager(d.page)}<p class="ow-count">מקור: ${ltr(d.source || 'packages/asset-library/vfx/manifest.json')}</p></div>`;
 }
 
-const BODY = { intake, summary, ui: uiTab, assets, models, sfx, vfx };
+const BODY = { games, intake, summary, ui: uiTab, assets, models, sfx, vfx };
 function tabs() {
   return html`<div class="ow-tabs" role="tablist" aria-label="הספריות">${TABS.map(([k, l]) => html`<button class="ow-tab ${st.tab === k ? 'on' : ''}" role="tab" id="lib-t-${k}"
     aria-selected="${st.tab === k}" aria-controls="lib-panel" tabindex="${st.tab === k ? '0' : '-1'}" data-act="tab" data-key="tabkey" data-t="${k}">${l}</button>`)}</div>`;
 }
-const setTab = (t, ctx) => { st.tab = t; st.off = 0; st.q = ''; ctx.refresh(); };
+const setTab = (t, ctx) => {
+  st.tab = t; st.off = 0; st.q = ''; st.gid = '';
+  if (hashGame()) history.replaceState(null, '', '#/library');
+  ctx.refresh();
+};
 
 export default {
   id: 'library', title: 'הספריות', nav: 'הספריות', glyph: 'library',
   sub: 'קטלוגים לצד קליטת קבצים בפועל: מקור, רישיון, הורדה, אימות והימצאות בשרת. לא כל רשומה זמינה לבונה.',
-  load: (ctx) => ctx.api.get(`/api/cc/library?${query()}`),
+  load: (ctx) => {
+    st.ctx = ctx;
+    if (hashGame()) st.tab = 'games';
+    return st.tab === 'games' ? gamesLoad(ctx) : ctx.api.get(`/api/cc/library?${query()}`);
+  },
   render(d) {
     if (d?.ok === false) return failCard(d.reason, { retry: true, title: 'לא הצלחנו לקרוא את הספריות' });
-    const body = d.tab === st.tab ? BODY[st.tab](d) : html`<div class="skel" style="height:320px"></div>`;
+    const body = d.tab === st.tab && (st.tab !== 'games' || d.view === (st.gid ? 'detail' : 'list')) ? BODY[st.tab](d) : html`<div class="skel" style="height:320px"></div>`;
     return html`${tabs()}<div id="lib-panel" role="tabpanel" aria-labelledby="lib-t-${st.tab}" data-k="lib-${st.tab}">${body}</div>`;
   },
   after(root, ctx) {
@@ -264,12 +355,12 @@ export default {
     },
     filter(el, ctx) {
       const f = (st.f[st.tab] ||= {}); f[el.dataset.k] = el.value; if (el.dataset.k === 'pack') f.folder = '';
-      st.off = 0; if (st.tab === 'ui') ctx.rerender(); else ctx.refresh();
+      st.off = 0; if (localView()) ctx.rerender(); else ctx.refresh();
     },
     src(el, ctx) { st.f.models = { source: el.dataset.v }; st.off = 0; ctx.refresh(); },
     q(el, ctx) {
       st.q = el.value; clearTimeout(st.tq);
-      if (st.tab === 'ui') { ctx.rerender(); return; }
+      if (localView()) { ctx.rerender(); return; }
       st.tq = setTimeout(() => { st.off = 0; ctx.refresh(); }, 300);
     },
     pg(el, ctx) { st.off = Math.max(0, st.off + Number(el.dataset.d) * (PER[st.tab] || 60)); ctx.refresh(); document.getElementById('lib-panel')?.scrollIntoView({ block: 'start' }); },
