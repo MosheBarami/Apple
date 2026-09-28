@@ -28,6 +28,16 @@ export function libraryNamespace(env: Env, userId: string | undefined) {
   const release = env.RELEASE_LIBRARY_OWNER_ID?.trim() || idList(env.OWNER_USER_IDS)[0];
   return release && (userId === release || idList(env.LIBRARY_APPROVED_USER_IDS).includes(userId)) ? release : userId;
 }
+/**
+ * Q37/G02: before launch only the owner and approved accounts may start builds. The owner ids and
+ * LIBRARY_APPROVED_USER_IDS (secrets) are the whole list. With no OWNER_USER_IDS configured (local
+ * dev, tests) nothing is gated: there is no owner to approve anyone.
+ */
+export function buildApproved(env: Env, userId: string): boolean {
+  const owners = idList(env.OWNER_USER_IDS);
+  if (owners.length === 0) return true;
+  return owners.includes(userId) || userId === env.RELEASE_LIBRARY_OWNER_ID?.trim() || idList(env.LIBRARY_APPROVED_USER_IDS).includes(userId);
+}
 export async function ownerCorpusTables(env: Env) {
   // D1 exec splits statements on newlines: each complete statement must occupy one line.
   await env.CORPUS.exec(`CREATE TABLE IF NOT EXISTS owner_corpus_components (owner_id TEXT NOT NULL, id TEXT NOT NULL, sha TEXT NOT NULL, metadata TEXT NOT NULL, blob_ready INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(owner_id,id));

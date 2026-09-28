@@ -156,6 +156,9 @@ import {
   type PluginToolFilter,
   type ToolStudioRequirements,
 } from '../plugin-capabilities';
+import { buildApproved } from '../owner-corpus.ts';
+
+const ACCOUNT_NOT_APPROVED = 'Apple is in private pre-launch: building is open to approved accounts only. Ask the owner to approve this account.';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -1464,6 +1467,13 @@ export class SessionDO extends DurableObject<Env> {
     return null;
   }
 
+  /** G02/Q37: the pre-launch account gate. The project owner's account is what builds are charged to. */
+  private refuseUnapproved(ws: WebSocket | undefined, bind: { ownerId: string }): boolean {
+    if (buildApproved(this.env, bind.ownerId)) return false;
+    this.refuseOne(ws, { type: 'error', code: 'account_not_approved', message: ACCOUNT_NOT_APPROVED });
+    return true;
+  }
+
   /**
    * The gate's refusal, under one stable code. Terminal only when no run is live: a refused message
    * sent during a run must not tell the browser that the run, which is still there, has ended.
@@ -2459,6 +2469,7 @@ export class SessionDO extends DurableObject<Env> {
         productModel?: unknown;
       };
       if (!text?.trim()) return json({ ok: false, error: 'text required' }, 400);
+      if (!buildApproved(this.env, bind.ownerId)) return json({ ok: false, code: 'account_not_approved', error: ACCOUNT_NOT_APPROVED }, 403);
       const agent = await this.ctx.storage.get<AgentState>('agent');
       if (agent?.status === 'running') return json({ ok: false, error: 'a run is already in progress' }, 409);
       // `effort` pins the reasoning tier for the whole run, overriding the adaptive policy. It
@@ -2917,6 +2928,7 @@ export class SessionDO extends DurableObject<Env> {
           // G03: nothing is built, or steered, before the paired place is connected.
           const live = await this.ctx.storage.get<AgentState>('agent');
           const runLive = !!live && live.status !== 'idle';
+          if (!runLive && this.refuseUnapproved(ws, bind)) return;
           const gate = await this.studioGate();
           if (gate) {
             this.refuseStudio(ws, gate, runLive);
@@ -3003,6 +3015,7 @@ export class SessionDO extends DurableObject<Env> {
           return;
         }
         // G03, before anything is deleted: an edit starts a build like any message does.
+        if (this.refuseUnapproved(ws, bind)) return;
         const gate = await this.studioGate();
         if (gate) {
           this.refuseStudio(ws, gate, false);

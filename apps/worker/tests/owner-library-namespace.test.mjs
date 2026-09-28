@@ -121,3 +121,20 @@ test('manifest requires an explicit scriptsPreserved boolean and bounded boolean
   const [parsed]=C.parseOwnerManifest({ownerAttested:true,components:[{...base,readiness:{visualInspection:false},ownerId:'forged'}]});
   assert.deepEqual(parsed.readiness,{visualInspection:false});assert.equal(parsed.scriptsPreserved,false);assert.equal(parsed.ownerId,undefined);
 });
+
+test('G02/Q37: only the owner and approved accounts may start builds before launch', () => {
+  const e = env();
+  assert.equal(C.buildApproved(e, OWNER), true);
+  assert.equal(C.buildApproved(e, 'other-owner'), true);
+  assert.equal(C.buildApproved(e, APPROVED), true);
+  assert.equal(C.buildApproved(e, STRANGER), false);
+  assert.equal(C.buildApproved(env({OWNER_USER_IDS: ''}), STRANGER), true, 'no owner configured (dev) gates nothing');
+});
+
+test('G02: every run-start path in the session DO consults the account gate', async () => {
+  const {readFileSync} = await import('node:fs');
+  const src = readFileSync(join(root, 'src/do/session.ts'), 'utf8');
+  assert.match(src, /if \(!runLive && this\.refuseUnapproved\(ws, bind\)\) return;/, 'chat message');
+  assert.match(src, /if \(this\.refuseUnapproved\(ws, bind\)\) return;\n\s+const gate = await this\.studioGate\(\);/, 'message edit');
+  assert.match(src, /if \(!buildApproved\(this\.env, bind\.ownerId\)\) return json\(\{ ok: false, code: 'account_not_approved'/, '/agent-run');
+});
