@@ -106,14 +106,13 @@ function logTab(a) {
 }
 
 function dataTab(a) {
-  const co = a.corpus; const st = a.static; const g = a.gauntlet; const bi = a.billing || {}; const pr = a.product;
+  const co = a.corpus; const st = a.static; const bi = a.billing || {}; const pr = a.product;
   return html`<div class="ap-grid">
     ${panel('corpus', 'הקורפוס', id('/api/admin/corpus-census'), co ? html`<div class="ap-big">${rn('ap-chunks', co.chunks, num(co.chunks))}<small>chunks</small></div>
       ${meter(co.chunks ? co.embedded / co.chunks : null, 'var(--ap-ink)')}<p class="ap-fine">${num(co.embedded)} מהם עם embedding (${pct(co.chunks ? co.embedded / co.chunks : null)}).</p>` : html`<p class="ap-empty">המפקד לא זמין.</p>`)}
     ${panel('static', 'קבצים סטטיים', id('/api/admin/static-list'), st ? html`<div class="ap-big">${rn('ap-files', st.files, num(st.files))}<small>קבצים</small></div>
       ${kv([['chunks', num(st.chunks)], ['immutable', num(st.immutable)], ['עודכן', ago(st.lastAt)]])}
       <ul class="ap-tags">${arr(st.types).map((x) => html`<li data-k="ty-${x.key}">${id(x.key)} <span>${num(x.count)}</span></li>`)}</ul>` : html`<p class="ap-empty">הרשימה לא זמינה.</p>`)}
-    ${panel('gaunt', 'סבבי gauntlet', g ? id(g.source) : null, g ? html`<div class="ap-big">${rn('ap-rounds', g.rounds, num(g.rounds))}<small>סבבים, האחרון ${num(g.last)}</small></div>` : html`<p class="ap-empty">התיקייה לא נמצאה בריפו.</p>`)}
     ${panel('bill', 'תשלומים', id('/api/admin/billing-wiring'), kv([
       ['מפתח Stripe', bi.keyMode === 'live' ? 'live' : bi.keyMode === 'test' ? html`<span class="ap-chip is-warn">test</span>` : '—'],
       ['סביבה', bi.production ? 'פרודקשן' : 'פיתוח'], ['Webhook', bi.webhook ? 'מחובר' : 'חסר'],

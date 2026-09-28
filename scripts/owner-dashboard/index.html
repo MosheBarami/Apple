@@ -363,7 +363,7 @@
   </div>
   <nav class="tabs" role="tablist" aria-label="לשוניות">
     <button class="tab-btn" role="tab" data-tab="now">עכשיו</button>
-    <button class="tab-btn" role="tab" data-tab="model">המודל והאימון</button>
+    <button class="tab-btn" role="tab" data-tab="model">המנוע</button>
     <button class="tab-btn" role="tab" data-tab="libs">ספריות<span class="ct" id="ctLibs"></span></button>
     <button class="tab-btn" role="tab" data-tab="changes">מה השתנה<span class="ct" id="ctShots"></span></button>
     <button class="tab-btn" role="tab" data-tab="hundred">מה זה 100%</button>
@@ -374,9 +374,8 @@
 <main>
   <!-- ============ NOW ============ -->
   <section class="tab" id="tab-now" role="tabpanel">
-    <div class="g g3" id="rings">
+    <div class="g g2" id="rings">
       <div class="card"><span class="sk h120"></span></div><div class="card"><span class="sk h120"></span></div>
-      <div class="card"><span class="sk h120"></span></div>
     </div>
     <div class="g g21">
       <div class="card">
@@ -391,16 +390,13 @@
         <div class="card"><h2>מה באוויר עכשיו</h2><div id="prod"><span class="sk"></span><span class="sk w60"></span></div></div>
       </div>
     </div>
-    <div class="g g21">
-      <div class="card"><h2>ההשוואה האחרונה: Apple מול המשחק האמיתי</h2><div id="latestCompare"><span class="sk h120"></span></div></div>
-      <div class="card"><h2>מה כתבתי לך לאחרונה</h2><div class="says" id="says"><span class="sk"></span><span class="sk w80"></span></div></div>
-    </div>
+    <div class="card mb"><h2>מה כתבתי לך לאחרונה</h2><div class="says" id="says"><span class="sk"></span><span class="sk w80"></span></div></div>
   </section>
 
   <!-- ============ MODEL ============ -->
   <section class="tab" id="tab-model" role="tabpanel">
     <div class="card mb"><h2>המנוע שהלקוחות מקבלים</h2><div class="plans" id="plans"><span class="sk h120"></span></div></div>
-    <div class="card mb"><h2>מאיפה הידע מגיע</h2><div id="sources"><span class="sk h120"></span></div></div>
+    <div class="card mb"><h2>חיפוש בידע</h2><div id="sources"><span class="sk h120"></span></div></div>
     <div class="card"><h2>מה הוא יודע</h2><div id="knows"><span class="sk h120"></span></div></div>
   </section>
 
@@ -553,6 +549,8 @@ function ring(k, f1, f2, grad, center, small) {
 
 // ---- Hebrew names for the things the code names in English
 const BLURB_HE = { 'Apple': 'המנוע של Apple, בונה משחקים שלמים', 'Gemini 3.8 Flash': 'המודל המהיר של Google, זוכר פרויקטים גדולים מאוד', 'GPT-5.6': 'מודל הדגל של OpenAI, לבניות הכי קשות', 'GPT-5.6 Luna': 'גרסה חסכונית של GPT-5.6' };
+const HELD_HE = ['L01: חיוב חי ב-Stripe מוחזק עד הוראה נפרדת של הבעלים', 'L02: הפצה ציבורית של התוסף מוחזקת עד הוראה נפרדת של הבעלים'];
+const GATE_STATUS_HE = { passed: 'עבר', failed: 'נכשל', partial: 'חלקי', in_progress: 'בעבודה', not_evaluated: 'טרם נבדק' };
 const STATUS_HE = { done: 'הושלם', partial: 'חלקית', progress: 'בעבודה עכשיו', blocked: 'מחכה', todo: 'עוד לא התחיל' };
 const SEV_HE = { critical: 'קריטי', high: 'חמור', medium: 'בינוני', low: 'קל' };
 const DOMAIN_HE = { ui: 'ממשק ומסכים', input: 'שליטה וקלט', client_server: 'לקוח ושרת', data: 'שמירת נתונים', gameplay: 'משחקיות', worldbuilding: 'בניית עולם', performance: 'ביצועים', security: 'אבטחה', genre_pattern: "דפוסים לפי ז'אנר" };
@@ -593,7 +591,7 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#lb').hidden = t
 // =========================================================================================
 function renderProject() {
   if (!P) return;
-  const parts = [renderRings, renderNext, renderBlockers, renderProd, renderCompare, renderPlans,
+  const parts = [renderRings, renderNext, renderBlockers, renderProd, renderPlans,
     renderSources, renderKnows, renderLibs, renderCode, renderGallery, renderCommits, renderHundred];
   for (const f of parts) { try { f(); } catch (err) { console.error(f.name, err); } }
   animate(document, false);
@@ -601,17 +599,16 @@ function renderProject() {
 }
 
 function renderRings() {
-  const a = P.acceptance, vs = P.vision?.items || [], g = P.gauntlet;
+  const a = P.acceptance, vs = P.vision?.items || [];
   const n = (st) => vs.filter((i) => i.status === st).length;
   const done = n('done'), moving = n('partial') + n('progress'), waiting = n('blocked');
-  const rounds = g?.rounds?.length || 0;
+  const gates = a?.v3 ? a.missions.filter((m) => /^G\d/.test(m.key)) : null;
+  const gd = gates ? gates.filter((m) => m.ok).length : a?.done, gt = gates ? gates.length : a?.total;
   const cards = [
-    { tab: 'hundred', title: 'המוצר מוכן ל-100%', html: ring('r-acc', a ? a.done / a.total : 0, null, 'gA', a ? pctTxt(a.done / a.total) : '—', 'מוכן'),
-      sub: a ? `${a.done} מתוך ${a.total} התנאים מתקיימים` : NM },
+    { tab: 'hundred', title: gates ? 'שערי קבלה V3' : 'המוצר מוכן ל-100%', html: ring('r-acc', gt ? gd / gt : 0, null, 'gA', gt ? pctTxt(gd / gt) : '—', 'עברו'),
+      sub: gt ? `${gd} מתוך ${gt} ${gates ? 'שערים עברו, רק עם ראיות חיות' : 'התנאים מתקיימים'}` : NM },
     { tab: 'hundred', title: 'החזון שלך', html: ring('r-vis', vs.length ? done / vs.length : 0, vs.length ? (done + moving) / vs.length : 0, 'gV', `${done}/${vs.length}`, 'הושלמו'),
       sub: `${moving} בעבודה · ${waiting} מחכים למישהו אחר` },
-    { tab: 'changes', title: 'מבחן המראה מול המשחק האמיתי', html: ring('r-g', rounds ? (g.passes || 0) / rounds : 0, null, 'gW', `${g?.passes ?? 0}/${rounds}`, 'סבבים עברו'),
-      sub: esc(visItem('gauntlet')?.detail || '') },
   ];
   $('#rings').innerHTML = cards.map((c) => `<button class="card ringcard" data-go="${c.tab}">${c.html}<div class="rt"><div class="rtt">${esc(c.title)}</div><div class="rts">${c.sub}</div></div></button>`).join('');
 }
@@ -630,32 +627,29 @@ function renderBlockers() {
   const reviews = P.acceptance?.reviews;
   $('#blockers').innerHTML = (top.length ? top.map((x) => `<div class="blk">${sevChip(x.sev)}<div class="x"><b class="ltr">${esc(x.id)}</b> · ${esc(bl[x.id] || '')}
       <details><summary>הפרטים ביומן</summary><div class="en">${esc(x.text)}</div></details></div></div>`).join('') : '<div class="dim">אין תקלות קריטיות או חמורות פתוחות</div>')
+    + HELD_HE.map((h) => `<div class="blk">${chip('st-todo', 'מוחזק')}<div class="x">${esc(h)}</div></div>`).join('')
     + (reviews && reviews.fresh < reviews.required ? `<div class="blk">${chip('st-todo', 'בסוף')}<div class="x">${reviews.required} ביקורות חיצוניות נקיות בסוף הדרך. יש ${reviews.fresh} עד עכשיו.</div></div>` : '');
 }
 
 function renderProd() {
   const p = P.prod, g = P.git;
   const rows = [];
+  let same = null;
   if (p && !p.error) {
+    const base = String(p.buildSha || '').replace(/-dirty$/, '');
+    same = base && g?.head ? (g.head.startsWith(base) || base.startsWith(g.head)) && !p.dirtyBuild : null;
     rows.push(`<span>הגרסה שבאוויר</span><b class="ltr">${esc(p.buildSha || '—')}</b>`);
-    rows.push(`<span>שינויים שמורים שעוד לא עלו לאוויר</span><b>${p.behind ?? '—'}</b>`);
+    if (g?.head) rows.push(`<span>הגרסה האחרונה ב-main</span><b class="ltr">${esc(g.head)}</b>`);
+    if (p.behind != null) rows.push(`<span>שינויים שמורים שעוד לא עלו לאוויר</span><b>${p.behind}</b>`);
   } else rows.push(`<span>הגרסה שבאוויר</span><b>${p?.error ? 'לא ענה' : '…'}</b>`);
   if (g) {
     rows.push(`<span>שינויים שנשמרו ב-24 השעות האחרונות</span><b>${g.last24h}</b>`);
     rows.push(`<span>קבצים שעוד לא נשמרו</span><b>${g.dirty ?? '—'}</b>`);
   }
-  $('#prod').innerHTML = `<div class="kv">${rows.join('')}</div>`
+  $('#prod').innerHTML = (same == null ? '' : `<div style="margin-bottom:10px">${same ? chip('st-done', 'האוויר זהה ל-main') : chip('st-blocked', 'האוויר לא מעודכן: main התקדם, נדרשת פריסה')}</div>`)
+    + `<div class="kv">${rows.join('')}</div>`
     + (p?.dirtyBuild ? `<div class="para" style="margin:12px 0 0">הגרסה שבאוויר נבנתה כשהיו במחשב שינויים שעוד לא נשמרו. בהעלאה הבאה זה יתוקן.</div>` : '')
     + (p?.checkedAt ? `<div class="faint" style="font-size:12px;margin-top:10px">נבדק ${ago(p.checkedAt)}</div>` : '');
-}
-
-function renderCompare() {
-  const g = P.gauntlet;
-  if (!g?.latest) { $('#latestCompare').innerHTML = '<div class="dim">עוד אין השוואות</div>'; return; }
-  const cap = `סבב ${g.latest.round} · ${ago(g.latest.mtime)}`;
-  $('#latestCompare').innerHTML = `<img class="compare" src="${esc(g.latest.url)}" alt="${esc(cap)}" data-full="${esc(g.latest.url)}" data-cap="${esc(cap)}" loading="lazy">
-    <div class="para" style="margin:10px 0 0">${esc(cap)}. כל סבב מושווה לתמונות מהמשחק האמיתי, ומבחן עובר רק כשאי אפשר להבדיל ביניהם.</div>
-    <div class="refs">${(g.refs || []).slice(0, 5).map((u) => `<img src="${esc(u)}" alt="" loading="lazy" data-full="${esc(u)}" data-cap="המשחק האמיתי">`).join('')}</div>`;
 }
 
 function renderPlans() {
@@ -671,18 +665,11 @@ function renderPlans() {
 }
 
 function renderSources() {
-  const t = P.training || {}, hf = t.hf, lf = t.langflow, vz = t.vectorize;
+  const vz = P.training?.vectorize;
   const docs = P.libraries?.find((l) => l.id === 'docs');
-  const KIND = { model: 'מודל', dataset: 'מאגר נתונים', space: 'Space' };
-  const hfHtml = Array.isArray(hf) ? hf.map((r) => `<div class="blk">${chip(r.private ? 'st-todo' : 'st-done', r.private ? 'פרטי' : 'ציבורי')}<div class="x"><b class="ltr">${esc(r.id)}</b><div class="faint" style="font-size:12px">${KIND[r.kind] || r.kind}${r.modified ? ' · עודכן ' + heDay(Date.parse(r.modified)) : ''}</div></div></div>`).join('')
-    : hf?.error ? NM : '<span class="sk"></span>';
   const vf = vz && !vz.error && docs?.count ? vz.vectors / docs.count : null;
-  $('#sources').innerHTML = `<div class="grp">Hugging Face</div>${hfHtml}
-    <div class="grp">Langflow (זרימות עבודה)</div>
-    ${lf ? `<div class="blk">${chip(lf.running ? 'st-done' : 'st-blocked', lf.running ? 'רץ אצלך במחשב' : 'לא רץ')}<div class="x">${lf.version ? `גרסה <span class="ltr">${esc(lf.version)}</span> · ` : ''}זרימות של המוצר: <b>${lf.flowsInRepo}</b></div></div>` : '<span class="sk"></span>'}
-    <div class="grp">Cloudflare Vectorize (חיפוש בידע)</div>
-    ${vz && !vz.error ? `<div class="brow" style="grid-template-columns:minmax(0,1fr) auto"><span>${nf(vz.vectors)} מתוך ${nf(docs?.count)} קטעי ידע מחוברים לחיפוש</span><span class="v">${pctTxt(vf)}</span></div>${bar('vz', vf, 'w')}
-      <div class="faint" style="font-size:12px;margin-top:6px">עודכן לאחרונה ${vz.updated ? heDay(Date.parse(vz.updated)) : '—'}</div>` : vz?.error ? NM : '<span class="sk"></span>'}`;
+  $('#sources').innerHTML = vz && !vz.error ? `<div class="brow" style="grid-template-columns:minmax(0,1fr) auto"><span>${nf(vz.vectors)}${docs?.count ? ` מתוך ${nf(docs.count)}` : ''} קטעי ידע מחוברים לחיפוש (Cloudflare Vectorize)</span><span class="v">${pctTxt(vf)}</span></div>${bar('vz', vf, 'w')}
+      <div class="faint" style="font-size:12px;margin-top:6px">עודכן לאחרונה ${vz.updated ? heDay(Date.parse(vz.updated)) : '—'}</div>` : vz?.error ? NM : '<span class="sk"></span>';
 }
 
 function renderKnows() {
@@ -776,13 +763,16 @@ function renderCommits() {
 function renderHundred() {
   const a = P.acceptance, f = P.findings, q = P.queue, vs = P.vision?.items || [];
   if (a) {
-    const miss = a.items.filter((i) => !i.ok);
-    $('#hero100').innerHTML = `${ring('h-acc', a.done / a.total, null, 'gA', pctTxt(a.done / a.total), 'מוכן')}
-      <div><h3>המוצר מוכן כש<span class="shine">כל ${a.total} התנאים</span> מתקיימים, ובדיקת הקבלה עוברת.</h3>
-      <div class="para" style="margin:10px 0 0">עכשיו <b>${a.done}</b> מתוך <b>${a.total}</b> מתקיימים. חסרים: ${miss.map((i) => esc(i.label)).join(' · ')}.</div></div>`;
-    const grp = (title, list) => `<div class="grp">${title}</div>${list.map((i) => `<div class="ck ${i.ok ? 'ok' : 'no'}"><span class="b">${i.ok ? '✓' : '✗'}</span><span>${esc(i.label)}</span></div>`).join('')}`;
-    $('#checklist').innerHTML = grp('איכות ובדיקות', a.flags) + grp('משימות שהמוצר צריך לעשות לבד', a.missions)
-      + grp('ביקורות חיצוניות בסוף', a.items.filter((i) => /^review/.test(i.key))) + grp('תקלות', a.items.filter((i) => i.key === 'critical' || i.key === 'high'));
+    const gates = a.v3 ? a.missions.filter((i) => /^G\d/.test(i.key)) : null;
+    const gd = gates ? gates.filter((i) => i.ok).length : a.done, gt = gates ? gates.length : a.total;
+    const miss = (gates || a.items).filter((i) => !i.ok);
+    $('#hero100').innerHTML = `${ring('h-acc', gd / gt, null, 'gA', pctTxt(gd / gt), 'מוכן')}
+      <div><h3>${a.v3 ? 'המוצר מוכן כש<span class="shine">כל 16 השערים G01–G16</span> עוברים עם ראיות חיות, ואין תקלה קריטית פתוחה.' : `המוצר מוכן כש<span class="shine">כל ${a.total} התנאים</span> מתקיימים, ובדיקת הקבלה עוברת.`}</h3>
+      <div class="para" style="margin:10px 0 0">עכשיו <b>${gd}</b> מתוך <b>${gt}</b> ${gates ? 'שערים עברו' : 'מתקיימים'}. חסרים: ${miss.map((i) => esc(gates ? i.key : i.label)).join(' · ')}.</div></div>`;
+    const grp = (title, list) => list.length ? `<div class="grp">${title}</div>${list.map((i) => `<div class="ck ${i.ok ? 'ok' : 'no'}"><span class="b">${i.ok ? '✓' : '✗'}</span><span>${esc(i.label)}${i.status ? ` ${chip(i.ok ? 'st-done' : 'st-todo', GATE_STATUS_HE[i.status] || i.status)}` : ''}</span></div>`).join('')}` : '';
+    $('#checklist').innerHTML = grp('איכות ובדיקות', a.flags) + (a.v3 ? grp('שערי קבלה V3 (G01–G16)', a.missions.filter((i) => /^G\d/.test(i.key))) : grp('משימות שהמוצר צריך לעשות לבד', a.missions))
+      + grp('ביקורות חיצוניות בסוף', a.items.filter((i) => /^review/.test(i.key))) + grp('תקלות', a.items.filter((i) => i.key === 'critical' || i.key === 'high'))
+      + `<div class="grp">מחוץ ל-100%: מוחזק להשקה</div>${HELD_HE.map((h) => `<div class="ck"><span class="b">…</span><span>${esc(h)}</span></div>`).join('')}`;
   } else { $('#hero100').innerHTML = NM; $('#checklist').innerHTML = NM; }
 
   if (f) {
