@@ -659,6 +659,13 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
       run: () => navigate(`/projects/${projectId}/roadmap`),
     },
     {
+      id: 'ws-branding',
+      title: 'Generate Branding',
+      section: 'Project',
+      keywords: ['name', 'icon', 'thumbnail', 'description', 'store'],
+      run: () => navigate(`/projects/${projectId}/branding`),
+    },
+    {
       id: 'ws-export-md',
       title: 'Export conversation (Markdown)',
       section: 'Project',
@@ -973,6 +980,15 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           >
             <Icon d={PATH.listAll} size={15} />
             <span className="gx-top__cp-label">Roadmap</span>
+          </Link>
+          <Link
+            to={`/projects/${projectId}/branding`}
+            className="gx-btn gx-btn--outline gx-top__cp"
+            aria-label="Generate Branding"
+            title="Name, descriptions, icon and thumbnails for this game's store page"
+          >
+            <Icon d={PATH.camera} size={15} />
+            <span className="gx-top__cp-label">Generate Branding</span>
           </Link>
 
           <button
