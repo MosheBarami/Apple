@@ -111,6 +111,14 @@ export async function readOwnerOriginalString(ctx:AgentCtx,a:Record<string,unkno
 export async function queryOwnerCatalog(ctx:AgentCtx,a:Record<string,unknown>) {
  if (!ctx.userId) return {error:'Owner catalogue reads need an authenticated owner context.'};
  const action=a.section ?? 'sources',limit=a.limit ?? 5,after=a.after ?? '';
+ if (action==='native-readiness') {
+  // Plugin validates the gateway's nested rows[].readiness flags and projects bounded rows (LocalOwnerCorpus.luau).
+  const cursor=a.after ?? 0,query=a.query ?? '';
+  if (!Number.isInteger(cursor) || Number(cursor)<0 || Number(cursor)>1_000_000 || !Number.isInteger(limit) || Number(limit)<1 || Number(limit)>10 || typeof query!=='string' || query.length>120) return {error:'native-readiness: numeric after cursor 0..1000000, limit 1..10, optional query up to 120 characters.'};
+  const data=await localOwnerQuery(ctx,{action:'native-readiness',after:Number(cursor),limit:Number(limit),query:query||undefined});
+  if ('error' in data) return data;
+  return {...data,sourceExecuted:false,untrustedData:true,note:'Rows are hash-verified offline native model artifacts. rows[].readiness flags are the gateway record: visualInspection, gameplayVerified and commercialReadiness stay false until actual evidence exists. Page with nextAfter unchanged.'};
+ }
  if (!['sources','health'].includes(String(action)) || !Number.isInteger(limit) || Number(limit)<1 || Number(limit)>10 || typeof after!=='string' || after!=='' && !SHA.test(after)) return {error:'Use section sources/health, limit 1..10 and the exclusive source SHA cursor.'};
  const data=await localOwnerQuery(ctx,{action:action as 'sources'|'health',limit:Number(limit),after:after||undefined});
  if ('error' in data) return data;

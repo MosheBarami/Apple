@@ -89,6 +89,15 @@ test('paged full source catalogue is paired, authenticated and keeps SHA cursors
  const denied=await run({...ctx,userId:undefined},'query_owner_catalog',{});assert.equal(denied.out.ok,false);assert.equal(calls.length,1);
  const bad=await run(ctx,'query_owner_catalog',{after:id});assert.equal(bad.out.ok,false);assert.equal(calls.length,1);
 });
+test('native-readiness catalogue section reaches the paired plugin with a numeric row cursor and keeps nested readiness',async()=>{
+ const readiness={offlineNativeArtifact:true,realStudioInsertion:true,visualEvidenceCaptured:true,visualInspection:false,gameplayVerified:false,commercialReadiness:false};
+ const calls=[],ctx=context(async op=>{calls.push(op);return {ok:true,data:{schema:'apple.owner-corpus.native-readiness-page.v1',rows:[{id:'owner-xml:'+sha+':chunk-00023',sourceSHA256:sha,chunkId:'chunk-00023',artifactSHA256:jobId,artifactBytes:51205,readiness}],nextAfter:11,totalArtifacts:203,sourceExecuted:false}};});
+ const page=await run(ctx,'query_owner_catalog',{section:'native-readiness',after:10,limit:1,query:'Jailbreak'});
+ assert.equal(page.out.ok,true);assert.deepEqual({op:calls[0].op,action:calls[0].action,after:calls[0].after,limit:calls[0].limit,query:calls[0].query},{op:'query_owner_local',action:'native-readiness',after:10,limit:1,query:'Jailbreak'});
+ assert.deepEqual(page.data.rows[0].readiness,readiness);assert.equal(page.data.totalArtifacts,203);assert.equal(page.data.sourceExecuted,false);
+ for(const args of [{after:sha},{after:-1},{limit:11},{query:'x'.repeat(121)}]){const bad=await run(ctx,'query_owner_catalog',{section:'native-readiness',...args});assert.equal(bad.out.ok,false,JSON.stringify(args));}
+ assert.equal(calls.length,1,'invalid readiness page request reached the plugin');
+});
 test('owner-first component search scopes full SQLite index by selected original source SHA',async()=>{
  let op;const ctx=context(async v=>{op=v;return {ok:true,data:{items:[{id:raw,name:'NonSeed',class:'Model'}],nextAfter:null}};});
  const got=await run(ctx,'find_library_model',{query:'NonSeed',sourceSHA:sha});assert.equal(got.out.ok,true);assert.equal(op.sourceSHA,sha);assert.equal(got.data.source,'owner_local');assert.equal(got.data.results[0].preview.visualApproved,false);

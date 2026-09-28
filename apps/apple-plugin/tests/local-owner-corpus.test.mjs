@@ -23,6 +23,7 @@ local requests,loads = 0,0
 local revoked,tamper,residue=false,false,false
 local rootClass="Model"
 local originalRevoke=false
+local flatReadiness=false
 local config={port=63747,key=string.rep("k",43)}
 local http={UrlEncode=function(_,text) return text end,JSONEncode=function()return "{}" end}
 function http:RequestAsync(request)
@@ -53,6 +54,16 @@ function http:JSONDecode(url)
   return {kind="script-free-native-rbxm",encoding="base64",data="encoded",offset=0,totalBytes=#nativeBytes,nextOffset=nil,sha256=expectedHash,chunkSha256=tamper and string.rep("f",64) or expectedHash,execution="never"}
  end
  if string.find(url,"/v1/native-map?",1,true) then return {items={{node_id=id,class=rootClass,nativeChildIndices={0},namespace="R${hex(id)}"},{node_id=childId,class="MeshPart",nativeChildIndices={0,0},namespace="R${hex(child)}"}},nextAfter=nil} end
+ if string.find(url,"/v1/native-readiness?",1,true) then
+  -- Row values from the live gateway receipt docs/evidence/owner-corpus-20260926/native-readiness-live-gateway-proof.json.
+  assert(string.find(url,"after=10",1,true) and string.find(url,"limit=2",1,true) and string.find(url,"query=Jailbreak",1,true),url)
+  local source="b0faf9f831669d2d52e07cda08a2f8737d10c6f81f94bea57765be6769451267"
+  local row={sourceSHA256=source,chunkId="chunk-00023",id="owner-xml:"..source..":chunk-00023",artifactSHA256="d4046d36a86fea67815bd8627cc4e2bbb12d0b0a02dd114a3d53c364257a0b87",
+   artifactBytes=51205,nativeInstances=2875,sourceName="Jailbreak (Beta).rbxlx",readiness={offlineNativeArtifact=true,realStudioInsertion=true,
+   visualEvidenceCaptured=true,visualInspection=false,gameplayVerified=false,commercialReadiness=false}}
+  if flatReadiness then for key,flag in row.readiness do row[key]=flag end; row.readiness=nil end
+  return {schema="apple.owner-corpus.native-readiness-page.v1",after=10,limit=2,nextAfter=11,totalArtifacts=203,matchingPreservedArtifacts=230,rows={row},sourceExecuted=false,assemblyPerformed=false,keyFile="/PRIVATE"}
+ end
  if string.find(url,"/v1/search?",1,true) then return {items={{id=id,name="Waterfall",source={path="/private/DO_NOT_EXPOSE"}}},nextAfter=id} end
  error("unexpected gateway request")
 end
@@ -156,6 +167,17 @@ mediaOp.id=sourceSHA..":binary:42"
 assert(c:execute("mediaBinary",mediaOp,false,current).ok==false and requests==beforeEvidence,"binary referent consumed as normalized media")
 local assemblyList=c:execute("assemblyList",{op="query_owner_assembly",action="recipes",limit=1},false,current)
 assert(assemblyList.ok==true and assemblyList.data.keyFile==nil,"local key/path metadata leaked")
+local readinessOp={op="query_owner_local",action="native-readiness",after=10,limit=2,query="Jailbreak"}
+local ready=c:execute("readiness",readinessOp,false,current)
+assert(ready.ok==true,ready.error)
+local readyRow=ready.data.rows[1]
+assert(ready.data.totalArtifacts==203 and ready.data.nextAfter==11 and ready.data.keyFile==nil and readyRow.readiness.realStudioInsertion==true
+ and readyRow.readiness.commercialReadiness==false and readyRow.artifactBytes==51205,"nested gateway rows[].readiness not consumed")
+flatReadiness=true
+assert(c:execute("flatReadiness",readinessOp,false,current).ok==false,"flat readiness flags admitted without rows[].readiness")
+flatReadiness=false
+local beforeReadiness=requests
+assert(c:execute("readinessCursor",{op="query_owner_local",action="native-readiness",after=-1},false,current).ok==false and requests==beforeReadiness,"negative readiness cursor reached gateway")
 print("executed local owner bridge boundary passed")
 `;
 function run(source=family) {
@@ -189,5 +211,15 @@ test('new media/assembly byte checks are behaviorally falsified when disabled',(
 
 test('whole catalogue proof fails when the source-page route is absent',()=>{
  const anchor='sources="/v1/sources",';assert.equal(family.split(anchor).length-1,1);
+ const result=run(family.replace(anchor,''));assert.notEqual(result.status,0);assert.match(result.output,/unsupported local query/);
+});
+
+test('native-readiness consumer fails if it reads flat flags instead of rows[].readiness (2026-09-27 mismatch)',()=>{
+ const anchor='if type(row.readiness[key]) ~= "boolean" then return nil end';assert.equal(family.split(anchor).length-1,1);
+ const result=run(family.replace(anchor,'if type(row[key]) ~= "boolean" then return nil end'));assert.notEqual(result.status,0);assert.match(result.output,/native-readiness page failed its rows\[\]\.readiness contract/);
+});
+
+test('native-readiness proof fails when the route is absent',()=>{
+ const anchor='["native-readiness"]="/v1/native-readiness"';assert.equal(family.split(anchor).length-1,1);
  const result=run(family.replace(anchor,''));assert.notEqual(result.status,0);assert.match(result.output,/unsupported local query/);
 });

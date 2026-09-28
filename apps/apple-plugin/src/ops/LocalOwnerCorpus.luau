@@ -24,6 +24,29 @@ local function sourceMetadata(value)
  out.exactStrings=exactMetadata(value.exactStrings)
  return out
 end
+-- /v1/native-readiness rows carry flags nested under rows[].readiness (gateway_native_readiness.py _page).
+local READINESS_FLAGS = {"offlineNativeArtifact","realStudioInsertion","visualEvidenceCaptured","visualInspection","gameplayVerified","commercialReadiness"}
+local function readinessPage(data, limit, integer)
+	if data.schema ~= "apple.owner-corpus.native-readiness-page.v1" or data.sourceExecuted ~= false or type(data.rows) ~= "table" or #data.rows > limit
+		or not integer(data.nextAfter) or not integer(data.totalArtifacts) then return nil end
+	local rows = {}
+	for _, row in data.rows do
+		if type(row) ~= "table" or type(row.readiness) ~= "table" or not sha(row.sourceSHA256) or not sha(row.artifactSHA256)
+			or type(row.chunkId) ~= "string" or not string.match(row.chunkId,"^chunk%-%d%d%d%d%d$")
+			or row.id ~= "owner-xml:"..row.sourceSHA256..":"..row.chunkId or not integer(row.artifactBytes) or row.artifactBytes < 1 then return nil end
+		local readiness = {}
+		for _, key in READINESS_FLAGS do
+			if type(row.readiness[key]) ~= "boolean" then return nil end
+			readiness[key] = row.readiness[key]
+		end
+		if readiness.offlineNativeArtifact ~= true then return nil end
+		local name = type(row.sourceName) == "string" and not string.find(row.sourceName,"[%c]") and string.sub(row.sourceName,1,160) or nil
+		table.insert(rows,{id=row.id,sourceSHA256=row.sourceSHA256,chunkId=row.chunkId,artifactSHA256=row.artifactSHA256,artifactBytes=row.artifactBytes,
+			nativeInstances=if integer(row.nativeInstances) then row.nativeInstances else nil,sourceName=name,readiness=readiness})
+	end
+	return {schema=data.schema,rows=rows,nextAfter=data.nextAfter,totalArtifacts=data.totalArtifacts,
+		matchingPreservedArtifacts=if integer(data.matchingPreservedArtifacts) then data.matchingPreservedArtifacts else nil,sourceExecuted=false,assemblyPerformed=false}
+end
 local function sanitize(value)
 	if type(value) ~= "table" then return value end
 	local out = {}
@@ -69,10 +92,10 @@ function LocalOwnerCorpus.build(api)
 	local function query(self,op,stillCurrent)
 		local config, err = connection(self,stillCurrent)
 		if not config then return nil,"refused",err end
-		local paths = {health="/v1/health",sources="/v1/sources",search="/v1/search",describe="/v1/describe",children="/v1/children",relations="/v1/relations",record="/v1/record",plan="/v1/plan",materialize="/v1/materialize",job="/v1/job",["native-map"]="/v1/native-map"}
+		local paths = {health="/v1/health",sources="/v1/sources",search="/v1/search",describe="/v1/describe",children="/v1/children",relations="/v1/relations",record="/v1/record",plan="/v1/plan",materialize="/v1/materialize",job="/v1/job",["native-map"]="/v1/native-map",["native-readiness"]="/v1/native-readiness"}
 		local path = paths[op.action]
 		if not path then return nil,"invalid","unsupported local query" end
-		if op.action ~= "health" and op.action ~= "sources" and op.action ~= "search" and op.action ~= "job" and op.action ~= "native-map" and not nodeId(op.id) then return nil,"invalid","exact local node ID required" end
+		if op.action ~= "health" and op.action ~= "sources" and op.action ~= "search" and op.action ~= "job" and op.action ~= "native-map" and op.action ~= "native-readiness" and not nodeId(op.id) then return nil,"invalid","exact local node ID required" end
 		if (op.action == "job" or op.action == "native-map") and not sha(op.jobId) then return nil,"invalid","exact local job ID required" end
 		local http = api.serviceFrom(self.game,self.options.services,"HttpService")
 		local params = {}
@@ -86,6 +109,9 @@ function LocalOwnerCorpus.build(api)
    if op.sourceSHA ~= nil then if not sha(op.sourceSHA) then return nil,"invalid","invalid source SHA filter" end; add("source",op.sourceSHA) end
 			if op.after ~= nil then if not nodeId(op.after) then return nil,"invalid","invalid search cursor" end; add("after",op.after) end
 			add("class",op.className)
+		elseif op.action == "native-readiness" then
+			if op.after ~= nil then if not api.integer(op.after) or op.after < 0 or op.after > 1000000 then return nil,"invalid","invalid readiness row cursor" end; add("after",op.after) end
+			if op.query ~= nil then if type(op.query) ~= "string" or #op.query > 120 or string.find(op.query,"[%c]") then return nil,"invalid","bounded readiness query required" end; add("query",op.query) end
 		else
 			for _, key in {"offset","after","afterOrdinal"} do
 				if op[key] ~= nil then if not api.integer(op[key]) or op[key] < 0 or op[key] > 1000000000 then return nil,"invalid","invalid numeric page cursor" end; add(key,op[key]) end
@@ -110,7 +136,11 @@ function LocalOwnerCorpus.build(api)
 		if op.action == "sources" then
    local items={}; for _,row in data.items or {} do table.insert(items,sourceMetadata(row)) end
    data={items=items,nextAfter=data.nextAfter}
-  elseif op.action == "health" then data={scope=data.scope,sourceStatuses=data.sourceStatuses,policy=data.policy,scripts=data.scripts,ok=data.ok} end
+  elseif op.action == "health" then data={scope=data.scope,sourceStatuses=data.sourceStatuses,policy=data.policy,scripts=data.scripts,ok=data.ok}
+  elseif op.action == "native-readiness" then
+   data = readinessPage(data,limit,api.integer)
+   if not data then return nil,"refused","native-readiness page failed its rows[].readiness contract" end
+  end
   data = sanitize(data)
 		if op.action == "record" then
 			local encoding = api.serviceFrom(self.game,self.options.services,"EncodingService")

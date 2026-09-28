@@ -133,7 +133,7 @@ export type StudioOp =
   | { op: 'snapshot'; root: string; includeScripts?: boolean; checkpointId?: string } // serialize subtree; new checkpoints bind their identity
   | { op: 'restore'; root: string; snapshot: unknown; checkpointId?: string } // optional for legacy senders; SessionDO always binds it
   | { op: 'insert_asset'; assetId: number; parent: string }
-  | { op: 'query_owner_local'; action: 'health' | 'sources' | 'search' | 'describe' | 'record' | 'children' | 'relations' | 'plan' | 'materialize' | 'job' | 'native-map';
+  | { op: 'query_owner_local'; action: 'health' | 'sources' | 'search' | 'describe' | 'record' | 'children' | 'relations' | 'plan' | 'materialize' | 'job' | 'native-map' | 'native-readiness';
       id?: string; query?: string; sourceSHA?: string; jobId?: string; className?: string; kind?: string; scope?: string; limit?: number;
       offset?: number; after?: string | number; afterOrdinal?: number; afterId?: string }
   | { op: 'query_owner_assembly'; action: 'recipes' | 'code' | 'record'; sourceSHA?: string; mechanic?: string; codeSHA?: string; after?: string | number; offset?: number; limit?: number }
