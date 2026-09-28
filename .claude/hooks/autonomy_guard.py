@@ -47,7 +47,6 @@ FORBIDDEN_BASH = (
     (r"\bgit\s+checkout\b", "git checkout overwrites working-tree files / moves the shared HEAD"),
     (r"\bgit\s+switch\b", "git switch moves the shared HEAD under other agents"),
     (r"\bgit\s+restore\b", "git restore discards uncommitted work"),
-    (r"\bgit\s+add\s+(-A\b|--all\b|-u\b|--update\b|\.(\s|$))", "indiscriminate staging sweeps peers' work into your commit"),
     (r"\brm\s+-[a-zA-Z]*r[a-zA-Z]*f?[a-zA-Z]*\s+(/|~|\$HOME)(\s|/?$)", "recursive delete of / or the home directory"),
     (r"\bsecurity\s+(dump-keychain|find-(generic|internet)-password)\b", "keychain secret extraction"),
     (r"\bsqlite3\b.*(Cookies|Login Data)", "browser credential database access"),
