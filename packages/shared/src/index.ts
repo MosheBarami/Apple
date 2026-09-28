@@ -128,10 +128,22 @@ export type StudioOp =
   // Studio gives plugins no viewport readback, so the plugin rasterises the scene itself and
   // returns real pixels. `view` picks a camera preset; `target` frames one instance's subtree.
   | { op: 'render_view'; target?: string; view?: RenderViewName | 'all'; width?: number; height?: number }
+  | { op: 'capture_studio_viewport' }
   | { op: 'screenshot'; target?: string } // hero view at default size; kept for compatibility
   | { op: 'snapshot'; root: string; includeScripts?: boolean; checkpointId?: string } // serialize subtree; new checkpoints bind their identity
   | { op: 'restore'; root: string; snapshot: unknown; checkpointId?: string } // optional for legacy senders; SessionDO always binds it
   | { op: 'insert_asset'; assetId: number; parent: string }
+  | { op: 'query_owner_local'; action: 'health' | 'sources' | 'search' | 'describe' | 'record' | 'children' | 'relations' | 'plan' | 'materialize' | 'job' | 'native-map';
+      id?: string; query?: string; sourceSHA?: string; jobId?: string; className?: string; kind?: string; scope?: string; limit?: number;
+      offset?: number; after?: string | number; afterOrdinal?: number; afterId?: string }
+  | { op: 'query_owner_assembly'; action: 'recipes' | 'code' | 'record'; sourceSHA?: string; mechanic?: string; codeSHA?: string; after?: string | number; offset?: number; limit?: number }
+  | { op: 'query_owner_media'; id: string; property: string; offset?: number; limit?: number; inspect?: boolean }
+  | { op: 'query_owner_exact'; action: 'sources' | 'strings' | 'string'; sourceSHA?: string; identity?: string;
+      seq?: number; offset?: number; limit?: number; after?: string | number }
+  | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
+      nativeInstances: number; parent: string }
+  | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
+      contentToken: string; parent: string; name: string }
   // Roblox-native text-to-3D. Free, ~20s, 10 req/min. Output is SESSION-SCOPED: it does not
   // survive save/publish. The result always carries a QC verdict — generation succeeding is not
   // evidence the model is good.
@@ -361,6 +373,9 @@ export interface RenderViewResult {
   subject: string;
   boundsSize: [number, number, number];
   views: RenderedView[];
+  /** Native active viewport may exist without any software-renderable geometry. */
+  softwareRenderError?: string;
+  targetFramed?: boolean;
   lighting?: SceneLighting;
   layout?: SceneLayout;
   /** Active Studio 3D viewport capture when the user granted screenshot permission. */
@@ -448,7 +463,7 @@ export const REFUSAL_REMEDIES = {
   /** Studio is running a test, so the plugin will not write. */
   leave_test_mode: 'Stop the running test in Studio (the ⏹ Stop button) and ask again — Apple only edits in edit mode.',
   /** The asset is not in the signed-in user's inventory. */
-  take_asset_first: 'Open that asset on the Creator Store and take it into your inventory, then ask again. Roblox only lets a plugin load assets the signed-in account owns.',
+  take_asset_first: 'Apple could not load this model. Choose another one, or add it to your Roblox inventory and try again.',
   /** The requested target is outside the scope the plugin will write to. */
   choose_allowed_target: 'Ask for a target inside the place Apple may write to — Workspace, ServerStorage, ServerScriptService, ReplicatedStorage, StarterGui, StarterPack or StarterPlayer.',
   /** The asset carried code, which this product will not insert on anyone's behalf. */
@@ -938,6 +953,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'set_visible':
     case 'insert_asset':
     // D-MODELLIB-1: puts a library model into the place, the same act as insert_asset.
+    case 'insert_owner_component':
     case 'insert_library_model':
     case 'generate_model':
     case 'generate_model_external':
@@ -1128,6 +1144,11 @@ export interface StudioFrame {
   encoding?: FrameEncoding;
   /** Capture source. Absent means a legacy software-render frame. */
   source?: 'studio_viewport' | 'software_render';
+  /** Actual engine resolution before bounded transport resampling. */
+  nativeWidth?: number;
+  nativeHeight?: number;
+  resampled?: boolean;
+  captureMethod?: 'capture_service';
   width: number;
   height: number;
   /** Which camera preset produced it. */
@@ -2778,6 +2799,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'insert_asset',
     label: 'Insert assets from the Creator Store',
     why: 'Brings third-party models into your place.',
+    group: 'changes',
+  },
+  {
+    name: 'insert_owner_component',
+    label: 'Import owner-supplied components',
+    why: 'Inserts private native components, preserving downloaded source as inert data.',
     group: 'changes',
   },
   {

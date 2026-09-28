@@ -42,6 +42,7 @@ export const MUTATING_OPS: ReadonlySet<string> = new Set([
   'move_instances',
   'restore',
   'insert_asset',
+  'import_owner_component',
   'run_code',
   'generate_model',
   'transform_instances',

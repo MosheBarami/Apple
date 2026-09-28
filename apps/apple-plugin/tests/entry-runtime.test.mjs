@@ -86,8 +86,13 @@ end}
 local commandOptions
 local Commands = {new=function(options)
   commandOptions=options
-  return {execute=function(self,id,op,allow)
+  return {execute=function(self,id,op,allow,fence)
     table.insert(editsObserved,allow)
+    if type(op)=='table' and op.op=='capture_studio_viewport' then
+      return {id=id,ok=commandOptions.isEdit() and type(fence)=='function' and fence()==true}
+    elseif type(op)=='table' and op.op=='create_instances' then
+      return {id=id,ok=allow==true and type(fence)=='function' and fence()==true}
+    end
     if type(op)=='table' and op.op=='run_mode' and (op.action=='start' or op.action=='run' or op.action=='restart') then
       studioTest.EditModeActive=false; studioTest:FirePropertyChanged('EditModeActive')
       return {id=id,ok=true,data={runMode=true,running=true}}
@@ -149,6 +154,14 @@ byText('Connect to Apple').Activated:Fire()
 assert(bridgeInstance.claims==1)
 bridgeConfig.execute('b',{})
 assert(editsObserved[#editsObserved]==false,'pairing must not grant writes')
+local pairedCapture=bridgeConfig.execute('paired-inspect-capture',{op='capture_studio_viewport'},function()return true end)
+assert(pairedCapture.ok==true,'paired viewport capture must work with edits OFF')
+assert(editsObserved[#editsObserved]==false,'read-only capture must not grant edit consent')
+assert(bridgeConfig.execute('paired-write-denied',{op='create_instances'},function()return true end).ok==false,'pairing pixels must not authorize place writes')
+assert(bridgeConfig.execute('retired-capture',{op='capture_studio_viewport'},function()return false end).ok==false,'retired generation must refuse pixels')
+studioTest.EditModeActive=false
+assert(bridgeConfig.execute('running-capture',{op='capture_studio_viewport'},function()return true end).ok==false,'capture must still require edit mode')
+studioTest.EditModeActive=true
 byText('Enable edits…').Activated:Fire()
 bridgeConfig.execute('c',{})
 assert(editsObserved[#editsObserved]==false,'first click only discloses')
@@ -233,6 +246,7 @@ studioTest:FirePropertyChanged('EditModeActive')
 byText('Disconnect').Activated:Fire()
 bridgeConfig.execute('i',{})
 assert(editsObserved[#editsObserved]==false,'disconnect clears permission')
+assert(bridgeConfig.execute('disconnected-capture',{op='capture_studio_viewport'},function()return true end).ok==false,'disconnected pairing must refuse pixels')
 plugin.Unloading:Fire()
 assert(bridgeInstance.destroyed and commandDestroyed)
 for _,o in objects do
@@ -250,6 +264,12 @@ print('entry runtime assertions passed')
   writeFileSync(file, prelude + '\n' + entry + '\n' + assertions);
   const output = execFileSync('luau', [file], { encoding: 'utf8' });
   assert.match(output, /entry runtime assertions passed/);
+
+  const oldCaptureFence = entry.replace(' or op.op == "capture_studio_viewport"', '');
+  assert.notEqual(oldCaptureFence,entry,'capture pairing fence must be present');
+  const mutantFile=join(directory,'entry-capture-edit-fence-mutant.luau');
+  writeFileSync(mutantFile,prelude+'\n'+oldCaptureFence+'\n'+assertions);
+  assert.throws(()=>execFileSync('luau',[mutantFile],{encoding:'utf8',stdio:'pipe'}),error=>String(error.stdout??'').includes('paired viewport capture must work with edits OFF')||String(error.stderr??'').includes('paired viewport capture must work with edits OFF'));
 
   const unknownServicePrelude = prelude.replace(
     'studioTest.EditModeActive=true',

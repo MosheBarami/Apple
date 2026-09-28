@@ -1,0 +1,5 @@
+# Owner-listed backpack GUI #23, 2026-09-26
+
+The [owner-listed post](https://devforum.roblox.com/t/free-front-end-backpack-hotbar-gui/3081889) links to the author's [post 5 in the source topic](https://devforum.roblox.com/t/custom-inventory-system-full-tutorial-model/2955578/5), which attaches `inv.rbxm`. Downloaded that original attachment to Git-ignored `packages/asset-library/review/owner-23/inv.rbxm`: **63,171 bytes**, SHA-256 `44b78f42f3757cbfe05c1d72dbd7cec4851c2fa6fbddfb82ad79cb838f67dd7d`. Both isolated worktree and live-dashboard copies have the same hash.
+
+A read-only Roblox binary deserializer found 101 Instances, 16 GuiObjects and **53 scripts** (48 ModuleScripts, 5 LocalScripts). No script was executed or installed in Studio. The author says the client-only UI uses Fusion; the preview shows a sparse dark-gray backpack and hotbar over a baseplate. This is a useful functional reference but fails the colorful cartoon commercial visual target. The attachment is local review only, with no Apple backend redistribution grant or verified insertion route. The live dashboard shows its filename, hash, source, and lack of backend access.

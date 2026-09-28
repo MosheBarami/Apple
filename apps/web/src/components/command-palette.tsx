@@ -42,8 +42,11 @@ export function CommandPalette() {
 
   useOverlayScrollLock(open);
 
-  const ranked = useMemo(() => rankCommands(commands, query), [commands, query]);
-  const groups = useMemo(() => groupBySection(ranked), [ranked]);
+  const matches = useMemo(() => rankCommands(commands, query), [commands, query]);
+  const groups = useMemo(() => groupBySection(matches), [matches]);
+  // Pointer dispatch, keyboard selection and aria-activedescendant use the displayed order.
+  // Grouping can move rows away from their position in the ungrouped score list.
+  const ranked = useMemo(() => groups.flatMap((group) => group.items), [groups]);
 
   // Global chord. Registered once, at the document, so it works from inside any input except one
   // that has already handled it.

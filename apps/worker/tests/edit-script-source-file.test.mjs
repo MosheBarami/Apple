@@ -28,6 +28,7 @@ const bundle = (rel, name) => {
 
 const T = await import(pathToFileURL(bundle('tools.ts', 'tools')).href);
 const W = await import(pathToFileURL(bundle('webtools.ts', 'webtools')).href);
+const L = await import(pathToFileURL(bundle('luau-review.ts', 'luau-review')).href);
 
 function fakeKV() {
   const rows = new Map();
@@ -70,11 +71,17 @@ function studio(kv, projectId = 'project-A', initial = 'print("before")\n') {
       ops.push(op);
       if (op.op === 'read_script') {
         if (body === null) return { ok: false, error: `script not found: ${op.path}` };
-        return { ok: true, data: { path: op.path, source: body } };
+        return { ok: true, data: { path: op.path, source: body, baseHash: L.sourceHash(body) } };
       }
       if (op.op === 'edit_script') {
-        body = op.source;
-        return { ok: true, data: { path: op.path, mode: 'replace' } };
+        if (op.edits) {
+          const applied = L.applyEdits(body, op.edits);
+          if (!applied.ok) return { ok: false, error: applied.error };
+          body = applied.source;
+        } else {
+          body = op.source;
+        }
+        return { ok: true, data: { path: op.path, mode: op.edits ? 'edits' : 'replace' } };
       }
       return { ok: false, error: `unexpected op ${op.op}` };
     },
@@ -250,4 +257,58 @@ test('saved syntax errors and asset-loader Luau are refused before any Studio mu
     assert.match(String(res.error), pattern, `${path}: ${JSON.stringify(res)}`);
     assert.equal(s.writes().length, 0, `${path} reached the edit_script mutation`);
   }
+});
+
+// Replay the SHAPE observed in the live 2026-09-26 provider response: top-level
+// find/replace and read_script's camel-case baseHash, rather than canonical edits.
+test('flat provider find/replace preserves the exact edit and read hash', async () => {
+  const s = studio(fakeKV());
+  const read = await T.TOOLS.read_script.run(s.ctx, { path: TARGET });
+  assert.match(read.baseHash, /^[0-9a-f]{8}$/);
+  const out = await T.TOOLS.edit_script.run(s.ctx, {
+    path: TARGET, baseHash: read.baseHash, find: 'before', replace: 'after',
+  });
+  assert.equal(out.error, undefined, JSON.stringify(out));
+  assert.equal(s.body(), 'print("after")\n');
+  assert.equal(s.writes().length, 1);
+});
+
+test('flat provider input cannot bypass conflict or ambiguous payload refusal', async () => {
+  const flat = { path: TARGET, find: 'before', replace: 'after' };
+  for (const args of [
+    { ...flat, baseHash: '00000000' },
+    { ...flat, baseHash: '00000000', base_hash: '11111111' },
+    { ...flat, source: 'print("replacement")' },
+    { ...flat, edits: [{ find: 'before', replace: 'other' }] },
+    { ...flat, source_file: { path: FILE, version: 1 } },
+    { ...flat, find: '' },
+    { ...flat, find: 42 },
+    { ...flat, replace: undefined },
+    { path: TARGET, find: 'before' },
+    { path: TARGET, replace: 'after' },
+    { ...flat, all: 'true' },
+    { ...flat, baseHash: 42 },
+  ]) {
+    const s = studio(fakeKV());
+    const out = await T.TOOLS.edit_script.run(s.ctx, args);
+    assert.equal(typeof out.error, 'string', JSON.stringify(args));
+    assert.equal(s.writes().length, 0, JSON.stringify(args));
+    assert.equal(s.body(), 'print("before")\n');
+  }
+});
+
+test('flat input still refuses no match and syntax damage and allows exact deletion', async () => {
+  for (const args of [
+    { find: 'missing text', replace: 'other' },
+    { find: 'print("before")', replace: 'local = ' },
+  ]) {
+    const s = studio(fakeKV());
+    const out = await T.TOOLS.edit_script.run(s.ctx, { path: TARGET, ...args });
+    assert.equal(typeof out.error, 'string');
+    assert.equal(s.writes().length, 0);
+  }
+  const s = studio(fakeKV());
+  const out = await T.TOOLS.edit_script.run(s.ctx, { path: TARGET, find: 'print("before")', replace: '' });
+  assert.equal(out.error, undefined, JSON.stringify(out));
+  assert.equal(s.body(), '\n');
 });

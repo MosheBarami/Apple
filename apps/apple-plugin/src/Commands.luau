@@ -3171,15 +3171,20 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?, s
 		return self.game:GetService("InsertService"):LoadAsset(assetId)
 	end)
 	if not okLoad or typeof(loaded) ~= "Instance" then
-		-- WHY ONE REMEDY FOR EVERY WAY THIS CAN FAIL. LoadAsset refuses for several reasons and
-		-- Roblox says which only in prose we do not own, so the code cannot be picked by reading
-		-- the sentence. It is `take_asset_first` because ownership is the only cause the user can
-		-- act on, and because it is the cause in practice: the ownership evidence note dated
-		-- 2026-09-19 measured "User is not authorized" for a library id against an owned-asset
-		-- control that succeeded, and asset-library.ts reports that every live row of the library
-		-- needs taking. The over-promise is narrow and visible — a deleted or moderated asset sends
-		-- the user to a Creator Store page that is not there — and that beats the alternative,
-		-- which is the worker saying it does not know while the product has the answer written down.
+		-- Roblox's owned-asset loader refuses free Creator Store models from other creators.
+		-- The modern loader can read them only when this experience ALREADY allows third-party
+		-- assets. The RobloxScript-protected setting cannot be read by a plugin; the engine itself
+		-- refuses this call when disabled. Never set that security-sensitive Studio option here.
+		-- Both loaders feed the same detached scan and checks before anything is parented.
+		local okService, assetService = pcall(function() return self.game:GetService("AssetService") end)
+		if okService and assetService then
+			okLoad, loaded = pcall(function() return assetService:LoadAssetAsync(assetId) end)
+		end
+	end
+	if not okLoad or typeof(loaded) ~= "Instance" then
+		-- Roblox can refuse either loader for ownership, moderation, deletion or a transient error.
+		-- The remedy offers another model as well as taking this one into inventory; it does not
+		-- claim to know which Roblox-side cause fired or suggest changing a security setting.
 		return nil, "refused", "Roblox would not load asset " .. tostring(assetId) .. ": " .. tostring(loaded), "take_asset_first"
 	end
 
@@ -3492,6 +3497,7 @@ local function handleTransform(self: any, op: any): (any?, string?, string?, str
 	if not okFrames then return nil, "internal", "could not construct the requested transform" end
 
 	local changes = {}
+	local pivots = {}
 	local seenParts = {}
 	for _, target in targets do
 		local origin, parts, spatialErr = spatialBody(target.inst)
@@ -3513,6 +3519,31 @@ local function handleTransform(self: any, op: any): (any?, string?, string?, str
 				table.insert(changes, change)
 			end
 		end
+		if isA(target.inst, "Model") then
+			local descendants, descendantsErr = descendantsOf(target.inst)
+			if not descendants then return nil, "internal", descendantsErr end
+			local models = { target.inst }
+			for _, descendant in descendants do
+				if isA(descendant, "Model") then
+					if #models >= MAX_AFFECTED_PARTS then return nil, "invalid", "transform exceeds the model-pivot limit" end
+					table.insert(models, descendant)
+				end
+			end
+			for _, model in models do
+				if #pivots >= MAX_AFFECTED_PARTS then return nil, "invalid", "transform exceeds the model-pivot limit" end
+				local okPivot, change = pcall(function()
+					-- A PrimaryPart carries its model pivot with the part transform.
+					-- WorldPivot only needs a separate write for models without one.
+					if model.PrimaryPart ~= nil then return nil end
+					local current = model:GetPivot()
+					local nextPosition = origin + rotation:VectorToWorldSpace(current.Position - origin) * scale + moveVector
+					local turned = rotation * current
+					return { model = model, cframe = turned + (nextPosition - turned.Position) }
+				end)
+				if not okPivot then return nil, "internal", "could not calculate model pivot transform: " .. tostring(change) end
+				if change then table.insert(pivots, change) end
+			end
+		end
 	end
 	for _, change in changes do
 		local ok, setErr = pcall(function()
@@ -3521,7 +3552,11 @@ local function handleTransform(self: any, op: any): (any?, string?, string?, str
 		end)
 		if not ok then return nil, "internal", "Studio refused part transform: " .. tostring(setErr) end
 	end
-	return { transformed = #targets, parts = #changes, moved = moved, rotated = rotated, scaled = scaled }, nil
+	for _, change in pivots do
+		local ok, setErr = pcall(function() change.model.WorldPivot = change.cframe end)
+		if not ok then return nil, "internal", "Studio refused model pivot transform: " .. tostring(setErr) end
+	end
+	return { transformed = #targets, parts = #changes, pivots = #pivots, moved = moved, rotated = rotated, scaled = scaled }, nil
 end
 
 local function handleClone(self: any, op: any): (any?, string?, string?, string?)
@@ -4194,7 +4229,7 @@ function loadStudioCaptureAdapter(options: any, gameRef: any): (any?, string?)
 		return nil, "the StudioCapture adapter is not bundled in this build"
 	end
 	local created, adapter = pcall(function()
-		return module.new({ game = gameRef, services = options.services, enum = options.enum })
+		return module.new({ game = gameRef, services = options.services, enum = options.enum, isEdit = options.isEdit })
 	end)
 	if not created or type(adapter) ~= "table" or type(adapter.capture) ~= "function" then
 		return nil, "StudioCaptureService could not be initialised"
@@ -4412,7 +4447,7 @@ end
 ]]
 local RENDER_VIEWS = { hero = true, front = true, side = true, top = true, eye = true, all = true }
 
-local function renderCapture(self: any, op: any, view: string, width: number, height: number): (any?, string?, string?)
+local function renderCapture(self: any, op: any, view: string, width: number, height: number, stillCurrent: any?): (any?, string?, string?)
 	if not self.render then
 		return nil, "refused", self.renderError or "the bounded software renderer is unavailable"
 	end
@@ -4441,20 +4476,24 @@ local function renderCapture(self: any, op: any, view: string, width: number, he
 	end)
 	if not ok then return nil, "internal", tostring(result) end
 	if type(result) ~= "table" then return nil, "internal", "the renderer returned no result" end
-	-- The renderer reports "nothing renderable found under ..." as data rather than raising. That
-	-- is a real answer about the place, not a fault, and it is returned as a NAMED failure so the
-	-- agent is told the frame is empty instead of being handed a picture of the sky.
-	if type(result.error) == "string" then return nil, "not_found", result.error end
+	-- No software-renderable parts does not mean the native scene is empty: Beams, UI and other
+	-- engine surfaces may still be visible. Keep this limitation separate and attempt native pixels.
+	local softwareError = if type(result.error) == "string" then result.error else nil
+	if softwareError then
+		result = { subject = subject, views = {}, softwareRenderError = softwareError, targetFramed = false }
+	end
 	-- Native viewport capture is additive. Software views remain the multi-angle, target-framed
 	-- critique surface; StudioCaptureService contributes what the person is actually seeing in the
 	-- active 3D viewport. Failure here must not erase a valid software observation.
 	if self.capture and type(self.capture.capture) == "function" then
-		local nativeOk, native, nativeErr = pcall(function() return self.capture:capture(w :: number, h :: number) end)
+		local nativeOk, native, nativeErr = pcall(function() return self.capture:capture(320,240,stillCurrent) end)
 		if nativeOk and type(native) == "table" and type(native.rgbBase64) == "string" and #native.rgbBase64 > 0 then
 			result.studioViewport = {
 				rgbBase64 = native.rgbBase64,
-				encoding = "png",
+				encoding = native.encoding,
 				source = "studio_viewport",
+				nativeWidth = native.nativeWidth, nativeHeight = native.nativeHeight,
+				resampled = native.resampled, captureMethod = native.captureMethod,
 				width = native.width,
 				height = native.height,
 				capturedAt = native.capturedAt,
@@ -4469,19 +4508,34 @@ local function renderCapture(self: any, op: any, view: string, width: number, he
 	elseif type(self.captureError) == "string" then
 		result.studioViewportError = string.sub(self.captureError, 1, 240)
 	end
+	if softwareError and not result.studioViewport then
+		return nil, if self.capture then "refused" else "not_found", softwareError .. "; native viewport unavailable: " .. tostring(result.studioViewportError or "capture adapter unavailable")
+	end
 	return result, nil
 end
 
-local function handleRenderView(self: any, op: any): (any?, string?, string?)
+local function handleRenderView(self: any, op: any, stillCurrent: any?): (any?, string?, string?)
 	local view = if op.view == nil then "hero" else op.view
 	if type(view) ~= "string" then return nil, "invalid", "view must be a string" end
-	return renderCapture(self, op, view, op.width, op.height)
+	return renderCapture(self, op, view, op.width, op.height, stillCurrent)
 end
 
-local function handleScreenshot(self: any, op: any): (any?, string?, string?)
-	-- Kept for compatibility with senders older than the multi-view protocol: one hero frame at the
-	-- default size. It is the same code path, not a second one.
-	return renderCapture(self, op, "hero", nil, nil)
+local function handleScreenshot(self: any, op: any, stillCurrent: any?): (any?, string?, string?)
+	return renderCapture(self, op, "hero", nil, nil, stillCurrent)
+end
+
+local function handleNativeViewport(self: any, _op: any, stillCurrent: any?): (any?, string?, string?)
+	-- Native current-camera pixels, independent of software geometry. No camera or place writes.
+	if not self.capture then return nil, "refused", self.captureError or "native viewport capture is unavailable" end
+	local ok, frame, err = pcall(function() return self.capture:capture(320,240,stillCurrent) end)
+	if not ok then return nil, "refused", tostring(frame) end
+	if type(frame) ~= "table" or (frame.encoding ~= "png" and frame.encoding ~= "rgb24") or frame.source ~= "studio_viewport" or type(frame.rgbBase64) ~= "string" or #frame.rgbBase64 == 0 then
+		return nil, "refused", err or "native viewport returned no pixels"
+	end
+	frame.view = "viewport"
+	frame.subject = "game.Workspace"
+	frame.targetFramed = false
+	return frame, nil
 end
 
 function runModeState(runService: any): (any?, string?)
@@ -4753,6 +4807,7 @@ HANDLERS = {
 	ping = function(_, _) return opPing() end,
 	render_view = handleRenderView,
 	screenshot = handleScreenshot,
+	capture_studio_viewport = handleNativeViewport,
 	run_mode = handleRunMode,
 	inspect_model = handleInspectModel,
 	project_census = handleProjectCensus,
@@ -5067,7 +5122,7 @@ function Commands.new(options: any?): any
 		-- three values is unchanged; the ones that know the answer can now give it.
 		if not MUTATING[name] then
 			local ok, data, kind, message, remedy = pcall(function()
-				local result, resultKind, resultMessage, resultRemedy = handler(self, op)
+				local result, resultKind, resultMessage, resultRemedy = handler(self, op, stillCurrent)
 				return result, resultKind, resultMessage, resultRemedy
 			end)
 			if not ok then
@@ -5091,7 +5146,7 @@ function Commands.new(options: any?): any
 					end
 					return result, resultKind, resultMessage
 				end
-				local result, resultKind, resultMessage, resultRemedy = handler(self, op)
+				local result, resultKind, resultMessage, resultRemedy = handler(self, op, stillCurrent)
 			return result, resultKind, resultMessage, resultRemedy
 		end)
 		if not ok then
@@ -5196,6 +5251,10 @@ function Commands.capabilities(engine: any): any
 		local reason = capabilityReason(engine and engine.renderError, "the bounded software renderer is not bundled in this build")
 		byName.render_view = { op = "render_view", status = "unsupported", reason = reason }
 		byName.screenshot = { op = "screenshot", status = "unsupported", reason = reason }
+	end
+
+	if engine == nil or engine.capture == nil then
+		byName.capture_studio_viewport = { op = "capture_studio_viewport", status = "unsupported", reason = capabilityReason(engine and engine.captureError, "native Studio viewport capture is unavailable") }
 	end
 
 	-- `execute` checks UNSUPPORTED before every other dispatch path, so an explicit refusal wins if

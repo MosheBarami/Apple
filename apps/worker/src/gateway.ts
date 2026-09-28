@@ -382,6 +382,8 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     // Tool definitions only reach the wire in NATIVE mode; in prompted mode they are already
     // baked into the system message above.
     tools: cfg.nativeTools ? req.tools : undefined,
+    ...(cfg.nativeTools && req.requiredTool && req.tools?.some((tool) => tool.name === req.requiredTool)
+      ? { requiredTool: req.requiredTool } : {}),
     maxTokens,
     temperature: req.temperature ?? cfg.temperature,
     ...(effort ? { reasoningEffort: effort } : {}),

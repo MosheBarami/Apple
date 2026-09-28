@@ -233,6 +233,58 @@ spec("handler-level refusals carry the remedy the product wrote for them", funct
     c:destroy()
 end)
 
+spec("the engine gates third-party loading even when its setting cannot be read", function()
+    local calls = 0
+    local allow = false
+    services.InsertService = { LoadAsset = function() error("not owned by this place") end }
+    services.AssetService = setmetatable({
+        LoadAssetAsync = function(_, _)
+            calls += 1
+            if not allow then error("third-party loading is disabled") end
+            local model = Instance.new("Model")
+            local part = Instance.new("Part"); part.Name = "CartoonTree"; part.Parent = model
+            return model
+        end,
+    }, { __index = function(_, key)
+        if key == "AllowInsertFreeAssets" then error("lacking capability RobloxScript") end
+        return nil
+    end })
+    local c = newCommands()
+    local op = { op = "insert_asset", assetId = 123456, parent = "game.Workspace" }
+    local shut = run(c, "third-party-disabled", op, true)
+    eq(shut.ok, false, "disabled third-party loading must refuse")
+    eq(calls, 1, "the engine refuses loading when the setting is off")
+
+    allow = true
+    local allowed = run(c, "third-party-enabled", op, true)
+    eq(allowed.ok, true, "a free model may load when the person already enabled Studio's setting")
+    eq(allowed.data.count, 1)
+    eq(calls, 2)
+
+    services.InsertService.LoadAsset = function(_, _)
+        local model = Instance.new("Model")
+        local part = Instance.new("Part"); part.Name = "OfficialCartoonTree"; part.Parent = model
+        return model
+    end
+    local official = run(c, "official-still-first", { op = "insert_asset", assetId = 123458, parent = "game.Workspace" }, true)
+    eq(official.ok, true, "Roblox-owned assets still use the existing loader")
+    eq(calls, 2, "the modern loader is only a fallback")
+    services.InsertService.LoadAsset = function() error("not owned by this place") end
+
+    services.AssetService.LoadAssetAsync = function(_, _)
+        calls += 1
+        local model = Instance.new("Model")
+        local script = Instance.new("Script"); script.Name = "Payload"; script.Parent = model
+        return model
+    end
+    local scripted = run(c, "third-party-scripted", { op = "insert_asset", assetId = 123457, parent = "game.Workspace" }, true)
+    eq(scripted.ok, false, "a third-party model with code must still be refused")
+    eq(scripted.remedy, "choose_scriptless_asset")
+    eq(calls, 3)
+    c:destroy()
+    services.InsertService = nil; services.AssetService = nil
+end)
+
 spec("typed creation and set_props commit a recording", function()
     local c = newCommands()
     local made = run(c, "create", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace", props = { Anchored = { t = "bool", v = true }, Size = { t = "Vector3", v = { 4, 2, 1 } } }, attributes = { Zone = { t = "string", v = "safe" } }, children = {{ className = "Folder", name = "Nested" }} }} }, true)
@@ -793,6 +845,34 @@ spec("transform_instances moves and scales through one recorded plan", function(
     local refused = run(c, "bad-transform", { op = "transform_instances", paths = { "game.Workspace.Mover" }, scale = 0 / 0 }, true)
     eq(refused.ok, false); eq(mover.Size.X, 2, "invalid transform leaves geometry unchanged")
     c:destroy()
+end)
+
+spec("model transforms preserve offset pivots and nested model pivots", function()
+    local model = Instance.new("Model"); model.Name = "PivotAssembly"; model.Parent = workspace
+    local nested = Instance.new("Model"); nested.Name = "Nested"; nested.Parent = model
+    local part = Instance.new("Part"); part.CFrame = CFrame.new(10, 20, 30); part.Parent = nested
+    model.WorldPivot = CFrame.new(12, 23, 34)
+    nested.WorldPivot = CFrame.new(9, 18, 27)
+    model.GetPivot = function(self) return self.WorldPivot end
+    nested.GetPivot = function(self) return self.WorldPivot end
+    local primaryModel = Instance.new("Model"); primaryModel.Name = "Primary"; primaryModel.Parent = model
+    local primary = Instance.new("Part"); primary.CFrame = CFrame.new(10, 20, 30); primary.Parent = primaryModel
+    primaryModel.PrimaryPart = primary; primaryModel.WorldPivot = CFrame.new(100, 100, 100)
+    local sibling = Instance.new("Model"); sibling.Name = "PivotSibling"; sibling.WorldPivot = CFrame.new(80, 80, 80); sibling.Parent = workspace
+    local c = newCommands()
+    local r = run(c, "model-pivots", { op = "transform_instances", paths = { "game.Workspace.PivotAssembly" }, move = { 2, 3, 4 }, scale = 2 }, true)
+    eq(r.ok, true, tostring(r.error)); eq(r.data.parts, 2)
+    eq(part.Position.X, 12); eq(part.Position.Y, 23); eq(part.Position.Z, 34)
+    eq(model.WorldPivot.Position.X, 16, "offset pivot follows the geometry transform")
+    eq(model.WorldPivot.Position.Y, 29); eq(model.WorldPivot.Position.Z, 42)
+    eq(nested.WorldPivot.Position.X, 10); eq(nested.WorldPivot.Position.Y, 19); eq(nested.WorldPivot.Position.Z, 28)
+    eq(primary.Position.X, 12); eq(primaryModel.WorldPivot.Position.X, 100, "PrimaryPart owns its model pivot")
+    eq(sibling.WorldPivot.Position.X, 80, "unselected model is unchanged")
+    nested.GetPivot = function() error("pivot unreadable") end
+    local failed = run(c, "pivot-preflight", { op = "transform_instances", paths = { "game.Workspace.PivotAssembly" }, move = { 1, 0, 0 } }, true)
+    eq(failed.ok, false); eq(part.Position.X, 12, "pivot preflight precedes geometry writes")
+    eq(model.WorldPivot.Position.X, 16); eq(history.recording, nil)
+    c:destroy(); model:Destroy(); sibling:Destroy()
 end)
 
 spec("multi-target structural failures happen before the first mutation", function()
@@ -1482,7 +1562,7 @@ test('every dispatcher branch binds the handler remedy, including Studio-state c
   // condition the three unreachable remedies grew in: a slot nobody could observe, discovered only
   // when a refusal arrived with nothing in it. So the shape is pinned here until a read-side remedy
   // exists to pin it behaviourally, and the failure message says which branch lost the value.
-  const branches = SOURCE.match(/local result, resultKind, resultMessage(, resultRemedy)? = handler\(self, op\)/g) ?? [];
+  const branches = SOURCE.match(/local result, resultKind, resultMessage(, resultRemedy)? = handler\(self, op\b[^)]*\)/g) ?? [];
   assert.equal(branches.length, 3, 'execute should call the handler in exactly three branches');
   for (const branch of branches) {
     assert.match(branch, /resultRemedy/, 'a dispatcher branch stopped binding the handler remedy: ' + branch);

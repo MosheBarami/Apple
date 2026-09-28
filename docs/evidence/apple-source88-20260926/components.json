@@ -1,0 +1,32 @@
+[
+  {
+    "bodyPosition": "818.6874, 223.48132, -193.5803",
+    "parts": 2,
+    "scripts": 0,
+    "size": "2.667, 1.942, 2.805",
+    "sourceGeometryPreserved": true,
+    "stemDistance": 1.2894482612609863,
+    "stemPosition": "818.68616, 224.77077, -193.58342",
+    "variant": 1
+  },
+  {
+    "bodyPosition": "818.6874, 223.48132, -190.5803",
+    "parts": 2,
+    "scripts": 0,
+    "size": "2.6672869, 1.9417715, 2.8045468",
+    "sourceGeometryPreserved": true,
+    "stemDistance": 1.2707868814468384,
+    "stemPosition": "818.68616, 224.7521, -190.58342",
+    "variant": 2
+  },
+  {
+    "bodyPosition": "818.6874, 223.48132, -187.73033",
+    "parts": 2,
+    "scripts": 0,
+    "size": "2.6672869, 1.9417715, 2.8045468",
+    "sourceGeometryPreserved": true,
+    "stemDistance": 1.2732511758804321,
+    "stemPosition": "818.6874, 224.75351, -187.7824",
+    "variant": 3
+  }
+]

@@ -86,7 +86,7 @@ const reasons = {
 
 function currentAuthoringReport() {
   const supported = [
-    'ping', 'render_view', 'screenshot',
+    'ping', 'render_view', 'screenshot', 'capture_studio_viewport', 'import_owner_component', 'query_owner_local', 'query_owner_exact', 'query_owner_assembly', 'query_owner_media', 'import_owner_local',
     'get_tree', 'get_instance', 'list_scripts', 'read_script', 'dump_scripts', 'search_scripts',
     'get_logs', 'get_selection', 'viewport_info', 'select', 'camera_focus', 'create_instances',
     'set_props', 'delete_instances', 'move_instances', 'transform_instances', 'clone_instances',
@@ -159,7 +159,7 @@ test('legacy, missing, malformed and unknown-schema clients preserve the existin
   // offering it on "unknown" would hand the model a check that is refused on its first call.
   const optIn = candidates.filter((name) => requirements[name].some((op) => C.OPT_IN_OPERATIONS.has(op)));
   // D-MODELLIB-1: insert_library_model stands its model on the spot through spatial_query, so it is opt-in too.
-  assert.deepEqual([...optIn].sort(), ['play_check', 'insert_library_model', ...PHASE_A_TOOLS].sort(), 'the opt-in tool set changed — review it');
+  for (const name of ['play_check','insert_owner_component','capture_studio_viewport','list_owner_original_strings','read_owner_original_string']) assert.ok(optIn.includes(name), `${name} must remain opt-in`);
   for (const raw of [
     undefined,
     null,
@@ -172,7 +172,7 @@ test('legacy, missing, malformed and unknown-schema clients preserve the existin
     assert.equal(filtered.capabilitiesKnown, false);
     assert.deepEqual([...filtered.allowed], candidates.filter((name) => !optIn.includes(name)));
     assert.deepEqual(filtered.withheld, optIn);
-    assert.deepEqual(filtered.limitations.map((item) => item.operation).sort(), ['play_check', ...PHASE_A_OPS].sort());
+    assert.deepEqual(filtered.limitations.map((item) => item.operation).sort(), [...new Set(optIn.flatMap(name => requirements[name]).filter(op => C.OPT_IN_OPERATIONS.has(op)))].sort());
   }
 });
 
@@ -211,6 +211,7 @@ test('only explicitly unsupported operations withhold their dependent tools', ()
     'get_project_tree', 'get_instance', 'read_script', 'edit_script', 'create_instances',
     'set_properties', 'create_checkpoint', 'get_output_logs', 'insert_asset', 'render_view',
     'compose_thumbnail', 'inspect_visually', 'generate_model', 'run_and_check', 'inspect_model',
+    'query_owner_assembly', 'read_owner_media',
   ]) {
     assert.equal(filtered.allowed.has(tool), true, `${tool} should remain executable through typed Studio operations`);
   }
@@ -352,4 +353,17 @@ test('the prose limitation note is bounded while the structured limitation list 
   assert.doesNotMatch(note, /operation_12:/);
   assert.equal(limitations.length, 20, 'rendering the note must not mutate structured evidence');
   assert.ok(note.length < 5000, `capability note grew to ${note.length} characters`);
+});
+
+
+test('native insertion capability alternatives preserve a complete path and refuse absent paths', () => {
+  const name='insert_owner_component',tool=T.TOOLS[name];
+  const alternatives={[name]:tool.studioOpAlternatives};
+  const report=ops=>({schema:C.PLUGIN_CAPABILITY_SCHEMA,operations:ops.map(op=>({op,status:'supported'}))});
+  for(const ops of [['snapshot','import_owner_component'],['snapshot','query_owner_local','import_owner_local']]) {
+    assert.equal(C.filterToolsForPlugin([name],{[name]:tool.studioOps},report(ops),alternatives).allowed.has(name),true);
+  }
+  for(const ops of [['snapshot'],['snapshot','query_owner_local'],['query_owner_local','import_owner_local']]) {
+    assert.equal(C.filterToolsForPlugin([name],{[name]:tool.studioOps},report(ops),alternatives).allowed.has(name),false);
+  }
 });

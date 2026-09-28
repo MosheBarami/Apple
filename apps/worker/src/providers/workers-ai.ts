@@ -395,6 +395,12 @@ export const workersAiAdapter: ProviderAdapter = {
         type: 'function',
         function: { name: t.name, description: t.description, parameters: t.parameters },
       }));
+      // GLM's documented named function choice keeps calls structured under long contexts.
+      // This only narrows an existing definition; it cannot restore a withheld tool.
+      if (req.modelId === '@cf/zai-org/glm-5.3-flash' && req.requiredTool &&
+          req.tools.some((tool) => tool.name === req.requiredTool)) {
+        payload.tool_choice = { type: 'function', function: { name: req.requiredTool } };
+      }
     }
     // Cloudflare documents reasoning_effort for GLM-4.7/5.3, and Gemini's chat-completions wire
     // takes the same field. Qwen3 is reasoning-capable but its binding schema does not document an

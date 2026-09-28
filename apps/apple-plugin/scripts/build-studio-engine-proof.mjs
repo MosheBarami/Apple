@@ -42,5 +42,5 @@ execFileSync('python3', [join(root, '..', '..', 'scripts', 'inspect-plugin-build
 const bytes = statSync(artifact).size;
 console.log(`Disposable Studio proof built and inspected: ${artifact} (${bytes} bytes)`);
 console.log('Open it in Studio Edit mode and run this exact one-line Command Bar expression:');
-console.log('require(game.ServerScriptService.AppleStudioEngineProof).run()');
+console.log('task.delay(0.1, function() require(game.ServerScriptService.AppleStudioEngineProof).run() end)');
 console.log('A build is not an observed Studio pass; checkpoint restore has its own restore proof and generate_model has its own generation proof.');

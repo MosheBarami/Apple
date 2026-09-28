@@ -45,6 +45,9 @@ export interface PluginToolFilter {
  * only when the plugin says, explicitly, `supported` — including in compatibility mode.
  */
 export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName>([
+  'query_owner_local', 'query_owner_exact', 'query_owner_assembly', 'query_owner_media', 'import_owner_local',
+  'import_owner_component',
+  'capture_studio_viewport',
   'play_check',
   // D-VISION-1 Phase A: the op families in apps/apple-plugin/src/ops. No plugin before them had any.
   'query_instances', 'set_props_bulk', 'spatial_query', 'scatter', 'collision_groups', 'collision_groups_list',
@@ -147,6 +150,7 @@ export function filterToolsForPlugin(
   candidates: Iterable<string>,
   requirements: ToolStudioRequirements,
   rawCapabilities: unknown,
+  alternatives: Readonly<Record<string, readonly (readonly StudioOpName[])[]>> = {},
 ): PluginToolFilter {
   const names = [...new Set(candidates)];
   const parsed = parsePluginCapabilities(rawCapabilities);
@@ -157,10 +161,14 @@ export function filterToolsForPlugin(
 
   for (const tool of names) {
     const blockers: { operation: StudioOpName; reason: string }[] = [];
+    const branches = alternatives[tool] ?? [];
+    const viable = branches.some(branch => branch.length > 0 && branch.every(op => pluginOperationVerdict(parsed,op).status === 'supported'));
+    const branchOps = new Set(branches.flat());
     for (const operation of requirements[tool] ?? []) {
+      if (viable && branchOps.has(operation)) continue;
       const verdict = pluginOperationVerdict(parsed, operation);
       if (verdict.status === 'unsupported') blockers.push({ operation, reason: verdict.reason });
-      else if (verdict.status === 'unknown' && OPT_IN_OPERATIONS.has(operation)) blockers.push({ operation, reason: NOT_REPORTED });
+      else if (verdict.status === 'unknown' && (OPT_IN_OPERATIONS.has(operation) || viable)) blockers.push({ operation, reason: NOT_REPORTED });
     }
 
     if (blockers.length === 0) {

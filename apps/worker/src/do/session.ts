@@ -59,7 +59,7 @@ import {
 } from '../frame-bus';
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
-import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, visualAssetAnchor, type PendingAssetChoice } from '../asset-choice';
+import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, selectedInsertionCalls, visualAssetAnchor, type PendingAssetChoice, type SelectedAssetInsertion } from '../asset-choice';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
@@ -88,6 +88,8 @@ import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTIN
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
+import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
+import { explicitToolSequence, sequenceProgress, sequenceStepMessages, sequenceCallSignature } from '../tool-sequence';
 import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
@@ -213,6 +215,7 @@ interface AgentState {
   productModel?: ProductModel;
   /** Owner-approved Creator Store model for this run, selected from a shown preview. */
   approvedLibraryAssetId?: number;
+  selectedAssetInsertion?: SelectedAssetInsertion;
   rejectedLibraryAssetIds?: number[];
   assetChoiceAnchor?: string;
   assetChoiceMisses?: number;
@@ -3265,6 +3268,7 @@ export class SessionDO extends DurableObject<Env> {
     const sys = systemPrompt({
       mode,
       autonomous: runAutonomous,
+      toolSequence: mode === 'agent' ? explicitToolSequence(text, new Set(toolNames())) ?? undefined : undefined,
       studioConnected,
       placeName: pluginState?.placeName ?? null,
       projectName: bind.projectName,
@@ -3316,7 +3320,7 @@ export class SessionDO extends DurableObject<Env> {
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
       // trimTranscript documents — the agent kept working with no record of the task.
       llm: [{ role: 'system', content: skills.block ? `${sys}\n\n${skills.block}` : sys }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
-      ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId } : {}),
+      ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
       ...(rejectedChoice && pendingChoice?.anchor ? { assetChoiceAnchor: pendingChoice.anchor } : {}),
       ...(skills.ids.length > 0 ? { skillCardsShown: skills.ids } : {}),
@@ -3747,8 +3751,19 @@ export class SessionDO extends DurableObject<Env> {
       ? base
       : applyToolPermissions(base, agent.toolPermissions);
     const offeredCapabilityFilter = this.pluginToolFilter(userAllowed);
-    const offeredAllowed = offeredCapabilityFilter.allowed;
     const knownTools = new Set(toolNames());
+    const sequence = explicitToolSequence(agent.request ?? '', knownTools);
+    const sequenceStep = sequence ? sequenceProgress(sequence, agent.trace) : null;
+    if (sequenceStep && sequenceStep.state !== 'next') {
+      await this.finishRun(agent, sequenceStep.state === 'complete' ? 'done' : 'incomplete', undefined,
+        sequenceStep.state === 'complete'
+          ? 'The tool sequence you requested is complete. No further checks were run; gameplay remains unverified.'
+          : 'The tool sequence stopped after a failed or unexpected action. Review the recorded changes before continuing.');
+      return;
+    }
+    const offeredAllowed = sequenceStep?.state === 'next'
+      ? new Set([...offeredCapabilityFilter.allowed].filter((tool) => tool === sequenceStep.tool))
+      : offeredCapabilityFilter.allowed;
 
     //[[ AND SAY WHAT WAS TAKEN.
     //
@@ -3838,13 +3853,20 @@ export class SessionDO extends DurableObject<Env> {
     // on the run's first step, gets no tool definitions: they are 69 tools and ~67k characters, about
     // 80% of the input of every call, and "hi" needs none of them. CONVERSATIONAL_RE is anchored to the
     // whole message, so "hi, build me a tower" is not talk. Any later step is offered the normal set.
-    const talkOnly = agent.traits?.conversational === true && agent.step === 1 && !agent.mutated;
+    const talkOnly = !sequence && agent.traits?.conversational === true && agent.step === 1 && !agent.mutated;
+    // Historical assistant replies can include unsupported completion claims. State the current
+    // required action at the provider boundary, using only validated registry names.
+    const stepMessages = sequenceStep?.state === 'next'
+      ? sequenceStepMessages(agent.llm, sequenceStep.tool)
+      : agent.llm;
     const res = await llmChat(
       this.env,
       {
         model: gatewayModel,
-        messages: agent.llm,
+        messages: stepMessages,
         tools: talkOnly ? [] : toolDefs(offerStudio, offeredAllowed),
+        ...(sequenceStep?.state === 'next' && offeredAllowed.has(sequenceStep.tool)
+          ? { requiredTool: sequenceStep.tool } : {}),
         reasoningEffort: choice.effort,
         maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),
       },
@@ -4002,7 +4024,25 @@ export class SessionDO extends DurableObject<Env> {
     // step, so the value on the log is the last thing the provider said about this run — which is
     // the response the run ended on.
     agent.lastFinishReason = finishReason;
+    if (agent.selectedAssetInsertion && !agent.selectedAssetInsertion.attempted &&
+        (res.toolCalls.length > 0 || finishReason === 'stop')) {
+      // This schedules the selected tool through the normal execution path below. It grants no
+      // permissions, skips no access checks, and a refused insertion remains a failed result.
+      const preparations = new Set(toolNames().filter((name) =>
+        !READ_ONLY_WITHHELD.has(name) &&
+        (/^(get_|read_|list_|query_)/.test(name) || name === 'create_checkpoint' || name === 'search_docs' || name === 'propose_plan')));
+      res.toolCalls = selectedInsertionCalls(agent.selectedAssetInsertion, res.toolCalls, preparations, `selected_${agent.step}`);
+      res.text = ''; // Model prose is not evidence that the selected insertion happened.
+      agent.lastCalls = res.toolCalls.slice(-8);
+    }
     if (!res.toolCalls.length && finishReason === 'length') {
+      // A finite user workflow authorizes the named calls, not an unlimited series
+      // of paid reasoning-only retries. Preserve the trace and end without a write.
+      if (sequence) {
+        await this.finishRun(agent, 'incomplete', undefined,
+          'The model reached its output limit before completing the requested tool. I stopped without retrying or adding other actions.');
+        return;
+      }
       // Output ceilings are a provider-call boundary, not a customer-run boundary. The old path
       // printed partial JSON/prose, ended the run and told the user to send another message. Keep
       // the durable tool/results history, discard the unusable partial assistant payload, and ask
@@ -4073,6 +4113,11 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (!res.toolCalls.length) {
+      if (sequence) {
+        await this.finishRun(agent, 'incomplete', undefined,
+          'The requested tool sequence was not completed. I stopped without adding other actions.');
+        return;
+      }
       agent.llm.push({ role: 'assistant', content: res.text });
       //[[ THE STEER GETS ITS TURN — BOUNDED.
       //
@@ -4291,9 +4336,30 @@ export class SessionDO extends DurableObject<Env> {
     let verifiedThisStep = false;
     for (const call of res.toolCalls.slice(0, 4)) {
       if (await this.stopForAccess(agent)) return;
+      if (sequence) {
+        const next = sequenceProgress(sequence, agent.trace);
+        if (next.state !== 'next' || call.name !== next.tool) {
+          await this.finishRun(agent, 'incomplete', undefined,
+            'Apple attempted an action outside the tool sequence you requested. That action was not run.');
+          return;
+        }
+      }
       const t0 = Date.now();
       const toolId = call.id;
-      const sig = `${call.name}:${call.arguments}`;
+      const sig = sequenceCallSignature(call.name, call.arguments, sequence ? agent.trace.length : undefined);
+      // A user-specified search count is a run boundary, not a suggestion to the model. In the
+      // connected garden probe it made five library searches after being allowed only two, then
+      // tried to build a detailed crop from Parts. Stop before the third lookup costs anything.
+      if (assetSearchLimitReached(agent.request ?? '', agent.trace, call.name)) {
+        const limit = explicitAssetSearchLimit(agent.request ?? '');
+        const summary = `${call.name}: the owner's ${limit}-search limit was reached; this search was not run`;
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary });
+        agent.trace.push({ tool: call.name, summary, ok: false, durationMs: Date.now() - t0 });
+        await this.finishRun(agent, 'incomplete', undefined,
+          `The ${limit}-search limit in your request was reached. I stopped without making another asset search; review the options already found before continuing.`);
+        return;
+      }
       //[[ THE DUPLICATE GUARD, AND ITS TWO EXCEPTIONS.
       //
       //   An identical call is refused as "already done" — unless (a) its last attempt failed in a
@@ -4503,6 +4569,34 @@ export class SessionDO extends DurableObject<Env> {
         toolCallId: call.id,
         name: call.name,
       });
+      if (agent.selectedAssetInsertion && !agent.selectedAssetInsertion.attempted && call.name === 'insert_library_model') {
+        agent.selectedAssetInsertion.attempted = true;
+        await this.persistAgent(agent);
+        if (!out.ok) {
+          await this.finishRun(agent, 'incomplete', undefined,
+            'The selected model could not be inserted. Review the insertion result before choosing another model or continuing.');
+          return;
+        }
+        // Wait for a new step with the actual result before allowing unrelated work.
+        break;
+      }
+      if (sequence) {
+        const progress = sequenceProgress(sequence, agent.trace);
+        if (progress.state !== 'next') {
+          if (await stopRequested(this.ctx.storage)) {
+            await this.finishRun(agent, 'stopped');
+          } else {
+            await this.finishRun(agent, progress.state === 'complete' ? 'done' : 'incomplete', undefined,
+              progress.state === 'complete'
+                ? 'The tool sequence you requested is complete. No further checks were run; gameplay remains unverified.'
+                : 'The requested tool failed. I stopped without retrying or adding other actions.');
+          }
+          return;
+        }
+        // Only the next explicitly requested tool may follow; generic whole-game/visual steers
+        // would enlarge this finite workflow and caused the measured 27-call repair loop.
+        continue;
+      }
       if (agent.mode === 'agent' && call.name === 'find_library_model' && out.ok && ctx.userId && out.detail && typeof out.detail === 'object') {
         const detail = out.detail as { kind?: unknown; options?: unknown };
         const options = detail.kind === 'asset_choices' && Array.isArray(detail.options)
@@ -4557,6 +4651,18 @@ export class SessionDO extends DurableObject<Env> {
     if (agent.status === 'stopping' || (await stopRequested(this.ctx.storage))) {
       agent.status = 'stopping';
       await this.finishRun(agent, 'stopped');
+      return;
+    }
+    if (sequence) {
+      // Refused/duplicate calls are not trace progress. Never let a finite allowance
+      // turn into paid retries at the same sequence position.
+      if (sequenceProgress(sequence, agent.trace, executedThisStep).state === 'failed') {
+        await this.finishRun(agent, 'incomplete', undefined,
+          'The requested action could not be executed. I stopped without retrying or adding other actions.');
+        return;
+      }
+      await this.persistAgent(agent);
+      await this.ctx.storage.setAlarm(Date.now() + 10);
       return;
     }
     // A step whose every call was refused as a duplicate made no progress and was still paid for.
@@ -5503,6 +5609,7 @@ export class SessionDO extends DurableObject<Env> {
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
       // "can you build right now" is no. The connection half now comes from the same rule the
       // header and the status broadcast use.
+      localOwnerGateway: this.pluginCapabilityReport?.operations.some(op => op.op === 'query_owner_local' && op.status === 'supported') === true,
       studioConnected: () => this.opQueue.length < 100 && this.pluginConnectedNow(),
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs, agent),
       // Read the run by reference: create_instances and delete_instances can arrive in one LLM
@@ -5859,7 +5966,8 @@ export class SessionDO extends DurableObject<Env> {
 
   /** Capability narrowing is always the last narrowing layer: mode, user preference, then plugin. */
   private pluginToolFilter(candidates: ReadonlySet<string>): PluginToolFilter {
-    return filterToolsForPlugin(candidates, STUDIO_TOOL_REQUIREMENTS, this.pluginCapabilityReport);
+    return filterToolsForPlugin(candidates, STUDIO_TOOL_REQUIREMENTS, this.pluginCapabilityReport,
+      Object.fromEntries(Object.entries(TOOLS).map(([name,tool]) => [name,tool.studioOpAlternatives ?? []])));
   }
 
   /**

@@ -37,7 +37,8 @@ local Commands = require(script.Commands)
 -- this file was force-clearing consent because we are not, and the user would be told to press a
 -- button that refuses. editModeActive() is the definition the consent fence already uses; the
 -- engine gets that one, so a refusal names the thing that is actually shut.
-local commands = Commands.new({ isEdit = editModeActive })
+local ownerGatewayConfig: any = nil
+local commands = Commands.new({ isEdit = editModeActive, ownerGateway = function() return ownerGatewayConfig end })
 local allowEdits = false
 local confirmingEdits = false
 local connecting = false
@@ -235,11 +236,26 @@ local codeCorner = Instance.new("UICorner")
 codeCorner.CornerRadius = UDim.new(0, 10)
 codeCorner.Parent = code
 local connect = control("Connect to Apple")
+
+text("Optional private owner library: connect a local gateway for this paired session. Selected descriptions/source pages may be sent to the agent over HTTPS; the local key and native asset bytes stay in Studio. Downloaded source is never executed.", 13, true)
+local function gatewayField(name: string, placeholder: string): TextBox
+    order += 1
+    local field = Instance.new("TextBox")
+    field.Name = name; field.LayoutOrder = order; field.Size = UDim2.new(1,0,0,40)
+    field.BackgroundColor3 = colors.panel; field.TextColor3 = colors.text; field.PlaceholderColor3 = colors.muted
+    field.Font = Enum.Font.SourceSans; field.TextSize = 14; field.Text = ""; field.PlaceholderText = placeholder
+    field.ClearTextOnFocus = false; field.Parent = scroll
+    return field
+end
+local gatewayPort = gatewayField("OwnerGatewayPort","Local gateway port")
+local gatewayKey = gatewayField("OwnerGatewayKey","Ephemeral gateway key (cleared on connect)")
+local gatewayConnect = control("Connect private owner library")
+local gatewayNote = text("Private library disconnected",13,true)
 local permission = text("Access: inspect only", 15, false)
 local edits = control("Enable edits…")
 local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
 local activity = text("No actions yet", 13, true)
-local version = text("Apple Studio · 1.4.2 · independent preview", 12, true)
+local version = text("Apple Studio · 1.4.3 · independent preview", 12, true)
 version.LayoutOrder = 100
 
 local function refreshAccess()
@@ -249,6 +265,9 @@ local function refreshAccess()
 		confirmingEdits = false
 		appleRunActive = false
 		showSources(false, nil)
+		ownerGatewayConfig = nil
+		gatewayKey.Text = ""
+		gatewayNote.Text = "Private library disconnected"
 	end
 	permission.Text = if allowEdits and not editModeActive() then "Access: edits paused while Studio is testing"
 		elseif allowEdits then "Access: edits allowed for this connection" else "Access: inspect only"
@@ -303,7 +322,10 @@ bridge = Bridge.new({
 			-- retained per-connection consent authorizes those controls; ordinary writes still receive
 			-- consentStillCurrent() and remain blocked until Studio returns to edit mode.
 			local authorized = if runAction ~= nil then pairingStillCurrent() and allowEdits else consentStillCurrent()
-			local result = commands:execute(id, op, authorized, consentStillCurrent)
+			-- Pairing already consents to active viewport snapshots. This operation reads
+			-- native pixels without camera/place writes; StudioCapture also fences edit mode.
+			local readFence = if type(op) == "table" and (op.op == "query_owner_local" or op.op == "query_owner_exact" or op.op == "query_owner_assembly" or op.op == "query_owner_media" or op.op == "capture_studio_viewport") then pairingStillCurrent else consentStillCurrent
+			local result = commands:execute(id, op, authorized, readFence)
 			if runAction ~= nil then
 				if result.ok ~= true then
 					appleRunActive = ownedBefore
@@ -319,7 +341,7 @@ bridge = Bridge.new({
 		return {
 			kind = "state", placeName = game.Name, placeId = game.PlaceId,
 			gameId = game.GameId, isRunMode = RunService:IsRunMode(),
-			selectionCount = #Selection:Get(), pluginVersion = "1.4.2",
+			selectionCount = #Selection:Get(), pluginVersion = "1.4.3",
 		}
 	end,
 	onStatus = function(message: string)
@@ -336,6 +358,19 @@ bridge = Bridge.new({
 		showSources(value.owed == true, if type(value.message) == "string" then value.message else nil)
 	end,
 })
+
+table.insert(connections, gatewayConnect.Activated:Connect(function()
+    local key = gatewayKey.Text
+    gatewayKey.Text = ""
+    if disposed or not bridge:isConnected() then gatewayNote.Text = "Pair with Apple first."; return end
+    if ownerGatewayConfig then ownerGatewayConfig = nil; gatewayNote.Text = "Private library disconnected"; return end
+    local port = tonumber(gatewayPort.Text)
+    if port == nil or port ~= math.floor(port) or port < 1 or port > 65535 or #key < 32 or #key > 128 or string.match(key,"^[%w_-]+$") == nil then
+        gatewayNote.Text = "Enter the current local port and ephemeral key."; return
+    end
+    ownerGatewayConfig = {port=port,key=key}
+    gatewayNote.Text = "Private library configured for this session; requests verify gateway access. Click again to disconnect."
+end))
 
 table.insert(connections, sourcesSave.Activated:Connect(function()
 	if disposed then return end
@@ -431,6 +466,8 @@ end
 
 plugin.Unloading:Connect(function()
 	disposed = true
+	ownerGatewayConfig = nil
+	gatewayKey.Text = ""
 	allowEdits = false
 	confirmingEdits = false
 	bridge:destroy()

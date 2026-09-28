@@ -288,7 +288,19 @@ test('promotionMargin is max(2, spread of the reseeds around the best they re-ra
     { lever: { id: 'reseed@v22' }, status: 'eval_failed', scores: null, bestVersionAtRun: 5, bestTotalAtRun: 20 },
     { lever: { id: 'lr-1e-4' }, status: 'done', scores: { total: 10 }, bestVersionAtRun: 5, bestTotalAtRun: 20 },
   ];
-  assert.equal(promotionMargin(h), 5);
+  assert.equal(promotionMargin(h), 6);
+});
+
+test('promotionMargin accounts for repeated paired scores of the same best adapter', () => {
+  const history = [24, 24, 21].map((bestTotalAtRun, i) => ({
+    version: 26 + i,
+    status: 'done',
+    lever: { id: `ordinary-${i}` },
+    scores: { total: 19 },
+    bestVersionAtRun: 22,
+    bestTotalAtRun,
+  }));
+  assert.equal(promotionMargin(history), 4);
 });
 
 // ---------- hypotheses ----------

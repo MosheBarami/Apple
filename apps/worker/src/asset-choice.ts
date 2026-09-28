@@ -13,6 +13,41 @@ export interface PendingAssetChoice {
 
 export const ASSET_CHOICE_MESSAGE = /^Use visual option ([123]) and continue\.$/;
 
+/** Durable obligation, independent of the transcript and its trimming. */
+export interface SelectedAssetInsertion {
+  id: string;
+  preparationSteps?: number;
+  attempted?: boolean;
+}
+
+/** Preserve prerequisite reads, but never let model drift replace an owner-selected asset. */
+export function selectedInsertionCalls<T extends { id: string; name: string; arguments: string }>(
+  selection: SelectedAssetInsertion,
+  calls: T[],
+  preparationTools: ReadonlySet<string>,
+  callId: string,
+): { id: string; name: string; arguments: string }[] {
+  if (selection.attempted) return calls;
+  const prepared = [];
+  for (const call of calls.slice(0, 4)) {
+    if (call.name === 'insert_library_model') {
+      try {
+        const args = JSON.parse(call.arguments);
+        if (args?.id === selection.id) return [...prepared, call];
+      } catch { /* Invalid/wrong ids cannot discharge the owner's selection. */ }
+      break;
+    }
+    if (!preparationTools.has(call.name) || prepared.length >= 3) break;
+    prepared.push(call);
+  }
+  // Reads alone may prepare for two turns, never postpone insertion indefinitely.
+  if (prepared.length === calls.length && prepared.length > 0 && (selection.preparationSteps ?? 0) < 2) {
+    selection.preparationSteps = (selection.preparationSteps ?? 0) + 1;
+    return prepared;
+  }
+  return [...prepared, { id: callId, name: 'insert_library_model', arguments: JSON.stringify({ id: selection.id }) }];
+}
+
 export function selectedLibraryAsset(
   text: string,
   pending: PendingAssetChoice | null,
