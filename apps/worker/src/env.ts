@@ -66,6 +66,18 @@ export interface Env {
    * to unmetered Credits (POST /api/me/owner-credits). Unset or blank means nobody can.
    */
   OWNER_USER_IDS?: string;
+  /**
+   * Owner-corpus release library (V3 G05, Q37): whose cloud owner corpus approved accounts read.
+   * Unset or blank means the first OWNER_USER_IDS id. A Supabase user id; set as a secret like
+   * OWNER_USER_IDS so it survives deploys and stays out of the repo.
+   */
+  RELEASE_LIBRARY_OWNER_ID?: string;
+  /**
+   * Comma-separated Supabase user ids approved before launch to find/read/insert from the release
+   * library (read-only; their own uploads stay in their own namespace). Unset or blank means nobody
+   * besides the release owner. Set as a secret (`wrangler secret put`).
+   */
+  LIBRARY_APPROVED_USER_IDS?: string;
   //[[ `RESVG_WASM?: WebAssembly.Module` WAS HERE, AND WAS A DIRECTION TO A PLACE THAT DOES NOT EXIST.
   //
   //   Its comment read "the resvg renderer, bound in wrangler.jsonc. Absent means this deployment

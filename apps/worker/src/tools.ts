@@ -76,7 +76,7 @@ import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySou
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog } from './local-owner-corpus';
-import { findOwnerComponents, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
+import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
@@ -4699,9 +4699,10 @@ export const TOOLS: Record<string, ToolImpl> = {
     run: async (ctx,a) => {
       if (!ctx.userId) return {error:'Owner component reads need an authenticated owner context.'};
       if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return readLocalOwner(ctx,a);
-      const component = await ownerComponent(ctx.env,ctx.userId,String(a.id ?? ''));
+      const library = libraryNamespace(ctx.env,ctx.userId);
+      const component = await ownerComponent(ctx.env,library,String(a.id ?? ''));
       if (!component) return {error:'Component is not available in this owner corpus.'};
-      return readOwnerDescription(ctx.env,ctx.userId,component,{scriptId:a.scriptId === undefined ? undefined : String(a.scriptId),section:a.section === undefined ? undefined : String(a.section),offset:Number(a.offset),maxChars:Number(a.maxChars)});
+      return readOwnerDescription(ctx.env,library,component,{scriptId:a.scriptId === undefined ? undefined : String(a.scriptId),section:a.section === undefined ? undefined : String(a.section),offset:Number(a.offset),maxChars:Number(a.maxChars)});
     },
   },
   find_library_model: {
@@ -4740,7 +4741,7 @@ export const TOOLS: Record<string, ToolImpl> = {
           note:'Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair.'};
         if (a.after !== undefined || a.sourceSHA !== undefined) return {...local,source:'owner_local',results:[],note:'This local page ended or was refused. No unrelated catalogue page substituted.'};
       }
-      const owned = await findOwnerComponents(ctx.env, ctx.userId, query ?? '', Number(a.limit ?? 10));
+      const owned = await findOwnerComponents(ctx.env, libraryNamespace(ctx.env, ctx.userId), query ?? '', Number(a.limit ?? 10));
       if (owned.length) {
         const results: Record<string,unknown>[] = [];
         let chars = 0;
@@ -4748,14 +4749,14 @@ export const TOOLS: Record<string, ToolImpl> = {
           const row = {id:c.id,name:c.name.slice(0,128),className:c.className.slice(0,128),path:c.path.slice(0,256),
             summary:c.summary.slice(0,512),usage:c.usage.slice(0,512),componentSha256:c.componentSha256,
             byteLength:c.byteLength,dependencyCount:c.dependencyIds.length,unresolvedRefCount:c.unresolvedRefs.length,
-            descriptionAvailable:!!c.descriptionSha256,scriptsPreserved:true};
+            descriptionAvailable:!!c.descriptionSha256,scriptsPreserved:c.scriptsPreserved,...(c.readiness ? {readiness:c.readiness} : {})};
           const size = JSON.stringify(row).length;
           if (chars + size > 18000) break;
           results.push(row); chars += size;
         }
         return {source:'owner_corpus',results,total:owned.length,outputLimited:results.length < owned.length,
           localGateway:localStatus ? ('error' in rec(localStatus) ? 'unavailable' : 'no matches') : 'not configured',
-          note:'Owner-attested cloud seed components are fallback after the full local corpus. Components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data.'};
+          note:'Owner-attested cloud seed components are fallback after the full local corpus. Components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data; scriptsPreserved:false marks a script-free unit whose original scripts were excluded.'};
       }
       const found = findLibraryModels({
         query,
@@ -4819,12 +4820,13 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (String(a.id ?? '').startsWith('owner:')) {
         if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return { error: 'Native owner import is unavailable for this run: check permissions and update the paired plugin.' };
         if (!ctx.userId) return { error: 'Owner corpus insertion requires the authenticated project owner.' };
-        const component = await ownerComponent(ctx.env, ctx.userId, String(a.id));
+        const library = libraryNamespace(ctx.env, ctx.userId);
+        const component = await ownerComponent(ctx.env, library, String(a.id));
         if (!component) return { error: 'This component has no verified bytes in this owner corpus. Ingest its complete native export first.' };
         if (a.position !== undefined || a.height !== undefined || a.scale !== undefined) return { error: 'Owner imports preserve authored transforms. Insert first, then use transform_instances on the returned path.' };
         const checkpoint = await ctx.createCheckpoint('before owner component import', 'auto');
         if ('error' in checkpoint) return { error: `Owner import refused: checkpoint failed (${checkpoint.error}).` };
-        const token = await ownerComponentGrant(ctx.env, ctx.userId, component);
+        const token = await ownerComponentGrant(ctx.env, library, component);
         const imported = await ctx.execStudioOp({ op: 'import_owner_component', componentId: component.id,
           componentSha256: component.componentSha256, byteLength: component.byteLength, contentToken: token,
           parent: String(a.parent ?? 'game.ServerStorage'), name: component.name.slice(0,96) }, 120_000);

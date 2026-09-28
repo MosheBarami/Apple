@@ -8,10 +8,26 @@ export interface OwnerComponent {
   id: string; name: string; className: string; path: string;
   sourceSha256: string; componentSha256: string; byteLength: number;
   summary: string; usage: string; dependencyIds: string[]; unresolvedRefs: string[];
-  scriptsPreserved: true; descriptionSha256?: string;
+  /** false = script-free native unit (script subtrees were excluded when it was cut); never inferred. */
+  scriptsPreserved: boolean; descriptionSha256?: string;
+  /** Publisher-recorded evidence flags (e.g. native-readiness index); absent means not recorded. */
+  readiness?: Record<string, boolean>;
 }
 const key = (ownerId: string, sha: string) => `owner-corpus/${encodeURIComponent(ownerId)}/${sha}.rbxm`;
 export const ownerComponentId = (id: string) => id.startsWith('owner:') ? id : `owner:${id}`;
+const idList = (value?: string) => (value ?? '').split(',').map(id => id.trim()).filter(Boolean);
+/**
+ * Whose cloud owner corpus a signed-in user READS (find/read/insert). Pre-launch (Q37) the release
+ * library is shared only with its owner and LIBRARY_APPROVED_USER_IDS; everyone else keeps their own
+ * namespace. Writes (manifest/blob routes) always stay scoped to the caller's own id.
+ */
+export function libraryNamespace(env: Env, userId: string): string;
+export function libraryNamespace(env: Env, userId: string | undefined): string | undefined;
+export function libraryNamespace(env: Env, userId: string | undefined) {
+  if (!userId) return userId;
+  const release = env.RELEASE_LIBRARY_OWNER_ID?.trim() || idList(env.OWNER_USER_IDS)[0];
+  return release && (userId === release || idList(env.LIBRARY_APPROVED_USER_IDS).includes(userId)) ? release : userId;
+}
 export async function ownerCorpusTables(env: Env) {
   // D1 exec splits statements on newlines: each complete statement must occupy one line.
   await env.CORPUS.exec(`CREATE TABLE IF NOT EXISTS owner_corpus_components (owner_id TEXT NOT NULL, id TEXT NOT NULL, sha TEXT NOT NULL, metadata TEXT NOT NULL, blob_ready INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(owner_id,id));
@@ -26,8 +42,8 @@ export function parseOwnerManifest(body: unknown): OwnerComponent[] {
   return b.components.map(raw => {
     const c = raw as OwnerComponent;
     if (!c || typeof c !== 'object' || !SHA.test(c.sourceSha256) || !SHA.test(c.componentSha256) ||
-        !Number.isSafeInteger(c.byteLength) || c.byteLength < 1 || c.byteLength > OWNER_COMPONENT_MAX_BYTES || c.scriptsPreserved !== true) {
-      throw new Error('component requires source/component SHA-256, bounded binary byteLength and scriptsPreserved:true');
+        !Number.isSafeInteger(c.byteLength) || c.byteLength < 1 || c.byteLength > OWNER_COMPONENT_MAX_BYTES || typeof c.scriptsPreserved !== 'boolean') {
+      throw new Error('component requires source/component SHA-256, bounded binary byteLength and an explicit scriptsPreserved boolean');
     }
     for (const field of ['id','name','className','path','summary','usage'] as const) {
       if (typeof c[field] !== 'string' || c[field].length > (field === 'summary' || field === 'usage' ? 4000 : 1000) || !c[field]) throw new Error(`invalid component ${field}`);
@@ -36,10 +52,13 @@ export function parseOwnerManifest(body: unknown): OwnerComponent[] {
       if (!Array.isArray(c[field]) || c[field].length > 5000 || c[field].some(v => typeof v !== 'string' || v.length > 1000)) throw new Error(`invalid ${field}`);
     }
     if (c.descriptionSha256 !== undefined && !SHA.test(c.descriptionSha256)) throw new Error('invalid description SHA-256');
+    if (c.readiness !== undefined && (!c.readiness || typeof c.readiness !== 'object' || Array.isArray(c.readiness) ||
+        Object.keys(c.readiness).length > 16 || Object.entries(c.readiness).some(([k,v]) => k.length > 64 || typeof v !== 'boolean'))) throw new Error('invalid readiness flags');
     // Persist only the contract fields, never caller-supplied owner ids or blob URLs.
     return { id: ownerComponentId(c.id), name: c.name, className: c.className, path: c.path,
       sourceSha256: c.sourceSha256, componentSha256: c.componentSha256, byteLength: c.byteLength,
-      summary: c.summary, usage: c.usage, dependencyIds: c.dependencyIds, unresolvedRefs: c.unresolvedRefs, scriptsPreserved: true, ...(c.descriptionSha256 ? { descriptionSha256: c.descriptionSha256 } : {}) };
+      summary: c.summary, usage: c.usage, dependencyIds: c.dependencyIds, unresolvedRefs: c.unresolvedRefs, scriptsPreserved: c.scriptsPreserved, ...(c.descriptionSha256 ? { descriptionSha256: c.descriptionSha256 } : {}),
+      ...(c.readiness ? { readiness: { ...c.readiness } } : {}) };
   });
 }
 export async function ingestOwnerManifest(env: Env, ownerId: string, body: unknown) {
