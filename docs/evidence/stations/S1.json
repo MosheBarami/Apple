@@ -1,7 +1,7 @@
 {
   "station": "S1",
-  "origin": "https://golem.moshe-barami111.workers.dev",
-  "headSha": "d44316ecfa85e623a7d514b87d8a134ca58692db",
+  "origin": "https://apple.moshe-barami111.workers.dev",
+  "headSha": "64b26a490c4cc1a31791fb3f20d011e5b043e996",
   "clauses": {
     "status": {
       "/": 200,
@@ -33,8 +33,8 @@
     }
   },
   "bodySha256": {
-    "/": "18511508cffaffc5739994236838dae3ab9511cc290a54de6dc05776e1d3d2fc",
-    "/pricing": "305e5501b7c775a917d9e098e131efb0b056ad49000f7da6438e38dd638c335a"
+    "/": "1b4e9773aafd95d48e37a55c0407eaf8b55eb68e7c8ac90209bd50391f45a728",
+    "/pricing": "2fdbb3c9a0359331286dc919da8ff17333ee6410eb3c73f9904d6291c4270345"
   },
   "findings": []
 }

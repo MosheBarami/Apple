@@ -202,7 +202,8 @@ test('play_check_ui sends one play_check_ui op, outwaits the plugin, and states 
   const { ctx, calls } = studio(report);
   const out = await T.TOOLS.play_check_ui.run(ctx, { press: ['game.StarterGui.ShopGui.Panel.Open', 'StarterGui.ShopGui.Panel.Buy'], seconds: 99 });
   assert.equal(calls.length, 1);
-  assert.deepEqual(calls[0].op, { op: 'play_check_ui', seconds: 15, press: ['game.StarterGui.ShopGui.Panel.Open', 'StarterGui.ShopGui.Panel.Buy'] });
+  // The plugin parses only paths that start at game, so a path without it is sent with it.
+  assert.deepEqual(calls[0].op, { op: 'play_check_ui', seconds: 15, press: ['game.StarterGui.ShopGui.Panel.Open', 'game.StarterGui.ShopGui.Panel.Buy'] });
   assert.ok(calls[0].timeoutMs >= 90_000, 'the worker must outwait the longer session with presses');
   assert.match(out.presses[0], /Open: pressed, and the button activated/);
   assert.match(out.presses[1], /Buy: pressed, but the button did NOT activate/);
@@ -229,6 +230,28 @@ test('play_check_ui: every button activating is said, and the screen is marked a
   });
   assert.match(out.note, /Every listed button activated; the screen below was read AFTER the presses/);
   assert.doesNotMatch(out.note, /NOT verified/);
+});
+
+test('play_check_ui: each press says what it changed, and one that changed nothing is not called verified (F-050)', () => {
+  const out = P.summarisePlayCheck({
+    completed: true, playerJoined: true, characterSpawned: true, clientReported: true, playerGuiFound: true, harnessRemoved: true,
+    screenGuis: [{ name: 'ShopGui', enabled: true, labels: [{ name: 'Status', text: 'Speed boost active!', visible: true }] }],
+    presses: [
+      { path: 'game.StarterGui.ShopGui.Panel.Buy', found: true, pressed: true, activated: true, activations: 1, changes: ['leaderstats Coins 5 → 0', 'WalkSpeed 16 → 24'] },
+      { path: 'game.StarterGui.ShopGui.Panel.Close', found: true, pressed: true, activated: true, activations: 1, changes: [] },
+      { path: 'game.StarterGui.ShopGui.Sell', found: false, error: 'the button did not appear', buttonsOnScreen: ['game.StarterGui.ShopGui.Panel.Buy'] },
+    ],
+  });
+  assert.match(out.presses[0], /Coins 5 → 0/);
+  assert.match(out.presses[0], /WalkSpeed 16 → 24/);
+  assert.match(out.presses[1], /nothing/i);
+  assert.match(out.presses[2], /game\.StarterGui\.ShopGui\.Panel\.Buy/, 'a missing button names the buttons the player could press');
+  assert.match(out.note, /Close/, 'the note names the press that changed nothing');
+  assert.match(out.note, /NOT verified/);
+});
+
+test('play_check tells the model which tool presses buttons (F-050)', () => {
+  assert.match(T.TOOLS.play_check.def.description, /play_check_ui/);
 });
 
 /* ---------------------------------------------------------------------- build_ui --- */

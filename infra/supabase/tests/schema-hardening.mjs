@@ -27,7 +27,18 @@ const HARDENING_NAME = '0010_schema_hardening.sql';
 const HARDENING_SQL = readFileSync(join(MIGRATIONS, HARDENING_NAME), 'utf8');
 const HARDENING_SHA256 = createHash('sha256').update(HARDENING_SQL).digest('hex');
 const BASE_MIGRATIONS = readdirSync(MIGRATIONS)
-  .filter((name) => name.endsWith('.sql') && name !== HARDENING_NAME)
+  .filter((name) => name.endsWith('.sql') && name < HARDENING_NAME)
+  .sort();
+
+// THE PROPERTY, NOT THE LIST. This was a hand-written array ending at 0009, and it went red the
+// moment 0011/0012/0013 were added while the fixture was still doing exactly the right thing —
+// the same "guard that fails when the code gets better" shape this repository keeps catching.
+// What the fixture needs is every migration numbered BELOW the one under test, and nothing at or
+// above it: 0011's guest-read policy and 0012/0013's constraint changes describe LATER states of
+// the schema, and applying them here would change what "before 0010" means. The list is now read
+// from the directory and only the boundary is asserted.
+const ABOVE_OR_AT_HARDENING = readdirSync(MIGRATIONS)
+  .filter((name) => name.endsWith('.sql') && name >= HARDENING_NAME)
   .sort();
 
 assert.deepEqual(
@@ -43,7 +54,18 @@ assert.deepEqual(
     '0008_project_tags.sql',
     '0009_membership_access_outbox.sql',
   ],
-  'the focused fixture must apply exactly 0001-0009 before 0010',
+  // A TRIPWIRE, and it is meant to be exact. Any change to the pre-0010 history needs a human to
+  // look at it, because the fixture below is built on that history being fixed. Adding a migration
+  // ABOVE 0010 does not fire this; inserting one BELOW it does, which is the case worth stopping.
+  'the pre-0010 history is exactly these nine files',
+);
+assert.ok(
+  ABOVE_OR_AT_HARDENING.includes(HARDENING_NAME),
+  'the boundary is real: the migration under test sorts at or above itself',
+);
+assert.ok(
+  ABOVE_OR_AT_HARDENING.every((name) => name >= HARDENING_NAME),
+  'and nothing numbered below the migration under test leaked into the above-the-boundary set',
 );
 
 const NAME = `golem-schema-hardening-${process.pid}`;

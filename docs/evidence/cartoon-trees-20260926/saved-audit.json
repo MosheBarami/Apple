@@ -1,0 +1,36 @@
+{
+  "cataloguePreserved": true,
+  "oldModels": [
+    {
+      "inStorage": true,
+      "inWorld": false,
+      "name": "ExistingTree"
+    },
+    {
+      "inStorage": true,
+      "inWorld": false,
+      "name": "TreeSmall"
+    },
+    {
+      "inStorage": true,
+      "inWorld": false,
+      "name": "LowPolyTree"
+    }
+  ],
+  "trees": [
+    {
+      "anchored": 6,
+      "collidable": 6,
+      "meshParts": 6,
+      "name": "GardenTreeA",
+      "scripts": 0
+    },
+    {
+      "anchored": 7,
+      "collidable": 7,
+      "meshParts": 7,
+      "name": "GardenTreeB",
+      "scripts": 0
+    }
+  ]
+}

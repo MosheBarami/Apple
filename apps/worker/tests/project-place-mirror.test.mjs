@@ -194,3 +194,19 @@ test('a bound place wins over whatever unsaved place is open', async () => {
   const names = patches(calls).map((c) => c.body.place_name);
   assert.deepEqual(names, ['Zeta Test Place']);
 });
+
+// F-008's first evidence was the operator's own view: admin session-info read link.place = null while
+// the dock named Place1.rbxl. link.place is the BINDING, null by design for an unsaved place, so the
+// operator record carries what Studio reported beside it, as the owner's diagnostics already do.
+test('session info reports the place Studio has open, even when nothing is bound', async () => {
+  const { h, restore } = await signedIn();
+  try {
+    await h.session.handlePluginPoll({ state: state({ placeId: 0, gameId: 0, placeName: 'Place1' }) });
+    const info = await (await h.session.fetch(new Request('https://do/info'))).json();
+    assert.equal(info.link.place ?? null, null, 'CONTROL: the unsaved place is still not bound');
+    assert.equal(info.openPlace?.placeName, 'Place1', 'session info says Studio named nothing while it named Place1');
+    assert.equal(info.openPlace?.placeId, 0);
+  } finally {
+    restore();
+  }
+});

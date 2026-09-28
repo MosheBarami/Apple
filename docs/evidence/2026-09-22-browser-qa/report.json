@@ -1,0 +1,4053 @@
+{
+  "base": "https://apple.moshe-barami111.workers.dev",
+  "startedAt": "2026-09-22T17:01:39.915Z",
+  "runs": [
+    {
+      "viewport": "320x720",
+      "path": "/",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 320,
+        "innerWidth": 320,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 119,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 41,
+        "total": 41,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 17,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "h1",
+            "name": "rise-in",
+            "dur": "0.3s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "320x720",
+      "path": "/",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 320,
+        "innerWidth": 320,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 119,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 41,
+        "total": 41,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 17,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "h1",
+            "name": "rise-in",
+            "dur": "0.3s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "320x720",
+      "path": "/pricing",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 320,
+        "innerWidth": 320,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 198,
+        "failures": [],
+        "failureCount": 0
+      },
+      "focus": {
+        "sampled": 21,
+        "total": 21,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Pricing — Apple",
+      "error": null
+    },
+    {
+      "viewport": "320x720",
+      "path": "/pricing",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 320,
+        "innerWidth": 320,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 198,
+        "failures": [],
+        "failureCount": 0
+      },
+      "focus": {
+        "sampled": 21,
+        "total": 21,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Pricing — Apple",
+      "error": null
+    },
+    {
+      "viewport": "320x720",
+      "path": "/app",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 320,
+        "innerWidth": 320,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 14,
+        "failures": [
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "New here? Create an account",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          },
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "Locked out and a reset will not help? Ask a pers",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          }
+        ],
+        "failureCount": 2
+      },
+      "focus": {
+        "sampled": 7,
+        "total": 7,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "ltr",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "320x720",
+      "path": "/app",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 320,
+        "innerWidth": 320,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 14,
+        "failures": [
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "New here? Create an account",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          },
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "Locked out and a reset will not help? Ask a pers",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          }
+        ],
+        "failureCount": 2
+      },
+      "focus": {
+        "sampled": 7,
+        "total": 7,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "ltr",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "390x844",
+      "path": "/",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 390,
+        "innerWidth": 390,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 119,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 41,
+        "total": 41,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 18,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "h1",
+            "name": "rise-in",
+            "dur": "0.3s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "390x844",
+      "path": "/",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 390,
+        "innerWidth": 390,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 119,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 41,
+        "total": 41,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 18,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "h1",
+            "name": "rise-in",
+            "dur": "0.3s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "390x844",
+      "path": "/pricing",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 390,
+        "innerWidth": 390,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 198,
+        "failures": [],
+        "failureCount": 0
+      },
+      "focus": {
+        "sampled": 21,
+        "total": 21,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Pricing — Apple",
+      "error": null
+    },
+    {
+      "viewport": "390x844",
+      "path": "/pricing",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 390,
+        "innerWidth": 390,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 198,
+        "failures": [],
+        "failureCount": 0
+      },
+      "focus": {
+        "sampled": 21,
+        "total": 21,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Pricing — Apple",
+      "error": null
+    },
+    {
+      "viewport": "390x844",
+      "path": "/app",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 390,
+        "innerWidth": 390,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 14,
+        "failures": [
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "New here? Create an account",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          },
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "Locked out and a reset will not help? Ask a pers",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          }
+        ],
+        "failureCount": 2
+      },
+      "focus": {
+        "sampled": 7,
+        "total": 7,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "ltr",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "390x844",
+      "path": "/app",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 390,
+        "innerWidth": 390,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 14,
+        "failures": [
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "New here? Create an account",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          },
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "Locked out and a reset will not help? Ask a pers",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          }
+        ],
+        "failureCount": 2
+      },
+      "focus": {
+        "sampled": 7,
+        "total": 7,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "ltr",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "768x900",
+      "path": "/",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 768,
+        "innerWidth": 768,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 123,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 44,
+        "total": 44,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 45,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "g",
+            "name": "ambient-sway",
+            "dur": "31s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "768x900",
+      "path": "/",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 768,
+        "innerWidth": 768,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 123,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 44,
+        "total": 44,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 45,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "g",
+            "name": "ambient-sway",
+            "dur": "31s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "768x900",
+      "path": "/pricing",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 768,
+        "innerWidth": 768,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 198,
+        "failures": [],
+        "failureCount": 0
+      },
+      "focus": {
+        "sampled": 21,
+        "total": 21,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Pricing — Apple",
+      "error": null
+    },
+    {
+      "viewport": "768x900",
+      "path": "/pricing",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 768,
+        "innerWidth": 768,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 198,
+        "failures": [],
+        "failureCount": 0
+      },
+      "focus": {
+        "sampled": 21,
+        "total": 21,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Pricing — Apple",
+      "error": null
+    },
+    {
+      "viewport": "768x900",
+      "path": "/app",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 768,
+        "innerWidth": 768,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 14,
+        "failures": [
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "New here? Create an account",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          },
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "Locked out and a reset will not help? Ask a pers",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          }
+        ],
+        "failureCount": 2
+      },
+      "focus": {
+        "sampled": 7,
+        "total": 7,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "ltr",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "768x900",
+      "path": "/app",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 768,
+        "innerWidth": 768,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 14,
+        "failures": [
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "New here? Create an account",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          },
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "Locked out and a reset will not help? Ask a pers",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          }
+        ],
+        "failureCount": 2
+      },
+      "focus": {
+        "sampled": 7,
+        "total": 7,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "ltr",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "1440x900",
+      "path": "/",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 1440,
+        "innerWidth": 1440,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 123,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 44,
+        "total": 44,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 45,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "g",
+            "name": "ambient-sway",
+            "dur": "31s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "1440x900",
+      "path": "/",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 1440,
+        "innerWidth": 1440,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 123,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 44,
+        "total": 44,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 45,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "g",
+            "name": "ambient-sway",
+            "dur": "31s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "1440x900",
+      "path": "/pricing",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 1440,
+        "innerWidth": 1440,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 207,
+        "failures": [],
+        "failureCount": 0
+      },
+      "focus": {
+        "sampled": 29,
+        "total": 29,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Pricing — Apple",
+      "error": null
+    },
+    {
+      "viewport": "1440x900",
+      "path": "/pricing",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 1440,
+        "innerWidth": 1440,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 207,
+        "failures": [],
+        "failureCount": 0
+      },
+      "focus": {
+        "sampled": 29,
+        "total": 29,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Pricing — Apple",
+      "error": null
+    },
+    {
+      "viewport": "1440x900",
+      "path": "/app",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 1440,
+        "innerWidth": 1440,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 14,
+        "failures": [
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "New here? Create an account",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          },
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "Locked out and a reset will not help? Ask a pers",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          }
+        ],
+        "failureCount": 2
+      },
+      "focus": {
+        "sampled": 7,
+        "total": 7,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "ltr",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "1440x900",
+      "path": "/app",
+      "theme": "light",
+      "dir": "ltr",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 1440,
+        "innerWidth": 1440,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 14,
+        "failures": [
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "New here? Create an account",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          },
+          {
+            "tag": "p",
+            "cls": "auth-switch",
+            "text": "Locked out and a reset will not help? Ask a pers",
+            "ratio": 3.94,
+            "need": 4.5,
+            "size": 13
+          }
+        ],
+        "failureCount": 2
+      },
+      "focus": {
+        "sampled": 7,
+        "total": 7,
+        "noRing": [],
+        "noRingCount": 0
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "ltr",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "320x720",
+      "path": "/",
+      "theme": "dark",
+      "dir": "rtl",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 320,
+        "innerWidth": 320,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 119,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 41,
+        "total": 41,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 17,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "h1",
+            "name": "rise-in",
+            "dur": "0.3s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "rtl",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "320x720",
+      "path": "/",
+      "theme": "light",
+      "dir": "rtl",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 320,
+        "innerWidth": 320,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 119,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 41,
+        "total": 41,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 17,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "h1",
+            "name": "rise-in",
+            "dur": "0.3s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "rtl",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "390x844",
+      "path": "/",
+      "theme": "dark",
+      "dir": "rtl",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 390,
+        "innerWidth": 390,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 119,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 41,
+        "total": 41,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 18,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "h1",
+            "name": "rise-in",
+            "dur": "0.3s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "rtl",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "390x844",
+      "path": "/",
+      "theme": "light",
+      "dir": "rtl",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 390,
+        "innerWidth": 390,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 119,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 41,
+        "total": 41,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 18,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "path",
+            "name": "settle",
+            "dur": "26s"
+          },
+          {
+            "tag": "h1",
+            "name": "rise-in",
+            "dur": "0.3s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "rtl",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "768x900",
+      "path": "/",
+      "theme": "dark",
+      "dir": "rtl",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 768,
+        "innerWidth": 768,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 123,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 44,
+        "total": 44,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 45,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "g",
+            "name": "ambient-sway",
+            "dur": "31s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "rtl",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "768x900",
+      "path": "/",
+      "theme": "light",
+      "dir": "rtl",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 768,
+        "innerWidth": 768,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 123,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 44,
+        "total": 44,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 45,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "g",
+            "name": "ambient-sway",
+            "dur": "31s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "rtl",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "1440x900",
+      "path": "/",
+      "theme": "dark",
+      "dir": "rtl",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 1440,
+        "innerWidth": 1440,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 123,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 44,
+        "total": 44,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 45,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "g",
+            "name": "ambient-sway",
+            "dur": "31s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "rtl",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "1440x900",
+      "path": "/",
+      "theme": "light",
+      "dir": "rtl",
+      "motion": "no-preference",
+      "hScroll": {
+        "docScrollWidth": 1440,
+        "innerWidth": 1440,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 123,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 44,
+        "total": 44,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 45,
+        "sample": [
+          {
+            "tag": "a",
+            "name": "slide-in-left",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "a",
+            "name": "slide-in-down",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "slide-in-right",
+            "dur": "0.3s"
+          },
+          {
+            "tag": "div",
+            "name": "column-breathe",
+            "dur": "14s"
+          },
+          {
+            "tag": "svg",
+            "name": "drift, fade-in-soft",
+            "dur": "38s, 0.9s"
+          },
+          {
+            "tag": "g",
+            "name": "ambient-sway",
+            "dur": "31s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          },
+          {
+            "tag": "path",
+            "name": "stratum-drift",
+            "dur": "46s"
+          }
+        ]
+      },
+      "pageLang": "en",
+      "pageDir": "rtl",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "320x720",
+      "path": "/",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "reduce",
+      "hScroll": {
+        "docScrollWidth": 320,
+        "innerWidth": 320,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 120,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 41,
+        "total": 41,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "390x844",
+      "path": "/",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "reduce",
+      "hScroll": {
+        "docScrollWidth": 390,
+        "innerWidth": 390,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 120,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 41,
+        "total": 41,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "768x900",
+      "path": "/",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "reduce",
+      "hScroll": {
+        "docScrollWidth": 768,
+        "innerWidth": 768,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 124,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 44,
+        "total": 44,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    },
+    {
+      "viewport": "1440x900",
+      "path": "/",
+      "theme": "dark",
+      "dir": "ltr",
+      "motion": "reduce",
+      "hScroll": {
+        "docScrollWidth": 1440,
+        "innerWidth": 1440,
+        "overflowing": false
+      },
+      "past": [],
+      "pastCount": 0,
+      "contrast": {
+        "checked": 124,
+        "failures": [
+          {
+            "tag": "figcaption",
+            "cls": "micro proof-caption",
+            "text": "Roblox Studio · 19 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro proof-ask-label",
+            "text": "Sent, both times",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: inspect only",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "p",
+            "cls": "micro proof-state",
+            "text": "Access: edits allowed for this connection",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "screen-inventory · 21 September 2026",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "",
+            "text": "0 objects hidden — this is the screen the script",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "characters of Luau written",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "interface objects built",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "shipped games behind the library it used",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          },
+          {
+            "tag": "span",
+            "cls": "micro built-label",
+            "text": "image assets referenced — every shape is drawn",
+            "ratio": 4.35,
+            "need": 4.5,
+            "size": 10
+          }
+        ],
+        "failureCount": 10
+      },
+      "focus": {
+        "sampled": 44,
+        "total": 44,
+        "noRing": [
+          {
+            "tag": "textarea",
+            "text": ""
+          }
+        ],
+        "noRingCount": 1
+      },
+      "motionRunning": {
+        "count": 0,
+        "sample": []
+      },
+      "pageLang": "en",
+      "pageDir": "(unset)",
+      "pageTitle": "Apple — build Roblox games inside Studio",
+      "error": null
+    }
+  ],
+  "keyboard": {
+    "stops": 30,
+    "noVisibleRing": 1,
+    "order": [
+      {
+        "tag": "a",
+        "text": "Skip to content",
+        "ring": "outline",
+        "inView": true
+      },
+      {
+        "tag": "a",
+        "text": "Apple",
+        "ring": "outline",
+        "inView": true
+      },
+      {
+        "tag": "a",
+        "text": "Docs",
+        "ring": "outline",
+        "inView": true
+      },
+      {
+        "tag": "a",
+        "text": "Showcase",
+        "ring": "outline",
+        "inView": true
+      },
+      {
+        "tag": "a",
+        "text": "Pricing",
+        "ring": "outline",
+        "inView": true
+      },
+      {
+        "tag": "a",
+        "text": "Sign in",
+        "ring": "outline",
+        "inView": true
+      },
+      {
+        "tag": "button",
+        "text": "",
+        "ring": "outline",
+        "inView": true
+      },
+      {
+        "tag": "a",
+        "text": "Create an account",
+        "ring": "outline",
+        "inView": true
+      },
+      {
+        "tag": "textarea",
+        "text": "",
+        "ring": "none",
+        "inView": true
+      },
+      {
+        "tag": "button",
+        "text": "Build",
+        "ring": "outline",
+        "inView": true
+      },
+      {
+        "tag": "a",
+        "text": "See the status ↗",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "a",
+        "text": "Create a free account",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "a",
+        "text": "Read the docs",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "a",
+        "text": "The whole log of one run, and the five d",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Workspace",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Baseplate",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "SpawnLocation",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "ServerScriptService",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Main",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "ReplicatedStorage",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Floor is one flat slab — no material bre",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Two towers share an edge and read as one",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Nothing marks where a player spawns",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Floor is one flat slab — no material bre",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Two towers share an edge and read as one",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Nothing marks where a player spawns",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "A leaderstat",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Save what a player buys",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "button",
+        "text": "Fetch a script from a URL",
+        "ring": "outline",
+        "inView": false
+      },
+      {
+        "tag": "pre",
+        "text": "local Players = game:GetService(\"Players",
+        "ring": "outline",
+        "inView": false
+      }
+    ]
+  },
+  "finishedAt": "2026-09-22T17:02:40.865Z"
+}

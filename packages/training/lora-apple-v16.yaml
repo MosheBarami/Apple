@@ -1,0 +1,25 @@
+# Apple v16 — written by src/train-forever.mjs; do not hand-edit (the next version derives from the best).
+#
+# Lever: game-logic-v4-verified-shard — one change relative to the best at the time, v5 (lora-apple-v5.yaml).
+# Why: Add 51 first-party game-logic modules from five families, each hash-checked and executed by
+# the local Luau checker. Only the training split grows; the pinned validation and 38-row evaluation
+# remain untouched. This directly targets the measured 0/8 logic weakness.
+# Change:
+# data:{"op":"appendVerified","source":"data/game-logic-seeds-v4/shard-3.jsonl","sha256":"bf46d88962778c37bf7a89a8a4b7d9902e290cd051392f0ada73e9c7e487863a"}
+model: "unsloth/Llama-3.2-3B-Instruct"
+train: true
+data: "runs/forever/data-v16"
+fine_tune_type: "lora"
+optimizer: "adamw"
+num_layers: 16
+batch_size: 1
+grad_accumulation_steps: 4
+grad_checkpoint: true
+max_seq_length: 2048
+iters: 400
+learning_rate: 5.0e-5
+val_batches: -1
+steps_per_report: 10
+steps_per_eval: 25
+save_every: 25
+adapter_path: "adapters/apple-v16"

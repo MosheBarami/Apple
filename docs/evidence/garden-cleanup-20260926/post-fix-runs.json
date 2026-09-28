@@ -1,0 +1,18 @@
+[
+  {
+    "id": "33615801-5fb6-4056-a524-e8953e5bb467",
+    "createdAt": "2026-09-26T10:12:32.478Z",
+    "creditsSpent": 0,
+    "stopReason": "incomplete",
+    "toolTrace": [],
+    "content": "The requested tool sequence was not completed. I stopped without adding other actions.\n\nYou have not been charged for this run: the 5 Credits it used have been put back."
+  },
+  {
+    "id": "8203bee1-c309-4375-b505-2f2802075d4a",
+    "createdAt": "2026-09-26T10:13:16.372Z",
+    "creditsSpent": 0,
+    "stopReason": "incomplete",
+    "toolTrace": [],
+    "content": "The requested tool sequence was not completed. I stopped without adding other actions.\n\nYou have not been charged for this run: the 5 Credits it used have been put back."
+  }
+]

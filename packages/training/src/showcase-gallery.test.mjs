@@ -45,7 +45,7 @@ function build({ corpus = null, corpusPath = null, results = null, genre = 'tyco
   for (const [name, body] of Object.entries(sources ?? {})) writeFileSync(join(ui, name), body);
   for (const [name, body] of Object.entries(mapSources ?? {})) writeFileSync(join(maps, name), body);
   writeFileSync(join(ui, 'manifest.json'), JSON.stringify({
-    base: 'https://example.invalid', model: 'rune', genre,
+    base: 'https://example.invalid', model: 'agent', genre,
     counts: { targets: 2, built: 1, byOutcome: { built: 1, truncated_code_block: 1 } },
     results: results ?? [
       { target: 'screen-shop', id: 'screen-shop', genre: 'tycoon', outcome: 'built', guiNodes: 4, files: { svg: 'a.svg' } },

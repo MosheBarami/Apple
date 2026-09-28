@@ -8,10 +8,13 @@
  *
  * SETTINGS DISCIPLINE, every line of it learned from a defect this repository shipped:
  *
- *   - A GATEWAY CONFIG NAME IS NOT A PRODUCT LANE. `--lane apple-max --mode super-agent` resolves
- *     what a person actually reaches, through the same `gatewayModelFor` mapping the worker uses.
- *     The resolution is imported from production-settings.mjs, whose own test reads apps/worker/src
- *     and goes red if the worker moves and the mirror does not.
+ *   - A GATEWAY CONFIG NAME IS NOT A PRODUCT LANE. `--lane apple-max --mode agent` resolves what a
+ *     person actually reaches, through the same `gatewayModelFor` mapping the worker uses. The
+ *     resolution is imported from production-settings.mjs, whose own test reads apps/worker/src and
+ *     goes red if the worker moves and the mirror does not.
+ *   - THE MODE IS VALIDATED BY THE MIRROR, NOT BY A HAND-WRITTEN LIST HERE. `resolveMode` refuses
+ *     the retired vocabulary by name and names the replacement, so `--mode stone` says "stone is
+ *     retired, it is now agent" rather than "unknown mode".
  *   - MEASURE AT THE BUDGET PRODUCTION USES. An eval that hardcoded 1,100 tokens once reported a
  *     model as broken that was not. The budget is derived the way the worker derives it — the
  *     mode's base tokens scaled by effort — and then MIN'd with the gateway's own ceiling, because
@@ -36,8 +39,8 @@
  *
  * Usage:
  *   node packages/training/src/roblox-frontier-bench.mjs --lane apple --mode agent --arm neutral
- *   node packages/training/src/roblox-frontier-bench.mjs --lane apple-max --mode super-agent --arm house-rules
- *   node packages/training/src/roblox-frontier-bench.mjs --show-settings --lane apple-max --mode super-agent
+ *   node packages/training/src/roblox-frontier-bench.mjs --lane apple-max --mode agent --arm house-rules
+ *   node packages/training/src/roblox-frontier-bench.mjs --show-settings --lane apple-max --mode plan
  *   node packages/training/src/roblox-frontier-bench.mjs --lane apple --mode agent --arm neutral --replicate 2
  */
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
@@ -46,7 +49,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FRONTIER_ITEMS, ARMS, AXES } from './roblox-frontier-tasks.mjs';
 import { scoreFrontierItem, tally, HARNESS_PATH } from './score-roblox-frontier.mjs';
-import { MODE_ALIASES, resolveSettings, cacheBustTokens } from './production-settings.mjs';
+import { cacheBustTokens, resolveMode, resolveSettings } from './production-settings.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -66,10 +69,9 @@ if (lane !== 'apple' && lane !== 'apple-max') {
   console.error(`unknown lane "${lane}" — use apple or apple-max`);
   process.exit(2);
 }
-if (!MODE_ALIASES[modeArg]) {
-  console.error(`unknown mode "${modeArg}" — use plan, agent or super-agent`);
-  process.exit(2);
-}
+// The mirror owns this check, so a retired name gets the message that names its replacement.
+try { resolveMode(modeArg); }
+catch (e) { console.error(e.message); process.exit(2); }
 const arm = ARMS[armId];
 if (!arm) {
   console.error(`unknown arm "${armId}" — use ${Object.keys(ARMS).join(' or ')}`);

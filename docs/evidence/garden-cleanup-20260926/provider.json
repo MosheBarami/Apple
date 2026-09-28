@@ -1,0 +1,50 @@
+[
+  {
+    "runId": "ffacf8b3-7949-40b6-a520-f58cf7c7d7ee",
+    "neurons": 466,
+    "at": 1790417298874,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  },
+  {
+    "runId": "ffacf8b3-7949-40b6-a520-f58cf7c7d7ee",
+    "neurons": 111,
+    "at": 1790417305272,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  },
+  {
+    "runId": "ffacf8b3-7949-40b6-a520-f58cf7c7d7ee",
+    "neurons": 278,
+    "at": 1790417307293,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  },
+  {
+    "runId": "ffacf8b3-7949-40b6-a520-f58cf7c7d7ee",
+    "neurons": 130,
+    "at": 1790417342166,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  },
+  {
+    "runId": "ffacf8b3-7949-40b6-a520-f58cf7c7d7ee",
+    "neurons": 111,
+    "at": 1790417344783,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  },
+  {
+    "runId": "ffacf8b3-7949-40b6-a520-f58cf7c7d7ee",
+    "neurons": 115,
+    "at": 1790417349671,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  },
+  {
+    "runId": "ffacf8b3-7949-40b6-a520-f58cf7c7d7ee",
+    "neurons": 129,
+    "at": 1790417354721,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  },
+  {
+    "runId": "ffacf8b3-7949-40b6-a520-f58cf7c7d7ee",
+    "neurons": 132,
+    "at": 1790417359828,
+    "model": "@cf/zai-org/glm-5.3-flash"
+  }
+]

@@ -1,0 +1,162 @@
+{
+  "asOf": "2026-09-26T23:29:58.553389+00:00",
+  "scope": "Only source roots declared in packages/owner-corpus/corpus.py; no repository or unrelated download scan.",
+  "privacy": "Exact source paths omitted. Source basenames, SHA-256 digests, and counts may appear.",
+  "denominators": {
+    "originalReportedRobloxFilePaths": 447,
+    "currentRobloxDistinctPaths": 447,
+    "currentRobloxUniqueCachedSha256": 438,
+    "indexedDistinctSources": 438,
+    "indexedRobloxAliasPaths": 447
+  },
+  "coverage": {
+    "robloxPathAliasesIndexed": 447,
+    "robloxPathCoverage": 1.0,
+    "uniqueRobloxHashesIndexed": 438,
+    "uniqueRobloxHashCoverage": 1.0,
+    "interpretation": "438 is a distinct-content count; 447 is a distinct-path count. Compare source coverage with the unique-SHA denominator and alias coverage with the path denominator."
+  },
+  "inventory": {
+    "declaredRoots": 28,
+    "missingRootCount": 1,
+    "missingRootNames": [
+      "grow_a_garden.rbxl"
+    ],
+    "missingRootsMatchCachedManifest": true,
+    "allFileDistinctPaths": 2872,
+    "cachedManifestDistinctPaths": 2872,
+    "sqliteAliasDistinctPaths": 2872,
+    "cachePathsMissingOrNew": 0,
+    "cachePathsStale": 0,
+    "sqliteAliasesMissingOrNew": 0,
+    "sqliteAliasesStale": 0,
+    "sqliteAliasShaMismatches": 0,
+    "sqliteSourcesMissingFromCachedInventory": 0,
+    "cachedHashesMissingFromSqlite": 0,
+    "originalRobloxPathCountMatches": true
+  },
+  "robloxFiles": {
+    "distinctPaths": 447,
+    "formatsByPath": {
+      ".rbxl": 439,
+      ".rbxlx": 1,
+      ".rbxm": 7
+    },
+    "contentClassificationByHeader": {
+      "binary": 420,
+      "xml": 27
+    },
+    "sqliteAliasStatusByPath": {
+      "indexed": 447
+    },
+    "failedDistinctSources": 0,
+    "localOnlyDistinctSources": 2425,
+    "unindexedPathCount": 0,
+    "unindexedFiles": [],
+    "missingSqliteAliases": [],
+    "duplicateShaGroups": [
+      {
+        "sha256": "0cfd38996bf275c4258c539005b5b1a110cf317e02d8c32c0809c4556dd76ad1",
+        "distinctPathCount": 2,
+        "names": [
+          "Apocalypse Rising Reimagined.rbxl",
+          "AR Reimagined.rbxl"
+        ]
+      },
+      {
+        "sha256": "20a3bc246254ff09a7ccb97842d3daea094b49f28d4539e8654569dc49bc6845",
+        "distinctPathCount": 2,
+        "names": [
+          "Dead Winter v2 (2).rbxl",
+          "Dead Winter v2.rbxl"
+        ]
+      },
+      {
+        "sha256": "49bf12ed16b8941d06f3187c6f20833d93bf90f3b5fb6e2933da09e3733da6c2",
+        "distinctPathCount": 2,
+        "names": [
+          "407782439.rbxl",
+          "AGR Christophsis Battlegrounds, Chaleydonia.rbxl"
+        ]
+      },
+      {
+        "sha256": "4dc477e71b2dbaf1bba96d728d134f9764fb50a17635de9b6f12c052b34b974e",
+        "distinctPathCount": 2,
+        "names": [
+          "[SF] Havoc Island [FINAL RELEASE].rbxl",
+          "SF_Havoc_Island_FINAL_RELEASE.rbxl"
+        ]
+      },
+      {
+        "sha256": "cbe39b335cc55ced17a6cf873bb7976b96d0660fd35c9d5860c5216007b23e85",
+        "distinctPathCount": 2,
+        "names": [
+          "170998871.rbxl",
+          "The Candle Den Dance Hall and Lounge.rbxl"
+        ]
+      },
+      {
+        "sha256": "d49638b7bbb306578787387d056e53c82c9e6db7ac30d68707504fa7b095fd77",
+        "distinctPathCount": 2,
+        "names": [
+          "rip ur toaster by OriginatedSystemized.rbxl",
+          "Toast.rbxl"
+        ]
+      },
+      {
+        "sha256": "d7e818af5b454076090a144b1f5af684eb3dea9b2901e525c7ea6e08562f0dba",
+        "distinctPathCount": 2,
+        "names": [
+          "Phantom Forces [current version].rbxl",
+          "Phantom Forces.rbxl"
+        ]
+      },
+      {
+        "sha256": "dcb50bbb5b3d4ff5c415be7e22c8ccdd69eb720649f8e65633629ac222ddc2a9",
+        "distinctPathCount": 2,
+        "names": [
+          "320474053.rbxl",
+          "Maison sur la falaise.rbxl"
+        ]
+      },
+      {
+        "sha256": "ef4f9f7429aef1b50b230e8a3d1a9bd7c2009affef4fda49a77e04ca51b5a418",
+        "distinctPathCount": 2,
+        "names": [
+          "Contro.rbxl",
+          "new sword build.rbxl"
+        ]
+      }
+    ],
+    "duplicateShaGroupCount": 9,
+    "duplicateRobloxPathExcess": 9,
+    "aliasShaMismatches": []
+  },
+  "sqlite": {
+    "allDistinctSources": 2863,
+    "indexedDistinctSources": 438,
+    "localFileDistinctSources": 2425,
+    "decodeFailedDistinctSources": 0,
+    "indexedPlusFailedPlusLocal": 2863,
+    "decodeFailedNamesAndSha256": [],
+    "otherStatuses": {},
+    "cachedHashesMissingInSqlite": [],
+    "sqliteSourceHashesMissingFromCachedInventory": []
+  },
+  "cachedHashValidation": {
+    "policy": "deterministic evenly spaced sample; max 12 files, 64 MiB each, 128 MiB total",
+    "selected": 12,
+    "verified": 12,
+    "skippedBySizeCap": 0,
+    "bytesHashed": 8635053,
+    "mismatches": []
+  },
+  "reconciliation": {
+    "currentFilesMatchCachedManifest": true,
+    "currentFilesMatchSqliteAliases": true,
+    "cachedMissingRootsMatchCurrent": true,
+    "sqliteAliasHashesMatchCachedInventory": true,
+    "sqliteSourceHashesMatchCachedInventory": true,
+    "cachedHashMismatchCount": 0
+  }
+}

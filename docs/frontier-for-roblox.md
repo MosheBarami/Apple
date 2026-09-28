@@ -853,17 +853,33 @@ body", which is answerable from the mirror.
 `apps/worker/src/do/session.ts`, and **its own test reads the worker's source**, so a drift between
 the two is a red test rather than a wrong table here.
 
+<!-- 2026-09-22 REVISION. The table below was re-printed after the product contract settled on
+     `ProductMode = 'plan' | 'agent'` and the gateway keys in gateway.ts DEFAULT_MODELS were renamed
+     to match. The previous printing of this table said `stone`/`rune` and carried a `Super Agent`
+     row; those keys no longer exist in the worker. The guard promised in the paragraph above did
+     exactly its job: `roblox-frontier.test.mjs` went red on the rename and named the row that moved.
+     The historical table is not reproduced here because it was a PRINTED RESOLUTION, not a
+     measurement — no neuron was spent on it and no number on this page was derived from it. -->
+
 | lane | mode | gateway | model | effort | base | requested | ceiling | effective |
 |---|---|---|---|---|---|---|---|---|
-| `apple` | Plan | `stone` | glm-5.3-flash | low | 4,400 | 4,400 | 6,500 | 4,400 |
-| **`apple`** | **Agent** | **`stone`** | **glm-5.3-flash** | **high** | **4,400** | **8,800** | **6,500** | **6,500** |
-| `apple-max` | Plan | `stone` | glm-5.3-flash | high | 4,400 | 8,800 | 6,500 | 6,500 |
-| **`apple-max`** | **Agent** | **`stone`** | **glm-5.3-flash** | **high** | **4,400** | **8,800** | **6,500** | **6,500** |
-| `apple-max` | Super Agent | `rune` | glm-5.3-flash | high | 5,200 | 10,400 | 6,500 | 6,500 |
+| `apple` | Plan | `plan` | glm-5.3-flash | low | 4,400 | 4,400 | 6,500 | 4,400 |
+| **`apple`** | **Agent** | **`agent`** | **glm-5.3-flash** | **high** | **4,400** | **8,800** | **6,500** | **6,500** |
+| `apple-max` | Plan | `plan` | glm-5.3-flash | high | 4,400 | 8,800 | 6,500 | 6,500 |
+| **`apple-max`** | **Agent** | **`agent`** | **glm-5.3-flash** | **high** | **4,400** | **8,800** | **6,500** | **6,500** |
 
-The two Agent rows are equal in **every field that is sent**. Serialised with the same arm and the
-same prompt, the request bodies are 1,563 bytes each and hash to the same
-`sha256 041da14ebce80234` — checked by hashing them, not by comparing the table by eye.
+The two Agent rows are equal in **every field that is sent**. Serialised with the same arm
+(`house-rules-plus`) and the same prompt, the request bodies are 1,569 bytes each and hash to the
+same `sha256 63d42698eedb5f36` — checked by hashing them, not by comparing the table by eye. The
+construction is the one the bench uses, `JSON.stringify({ model, prompt, system: arm.system,
+maxTokens: requestedTokens })` with `prompt: 'PROMPT'`, so the byte count is a property of that
+body and not of any real prompt.
+
+**Plan is where the lanes still differ, and the difference is the budget.** Both lanes resolve to
+`plan`, the same model and the same ceiling; `apple` asks for 4,400 and `apple-max` for 8,800,
+because the entitlement floor raises Plan's `low` baseline to `high`. So the claim below is about
+**Agent**, which is the mode §9's numbers were taken in — it is not a claim that the two tiers are
+interchangeable in every mode.
 
 ### 10.3 What this settles, and what it does not
 
@@ -880,15 +896,18 @@ were identical is not.
 
 **Does not settle.** Three things, none of them about the model:
 
-- **Super Agent was not run.** `rune` at a requested 10,400 is a different body — and the same 6,500
-  ceiling clamps it, so the provider sees an identical budget, and `/api/admin/model-test` reports
-  `rune` serving the same `@cf/zai-org/glm-5.3-flash`. No customer can select it
-  (`PRODUCT_MODES_OFFERED`), and 16 items there would cost roughly 350 neurons to measure a mode
-  nobody reaches. Deliberately not spent, and named here rather than left as a silent gap.
-- **The step limit is a real difference between the lanes and this page cannot see it.**
-  `maxStepsFor` bounds the free lane to `min(STEP_LIMITS[mode], STEP_LIMITS.clay)`. Every item here
-  is one prompt and one answer, so a per-run step budget never enters. A multi-step build could
-  differ between the lanes for that reason alone, and nothing here says otherwise.
+- **Super Agent was retired rather than measured, and that closes the gap by removal.**
+  <!-- 2026-09-22: the product contract settled on `ProductMode = 'plan' | 'agent'`, with Autonomous
+       as a boolean ON Agent rather than a third mode. `rune` no longer exists in the worker or in
+       `gatewayModelFor`, so there is nothing left to measure: `resolveMode` refuses the name and
+       says what it became. The paragraph this replaced recorded a deliberately unspent ~350 neurons
+       for a mode nobody could reach, which was the right call at the time; the mode is now gone, so
+       the call is moot rather than settled by evidence. -->
+- **The step limit no longer differs between the lanes, and it never differed by mode.**
+  `MAX_RUN_STEPS` is one constant of 1000 in `do/session.ts`, applied to every mode and every lane;
+  `STEP_LIMITS` and `maxStepsFor` are gone. Every item here is one prompt and one answer, so a
+  per-run step budget never enters — but the earlier version of this bullet claimed the free lane
+  was bounded to `min(STEP_LIMITS[mode], STEP_LIMITS.clay)`, and that table no longer exists.
 - **The composer, still.** Same limit as §8.8: `/api/admin/model-test` takes the system prompt from
   the caller, so no measurement on this page — on either lane — went through the prompt the product
   composes.

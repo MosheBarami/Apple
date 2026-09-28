@@ -1119,6 +1119,10 @@ async function backoff(ctx, failures, why) {
 }
 
 async function main() {
+  const ownerStop = join(TRAINING, 'OWNER_DISABLED.json');
+  if (existsSync(ownerStop) && readJson(ownerStop).disabled === true) {
+    throw new Error('LoRA training is disabled by the owner. See packages/training/OWNER_DISABLED.json.');
+  }
   const args = new Set(process.argv.slice(2));
   const ctx = { dry: args.has('--dry-run'), once: args.has('--once'), publish: args.has('--publish'), post: args.has('--post'), cpu: args.has('--cpu') };
   L = layout(ctx.dry);

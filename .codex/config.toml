@@ -1,0 +1,13 @@
+approval_policy = "never"
+model_reasoning_summary = "auto"
+model_verbosity = "medium"
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@latest"]
+
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+CLAUDE_AUTOCOMPACT_PCT_OVERRIDE = "20"
+BASH_MAX_OUTPUT_LENGTH = "12000"

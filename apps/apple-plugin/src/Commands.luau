@@ -2395,12 +2395,21 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 			state.skipped[className] = (state.skipped[className] or 0) + 1
 			return nil
 		end
-		-- F-053: only a checkpoint (state.holds) holds a copy; its children are captured as nodes.
+		-- F-053: only a checkpoint (state.holds) holds a copy; its children are captured as nodes,
+		-- except a SurfaceAppearance, which stays in the copy: its texture pack and emissive mask can be
+		-- neither read nor written by a plugin, so a node would bring a generated model back untextured.
 		local held = nil
 		if className == "MeshPart" and state.holds ~= nil then
 			held = safeClone(inst)
 			if held then
-				for _, copyChild in (childrenOf(held) or {}) do pcall(function() copyChild:Destroy() end) end
+				for _, copyChild in (childrenOf(held) or {}) do
+					if classNameOf(copyChild) ~= "SurfaceAppearance" then pcall(function() copyChild:Destroy() end) end
+				end
+			elseif propertyValue(inst, "Archivable") == false then
+				state.complete = false
+				local key = "MeshPart (Archivable is off, so Studio will not copy it)"
+				state.skipped[key] = (state.skipped[key] or 0) + 1
+				return nil
 			end
 		end
 		if not RESTORE_CLASSES[className] and not held and not isService and not isProtectedContainer then
@@ -2446,6 +2455,8 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 	if not children then return nil, childrenErr end
 	local childCount = 0
 	for _, child in children do
+		-- Already in the held copy (Clone copies exactly the children whose Archivable is on).
+		if held and classNameOf(child) == "SurfaceAppearance" and propertyValue(child, "Archivable") ~= false then continue end
 		childCount += 1
 		if childCount > MAX_SNAPSHOT_CHILDREN then
 			truncate(state, "children")
@@ -2766,7 +2777,19 @@ local function opPing(): any
 	return { pong = true }
 end
 
-local function makeNode(self: any, inst: any, path: string, depth: number, state: any): any
+-- Read-only references retain actual object identity across duplicate names/reordering.
+-- Never feed these to the general path resolver: writes still require normal unambiguous paths.
+local function readReference(self: any, inst: any): string
+	self.readRefCounter += 1
+	local key = ("read-ref:%s:%d"):format(self.readRefEpoch, self.readRefCounter)
+	self.readRefs[key] = { instance = inst, issued = nowSeconds() }
+	if self.readRefCounter > 2048 then
+		self.readRefs[("read-ref:%s:%d"):format(self.readRefEpoch, self.readRefCounter - 2048)] = nil
+	end
+	return key
+end
+
+local function makeNode(self: any, inst: any, path: string, depth: number, state: any, ambiguous: boolean?): any
 	if state.count >= state.maxNodes then state.truncated = true; return nil end
 	state.count += 1
 	local node: any = {
@@ -2777,6 +2800,7 @@ local function makeNode(self: any, inst: any, path: string, depth: number, state
 	}
 	local children = childrenOf(inst)
 	if children then node.childCount = #children end
+	if ambiguous and self.readRefEpoch then node.readRef = readReference(self, inst) end
 	local props = captureProperties(self.game, inst, READ_PROPERTIES)
 	if next(props) then node.props = props end
 	local attrs = captureAttributes(self.game, inst)
@@ -2787,11 +2811,13 @@ local function makeNode(self: any, inst: any, path: string, depth: number, state
 	end
 	if children then
 		node.children = {}
+		local names = {}
+		for _, child in children do names[nameOf(child)] = (names[nameOf(child)] or 0) + 1 end
 		for _, child in children do
 			if state.count >= state.maxNodes then state.truncated = true; break end
 			if not PRESERVE_CLASSES[classNameOf(child)] then
 				local childPath = fullPath(self.game, child) or path .. "." .. nameOf(child)
-				local childNode = makeNode(self, child, childPath, depth + 1, state)
+				local childNode = makeNode(self, child, childPath, depth + 1, state, ambiguous == true or names[nameOf(child)] > 1)
 				if childNode then table.insert(node.children, childNode) end
 			end
 		end
@@ -2830,7 +2856,31 @@ local function handleTree(self: any, op: any): (any?, string?, string?)
 end
 
 local function handleInstance(self: any, op: any): (any?, string?, string?)
-	local inst, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.path, false)
+	local inst, canonical, err, pathKind
+	if type(op.path) == "string" and string.sub(op.path, 1, 9) == "read-ref:" then
+		local entry = self.readRefs[op.path]
+		if not entry or nowSeconds() - entry.issued > 600 then
+			self.readRefs[op.path] = nil
+			return nil, "not_found", "read reference expired or is unknown; read the tree again"
+		end
+		canonical = fullPath(self.game, entry.instance)
+		local parts = canonical and parsePath(canonical)
+		local serviceName = parts and firstService(parts)
+		local service = serviceName and serviceFrom(self.game, self.options.services, serviceName)
+		local ancestor = entry.instance
+		local depth = 0
+		while ancestor and ancestor ~= service and depth < 64 do
+			ancestor = parentOf(ancestor)
+			depth += 1
+		end
+		if not service or ancestor ~= service then
+			self.readRefs[op.path] = nil
+			return nil, "refused", "read reference target is outside the current place read scope"
+		end
+		inst = entry.instance
+	else
+		inst, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.path, false)
+	end
 	if not inst then return nil, pathKind or "not_found", err end
 	local count, countErr = childCount(inst)
 	if count == nil then return nil, "internal", countErr end
@@ -4621,15 +4671,25 @@ local function handlePlayCheck(self: any, op: any): (any?, string?, string?, str
 		for index, raw in op.press do
 			if type(index) ~= "number" then return nil, "invalid", "play_check.press must be a list" end
 			local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, raw, false)
-			if not inst then return nil, pathKind or "not_found", resolveErr end
-			local parts = parsePath(canonical)
+			-- A button a LocalScript builds at runtime is not in StarterGui at edit time: the player's
+			-- PlayerGui is searched for the same path instead, and the report says if it never appeared.
+			if not inst and pathKind ~= "not_found" then return nil, pathKind or "invalid", resolveErr end
+			local parts = parsePath(if inst then canonical else raw)
 			if not parts or parts[2] ~= "StarterGui" or #parts < 4 then
 				return nil, "invalid", "play_check.press targets must be buttons inside a ScreenGui in game.StarterGui"
 			end
-			local starterGui = serviceFrom(self.game, self.options.services, "StarterGui")
-			local screen = starterGui and starterGui:FindFirstChild(parts[3])
-			if not screen or not isA(screen, "ScreenGui") then return nil, "invalid", "play_check.press targets must be inside a ScreenGui: " .. tostring(canonical) end
-			if not isA(inst, "GuiButton") then return nil, "invalid", "play_check.press targets must be a TextButton or ImageButton: " .. tostring(canonical) end
+			if inst then
+				local starterGui = serviceFrom(self.game, self.options.services, "StarterGui")
+				local screen = starterGui and starterGui:FindFirstChild(parts[3])
+				if not screen or not isA(screen, "ScreenGui") then return nil, "invalid", "play_check.press targets must be inside a ScreenGui: " .. tostring(canonical) end
+				if not isA(inst, "GuiButton") then return nil, "invalid", "play_check.press targets must be a TextButton or ImageButton: " .. tostring(canonical) end
+			else
+				for segmentIndex = 3, #parts do
+					local valid, nameErr = safeName(parts[segmentIndex], "play_check.press path segment")
+					if not valid then return nil, "invalid", nameErr end
+				end
+				canonical = raw
+			end
 			local segments = {}
 			for segmentIndex = 3, #parts do table.insert(segments, parts[segmentIndex]) end
 			table.insert(press, { path = canonical, segments = segments })
@@ -4865,7 +4925,15 @@ function Commands.new(options: any?): any
 		local ok, value = pcall(function() return game end)
 		if ok then gameRef = value end
 	end
+	-- A fresh GUID prevents references from a prior plugin load aliasing new objects.
+	-- GenerateGUID is local; this does not make an HTTP request or change settings.
+	local epochOk, epoch = pcall(function()
+		return gameRef:GetService("HttpService"):GenerateGUID(false)
+	end)
 	local self: any = {
+		readRefs = {},
+		readRefEpoch = if epochOk and type(epoch) == "string" and #epoch == 36 then epoch else nil,
+		readRefCounter = 0,
 		options = opts,
 		game = gameRef,
 		destroyed = false,
@@ -5053,6 +5121,7 @@ function Commands.new(options: any?): any
 	function self:destroy()
 		if self.destroyed then return end
 		self.destroyed = true
+		self.readRefs = {}
 		for _, holds in self.heldCopies do for _, copy in holds do pcall(function() copy:Destroy() end) end end
 		self.heldCopies = {}
 		self.heldOrder = {}

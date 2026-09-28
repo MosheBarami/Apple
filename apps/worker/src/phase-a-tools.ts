@@ -725,14 +725,17 @@ export function playCheckUiOp(a: Args): StudioOp | Refusal {
   if (press.some((p) => !/^(game\.)?StarterGui\./.test(p))) {
     return refuse('Each press path must be a GuiButton inside a ScreenGui in game.StarterGui, e.g. "game.StarterGui.ShopGui.Panel.Buy".');
   }
-  return { op: 'play_check_ui', seconds, ...(rawTouch.length ? { touch: rawTouch as string[] } : {}), press };
+  // The plugin parses only paths that start at `game`.
+  const sent = press.map((p) => (p.startsWith('game.') ? p : `game.${p}`));
+  return { op: 'play_check_ui', seconds, ...(rawTouch.length ? { touch: rawTouch as string[] } : {}), press: sent };
 }
 
 export const PLAY_CHECK_UI_DEF: GatewayToolDef = {
   name: 'play_check_ui',
   description:
-    "play_check that also PRESSES on-screen buttons: starts a real Test session with one player, optionally walks onto `touch` parts, then clicks each `press` button (a GuiButton inside a ScreenGui in game.StarterGui, up to 5, in order) the way a player's click does, and reports for each whether it was found, visible and actually activated, the leaderstats after the presses, what the screen shows afterwards, and client and server errors. " +
-    'Use it to prove a UI flow works (Shop → Buy → coins go down) before you say so. A button that was not activated has not been tested.',
+    "play_check that also PRESSES on-screen buttons: starts a real Test session with one player, optionally walks onto `touch` parts, then clicks each `press` button (a GuiButton inside a ScreenGui in game.StarterGui, up to 5, in order) the way a player's click does, and reports for each whether it was found, visible and actually activated, and WHAT THAT PRESS CHANGED (panels shown or hidden, text, leaderstats, WalkSpeed/JumpPower/Health, player attributes), then the screen afterwards and client and server errors. " +
+    'A button a LocalScript builds at runtime is named the same way, by the ScreenGui name it gets in PlayerGui (game.StarterGui.<ScreenGui>.<path>); a missing button lists the buttons that were on screen. ' +
+    'Use it to prove a UI flow works (Shop → Buy → coins go down) before you say so. A button that was not activated, or that changed nothing, has not been shown to work.',
   parameters: S({
     press: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: PLAY_CHECK_UI_PRESS_LIMIT, description: 'e.g. ["game.StarterGui.ShopGui.Panel.Open", "game.StarterGui.ShopGui.Panel.Items.Sword.Buy"]' },
     seconds: { type: 'number', description: '3-15, default 5: how long the player stays in before the touches and presses' },

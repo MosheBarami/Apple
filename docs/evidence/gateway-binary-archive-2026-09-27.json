@@ -1,0 +1,70 @@
+{
+  "adapter": "packages/owner-corpus/gateway_binary_archive.py",
+  "contract": "serve(handler,path,value,number)",
+  "routes": [
+    "/v1/binary-archive-sources",
+    "/v1/binary-archive"
+  ],
+  "archiveLibrary": {
+    "completeOrReusedSources": 411,
+    "sourceListingPaged": true,
+    "payloadIncludedInManifestPages": false
+  },
+  "readbacks": [
+    {
+      "sourceSHA": "7979acb835495806548ffc9ff6d16d3b7a34b8d428e699602b32ca5bc309fd7d",
+      "instances": 13295,
+      "chunks": 2622,
+      "propertyChunks": 2481,
+      "exactString": {
+        "chunk": 971,
+        "classArrayIndex": 0,
+        "rawReferent": 10321,
+        "bytes": 22385,
+        "sha256": "cf0f48dab16feda9e5b260e3ca1a5e9bf9cf897fab086896540b260c5e1b8cef"
+      },
+      "opaqueArray": {
+        "chunk": 139,
+        "typeId": 18,
+        "bytes": 100,
+        "sha256": "b51fef7685379aab9dda17e19e5ef4f08a22e612e10d3b196da03db3ee24d604"
+      },
+      "originalCASStatStable": true
+    },
+    {
+      "sourceSHA": "8bf6b96a20497f7c2e8b49ab227b4db7de9400df331c98ba30d1a316833457eb",
+      "instances": 798862,
+      "chunks": 729,
+      "propertyChunks": 661,
+      "exactString": {
+        "chunk": 66,
+        "classArrayIndex": 0,
+        "bytes": 41,
+        "sha256": "563b9103b9c89bdf888a2e66eb584a884f916d444244200c2097108213985dfa"
+      },
+      "opaqueArray": {
+        "chunk": 69,
+        "typeId": 16,
+        "propertyLabel": "CFrame",
+        "bytes": 29484,
+        "sha256": "c0b5d7b8f545f742092ea541e03971287d2bfc1d5abad87fce183e62b9148e03",
+        "orderedRawReferentsPaged": 2268,
+        "pageSize": 1000
+      },
+      "decodedChunkPagination": {
+        "chunk": 15,
+        "totalBytes": 246564,
+        "pageBytes": [131072, 115492],
+        "pageSHA256": [
+          "b63370b18b8c256cdddf7117848e993a5dae06bb6a2d6ae896d8599532ca8509",
+          "63b666f6a9ef5b3b10d3b55d594541660be617f509aa522eefd0bf02f9f12bd6"
+        ]
+      },
+      "originalCASStatStable": true
+    }
+  ],
+  "execution": "none",
+  "normalizedNodeMappingProved": false,
+  "liveServerStarted": false,
+  "workerPluginOrGatewayFilesChanged": false
+}

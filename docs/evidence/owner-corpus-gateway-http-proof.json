@@ -1,0 +1,129 @@
+{
+  "readyFile": "/private/tmp/owner-gateway-ready-proof-final-code.json",
+  "authorizationWithoutKey": 401,
+  "browserOrigin": 403,
+  "keyFileMode": "0o600",
+  "cases": [
+    {
+      "nodeId": "7e3f8eea8ddbc8e0d154adb6b8016fa257862fd0e28b6457fc84c213e5c3f7fa:0",
+      "jobId": "83a54b6bfbca72e25f6f558d821d20f906b740d5fed4a04b93a124c8996919b7",
+      "nativeInstances": 955,
+      "nativeBytes": 44199,
+      "nativeSha256": "7cc71b38e68ab3b7898f04214a0f9a367459e4d0663da201bc390a61e17650e9",
+      "materializationSeconds": 19.584,
+      "nativeScripts": 0,
+      "artifactSHAAndChunksVerified": true,
+      "downloadedNativePath": "/private/tmp/gateway-final-955.rbxm",
+      "repeatSameLazyJob": true,
+      "mediaCount": 149,
+      "mediaPages": 22,
+      "dependenciesCount": 0,
+      "dependenciesPages": 1,
+      "nativeMapCount": 955,
+      "originalRawSHAExact": true,
+      "originalRawBytes": 43859,
+      "nativeBinaryReadback": {
+        "actualBinaryChildMapPassed": true,
+        "nativeInstances": 955,
+        "nativeMapCount": 955,
+        "nativeScripts": 0
+      }
+    },
+    {
+      "nodeId": "b4208b3eff4134bd93c909a977afbd7cb3e695e1bda5fcfbc540a05f9c15c5ea:0",
+      "jobId": "2a9b3e94cb95534d707bc92987876d428061a5344b3f40a88d8eca82efe8c5c5",
+      "nativeInstances": 834,
+      "nativeBytes": 55987,
+      "nativeSha256": "376466bade88d826a391696a6f40ebd3c5f73ae085a77154fe9e0e4b0e6a4f6f",
+      "materializationSeconds": 14.345,
+      "nativeScripts": 0,
+      "artifactSHAAndChunksVerified": true,
+      "downloadedNativePath": "/private/tmp/gateway-final-834.rbxm",
+      "repeatSameLazyJob": true,
+      "mediaCount": 78,
+      "mediaPages": 12,
+      "dependenciesCount": 226,
+      "dependenciesPages": 33,
+      "nativeMapCount": 834,
+      "originalRawSHAExact": true,
+      "originalRawBytes": 108957,
+      "nativeBinaryReadback": {
+        "actualBinaryChildMapPassed": true,
+        "nativeInstances": 834,
+        "nativeMapCount": 834,
+        "nativeScripts": 0
+      }
+    }
+  ],
+  "searchPaginationDistinct": true,
+  "overlargeMapPlan": {
+    "id": "9bc3ede55902076de09c24419f8556b78068b94d6ef8ab47be3fb3bf226619af:0",
+    "sourceId": "9bc3ede55902076de09c24419f8556b78068b94d6ef8ab47be3fb3bf226619af",
+    "rootPropertySha256": "3fb40d8d28cee5226c6701b57cad8587d9ad7418a587ecea0f8a5950032ea81d",
+    "count": {
+      "nodes": null,
+      "nodesAtLeast": 20001,
+      "exact": false,
+      "fitsOperation": false
+    },
+    "operationNodeCap": 20000,
+    "libraryExcluded": false,
+    "children": [
+      {
+        "id": "9bc3ede55902076de09c24419f8556b78068b94d6ef8ab47be3fb3bf226619af:2",
+        "class": "Model",
+        "name": "Case",
+        "ordinal": 0,
+        "component_sha": "0a8b6233e724cf309c427e6629ef12d7096c420537eb8ee8eb2918491fc6f1c5",
+        "subtree": {
+          "nodes": 51,
+          "nodesAtLeast": 51,
+          "exact": true,
+          "fitsOperation": true
+        },
+        "namespace": "Re55a491fc73dfdc47e6a18fa63021b41457b61f755c9cafb085908583102d928"
+      }
+    ],
+    "next": {
+      "afterOrdinal": 0,
+      "afterId": "9bc3ede55902076de09c24419f8556b78068b94d6ef8ab47be3fb3bf226619af:2"
+    },
+    "assemblyPlan": [
+      "Preserve the root shallow properties as inert data; allocate a script-free native container in original service/context.",
+      "Page all child IDs; materialize fitting subtrees. Recursively plan oversized children; no source-library exclusion.",
+      "Use deterministic node-ID namespace and native child-index map to retain global identity across chunks.",
+      "Restore safe cross-chunk Ref properties in a separate second pass from original dependency metadata after all targets exist."
+    ],
+    "crossBundleRefs": "preserved in original CAS/dependency data; native chunk external refs are null. Automatic cross-bundle repair is NOT implemented.",
+    "exactOriginalEndpoint": "/v1/source?id=9bc3ede55902076de09c24419f8556b78068b94d6ef8ab47be3fb3bf226619af",
+    "actualScreenshotRequired": true
+  },
+  "executableRootRejected": 400,
+  "scriptReadInert": true,
+  "observedAt": "2026-09-26T20:47:01.011199+00:00",
+  "testListener": {
+    "pid": 82276,
+    "execHandle": 68846,
+    "stopped": true,
+    "ephemeralKeyRemoved": true
+  },
+  "scope": "new gateway.py and documentation only; no worker/plugin/ingestor/catalogue edits",
+  "libraryScope": "all indexed owner nodes; 20000 is per-operation cap, never a five-seed catalogue",
+  "limitations": [
+    "Native screenshot engine Feature not supported is separate; no screenshot/whole-game completion claimed.",
+    "Cross-bundle dependencies preserve exact original metadata; automatic native link repair is not implemented.",
+    "Parent should start one persistent listener using gateway.py; the test ready file now points to a stopped process."
+  ],
+  "ingestorPid36052Active": true,
+  "parentNonseedJobFinalizedDuringShutdown": {
+    "jobId": "b1db985a8b44df407261618f9d941946602d29b0c354db902d2ec95c917282b4",
+    "nodeId": "d1ff4f4f37dbba5a277fb144f0879b54462ecb214b01e07feb9f4779c6af34fa:0",
+    "nativeInstances": 363,
+    "nativeBytes": 25643,
+    "nativeScripts": 0,
+    "artifactSHAVerified": true,
+    "receiptPath": "/private/tmp/owner-gateway-cache-final-proof/b1db985a8b44df407261618f9d941946602d29b0c354db902d2ec95c917282b4/receipt.json",
+    "nativePath": "/private/tmp/owner-gateway-cache-final-proof/b1db985a8b44df407261618f9d941946602d29b0c354db902d2ec95c917282b4/native.rbxm",
+    "status": "ready-on-disk; test listener stopped; persistent gateway can resolve the cache"
+  }
+}

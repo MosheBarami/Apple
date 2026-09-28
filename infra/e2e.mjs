@@ -1,5 +1,5 @@
 // End-to-end test against PRODUCTION: auth -> project -> pairing -> claim ->
-// WS chat (clay, no studio) -> WS chat (stone, with a simulated Studio plugin).
+// WS chat (Plan, no studio) -> WS chat (Agent, with a simulated Studio plugin).
 import { readFileSync } from 'node:fs';
 
 const root = new URL('..', import.meta.url).pathname;
@@ -190,18 +190,18 @@ function wsChat(text, mode, { expectTools, productModel } = {}) {
   });
 }
 
-// 5. chat without studio (clay) — should answer using knowledge/docs, no studio tools
-log('5. clay chat (no studio)…');
-const clay = await wsChat('In one short sentence, what does task.wait() do in Roblox Luau?', 'clay');
-log('   → stopReason', clay.stopReason, '| text:', clay.finalText.slice(0, 120).replace(/\n/g, ' '));
-if (clay.stopReason !== 'done' || clay.finalText.length < 10) fail('clay chat failed');
+// 5. chat without studio (Plan) — should answer using knowledge/docs, no studio tools
+log('5. Plan chat (no studio)…');
+const planRun = await wsChat('In one short sentence, what does task.wait() do in Roblox Luau?', 'plan');
+log('   → stopReason', planRun.stopReason, '| text:', planRun.finalText.slice(0, 120).replace(/\n/g, ' '));
+if (planRun.stopReason !== 'done' || planRun.finalText.length < 10) fail('Plan chat failed');
 
-// 6. chat WITH simulated studio (stone) — agent should call studio tools
+// 6. chat WITH simulated studio (Agent) — agent should call studio tools
 //
 // `productModel: 'apple'` IS LOAD-BEARING, AND ITS ABSENCE MADE THIS STEP UNREACHABLE.
 //
 // `effectiveProductModel` (apps/worker/src/do/session.ts:460) reads
-// `requested ?? (mode === 'clay' ? 'apple' : 'apple-max')`, so a `stone` chat that names no product
+// `requested ?? (mode === 'plan' ? 'apple' : 'apple-max')`, so an Agent chat that names no product
 // model is a request for **Apple MAX**, which `productModelVerdict` refuses on any free plan. The
 // E2E account is free — step 3 above prints `plan free` on every run — so since product-model
 // entitlement landed this step asked for something this account can never have, and the run died
@@ -210,18 +210,17 @@ if (clay.stopReason !== 'done' || clay.finalText.length < 10) fail('clay chat fa
 //
 // THIS DOES NOT WEAKEN THE STEP, and it is worth being exact about why. What is being tested here
 // is named on the line above: *the agent calls Studio tools*, asserted at the bottom of this block
-// against `opsHandled`. That assertion is untouched. The mode stays `stone`, so the toolset is the
-// build toolset; only the FOUNDATION changes, and on the free lane `gatewayModelFor('stone','apple')`
-// is still `stone` — the same model, by the measurement in session.ts:464. What the free lane
+// against `opsHandled`. That assertion is untouched. The mode stays Agent, so the toolset is the
+// build toolset; only the product-model entitlement is pinned to Apple for this free fixture. What the free lane
 // actually gives up is steps (`maxStepsFor` caps it at Plan's limit), which is a smaller budget for
 // the same work, not a different test. A step that cannot run asserts nothing at all; this one can.
 //
 // If MAX entitlement itself needs covering, that is a separate step with a paid fixture account —
 // do not get it by removing this one's product model again.
-log('6. starting fake plugin loop + stone chat…');
+log('6. starting fake plugin loop + Agent chat…');
 pluginLoop();
 await new Promise((r) => setTimeout(r, 2500)); // let first poll register
-const stone = await wsChat('Create a glowing neon blue anchored part named BeaconTower, 4x30x4 studs, at position (10, 15, 10) in the workspace. Then confirm what you created.', 'stone', { expectTools: true, productModel: 'apple' });
+const agentRun = await wsChat('Create a glowing neon blue anchored part named BeaconTower, 4x30x4 studs, at position (10, 15, 10) in the workspace. Then confirm what you created.', 'agent', { expectTools: true, productModel: 'apple' });
 
 // 6b. CHECKPOINTING, OVER THE WIRE, WITH THE ADMISSION LIVE.
 //
@@ -257,8 +256,8 @@ if (rows.some((row) => row.label === 'e2e nested')) fail('a refused checkpoint w
 log('6d. listing holds the saved checkpoint and not the refused one ✓');
 
 pluginRunning = false;
-log('   → stopReason', stone.stopReason, '| studio ops handled by fake plugin:', JSON.stringify(opsHandled));
-log('   → reply:', stone.finalText.slice(0, 200).replace(/\n/g, ' '));
+log('   → stopReason', agentRun.stopReason, '| studio ops handled by fake plugin:', JSON.stringify(opsHandled));
+log('   → reply:', agentRun.finalText.slice(0, 200).replace(/\n/g, ' '));
 if (!opsHandled.includes('create_instances') && !opsHandled.includes('run_code')) fail('agent never tried to build anything in studio');
 
 // 7. history + checkpoints listing

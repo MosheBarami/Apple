@@ -163,6 +163,13 @@ local root = setmetatable({ __class = true, ClassName = "DataModel", Name = "gam
 local services = {}
 local function addService(name) local item = Instance.new(name); item.Name = name; item.Parent = root; services[name] = item end
 for _, name in ipairs({"Workspace","ReplicatedStorage","ServerScriptService","ServerStorage","StarterGui","StarterPack","StarterPlayer","ReplicatedFirst","Lighting","SoundService","Teams","TextChatService","MaterialService"}) do addService(name) end
+local guidCounter = 0
+services.HttpService = {}
+function services.HttpService:GenerateGUID(wrap)
+    guidCounter += 1
+    local id = string.format("%08x-0000-4000-8000-000000000000", guidCounter)
+    return if wrap then "{" .. id .. "}" else id
+end
 function root:GetService(name) if services[name] then return services[name] end; error("missing service " .. name) end
 game = root
 workspace = services.Workspace

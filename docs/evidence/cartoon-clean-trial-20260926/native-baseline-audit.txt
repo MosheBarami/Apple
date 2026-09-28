@@ -1,0 +1,22 @@
+The following is a diff from the previous accessibility tree for Window: "/private/var/folders/hw/0ybpmzsn323dbcc3cgjwrb700000gn/T/apple-frontier-baseplate-Gmkpd1/AppleFrontierFreshBaseplate.rbxlx - Roblox Studio" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+~	18 text entry area Secondary Actions: Raise, Value:   14:57:44.105  Failed to load plugin {type=Local filepath=robloxstudio-mcp.rbxm} in datamodel Edit  -  Studio
+  14:57:44.641  [Project Tests] Studio plugin loaded.  -  Edit
+  14:57:44.666  Unable to load plugin icon: rbxasset://textures/DeveloperFramework/PluginToolbar/icon_add.png  -  Studio
+  14:57:44.900  [Blockwright] plugin loaded. Server: http://localhost:3000  -  Edit
+  14:57:45.557  Unpacked AgileBot into user_AgileBootstrap.rbxmx.AgileBootstrap.AgileBot  -  Edit
+  14:57:45.558  [AgileBot] Studio HTTP requests are disabled. Enable 'Allow HTTP Requests' in Game Settings > Security.  -  Edit
+  14:57:45.739  [PanicGit] AgileBotGit loaded. Open AgileBotGit to save/load checkpoints.  -  Edit
+  14:57:47.015  [robloxstudio-mcp] /ready failed for instance:k7m-1bt/edit: RequestAsync threw for http://localhost:58741/ready: HttpError: ConnectFail  -  Edit
+  15:02:43.570  'AppleFrontierFreshBaseplate.rbxlx' auto-recovery file was created  -  Studio
+  15:07:59.763  > local p,s,g=0,0,0;for _,v in ipairs(game:GetDescendants()) do if v:IsA("BasePart") then p+=1 end;if v:IsA("LuaSourceContainer") then s+=1 end;if v:IsA("ScreenGui") then g+=1 end end;print("APPLE_CLEAN_BASELINE_AUDIT",p,s,g)  -  Studio
+  15:07:59.778  APPLE_CLEAN_BASELINE_AUDIT 15 1 8  -  Edit
+  15:08:15.166  > for _,n in ipairs({"Workspace","ServerScriptService","ServerStorage","ReplicatedStorage","StarterGui","StarterPlayer","ReplicatedFirst"}) do local r=game:GetService(n);local p,s,g=0,0,0;for _,v in ipairs(r:GetDescendants()) do if v:IsA("BasePart") then p+=1 end;if v:IsA("LuaSourceContainer") then s+=1 end;if v:IsA("ScreenGui") then g+=1 end end;print("APPLE_BASELINE_SERVICE",n,p,s,g) end  -  Studio
+  15:08:15.176  APPLE_BASELINE_SERVICE Workspace 3 0 0  -  Edit
+  15:08:15.176  APPLE_BASELINE_SERVICE ServerScriptService 0 0 0  -  Edit
+  15:08:15.176  APPLE_BASELINE_SERVICE ServerStorage 0 0 0  -  Edit
+  15:08:15.176  APPLE_BASELINE_SERVICE ReplicatedStorage 0 0 0  -  Edit
+  15:08:15.176  APPLE_BASELINE_SERVICE StarterGui 0 0 0  -  Edit
+  15:08:15.176  APPLE_BASELINE_SERVICE StarterPlayer 0 0 0  -  Edit
+  15:08:15.176  APPLE_BASELINE_SERVICE ReplicatedFirst 0 0 0  -  Edit
++		38 scroll bar (settable) 6
+The focused UI element is 1 text entry area (settable) Secondary Actions: Raise, Value: for _,n in ipairs({"Workspace","ServerScriptService","ServerStorage","ReplicatedStorage","StarterGui","StarterPlayer","ReplicatedFirst"}) do local r=game:GetService(n);local p,s,g=0,0,0;for _,v in ipairs(r:GetDescendants()) do if v:IsA("BasePart") then p+=1 end;if v:IsA("LuaSourceContainer") then s+=1 end;if v:IsA("ScreenGui") then g+=1 end end;print("APPLE_BASELINE_SERVICE",n,p,s,g) end

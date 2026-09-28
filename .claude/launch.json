@@ -51,6 +51,15 @@
         "/private/tmp/claude-501/-Users-moshe-Desktop-RbxAI/1229df72-fc9c-415b-9c48-74ef7caed40a/scratchpad/ds-bundle"
       ],
       "port": 4318
+    },
+    {
+      "name": "run-dashboard",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "/private/tmp/claude-501/-Users-moshe-Desktop-RbxAI/97464f8d-2373-4986-8891-45b9c35e572d/scratchpad/run-dashboard/server.mjs",
+        "4777"
+      ],
+      "port": 4777
     }
   ]
 }

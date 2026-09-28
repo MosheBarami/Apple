@@ -61,6 +61,11 @@ export interface Env {
   /** AI Gateway id; when unset, calls bypass the gateway (still budget-gated) */
   AI_GATEWAY_ID?: string;
   ADMIN_KEY?: string;
+  /**
+   * Secret: comma-separated Supabase auth user ids (the JWT `sub`) allowed to switch their OWN account
+   * to unmetered Credits (POST /api/me/owner-credits). Unset or blank means nobody can.
+   */
+  OWNER_USER_IDS?: string;
   //[[ `RESVG_WASM?: WebAssembly.Module` WAS HERE, AND WAS A DIRECTION TO A PLACE THAT DOES NOT EXIST.
   //
   //   Its comment read "the resvg renderer, bound in wrangler.jsonc. Absent means this deployment

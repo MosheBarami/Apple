@@ -507,10 +507,11 @@ local function pressSession(options)
             local stats = Instance.new("Folder"); stats.Name = "leaderstats"; stats.Parent = world.player
             local coins = Instance.new("IntValue"); coins.Name = "Coins"; coins.Value = 0; coins.Parent = stats
             for _, gui in ipairs(world.playerGui:GetChildren()) do layOut(gui, 0, 0, 1280, 720) end
+            if options.onClient then options.onClient(world) end
             for _, node in ipairs(world.playerGui:GetDescendants()) do
                 if node:IsA("GuiButton") then
                     node.Activated = world.signal()
-                    if node.Name == "Buy" then node.Activated:Connect(function() coins.Value += 1 end) end
+                    if node.Name == "Buy" then node.Activated:Connect(function() coins.Value += 1; if options.onBuy then options.onBuy(world) end end) end
                 end
             end
         end,
@@ -539,6 +540,40 @@ spec("without VirtualInput a press is reported as NOT pressed, never as pressed"
     local entry = r.data.presses[1]
     eq(entry.found, true); eq(entry.pressed, false); eq(entry.activated, false); has(entry.error, "VirtualInput")
     eq(r.data.leaderstatsAfterPresses[1].value, 0)
+end)
+
+spec("each press says what it changed on the player's screen and in their state, and a button a LocalScript builds can be pressed", function()
+    local panel = ui("Frame", "Panel", store, UDim2.new(0, 300, 0, 200), UDim2.new(0, 400, 0, 100)); panel.Visible = false
+    local status = ui("TextLabel", "Status", panel, UDim2.new(1, 0, 0, 40)); status.Text = "Need 5 coins"
+    -- The builder a customer's game uses: a LocalScript in StarterGui that makes the ScreenGui at runtime.
+    local builder = Instance.new("LocalScript"); builder.Name = "RuntimeShop"; builder.Parent = services.StarterGui
+    local session = pressSession({
+        onClient = function(world)
+            local humanoid = Instance.new("Humanoid"); humanoid.WalkSpeed = 16; humanoid.Parent = world.player.Character
+            local built = Instance.new("ScreenGui"); built.Name = "RuntimeShop"; built.Enabled = true; built.IgnoreGuiInset = false; built.Parent = world.playerGui
+            ui("TextButton", "Open", built, UDim2.new(0, 80, 0, 40), UDim2.new(0, 600, 0, 600))
+            layOut(built, 0, 0, 1280, 720)
+        end,
+        onBuy = function(world)
+            local shown = world.playerGui:FindFirstChild("StoreGui"):FindFirstChild("Panel")
+            shown.Visible = true; shown:FindFirstChild("Status").Text = "Speed boost active!"
+            world.player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 24
+        end,
+    })
+    studioTest.onSession = session
+    local r = c:execute("p8", { op = "play_check_ui", seconds = 3, press = {
+        "game.StarterGui.StoreGui.Buy", "game.StarterGui.RuntimeShop.Open", "game.StarterGui.RuntimeShop.Close",
+    } }, true)
+    panel:Destroy(); builder:Destroy()
+    eq(r.ok, true, tostring(r.error))
+    local buy, open, close = r.data.presses[1], r.data.presses[2], r.data.presses[3]
+    eq(buy.activated, true)
+    local said = table.concat(buy.changes or {}, " | ")
+    has(said, "Coins"); has(said, "WalkSpeed"); has(said, "Speed boost active!"); has(said, "Panel")
+    eq(#buy.changes <= 4, true, "one line per change, not one per element the opened panel holds: " .. said)
+    eq(open.found, true, "a button built at runtime is found in PlayerGui, not refused for missing from StarterGui")
+    eq(open.activated, true); eq(type(open.changes), "table"); eq(#open.changes, 0, "a press that changed nothing says so")
+    eq(close.found, false); has(table.concat(close.buttonsOnScreen or {}, " "), "game.StarterGui.RuntimeShop.Open")
 end)
 
 spec("press targets must be buttons inside a StarterGui ScreenGui, at most five, behind consent", function()
@@ -581,7 +616,7 @@ const skip = available ? false : 'luau is not on PATH';
 
 test('Phase A op families pass the executable Studio-mock suite', { skip }, () => {
   const result = runSuite();
-  assert.match(result.output, /^commands: 28 passed$/m, 'suite did not report a clean run:\n' + result.output);
+  assert.match(result.output, /^commands: 29 passed$/m, 'suite did not report a clean run:\n' + result.output);
   assert.equal(result.status, 0, result.output);
 });
 
@@ -603,6 +638,13 @@ const BREAKS = [
     anchor: '\t\t\tif api.isScript(node) then\n', with: '\t\t\tif false then\n' },
   { why: 'a press clicks below the top bar', playCheck: true,
     anchor: 'if okInset and inset then centre += inset end', with: '' },
+  { why: 'a press reports what it changed', playCheck: true,
+    anchor: 'if okPress then entry.changes, entry.changesTruncated = changes(before, observe(player, playerGui)) end', with: '' },
+  { why: 'a built ScreenGui is found past the same-named script copy', playCheck: true,
+    anchor: 'if child.Name == segment and child:IsA("ScreenGui") then return child end', with: 'if child.Name == segment then return child end' },
+  { why: 'a press may name a button a LocalScript builds', commands: true,
+    anchor: 'if not inst and pathKind ~= "not_found" then return nil, pathKind or "invalid", resolveErr end',
+    with: 'if not inst then return nil, pathKind or "invalid", resolveErr end' },
   { why: 'press targets must be GuiButtons', commands: true,
     anchor: 'if not isA(inst, "GuiButton") then return nil, "invalid", "play_check.press targets must be a TextButton',
     with: 'if false then return nil, "invalid", "play_check.press targets must be a TextButton' },

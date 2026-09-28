@@ -149,9 +149,12 @@ const FORBIDS_CHANGES_RE = new RegExp(
 );
 const NEGATED_LIST_RE = /\b(?:do not|don['’]t|dont|never)\b/i;
 const WHOLE_PLACE_LAST_RE = new RegExp(String.raw`\b(?:or|nor)\s+(?:change|modify|touch|edit|alter)\s+${WHOLE_PLACE}`, 'i');
+// A global prohibition also appears as a list: "No edits, searches or publication."
+// Requiring punctuation/end after the noun excludes scoped limits such as "no edits to scripts".
+const NO_CHANGES_LIST_RE = /\bno\s+(?:edits|changes|modifications)(?=\s*(?:[,.;!?]|$))/i;
 
 export function forbidsChanges(text: string): boolean {
-  if (FORBIDS_CHANGES_RE.test(text)) return true;
+  if (FORBIDS_CHANGES_RE.test(text) || NO_CHANGES_LIST_RE.test(text)) return true;
   // A test request can forbid several actions in one list: "Do not edit scripts, insert assets,
   // upload anything, or change the saved place." The old direct-verb pattern missed that last
   // whole-place prohibition and a live audit anchored parts despite the request. Keep the negation

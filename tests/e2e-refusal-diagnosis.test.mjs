@@ -78,7 +78,7 @@ function settledWithin(promise, ms = 2000) {
 test('a refusal is reported as a refusal, not as a timeout', async () => {
   const sockets = [];
   const wsChat = loadWsChat(SOURCE, { socketSink: sockets });
-  const run = wsChat('build me a tower', 'stone');
+  const run = wsChat('build me a tower', 'agent');
   assert.equal(sockets.length, 1, 'wsChat did not open a socket');
   deliver(sockets[0], [
     { type: 'hello', studioConnected: false },
@@ -98,7 +98,7 @@ test('a refusal is reported as a refusal, not as a timeout', async () => {
 test('a normal run still resolves on its terminal event', async () => {
   const sockets = [];
   const wsChat = loadWsChat(SOURCE, { socketSink: sockets });
-  const run = wsChat('what does task.wait() do?', 'clay');
+  const run = wsChat('what does task.wait() do?', 'plan');
   deliver(sockets[0], [
     { type: 'hello', studioConnected: false },
     { type: 'delta', text: 'It yields ' },
@@ -118,7 +118,7 @@ test('role_changed is informational and does not abort a live run', async () => 
   // image of the defect above: an observation rendered as a failure.
   const sockets = [];
   const wsChat = loadWsChat(SOURCE, { socketSink: sockets });
-  const run = wsChat('keep building', 'stone');
+  const run = wsChat('keep building', 'agent');
   deliver(sockets[0], [
     { type: 'hello', studioConnected: true },
     { type: 'error', code: 'role_changed', message: 'Your role on this project is now viewer.' },

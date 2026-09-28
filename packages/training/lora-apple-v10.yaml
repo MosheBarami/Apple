@@ -1,0 +1,26 @@
+# Apple v10 — written by src/train-forever.mjs; do not hand-edit (the next version derives from the best).
+#
+# Lever: mask-prompt — one change relative to the best at the time, v5 (lora-apple-v5.yaml).
+# Why: v5 takes loss on the whole row, and the system prompt plus tool schemas are most of every
+# trajectory row's tokens. Masking the prompt spends all gradient on the answer span. Safe for
+# Llama: mlx_lm's mask offset uses the same add_generation_prompt prefix as generate_eval.py
+# (pre-flight checks it).
+# Change: mask_prompt=true
+model: "unsloth/Llama-3.2-3B-Instruct"
+train: true
+data: "mlxdata-apple-v5"
+fine_tune_type: "lora"
+optimizer: "adamw"
+num_layers: 16
+batch_size: 1
+grad_accumulation_steps: 4
+grad_checkpoint: true
+max_seq_length: 2048
+iters: 400
+learning_rate: 5.0e-5
+val_batches: -1
+steps_per_report: 10
+steps_per_eval: 25
+save_every: 25
+adapter_path: "adapters/apple-v10"
+mask_prompt: true

@@ -305,7 +305,7 @@ import {
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
 import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@golem/shared';
 import { canUseProductModel, isModelId, isPlanId, MODEL_IDS, modelListing, modelRefusal, PRICE_CURRENCY, type ProductModel } from '@golem/shared';
-import { MAX_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
+import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
 
 /**
  * The refusals that mean "this kind of file will never work here", as opposed to "this particular
@@ -1064,8 +1064,8 @@ app.post('/api/projects/:id/attachments', async (c) => {
   // Checked first only to avoid buffering a body that has already announced itself as too big. The
   // real check is on the bytes below, and a request that lies about its length meets that one.
   const declaredLength = Number(c.req.header('Content-Length') ?? '');
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_ATTACHMENT_BYTES) {
-    return c.json({ error: attachmentRefusalMessage('too_large'), reason: 'too_large' }, 413);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_IMAGE_ATTACHMENT_BYTES) {
+    return c.json({ error: attachmentRefusalMessage('too_large', { maxBytes: MAX_IMAGE_ATTACHMENT_BYTES }), reason: 'too_large' }, 413);
   }
 
   const bytes = new Uint8Array(await c.req.arrayBuffer());
@@ -4349,10 +4349,14 @@ app.post('/api/admin/quota-reset', async (c) => {
   return c.json(await res.json());
 });
 
-/** Owner-only unmetered Credit switch. Identity comes from the verified session, never input. */
+/**
+ * Owner-only unmetered Credit switch. The owner is named by configuration (OWNER_USER_IDS, Supabase auth
+ * user ids) and matched on the signed `sub`, never on input or on the email claim. Unset refuses everyone.
+ */
 app.post('/api/me/owner-credits', async (c) => {
   const user = c.get('user');
-  if (user.email?.toLowerCase() !== 'moshe.barami111@gmail.com') return c.json({ error: 'forbidden' }, 403);
+  const owners = (c.env.OWNER_USER_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean);
+  if (!owners.includes(user.userId)) return c.json({ error: 'forbidden' }, 403);
   const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/set-unmetered', {
     method: 'POST',
     body: JSON.stringify({ enabled: true }),

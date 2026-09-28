@@ -1,4 +1,4 @@
--- Golem initial schema. Tenant isolation: RLS on every table, owner scoping.
+-- Apple initial schema. Tenant isolation: RLS on every table, owner scoping.
 -- The Worker also filters by owner id from the verified JWT on every query.
 
 create table public.profiles (
@@ -30,7 +30,7 @@ create table public.messages (
   project_id uuid not null references public.projects(id) on delete cascade,
   owner_id uuid not null references public.profiles(id) on delete cascade,
   role text not null check (role in ('user','assistant','system')),
-  mode text check (mode in ('clay','stone','rune')),
+  mode text check (mode in ('plan','agent')),
   content text not null,
   tool_trace jsonb,
   created_at timestamptz not null default now()

@@ -1,0 +1,48 @@
+{
+  "archivedModels": [
+    {
+      "inGarden": false,
+      "inStorage": true,
+      "inWorkspace": false,
+      "name": "TreeLarge",
+      "parts": 16
+    },
+    {
+      "inGarden": false,
+      "inStorage": true,
+      "inWorkspace": false,
+      "name": "TreeMedium",
+      "parts": 10
+    },
+    {
+      "inGarden": false,
+      "inStorage": true,
+      "inWorkspace": false,
+      "name": "TreeSmall2",
+      "parts": 6
+    },
+    {
+      "inGarden": false,
+      "inStorage": true,
+      "inWorkspace": false,
+      "name": "Lamp",
+      "parts": 4
+    },
+    {
+      "inGarden": false,
+      "inStorage": true,
+      "inWorkspace": false,
+      "name": "GardenBarrel",
+      "parts": 4
+    },
+    {
+      "inGarden": false,
+      "inStorage": true,
+      "inWorkspace": false,
+      "name": "houseInteriorFloorLamp",
+      "parts": 5
+    }
+  ],
+  "archivedParts": 45,
+  "cartoonTreesPresent": true
+}

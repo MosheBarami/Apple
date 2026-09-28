@@ -81,13 +81,13 @@ test('an empty file is refused rather than uploaded as a nothing', () => {
 
 /* --------------------------------------------------------------- the type ---- */
 
-test('the allowlist is text-bearing types only, and the accept string is built from it', () => {
+test('the allowlist admits PNG and text, and the accept string is built from it', () => {
   assert.ok(ATTACHMENT_MIME_ALLOWLIST.includes('text/plain'));
   assert.ok(ATTACHMENT_MIME_ALLOWLIST.includes('text/markdown'));
   assert.ok(ATTACHMENT_MIME_ALLOWLIST.includes('application/json'));
   // Nothing in the allowlist may be a format this build cannot read back as text.
   for (const mime of ATTACHMENT_MIME_ALLOWLIST) {
-    assert.ok(!mime.startsWith('image/'), `${mime} is an image, and images are refused by name`);
+    assert.ok(!mime.startsWith('image/') || ['image/png', 'image/jpeg'].includes(mime), 'only supported PNG images are admitted');
     assert.ok(!mime.startsWith('audio/'), `${mime} is audio, and audio is refused by name`);
   }
   // The file picker must offer exactly what the server will take, or the dialog is a lie.
@@ -100,14 +100,14 @@ test('an extension resolves the type when the browser declares nothing', () => {
   assert.equal(attachmentMimeFor('Door.luau', ''), 'text/x-lua');
   assert.equal(attachmentMimeFor('README.md', ''), 'text/markdown');
   assert.equal(attachmentMimeFor('data.json', 'application/octet-stream'), 'application/json');
-  assert.equal(attachmentMimeFor('cover.png', 'image/png'), null, 'an image resolves to no admissible type');
+  assert.equal(attachmentMimeFor('cover.png', 'image/png'), 'image/png');
 });
 
-test('an image is refused by name, not swallowed', () => {
+test('a truncated PNG is refused, not swallowed', () => {
   const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
   const v = validateAttachment({ name: 'screenshot.png', declaredMime: 'image/png', bytes: png });
   assert.equal(v.ok, false);
-  assert.equal(v.reason, 'image_unsupported');
+  assert.equal(v.reason, 'invalid_image');
   assert.match(v.message, /image/i);
 });
 

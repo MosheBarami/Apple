@@ -36,6 +36,8 @@ test('the request that was violated is recognised as forbidding changes', () => 
     "Don't touch my game, only explain the lag",
     'In the connected isolated garden place, establish a gameplay baseline. Run play_check, play_check_ui, and audit_build at most once each. Do not edit scripts, insert assets, upload anything, or change the saved place. Report the core loop steps actually observed.',
     'Inspect the scripts, but do not change the saved place.',
+    'Inspect the attached actual Roblox Studio screenshot using inspect_attachment_image exactly once. No edits, searches, capture calls or publication; stop after one image inspection and its report.',
+    'Review the screenshot. No changes.',
   ]) assert.equal(R.forbidsChanges(t), true, t);
 });
 
@@ -48,6 +50,8 @@ test('a request FOR a change with a limit on it is never read as read-only', () 
     'Change the baseplate to grass',
     'Make a coin collecting game',
     'Do not edit scripts, but change the saved place by adding a tree',
+    'Build a shop with no edits to the existing scripts',
+    'Add a tree; no changes to the UI',
   ]) assert.equal(R.forbidsChanges(t), false, t);
 });
 

@@ -101,6 +101,7 @@ import {
 import { checkWorkspacePath, kvWorkspace, runWebTool, webToolDef, WORKSPACE_MAX_BYTES, type WebToolCtx, type WorkspaceStore } from './webtools';
 import type { WebFetchLike } from './net-policy';
 import { chat } from './gateway';
+import { inspectAttachmentImage } from './attachment-vision';
 import {
   searchInstances, setPropertiesBulk, spatialQuery, scatterInstances, collisionGroups, shapeTerrain, readTerrain,
   createRig, checkUiLayout, buildUi, playCheckUiOp, PLAY_CHECK_UI_DEF, type OpCall,
@@ -738,6 +739,7 @@ function decodeTagged(value: unknown): unknown {
 }
 
 type StudioTreeNode = {
+  readRef?: string;
   path?: string;
   name?: string;
   class?: string;
@@ -808,18 +810,35 @@ function treeOutline(data: unknown, budget = MAX_RESULT_CHARS - 300): Record<str
   let used = 0;
   let total = 0;
   let firstHidden: string | undefined;
-  const walk = (node: StudioTreeNode, depth: number) => {
+  // Keep the geometry needed for placement without returning every typed property.
+  // Only measured finite vectors are shown; Models without these fields get none.
+  const spatial = (node: StudioTreeNode) => {
+    const fields: string[] = [];
+    for (const [key, label] of [['Position', 'position'], ['Size', 'size']] as const) {
+      const prop = node.props?.[key] as { t?: unknown; v?: unknown } | undefined;
+      if (prop?.t === 'Vector3' && Array.isArray(prop.v) && prop.v.length === 3
+        && prop.v.every((v) => typeof v === 'number' && Number.isFinite(v))) {
+        fields.push(`${label}=${JSON.stringify(prop.v)}`);
+      }
+    }
+    const anchored = node.props?.Anchored as { t?: unknown; v?: unknown } | undefined;
+    if (anchored?.t === 'bool' && typeof anchored.v === 'boolean') fields.push(`anchored=${anchored.v}`);
+    return fields.length ? ` ${fields.join(' ')}` : '';
+  };
+  const walk = (node: StudioTreeNode, depth: number, siblings = 1) => {
     total += 1;
     const name = node.name ?? node.path?.split('.').pop() ?? '?';
     const unfetched = Number((node as { moreChildren?: unknown }).moreChildren) || 0;
-    const line = `${'  '.repeat(depth)}${name} (${node.class ?? '?'})${unfetched > 0 ? ` +${unfetched} more children not fetched` : ''}`;
+    const line = `${'  '.repeat(depth)}${name} (${node.class ?? '?'})${siblings > 1 ? ` [ambiguous: ${siblings} siblings named ${name}; this path cannot select one]` : ''}${typeof node.readRef === 'string' && /^read-ref:[0-9a-f-]{36}:\d+$/.test(node.readRef) ? ` readRef=${node.readRef} (get_instance reads only)` : ''}${spatial(node)}${unfetched > 0 ? ` +${unfetched} more children not fetched` : ''}`;
     if (used + line.length + 1 <= budget) {
       lines.push(line);
       used += line.length + 1;
     } else if (!firstHidden) {
       firstHidden = node.path ?? name;
     }
-    for (const child of node.children ?? []) walk(child, depth + 1);
+    const counts = new Map<string | undefined, number>();
+    for (const child of node.children ?? []) counts.set(child.name, (counts.get(child.name) ?? 0) + 1);
+    for (const child of node.children ?? []) walk(child, depth + 1, counts.get(child.name));
   };
   walk(root, 0);
   // Fit on the SERIALISED reply, which is what the cap measures: JSON escapes every newline and quote,
@@ -1700,7 +1719,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
       name: 'get_project_tree',
-      description: 'Snapshot of the game instance tree (names, classes, child counts). Start here to understand a project.',
+      description: 'Snapshot of the game instance tree with names, classes, measured part positions/sizes/anchoring when available, and duplicate-name warnings. Start here to understand a project. Ambiguous sibling paths cannot target a single instance; do not guess which sibling is intended.',
       parameters: S({
         root: { type: 'string', description: 'Path to start from, e.g. "game.Workspace". Default: whole game (key services).' },
         maxDepth: { type: 'number', description: 'Depth limit, default 4' },
@@ -2539,7 +2558,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'get_instance',
       description:
-        'Read one instance back: its class, child count, common properties and attributes. Use it to VERIFY a change you just made, and quote what you actually saw rather than what you intended. Cheaper and more reliable than a run_luau that returns the same value.',
+        'Read one instance back: its class, child count, common properties and attributes. Use it to VERIFY a change you just made, and quote what you actually saw rather than what you intended. Cheaper and more reliable than a run_luau that returns the same value. When a tree provides readRef for a duplicate-named instance, pass that exact readRef as path to read it; references expire and cannot authorize writes.',
       parameters: S({ path: { type: 'string', description: 'Full path, e.g. game.Workspace.Lobby.Floor' } }, ['path']),
     },
     studio: true,
@@ -4330,6 +4349,23 @@ export const TOOLS: Record<string, ToolImpl> = {
    * hour" and that one is TRUE: it writes through `storeImage`, which is KV with IMAGE_TTL_SECONDS.
    * Two tools, two stores, two different honest sentences.
    */
+  inspect_attachment_image: {
+    def: {
+      name: 'inspect_attachment_image',
+      description: 'Inspect actual pixels in a private PNG or JPEG attached to this project. Call this before claiming to see an attached image. Optionally compare against another attached reference image. Returns detailed visible defects, repair needs, image hashes and uncertainty. A still image does not prove gameplay, native insertion or commercial readiness.',
+      parameters: S({
+        attachmentId: { type: 'string', description: 'Attachment id supplied with the message.' },
+        referenceAttachmentId: { type: 'string', description: 'Optional reference PNG or JPEG attachment in this same project.' },
+        focus: { type: 'string', description: 'Visual requirements and repair questions.' },
+      }, ['attachmentId']),
+    },
+    studio: false,
+    run: async (ctx, a) => inspectAttachmentImage(ctx.env, ctx.projectId, {
+      attachmentId: String(a.attachmentId ?? ''),
+      referenceAttachmentId: typeof a.referenceAttachmentId === 'string' ? a.referenceAttachmentId : undefined,
+      focus: typeof a.focus === 'string' ? a.focus : undefined,
+    }),
+  },
   generate_image: {
     def: {
       name: 'generate_image',

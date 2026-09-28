@@ -255,7 +255,7 @@ if type(args.press) == "table" then
 	end
 end
 pcall(function() channel:FireClient(player, { nonce = args.nonce, since = since, press = presses }) end)
-local reportBy = os.clock() + 6 + 2 * #presses
+local reportBy = os.clock() + 6 + 4 * #presses
 while clientReport == nil and not ended and os.clock() < reportBy do task.wait(0.2) end
 if #presses > 0 then report.leaderstatsAfterPresses = stats() end
 finish("done")
@@ -277,7 +277,98 @@ if not channel or channel:GetAttribute(MARKER) ~= marker then return end
 -- button's own Activated / MouseButton1Click handlers run exactly as a player's click would run
 -- them. Nothing here fires a signal directly or calls a handler: if VirtualInput is unavailable the
 -- press is reported as not pressed, never as pressed.
-local function pressAll(playerGui, list)
+--
+-- What a press changed is read from the player's own screen and state just before the click and
+-- again after the wait: every GuiObject's visibility and text under each ScreenGui (keyed by its
+-- path), the leaderstats, the Humanoid's movement and health, and the player's attributes.
+local function observe(player, playerGui)
+	local view = { order = {}, nodes = {}, valueOrder = {}, values = {} }
+	for _, gui in playerGui:GetChildren() do
+		if gui:IsA("ScreenGui") and #view.order < 300 then
+			local okEnabled, enabled = pcall(function() return gui.Enabled end)
+			enabled = okEnabled and enabled ~= false
+			local keys = { [gui] = clip(gui.Name, 60) }
+			view.nodes[keys[gui]] = { shown = enabled }
+			table.insert(view.order, keys[gui])
+			for _, node in gui:GetDescendants() do
+				if #view.order >= 300 then break end
+				local parentKey = keys[node.Parent]
+				if parentKey then
+					local key = parentKey .. "." .. clip(node.Name, 60)
+					if view.nodes[key] then key ..= "#" .. #view.order end
+					keys[node] = key
+					if node:IsA("GuiObject") then
+						local okText, text = pcall(function() return node.Text end)
+						view.nodes[key] = { shown = enabled and shown(node, gui), text = if okText and type(text) == "string" then clip(text, 80) else nil, parent = parentKey }
+						table.insert(view.order, key)
+					end
+				end
+			end
+		end
+	end
+	local function put(key, value)
+		if value ~= nil and #view.valueOrder < 40 then view.values[key] = clip(value, 60); table.insert(view.valueOrder, key) end
+	end
+	local stats = player:FindFirstChild("leaderstats")
+	if stats then
+		for _, value in stats:GetChildren() do
+			if value:IsA("ValueBase") then pcall(function() put("leaderstats " .. clip(value.Name, 40), value.Value) end) end
+		end
+	end
+	local okHumanoid, humanoid = pcall(function() return player.Character:FindFirstChildOfClass("Humanoid") end)
+	if okHumanoid and humanoid then
+		for _, name in { "WalkSpeed", "JumpPower", "JumpHeight", "Health", "MaxHealth" } do pcall(function() put(name, humanoid[name]) end) end
+	end
+	local okAttributes, attributes = pcall(function() return player:GetAttributes() end)
+	if okAttributes and type(attributes) == "table" then
+		for name, value in attributes do put("attribute " .. clip(name, 40), value) end
+	end
+	return view
+end
+-- One line per change, at most 12. A panel that opens is one line, not one per element inside it.
+local function changes(before, after)
+	local out, more = {}, false
+	local function add(text) if #out < 12 then table.insert(out, clip(text, 200)) else more = true end end
+	for _, key in after.order do
+		local now, was = after.nodes[key], before.nodes[key]
+		if was == nil then
+			if not (now.parent and after.nodes[now.parent] and before.nodes[now.parent] == nil) then
+				add(key .. " appeared" .. (if now.shown then "" else " (hidden)") .. (if now.text then ' with text "' .. now.text .. '"' else ""))
+			end
+		else
+			local parentNow, parentWas = now.parent and after.nodes[now.parent], now.parent and before.nodes[now.parent]
+			if now.shown ~= was.shown and not (parentNow and parentWas and parentNow.shown ~= parentWas.shown) then
+				add(key .. (if now.shown then " became visible" else " was hidden"))
+			end
+			if now.text ~= nil and was.text ~= nil and now.text ~= was.text then add(key .. ' text "' .. was.text .. '" → "' .. now.text .. '"') end
+		end
+	end
+	for _, key in before.order do
+		local was = before.nodes[key]
+		if after.nodes[key] == nil and not (was.parent and before.nodes[was.parent] and after.nodes[was.parent] == nil) then add(key .. " was removed") end
+	end
+	for _, key in after.valueOrder do
+		if before.values[key] ~= after.values[key] then add(key .. " " .. (before.values[key] or "none") .. " → " .. after.values[key]) end
+	end
+	for _, key in before.valueOrder do
+		if after.values[key] == nil then add(key .. " " .. before.values[key] .. " → none") end
+	end
+	return out, more
+end
+-- The buttons a player could press right now, named the way a press names them.
+local function buttonsOn(playerGui)
+	local out = {}
+	local prefix = #playerGui:GetFullName() + 2
+	for _, node in playerGui:GetDescendants() do
+		if #out >= 8 then break end
+		local screen = node:IsA("GuiButton") and node:FindFirstAncestorOfClass("ScreenGui")
+		if screen and screen.Enabled ~= false and shown(node, playerGui) then
+			table.insert(out, clip("game.StarterGui." .. string.sub(node:GetFullName(), prefix), 200))
+		end
+	end
+	return out
+end
+local function pressAll(player, playerGui, list)
 	local results = {}
 	if type(list) ~= "table" or #list == 0 then return results end
 	local UserInputService = game:GetService("UserInputService")
@@ -286,13 +377,21 @@ local function pressAll(playerGui, list)
 	for index, target in list do
 		if index > 5 then break end
 		local entry = { path = clip(target.path, 320), found = false, pressed = false, activations = 0 }
-		-- segments are relative to StarterGui: the ScreenGui is copied into PlayerGui under its name.
+		-- segments are relative to StarterGui: the ScreenGui is copied into PlayerGui under its name,
+		-- or a LocalScript builds it there (next to the script's own copy, which may share the name).
 		local node = playerGui
 		local waitUntil = os.clock() + 3
+		local function find(parent, segment)
+			if parent ~= playerGui then return parent:FindFirstChild(segment) end
+			for _, child in parent:GetChildren() do
+				if child.Name == segment and child:IsA("ScreenGui") then return child end
+			end
+			return nil
+		end
 		for _, segment in target.segments do
 			if node == nil then break end
-			local child = node:FindFirstChild(segment)
-			while child == nil and os.clock() < waitUntil do task.wait(0.1); child = node:FindFirstChild(segment) end
+			local child = find(node, segment)
+			while child == nil and os.clock() < waitUntil do task.wait(0.1); child = find(node, segment) end
 			node = child
 		end
 		if node and node:IsA("GuiButton") then
@@ -313,6 +412,7 @@ local function pressAll(playerGui, list)
 					local okInset, inset = pcall(function() return GuiService:GetGuiInset() end)
 					if okInset and inset then centre += inset end
 				end
+				local before = observe(player, playerGui)
 				local okPress, pressErr = pcall(function()
 					virtual:SendMouseButton(centre, Enum.UserInputType.MouseButton1, true)
 					task.wait(0.05)
@@ -324,11 +424,13 @@ local function pressAll(playerGui, list)
 				entry.activations = fired
 				entry.activated = fired > 0
 				if not okPress then entry.error = clip(pressErr, 200) end
+				if okPress then entry.changes, entry.changesTruncated = changes(before, observe(player, playerGui)) end
 			end
 		elseif node then
 			entry.error = "the path is not a GuiButton (TextButton or ImageButton)"
 		else
 			entry.error = "the button did not appear in the player's PlayerGui"
+			entry.buttonsOnScreen = buttonsOn(playerGui)
 		end
 		table.insert(results, entry)
 	end
@@ -340,7 +442,7 @@ channel.OnClientEvent:Connect(function(request)
 	if type(request) ~= "table" or request.nonce ~= marker then return end
 	local player = Players.LocalPlayer
 	local playerGui = player and player:FindFirstChild("PlayerGui")
-	local presses = if playerGui then pressAll(playerGui, request.press) else {}
+	local presses = if playerGui then pressAll(player, playerGui, request.press) else {}
 	local guis, others = census(playerGui)
 	local errors, warnings = collectLogs(LogService, tonumber(request.since) or 0, scriptErrors)
 	channel:FireServer({ nonce = marker, playerGui = playerGui ~= nil, screenGuis = guis, otherChildren = others, errors = errors, warnings = warnings, presses = presses })
@@ -445,6 +547,16 @@ local function guiList(raw: any): { any }
 	return out
 end
 
+local function textList(raw: any, limit: number): { string }?
+	if type(raw) ~= "table" then return nil end
+	local out = {}
+	for _, item in raw do
+		if #out >= limit then break end
+		if type(item) == "string" then table.insert(out, clipText(item, 200)) end
+	end
+	return out
+end
+
 local function pressList(raw: any): { any }
 	local out = {}
 	if type(raw) ~= "table" then return out end
@@ -457,6 +569,10 @@ local function pressList(raw: any): { any }
 				pressed = item.pressed == true, activated = item.activated == true,
 				activations = if type(item.activations) == "number" then math.clamp(math.floor(item.activations), 0, 1000) else 0,
 				error = if item.error ~= nil then clipText(item.error, 200) else nil,
+				-- nil when nothing was observed (not pressed); an empty list when a press changed nothing.
+				changes = textList(item.changes, 12),
+				changesTruncated = item.changesTruncated == true or nil,
+				buttonsOnScreen = textList(item.buttonsOnScreen, 8),
 			})
 		end
 	end

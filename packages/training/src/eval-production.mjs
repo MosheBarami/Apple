@@ -18,13 +18,14 @@
  *
  * Usage:
  *   node packages/training/src/eval-production.mjs --lane apple --mode agent --n 24
- *   node packages/training/src/eval-production.mjs --model stone --max-tokens 5500   (raw config)
+ *   node packages/training/src/eval-production.mjs --model agent --max-tokens 5500   (raw config)
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ALL_GAME_LOGIC_CURRICULUM } from './build-game-logic.mjs';
 import { scoreGameLogic } from './score-eval.mjs';
+import { resolveSettings } from './production-settings.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -68,98 +69,71 @@ const DEFAULT_SYSTEM =
 //   Mirrored from apps/worker/src/do/session.ts and apps/worker/src/reasoning.ts. If those move,
 //   these must move with them; `--show-settings` prints the resolution so a drift is visible
 //   without spending a single neuron.
-const MODE_BASE_TOKENS = { clay: 4400, stone: 4400, rune: 5200 };
-const BASELINE_EFFORT = { clay: 'low', stone: 'high', rune: 'high' };
-const ENTITLEMENT_FLOOR = { apple: 'low', 'apple-max': 'high' };
-const EFFORT_SCALE = { low: 1, medium: 2.5, high: 2 };
-const RANK = { low: 0, medium: 1, high: 2 };
-
-//[[ THE CEILING IS PART OF THE SETTINGS, BECAUSE IT CAN SILENTLY REPLACE THEM.
+//[[ 2026-09-22 — THE TABLES THAT USED TO LIVE HERE ARE GONE, AND THAT IS THE FIX.
 //
-//   gateway.ts line 363: `const maxTokens = Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)`.
-//   The budget that reaches the provider is the MINIMUM of what the lane asks for and what the
-//   config allows. The free lane in Super Agent asks for 6500 (rune's base at high) and is routed
-//   to `stone`, whose ceiling is 6500 — so it receives 6500, and a script that reported another number would
-//   be naming a number the provider never saw. Both are recorded below and the run says which one
-//   was binding.
-const GATEWAY_CEILING = { clay: 6500, stone: 6500, rune: 6500, vision: 4000, memory: 800 };
-
-/** Product vocabulary in, internal specialist out. A person picks Plan/Agent/Super Agent. */
-const MODE_ALIASES = {
-  plan: 'clay', clay: 'clay',
-  agent: 'stone', stone: 'stone',
-  'super-agent': 'rune', super: 'rune', rune: 'rune',
-};
-
-/** Mirrors gatewayModelFor in apps/worker/src/do/session.ts. */
-function gatewayFor(mode, lane) {
-  if (lane === 'apple') return 'stone';
-  if (lane === 'apple-max') return mode === 'clay' ? 'stone' : mode;
-  return mode;
-}
-
-/**
- * The effort a lane asks for BEFORE any escalation signal — which is a FLOOR, not the whole story.
- *
- * chooseEffort starts at BASELINE[mode], raises it to ENTITLEMENT_FLOOR[lane], then raises it
- * further on signals (ambiguous request, visual design work, multi-system task, recovery from a
- * failed step). Signals only ever RAISE. So this is the least effort production would use for the
- * lane, and a real build request that trips a signal gets the same or more. The run records this
- * as `effortIsAFloor: true` rather than claiming to have reproduced the policy's verdict on these
- * particular prompts, which it has not: /api/admin/model-test does not run classifyRequest.
- */
-function effortFor(mode, lane) {
-  const base = BASELINE_EFFORT[mode];
-  const floor = lane ? ENTITLEMENT_FLOOR[lane] : undefined;
-  return floor !== undefined && RANK[floor] > RANK[base] ? floor : base;
-}
-
-/** Mirrors tokensForEffort in apps/worker/src/reasoning.ts. */
-const tokensForEffort = (base, effort) => Math.round(base * EFFORT_SCALE[effort]);
-
+//   This file carried its own MODE_BASE_TOKENS, BASELINE_EFFORT, ENTITLEMENT_FLOOR, EFFORT_SCALE,
+//   GATEWAY_CEILING, MODE_ALIASES, gatewayFor, effortFor and tokensForEffort — a second, unchecked
+//   copy of apps/worker/src. The comment above admits the shape of the risk ("If those move, these
+//   must move with them") and then relies on a human noticing. `production-settings.mjs` is the ONE
+//   mirror that production-settings.test.mjs holds against the worker field by field, so the
+//   resolution is taken from there and nothing is retyped. That is rule 7 of the working rules.
+//
+//   It was not hypothetical: by the time this was removed the local copy still said
+//   `clay`/`stone`/`rune` while the worker had renamed every one of those keys to `plan`/`agent`.
+//
+//   THE TWO FACTS THE LOCAL COPY EXISTED TO RECORD, KEPT BECAUSE THEY ARE STILL TRUE:
+//
+//     - THE CEILING IS PART OF THE SETTINGS, BECAUSE IT CAN SILENTLY REPLACE THEM. gateway.ts clamps
+//       with `Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)`, so the budget that reaches
+//       the provider is the MINIMUM of what the lane asks for and what the config allows. A script
+//       that reported only the request would name a number the provider never saw. `resolveSettings`
+//       records both and `clampedByCeiling` says which one was binding.
+//     - THE EFFORT A LANE ASKS FOR IS A FLOOR, NOT THE WHOLE STORY. chooseEffort starts at
+//       BASELINE[mode], raises it to ENTITLEMENT_FLOOR[lane], then raises it further on signals
+//       (ambiguous request, visual design work, multi-system task, recovery from a failed step).
+//       Signals only ever RAISE, so a real build that trips one gets the same or more. The run
+//       records `effortIsAFloor: true` rather than claiming to have reproduced the policy's verdict
+//       on these particular prompts, which it has not: /api/admin/model-test does not run
+//       classifyRequest.
+//]]
 const lane = arg('lane', null);
 if (lane && lane !== 'apple' && lane !== 'apple-max') {
   console.error(`unknown lane "${lane}" — use apple or apple-max`);
   process.exit(2);
 }
 const modeArg = arg('mode', lane ? 'agent' : null);
-const mode = modeArg ? MODE_ALIASES[modeArg] : null;
-if (modeArg && !mode) {
-  console.error(`unknown mode "${modeArg}" — use plan, agent or super-agent`);
-  process.exit(2);
-}
-
-const model = lane ? gatewayFor(mode, lane) : arg('model', 'stone');
-const effort = lane ? (arg('effort', null) ?? effortFor(mode, lane)) : null;
-
-//[[ WHAT WE ASK FOR, AND WHAT THE PROVIDER IS ALLOWED TO GIVE. NEVER REPORT ONLY ONE.
-const requestedTokens = Number(
-  arg('max-tokens', lane ? tokensForEffort(MODE_BASE_TOKENS[mode], effort) : GATEWAY_CEILING[model] ?? 5500),
-);
-const ceiling = GATEWAY_CEILING[model] ?? null;
-const effectiveTokens = ceiling === null ? requestedTokens : Math.min(requestedTokens, ceiling);
-const clamped = effectiveTokens < requestedTokens;
 
 const n = Number(arg('n', '12'));
 const systemFile = arg('system-file', null);
 const system = systemFile ? readFileSync(systemFile, 'utf8') : DEFAULT_SYSTEM;
 const offset = Number(arg('offset', '0'));
 
+//[[ ONE RESOLUTION, TAKEN FROM THE MIRROR, INCLUDING THE MODE VALIDATION.
+//   Without a lane the script keeps its `--raw` behaviour of naming a gateway config directly, which
+//   is what an admin experiment against one specific model wants. A retired mode is refused either
+//   way, by `resolveMode`, with a message that names its replacement. ]]
+let resolved;
+try {
+  resolved = resolveSettings({
+    lane,
+    mode: modeArg ?? 'agent',
+    model: lane ? null : arg('model', 'agent'),
+    effort: arg('effort', null),
+    maxTokens: arg('max-tokens', null),
+  });
+} catch (e) { console.error(e.message); process.exit(2); }
+
+//[[ WHAT WE ASK FOR, AND WHAT THE PROVIDER IS ALLOWED TO GIVE. NEVER REPORT ONLY ONE. ]]
 const settings = {
-  lane: lane ?? null,
-  productMode: lane ? modeArg : null,
-  specialist: mode,
-  gateway: model,
-  effort,
-  effortIsAFloor: Boolean(lane) && !arg('effort', null),
-  baseTokens: mode ? MODE_BASE_TOKENS[mode] : null,
-  requestedTokens,
-  gatewayCeiling: ceiling,
-  effectiveTokens,
-  clampedByCeiling: clamped,
+  ...resolved,
+  // In raw mode the request IS the gateway ceiling, not the mode's base scaled by effort — so the
+  // base is not part of the resolution and reporting it would imply an arithmetic that did not run.
+  baseTokens: lane ? resolved.baseTokens : null,
   n, offset,
   systemFile: systemFile ?? '(built-in default)',
 };
+const model = settings.gateway;
+const requestedTokens = settings.requestedTokens;
 
 if (flag('show-settings')) {
   console.log(JSON.stringify(settings, null, 1));
@@ -288,7 +262,7 @@ const out = {
   settings,
   system,
   // Kept at the top level under their old names so older readers of this file do not break.
-  lane: lane ?? null, model, maxTokens: effectiveTokens,
+  lane: lane ?? null, model, maxTokens: settings.effectiveTokens,
   attempted: chosen.length,
   n: rows.length, ok, pct: rows.length ? Math.round((ok / rows.length) * 100) : 0,
   notMeasured: errors.length, errors,
@@ -306,7 +280,7 @@ const tag = arg('tag', null);
 const slug = (lane ? `${lane}-${modeArg}` : model) + (offset ? `-from${offset}` : '') + (tag ? `-${tag}` : '');
 const path = resolve(RUNS_DIR, `eval-production-${slug}.json`);
 writeFileSync(path, JSON.stringify(out, null, 1) + '\n');
-console.log(`\n${lane ? `${lane} lane, ${modeArg} mode (gateway ${model}, effort ${effort}, ${effectiveTokens} tokens${clamped ? ` — CLAMPED from ${requestedTokens}` : ''})` : `${model} config @ ${effectiveTokens}`}`);
+console.log(`\n${lane ? `${lane} lane, ${modeArg} mode (gateway ${model}, effort ${settings.effort}, ${settings.effectiveTokens} tokens${settings.clampedByCeiling ? ` — CLAMPED from ${requestedTokens}` : ''})` : `${model} config @ ${settings.effectiveTokens}`}`);
 console.log(`  ${ok}/${rows.length} (${out.pct}%) of the prompts that were ANSWERED; ${errors.length} of ${chosen.length} not measured`);
 console.log(`  neurons ${neurons} (${out.neuronsPerPrompt}/prompt)`);
 console.log(`  output chars: mean ${outputChars.mean}, median ${outputChars.median}, range ${outputChars.min}-${outputChars.max}, empty ${outputChars.empty}`);

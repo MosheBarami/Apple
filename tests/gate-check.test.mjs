@@ -528,7 +528,13 @@ test('two runs of an unchanged gate produce the same fingerprint', () => {
   //   Runs the fixture twice more and prints the first RAW line that differs. Whatever the noise
   //   is, it is in that line. Costs two extra fixture runs and only on the failing path. ]]
   if (sha(a) !== sha(b)) {
-    const raw = () => spawnSync('node', ['--test', spec], { encoding: 'utf8', timeout: 60_000 });
+    // NODE_TEST_CONTEXT MUST NOT REACH THE DIAGNOSTIC EITHER. Inherited, the child prints "run() is
+    // being called recursively within a test file. skipping running files." and RUNS NOTHING — so
+    // the one line this diagnostic exists to name was the recursion warning rather than the line
+    // that actually differed. It named a real difference in the wrong output.
+    const diagEnv = { ...process.env };
+    delete diagEnv.NODE_TEST_CONTEXT;
+    const raw = () => spawnSync('node', ['--test', spec], { encoding: 'utf8', timeout: 60_000, env: diagEnv });
     const [x, y] = [raw(), raw()].map((r) => `${r.stdout ?? ''}${r.stderr ?? ''}`.split('\n'));
     let i = 0;
     while (i < Math.max(x.length, y.length) && x[i] === y[i]) i++;
@@ -577,6 +583,10 @@ test('a warning in a gate\'s output does not change the fingerprint, but its TEX
   const childEnv = { ...process.env };
   delete childEnv.NODE_TEST_CONTEXT;
   const probe = spawnSync('node', ['--test', one], { encoding: 'utf8', timeout: 60_000, env: childEnv });
+  // The `# ` is node's TAP reporter prefixing the child's diagnostics stream, and it is present on
+  // Node 22.22.2 — `# (node:19653) Warning: stalefixture`. The anchor was `^\(node:` and did not
+  // match, so this non-vacuity check was failing against an output that DID carry the pid. Match
+  // the line with or without the marker: what this asserts is that the pid is there.
   assert.match(`${probe.stdout ?? ''}${probe.stderr ?? ''}`, /^(?:# )?\(node:\d+\) Warning: stalefixture/m,
     'the fixture emitted no pid-prefixed warning, so this test would pass over nothing');
 

@@ -174,7 +174,14 @@ async function main() {
     process.exit(2);
   }
   const { mod: genreMod, cleanup } = await loadGenreLibrary();
-  const model = arg('model', 'rune');
+  //[[ 2026-09-22 — SEE generate-ui-showcase.mjs FOR THE LONG FORM. The gateway key is now the
+  //   product mode and no longer encodes a lane, so the lane is explicit rather than inferred. ]]
+  const model = arg('model', 'agent');
+  const lane = arg('lane', 'apple');
+  if (lane !== 'apple' && lane !== 'apple-max') {
+    console.error(`unknown lane "${lane}" — use apple or apple-max`);
+    process.exit(2);
+  }
   const maxTokens = Number(arg('max-tokens', '6000'));
   const size = { w: Number(arg('width', '1600')), h: Number(arg('height', '900')) };
   const outDir = arg('out', join(REPO, 'docs/evidence/map-showcase'));
@@ -208,7 +215,7 @@ async function main() {
         generatedAt: new Date().toISOString(),
         base: BASE,
         model,
-        lane: model === 'rune' ? 'Apple MAX' : model === 'stone' ? 'Apple' : model,
+        lane,
         libraryDelivery: 'injected',
         promptConstraint:
           'The prompt asks for .Position/.Orientation rather than CFrame, because ui-harness.luau models CFrame as opaque and a CFrame-placed part would have no coordinates to draw. This narrows style, not ability.',

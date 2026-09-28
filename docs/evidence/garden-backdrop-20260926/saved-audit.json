@@ -1,0 +1,50 @@
+{
+  "added": 39,
+  "existingChanged": {},
+  "missing": 0,
+  "scriptChanged": 0,
+  "sourceMismatch": 0,
+  "trees": [
+    {
+      "name": "GardenTreeA",
+      "parts": 6,
+      "unanchored": 0
+    },
+    {
+      "name": "GardenTreeB",
+      "parts": 7,
+      "unanchored": 0
+    },
+    {
+      "name": "GardenTreeA (2)",
+      "parts": 6,
+      "unanchored": 0
+    },
+    {
+      "name": "GardenTreeB (2)",
+      "parts": 7,
+      "unanchored": 0
+    },
+    {
+      "name": "GardenTreeA (3)",
+      "parts": 6,
+      "unanchored": 0
+    },
+    {
+      "name": "GardenTreeB (3)",
+      "parts": 7,
+      "unanchored": 0
+    },
+    {
+      "name": "GardenTreeA (4)",
+      "parts": 6,
+      "unanchored": 0
+    },
+    {
+      "name": "GardenTreeB (4)",
+      "parts": 7,
+      "unanchored": 0
+    }
+  ],
+  "verifiedMeshIds": 0
+}

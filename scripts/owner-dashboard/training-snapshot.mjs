@@ -47,6 +47,8 @@ function reportedStep(repo, version) {
 }
 
 export function trainingSnapshot(repo) {
+  let ownerDisabled = false;
+  try { ownerDisabled = JSON.parse(readFileSync(join(repo, 'packages/training/OWNER_DISABLED.json'), 'utf8')).disabled === true; } catch {}
   let state;
   try {
     state = JSON.parse(readFileSync(join(repo, 'packages/training/runs/forever/state.json'), 'utf8'));
@@ -62,11 +64,12 @@ export function trainingSnapshot(repo) {
     .filter((row) => Number.isInteger(row?.version) && typeof row.status === 'string')
     .map((row) => {
       const measured = row.status === 'done' || row.status === 'seed' ? score(row.scores) : null;
-      const progress = row.status === 'started' && !row.adapterPath ? reportedStep(repo, row.version) : null;
+      const progress = !ownerDisabled && row.status === 'started' && !row.adapterPath ? reportedStep(repo, row.version) : null;
       return {
         version: row.version,
-        status: row.status,
-        label: row.status === 'started' && typeof row.adapterPath === 'string' && row.adapterPath.length > 0
+        status: ownerDisabled && row.status === 'started' ? 'stopped' : row.status,
+        label: ownerDisabled && row.status === 'started' ? 'בוטל לפי הוראת הבעלים; אין אימון פעיל'
+          : row.status === 'started' && typeof row.adapterPath === 'string' && row.adapterPath.length > 0
           && Number.isFinite(row.valLoss)
           ? 'האימון הסתיים, ציון בהמתנה'
           : progress ? `דווח צעד ${progress.step} מתוך ${progress.iters}; הציון טרם נמדד`
@@ -77,5 +80,5 @@ export function trainingSnapshot(repo) {
       };
     })
     .sort((a, b) => b.version - a.version);
-  return { best: verifiedBest ? { version: state.best.version, ...verifiedBest } : null, versions };
+  return { ownerDisabled, best: verifiedBest ? { version: state.best.version, ...verifiedBest } : null, versions };
 }

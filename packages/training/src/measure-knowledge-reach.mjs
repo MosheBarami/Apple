@@ -53,6 +53,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { GATEWAY_CEILING, MODE_BASE_TOKENS, gatewayFor, resolveMode } from './production-settings.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..', '..', '..');
@@ -141,16 +142,24 @@ function loadWorkerBits() {
   return import(out);
 }
 
-/** Mirrors baseTokensFor/MODE_BASE_TOKENS in apps/worker/src/do/session.ts. */
-const MODE_BASE_TOKENS = { clay: 4400, stone: 4400, rune: 5200 };
-/** Mirrors the gateway ceiling in apps/worker/src/gateway.ts DEFAULT_MODELS; also read live below. */
-const GATEWAY_CEILING = { clay: 6500, stone: 6500, rune: 6500 };
-/** Mirrors gatewayModelFor in apps/worker/src/do/session.ts. */
-//[[ `none` means the request omits productModel entirely — the legacy path. session.ts then reads
-//   effectiveProductModel(mode, undefined) = 'apple-max' for gating but leaves agent.productModel
-//   undefined, so gatewayModelFor falls through to the mode and maxStepsFor gives the full 16.
-const gatewayFor = (mode, lane) =>
-  lane === 'apple' ? 'stone' : lane === 'apple-max' ? (mode === 'clay' ? 'stone' : mode) : mode;
+//[[ THE BASE TOKENS, THE CEILING AND THE GATEWAY COME FROM THE CHECKED MIRROR, NOT FROM A COPY HERE.
+//
+//   This file used to carry its own MODE_BASE_TOKENS / GATEWAY_CEILING / gatewayFor, and they went
+//   stale: the local copy still said clay/stone/rune after the worker renamed every one of those
+//   keys to plan/agent.
+//
+//   They cannot come from `bits` instead. apps/worker/src/do/session.ts imports `cloudflare:workers`,
+//   so esbuild refuses to bundle it for node — measured, `Could not resolve "cloudflare:workers"`.
+//   The effort and the token SCALING do come from the real worker above, because reasoning.ts
+//   bundles fine; only the three declarations that live in the unbundlable file are mirrored.
+//
+//   production-settings.mjs is the one copy that production-settings.test.mjs holds against the
+//   worker's source field by field, so importing it here is what keeps this a measurement rather
+//   than a retyped approximation.
+//
+//   `lane` is accepted and ignored, matching gatewayModelFor, which voids its productModel argument:
+//   entitlement no longer selects a different foundation model, so every lane resolves to its mode.
+//]]
 
 /** Resolve every setting the worker would resolve, for one request. */
 function resolveSettings(bits, text, opts) {
@@ -167,8 +176,8 @@ function resolveSettings(bits, text, opts) {
     projectName: 'E2E Obby',
     memorySummary: null,
     memoryFacts: [],
-    sceneKind: traits.visualDesignTask && mode !== 'clay' ? text : undefined,
-    uiBrief: traits.uiDesignTask && mode !== 'clay' ? (bits.designBrief(text)?.text ?? null) : null,
+    sceneKind: traits.visualDesignTask && mode !== 'plan' ? text : undefined,
+    uiBrief: traits.uiDesignTask && mode !== 'plan' ? (bits.designBrief(text)?.text ?? null) : null,
     studioCapabilityNote: null,
     personalisation: null,
     fenceId: 'fence-' + Math.random().toString(36).slice(2, 10),
@@ -395,7 +404,10 @@ async function realLoop(chosen, opts) {
 // main
 // ---------------------------------------------------------------------------
 const suite = arg('suite', 'first-reach');
-const mode = arg('mode', 'stone');
+// The mode is validated, not trusted. A retired name would otherwise index MODE_BASE_TOKENS to
+// `undefined`, and `bits.tokensForEffort(undefined, …)` is `NaN` — a silently wrong budget rather
+// than a refusal, which is exactly the failure this whole file exists to avoid.
+const mode = resolveMode(arg('mode', 'agent'));
 const lane = arg('lane', 'apple-max');
 const studioConnected = !flag('offline');
 const n = Number(arg('n', String(PROMPTS.length)));
@@ -484,7 +496,7 @@ const out = {
     knowledgeToolsOffered: KNOWLEDGE_TOOLS.filter((k) => settings0.tools.some((t) => t.name === k)),
     temperatureSent: suite === 'real-loop' ? 0.25 : null,
     temperatureNote: suite === 'real-loop' ? null
-      : 'raw-probe does not forward temperature; production stone sends 0.25. Everything else matches.',
+      : 'raw-probe does not forward temperature; production agent sends 0.25. Everything else matches.',
   },
   n: rows.length, scored: scored.length,
   measurable: measurable.length,

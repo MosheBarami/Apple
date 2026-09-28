@@ -406,7 +406,7 @@ export const workersAiAdapter: ProviderAdapter = {
     if (req.lora) payload.lora = req.lora;
 
     const promptChars =
-      messages.reduce((n, m) => n + contentChars(m.content), 0) + JSON.stringify(payload.tools ?? '').length;
+      messages.reduce((n, m) => n + contentChars(m.content, req.modelId), 0) + JSON.stringify(payload.tools ?? '').length;
     return { payload, promptChars };
   },
 

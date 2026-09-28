@@ -177,6 +177,23 @@ function normaliseOutput(raw) {
   return raw
     // `✔ a test name (38.670292ms)` and `ℹ duration_ms 17046.609625`
     .replace(/\(\d+(?:\.\d+)?ms\)/g, '(TIMEms)')
+    //[[ THE COLON IS LOAD-BEARING, and its absence was the whole defect, found 2026-09-22.
+    //
+    //   Node's TAP reporter has two shapes for this figure and they are not the same string:
+    //
+    //       # duration_ms 46.819209          the summary line, no colon
+    //         duration_ms: 0.8285            the per-test diagnostic block, WITH a colon
+    //
+    //   This rule was written against the first and never matched the second, so every per-test
+    //   duration survived normalisation and EVERY test gate's fingerprint changed on every run —
+    //   `--reverify` would quarantine all of them, for ever, which is the exact consequence the
+    //   comment at the top of this function says it exists to prevent. It was still happening,
+    //   one character to the right of the rule that was meant to stop it.
+    //
+    //   Measured before and after on Node 22.22.2 with a two-test fixture: output-bytes 262/264/261
+    //   across three runs before, identical fingerprints after. The `:?` covers both shapes rather
+    //   than trading one for the other, because both are real and a future Node may emit either.
+    //   ]]
     .replace(/duration_ms:? [\d.]+/g, 'duration_ms TIME')
     // Playwright's own tally: `60 passed (12.8s)`, and `(1.2m)` on a slow machine. Without this a
     // browser gate's output never reproduces, so its fingerprint can only ever refresh — the same
@@ -195,7 +212,21 @@ function normaliseOutput(raw) {
     //   moved outside both paths this function rewrites. The diagnostic named the line in one run.
     //
     //   ONLY THE PID GOES. The warning's text is signal — a gate that starts emitting a deprecation
-    //   warning has changed and must fail its fingerprint. ]]
+    //   warning has changed and must fail its fingerprint.
+    //
+    //   AND IT IS NOT ALWAYS AT THE START OF THE LINE, found 2026-09-22 on Node 22.22.2. `node
+    //   --test` runs the file under its TAP reporter, and that reporter prefixes anything the child
+    //   writes to its diagnostics stream with `# `:
+    //
+    //       TAP version 13
+    //       # (node:19653) Warning: stalefixture
+    //
+    //   The anchor `^\(node:` therefore never matched a warning emitted from inside a test file,
+    //   which is every warning a test gate can produce. The pid went into the fingerprint and the
+    //   gate could never reproduce — the exact consequence this rule was written to prevent, still
+    //   happening one comment marker to the left. The optional `# ` is kept in the replacement so
+    //   the TAP shape of the line survives normalisation, and only the digits are replaced.
+    //   ]]*/
     .replace(/^(# )?\(node:\d+\)/gm, '$1(node:PID)')
     // mkdtemp directories: the random segment differs on every run
     .replace(/\/(?:var\/folders|tmp)\/[^\s'"`)]+/g, '/TMPDIR')

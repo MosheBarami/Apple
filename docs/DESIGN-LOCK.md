@@ -76,6 +76,9 @@ panel at most. A panel that tints four things has told the reader nothing.
   `--shadow-modal` for a modal. A card does not cast. Separation is a hairline plus a surface step.
 - Glass — `backdrop-filter` with a translucent fill — is reserved for the composer and the top bar:
   surfaces that sit over moving content. Everywhere else it is cost without meaning.
+- **Superseded for the app shell by D-GLASS-1** (docs/autonomy/DECISIONS.md): apps/web/src/design/glass.css
+  gives the rail, cards, menus, dialogs and toasts a matte glass fill, a lift shadow and larger radii.
+  Blur still stays off anything a list repeats.
 - Spacing runs on 4px. The common steps are 8, 12, 16, 24, 32.
 
 ## Motion

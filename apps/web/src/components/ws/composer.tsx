@@ -217,7 +217,7 @@ function AttachButton({ projectId, disabled }: { projectId?: string; disabled?: 
       disabled={!projectId || disabled}
       // The bar's tip when it can be pressed; the native title when it cannot, because a disabled
       // button receives no pointer events and the reason would otherwise go unsaid.
-      data-tip={projectId ? 'Attach a file — text, Markdown, CSV, JSON or Luau' : undefined}
+      data-tip={projectId ? 'Attach a file — PNG or JPEG image, text, Markdown, CSV, JSON or Luau' : undefined}
       title={projectId ? undefined : 'Attachments need an open project'}
       aria-label="Attach a file"
       data-dock=""

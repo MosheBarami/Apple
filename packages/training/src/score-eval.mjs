@@ -209,7 +209,12 @@ async function main() {
   console.log(`style recall   ${mean(style.base).padStart(10)}      ${mean(style.adapter)}   (n=${style.base.n} visual call rows)`);
 
   const out = file.replace(/\.json$/, '-scored.json');
-  writeFileSync(out, JSON.stringify({ tally, style, perRow }, null, 1));
+  const selectedSide = data.adapterSide ?? 'adapter';
+  const selectedFiles = data.provenance?.adapterFiles?.[selectedSide];
+  writeFileSync(out, JSON.stringify({ tally, style, perRow,
+    model: data.model, adapter: data.adapter, provenance: data.provenance ?? null,
+    adapterIdentity: selectedFiles ? { side: selectedSide, files: selectedFiles } : null,
+  }, null, 1));
   console.log(`\nwrote ${out}`);
 }
 

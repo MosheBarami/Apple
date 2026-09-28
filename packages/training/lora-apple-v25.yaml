@@ -1,0 +1,25 @@
+# Apple v25 — written by src/train-forever.mjs; do not hand-edit (the next version derives from the best).
+#
+# Lever: storage-outcome-verified-shard — one change relative to the best at the time, v22 (lora-apple-v22.yaml).
+# Why: Add four first-party, locally executed modules that distinguish a successful empty read from
+# a failed read and forbid writeback after failure. This tests whether the model generalizes storage
+# outcome handling without training on the frontier task wording or changing validation/test rows.
+# Change:
+# data:{"op":"appendVerified","source":"data/storage-outcome-seeds-v1/shard-1.jsonl","sha256":"77350a388b3b1345a2274bcb0795087d3efd85cb282069f02c9c968aa566c46d"}
+model: "unsloth/Llama-3.2-3B-Instruct"
+train: true
+data: "runs/forever/data-v25"
+fine_tune_type: "lora"
+optimizer: "adamw"
+num_layers: 16
+batch_size: 1
+grad_accumulation_steps: 4
+grad_checkpoint: true
+max_seq_length: 2048
+iters: 400
+learning_rate: 5.0e-5
+val_batches: -1
+steps_per_report: 10
+steps_per_eval: 25
+save_every: 25
+adapter_path: "adapters/apple-v25"

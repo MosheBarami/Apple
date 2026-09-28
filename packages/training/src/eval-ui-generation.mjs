@@ -41,7 +41,7 @@ import { fileURLToPath } from 'node:url';
 import { buildTasks } from './ui-tasks.mjs';
 import { UI_SYSTEM_PROMPT } from './ui-tasks.mjs';
 import { check, select, scoreUiTask } from './score-ui.mjs';
-import { MODE_ALIASES, resolveSettings, cacheBustTokens } from './production-settings.mjs';
+import { cacheBustTokens, resolveMode, resolveSettings } from './production-settings.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -59,10 +59,9 @@ const only = arg('only', null);
 const systemFile = arg('system-file', null);
 const system = systemFile ? readFileSync(systemFile, 'utf8') : UI_SYSTEM_PROMPT;
 
-if (!MODE_ALIASES[modeArg]) {
-  console.error(`unknown mode "${modeArg}" — use plan, agent or super-agent`);
-  process.exit(2);
-}
+// The mirror owns this check, so a retired name gets the message that names its replacement.
+try { resolveMode(modeArg); }
+catch (e) { console.error(e.message); process.exit(2); }
 if (lane !== 'apple' && lane !== 'apple-max' && !flag('raw')) {
   console.error(`unknown lane "${lane}" — use apple or apple-max, or pass --raw with --model`);
   process.exit(2);

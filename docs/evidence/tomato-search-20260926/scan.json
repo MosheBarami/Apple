@@ -1,0 +1,340 @@
+{
+  "method": "Trusted Lune data-only name scan; no Source executed; roots excluded from descendant counts",
+  "files": [
+    {
+      "file": "review/owner-41/Simulator-Building-Kit-Studio-export.rbxm",
+      "instances": 64,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-41/Free-Simulator-Map-Studio-export.rbxm",
+      "instances": 815,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-44/Tycoon-Map.rbxl",
+      "instances": 1528,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-44/Tycoon-Assets.rbxl",
+      "instances": 540,
+      "matches": [],
+      "parsed": true,
+      "scripts": 24
+    },
+    {
+      "file": "review/owner-59/extracted/minershaven-d5c8b41ca8ed9f1bd91176ec397e8dff9a259130/minershaven.rbxl",
+      "instances": 60950,
+      "matches": [
+        {
+          "class": "Part",
+          "path": "ReplicatedStorage.Items.Ice Fortress Wall.Model.Carrot"
+        }
+      ],
+      "parsed": true,
+      "scripts": 710
+    },
+    {
+      "file": "review/owner-60/CityRushTycoon_Feimiao2013.rbxl",
+      "instances": 14811,
+      "matches": [
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Parrot.Meshes/SM_Prop_Carrot_01"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Parrot.Meshes/SM_Prop_Carrot_01"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Parrot.Meshes/SM_Prop_Carrot_01"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Parrot.Meshes/SM_Prop_Carrot_01"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Parrot.Meshes/SM_Prop_Carrot_01"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Parrot.Meshes/SM_Prop_Carrot_01"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Parrot.Meshes/SM_Prop_Carrot_01"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Parrot.Meshes/SM_Prop_Carrot_01"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_S"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Tomato_01_L"
+        },
+        {
+          "class": "MeshPart",
+          "path": "Workspace.Environment.Model.Meshes/SM_Prop_Box_Carrot_01"
+        }
+      ],
+      "parsed": true,
+      "scripts": 488
+    },
+    {
+      "file": "review/owner-67/Obby Kit.rbxl",
+      "instances": 164,
+      "matches": [],
+      "parsed": true,
+      "scripts": 13
+    },
+    {
+      "file": "review/owner-82-monk-mini/Monk's Mini Cartoony Low Poly asset pack.rbxm",
+      "instances": 47,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-83-arda-small/Small Asset Pack.rbxm",
+      "instances": 31,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-84-retro-stud/Assetpack_full.rbxm",
+      "instances": 777,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-86-idkreally/AssetPack-Studio-export.rbxm",
+      "instances": 90,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-93/PetPack-Studio-export.rbxm",
+      "instances": 260,
+      "matches": [],
+      "parsed": true,
+      "scripts": 1
+    },
+    {
+      "file": "review/owner-93/PetPack-script-stripped.rbxm",
+      "instances": 259,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-97/extracted/Inno's_Stylized_Asset_Pack/Innos's_Stylized_Asset_Pack.rbxm",
+      "instances": 462,
+      "matches": [],
+      "parsed": true,
+      "scripts": 1
+    },
+    {
+      "file": "review/owner-97/extracted/Inno's_Stylized_Asset_Pack/Roblox_Workspace_File.rbxl",
+      "instances": 529,
+      "matches": [],
+      "parsed": true,
+      "scripts": 1
+    },
+    {
+      "file": "review/owner-98/TownKit-Studio-export.rbxm",
+      "instances": 2168,
+      "matches": [],
+      "parsed": true,
+      "scripts": 1
+    },
+    {
+      "file": "review/owner-98/TownKit-script-stripped.rbxm",
+      "instances": 2167,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-99/MarketPack-Studio-export.rbxm",
+      "instances": 15,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-101/CityPack-Studio-export.rbxm",
+      "instances": 14,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-102/FurniturePack-Studio-export.rbxm",
+      "instances": 509,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-103/JustinPack-Studio-export.rbxm",
+      "instances": 2110,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-104/KitchenPack-Studio-export.rbxm",
+      "instances": 780,
+      "matches": [],
+      "parsed": true,
+      "scripts": 4
+    },
+    {
+      "file": "review/owner-104/KitchenPack-script-stripped.rbxm",
+      "instances": 776,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-106/LowsPack-Studio-export.rbxm",
+      "instances": 34,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-107/EnvironmentPack-Studio-export.rbxm",
+      "instances": 121,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    },
+    {
+      "file": "review/owner-108/KayrasPack-Studio-export.rbxm",
+      "instances": 159,
+      "matches": [],
+      "parsed": true,
+      "scripts": 0
+    }
+  ],
+  "newDownloadedBytes": 0,
+  "studioInsertions": 0,
+  "providerCalls": 0
+}

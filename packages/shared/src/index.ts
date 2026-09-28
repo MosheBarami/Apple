@@ -1672,6 +1672,8 @@ export interface GatewayRequest {
   model: string; // internal model key, not provider id
   messages: GatewayMessage[];
   tools?: GatewayToolDef[];
+  /** Named native tool choice; must already be present in tools. */
+  requiredTool?: string;
   maxTokens?: number;
   temperature?: number;
   jsonSchema?: unknown;

@@ -189,6 +189,11 @@ interface PlayPress {
   activated?: boolean;
   activations?: number;
   error?: string;
+  /** What this press changed on the player's screen and state; [] = nothing; absent = not observed. */
+  changes?: string[];
+  changesTruncated?: boolean;
+  /** For a button that never appeared: the buttons the player could press instead. */
+  buttonsOnScreen?: string[];
 }
 
 /**
@@ -217,20 +222,32 @@ export function summarisePlayCheck(raw: unknown): PlayCheckSummary {
     return parts.join(', ');
   });
   const pressList = list<PlayPress>(d.presses);
+  const changed = (p: PlayPress): string => {
+    if (!Array.isArray(p.changes)) return '';
+    if (!p.changes.length) return "; NOTHING changed on the player's screen, leaderstats, Humanoid or attributes within 1 s";
+    return `; it changed: ${p.changes.join('; ')}${p.changesTruncated ? ' (and more)' : ''}`;
+  };
   const presses = pressList.map((p) => {
-    if (!p.found) return `${p.path}: NOT FOUND on the player's screen${p.error ? ` (${p.error})` : ''}`;
-    if (p.activated) return `${p.path}: pressed, and the button activated${Number(p.activations) > 1 ? ` (${p.activations} times)` : ''}`;
-    if (p.pressed) return `${p.path}: pressed, but the button did NOT activate${p.error ? ` (${p.error})` : ''}`;
+    if (!p.found) {
+      const seen = list<string>(p.buttonsOnScreen);
+      return `${p.path}: NOT FOUND on the player's screen${p.error ? ` (${p.error})` : ''}${seen.length ? `; buttons the player could press: ${seen.join(', ')}` : ''}`;
+    }
+    if (p.activated) return `${p.path}: pressed, and the button activated${Number(p.activations) > 1 ? ` (${p.activations} times)` : ''}${changed(p)}`;
+    if (p.pressed) return `${p.path}: pressed, but the button did NOT activate${p.error ? ` (${p.error})` : ''}${changed(p)}`;
     return `${p.path}: NOT pressed${p.error ? ` — ${p.error}` : ''}`;
   });
   const failedPresses = pressList.filter((p) => !p.activated).length;
+  const idle = pressList.filter((p) => p.activated && Array.isArray(p.changes) && p.changes.length === 0).map((p) => p.path);
   const afterPresses = d.leaderstatsAfterPresses == null ? undefined : statText(list<PlayStat>(d.leaderstatsAfterPresses)) || 'none';
   const pressed = presses.length ? { presses, ...(afterPresses !== undefined ? { leaderstatsAfterPresses: afterPresses } : {}) } : {};
-  const pressNote = failedPresses
+  const idleNote = idle.length
+    ? `${idle.join(', ')} activated but changed nothing the check could see, so what it should do is NOT verified. `
+    : '';
+  const pressNote = (failedPresses
     ? `${failedPresses} of ${pressList.length} button press(es) did NOT activate, so that part of the flow is NOT verified — say so, and fix the button or its script before claiming it works. `
     : presses.length
       ? 'Every listed button activated; the screen below was read AFTER the presses. '
-      : '';
+      : '') + idleNote;
 
   const base = { clientErrors, serverErrors, warnings, harness };
   // A harness left in the customer's place is the one thing that must survive truncation, so it

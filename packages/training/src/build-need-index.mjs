@@ -9,7 +9,7 @@
  * teenage-Roblox vocabulary, and nothing in the repository records the second one.
  *
  * This script records it. For each module it asks the PRODUCTION model — the same
- * @cf/zai-org/glm-5.3-flash the `stone` lane serves — to write the messages a Roblox creator might
+ * @cf/zai-org/glm-5.3-flash that Agent mode resolves to — to write the messages a Roblox creator might
  * type when they need exactly this logic, and stores the union of that vocabulary next to the
  * module. searchVerifiedModulesByNeed() in apps/worker/src/verified-modules.ts scores against it.
  *
@@ -87,8 +87,8 @@ export function minify(full) {
   };
 }
 
-/** `stone` is what the apple lane is routed to; see gatewayModelFor in do/session.ts. */
-const MODEL = 'stone';
+/** `agent` is the gateway key the product's Agent mode resolves to; see gatewayModelFor in do/session.ts. */
+const MODEL = 'agent';
 const MAX_TOKENS = 420;
 const LINES = 8;
 

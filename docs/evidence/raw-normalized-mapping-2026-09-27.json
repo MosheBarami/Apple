@@ -1,0 +1,115 @@
+{
+  "format": "raw-normalized-mapping-verification-v1",
+  "date": "2026-09-27",
+  "method": "actual decoded INST referents and PRNT parent pairs correlated recursively to read-only index.sqlite nodes by exact class/name uniqueness in both sibling sets under a uniquely correlated parent",
+  "ordinalUsedAsIdentity": false,
+  "referentEqualityUsedAsIdentity": false,
+  "classArrayIndexUse": "selects a value within its raw class PROP array only after unique node correlation; not used as node identity",
+  "mutations": {
+    "archiveChanged": false,
+    "indexChanged": false,
+    "sourceExecuted": false,
+    "nativeStudioUsed": false,
+    "paidCalls": false
+  },
+  "runs": [
+    {
+      "label": "Building Simulator",
+      "sourceSHA256": "7979acb835495806548ffc9ff6d16d3b7a34b8d428e699602b32ca5bc309fd7d",
+      "normalizedSHA256": "841beb1d14580cc6170b955c8c362935cdc4b440564136f294018453584b40a9",
+      "sourceBytes": 1132581,
+      "elapsedSeconds": 2.063,
+      "rawReferents": 13295,
+      "normalizedNodes": 13295,
+      "classCountsMatch": true,
+      "distinctClasses": 138,
+      "uniqueCorrelations": 5603,
+      "ambiguousSiblingKeys": 547,
+      "ambiguousRawNodes": 6953,
+      "ambiguousNormalizedNodes": 6953,
+      "rawNoSiblingKey": 0,
+      "normalizedNoSiblingKey": 0,
+      "rawUnsupportedInvalidNameOrClass": 0,
+      "normalizedUnsupportedInvalidNameOrClass": 0,
+      "rawBlockedBelowUnresolvedParents": 739,
+      "normalizedBlockedBelowUnresolvedParents": 739,
+      "uniqueExample": {
+        "rawReferent": 9985,
+        "normalizedNodeId": "7979acb835495806548ffc9ff6d16d3b7a34b8d428e699602b32ca5bc309fd7d:9985",
+        "class": "Chat",
+        "name": "Chat",
+        "parentRawReferent": -1,
+        "parentNormalizedNodeId": null,
+        "basis": "unique exact class/name key in paired root sibling sets"
+      },
+      "ambiguityExample": {
+        "class": "Instance",
+        "name": "FilteredSelection",
+        "parentRawReferent": -1,
+        "rawCount": 5,
+        "normalizedCount": 5,
+        "status": "unsupported duplicate siblings; no tie-break applied"
+      }
+    },
+    {
+      "label": "Azure Mines",
+      "sourceSHA256": "8bf6b96a20497f7c2e8b49ab227b4db7de9400df331c98ba30d1a316833457eb",
+      "normalizedSHA256": "89e1b9d00e3d7dca09441c5ec954bfcd6473d27ecf9789cc554ce6d7c6794cfc",
+      "sourceBytes": 1431649,
+      "elapsedSeconds": 15.085,
+      "rawReferents": 798862,
+      "normalizedNodes": 798862,
+      "classCountsMatch": true,
+      "distinctClasses": 66,
+      "uniqueCorrelations": 13192,
+      "ambiguousSiblingKeys": 316,
+      "ambiguousRawNodes": 65839,
+      "ambiguousNormalizedNodes": 65840,
+      "rawNoSiblingKey": 1,
+      "normalizedNoSiblingKey": 0,
+      "rawUnsupportedInvalidNameOrClass": 0,
+      "normalizedUnsupportedInvalidNameOrClass": 0,
+      "rawBlockedBelowUnresolvedParents": 719830,
+      "normalizedBlockedBelowUnresolvedParents": 719830,
+      "uniqueExample": {
+        "rawReferent": 0,
+        "normalizedNodeId": "8bf6b96a20497f7c2e8b49ab227b4db7de9400df331c98ba30d1a316833457eb:0",
+        "class": "Folder",
+        "name": "SavedGameModules",
+        "parentRawReferent": -1,
+        "parentNormalizedNodeId": null,
+        "basis": "unique exact class/name key in paired root sibling sets"
+      },
+      "ambiguityExample": {
+        "class": "SurfaceGui",
+        "name": "SurfaceGui",
+        "parentRawReferent": 798534,
+        "rawCount": 5,
+        "normalizedCount": 5,
+        "status": "unsupported duplicate siblings; no tie-break applied"
+      },
+      "unsupportedGap": "one raw node has no matching class/name sibling under its paired parent; it remains unmapped"
+    }
+  ],
+  "aggregateMappingElapsedSeconds": 17.148,
+  "propertyReadback": {
+    "sourceSHA256": "7979acb835495806548ffc9ff6d16d3b7a34b8d428e699602b32ca5bc309fd7d",
+    "normalizedNodeId": "7979acb835495806548ffc9ff6d16d3b7a34b8d428e699602b32ca5bc309fd7d:11438",
+    "rawReferent": 11438,
+    "class": "CookiesService",
+    "property": "Name",
+    "status": "exact-original-bytes",
+    "decodedValueForReceipt": "CookiesService",
+    "rawValueSHA256": "da56024a7ce5c024d35bb35589ca968ff2ebf820da36ac0595f5c521086c3cce",
+    "classArrayIndex": 0,
+    "classArrayIndexIsIdentity": false,
+    "elapsedSeconds": 2.279,
+    "indexAndOriginalArchiveStatUnchanged": true
+  },
+  "limits": [
+    "Only unique exact class/name sibling keys beneath previously paired parents are mapped.",
+    "Large-source duplicates and descendants beneath unresolved nodes remain unavailable; mapping coverage is intentionally partial.",
+    "Class histogram equality is a consistency check, not proof that all nodes or properties match.",
+    "No ordinal, referent number equality, or normalized ID suffix equality was used to decide a match."
+  ]
+}

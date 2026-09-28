@@ -47,7 +47,9 @@ async function fixture(run, { body, configModel = model } = {}) {
   try {
     const fetchImpl = async (url, init) => {
       calls.push({ url, init });
-      if (url.endsWith('/models')) return Response.json({ stone: { id: configModel } });
+      // The gateway key is the product mode: `agent` is what the Apple lane routes to since the
+      // 2026-09-22 rename. The preflight below refuses if the live map disagrees, which is the point.
+      if (url.endsWith('/models')) return Response.json({ agent: { id: configModel } });
       assert.ok(readSpendLedger(budgetPath).allocatedUsd >= 0.005, 'reservation must exist before paid network call');
       if (body instanceof Error) throw body;
       return Response.json(body ?? { ok: true, model, text: answer, usage: { inputTokens: 100, outputTokens: 300 } });

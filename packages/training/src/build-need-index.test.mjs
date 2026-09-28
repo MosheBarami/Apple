@@ -138,8 +138,9 @@ test('the recorded convergences are still there, so the allowance cannot outlive
 
 test('the index records what produced it, so a number can name its settings', { skip: notGenerated }, () => {
   assert.ok(bundle.settings.model, 'no lane recorded');
-  //[[ `stone` is a gateway config name, not a product and not a model. The served id is what a
-  //   reader can check. ]]
+  //[[ THE GATEWAY KEY IS AN INTERNAL CONFIG NAME, NOT A PRODUCT AND NOT A MODEL, and since the
+  //   2026-09-22 rename it is also the product mode (`plan` / `agent`). The SERVED ID is what a
+  //   reader can actually check, which is why `servedBy` is asserted separately. ]]
   assert.ok(bundle.settings.servedBy, 'no served model id recorded');
   assert.ok(bundle.settings.maxTokens > 0);
   assert.ok(bundle.generatedAt);

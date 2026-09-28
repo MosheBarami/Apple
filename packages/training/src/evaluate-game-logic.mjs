@@ -57,7 +57,7 @@ export async function evaluateGameLogic({ live = false, adminKey, output, budget
   const headers = { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey };
   const preflight = await fetchImpl(`${BASE}/api/admin/models`, { headers, signal: AbortSignal.timeout(15_000) });
   const config = await preflight.json();
-  if (!preflight.ok || config?.stone?.id !== MODEL) throw new Error('live model preflight failed; no inference requested');
+  if (!preflight.ok || config?.agent?.id !== MODEL) throw new Error('live model preflight failed; no inference requested');
   const records = [];
   let reservedUsd = 0;
   for (const example of examples) {
@@ -72,7 +72,7 @@ export async function evaluateGameLogic({ live = false, adminKey, output, budget
     try {
       const response = await fetchImpl(`${BASE}/api/admin/model-test`, {
         method: 'POST', headers,
-        body: JSON.stringify({ model: 'stone', prompt: example.prompt, system: SYSTEM, maxTokens: MAX_TOKENS, tools: false, rag: false }),
+        body: JSON.stringify({ model: 'agent', prompt: example.prompt, system: SYSTEM, maxTokens: MAX_TOKENS, tools: false, rag: false }),
         signal: AbortSignal.timeout(60_000),
       });
       const body = await response.json();

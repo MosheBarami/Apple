@@ -1,0 +1,111 @@
+{
+  "verifiedAt": "2026-09-26T09:41:01.991944+00:00",
+  "templateParts": 2,
+  "templateScripts": 0,
+  "operatorLocalImport": true,
+  "appleAgentInsertion": false,
+  "appleIntegration": true,
+  "traces": [
+    {
+      "id": "f330f4ac-a17b-4f2a-ad6f-73aaafe6b74e",
+      "createdAt": "2026-09-26T09:35:57.753Z",
+      "creditsSpent": 3,
+      "stopReason": "done",
+      "tools": [
+        {
+          "tool": "move_instances",
+          "ok": true,
+          "durationMs": 175
+        }
+      ]
+    },
+    {
+      "id": "e7e8d2fe-b9e2-4e13-b7ac-e9b0721ae0f3",
+      "createdAt": "2026-09-26T09:37:05.396Z",
+      "creditsSpent": 14,
+      "stopReason": "done",
+      "tools": [
+        {
+          "tool": "read_script",
+          "ok": true,
+          "durationMs": 177
+        },
+        {
+          "tool": "edit_script",
+          "ok": true,
+          "durationMs": 358
+        }
+      ]
+    }
+  ],
+  "providerCalls": [
+    {
+      "at": 1790415357550,
+      "runId": "f330f4ac-a17b-4f2a-ad6f-73aaafe6b74e",
+      "provider": "workers-ai",
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "inputTokens": 5454,
+      "outputTokens": 73,
+      "neurons": 78,
+      "outcome": "ok"
+    },
+    {
+      "at": 1790415376137,
+      "runId": "e7e8d2fe-b9e2-4e13-b7ac-e9b0721ae0f3",
+      "provider": "workers-ai",
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "inputTokens": 9344,
+      "outputTokens": 23,
+      "neurons": 129,
+      "outcome": "ok"
+    },
+    {
+      "at": 1790415424569,
+      "runId": "e7e8d2fe-b9e2-4e13-b7ac-e9b0721ae0f3",
+      "provider": "workers-ai",
+      "model": "@cf/zai-org/glm-5.3-flash",
+      "inputTokens": 12631,
+      "outputTokens": 2138,
+      "neurons": 270,
+      "outcome": "ok"
+    }
+  ],
+  "neurons": 477,
+  "creditsSpent": 17,
+  "savedChanges": {
+    "added": [
+      "ServerStorage.GardenPumpkinTemplate.PumpkinStem#1",
+      "ServerStorage.GardenPumpkinTemplate.Pumpkin#1"
+    ],
+    "changed": [
+      "ServerScriptService.GardenMain#1"
+    ],
+    "missing": {}
+  },
+  "nativePlay": {
+    "firstCoins": [
+      60,
+      0,
+      110
+    ],
+    "secondCoins": [
+      110,
+      50,
+      160
+    ],
+    "pads": [
+      "Pad6",
+      "Pad4"
+    ],
+    "buy": true,
+    "plant": true,
+    "visualGrowth": true,
+    "readinessToast": true,
+    "harvestVisualRemoved": true,
+    "sell": true
+  },
+  "downloadedScriptsExecuted": false,
+  "permanentUploads": false,
+  "independentReviews": 0,
+  "fullGameQuality": "unmet"
+}

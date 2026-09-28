@@ -50,11 +50,26 @@ and are tracked as handoffs, not gates.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=d73baf876d31b412cd5ef03ad6a71bb7048bd6b423b167847475224af373886d; output-bytes=555; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=0a443a1a3cda7802f88ec4ec; at=2026-09-15T00:25:13.524Z
 
 - [x] G7: No tool is offered that this deployment cannot run
-    CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 7 --label G7 -- node --test tests/asset-library-gating.test.mjs
+    CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 12 --label G7 -- node --test tests/plugin-capabilities.test.mjs
     EXPECT: G7 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G7; path=6765c31f4f12/53 entries; git-sha=62536fc; tree-clean=yes; break-sha=62536fc; EXPECT=unmatched; output-sha256=92521bec39b5a983214ecf7765efb425848907052403e7510bfced8f5d16736b; output-bytes=1714; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=340a4123b10fd90a8963033a; at=2026-09-14T18:52:01.460Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=b19fd59a4ceeff4e7f0c28883d3182d1e6b58f972d17dc0b553a9f8b5e3784a7; output-bytes=679; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=2; deps-sha=340a4123b10fd90a8963033a; at=2026-09-15T00:25:13.512Z
   EXPECT-CHANGE: old=fail 0 new=G7 OK reason=derived-floor-7-measured-7-passing
+  CHECK-CHANGE: old=tests/asset-library-gating.test.mjs new=tests/plugin-capabilities.test.mjs reason=the-gated-file-was-deleted-with-the-asset-library-2026-09-20
+    The asset library was removed by the owner on 2026-09-20 and `asset-library-gating.test.mjs` went
+    with it, so this gate's CHECK named a file that no longer exists and could only ever exit 1. The
+    gate stayed ticked because its EVIDENCE had been recorded while the file was still there — a
+    recorded pass outliving the test it recorded, which is the failure the ledger's own `--reverify`
+    is built to catch. Re-aimed at the test that proves the same property today:
+    `tests/plugin-capabilities.test.mjs` — "every Studio tool carries non-empty co-located StudioOp
+    metadata and every named op is live", "only explicitly unsupported operations withhold their
+    dependent tools", and "legacy, missing, malformed and unknown-schema clients preserve the
+    existing tool set". The floor moved 7 -> 12 because the file has twelve tests, derived from the
+    file rather than chosen. Verified both directions on 2026-09-22: the re-aimed CHECK prints
+    `G7 OK 12 passed` and exits 0, `--floor 13` prints `G7 FAIL — 12 passed, below the floor of 13`,
+    and the old CHECK prints `G7 FAIL — no pass/fail totals in the output`. The EVIDENCE line above
+    is the 2026-09-15 record and is STALE until the tree is committed and re-approved; it is left as
+    recorded rather than re-approved from a dirty tree.
 
 - [x] G8: Billing refuses an unsigned, forged, stale or tampered webhook
     CHECK: cd apps/worker && node --test tests/billing.test.mjs tests/billing-route.test.mjs

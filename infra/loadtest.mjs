@@ -94,7 +94,7 @@ stats('ws connect->hello', wsTimes, `ok=${live.length}/${projects.length}`);
 if (wsFails.length) console.log('   ws failures:', wsFails.slice(0, 3));
 
 // ---- phase 4: concurrent real inference --------------------------------------
-console.log(`[4] ${INFER} concurrent Clay inferences (real Workers AI)`);
+console.log(`[4] ${INFER} concurrent Plan inferences (real Workers AI)`);
 const inferTimes = [], firstTokenTimes = [], inferErrors = [];
 await Promise.all(live.slice(0, INFER).map((u) => new Promise((resolve) => {
   const t0 = t();
@@ -109,7 +109,7 @@ await Promise.all(live.slice(0, INFER).map((u) => new Promise((resolve) => {
     }
     if (m.type === 'msg_end') { clearTimeout(timer); inferTimes.push(t() - t0); resolve(); }
   };
-  u.ws.send(JSON.stringify({ type: 'chat', text: 'In one short sentence: what is a RemoteEvent used for in Roblox?', mode: 'clay' }));
+  u.ws.send(JSON.stringify({ type: 'chat', text: 'In one short sentence: what is a RemoteEvent used for in Roblox?', mode: 'plan' }));
 })));
 stats('inference total', inferTimes, `errors=${inferErrors.length}`);
 stats('time to first text', firstTokenTimes);

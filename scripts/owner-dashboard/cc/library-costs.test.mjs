@@ -54,9 +54,12 @@ test('owner acquisition view separates listed sources, local bytes and backend s
   assert.ok(d.sources.page.rows.some((r) => r.url.includes('zerodev.tools')));
   assert.ok(d.sources.excluded >= 11, 'the general-purpose 3D portals are excluded from Roblox model intake');
   const ownerMap = await library(q({ tab: 'intake', view: 'sources', q: 'free-low-poly-simulator-kit-and-map', limit: '2' }));
-  assert.ok(ownerMap.page.rows.some((r) => r.state === 'roblox-inventory-only' && r.acquired === 0
-    && r.inventoryAssetIds.includes(6606406243) && r.inventoryAssetIds.includes(6606350916)),
-  'claiming Roblox assets does not invent downloaded files');
+  const listedMap = ownerMap.page.rows.find((r) => r.inventoryAssetIds?.includes(6606406243)
+    && r.inventoryAssetIds.includes(6606350916));
+  assert.ok(listedMap && listedMap.acquired === 0, 'manual review imports do not invent builder-ready assets');
+  assert.equal(listedMap.reviewFiles.length, 2);
+  assert.ok(listedMap.reviewFiles.every((r) => r.local.state === 'verified'),
+    'each actually acquired map and kit export must match its recorded bytes and hash');
   assert.ok(d.files.total > 0);
   assert.ok(d.files.local > 0);
   assert.ok(d.files.fromOwner >= 0 && d.files.fromOwner < d.files.local, 'the owner count is separate from old inventory');
@@ -68,6 +71,54 @@ test('owner acquisition view separates listed sources, local bytes and backend s
   assert.ok(excluded.page.rows.every((r) => r.state === 'out-of-scope-not-roblox' && r.acquired === 0));
   const sound = await library(q({ tab: 'sfx', source: 'opengameart', q: 'Ability Learn', limit: '40' }));
   assert.ok(sound.page.rows.some((r) => r.file && r.local.state === 'verified'), '35 downloaded sounds must show as files');
+});
+
+test('each owner review download appears as a separate verified file without backend access', async () => {
+  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'GwiddysEasyUI', limit: '10' }));
+  assert.equal(files.page.total, 2);
+  assert.deepEqual(files.page.rows.map((r) => r.file.split('/').at(-1)).sort(), ['GwiddysEasyUI.psd', 'GwiddysEasyUI.zip']);
+  assert.ok(files.page.rows.every((r) => r.local.state === 'verified' && r.backend.state === 'not-supported' && r.use === 'review-only'));
+  const source = await library(q({ tab: 'intake', view: 'sources', q: 'easy-gui-buttons-pack/3272514' }));
+  assert.equal(source.sources.page.rows[0].reviewFiles.length, 2);
+  assert.ok(source.sources.page.rows[0].reviewFiles.every((r) => r.local.state === 'verified'));
+});
+
+test('multi-screen Roblox UI kit lists every JSON and Luau export separately', async () => {
+  const source = await library(q({ tab: 'intake', view: 'sources', q: 'robloxguimaker.app/kits/simulator-kit' }));
+  assert.equal(source.sources.page.rows[0].reviewFiles.length, 10);
+  assert.ok(source.sources.page.rows[0].reviewFiles.every((r) => r.local.state === 'verified'));
+  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'robloxguimaker.app/kits/simulator-kit', limit: '20' }));
+  assert.equal(files.page.total, 10);
+  assert.ok(files.page.rows.every((r) => r.local.state === 'verified' && r.backend.state === 'not-supported' && r.use === 'review-only'));
+});
+
+test('GitHub dialogue kit review files retain the actual archive download URL', async () => {
+  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'owner-32', limit: '10' }));
+  assert.equal(files.page.total, 2);
+  assert.ok(files.page.rows.every((r) => r.local.state === 'verified' && r.backend.state === 'not-supported'));
+  assert.ok(files.page.rows.every((r) => r.download.url === 'https://github.com/arakoDev/MrDialogue/archive/refs/heads/main.zip'));
+});
+
+test('two tycoon place files retain their distinct author download URLs', async () => {
+  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'owner-44', limit: '10' }));
+  assert.equal(files.page.total, 2);
+  const byName = Object.fromEntries(files.page.rows.map((r) => [r.name, r]));
+  assert.equal(byName['Tycoon-Map.rbxl'].download.url, 'https://devforum.roblox.com/uploads/short-url/qIW7OQlP0Opv6HQq1yRERoOdDHO.rbxl');
+  assert.equal(byName['Tycoon-Assets.rbxl'].download.url, 'https://devforum.roblox.com/uploads/short-url/mKiIQYOa4lxiKkSty7tNXXk4t2p.rbxl');
+  assert.ok(files.page.rows.every((r) => r.local.state === 'verified' && r.backend.state === 'not-supported'));
+});
+
+test('Roblox icon archive files retain extraction provenance and remain review-only', async () => {
+  const files = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'owner-36', limit: '250' }));
+  assert.equal(files.page.total, 202);
+  const second = await library(q({ tab: 'intake', view: 'files', owner: '1', q: 'owner-36', off: '120', limit: '120' }));
+  const rows = [...files.page.rows, ...second.page.rows];
+  const archive = rows.find((r) => r.name.endsWith('.zip'));
+  const extracted = rows.filter((r) => r.file.includes('/extracted/'));
+  assert.equal(extracted.length, 201);
+  assert.equal(archive.download.method, 'Official itch.io free ZIP download via anonymous public form');
+  assert.ok(extracted.every((r) => r.download.method === 'Extracted from verified Icon Pack @Streeteenk.zip'));
+  assert.ok(rows.every((r) => r.backend.state === 'not-supported' && r.use === 'review-only'));
 });
 
 test('summary counts every library and has a growth series from git', async () => {

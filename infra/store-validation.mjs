@@ -170,7 +170,7 @@ const stop = await new Promise((resolve) => {
     if (m.type === 'hello') {
       seen.studioConnected = m.studioConnected;
       ws.send(JSON.stringify({
-        type: 'chat', mode: 'clay',
+        type: 'chat', mode: 'plan',
         text: 'How many children does Workspace have right now? Use the project tree, answer in one sentence.',
       }));
     } else if (m.type === 'run_intent') seen.intent = m.intent;

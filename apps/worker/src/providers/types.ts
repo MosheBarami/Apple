@@ -212,14 +212,22 @@ export interface ProviderAdapter {
 // ---------------------------------------------------------------------------
 
 /**
- * Character weight of a message for the pre-flight reservation. Image parts are costed by their
- * base64 length, which over-states what a vision model actually charges for a small frame — the
- * safe direction, since under-reserving is the only way a bill escapes.
+ * Character-equivalent weight for preflight. GLM Flash's published processor caps an image at
+ * 8,000 tokens; reserve that maximum plus 128 framing tokens for every inline PNG/JPEG, even
+ * a tiny one. Transport base64 is not tokenized text. Unknown models/URLs retain the prior
+ * length fallback. Actual provider usage still settles the reservation in the gateway.
+ * Source: https://huggingface.co/zai-org/GLM-5.3-Flash/raw/main/processor_config.json
  */
-export function contentChars(content: string | GatewayContentPart[]): number {
+export function contentChars(content: string | GatewayContentPart[], modelId?: string): number {
   if (typeof content === 'string') return content.length;
   return content.reduce(
-    (n, p) => n + ('text' in p ? p.text.length : 0) + ('image_url' in p ? p.image_url.url.length : 0),
+    (n, p) => {
+      if ('text' in p) return n + p.text.length;
+      const url = p.image_url.url;
+      const inlineFlashImage = modelId === '@cf/zai-org/glm-5.3-flash'
+        && /^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(url);
+      return n + (inlineFlashImage ? 8_128 * 3.5 : url.length);
+    },
     0,
   );
 }

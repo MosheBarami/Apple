@@ -1,0 +1,131 @@
+[
+  {
+    "runId": "e2e4e193-080f-4b2e-b04a-eeea0d4b5b40",
+    "creditsSpent": 28,
+    "stopReason": "stopped",
+    "toolTrace": [
+      {
+        "tool": "clone_instances",
+        "summary": "\u2713 clone_instances",
+        "ok": true,
+        "durationMs": 202,
+        "detail": {
+          "created": [
+            "game.Workspace.GardenMeshTrees[\"GardenTreeA (2)\"]",
+            "game.Workspace.GardenMeshTrees[\"GardenTreeB (2)\"]"
+          ],
+          "count": 2
+        }
+      },
+      {
+        "tool": "transform_instances",
+        "summary": "\u2713 transform_instances",
+        "ok": true,
+        "durationMs": 187,
+        "detail": {
+          "scaled": false,
+          "pivots": 2,
+          "moved": true,
+          "rotated": false,
+          "parts": 13,
+          "transformed": 2
+        }
+      }
+    ]
+  },
+  {
+    "runId": "dac29b52-cc96-45fb-88ae-7faea39425f9",
+    "creditsSpent": 8,
+    "stopReason": "done",
+    "toolTrace": [
+      {
+        "tool": "clone_instances",
+        "summary": "\u2713 clone_instances",
+        "ok": true,
+        "durationMs": 486,
+        "detail": {
+          "created": [
+            "game.Workspace.GardenMeshTrees[\"GardenTreeA (3)\"]",
+            "game.Workspace.GardenMeshTrees[\"GardenTreeB (3)\"]"
+          ],
+          "count": 2
+        }
+      },
+      {
+        "tool": "transform_instances",
+        "summary": "\u2713 transform_instances",
+        "ok": true,
+        "durationMs": 190,
+        "detail": {
+          "scaled": false,
+          "pivots": 2,
+          "moved": true,
+          "rotated": false,
+          "parts": 13,
+          "transformed": 2
+        }
+      },
+      {
+        "tool": "clone_instances",
+        "summary": "\u2713 clone_instances",
+        "ok": true,
+        "durationMs": 207,
+        "detail": {
+          "created": [
+            "game.Workspace.GardenMeshTrees[\"GardenTreeA (4)\"]",
+            "game.Workspace.GardenMeshTrees[\"GardenTreeB (4)\"]"
+          ],
+          "count": 2
+        }
+      },
+      {
+        "tool": "transform_instances",
+        "summary": "\u2713 transform_instances",
+        "ok": true,
+        "durationMs": 219,
+        "detail": {
+          "scaled": false,
+          "pivots": 2,
+          "moved": true,
+          "rotated": false,
+          "parts": 13,
+          "transformed": 2
+        }
+      }
+    ]
+  },
+  {
+    "runId": "aa690b8d-1357-4918-848d-165ed61a78fa",
+    "creditsSpent": 5,
+    "stopReason": "done",
+    "toolTrace": [
+      {
+        "tool": "set_properties_bulk",
+        "summary": "\u2713 set_properties_bulk",
+        "ok": true,
+        "durationMs": 197,
+        "detail": {
+          "more": 0,
+          "count": 1,
+          "changes": [
+            {
+              "before": {
+                "Transparency": {
+                  "v": 0,
+                  "t": "number"
+                }
+              },
+              "path": "game.Workspace.SpawnLocation.Decal",
+              "after": {
+                "Transparency": {
+                  "v": 1,
+                  "t": "number"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

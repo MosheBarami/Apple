@@ -438,7 +438,19 @@ async function main() {
     process.exit(2);
   }
   const lib = await loadWorkerLibrary();
-  const model = arg('model', 'rune');
+  //[[ 2026-09-22 — THE MODEL KEY IS A PRODUCT MODE NOW, AND IT NO LONGER IMPLIES A LANE.
+  //   This used to default to `rune` and infer the lane label from the key (`rune` -> Apple MAX,
+  //   `stone` -> Apple). After the rename the gateway key IS the mode, and `gatewayModelFor` ignores
+  //   the product model entirely, so the key cannot tell you which lane generated the showcase. The
+  //   lane is therefore an explicit argument, and the manifest records what was actually asked for.
+  //   A key that is not a live product mode is refused by the live /api/admin/models preflight.
+  //]]
+  const model = arg('model', 'agent');
+  const lane = arg('lane', 'apple');
+  if (lane !== 'apple' && lane !== 'apple-max') {
+    console.error(`unknown lane "${lane}" — use apple or apple-max`);
+    process.exit(2);
+  }
   const genreId = arg('genre', 'tycoon');
   const maxTokens = Number(arg('max-tokens', '6000'));
   const viewport = { id: 'desktop', w: Number(arg('width', '1600')), h: Number(arg('height', '900')) };
@@ -473,7 +485,7 @@ async function main() {
     generatedAt: new Date().toISOString(),
     base: BASE,
     model,
-    lane: model === 'rune' ? 'Apple MAX' : model === 'stone' ? 'Apple' : model,
+    lane,
     genre: genreId,
     viewport,
     libraryDelivery: 'injected',

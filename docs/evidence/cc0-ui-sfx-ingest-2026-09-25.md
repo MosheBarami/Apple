@@ -22,3 +22,10 @@ No file was uploaded to a Roblox account, and these rows are `store-only` in the
 these 35 downloaded files are in the backend but cannot yet be played in a Roblox experience.
 An owner-approved, quota-aware audio publishing path or a matching Roblox-licensed asset ID is
 needed before Apple can choose and insert them into a customer's game.
+
+The owner's full source list is captured in `packages/asset-library/sources/owner-priority.jsonl`
+without omitting a link: 147 distinct URLs (40 UI, 37 maps/game samples, 34 models/props, 6 VFX,
+5 SFX, 10 animations and 15 source portals). This is a review queue, **not** an ingested asset
+count. One supplied RhosGFX URL combines two sites into an invalid URL and is marked as such.
+Every other unreviewed link remains labelled `rights-review-pending`; a listing that says "free"
+does not by itself authorize rehosting or model training.

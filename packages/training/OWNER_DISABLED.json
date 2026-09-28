@@ -1,0 +1,5 @@
+{
+  "disabled": true,
+  "date": "2026-09-26",
+  "reason": "Owner explicitly canceled LoRA training and redirected work to owner supplied asset/game extraction and product integration. Do not restart training unless the owner explicitly changes this direction."
+}

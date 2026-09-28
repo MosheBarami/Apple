@@ -19,7 +19,7 @@ if (!E2E_EMAIL || !E2E_PASSWORD) {
 const BASE = process.env.API_BASE;
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
 const ANON = readFileSync(root + '/apps/worker/wrangler.jsonc', 'utf8').match(/"SUPABASE_ANON_KEY":\s*"([^"]+)"/)[1];
-const [mode, text] = [process.argv[2] ?? 'stone', process.argv[3] ?? 'hello'];
+const [mode, text] = [process.argv[2] ?? 'agent', process.argv[3] ?? 'hello'];
 const { access_token: jwt } = await (await fetch(`${SUPA}/auth/v1/token?grant_type=password`, {
   method: 'POST', headers: { apikey: ANON, 'Content-Type': 'application/json' },
   body: JSON.stringify({ email: E2E_EMAIL, password: E2E_PASSWORD }),

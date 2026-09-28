@@ -1,0 +1,42 @@
+[
+  {
+    "gatewayLogId": "01M3EK7F01GN1XPE50HH4G9CSD",
+    "requestSha256": "135eeb8456fcffa39f88cd710fa0a762fbf53077a548c1e84dd25c1956e12911",
+    "tools": [],
+    "toolChoice": null,
+    "replyContent": "<tool_call>move_instances({\"moves\": [{\"path\": \"game.Workspace.Bench\", \"newParent\": \"game.ServerStorage\"}]})",
+    "structuredCalls": [],
+    "finishReason": "stop",
+    "gatewayReportedCostUsd": 0.0014181498565673828,
+    "usage": {
+      "prompt_tokens": 9241,
+      "completion_tokens": 64,
+      "total_tokens": 9305,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "neurons": 128.92271423339844
+    }
+  },
+  {
+    "gatewayLogId": "01M3EK8QXE2E75ZGB13207NJ43",
+    "requestSha256": "f027d5bf8eeb1f8af8ee9f3931f1cf0cfb8d3a7b805f38557267c9ff5de10915",
+    "tools": [
+      "move_instances"
+    ],
+    "toolChoice": null,
+    "replyContent": "{\"moves\":[{\"newParent\":\"game.ServerStorage\",\"path\":\"game.Workspace.Bench\"}]}",
+    "structuredCalls": [],
+    "finishReason": "stop",
+    "gatewayReportedCostUsd": 0.0014596598510742188,
+    "usage": {
+      "prompt_tokens": 9914,
+      "completion_tokens": 68,
+      "total_tokens": 9982,
+      "prompt_tokens_details": {
+        "cached_tokens": 512
+      },
+      "neurons": 132.69635009765625
+    }
+  }
+]

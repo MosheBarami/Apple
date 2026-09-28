@@ -1,0 +1,113 @@
+{
+  "format": "authoritative-raw-normalize-evidence-v1",
+  "date": "2026-09-27",
+  "method": "private binary copy with per-instance JSON/base64 raw-referent+original-Name marker; trusted local Lune decode/serialize; marker removed while restoring original Name; independent streamed XML readback",
+  "identityDoesNotUse": [
+    "name uniqueness",
+    "sibling ordinal",
+    "raw referent equal to emitted XML referent",
+    "existing normalized node ID suffix"
+  ],
+  "verification": {
+    "allRawReferentsOneToOne": true,
+    "allEmittedXmlReferentsUnique": true,
+    "realBinaryPRNTParentsVerified": true,
+    "classesVerified": true,
+    "restoredNamesIndependentlyReadBack": true,
+    "originalsModified": false,
+    "indexModified": false,
+    "sourceExecuted": false,
+    "nativeStudioUsed": false,
+    "paidCalls": false,
+    "existingIndexIDsMapped": false,
+    "trialOutputsPersisted": false
+  },
+  "resourceBounds": {
+    "largeNodeLimit": 900000,
+    "largeNormalizerXmlLimitBytes": 805306368,
+    "largeWallAndCpuLimitSeconds": 600,
+    "largeSampledLuneRssLimitBytes": 8589934592,
+    "largeMinimumFreeDiskBytes": 4294967296,
+    "largeDecodedChunkLimitBytes": 268435456,
+    "largeOriginalInputLimitBytes": 67108864
+  },
+  "runs": [
+    {
+      "role": "small-first-method-proof",
+      "sourceName": "JailBreak.rbxl",
+      "sourceSHA256": "7bce464ff5c045d5907488e72d97336517c2cd8d0aed86fee7931510c15545ef",
+      "nodes": 625,
+      "uniqueOneToOneMap": true,
+      "classMismatches": 0,
+      "PRNTParentMismatches": 0,
+      "originalNameBytesVerified": 625,
+      "restoredNameXMLReadbackVerified": 625,
+      "specialEncodedNames": 0,
+      "invalidUtf8Names": 0,
+      "normalizedArtifactSHA256": "e7a404e02765f713eca20440870e804391865479be23aeaf743aa4e77116e72d",
+      "identitySidecarSHA256": "bbd950093ba39bd8428b3369d2ed833ebbd364e67929526b97559da5ce1357f4",
+      "originalSourceHashesMatched": 0,
+      "originalSourceHashesDifferedAfterNormalization": 12,
+      "invalidUtf8SourceHashesUnsupported": 0,
+      "sourceHashDifferenceExamples": [
+        {
+          "rawReferent": 7,
+          "originalSHA256": "22870dc528511c8fdbf32454b429f97c8bdb80be296408b7273d2b0ba70f484c",
+          "normalizedSHA256": "2552daa36c2a8294cb23d8cdf4ad4cc888ca0c5aa106067c6eb9f977ec90a405"
+        },
+        {
+          "rawReferent": 109,
+          "originalSHA256": "1ef99c4daf901744fd33e693e97d8214f6ddf3599e093500f11f61435c20980f",
+          "normalizedSHA256": "4064e8d66a95e09ad869d17325740ed986cd552e96e4b2cff2e54a008eea1019"
+        }
+      ],
+      "elapsedSeconds": 0.74,
+      "inputBytes": 36426,
+      "taggedBinaryBytes": 124399,
+      "decoderXmlBytes": 1269328,
+      "restoredXmlBytes": 1189046,
+      "sidecarBytes": 7622,
+      "sampledLuneRssPeakBytes": 1736704,
+      "limitsUsed": {
+        "maxNodes": 20000,
+        "maxXmlBytes": 268435456,
+        "maxSeconds": 120,
+        "maxSampledRssBytes": 4294967296,
+        "minFreeDiskBytes": 2147483648
+      }
+    },
+    {
+      "role": "large-bounded-verification-after-small-proof",
+      "sourceName": "Azure Mines.rbxl",
+      "sourceSHA256": "8bf6b96a20497f7c2e8b49ab227b4db7de9400df331c98ba30d1a316833457eb",
+      "nodes": 798862,
+      "uniqueOneToOneMap": true,
+      "classMismatches": 0,
+      "PRNTParentMismatches": 0,
+      "originalNameBytesVerified": 798862,
+      "restoredNameXMLReadbackVerified": 798862,
+      "specialEncodedNames": 0,
+      "invalidUtf8Names": 0,
+      "normalizedArtifactSHA256": "ffc722b142b2cce4ce18b62acbdeda06f7fb2a1ef6ec8ac2b944db5a4bfb000f",
+      "identitySidecarSHA256": "8cad0da11781f2a79e8b5585061c6ca56f2d8c5f4338e4073f041fd00fef7f2e",
+      "originalSourceHashesMatched": 741,
+      "originalSourceHashesDifferedAfterNormalization": 0,
+      "invalidUtf8SourceHashesUnsupported": 0,
+      "elapsedSeconds": 120.992,
+      "inputBytes": 1431649,
+      "taggedBinaryBytes": 110064868,
+      "decoderXmlBytes": 533772805,
+      "restoredXmlBytes": 433582340,
+      "sidecarBytes": 14157641,
+      "sampledLuneRssPeakBytes": 5432999936,
+      "limitsUsed": {
+        "maxNodes": 900000,
+        "maxXmlBytes": 805306368,
+        "maxSeconds": 600,
+        "maxSampledRssBytes": 8589934592,
+        "minFreeDiskBytes": 4294967296
+      }
+    }
+  ],
+  "interpretation": "The sidecar maps raw binary referents to referents emitted by this exact fresh Lune-normalized artifact. It does not map to historical index.sqlite IDs or prove that normalization preserved original Source bytes."
+}

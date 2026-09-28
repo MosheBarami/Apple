@@ -9,7 +9,7 @@
 // paired plugin; this script reports their reachability honestly rather than
 // pretending to have exercised them. See the STUDIO section of the output.
 //
-//   node infra/smoke.mjs [--mode clay|stone] [--text "..."] [--no-model] [--studio]
+//   node infra/smoke.mjs [--mode plan|agent] [--text "..."] [--no-model] [--studio]
 //
 // --no-model  do not send a chat turn. The model-dependent checks are reported SKIP and counted,
 //             never silently dropped. §10 invokes this script with this flag; until now the flag
@@ -48,7 +48,7 @@ const arg = (flag, dflt) => {
   const i = process.argv.indexOf(flag);
   return i === -1 ? dflt : process.argv[i + 1];
 };
-const MODE = arg('--mode', 'clay');
+const MODE = arg('--mode', 'plan');
 const TEXT = arg('--text', 'In one sentence, what is in this project right now?');
 const NO_MODEL = process.argv.includes('--no-model');
 const STUDIO = process.argv.includes('--studio');
@@ -69,10 +69,8 @@ for (let i = 2; i < process.argv.length; i += 1) {
 
 // ---------------------------------------------------- the §12.5 spend ceiling ---
 //
-// REFUSE BEFORE SPENDING, NOT REPORT AFTER. §12.5 caps a pass at 500 neurons. A `stone` turn is
-// 4-18 Credits and a `rune` one 10-30, which at 30 neurons per Credit is up to 540 and 900 — so a
-// single documented invocation of this script can blow the whole pass ceiling, and nothing in it
-// knew the ceiling existed. Clay, at 2 Credits / 60 neurons, is the only mode that fits.
+// REFUSE BEFORE SPENDING, NOT REPORT AFTER. §12.5 caps a pass at 500 neurons. Agent can exceed
+// that ceiling at the upper end of its measured range; Plan fits. The figures remain derived below.
 //
 // Both numbers are DERIVED from the files the product actually bills with — `typicalCredits` in
 // @golem/shared and NEURONS_PER_CREDIT in the worker's pricing — rather than restated here, because
@@ -113,7 +111,7 @@ if (!NO_MODEL) {
   const worstNeurons = worstCredits * perCredit;
   if (worstNeurons > SPEND_CEILING_NEURONS) {
     console.error(`smoke: --mode ${MODE} costs up to ${worstCredits} Credits = ${worstNeurons} neurons, over the §12.5 ceiling of ${SPEND_CEILING_NEURONS} per pass.`);
-    console.error('Use --no-model, or --mode clay. Refused before spending rather than reported after.');
+    console.error('Use --no-model, or --mode plan. Refused before spending rather than reported after.');
     process.exit(2);
   }
   console.log(`spend — --mode ${MODE} is at most ${worstCredits} Credits = ${worstNeurons} neurons, within the ${SPEND_CEILING_NEURONS} ceiling`);
@@ -267,13 +265,9 @@ const runOnce = () =>
 //
 // Whether this block runs is a budget decision, so it has to be one the caller can actually make.
 //
-// Two different figures describe the cost and they must not be confused. COST-MODEL records
-// MEASURED turns — clay ~29 neurons, a stone full build-and-verify in Studio ~1,266. The guard
-// above uses neither: it derives the upper end of the mode's `typicalCredits` range, which puts
-// stone at 18 Credits = 540 neurons. That is the conservative choice for clay, where 2 Credits = 60
-// neurons is more than the ~29 actually measured, and it refuses stone and rune on the §12.5
-// ceiling either way. The derived figure is used because it comes from the file the product bills
-// with, and a guard that keeps its own copy of the prices stops agreeing with them.
+// The guard derives the upper end of the selected mode's `typicalCredits` range from shared
+// source instead of copying a benchmark number. That keeps the spend fence aligned with the
+// product's own measured pricing.
 if (NO_MODEL) {
   for (const name of [
     'chat — a real agent turn completes',

@@ -62,8 +62,10 @@ function summary(d) {
 
 // Owner-only, read-only intake ledger. Every label says what was measured; a catalogue entry is
 // never presented as a downloaded byte or as a Roblox asset.
-const INTAKE_STATE = { 'rights-review-pending': 'ממתין לבדיקת זכויות', 'local-review-only': 'עותק לבדיקה בלבד',
-  'out-of-scope-not-roblox': 'מחוץ לתחום — לא נוצר ל־Roblox', 'roblox-inventory-only': 'במלאי Roblox בלבד — אין קובץ מקומי',
+const INTAKE_STATE = { 'rights-review-pending': 'ממתין לבדיקת זכויות', 'rights-reviewed-no-backend': 'מותר במשחק · אסור להפיץ כחבילה', 'local-review-only': 'עותק לבדיקה בלבד', 'visual-rejected': 'נדחה בבדיקה חזותית',
+  'out-of-scope-not-roblox': 'מחוץ לתחום — לא נוצר ל־Roblox', 'out-of-scope-not-cartoon': 'מחוץ לתחום — לא משחק קרטוני צבעוני',
+  'roblox-inventory-only': 'במלאי Roblox בלבד — אין קובץ מקומי', 'external-experience-only': 'משחק לצפייה בלבד — אין קובץ להורדה',
+  'source-unavailable': 'המקור אינו זמין כרגע', 'download-not-verified': 'ההורדה לא אומתה בדיסק', 'license-restricts-backend': 'הרישיון אוסר הפצה כחבילת נכסים',
   verified: 'קובץ וגיבוב אומתו', present: 'קובץ קיים, ללא גיבוב רשום',
   missing: 'אין קובץ מקומי', mismatch: 'אי התאמה בקובץ', stored: 'נמצא בשרת', 'not-stored': 'טרם הועלה לשרת',
   'not-checked': 'השרת לא נבדק', 'not-supported': 'אין מסלול העלאה מאומת' };
@@ -72,8 +74,8 @@ function intake(d) {
   const view = filt('view') || 'sources'; const rows = arr(d.page?.rows);
   return html`<div class="ow-panel">
     <div class="g g4">${stat({ key: 'in-sources', label: 'מקורות ברשימה שלך', value: d.sources?.total, sub: `${num(d.sources?.excluded)} אתרי מודלים כלליים הוצאו מהתוכנית` })}
-      ${stat({ key: 'in-owner', label: 'קבצים מהרשימה שלך בדיסק', value: d.files?.fromOwner, sub: `${num(d.files?.reviewOnly)} עותקים נוספים לבדיקה בלבד` })}
-      ${stat({ key: 'in-local', label: 'קבצים מוצגים בדיסק', value: d.files?.local, sub: 'ללא קובצי המודלים הכלליים שהוצאו' })}
+      ${stat({ key: 'in-owner', label: 'נכסים מהרשימה שלך זמינים לבונה', value: d.files?.fromOwner, sub: `${num(d.files?.reviewOnly)} קבצים נוספים אומתו לבדיקה בלבד` })}
+      ${stat({ key: 'in-local', label: 'קבצים שנמצאו בדיסק', value: d.files?.local, sub: 'כולל עותקי בדיקה; בלי מודלים כלליים שהוצאו' })}
       ${stat({ key: 'in-hashes', label: 'קבצים עם גיבוב צפוי', value: d.files?.hashRecorded, sub: 'ההתאמה נבדקת בכל עמוד שנפתח' })}</div>
     ${note('info', 'מה באמת הושלם', d.note)}
     <div class="ow-bar"><div class="seg" role="group" aria-label="תצוגת קליטה">
@@ -82,10 +84,10 @@ function intake(d) {
       ${search(view === 'sources' ? 'חיפוש מקור או חבילה' : 'חיפוש נכס, מקור או קובץ')}
       ${sel('category', 'סוג', arr(d.categories).map((c) => [c.k, c.k, c.n]))}
       ${view === 'files' ? sel('owner', 'המקורות שלך', [['1', 'רק מהרשימה שלך']]) : ''}</div>
-    ${view === 'sources' ? html`<div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>עדיפות</th><th>המקור שביקשת</th><th>סוג</th><th>מצב אמיתי</th><th>קבצים שנקלטו</th></tr></thead><tbody>
+    ${view === 'sources' ? html`<div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>עדיפות</th><th>המקור שביקשת</th><th>סוג</th><th>מצב אמיתי</th><th>נכסים זמינים לבונה</th></tr></thead><tbody>
       ${rows.map((r) => html`<tr data-k="src-${r.priority}"><td>${num(r.priority)}</td><td dir="auto"><a href="${r.url}" target="_blank" rel="noopener noreferrer">${r.url}</a>
         ${r.rights ? html`<br><small class="dim">${r.rights}</small>` : ''}</td><td>${r.category}</td>
-        <td>${intakeLabel(r.state)}${arr(r.assetPages || (r.assetPage ? [r.assetPage] : [])).map((url, i) => html`<br><a href="${url}" target="_blank" rel="noopener noreferrer">מודל ${i + 1} במלאי Roblox ↗</a>`)}${r.review ? html` · ${intakeLabel(r.review.state)}${r.review.bytes ? ` (${bytes(r.review.bytes)})` : ''}` : ''}</td>
+        <td>${intakeLabel(r.state)}${r.studioVerification?.appleAgentPlacement?.verified ? html`<br><small>אומת מיקום דרך Apple · ${num(r.studioVerification.appleAgentPlacement.changedParts)} חלקים · ${num(r.studioVerification.appleAgentPlacement.credits)} Credits · ${r.studioVerification.appleAgentPlacement.cleanupVerified ? 'הניסוי הוחזר למצב המקורי' : 'השינוי נשאר במקום'} · הכנסה אוטומטית טרם אומתה</small>` : ''}${r.studioVerification?.method === 'local-file-import' ? html`<br><small>אומת ייבוא מקומי ב־Studio · ${num(r.studioVerification.meshParts)} MeshParts · ${num(r.studioVerification.scripts)} סקריפטים · הכנסה דרך סוכן Apple טרם אומתה</small>` : ''}${arr(r.assetPages || (r.assetPage ? [r.assetPage] : [])).concat(arr(r.inventoryAssetIds).map((id) => `https://create.roblox.com/store/asset/${id}`)).map((url, i) => html`<br><a href="${url}" target="_blank" rel="noopener noreferrer">מודל ${i + 1} במלאי Roblox ↗</a>`)}${arr(r.reviewFiles).map((f) => html`<br><small>${ltr(f.file.split('/').at(-1))} · ${intakeLabel(f.local.state)}${f.local.bytes ? ` (${bytes(f.local.bytes)})` : ''}</small>`)}</td>
         <td class="n">${num(r.acquired || 0)}</td></tr>`)}</tbody></table></div></div>`
       : html`<div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>נכס</th><th>סוג / מקור / רישיון</th><th>הורדה</th><th>קובץ בדיסק</th><th>שרת Apple</th></tr></thead><tbody>
       ${rows.map((r) => html`<tr data-k="file-${r.k}"><td dir="auto"><b>${r.name}</b><br><small class="dim">${ltr(r.file)}</small></td>

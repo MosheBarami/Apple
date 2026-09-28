@@ -85,6 +85,13 @@ test('a finished run keeps at most one line, and only when it went well', () => 
   assert.equal(live.doneSummary(run(tools, { streaming: false, stopReason: 'stopped' })), null);
 });
 
+test('bounded placement completion describes edits without claiming visual polish', () => {
+  const bounded = run([tool('t1', 'transform_instances'), tool('t2', 'transform_instances'), tool('t3', 'move_instances'), tool('t4', 'move_instances')], { streaming: false, stopReason: 'done' });
+  const summary = live.doneSummary(bounded);
+  assert.ok(summary);
+  assert.doesNotMatch(summary, /polished|finished|complete|ready/i);
+});
+
 // ------------------------------------------------------------- the turn, rendered ---
 
 const ui = await bundle(`
