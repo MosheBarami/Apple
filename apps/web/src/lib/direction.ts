@@ -12,9 +12,9 @@
  * direction-neutral, and converting them would be churn that reads as progress.
  *
  * RESOLUTION ORDER, most specific first:
- *   1. an explicit user choice, persisted
- *   2. the browser's language list
- *   3. LTR
+ *   1. the browser's language list, if the interface is written in that language
+ *   2. LTR
+ * A saved 'apple.dir' from the old Hebrew UI is ignored and cleared.
  *
  * `localStorage` is wrapped because it throws outright in a private window and in some embedded
  * webviews — a preference lookup must never be able to stop the app from rendering.
@@ -43,8 +43,7 @@ const RTL_LANGS = new Set(['ar', 'fa', 'ur', 'ps', 'sd', 'ug', 'yi', 'dv', 'ku',
  *
  * NOTHING ELSE IN THIS FILE CHANGES, and none of the logical-property work in the stylesheets is
  * wasted: add a tag here on the day its strings are translated and every mirror turns on at once.
- * An explicit choice still wins over this — somebody who deliberately picks RTL is telling us
- * something about themselves, not asking us to guess.
+ * 
  */
 export const UI_LANGUAGES: readonly string[] = ['en'];
 
@@ -60,15 +59,6 @@ function primarySubtag(tag: string): string {
 /** Is this BCP-47 tag written right-to-left? `he-IL` and `he` must both count. */
 export function isRtlLanguage(tag: string): boolean {
   return RTL_LANGS.has(primarySubtag(tag));
-}
-
-function storedDirection(): Direction | null {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    return v === 'rtl' || v === 'ltr' ? v : null;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -105,7 +95,16 @@ export function detectLanguage(
 }
 
 export function resolveDirection(): Direction {
-  return storedDirection() ?? detectDirection();
+  return detectDirection();
+}
+
+/** The old Hebrew UI saved 'rtl' under this key. It is never read; drop it so it cannot linger. */
+function clearLegacyDirection(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* unavailable storage has nothing to clear */
+  }
 }
 
 /**
@@ -124,17 +123,9 @@ export function applyDirection(dir: Direction, lang?: string): void {
   el.setAttribute('lang', lang ?? detectLanguage());
 }
 
-export function setDirection(dir: Direction, lang?: string): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, dir);
-  } catch {
-    /* a preference that cannot be saved is still applied for this session */
-  }
-  applyDirection(dir, lang);
-}
-
 /** Wire direction at boot. Safe to call before React mounts. */
 export function initDirection(): Direction {
+  clearLegacyDirection();
   const dir = resolveDirection();
   applyDirection(dir);
   return dir;

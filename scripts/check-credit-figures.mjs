@@ -352,7 +352,7 @@ for (const { key, mode } of MODES) {
   // making the same daily-count claim CREDITS_PER_BUILD makes, and the two must agree.
   if (/\bbuild/i.test(unit) && cost !== creditsPerBuild) {
     problems.push(
-      `MODE_INFO.${specialist}.entryUnit says "${unit}" at ${cost} Credits, so the per-request `
+      `MODE_INFO.${key}.entryUnit says "${unit}" at ${cost} Credits, so the per-request `
       + `table implies ${Math.floor(freeDay / cost)} builds a free day while CREDITS_PER_BUILD `
       + `(${creditsPerBuild}) implies ${buildsFreeDay}. Price the build at ${creditsPerBuild}, or `
       + 'name the smaller piece of work the entry price was measured on.',

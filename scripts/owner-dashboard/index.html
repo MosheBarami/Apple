@@ -188,8 +188,6 @@
   .plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
   @media (max-width: 960px) { .plans { grid-template-columns: minmax(0, 1fr); } }
   .plan { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: rgba(8,11,19,.5); }
-  .plan.max { border-color: rgba(194,108,245,.35); background: linear-gradient(180deg, rgba(194,108,245,.07), rgba(8,11,19,.5)); }
-  .plan.pro { border-color: rgba(91,124,250,.35); background: linear-gradient(180deg, rgba(91,124,250,.07), rgba(8,11,19,.5)); }
   .plan h3 { font-size: 20px; font-weight: 800; display: flex; align-items: baseline; gap: 8px; }
   .plan h3 small { font-size: 12px; color: var(--faint); font-weight: 400; }
   .model { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
@@ -394,14 +392,14 @@
       </div>
     </div>
     <div class="g g21">
-      <div class="card"><h2>ההשוואה האחרונה: Apple MAX מול המשחק האמיתי</h2><div id="latestCompare"><span class="sk h120"></span></div></div>
+      <div class="card"><h2>ההשוואה האחרונה: Apple מול המשחק האמיתי</h2><div id="latestCompare"><span class="sk h120"></span></div></div>
       <div class="card"><h2>מה כתבתי לך לאחרונה</h2><div class="says" id="says"><span class="sk"></span><span class="sk w80"></span></div></div>
     </div>
   </section>
 
   <!-- ============ MODEL ============ -->
   <section class="tab" id="tab-model" role="tabpanel">
-    <div class="card mb"><h2>המודלים שהלקוחות בוחרים, לפי מסלול</h2><div class="plans" id="plans"><span class="sk h120"></span></div></div>
+    <div class="card mb"><h2>המנוע שהלקוחות מקבלים</h2><div class="plans" id="plans"><span class="sk h120"></span></div></div>
     <div class="card mb"><h2>מאיפה הידע מגיע</h2><div id="sources"><span class="sk h120"></span></div></div>
     <div class="card"><h2>מה הוא יודע</h2><div id="knows"><span class="sk h120"></span></div></div>
   </section>
@@ -554,12 +552,11 @@ function ring(k, f1, f2, grad, center, small) {
 }
 
 // ---- Hebrew names for the things the code names in English
-const BLURB_HE = { 'Apple': 'מהיר וזול, לשינויים קטנים', 'Apple MAX': 'הבנאי המלא, למשחקים שלמים והרבה קבצים', 'Gemini 3.8 Flash': 'המודל המהיר של Google, זוכר פרויקטים גדולים מאוד', 'GPT-5.6': 'מודל הדגל של OpenAI, לבניות הכי קשות', 'GPT-5.6 Luna': 'גרסה חסכונית של GPT-5.6' };
+const BLURB_HE = { 'Apple': 'המנוע של Apple, בונה משחקים שלמים', 'Gemini 3.8 Flash': 'המודל המהיר של Google, זוכר פרויקטים גדולים מאוד', 'GPT-5.6': 'מודל הדגל של OpenAI, לבניות הכי קשות', 'GPT-5.6 Luna': 'גרסה חסכונית של GPT-5.6' };
 const STATUS_HE = { done: 'הושלם', partial: 'חלקית', progress: 'בעבודה עכשיו', blocked: 'מחכה', todo: 'עוד לא התחיל' };
 const SEV_HE = { critical: 'קריטי', high: 'חמור', medium: 'בינוני', low: 'קל' };
 const DOMAIN_HE = { ui: 'ממשק ומסכים', input: 'שליטה וקלט', client_server: 'לקוח ושרת', data: 'שמירת נתונים', gameplay: 'משחקיות', worldbuilding: 'בניית עולם', performance: 'ביצועים', security: 'אבטחה', genre_pattern: "דפוסים לפי ז'אנר" };
 const KIT_HE = { horror: 'אימה', obby: 'אובי', tycoon: 'טייקון', simulator: 'סימולטור', racing: 'מרוצים', roleplay: 'משחק תפקידים', tower_defense: 'הגנת מגדלים', fps_arena: 'יריות', anime_battle: 'קרבות אנימה', survival: 'הישרדות', adventure: 'הרפתקאות' };
-const TIERS = [{ id: 'free', he: 'Free', note: 'חינם' }, { id: 'pro', he: 'Pro', note: 'בתשלום' }, { id: 'max', he: 'Max', note: 'הכול' }];
 const ROUTE_HE = { 'workers-ai': 'Cloudflare Workers AI', 'unified-billing': 'Cloudflare AI Gateway' };
 const VENDOR = { Apple: ['A', '#5b7cfa'], Google: ['G', '#22c55e'], OpenAI: ['O', '#e8ecf6'] };
 const LIMIT_HE = (l) => /5-hour/i.test(l) ? 'מגבלת 5 שעות' : /fable/i.test(l) ? 'שבועי · Fable' : /weekly/i.test(l) ? 'שבועי · כל המודלים' : l;
@@ -664,19 +661,13 @@ function renderCompare() {
 function renderPlans() {
   const f = P.code?.facts;
   if (!f || f.error) { $('#plans').innerHTML = f?.error ? NM : '<span class="sk h120"></span>'; return; }
-  const rank = Object.fromEntries(TIERS.map((t, i) => [t.id, i]));
-  const plansFor = (tier) => Object.entries(f.tierForPlan || {}).filter(([, t]) => t === tier).map(([p]) => p);
-  const mv = visItem('models');
-  $('#plans').innerHTML = TIERS.map((t, i) => {
-    const ms = f.models.filter((m) => rank[m.tier] <= i);
-    return `<div class="plan ${t.id}"><h3>${t.he}<small class="ltr">${esc(plansFor(t.id).join(' · '))}</small></h3>
-      <div class="dim" style="font-size:13px;margin-bottom:6px">${ms.length} מודלים · ${t.note}</div>
+  const ms = f.models || [];
+  $('#plans').innerHTML = `<div class="plan"><h3>Apple<small class="ltr">מנוע אחד לכל הלקוחות</small></h3>
+      <div class="dim" style="font-size:13px;margin-bottom:6px">${ms.length} מודלים</div>
       ${ms.map((m) => { const [ch, col] = VENDOR[m.vendor] || [m.vendor?.[0] || '?', '#8b95ad'];
         return `<div class="model"><span class="vend" style="background:${col}22;color:${col};border:1px solid ${col}55">${esc(ch)}</span><div style="min-width:0">
           <div class="mn">${esc(m.displayName)}</div><div class="mb2" style="display:block">${esc(BLURB_HE[m.displayName] || m.blurb || '')}</div>
-          <div class="chips2">${chip('', ROUTE_HE[m.route] || m.route)}${chip('', `×${m.creditMultiplier} קרדיטים`)}</div></div></div>`; }).join('')}
-      ${t.id === 'max' && mv && mv.status !== 'done' ? `<div class="para" style="margin:10px 0 0">${esc(mv.detail)}</div>` : ''}</div>`;
-  }).join('');
+          <div class="chips2">${m.route ? chip('', ROUTE_HE[m.route] || m.route) : ''}${m.creditMultiplier != null ? chip('', `×${m.creditMultiplier} קרדיטים`) : ''}</div></div></div>`; }).join('')}</div>`;
 }
 
 function renderSources() {

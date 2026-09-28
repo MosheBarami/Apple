@@ -6,7 +6,7 @@
 // these tests cover the half that decides WHEN to mirror.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isRtlLanguage, detectDirection, detectLanguage, UI_LANGUAGES } from '../src/lib/direction.ts';
+import { isRtlLanguage, detectDirection, detectLanguage, resolveDirection, initDirection, UI_LANGUAGES } from '../src/lib/direction.ts';
 
 test('Hebrew is NOT an RTL language this product knows about', () => {
   // Hebrew was removed from the product on 2026-09-20 — a Hebrew prompt was measured losing a word
@@ -72,4 +72,14 @@ test('lang declares the words on the page, not the reader’s preference', () =>
 
 test('an empty language list does not throw', () => {
   assert.equal(detectDirection([]), 'ltr');
+});
+
+test('a legacy saved rtl value is ignored and cleared', () => {
+  const store = new Map([['apple.dir', 'rtl']]);
+  globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, removeItem: (k) => store.delete(k) };
+  Object.defineProperty(globalThis, 'navigator', { value: { languages: ['en-US'], language: 'en-US' }, configurable: true });
+  globalThis.document = { documentElement: { setAttribute() {} } };
+  assert.equal(resolveDirection(), 'ltr');
+  assert.equal(initDirection(), 'ltr');
+  assert.equal(store.has('apple.dir'), false);
 });

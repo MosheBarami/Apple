@@ -31,9 +31,6 @@ Sources stay in their original locations; this vault references them instead of 
 - Highest-value next action: /Users/moshe/Desktop/RbxAI/docs/autonomy/NEXT_ACTION.md
 - Acceptance contract: /Users/moshe/Desktop/RbxAI/docs/autonomy/ACCEPTANCE.json
 - Customer findings: /Users/moshe/Desktop/RbxAI/docs/autonomy/CUSTOMER_FINDINGS.md
-- Owner's Agentic OS tutorial video: /Users/moshe/Downloads/This NEW Jev + Claude OS Just Changed Every AI Workflow.mp4
-
-The video is an example and a source of ideas, not an instruction to change Apple or copy the creator's private setup.
 `,
   'wiki/index.md': `# Apple OS index
 

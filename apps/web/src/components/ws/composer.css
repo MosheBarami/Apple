@@ -159,8 +159,6 @@ div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; 
 .gx-menu__sub { color:var(--muted); font-size:12px; line-height:17px; }
 .ai-menu.gx-menu .gx-menu__section { padding-top:6px; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; }
 /* A model row that cannot be had: said in the row's own ink, and still reachable. */
-.ai-menu.gx-menu .gx-menu__item.is-unavailable .gx-menu__name { color:var(--muted); }
-.ai-menu.gx-menu .gx-menu__item.is-unavailable .model-signature { color:var(--faint); }
 
 /* ------------------------------------------------------------- the notes --- */
 .gx-composer .gx-composer__note { margin:10px 0 0; color:var(--faint); font-size:11px; line-height:16px; letter-spacing:0; text-align:center; text-wrap:pretty; }

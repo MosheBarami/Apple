@@ -111,7 +111,7 @@ function commits(h) {
   const rows = repos.flatMap((r) => arr(r.commits).map((c) => ({ ...c, repo: r }))).sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0)).slice(0, 12);
   const failed = repos.filter((r) => r.commitsError);
   return html`<section class="card hf-log" data-k="log" aria-labelledby="hf-log-h">
-    <h2 class="hf-sec-h" id="hf-log-h">${g(G.commit, 16)}LoRA ואימון: מה עלה לאחרונה<small>היסטוריית ה-commits של ${repos.map((r, i) => html`${i ? ' ו-' : ''}<bdi class="mono" dir="ltr">${repoName(r.id)}</bdi>`)}</small></h2>
+    <h2 class="hf-sec-h" id="hf-log-h">${g(G.commit, 16)}מה עלה לאחרונה<small>היסטוריית ה-commits של ${repos.map((r, i) => html`${i ? ' ו-' : ''}<bdi class="mono" dir="ltr">${repoName(r.id)}</bdi>`)}</small></h2>
     ${failed.length ? html`<p class="hf-small is-bad" role="status">לא הצלחנו לקרוא את ההיסטוריה של ${failed.map((r) => repoName(r.id)).join(', ')}: ${failed[0].commitsError}.</p>` : ''}
     ${rows.length ? html`<ol class="hf-tl">${rows.map((c) => html`<li class="hf-tl-i is-${c.repo.kind}" data-k="cm-${c.id}">
       <span class="hf-tl-d" aria-hidden="true"></span>
@@ -152,7 +152,7 @@ function spaceCard(s) {
 
 export default {
   id: 'hf', title: 'Hugging Face', nav: 'Hugging Face', brand: 'huggingface', needs: ['hf'],
-  sub: 'החשבון ב-Hub: מודל ה-LoRA, מאגר הנתונים שהוא לומד ממנו וה-Spaces',
+  sub: 'החשבון ב-Hub: המודלים, מאגרי הנתונים וה-Spaces',
   links: (d) => [{ label: 'הפרופיל ב-Hub', url: d.hf?.user && `https://huggingface.co/${d.hf.user}` }],
   render(d) {
     const h = d.hf || {}; const e = h.errors || {};
