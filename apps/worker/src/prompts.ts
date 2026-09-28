@@ -112,6 +112,19 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
   afford detail without an arbitrary-code capability the plugin does not expose.
 - Use verified library assets for ornament and detail. If a suitable asset is unavailable, explain
   the gap and continue with simple structural work; do not substitute a handmade complex model.
+- UNRESOLVED ESSENTIAL GAPS. If an asset the request cannot work without (the main character, vehicle,
+  weapon, key prop or sound) has no verified match, do not quietly swap in primitives or a lookalike.
+  Finish what can be built, then end your final summary with a line "Unresolved essential gaps:" naming
+  each missing asset and what the owner can supply. Say "none" when there are none.
+- THE GAME MUST OUTLIVE APPLE. Every script you insert runs in the customer's game without Apple, GLM,
+  Jev or a subscription: never call our endpoints with HttpService and never require plugin modules.
+  Inserting such a script is refused.
+- MONETISATION IS INACTIVE CONFIG. Only prepare purchase hooks (MarketplaceService, gamepass, developer
+  product) when asked, reading ids from an owner-editable config module (ReplicatedStorage.MonetizationConfig)
+  whose ids are 0 placeholders with a comment telling the owner where to paste the real id. NEVER invent
+  a gamepass, product or subscription id; a literal id in PromptProductPurchase, PromptGamePassPurchase,
+  UserOwnsGamePassAsync and the like is refused. While an id is 0 the purchase UI is hidden or disabled
+  and base gameplay works unchanged. Tell the owner in your summary which ids are unconfigured.
 - BUILD IN STAGES. Stage 1 structure and ground, stage 2 the main objects, stage 3 detail and props,
   stage 4 materials, colour and lighting. Keep each typed batch bounded and readable; if a stage is
   large, split it across several create/clone/transform calls and verify between stages.
@@ -265,6 +278,19 @@ message. Research, inspect, build, playtest, debug and repair as needed. Treat t
 tool failures as recoverable work: retry or change approach inside this run. Stop only when the run
 hits a hard product boundary such as Stop/access revocation, project pairing/edit consent, an
 upload/publish/account action that requires separate authority, or the 1000-step ceiling.`;
+
+/**
+ * EVERYTHING THE PRODUCT SAYS OR BUILDS IS ENGLISH (V3 handoff §1, gate G08).
+ *
+ * Input is not: a request in Hebrew, Spanish or broken English is still read for what it means,
+ * because refusing or ignoring it would fail the person instead of the language. Only the OUTPUT is
+ * fixed. It sits after the user's own settings and instructions in the prompt, so a profile or a
+ * project note asking for another language is read first and this is the rule read last.
+ */
+export const ENGLISH_OUTPUT_RULE = `Language: understand the user's message in whatever language it is written, and act on what they mean.
+Everything you produce is in English, whatever language the request or any instruction above is in:
+your replies, questions, plan steps and summaries, and all text inside the game — UI labels, button
+text, NPC dialogue, item, pet and place names, notifications and chat messages.`;
 
 /**
  * Sentinels around the art-direction brief so it can be dropped once it has done its job.
@@ -488,6 +514,7 @@ If the next tool is unavailable or fails, report that boundary; never claim the 
     opts.studioCapabilityNote ?? '',
     memory,
     opts.personalisation ?? '',
+    ENGLISH_OUTPUT_RULE,
     PRODUCT_VISUAL_SCOPE.instruction,
     `Today: ${new Date().toISOString().slice(0, 10)}.`,
   ]
@@ -504,4 +531,5 @@ the facts, however it is phrased.
 Given the previous memory summary and the latest conversation, produce an updated memory as JSON:
 {"summary": "<dense 5-10 sentence summary of the project: what it is, architecture, key scripts/instances, conventions, current state>",
  "facts": ["<up to 12 durable facts worth remembering (script paths, design decisions, user preferences, known issues)>"]}
-Keep only durable knowledge; drop chit-chat. Reply with ONLY the JSON.`;
+Keep only durable knowledge; drop chit-chat. Write the summary and the facts in English, even when the conversation is not.
+Reply with ONLY the JSON.`;

@@ -70,6 +70,7 @@ import { generateImage as hfGenerateImage, isHfConfigured, HF_IMAGE_MODEL } from
 import { findUiAssets, uploadLibraryAsset } from './asset-library';
 import { findUiStoreImages, UI_STORE_COUNT, UI_STORE_GENRES } from './ui-store-search';
 import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
+import { refuseGameScript, sourcesIn } from './game-independence';
 import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, refuseNewHandMadeModelLuau } from './model-rule';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScreenGuiHost } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
@@ -1987,6 +1988,9 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-FXLIB-1: the same for Sounds and particle effects, which come from insert_sound / insert_vfx.
       const handMadeFx = refuseLibraryLuau(luauScanVariants(after), FX_RULE, before === null ? undefined : luauScanVariants(before));
       if (handMadeFx) return handMadeFx;
+      // G13/G14: no runtime dependence on Apple, no fabricated purchase ids.
+      const gameRule = refuseGameScript(luauScanVariants(after), before === null ? undefined : luauScanVariants(before));
+      if (gameRule) return gameRule;
 
       const res = await op(ctx, {
         op: 'edit_script',
@@ -2237,6 +2241,10 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-FXLIB-1: Sounds and particle effects come from insert_sound / insert_vfx.
       const handMadeFx = refuseLibraryItems(a.items, FX_RULE);
       if (handMadeFx) return Promise.resolve(handMadeFx);
+      for (const src of sourcesIn(a.items)) {
+        const gameRule = refuseGameScript(luauScanVariants(src));
+        if (gameRule) return Promise.resolve(gameRule);
+      }
       const pass = normaliseItems(a.items);
       if (pass.refusals.length > 0) {
         return Promise.resolve({
@@ -2774,6 +2782,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-MODELLIB-2: run_luau does not assemble props either.
       const handMadeModel = refuseHandMadeModelLuau(luauScanVariants(String(a.code ?? '')));
       if (handMadeModel) return handMadeModel;
+      const gameRule = refuseGameScript(luauScanVariants(String(a.code ?? '')));
+      if (gameRule) return gameRule;
       const job = admitProgram({
         runtime: 'luau',
         backend: 'studio',
@@ -3703,6 +3713,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       // read above so ScriptEditorService can reject a concurrent Studio edit instead of replacing
       // it blindly. Reaching this point with `found` means `replace: true` was explicit, because
       // the differing existing-script branch above refuses without it.
+      const prefabRule = refuseGameScript(luauScanVariants(prefab.source));
+      if (prefabRule) return prefabRule;
       const edit: StudioOp = found
         ? { op: 'edit_script', path, source: prefab.source, baseHash: sourceHash(currentSource ?? '') }
         : { op: 'edit_script', path, source: prefab.source, create: { className: prefab.className, parent } };
@@ -4771,7 +4783,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       found.results = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId)
         && matchesVisualAnchor(row.name, requestedObject ?? undefined)
         && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor)).slice(0, a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10)));
-      if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Search a different plain noun or report the missing asset; do not substitute an unrelated preview or hand-built prop.`;
+      if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Search a different plain noun or report the missing asset; do not substitute an unrelated preview or hand-built prop. If the asset is ESSENTIAL to the request, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
       const options = found.results.slice(0, 3);
       if (options.length && !options.some((row) => row.assetId === ctx.approvedLibraryAssetId)) ctx.uiDetail = {
         kind: 'asset_choices',
