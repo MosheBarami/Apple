@@ -9,7 +9,6 @@ Pre-V3 queue archived in `archive/pre-v3/NEXT_ACTION.md`. Order follows `v3/Appl
    c. Composer hard gate: locked until the correct place is paired and connected, and the same refusal
       server-side in SessionDO `chat`; Stop stays independent.
    d. English-only replies (drop reply-language preference).
-   e. Jev router module with deterministic fallback (self-activates once Q-025 is done).
 2. **Stage 1 — run lifecycle (G10):** pause on Studio disconnect + explicit Continue; mid-run steering
    queued to the next safe boundary; Stop acknowledged when the run has actually ended.
 3. **Stage 2 — catalog (G05/G06):** build the plugin/worker consumer of `/v1/native-readiness`

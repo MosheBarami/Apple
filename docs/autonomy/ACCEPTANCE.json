@@ -13,7 +13,7 @@
   {
    "id": "G01",
    "title": "Single-engine policy",
-   "requirement": "Only Apple vX is customer-facing; approved Flash and backend Jev routing; no training, old tiers or mode selectors.",
+   "requirement": "Only Apple vX is customer-facing; GLM 5.3 Flash via Cloudflare is the only game-building model; no Jev (owner dropped it 2026-09-28), no training, old tiers or mode selectors.",
    "owner_sources": [
     7,
     16,
@@ -21,7 +21,7 @@
     18,
     25
    ],
-   "evidence_required": "Inspect routes/config/migration and a real model request; verify no training-only job is active.",
+   "evidence_required": "Inspect routes/config/migration and a real model request; verify no training-only job is active and no Jev dependency exists.",
    "status": "not_evaluated",
    "evidence": []
   },
@@ -258,5 +258,11 @@
  "quality_family_note": "Names identify owner-selected target families. This is not a factual inventory of their current mechanics or a declaration of clone/parity performance.",
  "method_note": "Focused tests and actual product execution remain; do not reinstate an endless model critique loop or remove real functional/security checks.",
  "adopted_date": "2026-09-28",
- "superseded_contract": "docs/autonomy/archive/pre-v3/ACCEPTANCE.v1.json"
+ "superseded_contract": "docs/autonomy/archive/pre-v3/ACCEPTANCE.v1.json",
+ "owner_revisions": [
+  {
+   "date": "2026-09-28",
+   "change": "Jev (typesafe/jev) dropped entirely from the product at owner instruction (\"drop jev entirely then\"), after the first call returned HTTP 402."
+  }
+ ]
 }

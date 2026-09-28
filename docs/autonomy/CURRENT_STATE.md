@@ -22,15 +22,15 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
 - `@cf/zai-org/glm-5.3-flash` on the owner's account: HTTP 200 in 2.7 s, 84 tokens, 3.18 neurons.
   Note: with `max_tokens` 64 the whole budget went to `reasoning_content` and `content` was empty —
   callers must budget for reasoning or disable it.
-- `typesafe/jev`: HTTP 402 "Insufficient balance; add money to your gateway or use BYOK" → OWNER_QUEUE
-  Q-025. Must stay optional with deterministic fallback.
+- `typesafe/jev`: HTTP 402 "Insufficient balance; add money to your gateway or use BYOK". The owner then
+  dropped Jev entirely (D-V3-2); routing stays deterministic + GLM.
 
 ## Requirement-to-code map (Stage 0 deliverable; file refs as of 2026-09-28)
 
 | V3 item | Current code | Verdict |
 |---|---|---|
 | Single engine | `gateway.ts:113-125` already GLM 5.3 Flash for plan/agent/vision; but `shared/src/models.ts:38` exposes `apple`, `apple-max`, `gemini-3.8-flash`, `gpt-5.6`, `gpt-5.6-luna` with free/pro/max tiers; `providers/workers-ai.ts:34` stale `APPLE_MODEL_ID` qwen3; LoRA lab lanes `gateway.ts:121-122` | adapt: one `Apple vX`, keep wire ids via compat bridge |
-| Jev | only `scripts/apple-os/route.mjs` (owner tool); nothing in the Worker | adapt: bounded backend router + fallback |
+| Jev | only `scripts/apple-os/route.mjs` (owner's local Apple-OS tool); nothing in the Worker | dropped by owner (D-V3-2): nothing to build |
 | Modes | `ProductMode`/`autonomous` in `shared/src/index.ts:695,760,772,1291,1748,1803`; worker `session.ts:2836`, `router.ts:150`, `prompts.ts:494`; web `composer.tsx:159-163,977-996`, `workspace.tsx`, `usage.tsx`; site `docs/modes.astro`; `messages.mode` column | remove from UI/site; adapt to internal stages |
 | Training | `packages/training` (workspace member, CI runs its tests), dashboard LoRA pages, LoRA lanes | remove from active product; archive |
 | Studio gate | composer disabled only on socket/permission (`workspace.tsx:1176`); server `chat` never checks Studio (`session.ts:2827-2891`); wrong place only per op (`:5755`) | adapt: UI lock + server refusal |

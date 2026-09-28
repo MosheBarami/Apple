@@ -311,3 +311,11 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   `.autonomy/backups/codex-wip-2026-09-28/` (tracked.patch + untracked.tgz + HEAD).
 - **Reverse:** restore `archive/pre-v3/ACCEPTANCE.v1.json` and `MISSION.v1.md`; the v1 branch of the
   gate script is unchanged.
+
+## D-V3-2 — Jev dropped entirely (owner, 2026-09-28)
+
+- **Decision:** owner instruction "drop jev entirely then", after `typesafe/jev` returned HTTP 402 (needs
+  paid gateway credit or BYOK). Apple uses GLM 5.3 Flash plus deterministic routing only; G01 updated;
+  Q-025 withdrawn. The owner's local Apple-OS launch agent `com.moshe.apple-os.open-jev` is a separate
+  tool outside the product and was left untouched.
+- **Reverse:** re-add Jev to G01 and fund the gateway.
