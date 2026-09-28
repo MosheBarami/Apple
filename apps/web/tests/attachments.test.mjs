@@ -56,11 +56,12 @@ const run = (actions, start = []) => actions.reduce((s, a) => stageReducer(s, a)
 /* ------------------------------------------------------------------ admission ---- */
 
 test('a file the server would refuse is refused here first, in the server’s own words', () => {
-  const { admitted, refused } = admitFiles([], [file('shot.png', 100, 'image/png')]);
+  // PNG and JPEG are admitted (inspected through a vision tool); an animated GIF is not.
+  const { admitted, refused } = admitFiles([], [file('clip.gif', 100, 'image/gif')]);
   assert.equal(admitted.length, 0);
   assert.equal(refused.length, 1);
-  assert.equal(refused[0].name, 'shot.png');
-  assert.match(refused[0].message, /image/i);
+  assert.equal(refused[0].name, 'clip.gif');
+  assert.match(refused[0].message, /image|type|gif/i);
 });
 
 test('an over-size file never leaves the machine', () => {

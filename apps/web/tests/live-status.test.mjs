@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { WEB, bundle, count, renderWith, text } from './ui-bundle.mjs';
+const replySurface = (html) => html.replace(/<details class="gx-evidence">[\s\S]*<\/details>/, ''); // V3 UI-LATEST: technical detail lives only behind Details
 
 const SRC = join(WEB, 'src');
 const live = await import(pathToFileURL(join(SRC, 'lib/live-status.ts')).href);
@@ -109,9 +110,9 @@ const busy = [
 ];
 
 function turn(item, extra = {}) {
-  return renderWith(ui.renderToStaticMarkup, ui.h(ui.Turn, { status: null, isLast: true, ...extra, item: {
+  return replySurface(renderWith(ui.renderToStaticMarkup, ui.h(ui.Turn, { status: null, isLast: true, ...extra, item: {
     id: 'm1', role: 'assistant', content: '', streaming: false, createdAt: T0, ...item,
-  } }));
+  } })));
 }
 
 /** Everything a customer could read or open in the turn: the text, and every attribute a reader announces. */

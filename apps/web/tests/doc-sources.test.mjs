@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { WEB, bundle, decomment, renderWith } from './ui-bundle.mjs';
+const replySurface = (html) => html.replace(/<details class="gx-evidence">[\s\S]*<\/details>/, ''); // V3 UI-LATEST: technical detail lives only behind Details
 
 const SRC = join(WEB, 'src');
 const { docSourcesFromTools, DOC_SEARCH_TOOL } = await import(pathToFileURL(join(SRC, 'lib/doc-sources.ts')).href);
@@ -92,11 +93,11 @@ const ui = await bundle(`
   export { renderToStaticMarkup } from 'react-dom/server';
   export { Turn } from './src/components/ws/turn';
 `, { name: 'doc-sources', resolveDir: WEB });
-const renderTurn = (tools) => renderWith(ui.renderToStaticMarkup, ui.h(ui.Turn, {
+const renderTurn = (tools) => replySurface(renderWith(ui.renderToStaticMarkup, ui.h(ui.Turn, {
   item: { id: 'a1', role: 'assistant', content: 'Use TweenService.', tools, streaming: false, stopReason: 'done', createdAt: 1_700_000_000_000 },
   status: null,
   isLast: false,
-}));
+})));
 
 //[[ RESTATED 2026-09-24 (owner decision D-THINK-1). This showed the searched pages under the reply
 //   as AI Elements Sources. The owner asked that no technical detail be visible, and a list of

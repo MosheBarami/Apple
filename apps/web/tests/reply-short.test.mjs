@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { WEB, bundle, decomment, renderWith, text } from './ui-bundle.mjs';
+const replySurface = (html) => html.replace(/<details class="gx-evidence">[\s\S]*<\/details>/, ''); // V3 UI-LATEST: technical detail lives only behind Details
 
 const ui = await bundle(`
   export { createElement as h } from 'react';
@@ -76,7 +77,7 @@ test('a whole settled reply, rendered: the words and the picture, no property ca
   // TWICE. The renderer is lazily loaded, and a first server render shows its fallback; rendering
   // again once the chunk has resolved shows what a browser shows a moment later. Asserting on the
   // first render alone would pass whatever the reply drew through the renderer.
-  const turn = () => renderWith(ui.renderToStaticMarkup, ui.h(ui.Turn, { item, status: null, isLast: true }));
+  const turn = () => replySurface(renderWith(ui.renderToStaticMarkup, ui.h(ui.Turn, { item, status: null, isLast: true })));
   turn();
   await new Promise((resolve) => setTimeout(resolve, 0));
   const html = turn();

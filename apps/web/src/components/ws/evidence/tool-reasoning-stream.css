@@ -1,0 +1,15 @@
+.evidence-stream-text__caret {
+  display: inline-block;
+  width: 0.5ch;
+  margin-left: 1px;
+  background: currentColor;
+  height: 1em;
+  vertical-align: text-bottom;
+  animation: evidence-caret 1s steps(2, start) infinite;
+}
+@keyframes evidence-caret { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .evidence-stream-text__caret { animation: none; }
+}
+.evidence-tool__meta { font-size: 0.75rem; opacity: 0.75; margin: 0; }
+.evidence-tool__note { font-size: 0.75rem; opacity: 0.75; }

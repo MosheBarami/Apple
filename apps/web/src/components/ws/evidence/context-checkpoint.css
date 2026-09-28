@@ -1,0 +1,10 @@
+.ev-context { display: grid; gap: 4px; font-size: 12px; color: var(--muted-foreground, #666); }
+.ev-context__meter { height: 4px; border-radius: 2px; background: var(--border, #ddd); overflow: hidden; }
+.ev-context__meter > span { display: block; height: 100%; background: currentColor; }
+.ev-context[data-over='true'] .ev-context__meter > span { background: var(--destructive, #c33); }
+.ev-checkpoint { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted-foreground, #666); }
+.ev-checkpoint__rule { flex: 1; height: 1px; background: var(--border, #ddd); }
+.ev-confirm { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--border, #ddd); border-radius: 8px; font-size: 13px; }
+.ev-confirm__actions { display: flex; gap: 8px; }
+.ev-attachments { display: grid; gap: 4px; }
+.ev-attachments__title { font-size: 12px; color: var(--muted-foreground, #666); }

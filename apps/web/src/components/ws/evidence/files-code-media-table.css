@@ -1,0 +1,11 @@
+.ev-script { border: 1px solid var(--border, #ddd); border-radius: 8px; margin: 6px 0; }
+.ev-script__summary { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; cursor: pointer; font-size: 13px; }
+.ev-script__meta, .ev-image__caption, .ev-table__more { color: var(--muted, #777); font-size: 12px; }
+.ev-image { margin: 6px 0; }
+.ev-image img { max-width: 100%; border-radius: 8px; }
+.ev-table { overflow-x: auto; margin: 6px 0; }
+.ev-table table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.ev-table th, .ev-table td { text-align: left; padding: 4px 10px; border-bottom: 1px solid var(--border, #ddd); }
+.ev-tree__main { display: inline-flex; align-items: center; gap: 6px; }
+.ev-tree__tag { font-size: 11px; color: var(--muted, #777); }
+.ai-tree__row.is-affected .ai-tree__name { font-weight: 600; }

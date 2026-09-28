@@ -1,0 +1,10 @@
+.ev-cite { display: inline-flex; gap: 2px; margin-inline-start: 2px; }
+.ev-cite__chip { font-size: 10px; padding: 0 5px; border-radius: 8px; background: var(--surface-2, rgba(128,128,128,.18)); cursor: help; }
+.ev-cite__note { opacity: .7; }
+.ev-agent { padding: 12px 14px; border: 1px solid var(--border, rgba(128,128,128,.25)); border-radius: 10px; font-size: 13px; }
+.ev-agent__name { margin: 0; font-size: 14px; font-weight: 600; }
+.ev-agent__blurb, .ev-agent__row { margin: 4px 0 0; }
+.gx-evidence { margin-top: 8px; font-size: 13px; }
+.gx-evidence > summary { cursor: pointer; color: var(--text-dim, rgba(128,128,128,.9)); font-size: 12px; user-select: none; }
+.gx-evidence[open] > summary { margin-bottom: 8px; }
+.gx-evidence > :not(summary) + :not(summary) { margin-top: 8px; }

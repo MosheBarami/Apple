@@ -39,6 +39,7 @@ import { ExpandableImages } from '../picks/chat/expandable-images';
 import { AssetChoice } from './asset-choice';
 import { visualOptions } from './asset-choice-model';
 import './turn.css';
+import { TurnEvidence } from './evidence/turn-evidence';
 
 function useNow(active: boolean): number {
   const [now, setNow] = useState(() => Date.now());
@@ -446,6 +447,7 @@ export function Turn({
             charged, sitting next to the time the turn happened. Rendered only when the worker
             sent one and something was actually spent: an absent field means a conversation from
             history or an older worker, and neither should be drawn as a confident zero. */}
+        <TurnEvidence item={item} status={isLast ? status : null} activity={activity} upcoming={plannedSteps} />
         <p className="gx-turn__foot">
           <Stamp at={item.createdAt} align="start" />
           {item.creditsSpent != null && item.creditsSpent > 0 && (
