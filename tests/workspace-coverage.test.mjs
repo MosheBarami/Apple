@@ -144,6 +144,40 @@ test('a container directory is not itself required to have a manifest', () => {
   assert.equal(r.exit, 0, r.out);
 });
 
+test('a `!dir` entry removes exactly that directory, and a comment does not end the block', () => {
+  // packages/training is excluded this way. The comment above the entry is the real file's shape:
+  // the first block regex stopped at a comment line and would have dropped every entry after it.
+  const ws = "packages:\n  - 'apps/*'\n  # archive\n  - 'packages/*'\n  - '!packages/archive'\n";
+  const r = fixture({
+    'packages/archive': { manifest: null, files: ['src/a.ts'] },
+    'packages/live': { manifest: null, files: ['src/b.ts'] },
+  }, { workspace: ws });
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /packages\/live/, 'packages/* after the comment must still be expanded');
+  assert.doesNotMatch(r.out, /packages\/archive/, r.out);
+});
+
+test('a gitignored member is skipped and named, a tracked one is not', () => {
+  const r0 = fixture({
+    'packages/private': { manifest: null, files: ['src/a.ts'] },
+    'packages/public': { manifest: withTest, files: ['src/b.ts'] },
+  });
+  try {
+    spawnSync('git', ['init', '-q'], { cwd: r0.dir });
+    writeFileSync(join(r0.dir, '.gitignore'), 'packages/private/\n');
+    const proc = spawnSync('node', [CHECKER, '--root', r0.dir], { encoding: 'utf8', timeout: 30_000 });
+    const out = `${proc.stdout}${proc.stderr}`;
+    assert.equal(proc.status, 0, out);
+    assert.match(out, /skipped, gitignored: packages\/private/);
+    // CONTROL: the same tree without the ignore rule fails on the manifest-less member.
+    rmSync(join(r0.dir, '.gitignore'));
+    const again = spawnSync('node', [CHECKER, '--root', r0.dir], { encoding: 'utf8', timeout: 30_000 });
+    assert.equal(again.status, 1, `${again.stdout}${again.stderr}`);
+  } finally {
+    rmSync(r0.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  }
+});
+
 /* ------------------------------------------------- it still passes for real --- */
 
 test('this repository itself passes', () => {

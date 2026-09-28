@@ -3,7 +3,6 @@ import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { initVault, vaultPath } from './vault.mjs';
-import { trainingSnapshot } from '../owner-dashboard/training-snapshot.mjs';
 
 export const repoPath = resolve(import.meta.dirname, '../..');
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
@@ -26,7 +25,6 @@ function activeOwnerMission(repo) {
 
 export function collectBriefFacts({ repo = repoPath, now = new Date() } = {}) {
   const acceptance = readJson(join(repo, 'docs/autonomy/ACCEPTANCE.json'));
-  const training = trainingSnapshot(repo);
   const gitSha = command('git', ['rev-parse', '--short', 'HEAD'], repo);
   const dirty = command('git', ['status', '--porcelain', '--untracked-files=no'], repo);
   const mission = activeOwnerMission(repo);
@@ -34,22 +32,18 @@ export function collectBriefFacts({ repo = repoPath, now = new Date() } = {}) {
   return { measuredAt: now.toISOString(), gitSha, trackedChanges: dirty == null ? null : dirty.split('\n').filter(Boolean).length,
     acceptance: { reviews: acceptance.fresh_reviews_without_material_blocker, requiredReviews: acceptance.required_fresh_reviews_without_material_blocker,
       critical: acceptance.open_critical_findings, high: acceptance.open_high_findings, candidateComplete: acceptance.candidate_complete },
-    training: training ? { best: training.best, latest: training.versions[0] || null } : null,
     nextAction: next.slice(0, 2000), nextActionSource: mission ? 'active codex-owner mission ledger' : 'docs/autonomy/NEXT_ACTION.md', sources: [
-      'docs/autonomy/ACCEPTANCE.json', mission ? 'active codex-owner mission ledger' : 'docs/autonomy/NEXT_ACTION.md', 'packages/training/runs/forever/state.json',
+      'docs/autonomy/ACCEPTANCE.json', mission ? 'active codex-owner mission ledger' : 'docs/autonomy/NEXT_ACTION.md',
     ] };
 }
 
 export function renderBrief(f) {
-  const a = f.acceptance, t = f.training;
-  const best = t?.best ? `v${t.best.version}: ${t.best.passed}/${t.best.total} במבחן הקוד המקומי` : 'אין ציון מאומת';
-  const latest = t?.latest ? `v${t.latest.version}: ${safeText(t.latest.label)}${t.latest.passed == null ? '' : ` (${t.latest.passed}/${t.latest.total})`}` : 'אין נתון';
+  const a = f.acceptance;
   return `# דוח Apple OS — ${f.measuredAt}\n\n` +
     `## מצב קבלה\n\n- ביקורות עצמאיות: ${a.reviews}/${a.requiredReviews}.\n- ממצאים פתוחים: ${a.critical} קריטיים, ${a.high} גבוהים.\n- מועמד לסיום לפי החוזה: ${a.candidateComplete ? 'כן' : 'לא'}.\n\n` +
-    `## מודל מקומי\n\n- הטוב המאומת: ${best}.\n- הגרסה האחרונה: ${latest}.\n- הציון המקומי אינו הוכחה לאיכות משחק ב־Studio.\n\n` +
     `## הפעולה הבאה\n\n${nextActionForOwner(f.nextAction)}\n\n- מקור: ${f.nextActionSource === 'active codex-owner mission ledger' ? 'יומן משימת הבעלים הפעילה' : f.nextActionSource}.\n\n` +
     `## עקיבות\n\n- Git HEAD: ${f.gitSha || 'לא זמין'}; קבצים מנוהלים ששונו: ${f.trackedChanges ?? 'לא זמין'}.\n` +
-    `- מקור חוזה: ${f.sources[0]}; פעולה: ${f.sources[1]}; אימון: ${f.sources[2]}.\n` +
+    `- מקור חוזה: ${f.sources[0]}; פעולה: ${f.sources[1]}.\n` +
     `- הדוח הוא תמונת מצב מקומית בזמן הרשום, ולא בדיקת Studio או בדיקת אתר חי.\n`;
 }
 

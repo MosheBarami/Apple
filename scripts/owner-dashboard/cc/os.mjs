@@ -26,8 +26,6 @@ export async function osAction(body) {
         const brief = latestBrief();
         execution = brief ? { kind: 'brief', path: brief.path, text: brief.text.slice(0, 5000) }
           : { kind: 'brief', message: 'עדיין אין דוח. הכינו דוח בעלים מהכפתור בהמשך הדף.' };
-      } else if (decision.handler === 'training-status') {
-        execution = { kind: 'training', training: collectBriefFacts().training };
       }
     }
     return { ok: true, decision, execution };

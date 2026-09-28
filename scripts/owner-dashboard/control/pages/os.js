@@ -21,21 +21,20 @@ function result() {
   const x = r.execution;
   return html`<div role="status"><p><b>נתיב ${d.tier || '—'}</b> · ${d.tier === 1 ? 'פעולה מקומית ללא מודל' : d.tier === 2 ? 'שאלה לסוכן עונה' : 'עבודה לסוכן Codex'} · מקור: ${sources[d.source] || d.source || 'לא ידוע'}.${d.tier !== 1 ? ' הסיווג מוצג; עבודת הסוכן עדיין לא מופעלת מהדף.' : ''}</p>
     ${x?.kind === 'brief' ? html`<p class="os-path" dir="ltr">${x.path || x.message}</p>${x.text ? html`<pre class="os-brief" dir="auto">${x.text}</pre>` : ''}` : ''}
-    ${x?.kind === 'training' ? html`<p>הטוב המאומת: ${x.training?.best ? `v${x.training.best.version} · ${x.training.best.passed}/${x.training.best.total}` : 'אין נתון'}. אחרון: ${x.training?.latest?.label || 'אין נתון'}.</p>` : ''}</div>`;
+    </div>`;
 }
 
 export default {
   id: 'os', title: 'Apple OS', nav: 'Apple OS', endpoint: '/api/cc/os',
   sub: 'מיומנויות, ידע, דוחות וניתוב שמבוססים על מצב Apple האמיתי',
   render(d) {
-    const f = d.facts || {}, a = f.acceptance || {}, t = f.training || {};
+    const f = d.facts || {}, a = f.acceptance || {};
     return html`
-      <div class="g g3">
+      <div class="g g2">
         <article class="card tile"><h2>קבלת מוצר</h2><p class="tile-v"><b>${num(a.reviews)}/${num(a.requiredReviews)}</b><span>ביקורות עצמאיות</span></p><p class="explain">${num(a.high)} ממצאים גבוהים פתוחים · מדידה מקומית ${f.measuredAt || 'לא זמינה'}</p></article>
-        <article class="card tile"><h2>מודל מקומי</h2><p class="tile-v"><b>${t.best ? `v${t.best.version} · ${t.best.passed}/${t.best.total}` : '—'}</b><span>הטוב המאומת</span></p><p class="explain">${t.latest ? `גרסה אחרונה v${t.latest.version}: ${t.latest.label}` : 'אין מצב אימון זמין'} · ציון קוד בלבד</p></article>
         <article class="card tile"><h2>חיבורים</h2><p>Whisper: ${d.voice?.whisper ? 'מקומי וזמין' : 'לא זמין'}</p><p>קול יוצא: ${d.voice?.kokoro ? 'Kokoro לאנגלית; קול המחשב לעברית' : d.voice?.speechOutput ? 'קול המחשב המקומי' : 'לא זמין'}</p></article>
       </div>
-      <section class="card"><h2>בקשה או חיפוש</h2><p class="explain">כתבו מה צריך. בקשה מדויקת להצגת הדוח או מצב האימון מתבצעת מיד מהמחשב הזה. הטקסט לא נשלח לשירות חיצוני. ״חפש״ קורא את מאגר הידע המקומי. אין כאן בנייה או פריסה.</p>
+      <section class="card"><h2>בקשה או חיפוש</h2><p class="explain">כתבו מה צריך. בקשה מדויקת להצגת הדוח מתבצעת מיד מהמחשב הזה. הטקסט לא נשלח לשירות חיצוני. ״חפש״ קורא את מאגר הידע המקומי. אין כאן בנייה או פריסה.</p>
         <div class="g g21"><input class="os-query" id="os-query" aria-label="בקשה ל־Apple OS" maxlength="4000" value="${work.query}" placeholder="למשל: הצג את דוח הבעלים האחרון" dir="auto">
           <div class="os-actions"><button class="btn btn-ok" data-act="route" ${work.busy ? 'disabled' : ''}>נתב בקשה</button> <button class="btn" data-act="search" ${work.busy ? 'disabled' : ''}>חפש בידע</button></div></div>
         ${work.busy ? html`<p role="status">בודק…</p>` : result()}

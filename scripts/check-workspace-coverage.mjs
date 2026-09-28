@@ -17,7 +17,7 @@
 //
 // A package may opt out ONLY by declaring why, in the file itself, beside its name.
 // An opt-out that is merely absent is a failure.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,7 +45,9 @@ function members() {
   const ws = readFileSync(join(ROOT, 'pnpm-workspace.yaml'), 'utf8');
   // Only the `packages:` block. The file also has `allowBuilds:` and
   // `minimumReleaseAgeExclude:` list items, and matching those would be nonsense.
-  const block = /^packages:\n((?:\s+-\s*.*\n)+)/m.exec(ws);
+  // Comment lines inside the block are kept in it: a comment above an entry must not end the
+  // block early and silently drop every entry after it.
+  const block = /^packages:\n((?:[ \t]+(?:-|#).*\n)+)/m.exec(ws);
   if (!block) throw new Error('no packages: block in pnpm-workspace.yaml');
   const entries = [...block[1].matchAll(/^\s*-\s*(.+?)\s*$/gm)]
     .map((m) => m[1].replace(/^['"]|['"]$/g, ''));   // quoted entries are valid YAML
@@ -58,8 +60,12 @@ function members() {
   //   is a quiet pass is the defect it exists to catch. ]]
   const globs = [];
   const unhandled = [];
+  // `!dir` removes one directory from the workspace (packages/training, the archive of the
+  // cancelled training work). Only an exact directory is understood; a negated glob is unhandled.
+  const excluded = new Set();
   for (const e of entries) {
     if (/\/\*$/.test(e)) globs.push(e);
+    else if (/^![^*]+$/.test(e)) excluded.add(e.slice(1).replace(/\/$/, ''));
     else unhandled.push(e);
   }
   if (unhandled.length > 0) {
@@ -76,6 +82,7 @@ function members() {
     for (const name of readdirSync(base)) {
       const dir = join(base, name);
       if (!statSync(dir).isDirectory()) continue;
+      if (excluded.has(relative(ROOT, dir).replaceAll('\\', '/'))) continue;
       out.push(dir);
     }
   }
@@ -104,6 +111,17 @@ function sourceFileCount(dir) {
 const problems = [];
 const covered = [];
 const ALL = members();
+
+//[[ A GITIGNORED MEMBER IS IN NO CHECKOUT CI RUNS.
+//
+//   packages/owner-corpus is the owner's private corpus tooling: gitignored, never committed, so it
+//   is absent from every clone `pnpm -r test` runs in. Demanding a manifest for it failed this check
+//   on the one machine that has it and nowhere else. It is skipped — and named on the output, so
+//   the skip is never silent. ]]
+const ignoredMembers = new Set(ALL.filter((dir) => {
+  const rel = relative(ROOT, dir).replaceAll('\\', '/');
+  return spawnSync('git', ['check-ignore', '-q', rel], { cwd: ROOT }).status === 0;
+}));
 
 // `apps/*` and `apps/benchmark/*` both match, so `apps/benchmark` is itself listed
 // while being only a container for the real member beneath it. A directory that holds
@@ -158,7 +176,7 @@ function reachedBy(pattern, files) {
 }
 
 for (const dir of ALL) {
-  if (isContainer(dir)) continue;
+  if (isContainer(dir) || ignoredMembers.has(dir)) continue;
   const rel = relative(ROOT, dir).replaceAll('\\', '/');
   const manifest = join(dir, 'package.json');
 
@@ -275,3 +293,6 @@ if (problems.length > 0) {
 console.log(`workspace coverage: ${covered.length} package(s) reachable from \`pnpm -r test\``);
 console.log(`  ${covered.join(', ')}`);
 console.log(`  exempt: ${Object.keys(EXEMPT).join(', ') || 'none'}`);
+if (ignoredMembers.size) {
+  console.log(`  skipped, gitignored: ${[...ignoredMembers].map((d) => relative(ROOT, d).replaceAll('\\', '/')).join(', ')}`);
+}

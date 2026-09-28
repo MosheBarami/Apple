@@ -72,7 +72,7 @@
     "R69": { "tests": "training|dataset|rights", "files": ["packages/training"] },
     "R70": { "tests": "training|adapter|lora", "files": ["packages/training"] },
     "R71": { "tests": "eval|benchmark|score", "files": ["packages/evals/src"] },
-    "R72": { "tests": "promot|specializ|production.*model", "files": ["apps/worker/src/training-trajectory.ts"] },
+    "R72": { "tests": "promot|specializ|production.*model", "files": [] },
     "R73": { "tests": "automation|autonom|scheduled", "files": ["apps/web/src/components/ws/automations-panel.tsx"] },
     "R74": { "tests": "inbox|notification", "files": ["apps/worker/src/notify.ts"] },
     "R75": { "tests": "api key|/v1|sdk|cli", "files": ["packages/sdk"] },

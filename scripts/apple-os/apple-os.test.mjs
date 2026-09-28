@@ -40,10 +40,10 @@ test('brief reads current sources and writes a dated local artifact without chan
     const text = readFileSync(result.path, 'utf8');
     assert.match(text, /2026-09-25T12:00:00.000Z/);
     assert.match(text, /ביקורות עצמאיות/);
-    assert.match(text, /packages\/training\/runs\/forever\/state.json/);
+    assert.doesNotMatch(text, /packages\/training/, 'training is cancelled (V3 §2); the brief does not read it');
     assert.equal(latestBrief(root).path, result.path);
     assert.ok(Number.isInteger(result.facts.acceptance.reviews));
-    assert.ok(result.facts.training?.best?.total > 0);
+    assert.equal(result.facts.training, undefined);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -54,9 +54,8 @@ test('dashboard request routing and vault search remain local', async () => {
   const executed = await osAction({ kind: 'route', text: 'show latest brief', executeExact: true });
   assert.equal(executed.execution.kind, 'brief');
   assert.ok(executed.execution.path?.endsWith('-owner-brief.md'));
-  const training = await osAction({ kind: 'route', text: 'הצג את מצב האימון', executeExact: true });
-  assert.equal(training.execution.kind, 'training');
-  assert.ok(training.execution.training.best.total > 0);
+  // The training-status command is retired with training itself (V3 §2): it executes nothing.
+  assert.equal((await osAction({ kind: 'route', text: 'הצג את מצב האימון', executeExact: true })).execution, null);
   assert.equal((await osAction({ kind: 'route', text: 'build a game', executeExact: true })).execution, null);
   const searched = await osAction({ kind: 'search', query: 'Apple' });
   assert.equal(searched.ok, true);

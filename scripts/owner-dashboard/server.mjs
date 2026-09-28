@@ -1,5 +1,5 @@
 // The owner's live dashboard: one page for the whole Apple project — what the agents are doing right
-// now, the model and its training, the libraries, the screenshots, what 100% means, and what the run
+// now, the model, the libraries, the screenshots, what 100% means, and what the run
 // costs in tokens and dollars. Dependency-free; binds 127.0.0.1 only.
 //
 //   node scripts/owner-dashboard/server.mjs [port]      (default 4777)

@@ -3,6 +3,9 @@ packages:
   - apps/benchmark/*
   - apps/experiences/*
   - packages/*
+  # Training and LoRA are cancelled (V3 §2). packages/training stays in the tree as the
+  # historical archive; it is not a workspace member, so `pnpm -r` never builds or tests it.
+  - '!packages/training'
 allowBuilds:
   esbuild: true
   workerd: true

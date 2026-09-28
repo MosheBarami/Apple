@@ -1,6 +1,6 @@
 // The project half of the owner's dashboard. Every number is read at collection time from the
 // repository's own source of truth: the acceptance gate, the findings and owner-queue ledgers, the
-// model registry, the training runs, and the libraries' own modules (bundled and executed, so a count
+// model registry and the libraries' own modules (bundled and executed, so a count
 // is the length of the real array, not a regex's guess). The only hand-kept file is
 // docs/autonomy/vision-status.json, the ledger of the owner's vision.
 //
@@ -10,8 +10,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
-import { frontierOf } from './frontier.mjs';
-import { trainingSnapshot } from './training-snapshot.mjs';
 
 export const MEDIA_ROOTS = {
   gauntlet: 'docs/gauntlet/visual',
@@ -342,71 +340,7 @@ async function libraries(repo, facts) {
   ];
 }
 
-// ---- Training ------------------------------------------------------------------------------------
-function adaptersOf(repo) {
-  const dir = path.join(repo, 'packages/training/adapters');
-  let names = [];
-  try { names = fs.readdirSync(dir).filter((n) => statOf(path.join(dir, n))?.isDirectory()); } catch { return null; }
-  return names.map((n) => {
-    const d = path.join(dir, n), cfg = readJson(path.join(d, 'adapter_config.json')) || {};
-    const fl = fs.readdirSync(d);
-    const ckpts = fl.map((f) => /^(\d+)_adapters\.safetensors$/.exec(f)).filter(Boolean).map((m) => Number(m[1]));
-    const ends = fl.filter((f) => f.endsWith('.safetensors')).map((f) => statOf(path.join(d, f))?.mtimeMs).filter(Boolean);
-    const start = statOf(path.join(d, 'adapter_config.json'))?.mtimeMs ?? null;
-    const end = ends.length ? Math.max(...ends) : null;
-    const main = statOf(path.join(d, 'adapters.safetensors'));
-    return {
-      name: n, best: n.endsWith('-best'), base: cfg.model ?? null, rank: cfg.lora_parameters?.rank ?? null, layers: cfg.num_layers ?? null,
-      itersPlanned: cfg.iters ?? null, itersReached: ckpts.length ? Math.max(...ckpts) : null, data: cfg.data ?? null,
-      startedAt: start, endedAt: end, minutes: start && end && !n.endsWith('-best') ? Math.max(0, Math.round((end - start) / 60000)) : null,
-      sizeMb: main ? Math.round(main.size / 1e5) / 10 : null,
-    };
-  }).sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0));
-}
-
-async function datasetsOf(repo) {
-  const D = (p) => path.join(repo, 'packages/training/data', p);
-  const split = async (dir) => ({ train: await lines(D(`${dir}/train.jsonl`)), val: await lines(D(`${dir}/val.jsonl`)), test: await lines(D(`${dir}/test.jsonl`)) });
-  const R = 'roblox-research-v1-20260920/release';
-  const sumDir = async (rel) => { let n = 0, any = false; const base = D(rel); const fl = []; walk(base, (p) => { if (p.endsWith('.jsonl')) fl.push(p); }); for (const p of fl) { const c = await lines(p); if (c != null) { n += c; any = true; } } return any ? n : null; };
-  const hf = readJson(D('hf/REJECTED.json'));
-  const gl = (() => { try { return fs.readdirSync(D('.')).filter((n) => n.startsWith('game-logic')); } catch { return []; } })();
-  const synth = readJson(D('game-logic-synth-v1/examples.json')), rej = readJson(D('game-logic-synth-v1/rejects.json'));
-  const verifiedV4 = await lines(D('game-logic-seeds-v4/shard-3.jsonl'));
-  const gate = await split('.');
-  return [
-    { id: 'gate', name: 'סט האימון הנקי', what: 'קוד Luau מתוך מאגרים פתוחים עם רישיון שמתיר אימון', rows: (gate.train ?? 0) + (gate.val ?? 0) + (gate.test ?? 0), split: gate, source: 'GitHub', usedIn: 'v1–v4' },
-    { id: 'trajectories', name: 'הדגמות שימוש בכלים', what: 'איך סוכן טוב משתמש בכלים צעד אחרי צעד', ...(await (async () => { const s = await split('tool-trajectories-v1'); return { rows: (s.train ?? 0) + (s.val ?? 0) + (s.test ?? 0), split: s }; })()), source: 'מקומי', usedIn: 'v4' },
-    { id: 'gameLogic', name: 'לוגיקת משחק', what: 'בעיות לוגיקה (מטבעות, מלאי, זמנים) עם בדיקות שמריצות את הקוד', rows: gl.length, unit: 'אוספים', extra: [synth ? `${Array.isArray(synth) ? synth.length : synth.examples?.length ?? '?'} דוגמאות סינתטיות שעברו בדיקה, ${Array.isArray(rej) ? rej.length : rej?.rejects?.length ?? '?'} נדחו` : null, verifiedV4 != null ? `${verifiedV4} דוגמאות Luau מאומתות נוספו לאימון v22` : null].filter(Boolean).join(' · ') || null, source: 'מקומי', usedIn: 'v5; אוסף מאומת נוסף ב-v22' },
-    { id: 'github', name: 'מאגר GitHub הגדול', what: 'קוד רובלוקס מ-1,035 מאגרים', rows: await lines(D('roblox-github-v1/rows.jsonl')), extra: `${(await lines(D('roblox-github-v1/repos.jsonl'))) ?? '?'} מאגרים`, source: 'GitHub', usedIn: 'עוד לא' },
-    { id: 'research', name: 'מאגר המחקר', what: 'קוד, דוגמאות אימון וידע מ-6 מקורות', rows: null, parts: { code: await sumDir(`${R}/code_candidates`), sft: await sumDir(`${R}/sft_candidates`), knowledge: await lines(D(`${R}/../release/knowledge/references.jsonl`)) }, source: 'GitHub, תיעוד, Hugging Face', usedIn: 'עוד לא (מחכה לאישור רישיונות)' },
-    { id: 'hf', name: 'מאגרים מ-Hugging Face', what: 'מאגרים ציבוריים שנבדקו לרישיון ולאיכות', rows: Array.isArray(hf?.admitted) ? hf.admitted.length : null, unit: 'אושרו', extra: Array.isArray(hf?.rejected) ? `${hf.rejected.length} נדחו` : null, source: 'Hugging Face', usedIn: 'מבחנים' },
-  ];
-}
-
-function evalsOf(repo) {
-  const R = (p) => readJson(path.join(repo, 'packages/training/runs', p));
-  const prod = R('eval-production-SUMMARY.json'), v4 = R('eval-v4-scored.json'), cov = R('failure-coverage.json'), lib = R('library-yield.json');
-  const frac = (s) => { const m = /(\d+)\s*\/\s*(\d+)/.exec(String(s || '')); return m ? { ok: Number(m[1]), n: Number(m[2]) } : null; };
-  const tally = (side, dom) => { const t = v4?.tally?.[side]?.[dom]; return t ? { ok: t.ok, n: t.n } : null; };
-  return {
-    production: prod ? { at: prod.measuredAt ?? null, free1: frac(prod.headline?.freeLaneAgentPrompts1to24), free2: frac(prod.headline?.freeLaneAgentPrompts25to48), max: frac(prod.headline?.maxSuperAgentPrompts25to48) } : null,
-    v4: v4 ? { trajectory: { base: tally('base', 'trajectory'), adapter: tally('adapter', 'trajectory') }, gameLogic: { base: tally('base', 'game-logic'), adapter: tally('adapter', 'game-logic') } } : null,
-    failureCoverage: cov ? { pct: cov.coverage_percent, cited: cov.failures_cited_by_a_test, total: cov.documented_failures } : null,
-    library: lib ? { modules: lib.moduleCount, honesty: lib.honesty } : null,
-  };
-}
-
-function v5Of(repo) {
-  const T = (p) => path.join(repo, 'packages/training', p);
-  const y = readText(T('lora-apple-v5.yaml'));
-  if (!y) return null;
-  const get = (k) => new RegExp(`^${k}:\\s*"?([^"\\n#]+)"?`, 'm').exec(y)?.[1]?.trim() ?? null;
-  const data = get('data'), adapter = get('adapter_path');
-  return { base: get('model'), data, iters: Number(get('iters')) || null, dataReady: !!(data && statOf(T(data))),
-    trained: !!(adapter && (statOf(T(`${adapter}/adapters.safetensors`)) || statOf(T(`${adapter}-best/adapters.safetensors`)))) };
-}
-
+// ---- Providers the model tab reads (training and LoRA were cancelled, V3 §2) ----------------------
 async function hfOf() {
   const py = `
 import json
@@ -455,7 +389,7 @@ export async function collectProject(repo, hooks = {}) {
   onLate = hooks.onLate ?? onLate;
   const findings = findingsOf(repo);
   const facts = slow('codeFacts', 30 * 60000, () => codeFacts(repo));
-  const [gateR, git, datasets, libs] = await Promise.all([gate(repo), gitOf(repo), datasetsOf(repo), libraries(repo, facts)]);
+  const [gateR, git, libs] = await Promise.all([gate(repo), gitOf(repo), libraries(repo, facts)]);
   const vision = readJson(path.join(repo, 'docs/autonomy/vision-status.json'));
   if (vision?.items && findings) {
     const f = vision.items.find((i) => i.status === 'live' && i.id === 'findings');
@@ -477,7 +411,6 @@ export async function collectProject(repo, hooks = {}) {
     code: { facts, sizes: slow('codeSizes', 60 * 60000, () => codeSizes(repo)) },
     libraries: libs,
     training: {
-      adapters: adaptersOf(repo), datasets, frontier: frontierOf(repo), evals: evalsOf(repo), v5: v5Of(repo), forever: trainingSnapshot(repo),
       hf: slow('hf', 10 * 60000, hfOf),
       langflow: slow('langflow', 60000, () => langflowOf(repo)),
       vectorize: slow('vectorize', 30 * 60000, () => vectorizeOf(repo)),

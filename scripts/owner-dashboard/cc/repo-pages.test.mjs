@@ -111,18 +111,15 @@ test('commits: the whole history, paginated, with a detail view', { timeout: 120
   assert.equal((await json('/api/cc/commits?sha=not-a-sha;rm')).ok, false, 'a malformed sha never reaches git');
 });
 
-test('models: registry with plan gating, every LoRA run, evals and skills', async () => {
+test('models: registry, RAG and skills; the retired training views are gone', async () => {
   const d = await json('/api/cc/models');
   assert.equal(d.ok, true);
   assert.deepEqual(d.registry.models.map((m) => m.id), ['apple'], 'one engine (V3 G01)');
   assert.ok(d.registry.models.every((m) => m.providerModelId && Array.isArray(m.plans)));
-  assert.ok(d.lora.length >= 5);
-  assert.ok(d.lora.every((l) => l.version && l.base));
-  assert.ok(d.evals.length > 0 && d.evals.some((e) => e.tracks.some((t) => t.adapter.n > 0)));
   assert.ok(d.rag.chunks > 0);
   assert.ok(d.skills.cards.length > 0);
-  // The frontier card is per product lane (frontier.mjs), not one pool of every lane's runs.
-  assert.deepEqual(d.frontier.lanes.map((l) => l.lane), ['apple-max', 'apple']);
+  // Training and LoRA are cancelled (V3 §2): no LoRA runs, adapter evals or Apple MAX frontier lanes.
+  for (const k of ['lora', 'evals', 'production', 'frontier']) assert.equal(d[k], undefined, `${k} is a retired training view`);
 });
 
 test('design-history: design commits since Golem, dated screenshots, decisions', { timeout: 120000 }, async () => {

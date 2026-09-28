@@ -2,8 +2,6 @@
 const DIRECT = [
   { re: /^(?:show|open|bring up|הצג|פתח|תראה)(?: לי)? (?:the )?(?:latest |האחרון |את )?(?:owner |apple )?(?:brief|report|דוח|סיכום)(?: (?:הבוקר|היומי))?$/i, action: 'latest-brief' },
   { re: /^(?:הצג|פתח|תראה)(?: לי)? (?:את )?(?:דוח|סיכום)(?: הבעלים| Apple)?(?: האחרון| היומי)?$/u, action: 'latest-brief' },
-  { re: /^(?:show|open|הצג|פתח)(?: לי)? (?:the )?(?:training|אימון)(?: (?:status|מצב))?$/i, action: 'training-status' },
-  { re: /^(?:הצג|פתח)(?: לי)? (?:את )?מצב (?:האימון|אימון)$/u, action: 'training-status' },
 ];
 const WRITE = /\b(?:build|implement|edit|fix|deploy|publish|release|create|change|delete|commit|push|install|run|test)\b|(?:בנה|תבנה|תקן|ערוך|שנה|פרוס|פרסם|מחק|הרץ|בדוק|התקן)/i;
 

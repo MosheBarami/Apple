@@ -31,7 +31,6 @@ Sources stay in their original locations; this vault references them instead of 
 - Highest-value next action: /Users/moshe/Desktop/RbxAI/docs/autonomy/NEXT_ACTION.md
 - Acceptance contract: /Users/moshe/Desktop/RbxAI/docs/autonomy/ACCEPTANCE.json
 - Customer findings: /Users/moshe/Desktop/RbxAI/docs/autonomy/CUSTOMER_FINDINGS.md
-- Training state: /Users/moshe/Desktop/RbxAI/packages/training/runs/forever/state.json
 - Owner's Agentic OS tutorial video: /Users/moshe/Downloads/This NEW Jev + Claude OS Just Changed Every AI Workflow.mp4
 
 The video is an example and a source of ideas, not an instruction to change Apple or copy the creator's private setup.
@@ -46,7 +45,7 @@ Read raw/sources.md for source locations. Read the current source before making 
 `,
   'wiki/apple.md': `# Apple mission
 
-Apple builds and edits Roblox experiences inside a creator's real Studio place. The acceptance contract is in the repository. The live Studio place and customer experience are release oracles. The private LoRA training loop measures local code answers; its score alone is not product quality.
+Apple builds and edits Roblox experiences inside a creator's real Studio place. The acceptance contract is in the repository. The live Studio place and customer experience are release oracles.
 
 Sources: /Users/moshe/Desktop/RbxAI/docs/autonomy/MISSION.md; /Users/moshe/Desktop/RbxAI/docs/autonomy/ACCEPTANCE.json; /Users/moshe/Desktop/RbxAI/docs/autonomy/CURRENT_STATE.md.
 
@@ -66,7 +65,7 @@ Sources: /Users/moshe/Desktop/RbxAI/docs/autonomy/README.md; /Users/moshe/Deskto
 
 Implemented now: owner brief, vault search, three-tier request routing, local speech transcription.
 
-Next product-specific skills: visual asset review with rights evidence; Studio build/playtest/readback; release readiness; training promotion review. These must use their existing repository proof and safety gates. A button is not proof of successful execution.
+Next product-specific skills: visual asset review with rights evidence; Studio build/playtest/readback; release readiness. These must use their existing repository proof and safety gates. A button is not proof of successful execution.
 
 Sources: /Users/moshe/Desktop/RbxAI/docs/autonomy/NEXT_ACTION.md; /Users/moshe/Desktop/RbxAI/docs/autonomy/MISSION.md.
 `,
