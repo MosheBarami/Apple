@@ -1,5 +1,6 @@
 import type { MessageDto } from '@golem/shared';
 import type { ChatItem } from './use-project-socket';
+import type { StudioLinkFacts } from './studio-connection';
 
 export type ProjectRequestChannel = 'history' | 'checkpoints';
 
@@ -109,4 +110,18 @@ export function mergeHistoryWithLive(history: ChatItem[], live: ChatItem[]): Cha
   });
 
   return [...merged, ...live.filter((item) => !historyIds.has(item.id))];
+}
+
+/**
+ * G03: the composer is locked until the paired place is open in a connected Studio. `connected`
+ * only turns true for a plugin holding this project's pairing token, so "paired" is part of it;
+ * an open place other than the paired one locks it too. The worker refuses the same frames.
+ */
+export function composerLocked(studio: { connected: boolean; link: Pick<StudioLinkFacts, 'placeMismatch'> }): boolean {
+  return !studio.connected || studio.link.placeMismatch !== null;
+}
+
+/** G03: Continue is offered only for a paused run whose Studio is back. A reconnect never resumes by itself. */
+export function continueOffered(paused: boolean, locked: boolean): boolean {
+  return paused && !locked;
 }

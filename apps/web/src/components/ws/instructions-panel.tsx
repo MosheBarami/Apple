@@ -5,7 +5,7 @@
 // instructions that live in the scoped store, layered org → you → this project.
 //
 // THE ONE THING THIS PANEL MUST NEVER DO IS LIE ABOUT WHICH LAYER IS ANSWERING. A person who sets
-// "reply in Hebrew" on their account, watches a project keep answering in English, and is shown no
+// "brief answers" on their account, watches a project keep answering at length, and is shown no
 // reason concludes the setting is broken. So every resolved row names its scope, and a row that is
 // overriding something says what it overrode. The layering itself is computed on the SERVER, by the
 // same function the agent uses to build its prompt — recomputing precedence here would be a second
@@ -36,33 +36,13 @@ import { useUnsavedGuard } from '../../lib/unsaved';
 import { GOVERNABLE_TOOLS, blockedTools, withToolBlocked } from './tool-permissions';
 import { KIND_LABELS, MANDATORY_KINDS, NOTIFICATION_KINDS } from '../../lib/notification-inbox.ts';
 import { MANDATORY_REASON, eventEnabled, toggledEvents } from '../../lib/notification-prefs.ts';
+import { formatSettings } from '../../lib/format';
 
 const CODING_STYLES = ['idiomatic', 'minimal', 'commented', 'strict-typed', 'oop', 'functional'] as const;
 const RESPONSE_LENGTHS = ['brief', 'normal', 'detailed'] as const;
-//[[ HEBREW IS NOT OFFERED, ON THE OWNER'S DECISION OF 2026-09-20.
-//
-//   An audit drove a Hebrew prompt through the real product and the result was not a translation
-//   gap, it was silent data loss: "אובי עם לבה ו3 שלבים" came back as a skill query for an obby
-//   with a collectible HEART — לבה (lava) had become לב (heart) — and the run_intent for it
-//   returned an empty checklist, empty questions and empty assumptions where the identical English
-//   prompt was fully populated. The person is not told any of that; they get a build missing the
-//   thing they asked for.
-//
-//   Offering a language chip is a promise that the product works in that language. It did not, so
-//   the chip goes rather than the promise being quietly wrong. This is a removal of a CLAIM, not of
-//   text handling: `dir="auto"`, the bidi tests and the RTL layout work all stay, because a person
-//   who types Hebrew anyway must still see their own words rendered the right way round. ]]
-const LANGUAGES: { tag: string; label: string }[] = [
-  { tag: 'en', label: 'English' },
-  { tag: 'es', label: 'Español' },
-  { tag: 'pt-BR', label: 'Português (BR)' },
-  { tag: 'fr', label: 'Français' },
-  { tag: 'de', label: 'Deutsch' },
-  { tag: 'ru', label: 'Русский' },
-  { tag: 'ja', label: '日本語' },
-  { tag: 'ko', label: '한국어' },
-  { tag: 'zh', label: '中文' },
-];
+// There is no reply-language choice: every answer is English (V3 handoff §1). A stored choice
+// from before is ignored by the worker, and what a person types in any language still renders the
+// right way round — `dir="auto"` in turn.tsx and lib/direction.ts stay.
 const CONVENTIONS = [
   { id: 'rojo-project', label: 'Rojo layout' },
   { id: 'studio-native', label: 'Edited in Studio' },
@@ -265,23 +245,6 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
       )}
 
       {/* ---------------------------------------------------------------- preferences -- */}
-      <label className="field">
-        <span className="field-label">Answer me in</span>
-        <select
-          className="mem__fact"
-          value={prefs.language ?? ''}
-          disabled={!canWrite}
-          onChange={(e) => setPref('language', e.target.value || undefined)}
-        >
-          <option value="">No preference</option>
-          {LANGUAGES.map((l) => (
-            <option key={l.tag} value={l.tag}>
-              {l.label}
-            </option>
-          ))}
-        </select>
-      </label>
-
       <label className="field">
         <span className="field-label">How much to say</span>
         <select
@@ -495,8 +458,8 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
             <li key={e.key} className="mem__item">
               <span className="mem__fact prefs__instruction">{e.value}</span>
               {e.expiresAt && (
-                <span className="prefs__until" title={`Forgotten on ${new Date(e.expiresAt).toLocaleString()}`}>
-                  until {new Date(e.expiresAt).toLocaleDateString()}
+                <span className="prefs__until" title={`Forgotten on ${new Date(e.expiresAt).toLocaleString(formatSettings().locale)}`}>
+                  until {new Date(e.expiresAt).toLocaleDateString(formatSettings().locale)}
                 </span>
               )}
               <button
@@ -602,7 +565,7 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
           <ul className="mem__list">
             {(audit.data?.audit ?? []).map((a) => (
               <li key={a.id} className="prefs__row">
-                <span className="prefs__from">{new Date(a.at).toLocaleString()}</span>
+                <span className="prefs__from">{new Date(a.at).toLocaleString(formatSettings().locale)}</span>
                 <code className="prefs__key">{a.key}</code>
                 <span className="prefs__value">
                   {a.action === 'delete' ? `forgotten (was “${a.before ?? ''}”)` : a.before ? `“${a.before}” → “${a.after ?? ''}”` : `set to “${a.after ?? ''}”`}

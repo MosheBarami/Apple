@@ -9,7 +9,7 @@ import { PlanLadder } from '../components/plans';
 import { OrderSummaryDialog } from '../components/order-summary';
 import { meterView, periodComparisonLine, spendByKind } from '../components/usage-meter-model';
 import { maxUpgradeAvailable } from '../lib/creation-intent';
-import { formatNumber } from '../lib/format';
+import { formatNumber, formatSettings } from '../lib/format';
 import { Failure } from '../components/failure';
 import {
   PLAN_COPY,
@@ -205,7 +205,7 @@ function CreditsRing({ remaining, daily, period }: { remaining: number; daily: n
  * Auckland can be the wrong day, on the one subject where the day is the whole point.
  */
 const formatDay = (unixSeconds: number): string =>
-  new Date(unixSeconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  new Date(unixSeconds * 1000).toLocaleDateString(formatSettings().locale, { year: 'numeric', month: 'long', day: 'numeric' });
 
 function BillingNotice({ view, onManage }: { view: SubscriptionView; onManage: () => void }) {
   const notice = billingNotice(view, {
@@ -241,7 +241,7 @@ function BillingHistory() {
       key: `${e.at}:${e.eventId ?? ''}`,
       text: billingChangeLine(e, {
         planName: (id) => (isPlanId(id) ? PLAN_COPY[id].name : id),
-        formatDate: (millis) => new Date(millis).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+        formatDate: (millis) => new Date(millis).toLocaleDateString(formatSettings().locale, { year: 'numeric', month: 'long', day: 'numeric' }),
       }),
     }))
     .filter((l): l is { key: string; text: string } => l.text !== null);
@@ -318,7 +318,7 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
   const when =
     invoice.created === null
       ? null
-      : new Date(invoice.created * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      : new Date(invoice.created * 1000).toLocaleDateString(formatSettings().locale, { year: 'numeric', month: 'long', day: 'numeric' });
   const lines = detail.data?.invoice?.lines ?? [];
 
   return (

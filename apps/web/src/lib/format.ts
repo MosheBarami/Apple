@@ -13,10 +13,10 @@
 // its last argument, so `node --test` can exercise every branch without touching the module state.
 // Explicit .ts extension so `node --test` can load this module directly through native type
 // stripping, the same reason the generative-UI validator does it. See apps/web/tsconfig.json.
-import { DEFAULT_PREFS, resolveHour12, resolveLocale, resolveTimeZone, type Prefs } from './prefs.ts';
+import { DEFAULT_PREFS, FALLBACK_LOCALE, resolveHour12, resolveLocale, resolveTimeZone, type Prefs } from './prefs.ts';
 
 export interface FormatSettings {
-  /** undefined means "the browser's own", which is what every call did before this existed. */
+  /** Always an English locale when it comes from `formatSettingsFrom` — see `resolveLocale`. */
   locale: string | undefined;
   timeZone: string | undefined;
   hour12: boolean | undefined;
@@ -60,7 +60,7 @@ function dateFormat(opts: Intl.DateTimeFormatOptions, s: FormatSettings): Intl.D
   try {
     return new Intl.DateTimeFormat(s.locale, { ...opts, timeZone: s.timeZone });
   } catch {
-    return new Intl.DateTimeFormat(undefined, opts);
+    return new Intl.DateTimeFormat(FALLBACK_LOCALE, opts);
   }
 }
 
@@ -68,7 +68,7 @@ function numberFormat(opts: Intl.NumberFormatOptions, s: FormatSettings): Intl.N
   try {
     return new Intl.NumberFormat(s.locale, opts);
   } catch {
-    return new Intl.NumberFormat(undefined, opts);
+    return new Intl.NumberFormat(FALLBACK_LOCALE, opts);
   }
 }
 
@@ -89,7 +89,7 @@ function relativeFormat(s: FormatSettings): Intl.RelativeTimeFormat {
   try {
     return new Intl.RelativeTimeFormat(s.locale, { numeric: 'auto', style: 'narrow' });
   } catch {
-    return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto', style: 'narrow' });
+    return new Intl.RelativeTimeFormat(FALLBACK_LOCALE, { numeric: 'auto', style: 'narrow' });
   }
 }
 
@@ -104,7 +104,7 @@ function unitAmount(value: number, unit: 'minute' | 'hour' | 'day', s: FormatSet
   try {
     return new Intl.NumberFormat(s.locale, { style: 'unit', unit, unitDisplay: 'narrow' }).format(value);
   } catch {
-    return new Intl.NumberFormat(undefined, { style: 'unit', unit, unitDisplay: 'narrow' }).format(value);
+    return new Intl.NumberFormat(FALLBACK_LOCALE, { style: 'unit', unit, unitDisplay: 'narrow' }).format(value);
   }
 }
 

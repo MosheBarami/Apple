@@ -78,7 +78,7 @@ import { notify } from '../notify';
 import { usageBand } from '../notifications';
 import { dayKey } from '../quota-math';
 import { chooseEffort, classifyRequest, forbidsChanges, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
-import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
+import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@golem/shared';
 import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { promptBudgetForKey } from '../prompt-budget';
@@ -297,6 +297,18 @@ interface AgentState {
   /** Studio was connected at some step of this run, so its tools stay offered if the link drops (F-033). */
   studioSeen?: boolean;
   /**
+   * G03: the run is paused because the paired place stopped being connected. No step runs, and no
+   * op is queued, until the place is back AND the user sends `continue` — a reconnect alone never
+   * resumes it. Stop still ends it.
+   */
+  pausedForStudio?: { at: number; reason: StudioPauseReason };
+  /**
+   * G10: identical calls (tool + arguments) whose attempts failed with the same result, and how
+   * often. Unlike `seenCalls` this is not forgotten after a change or a transcript trim, so a path
+   * that keeps failing the same way is stopped at MAX_SAME_FAILURES. Bounded like `retryableCalls`.
+   */
+  failedCalls?: { sig: string; error: string; count: number }[];
+  /**
    * propose_plan's consecutive refusals and the kinds of the last one, carried across steps so the
    * tool can keep its promise that no run is refused more than twice in a row. See PlanState.
    */
@@ -502,6 +514,16 @@ const MAX_NUDGE_LEVEL = 6;
 const MAX_IDENTICAL_RETRIES = 2;
 /** Consecutive all-duplicate steps after which a run ends on what it built (see AgentState.duplicateStreak). */
 const MAX_DUPLICATE_STREAK = 3;
+/**
+ * G10: how many times one call (tool + arguments) may fail with the same result before it is no
+ * longer run. One more than the retries a safe-to-repeat failure is given, so those still get theirs.
+ */
+const MAX_SAME_FAILURES = MAX_IDENTICAL_RETRIES + 1;
+/** G10: how long the HTTP Stop waits for the run to actually end before answering "still stopping". */
+const STOP_ACK_WAIT_MS = 8_000;
+/** G10: messages sent while a run works, held under their own key until the next step boundary. */
+const STEER_KEY = 'steerQueue';
+type QueuedSteer = { id: string; text: string; at: number };
 const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
 /** What a run that was told not to change anything is never offered. */
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
@@ -1412,6 +1434,126 @@ export class SessionDO extends DurableObject<Env> {
       origin.send(JSON.stringify(refusal));
     } catch {
       /* closed */
+    }
+  }
+
+  /**
+   * G03: is the paired place connected right now? Null when it is; otherwise why not. The same
+   * facts the rest of this file uses — the plugin heartbeat and the place check made on every poll.
+   * Unpairing deletes the heartbeat, so an unpaired project reads as disconnected here.
+   */
+  private async studioLinkDown(): Promise<StudioPauseReason | null> {
+    if (!(await this.pluginConnected())) return 'disconnected';
+    return this.placeMismatch ? 'place_mismatch' : null;
+  }
+
+  /**
+   * G03: may a build be started, steered or continued from the composer? Null when the project is
+   * paired and the paired place is connected; otherwise the stable reason and the sentence shown.
+   */
+  private async studioGate(): Promise<{ reason: StudioPauseReason; message: string } | null> {
+    const paired = (await this.ctx.storage.get<string>('pluginTokenHash')) ?? this.activePluginTokenHash;
+    if (!paired) {
+      return { reason: 'unpaired', message: 'Connect Roblox Studio first: open the Apple plugin in Studio and pair it with this project.' };
+    }
+    const down = await this.studioLinkDown();
+    if (down === 'disconnected') {
+      return { reason: down, message: 'Roblox Studio is not connected. Open the paired place in Studio with the Apple plugin running, then try again.' };
+    }
+    if (down === 'place_mismatch' && this.placeMismatch) return { reason: down, message: this.placeMismatch.message };
+    return null;
+  }
+
+  /**
+   * The gate's refusal, under one stable code. Terminal only when no run is live: a refused message
+   * sent during a run must not tell the browser that the run, which is still there, has ended.
+   */
+  private refuseStudio(ws: WebSocket, gate: { message: string }, runLive: boolean) {
+    const refusal = { type: 'error' as const, code: 'studio_required', message: gate.message };
+    if (!runLive) {
+      this.refuseOne(ws, refusal);
+      return;
+    }
+    try {
+      ws.send(JSON.stringify({ ...refusal, terminal: false } satisfies ServerMsg));
+    } catch {
+      /* closed */
+    }
+  }
+
+  /**
+   * G03: pause the run because the paired place went away. Queued ops of this run are withdrawn
+   * so a reconnect cannot deliver them behind the user's back; the run waits for `continue`.
+   */
+  private async pauseForStudio(agent: AgentState, reason: StudioPauseReason): Promise<void> {
+    agent.pausedForStudio = { at: Date.now(), reason };
+    await this.dropOpsForRun(agent.msgId);
+    await this.persistAgent(agent);
+    this.broadcast({ type: 'run_state', run: await this.runSnapshot() });
+  }
+
+  /**
+   * G10: a run with no step in flight — paused for Studio, or sleeping until a provider retry —
+   * would only see a Stop at its next alarm. Bring that alarm forward so the stop ends it now.
+   */
+  private async hurryStop(agent: AgentState): Promise<void> {
+    if (agent.pausedForStudio || (typeof agent.resumeAt === 'number' && agent.resumeAt > Date.now())) {
+      await this.ctx.storage.setAlarm(Date.now());
+    }
+  }
+
+  /**
+   * G10: a message sent while a run works is queued for that run's next step boundary rather than
+   * refused as busy or started as a second writer. False when there is no run to steer, so the
+   * caller starts one. A run that is stopping takes no new direction.
+   */
+  private async queueSteer(ws: WebSocket, text: string): Promise<boolean> {
+    const agent = await this.ctx.storage.get<AgentState>('agent');
+    if (!agent || agent.status === 'idle') return false;
+    const queued = (await this.ctx.storage.get<QueuedSteer[]>(STEER_KEY)) ?? [];
+    if (agent.status === 'stopping' || (await stopRequested(this.ctx.storage)) || queued.length >= 8) {
+      const message = queued.length >= 8
+        ? 'Apple has not reached your earlier messages yet. Send this one once they have been applied.'
+        : 'Apple is stopping this run. Send your message again once it has stopped.';
+      try {
+        ws.send(JSON.stringify({ type: 'error', code: 'busy', message, terminal: false } satisfies ServerMsg));
+      } catch {
+        /* closed */
+      }
+      return true;
+    }
+    const steer: QueuedSteer = { id: crypto.randomUUID(), text, at: Date.now() };
+    await this.ctx.storage.put(STEER_KEY, [...queued, steer]);
+    // The run may have ended between the read above and the write; nothing would ever apply the
+    // message then, so it is taken back and starts a run of its own instead.
+    const after = await this.ctx.storage.get<AgentState>('agent');
+    if (!after || after.status === 'idle') {
+      const left = ((await this.ctx.storage.get<QueuedSteer[]>(STEER_KEY)) ?? []).filter((q) => q.id !== steer.id);
+      if (left.length) await this.ctx.storage.put(STEER_KEY, left);
+      else await this.ctx.storage.delete(STEER_KEY);
+      return false;
+    }
+    this.broadcast({ type: 'steer', id: steer.id, state: 'queued' });
+    return true;
+  }
+
+  /**
+   * G10: hand messages the user sent during the run to the model, at a step boundary. They are
+   * recorded in the conversation now, when they take effect, not when they were typed.
+   */
+  private async applySteers(agent: AgentState): Promise<void> {
+    const queued = (await this.ctx.storage.get<QueuedSteer[]>(STEER_KEY)) ?? [];
+    if (!queued.length) return;
+    await this.ctx.storage.delete(STEER_KEY);
+    for (const steer of queued) {
+      this.sql.exec(`insert into messages(id, role, mode, content, created_at) values(?,?,?,?,?)`, steer.id, 'user', agent.mode, steer.text, Date.now());
+      agent.llm.push({
+        role: 'user',
+        content:
+          `New direction from the user, sent while you were working: ${steer.text}\n\n` +
+          'Keep everything already built and do not redo completed steps. Revise only the part of the work this changes, then carry on.',
+      });
+      this.broadcast({ type: 'steer', id: steer.id, state: 'applied' });
     }
   }
 
@@ -2621,9 +2763,21 @@ export class SessionDO extends DurableObject<Env> {
     // POST /api/projects/:id/stop (a browser whose socket is not heard). The same signal the socket writes.
     if (path === '/agent-stop' && req.method === 'POST') {
       const agent = await this.ctx.storage.get<AgentState>('agent');
-      if (!agent || agent.status === 'idle') return json({ ok: true, stopping: false, status: 'idle' });
+      if (!agent || agent.status === 'idle') return json({ ok: true, stopping: false, ended: true, status: 'idle' });
       await requestStop(this.ctx.storage);
-      return json({ ok: true, stopping: true, status: agent.status });
+      await this.hurryStop(agent);
+      // G10: answer when the run has ACTUALLY ended, so a browser whose socket is dead still gets
+      // the acknowledgement msg_end would have carried. Bounded: a model call already in flight
+      // ends the run only when it returns, and then this says "still stopping" instead of waiting.
+      const deadline = Date.now() + STOP_ACK_WAIT_MS;
+      while (Date.now() < deadline) {
+        const now = await this.ctx.storage.get<AgentState>('agent');
+        if (!now || now.status === 'idle' || now.msgId !== agent.msgId) {
+          return json({ ok: true, stopping: false, ended: true, status: 'idle', msgId: agent.msgId });
+        }
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      return json({ ok: true, stopping: true, ended: false, status: 'stopping', msgId: agent.msgId });
     }
 
     return json({ error: 'not found' }, 404);
@@ -2662,6 +2816,7 @@ export class SessionDO extends DurableObject<Env> {
       // would leave the run looking as though nothing had been withheld from it. Only sent when
       // something WAS withheld — an empty array here would claim a check the older runs never made.
       ...(agent.deniedTools?.length ? { deniedTools: agent.deniedTools } : {}),
+      ...(agent.pausedForStudio ? { paused: agent.pausedForStudio } : {}),
     };
   }
 
@@ -2759,6 +2914,14 @@ export class SessionDO extends DurableObject<Env> {
             );
             return;
           }
+          // G03: nothing is built, or steered, before the paired place is connected.
+          const live = await this.ctx.storage.get<AgentState>('agent');
+          const runLive = !!live && live.status !== 'idle';
+          const gate = await this.studioGate();
+          if (gate) {
+            this.refuseStudio(ws, gate, runLive);
+            return;
+          }
           // `msg.mode` (and a legacy `autonomous`) is not read: there are no modes (V3 G01), so an
           // older client's `plan` runs the same one behaviour instead of being refused.
           const productModel = asProductModel(msg.productModel);
@@ -2793,6 +2956,7 @@ export class SessionDO extends DurableObject<Env> {
           //   The project comes from `bind`, never from the frame — that is what stops an id from
           //   somebody else's project resolving here. ]]
           const withFiles = await promptWithAttachments(this.env, bind.projectId, text, msg.attachments);
+          if (await this.queueSteer(ws, withFiles)) return;
           await this.startRun(
             bind,
             withFiles,
@@ -2836,6 +3000,12 @@ export class SessionDO extends DurableObject<Env> {
         const agent = await this.ctx.storage.get<AgentState>('agent');
         if (agent && agent.status !== 'idle') {
           this.refuseOne(ws, { type: 'error', code: 'busy', message: 'Stop the current run before editing a message.' });
+          return;
+        }
+        // G03, before anything is deleted: an edit starts a build like any message does.
+        const gate = await this.studioGate();
+        if (gate) {
+          this.refuseStudio(ws, gate, false);
           return;
         }
 
@@ -2917,7 +3087,31 @@ export class SessionDO extends DurableObject<Env> {
         const agent = await this.ctx.storage.get<AgentState>('agent');
         if (agent && agent.status !== 'idle') {
           await requestStop(this.ctx.storage);
+          await this.hurryStop(agent);
         }
+        return;
+      }
+      case 'continue': {
+        // G03: the only thing that resumes a run paused for Studio. A reconnect never does.
+        if (mayNot('chat')) {
+          refuse('Your role on this project can read and comment, but not build.');
+          return;
+        }
+        const agent = await this.ctx.storage.get<AgentState>('agent');
+        if (!agent || agent.status !== 'running' || !agent.pausedForStudio) {
+          ws.send(JSON.stringify({ type: 'run_state', run: await this.runSnapshot() } satisfies ServerMsg));
+          return;
+        }
+        const gate = await this.studioGate();
+        if (gate) {
+          this.refuseStudio(ws, gate, true);
+          return;
+        }
+        // No step is in flight while a run is paused, so this write cannot race the run's own.
+        delete agent.pausedForStudio;
+        await this.persistAgent(agent);
+        await this.ctx.storage.setAlarm(Date.now() + 10);
+        this.broadcast({ type: 'run_state', run: await this.runSnapshot() });
         return;
       }
       case 'checkpoint_create': {
@@ -3056,6 +3250,7 @@ export class SessionDO extends DurableObject<Env> {
     // a stop that arrives in the moment a run is finishing can land after that clear, and it
     // must not travel into the run the user starts next.
     await clearStop(this.ctx.storage);
+    await this.ctx.storage.delete(STEER_KEY);
 
     // Credits are billed from measured usage after each model call, so entering a run only
     // requires having some balance left — the user is never charged for an estimate.
@@ -3166,7 +3361,7 @@ export class SessionDO extends DurableObject<Env> {
       //   indistinguishable from the switch not working.
       //
       //   What it does NOT drop is `personalisation` below. Those are settings the person TYPED —
-      //   the language to answer in, the project's instructions, the team's rules. They are things
+      //   the response length, the project's instructions, the team's rules. They are things
       //   they told Apple, not things Apple noticed, and silently ignoring them would be a second,
       //   unannounced setting hiding inside this one. ]]
       memorySummary: promptMemory.summary,
@@ -3227,6 +3422,9 @@ export class SessionDO extends DurableObject<Env> {
       startedAt: Date.now(),
       lastStepAt: Date.now(),
       userId: bind.ownerId,
+      // G03: a run admitted with Studio connected is a Studio run from its first step, so a drop
+      // before that step pauses it rather than letting it plan without the place.
+      ...(studioConnected ? { studioSeen: true } : {}),
       ...(typeof initiatedBy === 'string' && initiatedBy.trim().length > 0 ? { initiatedBy } : {}),
       ...(initiatorExpiresAt !== undefined ? { initiatorExpiresAt } : {}),
       highEffortUsed: 0,
@@ -3318,6 +3516,8 @@ export class SessionDO extends DurableObject<Env> {
       await this.finishRun(agent, 'stopped');
       return;
     }
+    // G03: a run paused for Studio waits for `continue`; no alarm, reconnect or watchdog resumes it.
+    if (agent.pausedForStudio) return;
     // Durable runs may legitimately sleep for minutes or hours between alarms. Age is not evidence
     // that work is lost: Stop/access/quota and the operation-specific timeouts are the actual gates.
     if (typeof agent.resumeAt === 'number' && Date.now() < agent.resumeAt) {
@@ -3496,6 +3696,17 @@ export class SessionDO extends DurableObject<Env> {
     //
     //   The run's own state carries the id across the eviction, so it is taken from there. ]]
     this.currentMsgId = agent.msgId;
+    // G03: a run that has used Studio does not take another step without it. Checked before the
+    // step is counted or paid for; the run keeps its transcript and resumes on `continue`.
+    if (agent.studioSeen) {
+      const down = await this.studioLinkDown();
+      if (down) {
+        await this.pauseForStudio(agent, down);
+        return;
+      }
+    }
+    // G10: direction the user sent during the run joins it here, between steps, never mid-step.
+    await this.applySteers(agent);
     // F-059: an answer given while the question is open (web or Studio) applies from this step, and
     // an eviction's lost policy is read back rather than refused as "never asked".
     if (this.pinnedPrefs === null || (await this.assetSourcesAskedNow())) await this.refreshPinnedPrefs();
@@ -3989,6 +4200,12 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
       agent.llm.push({ role: 'assistant', content: res.text });
+      // G10: the user sent direction while this step ran. The run takes it next step instead of ending.
+      if (((await this.ctx.storage.get<QueuedSteer[]>(STEER_KEY)) ?? []).length) {
+        await this.persistAgent(agent);
+        await this.ctx.storage.setAlarm(Date.now() + 10);
+        return;
+      }
       //[[ THE STEER GETS ITS TURN — BOUNDED.
       //
       //   It used to be pushed and then ignored: with nothing else owed (Studio offline, or the run
@@ -4205,6 +4422,7 @@ export class SessionDO extends DurableObject<Env> {
     let mutatedThisStep = false;
     let retuneThisStep: RetuneAction = 'none';
     let verifiedThisStep = false;
+    let pausedFor: StudioPauseReason | null = null;
     for (const call of res.toolCalls.slice(0, 4)) {
       if (await this.stopForAccess(agent)) return;
       if (sequence) {
@@ -4242,8 +4460,11 @@ export class SessionDO extends DurableObject<Env> {
       //   refused rather than being refused again here, which is what keeps consecutive
       //   propose_plan refusals at two or fewer whatever the model sends. ]]
       const retry = agent.retryableCalls?.find((r) => r.sig === sig);
-      const repeated = call.name !== 'propose_plan' && agent.seenCalls.includes(sig);
-      if (repeated && !(retry && retry.retries < MAX_IDENTICAL_RETRIES)) {
+      // Bounded like seenCalls: `sig` carries a whole script body for edit_script.
+      const failSig = sig.length > 400 ? `${sig.slice(0, 400)}#${sig.length}` : sig;
+      const failedAlike = (agent.failedCalls?.find((f) => f.sig === failSig)?.count ?? 0) >= MAX_SAME_FAILURES;
+      const repeated = call.name !== 'propose_plan' && (agent.seenCalls.includes(sig) || failedAlike);
+      if (repeated && !(retry && retry.retries < MAX_IDENTICAL_RETRIES && !failedAlike)) {
         // the model is looping — refuse the duplicate and steer it back to the work
         duplicatesThisStep += 1;
         const planNext = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
@@ -4257,7 +4478,7 @@ export class SessionDO extends DurableObject<Env> {
           role: 'tool',
           content:
             `[${call.name}] ` +
-            (retry
+            (retry || failedAlike
               ? 'You have already retried this exact call and it failed every time, so it was not run again. Do not repeat it; change your approach.'
               : 'You already made this exact call earlier in this run and have the result above. Do not repeat it.') +
             steer,
@@ -4400,6 +4621,16 @@ export class SessionDO extends DurableObject<Env> {
       } else if (retry) {
         agent.retryableCalls = (agent.retryableCalls ?? []).filter((r) => r.sig !== sig);
       }
+      // G10: the same call failing the same way again. Counted only for calls that ran.
+      if (allowed.has(call.name)) {
+        const failed = (agent.failedCalls ?? []).filter((f) => f.sig !== failSig);
+        const prior = agent.failedCalls?.find((f) => f.sig === failSig);
+        if (!out.ok) {
+          const error = out.summary.slice(0, 200);
+          failed.push({ sig: failSig, error, count: prior && prior.error === error ? prior.count + 1 : 1 });
+        }
+        agent.failedCalls = failed.slice(-8);
+      }
       if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
       // Keep the live trace the reconnect snapshot replays from.
@@ -4513,6 +4744,11 @@ export class SessionDO extends DurableObject<Env> {
         break;
       }
       if (await this.stopForAccess(agent)) return;
+      // G03: Studio went away during this step. What is left of the step is not run; the run pauses.
+      if (agent.studioSeen) {
+        pausedFor = await this.studioLinkDown();
+        if (pausedFor) break;
+      }
     }
 
     // Checked again here, not only inside the tool loop: a stop that arrives after the last
@@ -4521,6 +4757,22 @@ export class SessionDO extends DurableObject<Env> {
     if (agent.status === 'stopping' || (await stopRequested(this.ctx.storage))) {
       agent.status = 'stopping';
       await this.finishRun(agent, 'stopped');
+      return;
+    }
+    if (pausedFor) {
+      // Every call of the turn gets a result, so the transcript stays well formed and the model
+      // knows these were never attempted.
+      const answered = new Set(agent.llm.filter((m) => m.role === 'tool').map((m) => m.toolCallId));
+      for (const call of res.toolCalls.slice(0, 4)) {
+        if (answered.has(call.id)) continue;
+        agent.llm.push({
+          role: 'tool',
+          content: `[${call.name}] Not run: Roblox Studio disconnected and the run paused before this call. Decide again once the run continues.`,
+          toolCallId: call.id,
+          name: call.name,
+        });
+      }
+      await this.pauseForStudio(agent, pausedFor);
       return;
     }
     if (sequence) {
@@ -5161,6 +5413,13 @@ export class SessionDO extends DurableObject<Env> {
     );
     this.rememberProductModel(agent.msgId, normalizeModelId(agent.productModel));
     await this.persistAgent(agent);
+    // G10: direction that reached a run too late to be applied is said to be unapplied, not lost.
+    // Read after the idle write above, so a message that arrives later starts its own run instead.
+    const unapplied = (await this.ctx.storage.get<QueuedSteer[]>(STEER_KEY)) ?? [];
+    if (unapplied.length) {
+      await this.ctx.storage.delete(STEER_KEY);
+      for (const steer of unapplied) this.broadcast({ type: 'steer', id: steer.id, state: 'dropped' });
+    }
     // The settled cost of the whole run. Read here, after the last `quotaSpend`, because every
     // earlier broadcast of this number was taken before that step's settlement and was therefore
     // an under-count of what the user had actually been charged.

@@ -10,12 +10,13 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { ProductModel } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
-import { shortRelative } from '../lib/format';
+import { formatSettings, shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
 import { useProvideCheckpoints } from '../lib/shell';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
+import { composerLocked, continueOffered } from '../lib/project-socket-state';
 import { interfaceSound } from '../lib/interface-sound';
 import { StudioLinkNote } from '../components/ws/studio-link-note';
 import { useToast } from '../components/toast';
@@ -312,6 +313,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     agentStatus,
     phaseMarks,
     running,
+    paused,
+    continueRun,
     checkpoints,
     checkpointsState,
     frames,
@@ -815,7 +818,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               <h1 className="gx-top__title">Build</h1>
             )}
             {when && (
-              <span className="gx-top__when" title={activityAt ? new Date(activityAt).toLocaleString() : undefined}>
+              <span className="gx-top__when" title={activityAt ? new Date(activityAt).toLocaleString(formatSettings().locale) : undefined}>
                 {when}
               </span>
             )}
@@ -1117,6 +1120,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           onNotice={(m) => toast(m, 'error')}
           running={running}
           disabled={conn !== 'open' || !chatAllowed}
+          // G03: nothing is typed or sent until the paired place is open in a connected Studio; a
+          // run Studio walked away from waits for Continue, offered once the place is back.
+          locked={composerLocked(studio)}
+          paused={paused !== null}
+          onContinue={continueOffered(paused !== null, composerLocked(studio)) ? continueRun : undefined}
           seed={seed}
           selection={studio.selection}
           // The other faces in this project read "is typing" off this. The frame has been in the
@@ -1193,7 +1201,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
                     kind, so on a shared project a teammate's checkpoint read as yours. This says
                     "Another member" or "Author not recorded" rather than picking the reader, which
                     is the wrong guess in exactly the argument the field exists for. */}
-                {checkpointAuthorView(c, userId || null, memberNames).label} · {new Date(c.createdAt).toLocaleString()} ·{' '}
+                {checkpointAuthorView(c, userId || null, memberNames).label} · {new Date(c.createdAt).toLocaleString(formatSettings().locale)} ·{' '}
                 {c.instanceCount} objects · {c.scriptCount} scripts
               </span>
               {/* The authored sentence, under the derived numbers. Shown verbatim and never

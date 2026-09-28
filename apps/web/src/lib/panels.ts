@@ -8,6 +8,7 @@ import { documentFromToolDetail, sanitizeDocument } from './generative-ui';
 import type { Block, RenderReviewBlock, UIDocument } from './generative-ui/schema';
 import { labelForTool } from '../components/ws/tool-vocabulary';
 import type { ChatItem, ToolEvent } from './use-project-socket';
+import { formatSettings } from './format';
 
 export interface SurfacePanel {
   id: string;
@@ -102,8 +103,8 @@ export function buildComparison(before: SurfacePanel, after: SurfacePanel): UIDo
       {
         type: 'scene_comparison',
         title: `${a.subject}`,
-        before: { label: new Date(before.at).toLocaleTimeString(), image: av.image, stats: stats(a, av) },
-        after: { label: new Date(after.at).toLocaleTimeString(), image: bv.image, stats: stats(b, bv) },
+        before: { label: new Date(before.at).toLocaleTimeString(formatSettings().locale), image: av.image, stats: stats(a, av) },
+        after: { label: new Date(after.at).toLocaleTimeString(formatSettings().locale), image: bv.image, stats: stats(b, bv) },
         note: 'Drag the handle, or use the arrow keys, to wipe between the two renders.',
       },
     ],

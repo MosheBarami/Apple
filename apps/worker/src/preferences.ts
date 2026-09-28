@@ -4,8 +4,8 @@
 // `memory-store.ts` (kind `preference`), which is what gives them scoping, expiry, audit, export
 // and the org/user/project layering for free, and they are read in exactly two places:
 //
-//   - the SYSTEM PROMPT, through `preferencesPrompt` — language, response length, coding style,
-//     Roblox conventions, and the personal profile.
+//   - the SYSTEM PROMPT, through `preferencesPrompt` — response length, coding style, Roblox
+//     conventions, and the personal profile.
 //   - the TOOLSET, through `applyToolPermissions` — which is the only one of these that is a
 //     guarantee rather than a request, and so is the only one written to NARROW and never widen.
 //
@@ -32,7 +32,6 @@ import {
 export const PREFERENCE_KEYS = [
   'coding_style',
   'roblox_conventions',
-  'language',
   'model',
   'response_length',
   'tool_permissions',
@@ -85,29 +84,14 @@ export type RobloxConvention = (typeof ROBLOX_CONVENTIONS)[number];
 export const ROBLOX_CONVENTIONS_MAX = 6;
 
 /**
- * Languages the product will answer in.
+ * Keys that USED to be preferences and are now ignored without complaint.
  *
- * An allowlist rather than "any BCP-47 tag" because this string is rendered into the system prompt
- * as an instruction, and a free-text language field is a free-text instruction field wearing a
- * label. Hebrew is first-class here: this product is built in it.
+ * `language` (a reply-language choice) was retired by the V3 handoff §1: every customer-facing
+ * output is English, whatever language the request arrives in. Rows written before that still sit
+ * in the store and an older page may still send the key, so both are dropped quietly — reporting
+ * them as `unknown_key` would tell somebody their save failed over a setting that no longer exists.
  */
-// 'he' was removed on 2026-09-20: a Hebrew prompt was measured losing a word silently on the way
-// in (לבה -> לב, lava -> heart) and returning an empty run intent, so the product stopped offering
-// the language rather than keep a promise it could not hold.
-export const LANGUAGES = ['en', 'es', 'pt-BR', 'fr', 'de', 'ru', 'ja', 'ko', 'zh'] as const;
-export type LanguageTag = (typeof LANGUAGES)[number];
-
-export const LANGUAGE_NAMES: Readonly<Record<LanguageTag, string>> = {
-  en: 'English',
-  'pt-BR': 'Brazilian Portuguese',
-  es: 'Spanish',
-  fr: 'French',
-  de: 'German',
-  ru: 'Russian',
-  ja: 'Japanese',
-  ko: 'Korean',
-  zh: 'Chinese',
-};
+const RETIRED_PREFERENCE_KEYS: readonly string[] = ['language'];
 
 export const RESPONSE_LENGTHS = ['brief', 'normal', 'detailed'] as const;
 export type ResponseLength = (typeof RESPONSE_LENGTHS)[number];
@@ -125,7 +109,6 @@ const inList = <T extends readonly string[]>(list: T, v: unknown): v is T[number
 
 export const isCodingStyle = (v: unknown): v is CodingStyle => inList(CODING_STYLES, v);
 export const isRobloxConvention = (v: unknown): v is RobloxConvention => inList(ROBLOX_CONVENTIONS, v);
-export const isLanguageTag = (v: unknown): v is LanguageTag => inList(LANGUAGES, v);
 export const isResponseLength = (v: unknown): v is ResponseLength => inList(RESPONSE_LENGTHS, v);
 // The vocabulary lives in @golem/shared: the dialog offers these choices and this module
 // validates what comes back, and a list in two places lets the dialog offer an option the worker
@@ -171,7 +154,6 @@ export const isPreferenceKey = (v: unknown): v is PreferenceKey => inList(PREFER
 export interface Preferences {
   coding_style?: CodingStyle;
   roblox_conventions?: RobloxConvention[];
-  language?: LanguageTag;
   /** A provider model id, validated against the ids this deployment can actually serve. */
   model?: string;
   response_length?: ResponseLength;
@@ -233,6 +215,7 @@ export function normalisePreferences(input: unknown, vocab: PreferenceVocabulary
   // Own keys only: an attacker-supplied object cannot smuggle a preference through the prototype,
   // and a `for...in` here would happily read one.
   for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    if (RETIRED_PREFERENCE_KEYS.includes(key)) continue;
     if (!isPreferenceKey(key)) {
       rejected.push({ key, reason: 'unknown_key' });
       continue;
@@ -240,10 +223,6 @@ export function normalisePreferences(input: unknown, vocab: PreferenceVocabulary
     switch (key) {
       case 'coding_style':
         if (isCodingStyle(value)) prefs.coding_style = value;
-        else rejected.push({ key, reason: 'bad_value' });
-        break;
-      case 'language':
-        if (isLanguageTag(value)) prefs.language = value;
         else rejected.push({ key, reason: 'bad_value' });
         break;
       case 'response_length':
@@ -699,7 +678,6 @@ export function preferencesPrompt(
   if (!fenceId) throw new Error('preferencesPrompt: fenceId is required — an empty fence id is a constant one');
   const prefs = input.prefs ?? {};
   const lines: string[] = [];
-  if (prefs.language) lines.push(`Reply in ${LANGUAGE_NAMES[prefs.language]} unless the user writes in another language.`);
   if (prefs.response_length) lines.push(RESPONSE_LENGTH_RULE[prefs.response_length]);
   if (prefs.coding_style) lines.push(CODING_STYLE_RULE[prefs.coding_style]);
   for (const c of prefs.roblox_conventions ?? []) lines.push(CONVENTION_RULE[c]);

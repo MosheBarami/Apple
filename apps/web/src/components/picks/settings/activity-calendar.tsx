@@ -9,6 +9,7 @@
 // nobody measured. The grid covers the five weeks the server can answer for, and says so.
 import { useState, type CSSProperties } from 'react';
 import { spring } from './motion';
+import { formatSettings } from '../../../lib/format';
 import './activity-calendar.css';
 
 export interface CalendarDay {
@@ -26,7 +27,7 @@ function level(events: number, max: number): number {
 }
 
 const longDay = (d: string) =>
-  new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+  new Date(`${d}T00:00:00Z`).toLocaleDateString(formatSettings().locale, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 export function ActivityCalendar({ days, today = new Date() }: { days: CalendarDay[]; today?: Date }) {
   const [tip, setTip] = useState<{ i: number; text: string } | null>(null);

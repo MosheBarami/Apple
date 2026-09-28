@@ -16,7 +16,7 @@ import { extractUIFence, parseDocument } from '../../lib/generative-ui';
 import { panelFromTool } from '../../lib/panels';
 import { splitReplyDocs } from '../../lib/reply-docs';
 import { plannedStepsFromDocs, type ValidatedDoc } from '../../lib/gates';
-import { clockTime, isoStamp } from '../../lib/format';
+import { clockTime, formatSettings, isoStamp } from '../../lib/format';
 import { AppleGlyph } from '../glyphs';
 import type { AgentStatus, ChatItem } from '../../lib/use-project-socket';
 import { eventsFromTurn, reduceActivity, type PhaseMark } from './activity-model';
@@ -74,7 +74,7 @@ function Stamp({ at, align }: { at: number; align: 'start' | 'end' }) {
   const label = clockTime(at);
   if (!label) return null;
   return (
-    <time className={`gx-stamp gx-stamp--${align}`} dateTime={isoStamp(at)} title={new Date(at).toLocaleString()}>
+    <time className={`gx-stamp gx-stamp--${align}`} dateTime={isoStamp(at)} title={new Date(at).toLocaleString(formatSettings().locale)}>
       {label}
     </time>
   );

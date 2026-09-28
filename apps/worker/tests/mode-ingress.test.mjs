@@ -79,6 +79,9 @@ function session({ rowsFor = () => [] } = {}) {
     ADMIN_DO: doStub({ ok: true }),
   };
   const s = new SessionDO(ctx, env);
+  // V3 G03 gates chat on a paired, connected Studio place (tests/studio-gate-steer.test.mjs holds
+  // that gate). This file tests something else, so its runs are admitted as they were before it.
+  s.studioGate = async () => null;
   return {
     store, sent, s, ws,
     async chat(mode, text = 'build a house', autonomous = false) {

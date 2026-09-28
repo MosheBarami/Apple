@@ -119,6 +119,15 @@ interface Props {
   running: boolean;
   studioConnected?: boolean;
   disabled?: boolean;
+  /**
+   * G03: the paired Studio place is not connected. Nothing can be typed or sent and the build
+   * controls are off; history stays readable and Stop stays live, because neither needs Studio.
+   */
+  locked?: boolean;
+  /** G03: the run is paused because Studio went away. */
+  paused?: boolean;
+  /** G03: resume the paused run. Passed only once the place is back; a reconnect never resumes on its own. */
+  onContinue?: () => void;
   seed?: string;
   /**
    * Bumped by the parent when a message this composer handed over, and was told had NOT left (a
@@ -189,7 +198,10 @@ export function Composer({
   onStop,
   running,
   studioConnected = false,
-  disabled,
+  disabled: socketDisabled,
+  locked = false,
+  paused = false,
+  onContinue,
   seed,
   sentLater = 0,
   placeholder,
@@ -200,6 +212,8 @@ export function Composer({
   onPresence,
   initialStaged,
 }: Props) {
+  // G03: a locked composer is a disabled one — no focus, no typing, no send — except for Stop.
+  const disabled = socketDisabled || locked;
   // RESTORED ON THE FIRST RENDER, not in an effect. An effect paints an empty box first, and
   // people start retyping into it before the draft lands on top of what they just typed.
   const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
@@ -613,7 +627,9 @@ export function Composer({
    */
   const submit = (): boolean => {
     const value = text.trim();
-    if (!value || running || disabled) return false;
+    // A message sent while a run works is direction for that run (G10): the worker queues it for
+    // the run's next step instead of starting a second one.
+    if (!value || disabled) return false;
     if (creationUnavailable) {
       onNotice?.('Connect Roblox Studio before generating a 3D model. Your draft is kept.');
       return false;
@@ -750,7 +766,13 @@ export function Composer({
             aria-activedescendant={mentionHits.length ? `gx-mention-${mentionPick}` : undefined}
             rows={1}
             maxLength={MESSAGE_MAX_CHARS}
-            placeholder={creation === 'build' ? (placeholder ?? PLACEHOLDER) : CREATION_INTENTS[creation].placeholder}
+            placeholder={
+              locked
+                ? 'Connect Roblox Studio with the paired place open to build'
+                : running
+                  ? 'Add direction — Apple applies it after the current step'
+                  : creation === 'build' ? (placeholder ?? PLACEHOLDER) : CREATION_INTENTS[creation].placeholder
+            }
             disabled={disabled}
             data-tour="composer"
           />
@@ -881,6 +903,7 @@ export function Composer({
                 className="gx-chip gx-chip--selection"
                 size="sm"
                 onClick={insertSelection}
+                disabled={disabled}
                 data-tip="Refer to what is selected in Studio"
                 data-fx="press ripple"
               >
@@ -897,6 +920,7 @@ export function Composer({
                 className="gx-chip gx-chip--create"
                 size="sm"
                 data-active={creation === 'build' ? undefined : ''}
+                disabled={locked}
                 aria-label={creation === 'build' ? 'Create' : `Create: ${CREATION_INTENTS[creation].label}`}
                 data-tip="Images, 3D and starting points"
                 data-fx="press ripple"
@@ -961,6 +985,12 @@ export function Composer({
                 was said goes in at the caret, never straight out. */}
             <VoiceInput onText={insertPhrase} onNotice={onNotice} disabled={disabled || running} />
 
+            {paused && onContinue && (
+              <PromptInputButton className="gx-chip gx-chip--continue" size="sm" onClick={onContinue} data-fx="press ripple">
+                Continue
+              </PromptInputButton>
+            )}
+
             {running ? (
               // The title as well as the label: a pointer user gets no accessible name, and this
               // is the one control on the bar whose consequence is not obvious from its glyph.
@@ -999,6 +1029,16 @@ export function Composer({
       {/* The one tooltip every `data-tip` control in the panel shares (tip-group.tsx). */}
       <TipGroup rootRef={panel} />
 
+      {locked && (
+        <p className="gx-creation-note" role="status">
+          {paused
+            ? 'Paused: Roblox Studio disconnected. Reopen the paired place with the Apple plugin running, then press Continue.'
+            : 'Connect Roblox Studio with the paired place open to send a message. Your history stays here.'}
+        </p>
+      )}
+      {!locked && paused && onContinue && (
+        <p className="gx-creation-note" role="status">Studio is back. Press Continue to resume the paused run.</p>
+      )}
       {creation !== 'build' && <p className="gx-creation-note" role="status">{creationUnavailable ? 'Studio disconnected. Reconnect using Studio above, or switch to Images or chat. Your draft is kept.' : CREATION_INTENTS[creation].note}</p>}
       {/* TWO FACTS, AND THEY WERE RUNNING INTO EACH OTHER. JSX collapses the line break into a
           single space, so this line rendered "⇧↵ for a new line Apple can get things wrong" — one

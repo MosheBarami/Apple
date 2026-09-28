@@ -16,6 +16,7 @@ import type {
 import { verticalDominance } from '@golem/shared';
 import type { UIDocument } from './schema.ts';
 import { sanitizeDocument, type ValidationResult } from './validate.ts';
+import { formatSettings } from '../format.ts';
 
 // ---------------------------------------------------------------------------
 // Pixels: the plugin returns packed RGB rows; the browser turns them into a PNG
@@ -268,7 +269,7 @@ const CHECKPOINT_KIND_LABEL: Record<CheckpointMeta['kind'], string> = {
 export function checkpointComparisonToDocument(left: CheckpointMeta, right: CheckpointMeta): ValidationResult {
   const side = (cp: CheckpointMeta) => ({
     label: `${cp.label} (${CHECKPOINT_KIND_LABEL[cp.kind]})`,
-    when: new Date(cp.createdAt).toLocaleString(),
+    when: new Date(cp.createdAt).toLocaleString(formatSettings().locale),
     scriptCount: cp.scriptCount,
     instanceCount: cp.instanceCount,
     sizeBytes: cp.sizeBytes,

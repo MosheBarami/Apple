@@ -33,7 +33,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase, type ProjectRow } from '../../../lib/supabase';
 import { PROJECT_LIST_KEYS } from '../../../lib/archive';
 import { createUndoable, type Undoable } from '../../../lib/undo';
-import { shortRelative } from '../../../lib/format';
+import { formatSettings, shortRelative } from '../../../lib/format';
 import { MOCK_MODE } from '../../../lib/mock';
 import { useToast } from '../../toast';
 import { ContextMenu, useContextMenu, type MenuItem } from './context-menu';
@@ -376,7 +376,7 @@ function ChatRow({
           )}
           <span className="gx-conv__name">{p.name}</span>
           {when && (
-            <span className="gx-conv__time" title={at ? new Date(at).toLocaleString() : undefined}>
+            <span className="gx-conv__time" title={at ? new Date(at).toLocaleString(formatSettings().locale) : undefined}>
               {when}
             </span>
           )}

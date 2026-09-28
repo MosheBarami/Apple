@@ -8,7 +8,7 @@
 // Keyboard too: the chart is one focusable control; Left/Right walk the days, Home/End jump to the
 // ends, and the day's figure is the slider's value text, so a screen reader reads it on each step.
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import { formatNumber } from '../../../lib/format';
+import { formatNumber, formatSettings } from '../../../lib/format';
 import { reducedMotion } from './motion';
 import { RollingNumber } from './rolling-number';
 import './line-graph.css';
@@ -22,7 +22,7 @@ const W = 600;
 const H = 150;
 
 const dayLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  new Date(`${day}T00:00:00Z`).toLocaleDateString(formatSettings().locale, { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 export function LineGraph({ series, totalLabel }: { series: LinePoint[]; totalLabel: string }) {
   const [at, setAt] = useState<number | null>(null);

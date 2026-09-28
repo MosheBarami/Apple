@@ -18,6 +18,7 @@ import type {
   StudioEventLog,
   StudioEventSelection,
   StudioEventState,
+  StudioPauseReason,
 } from '@golem/shared';
 // The rule for what counts as a new version of a message, shared with the DO so the count this
 // client shows before the round trip and the rows the server writes cannot disagree.
@@ -238,6 +239,8 @@ export interface ProjectSocket {
    */
   phaseMarks: PhaseMark[];
   running: boolean;
+  /** G03: why the run in flight is paused for Studio, or null. Only Continue resumes it. */
+  paused: StudioPauseReason | null;
   logs: StudioEventLog[];
   /** Recent frames rasterised inside Studio. Capped — these are large. */
   frames: StudioFrame[];
@@ -273,6 +276,8 @@ export interface ProjectSocket {
   editAndResend: (messageId: string, text: string, productModel?: ProductModel) => boolean;
   /** Resolves false only when neither the socket nor the HTTP stop reached the worker. */
   stop: () => Promise<boolean>;
+  /** G03: resume a run paused for Studio. The worker refuses it until the paired place is back. */
+  continueRun: () => boolean;
   /** @param description what the snapshot contains or why it was taken. Optional — see ClientMsg. */
   createCheckpoint: (label: string, description?: string) => void;
   restoreCheckpoint: (checkpointId: string) => void;
@@ -400,6 +405,7 @@ export function useProjectSocket(
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   const [phaseMarks, setPhaseMarks] = useState<PhaseMark[]>([]);
   const [running, setRunning] = useState(false);
+  const [paused, setPaused] = useState<StudioPauseReason | null>(null);
   // A PROMPT SENT INTO A SOCKET THAT WAS ALREADY GONE. A deploy evicts the session and the browser
   // learns of the close a moment later; a frame written in between is accepted by ws.send and never
   // arrives. Measured 2026-09-23 twice in production: the prompt vanished from the box, nothing ran,
@@ -683,6 +689,7 @@ export function useProjectSocket(
       }
       case 'msg_end':
         setRunning(false);
+        setPaused(null);
         setAgentStatus(null);
         setMessages((list) => {
           const idx = list.findIndex((m) => m.id === msg.msgId);
@@ -784,6 +791,7 @@ export function useProjectSocket(
         // view of it did. Rebuild that view from the worker's snapshot.
         if (!msg.run) {
           setRunning(false);
+          setPaused(null);
           setAgentStatus(null);
           setPhaseMarks([]);
           // No run in flight. A turn still streaming here ended while this page was not listening
@@ -795,6 +803,7 @@ export function useProjectSocket(
         }
         const run = msg.run;
         setRunning(true);
+        setPaused(run.paused?.reason ?? null);
         // The snapshot carries the CURRENT phase and no history of the earlier
         // ones — they ended before this socket existed. So the mark list starts
         // here, and the phases before the refresh are honestly gone rather than
@@ -941,6 +950,13 @@ export function useProjectSocket(
         }
         errorCbRef.current(msg.code, msg.message);
         break;
+      case 'steer':
+        // G10: a message sent mid-run is held for the run's next step. Only the one the run ended
+        // before reading needs saying: it was not acted on, and the person should send it again.
+        if (msg.state === 'dropped') {
+          noticeCbRef.current?.('steer_dropped', 'The run ended before it could read your last message. Send it again to act on it.');
+        }
+        break;
       case 'notice':
         // NOT routed to the error callback. The run is still going, and a failure-shaped warning
         // about a run that did not fail teaches people to distrust both.
@@ -1060,7 +1076,7 @@ export function useProjectSocket(
       // Only a frame that ANSWERS a chat acknowledges it: the run starting, or a refusal. Presence and
       // status frames are broadcast to every socket all the time, so counting them would clear a
       // prompt that never arrived (caught by simulating the dropped frame in production).
-      if (msg.type === 'msg_start' || msg.type === 'error' || msg.type === 'quota' || msg.type === 'notice') {
+      if (msg.type === 'msg_start' || msg.type === 'error' || msg.type === 'quota' || msg.type === 'notice' || msg.type === 'steer') {
         unackedChat.current = null;
       }
       handleServerMsg(msg);
@@ -1225,12 +1241,17 @@ export function useProjectSocket(
   const stop = useCallback(async (): Promise<boolean> => {
     const sent = sendRaw({ type: 'stop' });
     try {
-      await stopRun(projectId);
+      const res = await stopRun(projectId);
+      // The worker waits (bounded) for the run to end and says whether it did (G10). An ended run
+      // is settled here even if the socket that would have carried msg_end is dead.
+      if ((res as { ended?: boolean }).ended) handleServerMsg({ type: 'run_state', run: null });
       return true;
     } catch {
       return sent;
     }
-  }, [sendRaw, projectId]);
+  }, [sendRaw, projectId, handleServerMsg]);
+
+  const continueRun = useCallback(() => sendRaw({ type: 'continue' }), [sendRaw]);
 
   const createCheckpoint = useCallback(
     (label: string, description?: string) => {
@@ -1264,6 +1285,7 @@ export function useProjectSocket(
     // briefly clears the local flag. Keep Stop available over HTTP until a terminal
     // frame or a fresh no-run snapshot settles that card.
     running: runVisible(running, messages),
+    paused,
     logs,
     frames,
     playtest,
@@ -1274,6 +1296,7 @@ export function useProjectSocket(
     signalPresence,
     editAndResend,
     stop,
+    continueRun,
     createCheckpoint,
     restoreCheckpoint,
     reloadHistory: loadHistory,

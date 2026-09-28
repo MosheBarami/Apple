@@ -42,25 +42,13 @@ export type HourCycle = (typeof HOUR_CYCLES)[number];
 /**
  * Regional formatting, as an allowlist of locales rather than a free-text BCP-47 field.
  *
- * Same reasoning as the worker's `LANGUAGES`: an arbitrary tag reaches `Intl` and a handful of them
- * reach a formatter that does not behave the way the settings screen promised. These are the
- * regions this product has users in, and each one is a real, distinct set of conventions —
- * en-US and en-GB differ on date order, de-DE and en-US differ on decimal separators.
+ * ENGLISH ONLY (V3 handoff §1): every word the product prints is English, and a locale is words —
+ * month names, "yesterday", "PM". So the choice is between English conventions (en-US and en-GB
+ * differ on date order), and 'system' follows the device only when the device is English — see
+ * `resolveLocale`. A non-English region stored by an older build is not an error: `normalisePrefs`
+ * falls back to the default for that one field.
  */
-export const REGIONS = [
-  'system',
-  'en-US',
-  'en-GB',
-  'en-AU',
-  'de-DE',
-  'fr-FR',
-  'es-ES',
-  'pt-BR',
-  'ru-RU',
-  'ja-JP',
-  'ko-KR',
-  'zh-CN',
-] as const;
+export const REGIONS = ['system', 'en-US', 'en-GB', 'en-AU'] as const;
 export type Region = (typeof REGIONS)[number];
 
 export const REGION_NAMES: Readonly<Record<Region, string>> = {
@@ -68,18 +56,10 @@ export const REGION_NAMES: Readonly<Record<Region, string>> = {
   'en-US': 'English (United States)',
   'en-GB': 'English (United Kingdom)',
   'en-AU': 'English (Australia)',
-  'de-DE': 'German (Germany)',
-  'fr-FR': 'French (France)',
-  'es-ES': 'Spanish (Spain)',
-  'pt-BR': 'Portuguese (Brazil)',
-  'ru-RU': 'Russian (Russia)',
-  'ja-JP': 'Japanese (Japan)',
-  'ko-KR': 'Korean (Korea)',
-  'zh-CN': 'Chinese (China)',
-  // 'he-IL' was removed on 2026-09-20 with the Hebrew language chip: a Hebrew prompt was measured
-  // losing a word silently (לבה -> לב, lava -> heart) and returning an empty run intent. Offering a
-  // locale is a claim that the product works in it.
 };
+
+/** What 'system' formats in when the device's own language is not English. */
+export const FALLBACK_LOCALE = 'en-US';
 
 // A "default project view" preference was drafted here and REMOVED before it shipped, which is
 // worth a note so the next person does not re-add it. `routes/workspace.tsx` opens with the words
@@ -353,9 +333,16 @@ export function resolveReducedMotion(motion: unknown, systemPrefersReduced: unkn
   return systemPrefersReduced === true;
 }
 
-/** The locale to format in, or undefined to mean "whatever the browser is set to". */
-export function resolveLocale(region: unknown): string | undefined {
-  return isRegion(region) && region !== SYSTEM ? region : undefined;
+/**
+ * The locale to format in — always an English one.
+ *
+ * A chosen region wins. Otherwise the device decides only if it is English (so an en-GB machine
+ * still gets day-first dates); a Hebrew, German or Japanese device gets FALLBACK_LOCALE rather than
+ * its own month names.
+ */
+export function resolveLocale(region: unknown, device: unknown = globalThis.navigator?.language): string {
+  if (isRegion(region) && region !== SYSTEM) return region;
+  return typeof device === 'string' && /^en(-[A-Za-z0-9]{2,8})*$/.test(device) ? device : FALLBACK_LOCALE;
 }
 
 /** The zone to format in, or undefined for the browser's own. Never an unvalidated string. */

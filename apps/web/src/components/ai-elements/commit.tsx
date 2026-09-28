@@ -9,6 +9,7 @@
 // actions (files-panel.tsx). The store records no author, so no author is drawn.
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from './lib/utils';
+import { formatSettings } from '../../lib/format';
 import './commit.css';
 
 export type CommitProps = HTMLAttributes<HTMLDivElement> & { current?: boolean };
@@ -46,8 +47,8 @@ export const CommitSeparator = ({ children = '·' }: { children?: ReactNode }) =
 );
 
 export const CommitTimestamp = ({ date, children, className }: { date: Date; children?: ReactNode; className?: string }) => (
-  <time className={cn('ai-commit__time', className)} dateTime={date.toISOString()} title={date.toLocaleString()}>
-    {children ?? date.toLocaleString()}
+  <time className={cn('ai-commit__time', className)} dateTime={date.toISOString()} title={date.toLocaleString(formatSettings().locale)}>
+    {children ?? date.toLocaleString(formatSettings().locale)}
   </time>
 );
 

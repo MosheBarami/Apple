@@ -49,6 +49,7 @@ import {
   type AutomationDraft,
   type Refusal,
 } from '../../lib/automations';
+import { formatSettings } from '../../lib/format';
 import './automations-panel.css';
 
 /** The reason a request was refused, and the field it belongs on. Null when nothing was refused. */
@@ -123,7 +124,7 @@ function RunHistory({ automationId }: { automationId: string }) {
               <span className="au-run__body">
                 <span className="au-run__head">
                   <span className="au-run__what">{o.label}</span>
-                  <span className="au-run__when">{new Date(r.startedAt).toLocaleString()}</span>
+                  <span className="au-run__when">{new Date(r.startedAt).toLocaleString(formatSettings().locale)}</span>
                 </span>
                 <span className="au-run__meta">
                   {r.trigger === 'manual' ? 'You ran it' : `Started by ${r.trigger}`}

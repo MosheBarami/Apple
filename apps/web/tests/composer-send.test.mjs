@@ -290,10 +290,10 @@ test('the counter appears only near the limit, and is announced politely', () =>
 test('an unknown stored send key falls back without discarding the other settings', () => {
   // Per-field fallback is the rule this store is built on: one stale field written by an older
   // build must not silently reset everything the user configured.
-  const prefs = normalisePrefs({ sendKey: 'ctrl-j', appearance: 'light', region: 'de-DE' });
+  const prefs = normalisePrefs({ sendKey: 'ctrl-j', appearance: 'light', region: 'en-GB' });
   assert.equal(prefs.sendKey, DEFAULT_PREFS.sendKey);
   assert.equal(prefs.appearance, 'light');
-  assert.equal(prefs.region, 'de-DE');
+  assert.equal(prefs.region, 'en-GB');
 });
 
 test('every offered option is one the store will accept back', () => {

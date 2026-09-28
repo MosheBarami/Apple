@@ -516,7 +516,6 @@ export type ToolPermission = 'allow' | 'ask' | 'deny';
 export interface Preferences {
   coding_style?: CodingStyle;
   roblox_conventions?: string[];
-  language?: string;
   model?: string;
   response_length?: ResponseLength;
   tool_permissions?: Record<string, ToolPermission>;

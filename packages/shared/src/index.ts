@@ -789,6 +789,8 @@ export type ClientMsg =
    */
   | { type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; productModel?: ProductModel }
   | { type: 'stop' } // interrupt agent
+  /** Resume a run paused because Studio disconnected (G03). Only this resumes it; a reconnect never does. */
+  | { type: 'continue' }
   | { type: 'resume' }
   /**
    * `description` is what the snapshot CONTAINS or why it was taken, in the user's own words.
@@ -1121,7 +1123,14 @@ export interface RunSnapshot {
    * withheld. Absent when nothing was — which is a different fact from an empty list arriving.
    */
   deniedTools?: string[];
+  /**
+   * Present while the run is paused because the paired Studio place is not connected (G03). Nothing
+   * runs until the place is back AND the user sends `continue`.
+   */
+  paused?: { reason: StudioPauseReason; at: number };
 }
+
+export type StudioPauseReason = 'unpaired' | 'disconnected' | 'place_mismatch';
 
 /** One real or software-rendered Studio frame forwarded to the browser. */
 export interface StudioFrame {
@@ -1202,7 +1211,7 @@ export interface PlaytestRun {
   endedAt?: number;
   /** How many seconds of run mode were requested. */
   requestedSeconds: number;
-  /** What the worker is doing at this instant, in the user's language. */
+  /** What the worker is doing at this instant, in English. */
   action: string;
   /** Real counts from the Studio console, not estimates. */
   consoleErrors: number;
@@ -1484,6 +1493,11 @@ export type ServerMsg =
    * simply discarded. An `error` carrying it would be a lie about a run that is still going.
    */
   | { type: 'notice'; code: string; message: string }
+  /**
+   * A message sent while a run is working (G10). `queued`: held for the next safe point between
+   * tool steps. `applied`: handed to the run there. `dropped`: the run ended first, so it was not applied.
+   */
+  | { type: 'steer'; id: string; state: 'queued' | 'applied' | 'dropped' }
   /**
    * WHO ELSE IS IN THIS PROJECT RIGHT NOW.
    *
@@ -2158,14 +2172,16 @@ export function formatMoney(
   amount: number,
   opts: { currency?: string; locale?: string } = {},
 ): string {
+  // en-US unless told otherwise, never the browser's own: a price is product text, and product text
+  // is English (V3 handoff §1) — a Hebrew or Arabic browser would otherwise reorder or re-digit it.
   if (typeof amount !== 'number' || !Number.isFinite(amount)) return '';
   const currency = opts.currency ?? PRICE_CURRENCY;
   const fractionless = Number.isInteger(amount) ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {};
   try {
-    return new Intl.NumberFormat(opts.locale, { style: 'currency', currency, ...fractionless }).format(amount);
+    return new Intl.NumberFormat(opts.locale ?? 'en-US', { style: 'currency', currency, ...fractionless }).format(amount);
   } catch {
     // A malformed or unknown code. The amount still has to reach the page.
-    return new Intl.NumberFormat(opts.locale, { style: 'currency', currency: PRICE_CURRENCY, ...fractionless }).format(amount);
+    return new Intl.NumberFormat(opts.locale ?? 'en-US', { style: 'currency', currency: PRICE_CURRENCY, ...fractionless }).format(amount);
   }
 }
 

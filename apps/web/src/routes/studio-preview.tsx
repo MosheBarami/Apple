@@ -145,6 +145,8 @@ function Arena.spawn(player: Player)
 
 const LONG_USER = 'I want the lobby to feel like the entrance to something bigger. Make the floor out of worn stone tiles with a little moss in the cracks, put four tall pillars around a raised circular platform, and in the middle a portal ring that slowly spins and glows gold. When a player walks into it they should be teleported to the arena place, but only once every couple of seconds so nobody gets bounced twice. Add some warm lights on the pillars so the portal is the brightest thing in the room, and keep the whole thing readable from the spawn point without the player having to turn the camera.';
 
+// A request typed in Hebrew, answered in English: input in any language is read, output is always
+// English (V3 handoff §1). The user's own text must still render right-to-left.
 const HEBREW_USER = 'תבנה לובי עם פורטל זהוב שמסתובב לאט, ותוסיף ארבעה עמודים סביב הבמה. חשוב שהשחקנים יראו את הפורטל מנקודת ההתחלה.';
 
 function staged(): StagedAttachment[] {
@@ -394,7 +396,7 @@ function Scenario({ id }: { id: ScenarioId }) {
         user('u2', LONG_USER, t0 - 200_000, 1),
         { ...settled({ id: 'a2', createdAt: t0 - 198_000, content: SHORT_REPLY }) },
         user('u3', HEBREW_USER, t0 - 90_000),
-        { ...settled({ id: 'a3', createdAt: t0 - 88_000, content: 'בוצע. הוספתי ארבעה עמודים סביב הבמה, והפורטל נראה מנקודת ההתחלה.', tools: settledTools(t0 - 88_000).slice(3, 5), creditsSpent: 2 }) },
+        { ...settled({ id: 'a3', createdAt: t0 - 88_000, content: 'Done. I added four pillars around the stage, and the portal is visible from the spawn point.', tools: settledTools(t0 - 88_000).slice(3, 5), creditsSpent: 2 }) },
       ]} />;
 
     case 'streaming': {

@@ -112,7 +112,7 @@ test('a query that matches nothing matches nothing', () => {
 
 test('an empty section is not rendered as a heading with nothing under it', () => {
   const sections = visibleSections('clock');
-  assert.deepEqual(sections, ['Language and region']);
+  assert.deepEqual(sections, ['Region']);
   assert.equal(settingMatches('clock', 'clock'), true);
   assert.equal(settingMatches('appearance', 'clock'), false);
 });

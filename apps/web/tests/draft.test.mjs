@@ -176,10 +176,13 @@ test('the draft is cleared only after the message actually left', () => {
   // A send refused because the socket had closed must leave the draft exactly where it was.
   const submit = COMPOSER.slice(COMPOSER.indexOf('const submit ='), COMPOSER.indexOf('const onKeyDown'));
   // `return false`: the refusal PromptInput honours by clearing nothing (composer-send.test.mjs).
-  assert.match(submit, /if \(!value \|\| running \|\| disabled\) return false;/);
+  // The property, not the spelling: an empty box or a disabled composer refuses before anything is
+  // cleared. (A send during a run is no longer refused here: V3 G10 makes it direction for the run.)
+  const refusal = /if \(!value \|\|[^)]*\bdisabled\b[^)]*\) return false;/.exec(submit);
+  assert.ok(refusal, 'submit() no longer refuses an empty or disabled send');
   assert.ok(submit.indexOf('onSend(value)') < submit.indexOf('clearDraft(draftKey)'), 'send, then clear');
   assert.ok(
-    submit.indexOf('if (!value || running || disabled) return false;') < submit.indexOf('clearDraft(draftKey)'),
+    refusal.index < submit.indexOf('clearDraft(draftKey)'),
     'a refused send must never reach the clear',
   );
 });

@@ -455,7 +455,7 @@ export function formatMoney(minor: unknown, currency: unknown, locale?: string):
   if (typeof currency !== 'string' || !/^[A-Za-z]{3}$/.test(currency)) return null;
   const code = currency.toUpperCase();
   try {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(minor / 100);
+    return new Intl.NumberFormat(locale ?? 'en-US', { style: 'currency', currency: code }).format(minor / 100);
   } catch {
     // An Intl that does not know the code still has to print the number rather than throwing on a
     // billing page. Minor units are not universally 100, but Stripe reports in them and this is the

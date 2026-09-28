@@ -33,7 +33,7 @@ const {
   normalisePreferences, mergePreferences, mostRestrictive, applyToolPermissions,
   preferencesPrompt, normaliseProfile, preferencesFromEntries, profileFromEntries,
   preferencesToEntries, instructionsFromEntries, needsForModelKey, routePreferredModel,
-  PREFERENCE_KEYS, LANGUAGES, CODING_STYLES, RESPONSE_LENGTHS, ROBLOX_CONVENTIONS,
+  PREFERENCE_KEYS, CODING_STYLES, RESPONSE_LENGTHS, ROBLOX_CONVENTIONS,
   ROBLOX_CONVENTIONS_MAX, PROFILE_FIELD_MAX, preferenceEntryKey,
   memoryModeOf, mostRestrictiveMemoryMode,
 } = P;
@@ -46,12 +46,12 @@ const VOCAB = { knownModelIds: MODELS, knownToolNames: TOOLS };
 
 test('a well-formed preferences object survives intact', () => {
   const { prefs, rejected } = normalisePreferences({
-    coding_style: 'strict-typed', language: 'es', response_length: 'brief',
+    coding_style: 'strict-typed', response_length: 'brief',
     roblox_conventions: ['rojo-project', 'server-authoritative'],
     model: MODELS[0], tool_permissions: { run_luau: 'deny' },
   }, VOCAB);
   assert.deepEqual(rejected, []);
-  assert.equal(prefs.language, 'es');
+  assert.equal(prefs.response_length, 'brief');
   assert.equal(prefs.coding_style, 'strict-typed');
   assert.deepEqual(prefs.roblox_conventions, ['rojo-project', 'server-authoritative']);
   assert.deepEqual(prefs.tool_permissions, { run_luau: 'deny' });
@@ -66,14 +66,14 @@ test('a key nobody defined is dropped and NAMED, not silently swallowed', () => 
 
 test('every enum refuses a value that is nearly right', () => {
   const near = {
-    coding_style: 'Strict-Typed', language: 'en-GB', response_length: 'short',
+    coding_style: 'Strict-Typed', response_length: 'short',
     roblox_conventions: ['rojo'], tool_permissions: { run_luau: 'ALLOW' },
   };
   const { prefs, rejected } = normalisePreferences(near, VOCAB);
-  for (const k of ['coding_style', 'language', 'response_length', 'roblox_conventions', 'tool_permissions']) {
+  for (const k of ['coding_style', 'response_length', 'roblox_conventions', 'tool_permissions']) {
     assert.equal(prefs[k], undefined, `${k} must not be accepted`);
   }
-  assert.ok(rejected.length >= 5, 'each one reported');
+  assert.ok(rejected.length >= 4, 'each one reported');
 });
 
 test('a MISSING allowlist refuses the key rather than accepting it unchecked', () => {
@@ -153,21 +153,21 @@ test('the result is a copy: narrowing does not mutate the mode toolset it was gi
 
 test('project overrides user overrides org, and the winner names its layer', () => {
   const merged = mergePreferences({
-    org: { language: 'en', response_length: 'detailed' },
-    user: { language: 'es' },
-    project: { coding_style: 'minimal' },
+    org: { coding_style: 'idiomatic', response_length: 'detailed' },
+    user: { coding_style: 'minimal' },
+    project: { roblox_conventions: ['knit'] },
   });
-  assert.equal(merged.prefs.language, 'es');
-  assert.equal(merged.sources.language, 'user', 'the person beat their organisation');
+  assert.equal(merged.prefs.coding_style, 'minimal');
+  assert.equal(merged.sources.coding_style, 'user', 'the person beat their organisation');
   assert.equal(merged.prefs.response_length, 'detailed');
   assert.equal(merged.sources.response_length, 'org', 'nothing nearer had an opinion');
-  assert.equal(merged.sources.coding_style, 'project');
+  assert.equal(merged.sources.roblox_conventions, 'project');
 });
 
 test('a project overrides a user setting, which is the case the viewer has to be able to explain', () => {
-  const merged = mergePreferences({ user: { language: 'es' }, project: { language: 'en' } });
-  assert.equal(merged.prefs.language, 'en');
-  assert.equal(merged.sources.language, 'project');
+  const merged = mergePreferences({ user: { response_length: 'brief' }, project: { response_length: 'detailed' } });
+  assert.equal(merged.prefs.response_length, 'detailed');
+  assert.equal(merged.sources.response_length, 'project');
 });
 
 test('a lower layer cannot WIDEN a tool denial from a higher one', () => {
@@ -288,8 +288,8 @@ test('text pretending to close the fence cannot, because it does not know the id
 });
 
 test('preferences become instructions the model can act on, and silence stays silent', () => {
-  const block = preferencesPrompt({ prefs: { language: 'es', response_length: 'brief', coding_style: 'strict-typed', roblox_conventions: ['rojo-project'] } }, 'f1');
-  assert.match(block, /Spanish/);
+  const block = preferencesPrompt({ prefs: { response_length: 'brief', coding_style: 'strict-typed', roblox_conventions: ['rojo-project'] } }, 'f1');
+  assert.match(block, /as few words/);
   assert.match(block, /--!strict/);
   assert.match(block, /Rojo/);
   assert.equal(preferencesPrompt({}, 'f1'), '', 'no preferences means no tokens spent saying so');
@@ -308,7 +308,7 @@ const row = (key, value, kind) => ({
 });
 
 test('preferences round-trip through the rows the store holds', () => {
-  const prefs = { language: 'es', coding_style: 'minimal', tool_permissions: { run_luau: 'deny' } };
+  const prefs = { response_length: 'brief', coding_style: 'minimal', tool_permissions: { run_luau: 'deny' } };
   const entries = preferencesToEntries(prefs, 'user', 'u1');
   const back = preferencesFromEntries(entries.map((e) => row(e.key, e.value, 'preference')), VOCAB);
   assert.deepEqual(back.prefs, prefs);
@@ -324,20 +324,19 @@ test('every generated key is one the store will actually accept', () => {
 
 test('a stored row that is not JSON, or is JSON of the wrong shape, is dropped', () => {
   const back = preferencesFromEntries([
-    row('pref.language', 'es', 'preference'),            // not JSON — a hand edit
+    row('pref.roblox_conventions', 'knit', 'preference'), // not JSON — a hand edit
     row('pref.coding_style', '"nonsense"', 'preference'), // JSON, but not a style
     row('pref.response_length', '"brief"', 'preference'), // good
-    row('pref.language', '"zz"', 'preference'),           // JSON, not a language
   ], VOCAB);
-  assert.equal(back.prefs.language, undefined);
+  assert.equal(back.prefs.roblox_conventions, undefined);
   assert.equal(back.prefs.coding_style, undefined);
   assert.equal(back.prefs.response_length, 'brief');
 });
 
 test('only preference-kind rows are read as preferences', () => {
-  // The key namespace and the kind must AGREE. A fact row named pref.language is a fact.
-  const back = preferencesFromEntries([row('pref.language', '"he"', 'fact')], VOCAB);
-  assert.equal(back.prefs.language, undefined);
+  // The key namespace and the kind must AGREE. A fact row named pref.response_length is a fact.
+  const back = preferencesFromEntries([row('pref.response_length', '"brief"', 'fact')], VOCAB);
+  assert.equal(back.prefs.response_length, undefined);
 });
 
 test('the profile is trimmed, collapsed, capped and refuses fields nobody defined', () => {
@@ -359,14 +358,14 @@ test('instructions are read per scope, in key order, and only from instruction r
     { ...row('instruction.b', 'second', 'instruction'), scope: 'project', scopeId: 'p1' },
     { ...row('instruction.a', 'first', 'instruction'), scope: 'project', scopeId: 'p1' },
     { ...row('instruction.c', 'team', 'instruction'), scope: 'org', scopeId: 'o1' },
-    { ...row('pref.language', '"he"', 'preference'), scope: 'project', scopeId: 'p1' },
+    { ...row('pref.response_length', '"brief"', 'preference'), scope: 'project', scopeId: 'p1' },
   ];
   assert.deepEqual(instructionsFromEntries(rows, 'project'), ['first', 'second']);
   assert.deepEqual(instructionsFromEntries(rows, 'org'), ['team']);
 });
 
 test('preferencesToEntries refuses a scope nobody defined rather than writing a row nothing can read', () => {
-  assert.throws(() => preferencesToEntries({ language: 'es' }, 'banana', 'x'), /unknown scope/);
+  assert.throws(() => preferencesToEntries({ response_length: 'brief' }, 'banana', 'x'), /unknown scope/);
 });
 
 // -------------------------------------------------------- the vocabularies are wired ---
@@ -379,14 +378,14 @@ test('every declared preference key is handled by the validator', () => {
   for (const key of PREFERENCE_KEYS) assert.ok(body.includes(`case '${key}':`), `${key} has no branch in normalisePreferences`);
 });
 
-test('every language has a name, and every style, convention and length has a rule', () => {
+test('every style, convention and length has a rule', () => {
   // A value in the allowlist with no rendering is a preference the user can set and the model never
   // hears about — the exact shape of a setting that looks wired and is not.
   //
   // THE PREVIOUS VERSION OF THIS TEST COULD NOT SEE THAT for three of its four loops. It asserted
   // `!block.includes('undefined')`, which is only meaningful where the value reaches the output
-  // through a TEMPLATE LITERAL — `${LANGUAGE_NAMES[lang]}` really does render the six characters
-  // "undefined" when the entry is missing. The other three reach the output through
+  // through a TEMPLATE LITERAL — the retired reply-language rule rendered the six characters
+  // "undefined" when its name entry was missing. The other three reach the output through
   // `lines.join('\n- ')`, and **Array.prototype.join renders undefined and null as the EMPTY
   // STRING**. A missing rule did not spell "undefined" in the block; it left a bullet with nothing
   // after it. Deleting CODING_STYLE_RULE.oop, RESPONSE_LENGTH_RULE.normal or
@@ -411,7 +410,6 @@ test('every language has a name, and every style, convention and length has a ru
     assert.ok(!got[0].includes('undefined'), `${what} rendered the literal text "undefined"`);
   };
 
-  for (const lang of LANGUAGES) one({ language: lang }, `language ${lang}`);
   for (const style of CODING_STYLES) one({ coding_style: style }, `style ${style}`);
   for (const len of RESPONSE_LENGTHS) one({ response_length: len }, `length ${len}`);
   for (const c of ROBLOX_CONVENTIONS) one({ roblox_conventions: [c] }, `convention ${c}`);
@@ -448,15 +446,15 @@ test('the default is stated in one place, and it is the behaviour the product al
 });
 
 test('an organisation that turns memory off cannot be overridden by the layers below it', () => {
-  // The contrast is the point: `language` overrides downward, because it is taste.
+  // The contrast is the point: `coding_style` overrides downward, because it is taste.
   const merged = mergePreferences({
-    org: { memory_mode: 'off', language: 'en' },
-    user: { memory_mode: 'auto', language: 'es' },
+    org: { memory_mode: 'off', coding_style: 'idiomatic' },
+    user: { memory_mode: 'auto', coding_style: 'minimal' },
     project: { memory_mode: 'auto' },
   });
   assert.equal(merged.prefs.memory_mode, 'off', 'the strictest layer wins wherever it was set');
   assert.equal(merged.sources.memory_mode, 'org', 'and the panel can say which layer decided');
-  assert.equal(merged.prefs.language, 'es', 'while taste still overrides downward');
+  assert.equal(merged.prefs.coding_style, 'minimal', 'while taste still overrides downward');
 });
 
 test('a project may make memory STRICTER than the account does', () => {
@@ -476,7 +474,7 @@ test('the ranking is a relationship, not three literals', () => {
 });
 
 test('a layer that says nothing about memory leaves no setting behind', () => {
-  const merged = mergePreferences({ user: { language: 'es' }, project: {} });
+  const merged = mergePreferences({ user: { response_length: 'brief' }, project: {} });
   assert.equal(merged.prefs.memory_mode, undefined, 'unset is a state the panel must be able to show');
   assert.equal(memoryModeOf(merged.prefs), 'auto', 'and it reads as the default');
 });

@@ -165,6 +165,9 @@ function makeSession({ plan = 'free', planOf = () => plan, quotaStatus = 200, ai
   };
   Object.assign(env, envExtra);
   const session = new SessionDO(ctx, env);
+  // V3 G03 gates chat on a paired, connected Studio place (tests/studio-gate-steer.test.mjs holds
+  // that gate). This file tests something else, so its runs are admitted as they were before it.
+  session.studioGate = async () => null;
   return { session, store, sql, sent, calls, providerRuns, ws };
 }
 

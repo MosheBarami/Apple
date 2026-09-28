@@ -26,7 +26,7 @@ export interface ContextBudget {
 }
 
 /** 24000 → "24,000". Grouping is the difference between a number and a wall of digits. */
-const group = (n: number) => Math.max(0, Math.round(n)).toLocaleString();
+const group = (n: number) => Math.max(0, Math.round(n)).toLocaleString('en-US');
 
 /**
  * How full this run's context is, as a sentence — or null when there is nothing honest to say.

@@ -730,7 +730,11 @@ test('a run that keeps changing the same thing is ended at the retune limit, on 
 
 // F-033, 2026-09-22 (run d1a97c0d): Studio stopped answering mid-run, its tools were withdrawn, and the
 // reply told the customer the terrain and lighting tools "aren't offered in this mode".
-test('when Studio drops mid-run its tools stay offered, and a call is refused as a disconnect, not a mode limit', async () => {
+// V3 G03 replaced what this test used to pin (F-033: keep stepping with Studio down and refuse each
+// Studio call as a disconnect). A run that has used Studio now PAUSES when it goes away: no further
+// model step is paid for and nothing is queued for the place. The refusal wording for a Studio tool
+// called without Studio is still pinned above, for a run that never had it.
+test('when Studio drops mid-run the run pauses: no further model step, nothing reaches Studio', async () => {
   const h = await makeSession({
     connected: true,
     answerOp: (op) => (op.op === 'get_tree' ? { ok: true, data: { root: { path: 'game.Workspace', name: 'Workspace', class: 'Workspace', children: [] } } } : { ok: true, data: {} }),
@@ -743,17 +747,14 @@ test('when Studio drops mid-run its tools stay offered, and a call is refused as
   try {
     await start(h, { text: 'make it sunset' });
     await h.session.alarm();
-    assert.ok(h.chatCalls.length >= 1, 'no model call was made — this checks nothing');
+    assert.equal(h.chatCalls.length, 1, 'no model call was made — this checks nothing');
     // The plugin stops answering: every heartbeat the session reads is cleared.
     h.store.set('pluginLastSeen', 0); h.session.lastSeenWrittenAt = 0; h.session.pluginLastSeenMs = 0;
     for (let i = 0; i < 6 && !lastEnd(h); i++) await h.session.alarm();
-    assert.ok(h.chatCalls.length >= 2, 'the run ended before a step with Studio down — this checks nothing');
-    const offered = (h.chatCalls[1].req.tools ?? []).map((t) => t.name);
-    assert.ok(offered.includes('set_properties'), 'the Studio tools were withdrawn when the link dropped');
-    const toolText = JSON.stringify(h.chatCalls[2]?.req.messages.filter((m) => m.role === 'tool' && /set_properties/.test(String(m.content))));
+    assert.equal(h.chatCalls.length, 1, 'a model step was taken with Studio down');
+    assert.equal(lastEnd(h), undefined, 'a disconnect pauses the run; it does not end it');
+    assert.equal(h.store.get('agent').pausedForStudio?.reason, 'disconnected');
     assert.equal(h.ops.filter((op) => op.op === 'set_props').length, 0, 'the change reached Studio although it was down');
-    assert.match(toolText, /not connected right now/);
-    assert.match(toolText, /It is not a limit of this mode/);
   } finally {
     h.stop();
   }

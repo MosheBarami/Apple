@@ -97,6 +97,9 @@ function session(sockets) {
     ADMIN_DO: doStub({ ok: true }),
   };
   const s = new SessionDO(ctx, env);
+  // V3 G03 gates chat on a paired, connected Studio place (tests/studio-gate-steer.test.mjs holds
+  // that gate). This file tests something else, so its runs are admitted as they were before it.
+  s.studioGate = async () => null;
   return {
     store,
     async chat(from, text = 'build a house') {
@@ -129,6 +132,9 @@ test("THE BUSY REFUSAL REACHES ONE PERSON: a colleague's screen does not accuse 
   // targeting test pass by doing nothing.
   const agent = s.store.get('agent');
   assert.ok(agent && agent.status !== 'idle', 'the first member must actually be mid-run');
+  // V3 G10: a message sent to a WORKING run is direction for it (queued, not refused), so the chat
+  // busy refusal now answers only a run that is stopping. That is the refusal targeted here.
+  s.store.set('agent', { ...agent, status: 'stopping' });
 
   await s.chat(second);
   assert.deepEqual(second.codes(), ['busy'], 'the person who asked is told the project is busy');

@@ -23,12 +23,17 @@ import { fileURLToPath } from 'node:url';
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const read = (...p) => readFileSync(join(SRC, ...p), 'utf8');
 
-test('no language chip offers Hebrew', () => {
+test('no reply-language choice is offered at all', () => {
+  // Hebrew went first (2026-09-20); every other reply language followed with the V3 handoff §1:
+  // all customer-facing output is English. So the property is now "no language choice", not
+  // "no Hebrew in the choice".
   const panel = read('components', 'ws', 'instructions-panel.tsx');
-  const chips = /const LANGUAGES[^=]*=\s*\[([\s\S]*?)\];/.exec(panel);
-  assert.ok(chips, 'the LANGUAGES list could not be found — re-read this guard');
-  assert.ok(chips[1].includes("tag: 'en'"), 'the list parse is wrong: English is missing too');
-  assert.ok(!/tag:\s*'he'/.test(chips[1]), 'a Hebrew language chip is back; it promises a language measured to lose words');
+  assert.match(panel, /setPref\('response_length'/, 'the panel parse is wrong: its other settings are missing too');
+  assert.doesNotMatch(panel, /setPref\('language'|const LANGUAGES\b/, 'a reply-language control is back');
+  const api = read('lib', 'api.ts');
+  const prefsType = /export interface Preferences \{([\s\S]*?)\n\}/.exec(api);
+  assert.ok(prefsType, 'the Preferences type could not be found — re-read this guard');
+  assert.doesNotMatch(prefsType[1], /^\s*language\??:/m, 'the wire type carries a language field again');
 });
 
 test('no region offers Hebrew', () => {

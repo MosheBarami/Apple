@@ -10,7 +10,7 @@
 //
 //   2. A PREFERENCE THAT NOTHING READS IS NOT A PREFERENCE. It is a control that moves. So the
 //      resolvers are tested against the formatters they actually feed, with fixtures where the
-//      regions genuinely disagree — a date order, a decimal separator, a clock — because a test
+//      regions genuinely disagree — a date order, a clock, a zone — because a test
 //      that formats 1000 in two locales that both render it "1,000" measures nothing.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,6 +18,7 @@ import {
   APPEARANCES,
   COMMON_TIME_ZONES,
   DEFAULT_PREFS,
+  FALLBACK_LOCALE,
   HOUR_CYCLES,
   MOTIONS,
   PREF_LABELS,
@@ -57,15 +58,25 @@ test('one bad field does not discard the others', () => {
   const p = normalisePrefs({
     appearance: 'light',
     motion: 'reduced',
-    region: 'de-DE',
+    region: 'en-GB',
     hourCycle: 'NONSENSE',
     timeZone: 'Europe/Berlin',
   });
   assert.equal(p.hourCycle, DEFAULT_PREFS.hourCycle, 'the bad field falls back');
   assert.equal(p.appearance, 'light');
   assert.equal(p.motion, 'reduced');
-  assert.equal(p.region, 'de-DE');
+  assert.equal(p.region, 'en-GB');
   assert.equal(p.timeZone, 'Europe/Berlin');
+});
+
+test('a non-English region stored by an older build loads as the default, and nothing else is lost', () => {
+  // English-only (V3 handoff §1): de-DE, ja-JP and he-IL were once offered or stored. They must load
+  // harmlessly, never throw, and never reach a formatter.
+  for (const old of ['de-DE', 'ja-JP', 'he-IL', 'zh-CN']) {
+    const p = normalisePrefs({ region: old, appearance: 'light' });
+    assert.equal(p.region, DEFAULT_PREFS.region, old);
+    assert.equal(p.appearance, 'light', `${old}: its neighbours survive`);
+  }
 });
 
 test('a time zone is refused before it is stored, not when it is rendered', () => {
@@ -104,7 +115,7 @@ test('every region offered has a name, and every name a region', () => {
 test('the reset button knows what there is to reset', () => {
   assert.equal(isDefaultPrefs(prefs()), true);
   assert.deepEqual(changedPrefs(prefs()), []);
-  const changed = prefs({ region: 'de-DE', appearance: 'light' });
+  const changed = prefs({ region: 'en-GB', appearance: 'light' });
   assert.equal(isDefaultPrefs(changed), false);
   assert.deepEqual(changedPrefs(changed).sort(), ['appearance', 'region']);
   // Every field is nameable, or the dialog lists a key the user has never seen.
@@ -165,14 +176,20 @@ test('the region actually changes the date order', () => {
   assert.match(gb, /Feb/);
 });
 
-test('the region actually changes the decimal separator', () => {
-  const us = formatNumber(1234.5, {}, formatSettingsFrom(prefs({ region: 'en-US' })));
-  const de = formatNumber(1234.5, {}, formatSettingsFrom(prefs({ region: 'de-DE' })));
-  assert.equal(us, '1,234.5');
-  assert.equal(de, '1.234,5');
-  // The consequence, said out loud: a thousands separator read as a decimal point is a Credit
-  // balance wrong by three orders of magnitude.
-  assert.notEqual(us, de);
+test('every offered region formats in English', () => {
+  assert.ok(REGIONS.length >= 2, 'the region list is empty — this test would check nothing');
+  for (const r of REGIONS) {
+    const s = formatSettingsFrom(prefs({ region: r, timeZone: 'UTC' }));
+    assert.match(s.locale, /^en\b/, `${r} resolves to ${s.locale}`);
+    assert.match(fullStamp(AT, s), /Feb/, r);
+  }
+});
+
+test('a region nobody can choose any more still formats in English', () => {
+  // A value that bypassed normalisePrefs (a hand-edited blob, an older build in another tab).
+  const de = formatSettingsFrom(prefs({ region: 'de-DE' }));
+  assert.match(de.locale, /^en\b/);
+  assert.equal(formatNumber(1234.5, {}, de), '1,234.5');
 });
 
 test('the clock preference actually changes the clock', () => {
@@ -206,26 +223,27 @@ test('the machine-readable stamp is NOT localised', () => {
   assert.equal(isoStamp(AT), new Date(AT).toISOString());
 });
 
-test('the default settings format exactly as the browser would have on its own', () => {
-  // The whole point of 'system' being the default: nobody who has never opened settings sees any
-  // change at all.
+test('the default follows the device only when the device is English', () => {
   const s = formatSettingsFrom(prefs());
-  assert.deepEqual(s, { locale: undefined, timeZone: undefined, hour12: undefined });
-  assert.equal(formatNumber(1234.5, {}, s), (1234.5).toLocaleString());
-  assert.equal(formatNumber(1200, {}, s), (1200).toLocaleString());
+  assert.equal(s.timeZone, undefined);
+  assert.equal(s.hour12, undefined);
+  assert.match(s.locale, /^en\b/);
+  assert.equal(resolveLocale('system', 'en-GB'), 'en-GB', 'an English device keeps its own conventions');
+  assert.equal(resolveLocale('system', 'en'), 'en');
+  for (const device of ['he-IL', 'he', 'de-DE', 'ja-JP', 'ar-EG', '', undefined, 42, 'english']) {
+    assert.equal(resolveLocale('system', device), FALLBACK_LOCALE, `device ${String(device)}`);
+  }
 });
 
 test('bytes are formatted in the reader\'s conventions too', () => {
-  const de = formatSettingsFrom(prefs({ region: 'de-DE' }));
-  assert.equal(formatBytes(2048, de), '2,0 KB');
   assert.equal(formatBytes(2048, formatSettingsFrom(prefs({ region: 'en-US' }))), '2.0 KB');
   assert.equal(formatBytes(512, formatSettingsFrom(prefs({ region: 'en-US' }))), '512 B');
 });
 
 test('a resolver never hands a formatter a value it has not checked', () => {
-  assert.equal(resolveLocale('system'), undefined);
-  assert.equal(resolveLocale('xx-YY'), undefined, 'a locale outside the allowlist is not passed through');
-  assert.equal(resolveLocale('de-DE'), 'de-DE');
+  assert.equal(resolveLocale('en-AU', 'he-IL'), 'en-AU');
+  assert.equal(resolveLocale('xx-YY', 'he-IL'), FALLBACK_LOCALE, 'a locale outside the allowlist is not passed through');
+  assert.equal(resolveLocale('de-DE', 'de-DE'), FALLBACK_LOCALE, 'nor is a non-English one');
   assert.equal(resolveTimeZone('system'), undefined);
   assert.equal(resolveTimeZone('Europe/Nowhere'), undefined);
   assert.equal(resolveTimeZone('Europe/Berlin'), 'Europe/Berlin');

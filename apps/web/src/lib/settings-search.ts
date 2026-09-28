@@ -52,9 +52,9 @@ export const SETTING_FIELDS: readonly SettingField[] = [
   },
   { id: 'appearance', title: 'Appearance', section: 'Appearance', keywords: ['theme', 'dark', 'light', 'night', 'colour', 'color', 'system'] },
   { id: 'motion', title: 'Motion', section: 'Appearance', keywords: ['animation', 'reduce', 'accessibility', 'vestibular', 'movement'] },
-  { id: 'region', title: 'Regional formatting', section: 'Language and region', keywords: ['locale', 'date format', 'number format', 'decimal', 'separator', 'language'] },
-  { id: 'clock', title: 'Clock', section: 'Language and region', keywords: ['24 hour', '12 hour', 'am pm', 'time format'] },
-  { id: 'time-zone', title: 'Time zone', section: 'Language and region', keywords: ['timezone', 'utc', 'gmt', 'clock', 'offset'] },
+  { id: 'region', title: 'Regional formatting', section: 'Region', keywords: ['locale', 'date format', 'number format', 'decimal', 'separator'] },
+  { id: 'clock', title: 'Clock', section: 'Region', keywords: ['24 hour', '12 hour', 'am pm', 'time format'] },
+  { id: 'time-zone', title: 'Time zone', section: 'Region', keywords: ['timezone', 'utc', 'gmt', 'clock', 'offset'] },
   // `sendKey` is a stored preference too, and it is deliberately NOT listed here: its control lives
   // in the keyboard-shortcuts dialog, beside the binding it changes. A search on this page that
   // returned it would reveal a row this page does not have — the exact failure the registry exists

@@ -461,7 +461,7 @@ const shortDate = (iso: string) =>
       }
     }
 
-    if (checkedEl) checkedEl.textContent = new Date().toLocaleTimeString();
+    if (checkedEl) checkedEl.textContent = new Date().toLocaleTimeString('en-GB');
     startCountdown();
     pollTimer = window.setTimeout(check, INTERVAL);
   }

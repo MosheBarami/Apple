@@ -885,7 +885,7 @@ const SECTION_INDEX = [
     fields: ['notify-quiet-hours', 'notify-digest', 'notify-events'],
   },
   { group: 'Preferences', id: 'appearance', label: 'Appearance', fields: ['appearance', 'motion'] },
-  { group: 'Preferences', id: 'region', label: 'Language and region', fields: ['region', 'clock', 'time-zone'] },
+  { group: 'Preferences', id: 'region', label: 'Region', fields: ['region', 'clock', 'time-zone'] },
   {
     group: 'Your data',
     id: 'privacy',
@@ -1056,7 +1056,7 @@ const HOUR_NAMES: Record<HourCycle, string> = {
  *
  *   * THE WHOLE PREFERENCE OBJECT IS SENT. `PUT .../preferences` replaces the scope and DELETES
  *     any key it does not receive, so that clearing a setting is reachable. Sending only the two
- *     notification keys would therefore silently wipe this person's language and coding-style
+ *     notification keys would therefore silently wipe this person's response-length and coding-style
  *     preferences — hence the spread over what is stored.
  *   * WHAT WAS REFUSED IS PRINTED. `unknown_timezone` and `empty_window` make the server discard
  *     the value and answer with the DEFAULT; a page that rendered the response without reading
@@ -2352,7 +2352,7 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section id="region" title="Language and region" visible={sectionShows('region', 'clock', 'time-zone')}>
+      <Section id="region" title="Region" visible={sectionShows('region', 'clock', 'time-zone')}>
         <Row id="region"
           visible={shows('region')}
           title="Regional formatting"

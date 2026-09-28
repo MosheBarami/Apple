@@ -17,6 +17,7 @@ import { ApiError, decideSuggestion, fetchMemory, saveMemory } from '../../lib/a
 import { decisionBody, isAlreadyAnswered, pendingFrom, type SuggestionDecision } from '../../lib/memory-approvals';
 import { useToast } from '../toast';
 import { useUnsavedGuard } from '../../lib/unsaved';
+import { formatSettings } from '../../lib/format';
 
 const FACT_MAX = 300;
 const SUMMARY_MAX = 3000;
@@ -294,7 +295,7 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
 
       {state.data.editedAt && (
         <p className="mem__note mem__note--quiet">
-          Last edited by you on {new Date(state.data.editedAt).toLocaleString()}.
+          Last edited by you on {new Date(state.data.editedAt).toLocaleString(formatSettings().locale)}.
         </p>
       )}
     </div>
