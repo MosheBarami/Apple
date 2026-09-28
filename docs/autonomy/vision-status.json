@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-09-26T17:49:21.838562+00:00",
-  "now": "ניסוי המשחק המלא הסתיים לא גמור: העץ שנבחר לא הוכנס, ולולאת החקלאות לא נבנתה. 267 Credits ו־8,007 נוירונים מתועדים; ביקורת נראות עצמאית מצאה כשל קריטי. F059/F064 ו־0/3 נשארו פתוחים. v34 עבר השוואה זוגית של 38 שורות: 26 מול 23, והועלה למאגר פרטי עם קובץ ההשוואה שאומת בהורדה. תהליך האימון היחיד ממשיך v35, אחרון שנצפה 440/800. תיקון בחירת נכס בפיתוח; טרם נפרס.",
-  "nextStep": "לתקן את המשך העבודה לאחר בחירת נכס, לבדוק אותו ב־Studio בהרצה מוגבלת ולבנות משחק מלא שעובר בדיקת משחק ונראות.",
+  "updatedAt": "2026-09-28T23:39:23.765028+00:00",
+  "now": "היקף V3 בביצוע (שערים G01–G16). נדחף ל־main אך טרם נפרס: מנוע יחיד GLM 5.3 Flash, הסרת מצבים ואימון, שער Studio קשיח עם השהיה/המשך, הכוונה באמצע ריצה ועצירה מאושרת, פלט באנגלית בלבד, שער חשבונות מאושרים לפני השקה, צריכת native-readiness ומרחב ספרייה לענן. בעבודה כעת: Generate Branding, עצמאות משחק, ו־23 רכיבי הממשק (G12).",
+  "nextStep": "לסיים את העבודה הפתוחה, להריץ בדיקות, לפרוס ל־Cloudflare ולאמת חי ב־Studio (G03/G10), ואז לבנות שלושה משחקים מלאים.",
   "items": [
     {
       "id": "productScope",
