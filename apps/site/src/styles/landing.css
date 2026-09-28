@@ -1003,12 +1003,6 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
   letter-spacing: -0.01em;
 }
 
-/* The Apple MAX wordmark is the one brand exception to the type weights. */
-.max-name {
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
 .mode-blurb,
 .model-blurb {
   margin: 6px 0 0;
@@ -1019,58 +1013,6 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
 
 .model-plans {
   margin: 10px 0 0;
-}
-
-.model-sale {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.model-sale a {
-  color: var(--ink);
-  text-decoration: underline;
-  text-decoration-color: var(--line-strong);
-  text-underline-offset: 3px;
-}
-
-.makers-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px 48px;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 48px;
-  padding-top: 28px;
-  border-top: 1px solid var(--hairline);
-}
-
-.makers-copy {
-  flex: 1 1 300px;
-  max-width: 560px;
-}
-
-.makers-line {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1.6;
-}
-
-.makers-link {
-  display: inline-block;
-  margin-top: 10px;
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: underline;
-  text-decoration-color: var(--line-strong);
-  text-underline-offset: 3px;
-}
-
-.makers-link:hover {
-  text-decoration-color: var(--accent);
 }
 
 .auto-row {

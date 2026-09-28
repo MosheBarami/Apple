@@ -52,7 +52,8 @@ interface Stored {
 }
 
 /**
- * THE THIRD-PARTY LEDGER (D-VISION-1). Gemini, GPT-5.6 and Luna are paid from prepaid AI Gateway
+ * THE THIRD-PARTY LEDGER (D-VISION-1). No product model uses it since V3 (gate G01); it still holds
+ * any third-party id an operator configures. Such ids are paid from prepaid AI Gateway
  * credits, not Workers AI neurons, so they are reserved and settled HERE and never against the
  * neuron day above. Kept in neurons like everything else (USD converts at USD_PER_NEURON); the
  * ceilings are set in dollars in pricing.ts. There is no free allocation on this wallet: every
@@ -449,7 +450,7 @@ export class BudgetDO extends DurableObject<Env> {
           return Response.json({
             ok: false,
             reason: 'third_party_daily_cap',
-            message: "Today's allowance for outside models (Gemini and GPT) is used up. Apple and Apple MAX still work, and it resets at midnight UTC.",
+            message: "Today's allowance for outside models is used up. Apple still works, and it resets at midnight UTC.",
             state: this.view(s, killed, killedReason, limits, t),
           });
         }
@@ -457,7 +458,7 @@ export class BudgetDO extends DurableObject<Env> {
           return Response.json({
             ok: false,
             reason: 'third_party_monthly_cap',
-            message: "This month's allowance for outside models (Gemini and GPT) is used up. Apple and Apple MAX still work.",
+            message: "This month's allowance for outside models is used up. Apple still works.",
             state: this.view(s, killed, killedReason, limits, t),
           });
         }

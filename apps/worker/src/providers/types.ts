@@ -145,8 +145,6 @@ export interface NormalizedRequest {
   temperature: number;
   reasoningEffort?: 'low' | 'medium' | 'high';
   jsonSchema?: unknown;
-  /** Workers AI fine-tune (LoRA adapter) to serve on top of modelId; other providers ignore it. */
-  lora?: string;
 }
 
 export interface EncodedRequest {

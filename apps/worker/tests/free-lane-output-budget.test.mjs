@@ -7,7 +7,7 @@
  * WHAT THIS ASSERTS is the number that actually reaches the provider, which is neither half on its
  * own: llmChat computes `Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens)`, so the request
  * (`tokensForEffort(baseTokensFor(mode), effort)`) and the model config's ceiling
- * (`DEFAULT_MODELS[gatewayModelFor(mode, productModel)].maxTokens`) are two different numbers and
+ * (`DEFAULT_MODELS[gatewayModelFor(mode)].maxTokens`) are two different numbers and
  * the free lane was broken by the second one. A guard that read only `MODE_BASE_TOKENS` would have
  * stayed green through the whole defect.
  *
@@ -80,12 +80,12 @@ test('every lane gets at least the budget its own toolset is sized for', () => {
   }
 });
 
-test('the free and paid Agent lanes are no longer asymmetric in output room', () => {
-  const free = budget('agent', 'apple', 'high');
-  const paid = budget('agent', 'apple-max', 'high');
+test('one engine, one output room: a retired id gets exactly what Apple gets (V3 G01)', () => {
+  const apple = budget('agent', 'apple', 'high');
+  const legacy = budget('agent', 'apple-max', 'high');
   // The measured failure was 2000 vs 5500 — a third of the room for the identical toolset.
-  assert.ok(free >= 5000, `the free Agent lane gets ${free} output tokens`);
-  assert.ok(free >= paid * 0.9, `the free lane (${free}) is still far short of the paid lane (${paid})`);
+  assert.ok(apple >= 5000, `the Agent lane gets ${apple} output tokens`);
+  assert.equal(legacy, apple, 'a retired product model id is served by the same lane as Apple');
 });
 
 test('Plan mode asks for enough that its model can answer at all', () => {

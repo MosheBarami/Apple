@@ -19,8 +19,8 @@
 // task) that consumes the whole output budget before it writes a word. `high` reasons briefly and
 // decisively — 161 characters — and costs 2.8% more than `low` while returning a better answer.
 // So escalating to `high` is nearly free, and `medium` is a trap.
-import { MODEL_REGISTRY, PRODUCT_MODE_INFO, CONVERSATIONAL_RE, META_QUESTION_RE } from '@golem/shared';
-import type { ProductMode, ProductModel } from '@golem/shared';
+import { PRODUCT_MODE_INFO, CONVERSATIONAL_RE, META_QUESTION_RE } from '@golem/shared';
+import type { ProductMode } from '@golem/shared';
 
 /** `medium` exists in the provider's API but is never selected — see the table above. */
 export type Effort = 'low' | 'medium' | 'high';
@@ -37,16 +37,6 @@ export const MAX_HIGH_EFFORT_STEPS = 8;
 
 export interface ReasoningSignals {
   mode: ProductMode;
-  /**
-   * The model entitlement the account SELECTED for this request, which is a different axis from
-   * `mode` and was missing here entirely.
-   *
-   * `gatewayModelFor`, `maxStepsFor` and `baseTokensFor` in do/session.ts all branch on it; this
-   * policy did not, so the one thing a person buys when they choose Apple MAX — a better answer —
-   * was the one thing it could not affect. Picking MAX and Plan together produced `low`, because
-   * Plan baselines to `low` no matter who is asking.
-   */
-  productModel?: ProductModel;
   /** 1-based step index within the current run */
   step: number;
   /** how many high-effort steps this run has already spent */
@@ -198,34 +188,6 @@ export function classifyRequest(
  */
 const BASELINE: Record<ProductMode, Effort> = { plan: 'low', agent: 'high' };
 
-/**
- * THE FLOOR APPLE MAX BUYS, AND WHY IT IS A FLOOR RATHER THAN A BASELINE.
- *
- * The entitlement a person selects is a different axis from Plan/Agent. Apple MAX keeps a high
- * floor even when the request is in Plan mode.
- *
- * The cost argument in the table at the top of this file is what makes a floor safe: on the design
- * probe `high` cost 40.8 neurons against `low`'s 39.7, about 3%. Buying the better answer for
- * everyone who paid for the better answer is close to free, so the floor does not need to be
- * rationed the way a genuinely expensive tier would.
- *
- * It is a FLOOR, not an override: the escalation signals below can still raise a MAX run, and the
- * conversational early-return below still wins over it, because a greeting has nothing to
- * deliberate about no matter what the account is entitled to.
- */
-/**
- * The third-party models (D-VISION-1) have no adaptive floor: the provider is sent the registry's
- * fixed effort (low until multipliers are re-measured), because their thinking bills as output at
- * up to 60× Apple's rate. `low` here adds nothing over any baseline — it exists so the table stays
- * total over ProductModel and the Apple lanes' two entries stay the ones the training harness
- * mirrors (packages/training/src/production-settings.mjs).
- */
-const THIRD_PARTY_FLOOR = Object.fromEntries(
-  MODEL_REGISTRY.filter((m) => m.route === 'unified-billing').map((m) => [m.id, 'low']),
-) as Record<Exclude<ProductModel, 'apple' | 'apple-max'>, Effort>;
-
-const ENTITLEMENT_FLOOR: Record<ProductModel, Effort> = { apple: 'low', 'apple-max': 'high', ...THIRD_PARTY_FLOOR };
-
 export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   // Talk costs `low`, in every mode, with no escalation path. A greeting has nothing to deliberate
   // about, and the signals below would otherwise raise it: `ambiguousRequest` used to fire on any
@@ -238,9 +200,8 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   //
   //   But "ok" is also how a person accepts a plan. Apple proposes, the user replies "ok", and
   //   Apple builds: sixteen steps of real work, every one of them pinned to `low` by a verdict
-  //   about a two-letter message, with this return firing before the entitlement floor below so
-  //   Apple MAX could not lift it either. The user paid for judgement and the approval itself
-  //   switched it off.
+  //   about a two-letter message, with this return firing before any escalation below. The user
+  //   asked for a build and the approval itself switched judgement off.
   //
   //   A run that has taken a second step, or has already changed the project, has falsified the
   //   guess by its own behaviour. Past that point the opening word is not evidence about what is
@@ -254,13 +215,6 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   let effort = BASELINE[s.mode];
   const spoken = PRODUCT_MODE_INFO[s.mode].name;
   const reasons: string[] = [`${spoken} baseline`];
-
-  // The entitlement floor, applied before the signals so a signal can still raise it further.
-  const floor = s.productModel ? ENTITLEMENT_FLOOR[s.productModel] : undefined;
-  if (floor !== undefined && RANK[floor] > RANK[effort]) {
-    effort = floor;
-    reasons.push(`${s.productModel === 'apple-max' ? 'Apple MAX' : 'Apple'} floor`);
-  }
 
   const raise = (to: Effort, why: string) => {
     if (RANK[to] > RANK[effort]) {
@@ -294,11 +248,8 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   // Budget guard: past the cap, fall back to low rather than compounding. `medium` is never a
   // fallback — it is both slower and more expensive than the tier it would be replacing.
   // The cap is a backstop against a pathological run, not an economy — `high` measures within 3%
-  // of `low`. On Apple MAX it is skipped: a 16-step Agent run would otherwise spend steps 1-8 at
-  // `high` and steps 9-16 at `low`, so the longest and usually hardest half of a run a person
-  // specifically paid to have thought about would be the cheap half. That is the defect this
-  // floor exists to remove, and re-introducing it at step 9 would remove it only for short runs.
-  if (effort === 'high' && s.highEffortUsed >= MAX_HIGH_EFFORT_STEPS && s.productModel !== 'apple-max') {
+  // of `low`.
+  if (effort === 'high' && s.highEffortUsed >= MAX_HIGH_EFFORT_STEPS) {
     effort = 'low';
     reasons.push(`high-effort budget spent (${MAX_HIGH_EFFORT_STEPS} steps)`);
   }

@@ -12,7 +12,7 @@
 // so the published schema cannot describe a route that is not there and a route cannot exist
 // without a declared scope. A path Hono serves but this table omits is answered 404 by the
 // middleware — an undeclared route is unreachable rather than unguarded.
-import { MODEL_REGISTRY, type GatewayMessage, type GatewayResponse, type ProductModel } from '@golem/shared';
+import { LEGACY_MODEL_IDS, registryModel, type GatewayMessage, type GatewayResponse, type ProductModel } from '@golem/shared';
 import type { ApiScope } from './api-keys';
 
 // ---------------------------------------------------------------------------
@@ -193,23 +193,23 @@ export function matchRoute(method: string, pathname: string): RouteMatch | undef
  * nothing. If a key is ever minted before this ships, add the aliases.
  */
 //
-// GENERATED FROM THE REGISTRY (D-VISION-1). The outside models are Apple's to offer by name — the
-// product picker names them too — and each is gated per account exactly as in the product. The
-// provider id is still never published: a caller names the registry id, never `openai/…`. Apple is
-// published as `apple-chat`, its existing id, and the two Apple lanes keep their mode keys.
-const APPLE_LANES: Record<string, { publicId: string; internal: string }> = {
-  apple: { publicId: 'apple-chat', internal: 'plan' },
-  'apple-max': { publicId: 'apple-max', internal: 'agent' },
-};
+// ONE ENGINE (V3 gate G01). Apple is published as `apple-chat`, its existing id. The provider id is
+// never published: a caller names Apple, never `@cf/…`.
+const APPLE = registryModel('apple')!;
 export const PUBLIC_MODELS: Record<string, { internal: string; description: string; productModel?: ProductModel }> = {
-  ...Object.fromEntries(
-    MODEL_REGISTRY.map((m) => {
-      const lane = APPLE_LANES[m.id];
-      return [lane?.publicId ?? m.id, { internal: lane?.internal ?? m.id, productModel: m.id, description: `${m.displayName}. ${m.blurb}` }];
-    }),
-  ),
+  'apple-chat': { internal: 'plan', productModel: APPLE.id, description: `${APPLE.displayName}. ${APPLE.blurb}` },
   'apple-plan': { internal: 'plan', description: 'The planner. Reasons about a place without proposing edits to it.' },
 };
+
+/**
+ * The compatibility bridge for callers that still name a retired model (LEGACY_MODEL_IDS): served
+ * by Apple and answered as `apple-chat`, so the response names what actually ran. Never refused,
+ * never listed by GET /v1/models.
+ */
+function publicModelId(id: string): string | undefined {
+  if (Object.hasOwn(PUBLIC_MODELS, id)) return id;
+  return (LEGACY_MODEL_IDS as readonly string[]).includes(id) ? 'apple-chat' : undefined;
+}
 
 export function publicModelList(createdAt: number): Record<string, unknown> {
   return {
@@ -319,13 +319,14 @@ export function parseChatCompletionRequest(body: unknown): Parsed<ChatCompletion
   if (typeof b.model !== 'string' || b.model === '') {
     return fault(400, 'invalid_request_error', "'model' is required.", 'model');
   }
-  // `Object.hasOwn` and not a bare index: `PUBLIC_MODELS['constructor']` inherits a truthy value
+  // publicModelId uses `Object.hasOwn`, not a bare index: `PUBLIC_MODELS['constructor']` inherits a truthy value
   // from Object.prototype, so a caller asking for the model named `constructor` — or `__proto__`,
   // or `toString` — would pass this check and then be routed to the internal model key
   // `undefined`. A Record<string, T> is a lookup table with a prototype attached, and the
   // prototype is reachable from the request body.
-  const model = Object.hasOwn(PUBLIC_MODELS, b.model) ? PUBLIC_MODELS[b.model] : undefined;
-  if (!model) {
+  const publicId = publicModelId(b.model);
+  const model = publicId === undefined ? undefined : PUBLIC_MODELS[publicId];
+  if (!model || publicId === undefined) {
     return fault(
       404,
       'model_not_found',
@@ -384,7 +385,7 @@ export function parseChatCompletionRequest(body: unknown): Parsed<ChatCompletion
   return {
     ok: true,
     value: {
-      publicModel: b.model,
+      publicModel: publicId,
       internalModel: model.internal,
       ...(model.productModel ? { productModel: model.productModel } : {}),
       messages,

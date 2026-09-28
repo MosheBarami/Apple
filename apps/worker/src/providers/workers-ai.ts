@@ -11,11 +11,10 @@
 // Workers AI is reached through a BINDING, not HTTP: there is no key and no base URL, which is
 // why its availability is "does env.AI exist", not "is a secret set".
 import type { Env } from '../env';
-import { registryModelByProviderId, type ModelWire } from '@golem/shared';
+import { registryModel } from '@golem/shared';
 import { routeForModelId } from '../pricing';
 import {
   contentChars,
-  contentText,
   type EncodedRequest,
   type ErrorClassification,
   type GatewayToolCall,
@@ -30,28 +29,21 @@ import {
   ProviderError,
 } from './types';
 
-/** Product-model routing. Apple chosen 2026-09-18; Apple MAX moved to GLM-5.3 Flash on 2026-09-19. */
-export const APPLE_MODEL_ID = '@cf/qwen/qwen3-30b-a3b-fp8';
-
 /**
- * THE MAX LANE AND THE VISUAL CRITIC ARE NOW THE SAME MODEL, and that is worth saying rather than
- * leaving for someone to notice two equal strings.
+ * THE ONE PRODUCT ENGINE (V3 gate G01): Apple runs GLM 5.3 Flash, read from the registry in
+ * @golem/shared so this id cannot go stale beside it again (it once still named Qwen3).
  *
- * The paid lane ran on glm-4.7-flash, which has no row in docs/evals/RESULTS.md — it was never
- * measured on this product's suite. The only MAX model that was is glm-5.3-flash, and it had been
- * demoted to vision. So the mode a customer pays for was the unevaluated one, and the owner's call
- * on 2026-09-19 put it back.
- *
- * The product run route and `vision` keep their own maxTokens, temperature and tool settings in
- * DEFAULT_MODELS. They merely resolve to the same weights now, which makes the MAX lane multimodal
- * as a side effect.
+ * The visual critic is the same model. The product run routes and `vision` keep their own
+ * maxTokens, temperature and tool settings in DEFAULT_MODELS; they merely resolve to the same weights.
  */
-export const APPLE_MAX_MODEL_ID = '@cf/zai-org/glm-5.3-flash';
-export const VISION_MODEL_ID = '@cf/zai-org/glm-5.3-flash';
+export const APPLE_MODEL_ID = registryModel('apple')!.providerModelId;
+export const VISION_MODEL_ID = APPLE_MODEL_ID;
 
-export const APPLE_CONTEXT_WINDOW = 32_768;
-export const APPLE_MAX_CONTEXT_WINDOW = 1_310_720;
+export const APPLE_CONTEXT_WINDOW = 1_310_720;
 export const VISION_CONTEXT_WINDOW = 1_310_720;
+
+/** The memory summariser's model (DEFAULT_MODELS.memory). Internal; never a customer engine. */
+const MEMORY_MODEL_ID = '@cf/qwen/qwen3-30b-a3b-fp8';
 
 /**
  * The catalogue must list every id DEFAULT_MODELS can point at. `modelById()` returns undefined for
@@ -107,22 +99,22 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
     unverifiedFields: [],
   },
   {
-    id: APPLE_MODEL_ID,
+    id: MEMORY_MODEL_ID,
     displayName: 'Qwen3 30B A3B FP8',
     provider: 'workers-ai',
     supportsTools: true,
     supportsVision: false,
-    contextWindow: APPLE_CONTEXT_WINDOW,
+    contextWindow: 32_768,
     maxOutput: 2_000,
     inputCostPer1M: 0.0509,
     outputCostPer1M: 0.335,
     unverifiedFields: ['maxOutput'],
   },
-  // ONE ROW, because APPLE_MAX_MODEL_ID and VISION_MODEL_ID are now the same id. A second row for
-  // the same string would make `modelById()` return whichever came first and quietly hide the other
-  // one's figures — two catalogue entries for one model is a disagreement waiting to be believed.
+  // ONE ROW, because APPLE_MODEL_ID and VISION_MODEL_ID are the same id. A second row for the same
+  // string would make `modelById()` return whichever came first and quietly hide the other one's
+  // figures — two catalogue entries for one model is a disagreement waiting to be believed.
   {
-    id: VISION_MODEL_ID,
+    id: APPLE_MODEL_ID,
     displayName: 'GLM-5.3 Flash',
     provider: 'workers-ai',
     supportsTools: true,
@@ -174,9 +166,9 @@ export function gatewayOpts(env: Env, kind: string, cacheTtl: number, sessionId?
   const id = env.AI_GATEWAY_ID;
   const affinity = sessionId ? { extraHeaders: { 'x-session-affinity': sessionId } } : undefined;
   if (!id) {
-    // A third-party model (D-VISION-1) is paid from AI Gateway credits under Unified Billing, and
-    // only a call that names the gateway is billed there. Without one it is refused HERE, before
-    // anything leaves the worker, rather than sent somewhere it is not metered.
+    // A third-party id (only reachable through a KV model override) would be paid from AI Gateway
+    // credits, and only a call that names the gateway is billed there. Without one it is refused
+    // HERE, before anything leaves the worker, rather than sent somewhere it is not metered.
     if (model && routeForModelId(model) === 'unified-billing') {
       throw new ProviderError('unknown', 'workers-ai', `${model} runs through AI Gateway, and AI_GATEWAY_ID is not set on this worker`, undefined, false);
     }
@@ -279,67 +271,7 @@ export const WORKERS_AI_RETRYABLE = /\b3021\b|rate limit|too many requests|capac
  * Exported so there is ONE rule rather than a second copy of this regex living next to the UI.
  */
 export function acceptsReasoningEffort(modelId: string): boolean {
-  if (/^@cf\/zai-org\/glm-/.test(modelId)) return true;
-  // The third-party registry models each have a documented effort field: `reasoning.effort` on the
-  // Responses wire (GPT-5.6) and `reasoning_effort` on Gemini's chat-completions wire. Sent at the
-  // registry's `low`, because thinking tokens bill as output. Not yet observed on a live call —
-  // the AI Gateway balance is $0 (OWNER_QUEUE Q-006) — and listed for live verification.
-  return registryModelByProviderId(modelId)?.route === 'unified-billing';
-}
-
-/** Which wire a model id speaks. Anything the registry does not list is a Workers AI chat model. */
-export function wireFor(modelId: string): ModelWire {
-  return registryModelByProviderId(modelId)?.wire ?? 'chat';
-}
-
-/**
- * THE RESPONSES WIRE (OpenAI GPT-5.6 Sol and Luna on Unified Billing, D-VISION-1).
- *
- * These models take no `messages` body — the 2026-08-31 probe that sent one got "7003 Invalid value
- * at input". The same conversation goes out as:
- *   - every system message joined into `instructions`;
- *   - user and assistant turns as input messages, images as `input_image`;
- *   - an assistant's structured tool calls as `function_call` items, and each tool result as a
- *     `function_call_output` item answering its call id — structured, never as text;
- *   - tools flattened to `{type:'function', name, description, parameters}`.
- * `store: false` because nothing is to be kept on the provider's side. No temperature: the GPT-5
- * reasoning models refuse the field, and effort is the knob they document instead.
- */
-export function encodeResponses(req: NormalizedRequest): EncodedRequest {
-  const instructions: string[] = [];
-  const input: Record<string, unknown>[] = [];
-  for (const m of req.messages) {
-    if (m.role === 'system') {
-      instructions.push(contentText(m.content));
-    } else if (m.role === 'tool') {
-      input.push({ type: 'function_call_output', call_id: m.toolCallId ?? '', output: contentText(m.content) });
-    } else if (m.role === 'assistant') {
-      const text = contentText(m.content);
-      if (text) input.push({ role: 'assistant', content: text });
-      for (const c of m.toolCalls ?? []) input.push({ type: 'function_call', call_id: c.id, name: c.name, arguments: c.arguments });
-    } else {
-      input.push({
-        role: 'user',
-        content: typeof m.content === 'string'
-          ? m.content
-          : m.content.map((p) => ('text' in p ? { type: 'input_text', text: p.text } : { type: 'input_image', image_url: p.image_url.url })),
-      });
-    }
-  }
-  const payload: Record<string, unknown> = {
-    ...(instructions.length ? { instructions: instructions.join('\n\n') } : {}),
-    input,
-    max_output_tokens: req.maxTokens,
-    store: false,
-  };
-  if (req.tools?.length) {
-    payload.tools = req.tools.map((t) => ({ type: 'function', name: t.name, description: t.description, parameters: t.parameters }));
-  }
-  if (req.reasoningEffort && acceptsReasoningEffort(req.modelId)) payload.reasoning = { effort: req.reasoningEffort };
-  if (req.jsonSchema) payload.text = { format: { type: 'json_schema', ...(req.jsonSchema as Record<string, unknown>) } };
-  const promptChars =
-    req.messages.reduce((n, m) => n + contentChars(m.content), 0) + JSON.stringify(payload.tools ?? '').length;
-  return { payload, promptChars };
+  return /^@cf\/zai-org\/glm-/.test(modelId);
 }
 
 // ---------------------------------------------------------------------------
@@ -358,14 +290,13 @@ export const workersAiAdapter: ProviderAdapter = {
       available: bound,
       reason: bound ? null : 'binding_missing',
       detail: bound
-        ? 'Cloudflare Workers AI binding is present — Apple and Apple MAX use Workers AI product routes.'
+        ? 'Cloudflare Workers AI binding is present — Apple uses Workers AI product routes.'
         : 'The `AI` Workers AI binding is not present on this environment.',
       unsupportedModelKeys: [],
     };
   },
 
   encode(req: NormalizedRequest): EncodedRequest {
-    if (wireFor(req.modelId) === 'responses') return encodeResponses(req);
     // Assistant tool calls go back to the model as STRUCTURED tool_calls, never as text fences.
     // Serialising them as ```tool_call blocks teaches a model to imitate the pattern in prose,
     // which then never executes — observed with GLM-5.3-flash before this was fixed.
@@ -402,14 +333,12 @@ export const workersAiAdapter: ProviderAdapter = {
         payload.tool_choice = { type: 'function', function: { name: req.requiredTool } };
       }
     }
-    // Cloudflare documents reasoning_effort for GLM-4.7/5.3, and Gemini's chat-completions wire
-    // takes the same field. Qwen3 is reasoning-capable but its binding schema does not document an
-    // effort knob, so do not send it an invented field.
+    // Cloudflare documents reasoning_effort for GLM-4.7/5.3. Qwen3 is reasoning-capable but its
+    // binding schema does not document an effort knob, so do not send it an invented field.
     if (req.reasoningEffort && acceptsReasoningEffort(req.modelId)) {
       payload.reasoning_effort = req.reasoningEffort;
     }
     if (req.jsonSchema) payload.response_format = { type: 'json_schema', json_schema: req.jsonSchema };
-    if (req.lora) payload.lora = req.lora;
 
     const promptChars =
       messages.reduce((n, m) => n + contentChars(m.content, req.modelId), 0) + JSON.stringify(payload.tools ?? '').length;

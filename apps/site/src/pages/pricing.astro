@@ -18,9 +18,7 @@ import {
   monthlyCeilingBitesFirst,
   PRODUCT_MODES,
   PRODUCT_MODE_INFO,
-  PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
-  canUseProductModel,
   MODE_INFO,
   CREDIT_PURCHASE_LIVE as SHARED_CREDIT_PURCHASE_LIVE } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
@@ -126,18 +124,12 @@ const supportBullet = (id: PlanId) =>
 const autonomousBullet = `Autonomous on ${PRODUCT_MODE_INFO.agent.name} · up to 1000 steps a message`;
 const UNIVERSAL_BULLETS = PLAN_FEATURES.filter((f) => PLAN_IDS.every((id) => f.values[id] === true)).map(cardLabel);
 
-/* MODELS ARE NOT PLANS. Apple and Apple MAX are model choices; Free, Builder, Studio and Enterprise
-   are plans. Which plans include which model is asked of canUseProductModel — the function the
-   worker enforces — so the page cannot promise Apple MAX to a plan that does not get it. */
-const [baseModel, strongModel] = PRODUCT_MODELS;
+/* ONE ENGINE ON EVERY PLAN (V3 gate G01). Free, Builder, Studio and Enterprise are plans and differ
+   only in their allowance; every one of them uses Apple, the only engine there is. */
 const listNames = (names: string[]) =>
   names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-const strongPlans = listNames(
-  PLAN_IDS.filter((id) => canUseProductModel(strongModel, id)).map((id) => PLAN_COPY[id].name),
-);
 const planNames = listNames(PLAN_IDS.map((id) => PLAN_COPY[id].name));
-const baseName = PRODUCT_MODEL_INFO[baseModel].name;
-const strongName = PRODUCT_MODEL_INFO[strongModel].name;
+const engineName = PRODUCT_MODEL_INFO.apple.name;
 
 /*
  * ONE CARD IS RANKED, AND WHICH ONE IS ASKED RATHER THAN TYPED.
@@ -329,7 +321,7 @@ const limitFaq = [
 
 <Base
   title="Pricing — Apple"
-  description={`Plans and Credits for Apple. Free includes ${free.creditsPerDay} Credits a day and the ${baseName} model; ${strongName}, the stronger model, is included with ${strongPlans}.${billing.checkout ? '' : ' Paid checkout is not open yet.'}`}
+  description={`Plans and Credits for Apple. Free includes ${free.creditsPerDay} Credits a day, and every plan uses ${engineName}.${billing.checkout ? '' : ' Paid checkout is not open yet.'}`}
 >
   <!-- ==================================================== head -->
   <section class="section phead" aria-labelledby="pricing-title">
@@ -342,8 +334,8 @@ const limitFaq = [
         {canBuy('builder') || canBuy('studio') ? 'Start free. Pay when you build every day.' : 'Start free. Paid plans are not on sale yet.'}
       </h1>
       <p class="lede lede-wide">
-        {planNames} are plans. {baseName} and {strongName} are models: every plan gets {baseName}, and
-        {strongName}, the stronger model, is included with {strongPlans}.
+        {planNames} are plans. Every plan uses {engineName}; they differ only in how many Credits they
+        include.
         {billing.checkout
           ? 'Every paid plan below can be bought now. Cancel from your own account page at any time.'
           : 'Paid checkout is not open yet; the paid plans below describe the planned offering.'}
@@ -370,7 +362,7 @@ const limitFaq = [
           <ul class="plan__list">
             <li><strong>{free.creditsPerDay.toLocaleString()} Credits</strong> per day · {free.creditsPerMonth.toLocaleString()} a month</li>
             <li>About {buildsPerMonth('free')} quality-gated builds a month</li>
-            <li>{baseName} model</li>
+            <li>Built by {engineName}</li>
             <li>{autonomousBullet}</li>
             {UNIVERSAL_BULLETS.map((b) => <li>{b}</li>)}
             {studioBullet && <li>{studioBullet}</li>}
@@ -433,7 +425,7 @@ const limitFaq = [
                   {PLAN_LIMITS[id].creditsPerMonth.toLocaleString()} a month
                 </li>
                 <li>About {buildsPerMonth(id)} quality-gated builds a month</li>
-                <li>{strongName}, the stronger model</li>
+                <li>Built by {engineName}</li>
                 <li>{autonomousBullet}</li>
                 {/* The same gap as the `credits` row below, one surface earlier. Builder's
                     highlights include "Buy credits when you need more", and leaving it beside a
@@ -635,7 +627,7 @@ const limitFaq = [
         Figures come from the shared plan configuration. Free access is available now.{' '}
         {canBuy('builder') || canBuy('studio')
           ? 'Paid plans can be purchased above.'
-          : `Paid plans, and with them ${strongName}, are not yet available to purchase.`}{' '}
+          : 'Paid plans are not yet available to purchase.'}{' '}
         {STUDIO_PLUGIN_STORE_LIVE ? (
           <>Building in Studio also needs the Apple Studio plugin, which is free: <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">get it from the Creator Store</a>.</>
         ) : (

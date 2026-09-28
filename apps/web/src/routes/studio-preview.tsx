@@ -17,7 +17,7 @@
 // not drawn as a failure.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { modelListing, type PlaytestRun, type ProductMode, type ProductModel, type StudioFrame } from '@golem/shared';
+import { type PlaytestRun, type ProductMode, type StudioFrame } from '@golem/shared';
 import { Turn } from '../components/ws/turn';
 import { ChatWelcome } from '../components/ws/chat-welcome';
 import { Composer } from '../components/ws/composer';
@@ -59,12 +59,6 @@ const SEEDS = [
 /* ------------------------------------------------------------- fixtures --- */
 
 const SPECIMEN_PROJECT = 'specimen';
-
-/**
- * The model picker, for looking at: the registry marked for a Builder (Pro) account, so the list
- * shows Apple and Apple MAX open and the outside models locked with the plan that includes them.
- */
-const SPECIMEN_MODELS = modelListing('builder');
 
 function user(id: string, content: string, at: number, revisions?: number): ChatItem {
   return { id, role: 'user', mode: 'agent', content, tools: [], streaming: false, createdAt: at, revisions };
@@ -300,7 +294,6 @@ interface ScreenProps {
 function Screen({ items, status = null, running = false, mode: initialMode = 'agent', autonomous: initialAuto = false, initialStaged, playtest = null, empty = false, after, onChooseAsset }: ScreenProps) {
   const [mode, setMode] = useState<ProductMode>(initialMode);
   const [autonomous, setAutonomous] = useState(initialAuto);
-  const [model, setModel] = useState<ProductModel>('apple');
   const [seed, setSeed] = useState<string | undefined>();
   const lastAssistant = [...items].reverse().find((item) => item.role === 'assistant')?.id;
   return (
@@ -339,10 +332,6 @@ function Screen({ items, status = null, running = false, mode: initialMode = 'ag
           onStop={() => undefined}
           running={running}
           studioConnected
-          productModel={model}
-          onModelChange={setModel}
-          modelPlan="builder"
-          models={SPECIMEN_MODELS}
           mode={mode}
           onModeChange={(next) => {
             setMode(next);

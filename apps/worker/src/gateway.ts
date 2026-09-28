@@ -10,12 +10,10 @@
 // PROVIDER NEUTRALITY. As of 2026-08-31 the transport lives behind an adapter (see ./providers):
 // this file owns spend policy, the prompted-tool fallback and response post-processing, and an
 // adapter owns one provider's wire format. Every model key resolves to the Workers AI adapter,
-// and every call is `env.AI.run(id, payload, gatewayOpts(...))`. The outside models (D-VISION-1)
-// take the same path: their third-party ids run through AI Gateway Unified Billing, and the
-// adapter picks the chat or Responses wire from the registry in @golem/shared.
+// and every call is `env.AI.run(id, payload, gatewayOpts(...))`. The product has one customer
+// engine, Apple (GLM 5.3 Flash, V3 gate G01), under the `plan` and `agent` keys below.
 import type { Env } from './env';
 import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@golem/shared';
-import { MODEL_REGISTRY } from '@golem/shared';
 import { isCompleteToolCall } from './tool-call-integrity';
 import { estimateNeurons, neuronsFor, maxNeuronsPerStepFor } from './pricing';
 import { recordEvent } from './analytics';
@@ -41,12 +39,6 @@ export interface ModelCfg {
   ctx: number;
   temperature: number;
   reasoningEffort?: 'low' | 'medium' | 'high';
-  /**
-   * A Workers AI fine-tune (LoRA adapter) name or id to serve on top of `id`. Only the bases that
-   * accept adapters honour it (llama-3.2-3b, qwen2.5-coder-32b, ...); set it only after the adapter
-   * has beaten its base on the product eval (the `lora` gate in packages/shared/src/models.ts).
-   */
-  lora?: string;
 }
 
 /** The provider refused before running the model, so nothing was billed. Safe to try again. */
@@ -86,62 +78,18 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // neuron caps, not by this number, and settlement is on ACTUAL usage, so a short step still
   // costs a short step.
   // -------------------------------------------------------------------------
-  // PRODUCT RUN ROUTING. Plan and Agent share the measured GLM-5.3 Flash foundation. Product-model
-  // entitlement still controls paid capabilities and reasoning policy; the run mode controls tools.
-  // Both keys exist because callers name the product mode directly.
-  //[[ APPLE MAX RUNS ON GLM-5.3 FLASH. Owner decision, 2026-09-19, and the evidence agrees with it.
-  //
-  //   The lane was on glm-4.7-flash, and a fresh-context reviewer found the problem with that:
-  //   `docs/evals/RESULTS.md` has NO glm-4.7 row at all. The only MAX model ever measured on this
-  //   product's eval suite is glm-5.3-flash, and it had been demoted to
-  //   the vision lane — so the mode a customer pays for was the unevaluated one.
-  //
-  //   Read honestly, that is an argument for 5.3 and NOT a claim that 5.3 is 2.1 points better:
-  //   docs/research/hf-specialists.md says the suite is saturated and the spread is inside
-  //   run-to-run variance, and docs/evals/FINDINGS.md says the suite no longer exists in that form.
-  //   What can be said is that one of these two has been measured on this product and the other has
-  //   not, and the paid lane should not be the unmeasured one.
-  //
-  //   It also buys two capabilities: 5.3 Flash is natively multimodal, so the MAX lane and the
-  //   visual critic are now the same model rather than two, and the context window goes from 131k
-  //   to 1.3M. Prompt trimming is governed by MAX_PROMPT_CHARS in do/session.ts, not by `ctx`, so
-  //   the bigger window changes what is POSSIBLE here, not what is sent today.
-  //
-  //   COST: 5.3 Flash is dearer per token than 4.7 Flash and Cloudflare requires a paid plan or
-  //   prepaid AI Gateway credits for it. The daily and monthly neuron caps remain the spend gate;
-  //   this raises the price of a MAX step, not the ceiling on the bill. ]]
+  // PRODUCT RUN ROUTING. Apple is the one customer engine (V3 gate G01): Plan and Agent both run
+  // GLM 5.3 Flash, the id the shared registry names (tests/single-engine.test.mjs holds them equal). The run mode controls tools, never the model.
+  // Both keys exist because callers name the product mode directly. GLM 5.3 Flash spends output
+  // budget on reasoning_content before it writes `content`, so these ceilings must not be lowered:
+  // a small max_tokens can come back with an empty answer.
   plan: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
   agent: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
 
   memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 800, ctx: 32_768, temperature: 0.2 },
 
-  // TRAINING LAB. The two Workers AI bases that accept Apple's LoRA adapters, addressable only by
-  // key (no product lane selects them), so /api/admin/model-test can score base against adapter on
-  // the same wire the product would use. GLM-5.3 Flash, Apple's current base, rejects adapters.
-  'lab-llama-3b': { id: '@cf/meta/llama-3.2-3b-instruct', nativeTools: true, maxTokens: 2048, ctx: 80_000, temperature: 0.25 },
-  'lab-qwen-coder-32b': { id: '@cf/qwen/qwen2.5-coder-32b-instruct', nativeTools: true, maxTokens: 2048, ctx: 32_768, temperature: 0.25 },
-
   // The visual critic sends real image_url data URLs and must remain on a multimodal model.
   vision: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 4000, ctx: 1_310_720, temperature: 0.3, reasoningEffort: 'low' },
-
-  // THE OUTSIDE MODELS (D-VISION-1), keyed by their registry id and derived from the registry, so a
-  // model is added in packages/shared/src/models.ts and nowhere else. They run on the same binding
-  // as Apple (`env.AI.run` through AI Gateway, Unified Billing); the adapter picks the wire from
-  // the registry. Apple and Apple MAX are not listed here: both are GLM-5.3 Flash, which `plan` and
-  // `agent` above already configure, and the lanes differ only in the reasoning policy.
-  ...Object.fromEntries(
-    MODEL_REGISTRY.filter((m) => m.route === 'unified-billing').map((m): [string, ModelCfg] => [
-      m.id,
-      {
-        id: m.providerModelId,
-        nativeTools: m.nativeTools,
-        maxTokens: m.maxOutputTokens,
-        ctx: m.ctx,
-        temperature: 0.25,
-        ...(m.reasoningEffort ? { reasoningEffort: m.reasoningEffort } : {}),
-      },
-    ]),
-  ),
 };
 
 let modelCache: { at: number; models: Record<string, ModelCfg> } | null = null;
@@ -244,8 +192,8 @@ const BUDGET_MESSAGES: Record<string, string> = {
   monthly_cap: "Apple has reached this month's shared building capacity.",
   request_too_large: 'That request needs more context than a single step allows — try narrowing it.',
   killed: 'AI generation is paused right now.',
-  third_party_daily_cap: "Today's allowance for outside models (Gemini and GPT) is used up. Apple and Apple MAX still work, and it resets at midnight UTC.",
-  third_party_monthly_cap: "This month's allowance for outside models (Gemini and GPT) is used up. Apple and Apple MAX still work.",
+  third_party_daily_cap: "Today's allowance for outside models is used up. Apple still works, and it resets at midnight UTC.",
+  third_party_monthly_cap: "This month's allowance for outside models is used up. Apple still works.",
 };
 
 async function reserve(env: Env, model: string, neurons: number): Promise<number> {
@@ -319,8 +267,6 @@ export interface ChatOptions {
    * reused; never share it between tenants. Omit it and every step re-prefills from cold.
    */
   sessionId?: string;
-  /** Admin eval only: serve this LoRA adapter instead of the model's configured one. */
-  lora?: string;
   /**
    * Who this call is for, for the analytics event log ONLY. Both are optional and both default to
    * an unattributed event rather than to a plausible-looking placeholder: a model trace filed
@@ -388,7 +334,6 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     temperature: req.temperature ?? cfg.temperature,
     ...(effort ? { reasoningEffort: effort } : {}),
     ...(req.jsonSchema ? { jsonSchema: req.jsonSchema } : {}),
-    ...((opts.lora ?? cfg.lora) ? { lora: opts.lora ?? cfg.lora } : {}),
   });
 
   // ---- spend gate: nothing below this line runs without a reservation ----
@@ -405,9 +350,8 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   // because a cap enforced in exactly one place has a single point of failure. If you are simplifying
   // this, the thing to verify is that budget.ts's own per-request check still refuses: that is what
   // covers this one's absence, and it is the only thing that does.
-  // The cap is the MODEL's (registry `maxNeuronsPerStep`), not one global number: a GPT-5.6 step
-  // costs forty times an Apple step, and a single cap either refuses every one or lets an Apple
-  // step reserve forty times what it can cost. BudgetDO applies the same per-model cap.
+  // The cap is the MODEL's (registry `maxNeuronsPerStep`, else MAX_NEURONS_PER_REQUEST). BudgetDO
+  // applies the same per-model cap.
   if (estimate > maxNeuronsPerStepFor(cfg.id)) {
     throw new BudgetError('request_too_large', BUDGET_MESSAGES.request_too_large!);
   }

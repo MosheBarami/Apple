@@ -202,7 +202,7 @@ async function stepWith({ effortApplies }) {
     __effortApplies: effortApplies,
     AI: { run: async () => { throw new Error('the test must never call a model'); } },
     CORPUS: { prepare: () => ({ first: async () => null }) },
-    // The paid lane is Apple MAX, re-checked against this plan on every step (D-VISION-1).
+    // No plan gates the engine any more (V3 G01); a retired id stored on the run is served as Apple.
     QUOTA_DO: { idFromName: () => ({}), get: () => ({ fetch: async () => Response.json({ plan: effortApplies ? 'builder' : 'free', creditsRemaining: 100, creditsDaily: 100 }) }) },
   };
   const session = new RunnableSessionDO(ctx, env);

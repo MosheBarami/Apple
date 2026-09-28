@@ -258,16 +258,16 @@ import { toolNames } from ${abs('apps/worker/src/tools.ts')};
 import { CREATOR_SKILLS } from ${abs('apps/worker/src/creator-skills.ts')};
 import { MECHANIC_PATTERNS } from ${abs('apps/worker/src/mechanics.ts')};
 import { GENRE_KIT_IDS } from ${abs('apps/worker/src/genre-kits.ts')};
-import { MODEL_REGISTRY, TIER_FOR_PLAN } from ${abs('packages/shared/src/models.ts')};
+import { MODEL_REGISTRY } from ${abs('packages/shared/src/models.ts')};
 import { ICON_PATH } from ${abs('apps/web/src/components/icons.ts')};
 import { STUDIO_ICON_CLASSES } from ${abs('apps/web/src/components/studio-icon-model.ts')};
 const skillDomains = {};
 for (const s of CREATOR_SKILLS) skillDomains[s.domain] = (skillDomains[s.domain] || 0) + 1;
 console.log(JSON.stringify({
   tools: toolNames(), skills: CREATOR_SKILLS.length, skillDomains, mechanics: MECHANIC_PATTERNS.length,
-  kits: [...GENRE_KIT_IDS], tierForPlan: TIER_FOR_PLAN,
+  kits: [...GENRE_KIT_IDS], tierForPlan: {},
   models: MODEL_REGISTRY.map((m) => ({ id: m.id, displayName: m.displayName, blurb: m.blurb, vendor: m.vendor,
-    providerModelId: m.providerModelId, tier: m.tier, route: m.route, creditMultiplier: m.creditMultiplier, lora: m.lora ?? null })),
+    providerModelId: m.providerModelId })),
   webIcons: Object.keys(ICON_PATH).length, studioIcons: STUDIO_ICON_CLASSES.length,
 }));`);
   try {

@@ -1,16 +1,13 @@
 ---
-import { MODE_INFO, PLAN_COPY, PLAN_IDS, PLAN_LIMITS, PRODUCT_MODELS, PRODUCT_MODES, canUseProductModel, type ProductMode } from '@golem/shared';
+import { MODE_INFO, PLAN_COPY, PLAN_IDS, PLAN_LIMITS, PRODUCT_MODES, type ProductMode } from '@golem/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
 const free = PLAN_LIMITS.free;
 const list = new Intl.ListFormat('en', { type: 'conjunction' });
-// Plans and which of them include the stronger model, asked of the same function the worker enforces.
+// Every plan uses the one engine, Apple (V3 gate G01); plans differ only in their allowance.
 const planNames = list.format(PLAN_IDS.map((id) => PLAN_COPY[id].name));
-const strongPlans = list.format(
-  PLAN_IDS.filter((id) => canUseProductModel(PRODUCT_MODELS[1], id)).map((id) => PLAN_COPY[id].name),
-);
 const MODE_DETAIL: Record<ProductMode, string> = {
   plan: 'Use Plan when you want Apple to inspect the project, reason about the change and give you a concrete approach without modifying the place.',
   agent: 'Use Agent when you want Apple to carry the work through in Studio: read the project, make permitted edits, verify what changed and repair problems it finds.',
@@ -24,8 +21,8 @@ const MODE_DETAIL: Record<ProductMode, string> = {
 >
   <p>
     Apple has two product modes: <strong>Plan</strong> and <strong>Agent</strong>. The mode chooses
-    what kind of work the request may do. It is separate from the Apple / Apple MAX model selector,
-    Studio edit permission and your subscription allowance.
+    what kind of work the request may do. It is separate from Studio edit permission and your
+    subscription allowance.
   </p>
 
   {PRODUCT_MODES.map((mode) => (
@@ -58,11 +55,10 @@ const MODE_DETAIL: Record<ProductMode, string> = {
       : <>Public Studio installation is unavailable right now. See <a href="/docs/plugin">plugin availability</a>.</>}
   </p>
 
-  <h2>Models and plans are separate</h2>
+  <h2>One engine on every plan</h2>
   <p>
-    Apple and Apple MAX are model choices; {planNames} are account plans. Neither adds another work
-    mode. Apple MAX is the stronger model, included with {strongPlans}. The Free plan uses Apple and
-    includes {free.creditsPerDay} Credits per day subject to its monthly ceiling. See <a href="/docs/credits-and-limits">Credits and limits</a> for the current
+    Apple is the only engine; {planNames} are account plans, and every plan uses Apple. A plan does
+    not add another work mode. The Free plan includes {free.creditsPerDay} Credits per day subject to its monthly ceiling. See <a href="/docs/credits-and-limits">Credits and limits</a> for the current
     allowance and metering rules.
   </p>
 

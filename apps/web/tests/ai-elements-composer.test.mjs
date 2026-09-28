@@ -11,8 +11,9 @@
  *     only place a violet class is ever applied;
  *   * Send is a submit named "Send"; while a run is live the same slot is a plain button named
  *     "Stop this run", and there is no submit to press;
- *   * Mode, Model and Create are menu triggers; a menu's radio rows carry aria-checked from the
- *     group's value, and a row can be aria-disabled yet reachable, which the MAX row depends on.
+ *   * Mode is a radio switch and Create a menu trigger, and there is no model control (V3 G01: one
+ *     engine); a menu's radio rows carry aria-checked from the group's value, and a row can be
+ *     aria-disabled yet reachable.
  *
  * And the sheets: violet is spent only under `.is-on`; the composer's and the vendored components'
  * stylesheets carry no raw colour; every transition in composer.css has a reduced-motion opt-out.
@@ -56,8 +57,6 @@ function composer(overrides = {}) {
       onSend: () => true,
       onStop: noop,
       running: false,
-      productModel: 'apple',
-      onModelChange: noop,
       mode: 'agent',
       onModeChange: noop,
       autonomous: false,
@@ -179,12 +178,10 @@ test('the paperclip is off, with the reason, where there is no project to upload
 
 // ------------------------------------------------------------------ menus ---
 
-test('Mode, Model and Create are named by what they hold', () => {
-  //[[ RESTATED 2026-09-23. Model is no longer a menu: it is AI Elements' ModelSelector, a DIALOG with
-  //   a searchable list (components/ws/model-picker.tsx, rendered by tests/model-picker.test.mjs, whose
-  //   trigger is aria-haspopup="dialog"). Its code loads after the composer, and until it lands the
-  //   chip is the same face and cannot be pressed — which is what server rendering sees here. The
-  //   property is unchanged: each of the three controls says what it currently holds. ]]
+test('Mode and Create are named by what they hold, and there is no model control', () => {
+  //[[ RESTATED for V3 gate G01. Apple is the only engine, so the model chip and its picker are
+  //   gone: nothing in the composer names or chooses a model. The property is unchanged for what
+  //   remains: each control says what it currently holds. ]]
   //[[ RESTATED 2026-09-23 (composer picks). Mode is no longer a menu either: it is a two-way radio
   //   switch, so both words are on screen. It still says what it holds — its checked radio is the
   //   current mode — so the menu triggers are Create alone. ]]
@@ -201,34 +198,8 @@ test('Mode, Model and Create are named by what they hold', () => {
   const checked = radios.filter((r) => /aria-checked="true"/.test(r));
   assert.equal(checked.length, 1, 'exactly one mode is chosen');
   assert.match(checked[0], />Plan</, 'the chosen radio is the current mode');
-  const model = tags(html, 'button').filter((t) => attr(t, 'aria-label')?.startsWith('Model: '));
-  assert.equal(model.length, 1, 'exactly one model chip');
-  assert.equal(attr(model[0], 'aria-label'), 'Model: Apple');
-  // Which of the two it is depends on whether an earlier render in this process already fetched the
-  // picker's chunk; either way it is one of exactly these two, never a pressable chip that opens nothing.
-  assert.ok(
-    has(model[0], 'disabled') || attr(model[0], 'aria-haspopup') === 'dialog',
-    'the model chip is neither the inert placeholder nor the ModelSelector trigger',
-  );
-  // WHICHEVER ONE THIS RUN SAW, the other is held too: which chip the server render shows depends on
-  // test order, so the placeholder's own promise — drawn, named, and not pressable — is read from
-  // the Suspense fallback itself. (Found by falsification: removing its `disabled` stayed green.)
-  const src = readFileSync(join(WEB, 'src', 'components', 'ws', 'composer.tsx'), 'utf8');
-  const fallback = src.slice(src.indexOf('fallback={'), src.indexOf('<ModelPicker'));
-  assert.ok(fallback.length > 20, 'the model picker has lost its Suspense fallback');
-  assert.match(fallback, /<button type="button" className="gx-chip gx-chip--model" disabled aria-label=\{`Model: \$\{modelLabel\}`\}>/);
-  //[[ RESTATED 2026-09-23 (D-VISION-1). Bring-your-own-key is gone; every model is a registry
-  //   model. The property: the chip is named by the registry's display name of the model it holds,
-  //   for every model, not only Apple's. ]]
-  for (const id of ['apple-max', 'gemini-3.8-flash', 'gpt-5.6', 'gpt-5.6-luna']) {
-    const held = composer({ productModel: id, modelPlan: 'studio' });
-    const name = { 'apple-max': 'Apple MAX', 'gemini-3.8-flash': 'Gemini 3.8 Flash', 'gpt-5.6': 'GPT-5.6', 'gpt-5.6-luna': 'GPT-5.6 Luna' }[id];
-    assert.ok(tags(held, 'button').some((t) => attr(t, 'aria-label') === `Model: ${name}`), `the chip does not say ${name}`);
-  }
-  // The render above sees the loaded picker's own trigger once its chunk is in; the placeholder
-  // before that is named by `modelLabel`, so that name must be the registry's too. (Found by
-  // falsification: an Apple-only modelLabel stayed green on the render alone.)
-  assert.match(decomment(src), /const modelLabel = [^;]*\.displayName\b/);
+  assert.equal(tags(html, 'button').some((t) => /^Model\b/.test(attr(t, 'aria-label') ?? '')), false, 'a model control is back');
+  assert.doesNotMatch(html, /gx-chip--model/);
 });
 
 test('an open menu: radio rows checked from the group value, and a row can be aria-disabled yet reachable', () => {

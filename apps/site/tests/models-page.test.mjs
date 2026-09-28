@@ -1,29 +1,26 @@
 /**
- * /models AND THE LANDING'S "FROM OTHER MAKERS" ROW — WHAT THEY MAY CLAIM, AND HOW THEY LOOK.
+ * /models — THE ONE ENGINE (V3 gate G01) — WHAT IT MAY CLAIM, AND HOW IT LOOKS.
  *
- * The page lists models a young creator can pick. RESTATED for owner decision D-VISION-1, which
- * replaced the OpenRouter catalogue with the model registry and removed models on a customer's own
- * key. Four ways it can lie, each guarded below:
+ * The page used to list the model registry, other makers' models included. Apple is now the only
+ * engine, on every plan, so the page describes one engine. Four ways it can lie, each guarded below:
  *
- *   1. A MODEL THAT IS NOT ON OFFER. The rows must be exactly the registry's, in its order. This
- *      file reads the registry itself rather than the page's own helper, so a page that stopped
- *      asking — or asked something else — disagrees with it.
- *   2. A PRICE OR A PLAN IT DID NOT ASK FOR. Every other maker's row says the plan that includes it
- *      and its "×N credits" rate, both derived here from the registry's tier and multiplier.
+ *   1. AN ENGINE THAT IS NOT ON OFFER. What it names is exactly the registry's (Apple), read here from
+ *      the registry itself, and no retired model (MAX, Gemini, GPT-5.6, Luna) appears on it or on the
+ *      landing.
+ *   2. A PRICE OR A PLAN GATE. No row is "Included with" one plan and no "×N credits" rate is shown:
+ *      every plan uses Apple, and the page says so.
  *   3. A KEY OF YOUR OWN. That path is gone; nothing on /models or the landing may offer it.
  *   4. AN INSTALL PROMISE. The Studio plugin cannot be installed right now; nothing here may say it
  *      can while STUDIO_PLUGIN_STORE_LIVE is false.
  *
  * And the look: 4.5:1 text in both themes and no horizontal overflow at 320/390/768/1440, measured
- * in a real Chromium; the one blue focus ring, measured on a focused control; and the vendor icons
- * byte-identical to their NOTICE rows.
+ * in a real Chromium; the one blue focus ring, measured on a focused control.
  *
  * READS THE BUILT OUTPUT. Run `npx astro build` in apps/site first.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { dirname, extname, join, normalize, sep } from 'node:path';
@@ -49,85 +46,50 @@ function section(id) {
 
 // ------------------------------------------------------------------ the registry's facts
 
-const { MODEL_REGISTRY, TIER_PLAN_NAME } = await import('../../../packages/shared/src/models.ts');
-const OTHERS = MODEL_REGISTRY.filter((m) => m.vendor !== 'Apple');
+const { MODEL_REGISTRY, LEGACY_MODEL_IDS } = await import('../../../packages/shared/src/models.ts');
+const main = (h) => text(h.slice(h.indexOf('<main'), h.indexOf('</main>')));
+/** What a retired model was called on this site. "Max" alone is a plan's name, so only "Apple MAX". */
+const RETIRED = /Apple MAX|Gemini|GPT-5\.6|\bLuna\b|other makers|×\s?\d+(\.\d+)? credits/i;
 
-const idsIn = (s) => [...s.matchAll(/<li class="mrow"[^>]*data-model-id="([^"]+)"/g)].map((m) => m[1]);
-
-test('the build and the worker facts are both here, so nothing below is vacuous', () => {
+test('the build and the registry are both here, so nothing below is vacuous', () => {
   assert.ok(html, 'dist/models/index.html is missing — run `npx astro build` in apps/site first');
   assert.ok(landing, 'dist/index.html is missing — run `npx astro build` in apps/site first');
-  assert.ok(OTHERS.length >= 1, 'the registry has no model from another maker — the rows below would check nothing');
+  assert.deepEqual(MODEL_REGISTRY.map((m) => m.id), ['apple'], 'the registry is not the one engine');
+  assert.equal(LEGACY_MODEL_IDS.length, 4);
 });
 
-test('THE ROWS ARE THE REGISTRY: every other maker\'s model, in registry order, and nothing else', () => {
-  assert.deepEqual(idsIn(section('other-makers')), OTHERS.map((m) => m.id), 'the other-makers list is not the registry\'s');
-  const known = new Set(MODEL_REGISTRY.map((m) => m.id));
-  const invented = idsIn(html).filter((id) => !known.has(id));
-  assert.deepEqual(invented, [], `ids on /models that the registry does not have: ${invented.join(', ')}`);
-  for (const m of OTHERS) assert.ok(text(section('other-makers')).includes(m.displayName), `/models does not print ${m.id}'s name "${m.displayName}"`);
-});
-
-test('THE BUILT-IN MODELS ARE THE PRODUCT\'S OWN, named from @golem/shared', async () => {
-  // RESTATED for D-VISION-1: PRODUCT_MODEL_INFO is derived from the model registry now, so the
-  // names are read from the registry itself — Apple's own lanes, the ones built into Apple.
-  const { MODEL_REGISTRY } = await import('../../../packages/shared/src/models.ts');
-  const names = MODEL_REGISTRY.filter((m) => m.vendor === 'Apple').map((m) => m.displayName);
-  assert.ok(names.length >= 2, 'the Apple lanes were not found in the model registry');
+test('THE ENGINE IS THE REGISTRY\'S: Apple, named from @golem/shared, on every plan', () => {
   const built = text(section('built-in'));
-  for (const n of names) assert.ok(built.includes(n), `the built-in section does not name ${n}`);
-  assert.match(built, /Apple Credits/, 'the built-in section does not say what the built-in models spend');
+  for (const m of MODEL_REGISTRY) {
+    assert.ok(built.includes(m.displayName), `the page does not name ${m.displayName}`);
+    assert.ok(built.includes(m.blurb), `the page does not carry ${m.id}'s registry line`);
+  }
+  assert.match(built, /every plan/i, 'the page does not say every plan uses Apple');
+  assert.match(built, /Apple Credits/, 'the page does not say what a request spends');
+  assert.equal(html.includes('id="other-makers"'), false, '/models still has an other-makers section');
 });
 
-test('EVERY OTHER MAKER\'S ROW SAYS WHICH PLAN INCLUDES IT AND ITS CREDIT RATE, as the registry has them', () => {
-  const rows = [...section('other-makers').matchAll(/<li class="mrow"[\s\S]*?<\/li>/g)].map((m) => m[0]);
-  assert.equal(rows.length, OTHERS.length);
-  for (const m of OTHERS) {
-    const row = text(rows.find((r) => r.includes(`data-model-id="${m.id}"`)) ?? '');
-    if (m.tier === 'free') assert.match(row, /every plan/i, `${m.id} is free-tier and its row does not say every plan includes it`);
-    else assert.ok(row.includes(`Included with ${TIER_PLAN_NAME[m.tier]}`), `${m.id}'s row does not name the plan that includes it: ${row}`);
-    if (m.creditMultiplier > 1) assert.ok(row.endsWith(`×${m.creditMultiplier} credits`), `${m.id}'s row does not end on its ×${m.creditMultiplier} credits badge: ${row}`);
-    else assert.doesNotMatch(row, /×\d+ credits/, `${m.id} costs what Apple MAX costs and its row carries a badge`);
-  }
-  assert.match(text(section('other-makers')), /Apple Credits/, 'the section does not say these models use Apple Credits');
+test('NO RETIRED MODEL, TIER OR CREDIT RATE on /models or the landing (V3 G01)', () => {
+  assert.ok(main(html).length > 100 && main(landing).length > 200, 'no <main> to read');
+  assert.doesNotMatch(main(html), RETIRED, '/models names a retired model or a rate');
+  assert.doesNotMatch(main(landing), RETIRED, 'the landing names a retired model or a rate');
+  assert.doesNotMatch(main(html), /Included with (Builder|Studio)/, '/models gates the engine on a plan');
+  assert.equal(landing.includes('class="makers-strip"'), false, 'the landing still has the other-makers row');
 });
 
 test('NOTHING ON /models OR THE LANDING OFFERS A KEY OF YOUR OWN (D-VISION-1)', () => {
   const words = /own key|your key|bring your own|OpenRouter|\bBYOK\b|free for a limited time/i;
-  const main = (h) => text(h.slice(h.indexOf('<main'), h.indexOf('</main>')));
-  assert.ok(main(html).length > 200 && main(landing).length > 200, 'no <main> to read');
+  assert.ok(main(html).length > 100 && main(landing).length > 200, 'no <main> to read');
   assert.doesNotMatch(main(html), words, '/models still offers a key of your own');
   assert.doesNotMatch(main(landing), words, 'the landing still offers a key of your own');
 });
 
-test('NOTHING ON /models OR IN THE LANDING ROW SAYS THE PLUGIN CAN BE INSTALLED while the store is not live', () => {
+test('NOTHING ON /models SAYS THE PLUGIN CAN BE INSTALLED while the store is not live', () => {
   const live = /export const STUDIO_PLUGIN_STORE_LIVE:\s*boolean\s*=\s*true/.test(read('packages/shared/src/index.ts'));
   if (live) return;
-  const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
-  assert.ok(main.length > 1000, '/models has no <main> to read');
-  assert.doesNotMatch(text(main), /install|Creator Store|download the plugin/i, '/models promises an install');
-  const strip = /class="makers-strip"[\s\S]*?<\/ul>/.exec(landing)?.[0];
-  assert.ok(strip, 'the landing has no "From other makers" row');
-  assert.doesNotMatch(text(strip), /install|Creator Store/i, 'the landing row promises an install');
-  assert.match(strip, /href="\/models"/, 'the landing row does not lead to /models');
-});
-
-test('THE VENDOR ICONS ARE THE UPSTREAM BYTES THE NOTICE NAMES, and none carries active content', () => {
-  const dir = join(SITE, 'src', 'assets', 'model-logos');
-  const notice = readFileSync(join(dir, 'NOTICE'), 'utf8');
-  const rows = [...notice.matchAll(/^(\S+)\s+([0-9a-f]{64})\s+(https:\/\/\S+)$/gm)].map((m) => ({ file: m[1], sha: m[2], url: m[3] }));
-  const files = readdirSync(dir).filter((f) => f !== 'NOTICE');
-  assert.ok(rows.length >= 5 && files.includes('LICENSE'), 'NOTICE rows or LICENSE missing');
-  assert.deepEqual(rows.map((r) => r.file).sort(), files.sort(), 'a vendored file has no NOTICE row, or a row has no file');
-  for (const r of rows) {
-    const sha = createHash('sha256').update(readFileSync(join(dir, r.file))).digest('hex');
-    assert.equal(sha, r.sha, `${r.file} is not the bytes its NOTICE row records`);
-    assert.match(r.url, /^https:\/\/(cdn\.jsdelivr\.net\/npm\/|raw\.githubusercontent\.com\/)/, `${r.file} came from an unapproved host`);
-    if (r.file.endsWith('.svg')) {
-      assert.doesNotMatch(readFileSync(join(dir, r.file), 'utf8'), /<script|\son[a-z]+=|href=|<foreignObject/i, `${r.file} carries active content`);
-    }
-  }
-  assert.match(readFileSync(join(dir, 'LICENSE'), 'utf8'), /MIT License/, 'LICENSE is not the MIT text');
+  const body = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+  assert.ok(body.length > 500, '/models has no <main> to read');
+  assert.doesNotMatch(text(body), /install|Creator Store|download the plugin/i, '/models promises an install');
 });
 
 test('no id repeats on /models (an inlined icon\'s gradient ids included)', () => {
@@ -199,13 +161,13 @@ function overflowing(scope) {
   return out.slice(0, 8);
 }
 
-test('NO HORIZONTAL OVERFLOW at 320, 390, 768 and 1440, on /models and on the landing row', async () => {
+test('NO HORIZONTAL OVERFLOW at 320, 390, 768 and 1440, on /models', async () => {
   const bad = [];
   let measured = 0;
   await withPages(async (browser, base) => {
     for (const width of [320, 390, 768, 1440]) {
       const page = await (await browser.newContext({ viewport: { width, height: 900 } })).newPage();
-      for (const [route, scope] of [['/models/', 'main'], ['/', '.makers-strip']]) {
+      for (const [route, scope] of [['/models/', 'main']]) {
         await page.goto(base + route, { waitUntil: 'load' });
         const count = await page.evaluate((s) => document.querySelectorAll(s).length, scope);
         assert.ok(count > 0, `${route} has no ${scope} at ${width}px, so nothing was measured`);
@@ -214,7 +176,7 @@ test('NO HORIZONTAL OVERFLOW at 320, 390, 768 and 1440, on /models and on the la
       }
     }
   });
-  assert.equal(measured, 8);
+  assert.equal(measured, 4);
   assert.deepEqual(bad, [], bad.join('\n'));
 });
 
@@ -268,8 +230,8 @@ test('EVERY WORD ON /models CLEARS 4.5:1 against what is behind it, dark and lig
       await page.waitForTimeout(700);
       assert.equal(await page.evaluate(() => document.documentElement.getAttribute('data-theme')), theme);
       const { seen, bad } = await page.evaluate(lowContrast);
-      // RESTATED (D-VISION-1): the page is the registry now, a handful of rows rather than dozens,
-      // so the floor is derived from it — at least three runs per model plus the page's head.
+      // RESTATED (V3 G01): one engine now, so the floor is derived from the registry — at least
+      // three runs per engine plus the page's head.
       assert.ok(seen >= 3 * MODEL_REGISTRY.length + 5, `${theme}: only ${seen} text runs measured`);
       assert.deepEqual(bad, [], `${theme}: text below 4.5:1 on /models:\n  ${bad.join('\n  ')}`);
       await ctx.close();

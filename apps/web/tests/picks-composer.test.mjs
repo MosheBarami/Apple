@@ -1,7 +1,8 @@
 // THE OWNER'S COMPOSER PICKS ARE IN THE PRODUCT, NOT BESIDE IT.
 //
 // Each pick the composer lane used is listed with the file that carries it, the name it is cited by
-// there, and the line in the product surface (the composer, or the model picker) that mounts it.
+// there, and the line in the product surface (the composer) that mounts it. The model picker and its
+// two picks (motion--variants, ae-model-selector) went with V3 gate G01: Apple is the only engine.
 // Removing a mount, an import, or the hook that drives a behaviour turns this red. Comments are
 // stripped before a mount is looked for, so a comment that names a removed control does not count.
 import test from 'node:test';
@@ -12,12 +13,11 @@ const raw = (f) => readFileSync(new URL(`../src/components/${f}`, import.meta.ur
 const code = (f) => raw(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\s*\/\/[^\n]*\n/g, '{\n');
 
 const COMPOSER = code('ws/composer.tsx');
-const PICKER = code('ws/model-picker.tsx');
 
 /** [pick id, file under components/, the name the file cites it by, [surface source, mount]...] */
 const PICKS = [
   ['animate-ui--button', 'picks/composer/press-fx.ts', /Animate UI "Button"/, [[COMPOSER, /usePressFx\(panel\)/], [COMPOSER, /data-fx="press squish ripple spotlight lift"/]]],
-  ['animate-ui--ripple-button', 'picks/composer/press-fx.ts', /Animate UI "Ripple/, [[COMPOSER, /data-fx="press ripple"/], [PICKER, /data-fx="press ripple"/]]],
+  ['animate-ui--ripple-button', 'picks/composer/press-fx.ts', /Animate UI "Ripple/, [[COMPOSER, /data-fx="press ripple"/]]],
   ['motion--hover', 'picks/composer/press-fx.ts', /Motion "Hover"/, [[COMPOSER, /data-fx="[^"]*\blift\b[^"]*"/]]],
   ['motion--press', 'picks/composer/press-fx.ts', /Motion "Press"/, [[COMPOSER, /data-fx="[^"]*\bsquish\b[^"]*"/]]],
   ['ui-layouts--button-background-spotlight', 'picks/composer/press-fx.ts', /UI Layouts "Button Background Spotlight"/, [[COMPOSER, /data-fx="[^"]*\bspotlight\b[^"]*"/]]],
@@ -28,7 +28,7 @@ const PICKS = [
   ['gsap--cssplugin', 'picks/composer/composer-fx.css', /GSAP "CSSPlugin"/, [[COMPOSER, /import '\.\.\/picks\/composer\/composer-fx\.css'/]]],
   ['motion--create-button', 'picks/composer/composer-fx.css', /Motion "Create Button"/, [[COMPOSER, /className="gx-menu gx-menu--create"/]]],
   ['motion--radix-toggle-group', 'picks/composer/mode-switch.tsx', /Motion "Radix: Toggle Group"/, [[COMPOSER, /<ModeSwitch mode=\{mode\} onModeChange=\{onModeChange\} \/>/]]],
-  ['animate-ui--highlight', 'picks/composer/sliding-highlight.ts', /Animate UI/, [[COMPOSER, /<ModeSwitch /], [PICKER, /<ModelListHighlight \/>/]]],
+  ['animate-ui--highlight', 'picks/composer/sliding-highlight.ts', /Animate UI/, [[COMPOSER, /<ModeSwitch /]]],
   ['motion--radix-tooltip', 'picks/composer/tip-group.tsx', /Motion's "Radix/, [[COMPOSER, /<TipGroup rootRef=\{panel\} \/>/], [COMPOSER, /data-tip=/]]],
   ['reactbits--border-glow', 'picks/composer/border-glow.tsx', /React Bits/, [[COMPOSER, /<BorderGlow hostRef=\{panel\} \/>/]]],
   ['animate-ui--typing-text', 'picks/composer/typing-placeholder.tsx', /Animate UI "Typing Text"/, [[COMPOSER, /<TypingPlaceholder\b/]]],
@@ -45,13 +45,11 @@ const PICKS = [
   ['reactbits--voice-pill', 'picks/composer/voice-input.tsx', /React Bits "Voice Pill"/, [[COMPOSER, /<VoiceInput\b/]]],
   ['ae-transcription', 'picks/composer/voice-input.tsx', /AI Elements "transcription"/, [[COMPOSER, /<VoiceInput\b/], [code('picks/composer/voice-input.tsx'), /className="pk-transcript" aria-live="polite"/]]],
   ['ae-mic-selector', 'picks/composer/voice-input.tsx', /AI Elements "mic-selector"/, [[COMPOSER, /<VoiceInput\b/], [code('picks/composer/voice-input.tsx'), /aria-label="Choose a microphone"/]]],
-  ['motion--variants', 'picks/composer/model-list-fx.css', /Motion "Variants"/, [[PICKER, /style=\{\{ \['--i' as string\]: i \}\}/], [code('picks/composer/model-list-fx.tsx'), /import '\.\/model-list-fx\.css'/]]],
-  ['ae-model-selector', 'ws/model-picker.tsx', /ModelSelector/, [[PICKER, /from '\.\.\/ai-elements\/model-selector'/], [COMPOSER, /const ModelPicker = lazy\(\(\) => import\('\.\/model-picker'\)\)/]]],
   ['ae-prompt-input-select-hovercard-tabs-command-actionaddscreenshot', 'ai-elements/prompt-input.tsx', /PromptInput/, [[COMPOSER, /<PromptInput\b/], [COMPOSER, /from '\.\.\/ai-elements\/prompt-input'/]]],
 ];
 
 test('the lane list is not empty and names each pick once', () => {
-  assert.ok(PICKS.length >= 30);
+  assert.ok(PICKS.length >= 29);
   assert.equal(new Set(PICKS.map(([id]) => id)).size, PICKS.length);
 });
 
@@ -72,7 +70,6 @@ test('every pick component the composer draws is imported from its own file', ()
   ]) {
     assert.match(COMPOSER, new RegExp(`import \\{ ${name} \\} from '\\.\\./picks/composer/${file}'`), `${name} is not imported`);
   }
-  assert.match(PICKER, /import \{ ModelListHighlight \} from '\.\.\/picks\/composer\/model-list-fx'/);
 });
 
 test('the sheet the composer imports holds the behaviours it claims', () => {

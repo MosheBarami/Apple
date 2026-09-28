@@ -36,7 +36,7 @@ test.after(() => rmSync(TMP, { recursive: true, force: true }));
 const TOOLS_CHARS = 70_000; // the order of the full tool-definition payload
 const agent = B.DEFAULT_MODELS.agent;
 
-test('a full Apple MAX step at the budget is admitted by the gateway\'s own estimate and cap', () => {
+test('a full Apple step at the budget is admitted by the gateway\'s own estimate and cap', () => {
   const b = B.promptBudgetForKey('agent', TOOLS_CHARS);
   const priced = B.modelById(agent.id);
   assert.ok(priced, 'the agent model is priced in the catalogue');
@@ -44,7 +44,7 @@ test('a full Apple MAX step at the budget is admitted by the gateway\'s own esti
   assert.ok(estimate <= B.maxNeuronsPerStepFor(agent.id), `estimate ${estimate} over the per-step cap`);
 });
 
-test('the Apple MAX budget uses the room the gate allows, not a window-blind constant', () => {
+test('the Apple budget uses the room the gate allows, not a window-blind constant', () => {
   const b = B.promptBudgetForKey('agent', TOOLS_CHARS);
   // Round 4 was cut at 60,000 while the gate would have admitted about twice that.
   assert.ok(b.maxChars > 60_000, `budget ${b.maxChars}`);

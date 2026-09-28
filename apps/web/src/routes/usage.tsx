@@ -63,7 +63,7 @@ import { LiveStats } from '../components/picks/settings/live-stats';
 import { GlideIndicator } from '../components/picks/settings/glide-indicator';
 import '../components/picks/settings/account-buttons.css';
 
-// Product model selection is a separate axis from whether a request is Plan or Agent.
+// The one engine (V3 gate G01): every plan uses Apple; plans differ only in their allowance.
 const MODELS = PRODUCT_MODELS;
 
 const RUN_MODE_COMPARISON = [
@@ -859,9 +859,9 @@ export function UsagePage() {
             <ul className="mode-cost-list">
               {MODELS.map((m) => (
                 <li key={m} className="mode-cost">
-                  <ModelMark variant={m === 'apple' ? 'apple' : 'max'} />
-                  <span className="mode-cost-name">{m === 'apple-max' ? <>Apple <span className="apple-max-name">MAX</span></> : PRODUCT_MODEL_INFO[m].name}: </span>
-                  <span className="mode-cost-blurb">{m === 'apple' ? 'Limited daily use on the free tier.' : 'Available with a paid subscription.'}</span>
+                  <ModelMark variant="apple" />
+                  <span className="mode-cost-name">{PRODUCT_MODEL_INFO[m].name}: </span>
+                  <span className="mode-cost-blurb">{PRODUCT_MODEL_INFO[m].blurb} Every plan uses it.</span>
                 </li>
               ))}
             </ul>

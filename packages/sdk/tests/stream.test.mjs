@@ -259,11 +259,11 @@ test('a terminal refusal ends the SDK run while an informational error does not'
   assert.equal(info.error, 'role changed');
 
   const refused = applyServerMsg(initial, {
-    type: 'error', code: 'product_model_unavailable', message: 'MAX unavailable', terminal: true,
+    type: 'error', code: 'quota', message: 'Daily Credits are used up.', terminal: true,
   });
   assert.equal(refused.done, true);
   assert.equal(refused.stopReason, 'error');
-  assert.equal(refused.error, 'MAX unavailable');
+  assert.equal(refused.error, 'Daily Credits are used up.');
 });
 
 test('a FLAPPING connection backs off further each time, and does not reset on open', () => {

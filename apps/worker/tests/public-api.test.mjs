@@ -554,11 +554,11 @@ test('the model id is looked up on the table itself, not through Object.prototyp
 });
 
 test('a foundation-model id is refused by name rather than silently aliased', () => {
-  // RESTATED for D-VISION-1. The outside models are now the product's to offer, by their REGISTRY
-  // id (`gpt-5.6-luna` is one); what stays refused is every PROVIDER id — the registry's own
-  // provider ids included — and every model the product does not offer.
+  // RESTATED for V3 G01. The API serves one engine, Apple, as `apple-chat`; the retired product ids
+  // are bridged to it (below). What stays refused is every PROVIDER id, the registry's own
+  // included, and every model the product never offered.
   const providerIds = S.MODEL_REGISTRY.map((m) => m.providerModelId);
-  assert.ok(providerIds.length >= 5);
+  assert.ok(providerIds.length >= 1);
   for (const id of ['gpt-4o', 'gemini-3.7-flash', 'deepseek-v4', '@cf/openai/gpt-oss-120b', ...providerIds]) {
     const r = P.parseChatCompletionRequest({ model: id, messages: [{ role: 'user', content: 'x' }] });
     assert.equal(r.ok, false, `${id} was accepted as a model`);
@@ -566,20 +566,16 @@ test('a foundation-model id is refused by name rather than silently aliased', ()
   }
 });
 
-test('the public model list is the registry: every model reachable by one id, each on a real gateway key', () => {
-  const byProduct = new Map();
-  for (const [id, m] of Object.entries(P.PUBLIC_MODELS)) {
-    assert.ok(Object.hasOwn(GW.DEFAULT_MODELS, m.internal), `${id} routes to '${m.internal}', which the gateway does not configure`);
-    if (m.productModel) byProduct.set(m.productModel, [...(byProduct.get(m.productModel) ?? []), id]);
-  }
-  for (const m of S.MODEL_REGISTRY) assert.equal(byProduct.get(m.id)?.length, 1, `${m.id} is reachable by ${byProduct.get(m.id)?.length ?? 0} public ids`);
-  assert.equal(byProduct.size, S.MODEL_REGISTRY.length, 'a public id names a model the registry does not have');
-  // `apple-chat` is Apple's published id and keeps working; it is not renamed to the registry id.
-  assert.equal(P.PUBLIC_MODELS['apple-chat']?.productModel, 'apple');
-  // An outside model runs under its OWN gateway key, never a mode key that would put it on GLM.
-  for (const m of S.MODEL_REGISTRY.filter((x) => x.route === 'unified-billing')) {
-    assert.equal(GW.DEFAULT_MODELS[P.PUBLIC_MODELS[m.id].internal].id, m.providerModelId, m.id);
-  }
+test('the public model list is one engine: Apple as apple-chat, on the gateway key that runs GLM', () => {
+  // `apple-plan` is the read-only planner MODE on the same engine, not a second model.
+  assert.deepEqual(Object.values(P.PUBLIC_MODELS).filter((m) => m.productModel).length, 1);
+  assert.equal(P.PUBLIC_MODELS['apple-plan'].internal, 'plan');
+  const apple = P.PUBLIC_MODELS['apple-chat'];
+  assert.equal(apple.productModel, 'apple');
+  assert.ok(Object.hasOwn(GW.DEFAULT_MODELS, apple.internal), `apple-chat routes to '${apple.internal}', which the gateway does not configure`);
+  assert.equal(GW.DEFAULT_MODELS[apple.internal].id, S.registryModel('apple').providerModelId);
+  // No retired id is published; each is only accepted, through the bridge.
+  for (const id of S.LEGACY_MODEL_IDS) assert.equal(Object.hasOwn(P.PUBLIC_MODELS, id), false, id);
 });
 
 test('the request parser refuses the shapes this surface cannot honour', () => {
@@ -880,104 +876,60 @@ test('a live key returns an OpenAI-shaped completion with usage and rate-limit h
   assert.ok(bundle.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), 'a live call did not spend Credits');
 });
 
-test('Apple MAX is refused for a free account before quota spend or provider work', async () => {
-  const bundle = makeEnv();
-  const key = await seedKey(bundle, { scopes: ['chat:write'] });
-  const r = await call('/v1/chat/completions', {
-    method: 'POST', key: key.key, env: bundle.env,
-    body: { model: 'apple-max', messages: [{ role: 'user', content: 'build a tower' }] },
-  });
-  assert.equal(r.status, 403);
-  assert.equal(r.json.error.code, 'model_not_entitled');
-  assert.equal(bundle.trace.ai.length, 0, 'an unentitled MAX request reached the provider');
-  assert.equal(bundle.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), false, 'MAX was charged before entitlement');
-  assert.equal(bundle.trace.calls.some((c) => c.ns === 'BUDGET_DO'), false, 'MAX reserved budget before entitlement');
-});
-
-test('every paid model is refused below its tier on both public routes, before spend, in the picker\'s words', async () => {
-  const BELOW = { pro: 'free', max: 'builder' };
-  const paid = S.MODEL_REGISTRY.filter((m) => m.tier !== 'free');
-  assert.ok(paid.length >= 4);
-  for (const m of paid) {
-    const plan = BELOW[m.tier];
-    const quota = async ({ path }) => (path === '/state' ? { ...QUOTA_STATE, plan } : { ok: true, state: { ...QUOTA_STATE, plan } });
-    const publicId = Object.entries(P.PUBLIC_MODELS).find(([, v]) => v.productModel === m.id)[0];
-
-    const chat = makeEnv({ quota });
-    const ck = await seedKey(chat, { scopes: ['chat:write'] });
-    const r = await call('/v1/chat/completions', { method: 'POST', key: ck.key, env: chat.env, body: { model: publicId, messages: [{ role: 'user', content: 'hi' }] } });
-    assert.equal(r.status, 403, `${m.id} on ${plan}`);
-    assert.equal(r.json.error.code, 'model_not_entitled');
-    assert.equal(r.json.error.message, S.modelRefusal(m.id));
-    assert.match(r.json.error.message, new RegExp(`^${m.displayName.replace(/[.]/g, '\\.')} is included with `));
-    assert.equal(chat.trace.ai.length, 0, `${m.id} reached the provider`);
-    assert.equal(chat.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), false, `${m.id} was charged`);
-
-    const run = makeEnv({ quota });
-    const rk = await seedKey(run, { scopes: ['runs:write'], projects: GRANTED });
-    const rr = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: rk.key, env: run.env, body: { input: 'x', mode: 'agent', productModel: m.id } });
-    assert.equal(rr.status, 403, `${m.id} run on ${plan}`);
-    assert.equal(rr.json.error.message, S.modelRefusal(m.id));
+test('a retired model id is served by Apple on a free account and answered as apple-chat (V3 G01 bridge)', async () => {
+  for (const id of S.LEGACY_MODEL_IDS) {
+    const bundle = makeEnv({ aiText: 'A stone plaza.' });
+    const key = await seedKey(bundle, { scopes: ['chat:write'] });
+    const r = await call('/v1/chat/completions', {
+      method: 'POST', key: key.key, env: bundle.env,
+      body: { model: id, messages: [{ role: 'user', content: 'build a tower' }] },
+    });
+    assert.equal(r.status, 200, `${id}: ${r.text.slice(0, 200)}`);
+    assert.equal(r.json.model, 'apple-chat', `${id} was not answered as what actually ran`);
+    assert.equal(bundle.trace.ai.length, 1, `${id} did not run`);
+    assert.ok(bundle.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), `${id} did not spend Credits`);
   }
 });
 
-test('an unknown productModel on a run is refused with the registry ids listed', async () => {
-  const bundle = makeEnv();
-  const key = await seedKey(bundle, { scopes: ['runs:write'], projects: GRANTED });
-  const r = await call(`/v1/projects/${PROJECT_ID}/runs`, { method: 'POST', key: key.key, env: bundle.env, body: { input: 'x', productModel: 'gpt-4o' } });
-  assert.equal(r.status, 400);
-  for (const m of S.MODEL_REGISTRY) assert.ok(r.json.error.message.includes(m.id), `${m.id} missing from: ${r.json.error.message}`);
+test('the public parser answers every retired id as apple-chat, run as Apple', () => {
+  const apple = P.parseChatCompletionRequest({ model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] });
+  assert.equal(apple.ok, true);
+  assert.equal(apple.value.productModel, 'apple');
+  for (const id of S.LEGACY_MODEL_IDS) {
+    const r = P.parseChatCompletionRequest({ model: id, messages: [{ role: 'user', content: 'hi' }] });
+    assert.equal(r.ok, true, `${id} was refused`);
+    assert.equal(r.value.publicModel, 'apple-chat', id);
+    assert.equal(r.value.internalModel, apple.value.internalModel, id);
+    assert.equal(r.value.productModel, 'apple', id);
+  }
 });
 
-test('GET /api/models lists the registry in order, marked for the caller\'s own plan, and fails closed', async () => {
-  for (const [plan, status] of [['free', 200], ['builder', 200], ['studio', 200], ['studio', 503]]) {
-    const bundle = makeEnv({
-      quota: async ({ path }) => {
-        if (status !== 200) throw new Error('quota unavailable');
-        return path === '/state' ? { ...QUOTA_STATE, plan } : { ok: true };
-      },
-    });
-    const r = await call('/api/models', { jwt: OWNER_JWT, env: bundle.env });
-    assert.equal(r.status, 200, r.text.slice(0, 200));
-    const effective = status === 200 ? plan : undefined;
-    assert.deepEqual(r.json.models.map((x) => x.id), S.MODEL_REGISTRY.map((x) => x.id));
-    for (const row of r.json.models) {
-      assert.equal(row.available, S.canUseModel(row.id, effective), `${row.id} on ${plan}/${status}`);
-      assert.equal(row.lockedReason, row.available ? '' : S.lockedReason(row.id));
-      assert.equal(row.creditMultiplier, S.registryModel(row.id).creditMultiplier);
-      assert.equal('providerModelId' in row, false, 'the provider id is not published to the browser');
+test('any productModel on a run, retired or unknown, runs as Apple on every plan', async () => {
+  for (const plan of ['free', 'builder']) {
+    for (const productModel of ['apple', ...S.LEGACY_MODEL_IDS, 'gpt-4o']) {
+      const seen = [];
+      const bundle = makeEnv({
+        quota: async ({ path }) => (path === '/state' ? { ...QUOTA_STATE, plan } : { ok: true, state: { ...QUOTA_STATE, plan } }),
+        session: async ({ path, body }) => {
+          if (path === '/agent-run') seen.push(body);
+          return { ok: true, started: true };
+        },
+      });
+      const key = await seedKey(bundle, { scopes: ['runs:write'], projects: GRANTED });
+      const r = await call(`/v1/projects/${PROJECT_ID}/runs`, {
+        method: 'POST', key: key.key, env: bundle.env,
+        body: { input: 'build a tower', mode: 'agent', productModel },
+      });
+      assert.equal(r.status, 202, `${productModel} on ${plan}: ${r.text.slice(0, 300)}`);
+      assert.equal(r.json.productModel, 'apple');
+      assert.deepEqual(seen, [{ text: 'build a tower', mode: 'agent', autonomous: false, productModel: 'apple' }]);
     }
   }
-  assert.equal((await call('/api/models', { env: makeEnv().env })).status, 401);
 });
 
-test('a paid account may use Apple MAX while the request remains model-labelled', async () => {
-  const seen = [];
-  const bundle = makeEnv({
-    quota: async ({ path }) => (path === '/state' ? { ...QUOTA_STATE, plan: 'builder' } : { ok: true, state: { ...QUOTA_STATE, plan: 'builder' } }),
-    session: async ({ path, body }) => {
-      if (path === '/agent-run') seen.push(body);
-      return { ok: true, started: true };
-    },
-  });
-  const key = await seedKey(bundle, { scopes: ['runs:write'], projects: GRANTED });
-  const r = await call(`/v1/projects/${PROJECT_ID}/runs`, {
-    method: 'POST', key: key.key, env: bundle.env,
-    body: { input: 'build a tower', mode: 'agent', productModel: 'apple-max' },
-  });
-  assert.equal(r.status, 202, r.text.slice(0, 300));
-  assert.equal(r.json.productModel, 'apple-max');
-  assert.deepEqual(seen, [{ text: 'build a tower', mode: 'agent', autonomous: false, productModel: 'apple-max' }]);
-});
-
-test('the public parser maps each public model to its independent product selector', () => {
-  const apple = P.parseChatCompletionRequest({ model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] });
-  const max = P.parseChatCompletionRequest({ model: 'apple-max', messages: [{ role: 'user', content: 'hi' }] });
-  assert.equal(apple.ok, true);
-  assert.equal(max.ok, true);
-  assert.equal(apple.value.productModel, 'apple');
-  assert.equal(max.value.productModel, 'apple-max');
-  assert.equal(P.parseChatCompletionRequest({ model: 'apple-plan', messages: [{ role: 'user', content: 'hi' }] }).value.productModel, undefined);
+test('GET /api/models is gone: there is no model list to pick from', async () => {
+  const r = await call('/api/models', { jwt: OWNER_JWT, env: makeEnv().env });
+  assert.notEqual(r.status, 200, r.text.slice(0, 200));
 });
 
 test('a run that ends in a tool call is an error, not an empty completion', async () => {

@@ -186,7 +186,6 @@ div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; 
 .gx-menu__main { display:grid; flex:1; min-width:0; gap:2px; }
 .gx-menu__name { color:var(--ink); font-size:13px; line-height:18px; }
 .gx-menu__sub { color:var(--muted); font-size:12px; line-height:17px; }
-.gx-menu__badge { margin-inline-start:6px; padding:1px 5px; border:1px solid var(--line); border-radius:var(--r-xs); color:var(--faint); font-size:9.5px; letter-spacing:.06em; vertical-align:1px; }
 .ai-menu.gx-menu .gx-menu__section { padding-top:6px; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; }
 /* A model row that cannot be had: said in the row's own ink, and still reachable. */
 .ai-menu.gx-menu .gx-menu__item.is-unavailable .gx-menu__name { color:var(--muted); }
@@ -209,9 +208,8 @@ div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; 
   /* WRAP, NEVER HIDE. A row that scrolls sideways puts Create (or the Studio chip) off the edge with
      nothing to say it is there; a second line is honest and still one gesture away. */
   .gx-composer .gx-composer__bar .gx-composer__options { flex-wrap:wrap; row-gap:4px; overflow:visible; }
-  /* The model and Create chips keep their mark and their menu; the name is in the menu and in the
-     chip's accessible label (and a chosen creation intent still tints the chip and has its note). */
-  .gx-composer .gx-composer__bar .gx-chip--model .gx-chip__label,
+  /* The Create chip keeps its mark and its menu; the name is in the menu and in the chip's
+     accessible label (and a chosen creation intent still tints the chip and has its note). */
   .gx-composer .gx-composer__bar .gx-chip--create .gx-chip__label,
   .gx-composer .gx-composer__bar .gx-chip .gx-chip__caret { display:none; }
   .gx-composer .gx-composer__bar .gx-chip,.gx-composer .gx-composer__bar .gx-autonomous { padding-inline:7px; }

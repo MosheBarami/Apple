@@ -21,11 +21,12 @@ const lineCount = (p) => { const s = readText(p); return s == null ? null : s.sp
 async function registry() {
   const file = R('packages/shared/src/models.ts');
   const m = await import(`${pathToFileURL(file).href}?v=${statOf(file)?.mtimeMs}`);
-  const plans = Object.keys(m.TIER_FOR_PLAN);
+  // One engine on every plan (V3 gate G01): there is no tier table and nothing is locked.
+  const plans = ['free', 'builder', 'studio', 'enterprise'];
   return {
     source: 'packages/shared/src/models.ts',
-    models: m.MODEL_REGISTRY.map((x) => ({ ...x, lora: x.lora ?? null, plans: plans.filter((p) => m.canUseModel(x.id, p)), locked: m.lockedReason(x.id) })),
-    tierForPlan: m.TIER_FOR_PLAN,
+    models: m.MODEL_REGISTRY.map((x) => ({ ...x, lora: null, plans, locked: '' })),
+    tierForPlan: null,
   };
 }
 

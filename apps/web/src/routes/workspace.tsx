@@ -8,7 +8,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { PRODUCT_MODES, bestEntitledModel, canUseProductModel, modelRefusal, type ProductMode, type ProductModel } from '@golem/shared';
+import { PRODUCT_MODES, type ProductMode, type ProductModel } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
@@ -32,10 +32,7 @@ import { MembersPanel } from '../components/ws/members-panel';
 import {
   ApiError,
   downloadExport,
-  fetchMe,
-  fetchBillingConfig,
   fetchMembers,
-  fetchModels,
   fetchProjectAccess,
   // Renamed at the import rather than in the module: `rebindPlace` is already the name of the
   // handler below, and shadowing the client with the callback that calls it is how a later edit
@@ -61,8 +58,6 @@ import { StudioActivity } from '../components/ws/studio-activity';
 import { ChatWelcome } from '../components/ws/chat-welcome';
 import { EmptyState } from '../components/empty-state';
 import { Spinner } from '../components/loading';
-import { maxUpgradeAvailable } from '../lib/creation-intent';
-import { readModelChoice, saveModelChoice } from '../lib/model-choice';
 
 // The credits drawer's panel, loaded the first time the drawer opens (see the drawer below).
 const CreditsPanel = lazy(() => import('../components/ws/credits-panel').then((m) => ({ default: m.CreditsPanel })));
@@ -195,17 +190,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   // permissions and lets a run take up to 1000 steps; measured 2026-09-22, single ordinary requests
   // cost 105-450 Credits against a 100-Credit free day. Nobody should start that without choosing to.
   const [autonomous, setAutonomous] = useState(false);
-  //[[ THE MODEL (D-VISION-1): a registry id. Starts on Apple, then — once the account is read —
-  //   becomes the last choice this person made on this device, or the best model their plan still
-  //   includes if that choice has since been locked (see the effect beside `userId` below). ]]
-  const [productModel, setProductModel] = useState<ProductModel>('apple');
-  const account = useQuery({ queryKey: ['me'], queryFn: fetchMe, staleTime: 60_000, retry: 1 });
-  const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, staleTime: 60_000, retry: false });
-  const modelPlan = account.data?.quota.plan;
-  // The registry marked for this plan. Keyed by the plan, so an upgrade re-reads it; a failed read
-  // is not retried into the person's face — the picker marks the same registry with the plan.
-  const modelList = useQuery({ queryKey: ['models', modelPlan ?? null], queryFn: fetchModels, staleTime: 5 * 60_000, retry: false });
-  const modelAllowed = canUseProductModel(productModel, modelPlan);
+  // One engine (V3 gate G01): every message is sent as Apple, on every plan.
+  const productModel: ProductModel = 'apple';
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
   // Kept beside the label rather than inside the form element so clearing both after a save is one
@@ -396,23 +382,6 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   // The resolved policy — org, user and project already layered by the server. Re-deriving the
   // precedence here would be a second implementation of it, and the two would diverge.
   const userId = session?.user.id ?? '';
-  //[[ THE REMEMBERED CHOICE AND THE DOWNGRADE FALLBACK, both through `bestEntitledModel`. Waits for
-  //   the account: before it is read the plan is unknown, and falling back then would move every
-  //   paying person off their model on every page load. The first pass for an account restores
-  //   what this device remembers; every later pass (the plan changed) only falls back. The fallback
-  //   is not saved, so the remembered choice comes back if the plan does. ]]
-  const restoredFor = useRef<string | null>(null);
-  useEffect(() => {
-    if (!userId || !account.data) return;
-    const first = restoredFor.current !== userId;
-    restoredFor.current = userId;
-    const remembered = first ? readModelChoice(userId) : null;
-    setProductModel((current) => bestEntitledModel(modelPlan, remembered ?? current));
-  }, [userId, account.data, modelPlan]);
-  const chooseProductModel = useCallback((model: ProductModel) => {
-    setProductModel(model);
-    saveModelChoice(userId, model);
-  }, [userId]);
   //[[ NAMES FOR THE PEOPLE WHO TOOK THE CHECKPOINTS.
   //
   //   Asked only while the checkpoints drawer is open. The roster rather than presence: a
@@ -467,11 +436,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
    * that is the edit path, which asks first.
    */
   const retryLast = useCallback(() => {
-    if (running || !modelAllowed || !chatAllowed) return;
+    if (running || !chatAllowed) return;
     const lastUser = [...messages].reverse().find((m) => m.role === 'user');
     if (!lastUser) return;
     editAndResend(lastUser.id, lastUser.content, mode, productModel, autonomous);
-  }, [messages, running, editAndResend, mode, productModel, autonomous, modelAllowed, chatAllowed]);
+  }, [messages, running, editAndResend, mode, productModel, autonomous, chatAllowed]);
 
   // Which of my own messages is being edited, if any.
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
@@ -756,10 +725,6 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   const send = (text: string, attachments: ChatAttachment[] = []): boolean => {
     if (!chatAllowed) {
       toast(`${chatWhy ?? 'You cannot send messages in this project.'} Your draft is kept.`, 'error');
-      return false;
-    }
-    if (!modelAllowed) {
-      toast(`${modelRefusal(productModel)} Your draft is kept.`, 'error');
       return false;
     }
     // Sending re-arms following: you have just added to the conversation, so you want to watch it.
@@ -1174,11 +1139,6 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           onNotice={(m) => toast(m, 'error')}
           running={running}
           disabled={conn !== 'open' || !chatAllowed}
-          productModel={productModel}
-          modelPlan={modelPlan}
-          maxUpgradeAvailable={maxUpgradeAvailable(billing.data)}
-          onModelChange={chooseProductModel}
-          models={modelList.data?.models ?? null}
           mode={mode}
           onModeChange={(next) => {
             setMode(next);
@@ -1186,7 +1146,6 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           }}
           autonomous={autonomous}
           onAutonomousChange={setAutonomous}
-          onUpgrade={() => navigate('/usage')}
           seed={seed}
           selection={studio.selection}
           // The other faces in this project read "is typing" off this. The frame has been in the
@@ -1327,10 +1286,6 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           onConfirm={(text) => {
             if (!chatAllowed) {
               toast(`${chatWhy ?? 'You cannot edit messages in this project.'} Your edit is kept.`, 'error');
-              return;
-            }
-            if (!modelAllowed) {
-              toast(`${modelRefusal(productModel)} Your edit is kept.`, 'error');
               return;
             }
             editAndResend(editing.id, text, mode, productModel, autonomous);

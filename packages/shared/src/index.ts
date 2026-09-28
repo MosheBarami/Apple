@@ -1,7 +1,7 @@
 // @golem/shared — wire protocol + domain types shared by worker, web app, evals.
 // The Studio plugin (Luau) mirrors these shapes; apps/plugin/src/Protocol.luau documents the mapping.
 
-import { MODEL_IDS, MODEL_REGISTRY, canUseModel, type ModelId } from './models.ts';
+import { MODEL_IDS, MODEL_REGISTRY, type ModelId } from './models.ts';
 
 // ---------------------------------------------------------------------------
 // Studio op protocol: commands the agent sends to the Studio plugin.
@@ -710,16 +710,14 @@ export interface PluginPollResponse {
 export type ProductMode = 'plan' | 'agent';
 
 /**
- * The user-facing model selector. This is deliberately separate from `ProductMode`: one chooses
- * Plan or Agent behavior, while this value is the model selected for a new request.
- *
- * DERIVED FROM THE MODEL REGISTRY (./models.ts, D-VISION-1). The name is kept because it is the
- * wire field (`productModel`) and a hundred call sites; the values are the registry's ids, so a
- * model added there is a model everywhere this type reaches.
+ * The engine a request ran on, deliberately separate from `ProductMode` (Plan or Agent behaviour).
+ * There is one, Apple (./models.ts, V3 gate G01); the name is kept because `productModel` is a wire
+ * field. Values from older clients and stored rows are normalized
+ * to Apple by `normalizeModelId`, never refused.
  */
 export type ProductModel = ModelId;
 
-/** The models the current product picker may offer, in display order. */
+/** The customer engines, in display order: Apple alone. */
 export const PRODUCT_MODELS: readonly ProductModel[] = MODEL_IDS;
 
 export const PRODUCT_MODEL_INFO: Record<ProductModel, { name: string; blurb: string }> = Object.fromEntries(
@@ -2148,17 +2146,6 @@ export function isPlanId(v: unknown): v is PlanId {
   return typeof v === 'string' && (PLAN_IDS as string[]).includes(v);
 }
 
-/**
- * Whether an account may select a product model right now.
- *
- * The older name for `canUseModel` (./models.ts), kept so every caller that already asks this
- * question keeps asking the one rule. Apple is the free lane and needs no subscription record;
- * every other model is refused for an absent, malformed or unknown plan, just like Free.
- */
-export function canUseProductModel(model: unknown, plan?: string): boolean {
-  return canUseModel(model, plan);
-}
-
 export interface PlanCopy {
   id: PlanId;
   name: string;
@@ -2242,7 +2229,7 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
     //   thing that does not exist is the defect; a shorter honest card is not. ]]
     highlights: ['About 5× the Free allowance', 'Buy credits when you need more', 'Everything in Free'],
   },
-  // Likewise `studio` is shown as "Max". Copy that names it beside Apple MAX says "the Max plan".
+  // Likewise `studio` is shown as "Max".
   studio: {
     id: 'studio',
     name: 'Max',
@@ -2434,14 +2421,6 @@ function everyPlan<T>(f: (plan: PlanId) => T): Record<PlanId, T> {
 }
 
 export const PLAN_FEATURES: readonly PlanFeature[] = [
-  // One row per model a plan can be refused, from the registry and asked of the same rule the
-  // worker enforces. A model every plan includes (Apple) is not a row: it cannot differ by plan.
-  ...MODEL_REGISTRY.filter((m) => m.tier !== 'free').map((m, i): PlanFeature => ({
-    id: m.id,
-    label: m.displayName,
-    ...(i === 0 ? { note: 'Model access is separate from the work mode.' } : {}),
-    values: everyPlan((p) => canUseModel(m.id, p)),
-  })),
   {
     id: 'price',
     label: 'Price',

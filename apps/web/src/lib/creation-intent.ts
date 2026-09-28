@@ -6,12 +6,6 @@ export function maxUpgradeAvailable(config?: { checkout: boolean; purchasable: r
   return config.checkout && config.purchasable.some((plan) => plan === 'builder' || plan === 'studio');
 }
 
-export function maxAccessNotice(available: boolean | null): string {
-  return available === false
-    ? 'Apple MAX is required. Paid subscriptions are not available yet. Your draft is kept.'
-    : 'Apple MAX is required. Subscription availability could not be confirmed. Check Usage and Credits; your draft is kept.';
-}
-
 export const CREATION_INTENTS = {
   build: { label: 'Build', placeholder: 'Describe the world you want to make.', note: '' },
   image: {

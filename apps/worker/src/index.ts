@@ -305,7 +305,7 @@ import {
 } from './public-api';
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
 import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@golem/shared';
-import { canUseProductModel, isModelId, isPlanId, MODEL_IDS, modelListing, modelRefusal, PRICE_CURRENCY, type ProductModel } from '@golem/shared';
+import { isPlanId, normalizeModelId, PRICE_CURRENCY, type ProductModel } from '@golem/shared';
 import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
 
 /**
@@ -3637,7 +3637,7 @@ app.get('/api/admin/account/:userId', async (c) => {
 });
 
 app.post('/api/admin/model-test', async (c) => {
-  const body = await c.req.json<{ model: string; prompt: string; tools?: boolean; system?: string; rag?: boolean; maxTokens?: number; lora?: string }>();
+  const body = await c.req.json<{ model: string; prompt: string; tools?: boolean; system?: string; rag?: boolean; maxTokens?: number }>();
   const t0 = Date.now();
   try {
     let userContent = body.prompt;
@@ -3677,7 +3677,7 @@ app.post('/api/admin/model-test', async (c) => {
         ? [{ name: 'echo_tool', description: 'Echo a message back (test tool)', parameters: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'] } }]
         : undefined,
       maxTokens: body.maxTokens ?? 1600,
-    }, body.lora ? { lora: body.lora, kind: 'admin:lora-eval' } : undefined);
+    });
     // A marker pointing at a source the model was never shown makes a sentence look sourced, and it
     // survives review. If it is going to be caught at all it has to be caught here, where the
     // sources are still in hand.
@@ -3991,18 +3991,6 @@ app.get('/api/me/roblox-key/check', async (c) => {
   const user = c.get('user');
   if (!user) return c.json({ error: 'not signed in' }, 401);
   return c.json(await checkRobloxCredential(c.env as never, user.userId));
-});
-
-/**
- * THE MODEL PICKER'S LIST (D-VISION-1): every registry model, in registry order, each marked
- * available or locked FOR THIS ACCOUNT by canUseModel against the QuotaDO plan. A failed plan read
- * is no plan, so every paid model reads locked — the picker cannot offer what a run would refuse.
- */
-app.get('/api/models', async (c) => {
-  const user = c.get('user');
-  if (!user) return c.json({ error: 'not signed in' }, 401);
-  const plan = await quotaPlan(c.env, user.userId);
-  return c.json({ models: modelListing(typeof plan === 'string' ? plan : undefined) });
 });
 
 app.delete('/api/me/roblox-key', async (c) => {
@@ -5088,25 +5076,6 @@ async function quotaSpend(env: Env, userId: string, credits: number, kind: strin
   return (await res.json()) as { ok: boolean; state?: { creditsRemaining?: number } };
 }
 
-/** Read the account's enforced plan without ever treating an unreadable ledger as paid access. */
-async function quotaPlan(env: Env, userId: string): Promise<unknown | null> {
-  try {
-    const res = await env.QUOTA_DO.get(env.QUOTA_DO.idFromName(userId)).fetch('https://do/state');
-    if (!res.ok) return null;
-    const body = (await res.json()) as { plan?: unknown };
-    return body?.plan ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function accountCanUseProductModel(env: Env, userId: string, model: ProductModel): Promise<boolean> {
-  // A free model needs no plan, so it stays usable while the billing read is unavailable.
-  if (canUseProductModel(model, undefined)) return true;
-  const plan = await quotaPlan(env, userId);
-  return canUseProductModel(model, typeof plan === 'string' ? plan : undefined);
-}
-
 function idemStorageKey(keyId: string, idemKey: string): string {
   return `idem:${keyId}:${idemKey}`;
 }
@@ -5147,13 +5116,6 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
   const parsed = legacy ? parseLegacyCompletionRequest(body) : parseChatCompletionRequest(body);
   if (!parsed.ok) return refuse(parsed.fault.status, parsed.fault.code, parsed.fault.message, parsed.fault.param);
   const req: ChatCompletionRequest = parsed.value;
-
-  // Model entitlement is checked before idempotency replay and, crucially, before any quota
-  // admission or provider call. Test keys are deterministic simulations and never spend, so they
-  // retain their sandbox behaviour even when the request names the paid model.
-  if (key.mode !== 'test' && req.productModel && !(await accountCanUseProductModel(c.env, key.userId, req.productModel))) {
-    return refuse(403, 'model_not_entitled', modelRefusal(req.productModel), 'model');
-  }
 
   // ---- idempotency ----
   const idemHeader = c.req.header('Idempotency-Key');
@@ -5337,10 +5299,10 @@ app.get('/v1/projects/:id/messages', async (c) => {
 /** Public run modes. Plan and Agent are the complete run-mode vocabulary. */
 const PUBLIC_RUN_MODES: Record<string, 'plan' | 'agent'> = { plan: 'plan', agent: 'agent' };
 
-/** Additive model selector for API runs; autonomy is a separate per-run boolean. */
-function asProductModel(value: unknown): ProductModel | undefined | null {
+/** The additive `productModel` field on API runs. Any value, retired ids included, is Apple. */
+function asProductModel(value: unknown): ProductModel | undefined {
   if (value === undefined || value === null) return undefined;
-  return isModelId(value) ? value : null;
+  return normalizeModelId(value);
 }
 
 app.post('/v1/projects/:id/runs', async (c) => {
@@ -5375,14 +5337,6 @@ app.post('/v1/projects/:id/runs', async (c) => {
   const mode = PUBLIC_RUN_MODES[wanted]!;
   const autonomous = mode === 'agent' && body?.autonomous === true;
   const productModel = asProductModel(body?.productModel);
-  if (productModel === null) {
-    return c.json(errorBody(400, 'invalid_request_error', `'productModel' must be one of ${MODEL_IDS.join(', ')}.`, requestId, 'productModel'), 400);
-  }
-  // Entitlement is checked before any session admission. A paid model must never reach quota,
-  // idempotency or provider work for an account whose authoritative QuotaDO plan is unavailable.
-  if (key.mode !== 'test' && productModel && !(await accountCanUseProductModel(c.env, key.userId, productModel))) {
-    return c.json(errorBody(403, 'model_not_entitled', modelRefusal(productModel), requestId, 'productModel'), 403);
-  }
 
   //[[ THE HEADER THE ROUTE TABLE ALREADY PROMISED.
   //
@@ -5396,9 +5350,8 @@ app.post('/v1/projects/:id/runs', async (c) => {
   //   progress" — an error, for a request the caller was told was protected. Once that run had
   //   finished, the retry started a SECOND run on the same project and spent the Credits again.
   //
-  //   Placed after validation and entitlement and before anything that starts work, which is the
-  //   same order handleCompletion uses. A malformed body must be a 400 whatever key it carries, and
-  //   a key must never become the thing that admits an unentitled model.
+  //   Placed after validation and before anything that starts work, which is the same order
+  //   handleCompletion uses. A malformed body must be a 400 whatever key it carries.
   //
   //   The SANDBOX is covered too: a test key exists so CI can hammer the whole request path, and an
   //   idempotency guarantee that only exists in live mode is one a CI job cannot exercise. ]]
@@ -5472,9 +5425,6 @@ app.post('/v1/projects/:id/runs', async (c) => {
   }));
   const out = (await res.json()) as { ok?: boolean; error?: string; code?: string };
   if (!res.ok || out.ok === false) {
-    if (res.status === 403 || out.code === 'product_model_unavailable') {
-      return c.json(errorBody(403, 'model_not_entitled', out.error ?? modelRefusal(productModel), requestId, 'productModel'), 403);
-    }
     const status = res.status === 409 ? 409 : res.status === 400 ? 400 : 502;
     return c.json(errorBody(status, 'run_not_started', out.error ?? 'The run could not be started.', requestId), status as 409);
   }

@@ -4,7 +4,9 @@
  * Twenty-two components were ticked for the public home page and the shared Nav/Footer. They are
  * now twelve mounts, because picks that did one job were merged (four noise grounds into one
  * NoiseField, four Animated Beam variants into one BeamFlow, four button treatments into one
- * CtaButton, and so on). A component nobody imports is a demo, so the first half of this file reads
+ * CtaButton, and so on). Two of them (eldora--animated-frameworks, eldora--integrations) drew the
+ * "From other makers" row, which went with the other makers' models (V3 gate G01: Apple is the only
+ * engine), so twenty remain. A component nobody imports is a demo, so the first half of this file reads
  * the pages, with comments stripped, and fails when a mount is removed or only described.
  *
  * The second half EXECUTES the pick scripts. The owner picked looping, canvas-drawn grounds, so
@@ -44,7 +46,7 @@ const markup = (s) => s.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');
 
 /** Every pick of the lane, by picker id, to the place it now lives. */
 const LANE = [
-  'componentry--cursor-driven-particle-typography', 'eldora--animated-frameworks', 'eldora--integrations',
+  'componentry--cursor-driven-particle-typography',
   'eldora--ipad', 'gsap--modifiers', 'motion--ui-arrow-link', 'motion--conic-gradient-pointer',
   'motion--scramble-text-hover', 'motion--ui-screenshot-scroll-reveal', 'motion--ticker', 'reactbits--dither',
   'reactbits--shape-waves', 'reactbits--specular-button', 'reactbits--topography', 'reactbits--waves',
@@ -62,7 +64,6 @@ const MOUNTS = [
   { ids: ['gsap--modifiers', 'motion--ticker'], file: INDEX, name: 'Marquee', from: 'components/Marquee.astro', use: /<Marquee\b[^>]*\bfills="hero-start"/ },
   { ids: ['ui-layouts--animated-beam-default', 'ui-layouts--animated-beam-multiple-input', 'ui-layouts--animated-beam-multiple-output', 'ui-layouts--animated-beam-unidirectional'], file: INDEX, name: 'BeamFlow', from: 'picks/BeamFlow.astro', use: /<BeamFlow\b[^>]*\/>/ },
   { ids: ['eldora--ipad', 'motion--ui-screenshot-scroll-reveal'], file: INDEX, name: 'DeviceFrame', from: 'picks/DeviceFrame.astro', use: /<DeviceFrame\b[^>]*>\s*<div class="demos"/ },
-  { ids: ['eldora--animated-frameworks', 'eldora--integrations'], file: INDEX, name: 'MakerTiles', from: 'picks/MakerTiles.astro', use: /<MakerTiles\b[^>]*\bmakers=\{/ },
   { ids: ['motion--ui-arrow-link'], file: INDEX, name: 'ArrowLink', from: 'picks/ArrowLink.astro', use: /<ArrowLink\b[^>]*href=/ },
   { ids: ['motion--ui-arrow-link'], file: ['components', 'ConsentProof.astro'], name: 'ArrowLink', from: 'picks/ArrowLink.astro', use: /<ArrowLink\b[^>]*href="\/proof"/ },
   { ids: ['motion--ui-arrow-link'], file: ['components', 'BuiltScreen.astro'], name: 'ArrowLink', from: 'picks/ArrowLink.astro', use: /<ArrowLink\b[^>]*href=/ },
@@ -84,7 +85,7 @@ function missing(mount, source) {
 const APPLIED = { 'motion--scramble-text-hover': 'Scramble text runs on the real navigation links' };
 
 test('every pick of the landing lane is accounted for by a mount', () => {
-  assert.equal(new Set(LANE).size, 22, 'the lane list drifted');
+  assert.equal(new Set(LANE).size, 20, 'the lane list drifted');
   const covered = new Set([...MOUNTS.flatMap((m) => m.ids), ...Object.keys(APPLIED)]);
   assert.deepEqual(LANE.filter((id) => !covered.has(id)), [], 'a pick has no mount in this file');
   assert.deepEqual([...covered].filter((id) => !LANE.includes(id)), [], 'a mount names a pick outside the lane');
@@ -118,7 +119,6 @@ test('each pick component starts its own behaviour, so a mount is never an inert
     ['picks/PointerRim.astro', 'mountRims', './pointer-rim'],
     ['picks/BeamFlow.astro', 'mountBeams', './beam-flow'],
     ['picks/DeviceFrame.astro', 'mountDevices', './device-frame'],
-    ['picks/MakerTiles.astro', 'mountMakerTiles', './maker-tiles'],
     ['picks/CtaButton.astro', 'mountCtas', './cta-button'],
     ['picks/ParticleWord.astro', 'mountParticleWords', './particle-word'],
     ['Marquee.astro', 'mountTickers', './picks/ticker'],
@@ -143,7 +143,7 @@ test('removing a mount turns this file red (the checker is not vacuous)', () => 
 
 /* ======================================================================= 2. the sheets obey === */
 
-const SHEETS = ['arrow-link', 'beam-flow', 'cta-button', 'device-frame', 'maker-tiles', 'noise-field', 'particle-word', 'pointer-rim', 'ticker']
+const SHEETS = ['arrow-link', 'beam-flow', 'cta-button', 'device-frame', 'noise-field', 'particle-word', 'pointer-rim', 'ticker']
   .map((n) => [n, strip(readFileSync(join(PICKS, `${n}.css`), 'utf8'))]);
 
 test('no pick sheet brings in a glow, a gradient fill, violet, a hidden cursor or green', () => {
@@ -164,7 +164,7 @@ test('a sheet that animates or moves something has a reduced-motion answer', () 
     movers += 1;
     assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/, `${name}.css moves things and has no reduced-motion block`);
   }
-  assert.ok(movers >= 4, `only ${movers} moving sheets found; the scan has drifted`);
+  assert.ok(movers >= 3, `only ${movers} moving sheets found; the scan has drifted`);
 });
 
 /* ================================================================ 3. the loops, executed === */
@@ -447,37 +447,6 @@ test('Ticker: under reduced motion it is a still list, with no copies and no fra
   assert.equal(root.classList.contains('is-live'), false);
   assert.ok(rows.every((r) => r.children[0].children.every((c) => !c.hasAttribute('data-copy'))), 'copies were added under reduced motion');
   assert.equal(rows[0].children[0].style.transform ?? '', '', 'the row was moved under reduced motion');
-}));
-
-function tilesPage(h) {
-  const tiles = [0, 1, 2, 3].map((i) => { const t = new El('li', { class: 'mk-tile' }); t.rect = { left: i * 60, top: 0, width: 48, height: 48 }; return t; });
-  const root = new El('div', { class: 'mk', 'data-mk': '' }, [new El('ul', { class: 'mk-row' }, tiles), new El('span', { class: 'mk-rail' }, [new El('span', { class: 'mk-light' })])]);
-  root.clientWidth = 240;
-  h.body.append(root);
-  return { root, tiles };
-}
-
-test('MakerTiles: the light runs only on screen, and no tile is left tipped when it stops', withPage({}, async (h) => {
-  const { root, tiles } = tilesPage(h);
-  (await load('maker-tiles')).mountMakerTiles();
-  assert.equal(h.pending, 0, 'the light ran before the row was seen');
-  h.see(root, true);
-  h.flush(3);
-  assert.ok(h.pending > 0 && root.classList.contains('is-running'), 'on screen, the light did not run');
-  assert.ok(tiles.some((t) => t.classList.contains('is-up')), 'the light passed and no tile tipped up');
-  h.see(root, false);
-  h.flush(2);
-  assert.equal(h.pending, 0, 'off screen, the light kept running');
-  assert.ok(tiles.every((t) => !t.classList.contains('is-up')), 'a tile was left tipped up');
-}));
-
-test('MakerTiles: under reduced motion no light runs and every tile is simply shown', withPage({ reduced: true }, async (h) => {
-  const { root } = tilesPage(h);
-  (await load('maker-tiles')).mountMakerTiles();
-  h.see(root, true);
-  h.flush(3);
-  assert.equal(h.pending, 0, 'under reduced motion the light runs');
-  assert.equal(root.classList.contains('is-armed'), false, 'under reduced motion the tiles are hidden for an arrival');
 }));
 
 function wordPage(h) {

@@ -30,9 +30,8 @@ import type {
   ProductModel,
   PluginCapabilityReportV1,
 } from '@golem/shared';
-import { canUseProductModel, isModelId, isRunFailure, MESSAGE_MAX_CHARS, modelRefusal, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
+import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
 import { isRefusalRemedyCode, type RefusalRemedyCode } from '@golem/shared';
-import { registryModel } from '@golem/shared';
 
 /**
  * The edit history being moved onto the message that replaces an edited one.
@@ -211,7 +210,7 @@ interface AgentState {
   mode: ProductMode;
   /** Per-message autonomy switch. It is meaningful only when mode === 'agent'. */
   autonomous?: boolean;
-  /** The user's model entitlement, independent of Plan/Agent and the Autonomous toggle. */
+  /** The engine the run is on: always Apple. A run persisted by an older build may hold a retired id. */
   productModel?: ProductModel;
   /** Owner-approved Creator Store model for this run, selected from a shown preview. */
   approvedLibraryAssetId?: number;
@@ -575,25 +574,18 @@ const MODE_SKEW_REFUSAL = 'This connection is out of date — reload the page to
 /** A restore refused because a run is still changing the place. Plain words: the reader may be young. */
 const RESTORE_WHILE_RUNNING = 'Apple is still building. Press Stop first, then restore.';
 
-/** Runtime validation for the additive product-model field on newer clients. */
-function asProductModel(x: unknown): ProductModel | undefined | null {
+/**
+ * The additive `productModel` field, from a client frame or a stored row. Apple is the one engine
+ * (V3 gate G01), so every value — `apple`, a retired id such as `apple-max`, or anything an older
+ * client sends — is normalized to it and never refused.
+ */
+function asProductModel(x: unknown): ProductModel | undefined {
   if (x === undefined || x === null) return undefined;
-  // Every registry model (D-VISION-1); what the account may USE is productModelVerdict's question.
-  return isModelId(x) ? x : null;
+  return normalizeModelId(x);
 }
 
-/** Model entitlement is independent of Plan/Agent. Older clients default to the free Apple lane. */
-function effectiveProductModel(mode: ProductMode, requested?: ProductModel): ProductModel {
-  void mode;
-  return requested ?? 'apple';
-}
-
-// Product-model entitlement and Plan/Agent are separate axes. The two Apple lanes use the same
-// measured foundation under the mode keys (plan/agent), so entitlement reaches them only as effort
-// policy. A third-party model (D-VISION-1) is its own DEFAULT_MODELS key, named by its registry id,
-// because its provider id, output ceiling and wire differ from GLM's.
-export function gatewayModelFor(mode: ProductMode, productModel?: ProductModel): string {
-  if (productModel && registryModel(productModel)?.route === 'unified-billing') return productModel;
+// Apple is the one engine, so the gateway key is the run mode (plan/agent), both GLM 5.3 Flash.
+export function gatewayModelFor(mode: ProductMode): string {
   return mode;
 }
 
@@ -1015,9 +1007,8 @@ export class SessionDO extends DurableObject<Env> {
   /**
    * Read additive model metadata without changing the long-lived messages table schema.
    *
-   * The column holds a registry model id. Anything else in it — including the OpenRouter ids that
-   * runs on a customer's own key wrote before BYOK was removed (D-VISION-1) — is dropped as
-   * unknown, so such a turn is never relabelled as a model that did not run it.
+   * The column holds the id a turn was stored with. Retired ids (`apple-max`, `gpt-5.6`, ...) are
+   * normalized to Apple by asProductModel, so old sessions keep loading.
    */
   private productModelsFor(ids: readonly string[]): Map<string, { productModel: ProductModel }> {
     const out = new Map<string, { productModel: ProductModel }>();
@@ -1135,34 +1126,6 @@ export class SessionDO extends DurableObject<Env> {
       messageId,
       model,
     );
-  }
-
-  /** Read only a successful QuotaDO state; an error body is never evidence of paid access. */
-  private async productModelPlan(userId: string): Promise<string | undefined> {
-    try {
-      const stub = this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(userId));
-      const res = await stub.fetch('https://do/state');
-      if (!res.ok) return undefined;
-      const data = (await res.json()) as { plan?: unknown };
-      return typeof data?.plan === 'string' ? data.plan : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  /** MAX admission is checked against the QuotaDO's plan, never against a client claim. */
-  private async productModelVerdict(
-    bind: { ownerId: string },
-    mode: ProductMode,
-    requested?: ProductModel,
-  ): Promise<{ ok: true; model: ProductModel } | { ok: false; model: ProductModel; message: string }> {
-    const model = effectiveProductModel(mode, requested);
-    // The free lane is intentionally usable while a billing read is unavailable. MAX is the
-    // paid capability, so only that lane needs an authoritative QuotaDO read.
-    if (canUseProductModel(model, undefined)) return { ok: true, model };
-    const plan = await this.productModelPlan(bind.ownerId);
-    if (canUseProductModel(model, plan)) return { ok: true, model };
-    return { ok: false, model, message: modelRefusal(model) };
   }
 
   /** The project this session is bound to, or null before the binding has been read. */
@@ -2397,9 +2360,6 @@ export class SessionDO extends DurableObject<Env> {
       if (!runMode) return json({ ok: false, error: `unknown mode` }, 400);
       const runAutonomous = runMode === 'agent' && autonomous === true;
       const selectedModel = asProductModel(productModel);
-      if (selectedModel === null) return json({ ok: false, error: 'unknown product model' }, 400);
-      const modelVerdict = await this.productModelVerdict(bind, runMode, selectedModel);
-      if (!modelVerdict.ok) return json({ ok: false, error: modelVerdict.message, code: 'product_model_unavailable' }, 403);
       await this.startRun(bind, text.slice(0, MESSAGE_MAX_CHARS), runMode, effort, undefined, undefined, selectedModel, runAutonomous, bind.ownerId);
       return json({ ok: true, started: true, mode: runMode, autonomous: runAutonomous, ...(selectedModel ? { productModel: selectedModel } : {}), effort: effort ?? 'adaptive' });
     }
@@ -2724,7 +2684,7 @@ export class SessionDO extends DurableObject<Env> {
       msgId: agent.msgId,
       mode: agent.mode,
       ...(agent.autonomous ? { autonomous: true } : {}),
-      ...(agent.productModel ? { productModel: agent.productModel } : {}),
+      ...(agent.productModel ? { productModel: normalizeModelId(agent.productModel) } : {}),
       phase: agent.phase ?? 'planning',
       step: agent.step,
       totalSteps: MAX_RUN_STEPS,
@@ -2844,10 +2804,6 @@ export class SessionDO extends DurableObject<Env> {
           }
           const autonomous = mode === 'agent' && msg.autonomous === true;
           const productModel = asProductModel(msg.productModel);
-          if (productModel === null) {
-            this.refuseOne(ws, { type: 'error', code: 'bad_product_model', message: 'Unknown product model for this request.' });
-            return;
-          }
           const text = msg.text.slice(0, MESSAGE_MAX_CHARS);
           //[[ THE SAME BUILD, ASKED AGAIN.
           //
@@ -2925,15 +2881,6 @@ export class SessionDO extends DurableObject<Env> {
         }
         const autonomous = mode === 'agent' && msg.autonomous === true;
         const productModel = asProductModel(msg.productModel);
-        if (productModel === null) {
-          this.refuseOne(ws, { type: 'error', code: 'bad_product_model', message: 'Unknown product model for this request.' });
-          return;
-        }
-        const modelVerdict = await this.productModelVerdict(bind, mode, productModel);
-        if (!modelVerdict.ok) {
-          this.refuseOne(ws, { type: 'error', code: 'product_model_unavailable', message: modelVerdict.message });
-          return;
-        }
         const agent = await this.ctx.storage.get<AgentState>('agent');
         if (agent && agent.status !== 'idle') {
           this.refuseOne(ws, { type: 'error', code: 'busy', message: 'Stop the current run before editing a message.' });
@@ -3155,12 +3102,7 @@ export class SessionDO extends DurableObject<Env> {
       this.refuseOne(origin, { type: 'error', code: 'forbidden', message: access.message });
       return;
     }
-    const modelVerdict = await this.productModelVerdict(bind, mode, productModel);
-    if (!modelVerdict.ok) {
-      this.refuseOne(origin, { type: 'error', code: 'product_model_unavailable', message: modelVerdict.message });
-      return;
-    }
-    const selectedProductModel = modelVerdict.model;
+    const selectedProductModel = productModel ?? normalizeModelId(undefined);
     // Clear any stop left behind by a previous run. Belt and braces with finishRun's clear:
     // a stop that arrives in the moment a run is finishing can land after that clear, and it
     // must not travel into the run the user starts next.
@@ -3177,8 +3119,8 @@ export class SessionDO extends DurableObject<Env> {
     this.broadcast({ type: 'quota', quota: quota.state });
     // One approval is scoped to one admitted run. A new unrelated message invalidates old cards.
     await this.ctx.storage.delete('pendingAssetChoice');
-    // Mark the socket only after entitlement and quota admission succeeded. A refused MAX request
-    // must not leave a collaborator's presence claiming that a build is in flight.
+    // Mark the socket only after quota admission succeeded. A refused request must not leave a
+    // collaborator's presence claiming that a build is in flight.
     if (origin) this.touch(origin, 'building');
 
     const userMsgId = crypto.randomUUID();
@@ -3629,23 +3571,9 @@ export class SessionDO extends DurableObject<Env> {
     // A run persisted before BYOK was removed may still name a customer key. That run cannot be
     // continued on the key and must not silently move onto Apple's Credits, so it ends here.
     if ((agent as { customerModel?: unknown }).customerModel) {
-      agent.finalText = agent.finalText || 'Runs on your own key have been retired. Choose a model and send again. Progress is saved.';
+      agent.finalText = agent.finalText || 'Runs on your own key have been retired. Send your message again. Progress is saved.';
       await this.finishRun(agent, 'error', 'model_failed');
       return;
-    }
-    //[[ THE MODEL IS RE-CHECKED ON EVERY STEP, NOT ONLY AT ADMISSION (D-VISION-1).
-    //
-    //   A run can outlive the plan it started on: a downgrade or a lapsed subscription lands while
-    //   a 16-step build is between steps, and admission alone would let a paid model finish the run
-    //   on an account that no longer has it. `agent.userId` is the owner's billing identity, the
-    //   same identity admission read. A free model needs no read, so this costs nothing on Apple. ]]
-    if (agent.productModel) {
-      const verdict = await this.productModelVerdict({ ownerId: agent.userId }, agent.mode, agent.productModel);
-      if (!verdict.ok) {
-        agent.finalText = agent.finalText || `${verdict.message} Progress is saved.`;
-        await this.finishRun(agent, 'quota');
-        return;
-      }
     }
     if (agent.step > 1) {
       const state = await this.quotaState(agent.userId);
@@ -3679,7 +3607,7 @@ export class SessionDO extends DurableObject<Env> {
     //   prompt, not the user's conversation. It is a cost optimisation on our instructions, and
     //   announcing it to a builder as "context was truncated" would describe a loss they did not
     //   take. What they can lose is turns, and that is what this counts. ]]
-    const budget = transcriptBudget(gatewayModelFor(agent.mode, agent.productModel));
+    const budget = transcriptBudget(gatewayModelFor(agent.mode));
     const trimmed = trimTranscriptReport(agent.llm, budget.maxChars, budget.targetChars);
     agent.llm = trimmed.llm;
     // A READ WHOSE RESULT WAS TRIMMED AWAY MAY BE READ AGAIN. The duplicate guard refuses an identical
@@ -3795,12 +3723,6 @@ export class SessionDO extends DurableObject<Env> {
     // outcome — visual design, recovery from failure, anything irreversible.
     const choice = chooseEffort({
       mode: agent.mode,
-      // The entitlement travels WITH the mode. `chooseEffort` is the ONLY thing that reads it now:
-      // for the Apple lanes `gatewayModelFor` returns the mode key and `baseTokensFor` is keyed on
-      // the mode alone, so the entitlement reaches the request as an EFFORT FLOOR and nothing else. The
-      // thinking policy used to ignore it entirely, which is how Apple MAX in Plan mode came to
-      // think at `low`.
-      productModel: agent.productModel,
       step: agent.step,
       highEffortUsed: agent.highEffortUsed ?? 0,
       priorStepFailed: agent.priorStepFailed,
@@ -3812,7 +3734,7 @@ export class SessionDO extends DurableObject<Env> {
     });
     if (agent.forcedEffort) choice.effort = agent.forcedEffort;
     if (choice.effort === 'high') agent.highEffortUsed = (agent.highEffortUsed ?? 0) + 1;
-    const gatewayModel = gatewayModelFor(agent.mode, agent.productModel);
+    const gatewayModel = gatewayModelFor(agent.mode);
     //[[ REPORT THE SETTING THAT WAS APPLIED, NOT THE ONE THAT WAS CHOSEN.
     //
     //   The policy decides an effort for every step whatever the lane. Whether that effort reaches
@@ -4616,7 +4538,7 @@ export class SessionDO extends DurableObject<Env> {
           const pending: PendingAssetChoice = {
             request: agent.request ?? '',
             mode: agent.mode,
-            ...(agent.productModel ? { productModel: agent.productModel } : {}),
+            ...(agent.productModel ? { productModel: normalizeModelId(agent.productModel) } : {}),
             autonomous: agent.autonomous === true,
             ...(agent.rejectedLibraryAssetIds?.length ? { rejectedAssetIds: agent.rejectedLibraryAssetIds } : {}),
             ...(anchor ? { anchor } : {}),
@@ -5292,7 +5214,7 @@ export class SessionDO extends DurableObject<Env> {
       deniedToolsForHistory,
       agent.msgId,
     );
-    this.rememberProductModel(agent.msgId, agent.productModel ?? effectiveProductModel(agent.mode));
+    this.rememberProductModel(agent.msgId, normalizeModelId(agent.productModel));
     await this.persistAgent(agent);
     // The settled cost of the whole run. Read here, after the last `quotaSpend`, because every
     // earlier broadcast of this number was taken before that step's settlement and was therefore

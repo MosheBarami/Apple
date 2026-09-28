@@ -1,18 +1,14 @@
 ---
 import Base from '../layouts/Base.astro';
 import AppleMark from '../components/AppleMark.astro';
-import { builtInModels, otherModels, plansLine, creditBadge, logoFileFor, logoSvg } from '../lib/model-catalogue';
+import { PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@golem/shared';
 
 /*
- * /models — WHICH MODELS CAN ANSWER, AND WHAT EACH ONE COSTS THE READER.
+ * /models — THE ONE ENGINE (V3 gate G01).
  *
- * Every row below comes from the model registry in @golem/shared, through lib/model-catalogue.ts —
- * nothing on this page names a model, a vendor or a plan by hand. Two groups, in registry order:
- * Apple's own models, then the ones from other makers. Every model uses Apple Credits; the other
- * makers' rows say how many times Apple MAX's rate a step costs, and which plan includes them.
- *
- * NO KEY OF YOUR OWN. Models on a customer's own key were removed (owner decision D-VISION-1), so
- * nothing here explains a key or lists a model that needs one.
+ * Apple is the only engine: every plan uses it, Free too, and plans differ only in their allowance.
+ * The name and the line under it come from the registry in @golem/shared (PRODUCT_MODEL_INFO), so
+ * this page cannot describe an engine the product does not run. The URL stays so old links land.
  *
  * Copy is short and plain on purpose (D-UX-2): the readers are young and not technical.
  *
@@ -20,33 +16,19 @@ import { builtInModels, otherModels, plansLine, creditBadge, logoFileFor, logoSv
  * is false), and this page has no reason to mention installing at all.
  */
 
-const builtIn = builtInModels();
-const others = otherModels();
-
-const list = (names: string[]) =>
-  names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-const makers = list([...new Set(others.map((m) => m.vendor))]);
-
-const otherRows = others.map((m) => ({
-  model: m,
-  plans: plansLine(m),
-  badge: creditBadge(m),
-  icon: logoSvg(logoFileFor(m)),
-  initial: m.vendor.trim().charAt(0).toUpperCase(),
-}));
+const engines = PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m]);
 ---
 
 <Base
-  title="Models — Apple"
-  description={`The models that can build with you in Apple: ${list(builtIn.map((m) => m.displayName))}, and ${list(others.map((m) => m.displayName))} from ${makers}. Every one uses Apple Credits.`}
+  title="Engine — Apple"
+  description="Apple builds every game you ask for, on every plan, Free too. Every request uses your Apple Credits."
 >
   <section class="section mhead" aria-labelledby="models-title">
     <div class="wrap">
-      <p class="eyebrow">Models</p>
-      <h1 id="models-title" class="carved">Choose who builds with you.</h1>
+      <p class="eyebrow">Engine</p>
+      <h1 id="models-title" class="carved">One engine builds with you.</h1>
       <p class="lede">
-        {list(builtIn.map((m) => m.displayName))} are Apple's own. {list(others.map((m) => m.displayName))} come from {makers}.
-        Every one uses your Apple Credits.
+        Apple answers every request, on every plan, Free too. Every request uses your Apple Credits.
       </p>
     </div>
   </section>
@@ -55,39 +37,17 @@ const otherRows = others.map((m) => ({
     <div class="wrap">
       <h2 id="built-in-title" class="mtitle">Built into Apple</h2>
       <ul class="builtin" role="list">
-        {builtIn.map((m) => (
+        {engines.map((m) => (
           <li class="builtin-card">
             <span class="logo logo--apple"><AppleMark size={18} /></span>
             <div>
-              <p class="mname">{m.id === 'apple-max' ? <>Apple <span class="max-name">MAX</span></> : m.displayName}</p>
+              <p class="mname">{m.name}</p>
               <p class="mblurb">{m.blurb}</p>
-              <p class="micro mmeta">Uses Apple Credits · {plansLine(m)} · plans on the <a href="/pricing">pricing page</a></p>
+              <p class="micro mmeta">Uses Apple Credits · Included with every plan, Free too · plans on the <a href="/pricing">pricing page</a></p>
             </div>
           </li>
         ))}
       </ul>
-    </div>
-  </section>
-
-  <section class="section" id="other-makers" aria-labelledby="other-makers-title">
-    <div class="wrap">
-      <h2 id="other-makers-title" class="mtitle">From other makers</h2>
-      <p class="mexplain" data-others-explainer>These run inside Apple the same way and use your Apple Credits too. A step costs more Credits than on Apple MAX; the number beside each one says how many times as many.</p>
-
-      <ul class="mlist" role="list" aria-label="Models from other makers">
-        {otherRows.map((r) => (
-          <li class="mrow" data-model-id={r.model.id}>
-            {r.icon ? <span class="logo" set:html={r.icon} /> : <span class="logo logo--initial" aria-hidden="true">{r.initial}</span>}
-            <div class="mrow-text">
-              <p class="mrow-name">{r.model.displayName}</p>
-              <p class="mrow-vendor">{r.model.vendor} · {r.plans}</p>
-            </div>
-            {r.badge && <span class="badge">{r.badge}</span>}
-          </li>
-        ))}
-      </ul>
-
-      <p class="credit">Vendor icons from <a href="https://github.com/lobehub/lobe-icons">Lobe Icons</a> (MIT). Each name belongs to its owner.</p>
 
       <a class="btn btn-primary btn-lg mcta" href="/app/signup">Create a free account</a>
     </div>
@@ -109,14 +69,6 @@ const otherRows = others.map((m) => ({
     font-weight: 500;
     line-height: 1.15;
     letter-spacing: -0.024em;
-  }
-
-  .mexplain {
-    max-width: 62ch;
-    margin: 0 0 28px;
-    color: var(--ink-2);
-    font-size: 1.0625rem;
-    line-height: 1.65;
   }
 
   .builtin {
@@ -148,11 +100,6 @@ const otherRows = others.map((m) => ({
     letter-spacing: -0.01em;
   }
 
-  .max-name {
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
-
   .mblurb {
     margin: 6px 0 0;
     color: var(--muted);
@@ -164,30 +111,11 @@ const otherRows = others.map((m) => ({
     margin: 12px 0 0;
   }
 
-  .mmeta a,
-  .credit a {
+  .mmeta a {
     color: var(--ink);
     text-decoration: underline;
     text-decoration-color: var(--line-strong);
     text-underline-offset: 3px;
-  }
-
-  .mlist {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0 24px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .mrow {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    min-width: 0;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--hairline);
   }
 
   .logo {
@@ -209,72 +137,12 @@ const otherRows = others.map((m) => ({
     height: 16px;
   }
 
-  .logo--initial {
-    color: var(--muted);
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .mrow-text {
-    display: grid;
-    min-width: 0;
-  }
-
-  /* Name and maker are two separate lines by design, so they are two blocks rather than one text
-     run: the orphan scan (tests/rendered-typography.test.mjs) then reads each for what it is. */
-  .mrow-name,
-  .mrow-vendor {
-    margin: 0;
-  }
-
-  .mrow-name {
-    overflow-wrap: anywhere;
-    color: var(--ink);
-    font-size: 15px;
-    font-weight: 500;
-    line-height: 1.35;
-  }
-
-  .mrow-vendor {
-    color: var(--muted);
-    font-size: 13px;
-    line-height: 1.4;
-  }
-
-  /* The credit rate is a fact about price, not a status a reader must act on, so it is ink on a
-     surface step — never the status green, which this site keeps for status dots. */
-  .badge {
-    flex: none;
-    white-space: nowrap;
-    margin-left: auto;
-    padding: 2px 8px;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--r-pill);
-    color: var(--ink);
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.5;
-  }
-
-  .credit {
-    margin: 28px 0 0;
-    color: var(--muted);
-    font-size: 13px;
-  }
-
   .mcta {
     margin-top: 40px;
   }
 
-  @media (max-width: 1000px) {
-    .mlist {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
   @media (max-width: 720px) {
-    .builtin,
-    .mlist {
+    .builtin {
       grid-template-columns: minmax(0, 1fr);
     }
   }

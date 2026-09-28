@@ -13,7 +13,6 @@ import BuiltScreen from '../components/BuiltScreen.astro';
      Marquee      the rows of ideas under the composer; pressing one types it into the field
      BeamFlow     what a run reads and what it can make, as beams through a hub
      DeviceFrame  the "try it" panel on a tablet that settles flat as it scrolls in
-     MakerTiles   the other makers whose models Apple runs
      ArrowLink    the text links that lead somewhere
      CtaButton    the one primary button
    tests/picks-landing.test.mjs fails if any of them stops being mounted. */
@@ -22,23 +21,17 @@ import PointerRim from '../components/picks/PointerRim.astro';
 import Marquee from '../components/Marquee.astro';
 import BeamFlow from '../components/picks/BeamFlow.astro';
 import DeviceFrame from '../components/picks/DeviceFrame.astro';
-import MakerTiles from '../components/picks/MakerTiles.astro';
 import ArrowLink from '../components/picks/ArrowLink.astro';
 import CtaButton from '../components/picks/CtaButton.astro';
 /* The site's one set of Roblox object glyphs, drawn for it (its header has the rules). */
 import ObjectIcon from '../components/ObjectIcon.astro';
 import {
-  PLAN_COPY,
-  PLAN_IDS,
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
   PRODUCT_MODES,
   PRODUCT_MODE_INFO,
-  canUseProductModel,
 } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
-import { paidPlansOnSale } from '../lib/billing-probe';
-import { otherModels, logoFileFor, logoUrl } from '../lib/model-catalogue';
 
 /*
  * THE FRONT PAGE, REBUILT TO THE FINAL DIRECTION (2026-09-22).
@@ -173,37 +166,9 @@ const asks = [
   },
 ];
 
-/* MODELS ARE NOT PLANS. Apple and Apple MAX are model choices; Free, Builder, Studio and Enterprise
-   are plans. Which plans include a model is ASKED of canUseProductModel, the function the worker
-   enforces, so this sentence cannot promise a model to a plan that does not get it. */
-const plansFor = (model: (typeof PRODUCT_MODELS)[number]) => {
-  const names = PLAN_IDS.filter((id) => canUseProductModel(model, id)).map((id) => PLAN_COPY[id].name);
-  if (names.length === PLAN_IDS.length) return 'Included with every plan, Free too';
-  if (names.length < 2) return `Included with ${names.join('')}`;
-  return `Included with ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-};
-
-/* WHETHER ANY PAID PLAN CAN BE BOUGHT IS ASKED, NOT TYPED — the same build-time probe, and the
-   same safe fallback, as pages/pricing.astro (read the long note there). The models list says
-   which plans include Apple MAX; without this line a reader concludes they can have it today,
-   while /pricing says no paid plan is on sale. An unreachable probe means "not on sale". */
-const paidOnSale = await paidPlansOnSale();
-const paidOnly = (model: (typeof PRODUCT_MODELS)[number]) => !canUseProductModel(model, 'free');
-
 /* The install line. When the listing is live the shared href IS the store URL, and it leaves the
    site, so it opens in a new tab without handing Roblox a window reference. */
 const installExternal = STUDIO_PLUGIN_STORE_LIVE;
-
-/* THE OTHER MAKERS, IN ONE LINE AND A ROW OF MARKS. Read from the model registry through
-   lib/model-catalogue.ts, like /models, so the makers named and the marks drawn are ones the picker
-   really offers. One mark per maker, in registry order. (This row was "On your own key" until BYOK
-   was removed, D-VISION-1: every model now runs inside Apple on Apple Credits.) */
-const others = otherModels();
-const firstPerMaker = others.filter((m, i) => others.findIndex((x) => x.vendor === m.vendor) === i);
-const makerNames = firstPerMaker.map((m) => m.vendor).join(' and ');
-const makerTiles = firstPerMaker
-  .map((m) => ({ vendor: m.vendor, icon: logoUrl(logoFileFor(m)) }))
-  .filter((m) => m.icon);
 ---
 
 <Landing
@@ -431,8 +396,8 @@ const makerTiles = firstPerMaker
     <section class="band" id="models" aria-labelledby="plans-title">
       <div class="shell">
         <div class="band-head" data-reveal>
-          <h2 id="plans-title" class="section-title">Modes and models</h2>
-          <p class="section-sub">The mode decides what a request may do to your place. The model decides who answers it. Plans and Credits are on the <a href="/pricing">pricing page</a>.</p>
+          <h2 id="plans-title" class="section-title">Modes and engine</h2>
+          <p class="section-sub">The mode decides what a request may do to your place. Apple answers every request, on every plan. Plans and Credits are on the <a href="/pricing">pricing page</a>.</p>
         </div>
 
         <div class="choices">
@@ -460,33 +425,17 @@ const makerTiles = firstPerMaker
           </div>
 
           <div class="choice-group" data-reveal data-reveal-delay="80">
-            <h3 class="micro choice-label">Models</h3>
+            <h3 class="micro choice-label">Engine</h3>
             <ul class="model-grid" role="list">
               {PRODUCT_MODELS.map((model) => (
                 <li class="model-card">
-                  <p class="model-name">{model === 'apple-max' ? <>Apple <span class="max-name">MAX</span></> : PRODUCT_MODEL_INFO[model].name}</p>
+                  <p class="model-name">{PRODUCT_MODEL_INFO[model].name}</p>
                   <p class="model-blurb">{PRODUCT_MODEL_INFO[model].blurb}</p>
-                  <p class="micro model-plans">{plansFor(model)}</p>
-                  {paidOnly(model) && !paidOnSale && (
-                    <p class="model-sale">No paid plan is on sale yet; see <a href="/pricing">pricing</a>.</p>
-                  )}
+                  <p class="micro model-plans">Included with every plan, Free too</p>
                 </li>
               ))}
             </ul>
           </div>
-        </div>
-
-        {/* SHORT ON PURPOSE (D-UX-2). Which plan includes each model and what it costs in Credits are
-            on /models; this is the one line that says who else makes them. */}
-        <div class="makers-strip" data-reveal>
-          <div class="makers-copy">
-            <h3 class="micro choice-label">From other makers</h3>
-            <p class="makers-line">
-              The models from {makerNames} run inside Apple the same way, on your Apple Credits.
-            </p>
-            <ArrowLink class="makers-link" href="/models">See every model</ArrowLink>
-          </div>
-          <MakerTiles makers={makerTiles} label="The makers" />
         </div>
       </div>
     </section>

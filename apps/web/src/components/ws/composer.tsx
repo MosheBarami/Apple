@@ -1,6 +1,5 @@
-// One model picker: Apple for limited free use, Apple MAX for subscribers.
-// Model identity is independent of the legacy autonomy/specialist wire fields.
-// The server owns entitlements; this surface prevents avoidable rejected sends.
+// One engine, Apple (V3 gate G01): there is no model picker and no model-gated control here.
+// The workspace sends `productModel: 'apple'` on the wire; the server serves every value as Apple.
 //
 // BUILT FROM VERCEL AI ELEMENTS (components/ai-elements/prompt-input.tsx and attachments.tsx, vendored
 // at a pinned commit — see that directory's NOTICE). PromptInput is the form, the hidden file input
@@ -8,19 +7,14 @@
 // PromptInputButton, PromptInputSubmit and PromptInputActionMenu are the bar. What stays HERE is what
 // this product decides: which key sends (the person's preference), what a file is allowed to be and
 // where it goes (uploaded to the project as it is staged), when a send is refused and that the
-// refusal keeps the draft, the @-mention picker, Plan or Agent, the Autonomous switch and the model.
-import { Suspense, lazy, useEffect, useMemo, useReducer, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
+// refusal keeps the draft, the @-mention picker, Plan or Agent and the Autonomous switch.
+import { useEffect, useReducer, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import {
   ATTACHMENT_ACCEPT,
   MESSAGE_MAX_CHARS,
   MESSAGE_WARN_CHARS,
-  canUseProductModel,
-  modelRefusal,
-  registryModel,
   type ChatAttachment,
-  type ModelListing,
   type ProductMode,
-  type ProductModel,
   type StudioEventSelection,
 } from '@golem/shared';
 import { Icon, PATH } from './primitives';
@@ -72,9 +66,7 @@ import {
   type SentActivity,
 } from '../../lib/presence-signal';
 import { usePrefs } from '../../lib/theme';
-import { CREATION_INTENTS, creationMessage, maxAccessNotice, type CreationIntent } from '../../lib/creation-intent';
-import { ModelChipFace } from './model-chip';
-import { pickerGroups, type PickerRow } from './model-picker-model';
+import { CREATION_INTENTS, creationMessage, type CreationIntent } from '../../lib/creation-intent';
 //[[ THE OWNER'S PICKS, ON THE PARTS THEY BELONG TO (components/picks/composer/). Each file names
 //   the pick it came from and what was rebuilt; the short version, part by part:
 //     the card        Border Glow (the edge that lights toward the pointer), CSSPlugin focus ring
@@ -101,12 +93,6 @@ import { CreditsRing } from '../picks/composer/credits-ring';
 import { VoiceInput } from '../picks/composer/voice-input';
 import './composer.css';
 import '../picks/composer/composer-fx.css';
-
-//[[ THE PICKER'S CODE ARRIVES AFTER THE COMPOSER. The vendor marks and the searchable list are only
-//   needed once somebody opens the chip, and this is the page everybody loads first. Until the
-//   chunk lands the chip is drawn with the same face and cannot be pressed — a chip that looked
-//   pressable and did nothing would be the defect the MAX row once had. ]]
-const ModelPicker = lazy(() => import('./model-picker'));
 
 // WHAT THIS BOX IS FOR, IN THE WORDS OF THE JOB. "Ask anything about your project…" is the line
 // every chat product ships with, and it describes a question-answering service: this one builds,
@@ -135,14 +121,6 @@ interface Props {
   running: boolean;
   studioConnected?: boolean;
   disabled?: boolean;
-  productModel: ProductModel;
-  modelPlan?: string;
-  onModelChange: (model: ProductModel) => void;
-  /**
-   * GET /api/models: the registry, marked for this account's plan (D-VISION-1). Absent or null when
-   * it has not been read, and then the picker marks the same registry with `modelPlan`.
-   */
-  models?: readonly ModelListing[] | null;
   /**
    * PLAN OR AGENT — the choice between looking and building, made by the person sending the
    * message.
@@ -161,8 +139,6 @@ interface Props {
   /** Agent-only per-message capability grant. Plan never sends autonomous=true. */
   autonomous: boolean;
   onAutonomousChange: (enabled: boolean) => void;
-  onUpgrade?: () => void;
-  maxUpgradeAvailable?: boolean | null;
   seed?: string;
   /**
    * Bumped by the parent when a message this composer handed over, and was told had NOT left (a
@@ -234,16 +210,10 @@ export function Composer({
   running,
   studioConnected = false,
   disabled,
-  productModel,
-  modelPlan,
-  onModelChange,
-  models,
   mode,
   onModeChange,
   autonomous,
   onAutonomousChange,
-  onUpgrade,
-  maxUpgradeAvailable = null,
   seed,
   sentLater = 0,
   placeholder,
@@ -654,37 +624,10 @@ export function Composer({
 
   const blocked = blockingReason(staged);
   const creationUnavailable = creation === 'model' && !studioConnected;
-  const modelGroups = useMemo(() => pickerGroups({ listing: models, modelPlan }), [models, modelPlan]);
-  // The shared rule the worker also applies at admission and at every step, so the chip and the
-  // send agree with what the run will be allowed to do.
-  const modelUnavailable = !canUseProductModel(productModel, modelPlan);
-  const maxAvailable = canUseProductModel('apple-max', modelPlan);
-  const requestMaxAccess = () => {
-    if (maxUpgradeAvailable === true) onUpgrade?.();
-    else onNotice?.(maxAccessNotice(maxUpgradeAvailable));
-  };
   const chooseCreation = (next: CreationIntent) => {
-    if (!maxAvailable) { requestMaxAccess(); return; }
     setCreation(creation === next ? 'build' : next);
-    // Images and 3D are Apple MAX's, so choosing one puts the run on it.
-    onModelChange('apple-max');
     // After the menu has handed focus back to its trigger, so the box is where the typing goes.
     requestAnimationFrame(() => box.current?.focus());
-  };
-  /**
-   * A MODEL ROW THAT CANNOT BE HAD SAYS SO, and choosing it goes to the plans (or, when none can be
-   * bought, says which plan includes it) rather than moving the chip. The row stays reachable and
-   * clickable for exactly that reason. Images and 3D are Apple MAX's, so any other model clears them.
-   */
-  const chooseRow = (row: PickerRow): boolean => {
-    if (!canUseProductModel(row.id, modelPlan)) {
-      if (maxUpgradeAvailable === true && onUpgrade) onUpgrade();
-      else onNotice?.(`${modelRefusal(row.id)} Your draft is kept.`);
-      return false;
-    }
-    onModelChange(row.id);
-    if (row.id !== 'apple-max') setCreation('build');
-    return true;
   };
 
   /**
@@ -695,10 +638,6 @@ export function Composer({
   const submit = (): boolean => {
     const value = text.trim();
     if (!value || running || disabled) return false;
-    if (modelUnavailable) {
-      onNotice?.(`${modelRefusal(productModel)} Your draft is kept.`);
-      return false;
-    }
     if (creationUnavailable) {
       onNotice?.('Connect Roblox Studio before generating a 3D model. Your draft is kept.');
       return false;
@@ -785,9 +724,6 @@ export function Composer({
   };
 
   const showCount = text.length >= MESSAGE_WARN_CHARS;
-  // The id a send would use and the name the chip shows: the registry's display name.
-  const modelId = productModel;
-  const modelLabel = registryModel(productModel)?.displayName ?? productModel;
   const autonomousOn = autonomous && mode === 'agent';
 
   return (
@@ -963,9 +899,9 @@ export function Composer({
           <PromptInputTools className="gx-composer__options">
             {/*[[ ---------------------------------------- plan or agent ----
                 FIRST IN THE BAR, because it is the only control here that decides whether this
-                message CHANGES the place. The model chip picks how well the work is done; this
-                picks whether work happens at all, and a person who wants to be told what is wrong
-                before anything is touched has no other way to ask for that.
+                message CHANGES the place. It picks whether work happens at all, and a person who
+                wants to be told what is wrong before anything is touched has no other way to ask
+                for that.
 
                 Both entries are always selectable. Neither is gated on a plan, a subscription or a
                 Studio connection — Plan maps to the same free specialist a free account already
@@ -995,26 +931,6 @@ export function Composer({
               <span className="gx-autonomous__switch" aria-hidden="true" />
               <span className="gx-autonomous__label">Autonomous</span>
             </PromptInputButton>
-
-            {/*[[ -------------------------------------------------- model ----
-                AI Elements' ModelSelector, in model-picker.tsx: the registry's models under one
-                heading. Which rows exist and which can be chosen is model-picker-model.ts; what
-                choosing one does is `chooseRow` above. ]]*/}
-            <Suspense
-              fallback={
-                <button type="button" className="gx-chip gx-chip--model" disabled aria-label={`Model: ${modelLabel}`}>
-                  <ModelChipFace id={modelId} label={modelLabel} />
-                </button>
-              }
-            >
-              <ModelPicker
-                groups={modelGroups}
-                selected={modelId}
-                fallbackLabel={modelLabel}
-                onChoose={chooseRow}
-                onUpgrade={maxUpgradeAvailable === true ? onUpgrade : undefined}
-              />
-            </Suspense>
 
             {/* THE ASSET BROWSER IS GONE, on the owner's instruction of 2026-09-19, and what it means
                 is a change of who does the looking. The customer describes what the place needs and
@@ -1059,8 +975,8 @@ export function Composer({
                   onCheckedChange={() => chooseCreation('image')}
                 >
                   <span className="gx-menu__main">
-                    <span className="gx-menu__name">Image <span className="gx-menu__badge">MAX</span></span>
-                    <span className="gx-menu__sub">{maxAvailable ? 'Generate an image' : 'Requires Apple MAX'}</span>
+                    <span className="gx-menu__name">Image</span>
+                    <span className="gx-menu__sub">Generate an image</span>
                   </span>
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
@@ -1069,8 +985,8 @@ export function Composer({
                   onCheckedChange={() => chooseCreation('model')}
                 >
                   <span className="gx-menu__main">
-                    <span className="gx-menu__name">3D <span className="gx-menu__badge">MAX</span></span>
-                    <span className="gx-menu__sub">{studioConnected ? (maxAvailable ? 'Generate directly in Studio' : 'Requires Apple MAX') : 'Connect Studio first'}</span>
+                    <span className="gx-menu__name">3D</span>
+                    <span className="gx-menu__sub">{studioConnected ? 'Generate directly in Studio' : 'Connect Studio first'}</span>
                   </span>
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
@@ -1123,7 +1039,7 @@ export function Composer({
               <PromptInputSubmit
                 className="gx-send pk-send"
                 status="ready"
-                disabled={!text.trim() || disabled || blocked !== null || creationUnavailable || modelUnavailable}
+                disabled={!text.trim() || disabled || blocked !== null || creationUnavailable}
                 title={creationUnavailable ? 'Connect Roblox Studio to generate this 3D model' : (blocked ?? undefined)}
                 aria-label="Send"
                 // The Send picks: it widens to say "Send" (composer-fx.css), a light follows the
@@ -1143,7 +1059,6 @@ export function Composer({
       {/* The one tooltip every `data-tip` control in the panel shares (tip-group.tsx). */}
       <TipGroup rootRef={panel} />
 
-      {modelUnavailable && <p className="gx-creation-note" role="status">{modelRefusal(productModel)} Your draft is kept.</p>}
       {creation !== 'build' && <p className="gx-creation-note" role="status">{creationUnavailable ? 'Studio disconnected. Reconnect using Studio above, or switch to Images or chat. Your draft is kept.' : CREATION_INTENTS[creation].note}</p>}
       {/* TWO FACTS, AND THEY WERE RUNNING INTO EACH OTHER. JSX collapses the line break into a
           single space, so this line rendered "⇧↵ for a new line Apple can get things wrong" — one

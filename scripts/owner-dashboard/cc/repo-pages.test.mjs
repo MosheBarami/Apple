@@ -114,7 +114,7 @@ test('commits: the whole history, paginated, with a detail view', { timeout: 120
 test('models: registry with plan gating, every LoRA run, evals and skills', async () => {
   const d = await json('/api/cc/models');
   assert.equal(d.ok, true);
-  assert.ok(d.registry.models.length >= 5);
+  assert.deepEqual(d.registry.models.map((m) => m.id), ['apple'], 'one engine (V3 G01)');
   assert.ok(d.registry.models.every((m) => m.providerModelId && Array.isArray(m.plans)));
   assert.ok(d.lora.length >= 5);
   assert.ok(d.lora.every((l) => l.version && l.base));

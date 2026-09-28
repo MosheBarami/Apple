@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const web = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(mkdtempSync(join(tmpdir(), 'apple-intent-')), 'intent.mjs');
 execFileSync(join(web, '../worker/node_modules/.bin/esbuild'), [join(web, 'src/lib/creation-intent.ts'), '--bundle', '--format=esm', `--outfile=${out}`], { stdio: 'pipe' });
-const { creationMessage, CREATION_INTENTS, maxUpgradeAvailable, maxAccessNotice } = await import(out);
+const { creationMessage, CREATION_INTENTS, maxUpgradeAvailable } = await import(out);
 
 function assertUpgradeAvailability(check) {
   assert.equal(check(undefined), null, 'unobserved availability is unknown');
@@ -22,17 +22,12 @@ test('media upgrade follows observed checkout and paid-price availability', () =
   assertUpgradeAvailability(maxUpgradeAvailable);
   assert.throws(() => assertUpgradeAvailability(() => true), /unobserved availability/);
   assert.throws(() => assertUpgradeAvailability((config) => config ? config.purchasable.includes('builder') : null), /no checkout/);
-  assert.match(maxAccessNotice(false), /not available yet/);
-  assert.match(maxAccessNotice(null), /could not be confirmed/);
 });
 
-test('composer gates upgrade navigation and keeps draft in unavailable states', () => {
+test('Image and 3D are not gated on a model tier (V3 G01: one engine, on every plan)', () => {
   const composer = readFileSync(join(web, 'src/components/ws/composer.tsx'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  const gate = composer.slice(composer.indexOf('const requestMaxAccess ='), composer.indexOf('const submit ='));
-  assert.match(gate, /if \(maxUpgradeAvailable === true\) onUpgrade\?\./);
-  assert.match(gate, /maxAccessNotice\(maxUpgradeAvailable\)/);
-  assert.doesNotMatch(gate, /clearDraft|setText/);
+  assert.doesNotMatch(composer, /requestMaxAccess|maxAccessNotice|maxUpgradeAvailable|onUpgrade|Requires Apple MAX/);
 });
 
 test('ordinary chat reaches the existing run without added instructions', () => {
