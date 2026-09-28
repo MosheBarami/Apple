@@ -114,6 +114,13 @@ async function gate(repo) {
 function acceptance(repo, findings) {
   const a = readJson(path.join(repo, 'docs/autonomy/ACCEPTANCE.json'));
   if (!a) return null;
+  if (Array.isArray(a.gates)) {
+    // V3 contract: gates G01–G16, each met only with live evidence (status "passed").
+    const crit = findings ? findings.open.filter((f) => f.sev === 'critical').length : null;
+    const gates = a.gates.map((g) => ({ key: g.id, label: `${g.id} ${g.title}`, ok: g.status === 'passed', status: g.status }));
+    const items = [...gates, { key: 'critical', label: 'אין תקלות קריטיות פתוחות', ok: crit === 0 }];
+    return { v3: true, flags: [], missions: gates, reviews: null, items, done: items.filter((i) => i.ok).length, total: items.length };
+  }
   const flags = Object.entries(FLAG_HE).map(([key, label]) => ({ key, label, ok: a[key] === true }));
   const missions = Object.entries(a.missions || {}).map(([key, v]) => ({ key, label: MISSION_HE[key] || key, ok: v === true }));
   const reviews = { fresh: a.fresh_reviews_without_material_blocker ?? 0, required: a.required_fresh_reviews_without_material_blocker ?? 3 };
