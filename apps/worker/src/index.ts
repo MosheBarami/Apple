@@ -185,6 +185,7 @@ import { dstDisclosure, instantForWall, wallPartsAt } from './zoned-time';
 import { dunningCopy, interpretDunningEvent } from './dunning';
 import { critiqueViews } from './vision';
 import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type StudioProbe, type RoadmapChat } from './roadmap';
+import { applyBrandingEdit, brandingArt, BRANDING_PUBLISH, generateBranding, readBranding, writeBranding } from './branding';
 import { refuseLuauIngress } from './tools';
 import { ensureProvenanceTables, exportProjectAttribution } from './provenance';
 import {
@@ -2311,6 +2312,63 @@ app.post('/api/projects/:id/roadmap/brief', async (c) => {
   if (!brief) return c.json({ error: 'no such milestone for this project' }, 404);
   void count(c.env, 'roadmap_brief');
   return c.json(brief);
+});
+
+// ---------------------------------------------------------------- Generate Branding (V3 §7, G15)
+// Owner-only, like every route above. branding.ts owns the logic; these routes prove ownership and
+// hand it the project's own boundaries. Generating reads Studio (one render_view), never starts a
+// run and never publishes; see the header of branding.ts.
+app.get('/api/projects/:id/branding', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const branding = await readBranding(c.env, ctx.project.id);
+  const art = branding ? await brandingArt(c.env, ctx.project.id, branding) : [];
+  return c.json({ branding, art, publish: BRANDING_PUBLISH }, 200, { 'Cache-Control': 'private, no-store' });
+});
+
+app.post('/api/projects/:id/branding/generate', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const user = c.get('user');
+  const out = await generateBranding(c.env, ctx.project.id, {
+    probe: studioProbeFor(ctx.stub),
+    spend: async () => {
+      const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/spend', {
+        method: 'POST',
+        body: JSON.stringify({ credits: 1, kind: 'branding_copy' }),
+      });
+      return ((await res.json()) as { ok: boolean }).ok === true;
+    },
+    chat: async (system, prompt) => (await llmChat(
+      c.env,
+      { model: 'plan', messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], maxTokens: 1500 },
+      { kind: 'branding:copy', cacheTtl: 0, actorId: user.userId, projectId: ctx.project.id },
+    )).text,
+    context: async () => {
+      const mem = (await (await ctx.stub.fetch('https://do/memory')).json().catch(() => null)) as { memory?: { summary?: string | null; facts?: string[] } } | null;
+      const msgs = (await (await ctx.stub.fetch('https://do/messages?limit=100')).json().catch(() => null)) as { messages?: { role: string; content: string }[] } | null;
+      return {
+        projectName: ctx.project.name,
+        memorySummary: mem?.memory?.summary ?? null,
+        memoryFacts: mem?.memory?.facts ?? [],
+        userRequests: (msgs?.messages ?? []).filter((m) => m.role === 'user').map((m) => m.content),
+      };
+    },
+  });
+  if (out.status !== 200) return c.json(out, out.status);
+  void count(c.env, 'branding_generated');
+  return c.json({ branding: out.record, art: out.art, captured: out.captured, modelCalls: out.modelCalls, publish: BRANDING_PUBLISH });
+});
+
+app.put('/api/projects/:id/branding', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const current = await readBranding(c.env, ctx.project.id);
+  if (!current) return c.json({ error: 'Generate branding first; there is nothing to edit yet.' }, 404);
+  const next = applyBrandingEdit(current, await c.req.json().catch(() => null));
+  if ('error' in next) return c.json({ error: next.error }, 400);
+  await writeBranding(c.env, ctx.project.id, next);
+  return c.json({ branding: next, art: await brandingArt(c.env, ctx.project.id, next), publish: BRANDING_PUBLISH });
 });
 
 // ---------------------------------------------------------------- studio plugin endpoints (token auth, not JWT)

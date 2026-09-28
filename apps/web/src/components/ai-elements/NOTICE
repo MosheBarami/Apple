@@ -658,7 +658,10 @@ Checked against the product's real surfaces on 2026-09-23. Each is one line: wha
   confirmation, question, queue
                      Each needs a worker round-trip that does not exist yet (tool approval, ask_user,
                      a queued-message store).
-  image, artifact, audio-player
+  image              Re-implemented, no upstream copy kept: image.tsx renders the
+                     Branding window's composed icon and thumbnails. Chat images below still use
+                     SafeImage.
+  artifact, audio-player
                      Generated images and sounds already render through lib/generative-ui (SafeImage,
                      SafeAudio: fetched with the person's token, with loading and gone states). A swap
                      is only safe with those states kept, and is left for its own change.

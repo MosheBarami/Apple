@@ -1,0 +1,16 @@
+.brand { display:grid; gap:18px; }
+.brand__label { display:flex; align-items:center; gap:10px; color:var(--muted); font-size:13px; }
+.brand__badge { display:inline-block; padding:2px 8px; border:1px solid var(--line); border-radius:var(--r-md); font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
+.brand__gallery { display:grid; grid-template-columns:minmax(160px,240px) 1fr; gap:20px; align-items:start; }
+.brand__art { margin:0; display:grid; gap:8px; }
+.brand__art--thumbnail ~ .brand__art--thumbnail { grid-column:2; }
+.brand__art .ai-elements-image { width:100%; height:auto; border:1px solid var(--line); border-radius:var(--r-md); }
+.brand__art figcaption { display:grid; gap:6px; font-size:13px; }
+.brand__prov { color:var(--muted); font-size:12px; }
+.brand__dl { justify-self:start; }
+.brand__names { border:0; padding:0; margin:0; display:flex; flex-wrap:wrap; gap:8px; }
+.brand__names legend { margin-bottom:8px; }
+.brand__name[aria-pressed='true'] { border-color:var(--accent); }
+.brand__actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.brand__empty { display:grid; gap:14px; justify-items:start; }
+@media (max-width:720px) { .brand__gallery { grid-template-columns:1fr; } .brand__art--thumbnail ~ .brand__art--thumbnail { grid-column:auto; } }

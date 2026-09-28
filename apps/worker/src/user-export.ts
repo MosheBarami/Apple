@@ -375,6 +375,7 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   // gets when they ask, so both halves have to be named.
   { store: 'd1', binding: 'CORPUS', name: 'generated_images', personal: true, holds: 'the index of your saved images — which project, how large, when, and the key to the file' },
   { store: 'r2', binding: 'MEDIA', name: 'image/<project>/', personal: true, holds: 'the generated image files themselves, until project deletion; download from the authenticated image result' },
+  { store: 'd1', binding: 'CORPUS', name: 'project_branding', personal: true, holds: 'a project\'s saved branding: game-name suggestions, descriptions, tagline and which saved captures the art is composed from' },
   { store: 'd1', binding: 'CORPUS', name: 'generated_image_tombstones', personal: true, holds: 'deleted project IDs retained to fence late image writes; no pixels or account details' },
   { store: 'kv', binding: 'KV', name: 'image:<project>:', personal: true, holds: 'temporary previews and older generated images, for an hour' },
   { store: 'r2', binding: 'MEDIA', name: 'audio/<project>/', personal: true, holds: 'sound the agent generated for you, until the lifecycle rule drops it a year later' },

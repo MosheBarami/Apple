@@ -37,6 +37,7 @@ import { oncePerIsolate } from './schema-once';
 import { shareGrantPrefix, shareLinkKey, shareLinkProjectPrefix } from './collab-links';
 import { attachmentProjectPrefix } from './attachments';
 import { eraseGeneratedImages } from './generated-images';
+import { ensureBrandingTables } from './branding';
 
 /** Typed by the person, in this exact form, before anything is deleted. */
 export const ERASURE_CONFIRMATION = 'DELETE MY ACCOUNT';
@@ -257,6 +258,7 @@ export async function eraseProjectData(env: Env, projectId: string): Promise<Era
     ensureNotificationTables(env).catch(() => {}),
     ensureAutomationTables(env).catch(() => {}),
     ensureProvenanceTables(env).catch(() => {}),
+    ensureBrandingTables(env).catch(() => {}),
   ]);
 
   steps.push(await d1Sweep(env, 'memory_entries (project)', `delete from memory_entries where scope = 'project' and scope_id = ?`, projectId));
@@ -265,6 +267,7 @@ export async function eraseProjectData(env: Env, projectId: string): Promise<Era
   steps.push(await d1Sweep(env, 'automation_runs (project)', `delete from automation_runs where project_id = ?`, projectId));
   steps.push(await d1Sweep(env, 'automations (project)', `delete from automations where project_id = ?`, projectId));
   steps.push(await d1Sweep(env, 'project_asset_use', `delete from project_asset_use where project_id = ?`, projectId));
+  steps.push(await d1Sweep(env, 'project_branding', `delete from project_branding where project_id = ?`, projectId));
 
   if (env.KV) {
     steps.push(await kvSweep(env, 'workspace files', `ws:${projectId}:`));

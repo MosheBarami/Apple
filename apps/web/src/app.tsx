@@ -45,6 +45,7 @@ import { DashboardPage } from './routes/dashboard';
 // user lands, stays eager.
 const WorkspacePage = lazy(() => import('./routes/workspace').then((m) => ({ default: m.WorkspacePage })));
 const RoadmapPage = lazy(() => import('./routes/roadmap').then((m) => ({ default: m.RoadmapPage })));
+const BrandingPage = lazy(() => import('./routes/branding').then((m) => ({ default: m.BrandingPage })));
 const UsagePage = lazy(() => import('./routes/usage').then((m) => ({ default: m.UsagePage })));
 const SettingsPage = lazy(() => import('./routes/settings').then((m) => ({ default: m.SettingsPage })));
 // Lazy for the same reason, and one more. The admin console is rendered only for
@@ -177,6 +178,16 @@ export function App() {
                       element={
                         <Suspense fallback={<div className="page" aria-busy="true" />}>
                           <RoadmapPage />
+                        </Suspense>
+                      }
+                    />
+                    {/* The project's store-page branding (G15). Opened in its own window from the
+                        workspace; nothing on it publishes. */}
+                    <Route
+                      path="/projects/:id/branding"
+                      element={
+                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                          <BrandingPage />
                         </Suspense>
                       }
                     />
