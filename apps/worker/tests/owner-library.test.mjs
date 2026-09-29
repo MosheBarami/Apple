@@ -87,3 +87,17 @@ test('browse_owner_library lists without an id and reads one game with an id',as
   assert.equal(c.calls[1].action,'game');assert.equal(c.calls[1].id,id);assert.equal(one.out.ok,true);
   assert.equal((await run(c,'browse_owner_library',{id:'nothex!'})).out.ok,false);
 });
+
+test('browse_owner_library with kind searches single assets across the library and says how to import them',async()=>{
+  const c=ctx({total:1,items:[{gameId:id,kind:'ui',name:'Shop',path:'/StarterGui/Shop'}]});
+  const {out,data}=await run(c,'browse_owner_library',{kind:'ui',q:'shop',game:id});
+  assert.equal(out.ok,true);
+  assert.deepEqual([c.calls[0].action,c.calls[0].kind,c.calls[0].q,c.calls[0].game],['list','ui','shop',id]);
+  assert.match(data.note,/import_owner_library \{gameId, path, mode:"self"\}/);
+  assert.match(data.note,/a map: path "\/Workspace", mode "children"/);
+  for(const kind of ['model','fx','sound','animation','tool','script','map'])assert.equal((await run(ctx({items:[]}),'browse_owner_library',{kind})).out.ok,true);
+  const bad=await run(ctx({}),'browse_owner_library',{kind:'texture'});
+  assert.match(bad.data.error ?? '',/kind must be one of|must be equal to one of/);
+  const badGame=await run(ctx({}),'browse_owner_library',{kind:'ui',game:'nothex!'});
+  assert.match(badGame.data.error,/game must be a library game id/);
+});

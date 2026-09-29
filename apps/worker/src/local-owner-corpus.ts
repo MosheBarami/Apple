@@ -128,6 +128,7 @@ export async function queryOwnerCatalog(ctx:AgentCtx,a:Record<string,unknown>) {
 /* ------------------------------------------------- the owner's uploaded game library (first source) --- */
 
 const GAME_ID = /^[0-9a-f]{8,64}$/;
+const ASSET_KINDS = ['ui','model','fx','sound','animation','tool','script','map'];
 const LIBRARY_IMPORT_MS = 600_000;
 /** Where a whole slot of a library game goes: the same service in the open place. */
 const SLOT_PARENTS: Record<string,string> = {
@@ -156,10 +157,14 @@ export async function browseOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown
   const after = a.after === undefined ? undefined : Number(a.after);
   if (after !== undefined && (!Number.isInteger(after) || after < 0 || after > 100000)) return {error:'after must be the numeric nextAfter from the previous page.'};
   const text = (v: unknown) => v === undefined || v === '' ? undefined : String(v).slice(0,120);
-  const out = await ctx.execStudioOp(id ? {op:'query_owner_library',action:'game',id} : {op:'query_owner_library',action:'list',q:text(a.q),niche:text(a.niche),after,limit:Math.min(25,Math.max(1,Number(a.limit)||10))},60_000);
+  const kind = text(a.kind), game = text(a.game);
+  if (kind !== undefined && !ASSET_KINDS.includes(kind)) return {error:`kind must be one of ${ASSET_KINDS.join(', ')}.`};
+  if (game !== undefined && !GAME_ID.test(game)) return {error:'game must be a library game id.'};
+  const out = await ctx.execStudioOp(id ? {op:'query_owner_library',action:'game',id} : {op:'query_owner_library',action:'list',q:text(a.q),niche:text(a.niche),kind,game,after,limit:Math.min(25,Math.max(1,Number(a.limit)||10))},60_000);
   if (!out.ok) return {error:out.error ?? 'Owner library refused the request'};
   return {...out.data as Record<string,unknown>,untrustedData:true,note: id
     ? 'Paths for import_owner_library: "/Service" or "/Service/Child"; a repeated sibling name is "Name#2". Big services list only their first children (childrenTotal is exact).'
+    : kind ? 'Import a hit with import_owner_library {gameId, path, mode:"self"} (a map: path "/Workspace", mode "children"); its scripts come with it. Sound and animation ids may belong to the uploader and fail to load in this account. Page with nextAfter unchanged.'
     : 'Ids are unique prefixes; pass one to browse_owner_library {id} for its breakdown, then recreate_owner_game or import_owner_library. Page with nextAfter unchanged.'};
 }
 /** One import, no checkpoint (callers take theirs). Result is the plugin's data or {error}. */

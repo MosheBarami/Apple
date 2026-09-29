@@ -467,13 +467,14 @@ function LocalOwnerCorpus.build(api)
 			local after = op.after or 0
 			if not api.integer(limit) or limit < 1 or limit > 25 or not api.integer(after) or after < 0 or after > 100000 then return nil, "invalid", "list limit 1..25 and after 0..100000 required" end
 			local params = { "limit=" .. limit, "after=" .. after }
-			for _, key in { "q", "niche" } do
+			for _, key in { "q", "niche", "kind", "game" } do
 				if op[key] ~= nil then
 					if not libraryText(op[key], 120) then return nil, "invalid", key .. " must be plain text up to 120 characters" end
 					table.insert(params, key .. "=" .. http:UrlEncode(op[key]))
 				end
 			end
-			path = "/v1/library?" .. table.concat(params, "&")
+			-- A kind searches single assets (one UI, model, effect...) across every game instead of whole games.
+			path = (if op.kind ~= nil then "/v1/library/assets?" else "/v1/library?") .. table.concat(params, "&")
 		elseif op.action == "game" then
 			if not libraryId(op.id) then return nil, "invalid", "a library game id (8-64 hex characters) is required" end
 			path = "/v1/library/game?id=" .. op.id

@@ -143,7 +143,7 @@ export type StudioOp =
       seq?: number; offset?: number; limit?: number; after?: string | number }
   | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
       nativeInstances: number; parent: string }
-  | { op: 'query_owner_library'; action: 'list' | 'game'; q?: string; niche?: string; after?: number; limit?: number; id?: string }
+  | { op: 'query_owner_library'; action: 'list' | 'game'; q?: string; niche?: string; kind?: string; game?: string; after?: number; limit?: number; id?: string }
   | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean; replace?: boolean }
   | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
       contentToken: string; parent: string; name: string }
