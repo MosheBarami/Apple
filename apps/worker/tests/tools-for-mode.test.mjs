@@ -111,7 +111,9 @@ test('without Studio, builders retain image generation but Plan stays read-only'
   // `find_library_model` (D-MODELLIB-1) is the same kind of lookup, over the model index.
   // `find_sound` and `find_vfx` (D-FXLIB-1, reviewed 2026-09-23): the same kind of lookup, over the
   // bundled sound and effect indexes (fx-library.test.mjs).
-  const KNOWLEDGE = ['get_verified_module', 'get_ui_construction', 'find_ui_asset', 'find_library_model', 'find_sound', 'find_vfx'];
+  // `read_owner_component` (7238774a): studio:false, reads cloud owner-corpus bytes and description by
+  // the signed-in user's namespace, so it answers identically with Studio absent.
+  const KNOWLEDGE = ['read_owner_component', 'get_verified_module', 'get_ui_construction', 'find_ui_asset', 'find_library_model', 'find_sound', 'find_vfx'];
   const expected = {
     plan: ['get_genre_references', 'read_creation_skill', 'remember', 'search_creation_skills', 'search_docs', ...KNOWLEDGE],
     // generate_ui_image_hf: reviewed 2026-09-23 as generate_image's fallback — studio:false,
