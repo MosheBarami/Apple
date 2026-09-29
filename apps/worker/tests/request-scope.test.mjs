@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate } from '../src/request-scope.ts';
+import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate, isOwnerLibraryOnlyRequest, staysInOwnerLibrary } from '../src/request-scope.ts';
 
 test('lighting-only requests are recognised, and anything that also asks for objects is not', () => {
   for (const t of ['make the lighting warmer, like the sun is going down', 'make it darker and moodier', 'too foggy, make it a clear golden hour', 'can you make it night time']) {
@@ -47,4 +47,19 @@ test('a request to recreate an uploaded owner game changes the place only by rec
   const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
   assert.match(src, /isOwnerRecreateRequest\(text\) \? \{ ownerRecreate: true \}/);
   assert.match(src, /agent\.ownerRecreate && !agent\.keepOwnerOriginal && READ_ONLY_WITHHELD\.has\(call\.name\) && !startsOwnerRecreate\(call\.name\)/);
+});
+
+test('a game built only from owner library parts cannot generate or take Creator Store content', () => {
+  // Live 2026-09-29: a pet obby "only from parts of my uploaded owner library games" hand-built coloured platforms.
+  for (const t of ['This is a new empty place. Build a new pet obby game only from parts of my uploaded owner library games; do not generate parts, UI or effects yourself.', 'make a tycoon from my library, don\'t generate anything']) {
+    assert.equal(isOwnerLibraryOnlyRequest(t), true, t);
+  }
+  for (const t of ['make a pet obby', 'import the farm from my owner library', 'only use neon parts']) {
+    assert.equal(isOwnerLibraryOnlyRequest(t), false, t);
+  }
+  for (const t of ['create_instances', 'insert_asset', 'find_library_model', 'insert_library_model', 'build_ui', 'insert_vfx', 'run_luau']) assert.equal(staysInOwnerLibrary(t), false, t);
+  for (const t of ['browse_owner_library', 'import_owner_library', 'recreate_owner_game', 'transform_instances', 'move_instances', 'clone_instances', 'edit_script', 'get_project_tree']) assert.equal(staysInOwnerLibrary(t), true, t);
+  const src = src0();
+  assert.match(src, /isOwnerLibraryOnlyRequest\(text\) \? \{ ownerLibraryOnly: true \}/);
+  assert.match(src, /if \(agent\.ownerLibraryOnly && !staysInOwnerLibrary\(call\.name\)\) \{[\s\S]{0,800}continue;/);
 });

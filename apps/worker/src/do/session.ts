@@ -89,7 +89,7 @@ import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-k
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
 import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
 import { explicitToolSequence, sequenceProgress, sequenceStepMessages, sequenceCallSignature } from '../tool-sequence';
-import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate } from '../request-scope';
+import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate, isOwnerLibraryOnlyRequest, staysInOwnerLibrary } from '../request-scope';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
@@ -403,6 +403,8 @@ interface AgentState {
   lightingOnly?: boolean;
   /** The request recreates an owner library game: other changes are refused until it is recreated (request-scope.ts). */
   ownerRecreate?: boolean;
+  /** The request builds only from owner library parts: generating or Creator Store tools are refused (request-scope.ts). */
+  ownerLibraryOnly?: boolean;
   /**
    * Which tools the permissions above actually REMOVED from this run, computed once at the first
    * step and kept so the announcement is made once and survives a reload.
@@ -556,6 +558,11 @@ const OWNER_RECREATE_FIRST =
   'Not run: this request recreates a game from the owner library, and this run has not recreated it yet. The place holds only ' +
   "what this run's own reads show, whatever earlier replies say. Call recreate_owner_game with the game's id from " +
   'browse_owner_library first: it replaces each slot, so it never duplicates. Never build its UI, parts or scripts by hand.';
+/** What a library-only request is told when it tries to make content instead of importing it. */
+const OWNER_LIBRARY_ONLY =
+  'Not run: this request builds only from the owner library, so nothing is generated, hand-built or taken from the Creator Store. ' +
+  'Find the part with browse_owner_library {kind, q} (kind ui, model, fx, sound, animation, tool, script or map), import it with ' +
+  'import_owner_library, then arrange it with transform_instances, move_instances or clone_instances.';
 /** What a run is told when it tries to redo a kit it already built. */
 const KIT_KEPT =
   'Not run: the ready-made scene is finished, and its pieces and the terrain around it are kept as built in this run. ' +
@@ -3450,6 +3457,7 @@ export class SessionDO extends DurableObject<Env> {
       ...(mode === 'agent' && forbidsChanges(text) ? { readOnly: true } : {}),
       ...(mode === 'agent' && isLightingOnlyRequest(text) ? { lightingOnly: true } : {}),
       ...(mode === 'agent' && isOwnerRecreateRequest(text) ? { ownerRecreate: true } : {}),
+      ...(mode === 'agent' && isOwnerLibraryOnlyRequest(text) ? { ownerLibraryOnly: true } : {}),
       step: 0,
       maxSteps: MAX_RUN_STEPS,
       creditsSpent: quota ? 1 : 0,
@@ -4488,6 +4496,13 @@ export class SessionDO extends DurableObject<Env> {
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (recreate the game first)` });
         agent.llm.push({ role: 'tool', content: `[${call.name}] ${OWNER_RECREATE_FIRST}`, toolCallId: call.id, name: call.name });
+        continue;
+      }
+      if (agent.ownerLibraryOnly && !staysInOwnerLibrary(call.name)) {
+        duplicatesThisStep += 1;
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (library parts only)` });
+        agent.llm.push({ role: 'tool', content: `[${call.name}] ${OWNER_LIBRARY_ONLY}`, toolCallId: call.id, name: call.name });
         continue;
       }
       if (agent.kitZone && touchesKit(agent.kitZone, call.name, call.arguments)) {

@@ -47,3 +47,23 @@ export function isOwnerRecreateRequest(text: string): boolean {
 export function startsOwnerRecreate(tool: string): boolean {
   return tool === 'recreate_owner_game';
 }
+
+/**
+ * A game built ONLY from owner library parts (2026-09-29): asked for a pet obby "only from parts of my uploaded
+ * owner library games … do not generate parts", one run searched the Creator Store and then hand-built coloured
+ * obby platforms. So such a request cannot create or insert content from anywhere but the library.
+ */
+export function isOwnerLibraryOnlyRequest(text: string): boolean {
+  return /\b(owner library|uploaded|my library)\b/i.test(text)
+    && /\b(only from|only use|do not generate|don'?t generate|not generated|never generate|no generated)\b/i.test(text);
+}
+
+const NOT_FROM_LIBRARY = new Set(['create_instances', 'edit_terrain', 'build_scene', 'run_luau', 'add_effect', 'install_module',
+  'insert_asset', 'generate_model', 'insert_owner_component', 'insert_library_model', 'find_library_model', 'generate_model_external',
+  'scatter_instances', 'shape_terrain', 'create_rig', 'build_ui', 'insert_sound', 'insert_vfx', 'insert_ui_component', 'design_sound',
+  'assign_sounds']);
+
+/** Whether a library-only run may call this tool: it may import, arrange, fix scripts and read, never make content. */
+export function staysInOwnerLibrary(tool: string): boolean {
+  return !NOT_FROM_LIBRARY.has(tool);
+}
