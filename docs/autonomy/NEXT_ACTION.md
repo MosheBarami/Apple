@@ -4,7 +4,11 @@ Pre-V3 queue archived in `archive/pre-v3/NEXT_ACTION.md`. Order follows `v3/Appl
 Owner consent on record for the rest of V3 (2026-09-29): Cloudflare deploy to existing production, bounded
 paid GLM runs, driving Roblox Studio, push to GitHub `main`. Stripe (L01) and public plugin release (L02) stay held.
 
-Landed in code (pushed to `main`, NOT yet deployed, so no gate is evidenced yet):
+Status 2026-09-29 ~03:00Z: `main` through ef42a53f is deployed; live evidence is in CURRENT_STATE.md
+(G01, G03, G10, G13 on Candy Garden v2). Building is paused until the daily neuron capacity resets
+(midnight UTC). The owner decides whether to raise `BILLABLE_NEURONS_PER_DAY` (a day fits about 2-3 full game builds).
+
+Landed in code (pushed to `main`):
 G01 single engine, mode removal, training retirement, G05 native-readiness consumer, G06 library
 namespace, G03 hard Studio gate + pause/Continue + steering + acknowledged Stop (G10), English-only
 output (G08), G02 pre-launch account gate, Q21 critique-loop removal, Stop abandons in-flight model calls.
@@ -22,7 +26,9 @@ output (G08), G02 pre-launch account gate, Q21 critique-loop removal, Stop aband
    → pair unlocks → wrong place locks → disconnect mid-run pauses → reconnect offers Continue with no
    duplication → steering applies at the next step → offline Stop works.
 5. **Three complete games** (G07/G08/G09/G13/G14): Steal a Brainrot, Grow a Garden, Arm Wrestle
-   Simulator families, each in its own project, played in Studio.
+   Simulator families, each in its own project, played in Studio. Grow a Garden = Candy Garden v2
+   (project 2b3cbdae). Next, send its open fixes as one follow-up: growing label/countdown, unlock prices,
+   real icons, the close button hidden under My Plot. Then run G15 Generate Branding on it, then the other two games.
 6. **Final audit (G16)** and update `ACCEPTANCE.json` gate statuses with live evidence only.
 7. Move the working copy back to `~/Desktop/RbxAI` (owner request): swap the evicted Desktop `.git`
    for the local one; private data stays in iCloud.

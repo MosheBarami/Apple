@@ -20,6 +20,23 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
 - Q19 (f806a876): library models insert directly, no "choose the model" interrupt.
 - Cost: an obby took ~170 credits over 30 steps (one tool per step, ~37-45k input tokens per step,
   first-step latency ~36-62 s). Prompt now asks for up to 4 calls per step (1e753d85).
+- Candy Garden (Grow-a-Garden family, prompt "Make a Grow a Garden style game where everything is candy…"):
+  - v1 (project b5c96da6, run 2b637c06): done, 205 steps, ~1,049 credits; working shop/plant/harvest, but
+    realistic Terrain grass. The prompt now makes the ground studded Plastic slabs.
+  - v2 (project 2b3cbdae, studded, UI Studded): three runs, ~1,790 credits kept. Run 1 ended incomplete
+    after ~60 min on the "changed the same thing" stop. Run 2 ended on the "repeating a step" stop.
+    Run 3 hit the daily capacity after 23 steps and was refunded.
+  - Playtest after run 2: studded ground/UI; one panel at a time; buy 20→10, plant, ~30 s grow,
+    harvest →35. Still wrong: "Harvest" is shown while growing, locked seeds have no price (so they
+    cannot be unlocked), icons are placeholder letters, and the My Plot button covers the shop close button.
+    Save/rejoin is not proven (coins reset in Studio).
+  - G13 on v2: scripts contain no HttpService/http/Apple references; with Apple disconnected the loop
+    plays (buy, plant, grow, harvest).
+  - Fixed on the way: a run that recovered from a refusal no longer ends with the refusal heading
+    (f6c4c84d). An incomplete run that built things no longer says "I did not change anything" (ef42a53f).
+- Capacity: `BILLABLE_NEURONS_PER_DAY` 90k + 10k free (~$0.99/day). One full game build costs 30-40k
+  neurons, so a day fits about 2-3 builds. It ran out 2026-09-29 ~03:00Z. Raising it is the owner's
+  spending decision (not taken).
 - Owner-blocked: G02/G06 need a second approved account (agents may not create accounts);
   G05 library publish needs the owner's `APPLE_OWNER_JWT`.
 
