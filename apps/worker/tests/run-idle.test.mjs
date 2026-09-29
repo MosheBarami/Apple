@@ -131,7 +131,7 @@ test('the run loop passes canBuild, ends a stalled run as incomplete, and tells 
 
 // Changing the same thing over and over — F-036, 101 steps re-tuning one Lighting value.
 test('the same target changed again and again is told to stop tuning, then ended; other targets are separate', async () => {
-  const { afterChange, RETUNE_NUDGE, RETUNE_LIMIT, RETUNE_KEYS } = await import('../src/run-idle.ts');
+  const { afterChange, RETUNE_NUDGE, RETUNE_LIMIT } = await import('../src/run-idle.ts');
   let counts; const actions = [];
   for (let i = 0; i < RETUNE_LIMIT; i++) { const r = afterChange(counts, 'set_props game.Lighting'); counts = r.counts; actions.push(r.action); }
   assert.equal(actions.indexOf('nudge'), RETUNE_NUDGE - 1);
@@ -140,7 +140,13 @@ test('the same target changed again and again is told to stop tuning, then ended
   let spread; const spreadActions = [];
   for (let i = 0; i < 40; i++) { const r = afterChange(spread, `create_instances Coin${i}`); spread = r.counts; spreadActions.push(r.action); }
   assert.ok(spreadActions.every((a) => a === 'none'), 'forty different targets are forty pieces of work, not one retune');
-  assert.ok(Object.keys(spread).length <= RETUNE_KEYS, 'the remembered targets are bounded');
+  assert.ok(Object.keys(spread).length <= 1, 'only the current run of one target is remembered');
+  let mixed; const mixedActions = [];
+  for (let i = 0; i < 3 * RETUNE_LIMIT; i++) {
+    const key = i % 3 === 2 ? 'edit_script game.ServerScriptService.Server' : 'edit_script game.StarterPlayer.Client';
+    const r = afterChange(mixed, key); mixed = r.counts; mixedActions.push(r.action);
+  }
+  assert.ok(mixedActions.every((a) => a === 'none'), 'a script edited many times between other changes is building, not retuning');
 });
 
 test('the run loop counts each successful change by its target and acts on the answer', () => {
