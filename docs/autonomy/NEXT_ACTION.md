@@ -6,7 +6,9 @@ paid GLM runs, driving Roblox Studio, push to GitHub `main`. Stripe (L01) and pu
 
 Status 2026-09-29 ~03:10Z: `main` through 9c776d41 is deployed (worker); the local test plugin in
 `~/Documents/Roblox/Plugins` is rebuilt from 00807fb7; live evidence is in CURRENT_STATE.md
-(G01, G03, G10, G13 on Candy Garden v2). Building is paused until the daily neuron capacity resets
+(G01, G03, G10, G13 on Candy Garden v2). 2026-09-29 ~03:45Z: G11 restore proven live with plugin 01c91e39
+(evidence/20260929-g11-restore; still owed: a follow-up run after a restore) and G15 Generate Branding proven live
+(evidence/20260929-g15-branding). Building is paused until the daily neuron capacity resets
 (midnight UTC). The owner decides whether to raise `BILLABLE_NEURONS_PER_DAY` (a day fits about 2-3 full game builds).
 
 Landed in code (pushed to `main`):
@@ -29,7 +31,7 @@ output (G08), G02 pre-launch account gate, Q21 critique-loop removal, Stop aband
 5. **Three complete games** (G07/G08/G09/G13/G14): Steal a Brainrot, Grow a Garden, Arm Wrestle
    Simulator families, each in its own project, played in Studio. Grow a Garden = Candy Garden v2
    (project 2b3cbdae). Next, send its open fixes as one follow-up: growing label/countdown, unlock prices,
-   real icons, the close button hidden under My Plot. Then run G15 Generate Branding on it, then the other two games.
+   real icons, the close button hidden under My Plot. Then ask for one inactive game pass / developer product (G14: v2 has none) and continue after the G11 restore; then the other two games.
 6. **Final audit (G16)** and update `ACCEPTANCE.json` gate statuses with live evidence only.
 7. Move the working copy back to `~/Desktop/RbxAI` (owner request): swap the evicted Desktop `.git`
    for the local one; private data stays in iCloud.
