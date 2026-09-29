@@ -800,6 +800,26 @@ spec("checkpoint restores opaque visual/audio content, sequences and deferred in
     root:Destroy(); c:destroy()
 end)
 
+spec("links between same-named siblings (a library lamp's four Smooth Block Models) restore to the right ones (Candy Garden v2)", function()
+    local root = Instance.new("Folder"); root.Name = "LampRoot"; root.Parent = workspace
+    local lamp = Instance.new("Model"); lamp.Name = "Lamp"; lamp.Parent = root
+    local blocks = {}
+    for i = 1, 4 do
+        local block = Instance.new("Part"); block.Name = "Smooth Block Model"; block.Size = v3(i, 1, 1); block.Parent = lamp
+        blocks[i] = block
+    end
+    local weld = Instance.new("WeldConstraint"); weld.Name = "Weld"; weld.Part0 = blocks[2]; weld.Part1 = blocks[4]; weld.Parent = lamp
+    local c = newCommands()
+    local snap = run(c, "lamp-snapshot", { op = "snapshot", root = "game.Workspace.LampRoot", includeScripts = true, checkpointId = "cp-lamp" }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true)
+    lamp.Parent = nil
+    local restored = run(c, "lamp-restore", { op = "restore", root = "game.Workspace.LampRoot", checkpointId = "cp-lamp", snapshot = snap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    local back = root:FindFirstChild("Lamp"):FindFirstChild("Weld")
+    eq(back.Part0.Size.X, 2, "Part0 is the second block"); eq(back.Part1.Size.X, 4, "Part1 is the fourth block")
+    root:Destroy(); c:destroy()
+end)
+
 spec("set_props can wire bounded in-place instance references after creation", function()
     local a = Instance.new("Part"); a.Name = "RefA"; a.Parent = workspace
     local b = Instance.new("Part"); b.Name = "RefB"; b.Parent = workspace

@@ -1253,6 +1253,55 @@ local function resolvePath(gameRef: any, services: any, path: any, write: boolea
 	return current, canonical
 end
 
+-- A library model repeats names (a lamp holds four "Smooth Block Model"s), so a link to one of them
+-- also records, per path segment below the service, which same-named sibling it is (Candy Garden v2).
+-- nil when every segment is unique, which keeps the plain path as the whole reference.
+local function siblingOrdinals(gameRef: any, inst: any): { number }?
+	local out = {}
+	local needed = false
+	local current = inst
+	for _ = 1, 64 do
+		local okParent, parent = pcall(function() return current.Parent end)
+		if not okParent or parent == nil or parent == gameRef then break end
+		local name = nameOf(current)
+		local matches, ordinal = 0, 0
+		for _, sibling in childrenOf(parent) or {} do
+			if nameOf(sibling) == name then
+				matches += 1
+				if sibling == current then ordinal = matches end
+			end
+		end
+		if matches > 1 then needed = true end
+		table.insert(out, 1, ordinal)
+		current = parent
+	end
+	return if needed then out else nil
+end
+
+local function resolveOrdinalPath(gameRef: any, services: any, path: any, ordinals: any): (any?, string?)
+	local parts, parseErr = parsePath(path)
+	if not parts then return nil, parseErr end
+	if type(ordinals) ~= "table" or #ordinals ~= #parts - 2 then return nil, "instance reference ordinals do not match its path" end
+	local serviceName = firstService(parts)
+	if not serviceName then return nil, "path names a service outside Apple's allowlist" end
+	local current = serviceFrom(gameRef, services, serviceName)
+	if not current then return nil, ("service %s is unavailable"):format(serviceName) end
+	for index = 3, #parts do
+		local wanted = ordinals[index - 2]
+		if type(wanted) ~= "number" or wanted < 1 or wanted % 1 ~= 0 then return nil, "instance reference ordinal is invalid" end
+		local seen, found = 0, nil
+		for _, candidate in childrenOf(current) or {} do
+			if nameOf(candidate) == parts[index] then
+				seen += 1
+				if seen == wanted then found = candidate; break end
+			end
+		end
+		if not found then return nil, ("instance not found at %s"):format(path) end
+		current = found
+	end
+	return current
+end
+
 local function writableTarget(gameRef: any, inst: any): boolean
 	local path = fullPath(gameRef, inst)
 	if not path then return false end
@@ -1433,6 +1482,11 @@ local function decodeValue(value: any, label: string, allowInstance: boolean?, g
 	elseif t == "Instance" then
 		if not allowInstance then return nil, ("%s may not reference an instance"):format(label) end
 		if gameRef == nil then return nil, ("%s cannot resolve an instance reference without a DataModel"):format(label) end
+		if value.o ~= nil then
+			local ordered, orderedErr = resolveOrdinalPath(gameRef, services, value.v, value.o)
+			if not ordered then return nil, orderedErr or (label .. " reference was not found") end
+			return ordered
+		end
 		local ref, _, resolveErr = resolvePath(gameRef, services, value.v, false)
 		if not ref then return nil, resolveErr or (label .. " reference was not found") end
 		return ref
@@ -1506,7 +1560,7 @@ local function encodeValue(value: any, gameRef: any, label: string): (any?, stri
 	elseif kind == "Instance" then
 		local path, err = fullPath(gameRef, value)
 		if not path then return nil, err end
-		return { t = "Instance", v = path }
+		return { t = "Instance", v = path, o = siblingOrdinals(gameRef, value) }
 	end
 	return nil, label .. " has an unsupported value type"
 end
@@ -2513,6 +2567,26 @@ local function snapshotDataModel(self: any, state: any): (any?, string?)
 	return node
 end
 
+-- A snapshot's instance links point into the tree the restore is about to rebuild, so they are
+-- resolved once that tree exists (applyRestore). Before then only their shape is checked.
+local function splitSnapshotRefs(props: any): (any?, { [string]: any }, string?)
+	local refs = {}
+	if type(props) ~= "table" then return props, refs end
+	local plain = {}
+	for property, typed in props do
+		if type(typed) == "table" and typed.t == "Instance" then
+			if type(property) ~= "string" or not INSTANCE_REF_PROPERTY[property] then return nil, refs, ("snapshot props.%s may not reference an instance"):format(tostring(property)) end
+			local parts, parseErr = parsePath(typed.v)
+			if not parts then return nil, refs, parseErr end
+			if typed.o ~= nil and (type(typed.o) ~= "table" or #typed.o ~= #parts - 2) then return nil, refs, ("snapshot props.%s has invalid sibling ordinals"):format(property) end
+			refs[property] = typed
+		else
+			plain[property] = typed
+		end
+	end
+	return plain, refs
+end
+
 local function validateSnapshotNode(self: any, node: any, depth: number, parentClass: string?, rootClass: string?, stats: any): string?
 	if type(node) ~= "table" then return "snapshot node must be an object" end
 	local depthAllowance = if rootClass == "DataModel" then 1 else 0
@@ -2552,7 +2626,9 @@ local function validateSnapshotNode(self: any, node: any, depth: number, parentC
 	if not name then return nameErr end
 	if dataModel and name ~= "game" then return "DataModel snapshot root must be named game" end
 	if (serviceClass or protectedContainer) and name ~= className then return "protected snapshot identity has an unexpected name" end
-	local _, _, propErr = validateProps(node.props, "snapshot props", true, true, self.game, self.options.services)
+	local plainProps, _, refErr = splitSnapshotRefs(node.props)
+	if refErr then return refErr end
+	local _, _, propErr = validateProps(plainProps, "snapshot props", true, true, self.game, self.options.services)
 	if propErr then return propErr end
 	local _, attrErr = validateAttributes(node.attributes, "snapshot attributes")
 	if attrErr then return attrErr end
@@ -2611,18 +2687,18 @@ local function sourceWrite(editor: any, inst: any, callback: (string) -> string)
 end
 
 local function applySnapshotState(self: any, inst: any, node: any, state: any, expectEmptySource: boolean?): string?
-	local props, _, propErr = validateProps(node.props, "snapshot props", true, true, self.game, self.options.services)
+	local plainProps, refs, refErr = splitSnapshotRefs(node.props)
+	if refErr then return refErr end
+	local props, _, propErr = validateProps(plainProps, "snapshot props", true, true, self.game, self.options.services)
 	if propErr then return propErr end
 	local attrs, attrErr = validateAttributes(node.attributes, "snapshot attributes")
 	if attrErr then return attrErr end
 	for property, value in props do
-		local typed = node.props[property]
-		if type(typed) == "table" and typed.t == "Instance" then
-			table.insert(state.pendingRefs, { inst = inst, property = property, typed = typed })
-		else
-			local ok, err = pcall(function() inst[property] = value end)
-			if not ok then return ("could not restore %s: %s"):format(property, tostring(err)) end
-		end
+		local ok, err = pcall(function() inst[property] = value end)
+		if not ok then return ("could not restore %s: %s"):format(property, tostring(err)) end
+	end
+	for property, typed in refs do
+		table.insert(state.pendingRefs, { inst = inst, property = property, typed = typed })
 	end
 	local okCurrent, currentAttrs = pcall(function() return inst:GetAttributes() end)
 	if not okCurrent or type(currentAttrs) ~= "table" then return "could not read current attributes before restore" end
@@ -4116,11 +4192,14 @@ function applyRestore(self: any, plan: any): (any?, string?, string?)
 		local restoreErr = restoreExisting(self, root, rootNode, state)
 		if restoreErr then return nil, "internal", restoreErr end
 	end
+	-- Every instance exists by now, so a link that still does not resolve is one property lost, reported
+	-- in failedProperties. Aborting here would leave the place half rebuilt: Studio's Cancel did not
+	-- put the cleared content back (Candy Garden v2, 2026-09-29).
+	local failedProperties = 0
 	for _, pending in state.pendingRefs do
 		local value, valueErr = decodeValue(pending.typed, "snapshot props." .. pending.property, true, self.game, self.options.services)
-		if valueErr then return nil, "internal", "could not resolve restored " .. pending.property .. ": " .. valueErr end
-		local ok, setErr = pcall(function() pending.inst[pending.property] = value end)
-		if not ok then return nil, "internal", ("could not restore %s: %s"):format(pending.property, tostring(setErr)) end
+		local ok = valueErr == nil and pcall(function() pending.inst[pending.property] = value end)
+		if not ok then failedProperties += 1 end
 	end
 	if state.scriptsRestored ~= plan.snapshot.scriptCount then return nil, "internal", "restore script count did not match the checkpoint" end
 	return {
@@ -4135,7 +4214,7 @@ function applyRestore(self: any, plan: any): (any?, string?, string?)
 		scriptsExpected = plan.snapshot.scriptCount,
 		failedInstances = 0,
 		failedScripts = 0,
-		failedProperties = 0,
+		failedProperties = failedProperties,
 	}, nil
 end
 
