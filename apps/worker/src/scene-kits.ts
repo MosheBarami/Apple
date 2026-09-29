@@ -54,7 +54,7 @@ function part(name: string, size: Vec3, frame: Prop, extra: Record<string, Prop>
   return {
     className: 'Part',
     name,
-    props: { Anchored: bool(true), Size: v3(size), CFrame: frame, TopSurface: { t: 'EnumItem', v: 'Enum.SurfaceType.Smooth' }, BottomSurface: { t: 'EnumItem', v: 'Enum.SurfaceType.Smooth' }, ...extra },
+    props: { Anchored: bool(true), Size: v3(size), CFrame: frame, TopSurface: { t: 'EnumItem', v: 'Enum.SurfaceType.Studs' }, BottomSurface: { t: 'EnumItem', v: 'Enum.SurfaceType.Inlet' }, ...extra },
     ...(children ? { children } : {}),
   };
 }
