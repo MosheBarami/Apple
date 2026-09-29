@@ -3752,6 +3752,7 @@ export class SessionDO extends DurableObject<Env> {
     }
     if (agent.step >= MAX_RUN_STEPS) {
       agent.finalText = agent.finalText || `I reached the ${MAX_RUN_STEPS}-step ceiling for this message. Work already applied to the project is saved.`;
+      agent.terminalNote = agent.finalText;
       await this.finishRun(agent, 'incomplete', undefined, undefined, 'step_limit');
       return;
     }
@@ -4833,6 +4834,7 @@ export class SessionDO extends DurableObject<Env> {
     // Changing the same thing over and over — F-036: 101 steps re-tuning one Lighting value.
     if (retuneThisStep === 'finish') {
       const note = `Apple stopped here: it had changed the same thing many times in a row. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what should be different and it will pick up from there.`;
+      agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -5216,6 +5218,10 @@ export class SessionDO extends DurableObject<Env> {
             ? 'I looked through your place but did not reach an answer before I stopped, and I kept ' +
               're-reading the same things. Nothing was changed, as you asked. Ask again and name the ' +
               'script or object to start from, and I will look there first.'
+            // Candy Garden v2 (2026-09-29): 176 applied ops, and the reply said nothing was changed.
+            : agent.mutated
+            ? `Apple stopped before it finished. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}` +
+              'Everything it built is in your place. Send another message and Apple will continue from here.'
             : 'I did not change anything in your project. I looked around but never made the edit you ' +
               'asked for, which is a fault on my side rather than a result. Nothing was modified, so ' +
               'there is nothing to undo — ask me again and I will build it.'
@@ -5291,9 +5297,9 @@ export class SessionDO extends DurableObject<Env> {
     // fabrication — is worse than one. What was removed is written to the oplog rather than to the
     // reply: the user needs the truth, not a note about their assistant's imagination, and the next
     // person debugging this needs to know a replacement happened at all.
-    // A run that finished and changed the place recovered from its refusal: the heading "Apple could
-    // not change your place" would contradict the work it just reported (Candy Garden, 2026-09-29).
-    const recovered = reason === 'done' && agent.mutated === true;
+    // A run that changed the place recovered from its refusal: the heading "Apple could not change
+    // your place" would contradict the work it just reported (Candy Garden, 2026-09-29).
+    const recovered = agent.mutated === true;
     const fiction = remedyCloses || recovered ? null : replacedFiction(contentWithRefund, agent.refusalRemedy);
     // When the remedy is already the closing it is not appended a second time.
     const withRemedy = remedyCloses || recovered ? contentWithRefund : replyWithRemedy(contentWithRefund, agent.refusalRemedy);
