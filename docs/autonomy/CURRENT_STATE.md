@@ -17,6 +17,16 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
   history reload (989e7dc1).
 - Owner direction 2026-09-29: no per-turn "Details" (removed, d2c17f77); bright colourful STUDDED is the
   default look (prompt + scene kits, d2c17f77) and the default UI theme (composer chip, 7ffa6ccb).
+- G11 (2026-09-29, plugin 01c91e39 installed locally, Candy Garden v2 in Studio): checkpoint adebac49
+  (306 instances, 6 scripts, 7 preserved engine objects); deleted a Lamp and Flower 3 (Workspace 59 → 41
+  descendants); restore without edit consent is refused (409, "Enable edits…"); with edits allowed it
+  returned 200, 304 instances / 6 of 6 scripts / 0 failed instances, scripts, properties. The Workspace
+  signature after restore equals the one before (59 descendants, same children and counts, both Lamps'
+  PrimaryPart = Smooth Block Model #1, 8 SpecialMeshes, CurrentCamera Workspace.Camera). A failed restore
+  is rolled back as one ChangeHistory cancel. Found and fixed on the way (plugin, each with a failing spec
+  first): a child named like a property (a lamp's "Texture") was captured as the property (f57aa293);
+  links to same-named siblings resolved to the first one (1fcb0682); TextX/YAlignment, ButtonStyle,
+  FrameStyle enums were refused (a94d5392); engine `RBX…` attributes could not be written back (01c91e39).
 - Q19 (f806a876): library models insert directly, no "choose the model" interrupt.
 - Cost: an obby took ~170 credits over 30 steps (one tool per step, ~37-45k input tokens per step,
   first-step latency ~36-62 s). Prompt now asks for up to 4 calls per step (1e753d85).
