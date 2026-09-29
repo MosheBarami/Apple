@@ -11,3 +11,28 @@ test('the prompt says to change only what was asked, and to reply in plain words
   assert.match(src, /If a check suggests other improvements, do not make\s+them/);
   assert.match(src, /young player: plain words, no numbers, colour values or property names/);
 });
+
+// 2026-09-30: replies listed script paths ("ReplicatedStorage.Modules.DumpTable (loadstring)"), instance counts and
+// "suspicious scripts" to a young creator, partly because the prompt told the agent to. The reply rules now say what to
+// talk about and what never to mention, and the code (not the prompt) keeps imported originals out of the audit and
+// refuses to rename or move a recreated game.
+test('the prompt tells the agent to talk about what the player sees, one plain sentence per real problem', () => {
+  assert.match(src, /what the player will now see and do/);
+  assert.match(src, /Never mention tools, paths, services, class or script names, counts of objects or scripts, error codes, ids or\s+"checkpoint"/);
+  assert.match(src, /A real problem gets ONE plain sentence/);
+  assert.match(src, /Progress saving will work once the game is published/);
+});
+
+test('nothing in the prompt still coaches jargon', () => {
+  assert.doesNotMatch(src, /tell the user which scripts/i);
+  assert.doesNotMatch(src, /flagged suspicious/i);
+  assert.doesNotMatch(src, /possible backdoors/i);
+  assert.doesNotMatch(src, /quote what (playerSees|each press)/);
+  assert.match(src, /If an imported game can load code from the internet, say so in one plain sentence/);
+});
+
+test('rules the code already enforces are not repeated in the prompt', () => {
+  assert.doesNotMatch(src, /EXCEPT imported library/, 'audit_build skips roots tagged AppleLibraryGame');
+  assert.doesNotMatch(src, /never rename, move or\s+regroup/i, 'a recreated game refuses rename, move, group and ungroup');
+  assert.doesNotMatch(src, /hunt them down/);
+});

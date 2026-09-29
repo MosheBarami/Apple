@@ -156,26 +156,89 @@ test('the run loop counts each successful change by its target and acts on the a
 });
 
 // 2026-09-23: bound endings said "What it built is in your place" and nothing about what that was.
-test('a stopped run says what it changed, counted from its own trace', async () => {
-  const { builtSummary } = await import('../src/run-idle.ts');
-  const mutating = new Set(['edit_terrain', 'create_instances', 'transform_instances']);
-  const trace = [
-    { tool: 'get_project_tree', ok: true },
-    { tool: 'edit_terrain', ok: true }, { tool: 'edit_terrain', ok: true }, { tool: 'edit_terrain', ok: false },
-    { tool: 'create_instances', ok: true },
-    { tool: 'transform_instances', ok: true }, { tool: 'transform_instances', ok: true }, { tool: 'transform_instances', ok: true },
-  ];
-  assert.equal(builtSummary(trace, mutating), 'It made 6 changes in your place: moves and resizes (3), terrain (2), new objects (1).');
-  assert.equal(builtSummary([{ tool: 'get_project_tree', ok: true }], mutating), '', 'a run that changed nothing claims nothing');
+// 2026-09-30: and once they did, they named tools ("recreate owner game (1)"). They now name what the user got.
+test('a stopped run says what the user got, in plain words, counted from its own record', async () => {
+  const { builtSummary, addMade, madeKey } = await import('../src/run-idle.ts');
+  const made = (...calls) => calls.reduce((m, [tool, args]) => addMade(m, madeKey(tool, args)), undefined);
+  assert.equal(
+    builtSummary(made(['edit_terrain'], ['edit_terrain'], ['create_instances'], ['transform_instances'], ['insert_sound'], ['insert_sound'], ['insert_sound'])),
+    'It worked on the terrain, new objects, moved or resized objects and 3 sounds.');
+  assert.equal(builtSummary(made(['insert_sound'])), 'It worked on a sound.');
+  assert.equal(builtSummary(made(['add_effect'], ['insert_vfx'])), 'It worked on 2 effects.', 'two tools that make the same kind of thing count together');
+  assert.equal(builtSummary(made(['insert_vfx'])), 'It worked on an effect.');
+  assert.equal(builtSummary(made(['edit_script'], ['run_luau'], ['install_module'])), 'It worked on how the game works.');
+  assert.equal(builtSummary(undefined), '', 'a run that changed nothing claims nothing');
+  assert.equal(builtSummary({}), '');
+  assert.equal(builtSummary(made(['create_instances'], ['set_mood'], ['insert_sound'], ['edit_terrain'], ['edit_script'], ['clone_instances'], ['delete_instances'])),
+    'It worked on new objects, the lighting, a sound, the terrain, how the game works, copies of objects and more.', 'a long list is cut short');
 });
 
-test('every bound ending that follows a change carries the count', async () => {
+test('what a library import brought is named the way the game shows it, never by path or tool', async () => {
+  const { builtSummary, addMade, madeKey, plainName, plainLibraryThing } = await import('../src/run-idle.ts');
+  const imp = (path, mode = 'self') => madeKey('import_owner_library', JSON.stringify({ gameId: 'abcdef012345', path, mode }));
+  assert.equal(plainLibraryThing('/Workspace'), 'the game map');
+  assert.equal(plainLibraryThing('/StarterGui'), 'the game screens');
+  assert.equal(plainLibraryThing('/StarterGui/ShopGui'), 'the shop screen');
+  assert.equal(plainLibraryThing('/StarterGui/MainUI/Frames#2'), 'the frames screen');
+  assert.equal(plainLibraryThing('/Workspace/BrainrotPet'), 'the brainrot pet');
+  assert.equal(plainLibraryThing('/ServerScriptService/CashLoop'), 'the cash loop system');
+  assert.equal(plainLibraryThing('/StarterPack/Sword'), 'the sword tool');
+  assert.equal(plainLibraryThing('/'), 'a saved model');
+  assert.equal(plainLibraryThing('/StarterGui/##'), 'a screen', 'a name with nothing readable falls back to its kind');
+  assert.equal(plainName('/Workspace/Plot1'), 'plot 1');
+  assert.equal(plainName('/StarterGui/ShopGUI'), 'shop');
+  assert.equal(plainName('/Workspace/Brainrot Pet#3'), 'brainrot pet');
+  assert.equal(plainName('/Workspace/Bases_NEW/{94396031-cda8-4c6d-ae16-6f869de43bd7}'), '', 'an id is not a name');
+  assert.equal(plainName('/Workspace/1449'), '', 'a bare number is not a name');
+  assert.equal(plainLibraryThing('/SavedGameModules/Workspace/BoatContainer/Boat_{2E055272-1AE8-47E0-8BF6-22F0E52C71F9}'), 'a system');
+  let made;
+  for (const key of [imp('/Workspace', 'children'), imp('/StarterGui/ShopGui'), imp('/StarterGui/ShopGui'), madeKey('recreate_owner_game', '{"gameId":"abcdef012345"}')]) made = addMade(made, key);
+  assert.equal(builtSummary(made), 'It worked on the game map, the shop screen and the whole game.');
+  assert.equal(madeKey('import_owner_library', 'not json'), '=part of a saved game', 'unreadable arguments still name no tool');
+});
+
+test('addMade keeps a bounded record and files the overflow as other changes', async () => {
+  const { builtSummary, addMade } = await import('../src/run-idle.ts');
+  let made;
+  for (let i = 0; i < 100; i++) made = addMade(made, `=thing number ${i}`);
+  assert.ok(Object.keys(made).length <= 31, `${Object.keys(made).length} keys kept`);
+  assert.match(builtSummary(made), /^It worked on .+ and more\.$/);
+  assert.equal(builtSummary(addMade(addMade(undefined, 'constructor'), 'partial')), 'It worked on other changes.', 'an unknown key, even a name that exists on every object, is other changes');
+});
+
+test('no project-changing tool reaches the user under its own name', async () => {
+  const esbuild = await import('esbuild');
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { pathToFileURL } = await import('node:url');
+  const dir = mkdtempSync(join(tmpdir(), 'run-idle-tools-'));
+  try {
+    await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'),
+      alias: { '@golem/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
+    const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
+    const { builtSummary, addMade, madeKey } = await import('../src/run-idle.ts');
+    const writers = T.projectMutatingToolNames();
+    assert.ok(writers.length > 30, 'the registry lists its project-changing tools');
+    for (const name of writers) {
+      const said = builtSummary(addMade(undefined, madeKey(name, '{"path":"/Workspace/Farm","mode":"self"}')));
+      assert.ok(said, `${name} says nothing`);
+      assert.doesNotMatch(said, /[a-z]+_[a-z]+/, `${name} reaches the user as: ${said}`);
+      assert.doesNotMatch(said, /other changes/, `${name} has no plain words in run-idle.ts MADE`);
+    }
+    assert.equal(builtSummary({ made_up_tool: 2 }), 'It worked on other changes.');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('every bound ending that follows a change carries what was made', async () => {
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
-  for (const lead of ['kept repeating a step it had already done. ', 'instead of building the rest. ', 'many times in a row. ']) {
+  for (const lead of ['kept doing the same thing again and again. ', 'instead of building the rest. ', 'over and over. ']) {
     const at = src.indexOf(lead);
     assert.ok(at > 0, `ending "${lead.trim()}" not found — this checks nothing`);
-    assert.match(src.slice(at, at + 120), /builtSummary\(agent\.trace, READ_ONLY_WITHHELD\)/, `"${lead.trim()}" does not say what was changed`);
+    assert.match(src.slice(at, at + 120), /builtSummary\(agent\.made\)/, `"${lead.trim()}" does not say what was made`);
   }
 });
 

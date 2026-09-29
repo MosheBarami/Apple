@@ -336,5 +336,5 @@ test('a run persisted on a customer key before the removal ends in a sentence, w
   await h.session.alarm();
   assert.equal(h.providerRuns.length, 0, 'the step ran — on Apple\'s Credits — although the run was started on a key');
   const reply = h.sql.messages.filter((x) => x.role === 'assistant').map((x) => x.content).join('\n');
-  assert.match(reply, /own key have been retired/, `the run ended without saying why — ${reply.slice(0, 200)}`);
+  assert.match(reply, /old way Apple no longer supports/, `the run ended without saying why — ${reply.slice(0, 200)}`);
 });

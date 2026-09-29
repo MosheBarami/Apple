@@ -1,5 +1,6 @@
 import type { AgentCtx } from './tools';
 import type { StudioOp } from '@golem/shared';
+import { plainName } from './run-idle';
 
 export const LOCAL_OWNER_PREFIX = 'owner-local:';
 const ID = /^[a-f0-9]{64}:(?!binary:)[^\x00-\x1f\x7f]{1,400}$/;
@@ -168,8 +169,8 @@ export async function browseOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown
     : 'Ids are unique prefixes; pass one to browse_owner_library {id} for its breakdown, then recreate_owner_game or import_owner_library. Page with nextAfter unchanged.'};
 }
 /** One import, no checkpoint (callers take theirs). Result is the plugin's data or {error}. */
-async function libraryImport(ctx: AgentCtx, gameId: string, path: string, mode: 'self'|'children', parent: string, applyServiceProperties: boolean, replace = false) {
-  const out = await ctx.execStudioOp({op:'import_owner_library',gameId,path,mode,parent,applyServiceProperties,...(replace ? {replace:true} : {})},LIBRARY_IMPORT_MS);
+async function libraryImport(ctx: AgentCtx, gameId: string, path: string, mode: 'self'|'children', parent: string, applyServiceProperties: boolean, replace = false, onlyMissing = false) {
+  const out = await ctx.execStudioOp({op:'import_owner_library',gameId,path,mode,parent,applyServiceProperties,...(replace ? {replace:true} : {}),...(onlyMissing ? {onlyMissing:true} : {})},LIBRARY_IMPORT_MS);
   return out.ok ? out.data as Record<string,unknown> : {error:out.error ?? 'Owner library import refused'};
 }
 /** The game's MaterialVariants ("2022 Stud"...): its parts name them, and without them Studio draws the bare base
@@ -178,6 +179,53 @@ async function libraryMaterials(ctx: AgentCtx, gameId: string) {
   const out = await ctx.execStudioOp({op:'import_owner_library',gameId,path:'/MaterialService',mode:'children',parent:'game.MaterialService',applyServiceProperties:false,onlyMissing:true},LIBRARY_IMPORT_MS);
   if (out.ok) return Number((out.data as Record<string,unknown>).roots) - Number((out.data as Record<string,unknown>).skipped ?? 0);
   return /path not found/.test(out.error ?? '') ? 0 : `not imported: ${out.error}`;
+}
+const DEPENDENCY_LIMIT = 25;
+/**
+ * A dependency can belong inside a folder the original game had ("game.ReplicatedStorage.Modules") that this place lacks
+ * (about a third of them do), and an import cannot make its parent. The missing folders are made, top down. True when any
+ * was made; a parent Studio fails to read for any reason but "not found" is left alone.
+ */
+async function libraryFolders(ctx: AgentCtx, parent: string) {
+  const names = parent.split('.');
+  let made = false;
+  for (let i = names[1] === 'StarterPlayer' ? 3 : 2; i < names.length; i++) {
+    const there = await ctx.execStudioOp({op:'get_tree',root:names.slice(0,i+1).join('.'),maxDepth:0,maxNodes:1});
+    if (there.ok) continue;
+    if (there.failure !== 'not_found') return made;
+    const folder = await ctx.execStudioOp({op:'create_instances',items:[{className:'Folder',name:names[i]!,parent:names.slice(0,i).join('.')}]});
+    if (!folder.ok) return made;
+    made = true;
+  }
+  return made;
+}
+/**
+ * A library asset copied alone lacks what it talks to: a shop screen without its remotes, modules and server scripts does
+ * nothing. The library says what one asset needs (the paired plugin's deps action); each of those is imported where it
+ * belongs, skipping any whose name is already there; what drives the asset (its controller) comes first, so the cap of
+ * 25 never cuts the piece that makes a screen respond. Once per run per asset. A plugin or library without the deps action
+ * leaves the import exactly as it was. Result: the plain list the agent reports (and the suspicious scripts those pieces
+ * brought, so an automatic import hides nothing a manual one would show), or undefined when there is none.
+ */
+async function libraryDependencies(ctx: AgentCtx, gameId: string, path: string) {
+  if (ctx.onceInRun?.(`deps ${gameId} ${path}`) === false) return undefined;
+  const found = await ctx.execStudioOp({op:'query_owner_library',action:'deps',gameId,path},60_000);
+  if (!found.ok) return undefined;
+  const data = (found.data ?? {}) as {needs?: unknown; usedBy?: unknown};
+  const listed = [...(Array.isArray(data.usedBy) ? data.usedBy : []), ...(Array.isArray(data.needs) ? data.needs : [])] as {path?: unknown; parent?: unknown; why?: unknown}[];
+  const wanted = new Map<string,{path:string;parent:string;why:string}>();
+  for (const dep of listed) {
+    if (typeof dep?.path !== 'string' || typeof dep.parent !== 'string' || dep.path === path || !dep.path.startsWith('/') || dep.path.length > 1024 || !/^game\.[\x20-\x7e]{1,300}$/.test(dep.parent)) continue;
+    wanted.set(dep.parent+' '+dep.path,{path:dep.path,parent:dep.parent,why:typeof dep.why === 'string' ? dep.why.replace(/[\x00-\x1f\x7f]/g,' ').slice(0,160) : ''});
+  }
+  const dependencies: {name:string;why:string;added:boolean}[] = [], suspicious: unknown[] = [];
+  for (const dep of [...wanted.values()].slice(0,DEPENDENCY_LIMIT)) {
+    let done = await libraryImport(ctx,gameId,dep.path,'self',dep.parent,false,false,true);
+    if ('error' in done && await libraryFolders(ctx,dep.parent)) done = await libraryImport(ctx,gameId,dep.path,'self',dep.parent,false,false,true);
+    dependencies.push({name:plainName(dep.path) || 'a helper',why:dep.why,added:!('error' in done) && Number(done.roots) > Number(done.skipped ?? 0)});
+    if (Array.isArray(done.suspicious)) suspicious.push(...done.suspicious);
+  }
+  return dependencies.length ? {dependencies,suspicious,...(wanted.size > DEPENDENCY_LIMIT ? {dependenciesLeftOut:wanted.size - DEPENDENCY_LIMIT} : {})} : undefined;
 }
 export async function importOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown>) {
   const blocked = libraryReady(ctx); if (blocked) return {error:blocked};
@@ -189,11 +237,13 @@ export async function importOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown
   // brought in by an earlier import) still takes imports: they only add objects and Studio's undo takes them back.
   // Never delete imported originals to make a checkpoint work. Any other failure (Studio gone, snapshot failed) refuses.
   const oversize = 'error' in checkpoint && /^Checkpoint was not saved: |too large to checkpoint/.test(checkpoint.error);
-  if ('error' in checkpoint && !oversize) return {error:`Owner library import refused: checkpoint failed (${checkpoint.error}).`};
+  if ('error' in checkpoint && !oversize) return {error:`Nothing was imported: Apple could not save a copy of the place first (${checkpoint.error}). Tell the user in one plain sentence.`};
   const done = await libraryImport(ctx,gameId,path,mode,parent,mode === 'children' && (path === '/Lighting' || path === '/Workspace'));
   if ('error' in done) return done;
   const materialVariants = await libraryMaterials(ctx,gameId);
-  return {...done,path,mode,materialVariants,...(oversize ? {checkpoint:'none: this place cannot be checkpointed (too large or holding objects a snapshot cannot capture); Studio undo reverts this import. Keep every imported original.'} : {}),note:'Original scripts came with it; flagged suspicious scripts (require(id), loadstring, getfenv) must be reported to the user. Terrain is never copied.'};
+  const needed = mode === 'self' ? await libraryDependencies(ctx,gameId,path) : undefined;
+  const suspicious = needed?.suspicious.length ? [...(Array.isArray(done.suspicious) ? done.suspicious : []), ...needed.suspicious].slice(0,50) : done.suspicious;
+  return {...done,path,mode,materialVariants,...needed,suspicious,...(oversize ? {checkpoint:'none: this place cannot be checkpointed (too large or holding objects a snapshot cannot capture); Studio undo reverts this import. Keep every imported original.'} : {}),note:'Its own scripts came with it' + (needed ? ', and the pieces it needs are listed in dependencies' : '') + '. If a script in it can load code from the internet or ask players to pay (see suspicious), tell the user in one plain sentence, naming no scripts. Terrain is never copied.'};
 }
 const GAME_SLOTS = ['/Lighting','/ReplicatedFirst','/ReplicatedStorage','/ServerStorage','/ServerScriptService','/SoundService','/Teams','/StarterPack','/StarterGui',
   '/StarterPlayer/StarterPlayerScripts','/StarterPlayer/StarterCharacterScripts','/Workspace'];
@@ -215,7 +265,7 @@ export async function recreateOwnerGame(ctx: AgentCtx, a: Record<string,unknown>
   });
   if (!slots.length) return {error:'This library entry has nothing to import.'};
   const checkpoint = await ctx.createCheckpoint('before recreating an owner game','auto');
-  if ('error' in checkpoint) return {error:`Recreate refused: checkpoint failed (${checkpoint.error}).`};
+  if ('error' in checkpoint) return {error:`Nothing was imported: Apple could not save a copy of the place first (${checkpoint.error}). Tell the user in one plain sentence.`};
   const results: Record<string,unknown>[] = [], suspicious: unknown[] = [];
   let roots = 0, instances = 0, scripts = 0;
   // Each slot replaces what it held (template Baseplate/SpawnLocation, default Sky), so the place is the original.
@@ -236,5 +286,5 @@ export async function recreateOwnerGame(ctx: AgentCtx, a: Record<string,unknown>
   }
   return {game:game.name,gameId,slots:results,totals:{roots,instances,scripts},suspicious,terrainChildren,materialVariants,
     ...(game.terrain ? {terrain:'voxels not copied'} : {}),
-    note:'Original scripts and objects were imported into their own services. Report every suspicious script (possible backdoor: require(id), loadstring, getfenv) to the user. Keep every original name and place: the scripts find objects by them, so do not rename, move or regroup anything. Now adjust only what the request changes; a plain recreate is done after one playtest check.'};
+    note:'The whole game is in the place with its own scripts. If a script in it can load code from the internet or ask players to pay (see suspicious), tell the user in one plain sentence, naming no scripts. Now change only what the request asks for; a plain recreate is done after one playtest check.'};
 }

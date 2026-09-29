@@ -51,7 +51,7 @@ export interface Sheddable {
 export type PersistOutcome = 'full' | 'shed' | 'terminal';
 
 export const TOO_LARGE_MESSAGE =
-  'This run was stopped because its state grew too large to save.';
+  'This run got too big to keep going, so Apple stopped it. Everything already in your place is saved. Send another message to carry on.';
 
 /** How much trace survives a shed. Enough to explain what the run was doing, not enough to be
  *  what made it too large. */

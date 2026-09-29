@@ -264,6 +264,11 @@ export interface AgentCtx {
    * rebuilds this context every step) and reads it back after each call. See PlanState.
    */
   planState?: PlanState;
+  /**
+   * True the first time a key is claimed in this run, false after. For work a tool must not repeat
+   * within one run (adding the same asset's dependencies twice). Absent outside a run, where every claim is the first.
+   */
+  onceInRun?(key: string): boolean;
 }
 
 /**
@@ -3383,7 +3388,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'audit_build',
       description:
-        'Audit what has been built against a panel of adversarial critics and get back CONFIRMED defects, each naming the metric it measured, that metric\'s value, and the threshold it violates — unanchored parts that will fall on server start, default-grey Plastic, single-material builds, coplanar faces that will z-fight, sub-perceptual parts, a silhouette that carries no information, an untouched Lighting rig. Costs nothing and calls no model. Run it after building and again after fixing. It judges GEOMETRY and lighting configuration; it does not look at the render, so it complements inspect_visually rather than replacing it.',
+        'Audit what has been built against a panel of adversarial critics and get back CONFIRMED defects, each naming the metric it measured, that metric\'s value, and the threshold it violates — unanchored parts that will fall on server start, default-grey Plastic, single-material builds, coplanar faces that will z-fight, sub-perceptual parts, a silhouette that carries no information, an untouched Lighting rig. Costs nothing and calls no model. Run it after building and again after fixing. It judges GEOMETRY and lighting configuration; it does not look at the render, so it complements inspect_visually rather than replacing it. Imported library originals are left out: they are the original game\'s own design.',
       parameters: S({}),
     },
     studio: true,
@@ -3396,6 +3401,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const capture = auditCaptureFromTree(workspace, lighting);
       if (!capture) return { error: 'the typed Studio tree returned something this worker could not read' };
       if (capture.parts.length === 0) {
+        if (capture.importedRoots) return { text: 'Nothing to fix: everything in Workspace is imported original game content, which is the game\'s own design and is not audited.', confirmed: 0, blocking: 0, partsAudited: 0, importedRoots: capture.importedRoots };
         return { error: 'there is no geometry in Workspace to audit yet — build something first' };
       }
 
@@ -4806,7 +4812,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   browse_owner_library: {
     def: {
       name: 'browse_owner_library',
-      description: "Browse the owner's uploaded game library, the FIRST source for every build. Without id: pages games (q = words in a game or its top-level names, niche, after = nextAfter) with per-service counts and top names. With id: that game's full breakdown per service (children with instance and script counts, lighting, terrain). With kind: searches single assets inside all 437 games instead, ui (ScreenGuis, their panels, loose UI frames, billboards), model (models and meshes, pets, props, buildings), fx (the part holding particles, beams, trails, fire), sound, animation, tool, script (modules and systems) or map (a game's whole Workspace; import it with mode children); q = words in its name, path or contents, game = one game id. Each hit has gameId and path. Paths from it feed import_owner_library (mode self); a UI goes to game.StarterGui, an fx holder under the part it decorates.",
+      description: "Browse the owner's uploaded game library, the FIRST source for every build. Without id: pages games (q = words in a game or its top-level names, niche, after = nextAfter) with per-service counts and top names. With id: that game's full breakdown per service (children with instance and script counts, lighting, terrain). With kind: searches single assets inside all library games instead, ui (ScreenGuis, their panels, loose UI frames, billboards), model (models and meshes, pets, props, buildings), fx (the part holding particles, beams, trails, fire), sound, animation, tool, script (modules and systems) or map (a game's whole Workspace; import it with mode children); q = words in its name, path or contents, game = one game id. Each hit has gameId and path. Paths from it feed import_owner_library (mode self); a UI goes to game.StarterGui, an fx holder under the part it decorates.",
       parameters: S({q:{type:'string'},niche:{type:'string'},kind:{type:'string',enum:['ui','model','fx','sound','animation','tool','script','map'],description:'Search single assets of this kind across the library.'},game:{type:'string',description:'With kind: only this game id.'},id:{type:'string',description:'A game id from the list; returns its breakdown.'},after:{type:'number',description:'nextAfter from the previous page.'},limit:{type:'number',description:'1..25, default 10.'}}),
     },
     studio: true,
@@ -4816,7 +4822,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   import_owner_library: {
     def: {
       name: 'import_owner_library',
-      description: "Copy part of an owner library game into Studio WITH its original scripts, parented straight into the target (no wrapper Folder) so the game's scripts find their objects. path is a library path from browse_owner_library: \"/Workspace\", \"/ServerScriptService\", \"/StarterPlayer/StarterPlayerScripts\", \"/Workspace/Farm\" (a repeated sibling name is \"Name#2\"); \"/\" with mode children is the loose top level of a model file. mode children imports what is inside the path, self imports the instance itself. parent defaults to the same service for a service path, else game.Workspace; \"/Lighting\" and \"/Workspace\" children also apply the game's lighting/gravity. Terrain is never copied. Takes a checkpoint. Tell the user which scripts come back suspicious.",
+      description: "Copy part of an owner library game into Studio WITH its original scripts, parented straight into the target (no wrapper Folder) so the game's scripts find their objects. path is a library path from browse_owner_library: \"/Workspace\", \"/ServerScriptService\", \"/StarterPlayer/StarterPlayerScripts\", \"/Workspace/Farm\" (a repeated sibling name is \"Name#2\"); \"/\" with mode children is the loose top level of a model file. mode children imports what is inside the path, self imports the instance itself. parent defaults to the same service for a service path, else game.Workspace; \"/Lighting\" and \"/Workspace\" children also apply the game's lighting/gravity. Terrain is never copied. Takes a checkpoint. A single asset (mode self) also brings the pieces it needs to work (remotes, modules, server scripts, controllers): they are added for you and listed as dependencies.",
       parameters: S({gameId:{type:'string'},path:{type:'string'},mode:{type:'string',enum:['self','children']},parent:{type:'string',description:'Studio path such as game.Workspace or game.StarterPlayer.StarterPlayerScripts.'}},['gameId','path','mode']),
     },
     studio: true,

@@ -50,6 +50,8 @@ export interface AuditCapture {
   total: number;
   /** False when a bounded typed tree hit its node ceiling before the true total was known. */
   totalKnown?: boolean;
+  /** Imported library originals left out of the audit (see auditCaptureFromTree). */
+  importedRoots?: number;
   lighting?: CriticInput['lighting'];
 }
 
@@ -170,7 +172,12 @@ const triple = (value: unknown): [number, number, number] | null => {
   return [v[0] as number, v[1] as number, v[2] as number];
 };
 
-/** Build the same deterministic audit input from the bounded typed get_tree/render_view protocol. */
+/**
+ * Build the same deterministic audit input from the bounded typed get_tree/render_view protocol.
+ *
+ * A root the owner-library import tagged with the AppleLibraryGame attribute is the original game's own design: its
+ * unanchored, far-away, huge or coplanar parts are how that game works, so nothing under it is audited or counted.
+ */
 export function auditCaptureFromTree(treeRaw: unknown, lightingRaw?: unknown): AuditCapture | null {
   if (!treeRaw || typeof treeRaw !== 'object') return null;
   const tree = treeRaw as Record<string, unknown>;
@@ -178,9 +185,11 @@ export function auditCaptureFromTree(treeRaw: unknown, lightingRaw?: unknown): A
   if (!root || typeof root !== 'object') return null;
   const parts: AuditPart[] = [];
   let lightInstances = 0;
+  let importedRoots = 0;
   const walk = (nodeRaw: unknown): void => {
     if (!nodeRaw || typeof nodeRaw !== 'object') return;
     const node = nodeRaw as Record<string, unknown>;
+    if (node.attributes && typeof node.attributes === 'object' && 'AppleLibraryGame' in node.attributes) { importedRoots += 1; return; }
     const props = node.props && typeof node.props === 'object' ? node.props as Record<string, unknown> : {};
     const className = typeof node.class === 'string' ? node.class : '';
     if (className === 'PointLight' || className === 'SpotLight' || className === 'SurfaceLight') lightInstances += 1;
@@ -234,7 +243,7 @@ export function auditCaptureFromTree(treeRaw: unknown, lightingRaw?: unknown): A
     };
   }
   const truncated = tree.truncated === true;
-  return { parts, truncated, total: parts.length, totalKnown: !truncated, lighting };
+  return { parts, truncated, total: parts.length, totalKnown: !truncated, ...(importedRoots ? { importedRoots } : {}), lighting };
 }
 
 // --- metrics -------------------------------------------------------------------------------------

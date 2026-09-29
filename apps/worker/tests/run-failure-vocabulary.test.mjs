@@ -73,7 +73,7 @@ test('the fallback stops interpolating the error into what the user reads', () =
   );
   // And what replaces it answers the question the header of error-taxonomy.ts names first without
   // claiming that nothing was lost: only edits actually applied to Studio are known to be saved.
-  assert.match(SESSION, /Work already applied to Studio is saved/, 'the fallback must still say what is known to be preserved');
+  assert.match(SESSION, /Everything already built is saved/, 'the fallback must still say what is known to be preserved');
 });
 
 test('the provider’s words survive on the server, for support', () => {

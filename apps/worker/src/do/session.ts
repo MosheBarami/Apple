@@ -83,7 +83,7 @@ import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
@@ -244,6 +244,10 @@ interface AgentState {
   /** neurons this run has consumed, so Credits round once per run instead of once per call */
   neuronsUsed?: number;
   trace: ToolTraceEntry[];
+  /** What this run's successful changes gave the user, counted by run-idle.ts addMade; the stop messages are built from it. */
+  made?: Record<string, number>;
+  /** Keys a tool may claim once per run (ctx.onceInRun), e.g. the dependencies already added for one library asset. */
+  onceKeys?: string[];
   /** A create_instances name conflict fences destructive recovery for the rest of this run. */
   blockDeletesAfterCreateConflict?: boolean;
   /** A recreate_owner_game slot import: the original scripts find objects by name, so this run keeps names and structure. */
@@ -3529,10 +3533,11 @@ export class SessionDO extends DurableObject<Env> {
           description: `Apple was asked to: ${intent?.summary ?? text}`,
         }); // broadcasts internally
         if ('error' in checkpoint) {
+          console.warn('[session] pre-run checkpoint failed:', String(checkpoint.error).slice(0, 200));
           this.broadcast({
             type: 'error',
             code: 'checkpoint',
-            message: `Couldn't snapshot your project before starting (${checkpoint.error}). Continuing without an undo point.`,
+            message: "Apple couldn't save a copy of your place before starting, so this change can't be undone in one click. It is carrying on anyway.",
           });
         }
       } catch (err) {
@@ -3540,7 +3545,7 @@ export class SessionDO extends DurableObject<Env> {
         this.broadcast({
           type: 'error',
           code: 'checkpoint',
-          message: "Couldn't snapshot your project before starting. Continuing without an undo point.",
+          message: "Apple couldn't save a copy of your place before starting, so this change can't be undone in one click. It is carrying on anyway.",
         });
       }
     }
@@ -3584,13 +3589,13 @@ export class SessionDO extends DurableObject<Env> {
         const hours = Math.max(1, Math.round((resetsAt.getTime() - Date.now()) / 3_600_000));
         const tail =
           e.reason === 'monthly_cap' || e.reason === 'third_party_monthly_cap'
-            ? 'Capacity refills at the start of next month.'
+            ? 'It opens up again at the start of next month.'
             : e.reason === 'killed'
               ? 'An administrator paused generation; it will be back shortly.'
-              : `Capacity resets in about ${hours} hour${hours === 1 ? '' : 's'} (midnight UTC).`;
+              : `It opens up again in about ${hours} hour${hours === 1 ? '' : 's'}.`;
         agent.finalText =
           (agent.finalText ? agent.finalText + '\n\n' : '') +
-          `${e.message} Everything I finished is saved — your project and checkpoints are untouched. ${tail}`;
+          `${e.message} Everything I finished is saved in your place. ${tail}`;
         this.broadcast({ type: 'error', code: 'capacity', message: e.message });
         await this.finishRun(agent, 'quota');
         return;
@@ -3643,8 +3648,8 @@ export class SessionDO extends DurableObject<Env> {
         const hours = Math.max(1, Math.round((resetsAt.getTime() - Date.now()) / 3_600_000));
         agent.finalText =
           (agent.finalText ? agent.finalText + '\n\n' : '') +
-          `Apple has reached today's shared building capacity, so I stopped here. Everything I finished is saved — your project and checkpoints are untouched. Capacity resets in about ${hours} hour${hours === 1 ? '' : 's'} (midnight UTC), and you can pick up right where we left off.`;
-        this.broadcast({ type: 'error', code: 'capacity', message: `Apple is at capacity for today. Resets in ~${hours}h (midnight UTC).` });
+          `Apple is very busy today and has reached its building limit, so I stopped here. Everything I finished is saved in your place. It opens up again in about ${hours} hour${hours === 1 ? '' : 's'}, and then you can pick up right where we left off.`;
+        this.broadcast({ type: 'error', code: 'capacity', message: `Apple is full for today. It opens up again in about ${hours} hour${hours === 1 ? '' : 's'}.` });
         await this.finishRun(agent, 'quota');
         return;
       }
@@ -3654,7 +3659,7 @@ export class SessionDO extends DurableObject<Env> {
       // branch above it instead, and it answers "did I lose anything" first.
       agent.finalText =
         agent.finalText ||
-        'That step failed on our side. Work already applied to Studio is saved.';
+        'That step failed on our side. Everything already built is saved. Send your message again to keep going.';
       console.warn('[session] step failed:', msg);
       await this.finishRun(agent, 'error', 'model_failed');
     } finally {
@@ -3691,15 +3696,15 @@ export class SessionDO extends DurableObject<Env> {
       delete agent.providerWaitSince;
       agent.finalText =
         (agent.finalText ? agent.finalText + '\n\n' : '') +
-        `The model provider has not answered for ${minutes} minute${minutes === 1 ? '' : 's'} — every attempt was ` +
-        `${cause === 'rate_limited' ? 'refused as too busy' : 'lost before a response came back'} — so I stopped this run ` +
-        'here instead of waiting indefinitely.' +
-        (agent.mutated === true ? ' Everything already applied to your project is saved.' : '') +
-        ' Send the message again once the provider is back.';
+        `Apple's builder has not answered for ${minutes} minute${minutes === 1 ? '' : 's'} — ` +
+        `${cause === 'rate_limited' ? 'it is too busy right now' : 'the connection kept dropping'} — so I stopped ` +
+        'here instead of waiting forever.' +
+        (agent.mutated === true ? ' Everything already in your place is saved.' : '') +
+        ' Send your message again in a little while.';
       this.broadcast({
         type: 'error',
         code: 'busy',
-        message: `The model provider has been unavailable for ${minutes} minute${minutes === 1 ? '' : 's'}, so this run was ended.`,
+        message: `Apple's builder has not answered for ${minutes} minute${minutes === 1 ? '' : 's'}, so it stopped. Try again in a little while.`,
       });
       // Two literal calls rather than a ternary: the code is part of a closed vocabulary and
       // run-failure-vocabulary.test.mjs reads each call site to prove it.
@@ -3714,9 +3719,9 @@ export class SessionDO extends DurableObject<Env> {
       type: 'notice',
       code: 'provider_wait',
       message:
-        `Waiting on the model provider (${cause === 'rate_limited' ? 'it is too busy right now' : 'it did not answer'}) — ` +
-        `retrying in ${Math.max(1, Math.round(waitMs / 1000))} s. The run is still going; it ends if the provider ` +
-        `stays unavailable for ${Math.round(PROVIDER_OUTAGE_MAX_MS / 60_000)} minutes.`,
+        `Apple's builder ${cause === 'rate_limited' ? 'is too busy right now' : 'did not answer'}. ` +
+        `Trying again in ${Math.max(1, Math.round(waitMs / 1000))} seconds; you do not need to do anything. ` +
+        `If it stays away for ${Math.round(PROVIDER_OUTAGE_MAX_MS / 60_000)} minutes, Apple stops and tells you.`,
     });
     await this.ctx.storage.setAlarm(agent.resumeAt);
   }
@@ -3772,7 +3777,7 @@ export class SessionDO extends DurableObject<Env> {
       }
     }
     if (agent.step >= MAX_RUN_STEPS) {
-      agent.finalText = agent.finalText || `I reached the ${MAX_RUN_STEPS}-step ceiling for this message. Work already applied to the project is saved.`;
+      agent.finalText = agent.finalText || 'I have worked as long as I can on one message, so I stopped here. Everything I made is saved in your place. Send another message and I will keep going.';
       agent.terminalNote = agent.finalText;
       await this.finishRun(agent, 'incomplete', undefined, undefined, 'step_limit');
       return;
@@ -3784,7 +3789,7 @@ export class SessionDO extends DurableObject<Env> {
     // A run persisted before BYOK was removed may still name a customer key. That run cannot be
     // continued on the key and must not silently move onto Apple's Credits, so it ends here.
     if ((agent as { customerModel?: unknown }).customerModel) {
-      agent.finalText = agent.finalText || 'Runs on your own key have been retired. Send your message again. Progress is saved.';
+      agent.finalText = agent.finalText || 'That message was started in an old way Apple no longer supports. Send it again and Apple will start fresh. Everything already made is saved.';
       await this.finishRun(agent, 'error', 'model_failed');
       return;
     }
@@ -3896,8 +3901,8 @@ export class SessionDO extends DurableObject<Env> {
     if (sequenceStep && sequenceStep.state !== 'next') {
       await this.finishRun(agent, sequenceStep.state === 'complete' ? 'done' : 'incomplete', undefined,
         sequenceStep.state === 'complete'
-          ? 'The tool sequence you requested is complete. No further checks were run; gameplay remains unverified.'
-          : 'The tool sequence stopped after a failed or unexpected action. Review the recorded changes before continuing.');
+          ? 'The steps you asked for are done. Nothing else was checked, so how the game plays has not been tested.'
+          : 'The steps you asked for stopped because one of them did not work. Look at what was changed before you carry on.');
       return;
     }
     const offeredAllowed = sequenceStep?.state === 'next'
@@ -4181,7 +4186,7 @@ export class SessionDO extends DurableObject<Env> {
       // of paid reasoning-only retries. Preserve the trace and end without a write.
       if (sequence) {
         await this.finishRun(agent, 'incomplete', undefined,
-          'The model reached its output limit before completing the requested tool. I stopped without retrying or adding other actions.');
+          'I ran out of room to finish that step, so I stopped without trying anything else.');
         return;
       }
       // Output ceilings are a provider-call boundary, not a customer-run boundary. The old path
@@ -4219,17 +4224,16 @@ export class SessionDO extends DurableObject<Env> {
       //   evidence `refundVerdict` reads a few lines later — so the clause is only stated when
       //   there is something for it to be about. ]]
       const kept = agent.mutated === true || agent.trace.some((t) => t.ok);
-      const savedClause = kept ? ' Everything completed before it stopped is saved.' : '';
+      const savedClause = kept ? ' Everything finished before it stopped is saved in your place.' : '';
       const providerNote =
         (finishReason === 'error'
-          ? 'The model could not complete this step.'
-          : 'The model response did not confirm that this step completed.') +
-        savedClause +
-        ' Progress already applied to the project is preserved.';
+          ? 'Apple could not finish this step.'
+          : 'Apple did not get a clear answer for this step.') +
+        savedClause;
       const artifactNote = artifact.missing
         ? artifact.tool === 'generate_image'
-          ? 'No image was generated in this run. There is no new image to view or download.'
-          : 'No 3D model was generated in this run. Check the Studio connection and generation availability before retrying.'
+          ? 'No image was made this time, so there is nothing new to look at or download.'
+          : 'No 3D model was made this time. Check that Roblox Studio is still connected, then try again.'
         : '';
       const partial = typeof res.text === 'string' ? res.text.trim() : '';
       const segment = [partial, artifactNote, providerNote].filter(Boolean).join('\n\n');
@@ -4259,7 +4263,7 @@ export class SessionDO extends DurableObject<Env> {
     if (!res.toolCalls.length) {
       if (sequence) {
         await this.finishRun(agent, 'incomplete', undefined,
-          'The requested tool sequence was not completed. I stopped without adding other actions.');
+          'The steps you asked for were not finished, so I stopped without doing anything else.');
         return;
       }
       agent.llm.push({ role: 'assistant', content: res.text });
@@ -4362,8 +4366,8 @@ export class SessionDO extends DurableObject<Env> {
       // since the model's prose is not evidence of what changed (agent.mutated is).
       if (askedForWork) {
         const note =
-          'Nothing in the project was changed: this run was not offered any tool that edits the project ' +
-          '(the tool permissions or the connected Studio withhold them).';
+          'Nothing in your place was changed: Apple was not able to make changes this time. Check that Roblox Studio ' +
+          'is connected and that Apple is allowed to change your place, then ask again.';
         const prior = agent.streamedText ?? '';
         agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
         agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -4426,7 +4430,7 @@ export class SessionDO extends DurableObject<Env> {
         const next = sequenceProgress(sequence, agent.trace);
         if (next.state !== 'next' || call.name !== next.tool) {
           await this.finishRun(agent, 'incomplete', undefined,
-            'Apple attempted an action outside the tool sequence you requested. That action was not run.');
+            'Apple tried to do something you did not ask for, so it did not run it.');
           return;
         }
       }
@@ -4443,7 +4447,7 @@ export class SessionDO extends DurableObject<Env> {
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary });
         agent.trace.push({ tool: call.name, summary, ok: false, durationMs: Date.now() - t0 });
         await this.finishRun(agent, 'incomplete', undefined,
-          `The ${limit}-search limit in your request was reached. I stopped without making another asset search; review the options already found before continuing.`);
+          `You asked for at most ${limit} search${limit === 1 ? '' : 'es'}, and that is used up. I stopped without searching again; have a look at the options already found.`);
         return;
       }
       //[[ THE DUPLICATE GUARD, AND ITS TWO EXCEPTIONS.
@@ -4586,6 +4590,8 @@ export class SessionDO extends DurableObject<Env> {
       // A composite tool can fail after an earlier sub-operation already changed Studio. runTool
       // reports that residual mutation explicitly even when `ok` is false; losing it here would
       // make refund/delivery bookkeeping claim nothing changed when the place did.
+      // A composite that failed part-way still changed the place, but not into what its name says.
+      if (out.mutatedProject === true) agent.made = addMade(agent.made, out.ok ? madeKey(call.name, call.arguments) : 'partial');
       if (out.mutatedProject === true) {
         agent.mutated = true;
         mutatedThisStep = true;
@@ -4689,7 +4695,7 @@ export class SessionDO extends DurableObject<Env> {
         await this.persistAgent(agent);
         if (!out.ok) {
           await this.finishRun(agent, 'incomplete', undefined,
-            'The selected model could not be inserted. Review the insertion result before choosing another model or continuing.');
+            'The model you picked could not be added to your place. Choose another one, or ask again.');
           return;
         }
         // Wait for a new step with the actual result before allowing unrelated work.
@@ -4703,8 +4709,8 @@ export class SessionDO extends DurableObject<Env> {
           } else {
             await this.finishRun(agent, progress.state === 'complete' ? 'done' : 'incomplete', undefined,
               progress.state === 'complete'
-                ? 'The tool sequence you requested is complete. No further checks were run; gameplay remains unverified.'
-                : 'The requested tool failed. I stopped without retrying or adding other actions.');
+                ? 'The steps you asked for are done. Nothing else was checked, so how the game plays has not been tested.'
+                : 'That step did not work, so I stopped without trying again or doing anything else.');
           }
           return;
         }
@@ -4760,7 +4766,7 @@ export class SessionDO extends DurableObject<Env> {
       // turn into paid retries at the same sequence position.
       if (sequenceProgress(sequence, agent.trace, executedThisStep).state === 'failed') {
         await this.finishRun(agent, 'incomplete', undefined,
-          'The requested action could not be executed. I stopped without retrying or adding other actions.');
+          'That step could not be done, so I stopped without trying again or doing anything else.');
         return;
       }
       await this.persistAgent(agent);
@@ -4800,12 +4806,12 @@ export class SessionDO extends DurableObject<Env> {
       });
     } else if (streak === 'end') {
       const note = agent.lightingOnly && agent.mutated
-        ? `The lighting is changed. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what else you would like and Apple will do it.`
+        ? `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and Apple will do it.`
         : agent.kitZone
-        ? `Your scene is built. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what you would like changed and Apple will change it.`
+        ? `Your scene is built. ${spaced(builtSummary(agent.made))}Say what you would like changed and Apple will change it.`
         : agent.mutated
-        ? `Apple stopped because it kept repeating a step it had already done. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Everything it built is in your place.`
-        : 'Apple stopped because it kept repeating a step it had already done, and nothing in your place was changed.';
+        ? `Apple stopped because it kept doing the same thing again and again. ${spaced(builtSummary(agent.made))}Everything it made is in your place.`
+        : 'Apple stopped because it kept doing the same thing again and again, and nothing in your place was changed.';
       agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
@@ -4847,7 +4853,7 @@ export class SessionDO extends DurableObject<Env> {
     // build at the nudge; at the limit the run ends and says plainly what it did and did not do.
     if (idle.action === 'stall' && agent.lightingOnly && agent.mutated) {
       // A lighting change that is made and then only looked at is finished, not stalled.
-      const note = `The lighting is changed. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what else you would like and Apple will do it.`;
+      const note = `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and Apple will do it.`;
       agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
@@ -4858,8 +4864,8 @@ export class SessionDO extends DurableObject<Env> {
     }
     if (idle.action === 'stall') {
       const note = agent.mutated
-        ? `Apple stopped because it kept re-reading your place instead of building the rest. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Ask again to continue.`
-        : 'Apple stopped because it kept re-reading your place instead of building, and nothing in your place was changed. Ask again to continue.';
+        ? `Apple stopped because it kept looking at your place instead of building the rest. ${spaced(builtSummary(agent.made))}Send another message and it will carry on.`
+        : 'Apple stopped because it kept looking at your place instead of building anything, so nothing was changed. Send your message again to try once more.';
       agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
@@ -4870,7 +4876,7 @@ export class SessionDO extends DurableObject<Env> {
     }
     // Changing the same thing over and over — F-036: 101 steps re-tuning one Lighting value.
     if (retuneThisStep === 'finish') {
-      const note = `Apple stopped here: it had changed the same thing many times in a row. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}Say what should be different and it will pick up from there.`;
+      const note = `Apple stopped because it kept changing the same thing over and over. ${spaced(builtSummary(agent.made))}Tell it what should look different and it will carry on from there.`;
       agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
@@ -4901,7 +4907,7 @@ export class SessionDO extends DurableObject<Env> {
       const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
       agent.llm.push({ role: 'user', content: gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_IDLE_STEER });
     } else if (idle.action === 'finish') {
-      const note = 'Apple stopped here: the change was made and checked, and further steps were only re-reading the place.';
+      const note = 'Apple made the change and checked it, then had nothing left to do, so it stopped here.';
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -5243,8 +5249,8 @@ export class SessionDO extends DurableObject<Env> {
       reason === 'incomplete'
         ? artifact.missing
           ? (artifact.tool === 'generate_image'
-            ? 'No image was generated in this run. There is no new image to view or download.'
-            : 'No 3D model was generated in this run. Check the Studio connection and generation availability before retrying.')
+            ? 'No image was made this time, so there is nothing new to look at or download.'
+            : 'No 3D model was made this time. Check that Roblox Studio is still connected, then try again.')
           : remedyCloses
             ? replyWithRemedy('', agent.refusalRemedy)
           : agent.terminalNote
@@ -5257,8 +5263,8 @@ export class SessionDO extends DurableObject<Env> {
               'script or object to start from, and I will look there first.'
             // Candy Garden v2 (2026-09-29): 176 applied ops, and the reply said nothing was changed.
             : agent.mutated
-            ? `Apple stopped before it finished. ${spaced(builtSummary(agent.trace, READ_ONLY_WITHHELD))}` +
-              'Everything it built is in your place. Send another message and Apple will continue from here.'
+            ? `Apple stopped before it finished. ${spaced(builtSummary(agent.made))}` +
+              'Everything it made is in your place. Send another message and Apple will carry on from here.'
             : 'I did not change anything in your project. I looked around but never made the edit you ' +
               'asked for, which is a fault on my side rather than a result. Nothing was modified, so ' +
               'there is nothing to undo — ask me again and I will build it.'
@@ -5710,6 +5716,14 @@ export class SessionDO extends DurableObject<Env> {
   private agentCtx(agent?: AgentState): AgentCtx {
     return {
       discoveredAssetIds: new Set(agent?.discoveredAssetIds ?? []),
+      onceInRun: (key) => {
+        if (!agent) return true;
+        const seen = agent.onceKeys ?? (agent.onceKeys = []);
+        if (seen.includes(key)) return false;
+        seen.push(key);
+        if (seen.length > 200) seen.shift();
+        return true;
+      },
       env: this.env,
       projectId: this.boundProjectId ?? undefined,
       // The run's user is the project owner (startRun records `bind.ownerId`); a tool that acts in

@@ -492,7 +492,7 @@ test('A TERMINAL FAILURE THAT SAVED NOTHING DOES NOT TELL THE USER THEIR WORK IS
   await start(h);
   await h.session.alarm();
   const content = assistantRow(h).content;
-  assert.match(content, /could not complete|failed/i, 'what stopped it is still said');
+  assert.match(content, /could not (complete|finish)|failed/i, 'what stopped it is still said');
   assert.doesNotMatch(content, /send another message/i, 'the product must not outsource recovery to the user');
   assert.doesNotMatch(content, /is saved/, 'but nothing was saved, so nothing claims to be');
 });

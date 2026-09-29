@@ -4572,7 +4572,8 @@ app.post('/api/admin/run-tool/:id', async (c) => {
  * place, and they are precisely the two an unvalidated bypass must not reach; both are still
  * available through /api/admin/run-tool, which goes through the gate.
  *
- * The list is what the harnesses in infra/ and packages/evals actually send, and no more.
+ * The list is what the harnesses in infra/ and packages/evals actually send, and no more, plus the two read-only
+ * ops the owner-library audit drives (capture_studio_viewport, preload_content): they look, they insert nothing.
  */
 const ADMIN_STUDIO_OPS = new Set<StudioOp['op']>([
   'ping',
@@ -4588,6 +4589,8 @@ const ADMIN_STUDIO_OPS = new Set<StudioOp['op']>([
   'viewport_info',
   'render_view',
   'screenshot',
+  'capture_studio_viewport',
+  'preload_content',
   'create_instances',
   'set_props',
   'delete_instances',

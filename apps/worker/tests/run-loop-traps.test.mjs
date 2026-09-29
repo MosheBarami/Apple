@@ -227,6 +227,8 @@ const calls = (...list) => answer({
 });
 const REFUSED = { __refuse: true };
 const TRANSIENT = { __transient: true };
+/** A tool name (snake_case) has no business in a sentence a young creator reads. */
+const TOOL_NAME = /\b[a-z]+(?:_[a-z]+)+\b/;
 
 async function start(h, { text = 'build me a spawn platform', mode = 'agent' } = {}) {
   const res = await h.session.fetch(new Request('https://do/agent-run', {
@@ -263,8 +265,8 @@ test('EVERY PROVIDER WAIT IS ANNOUNCED TO THE CLIENT, and the run stays alive wh
     await h.session.alarm();
     assert.equal(h.store.get('agent').status, 'running', 'one refusal must not end the run');
     assert.equal(notices(h).length, 1, 'the wait sent nothing to the client — a waiting run looks exactly like a dead one');
-    assert.match(notices(h)[0].message, /Waiting on the model provider/);
-    assert.match(notices(h)[0].message, /retrying in \d+ s/);
+    assert.match(notices(h)[0].message, /Apple's builder is too busy right now/);
+    assert.match(notices(h)[0].message, /Trying again in \d+ seconds/);
     const statusAfter = h.sent.slice(h.sent.indexOf(notices(h)[0]) - 1).find((m) => m.type === 'agent_status');
     assert.ok(statusAfter, 'the Thinking card must be told the run is still going');
 
@@ -296,7 +298,7 @@ test('A PROVIDER THAT REFUSES FOR FIVE MINUTES ENDS THE RUN HONESTLY, AND THE CR
     assert.ok(end, 'a provider unavailable past the bound still has the run waiting forever');
     assert.equal(end.stopReason, 'error');
     assert.equal(end.error, 'busy', 'the ending must carry a code from the shared vocabulary');
-    assert.match(assistantRow(h).content, /model provider has not answered for \d+ minutes?/,
+    assert.match(assistantRow(h).content, /builder has not answered for \d+ minutes?/,
       'the reply must say what actually happened');
     // Nothing was built, so the admission Credit is handed back under the ordinary refund rules.
     assert.deepEqual(h.refunds, [1], 'a run that delivered nothing was not refunded');
@@ -314,7 +316,7 @@ test('a transport outage past the bound ends with the dropped-step code', async 
     await h.session.alarm();
     assert.equal(lastEnd(h)?.stopReason, 'error');
     assert.equal(lastEnd(h).error, 'dropped_step');
-    assert.match(assistantRow(h).content, /lost before a response came back/);
+    assert.match(assistantRow(h).content, /connection kept dropping/);
   } finally { h.stop(); }
 });
 
@@ -545,9 +547,9 @@ test('A PAIRED RUN OFFERED NOTHING THAT CHANGES THE PROJECT IS NOT NUDGED TO CHA
     assert.equal(h.store.get('agent').llm.some((m) => m.role === 'user' && OWES_WORK_NUDGE.test(m.content)), false,
       'a run with no tool that changes the project was told to change it');
     assert.ok(lastEnd(h), 'the run kept going after a reply it can never improve on');
-    assert.match(assistantRow(h).content, /Nothing in the project was changed/,
+    assert.match(assistantRow(h).content, /Nothing in your place was changed: Apple was not able to make changes/,
       'the reply must say nothing changed, whatever the model wrote');
-    assert.match(h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join(''), /Nothing in the project was changed/,
+    assert.match(h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join(''), /Nothing in your place was changed: Apple was not able to make changes/,
       'and the person watching must be told, not only the stored row');
 
     // CONTROL: the same prose on a run that CAN build is still steered back to the work.
@@ -675,8 +677,71 @@ test('a run that changed something and then only reads is ended at the read-stal
     const reads = h.ops.filter((op) => op.op === 'get_tree').length;
     assert.ok(reads <= 21, `ended after ${reads} read-only steps, not at the limit`);
     const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
-    assert.match(text, /kept re-reading your place instead of building/);
+    assert.match(text, /kept looking at your place instead of building/);
+    assert.doesNotMatch(text, TOOL_NAME, 'the stop note names a tool');
     assert.notEqual(end.stopReason, 'done');
+  } finally {
+    h.stop();
+  }
+});
+
+// 2026-09-30: the stop note listed tool names ("recreate owner game (1)"). It now says what the user got.
+test('a stopped run tells a young creator what they got, and names no tool', async () => {
+  const gameId = 'abcdef012345';
+  const SUPPORTED = { schema: 'golem.studio-ops.v1', operations: ['import_owner_library', 'query_owner_library', 'snapshot'].map((op) => ({ op, status: 'supported' })) };
+  const h = await makeSession({
+    connected: true,
+    capabilities: SUPPORTED,
+    answerOp: (op) => {
+      if (op.op === 'get_tree') return { ok: true, data: { root: { path: op.root, name: 'x', class: 'Folder', children: [] } } };
+      if (op.op === 'import_owner_library') return { ok: true, data: { roots: 1, instances: 12, scripts: 2, suspicious: [] } };
+      return { ok: true, data: {} };
+    },
+    responses: [
+      calls(['import_owner_library', { gameId, path: '/StarterGui/ShopGui', mode: 'self' }], ['import_owner_library', { gameId, path: '/Workspace', mode: 'children' }]),
+      calls(['create_instances', { instances: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
+      ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
+      answer({ text: 'Done.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'make a coin shop game' });
+    for (let i = 0; i < 60 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended');
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+    assert.match(text, /It worked on the shop screen, the game map and new objects\./, text);
+    assert.doesNotMatch(text, TOOL_NAME, 'the stop note names a tool');
+    assert.doesNotMatch(assistantRow(h).content, TOOL_NAME, 'the saved reply names a tool');
+  } finally {
+    h.stop();
+  }
+});
+
+// The dependencies of a library asset are added once per RUN. The memory is the run's own persisted state, not a test double.
+test('a library asset brings what it needs, once per run, even when the model asks for it again', async () => {
+  const gameId = 'abcdef012345', shop = '/StarterGui/ShopGui';
+  const SUPPORTED = { schema: 'golem.studio-ops.v1', operations: ['import_owner_library', 'query_owner_library', 'snapshot'].map((op) => ({ op, status: 'supported' })) };
+  const h = await makeSession({
+    connected: true,
+    capabilities: SUPPORTED,
+    answerOp: (op) => {
+      if (op.op === 'query_owner_library') return { ok: true, data: { path: shop, needs: [{ path: '/ReplicatedStorage/BuyItem', parent: 'game.ReplicatedStorage', mode: 'self', instances: 1, why: 'the shop buttons fire the BuyItem remote' }], usedBy: [] } };
+      if (op.op === 'import_owner_library') return { ok: true, data: { roots: 1, instances: 12, scripts: 2, suspicious: [] } };
+      return { ok: true, data: {} };
+    },
+    responses: [
+      calls(['import_owner_library', { gameId, path: shop, mode: 'self', parent: 'game.StarterGui' }]),
+      calls(['import_owner_library', { gameId, path: shop, mode: 'self', parent: 'game.Workspace' }]),
+      answer({ text: 'The shop is ready.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'add a shop' });
+    for (let i = 0; i < 20 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended');
+    assert.equal(h.ops.filter((op) => op.op === 'query_owner_library' && op.action === 'deps').length, 1, 'the same asset asked for its pieces twice in one run');
+    const deps = h.ops.filter((op) => op.op === 'import_owner_library' && op.path === '/ReplicatedStorage/BuyItem');
+    assert.deepEqual(deps.map((op) => [op.mode, op.parent, op.onlyMissing]), [['self', 'game.ReplicatedStorage', true]]);
   } finally {
     h.stop();
   }
@@ -721,7 +786,8 @@ test('a run that keeps changing the same thing is ended at the retune limit, on 
     assert.ok(sets > 0, 'no set_props reached Studio — the fixture checks nothing');
     assert.ok(sets <= 12, `changed the same target ${sets} times before stopping`);
     const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
-    assert.match(text, /changed the same thing many times in a row/);
+    assert.match(text, /kept changing the same thing over and over/);
+    assert.doesNotMatch(text, TOOL_NAME, 'the stop note names a tool');
     assert.equal(lastEnd(h).stopReason, 'incomplete', 'a retune guard is a stopped build, not a completed game');
   } finally {
     h.stop();
@@ -769,8 +835,8 @@ test('when Studio drops mid-run the run pauses: no further model step, nothing r
 // send a body the stream already shows.
 
 const GENERIC_INCOMPLETE = /I did not change anything in your project/g;
-const STALL = /kept re-reading your place instead of building/g;
-const REPEAT = /kept repeating a step it had already done/g;
+const STALL = /kept looking at your place instead of building/g;
+const REPEAT = /kept doing the same thing again and again/g;
 const REFUND = /You have not been charged for this run/g;
 const HEADING = /Apple could not change your place/g;
 const count = (text, re) => (String(text).match(re) ?? []).length;
@@ -920,7 +986,7 @@ for (const spent of [false, true]) {
       for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
       assert.ok(lastEnd(h), 'the run never ended');
       assert.ok(h.chatCalls.length >= 11, `the fixture never reached the idle bound (${h.chatCalls.length} model calls)`);
-      assert.doesNotMatch(streamed(h), /only re-reading the place/, 'the run ended on the idle bound with parts unbuilt');
+      assert.doesNotMatch(streamed(h), /had nothing left to do/, 'the run ended on the idle bound with parts unbuilt');
       const steers = steersSent(h);
       assert.ok(steers.length > 0, 'no steer named a missing part');
       assert.match(steers[0], /boat|tavern|market|stall/i, `the steer did not name an unbuilt part: ${steers[0]}`);
@@ -944,7 +1010,7 @@ test('F-064 control: a run whose listed parts are all built still ends on the id
     // idle-bound end is the one reached once they are spent.
     h.store.set('agent', structuredClone({ ...h.store.get('agent'), autonomousContinues: 99 }));
     for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
-    assert.match(streamed(h), /only re-reading the place/);
+    assert.match(streamed(h), /had nothing left to do/);
     assert.equal(steersSent(h).length, 0);
   } finally {
     h.stop();
@@ -1076,7 +1142,7 @@ test('AN EXPLICIT COMPLETED TOOL SEQUENCE DOES NOT BUY ANOTHER MODEL CALL OR AUT
     assert.equal(h.chatCalls.length, 0, 'a completed persisted workflow called the provider');
     assert.deepEqual(h.ops.filter((op) => op.op !== 'snapshot'), [], 'only the automatic rollback checkpoint may reach Studio');
     assert.equal(lastEnd(h)?.stopReason, 'done');
-    assert.match(assistantRow(h).content, /gameplay remains unverified/);
+    assert.match(assistantRow(h).content, /how the game plays has not been tested/);
   } finally { h.stop(); }
 });
 
@@ -1088,7 +1154,7 @@ test('AN OUT-OF-SEQUENCE CALL IS STOPPED BEFORE STUDIO', async () => {
     assert.deepEqual(h.chatCalls[0].req.tools.map((t) => t.name), ['read_script']);
     assert.deepEqual(h.ops.filter((op) => op.op !== 'snapshot'), [], 'only the automatic rollback checkpoint may reach Studio');
     assert.equal(lastEnd(h)?.stopReason, 'incomplete');
-    assert.match(assistantRow(h).content, /outside the tool sequence/);
+    assert.match(assistantRow(h).content, /did not ask for/);
   } finally { h.stop(); }
 });
 
@@ -1099,7 +1165,7 @@ test('A FAILED REQUESTED TOOL ENDS WITHOUT RETRY OR WHOLE-GAME STEERS', async ()
     await h.session.alarm();
     assert.equal(h.chatCalls.length, 1);
     assert.equal(lastEnd(h)?.stopReason, 'incomplete');
-    assert.match(assistantRow(h).content, /without retrying/);
+    assert.match(assistantRow(h).content, /without trying again/);
     await h.session.alarm();
     assert.equal(h.chatCalls.length, 1, 'an ended failed sequence resumed');
   } finally { h.stop(); }

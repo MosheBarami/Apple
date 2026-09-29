@@ -95,39 +95,93 @@ export function afterChange(counts: Record<string, number> | undefined, key: str
 }
 
 
-/** Plain words for what a change was, for a young reader. Anything unlisted reads as its tool name. */
-const CHANGE_WORDS: Record<string, string> = {
-  edit_terrain: 'terrain',
-  create_instances: 'new objects',
-  generate_model: 'generated models',
-  transform_instances: 'moves and resizes',
-  set_properties: 'property changes',
-  set_mood: 'lighting',
-  add_effect: 'effects',
-  insert_vfx: 'effects',
-  insert_sound: 'sounds',
-  edit_script: 'script edits',
-  delete_instances: 'deletions',
-  clone_instances: 'copies',
-  insert_asset: 'inserted assets',
-  install_module: 'modules',
+/**
+ * WHAT A CHANGE GAVE THE USER, in the words a young creator uses. A pair is a countable thing ("a sound", "3 sounds");
+ * a string is a phrase that never takes a number. A tool that is not listed reads as "other changes", never as its own
+ * name (tests/run-idle.test.mjs makes every project-changing tool answer for itself).
+ */
+const MADE: Record<string, string | [string, string]> = {
+  edit_script: 'how the game works', format_script: 'how the game works', run_luau: 'how the game works', install_module: 'how the game works',
+  create_instances: 'new objects', build_scene: 'a ready-made scene',
+  set_properties: 'how things look', set_properties_bulk: 'how things look', set_locked: 'how things look', set_visible: 'how things look',
+  edit_terrain: 'the terrain', shape_terrain: 'the terrain',
+  delete_instances: 'removed objects',
+  move_instances: 'moved or resized objects', transform_instances: 'moved or resized objects',
+  group_instances: 'tidied objects', ungroup_instances: 'tidied objects', rename_instance: 'tidied objects',
+  clone_instances: 'copies of objects', scatter_instances: 'copies of objects',
+  set_mood: 'the lighting',
+  add_effect: ['effect', 'effects'], insert_vfx: ['effect', 'effects'], remove_effect: 'removed effects',
+  insert_sound: ['sound', 'sounds'], design_sound: 'the sound mix', assign_sounds: 'the sound mix',
+  insert_asset: ['model', 'models'], insert_library_model: ['model', 'models'], insert_owner_component: ['model', 'models'],
+  generate_model: ['model', 'models'], generate_model_external: ['model', 'models'],
+  insert_ui_component: 'the on-screen parts', build_ui: 'the on-screen parts',
+  collision_groups: 'what things can pass through',
+  create_rig: ['character', 'characters'],
 };
 
+const WORDS = (s: string) => s.replace(/([a-z\d])([A-Z])/g, '$1 $2').replace(/([A-Za-z])(\d)/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').replace(/[^A-Za-z0-9' ]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+const SERVICE_PART: Record<string, string> = {
+  Workspace: 'the game map', StarterGui: 'the game screens', Lighting: 'the game lighting', SoundService: 'the game sounds',
+  StarterPack: 'the starter tools', Teams: 'the teams', MaterialService: 'the game materials',
+};
+
+/** "/StarterGui/ShopGui#2" -> "shop": the library name of a thing, as words. Empty when nothing readable is left (an id or a bare number is not a name). */
+export function plainName(path: string): string {
+  const last = path.split('/').filter(Boolean).pop() ?? '';
+  const words = WORDS(last.replace(/#\d+$/, '')).replace(/ (gui|ui|screen|frame|model|folder)$/, '');
+  return /[a-z]/.test(words) && (words.match(/\d/g) ?? []).length <= 4 ? words.slice(0, 40).trim() : '';
+}
+
+/** What a library path is called to a user: "/Workspace" is the game map, "/StarterGui/ShopGui" the shop screen. */
+export function plainLibraryThing(path: string): string {
+  const [service, ...rest] = path.split('/').filter(Boolean);
+  if (!service) return 'a saved model';
+  if (!rest.length) return SERVICE_PART[service] ?? 'the game systems';
+  const name = plainName(path);
+  const kind = service === 'StarterGui' ? 'screen' : service === 'StarterPack' ? 'tool' : service === 'SoundService' ? 'sound'
+    : service === 'Workspace' ? '' : 'system';
+  return name ? `the ${name}${kind ? ` ${kind}` : ''}` : kind ? `a ${kind}` : 'a model';
+}
+
+/** The key a successful project-changing call is filed under (see addMade): its tool, or "=" and what a library import brought. */
+export function madeKey(tool: string, args: string | undefined): string {
+  if (tool === 'recreate_owner_game') return '=the whole game';
+  if (tool !== 'import_owner_library') return tool;
+  try {
+    const path = (JSON.parse(args || '{}') as { path?: unknown }).path;
+    if (typeof path === 'string') return '=' + plainLibraryThing(path);
+  } catch { /* the tool already refused bad JSON */ }
+  return '=part of a saved game';
+}
+
+/** Count one more change under its key. At most 30 different keys are kept; the rest count as other changes. */
+export function addMade(made: Record<string, number> | undefined, key: string): Record<string, number> {
+  const next = { ...made };
+  const at = Object.prototype.hasOwnProperty.call(next, key) || Object.keys(next).length < 30 ? key : 'other';
+  next[at] = (next[at] ?? 0) + 1;
+  return next;
+}
+
 /**
- * What a run that a bound stopped actually changed, counted from its own trace. Measured 2026-09-23:
- * three sky-island runs ended "Apple stopped here … What it built is in your place" with no word of
- * what that was, and an earlier reply (F-033) guessed "about a dozen" edits for 149. A count from the
- * trace cannot be that wrong. Empty when nothing changed.
+ * What a run that a bound stopped gave the user, from its own record of successful changes. Measured 2026-09-23:
+ * three sky-island runs ended "Apple stopped here … What it built is in your place" with no word of what that was,
+ * and an earlier reply (F-033) guessed "about a dozen" edits for 149. A count from the record cannot be that wrong.
+ * It names what the user got ("the shop screen", "3 sounds"), never a tool. Empty when nothing changed.
  */
-export function builtSummary(trace: readonly { tool: string; ok: boolean }[], mutating: ReadonlySet<string>): string {
-  const counts = new Map<string, number>();
-  for (const t of trace) if (t.ok && mutating.has(t.tool)) counts.set(t.tool, (counts.get(t.tool) ?? 0) + 1);
-  const total = [...counts.values()].reduce((a, b) => a + b, 0);
-  if (total === 0) return '';
-  const parts = [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([tool, n]) => `${CHANGE_WORDS[tool] ?? tool.replace(/_/g, ' ')} (${n})`);
-  return `It made ${total} change${total === 1 ? '' : 's'} in your place: ${parts.join(', ')}.`;
+export function builtSummary(made: Record<string, number> | undefined): string {
+  const things = new Map<string, { one: string; n: number }>();
+  for (const [key, n] of Object.entries(made ?? {})) {
+    const what = key.startsWith('=') ? key.slice(1) : Object.prototype.hasOwnProperty.call(MADE, key) ? MADE[key]! : 'other changes';
+    const [one, many] = typeof what === 'string' ? [what, what] : what;
+    things.set(many, { one, n: (things.get(many)?.n ?? 0) + n });
+  }
+  const parts = [...things].map(([many, { one, n }]) =>
+    one === many ? many : n === 1 ? `${/^[aeiou]/.test(one) ? 'an' : 'a'} ${one}` : `${n} ${many}`);
+  const shown = parts.slice(0, 6);
+  if (!shown.length) return '';
+  const list = parts.length > shown.length ? `${shown.join(', ')} and more`
+    : shown.length === 1 ? shown[0]! : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
+  return `It worked on ${list}.`;
 }
 
 /**

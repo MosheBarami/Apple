@@ -389,7 +389,7 @@ test('a gateway response with no completion reason fails closed instead of inven
   assert.equal(end.stopReason, 'error');
   assert.equal(end.error, 'model_failed');
   assert.match(assistantRow(h).content, /Partial response with no terminal marker/);
-  assert.match(assistantRow(h).content, /completion|confirm/i);
+  assert.match(assistantRow(h).content, /clear answer/i);
   assert.doesNotMatch(assistantRow(h).content, /send another message/i);
 });
 
@@ -474,7 +474,7 @@ test('three steps of nothing but refused duplicates end the run instead of payin
   assert.ok(end, 'the run must end');
   assert.notEqual(end.stopReason, 'error');
   const said = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
-  assert.match(said, /kept repeating a step it had already done/);
+  assert.match(said, /kept doing the same thing again and again/);
   assert.match(said, /nothing in your place was changed/, 'nothing was built, and the note must say so');
 });
 
@@ -526,7 +526,7 @@ test('an explicit finite workflow stops on reasoning-only truncation without buy
   await h.session.alarm();
   assert.equal(h.store.get('agent').status, 'idle');
   assert.equal(lastEnd(h).stopReason, 'incomplete');
-  assert.match(assistantRow(h).content, /output limit/i);
+  assert.match(assistantRow(h).content, /ran out of room/i);
   assert.equal(h.store.get('agent').trace.length, 1, 'no write followed the truncated response');
   const calls = h.chatCalls.length;
   await h.session.alarm();

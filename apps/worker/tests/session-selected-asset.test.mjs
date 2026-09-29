@@ -326,7 +326,7 @@ test('an actual insertion denial ends incomplete without retry, construction, or
   assert.equal(h.store.get('agent').status, 'idle');
   assert.equal(h.store.get('agent').mutated, undefined);
   assert.equal(lastEnd(h).stopReason, 'incomplete');
-  assert.match(assistantRow(h).content, /could not be inserted/i);
+  assert.match(assistantRow(h).content, /could not be added to your place/i);
 });
 
 test('withheld insertion cannot widen permissions or fall back to building', async () => {
