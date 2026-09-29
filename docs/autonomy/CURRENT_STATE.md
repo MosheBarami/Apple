@@ -4,6 +4,25 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
 **unmeasured**: every gate is `not_evaluated`. The pre-V3 state file is `archive/pre-v3/CURRENT_STATE.md`
 (historical, not current proof).
 
+## Live V3 evidence (2026-09-29, production `apple.moshe-barami111.workers.dev`)
+
+- Deployed through 1e753d85 (worker + static, verified serving). Remote renamed to `MosheBarami/Apple`.
+- G01: real GLM 5.3 Flash (`@cf/zai-org/glm-5.3-flash`, features `apple:step:high/low`) built a
+  spawn pad in Studio. Memory summaries use `@cf/qwen/qwen3-30b-a3b-fp8` (not game-building; flag in G16 audit).
+- G03: unpaired composer locked; pairing unlocks; disconnect mid-run pauses ("Paused: Roblox Studio
+  disconnected… press Continue"); reconnect offers Continue with no duplicated mutations. Wrong-place
+  refusal needs two published place ids (unsaved places are id 0 → `unverified`), so it is unit-tested only.
+- G10: steer applied at a later step (Neon); Stop online refunded 21 credits; Stop with a dead socket
+  ended the run ("Stopped.") and relocked the composer. Steer messages now keep their position after a
+  history reload (989e7dc1).
+- Owner direction 2026-09-29: no per-turn "Details" (removed, d2c17f77); bright colourful STUDDED is the
+  default look (prompt + scene kits, d2c17f77) and the default UI theme (composer chip, 7ffa6ccb).
+- Q19 (f806a876): library models insert directly, no "choose the model" interrupt.
+- Cost: an obby took ~170 credits over 30 steps (one tool per step, ~37-45k input tokens per step,
+  first-step latency ~36-62 s). Prompt now asks for up to 4 calls per step (1e753d85).
+- Owner-blocked: G02/G06 need a second approved account (agents may not create accounts);
+  G05 library publish needs the owner's `APPLE_OWNER_JWT`.
+
 ## Repository and production (FACT)
 
 - Checkout `/Users/moshe/Developer/RbxAI`, branch `main`, remote `github.com/MosheBarami/apple`.
