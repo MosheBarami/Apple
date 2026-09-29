@@ -5291,9 +5291,12 @@ export class SessionDO extends DurableObject<Env> {
     // fabrication — is worse than one. What was removed is written to the oplog rather than to the
     // reply: the user needs the truth, not a note about their assistant's imagination, and the next
     // person debugging this needs to know a replacement happened at all.
-    const fiction = remedyCloses ? null : replacedFiction(contentWithRefund, agent.refusalRemedy);
+    // A run that finished and changed the place recovered from its refusal: the heading "Apple could
+    // not change your place" would contradict the work it just reported (Candy Garden, 2026-09-29).
+    const recovered = reason === 'done' && agent.mutated === true;
+    const fiction = remedyCloses || recovered ? null : replacedFiction(contentWithRefund, agent.refusalRemedy);
     // When the remedy is already the closing it is not appended a second time.
-    const withRemedy = remedyCloses ? contentWithRefund : replyWithRemedy(contentWithRefund, agent.refusalRemedy);
+    const withRemedy = remedyCloses || recovered ? contentWithRefund : replyWithRemedy(contentWithRefund, agent.refusalRemedy);
     if (fiction) {
       this.sql.exec(
         `insert into oplog(op_id, kind, ok, summary, created_at, failure, run_id) values(?,?,?,?,?,?,?)`,
