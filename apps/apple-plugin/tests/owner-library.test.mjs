@@ -79,6 +79,8 @@ assert(game:GetService("Workspace"):FindFirstChild("Fences")~=nil and good.data.
 local again=c:execute("again",op,true,current)
 assert(again.ok==true and again.data.inserted[1]=="game.Workspace[\\"Barn (2)\\"]" and #again.data.renamed==2,"a second import of the same part must stay addressable")
 assert(game:GetService("Workspace"):FindFirstChild("Barn (2)"):FindFirstChild("Milk") and game:GetService("Workspace"):FindFirstChild("Fences (2)"))
+local missingOnly=c:execute("onlyMissing",{op="import_owner_library",gameId="abcdef012345",path="/Workspace",mode="children",parent="Workspace",onlyMissing=true},true,current)
+assert(missingOnly.ok==true and missingOnly.data.skipped==2 and game:GetService("Workspace"):FindFirstChild("Barn (3)")==nil,"onlyMissing must keep what the place has")
 local light=c:execute("light",{op="import_owner_library",gameId="abcdef012345",path="/Lighting",mode="children",parent="game.Lighting",applyServiceProperties=true},true,current)
 assert(light.ok==true,light.error)
 local lighting=game:GetService("Lighting")

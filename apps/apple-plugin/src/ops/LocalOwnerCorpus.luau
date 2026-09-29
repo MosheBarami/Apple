@@ -581,10 +581,13 @@ function LocalOwnerCorpus.build(api)
 		-- Roots go straight in with their own names: the game's scripts find them where they expect. A root named like
 		-- something already in the parent (a second "sparkles") takes Studio's paste name, "sparkles (2)", or no path could
 		-- reach either copy; roots sharing a name inside one import keep it, as the original game had them.
-		local before, renamed = {}, {}
+		-- onlyMissing (a game's MaterialVariants) skips what the place already has: parts find a variant by its name.
+		local before, renamed, skipped = {}, {}, 0
 		for _, child in api.childrenOf(parent) do before[child.Name] = true end
 		for index, root in roots do
-			if before[root.Name] then
+			if before[root.Name] and op.onlyMissing == true then
+				api.destroyInstance(root); skipped += 1; placed = index; continue
+			elseif before[root.Name] then
 				local fresh = api.uniqueName(parent, root.Name)
 				if fresh then table.insert(renamed, { from = root.Name, to = fresh }); root.Name = fresh end
 			end
@@ -621,7 +624,7 @@ function LocalOwnerCorpus.build(api)
 		end
 		return { inserted = inserted, roots = #roots, instances = counts.nodes, scripts = counts.scripts, suspicious = suspicious,
 			suspiciousCount = if type(extract.suspicious) == "table" then #extract.suspicious else 0, serviceApplied = applied, removed = removed,
-			renamed = if #renamed > 0 then renamed else nil, parent = canonical, game = extract.game, sha256 = extract.sha256 }
+			renamed = if #renamed > 0 then renamed else nil, skipped = if skipped > 0 then skipped else nil, parent = canonical, game = extract.game, sha256 = extract.sha256 }
 	end
 	return {handlers={query_owner_local=query,query_owner_exact=exact,query_owner_assembly=evidence,query_owner_media=evidence,import_owner_local=import,query_owner_library=queryLibrary,import_owner_library=importLibrary},mutating={import_owner_local=true,import_owner_library=true}}
 end

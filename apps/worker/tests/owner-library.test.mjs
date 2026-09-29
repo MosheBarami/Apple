@@ -37,10 +37,13 @@ test('recreate_owner_game imports every slot the game has, in order, into the sa
     ['/ServerScriptService','game.ServerScriptService','children',false,true],
     ['/StarterPlayer/StarterPlayerScripts','game.StarterPlayer.StarterPlayerScripts','children',false,true],
     ['/Workspace','game.Workspace','children',true,true],
+    ['/MaterialService','game.MaterialService','children',false,undefined],
     ['/Workspace/Terrain','game.Workspace.Terrain','children',false,undefined]]);
   assert.equal(c.calls[0].op,'query_owner_library');assert.equal(c.calls[0].action,'game');
   assert.deepEqual(data.totals,{roots:10,instances:50,scripts:5});
   assert.equal(data.terrainChildren,2);assert.equal(data.terrain,'voxels not copied');
+  // Studded games draw their studs from MaterialVariants the parts name; the place's own same-named ones are kept.
+  assert.equal(imports.find(o=>o.path==='/MaterialService').onlyMissing,true);assert.equal(data.materialVariants,2);
   assert.deepEqual(data.suspicious,[{slot:'/ServerScriptService',path:'ServerScriptService.Loader',pattern:'loadstring'}]);
 });
 
@@ -49,7 +52,7 @@ test('a model-style file imports its loose top level into Workspace',async()=>{
   const {out}=await run(c,'recreate_owner_game',{gameId:id});
   assert.equal(out.ok,true);
   const imports=c.calls.filter(o=>o.op==='import_owner_library');
-  assert.deepEqual(imports.map(o=>[o.path,o.parent,o.mode]),[['/','game.Workspace','children']]);
+  assert.deepEqual(imports.map(o=>[o.path,o.parent,o.mode]),[['/','game.Workspace','children'],['/MaterialService','game.MaterialService','children']]);
 });
 
 test('recreate stops at the first hard failure and reports what was already imported',async()=>{
@@ -107,7 +110,9 @@ test('import_owner_library still imports into a place Studio cannot checkpoint, 
   c.createCheckpoint=async()=>({error:'Checkpoint was not saved: this project holds more objects than one checkpoint can carry — Studio stopped early (120000 objects).'});
   const {out,data}=await run(c,'import_owner_library',{gameId:id,path:'/StarterGui/Inventory',mode:'self'});
   assert.equal(out.ok,true);assert.match(data.checkpoint,/Studio undo/);
-  assert.equal(c.calls.filter(o=>o.op==='import_owner_library').length,1);
+  assert.deepEqual(c.calls.filter(o=>o.op==='import_owner_library').map(o=>o.path),['/StarterGui/Inventory','/MaterialService']);
+  const none=ctx(GAME,'/MaterialService');
+  assert.equal((await run(none,'import_owner_library',{gameId:id,path:'/StarterGui/Inventory',mode:'self'})).data.materialVariants,0,'a game without MaterialService still imports');
   // Live 2026-09-29: an imported shop GUI held morph clothing a snapshot cannot capture; the agent began deleting it.
   const u=ctx(GAME);
   u.createCheckpoint=async()=>({error:'Checkpoint was not saved: Studio read the project but could not capture 1 Pants, 2 HopperBin, so a restore would not put it back as it is.'});

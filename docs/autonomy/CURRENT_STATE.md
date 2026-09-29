@@ -66,6 +66,16 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
   `~/Library/Application Support/Apple/owner-library/`. The loopback gateway serves `/v1/library*` (no key);
   the agent has `browse_owner_library`, `import_owner_library` and `recreate_owner_game` (whole services with
   scripts, Lighting/Gravity). Terrain voxels are not copied; Terrain's children are (cb256bc6).
+- Owner library DONE (2026-09-29): all 439 uploaded .rbxl/.rbxm files cataloged (439/439, 0 failed; 9.93M instances,
+  204K scripts) and asset-indexed by `packages/owner-corpus/library_assets.py` (439/439): 67,318 single assets —
+  33,974 models, 13,431 script systems, 10,383 UIs, 7,322 sounds, 4,841 fx holders, 3,455 tools, 2,414 animations,
+  282 maps — each with the path `import_owner_library` takes. Extract check: the median asset of every kind in every
+  game was cut to .rbxm with its scripts — 2,514/2,514 ok across 438 games. The agent searches all of it with
+  `browse_owner_library {kind, q}` (34364ad0). Fixed on the way: imports continue in a place Studio cannot
+  checkpoint (08f37761, ff0403a7) instead of refusing or deleting imported originals; a request to build ONLY from
+  library parts refuses generating/Creator Store tools (73fc023e).
+  A root imported next to a same-named object takes Studio's paste name (`sparkles (2)`), so a second import of the
+  same part stays addressable (plugin 77db6987; before it the agent looped on "path is ambiguous").
 - Recreate grow_a_garden live (2026-09-29, project 6de01410): each slot replaces what the template held (cb256bc6), so no
   grey Baseplate/SpawnLocation is left; the original farm, NPCs, sky and UI (SEEDS/GARDEN/SELL, Shop, VIP) appear. Two agent
   defects found and fixed: after the import it renamed originals (Farm → Grow_a_Garden_Map), which breaks scripts that find

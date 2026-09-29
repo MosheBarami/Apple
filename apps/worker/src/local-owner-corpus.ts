@@ -172,6 +172,13 @@ async function libraryImport(ctx: AgentCtx, gameId: string, path: string, mode: 
   const out = await ctx.execStudioOp({op:'import_owner_library',gameId,path,mode,parent,applyServiceProperties,...(replace ? {replace:true} : {})},LIBRARY_IMPORT_MS);
   return out.ok ? out.data as Record<string,unknown> : {error:out.error ?? 'Owner library import refused'};
 }
+/** The game's MaterialVariants ("2022 Stud"...): its parts name them, and without them Studio draws the bare base
+ * material (studded games turn icy Glacier white). Ones the place already has are kept. A game without any is fine. */
+async function libraryMaterials(ctx: AgentCtx, gameId: string) {
+  const out = await ctx.execStudioOp({op:'import_owner_library',gameId,path:'/MaterialService',mode:'children',parent:'game.MaterialService',applyServiceProperties:false,onlyMissing:true},LIBRARY_IMPORT_MS);
+  if (out.ok) return Number((out.data as Record<string,unknown>).roots) - Number((out.data as Record<string,unknown>).skipped ?? 0);
+  return /path not found/.test(out.error ?? '') ? 0 : `not imported: ${out.error}`;
+}
 export async function importOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown>) {
   const blocked = libraryReady(ctx); if (blocked) return {error:blocked};
   const gameId = String(a.gameId ?? ''), path = String(a.path ?? ''), mode = a.mode;
@@ -184,7 +191,9 @@ export async function importOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown
   const oversize = 'error' in checkpoint && /^Checkpoint was not saved: |too large to checkpoint/.test(checkpoint.error);
   if ('error' in checkpoint && !oversize) return {error:`Owner library import refused: checkpoint failed (${checkpoint.error}).`};
   const done = await libraryImport(ctx,gameId,path,mode,parent,mode === 'children' && (path === '/Lighting' || path === '/Workspace'));
-  return 'error' in done ? done : {...done,path,mode,...(oversize ? {checkpoint:'none: this place cannot be checkpointed (too large or holding objects a snapshot cannot capture); Studio undo reverts this import. Keep every imported original.'} : {}),note:'Original scripts came with it; flagged suspicious scripts (require(id), loadstring, getfenv) must be reported to the user. Terrain is never copied.'};
+  if ('error' in done) return done;
+  const materialVariants = await libraryMaterials(ctx,gameId);
+  return {...done,path,mode,materialVariants,...(oversize ? {checkpoint:'none: this place cannot be checkpointed (too large or holding objects a snapshot cannot capture); Studio undo reverts this import. Keep every imported original.'} : {}),note:'Original scripts came with it; flagged suspicious scripts (require(id), loadstring, getfenv) must be reported to the user. Terrain is never copied.'};
 }
 const GAME_SLOTS = ['/Lighting','/ReplicatedFirst','/ReplicatedStorage','/ServerStorage','/ServerScriptService','/SoundService','/Teams','/StarterPack','/StarterGui',
   '/StarterPlayer/StarterPlayerScripts','/StarterPlayer/StarterCharacterScripts','/Workspace'];
@@ -218,13 +227,14 @@ export async function recreateOwnerGame(ctx: AgentCtx, a: Record<string,unknown>
     for (const s of Array.isArray(done.suspicious) ? done.suspicious : []) suspicious.push({slot,...(s as object)});
     results.push({slot,parent,roots:done.roots,instances:done.instances,scripts:done.scripts,serviceApplied:done.serviceApplied,removed:done.removed});
   }
+  const materialVariants = await libraryMaterials(ctx,gameId);
   // Terrain's own children (Clouds, effect attachments scripts look up); a missing or empty Terrain is not an error.
   let terrainChildren: unknown = 0;
   if (game.place !== false) {
     const done = await libraryImport(ctx,gameId,'/Workspace/Terrain','children','game.Workspace.Terrain',false);
     terrainChildren = 'error' in done ? done.error : done.roots;
   }
-  return {game:game.name,gameId,slots:results,totals:{roots,instances,scripts},suspicious,terrainChildren,
+  return {game:game.name,gameId,slots:results,totals:{roots,instances,scripts},suspicious,terrainChildren,materialVariants,
     ...(game.terrain ? {terrain:'voxels not copied'} : {}),
     note:'Original scripts and objects were imported into their own services. Report every suspicious script (possible backdoor: require(id), loadstring, getfenv) to the user. Keep every original name and place: the scripts find objects by them, so do not rename, move or regroup anything. Now adjust only what the request changes; a plain recreate is done after one playtest check.'};
 }
