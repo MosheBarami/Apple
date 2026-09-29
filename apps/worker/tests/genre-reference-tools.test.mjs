@@ -67,11 +67,13 @@ test('the genre kit links to the same retrieval tool before model-context trunca
   assert.match(result.resultForLlm, /read_creation_skill/);
 });
 
-test('the active genre kit tool cannot hand a dark horror palette to cartoon-only Apple', async () => {
+// Owner scope since 7238774a: every Roblox genre and requested art direction; studded is only the default.
+test('the active genre kit tool serves a requested horror genre as well as the default families', async () => {
   const tool = TOOLS.get_genre_kit;
-  assert.ok(!tool.def.parameters.properties.genre.enum.includes('horror'));
-  const refused = await tool.run({}, { genre: 'horror' });
-  assert.match(refused.error, /colorful cartoon/i);
+  assert.ok(tool.def.parameters.properties.genre.enum.includes('horror'));
+  const horror = await tool.run({}, { genre: 'horror' });
+  assert.equal(horror.error, undefined);
+  assert.ok(Array.isArray(horror.palette));
   const available = await tool.run({}, { genre: 'simulator' });
   assert.ok(Array.isArray(available.palette));
   assert.ok(available.makeThese.length > 0);

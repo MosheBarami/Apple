@@ -55,12 +55,15 @@ const PLOT_GAME = 'Build a farming tycoon with 6 plots';
 
 // --------------------------------------------------------------- the style ---
 
-test('the brief uses a single colorful cartoon style, and Plastic is part of it', () => {
+// Owner direction 2026-09-29 (d2c17f77): bright colourful studded is the default and first priority; a
+// look the user names is still followed (scope 7238774a).
+test('the brief defaults to bright colourful studded Plastic and follows a requested look', () => {
   const brief = worldBuildingBrief(PLOT_GAME);
   const style = section(brief, 'STYLE');
-  assert.match(style, /STYLISED/);
-  assert.match(style, /SmoothPlastic/);
-  assert.doesNotMatch(style, /REALISTIC|photorealistic/i);
+  assert.match(style, /unless the user names another look/i);
+  assert.match(style, /STUDDED/);
+  assert.match(style, /Plastic, Studs on top/);
+  assert.match(style, /When the user asks for a genre or art direction, follow it/);
 });
 
 test('the cartoon brief neither bans Plastic nor caps saturation', () => {

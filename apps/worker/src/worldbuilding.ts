@@ -271,7 +271,9 @@ export const CARTOON_PALETTES = ['brightPlay', 'candyArcade', 'oceanPlay', 'cozy
 
 const UNIVERSAL = `ART DIRECTION (mandatory for every new Apple build)
 
-STYLE — follow the user's requested Roblox genre and art direction across world, UI, props,
+STYLE — unless the user names another look, build Apple's default and first priority: modern, bright,
+saturated, colourful STUDDED Roblox (Plastic, Studs on top, Inlet below, bold colour blocking, the
+studded UI theme). When the user asks for a genre or art direction, follow it across world, UI, props,
 characters and VFX. Owner-supplied components are the first source. Use coherent materials,
 readable silhouettes and lighting appropriate to the requested mood, including dark horror,
 realistic or colorful styles. Keep gameplay surfaces and hazards distinct.

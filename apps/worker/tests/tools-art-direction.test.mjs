@@ -124,12 +124,9 @@ test('each mood sends different typed Lighting values, so the choice is not cosm
   assert.notEqual(seen.get('night'), seen.get('sunny'));
 });
 
-test('the active mood tool refuses dark horror without touching Studio', async () => {
-  const { ctx, ops } = moodBridge();
-  const res = await T.TOOLS.set_mood.run(ctx, { mood: 'horror' });
-  assert.match(String(res.error), /colorful cartoon|unknown mood/i);
-  assert.equal(ops.length, 0);
-  assert.ok(!T.TOOLS.set_mood.def.parameters.properties.mood.enum.includes('horror'));
+// Owner scope since 7238774a: a requested dark mood is a valid art direction, not a refusal.
+test('the mood tool offers a requested horror mood', () => {
+  assert.ok(T.TOOLS.set_mood.def.parameters.properties.mood.enum.includes('horror'));
 });
 
 test('an unknown mood is refused BY NAME and reaches Studio not at all', async () => {

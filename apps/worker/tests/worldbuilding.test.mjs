@@ -124,21 +124,13 @@ test('outdoor requests get the natural-scene rules and indoor ones do not', () =
   }
 });
 
-test('the active brief offers only colorful cartoon moods and palettes', () => {
+// Owner scope since 7238774a: every mood can be requested; the colourful presets stay offered by name.
+test('the brief offers the colourful moods and palettes, and the plan schema accepts every mood', () => {
   const brief = worldBuildingBrief('obby');
-  assert.deepEqual(SCENE_PLAN_SCHEMA.properties.style.enum, ['stylised']);
-  assert.deepEqual(SCENE_PLAN_SCHEMA.properties.mood.enum, CARTOON_MOODS);
+  assert.deepEqual(SCENE_PLAN_SCHEMA.properties.mood.enum, Object.keys(MOODS));
   assert.ok(CARTOON_MOODS.includes('sunny'));
-  assert.ok(!CARTOON_MOODS.includes('horror'));
-  assert.ok(!CARTOON_MOODS.includes('overcast'));
-  assert.ok(!CARTOON_PALETTES.includes('coldHorror'));
-  assert.ok(!CARTOON_PALETTES.includes('modernCivic'));
   for (const mood of CARTOON_MOODS) assert.ok(brief.includes(mood), `${mood} is not offered`);
-  for (const pal of CARTOON_PALETTES) {
-    assert.ok(brief.includes(pal), `${pal} is not offered`);
-    assert.ok(PALETTES[pal].materials.includes('SmoothPlastic'), `${pal} is not a cartoon palette`);
-  }
-  assert.doesNotMatch(brief, /- REALISTIC|palette coldHorror|mood horror|realistic cities/i);
+  for (const pal of CARTOON_PALETTES) assert.ok(brief.includes(pal), `${pal} is not offered`);
   assert.match(brief, /find_library_model/);
   assert.match(brief, /insert_library_model/);
   assert.match(brief, /simple.*parts/i);
