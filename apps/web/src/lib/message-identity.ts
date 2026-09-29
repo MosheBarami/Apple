@@ -39,15 +39,21 @@ export const isLocalId = (id: string): boolean => id.startsWith(LOCAL_ID_PREFIX)
  *   * no server id (an older worker sends none): leave every local id alone;
  *   * the server id is already on a message: never two messages with one id;
  *   * the only local ids belong to assistant messages: the server is naming a user row.
+ *
+ * `which` says where to look. A run's own message is the NEWEST unnamed one (`msg_start` names it
+ * as the run begins). A steer (G10) is a message sent mid-run and named later, in send order, so
+ * with several queued it is the OLDEST unnamed one: naming the newest would cross their ids.
  */
 export function adoptUserMessageId<T extends { id: string; role: string }>(
   list: T[],
   serverId: string | undefined,
+  which: 'newest' | 'oldest' = 'newest',
 ): T[] {
   if (!serverId) return list;
   if (list.some((m) => m.id === serverId)) return list;
   let target = -1;
-  for (let i = list.length - 1; i >= 0; i--) {
+  for (let n = 0; n < list.length; n++) {
+    const i = which === 'newest' ? list.length - 1 - n : n;
     const item = list[i]!;
     if (item.role === 'user' && isLocalId(item.id)) {
       target = i;

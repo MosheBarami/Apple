@@ -955,6 +955,14 @@ export function useProjectSocket(
       case 'steer':
         // G10: a message sent mid-run is held for the run's next step. Only the one the run ended
         // before reading needs saying: it was not acted on, and the person should send it again.
+        //
+        // A steer never gets a `msg_start`, so the frame that carries its server id is where the
+        // optimistic message is named. Left under its local id, the next history load finds no row
+        // to match it against and `mergeHistoryWithLive` re-appends it after everything else,
+        // however early in the conversation it was sent. A dropped steer has no row to name.
+        if (msg.state !== 'dropped') {
+          setMessages((list) => adoptUserMessageId(list, msg.id, 'oldest'));
+        }
         if (msg.state === 'dropped') {
           noticeCbRef.current?.('steer_dropped', 'The run ended before it could read your last message. Send it again to act on it.');
         }

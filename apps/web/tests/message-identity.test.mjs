@@ -24,6 +24,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mergeHistoryWithLive } from '../src/lib/project-socket-state.ts';
 import { LOCAL_ID_PREFIX, isLocalId, localId, adoptUserMessageId } from '../src/lib/message-identity.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -119,4 +120,31 @@ test('the client adopts it, and mints its local ids from the one module that def
   assert.match(SOCKET, /const list = adoptUserMessageId\(raw, msg\.userMsgId\)/);
   assert.match(SOCKET, /from '\.\/message-identity'/);
   assert.equal(/const localId = \(\) =>/.test(SOCKET), false, 'no second definition of a local id');
+});
+
+// ------------------------------------------------------- steers (G10, mid-run sends) ---
+
+test('a steer names the OLDEST unnamed user message, so several queued steers keep their order', () => {
+  // Two steers queued in one step get their frames in send order; naming the newest would hand the
+  // first steer's id to the second message.
+  const list = [user('real-1'), bot('real-2'), user(`${LOCAL_ID_PREFIX}1`), user(`${LOCAL_ID_PREFIX}2`)];
+  const first = adoptUserMessageId(list, 'steer-1', 'oldest');
+  assert.deepEqual(first.map((m) => m.id), ['real-1', 'real-2', 'steer-1', `${LOCAL_ID_PREFIX}2`]);
+  assert.deepEqual(adoptUserMessageId(first, 'steer-2', 'oldest').map((m) => m.id), ['real-1', 'real-2', 'steer-1', 'steer-2']);
+});
+
+test('an un-named steer is re-appended after later messages by a history load; a named one is not', () => {
+  // The production bug: chat B sent mid-run A never got a msg_start, kept its local id, and the
+  // history load after the run put it AFTER every later message (C, D).
+  const at = (id, role, t) => ({ id, role, content: id, createdAt: t });
+  const history = [at('a', 'user', 1), at('b', 'user', 2), at('a-reply', 'assistant', 3), at('c', 'user', 4), at('c-reply', 'assistant', 5)];
+  const live = [at('a', 'user', 1), at('a-reply', 'assistant', 3), at(`${LOCAL_ID_PREFIX}b`, 'user', 2), at('c', 'user', 4), at('c-reply', 'assistant', 5)];
+  const stuck = mergeHistoryWithLive(history, live).map((m) => m.id);
+  assert.equal(stuck[stuck.length - 1], `${LOCAL_ID_PREFIX}b`, 'documents the failure mode');
+  const named = adoptUserMessageId(live, 'b', 'oldest');
+  assert.deepEqual(mergeHistoryWithLive(history, named).map((m) => m.id), ['a', 'b', 'a-reply', 'c', 'c-reply']);
+});
+
+test('the client names the steer from the frame that carries its id, and not when it was dropped', () => {
+  assert.match(SOCKET, /if \(msg\.state !== 'dropped'\) \{\s*setMessages\(\(list\) => adoptUserMessageId\(list, msg\.id, 'oldest'\)\);/);
 });
