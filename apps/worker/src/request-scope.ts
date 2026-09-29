@@ -33,3 +33,17 @@ export function staysInLighting(tool: string, argsJson: string | undefined): boo
   }
   return false;
 }
+
+/**
+ * A request to recreate an uploaded owner game (2026-09-29): in a fresh place, trusting an earlier
+ * reply that said the game was recreated, the model planned a hand-built HUD instead. So until this
+ * run has recreated it, changing the place any other way is refused.
+ */
+export function isOwnerRecreateRequest(text: string): boolean {
+  return /\brecreat/i.test(text) && /\b(owner library|uploaded|my library)\b/i.test(text);
+}
+
+/** What a recreate request may call before the game is recreated. */
+export function startsOwnerRecreate(tool: string): boolean {
+  return tool === 'recreate_owner_game' || tool === 'import_owner_library';
+}

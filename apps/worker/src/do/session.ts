@@ -89,7 +89,7 @@ import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-k
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
 import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
 import { explicitToolSequence, sequenceProgress, sequenceStepMessages, sequenceCallSignature } from '../tool-sequence';
-import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
+import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate } from '../request-scope';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
@@ -401,6 +401,8 @@ interface AgentState {
   readOnly?: boolean;
   /** The request is only about the light: changes outside Lighting are refused (request-scope.ts). */
   lightingOnly?: boolean;
+  /** The request recreates an owner library game: other changes are refused until it is recreated (request-scope.ts). */
+  ownerRecreate?: boolean;
   /**
    * Which tools the permissions above actually REMOVED from this run, computed once at the first
    * step and kept so the announcement is made once and survives a reload.
@@ -549,6 +551,11 @@ function steerToPart(agent: AgentState): string | null {
 const LIGHTING_ONLY =
   'Not run: this request is only about the lighting, so only Lighting changes are made in this run. ' +
   'Finish the lighting change, then reply to the user in one or two short, simple sentences.';
+/** What a recreate request is told when it changes the place before recreating the game. */
+const OWNER_RECREATE_FIRST =
+  'Not run: this request recreates a game from the owner library, and this run has not recreated it yet. The place holds only ' +
+  "what this run's own reads show, whatever earlier replies say. Call recreate_owner_game with the game's id from " +
+  'browse_owner_library first: it replaces each slot, so it never duplicates. Never build its UI, parts or scripts by hand.';
 /** What a run is told when it tries to redo a kit it already built. */
 const KIT_KEPT =
   'Not run: the ready-made scene is finished, and its pieces and the terrain around it are kept as built in this run. ' +
@@ -3442,6 +3449,7 @@ export class SessionDO extends DurableObject<Env> {
       ...(skills.ids.length > 0 ? { skillCardsShown: skills.ids } : {}),
       ...(mode === 'agent' && forbidsChanges(text) ? { readOnly: true } : {}),
       ...(mode === 'agent' && isLightingOnlyRequest(text) ? { lightingOnly: true } : {}),
+      ...(mode === 'agent' && isOwnerRecreateRequest(text) ? { ownerRecreate: true } : {}),
       step: 0,
       maxSteps: MAX_RUN_STEPS,
       creditsSpent: quota ? 1 : 0,
@@ -4473,6 +4481,13 @@ export class SessionDO extends DurableObject<Env> {
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (this request is about the lighting)` });
         agent.llm.push({ role: 'tool', content: `[${call.name}] ${LIGHTING_ONLY}`, toolCallId: call.id, name: call.name });
+        continue;
+      }
+      if (agent.ownerRecreate && !agent.keepOwnerOriginal && READ_ONLY_WITHHELD.has(call.name) && !startsOwnerRecreate(call.name)) {
+        duplicatesThisStep += 1;
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (recreate the game first)` });
+        agent.llm.push({ role: 'tool', content: `[${call.name}] ${OWNER_RECREATE_FIRST}`, toolCallId: call.id, name: call.name });
         continue;
       }
       if (agent.kitZone && touchesKit(agent.kitZone, call.name, call.arguments)) {

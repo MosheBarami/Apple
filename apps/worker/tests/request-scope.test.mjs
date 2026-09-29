@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isLightingOnlyRequest, staysInLighting } from '../src/request-scope.ts';
+import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate } from '../src/request-scope.ts';
 
 test('lighting-only requests are recognised, and anything that also asks for objects is not', () => {
   for (const t of ['make the lighting warmer, like the sun is going down', 'make it darker and moodier', 'too foggy, make it a clear golden hour', 'can you make it night time']) {
@@ -28,4 +28,20 @@ test('the session refuses out-of-scope changes on a lighting-only run', () => {
   const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
   assert.match(src, /isLightingOnlyRequest\(text\) \? \{ lightingOnly: true \}/, 'the run is never marked lighting-only');
   assert.match(src, /if \(agent\.lightingOnly && READ_ONLY_WITHHELD\.has\(call\.name\) && !staysInLighting\(call\.name, call\.arguments\)\) \{[\s\S]{0,1200}continue;/, 'out-of-scope changes still run');
+});
+
+test('a request to recreate an uploaded owner game changes the place only by recreating it first', () => {
+  // Live 2026-09-29: in a fresh place the model trusted an earlier "recreated" reply and planned a hand-built HUD.
+  for (const t of ['Recreate my uploaded game grow_a_garden from my owner library: bring in its map, UI, scripts, sounds and lighting as they are in the original.', 'recreate steal a brainrot from my library']) {
+    assert.equal(isOwnerRecreateRequest(t), true, t);
+  }
+  for (const t of ['make a garden game', 'recreate the lobby door', 'import the farm from my owner library']) {
+    assert.equal(isOwnerRecreateRequest(t), false, t);
+  }
+  assert.equal(startsOwnerRecreate('recreate_owner_game'), true);
+  assert.equal(startsOwnerRecreate('import_owner_library'), true);
+  assert.equal(startsOwnerRecreate('insert_ui_component'), false);
+  const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
+  assert.match(src, /isOwnerRecreateRequest\(text\) \? \{ ownerRecreate: true \}/);
+  assert.match(src, /agent\.ownerRecreate && !agent\.keepOwnerOriginal && READ_ONLY_WITHHELD\.has\(call\.name\) && !startsOwnerRecreate\(call\.name\)/);
 });

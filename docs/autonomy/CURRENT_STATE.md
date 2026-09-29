@@ -73,7 +73,9 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
   generated UI, so it forced insert_ui_component buttons over the original — the original UI now satisfies it (ffb587db).
   project_census counts up to 200k instances (was 4,800; plugin 856b0933, installed locally). Still open: the protective
   checkpoint refuses a place this large, so run_and_check is refused (play_check works); the original Init waits on DataStores
-  until the place is published with Studio API access (owner action).
+  until the place is published with Studio API access (owner action). Third defect (f0cbf825): after the verified recreate
+  the part steer read "map, UI, scripts, sounds and lighting" as unbuilt parts and, with rename/move fenced, the model
+  created Grow_A_Garden_Map/_Sounds/_Lighting folders; a recreate run now owes no named parts.
 - Owner-blocked: G02/G06 need a second approved account (agents may not create accounts);
   G05 library publish needs the owner's `APPLE_OWNER_JWT`.
 
