@@ -59,7 +59,7 @@ import {
 } from '../frame-bus';
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
-import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, selectedInsertionCalls, visualAssetAnchor, type PendingAssetChoice, type SelectedAssetInsertion } from '../asset-choice';
+import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, selectedInsertionCalls, type PendingAssetChoice, type SelectedAssetInsertion } from '../asset-choice';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
@@ -4670,39 +4670,6 @@ export class SessionDO extends DurableObject<Env> {
         // Only the next explicitly requested tool may follow; generic whole-game/visual steers
         // would enlarge this finite workflow and caused the measured 27-call repair loop.
         continue;
-      }
-      if (agent.mode === 'agent' && call.name === 'find_library_model' && out.ok && ctx.userId && out.detail && typeof out.detail === 'object') {
-        const detail = out.detail as { kind?: unknown; options?: unknown };
-        const options = detail.kind === 'asset_choices' && Array.isArray(detail.options)
-          ? detail.options.filter((option): option is { id: string; assetId: number; name: string } =>
-              option !== null && typeof option === 'object' &&
-              typeof option.id === 'string' && option.id.length <= 160 &&
-              Number.isSafeInteger(option.assetId) && option.assetId > 0 &&
-              typeof option.name === 'string' && option.name.length <= 120).slice(0, 3)
-          : [];
-        if (options.length) {
-          let query = '';
-          try {
-            const args = JSON.parse(call.arguments || '{}') as { query?: unknown };
-            if (typeof args.query === 'string') query = args.query;
-          } catch { /* The tool already refused malformed input. */ }
-          const anchor = agent.assetChoiceAnchor ?? visualAssetAnchor(query, options);
-          const pending: PendingAssetChoice = {
-            request: agent.request ?? '',
-            mode: agent.mode,
-            ...(agent.productModel ? { productModel: normalizeModelId(agent.productModel) } : {}),
-            ...(agent.rejectedLibraryAssetIds?.length ? { rejectedAssetIds: agent.rejectedLibraryAssetIds } : {}),
-            ...(anchor ? { anchor } : {}),
-            options: options.map((option) => ({
-              id: option.id,
-              assetId: option.assetId,
-              name: option.name,
-            })),
-          };
-          await this.ctx.storage.put('pendingAssetChoice', pending);
-          await this.finishRun(agent, 'incomplete', undefined, 'Choose the model that looks right. Apple will continue after your choice.');
-          return;
-        }
       }
       if (agent.mode === 'agent' && call.name === 'find_library_model' && out.ok && agent.assetChoiceAnchor) {
         agent.assetChoiceMisses = (agent.assetChoiceMisses ?? 0) + 1;

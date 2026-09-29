@@ -140,7 +140,7 @@ test('third-party cartoon models are opt-in search candidates, never claimed uni
   const answer = await T.runTool(ctx, 'find_library_model', JSON.stringify({ query: 'cartoony tree', includeThirdParty: true }));
   const found = JSON.parse(answer.resultForLlm);
   assert.ok(found.results.some((r) => r.assetId === id && r.requiresThirdPartyLoading === true));
-  assert.ok(answer.detail?.options.some((r) => r.assetId === id && /third-party asset loading/i.test(r.name)));
+  assert.notEqual(answer.detail?.kind, 'asset_choices', 'Q19: a search never interrupts the run with a preview choice');
   assert.equal(M.findLibraryModels({ query: 'fountain' }).results.length, 0, 'a conditional-only prop became a default claim');
   assert.equal(M.findLibraryModels({ query: 'fountain', includeThirdParty: true }).results.some((r) => r.assetId === 3241261980), false,
     'the visually inspected gray realistic fountain was offered as a colorful cartoon candidate');
@@ -288,12 +288,11 @@ test('a Creator Store row is inserted by its own id, scanned, then stood on the 
   assert.equal(ops.filter((o) => o.op === 'transform_instances' && o.scale).length, 0, 'a Creator Store row keeps its own scale unless asked');
 });
 
-test('a detailed model cannot be inserted before the owner selects its preview', async () => {
+test('Q19: the agent inserts a library model it chose without waiting for a preview approval', async () => {
   const s = sample((r) => typeof r[5] === 'number');
-  const { ctx, ops } = ctxWith();
+  const { ctx } = ctxWith();
   const result = await run(ctx, 'insert_library_model', { id: s.id });
-  assert.match(result.error, /preview and choose/);
-  assert.equal(ops.length, 0, 'an unapproved option must never reach Studio');
+  assert.doesNotMatch(String(result.error ?? ''), /preview and choose|wait for their choice/);
 });
 
 test('a rejected preview is not offered again in the next search', async () => {

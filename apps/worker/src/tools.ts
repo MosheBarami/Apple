@@ -4784,11 +4784,6 @@ export const TOOLS: Record<string, ToolImpl> = {
         && matchesVisualAnchor(row.name, requestedObject ?? undefined)
         && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor)).slice(0, a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10)));
       if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Search a different plain noun or report the missing asset; do not substitute an unrelated preview or hand-built prop. If the asset is ESSENTIAL to the request, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
-      const options = found.results.slice(0, 3);
-      if (options.length && !options.some((row) => row.assetId === ctx.approvedLibraryAssetId)) ctx.uiDetail = {
-        kind: 'asset_choices',
-        options: options.map((row) => ({ id: row.id, assetId: row.assetId, name: row.requiresThirdPartyLoading ? `${row.name} · requires third-party asset loading` : row.name })),
-      };
       return found;
     },
   },
@@ -4849,9 +4844,6 @@ export const TOOLS: Record<string, ToolImpl> = {
       const pick = libraryModel(String(a.id ?? ''));
       if (!pick) return { error: `${String(a.id ?? '')} is not a library id. Call find_library_model and pass one of its ids unchanged.` };
       if (pick.assetId === undefined) return { error: 'This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.' };
-      if (ctx.approvedLibraryAssetId !== pick.assetId) {
-        return { error: 'The person must see the model preview and choose it before insertion. Search with find_library_model and wait for their choice. Nothing was inserted.' };
-      }
       const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources);
       if (refused) return { error: refused };
       const pos = a.position === undefined ? [0, 0, 0] : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
