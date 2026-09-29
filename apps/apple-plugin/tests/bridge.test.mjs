@@ -35,8 +35,19 @@ local nextBody = 0
 local nextResponse = 0
 local httpAwaiting = false
 
+local warns = {}
+local function warn(message) table.insert(warns, message) end
+-- A result carrying poison = true stands for one Studio cannot encode or send (too large).
+local function poisoned(value)
+    if type(value) ~= "table" then return false end
+    if value.poison == true then return true end
+    for _, child in value do if poisoned(child) then return true end end
+    return false
+end
+
 local HttpService = {}
 function HttpService:JSONEncode(value)
+    if poisoned(value) then error("result too large to encode") end
     nextBody += 1
     local marker = "body:" .. tostring(nextBody)
     encodedBodies[marker] = value
@@ -289,6 +300,34 @@ do
     bridge:disconnect()
     assert(not executed[1].stillCurrent(), "a stored operation fence retires with its connection")
     assert(tick(), "retired retry generation should finish cooperatively")
+end
+
+-- Live 2026-09-29: a result Studio could not send kept the session on "Connection hiccup" forever and
+-- every later op waited behind it. After three failed sends it is answered with a short failure.
+do
+    local bridge, statuses, _, executed, _, _, _, _, setExecuteResult = makeBridge()
+    queueResponse({ token = "big.secret", projectId = "big-project", projectName = "Big" })
+    assert(bridge:connect("BIG001"))
+    setExecuteResult({ ok = true, data = { poison = true } })
+    queueResponse({ ops = { pending("op-big", "snapshot") }, waitMs = 1 })
+    assert(tick())
+    assert(#executed == 1)
+    local before, warned = #requests, #warns
+    for _ = 1, 3 do assert(tick()) end
+    assert(#requests == before, "an unencodable body never reaches HttpService")
+    assert(string.find(statuses[#statuses], "hiccup", 1, true) ~= nil)
+    assert(#warns == warned + 2 and string.find(warns[warned + 1], "could not encode", 1, true) ~= nil, tostring(warns[warned + 1]))
+    assert(string.find(warns[#warns], "too large to send", 1, true) ~= nil, "the owner can see what happened")
+    queueResponse({ ops = { pending("op-big", "snapshot") }, waitMs = 1 })
+    assert(tick())
+    local sent = requests[#requests].body.results[1]
+    assert(sent.id == "op-big" and sent.ok == false and string.find(sent.error, "could not send its result", 1, true), "the stuck result is answered as failed")
+    assert(#executed == 1, "a redelivered id answers from the replaced replay entry")
+    queueResponse({ ops = {}, waitMs = 1 })
+    assert(tick())
+    assert(statuses[#statuses] == "Connected · Big", tostring(statuses[#statuses]))
+    bridge:disconnect()
+    assert(tick())
 end
 
 -- A long session is not a leak. 2026-09-22: the replay memory kept every op id and ended the session

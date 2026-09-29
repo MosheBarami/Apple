@@ -68,6 +68,8 @@ type Session = {
 	capabilities: any?,
 	capabilitiesPending: boolean,
 	retrying: boolean?,
+	lastFailure: string?,
+	unsent: number?,
 	assetSourcesAnswer: any?,
 	assetSourcesOwed: boolean,
 }
@@ -218,14 +220,15 @@ local function parseResponse(response: any): (boolean, number, any)
 	return true, status, decoded
 end
 
-local function post(url: string, body: any, token: string?): (boolean, number, any)
+-- The fourth value says why a request never got an answer (Studio's own error), for the poll loop.
+local function post(url: string, body: any, token: string?): (boolean, number, any, string?)
 	-- Keep the wire names used by the existing worker.  The URL is a module constant, not a value
 	-- supplied by a prompt, a project, or a server response.
 	local encodedOk, encoded = pcall(function()
 		return HttpService:JSONEncode(body)
 	end)
 	if not encodedOk or type(encoded) ~= "string" then
-		return false, 0, nil
+		return false, 0, nil, "could not encode: " .. tostring(encoded)
 	end
 
 	local requestedOk, response = pcall(function()
@@ -242,9 +245,35 @@ local function post(url: string, body: any, token: string?): (boolean, number, a
 		})
 	end)
 	if not requestedOk then
-		return false, 0, nil
+		return false, 0, nil, ("%s (%d bytes)"):format(tostring(response), #encoded)
 	end
 	return parseResponse(response)
+end
+
+-- A result Studio cannot deliver (too large for HttpService, or not encodable) used to be retried
+-- forever: the session sat on "Connection hiccup" and every later op waited behind it (live
+-- 2026-09-29, first checkpoint after importing a 76,000-part game). After a few failures that never
+-- reached the worker, each pending result that does not fit is answered with a short failure instead.
+local MAX_RESULT_BYTES = 900000
+local UNSENT_RETRIES = 3
+
+local function shrinkUnsendable(session: Session, reason: string): number
+	local shrunk = 0
+	for index, result in session.pendingResults do
+		local encodedOk, encoded = pcall(function() return HttpService:JSONEncode(result) end)
+		if not encodedOk or type(encoded) ~= "string" or #encoded > MAX_RESULT_BYTES then
+			local short = {
+				id = result.id,
+				ok = false,
+				failure = "internal",
+				error = string.sub("Studio ran this operation but could not send its result (" .. reason .. "); treat its effect as unknown and read the place again.", 1, 1000),
+			}
+			session.pendingResults[index] = short
+			if session.replay[result.id] ~= nil then session.replay[result.id] = short end
+			shrunk += 1
+		end
+	end
+	return shrunk
 end
 
 local function waitSeconds(waitMs: any): number
@@ -546,7 +575,7 @@ local function pollLoop(self: BridgeObject, session: Session)
 			local sentEvents, sentEventSequences = eventsForPoll(session)
 			if #sentEvents > 0 then outbound.events = sentEvents end
 
-			local ok, statusCode, body = post(POLL_URL, outbound, session.token)
+			local ok, statusCode, body, failureDetail = post(POLL_URL, outbound, session.token)
 		-- RequestAsync yields.  A user disconnect or a replacement connect may have retired this
 		-- loop while it was away; no response from the retired generation may mutate Studio.
 		if not current(self, session) then
@@ -562,11 +591,23 @@ local function pollLoop(self: BridgeObject, session: Session)
 				releaseEvents(session, sentEventSequences)
 				session.retrying = true
 				callStatus(self.config, "Connection hiccup — retrying…")
+				local reason = failureDetail or ("HTTP " .. tostring(statusCode))
+				if reason ~= session.lastFailure then
+					session.lastFailure = reason
+					warn("[Apple] poll did not reach Apple: " .. string.sub(reason, 1, 300))
+				end
+				session.unsent = if failureDetail ~= nil and sentCount > 0 then (session.unsent or 0) + 1 else 0
+				if session.unsent >= UNSENT_RETRIES then
+					session.unsent = 0
+					local shrunk = shrinkUnsendable(session, string.sub(reason, 1, 200))
+					if shrunk > 0 then warn(("[Apple] %d operation result(s) were too large to send; Apple was told they failed"):format(shrunk)) end
+				end
 			task.wait(RETRY_WAIT_SECONDS)
 			if not current(self, session) then return end
 					continue
 				end
 				session.capabilitiesPending = false
+				session.lastFailure, session.unsent = nil, 0
 				-- A successful poll is not necessarily a saved answer. Retry only a transient
 				-- worker failure; a policy refusal needs a new choice from the person.
 				local sourcesReply = body.assetSources
