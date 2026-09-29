@@ -70,10 +70,12 @@ end
 
 local function stubRenderer() return { capture = function() return { views = {} } end } end
 local function stubGeneration() return { generate = function() return { ok = false } end } end
+-- The shipped entry point loads the bundled StudioCapture module, which this harness cannot; stand in for it.
+local function stubCapture() return { capture = function() return nil, "stub" end } end
 
 -- The shipped PlayCheck module is bundled beside Commands, exactly as rojo places it; the mock's
 -- StudioTestService exposes ExecutePlayModeAsync as current Studio documents it.
-emit("BUNDLED", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), generation = stubGeneration(), playCheck = PlayCheck, opFamilies = OP_FAMILIES_UNDER_TEST })))
+emit("BUNDLED", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), capture = stubCapture(), generation = stubGeneration(), playCheck = PlayCheck, opFamilies = OP_FAMILIES_UNDER_TEST })))
 emit("NO_RENDERER", Commands.capabilities(Commands.new({ game = game, generation = stubGeneration(), playCheck = PlayCheck })))
 emit("NO_PLAY_CHECK", Commands.capabilities(Commands.new({ game = game, render = stubRenderer(), generation = stubGeneration() })))
 `;
@@ -276,7 +278,8 @@ test('SessionDO still keys its unverified-appearance sentence off the withheld s
   const code = session.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
   assert.match(code, /withheld\.includes\('inspect_visually'\)/, 'the degradation is no longer driven by the capability report');
   assert.match(code, /Rendered appearance was not verified/, 'the user is no longer told the visual check did not run');
-  assert.match(code, /allowed\.has\('inspect_visually'\)/, 'the automatic critique no longer checks whether it may run');
+  // The automatic critique that asked `allowed.has('inspect_visually')` is gone by owner decision (V3 Q21, 3dc0d89c).
+  assert.doesNotMatch(code, /allowed\.has\('inspect_visually'\)/, 'an automatic visual critique is back in the run loop (V3 Q21)');
 });
 
 /**
