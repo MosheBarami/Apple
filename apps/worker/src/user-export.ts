@@ -328,6 +328,9 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   //   dropping them is a `wrangler d1` action against live infrastructure, not a code change. This
   //   note is here so the next person to read this list knows the difference between "the product
   //   no longer has a catalogue" and "the bytes are gone". ]]
+  // `owner_id` is the publishing account, not a subject: the rows are publisher-attested Roblox components
+  // (name, path, hashes, usage notes) uploaded through owner-corpus-routes.ts, with nothing about anyone else.
+  { store: 'd1', binding: 'CORPUS', name: 'owner_corpus_components', personal: false, holds: 'the owner-attested release library: component names, paths, hashes and usage notes, keyed by the publishing account' },
   { store: 'd1', binding: 'CORPUS', name: 'chunks', personal: false, holds: 'the documentation corpus the agent retrieves from' },
   { store: 'd1', binding: 'CORPUS', name: 'static_assets', personal: false, holds: 'the deployed web bundle' },
   { store: 'd1', binding: 'CORPUS', name: 'static_chunks', personal: false, holds: 'the bytes of the deployed web bundle' },
