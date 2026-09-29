@@ -71,6 +71,9 @@ function familyHandlers() {
   assert.ok(names.length >= 1, 'ops/init.luau requires no family');
   return names.flatMap((name) => {
     const src = readFileSync(join(dir, `${name}.luau`), 'utf8');
+    // OwnerCorpus and LocalOwnerCorpus (7238774a) return their table on one line, `handlers = { a = f, b = g }`.
+    const inline = /\bhandlers\s*=\s*\{([^\n{}]*)\}/.exec(src);
+    if (inline) return [...inline[1].matchAll(/(?:^|,)\s*([a-z_]+)\s*=/g)].map((m) => m[1]);
     const block = /\bhandlers = \{([\s\S]*?)\n\t*\}/.exec(src);
     assert.ok(block, `ops/${name}.luau has no handlers table`);
     return [...block[1].matchAll(/^\s*([a-z_]+)\s*=/gm)].map((m) => m[1]);
