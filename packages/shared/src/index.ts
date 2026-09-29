@@ -12,6 +12,7 @@ import type { UiTheme } from './ui-theme.ts';
 
 export type PropValue =
   | { t: 'string'; v: string }
+  | { t: 'bytes'; v: string } // hex, a string that is not UTF-8 (binary attributes)
   | { t: 'number'; v: number }
   | { t: 'bool'; v: boolean }
   | { t: 'Vector3'; v: [number, number, number] }

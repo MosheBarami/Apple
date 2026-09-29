@@ -1380,6 +1380,9 @@ local function decodeValue(value: any, label: string, allowInstance: boolean?, g
 		return nil
 	elseif t == "string" then
 		return safeText(value.v, MAX_TEXT, label)
+	elseif t == "bytes" then
+		if type(value.v) ~= "string" or #value.v > 2 * MAX_TEXT or #value.v % 2 ~= 0 or string.find(value.v, "[^%x]") then return nil, ("%s must be hex bytes"):format(label) end
+		return (string.gsub(value.v, "%x%x", function(h) return string.char(tonumber(h, 16) :: number) end))
 	elseif t == "number" then
 		if not finite(value.v) then return nil, ("%s must be finite"):format(label) end
 		return value.v
@@ -1505,7 +1508,12 @@ end
 local function encodeValue(value: any, gameRef: any, label: string): (any?, string?)
 	local kind = safeType(value)
 	if kind == "nil" then return { t = "nil" } end
-	if kind == "string" then return { t = "string", v = string.sub(value, 1, MAX_TEXT) } end
+	if kind == "string" then
+		local text = string.sub(value, 1, MAX_TEXT)
+		-- Binary attributes (VFX curve blobs) are not UTF-8 and JSON cannot carry them: keep the exact bytes as hex.
+		if utf8.len(text) then return { t = "string", v = text } end
+		return { t = "bytes", v = (string.gsub(text, ".", function(c) return string.format("%02x", string.byte(c)) end)) }
+	end
 	if kind == "number" then
 		if not finite(value) then return nil, label .. " is non-finite" end
 		return { t = "number", v = value }

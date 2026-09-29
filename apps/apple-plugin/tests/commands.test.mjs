@@ -1048,7 +1048,7 @@ spec("snapshot binds checkpoint identity and reports honest whole-place coverage
 end)
 
 spec("restore is checkpoint-bound, source-hash verified and one recorded mutation", function()
-    local folder = Instance.new("Folder"); folder.Name = "RestoreTarget"; folder:SetAttribute("Version", "checkpoint"); folder.Parent = workspace
+    local folder = Instance.new("Folder"); folder.Name = "RestoreTarget"; folder:SetAttribute("Version", "checkpoint"); folder:SetAttribute("Size_Curve", "\255\0\128ok"); folder.Parent = workspace
     local child = Instance.new("Part"); child.Name = "Before"; child.Transparency = 0.25; child.Parent = folder
     local scriptObject = Instance.new("ModuleScript"); scriptObject.Name = "Logic"; scriptObject.Source = "return 'checkpoint'\\n"; scriptObject.Parent = folder
     local c = newCommands()
@@ -1056,6 +1056,8 @@ spec("restore is checkpoint-bound, source-hash verified and one recorded mutatio
     eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true); eq(snap.data.complete, true)
     local savedPart = nil
     for _, node in ipairs(snap.data.node.children) do if node.className == "Part" then savedPart = node end end
+    -- Live 2026-09-29: VFX curve attributes hold non-UTF-8 bytes that JSONEncode refuses; they travel as hex.
+    eq(snap.data.node.attributes.Size_Curve.t, "bytes"); eq(snap.data.node.attributes.Size_Curve.v, "ff00806f6b")
     eq(savedPart ~= nil, true); eq(savedPart.props.Transparency.v, 0.25, "checkpoint must preserve the pre-mutation part transparency")
     local sourceNode = nil
     for _, node in ipairs(snap.data.node.children) do if node.className == "ModuleScript" then sourceNode = node end end
@@ -1063,13 +1065,13 @@ spec("restore is checkpoint-bound, source-hash verified and one recorded mutatio
 
     child.Name = "After"; child.Transparency = 0.9
     scriptObject.Source = "return 'changed'\\n"
-    folder:SetAttribute("Version", "changed")
+    folder:SetAttribute("Version", "changed"); folder:SetAttribute("Size_Curve", nil)
     local extra = Instance.new("Part"); extra.Name = "Extra"; extra.Parent = folder
     local beforeHistory = #history.log
     local restored = run(c, "restore-commit", { op = "restore", root = "game.Workspace.RestoreTarget", checkpointId = "cp-restore-1", snapshot = snap.data }, true, function() return true end)
     eq(restored.ok, true, tostring(restored.error)); eq(restored.data.restored, true); eq(restored.data.checkpointId, "cp-restore-1")
     eq(restored.data.scriptsRestored, 1); eq(restored.data.scriptsExpected, 1); eq(restored.data.failedInstances, 0); eq(restored.data.failedScripts, 0); eq(restored.data.failedProperties, 0)
-    eq(folder:GetAttribute("Version"), "checkpoint"); eq(folder:FindFirstChild("Extra"), nil)
+    eq(folder:GetAttribute("Version"), "checkpoint"); eq(folder:GetAttribute("Size_Curve"), "\255\0\128ok"); eq(folder:FindFirstChild("Extra"), nil)
     eq(folder:FindFirstChild("Before").Transparency, 0.25); eq(folder:FindFirstChild("Logic").Source, "return 'checkpoint'\\n")
     eq(#history.log, beforeHistory + 2); has(history.log[beforeHistory + 1], "begin:Apple restore restore-commit"); eq(history.log[beforeHistory + 2], "Commit")
     eq(history.recording, nil)
