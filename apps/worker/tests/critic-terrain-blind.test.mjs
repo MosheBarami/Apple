@@ -40,5 +40,7 @@ test('inspect_visually does not score an outdoor scene its renderer cannot see',
   const body = src.slice(at, at + 4000);
   const skip = body.indexOf('if (!renderShowsTerrain(res) && isOutdoorRequest(intent))');
   assert.ok(skip > 0, 'the blind-renderer skip is missing');
-  assert.ok(skip < body.indexOf('critiqueViews('), 'the skip must come before any scoring');
+  // The native-pixel branch above it (b02db459) scores real Studio captures, which do show Terrain; the
+  // skip guards the software render, so it must come before the last scoring call.
+  assert.ok(skip < body.lastIndexOf('critiqueViews('), 'the skip must come before any scoring');
 });
