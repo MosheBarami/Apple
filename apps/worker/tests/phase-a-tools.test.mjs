@@ -212,6 +212,13 @@ test('play_check_ui sends one play_check_ui op, outwaits the plugin, and states 
   assert.equal(out.leaderstatsAfterPresses, 'Coins 90');
 });
 
+test('play_check_ui presses are steps: the same button may be pressed twice, in order (Candy Garden v2)', async () => {
+  const { ctx, calls } = studio({ completed: true, presses: [] });
+  await T.TOOLS.play_check_ui.run(ctx, { press: ['game.StarterGui.Plot.Slot1', 'game.StarterGui.Plot.Slot1'] });
+  assert.equal(calls.length, 1, 'plant then harvest the same slot is one legitimate check');
+  assert.deepEqual(calls[0].op.press, ['game.StarterGui.Plot.Slot1', 'game.StarterGui.Plot.Slot1']);
+});
+
 test('play_check_ui: a missing button is NOT FOUND, never an activation', () => {
   const out = P.summarisePlayCheck({
     completed: true, playerJoined: true, characterSpawned: true, clientReported: true, playerGuiFound: true, screenGuis: [], harnessRemoved: true,

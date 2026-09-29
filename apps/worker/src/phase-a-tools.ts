@@ -74,15 +74,18 @@ function text(v: unknown, label: string, max: number): string | Refusal {
   return v.trim();
 }
 
-function paths(v: unknown, label: string, max: number): string[] | Refusal {
+/** `ordered` lists are steps, so a path may repeat: press Slot1 to plant, then Slot1 again to harvest. */
+function paths(v: unknown, label: string, max: number, ordered = false): string[] | Refusal {
   if (!Array.isArray(v) || v.length === 0 || v.length > max) return refuse(`${label} must list 1-${max} instance paths.`);
   const seen = new Set<string>();
+  const list: string[] = [];
   for (const [i, p] of v.entries()) {
     if (typeof p !== 'string' || !p.trim() || p.length > PATH_CHARS) return refuse(`${label}[${i}] must be an instance path of 1-${PATH_CHARS} characters.`);
-    if (seen.has(p.trim())) return refuse(`${label} lists ${p} more than once.`);
+    if (seen.has(p.trim()) && !ordered) return refuse(`${label} lists ${p} more than once.`);
     seen.add(p.trim());
+    list.push(p.trim());
   }
-  return [...seen];
+  return list;
 }
 
 function integer(v: unknown, label: string, lo: number, hi: number, fallback: number): number | Refusal {
@@ -720,7 +723,7 @@ export function playCheckUiOp(a: Args): StudioOp | Refusal {
   if (!Array.isArray(rawTouch) || rawTouch.length > 5 || rawTouch.some((p) => typeof p !== 'string' || p.length > PATH_CHARS)) {
     return refuse('touch must be a list of at most 5 instance paths inside game.Workspace.');
   }
-  const press = paths(a.press, 'press', PLAY_CHECK_UI_PRESS_LIMIT);
+  const press = paths(a.press, 'press', PLAY_CHECK_UI_PRESS_LIMIT, true);
   if (isRefusal(press)) return press;
   if (press.some((p) => !/^(game\.)?StarterGui\./.test(p))) {
     return refuse('Each press path must be a GuiButton inside a ScreenGui in game.StarterGui, e.g. "game.StarterGui.ShopGui.Panel.Buy".');
