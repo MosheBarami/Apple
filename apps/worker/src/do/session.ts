@@ -529,7 +529,8 @@ const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
 /** What the request's list and the plan's building steps named that nothing this run built is named for. */
 function openParts(agent: AgentState) {
-  if (agent.mode !== 'agent') return [];
+  // A recreated owner game brought every part the original has, under the original's names.
+  if (agent.mode !== 'agent' || agent.keepOwnerOriginal) return [];
   const steps = agent.plan ? settlePlan(agent.plan, agent.trace).steps : [];
   return missingParts(requestedParts(agent.request, steps, (tool) => READ_ONLY_WITHHELD.has(tool)), agent.builtWords ?? []);
 }
