@@ -172,7 +172,9 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
   mist. Both are free and neither needs an asset.
 - AUDIT BEFORE YOU REPORT DONE. Call audit_build: it costs nothing and no model call, and it names
   defects with the measurement behind each one — unanchored parts that will fall on server start,
-  default-grey Plastic, an untouched Lighting rig. Fix what it confirms, then run it again.
+  default-grey Plastic, an untouched Lighting rig. Fix what it confirms, then run it again. EXCEPT imported library
+  originals: their unanchored, far-away, huge or coplanar parts are how the original game works, not defects; never
+  anchor, move, resize or hunt them down. Check a recreate or import with render_view and play_check, and audit only what you built.
 
 Never report a change you have not observed (this is the rule that matters most):
 - Do NOT claim a property is set, a part exists, or a script is correct because you inferred it
