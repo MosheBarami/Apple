@@ -139,16 +139,23 @@ export const FREE_NEURONS_PER_DAY = 10_000;
  *   This is the owner's money and the decision is reversible in one constant. If $19.80 a month is
  *   the wrong answer, this line is where to change it — not the guard, not the message, not the
  *   admission logic, all of which are correct and should stay exactly as they are. ]]*/
-export const BILLABLE_NEURONS_PER_DAY = 90_000;
+/*[[ REMOVED AS A LIMIT 2026-09-29, OWNER DECISION ("No Apple cap").
+ *
+ *   The 90,000 day ($0.99) stopped a Candy Garden build mid-run on 2026-09-29. Asked to pick 300k, 1M
+ *   or no Apple cap, the owner chose no Apple cap: a build must only stop at a real blocker. The
+ *   figures below are high enough never to bind (1,000,000,000 is $11,000 a day), so Cloudflare
+ *   billing is the only spending bound. MAX_NEURONS_PER_REQUEST still bounds one call. ]]*/
+export const BILLABLE_NEURONS_PER_DAY = 1_000_000_000;
 
 /**
- * Independent monthly backstop: 1,800,000 × $0.011/1000 ≈ $19.80.
+ * Independent monthly backstop: was 1,800,000 × $0.011/1000 ≈ $19.80; lifted with the day cap
+ * (owner, 2026-09-29) to 30,000,000,000, which never binds.
  *
  * It stays INDEPENDENT of the daily figure on purpose — thirty days at the daily ceiling would be
  * $29.70, and this stops there instead. A month of heavy days cannot quietly become a bigger bill
  * than a month of light ones was budgeted for.
  */
-export const BILLABLE_NEURONS_PER_MONTH = 1_800_000;
+export const BILLABLE_NEURONS_PER_MONTH = 30_000_000_000;
 
 /** Total neurons usable in a day (free + billable) before generation stops. */
 export const DAILY_NEURON_CEILING = FREE_NEURONS_PER_DAY + BILLABLE_NEURONS_PER_DAY;

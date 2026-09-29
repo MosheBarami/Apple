@@ -48,12 +48,9 @@ test('the old 22x headroom is gone', () => {
   }
 });
 
-test('the ceiling a compromised ADMIN_KEY could reach stays bounded', () => {
-  // The point of the change: the worst case a secret can produce is the compiled budget, not $220.
-  const perMonth = compiled('BILLABLE_NEURONS_PER_MONTH');
-  const worstCase = perMonth * USD_PER_NEURON;
-  assert.ok(worstCase < 50, `a compromised admin key could still reach $${worstCase.toFixed(2)}/month`);
-});
+// Removed 2026-09-29: 'the ceiling a compromised ADMIN_KEY could reach stays bounded' (< $50/month).
+// The owner lifted the Apple spending cap ("No Apple cap"); the compiled ceiling no longer bounds the
+// bill, so the worst case is Cloudflare billing. The route still cannot raise past the compiled value.
 
 test('lowering is still allowed, and zero is reachable', () => {
   // Lowering must stay instant — it is what you do in a hurry. Zero is the emergency stop.

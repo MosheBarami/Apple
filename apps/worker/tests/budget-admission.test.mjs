@@ -47,8 +47,9 @@ const FREE_PER_DAY = 10_000;
 // boundary arithmetic assumes, restated independently, and the first test compares them against
 // the COMPILED module. Raised 2026-09-20 with pricing.ts: 15,000 -> 90,000, because at 15,000 the
 // live product refused every build and the owner could not use it. See the long note there.
-const BILLABLE_PER_DAY = 90_000;
-const CEILING = FREE_PER_DAY + BILLABLE_PER_DAY; // 100,000
+const BILLABLE_PER_DAY = 1_000_000_000;
+const BILLABLE_PER_MONTH = 30_000_000_000;
+const CEILING = FREE_PER_DAY + BILLABLE_PER_DAY;
 const MAX_PER_REQUEST = 1_200;
 
 function budget(seed = {}) {
@@ -107,7 +108,7 @@ test('the compiled ceilings are what every boundary below assumes', async () => 
 test('the monthly backstop refuses independently of the day', async () => {
   const b = budget(seedUsed(FREE_PER_DAY));
   const s = b.stored();
-  s.monthBillableNeurons = 1_800_000;
+  s.monthBillableNeurons = BILLABLE_PER_MONTH;
   await b.call('/reserve', { neurons: 1, model: 'm' });
   const blocked = await b.reserve(500);
   assert.equal(blocked.ok, false);
@@ -365,10 +366,10 @@ test('the admin route cannot raise a ceiling above the compiled default', async 
   // from a 22x bill, and /api/admin/* is exempt from user auth.
   const b = budget();
   const raised = await b.call('/limits', {
-    billableNeuronsPerDay: 2_000_000, billableNeuronsPerMonth: 20_000_000, maxNeuronsPerRequest: 100_000,
+    billableNeuronsPerDay: 2 * BILLABLE_PER_DAY, billableNeuronsPerMonth: 2 * BILLABLE_PER_MONTH, maxNeuronsPerRequest: 100_000,
   });
   assert.equal(raised.limits.billableNeuronsPerDay, BILLABLE_PER_DAY);
-  assert.equal(raised.limits.billableNeuronsPerMonth, 1_800_000);
+  assert.equal(raised.limits.billableNeuronsPerMonth, BILLABLE_PER_MONTH);
   assert.equal(raised.limits.maxNeuronsPerRequest, MAX_PER_REQUEST);
 });
 

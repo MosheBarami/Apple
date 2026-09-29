@@ -99,7 +99,7 @@ test('the third-party month refuses independently of the day', async () => {
 
 test('a full neuron day does not refuse a third-party model', async () => {
   const b = budget({
-    budget: { day: today(), month: thisMonth(), dayNeurons: 100_000, dayPending: 0, dayBillableNeurons: 90_000, monthBillableNeurons: 90_000 },
+    budget: { day: today(), month: thisMonth(), dayNeurons: 1_000_010_000, dayPending: 0, dayBillableNeurons: 1_000_000_000, monthBillableNeurons: 1_000_000_000 },
   });
   assert.equal((await b.call('/reserve', { neurons: 10, model: GLM })).reason, 'daily_cap');
   assert.equal((await b.call('/reserve', { neurons: 10, model: SOL })).ok, true);
