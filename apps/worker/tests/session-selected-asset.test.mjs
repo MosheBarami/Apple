@@ -243,6 +243,10 @@ const lastEnd = (h) => [...h.sent].reverse().find((m) => m.type === 'msg_end');
 const assistantRow = (h) => [...h.sql.messages].reverse().find((m) => m.role === 'assistant');
 
 
+// insert_library_model declares alternative op branches (634eaece): the Creator Store branch is
+// `insert_asset`, and once one branch is whole every other op the tool needs must be reported too.
+const SUPPORTED_OPS = ['snapshot', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances',
+  'spatial_query', 'transform_instances', 'insert_asset'].map((op) => ({ op, status: 'supported' }));
 const selected = { id: 'roblox:oak', assetId: 101, name: 'OakTree' };
 const call = (name, args = {}) => ({ id: name + '-1', name, arguments: JSON.stringify(args) });
 async function chosen(h) {
@@ -251,7 +255,7 @@ async function chosen(h) {
     options: [selected],
   });
   h.session.pluginConnected = async () => true;
-  h.session.pluginCapabilityReport = { schema: 'golem.studio-ops.v1', operations: [{ op: 'spatial_query', status: 'supported' }] };
+  h.session.pluginCapabilityReport = { schema: 'golem.studio-ops.v1', operations: SUPPORTED_OPS };
   h.session.createCheckpoint = async () => ({ id: 'checkpoint-test' });
   const executed = [];
   h.session.env.__testRunTool = async (ctx, name, args) => {
@@ -278,7 +282,7 @@ test('unrelated searches and primitive construction cannot precede the selected 
     // Reload the DO from the same durable store to exercise eviction, not an in-memory flag.
     h.session = new SessionDO(h.session.ctx, h.session.env);
     h.session.pluginConnected = async () => true;
-    h.session.pluginCapabilityReport = { schema: 'golem.studio-ops.v1', operations: [{ op: 'spatial_query', status: 'supported' }] };
+    h.session.pluginCapabilityReport = { schema: 'golem.studio-ops.v1', operations: SUPPORTED_OPS };
     await h.session.alarm();
     assert.deepEqual(executed.map(x => x.name), ['insert_library_model'], name);
     assert.deepEqual(executed[0].args, { id: selected.id });
