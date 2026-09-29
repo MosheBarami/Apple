@@ -13,8 +13,11 @@ function familyHandlerKeys() {
   const keys = new Set();
   for (const [name, source] of Object.entries(opFamilySources())) {
     const match = /\n\t\thandlers = \{([\s\S]*?)\n\t\t\}/.exec(source);
-    assert.ok(match, `${name} has no handlers table`);
-    for (const entry of match[1].matchAll(/^\s*([a-z_]+)\s*=/gm)) keys.add(entry[1]);
+    // OwnerCorpus and LocalOwnerCorpus (7238774a) write the table on one line, `handlers = { a = f, b = g }`.
+    const inline = match ? null : /\bhandlers\s*=\s*\{([^\n{}]*)\}/.exec(source);
+    assert.ok(match || inline, `${name} has no handlers table`);
+    if (inline) for (const entry of inline[1].matchAll(/(?:^|,)\s*([a-z_]+)\s*=/g)) keys.add(entry[1]);
+    else for (const entry of match[1].matchAll(/^\s*([a-z_]+)\s*=/gm)) keys.add(entry[1]);
   }
   return keys;
 }
