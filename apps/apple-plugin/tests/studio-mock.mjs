@@ -131,7 +131,11 @@ function methods:WaitForChild(name, timeout)
     return found
 end
 function methods:Destroy() self.Parent = nil; self.__destroyed = true end
-function methods:SetAttribute(name, value) self.__attributes[name] = value end
+function methods:SetAttribute(name, value)
+    -- As in Studio: names starting with RBX are the engine's.
+    if string.sub(name, 1, 3) == "RBX" then error("Attempt to assign attribute " .. name .. ". CoreScript permission required") end
+    self.__attributes[name] = value
+end
 function methods:GetAttribute(name) return self.__attributes[name] end
 function methods:GetAttributes() local out = {}; for k, v in pairs(self.__attributes) do out[k] = v end; return out end
 function methods:Clone()

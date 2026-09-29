@@ -1680,6 +1680,9 @@ local function captureAttributes(gameRef: any, inst: any): ({ [string]: any }, {
 		count += 1
 		if count > MAX_ATTRIBUTES then table.insert(issues, "attribute list exceeds the limit"); break end
 		local valid, err = safeName(name, "attribute name")
+		-- "RBX" names belong to the engine (Lighting's RBX_OriginalTechnologyOnFileLoad): a plugin can
+		-- neither set nor clear them, so a checkpoint neither keeps nor restores them.
+		if valid and string.sub(valid, 1, 3) == "RBX" then continue end
 		if not valid then table.insert(issues, err :: string) else
 			local encoded, encodeErr = encodeValue(value, gameRef, "attribute " .. valid)
 			if encoded and encoded.t ~= "Instance" then out[valid] = encoded elseif encodeErr then table.insert(issues, encodeErr) end
@@ -2709,12 +2712,13 @@ local function applySnapshotState(self: any, inst: any, node: any, state: any, e
 	local okCurrent, currentAttrs = pcall(function() return inst:GetAttributes() end)
 	if not okCurrent or type(currentAttrs) ~= "table" then return "could not read current attributes before restore" end
 	for attribute in currentAttrs do
-		if attrs[attribute] == nil then
+		if attrs[attribute] == nil and string.sub(attribute, 1, 3) ~= "RBX" then
 			local ok, err = pcall(function() inst:SetAttribute(attribute, nil) end)
 			if not ok then return ("could not remove stale attribute %s: %s"):format(attribute, tostring(err)) end
 		end
 	end
 	for attribute, value in attrs do
+		if string.sub(attribute, 1, 3) == "RBX" then continue end
 		local ok, err = pcall(function() inst:SetAttribute(attribute, value) end)
 		if not ok then return ("could not restore attribute %s: %s"):format(attribute, tostring(err)) end
 	end
@@ -4199,8 +4203,7 @@ function applyRestore(self: any, plan: any): (any?, string?, string?)
 		if restoreErr then return nil, "internal", restoreErr end
 	end
 	-- Every instance exists by now, so a link that still does not resolve is one property lost, reported
-	-- in failedProperties. Aborting here would leave the place half rebuilt: Studio's Cancel did not
-	-- put the cleared content back (Candy Garden v2, 2026-09-29).
+	-- in failedProperties, rather than a reason to cancel the whole restore.
 	local failedProperties = 0
 	for _, pending in state.pendingRefs do
 		local value, valueErr = decodeValue(pending.typed, "snapshot props." .. pending.property, true, self.game, self.options.services)

@@ -832,6 +832,22 @@ spec("set_props can wire bounded in-place instance references after creation", f
     a:Destroy(); b:Destroy(); weld:Destroy(); c:destroy()
 end)
 
+spec("an engine RBX attribute is neither kept nor written back, so Lighting-style content restores (Candy Garden v2)", function()
+    local root = Instance.new("Folder"); root.Name = "EngineAttrs"; root.Parent = workspace
+    rawget(root, "__attributes").RBX_OriginalTechnologyOnFileLoad = "Future"
+    root:SetAttribute("Coins", 5)
+    local part = Instance.new("Part"); part.Name = "Block"; part.Parent = root
+    local c = newCommands()
+    local snap = run(c, "engine-attr-snapshot", { op = "snapshot", root = "game.Workspace.EngineAttrs", includeScripts = true, checkpointId = "cp-engine-attr" }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true)
+    root:SetAttribute("Coins", 1); part.Parent = nil
+    local restored = run(c, "engine-attr-restore", { op = "restore", root = "game.Workspace.EngineAttrs", checkpointId = "cp-engine-attr", snapshot = snap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    eq(root:GetAttribute("Coins"), 5); eq(rawget(root, "__attributes").RBX_OriginalTechnologyOnFileLoad, "Future", "the engine's attribute is untouched")
+    eq(root:FindFirstChild("Block").ClassName, "Part")
+    root:Destroy(); c:destroy()
+end)
+
 spec("a label's text alignment is an allowed enum, so it can be written and a checkpoint of it restored (Candy Garden v2)", function()
     local label = Instance.new("TextLabel"); label.Name = "AlignLabel"; label.Parent = workspace
     local c = newCommands()
