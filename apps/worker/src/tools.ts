@@ -4827,7 +4827,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   recreate_owner_game: {
     def: {
       name: 'recreate_owner_game',
-      description: "Recreate an uploaded owner library game in the open place from its original parts and scripts: imports every slot the game has, in order Lighting, ReplicatedFirst, ReplicatedStorage, ServerStorage, ServerScriptService, SoundService, Teams, StarterPack, StarterGui, StarterPlayerScripts, StarterCharacterScripts, Workspace, each into the same service (a model file goes into Workspace). Returns per-slot results, totals and every suspicious script; stops at the first failure. Terrain is not copied. Use browse_owner_library first to pick the closest game.",
+      description: "Recreate an uploaded owner library game in the open place from its original parts and scripts: imports every slot the game has, in order Lighting, ReplicatedFirst, ReplicatedStorage, ServerStorage, ServerScriptService, SoundService, Teams, StarterPack, StarterGui, StarterPlayerScripts, StarterCharacterScripts, Workspace, each into the same service (a model file goes into Workspace), replacing what that slot held, so a second run never duplicates. Returns per-slot results, totals and every suspicious script; stops at the first failure. Terrain is not copied. Use browse_owner_library first to pick the closest game.",
       parameters: S({gameId:{type:'string'}},['gameId']),
     },
     studio: true,
