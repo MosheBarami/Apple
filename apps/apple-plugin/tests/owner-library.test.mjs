@@ -34,6 +34,9 @@ function http:JSONDecode(url)
  if string.find(url,"/v1/library/artifact",1,true) then
   return {kind="owner-library-rbxm",encoding="base64",data="encoded",offset=0,totalBytes=#bytesValue,nextOffset=nil,sha256=expected,chunkSha256=tamper and string.rep("f",64) or expected,execution="never"}
  end
+ if string.find(url,"/v1/library/deps",1,true) then
+  return {path="/StarterGui/ShopGui",needs={{path="/ReplicatedStorage/BuyItem",parent="game.ReplicatedStorage",mode="self",instances=1,why="the shop buttons fire the BuyItem remote"}},usedBy={}}
+ end
  if string.find(url,"/v1/library/game",1,true) then
   local children={}; for i=1,80 do children[i]={name="C"..i,class="Model",instances=1,scripts=0} end
   return {id="abcdef012345",name="Farm Game",place=true,services={Workspace={instances=80,scripts=0,children=children}}}
@@ -41,11 +44,17 @@ function http:JSONDecode(url)
  return {total=1,items={{id="abcdef012345",name="Farm Game"}},nextAfter=nil}
 end
 local encoding={Base64Decode=function()return buffer.fromstring(bytesValue) end,ComputeBufferHash=function(_,value) return buffer.fromstring(${luaBytes(bytes)}) end}
+local locked=false
 local serializer={DeserializeInstancesAsync=function(_,value)
  loads += 1
  local model=Instance.new("Model");model.Name="Barn"
  local script=Instance.new("Script");script.Name="Milk";script.Parent=model
  local other=Instance.new("Folder");other.Name="Fences"
+ if locked then
+  -- a root that refuses attributes, as some engine-owned instances do
+  local base=getmetatable(model)
+  setmetatable(model,{__index=function(self,key) if key=="SetAttribute" then return function() error("attributes refused") end end return base.__index(self,key) end,__newindex=base.__newindex})
+ end
  return {model,other}
 end}
 local function current()return true end
@@ -61,6 +70,20 @@ assert(c:execute("badkind",{op="query_owner_library",action="list",kind="ui\\n"}
 local game1=c:execute("game",{op="query_owner_library",action="game",id="abcdef012345"},false,current)
 assert(game1.ok==true and #game1.data.services.Workspace.children==60 and game1.data.services.Workspace.childrenTotal==80)
 assert(c:execute("badid",{op="query_owner_library",action="game",id="../etc"},false,current).ok==false)
+local deps=c:execute("deps",{op="query_owner_library",action="deps",gameId="abcdef012345",path="/StarterGui/Shop Gui"},false,current)
+assert(deps.ok==true,deps.error)
+assert(urls[#urls]=="http://127.0.0.1:63747/v1/library/deps?id=abcdef012345&path=/StarterGui/Shop Gui",urls[#urls])
+assert(deps.data.needs[1].path=="/ReplicatedStorage/BuyItem" and deps.data.needs[1].why=="the shop buttons fire the BuyItem remote" and #deps.data.usedBy==0 and deps.data.sourceExecuted==false,"deps must pass the gateway answer through")
+local asked=#urls
+for _,bad in {{gameId="../etc",path="/StarterGui"},{gameId="abcdef012345",path="StarterGui"},{gameId="abcdef012345",path="/Start\\nGui"},{gameId="abcdef012345",path="/"..string.rep("a",1024)},{gameId="abcdef012345"},{path="/StarterGui"},{gameId="abc",path="/StarterGui"}} do
+ bad.op,bad.action="query_owner_library","deps"
+ assert(c:execute("baddeps",bad,false,current).ok==false,"invalid deps request reached the gateway")
+end
+assert(#urls==asked,"an invalid deps request was sent to the gateway")
+assert(c:execute("staledeps",{op="query_owner_library",action="deps",gameId="abcdef012345",path="/StarterGui"},false,function()return false end).ok==false and #urls==asked,"retired pairing read deps")
+local depsMissing=c:execute("depsmissing",{op="query_owner_library",action="deps",gameId="abcdef012345",path="/missing"},false,current)
+assert(depsMissing.ok==false and string.find(depsMissing.error,"path not found",1,true),depsMissing.error)
+assert(c:execute("badaction",{op="query_owner_library",action="nope"},false,current).ok==false)
 assert(c:execute("stale",{op="query_owner_library",action="list"},false,function()return false end).ok==false,"retired pairing read the library")
 local op={op="import_owner_library",gameId="abcdef012345",path="/Workspace",mode="children",parent="Workspace"}
 assert(c:execute("denied",op,false,current).ok==false and loads==0,"inspect-only library insertion bypass")
@@ -76,6 +99,10 @@ assert(good.data.roots==2 and good.data.scripts==1 and good.data.instances==3 an
 local barn=game:GetService("Workspace"):FindFirstChild("Barn")
 assert(barn and barn:FindFirstChild("Milk"),"roots must land directly in the target with scripts intact")
 assert(game:GetService("Workspace"):FindFirstChild("Fences")~=nil and good.data.inserted[1]=="game.Workspace.Barn")
+local fences=game:GetService("Workspace"):FindFirstChild("Fences")
+assert(barn:GetAttribute("AppleLibraryGame")=="abcdef012345" and barn:GetAttribute("AppleLibraryPath")=="/Workspace","every inserted root is tagged with its game and path")
+assert(fences:GetAttribute("AppleLibraryGame")=="abcdef012345" and fences:GetAttribute("AppleLibraryPath")=="/Workspace")
+assert(barn:FindFirstChild("Milk"):GetAttribute("AppleLibraryGame")==nil,"only roots are tagged, not their descendants")
 local again=c:execute("again",op,true,current)
 assert(again.ok==true and again.data.inserted[1]=="game.Workspace[\\"Barn (2)\\"]" and #again.data.renamed==2,"a second import of the same part must stay addressable")
 assert(game:GetService("Workspace"):FindFirstChild("Barn (2)"):FindFirstChild("Milk") and game:GetService("Workspace"):FindFirstChild("Fences (2)"))
@@ -97,6 +124,13 @@ local replaced=c:execute("replace",{op="import_owner_library",gameId="abcdef0123
 assert(replaced.ok==true,replaced.error)
 assert(ws:FindFirstChild("Baseplate")==nil and replaced.data.removed==5,"replace must clear the slot's earlier content")
 assert(ws:FindFirstChild("Barn") and ws:FindFirstChild("Fences") and ws:FindFirstChild("Terrain") and ws:FindFirstChild("Camera"),"replace keeps Terrain and Camera")
+locked=true
+local tagged=c:execute("tagged",{op="import_owner_library",gameId=string.rep("ab",32),path="/Workspace/Farm",mode="self",parent="ReplicatedStorage"},true,current)
+locked=false
+assert(tagged.ok==true,tagged.error)
+local rs=game:GetService("ReplicatedStorage")
+assert(rs:FindFirstChild("Barn"):GetAttribute("AppleLibraryGame")==nil,"a root that refuses attributes stays untagged and the import still lands")
+assert(rs:FindFirstChild("Fences"):GetAttribute("AppleLibraryGame")==string.rep("ab",6) and rs:FindFirstChild("Fences"):GetAttribute("AppleLibraryPath")=="/Workspace/Farm","a long game id is cut to 12 hex")
 local terrainKids=c:execute("terrain",{op="import_owner_library",gameId="abcdef012345",path="/Workspace/Terrain",mode="children",parent="Workspace.Terrain"},true,current)
 assert(terrainKids.ok==true and ws.Terrain:FindFirstChild("Barn"),"Terrain must take the original's children")
 assert(c:execute("outside",{op="import_owner_library",gameId="abcdef012345",path="/Workspace",mode="children",parent="Players"},true,current).ok==false)
@@ -119,4 +153,12 @@ test('library chunk integrity proof fails if hash checking is removed',()=>{
  const anchor=' or hash(chunk) ~= part.chunkSha256';
  assert.equal(family.split(anchor).length-1,2);
  const result=run(family.replace(anchor,'').replace(anchor,''));assert.notEqual(result.status,0);assert.match(result.output,/tampered chunk reached the deserializer/);
+});
+test('library tagging and deps proofs fail if the tags or the deps action are removed',()=>{
+ const tag='\t\t\t\troot:SetAttribute("AppleLibraryGame", string.sub(op.gameId, 1, 12))\n';
+ assert.equal(family.split(tag).length-1,1);
+ const untagged=run(family.replace(tag,''));assert.notEqual(untagged.status,0);assert.match(untagged.output,/every inserted root is tagged/);
+ const deps='elseif op.action == "deps" then';
+ assert.equal(family.split(deps).length-1,1);
+ const noDeps=run(family.replace(deps,'elseif false then'));assert.notEqual(noDeps.status,0);assert.match(noDeps.output,/action must be list, game or deps/);
 });

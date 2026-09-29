@@ -478,8 +478,14 @@ function LocalOwnerCorpus.build(api)
 		elseif op.action == "game" then
 			if not libraryId(op.id) then return nil, "invalid", "a library game id (8-64 hex characters) is required" end
 			path = "/v1/library/game?id=" .. op.id
+		elseif op.action == "deps" then
+			-- What one asset needs (remotes, modules, server scripts) and what needs it, for an import that responds.
+			if not libraryId(op.gameId) or not libraryText(op.path, 1024) or string.sub(op.path, 1, 1) ~= "/" then
+				return nil, "invalid", "gameId (8-64 hex characters) and an absolute library path are required"
+			end
+			path = "/v1/library/deps?id=" .. op.gameId .. "&path=" .. http:UrlEncode(op.path)
 		else
-			return nil, "invalid", "action must be list or game"
+			return nil, "invalid", "action must be list, game or deps"
 		end
 		local ok, data = pcall(libraryGet, self, config, path, 1000000)
 		if not ok then return nil, "refused", tostring(data) end
@@ -594,6 +600,11 @@ function LocalOwnerCorpus.build(api)
 			local ok, err = api.parentInstance(root, parent)
 			if not ok then cleanup(); return nil, "refused", "library insertion failed: " .. tostring(err) end
 			placed = index
+			-- Tells an original from what the agent built; a root that refuses attributes goes untagged.
+			pcall(function()
+				root:SetAttribute("AppleLibraryGame", string.sub(op.gameId, 1, 12))
+				root:SetAttribute("AppleLibraryPath", op.path)
+			end)
 		end
 		local inserted = {}
 		for index = 1, math.min(#roots, 50) do

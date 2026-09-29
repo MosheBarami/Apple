@@ -144,7 +144,7 @@ export type StudioOp =
       seq?: number; offset?: number; limit?: number; after?: string | number }
   | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
       nativeInstances: number; parent: string }
-  | { op: 'query_owner_library'; action: 'list' | 'game'; q?: string; niche?: string; kind?: string; game?: string; after?: number; limit?: number; id?: string }
+  | { op: 'query_owner_library'; action: 'list' | 'game' | 'deps'; q?: string; niche?: string; kind?: string; game?: string; after?: number; limit?: number; id?: string; gameId?: string; path?: string }
   | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean; replace?: boolean; onlyMissing?: boolean }
   | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
       contentToken: string; parent: string; name: string }
@@ -239,7 +239,9 @@ export type StudioOp =
   | { op: 'ui_layout_check'; screen: string; devices?: UiLayoutDevice[] }
   /** play_check plus presses (F-050): each `press` path is a GuiButton inside a ScreenGui in StarterGui. */
   | { op: 'play_check_ui'; seconds?: number; touch?: string[]; press: string[] }
-  | { op: 'preview_sound'; soundId: string; volume?: number }; // D-FXLIB-1: plays a library sound in Studio only
+  | { op: 'preview_sound'; soundId: string; volume?: number } // D-FXLIB-1: plays a library sound in Studio only
+  // Read-only: asks Studio whether asset ids load (ContentProvider:PreloadAsync), inserts nothing. Data: { results: { [id]: 'Success' | 'Failure' | 'TimedOut' }, elapsedMs }
+  | { op: 'preload_content'; items: { id: string; type?: 'image' | 'mesh' | 'sound' | 'animation' | 'texture' | 'other' }[]; timeoutMs?: number };
 
 /**
  * Camera presets the plugin's software renderer can produce. Multi-view exists because a single
