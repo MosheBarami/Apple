@@ -163,8 +163,13 @@ test('F-007: while the model writes the next step, the header no longer shows th
   assert.equal(h.phaseAtCall[1], 'composing', 'the model step is announced as its own phase');
 });
 
-test('the check the worker runs after a change is announced as verifying, and an ordered rebuild as rebuilding', async () => {
+// The worker used to run inspect_visually itself after a visual change, announce it as `verifying` and
+// order a `rebuilding`. Q21 removed that loop (3dc0d89c): the model chooses when to look, so neither
+// phase may appear from the worker's own initiative.
+test('the worker does not run its own visual check after a change, so it announces neither verifying nor rebuilding', async () => {
+  let checks = 0;
   globalThis.__visualCheck = (ctx) => {
+    checks += 1;
     ctx.lastRender = { layout: { parts: [] } };
     ctx.lastCritique = { passed: false, unavailable: false, score: 3, summary: 'The room reads as empty.', hardFails: [], defects: [] };
     return { ok: true, summary: 'Visual check: 3/10' };
@@ -172,22 +177,15 @@ test('the check the worker runs after a change is announced as verifying, and an
   try {
     const h = await makeSession({ connected: true, responses: [answer('I built the cabin.'), answer(), answer()] });
     await start(h, 'build a cozy cabin interior with warm lighting');
-    // The run has already changed the place, and one earlier pass left an identical (empty) scene —
-    // so this failing check is the one that orders the layout started over.
     const agent = h.store.get('agent');
     assert.equal(agent.traits?.visualDesignTask, true, 'CONTROL: the request is classified as visual');
-    h.store.set('agent', { ...agent, mutated: true, passes: [{ signature: 'empty', score: 3, parts: 0 }] });
+    h.store.set('agent', { ...agent, mutated: true });
 
     await h.session.alarm();
     const phases = h.sent.filter((m) => m.type === 'agent_status').map((m) => m.phase);
-    const v = phases.indexOf('verifying');
-    assert.ok(v >= 0, `the post-change check was never announced as verifying: ${phases.join(', ')}`);
-    assert.equal(h.store.get('agent').rebuildOrdered, true, 'CONTROL: the check ordered a rebuild');
-    assert.ok(phases.indexOf('rebuilding', v) > v, `the ordered rebuild was never announced: ${phases.join(', ')}`);
-
-    await h.session.alarm();
-    assert.equal(h.phaseAtCall[1], 'rebuilding', 'the step that starts the layout over keeps saying so while the model writes it');
     h.stop();
+    assert.equal(checks, 0, 'the worker ran inspect_visually on its own');
+    assert.ok(!phases.includes('verifying') && !phases.includes('rebuilding'), `the worker announced its own check: ${phases.join(', ')}`);
   } finally {
     delete globalThis.__visualCheck;
   }
