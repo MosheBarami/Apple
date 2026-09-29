@@ -232,7 +232,21 @@ RESTORE_CLASSES.ModuleScript = true
 -- be removed by restore, because doing so requires no claim that Apple can recreate its mesh.
 local DELETE_ONLY_CLASSES = {
 	MeshPart = true,
+	SpecialMesh = true,
+	Camera = true,
 	TouchTransmitter = true,
+}
+
+-- Classes a checkpoint holds as a detached copy (F-053). Creator Store models bring the other two:
+-- measured 2026-09-29 (Candy Garden v2), one owner component added its ThumbnailCamera and two
+-- library models added eight SpecialMeshes, and from then on every checkpoint was refused
+-- ("could not capture SpecialMesh x8, Camera x1"), so every run_and_check playtest was refused too.
+-- A SpecialMesh carries MeshId/TextureId, which Apple never writes, and a Camera anywhere but
+-- Workspace.CurrentCamera is authored content, so both come back from the held copy, like a MeshPart.
+local HELD_CLASSES = {
+	MeshPart = true,
+	SpecialMesh = true,
+	Camera = true,
 }
 
 -- Runtime objects Roblox itself creates, never authored: a TouchTransmitter appears under a part the
@@ -2390,7 +2404,8 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 		local parent = parentOf(inst)
 		local isService = parent == self.game and READ_SERVICES[className] == true
 		local isProtectedContainer = protectedContainerIdentity(inst)
-		if SNAPSHOT_PRESERVE_CLASSES[className] or (PROTECTED_CONTAINER_CLASSES[className] and not isProtectedContainer) then
+		local holdable = HELD_CLASSES[className] and state.holds ~= nil
+		if (SNAPSHOT_PRESERVE_CLASSES[className] and not holdable) or (PROTECTED_CONTAINER_CLASSES[className] and not isProtectedContainer) then
 			state.complete = false
 			state.skipped[className] = (state.skipped[className] or 0) + 1
 			return nil
@@ -2399,7 +2414,7 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 		-- except a SurfaceAppearance, which stays in the copy: its texture pack and emissive mask can be
 		-- neither read nor written by a plugin, so a node would bring a generated model back untextured.
 		local held = nil
-		if className == "MeshPart" and state.holds ~= nil then
+		if holdable then
 			held = safeClone(inst)
 			if held then
 				for _, copyChild in (childrenOf(held) or {}) do
@@ -2407,7 +2422,7 @@ local function snapshotNode(self: any, inst: any, depth: number, state: any): (a
 				end
 			elseif propertyValue(inst, "Archivable") == false then
 				state.complete = false
-				local key = "MeshPart (Archivable is off, so Studio will not copy it)"
+				local key = className .. " (Archivable is off, so Studio will not copy it)"
 				state.skipped[key] = (state.skipped[key] or 0) + 1
 				return nil
 			end
@@ -2517,14 +2532,14 @@ local function validateSnapshotNode(self: any, node: any, depth: number, parentC
 	elseif node.held ~= nil then
 		-- Only a copy THIS engine took for this checkpoint, used once, and only for its own class.
 		local copy = if type(node.held) == "string" and stats.holds then stats.holds[node.held] else nil
-		if className ~= "MeshPart" or copy == nil or stats.usedHolds[node.held] then
-			return "snapshot MeshPart is not held by this Studio session (the plugin was reloaded since the checkpoint, or the snapshot was altered), so it cannot be restored; use Studio Undo instead"
+		if not HELD_CLASSES[className] or copy == nil or stats.usedHolds[node.held] then
+			return "snapshot " .. className .. " is not held by this Studio session (the plugin was reloaded since the checkpoint, or the snapshot was altered), so it cannot be restored; use Studio Undo instead"
 		end
 		stats.usedHolds[node.held] = true
 	elseif not RESTORE_CLASSES[className] then
 		return "snapshot contains a class outside Apple's restore allowlist"
 	end
-	if node.held ~= nil and (depth == 0 or className ~= "MeshPart") then return "snapshot hold metadata is attached to the wrong node" end
+	if node.held ~= nil and (depth == 0 or not HELD_CLASSES[className]) then return "snapshot hold metadata is attached to the wrong node" end
 	if dataModel and depth ~= 0 then return "DataModel may appear only as the snapshot root" end
 	local protectedIdentity = dataModel or serviceClass or protectedContainer
 	if protectedIdentity and node.protectedIdentity ~= true then return "snapshot is missing protected identity metadata" end
@@ -2679,7 +2694,8 @@ local function preflightDeletable(node: any, depth: number): string?
 	if not children then return err end
 	for _, child in children do
 		local className = classNameOf(child)
-		if SNAPSHOT_PRESERVE_CLASSES[className] or PROTECTED_CONTAINER_CLASSES[className] then
+		-- A Camera nested in a recreatable instance is never Workspace.CurrentCamera: it is authored.
+		if (SNAPSHOT_PRESERVE_CLASSES[className] and not HELD_CLASSES[className]) or PROTECTED_CONTAINER_CLASSES[className] then
 			return "restore would delete protected Studio content nested inside a recreatable instance"
 		end
 		if not RESTORE_CLASSES[className] and not DELETE_ONLY_CLASSES[className] then return "restore would delete an unsupported current instance class: " .. className end

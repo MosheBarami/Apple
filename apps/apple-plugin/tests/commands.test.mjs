@@ -478,6 +478,32 @@ spec("a MeshPart in a checkpoint is held by this Studio session, so the checkpoi
     root:Destroy(); reloaded:destroy()
 end)
 
+spec("a library model's SpecialMesh and ThumbnailCamera are held, so its place can still checkpoint (Candy Garden v2)", function()
+    local root = Instance.new("Folder"); root.Name = "LibraryModels"; root.Parent = workspace
+    local model = Instance.new("Model"); model.Name = "Lollipop"; model.Parent = root
+    local stick = Instance.new("Part"); stick.Name = "Stick"; stick.Size = v3(1, 4, 1); stick.Anchored = true; stick.Parent = model
+    local mesh = Instance.new("SpecialMesh"); mesh.Name = "Mesh"; mesh.MeshId = "rbxassetid://6161"; mesh.Parent = stick
+    local thumb = Instance.new("Camera"); thumb.Name = "ThumbnailCamera"; thumb.CFrame = cf(1, 2, 3); thumb.Parent = model
+    local c = newCommands()
+    local snap = run(c, "library-held-snapshot", { op = "snapshot", root = "game.Workspace.LibraryModels", includeScripts = true, checkpointId = "cp-library" }, false)
+    eq(snap.ok, true, tostring(snap.error))
+    eq(next(snap.data.skipped), nil, "neither the SpecialMesh nor the ThumbnailCamera is skipped")
+    eq(snap.data.restorable, true); eq(snap.data.checkpointEligible, true)
+
+    stick.Parent = nil; thumb.Parent = nil
+    local restored = run(c, "library-held-restore", { op = "restore", root = "game.Workspace.LibraryModels", checkpointId = "cp-library", snapshot = snap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    local back = root:FindFirstChild("Lollipop")
+    eq(back:FindFirstChild("Stick"):FindFirstChild("Mesh").MeshId, "rbxassetid://6161", "the mesh comes from the held copy")
+    eq(back:FindFirstChild("ThumbnailCamera").ClassName, "Camera")
+    eq(workspace.CurrentCamera.Name, "Camera", "the engine camera is untouched")
+
+    -- Without a checkpoint nothing is held, so both are still named.
+    local plain = run(c, "library-plain", { op = "snapshot", root = "game.Workspace.LibraryModels", includeScripts = true }, false)
+    eq(plain.data.restorable, false); eq(plain.data.skipped.SpecialMesh, 1); eq(plain.data.skipped.Camera, 1)
+    root:Destroy(); c:destroy()
+end)
+
 spec("a held MeshPart comes back with its own SurfaceAppearance, and one Studio will not copy is named (F-053)", function()
     local root = Instance.new("Folder"); root.Name = "HeldLook"; root.Parent = workspace
     local body = Instance.new("MeshPart"); body.Name = "Body"; body.MeshId = "rbxassetid://5151"; body.Parent = root
