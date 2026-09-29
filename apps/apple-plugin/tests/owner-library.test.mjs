@@ -82,6 +82,14 @@ local empty=c:execute("empty",{op="import_owner_library",gameId="abcdef012345",p
 assert(empty.ok==true and empty.data.roots==0 and loads==before and lighting.Brightness==5,"properties-only path must apply without fetching")
 local scripts=c:execute("scripts",{op="import_owner_library",gameId="abcdef012345",path="/StarterPlayer/StarterPlayerScripts",mode="children",parent="StarterPlayer.StarterPlayerScripts"},true,current)
 assert(scripts.ok==true,scripts.error)
+local ws=game:GetService("Workspace")
+local template=Instance.new("Part");template.Name="Baseplate";template.Parent=ws
+local replaced=c:execute("replace",{op="import_owner_library",gameId="abcdef012345",path="/Workspace",mode="children",parent="Workspace",replace=true},true,current)
+assert(replaced.ok==true,replaced.error)
+assert(ws:FindFirstChild("Baseplate")==nil and replaced.data.removed==3,"replace must clear the slot's earlier content")
+assert(ws:FindFirstChild("Barn") and ws:FindFirstChild("Fences") and ws:FindFirstChild("Terrain") and ws:FindFirstChild("Camera"),"replace keeps Terrain and Camera")
+local terrainKids=c:execute("terrain",{op="import_owner_library",gameId="abcdef012345",path="/Workspace/Terrain",mode="children",parent="Workspace.Terrain"},true,current)
+assert(terrainKids.ok==true and ws.Terrain:FindFirstChild("Barn"),"Terrain must take the original's children")
 assert(c:execute("outside",{op="import_owner_library",gameId="abcdef012345",path="/Workspace",mode="children",parent="Players"},true,current).ok==false)
 serverGone=true
 local down=c:execute("down",op,true,current)

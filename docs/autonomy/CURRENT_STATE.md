@@ -59,9 +59,13 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
     - `play_check_ui` refused pressing Slot1 twice (plant, then harvest); presses are ordered steps now (9c776d41).
     - The retune stop counted every edit of the client script across the whole build; it now counts
       changes in a row to one target (140eba76).
-- Capacity: `BILLABLE_NEURONS_PER_DAY` 90k + 10k free (~$0.99/day). One full game build costs 30-40k
-  neurons, so a day fits about 2-3 builds. It ran out 2026-09-29 ~03:00Z. Raising it is the owner's
-  spending decision (not taken).
+- Capacity: owner decision 2026-09-29 "No Apple cap": `BILLABLE_NEURONS_PER_DAY` 1e9 / month 3e10
+  (de1117b8, deployed). Only `MAX_NEURONS_PER_REQUEST` still bounds a single request.
+- Owner library (c6f74af4, deployed; plugin installed locally): 437 uploaded games/models cataloged by
+  `packages/owner-corpus/library_catalog.py` (9.9M instances, 203,782 scripts) into
+  `~/Library/Application Support/Apple/owner-library/`. The loopback gateway serves `/v1/library*` (no key);
+  the agent has `browse_owner_library`, `import_owner_library` and `recreate_owner_game` (whole services with
+  scripts, Lighting/Gravity). Terrain is not copied yet.
 - Owner-blocked: G02/G06 need a second approved account (agents may not create accounts);
   G05 library publish needs the owner's `APPLE_OWNER_JWT`.
 

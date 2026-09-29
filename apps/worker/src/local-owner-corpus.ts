@@ -163,8 +163,8 @@ export async function browseOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown
     : 'Ids are unique prefixes; pass one to browse_owner_library {id} for its breakdown, then recreate_owner_game or import_owner_library. Page with nextAfter unchanged.'};
 }
 /** One import, no checkpoint (callers take theirs). Result is the plugin's data or {error}. */
-async function libraryImport(ctx: AgentCtx, gameId: string, path: string, mode: 'self'|'children', parent: string, applyServiceProperties: boolean) {
-  const out = await ctx.execStudioOp({op:'import_owner_library',gameId,path,mode,parent,applyServiceProperties},LIBRARY_IMPORT_MS);
+async function libraryImport(ctx: AgentCtx, gameId: string, path: string, mode: 'self'|'children', parent: string, applyServiceProperties: boolean, replace = false) {
+  const out = await ctx.execStudioOp({op:'import_owner_library',gameId,path,mode,parent,applyServiceProperties,...(replace ? {replace:true} : {})},LIBRARY_IMPORT_MS);
   return out.ok ? out.data as Record<string,unknown> : {error:out.error ?? 'Owner library import refused'};
 }
 export async function importOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown>) {
@@ -200,15 +200,22 @@ export async function recreateOwnerGame(ctx: AgentCtx, a: Record<string,unknown>
   if ('error' in checkpoint) return {error:`Recreate refused: checkpoint failed (${checkpoint.error}).`};
   const results: Record<string,unknown>[] = [], suspicious: unknown[] = [];
   let roots = 0, instances = 0, scripts = 0;
+  // Each slot replaces what it held (template Baseplate/SpawnLocation, default Sky), so the place is the original.
   for (const slot of slots) {
     const parent = slot === '/' ? 'game.Workspace' : SLOT_PARENTS[slot]!;
-    const done = await libraryImport(ctx,gameId,slot,'children',parent,slot === '/Lighting' || slot === '/Workspace');
+    const done = await libraryImport(ctx,gameId,slot,'children',parent,slot === '/Lighting' || slot === '/Workspace',true);
     if ('error' in done) return {error:`Recreate stopped at ${slot}: ${done.error}`,failedSlot:slot,projectMutated:results.length > 0,slots:results,importedSoFar:{roots,instances,scripts},suspicious};
     roots += Number(done.roots) || 0; instances += Number(done.instances) || 0; scripts += Number(done.scripts) || 0;
     for (const s of Array.isArray(done.suspicious) ? done.suspicious : []) suspicious.push({slot,...(s as object)});
-    results.push({slot,parent,roots:done.roots,instances:done.instances,scripts:done.scripts,serviceApplied:done.serviceApplied});
+    results.push({slot,parent,roots:done.roots,instances:done.instances,scripts:done.scripts,serviceApplied:done.serviceApplied,removed:done.removed});
   }
-  return {game:game.name,gameId,slots:results,totals:{roots,instances,scripts},suspicious,
-    ...(game.terrain ? {terrain:'not copied'} : {}),
+  // Terrain's own children (Clouds, effect attachments scripts look up); a missing or empty Terrain is not an error.
+  let terrainChildren: unknown = 0;
+  if (game.place !== false) {
+    const done = await libraryImport(ctx,gameId,'/Workspace/Terrain','children','game.Workspace.Terrain',false);
+    terrainChildren = 'error' in done ? done.error : done.roots;
+  }
+  return {game:game.name,gameId,slots:results,totals:{roots,instances,scripts},suspicious,terrainChildren,
+    ...(game.terrain ? {terrain:'voxels not copied'} : {}),
     note:'Original scripts and objects were imported into their own services. Report every suspicious script (possible backdoor: require(id), loadstring, getfenv) to the user. Now adjust only what the request changes.'};
 }

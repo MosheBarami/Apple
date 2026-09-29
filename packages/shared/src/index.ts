@@ -144,7 +144,7 @@ export type StudioOp =
   | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
       nativeInstances: number; parent: string }
   | { op: 'query_owner_library'; action: 'list' | 'game'; q?: string; niche?: string; after?: number; limit?: number; id?: string }
-  | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean }
+  | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean; replace?: boolean }
   | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
       contentToken: string; parent: string; name: string }
   // Roblox-native text-to-3D. Free, ~20s, 10 req/min. Output is SESSION-SCOPED: it does not

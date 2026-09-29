@@ -503,7 +503,9 @@ function LocalOwnerCorpus.build(api)
 		local parentPath = if string.sub(op.parent, 1, 4) == "game" then op.parent else "game." .. op.parent
 		local parent, canonical, parentErr, parentKind, remedy = api.resolvePath(self.game, self.options.services, parentPath, true)
 		if not parent then return nil, parentKind or "not_found", parentErr, remedy end
-		local refused, refusedRemedy = api.destinationRefusal(self.game, parent, canonical, "Folder")
+		-- Terrain is engine-owned, but a game's scripts expect its original children (Clouds, effect attachments) under it.
+		local refused, refusedRemedy
+		if api.classNameOf(parent) ~= "Terrain" then refused, refusedRemedy = api.destinationRefusal(self.game, parent, canonical, "Folder") end
 		if refused then return nil, "refused", refused, refusedRemedy end
 		local http = api.serviceFrom(self.game, self.options.services, "HttpService")
 		local encoding = api.serviceFrom(self.game, self.options.services, "EncodingService")
@@ -567,6 +569,14 @@ function LocalOwnerCorpus.build(api)
 			return { nodes = nodes, scripts = scripts }
 		end)
 		if not staged or not sameLibrary(self, config, stillCurrent) then cleanup(); return nil, "refused", "library admission or edit consent failed: " .. (if staged then "session ended" else tostring(counts)) end
+		-- A recreate replaces what the slot held (a template Baseplate, a default Sky); the caller checkpointed first.
+		local removed = 0
+		if op.replace == true then
+			for _, child in api.childrenOf(parent) do
+				local class = api.classNameOf(child)
+				if class ~= "Terrain" and class ~= "Camera" and api.destroyInstance(child) then removed += 1 end
+			end
+		end
 		-- Roots go straight in with their own names: the game's scripts find them where they expect.
 		for index, root in roots do
 			local ok, err = api.parentInstance(root, parent)
@@ -601,7 +611,7 @@ function LocalOwnerCorpus.build(api)
 			if type(entry) == "table" and libraryText(entry.path, 400) and libraryText(entry.pattern, 80) then table.insert(suspicious, { path = entry.path, pattern = entry.pattern }) end
 		end
 		return { inserted = inserted, roots = #roots, instances = counts.nodes, scripts = counts.scripts, suspicious = suspicious,
-			suspiciousCount = if type(extract.suspicious) == "table" then #extract.suspicious else 0, serviceApplied = applied,
+			suspiciousCount = if type(extract.suspicious) == "table" then #extract.suspicious else 0, serviceApplied = applied, removed = removed,
 			parent = canonical, game = extract.game, sha256 = extract.sha256 }
 	end
 	return {handlers={query_owner_local=query,query_owner_exact=exact,query_owner_assembly=evidence,query_owner_media=evidence,import_owner_local=import,query_owner_library=queryLibrary,import_owner_library=importLibrary},mutating={import_owner_local=true,import_owner_library=true}}
