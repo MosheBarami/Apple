@@ -65,7 +65,15 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
   `packages/owner-corpus/library_catalog.py` (9.9M instances, 203,782 scripts) into
   `~/Library/Application Support/Apple/owner-library/`. The loopback gateway serves `/v1/library*` (no key);
   the agent has `browse_owner_library`, `import_owner_library` and `recreate_owner_game` (whole services with
-  scripts, Lighting/Gravity). Terrain is not copied yet.
+  scripts, Lighting/Gravity). Terrain voxels are not copied; Terrain's children are (cb256bc6).
+- Recreate grow_a_garden live (2026-09-29, project 6de01410): each slot replaces what the template held (cb256bc6), so no
+  grey Baseplate/SpawnLocation is left; the original farm, NPCs, sky and UI (SEEDS/GARDEN/SELL, Shop, VIP) appear. Two agent
+  defects found and fixed: after the import it renamed originals (Farm → Grow_a_Garden_Map), which breaks scripts that find
+  them by name — a run that recreated a game now refuses rename/move/group/ungroup (856b0933); and the HUD gate counted only
+  generated UI, so it forced insert_ui_component buttons over the original — the original UI now satisfies it (ffb587db).
+  project_census counts up to 200k instances (was 4,800; plugin 856b0933, installed locally). Still open: the protective
+  checkpoint refuses a place this large, so run_and_check is refused (play_check works); the original Init waits on DataStores
+  until the place is published with Studio API access (owner action).
 - Owner-blocked: G02/G06 need a second approved account (agents may not create accounts);
   G05 library publish needs the owner's `APPLE_OWNER_JWT`.
 
