@@ -102,14 +102,18 @@ test('browse_owner_library with kind searches single assets across the library a
   assert.match(badGame.data.error,/game must be a library game id/);
 });
 
-test('import_owner_library still imports into a place too large for one checkpoint, but refuses on other checkpoint failures',async()=>{
+test('import_owner_library still imports into a place Studio cannot checkpoint, but refuses when the snapshot itself fails',async()=>{
   const c=ctx(GAME);
   c.createCheckpoint=async()=>({error:'Checkpoint was not saved: this project holds more objects than one checkpoint can carry — Studio stopped early (120000 objects).'});
   const {out,data}=await run(c,'import_owner_library',{gameId:id,path:'/StarterGui/Inventory',mode:'self'});
   assert.equal(out.ok,true);assert.match(data.checkpoint,/Studio undo/);
   assert.equal(c.calls.filter(o=>o.op==='import_owner_library').length,1);
+  // Live 2026-09-29: an imported shop GUI held morph clothing a snapshot cannot capture; the agent began deleting it.
+  const u=ctx(GAME);
+  u.createCheckpoint=async()=>({error:'Checkpoint was not saved: Studio read the project but could not capture 1 Pants, 2 HopperBin, so a restore would not put it back as it is.'});
+  assert.equal((await run(u,'import_owner_library',{gameId:id,path:'/StarterGui/Inventory',mode:'self'})).out.ok,true);
   const d=ctx(GAME);
-  d.createCheckpoint=async()=>({error:'Checkpoint was not saved: storage unavailable'});
+  d.createCheckpoint=async()=>({error:'snapshot failed'});
   const refused=await run(d,'import_owner_library',{gameId:id,path:'/StarterGui/Inventory',mode:'self'});
   assert.equal(refused.out.ok,false);assert.match(refused.data.error,/checkpoint failed/);
   assert.equal(d.calls.filter(o=>o.op==='import_owner_library').length,0);

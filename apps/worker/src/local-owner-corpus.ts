@@ -178,12 +178,13 @@ export async function importOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown
   if (!GAME_ID.test(gameId) || !path.startsWith('/') || path.length > 1024 || (mode !== 'self' && mode !== 'children')) return {error:'Use gameId from browse_owner_library, an absolute library path such as "/Workspace/Farm", and mode self or children.'};
   const parent = a.parent === undefined ? libraryDefaultParent(path,mode) : String(a.parent);
   const checkpoint = await ctx.createCheckpoint('before owner library import','auto');
-  // A place grown past one checkpoint (usually by an imported map) still takes imports: they only add objects and
-  // Studio's undo takes them back. Any other checkpoint failure still refuses.
-  const oversize = 'error' in checkpoint && checkpoint.error.includes('Studio stopped early');
+  // A place Studio can read but not checkpoint (too large, or holding objects a snapshot cannot capture, both usually
+  // brought in by an earlier import) still takes imports: they only add objects and Studio's undo takes them back.
+  // Never delete imported originals to make a checkpoint work. Any other failure (Studio gone, snapshot failed) refuses.
+  const oversize = 'error' in checkpoint && /^Checkpoint was not saved: |too large to checkpoint/.test(checkpoint.error);
   if ('error' in checkpoint && !oversize) return {error:`Owner library import refused: checkpoint failed (${checkpoint.error}).`};
   const done = await libraryImport(ctx,gameId,path,mode,parent,mode === 'children' && (path === '/Lighting' || path === '/Workspace'));
-  return 'error' in done ? done : {...done,path,mode,...(oversize ? {checkpoint:'none: the place is larger than one checkpoint; Studio undo reverts this import'} : {}),note:'Original scripts came with it; flagged suspicious scripts (require(id), loadstring, getfenv) must be reported to the user. Terrain is never copied.'};
+  return 'error' in done ? done : {...done,path,mode,...(oversize ? {checkpoint:'none: this place cannot be checkpointed (too large or holding objects a snapshot cannot capture); Studio undo reverts this import. Keep every imported original.'} : {}),note:'Original scripts came with it; flagged suspicious scripts (require(id), loadstring, getfenv) must be reported to the user. Terrain is never copied.'};
 }
 const GAME_SLOTS = ['/Lighting','/ReplicatedFirst','/ReplicatedStorage','/ServerStorage','/ServerScriptService','/SoundService','/Teams','/StarterPack','/StarterGui',
   '/StarterPlayer/StarterPlayerScripts','/StarterPlayer/StarterCharacterScripts','/Workspace'];
