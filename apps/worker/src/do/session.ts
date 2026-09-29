@@ -4226,9 +4226,12 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (res.text) {
+      // Each step's narration is its own paragraph; appended bare, sentences from two steps ran together.
+      const prior = agent.streamedText ?? '';
+      const piece = prior && !/\s$/.test(prior) ? `\n\n${res.text}` : res.text;
       agent.finalText = res.text;
-      agent.streamedText = (agent.streamedText ?? '') + res.text;
-      this.broadcast({ type: 'delta', msgId: agent.msgId, text: res.text });
+      agent.streamedText = prior + piece;
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: piece });
     }
 
     if (!res.toolCalls.length) {
