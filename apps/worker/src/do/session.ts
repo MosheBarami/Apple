@@ -4587,6 +4587,8 @@ export class SessionDO extends DurableObject<Env> {
       }
       if (out.ok && VERIFIERS.has(call.name) && agent.mutated) verifiedThisStep = true;
       if (out.mutatedProject === true && buildsHud(call.name, call.arguments)) agent.hudBuilt = true;
+      // A model file recreates without replacing a slot, so the import alone does not mark it.
+      if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
       if (out.ok && call.name === 'play_check') agent.playChecked = true;
       // A read made BEFORE the place changed is not the same read after it. Refusing an identical
       // get_project_tree as "you already have the result above" after a create_instances hands the

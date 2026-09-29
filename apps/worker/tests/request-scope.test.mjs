@@ -30,6 +30,8 @@ test('the session refuses out-of-scope changes on a lighting-only run', () => {
   assert.match(src, /if \(agent\.lightingOnly && READ_ONLY_WITHHELD\.has\(call\.name\) && !staysInLighting\(call\.name, call\.arguments\)\) \{[\s\S]{0,1200}continue;/, 'out-of-scope changes still run');
 });
 
+const src0 = () => readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
+
 test('a request to recreate an uploaded owner game changes the place only by recreating it first', () => {
   // Live 2026-09-29: in a fresh place the model trusted an earlier "recreated" reply and planned a hand-built HUD.
   for (const t of ['Recreate my uploaded game grow_a_garden from my owner library: bring in its map, UI, scripts, sounds and lighting as they are in the original.', 'recreate steal a brainrot from my library']) {
@@ -39,7 +41,8 @@ test('a request to recreate an uploaded owner game changes the place only by rec
     assert.equal(isOwnerRecreateRequest(t), false, t);
   }
   assert.equal(startsOwnerRecreate('recreate_owner_game'), true);
-  assert.equal(startsOwnerRecreate('import_owner_library'), true);
+  assert.equal(startsOwnerRecreate('import_owner_library'), false, 'a plain slot import is not a recreate');
+  assert.match(src0(), /out\.mutatedProject === true && call\.name === 'recreate_owner_game'\) agent\.keepOwnerOriginal = true/);
   assert.equal(startsOwnerRecreate('insert_ui_component'), false);
   const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
   assert.match(src, /isOwnerRecreateRequest\(text\) \? \{ ownerRecreate: true \}/);

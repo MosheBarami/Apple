@@ -45,5 +45,5 @@ export function isOwnerRecreateRequest(text: string): boolean {
 
 /** What a recreate request may call before the game is recreated. */
 export function startsOwnerRecreate(tool: string): boolean {
-  return tool === 'recreate_owner_game' || tool === 'import_owner_library';
+  return tool === 'recreate_owner_game';
 }
