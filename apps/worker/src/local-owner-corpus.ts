@@ -217,5 +217,5 @@ export async function recreateOwnerGame(ctx: AgentCtx, a: Record<string,unknown>
   }
   return {game:game.name,gameId,slots:results,totals:{roots,instances,scripts},suspicious,terrainChildren,
     ...(game.terrain ? {terrain:'voxels not copied'} : {}),
-    note:'Original scripts and objects were imported into their own services. Report every suspicious script (possible backdoor: require(id), loadstring, getfenv) to the user. Now adjust only what the request changes.'};
+    note:'Original scripts and objects were imported into their own services. Report every suspicious script (possible backdoor: require(id), loadstring, getfenv) to the user. Keep every original name and place: the scripts find objects by them, so do not rename, move or regroup anything. Now adjust only what the request changes; a plain recreate is done after one playtest check.'};
 }

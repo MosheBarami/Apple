@@ -4873,7 +4873,8 @@ local function handleProjectCensus(self: any, _op: any): (any?, string?, string?
 	local parts = 0
 	local scripts = 0
 	local traversed = 0
-	local limit = MAX_TREE_NODES * 4
+	-- Counting only: a recreated owner game holds tens of thousands of instances.
+	local limit = 200000
 	for _, serviceName in PLACE_SERVICES do
 		local root = serviceFrom(self.game, self.options.services, serviceName)
 		if not root then return nil, "refused", "service is unavailable during census: " .. serviceName end

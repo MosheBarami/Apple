@@ -246,6 +246,8 @@ interface AgentState {
   trace: ToolTraceEntry[];
   /** A create_instances name conflict fences destructive recovery for the rest of this run. */
   blockDeletesAfterCreateConflict?: boolean;
+  /** A recreate_owner_game slot import: the original scripts find objects by name, so this run keeps names and structure. */
+  keepOwnerOriginal?: boolean;
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
   /**
    * Identical calls whose last attempt failed in a way op-failure.ts classified as SAFE TO REPEAT
@@ -727,6 +729,8 @@ const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
  * truncated one, and every checkpoint on this object shares one SQLite.
  */
 const MAX_CHECKPOINT_DESCRIPTION = 500;
+/** Refused after a run recreated an owner game (AgentState.keepOwnerOriginal). */
+const RESTRUCTURING_OPS = new Set(['rename_instance', 'move_instances', 'group_instances', 'ungroup_instances']);
 // The transcript is re-sent every step, and the budget includes the ~15k-char system prompt. At 24,000
 // a building run kept about two turn groups and re-read what it had just read (F-039: 88 reads, 242
 // Credits); at a fixed 60,000 gauntlet round 4 dropped 23 turn groups and lost its plan. The budget is
@@ -5949,6 +5953,10 @@ export class SessionDO extends DurableObject<Env> {
     if (this.placeMismatch) {
       return { id: 'none', ok: false, error: this.placeMismatch.message, failure: WORKER_FAILURES.placeMismatch };
     }
+    if (run?.keepOwnerOriginal && RESTRUCTURING_OPS.has(studioOp.op)) {
+      return { id: 'none', ok: false, failure: 'refused',
+        error: 'This run recreated an owner library game. Its scripts find objects by their original names and places, so renaming, moving or regrouping them is refused. Keep the original structure.' };
+    }
     // A membership event may arrive while the model is between tool calls. Check immediately
     // before queueing so a revoked run cannot hand a fresh mutation to the next plugin poll.
     if (run) {
@@ -5993,6 +6001,10 @@ export class SessionDO extends DurableObject<Env> {
         resolve(r);
       });
     });
+    if (run && studioOp.op === 'import_owner_library' && studioOp.replace === true && result.ok && !run.keepOwnerOriginal) {
+      run.keepOwnerOriginal = true;
+      await this.persistAgent(run);
+    }
     if (run && studioOp.op === 'create_instances' && !result.ok && result.failure === 'conflict') {
       run.blockDeletesAfterCreateConflict = true;
       // Persist before the next tool call: a DO eviction must not clear a safety fence after
