@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { encodePng } from '../src/png.ts';
 import { validateAttachment, MAX_ATTACHMENT_BYTES, MAX_IMAGE_ATTACHMENT_BYTES } from '@golem/shared';
@@ -52,8 +52,11 @@ test('private PNG availability is honest and exact pixels reach vision, with pro
   assert.equal(unavailable.inspected, false);
 });
 
-test('the actual native Studio screenshot passes the image rule above the text limit', () => {
-  const bytes = new Uint8Array(readFileSync(new URL('../../../docs/evidence/owner-corpus-20260926/lowpoly-lobby-native-studio.png', import.meta.url)));
+// docs/evidence/owner-corpus-*/ is gitignored (D-V3-3, 9ababa90), so the screenshot exists only in the
+// owner's own checkout; a clean clone or worktree skips this instead of failing on a missing file.
+const NATIVE_SHOT = new URL('../../../docs/evidence/owner-corpus-20260926/lowpoly-lobby-native-studio.png', import.meta.url);
+test('the actual native Studio screenshot passes the image rule above the text limit', { skip: !existsSync(NATIVE_SHOT) && 'private fixture is not in this checkout' }, () => {
+  const bytes = new Uint8Array(readFileSync(NATIVE_SHOT));
   assert.ok(bytes.length > MAX_ATTACHMENT_BYTES);
   assert.equal(validateAttachment({ name: 'studio.png', declaredMime: 'image/png', bytes }).ok, true);
 });
