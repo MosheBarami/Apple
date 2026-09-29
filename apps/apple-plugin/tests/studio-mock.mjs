@@ -66,7 +66,8 @@ function regionMt:ExpandToGrid(_) return self end
 Enum = { FinishRecordingOperation = { Commit = "Commit", Cancel = "Cancel" }, Material = {
     SmoothPlastic = "Enum.Material.SmoothPlastic", Grass = "Enum.Material.Grass", Rock = "Enum.Material.Rock",
     Air = "Enum.Material.Air", Water = "Enum.Material.Water",
-}, Font = { SourceSans = "Enum.Font.SourceSans" }, ReverbType = { Cave = "Enum.ReverbType.Cave", NoReverb = "Enum.ReverbType.NoReverb" } }
+}, Font = { SourceSans = "Enum.Font.SourceSans" }, ReverbType = { Cave = "Enum.ReverbType.Cave", NoReverb = "Enum.ReverbType.NoReverb" },
+    TextXAlignment = { Left = "Enum.TextXAlignment.Left" }, TextYAlignment = { Top = "Enum.TextYAlignment.Top" } }
 
 local methods = {}
 local mt = {

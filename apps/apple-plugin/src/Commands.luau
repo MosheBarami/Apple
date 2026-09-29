@@ -977,6 +977,12 @@ local ENUM_ALLOW = {
 	AlignType = true,
 	OrientationAlignmentMode = true,
 	VelocityConstraintMode = true,
+	-- Read by every checkpoint of a place with UI (Candy Garden v2's labels and buttons), so a
+	-- restore refused them until they were allowed here too.
+	TextXAlignment = true,
+	TextYAlignment = true,
+	ButtonStyle = true,
+	FrameStyle = true,
 }
 
 local INSTANCE_REF_PROPERTY = {

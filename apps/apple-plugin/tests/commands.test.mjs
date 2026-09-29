@@ -832,6 +832,16 @@ spec("set_props can wire bounded in-place instance references after creation", f
     a:Destroy(); b:Destroy(); weld:Destroy(); c:destroy()
 end)
 
+spec("a label's text alignment is an allowed enum, so it can be written and a checkpoint of it restored (Candy Garden v2)", function()
+    local label = Instance.new("TextLabel"); label.Name = "AlignLabel"; label.Parent = workspace
+    local c = newCommands()
+    local set = run(c, "align", { op = "set_props", path = "game.Workspace.AlignLabel", props = {
+        TextXAlignment = { t = "EnumItem", v = "Enum.TextXAlignment.Left" }, TextYAlignment = { t = "EnumItem", v = "Enum.TextYAlignment.Top" },
+    } }, true)
+    eq(set.ok, true, tostring(set.error)); eq(label.TextXAlignment, "Enum.TextXAlignment.Left"); eq(label.TextYAlignment, "Enum.TextYAlignment.Top")
+    label:Destroy(); c:destroy()
+end)
+
 spec("create_instances preflights collisions and the whole nested tree", function()
     local c = newCommands()
     local existing = run(c, "existing-name", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace" }} }, true)
