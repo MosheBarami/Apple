@@ -4594,7 +4594,7 @@ local function renderCapture(self: any, op: any, view: string, width: number, he
 	-- critique surface; StudioCaptureService contributes what the person is actually seeing in the
 	-- active 3D viewport. Failure here must not erase a valid software observation.
 	if self.capture and type(self.capture.capture) == "function" then
-		local nativeOk, native, nativeErr = pcall(function() return self.capture:capture(320,240,stillCurrent) end)
+		local nativeOk, native, nativeErr = pcall(function() return self.capture:capture(w :: number, h :: number, stillCurrent) end)
 		if nativeOk and type(native) == "table" and type(native.rgbBase64) == "string" and #native.rgbBase64 > 0 then
 			result.studioViewport = {
 				rgbBase64 = native.rgbBase64,
