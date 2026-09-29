@@ -249,12 +249,21 @@ test('a PNG posted as text/plain with a .txt name is refused on its bytes', asyn
   assert.equal(store.map.size, 0);
 });
 
-test('an image is refused by name with the sentence the person needs', async () => {
+// PNG and JPEG are read since ec29b221, so only the formats it does not read are refused by name.
+test('an image of a format Apple cannot read is refused by name with the sentence the person needs', async () => {
+  const { db, store } = fresh();
+  const env = envFor(db, store);
+  const res = await hit(`${url()}?name=shot.gif`, upload(ALICE, 'shot.gif', 'whatever', 'image/gif'), env);
+  assert.equal(res.status, 415);
+  assert.equal((await res.json()).reason, 'image_unsupported');
+});
+
+test('a PNG name over bytes that are not an image is a malformed upload, not an unsupported type', async () => {
   const { db, store } = fresh();
   const env = envFor(db, store);
   const res = await hit(`${url()}?name=shot.png`, upload(ALICE, 'shot.png', 'whatever', 'image/png'), env);
-  assert.equal(res.status, 415);
-  assert.equal((await res.json()).reason, 'image_unsupported');
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).reason, 'invalid_image');
 });
 
 test('an empty upload is refused rather than stored as a nothing', async () => {
