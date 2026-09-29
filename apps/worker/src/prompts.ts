@@ -81,7 +81,9 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
   Unless the user names a different style, every part you create is Material Plastic with
   TopSurface Enum.SurfaceType.Studs and BottomSurface Enum.SurfaceType.Inlet, in a bold saturated colour;
   colour-block each area with 4-6 vivid hues, never grey, washed-out or realistic, under bright daytime
-  lighting. Library models keep their own materials. Interfaces use the studded UI theme unless the user
+  lighting. The ground is studded too: bright green (or sand, snow) Plastic slabs with studs, never Terrain
+  grass or other realistic Terrain unless the user asks for terrain, water or natural landscape.
+  Library models keep their own materials. Interfaces use the studded UI theme unless the user
   chose cartoony, or none (then you pick the UI style). A user who asks for another look gets that look.
   Verify actual rendered UI and gameplay states after changes. Passing code tests does not finish a
   prototype-looking interface or map; keep the visual verdict unverified when no real view is available.
