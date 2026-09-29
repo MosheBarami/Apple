@@ -11,6 +11,13 @@ Status 2026-09-29 ~03:10Z: `main` through 9c776d41 is deployed (worker); the loc
 (evidence/20260929-g15-branding). Building is paused until the daily neuron capacity resets
 (midnight UTC). The owner decides whether to raise `BILLABLE_NEURONS_PER_DAY` (a day fits about 2-3 full game builds).
 
+Status 2026-09-29 ~08:46Z (production 56de3f12): the final grow_a_garden recreate run is clean — right game, all
+slots in their services (16,636 instances, 1,248 scripts), original names kept, no generated parts, one real script fix
+(OwnerTagHandler race), 81 Credits, nothing after the reply. Fixed on the way: part steer after a recreate (f0cbf825),
+recreate-first fence (7ec54a20), model-file recreate fence + local gateway search ignoring separators (56de3f12).
+Next: a "new niche game from library parts" run (e.g. steal_a_brainrot parts); raise MAX_SNAPSHOT_NODES so run_and_check
+works on large recreated places. Owner action: publish the place with Studio API access for DataStores.
+
 Landed in code (pushed to `main`):
 G01 single engine, mode removal, training retirement, G05 native-readiness consumer, G06 library
 namespace, G03 hard Studio gate + pause/Continue + steering + acknowledged Stop (G10), English-only
