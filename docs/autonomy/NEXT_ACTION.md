@@ -4,7 +4,8 @@ Pre-V3 queue archived in `archive/pre-v3/NEXT_ACTION.md`. Order follows `v3/Appl
 Owner consent on record for the rest of V3 (2026-09-29): Cloudflare deploy to existing production, bounded
 paid GLM runs, driving Roblox Studio, push to GitHub `main`. Stripe (L01) and public plugin release (L02) stay held.
 
-Status 2026-09-29 ~03:00Z: `main` through ef42a53f is deployed; live evidence is in CURRENT_STATE.md
+Status 2026-09-29 ~03:10Z: `main` through 9c776d41 is deployed (worker); the local test plugin in
+`~/Documents/Roblox/Plugins` is rebuilt from 00807fb7; live evidence is in CURRENT_STATE.md
 (G01, G03, G10, G13 on Candy Garden v2). Building is paused until the daily neuron capacity resets
 (midnight UTC). The owner decides whether to raise `BILLABLE_NEURONS_PER_DAY` (a day fits about 2-3 full game builds).
 

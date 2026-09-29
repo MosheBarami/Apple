@@ -34,6 +34,13 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
     plays (buy, plant, grow, harvest).
   - Fixed on the way: a run that recovered from a refusal no longer ends with the refusal heading
     (f6c4c84d). An incomplete run that built things no longer says "I did not change anything" (ef42a53f).
+  - Why runs 1-2 stopped (fixed 2026-09-29, deployed 9c776d41; plugin fix installed locally only):
+    - An owner component brought a ThumbnailCamera and two library models brought 8 SpecialMeshes,
+      after which every checkpoint was refused, and with it every `run_and_check` playtest. The plugin
+      now holds both as detached copies, like MeshPart (00807fb7).
+    - `play_check_ui` refused pressing Slot1 twice (plant, then harvest); presses are ordered steps now (9c776d41).
+    - The retune stop counted every edit of the client script across the whole build; it now counts
+      changes in a row to one target (140eba76).
 - Capacity: `BILLABLE_NEURONS_PER_DAY` 90k + 10k free (~$0.99/day). One full game build costs 30-40k
   neurons, so a day fits about 2-3 builds. It ran out 2026-09-29 ~03:00Z. Raising it is the owner's
   spending decision (not taken).
