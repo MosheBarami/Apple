@@ -504,6 +504,23 @@ spec("a library model's SpecialMesh and ThumbnailCamera are held, so its place c
     root:Destroy(); c:destroy()
 end)
 
+spec("a child named like a property (a lamp's Texture) is a child, not a property, so the checkpoint restores (Candy Garden v2)", function()
+    local root = Instance.new("Folder"); root.Name = "Shadowed"; root.Parent = workspace
+    local shade = Instance.new("Part"); shade.Name = "Shade"; shade.Anchored = true; shade.Parent = root
+    local texture = Instance.new("Texture"); texture.Name = "Texture"; texture.Parent = shade
+    local box = Instance.new("Folder"); box.Name = "Box"; box.Parent = root
+    local value = Instance.new("NumberValue"); value.Name = "Value"; value.Value = 7; value.Parent = box
+    local c = newCommands()
+    local snap = run(c, "shadowed-snapshot", { op = "snapshot", root = "game.Workspace.Shadowed", includeScripts = true, checkpointId = "cp-shadowed" }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.restorable, true)
+    shade.Parent = nil; box.Parent = nil
+    local restored = run(c, "shadowed-restore", { op = "restore", root = "game.Workspace.Shadowed", checkpointId = "cp-shadowed", snapshot = snap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    eq(root:FindFirstChild("Shade"):FindFirstChild("Texture").ClassName, "Texture")
+    eq(root:FindFirstChild("Box"):FindFirstChild("Value").Value, 7)
+    root:Destroy(); c:destroy()
+end)
+
 spec("a held MeshPart comes back with its own SurfaceAppearance, and one Studio will not copy is named (F-053)", function()
     local root = Instance.new("Folder"); root.Name = "HeldLook"; root.Parent = workspace
     local body = Instance.new("MeshPart"); body.Name = "Body"; body.MeshId = "rbxassetid://5151"; body.Parent = root

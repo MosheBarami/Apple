@@ -74,7 +74,12 @@ local mt = {
         if key == "Parent" then return rawget(self, "__parent") end
         if key == "CFrame" then return rawget(self, "__cframe") end
         if key == "Position" then return rawget(self, "__position") end
-        return methods[key] or rawget(self, key)
+        local own = methods[key] or rawget(self, key)
+        if own ~= nil then return own end
+        -- Like Roblox: a name that is not a property or method finds a child of that name.
+        local children = rawget(self, "__children")
+        if type(key) == "string" and children then for _, child in ipairs(children) do if rawget(child, "Name") == key then return child end end end
+        return nil
     end,
     __newindex = function(self, key, value)
         if key == "Parent" then

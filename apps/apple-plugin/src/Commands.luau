@@ -1597,7 +1597,11 @@ local function captureProperties(gameRef: any, inst: any, tableAllow: any, inclu
 	for property in tableAllow do
 		if includeContent == true or not CONTENT_PROPERTY[property] then
 			local ok, value = pcall(function() return inst[property] end)
-			if ok and value ~= nil then
+			-- On a class without the property, `inst[property]` returns a child with that name (a
+			-- library lamp's child "Texture"), which is not a property value (Candy Garden v2, G11).
+			local shadowed = ok and safeType(value) == "Instance"
+				and (not INSTANCE_REF_PROPERTY[property] or (value.Parent == inst and value.Name == property))
+			if ok and value ~= nil and not shadowed then
 				local encoded, err = encodeValue(value, gameRef, property)
 				if encoded then out[property] = encoded elseif err then table.insert(issues, err) end
 			end
