@@ -14,7 +14,9 @@ import {
   ATTACHMENT_ACCEPT,
   MESSAGE_MAX_CHARS,
   MESSAGE_WARN_CHARS,
+  UI_THEMES,
   type ChatAttachment,
+  type UiTheme,
   type StudioEventSelection,
 } from '@golem/shared';
 import { Icon, PATH } from './primitives';
@@ -36,6 +38,8 @@ import { Attachment, AttachmentInfo, AttachmentPreview, AttachmentRemove, Attach
 import {
   DropdownMenuCheckboxItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
 } from '../ai-elements/ui/dropdown-menu';
 import { ArrowUpIcon, CheckIcon, PaperclipIcon } from '../ai-elements/icons';
@@ -52,6 +56,7 @@ import {
 import { observeComposerHeight } from '../../lib/composer-height';
 import { sendBinding, sendHint } from '../../lib/send-key';
 import { readDraft, writeDraft, clearDraft } from '../../lib/draft';
+import { readUiTheme, writeUiTheme } from '../../lib/ui-theme';
 import { insertAtCursor, selectionChipLabel, selectionReference, type Insertion } from '../../lib/selection-reference';
 import { insertableTemplates } from '../../lib/project-templates';
 import { applyMention, matchMentions, mentionQuery } from '../../lib/mentions';
@@ -106,6 +111,13 @@ const PLACEHOLDER = 'Describe what to build, change or fix in your place';
  * list that cannot change.
  */
 const TEMPLATES = insertableTemplates();
+
+const UI_THEME_LABEL: Record<UiTheme, string> = { studded: 'Studded', cartoony: 'Cartoony', none: 'None' };
+const UI_THEME_BLURB: Record<UiTheme, string> = {
+  studded: 'Classic studded look (default)',
+  cartoony: 'Soft, rounded, playful',
+  none: 'Apple picks the style',
+};
 
 interface Props {
   /**
@@ -218,6 +230,9 @@ export function Composer({
   // people start retyping into it before the draft lands on top of what they just typed.
   const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
   const [creation, setCreation] = useState<CreationIntent>('build');
+  // UI-only (the world stays studded). Kept per project by lib/ui-theme.ts; the workspace reads the
+  // same store when it sends, so the choice and what goes on the wire cannot disagree.
+  const [uiTheme, setUiTheme] = useState<UiTheme>(() => readUiTheme(projectId ?? ''));
   const box = useRef<HTMLTextAreaElement>(null);
   // THE WHOLE BOX IS THE TARGET. A click on the composer's padding, above or beside the text, landed on
   // the panel and focused nothing — measured 2026-09-23: the message typed after that click went
@@ -346,6 +361,7 @@ export function Composer({
     setText(next);
     setCaret(next.length);
     setCreation('build');
+    setUiTheme(readUiTheme(projectId ?? ''));
   }, [draftKey]);
 
   // Debounced, because a write per keystroke is a synchronous localStorage call per keystroke in
@@ -963,6 +979,45 @@ export function Composer({
                     </span>
                   </PromptInputActionMenuItem>
                 ))}
+              </PromptInputActionMenuContent>
+            </PromptInputActionMenu>
+
+            {/* UI theme: how the interfaces Apple builds look. Not the world, not this website. `none`
+                hands the choice to Apple; it never means "build no UI". Studded is the default. */}
+            <PromptInputActionMenu>
+              <PromptInputActionMenuTrigger
+                className="gx-chip gx-chip--theme"
+                size="sm"
+                disabled={locked}
+                aria-label={`UI theme: ${UI_THEME_LABEL[uiTheme]}`}
+                data-tip="Style of the interfaces Apple builds"
+                data-fx="press ripple"
+              >
+                <Icon d={PATH.layers} size={11} />
+                <span className="gx-chip__label">UI: {UI_THEME_LABEL[uiTheme]}</span>
+                <span className="gx-chip__caret" aria-hidden="true">
+                  <Icon d={PATH.chevronDown} size={11} />
+                </span>
+              </PromptInputActionMenuTrigger>
+              <PromptInputActionMenuContent aria-label="UI theme" side="top" className="gx-menu gx-menu--create">
+                <DropdownMenuRadioGroup
+                  value={uiTheme}
+                  onValueChange={(v) => {
+                    const next = UI_THEMES.find((t) => t === v);
+                    if (!next) return;
+                    setUiTheme(next);
+                    writeUiTheme(projectId ?? '', next);
+                  }}
+                >
+                  {UI_THEMES.map((t) => (
+                    <DropdownMenuRadioItem key={t} value={t} className="gx-menu__item">
+                      <span className="gx-menu__main">
+                        <span className="gx-menu__name">{UI_THEME_LABEL[t]}</span>
+                        <span className="gx-menu__sub">{UI_THEME_BLURB[t]}</span>
+                      </span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
               </PromptInputActionMenuContent>
             </PromptInputActionMenu>
 

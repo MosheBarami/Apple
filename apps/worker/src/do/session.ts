@@ -32,6 +32,7 @@ import type {
 } from '@golem/shared';
 import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
 import { isRefusalRemedyCode, type RefusalRemedyCode } from '@golem/shared';
+import { asUiTheme, uiThemeContextLine, type UiTheme } from '@golem/shared';
 
 /**
  * The edit history being moved onto the message that replaces an edited one.
@@ -2989,6 +2990,7 @@ export class SessionDO extends DurableObject<Env> {
             productModel,
             me?.userId,
             me?.grantExpiresAt ?? undefined,
+            asUiTheme(msg.uiTheme),
           );
         }
         return;
@@ -3095,6 +3097,7 @@ export class SessionDO extends DurableObject<Env> {
             productModel,
             me?.userId,
             me?.grantExpiresAt ?? undefined,
+            asUiTheme(msg.uiTheme),
           );
         }
         return;
@@ -3219,9 +3222,10 @@ export class SessionDO extends DurableObject<Env> {
     productModel?: ProductModel,
     initiatedBy?: string,
     initiatorExpiresAt?: string | number,
+    uiTheme?: UiTheme,
   ) {
     const attempt = await this.startGate(() =>
-      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, initiatedBy, initiatorExpiresAt),
+      this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, initiatedBy, initiatorExpiresAt, uiTheme),
     );
     if (!attempt.ran) {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
@@ -3238,6 +3242,7 @@ export class SessionDO extends DurableObject<Env> {
     productModel?: ProductModel,
     initiatedBy?: string,
     initiatorExpiresAt?: string | number,
+    uiTheme?: UiTheme,
   ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
     if (existing && existing.status !== 'idle') {
@@ -3423,7 +3428,9 @@ export class SessionDO extends DurableObject<Env> {
       fenceId,
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
       // trimTranscript documents — the agent kept working with no record of the task.
-      llm: [{ role: 'system', content: skills.block ? `${sys}\n\n${skills.block}` : sys }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
+      // The UI theme is per request, so it rides in this run's context and not in the system prompt
+      // builder. UI-only: the world direction is unchanged by it.
+      llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme))].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
       ...(rejectedChoice && pendingChoice?.anchor ? { assetChoiceAnchor: pendingChoice.anchor } : {}),

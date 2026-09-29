@@ -180,6 +180,7 @@ div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; 
   /* The Create chip keeps its mark and its menu; the name is in the menu and in the chip's
      accessible label (and a chosen creation intent still tints the chip and has its note). */
   .gx-composer .gx-composer__bar .gx-chip--create .gx-chip__label,
+  .gx-composer .gx-composer__bar .gx-chip--theme .gx-chip__label,
   .gx-composer .gx-composer__bar .gx-chip .gx-chip__caret { display:none; }
   .gx-composer .gx-composer__bar .gx-chip { padding-inline:7px; }
   .gx-composer .gx-attach .gx-attach__row .ai-attachment__info { max-width:150px; }

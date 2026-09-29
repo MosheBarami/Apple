@@ -2,6 +2,7 @@
 // The Studio plugin (Luau) mirrors these shapes; apps/plugin/src/Protocol.luau documents the mapping.
 
 import { MODEL_IDS, MODEL_REGISTRY, type ModelId } from './models.ts';
+import type { UiTheme } from './ui-theme.ts';
 
 // ---------------------------------------------------------------------------
 // Studio op protocol: commands the agent sends to the Studio plugin.
@@ -775,7 +776,7 @@ export interface ChatAttachment {
 }
 
 export type ClientMsg =
-  | { type: 'chat'; text: string; mode: ProductMode; productModel?: ProductModel; attachments?: ChatAttachment[] }
+  | { type: 'chat'; text: string; mode: ProductMode; productModel?: ProductModel; uiTheme?: UiTheme; attachments?: ChatAttachment[] }
   /**
    * Correct an earlier prompt and run again from there.
    *
@@ -787,7 +788,7 @@ export type ClientMsg =
    * work is not. Checkpoints are the tool for that, and the two are deliberately separate — a
    * wording fix should not silently revert a working door.
    */
-  | { type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; productModel?: ProductModel }
+  | { type: 'edit_resend'; messageId: string; text: string; mode: ProductMode; productModel?: ProductModel; uiTheme?: UiTheme }
   | { type: 'stop' } // interrupt agent
   /** Resume a run paused because Studio disconnected (G03). Only this resumes it; a reconnect never does. */
   | { type: 'continue' }
@@ -2980,6 +2981,7 @@ export function isRunFailure(v: unknown): v is RunFailure {
 export * from './attachments.ts';
 export * from './models.ts';
 export * from './spilled-payload.ts';
+export * from './ui-theme.ts';
 
 /**
  * Talk, not work — a greeting, thanks, an acknowledgement, or a question about Apple itself.

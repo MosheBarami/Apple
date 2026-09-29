@@ -158,10 +158,12 @@ test('Create is named by what it holds, and there is no mode or model control', 
   //[[ RESTATED 2026-09-23 (composer picks). Mode is no longer a menu either: it is a two-way radio
   //   switch, so both words are on screen. It still says what it holds — its checked radio is the
   //   current mode — so the menu triggers are Create alone. ]]
+  //[[ RESTATED (V3 UI contract, Q6/Q19): the UI theme control is the second menu, and it too says
+  //   what it holds ("UI theme: Studded" by default). There is still no mode or model menu. ]]
   const html = composer();
   const triggers = tags(html, 'button').filter((t) => attr(t, 'aria-haspopup') === 'menu');
   const names = triggers.map((t) => attr(t, 'aria-label'));
-  assert.deepEqual(names, ['Create']);
+  assert.deepEqual(names, ['Create', 'UI theme: Studded']);
   for (const t of triggers) assert.equal(attr(t, 'aria-expanded'), 'false');
   assert.equal(tags(html, 'button').some((t) => /^Model\b/.test(attr(t, 'aria-label') ?? '')), false, 'a model control is back');
   assert.doesNotMatch(html, /gx-chip--model/);

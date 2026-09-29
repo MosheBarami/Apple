@@ -23,6 +23,8 @@ import type {
 // The rule for what counts as a new version of a message, shared with the DO so the count this
 // client shows before the round trip and the rows the server writes cannot disagree.
 import { recordsRevision } from '@golem/shared';
+// The composer's UI theme for this project; read at send time so the frame carries the current pick.
+import { readUiTheme } from './ui-theme';
 import type { PhaseMark } from '../components/ws/activity-model';
 import type { RestoreStatus } from './restore-status';
 import { fetchCheckpoints, fetchMessages, stopRun } from './api';
@@ -1170,7 +1172,7 @@ export function useProjectSocket(
       const mode = 'agent';
       // `model` only for a model on the customer's own key: an Apple run stays byte-identical on the
       // wire to every run before the picker existed (the worker reads `productModel` then).
-      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(productModel ? { productModel } : {}) });
+      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(productModel ? { productModel } : {}), uiTheme: readUiTheme(projectId) });
       if (ok) {
         setRunning(true);
         setMessages((list) => {
@@ -1192,7 +1194,7 @@ export function useProjectSocket(
       }
       return ok;
     },
-    [sendRaw],
+    [sendRaw, projectId],
   );
 
   const sendChat = useCallback(
@@ -1201,7 +1203,7 @@ export function useProjectSocket(
       // Omitted entirely when there are none, so a message with no files is byte-identical on the
       // wire to every message this product has ever sent.
       const mode = 'agent';
-      const ok = sendRaw({ type: 'chat', text, mode, ...(productModel ? { productModel } : {}), ...(attachments.length ? { attachments } : {}) });
+      const ok = sendRaw({ type: 'chat', text, mode, ...(productModel ? { productModel } : {}), uiTheme: readUiTheme(projectId), ...(attachments.length ? { attachments } : {}) });
       if (ok) {
         setRunning(true);
         const id = localId();
@@ -1228,7 +1230,7 @@ export function useProjectSocket(
       }
       return ok;
     },
-    [sendRaw],
+    [sendRaw, projectId],
   );
 
   const signalPresence = useCallback(
