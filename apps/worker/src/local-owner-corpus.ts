@@ -124,3 +124,91 @@ export async function queryOwnerCatalog(ctx:AgentCtx,a:Record<string,unknown>) {
  if ('error' in data) return data;
  return {...data,scope:'all-indexed-owner-library',sourceExecuted:false,untrustedData:true,visualEvidence:'unverified',note:'Source IDs are original SHA identities, not component selectors. Search find_library_model with sourceSHA and plain words, page nextAfter unchanged. Read exact owner-local node context/bytes on demand. Import only script-free native subtrees through checkpoint and edit consent. Native capture and actual pixel critique are required before visual approval; source names, index matches and decoded bytes are not visual or gameplay proof.'};
 }
+
+/* ------------------------------------------------- the owner's uploaded game library (first source) --- */
+
+const GAME_ID = /^[0-9a-f]{8,64}$/;
+const LIBRARY_IMPORT_MS = 600_000;
+/** Where a whole slot of a library game goes: the same service in the open place. */
+const SLOT_PARENTS: Record<string,string> = {
+  '/Lighting':'game.Lighting','/ReplicatedFirst':'game.ReplicatedFirst','/ReplicatedStorage':'game.ReplicatedStorage','/ServerStorage':'game.ServerStorage',
+  '/ServerScriptService':'game.ServerScriptService','/SoundService':'game.SoundService','/Teams':'game.Teams','/StarterPack':'game.StarterPack',
+  '/StarterGui':'game.StarterGui','/StarterPlayer/StarterPlayerScripts':'game.StarterPlayer.StarterPlayerScripts',
+  '/StarterPlayer/StarterCharacterScripts':'game.StarterPlayer.StarterCharacterScripts','/Workspace':'game.Workspace',
+};
+/** The children of a service path land in that service; a whole instance from a service lands beside its siblings; anything else in Workspace. */
+export function libraryDefaultParent(path: string, mode: string): string {
+  const clean = path.replace(/\/+$/,'') || '/';
+  if (mode === 'children' && SLOT_PARENTS[clean]) return SLOT_PARENTS[clean];
+  const parts = clean.split('/').filter(Boolean);
+  if (mode === 'self' && parts.length === 2 && SLOT_PARENTS['/'+parts[0]!]) return SLOT_PARENTS['/'+parts[0]!]!;
+  return 'game.Workspace';
+}
+function libraryReady(ctx: AgentCtx) {
+  if (!ctx.userId) return 'Owner library access needs an authenticated owner context.';
+  if (!ctx.studioConnected()) return 'Studio is not connected.';
+  return null;
+}
+export async function browseOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown>) {
+  const blocked = libraryReady(ctx); if (blocked) return {error:blocked};
+  const id = a.id === undefined ? undefined : String(a.id);
+  if (id !== undefined && !GAME_ID.test(id)) return {error:'id must be a library game id (8-64 hex characters) from a browse_owner_library list.'};
+  const after = a.after === undefined ? undefined : Number(a.after);
+  if (after !== undefined && (!Number.isInteger(after) || after < 0 || after > 100000)) return {error:'after must be the numeric nextAfter from the previous page.'};
+  const text = (v: unknown) => v === undefined || v === '' ? undefined : String(v).slice(0,120);
+  const out = await ctx.execStudioOp(id ? {op:'query_owner_library',action:'game',id} : {op:'query_owner_library',action:'list',q:text(a.q),niche:text(a.niche),after,limit:Math.min(25,Math.max(1,Number(a.limit)||10))},60_000);
+  if (!out.ok) return {error:out.error ?? 'Owner library refused the request'};
+  return {...out.data as Record<string,unknown>,untrustedData:true,note: id
+    ? 'Paths for import_owner_library: "/Service" or "/Service/Child"; a repeated sibling name is "Name#2". Big services list only their first children (childrenTotal is exact).'
+    : 'Ids are unique prefixes; pass one to browse_owner_library {id} for its breakdown, then recreate_owner_game or import_owner_library. Page with nextAfter unchanged.'};
+}
+/** One import, no checkpoint (callers take theirs). Result is the plugin's data or {error}. */
+async function libraryImport(ctx: AgentCtx, gameId: string, path: string, mode: 'self'|'children', parent: string, applyServiceProperties: boolean) {
+  const out = await ctx.execStudioOp({op:'import_owner_library',gameId,path,mode,parent,applyServiceProperties},LIBRARY_IMPORT_MS);
+  return out.ok ? out.data as Record<string,unknown> : {error:out.error ?? 'Owner library import refused'};
+}
+export async function importOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown>) {
+  const blocked = libraryReady(ctx); if (blocked) return {error:blocked};
+  const gameId = String(a.gameId ?? ''), path = String(a.path ?? ''), mode = a.mode;
+  if (!GAME_ID.test(gameId) || !path.startsWith('/') || path.length > 1024 || (mode !== 'self' && mode !== 'children')) return {error:'Use gameId from browse_owner_library, an absolute library path such as "/Workspace/Farm", and mode self or children.'};
+  const parent = a.parent === undefined ? libraryDefaultParent(path,mode) : String(a.parent);
+  const checkpoint = await ctx.createCheckpoint('before owner library import','auto');
+  if ('error' in checkpoint) return {error:`Owner library import refused: checkpoint failed (${checkpoint.error}).`};
+  const done = await libraryImport(ctx,gameId,path,mode,parent,mode === 'children' && (path === '/Lighting' || path === '/Workspace'));
+  return 'error' in done ? done : {...done,path,mode,note:'Original scripts came with it; flagged suspicious scripts (require(id), loadstring, getfenv) must be reported to the user. Terrain is never copied.'};
+}
+const GAME_SLOTS = ['/Lighting','/ReplicatedFirst','/ReplicatedStorage','/ServerStorage','/ServerScriptService','/SoundService','/Teams','/StarterPack','/StarterGui',
+  '/StarterPlayer/StarterPlayerScripts','/StarterPlayer/StarterCharacterScripts','/Workspace'];
+export async function recreateOwnerGame(ctx: AgentCtx, a: Record<string,unknown>) {
+  const blocked = libraryReady(ctx); if (blocked) return {error:blocked};
+  const gameId = String(a.gameId ?? '');
+  if (!GAME_ID.test(gameId)) return {error:'gameId must be a library game id from browse_owner_library.'};
+  const info = await ctx.execStudioOp({op:'query_owner_library',action:'game',id:gameId},60_000);
+  if (!info.ok) return {error:info.error ?? 'Owner library refused the request'};
+  const game = info.data as Record<string,unknown>;
+  const services = (game.services ?? {}) as Record<string,{instances?:number;children?:{name?:string;instances?:number}[]}>;
+  let slots: string[];
+  if (game.place === false) slots = ['/'];
+  else slots = GAME_SLOTS.filter(slot => {
+    const [service,child] = slot.slice(1).split('/') as [string,string|undefined];
+    const entry = services[service];
+    if (child) return !!entry?.children?.some(c => c.name === child && Number(c.instances) > 0);
+    return Number(entry?.instances) > 0 || (service === 'Lighting' && !!game.lighting && Object.keys(game.lighting as object).length > 0);
+  });
+  if (!slots.length) return {error:'This library entry has nothing to import.'};
+  const checkpoint = await ctx.createCheckpoint('before recreating an owner game','auto');
+  if ('error' in checkpoint) return {error:`Recreate refused: checkpoint failed (${checkpoint.error}).`};
+  const results: Record<string,unknown>[] = [], suspicious: unknown[] = [];
+  let roots = 0, instances = 0, scripts = 0;
+  for (const slot of slots) {
+    const parent = slot === '/' ? 'game.Workspace' : SLOT_PARENTS[slot]!;
+    const done = await libraryImport(ctx,gameId,slot,'children',parent,slot === '/Lighting' || slot === '/Workspace');
+    if ('error' in done) return {error:`Recreate stopped at ${slot}: ${done.error}`,failedSlot:slot,projectMutated:results.length > 0,slots:results,importedSoFar:{roots,instances,scripts},suspicious};
+    roots += Number(done.roots) || 0; instances += Number(done.instances) || 0; scripts += Number(done.scripts) || 0;
+    for (const s of Array.isArray(done.suspicious) ? done.suspicious : []) suspicious.push({slot,...(s as object)});
+    results.push({slot,parent,roots:done.roots,instances:done.instances,scripts:done.scripts,serviceApplied:done.serviceApplied});
+  }
+  return {game:game.name,gameId,slots:results,totals:{roots,instances,scripts},suspicious,
+    ...(game.terrain ? {terrain:'not copied'} : {}),
+    note:'Original scripts and objects were imported into their own services. Report every suspicious script (possible backdoor: require(id), loadstring, getfenv) to the user. Now adjust only what the request changes.'};
+}

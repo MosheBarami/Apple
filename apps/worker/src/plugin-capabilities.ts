@@ -46,6 +46,7 @@ export interface PluginToolFilter {
  */
 export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName>([
   'query_owner_local', 'query_owner_exact', 'query_owner_assembly', 'query_owner_media', 'import_owner_local',
+  'query_owner_library', 'import_owner_library',
   'import_owner_component',
   'capture_studio_viewport',
   'play_check',

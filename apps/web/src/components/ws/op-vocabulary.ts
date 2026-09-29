@@ -42,6 +42,10 @@ export const OP_LABEL: Record<string, string> = {
   set_locked: 'Locked or unlocked objects',
   set_visible: 'Showed or hid objects',
   insert_asset: 'Inserted an asset',
+  import_owner_local: 'Added a piece from the game library',
+  import_owner_library: 'Added parts from your game library',
+  query_owner_library: 'Looked in your game library',
+  import_owner_component: 'Added a piece from the game library',
   generate_model: 'Generated a model',
   terrain_edit: 'Edited terrain',
   run_code: 'Ran Luau inside Studio',
@@ -50,6 +54,11 @@ export const OP_LABEL: Record<string, string> = {
   select: 'Selected objects',
   camera_focus: 'Pointed the camera at an object',
   render_view: 'Rendered a view',
+  capture_studio_viewport: 'Captured the Studio view',
+  query_owner_local: 'Looked in the game library',
+  query_owner_assembly: 'Looked up how a library game works',
+  query_owner_media: 'Looked at library media',
+  query_owner_exact: 'Looked up a library piece',
   screenshot: 'Took a picture of the place',
 
   // --- history -----------------------------------------------------------

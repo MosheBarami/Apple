@@ -143,6 +143,8 @@ export type StudioOp =
       seq?: number; offset?: number; limit?: number; after?: string | number }
   | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
       nativeInstances: number; parent: string }
+  | { op: 'query_owner_library'; action: 'list' | 'game'; q?: string; niche?: string; after?: number; limit?: number; id?: string }
+  | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean }
   | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
       contentToken: string; parent: string; name: string }
   // Roblox-native text-to-3D. Free, ~20s, 10 req/min. Output is SESSION-SCOPED: it does not
@@ -926,6 +928,16 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'spatial_query':
     case 'read_terrain':
     case 'check_ui_layout':
+    // Reading the owner's private library and a project's own attached image: each looks something
+    // up and changes nothing in the place.
+    case 'inspect_attachment_image':
+    case 'query_owner_catalog':
+    case 'query_owner_assembly':
+    case 'read_owner_media':
+    case 'list_owner_original_strings':
+    case 'read_owner_original_string':
+    case 'read_owner_component':
+    case 'browse_owner_library':
       return 'inspecting';
     // Announcing the plan is not doing the work. This tool runs before anything in the project
     // moves, so the one phase it must never fall through to is the `default` below — 'building'
@@ -960,6 +972,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'insert_asset':
     // D-MODELLIB-1: puts a library model into the place, the same act as insert_asset.
     case 'insert_owner_component':
+    case 'import_owner_library':
+    case 'recreate_owner_game':
     case 'insert_library_model':
     case 'generate_model':
     case 'generate_model_external':
@@ -1012,6 +1026,8 @@ export function phaseForTool(tool: string): AgentPhase {
     // aspect ratio Roblox requires — so it announces the same phase. It changes nothing in the
     // place, which is why it must not fall through to the `building` default below.
     case 'compose_thumbnail':
+    // The plugin rasterises the live Studio viewport; nothing in the place changes.
+    case 'capture_studio_viewport':
       return 'rendering';
     case 'check_composition':
     case 'inspect_visually':
@@ -2755,6 +2771,18 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'insert_owner_component',
     label: 'Import owner-supplied components',
     why: 'Inserts private native components, preserving downloaded source as inert data.',
+    group: 'changes',
+  },
+  {
+    name: 'import_owner_library',
+    label: 'Import parts of your uploaded games',
+    why: 'Copies objects and their original scripts from your own game library into your place.',
+    group: 'changes',
+  },
+  {
+    name: 'recreate_owner_game',
+    label: 'Recreate your uploaded games',
+    why: 'Copies a whole game from your own library, scripts included, into your place.',
     group: 'changes',
   },
   {

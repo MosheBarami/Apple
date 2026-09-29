@@ -324,7 +324,7 @@ bridge = Bridge.new({
 			local authorized = if runAction ~= nil then pairingStillCurrent() and allowEdits else consentStillCurrent()
 			-- Pairing already consents to active viewport snapshots. This operation reads
 			-- native pixels without camera/place writes; StudioCapture also fences edit mode.
-			local readFence = if type(op) == "table" and (op.op == "query_owner_local" or op.op == "query_owner_exact" or op.op == "query_owner_assembly" or op.op == "query_owner_media" or op.op == "capture_studio_viewport") then pairingStillCurrent else consentStillCurrent
+			local readFence = if type(op) == "table" and (op.op == "query_owner_local" or op.op == "query_owner_exact" or op.op == "query_owner_assembly" or op.op == "query_owner_media" or op.op == "query_owner_library" or op.op == "capture_studio_viewport") then pairingStillCurrent else consentStillCurrent
 			local result = commands:execute(id, op, authorized, readFence)
 			if runAction ~= nil then
 				if result.ok ~= true then

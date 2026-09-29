@@ -76,7 +76,7 @@ import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScree
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
-import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog } from './local-owner-corpus';
+import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
 import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
@@ -4801,6 +4801,40 @@ export const TOOLS: Record<string, ToolImpl> = {
       ? TOOLS.insert_library_model!.run(ctx,a)
       : {error:'insert_owner_component requires an exact owner: component id'},
   },
+  // THE OWNER'S UPLOADED GAMES, FIRST SOURCE FOR EVERY BUILD. Whole games with their original scripts, read from the
+  // owner's Mac through the paired plugin; the ops need no pasted gateway key.
+  browse_owner_library: {
+    def: {
+      name: 'browse_owner_library',
+      description: "Browse the owner's uploaded game library, the FIRST source for every build. Without id: pages games (q = words in a game or its top-level names, niche, after = nextAfter) with per-service counts and top names. With id: that game's full breakdown per service (children with instance and script counts, lighting, terrain). Paths from it feed import_owner_library.",
+      parameters: S({q:{type:'string'},niche:{type:'string'},id:{type:'string',description:'A game id from the list; returns its breakdown.'},after:{type:'number',description:'nextAfter from the previous page.'},limit:{type:'number',description:'1..25, default 10.'}}),
+    },
+    studio: true,
+    studioOps: ['query_owner_library'],
+    run: browseOwnerLibrary,
+  },
+  import_owner_library: {
+    def: {
+      name: 'import_owner_library',
+      description: "Copy part of an owner library game into Studio WITH its original scripts, parented straight into the target (no wrapper Folder) so the game's scripts find their objects. path is a library path from browse_owner_library: \"/Workspace\", \"/ServerScriptService\", \"/StarterPlayer/StarterPlayerScripts\", \"/Workspace/Farm\" (a repeated sibling name is \"Name#2\"); \"/\" with mode children is the loose top level of a model file. mode children imports what is inside the path, self imports the instance itself. parent defaults to the same service for a service path, else game.Workspace; \"/Lighting\" and \"/Workspace\" children also apply the game's lighting/gravity. Terrain is never copied. Takes a checkpoint. Tell the user which scripts come back suspicious.",
+      parameters: S({gameId:{type:'string'},path:{type:'string'},mode:{type:'string',enum:['self','children']},parent:{type:'string',description:'Studio path such as game.Workspace or game.StarterPlayer.StarterPlayerScripts.'}},['gameId','path','mode']),
+    },
+    studio: true,
+    studioOps: ['snapshot','import_owner_library'],
+    mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r && !('projectMutated' in r)),
+    run: importOwnerLibrary,
+  },
+  recreate_owner_game: {
+    def: {
+      name: 'recreate_owner_game',
+      description: "Recreate an uploaded owner library game in the open place from its original parts and scripts: imports every slot the game has, in order Lighting, ReplicatedFirst, ReplicatedStorage, ServerStorage, ServerScriptService, SoundService, Teams, StarterPack, StarterGui, StarterPlayerScripts, StarterCharacterScripts, Workspace, each into the same service (a model file goes into Workspace). Returns per-slot results, totals and every suspicious script; stops at the first failure. Terrain is not copied. Use browse_owner_library first to pick the closest game.",
+      parameters: S({gameId:{type:'string'}},['gameId']),
+    },
+    studio: true,
+    studioOps: ['snapshot','query_owner_library','import_owner_library'],
+    mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r && !('projectMutated' in r)),
+    run: recreateOwnerGame,
+  },
   insert_library_model: {
     def: {
       name: 'insert_library_model',
@@ -5532,13 +5566,13 @@ export async function runTool(
       ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== 'projectMutated' && key !== 'retryable'))
       : result;
     let str = typeof visibleResult === 'string' ? visibleResult : JSON.stringify(visibleResult);
-    const resultLimit = name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' || name === 'inspect_visually' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
+    const resultLimit = name === 'browse_owner_library' || name === 'import_owner_library' || name === 'recreate_owner_game' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' || name === 'inspect_visually' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
     if (str.length > resultLimit) str = str.slice(0, resultLimit) + `\n...[truncated ${str.length - resultLimit} chars]`;
     const mutatedProject = partialMutation || (!failed && toolMutatesProject(name, result));
     // An explicit UI payload wins. It is capped separately and more generously than the derived
     // one: this socket already carries 200KB playtest frames, so a single ~25KB evidence panel per
     // build is not what needs protecting — a 24KB cap sized for re-sent tool results is.
-    const privateOwnerRead = name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_owner_component' && String(args.id ?? '').startsWith(LOCAL_OWNER_PREFIX);
+    const privateOwnerRead = name === 'browse_owner_library' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_owner_component' && String(args.id ?? '').startsWith(LOCAL_OWNER_PREFIX);
     const detail = privateOwnerRead ? undefined : ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(visibleResult);
     ctx.uiDetail = undefined;
     return {

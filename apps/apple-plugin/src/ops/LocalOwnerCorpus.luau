@@ -420,6 +420,190 @@ function LocalOwnerCorpus.build(api)
 			uiGuidance="Use exact root paths. A Frame under a StarterGui Folder requires an existing ScreenGui host; create only an empty host if missing, then move the original Frame. Authored visibility is unchanged. A mount is not rendered-pixel proof.",
 			crossChunkRefs="not automatically repaired; inspect dependency records",externalMedia="not verified loaded",visualVerified=false,gameplayVerified=false}
 	end
-	return {handlers={query_owner_local=query,query_owner_exact=exact,query_owner_assembly=evidence,query_owner_media=evidence,import_owner_local=import},mutating={import_owner_local=true}}
+	-- The owner's uploaded games, SCRIPTS INCLUDED (gateway_library.py). Unlike the ops above these need no
+	-- pasted port/key: the gateway serves /v1/library* to loopback without a key, on its default port. The
+	-- paired-session consent fence (stillCurrent) still applies to both.
+	local LIBRARY_PORT, LIBRARY_MAX_BYTES, LIBRARY_MAX_NODES = 63747, 64 * 1024 * 1024, 250000
+	local function libraryConfig(self, stillCurrent)
+		local ok, yes = pcall(function() return type(stillCurrent) == "function" and stillCurrent() == true end)
+		if not ok or not yes then return nil end
+		return connection(self, stillCurrent) or { port = LIBRARY_PORT }
+	end
+	local function sameLibrary(self, config, stillCurrent)
+		local current = libraryConfig(self, stillCurrent)
+		return current ~= nil and current.port == config.port and current.key == config.key
+	end
+	local function libraryGet(self, config, path, cap)
+		local http = api.serviceFrom(self.game, self.options.services, "HttpService")
+		if not http then error("HttpService is unavailable", 0) end
+		local headers = { ["Content-Type"] = "application/json" }
+		if config.key then headers.Authorization = "Bearer " .. config.key end
+		local ok, response = pcall(function()
+			return http:RequestAsync({ Url = "http://127.0.0.1:" .. tostring(config.port) .. path, Method = "GET", Headers = headers })
+		end)
+		if not ok or type(response) ~= "table" then error("owner library gateway is not reachable on 127.0.0.1:" .. tostring(config.port) .. "; start it on the Mac", 0) end
+		if type(response.Body) ~= "string" or #response.Body > cap then error("owner library response exceeded its bound", 0) end
+		local decoded, value = pcall(function() return http:JSONDecode(response.Body) end)
+		if response.Success ~= true then
+			local reason = if decoded and type(value) == "table" and type(value.error) == "string" then string.gsub(string.sub(value.error, 1, 300), "%c", " ") else "HTTP " .. tostring(response.StatusCode)
+			error("owner library refused: " .. reason, 0)
+		end
+		if not decoded or type(value) ~= "table" then error("owner library returned invalid JSON", 0) end
+		return value
+	end
+	local function libraryText(value, limit)
+		return type(value) == "string" and #value <= limit and not string.find(value, "%c")
+	end
+	local function libraryId(value)
+		return type(value) == "string" and string.match(value, "^[0-9a-f]+$") ~= nil and #value >= 8 and #value <= 64
+	end
+	local function queryLibrary(self, op, stillCurrent)
+		local config = libraryConfig(self, stillCurrent)
+		if not config then return nil, "refused", "owner library requires a live paired connection" end
+		local http = api.serviceFrom(self.game, self.options.services, "HttpService")
+		local path
+		if op.action == "list" then
+			local limit = op.limit or 10
+			local after = op.after or 0
+			if not api.integer(limit) or limit < 1 or limit > 25 or not api.integer(after) or after < 0 or after > 100000 then return nil, "invalid", "list limit 1..25 and after 0..100000 required" end
+			local params = { "limit=" .. limit, "after=" .. after }
+			for _, key in { "q", "niche" } do
+				if op[key] ~= nil then
+					if not libraryText(op[key], 120) then return nil, "invalid", key .. " must be plain text up to 120 characters" end
+					table.insert(params, key .. "=" .. http:UrlEncode(op[key]))
+				end
+			end
+			path = "/v1/library?" .. table.concat(params, "&")
+		elseif op.action == "game" then
+			if not libraryId(op.id) then return nil, "invalid", "a library game id (8-64 hex characters) is required" end
+			path = "/v1/library/game?id=" .. op.id
+		else
+			return nil, "invalid", "action must be list or game"
+		end
+		local ok, data = pcall(libraryGet, self, config, path, 1000000)
+		if not ok then return nil, "refused", tostring(data) end
+		if not sameLibrary(self, config, stillCurrent) then return nil, "refused", "paired session ended during read" end
+		if op.action == "game" and type(data.services) == "table" then
+			-- The full child list of a big map would not fit a tool result; the totals stay exact.
+			for _, service in data.services do
+				if type(service) == "table" and type(service.children) == "table" and #service.children > 60 then
+					service.childrenTotal = #service.children
+					for index = #service.children, 61, -1 do service.children[index] = nil end
+				end
+			end
+		end
+		data.sourceExecuted = false
+		return data
+	end
+	local function importLibrary(self, op, stillCurrent)
+		local config = libraryConfig(self, stillCurrent)
+		if not config then return nil, "refused", "owner library requires a live paired connection" end
+		if not libraryId(op.gameId) or not libraryText(op.path, 1024) or string.sub(op.path, 1, 1) ~= "/" or (op.mode ~= "self" and op.mode ~= "children")
+			or not libraryText(op.parent, 512) then return nil, "invalid", "gameId, absolute library path, mode self|children and parent required" end
+		local parentPath = if string.sub(op.parent, 1, 4) == "game" then op.parent else "game." .. op.parent
+		local parent, canonical, parentErr, parentKind, remedy = api.resolvePath(self.game, self.options.services, parentPath, true)
+		if not parent then return nil, parentKind or "not_found", parentErr, remedy end
+		local refused, refusedRemedy = api.destinationRefusal(self.game, parent, canonical, "Folder")
+		if refused then return nil, "refused", refused, refusedRemedy end
+		local http = api.serviceFrom(self.game, self.options.services, "HttpService")
+		local encoding = api.serviceFrom(self.game, self.options.services, "EncodingService")
+		local serializer = api.serviceFrom(self.game, self.options.services, "SerializationService")
+		local hashEnum = self.enum and self.enum.HashAlgorithm and self.enum.HashAlgorithm.Sha256
+		if not encoding or type(encoding.ComputeBufferHash) ~= "function" or type(encoding.Base64Decode) ~= "function" or not hashEnum or not serializer or type(serializer.DeserializeInstancesAsync) ~= "function" then return nil, "unsupported", "native decoder/hash services unavailable" end
+		local function hash(bytes)
+			local digest = encoding:ComputeBufferHash(bytes, hashEnum)
+			if buffer.len(digest) ~= 32 then error("invalid SHA-256 length", 0) end
+			local parts = {}; for i = 0, 31 do table.insert(parts, string.format("%02x", buffer.readu8(digest, i))) end
+			return table.concat(parts)
+		end
+		local fetched, result = pcall(function()
+			local extract = libraryGet(self, config, "/v1/library/extract?id=" .. op.gameId .. "&path=" .. http:UrlEncode(op.path) .. "&mode=" .. op.mode, 1000000)
+			local total = extract.bytes
+			if not api.integer(extract.instances) or extract.instances < 0 or extract.instances > LIBRARY_MAX_NODES then error("library extract exceeds the node cap or is malformed", 0) end
+			-- A path with nothing under it (a Lighting with only properties) has no file to fetch.
+			if extract.instances == 0 then return { extract = extract } end
+			if not sha(extract.jobId) or not api.integer(total) or total < 1 or total > LIBRARY_MAX_BYTES or not sha(extract.sha256) then error("library extract exceeds the byte cap or is malformed", 0) end
+			local chunks, offset = {}, 0
+			while offset < total do
+				if not sameLibrary(self, config, stillCurrent) then error("session ended", 0) end
+				local part = libraryGet(self, config, "/v1/library/artifact?jobId=" .. extract.jobId .. "&offset=" .. offset .. "&limit=" .. CHUNK, 180000)
+				if part.kind ~= "owner-library-rbxm" or part.encoding ~= "base64" or part.offset ~= offset or part.totalBytes ~= total or part.sha256 ~= extract.sha256
+					or not sha(part.chunkSha256) or type(part.data) ~= "string" or #part.data > 174764 then error("chunk metadata mismatch", 0) end
+				local chunk = encoding:Base64Decode(buffer.fromstring(part.data))
+				local size = buffer.len(chunk)
+				if size < 1 or size > CHUNK or offset + size > total or hash(chunk) ~= part.chunkSha256 then error("chunk integrity failed", 0) end
+				offset += size
+				if (offset < total and part.nextOffset ~= offset) or (offset == total and part.nextOffset ~= nil) then error("chunk cursor mismatch", 0) end
+				table.insert(chunks, buffer.tostring(chunk))
+			end
+			local value = buffer.fromstring(table.concat(chunks))
+			if hash(value) ~= extract.sha256 or string.sub(buffer.tostring(value), 1, 8) ~= "<roblox!" then error("library rbxm integrity failed", 0) end
+			return { bytes = value, extract = extract }
+		end)
+		if not fetched then return nil, "refused", "owner library fetch failed: " .. tostring(result) end
+		if not sameLibrary(self, config, stillCurrent) then return nil, "refused", "paired session ended during library fetch" end
+		local extract = result.extract
+		local roots = {}
+		if result.bytes then
+			local loaded, decoded = pcall(function() return serializer:DeserializeInstancesAsync(result.bytes) end)
+			if not loaded or type(decoded) ~= "table" or #decoded < 1 then return nil, "refused", "Studio rejected the library file" end
+			roots = decoded
+		end
+		local placed = 0
+		local function cleanup()
+			for index, root in roots do
+				if index <= placed then pcall(function() root.Parent = nil end) else api.destroyInstance(root) end
+			end
+		end
+		local staged, counts = pcall(function()
+			local nodes, scripts = 0, 0
+			for _, root in roots do
+				if root.Parent ~= nil or root.ClassName == "DataModel" then error("detached roots required", 0) end
+				local all = { root }; for _, child in root:GetDescendants() do table.insert(all, child) end
+				nodes += #all
+				if nodes > LIBRARY_MAX_NODES then error("library node cap exceeded", 0) end
+				for _, node in all do if node:IsA("LuaSourceContainer") then scripts += 1 end end
+			end
+			return { nodes = nodes, scripts = scripts }
+		end)
+		if not staged or not sameLibrary(self, config, stillCurrent) then cleanup(); return nil, "refused", "library admission or edit consent failed: " .. (if staged then "session ended" else tostring(counts)) end
+		-- Roots go straight in with their own names: the game's scripts find them where they expect.
+		for index, root in roots do
+			local ok, err = api.parentInstance(root, parent)
+			if not ok then cleanup(); return nil, "refused", "library insertion failed: " .. tostring(err) end
+			placed = index
+		end
+		local inserted = {}
+		for index = 1, math.min(#roots, 50) do
+			local path = api.fullPath(self.game, roots[index])
+			if path then table.insert(inserted, path) end
+		end
+		local applied = {}
+		if op.applyServiceProperties == true and type(extract.serviceProperties) == "table" and (parent.ClassName == "Lighting" or parent.ClassName == "Workspace") then
+			for name, value in extract.serviceProperties do
+				if type(name) == "string" and string.match(name, "^[%a][%w_]*$") then
+					local setOk = pcall(function()
+						if type(value) == "table" then
+							if not (type(value.r) == "number" and type(value.g) == "number" and type(value.b) == "number") then error("unsupported value") end
+							parent[name] = Color3.fromRGB(value.r, value.g, value.b)
+						elseif type(value) == "number" or type(value) == "boolean" then
+							parent[name] = value
+						else error("unsupported value") end
+					end)
+					if setOk then table.insert(applied, name) end
+				end
+			end
+			table.sort(applied)
+		end
+		local suspicious = {}
+		for index, entry in type(extract.suspicious) == "table" and extract.suspicious or {} do
+			if index > 50 then break end
+			if type(entry) == "table" and libraryText(entry.path, 400) and libraryText(entry.pattern, 80) then table.insert(suspicious, { path = entry.path, pattern = entry.pattern }) end
+		end
+		return { inserted = inserted, roots = #roots, instances = counts.nodes, scripts = counts.scripts, suspicious = suspicious,
+			suspiciousCount = if type(extract.suspicious) == "table" then #extract.suspicious else 0, serviceApplied = applied,
+			parent = canonical, game = extract.game, sha256 = extract.sha256 }
+	end
+	return {handlers={query_owner_local=query,query_owner_exact=exact,query_owner_assembly=evidence,query_owner_media=evidence,import_owner_local=import,query_owner_library=queryLibrary,import_owner_library=importLibrary},mutating={import_owner_local=true,import_owner_library=true}}
 end
 return LocalOwnerCorpus

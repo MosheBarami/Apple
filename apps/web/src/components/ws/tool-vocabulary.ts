@@ -186,6 +186,7 @@ export const TOOL = {
 
   // C13
   render_view: { kind: 'rendering', label: 'Rendered the scene', live: 'Taking a picture of it' },
+  capture_studio_viewport: { kind: 'rendering', label: 'Captured the Studio view', live: 'Taking a picture of Studio' },
   compose_thumbnail: { kind: 'rendering', label: 'Framed a store-page image', live: 'Making a thumbnail' },
   get_instance: { kind: 'inspecting', label: 'Read an instance back', live: 'Taking a closer look', on: 'Looking at the {}' },
   get_selection: { kind: 'inspecting', label: 'Checked what you have selected', live: 'Seeing what you picked' },
@@ -212,6 +213,17 @@ export const TOOL = {
   insert_sound: { kind: 'building', label: 'Added a sound', live: 'Adding a sound' },
   insert_vfx: { kind: 'building', label: 'Added a visual effect', live: 'Adding a visual effect' },
   insert_library_model: { kind: 'building', label: 'Added a model from the library', live: 'Adding a model' },
+  insert_owner_component: { kind: 'building', label: 'Added a piece from the game library', live: 'Adding a piece' },
+  query_owner_catalog: { kind: 'searching_assets', label: 'Looked in the game library', live: 'Finding the right pieces' },
+  browse_owner_library: { kind: 'searching_assets', label: 'Looked in your game library', live: 'Looking through your games' },
+  import_owner_library: { kind: 'building', label: 'Added parts from your game library', live: 'Adding parts from your games' },
+  recreate_owner_game: { kind: 'building', label: 'Rebuilt a game from your library', live: 'Rebuilding the game from its parts' },
+  query_owner_assembly: { kind: 'searching_assets', label: 'Looked up how a library game works', live: 'Studying a library game' },
+  read_owner_media: { kind: 'inspecting', label: 'Looked at library media', live: 'Looking at library media' },
+  list_owner_original_strings: { kind: 'inspecting', label: 'Listed library code', live: 'Reading library code' },
+  read_owner_original_string: { kind: 'inspecting', label: 'Read library code', live: 'Reading library code' },
+  read_owner_component: { kind: 'inspecting', label: 'Looked at a library piece', live: 'Looking at a library piece' },
+  inspect_attachment_image: { kind: 'inspecting', label: 'Looked at your image', live: 'Looking at your image' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent', live: 'Checking how it looks' },

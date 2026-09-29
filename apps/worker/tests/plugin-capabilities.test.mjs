@@ -86,7 +86,7 @@ const reasons = {
 
 function currentAuthoringReport() {
   const supported = [
-    'ping', 'render_view', 'screenshot', 'capture_studio_viewport', 'import_owner_component', 'query_owner_local', 'query_owner_exact', 'query_owner_assembly', 'query_owner_media', 'import_owner_local',
+    'ping', 'render_view', 'screenshot', 'capture_studio_viewport', 'import_owner_component', 'query_owner_local', 'query_owner_exact', 'query_owner_assembly', 'query_owner_media', 'import_owner_local', 'query_owner_library', 'import_owner_library',
     'get_tree', 'get_instance', 'list_scripts', 'read_script', 'dump_scripts', 'search_scripts',
     'get_logs', 'get_selection', 'viewport_info', 'select', 'camera_focus', 'create_instances',
     'set_props', 'delete_instances', 'move_instances', 'transform_instances', 'clone_instances',
