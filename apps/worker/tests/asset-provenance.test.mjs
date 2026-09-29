@@ -39,7 +39,8 @@ test('every agent-run call site passes the run in', () => {
   // error, degraded provenance.
   const callSites = [...SESSION.matchAll(/this\.agentCtx\(([^)]*)\)/g)].map((m) => m[1].trim());
   const withRun = callSites.filter((a) => a === 'agent');
-  assert.equal(withRun.length, 2, 'both agent-run call sites must pass the run');
+  // One site since the automatic visual self-critique loop left runStep (3dc0d89c, Q21).
+  assert.equal(withRun.length, 1, 'the agent-run call site must pass the run');
 
   // THE RUN-LESS SITES ARE NAMED, NOT COUNTED. A bare count is a number the next person bumps
   // when their route trips it, which is exactly how a provenance-degrading call site gets waved
