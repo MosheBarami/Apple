@@ -27,6 +27,14 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
   first): a child named like a property (a lamp's "Texture") was captured as the property (f57aa293);
   links to same-named siblings resolved to the first one (1fcb0682); TextX/YAlignment, ButtonStyle,
   FrameStyle enums were refused (a94d5392); engine `RBX…` attributes could not be written back (01c91e39).
+- G15 (2026-09-29): Generate Branding proven live on Candy Garden v2 (`evidence/20260929-g15-branding`).
+- G12 vs owner direction: the evidence renderers (Reasoning, Tool, Plan, Chain of Thought, Agent, Checkpoint, …)
+  were mounted only through the per-turn Details disclosure the owner removed (d2c17f77). They stay built and
+  tested but unmounted; G12's "technical details accessible" clause is an owner override for the G16 audit.
+- Tests 2026-09-29 (5f4e7881, deployed): worker 4332/0 in the checkout, 4328/2 on clean HEAD (the two MCP /
+  phase classification checks are satisfied only by uncommitted foreign WIP in `mcp.ts` and
+  `packages/shared/src/index.ts`); plugin 71/0; web 2448/0. The art-direction brief now leads with the
+  studded default and still follows a named look (all genres, 7238774a).
 - Q19 (f806a876): library models insert directly, no "choose the model" interrupt.
 - Cost: an obby took ~170 credits over 30 steps (one tool per step, ~37-45k input tokens per step,
   first-step latency ~36-62 s). Prompt now asks for up to 4 calls per step (1e753d85).
