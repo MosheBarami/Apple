@@ -220,10 +220,19 @@ test('a built game with nothing on screen or an unplayed loop is not finished; o
 });
 
 test('the run loop records the HUD and the playtest, and steers an unfinished game before it can end', () => {
-  assert.match(SESSION, /out\.mutatedProject === true && \(call\.name === 'build_ui' \|\| call\.name === 'insert_ui_component' \|\| \/ScreenGui\|ui_kit\/\.test\(call\.arguments[^)]*\)\)\) agent\.hudBuilt = true/);
+  assert.match(SESSION, /out\.mutatedProject === true && buildsHud\(call\.name, call\.arguments\)\) agent\.hudBuilt = true/);
   assert.match(SESSION, /out\.ok && call\.name === 'play_check'\) agent\.playChecked = true/);
   // every Autonomous ending consults the game gaps: prose, idle, and the duplicate-streak unstick
   const uses = SESSION.match(/gameGaps\(agent\.request, agent, allowed\.has\('play_check'\)\)/g) ?? [];
   assert.equal(uses.length, 3, 'the prose, idle and duplicate-streak endings must all check the game');
   assert.match(SESSION, /gaps\.length > 0 \|\| leavesWorkOpen\(res\.text\)/);
+});
+
+test('an owner game recreate or StarterGui import brings its own HUD, so no generated HUD is owed', async () => {
+  const { buildsHud } = await import('../src/run-idle.ts');
+  assert.equal(buildsHud('recreate_owner_game', '{"gameId":"0a1b2c3d"}'), true);
+  assert.equal(buildsHud('import_owner_library', '{"gameId":"0a1b2c3d","path":"/StarterGui","parent":"game.StarterGui"}'), true);
+  assert.equal(buildsHud('import_owner_library', '{"gameId":"0a1b2c3d","path":"/Workspace/Farm"}'), false);
+  assert.equal(buildsHud('insert_ui_component', '{}'), true);
+  assert.equal(buildsHud('create_instances', '{"items":[{"className":"Part"}]}'), false);
 });

@@ -181,6 +181,12 @@ export function gameGaps(
   return gaps;
 }
 
+/** A mutating call that puts a HUD on screen. An owner game's original UI counts: a recreate or a StarterGui import brings its own. */
+export function buildsHud(name: string, args: string | undefined): boolean {
+  return name === 'build_ui' || name === 'insert_ui_component' || name === 'recreate_owner_game' ||
+    /ScreenGui|ui_kit/.test(args ?? '') || (name === 'import_owner_library' && /StarterGui/.test(args ?? ''));
+}
+
 export function gameGapSteer(gaps: readonly ('hud' | 'playtest')[]): string {
   const owed: string[] = [];
   if (gaps.includes('hud')) {
