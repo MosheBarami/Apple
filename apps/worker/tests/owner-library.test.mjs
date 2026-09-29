@@ -101,3 +101,16 @@ test('browse_owner_library with kind searches single assets across the library a
   const badGame=await run(ctx({}),'browse_owner_library',{kind:'ui',game:'nothex!'});
   assert.match(badGame.data.error,/game must be a library game id/);
 });
+
+test('import_owner_library still imports into a place too large for one checkpoint, but refuses on other checkpoint failures',async()=>{
+  const c=ctx(GAME);
+  c.createCheckpoint=async()=>({error:'Checkpoint was not saved: this project holds more objects than one checkpoint can carry — Studio stopped early (120000 objects).'});
+  const {out,data}=await run(c,'import_owner_library',{gameId:id,path:'/StarterGui/Inventory',mode:'self'});
+  assert.equal(out.ok,true);assert.match(data.checkpoint,/Studio undo/);
+  assert.equal(c.calls.filter(o=>o.op==='import_owner_library').length,1);
+  const d=ctx(GAME);
+  d.createCheckpoint=async()=>({error:'Checkpoint was not saved: storage unavailable'});
+  const refused=await run(d,'import_owner_library',{gameId:id,path:'/StarterGui/Inventory',mode:'self'});
+  assert.equal(refused.out.ok,false);assert.match(refused.data.error,/checkpoint failed/);
+  assert.equal(d.calls.filter(o=>o.op==='import_owner_library').length,0);
+});
