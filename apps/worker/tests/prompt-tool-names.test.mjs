@@ -91,6 +91,7 @@ test('EVERY TOOL THE PROMPT NAMES IS A REGISTERED TOOL', () => {
     // UI library COMPONENT ids, the argument insert_ui_component takes (D-UIONLY-1), named as examples.
     'currency_counter',
     'shop_window',
+    'item_card',
   ]);
 
   for (const prompt of everyPrompt()) {
