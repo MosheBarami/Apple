@@ -5,6 +5,13 @@ compose from components (systems, UI kit, props and creatures) on a NEW map, nev
 Request twists must be really made (fruit enemies built as fruit, rigged and animated without private assets). Tests are
 ideas, not game names. The status below is history.
 
+**Owner confirmed 2026-09-30 (question round), in this order:**
+0. Small fixes first: a judge/play check always stops the Studio play session; a second request on a built place continues that game.
+1. Components with contracts (needs/gives), each tested alone in Studio, plus 4. our own code-driven Motor6D animation (walk, idle,
+   attack; no private assets). Scope: ONE idea end to end, "defend your orchard from vegetables that come in waves", with only the
+   components it needs, then built live on a new map.
+Twist creatures: a rigged library body plus real fruit/veg meshes from the garden games, animated by our code. No uploads.
+
 Status 2026-09-30 evening (production 177876ea): the library passes the client test. "Plants vs Brainrots, but the brainrots
 are fruit" builds in ~55 s and the judge says ready (94/100, all seven criteria) on two builds in a row and two re-checks;
 played by hand it is clean and progresses (evidence/20260930-client-test); the agent's answer is plain and friendly.

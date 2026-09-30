@@ -44,7 +44,7 @@ test('a request to recreate an uploaded owner game changes the place only by rec
   assert.equal(startsOwnerRecreate('import_owner_library'), false, 'a plain slot import is not a recreate');
   assert.match(src0(), /out\.mutatedProject === true && call\.name === 'recreate_owner_game'\) agent\.keepOwnerOriginal = true/);
   // A built game is not a copy: it marks the run as built (no parts owed, models may be renamed to their new theme), not as an original.
-  assert.match(src0(), /out\.mutatedProject === true && call\.name === 'build_game'\) agent\.builtGame = true/);
+  assert.match(src0(), /out\.mutatedProject === true && call\.name === 'build_game'\) \{\s*agent\.builtGame = true;/);
   assert.equal(startsOwnerRecreate('insert_ui_component'), false);
   const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
   assert.match(src, /isOwnerRecreateRequest\(text\) \? \{ ownerRecreate: true \}/);
