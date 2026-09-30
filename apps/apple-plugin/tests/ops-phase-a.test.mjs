@@ -548,6 +548,39 @@ spec("play_check presses a real on-screen button and reports what pressing it di
     eq(r.data.harnessRemoved, true)
 end)
 
+spec("play_check_ui reads the money counters again after the presses, so a button that pays shows even without leaderstats", function()
+    runService.edit = true; runService.running = false
+    local counter = ui("TextLabel", "Money", store, UDim2.new(0, 100, 0, 20), UDim2.new(0, 10, 0, 200)); counter.Text = "$0"
+    local session = pressSession({ onBuy = function(world)
+        for _, node in ipairs(world.playerGui:GetDescendants()) do if node.Name == "Money" then node.Text = "$5" end end
+    end })
+    studioTest.onSession = session
+    local r = c:execute("p1b", { op = "play_check_ui", seconds = 3, press = { "game.StarterGui.StoreGui.Buy" } }, true)
+    counter:Destroy()
+    eq(r.ok, true, tostring(r.error))
+    eq(r.data.hud.afterWait[1].text, "$0", "before the press")
+    eq(r.data.hud.afterPresses[1].text, "$5", "after the Buy press")
+end)
+
+spec("a window a press opens is reported even in a screen so big that the change list stops before it", function()
+    runService.edit = true; runService.running = false
+    local filler = Instance.new("ScreenGui"); filler.Name = "Filler"; filler.Enabled = true; filler.Parent = services.StarterGui
+    local crowd = Instance.new("Frame"); crowd.Name = "Crowd"; crowd.Parent = filler
+    for i = 1, 320 do local f = Instance.new("Frame"); f.Name = "F" .. i; f.Parent = crowd end
+    local late = Instance.new("ScreenGui"); late.Name = "Late"; late.Enabled = true; late.Parent = services.StarterGui
+    local panel = ui("Frame", "Panel", late, UDim2.new(0, 100, 0, 100)); panel.Visible = false
+    local session = pressSession({ onBuy = function(world)
+        for _, node in ipairs(world.playerGui:GetDescendants()) do if node.Name == "Panel" then node.Visible = true end end
+    end })
+    studioTest.onSession = session
+    local r = c:execute("p1c", { op = "play_check_ui", seconds = 3, press = { "game.StarterGui.StoreGui.Buy" } }, true)
+    filler:Destroy(); late:Destroy()
+    eq(r.ok, true, tostring(r.error))
+    local seen = false
+    for _, line in ipairs(r.data.presses[1].changes) do if line == "Late.Panel became visible" then seen = true end end
+    eq(seen, true, "the press opened Late.Panel: " .. table.concat(r.data.presses[1].changes, " | "))
+end)
+
 spec("without VirtualInput a press is reported as NOT pressed, never as pressed", function()
     local session = pressSession({ noVirtualInput = true })
     studioTest.onSession = session
@@ -632,7 +665,7 @@ const skip = available ? false : 'luau is not on PATH';
 
 test('Phase A op families pass the executable Studio-mock suite', { skip }, () => {
   const result = runSuite();
-  assert.match(result.output, /^commands: 29 passed$/m, 'suite did not report a clean run:\n' + result.output);
+  assert.match(result.output, /^commands: 31 passed$/m, 'suite did not report a clean run:\n' + result.output);
   assert.equal(result.status, 0, result.output);
 });
 
@@ -655,7 +688,9 @@ const BREAKS = [
   { why: 'a press clicks below the top bar', playCheck: true,
     anchor: 'if okInset and inset then centre += inset end', with: '' },
   { why: 'a press reports what it changed', playCheck: true,
-    anchor: 'if okPress then entry.changes, entry.changesTruncated = changes(before, observe(player, playerGui)) end', with: '' },
+    anchor: 'entry.changes, entry.changesTruncated = changes(before, observe(player, playerGui))', with: 'entry.changes, entry.changesTruncated = {}, false' },
+  { why: 'a press reports the top-level pieces it opened or closed, past the point where the change list stops', playCheck: true,
+    anchor: 'if okBefore and okAfter then', with: 'if false then' },
   { why: 'a built ScreenGui is found past the same-named script copy', playCheck: true,
     anchor: 'if child.Name == segment and child:IsA("ScreenGui") then return child end', with: 'if child.Name == segment then return child end' },
   { why: 'a press may name a button a LocalScript builds', commands: true,

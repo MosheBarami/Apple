@@ -198,10 +198,22 @@ if ended then return end
 if not character then finish("no_character") return end
 report.characterSpawned = true
 report.leaderstatsBefore = stats()
+-- Where the character stands, three times: at the spawn, after the wait, after the touches. A player who fell out of the world
+-- (no floor under the spawn) is far below where they started.
+local function where()
+	local current = player.Character
+	local root = current and current:FindFirstChild("HumanoidRootPart")
+	if not root then return nil end
+	local ok, x, y, z = pcall(function() local position = root.Position; return position.X, position.Y, position.Z end)
+	if not ok or type(x) ~= "number" or type(y) ~= "number" or type(z) ~= "number" then return nil end
+	return { math.floor(x * 10) / 10, math.floor(y * 10) / 10, math.floor(z * 10) / 10 }
+end
+report.at = { start = where() }
 
 task.wait(seconds)
 if ended then return end
 report.waitedSeconds = seconds
+report.at.afterWait = where()
 
 if type(args.touch) == "table" then
 	for index, target in args.touch do
@@ -238,6 +250,7 @@ if type(args.touch) == "table" then
 	end
 end
 report.leaderstatsAfter = stats()
+report.at.finish = where()
 
 local okGui, playerGui = pcall(function() return player:FindFirstChild("PlayerGui") end)
 if okGui and playerGui then
@@ -368,6 +381,72 @@ local function buttonsOn(playerGui)
 	end
 	return out
 end
+-- The money counters on the player's screen: a shown text with digits whose own name, or the name of one of the three things it
+-- sits in, says cash, coins, gems... They are read on their own (observe stops at 300 nodes, and a big game's counter can lie past
+-- it) just after the character spawned, after the wait and the touches, and after the presses, so a game that keeps its money in a
+-- data module instead of leaderstats still shows whether the wait, a coin or a button paid.
+local COUNTER_WORDS = { "cash", "money", "coin", "gold", "gem", "sheckle", "buck", "dollar", "credit", "token", "diamond", "balance", "wallet" }
+local function counterName(node, gui)
+	local current, depth = node, 0
+	while current and current ~= gui and depth < 4 do
+		local lowered = string.lower(current.Name)
+		for _, word in COUNTER_WORDS do
+			if string.find(lowered, word, 1, true) then return true end
+		end
+		current = current.Parent
+		depth += 1
+	end
+	return false
+end
+local function counters(playerGui)
+	local out = {}
+	if not playerGui then return out end
+	local prefix = #playerGui:GetFullName() + 2
+	for _, gui in playerGui:GetChildren() do
+		if gui:IsA("ScreenGui") and gui.Enabled ~= false then
+			for _, node in gui:GetDescendants() do
+				if #out >= 16 then return out end
+				if node:IsA("TextLabel") or node:IsA("TextButton") then
+					local okText, text = pcall(function() return node.Text end)
+					if okText and type(text) == "string" and string.find(text, "%d") and shown(node, gui) and counterName(node, gui) then
+						table.insert(out, { name = clip(string.sub(node:GetFullName(), prefix), 120), text = clip(text, 40) })
+					end
+				end
+			end
+		end
+	end
+	return out
+end
+-- Which pieces of the screen the player has on once the game has settled: every direct child of every ScreenGui, and whether it
+-- shows. A LocalScript hides most windows the moment the game starts, so what a place was authored with says little about what
+-- the player sees; this is read before the presses, which open windows.
+local function widgets(playerGui)
+	local out = {}
+	if not playerGui then return out end
+	for _, gui in playerGui:GetChildren() do
+		if gui:IsA("ScreenGui") then
+			local okEnabled, enabled = pcall(function() return gui.Enabled end)
+			local on = not okEnabled or enabled ~= false
+			for _, node in gui:GetChildren() do
+				if #out >= 240 then return out end
+				if node:IsA("GuiObject") then
+					table.insert(out, { gui = clip(gui.Name, 60), name = clip(node.Name, 60), visible = on and shown(node, gui) })
+				end
+			end
+		end
+	end
+	return out
+end
+-- The same pieces keyed by name ("Gui.Piece"; a repeated name gets "#2"...), to see which ones a press opened or closed.
+local function widgetKeys(list)
+	local out, seen = {}, {}
+	for _, w in list do
+		local base = w.gui .. "." .. w.name
+		seen[base] = (seen[base] or 0) + 1
+		out[if seen[base] > 1 then base .. "#" .. seen[base] else base] = w.visible
+	end
+	return out
+end
 local function pressAll(player, playerGui, list)
 	local results = {}
 	if type(list) ~= "table" or #list == 0 then return results end
@@ -413,6 +492,8 @@ local function pressAll(player, playerGui, list)
 					if okInset and inset then centre += inset end
 				end
 				local before = observe(player, playerGui)
+				-- observe stops at 300 nodes and a big game's windows lie past that: the top-level pieces are compared on their own.
+				local okBefore, piecesBefore = pcall(widgets, playerGui)
 				local okPress, pressErr = pcall(function()
 					virtual:SendMouseButton(centre, Enum.UserInputType.MouseButton1, true)
 					task.wait(0.05)
@@ -424,7 +505,22 @@ local function pressAll(player, playerGui, list)
 				entry.activations = fired
 				entry.activated = fired > 0
 				if not okPress then entry.error = clip(pressErr, 200) end
-				if okPress then entry.changes, entry.changesTruncated = changes(before, observe(player, playerGui)) end
+				if okPress then
+					entry.changes, entry.changesTruncated = changes(before, observe(player, playerGui))
+					local okAfter, piecesAfter = pcall(widgets, playerGui)
+					if okBefore and okAfter then
+						local was, now, extra = widgetKeys(piecesBefore), widgetKeys(piecesAfter), {}
+						for key, shownNow in now do
+							if was[key] ~= nil and was[key] ~= shownNow then table.insert(extra, key .. (if shownNow then " became visible" else " was hidden")) end
+						end
+						table.sort(extra)
+						for _, line in extra do
+							local present = false
+							for _, existing in entry.changes do if existing == line then present = true end end
+							if not present and #entry.changes < 12 then table.insert(entry.changes, line) end
+						end
+					end
+				end
 			end
 		elseif node then
 			entry.error = "the path is not a GuiButton (TextButton or ImageButton)"
@@ -438,14 +534,40 @@ local function pressAll(player, playerGui, list)
 	return results
 end
 
+-- The counters a moment after the character spawned: before the server's wait and touches, once the game has had time to build its
+-- screen and load its data.
+local firstCounters = nil
+task.spawn(function()
+	local player = Players.LocalPlayer
+	local playerGui = player and player:FindFirstChild("PlayerGui")
+	local giveUp = os.clock() + 10
+	while player and not playerGui and os.clock() < giveUp do task.wait(0.25); playerGui = player:FindFirstChild("PlayerGui") end
+	if not playerGui then return end
+	while not player.Character and os.clock() < giveUp do task.wait(0.25) end
+	task.wait(1.5)
+	local ok, list = pcall(counters, playerGui)
+	if ok then firstCounters = list end
+end)
+
 channel.OnClientEvent:Connect(function(request)
 	if type(request) ~= "table" or request.nonce ~= marker then return end
 	local player = Players.LocalPlayer
 	local playerGui = player and player:FindFirstChild("PlayerGui")
+	-- Reading the counters never costs the report: a failure here leaves them out and the rest goes on.
+	local function readCounters()
+		if not playerGui then return nil end
+		local ok, list = pcall(counters, playerGui)
+		if ok then return list end
+		return nil
+	end
+	local afterWait = readCounters()
+	local okWidgets, widgetsAtStart = false, nil
+	if playerGui then okWidgets, widgetsAtStart = pcall(widgets, playerGui) end
 	local presses = if playerGui then pressAll(player, playerGui, request.press) else {}
+	local afterPresses = if #presses > 0 then readCounters() else nil
 	local guis, others = census(playerGui)
 	local errors, warnings = collectLogs(LogService, tonumber(request.since) or 0, scriptErrors)
-	channel:FireServer({ nonce = marker, playerGui = playerGui ~= nil, screenGuis = guis, otherChildren = others, errors = errors, warnings = warnings, presses = presses })
+	channel:FireServer({ nonce = marker, playerGui = playerGui ~= nil, screenGuis = guis, otherChildren = others, errors = errors, warnings = warnings, presses = presses, hud = { first = firstCounters, afterWait = afterWait, afterPresses = afterPresses, widgets = if okWidgets then widgetsAtStart else nil } })
 end)
 ]==]
 
@@ -589,6 +711,31 @@ local function otherList(raw: any): { any }
 	return out
 end
 
+local function counterList(raw: any): { any }?
+	if type(raw) ~= "table" then return nil end
+	local out = {}
+	for _, item in raw do
+		if #out >= 16 then break end
+		if type(item) == "table" and item.name ~= nil then table.insert(out, { name = clipText(item.name, 120), text = clipText(item.text or "", 40) }) end
+	end
+	return out
+end
+
+local function point(raw: any): { number }?
+	if type(raw) ~= "table" or type(raw[1]) ~= "number" or type(raw[2]) ~= "number" or type(raw[3]) ~= "number" then return nil end
+	return { raw[1], raw[2], raw[3] }
+end
+
+local function widgetList(raw: any): { any }?
+	if type(raw) ~= "table" then return nil end
+	local out = {}
+	for _, item in raw do
+		if #out >= 240 then break end
+		if type(item) == "table" and item.name ~= nil then table.insert(out, { gui = clipText(item.gui, 60), name = clipText(item.name, 60), visible = item.visible == true }) end
+	end
+	return out
+end
+
 function PlayCheck.normalise(report: any, seconds: number): any
 	local client = if type(report.client) == "table" then report.client else nil
 	local touches = {}
@@ -629,6 +776,10 @@ function PlayCheck.normalise(report: any, seconds: number): any
 		touches = touches,
 		presses = if client then pressList(client.presses) else {},
 		leaderstatsAfterPresses = statList(report.leaderstatsAfterPresses),
+		-- Where the character stood (x, y, z): at the spawn, after the wait, after the touches (nil = not read).
+		characterAt = if type(report.at) == "table" then { start = point(report.at.start), afterWait = point(report.at.afterWait), finish = point(report.at.finish) } else nil,
+		-- The money counters on the player's screen (just after the character spawned, after the wait and touches, after the presses) and which top-level pieces of it show once the game has settled (nil = not read).
+		hud = if client and type(client.hud) == "table" then { first = counterList(client.hud.first), afterWait = counterList(client.hud.afterWait), afterPresses = counterList(client.hud.afterPresses), widgets = widgetList(client.hud.widgets) } else nil,
 	}
 end
 

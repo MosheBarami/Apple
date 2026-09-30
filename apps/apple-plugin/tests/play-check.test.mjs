@@ -139,6 +139,8 @@ spec("a working counter is read, and walking onto a coin shows what the coin did
     eq(d.leaderstatsBefore[1].name, "Coins"); eq(d.leaderstatsBefore[1].value, 0)
     eq(#d.touches, 1); eq(d.touches[1].path, "game.Workspace.Coin1"); eq(d.touches[1].found, true); eq(d.touches[1].moved, true)
     eq(d.touches[1].leaderstatsAfter[1].value, 1, "the coin paid out"); eq(d.touches[1].transparency, 1)
+    eq(d.characterAt ~= nil, true, "the report says where the character stood")
+    eq(d.characterAt.finish[1], 10); eq(d.characterAt.finish[2], 3); eq(d.characterAt.finish[3], 0)  -- after walking onto the coin
     local shown = find(d.screenGuis, "CoinGui")
     eq(shown ~= nil, true); eq(shown.enabled, true)
     local coinLabel = find(shown.labels, "CoinLabel"); eq(coinLabel.visible, true); eq(coinLabel.text, "Coins: 0")
@@ -236,6 +238,40 @@ spec("the harness is fixed plugin text: nothing from the wire reaches its source
     eq(harnessInPlace(), 0); c:destroy()
 end)
 
+spec("the money counters are read just after the character spawned and again after the wait and the touches, for a game that keeps its money outside leaderstats", function()
+    fresh()
+    local gui = Instance.new("ScreenGui"); gui.Name = "Hud"; gui.Enabled = true; gui.Parent = services.StarterGui
+    local bottom = Instance.new("Frame"); bottom.Name = "Bottom"; bottom.Parent = gui
+    local money = Instance.new("TextLabel"); money.Name = "Money"; money.Text = "$0"; money.Parent = bottom
+    local level = Instance.new("TextLabel"); level.Name = "Level"; level.Text = "Level 1"; level.Parent = bottom
+    local blank = Instance.new("TextLabel"); blank.Name = "Coins"; blank.Text = "Coins"; blank.Parent = bottom
+    local shop = Instance.new("Frame"); shop.Name = "Shop"; shop.Visible = false; shop.Parent = gui
+    local price = Instance.new("TextLabel"); price.Name = "CashPrice"; price.Text = "$500"; price.Parent = shop
+    local coin = Instance.new("Part"); coin.Name = "Coin1"; coin.Position = v3(10, 3, 0); coin.Size = v3(2, 2, 2); coin.Parent = workspace
+    studioTest.onSession = simulatePlaySession({
+        onServer = function(world)
+            world.workspace:FindFirstChild("Coin1").Touched:Connect(function()
+                for _, node in world.playerGui:GetDescendants() do if node.Name == "Money" then node.Text = "$25" end end
+            end)
+        end,
+    })
+    local c = newCommands()
+    local r = c:execute("hud", { op = "play_check", seconds = 4, touch = { "game.Workspace.Coin1" } }, true)
+    eq(r.ok, true, tostring(r.error))
+    local hud = r.data.hud
+    eq(hud ~= nil, true, "the report carries the counters")
+    eq(#hud.first, 1, "the level has digits but is no counter, a text with no digit is no counter, and the price sits in a hidden window")
+    eq(hud.first[1].name, "Hud.Bottom.Money"); eq(hud.first[1].text, "$0", "the first look is before the coin")
+    eq(hud.afterWait[1].text, "$25", "after the touch the counter moved: the coin paid")
+    eq(hud.afterPresses, nil, "nothing was pressed, so nothing was read after presses")
+    eq(r.data.leaderstatsBefore, nil, "and this game has no leaderstats at all")
+    local seen = {}
+    for _, w in hud.widgets do seen[w.gui .. "." .. w.name] = w.visible end
+    eq(seen["Hud.Bottom"], true, "the piece the game shows"); eq(seen["Hud.Shop"], false, "the window the game hides is hidden, whatever it was authored as")
+    gui:Destroy(); coin:Destroy(); c:destroy()
+    eq(harnessInPlace(), 0)
+end)
+
 report()
 `;
 
@@ -289,6 +325,36 @@ const BREAKS = [
     file: 'playCheck',
     anchor: '\tlocal errors, warnings = collectLogs(LogService, tonumber(request.since) or 0, scriptErrors)\n',
     with: '\tlocal errors, warnings = {}, {}\n',
+  },
+  {
+    why: 'the money counters are read after the wait and the touches',
+    file: 'playCheck',
+    anchor: '\tlocal afterWait = readCounters()\n',
+    with: '\tlocal afterWait = nil\n',
+  },
+  {
+    why: 'the money counters are read just after the character spawned',
+    file: 'playCheck',
+    anchor: '\tif ok then firstCounters = list end\n',
+    with: '\t_ = ok\n',
+  },
+  {
+    why: 'the character position is read after the touches',
+    file: 'playCheck',
+    anchor: 'report.at.finish = where()\n',
+    with: '\n',
+  },
+  {
+    why: 'a piece of the screen is on only if it shows',
+    file: 'playCheck',
+    anchor: 'visible = on and shown(node, gui) })',
+    with: 'visible = on })',
+  },
+  {
+    why: 'a counter must be visible to be a counter',
+    file: 'playCheck',
+    anchor: 'string.find(text, "%d") and shown(node, gui) and counterName(node, gui)',
+    with: 'string.find(text, "%d") and counterName(node, gui)',
   },
   {
     why: 'play_check takes the edit-mode and consent gates',
