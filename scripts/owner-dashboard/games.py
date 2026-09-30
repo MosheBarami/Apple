@@ -66,6 +66,11 @@ def main():
     systems = load('systems.json', {'systems': []})
     systems = systems.get('systems', []) if isinstance(systems, dict) else systems
     builds = load('live-builds.json', {'builds': []})['builds']
+    # Knowledge cards (one per priority game) and genre syntheses: what the design step builds original games from.
+    kdir = os.path.join(LIB, 'knowledge')
+    carded = {f[:-5] for f in os.listdir(kdir) if f.endswith('.json') and len(f) == 69} if os.path.isdir(kdir) else set()
+    gdir = os.path.join(kdir, 'genres')
+    genres = sorted(f[:-5] for f in os.listdir(gdir) if f.endswith('.json')) if os.path.isdir(gdir) else []
     media = load('media.json', {'items': [], 'packs': []})
     family_of = {m['id']: fam for fam in families for m in fam['members']}
     does, live = {}, {}
@@ -126,7 +131,7 @@ def main():
                 'kind': 'place' if g.get('place') else 'model', 'niches': g.get('niches', []),
                 'family': fam['name'] if fam else None, 'primary': bool(fam) and fam['primary'] == sid, 'versions': len(fam['members']) if fam else 1,
                 'look': look_of(style.get(sid)), 'works': integ.get('works'), 'scripts': integ.get('scripts') or g.get('scripts') or 0,
-                'stripped': stripped, 'systems': does.get(sid[:12], [])[:4], 'liveBuilds': live.get(sid[:12], [])}
+                'stripped': stripped, 'systems': does.get(sid[:12], [])[:4], 'liveBuilds': live.get(sid[:12], []), 'card': sid in carded}
         write(os.path.join(GAME_DIR, safe(sid) + '.json'), {'schema': 'apple.owner-dashboard.game.v2', 'builtAt': built, 'stageOrder': STAGES,
                                                             **head, 'components': components})
         games.append(head)
@@ -146,6 +151,7 @@ def main():
         'families': len(families), 'studded': sum(1 for g in games if g['look'] in ('studded', 'studded-modern')), 'works': works,
         'systems': len(systems), 'media': len(media.get('items', [])), 'mediaPacks': len(media.get('packs', [])),
         'repaired': sum(1 for s in sources.values() if s.get('fixes')), 'liveBuilds': len(builds), 'liveGames': len(live),
+        'cards': len(carded), 'genres': genres, 'ready': sum(1 for b in builds if b.get('verdict') == 'ready'),
     }
     write(OUT, {'schema': 'apple.owner-dashboard.games.v2', 'builtAt': built, 'stageOrder': STAGES, 'summary': summary, 'games': games, 'builds': builds})
     print(json.dumps(summary, ensure_ascii=False), f'{time.time() - t0:.0f}s', file=sys.stderr)

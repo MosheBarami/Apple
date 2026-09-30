@@ -72,7 +72,8 @@ function gamesList(d) {
       ${stat({ key: 'gm-works', label: 'משחקים שהקוד שלהם עובד', value: s.works?.yes, sub: `${num(s.works?.partly)} חלקית · ${num(s.works?.['looks only'])} מראה בלבד` })}
       ${stat({ key: 'gm-stud', label: 'משחקי סטאדים', value: s.studded, sub: `${num(s.systems)} מערכות מוכנות להתקנה` })}
       ${stat({ key: 'gm-media', label: 'קבצי אמנות', value: s.media, sub: `${num(s.mediaPacks)} חבילות · עוד לא הועלו ל־Roblox` })}
-      ${stat({ key: 'gm-live', label: 'בניות חיות ב־Studio', value: s.liveBuilds, sub: `${num(s.liveGames)} משחקים מהספרייה שימשו בהן` })}
+      ${stat({ key: 'gm-live', label: 'בניות חיות ב־Studio', value: s.liveBuilds, sub: `${num(s.liveGames)} משחקים מהספרייה שימשו בהן · ${num(s.ready)} עברו את מבחן הלקוח` })}
+      ${stat({ key: 'gm-know', label: 'כרטיסי ידע', value: s.cards, sub: `${num(arr(s.genres).length)} ז'אנרים מסוכמים: ${arr(s.genres).join(', ')}` })}
       ${stat({ key: 'gm-fail', label: 'משחקים עם כשל', value: s.withFailures, sub: `${num(s.repaired)} קבצים תוקנו כדי שייקראו` })}</div>
     ${sec('התקדמות הספרייה לפי שלב', 'חלק המופעים בכל המשחקים שהגיע לכל שלב')}
     <div class="card">${stageBars(s.stages, arr(d.stageOrder))}</div>
@@ -83,7 +84,7 @@ function gamesList(d) {
       ${gsel('show', 'הצג', [['', 'הכול'], ['studded', 'סטאדים'], ['works', 'קוד עובד'], ['looks', 'מראה בלבד'], ['families', 'עם כמה גרסאות'], ['live', 'שימש בבנייה חיה'], ['failures', 'עם הערות']])}
       ${gsel('sort', 'מיון', [['percent', 'אחוז: גבוה קודם'], ['percent-asc', 'אחוז: נמוך קודם'], ['name', 'שם']])}</div>
     <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>משחק</th><th>מראה</th><th>קוד</th><th>אחוז</th><th class="n">נכסים</th><th class="n">מופעים</th><th>הערות</th></tr></thead><tbody>
-    ${rows.map((g) => html`<tr data-k="g-${g.id}"><td dir="auto"><a href="${gameHref(g.id)}"><b>${g.name}</b></a>${(g.versions || 1) > 1 ? html` ${chip(g.primary ? `${num(g.versions)} גרסאות · ראשית` : `גרסה של ${g.family}`, g.primary ? 'chip-ok' : '')}` : ''}${arr(g.liveBuilds).length ? html` ${chip('נבנה חי', 'chip-ok')}` : ''}</td>
+    ${rows.map((g) => html`<tr data-k="g-${g.id}"><td dir="auto"><a href="${gameHref(g.id)}"><b>${g.name}</b></a>${(g.versions || 1) > 1 ? html` ${chip(g.primary ? `${num(g.versions)} גרסאות · ראשית` : `גרסה של ${g.family}`, g.primary ? 'chip-ok' : '')}` : ''}${arr(g.liveBuilds).length ? html` ${chip('נבנה חי', 'chip-ok')}` : ''}${g.card ? html` ${chip('כרטיס ידע', '')}` : ''}</td>
       <td>${tag(LOOK, g.look)}</td><td>${tag(WORKS, g.works)}</td>
       <td>${pctCell(g.percent)}</td><td class="n">${num(g.componentCount)}</td><td class="n">${num(g.instances)}</td><td>${failBadge(arr(g.failures).length)}</td></tr>`)}
     </tbody></table></div>${rows.length ? '' : html`<p class="empty" style="padding:14px 20px">אין משחק שמתאים לסינון.</p>`}</div></div>`;
