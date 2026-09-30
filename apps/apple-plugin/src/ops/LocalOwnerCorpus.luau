@@ -425,7 +425,7 @@ function LocalOwnerCorpus.build(api)
 	-- paired-session consent fence (stillCurrent) still applies to both.
 	local LIBRARY_PORT, LIBRARY_MAX_BYTES, LIBRARY_MAX_NODES = 63747, 64 * 1024 * 1024, 250000
 	-- Read routes the "route" action forwards as they are; the gateway owns their meaning, the plugin only bounds them.
-	local LIBRARY_ROUTES = { deps = true, install = true, systems = true, blueprint = true, family = true, report = true, media = true }
+	local LIBRARY_ROUTES = { deps = true, install = true, systems = true, blueprint = true, family = true, report = true, media = true, design = true }
 	local function libraryConfig(self, stillCurrent)
 		local ok, yes = pcall(function() return type(stillCurrent) == "function" and stillCurrent() == true end)
 		if not ok or not yes then return nil end
@@ -489,9 +489,9 @@ function LocalOwnerCorpus.build(api)
 			end
 			path = "/v1/library/deps?id=" .. op.gameId .. "&path=" .. http:UrlEncode(op.path)
 		elseif op.action == "route" then
-			-- Any gateway read route without an action of its own (install, systems, blueprint...): the route is allowlisted and
+			-- Any gateway read route without an action of its own (install, systems, blueprint, design...): the route is allowlisted and
 			-- the params are bounded plain text or numbers, sorted so the same request always makes the same URL.
-			if type(op.route) ~= "string" or LIBRARY_ROUTES[op.route] ~= true then return nil, "invalid", "route must be deps, install, systems, blueprint, family, report or media" end
+			if type(op.route) ~= "string" or LIBRARY_ROUTES[op.route] ~= true then return nil, "invalid", "route must be deps, install, systems, blueprint, family, report, media or design" end
 			if op.params ~= nil and type(op.params) ~= "table" then return nil, "invalid", "params must be a table of names and values" end
 			local values, names = {}, {}
 			for key, value in op.params or {} do

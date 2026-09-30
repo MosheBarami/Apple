@@ -100,7 +100,9 @@ assert(c:execute("systems",routeOp("systems"),false,current).ok==true and urls[#
 assert(c:execute("systems2",routeOp("systems",{}),false,current).ok==true and urls[#urls]=="http://127.0.0.1:63747/v1/library/systems","empty params means no query string")
 assert(c:execute("blueprint",routeOp("blueprint",{theme="candy land",seed=7,niche="brainrot",limit=2.5}),false,current).ok==true)
 assert(urls[#urls]=="http://127.0.0.1:63747/v1/library/blueprint?limit=2.5&niche=brainrot&seed=7&theme=candy land","params must be sorted so one request is one URL: "..urls[#urls])
-for _,name in {"deps","install","systems","blueprint","family","report","media"} do
+assert(c:execute("design",routeOp("design",{request="a garden game with a candy theme",theme="candy",features="pets, shop",seed=3}),false,current).ok==true)
+assert(urls[#urls]=="http://127.0.0.1:63747/v1/library/design?features=pets, shop&request=a garden game with a candy theme&seed=3&theme=candy","the design route takes the request, theme, features and seed as sorted params: "..urls[#urls])
+for _,name in {"deps","install","systems","blueprint","family","report","media","design"} do
  assert(c:execute("allowed",routeOp(name,{id="abcdef012345"}),false,current).ok==true and string.find(urls[#urls],"/v1/library/"..name.."?id=abcdef012345",1,true),"route "..name.." must be forwarded")
 end
 encodeReal=true
