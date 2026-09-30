@@ -332,7 +332,11 @@ export function Turn({
           activity={activity}
         />
 
-        {item.content && (
+        {/* WHILE APPLE WORKS, ONE LIVE LINE AND NOTHING ELSE (owner, 2026-09-30). The steps' in-between narration
+            ("Got it — every screen will be assembled…", "Now playing it as a player…") streamed in sections under a status
+            line that stayed on top, and read as tool talk. The status line above says what is happening; the reply
+            appears once, when the run ends and msg_end settles it to the stored answer. */}
+        {item.content && !item.streaming && (
           // The reply answers in the user's language, so it takes its direction from itself too.
           // MessageResponse renders through lib/markdown.tsx (marked + DOMPurify, fences to the code
           // block) — the one renderer allowed to put model output on screen.
