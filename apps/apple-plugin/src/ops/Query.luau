@@ -400,8 +400,49 @@ function Query.build(api)
 			table.insert(exclude, inst)
 			-- A tiny inset keeps faces that merely touch (a part resting on the floor) from counting.
 			local inset = Vector3.new(math.max(size.X - 0.1, 0.05), math.max(size.Y - 0.1, 0.05), math.max(size.Z - 0.1, 0.05))
-			local parts, overlapErr = partsInBox(self, cframe, inset, exclude)
-			if not parts then return nil, "internal", overlapErr end
+			local boxed, overlapErr = partsInBox(self, cframe, inset, exclude)
+			if not boxed then return nil, "internal", overlapErr end
+			-- Box overlap is only a first cut. Invisible walk-through volumes (zones, hitboxes, spawn regions) are not in the way,
+			-- nor is whatever the model stands on (its top at or below the model's bottom); what remains must touch one of the
+			-- model's own parts for real (GetPartsInPart), not only share a bounding box with it (a big mesh's empty corners).
+			local solid = {}
+			for _, part in boxed do
+				local okSolid, blocks = pcall(function()
+					if not part.CanCollide and part.Transparency >= 0.95 then return false end
+					local sz = part.Size
+					local okTurn, reach = pcall(function()
+						local cf = part.CFrame
+						return (math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.LookVector.Y) * sz.Z) / 2
+					end)
+					return part.Position.Y + (if okTurn then reach else sz.Y / 2) > bottom + 0.25
+				end)
+				if okSolid and blocks then table.insert(solid, part) end
+			end
+			local parts = {}
+			if #solid > 0 then
+				local world = workspaceOf(self)
+				local own = if inst:IsA("BasePart") then { inst } else {}
+				for _, d in inst:GetDescendants() do
+					if #own > 60 then break end
+					if d:IsA("BasePart") then table.insert(own, d) end
+				end
+				if #own > 60 or not world then
+					parts = solid -- too many pieces to test one by one: the box answer stands
+				else
+					local seen = {}
+					local params = OverlapParams.new()
+					params.FilterType = Enum.RaycastFilterType.Include
+					params.FilterDescendantsInstances = solid
+					for _, piece in own do
+						local okHit, hits = pcall(function() return world:GetPartsInPart(piece, params) end)
+						if okHit and type(hits) == "table" then
+							for _, hit in hits do
+								if not seen[hit] then seen[hit] = true; table.insert(parts, hit) end
+							end
+						end
+					end
+				end
+			end
 			local listed, total = listParts(self, parts)
 			data.overlapping, data.overlapCount = listed, total
 			local r = cast(self, Vector3.new(centre.X, bottom + 0.05, centre.Z), Vector3.new(0, -Query.MAX_RAY, 0), exclude)

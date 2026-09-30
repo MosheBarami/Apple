@@ -81,6 +81,16 @@ workspace.GetPartBoundsInBox = function(self, cframe, size, params)
     return out
 end
 
+-- GetPartsInPart as an axis-aligned overlap of the piece with the parts the Include filter names.
+workspace.GetPartsInPart = function(self, piece, params)
+    local out, c, size = {}, piece.Position, piece.Size
+    for _, part in ipairs(params and params.FilterDescendantsInstances or {}) do
+        local p, s = part.Position, part.Size
+        if math.abs(p.X - c.X) < (s.X + size.X) / 2 and math.abs(p.Y - c.Y) < (s.Y + size.Y) / 2 and math.abs(p.Z - c.Z) < (s.Z + size.Z) / 2 then table.insert(out, part) end
+    end
+    return out
+end
+
 -- PhysicsService as documented: registered groups, pairwise collidability, a group limit.
 local physics = { groups = { "Default" }, pairs = {}, max = 32 }
 function physics:IsCollisionGroupRegistered(n) for _, g in ipairs(self.groups) do if g == n then return true end end; return false end
@@ -244,6 +254,12 @@ spec("check_placement names what a part floats above and what it is inside", fun
     eq(r.data.overlapCount, 1); eq(r.data.overlapping[1], "game.Workspace.Wall")
     local ok = c:execute("s4", { op = "spatial_query", action = "check_placement", path = "game.Workspace.Resting" }, false)
     eq(ok.data.floating, false, "a part resting on the ground does not float"); eq(ok.data.overlapCount, 0, "touching the ground is not overlapping it")
+    -- Live 2026-09-30: every spot on a brainrot map "overlapped" an invisible walk-through zone, so nothing could be placed.
+    local zone = part("Zone", workspace, v3(10, 5, 0), v3(40, 20, 40)); zone.Transparency = 1; zone.CanCollide = false
+    eq(c:execute("s4z", { op = "spatial_query", action = "check_placement", path = "game.Workspace.Resting" }, false).data.overlapCount, 0, "an invisible walk-through zone is not in the way")
+    zone.CanCollide = true
+    eq(c:execute("s4w", { op = "spatial_query", action = "check_placement", path = "game.Workspace.Resting" }, false).data.overlapCount, 1, "an invisible wall still is")
+    zone:Destroy()
 end)
 
 spec("spatial_query overlap and raycast answer, and bad input is refused", function()

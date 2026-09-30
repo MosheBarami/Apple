@@ -454,7 +454,9 @@ function LocalOwnerCorpus.build(api)
 		return value
 	end
 	local function libraryText(value, limit)
-		return type(value) == "string" and #value <= limit and not string.find(value, "%c")
+		-- ASCII control characters only: Studio's %c also matches the bytes 0x80-0x9F that every emoji and most accented
+		-- letters use in UTF-8 ("Full Pet System 🐈"), which refused real library paths.
+		return type(value) == "string" and #value <= limit and not string.find(value, "[%z\1-\31\127]")
 	end
 	local function libraryId(value)
 		return type(value) == "string" and string.match(value, "^[0-9a-f]+$") ~= nil and #value >= 8 and #value <= 64
@@ -582,6 +584,13 @@ function LocalOwnerCorpus.build(api)
 			local loaded, decoded = pcall(function() return serializer:DeserializeInstancesAsync(result.bytes) end)
 			if not loaded or type(decoded) ~= "table" or #decoded < 1 then return nil, "refused", "Studio rejected the library file" end
 			roots = decoded
+			-- A copy keeps links to its original creator's packages; the first edit then stops Studio with a "modifying
+			-- packages" dialog. The owner's copy is his own, so the links go before anything is placed.
+			for _, root in roots do
+				for _, node in root:GetDescendants() do
+					if node.ClassName == "PackageLink" then pcall(function() node:Destroy() end) end
+				end
+			end
 		end
 		local placed = 0
 		local function cleanup()
