@@ -190,6 +190,18 @@ function samePluginCapabilityClient(
   return !!a && !!b && a.version === b.version && a.protocol === b.protocol;
 }
 
+/** The text of the last user message in a run's conversation: what the user asked for, in their own words. */
+export function lastUserText(messages: readonly { role: string; content?: unknown }[]): string | undefined {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const m = messages[i]!;
+    if (m.role !== 'user') continue;
+    const text = typeof m.content === 'string' ? m.content
+      : Array.isArray(m.content) ? m.content.map((c) => (c && typeof c === 'object' && typeof (c as { text?: unknown }).text === 'string' ? (c as { text: string }).text : '')).join(' ') : '';
+    if (text.trim()) return text.trim();
+  }
+  return undefined;
+}
+
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
   /**
@@ -5727,6 +5739,7 @@ export class SessionDO extends DurableObject<Env> {
       discoveredAssetIds: new Set(agent?.discoveredAssetIds ?? []),
       // The design plan_game made, kept between the run's steps (the context is rebuilt every step) and across a restart of this object.
       ...(agent ? { plannedGame: { load: () => this.ctx.storage.get('plannedGame'), save: (stored: unknown) => this.ctx.storage.put('plannedGame', stored) } } : {}),
+      ...(agent ? { userRequest: () => lastUserText(agent.llm) } : {}),
       onceInRun: (key) => {
         if (!agent) return true;
         const seen = agent.onceKeys ?? (agent.onceKeys = []);

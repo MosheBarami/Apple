@@ -116,6 +116,16 @@ const text = (f, p) => f.world.nodes.get(p).props.Text.v;
 
 // ------------------------------------------------------------------------------------------------- plan_game
 
+test('plan_game: the library reads the user\'s own words, not the model\'s retelling; after a short reply ("yes, do it") the model\'s words stand', async () => {
+  const seen = [];
+  const f = studio({ route: { design: (op) => { seen.push(op.params.request); return { ok: true, data: design() }; } } });
+  f.ctx.userRequest = () => 'Make me a Plants vs Brainrots style game, but the brainrots are fruit.';
+  await plan(f, { request: 'a lane defense game with plants' });
+  f.ctx.userRequest = () => 'yes, do it';
+  await plan(f, { request: 'a candy garden' });
+  assert.deepEqual(seen, ['Make me a Plants vs Brainrots style game, but the brainrots are fruit.', 'a candy garden']);
+});
+
 test('plan_game: asks the library for the design with the request, theme, features and seed, and keeps the whole plan for build_game', async () => {
   const seen = [];
   const f = studio({ route: { design: (op) => { seen.push(op); return { ok: true, data: design() }; } } });

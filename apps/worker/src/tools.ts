@@ -278,6 +278,8 @@ export interface AgentCtx {
    * the last design in memory.
    */
   plannedGame?: { load(): Promise<unknown>; save(stored: unknown): Promise<void> };
+  /** The user's own words for this run (their last message), so a tool that must understand the request does not read the model's retelling of it. */
+  userRequest?: () => string | undefined;
 }
 
 /**

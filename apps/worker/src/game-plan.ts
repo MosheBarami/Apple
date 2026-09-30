@@ -324,7 +324,11 @@ const planWords = (d: Design): string => {
 export async function planGame(ctx: AgentCtx, a: Record<string, unknown>) {
   const blocked = libraryReady(ctx);
   if (blocked) return { error: plainProblem(blocked) + ' ' + blocked };
-  const request = shortText(a.request);
+  // The user's own words carry the theme and the twist ("but the brainrots are fruit"); the model's retelling can lose them. A short reply
+  // ("yes, do it") says nothing about the game, so then the model's words stand.
+  const own = ctx.userRequest?.()?.trim() ?? '';
+  const words = own.split(/\s+/).filter(Boolean).length >= 4 ? own : '';
+  const request = shortText(words || a.request);
   if (!request) return { error: 'request is required: what the user asked for, in their own words.' };
   const theme = shortText(a.theme, 100), features = shortText(a.features);
   const seed = a.seed !== undefined && a.seed !== '' && Number.isFinite(Number(a.seed)) ? Math.abs(Math.floor(Number(a.seed))) % 1_000_000 : Math.floor(Math.random() * 1_000_000);
@@ -333,7 +337,7 @@ export async function planGame(ctx: AgentCtx, a: Record<string, unknown>) {
   const design = readDesign(rec(out.data));
   if ('error' in design) return { error: `${design.error} Tell the user in one plain sentence that the library has nothing for that kind of game yet; nothing was built.` };
   // The library takes the first 200 characters; the judge is given the user's whole request.
-  await keepPlan(ctx, { design, request: clean(a.request, 1000) || request, seed, at: Date.now() });
+  await keepPlan(ctx, { design, request: clean(words || a.request, 1000) || request, seed, at: Date.now() });
   return {
     planned: true, plan: digest(design, seed), forUser: planWords(design),
     note: 'The full plan is saved. Read the digest: the title, theme, pitch and currency name are yours to change (pass them as design {title, theme, currency} to build_game); the parts, screens and texts are fixed. Then call build_game. Name no tools, paths, counts or ids to the user.',
