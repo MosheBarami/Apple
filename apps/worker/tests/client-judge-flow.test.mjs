@@ -37,6 +37,8 @@ test('a finished garden game is ready: every question a client asks is a yes, fr
   for (const c of res.criteria) assert.deepEqual([c.ok, c.measured, typeof c.fix, Array.isArray(c.evidence), c.evidence.length > 0], [true, true, 'string', true, true], c.id);
   assert.deepEqual(res.fixes, []);
   assert.match(res.forUser, /^Your game passed every check a player would notice/);
+  assert.match(res.next, /^The game is ready\. Answer the user now[\s\S]*run no further checks/, 'ready ends the flow: the answer comes next');
+  assert.doesNotMatch(JSON.stringify(res.notVerified), /inspect_visually/, 'no further check is asked for');
   assert.equal('plain' in res.criteria[0], false, 'the plain sentences are for forUser, not part of the criteria');
 
   // The loop that was seen is in the evidence: the walk paid, the shop sold.
@@ -120,6 +122,7 @@ test('the game as the owner saw it fail is not ready, and each defect he named c
 
   const res = await judge(f);
   assert.equal(res.verdict, 'not ready');
+  assert.match(res.next, /^Fix what fixes lists/);
   assert.ok(res.score <= 79, `not ready caps the score: ${res.score}`);
   assert.ok(res.criteria.every((c) => c.measured && !c.ok), res.criteria.filter((c) => c.ok).map((c) => c.id).join());
   const ev = (id) => crit(res, id).evidence.join('\n');

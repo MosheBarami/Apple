@@ -626,7 +626,7 @@ export async function judgeGame(call: OpCall, a: Args, opts: JudgeOptions = {}):
 
   const criteria: Criterion[] = [placeholders, coherence, buttons, progression, errors, construction, fitness];
   const notVerified = [
-    'how the game LOOKS (no screenshot was judged, so look with inspect_visually before you tell the user it is ready; geometry comes from authored positions and from which pieces the test player had on, and pieces a layout object or a script places were not placed)',
+    'how the game LOOKS (no screenshot was judged; geometry comes from authored positions and from which pieces the test player had on, and pieces a layout object or a script places were not placed)',
     ...(stood.length ? [] : ['where the player stands during play (falling out of the world is inferred from the ground under the spawn)']),
     'effects of a press that take longer than about a second, and buttons inside windows beyond the one shop flow tried',
     ...(read.over ? [`${read.over} more screens beyond the ${MAX_SCREENS} switched on and ${MAX_OFF_SCREENS} switched off that were read`] : []),
@@ -644,6 +644,10 @@ export async function judgeGame(call: OpCall, a: Args, opts: JudgeOptions = {}):
     verdict: verdict.verdict, score: verdict.score, forUser: verdict.forUser, fixes: verdict.fixes,
     criteria: criteria.map(({ plain: _plain, ...c }) => c),
     sessions: logs, coverage, notVerified: verdict.notVerified,
+    // Ready is the end of the flow: the next thing the user hears is the answer, not more checks.
+    next: verdict.verdict === 'ready'
+      ? 'The game is ready. Answer the user now, from forUser, in your own friendly words: what the player will see and do. Change nothing more and run no further checks.'
+      : 'Fix what fixes lists, in its order, then call judge_game again (at most three rounds in all).',
   });
 }
 
