@@ -8,7 +8,7 @@ import { icon } from '../logos.js';
 import { spark } from '../fx.js';
 import { stat, sec, note, extBtn } from './kit.js';
 
-const TABS = [['games', 'משחקי rbxl'], ['intake', 'קליטת נכסים'], ['summary', 'סקירה'], ['ui', 'רכיבי UI'], ['assets', 'אייקונים ותמונות'], ['models', 'מודלים וערכות'], ['sfx', 'צלילים'], ['vfx', 'אפקטים']];
+const TABS = [['games', 'משחקים ומודלים'], ['intake', 'קליטת נכסים'], ['summary', 'סקירה'], ['ui', 'רכיבי UI'], ['assets', 'אייקונים ותמונות'], ['models', 'מודלים וערכות'], ['sfx', 'צלילים'], ['vfx', 'אפקטים']];
 const PER = { games: 50, intake: 60, models: 60, sfx: 60, vfx: 60 };
 const st = { tab: 'games', gid: '', f: {}, off: 0, q: '', tq: null };
 const media = (p) => (p ? `/api/cc/media?p=${encodeURIComponent(p)}` : '');
@@ -40,17 +40,22 @@ const chip = (t, cls = '') => html`<span class="chip chip-sm ${cls}">${t}</span>
 const imgBox = (src, alt, extra = '') => html`<div class="ow-img">${src ? html`<img src="${src}" alt="${alt}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : html`<span class="ow-none">אין תמונה</span>`}${extra}</div>`;
 
 // ---------------------------------------------------------------- rbxl games
-// Every rbxl file the owner supplied, from /api/cc/games (the index: filtered and sorted here) and
-// /api/cc/games/<id> (one game, its components paged by the server). Route: #/library/games/<id>.
-const STAGE = { extracted: 'חולץ לרשומות', native: 'הומר לקובץ Roblox מקורי', inserted: 'הוכנס לסטודיו', visual: 'צולם ונבדק ויזואלית', gameplay: 'משחקיות אומתה', published: 'פורסם בספריית Apple' };
+// Every game and model file the owner supplied, from /api/cc/games (the index: filtered and sorted here) and
+// /api/cc/games/<id> (one game, its assets paged by the server). Route: #/library/games/<id>.
+const STAGE = { stored: 'נשמר בספרייה של Apple', cataloged: 'קוטלג (שירותים וחלקים)', indexed: 'נכסים אונדקסו לחיפוש', verified: 'יוצא שלם עם הסקריפטים', mapped: 'מופה מה כל נכס צריך כדי לעבוד', styled: 'המראה נסרק (סטאדים, צבע)',
+  extracted: 'חולץ לרשומות', native: 'הומר לקובץ Roblox מקורי', inserted: 'הוכנס לסטודיו', visual: 'צולם ונבדק ויזואלית', gameplay: 'משחקיות אומתה', published: 'פורסם בספריית Apple' };
+const LOOK = { 'studded-modern': ['סטאדים מודרני', 'chip-ok'], studded: ['סטאדים קלאסי', 'chip-ok'], flat: ['חלק', ''] };
+const WORKS = { yes: ['קוד עובד', 'chip-ok'], partly: ['קוד חלקי', 'chip-warn'], 'looks only': ['מראה בלבד', 'chip-bad'] };
+const tag = (map, k) => (map[k] ? chip(map[k][0], map[k][1]) : '');
 const hashGame = () => { const m = location.hash.match(/^#\/library\/games\/(.+)$/); try { return m ? decodeURIComponent(m[1]) : ''; } catch { return ''; } };
 const gameHref = (id) => `#/library/games/${encodeURIComponent(id)}`;
 const p1 = (n) => `${num(n, 1)}%`;
 const pctCell = (n) => html`<span class="ow-count">${p1(n)}</span> <span class="meter" aria-hidden="true" style="width:70px"><i style="width:${Math.max(n > 0 ? 2 : 0, Math.min(100, n || 0))}%;background:var(--p-accent, var(--accent))"></i></span>`;
 const stageBars = (stages, order = Object.keys(STAGE)) => html`<div style="display:grid;grid-template-columns:minmax(180px,1fr) 2fr 64px;gap:8px 12px;align-items:center">
   ${order.map((k) => html`<span>${STAGE[k] || k}</span>${meter(stages?.[k] || 0)}<b class="n">${p1((stages?.[k] || 0) * 100)}</b>`)}</div>`;
-const failBadge = (n) => (n ? chip(`${num(n)} כשלים`, 'chip-bad') : chip('ללא כשלים', 'chip-ok'));
-const SHOW = { failures: (g) => arr(g.failures).length > 0, native: (g) => (g.stages?.native || 0) > 0, missing: (g) => g.status === 'missing' };
+const failBadge = (n) => (n ? chip(`${num(n)} הערות`, 'chip-warn') : chip('תקין', 'chip-ok'));
+const SHOW = { failures: (g) => arr(g.failures).length > 0, studded: (g) => /studded/.test(g.look || ''), works: (g) => g.works === 'yes',
+  looks: (g) => g.works === 'looks only', live: (g) => arr(g.liveBuilds).length > 0, families: (g) => (g.versions || 1) > 1 };
 const GSORT = { percent: (a, b) => b.percent - a.percent, 'percent-asc': (a, b) => a.percent - b.percent, name: (a, b) => String(a.name).localeCompare(String(b.name)) };
 const gsel = (k, label, opts) => html`<label class="sel"><span>${label}</span><select data-change="filter" data-k="${k}" id="lib-f-games-${k}">
   ${opts.map(([v, t]) => html`<option value="${v}" ${(filt(k) || opts[0][0]) === v ? 'selected' : ''}>${t}</option>`)}</select></label>`;
@@ -62,18 +67,24 @@ function gamesList(d) {
   return html`<div class="ow-panel">
     <div class="g g4" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
       ${stat({ key: 'gm-pct', label: 'השלמת ספריית Apple', text: p1(s.percent), sub: `ממוצע פשוט של המשחקים: ${p1(s.meanGamePercent)}`, tone: 'accent' })}
-      ${stat({ key: 'gm-games', label: 'משחקי rbxl', value: s.games, sub: `${num(s.files)} קבצים · ${num(s.indexed)} נקראו` })}
-      ${stat({ key: 'gm-comp', label: 'רכיבים', value: s.components, sub: `${num(s.instances)} מופעים` })}
-      ${stat({ key: 'gm-fail', label: 'משחקים עם כשלים', value: s.withFailures, sub: `${num(s.nativeGames)} משחקים עם המרה למקורי` })}</div>
+      ${stat({ key: 'gm-games', label: 'משחקים ומודלים', value: s.games, sub: `${num(s.families)} משפחות (גרסאות מקובצות) · ${num(s.files)} קבצים` })}
+      ${stat({ key: 'gm-comp', label: 'נכסים לייבוא', value: s.components, sub: `${num(s.instances)} מופעים` })}
+      ${stat({ key: 'gm-works', label: 'משחקים שהקוד שלהם עובד', value: s.works?.yes, sub: `${num(s.works?.partly)} חלקית · ${num(s.works?.['looks only'])} מראה בלבד` })}
+      ${stat({ key: 'gm-stud', label: 'משחקי סטאדים', value: s.studded, sub: `${num(s.systems)} מערכות מוכנות להתקנה` })}
+      ${stat({ key: 'gm-media', label: 'קבצי אמנות', value: s.media, sub: `${num(s.mediaPacks)} חבילות · עוד לא הועלו ל־Roblox` })}
+      ${stat({ key: 'gm-live', label: 'בניות חיות ב־Studio', value: s.liveBuilds, sub: `${num(s.liveGames)} משחקים מהספרייה שימשו בהן` })}
+      ${stat({ key: 'gm-fail', label: 'משחקים עם כשל', value: s.withFailures, sub: `${num(s.repaired)} קבצים תוקנו כדי שייקראו` })}</div>
     ${sec('התקדמות הספרייה לפי שלב', 'חלק המופעים בכל המשחקים שהגיע לכל שלב')}
     <div class="card">${stageBars(s.stages, arr(d.stageOrder))}</div>
-    ${note('info', 'איך מחושב האחוז', `רכיב הוא ילד ישיר של שירות עליון. כל רכיב עובר ${num(arr(d.stageOrder).length)} שלבים והאחוז שלו הוא ממוצע השלבים; אחוז משחק הוא ממוצע הרכיבים שלו משוקלל לפי מספר המופעים, ואחוז הספרייה כך גם בין המשחקים. שלב החילוץ מושלם תמיד, ולכן אין משחק מתחת ל־16.7%. נבנה ${fullDate(d.builtAt)}; לרענון: python3 scripts/owner-dashboard/games.py`)}
-    ${sec(`כל המשחקים (${num(rows.length)} מתוך ${num(arr(d.games).length)})`, 'לחיצה על משחק מראה אילו רכיבים חולצו ממנו ומה נכשל')}
+    ${note('info', 'איך מחושב האחוז', `נכס הוא חלק שאפשר לייבא לבד: מפה, מודל, מסך, אפקט, צליל, אנימציה, כלי או מערכת קוד. כל נכס עובר ${num(arr(d.stageOrder).length)} שלבים והאחוז שלו הוא ממוצע השלבים; אחוז משחק הוא ממוצע הנכסים שלו משוקלל לפי מספר המופעים, ואחוז הספרייה כך גם בין המשחקים. "עובד / חלקי / מראה בלבד" אומר כמה מהסקריפטים שלמים בעותק השמור, לא אם המשחק נבדק ב־Studio; בניות חיות מופיעות בנפרד למטה. נבנה ${fullDate(d.builtAt)}; לרענון: python3 scripts/owner-dashboard/games.py`)}
+    ${arr(d.builds).length ? html`${sec('בניות חיות ב־Studio', 'משחקים ש־Apple בנה מהספרייה ונבדקו ב־Studio')}<div class="card">${arr(d.builds).map((b) => html`<p dir="auto"><b>${b.title}</b> <small class="dim">${b.at} · ${num(arr(b.games).length)} משחקים מהספרייה</small><br><small dir="auto">${arr(b.gameNames).join(' · ')}</small><br><small dir="ltr" class="dim">${b.what}</small></p>`)}</div>` : ''}
+    ${sec(`כל המשחקים (${num(rows.length)} מתוך ${num(arr(d.games).length)})`, 'לחיצה על משחק מראה את הנכסים שלו, מה כל אחד צריך כדי לעבוד ומה חסר בעותק השמור')}
     <div class="ow-bar">${search('חיפוש משחק לפי שם')}
-      ${gsel('show', 'הצג', [['', 'הכול'], ['failures', 'עם כשלים'], ['native', 'עם המרה למקורי'], ['missing', 'קובץ חסר']])}
+      ${gsel('show', 'הצג', [['', 'הכול'], ['studded', 'סטאדים'], ['works', 'קוד עובד'], ['looks', 'מראה בלבד'], ['families', 'עם כמה גרסאות'], ['live', 'שימש בבנייה חיה'], ['failures', 'עם הערות']])}
       ${gsel('sort', 'מיון', [['percent', 'אחוז: גבוה קודם'], ['percent-asc', 'אחוז: נמוך קודם'], ['name', 'שם']])}</div>
-    <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>משחק</th><th>אחוז</th><th class="n">רכיבים</th><th class="n">מופעים</th><th>כשלים</th></tr></thead><tbody>
-    ${rows.map((g) => html`<tr data-k="g-${g.id}"><td dir="auto"><a href="${gameHref(g.id)}"><b>${g.name}</b></a>${g.status === 'missing' ? html` ${chip('קובץ חסר', 'chip-bad')}` : ''}</td>
+    <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>משחק</th><th>מראה</th><th>קוד</th><th>אחוז</th><th class="n">נכסים</th><th class="n">מופעים</th><th>הערות</th></tr></thead><tbody>
+    ${rows.map((g) => html`<tr data-k="g-${g.id}"><td dir="auto"><a href="${gameHref(g.id)}"><b>${g.name}</b></a>${(g.versions || 1) > 1 ? html` ${chip(g.primary ? `${num(g.versions)} גרסאות · ראשית` : `גרסה של ${g.family}`, g.primary ? 'chip-ok' : '')}` : ''}${arr(g.liveBuilds).length ? html` ${chip('נבנה חי', 'chip-ok')}` : ''}</td>
+      <td>${tag(LOOK, g.look)}</td><td>${tag(WORKS, g.works)}</td>
       <td>${pctCell(g.percent)}</td><td class="n">${num(g.componentCount)}</td><td class="n">${num(g.instances)}</td><td>${failBadge(arr(g.failures).length)}</td></tr>`)}
     </tbody></table></div>${rows.length ? '' : html`<p class="empty" style="padding:14px 20px">אין משחק שמתאים לסינון.</p>`}</div></div>`;
 }
@@ -84,24 +95,28 @@ function gameDetail(d) {
     <p><a class="btn btn-sm" href="#/library">→ חזרה לכל המשחקים</a></p>
     <div class="g g4" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
       ${stat({ key: 'gd-pct', label: d.name, text: p1(d.percent), sub: d.status === 'missing' ? 'קובץ חסר' : `${bytes(d.bytes)}`, tone: 'accent' })}
-      ${stat({ key: 'gd-comp', label: 'רכיבים', value: d.componentCount, sub: `${num(d.instances)} מופעים` })}
-      ${stat({ key: 'gd-fail', label: 'כשלים', value: arr(d.failures).length })}</div>
+      ${stat({ key: 'gd-comp', label: 'נכסים לייבוא', value: d.componentCount, sub: `${num(d.instances)} מופעים` })}
+      ${stat({ key: 'gd-scripts', label: 'סקריפטים', value: d.scripts, sub: d.stripped ? `${num(d.stripped)} ריקים בעותק השמור` : 'כולם שלמים' })}
+      ${stat({ key: 'gd-fail', label: 'הערות', value: arr(d.failures).length })}</div>
+    <p>${tag(LOOK, d.look)} ${tag(WORKS, d.works)} ${d.family ? chip(`משפחה: ${d.family} (${num(d.versions)} גרסאות${d.primary ? ', זו הראשית' : ''})`) : ''} ${arr(d.niches).map((n) => chip(n))}</p>
+    ${arr(d.systems).length ? html`${sec('מערכות מוכנות להתקנה מהקובץ הזה')}<div class="card">${arr(d.systems).map((x) => html`<p dir="auto">${x}</p>`)}</div>` : ''}
+    ${arr(d.liveBuilds).length ? html`${sec('שימש בבניות חיות')}<div class="card">${arr(d.liveBuilds).map((x) => html`<p dir="auto">${x}</p>`)}</div>` : ''}
     ${sec('נתיבי המקור')}
     <div class="card">${arr(d.paths).length ? arr(d.paths).map((x) => html`<p>${ltr(x, 'mono')}</p>`) : html`<p class="empty">אין נתיב מקור.</p>`}</div>
-    ${sec('התקדמות לפי שלב')}<div class="card">${stageBars(d.stages)}</div>
-    ${sec('כשלים', 'מה לא חולץ או חולץ באופן חלקי')}
+    ${sec('התקדמות לפי שלב')}<div class="card">${stageBars(d.stages, arr(d.stageOrder).length ? d.stageOrder : undefined)}</div>
+    ${sec('הערות', 'מה תוקן בקובץ ומה חסר בעותק השמור')}
     <div class="card">${arr(d.failures).length ? arr(d.failures).map((f) => (f.detail ? html`<details><summary dir="auto">${f.he}</summary><pre dir="ltr">${f.detail}</pre></details>` : html`<p dir="auto">${f.he}</p>`))
-      : html`<p class="empty">לא נרשמו כשלים למשחק הזה.</p>`}</div>
-    ${sec('לפי שירות', 'איפה במשחק נמצאים הרכיבים')}
-    <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>שירות</th><th class="n">רכיבים</th><th class="n">מופעים</th></tr></thead><tbody>
+      : html`<p class="empty">אין הערות למשחק הזה.</p>`}</div>
+    ${sec('לפי שירות', 'איפה במשחק נמצאים הנכסים')}
+    <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>שירות</th><th class="n">נכסים</th><th class="n">מופעים</th></tr></thead><tbody>
     ${arr(d.services).map((x) => html`<tr><td>${ltr(x.service)}</td><td class="n">${num(x.components)}</td><td class="n">${num(x.instances)}</td></tr>`)}</tbody></table></div></div>
-    ${sec('כל הרכיבים', `${num(d.page?.total)} רכיבים מתאימים`)}
-    <div class="ow-bar">${search('חיפוש רכיב לפי שם או סוג')}
+    ${sec('כל הנכסים', `${num(d.page?.total)} נכסים מתאימים`)}
+    <div class="ow-bar">${search('חיפוש נכס לפי שם או סוג')}
       ${sel('service', 'שירות', arr(d.services).map((x) => [x.service, x.service, x.components]))}
       ${gsel('sort', 'מיון', [['instances', 'מופעים'], ['percent', 'אחוז: גבוה קודם'], ['percent-asc', 'אחוז: נמוך קודם'], ['name', 'שם']])}</div>
-    <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>רכיב</th><th>סוג</th><th>שירות</th><th class="n">מופעים</th><th class="n">סקריפטים</th><th class="n">מדיה מאומתת</th><th>אחוז</th><th>בעיות</th></tr></thead><tbody>
-    ${rows.map((c) => html`<tr><td dir="auto"><b>${c.name}</b></td><td>${ltr(c.class)}</td><td>${ltr(c.service)}</td><td class="n">${num(c.instances)}</td><td class="n">${num(c.scripts)}</td>
-      <td class="n">${num(c.mediaVerified)}/${num(c.media)}</td><td>${pctCell(c.percent)}</td>
+    <div class="card" style="padding:0"><div class="tbl-wrap"><table class="ow-t"><thead><tr><th>נכס</th><th>סוג</th><th>שירות</th><th class="n">מופעים</th><th class="n">סקריפטים</th><th class="n">${rows.some((c) => c.mediaVerified == null) ? 'תמונות, צלילים ומודלים' : 'מדיה מאומתת'}</th><th>אחוז</th><th>הערות</th></tr></thead><tbody>
+    ${rows.map((c) => html`<tr><td dir="auto"><b>${c.name}</b> ${c.scripts ? tag(WORKS, c.works) : ''}</td><td>${ltr(c.class)}</td><td>${ltr(c.service)}</td><td class="n">${num(c.instances)}</td><td class="n">${num(c.scripts)}</td>
+      <td class="n">${c.mediaVerified == null ? num(c.media) : html`${num(c.mediaVerified)}/${num(c.media)}`}</td><td>${pctCell(c.percent)}</td>
       <td>${arr(c.issues).length ? html`<details><summary>${num(c.issues.length)}</summary>${c.issues.map((i) => html`<p dir="auto"><small>${i}</small></p>`)}</details>` : html`<span class="dim">—</span>`}</td></tr>`)}
     </tbody></table></div>${rows.length ? '' : html`<p class="empty" style="padding:14px 20px">אין רכיב שמתאים לסינון.</p>`}</div>
     ${pager(d.page)}</div>`;
