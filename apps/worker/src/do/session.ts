@@ -565,8 +565,9 @@ const OWNER_RECREATE_FIRST =
 /** What a library-only request is told when it tries to make content instead of importing it. */
 const OWNER_LIBRARY_ONLY =
   'Not run: this request builds only from the owner library, so nothing is generated, hand-built or taken from the Creator Store. ' +
-  'Find the part with browse_owner_library {kind, q} (kind ui, model, fx, sound, animation, tool, script or map), import it with ' +
-  'import_owner_library, then arrange it with transform_instances, move_instances or clone_instances.';
+  'Build the game with assemble_owner_game {niche}, add a feature with install_owner_system {gameId}, or find one part with browse_owner_library ' +
+  '{kind, q} (kind ui, model, fx, sound, animation, tool, script or map), import it with import_owner_library, then arrange it with ' +
+  'transform_instances or clone_instances.';
 /** What a run is told when it tries to redo a kit it already built. */
 const KIT_KEPT =
   'Not run: the ready-made scene is finished, and its pieces and the terrain around it are kept as built in this run. ' +

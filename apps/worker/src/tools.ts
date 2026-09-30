@@ -77,6 +77,7 @@ import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySou
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
+import { installOwnerSystem, assembleOwnerGame, installSummary, assembleSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
 import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
@@ -342,6 +343,11 @@ interface ToolImpl {
    * implementation prevents SessionDO from accumulating another hand-maintained tool-name list.
    */
   mutatesProject?: boolean | ((result: unknown) => boolean);
+  /**
+   * The one line the activity feed shows for this tool, in words a young player reads (no tool name, path or count).
+   * Absent: the generic "✓ tool_name · target" line.
+   */
+  plainSummary?(args: Record<string, unknown>, result: unknown, failed: boolean): string;
   run(ctx: AgentCtx, args: Record<string, unknown>): Promise<unknown>;
 }
 
@@ -4812,11 +4818,12 @@ export const TOOLS: Record<string, ToolImpl> = {
   browse_owner_library: {
     def: {
       name: 'browse_owner_library',
-      description: "Browse the owner's uploaded game library, the FIRST source for every build. Without id: pages games (q = words in a game or its top-level names, niche, after = nextAfter) with per-service counts and top names. With id: that game's full breakdown per service (children with instance and script counts, lighting, terrain). With kind: searches single assets inside all library games instead, ui (ScreenGuis, their panels, loose UI frames, billboards), model (models and meshes, pets, props, buildings), fx (the part holding particles, beams, trails, fire), sound, animation, tool, script (modules and systems) or map (a game's whole Workspace; import it with mode children); q = words in its name, path or contents, game = one game id. Each hit has gameId and path. Paths from it feed import_owner_library (mode self); a UI goes to game.StarterGui, an fx holder under the part it decorates.",
-      parameters: S({q:{type:'string'},niche:{type:'string'},kind:{type:'string',enum:['ui','model','fx','sound','animation','tool','script','map'],description:'Search single assets of this kind across the library.'},game:{type:'string',description:'With kind: only this game id.'},id:{type:'string',description:'A game id from the list; returns its breakdown.'},after:{type:'number',description:'nextAfter from the previous page.'},limit:{type:'number',description:'1..25, default 10.'}}),
+      description: "Browse the owner's uploaded game library, the FIRST source for every build. Without id: pages games (q = words in a game or its top-level names, niche, after = nextAfter) with per-service counts and top names. With id: that game's full breakdown per service (children with instance and script counts, lighting, terrain). With kind: searches single assets inside all library games instead, ui (ScreenGuis, their panels, loose UI frames, billboards), model (models and meshes, pets, props, buildings), fx (the part holding particles, beams, trails, fire), sound, animation, tool, script (modules and systems) or map (a game's whole Workspace; import it with mode children), or system (ready-made systems such as daily rewards, pets or a spin wheel, each with what it does and whether its code works; add one with install_owner_system); q = words in its name, path or contents, game = one game id. Each hit has gameId and path. Paths from it feed import_owner_library (mode self); a UI goes to game.StarterGui, an fx holder under the part it decorates.",
+      parameters: S({q:{type:'string'},niche:{type:'string'},kind:{type:'string',enum:['ui','model','fx','sound','animation','tool','script','map','system'],description:'Search single assets of this kind across the library; system lists the ready-made systems install_owner_system adds.'},game:{type:'string',description:'With kind: only this game id.'},id:{type:'string',description:'A game id from the list; returns its breakdown.'},after:{type:'number',description:'nextAfter from the previous page.'},limit:{type:'number',description:'1..25, default 10.'}}),
     },
     studio: true,
     studioOps: ['query_owner_library'],
+    plainSummary: browseSummary,
     run: browseOwnerLibrary,
   },
   import_owner_library: {
@@ -4828,6 +4835,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['snapshot','import_owner_library'],
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r && !('projectMutated' in r)),
+    plainSummary: importSummary,
     run: importOwnerLibrary,
   },
   recreate_owner_game: {
@@ -4839,7 +4847,32 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['snapshot','query_owner_library','import_owner_library'],
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r && !('projectMutated' in r)),
+    plainSummary: recreateSummary,
     run: recreateOwnerGame,
+  },
+  install_owner_system: {
+    def: {
+      name: 'install_owner_system',
+      description: "Add ONE ready-made system from the owner's saved games to the open place with everything it needs to work: daily rewards, a spin wheel, pets and eggs, settings, notifications, a loading screen, donations, codes, trading, plots, a shop. Its screens, scripts, remotes and modules go where Roblox expects them, parts the place already has are skipped (so a second install never duplicates), and screens that came without working code get their buttons connected so every menu opens and closes. gameId is a saved game or system pack from browse_owner_library (kind script, or q = what the system does). Takes one checkpoint. Answer the user from the returned forUser, in your own friendly words.",
+      parameters: S({gameId:{type:'string',description:'A library game id from browse_owner_library.'}},['gameId']),
+    },
+    studio: true,
+    studioOps: ['snapshot','query_owner_library','import_owner_library'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as {changed?: unknown}).changed === true,
+    plainSummary: installSummary,
+    run: installOwnerSystem,
+  },
+  assemble_owner_game: {
+    def: {
+      name: 'assemble_owner_game',
+      description: "THE way to build a game from the owner's saved games. The library plans an ORIGINAL bright, saturated, studded, cartoony game out of many saved games (a world, a working game core, two to five systems such as daily rewards, a spin wheel, pets, settings and music, characters and props, effects, sounds and lighting) and this carries the whole plan out: everything is imported with its scripts, every model is set on the ground near the spawn or on the plots without overlapping anything, screens that came without working code get their buttons connected, and a part that fails is skipped while the rest goes on. Takes one checkpoint and can run for several minutes. niche = the kind of game in plain words (tycoon, brainrot collecting, garden simulator, obby); theme = optional flavour (candy, space); seed = any whole number (leave it out for a fresh combination; the same seed gives the same plan again). Do not import or recreate more from the library afterwards for what it already covers. Answer the user from the returned forUser, in your own friendly words.",
+      parameters: S({niche:{type:'string'},theme:{type:'string'},seed:{type:'number'}},['niche']),
+    },
+    studio: true,
+    studioOps: ['snapshot','query_owner_library','import_owner_library'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as {changed?: unknown}).changed === true,
+    plainSummary: assembleSummary,
+    run: assembleOwnerGame,
   },
   insert_library_model: {
     def: {
@@ -5572,7 +5605,7 @@ export async function runTool(
       ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== 'projectMutated' && key !== 'retryable'))
       : result;
     let str = typeof visibleResult === 'string' ? visibleResult : JSON.stringify(visibleResult);
-    const resultLimit = name === 'browse_owner_library' || name === 'import_owner_library' || name === 'recreate_owner_game' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' || name === 'inspect_visually' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
+    const resultLimit = name === 'browse_owner_library' || name === 'import_owner_library' || name === 'recreate_owner_game' || name === 'install_owner_system' || name === 'assemble_owner_game' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' || name === 'inspect_visually' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
     if (str.length > resultLimit) str = str.slice(0, resultLimit) + `\n...[truncated ${str.length - resultLimit} chars]`;
     const mutatedProject = partialMutation || (!failed && toolMutatesProject(name, result));
     // An explicit UI payload wins. It is capped separately and more generously than the derived
@@ -5582,7 +5615,9 @@ export async function runTool(
     const detail = privateOwnerRead ? undefined : ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(visibleResult);
     ctx.uiDetail = undefined;
     return {
-      summary: summarize(name, args, failed, failed ? (visibleResult as Record<string, unknown>).error : undefined),
+      summary: impl.plainSummary
+        ? scrubEngineIdentity(impl.plainSummary(args, visibleResult, failed)).replace(/\s+/g, ' ').slice(0, MAX_SUMMARY_CHARS)
+        : summarize(name, args, failed, failed ? (visibleResult as Record<string, unknown>).error : undefined),
       resultForLlm: str,
       ok: !failed,
       detail,
