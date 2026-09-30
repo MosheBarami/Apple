@@ -1,5 +1,14 @@
 # NEXT ACTION (V3)
 
+Status 2026-09-30 evening (production 5eaeeb1a): the library passes the client test. "Plants vs Brainrots, but the brainrots
+are fruit" builds in ~55 s and the judge says ready (94/100, all seven criteria) on two runs in a row; played by hand it is
+clean and progresses (evidence/20260930-client-test). Next, in order:
+1. After judge_game says ready, the agent must answer: its visual check frames the empty edit camera (score 3, "passed:false")
+   and it then searches scripts instead of replying. Frame the play area (spawn/plot) for inspect_visually and steer to the answer.
+2. The same client test for the other genres (candy garden, steal-a-brainrot, escape tsunami, pet sim): their designs pass the
+   planner tests but were not built live; the content choice (library_content.select) only runs for a creature twist.
+3. Private sounds/animations of the original creator stay silent (see item 3 below).
+
 Status 2026-09-30 (production db4ec488, plugin c707e1c6 local): the owner library is complete end to end (see
 CURRENT_STATE "Owner library v2"). The owner's next prompt is about the PRODUCT. Found while testing, in priority order:
 1. When a screen is visible in edit mode but hidden in play, play_check should name the script that hides it (first-join

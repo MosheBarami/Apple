@@ -66,6 +66,25 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
   `~/Library/Application Support/Apple/owner-library/`. The loopback gateway serves `/v1/library*` (no key);
   the agent has `browse_owner_library`, `import_owner_library` and `recreate_owner_game` (whole services with
   scripts, Lighting/Gravity). Terrain voxels are not copied; Terrain's children are (cb256bc6).
+- Client test PASSED (2026-09-30 evening, production 5eaeeb1a, evidence/20260930-client-test). The owner's verdict on
+  v2 (random UI and models, a pets UI in a garden game, whole maps dropped in, placeholders, non-functional pieces) is
+  answered by a design/build flow instead of the random blueprint: `plan_game` -> `library_design.py` (the best working core
+  of the genre from 180 knowledge cards + 8 genre syntheses; left-out features cut through a closure over the core's own
+  code, so a part kept code reads stays; screens/buttons of left-out features, the creator's Robux buttons in screens AND
+  templates, gift buttons, a left-out mode's HUD panel are hidden and tagged AppleHidden, never deleted; the creatures that
+  fit the request's twist are CHOSEN from the core's own - `library_content.py` - with exact parse-checked code edits;
+  rebirths ask for them and stop promising left-out features; the tutorial is skipped; an admin console's loader block and a
+  left-out feature's tool grant are removed; texts naming the currency are fixed) -> `build_game` (imports, hides, text
+  fixes, code edits, the services' own attributes such as Workspace.DataKey, the source's StreamingEnabled) ->
+  `judge_game`. "Plants vs Brainrots, but the brainrots are fruit": built in ~55 s, judge READY 94/100 with all seven
+  criteria on two runs in a row; played by hand: clean HUD, seed shop without Robux buttons, 18 fruit enemies walk the
+  lanes, plant -> defeat -> sell earns ($280 -> $317), Index lists only fruit ones, Rebirth asks for a fruit enemy.
+  Found on the way (11 live runs): data never loaded (Workspace attributes were not imported), a cut template crashed a
+  shared module and killed every menu, deep references to cut parts, streaming on in a new place, the judge calling a
+  working button dead and a restock countdown spending, the model's paraphrase losing the twist (plan_game now reads the
+  user's pinned message), the model re-theming finished content (note + prompt now say when nothing is left).
+  Open: after "ready" the agent's visual check frames the empty edit camera and it keeps searching instead of answering;
+  the original creator's private sounds/animations stay silent; other genres not yet built live.
 - Owner library v2 COMPLETE (2026-09-30, production db4ec488, plugin c707e1c6 installed locally). Sources: every
   Roblox file the owner uploaded (439 old + 127 new from `~/Desktop/SOME MORE ASSETS AND GAMES`, 3 repaired, 1 zipped
   Figma file moved to media) is copied content-addressed into `owner-library/sources/` (`library_sources.py`); the
