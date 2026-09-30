@@ -7,6 +7,7 @@ import { screenRoots } from './menu-binder';
 import { ASSEMBLE_BUDGET_MS, list, noCopy, plainProblem, plainText, SAVES, sentence, workspaceIsFresh } from './library-assemble';
 import { ask, ensureSpawn, newPlaceState, placeRegion, type Vec3 } from './library-placement';
 import { applyEdits, checkSyntax, sourceHash, type ScriptEdit } from './luau-review';
+import { SILENCE_LUAU, parseSilenced } from './private-audio';
 
 /**
  * THE TWO STEPS OF AN ORIGINAL GAME.
@@ -772,6 +773,10 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
   // 5. the content the design chose (the creatures that fit the twist) is made so in the code.
   const patched = disconnected || !design.patches.length ? { applied: 0, failed: [] as { path: string; why: string }[], gone: false } : await applyPatches(ctx, design.patches, all);
   if (patched.gone) disconnected = true;
+  // The original creator's private sounds would fill every play's Output with red "not authorized" lines: silenced, names kept.
+  const quiet = disconnected ? undefined : await ask(ctx, { op: 'run_code', code: SILENCE_LUAU, timeoutMs: 90_000 }, 100_000);
+  if (quiet && !quiet.ok && quiet.failure === 'transport') disconnected = true;
+  const silenced = quiet?.ok ? parseSilenced(quiet.data) : undefined;
   const lit = disconnected || !design.look.lighting ? undefined : await setLighting(ctx, design.look.lighting);
   if (lit === 'gone') disconnected = true;
 
@@ -798,6 +803,7 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
     ...(menus ? { menus: MENUS_CONNECTED } : {}),
     ...(design.chosen && patched.applied ? { contentChosen: `${design.chosen.why}: ${design.chosen.keep.slice(0, 10).join(', ')}${design.chosen.keep.length > 10 ? '…' : ''}. This is done; do not rename or re-register them.` } : {}),
     ...(patched.failed.length ? { editsNotApplied: patched.failed.slice(0, 6) } : {}),
+    ...(silenced?.silenced ? { privateSounds: `${silenced.silenced} sounds of the original creator could not load here and were silenced (names kept). This is done; do not change them.` } : {}),
     themeTheContent: checklist,
     seconds: Math.round((now() - started) / 1000),
     note: workLeft(checklist) ? NEXT_STEPS : DONE_STEPS,

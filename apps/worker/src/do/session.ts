@@ -3,6 +3,7 @@
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
 import { lastUserText } from '../user-request';
 import { afterReady, saysReady } from '../run-flow';
+import { withoutToolTalk } from '../plain-reply';
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
 import { RETENTION } from '../retention';
@@ -5292,7 +5293,7 @@ export class SessionDO extends DurableObject<Env> {
             : 'I did not change anything in your project. I looked around but never made the edit you ' +
               'asked for, which is a fault on my side rather than a result. Nothing was modified, so ' +
               'there is nothing to undo — ask me again and I will build it.'
-        : agent.finalText || (reason === 'stopped' ? 'Stopped.' : 'Done.')
+        : withoutToolTalk(agent.finalText, toolNames()) || (reason === 'stopped' ? 'Stopped.' : 'Done.')
     );
 
     //[[ AND THE RUN STOPS BILLING FOR WORK IT DID NOT DO.

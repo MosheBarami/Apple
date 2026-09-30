@@ -663,3 +663,17 @@ test('the flow: a design path resolves the way the imports put things (children 
   assert.equal(G.basePath('/Workspace@box(1,2,3,4,5,6)'), '/Workspace');
   assert.equal(G.basePath('/ReplicatedStorage@except(A,B)'), '/ReplicatedStorage');
 });
+
+test('build_game: the original creator\'s private sounds are silenced in Studio after the build (names kept), so no play fills the Output with "not authorized"', async () => {
+  const f = studio({ fail: (op) => (op.op === 'run_code' ? { ok: true, data: { result: { t: 'string', v: 'silence 12 3 7' }, prints: [] } } : null) });
+  const { data } = await built(f);
+  const code = f.ops('run_code');
+  assert.equal(code.length, 1);
+  assert.match(code[0].code, /PreloadAsync/);
+  assert.match(code[0].code, /AssetFetchStatus\.Failure/);
+  assert.match(code[0].code, /SetAttribute\("AppleSilenced"/);
+  assert.doesNotMatch(code[0].code, /HttpService|:Destroy\(|\.Name\s*=/, 'nothing deleted or renamed, nothing the plugin guards');
+  assert.match(data.privateSounds, /^7 sounds .* silenced \(names kept\)/);
+  const quiet = await built(studio());
+  assert.equal(quiet.data.privateSounds, undefined, 'a Studio that cannot tell says nothing');
+});
