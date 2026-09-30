@@ -1,4 +1,5 @@
-// install_owner_system and assemble_owner_game: the two ways to build from the owner's saved games.
+// install_owner_system and the older blueprint builder assemble_owner_game (code kept, no longer offered to the agent: the agent
+// builds with plan_game and build_game, tests/game-plan.test.mjs).
 //
 // The library decides WHAT (an install plan for one saved game, a blueprint for a whole game); these tools carry it out in
 // Studio and tell a young player what happened. Everything runs against a stand-in plugin (fixtures/fake-studio.mjs) that
@@ -72,6 +73,13 @@ function importOf(op) {
 }
 const studio = (over = {}) => fakeStudio({ route: { install: (op) => (PLANS[op.params.id] ? { ok: true, data: PLANS[op.params.id] } : { ok: false, error: 'no such game' }), blueprint: BLUEPRINT() }, importOf, ...over });
 async function run(f, name, args) { const out = await T.runTool(f.ctx, name, JSON.stringify(args)); return { out, data: JSON.parse(out.resultForLlm) }; }
+/** The older builder is called directly: it is no longer one of the agent's tools. */
+async function assemble(f, args) {
+  const data = await A.assembleOwnerGame(f.ctx, args);
+  const failed = 'error' in data;
+  const out = { ok: !failed, ...(!failed && data.changed === true ? { mutatedProject: true } : {}), summary: A.assembleSummary(args, data, failed), resultForLlm: JSON.stringify(data) };
+  return { out, data };
+}
 const imports = (f) => f.ops('import_owner_library');
 const jargon = /[a-z]+_[a-z]+|\/[A-Za-z]|game\.|\bStarterGui\b|\bServerScriptService\b|checkpoint|\d/;
 
@@ -213,14 +221,14 @@ test('install_owner_system: a game is named as its owner would say it (no file-n
 
 test('assemble_owner_game: asks the library for a plan by niche, theme and seed, and takes ONE checkpoint', async () => {
   const f = studio();
-  const { out, data } = await run(f, 'assemble_owner_game', { niche: 'brainrot collecting', theme: 'candy', seed: 42 });
+  const { out, data } = await assemble(f, { niche: 'brainrot collecting', theme: 'candy', seed: 42 });
   assert.equal(out.ok, true); assert.equal(out.mutatedProject, true);
   const asked = f.ops('query_owner_library')[0];
   assert.deepEqual([asked.action, asked.route, asked.params], ['route', 'blueprint', { niche: 'brainrot collecting', theme: 'candy', seed: 42 }]);
   assert.equal(f.ctx.checkpoints.length, 1);
   assert.equal(data.seed, 42);
   const fresh = studio();
-  const r = await run(fresh, 'assemble_owner_game', { niche: 'tycoon' });
+  const r = await assemble(fresh, { niche: 'tycoon' });
   const p = fresh.ops('query_owner_library')[0].params;
   assert.deepEqual(Object.keys(p).sort(), ['niche', 'seed'], 'no theme when none was given');
   assert.equal(Number.isInteger(p.seed) && p.seed >= 0, true);
@@ -229,7 +237,7 @@ test('assemble_owner_game: asks the library for a plan by niche, theme and seed,
 
 test('assemble_owner_game: carries the whole plan out in order: world, core, systems, kit, models, effects, sounds, sky', async () => {
   const f = studio();
-  await run(f, 'assemble_owner_game', { niche: 'brainrot collecting', seed: 1 });
+  await assemble(f, { niche: 'brainrot collecting', seed: 1 });
   const real = imports(f).filter((o) => o.path !== '/MaterialService');
   const games = real.map((o) => Number(o.gameId)).filter((g, i, all) => i === 0 || g !== all[i - 1]);
   assert.deepEqual(games, [1, 2, 5, 4, 3, 6, 7, 8, 9, 10, 11, 1], 'world, core, the three systems as planned, kit, characters, props, effects, music, sound effects, sky');
@@ -239,7 +247,7 @@ test('assemble_owner_game: carries the whole plan out in order: world, core, sys
 
 test('assemble_owner_game: every import is studio-data-ready; the world replaces a NEW place\'s template; the sky replaces the sky', async () => {
   const f = studio();
-  await run(f, 'assemble_owner_game', { niche: 'x', seed: 1 });
+  await assemble(f, { niche: 'x', seed: 1 });
   assert.ok(imports(f).length > 15);
   assert.ok(imports(f).every((o) => o.studioData === true), 'studioData on every import');
   const world = imports(f).find((o) => o.gameId === gid(1) && o.path === '/Workspace');
@@ -248,7 +256,7 @@ test('assemble_owner_game: every import is studio-data-ready; the world replaces
   const sky = imports(f).find((o) => o.path === '/Lighting');
   assert.deepEqual([sky.replace, sky.applyServiceProperties, sky.parent], [true, true, 'game.Lighting']);
   const kept = studio({ workspace: ['Baseplate', 'SpawnLocation', 'MyHouse'] });
-  await run(kept, 'assemble_owner_game', { niche: 'x', seed: 1 });
+  await assemble(kept, { niche: 'x', seed: 1 });
   assert.equal(imports(kept).find((o) => o.path === '/Workspace').replace, undefined, 'a place with its own things keeps them');
   assert.ok(kept.world.nodes.has('game.Workspace.MyHouse'));
   assert.equal(imports(kept).filter((o) => o.replace).length, 1, 'only the sky replaces');
@@ -256,7 +264,7 @@ test('assemble_owner_game: every import is studio-data-ready; the world replaces
 
 test('assemble_owner_game: sounds go to SoundService whatever the plan said, and each source game brings its materials once', async () => {
   const f = studio();
-  await run(f, 'assemble_owner_game', { niche: 'x', seed: 1 });
+  await assemble(f, { niche: 'x', seed: 1 });
   for (const path of ['/Workspace/Theme', '/Workspace/Pop']) assert.equal(imports(f).find((o) => o.path === path).parent, 'game.SoundService');
   const mats = imports(f).filter((o) => o.path === '/MaterialService');
   assert.equal(new Set(mats.map((o) => o.gameId)).size, mats.length, 'once per game');
@@ -266,7 +274,7 @@ test('assemble_owner_game: sounds go to SoundService whatever the plan said, and
 
 test('assemble_owner_game: characters and props end up on the ground, apart, out of the walls, near the spawn; effects where the plan put them', async () => {
   const f = studio({ walls: [{ center: [40, 15, 0], size: [20, 30, 60] }], ghosts: [{ center: [-30, 4, -30], size: [30, 8, 30] }] });
-  const { data } = await run(f, 'assemble_owner_game', { niche: 'x', seed: 5 });
+  const { data } = await assemble(f, { niche: 'x', seed: 5 });
   const under = (name) => [...f.world.nodes.values()].filter((n) => new RegExp(`^game\\.Workspace\\.${name}( \\(\\d+\\))?$`).test(n.path));
   assert.equal(under('Brainrot').length, 3); assert.equal(under('Tree').length, 6); assert.equal(under('Sparkle').length, 2);
   const placed = [...under('Brainrot'), ...under('Tree'), ...under('Sparkle')];
@@ -285,7 +293,7 @@ test('assemble_owner_game: a map with no spawn is decorated around its own middl
   bp.components = bp.components.filter((c) => ['world', 'props', 'characters'].includes(c.role));
   const far = [1800, 2000, 2200, 2400].map((x, i) => ({ name: 'Block' + i, class: 'Model', center: [x, -2, 300], size: [300, 4, 300] }));
   const f = studio({ route: { blueprint: bp }, importOf: (op) => (op.path === '/Workspace' && op.mode === 'children' ? { roots: far } : importOf(op)) });
-  await run(f, 'assemble_owner_game', { niche: 'x', seed: 2 });
+  await assemble(f, { niche: 'x', seed: 2 });
   const placed = [...f.world.nodes.values()].filter((n) => /^game\.Workspace\.(Tree|Brainrot)( \(\d+\))?$/.test(n.path));
   assert.equal(placed.length, 9);
   for (const n of placed) assert.ok(Math.abs(n.center[0] - 2100) < 400 && Math.abs(n.center[2] - 300) < 300, `${n.path} stands on the map (${n.center})`);
@@ -293,13 +301,13 @@ test('assemble_owner_game: a map with no spawn is decorated around its own middl
 
 test('assemble_owner_game: a core brought from another game moves down onto the new world\'s ground, as one group', async () => {
   const f = studio();
-  await run(f, 'assemble_owner_game', { niche: 'x', seed: 1 });
+  await assemble(f, { niche: 'x', seed: 1 });
   const plots = f.world.nodes.get('game.Workspace.Plots');
   assert.ok(Math.abs(plots.center[1] - plots.size[1] / 2) < 1e-6, `the plots rest on the ground (centre ${plots.center[1]})`);
   const bp = BLUEPRINT();
   bp.components = bp.components.filter((c) => c.role !== 'world').map((c) => (c.role === 'core' ? { ...c, gameId: gid(1) } : c));
   const own = studio({ route: { install: (op) => ({ ok: true, data: PLANS[op.params.id] }), blueprint: bp } });
-  await run(own, 'assemble_owner_game', { niche: 'x', seed: 1 });
+  await assemble(own, { niche: 'x', seed: 1 });
   assert.equal(own.world.nodes.get('game.Workspace.Plots').center[1], 30, 'a core that brings its own map is left where it is');
 });
 
@@ -311,7 +319,7 @@ test('assemble_owner_game: a core\'s map pieces move by the offset the library w
   const seen = { Base: [960, 1.5, -1040], 'Base#2': [960, 1.5, -1020], MainSpawn: [1060, 3, -1000] };
   const f = studio({ route: { blueprint: bp },
     importOf: (op) => { const name = op.path.split('/').pop(); return seen[name] ? { roots: [{ name: name.replace('#2', '2'), class: 'Part', center: [...seen[name]], size: [4, 1, 4] }] } : importOf(op); } });
-  const { data } = await run(f, 'assemble_owner_game', { niche: 'x', seed: 1 });
+  const { data } = await assemble(f, { niche: 'x', seed: 1 });
   const at = (n) => f.world.nodes.get('game.Workspace.' + n).center;
   assert.deepEqual([at('Base'), at('Base2'), at('MainSpawn')], [[960 - 1153, 0.5, -1040 + 1024], [960 - 1153, 0.5, -1020 + 1024], [1060 - 1153, 2, -1000 + 1024]]);
   assert.equal(f.ops('query_owner_library').filter((o) => o.action === 'deps' && /\/Workspace\//.test(o.path)).length, 0, 'a helper imported for one piece would stand apart from the moved ones');
@@ -322,7 +330,7 @@ test('assemble_owner_game: a core\'s map pieces move by the offset the library w
 
 test('assemble_owner_game: screens are wired by what the library says works: the core and the daily reward are left, the kit and the wheel are connected', async () => {
   const f = studio();
-  const { data } = await run(f, 'assemble_owner_game', { niche: 'x', seed: 1 });
+  const { data } = await assemble(f, { niche: 'x', seed: 1 });
   const attr = (p) => f.world.nodes.get(p)?.attrs.AppleMenuBinder;
   assert.deepEqual([attr('game.StarterGui.CoreHud'), attr('game.StarterGui.DailyGui'), attr('game.StarterGui.Menus'), attr('game.StarterGui.SpinGui')], [undefined, undefined, true, true]);
   assert.equal(f.ops('edit_script').length, 1, 'ONE binder for the whole game');
@@ -332,7 +340,7 @@ test('assemble_owner_game: screens are wired by what the library says works: the
 
 test('assemble_owner_game: the answer for the user is plain: names its sources, says what players get, has no path, tool name, id or count', async () => {
   const f = studio();
-  const { out, data } = await run(f, 'assemble_owner_game', { niche: 'brainrot collecting', seed: 3 });
+  const { out, data } = await assemble(f, { niche: 'brainrot collecting', seed: 3 });
   assert.match(data.forUser, /^Brainrot Bonanza is ready in your place/);
   for (const name of ['Sunny Map', 'Plants Game', 'Daily Reward System', 'Lucky Spin Wheel', 'Settings Menu', 'Studded UI', 'Tsunami Brainrots', 'Stud Asset Pack']) assert.ok(data.forUser.includes(name), name + ' missing from: ' + data.forUser);
   assert.equal(data.forUser.includes('(2)'), false, 'the library\'s copy marker is not part of a name');
@@ -346,7 +354,7 @@ test('assemble_owner_game: the answer for the user is plain: names its sources, 
 
 test('assemble_owner_game: a part that fails is skipped and named plainly; the rest still goes on', async () => {
   const f = studio({ importOf: (op) => (op.gameId === gid(4) || op.gameId === gid(8) ? { error: 'path not found: ' + op.path } : importOf(op)) });
-  const { out, data } = await run(f, 'assemble_owner_game', { niche: 'x', seed: 1 });
+  const { out, data } = await assemble(f, { niche: 'x', seed: 1 });
   assert.equal(out.ok, true);
   assert.deepEqual(data.parts.filter((p) => !p.ok).map((p) => p.part).sort(), ['props', 'system']);
   assert.match(data.forUser, /one of its features and the decorations could not be added, so the game is missing those\./);
@@ -359,7 +367,7 @@ test('assemble_owner_game: a part that fails is skipped and named plainly; the r
 
 test('assemble_owner_game: models nobody could place are removed; nothing is left inside a wall or under the map', async () => {
   const f = studio({ ghosts: [{ center: [0, 4, 0], size: [800, 8, 800] }] });
-  const { out, data } = await run(f, 'assemble_owner_game', { niche: 'x', seed: 1 });
+  const { out, data } = await assemble(f, { niche: 'x', seed: 1 });
   assert.equal(out.ok, true);
   assert.deepEqual(data.parts.filter((p) => !p.ok).map((p) => p.part).sort(), ['characters', 'fx', 'props']);
   assert.match(data.forUser, /the characters, the decorations and the effects could not be added/);
@@ -368,7 +376,7 @@ test('assemble_owner_game: models nobody could place are removed; nothing is lef
 
 test('assemble_owner_game: a Studio that goes away stops the build, keeps what was built and says so', async () => {
   const f = studio({ fail: (op) => (op.op === 'import_owner_library' && op.gameId === gid(6) ? { ok: false, error: 'Studio is not connected', failure: 'transport' } : null) });
-  const { out, data } = await run(f, 'assemble_owner_game', { niche: 'x', seed: 1 });
+  const { out, data } = await assemble(f, { niche: 'x', seed: 1 });
   assert.equal(out.ok, true);
   assert.match(data.forUser, /Roblox Studio stopped answering part-way, so the rest was not added\./);
   assert.equal(imports(f).filter((o) => o.gameId === gid(7)).length, 0, 'nothing after the loss is attempted');
@@ -392,24 +400,24 @@ test('assemble_owner_game: a run that has taken too long stops adding extras and
 
 test('assemble_owner_game: no plan, no niche or no way to save a copy first changes nothing and is one plain sentence', async () => {
   const none = studio({ route: { blueprint: new Error('owner library gateway is not reachable; start it on the Mac') } });
-  const a = await run(none, 'assemble_owner_game', { niche: 'obby' });
+  const a = await assemble(none, { niche: 'obby' });
   assert.equal(a.out.ok, false);
   assert.equal(a.out.summary, '✗ Apple could not reach your saved games right now');
   assert.deepEqual([none.ctx.checkpoints.length, imports(none).length], [0, 0]);
   const empty = studio({ route: { blueprint: { title: 'X', components: [{ role: 'nonsense', gameId: 'zz' }] } } });
-  const b = await run(empty, 'assemble_owner_game', { niche: 'obby' });
+  const b = await assemble(empty, { niche: 'obby' });
   assert.equal(b.out.ok, false); assert.match(b.data.error, /Tell the user in one plain sentence that the library has nothing for that kind of game yet/);
   assert.equal(empty.ctx.checkpoints.length, 0);
   const missing = studio();
-  assert.equal((await run(missing, 'assemble_owner_game', {})).out.ok, false);
+  assert.equal((await assemble(missing, {})).out.ok, false);
   assert.equal(missing.log.length, 0);
   const noCopy = studio();
   noCopy.ctx.createCheckpoint = async () => ({ error: 'snapshot failed' });
-  const c = await run(noCopy, 'assemble_owner_game', { niche: 'obby' });
+  const c = await assemble(noCopy, { niche: 'obby' });
   assert.deepEqual([c.out.ok, imports(noCopy).length], [false, 0]);
   assert.match(c.out.summary, /^✗ Apple could not save a copy of your place first/);
   const allFail = studio({ importOf: () => ({ error: 'path not found' }), route: { install: { ok: false, error: 'x' }, blueprint: BLUEPRINT() } });
-  const d = await run(allFail, 'assemble_owner_game', { niche: 'obby', seed: 1 });
+  const d = await assemble(allFail, { niche: 'obby', seed: 1 });
   assert.equal(d.out.ok, false); assert.match(d.out.summary, /^✗ Apple could not build a game from your saved games this time/);
   assert.equal(d.out.mutatedProject, undefined);
 });
@@ -477,51 +485,53 @@ test('the older library tools speak plainly in the activity feed too', async () 
   assert.equal((await run(bad, 'import_owner_library', { gameId: gid(2), path: '/StarterGui/ShopGui', mode: 'self' })).out.summary, '✗ Something stopped it from finishing.');
 });
 
-test('the two new tools are registered as project-changing Studio tools, offered only with the ops they need, and described for the model', () => {
-  for (const name of ['install_owner_system', 'assemble_owner_game']) {
+test('the library tools are registered as project-changing Studio tools, offered only with the ops they need, and described for the model; the older blueprint builder is not offered', () => {
+  for (const name of ['install_owner_system', 'build_game']) {
     const tool = T.TOOLS[name];
     assert.equal(tool.studio, true); assert.ok(tool.mutatesProject);
     assert.deepEqual([...tool.studioOps].sort(), ['import_owner_library', 'query_owner_library', 'snapshot']);
     assert.ok(T.projectMutatingToolNames().includes(name));
   }
-  assert.match(T.TOOLS.assemble_owner_game.def.description, /THE way to build a game/);
-  assert.match(T.TOOLS.assemble_owner_game.def.description, /niche/);
-  assert.deepEqual(T.TOOLS.assemble_owner_game.def.parameters.required, ['niche']);
+  assert.equal(T.TOOLS.plan_game.mutatesProject, undefined, 'planning changes nothing');
+  assert.deepEqual(T.TOOLS.plan_game.studioOps, ['query_owner_library']);
+  assert.match(T.TOOLS.plan_game.def.description, /FIRST STEP/);
+  assert.deepEqual(T.TOOLS.plan_game.def.parameters.required, ['request']);
   assert.deepEqual(T.TOOLS.install_owner_system.def.parameters.required, ['gameId']);
+  assert.equal(T.TOOLS.assemble_owner_game, undefined);
 });
 
 // ---------------------------------------------------------- the prompt, the run's own record and the fences
 
-test('the prompt names the two tools as THE way to build from the saved games, in a short paragraph without the do-and-do-not prose the tools now enforce', async () => {
+test('the prompt names the flow (plan, build, theme, judge, fix, answer) as the way to build from the saved games, in a short paragraph without the do-and-do-not prose the tools now enforce', async () => {
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/prompts.ts', import.meta.url), 'utf8');
   const at = src.indexOf("- THE OWNER'S SAVED GAMES ARE THE FIRST SOURCE FOR EVERY BUILD.");
   assert.ok(at > 0, 'the paragraph');
   const paragraph = src.slice(at, src.indexOf('\n- ', at + 10));
-  assert.ok(paragraph.length < 800, `${paragraph.length} characters: keep it short, the tool descriptions carry the how`);
-  assert.match(paragraph, /assemble_owner_game \{niche\}/);
+  assert.ok(paragraph.length < 1000, `${paragraph.length} characters: keep it short, the tool descriptions carry the how`);
+  assert.match(paragraph, /plan_game \{request\}[\s\S]*build_game[\s\S]*judge_game \{request\}[\s\S]*at most three rounds/);
   assert.match(paragraph, /install_owner_system \{gameId\}/);
   assert.match(paragraph, /If an imported game can load code from the internet, say so in one plain sentence/);
   for (const enforced of [/never a flat or realistic map/i, /studded-modern and\s+studded-classic/i, /MaterialVariant from MaterialService/i, /unrelated GUIs dropped on it/i, /ONE studded game in the niche/i]) assert.doesNotMatch(src, enforced);
 });
 
-test('a run that assembled a game or installed a system reports it in plain words, and the HUD gap knows a whole game has screens', async () => {
+test('a run that built a game or installed a system reports it in plain words, and the HUD gap knows a whole game has screens', async () => {
   const { builtSummary, addMade, madeKey, buildsHud } = await import('../src/run-idle.ts');
-  assert.equal(builtSummary(addMade(undefined, madeKey('assemble_owner_game', '{"niche":"tycoon"}'))), 'It worked on a whole new game from your saved games.');
+  assert.equal(builtSummary(addMade(undefined, madeKey('build_game', '{}'))), 'It worked on a whole new game from your saved games.');
   assert.equal(builtSummary(addMade(undefined, madeKey('install_owner_system', '{"gameId":"abcdef012345"}'))), 'It worked on a ready-made feature from your saved games.');
-  assert.equal(buildsHud('assemble_owner_game', '{"niche":"tycoon"}'), true);
+  assert.equal(buildsHud('build_game', '{}'), true);
   assert.equal(buildsHud('install_owner_system', '{"gameId":"abcdef012345"}'), false, 'one system is not a HUD');
 });
 
-test('a build that only uses the saved games may call the two tools, and is told about them when it reaches for something else', async () => {
+test('a build that only uses the saved games may call the library tools, and is told about them when it reaches for something else', async () => {
   const { staysInOwnerLibrary } = await import('../src/request-scope.ts');
-  assert.equal(staysInOwnerLibrary('assemble_owner_game'), true);
+  for (const name of ['plan_game', 'build_game', 'judge_game']) assert.equal(staysInOwnerLibrary(name), true, name);
   assert.equal(staysInOwnerLibrary('install_owner_system'), true);
   const { readFileSync } = await import('node:fs');
   const session = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
-  assert.match(session, /Build the game with assemble_owner_game \{niche\}, add a feature with install_owner_system \{gameId\}/);
+  assert.match(session, /Build the game with plan_game \{request\} then build_game, add a feature with install_owner_system \{gameId\}/);
   const mcp = readFileSync(new URL('../src/mcp.ts', import.meta.url), 'utf8');
-  assert.match(mcp, /install_owner_system: /); assert.match(mcp, /assemble_owner_game: /);
+  assert.match(mcp, /install_owner_system: /); assert.match(mcp, /plan_game: /); assert.match(mcp, /build_game: /); assert.doesNotMatch(mcp, /assemble_owner_game: /);
 });
 
 test('browse_owner_library kind system lists the ready-made systems through the library\'s systems route, and says how to add one', async () => {

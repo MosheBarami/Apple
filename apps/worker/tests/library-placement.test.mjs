@@ -262,3 +262,47 @@ test('placeGroup: a system\'s world pieces move together onto open ground near t
   assert.ok(Math.hypot(b.center[0], b.center[2]) < 200, 'near the play area');
   assert.ok(!(b.center[0] > 25 && b.center[0] < 55 && Math.abs(b.center[2]) < 35), 'not in the wall');
 });
+
+test('groupClear: the group\'s own pieces overlapping each other do not block it; a wall, a model already there or an unanswered check do', async () => {
+  const f = fakeStudio({ walls: [{ center: [500, -38, 500], size: [4, 4, 4] }] });
+  const plaza = 'game.Workspace.Plaza', fountain = 'game.Workspace.Fountain';
+  f.world.add(plaza, { class: 'Model', center: [100, 1, 100], size: [30, 2, 30] });
+  f.world.add(fountain, { class: 'Model', center: [100, 3, 100], size: [8, 6, 8] });   // stands in the plaza: their boxes overlap
+  assert.equal(await P.groupClear(f.ctx, [plaza, fountain]), 'clear');
+  f.world.add('game.Workspace.Statue', { class: 'Model', center: [105, 3, 100], size: [4, 6, 4] });
+  assert.equal(await P.groupClear(f.ctx, [plaza, fountain]), 'blocked', 'a model that is not in the group is in the way');
+  f.world.nodes.delete('game.Workspace.Statue');
+  f.world.add('game.Workspace.Hut', { class: 'Model', center: [500, -38, 500], size: [4, 4, 4] });
+  assert.equal(await P.groupClear(f.ctx, ['game.Workspace.Hut']), 'blocked', 'a wall is in the way');
+  assert.equal(await P.groupClear(f.ctx, ['game.Workspace.Nowhere']), 'blocked', 'a check that cannot be made is not a pass');
+  const gone = fakeStudio({ fail: (op) => (op.op === 'spatial_query' ? { ok: false, error: 'gone', failure: 'transport' } : null) });
+  gone.world.add(plaza, { class: 'Model', center: [100, 1, 100], size: [30, 2, 30] });
+  assert.equal(await P.groupClear(gone.ctx, [plaza]), 'disconnected');
+});
+
+test('placeGroup: a group whose pieces overlap each other (a plaza and the fountain on it) is placed as one', async () => {
+  const f = fakeStudio();
+  const plaza = 'game.Workspace.Plaza', fountain = 'game.Workspace.Fountain';
+  f.world.add(plaza, { class: 'Model', center: [500, -40, 500], size: [30, 2, 30] });
+  f.world.add(fountain, { class: 'Model', center: [500, -38.5, 500], size: [8, 6, 8] });
+  assert.equal(await P.placeGroup(f.ctx, [plaza, fountain], P.newPlaceState(), 1, FAR()), 'placed');
+  const p = f.world.nodes.get(plaza), q = f.world.nodes.get(fountain);
+  assert.ok(Math.abs(q.center[0] - p.center[0]) < 1e-6 && Math.abs(q.center[1] - p.center[1] - 1.5) < 1e-6, 'and keeps its layout');
+});
+
+test('placeRegion: goes where the design\'s offset says when that spot is free and rests on the ground; otherwise finds open ground; with none it removes the region', async () => {
+  const region = (f) => { f.world.add('game.Workspace.Fountain', { class: 'Model', center: [300, -40, 300], size: [10, 10, 10] }); return ['game.Workspace.Fountain']; };
+  const free = fakeStudio();
+  assert.equal(await P.placeRegion(free.ctx, region(free), [150, 0, 0], P.newPlaceState(), 1, FAR()), 'placed');
+  const at = free.world.nodes.get('game.Workspace.Fountain');
+  assert.deepEqual([at.center[0], at.center[1] - at.size[1] / 2, at.center[2]], [450, 0, 300], 'moved by the offset, bottom on the ground');
+  const s2 = fakeStudio(); const st2 = P.newPlaceState();
+  await P.placeRegion(s2.ctx, region(s2), [150, 0, 0], st2, 1, FAR());
+  assert.equal(st2.placed.length, 1, 'its footprint is remembered so the next piece keeps clear');
+  const taken = fakeStudio({ walls: [{ center: [450, 5, 300], size: [40, 40, 40] }] });
+  assert.equal(await P.placeRegion(taken.ctx, region(taken), [150, 0, 0], P.newPlaceState(), 1, FAR()), 'placed');
+  assert.notEqual(taken.world.nodes.get('game.Workspace.Fountain').center[0], 450, 'the planned spot was taken: it looked elsewhere');
+  const none = fakeStudio({ walls: Array.from({ length: 40 }, (_, i) => ({ center: [Math.cos(i) * 40, 20, Math.sin(i) * 40], size: [1000, 60, 1000] })) });
+  assert.equal(await P.placeRegion(none.ctx, region(none), undefined, P.newPlaceState(), 1, FAR()), 'no_room');
+  assert.equal(none.world.nodes.has('game.Workspace.Fountain'), false, 'a region with no room is deleted');
+});

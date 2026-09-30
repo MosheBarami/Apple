@@ -365,14 +365,61 @@ export async function placeGroup(ctx: AgentCtx, paths: string[], state: PlaceSta
     if (went.gone) return 'disconnected';
     if (!went.moved) return 'skipped';
     moved[0] += move[0]; moved[1] += move[1]; moved[2] += move[2];
-    let clear = true;
-    for (const p of measured) {
-      const seen = await ask(ctx, { op: 'spatial_query', action: 'check_placement', path: p });
-      if (gone(seen)) return 'disconnected';
-      if (!seen.ok || Number(seen.data.overlapCount) > 0) { clear = false; break; }
-    }
-    if (clear) { state.placed.push({ x, z, r }); state.recent.push(...measured); return 'placed'; }
+    const clear = await groupClear(ctx, measured);
+    if (clear === 'disconnected') return 'disconnected';
+    if (clear === 'clear') { state.placed.push({ x, z, r }); state.recent.push(...measured); return 'placed'; }
   }
   if (moved.some((v) => v !== 0)) await moveBy(ctx, roots, [-moved[0], -moved[1], -moved[2]]);
   return 'no_room';
+}
+
+/**
+ * Whether a group of roots touches anything that is not part of the group. A root's own neighbours in the group (a plaza and the
+ * fountain standing on it) overlap by design; what blocks is a wall, a building or a model that was already there.
+ * A check that cannot be made, or more overlaps than the plugin lists, is not a pass.
+ */
+export async function groupClear(ctx: AgentCtx, roots: readonly string[]): Promise<'clear' | 'blocked' | 'disconnected'> {
+  const inside = (p: string) => roots.some((r) => p === r || p.startsWith(r + '.') || p.startsWith(r + '['));
+  for (const p of roots) {
+    const seen = await ask(ctx, { op: 'spatial_query', action: 'check_placement', path: p });
+    if (gone(seen)) return 'disconnected';
+    if (!seen.ok) return 'blocked';
+    const count = Number(seen.data.overlapCount);
+    if (!(count > 0)) continue;
+    const listed = Array.isArray(seen.data.overlapping) ? seen.data.overlapping.filter((x): x is string => typeof x === 'string') : [];
+    if (listed.length < count || !listed.every(inside)) return 'blocked';
+  }
+  return 'clear';
+}
+
+/**
+ * A region brought from another map goes where the design worked out it fits (a move by `offset`, then resting on the ground of
+ * the play area). That spot has to be free; when it is not, or there is no offset, the group looks for open ground itself
+ * (placeGroup). A region that fits nowhere is deleted rather than left inside something.
+ */
+export async function placeRegion(ctx: AgentCtx, paths: string[], offset: Vec3 | undefined, state: PlaceState, seed: number, deadline: number, now: () => number = Date.now): Promise<'placed' | 'no_room' | 'skipped' | 'disconnected'> {
+  const roots = paths.slice(0, 20);
+  if (offset && offset.some((v) => v !== 0)) {
+    const went = await moveBy(ctx, roots, offset);
+    if (went.gone) return 'disconnected';
+    if (went.moved) {
+      await settleGroup(ctx, roots, state);
+      const clear = await groupClear(ctx, roots);
+      if (clear === 'disconnected') return 'disconnected';
+      if (clear === 'clear') {
+        const boxes: Box[] = [];
+        for (const p of roots) { const b = await boundsOf(ctx, p); if (isBox(b)) boxes.push(b); else if (gone(b)) return 'disconnected'; }
+        if (boxes.length) {
+          const x0 = Math.min(...boxes.map((b) => b.center[0] - b.size[0] / 2)), x1 = Math.max(...boxes.map((b) => b.center[0] + b.size[0] / 2));
+          const z0 = Math.min(...boxes.map((b) => b.center[2] - b.size[2] / 2)), z1 = Math.max(...boxes.map((b) => b.center[2] + b.size[2] / 2));
+          state.placed.push({ x: (x0 + x1) / 2, z: (z0 + z1) / 2, r: Math.hypot(x1 - x0, z1 - z0) / 2 });
+          state.recent.push(...roots);
+        }
+        return 'placed';
+      }
+    }
+  }
+  const where = await placeGroup(ctx, roots, state, seed, deadline, now);
+  if (where === 'no_room') await ask(ctx, { op: 'delete_instances', paths: roots });
+  return where;
 }

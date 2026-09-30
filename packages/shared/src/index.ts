@@ -145,7 +145,7 @@ export type StudioOp =
   | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
       nativeInstances: number; parent: string }
   | { op: 'query_owner_library'; action: 'list' | 'game' | 'deps' | 'route'; q?: string; niche?: string; kind?: string; game?: string; after?: number; limit?: number; id?: string; gameId?: string; path?: string;
-      route?: 'deps' | 'install' | 'systems' | 'blueprint' | 'family' | 'report' | 'media'; params?: Record<string, string | number> }
+      route?: 'deps' | 'install' | 'systems' | 'blueprint' | 'family' | 'report' | 'media' | 'design'; params?: Record<string, string | number> }
   | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean; replace?: boolean; onlyMissing?: boolean; studioData?: boolean }
   | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
       contentToken: string; parent: string; name: string }
@@ -943,6 +943,9 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'read_owner_component':
     case 'browse_owner_library':
       return 'inspecting';
+    // Working out the design of a game reads the owner's library and moves nothing: it is the planning step of a build.
+    case 'plan_game':
+      return 'planning';
     // Announcing the plan is not doing the work. This tool runs before anything in the project
     // moves, so the one phase it must never fall through to is the `default` below — 'building'
     // would have the workspace claim the place is being changed at the exact moment it is not.
@@ -979,7 +982,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'import_owner_library':
     case 'recreate_owner_game':
     case 'install_owner_system':
-    case 'assemble_owner_game':
+    case 'build_game':
     case 'insert_library_model':
     case 'generate_model':
     case 'generate_model_external':
@@ -2800,9 +2803,9 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
-    name: 'assemble_owner_game',
+    name: 'build_game',
     label: 'Build a new game from your uploaded games',
-    why: 'Builds an original game from many of your uploaded games, scripts included, in your place.',
+    why: 'Builds an original game from a plan made out of your uploaded games, scripts included, in your place.',
     group: 'changes',
   },
   {

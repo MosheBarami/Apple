@@ -8,6 +8,8 @@
 const CLASS_PARENTS = { TextButton: 'GuiButton', ImageButton: 'GuiButton', Script: 'LuaSourceContainer', LocalScript: 'LuaSourceContainer', ModuleScript: 'LuaSourceContainer', ScreenGui: 'LayerCollector', BillboardGui: 'LayerCollector', SurfaceGui: 'LayerCollector' };
 const isA = (cls, target) => { for (let c = cls; c; c = CLASS_PARENTS[c]) if (c === target) return true; return false; };
 const last = (path) => path.split('.').pop();
+/** query_instances.property {name, op, value}: eq is the whole value, contains is a case-insensitive part of it. */
+const propMatches = (n, p) => { const v = n.props?.[p.name]; if (v === undefined) return false; const t = String(v?.v ?? v).toLowerCase(), w = String(p.value).toLowerCase(); return (p.op ?? 'eq') === 'contains' ? t.includes(w) : t === w; };
 const lastSlash = (path) => path.split('/').filter(Boolean).pop() ?? '';
 
 /**
@@ -70,7 +72,7 @@ export function fakeStudio(o = {}) {
         if (op.onlyMissing && [...kids(op.parent)].some((c) => c.name === r.name)) { skipped += 1; continue; }
         const path = op.parent + '.' + r.name;
         add(path, { class: r.class ?? 'Model', center: r.center, size: r.size, attrs: { AppleLibraryGame: op.gameId, AppleLibraryPath: op.path } });
-        for (const c of r.children ?? []) add(path + '.' + c.name, { class: c.class ?? 'Frame' });
+        for (const c of r.children ?? []) { add(path + '.' + c.name, { class: c.class ?? 'Frame', props: c.props }); for (const g of c.children ?? []) add(path + '.' + c.name + '.' + g.name, { class: g.class ?? 'TextLabel', props: g.props }); }
         for (const s of r.scripts ?? []) add(path + '.' + s.name, { class: s.class ?? 'LocalScript', source: s.source ?? '' });
         inserted.push(path);
       }
@@ -115,8 +117,8 @@ export function fakeStudio(o = {}) {
         const b = box(n);
         const data = { action: op.action, path: n.path, center: n.center, size: n.size, bottomY: b.lo[1], topY: b.hi[1] };
         if (op.action === 'bounds') return ok(data);
-        const hits = [...walls.map(wallBox), ...ghosts.map(wallBox), ...models([n.path]).map(box)].filter((x) => overlap(b, x));
-        return ok({ ...data, overlapping: hits.map((_, i) => 'part' + i), overlapCount: hits.length, ground: { hit: true }, gapBelow: b.lo[1] - ground, floating: b.lo[1] - ground > 0.5 });
+        const hits = [...walls.map((w, i) => ({ box: wallBox(w), path: 'game.Workspace.Wall' + i })), ...ghosts.map((w, i) => ({ box: wallBox(w), path: 'game.Workspace.Zone' + i })), ...models([n.path]).map((m) => ({ box: box(m), path: m.path }))].filter((x) => overlap(b, x.box));
+        return ok({ ...data, overlapping: hits.map((h) => h.path), overlapCount: hits.length, ground: { hit: true }, gapBelow: b.lo[1] - ground, floating: b.lo[1] - ground > 0.5 });
       }
       if (op.action === 'find_ground') {
         const [x, top, z] = op.position;
@@ -143,10 +145,10 @@ export function fakeStudio(o = {}) {
       }
       return ok({ created, count: created.length });
     },
-    delete_instances(op) { for (const p of op.paths) remove(p); return ok({ deleted: op.paths.length }); },
+    delete_instances(op) { for (const p of op.paths) if (!nodes.has(p)) return no(p + ' not found', 'not_found'); for (const p of op.paths) remove(p); return ok({ deleted: op.paths.length }); },
     query_instances(op) {
       const root = op.root ?? 'game';
-      const found = under(root).filter((n) => (!op.className || n.class === op.className) && (!op.isA || isA(n.class, op.isA)) && (!op.name || n.name.toLowerCase().includes(op.name.toLowerCase().replace(/\*/g, '')))).slice(0, op.limit ?? 50);
+      const found = under(root).filter((n) => (!op.className || n.class === op.className) && (!op.isA || isA(n.class, op.isA)) && (!op.name || n.name.toLowerCase().includes(op.name.toLowerCase().replace(/\*/g, ''))) && (!op.property || propMatches(n, op.property))).slice(0, op.limit ?? 50);
       return ok({ matches: found.map((n) => ({ path: n.path, className: n.class })), count: found.length });
     },
     dump_scripts(op) { return ok({ scripts: under(op.root ?? 'game').filter((n) => isA(n.class, 'LuaSourceContainer')).map((n) => ({ path: n.path, class: n.class, source: n.source ?? '' })) }); },
@@ -157,7 +159,8 @@ export function fakeStudio(o = {}) {
     },
     read_script(op) { const n = nodes.get(op.path); return n && isA(n.class, 'LuaSourceContainer') ? ok({ path: n.path, class: n.class, source: n.source ?? '' }) : no('not found', 'not_found'); },
     edit_script(op) { if (op.create) add(op.path, { class: op.create.className, source: op.source }); else nodes.get(op.path).source = op.source; return ok({}); },
-    set_props(op) { const n = nodes.get(op.path); if (!n) return no('not found', 'not_found'); for (const [k, v] of Object.entries(op.attributes ?? {})) n.attrs[k] = v.v; return ok({}); },
+    set_props(op) { const n = nodes.get(op.path); if (!n) return no('not found', 'not_found'); for (const [k, v] of Object.entries(op.attributes ?? {})) n.attrs[k] = v.v; for (const [k, v] of Object.entries(op.props ?? {})) (n.props ??= {})[k] = v; return ok({}); },
+    get_instance(op) { const n = nodes.get(op.path); return n ? ok({ path: n.path, name: n.name, class: n.class, childCount: kids(n.path).length, props: n.props ?? {}, attributes: n.attrs }) : no('instance not found at ' + op.path, 'not_found'); },
     snapshot() { return ok({}); },
   };
 

@@ -146,7 +146,7 @@ export function plainLibraryThing(path: string): string {
 /** The key a successful project-changing call is filed under (see addMade): its tool, or "=" and what a library import brought. */
 export function madeKey(tool: string, args: string | undefined): string {
   if (tool === 'recreate_owner_game') return '=the whole game';
-  if (tool === 'assemble_owner_game') return '=a whole new game from your saved games';
+  if (tool === 'build_game') return '=a whole new game from your saved games';
   if (tool === 'install_owner_system') return '=a ready-made feature from your saved games';
   if (tool !== 'import_owner_library') return tool;
   try {
@@ -239,7 +239,7 @@ export function gameGaps(
 
 /** A mutating call that puts a HUD on screen. An owner game's original UI counts: a recreate or a StarterGui import brings its own. */
 export function buildsHud(name: string, args: string | undefined): boolean {
-  return name === 'build_ui' || name === 'insert_ui_component' || name === 'recreate_owner_game' || name === 'assemble_owner_game' ||
+  return name === 'build_ui' || name === 'insert_ui_component' || name === 'recreate_owner_game' || name === 'build_game' ||
     /ScreenGui|ui_kit/.test(args ?? '') || (name === 'import_owner_library' && /StarterGui/.test(args ?? ''));
 }
 

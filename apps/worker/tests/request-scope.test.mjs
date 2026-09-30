@@ -43,6 +43,8 @@ test('a request to recreate an uploaded owner game changes the place only by rec
   assert.equal(startsOwnerRecreate('recreate_owner_game'), true);
   assert.equal(startsOwnerRecreate('import_owner_library'), false, 'a plain slot import is not a recreate');
   assert.match(src0(), /out\.mutatedProject === true && call\.name === 'recreate_owner_game'\) agent\.keepOwnerOriginal = true/);
+  // A built game is not a copy: it marks the run as built (no parts owed, models may be renamed to their new theme), not as an original.
+  assert.match(src0(), /out\.mutatedProject === true && call\.name === 'build_game'\) agent\.builtGame = true/);
   assert.equal(startsOwnerRecreate('insert_ui_component'), false);
   const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
   assert.match(src, /isOwnerRecreateRequest\(text\) \? \{ ownerRecreate: true \}/);
@@ -58,7 +60,9 @@ test('a game built only from owner library parts cannot generate or take Creator
     assert.equal(isOwnerLibraryOnlyRequest(t), false, t);
   }
   for (const t of ['create_instances', 'insert_asset', 'find_library_model', 'insert_library_model', 'build_ui', 'insert_vfx', 'run_luau']) assert.equal(staysInOwnerLibrary(t), false, t);
-  for (const t of ['browse_owner_library', 'import_owner_library', 'recreate_owner_game', 'transform_instances', 'move_instances', 'clone_instances', 'edit_script', 'get_project_tree']) assert.equal(staysInOwnerLibrary(t), true, t);
+  for (const t of ['browse_owner_library', 'import_owner_library', 'recreate_owner_game', 'transform_instances', 'move_instances', 'clone_instances', 'edit_script', 'get_project_tree', 'plan_game', 'build_game', 'judge_game']) assert.equal(staysInOwnerLibrary(t), true, t);
+  // Audio is the one exception: a saved game's sounds are private to their uploader, so licensed public audio replaces them.
+  for (const t of ['insert_sound', 'design_sound', 'assign_sounds', 'find_sound']) assert.equal(staysInOwnerLibrary(t), true, t);
   const src = src0();
   assert.match(src, /isOwnerLibraryOnlyRequest\(text\) \? \{ ownerLibraryOnly: true \}/);
   assert.match(src, /if \(agent\.ownerLibraryOnly && !staysInOwnerLibrary\(call\.name\)\) \{[\s\S]{0,800}continue;/);

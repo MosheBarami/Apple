@@ -60,10 +60,13 @@ export function isOwnerLibraryOnlyRequest(text: string): boolean {
 
 const NOT_FROM_LIBRARY = new Set(['create_instances', 'edit_terrain', 'build_scene', 'run_luau', 'add_effect', 'install_module',
   'insert_asset', 'generate_model', 'insert_owner_component', 'insert_library_model', 'find_library_model', 'generate_model_external',
-  'scatter_instances', 'shape_terrain', 'create_rig', 'build_ui', 'insert_sound', 'insert_vfx', 'insert_ui_component', 'design_sound',
-  'assign_sounds']);
+  'scatter_instances', 'shape_terrain', 'create_rig', 'build_ui', 'insert_vfx', 'insert_ui_component']);
 
-/** Whether a library-only run may call this tool: it may import, arrange, fix scripts and read, never make content. */
+/**
+ * Whether a library-only run may call this tool: it may import, arrange, fix scripts and read, never make content. Audio is the
+ * one exception (2026-09-30): the sounds in a saved game are private to their uploader and do not play elsewhere, so they are
+ * replaced with licensed public audio through the sound tools (insert_sound, design_sound, assign_sounds).
+ */
 export function staysInOwnerLibrary(tool: string): boolean {
   return !NOT_FROM_LIBRARY.has(tool);
 }

@@ -252,6 +252,8 @@ interface AgentState {
   blockDeletesAfterCreateConflict?: boolean;
   /** A recreate_owner_game slot import: the original scripts find objects by name, so this run keeps names and structure. */
   keepOwnerOriginal?: boolean;
+  /** build_game finished: the game is whole and its content is being given a new theme, which renames and moves models, so the structure fence lifts. */
+  builtGame?: boolean;
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
   /**
    * Identical calls whose last attempt failed in a way op-failure.ts classified as SAFE TO REPEAT
@@ -539,6 +541,8 @@ const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
 function openParts(agent: AgentState) {
   // A recreated owner game brought every part the original has, under the original's names.
   if (agent.mode !== 'agent' || agent.keepOwnerOriginal) return [];
+  // A game built by build_game has all the parts its plan needed; the request's words are not a list of parts still to add.
+  if (agent.builtGame) return [];
   const steps = agent.plan ? settlePlan(agent.plan, agent.trace).steps : [];
   return missingParts(requestedParts(agent.request, steps, (tool) => READ_ONLY_WITHHELD.has(tool)), agent.builtWords ?? []);
 }
@@ -565,9 +569,10 @@ const OWNER_RECREATE_FIRST =
 /** What a library-only request is told when it tries to make content instead of importing it. */
 const OWNER_LIBRARY_ONLY =
   'Not run: this request builds only from the owner library, so nothing is generated, hand-built or taken from the Creator Store. ' +
-  'Build the game with assemble_owner_game {niche}, add a feature with install_owner_system {gameId}, or find one part with browse_owner_library ' +
+  'Build the game with plan_game {request} then build_game, add a feature with install_owner_system {gameId}, or find one part with browse_owner_library ' +
   '{kind, q} (kind ui, model, fx, sound, animation, tool, script or map), import it with import_owner_library, then arrange it with ' +
-  'transform_instances or clone_instances.';
+  'transform_instances or clone_instances. Sounds are the one exception: a saved game\'s sounds are private to their uploader and do not play ' +
+  'elsewhere, so replace them with licensed public audio through insert_sound.';
 /** What a run is told when it tries to redo a kit it already built. */
 const KIT_KEPT =
   'Not run: the ready-made scene is finished, and its pieces and the terrain around it are kept as built in this run. ' +
@@ -4611,7 +4616,10 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true && buildsHud(call.name, call.arguments)) agent.hudBuilt = true;
       // A model file recreates without replacing a slot, so the import alone does not mark it.
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
-      if (out.ok && call.name === 'play_check') agent.playChecked = true;
+      // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
+      if (out.mutatedProject === true && call.name === 'build_game') agent.builtGame = true;
+      // Judging the game plays it in up to three Test sessions (sessions:0 reads without playing), so it is the playtest a built game is owed.
+      if (out.ok && (call.name === 'play_check' || (call.name === 'judge_game' && !/"sessions"\s*:\s*0\b/.test(call.arguments)))) agent.playChecked = true;
       // A read made BEFORE the place changed is not the same read after it. Refusing an identical
       // get_project_tree as "you already have the result above" after a create_instances hands the
       // model a result that is now false — and it asks again (run 1870ecfe). So a change forgets the
@@ -5717,6 +5725,8 @@ export class SessionDO extends DurableObject<Env> {
   private agentCtx(agent?: AgentState): AgentCtx {
     return {
       discoveredAssetIds: new Set(agent?.discoveredAssetIds ?? []),
+      // The design plan_game made, kept between the run's steps (the context is rebuilt every step) and across a restart of this object.
+      ...(agent ? { plannedGame: { load: () => this.ctx.storage.get('plannedGame'), save: (stored: unknown) => this.ctx.storage.put('plannedGame', stored) } } : {}),
       onceInRun: (key) => {
         if (!agent) return true;
         const seen = agent.onceKeys ?? (agent.onceKeys = []);
@@ -6001,7 +6011,7 @@ export class SessionDO extends DurableObject<Env> {
     if (this.placeMismatch) {
       return { id: 'none', ok: false, error: this.placeMismatch.message, failure: WORKER_FAILURES.placeMismatch };
     }
-    if (run?.keepOwnerOriginal && RESTRUCTURING_OPS.has(studioOp.op)) {
+    if (run?.keepOwnerOriginal && !run.builtGame && RESTRUCTURING_OPS.has(studioOp.op)) {
       return { id: 'none', ok: false, failure: 'refused',
         error: 'This run recreated an owner library game. Its scripts find objects by their original names and places, so renaming, moving or regrouping them is refused. Keep the original structure.' };
     }

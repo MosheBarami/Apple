@@ -8,13 +8,16 @@ import { plainLibraryThing } from './run-idle';
 import { ensureSpawn, fitCounts, MAX_COPIES, moveBy, newPlaceState, placeGroup, placeModels, settleGroup, type PlaceSpec, type Vec3 } from './library-placement';
 
 /**
- * THE TWO WAYS TO BUILD FROM THE OWNER'S SAVED GAMES.
+ * FROM THE OWNER'S SAVED GAMES, ONE SYSTEM AT A TIME.
  *
  *   install_owner_system  {gameId}                 one ready-made system, with everything it needs to work
- *   assemble_owner_game   {niche, theme?, seed?}   an original game from many saved games, carried out from the library's plan
  *
- * The library (the owner's Mac, through the paired plugin) decides WHAT: an install plan for one saved game, a blueprint
- * for a whole game. This file only carries the plan out in Studio and says what happened in words a young player reads.
+ * A whole game is built by plan_game and build_game (game-plan.ts). assembleOwnerGame below is the older random-blueprint builder
+ * (niche, theme, seed): it is no longer one of the agent's tools and stays only because the shared pieces here (the plain words,
+ * the install steps) and its own tests use it.
+ *
+ * The library (the owner's Mac, through the paired plugin) decides WHAT: an install plan for one saved game. This file only carries
+ * the plan out in Studio and says what happened in words a young player reads.
  * Nothing here returns a tool name, a path, an id or a count in the text meant for the user (`forUser`, the feed line).
  */
 
@@ -37,13 +40,13 @@ export function plainProblem(raw: unknown): string {
   if (/not connected|disconnected/i.test(t)) return 'Roblox Studio stopped answering.';
   return 'Something stopped it from finishing.';
 }
-const noCopy = (technical: string) => ({ error: 'Apple could not save a copy of your place first, so nothing was changed. Tell the user in one plain sentence.', technical });
-const list = (items: readonly string[], most = 6): string => {
+export const noCopy = (technical: string) => ({ error: 'Apple could not save a copy of your place first, so nothing was changed. Tell the user in one plain sentence.', technical });
+export const list = (items: readonly string[], most = 6): string => {
   const shown = items.slice(0, most);
   const text = shown.length > 1 ? `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}` : (shown[0] ?? '');
   return items.length > most ? `${shown.join(', ')} and more` : text;
 };
-const sentence = (t: string): string => t.replace(/[\s.;,]+$/, '');
+export const sentence = (t: string): string => t.replace(/[\s.;,]+$/, '');
 
 type Works = 'yes' | 'partly' | 'looks only';
 const asWorks = (v: unknown): Works => (v === 'yes' || v === 'looks only' ? v : 'partly');
@@ -134,7 +137,7 @@ function installWords(plan: InstallPlan, r: { added: string[]; failed: number; m
   return parts.join(' ');
 }
 
-const SAVES = /(?:^|\.)AppleStudioData$/;
+export const SAVES = /(?:^|\.)AppleStudioData$/;
 
 export async function installOwnerSystem(ctx: AgentCtx, a: Record<string, unknown>) {
   const blocked = libraryReady(ctx);
@@ -234,7 +237,7 @@ export const inBuildOrder = (components: readonly Component[]): Component[] =>
 
 const TEMPLATE_WORKSPACE = new Set(['Baseplate', 'SpawnLocation', 'Terrain', 'Camera']);
 /** A new place holds only the template's baseplate and spawn: the world may replace them. A place with anything else keeps it. */
-async function workspaceIsFresh(ctx: AgentCtx): Promise<boolean> {
+export async function workspaceIsFresh(ctx: AgentCtx): Promise<boolean> {
   const out = await ctx.execStudioOp({ op: 'get_tree', root: 'game.Workspace', maxDepth: 1, maxNodes: 40 });
   if (!out.ok) return false;
   const kids = ((out.data as { root?: { children?: { name?: unknown; class?: unknown }[] } } | undefined)?.root?.children ?? []);

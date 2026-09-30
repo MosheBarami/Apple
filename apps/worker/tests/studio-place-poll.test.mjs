@@ -177,6 +177,22 @@ test('a run that recreated an owner game keeps its original names and structure'
   assert.equal((await edit).ok, true, 'property edits stay allowed');
 });
 
+test('a game built by build_game may rename and move its models: giving the content a new theme needs it', async () => {
+  const { o } = await session();
+  o.pluginConnected = async () => true;
+  o.runAccessVerdict = async () => ({ stop: false });
+  // The world import of a new place replaced the template, which fences the run; build_game then finished.
+  const run = { msgId: 'build-run', status: 'running', llm: [], trace: [], finalText: '', keepOwnerOriginal: true, builtGame: true };
+  for (const op of [{ op: 'rename_instance', path: 'game.ReplicatedStorage.Assets.Carrot', name: 'Gumdrop' }, { op: 'move_instances', moves: [] }]) {
+    const pending = o.execStudioOp(op, 1000, run);
+    await new Promise((resolve) => setImmediate(resolve));
+    const [id, answer] = [...o.opWaiters.entries()].at(-1) ?? [];
+    assert.ok(answer, `${op.op} did not reach the Studio queue`);
+    answer({ id, ok: true, data: {} });
+    assert.equal((await pending).ok, true, op.op);
+  }
+});
+
 async function paired(extra = {}) {
   return session({
     bind: { projectId: 'proj', projectName: 'Tower Defence', ownerId: 'owner-1' },

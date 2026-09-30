@@ -77,7 +77,8 @@ import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySou
 import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
-import { installOwnerSystem, assembleOwnerGame, installSummary, assembleSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
+import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
+import { planGame, buildGame, planSummary, buildSummary } from './game-plan';
 import { JUDGE_GAME_DEF, judgeGame, judgeSummary } from './client-judge';
 import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
@@ -271,6 +272,12 @@ export interface AgentCtx {
    * within one run (adding the same asset's dependencies twice). Absent outside a run, where every claim is the first.
    */
   onceInRun?(key: string): boolean;
+  /**
+   * Where plan_game keeps the design build_game carries out. The run loop rebuilds this context every step and a design is too big
+   * to hand back through the model, so the session keeps it. Absent outside a run (the eval harness, tests): game-plan.ts then keeps
+   * the last design in memory.
+   */
+  plannedGame?: { load(): Promise<unknown>; save(stored: unknown): Promise<void> };
 }
 
 /**
@@ -4877,17 +4884,28 @@ export const TOOLS: Record<string, ToolImpl> = {
     plainSummary: installSummary,
     run: installOwnerSystem,
   },
-  assemble_owner_game: {
+  plan_game: {
     def: {
-      name: 'assemble_owner_game',
-      description: "THE way to build a game from the owner's saved games. The library plans an ORIGINAL bright, saturated, studded, cartoony game out of many saved games (a world, a working game core, two to five systems such as daily rewards, a spin wheel, pets, settings and music, characters and props, effects, sounds and lighting) and this carries the whole plan out: everything is imported with its scripts, every model is set on the ground near the spawn or on the plots without overlapping anything, screens that came without working code get their buttons connected, and a part that fails is skipped while the rest goes on. Takes one checkpoint and can run for several minutes. niche = the kind of game in plain words (tycoon, brainrot collecting, garden simulator, obby); theme = optional flavour (candy, space); seed = any whole number (leave it out for a fresh combination; the same seed gives the same plan again). Do not import or recreate more from the library afterwards for what it already covers. Answer the user from the returned forUser, in your own friendly words.",
-      parameters: S({niche:{type:'string'},theme:{type:'string'},seed:{type:'number'}},['niche']),
+      name: 'plan_game',
+      description: "FIRST STEP of every game built from the owner's saved games: designs an ORIGINAL game fitted to the request: one working saved game to build on, the features kept and left out, the screens and texts to fix, the content to theme, a fresh title. Changes nothing. Returns a digest; you may change only title, theme, pitch and currency (pass them to build_game). Same seed, same plan.",
+      parameters: S({request:{type:'string'},theme:{type:'string'},features:{type:'array',items:{type:'string'}},seed:{type:'number'}},['request']),
+    },
+    studio: true,
+    studioOps: ['query_owner_library'],
+    plainSummary: planSummary,
+    run: planGame,
+  },
+  build_game: {
+    def: {
+      name: 'build_game',
+      description: "SECOND STEP: carries the plan_game design out exactly: brings in only the parts it lists (with scripts), sets extra landmarks on open ground, deletes screens that do not belong, replaces placeholder and leftover texts, sets the sky, adds a spawn, connects menus. One checkpoint; takes minutes. Returns forUser (plain words) and themeTheContent (modules to theme with format and count, models to import, code edits, walkthrough). Then theme the content, run judge_game {request}, fix what it lists (at most three rounds), answer from forUser.",
+      parameters: S({design:{type:'object',description:'Only names you changed.',properties:{title:{type:'string'},theme:{type:'string'},pitch:{type:'string'},currency:{type:'string'}}}}),
     },
     studio: true,
     studioOps: ['snapshot','query_owner_library','import_owner_library'],
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as {changed?: unknown}).changed === true,
-    plainSummary: assembleSummary,
-    run: assembleOwnerGame,
+    plainSummary: buildSummary,
+    run: buildGame,
   },
   insert_library_model: {
     def: {
@@ -5620,7 +5638,7 @@ export async function runTool(
       ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== 'projectMutated' && key !== 'retryable'))
       : result;
     let str = typeof visibleResult === 'string' ? visibleResult : JSON.stringify(visibleResult);
-    const resultLimit = name === 'browse_owner_library' || name === 'import_owner_library' || name === 'recreate_owner_game' || name === 'install_owner_system' || name === 'assemble_owner_game' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' || name === 'inspect_visually' || name === 'judge_game' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
+    const resultLimit = name === 'browse_owner_library' || name === 'import_owner_library' || name === 'recreate_owner_game' || name === 'install_owner_system' || name === 'plan_game' || name === 'build_game' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' || name === 'inspect_visually' || name === 'judge_game' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
     if (str.length > resultLimit) str = str.slice(0, resultLimit) + `\n...[truncated ${str.length - resultLimit} chars]`;
     const mutatedProject = partialMutation || (!failed && toolMutatesProject(name, result));
     // An explicit UI payload wins. It is capped separately and more generously than the derived
