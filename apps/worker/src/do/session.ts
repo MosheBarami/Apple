@@ -4001,7 +4001,8 @@ export class SessionDO extends DurableObject<Env> {
     // on the run's first step, gets no tool definitions: they are 69 tools and ~67k characters, about
     // 80% of the input of every call, and "hi" needs none of them. CONVERSATIONAL_RE is anchored to the
     // whole message, so "hi, build me a tower" is not talk. Any later step is offered the normal set.
-    const talkOnly = !sequence && agent.traits?.conversational === true && agent.step === 1 && !agent.mutated;
+    // After judge_game said ready, the next step is the answer: no tool is offered, so the model can only reply (run-flow.ts).
+    const talkOnly = (!sequence && agent.traits?.conversational === true && agent.step === 1 && !agent.mutated) || agent.judgedReady === true;
     // Historical assistant replies can include unsupported completion claims. State the current
     // required action at the provider boundary, using only validated registry names.
     const stepMessages = sequenceStep?.state === 'next'
@@ -4388,7 +4389,8 @@ export class SessionDO extends DurableObject<Env> {
       // and a game with nothing on screen or a loop nobody played is not finished either.
       const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
       // …nor is a request whose own list still names a part nothing built is named for (run-parts.ts).
-      const partNext = agent.mutated && canBuild && !owesWork ? steerToPart(agent) : null;
+      // A game the client check called ready is finished: its answer ends the run (run-flow.ts).
+      const partNext = agent.mutated && canBuild && !owesWork && !agent.judgedReady ? steerToPart(agent) : null;
       if (partNext) {
         agent.llm.push({ role: 'user', content: partNext });
         await this.persistAgent(agent);
@@ -4396,7 +4398,7 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
       if (
-        agent.mutated && canBuild && !owesWork &&
+        agent.mutated && canBuild && !owesWork && !agent.judgedReady &&
         (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES && (gaps.length > 0 || leavesWorkOpen(res.text))
       ) {
         agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;

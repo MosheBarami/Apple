@@ -12,3 +12,13 @@ test('run flow: a ready verdict from judge_game ends the changes; the answer is 
   assert.equal(afterReady(false, 'insert_ui_component', writers), undefined, 'before a ready verdict, fixing goes on');
   assert.equal(afterReady(undefined, 'edit_script', writers), undefined);
 });
+
+test('run flow: the step after a ready verdict offers no tools, so the reply is the answer', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
+  assert.match(src, /const talkOnly = \([^\n]*\) \|\| agent\.judgedReady === true;/);
+  assert.match(src, /tools: talkOnly \? \[\] :/);
+  assert.match(src, /if \(out\.ok && saysReady\(call\.name, out\.resultForLlm\)\) agent\.judgedReady = true;/);
+  assert.match(src, /!owesWork && !agent\.judgedReady \? steerToPart\(agent\)/, 'no part steer after ready');
+  assert.match(src, /agent\.mutated && canBuild && !owesWork && !agent\.judgedReady &&/, 'no keep-going steer after ready');
+});
