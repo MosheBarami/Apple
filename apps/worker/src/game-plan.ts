@@ -656,6 +656,13 @@ function buildWords(design: Design, r: {
 const NEXT_STEPS = 'The build is in the place. Now: (1) theme the content: for each entry of themeTheContent.tables read the module (read_script), then edit it (edit_script) so every item gets a themed name (theme.nameIdeas) and price in the given format and count (a module that has more items than the count keeps only that many); keep keepInMind true while you do; import the themedModels that fit with import_owner_library; carry out brokenReferences (each line names a part that is not in the game: remove or guard it), codeEdits, featuresToWrite and textsStillToChange with edit_script. ' +
   '(2) Call judge_game {request: themeTheContent.request}. (3) Fix what it lists, in its order, and judge again, at most three rounds in all. ' +
   '(4) Answer the user from forUser in your own friendly words: what the player will see and do. Name no tools, paths, counts or ids. If a script in it can load code from the internet or ask players to pay (see suspicious), say so in one plain sentence.';
+/** When the build did everything itself (the content was chosen, the texts fixed, nothing left to write), the model checks and answers. */
+const DONE_STEPS = 'The build is in the place and nothing is left to do on it: the content that fits the request was chosen, and the texts, names and code were already changed. ' +
+  'Do not rename, re-theme or rewrite anything. Now: (1) Call judge_game {request: themeTheContent.request}. (2) Fix only what it lists, in its order, and judge again, at most three rounds in all. ' +
+  '(3) Answer the user from forUser in your own friendly words: what the player will see and do. Name no tools, paths, counts or ids. If a script in it can load code from the internet or ask players to pay (see suspicious), say so in one plain sentence.';
+/** Is there anything in the checklist for the model to do before the judge? */
+const workLeft = (c: Record<string, unknown>): boolean =>
+  ['tables', 'themedModels', 'codeEdits', 'featuresToWrite', 'brokenReferences', 'textsStillToChange'].some((k) => Array.isArray(c[k]) && (c[k] as unknown[]).length > 0);
 
 export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts: BuildOptions = {}) {
   const now = opts.now ?? Date.now;
@@ -776,6 +783,7 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
   if (imported === 0) return { error: `${disconnected ? plainProblem('disconnected') : 'Apple could not build a game from your saved games this time.'} Tell the user in one plain sentence; nothing was added.`, technical: failed[0] };
   // Scripts that can call out to the internet come in dozens (every plant model carries one): a few say it, the count says how many.
   const flagged = suspicious.slice(0, 8);
+  const checklist = await themeTheContent(ctx, design, request, fixes.left, lit === 'refused' ? 'Studio refused the theme lighting; set the Lighting values by hand.' : '', dangling);
   return {
     built: true, changed: true, title: design.title, genre: design.genre, seed,
     forUser: buildWords(design, { failed, regionsPlaced, regionsLeft, removed: screens.removed.length + hid.hidden, fixed: fixes.fixed, menus, saves: inserted.some((p) => SAVES.test(p)), timedOut, disconnected, light: lit === 'set', spawn: spawned,
@@ -786,9 +794,9 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
     ...(menus ? { menus: MENUS_CONNECTED } : {}),
     ...(design.chosen && patched.applied ? { contentChosen: `${design.chosen.why}: ${design.chosen.keep.slice(0, 10).join(', ')}${design.chosen.keep.length > 10 ? '…' : ''}. This is done; do not rename or re-register them.` } : {}),
     ...(patched.failed.length ? { editsNotApplied: patched.failed.slice(0, 6) } : {}),
-    themeTheContent: await themeTheContent(ctx, design, request, fixes.left, lit === 'refused' ? 'Studio refused the theme lighting; set the Lighting values by hand.' : '', dangling),
+    themeTheContent: checklist,
     seconds: Math.round((now() - started) / 1000),
-    note: NEXT_STEPS,
+    note: workLeft(checklist) ? NEXT_STEPS : DONE_STEPS,
   };
 }
 

@@ -260,7 +260,20 @@ test('build_game: the content the design chose is made so in the code: exact edi
   assert.deepEqual(data.editsNotApplied.map((e) => e.path), ['game.ReplicatedStorage.Config.Creatures', 'game.ReplicatedStorage.Config.Rebirths']);
   assert.match(data.contentChosen, /Banana, Kiwi\. This is done; do not rename/);
   assert.match(data.forUser, /Only the 2 characters that fit the theme appear, the rest never show up\./);
+
   assert.equal(jargon.test(data.forUser), false, data.forUser);
+});
+
+test('build_game: when the build did everything itself, the model is told to check the game and answer, not to theme or rewrite anything', async () => {
+  const d = design();
+  const f = studio({ route: { design: designRoute({ content: { ...d.content, tables: [], models: [], chosen: { keep: ['Banana'], left: 3, why: 'only the fruit spawn' }, patches: [] },
+    leaveOut: d.leaveOut.map((l) => ({ ...l, edits: [] })), keepEdits: [], write: [], screens: { ...d.screens, fixTexts: [] }, branding: [] }) } });
+  const { data } = await built(f);
+  assert.deepEqual(Object.keys(data.themeTheContent).filter((k) => /tables|themedModels|codeEdits|featuresToWrite|brokenReferences|textsStillToChange/.test(k) && data.themeTheContent[k].length), []);
+  assert.match(data.note, /nothing is left to do on it/);
+  assert.match(data.note, /Do not rename, re-theme or rewrite anything/);
+  const busy = await built(studio());
+  assert.match(busy.data.note, /theme the content/, 'a plan that leaves work says so');
 });
 
 test('build_game: a path that leads nowhere deletes nothing else, not even a look-alike elsewhere', async () => {
