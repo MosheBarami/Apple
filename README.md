@@ -1,6 +1,6 @@
-# Golem
+# Apple
 
-**Describe it. Golem builds it.** — an AI SaaS that takes a Roblox game from idea to working
+**Describe it. Apple builds it.** — an AI SaaS that takes a Roblox game from idea to working
 experience, through one assistant that lives in a web workspace and inside Roblox Studio.
 
 - **Live**: https://golem.moshe-barami111.workers.dev
@@ -19,10 +19,10 @@ Durable Object and executes typed ops with ChangeHistoryService undo around ever
 
 ```
 browser ── WebSocket ──▶ SessionDO ◀── long-poll ── Studio plugin
-                          │  agent loop (alarm-driven steps)
-                          │  checkpoints (gzipped snapshots in DO SQLite)
-                          ▼
-                     Workers AI  +  Vectorize/D1 RAG
+                           │  agent loop (alarm-driven steps)
+                           │  checkpoints (gzipped snapshots in DO SQLite)
+                           ▼
+                      Workers AI  +  Vectorize/D1 RAG
 ```
 
 ## Repo layout
