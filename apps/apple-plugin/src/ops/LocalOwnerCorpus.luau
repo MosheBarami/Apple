@@ -586,9 +586,17 @@ function LocalOwnerCorpus.build(api)
 			roots = decoded
 			-- A copy keeps links to its original creator's packages; the first edit then stops Studio with a "modifying
 			-- packages" dialog. The owner's copy is his own, so the links go before anything is placed.
+			-- Pack authors also leave notes for the developer inside what they ship ("BORRAR ESTO!!!", "Delete this", "READ ME"):
+			-- a sign on the player's screen saying "delete this sign" is not part of any game.
+			local NOTES = { "borrar", "delete this", "delete me", "remove this", "read me", "readme", "read_this", "read this", "<-read" }
+			local function note(name)
+				local lower = string.lower(name)
+				for _, phrase in NOTES do if string.find(lower, phrase, 1, true) then return true end end
+				return false
+			end
 			for _, root in roots do
 				for _, node in root:GetDescendants() do
-					if node.ClassName == "PackageLink" then pcall(function() node:Destroy() end) end
+					if node.ClassName == "PackageLink" or note(node.Name) then pcall(function() node:Destroy() end) end
 				end
 			end
 		end
