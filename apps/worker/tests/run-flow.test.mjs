@@ -40,7 +40,7 @@ test('run flow: a second request on a built place continues that game instead of
 test('run flow: build_game records the project\'s game and the next run reads it', async () => {
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
-  assert.match(src, /call\.name === 'build_game'\) \{\s*agent\.builtGame = true;[^}]*storage\.put\('builtGame'/);
+  assert.match(src, /\(call\.name === 'build_game' \|\| call\.name === 'compose_game'\)\) \{\s*agent\.builtGame = true;[^}]*storage\.put\('builtGame'/);
   assert.match(src, /continueGameLine\(await this\.ctx\.storage\.get<BuiltGameRecord>\('builtGame'\), text\)/);
   assert.match(src, /\?\? refuseRebuild\(agent\.continuesGame, call\.name\)/);
 });

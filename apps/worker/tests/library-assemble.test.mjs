@@ -494,7 +494,7 @@ test('the library tools are registered as project-changing Studio tools, offered
   }
   assert.equal(T.TOOLS.plan_game.mutatesProject, undefined, 'planning changes nothing');
   assert.deepEqual(T.TOOLS.plan_game.studioOps, ['query_owner_library']);
-  assert.match(T.TOOLS.plan_game.def.description, /FIRST STEP/);
+  assert.match(T.TOOLS.plan_game.def.description, /saved games by name/);
   assert.deepEqual(T.TOOLS.plan_game.def.parameters.required, ['request']);
   assert.deepEqual(T.TOOLS.install_owner_system.def.parameters.required, ['gameId']);
   assert.equal(T.TOOLS.assemble_owner_game, undefined);
@@ -502,14 +502,15 @@ test('the library tools are registered as project-changing Studio tools, offered
 
 // ---------------------------------------------------------- the prompt, the run's own record and the fences
 
-test('the prompt names the flow (plan, build, theme, judge, fix, answer) as the way to build from the saved games, in a short paragraph without the do-and-do-not prose the tools now enforce', async () => {
+test('the prompt names the flow (compose, judge, fix, answer) as the way to build a new game, in a short paragraph without the do-and-do-not prose the tools now enforce', async () => {
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/prompts.ts', import.meta.url), 'utf8');
-  const at = src.indexOf("- THE OWNER'S SAVED GAMES ARE THE FIRST SOURCE FOR EVERY BUILD.");
+  const at = src.indexOf('- A NEW GAME IS MADE FROM COMPONENTS, NEVER BY COPYING A WHOLE SAVED GAME.');
   assert.ok(at > 0, 'the paragraph');
   const paragraph = src.slice(at, src.indexOf('\n- ', at + 10));
-  assert.ok(paragraph.length < 1000, `${paragraph.length} characters: keep it short, the tool descriptions carry the how`);
-  assert.match(paragraph, /plan_game \{request\}[\s\S]*build_game[\s\S]*judge_game \{request\}[\s\S]*at most three rounds/);
+  assert.ok(paragraph.length < 1300, `${paragraph.length} characters: keep it short, the tool descriptions carry the how`);
+  assert.match(paragraph, /compose_game \{request\}[\s\S]*judge_game \{request\}[\s\S]*at most three rounds/);
+  assert.match(paragraph, /never build a different game instead/);
   assert.match(paragraph, /install_owner_system \{gameId\}/);
   assert.match(paragraph, /If an imported game can load code from the internet, say so in one plain sentence/);
   for (const enforced of [/never a flat or realistic map/i, /studded-modern and\s+studded-classic/i, /MaterialVariant from MaterialService/i, /unrelated GUIs dropped on it/i, /ONE studded game in the niche/i]) assert.doesNotMatch(src, enforced);

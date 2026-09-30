@@ -4636,7 +4636,7 @@ export class SessionDO extends DurableObject<Env> {
       // A model file recreates without replacing a slot, so the import alone does not mark it.
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
       // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
-      if (out.mutatedProject === true && call.name === 'build_game') {
+      if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {
         agent.builtGame = true;
         // One project is one game: the next run on this project continues it (run-flow.ts continueGameLine).
         await this.ctx.storage.put('builtGame', { at: Date.now(), request: (agent.request ?? lastUserText(agent.llm) ?? '').slice(0, 300) } satisfies BuiltGameRecord);

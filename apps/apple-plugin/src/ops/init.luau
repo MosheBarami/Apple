@@ -24,5 +24,6 @@ load(function() return require(script.Fx) end)
 load(function() return require(script.Content) end)
 load(function() return require(script.OwnerCorpus) end)
 load(function() return require(script.LocalOwnerCorpus) end)
+load(function() return require(script.Compose) end)
 
 return families

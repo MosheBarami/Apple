@@ -118,6 +118,10 @@ export type StudioOp =
   // positive multiplier. Non-finite and out-of-range values are refused rather than clamped.
   | { op: 'transform_instances'; paths: string[]; move?: [number, number, number]; rotate?: [number, number, number]; scale?: number }
   | { op: 'clone_instances'; paths: string[]; parent?: string }
+  /** The composer (apps/worker/src/compose.ts): copies of imported library pieces placed on a new map. */
+  | { op: 'place_copies'; items: { from: string; parent: string; name: string; at: [number, number, number]; yaw?: number; height?: number; length?: number; along?: 'x' | 'z' }[] }
+  /** The composer: a UI kit's own scripts and sounds taken out (only those classes). */
+  | { op: 'strip_descendants'; root: string; classes: ('LocalScript' | 'Script' | 'ModuleScript' | 'Sound')[] }
   | { op: 'group_instances'; paths: string[]; name?: string }
   | { op: 'ungroup_instances'; paths: string[] }
   | { op: 'rename_instance'; path: string; name: string }
@@ -983,6 +987,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'recreate_owner_game':
     case 'install_owner_system':
     case 'build_game':
+    case 'compose_game':
     case 'insert_library_model':
     case 'generate_model':
     case 'generate_model_external':
@@ -2800,6 +2805,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'install_owner_system',
     label: 'Add a ready-made feature from your uploaded games',
     why: 'Copies one feature with its scripts from your own game library into your place.',
+    group: 'changes',
+  },
+  {
+    name: 'compose_game',
+    label: 'Build a new game for your idea',
+    why: 'Builds a new game for your idea from ready-made parts and pieces of your game library, with its own map, in your place.',
     group: 'changes',
   },
   {

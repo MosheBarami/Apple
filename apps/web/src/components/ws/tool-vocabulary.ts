@@ -221,6 +221,7 @@ export const TOOL = {
   install_owner_system: { kind: 'building', label: 'Added a feature from your game library', live: 'Adding a feature from your games' },
   plan_game: { kind: 'planning', label: 'Planned an original game from your library', live: 'Planning your game' },
   build_game: { kind: 'building', label: 'Built a game from your library', live: 'Building your game from your games' },
+  compose_game: { kind: 'building', label: 'Built your game', live: 'Building your game' },
   query_owner_assembly: { kind: 'searching_assets', label: 'Looked up how a library game works', live: 'Studying a library game' },
   read_owner_media: { kind: 'inspecting', label: 'Looked at library media', live: 'Looking at library media' },
   list_owner_original_strings: { kind: 'inspecting', label: 'Listed library code', live: 'Reading library code' },

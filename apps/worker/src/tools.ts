@@ -79,6 +79,7 @@ import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
 import { planGame, buildGame, planSummary, buildSummary, plannedLoop } from './game-plan';
+import { composeGame, composeSummary } from './compose-tool';
 import { JUDGE_GAME_DEF, judgeGame, judgeSummary } from './client-judge';
 import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
@@ -4897,7 +4898,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   plan_game: {
     def: {
       name: 'plan_game',
-      description: "FIRST STEP of every game built from the owner's saved games: designs an ORIGINAL game fitted to the request: one working saved game to build on, the features kept and left out, the screens and texts to fix, the content to theme, a fresh title. Changes nothing. Returns a digest; you may change only title, theme, pitch and currency (pass them to build_game). Same seed, same plan.",
+      description: "Only when the user asks for one of their saved games by name: designs a copy of it. Changes nothing. Then build_game. A new idea goes to compose_game.",
       parameters: S({request:{type:'string'},theme:{type:'string'},features:{type:'array',items:{type:'string'}},seed:{type:'number'}},['request']),
     },
     studio: true,
@@ -4908,7 +4909,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   build_game: {
     def: {
       name: 'build_game',
-      description: "SECOND STEP: carries the plan_game design out exactly: brings in only the parts it lists (with scripts), sets extra landmarks on open ground, deletes screens that do not belong, replaces placeholder and leftover texts, sets the sky, adds a spawn, connects menus. One checkpoint; takes minutes. Returns forUser (plain words) and themeTheContent (modules to theme with format and count, models to import, code edits, walkthrough). Then theme the content, run judge_game {request}, fix what it lists (at most three rounds), answer from forUser.",
+      description: "Only after plan_game: builds that saved game's copy (one checkpoint). Then run judge_game {request}, fix what it lists (at most three rounds) and answer from forUser.",
       parameters: S({design:{type:'object',description:'Only names you changed.',properties:{title:{type:'string'},theme:{type:'string'},pitch:{type:'string'},currency:{type:'string'}}}}),
     },
     studio: true,
@@ -4916,6 +4917,18 @@ export const TOOLS: Record<string, ToolImpl> = {
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as {changed?: unknown}).changed === true,
     plainSummary: buildSummary,
     run: buildGame,
+  },
+  compose_game: {
+    def: {
+      name: 'compose_game',
+      description: "Builds a NEW game for the user's idea from components (systems, a UI kit, props, the idea's creatures) on a map made for it; never copies a saved game. One checkpoint, a few minutes. Then judge_game {request}, fix what it lists, answer from forUser.",
+      parameters: S({ request: { type: 'string', description: "The user's idea, in their words." } }, ['request']),
+    },
+    studio: true,
+    studioOps: ['snapshot', 'import_owner_library', 'create_instances', 'edit_script', 'delete_instances', 'set_visible', 'place_copies', 'strip_descendants'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
+    plainSummary: composeSummary,
+    run: composeGame,
   },
   insert_library_model: {
     def: {

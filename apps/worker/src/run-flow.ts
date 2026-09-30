@@ -33,7 +33,7 @@ export function wantsNewGame(text: string): boolean {
 }
 
 /** The tools that make a game from nothing; a run continuing a built game is refused them. */
-export const REBUILD_TOOLS: ReadonlySet<string> = new Set(['plan_game', 'build_game', 'recreate_owner_game']);
+export const REBUILD_TOOLS: ReadonlySet<string> = new Set(['plan_game', 'build_game', 'compose_game', 'recreate_owner_game']);
 
 /** The context line a run continuing a built game carries, or undefined when this run may build one. */
 export function continueGameLine(built: BuiltGameRecord | undefined, text: string): string | undefined {

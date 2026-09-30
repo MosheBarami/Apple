@@ -97,3 +97,35 @@ test('compose: the twist is built: every enemy is a body wearing a vegetable, an
 test('compose: the bundled components are the current sources', () => {
   execFileSync('node', [join(WORKER, '..', '..', 'scripts', 'gen-components.mjs'), '--check'], { stdio: 'pipe' });
 });
+
+const outT = join(mkdtempSync(join(tmpdir(), 'compose-tool-')), 't.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
+  [join(WORKER, 'src', 'compose-tool.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + outT, '--external:cloudflare:*'],
+  { cwd: WORKER, stdio: 'pipe' });
+const CT = await import(`file://${outT}`);
+const outR = join(mkdtempSync(join(tmpdir(), 'compose-run-')), 'r.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
+  [join(WORKER, 'src', 'compose-run.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + outR, '--external:cloudflare:*'],
+  { cwd: WORKER, stdio: 'pipe' });
+const CR = await import(`file://${outR}`);
+
+test('compose_game: an idea picks its template; an idea no template can build is refused, never swapped for another game', () => {
+  const orchard = CT.ideaRecipe('defend your orchard from vegetables that come in waves');
+  assert.equal(orchard.template, 'lane-defense/orchard');
+  assert.equal(CT.ideaRecipe('Defend the farm from waves of angry tomatoes').template, 'lane-defense/orchard');
+  const other = CT.ideaRecipe('a racing game on the moon');
+  assert.ok('error' in other);
+  assert.match(other.error, /nothing was built/);
+  assert.notEqual(CT.ideaSeed('defend your orchard'), CT.ideaSeed('defend your farm'), 'a new idea gets a new map');
+  assert.equal(CT.ideaSeed('Defend  your orchard'), CT.ideaSeed('defend your orchard'), 'the same idea gets the same map');
+});
+
+test('compose_game: composer values become the plugin\'s typed values', () => {
+  assert.deepEqual(CR.propValue('Size', [4, 1, 4]), { t: 'Vector3', v: [4, 1, 4] });
+  assert.deepEqual(CR.propValue('Material', 'Grass'), { t: 'EnumItem', v: 'Enum.Material.Grass' });
+  assert.deepEqual(CR.propValue('TopSurface', 'Studs'), { t: 'EnumItem', v: 'Enum.SurfaceType.Studs' });
+  const c = CR.propValue('Color', '#ff8000');
+  assert.equal(c.t, 'Color3'); assert.equal(c.v[0], 1); assert.ok(Math.abs(c.v[1] - 128 / 255) < 1e-9); assert.equal(c.v[2], 0);
+  assert.deepEqual(CR.propValue('Anchored', true), { t: 'bool', v: true });
+  assert.deepEqual(CR.propValue('', 'AppleTile'), { t: 'string', v: 'AppleTile' });
+});

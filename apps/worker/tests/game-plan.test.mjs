@@ -634,8 +634,10 @@ test('the flow: plan_game, build_game and judge_game are the agent\'s tools; ass
   assert.match(defs.build_game.description, /judge_game/);
   assert.match(defs.build_game.description, /at most three rounds/);
   assert.match(defs.plan_game.description, /build_game/);
+  assert.match(defs.plan_game.description, /compose_game/, 'a new idea goes to the composer');
+  assert.match(defs.compose_game.description, /never copies a saved game/);
   const prompts = readFileSync('src/prompts.ts', 'utf8');
-  assert.match(prompts, /plan_game \{request\}[\s\S]{0,200}build_game[\s\S]{0,400}judge_game \{request\}[\s\S]{0,120}at most three rounds/);
+  assert.match(prompts, /compose_game \{request\}[\s\S]{0,400}judge_game \{request\}[\s\S]{0,120}at most three rounds/);
   assert.equal(/assemble_owner_game/.test(prompts), false);
 });
 
@@ -644,7 +646,9 @@ test('the flow: the tools are registered where the product lists them (permissio
   assert.equal(S.GOVERNED_TOOLS.some((g) => g.name === 'assemble_owner_game'), false);
   assert.equal(S.phaseForTool('plan_game'), 'planning');
   assert.equal(S.phaseForTool('build_game'), 'building');
-  assert.deepEqual(T.projectMutatingToolNames().filter((n) => /_game$/.test(n)).sort(), ['build_game', 'recreate_owner_game']);
+  assert.ok(S.GOVERNED_TOOLS.some((g) => g.name === 'compose_game' && g.group === 'changes'));
+  assert.equal(S.phaseForTool('compose_game'), 'building');
+  assert.deepEqual(T.projectMutatingToolNames().filter((n) => /_game$/.test(n)).sort(), ['build_game', 'compose_game', 'recreate_owner_game']);
 });
 
 test('the flow: a design path resolves the way the imports put things (children go straight in, a self import keeps its name, odd names are bracketed)', () => {
