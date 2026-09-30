@@ -725,7 +725,8 @@ export function playCheckUiOp(a: Args): StudioOp | Refusal {
   }
   const press = paths(a.press, 'press', PLAY_CHECK_UI_PRESS_LIMIT, true);
   if (isRefusal(press)) return press;
-  if (press.some((p) => !/^(game\.)?StarterGui\./.test(p))) {
+  // A name that is not an identifier is written game.StarterGui["Shop Gui"].Buy, so StarterGui may be followed by a dot or a bracket.
+  if (press.some((p) => !/^(game\.)?StarterGui[.[]/.test(p))) {
     return refuse('Each press path must be a GuiButton inside a ScreenGui in game.StarterGui, e.g. "game.StarterGui.ShopGui.Panel.Buy".');
   }
   // The plugin parses only paths that start at `game`.

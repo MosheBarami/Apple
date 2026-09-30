@@ -297,6 +297,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   run_and_check: 'Starts and stops Run mode in the user\'s Studio. It takes over the window of whoever is sitting at it.',
   play_check: 'Starts a Test session with a player in the user\'s Studio and inserts a temporary harness for it. It takes over the window of whoever is sitting at it.',
   play_check_ui: 'play_check plus clicking on-screen buttons in the running game: the same takeover of the window of whoever is sitting at it.',
+  judge_game: 'Plays the game in up to three Test sessions with real button clicks: the same takeover of the window of whoever is sitting at it, for minutes rather than seconds.',
   run_spec: 'Executes assertion code against the place\'s modules, which means executing code.',
   audit_build: 'Runs Luau probes AND a panel of critic models. Both halves disqualify it: it executes, and it spends.',
 

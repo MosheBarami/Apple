@@ -219,6 +219,16 @@ test('play_check_ui presses are steps: the same button may be pressed twice, in 
   assert.deepEqual(calls[0].op.press, ['game.StarterGui.Plot.Slot1', 'game.StarterGui.Plot.Slot1']);
 });
 
+test('play_check_ui takes a button of a screen whose name is not an identifier, written the way the plugin writes it', async () => {
+  const { ctx, calls } = studio({ completed: true, presses: [] });
+  const path = 'game.StarterGui["Shop Gui"]["Open/Close"].Buy';
+  await T.TOOLS.play_check_ui.run(ctx, { press: [path] });
+  assert.equal(calls.length, 1, 'the press was sent, not refused');
+  assert.deepEqual(calls[0].op.press, [path]);
+  const refused = await T.TOOLS.play_check_ui.run(studio({ completed: true, presses: [] }).ctx, { press: ['game.StarterGuiX.Buy', 'game.Workspace["Shop Gui"].Buy'] });
+  assert.match(refused.error, /Each press path must be a GuiButton inside a ScreenGui in game\.StarterGui/, 'a neighbour of StarterGui is still not StarterGui');
+});
+
 test('play_check_ui: a missing button is NOT FOUND, never an activation', () => {
   const out = P.summarisePlayCheck({
     completed: true, playerJoined: true, characterSpawned: true, clientReported: true, playerGuiFound: true, screenGuis: [], harnessRemoved: true,

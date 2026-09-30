@@ -235,6 +235,7 @@ export const TOOL = {
   run_and_check: { kind: 'playtesting', label: 'Ran the game and checked it', live: 'Playing your game' },
   play_check: { kind: 'playtesting', label: 'Played it as a player and checked the screen', live: 'Playing your game' },
   play_check_ui: { kind: 'playtesting', label: 'Played it and pressed the buttons on screen', live: 'Pressing the buttons to test them' },
+  judge_game: { kind: 'playtesting', label: 'Judged the game the way a player would', live: 'Judging your game like a player would' },
   get_output_logs: { kind: 'debugging', label: 'Read the output log', live: 'Looking for problems' },
   create_checkpoint: { kind: 'saving', label: 'Saved a checkpoint', live: 'Saving your progress' },
   remember: { kind: 'remembering', label: 'Noted a fact about the project', live: 'Remembering what changed' },

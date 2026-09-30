@@ -5,7 +5,7 @@
 // operation and answers the way the real plugin does (apps/apple-plugin/src/ops/Query.luau and Commands.luau), so a test can
 // check what the tools ASKED and what the world looks like afterwards, not only what they returned.
 
-const CLASS_PARENTS = { TextButton: 'GuiButton', ImageButton: 'GuiButton', Script: 'LuaSourceContainer', LocalScript: 'LuaSourceContainer', ModuleScript: 'LuaSourceContainer' };
+const CLASS_PARENTS = { TextButton: 'GuiButton', ImageButton: 'GuiButton', Script: 'LuaSourceContainer', LocalScript: 'LuaSourceContainer', ModuleScript: 'LuaSourceContainer', ScreenGui: 'LayerCollector', BillboardGui: 'LayerCollector', SurfaceGui: 'LayerCollector' };
 const isA = (cls, target) => { for (let c = cls; c; c = CLASS_PARENTS[c]) if (c === target) return true; return false; };
 const last = (path) => path.split('.').pop();
 const lastSlash = (path) => path.split('/').filter(Boolean).pop() ?? '';
@@ -17,7 +17,9 @@ const lastSlash = (path) => path.split('/').filter(Boolean).pop() ?? '';
  * @param {object[]} [o.walls]   [{ center:[x,y,z], size:[x,y,z] }] solid: rays land on them, models cannot overlap them
  * @param {object[]} [o.ghosts]  same, but invisible to rays (a trigger zone): only the overlap check sees them
  * @param {string[]} [o.workspace]  names the place's Workspace holds at the start
- * @param {object} [o.game]     what a game breakdown (query_owner_library action game) answers
+ * @param {object | ((op: object) => object)} [o.game]     what a game breakdown (query_owner_library action game) answers
+ * @param {(op: object, n: number) => object | Error} [o.play]   the plugin's play_check / play_check_ui report for the n-th session (1-based); an Error is a refused session
+ * @param {Record<string, object>} [o.layout]    ui_layout_check answers by screen path (default: a pass)
  * @param {(op: object) => object | null} [o.fail]  return a reply to override an op's answer
  */
 export function fakeStudio(o = {}) {
@@ -40,13 +42,20 @@ export function fakeStudio(o = {}) {
   const models = (except) => [...nodes.values()].filter((n) => n.center && n.path.startsWith('game.Workspace.') && !except.includes(n.path) && n.class !== 'SpawnLocation' && n.name !== 'Baseplate');
   const ok = (data = {}) => ({ ok: true, data });
   const no = (error, failure) => ({ ok: false, error, ...(failure ? { failure } : {}) });
-  const world = { nodes, log, add, kids, under };
+  const world = { nodes, log, add, kids, under, get sessions() { return sessions; } };
 
+  let sessions = 0;
+  const playSession = (op) => {
+    sessions += 1;
+    const r = o.play?.(op, sessions);
+    if (r === undefined) return no(op.op + ' is not supported by this stand-in');
+    return r instanceof Error ? no(r.message) : ok(r);
+  };
   const handlers = {
     query_owner_library(op) {
       if (op.action === 'route') { const r = o.route?.[op.route]; return typeof r === 'function' ? r(op) : r === undefined ? no('unknown route ' + op.route) : r instanceof Error ? no(r.message) : ok(r); }
       if (op.action === 'deps') return ok({ needs: [], usedBy: [] });
-      return ok(o.game ?? { name: 'Game', place: true, services: {} });
+      return ok(typeof o.game === 'function' ? o.game(op) : o.game ?? { name: 'Game', place: true, services: {} });
     },
     import_owner_library(op) {
       const parent = nodes.get(op.parent);
@@ -70,7 +79,32 @@ export function fakeStudio(o = {}) {
     get_tree(op) {
       const n = nodes.get(op.root);
       if (!n) return no('instance not found at ' + op.root, 'not_found');
-      return ok({ root: { path: n.path, name: n.name, class: n.class, children: kids(n.path).map((c) => ({ path: c.path, name: c.name, class: c.class })) } });
+      // Like the plugin: properties and attributes on every node, children down to maxDepth (default 1), moreChildren where it stops.
+      const depth = op.maxDepth ?? 1, limit = op.maxNodes ?? Infinity;
+      let count = 0, cut = false;
+      const view = (x, d) => {
+        count += 1;
+        const cs = kids(x.path);
+        const out = { path: x.path, name: x.name, class: x.class, childCount: cs.length };
+        if (x.props) out.props = x.props;
+        if (x.attrs && Object.keys(x.attrs).length) out.attributes = x.attrs;
+        if (d < depth) {
+          out.children = [];
+          for (const c of cs) {
+            if (count >= limit) { out.truncated = true; cut = true; break; }
+            out.children.push(view(c, d + 1));
+          }
+        } else if (cs.length) out.moreChildren = cs.length;
+        return out;
+      };
+      const root = view(n, 0);
+      return ok({ root, nodeCount: count, truncated: cut });
+    },
+    play_check(op) { return playSession(op); },
+    play_check_ui(op) { return playSession(op); },
+    ui_layout_check(op) {
+      if (!nodes.has(op.screen)) return no('instance not found at ' + op.screen, 'not_found');
+      return ok(o.layout?.[op.screen] ?? { screen: op.screen, devices: [{ device: 'desktop', size: [1920, 1080], elements: 1, issues: [] }], issues: 0, verdict: 'pass' });
     },
     create_instances(op) { for (const i of op.items) add(i.parent + '.' + i.name, { class: i.className }); return ok({ created: op.items.length }); },
     spatial_query(op) {

@@ -1045,6 +1045,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'run_and_check':
     case 'play_check':
     case 'play_check_ui':
+    // Judging the finished game plays it (up to three short Test sessions), so it announces the phase that says so.
+    case 'judge_game':
       return 'playtesting';
     case 'get_output_logs':
       return 'debugging';
@@ -2831,6 +2833,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'play_check_ui',
     label: 'Playtest and press buttons',
     why: 'Starts a short Test session and clicks on-screen buttons as a player would. Withhold it and Apple cannot prove a menu or shop works.',
+    group: 'changes',
+  },
+  {
+    name: 'judge_game',
+    label: 'Judge the finished game like a client',
+    why: 'Reads your whole place and starts up to three short Test sessions in your Studio that click buttons as a player would. Withhold it and Apple cannot check the finished game against what you asked for.',
     group: 'changes',
   },
   {

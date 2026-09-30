@@ -78,6 +78,7 @@ import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, 
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
 import { installOwnerSystem, assembleOwnerGame, installSummary, assembleSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
+import { JUDGE_GAME_DEF, judgeGame, judgeSummary } from './client-judge';
 import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
@@ -3037,6 +3038,20 @@ export const TOOLS: Record<string, ToolImpl> = {
       return summarisePlayCheck(res);
     },
   },
+  /**
+   * THE CLIENT'S QUESTIONS. The owner judged a finished game as a paying customer would (is it unique, is the UI clean and
+   * fitting, is there progression, are there placeholders, do the buttons and the code work, does it have what the request
+   * implies) and found that the checks Apple ran asked none of them. This asks all seven, from the place and from up to three
+   * Test sessions, and returns a fix for each no. The bodies are in client-judge.ts; it changes nothing in the place.
+   */
+  judge_game: {
+    def: JUDGE_GAME_DEF,
+    studio: true,
+    // play_check_ui is reported supported only when play_check is (Commands.capabilities), so it stands for both.
+    studioOps: ['get_tree', 'query_instances', 'spatial_query', 'dump_scripts', 'ui_layout_check', 'play_check_ui'],
+    plainSummary: judgeSummary,
+    run: (ctx, a) => judgeGame(studioCall(ctx), a),
+  },
   get_output_logs: {
     def: { name: 'get_output_logs', description: 'Read recent Studio output/console logs (errors, warnings, prints).', parameters: S({}) },
     studio: true,
@@ -5605,7 +5620,7 @@ export async function runTool(
       ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== 'projectMutated' && key !== 'retryable'))
       : result;
     let str = typeof visibleResult === 'string' ? visibleResult : JSON.stringify(visibleResult);
-    const resultLimit = name === 'browse_owner_library' || name === 'import_owner_library' || name === 'recreate_owner_game' || name === 'install_owner_system' || name === 'assemble_owner_game' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' || name === 'inspect_visually' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
+    const resultLimit = name === 'browse_owner_library' || name === 'import_owner_library' || name === 'recreate_owner_game' || name === 'install_owner_system' || name === 'assemble_owner_game' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' || name === 'inspect_visually' || name === 'judge_game' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
     if (str.length > resultLimit) str = str.slice(0, resultLimit) + `\n...[truncated ${str.length - resultLimit} chars]`;
     const mutatedProject = partialMutation || (!failed && toolMutatesProject(name, result));
     // An explicit UI payload wins. It is capped separately and more generously than the derived
