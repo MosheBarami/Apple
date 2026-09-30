@@ -16,6 +16,7 @@ starts here, before AGENTS.md's map and before any code.
 | `PRODUCT_HYPOTHESES.md` | Hypotheses not yet tested. | implementers, critics |
 | `DECISIONS.md` | Decisions with evidence, rejected alternative and a falsification condition. | implementers, critics — **never** customer-strangers or fresh reviewers |
 | `EXPERIMENTS.md` | Experiments run and their measured outcome. | implementers, critics |
+| `SESSION_HANDOFF_2026-09-30.md` | **Latest handoff: the owner rejected the library game; the next session builds from components.** Read it first. | the next session |
 | `HANDOFF.md` | The compact handoff between sessions, in the report's format. | the next implementer only |
 | `evidence/<UTC stamp>/` | Per-iteration evidence: git state, test results, screenshots, Studio readback, deployment ids. | everyone |
 
