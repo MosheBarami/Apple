@@ -112,7 +112,10 @@ function methods:IsDescendantOf(ancestor)
     while current do if current==ancestor then return true end; current=current.Parent end
     return false
 end
-function methods:FindFirstChild(name) for _, child in ipairs(self.__children) do if child.Name == name then return child end end end
+function methods:FindFirstChild(name, recursive)
+    for _, child in ipairs(self.__children) do if child.Name == name then return child end end
+    if recursive then for _, child in ipairs(self.__children) do local found = child:FindFirstChild(name, true); if found then return found end end end
+end
 function methods:GetFullName()
     local names, current = {}, self
     while current and current.ClassName ~= "DataModel" do table.insert(names, 1, current.Name); current = current.Parent end

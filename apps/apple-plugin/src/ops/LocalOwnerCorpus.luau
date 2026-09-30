@@ -424,6 +424,8 @@ function LocalOwnerCorpus.build(api)
 	-- pasted port/key: the gateway serves /v1/library* to loopback without a key, on its default port. The
 	-- paired-session consent fence (stillCurrent) still applies to both.
 	local LIBRARY_PORT, LIBRARY_MAX_BYTES, LIBRARY_MAX_NODES = 63747, 64 * 1024 * 1024, 250000
+	-- Read routes the "route" action forwards as they are; the gateway owns their meaning, the plugin only bounds them.
+	local LIBRARY_ROUTES = { deps = true, install = true, systems = true, blueprint = true, family = true, report = true, media = true }
 	local function libraryConfig(self, stillCurrent)
 		local ok, yes = pcall(function() return type(stillCurrent) == "function" and stillCurrent() == true end)
 		if not ok or not yes then return nil end
@@ -484,8 +486,31 @@ function LocalOwnerCorpus.build(api)
 				return nil, "invalid", "gameId (8-64 hex characters) and an absolute library path are required"
 			end
 			path = "/v1/library/deps?id=" .. op.gameId .. "&path=" .. http:UrlEncode(op.path)
+		elseif op.action == "route" then
+			-- Any gateway read route without an action of its own (install, systems, blueprint...): the route is allowlisted and
+			-- the params are bounded plain text or numbers, sorted so the same request always makes the same URL.
+			if type(op.route) ~= "string" or LIBRARY_ROUTES[op.route] ~= true then return nil, "invalid", "route must be deps, install, systems, blueprint, family, report or media" end
+			if op.params ~= nil and type(op.params) ~= "table" then return nil, "invalid", "params must be a table of names and values" end
+			local values, names = {}, {}
+			for key, value in op.params or {} do
+				if type(key) ~= "string" or string.match(key, "^[a-zA-Z][a-zA-Z0-9]*$") == nil then return nil, "invalid", "a param name must be letters and digits, starting with a letter" end
+				if #names >= 12 then return nil, "invalid", "at most 12 params" end
+				if type(value) == "number" then
+					if value ~= value or value == math.huge or value == -math.huge then return nil, "invalid", key .. " must be a finite number" end
+					values[key] = tostring(value)
+				elseif libraryText(value, 200) then
+					values[key] = value
+				else
+					return nil, "invalid", key .. " must be plain text up to 200 characters or a number"
+				end
+				table.insert(names, key)
+			end
+			table.sort(names)
+			local params = {}
+			for _, key in names do table.insert(params, key .. "=" .. http:UrlEncode(values[key])) end
+			path = "/v1/library/" .. op.route .. (if #params > 0 then "?" .. table.concat(params, "&") else "")
 		else
-			return nil, "invalid", "action must be list, game or deps"
+			return nil, "invalid", "action must be list, game, deps or route"
 		end
 		local ok, data = pcall(libraryGet, self, config, path, 1000000)
 		if not ok then return nil, "refused", tostring(data) end
@@ -526,7 +551,7 @@ function LocalOwnerCorpus.build(api)
 			return table.concat(parts)
 		end
 		local fetched, result = pcall(function()
-			local extract = libraryGet(self, config, "/v1/library/extract?id=" .. op.gameId .. "&path=" .. http:UrlEncode(op.path) .. "&mode=" .. op.mode, 1000000)
+			local extract = libraryGet(self, config, "/v1/library/extract?id=" .. op.gameId .. "&path=" .. http:UrlEncode(op.path) .. "&mode=" .. op.mode .. (if op.studioData == true then "&studio=1" else ""), 1000000)
 			local total = extract.bytes
 			if not api.integer(extract.instances) or extract.instances < 0 or extract.instances > LIBRARY_MAX_NODES then error("library extract exceeds the node cap or is malformed", 0) end
 			-- A path with nothing under it (a Lighting with only properties) has no file to fetch.
@@ -588,10 +613,17 @@ function LocalOwnerCorpus.build(api)
 		-- something already in the parent (a second "sparkles") takes Studio's paste name, "sparkles (2)", or no path could
 		-- reach either copy; roots sharing a name inside one import keep it, as the original game had them.
 		-- onlyMissing (a game's MaterialVariants) skips what the place already has: parts find a variant by its name.
+		-- AppleStudioData (the stand-in for saving without publishing) is one shared module that scripts find by name anywhere:
+		-- a place that already has one keeps it, and a second copy is dropped and counted as skipped.
 		local before, renamed, skipped = {}, {}, 0
 		for _, child in api.childrenOf(parent) do before[child.Name] = true end
 		for index, root in roots do
-			if before[root.Name] and op.onlyMissing == true then
+			local duplicateStudioData = false
+			if root.Name == "AppleStudioData" then
+				local found, existing = pcall(function() return self.game:FindFirstChild("AppleStudioData", true) end)
+				duplicateStudioData = found and existing ~= nil
+			end
+			if duplicateStudioData or (before[root.Name] and op.onlyMissing == true) then
 				api.destroyInstance(root); skipped += 1; placed = index; continue
 			elseif before[root.Name] then
 				local fresh = api.uniqueName(parent, root.Name)

@@ -14,7 +14,8 @@ const SPEC=`
 local bytesValue,expected,jobId = "${bytes}","${hex}","${job}"
 local tamper,keyless,serverGone,loads=false,true,false,0
 local urls={}
-local http={UrlEncode=function(_,text) return text end,JSONEncode=function()return "{}" end}
+local encodeReal,withData=false,false
+local http={UrlEncode=function(_,text) if not encodeReal then return text end return (string.gsub(text,"[^%w%-_.~]",function(ch) return string.format("%%%02X",string.byte(ch)) end)) end,JSONEncode=function()return "{}" end}
 function http:RequestAsync(request)
  table.insert(urls,request.Url)
  assert(string.sub(request.Url,1,#"http://127.0.0.1:63747/v1/library")=="http://127.0.0.1:63747/v1/library",request.Url)
@@ -37,6 +38,9 @@ function http:JSONDecode(url)
  if string.find(url,"/v1/library/deps",1,true) then
   return {path="/StarterGui/ShopGui",needs={{path="/ReplicatedStorage/BuyItem",parent="game.ReplicatedStorage",mode="self",instances=1,why="the shop buttons fire the BuyItem remote"}},usedBy={}}
  end
+ if string.find(url,"/v1/library/install",1,true) then
+  return {game="abcdef012345",name="Daily Reward",kind="system-pack",steps={{path="/ServerScriptService/DailyReward",mode="self",parent="game.ServerScriptService",what="the daily reward script"}},skipped={},works="yes"}
+ end
  if string.find(url,"/v1/library/game",1,true) then
   local children={}; for i=1,80 do children[i]={name="C"..i,class="Model",instances=1,scripts=0} end
   return {id="abcdef012345",name="Farm Game",place=true,services={Workspace={instances=80,scripts=0,children=children}}}
@@ -54,6 +58,10 @@ local serializer={DeserializeInstancesAsync=function(_,value)
   -- a root that refuses attributes, as some engine-owned instances do
   local base=getmetatable(model)
   setmetatable(model,{__index=function(self,key) if key=="SetAttribute" then return function() error("attributes refused") end end return base.__index(self,key) end,__newindex=base.__newindex})
+ end
+ if withData then
+  local studio=Instance.new("ModuleScript");studio.Name="AppleStudioData"
+  return {model,other,studio}
  end
  return {model,other}
 end}
@@ -83,6 +91,35 @@ assert(#urls==asked,"an invalid deps request was sent to the gateway")
 assert(c:execute("staledeps",{op="query_owner_library",action="deps",gameId="abcdef012345",path="/StarterGui"},false,function()return false end).ok==false and #urls==asked,"retired pairing read deps")
 local depsMissing=c:execute("depsmissing",{op="query_owner_library",action="deps",gameId="abcdef012345",path="/missing"},false,current)
 assert(depsMissing.ok==false and string.find(depsMissing.error,"path not found",1,true),depsMissing.error)
+local function routeOp(route,params) return {op="query_owner_library",action="route",route=route,params=params} end
+local install=c:execute("install",routeOp("install",{id="abcdef012345"}),false,current)
+assert(install.ok==true,install.error)
+assert(urls[#urls]=="http://127.0.0.1:63747/v1/library/install?id=abcdef012345",urls[#urls])
+assert(install.data.kind=="system-pack" and install.data.steps[1].parent=="game.ServerScriptService" and install.data.works=="yes" and install.data.sourceExecuted==false,"route must pass the gateway answer through")
+assert(c:execute("systems",routeOp("systems"),false,current).ok==true and urls[#urls]=="http://127.0.0.1:63747/v1/library/systems","no params means no query string")
+assert(c:execute("systems2",routeOp("systems",{}),false,current).ok==true and urls[#urls]=="http://127.0.0.1:63747/v1/library/systems","empty params means no query string")
+assert(c:execute("blueprint",routeOp("blueprint",{theme="candy land",seed=7,niche="brainrot",limit=2.5}),false,current).ok==true)
+assert(urls[#urls]=="http://127.0.0.1:63747/v1/library/blueprint?limit=2.5&niche=brainrot&seed=7&theme=candy land","params must be sorted so one request is one URL: "..urls[#urls])
+for _,name in {"deps","install","systems","blueprint","family","report","media"} do
+ assert(c:execute("allowed",routeOp(name,{id="abcdef012345"}),false,current).ok==true and string.find(urls[#urls],"/v1/library/"..name.."?id=abcdef012345",1,true),"route "..name.." must be forwarded")
+end
+encodeReal=true
+assert(c:execute("encoded",routeOp("systems",{q="a&b=c d/\\195\\169#"}),false,current).ok==true)
+encodeReal=false
+assert(urls[#urls]=="http://127.0.0.1:63747/v1/library/systems?q=a%26b%3Dc%20d%2F%C3%A9%23","param values must be URL-encoded: "..urls[#urls])
+local twelve,thirteen={},{}
+for i=1,13 do thirteen["k"..i]="v"; if i<=12 then twelve["k"..i]=i end end
+twelve.k1=string.rep("a",200)
+assert(c:execute("twelve",routeOp("systems",twelve),false,current).ok==true,"12 params of up to 200 characters must be allowed")
+local routeAsked=#urls
+local badRoutes={routeOp(nil,{}),routeOp("nope",{}),routeOp("Install",{}),routeOp("../game",{}),routeOp("install?id=1",{}),routeOp("extract",{id="abcdef012345"}),routeOp("artifact",{}),routeOp("assets",{}),routeOp("game",{id="abcdef012345"}),routeOp(5,{})}
+for index,bad in badRoutes do assert(c:execute("badroute"..index,bad,false,current).ok==false,"a route outside the allowlist reached the gateway") end
+local badParams={"id=1",{"x"},{["a-b"]="x"},{["1a"]="x"},{[""]="x"},{["id&x"]="y"},{id=true},{id={}},{id=string.rep("a",201)},{id="a\\nb"},{id=0/0},{id=math.huge},{id=-math.huge},thirteen}
+for index,bad in badParams do assert(c:execute("badparams"..index,routeOp("install",bad),false,current).ok==false,"invalid route params reached the gateway (case "..index..")") end
+assert(#urls==routeAsked,"an invalid route request was sent to the gateway")
+assert(c:execute("stalefence",routeOp("install",{id="abcdef012345"}),false,function()return false end).ok==false and #urls==routeAsked,"retired pairing read a route")
+local routeMissing=c:execute("routemissing",routeOp("family",{id="missing"}),false,current)
+assert(routeMissing.ok==false and string.find(routeMissing.error,"path not found",1,true),routeMissing.error)
 assert(c:execute("badaction",{op="query_owner_library",action="nope"},false,current).ok==false)
 assert(c:execute("stale",{op="query_owner_library",action="list"},false,function()return false end).ok==false,"retired pairing read the library")
 local op={op="import_owner_library",gameId="abcdef012345",path="/Workspace",mode="children",parent="Workspace"}
@@ -134,6 +171,35 @@ assert(rs:FindFirstChild("Fences"):GetAttribute("AppleLibraryGame")==string.rep(
 local terrainKids=c:execute("terrain",{op="import_owner_library",gameId="abcdef012345",path="/Workspace/Terrain",mode="children",parent="Workspace.Terrain"},true,current)
 assert(terrainKids.ok==true and ws.Terrain:FindFirstChild("Barn"),"Terrain must take the original's children")
 assert(c:execute("outside",{op="import_owner_library",gameId="abcdef012345",path="/Workspace",mode="children",parent="Players"},true,current).ok==false)
+local function lastExtract() for i=#urls,1,-1 do if string.find(urls[i],"/v1/library/extract",1,true) then return urls[i] end end end
+local function countNamed(name) local n=0; for _,d in game:GetDescendants() do if d.Name==name then n+=1 end end; return n end
+assert(c:execute("plainflag",{op="import_owner_library",gameId="abcdef012345",path="/Workspace/Farm",mode="self",parent="ReplicatedStorage"},true,current).ok==true)
+assert(lastExtract()=="http://127.0.0.1:63747/v1/library/extract?id=abcdef012345&path=/Workspace/Farm&mode=self","studioData is opt-in: "..lastExtract())
+withData=true
+local studioOp={op="import_owner_library",gameId="abcdef012345",path="/Workspace/Farm",mode="self",parent="ReplicatedStorage",studioData=true}
+local studioFirst=c:execute("studio1",studioOp,true,current)
+assert(studioFirst.ok==true,studioFirst.error)
+assert(lastExtract()=="http://127.0.0.1:63747/v1/library/extract?id=abcdef012345&path=/Workspace/Farm&mode=self&studio=1","studioData must reach the extract URL: "..lastExtract())
+local studioModule=rs:FindFirstChild("AppleStudioData")
+assert(studioModule and studioModule.ClassName=="ModuleScript" and studioFirst.data.roots==3 and studioFirst.data.skipped==nil and #studioFirst.data.inserted==3,"the first AppleStudioData goes in like any root")
+studioOp.parent="Workspace"
+local studioSecond=c:execute("studio2",studioOp,true,current)
+assert(studioSecond.ok==true and studioSecond.data.roots==3 and studioSecond.data.skipped==1 and #studioSecond.data.inserted==2,"a second AppleStudioData is dropped and reported as skipped")
+assert(ws:FindFirstChild("AppleStudioData")==nil and countNamed("AppleStudioData")==1,"a second AppleStudioData must not be inserted")
+studioModule:Destroy()
+local deepFolder=Instance.new("Folder");deepFolder.Name="Systems";deepFolder.Parent=game:GetService("ServerScriptService")
+local deepModule=Instance.new("ModuleScript");deepModule.Name="AppleStudioData";deepModule.Parent=deepFolder
+studioOp.parent="ReplicatedStorage"
+local studioDeep=c:execute("studio3",studioOp,true,current)
+assert(studioDeep.ok==true and studioDeep.data.skipped==1 and rs:FindFirstChild("AppleStudioData")==nil and countNamed("AppleStudioData")==1,"an AppleStudioData anywhere in the place counts, not only one in the target")
+deepModule:Destroy()
+local oldModule=Instance.new("ModuleScript");oldModule.Name="AppleStudioData";oldModule.Parent=rs
+studioOp.replace=true
+local studioReplace=c:execute("studio4",studioOp,true,current)
+studioOp.replace=nil
+local newModule=rs:FindFirstChild("AppleStudioData")
+assert(studioReplace.ok==true and studioReplace.data.skipped==nil and newModule and newModule~=oldModule and countNamed("AppleStudioData")==1,"a replaced slot loses its AppleStudioData first, so the new one goes in and the place is never left without one")
+withData=false
 serverGone=true
 local down=c:execute("down",op,true,current)
 assert(down.ok==false and string.find(down.error,"not reachable",1,true),down.error)
@@ -160,5 +226,21 @@ test('library tagging and deps proofs fail if the tags or the deps action are re
  const untagged=run(family.replace(tag,''));assert.notEqual(untagged.status,0);assert.match(untagged.output,/every inserted root is tagged/);
  const deps='elseif op.action == "deps" then';
  assert.equal(family.split(deps).length-1,1);
- const noDeps=run(family.replace(deps,'elseif false then'));assert.notEqual(noDeps.status,0);assert.match(noDeps.output,/action must be list, game or deps/);
+ const noDeps=run(family.replace(deps,'elseif false then'));assert.notEqual(noDeps.status,0);assert.match(noDeps.output,/action must be list, game, deps or route/);
+});
+test('library route and studio data proofs fail if the allowlist, param bounds, studio flag or the duplicate skip are removed',()=>{
+ const cases=[
+  ['LIBRARY_ROUTES[op.route] ~= true','false',/a route outside the allowlist reached the gateway/],
+  ['if #names >= 12 then','if false then',/invalid route params reached the gateway \(case 14\)/],
+  ['string.match(key, "^[a-zA-Z][a-zA-Z0-9]*$") == nil','false',/invalid route params reached the gateway/],
+  ['elseif libraryText(value, 200) then','elseif type(value) == "string" then',/invalid route params reached the gateway/],
+  ['op.studioData == true then "&studio=1"','false then "&studio=1"',/studioData must reach the extract URL/],
+  ['if duplicateStudioData or (','if (',/a second AppleStudioData is dropped/],
+  ['self.game:FindFirstChild("AppleStudioData", true)','self.game:FindFirstChild("AppleStudioData")',/a second AppleStudioData is dropped/]
+ ];
+ for(const [anchor,replacement,expected] of cases){
+  assert.equal(family.split(anchor).length-1,1,anchor);
+  const broken=run(family.replace(anchor,replacement));
+  assert.notEqual(broken.status,0,anchor);assert.match(broken.output,expected,anchor);
+ }
 });

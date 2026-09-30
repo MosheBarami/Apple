@@ -144,8 +144,9 @@ export type StudioOp =
       seq?: number; offset?: number; limit?: number; after?: string | number }
   | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
       nativeInstances: number; parent: string }
-  | { op: 'query_owner_library'; action: 'list' | 'game' | 'deps'; q?: string; niche?: string; kind?: string; game?: string; after?: number; limit?: number; id?: string; gameId?: string; path?: string }
-  | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean; replace?: boolean; onlyMissing?: boolean }
+  | { op: 'query_owner_library'; action: 'list' | 'game' | 'deps' | 'route'; q?: string; niche?: string; kind?: string; game?: string; after?: number; limit?: number; id?: string; gameId?: string; path?: string;
+      route?: 'deps' | 'install' | 'systems' | 'blueprint' | 'family' | 'report' | 'media'; params?: Record<string, string | number> }
+  | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean; replace?: boolean; onlyMissing?: boolean; studioData?: boolean }
   | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
       contentToken: string; parent: string; name: string }
   // Roblox-native text-to-3D. Free, ~20s, 10 req/min. Output is SESSION-SCOPED: it does not
@@ -977,6 +978,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'insert_owner_component':
     case 'import_owner_library':
     case 'recreate_owner_game':
+    case 'install_owner_system':
+    case 'assemble_owner_game':
     case 'insert_library_model':
     case 'generate_model':
     case 'generate_model_external':
@@ -2786,6 +2789,18 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'recreate_owner_game',
     label: 'Recreate your uploaded games',
     why: 'Copies a whole game from your own library, scripts included, into your place.',
+    group: 'changes',
+  },
+  {
+    name: 'install_owner_system',
+    label: 'Add a ready-made feature from your uploaded games',
+    why: 'Copies one feature with its scripts from your own game library into your place.',
+    group: 'changes',
+  },
+  {
+    name: 'assemble_owner_game',
+    label: 'Build a new game from your uploaded games',
+    why: 'Builds an original game from many of your uploaded games, scripts included, in your place.',
     group: 'changes',
   },
   {
