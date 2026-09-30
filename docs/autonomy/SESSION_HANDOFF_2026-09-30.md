@@ -1,5 +1,8 @@
 # Session handoff — 2026-09-30 (owner library closed; original game passes the client test)
 
+> **REVOKED the same night:** the owner rejected this game (a copied world, an ignored fruit twist, T-posed creatures). Read
+> CURRENT_STATE.md top first. What follows is how the rejected flow works, kept as context.
+
 Read first: `docs/autonomy/README.md`, `MISSION.md`, `CURRENT_STATE.md`, `NEXT_ACTION.md`; scope is V3
 (`v3/Apple_RbxAI_HANDOFF_V3.md`, gates in `ACCEPTANCE.json`). Memory: `~/.claude/projects/-Users-moshe-Desktop-RbxAI/memory/MEMORY.md`
 (see `client-test-flow.md` and `owner-library-v2.md`). The owner's NEXT prompt is about the PRODUCT (site + agent), not the library.
