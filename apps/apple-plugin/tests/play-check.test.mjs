@@ -220,6 +220,35 @@ spec("a leftover harness does nothing in someone else's session and is swept bef
     eq(harnessInPlace(), 0); c:destroy()
 end)
 
+spec("the place removes the harness (an anti-cheat): the plugin's watchdog still ends the Test session, and the report says it was cut short", function()
+    fresh()
+    local watchdogs = 0
+    studioTest.onSession = simulatePlaySession({
+        onServer = function(world)
+            local copy = world.serverGame:GetService("ServerScriptService"):FindFirstChild(PlayCheck.SERVER_NAME)
+            if copy then copy:Destroy() end
+        end,
+        serverPlugin = function(dm, scheduler) if PlayCheck.watchdog(dm, scheduler) then watchdogs += 1 end end,
+        stopAt = 300,
+    })
+    local c = newCommands()
+    local r = c:execute("lost-harness", { op = "play_check", seconds = 3 }, true)
+    eq(watchdogs, 1, "the watchdog is set in the server DataModel of an Apple check")
+    eq(studioTest.running, false, "the session ended, so Studio is back in edit mode")
+    eq(studioTest.lastWorld.now <= PlayCheck.WATCHDOG_SECONDS, true, "ended by the watchdog, not left to run")
+    eq(r.ok, true, tostring(r.error)); eq(r.data.completed, false); eq(r.data.stage, "watchdog")
+    eq(harnessInPlace(), 0); c:destroy()
+end)
+
+spec("the watchdog stays out of a Test session the person started, and out of the client", function()
+    fresh()
+    local set = nil
+    studioTest.onSession = simulatePlaySession({ stopAt = 30, serverPlugin = function(dm, scheduler) set = PlayCheck.watchdog(dm, scheduler) end })
+    eq(studioTest:ExecutePlayModeAsync(nil), nil); eq(set, false, "no Apple args: the person's own Play is never ended")
+    local clientGame = { GetService = function() return { GetTestArgs = function() error("GetTestArgs failed from a client LocalScript") end } end }
+    eq(PlayCheck.watchdog(clientGame, { delay = function() error("nothing may be scheduled") end }), false, "where the args cannot be read nothing is set")
+end)
+
 spec("the harness is fixed plugin text: nothing from the wire reaches its source", function()
     fresh()
     local seen = {}
@@ -307,6 +336,18 @@ const BREAKS = [
     file: 'playCheck',
     anchor: '\tlocal remaining = removeAll()\n',
     with: '\tlocal remaining = 0\n',
+  },
+  {
+    why: 'the plugin ends an Apple check the place stopped (watchdog)',
+    file: 'playCheck',
+    anchor: '\t\tpcall(function() studioTest:EndTest({ nonce = args.nonce, harness = 1, stage = "watchdog" }) end)\n',
+    with: '\n',
+  },
+  {
+    why: 'the watchdog never touches a session without Apple args',
+    file: 'playCheck',
+    anchor: 'if not okArgs or type(args) ~= "table" or args.applePlayCheck ~= 1 or type(args.nonce) ~= "string" then return false end\n\tlocal delay',
+    with: 'if not okArgs then return false end\n\tlocal delay',
   },
   {
     why: 'the harness acts only on its own nonce',

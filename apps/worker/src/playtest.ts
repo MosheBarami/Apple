@@ -258,7 +258,9 @@ export function summarisePlayCheck(raw: unknown): PlayCheckSummary {
       verdict: 'no_player',
       playerSees: 'NOTHING WAS OBSERVED: no player character spawned within the bound, so nothing on screen was checked.',
       ...base,
-      note: `The check stopped at "${String(d.stage ?? 'unknown')}". Do not claim anything about what the player sees.`,
+      note: d.stage === 'watchdog'
+        ? 'The game\'s own scripts stopped the check before it could report (for example an anti-cheat that removes unknown scripts), so the Test session was ended for it and Studio is back in edit mode. Nothing about the player was observed; do not claim anything about what the player sees.'
+        : `The check stopped at "${String(d.stage ?? 'unknown')}". Do not claim anything about what the player sees.`,
     });
   }
   if (d.clientReported !== true) {

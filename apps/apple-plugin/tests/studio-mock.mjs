@@ -332,6 +332,8 @@ local function simulatePlaySession(config)
             schedule(coroutine.create(fn), world.now, table.pack())
         end
         if config.onServer then config.onServer(world) end
+        -- A plugin running in the Test's server DataModel (PlayCheck.watchdog): the place's scripts cannot stop it.
+        if config.serverPlugin then config.serverPlugin(serverGame, taskLib) end
         for _, node in ipairs(shared.ServerScriptService:GetDescendants()) do if node.ClassName == "Script" and node.Source ~= "" then runScript(node, serverGame) end end
         for _, node in ipairs(shared.ReplicatedFirst:GetDescendants()) do if node.ClassName == "LocalScript" and node.Source ~= "" then runScript(node, clientGame) end end
         if not config.noPlayer then

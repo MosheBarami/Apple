@@ -862,4 +862,27 @@ function PlayCheck.run(ctx: any): (any?, string?, string?, string?)
 	return data
 end
 
+--[[
+	THE WATCHDOG. The harness is a Script inside the customer's place, so the place can stop it
+	before its own deadline: an anti-cheat that destroys unknown scripts, a script that clears
+	ServerScriptService. Then nobody calls EndTest, ExecutePlayModeAsync never returns and Studio
+	stays in the Test session, where every edit is refused (seen live 2026-09-30: the run could only
+	ask the person to press Stop). The plugin also runs in the Test's server DataModel, out of the
+	place's reach. There it ends an Apple check that is still running after WATCHDOG_SECONDS, which
+	is past the harness's own 50 s bound, so a working harness always answers first.
+	`scheduler` is { delay } for the specs; Studio uses task. Returns whether a watchdog was set.
+]]
+PlayCheck.WATCHDOG_SECONDS = 60
+function PlayCheck.watchdog(gameRef: any, scheduler: any?): boolean
+	local okService, studioTest = pcall(function() return gameRef:GetService("StudioTestService") end)
+	if not okService or studioTest == nil then return false end
+	local okArgs, args = pcall(function() return studioTest:GetTestArgs() end)
+	if not okArgs or type(args) ~= "table" or args.applePlayCheck ~= 1 or type(args.nonce) ~= "string" then return false end
+	local delay = if scheduler then scheduler.delay else task.delay
+	delay(PlayCheck.WATCHDOG_SECONDS, function()
+		pcall(function() studioTest:EndTest({ nonce = args.nonce, harness = 1, stage = "watchdog" }) end)
+	end)
+	return true
+end
+
 return PlayCheck

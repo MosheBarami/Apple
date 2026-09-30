@@ -146,3 +146,11 @@ test('the prompt says a UI claim needs the player-side check, or an explicit "no
   assert.match(prompts, /run_and_check has no player/);
   assert.match(prompts, /NOT verified/);
 });
+
+test('a check the plugin\'s watchdog ended says the game stopped it and that nothing was observed', () => {
+  const out = P.summarisePlayCheck({ completed: false, stage: 'watchdog', harnessRemoved: true });
+  assert.equal(out.verdict, 'no_player');
+  assert.match(out.note, /game's own scripts stopped the check/);
+  assert.match(out.note, /back in edit mode/);
+  assert.doesNotMatch(out.note, /stopped at "watchdog"/);
+});

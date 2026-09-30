@@ -26,7 +26,14 @@ local function editModeActive(): boolean
 	return testOk and testEditModeActive == true
 end
 
-if not editModeActive() then return end
+if not editModeActive() then
+	-- In a Test session's server, end an Apple play check the place stopped (PlayCheck.watchdog).
+	local okServer, isServer = pcall(function() return RunService:IsServer() and not RunService:IsEdit() end)
+	if okServer and isServer then
+		pcall(function() require(script.PlayCheck).watchdog(game) end)
+	end
+	return
+end
 
 local Bridge = require(script.Bridge)
 local Commands = require(script.Commands)

@@ -6032,9 +6032,14 @@ export class SessionDO extends DurableObject<Env> {
       return { id: 'none', ok: false, failure: 'refused',
         error: 'This run recreated an owner library game. Its scripts find objects by their original names and places, so renaming, moving or regrouping them is refused. Keep the original structure.' };
     }
+    // Stopping Run mode only returns Studio to edit mode; it changes nothing in the place. It must reach
+    // Studio even when the run that started the simulation has ended (the user pressed Stop mid-playtest):
+    // refused or dropped, it left Studio simulating and every later edit was refused. So it belongs to
+    // no run (runId undefined, kept by partitionOpsByRun) and skips the access check below.
+    const leavesRunMode = studioOp.op === 'run_mode' && studioOp.action === 'stop';
     // A membership event may arrive while the model is between tool calls. Check immediately
     // before queueing so a revoked run cannot hand a fresh mutation to the next plugin poll.
-    if (run) {
+    if (run && !leavesRunMode) {
       const verdict = await this.runAccessVerdict(run);
       if (verdict.stop) {
         await this.dropOpsForRun(run.msgId);
@@ -6050,7 +6055,7 @@ export class SessionDO extends DurableObject<Env> {
       id: `op_${this.seq}_${Date.now().toString(36)}`,
       seq: this.seq,
       studioOp,
-      runId: this.currentMsgId,
+      runId: leavesRunMode ? undefined : this.currentMsgId,
     };
     this.opQueue.push(op);
     // Queueing an op is activity: it un-parks the poll so the next one holds again rather than

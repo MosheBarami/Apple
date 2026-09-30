@@ -2880,39 +2880,47 @@ export const TOOLS: Record<string, ToolImpl> = {
       // an installed plugin would fail on — which matters because Roblox has no
       // automatic plugin updating and a new op would be broken for every current user
       // until each of them clicked Update by hand.
-      const deadline = Date.now() + secs * 1000;
-      const pt = ctx.playtest;
-      if (pt) {
-        pt.phase('running', 'Run mode is live — capturing frames');
-        let logsSeen = 0;
-        while (Date.now() < deadline) {
-          const tickStart = Date.now();
-          if (pt.canCapture()) await pt.captureFrame();
+      // Anything thrown while Run mode is live (a frame capture, a log read) must not leave Studio
+      // simulating: every edit after it would be refused until someone pressed Stop by hand.
+      let logs: OpResult;
+      try {
+        const deadline = Date.now() + secs * 1000;
+        const pt = ctx.playtest;
+        if (pt) {
+          pt.phase('running', 'Run mode is live — capturing frames');
+          let logsSeen = 0;
+          while (Date.now() < deadline) {
+            const tickStart = Date.now();
+            if (pt.canCapture()) await pt.captureFrame();
 
-          // Console state is refreshed roughly every other capture. Reading it every
-          // pass would double the op traffic to show a number that changes slowly.
-          logsSeen += 1;
-          if (logsSeen % 2 === 0) {
-            const live = await ctx.execStudioOp({ op: 'get_logs', maxEntries: 120 }, 10_000);
-            if (live.ok) {
-              const counts = countConsole(parseLogEntries(live.data) ?? undefined);
-              pt.console(counts.errors, counts.warnings);
+            // Console state is refreshed roughly every other capture. Reading it every
+            // pass would double the op traffic to show a number that changes slowly.
+            logsSeen += 1;
+            if (logsSeen % 2 === 0) {
+              const live = await ctx.execStudioOp({ op: 'get_logs', maxEntries: 120 }, 10_000);
+              if (live.ok) {
+                const counts = countConsole(parseLogEntries(live.data) ?? undefined);
+                pt.console(counts.errors, counts.warnings);
+              }
             }
+
+            const spent = Date.now() - tickStart;
+            const wait = Math.min(PLAYTEST_FRAME_MIN_INTERVAL_MS - spent, deadline - Date.now());
+            if (wait > 0) await new Promise((r) => setTimeout(r, wait));
           }
-
-          const spent = Date.now() - tickStart;
-          const wait = Math.min(PLAYTEST_FRAME_MIN_INTERVAL_MS - spent, deadline - Date.now());
-          if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+          pt.phase('stopping', 'Stopping run mode and checking what changed');
+        } else {
+          await new Promise((r) => setTimeout(r, secs * 1000));
         }
-        pt.phase('stopping', 'Stopping run mode and checking what changed');
-      } else {
-        await new Promise((r) => setTimeout(r, secs * 1000));
-      }
 
-      const logs = await ctx.execStudioOp({ op: 'get_logs', maxEntries: 120 }, 15_000);
-      if (logs.ok) {
-        const counts = countConsole(parseLogEntries(logs.data) ?? undefined);
-        ctx.playtest?.console(counts.errors, counts.warnings);
+        logs = await ctx.execStudioOp({ op: 'get_logs', maxEntries: 120 }, 15_000);
+        if (logs.ok) {
+          const counts = countConsole(parseLogEntries(logs.data) ?? undefined);
+          ctx.playtest?.console(counts.errors, counts.warnings);
+        }
+      } catch (err) {
+        await ctx.execStudioOp({ op: 'run_mode', action: 'stop' }, 20_000).catch(() => undefined);
+        throw err;
       }
       const stop = await ctx.execStudioOp({ op: 'run_mode', action: 'stop' }, 20_000);
 
