@@ -66,6 +66,26 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
   `~/Library/Application Support/Apple/owner-library/`. The loopback gateway serves `/v1/library*` (no key);
   the agent has `browse_owner_library`, `import_owner_library` and `recreate_owner_game` (whole services with
   scripts, Lighting/Gravity). Terrain voxels are not copied; Terrain's children are (cb256bc6).
+- Owner library v2 COMPLETE (2026-09-30, production db4ec488, plugin c707e1c6 installed locally). Sources: every
+  Roblox file the owner uploaded (439 old + 127 new from `~/Desktop/SOME MORE ASSETS AND GAMES`, 3 repaired, 1 zipped
+  Figma file moved to media) is copied content-addressed into `owner-library/sources/` (`library_sources.py`); the
+  old ~/Downloads paths had vanished for 434 of 439, which had silently broken fresh extraction. 565/565 cataloged
+  (12.1M instances, 225K scripts), 95,804 assets indexed (sound/animation/mesh ids fixed), 565/565 style-scanned
+  (154 studded), 504 families (versions grouped, primaries chosen), 95,646/95,646 asset paths verified by a
+  whole-library round trip (`library_verify.py`, ~110 s for the whole library) with 99,575 typed content ids and
+  dependency closures (what each UI/tool needs + what drives it); script integrity per game (343 working, 77 partly,
+  145 looks-only: 66K of 225K scripts are stripped in saveinstance dumps); 54 installable systems with install plans
+  (`library_systems.py`, all 565 plans resolve); 5,797 media files (icons/panels/buttons/tiles/3D/design, thumbnails +
+  contact sheets, NOT uploaded to Roblox: owner-gated); `library_report.py` writes `owner-library/report/index.html`.
+  Agent: `assemble_owner_game` builds an original game from a library blueprint (`library_blueprint.py`, ≥ 8 games per
+  plan), `install_owner_system` routes a system pack into its services, imports bring their dependencies, a Studio data
+  stand-in (AppleStudioData) keeps DataStore games playable before publishing, script-less menus get a generic binder,
+  placement ignores invisible zones and checks real geometry, instruction notes / package links are dropped, replies and
+  stop messages are plain words. Live (project 3e6b43d7): "Bright Studded Brainrot Party" assembled in 76 s from 13
+  library games (Plants vs Brainrots core + pets/trading, donations, sprint, props, fx, music, sky); pet inventory and
+  trade screens respond in play; the core's side buttons are hidden by its own first-join tutorial by design.
+  Refused by the auto-mode safety classifier (not retried): admin run-tool acting as the project owner, and an
+  autonomous Studio audit plugin (sources left unused in `packages/owner-corpus/audit/`).
 - Owner library DONE (2026-09-29): all 439 uploaded .rbxl/.rbxm files cataloged (439/439, 0 failed; 9.93M instances,
   204K scripts) and asset-indexed by `packages/owner-corpus/library_assets.py` (439/439): 67,318 single assets —
   33,974 models, 13,431 script systems, 10,383 UIs, 7,322 sounds, 4,841 fx holders, 3,455 tools, 2,414 animations,
