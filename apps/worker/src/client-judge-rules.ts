@@ -658,7 +658,8 @@ export function constructionFindings(f: WorldFacts): string[] {
     else out.push('There is no spawn point, so players start at the world origin instead of a place you chose.');
   }
   for (const s of f.spawns.slice(0, 3)) {
-    if ((s.overlapCount ?? 0) > 0) out.push(`Spawn ${readable(s.path, 'Workspace')} is inside something (${s.overlapCount} parts overlap it).`);
+    // A spawn that nothing collides with (a script's invisible marker) is not "inside" anything: the player is put on top of what is there.
+    if ((s.overlapCount ?? 0) > 0 && s.canCollide !== false) out.push(`Spawn ${readable(s.path, 'Workspace')} is inside something (${s.overlapCount} parts overlap it).`);
     if (s.canCollide === false && s.groundHit === false) out.push(`Spawn ${readable(s.path, 'Workspace')} cannot be stood on and nothing is under it: the player falls out of the world.`);
   }
   const start = Math.min(f.groundY, f.stood?.[0]?.pos[1] ?? f.groundY);

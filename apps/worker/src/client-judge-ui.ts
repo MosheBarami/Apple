@@ -90,6 +90,12 @@ export function guiFrom(raw: unknown, parent: GuiNode | null = null, screen?: st
   return node;
 }
 
+/** Apple took it out of sight when it built the game (a left-out feature's window that stays because code names it): no player reaches it. */
+export function outOfSight(n: GuiNode): boolean {
+  for (let a: GuiNode | null = n; a; a = a.parent) if (a.attrs.AppleHidden === true) return true;
+  return false;
+}
+
 export const LAYERS: ReadonlySet<string> = new Set(['ScreenGui', 'BillboardGui', 'SurfaceGui']);
 const BUTTONS = new Set(['TextButton', 'ImageButton']);
 const TEXTY = new Set(['TextLabel', 'TextButton', 'TextBox']);
@@ -367,7 +373,7 @@ export function styleOf(screen: GuiNode): Style {
   const fonts = new Map<string, number>();
   let objects = 0, rounded = 0, stroked = 0, weight = 0, lit = 0, lightSum = 0;
   for (const n of all(screen)) {
-    if (!GUI_OBJECT.has(n.cls)) continue;
+    if (!GUI_OBJECT.has(n.cls) || outOfSight(n)) continue;
     const filled = visibleFill(n) && n.props.BackgroundColor3 !== undefined;
     const text = hasText(n) && textOf(n).trim() !== '';
     if (text && typeof n.props.Font === 'string' && !/\.Unknown$/.test(n.props.Font)) { const f = fontFamily(n.props.Font); fonts.set(f, (fonts.get(f) ?? 0) + 1); }

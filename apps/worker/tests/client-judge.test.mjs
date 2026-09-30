@@ -668,6 +668,7 @@ test('constructionFindings: the spawn is checked; a missing one, an occupied one
   assert.match(R.constructionFindings(facts({ spawns: [], originGround: true }))[0], /no spawn point, so players start at the world origin/);
   assert.match(R.constructionFindings(facts({ spawns: [], originGround: false }))[0], /fall out of the world/);
   assert.match(R.constructionFindings(facts({ spawns: [{ path: 'game.Workspace.Spawn', overlapCount: 3, canCollide: true, groundHit: true }] }))[0], /Spawn Spawn is inside something \(3 parts overlap it\)/);
+  assert.deepEqual(R.constructionFindings(facts({ spawns: [{ path: 'game.Workspace.SpawnFallback', overlapCount: 2, canCollide: false, groundHit: true }] })), [], 'a script\'s invisible marker is stood on top of');
   assert.match(R.constructionFindings(facts({ spawns: [{ path: 'game.Workspace.Spawn', canCollide: false, groundHit: false }] }))[0], /cannot be stood on and nothing is under it/);
   assert.deepEqual(R.constructionFindings(facts({ spawns: [{ path: 'game.Workspace.Spawn', canCollide: true, groundHit: false }] })), [], 'a solid spawn over the void is a floating island, not a fall');
 });

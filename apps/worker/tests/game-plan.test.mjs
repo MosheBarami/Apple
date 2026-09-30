@@ -234,6 +234,7 @@ test('build_game: what the design hides stays in the place, out of sight: a butt
   await built(f);
   assert.equal(f.world.nodes.get('game.StarterGui.HUD.ShopButton').props.Visible.v, false, 'the button is still there for the code, but hidden');
   assert.equal(f.world.nodes.get('game.StarterGui.Loading').props.Enabled.v, false, 'a ScreenGui is switched off');
+  assert.equal(f.world.nodes.get('game.StarterGui.HUD.ShopButton').attrs.AppleHidden, true, 'and tagged, so a check knows no player reaches it');
   assert.equal(f.ops('delete_instances').some((o) => /ShopButton|Loading/.test(o.paths[0])), false, 'nothing hidden is deleted');
 });
 
@@ -381,6 +382,19 @@ test('build_game: the model may change the title and the currency name only; a n
   assert.equal(text(f, 'game.StarterGui.Loading.Credit'), 'by the Sweet Sprout team');
   assert.equal(data.themeTheContent.currency.name, 'Gumdrops');
   assert.equal(imports(f).some((o) => o.gameId === gid(99)), false, 'parts and games are not the model\'s to change');
+});
+
+test('build_game: a service\'s own attributes (the save key every player\'s data is named by) come over, and one that held the old game\'s name holds the new title', async () => {
+  const f = studio({ route: { design: designRoute({ serviceAttributes: [
+    { path: '/Workspace', attributes: { DataKey: 'Data1', ServerLuck: 1, Testing: false, GameName: 'Candy Grove' }, title: ['GameName'] },
+    { path: 'not a service', attributes: { X: 1 } }, { path: '/ReplicatedStorage', attributes: { Bad: { nested: true } } },
+  ] }) } });
+  await plan(f);
+  await run(f, 'build_game', { design: { title: 'Sweet Sprout' } });
+  const sets = f.ops('set_props').filter((o) => o.attributes);
+  assert.deepEqual(sets.map((o) => o.path), ['game.Workspace'], 'only a service, only with values a script can read');
+  assert.deepEqual(sets[0].attributes, { DataKey: { t: 'string', v: 'Data1' }, ServerLuck: { t: 'number', v: 1 }, Testing: { t: 'bool', v: false }, GameName: { t: 'string', v: 'Sweet Sprout' } });
+  assert.ok(f.log.findIndex((o) => o.op === 'set_props' && o.attributes) > f.log.findIndex((o) => o.op === 'import_owner_library'), 'after the imports');
 });
 
 test('build_game: hands the model the content checklist (theme, modules, formats, counts, models, code edits, currency) and the walkthrough, with the request for judge_game', async () => {

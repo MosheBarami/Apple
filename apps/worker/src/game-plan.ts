@@ -47,6 +47,8 @@ export interface Design {
   tables: Table[]; models: ModelPick[]; currency: Currency; lockstep: string[]; registryNote: string;
   /** Content chosen from the core's own (the creatures that fit the twist), and the exact code edits that make it so. */
   chosen?: { keep: string[]; left: number; why: string }; patches: Patch[];
+  /** A service's own attributes, which an import of its children does not carry and scripts read (Workspace's DataKey names every save). `title`: the ones that hold the game's name. */
+  serviceAttributes: { path: string; attributes: Record<string, string | number | boolean>; title: string[] }[];
   keepEdits: Edit[]; themeNotes: string[]; write: Task[]; warnings: string[]; unreadable: number;
   studioNotes: string[]; walkthrough: string[]; checklist: string[];
 }
@@ -178,6 +180,13 @@ export function readDesign(raw: Record<string, unknown>): Design | { error: stri
     currency: { name: clean(money.name, 60), was: clean(money.was, 60), shownAs: clean(money.shownAs, 200), places: paths(money.places, 12), how: clean(money.how, 260) },
     lockstep: lines(content.lockstep, 200, 8), registryNote: clean(content.registryNote, 240),
     ...(rec(content.chosen).why ? { chosen: { keep: lines(rec(content.chosen).keep, 60, 40), left: Number(rec(content.chosen).left) || 0, why: clean(rec(content.chosen).why, 200) } } : {}),
+    serviceAttributes: arr(raw.serviceAttributes).slice(0, 12).map((x) => {
+      const attributes: Record<string, string | number | boolean> = {};
+      for (const [k, v] of Object.entries(rec(rec(x).attributes)).slice(0, 60)) {
+        if (/^[A-Za-z_][\w]{0,99}$/.test(k) && (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'string')) attributes[k] = typeof v === 'string' ? v.slice(0, 400) : v;
+      }
+      return { path: clean(rec(x).path, 100), attributes, title: arr(rec(x).title).filter((t): t is string => typeof t === 'string').slice(0, 10) };
+    }).filter((x) => /^\/[A-Za-z]+$/.test(x.path) && Object.keys(x.attributes).length),
     patches: arr(content.patches).slice(0, 10).map((x): Patch => ({
       path: clean(rec(x).path, 400), why: clean(rec(x).why, 200),
       // not `clean`: an edit's text is code, its line breaks and tabs are part of it
@@ -234,7 +243,7 @@ async function recallPlan(ctx: AgentCtx): Promise<Stored | undefined> {
   const fresh = typeof r.at === 'number' && Date.now() - r.at < PLAN_LIFETIME_MS;
   if (!fresh || !GAME_ID.test(String(rec(design.core).gameId ?? '')) || !Array.isArray(design.imports)) return undefined;
   // A plan kept by an earlier version of this file lacks the newer lists.
-  return { ...r, design: { keepEdits: [], themeNotes: [], unreadable: 0, hide: [], patches: [], ...design, write: arr(design.write).filter((w) => w && typeof w === 'object') } } as unknown as Stored;
+  return { ...r, design: { keepEdits: [], themeNotes: [], unreadable: 0, hide: [], patches: [], serviceAttributes: [], ...design, write: arr(design.write).filter((w) => w && typeof w === 'object') } } as unknown as Stored;
 }
 
 /**
@@ -401,7 +410,8 @@ async function hidePaths(ctx: AgentCtx, targets: readonly string[], imports: rea
     const at = await inspect(ctx, studio);
     if (at.gone) { gone = true; break; }
     if (!at.exists) continue;
-    const set = await ask(ctx, { op: 'set_props', path: studio, props: LAYER.test(at.cls ?? '') ? { Enabled: { t: 'bool', v: false } } : { Visible: { t: 'bool', v: false } } }, 20_000);
+    // AppleHidden says it was taken out of sight on purpose, so a check of the game does not count it as something a player sees.
+    const set = await ask(ctx, { op: 'set_props', path: studio, props: LAYER.test(at.cls ?? '') ? { Enabled: { t: 'bool', v: false } } : { Visible: { t: 'bool', v: false } }, attributes: { AppleHidden: { t: 'bool', v: true } } }, 20_000);
     if (set.ok) hidden += 1;
     else if (set.failure === 'transport') { gone = true; break; }
   }
@@ -703,6 +713,17 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
     if (!out.ok) { missed(part); if (out.failure === 'transport') disconnected = true; continue; }
     if (replace && world) fresh = false;
     took(part, out.data);
+  }
+  // The services' own attributes: scripts read them (a player's save key, a luck setting), and an import of a service's children does not bring them.
+  for (const a of design.serviceAttributes) {
+    if (disconnected) break;
+    const attributes: Record<string, PropValue> = {};
+    for (const [k, v] of Object.entries(a.attributes)) {
+      const value = a.title.includes(k) ? design.title : v;
+      attributes[k] = typeof value === 'number' ? { t: 'number', v: value } : typeof value === 'boolean' ? { t: 'bool', v: value } : { t: 'string', v: value };
+    }
+    const set = await ask(ctx, { op: 'set_props', path: 'game.' + a.path.slice(1), attributes }, 20_000);
+    if (!set.ok && set.failure === 'transport') disconnected = true;
   }
   // 2. regions from other maps: on the ground beside the play area, never on top of anything, never a second whole map.
   let regionsPlaced = 0, regionsLeft = 0;

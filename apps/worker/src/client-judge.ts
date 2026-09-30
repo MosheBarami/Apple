@@ -17,7 +17,7 @@
 import type { GatewayToolDef, StudioOp } from '@golem/shared';
 import { playCheckUiOp, type OpCall } from './phase-a-tools';
 import {
-  type GuiNode, type MenuCluster, arr, all, clip, coveringPieces, guiFrom, hasText, hasVisuals, isButton, labelOf, lastName, menuClusters, num, overlaps, pathParts, pickButtons, pickFlow, readable, rec, shown,
+  type GuiNode, type MenuCluster, arr, all, clip, coveringPieces, guiFrom, hasText, hasVisuals, isButton, labelOf, lastName, menuClusters, num, outOfSight, overlaps, pathParts, pickButtons, pickFlow, readable, rec, shown,
   showsSomething, str, styleClashes, textOf, under, visibleFillOf, widgetOf,
 } from './client-judge-ui';
 import {
@@ -149,6 +149,7 @@ async function readWorldGuis(call: OpCall): Promise<{ guis: GuiNode[]; total: nu
 function textItems(layer: GuiNode, via: TextItem['via'], hidden: ReadonlySet<GuiNode> = new Set()): TextItem[] {
   const out: TextItem[] = [];
   for (const n of all(layer)) {
+    if (outOfSight(n)) continue;
     // A screen or a top-level piece named as a note to its author ("DELETE ME") is a leftover the player finds even if its words are fine.
     if ((n === layer || n.parent === layer) && DEV_NAME.test(spaced(n.name))) out.push({ where: relative(n.path), text: spaced(n.name), cls: 'Instance name', state: shown(n) && !under(n, hidden) ? 'shown' : 'hidden', via });
     if (!hasText(n)) continue;
@@ -584,10 +585,15 @@ export async function judgeGame(call: OpCall, a: Args, opts: JudgeOptions = {}):
   const shownScreens = new Set(screens.filter((s) => showsSomething(s, hidden)).map((s) => s.name));
   for (const name of onScreen) shownScreens.add(name);
   const runtimeButtons = Math.max(0, ...plays.filter(observed).map((p) => p.screens.filter((s) => s.enabled).reduce((n, s) => n + s.labels.filter((l) => l.visible && l.cls === 'TextButton').length, 0)));
+  // A layout problem counts where a player can see it: not in a piece a script hides at the start or one the build took out of sight.
+  const seen = (i: LayoutIssue): boolean => {
+    const n = nodeAt.get(i.path) ?? nodeAt.get('game.StarterGui.' + i.path) ?? [...nodeAt.values()].find((x) => x.path.endsWith('.' + i.path));
+    return !n || (shown(n) && !under(n, hidden) && !outOfSight(n));
+  };
   const coherence = judgeCoherence({
     // Styles clash only between screens a player sees: one whose every window stays shut (a left-out feature's, kept for its code) shows no style.
     overlaps: overlaps(screens, hidden), menus, clashes: styleClashes(screens.filter((s) => shownScreens.has(s.name))), shownScreens: [...shownScreens], shownButtons: Math.max(pickButtons(screens, 0, hidden).hud, runtimeButtons),
-    layout, sources: sourceOf, cutScreens: read.cut, scriptDrawn, empty: shownScreens.size === 0, played: plays.some(observed),
+    layout: layout && layout.filter(seen), sources: sourceOf, cutScreens: read.cut, scriptDrawn, empty: shownScreens.size === 0, played: plays.some(observed),
   });
 
   const noPlay = (id: 'buttons_work' | 'progression' | 'errors'): Criterion => unmeasured(id, asked === 0 ? 'no play session was run.' : outOfTime ? 'the time budget ran out before a play session could start.' : `no play session ran${sessionError ? ` (${clip(sessionError, 120)})` : ''}.`, 'Make sure Studio can start a Test session (edit mode, edit consent), then run judge_game again.');

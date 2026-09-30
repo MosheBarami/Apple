@@ -68,6 +68,29 @@ test('a screen whose every window stays shut (a left-out feature kept for its co
   assert.equal(crit(res, 'ui_coherence').ok, true);
 });
 
+test('a layout problem counts only where a player can see it: not inside a piece the build took out of sight', async () => {
+  const issue = (path) => ({ kind: 'text_overflow', path, detail: 'its text does not fit its box' });
+  const layout = { 'game.StarterGui.HUD': { screen: 'game.StarterGui.HUD', devices: [{ device: 'desktop', size: [1920, 1080], elements: 9, issues: [issue('game.StarterGui.HUD.Timer.Time')] }], issues: 1, verdict: 'fail' } };
+  const { f, hud } = W.goodGarden({ studio: { play: W.gardenPlay(), layout } });
+  const timer = hud.frame('Timer', { pos: [0.8, 0, 0.3, 0], size: [0.1, 0, 0.05, 0] });
+  hud.put(timer, 'Time', 'TextLabel', { text: 'Next attack in 00:59' });
+  assert.match(crit(await judge(f), 'ui_coherence').evidence.join('\n'), /Layout text overflow/, 'on screen, it counts');
+  f.world.nodes.get(timer).attrs.AppleHidden = true;
+  f.world.nodes.get(timer).props.Visible = { t: 'bool', v: false };
+  assert.doesNotMatch(crit(await judge(f), 'ui_coherence').evidence.join('\n'), /Layout text overflow/);
+});
+
+test('what the build took out of sight (tagged AppleHidden) is not what a player reads: its old branding does not count', async () => {
+  const { f, hud } = W.goodGarden({ studio: { play: W.gardenPlay() } });
+  const reward = hud.frame('GroupReward', { visible: false, pos: [0.3, 0, 0.3, 0], size: [0.4, 0, 0.4, 0] });
+  hud.put(reward, 'Title', 'TextLabel', { text: '1. Like the game 👍 2. Join the group' });
+  const plain = await judge(f);
+  assert.match(crit(plain, 'fit_uniqueness').evidence.join('\n'), /Like the game/, 'a window that is only shut still counts: a script may open it');
+  f.world.nodes.get(reward).attrs.AppleHidden = true;
+  const tagged = await judge(f);
+  assert.doesNotMatch(crit(tagged, 'fit_uniqueness').evidence.join('\n'), /Like the game/);
+});
+
 test('the game as the owner saw it fail is not ready, and each defect he named comes back as its own finding with a fix', async () => {
   const names = { aaaa11111111: 'Grow A Garden', bbbb22222222: 'Full Pet System' };
   const f = fakeStudio({
