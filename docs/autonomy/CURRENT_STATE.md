@@ -4,6 +4,22 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
 **unmeasured**: every gate is `not_evaluated`. The pre-V3 state file is `archive/pre-v3/CURRENT_STATE.md`
 (historical, not current proof).
 
+## OWNER VERDICT 2026-09-30 night: the "client test pass" below is REVOKED — it is a failure
+
+Looking at the built "fruit" Plants vs Brainrots game, the owner said it is bad:
+- It copies a whole world 1:1 and cuts it down. The owner requires building **component by component** in the style (the
+  latest owner decision; it overrides the V3 text that allowed reusing complete maps), never copying whole worlds and editing them.
+- "Brainrots that are fruit" was done by picking existing brainrots with fruit names. That ignores the request; the enemies must
+  actually be fruit.
+- Every brainrot stands in a T-pose (no working rig or animations: the original creator's animations are private,
+  and Output shows "Animation failed to load").
+- Large combinations were never shown. Future tests are **ideas only, never game names**.
+The judge's "ready 94/100" measured the wrong thing: it never checked for a copied map, a twist it ignored, or T-posed creatures.
+Also, in the live check after deploy 8804bdac, the run on an already-built place went off track. It tried to build a new map and
+edit scripts while Studio was left in a test run (every write was refused). It ended by asking the user to press Stop.
+Landed that night (deployed 8804bdac, web too): the reply drops tool names and paths, only the live line shows while Apple works,
+and private sounds are silenced after build_game (unit-tested; not yet seen live).
+
 ## Live V3 evidence (2026-09-29, production `apple.moshe-barami111.workers.dev`)
 
 - Deployed through 1e753d85 (worker + static, verified serving). Remote renamed to `MosheBarami/Apple`.
@@ -66,7 +82,7 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
   `~/Library/Application Support/Apple/owner-library/`. The loopback gateway serves `/v1/library*` (no key);
   the agent has `browse_owner_library`, `import_owner_library` and `recreate_owner_game` (whole services with
   scripts, Lighting/Gravity). Terrain voxels are not copied; Terrain's children are (cb256bc6).
-- Client test PASSED (2026-09-30 evening, production 5eaeeb1a, evidence/20260930-client-test). The owner's verdict on
+- [REVOKED by the owner, see top] Client test PASSED (2026-09-30 evening, production 5eaeeb1a, evidence/20260930-client-test). The owner's verdict on
   v2 (random UI and models, a pets UI in a garden game, whole maps dropped in, placeholders, non-functional pieces) is
   answered by a design/build flow instead of the random blueprint: `plan_game` -> `library_design.py` (the best working core
   of the genre from 180 knowledge cards + 8 genre syntheses; left-out features cut through a closure over the core's own

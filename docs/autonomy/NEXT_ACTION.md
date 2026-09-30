@@ -1,5 +1,10 @@
 # NEXT ACTION (V3)
 
+**2026-09-30 night: the owner rejected the library game (see CURRENT_STATE top).** Next is a rebuild of HOW games are made:
+compose from components (systems, UI kit, props and creatures) on a NEW map, never import a whole world and cut it down.
+Request twists must be really made (fruit enemies built as fruit, rigged and animated without private assets). Tests are
+ideas, not game names. The status below is history.
+
 Status 2026-09-30 evening (production 177876ea): the library passes the client test. "Plants vs Brainrots, but the brainrots
 are fruit" builds in ~55 s and the judge says ready (94/100, all seven criteria) on two builds in a row and two re-checks;
 played by hand it is clean and progresses (evidence/20260930-client-test); the agent's answer is plain and friendly.
