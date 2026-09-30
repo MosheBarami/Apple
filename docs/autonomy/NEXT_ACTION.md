@@ -12,6 +12,22 @@ ideas, not game names. The status below is history.
    components it needs, then built live on a new map.
 Twist creatures: a rigged library body plus real fruit/veg meshes from the garden games, animated by our code. No uploads.
 
+**Done 2026-09-30 late:** the two fixes (deployed 7f7d75a0) and the first component, `packages/components/motion` (AppleMotion,
+0c4d7894). It was proven in a throwaway Studio place (15/15 biped, 7/7 quadruped and 1/1 tomato joints moved in play; see
+evidence/20260930-components). The library survey for the orchard idea is in the same folder.
+
+**Next, in order:**
+1. Wire components into the builder. Add a worker tool that installs a component from its component.json (files go to the
+   listed parents; the plugin writes the scripts), and a build step that runs AppleMotion.prepare on each creature. Ship the
+   Luau as text in the worker bundle (wrangler Text rule or a generated .ts), not as copies.
+2. Library proof through the product: import MythicNPC (PvB modded `f3ac50e43d68`), Penguin (Steal An Egg `4ba7759f7d19`)
+   and one Bone-skinned rig. Prepare them and play them; they must move with no "Animation failed to load" left.
+3. The fruit enemy: a Motor6D body (MythicNPC or the R15 Dummy) with real vegetable models from survey.md on it.
+4. The orchard components, each with a contract and tested alone: WaveService (ours; none exists in the library), plots and
+   planting (Easy Plot System), shop, sell and save (PvB modded donor, the Core/Data ProfileService wrapper), one UI kit from survey.md.
+5. A new map laid out from the idea, the composer that puts it together, and the new judge (fails on a copied map, a twist
+   that wasn't built, a creature that doesn't move, assets that don't load). Test with ideas only.
+
 Status 2026-09-30 evening (production 177876ea): the library passes the client test. "Plants vs Brainrots, but the brainrots
 are fruit" builds in ~55 s and the judge says ready (94/100, all seven criteria) on two builds in a row and two re-checks;
 played by hand it is clean and progresses (evidence/20260930-client-test); the agent's answer is plain and friendly.
