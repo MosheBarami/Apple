@@ -5,7 +5,7 @@ import {
 } from './local-owner-corpus';
 import { screenRoots } from './menu-binder';
 import { plainLibraryThing } from './run-idle';
-import { ensureSpawn, fitCounts, MAX_COPIES, moveBy, newPlaceState, placeModels, settleGroup, type PlaceSpec, type Vec3 } from './library-placement';
+import { ensureSpawn, fitCounts, MAX_COPIES, moveBy, newPlaceState, placeGroup, placeModels, settleGroup, type PlaceSpec, type Vec3 } from './library-placement';
 
 /**
  * THE TWO WAYS TO BUILD FROM THE OWNER'S SAVED GAMES.
@@ -72,7 +72,7 @@ export function readInstallPlan(raw: Record<string, unknown>): InstallPlan | { e
   return { game: String(raw.game ?? ''), name: displayName(raw.name) || 'That saved game', kind: String(raw.kind ?? 'system-pack'), steps, works: asWorks(raw.works), note: plainText(raw.note, 200) };
 }
 
-interface StepResult { what: string; state: 'added' | 'already' | 'have' | 'failed'; problem?: string; inserted: string[]; suspicious: unknown[] }
+interface StepResult { what: string; parent?: string; state: 'added' | 'already' | 'have' | 'failed'; problem?: string; inserted: string[]; suspicious: unknown[] }
 
 const lastName = (path: string) => (path.split('/').filter(Boolean).pop() ?? '').replace(/#\d+$/, '');
 /** "Leaderstats [DONT DRAG IF YOU HAVE THIS ALREADY]" is called "Leaderstats" in a query. */
@@ -113,7 +113,7 @@ async function runSteps(ctx: AgentCtx, gameId: string, plan: InstallPlan, until:
     }
     const d = (out.data ?? {}) as Record<string, unknown>;
     const added = (Number(d.roots) || 0) > (Number(d.skipped) || 0);
-    results.push({ what: step.what, state: added ? 'added' : 'already', inserted: Array.isArray(d.inserted) ? d.inserted.filter((p): p is string => typeof p === 'string') : [], suspicious: Array.isArray(d.suspicious) ? d.suspicious : [] });
+    results.push({ what: step.what, parent: step.parent, state: added ? 'added' : 'already', inserted: Array.isArray(d.inserted) ? d.inserted.filter((p): p is string => typeof p === 'string') : [], suspicious: Array.isArray(d.suspicious) ? d.suspicious : [] });
   }
   return { results, stopped };
 }
@@ -149,6 +149,9 @@ export async function installOwnerSystem(ctx: AgentCtx, a: Record<string, unknow
   if ('error' in copy) return noCopy(copy.error);
   const { results, stopped } = await runSteps(ctx, gameId, plan, () => false);
   const added = results.filter((r) => r.state === 'added'), failed = results.filter((r) => r.state === 'failed');
+  // A pack's world pieces arrive at their old coordinates; they go on open ground near the play area, together.
+  const world = plan.kind === 'place' ? [] : added.filter((r) => r.parent === 'game.Workspace').flatMap((r) => r.inserted);
+  if (world.length && !stopped) await placeGroup(ctx, world, newPlaceState(), 0, Date.now() + 120_000);
   const screens = screenRoots(added.flatMap((r) => r.inserted)).map((path) => ({ path, works: plan.works }));
   const wired = await connectMenus(ctx, screens);
   const changed = added.length > 0 || (wired?.wired.length ?? 0) > 0;
@@ -326,6 +329,12 @@ export async function assembleOwnerGame(ctx: AgentCtx, a: Record<string, unknown
         const { results, stopped } = await runSteps(ctx, c.gameId, sys, late);
         const added = results.filter((r) => r.state === 'added');
         part.inserted = added.flatMap((r) => r.inserted);
+        const world = sys.kind === 'place' ? [] : added.filter((r) => r.parent === 'game.Workspace').flatMap((r) => r.inserted);
+        if (world.length && !stopped) {
+          await settleCore();
+          const where = await placeGroup(ctx, world, state, seed, deadline, now);
+          if (where === 'disconnected') disconnected = true;
+        }
         part.ok = added.length > 0 || results.some((r) => r.state === 'already' || r.state === 'have');
         if (!part.ok) part.problem = results.find((r) => r.state === 'failed')?.problem ?? 'nothing could be added';
         for (const p of screenRoots(part.inserted)) screens.set(p, screens.get(p) ?? sys.works);
@@ -396,7 +405,7 @@ export async function assembleOwnerGame(ctx: AgentCtx, a: Record<string, unknown
     ...(spawned ? { spawn: 'Added a spawn pad on the map, because the map had none.' } : {}),
     parts: parts.map((p) => ({ part: p.role, from: p.game, ok: p.ok, ...(p.wanted !== undefined ? { placed: p.placed, wanted: p.wanted } : {}), ...(p.stopped ? { stopped: p.stopped } : {}), ...(p.problem ? { problem: plainProblem(p.problem), technical: p.problem.slice(0, 200) } : {}), ...(p.detail ? p.detail : {}) })),
     seconds,
-    note: 'Answer from forUser in your own friendly words: what the player sees and does, and the one thing that could not be added, if any. Name no tools, paths, counts or ids. Use the same seed to get this exact plan again, another seed for a different game.',
+    note: 'The build is finished. Check it once with play_check (as a player), then answer from forUser in your own friendly words: what the player sees and does, and the one thing that could not be added, if any. The imported games keep their own scripts and screens as they are. Name no tools, paths, counts or ids. Use the same seed to get this exact plan again, another seed for a different game.',
   };
 }
 

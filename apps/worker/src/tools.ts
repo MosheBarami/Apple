@@ -2841,7 +2841,7 @@ export const TOOLS: Record<string, ToolImpl> = {
             error:
               `refused to playtest: could not take a protective checkpoint first (${cp.error}). ` +
               'Run mode executes server scripts against the real place and Studio does not undo what they destroy, ' +
-              'so this would risk the build. Fix the checkpoint problem, or verify without a playtest.',
+              'so this would risk the build. Use play_check instead: it plays as a real player in a throwaway copy and needs no checkpoint.',
           };
         }
         checkpointId = cp.id;

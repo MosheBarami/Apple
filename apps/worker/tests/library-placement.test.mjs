@@ -248,3 +248,17 @@ test('a map with no SpawnLocation is played around its middle, not around the or
   await P.placeModels(spawned.ctx, [t2], { count: 2, on: 'spawn', spread: 40 }, P.newPlaceState(), 1, FAR());
   assert.equal(spawned.ops('get_tree').length, 0, 'the spawn is enough; the map is not measured');
 });
+
+test('placeGroup: a system\'s world pieces move together onto open ground near the spawn and keep their layout', async () => {
+  const f = fakeStudio({ walls: [{ center: [40, 15, 0], size: [20, 30, 60] }] });
+  const board = 'game.Workspace.DonationBoard', stand = 'game.Workspace.DonationStand';
+  f.world.add(board, { class: 'Model', center: [500, -40, 500], size: [10, 10, 2] });
+  f.world.add(stand, { class: 'Model', center: [510, -42, 500], size: [4, 6, 4] });
+  const out = await P.placeGroup(f.ctx, [board, stand], P.newPlaceState(), 3, FAR());
+  assert.equal(out, 'placed');
+  const b = f.world.nodes.get(board), s = f.world.nodes.get(stand);
+  assert.ok(Math.abs(Math.min(bottomOf(b), bottomOf(s))) < 1e-6, 'the group rests on the ground, not under the map');
+  assert.ok(Math.abs(s.center[0] - b.center[0] - 10) < 1e-6 && Math.abs(s.center[2] - b.center[2]) < 1e-6, 'the pieces keep their layout');
+  assert.ok(Math.hypot(b.center[0], b.center[2]) < 200, 'near the play area');
+  assert.ok(!(b.center[0] > 25 && b.center[0] < 55 && Math.abs(b.center[2]) < 35), 'not in the wall');
+});

@@ -333,3 +333,46 @@ export async function moveBy(ctx: AgentCtx, paths: string[], move: Vec3, depth =
   }
   return total;
 }
+
+/**
+ * A system's world pieces (a donation board, egg stands, a row of plots) keep their own layout and move together to open ground
+ * near the play area: spots on the spawn spiral are tried, and the first one where every measurable piece rests on the ground
+ * and overlaps nothing is kept. A group with no room goes back to where it arrived.
+ */
+export async function placeGroup(ctx: AgentCtx, paths: string[], state: PlaceState, seed: number, deadline: number, now: () => number = Date.now): Promise<'placed' | 'no_room' | 'skipped' | 'disconnected'> {
+  const roots = paths.slice(0, 20);
+  const measured: string[] = [], boxes: Box[] = [];
+  for (const p of roots) {
+    const b = await boundsOf(ctx, p);
+    if (isBox(b)) { measured.push(p); boxes.push(b); } else if (gone(b)) return 'disconnected';
+  }
+  if (!boxes.length) return 'skipped';
+  const minX = Math.min(...boxes.map((b) => b.center[0] - b.size[0] / 2)), maxX = Math.max(...boxes.map((b) => b.center[0] + b.size[0] / 2));
+  const minZ = Math.min(...boxes.map((b) => b.center[2] - b.size[2] / 2)), maxZ = Math.max(...boxes.map((b) => b.center[2] + b.size[2] / 2));
+  const bottom = Math.min(...boxes.map((b) => b.bottomY));
+  const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2, r = Math.hypot(maxX - minX, maxZ - minZ) / 2;
+  const anchor = (await anchorsFor(ctx, 'spawn', state, roots))[0]!;
+  const phase = ((seed % 360) * Math.PI) / 180, tries = MAX_ATTEMPTS * 2;
+  const moved: Vec3 = [0, 0, 0];
+  for (let attempt = 0; attempt < tries && now() <= deadline; attempt++) {
+    const [x, z] = spiralPoint(anchor.x, anchor.z, Math.max(20, r + 10), Math.max(60, r * 3 + 40), attempt, tries, phase);
+    if (crowded(x, z, r, state.placed)) continue;
+    const { reply, ground } = await groundAt(ctx, x, anchor.y + CEILING, z, [...roots, ...state.recent.slice(-TAKEN)].slice(0, 20));
+    if (gone(reply)) return 'disconnected';
+    if (!standable(ground, anchor.y)) continue;
+    const move: Vec3 = [x - cx - moved[0], Number((ground!.position as number[])[1]) - bottom - moved[1], z - cz - moved[2]];
+    const went = await moveBy(ctx, roots, move);
+    if (went.gone) return 'disconnected';
+    if (!went.moved) return 'skipped';
+    moved[0] += move[0]; moved[1] += move[1]; moved[2] += move[2];
+    let clear = true;
+    for (const p of measured) {
+      const seen = await ask(ctx, { op: 'spatial_query', action: 'check_placement', path: p });
+      if (gone(seen)) return 'disconnected';
+      if (!seen.ok || Number(seen.data.overlapCount) > 0) { clear = false; break; }
+    }
+    if (clear) { state.placed.push({ x, z, r }); state.recent.push(...measured); return 'placed'; }
+  }
+  if (moved.some((v) => v !== 0)) await moveBy(ctx, roots, [-moved[0], -moved[1], -moved[2]]);
+  return 'no_room';
+}
