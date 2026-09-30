@@ -1,10 +1,13 @@
 # NEXT ACTION (V3)
 
-Status 2026-09-30 evening (production 5eaeeb1a): the library passes the client test. "Plants vs Brainrots, but the brainrots
-are fruit" builds in ~55 s and the judge says ready (94/100, all seven criteria) on two runs in a row; played by hand it is
-clean and progresses (evidence/20260930-client-test). Next, in order:
-1. After judge_game says ready, the agent must answer: its visual check frames the empty edit camera (score 3, "passed:false")
-   and it then searches scripts instead of replying. Frame the play area (spawn/plot) for inspect_visually and steer to the answer.
+Status 2026-09-30 evening (production 177876ea): the library passes the client test. "Plants vs Brainrots, but the brainrots
+are fruit" builds in ~55 s and the judge says ready (94/100, all seven criteria) on two builds in a row and two re-checks;
+played by hand it is clean and progresses (evidence/20260930-client-test); the agent's answer is plain and friendly.
+Next, in order:
+1. After a ready verdict the model still wanders: once it replaced the silent private music and added a second money counter
+   (fixed by hand; the run now REFUSES project changes after "ready", 177876ea, unit-tested, not yet seen live), once it read
+   the viewport and called tools that do not exist ("get_transcript") instead of answering. End the run with the answer when
+   the verdict is ready (finishRun from the judge result) rather than hoping the model does.
 2. The same client test for the other genres (candy garden, steal-a-brainrot, escape tsunami, pet sim): their designs pass the
    planner tests but were not built live; the content choice (library_content.select) only runs for a creature twist.
 3. Private sounds/animations of the original creator stay silent (see item 3 below).
