@@ -2,6 +2,7 @@
 // Bridges: browser (WebSocket, hibernatable) <-> agent loop (alarm-driven steps) <-> Studio
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
 import { lastUserText } from '../user-request';
+import { afterReady, saysReady } from '../run-flow';
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
 import { RETENTION } from '../retention';
@@ -255,6 +256,8 @@ interface AgentState {
   keepOwnerOriginal?: boolean;
   /** build_game finished: the game is whole and its content is being given a new theme, which renames and moves models, so the structure fence lifts. */
   builtGame?: boolean;
+  /** judge_game said the game is ready in this run: project changes are refused and the answer is next (run-flow.ts). */
+  judgedReady?: boolean;
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
   /**
    * Identical calls whose last attempt failed in a way op-failure.ts classified as SAFE TO REPEAT
@@ -4495,6 +4498,14 @@ export class SessionDO extends DurableObject<Env> {
         });
         continue;
       }
+      const readyRefusal = afterReady(agent.judgedReady, call.name, new Set(projectMutatingToolNames()));
+      if (readyRefusal) {
+        duplicatesThisStep += 1;
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `✗ ${call.name} (the game is ready)` });
+        agent.llm.push({ role: 'tool', content: `[${call.name}] ${readyRefusal}`, toolCallId: call.id, name: call.name });
+        continue;
+      }
       if (agent.lightingOnly && READ_ONLY_WITHHELD.has(call.name) && !staysInLighting(call.name, call.arguments)) {
         duplicatesThisStep += 1;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
@@ -4619,6 +4630,7 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
       // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
       if (out.mutatedProject === true && call.name === 'build_game') agent.builtGame = true;
+      if (out.ok && saysReady(call.name, out.resultForLlm)) agent.judgedReady = true;
       // Judging the game plays it in up to three Test sessions (sessions:0 reads without playing), so it is the playtest a built game is owed.
       if (out.ok && (call.name === 'play_check' || (call.name === 'judge_game' && !/"sessions"\s*:\s*0\b/.test(call.arguments)))) agent.playChecked = true;
       // A read made BEFORE the place changed is not the same read after it. Refusing an identical
