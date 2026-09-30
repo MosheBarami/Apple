@@ -6,6 +6,7 @@ import {
 import { screenRoots } from './menu-binder';
 import { ASSEMBLE_BUDGET_MS, list, noCopy, plainProblem, plainText, SAVES, sentence, workspaceIsFresh } from './library-assemble';
 import { ask, ensureSpawn, newPlaceState, placeRegion, type Vec3 } from './library-placement';
+import { applyEdits, checkSyntax, sourceHash, type ScriptEdit } from './luau-review';
 
 /**
  * THE TWO STEPS OF AN ORIGINAL GAME.
@@ -38,14 +39,18 @@ type Values = Record<string, number | boolean | number[]>;
 export interface Look { mood: string; look: string; colours: string[]; nameIdeas: string[]; lighting?: { properties: Values; atmosphere: Values; sky: string } }
 export interface Design {
   title: string; genre: string; pitch: string; theme: string; look: Look; loop: string[]; progression: string[];
-  core: { gameId: string; name: string; why: string };
+  /** runs: how well the core's code works as saved (3: its loop runs). */
+  core: { gameId: string; name: string; why: string; runs?: number };
   imports: Part[]; cleanup: string[]; leaveOut: LeftOut[]; keeps: string[];
   add: Region[];
-  screensKeep: string[]; remove: { path: string; why: string }[]; fixTexts: Fix[]; branding: Fix[];
+  screensKeep: string[]; remove: { path: string; why: string }[]; hide: { path: string; why: string }[]; fixTexts: Fix[]; branding: Fix[];
   tables: Table[]; models: ModelPick[]; currency: Currency; lockstep: string[]; registryNote: string;
+  /** Content chosen from the core's own (the creatures that fit the twist), and the exact code edits that make it so. */
+  chosen?: { keep: string[]; left: number; why: string }; patches: Patch[];
   keepEdits: Edit[]; themeNotes: string[]; write: Task[]; warnings: string[]; unreadable: number;
   studioNotes: string[]; walkthrough: string[]; checklist: string[];
 }
+export interface Patch { path: string; edits: ScriptEdit[]; why: string }
 interface Stored { design: Design; request: string; seed: number; at: number }
 /** A plan older than this is another conversation's: build_game asks for a fresh one. */
 const PLAN_LIFETIME_MS = 3 * 60 * 60_000;
@@ -120,7 +125,7 @@ function readTask(raw: unknown): Task | undefined {
     like: arr(r.reference).slice(0, 3).map((x) => clean(`${rec(x).game || ''} ${rec(x).feature || ''} ${arr(rec(x).read).filter((p) => typeof p === 'string').slice(0, 3).join(', ')}`, 260)).filter(Boolean),
   };
 }
-const MAX = { imports: 60, add: 8, cleanup: 80, remove: 60, fixes: 80, branding: 40, tables: 40, models: 40, leaveOut: 40 };
+const MAX = { imports: 60, add: 8, cleanup: 80, remove: 60, hide: 60, fixes: 80, branding: 40, tables: 40, models: 40, leaveOut: 40 };
 
 /** The library's design, kept to what can be carried out. Anything unreadable is dropped; a design with no core or no import is refused. */
 export function readDesign(raw: Record<string, unknown>): Design | { error: string } {
@@ -146,7 +151,7 @@ export function readDesign(raw: Record<string, unknown>): Design | { error: stri
       ...(light.properties || light.atmosphere ? { lighting: { properties: values(light.properties), atmosphere: values(light.atmosphere), sky: clean(light.sky, 120) } } : {}),
     },
     loop: lines(raw.loop, 220, 8), progression: lines(raw.progression, 220, 8),
-    core: { gameId: coreId, name: clean(core.name, 80), why: clean(core.why, 300) },
+    core: { gameId: coreId, name: clean(core.name, 80), why: clean(core.why, 300), ...(Number.isFinite(Number(core.runs)) ? { runs: Number(core.runs) } : {}) },
     imports, cleanup: paths(raw.cleanup, MAX.cleanup),
     leaveOut: arr(raw.leaveOut).slice(0, MAX.leaveOut).map((x): LeftOut => {
       const r = rec(x);
@@ -157,6 +162,7 @@ export function readDesign(raw: Record<string, unknown>): Design | { error: stri
     add,
     screensKeep: paths(screens.keep, 80),
     remove: arr(screens.remove).slice(0, MAX.remove).map((x) => ({ path: clean(rec(x).path, 400), why: clean(rec(x).why, 200) })).filter((x) => x.path),
+    hide: arr(screens.hide).slice(0, MAX.hide).map((x) => ({ path: clean(rec(x).path, 400), why: clean(rec(x).why, 200) })).filter((x) => x.path),
     fixTexts: arr(screens.fixTexts).slice(0, MAX.fixes).map(readFix).filter((f): f is Fix => !!f),
     branding: arr(raw.branding).slice(0, MAX.branding).map(readFix).filter((f): f is Fix => !!f),
     tables: arr(content.tables).slice(0, MAX.tables).map((x): Table => {
@@ -171,6 +177,13 @@ export function readDesign(raw: Record<string, unknown>): Design | { error: stri
       .filter((m) => GAME_ID.test(m.gameId) && LIBRARY_PATH.test(m.path)),
     currency: { name: clean(money.name, 60), was: clean(money.was, 60), shownAs: clean(money.shownAs, 200), places: paths(money.places, 12), how: clean(money.how, 260) },
     lockstep: lines(content.lockstep, 200, 8), registryNote: clean(content.registryNote, 240),
+    ...(rec(content.chosen).why ? { chosen: { keep: lines(rec(content.chosen).keep, 60, 40), left: Number(rec(content.chosen).left) || 0, why: clean(rec(content.chosen).why, 200) } } : {}),
+    patches: arr(content.patches).slice(0, 10).map((x): Patch => ({
+      path: clean(rec(x).path, 400), why: clean(rec(x).why, 200),
+      // not `clean`: an edit's text is code, its line breaks and tabs are part of it
+      edits: arr(rec(x).edits).slice(0, 60).map((e) => ({ find: String(rec(e).find ?? '').slice(0, 2000), replace: String(rec(e).replace ?? '').slice(0, 6000), ...(rec(e).all === true ? { all: true } : {}) }))
+        .filter((e) => e.find),
+    })).filter((x) => x.path && x.edits.length),
     keepEdits: arr(raw.keepEdits).map((e): Edit => ({ path: clean(rec(e).path, 400), what: clean(typeof e === 'string' ? e : rec(e).change ?? rec(e).what, 300), feature: clean(rec(e).feature, 60) })).filter((e) => e.what).slice(0, 8),
     themeNotes: lines(raw.themeNotes, 300, 8),
     write: arr(raw.write).slice(0, 4).map(readTask).filter((t): t is Task => !!t), warnings: lines(raw.warnings, 300, 6), unreadable: listed.length - imports.length,
@@ -221,7 +234,17 @@ async function recallPlan(ctx: AgentCtx): Promise<Stored | undefined> {
   const fresh = typeof r.at === 'number' && Date.now() - r.at < PLAN_LIFETIME_MS;
   if (!fresh || !GAME_ID.test(String(rec(design.core).gameId ?? '')) || !Array.isArray(design.imports)) return undefined;
   // A plan kept by an earlier version of this file lacks the newer lists.
-  return { ...r, design: { keepEdits: [], themeNotes: [], unreadable: 0, ...design, write: arr(design.write).filter((w) => w && typeof w === 'object') } } as unknown as Stored;
+  return { ...r, design: { keepEdits: [], themeNotes: [], unreadable: 0, hide: [], patches: [], ...design, write: arr(design.write).filter((w) => w && typeof w === 'object') } } as unknown as Stored;
+}
+
+/**
+ * The first steps of the game's loop, when the game was built from a library core whose loop runs as saved: what a player does to earn.
+ * The judge's quick test cannot plant, aim or wait out a wave; this is what it says a player should try instead of calling the loop missing.
+ */
+export async function plannedLoop(ctx: AgentCtx): Promise<string[] | undefined> {
+  const stored = await recallPlan(ctx);
+  const d = stored?.design;
+  return d && (d.core.runs ?? 0) >= 3 && d.walkthrough.length ? d.walkthrough.slice(0, 4) : undefined;
 }
 
 /** What the model may change after reading the plan: the title, the theme, the pitch and the currency name. A new title or currency goes into every text that carried the old one. */
@@ -342,6 +365,47 @@ async function removePaths(ctx: AgentCtx, targets: readonly string[], imports: r
     else { stayed.push(path); if (del.failure === 'transport') gone = true; }
   }
   return { removed, stayed, gone };
+}
+
+/**
+ * The design's exact code edits (which of the core's creatures spawn, what a rebirth asks for). Each script is read, edited in memory the
+ * way the plugin would, checked to still parse, and written whole against the hash of what was read, so nothing half-applies.
+ */
+async function applyPatches(ctx: AgentCtx, patches: readonly Patch[], imports: readonly Part[]) {
+  let applied = 0, gone = false;
+  const failed: { path: string; why: string }[] = [];
+  for (const p of patches) {
+    const studio = toStudio(imports, p.path);
+    if (!studio) { failed.push({ path: p.path, why: 'not in the place' }); continue; }
+    const read = await ask(ctx, { op: 'read_script', path: studio }, 20_000);
+    if (!read.ok) { if (read.failure === 'transport') { gone = true; break; } failed.push({ path: studio, why: read.error ?? 'could not be read' }); continue; }
+    const before = String(read.data.source ?? '');
+    const edited = applyEdits(before, p.edits);
+    if (!edited.ok) { failed.push({ path: studio, why: edited.error }); continue; }
+    if (checkSyntax(edited.source).length) { failed.push({ path: studio, why: 'the edited script would not parse' }); continue; }
+    const wrote = await ask(ctx, { op: 'edit_script', path: studio, source: edited.source, baseHash: sourceHash(before) }, 30_000);
+    if (wrote.ok) applied += 1;
+    else if (wrote.failure === 'transport') { gone = true; break; }
+    else failed.push({ path: studio, why: wrote.error ?? 'Studio refused the edit' });
+  }
+  return { applied, failed, gone };
+}
+
+const LAYER = /^(ScreenGui|BillboardGui|SurfaceGui)$/;
+/** Hide each library path that is in the place: a screen is switched off, a frame or button made invisible. Nothing is deleted, so code that names it runs on. */
+async function hidePaths(ctx: AgentCtx, targets: readonly string[], imports: readonly Part[]) {
+  let hidden = 0, gone = false;
+  for (const path of targets) {
+    const studio = toStudio(imports, path);
+    if (!studio || isService(studio)) continue;
+    const at = await inspect(ctx, studio);
+    if (at.gone) { gone = true; break; }
+    if (!at.exists) continue;
+    const set = await ask(ctx, { op: 'set_props', path: studio, props: LAYER.test(at.cls ?? '') ? { Enabled: { t: 'bool', v: false } } : { Visible: { t: 'bool', v: false } } }, 20_000);
+    if (set.ok) hidden += 1;
+    else if (set.failure === 'transport') { gone = true; break; }
+  }
+  return { hidden, gone };
 }
 
 interface Unfixed { path: string; now: string; to: string; inScripts?: string[] }
@@ -557,6 +621,7 @@ async function themeTheContent(ctx: AgentCtx, design: Design, request: string, l
 
 function buildWords(design: Design, r: {
   failed: string[]; regionsPlaced: number; regionsLeft: number; removed: number; fixed: number; menus: boolean; saves: boolean; timedOut: boolean; disconnected: boolean; light: boolean; spawn: boolean;
+  chosen?: number;
 }): string {
   const title = plainText(design.title, 60), pitch = design.pitch ? pitchWords(design.pitch) : '';
   // A pitch usually opens with the title; then it is the first sentence and the title is not said twice.
@@ -564,7 +629,8 @@ function buildWords(design: Design, r: {
   const left = leftWords(design, 4);
   if (left.length) out.push(`It was built from a working game of its kind, without ${list(left, 4)}, which do not belong in it.`);
   if (r.regionsPlaced) out.push(`${r.regionsPlaced === 1 ? 'One extra landmark stands' : `${r.regionsPlaced} extra landmarks stand`} beside the play area.`);
-  if (r.removed) out.push('Screens that did not belong were removed.');
+  if (r.chosen) out.push(`Only the ${r.chosen} characters that fit ${design.pitch && /where (.+?)\.?$/i.test(design.pitch) ? `"${/where (.+?)\.?$/i.exec(design.pitch)![1]}"` : 'the theme'} appear, the rest never show up.`);
+  if (r.removed) out.push('Screens and buttons that did not belong were taken out of sight.');
   if (r.fixed) out.push('Placeholder and leftover texts were replaced with ones that fit.');
   if (r.light) out.push('The sky and lighting were set to fit the theme.');
   if (r.menus) out.push('Screens that came without working code had their buttons connected, so their menus open and close.');
@@ -663,15 +729,21 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
   const cleaned = disconnected ? { removed: [] as string[], stayed: [] as string[], gone: false } : await removePaths(ctx, design.cleanup, all);
   const screens = disconnected || cleaned.gone ? { removed: [] as string[], stayed: [] as string[], gone: false } : await removePaths(ctx, design.remove.map((r) => r.path), all, keepStudio);
   if (cleaned.gone || screens.gone) disconnected = true;
+  // Pieces the game's code still names but a player must not see (a Robux shop's button, a left-out feature's screen) are hidden, not deleted.
+  const hid = disconnected ? { hidden: 0, gone: false } : await hidePaths(ctx, design.hide.map((r) => r.path), all);
+  if (hid.gone) disconnected = true;
 
   // 4. texts that do not fit change (Text only); the lighting takes the theme's values.
   const allFixes = [...design.fixTexts, ...design.branding];
   const fixes: FixResult = disconnected ? { fixed: 0, left: allFixes.map((f) => ({ path: f.path, now: f.now, to: f.to })) } : await fixTexts(ctx, allFixes, all);
   if (fixes.gone) disconnected = true;
+  // 5. the content the design chose (the creatures that fit the twist) is made so in the code.
+  const patched = disconnected || !design.patches.length ? { applied: 0, failed: [] as { path: string; why: string }[], gone: false } : await applyPatches(ctx, design.patches, all);
+  if (patched.gone) disconnected = true;
   const lit = disconnected || !design.look.lighting ? undefined : await setLighting(ctx, design.look.lighting);
   if (lit === 'gone') disconnected = true;
 
-  // 5. a spawn, and menus for the screens that came without working code.
+  // 6. a spawn, and menus for the screens that came without working code.
   const spawned = disconnected ? false : await ensureSpawn(ctx, state).catch(() => false);
   const removedStudio = new Set(screens.removed.map((p) => toStudio(all, p)));
   const shownScreens = screenRoots(inserted).filter((p) => !removedStudio.has(p));
@@ -685,11 +757,14 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
   const flagged = suspicious.slice(0, 8);
   return {
     built: true, changed: true, title: design.title, genre: design.genre, seed,
-    forUser: buildWords(design, { failed, regionsPlaced, regionsLeft, removed: screens.removed.length, fixed: fixes.fixed, menus, saves: inserted.some((p) => SAVES.test(p)), timedOut, disconnected, light: lit === 'set', spawn: spawned }),
+    forUser: buildWords(design, { failed, regionsPlaced, regionsLeft, removed: screens.removed.length + hid.hidden, fixed: fixes.fixed, menus, saves: inserted.some((p) => SAVES.test(p)), timedOut, disconnected, light: lit === 'set', spawn: spawned,
+      ...(design.chosen && patched.applied ? { chosen: design.chosen.keep.length } : {}) }),
     couldNotAdd: failed,
     ...(screens.stayed.length ? { screensStillThere: screens.stayed.slice(0, 20) } : {}),
     ...(flagged.length ? { suspicious: flagged, ...(suspicious.length > flagged.length ? { suspiciousMore: suspicious.length - flagged.length } : {}) } : {}),
     ...(menus ? { menus: MENUS_CONNECTED } : {}),
+    ...(design.chosen && patched.applied ? { contentChosen: `${design.chosen.why}: ${design.chosen.keep.slice(0, 10).join(', ')}${design.chosen.keep.length > 10 ? '…' : ''}. This is done; do not rename or re-register them.` } : {}),
+    ...(patched.failed.length ? { editsNotApplied: patched.failed.slice(0, 6) } : {}),
     themeTheContent: await themeTheContent(ctx, design, request, fixes.left, lit === 'refused' ? 'Studio refused the theme lighting; set the Lighting values by hand.' : '', dangling),
     seconds: Math.round((now() - started) / 1000),
     note: NEXT_STEPS,

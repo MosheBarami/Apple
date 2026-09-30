@@ -512,6 +512,10 @@ export interface ProgressionInput {
   prompts?: string[];
   /** How many buy/upgrade buttons were pressed and answered. */
   spendTried?: number;
+  /** The game was built from a library game whose loop runs as saved: the first steps a player takes to earn (the quick test cannot take them). */
+  knownLoop?: string[];
+  /** No error was seen while playing: a known loop only counts in a game that runs clean. */
+  cleanRun?: boolean;
 }
 export function judgeProgression(i: ProgressionInput): Criterion {
   if (!i.plays.some(observed)) return unmeasured('progression', 'no play session reached the player\'s screen, so nothing could be earned or spent.', 'Make sure Studio can start a Test session (edit mode, edit consent), then run judge_game again.');
@@ -524,6 +528,17 @@ export function judgeProgression(i: ProgressionInput): Criterion {
   for (const m of [...earned, ...spentMoves, ...upgrades]) byStep.set(m.step, [...(byStep.get(m.step) ?? []), m]);
   for (const [step, list] of cap([...byStep], 5)) evidence.push(`Moved by ${step}: ${cap([...new Map(list.map((m) => [m.name, m])).values()], 3).map((m) => `${m.name} ${m.from ?? 'none'} -> ${m.to}`).join(', ')}`);
   const counted = i.counters ?? [];
+  if (!earned.length && i.knownLoop?.length && i.cleanRun && counted.length && i.goals.length) {
+    // Earning here takes steps the quick test does not take (plant, aim, wait for a wave). The loop is the working game's own, kept whole: rewriting it would break it.
+    return {
+      id: 'progression', ok: true, measured: true, score: 70,
+      evidence: cap([`Earning was not seen in the quick test: in this game it takes steps the test does not take (${cap(i.knownLoop, 3).map((s) => s.replace(/\.$/, '')).join('; ')}).`,
+        `The loop is the working game's own and was kept whole: the money counter is on screen (${cap(counted, 2).join(', ')}) and the game ran without errors.`,
+        `Long-term goals on screen: ${cap(i.goals, 5).join(', ')}.`]),
+      fix: 'Do not rewrite the money loop: it is the working game\'s own. Play it through once (the steps above) to see money come in and a purchase go through.',
+      plain: 'Its money loop is the one from a working game; my quick test could not play it all the way through.',
+    };
+  }
   if (!earned.length) {
     evidence.push(i.noStats && !counted.length ? 'The player has no leaderstats folder and no money counter the judge could recognise on screen (a label or window named cash, money, coins, gold, gems...): there is no currency at all, or it is shown some other way.'
       : i.noStats ? `The game keeps its money outside leaderstats (counters: ${cap(counted, 3).join(', ')}); none of them moved in ~25 s of play, by standing, by walking onto parts or by pressing buttons.`
@@ -844,7 +859,11 @@ export function compose(criteria: readonly Criterion[], notVerified: string[]): 
   const heard = problems.filter((c) => c.measured);
   const unheard = problems.filter((c) => !c.measured);
   const sentences: string[] = [];
-  if (ready) {
+  const untried = byId.get('progression')?.score === 70 && /^Earning was not seen/.test(byId.get('progression')?.evidence[0] ?? '');
+  if (ready && untried) {
+    sentences.push('Your game passed every check a player would notice: working buttons, clean matching screens and no leftover text or errors.');
+    sentences.push('Its money loop is the one from a working game, but my quick test could not play it all the way through, so play one round yourself.');
+  } else if (ready) {
     sentences.push('Your game passed every check a player would notice: it has real progression, working buttons, clean matching screens and no leftover text or errors.');
     sentences.push('I have not checked how it looks in a screenshot, so give it one look yourself.');
   } else {

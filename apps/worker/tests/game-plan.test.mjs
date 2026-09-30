@@ -228,6 +228,40 @@ test('build_game: the cleanup list and the screens the design removes are gone (
   assert.equal(f.world.nodes.has('game.StarterGui.HUD'), true);
 });
 
+test('build_game: what the design hides stays in the place, out of sight: a button made invisible, a whole screen switched off', async () => {
+  const d = design();
+  const f = studio({ route: { design: designRoute({ screens: { ...d.screens, hide: [{ path: '/StarterGui/HUD/ShopButton', why: 'its button opens a Robux shop' }, { path: '/StarterGui/Loading', why: 'the code still looks for it' }, { path: '/StarterGui/Gone', why: 'never imported' }] } }) } });
+  await built(f);
+  assert.equal(f.world.nodes.get('game.StarterGui.HUD.ShopButton').props.Visible.v, false, 'the button is still there for the code, but hidden');
+  assert.equal(f.world.nodes.get('game.StarterGui.Loading').props.Enabled.v, false, 'a ScreenGui is switched off');
+  assert.equal(f.ops('delete_instances').some((o) => /ShopButton|Loading/.test(o.paths[0])), false, 'nothing hidden is deleted');
+});
+
+test('build_game: the content the design chose is made so in the code: exact edits, each script written whole once; an edit that finds nothing or would not parse is not applied', async () => {
+  const src = 'local list = {\n\tBanana = {Rarity = "Rare"},\n\tKiwi = {Rarity = "Rare"},\n\tShark = {Rarity = "Rare"},\n}\nreturn list;';
+  const importWith = (op) => {
+    const r = importOf(op);
+    if (op.gameId === CORE && op.path.startsWith('/ReplicatedStorage')) r.roots[0].scripts = [{ name: 'Creatures', class: 'ModuleScript', source: src }, { name: 'Rebirths', class: 'ModuleScript', source: 'return {Shark = 1}' }];
+    return r;
+  };
+  const d = design();
+  const f = studio({ importOf: importWith, route: { design: designRoute({ content: { ...d.content, tables: [], chosen: { keep: ['Banana', 'Kiwi'], left: 1, why: 'only the creatures that fit spawn' }, patches: [
+    { path: '/ReplicatedStorage/Config/Creatures', why: 'only the fruit spawn', edits: [{ find: 'return list;', replace: 'for name, e in list do\n\tif name == "Shark" then e.DontSpawn = true end\nend\nreturn list;' }] },
+    { path: '/ReplicatedStorage/Config/Rebirths', why: 'asks for a fruit', edits: [{ find: 'Shark = 1', replace: '["Banana"] = 1', all: true }] },
+    { path: '/ReplicatedStorage/Config/Creatures', why: 'not there', edits: [{ find: 'Octopus = {', replace: 'x' }] },
+    { path: '/ReplicatedStorage/Config/Rebirths', why: 'breaks it', edits: [{ find: 'return {', replace: 'return {{' }] },
+  ] } }) } });
+  const { data } = await built(f);
+  const source = (p) => f.world.nodes.get(p).source;
+  assert.match(source('game.ReplicatedStorage.Config.Creatures'), /e\.DontSpawn = true end\nend\nreturn list;$/);
+  assert.equal(source('game.ReplicatedStorage.Config.Rebirths'), 'return {["Banana"] = 1}', 'the second edit of the same script found nothing to parse, so the first stands alone');
+  assert.equal(f.ops('edit_script').length, 2, 'each script is written once per patch that applies');
+  assert.deepEqual(data.editsNotApplied.map((e) => e.path), ['game.ReplicatedStorage.Config.Creatures', 'game.ReplicatedStorage.Config.Rebirths']);
+  assert.match(data.contentChosen, /Banana, Kiwi\. This is done; do not rename/);
+  assert.match(data.forUser, /Only the 2 characters that fit the theme appear, the rest never show up\./);
+  assert.equal(jargon.test(data.forUser), false, data.forUser);
+});
+
 test('build_game: a path that leads nowhere deletes nothing else, not even a look-alike elsewhere', async () => {
   const d = design();
   d.screens.remove = [{ path: '/StarterGui/Main/Effects', why: 'left out with its feature' }];

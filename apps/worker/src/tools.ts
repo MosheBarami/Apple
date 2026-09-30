@@ -78,7 +78,7 @@ import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, 
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
-import { planGame, buildGame, planSummary, buildSummary } from './game-plan';
+import { planGame, buildGame, planSummary, buildSummary, plannedLoop } from './game-plan';
 import { JUDGE_GAME_DEF, judgeGame, judgeSummary } from './client-judge';
 import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
@@ -3057,7 +3057,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     // play_check_ui is reported supported only when play_check is (Commands.capabilities), so it stands for both.
     studioOps: ['get_tree', 'query_instances', 'spatial_query', 'dump_scripts', 'ui_layout_check', 'play_check_ui'],
     plainSummary: judgeSummary,
-    run: (ctx, a) => judgeGame(studioCall(ctx), a),
+    run: async (ctx, a) => judgeGame(studioCall(ctx), a, { knownLoop: await plannedLoop(ctx).catch(() => undefined) }),
   },
   get_output_logs: {
     def: { name: 'get_output_logs', description: 'Read recent Studio output/console logs (errors, warnings, prints).', parameters: S({}) },

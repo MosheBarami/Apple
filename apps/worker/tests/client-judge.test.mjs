@@ -535,6 +535,25 @@ test('movesOf: standing still, walking onto a part and pressing a button each sa
   assert.deepEqual(clock, [], 'time played is not something the player earned');
 });
 
+test('judgeProgression: a loop the quick test cannot play (plant, then wait for a wave) passes only in a built library game that ran clean, with its counter and goals on screen', () => {
+  const input = (extra = {}) => ({ plays: [play()], moves: [], goals: ['Rebirth', 'Index'], currencies: [], noStats: true, counters: ['Main.Bottom.Money'],
+    knownLoop: ['Buy a Cactus seed at the seed shop.', 'Plant it in a lane on your plot.', 'Brainrots walk down the lanes; your plants defeat them for money.', 'Rebirth.'], cleanRun: true, ...extra });
+  const known = R.judgeProgression(input());
+  assert.deepEqual([known.ok, known.measured, known.score], [true, true, 70]);
+  assert.match(known.evidence[0], /^Earning was not seen in the quick test: in this game it takes steps the test does not take \(Buy a Cactus seed at the seed shop; Plant it in a lane on your plot; Brainrots walk/);
+  assert.match(known.fix, /^Do not rewrite the money loop/);
+  for (const [why, extra] of [['not a built library game', { knownLoop: undefined }], ['errors while playing', { cleanRun: false }], ['no money counter on screen', { counters: [] }], ['no long-term goal', { goals: [] }]]) {
+    assert.equal(R.judgeProgression(input(extra)).ok, false, why);
+  }
+  const earn = { session: 2, step: 'walking onto Coins.Coin1', name: 'Cash', from: 0, to: 5, kind: 'currency' };
+  assert.doesNotMatch(R.judgeProgression(input({ moves: [earn] })).evidence.join('\n'), /Earning was not seen/, 'what the test saw comes first');
+  const byId = (ok) => ['placeholders', 'ui_coherence', 'buttons_work', 'errors', 'construction', 'fit_uniqueness'].map((id) => ({ id, ok, measured: true, score: 100, evidence: [], fix: '', plain: '' }));
+  const verdict = R.compose([...byId(true), known], []);
+  assert.equal(verdict.verdict, 'ready');
+  assert.match(verdict.forUser, /my quick test could not play it all the way through, so play one round yourself/);
+  assert.doesNotMatch(verdict.forUser, /it has real progression/);
+});
+
 test('judgeProgression: earn and spend passes; earn without spend, or neither, fails with the loop that was seen', () => {
   const input = (mv, extra = {}) => ({ plays: [play()], moves: mv, goals: ['Rebirth'], currencies: ['Cash'], noStats: false, ...extra });
   const earn = { session: 2, step: 'walking onto Coins.Coin1', name: 'Cash', from: 0, to: 5, kind: 'currency' };

@@ -30,7 +30,7 @@ type Args = Record<string, unknown>;
 type Refusal = { error: string };
 const isErr = (r: unknown): r is Refusal => !!r && typeof r === 'object' && typeof (r as Args).error === 'string';
 
-export interface JudgeOptions { now?: () => number; budgetMs?: number }
+export interface JudgeOptions { now?: () => number; budgetMs?: number; /** The first steps of the game's loop when it came from a library game whose loop runs (see plannedLoop). */ knownLoop?: string[] }
 export const JUDGE_BUDGET_MS = 8 * 60_000;
 export const MAX_SESSIONS = 3;
 const PRESSES_PER_SESSION = 5;
@@ -597,11 +597,12 @@ export async function judgeGame(call: OpCall, a: Args, opts: JudgeOptions = {}):
   const moneyLabel = (n: GuiNode): boolean => (CURRENCY_NAME.test(spaced(n.name)) || /^\s*\$/.test(textOf(n))) && /\d/.test(textOf(n)) && hasText(n) && !isButton(n);
   const currencyScreens = screens.filter((s) => s.props.Enabled !== false).flatMap((s) => all(s).filter((n) => moneyLabel(n) && shown(n)).slice(0, 1).map((n) => ({ screen: s.name, text: textOf(n), path: readable(n.path, 'StarterGui') })));
   const goals = [...new Set(screens.flatMap(all).filter((n) => isButton(n) || (hasText(n) && textOf(n).trim())).map(labelOf).filter((l) => GOAL.test(l)))];
+  const errors = !plays.length ? noPlay('errors') : judgeErrors(plays, remoteRequires(scriptRead.scripts));
   const progression = !plays.length
     ? noPlay('progression')
     : judgeProgression({ plays, moves, goals, currencies, noStats, counters: [...new Set([...plays.flatMap((p) => p.hud?.afterWait ?? []).map((c) => c.name), ...currencyScreens.map((c) => c.path)])], prompts,
-      spendTried: [...latestOutcomes(outcomes).values()].filter((o) => (o.state === 'works' || o.state === 'silent') && SPEND_WORD.test(labels.get(o.path) ?? lastName(o.path))).length });
-  const errors = !plays.length ? noPlay('errors') : judgeErrors(plays, remoteRequires(scriptRead.scripts));
+      spendTried: [...latestOutcomes(outcomes).values()].filter((o) => (o.state === 'works' || o.state === 'silent') && SPEND_WORD.test(labels.get(o.path) ?? lastName(o.path))).length,
+      knownLoop: opts.knownLoop, cleanRun: errors.ok && errors.measured });
   const stood = plays.filter(observed).flatMap((p) => (['start', 'afterWait', 'finish'] as const)
     .flatMap((k) => { const pos = p.character?.[k]; return pos ? [{ when: `${k === 'start' ? 'at the spawn' : k === 'afterWait' ? `after ${p.seconds} s` : 'after the touches'} in session ${p.index}`, pos }] : []; }));
   const construction = judgeConstruction({ ...built.facts, stood });
