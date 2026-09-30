@@ -1,6 +1,7 @@
 // SessionDO — one per project. Store of record for chat history, checkpoints and op logs.
 // Bridges: browser (WebSocket, hibernatable) <-> agent loop (alarm-driven steps) <-> Studio
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
+import { lastUserText } from '../user-request';
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
 import { RETENTION } from '../retention';
@@ -188,18 +189,6 @@ function samePluginCapabilityClient(
   b: PluginCapabilityClientIdentity | null | undefined,
 ): boolean {
   return !!a && !!b && a.version === b.version && a.protocol === b.protocol;
-}
-
-/** The text of the last user message in a run's conversation: what the user asked for, in their own words. */
-export function lastUserText(messages: readonly { role: string; content?: unknown }[]): string | undefined {
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const m = messages[i]!;
-    if (m.role !== 'user') continue;
-    const text = typeof m.content === 'string' ? m.content
-      : Array.isArray(m.content) ? m.content.map((c) => (c && typeof c === 'object' && typeof (c as { text?: unknown }).text === 'string' ? (c as { text: string }).text : '')).join(' ') : '';
-    if (text.trim()) return text.trim();
-  }
-  return undefined;
 }
 
 interface AgentState {
