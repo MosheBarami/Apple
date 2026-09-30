@@ -58,6 +58,16 @@ test('a finished garden game is ready: every question a client asks is a yes, fr
   assert.ok(f.log.findIndex((op) => op.op === 'play_check_ui') > f.log.findIndex((op) => op.op === 'dump_scripts'), 'the place is read before it is played');
 });
 
+test('a screen whose every window stays shut (a left-out feature kept for its code) shows no look, so it cannot clash with the HUD', async () => {
+  const { f } = W.goodGarden({ studio: { play: W.gardenPlay() } });
+  const kept = W.screen(f, 'SiblingZIndex', { look: W.LOOK.pets });
+  const deck = kept.frame('DeckCreator', { visible: false, pos: [0.2, 0, 0.2, 0], size: [0.6, 0, 0.6, 0] });
+  for (const t of ['Cards', 'Merge', 'Equip', 'Pack']) kept.put(deck, t, 'TextButton', { text: t, size: [0.2, 0, 0.1, 0] });
+  const res = await judge(f);
+  assert.doesNotMatch(crit(res, 'ui_coherence').evidence.join('\n'), /Looks like two different games/);
+  assert.equal(crit(res, 'ui_coherence').ok, true);
+});
+
 test('the game as the owner saw it fail is not ready, and each defect he named comes back as its own finding with a fix', async () => {
   const names = { aaaa11111111: 'Grow A Garden', bbbb22222222: 'Full Pet System' };
   const f = fakeStudio({

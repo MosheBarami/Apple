@@ -585,7 +585,8 @@ export async function judgeGame(call: OpCall, a: Args, opts: JudgeOptions = {}):
   for (const name of onScreen) shownScreens.add(name);
   const runtimeButtons = Math.max(0, ...plays.filter(observed).map((p) => p.screens.filter((s) => s.enabled).reduce((n, s) => n + s.labels.filter((l) => l.visible && l.cls === 'TextButton').length, 0)));
   const coherence = judgeCoherence({
-    overlaps: overlaps(screens, hidden), menus, clashes: styleClashes(screens), shownScreens: [...shownScreens], shownButtons: Math.max(pickButtons(screens, 0, hidden).hud, runtimeButtons),
+    // Styles clash only between screens a player sees: one whose every window stays shut (a left-out feature's, kept for its code) shows no style.
+    overlaps: overlaps(screens, hidden), menus, clashes: styleClashes(screens.filter((s) => shownScreens.has(s.name))), shownScreens: [...shownScreens], shownButtons: Math.max(pickButtons(screens, 0, hidden).hud, runtimeButtons),
     layout, sources: sourceOf, cutScreens: read.cut, scriptDrawn, empty: shownScreens.size === 0, played: plays.some(observed),
   });
 
