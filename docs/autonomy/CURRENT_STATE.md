@@ -20,6 +20,20 @@ edit scripts while Studio was left in a test run (every write was refused). It e
 Landed that night (deployed 8804bdac, web too): the reply drops tool names and paths, only the live line shows while Apple works,
 and private sounds are silenced after build_game (unit-tested; not yet seen live).
 
+## 2026-09-30 late: owner confirmed the component plan; two small fixes deployed (7f7d75a0)
+
+- The owner confirmed (question round): first the two fixes below, then components with contracts plus our own code-driven
+  Motor6D animation, scoped to ONE idea end to end ("defend your orchard from vegetables that come in waves"). Twist creatures
+  are a rigged library body plus real fruit/veg meshes, animated by our code, with no uploads.
+- 1953444b: Studio is never left in a test run by Apple. The plugin's watchdog, in the Test's server DataModel, ends an Apple
+  play check the place stopped (after 60 s). run_and_check stops Run mode on any throw. A run_mode stop is admitted after its
+  run ended, and is queued under no run. Unit-tested (plugin 77/0, worker 4,576/0); not yet seen live.
+- 7f7d75a0: a second request on a built place continues that game. build_game records `builtGame` in the project, and a later
+  run is refused plan_game, build_game and recreate_owner_game unless the user asks for a new game in words. Unit-tested; not
+  yet seen live. Projects built before this deploy (c5405278) have no record.
+- Worker deployed 7f7d75a0 (version 5d2d62c7) and verified serving. The local test plugin was rebuilt from 7f7d75a0 into
+  ~/Documents/Roblox/Plugins/AppleStudio.rbxm (it loads in a new Studio process).
+
 ## Live V3 evidence (2026-09-29, production `apple.moshe-barami111.workers.dev`)
 
 - Deployed through 1e753d85 (worker + static, verified serving). Remote renamed to `MosheBarami/Apple`.
