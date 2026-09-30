@@ -1,0 +1,23 @@
+{
+  "id": "shop",
+  "name": "AppleShop",
+  "role": "system",
+  "summary": "Each player gets a plot of tiles, buys an item and places it on a free tile of their own plot, and can sell it back. The server checks everything.",
+  "files": {
+    "AppleShop.luau": { "class": "ModuleScript", "parent": "ServerScriptService.AppleComponents", "name": "AppleShop" },
+    "AppleShopClient.luau": { "class": "LocalScript", "parent": "StarterPlayer.StarterPlayerScripts", "name": "AppleShopClient" },
+    "AppleClientState.luau": { "class": "ModuleScript", "parent": "ReplicatedStorage.AppleComponents", "name": "AppleClientState" }
+  },
+  "needs": {
+    "config": "AppleGameConfig.shop: refund, items [{id, name, price, range, damage, rate, projectile?, color?}]",
+    "models": "ServerStorage.AppleDefenders.<id> for every item",
+    "map": "Workspace.AppleMap.Plots.<n>: tiles are BaseParts tagged AppleTile; optional TextLabel OwnerName, optional part Spawn",
+    "economy": "AppleEconomy"
+  },
+  "gives": {
+    "catalog": "ReplicatedStorage.AppleCatalog (JSON: id, name, price, order) and ReplicatedStorage.AppleItemModels (previews)",
+    "remotes": "ReplicatedStorage.AppleBuy(id, tile) -> ok, message; ReplicatedStorage.AppleSell(model) -> ok, message",
+    "placement": "placed models go to Workspace.AppleDefenders with Owner, Item, Range, Damage, Rate (AppleDefenders uses them)",
+    "client": "AppleClientState.pick(id) starts placing; Said(text, good) carries messages for the screen"
+  }
+}

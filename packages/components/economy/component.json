@@ -1,0 +1,19 @@
+{
+  "id": "economy",
+  "name": "AppleEconomy",
+  "role": "system",
+  "summary": "One currency per player in leaderstats, spent and granted only by the server, saved with a DataStore when the place allows it.",
+  "files": {
+    "AppleEconomy.luau": { "class": "ModuleScript", "parent": "ServerScriptService.AppleComponents", "name": "AppleEconomy" }
+  },
+  "needs": {
+    "boot": "A server script requires it once (AppleBoot does). Nothing else.",
+    "attributes": { "Currency": "string, default Coins", "Start": "number, default 50", "DataKey": "string, default AppleEconomy1" }
+  },
+  "gives": {
+    "api": "spend(player, amount, reason) -> boolean; grant(player, amount, reason); get(player) -> number; Changed(player, amount, delta, reason)",
+    "leaderstats": "player.leaderstats.<Currency> NumberValue",
+    "attribute": "player attribute <Currency> mirrors the balance, for any UI"
+  },
+  "limits": ["Saving needs a published place with Studio API access; without it the game still plays and says nothing is saved."]
+}

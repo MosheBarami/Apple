@@ -1,0 +1,21 @@
+{
+  "id": "waves",
+  "name": "AppleWaves",
+  "role": "system",
+  "summary": "Enemies come in numbered waves along lanes to a base; the waves keep coming, bigger and tougher, after the listed ones.",
+  "files": {
+    "AppleWaves.luau": { "class": "ModuleScript", "parent": "ServerScriptService.AppleComponents", "name": "AppleWaves" }
+  },
+  "needs": {
+    "config": "AppleGameConfig.waves: first, between, baseHealth, rewardShare, enemies {name: {health, speed, reward, damage}}, list [[{enemy, count, every}]]",
+    "map": "Workspace.AppleMap.Lanes.<lane> with waypoint Parts named 1..n (n at the base)",
+    "enemies": "ServerStorage.AppleEnemies.<name>: models with an anchored root (AppleMotion.prepare)",
+    "economy": "optional AppleEconomy, for rewards"
+  },
+  "gives": {
+    "state": "ReplicatedStorage.AppleState attributes: Wave, Phase (intermission|wave|lost), NextWaveIn, EnemiesLeft, BaseHealth, BaseHealthMax",
+    "enemies": "Workspace.AppleEnemies: live enemies tagged AppleEnemy and AppleCreature, attributes Health, MaxHealth, Reward, Enemy; set Health lower and LastHitBy to hit one",
+    "rewards": "a defeated enemy's Reward goes to the player who hit it last (or everyone)",
+    "loss": "the base at 0 clears the enemies and starts again from wave 1 after 6 s"
+  }
+}

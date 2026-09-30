@@ -1,0 +1,11 @@
+{
+  "id": "boot",
+  "name": "AppleBoot",
+  "role": "system",
+  "summary": "Starts a composed game's systems in the order the game config lists, handing each the config and the economy.",
+  "files": {
+    "AppleBoot.luau": { "class": "Script", "parent": "ServerScriptService", "name": "AppleBoot" }
+  },
+  "needs": { "config": "ServerScriptService.AppleComponents.AppleGameConfig with start = { module names in order }" },
+  "gives": { "start": "each listed module's start(config, economy) is called once; a failure is named in Output and the rest still start" }
+}

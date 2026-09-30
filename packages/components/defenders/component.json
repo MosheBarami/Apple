@@ -1,0 +1,19 @@
+{
+  "id": "defenders",
+  "name": "AppleDefenders",
+  "role": "system",
+  "summary": "Placed plants or towers hit the most advanced enemy in range, face it, play their attack and draw the shot.",
+  "files": {
+    "AppleDefenders.luau": { "class": "ModuleScript", "parent": "ServerScriptService.AppleComponents", "name": "AppleDefenders" },
+    "AppleShotClient.luau": { "class": "LocalScript", "parent": "StarterPlayer.StarterPlayerScripts", "name": "AppleShotClient" }
+  },
+  "needs": {
+    "defenders": "Models in Workspace.AppleDefenders with attributes Range, Damage, Rate, Owner (AppleShop places them); optional Muzzle part or attachment, ShotColor",
+    "enemies": "Models tagged AppleEnemy with a Health attribute (AppleWaves)"
+  },
+  "gives": {
+    "hits": "enemy Health lowered, LastHitBy = the owner's UserId",
+    "attack": "the defender turns to the enemy and gets MotionAttack (AppleMotion animates it)",
+    "shots": "ReplicatedStorage.AppleShot RemoteEvent; AppleShotClient draws a glowing ball"
+  }
+}
