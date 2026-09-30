@@ -70,13 +70,15 @@ Scope: owner V3 (`docs/autonomy/v3/`), contract `ACCEPTANCE.json` G01–G16. V3 
   Roblox file the owner uploaded (439 old + 127 new from `~/Desktop/SOME MORE ASSETS AND GAMES`, 3 repaired, 1 zipped
   Figma file moved to media) is copied content-addressed into `owner-library/sources/` (`library_sources.py`); the
   old ~/Downloads paths had vanished for 434 of 439, which had silently broken fresh extraction. 565/565 cataloged
-  (12.1M instances, 225K scripts), 95,804 assets indexed (sound/animation/mesh ids fixed), 565/565 style-scanned
-  (154 studded), 504 families (versions grouped, primaries chosen), 95,646/95,646 asset paths verified by a
-  whole-library round trip (`library_verify.py`, ~110 s for the whole library) with 99,575 typed content ids and
+  (12.2M instances, 226K scripts; content a saved copy left outside every service, e.g. RoCraft's 12K-object model
+  or a 31K-object GameModules folder, is now part of its game), 97,428 assets indexed (sound/animation/mesh ids fixed,
+  names with "/" reachable as %2F), 565/565 style-scanned (154 studded), 504 families (versions grouped, primaries
+  chosen), 97,265/97,265 asset paths verified by a whole-library round trip (`library_verify.py`, ~100 s) with 99,941 typed content ids and
   dependency closures (what each UI/tool needs + what drives it); script integrity per game (343 working, 77 partly,
   145 looks-only: 66K of 225K scripts are stripped in saveinstance dumps); 54 installable systems with install plans
   (`library_systems.py`, all 565 plans resolve); 5,797 media files (icons/panels/buttons/tiles/3D/design, thumbnails +
-  contact sheets, NOT uploaded to Roblox: owner-gated); `library_report.py` writes `owner-library/report/index.html`.
+  contact sheets, NOT uploaded to Roblox: owner-gated); `library_report.py` writes `owner-library/report/index.html`;
+  the owner dashboard's library pages (`scripts/owner-dashboard/games.py`, http://127.0.0.1:4777/#/library) read all of it.
   Agent: `assemble_owner_game` builds an original game from a library blueprint (`library_blueprint.py`, ≥ 8 games per
   plan), `install_owner_system` routes a system pack into its services, imports bring their dependencies, a Studio data
   stand-in (AppleStudioData) keeps DataStore games playable before publishing, script-less menus get a generic binder,
