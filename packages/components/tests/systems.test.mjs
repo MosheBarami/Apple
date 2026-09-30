@@ -75,6 +75,18 @@ spec("hud: numbers read like a game's", function()
   eq(Hud.clock(12), "0:12"); eq(Hud.clock(75), "1:15"); eq(Hud.clock(-3), "0:00")
 end)
 
+spec("creatures: a costume fills the torso-and-head space and stands its long side up", function()
+  local space = { sx = 2, sy = 3, sz = 1 }
+  local s = Creatures.fit({ sx = 1.79, sy = 0.58, sz = 0.65 }, space, true, 1)
+  eq(math.abs(1.79 * s - 3) < 1e-6, true, "a carrot lying down, stood up, is as tall as the space")
+  local w = Creatures.fit({ sx = 4, sy = 1, sz = 4 }, space, false, 1)
+  eq(4 * w <= 2 * 1.6 + 1e-6, true, "a wide costume is limited by width")
+  eq(Creatures.fit({ sx = 1, sy = 1, sz = 1 }, space, false, 1.2) > Creatures.fit({ sx = 1, sy = 1, sz = 1 }, space, false, 1), true)
+  local z, x = Creatures.uprightTurns({ sx = 1.79, sy = 0.58, sz = 0.65 }); eq(z, 1); eq(x, 0)
+  z, x = Creatures.uprightTurns({ sx = 0.5, sy = 0.5, sz = 2 }); eq(z, 0); eq(x, 1)
+  z, x = Creatures.uprightTurns({ sx = 1, sy = 2, sz = 1 }); eq(z, 0); eq(x, 0)
+end)
+
 print(("systems: %d passed%s"):format(passed, if #failures > 0 then ", " .. #failures .. " FAILED" else ""))
 for _, f in failures do print(f) end
 if #failures > 0 then error("system specs failed") end
@@ -90,6 +102,7 @@ test('the game components pass their luau specs', { skip: available() ? false : 
     `local Defenders = (function()\n${src('defenders/AppleDefenders.luau')}\nend)()`,
     `local Shop = (function()\n${src('shop/AppleShop.luau')}\nend)()`,
     `local Economy = (function()\n${src('economy/AppleEconomy.luau')}\nend)()`,
+    `local Creatures = (function()\n${src('creatures/AppleCreatures.luau')}\nend)()`,
     'script = nil -- the HUD starts itself only as a real LocalScript',
     `local Hud = (function()\n${src('hud/AppleHud.luau')}\nend)()`,
     SPEC,

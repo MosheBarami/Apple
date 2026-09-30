@@ -1,0 +1,17 @@
+{
+  "id": "creatures",
+  "name": "AppleCreatures",
+  "role": "content",
+  "summary": "New creatures made by combining library pieces: a rigged body wears a costume (a vegetable, a fruit, any prop) in place of its torso and head, so a twist like \"the enemies are vegetables\" is really built.",
+  "files": {
+    "AppleCreatures.luau": { "class": "ModuleScript", "parent": "ServerScriptService.AppleComponents", "name": "AppleCreatures" }
+  },
+  "needs": {
+    "config": "AppleGameConfig.creatures: { name = { body, costume, into, upright?, limbColor?, scale? } } (paths to library models the composer imported)",
+    "bodies": "rigged bodies with Motor6D limbs (MythicNPC, the R15 Dummy, the Penguin family)",
+    "boot": "runs before AppleBoot prepares the containers, so the new creatures are animated too"
+  },
+  "gives": {
+    "creatures": "one model per entry in its `into` container, e.g. ServerStorage.AppleEnemies.Carrot, with the costume welded on and the limbs walking"
+  }
+}

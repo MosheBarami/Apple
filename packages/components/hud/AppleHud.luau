@@ -4,7 +4,7 @@
 	state and turns the kit's shop into this game's shop; it never draws new panels. Which label is which comes
 	from ReplicatedStorage.AppleComponents.AppleClientConfig.ui (dotted paths under PlayerGui, set by the
 	composer after it looked at the kit), and falls back to names when a role is not given:
-	  money, wave, timer, base, baseBar, message, shopButton, shopPanel, shopClose, shopList, shopCard.
+	  money, wave, timer, base, baseBar, message, shopButton, shopLabel, shopPanel, shopClose, shopList, shopCard.
 	Words are in AppleClientConfig.words so the game speaks its own theme ("Wave", "Next wave in", ...).
 ]]
 local AppleHud = {}
@@ -86,14 +86,31 @@ local function textOf(node: Instance?): Instance?
 	return nil
 end
 
+--[[ Set a label's text, and its copies: kits draw outlines and shadows as child labels with the same text
+	("Money" with a "White" child reading "$299,999"). ]]
+local function setText(label: any, text: string)
+	local before = label.Text
+	label.Text = text
+	for _, d in label:GetDescendants() do
+		if (d:IsA("TextLabel") or d:IsA("TextButton")) and d.Text == before then d.Text = text end
+	end
+end
+
 local function viewport(model: Instance, holder: GuiObject)
-	local vf = Instance.new("ViewportFrame")
-	vf.Name = "AppleItemView"
-	vf.BackgroundTransparency = 1
-	vf.Size = UDim2.fromScale(1, 1)
-	vf.ZIndex = holder.ZIndex + 1
+	local vf: ViewportFrame
+	if holder:IsA("ViewportFrame") then
+		vf = holder
+	else
+		vf = Instance.new("ViewportFrame")
+		vf.Name = "AppleItemView"
+		vf.BackgroundTransparency = 1
+		vf.Size = UDim2.fromScale(1, 1)
+		vf.ZIndex = holder.ZIndex + 1
+		vf.Parent = holder
+	end
+	local world = vf:FindFirstChildWhichIsA("WorldModel") or vf
 	local copy = model:Clone()
-	copy.Parent = vf
+	copy.Parent = world
 	local cam = Instance.new("Camera")
 	cam.FieldOfView = 30
 	cam.Parent = vf
@@ -105,13 +122,11 @@ local function viewport(model: Instance, holder: GuiObject)
 		-- In front of the model (it faces its LookVector), a little to the side and above.
 		cam.CFrame = CFrame.lookAt(cf.Position + (cf.LookVector + cf.RightVector * 0.35 + Vector3.new(0, 0.35, 0)).Unit * dist, cf.Position)
 	end
-	vf.Parent = holder
 end
 
 function AppleHud.start()
 	local Players = game:GetService("Players")
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-	local HttpService = game:GetService("HttpService")
 	local player = Players.LocalPlayer
 	local gui = player:WaitForChild("PlayerGui")
 	local comps = ReplicatedStorage:WaitForChild("AppleComponents")
@@ -128,11 +143,20 @@ function AppleHud.start()
 		return byPath(gui, ui[role]) or guess(gui, role, want)
 	end
 
+	-- A label the game uses shows, even where the kit hid it (a counter from a feature the kit's game had off).
+	local function reveal(node: Instance?)
+		local at = node
+		while at and not at:IsA("ScreenGui") and not at:IsA("PlayerGui") do
+			if at:IsA("GuiObject") then at.Visible = true end
+			at = at.Parent
+		end
+	end
+
 	-- Money.
 	local money = textOf(find("money", function(d) return isText(d) or isPanel(d) end)) :: any
 	local moneyOriginal = if money then money.Text else ""
 	local function showMoney()
-		if money then money.Text = AppleHud.money(moneyOriginal, player:GetAttribute(currency) or 0) end
+		if money then setText(money, AppleHud.money(moneyOriginal, player:GetAttribute(currency) or 0)) end
 	end
 	player:GetAttributeChangedSignal(currency):Connect(showMoney)
 	showMoney()
@@ -141,19 +165,22 @@ function AppleHud.start()
 	local wave = textOf(find("wave", isText)) :: any
 	local timer = textOf(find("timer", isText)) :: any
 	local base = textOf(find("base", isText)) :: any
+	for _, node in { money, wave, timer, base } do reveal(node) end
+	local shopLabel = byPath(gui, ui.shopLabel) :: any
+	if shopLabel and words.shop then setText(shopLabel, words.shop) end
 	local bar = byPath(gui, ui.baseBar) :: any
 	local barFull = if bar then bar.Size else nil
 	local function showWaves()
 		local phase = state:GetAttribute("Phase")
 		local n = state:GetAttribute("Wave") or 0
-		if wave then wave.Text = ("%s %d"):format(words.wave or "Wave", math.max(1, if phase == "intermission" then n + 1 else n)) end
+		if wave then setText(wave, ("%s %d"):format(words.wave or "Wave", math.max(1, if phase == "intermission" then n + 1 else n))) end
 		if timer then
-			if phase == "intermission" then timer.Text = ("%s %s"):format(words.nextWave or "Next wave in", AppleHud.clock(state:GetAttribute("NextWaveIn") or 0))
-			elseif phase == "lost" then timer.Text = words.lost or "They got through! Starting over..."
-			else timer.Text = ("%d %s"):format(state:GetAttribute("EnemiesLeft") or 0, words.left or "left") end
+			if phase == "intermission" then setText(timer, ("%s %s"):format(words.nextWave or "Next wave in", AppleHud.clock(state:GetAttribute("NextWaveIn") or 0)))
+			elseif phase == "lost" then setText(timer, words.lost or "They got through! Starting over...")
+			else setText(timer, ("%d %s"):format(state:GetAttribute("EnemiesLeft") or 0, words.left or "left")) end
 		end
 		local hp, max = state:GetAttribute("BaseHealth") or 0, math.max(1, state:GetAttribute("BaseHealthMax") or 1)
-		if base then base.Text = ("%s %d/%d"):format(words.base or "Base", hp, max) end
+		if base then setText(base, ("%s %d/%d"):format(words.base or "Base", hp, max)) end
 		if bar and barFull then bar.Size = UDim2.new(barFull.X.Scale * hp / max, barFull.X.Offset * hp / max, barFull.Y.Scale, barFull.Y.Offset) end
 	end
 	for _, k in { "Phase", "Wave", "NextWaveIn", "EnemiesLeft", "BaseHealth", "BaseHealthMax" } do
@@ -196,7 +223,11 @@ function AppleHud.start()
 		if close then close.Activated:Connect(function() panel.Visible = false; State.pick(nil) end) end
 	end
 	if list and card then
-		local catalog = HttpService:JSONDecode((ReplicatedStorage:WaitForChild("AppleCatalog") :: StringValue).Value)
+		local catalog = {}
+		for _, f in ReplicatedStorage:WaitForChild("AppleCatalog"):GetChildren() do
+			table.insert(catalog, { id = f.Name, name = f:GetAttribute("Name") or f.Name, price = f:GetAttribute("Price") or 0, order = f:GetAttribute("Order") or 0,
+				blurb = f:GetAttribute("Blurb"), rarity = f:GetAttribute("Rarity") })
+		end
 		table.sort(catalog, function(a, b) return a.order < b.order end)
 		local models = ReplicatedStorage:WaitForChild("AppleItemModels")
 		local template = card:Clone()
@@ -207,32 +238,61 @@ function AppleHud.start()
 			c.Name = "AppleItem_" .. item.id
 			c.LayoutOrder = i
 			c.Visible = true
+			-- The creator's own sales never show in this game: Robux and gift buttons are hidden.
+			for _, d in c:GetDescendants() do
+				local n = norm(d.Name)
+				if d:IsA("GuiObject") and (n:find("robux", 1, true) or n:find("gift", 1, true) or n:find("premium", 1, true)) then d.Visible = false end
+			end
+			local function shown(d: Instance): boolean
+				local at: Instance? = d
+				while at and at ~= c do
+					if at:IsA("GuiObject") and not at.Visible then return false end
+					at = at.Parent
+				end
+				return true
+			end
 			local texts = {}
-			for _, d in c:GetDescendants() do if d:IsA("TextLabel") or d:IsA("TextButton") then table.insert(texts, d) end end
-			local priceLabel, nameLabel = nil, nil
+			for _, d in c:GetDescendants() do if (d:IsA("TextLabel") or d:IsA("TextButton")) and shown(d) and d.Text ~= "" and not (d.Parent and (d.Parent:IsA("TextLabel") or d.Parent:IsA("TextButton"))) then table.insert(texts, d) end end
+			local priceLabel, nameLabel, blurbLabel, rarityLabel = nil, nil, nil, nil
 			for _, t in texts do
 				local n = norm(t.Name)
 				if not priceLabel and (n:find("price", 1, true) or n:find("cost", 1, true) or t.Text:find("%$") or t.Text:match("^%s*[%d,%.]+%s*%a*$")) then priceLabel = t end
 			end
 			for _, t in texts do
 				local n = norm(t.Name)
-				if t ~= priceLabel and not nameLabel and (n:find("name", 1, true) or n:find("title", 1, true)) then nameLabel = t end
+				if t == priceLabel then continue end
+				if not nameLabel and (n:find("name", 1, true) or n:find("title", 1, true)) then nameLabel = t
+				elseif not blurbLabel and (n:find("desc", 1, true) or n:find("stock", 1, true) or n:find("info", 1, true) or n:find("stat", 1, true)) then blurbLabel = t
+				elseif not rarityLabel and n:find("rarity", 1, true) then rarityLabel = t end
 			end
 			if not nameLabel then
-				for _, t in texts do if t ~= priceLabel and (not nameLabel or #t.Text > #nameLabel.Text) then nameLabel = t end end
+				for _, t in texts do if t ~= priceLabel and t ~= blurbLabel and t ~= rarityLabel and (not nameLabel or #t.Text > #nameLabel.Text) then nameLabel = t end end
 			end
-			for _, t in texts do if t ~= priceLabel and t ~= nameLabel and not t:IsA("TextButton") then t.Text = "" end end
-			if nameLabel then nameLabel.Text = item.name end
-			if priceLabel then priceLabel.Text = AppleHud.money(priceLabel.Text ~= "" and priceLabel.Text or ("$0"), item.price) end
-			local icon: GuiObject? = nil
-			for _, d in c:GetDescendants() do
-				if d:IsA("ImageLabel") and (norm(d.Name):find("icon", 1, true) or norm(d.Name):find("image", 1, true) or norm(d.Name):find("picture", 1, true)) then icon = d break end
+			for _, t in texts do
+				if t ~= priceLabel and t ~= nameLabel and t ~= blurbLabel and t ~= rarityLabel and not t:IsA("TextButton") then setText(t, "") end
+			end
+			if nameLabel then setText(nameLabel, item.name) end
+			if priceLabel then setText(priceLabel, AppleHud.money(priceLabel.Text ~= "" and priceLabel.Text or "$0", item.price)) end
+			if blurbLabel then setText(blurbLabel, item.blurb or "") end
+			if rarityLabel then setText(rarityLabel, item.rarity or "") end
+			local icon: GuiObject? = c:FindFirstChildWhichIsA("ViewportFrame", true)
+			if not icon then
+				for _, d in c:GetDescendants() do
+					if d:IsA("ImageLabel") and (norm(d.Name):find("icon", 1, true) or norm(d.Name):find("image", 1, true) or norm(d.Name):find("picture", 1, true)) then icon = d break end
+				end
 			end
 			local model = models:FindFirstChild(item.id)
-			if icon and model then (icon :: ImageLabel).Image = ""; viewport(model, icon) end
-			local buyButton: GuiButton? = if c:IsA("GuiButton") then c else nil
+			if icon and model then
+				if icon:IsA("ImageLabel") then (icon :: ImageLabel).Image = "" end
+				viewport(model, icon)
+			end
+			local buyButton: GuiButton? = nil
+			for _, d in c:GetDescendants() do
+				if d:IsA("GuiButton") and shown(d) and (norm(d.Name):find("buy", 1, true) or (d.Parent and norm(d.Parent.Name):find("buy", 1, true))) then buyButton = d break end
+			end
+			if not buyButton and c:IsA("GuiButton") then buyButton = c end
 			if not buyButton then
-				for _, d in c:GetDescendants() do if d:IsA("GuiButton") then buyButton = d break end end
+				for _, d in c:GetDescendants() do if d:IsA("GuiButton") and shown(d) then buyButton = d break end end
 			end
 			if buyButton then
 				buyButton.Activated:Connect(function()

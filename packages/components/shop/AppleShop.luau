@@ -3,7 +3,7 @@
 	AppleShop: each player gets a plot of tiles; they buy an item and place it on a free tile of their own
 	plot; they can sell it back. Everything is checked on the server (their tile, free, affordable).
 	Settings: AppleGameConfig.shop = { refund = 0.5, items = { { id, name, price, range, damage, rate,
-	projectile?, color? } } }. Item models: ServerStorage.AppleDefenders.<id>. Plots: Workspace.AppleMap.Plots.<n>
+	projectile?, color?, blurb?, rarity? } } }. Item models: ServerStorage.AppleDefenders.<id>. Plots: Workspace.AppleMap.Plots.<n>
 	(any container) whose tiles are BaseParts tagged AppleTile. The catalog is published for clients as the JSON
 	string ReplicatedStorage.AppleCatalog; buying and selling go through ReplicatedStorage.AppleBuy and AppleSell.
 ]]
@@ -23,18 +23,26 @@ function AppleShop.start(config: any, economy: any)
 	local ServerStorage = game:GetService("ServerStorage")
 	local Players = game:GetService("Players")
 	local CollectionService = game:GetService("CollectionService")
-	local HttpService = game:GetService("HttpService")
 
 	local cfg = config.shop or {}
 	local items: { [string]: any } = {}
 	local public = {}
 	for i, item in cfg.items or {} do
 		items[item.id] = item
-		table.insert(public, { id = item.id, name = item.name or item.id, price = item.price or 0, order = i })
+		table.insert(public, { id = item.id, name = item.name or item.id, price = item.price or 0, order = i, blurb = item.blurb, rarity = item.rarity })
 	end
-	local catalog = ReplicatedStorage:FindFirstChild("AppleCatalog") or Instance.new("StringValue")
+	local catalog = ReplicatedStorage:FindFirstChild("AppleCatalog") or Instance.new("Folder")
 	catalog.Name = "AppleCatalog"
-	catalog.Value = HttpService:JSONEncode(public)
+	for _, entry in public do
+		local f = catalog:FindFirstChild(entry.id) or Instance.new("Folder")
+		f.Name = entry.id
+		f:SetAttribute("Name", entry.name)
+		f:SetAttribute("Price", entry.price)
+		f:SetAttribute("Order", entry.order)
+		f:SetAttribute("Blurb", entry.blurb)
+		f:SetAttribute("Rarity", entry.rarity)
+		f.Parent = catalog
+	end
 	catalog.Parent = ReplicatedStorage
 	-- Clients render each item's model in its shop card, so a copy of every item model is visible to them.
 	local previews = ReplicatedStorage:FindFirstChild("AppleItemModels") or Instance.new("Folder")

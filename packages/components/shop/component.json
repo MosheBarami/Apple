@@ -15,7 +15,7 @@
     "economy": "AppleEconomy"
   },
   "gives": {
-    "catalog": "ReplicatedStorage.AppleCatalog (JSON: id, name, price, order) and ReplicatedStorage.AppleItemModels (previews)",
+    "catalog": "ReplicatedStorage.AppleCatalog.<id> folders (attributes Name, Price, Order) and ReplicatedStorage.AppleItemModels (previews)",
     "remotes": "ReplicatedStorage.AppleBuy(id, tile) -> ok, message; ReplicatedStorage.AppleSell(model) -> ok, message",
     "placement": "placed models go to Workspace.AppleDefenders with Owner, Item, Range, Damage, Rate (AppleDefenders uses them)",
     "client": "AppleClientState.pick(id) starts placing; Said(text, good) carries messages for the screen"

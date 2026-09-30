@@ -2,10 +2,21 @@
   "id": "boot",
   "name": "AppleBoot",
   "role": "system",
-  "summary": "Starts a composed game's systems in the order the game config lists, handing each the config and the economy.",
+  "summary": "Starts a composed game: makes the listed creature containers animatable, turns AppleTags attributes into tags, then starts the listed systems in order with the config and the economy.",
   "files": {
-    "AppleBoot.luau": { "class": "Script", "parent": "ServerScriptService", "name": "AppleBoot" }
+    "AppleBoot.luau": {
+      "class": "Script",
+      "parent": "ServerScriptService",
+      "name": "AppleBoot"
+    }
   },
-  "needs": { "config": "ServerScriptService.AppleComponents.AppleGameConfig with start = { module names in order }" },
-  "gives": { "start": "each listed module's start(config, economy) is called once; a failure is named in Output and the rest still start" }
+  "needs": {
+    "config": "ServerScriptService.AppleComponents.AppleGameConfig: start = { module names in order }, prepare = { container paths, e.g. ServerStorage.AppleEnemies }",
+    "motion": "ReplicatedStorage.AppleComponents.AppleMotion when prepare is used"
+  },
+  "gives": {
+    "prepare": "every model in each listed container made animatable (AppleMotion.prepare)",
+    "tags": "Workspace instances with attribute AppleTags get those CollectionService tags",
+    "start": "each listed module's start(config, economy) is called once; a failure is named in Output and the rest still start"
+  }
 }

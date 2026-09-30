@@ -1,0 +1,358 @@
+/**
+ * THE COMPOSER. A game is made from components, never by copying a whole world and cutting it down (owner, 2026-09-30).
+ *
+ * A Recipe says what the game is: its words, the library pieces it uses (a UI kit, bodies and costumes for its
+ * creatures, the things players place, the props of its map) and the numbers of its systems. `composeSteps` turns a
+ * Recipe into Steps: import these library pieces, lay out a NEW map made for the idea, install these components,
+ * write the game's config, place these props, dress the kit. Steps are small and plain so two executors can run the
+ * same list: the worker (plugin ops, `runSteps`) and the Studio proof harness (packages/components/proof).
+ *
+ * Nothing here decides the idea; `recipes.ts` does. Everything here is pure and tested (tests/compose.test.mjs).
+ */
+import { COMPONENTS } from './components.generated';
+
+/** A piece of the owner library: its game (a unique hash prefix) and path, as library_extract and import_owner_library take them. */
+export interface LibRef { game: string; path: string }
+
+export interface EnemySpec {
+  name: string;
+  /** A creature made from pieces: a rigged body wearing a costume (AppleCreatures). */
+  body?: LibRef; costume?: LibRef; upright?: boolean; limbColor?: string; scale?: number; stretch?: number;
+  /** A size for the whole creature (a boss is bigger), applied after it is built. */
+  size?: number;
+  /** Or a whole library creature as it is. */
+  model?: LibRef;
+  health: number; speed: number; reward: number; damage: number;
+}
+export interface DefenderSpec {
+  id: string; name: string; model: LibRef; price: number; range: number; damage: number; rate: number;
+  projectile?: LibRef; projectileColor?: string; color?: string; blurb?: string; rarity?: string; height?: number;
+}
+export interface PropSpec { ref: LibRef; count: number; height?: number; where: 'scatter' | 'border' | 'rows' }
+export interface KitProfile {
+  id: string;
+  /** Screens to import into StarterGui, and the card template to put in the shop list. */
+  screens: LibRef[]; card?: { ref: LibRef; into: string };
+  /** Dotted paths under PlayerGui for AppleHud's roles. */
+  roles: Record<string, string>;
+  /** Paths under StarterGui to hide (panels this game does not use), and to delete (the kit's own scripts). */
+  hide: string[]; remove: string[];
+}
+export interface Recipe {
+  title: string;
+  currency: string;
+  start: number;
+  words: Record<string, string>;
+  palette: { grass: string; path: string; soil: string; tile: string; border: string };
+  kit: KitProfile;
+  enemies: EnemySpec[];
+  defenders: DefenderSpec[];
+  props: PropSpec[];
+  base: LibRef;
+  waves: { first: number; between: number; baseHealth: number; list: { enemy: string; count: number; every: number }[][] };
+  seed: number;
+}
+
+export type Step =
+  | { kind: 'import'; key: string; ref: LibRef; into: string }
+  | { kind: 'create'; parent: string; items: InstanceSpecLite[] }
+  | { kind: 'script'; className: 'Script' | 'LocalScript' | 'ModuleScript'; parent: string; name: string; source: string }
+  /**
+   * Copy the piece in `from` (an import folder) to `parent` as `name`. It keeps its own world orientation and turns
+   * `yaw` degrees about the vertical; with `along` it turns so its longer horizontal side runs along world X or Z.
+   * It is scaled uniformly so its world-aligned height is `height`, or its longer horizontal side is `length`, and
+   * stands with the bottom of its world-aligned box centred on `at`.
+   */
+  | { kind: 'place'; from: string; parent: string; name: string; at: [number, number, number]; yaw: number; height?: number; length?: number; along?: 'x' | 'z' }
+  /** Remove every instance of these classes under `root` (a kit's own sounds and scripts). */
+  | { kind: 'strip'; root: string; classes: string[] }
+  | { kind: 'hide'; paths: string[] }
+  | { kind: 'delete'; paths: string[] };
+
+export interface InstanceSpecLite {
+  className: string; name: string;
+  props?: Record<string, unknown>;
+  attributes?: Record<string, string | number | boolean>;
+  children?: InstanceSpecLite[];
+}
+
+// ------------------------------------------------------------------------------------------------ the map
+
+export type P2 = [number, number];
+export interface Layout {
+  lane: P2[];            // waypoints (x, z), gate first, base last
+  plots: P2[];           // plot centres
+  spawn: P2;             // where players appear
+  ground: { center: P2; size: P2 };
+  scatter: P2[];         // free spots for props, away from the lane and the plots
+  rows: P2[];            // free spots on a grid, nearest the base first, for orderly rows (an orchard)
+  border: { at: P2; along: 'x' | 'z' }[]; // spots along the edge of the ground, with the edge's direction
+}
+
+export const TILE = 6;              // studs between tile centres
+export const PLOT_TILES = 3;        // 3 x 3 tiles per plot
+export const LANE_WIDTH = 10;
+export const FENCE = 12;            // studs per fence piece along the edge
+const PLOT_HALF = (TILE * PLOT_TILES) / 2;
+
+/** Distance from point p to segment ab, on the ground plane. */
+export function segDist(p: P2, a: P2, b: P2): number {
+  const [px, pz] = p, [ax, az] = a, [bx, bz] = b;
+  const dx = bx - ax, dz = bz - az;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / len2));
+  return Math.hypot(px - (ax + t * dx), pz - (az + t * dz));
+}
+export function laneDist(p: P2, lane: P2[]): number {
+  let d = Infinity;
+  for (let i = 0; i < lane.length - 1; i++) d = Math.min(d, segDist(p, lane[i]!, lane[i + 1]!));
+  return d;
+}
+
+/** A small seeded random, so the same recipe lays out the same map. */
+export function rng(seed: number): () => number {
+  let s = Math.imul((seed >>> 0) ^ 0x5bd1e995, 2654435761) >>> 0 || 1;
+  const next = () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+  for (let i = 0; i < 8; i++) next(); // small seeds start alike; stir them first
+  return next;
+}
+
+/**
+ * The map for a lane-defense idea: a winding lane from the enemies' gate (north) to the base (south), four plots
+ * beside it (each tile within reach of the lane, none on it), the players' spawn in the open, and free spots for
+ * props. The seed mirrors and stretches the shape so two games do not share a map.
+ */
+export function laneLayout(seed: number): Layout {
+  const r = rng(seed);
+  const flip = r() < 0.5 ? -1 : 1;
+  const w = 38 + Math.round(r() * 6);
+  const base: P2[] = [[0, -110], [0, -60], [w, -60], [w, 0], [-w, 0], [-w, 50], [0, 50], [0, 92]];
+  const lane = base.map(([x, z]) => [x * flip, z] as P2);
+  // Each plot hugs a straight stretch of the lane (1 stud of grass between), so its far tiles are 21 studs away at most.
+  const hug = LANE_WIDTH / 2 + 1 + PLOT_HALF;
+  const plotsRaw: P2[] = [[w - hug, -60 + hug], [-hug, -85], [-w + hug, hug], [hug, 50 + hug]];
+  const plots = plotsRaw.map(([x, z]) => [x * flip, z] as P2);
+  const spawn: P2 = [6 * flip, 25];
+  const ground = { center: [0, -8] as P2, size: [170, 240] as P2 };
+  const scatter: P2[] = [];
+  const [gx, gz] = ground.center, [sx, sz] = ground.size;
+  for (let tries = 0; scatter.length < 60 && tries < 4000; tries++) {
+    const p: P2 = [gx - sx / 2 + 8 + r() * (sx - 16), gz - sz / 2 + 8 + r() * (sz - 16)];
+    if (laneDist(p, lane) < LANE_WIDTH / 2 + 6) continue;
+    if (plots.some(([x, z]) => Math.abs(p[0] - x) < PLOT_HALF + 5 && Math.abs(p[1] - z) < PLOT_HALF + 5)) continue;
+    if (Math.hypot(p[0] - spawn[0], p[1] - spawn[1]) < 10) continue;
+    if (scatter.some((q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 9)) continue;
+    scatter.push([Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]);
+  }
+  const clear = (p: P2, room: number) => laneDist(p, lane) >= LANE_WIDTH / 2 + room
+    && !plots.some(([x, z]) => Math.abs(p[0] - x) < PLOT_HALF + room && Math.abs(p[1] - z) < PLOT_HALF + room)
+    && Math.hypot(p[0] - spawn[0], p[1] - spawn[1]) >= 10;
+  const rows: P2[] = [];
+  for (let z = gz - sz / 2 + 12; z <= gz + sz / 2 - 12; z += FENCE) {
+    for (let x = gx - sx / 2 + 12; x <= gx + sx / 2 - 12; x += FENCE) if (clear([x, z], 7)) rows.push([x, z]);
+  }
+  const border: { at: P2; along: 'x' | 'z' }[] = [];
+  for (let x = gx - sx / 2 + FENCE / 2; x < gx + sx / 2; x += FENCE) {
+    border.push({ at: [x, gz - sz / 2 + 2], along: 'x' }, { at: [x, gz + sz / 2 - 2], along: 'x' });
+  }
+  for (let z = gz - sz / 2 + FENCE / 2; z < gz + sz / 2; z += FENCE) {
+    border.push({ at: [gx - sx / 2 + 2, z], along: 'z' }, { at: [gx + sx / 2 - 2, z], along: 'z' });
+  }
+  // The orchard grows around what it defends: rows fill from the base outwards.
+  const home = lane[lane.length - 1]!;
+  rows.sort((a, b) => Math.hypot(a[0] - home[0], a[1] - home[1]) - Math.hypot(b[0] - home[0], b[1] - home[1]));
+  return { lane, plots, spawn, ground, scatter, rows, border: border.filter((b) => laneDist(b.at, lane) > LANE_WIDTH) };
+}
+
+/** Every tile centre of a plot. */
+export function plotTiles(center: P2): P2[] {
+  const out: P2[] = [];
+  for (let i = 0; i < PLOT_TILES; i++) for (let j = 0; j < PLOT_TILES; j++) {
+    out.push([center[0] + (i - (PLOT_TILES - 1) / 2) * TILE, center[1] + (j - (PLOT_TILES - 1) / 2) * TILE]);
+  }
+  return out;
+}
+
+// ------------------------------------------------------------------------------------------------ Luau text
+
+/** A JSON-like value as a Luau table literal (the game's config modules). */
+export function luau(value: unknown, indent = ''): string {
+  if (value === null || value === undefined) return 'nil';
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '0';
+  if (typeof value === 'boolean') return String(value);
+  if (typeof value === 'string') return JSON.stringify(value).replace(/\\u([0-9a-fA-F]{4})/g, (_, h: string) => `\\u{${h}}`);
+  const next = indent + '\t';
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '{}';
+    return `{\n${value.map((v) => next + luau(v, next)).join(',\n')},\n${indent}}`;
+  }
+  const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== undefined);
+  if (entries.length === 0) return '{}';
+  return `{\n${entries.map(([k, v]) => `${next}${/^[A-Za-z_][A-Za-z0-9_]*$/.test(k) ? k : `[${JSON.stringify(k)}]`} = ${luau(v, next)}`).join(',\n')},\n${indent}}`;
+}
+
+/** The instance name a library path ends in ("Tomato#4" is the fourth sibling named Tomato; %2F is a slash). */
+export function libName(ref: LibRef): string {
+  const last = ref.path.split('/').filter(Boolean).pop() ?? 'Item';
+  return last.replace(/#\d+$/, '').replace(/%2F/g, '/');
+}
+
+// ------------------------------------------------------------------------------------------------ the steps
+
+const PART = (name: string, size: [number, number, number], at: [number, number, number], color: string, material: string, extra: Record<string, unknown> = {}): InstanceSpecLite => ({
+  className: 'Part', name,
+  props: { Size: size, Position: at, Anchored: true, Color: color, Material: material, TopSurface: 'Studs', BottomSurface: 'Inlet', ...extra },
+});
+
+/** The library pieces a recipe uses, each with the key it is staged under (ServerStorage.AppleParts.<key>). */
+export function pieces(recipe: Recipe): { key: string; ref: LibRef }[] {
+  const out: { key: string; ref: LibRef }[] = [];
+  const seen = new Map<string, string>();
+  const add = (prefix: string, ref: LibRef | undefined): string | undefined => {
+    if (!ref) return undefined;
+    const id = `${ref.game}:${ref.path}`;
+    const known = seen.get(id);
+    if (known) return known;
+    const key = `${prefix}${out.length + 1}`;
+    seen.set(id, key);
+    out.push({ key, ref });
+    return key;
+  };
+  for (const e of recipe.enemies) { add('Body', e.body); add('Costume', e.costume); add('Enemy', e.model); }
+  for (const d of recipe.defenders) { add('Defender', d.model); add('Projectile', d.projectile); }
+  for (const p of recipe.props) add('Prop', p.ref);
+  add('Base', recipe.base);
+  return out;
+}
+
+export function composeSteps(recipe: Recipe): Step[] {
+  const steps: Step[] = [];
+  const layout = laneLayout(recipe.seed);
+  const staged = pieces(recipe);
+  const keyOf = (ref: LibRef) => staged.find((s) => s.ref.game === ref.game && s.ref.path === ref.path)!.key;
+  const partPath = (ref: LibRef) => `ServerStorage.AppleParts.${keyOf(ref)}`;
+
+  // 1. Folders the rest lands in.
+  steps.push({ kind: 'create', parent: 'game.ServerStorage', items: [
+    { className: 'Folder', name: 'AppleParts', children: staged.map((s) => ({ className: 'Folder', name: s.key })) },
+    { className: 'Folder', name: 'AppleEnemies' }, { className: 'Folder', name: 'AppleDefenders' },
+  ] });
+  steps.push({ kind: 'create', parent: 'game.ServerScriptService', items: [{ className: 'Folder', name: 'AppleComponents' }] });
+  steps.push({ kind: 'create', parent: 'game.ReplicatedStorage', items: [{ className: 'Folder', name: 'AppleComponents' }, { className: 'Folder', name: 'AppleProjectiles' }] });
+
+  // 2. The library pieces.
+  for (const s of staged) steps.push({ kind: 'import', key: s.key, ref: s.ref, into: `game.ServerStorage.AppleParts.${s.key}` });
+
+  // 3. A new map, laid out for this idea.
+  const pal = recipe.palette;
+  const [gcx, gcz] = layout.ground.center, [gsx, gsz] = layout.ground.size;
+  const mapItems: InstanceSpecLite[] = [PART('Ground', [gsx, 2, gsz], [gcx, -1, gcz], pal.grass, 'Grass')];
+  const road: InstanceSpecLite[] = [];
+  for (let i = 0; i < layout.lane.length - 1; i++) {
+    const [ax, az] = layout.lane[i]!, [bx, bz] = layout.lane[i + 1]!;
+    const len = Math.hypot(bx - ax, bz - az) + LANE_WIDTH;
+    const horizontal = Math.abs(bx - ax) > Math.abs(bz - az);
+    road.push(PART(`Road${i + 1}`, horizontal ? [len, 0.4, LANE_WIDTH] : [LANE_WIDTH, 0.4, len], [(ax + bx) / 2, 0.2, (az + bz) / 2], pal.path, 'Ground', { TopSurface: 'Smooth', CanCollide: false }));
+  }
+  mapItems.push({ className: 'Model', name: 'Road', children: road });
+  mapItems.push({ className: 'Folder', name: 'Lanes', children: [{ className: 'Folder', name: 'Lane1', children: layout.lane.map(([x, z], i) => PART(String(i + 1), [2, 1, 2], [x, 1.5, z], '#ffffff', 'SmoothPlastic', { Transparency: 1, CanCollide: false, CanQuery: false })) }] });
+  mapItems.push({ className: 'Folder', name: 'Plots', children: layout.plots.map(([px, pz], n) => ({
+    className: 'Model', name: `Plot${n + 1}`,
+    children: [
+      PART('Border', [PLOT_HALF * 2 + 2, 0.6, PLOT_HALF * 2 + 2], [px, 0.3, pz], pal.border, 'Wood', { TopSurface: 'Smooth' }),
+      ...plotTiles([px, pz]).map(([tx, tz], i) => ({ ...PART(`Tile${i + 1}`, [TILE - 0.6, 1, TILE - 0.6], [tx, 0.5, tz], i % 2 === 0 ? pal.soil : pal.tile, 'Ground'), attributes: { AppleTags: 'AppleTile' } })),
+    ],
+  })) });
+  mapItems.push({ className: 'SpawnLocation', name: 'Spawn', props: { Size: [8, 1, 8], Position: [layout.spawn[0], 0.5, layout.spawn[1]], Anchored: true, Color: pal.border, Material: 'Wood', Neutral: true, Duration: 0 } });
+  steps.push({ kind: 'create', parent: 'game.Workspace', items: [{ className: 'Folder', name: 'AppleMap', children: [...mapItems, { className: 'Folder', name: 'Props' }] }] });
+  steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
+
+  // 4. Props, placed on the new map (the base at the lane's end, the rest on free spots).
+  const r = rng(recipe.seed ^ 0x9e3779b9);
+  const free = [...layout.scatter];
+  const rows = [...layout.rows];
+  const border = [...layout.border];
+  let n = 0;
+  const end = layout.lane[layout.lane.length - 1]!;
+  steps.push({ kind: 'place', from: partPath(recipe.base), parent: 'Workspace.AppleMap.Props', name: `Prop${++n}`, at: [end[0], 0, end[1] + 14], yaw: 180, height: 22 });
+  const taken: P2[] = [];
+  const nearTaken = (q: P2) => taken.some((t) => Math.hypot(q[0] - t[0], q[1] - t[1]) < 8);
+  for (const p of recipe.props) {
+    for (let i = 0; i < p.count; i++) {
+      if (p.where === 'border') {
+        // A fence runs around the whole edge: every border spot, turned along its edge, sized to meet the next.
+        const b = border.shift();
+        if (!b) break;
+        steps.push({ kind: 'place', from: partPath(p.ref), parent: 'Workspace.AppleMap.Props', name: `Prop${++n}`, at: [b.at[0], 0, b.at[1]], yaw: 0, along: b.along, length: FENCE });
+        continue;
+      }
+      let spot: P2 | undefined;
+      if (p.where === 'rows') {
+        while (rows.length && (spot = rows.shift()) && nearTaken(spot)) spot = undefined;
+      } else {
+        while (free.length && (spot = free.splice(Math.floor(r() * free.length), 1)[0]) && nearTaken(spot)) spot = undefined;
+      }
+      if (!spot) break;
+      taken.push(spot);
+      steps.push({ kind: 'place', from: partPath(p.ref), parent: 'Workspace.AppleMap.Props', name: `Prop${++n}`, at: [spot[0], 0, spot[1]],
+        yaw: p.where === 'rows' ? 0 : Math.round(r() * 360), ...(p.height ? { height: p.height } : {}) });
+    }
+  }
+
+  // 5. The components.
+  const want = ['motion', 'economy', 'creatures', 'waves', 'defenders', 'shop', 'hud', 'boot'];
+  for (const id of want) {
+    const c = COMPONENTS[id];
+    if (!c) throw new Error(`component ${id} is not bundled`);
+    for (const f of c.files) steps.push({ kind: 'script', className: f.className, parent: `game.${f.parent}`, name: f.name, source: f.source });
+  }
+
+  // 6. The game's config: what the components read.
+  const stage: { from: string; to: string; name: string; height?: number; color?: string }[] = [];
+  const creatures: Record<string, unknown> = {};
+  for (const e of recipe.enemies) {
+    if (e.body && e.costume) creatures[e.name] = { body: partPath(e.body), costume: partPath(e.costume), into: 'ServerStorage.AppleEnemies', upright: e.upright ?? true, limbColor: e.limbColor, scale: e.scale, stretch: e.stretch, size: e.size };
+    else if (e.model) stage.push({ from: partPath(e.model), to: 'ServerStorage.AppleEnemies', name: e.name });
+  }
+  for (const d of recipe.defenders) {
+    stage.push({ from: partPath(d.model), to: 'ServerStorage.AppleDefenders', name: d.id, ...(d.height ? { height: d.height } : {}) });
+    if (d.projectile) stage.push({ from: partPath(d.projectile), to: 'ReplicatedStorage.AppleProjectiles', name: `${d.id}Shot`, height: 1.6, ...(d.projectileColor ? { color: d.projectileColor } : {}) });
+  }
+  const config = {
+    title: recipe.title,
+    start: ['AppleShop', 'AppleWaves', 'AppleDefenders'],
+    stage,
+    creatures,
+    prepare: ['ServerStorage.AppleEnemies', 'ServerStorage.AppleDefenders'],
+    economy: { currency: recipe.currency, start: recipe.start, dataKey: `Apple_${recipe.seed}` },
+    waves: {
+      first: recipe.waves.first, between: recipe.waves.between, baseHealth: recipe.waves.baseHealth, rewardShare: 'killer',
+      enemies: Object.fromEntries(recipe.enemies.map((e) => [e.name, { health: e.health, speed: e.speed, reward: e.reward, damage: e.damage }])),
+      list: recipe.waves.list,
+    },
+    shop: {
+      refund: 0.5,
+      items: recipe.defenders.map((d) => ({ id: d.id, name: d.name, price: d.price, range: d.range, damage: d.damage, rate: d.rate,
+        ...(d.projectile ? { projectile: `${d.id}Shot` } : {}), ...(d.color ? { color: d.color } : {}), blurb: d.blurb, rarity: d.rarity })),
+    },
+  };
+  steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ServerScriptService.AppleComponents', name: 'AppleGameConfig',
+    source: `-- ${recipe.title}: what this game's systems read. Written by Apple's composer; edit freely.\nreturn ${luau(config)}\n` });
+  steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage.AppleComponents', name: 'AppleClientConfig',
+    source: `-- ${recipe.title}: what the screens show. Written by Apple's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, ui: recipe.kit.roles, words: recipe.words })}\n` });
+
+  // 7. The UI kit: its screens, its card in the shop list, its scripts out, the panels this game does not use hidden.
+  const kitKeys: string[] = [];
+  for (const [i, screen] of recipe.kit.screens.entries()) {
+    const key = `Screen${i + 1}`;
+    kitKeys.push(key);
+    steps.push({ kind: 'import', key, ref: screen, into: 'game.StarterGui' });
+  }
+  if (recipe.kit.card) steps.push({ kind: 'import', key: 'Card', ref: recipe.kit.card.ref, into: `game.StarterGui.${recipe.kit.card.into}` });
+  // The kit's own scripts and sounds go (its game's code is not this game's; its sounds are its creator's).
+  for (const screen of recipe.kit.screens) steps.push({ kind: 'strip', root: `game.StarterGui.${libName(screen)}`, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] });
+  if (recipe.kit.card) steps.push({ kind: 'strip', root: `game.StarterGui.${recipe.kit.card.into}.${libName(recipe.kit.card.ref)}`, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] });
+  if (recipe.kit.remove.length) steps.push({ kind: 'delete', paths: recipe.kit.remove.map((p) => `game.StarterGui.${p}`) });
+  if (recipe.kit.hide.length) steps.push({ kind: 'hide', paths: recipe.kit.hide.map((p) => `game.StarterGui.${p}`) });
+  return steps;
+}

@@ -4,17 +4,24 @@
 	saved. The rest of a composed game asks this module for money: AppleEconomy.spend(player, 40) returns
 	false when the player cannot afford it, AppleEconomy.grant(player, 5, "kill") adds. Saving uses a
 	DataStore when the place allows it (published, Studio API access on) and keeps playing without one.
-	Settings come from the module's attributes, so a composer can set them without editing code:
-	  Currency (string, default "Coins"), Start (number, default 50), DataKey (string, default "AppleEconomy1").
+	Settings: AppleGameConfig.economy = { currency = "Coins", start = 50, dataKey = "AppleEconomy1" } (or the
+	module's attributes Currency, Start, DataKey).
 ]]
 local Players = game:GetService("Players")
 
 local AppleEconomy = {}
 
+-- Settings: AppleGameConfig.economy when the game has one, else the module's own attributes, else defaults.
 local module = script
-local CURRENCY = (module:GetAttribute("Currency") :: string?) or "Coins"
-local START = (module:GetAttribute("Start") :: number?) or 50
-local DATA_KEY = (module:GetAttribute("DataKey") :: string?) or "AppleEconomy1"
+local settings: any = {}
+local configModule = module.Parent and module.Parent:FindFirstChild("AppleGameConfig")
+if configModule then
+	local ok, config = pcall(require, configModule)
+	if ok and type(config) == "table" and type(config.economy) == "table" then settings = config.economy end
+end
+local CURRENCY = settings.currency or (module:GetAttribute("Currency") :: string?) or "Coins"
+local START = settings.start or (module:GetAttribute("Start") :: number?) or 50
+local DATA_KEY = settings.dataKey or (module:GetAttribute("DataKey") :: string?) or "AppleEconomy1"
 
 AppleEconomy.CURRENCY = CURRENCY
 
