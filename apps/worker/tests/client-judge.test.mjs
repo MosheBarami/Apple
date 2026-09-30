@@ -412,15 +412,18 @@ const pr = (path, o = {}) => ({ path, found: true, visible: true, pressed: true,
 
 test('classifyPresses: a press that changed something works, one that changed nothing is silent, one that never fired is dead', () => {
   const states = R.classifyPresses(play({ presses: [
-    pr('a', { changes: ['leaderstats Cash 0 → 5'] }), pr('b', { changes: [] }), pr('c', { activated: false }), pr('d', { found: false }), pr('e', { visible: false }), pr('f', { pressed: false, activated: false, error: 'not pressed' }),
+    pr('a', { changes: ['leaderstats Cash 0 → 5'] }), pr('b', { changes: [] }), pr('c', { activated: false, changes: [] }), pr('d', { found: false }), pr('e', { visible: false }), pr('f', { pressed: false, activated: false, error: 'not pressed' }),
   ] })).map((o) => [o.path, o.state]);
   assert.deepEqual(states, [['a', 'works'], ['b', 'silent'], ['c', 'dead'], ['d', 'missing'], ['e', 'hidden'], ['f', 'unpressable']]);
+  // h: only a timer ticked, nothing answered the press; g: the game listens for the click another way, and its window opened
+  const other = R.classifyPresses(play({ presses: [pr('h', { activated: false, changes: ['attribute NextSeedRestock 266 → 265'] }), pr('g', { activated: false, changes: ['Main.Index became visible'] })] }));
+  assert.deepEqual(other.map((o) => [o.path, o.state]), [['h', 'dead'], ['g', 'works']]);
 });
 
 test('classifyPresses: a press that failed after an earlier press opened a window over it is blocked, not dead; a retry replaces it', () => {
-  const first = R.classifyPresses(play({ presses: [pr('shop', { changes: ['ShopGui.Panel became visible'] }), pr('seeds', { activated: false }), pr('index', { activated: false })] }));
+  const first = R.classifyPresses(play({ presses: [pr('shop', { changes: ['ShopGui.Panel became visible'] }), pr('seeds', { activated: false, changes: [] }), pr('index', { activated: false, changes: [] })] }));
   assert.deepEqual(first.map((o) => o.state), ['works', 'blocked', 'blocked']);
-  const retry = R.classifyPresses(play({ index: 2, presses: [pr('index', { activated: false }), pr('seeds', { changes: ['Seeds.Panel became visible'] })] }));
+  const retry = R.classifyPresses(play({ index: 2, presses: [pr('index', { activated: false, changes: [] }), pr('seeds', { changes: ['Seeds.Panel became visible'] })] }));
   const final = R.latestOutcomes([...first, ...retry]);
   assert.deepEqual([...final.values()].map((o) => [o.path, o.state, o.session]), [['shop', 'works', 1], ['seeds', 'works', 2], ['index', 'dead', 2]], 'pressed first, with nothing open, a button that never fires is dead');
   assert.equal(R.latestOutcomes([...retry, ...first]).get('seeds').state, 'works', 'an earlier blocked never hides a later result');
@@ -533,6 +536,8 @@ test('movesOf: standing still, walking onto a part and pressing a button each sa
   assert.deepEqual(moves(play({ ...hud([c('Main.Money', '$5')], [c('Other.Money', '$50')], null) })), [], 'a counter is compared with itself');
   const clock = moves(play({ seconds: 15, leaderstatsBefore: [{ name: 'PlayTime', value: 0 }, { name: 'Cash', value: 1 }], leaderstatsAfter: [{ name: 'PlayTime', value: 15 }, { name: 'Cash', value: 1 }] }));
   assert.deepEqual(clock, [], 'time played is not something the player earned');
+  const restock = moves(play({ presses: [pr('game.StarterGui.Main.Seeds.TextButton', { changes: ['attribute NextSeedRestock 266 → 265', 'attribute Money 400 → 360'] })] }));
+  assert.deepEqual(restock.map((m) => m.name), ['Money'], 'a shop\'s restock countdown ticking down is no spending');
 });
 
 test('judgeProgression: a loop the quick test cannot play (plant, then wait for a wave) passes only in a built library game that ran clean, with its counter and goals on screen', () => {

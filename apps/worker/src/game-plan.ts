@@ -127,7 +127,7 @@ function readTask(raw: unknown): Task | undefined {
     like: arr(r.reference).slice(0, 3).map((x) => clean(`${rec(x).game || ''} ${rec(x).feature || ''} ${arr(rec(x).read).filter((p) => typeof p === 'string').slice(0, 3).join(', ')}`, 260)).filter(Boolean),
   };
 }
-const MAX = { imports: 60, add: 8, cleanup: 80, remove: 60, hide: 60, fixes: 80, branding: 40, tables: 40, models: 40, leaveOut: 40 };
+const MAX = { imports: 60, add: 8, cleanup: 160, remove: 60, hide: 60, fixes: 80, branding: 40, tables: 40, models: 40, leaveOut: 40 };
 
 /** The library's design, kept to what can be carried out. Anything unreadable is dropped; a design with no core or no import is refused. */
 export function readDesign(raw: Record<string, unknown>): Design | { error: string } {

@@ -378,7 +378,8 @@ export function classifyPresses(play: Play): PressOutcome[] {
     if (!p.found) state = 'missing';
     else if (p.visible === false) state = 'hidden';
     else if (!p.pressed) state = 'unpressable';
-    else if (!p.activated) state = opened ? 'blocked' : 'dead';
+    // A game may listen for the click another way (MouseButton1Click, InputBegan): a window that appeared is the press working, whatever fired.
+    else if (!p.activated && !changes.some((c) => /became visible|appeared/.test(c))) state = opened ? 'blocked' : 'dead';
     else state = changes.length ? 'works' : 'silent';
     if (changes.some((c) => /became visible|appeared/.test(c))) opened = true;
     return { path: p.path, state, changes, session: play.index };
@@ -436,7 +437,9 @@ export function judgeButtons(i: ButtonsInput): Criterion {
 export interface Move { session: number; step: string; name: string; from: number | null; to: number | null; kind: 'currency' | 'ui' | 'body' }
 const BODY = new Set(['WalkSpeed', 'JumpPower', 'JumpHeight', 'MaxHealth']);
 /** Numbers a game keeps that are not something the player earns: how long they have played, their ping. */
-const NOT_EARNED = /\b(?:time|playtime|seconds?|minutes?|age|ping|fps)\b/i;
+const NOT_EARNED = /\b(?:time|playtime|seconds?|minutes?|age|ping|fps|restock|cooldown|timer|countdown|next)\b/i;
+/** "NextSeedRestock" is read word by word. */
+const notEarned = (name: string): boolean => NOT_EARNED.test(name.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_\-.]+/g, ' '));
 function toNumber(s: string): number | null {
   const t = s.trim().replace(/^R?\$/, '').replace(/,/g, '');
   const m = /^(-?\d+(?:\.\d+)?)\s*([kmbt])?$/i.exec(t);
@@ -499,7 +502,7 @@ export function movesOf(play: Play, labels: ReadonlyMap<string, string>): Move[]
       if (m && toNumber(m[2]!) !== null && toNumber(m[3]!) !== null) moves.push({ session: play.index, step, name: m[1]!, from: toNumber(m[2]!), to: toNumber(m[3]!), kind: 'ui' });
     }
   }
-  return moves.filter((m) => m.from !== m.to && m.to !== null && !NOT_EARNED.test(m.name));
+  return moves.filter((m) => m.from !== m.to && m.to !== null && !notEarned(m.name));
 }
 const up = (m: Move): boolean => (m.to ?? 0) > (m.from ?? 0);
 const down = (m: Move): boolean => (m.to ?? 0) < (m.from ?? 0);
