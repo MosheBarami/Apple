@@ -1,0 +1,26 @@
+{
+  "id": "motion",
+  "name": "AppleMotion",
+  "role": "animation",
+  "summary": "Idle, walk and attack for any rigged creature, made by code from the rig's own joints. No Animation assets, so no private-animation T-pose.",
+  "files": {
+    "AppleMotion.luau": { "class": "ModuleScript", "parent": "ReplicatedStorage.AppleComponents", "name": "AppleMotion" },
+    "AppleMotionClient.luau": { "class": "LocalScript", "parent": "StarterPlayer.StarterPlayerScripts", "name": "AppleMotionClient" }
+  },
+  "needs": {
+    "creatures": "Models with at least one Motor6D or Bone, standing in their rest pose. A model with none gets one from AppleMotion.prepare at build time.",
+    "tag": "Each creature model is tagged AppleCreature (AppleMotion.prepare does it).",
+    "movement": "Something moves the creature's root (a wave or AI system). The driver measures the speed; nothing else is required.",
+    "streaming": "With StreamingEnabled a creature streams as one piece (prepare sets ModelStreamingMode Atomic)."
+  },
+  "gives": {
+    "idle": "breathing body, nodding head, swaying arms, wagging tail, flapping wings",
+    "walk": "legs in opposition (bipeds) or diagonal pairs (four or more legs), counter-swinging arms, body bob; legless bodies hop and waddle",
+    "attack": "set the model attribute MotionAttack to a new number: a lunge with raised arms over 0.45 s",
+    "attributes": { "Motion": "\"walk\" | \"idle\" forces a mode", "MotionSpeed": "number overrides the measured speed", "MotionAttack": "number, change it to attack" }
+  },
+  "limits": [
+    "Bone-skinned rigs move by their bones; a fruit can only be attached rigidly to them, so fruit creatures use Motor6D bodies.",
+    "Animation runs on each client only (Transform does not replicate), which is what Roblox does for its own animations."
+  ]
+}

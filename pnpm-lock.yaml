@@ -117,6 +117,8 @@ importers:
 
   packages/asset-library: {}
 
+  packages/components: {}
+
   packages/corpus:
     dependencies:
       yaml:
