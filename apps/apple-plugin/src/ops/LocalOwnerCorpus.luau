@@ -62,22 +62,27 @@ local function sanitize(value)
 	return out
 end
 function LocalOwnerCorpus.build(api)
+	-- OWNER, 2026-10-01 ("manually entering it every time in the plugin is trash"): the gateway serves this Mac's
+	-- own library to loopback without a key by default (gateway.py --require-key restores it), so with nothing
+	-- pasted Studio connects by itself on the default port. A pasted port/key still wins. The paired-session
+	-- consent fence (stillCurrent) is unchanged.
+	local DEFAULT_PORT = 63747
 	local function connection(self, stillCurrent)
 		local ok, yes = pcall(function() return type(stillCurrent) == "function" and stillCurrent() == true end)
 		if not ok or not yes then return nil,"owner gateway requires a live paired connection" end
 		local configured, config = pcall(function() return self.options.ownerGateway() end)
-		if not configured or type(config) ~= "table" or not api.integer(config.port) or config.port < 1 or config.port > 65535
-			or type(config.key) ~= "string" or #config.key < 32 or #config.key > 128 or string.match(config.key,"^[%w_-]+$") == nil then
-			return nil,"local owner gateway is not configured for this session"
+		if configured and type(config) == "table" and api.integer(config.port) and config.port >= 1 and config.port <= 65535
+			and type(config.key) == "string" and #config.key >= 32 and #config.key <= 128 and string.match(config.key,"^[%w_-]+$") ~= nil then
+			return config
 		end
-		return config
+		return { port = DEFAULT_PORT }
 	end
 	local function request(self, config, path, body, cap)
 		local http = api.serviceFrom(self.game,self.options.services,"HttpService")
 		if not http then error("local gateway HTTP service unavailable") end
 		local ok, response = pcall(function()
 			return http:RequestAsync({Url="http://127.0.0.1:"..tostring(config.port)..path,Method=body and "POST" or "GET",
-				Headers={Authorization="Bearer "..config.key,["Content-Type"]="application/json"},Body=body and http:JSONEncode(body) or nil})
+				Headers=config.key and {Authorization="Bearer "..config.key,["Content-Type"]="application/json"} or {["Content-Type"]="application/json"},Body=body and http:JSONEncode(body) or nil})
 		end)
 		-- Never relay raw HTTP/native exceptions: they may contain private paths or credentials.
 		if not ok or type(response) ~= "table" or response.Success ~= true or type(response.Body) ~= "string" or #response.Body > cap then error("local gateway request refused or exceeded response bound") end

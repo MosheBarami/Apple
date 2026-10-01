@@ -244,7 +244,7 @@ codeCorner.CornerRadius = UDim.new(0, 10)
 codeCorner.Parent = code
 local connect = control("Connect to Apple")
 
-text("Optional private owner library: connect a local gateway for this paired session. Selected descriptions/source pages may be sent to the agent over HTTPS; the local key and native asset bytes stay in Studio. Downloaded source is never executed.", 13, true)
+text("Your owner library connects by itself while Apple is paired (the library server on this Mac, port 63747). Selected descriptions/source pages may be sent to the agent over HTTPS; native asset bytes stay in Studio. Downloaded source is never executed.", 13, true)
 local function gatewayField(name: string, placeholder: string): TextBox
     order += 1
     local field = Instance.new("TextBox")
@@ -257,7 +257,12 @@ end
 local gatewayPort = gatewayField("OwnerGatewayPort","Local gateway port")
 local gatewayKey = gatewayField("OwnerGatewayKey","Ephemeral gateway key (cleared on connect)")
 local gatewayConnect = control("Connect private owner library")
-local gatewayNote = text("Private library disconnected",13,true)
+local gatewayNote = text("Owner library: checking…",13,true)
+-- OWNER, 2026-10-01 ("manually entering it every time in the plugin is trash"): the library connects by itself, so
+-- the port/key fields are an override nobody needs day to day. They stay in the tree (hidden) for --require-key.
+gatewayPort.Visible = false
+gatewayKey.Visible = false
+gatewayConnect.Visible = false
 local permission = text("Access: inspect only", 15, false)
 local edits = control("Enable edits…")
 local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
@@ -266,6 +271,29 @@ local version = text("Apple Studio · 1.4.3 · independent preview", 12, true)
 -- Resurface License §1: prominent credit and a link (THIRD_PARTY_NOTICES.md).
 text("Classic studs by Resurface (cxmeel) · github.com/cxmeel/resurface-plugin", 12, true)
 version.LayoutOrder = 100
+
+local probeLibrary
+-- What the owner library holds, read from the local library server (loopback, no key); at most every 30 seconds.
+local lastLibraryProbe = 0
+probeLibrary = function()
+	if os.clock() - lastLibraryProbe < 30 then return end
+	lastLibraryProbe = os.clock()
+	task.spawn(function()
+		local ok, report = pcall(function()
+			local http = game:GetService("HttpService")
+			local res = http:RequestAsync({ Url = "http://127.0.0.1:63747/v1/library/report", Method = "GET" })
+			if not res.Success then return nil end
+			return http:JSONDecode(res.Body)
+		end)
+		if disposed then return end
+		if ok and type(report) == "table" and type(report.games) == "number" then
+			gatewayNote.Text = string.format("Owner library: connected · %d games · %d assets", report.games, tonumber(report.assets) or 0)
+		else
+			gatewayNote.Text = "Owner library: not running on this Mac (it starts at login; or run packages/owner-corpus/start-gateway.sh)"
+			lastLibraryProbe = 0
+		end
+	end)
+end
 
 local function refreshAccess()
 	local connected = bridge ~= nil and bridge:isConnected()
@@ -276,7 +304,9 @@ local function refreshAccess()
 		showSources(false, nil)
 		ownerGatewayConfig = nil
 		gatewayKey.Text = ""
-		gatewayNote.Text = "Private library disconnected"
+		gatewayNote.Text = "Owner library: connects when Apple is paired"
+	else
+		probeLibrary()
 	end
 	permission.Text = if allowEdits and not editModeActive() then "Access: edits paused while Studio is testing"
 		elseif allowEdits then "Access: edits allowed for this connection" else "Access: inspect only"

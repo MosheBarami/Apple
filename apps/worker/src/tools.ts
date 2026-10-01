@@ -5638,7 +5638,7 @@ export function targetOf(tool: string, argsJson: unknown): string | undefined {
 export const DEFERRED_TOOLS: ReadonlySet<string> = new Set([
   'generate_sound', 'design_sound', 'speak_line', 'assign_sounds', 'generate_image', 'generate_ui_image_hf', 'upload_ui_asset',
   'edit_terrain', 'shape_terrain', 'read_terrain', 'generate_model', 'generate_model_external', 'compose_thumbnail',
-  'plan_game', 'build_game', 'web_fetch', 'browse_page', 'web_search', 'screenshot_page', 'ocr_image',
+  'web_fetch', 'browse_page', 'web_search', 'screenshot_page', 'ocr_image',
   'github_lookup', 'git_history', 'workspace_list', 'workspace_read', 'workspace_write', 'review_scripts', 'format_script',
   'find_symbol', 'collision_groups', 'build_ui', 'insert_ui_component', 'run_spec',
 ]);
