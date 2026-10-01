@@ -108,7 +108,11 @@ export interface ObjectPart {
   /** Smooth plastic instead of studs (a keycap, like the owner's reference keyboard). */
   surface?: 'smooth';
 }
-export interface ObjectPlan { name: string; parts: ObjectPart[]; footprint: { x0: number; x1: number; z0: number; z1: number; top: number }; skipped?: string[] }
+export interface ObjectPlan {
+  name: string; parts: ObjectPart[]; footprint: { x0: number; x1: number; z0: number; z1: number; top: number }; skipped?: string[];
+  /** Parts the spec asked for that were left out because a keyboard has no such part (relayKeyboard). */
+  dropped?: string[];
+}
 
 /** [x, y, z] from an array, an {x, y, z} object or "x, y, z" text; null when it is none of those. */
 const v3 = (v: unknown): V3 | null => {
@@ -372,7 +376,10 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   }
   // A keyboard placed key by key is laid out by code (relayKeyboard), unless the model already used rows.
   const usedRows = (Array.isArray(a.parts) ? a.parts : []).some((r) => r && typeof r === 'object' && Array.isArray((r as Record<string, unknown>).rows));
+  const extrasAsked = parts.filter((p) => !p.text && !p.key && !p.rides).map((p) => p.name);
   parts.splice(0, parts.length, ...relayKeyboard(parts, usedRows));
+  const kept = new Set(parts.map((p) => p.name));
+  const dropped = extrasAsked.filter((n) => !kept.has(n));
   // Ground it: the lowest point of the object sits on the stage.
   const bottom = Math.min(...parts.map((p) => p.at[1] - p.size[1] / 2));
   for (const p of parts) p.at[1] -= bottom;
@@ -382,7 +389,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
     top: Math.max(...parts.map((p) => p.at[1] + p.size[1] / 2)),
   };
   if (parts.length === 0) return { error: `no part could be read: ${skipped.slice(0, 3).join('; ')}` };
-  return { name, parts, footprint, ...(skipped.length ? { skipped } : {}) };
+  return { name, parts, footprint, ...(skipped.length ? { skipped } : {}), ...(dropped.length ? { dropped } : {}) };
 }
 
 /**
@@ -419,6 +426,13 @@ export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number
     studs ? (smooth ? 'on a studded stage' : 'studded') : '',
     moving ? `${moving} of them move${keysBound ? `, ${keysBound} answer the real keyboard keys, and they are also pressed by clicking or walking on them` : ''}` : '',
     moving ? 'each move has its sound; a counter and a hint are on the player\'s screen (not in the world)' : '',
+    // What else is there, by name, and what is not (live 2026-10-01: the answer promised "two spinning knobs and a
+    // glowing light bar" for a keyboard with one knob and no light bar).
+    caps ? (() => {
+      const extras = plan.parts.filter((p) => !p.text && !p.rides && !/Case$/.test(p.name)).map((p) => p.name);
+      return extras.length ? `besides the keys only: ${extras.join(', ')}` : 'nothing besides the keys and their case';
+    })() : '',
+    plan.dropped?.length ? `left out, because a keyboard has no such part: ${plan.dropped.join(', ')} (do not mention them)` : '',
   ].filter(Boolean);
   return how.join('; ');
 }

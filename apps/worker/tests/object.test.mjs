@@ -348,3 +348,16 @@ test('a lone key joins the row above, and only a keyboard\'s own extras stay', (
   assert.ok(!plan.parts.some((p) => p.name === 'LEDBall' || p.name === 'GlowBar'), 'no junk beside the keys');
   assert.ok(plan.parts.some((p) => p.name === 'WristRest'));
 });
+
+// Live 2026-10-01: the answer promised "two spinning knobs and a glowing light bar"; the keyboard had one knob and no bar.
+test('the build result names every extra that is there and every one that was left out', () => {
+  const plan = O.expandObject({ name: 'Kb', scale: 4, parts: [
+    { name: 'Key', rows: [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L']], move: { as: 'press', on: 'key' } },
+    { name: 'VolumeKnob', shape: 'cylinder', size: [0.6, 0.4, 0.6], at: [6, 1, -1], color: 'grey', move: { as: 'spin', on: 'click' } },
+    { name: 'LightBar', size: [10, 0.2, 0.3], at: [0, 1, -1.5], color: 'pink' },
+  ] });
+  assert.deepEqual(plan.dropped, ['LightBar']);
+  const built = O.builtSummary(plan, 20, 19, true);
+  assert.match(built, /besides the keys only: VolumeKnob/);
+  assert.match(built, /left out[^:]*: LightBar/);
+});
