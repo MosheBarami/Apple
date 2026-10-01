@@ -977,3 +977,28 @@ test('a pair of end parts in one place goes to the two ends of the body', () => 
   assert.equal(parts[3].at[0], 0, 'eyes are not ends');
   assert.deepEqual(O.toEnds([{ name: 'B', size: [10, 2, 2], at: [0, 1, 0] }, { name: 'CapA', size: [1, 2, 2], at: [-4.5, 1, 0] }, { name: 'CapB', size: [1, 2, 2], at: [4.5, 1, 0] }]), [], 'already apart: left alone');
 });
+
+// Test 3 round 11 (2026-10-01): stretching a stick of butter stretched its label into a block jutting out of its front.
+test('a stick is stretched by its long parts; small details keep their size', () => {
+  const parts = [
+    { name: 'Butter', size: [4, 3, 3], at: [0, 1.5, 0] },
+    { name: 'Label', size: [2, 1.5, 0.2], at: [0, 1.5, 1.6] },
+    { name: 'Wrapper', size: [4.2, 0.4, 3.2], at: [0, 0.2, 0] },
+  ];
+  const k = O.shapeTo(parts, 'long');
+  assert.ok(k > 1);
+  assert.equal(parts[0].size[0], 4 * k, 'the butter stretches');
+  assert.equal(parts[2].size[0], 4.2 * k, 'the wrapper runs its length and stretches too');
+  assert.deepEqual(parts[1].size, [2, 1.5, 0.2], 'the label keeps its size');
+});
+
+test('a wrapper end hidden in the body comes out at its end, not under it (test 3 round 11)', () => {
+  const parts = [
+    { name: 'Butter', size: [30, 6, 8], at: [0, 3, 0] },
+    { name: 'WrapperEndLeft', size: [3.6, 6.8, 8.8], at: [-13, 3, 0] },
+    { name: 'WrapperEndRight', size: [3.6, 6.8, 8.8], at: [13, 3, 0] },
+  ];
+  O.unbury(parts);
+  assert.equal(parts[1].at[1], 3, 'not pushed under'); assert.equal(parts[2].at[1], 3);
+  assert.ok(parts[1].at[0] <= -15 && parts[2].at[0] >= 15, `${parts[1].at[0]} / ${parts[2].at[0]}: at the ends`);
+});

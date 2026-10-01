@@ -198,10 +198,13 @@ export function unbury(parts: ObjectPart[]): string[] {
     for (let pass = 0; pass < 4; pass++) {
       const q = parts.find((o) => o !== p && !o.own && (o.transparency ?? 0) <= 0.5 && vol(o) > vol(p) && holds(o, p.at));
       if (!q) break;
-      const axis = SIDE_WORDS.test(p.name) ? 2 : UP_WORDS.test(p.name) || DOWN_WORDS.test(p.name) ? 1 : p.size.indexOf(Math.min(...p.size));
+      // An end or a cap comes out at the body's end, never under it, even when it is a "WrapperEnd" (test 3 round 11:
+      // two wrapper ends pushed under the butter held it up like table legs).
+      const ofEnd = /end|cap/i.test(p.name);
+      const axis = ofEnd ? (q.size[0] >= q.size[2] ? 0 : 2) : SIDE_WORDS.test(p.name) ? 2 : UP_WORDS.test(p.name) || DOWN_WORDS.test(p.name) ? 1 : p.size.indexOf(Math.min(...p.size));
       const lean = p.at[axis]! - q.at[axis]!;
       // Down words win unless the name says top or lid (round 3: a "WrapperFold" went on top as a lid over the butter).
-      const dir = axis === 1 ? (DOWN_WORDS.test(p.name) && !/top|lid/i.test(p.name) ? -1 : 1) : Math.abs(lean) > 1e-3 ? Math.sign(lean) : 1;
+      const dir = axis === 1 && !ofEnd ? (DOWN_WORDS.test(p.name) && !/top|lid/i.test(p.name) ? -1 : 1) : Math.abs(lean) > 1e-3 ? Math.sign(lean) : /left|1$|a$/i.test(p.name) ? -1 : 1;
       p.at[axis] = q.at[axis]! + dir * (q.size[axis]! / 2 + p.size[axis]! / 2);
       if (!moved.includes(p.name)) moved.push(p.name);
     }
@@ -210,7 +213,7 @@ export function unbury(parts: ObjectPart[]): string[] {
   // the butter's whole top, a lid again).
   const body = [...parts].filter((o) => !o.own).sort((a, b) => vol(b) - vol(a))[0];
   for (const p of parts) {
-    if (!body || p === body || p.key || p.rides || p.own || !DOWN_WORDS.test(p.name) || /top|lid/i.test(p.name)) continue;
+    if (!body || p === body || p.key || p.rides || p.own || !DOWN_WORDS.test(p.name) || /top|lid|end|cap/i.test(p.name)) continue;
     const overlap = (i: number) => Math.max(0, Math.min(p.at[i]! + p.size[i]! / 2, body.at[i]! + body.size[i]! / 2) - Math.max(p.at[i]! - p.size[i]! / 2, body.at[i]! - body.size[i]! / 2));
     const covers = overlap(0) * overlap(2) >= 0.5 * body.size[0] * body.size[2];
     if (!covers || p.at[1] <= body.at[1] || p.size[1] >= body.size[1]) continue;
@@ -356,13 +359,15 @@ export function shapeTo(parts: ObjectPart[], shape: 'long' | 'flat' | undefined,
     const axis = x >= z ? 0 : 2, along = Math.max(x, z), next = Math.max(Math.min(x, z), y);
     if (along >= 3 * next) return 1;
     const k = 3.5 * next / along;
-    for (const p of parts) { p.size[axis] *= k; p.at[axis] *= k; }
+    // Parts that run most of the length stretch with it; a small detail keeps its size and only moves with the body
+    // (test 3 round 11, 2026-10-01: a label stretched into a block jutting 8 studs out of the butter's front).
+    for (const p of parts) { if (p.size[axis] >= 0.5 * along) p.size[axis] *= k; p.at[axis] *= k; }
     return k;
   }
   const lowest = Math.min(...basis.map((p) => p.at[1]! - p.size[1]! / 2));
   if (y <= 0.35 * Math.min(x, z)) return 1;
   const k = 0.25 * Math.min(x, z) / y;
-  for (const p of parts) { p.size[1] *= k; p.at[1] = lowest + (p.at[1] - lowest) * k; }
+  for (const p of parts) { if (p.size[1] >= 0.5 * y) p.size[1] *= k; p.at[1] = lowest + (p.at[1] - lowest) * k; }
   return k;
 }
 
