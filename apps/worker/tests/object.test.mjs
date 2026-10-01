@@ -104,7 +104,8 @@ test('a request for one thing is told apart from a game, an edit or a look', () 
 });
 
 test('positions come however a model writes them, and a missing one stands on the ground', () => {
-  const plan = O.expandObject({ name: 'Thing', parts: [
+  // scale 1: this is about reading positions, not about growing a small thing (fitFactor, test 2 round 2).
+  const plan = O.expandObject({ name: 'Thing', scale: 1, parts: [
     { name: 'A', size: [2, 2, 2], position: { x: 4, y: 1, z: 0 }, color: '#ffffff' },
     { name: 'B', size: [2, 2, 2], pos: '0, 1, 4', color: '#ffffff' },
     { name: 'C', size: [2, 4, 2], color: '#ffffff' },
@@ -114,7 +115,7 @@ test('positions come however a model writes them, and a missing one stands on th
 });
 
 test('a part with a flat or missing size does not sink the object', () => {
-  const plan = O.expandObject({ name: 'Y', parts: [{ name: 'A', size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff' }, { name: 'Sheet', size: [4, 0, 2], at: [0, 1, 0], color: '#ffffff' }, { name: 'Lost', at: [0, 0, 0] }] });
+  const plan = O.expandObject({ name: 'Y', scale: 1, parts: [{ name: 'A', size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff' }, { name: 'Sheet', size: [4, 0, 2], at: [0, 1, 0], color: '#ffffff' }, { name: 'Lost', at: [0, 0, 0] }] });
   assert.ok(!('error' in plan), JSON.stringify(plan));
   assert.equal(plan.parts.length, 2);
   assert.equal(plan.parts[1].size[1], 0.2, 'a flat side is made thin, not refused');
@@ -535,4 +536,70 @@ test('only a keyboard wears its theme; another object stands on a stage that con
   assert.match(tool, /isBoard && plan\.theme === 'rgb' \? '#3a3d46'/);
   const anim = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'animate', 'AppleAnimate.luau'), 'utf8');
   assert.ok(!/MaxActivationDistance = clip\.reach or (32|40)\b/.test(anim), 'clicks reach from the spawn');
+});
+
+// Test 2 round 2 (2026-10-01), the model's own spec as built: every detail at the butter's centre, 8 x 2 x 2, no move.
+const BUTTER = { name: 'StickOfButter', parts: [
+  { name: 'Butter', size: [8, 2, 2], at: [0, 1, 0], color: '#f5e27a' },
+  { name: 'ButterTop', size: [8, 0.4, 2], at: [0, 0.2, 0], color: '#e8d96a' },
+  { name: 'Wrapper', size: [8.4, 0.8, 2.4], at: [0, 0.4, 0], color: '#f7f3e8' },
+  { name: 'Label', size: [4, 0.8, 0.4], at: [0, 0.4, 0], color: '#d9c94f' },
+  { name: 'WrapperFold', size: [1.2, 0.8, 2.4], at: [0, 0.4, 0], color: '#f7f3e8' },
+] };
+const inside = (q, at) => [0, 1, 2].every((i) => Math.abs(at[i] - q.at[i]) < q.size[i] / 2 - 0.05);
+
+test('no detail stays hidden inside the body: a top goes on top, a wrapper under it, a label on the side the spawn sees', () => {
+  const plan = O.expandObject(BUTTER);
+  assert.ok(!('error' in plan), JSON.stringify(plan));
+  const by = Object.fromEntries(plan.parts.map((p) => [p.name, p]));
+  for (const p of plan.parts) for (const q of plan.parts) {
+    if (p !== q && q.size[0] * q.size[1] * q.size[2] > p.size[0] * p.size[1] * p.size[2]) assert.ok(!inside(q, p.at), `${p.name} is hidden inside ${q.name}`);
+  }
+  assert.ok(by.ButterTop.at[1] > by.Butter.at[1], 'the top is above the butter');
+  assert.ok(by.Wrapper.at[1] < by.Butter.at[1], 'the wrapper is under it');
+  assert.ok(by.Label.at[2] > by.Butter.at[2], 'the label faces the spawn (+Z)');
+  assert.deepEqual([...plan.unburied].sort(), ['ButterTop', 'Label', 'Wrapper', 'WrapperFold'].sort());
+  assert.equal(Math.min(...plan.parts.map((p) => p.at[1] - p.size[1] / 2)).toFixed(6), '0.000000', 'still grounded');
+});
+
+test('a too-small object is grown to be worth walking up to; a scale the model chose is kept', () => {
+  const plan = O.expandObject(BUTTER);
+  const long = plan.footprint.x1 - plan.footprint.x0;
+  assert.ok(long >= 2 * O.PLAYER_HEIGHT && long <= 4 * O.PLAYER_HEIGHT, `longest side ${long}`);
+  assert.ok(plan.grown > 1);
+  const kept = O.expandObject({ ...BUTTER, scale: 1 });
+  assert.equal(kept.footprint.x1 - kept.footprint.x0, 8.4, 'the model asked for scale 1');
+  assert.equal(O.fitFactor([{ at: [0, 10, 0], size: [20, 20, 4] }]), 1, 'big enough already');
+});
+
+test('an object nobody gave a move wobbles on a click as one, with a sound, so it gets its counter and hint', () => {
+  const plan = O.expandObject(BUTTER);
+  const moving = plan.parts.filter((p) => p.move);
+  assert.equal(moving.length, 1);
+  assert.equal(moving[0].name, 'Butter', 'the biggest part');
+  assert.deepEqual([moving[0].move.as, moving[0].move.on], ['wobble', 'click']);
+  assert.ok(moving[0].move.sound);
+  assert.ok(plan.parts.filter((p) => p !== moving[0]).every((p) => p.rides === 'Butter'), 'the rest ride it');
+  const said = O.builtSummary(plan, 1, 0, true);
+  assert.ok(!/keycap/.test(said), said);
+  assert.match(said, /made of: .*Label/);
+  assert.match(said, /no words are printed/, 'says the label has no words, so the reply cannot promise a printed one');
+  // A model that gave a move keeps its own.
+  const own = O.expandObject({ ...BUTTER, parts: [{ ...BUTTER.parts[0], move: { as: 'spin', on: 'loop' } }, ...BUTTER.parts.slice(1)] });
+  assert.equal(own.gaveMotion, undefined);
+  assert.equal(own.parts.find((p) => p.name === 'Butter').move.as, 'spin');
+});
+
+test('words on a thin side face the spawn unless a face is given', () => {
+  assert.equal(O.thinFace([4, 0.8, 0.4]), 'Back', 'a label standing on the side: +Z, toward the spawn');
+  assert.equal(O.thinFace([3, 0.5, 3]), 'Top', 'a keycap or a flat sign');
+  const plan = O.expandObject({ name: 'Box', parts: [{ name: 'Body', size: [8, 8, 8], at: [0, 4, 0], color: '#ff0000' }, { name: 'Label', size: [4, 2, 0.2], at: [0, 4, 4.1], text: 'HI' }] });
+  assert.equal(plan.parts.find((p) => p.name === 'Label').text.face, 'Back');
+});
+
+test('the build_object description holds no test answer', () => {
+  const src = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  const desc = /name: 'build_object',\s*description: "([^"]+)"/.exec(src)?.[1] ?? '';
+  assert.ok(desc.length > 100);
+  assert.ok(!/butter/i.test(desc), 'the owner\'s own test object is not spelled out in the tool');
 });

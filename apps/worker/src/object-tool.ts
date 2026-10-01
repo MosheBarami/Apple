@@ -118,6 +118,12 @@ export interface ObjectPlan {
   dropped?: string[];
   /** How a keyboard was made to look (keyboardTheme). */
   theme?: KeyboardTheme;
+  /** Parts moved out of a bigger part that hid them (unbury). */
+  unburied?: string[];
+  /** The part given a wobble because nothing moved (giveMotion). */
+  gaveMotion?: string;
+  /** How much the object was grown to be worth walking up to (fitFactor). */
+  grown?: number;
 }
 
 /** [x, y, z] from an array, an {x, y, z} object or "x, y, z" text; null when it is none of those. */
@@ -137,6 +143,69 @@ const KEY_WIDTH: [RegExp, number][] = [
   [/^(caps|capslock|caps lock)$/i, 1.75], [/^tab$/i, 1.5], [/^(ctrl|control|alt|win|cmd|fn|menu)$/i, 1.25],
 ];
 const PASTEL = ['#7be0ff', '#ff7bd1', '#ffe27a', '#9bff8a', '#b69bff'];
+
+const vol = (p: ObjectPart) => p.size[0] * p.size[1] * p.size[2];
+const holds = (q: ObjectPart, at: V3, margin = 0.05) => [0, 1, 2].every((i) => Math.abs(at[i]! - q.at[i]!) < q.size[i]! / 2 - margin);
+const UP_WORDS = /top|lid|icing|frosting|glaze|topping|sprinkle|cap|cream|sauce|fold|flap|knob|handle|stem|leaf|bow/i;
+const DOWN_WORDS = /bottom|base|tray|plate|dish|wrapper|paper|foil|stand|feet|foot|leg|saucer|mat/i;
+const SIDE_WORDS = /label|sticker|logo|sign|text|print|stripe|face|eye|mouth|window|door|badge|brand/i;
+
+/**
+ * A part whose centre is inside a bigger part cannot be seen (test 2 round 2, 2026-10-01: the butter's Label, its
+ * ButterTop and its WrapperFold all sat at the butter's own centre, and the reply still promised "a printed label on
+ * the side"). Each one is pushed out along its thinnest side until it sits flush on the face of what hid it: up for a
+ * topping, down for a tray or wrapper, toward the player (+Z) for a label, otherwise the way it already leaned.
+ * Moving parts and keys stay where they are. Pure; returns the names it moved.
+ */
+export function unbury(parts: ObjectPart[]): string[] {
+  const moved: string[] = [];
+  for (const p of parts) {
+    if (p.key || p.rides || p.own || (p.transparency ?? 0) > 0.5) continue;
+    for (let pass = 0; pass < 4; pass++) {
+      const q = parts.find((o) => o !== p && !o.own && (o.transparency ?? 0) <= 0.5 && vol(o) > vol(p) && holds(o, p.at));
+      if (!q) break;
+      const axis = SIDE_WORDS.test(p.name) ? 2 : UP_WORDS.test(p.name) || DOWN_WORDS.test(p.name) ? 1 : p.size.indexOf(Math.min(...p.size));
+      const lean = p.at[axis]! - q.at[axis]!;
+      const dir = axis === 1 ? (DOWN_WORDS.test(p.name) && !UP_WORDS.test(p.name) ? -1 : 1) : Math.abs(lean) > 1e-3 ? Math.sign(lean) : 1;
+      p.at[axis] = q.at[axis]! + dir * (q.size[axis]! / 2 + p.size[axis]! / 2);
+      if (!moved.includes(p.name)) moved.push(p.name);
+    }
+  }
+  return moved;
+}
+
+/** The face a part's words go on when none is given: Top for a flat part, else the thin side facing the spawn. Pure. */
+export function thinFace(size: V3): string {
+  const thin = size.indexOf(Math.min(...size));
+  return thin === 2 && size[2] < size[1] ? 'Back' : thin === 0 && size[0] < size[1] ? 'Right' : 'Top';
+}
+
+/** A player is 5 studs tall; a thing to walk up to is 2-4 player heights at its longest (owner: "a butter stick taller than the player"). */
+export const PLAYER_HEIGHT = 5;
+const FIT_MIN = 12, FIT_TO = 15;
+/**
+ * The factor that makes a too-small object worth walking up to: its longest side becomes FIT_TO studs when it is under
+ * FIT_MIN (test 2 round 2: the model sent an 8 x 2 x 2 stick of butter, under half a player tall, though the tool asks
+ * for 1.5-3 player heights). 1 when it is big enough already. Pure.
+ */
+export function fitFactor(parts: ObjectPart[]): number {
+  const span = (i: number) => Math.max(...parts.map((p) => p.at[i]! + p.size[i]! / 2)) - Math.min(...parts.map((p) => p.at[i]! - p.size[i]! / 2));
+  const longest = Math.max(span(0), span(1), span(2));
+  return longest > 0 && longest < FIT_MIN ? FIT_TO / longest : 1;
+}
+
+/**
+ * An object nobody can do anything with is a statue (test 2 round 2: no move on any part, so no click, no sound, no
+ * counter). When nothing moves, the biggest part wobbles on a click with a squish and the rest ride it, so the whole
+ * thing reacts as one. Pure; returns the part that now moves, if any.
+ */
+export function giveMotion(parts: ObjectPart[]): string | undefined {
+  if (parts.length === 0 || parts.some((p) => p.move || p.key || p.rides)) return undefined;
+  const body = [...parts].filter((p) => (p.transparency ?? 0) <= 0.5).sort((a, b) => vol(b) - vol(a))[0] ?? parts[0]!;
+  body.move = { as: 'wobble', on: 'click', sound: 'squish' };
+  for (const p of parts) if (p !== body) p.rides = body.name;
+  return body.name;
+}
 
 /** The colour covering the most of an object (by part volume). Pure. */
 export function mainColour(parts: ObjectPart[]): string {
@@ -475,7 +544,9 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
     }
     const textIn = p.text;
     const textOf = (value: unknown) => value === undefined || value === '' ? undefined : {
-      value: String(value).slice(0, 24), face: typeof (textIn as Record<string, unknown>)?.face === 'string' ? String((textIn as Record<string, unknown>).face) : 'Top',
+      // No face given: the side the part is thinnest on, the one the player sees from the spawn (+Z is Roblox's Back):
+      // a label standing on a butter's side reads from the spawn, not from the sky.
+      value: String(value).slice(0, 24), face: typeof (textIn as Record<string, unknown>)?.face === 'string' ? String((textIn as Record<string, unknown>).face) : thinFace(size),
       color: HEX.test(String((textIn as Record<string, unknown>)?.color ?? '')) ? String((textIn as Record<string, unknown>).color) : '#ffffff',
       ...(/^[A-Za-z]{3,30}$/.test(String((textIn as Record<string, unknown>)?.font ?? '')) ? { font: String((textIn as Record<string, unknown>).font) } : {}),
       ...((textIn as Record<string, unknown>)?.glow === true ? { glow: true } : {}),
@@ -533,9 +604,20 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
       p.surface = 'smooth';
     }
   }
+  // Anything that is not a keyboard: nothing hidden inside another part, something to do with it, and big enough.
+  const board = parts.some((p) => p.key || p.rides);
+  const unburied = board ? [] : unbury(parts);
+  const moves = board ? undefined : giveMotion(parts);
   // Ground it: the lowest point of the object sits on the stage.
   const bottom = Math.min(...parts.map((p) => p.at[1] - p.size[1] / 2));
   for (const p of parts) p.at[1] -= bottom;
+  // Grown from the ground's centre, never shrunk; a scale the model chose itself is kept.
+  const fit = board || a.scale !== undefined ? 1 : fitFactor(parts);
+  if (fit !== 1) for (const p of parts) {
+    p.size = p.size.map((n) => n * fit) as V3;
+    p.at = p.at.map((n) => n * fit) as V3;
+    if (p.move?.amount && !['spin', 'open', 'wobble'].includes(p.move.as)) p.move.amount *= fit;
+  }
   const footprint = {
     x0: Math.min(...parts.map((p) => p.at[0] - p.size[0] / 2)), x1: Math.max(...parts.map((p) => p.at[0] + p.size[0] / 2)),
     z0: Math.min(...parts.map((p) => p.at[2] - p.size[2] / 2)), z1: Math.max(...parts.map((p) => p.at[2] + p.size[2] / 2)),
@@ -543,7 +625,8 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   };
   if (parts.length === 0) return { error: `no part could be read: ${skipped.slice(0, 3).join('; ')}` };
   const theme = (['rgb', 'candy', 'pastel', 'given'] as const).find((t) => t === a.theme);
-  return { name, parts, footprint, ...(skipped.length ? { skipped } : {}), ...(dropped.length ? { dropped } : {}), ...(theme ? { theme } : {}) };
+  return { name, parts, footprint, ...(skipped.length ? { skipped } : {}), ...(dropped.length ? { dropped } : {}), ...(theme ? { theme } : {}),
+    ...(unburied.length ? { unburied } : {}), ...(moves ? { gaveMotion: moves } : {}), ...(fit !== 1 ? { grown: Math.round(fit * 100) / 100 } : {}) };
 }
 
 /**
@@ -573,7 +656,8 @@ export function isKeystroke(p: ObjectPart, words: string | undefined): boolean {
 
 /** What was built, in the words the answer may use. Pure. */
 export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number, studs: boolean): string {
-  const caps = plan.parts.filter((p) => p.rides).length;
+  // Keycaps are the skirts riding a key; an object riding its own wobbling body (giveMotion) has none.
+  const caps = plan.parts.filter((p) => p.rides && plan.parts.some((q) => q.name === p.rides && q.key)).length;
   const smooth = plan.parts.some((p) => p.surface === 'smooth');
   const how = [
     caps ? `${caps} keycaps (${plan.theme === 'rgb' ? 'dark chunky caps with small glowing rainbow legends, on a dark case with a purple underglow' : plan.theme === 'candy' ? 'caramel keycaps with black letters on a chocolate case' : 'smooth plastic, a lighter top with its letter on a darker skirt'})` : `${plan.parts.length} parts`,
@@ -587,6 +671,14 @@ export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number
       return extras.length ? `besides the keys only: ${extras.join(', ')}` : 'nothing besides the keys and their case';
     })() : '',
     plan.dropped?.length ? `left out, because a keyboard has no such part: ${plan.dropped.join(', ')} (do not mention them)` : '',
+    // Anything else, by name, with the words it really carries (test 2 round 2: the reply promised "a printed label"
+    // on a Label part with no words, buried inside the butter).
+    caps ? '' : (() => {
+      const worded = plan.parts.filter((p) => p.text).map((p) => `${p.name} reads "${p.text!.value}"`);
+      return `made of: ${plan.parts.map((p) => p.name).join(', ')}; ${worded.length ? worded.join(', ') : 'no words are printed on it'}`;
+    })(),
+    plan.gaveMotion ? `clicking it makes the whole thing wobble with a squish` : '',
+    plan.grown ? `grown ${plan.grown}x so it stands bigger than a player` : '',
   ].filter(Boolean);
   return how.join('; ');
 }
@@ -677,8 +769,9 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   const width = f.x1 - f.x0, depth = f.z1 - f.z0;
   const stageOn = a.stage !== 'none';
   const stageH = stageOn ? 2 : 0;
-  // The object stands a little away from the spawn; the spawn faces it.
-  const origin: V3 = [-(f.x0 + f.x1) / 2, stageH, -(Math.max(18, depth) + 16) - (f.z0 + f.z1) / 2];
+  // The object stands a short walk from the spawn, its stage's front edge about 12 studs past the spawn's, the spawn
+  // facing it (test 2 round 2: a small object 42 studs out was a speck the camera did not even show).
+  const origin: V3 = [-(f.x0 + f.x1) / 2, stageH, -(depth / 2 + 18) - (f.z0 + f.z1) / 2];
   const center: V3 = [0, stageH, origin[2] + (f.z0 + f.z1) / 2];
   const model = `game.Workspace.${plan.name}`;
 
@@ -788,6 +881,9 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
       if (player) problems.push(`player: ${player}`);
     }
   }
+
+  // Studio's view turns to what was made (test 2 round 2: the butter was built off-screen and the view showed grass).
+  await ctx.execStudioOp({ op: 'camera_focus', path: model }, 10_000).catch(() => undefined);
 
   // Lighting: the studded mood from the owner's lighting tutorial.
   const { TOOLS } = await import('./tools');

@@ -4959,7 +4959,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   build_object: {
     def: {
       name: 'build_object',
-      description: "Build the ONE thing asked for in one call (no desk, monitor or room unless asked): every piece its own part, bright colours, motions with sounds. Make it RECOGNISABLE at a glance: its real proportions (a stick of butter is about 4 long : 1 : 1, a donut a flat ring) and the 2-3 details that say what it is (butter: a pale-yellow block half out of a paper wrapper folded open, with a printed label on its side; a donut: icing on top with sprinkles). Size it 1.5-3 times a player's height (a player is 5 studs). Keyboards, keypads, pianos: ONE part with rows (laid out for you). Studs, stage, rig, lighting and a counter screen are added.",
+      description: "Build the ONE thing asked for in one call (no desk, monitor or room unless asked): every piece its own part, bright colours, motions with sounds. Make it RECOGNISABLE at a glance: its real proportions and the 2-3 details that say what it is (a donut: a flat ring, icing on top, sprinkles), each detail ON the outside of the body (at = the body's centre plus half both sizes), never inside it; words go in a part's text. Size it 2-3 times a player's height at its longest (a player is 5 studs; too small is grown for you). Keyboards, keypads, pianos: ONE part with rows (laid out for you). Studs, stage, rig, lighting and a counter screen are added.",
       parameters: S({
         name: { type: 'string' },
         scale: { type: 'number', description: 'multiplies every size; 3-6 makes a toy-sized thing walkable' },
@@ -4975,7 +4975,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       }, ['name', 'parts']),
     },
     studio: true,
-    studioOps: ['create_instances', 'delete_instances', 'set_props', 'apply_surface', 'rig_model', 'set_joint_pivot', 'edit_script', 'get_tree'],
+    studioOps: ['create_instances', 'delete_instances', 'set_props', 'apply_surface', 'rig_model', 'set_joint_pivot', 'edit_script', 'get_tree', 'camera_focus'],
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not build it' : 'Built it',
     run: buildObject,
