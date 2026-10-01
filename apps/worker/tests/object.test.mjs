@@ -137,10 +137,10 @@ test('a rows entry lays a keyboard out: no key overlaps another, every key answe
   const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
   const pairs = keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`));
   assert.deepEqual(pairs, [], 'keys overlap');
-  const key = (n) => keys.find((p) => p.name === n);
-  assert.equal(key('Key_Back').key, 'Backspace'); assert.equal(key('Key_Enter').key, 'Return'); assert.equal(key('Key_1').key, 'One');
-  assert.equal(key('Key_Space').key, 'Space'); assert.equal(key('Key_Q').key, 'Q');
-  assert.ok(key('Key_Space').size[0] > key('Key_Q').size[0] * 5, 'the space bar is a space bar');
+  const key = (label) => keys.find((p) => p.text.value === label);
+  assert.equal(key('BACK').key, 'Backspace'); assert.equal(key('ENTER').key, 'Return'); assert.equal(key('1').key, 'One');
+  assert.equal(key('SPACE').key, 'Space'); assert.equal(key('Q').key, 'Q');
+  assert.ok(key('SPACE').size[0] > key('Q').size[0] * 5, 'the space bar is a space bar');
   assert.ok(keys.every((p) => p.move?.as === 'press' && p.text?.value), 'every key presses and is labelled');
   const kase = plan.parts.find((p) => p.name === 'KeyCase');
   assert.ok(kase, 'no case');
@@ -169,8 +169,30 @@ test('a keyboard placed key by key is laid out again by code; the screen wall an
   assert.equal(keys.length, 13);
   const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
   assert.deepEqual(keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`)), [], 'keys overlap');
-  assert.equal(plan.parts.find((p) => p.name === 'Key_Back').key, 'Backspace');
-  assert.equal(plan.parts.find((p) => p.name === 'Key_Q').move.sound, 'keyboard thock', 'a key keeps its sound');
+  assert.equal(plan.parts.find((p) => p.text?.value === 'BACK').key, 'Backspace');
+  assert.equal(plan.parts.find((p) => p.text?.value === 'Q').move.sound, 'keyboard thock', 'a key keeps its sound');
   assert.ok(plan.parts.some((p) => p.name === 'KeyCase'), 'the keys sit on a case');
   assert.ok(plan.footprint.top < 6, `the keyboard is ${plan.footprint.top} studs tall`);
+});
+
+// The live re-test, take two: the model gave one rows entry per row, with "-" and "=" keys, and the build died on
+// "two parts are named Key_0_11". Rows entries are one keyboard, symbol keys are named by their key, and a repeated
+// name is renamed rather than fatal.
+test('one rows entry per row is one keyboard; symbol keys and repeated names never sink the build', () => {
+  const move = { as: 'press', on: 'key', sound: 'keyboard click' };
+  const plan = O.expandObject({ name: 'AsmrKeyboard', parts: [
+    { name: 'Key', rows: [['Esc', '1', '2', '-', '=']], at: [0, 0, -4], move },
+    { name: 'Key', rows: [['Q', 'W', '[', ']']], at: [0, 0, 0], move },
+    { name: 'Key', rows: [['Space']], at: [0, 0, 4], move },
+    { name: 'Glow', size: [1, 1, 1], color: '#ffffff' }, { name: 'Glow', size: [1, 1, 1], at: [3, 0.5, 0], color: '#ffffff' },
+  ] });
+  assert.ok(!('error' in plan), plan.error);
+  const keys = plan.parts.filter((p) => p.name.startsWith('Key_'));
+  assert.equal(keys.length, 10);
+  assert.equal(plan.parts.filter((p) => /Case$/.test(p.name)).length, 1, 'one keyboard, one case');
+  assert.ok(keys.some((p) => p.name === 'Key_Minus' && p.key === 'Minus'));
+  const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
+  assert.deepEqual(keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`)), []);
+  assert.ok(plan.parts.find((p) => p.text?.value === 'Q').at[2] > plan.parts.find((p) => p.text?.value === '1').at[2], 'rows stay front to back');
+  assert.equal(new Set(plan.parts.map((p) => p.name)).size, plan.parts.length, 'every name is unique');
 });

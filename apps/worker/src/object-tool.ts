@@ -151,7 +151,7 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
     const z = origin[2] - depth / 2 + ri * (unit + gap) + unit / 2;
     row.forEach((label, ci) => {
       const w = widthOf(label) * unit;
-      let name = `Key_${label.replace(/[^A-Za-z0-9]/g, '') || `${ri}_${ci}`}`;
+      let name = `Key_${keyCodeName(label) ?? (label.replace(/[^A-Za-z0-9]/g, '') || `${ri}_${ci}`)}`;
       while (used.has(name)) name += '_';
       used.add(name);
       out.push({
@@ -225,7 +225,12 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   if (!NAME.test(name)) return { error: 'name must be a plain name (letters, digits, _), e.g. AsmrKeyboard' };
   const scale = a.scale === undefined ? 1 : Number(a.scale);
   if (!Number.isFinite(scale) || scale <= 0 || scale > 50) return { error: 'scale must be between 0 and 50' };
-  const raw = (Array.isArray(a.parts) ? a.parts : []).flatMap((r, i) => r && typeof r === 'object' && Array.isArray((r as Record<string, unknown>).rows) ? unrollRows(r as Record<string, unknown>, i) : [r]);
+  // Every `rows` entry is one keyboard: a model that gives one entry per row gets them merged, front to back.
+  const given = Array.isArray(a.parts) ? a.parts : [];
+  const isRows = (r: unknown) => Boolean(r && typeof r === 'object' && Array.isArray((r as Record<string, unknown>).rows));
+  const rowEntries = given.filter(isRows) as Record<string, unknown>[];
+  const merged = rowEntries.length > 1 ? [{ ...rowEntries[0], at: undefined, rows: [...rowEntries].sort((x, y) => (v3(x.at)?.[2] ?? 0) - (v3(y.at)?.[2] ?? 0)).flatMap((e) => e.rows as unknown[]) }] : rowEntries;
+  const raw = [...given.filter((r) => !isRows(r)), ...merged.flatMap((r, i) => unrollRows(r, i))];
   if (raw.length === 0) return { error: 'parts is empty: list what the object is made of' };
   const parts: ObjectPart[] = [];
   const skipped: string[] = [];
@@ -275,14 +280,16 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
     let k = 0;
     for (let iy = 0; iy < grid[1]; iy++) for (let iz = 0; iz < grid[2]; iz++) for (let ix = 0; ix < grid[0]; ix++, k++) {
       const partName = count === 1 ? base : (typeof names[k] === 'string' && NAME.test(names[k] as string) ? names[k] as string : `${base}${k + 1}`);
-      if (seen.has(partName)) return { error: `two parts are named ${partName}` };
-      seen.add(partName);
+      // A repeated name is renamed, never fatal (owner, 2026-10-01: "two parts are named Key_0_11" sank a build).
+      let unique = partName;
+      for (let n = 2; seen.has(unique); n++) unique = `${partName}_${n}`;
+      seen.add(unique);
       // The key a part answers to: given, or read from its label ("Q" on a key is the Q key).
       const label = count === 1 ? (typeof textIn === 'string' ? textIn : (textIn as Record<string, unknown>)?.value) : texts[k];
       const key = keyCodeName(count === 1 ? p.key : keys[k]) ?? (move?.on === 'key' ? keyCodeName(label) : undefined);
       const text = count === 1 ? textOf((textIn as Record<string, unknown>)?.value ?? (typeof textIn === 'string' ? textIn : undefined)) : textOf(texts[k]);
       parts.push({
-        name: partName, shape, color,
+        name: unique, shape, color,
         size: size.map((n) => n * scale) as V3,
         at: [(at[0] + ix * step[0]) * scale, (at[1] + iy * step[1]) * scale, (at[2] + iz * step[2]) * scale],
         ...(rot ? { rot } : {}),

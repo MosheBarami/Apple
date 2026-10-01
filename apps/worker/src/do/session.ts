@@ -276,6 +276,8 @@ interface AgentState {
   focused?: boolean;
   /** A request for one thing: build_object is this run's first project change (object-tool.ts isObjectRequest). */
   objectFirst?: boolean;
+  /** build_object failures this run; the object fence lifts after three. */
+  objectFails?: number;
   /** An upgrades request: add_upgrades is this run's first project change, then the run only checks and answers. */
   upgradesFirst?: boolean;
   /** build_object succeeded: the rest of the run checks and answers (live 2026-10-01: it kept adding its own sounds and scripts). */
@@ -4723,9 +4725,14 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
       // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
       if (call.name === 'compose_game') agent.composeFirst = false; // tried: the fence lifts whatever the outcome
-      if (call.name === 'build_object') agent.objectFirst = false;
+      // The fence holds until the object is built: a failed build_object is retried with the reason, never swapped
+      // for hand-made instances (owner's re-test, 2026-10-01). After three failures the run may try other tools.
+      if (call.name === 'build_object') {
+        agent.objectFails = out.ok ? 0 : (agent.objectFails ?? 0) + 1;
+        if (out.ok || agent.objectFails >= 3) agent.objectFirst = false;
+      }
       if (call.name === 'build_object' && out.ok) agent.objectBuilt = true;
-      if (call.name === 'add_upgrades') agent.upgradesFirst = false;
+      if (call.name === 'add_upgrades' && (out.ok || (agent.trace?.filter((t) => t.tool === 'add_upgrades' && !t.ok).length ?? 0) >= 3)) agent.upgradesFirst = false;
       if (call.name === 'add_upgrades' && out.ok) agent.objectBuilt = true; // the same fence: check once, then answer
       if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {
         agent.builtGame = true;
