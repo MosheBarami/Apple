@@ -322,3 +322,13 @@ test('a wide key written as repeated cells is one key, and nothing lies over the
   assert.ok(rest.at[2] - rest.size[2] / 2 > front || rest.at[2] + rest.size[2] / 2 < back, 'the wrist rest is beside the keys, not over them');
   assert.ok(Math.abs(rest.at[1] - rest.size[1] / 2) < 0.01, 'and on the ground');
 });
+
+test('a wrist rest is a block, and a key legend is capped at about half the cap', () => {
+  const plan = O.expandObject({ name: 'Kb', scale: 4, parts: [
+    { name: 'Key', rows: [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['Shift', 'Z', 'X', 'C', 'V', 'B', 'N', 'M']], move: { as: 'press', on: 'key' } },
+    { name: 'WristRest', shape: 'cylinder', size: [15, 0.5, 1.7], at: [0, 1, 3], color: 'yellow' },
+  ] });
+  assert.equal(plan.parts.find((p) => p.name === 'WristRest').shape, 'block', 'not a pipe');
+  const src = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
+  assert.match(src, /p\.key \? \[\{ className: 'UITextSizeConstraint', name: 'Legend', props: \{ MaxTextSize: \d+ \} \}\]/);
+});

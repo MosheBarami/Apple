@@ -205,7 +205,8 @@ function restBeside(p: ObjectPart, keys: ObjectPart[], x0: number, x1: number, z
   if (!/wrist|palm|rest/i.test(p.name)) return p;
   const unit = Math.min(...keys.map((k) => Math.min(k.size[0], k.size[2])));
   const width = Math.min(p.size[0], (x1 - x0) * 0.7), height = Math.min(p.size[1], unit * 0.6), depth = Math.min(Math.max(p.size[2], unit), unit * 2);
-  return { ...p, rot: undefined, size: [width, height, depth], at: [(x0 + x1) / 2, floor + height / 2, z1 + unit * 0.6 + depth / 2] };
+  // A block: a long cylinder lies along X as a pipe one stud thick (the owner's screenshot, 2026-10-01).
+  return { ...p, shape: 'block', rot: undefined, size: [width, height, depth], at: [(x0 + x1) / 2, floor + height / 2, z1 + unit * 0.6 + depth / 2] };
 }
 
 /**
@@ -506,8 +507,11 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
     className: 'SurfaceGui', name: 'Label',
     props: { Face: { t: 'EnumItem', v: `Enum.NormalId.${t.face}` }, SizingMode: { t: 'EnumItem', v: 'Enum.SurfaceGuiSizingMode.PixelsPerStud' }, PixelsPerStud: Math.max(10, Math.min(80, 120 / Math.max(1, Math.min(p.size[0], p.size[2])))), LightInfluence: 0 },
     children: [{ className: 'TextLabel', name: 'Text', props: { Size: { t: 'UDim2', v: [0.9, 0, 0.9, 0] }, Position: { t: 'UDim2', v: [0.05, 0, 0.05, 0] }, BackgroundTransparency: 1, Text: t.value, TextScaled: true, Font: { t: 'EnumItem', v: 'Enum.Font.FredokaOne' }, TextColor3: t.color },
-      // Dark ink (a keycap's letter) is printed, not outlined; light text keeps its black outline.
-      children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: isDark(t.color) ? 0 : 2 } }] }],
+      // Dark ink (a keycap's letter) is printed, not outlined; light text keeps its black outline. A legend is at most
+      // about half the cap (owner, 2026-10-01: SHIFT and CAPS filled their caps and dwarfed the letters); the canvas's
+      // short side is about 120 px at any PixelsPerStud above.
+      children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: isDark(t.color) ? 0 : 2 } },
+        ...(p.key ? [{ className: 'UITextSizeConstraint', name: 'Legend', props: { MaxTextSize: 56 } }] : [])] }],
   });
   const moving = plan.parts.filter((p) => p.move);
   const partSpec = (p: ObjectPart): InstanceSpecLite => ({

@@ -31,12 +31,18 @@ export function clampPlayers(players: number): number {
   return Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, Math.round(players)));
 }
 
-export function hubLayout(seed: number, players: number, opts: { plotTiles?: number } = {}): Layout {
+/**
+ * `hero` is the footprint [width, depth] of what stands at the hub's centre (the player's own object on its stage): the
+ * hub grows to hold it with the pads and the spawn outside it (live 2026-10-01: a 75-stud hub under an 82-stud keyboard
+ * stage put the shop, the sell stand and the spawn on the keys).
+ */
+export function hubLayout(seed: number, players: number, opts: { plotTiles?: number; hero?: [number, number] } = {}): Layout {
   const n = clampPlayers(players);
   const tiles = Number.isFinite(opts.plotTiles) ? Math.max(1, Math.min(8, Math.round(opts.plotTiles!))) : 4;
   const r = rng(seed);
   const frameHalf = (tiles * TILE) / 2 + 1; // the plot's wooden frame is one stud wider than its tiles
-  const hubHalf = 24 + 3 * n;               // the hub square runs this far from its centre to each edge
+  const heroR = opts.hero && opts.hero.every((v) => Number.isFinite(v) && v > 0) ? Math.hypot(opts.hero[0], opts.hero[1]) / 2 : 0;
+  const hubHalf = Math.ceil(Math.max(24 + 3 * n, heroR + PAD + 6)); // the hub square runs this far from its centre to each edge
 
   // The ring: far enough that neighbouring frames keep PLOT_GAP between them (the chord between neighbours is at least
   // sqrt(2) times the gap that axis-aligned squares need), and that every spoke is at least SPOKE_MIN long even where
@@ -64,10 +70,12 @@ export function hubLayout(seed: number, players: number, opts: { plotTiles?: num
   // along the first spoke's axis, near its mouth.
   const between = (k: number): P2 => {
     const a = base + Math.PI / n + (Math.PI * 2 * k) / n;
-    return [round1(Math.cos(a) * hubHalf * 0.52), round1(Math.sin(a) * hubHalf * 0.52)];
+    const at = Math.max(hubHalf * 0.52, heroR + PAD * 0.75 + 2);
+    return [round1(Math.cos(a) * at), round1(Math.sin(a) * at)];
   };
   const shopPad = between(0), sellPad = between(Math.floor(n / 2));
-  const spawn: P2 = [round1(dirs[0]![0] * hubHalf * 0.8), round1(dirs[0]![1] * hubHalf * 0.8)];
+  const spawnAt = Math.min(hubHalf - PAD / 2 - 1, Math.max(hubHalf * 0.8, heroR + PAD / 2 + 2));
+  const spawn: P2 = [round1(dirs[0]![0] * spawnAt), round1(dirs[0]![1] * spawnAt)];
   const heroSpot: P2 = [0, 0];
 
   const extent = Math.ceil(ring + frameHalf * Math.SQRT2 + 48);

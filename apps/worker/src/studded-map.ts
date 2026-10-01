@@ -95,7 +95,8 @@ export function studdedMap(input: MapInput, pal: StudPalette = STUD_PALETTE): In
     && (!hub || (Math.max(Math.abs(p[0] - hub.center[0]), Math.abs(p[1] - hub.center[1])) >= hub.radius + 2 + room
       && !hub.spokes.some((sp) => sp.slice(1).some((b, k) => flatDist(p, sp[k]!, b) < laneWidth / 2 + room))));
   let terraces = 0;
-  for (let tries = 0; terraces < 9 && tries < 400; tries++) {
+  // A hub map has library scenery instead (compose-plotsim.ts decor): the owner read the bare slabs as junk.
+  for (let tries = 0; terraces < (hub ? 0 : 9) && tries < 400; tries++) {
     const w = 14 + Math.round(r() * 14), d = 14 + Math.round(r() * 14), h = r() < 0.5 ? 1 : 2;
     const p: P2 = [Math.round(gcx - gsx / 2 + w / 2 + r() * (gsx - w)), Math.round(gcz - gsz / 2 + d / 2 + r() * (gsz - d))];
     let clear = free(p, Math.max(w, d) / 2 + 2);

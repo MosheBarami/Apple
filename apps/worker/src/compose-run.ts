@@ -52,6 +52,35 @@ export interface RunReport {
 
 const clip = (s: unknown) => String(s ?? '').slice(0, 300);
 
+/** The plugin refuses a create_instances whose trees hold more than 400 instances; batches stay under this. */
+export const CREATE_LIMIT = 350;
+const nodes = (i: InstanceSpecLite): number => 1 + (i.children ?? []).reduce((n, c) => n + nodes(c), 0);
+
+/**
+ * One create split into batches the plugin accepts (live 2026-10-01: the simulator HUD was 400+ instances, Studio
+ * refused it and the game had no screen at all). Items go together while they fit; an item too big alone is made
+ * without its children, and its children follow under it. Parents always come before their children. Pure.
+ */
+export function createBatches(parent: string, items: InstanceSpecLite[], limit = CREATE_LIMIT): { parent: string; items: InstanceSpecLite[] }[] {
+  const out: { parent: string; items: InstanceSpecLite[] }[] = [];
+  let batch: InstanceSpecLite[] = [], size = 0;
+  const flush = () => { if (batch.length) out.push({ parent, items: batch }); batch = []; size = 0; };
+  for (const item of items) {
+    const n = nodes(item);
+    if (n <= limit) {
+      if (size + n > limit) flush();
+      batch.push(item); size += n;
+      continue;
+    }
+    flush();
+    const { children, ...shell } = item;
+    out.push({ parent, items: [shell] });
+    out.push(...createBatches(`${parent}.${item.name}`, children ?? [], limit));
+  }
+  flush();
+  return out;
+}
+
 export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done: number, total: number, what: string) => void): Promise<RunReport> {
   const report: RunReport = { counts: {}, problems: [], missing: [], critical: [] };
   const count = (k: string) => { report.counts[k] = (report.counts[k] ?? 0) + 1; };
@@ -70,11 +99,17 @@ export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done:
     } else if (s.kind === 'create') {
       // A rerun on the same place replaces what an earlier run made, rather than stacking a second copy.
       await op({ op: 'delete_instances', paths: s.items.map((i) => `${s.parent}.${i.name}`) }).catch(() => undefined);
-      const out = await op({ op: 'create_instances', items: s.items.map((i) => ({ ...typed(i), parent: s.parent })) }, 120_000);
-      if (out.ok) count('create');
+      let failed: string | undefined;
+      for (const b of createBatches(s.parent, s.items)) {
+        const out = await op({ op: 'create_instances', items: b.items.map((i) => ({ ...typed(i), parent: b.parent })) }, 120_000);
+        if (!out.ok) { failed = clip(out.error); break; }
+      }
+      if (!failed) count('create');
       else {
-        report.problems.push(`create in ${s.parent}: ${clip(out.error)}`);
-        if (s.parent === 'game.Workspace') report.critical.push(`the map was not made: ${clip(out.error)}`);
+        report.problems.push(`create in ${s.parent}: ${failed}`);
+        if (s.parent === 'game.Workspace') report.critical.push(`the map was not made: ${failed}`);
+        // A game with no screen cannot be played: nothing can be bought (the same live run).
+        if (s.parent === 'game.StarterGui') report.critical.push(`the game's screen was not made: ${failed}`);
       }
     } else if (s.kind === 'script') {
       const path = `${s.parent}.${s.name}`;
@@ -93,6 +128,8 @@ export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done:
       const out = await op({ op: 'set_visible', paths: s.paths, visible: false });
       if (out.ok) count('hide'); else report.problems.push(`hide: ${clip(out.error)}`);
     } else if (s.kind === 'delete') {
+      // The screen a game had stays when its new one was not made: an old screen beats none.
+      if (report.critical.some((c) => c.startsWith("the game's screen")) && s.paths.some((p) => p.startsWith('game.StarterGui.'))) continue;
       const out = await op({ op: 'delete_instances', paths: s.paths });
       if (out.ok) count('delete'); // an absent Baseplate is not a problem
     } else if (s.kind === 'strip') {

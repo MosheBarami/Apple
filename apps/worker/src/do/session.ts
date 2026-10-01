@@ -289,6 +289,10 @@ interface AgentState {
   objectBuilt?: boolean;
   /** compose_game built a plot simulator: the run plays it once and answers (the 93-step run rebuilt it by hand, 274 credits). */
   composedPlotSim?: boolean;
+  /** What the composer said the player can do in the game it built: the answer when the run ends any other way. */
+  composedForUser?: string;
+  /** What the last play_check found wrong, in its own words (undefined when it passed). */
+  lastCheckProblem?: string;
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
   uiTheme?: UiTheme;
   /** What this run's tools cited (sources.ts), numbered; sent to the web app with the answer. */
@@ -4740,9 +4744,17 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
       // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
       if (call.name === 'compose_game') agent.composeFirst = false; // tried: the fence lifts whatever the outcome
-      if (call.name === 'compose_game' && out.ok && out.mutatedProject === true && isPlotSimRequest(agent.request ?? '')) {
+      if (call.name === 'compose_game' && out.mutatedProject === true && out.ok && isPlotSimRequest(agent.request ?? '')) {
         agent.composedPlotSim = true;
         agent.objectBuilt = true;
+      }
+      if (call.name === 'compose_game' && out.ok) {
+        const said = (out.detail as { forUser?: unknown } | undefined)?.forUser;
+        if (typeof said === 'string' && said.trim()) agent.composedForUser = said.trim();
+      }
+      if (call.name === 'play_check' && out.ok) {
+        const d = out.detail as { verdict?: unknown; playerSees?: unknown } | undefined;
+        agent.lastCheckProblem = typeof d?.verdict === 'string' && /^no_|broken|error|fail/i.test(d.verdict) && typeof d.playerSees === 'string' ? d.playerSees : undefined;
       }
       // The fence holds until the object is built: a failed build_object is retried with the reason, never swapped
       // for hand-made instances (owner's re-test, 2026-10-01). After three failures the run may try other tools.
@@ -4961,6 +4973,10 @@ export class SessionDO extends DurableObject<Env> {
         ? `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and Apple will do it.`
         : agent.kitZone
         ? `Your scene is built. ${spaced(builtSummary(agent.made))}Say what you would like changed and Apple will change it.`
+        // A composed game ends on what the player can do in it, and on what the last check found (live 2026-10-01: the
+        // owner got "kept doing the same thing again and again" instead of how to play the game that was built).
+        : agent.composedForUser
+        ? `${agent.composedForUser}${agent.lastCheckProblem ? `\n\nOne thing is not right yet: ${agent.lastCheckProblem.replace(/\s*\(Studio's own[^)]*\)/, '')} Ask Apple to fix it.` : ''}`
         : agent.mutated
         ? `Apple stopped because it kept doing the same thing again and again. ${spaced(builtSummary(agent.made))}Everything it made is in your place.`
         : 'Apple stopped because it kept doing the same thing again and again, and nothing in your place was changed.';

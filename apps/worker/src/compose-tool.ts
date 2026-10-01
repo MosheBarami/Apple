@@ -127,16 +127,27 @@ async function libraryModels(ctx: AgentCtx, q: string, limit: number, minParts =
 async function composePlotSim(ctx: AgentCtx, idea: string) {
   const place = await readPlace(ctx);
   const draft = plotSimRecipe(idea, ideaSeed(idea), { ...place, library: [], hubProps: [], hasComponents: place.hasComponents });
-  const [library, sell, shop] = await Promise.all([
-    libraryModels(ctx, draft.subject, place.hero ? 2 : 5),
+  // Library first (owner, 2026-10-01: "if you find assets it's better than generating one from parts"): up to four
+  // other models of the subject, the hub's stands, and scenery for the island.
+  const [library, sell, shop, trees, rocks, stage] = await Promise.all([
+    libraryModels(ctx, draft.subject, place.hero ? 4 : 6),
     libraryModels(ctx, 'sell', 1, 5),
     libraryModels(ctx, 'shop', 1, 5),
+    libraryModels(ctx, 'tree', 1, 5),
+    libraryModels(ctx, 'rock', 1, 2),
+    place.hero ? ctx.execStudioOp({ op: 'get_instance', path: `game.Workspace.${place.hero}Stage.Stage` }, 20_000).catch(() => null) : Promise.resolve(null),
   ]);
+  const stageSize = stage?.ok ? triple((stage.data as { props?: Record<string, unknown> }).props?.Size) : null;
   const hubProps: PlotSimRecipe['hubProps'] = [
     ...(sell[0] ? [{ key: 'HubSell', ref: sell[0], at: 'sell' as const, height: 10 }] : []),
     ...(shop[0] ? [{ key: 'HubShop', ref: shop[0], at: 'shop' as const, height: 12 }] : []),
   ];
   const recipe = plotSimRecipe(idea, ideaSeed(idea), { ...place, library, hubProps, hasComponents: place.hasComponents });
+  recipe.decor = [
+    ...(trees[0] ? [{ key: 'DecorTree', ref: trees[0], height: 18, count: 16 }] : []),
+    ...(rocks[0] ? [{ key: 'DecorRock', ref: rocks[0], height: 5, count: 10 }] : []),
+  ];
+  if (stageSize) recipe.heroSize = [stageSize[0], stageSize[2]];
   if (!recipe.machines.length) {
     return { changed: false, template: 'none', note: `No ${recipe.subject} is in the place and the owner library has no ${recipe.subject} model, so there is nothing to sell yet. Build the ${recipe.subject} first with build_object, then call compose_game again.` };
   }
@@ -154,6 +165,9 @@ async function composePlotSim(ctx: AgentCtx, idea: string) {
       if (!moved?.ok) report.problems.push(`the ${recipe.subject} could not be moved onto the hub`);
     } else report.problems.push(`the ${recipe.subject}'s position could not be read, so it stays where it was`);
   }
+  // The screen is what makes it playable: read it back rather than trust the create (live 2026-10-01: refused, unnoticed).
+  const hud = await ctx.execStudioOp({ op: 'get_instance', path: 'game.StarterGui.AppleHUD' }, 20_000).catch(() => null);
+  if (!hud?.ok && !report.critical.some((c) => c.startsWith("the game's screen"))) report.critical.push("the game's screen is not in StarterGui");
   const built = (report.counts.script ?? 0) > 0;
   if (report.critical.length) {
     return { changed: built, error: `The game was not finished: ${report.critical.join('; ')}.`, problems: report.problems.slice(0, 12),

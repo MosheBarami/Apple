@@ -34,6 +34,10 @@ export interface PlotSimRecipe {
   hero?: string;                          // the object already in the place (Workspace.<hero>), the hub's centrepiece
   machines: MachineSpec[];
   hubProps: { key: string; ref: LibRef; at: 'shop' | 'sell' | 'hub'; height: number }[];
+  /** Library scenery (trees, rocks) scattered over the island off the roads and plots: a map, not a flat square. */
+  decor?: { key: string; ref: LibRef; height: number; count: number }[];
+  /** The hero's footprint on its stage [width, depth]: the hub is made to hold it. */
+  heroSize?: [number, number];
   upgrades: UpgradeSpec[];
   rebirth: { cost: number; growth: number; multiplier: number };
   hasComponents?: boolean;                // ServerScriptService.AppleComponents already holds the game's economy
@@ -79,16 +83,21 @@ const TIER_COLOURS: StudColour[] = ['blue', 'pink', 'blue', 'yellow', 'red', 'pu
 export function machineLadder(subject: string, hero: string | undefined, library: LibRef[]): MachineSpec[] {
   const out: MachineSpec[] = [];
   const tier = (i: number) => ({ price: Math.round(25 * 4.5 ** i), income: Math.max(1, Math.round(1 * 3.5 ** i)) });
-  if (hero) {
-    for (let i = 0; i < 4; i++) {
-      out.push({ id: `${cap(subject)}${TIER_NAMES[i]}`, name: `${TIER_NAMES[i]} ${cap(subject)}`, ...tier(out.length), perPress: 1 + out.length,
-        from: `Workspace.${hero}`, ...(i ? { hue: TIER_HUES[i] } : {}), icon: '⌨️', colour: TIER_COLOURS[i] });
-    }
-  }
-  library.slice(0, 6 - out.length).forEach((ref, k) => {
+  // Different models first (owner, 2026-10-01: "different keyboards"; four of six were the hero recoloured): the
+  // hero's own Classic opens the ladder, the library's models fill the middle, and the hero in gold tops it. Recoloured
+  // tiers only make up what the library could not.
+  const heroTiers = hero ? Math.min(4, Math.max(2, 6 - library.length)) : 0;
+  const heroTier = (i: number) => {
+    out.push({ id: `${cap(subject)}${TIER_NAMES[i]}`, name: `${TIER_NAMES[i]} ${cap(subject)}`, ...tier(out.length), perPress: 1 + out.length,
+      from: `Workspace.${hero}`, ...(TIER_HUES[i] ? { hue: TIER_HUES[i] } : {}), icon: '⌨️', colour: TIER_COLOURS[i] });
+  };
+  const middle = heroTiers > 2 ? [1, 2].slice(0, heroTiers - 2) : [];
+  if (hero) { heroTier(0); for (const i of middle) heroTier(i); }
+  library.slice(0, 6 - heroTiers).forEach((ref, k) => {
     out.push({ id: `${cap(subject)}Lib${k + 1}`, name: `${['Mega', 'Ultra', 'Royal', 'Mythic', 'Cosmic', 'Titan'][k]} ${cap(subject)}`, ...tier(out.length),
       ref, icon: '✨', colour: TIER_COLOURS[(out.length) % TIER_COLOURS.length] });
   });
+  if (hero) heroTier(3);
   return out;
 }
 
@@ -97,12 +106,16 @@ export function plotSimPieces(recipe: PlotSimRecipe): { key: string; ref: LibRef
   return [
     ...recipe.machines.filter((m) => m.ref).map((m) => ({ key: `Machine_${m.id}`, ref: m.ref! })),
     ...recipe.hubProps.map((p) => ({ key: p.key, ref: p.ref })),
+    ...(recipe.decor ?? []).map((d) => ({ key: d.key, ref: d.ref })),
   ];
 }
 
+/** Tiles on a side of a plot: 4x4 is a base with room for a ladder of machines, not a 3x3 doormat. */
+export const PLOT_TILES = 4;
+
 export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
   const steps: Step[] = [];
-  const layout = hubLayout(recipe.seed, recipe.players, { plotTiles: 3 });
+  const layout = hubLayout(recipe.seed, recipe.players, { plotTiles: PLOT_TILES, ...(recipe.heroSize ? { hero: recipe.heroSize } : {}) });
   const hub = layout.hub!;
   const staged = plotSimPieces(recipe);
 
@@ -136,6 +149,16 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
     const off = p.at === 'hub' ? [hub.radius * 0.6, 0] : [0, 0];
     steps.push({ kind: 'place', from: `ServerStorage.AppleParts.${p.key}`, parent: 'Workspace.AppleMap.Props', name: `HubProp${++n}`,
       at: [at[0] + off[0]!, 0, at[1] + off[1]!], yaw: Math.round((Math.atan2(-at[0], -at[1]) * 180) / Math.PI), height: p.height });
+  }
+  // The island's scenery: each library piece copied over the free ground (layout.scatter is off roads, plots and hub).
+  const turn = rng(recipe.seed ^ 0xdec0);
+  let spot = 0;
+  for (const d of recipe.decor ?? []) {
+    for (let k = 0; k < d.count && spot < layout.scatter.length; k++, spot++) {
+      const [x, z] = layout.scatter[spot]!;
+      steps.push({ kind: 'place', from: `ServerStorage.AppleParts.${d.key}`, parent: 'Workspace.AppleMap.Props', name: `${d.key}${k + 1}`,
+        at: [x, 0, z], yaw: Math.round(turn() * 360), height: Math.round(d.height * (0.8 + turn() * 0.4)) });
+    }
   }
 
   // 5. The components: money, the shop on plots, machines that earn, upgrades, presses, the HUD, effects, boot.
@@ -176,21 +199,22 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
   // 7. Studs on the map and on every library piece (the hero keeps its own smooth keycaps: it is not under these).
   if ((recipe.surface ?? 'studs') === 'studs') steps.push({ kind: 'surface', surface: 'studs', paths: ['game.Workspace.AppleMap', 'game.ServerStorage.AppleParts'] });
 
-  // 8. The simulator HUD; the hero's own small screen goes, its counter and upgrades are part of this one now.
-  if (recipe.hero) {
-    steps.push({ kind: 'delete', paths: [`game.StarterGui.${recipe.hero}HUD`, `game.StarterPlayer.StarterPlayerScripts.${recipe.hero}HUDScript`] });
-  }
+  // 8. The simulator HUD, then the hero's own small screen goes (its counter and upgrades are part of this one now).
+  //    The new screen comes first: live 2026-10-01 the old one was deleted, the new one was refused, and there was none.
   steps.push({ kind: 'create', parent: 'game.StarterGui', items: [plotSimHud(
     recipe.machines.map((m) => ({ id: m.id, name: m.name, price: m.price, income: m.income, icon: m.icon, colour: m.colour })),
     recipe.upgrades.map((u) => ({ id: u.id, label: u.label, cost: u.cost, icon: u.icon ?? KIND_ICON[u.kind], blurb: upgradeBlurb(u, recipe.currency) })),
     { currency: recipe.currency, shop: 'Shop', upgrades: 'Upgrades', rebirth: 'Rebirth' },
   )] });
+  if (recipe.hero) {
+    steps.push({ kind: 'delete', paths: [`game.StarterGui.${recipe.hero}HUD`, `game.StarterPlayer.StarterPlayerScripts.${recipe.hero}HUDScript`] });
+  }
   return steps;
 }
 
 /** Where the hero goes: the centre of the hub. */
 export function heroSpot(recipe: PlotSimRecipe): [number, number] {
-  return hubLayout(recipe.seed, recipe.players, { plotTiles: 3 }).hub!.heroSpot;
+  return hubLayout(recipe.seed, recipe.players, { plotTiles: PLOT_TILES, ...(recipe.heroSize ? { hero: recipe.heroSize } : {}) }).hub!.heroSpot;
 }
 
 /** The recipe for an idea, given what the place and the library hold. Pure. */

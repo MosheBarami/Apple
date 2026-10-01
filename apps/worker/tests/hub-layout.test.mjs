@@ -190,18 +190,23 @@ test('hub map: the road bricks lie along their spokes, turned to run along them'
   });
 });
 
-test('hub map: the plot size in the layout decides the tiles, and nothing lies in the way of a road', () => {
+test('hub map: no bare terrace slabs (the owner read them as junk; library scenery takes their place)', () => {
   const L = M.hubLayout(2, 5, { plotTiles: 5 });
-  const items = hubMap(L);
-  // terraces (the lighter grass steps) stay off the hub, the roads and the plots
-  const island = byName(items, 'Island')[0].children;
-  const terraces = island.filter((p) => /^Terrace/.test(p.name));
-  assert.ok(terraces.length > 0, 'a hub map still has terraces');
-  for (const t of terraces) {
-    const c = [t.props.Position[0], t.props.Position[2]], r = Math.max(t.props.Size[0], t.props.Size[2]) / 2;
-    assert.ok(cheb(c, L.hub.center) >= L.hub.radius + r - 1, 'a terrace is on the hub');
-    for (const [a, b] of L.hub.spokes) assert.ok(M.segDist(c, a, b) >= M.LANE_WIDTH / 2 + r - 1, 'a terrace is on a road');
+  const island = byName(hubMap(L), 'Island')[0].children;
+  assert.ok(island.length > 0, 'the island is there');
+  assert.equal(island.filter((p) => /^Terrace/.test(p.name)).length, 0);
+});
+
+test('hub map: a big hero gets a hub that holds it, with the pads and the spawn off it', () => {
+  const hero = [82, 41];
+  const L = M.hubLayout(7, 4, { plotTiles: 4, hero });
+  const r = Math.hypot(hero[0], hero[1]) / 2;
+  for (const [name, p] of [['shop', L.hub.shopPad], ['sell', L.hub.sellPad], ['spawn', L.spawn]]) {
+    assert.ok(Math.hypot(p[0], p[1]) >= r + 4, `the ${name} pad is on the hero`);
+    assert.ok(Math.max(Math.abs(p[0]), Math.abs(p[1])) + 5 <= L.hub.radius, `the ${name} pad hangs off the hub`);
   }
+  assert.ok(L.hub.radius >= r + 10, 'the hub is smaller than the hero');
+  assert.ok(M.hubLayout(7, 4, { plotTiles: 4 }).hub.radius < L.hub.radius, 'a small place keeps a small hub');
 });
 
 test('hub map: deterministic', () => {

@@ -30,15 +30,22 @@ test("the owner's request is a plot simulator for 4 players about the keyboard a
   assert.equal(P.subjectOf('a pizza tycoon'), 'pizza');
 });
 
-test('the machines are the player\'s own object in four colour tiers and the library\'s models, each tier dearer and richer', () => {
+// Owner, 2026-10-01: "different keyboards" — four of six were the hero recoloured. Library models fill the middle.
+test('the machines: the hero opens and (in gold) tops the ladder, different library models in between, each tier dearer and richer', () => {
   const m = P.machineLadder('keyboard', 'ASMRKeyboard', LIB);
   assert.equal(m.length, 6);
-  assert.deepEqual(m.slice(0, 4).map((x) => x.from), Array(4).fill('Workspace.ASMRKeyboard'));
-  assert.equal(new Set(m.slice(1, 4).map((x) => x.hue)).size, 3, 'each recoloured tier has its own colour family');
-  assert.deepEqual(m.slice(4).map((x) => x.ref), LIB, 'library models are machines too');
-  for (let i = 1; i < m.length; i++) {
-    assert.ok(m[i].price > m[i - 1].price && m[i].income > m[i - 1].income, `tier ${i} is not dearer and richer`);
-    assert.ok(m[i].price / m[i].income > m[i - 1].price / m[i - 1].income * 0.9, 'a dearer tier pays back no faster than a cheap one by far');
+  assert.equal(m[0].from, 'Workspace.ASMRKeyboard');
+  assert.equal(m[0].hue, undefined, 'the first is the player\'s own, as made');
+  assert.equal(m[5].from, 'Workspace.ASMRKeyboard');
+  assert.equal(m[5].hue, 0.13, 'the top tier is the player\'s own in gold');
+  assert.deepEqual(m.filter((x) => x.ref).map((x) => x.ref), LIB, 'every library model is a machine');
+  const four = [...LIB, { game: 'ced7934c1f5d', path: '/Workspace/Keyboard' }, { game: '0ce45fd5edd7', path: '/Workspace/Keyboard' }];
+  const m4 = P.machineLadder('keyboard', 'ASMRKeyboard', four);
+  assert.equal(m4.filter((x) => x.ref).length, 4, 'four library keyboards, four machines');
+  assert.equal(m4.filter((x) => x.from).length, 2, 'and only two of the hero');
+  for (const ladder of [m, m4]) for (let i = 1; i < ladder.length; i++) {
+    assert.ok(ladder[i].price > ladder[i - 1].price && ladder[i].income > ladder[i - 1].income, `tier ${i} is not dearer and richer`);
+    assert.ok(ladder[i].price / ladder[i].income > ladder[i - 1].price / ladder[i - 1].income * 0.9, 'a dearer tier pays back no faster than a cheap one by far');
   }
   assert.equal(P.machineLadder('pizza', undefined, []).length, 0, 'nothing to sell without an object or a library model');
 });
@@ -79,8 +86,66 @@ test('the session routes a simulator request to compose_game first, and compose_
 // with 24 build_object calls and 49 tree reads. A built plot simulator is played once and answered.
 test('a composed plot simulator ends the run at play-and-answer, and a game already in the project does not refuse it', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  assert.match(session, /call\.name === 'compose_game' && out\.ok && out\.mutatedProject === true && isPlotSimRequest\([^)]*\)\) \{\s*agent\.composedPlotSim = true;\s*agent\.objectBuilt = true;/);
+  assert.match(session, /call\.name === 'compose_game' && out\.mutatedProject === true && out\.ok && isPlotSimRequest\([^)]*\)\) \{\s*agent\.composedPlotSim = true;\s*agent\.objectBuilt = true;/);
   const after = session.slice(session.indexOf('const AFTER_OBJECT'), session.indexOf('const AFTER_OBJECT') + 400);
   assert.match(after, /agent\.composedPlotSim \? \['play_check', 'get_output_logs'\]/);
   assert.match(session, /const continueLine = mode === 'agent' && !isPlotSimRequest\(text\) \? continueGameLine\(/);
+});
+
+// Live 2026-10-01: the simulator HUD was 400+ instances; Studio refused the create, the old screen was already gone,
+// and the game had no screen at all while compose_game said "Built".
+test('a create too big for one call is split under the limit, parents first, nothing lost', async () => {
+  const runOut = join(mkdtempSync(join(tmpdir(), 'run-')), 'r.mjs');
+  execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'compose-run.ts'), '--bundle', '--format=esm', '--platform=node', '--outfile=' + runOut, '--external:cloudflare:*'], { cwd: WORKER, stdio: 'pipe' });
+  const R = await import(`file://${runOut}`);
+  const recipe = P.plotSimRecipe(OWNER, 12345, { hero: 'ASMRKeyboard', library: LIB, hubProps: [], hasComponents: true });
+  const hud = P.plotSimSteps(recipe).find((s) => s.kind === 'create' && s.parent === 'game.StarterGui');
+  const count = (i) => 1 + (i.children ?? []).reduce((n, c) => n + count(c), 0);
+  const total = hud.items.reduce((n, i) => n + count(i), 0);
+  assert.ok(total > 400, `the HUD is ${total} instances, the case this guards`);
+  const batches = R.createBatches(hud.parent, hud.items);
+  assert.ok(batches.length > 1);
+  for (const b of batches) assert.ok(b.items.reduce((n, i) => n + count(i), 0) <= R.CREATE_LIMIT, 'a batch over the limit');
+  assert.equal(batches.reduce((n, b) => n + b.items.reduce((m, i) => m + count(i), 0), 0), total, 'every instance is made once');
+  const made = new Set(['game.StarterGui']);
+  for (const b of batches) {
+    assert.ok(made.has(b.parent), `${b.parent} is used before it is made`);
+    const walk = (parent, i) => { made.add(`${parent}.${i.name}`); for (const c of i.children ?? []) walk(`${parent}.${i.name}`, c); };
+    for (const i of b.items) walk(b.parent, i);
+  }
+  const run = readFileSync(join(WORKER, 'src', 'compose-run.ts'), 'utf8');
+  assert.match(run, /if \(s\.parent === 'game\.StarterGui'\) report\.critical\.push/, 'a screen that was not made fails the build');
+});
+
+test('the new screen is made before the old one goes, and the composer reads it back', () => {
+  const recipe = P.plotSimRecipe(OWNER, 12345, { hero: 'ASMRKeyboard', library: LIB, hubProps: [], hasComponents: true });
+  const steps = P.plotSimSteps(recipe);
+  const made = steps.findIndex((s) => s.kind === 'create' && s.parent === 'game.StarterGui');
+  const gone = steps.findIndex((s) => s.kind === 'delete' && s.paths.includes('game.StarterGui.ASMRKeyboardHUD'));
+  assert.ok(made >= 0 && gone > made, 'the old screen goes only after the new one');
+  const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
+  assert.match(tool, /op: 'get_instance', path: 'game\.StarterGui\.AppleHUD'/);
+});
+
+test('the island gets library scenery off the roads, the plots and the hub; plots are 4x4', () => {
+  const recipe = P.plotSimRecipe(OWNER, 12345, { hero: 'ASMRKeyboard', library: LIB, hubProps: [], hasComponents: true });
+  recipe.decor = [{ key: 'DecorTree', ref: { game: 't', path: '/Workspace/Tree' }, height: 18, count: 16 }, { key: 'DecorRock', ref: { game: 'r', path: '/Workspace/Rock' }, height: 5, count: 10 }];
+  recipe.heroSize = [82, 41];
+  const steps = P.plotSimSteps(recipe);
+  const trees = steps.filter((s) => s.kind === 'place' && s.from === 'ServerStorage.AppleParts.DecorTree');
+  const rocks = steps.filter((s) => s.kind === 'place' && s.from === 'ServerStorage.AppleParts.DecorRock');
+  assert.equal(trees.length, 16);
+  assert.equal(rocks.length, 10);
+  assert.ok(steps.some((s) => s.kind === 'import' && s.key === 'DecorTree'), 'the tree is imported');
+  assert.equal(new Set([...trees, ...rocks].map((s) => `${s.at[0]},${s.at[2]}`)).size, 26, 'no two on one spot');
+  const map = JSON.stringify(steps.find((s) => s.kind === 'create' && s.parent === 'game.Workspace'));
+  assert.equal((map.match(/"name":"Tile\d+"/g) ?? []).length, 4 * 16, '4 plots of 4x4 tiles');
+  assert.equal(P.PLOT_TILES, 4);
+});
+
+test('a run that ends early after building a game ends on how to play it, and on what the last check found', () => {
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  assert.match(session, /: agent\.composedForUser\s*\?\s*`\$\{agent\.composedForUser\}/);
+  assert.match(session, /if \(typeof said === 'string' && said\.trim\(\)\) agent\.composedForUser = said\.trim\(\)/);
+  assert.match(session, /agent\.lastCheckProblem = /);
 });
