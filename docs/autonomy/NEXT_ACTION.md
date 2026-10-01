@@ -1,5 +1,14 @@
 # NEXT ACTION (V3)
 
+**2026-10-01 evening — Frontier ≈45%: test 1 (ASMR keyboard → "make it a full game with plots for 4 players") on round 8 of the critique loop, 0 of 5 silly tests green.** Every live test now ends in a harsh critique; it is fixed and re-run on a fresh baseplate until nothing is left, then marked done, and the next silly request starts. Five green tests means frontier. Meter: 50% × green tests/5 + 30% × critique fixed/found (48/57 at round 6) + 20% × cost/speed targets met (≤12 credits, ≤3 steps, ≤3 min, no failed call: met since round 5).
+
+**Where test 1 stands (production 65006872):** the keyboard costs 9–11 credits in 2 steps (~50 s); the game costs 10 credits in 2 steps (~80 s), was 274 credits and 93 steps on the first run. Fixed and deployed today: the HUD (batched creates), hub sized to the hero, library trees/rocks/pianos, one panel at a time, +N/s and Rebirth driven, a free starter machine, players start on their own plot, paid presses capped at 12 a second, shop copies anchored and gold that is gold, keyboards with real rows and no junk parts, and a composed game answered with the composer's own words.
+
+**Next, in order:**
+1. Round 8 of test 1 on a fresh baseplate: play it (starter machine, pads, Rebirth, a step on your own keyboard), write the critique; mark it done only when nothing is left.
+2. Still open from the critique: machines are tiny on a 6-stud tile; empty roads; stacked plates under the hero; keycap labels read sideways from the roads; play_check does not press the game's own buttons; tower-defence names inside the shop config.
+3. Then test 2: "make me a stick of butter", same loop.
+
 **2026-09-30 night: the owner rejected the library game (see CURRENT_STATE top).** Next is a rebuild of HOW games are made:
 compose from components (systems, UI kit, props and creatures) on a NEW map, never import a whole world and cut it down.
 Request twists must be really made (fruit enemies built as fruit, rigged and animated without private assets). Tests are

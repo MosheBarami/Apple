@@ -22,7 +22,8 @@ import { gamesRoute } from './games-api.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../..');
 const PORT = Number(process.argv[2] || 4777);
-const PROJECT = '/Users/moshe/.claude/projects/-Users-moshe-Desktop-RbxAI';
+// DASH_PROJECT points it at another Claude project's transcripts (a session started outside ~/Desktop/RbxAI).
+const PROJECT = process.env.DASH_PROJECT || '/Users/moshe/.claude/projects/-Users-moshe-Desktop-RbxAI';
 
 // $ per million tokens: [input, 5m cache write, 1h cache write, cache read, output]
 const PRICES = {
