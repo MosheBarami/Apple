@@ -466,3 +466,14 @@ test('on a board laid out by rows, only the layout\'s own keys stay', () => {
   assert.ok(!plan.parts.some((p) => p.name === 'CtrlKey'), 'the model\'s own Ctrl went');
   assert.equal(plan.parts.filter((p) => p.text?.value === 'CTRL' || p.text?.value === 'Ctrl').length, 2, 'the layout\'s two Ctrls stay');
 });
+
+// Round 12 of test 1 (2026-10-01): seen from the spawn, a wrist rest taller than the keys hid the whole board.
+test('a wrist rest is lower than the keytops', () => {
+  const plan = O.expandObject({ name: 'Kb', theme: 'rgb', parts: [
+    { name: 'Key', rows: [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L']], move: { as: 'press', on: 'key' } },
+    { name: 'WristRest', size: [40, 3, 6], at: [0, 1.5, 12], color: '#ff4fd8' },
+  ] });
+  const rest = plan.parts.find((p) => p.name === 'WristRest');
+  const keyTop = Math.max(...plan.parts.filter((p) => p.text).map((p) => p.at[1] + p.size[1] / 2));
+  assert.ok(rest.at[1] + rest.size[1] / 2 < keyTop, `the rest tops out at ${(rest.at[1] + rest.size[1] / 2).toFixed(2)}, the keys at ${keyTop.toFixed(2)}`);
+});

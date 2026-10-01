@@ -302,7 +302,9 @@ const KEYBOARD_EXTRA = /wrist|palm|rest|knob|dial|cable|cord/i;
 function restBeside(p: ObjectPart, keys: ObjectPart[], x0: number, x1: number, z1: number, floor: number): ObjectPart {
   if (!/wrist|palm|rest/i.test(p.name)) return p;
   const unit = Math.min(...keys.map((k) => Math.min(k.size[0], k.size[2])));
-  const width = Math.min(p.size[0], (x1 - x0) * 0.7), height = Math.min(p.size[1], unit * 0.6), depth = Math.min(Math.max(p.size[2], unit), unit * 2);
+  // Lower than the keytops: a rest taller than the keys was a wall hiding the board from the spawn (round 12).
+  const keyTop = Math.max(...keys.map((k) => k.at[1] + k.size[1] / 2));
+  const width = Math.min(p.size[0], (x1 - x0) * 0.7), height = Math.min(p.size[1], unit * 0.6, Math.max(0.3, (keyTop - floor) * 0.6)), depth = Math.min(Math.max(p.size[2], unit), unit * 2);
   // A block: a long cylinder lies along X as a pipe one stud thick (the owner's screenshot, 2026-10-01).
   return { ...p, shape: 'block', rot: undefined, size: [width, height, depth], at: [(x0 + x1) / 2, floor + height / 2, z1 + unit * 0.6 + depth / 2] };
 }
