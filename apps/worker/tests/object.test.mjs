@@ -68,7 +68,6 @@ test('a bad spec is refused with a reason, before anything is built', () => {
     [{ name: 'X', parts: [] }, /parts is empty/],
     [{ name: 'bad name', parts: [{ size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff' }] }, /plain name/],
     [{ name: 'X', parts: [{ size: [1, 0, 1], at: [0, 0, 0], color: '#ffffff' }] }, /size/],
-    [{ name: 'X', parts: [{ size: [1, 1, 1], at: [0, 0, 0], color: 'red' }] }, /color/],
     [{ name: 'X', parts: [{ size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff', move: { as: 'dance' } }] }, /move.as/],
     [{ name: 'X', parts: [{ size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff', repeat: { grid: [30, 30, 1], step: [1, 0, 1] } }] }, /more than/],
   ]) {
@@ -76,4 +75,17 @@ test('a bad spec is refused with a reason, before anything is built', () => {
     assert.ok('error' in r, JSON.stringify(spec));
     assert.match(r.error, why);
   }
+});
+
+test('slips a model makes are fixed, not fatal: number and word keys, colour names, odd shapes and names', () => {
+  const plan = O.expandObject({ name: 'Pad', parts: [
+    { name: 'key one!', shape: 'cube', size: [1, 1, 1], at: [0, 0, 0], color: 'red', text: '1', move: { as: 'press', on: 'key' } },
+    { name: 'Space', size: [4, 1, 1], at: [0, 0, 2], color: 'fff', key: 'space', move: { as: 'press', on: 'keyboard' } },
+    { size: [1, 1, 1], at: [3, 0, 0], color: 'not a colour', repeat: { grid: [2, 1, 1], step: [1.1, 0, 0], texts: ['a', ','] }, move: { as: 'press', on: 'key' } },
+  ] });
+  assert.ok(!('error' in plan), JSON.stringify(plan));
+  const [one, space, a, comma] = plan.parts;
+  assert.equal(one.name, 'keyone'); assert.equal(one.shape, 'block'); assert.equal(one.color, '#ff4b4b'); assert.equal(one.key, 'One', 'a key labelled 1 is the One key');
+  assert.equal(space.key, 'Space'); assert.equal(space.color, '#ffffff'); assert.equal(space.move.on, 'key');
+  assert.equal(a.key, 'A'); assert.equal(comma.key, 'Comma'); assert.equal(a.color, '#d7dde2', 'an unknown colour falls back to light grey');
 });

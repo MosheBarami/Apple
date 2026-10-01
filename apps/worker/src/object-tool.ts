@@ -31,6 +31,42 @@ const NAME = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const MAX_PARTS = 400;
 
+/** What people and models write for a key, as Roblox's Enum.KeyCode name. Unknown keys return undefined (click only). */
+const DIGITS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+const KEY_WORDS: Record<string, string> = {
+  ' ': 'Space', space: 'Space', spacebar: 'Space', enter: 'Return', return: 'Return', backspace: 'Backspace', tab: 'Tab',
+  shift: 'LeftShift', lshift: 'LeftShift', rshift: 'RightShift', ctrl: 'LeftControl', control: 'LeftControl', alt: 'LeftAlt',
+  caps: 'CapsLock', capslock: 'CapsLock', esc: 'Escape', escape: 'Escape', ',': 'Comma', '.': 'Period', ';': 'Semicolon',
+  '/': 'Slash', '-': 'Minus', '=': 'Equals', '[': 'LeftBracket', ']': 'RightBracket', "'": 'Quote', '\\': 'BackSlash',
+  '`': 'Backquote', up: 'Up', down: 'Down', left: 'Left', right: 'Right',
+};
+export function keyCodeName(raw: unknown): string | undefined {
+  if (typeof raw !== 'string' || !raw) return undefined;
+  const t = raw.trim();
+  if (/^[0-9]$/.test(t)) return DIGITS[Number(t)];
+  if (/^[a-zA-Z]$/.test(t)) return t.toUpperCase();
+  if (KEY_WORDS[t.toLowerCase()] ?? KEY_WORDS[t]) return KEY_WORDS[t.toLowerCase()] ?? KEY_WORDS[t];
+  if (/^F([1-9]|1[0-2])$/i.test(t)) return t.toUpperCase();
+  if (/^[A-Z][A-Za-z]{1,19}$/.test(t)) return t; // already an Enum.KeyCode name (One, LeftShift, Space...)
+  return undefined;
+}
+
+/** A colour as "#rrggbb": hex as given, a few names, or Roblox-ish defaults. */
+const COLOUR_NAMES: Record<string, string> = {
+  white: '#ffffff', black: '#1b1b1b', red: '#ff4b4b', orange: '#ff9f1a', yellow: '#ffe14d', green: '#5dd94a', blue: '#4fa3ff',
+  purple: '#a46bff', pink: '#ff6fd8', brown: '#8e5b32', grey: '#9aa3ab', gray: '#9aa3ab', cyan: '#4fe0ff', gold: '#ffc83d',
+  silver: '#c9d1d9', cream: '#fff3c4', butter: '#ffe680', beige: '#eedcb3',
+};
+export function colourHex(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const t = raw.trim().toLowerCase();
+  if (/^#[0-9a-f]{6}$/.test(t)) return t;
+  if (/^#[0-9a-f]{3}$/.test(t)) return '#' + t.slice(1).split('').map((c) => c + c).join('');
+  if (/^[0-9a-f]{6}$/.test(t)) return '#' + t;
+  if (/^[0-9a-f]{3}$/.test(t)) return '#' + t.split('').map((c) => c + c).join('');
+  return COLOUR_NAMES[t];
+}
+
 export interface Move { as: string; on: string; hinge?: string; amount?: number; sound?: string; prompt?: string }
 export interface ObjectPart {
   name: string; shape: string; size: V3; at: V3; rot?: V3; color: string; transparency?: number;
@@ -56,25 +92,25 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   const seen = new Set<string>();
   for (const [i, r] of raw.entries()) {
     const p = (r ?? {}) as Record<string, unknown>;
-    const base = String(p.name ?? `Part${i + 1}`);
-    if (!NAME.test(base)) return { error: `parts[${i}].name must be a plain name` };
-    const shape = String(p.shape ?? 'block');
-    if (!SHAPES.has(shape)) return { error: `parts[${i}].shape must be block, ball, cylinder or wedge` };
+    // Forgiving on purpose: a slip in a name, shape, colour or key costs a fixed-up part, never the whole build.
+    const cleaned = String(p.name ?? '').replace(/[^A-Za-z0-9_]/g, '');
+    const base = NAME.test(cleaned) ? cleaned : `Part${i + 1}`;
+    const rawShape = String(p.shape ?? 'block').toLowerCase();
+    const shape = SHAPES.has(rawShape) ? rawShape : rawShape === 'sphere' ? 'ball' : rawShape === 'cube' || rawShape === 'box' ? 'block' : rawShape === 'cyl' ? 'cylinder' : 'block';
     const size = v3(p.size), at = v3(p.at);
     if (!size || size.some((n) => n <= 0)) return { error: `parts[${i}].size must be [x, y, z] above 0` };
     if (!at) return { error: `parts[${i}].at must be [x, y, z]` };
     const rot = p.rot === undefined ? undefined : v3(p.rot);
     if (rot === null) return { error: `parts[${i}].rot must be [x, y, z] degrees` };
-    const color = String(p.color ?? '');
-    if (!HEX.test(color)) return { error: `parts[${i}].color must be "#rrggbb"` };
+    const color = colourHex(p.color ?? p.colour) ?? '#d7dde2';
     let move: Move | undefined;
     if (p.move !== undefined) {
       const m = (p.move ?? {}) as Record<string, unknown>;
-      const as = String(m.as ?? ''), on = String(m.on ?? 'click');
+      const as = String(m.as ?? '').toLowerCase(), onRaw = String(m.on ?? 'click').toLowerCase();
       if (!MOTIONS.has(as)) return { error: `parts[${i}].move.as must be press, spin, bob, open, wobble or pop` };
-      if (!TRIGGERS.has(on)) return { error: `parts[${i}].move.on must be click, touch, prompt, loop, once or key` };
-      const hinge = m.hinge === undefined ? undefined : String(m.hinge);
-      if (hinge !== undefined && !HINGES.has(hinge)) return { error: `parts[${i}].move.hinge must be bottom, top, back, front, left, right or center` };
+      const on = TRIGGERS.has(onRaw) ? onRaw : onRaw === 'keypress' || onRaw === 'keyboard' ? 'key' : 'click';
+      const hingeRaw = m.hinge === undefined ? undefined : String(m.hinge).toLowerCase();
+      const hinge = hingeRaw !== undefined && HINGES.has(hingeRaw) ? hingeRaw : undefined;
       const amount = m.amount === undefined ? undefined : Number(m.amount);
       if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0 || amount > 1000)) return { error: `parts[${i}].move.amount must be a positive number` };
       move = { as, on, ...(hinge ? { hinge } : {}), ...(amount ? { amount } : {}), ...(typeof m.sound === 'string' ? { sound: m.sound.slice(0, 80) } : {}), ...(typeof m.prompt === 'string' ? { prompt: m.prompt.slice(0, 30) } : {}) };
@@ -99,8 +135,9 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
       const partName = count === 1 ? base : (typeof names[k] === 'string' && NAME.test(names[k] as string) ? names[k] as string : `${base}${k + 1}`);
       if (seen.has(partName)) return { error: `two parts are named ${partName}` };
       seen.add(partName);
-      const key = count === 1 ? (typeof p.key === 'string' ? p.key : undefined) : (typeof keys[k] === 'string' ? keys[k] as string : undefined);
-      if (key !== undefined && !/^[A-Za-z][A-Za-z0-9]{0,19}$/.test(key)) return { error: `parts[${i}] key "${key}" is not a keyboard key name (Enum.KeyCode, e.g. "A", "Space")` };
+      // The key a part answers to: given, or read from its label ("Q" on a key is the Q key).
+      const label = count === 1 ? (typeof textIn === 'string' ? textIn : (textIn as Record<string, unknown>)?.value) : texts[k];
+      const key = keyCodeName(count === 1 ? p.key : keys[k]) ?? (move?.on === 'key' ? keyCodeName(label) : undefined);
       const text = count === 1 ? textOf((textIn as Record<string, unknown>)?.value ?? (typeof textIn === 'string' ? textIn : undefined)) : textOf(texts[k]);
       parts.push({
         name: partName, shape, color,

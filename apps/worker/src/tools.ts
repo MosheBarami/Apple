@@ -5733,6 +5733,8 @@ export async function runTool(
       result = { results: result, cite: fresh.map((s, i) => `[${ns[i]}] ${s.title} ${s.url}`) };
     }
     const failed = typeof result === 'object' && result !== null && 'error' in (result as Record<string, unknown>);
+    // A failed tool is logged for the developers (worker logs; wrangler tail), never shown to the user as it is.
+    if (failed) console.warn('[tool-failed]', name, String((result as { error?: unknown }).error ?? '').slice(0, 400));
     const partialMutation = failed && (result as Record<string, unknown>).projectMutated === true;
     //[[ RETRYABLE ONLY WHEN NOTHING WAS APPLIED. `retryable` comes from op-failure.ts's verdict on
     //   the LAST op a tool ran. A composite that already changed Studio before that op failed is
