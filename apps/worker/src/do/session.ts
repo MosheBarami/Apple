@@ -4768,7 +4768,10 @@ export class SessionDO extends DurableObject<Env> {
         agent.lastCheckProblem = typeof d?.verdict === 'string' && /^no_|broken|error|fail/i.test(d.verdict) && typeof d.playerSees === 'string' ? d.playerSees : undefined;
         const seen = out.detail as { leaderstats?: unknown; clientErrors?: unknown[]; serverErrors?: unknown[] } | undefined;
         const errors = (seen?.clientErrors?.length ?? 0) + (seen?.serverErrors?.length ?? 0);
-        agent.lastCheckSeen = `${typeof seen?.leaderstats === 'string' ? `${seen.leaderstats.replace(/→/g, 'went to')}, ` : ''}${errors ? `${errors} error${errors === 1 ? '' : 's'} came up` : 'no errors came up'}`;
+        // "Coins 0 at the start → Coins 70 at the end" reads as "Coins went from 0 to 70".
+        const ls = typeof seen?.leaderstats === 'string' ? /^(\w+) (-?[\d.,]+) at the start → \1 (-?[\d.,]+) at the end$/.exec(seen.leaderstats.trim()) : null;
+        const money = ls ? `${ls[1]} went from ${ls[2]} to ${ls[3]} on their own` : typeof seen?.leaderstats === 'string' ? seen.leaderstats : '';
+        agent.lastCheckSeen = `${money ? `${money}, and ` : ''}${errors ? `${errors} error${errors === 1 ? '' : 's'} came up` : 'nothing errored'}`;
       }
       // The fence holds until the object is built: a failed build_object is retried with the reason, never swapped
       // for hand-made instances (owner's re-test, 2026-10-01). After three failures the run may try other tools.

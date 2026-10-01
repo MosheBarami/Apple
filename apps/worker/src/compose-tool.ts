@@ -197,10 +197,13 @@ async function composePlotSim(ctx: AgentCtx, idea: string) {
   const libNames = recipe.machines.filter((m) => m.ref).length;
   const forUser = report.stopped
     ? `Studio disconnected while ${recipe.title} was being built, so it is only partly there. Reconnect and ask again to finish it.`
-    : `I turned it into ${recipe.title}: a hub${recipe.hero ? ` with your ${recipe.subject} in the middle` : ''} and ${recipe.players} plots around it, one for each player. ` +
-      // Each player is given a plot on joining and starts on it (AppleShop claim + the plot's Spawn): never "claim a plot".
-      `Every player starts on their own plot with a free ${recipe.machines[0]?.name ?? recipe.subject} already earning. Buy more ${recipe.subject}s in the Shop (or step on the SHOP pad in the hub) (${recipe.machines.map((m) => m.name).join(', ')}${libNames ? `; ${libNames} of them come from your library` : ''}) and place them on your plot: each one earns Coins every second, and pressing your own pays extra. ` +
-      `Upgrades make every press and every second worth more, and Rebirth starts you over with a permanent boost. Press Play to try it.`;
+    // Short lines a player reads at a glance (round 8 of the owner's test 1: one long sentence with two brackets in a row).
+    : [
+      `Your ${recipe.subject} is now **${recipe.title}**: a hub${recipe.hero ? ` with your ${recipe.subject} in the middle` : ''} and ${recipe.players} plots around it, one for each player.`,
+      `- Every player starts on their own plot with a free ${recipe.machines[0]?.name ?? recipe.subject} already earning Coins.`,
+      `- The Shop (button, or the SHOP pad in the hub) sells ${recipe.machines.length} ${recipe.subject}s: ${recipe.machines.map((m) => m.name).join(', ')}${libNames ? ` (${libNames} from your library)` : ''}. Each earns every second; pressing your own pays extra.`,
+      `- Upgrades make every press and every second worth more; Rebirth starts you over with a permanent boost.`,
+    ].join('\n');
   return {
     changed: built, game: recipe.title, template: 'plot-sim', built: report.counts,
     machines: recipe.machines.map((m) => `${m.name} ($${m.price}, +${m.income}/s${m.ref ? ', from the library' : m.from ? ', your own' : ''})`),
