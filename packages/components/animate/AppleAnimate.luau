@@ -17,7 +17,8 @@
 	(a ClickDetector), "prompt" (a ProximityPrompt; `prompt` gives its text), "touch", "once" (at start), or "key"
 	(the player presses the real keyboard key `key`, an Enum.KeyCode name such as "A" or "Space"; AppleAnimateClient
 	sends it). Every clip that plays is announced to every client on ReplicatedStorage.AppleAnimatePlayed (model,
-	clip name), so a screen can count presses or say something. A clip
+	clip name), so a screen can count presses or say something; a clip a player set off is also announced on the
+	server as ServerStorage.AppleAnimatePressed (player, model, clip), so a game can pay for presses. A clip
 	whose name starts with a joint's part name ("Key_A.press") plays from that part only, so 60 keys share one rig.
 	Joints move by their C0 (it replicates), offset from where they rest.
 	The model is found by its child AppleAnimations; anything added later is found too.
@@ -97,6 +98,11 @@ function AppleAnimate.start()
 		return r :: RemoteEvent
 	end
 	local played = remote("AppleAnimatePlayed")
+	-- Server side: (player, model, clip) whenever a player sets a clip off, so a game can pay for presses (AppleUpgrades).
+	local ServerStorage = game:GetService("ServerStorage")
+	local pressed = ServerStorage:FindFirstChild("AppleAnimatePressed") or Instance.new("BindableEvent")
+	pressed.Name = "AppleAnimatePressed"
+	pressed.Parent = ServerStorage
 	local keyRemote = remote("AppleAnimateKey")
 	local byKey: { [string]: { { model: Model, clip: any, name: string } } } = {}
 	local lastKey: { [Player]: number } = {}
@@ -107,7 +113,7 @@ function AppleAnimate.start()
 		lastKey[player] = now
 		for _, entry in byKey[key] or {} do
 			if entry.model.Parent then
-				entry.clip._play()
+				entry.clip._play(player)
 			end
 		end
 	end)
@@ -122,8 +128,9 @@ function AppleAnimate.start()
 		return byName, rest
 	end
 
-	local function play(model: Model, joints: { [string]: Motor6D }, rest: { [Motor6D]: CFrame }, clip: any, loop: boolean)
+	local function play(model: Model, joints: { [string]: Motor6D }, rest: { [Motor6D]: CFrame }, clip: any, loop: boolean, player: Player?)
 		if clip._name then played:FireAllClients(model, clip._name) end
+		if player and clip._name then (pressed :: BindableEvent):Fire(player, model, clip._name) end
 		for _, a in active do
 			if a.model == model and a.clip == clip then a.t = 0; return end -- pressing again restarts it
 		end
@@ -161,17 +168,17 @@ function AppleAnimate.start()
 				local cd = target:FindFirstChildWhichIsA("ClickDetector") or Instance.new("ClickDetector")
 				cd.MaxActivationDistance = clip.reach or 32
 				cd.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
-				cd.MouseClick:Connect(function() play(model, joints, rest, clip, false) end)
+				cd.MouseClick:Connect(function(player) play(model, joints, rest, clip, false, player) end)
 			elseif how == "prompt" then
 				local pp = Instance.new("ProximityPrompt")
 				pp.ActionText = clip.prompt or "Use"
 				pp.ObjectText = model.Name
 				pp.MaxActivationDistance = clip.reach or 10
 				pp.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
-				pp.Triggered:Connect(function() play(model, joints, rest, clip, false) end)
+				pp.Triggered:Connect(function(player) play(model, joints, rest, clip, false, player) end)
 			elseif how == "key" then
 				if type(clip.key) == "string" then
-					clip._play = function() play(model, joints, rest, clip, false) end
+					clip._play = function(player: Player?) play(model, joints, rest, clip, false, player) end
 					byKey[clip.key] = byKey[clip.key] or {}
 					table.insert(byKey[clip.key], { model = model, clip = clip, name = name })
 				end
@@ -179,7 +186,7 @@ function AppleAnimate.start()
 				local cd = target:FindFirstChildWhichIsA("ClickDetector") or Instance.new("ClickDetector")
 				cd.MaxActivationDistance = clip.reach or 40
 				cd.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
-				cd.MouseClick:Connect(function() play(model, joints, rest, clip, false) end)
+				cd.MouseClick:Connect(function(player) play(model, joints, rest, clip, false, player) end)
 			elseif how == "touch" then
 				local part = if target:IsA("BasePart") then target else model.PrimaryPart
 				local last = 0
@@ -187,7 +194,7 @@ function AppleAnimate.start()
 					part.Touched:Connect(function(hit)
 						if hit.Parent and hit.Parent:FindFirstChildOfClass("Humanoid") and os.clock() - last > (clip.length + 0.1) then
 							last = os.clock()
-							play(model, joints, rest, clip, false)
+							play(model, joints, rest, clip, false, game:GetService("Players"):GetPlayerFromCharacter(hit.Parent))
 						end
 					end)
 				end

@@ -121,3 +121,27 @@ test('colours come in every way a model writes them', () => {
   assert.equal(O.colourHex('Bright red'), '#c4281c');
   assert.equal(O.colourHex('#ABCDEF'), '#abcdef');
 });
+
+// Owner, 2026-10-01: the hand-placed keyboard put ENTER on BACK and keys inside keys. Rows are laid out by code.
+test('a rows entry lays a keyboard out: no key overlaps another, every key answers its real key, on a case', () => {
+  const plan = O.expandObject({ name: 'AsmrKeyboard', parts: [{
+    name: 'Key', rows: [['Esc', '1', '2', '3', 'Back'], ['Tab', 'Q', 'W', 'E', 'R'], ['Caps', 'A', 'S', 'D', 'Enter'], ['Shift', 'Z', 'X', 'C', 'V'], ['Space']],
+    move: { as: 'press', on: 'key', sound: 'keyboard click' },
+  }] });
+  assert.ok(!('error' in plan), plan.error);
+  const keys = plan.parts.filter((p) => p.name.startsWith('Key_'));
+  assert.equal(keys.length, 21);
+  const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
+  const pairs = keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`));
+  assert.deepEqual(pairs, [], 'keys overlap');
+  const key = (n) => keys.find((p) => p.name === n);
+  assert.equal(key('Key_Back').key, 'Backspace'); assert.equal(key('Key_Enter').key, 'Return'); assert.equal(key('Key_1').key, 'One');
+  assert.equal(key('Key_Space').key, 'Space'); assert.equal(key('Key_Q').key, 'Q');
+  assert.ok(key('Key_Space').size[0] > key('Key_Q').size[0] * 5, 'the space bar is a space bar');
+  assert.ok(keys.every((p) => p.move?.as === 'press' && p.text?.value), 'every key presses and is labelled');
+  const kase = plan.parts.find((p) => p.name === 'KeyCase');
+  assert.ok(kase, 'no case');
+  assert.ok(keys.every((p) => Math.abs(p.at[1] - p.size[1] / 2 - (kase.at[1] + kase.size[1] / 2)) < 1e-6), 'keys sit on the case');
+  assert.ok(keys.every((p) => Math.abs(p.at[0]) + p.size[0] / 2 <= kase.size[0] / 2 + 1e-6), 'keys stay on the case');
+  assert.ok(new Set(keys.map((p) => p.color)).size > 2, 'the keys are colourful');
+});

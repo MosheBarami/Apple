@@ -1,0 +1,20 @@
+{
+  "id": "upgrades",
+  "name": "AppleUpgrades",
+  "role": "system",
+  "summary": "Upgrades that really work: players earn the currency by pressing (any animated object's clicks and keys) and over time, and buy upgrades that raise what a press or a second pays, or multiply it. The server checks every purchase; levels are saved with the money.",
+  "files": {
+    "AppleUpgrades.luau": { "class": "Script", "parent": "ServerScriptService", "name": "AppleUpgrades" },
+    "AppleUpgradesClient.luau": { "class": "LocalScript", "parent": "StarterPlayer.StarterPlayerScripts", "name": "AppleUpgradesClient" }
+  },
+  "needs": {
+    "config": "ReplicatedStorage.AppleUpgradesConfig: { currency, screen, counter, button, panel, perPress, upgrades = { { id, label, kind = perPress|perSecond|multiplier, amount, cost, growth, max } } }",
+    "economy": "ServerScriptService.AppleComponents.AppleEconomy",
+    "screen": "a studded screen (build_studded_ui) with the counter, the button and the panel whose cards are named by upgrade id"
+  },
+  "gives": {
+    "remote": "ReplicatedStorage.AppleUpgradeBuy(id) -> ok, message",
+    "levels": "player attribute Upgrade_<id> (saved with the money)",
+    "earning": "ServerStorage.AppleAnimatePressed pays perPress for every press; perSecond pays every second"
+  }
+}

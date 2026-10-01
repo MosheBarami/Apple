@@ -217,6 +217,7 @@ export const TOOL = {
   insert_ui_component: { kind: 'building', label: 'Added a UI piece', live: 'Adding a button or panel' },
   animate_model: { kind: 'building', label: 'Made it move', live: 'Making it move' },
   build_studded_ui: { kind: 'building', label: 'Drew the game screens', live: 'Drawing the game screens' },
+  add_upgrades: { kind: 'building', label: 'Added working upgrades', live: 'Adding the upgrades' },
   insert_sound: { kind: 'building', label: 'Added a sound', live: 'Adding a sound' },
   insert_vfx: { kind: 'building', label: 'Added a visual effect', live: 'Adding a visual effect' },
   insert_library_model: { kind: 'building', label: 'Added a model from the library', live: 'Adding a model' },

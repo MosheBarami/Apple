@@ -122,6 +122,22 @@ spec("animate: keys ease between poses, hold at the ends, and name their joints"
   end
 end)
 
+spec("upgrades: prices grow, presses and seconds pay by level, multipliers multiply", function()
+  local ups = {
+    { id = "Fingers", kind = "perPress", amount = 1, cost = 10, growth = 1.5 },
+    { id = "Golden", kind = "multiplier", amount = 2, cost = 100, growth = 3 },
+    { id = "Auto", kind = "perSecond", amount = 2, cost = 50 },
+  }
+  eq(Upgrades.cost(ups[1], 0), 10, "the first level costs the base price")
+  eq(Upgrades.cost(ups[1], 2), 23, "then it grows")
+  eq(Upgrades.cost(ups[3], 1), 75, "growth defaults to 1.5")
+  eq(Upgrades.perPress(1, ups, {}), 1, "a press pays the base with nothing bought")
+  eq(Upgrades.perPress(1, ups, { Fingers = 3 }), 4)
+  eq(Upgrades.perPress(1, ups, { Fingers = 3, Golden = 2 }), 16, "two doublings")
+  eq(Upgrades.perSecond(ups, {}), 0, "nothing pays by itself until bought")
+  eq(Upgrades.perSecond(ups, { Auto = 2, Golden = 1 }), 8)
+end)
+
 print(("systems: %d passed%s"):format(passed, if #failures > 0 then ", " .. #failures .. " FAILED" else ""))
 for _, f in failures do print(f) end
 if #failures > 0 then error("system specs failed") end
@@ -143,6 +159,7 @@ test('the game components pass their luau specs', { skip: available() ? false : 
     `local Fx = (function()\n${src('fx/AppleFx.luau')}\nend)()`,
     `local Sounds = (function()\n${src('fx/AppleSounds.luau')}\nend)()`,
     `local Anim = (function()\n${src('animate/AppleAnimate.luau')}\nend)()`,
+    `local Upgrades = (function()\n${src('upgrades/AppleUpgrades.luau')}\nend)()`,
     SPEC,
   ].join('\n'));
   let out;

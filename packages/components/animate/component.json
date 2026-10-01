@@ -22,6 +22,7 @@
   "gives": {
     "motion": "the joints move by C0 from their rest, so every player sees the same motion",
     "interaction": "ClickDetector, ProximityPrompt or Touched starts a clip; a clip named Part.clip starts from that part only",
-    "signal": "ReplicatedStorage.AppleAnimatePlayed (model, clip) to every client whenever a clip plays"
+    "signal": "ReplicatedStorage.AppleAnimatePlayed (model, clip) to every client whenever a clip plays",
+    "pressed": "ServerStorage.AppleAnimatePressed (player, model, clip), a server BindableEvent, whenever a player sets a clip off"
   }
 }

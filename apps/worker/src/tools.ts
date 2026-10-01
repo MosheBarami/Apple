@@ -83,6 +83,7 @@ import { sourcesIn as runSourcesIn } from './sources';
 import { buildObject } from './object-tool';
 import { animateModel } from './animate-tool';
 import { buildStuddedUi } from './studded-ui-tool';
+import { addUpgrades } from './upgrades-tool';
 import { composeGame, composeSummary } from './compose-tool';
 import { judgeComposed } from './composed-judge';
 import { JUDGE_GAME_DEF, judgeGame, judgeSummary } from './client-judge';
@@ -4958,7 +4959,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   build_object: {
     def: {
       name: 'build_object',
-      description: "Build the ONE thing asked for in one call (no desk, monitor or room unless asked): every key/button/piece its own part (use repeat for rows), bright colours, motions with sounds. Studs, stage, rig, lighting and a counter screen are added.",
+      description: "Build the ONE thing asked for in one call (no desk, monitor or room unless asked): every piece its own part, bright colours, motions with sounds. Keyboards, keypads, pianos: ONE part with rows (laid out for you). Studs, stage, rig, lighting and a counter screen are added.",
       parameters: S({
         name: { type: 'string' },
         scale: { type: 'number', description: 'multiplies every size; 3-6 makes a toy-sized thing walkable' },
@@ -4967,8 +4968,9 @@ export const TOOLS: Record<string, ToolImpl> = {
           size: { type: 'array', items: { type: 'number' } }, at: { type: 'array', items: { type: 'number' }, description: 'centre [x,y,z], y up from the ground' },
           color: { type: 'string', description: '#rrggbb' }, text: { type: 'string' }, key: { type: 'string' },
           repeat: { type: 'object', properties: { grid: { type: 'array', items: { type: 'number' } }, step: { type: 'array', items: { type: 'number' } }, texts: { type: 'array', items: { type: 'string' } }, keys: { type: 'array', items: { type: 'string' } } } },
+          rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'key labels row by row, e.g. [["Esc","1","2"],["Q","W"],["Space"]]' },
           move: { type: 'object', properties: { as: { type: 'string', enum: ['press', 'spin', 'bob', 'open', 'wobble', 'pop'] }, on: { type: 'string', enum: ['key', 'click', 'touch', 'prompt', 'loop', 'once'] }, sound: { type: 'string', description: 'words, e.g. keyboard click' } } },
-        }, required: ['size', 'color'] } },
+        } } },
         screen: { type: 'object' },
       }, ['name', 'parts']),
     },
@@ -4994,13 +4996,25 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'build_studded_ui',
       description: "Studded game GUI: pieces [{kind counter|button|bar|panel, name, text, at, colour, cards}] (creation skill ui-studded-gui). Then script every value and button.",
-      parameters: S({ screen: { type: 'string' }, pieces: { type: 'array', items: { type: 'object' } } }, ['pieces']),
+      parameters: S({ screen: { type: 'string' }, pieces: { type: 'array', items: { type: 'object' } }, replace: { type: 'boolean' } }, ['pieces']),
     },
     studio: true,
     studioOps: ['create_instances', 'delete_instances'],
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not draw the screen' : 'Drew the studded screen',
     run: buildStuddedUi,
+  },
+  add_upgrades: {
+    def: {
+      name: 'add_upgrades',
+      description: 'Working upgrades in ONE call: money per press and per second, an Upgrades button and panel on the screen (nothing on it changes), server-checked buys, saved. Use for any upgrade request.',
+      parameters: S({ screen: { type: 'string' }, currency: { type: 'string' }, upgrades: { type: 'array', items: { type: 'object' }, description: '[{label, kind perPress|perSecond|multiplier, amount, cost}] or omit for a good default' } }, []),
+    },
+    studio: true,
+    studioOps: ['get_tree', 'create_instances', 'delete_instances', 'edit_script'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
+    plainSummary: (_a, _r, failed) => failed ? 'Could not add the upgrades' : 'Added working upgrades',
+    run: addUpgrades,
   },
   insert_library_model: {
     def: {

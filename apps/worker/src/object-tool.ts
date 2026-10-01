@@ -48,7 +48,7 @@ export function isObjectRequest(text: string | undefined): boolean {
 /** What people and models write for a key, as Roblox's Enum.KeyCode name. Unknown keys return undefined (click only). */
 const DIGITS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
 const KEY_WORDS: Record<string, string> = {
-  ' ': 'Space', space: 'Space', spacebar: 'Space', enter: 'Return', return: 'Return', backspace: 'Backspace', tab: 'Tab',
+  ' ': 'Space', space: 'Space', spacebar: 'Space', enter: 'Return', return: 'Return', backspace: 'Backspace', back: 'Backspace', bksp: 'Backspace', del: 'Delete', delete: 'Delete', tab: 'Tab',
   shift: 'LeftShift', lshift: 'LeftShift', rshift: 'RightShift', ctrl: 'LeftControl', control: 'LeftControl', alt: 'LeftAlt',
   caps: 'CapsLock', capslock: 'CapsLock', esc: 'Escape', escape: 'Escape', ',': 'Comma', '.': 'Period', ';': 'Semicolon',
   '/': 'Slash', '-': 'Minus', '=': 'Equals', '[': 'LeftBracket', ']': 'RightBracket', "'": 'Quote', '\\': 'BackSlash',
@@ -116,6 +116,55 @@ const v3 = (v: unknown): V3 | null => {
   return n.every((x) => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 2000) ? n as V3 : null;
 };
 
+/** How many key widths a key of this label takes on a real keyboard. */
+const KEY_WIDTH: [RegExp, number][] = [
+  [/^(space|spacebar)$/i, 6.25], [/^(enter|return)$/i, 2.25], [/^(shift|lshift|rshift)$/i, 2.25], [/^(back|backspace|bksp|delete|del)$/i, 2],
+  [/^(caps|capslock|caps lock)$/i, 1.75], [/^tab$/i, 1.5], [/^(ctrl|control|alt|win|cmd|fn|menu)$/i, 1.25],
+];
+const PASTEL = ['#7be0ff', '#ff7bd1', '#ffe27a', '#9bff8a', '#b69bff'];
+
+/**
+ * A `rows` entry (a keyboard, a keypad, a piano, a calculator): rows of labels laid out by code, so keys never overlap
+ * however many there are (owner, 2026-10-01: the hand-placed keyboard put ENTER on BACK). Keys are a `unit` wide (2
+ * studs) times their real width, `gap` apart, rows left-aligned front to back, on a case; each key is pressed by its
+ * real keyboard key when the move is on "key". Pure: returns plain part entries for expandObject.
+ */
+export function unrollRows(p: Record<string, unknown>, index: number): Record<string, unknown>[] {
+  const rows = (p.rows as unknown[]).filter(Array.isArray).map((r) => (r as unknown[]).map((l) => String(l ?? '').slice(0, 12)).filter(Boolean)).filter((r) => r.length > 0);
+  const num = (v: unknown, d: number, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+  const unit = num(p.unit, 2, 0.5, 20), gap = num(p.gap, unit * 0.12, 0, unit), height = num(p.height ?? p.keyHeight, unit * 0.45, 0.2, 20);
+  const margin = num(p.margin, unit * 0.5, 0, 50);
+  const colours = (Array.isArray(p.colors ?? p.colours) ? (p.colors ?? p.colours) as unknown[] : PASTEL).map(colourHex).filter(Boolean) as string[];
+  const widthOf = (label: string) => KEY_WIDTH.find(([re]) => re.test(label))?.[1] ?? num((p.widths as Record<string, unknown> | undefined)?.[label], 1, 0.5, 12);
+  const rowWidth = (r: string[]) => r.reduce((w, l) => w + widthOf(l) * unit, 0) + gap * (r.length - 1);
+  const width = Math.max(...rows.map(rowWidth)), depth = rows.length * unit + gap * (rows.length - 1);
+  const origin = v3(p.at ?? p.position) ?? [0, 0, 0];
+  const caseTop = p.case === false ? 0 : num(p.caseHeight, unit * 0.5, 0.2, 20);
+  const base = String(p.name ?? 'Key').replace(/[^A-Za-z0-9_]/g, '') || `Key${index + 1}`;
+  const out: Record<string, unknown>[] = [];
+  if (p.case !== false) {
+    out.push({ name: `${base}Case`, size: [width + 2 * margin, caseTop, depth + 2 * margin], at: [origin[0], origin[1] + caseTop / 2, origin[2]], color: colourHex(p.case) ?? '#2b2f45' });
+  }
+  const used = new Set<string>();
+  rows.forEach((row, ri) => {
+    let x = origin[0] - width / 2;
+    const z = origin[2] - depth / 2 + ri * (unit + gap) + unit / 2;
+    row.forEach((label, ci) => {
+      const w = widthOf(label) * unit;
+      let name = `Key_${label.replace(/[^A-Za-z0-9]/g, '') || `${ri}_${ci}`}`;
+      while (used.has(name)) name += '_';
+      used.add(name);
+      out.push({
+        name, size: [w, height, unit], at: [x + w / 2, origin[1] + caseTop + height / 2, z], color: colours[(ri + ci) % colours.length] ?? '#d7dde2',
+        text: { value: label.length > 1 ? label.toUpperCase() : label, face: 'Top', color: '#ffffff' }, key: label,
+        ...(p.move ? { move: p.move } : {}),
+      });
+      x += w + gap;
+    });
+  });
+  return out;
+}
+
 /**
  * The spec, checked and expanded: repeats unrolled, the scale applied, every part sitting on y = 0 or above. Pure.
  * `at` is the part's centre relative to the object's origin; y = 0 is the stage's top.
@@ -125,7 +174,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   if (!NAME.test(name)) return { error: 'name must be a plain name (letters, digits, _), e.g. AsmrKeyboard' };
   const scale = a.scale === undefined ? 1 : Number(a.scale);
   if (!Number.isFinite(scale) || scale <= 0 || scale > 50) return { error: 'scale must be between 0 and 50' };
-  const raw = Array.isArray(a.parts) ? a.parts : [];
+  const raw = (Array.isArray(a.parts) ? a.parts : []).flatMap((r, i) => r && typeof r === 'object' && Array.isArray((r as Record<string, unknown>).rows) ? unrollRows(r as Record<string, unknown>, i) : [r]);
   if (raw.length === 0) return { error: 'parts is empty: list what the object is made of' };
   const parts: ObjectPart[] = [];
   const skipped: string[] = [];

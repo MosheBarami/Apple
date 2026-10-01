@@ -4,6 +4,7 @@
 import { surfaceDefaultOp } from '../surfaces';
 import { addSources } from '../sources';
 import { isObjectRequest } from '../object-tool';
+import { isUpgradesRequest } from '../upgrades-tool';
 import { lastUserText } from '../user-request';
 import { afterReady, continueGameLine, refuseRebuild, saysReady, type BuiltGameRecord } from '../run-flow';
 import { ideaRecipe } from '../compose-tool';
@@ -275,6 +276,8 @@ interface AgentState {
   focused?: boolean;
   /** A request for one thing: build_object is this run's first project change (object-tool.ts isObjectRequest). */
   objectFirst?: boolean;
+  /** An upgrades request: add_upgrades is this run's first project change, then the run only checks and answers. */
+  upgradesFirst?: boolean;
   /** build_object succeeded: the rest of the run checks and answers (live 2026-10-01: it kept adding its own sounds and scripts). */
   objectBuilt?: boolean;
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
@@ -3492,6 +3495,7 @@ export class SessionDO extends DurableObject<Env> {
       ...(mode === 'agent' && !continueLine && !('error' in ideaRecipe(text)) ? { composeFirst: true } : {}),
       focused: true,
       ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isObjectRequest(text) ? { objectFirst: true } : {}),
+      ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isUpgradesRequest(text) ? { upgradesFirst: true } : {}),
       uiTheme: asUiTheme(uiTheme),
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
@@ -3947,7 +3951,7 @@ export class SessionDO extends DurableObject<Env> {
           : 'The steps you asked for stopped because one of them did not work. Look at what was changed before you carry on.');
       return;
     }
-    const AFTER_OBJECT = new Set(['build_object', 'play_check', 'get_output_logs', 'get_project_tree']);
+    const AFTER_OBJECT = new Set(['build_object', 'add_upgrades', 'play_check', 'play_check_ui', 'get_output_logs', 'get_project_tree']);
     const focusedAllowed = new Set([...offeredCapabilityFilter.allowed].filter((tool) =>
       agent.objectBuilt ? AFTER_OBJECT.has(tool) : agent.focused ? offeredWhenFocused(tool) : tool !== 'more_tools'));
     const offeredAllowed = sequenceStep?.state === 'next'
@@ -3995,7 +3999,7 @@ export class SessionDO extends DurableObject<Env> {
     });
     // An object run's design lives in build_object's spec, so long thinking buys time, not quality (owner, 2026-10-01:
     // fast and cheap). Low effort, unless the run is recovering from a failed step. 'medium' is never used (ADR-013).
-    if ((agent.objectFirst || agent.trace?.some((t) => t.tool === 'build_object')) && !agent.priorStepFailed && choice.effort === 'high') {
+    if ((agent.objectFirst || agent.upgradesFirst || agent.trace?.some((t) => t.tool === 'build_object' || t.tool === 'add_upgrades')) && !agent.priorStepFailed && choice.effort === 'high') {
       choice.effort = 'low';
       choice.reason = 'object build: the design is in build_object';
     }
@@ -4069,7 +4073,8 @@ export class SessionDO extends DurableObject<Env> {
         ...(sequenceStep?.state === 'next' && offeredAllowed.has(sequenceStep.tool)
           ? { requiredTool: sequenceStep.tool }
           : agent.composeFirst && !talkOnly && offeredAllowed.has('compose_game') ? { requiredTool: 'compose_game' }
-          : agent.objectFirst && !talkOnly && offeredAllowed.has('build_object') ? { requiredTool: 'build_object' } : {}),
+          : agent.objectFirst && !talkOnly && offeredAllowed.has('build_object') ? { requiredTool: 'build_object' }
+          : agent.upgradesFirst && !talkOnly && offeredAllowed.has('add_upgrades') ? { requiredTool: 'add_upgrades' } : {}),
         reasoningEffort: choice.effort,
         maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),
       },
@@ -4574,6 +4579,8 @@ export class SessionDO extends DurableObject<Env> {
           ? 'This idea is built with compose_game first (it makes the whole game from components); call compose_game {request} with the user\'s words.' : undefined)
         ?? (agent.objectFirst && call.name !== 'build_object' && READ_ONLY_WITHHELD.has(call.name)
           ? 'This is one object: build it with build_object first, in one call (creation skill any-idea-done-right has the spec and an example).' : undefined)
+        ?? (agent.upgradesFirst && call.name !== 'add_upgrades' && READ_ONLY_WITHHELD.has(call.name)
+          ? 'Upgrades are added with add_upgrades, in one call: it does the money, the screen and the scripts, and keeps the screen that is there.' : undefined)
         ?? ((agent.uiTheme ?? 'studded') === 'studded' && (call.name === 'insert_ui_component' || call.name === 'build_ui')
           ? 'The UI theme is studded: every screen is the game\'s own studded GUI. Use build_studded_ui (or build_object\'s screen), then a LocalScript for the values and buttons.' : undefined);
       if (readyRefusal) {
@@ -4709,6 +4716,8 @@ export class SessionDO extends DurableObject<Env> {
       if (call.name === 'compose_game') agent.composeFirst = false; // tried: the fence lifts whatever the outcome
       if (call.name === 'build_object') agent.objectFirst = false;
       if (call.name === 'build_object' && out.ok) agent.objectBuilt = true;
+      if (call.name === 'add_upgrades') agent.upgradesFirst = false;
+      if (call.name === 'add_upgrades' && out.ok) agent.objectBuilt = true; // the same fence: check once, then answer
       if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {
         agent.builtGame = true;
         // One project is one game: the next run on this project continues it (run-flow.ts continueGameLine).

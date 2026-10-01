@@ -1050,6 +1050,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'build_ui':
     case 'insert_ui_component':
     case 'build_studded_ui':
+    case 'add_upgrades':
     case 'animate_model':
     case 'build_object':
     case 'insert_sound':
@@ -2937,6 +2938,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'build_studded_ui',
     label: 'Draw studded game screens',
     why: 'Adds the game\'s own studded HUD, buttons and shop panels to StarterGui.',
+    group: 'changes',
+  },
+  {
+    name: 'add_upgrades',
+    label: 'Add working upgrades',
+    why: 'Adds money, an Upgrades button and a panel of upgrades the server checks, without changing the screen already there.',
     group: 'changes',
   },
   {

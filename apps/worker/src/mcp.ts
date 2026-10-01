@@ -365,6 +365,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   more_tools: 'Widens the agent\'s own tool list for a run; meaningless outside an agent run.',
   animate_model: 'Rigs a model and writes its animations as a script; excluded until the MCP surface has a reviewed rig-and-script scope.',
   build_studded_ui: 'Writes a whole studded ScreenGui into the place; excluded until the MCP surface has a reviewed UI-writing scope.',
+  add_upgrades: 'Installs server scripts and a studded screen into the place; excluded for the same reason as build_studded_ui.',
   compose_game: 'Builds a new game in Studio from components and pieces of the owner\'s private library; excluded for the same reason as query_owner_catalog.',
   insert_owner_component: 'Inserts a component from the owner\'s private library into the place. It is a write, which belongs to an agent run, and its source is the private library above.',
   check_ui_layout: 'Changes nothing in the place, but it builds a temporary copy of a screen in Studio\'s own UI layer, and its plugin operation is opt-in, which MCP does not negotiate. Excluded for both reasons.',
