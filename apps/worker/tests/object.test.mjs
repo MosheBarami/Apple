@@ -104,21 +104,22 @@ test('a request for one thing is told apart from a game, an edit or a look', () 
 });
 
 test('positions come however a model writes them, and a missing one stands on the ground', () => {
-  // scale 1: this is about reading positions, not about growing a small thing (fitFactor, test 2 round 2).
-  const plan = O.expandObject({ name: 'Thing', scale: 1, parts: [
+  // RESTATED round 5: a small thing is grown whatever its scale (fitFactor), so positions are read back at that growth.
+  const plan = O.expandObject({ name: 'Thing', parts: [
     { name: 'A', size: [2, 2, 2], position: { x: 4, y: 1, z: 0 }, color: '#ffffff' },
     { name: 'B', size: [2, 2, 2], pos: '0, 1, 4', color: '#ffffff' },
     { name: 'C', size: [2, 4, 2], color: '#ffffff' },
   ] });
   assert.ok(!('error' in plan), JSON.stringify(plan));
-  assert.deepEqual(plan.parts.map((p) => p.at), [[4, 1, 0], [0, 1, 4], [0, 2, 0]]);
+  const g = plan.grown ?? 1;
+  assert.deepEqual(plan.parts.map((p) => p.at.map((n) => Math.round(n / g * 1e6) / 1e6)), [[4, 1, 0], [0, 1, 4], [0, 2, 0]]);
 });
 
 test('a part with a flat or missing size does not sink the object', () => {
-  const plan = O.expandObject({ name: 'Y', scale: 1, parts: [{ name: 'A', size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff' }, { name: 'Sheet', size: [4, 0, 2], at: [0, 1, 0], color: '#ffffff' }, { name: 'Lost', at: [0, 0, 0] }] });
+  const plan = O.expandObject({ name: 'Y', parts: [{ name: 'A', size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff' }, { name: 'Sheet', size: [4, 0, 2], at: [0, 1, 0], color: '#ffffff' }, { name: 'Lost', at: [0, 0, 0] }] });
   assert.ok(!('error' in plan), JSON.stringify(plan));
   assert.equal(plan.parts.length, 2);
-  assert.equal(plan.parts[1].size[1], 0.2, 'a flat side is made thin, not refused');
+  assert.equal(Math.round(plan.parts[1].size[1] / (plan.grown ?? 1) * 1e6) / 1e6, 0.2, 'a flat side is made thin, not refused');
   assert.match(plan.skipped[0], /Lost/);
 });
 
@@ -567,8 +568,12 @@ test('a too-small object is grown to be worth walking up to; a scale the model c
   const long = plan.footprint.x1 - plan.footprint.x0;
   assert.ok(long >= 2 * O.PLAYER_HEIGHT && long <= 4 * O.PLAYER_HEIGHT, `longest side ${long}`);
   assert.ok(plan.grown > 1);
-  const kept = O.expandObject({ ...BUTTER, scale: 1 });
-  assert.equal(kept.footprint.x1 - kept.footprint.x0, 8.4, 'the model asked for scale 1');
+  // RESTATED round 5: a scale the model chose that still leaves it small is grown too; one that is big enough is kept.
+  const small = O.expandObject({ ...BUTTER, scale: 1.25 });
+  assert.ok(small.footprint.x1 - small.footprint.x0 >= 12, 'scale 1.25 left it 10.5 long');
+  const kept = O.expandObject({ ...BUTTER, scale: 2 });
+  assert.equal(kept.footprint.x1 - kept.footprint.x0, 16.8, 'scale 2 makes it big enough');
+  assert.equal(kept.grown, undefined);
   assert.equal(O.fitFactor([{ at: [0, 10, 0], size: [20, 20, 4] }]), 1, 'big enough already');
 });
 

@@ -666,8 +666,9 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   // Ground it: the lowest point of the object sits on the stage.
   const bottom = Math.min(...parts.map((p) => p.at[1] - p.size[1] / 2));
   for (const p of parts) p.at[1] -= bottom;
-  // Grown from the ground's centre, never shrunk; a scale the model chose itself is kept.
-  const fit = board || a.scale !== undefined ? 1 : fitFactor(parts);
+  // Grown from the ground's centre, never shrunk; a scale the model chose is kept when it is big enough (round 5: the
+  // model passed its own scale and the butter came out 10 x 2 x 2.5, smaller than a player).
+  const fit = board ? 1 : fitFactor(parts);
   if (fit !== 1) for (const p of parts) {
     p.size = p.size.map((n) => n * fit) as V3;
     p.at = p.at.map((n) => n * fit) as V3;
