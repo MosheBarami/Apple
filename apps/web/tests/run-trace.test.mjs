@@ -141,7 +141,29 @@ test('a live run: the open step shimmers "Thinking...", the closed one says how 
   assert.ok(html.indexOf('Looking around your game') < html.indexOf('Thinking...'), 'and the next step\'s thought after them');
   assert.match(text(html), /Now the door\./, 'the streaming block is open and its text is on the page');
   assert.doesNotMatch(text(html), /Reading the shop first\./, 'the finished block has collapsed');
-  assert.match(html, /class="apple-status__line"/, 'the one live status line stays');
+  // Owner, 2026-10-01: "replace the vercel ones with these, not both" — the app's own status pill is gone.
+  assert.doesNotMatch(html, /apple-status/, 'a status line of our own next to the AI Elements');
+});
+
+/** The text of every AI Elements Shimmer on the page (its gradient clips to the letters). */
+const shimmering = (html) => [...html.matchAll(/<(p|span)[^>]*class="[^"]*bg-clip-text text-transparent[^"]*"[^>]*>([^<]*)<\/\1>/g)].map((m) => m[2]);
+
+test('every live state shimmers (AI Elements Shimmer), and nothing does once the run settles', () => {
+  const before = turn({ streaming: true }, { status: { phase: 'planning', creditsSpent: 1 } });
+  assert.deepEqual(shimmering(before), ['Thinking...'], 'before the first thought arrives, the run says it is thinking');
+  assert.doesNotMatch(text(before), /Planning it out|Credit/, 'not the old pill');
+
+  const running = turn({ streaming: true, tools: [tool('t1', 'get_project_tree', { done: false, ok: undefined })] });
+  const live = shimmering(running);
+  assert.ok(live.includes('Looking around your game'), `the running step shimmers: ${JSON.stringify(live)}`);
+  assert.ok(!live.includes('Thinking...'), 'no extra line while a step is visibly moving');
+
+  const between = turn({ streaming: true, tools: [tool('t1', 'get_project_tree')] });
+  assert.deepEqual(shimmering(between), ['Thinking...'], 'between a finished step and the next thought');
+
+  const settled = turn({ content: 'Done.', stopReason: 'done', endedAt: T + 9000, tools: [tool('t1', 'get_project_tree')] });
+  assert.deepEqual(shimmering(settled), [], 'a settled turn is still');
+  assert.doesNotMatch(settled, /apple-status/);
 });
 
 test('a settled reply: its sources under it, and its [n] as inline citations to them', () => {

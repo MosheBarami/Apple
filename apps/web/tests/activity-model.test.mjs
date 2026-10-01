@@ -18,7 +18,9 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   eventsFromTurn,
@@ -664,15 +666,24 @@ test('and the terminal row survives, because msg_end’s own clock replaces the 
   assert.equal(noClock.terminal, null, 'a terminal row was dated by something nobody observed');
 });
 
-test('and the one surface that builds this from a turn actually passes that clock', () => {
-  // Without this line the two tests above are about a function nobody calls with an `endedAt`,
-  // and a run interrupted on its only tool loses the row that says it ended.
-  const turn = readFileSync(new URL('../src/components/ws/turn.tsx', import.meta.url), 'utf8');
-  const call = turn.slice(turn.indexOf('eventsFromTurn({'), turn.indexOf('upcoming: plannedSteps'));
-  assert.ok(call.length > 0, 'could not find the eventsFromTurn call');
-  assert.match(call, /endedAt: item\.endedAt/, 'turn.tsx must hand the observed end clock through');
-  assert.match(turn, /\[item\.tools, item\.stopReason, item\.error, item\.endedAt,/,
-    'and memoise on it, or the terminal row appears one render late');
+test('and any surface that builds this from a turn actually passes that clock', () => {
+  // Without this the two tests above are about a function nobody calls with an `endedAt`, and a run
+  // interrupted on its only tool loses the row that says it ended.
+  // RESTATED 2026-10-01: turn.tsx built it for the status pill, which the owner removed (AI Elements
+  // only). The property is now held for every caller in src, however many there are — zero included.
+  const calls = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir)) {
+      const path = join(dir, entry);
+      if (statSync(path).isDirectory()) walk(path);
+      else if (/\.tsx?$/.test(entry)) {
+        const src = readFileSync(path, 'utf8');
+        for (let at = src.indexOf('eventsFromTurn({'); at !== -1; at = src.indexOf('eventsFromTurn({', at + 1)) calls.push({ path, call: src.slice(at, src.indexOf('})', at)) });
+      }
+    }
+  };
+  walk(fileURLToPath(new URL('../src', import.meta.url)));
+  for (const { path, call } of calls) assert.match(call, /endedAt: item\.endedAt/, `${path} must hand the observed end clock through`);
 });
 
 test('the socket closes an open tool without asserting how it ended', () => {

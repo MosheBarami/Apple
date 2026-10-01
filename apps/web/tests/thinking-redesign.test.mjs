@@ -1,4 +1,10 @@
-/** Contract checks for the thinking surface: one friendly status line (owner decision D-THINK-1). */
+/**
+ * Contract checks for the thinking surface.
+ *
+ * RESTATED 2026-10-01 (owner): "replace the vercel ones with these, not both". The status pill
+ * (thinking.tsx) is removed; the thinking surface is run-steps.tsx — genuine AI Elements Reasoning and
+ * Task, with Shimmer on what is live. The properties that outlive the pill are held against it.
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -7,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, '..');
-const JSX = readFileSync(join(WEB, 'src/components/ws/thinking.tsx'), 'utf8');
+const JSX = readFileSync(join(WEB, 'src/components/ws/run-steps.tsx'), 'utf8');
 const TURN = readFileSync(join(WEB, 'src/components/ws/turn.tsx'), 'utf8');
 
 /**
@@ -28,37 +34,22 @@ function importedNames(source, spec) {
   return m ? m[1].split(',').map((part) => part.trim().replace(/^type\s+/, '')).filter(Boolean) : [];
 }
 
-//[[ RESTATED 2026-09-24 (owner decision D-THINK-1). The three tests that stood here pinned the
-//   Reasoning disclosure (its trigger, its duration, its open state), the AI Elements header and the
-//   execution-model.ts row selection. The owner replaced the card with one friendly status line and
-//   asked that there be no way at all to open technical detail. The properties now: nothing to open,
-//   one Shimmer only while live, and the words come from lib/live-status.ts — the renderer never
-//   reads a step's own summary, payload, target, tool name or timing. Rendered checks are in
-//   tests/thinking-surface.test.mjs and tests/live-status.test.mjs. ]]
-test('there is nothing to open: no disclosure, trace, tool row or button in the thinking surface', () => {
-  for (const spec of ['../ai-elements/reasoning', '../ai-elements/chain-of-thought', '../ai-elements/tool', '../ui/collapsible']) {
-    assert.deepEqual(importedNames(CODE, spec), [], `thinking.tsx takes a disclosure part from ${spec}`);
-  }
-  assert.doesNotMatch(CODE, /<(?:Reasoning|ChainOfThought|Tool|Collapsible)\w*\b/, 'a disclosure or trace component is drawn');
-  assert.doesNotMatch(CODE, /aria-expanded|aria-controls|<details\b|<button\b|onClick=/, 'something in the surface can be opened');
-});
-
-test('the live line is one Shimmer, drawn only while the run is live; no AICSS', () => {
-  assert.doesNotMatch(CODE, /aicss/, 'an AICSS component is back in the thinking surface');
-  assert.doesNotMatch(CODE, /\b(?:Orb|ThinkingState|StreamingText|reasoningOrb)\b/, 'a retired AICSS piece is back');
+//[[ RESTATED 2026-10-01. These held the pill: nothing to open, ONE Shimmer, words from live-status.
+//   The owner then asked for AI Elements Reasoning and Task, which open by design, and for shimmer on
+//   every live state. What holds now: the parts are the genuine AI Elements, and the moving words are
+//   their Shimmer — no AICSS, no retired orb, no home-made status line. ]]
+test('the thinking surface is genuine AI Elements, and its live words are AI Elements Shimmer', () => {
+  assert.deepEqual(importedNames(CODE, '../ai-elements/reasoning').sort(), ['Reasoning', 'ReasoningContent', 'ReasoningTrigger']);
+  assert.ok(importedNames(CODE, '../ai-elements/task').includes('Task'));
   assert.deepEqual(importedNames(CODE, '../ai-elements/shimmer'), ['Shimmer']);
-  assert.equal((CODE.match(/<Shimmer\b/g) ?? []).length, 1, 'one moving line, not one per step');
-  assert.match(CODE, /const isLive = streaming && !activity\.terminal;/, 'live means streaming and not yet ended');
-  assert.match(CODE, /if \(isLive\) \{[\s\S]*?<MorphingWords\b/, 'the moving words belong only to the live state');
-  assert.doesNotMatch(CODE, /Thought for/, 'a duration is technical detail and is not drawn');
+  assert.doesNotMatch(CODE, /aicss/, 'an AICSS component is back in the thinking surface');
+  assert.doesNotMatch(CODE, /\b(?:Orb|ThinkingState|StreamingText|reasoningOrb|MorphingWords)\b|apple-status/, 'a retired piece is back');
+  assert.doesNotMatch(TURN, /<Thinking\b|from '\.\/thinking'/, 'the status pill is back beside the AI Elements');
 });
 
-test('the words come from lib/live-status.ts; the renderer never reads a step\'s own facts', () => {
-  assert.deepEqual(importedNames(CODE, '../../lib/live-status').sort(), ['doneSummary', 'livePhrase']);
-  assert.doesNotMatch(CODE, /\.(?:summary|detail|target|durationMs|startedAt|tool|toolId|error)\b/,
-    'thinking.tsx reads a raw step fact, which could reach the customer');
-  assert.doesNotMatch(CODE, /\.state === '(?:failed|unknown|active|done)'/,
-    'thinking.tsx must not decide from a step\'s state; live-status.ts does');
+test('the words come from lib/live-status.ts', () => {
+  assert.deepEqual(importedNames(CODE, '../../lib/live-status').sort(), ['friendlyName', 'toolPhrase']);
+  assert.doesNotMatch(CODE, /\.(?:summary|detail|durationMs)\b/, 'run-steps reads a raw step fact, which could reach the customer');
 });
 
 test('the retired custom Stage/Activity card chrome cannot reappear', () => {
@@ -99,7 +90,6 @@ test('honesty: observed facts only, no denied-tools note, failures stay with the
   //   region were detail and are gone. What stays: no placeholder for an unobserved run,
   //   one polite announcement of the live line, and failure copy owned by the outcome row. ]]
   assert.doesNotMatch(CODE, /apple-status__note|turned off in your settings/, 'no persistent notice belongs in thinking');
-  assert.equal((CODE.match(/role="status"/g) ?? []).length, 1, 'the live line needs exactly one non-visual announcement');
 
   assert.doesNotMatch(CODE, /<ActivityTerminal\b|<Failure\b|is-fail|is-bad/,
     'Thinking must stay calm and must not own terminal failure presentation');

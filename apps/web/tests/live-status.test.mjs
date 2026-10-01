@@ -23,7 +23,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { WEB, bundle, count, renderWith, text } from './ui-bundle.mjs';
+import { WEB, bundle, renderWith, text } from './ui-bundle.mjs';
 const replySurface = (html) => html.replace(/<details class="gx-evidence">[\s\S]*<\/details>/, ''); // V3 UI-LATEST: technical detail lives only behind Details
 
 const SRC = join(WEB, 'src');
@@ -148,34 +148,33 @@ function assertNothingTechnical(html, where) {
   assert.deepEqual(foreign, [], `${where}: something other than an AI Elements collapsible opens`);
 }
 
-/** The one live status line (thinking.tsx), on its own. */
-const statusLine = (html) => {
-  const at = html.indexOf('class="apple-status__line"');
-  return at === -1 ? '' : html.slice(at, html.indexOf('</p>', at));
-};
+/** The words an AI Elements Shimmer is moving (the live states, owner 2026-10-01). */
+const shimmering = (html) => [...html.matchAll(/<(p|span)[^>]*class="[^"]*bg-clip-text text-transparent[^"]*"[^>]*>([^<]*)<\/\1>/g)].map((m) => m[2]);
 
-test('LIVE: one friendly line says what is happening now; finished steps are not listed', () => {
+test('LIVE: the step running now shimmers in plain words; there is no status pill of our own', () => {
   const html = turn({ streaming: true, tools: [...busy, tool('t5', 'set_properties', { done: false, ok: undefined, target: 'game.Workspace.Market.Stall1' })] },
     { status: { phase: 'building', creditsSpent: 3 } });
   assertNothingTechnical(html, 'live turn');
-  assert.equal(count(html, 'role="status"'), 1, 'exactly one status line');
-  const line = text(statusLine(html));
-  assert.match(line, /Editing the stall/);
-  for (const earlier of ['Looking around your game', 'Looking up how Roblox does it', 'Building']) {
-    assert.doesNotMatch(line, new RegExp(earlier), `"${earlier}" is a finished step and piled up in the live line`);
+  const live = shimmering(html).join(' | ');
+  assert.match(live, /Editing the stall/, 'the running step is the moving line');
+  for (const earlier of ['Looking around your game', 'Looking up how Roblox does it']) {
+    assert.doesNotMatch(live, new RegExp(earlier), `"${earlier}" is a finished step and still shimmers`);
   }
   // The steps themselves are the AI Elements Task the owner asked for, in words, with object chips.
   assert.match(html, /data-slot="collapsible-trigger"/, 'the steps are not an AI Elements Task');
-  assert.match(text(html), /3 Credits/, 'the running cost stays on screen');
+  // Owner, 2026-10-01: the "Planning it out | N Credits" pill is removed entirely — AI Elements only.
+  assert.doesNotMatch(html, /apple-status/, 'the old status pill is back');
+  assert.doesNotMatch(text(html), /\d+ Credits?\b/, 'the pill\'s running cost is back');
 });
 
-test('SETTLED, worked: the reply, and at most one friendly summary line', () => {
+test('SETTLED, worked: the reply, the Task naming the work, and nothing moving', () => {
   const html = turn({ content: 'Your market has two stalls now.', stopReason: 'done', endedAt: T0 + 9000,
     tools: busy.slice(0, 3) });
   assertNothingTechnical(html, 'settled turn');
   assert.match(text(html), /Your market has two stalls now\./);
-  assert.ok((html.match(/class="apple-status__line"/g) ?? []).length <= 1, 'more than one status line on a settled turn');
-  assert.match(text(html), /Built your game/, 'the one line a finished build keeps');
+  assert.doesNotMatch(html, /apple-status/, 'the old summary line is back');
+  assert.deepEqual(shimmering(html), [], 'a finished turn still shimmers');
+  assert.match(text(html), /Inspecting project/, 'the Task says what kind of work was done');
 });
 
 test('SETTLED, failed: one plain sentence, and Try again still works', () => {

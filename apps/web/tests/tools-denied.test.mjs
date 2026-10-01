@@ -32,7 +32,7 @@ execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
 const T = await import(`file://${out}`);
 
 const SOCKET = readFileSync(join(WEB, 'src', 'lib', 'use-project-socket.ts'), 'utf8');
-const THINKING = readFileSync(join(WEB, 'src', 'components', 'ws', 'thinking.tsx'), 'utf8');
+const RUN_STEPS = readFileSync(join(WEB, 'src', 'components', 'ws', 'run-steps.tsx'), 'utf8');
 const TURN = readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8');
 
 /* --------------------------------------------------------------- 1 & 2. the words --- */
@@ -77,7 +77,7 @@ test('the socket keeps the message, live and on replay', () => {
 test('the turn explains a permission limit without adding a thinking line', () => {
   // The live thinking line keeps changing with the work. Once the run settles, the reply gives
   // one plain reason without exposing a tool name or stacking a second thinking status.
-  assert.match(TURN, /deniedTools=\{item\.deniedTools\}/, 'the turn never passes it to the status line');
   assert.match(TURN, /turned off in your settings/, 'the reply never says why an ability was missing');
-  assert.doesNotMatch(THINKING, /turned off in your settings/, 'the live thinking line gained a persistent warning');
+  assert.doesNotMatch(RUN_STEPS, /turned off in your settings|deniedTools/, 'the live steps gained a persistent warning');
+  assert.doesNotMatch(TURN, /apple-status|<Thinking\b/, 'a second thinking line of our own is back');
 });

@@ -8,6 +8,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { ChevronDownIcon, SearchIcon, WrenchIcon, XIcon } from 'lucide-react';
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '../ai-elements/reasoning';
+import { Shimmer } from '../ai-elements/shimmer';
 import { Task, TaskContent, TaskItem, TaskItemFile, TaskTrigger } from '../ai-elements/task';
 import type { ToolEvent } from '../../lib/use-project-socket';
 import { disclosureChange, reasoningSeconds, traceSegments, type DisclosureState, type ReasoningBlock, type TraceFields } from '../../lib/run-trace';
@@ -96,7 +97,14 @@ export function StepReasoning({ block, live }: { block: ReasoningBlock; live: bo
 export function RunSteps({ item, tools, streaming }: { item: TraceFields; tools: readonly ToolEvent[]; streaming: boolean }) {
   const byId = new Map(tools.map((tool) => [tool.toolId, tool]));
   const segments = traceSegments(item, tools.map((tool) => tool.toolId));
-  if (segments.length === 0) return null;
+  // While the run is live and nothing is visibly moving (before the first thought, or between a
+  // finished step and the next), the run says so with AI Elements Shimmer — the only live line.
+  const last = segments[segments.length - 1];
+  const moving = last !== undefined && (last.kind === 'reasoning'
+    ? last.block.endedAt === undefined
+    : last.toolIds.some((id) => byId.get(id)?.done === false));
+  const waiting = streaming && !moving;
+  if (segments.length === 0 && !waiting) return null;
   return (
     <div className="flex flex-col gap-3" data-run-steps="">
       {segments.map((segment) => {
@@ -114,7 +122,9 @@ export function RunSteps({ item, tools, streaming }: { item: TraceFields; tools:
             <TaskTrigger title={taskTitle(group)}>
               <button type="button" aria-busy={active || undefined} className="flex w-full cursor-pointer items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground">
                 <SearchIcon className="size-4" aria-hidden="true" />
-                <p className="text-sm">{taskTitle(group)}</p>
+                {active
+                  ? <Shimmer as="p" className="text-sm" duration={1}>{taskTitle(group)}</Shimmer>
+                  : <p className="text-sm">{taskTitle(group)}</p>}
                 <ChevronDownIcon className="size-4 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
               </button>
             </TaskTrigger>
@@ -126,7 +136,9 @@ export function RunSteps({ item, tools, streaming }: { item: TraceFields; tools:
                   <TaskItem key={tool.toolId} className="flex items-center gap-2" data-outcome={outcome}>
                     <OutcomeMark outcome={outcome} />
                     <StepObject tool={tool} />
-                    <span>{toolPhrase(tool.tool, tool.target)}</span>
+                    {outcome === 'running'
+                      ? <Shimmer as="span" duration={1}>{toolPhrase(tool.tool, tool.target)}</Shimmer>
+                      : <span>{toolPhrase(tool.tool, tool.target)}</span>}
                     {name && <TaskItemFile>{name}</TaskItemFile>}
                     <span className="sr-only">{OUTCOME_WORD[outcome]}</span>
                   </TaskItem>
@@ -136,6 +148,7 @@ export function RunSteps({ item, tools, streaming }: { item: TraceFields; tools:
           </Task>
         );
       })}
+      {waiting && <Shimmer as="p" className="text-sm" duration={1}>Thinking...</Shimmer>}
     </div>
   );
 }

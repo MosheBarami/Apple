@@ -101,8 +101,9 @@ test('the renderer has exactly one way into the conversation: generated media in
   assert.match(media, /<GenerativeUI\b/, 'and it is ReplyMedia');
   assert.match(turn, /<ReplyMedia docs=\{replyDocs\.media\} \/>/);
   assert.doesNotMatch(turn, /replyDocs\.details/, 'the detail documents are handed to something that could draw them');
-  const thinking = decomment(readFileSync(join(WEB, 'src', 'components', 'ws', 'thinking.tsx'), 'utf8'));
-  assert.doesNotMatch(thinking, /GenerativeUI|Collapsible/, 'the thinking surface draws documents, or can be opened');
+  // The live steps (AI Elements Reasoning and Task, since 2026-10-01) open, but never onto a document.
+  const steps = decomment(readFileSync(join(WEB, 'src', 'components', 'ws', 'run-steps.tsx'), 'utf8'));
+  assert.doesNotMatch(steps, /GenerativeUI|replyDocs/, 'the live steps draw documents');
 });
 
 test('a plan step shows what it does in words, never its wire name', () => {

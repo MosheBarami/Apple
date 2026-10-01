@@ -36,7 +36,7 @@ const CONVERSATION = code('src/components/ai-elements/conversation.tsx');
 const STEPS = code('src/components/ws/run-steps.tsx');
 const ANSWER = code('src/components/ws/answer.tsx');
 const SYSTEM_CSS = read('src/design/system.css');
-const THINKING = code('src/components/ws/thinking.tsx');
+const RUN_STEPS = code('src/components/ws/run-steps.tsx');
 const WELCOME = code('src/components/ws/chat-welcome.tsx');
 const COMPOSER = code('src/components/ws/composer.tsx');
 const REVISIONS = code('src/components/ws/revisions-dialog.tsx');
@@ -56,10 +56,10 @@ test('the surfaces themselves are on screen: the workspace renders the turn, the
   mounted(WS, 'ConversationScrollButton', '../components/ai-elements/conversation', 'workspace');
   mounted(WS, 'RevisionsDialog', '../components/ws/revisions-dialog', 'workspace');
   mounted(WS, 'EditMessageDialog', '../components/ws/edit-message-dialog', 'workspace');
-  //[[ RESTATED 2026-09-24 (D-THINK-1): the Thinking card no longer draws tool headers; the turn
-  //   renders the live status line, whose words are the one Shimmer in thinking.tsx. ]]
-  mounted(TURN, 'Thinking', './thinking', 'turn');
-  assert.match(THINKING, /<Shimmer\b/, 'the status line renders its moving words');
+  //[[ RESTATED 2026-10-01 (owner): the status pill (thinking.tsx) is removed; the turn renders the
+  //   AI Elements steps, whose live rows are the Shimmer. ]]
+  mounted(TURN, 'RunSteps', './run-steps', 'turn');
+  assert.match(RUN_STEPS, /<Shimmer\b/, 'the live steps render their moving words');
   assert.match(COMPOSER, /<Attachment\b/, 'the composer renders attachment chips');
 });
 

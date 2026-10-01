@@ -17,7 +17,8 @@ const ROOT = join(WEB, '..', '..');
 const SHARED = readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
 const SESSION = readFileSync(join(ROOT, 'apps', 'worker', 'src', 'do', 'session.ts'), 'utf8');
 const SOCKET = readFileSync(join(WEB, 'src', 'lib', 'use-project-socket.ts'), 'utf8');
-const THINKING = readFileSync(join(WEB, 'src', 'components', 'ws', 'thinking.tsx'), 'utf8');
+// The turn as drawn: the message and its AI Elements steps (the status pill, thinking.tsx, was removed 2026-10-01).
+const THINKING = ['turn.tsx', 'run-steps.tsx'].map((f) => readFileSync(join(WEB, 'src', 'components', 'ws', f), 'utf8')).join('\n');
 
 test('the wire carries per-run cost, separately from account-wide quota', () => {
   const status = SHARED.slice(SHARED.indexOf("type: 'agent_status'"), SHARED.indexOf("| { type: 'quota'"));
@@ -78,23 +79,14 @@ test('the client carries it forward between settlements', () => {
   assert.match(SOCKET, /creditsSpent\?: number/, 'AgentStatus must declare it');
 });
 
-test('the UI shows it, and does not display a confident zero before anything is spent', () => {
-  //[[ RESTATED 2026-09-24 (D-THINK-1): the figure moved from the Reasoning header into the one live
-  //   status line, read as `credits` there. Same properties: no zero, the scope said to a screen
-  //   reader, singular and plural. ]]
-  assert.match(THINKING, /credits !== undefined && credits > 0/, 'an opening run must not render "0 Credits"');
-  //[[ "this run" MOVED INTO THE SCREEN-READER SPAN when the figure moved out of the collapsible
-  //   body and into the card's head, on 2026-09-20. Sighted readers get the scope from where it
-  //   sits — inside the run's own card, beside that run's title — and a header that reads
-  //   "7 Credits spent on this run so far" in full is a header that wraps to two lines on a
-  //   phone. A screen reader has no such context, so it is still said in full there.
-  //   WHETHER IT IS ACTUALLY ON SCREEN IS NOT ASSERTABLE FROM SOURCE TEXT, and that is the
-  //   defect this file missed for a whole audit cycle: the old line WAS in the source, inside a
-  //   `display:none` panel. `tests/run-cost-visible.test.mjs` renders it in a browser and
-  //   measures it instead. ]]
-  assert.match(THINKING, /<span className="gx-sr"> settled for this run so far<\/span>/);
-  // Singular and plural, because the string is shown verbatim.
-  assert.match(THINKING, /credits === 1 \? 'Credit' : 'Credits'/);
+//[[ RESTATED 2026-10-01 (owner): "remove entirely" the status pill that showed "Planning it out | N
+//   Credits". The figure went with it; the turn shows only AI Elements. What still holds: nothing in
+//   the turn draws a home-made cost line, and nothing in it prices anything itself (below). ]]
+test('the turn draws no home-made cost line', () => {
+  // The settled figure under a finished reply (item.creditsSpent, the message toolbar) stays; the live one
+  // (status.creditsSpent) was the pill's.
+  assert.doesNotMatch(THINKING, /apple-status__cost|status\??\.creditsSpent/, 'a live cost line of our own is back beside the AI Elements');
+  assert.match(THINKING, /item\.creditsSpent/, 'the settled cost under a finished reply is gone too');
 });
 
 test('activity does not advertise a finite step denominator for autonomous runs', () => {

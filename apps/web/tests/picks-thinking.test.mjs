@@ -18,7 +18,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { WEB, bundle, count, decomment, element, renderWith, text } from './ui-bundle.mjs';
 
 const SRC = join(WEB, 'src');
@@ -54,7 +53,8 @@ const MOUNTS = [
   ['componentry--ascii-effect',         'components/error-boundary.tsx',              'AsciiMark',    'picks/thinking/ascii-mark'],
   ['animate-ui--collapsible (crash)',   'components/error-boundary.tsx',              'FoldedDetails','picks/thinking/folded-details'],
   ['animate-ui--collapsible (failure)', 'components/failure.tsx',                     'FoldedDetails','picks/thinking/folded-details'],
-  ['ae-shimmer / shiny / shimmering',   'components/ws/thinking.tsx',                 'Shimmer',      'ai-elements/shimmer'],
+  // RESTATED 2026-10-01: the status pill it lived in is gone (owner); the live step rows shimmer now.
+  ['ae-shimmer / shiny / shimmering',   'components/ws/run-steps.tsx',                'Shimmer',      'ai-elements/shimmer'],
   ['animate-ui--shimmering-text',       'components/loading.tsx',                     'Shimmer',      'ai-elements/shimmer'],
 ];
 
@@ -75,17 +75,8 @@ test('the disclosure motion: Reasoning, Task and ChainOfThought content animate 
   assert.match(readFileSync(join(SRC, 'styles/ai-elements.css'), 'utf8'), /@import "tw-animate-css";/, 'the classes are compiled');
 });
 
-test('Thought Line: the status line arrives, and its words morph in and out', () => {
-  //[[ RESTATED 2026-09-24 (D-THINK-1): the settle-in and the Lattice glyph in the Reasoning trigger
-  //   became the status pill's arrival and the leaving/entering words of MorphingWords. ]]
-  const src = read('components/ws/thinking.tsx');
-  assert.match(src, /className="apple-status__phrase is-leaving"/);
-  assert.match(src, /className="apple-status__phrase is-entering"/);
-  const css = readFileSync(join(SRC, 'components/ws/thinking.css'), 'utf8');
-  for (const rule of ['\\.apple-status\\.is-live \\.apple-status__line', '\\.apple-status__phrase\\.is-entering', '\\.apple-status__phrase\\.is-leaving']) {
-    assert.match(css, new RegExp(`${rule} \\{[^}]*animation:`), `${rule} does not move`);
-  }
-});
+// RESTATED 2026-10-01: "Thought Line" (the status pill's arriving, morphing words) is removed with the
+// pill itself — the owner asked for AI Elements only. Its live motion is the AI Elements Shimmer.
 
 // RESTATED 2026-10-01. The home-made Shimmer merged Shiny Text's sweep with Shimmering Text's
 // per-glyph wave. The genuine AI Elements Shimmer is the sweep only: a light band (the background
@@ -97,14 +88,14 @@ test('the shimmer is AI Elements’ own: a band that sweeps across the words, cl
   assert.match(src, /bg-clip-text text-transparent/);
   assert.match(src, /backgroundPosition: "0% center"/);
   assert.match(read('components/loading.tsx'), /<Shimmer as="span"/);
-  assert.match(read('components/ws/thinking.tsx'), /<Shimmer\b/);
+  assert.match(read('components/ws/run-steps.tsx'), /<Shimmer\b/);
 });
 
 test('the surfaces the picks sit in are reached from the running app', () => {
   assert.match(read('lib/auth.tsx'), /<Forge kind="recalling"/, 'the first screen (Hyperspeed, Fill text) is the auth splash');
   assert.match(read('components/pairing-dialog.tsx'), /<Forge kind="connecting"/, 'the pairing wait (Ripple, Hacker Background) is the pairing dialog');
   assert.match(read('routes/workspace.tsx'), /<Spinner label=/, 'the spinner with its shimmering caption opens a project');
-  assert.match(read('components/ws/turn.tsx'), /<Thinking\b/, 'the Thinking card is drawn on every turn');
+  assert.match(read('components/ws/turn.tsx'), /<RunSteps\b/, 'the run\'s steps (AI Elements) are drawn on every turn');
   assert.match(read('app.tsx'), /<ErrorBoundary>/);
   assert.match(read('components/layout.tsx'), /<ErrorBoundary\b[^>]*scope="route"/);
   const emptyCallers = ['routes/workspace.tsx', 'routes/roadmap.tsx', 'routes/dashboard.tsx'].filter((f) => /<EmptyState\b/.test(read(f)));
@@ -121,33 +112,12 @@ test('the surfaces the picks sit in are reached from the running app', () => {
 const ui = await bundle(`
   export { createElement as h } from 'react';
   export { renderToStaticMarkup } from 'react-dom/server';
-  export { Thinking } from './src/components/ws/thinking';
   export { Forge, Spinner } from './src/components/loading';
   export { EmptyState } from './src/components/empty-state';
   export { Failure } from './src/components/failure';
   export { StepMark } from './src/components/picks/thinking/step-mark';
 `, { name: 'picks-thinking', resolveDir: WEB });
 const html = (el) => renderWith(ui.renderToStaticMarkup, el);
-const activity = await import(pathToFileURL(join(SRC, 'components/ws/activity-model.ts')).href);
-
-const T0 = 1_700_000_000_000;
-function settled(stopReason, ok = true) {
-  const tools = [{ toolId: 'a', tool: 'read_script', summary: 'Read 12 lines', ok, startedAt: T0, durationMs: 800, done: true, startObserved: true }];
-  return activity.reduceActivity({ events: activity.eventsFromTurn({ tools, stopReason, endedAt: T0 + 2000 }), now: T0 + 3000, streaming: false });
-}
-const thinking = (props) => html(ui.h(ui.Thinking, { status: null, streaming: false, ...props }));
-
-test('a settled run is marked only when it went well; failure and stop are the outcome row\'s to say', () => {
-  //[[ RESTATED 2026-09-24 (D-THINK-1): the Lattice glyph drew done / failed / stopped in the header.
-  //   Now a run that went well keeps one tick beside its summary, and nothing else is marked here. ]]
-  const tools = [{ toolId: 'a', tool: 'create_instances', summary: 'x', ok: true, startedAt: T0, durationMs: 800, done: true, startObserved: true }];
-  const built = activity.reduceActivity({ events: activity.eventsFromTurn({ tools, stopReason: 'done', endedAt: T0 + 2000 }), now: T0 + 3000, streaming: false });
-  const done = element(thinking({ activity: built }), /<span class="apple-status__tick"/);
-  assert.ok(done, 'a finished build has no mark');
-  assert.match(done, /aria-hidden="true"/, 'the tick repeats the words; it must not be read twice');
-  assert.equal(thinking({ activity: settled('error', false) }), '');
-  assert.equal(thinking({ activity: settled('stopped') }), '');
-});
 
 test('To-do list / Thought Line: a step is marked by its status', () => {
   const complete = html(ui.h(ui.StepMark, { status: 'complete' }));

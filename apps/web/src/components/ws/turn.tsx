@@ -15,12 +15,10 @@ import { splitSpilledPayload } from '../../lib/spilled-payload';
 import { extractUIFence, parseDocument } from '../../lib/generative-ui';
 import { panelFromTool } from '../../lib/panels';
 import { splitReplyDocs } from '../../lib/reply-docs';
-import { plannedStepsFromDocs, type ValidatedDoc } from '../../lib/gates';
 import { clockTime, formatSettings, isoStamp } from '../../lib/format';
 import type { AgentStatus, ChatItem } from '../../lib/use-project-socket';
-import { eventsFromTurn, reduceActivity, type PhaseMark } from './activity-model';
+import type { PhaseMark } from './activity-model';
 import { outcomeLine } from './outcome-model';
-import { Thinking } from './thinking';
 import { CheckIcon, CopyIcon, MoreHorizontalIcon, Share2Icon, XIcon } from 'lucide-react';
 import { Message, MessageAction, MessageActions, MessageContent, MessageToolbar } from '../ai-elements/message';
 import { Button } from '../ui/button';
@@ -34,17 +32,6 @@ import { visualOptions } from './asset-choice-model';
 import { Answer, RunSources } from './answer';
 import { RunSteps } from './run-steps';
 import { cn } from '../../lib/utils';
-
-function useNow(active: boolean): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!active) return;
-    setNow(Date.now());
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [active]);
-  return now;
-}
 
 // The component registry's renderer arrives when a reply first has something to draw with it. It is
 // not in the page everybody loads first: most replies are only words (D-UX-2).
@@ -237,42 +224,11 @@ export function Turn({
   );
   const assetOptions = useMemo(() => visualOptions(item.tools), [item.tools]);
 
-  // The steps a validated build_plan announced feed the activity reducer — never the raw tool payload.
-  const validated = useMemo<ValidatedDoc[]>(() => panels.map((p) => ({ id: p.id, doc: p.doc })), [panels]);
-  const plannedSteps = useMemo(() => plannedStepsFromDocs(validated), [validated]);
-
   // The one split (lib/reply-docs.ts): an image or a sound Apple made stays in the reply; every other
   // document is technical detail and is not drawn at all (owner decision D-THINK-1).
   const replyDocs = useMemo(
     () => splitReplyDocs([...(fenceDoc ? [fenceDoc] : []), ...panels.map((panel) => panel.doc)]),
     [fenceDoc, panels],
-  );
-
-  // The ordered, timed activity. Rebuilt from the merged turn through the same
-  // reducer the live socket log feeds, so a reloaded turn and a live one cannot
-  // report different things about the same run.
-  // One clock for the turn. It ticks only while this turn is streaming, so a
-  // settled conversation does not repaint itself once a second forever.
-  const now = useNow(item.streaming);
-  const activity = useMemo(
-    () =>
-      reduceActivity({
-        events: eventsFromTurn({
-          tools: item.tools,
-          phaseMarks,
-          stopReason: item.stopReason,
-          error: item.error,
-          // The instant this client saw `msg_end`. Undefined for a reloaded turn, which watched
-          // nothing — those fall back to the last observed tool end, which they always have.
-          // A run interrupted mid-tool no longer does, because that tool now carries no invented
-          // end, and without this the terminal row would vanish for exactly those runs.
-          endedAt: item.endedAt,
-        }),
-        upcoming: plannedSteps,
-        now,
-        streaming: item.streaming,
-      }),
-    [item.tools, item.stopReason, item.error, item.endedAt, item.streaming, phaseMarks, plannedSteps, now],
   );
 
   // The reply's text lands word by word when this client watched it arrive (Streamdown's cascade).
@@ -406,14 +362,6 @@ export function Turn({
       onContextMenu={menu.onContextMenu}
     >
       <MessageContent className="w-full gap-3">
-        {/* ONE FRIENDLY LINE while Apple works, and at most one once it is done (D-THINK-1). */}
-        <Thinking
-          status={isLast ? status : null}
-          streaming={item.streaming}
-          deniedTools={item.deniedTools}
-          activity={activity}
-        />
-
         {/* WHAT IT THOUGHT AND DID (owner, 2026-10-01): each step's reasoning as an AI Elements
             Reasoning — open and shimmering while it streams, "Thought for N seconds" once the step
             ends or a tool starts — with that step's tools after it as one Task. */}

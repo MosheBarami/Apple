@@ -166,7 +166,8 @@ test('the customer-facing Activity renderer contains no Apple-assumed/open-quest
   const { join, dirname } = await import('node:path');
   const { fileURLToPath } = await import('node:url');
   const web = join(dirname(fileURLToPath(import.meta.url)), '..');
-  const tsx = readFileSync(join(web, 'src/components/ws/thinking.tsx'), 'utf8');
+  // The turn's live surface since 2026-10-01 is the AI Elements steps (the status pill was removed).
+  const tsx = readFileSync(join(web, 'src/components/ws/run-steps.tsx'), 'utf8');
   assert.doesNotMatch(tsx, /stage\.assumptions/);
   assert.doesNotMatch(tsx, /Apple assumed/);
   assert.doesNotMatch(tsx, /gx-open-qs/);

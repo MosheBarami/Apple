@@ -48,9 +48,9 @@ const NO_CALL_SITE = {
   // construction: "no fallback copy, no default stage list and no way to invent a row… no
   // percentage anywhere, because a progress figure here would be a guess presented as a
   // measurement." A four-step timer rhythm beside it would be the guess that file refuses.
-  building: 'components/ws/thinking.tsx draws this wait from real tool events',
+  building: 'components/ws/run-steps.tsx draws this wait from real tool events',
   // 2026-09-21. Same surface: the Validation stage of that timeline.
-  verifying: 'components/ws/thinking.tsx draws this wait from real tool events',
+  verifying: 'components/ws/run-steps.tsx draws this wait from real tool events',
   // 2026-09-21. No render operation is exposed in the product yet.
   rendering: 'no surface in the product performs this operation',
   // 2026-09-21. Checkpoint restore runs from components/ws/revisions-dialog.tsx, which has never
