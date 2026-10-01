@@ -3,6 +3,7 @@
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
 import { surfaceDefaultOp } from '../surfaces';
 import { addSources } from '../sources';
+import { isObjectRequest } from '../object-tool';
 import { lastUserText } from '../user-request';
 import { afterReady, continueGameLine, refuseRebuild, saysReady, type BuiltGameRecord } from '../run-flow';
 import { ideaRecipe } from '../compose-tool';
@@ -272,6 +273,8 @@ interface AgentState {
    * more_tools lifts it for the rest of the run.
    */
   focused?: boolean;
+  /** A request for one thing: build_object is this run's first project change (object-tool.ts isObjectRequest). */
+  objectFirst?: boolean;
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
   uiTheme?: UiTheme;
   /** What this run's tools cited (sources.ts), numbered; sent to the web app with the answer. */
@@ -3486,6 +3489,7 @@ export class SessionDO extends DurableObject<Env> {
       ...(continueLine ? { continuesGame: true } : {}),
       ...(mode === 'agent' && !continueLine && !('error' in ideaRecipe(text)) ? { composeFirst: true } : {}),
       focused: true,
+      ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isObjectRequest(text) ? { objectFirst: true } : {}),
       uiTheme: asUiTheme(uiTheme),
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
@@ -3985,6 +3989,12 @@ export class SessionDO extends DurableObject<Env> {
       visualDefectsFound: agent.visualDefectsFound,
       ...(agent.traits ?? {}),
     });
+    // An object run's design lives in build_object's spec, so long thinking buys time, not quality (owner, 2026-10-01:
+    // fast and cheap). Low effort, unless the run is recovering from a failed step. 'medium' is never used (ADR-013).
+    if ((agent.objectFirst || agent.trace?.some((t) => t.tool === 'build_object')) && !agent.priorStepFailed && choice.effort === 'high') {
+      choice.effort = 'low';
+      choice.reason = 'object build: the design is in build_object';
+    }
     if (agent.forcedEffort) choice.effort = agent.forcedEffort;
     if (choice.effort === 'high') agent.highEffortUsed = (agent.highEffortUsed ?? 0) + 1;
     const gatewayModel = gatewayModelFor(agent.mode);
@@ -4043,7 +4053,8 @@ export class SessionDO extends DurableObject<Env> {
         tools: talkOnly ? [] : toolDefs(offerStudio, offeredAllowed),
         ...(sequenceStep?.state === 'next' && offeredAllowed.has(sequenceStep.tool)
           ? { requiredTool: sequenceStep.tool }
-          : agent.composeFirst && !talkOnly && offeredAllowed.has('compose_game') ? { requiredTool: 'compose_game' } : {}),
+          : agent.composeFirst && !talkOnly && offeredAllowed.has('compose_game') ? { requiredTool: 'compose_game' }
+          : agent.objectFirst && !talkOnly && offeredAllowed.has('build_object') ? { requiredTool: 'build_object' } : {}),
         reasoningEffort: choice.effort,
         maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),
       },
@@ -4540,6 +4551,8 @@ export class SessionDO extends DurableObject<Env> {
       const readyRefusal = afterReady(agent.judgedReady, call.name, new Set(projectMutatingToolNames())) ?? refuseRebuild(agent.continuesGame, call.name)
         ?? (agent.composeFirst && call.name !== 'compose_game' && READ_ONLY_WITHHELD.has(call.name)
           ? 'This idea is built with compose_game first (it makes the whole game from components); call compose_game {request} with the user\'s words.' : undefined)
+        ?? (agent.objectFirst && call.name !== 'build_object' && READ_ONLY_WITHHELD.has(call.name)
+          ? 'This is one object: build it with build_object first, in one call (creation skill any-idea-done-right has the spec and an example).' : undefined)
         ?? ((agent.uiTheme ?? 'studded') === 'studded' && (call.name === 'insert_ui_component' || call.name === 'build_ui')
           ? 'The UI theme is studded: every screen is the game\'s own studded GUI. Use build_studded_ui (or build_object\'s screen), then a LocalScript for the values and buttons.' : undefined);
       if (readyRefusal) {
@@ -4673,6 +4686,7 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
       // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
       if (call.name === 'compose_game') agent.composeFirst = false; // tried: the fence lifts whatever the outcome
+      if (call.name === 'build_object') agent.objectFirst = false;
       if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {
         agent.builtGame = true;
         // One project is one game: the next run on this project continues it (run-flow.ts continueGameLine).

@@ -55,7 +55,8 @@ export function propWordIn(name: unknown): string | null {
 const lastSegment = (path: unknown) => (typeof path === 'string' ? path.split('.').pop() : undefined);
 
 const SUGGEST =
-  'Instead: find_library_model with the plain noun (e.g. "oak tree", "wooden fence", "market stall", "shop building"), then insert_library_model with the id it returns; set its position and scale afterwards. ' +
+  'Instead: an object the user asked for (a keyboard, a stick of butter, a lamp) is ONE build_object call, which builds it studded, rigged and animated. ' +
+  'For a ready-made prop: find_library_model with the plain noun (e.g. "oak tree", "wooden fence", "market stall", "shop building"), then insert_library_model with the id it returns; set its position and scale afterwards. ' +
   'Plain structure is still yours to build: floors, paths, walls, pads, plazas and baseplates as plain Block or Cylinder Parts, named for what they are (Floor, Path, Plaza, RebirthPad), grouped in a Folder rather than a Model.';
 
 export interface ModelRefusal {

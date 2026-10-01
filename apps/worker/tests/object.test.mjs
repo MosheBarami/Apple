@@ -89,3 +89,8 @@ test('slips a model makes are fixed, not fatal: number and word keys, colour nam
   assert.equal(space.key, 'Space'); assert.equal(space.color, '#ffffff'); assert.equal(space.move.on, 'key');
   assert.equal(a.key, 'A'); assert.equal(comma.key, 'Comma'); assert.equal(a.color, '#d7dde2', 'an unknown colour falls back to light grey');
 });
+
+test('a request for one thing is told apart from a game, an edit or a look', () => {
+  for (const t of ['make an asmr keyboard', 'make me a stick of butter', 'build a giant spinning donut', 'create a lamp that glows', 'a rubber duck']) assert.ok(O.isObjectRequest(t), t);
+  for (const t of ['make an obby with lava', 'make it 100x cooler', 'build a tycoon game', 'fix the shop', 'improve the map', 'make the lighting better', 'add a shop', 'add a grassy hill', 'build a small harbour with a lighthouse and a pier', '']) assert.ok(!O.isObjectRequest(t), t);
+});

@@ -31,6 +31,20 @@ const NAME = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const MAX_PARTS = 400;
 
+/**
+ * A request for one THING ("make me a stick of butter", "build an asmr keyboard", "a giant spinning donut"), as
+ * opposed to a game, a change to what exists, or a look. Such a run calls build_object first (session.ts objectFirst):
+ * seen live 2026-10-01, the model hand-built a keyboard part by part instead and was refused. Pure.
+ */
+const GAME_OR_EDIT = /\b(game|obby|tycoon|simulator|sim|rpg|shooter|lobby|map|world|level|island|round|wave|defen[cs]e|plots?|shop system|economy|ui|hud|screen|menu|cooler|better|prettier|improve|fix|change|edit|remove|delete|move|make it|lighting|script|leaderboard)\b/i;
+const SCENE = /\b(hill|mountain|harbou?r|river|lake|forest|beach|city|town|village|terrain|landscape|room|area|zone|park|garden|farm|arena|stage|base|shop|store|system)\b/i;
+export function isObjectRequest(text: string | undefined): boolean {
+  const t = (text ?? '').trim();
+  if (!t || t.length > 140 || GAME_OR_EDIT.test(t) || SCENE.test(t)) return false;
+  if (/\band\b|,|;|\bthen\b/i.test(t)) return false; // several things, or steps: a scene or a plan, not one object
+  return /^(please\s+)?(can you\s+)?(make|build|create|give|spawn)\s+(me\s+|us\s+)?(a|an|one|some|the|my)?\b/i.test(t) || /^(an?|one)\s+\w+/i.test(t);
+}
+
 /** What people and models write for a key, as Roblox's Enum.KeyCode name. Unknown keys return undefined (click only). */
 const DIGITS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
 const KEY_WORDS: Record<string, string> = {
