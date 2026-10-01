@@ -71,7 +71,8 @@ export function judgeFindings(request: string, cfg: ComposedConfig, world: strin
   const spent = (num(a.moneyStart) ?? 0) - (num(a.moneyAfterBuy) ?? 0);
   out.push(bought > 0 && spent > 0
     ? { area: 'shop', ok: true, said: `A player can buy and plant: ${bought} placed.` }
-    : { area: 'shop', ok: false, said: `Buying and planting did not work in the check${a.buyErrors && Array.isArray(a.buyErrors) && a.buyErrors.length ? ` (${String(a.buyErrors[0])})` : ''}.`,
+    : { area: 'shop', ok: false, said: `Buying and planting did not work in the check${a.buyErrors && Array.isArray(a.buyErrors) && a.buyErrors.length ? ` (${String(a.buyErrors[0])})` : ''}` +
+        ` [plot ${a.plot ?? 'none'} after ${num(a.plotWait) ?? '?'} s, ${num(a.tiles) ?? 0} tiles, ${num(a.catalog) ?? 0} items, cheapest ${a.item ?? 'none'}, money ${num(a.moneyStart) ?? 'none'}].`,
       fix: 'Read game.ServerScriptService.AppleComponents.AppleShop and the plot tiles (game.Workspace.AppleMap.Plots); every tile needs the AppleTags attribute AppleTile.' });
 
   const enemies = num(a.enemies) ?? 0;

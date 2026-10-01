@@ -212,6 +212,9 @@ local function where()
 end
 report.at = { start = where() }
 
+-- A game Apple composed is played longer (35 s, inside the 50 s bound): the client's probe buys, plants, and has to see a
+-- wave reach what it planted before the report says whether beating it pays.
+if ReplicatedStorage:FindFirstChild("AppleBuy") or ReplicatedStorage:FindFirstChild("AppleState") then seconds = math.max(seconds, 35) end
 task.wait(seconds)
 if ended then return end
 report.waitedSeconds = seconds
@@ -556,7 +559,9 @@ task.spawn(function()
 		return nil
 	end
 	local t0 = os.clock()
-	while not player:GetAttribute("Plot") and os.clock() - t0 < 8 do task.wait(0.25) end
+	-- The game hands out plots once it has started (it builds its creatures first), so this waits up to 20 s.
+	while not player:GetAttribute("Plot") and os.clock() - t0 < 20 do task.wait(0.25) end
+	probe.plotWait = math.floor((os.clock() - t0) * 10) / 10
 	probe.plot = player:GetAttribute("Plot")
 	probe.moneyStart = money()
 	local catalog = ReplicatedStorage:FindFirstChild("AppleCatalog")
@@ -566,6 +571,7 @@ task.spawn(function()
 		if p < price then cheapest, price = f.Name, p end
 	end
 	probe.item = cheapest
+	probe.catalog = if catalog then #catalog:GetChildren() else -1
 	local map = workspace:FindFirstChild("AppleMap")
 	local plots = map and map:FindFirstChild("Plots")
 	local plot = plots and probe.plot and plots:FindFirstChild(probe.plot)
@@ -859,6 +865,7 @@ function PlayCheck.normalise(report: any, seconds: number): any
 		local errs = {}
 		for i, e in (if type(a.buyErrors) == "table" then a.buyErrors else {}) do if i <= 3 then table.insert(errs, clipText(e, 120)) end end
 		apple = { composed = true, plot = clipText(a.plot, 40), item = clipText(a.item, 60), tiles = num(a.tiles), bought = num(a.bought), buyErrors = errs,
+			plotWait = num(a.plotWait), catalog = num(a.catalog),
 			moneyStart = num(a.moneyStart), moneyAfterBuy = num(a.moneyAfterBuy), moneyEnd = num(a.moneyEnd), samples = num(a.samples),
 			enemies = num(a.enemies), defenders = num(a.defenders), enemyJoints = num(a.enemyJoints), enemyJointsMoving = num(a.enemyJointsMoving),
 			defenderJoints = num(a.defenderJoints), defenderJointsMoving = num(a.defenderJointsMoving), wave = num(a.wave),
