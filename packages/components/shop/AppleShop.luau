@@ -155,7 +155,9 @@ function AppleShop.start(config: any, economy: any)
 		for _, tile in plot:GetDescendants() do
 			if tile:IsA("BasePart") and CollectionService:HasTag(tile, "AppleTile") and not tile:GetAttribute("Occupied") then
 				local d = if from then (tile.Position - from).Magnitude else 0
-				if d < bestDist then best, bestDist = tile, d end
+				-- Beside the spawn, not under it: the tile the player lands on stays free (round 14: they spawned on it).
+				local under = from and math.abs(tile.Position.X - from.X) < tile.Size.X / 2 and math.abs(tile.Position.Z - from.Z) < tile.Size.Z / 2
+				if not under and d < bestDist then best, bestDist = tile, d end
 			end
 		end
 		if best then put(player, id, item, template, best) end
