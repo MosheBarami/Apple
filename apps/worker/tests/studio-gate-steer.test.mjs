@@ -519,3 +519,37 @@ test('G10: Stop during an in-flight model call ends the run without waiting for 
     h.stop();
   }
 });
+
+// 2026-10-02: every Studio window closed mid-run; the paused run sat "running" for 16 minutes until an admin stop.
+test('G03: a run paused for Studio ends at its deadline when Studio is still away, with an honest sentence', async () => {
+  let h;
+  let dropped = false;
+  h = await makeSession({
+    connected: true,
+    answerOp: (op) => {
+      if (!dropped && op.op === 'set_props' && op.path === 'game.Workspace') { dropped = true; disconnect(h); }
+      return ok();
+    },
+    responses: [calls(setProps('game.Workspace', { Gravity: 100 }), setProps('game.StarterPlayer', { CameraMaxZoomDistance: 60 }))],
+  });
+  try {
+    await send(h, chat('raise gravity and cap the camera zoom'));
+    await h.session.alarm();
+    assert.ok(h.store.get('agent').pausedForStudio, 'the run did not pause — this checks nothing');
+    // Inside the window an alarm leaves it paused.
+    await h.session.alarm();
+    assert.equal(lastEnd(h), undefined, 'ended before its deadline');
+    // Past the deadline, with Studio still down, it ends.
+    const agent = h.store.get('agent');
+    agent.pausedForStudio.at -= 60_000;
+    h.store.set('agent', agent);
+    await h.session.alarm();
+    const end = lastEnd(h);
+    assert.ok(end, 'a paused run with Studio gone never ended');
+    assert.equal(end.stopReason, 'incomplete');
+    assert.match(String(end.content ?? end.text ?? JSON.stringify(end)), /Studio disconnected/);
+    assert.match(String(end.content ?? end.text ?? JSON.stringify(end)), /Everything already built is saved/, 'it changed the place before Studio left');
+  } finally {
+    h.stop();
+  }
+});

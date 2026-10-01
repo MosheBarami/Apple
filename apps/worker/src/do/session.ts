@@ -566,6 +566,8 @@ const accessClearPendingKey = (userId: string): string => `accessClearPending:${
 // contract gives every message one explicit long-horizon ceiling instead.
 /** Latest product contract: one message may execute at most 1000 accepted work steps. */
 export const MAX_RUN_STEPS = 1000;
+/** How long a run paused for Studio waits for it to come back before it ends (pauseForStudio, alarm). */
+export const STUDIO_PAUSE_MAX_MS = 45_000;
 
 /** How many times one run may be steered back to work after replying without acting. */
 const MAX_NUDGE_LEVEL = 6;
@@ -1585,6 +1587,9 @@ export class SessionDO extends DurableObject<Env> {
     agent.pausedForStudio = { at: Date.now(), reason };
     await this.dropOpsForRun(agent.msgId);
     await this.persistAgent(agent);
+    // The pause has a deadline (2026-10-02: every Studio window closed mid-run and the run sat "running" for 16 minutes,
+    // with nobody to press Continue): the alarm comes back at the deadline and ends the run if Studio is still away.
+    await this.ctx.storage.setAlarm(agent.pausedForStudio.at + STUDIO_PAUSE_MAX_MS);
     this.broadcast({ type: 'run_state', run: await this.runSnapshot() });
   }
 
@@ -2859,6 +2864,8 @@ export class SessionDO extends DurableObject<Env> {
         // deliberately no owner id here — this endpoint is operational, not a user lookup
         project: { id: bind.projectId, name: bind.projectName },
         agentStatus: agent?.status ?? 'idle',
+        // A run paused for Studio is not a hung run (2026-10-02: a paused run looked hung for 16 minutes).
+        paused: agent?.pausedForStudio ?? null,
         messages: msgs.c,
         pluginConnected: await this.pluginConnected(),
         queuedOps: this.opQueue.length,
@@ -3664,8 +3671,19 @@ export class SessionDO extends DurableObject<Env> {
       await this.finishRun(agent, 'stopped');
       return;
     }
-    // G03: a run paused for Studio waits for `continue`; no alarm, reconnect or watchdog resumes it.
-    if (agent.pausedForStudio) return;
+    // G03: a run paused for Studio waits for `continue`; no alarm or reconnect resumes it. It waits at most
+    // STUDIO_PAUSE_MAX_MS: past that, a run whose Studio is still away, or that nobody is watching to press Continue,
+    // ends with an honest sentence (2026-10-02: a headless run paused for 16 minutes until an admin stop).
+    if (agent.pausedForStudio) {
+      const due = agent.pausedForStudio.at + STUDIO_PAUSE_MAX_MS;
+      if (Date.now() < due) { await this.ctx.storage.setAlarm(due); return; }
+      if ((await this.studioLinkDown()) || this.ctx.getWebSockets('client').length === 0) {
+        agent.studioDropped = true;
+        delete agent.pausedForStudio;
+        await this.finishRun(agent, 'incomplete', undefined, `Studio disconnected, so Apple stopped. ${agent.mutated ? 'Everything already built is saved in your place.' : 'Nothing in your place was changed.'} Reconnect Studio and ask again.`);
+      }
+      return;
+    }
     // Durable runs may legitimately sleep for minutes or hours between alarms. Age is not evidence
     // that work is lost: Stop/access/quota and the operation-specific timeouts are the actual gates.
     if (typeof agent.resumeAt === 'number' && Date.now() < agent.resumeAt) {
