@@ -69,7 +69,7 @@ test('every motion preset is a clip the animation player accepts', async () => {
 test('a bad spec is refused with a reason, before anything is built', () => {
   for (const [spec, why] of [
     [{ name: 'X', parts: [] }, /parts is empty/],
-    [{ name: 'bad name', parts: [{ size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff' }] }, /plain name/],
+    // RESTATED 2026-10-01: a bad name is no longer refused; it is cleaned (test 'a name with spaces is cleaned').
     [{ name: 'X', parts: [{ at: [0, 0, 0], color: '#ffffff' }] }, /no part could be read/],
     [{ name: 'X', parts: [{ size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff', move: { as: 'dance' } }] }, /move.as/],
     [{ name: 'X', parts: [{ size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff', repeat: { grid: [30, 30, 1], step: [1, 0, 1] } }] }, /more than/],
@@ -195,4 +195,10 @@ test('one rows entry per row is one keyboard; symbol keys and repeated names nev
   assert.deepEqual(keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`)), []);
   assert.ok(plan.parts.find((p) => p.text?.value === 'Q').at[2] > plan.parts.find((p) => p.text?.value === '1').at[2], 'rows stay front to back');
   assert.equal(new Set(plan.parts.map((p) => p.name)).size, plan.parts.length, 'every name is unique');
+});
+
+test('a name with spaces is cleaned, not refused', () => {
+  const plan = O.expandObject({ name: 'ASMR keyboard!', parts: [{ size: [1, 1, 1], color: '#ffffff' }] });
+  assert.equal(plan.name, 'ASMRKeyboard');
+  assert.equal(O.expandObject({ name: 'AsmrKeyboard', parts: [{ size: [1, 1, 1], color: '#ffffff' }] }).name, 'AsmrKeyboard');
 });

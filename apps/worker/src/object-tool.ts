@@ -221,7 +221,9 @@ export function relayKeyboard(parts: ObjectPart[]): ObjectPart[] {
  * `at` is the part's centre relative to the object's origin; y = 0 is the stage's top.
  */
 export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: string } {
-  const name = String(a.name ?? '');
+  // A name is cleaned, not refused ("ASMR Keyboard" -> AsmrKeyboard): the re-test lost a build to a space.
+  const words = String(a.name ?? '').split(/[^A-Za-z0-9]+/).filter(Boolean);
+  const name = words.map((w) => w[0]!.toUpperCase() + w.slice(1)).join('').replace(/^[0-9]+/, '').slice(0, 40) || 'MyObject';
   if (!NAME.test(name)) return { error: 'name must be a plain name (letters, digits, _), e.g. AsmrKeyboard' };
   const scale = a.scale === undefined ? 1 : Number(a.scale);
   if (!Number.isFinite(scale) || scale <= 0 || scale > 50) return { error: 'scale must be between 0 and 50' };
@@ -407,7 +409,11 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   });
   const items: InstanceSpecLite[] = [];
   const root: InstanceSpecLite = { className: 'Part', name: 'Root', props: { Size: [1, 1, 1], Position: center, Anchored: true, Transparency: 1, CanCollide: false, CanQuery: false } };
-  items.push({ className: 'Model', name: plan.name, children: [root, ...plan.parts.map(partSpec)] });
+  // The plugin takes at most 40 children per created instance (Commands.luau MAX_CHILDREN_PER_SPEC): the model is made
+  // with its first parts and the rest are added to it in batches (a full keyboard has 60+ keys).
+  const specs = plan.parts.map(partSpec);
+  const FIRST = 39, BATCH = 100;
+  items.push({ className: 'Model', name: plan.name, children: [root, ...specs.slice(0, FIRST)] });
   if (stageOn) {
     const pad = 6;
     const stageColor = HEX.test(String(a.stageColor ?? '')) ? String(a.stageColor) : '#ffd23f';
@@ -419,6 +425,10 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   for (const it of items) await ctx.execStudioOp({ op: 'delete_instances', paths: [`game.Workspace.${it.name}`] }, 20_000).catch(() => undefined);
   const made = await ctx.execStudioOp({ op: 'create_instances', items: items.map((i) => ({ ...typed(i), parent: 'game.Workspace' })) }, 120_000);
   if (!made.ok) return { error: `The object was not made: ${clipText(made.error)}` };
+  for (let i = FIRST; i < specs.length; i += BATCH) {
+    const more = await ctx.execStudioOp({ op: 'create_instances', items: specs.slice(i, i + BATCH).map((sp) => ({ ...typed(sp), parent: `game.Workspace.${plan.name}` })) }, 120_000);
+    if (!more.ok) return { error: `The object was only partly made: ${clipText(more.error)}`, changed: true, projectMutated: true };
+  }
 
   // The ground and the spawn: a bright studded field and a spawn that faces the object.
   await ctx.execStudioOp({ op: 'set_props', path: 'game.Workspace.Baseplate', props: { Color: { t: 'Color3', v: [0.38, 0.79, 0.29] }, Material: { t: 'EnumItem', v: 'Enum.Material.Plastic' } } }, 20_000).catch(() => undefined);
@@ -474,10 +484,13 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   // left it out on the live keyboard test (2026-10-01) and the game had no UI at all.
   const given = a.screen ?? a.hud;
   const keyed = moving.some((p) => p.move!.on === 'key');
-  const hud = (given === false ? null : given && typeof given === 'object' ? given : moving.length ? {
+  const defaults = moving.length ? {
     counter: keyed ? 'Keys pressed' : 'Presses',
     hint: keyed ? 'Type on your keyboard or click the keys!' : moving.some((p) => p.move!.on === 'loop') ? 'Watch it go!' : 'Click it!',
-  } : null) as Record<string, unknown> | null;
+  } : null;
+  // A screen object without a counter or hint (the re-test passed one) still gets them: the screen is never lost.
+  const asked = given && typeof given === 'object' ? given as Record<string, unknown> : null;
+  const hud = (given === false ? null : asked && (asked.counter || asked.hint) ? asked : defaults ? { ...defaults, ...(asked ?? {}) } : asked) as Record<string, unknown> | null;
   if (hud && (hud.counter || hud.hint)) {
     const screen = studdedScreen({ name: `${plan.name}HUD`, pieces: [
       ...(hud.counter ? [{ kind: 'counter' as const, name: 'Counter', text: '0', icon: String(hud.icon ?? '#').slice(0, 2), colour: 'purple' as const, plus: false, at: 'top-left' as const }] : []),

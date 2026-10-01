@@ -67,7 +67,7 @@ test('which requests are upgrades', () => {
 
 test('the run calls add_upgrades first for an upgrades request, then only checks', () => {
   const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
-  assert.match(src, /isUpgradesRequest\(text\) \? \{ upgradesFirst: true \}/);
+  assert.match(src, /isUpgradesRequest\(text\) \? \{ upgradesFirst: true\b/);
   assert.match(src, /agent\.upgradesFirst && !talkOnly && offeredAllowed\.has\('add_upgrades'\) \? \{ requiredTool: 'add_upgrades' \}/);
   assert.match(src, /call\.name === 'add_upgrades' && out\.ok\) agent\.objectBuilt = true/);
 });
@@ -78,4 +78,12 @@ test('a failed build_object is retried, not swapped for hand-made instances (the
   assert.match(lift, /agent\.objectFails = out\.ok \? 0 : \(agent\.objectFails \?\? 0\) \+ 1/);
   assert.match(lift, /if \(out\.ok \|\| agent\.objectFails >= 3\) agent\.objectFirst = false/);
   assert.doesNotMatch(src, /if \(call\.name === 'build_object'\) agent\.objectFirst = false;/, 'one failure lifts the fence again');
+});
+
+test('after the object is built an object run cannot add upgrades, and an upgrades run cannot rebuild the object', () => {
+  const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
+  const after = src.slice(src.indexOf('const AFTER_OBJECT'), src.indexOf('const AFTER_OBJECT') + 400);
+  assert.match(after, /agent\.upgradesRun\s*\?\s*\['add_upgrades'/);
+  assert.doesNotMatch(after.slice(after.indexOf(": ['build_object'")), /add_upgrades/, 'an object run may add upgrades');
+  assert.doesNotMatch(after.slice(0, after.indexOf(": ['build_object'")), /'build_object'/, 'an upgrades run may rebuild the object');
 });

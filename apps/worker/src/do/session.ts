@@ -280,6 +280,8 @@ interface AgentState {
   objectFails?: number;
   /** An upgrades request: add_upgrades is this run's first project change, then the run only checks and answers. */
   upgradesFirst?: boolean;
+  /** This run answers an upgrades request (it stays true after add_upgrades). */
+  upgradesRun?: boolean;
   /** build_object succeeded: the rest of the run checks and answers (live 2026-10-01: it kept adding its own sounds and scripts). */
   objectBuilt?: boolean;
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
@@ -3505,7 +3507,7 @@ export class SessionDO extends DurableObject<Env> {
       ...(mode === 'agent' && !continueLine && !('error' in ideaRecipe(text)) ? { composeFirst: true } : {}),
       focused: true,
       ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isObjectRequest(text) ? { objectFirst: true } : {}),
-      ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isUpgradesRequest(text) ? { upgradesFirst: true } : {}),
+      ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isUpgradesRequest(text) ? { upgradesFirst: true, upgradesRun: true } : {}),
       uiTheme: asUiTheme(uiTheme),
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
@@ -3961,7 +3963,11 @@ export class SessionDO extends DurableObject<Env> {
           : 'The steps you asked for stopped because one of them did not work. Look at what was changed before you carry on.');
       return;
     }
-    const AFTER_OBJECT = new Set(['build_object', 'add_upgrades', 'play_check', 'play_check_ui', 'get_output_logs', 'get_project_tree']);
+    // After the one thing is made the run only checks and answers: an object run may rebuild the object, an upgrades
+    // run may redo the upgrades, and neither adds the other (the re-test added an upgrades shop nobody asked for).
+    const AFTER_OBJECT = new Set(agent.upgradesRun
+      ? ['add_upgrades', 'play_check_ui', 'get_output_logs', 'get_project_tree']
+      : ['build_object', 'play_check', 'get_output_logs', 'get_project_tree']);
     const focusedAllowed = new Set([...offeredCapabilityFilter.allowed].filter((tool) =>
       agent.objectBuilt ? AFTER_OBJECT.has(tool) : agent.focused ? offeredWhenFocused(tool) : tool !== 'more_tools'));
     const offeredAllowed = sequenceStep?.state === 'next'
