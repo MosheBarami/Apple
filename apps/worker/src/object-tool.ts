@@ -177,6 +177,7 @@ const KEY_WIDTH: [RegExp, number][] = [
 ];
 const PASTEL = ['#7be0ff', '#ff7bd1', '#ffe27a', '#9bff8a', '#b69bff'];
 
+const GLOW_NAME = /glow|neon|led(?![a-z])|laser|flame|fire(?!truck)|plasma|lava|spark(?!le)|beam|aura/i;
 const vol = (p: ObjectPart) => p.size[0] * p.size[1] * p.size[2];
 const holds = (q: ObjectPart, at: V3, margin = 0.05) => [0, 1, 2].every((i) => Math.abs(at[i]! - q.at[i]!) < q.size[i]! / 2 - margin);
 const UP_WORDS = /top|lid|icing|frosting|glaze|topping|sprinkle|cap|cream|sauce|fold|flap|knob|handle|stem|leaf|bow/i;
@@ -773,7 +774,8 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
         ...(key ? { key } : {}),
         ...(count === 1 && typeof p.rides === 'string' && NAME.test(p.rides) ? { rides: p.rides } : {}),
         ...(p.surface === 'smooth' ? { surface: 'smooth' as const } : {}),
-        ...(p.material === 'Neon' ? { material: 'Neon' as const } : {}),
+        // A part named for a glow glows (test 3 round 7: a "GlowStripe" and two "Flame"s came out as plain plastic).
+        ...(p.material === 'Neon' || (p.material === undefined && GLOW_NAME.test(base)) ? { material: 'Neon' as const } : {}),
         ...(p.own === true ? { own: true } : {}),
       });
     }
@@ -933,7 +935,14 @@ export function objectForUser(plan: ObjectPlan): string {
   const places = new Map(placesOf(plan.parts).map((line) => { const m = /^(\w+) is (on top of|under|on the front of|on) \w+$/.exec(line); return [m?.[1] ?? '', m?.[2] ?? 'on'] as const; }));
   const where = (w: string) => w === 'on top of' ? 'on top' : w === 'under' ? 'underneath' : w === 'on the front of' ? 'on the front' : 'on its sides';
   const details: string[] = [];
-  for (const w of ['on top of', 'under', 'on the front of', 'on']) {
+  // Many details are said as one short list, with no places (test 3 round 7: "a flame ... on the front and a flame ...
+  // on its sides" for one pair of flames).
+  if (decor.length > 4) {
+    const said = sayParts(decor.map((p) => p.name), 6);
+    const rest = said[said.length - 1] === 'more' ? said.slice(0, -1) : said;
+    details.push(`${rest.slice(0, -1).join(', ')} and ${rest[rest.length - 1]}${said.length > rest.length ? ' among other details' : ''}`);
+  }
+  for (const w of decor.length > 4 ? [] : ['on top of', 'under', 'on the front of', 'on']) {
     const group = decor.filter((p) => (places.get(p.name) ?? 'on') === w).map((p) => p.name);
     if (!group.length) continue;
     const said = sayParts(group, 4);
@@ -949,7 +958,9 @@ export function objectForUser(plan: ObjectPlan): string {
   if (by('click').length) acts.push(`Click it and ${whole ? 'the whole thing' : who(by('click'))} ${by('click').length === 1 ? as(by('click')[0]!) : 'move'}${by('click').some((p) => p.move!.sound) ? ' with a sound' : ''}`);
   if (by('touch').length) acts.push(`walk into it and ${who(by('touch'))} ${by('touch').length === 1 ? as(by('touch')[0]!) : 'move'}`);
   if (by('prompt').length) acts.push(`walk up and press E to use it`);
-  if (by('loop').length) acts.push(`${who(by('loop'))} ${by('loop').length === 1 ? as(by('loop')[0]!) : 'move'} all the time`);
+  // Many looping details are summed up, not listed again.
+  if (by('loop').length > 3) acts.push('its other details move all the time');
+  else if (by('loop').length) acts.push(`${who(by('loop'))} ${by('loop').length === 1 ? as(by('loop')[0]!) : 'move'} all the time`);
   const bits = [...words, ...details];
   const look = bits.length > 1 ? `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}` : bits[0] ?? '';
   const kit = plan.cool ? 'Now it sparkles and glows, four neon orbs circle above it, and the rim of its stage lights up.' : '';

@@ -931,3 +931,26 @@ test('an object run builds at most twice (test 3 round 6: three builds in one ru
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
   assert.match(session, /t\.tool === 'build_object' && t\.ok\)\.length \?\? 0\) >= 2 \? \[\] : \['build_object'\]/);
 });
+
+// Test 3 round 7 (2026-10-01): a "GlowStripe" and "Flame"s were plain plastic, and the answer said one pair of
+// flames twice and ended its lists with "and more".
+test('a part named for a glow glows; many details are one short list', () => {
+  const parts = [
+    { name: 'ButterBody', size: [17, 3, 3], at: [0, 1.5, 0], color: '#ffe066', move: { as: 'bob', on: 'touch' } },
+    { name: 'Crown', size: [2, 4, 4], at: [0, 5, 0], color: '#ffd23f', move: { as: 'spin', on: 'loop' } },
+    { name: 'FlameLeft', size: [3, 2.5, 1.5], at: [0, 4, 1.5], color: '#ff6a00', move: { as: 'bob', on: 'loop' } },
+    { name: 'FlameRight', size: [3, 2.5, 1.5], at: [0, 1.5, -2.2], color: '#ff6a00', move: { as: 'bob', on: 'loop' } },
+    { name: 'GlowStripe', size: [14, 0.6, 0.4], at: [0, 2.6, 1.7], color: '#7dff6a', move: { as: 'pop', on: 'loop' } },
+    { name: 'EyeLeft', size: [1.7, 1.2, 1.2], at: [-3.6, 3.6, 0], color: '#ffffff', move: { as: 'pop', on: 'loop' } },
+    { name: 'EyeRight', size: [1.7, 1.2, 1.2], at: [3.6, 3.6, 0], color: '#ffffff' },
+    { name: 'GlowStripeSoft', size: [1, 1, 1], at: [0, 1, -3], color: '#ff00ff', material: 'Plastic' },
+  ];
+  const plan = O.expandObject({ name: 'StickOfButter', parts });
+  const by = Object.fromEntries(plan.parts.map((p) => [p.name, p]));
+  assert.equal(by.GlowStripe.material, 'Neon'); assert.equal(by.FlameLeft.material, 'Neon');
+  assert.equal(by.Crown.material, undefined); assert.equal(by.GlowStripeSoft.material, undefined, 'a material the model chose stays');
+  const said = O.objectForUser(plan);
+  assert.equal((said.match(/flame/g) ?? []).length, 1, said);
+  assert.ok(!/and more\b|more on/.test(said), said);
+  assert.match(said, /its other details move all the time/);
+});
