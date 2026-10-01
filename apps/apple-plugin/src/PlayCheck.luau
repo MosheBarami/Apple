@@ -140,6 +140,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local started = os.clock()
 local since = tonumber(args.since) or 0
 local seconds = math.clamp(tonumber(args.seconds) or 5, 3, 15)
+-- A game Apple composed starts its first wave at once in a check (AppleWaves reads this); other games ignore it.
+pcall(function() workspace:SetAttribute("AppleQuickStart", true) end)
 local scriptErrors = {}
 watchErrors(ScriptContext, scriptErrors)
 
@@ -534,6 +536,103 @@ local function pressAll(player, playerGui, list)
 	return results
 end
 
+-- A GAME APPLE COMPOSED (apps/worker/src/compose.ts) is played as a player would: buy the cheapest item, place it on the
+-- player's own tiles nearest the lane, then watch: did a wave come, do the creatures' joints move, was anything earned.
+-- Only a place with ReplicatedStorage.AppleBuy runs this; anything else reports composed = false.
+local appleProbe = { composed = false }
+task.spawn(function()
+	local buy = ReplicatedStorage:WaitForChild("AppleBuy", 8)
+	if not buy or not buy:IsA("RemoteFunction") then return end
+	local CollectionService = game:GetService("CollectionService")
+	local player = Players.LocalPlayer
+	local probe = { composed = true, bought = 0, buyErrors = {}, samples = 0, creatures = 0, enemies = 0, defenders = 0,
+		enemyJoints = 0, enemyJointsMoving = 0, defenderJoints = 0, defenderJointsMoving = 0 }
+	appleProbe = probe
+	local function money()
+		local stats = player:FindFirstChild("leaderstats")
+		for _, v in (if stats then stats:GetChildren() else {}) do
+			if v:IsA("NumberValue") or v:IsA("IntValue") then return v.Value end
+		end
+		return nil
+	end
+	local t0 = os.clock()
+	while not player:GetAttribute("Plot") and os.clock() - t0 < 8 do task.wait(0.25) end
+	probe.plot = player:GetAttribute("Plot")
+	probe.moneyStart = money()
+	local catalog = ReplicatedStorage:FindFirstChild("AppleCatalog")
+	local cheapest, price = nil, math.huge
+	for _, f in (if catalog then catalog:GetChildren() else {}) do
+		local p = f:GetAttribute("Price") or 0
+		if p < price then cheapest, price = f.Name, p end
+	end
+	probe.item = cheapest
+	local map = workspace:FindFirstChild("AppleMap")
+	local plots = map and map:FindFirstChild("Plots")
+	local plot = plots and probe.plot and plots:FindFirstChild(probe.plot)
+	local lanePoints = {}
+	local lanes = map and map:FindFirstChild("Lanes")
+	for _, lane in (if lanes then lanes:GetChildren() else {}) do
+		for _, w in lane:GetChildren() do if w:IsA("BasePart") then table.insert(lanePoints, w.Position) end end
+	end
+	local function nearLane(t)
+		local best = math.huge
+		for i = 1, #lanePoints - 1 do
+			local a, b = lanePoints[i], lanePoints[i + 1]
+			local ab = b - a
+			local k = math.clamp((t.Position - a):Dot(ab) / math.max(ab:Dot(ab), 1e-6), 0, 1)
+			best = math.min(best, (t.Position - (a + ab * k)).Magnitude)
+		end
+		return best
+	end
+	local tiles = {}
+	if plot then
+		for _, t in CollectionService:GetTagged("AppleTile") do if t:IsA("BasePart") and t:IsDescendantOf(plot) then table.insert(tiles, t) end end
+	end
+	table.sort(tiles, function(a, b) return nearLane(a) < nearLane(b) end)
+	probe.tiles = #tiles
+	for i = 1, math.min(3, #tiles) do
+		if not cheapest then break end
+		local ok, placed, message = pcall(function() return buy:InvokeServer(cheapest, tiles[i]) end)
+		if ok and placed then probe.bought += 1 elseif #probe.buyErrors < 3 then table.insert(probe.buyErrors, clip(if ok then message else placed, 120)) end
+	end
+	probe.moneyAfterBuy = money()
+	local last, moving = {}, {}
+	for _ = 1, 50 do
+		task.wait(0.5)
+		probe.samples += 1
+		local enemies, defenders, eJ, dJ, eM, dM = 0, 0, 0, 0, 0, 0
+		for _, m in CollectionService:GetTagged("AppleCreature") do
+			if m:IsA("Model") and m:IsDescendantOf(workspace) then
+				local isEnemy = CollectionService:HasTag(m, "AppleEnemy")
+				if isEnemy then enemies += 1 else defenders += 1 end
+				for _, j in m:GetDescendants() do
+					if j:IsA("Motor6D") or j:IsA("Bone") then
+						local tr = j.Transform
+						local prev = last[j]
+						if prev then
+							local _, angle = (prev:Inverse() * tr):ToAxisAngle()
+							if math.abs(angle) + (prev.Position - tr.Position).Magnitude > 0.01 then moving[j] = true end
+						end
+						last[j] = tr
+						if isEnemy then eJ += 1; if moving[j] then eM += 1 end else dJ += 1; if moving[j] then dM += 1 end end
+					end
+				end
+			end
+		end
+		probe.enemies = math.max(probe.enemies, enemies)
+		probe.defenders = math.max(probe.defenders, defenders)
+		if eJ > 0 then probe.enemyJoints = math.max(probe.enemyJoints, eJ); probe.enemyJointsMoving = math.max(probe.enemyJointsMoving, eM) end
+		if dJ > 0 then probe.defenderJoints = math.max(probe.defenderJoints, dJ); probe.defenderJointsMoving = math.max(probe.defenderJointsMoving, dM) end
+		local state = ReplicatedStorage:FindFirstChild("AppleState")
+		if state then
+			probe.wave = state:GetAttribute("Wave")
+			probe.phase = state:GetAttribute("Phase")
+			probe.baseHealth = state:GetAttribute("BaseHealth")
+		end
+		probe.moneyEnd = money()
+	end
+end)
+
 -- The counters a moment after the character spawned: before the server's wait and touches, once the game has had time to build its
 -- screen and load its data.
 local firstCounters = nil
@@ -567,7 +666,7 @@ channel.OnClientEvent:Connect(function(request)
 	local afterPresses = if #presses > 0 then readCounters() else nil
 	local guis, others = census(playerGui)
 	local errors, warnings = collectLogs(LogService, tonumber(request.since) or 0, scriptErrors)
-	channel:FireServer({ nonce = marker, playerGui = playerGui ~= nil, screenGuis = guis, otherChildren = others, errors = errors, warnings = warnings, presses = presses, hud = { first = firstCounters, afterWait = afterWait, afterPresses = afterPresses, widgets = if okWidgets then widgetsAtStart else nil } })
+	channel:FireServer({ nonce = marker, playerGui = playerGui ~= nil, screenGuis = guis, otherChildren = others, errors = errors, warnings = warnings, presses = presses, hud = { first = firstCounters, afterWait = afterWait, afterPresses = afterPresses, widgets = if okWidgets then widgetsAtStart else nil }, apple = appleProbe })
 end)
 ]==]
 
@@ -753,7 +852,20 @@ function PlayCheck.normalise(report: any, seconds: number): any
 		end
 	end
 	local stage = clipText(report.stage or "unknown", 24)
+	local apple = nil
+	if client and type(client.apple) == "table" and client.apple.composed == true then
+		local a = client.apple
+		local num = function(v) return if type(v) == "number" then v else nil end
+		local errs = {}
+		for i, e in (if type(a.buyErrors) == "table" then a.buyErrors else {}) do if i <= 3 then table.insert(errs, clipText(e, 120)) end end
+		apple = { composed = true, plot = clipText(a.plot, 40), item = clipText(a.item, 60), tiles = num(a.tiles), bought = num(a.bought), buyErrors = errs,
+			moneyStart = num(a.moneyStart), moneyAfterBuy = num(a.moneyAfterBuy), moneyEnd = num(a.moneyEnd), samples = num(a.samples),
+			enemies = num(a.enemies), defenders = num(a.defenders), enemyJoints = num(a.enemyJoints), enemyJointsMoving = num(a.enemyJointsMoving),
+			defenderJoints = num(a.defenderJoints), defenderJointsMoving = num(a.defenderJointsMoving), wave = num(a.wave),
+			phase = clipText(a.phase, 20), baseHealth = num(a.baseHealth) }
+	end
 	return {
+		apple = apple,
 		completed = stage == "done",
 		stage = stage,
 		requestedSeconds = seconds,

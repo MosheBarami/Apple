@@ -16,6 +16,7 @@
     "state": "ReplicatedStorage.AppleState attributes: Wave, Phase (intermission|wave|lost), NextWaveIn, EnemiesLeft, BaseHealth, BaseHealthMax",
     "enemies": "Workspace.AppleEnemies: live enemies tagged AppleEnemy and AppleCreature, attributes Health, MaxHealth, Reward, Enemy; set Health lower and LastHitBy to hit one",
     "rewards": "a defeated enemy's Reward goes to the player who hit it last (or everyone)",
-    "loss": "the base at 0 clears the enemies and starts again from wave 1 after 6 s"
+    "loss": "the base at 0 clears the enemies and starts again from wave 1 after 6 s",
+    "test": "Workspace attribute AppleQuickStart makes every countdown end in 2 s (set only by a test)"
   }
 }

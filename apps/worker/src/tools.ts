@@ -80,6 +80,7 @@ import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, inser
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
 import { planGame, buildGame, planSummary, buildSummary, plannedLoop } from './game-plan';
 import { composeGame, composeSummary } from './compose-tool';
+import { judgeComposed } from './composed-judge';
 import { JUDGE_GAME_DEF, judgeGame, judgeSummary } from './client-judge';
 import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
@@ -3066,9 +3067,11 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: JUDGE_GAME_DEF,
     studio: true,
     // play_check_ui is reported supported only when play_check is (Commands.capabilities), so it stands for both.
-    studioOps: ['get_tree', 'query_instances', 'spatial_query', 'dump_scripts', 'ui_layout_check', 'play_check_ui'],
+    studioOps: ['get_tree', 'query_instances', 'spatial_query', 'dump_scripts', 'ui_layout_check', 'play_check_ui', 'read_script'],
     plainSummary: judgeSummary,
-    run: async (ctx, a) => judgeGame(studioCall(ctx), a, { knownLoop: await plannedLoop(ctx).catch(() => undefined) }),
+    // A game compose_game made is judged on what the owner asked for (composed-judge.ts); anything else as before.
+    run: async (ctx, a) => (typeof a.request === 'string' && a.request.trim() ? await judgeComposed(studioCall(ctx), a.request.trim().slice(0, 1200)) : null)
+      ?? judgeGame(studioCall(ctx), a, { knownLoop: await plannedLoop(ctx).catch(() => undefined) }),
   },
   get_output_logs: {
     def: { name: 'get_output_logs', description: 'Read recent Studio output/console logs (errors, warnings, prints).', parameters: S({}) },

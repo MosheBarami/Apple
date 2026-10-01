@@ -185,7 +185,13 @@ function AppleWaves.start(config: any, economy: any?)
 			-- Intermission, counted down for the screens.
 			local wait = if wave == 0 then (cfg.first or 12) else (cfg.between or 10)
 			setState("Phase", "intermission")
-			for t = wait, 1, -1 do setState("NextWaveIn", t); task.wait(1) end
+			-- A test (Apple's play check) sets Workspace.AppleQuickStart: the countdown then ends in two seconds, so a short
+			-- test session sees a wave. Players never set it.
+			for t = wait, 1, -1 do
+				if workspace:GetAttribute("AppleQuickStart") and t > 2 then continue end
+				setState("NextWaveIn", t)
+				task.wait(1)
+			end
 			setState("NextWaveIn", 0)
 			while #Players:GetPlayers() == 0 do task.wait(1) end
 			wave += 1

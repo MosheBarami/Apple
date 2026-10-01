@@ -141,3 +141,34 @@ test('compose: every property the map writes is one the plugin will write (one r
   for (const s of steps.filter((x) => x.kind === 'create')) walk(s.items);
   for (const k of used) assert.ok(allowed.has(k), `${k} is not in the plugin's write allowlist`);
 });
+
+const outJ = join(mkdtempSync(join(tmpdir(), 'cjudge-')), 'j.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'composed-judge.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + outJ], { cwd: WORKER, stdio: 'pipe' });
+const J = await import(`file://${outJ}`);
+const IDEA = 'defend your orchard from vegetables that come in waves';
+
+test('composed judge: it reads the config the composer wrote', () => {
+  const cfg = J.readConfig(steps.find((s) => s.name === 'AppleGameConfig').source);
+  assert.equal(cfg.title, 'Orchard Siege');
+  assert.deepEqual([...cfg.enemies].sort(), recipe.enemies.map((e) => e.name).sort());
+  assert.deepEqual([...cfg.creatures].sort(), recipe.enemies.map((e) => e.name).sort());
+  assert.equal(cfg.costumed, recipe.enemies.length);
+  assert.deepEqual(cfg.items, recipe.defenders.map((d) => d.id));
+  assert.equal(J.readConfig('return { foo = 1 }'), null, 'a place the composer did not make goes to the older judge');
+});
+
+const GOOD = { apple: { composed: true, bought: 2, moneyStart: 60, moneyAfterBuy: 10, moneyEnd: 22, enemies: 4, wave: 1, enemyJoints: 24, enemyJointsMoving: 22, defenderJoints: 2, defenderJointsMoving: 2 } };
+
+test('composed judge: a game that plays as asked is ready; each of the owner\'s failures fails it', () => {
+  const cfg = J.readConfig(steps.find((s) => s.name === 'AppleGameConfig').source);
+  const world = ['Camera', 'Terrain', 'AppleMap', 'AppleEnemies', 'AppleDefenders'];
+  const ok = J.judgeFindings(IDEA, cfg, world, GOOD, { errors: [], loadFailures: ['Failed to load animation 114302219876492'] });
+  assert.equal(J.verdictOf(ok).verdict, 'ready', JSON.stringify(ok.filter((f) => !f.ok)));
+  const fail = (f) => J.verdictOf(f).verdict === 'not ready';
+  assert.ok(fail(J.judgeFindings(IDEA, cfg, [...world, 'Map', 'Lobby'], GOOD, { errors: [], loadFailures: [] })), 'a copied world fails');
+  assert.ok(fail(J.judgeFindings(IDEA, { ...cfg, enemies: ['Tung Tung', ...cfg.enemies] }, world, GOOD, { errors: [], loadFailures: [] })), 'a twist not built fails');
+  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, { apple: { ...GOOD.apple, enemyJointsMoving: 0 } }, { errors: [], loadFailures: [] })), 'a creature that does not move fails');
+  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, GOOD, { errors: [], loadFailures: ['Failed to load 111111', 'Failed to load 222222', 'Failed to load 333333'] })), 'assets that do not load fail');
+  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, { apple: { ...GOOD.apple, moneyEnd: 10 } }, { errors: [], loadFailures: [] })), 'a loop that pays nothing fails');
+  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, null, { errors: [], loadFailures: [] })), 'not played is never ready');
+});

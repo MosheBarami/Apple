@@ -25,17 +25,20 @@ export const PVB_KIT: KitProfile = {
     shopList: 'Main.Seeds.Frame.ScrollingFrame',
     shopCard: 'Main.Seeds.Frame.ScrollingFrame.SeedSlot',
   },
+  // A composed game carries only what it uses: every panel of the kit's game this game has no system for is deleted,
+  // not hidden (a hidden pet, egg or admin panel is still that other game's feature in this one).
   remove: [
-    'Main.LowPerformance.LocalScript', 'Main.PlaceVersion.label.version', 'Main.DefeatCounter.TextLabel.LocalScript',
-    'Main.Shop.Main.ScrollingFrame.SpookyPlantCrate.Limited_Animations_PlantCrate',
-    'Main.Shop.Main.ScrollingFrame.LimitedSeed_V2.Limited_Animations',
-    'Main.Shop.Main.ScrollingFrame.SpookyPlantCrate.Chances.Frame.Frame.TextButton.Chances',
+    'Main.Left', 'Main.CrateOpening', 'Main.Gifting', 'Main.Settings', 'Main.Tutorial', 'Main.Index', 'Main.Effects',
+    'Main.Gears', 'Main.AutoSell', 'Main.Admin', 'Main.Rewards', 'Main.GroupReward', 'Main.BrainrotNoti',
+    'Main.Rebirth', 'Main.EggOpening', 'Main.Codes', 'Main.Stats', 'Main.Upgrade', 'Main.CashPerSecond',
+    'Main.PlaceVersion', 'Main.LowPerformance', 'Main.Boss', 'Main.Empty', 'Main.LuckIncreaseNotif',
+    'Main.Update_Timer', 'Main.FPSCounter', 'Main.WheelbarrowTokens', 'Main.DialogueFrame', 'Main.Brainrot_Invasion',
+    'Main.ImminentAttackSplash', 'Main.Victory_Screen', 'Main.Biome_OLD', 'Main.Biome', 'Main.Crates',
+    'Main.Event_Candy', 'Main.CratePreview', 'Main.Shop', 'Main.SpookyPlantCratePreview', 'Main.Right.Garden',
+    'Main.Right.Sell', 'Main.Right.Folder', 'Main.Right.PopupTemplate', 'Main.Seeds.InstantRestock',
+    'Main.Seeds.Restock',
   ],
-  hide: [
-    'Main.Left', 'Main.Tutorial', 'Main.Effects', 'Main.BrainrotNoti', 'Main.Upgrade', 'Main.CashPerSecond', 'Main.PlaceVersion',
-    'Main.Empty', 'Main.Update_Timer', 'Main.FPSCounter', 'Main.DialogueFrame', 'Main.Right.Garden', 'Main.Right.Sell',
-    'Main.Right.Folder', 'Main.Seeds.InstantRestock', 'Main.Seeds.Restock',
-  ],
+  hide: [],
 };
 
 const BODY = {
