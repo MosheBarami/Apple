@@ -589,8 +589,8 @@ test('an object nobody gave a move wobbles on a click as one, with a sound, so i
   assert.ok(!/keycap/.test(said), said);
   assert.match(said, /made of: .*Label/);
   assert.match(said, /no words are printed/, 'says the label has no words, so the reply cannot promise a printed one');
-  // A model that gave a move keeps its own.
-  const own = O.expandObject({ ...BUTTER, parts: [{ ...BUTTER.parts[0], move: { as: 'spin', on: 'loop' } }, ...BUTTER.parts.slice(1)] });
+  // A model that gave a move keeps its own; RESTATED round 6: a loop-only move is set off by a click instead.
+  const own = O.expandObject({ ...BUTTER, parts: [{ ...BUTTER.parts[0], move: { as: 'spin', on: 'click' } }, ...BUTTER.parts.slice(1)] });
   assert.equal(own.gaveMotion, undefined);
   assert.equal(own.parts.find((p) => p.name === 'Butter').move.as, 'spin');
 });
@@ -674,10 +674,31 @@ test('a wrapper laid over the whole top goes under the body, and its words stay 
   const plan = O.expandObject(ROUND4);
   const by = Object.fromEntries(plan.parts.map((p) => [p.name, p]));
   assert.ok(by.Wrapper.at[1] < by.Butter.at[1], 'under the butter');
-  assert.equal(by.Wrapper.text?.value, 'SALTED', 'its words stay');
+  assert.equal(by.Wrapper.text?.value, 'SALTED', 'its words stay: its edge is 1.2 studs tall');
   assert.equal(by.Wrapper.text.face, 'Back', 'on its edge facing the spawn, not under the butter');
+  // Round 6: on a 0.4-stud edge nobody can read them, so they go and the summary cannot promise them.
+  const thin = O.expandObject({ ...ROUND4, parts: [ROUND4.parts[0], { ...ROUND4.parts[1], size: [7.2, 0.4, 31.2] }] });
+  assert.equal(thin.parts.find((p) => p.name === 'Wrapper').text, undefined);
+  assert.ok(!/SALTED/.test(O.builtSummary(thin, 2, 0, true)));
   // A topping on top stays on top.
   const cake = [{ name: 'Cake', size: [10, 6, 10], at: [0, 3, 0] }, { name: 'Icing', size: [10, 1, 10], at: [0, 6.5, 0] }];
   O.unbury(cake);
   assert.equal(cake[1].at[1], 6.5);
+});
+
+test('an object whose moves all play by themselves answers a click (round 6: a bobbing butter nobody could press)', () => {
+  const plan = O.expandObject({ name: 'StickOfButter', parts: [
+    { name: 'Butter', size: [3, 3, 12], at: [0, 1.5, 0], color: '#ffe066', move: { as: 'bob', on: 'loop' } },
+    { name: 'Wrapper', size: [3.4, 0.4, 12.4], at: [0, 0.2, 0], color: '#fff9c4' },
+  ] });
+  const butter = plan.parts.find((p) => p.name === 'Butter');
+  assert.deepEqual([butter.move.as, butter.move.on], ['bob', 'click']);
+  assert.equal(plan.gaveMotion, 'Butter');
+  assert.match(O.builtSummary(plan, 1, 0, true), /Butter moves when clicked/);
+  // A loop beside something the player can press stays a loop.
+  const fan = O.expandObject({ name: 'Fan', parts: [
+    { name: 'Blades', size: [8, 0.5, 8], at: [0, 6, 0], move: { as: 'spin', on: 'loop' } },
+    { name: 'Button', size: [1, 1, 1], at: [3, 0.5, 0], move: { as: 'press', on: 'click' } },
+  ] });
+  assert.equal(fan.parts.find((p) => p.name === 'Blades').move.on, 'loop');
 });

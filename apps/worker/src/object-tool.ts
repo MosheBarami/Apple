@@ -219,9 +219,12 @@ export function readableText(parts: ObjectPart[]): string[] {
     if (!p.text || p.key || p.text.face !== 'Top') continue;
     const above: V3 = [p.at[0], p.at[1] + p.size[1] / 2 + 0.1, p.at[2]];
     if (!parts.some((q) => q !== p && holds(q, above, 0))) continue;
-    // A thin part whose body already has words keeps its own, on its thin spawn-side edge: small, but seen.
-    if (p.size[1] >= 1.5 || !body || body === p || body.text) p.text = { ...p.text, face: 'Back' };
-    else { body.text = { ...p.text, face: 'Back' }; delete p.text; }
+    // A thin part whose body already has words keeps its own on its spawn-side edge when that edge is a stud tall or
+    // more; on a thinner edge nobody can read them, so they go (round 6: "SALTED" on a 0.4-stud wrapper edge).
+    if (p.size[1] >= 1.5 || !body || body === p) p.text = { ...p.text, face: 'Back' };
+    else if (!body.text) { body.text = { ...p.text, face: 'Back' }; delete p.text; }
+    else if (p.size[1] >= 1) p.text = { ...p.text, face: 'Back' };
+    else delete p.text;
     moved.push(p.name);
   }
   return moved;
@@ -253,7 +256,16 @@ export function fitFactor(parts: ObjectPart[]): number {
  * thing reacts as one. Pure; returns the part that now moves, if any.
  */
 export function giveMotion(parts: ObjectPart[]): string | undefined {
-  if (parts.length === 0 || parts.some((p) => p.move || p.key || p.rides)) return undefined;
+  if (parts.length === 0 || parts.some((p) => p.key)) return undefined;
+  // Moves that only play by themselves leave the player nothing to do (round 6: a butter that bobbed on a loop, a
+  // reply saying "click it!", and a counter stuck at 0): the biggest of them plays on a click instead.
+  const moving = parts.filter((p) => p.move);
+  if (moving.length && moving.every((p) => p.move!.on === 'loop' || p.move!.on === 'once')) {
+    const lead = [...moving].sort((a, b) => vol(b) - vol(a))[0]!;
+    lead.move = { ...lead.move!, on: 'click' };
+    return lead.name;
+  }
+  if (moving.length || parts.some((p) => p.rides)) return undefined;
   const body = [...parts].filter((p) => (p.transparency ?? 0) <= 0.5).sort((a, b) => vol(b) - vol(a))[0] ?? parts[0]!;
   body.move = { as: 'wobble', on: 'click', sound: 'squish' };
   for (const p of parts) if (p !== body) p.rides = body.name;
@@ -736,7 +748,8 @@ export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number
       const worded = plan.parts.filter((p) => p.text).map((p) => `${p.name} reads "${p.text!.value}"`);
       return `made of: ${plan.parts.map((p) => p.name).join(', ')}; ${worded.length ? worded.join(', ') : 'no words are printed on it'}`;
     })(),
-    plan.gaveMotion ? `clicking it makes the whole thing wobble with a squish` : '',
+    plan.gaveMotion ? (plan.parts.find((p) => p.name === plan.gaveMotion)?.move?.as === 'wobble' && plan.parts.some((p) => p.rides === plan.gaveMotion)
+      ? 'clicking it makes the whole thing wobble with a squish' : `${plan.gaveMotion} moves when clicked`) : '',
     plan.grown ? `grown ${plan.grown}x so it stands bigger than a player` : '',
   ].filter(Boolean);
   return how.join('; ');
