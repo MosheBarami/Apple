@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -128,4 +128,16 @@ test('compose_game: composer values become the plugin\'s typed values', () => {
   assert.equal(c.t, 'Color3'); assert.equal(c.v[0], 1); assert.ok(Math.abs(c.v[1] - 128 / 255) < 1e-9); assert.equal(c.v[2], 0);
   assert.deepEqual(CR.propValue('Anchored', true), { t: 'bool', v: true });
   assert.deepEqual(CR.propValue('', 'AppleTile'), { t: 'string', v: 'AppleTile' });
+});
+
+test('compose: every property the map writes is one the plugin will write (one refused property loses the whole map)', () => {
+  // Seen live 2026-09-30: SpawnLocation.Duration was refused, so create_instances refused the whole AppleMap.
+  const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+  const block = plugin.slice(plugin.indexOf('local PROPERTY_ALLOW = {'), plugin.indexOf('\n}', plugin.indexOf('local PROPERTY_ALLOW = {')));
+  const allowed = new Set([...block.matchAll(/^\s*([A-Za-z_]+)\s*=\s*true/gm)].map((m) => m[1]));
+  assert.ok(allowed.has('Size') && allowed.has('Material'), 'read the allowlist');
+  const used = new Set();
+  const walk = (items) => { for (const i of items) { Object.keys(i.props ?? {}).forEach((k) => used.add(k)); walk(i.children ?? []); } };
+  for (const s of steps.filter((x) => x.kind === 'create')) walk(s.items);
+  for (const k of used) assert.ok(allowed.has(k), `${k} is not in the plugin's write allowlist`);
 });

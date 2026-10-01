@@ -43,12 +43,14 @@ export interface RunReport {
   /** Library pieces that did not come in, by key. A game missing one of these is not the game the recipe describes. */
   missing: string[];
   stopped?: string;
+  /** What makes the game not the game at all (no map, no props): the build is a failure, whatever else came in. */
+  critical: string[];
 }
 
 const clip = (s: unknown) => String(s ?? '').slice(0, 300);
 
 export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done: number, total: number, what: string) => void): Promise<RunReport> {
-  const report: RunReport = { counts: {}, problems: [], missing: [] };
+  const report: RunReport = { counts: {}, problems: [], missing: [], critical: [] };
   const count = (k: string) => { report.counts[k] = (report.counts[k] ?? 0) + 1; };
   const op = async (o: StudioOp, ms = 60_000) => ctx.execStudioOp(o, ms);
   const places = steps.filter((s): s is Extract<Step, { kind: 'place' }> => s.kind === 'place');
@@ -66,7 +68,11 @@ export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done:
       // A rerun on the same place replaces what an earlier run made, rather than stacking a second copy.
       await op({ op: 'delete_instances', paths: s.items.map((i) => `${s.parent}.${i.name}`) }).catch(() => undefined);
       const out = await op({ op: 'create_instances', items: s.items.map((i) => ({ ...typed(i), parent: s.parent })) }, 120_000);
-      if (out.ok) count('create'); else report.problems.push(`create in ${s.parent}: ${clip(out.error)}`);
+      if (out.ok) count('create');
+      else {
+        report.problems.push(`create in ${s.parent}: ${clip(out.error)}`);
+        if (s.parent === 'game.Workspace') report.critical.push(`the map was not made: ${clip(out.error)}`);
+      }
     } else if (s.kind === 'script') {
       const path = `${s.parent}.${s.name}`;
       await op({ op: 'delete_instances', paths: [path] }).catch(() => undefined);
@@ -88,7 +94,7 @@ export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done:
     const batch = places.slice(i, i + 200).map((p) => ({ from: `game.${p.from}`, parent: `game.${p.parent}`, name: p.name, at: p.at, yaw: p.yaw,
       ...(p.height ? { height: p.height } : {}), ...(p.length ? { length: p.length } : {}), ...(p.along ? { along: p.along } : {}) }));
     const out = await op({ op: 'place_copies', items: batch }, 180_000);
-    if (!out.ok) { report.problems.push(`place: ${clip(out.error)}`); continue; }
+    if (!out.ok) { report.problems.push(`place: ${clip(out.error)}`); report.critical.push(`no props were placed: ${clip(out.error)}`); continue; }
     const data = out.data as { placed?: unknown[]; failed?: { index: number; error: string }[] };
     report.counts.place = (report.counts.place ?? 0) + (data.placed?.length ?? 0);
     for (const f of data.failed ?? []) report.problems.push(`place ${batch[f.index - 1]?.name ?? f.index}: ${clip(f.error)}`);

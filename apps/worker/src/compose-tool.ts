@@ -51,6 +51,13 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
   const steps = composeSteps(recipe);
   const report = await runSteps(ctx, steps);
   const built = (report.counts.import ?? 0) > 0 || (report.counts.script ?? 0) > 0;
+  if (report.critical.length) {
+    return {
+      changed: built, error: `The game was not finished: ${report.critical.join('; ')}.`,
+      forUser: `I started building ${recipe.title}, but part of it did not come out (${report.critical[0]}), so it is not playable yet. I will not call it done.`,
+      problems: report.problems.slice(0, 12),
+    };
+  }
   const enemies = recipe.enemies.map((e) => e.name.toLowerCase());
   const forUser = report.stopped
     ? `Studio disconnected while ${recipe.title} was being built, so it is only partly there. Reconnect and ask again to finish it.`

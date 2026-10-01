@@ -263,7 +263,7 @@ export function composeSteps(recipe: Recipe): Step[] {
       ...plotTiles([px, pz]).map(([tx, tz], i) => ({ ...PART(`Tile${i + 1}`, [TILE - 0.6, 1, TILE - 0.6], [tx, 0.5, tz], i % 2 === 0 ? pal.soil : pal.tile, 'Ground'), attributes: { AppleTags: 'AppleTile' } })),
     ],
   })) });
-  mapItems.push({ className: 'SpawnLocation', name: 'Spawn', props: { Size: [8, 1, 8], Position: [layout.spawn[0], 0.5, layout.spawn[1]], Anchored: true, Color: pal.border, Material: 'Wood', Neutral: true, Duration: 0 } });
+  mapItems.push({ className: 'SpawnLocation', name: 'Spawn', props: { Size: [8, 1, 8], Position: [layout.spawn[0], 0.5, layout.spawn[1]], Anchored: true, Color: pal.border, Material: 'Wood' } }); // Neutral and a short spawn shield are SpawnLocation's defaults (the plugin writes only allowlisted properties)
   steps.push({ kind: 'create', parent: 'game.Workspace', items: [{ className: 'Folder', name: 'AppleMap', children: [...mapItems, { className: 'Folder', name: 'Props' }] }] });
   steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
 
@@ -343,6 +343,8 @@ export function composeSteps(recipe: Recipe): Step[] {
 
   // 7. The UI kit: its screens, its card in the shop list, its scripts out, the panels this game does not use hidden.
   const kitKeys: string[] = [];
+  // A rebuild replaces the kit's screens instead of stacking a second copy of each.
+  steps.push({ kind: 'delete', paths: recipe.kit.screens.map((screen) => `game.StarterGui.${libName(screen)}`) });
   for (const [i, screen] of recipe.kit.screens.entries()) {
     const key = `Screen${i + 1}`;
     kitKeys.push(key);
