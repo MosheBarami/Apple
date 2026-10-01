@@ -4970,13 +4970,15 @@ export const TOOLS: Record<string, ToolImpl> = {
         name: { type: 'string' },
         scale: { type: 'number', description: 'multiplies every size; 3-6 makes a toy-sized thing walkable' },
         parts: { type: 'array', items: { type: 'object', properties: {
-          name: { type: 'string' }, shape: { type: 'string', enum: ['block', 'ball', 'cylinder', 'wedge'] },
+          name: { type: 'string', description: 'what the part is, e.g. Crown, FlameLeft, Wrapper' }, shape: { type: 'string', enum: ['block', 'ball', 'cylinder', 'wedge'] },
           size: { type: 'array', items: { type: 'number' } }, at: { type: 'array', items: { type: 'number' }, description: 'centre [x,y,z], y up from the ground' },
           color: { type: 'string', description: '#rrggbb' }, text: { type: 'string' }, key: { type: 'string' },
           repeat: { type: 'object', properties: { grid: { type: 'array', items: { type: 'number' } }, step: { type: 'array', items: { type: 'number' } }, texts: { type: 'array', items: { type: 'string' } }, keys: { type: 'array', items: { type: 'string' } } } },
           rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'key labels row by row, e.g. [["Esc","1","2"],["Q","W"],["Space"]]. Symbol keys by NAME, never the bare character: "Backslash", "Quote", "Backquote" (a bare \\ or " breaks the JSON). The F row and the modifiers are added for you.' },
           move: { type: 'object', properties: { as: { type: 'string', enum: ['press', 'spin', 'bob', 'open', 'wobble', 'pop'] }, on: { type: 'string', enum: ['key', 'click', 'touch', 'prompt', 'loop', 'once'] }, sound: { type: 'string', description: 'words, e.g. keyboard click' } } },
-        } } },
+        // A name saying what the part is, always (test 3 round 9, 2026-10-01: an upgrade's details came unnamed and the
+        // answer could only say "two red wedges"). A rows entry is named too.
+        }, required: ['name'] } },
         screen: { type: 'object' },
       }, ['name', 'parts']),
     },

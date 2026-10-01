@@ -955,3 +955,11 @@ test('a part named for a glow glows; many details are one short list', () => {
   assert.match(said, /its other details move all the time/);
   assert.match(said, /\. It has a crown, two flames/, 'many details are their own sentence (round 8)');
 });
+
+test('every build_object part must carry a name saying what it is (test 3 round 9)', () => {
+  const src = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  const at = src.indexOf("name: 'build_object',");
+  const def = src.slice(at, at + 3000);
+  assert.match(def, /name: \{ type: 'string', description: 'what the part is/);
+  assert.match(def, /\}, required: \['name'\] \} \},/);
+});
