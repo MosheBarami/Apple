@@ -231,11 +231,14 @@ test('every plot starts with the cheapest machine, and the composer says so', ()
 // Round 7 of test 1 (2026-10-01): the model's answer kept saying "you spawn in a hub"; every player starts on their plot.
 test('a checked plot simulator is answered with what the composer built and what the check measured', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  const end = session.slice(session.indexOf('if (agent.composedPlotSim && agent.composedForUser && agent.playChecked'), session.indexOf('if (agent.composedPlotSim && agent.composedForUser && agent.playChecked') + 600);
+  // RESTATED 2026-10-01 (round 8 of test 2): the same ending also answers a built object (composedObject).
+  const at = session.search(/if \(\(?agent\.composedPlotSim[^\n]*agent\.composedForUser && agent\.playChecked/);
+  assert.ok(at > 0, 'the composed ending exists');
+  const end = session.slice(at, at + 600);
   assert.match(end, /!agent\.lastCheckProblem\)/, 'only when the check passed');
   assert.match(end, /agent\.finalText = `\$\{agent\.composedForUser\}\\n\\nI play-tested it: \$\{agent\.lastCheckSeen/);
   assert.match(end, /await this\.finishRun\(agent, 'done'\);\s*return;/, 'no further model call');
-  assert.ok(session.indexOf('if (agent.composedPlotSim && agent.composedForUser && agent.playChecked') < session.indexOf('const AFTER_OBJECT'), 'before the next model step is prepared');
+  assert.ok(at < session.indexOf('const AFTER_OBJECT'), 'before the next model step is prepared');
 });
 
 // Round 9 of test 1 (2026-10-01): bare roads, and the hero's yellow stage stacked on the hub's plaza.

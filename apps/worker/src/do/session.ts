@@ -289,6 +289,8 @@ interface AgentState {
   objectBuilt?: boolean;
   /** compose_game built a plot simulator: the run plays it once and answers (the 93-step run rebuilt it by hand, 274 credits). */
   composedPlotSim?: boolean;
+  /** build_object built the one object asked for and said what it is (forUser): the run answers with that once played. */
+  composedObject?: boolean;
   /** What the composer said the player can do in the game it built: the answer when the run ends any other way. */
   composedForUser?: string;
   /** What the last play_check found wrong, in its own words (undefined when it passed). */
@@ -3986,7 +3988,8 @@ export class SessionDO extends DurableObject<Env> {
       await this.finishRun(agent, 'incomplete');
       return;
     }
-    if (agent.composedPlotSim && agent.composedForUser && agent.playChecked && !agent.lastCheckProblem) {
+    // An object run the same way (round 8 of test 2: the model's reply promised a wrapper "on top" that was under).
+    if ((agent.composedPlotSim || agent.composedObject) && agent.composedForUser && agent.playChecked && !agent.lastCheckProblem) {
       // The reply reaches the browser on msg_end (finishRun), like every other ending: nothing is streamed here.
       agent.finalText = `${agent.composedForUser}\n\nI play-tested it: ${agent.lastCheckSeen ?? 'it ran'}.`;
       await this.finishRun(agent, 'done');
@@ -4790,7 +4793,8 @@ export class SessionDO extends DurableObject<Env> {
         // "Coins 0 at the start → Coins 70 at the end" reads as "Coins went from 0 to 70".
         const ls = typeof seen?.leaderstats === 'string' ? /^(\w+) (-?[\d.,]+) at the start → \1 (-?[\d.,]+) at the end$/.exec(seen.leaderstats.trim()) : null;
         // Not "on their own": presses on the player's own machines pay too (round 13's answer overstated it).
-        const money = ls ? `${ls[1]} went from ${ls[2]} to ${ls[3]} during the test` : typeof seen?.leaderstats === 'string' ? seen.leaderstats : '';
+        // A game with no money says nothing about money (round 8 of test 2: "the player has no leaderstats folder").
+        const money = ls ? `${ls[1]} went from ${ls[2]} to ${ls[3]} during the test` : typeof seen?.leaderstats === 'string' && !/^the player has no/i.test(seen.leaderstats) ? seen.leaderstats : '';
         agent.lastCheckSeen = `${money ? `${money}, and ` : ''}${errors ? `${errors} error${errors === 1 ? '' : 's'} came up` : 'nothing errored'}`;
       }
       // The fence holds until the object is built: a failed build_object is retried with the reason, never swapped
@@ -4801,7 +4805,11 @@ export class SessionDO extends DurableObject<Env> {
       }
       // Only a run that IS one object ends at "check and answer" (owner's game request, 2026-10-01: a build_object
       // inside a whole-game run locked out every other writer and the model built plots and screens as 1-part objects).
-      if (call.name === 'build_object' && out.ok && agent.objectRun) agent.objectBuilt = true;
+      if (call.name === 'build_object' && out.ok && agent.objectRun) {
+        agent.objectBuilt = true;
+        const said = (out.detail as { forUser?: unknown } | undefined)?.forUser;
+        if (typeof said === 'string' && said.trim()) { agent.composedForUser = said.trim(); agent.composedObject = true; }
+      }
       if (call.name === 'add_upgrades' && (out.ok || (agent.trace?.filter((t) => t.tool === 'add_upgrades' && !t.ok).length ?? 0) >= 3)) agent.upgradesFirst = false;
       if (call.name === 'add_upgrades' && out.ok && agent.upgradesRun) agent.objectBuilt = true; // the same fence: check once, then answer
       if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {

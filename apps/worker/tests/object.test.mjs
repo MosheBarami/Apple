@@ -732,3 +732,24 @@ test('the summary says where each detail is on the body', () => {
   assert.match(said, /Wrapper is under Butter/);
   assert.match(said, /Pat is on top of Butter/);
 });
+
+// Test 2 round 8 (2026-10-01): the model's reply promised a "SALTED" wrapper "on top" that was under, with no words.
+test('an object run answers with what was built, once the play check passed', () => {
+  const plan = O.expandObject({ name: 'StickOfButter', request: 'make me a stick of butter', parts: [
+    { name: 'Butter', size: [3, 3, 10], at: [0, 1.9, 0], color: '#ffe066', text: 'BUTTER', move: { as: 'bob', on: 'touch' } },
+    { name: 'Wrapper', size: [3.5, 0.4, 10.5], at: [0, 3.6, 0], color: '#fff3b0', text: 'SALTED', move: { as: 'wobble', on: 'click', sound: 'paper' } },
+  ] });
+  const said = O.objectForUser(plan);
+  assert.match(said, /^Your stick of butter is in front of the spawn/);
+  assert.match(said, /"BUTTER" printed/);
+  assert.match(said, /wrapper underneath/);
+  assert.ok(!/SALTED|on top/.test(said.replace(/printed on its top/, '')), said);
+  assert.match(said, /Click it and the wrapper wobbles/);
+  assert.match(said, /walk into it and the butter bobs/);
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  assert.match(session, /call\.name === 'build_object' && out\.ok && agent\.objectRun\) \{[\s\S]{0,260}agent\.composedObject = true/);
+  assert.match(session, /\(agent\.composedPlotSim \|\| agent\.composedObject\) && agent\.composedForUser && agent\.playChecked && !agent\.lastCheckProblem/);
+  assert.match(session, /!\/\^the player has no\/i\.test\(seen\.leaderstats\)/, 'no money line for a game without money');
+  const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
+  assert.match(tool, /plan\.parts\.some\(\(p\) => p\.key\) \? \{\} : \{ forUser: objectForUser\(plan\) \}/, 'keyboards keep their own answer');
+});

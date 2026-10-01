@@ -802,6 +802,43 @@ export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number
 }
 
 /** Whether a colour is dark enough to print without an outline. Pure. */
+/**
+ * The answer to the user for a built object, said from the plan itself (round 8 of test 2: the model's own reply
+ * promised a "SALTED" wrapper "on top" that the tool had put under the butter and whose words it had removed). Only
+ * what was built: its size against a player, the words printed on it, where its details sit, and what a click, a
+ * touch or a key does. Not for keyboards, whose builtSummary the model retells. Pure.
+ */
+export function objectForUser(plan: ObjectPlan): string {
+  const what = plan.name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+  const f = plan.footprint, longest = Math.max(f.x1 - f.x0, f.z1 - f.z0, f.top);
+  const big = longest >= 2.5 * PLAYER_HEIGHT ? `about ${Math.round(longest)} studs, ${Math.round(longest / PLAYER_HEIGHT)} times as long as you are tall`
+    : `about ${Math.round(longest)} studs`;
+  const words = plan.parts.filter((p) => p.text).map((p) => `"${p.text!.value}" printed on its ${p.text!.face === 'Top' ? 'top' : 'front'}`);
+  const body = [...plan.parts].filter((p) => !p.own).sort((a, b) => vol(b) - vol(a))[0];
+  const humanName = (n: string) => n.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+  const details = body ? placesOf(plan.parts).map((line) => {
+    const m = /^(\w+) is (on top of|under|on the front of|on) \w+$/.exec(line);
+    return m ? `a ${humanName(m[1]!)} ${m[2] === 'on top of' ? 'on top' : m[2] === 'under' ? 'underneath' : m[2] === 'on the front of' ? 'on the front' : 'on it'}` : '';
+  }).filter(Boolean) : [];
+  const moving = plan.parts.filter((p) => p.move);
+  const verb: Record<string, string> = { press: 'presses down', spin: 'spins', bob: 'bobs', open: 'swings open', wobble: 'wobbles', pop: 'pops' };
+  const as = (p: ObjectPart) => verb[p.move!.as] ?? 'moves';
+  const by = (on: string) => moving.filter((p) => p.move!.on === on);
+  const acts: string[] = [];
+  const whole = plan.gaveMotion && plan.parts.some((p) => p.rides === plan.gaveMotion);
+  if (by('click').length) acts.push(`Click it and ${whole ? 'the whole thing' : by('click').map((p) => `the ${humanName(p.name)}`).join(' and ')} ${by('click').length === 1 ? as(by('click')[0]!) : 'move'}${by('click').some((p) => p.move!.sound) ? ' with a sound' : ''}`);
+  if (by('touch').length) acts.push(`walk into it and ${by('touch').map((p) => `the ${humanName(p.name)}`).join(' and ')} ${by('touch').length === 1 ? as(by('touch')[0]!) : 'move'}`);
+  if (by('prompt').length) acts.push(`walk up and press E to use it`);
+  if (by('loop').length) acts.push(`the ${by('loop').map((p) => humanName(p.name)).join(' and ')} ${by('loop').length === 1 ? as(by('loop')[0]!) : 'move'} all the time`);
+  const bits = [...words, ...details];
+  const look = bits.length > 1 ? `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}` : bits[0] ?? '';
+  const lines = [
+    `Your ${what} is in front of the spawn: ${big}${look ? `, with ${look}` : ''}.`,
+    acts.length ? `${acts.join('; ').replace(/^./, (c) => c.toUpperCase())}. A counter on your screen counts every press.` : '',
+  ];
+  return lines.filter(Boolean).join('\n');
+}
+
 export function isDark(hex: string): boolean {
   const n = parseInt(hex.slice(1), 16);
   return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 110;
@@ -1087,6 +1124,8 @@ end)
     // Said as it is, so the answer does not invent (owner's re-test, 2026-10-01: the reply called smooth keycaps
     // "studded" and promised a "counter screen" that is a counter on the player's screen).
     built: builtSummary(plan, moving.length, keys, wantsStuds),
+    // The run's answer once the play check passes (session.ts composedObject), so it says only what was built.
+    ...(plan.parts.some((p) => p.key) ? {} : { forUser: objectForUser(plan) }),
     note: 'Done: add nothing else. Check it once in play (play_check); if something is wrong, call build_object again with the whole fixed spec; otherwise tell the user in one or two friendly sentences what they can do with it, saying only what `built` says.',
   };
 }

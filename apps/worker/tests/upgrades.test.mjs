@@ -159,6 +159,7 @@ test('the GUI: one captioned counter pill, a glossy Upgrades button with a hidde
 test('only a one-object run is fenced after build_object; a game run keeps its tools', () => {
   const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
   assert.match(src, /isObjectRequest\(text\) \? \{ objectFirst: true, objectRun: true \}/);
-  assert.match(src, /call\.name === 'build_object' && out\.ok && agent\.objectRun\) agent\.objectBuilt = true/);
+  // RESTATED 2026-10-01 (round 8 of test 2): the fenced branch also keeps the object's own answer; still only objectRun.
+  assert.match(src, /call\.name === 'build_object' && out\.ok && agent\.objectRun\) \{?\s*agent\.objectBuilt = true/);
   assert.doesNotMatch(src, /call\.name === 'build_object' && out\.ok\) agent\.objectBuilt = true/, 'any build_object fences the run again');
 });
