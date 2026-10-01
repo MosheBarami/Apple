@@ -166,10 +166,32 @@ export function unbury(parts: ObjectPart[]): string[] {
       if (!q) break;
       const axis = SIDE_WORDS.test(p.name) ? 2 : UP_WORDS.test(p.name) || DOWN_WORDS.test(p.name) ? 1 : p.size.indexOf(Math.min(...p.size));
       const lean = p.at[axis]! - q.at[axis]!;
-      const dir = axis === 1 ? (DOWN_WORDS.test(p.name) && !UP_WORDS.test(p.name) ? -1 : 1) : Math.abs(lean) > 1e-3 ? Math.sign(lean) : 1;
+      // Down words win unless the name says top or lid (round 3: a "WrapperFold" went on top as a lid over the butter).
+      const dir = axis === 1 ? (DOWN_WORDS.test(p.name) && !/top|lid/i.test(p.name) ? -1 : 1) : Math.abs(lean) > 1e-3 ? Math.sign(lean) : 1;
       p.at[axis] = q.at[axis]! + dir * (q.size[axis]! / 2 + p.size[axis]! / 2);
       if (!moved.includes(p.name)) moved.push(p.name);
     }
+  }
+  return moved;
+}
+
+/**
+ * Words on a part's top that another part covers, or on a part under the body, cannot be read (round 3: the butter's
+ * "BUTTER" sat under its melty top). They go on the side the spawn sees (Back, +Z): the part's own when it is at least
+ * 1.5 studs tall there, otherwise the body's (the biggest part) when the body has no words. Pure; returns the parts
+ * whose words moved.
+ */
+export function readableText(parts: ObjectPart[]): string[] {
+  const moved: string[] = [];
+  const body = [...parts].sort((a, b) => vol(b) - vol(a))[0];
+  for (const p of parts) {
+    if (!p.text || p.key || p.text.face !== 'Top') continue;
+    const above: V3 = [p.at[0], p.at[1] + p.size[1] / 2 + 0.1, p.at[2]];
+    if (!parts.some((q) => q !== p && holds(q, above, 0))) continue;
+    if (p.size[1] >= 1.5) p.text = { ...p.text, face: 'Back' };
+    else if (body && body !== p && !body.text) { body.text = { ...p.text, face: 'Back' }; delete p.text; }
+    else continue;
+    moved.push(p.name);
   }
   return moved;
 }
@@ -607,6 +629,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   // Anything that is not a keyboard: nothing hidden inside another part, something to do with it, and big enough.
   const board = parts.some((p) => p.key || p.rides);
   const unburied = board ? [] : unbury(parts);
+  if (!board) readableText(parts);
   const moves = board ? undefined : giveMotion(parts);
   // Ground it: the lowest point of the object sits on the stage.
   const bottom = Math.min(...parts.map((p) => p.at[1] - p.size[1] / 2));
@@ -633,10 +656,13 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
  * A label on a part's top reads upright from the spawn. Roblox draws a Top-face SurfaceGui with its top toward the
  * part's -X (measured in Studio, 2026-10-01: the owner's keys read sideways), and the player looks along -Z; so a
  * labelled block with no rotation of its own is turned -90 degrees about Y with its width and depth swapped: the same
- * box in the world, its text upright. Only for motions along Y (press, bob, pop), whose clips do not care. Pure.
+ * box in the world, its text upright. Not for open, which swings on the part's own axes; a rigged part that turned has
+ * its joint turned back (buildObject), so its clip moves it as if it had not. Pure.
  */
 export function uprightLabel(p: ObjectPart): { Size: V3; Orientation?: V3 } {
-  const turns = p.text?.face === 'Top' && !p.rot && p.shape === 'block' && (!p.move || ['press', 'bob', 'pop'].includes(p.move.as));
+  // Not for a door (open swings on the part's own axes); a wobble or a spin reads upright too (round 3: the wobbling
+  // wrapper's "BUTTER" read sideways), its joint turned back to the world's axes in buildObject.
+  const turns = p.text?.face === 'Top' && !p.rot && p.shape === 'block' && (!p.move || p.move.as !== 'open');
   if (!turns) return { Size: p.size, ...(p.rot ? { Orientation: p.rot } : {}) };
   return { Size: [p.size[2], p.size[1], p.size[0]], Orientation: [0, -90, 0] };
 }
@@ -850,10 +876,18 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
     const rigged = await ctx.execStudioOp({ op: 'rig_model', root: `${model}.Root`, parts: [...moving, ...riders].map((p) => `${model}.${p.name}`), joint: 'motor' }, 60_000);
     if (!rigged.ok) problems.push(`rig: ${clipText(rigged.error)}`);
     else {
-      for (const p of moving) {
-        const at = hingePoint(p, origin);
-        if (at.every((n, i) => Math.abs(n - (origin[i]! + p.at[i]!)) < 1e-6)) continue;
-        const pv = await ctx.execStudioOp({ op: 'set_joint_pivot', joint: `${model}.Root.${p.name}`, at }, 20_000);
+      // Each joint hinges where its part's motion does; a rider of a part that turns hinges where that part does, so the
+      // two turn as one (round 3: the butter wobbled and its wrapper and top stayed flat). A part turned to read upright
+      // (uprightLabel) has its joint turned back to the world's axes.
+      const byName = new Map(plan.parts.map((p) => [p.name, p]));
+      const ROTATES = new Set(['spin', 'open', 'wobble']);
+      for (const p of [...moving, ...riders]) {
+        const leader = p.move ? p : byName.get(p.rides!)!;
+        if (!p.move && !ROTATES.has(leader.move!.as)) continue; // a keycap's skirt only slides with its cap
+        const at = hingePoint(leader, origin);
+        const turn = uprightLabel(p).Orientation ? [0, 90, 0] as V3 : undefined;
+        if (!turn && at.every((n, i) => Math.abs(n - (origin[i]! + p.at[i]!)) < 1e-6)) continue;
+        const pv = await ctx.execStudioOp({ op: 'set_joint_pivot', joint: `${model}.Root.${p.name}`, at, ...(turn ? { turn } : {}) }, 20_000);
         if (!pv.ok) problems.push(`hinge ${p.name}: ${clipText(pv.error)}`);
       }
       const clips: Record<string, unknown> = {};
@@ -897,7 +931,9 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   const keyed = moving.some((p) => p.move!.on === 'key');
   const defaults = moving.length ? {
     counter: keyed ? 'Keys pressed' : 'Presses',
-    hint: keyed ? 'Type on your keyboard or click the keys!' : moving.some((p) => p.move!.on === 'loop') ? 'Watch it go!' : 'Click it!',
+    // What the player can DO comes first (round 3: a clickable butter whose top bobbed on a loop said "Watch it go!").
+    hint: keyed ? 'Type on your keyboard or click the keys!' : moving.some((p) => p.move!.on === 'click') ? 'Click it!'
+      : moving.some((p) => p.move!.on === 'touch') ? 'Walk into it!' : moving.some((p) => p.move!.on === 'prompt') ? 'Walk up and press E!' : 'Watch it go!',
   } : null;
   // A screen object without a counter or hint (the re-test passed one) still gets them: the screen is never lost.
   const asked = given && typeof given === 'object' ? given as Record<string, unknown> : null;
@@ -922,8 +958,9 @@ local counter = gui:FindFirstChild("Counter", true)
 local value = counter and counter:FindFirstChild("Value")
 local n = 0
 local played = game:GetService("ReplicatedStorage"):WaitForChild("AppleAnimatePlayed")
-played.OnClientEvent:Connect(function(model)
-	if model and model.Name ~= "${plan.name}" then return end
+-- Only what a player set off counts: a loop that starts by itself is not a press.
+played.OnClientEvent:Connect(function(model, _clip, player)
+	if (model and model.Name ~= "${plan.name}") or player == nil then return end
 	n += 1
 	if value then value.Text = tostring(n) end
 	if counter then

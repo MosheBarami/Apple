@@ -603,3 +603,44 @@ test('the build_object description holds no test answer', () => {
   assert.ok(desc.length > 100);
   assert.ok(!/butter/i.test(desc), 'the owner\'s own test object is not spelled out in the tool');
 });
+
+// Test 2 round 3 (2026-10-01): a wrapper over the whole top, "BUTTER" under the melty top and sideways, a clickable
+// butter whose hint said "Watch it go!", and a wobble that left the top and wrapper flat.
+test('a wrapper goes under the body even when its name also says fold', () => {
+  const parts = [
+    { name: 'ButterBody', size: [20, 6, 10], at: [0, 3, 0], color: '#ffe066' },
+    { name: 'WrapperFold', size: [21, 1.2, 11], at: [0, 3, 0], color: '#fff3b0' },
+  ];
+  O.unbury(parts);
+  assert.ok(parts[1].at[1] < parts[0].at[1], 'under, not a lid');
+});
+
+test('words nobody can see move to the side the spawn sees', () => {
+  const plan = O.expandObject({ name: 'Butter', scale: 1, parts: [
+    { name: 'ButterBody', size: [20, 6, 10], at: [0, 3, 0], color: '#ffe066' },
+    { name: 'Wrapper', size: [21, 1.2, 11], at: [0, 6.6, 0], color: '#fff3b0', text: 'BUTTER' },
+    { name: 'MeltyTop', size: [4, 1.6, 4], at: [0, 8, 0], color: '#ffd23f' },
+  ] });
+  const body = plan.parts.find((p) => p.name === 'ButterBody');
+  assert.equal(body.text?.value, 'BUTTER', 'the words moved to the body');
+  assert.equal(body.text.face, 'Back', 'on the side facing the spawn');
+  assert.equal(plan.parts.find((p) => p.name === 'Wrapper').text, undefined);
+  // A tall part keeps its words, on its own spawn side.
+  assert.deepEqual(O.readableText([{ name: 'Sign', size: [6, 4, 1], at: [0, 2, 0], text: { value: 'HI', face: 'Top' } }, { name: 'Hat', size: [6, 1, 1], at: [0, 4.5, 0] }]), ['Sign']);
+});
+
+test('a wobbling or spinning label reads upright; only a door keeps its own axes', () => {
+  const part = (as) => ({ name: 'L', shape: 'block', size: [6, 1, 2], at: [0, 0, 0], color: '#fff', text: { value: 'A', face: 'Top', color: '#000' }, move: { as, on: 'click' } });
+  for (const as of ['press', 'wobble', 'spin', 'bob']) assert.deepEqual(O.uprightLabel(part(as)).Orientation, [0, -90, 0], as);
+  assert.equal(O.uprightLabel(part('open')).Orientation, undefined);
+  const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
+  assert.match(tool, /uprightLabel\(p\)\.Orientation \? \[0, 90, 0\]/, 'a turned part\'s joint is turned back');
+  assert.match(tool, /hingePoint\(leader, origin\)/, 'a rider of a turning part hinges where its leader does');
+});
+
+test('the hint says what the player can do, and the counter counts only what a player set off', () => {
+  const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
+  const hint = /hint: keyed \?[^\n]+\n[^\n]+/.exec(tool)?.[0] ?? '';
+  assert.ok(hint.indexOf("'Click it!'") >= 0 && hint.indexOf("'Click it!'") < hint.indexOf("'Watch it go!'"), hint);
+  assert.match(tool, /OnClientEvent:Connect\(function\(model, _clip, player\)[\s\S]{0,120}player == nil then return end/);
+});
