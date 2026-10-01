@@ -67,6 +67,22 @@ export function keyCodeName(raw: unknown): string | undefined {
   return undefined;
 }
 
+/** The nearest plain colour word for a hex colour. Pure. */
+export function colourWord(hex: string | undefined): string {
+  if (!hex || !HEX.test(hex)) return 'Grey';
+  const n = parseInt(hex.slice(1), 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const WORDS: [string, number[]][] = [['White', [245, 245, 245]], ['Black', [25, 25, 25]], ['Red', [230, 50, 50]], ['Orange', [255, 150, 30]],
+    ['Yellow', [255, 225, 80]], ['Gold', [230, 180, 40]], ['Green', [80, 200, 70]], ['Cyan', [70, 220, 255]], ['Blue', [60, 120, 255]],
+    ['Purple', [160, 90, 255]], ['Pink', [255, 110, 210]], ['Brown', [140, 90, 50]], ['Grey', [150, 155, 160]], ['Cream', [255, 243, 196]]];
+  return WORDS.map(([w, v]) => [w, (v[0]! - c[0]!) ** 2 + (v[1]! - c[1]!) ** 2 + (v[2]! - c[2]!) ** 2] as const).sort((a, b) => a[1] - b[1])[0]![0];
+}
+/** A name for an unnamed part from its colour and shape: GoldBlock, CyanWedge. Pure. */
+export function lookName(hex: string | undefined, shape: string): string {
+  const s = shape.toLowerCase();
+  const word = s === 'ball' || s === 'sphere' ? 'Ball' : s === 'cylinder' || s === 'cyl' ? 'Cylinder' : s === 'wedge' ? 'Wedge' : 'Block';
+  return `${colourWord(hex)}${word}`;
+}
+
 /** A colour as "#rrggbb": hex as given, a few names, or Roblox-ish defaults. */
 const COLOUR_NAMES: Record<string, string> = {
   white: '#ffffff', black: '#1b1b1b', red: '#ff4b4b', orange: '#ff9f1a', yellow: '#ffe14d', green: '#5dd94a', blue: '#4fa3ff',
@@ -675,8 +691,10 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   for (const [i, r] of raw.entries()) {
     const p = (r ?? {}) as Record<string, unknown>;
     // Forgiving on purpose: a slip in a name, shape, colour or key costs a fixed-up part, never the whole build.
-    const cleaned = String(p.name ?? '').replace(/[^A-Za-z0-9_]/g, '');
-    const base = NAME.test(cleaned) ? cleaned : `Part${i + 1}`;
+    const cleaned = String(p.name ?? p.id ?? p.label ?? p.kind ?? p.part ?? '').replace(/[^A-Za-z0-9_]/g, '');
+    // A part with no name is named for how it looks, so the answer can say "two cyan wedges" and not "ten parts"
+    // (test 3 round 5, 2026-10-01: an upgrade's ten new parts came without names and were said as "ten parts").
+    const base = NAME.test(cleaned) ? cleaned : lookName(colourHex(p.color ?? p.colour), String(p.shape ?? 'block'));
     const rawShape = String(p.shape ?? 'block').toLowerCase();
     const shape = SHAPES.has(rawShape) ? rawShape : rawShape === 'sphere' ? 'ball' : rawShape === 'cube' || rawShape === 'box' ? 'block' : rawShape === 'cyl' ? 'cylinder' : 'block';
     const sizeRaw = v3(p.size ?? p.dimensions);
@@ -872,7 +890,7 @@ export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number
  */
 export function sayParts(names: string[], max = 5): string[] {
   const COUNT = ['', 'a', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-  const base = (n: string) => n.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase()
+  const base = (n: string) => n.replace(/_/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase()
     .replace(/\b(left|right|front|back|top|bottom|upper|lower|inner|outer)\b/g, '').replace(/\d+/g, '').replace(/\s+/g, ' ').trim() || 'part';
   const kinds = new Map<string, number>();
   for (const n of names) kinds.set(base(n), (kinds.get(base(n)) ?? 0) + 1);
@@ -892,7 +910,7 @@ export function objectForUser(plan: ObjectPlan): string {
   // At most two printings are named; more read as clutter.
   const words = texts.slice(0, 2).map((p) => `"${p.text!.value}" printed on its ${side[p.text!.face] ?? 'side'}`);
   const body = [...plan.parts].filter((p) => !p.own).sort((a, b) => vol(b) - vol(a))[0];
-  const humanName = (n: string) => n.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+  const humanName = (n: string) => n.replace(/_\d+$/, '').replace(/_/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
   const decor = plan.parts.filter((p) => p !== body && !p.own && !/^Cool(Halo|Orb\d)$/.test(p.name));
   const places = new Map(placesOf(plan.parts).map((line) => { const m = /^(\w+) is (on top of|under|on the front of|on) \w+$/.exec(line); return [m?.[1] ?? '', m?.[2] ?? 'on'] as const; }));
   const where = (w: string) => w === 'on top of' ? 'on top' : w === 'under' ? 'underneath' : w === 'on the front of' ? 'on the front' : 'on its sides';
@@ -938,7 +956,7 @@ export function objectUpgradeLine(spec: Record<string, unknown>): string {
   const list = parts.slice(0, 30).map((p) => `${id(p.name)} size ${r(p.size)} at ${r(p.at)}`).join('; ');
   return `THIS PLACE ALREADY HAS ${id(spec.name)}, made by build_object: ${list}. The user wants it made cooler. Call build_object ONCE ` +
     `with name "${id(spec.name)}" and ONLY the new parts to add (3 to 6 cool details on its OUTSIDE, placed from the sizes and centres ` +
-    `above: a crown, flames, glowing stripes, eyes, wings, a jetpack...). Every part it has stays. Glow, sparkles, orbiting neon orbs and a ` +
+    `above: a crown, flames, glowing stripes, eyes, wings, a jetpack...), each with a name saying what it is (Crown, FlameLeft). Every part it has stays. Glow, sparkles, orbiting neon orbs and a ` +
     `lit stage rim are added for you, so do not add effects, sounds or scripts. Then play_check once.`;
 }
 

@@ -895,3 +895,20 @@ test('what is meant to glow is Neon again after the object is studded (test 3 ro
   assert.match(tool.slice(glow, glow + 500), /Material: \{ t: 'EnumItem', v: 'Enum\.Material\.Neon' \}/);
   assert.match(tool.slice(glow - 200, glow + 300), /plan\.cool && stageOn \? \[`game\.Workspace\.\$\{plan\.name\}Stage\.Rim`\]/);
 });
+
+// Test 3 round 5 (2026-10-01): the upgrade's ten new parts came with no names; the answer said "ten parts".
+test('a part with no name is named for how it looks, so the answer can say what it is', () => {
+  assert.equal(O.lookName('#ffd23f', 'block'), 'YellowBlock');
+  assert.equal(O.lookName('#4fd8ff', 'wedge'), 'CyanWedge');
+  const plan = O.expandObject({ name: 'Thing', parts: [
+    { size: [20, 5, 5], at: [0, 2.5, 0], color: '#ffe066' },
+    { shape: 'wedge', size: [3, 3, 3], at: [-6, 6.5, 0], color: '#4fd8ff' }, { shape: 'wedge', size: [3, 3, 3], at: [6, 6.5, 0], color: '#4fd8ff' },
+    { label: 'Crown', size: [3, 2, 3], at: [0, 6, 0], color: '#ffd23f' },
+  ] });
+  const names = plan.parts.map((p) => p.name);
+  assert.ok(names.includes('Crown'), 'a label is a name');
+  assert.ok(names.includes('CyanWedge') && names.includes('CyanWedge_2'), names.join(','));
+  const said = O.objectForUser(plan);
+  assert.match(said, /two cyan wedges/, said);
+  assert.ok(!/\bparts? on|ten parts|\bpart\d/i.test(said), said);
+});
