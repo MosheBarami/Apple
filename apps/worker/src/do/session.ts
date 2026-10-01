@@ -287,6 +287,8 @@ interface AgentState {
   upgradesRun?: boolean;
   /** build_object succeeded: the rest of the run checks and answers (live 2026-10-01: it kept adding its own sounds and scripts). */
   objectBuilt?: boolean;
+  /** compose_game built a plot simulator: the run plays it once and answers (the 93-step run rebuilt it by hand, 274 credits). */
+  composedPlotSim?: boolean;
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
   uiTheme?: UiTheme;
   /** What this run's tools cited (sources.ts), numbered; sent to the web app with the answer. */
@@ -3494,7 +3496,8 @@ export class SessionDO extends DurableObject<Env> {
 
     const skills = skillCardsForRun(effectiveRequest, mode === 'agent');
     const msgId = crypto.randomUUID();
-    const continueLine = mode === 'agent' ? continueGameLine(await this.ctx.storage.get<BuiltGameRecord>('builtGame'), text) : undefined;
+    // "make it a full game with plots" grows the game that is there, so it is composed, not refused as a rebuild (owner, 2026-10-01).
+    const continueLine = mode === 'agent' && !isPlotSimRequest(text) ? continueGameLine(await this.ctx.storage.get<BuiltGameRecord>('builtGame'), text) : undefined;
     const agent: AgentState = {
       status: 'running',
       mode,
@@ -3972,6 +3975,7 @@ export class SessionDO extends DurableObject<Env> {
     // run may redo the upgrades, and neither adds the other (the re-test added an upgrades shop nobody asked for).
     const AFTER_OBJECT = new Set(agent.upgradesRun
       ? ['add_upgrades', 'play_check_ui', 'get_output_logs', 'get_project_tree']
+      : agent.composedPlotSim ? ['play_check', 'get_output_logs']
       : ['build_object', 'play_check', 'get_output_logs', 'get_project_tree']);
     const focusedAllowed = new Set([...offeredCapabilityFilter.allowed].filter((tool) =>
       agent.objectBuilt ? AFTER_OBJECT.has(tool) : agent.focused ? offeredWhenFocused(tool) : tool !== 'more_tools'));
@@ -4736,6 +4740,10 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
       // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
       if (call.name === 'compose_game') agent.composeFirst = false; // tried: the fence lifts whatever the outcome
+      if (call.name === 'compose_game' && out.ok && out.mutatedProject === true && isPlotSimRequest(agent.request ?? '')) {
+        agent.composedPlotSim = true;
+        agent.objectBuilt = true;
+      }
       // The fence holds until the object is built: a failed build_object is retried with the reason, never swapped
       // for hand-made instances (owner's re-test, 2026-10-01). After three failures the run may try other tools.
       if (call.name === 'build_object') {

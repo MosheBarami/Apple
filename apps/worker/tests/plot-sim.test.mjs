@@ -74,3 +74,13 @@ test('the session routes a simulator request to compose_game first, and compose_
   const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
   assert.match(tool, /if \('error' in plan && isPlotSimRequest\(idea\)\) return composePlotSim\(ctx, idea\);/);
 });
+
+// The owner's 93-step run (2026-10-01, 274 credits): compose_game ran, then the model rebuilt plots and screens by hand
+// with 24 build_object calls and 49 tree reads. A built plot simulator is played once and answered.
+test('a composed plot simulator ends the run at play-and-answer, and a game already in the project does not refuse it', () => {
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  assert.match(session, /call\.name === 'compose_game' && out\.ok && out\.mutatedProject === true && isPlotSimRequest\([^)]*\)\) \{\s*agent\.composedPlotSim = true;\s*agent\.objectBuilt = true;/);
+  const after = session.slice(session.indexOf('const AFTER_OBJECT'), session.indexOf('const AFTER_OBJECT') + 400);
+  assert.match(after, /agent\.composedPlotSim \? \['play_check', 'get_output_logs'\]/);
+  assert.match(session, /const continueLine = mode === 'agent' && !isPlotSimRequest\(text\) \? continueGameLine\(/);
+});
