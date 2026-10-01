@@ -346,8 +346,9 @@ export function relayKeyboard(all: ObjectPart[], laidOut = false, theme: Keyboar
     p.at[0] - p.size[0] / 2 < x1 && p.at[0] + p.size[0] / 2 > x0 && p.at[2] - p.size[2] / 2 < z1 && p.at[2] + p.size[2] / 2 > z0;
   // Only what a keyboard has besides its keys stays: a wrist rest, a knob, a cable (live 2026-10-01: a cyan "LED" ball
   // floated on the stage and a pink bar lay along the keys).
-  const kept = parts.filter((p) => !isKey(p) && !under(p) && !NOT_A_KEYBOARD_PART.test(p.name) && KEYBOARD_EXTRA.test(p.name))
-    .map((p) => restBeside(p, keys, x0, x1, z1, floor)).filter((p) => !overKeys(p));
+  // A rest is put beside the keys first, then judged: judged where the model put it, a rest under the front row went as a plate.
+  const kept = parts.filter((p) => !isKey(p) && !NOT_A_KEYBOARD_PART.test(p.name) && KEYBOARD_EXTRA.test(p.name))
+    .map((p) => restBeside(p, keys, x0, x1, z1, floor)).filter((p) => !under(p) && !overKeys(p));
   // Laid out by rows already: keep the tool's keys and case, and only drop the model's own plates and screens.
   // A part bound to a key a labelled keycap already answers is a second key: live 2026-10-01 a 36-stud unlabelled pink
   // "Spacebar" bounced in front of the board beside the real SPACE key.
@@ -473,6 +474,16 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   parts.splice(0, parts.length, ...relayKeyboard(parts, usedRows, (['rgb', 'candy', 'pastel', 'given'] as const).find((t) => t === a.theme) ?? 'pastel'));
   const kept = new Set(parts.map((p) => p.name));
   const dropped = extrasAsked.filter((n) => !kept.has(n));
+  // A keyboard's own extras wear its theme (round 11: a hot-pink studded wrist rest and a cyan block on a dark gamer
+  // board): dark smooth plastic and a silver knob on rgb, chocolate on candy.
+  const boardTheme = (['rgb', 'candy'] as const).find((t) => t === a.theme);
+  if (boardTheme && parts.some((p) => p.text && p.key)) {
+    for (const p of parts) {
+      if (p.text || p.rides || p.key || /Case$/.test(p.name) || p.material === 'Neon') continue;
+      p.color = /knob|dial/i.test(p.name) ? (boardTheme === 'rgb' ? '#c9cdd6' : '#f0c48a') : boardTheme === 'rgb' ? '#22242a' : '#5a341d';
+      p.surface = 'smooth';
+    }
+  }
   // Ground it: the lowest point of the object sits on the stage.
   const bottom = Math.min(...parts.map((p) => p.at[1] - p.size[1] / 2));
   for (const p of parts) p.at[1] -= bottom;

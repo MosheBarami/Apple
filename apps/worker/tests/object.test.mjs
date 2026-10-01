@@ -444,3 +444,15 @@ test('a calculator or a keypad is never given an F row or modifiers it does not 
   assert.equal(full[1][0], '`', 'and the number row starts with `');
   assert.deepEqual(full[full.length - 1], ['Ctrl', 'Win', 'Alt', 'Space', 'Alt', 'Fn', 'Ctrl']);
 });
+
+// Round 11 of test 1 (2026-10-01): a hot-pink studded wrist rest and a cyan block on a dark gamer board.
+test('a keyboard\'s extras wear its theme', () => {
+  const plan = O.expandObject({ name: 'Kb', theme: 'rgb', parts: [
+    { name: 'Key', rows: [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L']], move: { as: 'press', on: 'key' } },
+    { name: 'WristRest', size: [10, 0.5, 1.5], at: [0, 1, 3], color: '#ff4fd8' },
+    { name: 'VolumeKnob', shape: 'cylinder', size: [0.6, 0.4, 0.6], at: [30, 1, -6], color: '#4fe0ff', move: { as: 'spin', on: 'click' } },
+  ] });
+  const rest = plan.parts.find((p) => p.name === 'WristRest'), knob = plan.parts.find((p) => p.name === 'VolumeKnob');
+  assert.equal(rest.color, '#22242a'); assert.equal(rest.surface, 'smooth');
+  assert.equal(knob.color, '#c9cdd6');
+});
