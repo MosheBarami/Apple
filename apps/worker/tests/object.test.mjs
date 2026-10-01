@@ -30,10 +30,12 @@ test('the ASMR keyboard expands to a case and 37 labelled keys, each bound to it
   const plan = O.expandObject(KEYBOARD);
   assert.ok(!('error' in plan), JSON.stringify(plan));
   // RESTATED 2026-10-01: each key is a keycap now, a top and the skirt that rides it (owner's reference keyboard).
-  assert.equal(plan.parts.length, 1 + 37 * 2);
+  // RESTATED 2026-10-01 (owner's reference board): a QWERTY board with a number row gets the 13-key F row, and a space
+  // bar alone on its row gets its 6 modifiers (completeKeyboard).
+  assert.equal(plan.parts.length, 1 + (37 + 13 + 6) * 2);
   const keys = plan.parts.filter((p) => p.move);
-  assert.equal(keys.length, 37);
-  assert.equal(plan.parts.filter((p) => p.rides).length, 37, 'every key has its skirt');
+  assert.equal(keys.length, 37 + 13 + 6);
+  assert.equal(plan.parts.filter((p) => p.rides).length, 37 + 13 + 6, 'every key has its skirt');
   assert.equal(keys.find((p) => p.key === 'Q').text.value, 'q', 'letters are printed lowercase, like the reference');
   assert.equal(keys.find((p) => p.text?.value === '1').key, 'One');
   assert.equal(plan.parts.find((p) => p.text?.value === 'SPACE').key, 'Space');
@@ -136,7 +138,9 @@ test('a rows entry lays a keyboard out: no key overlaps another, every key answe
   }] });
   assert.ok(!('error' in plan), plan.error);
   const keys = plan.parts.filter((p) => p.name.startsWith('Key_') && !p.rides);
-  assert.equal(keys.length, 21);
+  // RESTATED 2026-10-01 (owner's reference board): a QWERTY board with a number row gets the 13-key F row, and a space
+  // bar alone on its row gets its 6 modifiers (completeKeyboard).
+  assert.equal(keys.length, 21 + 13 + 6);
   const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
   const pairs = keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`));
   assert.deepEqual(pairs, [], 'keys overlap');
@@ -170,7 +174,8 @@ test('a keyboard placed key by key is laid out again by code; the screen wall an
   const names = plan.parts.map((p) => p.name);
   for (const gone of ['KeyboardBase', 'CounterScreen']) assert.ok(!names.includes(gone), `${gone} is still there`);
   const keys = plan.parts.filter((p) => p.name.startsWith('Key_') && !p.rides);
-  assert.equal(keys.length, 13);
+  // RESTATED 2026-10-01: the space bar alone on its row gets its 6 modifiers (no number row here, so no F row).
+  assert.equal(keys.length, 13 + 6);
   const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
   assert.deepEqual(keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`)), [], 'keys overlap');
   assert.equal(plan.parts.find((p) => p.text?.value === 'BACK').key, 'Backspace');
@@ -192,7 +197,9 @@ test('one rows entry per row is one keyboard; symbol keys and repeated names nev
   ] });
   assert.ok(!('error' in plan), plan.error);
   const keys = plan.parts.filter((p) => p.name.startsWith('Key_') && !p.rides);
-  assert.equal(keys.length, 10);
+  // RESTATED 2026-10-01 (owner's reference board): a QWERTY board with a number row gets the 13-key F row, and a space
+  // bar alone on its row gets its 6 modifiers (completeKeyboard).
+  assert.equal(keys.length, 10 + 13 + 6);
   assert.equal(plan.parts.filter((p) => /Case$/.test(p.name)).length, 1, 'one keyboard, one case');
   assert.ok(keys.some((p) => p.name === 'Key_Minus' && p.key === 'Minus'));
   const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
@@ -219,7 +226,8 @@ test('with rows, the model\'s own plate and screen go and the tool\'s case stays
   assert.ok(!names.includes('KeyboardBase'), 'the model\'s plate stayed under the case');
   assert.ok(!names.includes('TapScreen'), 'the screen slab stayed');
   assert.ok(names.includes('KeyEscCase'), 'the tool\'s case went');
-  assert.equal(plan.parts.filter((p) => p.name.startsWith('Key_') && !p.rides).length, 13);
+  // RESTATED 2026-10-01: + the 13-key F row and the space bar's 6 modifiers (completeKeyboard).
+  assert.equal(plan.parts.filter((p) => p.name.startsWith('Key_') && !p.rides).length, 13 + 13 + 6);
 });
 
 // Owner, 2026-10-01: the keys "sound like tiny bombs" — "mechanical keyboard" matched an explosion recording.
@@ -276,8 +284,10 @@ test('the space bar row is centred and keys are about 4 studs across', () => {
   const top = (k) => plan.parts.find((p) => p.key === k && p.move);
   const skirt = (k) => plan.parts.find((p) => p.rides === top(k).name);
   assert.ok(Math.abs(skirt('Q').size[0] - 4) < 1e-6, `a key is ${skirt('Q').size[0]} studs across`);
-  const middle = (top('Q').at[0] + top('P').at[0]) / 2;
-  assert.ok(Math.abs(top('Space').at[0] - middle) < 1e-6, 'the space bar is in the middle');
+  // RESTATED 2026-10-01: a lone space bar gets its modifiers (completeKeyboard), so the property is a real bottom row:
+  // the space bar between the two Alts, and wider than everything else on its row.
+  const bottom = plan.parts.filter((p) => p.move && Math.abs(p.at[2] - top('Space').at[2]) < 1e-6).sort((a, b) => a.at[0] - b.at[0]);
+  assert.deepEqual(bottom.map((p) => p.text.value), ['CTRL', 'WIN', 'ALT', 'SPACE', 'ALT', 'FN', 'CTRL']);
 });
 
 // Re-test, 2026-10-01: the reply called smooth keycaps "studded" and promised a "counter screen" in the world.
@@ -330,7 +340,7 @@ test('a wrist rest is a block, and a key legend is capped at about half the cap'
   ] });
   assert.equal(plan.parts.find((p) => p.name === 'WristRest').shape, 'block', 'not a pipe');
   const src = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
-  assert.match(src, /p\.key \? \[\{ className: 'UITextSizeConstraint', name: 'Legend', props: \{ MaxTextSize: \d+ \} \}\]/);
+  assert.match(src, /p\.key \? \[\{ className: 'UITextSizeConstraint', name: 'Legend', props: \{ MaxTextSize: (t\.glow \? \d+ : )?\d+ \} \}\]/);
 });
 
 // Owner's screenshots, 2026-10-01: an ENTER alone on its own row, cut off from the board; a cyan LED ball floating on
@@ -425,4 +435,12 @@ test('every key the player presses floats a "+N" over it', () => {
   assert.match(client, /label\.Text = "\+" \.\. tostring\(math\.floor\(amount\)\)/);
   const server = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'animate', 'AppleAnimate.luau'), 'utf8');
   assert.match(server, /played:FireAllClients\(model, clip\._name, player\)/);
+});
+
+test('a calculator or a keypad is never given an F row or modifiers it does not have', () => {
+  assert.deepEqual(O.completeKeyboard([['7', '8', '9'], ['4', '5', '6'], ['1', '2', '3'], ['0', '.']]), [['7', '8', '9'], ['4', '5', '6'], ['1', '2', '3'], ['0', '.']]);
+  const full = O.completeKeyboard([['Esc', '1', '2'], ['Q', 'W', 'E'], ['Space']]);
+  assert.equal(full[0][0], 'Esc', 'Esc moves up to the F row');
+  assert.equal(full[1][0], '`', 'and the number row starts with `');
+  assert.deepEqual(full[full.length - 1], ['Ctrl', 'Win', 'Alt', 'Space', 'Alt', 'Fn', 'Ctrl']);
 });

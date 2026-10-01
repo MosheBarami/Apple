@@ -102,7 +102,7 @@ export function colourHex(raw: unknown): string | undefined {
 export interface Move { as: string; on: string; hinge?: string; amount?: number; sound?: string; prompt?: string }
 export interface ObjectPart {
   name: string; shape: string; size: V3; at: V3; rot?: V3; color: string; transparency?: number;
-  text?: { value: string; face: string; color: string; font?: string }; move?: Move; key?: string;
+  text?: { value: string; face: string; color: string; font?: string; glow?: boolean }; move?: Move; key?: string;
   /** Neon for a glow (a keyboard's underglow); everything else is Plastic. */
   material?: 'Neon';
   /** Moves with this other part (a keycap's skirt rides its cap): rigged with it, posed with it in its clip. */
@@ -175,6 +175,27 @@ const ROW_MAX = 16;
  * wrapped where real rows start (Tab, Caps, the first Shift, Ctrl), else in thirteens. Live 2026-10-01: an ENTER sat cut
  * off from the board, and then 53 keys came out in one 270-stud row. Pure.
  */
+const BOTTOM_ROW = ['Ctrl', 'Win', 'Alt', 'Space', 'Alt', 'Fn', 'Ctrl'];
+const F_ROW = ['Esc', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'];
+
+/**
+ * A board is a real board: a space bar alone on its row gets the modifiers either side of it, and a board with a number
+ * row and no function row gets Esc and F1-F12 above it, Esc moving up off the number row (owner's reference keyboard,
+ * 2026-10-01; ours had a lone 6-key space bar and no F row). Pure.
+ */
+export function completeKeyboard(rows: string[][]): string[][] {
+  const out = rows.map((r) => r.length === 1 && /^(space|spacebar)$/i.test(r[0]!.trim()) ? [...BOTTOM_ROW] : r);
+  const numbers = out.findIndex((r) => r.includes('1') && r.includes('2'));
+  const hasF = out.some((r) => r.some((l) => /^F([1-9]|1[0-2])$/i.test(l.trim())));
+  // Only a typing keyboard: a calculator or a keypad has 1 and 2 on a row too.
+  const qwerty = out.some((r) => r.some((l) => /^q$/i.test(l.trim())) && r.some((l) => /^w$/i.test(l.trim())));
+  if (numbers >= 0 && !hasF && qwerty) {
+    out[numbers] = out[numbers]!.map((l) => /^(esc|escape)$/i.test(l.trim()) ? '`' : l);
+    out.splice(numbers, 0, [...F_ROW]);
+  }
+  return out;
+}
+
 export function keyboardRows(given: string[][]): string[][] {
   const singles = given.filter((r) => r.length === 1).length;
   const merged = given.length > 2 && singles > given.length / 2
@@ -212,7 +233,7 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
     .map((r) => (r as unknown[]).map((l) => String(l ?? '').slice(0, 12)).filter(Boolean)
       .filter((l, i, r) => i === 0 || l.trim().toLowerCase() !== r[i - 1]!.trim().toLowerCase()))
     .filter((r) => r.length > 0);
-  const rows = keyboardRows(given);
+  const rows = completeKeyboard(keyboardRows(given));
   const num = (v: unknown, d: number, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   // Low enough to walk onto (owner's play test, 2026-10-01: he had to jump onto the keyboard): case and key together are
   // under half a key, so a player steps up onto it and runs across the keys.
@@ -260,7 +281,7 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
       });
       out.push({
         name, size: [Math.max(0.4, w - unit * 0.18), capH, unit * 0.82], at: [x + w / 2, y0 + skirtH + capH / 2, z], color: shade(colour, theme === 'rgb' ? 0.06 : 0.22),
-        text: { value: label.length > 1 ? (theme === 'rgb' ? label : label.toUpperCase()) : (theme === 'pastel' ? label.toLowerCase() : label.toUpperCase()), face: 'Top', color: legend, ...(theme === 'rgb' ? { font: 'GothamBold' } : {}) }, key: label, surface: 'smooth',
+        text: { value: label.length > 1 ? (theme === 'rgb' ? label : label.toUpperCase()) : (theme === 'pastel' ? label.toLowerCase() : label.toUpperCase()), face: 'Top', color: legend, ...(theme === 'rgb' ? { font: 'GothamBold', glow: true } : {}) }, key: label, surface: 'smooth',
         // A keyboard key always answers its real key (owner, 2026-10-01: the model asked for "click" and typing on the
         // real keyboard stopped working); a key clip is also clicked and stepped on (AppleAnimate).
         ...(p.move ? { move: { ...(p.move as Record<string, unknown>), ...(keyCodeName(label) ? { on: 'key' } : {}) } } : {}),
@@ -408,6 +429,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
       value: String(value).slice(0, 24), face: typeof (textIn as Record<string, unknown>)?.face === 'string' ? String((textIn as Record<string, unknown>).face) : 'Top',
       color: HEX.test(String((textIn as Record<string, unknown>)?.color ?? '')) ? String((textIn as Record<string, unknown>).color) : '#ffffff',
       ...(/^[A-Za-z]{3,30}$/.test(String((textIn as Record<string, unknown>)?.font ?? '')) ? { font: String((textIn as Record<string, unknown>).font) } : {}),
+      ...((textIn as Record<string, unknown>)?.glow === true ? { glow: true } : {}),
     };
     const rep = (p.repeat ?? null) as Record<string, unknown> | null;
     const grid = rep ? v3(rep.grid) : [1, 1, 1] as V3;
@@ -602,14 +624,16 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
 
   const textGui = (t: NonNullable<ObjectPart['text']>, p: ObjectPart): InstanceSpecLite => ({
     className: 'SurfaceGui', name: 'Label',
-    props: { Face: { t: 'EnumItem', v: `Enum.NormalId.${t.face}` }, SizingMode: { t: 'EnumItem', v: 'Enum.SurfaceGuiSizingMode.PixelsPerStud' }, PixelsPerStud: Math.max(10, Math.min(80, 120 / Math.max(1, Math.min(p.size[0], p.size[2])))), LightInfluence: 0 },
+    props: { Face: { t: 'EnumItem', v: `Enum.NormalId.${t.face}` }, SizingMode: { t: 'EnumItem', v: 'Enum.SurfaceGuiSizingMode.PixelsPerStud' }, PixelsPerStud: Math.max(10, Math.min(80, 120 / Math.max(1, Math.min(p.size[0], p.size[2])))), LightInfluence: 0,
+      // A gamer board's legends glow (the owner's reference): brighter than lit plastic.
+      ...(t.glow ? { Brightness: 2.5 } : {}) },
     children: [{ className: 'TextLabel', name: 'Text', props: { Size: { t: 'UDim2', v: [0.9, 0, 0.9, 0] }, Position: { t: 'UDim2', v: [0.05, 0, 0.05, 0] }, BackgroundTransparency: 1, Text: t.value, TextScaled: true, Font: { t: 'EnumItem', v: `Enum.Font.${t.font ?? 'FredokaOne'}` }, TextColor3: t.color },
       // Dark ink (a keycap's letter) is printed, not outlined; light text keeps its black outline. A legend is at most
       // about half the cap (owner, 2026-10-01: SHIFT and CAPS filled their caps and dwarfed the letters); the canvas's
       // short side is about 120 px at any PixelsPerStud above.
       // A keycap's legend is printed (a gamer board's glows), never outlined.
       children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: isDark(t.color) || p.key ? 0 : 2 } },
-        ...(p.key ? [{ className: 'UITextSizeConstraint', name: 'Legend', props: { MaxTextSize: 56 } }] : [])] }],
+        ...(p.key ? [{ className: 'UITextSizeConstraint', name: 'Legend', props: { MaxTextSize: t.glow ? 66 : 56 } }] : [])] }],
   });
   const moving = plan.parts.filter((p) => p.move);
   const partSpec = (p: ObjectPart): InstanceSpecLite => ({
@@ -632,7 +656,8 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   items.push({ className: 'Model', name: plan.name, children: [root, ...specs.slice(0, FIRST)] });
   if (stageOn) {
     const pad = 6;
-    const stageColor = HEX.test(String(a.stageColor ?? '')) ? String(a.stageColor) : '#ffd23f';
+    // The stage wears the board's theme: a bright yellow slab under a dark gamer keyboard clashed (round 10).
+    const stageColor = HEX.test(String(a.stageColor ?? '')) ? String(a.stageColor) : plan.theme === 'rgb' ? '#3a3d46' : plan.theme === 'candy' ? '#6b3f22' : '#ffd23f';
     items.push({ className: 'Model', name: `${plan.name}Stage`, children: [
       { className: 'Part', name: 'Stage', props: { Size: [width + pad * 2, stageH, depth + pad * 2], Position: [center[0], stageH / 2, center[2]], Anchored: true, Color: stageColor, Material: 'Plastic' } },
       { className: 'Part', name: 'Rim', props: { Size: [width + pad * 2 + 2, stageH * 0.5, depth + pad * 2 + 2], Position: [center[0], stageH * 0.25, center[2]], Anchored: true, Color: '#8e5b32', Material: 'Plastic' } },
