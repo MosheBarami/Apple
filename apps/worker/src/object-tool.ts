@@ -165,6 +165,57 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
   return out;
 }
 
+const NOT_A_KEYBOARD_PART = /screen|monitor|display|desk|table|wall|counter|sign|board(?!.*key)/i;
+
+/**
+ * A keyboard the model placed key by key is laid out again by code (owner, 2026-10-01: the model ignored `rows` and
+ * hand-placed the keys again, with an 18-stud "CounterScreen" wall behind them). When 8 or more parts are labelled
+ * with keyboard keys, their labels are read row by row (front to back by z, left to right by x) and laid out with
+ * unrollRows at the model's own key size; the plates under them and any screen, monitor, desk or wall go (a counter
+ * screen is already on the player's screen). Each key keeps the motion and sound it was given. Pure.
+ */
+export function relayKeyboard(parts: ObjectPart[]): ObjectPart[] {
+  const labelOf = (p: ObjectPart) => (p.text?.value && keyCodeName(p.text.value.trim()) ? p.text.value.trim() : p.key && p.move ? p.key : undefined);
+  const isKey = (p: ObjectPart) => labelOf(p) !== undefined;
+  const keys = parts.filter(isKey);
+  if (keys.length < 8) return parts;
+  const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 1;
+  const single = keys.filter((k) => labelOf(k)!.length === 1);
+  const unit = median((single.length ? single : keys).map((k) => Math.min(k.size[0], k.size[2])));
+  const height = median(keys.map((k) => k.size[1]));
+  // Rows: keys whose centres are within half a key of each other front to back.
+  const byZ = [...keys].sort((a, b) => a.at[2] - b.at[2]);
+  const rows: ObjectPart[][] = [];
+  for (const k of byZ) {
+    const row = rows[rows.length - 1];
+    if (row && Math.abs(k.at[2] - row[0]!.at[2]) < unit * 0.5) row.push(k); else rows.push([k]);
+  }
+  for (const row of rows) row.sort((a, b) => a.at[0] - b.at[0]);
+  const x0 = Math.min(...keys.map((k) => k.at[0] - k.size[0] / 2)), x1 = Math.max(...keys.map((k) => k.at[0] + k.size[0] / 2));
+  const z0 = Math.min(...keys.map((k) => k.at[2] - k.size[2] / 2)), z1 = Math.max(...keys.map((k) => k.at[2] + k.size[2] / 2));
+  const keyBottom = Math.min(...keys.map((k) => k.at[1] - k.size[1] / 2));
+  const under = (p: ObjectPart) => !isKey(p) && p.at[1] + p.size[1] / 2 <= keyBottom + 0.05 &&
+    p.at[0] - p.size[0] / 2 < x1 && p.at[0] + p.size[0] / 2 > x0 && p.at[2] - p.size[2] / 2 < z1 && p.at[2] + p.size[2] / 2 > z0;
+  const plates = parts.filter(under).sort((a, b) => b.size[0] * b.size[2] - a.size[0] * a.size[2]);
+  const kept = parts.filter((p) => !isKey(p) && !under(p) && !NOT_A_KEYBOARD_PART.test(p.name));
+  const moveOf = new Map(keys.map((k) => [labelOf(k)!.toLowerCase(), k.move]));
+  const colours = [...new Set(keys.map((k) => k.color))].slice(0, 6);
+  const laid = unrollRows({
+    name: 'Key', rows: rows.map((r) => r.map((k) => labelOf(k)!)), unit, gap: unit * 0.12, height,
+    colors: colours.length > 1 ? colours : undefined, case: plates[0]?.color ?? '#2b2f45', at: [(x0 + x1) / 2, 0, (z0 + z1) / 2],
+  }, 0);
+  const made: ObjectPart[] = laid.map((r) => {
+    const label = (r.text as { value: string } | undefined)?.value;
+    const move = label ? moveOf.get(label.trim().toLowerCase()) ?? moveOf.get(String(r.key ?? '').toLowerCase()) ?? keys.find((k) => k.move)?.move : undefined;
+    const key = label ? keyCodeName(label) : undefined;
+    return {
+      name: String(r.name), shape: 'block', size: r.size as V3, at: r.at as V3, color: String(r.color),
+      ...(r.text ? { text: r.text as ObjectPart['text'] } : {}), ...(move ? { move } : {}), ...(key ? { key } : {}),
+    };
+  });
+  return [...made, ...kept];
+}
+
 /**
  * The spec, checked and expanded: repeats unrolled, the scale applied, every part sitting on y = 0 or above. Pure.
  * `at` is the part's centre relative to the object's origin; y = 0 is the stage's top.
@@ -242,6 +293,9 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
       });
     }
   }
+  // A keyboard placed key by key is laid out by code (relayKeyboard), unless the model already used rows.
+  const usedRows = (Array.isArray(a.parts) ? a.parts : []).some((r) => r && typeof r === 'object' && Array.isArray((r as Record<string, unknown>).rows));
+  if (!usedRows) parts.splice(0, parts.length, ...relayKeyboard(parts));
   // Ground it: the lowest point of the object sits on the stage.
   const bottom = Math.min(...parts.map((p) => p.at[1] - p.size[1] / 2));
   for (const p of parts) p.at[1] -= bottom;

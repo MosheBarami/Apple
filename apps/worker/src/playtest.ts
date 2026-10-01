@@ -171,6 +171,8 @@ export interface PlayCheckSummary {
   playerSees: string;
   clientErrors: string[];
   serverErrors: string[];
+  /** Errors that are the player's avatar, not the game (avatarNoise): said once, never a failed check. */
+  notTheGame?: string;
   warnings: number;
   leaderstats?: string;
   touches?: string[];
@@ -197,6 +199,16 @@ interface PlayPress {
 }
 
 /**
+ * The test player's own avatar failing to load its animation pack in Studio (owner, 2026-10-01: the agent told the
+ * user his keyboard's "animation asset hasn't loaded", from an engine error about the avatar). An engine error (no
+ * script) about loading an animation, or one from the character's Animate script, is not the game's. Pure.
+ */
+export function avatarNoise(e: PlayLog): boolean {
+  if (!/Failed to load animation|Animation failed to load/i.test(e.message)) return false;
+  return !e.source || /Character\.Animate|\.Animate$|^Animate$/.test(e.source);
+}
+
+/**
  * Read a plugin `play_check` result. Anything missing is stated as missing: a report the client half
  * never sent is "not observed", never an empty screen, and an empty screen is never a pass.
  */
@@ -205,8 +217,9 @@ export function summarisePlayCheck(raw: unknown): PlayCheckSummary {
   const harness = d.harnessRemoved === true
     ? 'the temporary check scripts were removed from the place'
     : `WARNING: ${Number(d.harnessRemaining) || 'some'} temporary check script(s) could NOT be removed — tell the user to delete ApplePlayCheckServer / ApplePlayCheckClient`;
-  const clientErrors = list<PlayLog>(d.clientErrors).slice(0, 10).map((e) => (e.source ? `${e.message} (${e.source})` : e.message));
-  const serverErrors = list<PlayLog>(d.serverErrors).slice(0, 10).map((e) => (e.source ? `${e.message} (${e.source})` : e.message));
+  const avatar = [...list<PlayLog>(d.clientErrors), ...list<PlayLog>(d.serverErrors)].filter(avatarNoise);
+  const clientErrors = list<PlayLog>(d.clientErrors).filter((e) => !avatarNoise(e)).slice(0, 10).map((e) => (e.source ? `${e.message} (${e.source})` : e.message));
+  const serverErrors = list<PlayLog>(d.serverErrors).filter((e) => !avatarNoise(e)).slice(0, 10).map((e) => (e.source ? `${e.message} (${e.source})` : e.message));
   const warnings = list(d.clientWarnings).length + list(d.serverWarnings).length;
   const before = list<PlayStat>(d.leaderstatsBefore);
   const after = list<PlayStat>(d.leaderstatsAfter);
@@ -249,7 +262,8 @@ export function summarisePlayCheck(raw: unknown): PlayCheckSummary {
       ? 'Every listed button activated; the screen below was read AFTER the presses. '
       : '') + idleNote;
 
-  const base = { clientErrors, serverErrors, warnings, harness };
+  const base = { clientErrors, serverErrors, warnings, harness,
+    ...(avatar.length ? { notTheGame: 'The test player\'s own avatar animations did not load in Studio (Roblox\'s character, not this game): ignore it and do not mention it.' } : {}) };
   // A harness left in the customer's place is the one thing that must survive truncation, so it
   // leads; otherwise the verdict and what the player sees come first.
   const lead = (r: PlayCheckSummary): PlayCheckSummary => (d.harnessRemoved === true ? r : Object.assign({ harness: r.harness }, r));

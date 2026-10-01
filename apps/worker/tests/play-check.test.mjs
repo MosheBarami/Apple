@@ -154,3 +154,17 @@ test('a check the plugin\'s watchdog ended says the game stopped it and that not
   assert.match(out.note, /back in edit mode/);
   assert.doesNotMatch(out.note, /stopped at "watchdog"/);
 });
+
+// Owner, 2026-10-01: the agent told the user his keyboard's "animation asset hasn't loaded" — the error was the test
+// player's own avatar animation pack failing in Studio.
+test("the test player's avatar animations failing to load are not the game's errors", () => {
+  const avatar = { message: 'Failed to load animation with sanitized ID rbxassetid://114302219876492: Animation failed to load, assetId: https://assetdelivery.roblox.com/v1/asset?id=114302219876492' };
+  const game = { message: 'attempt to index nil with Value', source: 'StarterPlayer.StarterPlayerScripts.HUD:12' };
+  const s = P.summarisePlayCheck({ clientErrors: [avatar, game], serverErrors: [avatar], playerGui: [] });
+  assert.deepEqual(s.clientErrors, [`${game.message} (${game.source})`], 'the game error stays, the avatar one goes');
+  assert.deepEqual(s.serverErrors, []);
+  assert.match(s.notTheGame, /avatar/);
+  const only = P.summarisePlayCheck({ clientErrors: [avatar], serverErrors: [avatar] });
+  assert.notEqual(only.verdict, 'client_errors', 'an avatar animation alone does not fail the check');
+  assert.equal(P.avatarNoise({ message: 'Failed to load animation with sanitized ID rbxassetid://1', source: 'Workspace.Door.DoorScript:4' }), false, 'a game script loading an animation is the game');
+});

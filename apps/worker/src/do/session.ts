@@ -561,6 +561,14 @@ const MAX_DUPLICATE_STREAK = 3;
 const MAX_SAME_FAILURES = MAX_IDENTICAL_RETRIES + 1;
 /** G10: how long the HTTP Stop waits for the run to actually end before answering "still stopping". */
 const STOP_ACK_WAIT_MS = 8_000;
+/** A failed step's own error, from the result the model saw, capped for the stored trace. */
+function failureText(resultForLlm: string | undefined): string {
+  try {
+    const parsed = JSON.parse(resultForLlm ?? '') as { error?: unknown };
+    return String(parsed.error ?? resultForLlm ?? '').slice(0, 400);
+  } catch { return String(resultForLlm ?? '').slice(0, 400); }
+}
+
 /** G10: messages sent while a run works, held under their own key until the next step boundary. */
 const STEER_KEY = 'steerQueue';
 type QueuedSteer = { id: string; text: string; at: number };
@@ -4682,6 +4690,7 @@ export class SessionDO extends DurableObject<Env> {
         // untrusted document in history, where the browser validates it before rendering. Without
         // it, a refreshed transcript reduces a generated image to a text-only row.
         detail: out.detail,
+        ...(out.ok ? {} : { error: failureText(out.resultForLlm) }),
       };
       agent.trace.push(entry);
       executedThisStep += 1;

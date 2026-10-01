@@ -33,8 +33,11 @@ test('the ASMR keyboard expands to a case and 37 labelled keys, each bound to it
   assert.equal(keys.length, 37);
   assert.deepEqual(keys.find((p) => p.text?.value === 'Q').key, 'Q');
   assert.equal(keys.find((p) => p.text?.value === '1').key, 'One');
-  assert.equal(plan.parts.find((p) => p.name === 'Space').key, 'Space');
-  assert.deepEqual(plan.parts[0].size, [12.6 * 4, 0.6 * 4, 5.8 * 4], 'scaled');
+  assert.equal(plan.parts.find((p) => p.text?.value === 'SPACE').key, 'Space');
+  // RESTATED 2026-10-01: a keyboard placed key by key is laid out again by code (relayKeyboard), so the case is the
+  // tool's, not the spec's. The property: the spec's scale reaches the keys, and they sit on a case.
+  assert.equal(keys.find((p) => p.text?.value === 'Q').size[0], 1 * 4, 'scaled');
+  assert.ok(plan.parts.some((p) => /Case$/.test(p.name)), 'on a case');
   assert.ok(Math.abs(Math.min(...plan.parts.map((p) => p.at[1] - p.size[1] / 2))) < 1e-9, 'it stands on the ground');
   const names = new Set(plan.parts.map((p) => p.name));
   assert.equal(names.size, plan.parts.length, 'every part has its own name');
@@ -144,4 +147,30 @@ test('a rows entry lays a keyboard out: no key overlaps another, every key answe
   assert.ok(keys.every((p) => Math.abs(p.at[1] - p.size[1] / 2 - (kase.at[1] + kase.size[1] / 2)) < 1e-6), 'keys sit on the case');
   assert.ok(keys.every((p) => Math.abs(p.at[0]) + p.size[0] / 2 <= kase.size[0] / 2 + 1e-6), 'keys stay on the case');
   assert.ok(new Set(keys.map((p) => p.color)).size > 2, 'the keys are colourful');
+});
+
+// Owner, 2026-10-01, the re-test: the model ignored rows, hand-placed the keys on a base, a case and a wrist rest, and
+// stood an 18-stud CounterScreen behind them. The tool lays such a keyboard out again itself.
+test('a keyboard placed key by key is laid out again by code; the screen wall and the plates go', () => {
+  const row = (labels, z, colour, w = 3) => labels.map((l, i) => ({ name: `K${z}_${i}`, size: [w, 1.2, 3], at: [-20 + i * 3.1, 3.6, z], color: colour, text: l, move: { as: 'press', on: 'key', sound: 'keyboard thock' } }));
+  const plan = O.expandObject({ name: 'AsmrKeyboard', parts: [
+    { name: 'KeyboardBase', size: [102, 3, 42], at: [0, 1.5, 0], color: '#22223a' },
+    { name: 'WristRest', size: [102, 2, 6], at: [0, 1, 24], color: '#ff4fa0' },
+    { name: 'CounterScreen', size: [30, 18, 3], at: [0, 9, -30], color: '#111133' },
+    ...row(['Q', 'W', 'E', 'R', 'T', 'Y'], -6, '#7be0ff'),
+    ...row(['A', 'S', 'D', 'F', 'G'], -2.9, '#ff7bd1'), // half a key off: still its own row
+    { name: 'BackspaceKey', size: [12, 1.2, 3], at: [-18, 3.6, -6.2], color: '#ffe27a', text: 'Back', move: { as: 'press', on: 'key' } },
+    { name: 'Spacebar', size: [48, 1.2, 3], at: [0, 3.6, 3], color: '#ffe27a', text: 'Space', move: { as: 'press', on: 'key' } },
+  ] });
+  assert.ok(!('error' in plan), plan.error);
+  const names = plan.parts.map((p) => p.name);
+  for (const gone of ['KeyboardBase', 'CounterScreen']) assert.ok(!names.includes(gone), `${gone} is still there`);
+  const keys = plan.parts.filter((p) => p.name.startsWith('Key_'));
+  assert.equal(keys.length, 13);
+  const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
+  assert.deepEqual(keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`)), [], 'keys overlap');
+  assert.equal(plan.parts.find((p) => p.name === 'Key_Back').key, 'Backspace');
+  assert.equal(plan.parts.find((p) => p.name === 'Key_Q').move.sound, 'keyboard thock', 'a key keeps its sound');
+  assert.ok(plan.parts.some((p) => p.name === 'KeyCase'), 'the keys sit on a case');
+  assert.ok(plan.footprint.top < 6, `the keyboard is ${plan.footprint.top} studs tall`);
 });

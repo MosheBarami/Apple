@@ -1719,6 +1719,8 @@ export interface ToolTraceEntry {
   durationMs: number;
   /** Capped structured tool output, when the tool emitted a generative-UI panel. */
   detail?: unknown;
+  /** Why a failed step failed, as the tool said it (capped). Kept so a reported run can be diagnosed; not drawn. */
+  error?: string;
 }
 
 export interface PairingCodeDto {
