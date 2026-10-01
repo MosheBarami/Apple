@@ -109,7 +109,10 @@ export async function addUpgrades(ctx: AgentCtx, a: Record<string, unknown>) {
   }
   // The economy keeps its money under the upgrades' currency name when the game has no settings of its own yet.
   if (!(await exists(ctx, 'game.ServerScriptService.AppleComponents.AppleGameConfig'))) {
-    const settings = `-- Game settings read by Apple's components. Written by Apple; edit freely.\nreturn ${luau({ economy: { currency, start: 0 } })}\n`;
+    // A new player starts with the price of the cheapest upgrade: the first buy comes at once (and a play check can
+    // confirm a real purchase; with 0 the re-test's check could only see a refusal).
+    const start = Math.min(...upgrades.map((u) => u.cost));
+    const settings = `-- Game settings read by Apple's components. Written by Apple; edit freely.\nreturn ${luau({ economy: { currency, start } })}\n`;
     const failed = await writeScript(ctx, { parent: 'ServerScriptService.AppleComponents', name: 'AppleGameConfig', className: 'ModuleScript', source: settings });
     if (failed) return { error: `The game settings were not written: ${failed}`, changed: true, projectMutated: true };
   }

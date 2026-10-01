@@ -91,7 +91,8 @@ test('after the object is built an object run cannot add upgrades, and an upgrad
 // Play test, 2026-10-01: the model named the currency Taps, the economy kept Coins, and the counter sat at 0.
 test('the money the screen shows is the money the economy keeps', () => {
   const tool = execFileSync('cat', [join(WORKER, 'src', 'upgrades-tool.ts')], { encoding: 'utf8' });
-  assert.match(tool, /AppleGameConfig'\)\)\) \{[\s\S]{0,300}economy: \{ currency, start: 0 \}/, 'a place without settings gets the upgrades\' currency');
+  assert.match(tool, /AppleGameConfig'\)\)\) \{[\s\S]{0,500}economy: \{ currency, start \}/, 'a place without settings gets the upgrades\' currency');
+  assert.match(tool, /const start = Math\.min\(\.\.\.upgrades\.map\(\(u\) => u\.cost\)\)/, 'and enough to buy the cheapest upgrade at once');
   const server = execFileSync('cat', [join(WORKER, '..', '..', 'packages', 'components', 'upgrades', 'AppleUpgrades.luau')], { encoding: 'utf8' });
   assert.match(server, /if shown ~= Economy\.CURRENCY then[\s\S]{0,200}player:SetAttribute\(shown, amount\)/, 'a game that already has Coins still shows the right number');
   const animate = execFileSync('cat', [join(WORKER, '..', '..', 'packages', 'components', 'animate', 'AppleAnimate.luau')], { encoding: 'utf8' });
