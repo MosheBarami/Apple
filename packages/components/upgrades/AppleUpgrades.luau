@@ -122,7 +122,9 @@ function AppleUpgrades.start()
 	;(pressed :: BindableEvent).Event:Connect(function(player: Player, model: Instance?)
 		-- Another player's machine pays its owner, never a visitor who clicks or steps on it.
 		if typeof(player) == "Instance" and player:IsA("Player") and AppleUpgrades.paysPress(ownerOf(model), player.UserId) then
-			Economy.grant(player, AppleUpgrades.perPress(base, upgrades, levels(player)), "press")
+			local pay = AppleUpgrades.perPress(base, upgrades, levels(player))
+			player:SetAttribute("PerPress", pay) -- what the "+N" over a pressed key says (AppleAnimateClient)
+			Economy.grant(player, pay, "press")
 		end
 	end)
 

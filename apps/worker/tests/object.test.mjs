@@ -395,3 +395,34 @@ test('a part bound to a key a keycap already has is not a second key', () => {
   assert.ok(!plan.parts.some((p) => p.name === 'Spacebar'), 'no second space bar');
   assert.equal(plan.parts.filter((p) => p.text?.value === 'SPACE').length, 1);
 });
+
+// Owner's references, 2026-10-01: a dark gamer board with small glowing rainbow legends, and a Roblox walk-on board of
+// caramel keycaps with black letters. The pastel toy slabs were neither.
+test('a keyboard looks like the user asked: rgb by default, candy for sweets, pastel only when asked', () => {
+  assert.equal(O.keyboardTheme('make an asmr keyboard'), 'rgb');
+  assert.equal(O.keyboardTheme('make a chocolate keyboard'), 'candy');
+  assert.equal(O.keyboardTheme('a cute pastel keyboard'), 'pastel');
+  assert.equal(O.keyboardTheme('a red keyboard'), 'given');
+  const rows = [['Esc', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'], ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['Space']];
+  const rgb = O.expandObject({ name: 'Kb', theme: 'rgb', parts: [{ name: 'Key', rows, move: { as: 'press', on: 'key' } }] });
+  const caps = rgb.parts.filter((p) => p.text);
+  assert.ok(caps.every((p) => parseInt(p.color.slice(1, 3), 16) < 90), 'dark caps');
+  const legends = new Set(caps.map((p) => p.text.color));
+  assert.ok(legends.size >= 5, 'a rainbow of legends across the board');
+  assert.ok(rgb.parts.some((p) => p.material === 'Neon' && /Glow/.test(p.name)), 'an underglow');
+  assert.ok(caps.every((p) => p.text.font === 'GothamBold'));
+  const cap = caps.find((p) => p.text.value === 'Q'), skirt = rgb.parts.find((p) => p.name === `${cap.name}Skirt`);
+  assert.ok(cap.size[1] + skirt.size[1] >= 0.34 * skirt.size[2], 'a chunky cap, not a slab');
+  const candy = O.expandObject({ name: 'Kb', theme: 'candy', parts: [{ name: 'Key', rows, move: { as: 'press', on: 'key' } }] });
+  assert.ok(candy.parts.filter((p) => p.text).every((p) => p.text.color === '#2a1a10'), 'black letters on caramel');
+  const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
+  assert.match(tool, /expandObject\(\{ \.\.\.a, theme: keyboardTheme\(ctx\.userRequest\?\.\(\)\) \}\)/, 'the user\'s words choose it');
+});
+
+test('every key the player presses floats a "+N" over it', () => {
+  const client = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'animate', 'AppleAnimateClient.luau'), 'utf8');
+  assert.match(client, /if who == me and typeof\(model\) == "Instance"/);
+  assert.match(client, /label\.Text = "\+" \.\. tostring\(math\.floor\(amount\)\)/);
+  const server = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'animate', 'AppleAnimate.luau'), 'utf8');
+  assert.match(server, /played:FireAllClients\(model, clip\._name, player\)/);
+});

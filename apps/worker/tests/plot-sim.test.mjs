@@ -194,7 +194,7 @@ test('a tier is one colour family, a shop copy is anchored, and one panel shows 
 
 test('the clips the server announces are always received (no "invocation queue exhausted" flood)', () => {
   const client = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'animate', 'AppleAnimateClient.luau'), 'utf8');
-  assert.match(client, /WaitForChild\("AppleAnimatePlayed", \d+\)[\s\S]{0,120}OnClientEvent:Connect/);
+  assert.match(client, /WaitForChild\("AppleAnimatePlayed", \d+\)[\s\S]{0,3000}played\.OnClientEvent:Connect/);
   assert.match(readFileSync(join(WORKER, 'src', 'components.generated.ts'), 'utf8'), /AppleAnimatePlayed\\*", 10\)/, 'the bundle is regenerated');
 });
 

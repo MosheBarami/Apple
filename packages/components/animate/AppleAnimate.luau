@@ -165,7 +165,8 @@ function AppleAnimate.start()
 	end
 
 	local function play(model: Model, joints: { [string]: Motor6D }, rest: { [Motor6D]: CFrame }, clip: any, loop: boolean, player: Player?)
-		if clip._name then played:FireAllClients(model, clip._name) end
+		-- Who pressed it rides along, so that player's screen can float a "+N" over the key (the owner's reference).
+		if clip._name then played:FireAllClients(model, clip._name, player) end
 		-- The clip always plays; only the presses that pay are capped per player.
 		if player and clip._name then
 			local recent = paid[player] or {}

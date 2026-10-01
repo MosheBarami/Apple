@@ -102,7 +102,9 @@ export function colourHex(raw: unknown): string | undefined {
 export interface Move { as: string; on: string; hinge?: string; amount?: number; sound?: string; prompt?: string }
 export interface ObjectPart {
   name: string; shape: string; size: V3; at: V3; rot?: V3; color: string; transparency?: number;
-  text?: { value: string; face: string; color: string }; move?: Move; key?: string;
+  text?: { value: string; face: string; color: string; font?: string }; move?: Move; key?: string;
+  /** Neon for a glow (a keyboard's underglow); everything else is Plastic. */
+  material?: 'Neon';
   /** Moves with this other part (a keycap's skirt rides its cap): rigged with it, posed with it in its clip. */
   rides?: string;
   /** Smooth plastic instead of studs (a keycap, like the owner's reference keyboard). */
@@ -112,6 +114,8 @@ export interface ObjectPlan {
   name: string; parts: ObjectPart[]; footprint: { x0: number; x1: number; z0: number; z1: number; top: number }; skipped?: string[];
   /** Parts the spec asked for that were left out because a keyboard has no such part (relayKeyboard). */
   dropped?: string[];
+  /** How a keyboard was made to look (keyboardTheme). */
+  theme?: KeyboardTheme;
 }
 
 /** [x, y, z] from an array, an {x, y, z} object or "x, y, z" text; null when it is none of those. */
@@ -132,12 +136,35 @@ const KEY_WIDTH: [RegExp, number][] = [
 ];
 const PASTEL = ['#7be0ff', '#ff7bd1', '#ffe27a', '#9bff8a', '#b69bff'];
 
+/** A colour from hue, saturation and value (each 0..1) as "#rrggbb". Pure. */
+export function hsvHex(h: number, sat: number, val: number): string {
+  const hh = ((h % 1) + 1) % 1 * 6, i = Math.floor(hh), f = hh - i;
+  const p = val * (1 - sat), q = val * (1 - sat * f), t = val * (1 - sat * (1 - f));
+  const [r, g, b] = [[val, t, p], [q, val, p], [p, val, t], [p, q, val], [t, p, val], [val, p, q]][i % 6]!;
+  return '#' + [r, g, b].map((c) => Math.round((c ?? 0) * 255).toString(16).padStart(2, '0')).join('');
+}
+
 /** A colour made lighter (amount > 0, toward white) or darker (toward black). Pure. */
 export function shade(hex: string, amount: number): string {
   const n = parseInt(hex.slice(1), 16);
   const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(amount >= 0 ? v + (255 - v) * amount : v * (1 + amount)));
   return `#${c.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('')}`;
 }
+
+/**
+ * How a keyboard looks, from the user's own words (owner's references, 2026-10-01: a dark gamer board with small glowing
+ * rainbow legends, and a Roblox walk-on board of caramel keycaps with black letters; our pastel toy slabs were neither).
+ * rgb unless the words ask for sweets, for pastel, or name colours of their own. Pure.
+ */
+export type KeyboardTheme = 'rgb' | 'candy' | 'pastel' | 'given';
+export function keyboardTheme(request: string | undefined): KeyboardTheme {
+  const t = String(request ?? '').toLowerCase();
+  if (/\b(chocolate|caramel|candy|sweets?|cookies?|cake|dessert|toffee|cocoa)\b/.test(t)) return 'candy';
+  if (/\b(pastel|cute|kawaii|rainbow|colou?rful|toy|bubbly)\b/.test(t)) return 'pastel';
+  if (/\b(red|blue|green|white|black|gold|golden|purple|pink|orange|yellow|silver|cyan|teal|grey|gray)\b/.test(t)) return 'given';
+  return 'rgb';
+}
+const CANDY_CAPS = ['#f0c48a', '#d9975c', '#c27f45', '#e8b070'];
 
 const ROW_START = /^(tab|caps|capslock|caps lock|shift|lshift|ctrl|control|lctrl)$/i;
 const ROW_MAX = 16;
@@ -189,7 +216,9 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
   const num = (v: unknown, d: number, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   // Low enough to walk onto (owner's play test, 2026-10-01: he had to jump onto the keyboard): case and key together are
   // under half a key, so a player steps up onto it and runs across the keys.
-  const unit = num(p.unit, 2, 0.5, 20), gap = num(p.gap, unit * 0.12, 0, unit), height = num(p.height ?? p.keyHeight, unit * 0.3, 0.2, 20);
+  // Chunky caps on a thin case: the same step up as before (under half a key), most of it keycap (the references).
+  const unit = num(p.unit, 2, 0.5, 20), gap = num(p.gap, unit * 0.1, 0, unit), height = num(p.height ?? p.keyHeight, unit * 0.36, 0.2, 20);
+  const theme: KeyboardTheme = ['rgb', 'candy', 'pastel', 'given'].includes(String(p.theme)) ? p.theme as KeyboardTheme : 'pastel';
   // A slim keyboard body just around the keys, not a wide plane (owner, 2026-10-01: "a giant plane with cubes").
   const margin = num(p.margin, unit * 0.3, 0, 50);
   const colours = (Array.isArray(p.colors ?? p.colours) ? (p.colors ?? p.colours) as unknown[] : PASTEL).map(colourHex).filter(Boolean) as string[];
@@ -197,11 +226,16 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
   const rowWidth = (r: string[]) => r.reduce((w, l) => w + widthOf(l) * unit, 0) + gap * (r.length - 1);
   const width = Math.max(...rows.map(rowWidth)), depth = rows.length * unit + gap * (rows.length - 1);
   const origin = v3(p.at ?? p.position) ?? [0, 0, 0];
-  const caseTop = p.case === false ? 0 : num(p.caseHeight, unit * 0.15, 0.2, 20);
+  const caseTop = p.case === false ? 0 : num(p.caseHeight, unit * 0.1, 0.2, 20);
   const base = String(p.name ?? 'Key').replace(/[^A-Za-z0-9_]/g, '') || `Key${index + 1}`;
   const out: Record<string, unknown>[] = [];
   if (p.case !== false) {
-    out.push({ name: `${base}Case`, size: [width + 2 * margin, caseTop, depth + 2 * margin], at: [origin[0], origin[1] + caseTop / 2, origin[2]], color: colourHex(p.case) ?? '#eef0f6', surface: 'smooth' });
+    const caseColour = theme === 'rgb' ? '#16171b' : theme === 'candy' ? '#4a2c1a' : colourHex(p.case) ?? '#eef0f6';
+    out.push({ name: `${base}Case`, size: [width + 2 * margin, caseTop, depth + 2 * margin], at: [origin[0], origin[1] + caseTop / 2, origin[2]], color: caseColour, surface: 'smooth' });
+    // A gamer board glows underneath: a thin neon band just inside the case's foot.
+    if (theme === 'rgb') {
+      out.push({ name: `${base}GlowCase`, size: [width + 2 * margin + 0.3, Math.min(0.25, caseTop * 0.5), depth + 2 * margin + 0.3], at: [origin[0], origin[1] + Math.min(0.25, caseTop * 0.5) / 2, origin[2]], color: '#b44dff', surface: 'smooth', material: 'Neon' });
+    }
   }
   const used = new Set<string>();
   rows.forEach((row, ri) => {
@@ -215,14 +249,18 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
       used.add(name);
       // A real keycap (owner's reference, 2026-10-01: "it just a textured cube"): a darker skirt with a lighter, inset
       // top that carries the letter in dark ink, smooth plastic; the skirt rides the top, so they press as one.
-      const colour = colours[(ri + ci) % colours.length] ?? '#d7dde2';
-      const skirtH = height * 0.55, capH = height * 0.45, y0 = origin[1] + caseTop;
+      const colour = theme === 'rgb' ? '#30323a' : theme === 'candy' ? CANDY_CAPS[(ri * 3 + ci) % CANDY_CAPS.length]! : colours[(ri + ci) % colours.length] ?? '#d7dde2';
+      // The legend: a rainbow across the board on a gamer keyboard (its hue follows the key's place left to right), black
+      // on caramel, dark ink on pastel.
+      const across = width > 0 ? (x + w / 2 - (origin[0] - width / 2)) / width : 0;
+      const legend = theme === 'rgb' ? hsvHex(0.83 - across * 0.83, 0.85, 1) : theme === 'candy' ? '#2a1a10' : '#3a3a4a';
+      const skirtH = height * 0.6, capH = height * 0.4, y0 = origin[1] + caseTop;
       out.push({
-        name: `${name}Skirt`, size: [w, skirtH, unit], at: [x + w / 2, y0 + skirtH / 2, z], color: shade(colour, -0.12), rides: name, surface: 'smooth',
+        name: `${name}Skirt`, size: [w, skirtH, unit], at: [x + w / 2, y0 + skirtH / 2, z], color: shade(colour, theme === 'rgb' ? -0.3 : -0.16), rides: name, surface: 'smooth',
       });
       out.push({
-        name, size: [Math.max(0.4, w - unit * 0.16), capH, unit * 0.84], at: [x + w / 2, y0 + skirtH + capH / 2, z], color: shade(colour, 0.22),
-        text: { value: label.length > 1 ? label.toUpperCase() : label.toLowerCase(), face: 'Top', color: '#3a3a4a' }, key: label, surface: 'smooth',
+        name, size: [Math.max(0.4, w - unit * 0.18), capH, unit * 0.82], at: [x + w / 2, y0 + skirtH + capH / 2, z], color: shade(colour, theme === 'rgb' ? 0.06 : 0.22),
+        text: { value: label.length > 1 ? (theme === 'rgb' ? label : label.toUpperCase()) : (theme === 'pastel' ? label.toLowerCase() : label.toUpperCase()), face: 'Top', color: legend, ...(theme === 'rgb' ? { font: 'GothamBold' } : {}) }, key: label, surface: 'smooth',
         // A keyboard key always answers its real key (owner, 2026-10-01: the model asked for "click" and typing on the
         // real keyboard stopped working); a key clip is also clicked and stepped on (AppleAnimate).
         ...(p.move ? { move: { ...(p.move as Record<string, unknown>), ...(keyCodeName(label) ? { on: 'key' } : {}) } } : {}),
@@ -255,7 +293,7 @@ function restBeside(p: ObjectPart, keys: ObjectPart[], x0: number, x1: number, z
  * unrollRows at the model's own key size; the plates under them and any screen, monitor, desk or wall go (a counter
  * screen is already on the player's screen). Each key keeps the motion and sound it was given. Pure.
  */
-export function relayKeyboard(all: ObjectPart[], laidOut = false): ObjectPart[] {
+export function relayKeyboard(all: ObjectPart[], laidOut = false, theme: KeyboardTheme = 'pastel'): ObjectPart[] {
   // A keycap's skirt rides its top and is part of the key, never a plate under the keyboard.
   const riders = all.filter((p) => p.rides);
   const parts = all.filter((p) => !p.rides);
@@ -299,7 +337,7 @@ export function relayKeyboard(all: ObjectPart[], laidOut = false): ObjectPart[] 
   const colours = [...new Set(keys.map((k) => k.color))].slice(0, 6);
   const laid = unrollRows({
     name: 'Key', rows: rows.map((r) => r.map((k) => labelOf(k)!)), unit, gap: unit * 0.12, height: Math.min(height, unit * 0.35),
-    colors: colours.length > 1 ? colours : undefined, case: '#eef0f6', at: [(x0 + x1) / 2, 0, (z0 + z1) / 2], move: keys.find((k) => k.move)?.move,
+    colors: colours.length > 1 ? colours : undefined, case: '#eef0f6', at: [(x0 + x1) / 2, 0, (z0 + z1) / 2], move: keys.find((k) => k.move)?.move, theme,
   }, 0);
   const made: ObjectPart[] = laid.map((r) => {
     const label = (r.text as { value: string } | undefined)?.value;
@@ -309,7 +347,7 @@ export function relayKeyboard(all: ObjectPart[], laidOut = false): ObjectPart[] 
     return {
       name: String(r.name), shape: 'block', size: r.size as V3, at: r.at as V3, color: String(r.color),
       ...(r.text ? { text: r.text as ObjectPart['text'] } : {}), ...(move ? { move } : {}), ...(key ? { key } : {}),
-      ...(typeof r.rides === 'string' ? { rides: r.rides } : {}), ...(r.surface === 'smooth' ? { surface: 'smooth' as const } : {}),
+      ...(typeof r.rides === 'string' ? { rides: r.rides } : {}), ...(r.surface === 'smooth' ? { surface: 'smooth' as const } : {}), ...(r.material === 'Neon' ? { material: 'Neon' as const } : {}),
     };
   });
   return [...made, ...kept];
@@ -333,7 +371,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   const merged = rowEntries.length > 1 ? [{ ...rowEntries[0], at: undefined, rows: [...rowEntries].sort((x, y) => (v3(x.at)?.[2] ?? 0) - (v3(y.at)?.[2] ?? 0)).flatMap((e) => e.rows as unknown[]) }] : rowEntries;
   // Keys about 4 studs across once scaled, bigger than a player's feet like the owner's reference, unless the model
   // gave a unit (the re-test's keyboard came out with 2-stud keys).
-  const raw = [...given.filter((r) => !isRows(r)), ...merged.flatMap((r, i) => unrollRows({ unit: 4 / scale, ...r }, i))];
+  const raw = [...given.filter((r) => !isRows(r)), ...merged.flatMap((r, i) => unrollRows({ unit: 4 / scale, ...r, theme: a.theme ?? 'pastel' }, i))];
   if (raw.length === 0) return { error: 'parts is empty: list what the object is made of' };
   const parts: ObjectPart[] = [];
   const skipped: string[] = [];
@@ -369,6 +407,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
     const textOf = (value: unknown) => value === undefined || value === '' ? undefined : {
       value: String(value).slice(0, 24), face: typeof (textIn as Record<string, unknown>)?.face === 'string' ? String((textIn as Record<string, unknown>).face) : 'Top',
       color: HEX.test(String((textIn as Record<string, unknown>)?.color ?? '')) ? String((textIn as Record<string, unknown>).color) : '#ffffff',
+      ...(/^[A-Za-z]{3,30}$/.test(String((textIn as Record<string, unknown>)?.font ?? '')) ? { font: String((textIn as Record<string, unknown>).font) } : {}),
     };
     const rep = (p.repeat ?? null) as Record<string, unknown> | null;
     const grid = rep ? v3(rep.grid) : [1, 1, 1] as V3;
@@ -402,13 +441,14 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
         ...(key ? { key } : {}),
         ...(count === 1 && typeof p.rides === 'string' && NAME.test(p.rides) ? { rides: p.rides } : {}),
         ...(p.surface === 'smooth' ? { surface: 'smooth' as const } : {}),
+        ...(p.material === 'Neon' ? { material: 'Neon' as const } : {}),
       });
     }
   }
   // A keyboard placed key by key is laid out by code (relayKeyboard), unless the model already used rows.
   const usedRows = (Array.isArray(a.parts) ? a.parts : []).some((r) => r && typeof r === 'object' && Array.isArray((r as Record<string, unknown>).rows));
   const extrasAsked = parts.filter((p) => !p.text && !p.key && !p.rides).map((p) => p.name);
-  parts.splice(0, parts.length, ...relayKeyboard(parts, usedRows));
+  parts.splice(0, parts.length, ...relayKeyboard(parts, usedRows, (['rgb', 'candy', 'pastel', 'given'] as const).find((t) => t === a.theme) ?? 'pastel'));
   const kept = new Set(parts.map((p) => p.name));
   const dropped = extrasAsked.filter((n) => !kept.has(n));
   // Ground it: the lowest point of the object sits on the stage.
@@ -420,7 +460,8 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
     top: Math.max(...parts.map((p) => p.at[1] + p.size[1] / 2)),
   };
   if (parts.length === 0) return { error: `no part could be read: ${skipped.slice(0, 3).join('; ')}` };
-  return { name, parts, footprint, ...(skipped.length ? { skipped } : {}), ...(dropped.length ? { dropped } : {}) };
+  const theme = (['rgb', 'candy', 'pastel', 'given'] as const).find((t) => t === a.theme);
+  return { name, parts, footprint, ...(skipped.length ? { skipped } : {}), ...(dropped.length ? { dropped } : {}), ...(theme ? { theme } : {}) };
 }
 
 /**
@@ -453,10 +494,10 @@ export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number
   const caps = plan.parts.filter((p) => p.rides).length;
   const smooth = plan.parts.some((p) => p.surface === 'smooth');
   const how = [
-    caps ? `${caps} keycaps (smooth plastic, a lighter top with its letter on a darker skirt)` : `${plan.parts.length} parts`,
+    caps ? `${caps} keycaps (${plan.theme === 'rgb' ? 'dark chunky caps with small glowing rainbow legends, on a dark case with a purple underglow' : plan.theme === 'candy' ? 'caramel keycaps with black letters on a chocolate case' : 'smooth plastic, a lighter top with its letter on a darker skirt'})` : `${plan.parts.length} parts`,
     studs ? (smooth ? 'on a studded stage' : 'studded') : '',
     moving ? `${moving} of them move${keysBound ? `, ${keysBound} answer the real keyboard keys, and they are also pressed by clicking or walking on them` : ''}` : '',
-    moving ? 'each move has its sound; a counter and a hint are on the player\'s screen (not in the world)' : '',
+    moving ? `each move has its sound${keysBound ? '; a "+1" pops up over every key the player presses or steps on' : ''}; a counter and a hint are on the player's screen (not in the world)` : '',
     // What else is there, by name, and what is not (live 2026-10-01: the answer promised "two spinning knobs and a
     // glowing light bar" for a keyboard with one knob and no light bar).
     caps ? (() => {
@@ -546,7 +587,8 @@ export function hingePoint(p: ObjectPart, origin: V3): V3 {
 const clipText = (s: unknown) => String(s ?? '').slice(0, 300);
 
 export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
-  const plan = expandObject(a);
+  // The board's look comes from the user's words, not the model's palette (owner's references, 2026-10-01).
+  const plan = expandObject({ ...a, theme: keyboardTheme(ctx.userRequest?.()) });
   if ('error' in plan) return { error: plan.error };
   const wantsStuds = !userWantsOwnSurface(ctx.userRequest?.());
   const { footprint: f } = plan;
@@ -561,11 +603,12 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   const textGui = (t: NonNullable<ObjectPart['text']>, p: ObjectPart): InstanceSpecLite => ({
     className: 'SurfaceGui', name: 'Label',
     props: { Face: { t: 'EnumItem', v: `Enum.NormalId.${t.face}` }, SizingMode: { t: 'EnumItem', v: 'Enum.SurfaceGuiSizingMode.PixelsPerStud' }, PixelsPerStud: Math.max(10, Math.min(80, 120 / Math.max(1, Math.min(p.size[0], p.size[2])))), LightInfluence: 0 },
-    children: [{ className: 'TextLabel', name: 'Text', props: { Size: { t: 'UDim2', v: [0.9, 0, 0.9, 0] }, Position: { t: 'UDim2', v: [0.05, 0, 0.05, 0] }, BackgroundTransparency: 1, Text: t.value, TextScaled: true, Font: { t: 'EnumItem', v: 'Enum.Font.FredokaOne' }, TextColor3: t.color },
+    children: [{ className: 'TextLabel', name: 'Text', props: { Size: { t: 'UDim2', v: [0.9, 0, 0.9, 0] }, Position: { t: 'UDim2', v: [0.05, 0, 0.05, 0] }, BackgroundTransparency: 1, Text: t.value, TextScaled: true, Font: { t: 'EnumItem', v: `Enum.Font.${t.font ?? 'FredokaOne'}` }, TextColor3: t.color },
       // Dark ink (a keycap's letter) is printed, not outlined; light text keeps its black outline. A legend is at most
       // about half the cap (owner, 2026-10-01: SHIFT and CAPS filled their caps and dwarfed the letters); the canvas's
       // short side is about 120 px at any PixelsPerStud above.
-      children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: isDark(t.color) ? 0 : 2 } },
+      // A keycap's legend is printed (a gamer board's glows), never outlined.
+      children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: isDark(t.color) || p.key ? 0 : 2 } },
         ...(p.key ? [{ className: 'UITextSizeConstraint', name: 'Legend', props: { MaxTextSize: 56 } }] : [])] }],
   });
   const moving = plan.parts.filter((p) => p.move);
@@ -574,7 +617,7 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
     props: {
       ...uprightLabel(p),
       Position: [origin[0] + p.at[0], origin[1] + p.at[1], origin[2] + p.at[2]],
-      Anchored: !p.move && !p.rides, Color: p.color, Material: 'Plastic', TopSurface: 'Smooth', BottomSurface: 'Smooth',
+      Anchored: !p.move && !p.rides, Color: p.color, Material: p.material ?? 'Plastic', TopSurface: 'Smooth', BottomSurface: 'Smooth',
       ...(p.shape === 'ball' ? { Shape: { t: 'EnumItem', v: 'Enum.PartType.Ball' } } : p.shape === 'cylinder' ? { Shape: { t: 'EnumItem', v: 'Enum.PartType.Cylinder' } } : {}),
       ...(p.transparency ? { Transparency: p.transparency } : {}),
     },
