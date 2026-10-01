@@ -142,7 +142,12 @@ export function shade(hex: string, amount: number): string {
  * real keyboard key when the move is on "key". Pure: returns plain part entries for expandObject.
  */
 export function unrollRows(p: Record<string, unknown>, index: number): Record<string, unknown>[] {
-  const rows = (p.rows as unknown[]).filter(Array.isArray).map((r) => (r as unknown[]).map((l) => String(l ?? '').slice(0, 12)).filter(Boolean)).filter((r) => r.length > 0);
+  // The same label twice in a row is one wide key written as cells (live 2026-10-01: "Space" five times made a 176-stud
+  // board with five space bars), so it is one key at its real width.
+  const rows = (p.rows as unknown[]).filter(Array.isArray)
+    .map((r) => (r as unknown[]).map((l) => String(l ?? '').slice(0, 12)).filter(Boolean)
+      .filter((l, i, r) => i === 0 || l.trim().toLowerCase() !== r[i - 1]!.trim().toLowerCase()))
+    .filter((r) => r.length > 0);
   const num = (v: unknown, d: number, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   // Low enough to walk onto (owner's play test, 2026-10-01: he had to jump onto the keyboard): case and key together are
   // under half a key, so a player steps up onto it and runs across the keys.
@@ -193,6 +198,17 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
 const NOT_A_KEYBOARD_PART = /screen|monitor|display|desk|table|wall|counter|sign|board(?!.*key)/i;
 
 /**
+ * A wrist or palm rest lies on the ground just in front of the bottom row, no wider than the keys (live 2026-10-01: the
+ * model floated it behind the number row). Any other part is returned as it is. Pure.
+ */
+function restBeside(p: ObjectPart, keys: ObjectPart[], x0: number, x1: number, z1: number, floor: number): ObjectPart {
+  if (!/wrist|palm|rest/i.test(p.name)) return p;
+  const unit = Math.min(...keys.map((k) => Math.min(k.size[0], k.size[2])));
+  const width = Math.min(p.size[0], (x1 - x0) * 0.7), height = Math.min(p.size[1], unit * 0.6), depth = Math.min(Math.max(p.size[2], unit), unit * 2);
+  return { ...p, rot: undefined, size: [width, height, depth], at: [(x0 + x1) / 2, floor + height / 2, z1 + unit * 0.6 + depth / 2] };
+}
+
+/**
  * A keyboard the model placed key by key is laid out again by code (owner, 2026-10-01: the model ignored `rows` and
  * hand-placed the keys again, with an 18-stud "CounterScreen" wall behind them). When 8 or more parts are labelled
  * with keyboard keys, their labels are read row by row (front to back by z, left to right by x) and laid out with
@@ -222,9 +238,15 @@ export function relayKeyboard(all: ObjectPart[], laidOut = false): ObjectPart[] 
   const x0 = Math.min(...keys.map((k) => k.at[0] - k.size[0] / 2)), x1 = Math.max(...keys.map((k) => k.at[0] + k.size[0] / 2));
   const z0 = Math.min(...keys.map((k) => k.at[2] - k.size[2] / 2)), z1 = Math.max(...keys.map((k) => k.at[2] + k.size[2] / 2));
   const keyBottom = Math.min(...keys.map((k) => k.at[1] - k.size[1] / 2));
+  const floor = Math.min(keyBottom, ...parts.filter((p) => /Case$/.test(p.name)).map((p) => p.at[1] - p.size[1] / 2));
   const under = (p: ObjectPart) => !isKey(p) && p.at[1] + p.size[1] / 2 <= keyBottom + 0.05 &&
     p.at[0] - p.size[0] / 2 < x1 && p.at[0] + p.size[0] / 2 > x0 && p.at[2] - p.size[2] / 2 < z1 && p.at[2] + p.size[2] / 2 > z0;
-  const kept = parts.filter((p) => !isKey(p) && !under(p) && !NOT_A_KEYBOARD_PART.test(p.name));
+  // Anything else lying over the keys hides them (live 2026-10-01: a lilac "DeckPlate" above the keycaps read as one
+  // big plane, and LED strips floated over the space bar), so only what is beside the keys stays.
+  const overKeys = (p: ObjectPart) => !isKey(p) && !/Case$/.test(p.name) &&
+    p.at[0] - p.size[0] / 2 < x1 && p.at[0] + p.size[0] / 2 > x0 && p.at[2] - p.size[2] / 2 < z1 && p.at[2] + p.size[2] / 2 > z0;
+  const kept = parts.filter((p) => !isKey(p) && !under(p) && !NOT_A_KEYBOARD_PART.test(p.name))
+    .map((p) => restBeside(p, keys, x0, x1, z1, floor)).filter((p) => !overKeys(p));
   // Laid out by rows already: keep the tool's keys and case, and only drop the model's own plates and screens.
   if (laidOut) return [...keys, ...riders, ...parts.filter((p) => /Case$/.test(p.name) && !isKey(p)), ...kept.filter((p) => !/Case$/.test(p.name))];
   const moveOf = new Map(keys.map((k) => [labelOf(k)!.toLowerCase(), k.move]));

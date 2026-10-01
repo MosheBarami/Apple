@@ -289,3 +289,36 @@ test('the build result says what was built, so the answer cannot invent it', () 
   assert.match(said, /real keyboard keys/);
   assert.match(said, /on the player's screen \(not in the world\)/);
 });
+
+// Live 2026-10-01 (new baseplate, "make an asmr keyboard"): the model wrote the space bar as five "Space" cells, laid a
+// lilac DeckPlate over the keys, floated LED strips above the space bar and put the wrist rest behind the number row.
+// The board came out 176 studs long with the keys hidden under a plane.
+test('a wide key written as repeated cells is one key, and nothing lies over the keys', () => {
+  const plan = O.expandObject({ name: 'ASMR Keyboard', scale: 4, parts: [
+    { name: 'Key', rows: [
+      ['Esc', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Back'],
+      ['Tab', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', '\\'],
+      ['Caps', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'", 'Enter', 'Enter'],
+      ['Shift', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 'Shift', '↑', 'Del'],
+      ['Ctrl', 'Win', 'Alt', 'Space', 'Space', 'Space', 'Space', 'Space', 'Alt', 'Fn', 'Ctrl', '←', '↓', '→'],
+    ], move: { as: 'press', on: 'key', sound: 'keyboard thock' } },
+    { name: 'DeckPlate', size: [15.75, 0.3, 5.25], at: [0, 1.175, 0], color: '#b9a3ff' },
+    { name: 'LEDStrip', size: [0.75, 0.15, 0.3], at: [-7.1, 1.47, 2.4], color: 'pink' },
+    { name: 'WristRest', size: [15, 0.75, 1.5], at: [0, 1.7, -3.4], color: 'yellow', move: { as: 'wobble', on: 'touch' } },
+  ] });
+  assert.ok(!('error' in plan), plan.error);
+  const spaces = plan.parts.filter((p) => p.text?.value === 'SPACE');
+  assert.equal(spaces.length, 1, 'one space bar');
+  assert.equal(plan.parts.filter((p) => p.text?.value === 'ENTER').length, 1, 'one enter');
+  assert.equal(plan.parts.filter((p) => p.text?.value === 'SHIFT').length, 2, 'left and right shift both stay');
+  const width = plan.footprint.x1 - plan.footprint.x0;
+  assert.ok(width < 80, `the board is ${width.toFixed(1)} studs wide`);
+  assert.ok(!plan.parts.some((p) => p.name === 'DeckPlate' || p.name === 'LEDStrip'), 'nothing lies over the keys');
+  const keys = plan.parts.filter((p) => p.text);
+  const rest = plan.parts.find((p) => p.name === 'WristRest');
+  assert.ok(rest, 'the wrist rest stays');
+  const front = Math.max(...keys.map((k) => k.at[2] + k.size[2] / 2));
+  const back = Math.min(...keys.map((k) => k.at[2] - k.size[2] / 2));
+  assert.ok(rest.at[2] - rest.size[2] / 2 > front || rest.at[2] + rest.size[2] / 2 < back, 'the wrist rest is beside the keys, not over them');
+  assert.ok(Math.abs(rest.at[1] - rest.size[1] / 2) < 0.01, 'and on the ground');
+});
