@@ -456,3 +456,13 @@ test('a keyboard\'s extras wear its theme', () => {
   assert.equal(rest.color, '#22242a'); assert.equal(rest.surface, 'smooth');
   assert.equal(knob.color, '#c9cdd6');
 });
+
+// Round 11 of test 1 (2026-10-01): a cyan studded CTRL block the model placed itself, beside the layout's own Ctrl.
+test('on a board laid out by rows, only the layout\'s own keys stay', () => {
+  const plan = O.expandObject({ name: 'Kb', theme: 'rgb', parts: [
+    { name: 'Key', rows: [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['Space']], move: { as: 'press', on: 'key' } },
+    { name: 'CtrlKey', size: [5, 1, 4], at: [-30, 1, 4], color: '#4fe0ff', text: 'Ctrl', key: 'LeftControl', move: { as: 'press', on: 'key' } },
+  ] });
+  assert.ok(!plan.parts.some((p) => p.name === 'CtrlKey'), 'the model\'s own Ctrl went');
+  assert.equal(plan.parts.filter((p) => p.text?.value === 'CTRL' || p.text?.value === 'Ctrl').length, 2, 'the layout\'s two Ctrls stay');
+});

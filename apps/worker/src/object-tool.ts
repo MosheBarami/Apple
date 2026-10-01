@@ -353,7 +353,10 @@ export function relayKeyboard(all: ObjectPart[], laidOut = false, theme: Keyboar
   // A part bound to a key a labelled keycap already answers is a second key: live 2026-10-01 a 36-stud unlabelled pink
   // "Spacebar" bounced in front of the board beside the real SPACE key.
   const labelled = new Set(keys.filter((k) => k.text).map((k) => keyCodeName(k.key ?? '') ?? k.key));
-  const realKeys = keys.filter((k) => k.text || !labelled.has(keyCodeName(k.key ?? '') ?? k.key));
+  // Laid out by rows, the keys are the layout's own (each top rides on its skirt); a key the model placed besides them is a
+  // second copy (round 11: a cyan studded "CTRL" block beside the real Ctrl).
+  const skirted = new Set(riders.map((r) => r.rides));
+  const realKeys = laidOut ? keys.filter((k) => skirted.has(k.name)) : keys.filter((k) => k.text || !labelled.has(keyCodeName(k.key ?? '') ?? k.key));
   if (laidOut) return [...realKeys, ...riders, ...parts.filter((p) => /Case$/.test(p.name) && !isKey(p)), ...kept.filter((p) => !/Case$/.test(p.name))];
   const moveOf = new Map(keys.map((k) => [labelOf(k)!.toLowerCase(), k.move]));
   const colours = [...new Set(keys.map((k) => k.color))].slice(0, 6);
