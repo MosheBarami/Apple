@@ -4,7 +4,8 @@
 	plot; they can sell it back. Everything is checked on the server (their tile, free, affordable).
 	Settings: AppleGameConfig.shop = { refund = 0.5, upgrade = { max, damage, range, rate, cost, growth },
 	items = { { id, name, price, range, damage, rate, unlock?, projectile?, color?, blurb?, rarity? } } }.
-	Progress: an item with `unlock = n` is sold once the player has reached wave n (now or in an earlier session);
+	Progress: an item with `unlock = n` is sold once the player has reached wave n (now or in an earlier session; a game
+	with no AppleGameConfig.waves has no waves, so nothing is locked);
 	each item has levels bought with AppleUpgrade(id), saved with the player's money, that make every copy of it
 	they own hit harder, reach further and throw faster. Item models: ServerStorage.AppleDefenders.<id>. Plots: Workspace.AppleMap.Plots.<n>
 	(any container) whose tiles are BaseParts tagged AppleTile. The catalog is published for clients as the JSON
@@ -97,7 +98,10 @@ function AppleShop.start(config: any, economy: any)
 	placed.Parent = workspace
 
 	local plots = workspace:WaitForChild("AppleMap"):WaitForChild("Plots")
+	-- A game without waves (a plot simulator) has nothing to reach: every item is open and `unlock` is ignored.
+	local hasWaves = type(config.waves) == "table"
 	local function reached(player: Player): number
+		if not hasWaves then return math.huge end
 		local state = ReplicatedStorage:FindFirstChild("AppleState") -- AppleWaves makes it, after the shop starts
 		local now = if state then (state:GetAttribute("Wave") or 0) else 0
 		return math.max(now, economy.getData(player, "BestWave") or 0)

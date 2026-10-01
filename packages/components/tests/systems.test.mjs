@@ -138,6 +138,35 @@ spec("upgrades: prices grow, presses and seconds pay by level, multipliers multi
   eq(Upgrades.perSecond(ups, { Auto = 2, Golden = 1 }), 8)
 end)
 
+spec("machines: income is base times level, multipliers stack, rebirth costs grow", function()
+  local drill = { income = 3, perPress = 2 }
+  eq(Machines.income(drill, 1), 3); eq(Machines.income(drill, 4), 12); eq(Machines.income(drill, 0), 3, "a level below 1 counts as 1")
+  eq(Machines.income(drill, nil), 3); eq(Machines.income({}, 5), 0, "no income, no pay"); eq(Machines.income(nil, 5), 0)
+  eq(Machines.pressIncome(drill, 3), 6); eq(Machines.pressIncome({ income = 3 }, 3), 0)
+  local ups = { { id = "Golden", kind = "multiplier", amount = 2 }, { id = "Fingers", kind = "perPress", amount = 1 } }
+  eq(Machines.multiplier(0, 0.5, nil, nil), 1, "nothing bought, nothing reborn")
+  eq(Machines.multiplier(2, 0.5, nil, nil), 2, "two rebirths at +0.5 each")
+  eq(Machines.multiplier(2, 0.5, ups, { Golden = 2, Fingers = 9 }), 8, "rebirths times two doublings; perPress upgrades do not multiply")
+  eq(Machines.multiplier("x", 0.5, ups, {}), 1, "a bad rebirth count is none")
+  local rules = Machines.rebirthRules({ cost = 100, growth = 1.5 })
+  eq(rules.cost, 100); eq(rules.growth, 1.5); eq(rules.multiplier, 0.5, "the rest keep their defaults")
+  eq(Machines.rebirthCost(rules, 0), 100); eq(Machines.rebirthCost(rules, 1), 150); eq(Machines.rebirthCost(rules, 2), 225)
+  eq(Machines.rebirthCost(rules, 3), 337, "floored"); eq(Machines.rebirthCost(Machines.rebirthRules(nil), 0), 1000)
+  eq(Machines.rebirthRefusal(99, 100), "You need more money to rebirth."); eq(Machines.rebirthRefusal(100, 100), nil)
+  local pay = Machines.payouts({
+    { owner = 1, item = "Drill", level = 2 }, { owner = 1, item = "Drill", level = 1 }, { owner = 2, item = "Drill", level = 1 },
+    { owner = 2, item = "Rock", level = 1 }, { owner = nil, item = "Drill", level = 1 }, { owner = 3, item = "Drill", level = 1 },
+  }, { Drill = { income = 3 } })
+  eq(pay[1], 9, "an owner is paid for each of their machines"); eq(pay[2], 3, "an item that is not a machine pays nothing")
+  eq(pay[3], 3); eq(pay[0], nil, "an unowned model pays nobody")
+end)
+
+spec("owners: only the owner's own presses play and pay; unowned things stay open to everyone", function()
+  eq(Anim.mayPress(nil, 7), true, "unowned"); eq(Anim.mayPress(7, 7), true, "the owner"); eq(Anim.mayPress(8, 7), false, "a visitor")
+  eq(Upgrades.paysPress(nil, 7), true); eq(Upgrades.paysPress(7, 7), true); eq(Upgrades.paysPress(8, 7), false)
+  eq(Machines.isOwn(7, 7), true); eq(Machines.isOwn(8, 7), false); eq(Machines.isOwn(nil, 7), false, "nobody's press is not the player's own")
+end)
+
 print(("systems: %d passed%s"):format(passed, if #failures > 0 then ", " .. #failures .. " FAILED" else ""))
 for _, f in failures do print(f) end
 if #failures > 0 then error("system specs failed") end
@@ -160,6 +189,7 @@ test('the game components pass their luau specs', { skip: available() ? false : 
     `local Sounds = (function()\n${src('fx/AppleSounds.luau')}\nend)()`,
     `local Anim = (function()\n${src('animate/AppleAnimate.luau')}\nend)()`,
     `local Upgrades = (function()\n${src('upgrades/AppleUpgrades.luau')}\nend)()`,
+    `local Machines = (function()\n${src('machines/AppleMachines.luau')}\nend)()`,
     SPEC,
   ].join('\n'));
   let out;

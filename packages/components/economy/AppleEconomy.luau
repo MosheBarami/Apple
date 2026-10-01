@@ -24,6 +24,7 @@ local START = settings.start or (module:GetAttribute("Start") :: number?) or 50
 local DATA_KEY = settings.dataKey or (module:GetAttribute("DataKey") :: string?) or "AppleEconomy1"
 
 AppleEconomy.CURRENCY = CURRENCY
+AppleEconomy.START = START -- what a player begins with (and what a rebirth sets the money back to)
 
 local changed = Instance.new("BindableEvent")
 AppleEconomy.Changed = changed.Event -- (player, newAmount, delta, reason)

@@ -9,6 +9,10 @@
  * The props that would look poor as boxes (trees, barn, bushes, fences) come from the library (compose.ts).
  * Pure: the same layout and palette always give the same map. Names the systems read (Lanes, Plots, tiles tagged
  * AppleTile, OwnerName labels, Spawn) are kept exactly.
+ *
+ * A plot-simulator layout (hub-layout.ts: `layout.hub` present, `layout.lane` empty) gets a HUB instead of the gate, the
+ * lane and the plaza: a stone plaza at the centre, a spoke road to every plot, a ShopPad and a SellPad. The island, the
+ * water, the plots (Plots / Plot<n> / tiles tagged AppleTile / OwnerName) and the Spawn are the same pieces.
  */
 import type { InstanceSpecLite, Layout, P2 } from './compose';
 import { MOODS } from './worldbuilding';
@@ -64,7 +68,7 @@ export function sign(name: string, at: P2, facing: 'x' | 'z', text: string, colo
 
 export interface MapInput {
   layout: Layout; tile: number; plotTiles: (c: P2) => P2[]; plotHalf: number; laneWidth: number;
-  words: { gate?: string; base?: string; plot?: string };
+  words: { gate?: string; base?: string; plot?: string; shop?: string; sell?: string };
   seed: () => number;
 }
 
@@ -74,6 +78,10 @@ export function studdedMap(input: MapInput, pal: StudPalette = STUD_PALETTE): In
   const r = input.seed;
   const [gcx, gcz] = layout.ground.center, [gsx, gsz] = layout.ground.size;
   const items: InstanceSpecLite[] = [];
+  // A hub map (hub-layout.ts) has no lane; its plots may be bigger or smaller than the composer's default.
+  const hub = layout.hub && layout.lane.length === 0 ? layout.hub : null;
+  const plotTilesOf: (c: P2) => P2[] = hub ? gridTiles(layout.plotTiles ?? Math.round((input.plotHalf * 2) / input.tile), input.tile) : input.plotTiles;
+  const plotHalf = hub ? ((layout.plotTiles ?? Math.round((input.plotHalf * 2) / input.tile)) * input.tile) / 2 : input.plotHalf;
 
   // The island: grass on top, three banded cliff steps below it, each wider, down into the water.
   const island: InstanceSpecLite[] = [brick('Grass', [gsx, 2, gsz], [gcx, -1, gcz], pal.grass, { faces: SIDES })];
@@ -82,8 +90,10 @@ export function studdedMap(input: MapInput, pal: StudPalette = STUD_PALETTE): In
     island.push(brick(`Cliff${k + 1}`, [gsx + out * 2, 5, gsz + out * 2], [gcx, -4.5 - k * 5, gcz], colour, { faces: SIDES }));
   });
   // Lighter grass terraces: low studded steps that break the flat ground, away from the lane, the plots and the spawn.
-  const free = (p: P2, room: number) => !layout.plots.some(([x, z]) => Math.abs(p[0] - x) < input.plotHalf + room && Math.abs(p[1] - z) < input.plotHalf + room)
-    && Math.hypot(p[0] - layout.spawn[0], p[1] - layout.spawn[1]) > room + 8;
+  const free = (p: P2, room: number) => !layout.plots.some(([x, z]) => Math.abs(p[0] - x) < plotHalf + room && Math.abs(p[1] - z) < plotHalf + room)
+    && Math.hypot(p[0] - layout.spawn[0], p[1] - layout.spawn[1]) > room + 8
+    && (!hub || (Math.max(Math.abs(p[0] - hub.center[0]), Math.abs(p[1] - hub.center[1])) >= hub.radius + 2 + room
+      && !hub.spokes.some((sp) => sp.slice(1).some((b, k) => flatDist(p, sp[k]!, b) < laneWidth / 2 + room))));
   let terraces = 0;
   for (let tries = 0; terraces < 9 && tries < 400; tries++) {
     const w = 14 + Math.round(r() * 14), d = 14 + Math.round(r() * 14), h = r() < 0.5 ? 1 : 2;
@@ -101,39 +111,52 @@ export function studdedMap(input: MapInput, pal: StudPalette = STUD_PALETTE): In
   items.push({ className: 'Model', name: 'Island', children: island });
   items.push(brick('Water', [900, 2, 900], [gcx, -12, gcz], pal.water, { extra: { Transparency: 0.15, CanCollide: false } }));
 
-  items.push({ className: 'Model', name: 'Road', children: roadPieces(layout.lane, laneWidth, pal) });
-  items.push({ className: 'Folder', name: 'Lanes', children: [{ className: 'Folder', name: 'Lane1', children: layout.lane.map(([x, z], i) => ({
-    className: 'Part', name: String(i + 1), props: { Size: [2, 1, 2], Position: [x, 1.5, z], Anchored: true, Transparency: 1, CanCollide: false, CanQuery: false },
-  })) }] });
+  if (hub) {
+    items.push(...hubItems(hub, laneWidth, input.words, pal));
+  } else {
+    items.push({ className: 'Model', name: 'Road', children: roadPieces(layout.lane, laneWidth, pal) });
+    items.push({ className: 'Folder', name: 'Lanes', children: [{ className: 'Folder', name: 'Lane1', children: layout.lane.map(([x, z], i) => ({
+      className: 'Part', name: String(i + 1), props: { Size: [2, 1, 2], Position: [x, 1.5, z], Anchored: true, Transparency: 1, CanCollide: false, CanQuery: false },
+    })) }] });
 
-  // The gate the enemies come through, and the plaza the base stands on.
-  const [g0x, g0z] = layout.lane[0]!;
-  const half = laneWidth / 2 + 2;
-  items.push({ className: 'Model', name: 'Gate', children: [
-    brick('PillarA', [3, 16, 3], [g0x - half, 8, g0z], pal.gate, { faces: SIDES }),
-    brick('PillarB', [3, 16, 3], [g0x + half, 8, g0z], pal.gate, { faces: SIDES }),
-    brick('Beam', [half * 2 + 6, 3, 4], [g0x, 17.5, g0z], pal.banner, { faces: SIDES, children: ['Front', 'Back'].map((face) => ({
-      className: 'SurfaceGui', name: `Face${face}`,
-      props: { Face: enumOf('NormalId', face), SizingMode: enumOf('SurfaceGuiSizingMode', 'PixelsPerStud'), PixelsPerStud: 40, LightInfluence: 0 },
-      children: [{ className: 'TextLabel', name: 'Words', props: { Size: { t: 'UDim2', v: [1, -20, 1, -10] }, Position: { t: 'UDim2', v: [0, 10, 0, 5] }, BackgroundTransparency: 1, Text: (input.words.gate ?? 'Enemy Gate').toUpperCase(), TextScaled: true, Font: enumOf('Font', 'FredokaOne'), TextColor3: '#ffffff' },
-        children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 4 } }] }],
-    })) }),
-    brick('CapA', [4, 1.5, 4], [g0x - half, 16.75, g0z], pal.cliffDark, { faces: SIDES }),
-    brick('CapB', [4, 1.5, 4], [g0x + half, 16.75, g0z], pal.cliffDark, { faces: SIDES }),
-  ] });
-  const end = layout.lane[layout.lane.length - 1]!;
-  items.push(brick('Plaza', [34, 0.5, 30], [end[0], 0.25, end[1] + 12], pal.sand, { collide: true }));
+    // The gate the enemies come through, and the plaza the base stands on.
+    const [g0x, g0z] = layout.lane[0]!;
+    const half = laneWidth / 2 + 2;
+    items.push({ className: 'Model', name: 'Gate', children: [
+      brick('PillarA', [3, 16, 3], [g0x - half, 8, g0z], pal.gate, { faces: SIDES }),
+      brick('PillarB', [3, 16, 3], [g0x + half, 8, g0z], pal.gate, { faces: SIDES }),
+      brick('Beam', [half * 2 + 6, 3, 4], [g0x, 17.5, g0z], pal.banner, { faces: SIDES, children: ['Front', 'Back'].map((face) => ({
+        className: 'SurfaceGui', name: `Face${face}`,
+        props: { Face: enumOf('NormalId', face), SizingMode: enumOf('SurfaceGuiSizingMode', 'PixelsPerStud'), PixelsPerStud: 40, LightInfluence: 0 },
+        children: [{ className: 'TextLabel', name: 'Words', props: { Size: { t: 'UDim2', v: [1, -20, 1, -10] }, Position: { t: 'UDim2', v: [0, 10, 0, 5] }, BackgroundTransparency: 1, Text: (input.words.gate ?? 'Enemy Gate').toUpperCase(), TextScaled: true, Font: enumOf('Font', 'FredokaOne'), TextColor3: '#ffffff' },
+          children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 4 } }] }],
+      })) }),
+      brick('CapA', [4, 1.5, 4], [g0x - half, 16.75, g0z], pal.cliffDark, { faces: SIDES }),
+      brick('CapB', [4, 1.5, 4], [g0x + half, 16.75, g0z], pal.cliffDark, { faces: SIDES }),
+    ] });
+    const end = layout.lane[layout.lane.length - 1]!;
+    items.push(brick('Plaza', [34, 0.5, 30], [end[0], 0.25, end[1] + 12], pal.sand, { collide: true }));
+  }
 
   // Plots: a wooden frame, dark soil tiles (alternating), and a sign with the owner's name.
   items.push({ className: 'Folder', name: 'Plots', children: layout.plots.map(([px, pz], n) => {
-    const toLane = nearestLaneSide([px, pz], layout.lane);
-    const signAt: P2 = toLane === 'x' ? [px, pz + (input.plotHalf + 2.5) * (pz > 0 ? 1 : -1)] : [px + (input.plotHalf + 2.5) * (px > 0 ? 1 : -1), pz];
+    let signAt: P2, signFacing: 'x' | 'z';
+    if (hub) {
+      // On the side away from the hub, where no spoke comes in.
+      const [dx, dz] = [px - hub.center[0], pz - hub.center[1]];
+      if (Math.abs(dx) >= Math.abs(dz)) { signAt = [px + (dx < 0 ? -1 : 1) * (plotHalf + 2.5), pz]; signFacing = 'x'; }
+      else { signAt = [px, pz + (dz < 0 ? -1 : 1) * (plotHalf + 2.5)]; signFacing = 'z'; }
+    } else {
+      const toLane = nearestLaneSide([px, pz], layout.lane);
+      signAt = toLane === 'x' ? [px, pz + (plotHalf + 2.5) * (pz > 0 ? 1 : -1)] : [px + (plotHalf + 2.5) * (px > 0 ? 1 : -1), pz];
+      signFacing = toLane === 'x' ? 'z' : 'x';
+    }
     return {
       className: 'Model', name: `Plot${n + 1}`,
       children: [
-        brick('Frame', [input.plotHalf * 2 + 2, 0.8, input.plotHalf * 2 + 2], [px, 0.4, pz], pal.frame, { faces: SIDES }),
-        ...input.plotTiles([px, pz]).map(([tx, tz], i) => brick(`Tile${i + 1}`, [input.tile - 0.6, 1, input.tile - 0.6], [tx, 0.7, tz], i % 2 === 0 ? pal.soil : pal.soilDark, { attributes: { AppleTags: 'AppleTile' } })),
-        sign('Sign', signAt, toLane === 'x' ? 'z' : 'x', input.words.plot ?? 'Free plot', pal.frame, 'OwnerName'),
+        brick('Frame', [plotHalf * 2 + 2, 0.8, plotHalf * 2 + 2], [px, 0.4, pz], pal.frame, { faces: SIDES }),
+        ...plotTilesOf([px, pz]).map(([tx, tz], i) => brick(`Tile${i + 1}`, [input.tile - 0.6, 1, input.tile - 0.6], [tx, 0.7, tz], i % 2 === 0 ? pal.soil : pal.soilDark, { attributes: { AppleTags: 'AppleTile' } })),
+        sign('Sign', signAt, signFacing, input.words.plot ?? 'Free plot', pal.frame, 'OwnerName'),
       ],
     };
   }) });
@@ -144,7 +167,7 @@ export function studdedMap(input: MapInput, pal: StudPalette = STUD_PALETTE): In
   // Painted guidance (never floating arrows): yellow chevrons on the grass from the spawn to the nearest plot, so the
   // first thing to do is obvious from the first second (docs/research/roblox-games/2026-09-25-direct-play.md).
   const [sx, sz] = layout.spawn;
-  const target = [...layout.plots].sort((a, b) => Math.hypot(a[0] - sx, a[1] - sz) - Math.hypot(b[0] - sx, b[1] - sz))[0];
+  const target = hub ? undefined : [...layout.plots].sort((a, b) => Math.hypot(a[0] - sx, a[1] - sz) - Math.hypot(b[0] - sx, b[1] - sz))[0];
   if (target) {
     const dx = target[0] - sx, dz = target[1] - sz;
     const dist = Math.hypot(dx, dz);
@@ -197,6 +220,95 @@ export function roadPieces(lane: P2[], laneWidth: number, pal: Pick<StudPalette,
       out.push(brick(`Curb${i + 1}${side < 0 ? 'a' : 'b'}`, along ? [span, 0.8, 1] : [1, 0.8, span], along ? [cx, 0.4, cz + off] : [cx + off, 0.4, cz], pal.curb));
     }
   }
+  return out;
+}
+
+// ------------------------------------------------------------------------------------------------ the hub
+
+/** Distance from p to segment ab on the ground plane (compose.ts segDist, kept here so this file imports no values from it). */
+function flatDist(p: P2, a: P2, b: P2): number {
+  const dx = b[0] - a[0], dz = b[1] - a[1];
+  const len2 = dx * dx + dz * dz;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / len2));
+  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dz));
+}
+
+/** Every tile centre of a square plot of `size` x `size` tiles (compose.ts plotTiles, for a plot of any size). */
+function gridTiles(size: number, tile: number): (c: P2) => P2[] {
+  return (c) => {
+    const out: P2[] = [];
+    for (let i = 0; i < size; i++) for (let j = 0; j < size; j++) out.push([c[0] + (i - (size - 1) / 2) * tile, c[1] + (j - (size - 1) / 2) * tile]);
+    return out;
+  };
+}
+
+/** The hub's own colours: a cool stone that no lane map uses, so the middle of the world reads at a glance. */
+export const HUB_COLOURS = { plaza: '#b9c6dc', inlay: '#e3ebf7', shop: '#3ddc5f', sell: '#ff9f1a' };
+/** A pad is this many studs on a side (hub-layout.ts PAD). */
+const PAD_SIZE = 10;
+
+/** A flat pad on the hub with big words on its top face: stepping on it is how the game opens the shop or sells. */
+function pad(name: string, at: P2, colour: string, text: string): InstanceSpecLite {
+  return brick(name, [PAD_SIZE, 0.6, PAD_SIZE], [at[0], 1.1, at[1]], colour, {
+    collide: false, children: [{
+      className: 'SurfaceGui', name: 'FaceTop',
+      props: { Face: enumOf('NormalId', 'Top'), SizingMode: enumOf('SurfaceGuiSizingMode', 'PixelsPerStud'), PixelsPerStud: 40, LightInfluence: 0 },
+      children: [{
+        className: 'TextLabel', name: 'Words',
+        props: { Size: { t: 'UDim2', v: [1, -24, 0.5, 0] }, Position: { t: 'UDim2', v: [0.5, 0, 0.5, 0] }, AnchorPoint: { t: 'Vector2', v: [0.5, 0.5] }, BackgroundTransparency: 1, Text: text.toUpperCase(), TextScaled: true, Font: enumOf('Font', 'FredokaOne'), TextColor3: '#ffffff' },
+        children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 4 } }],
+      }],
+    }],
+  });
+}
+
+/**
+ * What a hub map draws instead of a gate and a plaza: the stone plaza (on a wooden rim, with an inlay where the hero
+ * stands), a straight road to every plot, and the ShopPad and the SellPad. The pads are named exactly so the game's
+ * scripts find them.
+ */
+function hubItems(hub: NonNullable<Layout['hub']>, laneWidth: number, words: MapInput['words'], pal: StudPalette): InstanceSpecLite[] {
+  const [cx, cz] = hub.center;
+  const side = hub.radius * 2;
+  return [
+    {
+      className: 'Model', name: 'Hub', children: [
+        brick('HubRim', [side + 3, 0.3, side + 3], [cx, 0.15, cz], pal.curb),
+        brick('Plaza', [side, 0.8, side], [cx, 0.4, cz], HUB_COLOURS.plaza, { faces: SIDES }),
+        brick('Inlay', [side * 0.36, 0.1, side * 0.36], [hub.heroSpot[0], 0.85, hub.heroSpot[1]], HUB_COLOURS.inlay, { collide: false }),
+      ],
+    },
+    { className: 'Model', name: 'Road', children: spokePieces(hub.spokes, laneWidth, pal) },
+    pad('ShopPad', hub.shopPad, HUB_COLOURS.shop, words.shop ?? 'Shop'),
+    pad('SellPad', hub.sellPad, HUB_COLOURS.sell, words.sell ?? 'Sell'),
+  ];
+}
+
+/**
+ * A road of straight spokes at any angle: for every stretch one road brick and a curb on each side, turned about the
+ * vertical so its length runs along the stretch. The curbs are lower than the hub's plaza and the plots' frames (both
+ * 0.8), so where a spoke meets them the corners of its end are hidden under them instead of flickering. Exported for its tests.
+ */
+export function spokePieces(spokes: P2[][], laneWidth: number, pal: Pick<StudPalette, 'path' | 'curb'>): InstanceSpecLite[] {
+  const out: InstanceSpecLite[] = [];
+  const half = laneWidth / 2;
+  spokes.forEach((spoke, i) => {
+    for (let k = 0; k < spoke.length - 1; k++) {
+      const [ax, az] = spoke[k]!, [bx, bz] = spoke[k + 1]!;
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len <= 0.01) continue;
+      const [cx, cz] = [(ax + bx) / 2, (az + bz) / 2];
+      const yaw = Math.round(Math.atan2(bx - ax, bz - az) * 18000 / Math.PI) / 100; // a part's length runs along its own Z
+      const [nx, nz] = [(bz - az) / len, -(bx - ax) / len];                         // the unit across the road
+      const turned = { Orientation: [0, yaw, 0] };
+      const tag = spoke.length > 2 ? `${i + 1}_${k + 1}` : `${i + 1}`;
+      out.push(brick(`Spoke${tag}`, [laneWidth, 0.4, len], [cx, 0.2, cz], pal.path, { collide: false, extra: turned }));
+      for (const [side, mark] of [[-1, 'a'], [1, 'b']] as const) {
+        const off = side * (half + 0.5);
+        out.push(brick(`Spoke${tag}Curb${mark}`, [1, 0.6, len], [cx + nx * off, 0.3, cz + nz * off], pal.curb, { extra: turned }));
+      }
+    }
+  });
   return out;
 }
 

@@ -15,6 +15,6 @@
   "gives": {
     "remote": "ReplicatedStorage.AppleUpgradeBuy(id) -> ok, message",
     "levels": "player attribute Upgrade_<id> (saved with the money)",
-    "earning": "ServerStorage.AppleAnimatePressed pays perPress for every press; perSecond pays every second"
+    "earning": "ServerStorage.AppleAnimatePressed pays perPress for every press of an unowned model or of the presser's own (a model with an Owner attribute pays only its owner); perSecond pays every second"
   }
 }

@@ -1,0 +1,22 @@
+{
+  "id": "machines",
+  "name": "AppleMachines",
+  "role": "system",
+  "summary": "Plot-simulator income: every machine a player has placed on their plot earns them the currency every second (base income times its level, times their rebirth and upgrade multipliers), their own presses can pay extra, and a rebirth trades all progress for a permanent multiplier.",
+  "files": {
+    "AppleMachines.luau": { "class": "ModuleScript", "parent": "ServerScriptService.AppleComponents", "name": "AppleMachines" }
+  },
+  "needs": {
+    "config": "AppleGameConfig.machines = { [itemId] = { income = number per second at level 1, perPress = number? paid per press of the owner's own copy } }; AppleGameConfig.rebirth = { cost, growth, multiplier } (defaults 1000, 2, 0.5)",
+    "shop": "AppleShop: placed models in Workspace.AppleDefenders with attributes Owner (UserId number), Item (item id), Level",
+    "economy": "AppleEconomy (start(config, economy) as every system)",
+    "optional": "AppleUpgrades: ReplicatedStorage.AppleUpgradesConfig and player attributes Upgrade_<id> (multiplier upgrades raise the pay; rebirth zeroes the levels); AppleAnimate: ServerStorage.AppleAnimatePressed for perPress"
+  },
+  "gives": {
+    "income": "every second each owner is paid the sum of income(item, level) of their machines times multiplier(player) through economy.grant (reason machine)",
+    "rebirth": "ReplicatedStorage.AppleRebirth() -> ok, message: when money >= floor(rebirth.cost * rebirth.growth ^ rebirths) it sets money back to the economy start, destroys the player's placed models, sets every Upgrade_<id> to 0 and adds 1 to the saved Rebirths",
+    "attributes": "player attributes Rebirths, RebirthCost, Multiplier, IncomePerSecond for any screen",
+    "state": "ReplicatedStorage.AppleState (Configuration) with Phase = play when the game has no AppleWaves, so the HUD never waits for waves"
+  },
+  "limits": ["Saved rebirths need the economy's DataStore (a published place); otherwise they last for the session."]
+}

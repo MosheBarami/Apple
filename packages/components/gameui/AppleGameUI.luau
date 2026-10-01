@@ -5,7 +5,7 @@
 	gives each one its job. Nothing on the screen is a placeholder: every number is the game's, every button acts.
 
 	  Coins.Value          the player's money (counts up, "+N" pops beside it); Coins.Plus opens the shop
-	  Wave.Title / Timer   the wave, the countdown to the next one, enemies left, "cleared", "lost"
+	  Wave.Title / Timer   the wave, the countdown to the next one, enemies left, "cleared", "lost" (hidden when the game has no waves)
 	  Health.Fill / Label  the base's health (green, then yellow, then red)
 	  Menu.Shop / Upgrade  open their panels; a panel's Close (or Escape) shuts it
 	  ShopPanel ... Item_<id>  one card per item: its 3D model turning, name, info, price; Buy starts placing it
@@ -77,7 +77,11 @@ function AppleGameUI.start()
 	local catalog = ReplicatedStorage:WaitForChild("AppleCatalog")
 	local models = ReplicatedStorage:WaitForChild("AppleItemModels")
 	local upgrade = ReplicatedStorage:WaitForChild("AppleUpgrade") :: RemoteFunction
-	local state = ReplicatedStorage:WaitForChild("AppleState")
+	-- AppleState is made by AppleWaves (or by AppleMachines as Phase = "play"); a game with neither gets a stand-in,
+	-- so the HUD never hangs and the wave labels simply stay hidden.
+	local realState = ReplicatedStorage:WaitForChild("AppleState", 10)
+	local state: Instance = realState or Instance.new("Configuration")
+	local function noWaves(): boolean return realState == nil or state:GetAttribute("Phase") == "play" end
 
 	local function tween(o: Instance, t: number, props: { [string]: any }, style: Enum.EasingStyle?)
 		local tw = TweenService:Create(o, TweenInfo.new(t, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
@@ -104,7 +108,10 @@ function AppleGameUI.start()
 		end
 	end
 	local function money(): number return player:GetAttribute(currency) or 0 end
-	local function reached(): number return math.max(state:GetAttribute("Wave") or 0, player:GetAttribute("BestWave") or 0) end
+	local function reached(): number
+		if noWaves() then return math.huge end -- no waves: nothing is locked behind one
+		return math.max(state:GetAttribute("Wave") or 0, player:GetAttribute("BestWave") or 0)
+	end
 
 	-- A button presses in, grows a little under the mouse, and clicks.
 	local function button(b: Instance?, onClick: () -> ())
@@ -224,7 +231,14 @@ function AppleGameUI.start()
 		local title, timer = find("Wave.Title"), find("Wave.Timer")
 		local fill, health = find("Health.Fill"), find("Health")
 		local lastPhase: string? = nil
+		local waveFrame = find("Wave")
 		local function showWave()
+			if waveFrame and waveFrame:IsA("GuiObject") then waveFrame.Visible = not noWaves() end
+			if noWaves() then
+				setText(title, "")
+				setText(timer, "")
+				return
+			end
 			local wave = state:GetAttribute("Wave") or 0
 			local phase = state:GetAttribute("Phase")
 			setText(title, ("%s %d"):format((words.wave or "Wave"):upper(), math.max(1, if phase == "intermission" then wave + 1 else wave)))

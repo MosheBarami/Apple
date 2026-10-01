@@ -226,6 +226,30 @@ export type StudPiece =
 export interface StudCard { name: string; label: string; price?: string; colour?: StudColour; icon?: string; blurb?: string; level?: string }
 export interface StudScreenSpec { name: string; pieces: StudPiece[] }
 
+const BUBBLES: StudColour[] = ['blue', 'purple', 'pink', 'yellow', 'green', 'red'];
+
+/**
+ * One card of a shop or an upgrades panel, in the owner's reference look (Grow a Garden-style shops): a big icon in a
+ * bright bubble fills the top, a level badge sits in the corner, then the name, what it does and the price button.
+ * `index` picks the bubble's colour in turn. `opts.blurb` names the line that says what it does (Blurb), `opts.bubble`
+ * fixes the bubble's colour.
+ */
+export function studCard(c: StudCard, index: number, opts: { blurb?: string; bubble?: StudColour } = {}): InstanceSpecLite {
+  return studSurface(c.name, { size: [0, 160, 0, 236] }, 'cream', {
+    tile: 60, corner: 14, order: index, children: [
+      studSurface('IconBubble', { size: [0, 92, 0, 92], pos: [0.5, 0, 0, 12], anchor: [0.5, 0] }, opts.bubble ?? BUBBLES[index % BUBBLES.length]!, {
+        tile: 40, corner: 46, z: 2, children: [studText('Icon', c.icon ?? '\u2B50', { size: [0.78, 0, 0.78, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3, stroke: 0 })],
+      }),
+      ...(c.level !== undefined ? [studSurface('Level', { size: [0, 58, 0, 28], pos: [1, -6, 0, 6], anchor: [1, 0] }, 'purple', {
+        tile: 24, corner: 10, z: 4, children: [studText('Text', c.level, { size: [0.86, 0, 0.8, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 5 })],
+      })] : []),
+      studText('ItemName', c.label, { size: [1, -12, 0, 28], pos: [0.5, 0, 0, 110], anchor: [0.5, 0] }),
+      ...(c.blurb ? [studText(opts.blurb ?? 'Blurb', c.blurb, { size: [1, -16, 0, 22], pos: [0.5, 0, 0, 140], anchor: [0.5, 0] }, { colour: '#fff4c2', stroke: 2 })] : []),
+      ...(c.price ? [studButton('Buy', c.price, { size: [1, -20, 0, 46], pos: [0.5, 0, 1, -10], anchor: [0.5, 1] }, c.colour ?? 'green', { tile: 32 })] : []),
+    ],
+  });
+}
+
 const REGIONS: Record<StudAnchor, { pos: [number, number, number, number]; anchor: [number, number]; size: [number, number, number, number]; across: boolean; align: string }> = {
   'top-left': { pos: [0, 16, 0, 14], anchor: [0, 0], size: [0, 560, 0, 70], across: true, align: 'Left' },
   top: { pos: [0.5, 0, 0, 12], anchor: [0.5, 0], size: [0, 640, 0, 80], across: true, align: 'Center' },
@@ -248,21 +272,7 @@ export function studdedScreen(spec: StudScreenSpec): InstanceSpecLite {
   const panels: InstanceSpecLite[] = [];
   spec.pieces.forEach((p, i) => {
     if (p.kind === 'panel') {
-      // The owner's reference look (Grow a Garden-style shops): a big icon in a bright bubble fills the top of the card.
-      const BUBBLES: StudColour[] = ['blue', 'purple', 'pink', 'yellow', 'green', 'red'];
-      const cards = (p.cards ?? []).map((c, k) => studSurface(c.name, { size: [0, 160, 0, 236] }, 'cream', {
-        tile: 60, corner: 14, order: k, children: [
-          studSurface('IconBubble', { size: [0, 92, 0, 92], pos: [0.5, 0, 0, 12], anchor: [0.5, 0] }, BUBBLES[k % BUBBLES.length]!, {
-            tile: 40, corner: 46, z: 2, children: [studText('Icon', c.icon ?? '\u2B50', { size: [0.78, 0, 0.78, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3, stroke: 0 })],
-          }),
-          ...(c.level !== undefined ? [studSurface('Level', { size: [0, 58, 0, 28], pos: [1, -6, 0, 6], anchor: [1, 0] }, 'purple', {
-            tile: 24, corner: 10, z: 4, children: [studText('Text', c.level, { size: [0.86, 0, 0.8, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 5 })],
-          })] : []),
-          studText('ItemName', c.label, { size: [1, -12, 0, 28], pos: [0.5, 0, 0, 110], anchor: [0.5, 0] }),
-          ...(c.blurb ? [studText('Blurb', c.blurb, { size: [1, -16, 0, 22], pos: [0.5, 0, 0, 140], anchor: [0.5, 0] }, { colour: '#fff4c2', stroke: 2 })] : []),
-          ...(c.price ? [studButton('Buy', c.price, { size: [1, -20, 0, 46], pos: [0.5, 0, 1, -10], anchor: [0.5, 1] }, c.colour ?? 'green', { tile: 32 })] : []),
-        ],
-      }));
+      const cards = (p.cards ?? []).map((c, k) => studCard(c, k));
       // The panel fits its cards (owner, 2026-10-01: cards sat at the top of a half-empty panel and looked off-centre).
       const perRow = Math.min(3, Math.max(1, cards.length));
       const rows = Math.max(1, Math.ceil(cards.length / 3));
@@ -327,4 +337,143 @@ export function studdedScreen(spec: StudScreenSpec): InstanceSpecLite {
     };
   });
   return { className: 'ScreenGui', name: spec.name, children: [...regionFrames, ...panels] };
+}
+
+// ------------------------------------------------------------------------------------------------ a plot simulator's screen
+
+/** 1234 -> "1.2K", the way the game's own scripts abbreviate (AppleGameUI.short). */
+function abbreviate(n: number): string {
+  const abs = Math.abs(n);
+  for (const [size, mark] of [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']] as const) {
+    if (abs >= size) {
+      const v = n / size;
+      return (v >= 100 ? String(Math.floor(v)) : v.toFixed(1).replace(/\.0$/, '')) + mark;
+    }
+  }
+  return String(Math.floor(n));
+}
+
+export interface PlotSimItem { id: string; name: string; price: number; income: number; icon?: string; colour?: StudColour }
+export interface PlotSimUpgrade { id: string; label: string; cost: number; icon?: string; blurb?: string }
+export interface PlotSimWords { currency: string; shop?: string; upgrades?: string; rebirth?: string; perSecond?: string }
+
+/** A card grid that scrolls when there are more cards than fit (three across, two rows high). */
+function cardGrid(cards: InstanceSpecLite[]): { frame: InstanceSpecLite; width: number; height: number } {
+  const perRow = Math.min(3, Math.max(1, cards.length));
+  const rows = Math.min(2, Math.max(1, Math.ceil(cards.length / 3)));
+  return {
+    width: Math.max(420, perRow * 160 + (perRow - 1) * 26 + 70),
+    height: 40 + 30 + rows * 236 + (rows - 1) * 14 + 26,
+    frame: {
+      className: 'ScrollingFrame', name: 'Grid',
+      props: {
+        Size: udim2(1, -28, 1, -56), Position: udim2(0, 14, 0, 30), BackgroundTransparency: 1, BorderSizePixel: 0, ScrollBarThickness: 8,
+        CanvasSize: udim2(0, 0, 0, 0), AutomaticCanvasSize: enumOf('AutomaticSize', 'Y'), ScrollingDirection: enumOf('ScrollingDirection', 'Y'),
+      },
+      children: [
+        { className: 'UIGridLayout', name: 'Layout', props: { CellSize: udim2(0, 160, 0, 236), CellPadding: udim2(0, 26, 0, 14), SortOrder: enumOf('SortOrder', 'LayoutOrder'), HorizontalAlignment: enumOf('HorizontalAlignment', 'Center') } },
+        ...cards,
+      ],
+    },
+  };
+}
+
+/**
+ * The screen of a plot simulator (money, machines bought from a shop and put on your plot, upgrades, rebirth), studded
+ * like every HUD here. `AppleHUD`, so AppleGameUI binds it. The names the game's scripts look up, kept exactly:
+ *
+ *   AppleGameUI (packages/components/gameui)      Coins.Value, Coins.Plus, Menu.Shop, Toast,
+ *                                                 ShopPanel.Body.Grid with one Item_<id> card per machine
+ *                                                 (Icon, ItemName, Info, Buy.Label, Lock), a red Close on the panel
+ *   AppleUpgradesClient (components/upgrades)     the counter named like the currency's config (Coins), its Value,
+ *                                                 the button Upgrades (with its hidden Badge), UpgradesPanel, one card
+ *                                                 per upgrade named by its id (Level.Text, Buy.Label, IconBubble)
+ *   for the game's own script                     Coins.PerSecond ("+N/s"), Menu.Rebirth, RebirthPanel (Info, Bonus,
+ *                                                 Confirm); every panel starts hidden
+ *
+ * The Upgrades button and panel are the upgrades component's, not AppleGameUI's (it looks for Menu.Upgrade and
+ * UpgradePanel, which this screen does not have, so the two never both open one panel).
+ */
+export function plotSimHud(items: PlotSimItem[], upgrades: PlotSimUpgrade[], words: PlotSimWords): InstanceSpecLite {
+  const per = words.perSecond ?? '/s';
+  const currency = words.currency;
+
+  const menuButton = (name: string, label: string, icon: string, colour: StudColour, order: number, badge: boolean): InstanceSpecLite => {
+    const b = studSurface(name, { size: [1, 0, 0, 64] }, colour, {
+      button: true, tile: 40, order, shine: true,
+      children: [
+        studSurface('IconBubble', { size: [0, 44, 0, 44], pos: [0, 10, 0.5, 0], anchor: [0, 0.5] }, 'cream', {
+          tile: 30, corner: 22, z: 2, children: [studText('Icon', icon, { size: [0.74, 0, 0.74, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3, stroke: 0, colour: '#2b2b2b' })],
+        }),
+        studText('Label', label.toUpperCase(), { size: [1, -66, 0.56, 0], pos: [1, -8, 0.5, 0], anchor: [1, 0.5] }, { align: 'Center', z: 2 }),
+      ],
+    });
+    // A red "!" the game's script shows when something can be bought (hidden until then).
+    if (badge) b.children!.push(studSurface('Badge', { size: [0, 30, 0, 30], pos: [1, 8, 0, -8], anchor: [1, 0] }, 'red', {
+      tile: 20, corner: 15, z: 6, visible: false, children: [studText('Text', '!', { size: [0.7, 0, 0.8, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 7 })],
+    }));
+    return b;
+  };
+
+  const shopCards = items.map((it, i) => {
+    const card = studCard({ name: `Item_${it.id}`, label: it.name, price: `$${abbreviate(it.price)}`, icon: it.icon, blurb: `+${abbreviate(it.income)}${per}`, colour: 'green' }, i, { blurb: 'Info', bubble: it.colour });
+    card.children!.push(
+      // Where AppleGameUI turns the machine's 3D model, over the bubble's icon (the icon shows until a model exists).
+      { className: 'Frame', name: 'Icon', props: { Size: udim2(0, 92, 0, 92), Position: udim2(0.5, 0, 0, 12), AnchorPoint: vec2(0.5, 0), BackgroundTransparency: 1, ZIndex: 4 } },
+      studSurface('Lock', { size: [1, 0, 1, 0] }, 'grey', {
+        visible: false, tile: 60, corner: 14, z: 6, see: 0.35,
+        children: [studText('Label', 'LOCKED', { size: [0.9, 0, 0, 34], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 7 })],
+      }),
+    );
+    return card;
+  });
+  const upgradeCards = upgrades.map((u, i) => studCard({
+    name: u.id, label: u.label, price: `$ ${abbreviate(u.cost)}`, icon: u.icon ?? '⬆', blurb: u.blurb, level: 'Lv 0', colour: 'blue',
+  }, i));
+  const shopGrid = cardGrid(shopCards), upgradeGrid = cardGrid(upgradeCards);
+  const toastText = studText('Toast', '', { size: [0, 620, 0, 44], pos: [0.5, 0, 0.78, 0], anchor: [0.5, 0.5] }, { z: 8 });
+  const toast: InstanceSpecLite = { ...toastText, props: { ...toastText.props, Visible: false } }; // short messages (AppleClientState.say), shown by the game's script
+
+  return {
+    className: 'ScreenGui', name: 'AppleHUD', props: { ResetOnSpawn: false },
+    children: [
+      studSurface('Coins', { size: [0, 320, 0, 78], pos: [0, 16, 0, 14] }, 'yellow', {
+        tile: 44, corner: 12, shine: true,
+        children: [
+          {
+            className: 'Frame', name: 'Icon',
+            props: { Size: udim2(0, 50, 0, 50), Position: udim2(0, 8, 0.5, 0), AnchorPoint: vec2(0, 0.5), BackgroundColor3: '#ffd23f', ZIndex: 2 },
+            children: [
+              { className: 'UICorner', name: 'Round', props: { CornerRadius: udim(1, 0) } },
+              { className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 3 } },
+              { className: 'UIGradient', name: 'Tint', props: { Color: gradient('#fff17a', '#f0a81a'), Rotation: 90 } },
+              studText('Sign', '$', { size: [0.7, 0, 0.7, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3 }),
+            ],
+          },
+          studText('Value', '0', { size: [0, 194, 0.56, 0], pos: [0, 64, 0, 4], anchor: [0, 0] }, { align: 'Left' }),
+          studText('Caption', currency.toUpperCase(), { size: [0, 92, 0.28, 0], pos: [0, 64, 1, -5], anchor: [0, 1] }, { align: 'Left', stroke: 1.5, colour: '#fff4c2' }),
+          studText('PerSecond', `+0${per}`, { size: [0, 98, 0.28, 0], pos: [0, 160, 1, -5], anchor: [0, 1] }, { align: 'Left', stroke: 1.5, colour: '#b6ffb0' }),
+          studButton('Plus', '+', { size: [0, 46, 0, 46], pos: [1, -10, 0.5, 0], anchor: [1, 0.5] }, 'green', { tile: 30 }),
+        ],
+      }),
+      toast,
+      {
+        className: 'Frame', name: 'Menu',
+        props: { Size: udim2(0, 200, 0, 64 * 3 + 14 * 2), Position: udim2(0, 16, 0.5, 0), AnchorPoint: vec2(0, 0.5), BackgroundTransparency: 1 },
+        children: [
+          { className: 'UIListLayout', name: 'List', props: { Padding: udim(0, 14), SortOrder: enumOf('SortOrder', 'LayoutOrder') } },
+          menuButton('Shop', words.shop ?? 'Shop', '\u{1F6D2}', 'green', 1, true),
+          menuButton('Upgrades', words.upgrades ?? 'Upgrades', '⬆', 'blue', 2, true),
+          menuButton('Rebirth', words.rebirth ?? 'Rebirth', '♻', 'purple', 3, false),
+        ],
+      },
+      studPanel('ShopPanel', words.shop ?? 'Shop', { size: [0, shopGrid.width, 0, shopGrid.height], pos: [0.5, 0, 0.5, 20], anchor: [0.5, 0.5] }, 'green', 'orange', [shopGrid.frame]),
+      studPanel('UpgradesPanel', words.upgrades ?? 'Upgrades', { size: [0, upgradeGrid.width, 0, upgradeGrid.height], pos: [0.5, 0, 0.5, 20], anchor: [0.5, 0.5] }, 'blue', 'orange', [upgradeGrid.frame]),
+      studPanel('RebirthPanel', words.rebirth ?? 'Rebirth', { size: [0, 460, 0, 330], pos: [0.5, 0, 0.5, 20], anchor: [0.5, 0.5] }, 'purple', 'blue', [
+        studText('Info', `Start over for a permanent bonus to all your ${currency.toLowerCase()}.`, { size: [1, -50, 0, 66], pos: [0.5, 0, 0, 36], anchor: [0.5, 0] }, { stroke: 2 }),
+        studText('Bonus', 'x1', { size: [0, 220, 0, 74], pos: [0.5, 0, 0, 112], anchor: [0.5, 0] }, { colour: '#fff4c2', stroke: 3 }),
+        studButton('Confirm', (words.rebirth ?? 'Rebirth').toUpperCase(), { size: [0, 250, 0, 60], pos: [0.5, 0, 1, -16], anchor: [0.5, 1] }, 'pink', { tile: 36 }),
+      ]),
+    ],
+  };
 }

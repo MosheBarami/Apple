@@ -16,7 +16,8 @@
 	`ease` (Linear, Sine, Quad, Back, Bounce, Elastic) of the stretch that ends at it. `play` is "loop", "click"
 	(a ClickDetector), "prompt" (a ProximityPrompt; `prompt` gives its text), "touch", "once" (at start), or "key"
 	(the player presses the real keyboard key `key`, an Enum.KeyCode name such as "A" or "Space"; AppleAnimateClient
-	sends it; the key can also be clicked, or stepped on, which presses it with the player riding it down). Every clip that plays is announced to every client on ReplicatedStorage.AppleAnimatePlayed (model,
+	sends it; the key can also be clicked, or stepped on, which presses it with the player riding it down; a model with an
+	Owner attribute (its own or an ancestor's, a UserId) answers real keys only from that player). Every clip that plays is announced to every client on ReplicatedStorage.AppleAnimatePlayed (model,
 	clip name), so a screen can count presses or say something; a clip a player set off is also announced on the
 	server as ServerStorage.AppleAnimatePressed (player, model, clip), so a game can pay for presses. A clip
 	whose name starts with a joint's part name ("Key_A.press") plays from that part only, so 60 keys share one rig.
@@ -88,6 +89,22 @@ function AppleAnimate.jointsOf(keys: { any }): { string }
 	return out
 end
 
+--[[ Pure: whether a player may set off something owned by `owner` (a UserId; nil means nobody owns it, so anyone may). ]]
+function AppleAnimate.mayPress(owner: any, userId: number): boolean
+	return owner == nil or owner == userId
+end
+
+--[[ The Owner attribute of a model, or of the nearest ancestor that has one (a plot's machine is owned by its player). ]]
+function AppleAnimate.ownerOf(inst: Instance?): any
+	local at = inst
+	while at and at ~= workspace do
+		local owner = at:GetAttribute("Owner")
+		if owner ~= nil then return owner end
+		at = at.Parent
+	end
+	return nil
+end
+
 function AppleAnimate.start()
 	local RunService = game:GetService("RunService")
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -115,7 +132,8 @@ function AppleAnimate.start()
 		if now - (mine[key] or 0) < 0.03 then return end
 		mine[key] = now
 		for _, entry in byKey[key] or {} do
-			if entry.model.Parent then
+			-- A model somebody owns (a machine on their plot) answers only to its owner's keyboard.
+			if entry.model.Parent and AppleAnimate.mayPress(AppleAnimate.ownerOf(entry.model), player.UserId) then
 				entry.clip._play(player)
 			end
 		end

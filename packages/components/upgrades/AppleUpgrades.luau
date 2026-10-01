@@ -47,6 +47,22 @@ function AppleUpgrades.perSecond(upgrades: { Upgrade }, levels: { [string]: numb
 	return math.floor(add * AppleUpgrades.multiplier(upgrades, levels))
 end
 
+--[[ Pure: whether a press by `userId` pays: the pressed thing has no owner (nil), or its owner is the presser. ]]
+function AppleUpgrades.paysPress(owner: any, userId: number): boolean
+	return owner == nil or owner == userId
+end
+
+--[[ The Owner attribute (a UserId) of a pressed model or its nearest owned ancestor. ]]
+local function ownerOf(inst: Instance?): any
+	local at = inst
+	while at and at ~= workspace do
+		local owner = at:GetAttribute("Owner")
+		if owner ~= nil then return owner end
+		at = at.Parent
+	end
+	return nil
+end
+
 function AppleUpgrades.start()
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local ServerStorage = game:GetService("ServerStorage")
@@ -103,8 +119,9 @@ function AppleUpgrades.start()
 	local pressed = ServerStorage:FindFirstChild("AppleAnimatePressed") or Instance.new("BindableEvent")
 	pressed.Name = "AppleAnimatePressed"
 	pressed.Parent = ServerStorage
-	;(pressed :: BindableEvent).Event:Connect(function(player: Player)
-		if typeof(player) == "Instance" and player:IsA("Player") then
+	;(pressed :: BindableEvent).Event:Connect(function(player: Player, model: Instance?)
+		-- Another player's machine pays its owner, never a visitor who clicks or steps on it.
+		if typeof(player) == "Instance" and player:IsA("Player") and AppleUpgrades.paysPress(ownerOf(model), player.UserId) then
 			Economy.grant(player, AppleUpgrades.perPress(base, upgrades, levels(player)), "press")
 		end
 	end)

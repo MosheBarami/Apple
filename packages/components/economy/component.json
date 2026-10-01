@@ -11,7 +11,7 @@
     "attributes": { "Currency": "string, default Coins", "Start": "number, default 50", "DataKey": "string, default AppleEconomy1" }
   },
   "gives": {
-    "api": "spend(player, amount, reason) -> boolean; grant(player, amount, reason); get(player) -> number; Changed(player, amount, delta, reason)",
+    "api": "spend(player, amount, reason) -> boolean; grant(player, amount, reason); get(player) -> number; START (the opening balance); getData/setData(player, key[, value]); Changed(player, amount, delta, reason)",
     "leaderstats": "player.leaderstats.<Currency> NumberValue",
     "attribute": "player attribute <Currency> mirrors the balance, for any UI"
   },

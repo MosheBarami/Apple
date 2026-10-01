@@ -59,9 +59,24 @@ for _, s in config.stage or {} do
 			end
 		end
 	end
+	-- A colour family, not a flat paint: every part's hue turns by s.hue (0..1) and keeps its own lightness, so a
+	-- two-tone keycap stays two-tone (the plot simulator's variants of the player's own object).
+	if type(s.hue) == "number" then
+		for _, p in copy:GetDescendants() do
+			if p:IsA("BasePart") then
+				local h, sat, v = p.Color:ToHSV()
+				p.Color = Color3.fromHSV((h + s.hue) % 1, math.max(sat, 0.35), v)
+			end
+		end
+	end
 	if s.height then
 		local _, size = (copy :: Model):GetBoundingBox()
 		if size.Y > 0 then pcall(function() (copy :: Model):ScaleTo((copy :: Model):GetScale() * s.height / size.Y) end) end
+	elseif s.width then
+		-- Fit the widest side to s.width (a machine on a plot tile).
+		local _, size = (copy :: Model):GetBoundingBox()
+		local wide = math.max(size.X, size.Z)
+		if wide > 0 then pcall(function() (copy :: Model):ScaleTo((copy :: Model):GetScale() * s.width / wide) end) end
 	end
 	copy.Parent = to
 end

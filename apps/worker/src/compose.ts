@@ -88,6 +88,10 @@ export interface Layout {
   scatter: P2[];         // free spots for props, away from the lane and the plots
   rows: P2[];            // free spots on a grid, nearest the base first, for orderly rows (an orchard)
   border: { at: P2; along: 'x' | 'z' }[]; // spots along the edge of the ground, with the edge's direction
+  /** A plot-simulator map (hub-layout.ts): a central hub with spoke roads to the plots; `lane` is empty. */
+  hub?: { center: P2; radius: number; shopPad: P2; sellPad: P2; heroSpot: P2; spokes: P2[][] };
+  /** Tiles along one side of a plot (the plots are plotTiles x plotTiles); PLOT_TILES when absent. */
+  plotTiles?: number;
 }
 
 export const TILE = 6;              // studs between tile centres
@@ -166,10 +170,10 @@ export function laneLayout(seed: number): Layout {
 }
 
 /** Every tile centre of a plot. */
-export function plotTiles(center: P2): P2[] {
+export function plotTiles(center: P2, size: number = PLOT_TILES): P2[] {
   const out: P2[] = [];
-  for (let i = 0; i < PLOT_TILES; i++) for (let j = 0; j < PLOT_TILES; j++) {
-    out.push([center[0] + (i - (PLOT_TILES - 1) / 2) * TILE, center[1] + (j - (PLOT_TILES - 1) / 2) * TILE]);
+  for (let i = 0; i < size; i++) for (let j = 0; j < size; j++) {
+    out.push([center[0] + (i - (size - 1) / 2) * TILE, center[1] + (j - (size - 1) / 2) * TILE]);
   }
   return out;
 }

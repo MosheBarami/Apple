@@ -8,6 +8,7 @@ import { isUpgradesRequest } from '../upgrades-tool';
 import { lastUserText } from '../user-request';
 import { afterReady, continueGameLine, refuseRebuild, saysReady, type BuiltGameRecord } from '../run-flow';
 import { ideaRecipe } from '../compose-tool';
+import { isPlotSimRequest } from '../compose-plotsim';
 import { withoutToolTalk } from '../plain-reply';
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
@@ -3506,10 +3507,12 @@ export class SessionDO extends DurableObject<Env> {
       // builder. UI-only: the world direction is unchanged by it.
       llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme)), continueLine].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
       ...(continueLine ? { continuesGame: true } : {}),
-      ...(mode === 'agent' && !continueLine && !('error' in ideaRecipe(text)) ? { composeFirst: true } : {}),
+      // A game the composer can make (the orchard, or a simulator / tycoon / "make it a full game": compose-plotsim.ts)
+      // is made by compose_game first, from components and the library, never piece by piece.
+      ...(mode === 'agent' && !continueLine && (!('error' in ideaRecipe(text)) || isPlotSimRequest(text)) ? { composeFirst: true } : {}),
       focused: true,
       ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isObjectRequest(text) ? { objectFirst: true, objectRun: true } : {}),
-      ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isUpgradesRequest(text) ? { upgradesFirst: true, upgradesRun: true } : {}),
+      ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && !isPlotSimRequest(text) && isUpgradesRequest(text) ? { upgradesFirst: true, upgradesRun: true } : {}),
       uiTheme: asUiTheme(uiTheme),
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
