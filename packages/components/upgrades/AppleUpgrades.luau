@@ -82,6 +82,14 @@ function AppleUpgrades.start()
 	end
 	Players.PlayerRemoving:Connect(function(p) last[p] = nil end)
 
+	-- The screen shows the config's currency; when the economy keeps its money under another name (a game composed with
+	-- Coins, upgrades that say Taps) the balance is mirrored under the config's name too, so the counter is never stuck.
+	local shown = config.currency or Economy.CURRENCY
+	if shown ~= Economy.CURRENCY then
+		Economy.Changed:Connect(function(player: Player, amount: number) player:SetAttribute(shown, amount) end)
+		for _, p in Players:GetPlayers() do p:SetAttribute(shown, Economy.get(p)) end
+	end
+
 	-- Show every player's level from the start, even before they buy one.
 	local function show(player: Player)
 		for id, level in levels(player) do player:SetAttribute("Upgrade_" .. id, level) end

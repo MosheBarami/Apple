@@ -105,12 +105,15 @@ function AppleAnimate.start()
 	pressed.Parent = ServerStorage
 	local keyRemote = remote("AppleAnimateKey")
 	local byKey: { [string]: { { model: Model, clip: any, name: string } } } = {}
-	local lastKey: { [Player]: number } = {}
+	local lastKey: { [Player]: { [string]: number } } = {}
 	keyRemote.OnServerEvent:Connect(function(player: Player, key: any)
 		if type(key) ~= "string" or #key > 20 then return end
+		-- One key held down or flooded is not 30 presses a second; different keys pressed together all count.
 		local now = os.clock()
-		if now - (lastKey[player] or 0) < 0.03 then return end -- a held key or a flood is not 30 presses a second
-		lastKey[player] = now
+		local mine = lastKey[player] or {}
+		lastKey[player] = mine
+		if now - (mine[key] or 0) < 0.03 then return end
+		mine[key] = now
 		for _, entry in byKey[key] or {} do
 			if entry.model.Parent then
 				entry.clip._play(player)

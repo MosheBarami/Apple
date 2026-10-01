@@ -15,7 +15,7 @@ const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(mkdtempSync(join(tmpdir(), 'upg-')), 'u.mjs');
 const ENTRY = `export { screenWrites } from './src/studded-ui-tool';
 export { studdedScreen } from './src/stud-ui';
-export { readUpgrades, isUpgradesRequest, DEFAULT_UPGRADES } from './src/upgrades-tool';`;
+export { readUpgrades, isUpgradesRequest, DEFAULT_UPGRADES, KIND_ICON, upgradeBlurb } from './src/upgrades-tool';`;
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), ['--bundle', '--format=esm', '--platform=neutral', '--main-fields=module,main', '--loader=ts', '--outfile=' + out], { cwd: WORKER, input: ENTRY, stdio: ['pipe', 'pipe', 'pipe'] });
 const U = await import(`file://${out}`);
 
@@ -86,4 +86,24 @@ test('after the object is built an object run cannot add upgrades, and an upgrad
   assert.match(after, /agent\.upgradesRun\s*\?\s*\['add_upgrades'/);
   assert.doesNotMatch(after.slice(after.indexOf(": ['build_object'")), /add_upgrades/, 'an object run may add upgrades');
   assert.doesNotMatch(after.slice(0, after.indexOf(": ['build_object'")), /'build_object'/, 'an upgrades run may rebuild the object');
+});
+
+// Play test, 2026-10-01: the model named the currency Taps, the economy kept Coins, and the counter sat at 0.
+test('the money the screen shows is the money the economy keeps', () => {
+  const tool = execFileSync('cat', [join(WORKER, 'src', 'upgrades-tool.ts')], { encoding: 'utf8' });
+  assert.match(tool, /AppleGameConfig'\)\)\) \{[\s\S]{0,300}economy: \{ currency, start: 0 \}/, 'a place without settings gets the upgrades\' currency');
+  const server = execFileSync('cat', [join(WORKER, '..', '..', 'packages', 'components', 'upgrades', 'AppleUpgrades.luau')], { encoding: 'utf8' });
+  assert.match(server, /if shown ~= Economy\.CURRENCY then[\s\S]{0,200}player:SetAttribute\(shown, amount\)/, 'a game that already has Coins still shows the right number');
+  const animate = execFileSync('cat', [join(WORKER, '..', '..', 'packages', 'components', 'animate', 'AppleAnimate.luau')], { encoding: 'utf8' });
+  assert.match(animate, /mine\[key\]/, 'the flood guard is per key, so fast typing on different keys all counts');
+});
+
+// Owner, 2026-10-01: "the upgrades gui does not have any icons in it" and it felt mid.
+test('every upgrade card has an icon, a level badge, what it does and a priced button', () => {
+  const screen = U.studdedScreen({ name: 'HUD', pieces: [{ kind: 'panel', name: 'UpgradesPanel', title: 'Upgrades', cards: U.DEFAULT_UPGRADES.map((u) => ({
+    name: u.id, label: u.label, price: `$ ${u.cost}`, icon: U.KIND_ICON[u.kind], blurb: U.upgradeBlurb(u, 'Coins'), level: 'Lv 0' })) }] });
+  const json = JSON.stringify(screen);
+  for (const part of ['"IconBubble"', '"Icon"', '"Level"', '"Blurb"', '"Buy"']) assert.ok((json.match(new RegExp(part, 'g')) ?? []).length >= 3, `${part} missing from a card`);
+  assert.deepEqual(U.DEFAULT_UPGRADES.map((u) => U.upgradeBlurb(u, 'Coins')), ['+1 per press', '+1 Coins a second', 'x2 everything']);
+  assert.equal(new Set(Object.values(U.KIND_ICON)).size, 3, 'each kind has its own icon');
 });

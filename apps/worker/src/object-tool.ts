@@ -319,6 +319,31 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   return { name, parts, footprint, ...(skipped.length ? { skipped } : {}) };
 }
 
+/**
+ * A label on a part's top reads upright from the spawn. Roblox draws a Top-face SurfaceGui with its top toward the
+ * part's -X (measured in Studio, 2026-10-01: the owner's keys read sideways), and the player looks along -Z; so a
+ * labelled block with no rotation of its own is turned -90 degrees about Y with its width and depth swapped: the same
+ * box in the world, its text upright. Only for motions along Y (press, bob, pop), whose clips do not care. Pure.
+ */
+export function uprightLabel(p: ObjectPart): { Size: V3; Orientation?: V3 } {
+  const turns = p.text?.face === 'Top' && !p.rot && p.shape === 'block' && (!p.move || ['press', 'bob', 'pop'].includes(p.move.as));
+  if (!turns) return { Size: p.size, ...(p.rot ? { Orientation: p.rot } : {}) };
+  return { Size: [p.size[2], p.size[1], p.size[0]], Orientation: [0, -90, 0] };
+}
+
+/**
+ * Real keystrokes for keyboard keys (owner, 2026-10-01: "sounds like tiny bombs" — the words "mechanical keyboard"
+ * matched an explosion recording, "Air Blast Mechanical Bursts"). Short single-key recordings from the typing
+ * category, never anything else. Pure.
+ */
+export function keySoundPool(): string[] {
+  return findSounds('apple keyboard', { category: 'typing', limit: 8, maxSeconds: 1 }).map((h) => h.soundId).filter((id): id is string => Boolean(id));
+}
+/** Whether a moving part is a key that should sound like one: pressed by a real key, or asked to sound like typing. */
+export function isKeystroke(p: ObjectPart, words: string | undefined): boolean {
+  return p.move?.on === 'key' || /\b(key|keys|keyboard|typing|type|thock|clack|keycap|asmr)\b/i.test(words ?? '');
+}
+
 /** The keyframe clip for a preset motion of one part (AppleAnimate's format). Pure. */
 export function motionClip(part: ObjectPart): Record<string, unknown> {
   const m = part.move!;
@@ -402,7 +427,8 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   const partSpec = (p: ObjectPart): InstanceSpecLite => ({
     className: p.shape === 'wedge' ? 'WedgePart' : 'Part', name: p.name,
     props: {
-      Size: p.size, Position: [origin[0] + p.at[0], origin[1] + p.at[1], origin[2] + p.at[2]], ...(p.rot ? { Orientation: p.rot } : {}),
+      ...uprightLabel(p),
+      Position: [origin[0] + p.at[0], origin[1] + p.at[1], origin[2] + p.at[2]],
       Anchored: !p.move, Color: p.color, Material: 'Plastic', TopSurface: 'Smooth', BottomSurface: 'Smooth',
       ...(p.shape === 'ball' ? { Shape: { t: 'EnumItem', v: 'Enum.PartType.Ball' } } : p.shape === 'cylinder' ? { Shape: { t: 'EnumItem', v: 'Enum.PartType.Cylinder' } } : {}),
       ...(p.transparency ? { Transparency: p.transparency } : {}),
@@ -455,14 +481,17 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
       }
       const clips: Record<string, unknown> = {};
       const soundCache = new Map<string, string | undefined>();
+      const keystrokes = keySoundPool();
+      let keyIndex = 0;
       for (const p of moving) {
         const c = motionClip(p);
         const q = p.move!.sound;
-        if (q) {
-          if (!soundCache.has(q)) {
-            const direct = soundAssetId(q);
-            soundCache.set(q, direct ? `rbxassetid://${direct}` : findSounds(q, { limit: 1, maxSeconds: 4 })[0]?.soundId);
-          }
+        const direct = q ? soundAssetId(q) : null;
+        if (!direct && isKeystroke(p, q) && keystrokes.length) {
+          // A keyboard key sounds like a real key, a different recording on each neighbour (ASMR wants variety).
+          Object.assign(c, { sound: keystrokes[keyIndex++ % keystrokes.length], volume: 0.55 });
+        } else if (q) {
+          if (!soundCache.has(q)) soundCache.set(q, direct ? `rbxassetid://${direct}` : findSounds(q, { limit: 1, maxSeconds: 4 })[0]?.soundId);
           const s = soundCache.get(q);
           if (s) Object.assign(c, { sound: s, volume: 0.7 });
         }

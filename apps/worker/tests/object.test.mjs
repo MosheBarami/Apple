@@ -217,3 +217,13 @@ test('with rows, the model\'s own plate and screen go and the tool\'s case stays
   assert.ok(names.includes('KeyEscCase'), 'the tool\'s case went');
   assert.equal(plan.parts.filter((p) => p.name.startsWith('Key_')).length, 13);
 });
+
+// Owner, 2026-10-01: the keys "sound like tiny bombs" — "mechanical keyboard" matched an explosion recording.
+test('keyboard keys sound like real keys: short typing recordings, never an explosion', () => {
+  const pool = O.keySoundPool();
+  assert.ok(pool.length >= 4, `only ${pool.length} keystrokes`);
+  assert.equal(new Set(pool).size, pool.length, 'every key in a row does not sound the same');
+  assert.ok(O.isKeystroke({ move: { as: 'press', on: 'click' } }, 'mechanical keyboard thock'), 'asked to sound like a keyboard');
+  assert.ok(O.isKeystroke({ move: { as: 'press', on: 'key' } }, undefined), 'pressed by a real key');
+  assert.ok(!O.isKeystroke({ move: { as: 'spin', on: 'loop' } }, 'whoosh'), 'a fan is not a keystroke');
+});

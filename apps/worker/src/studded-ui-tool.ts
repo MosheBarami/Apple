@@ -33,7 +33,8 @@ export function readStudSpec(a: Record<string, unknown>): { name: string; pieces
     if (kind === 'panel') {
       const cards = (Array.isArray(p.cards) ? p.cards : []).slice(0, 12).map((c, k) => {
         const cc = (c ?? {}) as Record<string, unknown>;
-        return { name: NAME.test(String(cc.name ?? '')) ? String(cc.name) : `Card${k + 1}`, label: text(cc.label ?? cc.name, 24), ...(cc.price !== undefined ? { price: text(cc.price, 12) } : {}), ...(colourOf(cc.colour) ? { colour: colourOf(cc.colour) } : {}) };
+        return { name: NAME.test(String(cc.name ?? '')) ? String(cc.name) : `Card${k + 1}`, label: text(cc.label ?? cc.name, 24), ...(cc.price !== undefined ? { price: text(cc.price, 12) } : {}), ...(colourOf(cc.colour) ? { colour: colourOf(cc.colour) } : {}),
+          ...(typeof cc.icon === 'string' ? { icon: text(cc.icon, 4) } : {}), ...(typeof cc.blurb === 'string' ? { blurb: text(cc.blurb, 28) } : {}), ...(cc.level !== undefined ? { level: text(cc.level, 8) } : {}) };
       });
       pieces.push({ kind, name: pname, title: text(p.title ?? p.text ?? pname, 24), header: colourOf(p.header ?? p.colour), body: colourOf(p.body), cards });
       continue;

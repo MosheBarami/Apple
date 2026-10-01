@@ -215,7 +215,9 @@ export type StudPiece =
   | { kind: 'counter'; name: string; text: string; icon?: string; colour?: StudColour; plus?: boolean; at: StudAnchor }
   | { kind: 'button'; name: string; text: string; colour?: StudColour; at: StudAnchor }
   | { kind: 'bar'; name: string; text: string; colour?: StudColour; at: StudAnchor }
-  | { kind: 'panel'; name: string; title: string; header?: StudColour; body?: StudColour; cards?: { name: string; label: string; price?: string; colour?: StudColour }[] };
+  | { kind: 'panel'; name: string; title: string; header?: StudColour; body?: StudColour; cards?: StudCard[] };
+/** A shop or upgrade card: an icon in a coloured bubble, a level badge, the name, what it does, and its price. */
+export interface StudCard { name: string; label: string; price?: string; colour?: StudColour; icon?: string; blurb?: string; level?: string }
 export interface StudScreenSpec { name: string; pieces: StudPiece[] }
 
 const REGIONS: Record<StudAnchor, { pos: [number, number, number, number]; anchor: [number, number]; size: [number, number, number, number]; across: boolean; align: string }> = {
@@ -240,15 +242,24 @@ export function studdedScreen(spec: StudScreenSpec): InstanceSpecLite {
   const panels: InstanceSpecLite[] = [];
   spec.pieces.forEach((p, i) => {
     if (p.kind === 'panel') {
-      const cards = (p.cards ?? []).map((c, k) => studSurface(c.name, { size: [0, 150, 0, 190] }, 'cream', {
-        tile: 60, corner: 12, order: k, children: [
-          studText('ItemName', c.label, { size: [1, -12, 0, 30], pos: [0.5, 0, 0, 96], anchor: [0.5, 0] }),
-          ...(c.price ? [studButton('Buy', c.price, { size: [1, -20, 0, 44], pos: [0.5, 0, 1, -10], anchor: [0.5, 1] }, c.colour ?? 'green', { tile: 32 })] : []),
+      // The owner's reference look (Grow a Garden-style shops): a big icon in a bright bubble fills the top of the card.
+      const BUBBLES: StudColour[] = ['blue', 'purple', 'pink', 'yellow', 'green', 'red'];
+      const cards = (p.cards ?? []).map((c, k) => studSurface(c.name, { size: [0, 160, 0, 236] }, 'cream', {
+        tile: 60, corner: 14, order: k, children: [
+          studSurface('IconBubble', { size: [0, 92, 0, 92], pos: [0.5, 0, 0, 12], anchor: [0.5, 0] }, BUBBLES[k % BUBBLES.length]!, {
+            tile: 40, corner: 46, z: 2, children: [studText('Icon', c.icon ?? '\u2B50', { size: [0.78, 0, 0.78, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3, stroke: 0 })],
+          }),
+          ...(c.level !== undefined ? [studSurface('Level', { size: [0, 58, 0, 28], pos: [1, -6, 0, 6], anchor: [1, 0] }, 'purple', {
+            tile: 24, corner: 10, z: 4, children: [studText('Text', c.level, { size: [0.86, 0, 0.8, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 5 })],
+          })] : []),
+          studText('ItemName', c.label, { size: [1, -12, 0, 28], pos: [0.5, 0, 0, 110], anchor: [0.5, 0] }),
+          ...(c.blurb ? [studText('Blurb', c.blurb, { size: [1, -16, 0, 22], pos: [0.5, 0, 0, 140], anchor: [0.5, 0] }, { colour: '#fff4c2', stroke: 2 })] : []),
+          ...(c.price ? [studButton('Buy', c.price, { size: [1, -20, 0, 46], pos: [0.5, 0, 1, -10], anchor: [0.5, 1] }, c.colour ?? 'green', { tile: 32 })] : []),
         ],
       }));
-      panels.push(studPanel(p.name, p.title, { size: [0, 600, 0, 380], pos: [0.5, 0, 0.5, 20], anchor: [0.5, 0.5] }, p.header ?? 'green', p.body ?? 'orange', [{
-        className: 'Frame', name: 'Grid', props: { Size: udim2(1, -28, 1, -40), Position: udim2(0, 14, 0, 30), BackgroundTransparency: 1 },
-        children: [{ className: 'UIGridLayout', name: 'Layout', props: { CellSize: udim2(0, 150, 0, 190), CellPadding: udim2(0, 24, 0, 14), SortOrder: enumOf('SortOrder', 'LayoutOrder'), HorizontalAlignment: enumOf('HorizontalAlignment', 'Center') } }, ...cards],
+      panels.push(studPanel(p.name, p.title, { size: [0, 640, 0, 440], pos: [0.5, 0, 0.5, 20], anchor: [0.5, 0.5] }, p.header ?? 'green', p.body ?? 'orange', [{
+        className: 'Frame', name: 'Grid', props: { Size: udim2(1, -28, 1, -44), Position: udim2(0, 14, 0, 34), BackgroundTransparency: 1 },
+        children: [{ className: 'UIGridLayout', name: 'Layout', props: { CellSize: udim2(0, 160, 0, 236), CellPadding: udim2(0, 26, 0, 14), SortOrder: enumOf('SortOrder', 'LayoutOrder'), HorizontalAlignment: enumOf('HorizontalAlignment', 'Center') } }, ...cards],
       }]));
       return;
     }
