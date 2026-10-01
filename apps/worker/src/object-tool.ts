@@ -174,7 +174,7 @@ const NOT_A_KEYBOARD_PART = /screen|monitor|display|desk|table|wall|counter|sign
  * unrollRows at the model's own key size; the plates under them and any screen, monitor, desk or wall go (a counter
  * screen is already on the player's screen). Each key keeps the motion and sound it was given. Pure.
  */
-export function relayKeyboard(parts: ObjectPart[]): ObjectPart[] {
+export function relayKeyboard(parts: ObjectPart[], laidOut = false): ObjectPart[] {
   const labelOf = (p: ObjectPart) => (p.text?.value && keyCodeName(p.text.value.trim()) ? p.text.value.trim() : p.key && p.move ? p.key : undefined);
   const isKey = (p: ObjectPart) => labelOf(p) !== undefined;
   const keys = parts.filter(isKey);
@@ -198,6 +198,8 @@ export function relayKeyboard(parts: ObjectPart[]): ObjectPart[] {
     p.at[0] - p.size[0] / 2 < x1 && p.at[0] + p.size[0] / 2 > x0 && p.at[2] - p.size[2] / 2 < z1 && p.at[2] + p.size[2] / 2 > z0;
   const plates = parts.filter(under).sort((a, b) => b.size[0] * b.size[2] - a.size[0] * a.size[2]);
   const kept = parts.filter((p) => !isKey(p) && !under(p) && !NOT_A_KEYBOARD_PART.test(p.name));
+  // Laid out by rows already: keep the tool's keys and case, and only drop the model's own plates and screens.
+  if (laidOut) return [...keys, ...parts.filter((p) => /Case$/.test(p.name) && !isKey(p)), ...kept.filter((p) => !/Case$/.test(p.name))];
   const moveOf = new Map(keys.map((k) => [labelOf(k)!.toLowerCase(), k.move]));
   const colours = [...new Set(keys.map((k) => k.color))].slice(0, 6);
   const laid = unrollRows({
@@ -304,7 +306,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   }
   // A keyboard placed key by key is laid out by code (relayKeyboard), unless the model already used rows.
   const usedRows = (Array.isArray(a.parts) ? a.parts : []).some((r) => r && typeof r === 'object' && Array.isArray((r as Record<string, unknown>).rows));
-  if (!usedRows) parts.splice(0, parts.length, ...relayKeyboard(parts));
+  parts.splice(0, parts.length, ...relayKeyboard(parts, usedRows));
   // Ground it: the lowest point of the object sits on the stage.
   const bottom = Math.min(...parts.map((p) => p.at[1] - p.size[1] / 2));
   for (const p of parts) p.at[1] -= bottom;

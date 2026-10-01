@@ -202,3 +202,18 @@ test('a name with spaces is cleaned, not refused', () => {
   assert.equal(plan.name, 'ASMRKeyboard');
   assert.equal(O.expandObject({ name: 'AsmrKeyboard', parts: [{ size: [1, 1, 1], color: '#ffffff' }] }).name, 'AsmrKeyboard');
 });
+
+// Re-test take four: rows were used, but the model's own KeyboardBase (inside the tool's case) and a TapScreen slab stayed.
+test('with rows, the model\'s own plate and screen go and the tool\'s case stays', () => {
+  const plan = O.expandObject({ name: 'ASMRKeyboard', parts: [
+    { name: 'KeyboardBase', size: [102, 3, 36], at: [0, 1.5, 0], color: '#22223a' },
+    { name: 'TapScreen', size: [30, 3.6, 3], at: [0, 1.8, -25], color: '#111133' },
+    { name: 'KeyEsc', rows: [['Esc', '1', '2', '3'], ['Q', 'W', 'E', 'R'], ['A', 'S', 'D', 'F'], ['Space']], unit: 4, move: { as: 'press', on: 'key' } },
+  ] });
+  assert.ok(!('error' in plan), plan.error);
+  const names = plan.parts.map((p) => p.name);
+  assert.ok(!names.includes('KeyboardBase'), 'the model\'s plate stayed under the case');
+  assert.ok(!names.includes('TapScreen'), 'the screen slab stayed');
+  assert.ok(names.includes('KeyEscCase'), 'the tool\'s case went');
+  assert.equal(plan.parts.filter((p) => p.name.startsWith('Key_')).length, 13);
+});
