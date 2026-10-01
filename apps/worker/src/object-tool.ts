@@ -132,14 +132,16 @@ const PASTEL = ['#7be0ff', '#ff7bd1', '#ffe27a', '#9bff8a', '#b69bff'];
 export function unrollRows(p: Record<string, unknown>, index: number): Record<string, unknown>[] {
   const rows = (p.rows as unknown[]).filter(Array.isArray).map((r) => (r as unknown[]).map((l) => String(l ?? '').slice(0, 12)).filter(Boolean)).filter((r) => r.length > 0);
   const num = (v: unknown, d: number, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
-  const unit = num(p.unit, 2, 0.5, 20), gap = num(p.gap, unit * 0.12, 0, unit), height = num(p.height ?? p.keyHeight, unit * 0.45, 0.2, 20);
+  // Low enough to walk onto (owner's play test, 2026-10-01: he had to jump onto the keyboard): case and key together are
+  // under half a key, so a player steps up onto it and runs across the keys.
+  const unit = num(p.unit, 2, 0.5, 20), gap = num(p.gap, unit * 0.12, 0, unit), height = num(p.height ?? p.keyHeight, unit * 0.3, 0.2, 20);
   const margin = num(p.margin, unit * 0.5, 0, 50);
   const colours = (Array.isArray(p.colors ?? p.colours) ? (p.colors ?? p.colours) as unknown[] : PASTEL).map(colourHex).filter(Boolean) as string[];
   const widthOf = (label: string) => KEY_WIDTH.find(([re]) => re.test(label))?.[1] ?? num((p.widths as Record<string, unknown> | undefined)?.[label], 1, 0.5, 12);
   const rowWidth = (r: string[]) => r.reduce((w, l) => w + widthOf(l) * unit, 0) + gap * (r.length - 1);
   const width = Math.max(...rows.map(rowWidth)), depth = rows.length * unit + gap * (rows.length - 1);
   const origin = v3(p.at ?? p.position) ?? [0, 0, 0];
-  const caseTop = p.case === false ? 0 : num(p.caseHeight, unit * 0.5, 0.2, 20);
+  const caseTop = p.case === false ? 0 : num(p.caseHeight, unit * 0.15, 0.2, 20);
   const base = String(p.name ?? 'Key').replace(/[^A-Za-z0-9_]/g, '') || `Key${index + 1}`;
   const out: Record<string, unknown>[] = [];
   if (p.case !== false) {
@@ -203,7 +205,7 @@ export function relayKeyboard(parts: ObjectPart[], laidOut = false): ObjectPart[
   const moveOf = new Map(keys.map((k) => [labelOf(k)!.toLowerCase(), k.move]));
   const colours = [...new Set(keys.map((k) => k.color))].slice(0, 6);
   const laid = unrollRows({
-    name: 'Key', rows: rows.map((r) => r.map((k) => labelOf(k)!)), unit, gap: unit * 0.12, height,
+    name: 'Key', rows: rows.map((r) => r.map((k) => labelOf(k)!)), unit, gap: unit * 0.12, height: Math.min(height, unit * 0.35),
     colors: colours.length > 1 ? colours : undefined, case: plates[0]?.color ?? '#2b2f45', at: [(x0 + x1) / 2, 0, (z0 + z1) / 2],
   }, 0);
   const made: ObjectPart[] = laid.map((r) => {

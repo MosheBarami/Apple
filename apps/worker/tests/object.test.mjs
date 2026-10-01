@@ -227,3 +227,9 @@ test('keyboard keys sound like real keys: short typing recordings, never an expl
   assert.ok(O.isKeystroke({ move: { as: 'press', on: 'key' } }, undefined), 'pressed by a real key');
   assert.ok(!O.isKeystroke({ move: { as: 'spin', on: 'loop' } }, 'whoosh'), 'a fan is not a keystroke');
 });
+
+// Owner's play test, 2026-10-01: he had to jump to get onto the keyboard.
+test('a rows keyboard is low enough to walk onto: case and key under half a key tall', () => {
+  const plan = O.expandObject({ name: 'Kb', parts: [{ name: 'Key', rows: [['Q', 'W', 'E'], ['Space']], unit: 4, move: { as: 'press', on: 'click' } }] });
+  assert.ok(plan.footprint.top <= 4 * 0.5, `the keyboard is ${plan.footprint.top} studs tall`);
+});

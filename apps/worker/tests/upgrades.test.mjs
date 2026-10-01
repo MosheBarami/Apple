@@ -149,4 +149,7 @@ test('the GUI: one captioned counter pill, a glossy Upgrades button with a hidde
   assert.match(client, /badge\.Visible = affordable\(\)/);
   const animate = execFileSync('cat', [join(WORKER, '..', '..', 'packages', 'components', 'animate', 'AppleAnimate.luau')], { encoding: 'utf8' });
   assert.match(animate, /target\.Touched:Connect\(function\(hit\)[\s\S]{0,400}play\(model, joints, rest, clip, false, who\)/, 'a key is pressed by stepping on it');
+  // Play test: the model made the keys click-pressed and stepping did nothing; a part's own click clip steps too.
+  assert.match(animate, /if partName then stepOn\(target, model, joints, rest, clip\) end/, 'a click-pressed key is pressed by stepping on it');
+  assert.ok((animate.match(/stepOn\(target, model, joints, rest, clip\)/g) ?? []).length >= 2, 'key clips step too');
 });

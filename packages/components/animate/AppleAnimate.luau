@@ -152,6 +152,19 @@ function AppleAnimate.start()
 		end
 	end
 
+	-- Stepped on (owner, 2026-10-01: "the keyboard is supposed to go down with the players on top of it"): a player
+	-- landing on a part pressed by a click or a key presses it too, and rides it down. Once per landing.
+	local function stepOn(target: Instance, model: Model, joints: any, rest: any, clip: any)
+		if not target:IsA("BasePart") then return end
+		local onIt: { [Player]: number } = {}
+		target.Touched:Connect(function(hit)
+			local who = hit.Parent and game:GetService("Players"):GetPlayerFromCharacter(hit.Parent)
+			if not who or os.clock() - (onIt[who] or 0) < (clip.length + 0.15) then return end
+			onIt[who] = os.clock()
+			play(model, joints, rest, clip, false, who)
+		end)
+	end
+
 	local function wire(model: Model, module: ModuleScript)
 		local ok, clips = pcall(require, module)
 		if not ok or type(clips) ~= "table" then warn("AppleAnimate: " .. model:GetFullName() .. " has unreadable animations"); return end
@@ -172,6 +185,7 @@ function AppleAnimate.start()
 				cd.MaxActivationDistance = clip.reach or 32
 				cd.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
 				cd.MouseClick:Connect(function(player) play(model, joints, rest, clip, false, player) end)
+				if partName then stepOn(target, model, joints, rest, clip) end -- one part's own click clip: a key, a button
 			elseif how == "prompt" then
 				local pp = Instance.new("ProximityPrompt")
 				pp.ActionText = clip.prompt or "Use"
@@ -190,17 +204,7 @@ function AppleAnimate.start()
 				cd.MaxActivationDistance = clip.reach or 40
 				cd.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
 				cd.MouseClick:Connect(function(player) play(model, joints, rest, clip, false, player) end)
-				-- And stepped on (owner, 2026-10-01: "the keyboard is supposed to go down with the players on top of it"):
-				-- a player landing on a key presses it, and rides it down. Once per landing, not every physics frame.
-				if target:IsA("BasePart") then
-					local onIt: { [Player]: number } = {}
-					target.Touched:Connect(function(hit)
-						local who = hit.Parent and game:GetService("Players"):GetPlayerFromCharacter(hit.Parent)
-						if not who or os.clock() - (onIt[who] or 0) < (clip.length + 0.15) then return end
-						onIt[who] = os.clock()
-						play(model, joints, rest, clip, false, who)
-					end)
-				end
+				stepOn(target, model, joints, rest, clip)
 			elseif how == "touch" then
 				local part = if target:IsA("BasePart") then target else model.PrimaryPart
 				local last = 0
