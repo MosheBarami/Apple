@@ -223,7 +223,7 @@ test('every plot starts with the cheapest machine, and the composer says so', ()
   assert.match(cfg, new RegExp(`starter = "${recipe.machines[0].id}"`));
   const shop = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'shop', 'AppleShop.luau'), 'utf8');
   assert.match(shop, /task\.spawn\(giveStarter, player, plot\)/);
-  assert.match(shop, /local function giveStarter[\s\S]{0,700}put\(player, id, item, template, tile\)/);
+  assert.match(shop, /local function giveStarter[\s\S]{0,1500}put\(player, id, item, template, best\)/);
   const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
   assert.match(tool, /starts on their own plot with a free/);
 });
