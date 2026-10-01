@@ -22,6 +22,7 @@ import { applySurfaceOp, userWantsOwnSurface } from './surfaces';
 import { studdedScreen } from './stud-ui';
 import { writeScreen } from './studded-ui-tool';
 import { installAnimationPlayer } from './animate-tool';
+import { vfxPlan } from './fx-library';
 
 type V3 = [number, number, number];
 const SHAPES = new Set(['block', 'ball', 'cylinder', 'wedge']);
@@ -124,6 +125,8 @@ export interface ObjectPlan {
   gaveMotion?: string;
   /** How much the object was grown to be worth walking up to (fitFactor). */
   grown?: number;
+  /** The "make it cooler" kit was added (coolKit). */
+  cool?: boolean;
 }
 
 /** [x, y, z] from an array, an {x, y, z} object or "x, y, z" text; null when it is none of those. */
@@ -867,11 +870,11 @@ export function objectForUser(plan: ObjectPlan): string {
   const words = plan.parts.filter((p) => p.text).map((p) => `"${p.text!.value}" printed on its ${side[p.text!.face] ?? 'side'}`);
   const body = [...plan.parts].filter((p) => !p.own).sort((a, b) => vol(b) - vol(a))[0];
   const humanName = (n: string) => n.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
-  const details = body ? placesOf(plan.parts).map((line) => {
+  const details = body ? placesOf(plan.parts.filter((p) => !/^Cool(Halo|Orb\d)$/.test(p.name))).map((line) => {
     const m = /^(\w+) is (on top of|under|on the front of|on) \w+$/.exec(line);
     return m ? `a ${humanName(m[1]!)} ${m[2] === 'on top of' ? 'on top' : m[2] === 'under' ? 'underneath' : m[2] === 'on the front of' ? 'on the front' : 'on it'}` : '';
   }).filter(Boolean) : [];
-  const moving = plan.parts.filter((p) => p.move);
+  const moving = plan.parts.filter((p) => p.move && p.name !== 'CoolHalo');
   const verb: Record<string, string> = { press: 'presses down', spin: 'spins', bob: 'bobs', open: 'swings open', wobble: 'wobbles', pop: 'pops' };
   const as = (p: ObjectPart) => verb[p.move!.as] ?? 'moves';
   const by = (on: string) => moving.filter((p) => p.move!.on === on);
@@ -883,11 +886,59 @@ export function objectForUser(plan: ObjectPlan): string {
   if (by('loop').length) acts.push(`the ${by('loop').map((p) => humanName(p.name)).join(' and ')} ${by('loop').length === 1 ? as(by('loop')[0]!) : 'move'} all the time`);
   const bits = [...words, ...details];
   const look = bits.length > 1 ? `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}` : bits[0] ?? '';
+  const kit = plan.cool ? 'Now it sparkles and glows, four neon orbs circle above it, and the rim of its stage lights up.' : '';
   const lines = [
     `Your ${what} is in front of the spawn: ${big}${look ? `, with ${look}` : ''}.`,
+    kit,
     acts.length ? `${acts.join('; ').replace(/^./, (c) => c.toUpperCase())}. A counter on your screen counts every press.` : '',
   ];
   return lines.filter(Boolean).join('\n');
+}
+
+/**
+ * What the model is told on a "make it cooler" run: the object that is there, part by part as it was sent, and that it
+ * sends only what to add (test 3, 2026-10-01). Short on purpose: names, sizes and centres only. Pure.
+ */
+export function objectUpgradeLine(spec: Record<string, unknown>): string {
+  const parts = (Array.isArray(spec.parts) ? spec.parts : []) as Record<string, unknown>[];
+  // Names the model wrote in an earlier run go into this run's instructions, so only a plain identifier passes and
+  // numbers only as numbers: nothing the model typed can become an instruction here.
+  const id = (v: unknown) => String(v ?? '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 40) || 'Part';
+  const r = (v: unknown) => Array.isArray(v) ? `[${v.slice(0, 3).map((n) => Number.isFinite(Number(n)) ? Math.round(Number(n) * 10) / 10 : 0).join(', ')}]` : '?';
+  const list = parts.slice(0, 30).map((p) => `${id(p.name)} size ${r(p.size)} at ${r(p.at)}`).join('; ');
+  return `THIS PLACE ALREADY HAS ${id(spec.name)}, made by build_object: ${list}. The user wants it made cooler. Call build_object ONCE ` +
+    `with name "${id(spec.name)}" and ONLY the new parts to add (3 to 6 cool details on its OUTSIDE, placed from the sizes and centres ` +
+    `above: a crown, flames, glowing stripes, eyes, wings, a jetpack...). Every part it has stays. Glow, sparkles, orbiting neon orbs and a ` +
+    `lit stage rim are added for you, so do not add effects, sounds or scripts. Then play_check once.`;
+}
+
+/** The parts the model sent for an upgrade, added to the object as it was (same name replaces). Pure. */
+export function mergeUpgrade(prev: Record<string, unknown>, add: Record<string, unknown>): Record<string, unknown> {
+  const old = (Array.isArray(prev.parts) ? prev.parts : []) as Record<string, unknown>[];
+  const fresh = (Array.isArray(add.parts) ? add.parts : []) as Record<string, unknown>[];
+  const names = new Set(fresh.map((p) => String(p.name ?? '')));
+  return { ...prev, ...(add.screen !== undefined ? { screen: add.screen } : {}), name: prev.name, parts: [...old.filter((p) => !names.has(String(p.name ?? ''))), ...fresh] };
+}
+
+export const COOL_ORB_COLOURS = ['#ff4fd8', '#4fd8ff', '#ffe14d', '#7dff6a'];
+/**
+ * The "100x cooler" kit, added to a plan in place: a hub over the object that spins on a loop with four neon orbs
+ * riding it, so they circle above it. The sparkles, the light and the lit rim are added at build time. Pure.
+ */
+export function coolKit(plan: ObjectPlan): void {
+  const f = plan.footprint;
+  const cx = (f.x0 + f.x1) / 2, cz = (f.z0 + f.z1) / 2;
+  const r = Math.max(4, Math.min(12, Math.max(f.x1 - f.x0, f.z1 - f.z0) / 2));
+  const y = f.top + 3;
+  for (const n of ['CoolHalo', 'CoolOrb1', 'CoolOrb2', 'CoolOrb3', 'CoolOrb4']) {
+    const at = plan.parts.findIndex((p) => p.name === n);
+    if (at >= 0) plan.parts.splice(at, 1);
+  }
+  plan.parts.push({ name: 'CoolHalo', shape: 'block', size: [1, 1, 1], at: [cx, y, cz], color: '#ffffff', transparency: 0.99, move: { as: 'spin', on: 'loop' } });
+  const around: [number, number][] = [[r, 0], [0, r], [-r, 0], [0, -r]];
+  around.forEach(([dx, dz], i) => plan.parts.push({ name: `CoolOrb${i + 1}`, shape: 'ball', size: [1.8, 1.8, 1.8], at: [cx + dx, y, cz + dz], color: COOL_ORB_COLOURS[i]!, material: 'Neon', rides: 'CoolHalo' }));
+  plan.footprint = { ...f, top: Math.max(f.top, y + 0.9) };
+  plan.cool = true;
 }
 
 export function isDark(hex: string): boolean {
@@ -966,10 +1017,16 @@ export function hingePoint(p: ObjectPart, origin: V3): V3 {
 
 const clipText = (s: unknown) => String(s ?? '').slice(0, 300);
 
-export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
-  // The board's look comes from the user's words, not the model's palette (owner's references, 2026-10-01).
-  const plan = expandObject({ ...a, theme: keyboardTheme(ctx.userRequest?.()), request: ctx.userRequest?.() ?? '' });
+export async function buildObject(ctx: AgentCtx, sent: Record<string, unknown>) {
+  // A "make it cooler" run adds to the object that is there; every other build stands alone (test 3, 2026-10-01).
+  const memory = ctx.objectMemory;
+  const prev = memory?.upgrading ? await memory.load().catch(() => undefined) as Record<string, unknown> | undefined : undefined;
+  const a = prev && Array.isArray(prev.parts) ? mergeUpgrade(prev, sent) : sent;
+  // The board's look comes from the user's words, not the model's palette (owner's references, 2026-10-01). An upgrade
+  // keeps the shape words of the request that made the object.
+  const plan = expandObject({ ...a, theme: keyboardTheme(ctx.userRequest?.()), request: prev ? String(prev.request ?? '') : ctx.userRequest?.() ?? '' });
   if ('error' in plan) return { error: plan.error };
+  if (prev) coolKit(plan);
   const wantsStuds = !userWantsOwnSurface(ctx.userRequest?.());
   const { footprint: f } = plan;
   const width = f.x1 - f.x0, depth = f.z1 - f.z0;
@@ -1023,7 +1080,8 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
       : isBoard && plan.theme === 'rgb' ? '#3a3d46' : isBoard && plan.theme === 'candy' ? '#6b3f22' : contrastStage(mainColour(plan.parts));
     items.push({ className: 'Model', name: `${plan.name}Stage`, children: [
       { className: 'Part', name: 'Stage', props: { Size: [width + pad * 2, stageH, depth + pad * 2], Position: [center[0], stageH / 2, center[2]], Anchored: true, Color: stageColor, Material: 'Plastic' } },
-      { className: 'Part', name: 'Rim', props: { Size: [width + pad * 2 + 2, stageH * 0.5, depth + pad * 2 + 2], Position: [center[0], stageH * 0.25, center[2]], Anchored: true, Color: '#8e5b32', Material: 'Plastic' } },
+      // A cooler object's rim lights up (coolKit).
+      { className: 'Part', name: 'Rim', props: { Size: [width + pad * 2 + 2, stageH * 0.5, depth + pad * 2 + 2], Position: [center[0], stageH * 0.25, center[2]], Anchored: true, Color: plan.cool ? '#b44dff' : '#8e5b32', Material: plan.cool ? 'Neon' : 'Plastic' } },
     ] });
   }
   for (const it of items) await ctx.execStudioOp({ op: 'delete_instances', paths: [`game.Workspace.${it.name}`] }, 20_000).catch(() => undefined);
@@ -1096,6 +1154,20 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
     }
   }
 
+  // The cooler object sparkles and glows: the library's sparkle shimmer and a warm light on its biggest part (coolKit).
+  if (plan.cool) {
+    const body = [...plan.parts].filter((p) => !p.own && !p.name.startsWith('Cool')).sort((x, y) => y.size[0] * y.size[1] * y.size[2] - x.size[0] * x.size[1] * x.size[2])[0];
+    if (body) {
+      const path = `${model}.${body.name}`;
+      await ctx.execStudioOp({ op: 'delete_instances', paths: [`${path}.SparkleShimmerFX`, `${path}.CoolLight`] }, 20_000).catch(() => undefined);
+      const fx = vfxPlan('sparkle_shimmer', { path, className: 'Part' }, { scale: Math.max(1, Math.min(4, Math.max(...body.size) / 6)), rate: 2 });
+      const items = 'error' in fx ? [] : fx.items;
+      const light = { className: 'PointLight', name: 'CoolLight', parent: path, props: { Brightness: { t: 'number' as const, v: 2 }, Range: { t: 'number' as const, v: 20 }, Color: { t: 'Color3' as const, v: [1, 0.85, 0.5] as [number, number, number] } } };
+      const made = await ctx.execStudioOp({ op: 'create_instances', items: [...items, light] }, 60_000).catch(() => ({ ok: false, error: 'not made' }));
+      if (!made.ok) problems.push(`sparkles: ${clipText((made as { error?: string }).error)}`);
+    }
+  }
+
   // Studio's view turns to what was made (test 2 round 2: the butter was built off-screen and the view showed grass).
   await ctx.execStudioOp({ op: 'camera_focus', path: model }, 10_000).catch(() => undefined);
 
@@ -1159,6 +1231,8 @@ end)
     }
   }
   const keys = moving.filter((p) => p.move!.on === 'key' && p.key).length;
+  // Kept for a later "make it cooler", with the words that made it (its shape words).
+  await memory?.save({ ...a, request: prev ? prev.request : ctx.userRequest?.() ?? '' }).catch(() => undefined);
   // Rigging is what makes it move: if that failed, the object stands but does nothing, which is not done.
   if (moving.length && problems.some((p) => p.startsWith('rig') || p.startsWith('animations') || p.startsWith('player'))) {
     return { changed: true, projectMutated: true, object: model, error: `Built, but it cannot move yet: ${problems.join('; ')}. If Studio says an operation is unknown, the Apple plugin in Studio is older than this tool: tell the user to restart Studio.` };

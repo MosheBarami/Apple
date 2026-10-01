@@ -287,6 +287,12 @@ export interface AgentCtx {
   plannedGame?: { load(): Promise<unknown>; save(stored: unknown): Promise<void> };
   /** The user's own words for this run (their last message), so a tool that must understand the request does not read the model's retelling of it. */
   userRequest?: () => string | undefined;
+  /**
+   * The last object build_object made in this project (its whole spec), kept by the session so "make it 100x cooler"
+   * upgrades THAT object (test 3, 2026-10-01: an unguided run spent 266 credits sprinkling 14 effects and inserting a
+   * whole library place as an orbiting pat). `upgrading` is true on a run that asked for it to be made cooler.
+   */
+  objectMemory?: { load(): Promise<unknown>; save(spec: unknown): Promise<void>; upgrading: boolean };
   /** more_tools: lift the run's focused toolset for the rest of the run (session.ts AgentState.focused). */
   widenTools?: () => void;
   /** The run's sources (sources.ts): add some, get their [n] numbers back. */

@@ -98,7 +98,8 @@ import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-k
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
 import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
 import { explicitToolSequence, sequenceProgress, sequenceStepMessages, sequenceCallSignature } from '../tool-sequence';
-import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate, isOwnerLibraryOnlyRequest, staysInOwnerLibrary } from '../request-scope';
+import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate, isOwnerLibraryOnlyRequest, staysInOwnerLibrary, isUpgradeRequest } from '../request-scope';
+import { objectUpgradeLine } from '../object-tool';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
@@ -291,6 +292,10 @@ interface AgentState {
   composedPlotSim?: boolean;
   /** build_object built the one object asked for and said what it is (forUser): the run answers with that once played. */
   composedObject?: boolean;
+  /** The model answered a built object without playing it, and was sent to play_check once. */
+  sentToPlayCheck?: boolean;
+  /** This run makes the project's last built object cooler (isUpgradeRequest + the stored builtObject). */
+  upgradingObject?: boolean;
   /** What the composer said the player can do in the game it built: the answer when the run ends any other way. */
   composedForUser?: string;
   /** What the last play_check found wrong, in its own words (undefined when it passed). */
@@ -3513,6 +3518,11 @@ export class SessionDO extends DurableObject<Env> {
     const msgId = crypto.randomUUID();
     // "make it a full game with plots" grows the game that is there, so it is composed, not refused as a rebuild (owner, 2026-10-01).
     const continueLine = mode === 'agent' && !isPlotSimRequest(text) ? continueGameLine(await this.ctx.storage.get<BuiltGameRecord>('builtGame'), text) : undefined;
+    // "make it 100x cooler" on a place whose last build was one object upgrades that object in one build_object call
+    // (test 3, 2026-10-01: unguided, the run spent 266 credits on 54 calls and inserted a whole library place).
+    const lastObject = mode === 'agent' && !continueLine && isUpgradeRequest(text)
+      ? (await this.ctx.storage.get<{ spec?: Record<string, unknown> }>('builtObject'))?.spec : undefined;
+    const upgradeLine = lastObject ? objectUpgradeLine(lastObject) : undefined;
     const agent: AgentState = {
       status: 'running',
       mode,
@@ -3523,7 +3533,8 @@ export class SessionDO extends DurableObject<Env> {
       // trimTranscript documents — the agent kept working with no record of the task.
       // The UI theme is per request, so it rides in this run's context and not in the system prompt
       // builder. UI-only: the world direction is unchanged by it.
-      llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme)), continueLine].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
+      llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme)), continueLine, upgradeLine].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
+      ...(upgradeLine ? { objectFirst: true, objectRun: true, upgradingObject: true } : {}),
       ...(continueLine ? { continuesGame: true } : {}),
       // A game the composer can make (the orchard, or a simulator / tycoon / "make it a full game": compose-plotsim.ts)
       // is made by compose_game first, from components and the library, never piece by piece.
@@ -4536,6 +4547,19 @@ export class SessionDO extends DurableObject<Env> {
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
+      }
+      // A built object is answered from the build, never from the model's retelling (test 3 round 2, 2026-10-01: the
+      // model skipped the play check and wrote its own reply, so the composed ending never ran). Unchecked, it is
+      // sent to play once; checked, the run ends on what was built and what the check saw.
+      if (agent.composedObject && agent.composedForUser && !agent.lastCheckProblem && allowed.has('play_check')) {
+        if (!agent.playChecked && !agent.sentToPlayCheck) {
+          agent.sentToPlayCheck = true;
+          agent.llm.push({ role: 'user', content: 'Check it once in play now: call play_check. Write nothing else.' });
+          await this.persistAgent(agent);
+          await this.ctx.storage.setAlarm(Date.now() + 10);
+          return;
+        }
+        agent.finalText = agent.playChecked ? `${agent.composedForUser}\n\nI play-tested it: ${agent.lastCheckSeen ?? 'it ran'}.` : agent.composedForUser;
       }
       await this.finishRun(agent, owesWork ? 'incomplete' : 'done');
       return;
@@ -5933,6 +5957,11 @@ export class SessionDO extends DurableObject<Env> {
       // The design plan_game made, kept between the run's steps (the context is rebuilt every step) and across a restart of this object.
       ...(agent ? { plannedGame: { load: () => this.ctx.storage.get('plannedGame'), save: (stored: unknown) => this.ctx.storage.put('plannedGame', stored) } } : {}),
       ...(agent ? { userRequest: () => lastUserText(agent.llm) } : {}),
+      ...(agent ? { objectMemory: {
+        load: async () => (await this.ctx.storage.get<{ spec?: unknown }>('builtObject'))?.spec,
+        save: (spec: unknown) => this.ctx.storage.put('builtObject', { spec, at: Date.now() }),
+        upgrading: agent.upgradingObject === true,
+      } } : {}),
       onceInRun: (key) => {
         if (!agent) return true;
         const seen = agent.onceKeys ?? (agent.onceKeys = []);
