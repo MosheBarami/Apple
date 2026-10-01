@@ -172,7 +172,38 @@ export function unbury(parts: ObjectPart[]): string[] {
       if (!moved.includes(p.name)) moved.push(p.name);
     }
   }
+  // A wrapper, tray or plate laid over the body's top goes under it (round 4: the model put a 31 x 7 "Wrapper" flat on
+  // the butter's whole top, a lid again).
+  const body = [...parts].filter((o) => !o.own).sort((a, b) => vol(b) - vol(a))[0];
+  for (const p of parts) {
+    if (!body || p === body || p.key || p.rides || p.own || !DOWN_WORDS.test(p.name) || /top|lid/i.test(p.name)) continue;
+    const overlap = (i: number) => Math.max(0, Math.min(p.at[i]! + p.size[i]! / 2, body.at[i]! + body.size[i]! / 2) - Math.max(p.at[i]! - p.size[i]! / 2, body.at[i]! - body.size[i]! / 2));
+    const covers = overlap(0) * overlap(2) >= 0.5 * body.size[0] * body.size[2];
+    if (!covers || p.at[1] <= body.at[1] || p.size[1] >= body.size[1]) continue;
+    p.at[1] = body.at[1] - body.size[1] / 2 - p.size[1] / 2;
+    if (!moved.includes(p.name)) moved.push(p.name);
+  }
   return moved;
+}
+
+/**
+ * A long thing lies across the player's view, not pointing at the spawn (round 4: a 6 x 6 x 30 stick of butter showed
+ * the spawn only its square end). When the object is more than 1.5 times deeper (Z) than wide (X), every part is
+ * turned a quarter about the vertical: X and Z swap, and words on a side go to the side the spawn sees. Parts with a
+ * rotation of their own keep the object as it is. Pure; true when it turned.
+ */
+export function faceAcross(parts: ObjectPart[]): boolean {
+  const span = (i: number) => Math.max(...parts.map((p) => p.at[i]! + p.size[i]! / 2)) - Math.min(...parts.map((p) => p.at[i]! - p.size[i]! / 2));
+  if (parts.length === 0 || parts.some((p) => p.rot) || span(2) <= 1.5 * span(0)) return false;
+  for (const p of parts) {
+    p.size = [p.size[2], p.size[1], p.size[0]];
+    p.at = [-p.at[2], p.at[1], p.at[0]];
+    if (p.text && p.text.face !== 'Top' && p.text.face !== 'Bottom') p.text = { ...p.text, face: 'Back' };
+    // A hinge named by side turns with it (as at above, x' = -z and z' = x: +Z goes to -X, +X to +Z).
+    const hinge: Record<string, string> = { back: 'left', front: 'right', right: 'back', left: 'front' };
+    if (p.move?.hinge && hinge[p.move.hinge]) p.move = { ...p.move, hinge: hinge[p.move.hinge] };
+  }
+  return true;
 }
 
 /**
@@ -188,9 +219,9 @@ export function readableText(parts: ObjectPart[]): string[] {
     if (!p.text || p.key || p.text.face !== 'Top') continue;
     const above: V3 = [p.at[0], p.at[1] + p.size[1] / 2 + 0.1, p.at[2]];
     if (!parts.some((q) => q !== p && holds(q, above, 0))) continue;
-    if (p.size[1] >= 1.5) p.text = { ...p.text, face: 'Back' };
-    else if (body && body !== p && !body.text) { body.text = { ...p.text, face: 'Back' }; delete p.text; }
-    else continue;
+    // A thin part whose body already has words keeps its own, on its thin spawn-side edge: small, but seen.
+    if (p.size[1] >= 1.5 || !body || body === p || body.text) p.text = { ...p.text, face: 'Back' };
+    else { body.text = { ...p.text, face: 'Back' }; delete p.text; }
     moved.push(p.name);
   }
   return moved;
@@ -628,6 +659,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   }
   // Anything that is not a keyboard: nothing hidden inside another part, something to do with it, and big enough.
   const board = parts.some((p) => p.key || p.rides);
+  if (!board) faceAcross(parts);
   const unburied = board ? [] : unbury(parts);
   if (!board) readableText(parts);
   const moves = board ? undefined : giveMotion(parts);

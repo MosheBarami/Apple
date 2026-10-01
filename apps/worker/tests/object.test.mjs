@@ -644,3 +644,35 @@ test('the hint says what the player can do, and the counter counts only what a p
   assert.ok(hint.indexOf("'Click it!'") >= 0 && hint.indexOf("'Click it!'") < hint.indexOf("'Watch it go!'"), hint);
   assert.match(tool, /OnClientEvent:Connect\(function\(model, _clip, player\)[\s\S]{0,120}player == nil then return end/);
 });
+
+// Test 2 round 4 (2026-10-01): a 6 x 6 x 30 butter pointing at the spawn, and its wrapper flat over the whole top.
+const ROUND4 = { name: 'StickOfButter', parts: [
+  { name: 'Butter', size: [6, 6, 30], at: [0, 3, 0], color: '#ffe066', text: { value: 'BUTTER', face: 'Back' }, move: { as: 'bob', on: 'touch' } },
+  { name: 'Wrapper', size: [7.2, 1.2, 31.2], at: [0, 6.6, 0], color: '#fff3b0', text: 'SALTED', move: { as: 'wobble', on: 'click' } },
+] };
+
+test('a long thing lies across the view from the spawn, its words on the side the spawn sees', () => {
+  const plan = O.expandObject(ROUND4);
+  const butter = plan.parts.find((p) => p.name === 'Butter');
+  assert.deepEqual(butter.size, [30, 6, 6], 'long along X now');
+  assert.equal(butter.text.face, 'Back');
+  assert.ok(plan.footprint.x1 - plan.footprint.x0 > plan.footprint.z1 - plan.footprint.z0);
+  // A wide thing stays as it was; so does one with a rotation of its own.
+  assert.equal(O.faceAcross([{ name: 'A', size: [30, 6, 6], at: [0, 3, 0] }]), false);
+  assert.equal(O.faceAcross([{ name: 'A', size: [6, 6, 30], at: [0, 3, 0], rot: [0, 45, 0] }]), false);
+  const door = [{ name: 'Door', size: [1, 8, 4], at: [0, 4, 0], move: { as: 'open', on: 'click', hinge: 'back' } }];
+  O.faceAcross(door);
+  assert.equal(door[0].move.hinge, 'left', '+Z turns to -X with the part');
+});
+
+test('a wrapper laid over the whole top goes under the body, and its words stay where they can be seen', () => {
+  const plan = O.expandObject(ROUND4);
+  const by = Object.fromEntries(plan.parts.map((p) => [p.name, p]));
+  assert.ok(by.Wrapper.at[1] < by.Butter.at[1], 'under the butter');
+  assert.equal(by.Wrapper.text?.value, 'SALTED', 'its words stay');
+  assert.equal(by.Wrapper.text.face, 'Back', 'on its edge facing the spawn, not under the butter');
+  // A topping on top stays on top.
+  const cake = [{ name: 'Cake', size: [10, 6, 10], at: [0, 3, 0] }, { name: 'Icing', size: [10, 1, 10], at: [0, 6.5, 0] }];
+  O.unbury(cake);
+  assert.equal(cake[1].at[1], 6.5);
+});
