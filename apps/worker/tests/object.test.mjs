@@ -963,3 +963,17 @@ test('every build_object part must carry a name saying what it is (test 3 round 
   assert.match(def, /name: \{ type: 'string', description: 'what the part is/);
   assert.match(def, /\}, required: \['name'\] \} \},/);
 });
+
+// Test 3 round 10 (2026-10-01): both wrapper ends stood at the butter's middle, one inside the other.
+test('a pair of end parts in one place goes to the two ends of the body', () => {
+  const parts = [
+    { name: 'Butter', size: [15, 4, 4], at: [0, 2, 0] },
+    { name: 'WrapperEnd1', size: [1.5, 4.4, 4.4], at: [0, 2, 0] },
+    { name: 'WrapperEnd2', size: [1.5, 4.4, 4.4], at: [0, 2, 0] },
+    { name: 'EyeLeft', size: [1, 1, 1], at: [0, 3, 2] }, { name: 'EyeRight', size: [1, 1, 1], at: [0, 3, 2] },
+  ];
+  assert.deepEqual(O.toEnds(parts).sort(), ['WrapperEnd1', 'WrapperEnd2']);
+  assert.equal(parts[1].at[0], -6.75); assert.equal(parts[2].at[0], 6.75);
+  assert.equal(parts[3].at[0], 0, 'eyes are not ends');
+  assert.deepEqual(O.toEnds([{ name: 'B', size: [10, 2, 2], at: [0, 1, 0] }, { name: 'CapA', size: [1, 2, 2], at: [-4.5, 1, 0] }, { name: 'CapB', size: [1, 2, 2], at: [4.5, 1, 0] }]), [], 'already apart: left alone');
+});

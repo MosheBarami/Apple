@@ -241,6 +241,30 @@ export function wrapAround(parts: ObjectPart[]): string[] {
 }
 
 /**
+ * Two parts named for an end ("WrapperEnd1", "WrapperEnd2", "CapLeft") that sit in the same place go to the two ends of
+ * the body's long side (test 3 round 10, 2026-10-01: both wrapper ends stood at the butter's middle, one inside the
+ * other). Pure; returns the parts it moved.
+ */
+export function toEnds(parts: ObjectPart[]): string[] {
+  const body = [...parts].filter((o) => !o.own).sort((a, b) => vol(b) - vol(a))[0];
+  if (!body) return [];
+  const long = body.size[0] >= body.size[2] ? 0 : 2;
+  const stem = (n: string) => n.replace(/(_?\d+|Left|Right|Front|Back|A|B)$/, '');
+  const ends = parts.filter((p) => p !== body && !p.key && !p.rides && /end|cap/i.test(p.name));
+  const moved: string[] = [];
+  for (const p of ends) {
+    if (moved.includes(p.name)) continue;
+    const twin = ends.find((q) => q !== p && !moved.includes(q.name) && stem(q.name) === stem(p.name) && [0, 1, 2].every((i) => Math.abs(q.at[i]! - p.at[i]!) < 0.5));
+    if (!twin) continue;
+    const reach = body.size[long]! / 2 - p.size[long]! / 2;
+    p.at[long] = body.at[long]! - reach;
+    twin.at[long] = body.at[long]! + reach;
+    moved.push(p.name, twin.name);
+  }
+  return moved;
+}
+
+/**
  * A detail hovering a little over what is under it comes down onto it (round 10: the butter's TopSlab floated 1.9
  * studs over the butter, held up only by a band). A gap under 3 studs is a slip, not a design: the part rests on the
  * highest top beneath its footprint. Further up it is left (a halo, a balloon). Lowest first, so a stack settles. Pure.
@@ -809,7 +833,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   if (!board) shapeTo(parts, shapeWord(`${String(a.request ?? '')} ${String(a.name ?? '')}`), basisOf());
   if (!board) faceAcross(parts, basisOf());
   const unburied = board ? [] : unbury(parts);
-  if (!board) { wrapAround(parts); settle(parts); }
+  if (!board) { wrapAround(parts); toEnds(parts); settle(parts); }
   if (!board) readableText(parts);
   // Words with no colour of their own stand out from what they are printed on (round 9: white "BUTTER" on pale yellow):
   // dark ink on a light part. A keyboard's legends keep their theme's colours.
