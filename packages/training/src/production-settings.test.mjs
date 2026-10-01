@@ -38,8 +38,11 @@ test('MODE_BASE_TOKENS matches apps/worker/src/do/session.ts', () => {
   //   DIFFERENT DECLARATION FROM THE TABLE ABOVE. `VALID_MODES` is the Set `asProductMode` checks;
   //   MODE_BASE_TOKENS is what sizes the budget. They must name the same modes, and a mode added to
   //   one and not the other is a mode that either cannot run or runs with an undefined budget. ]]
-  const valid = /const VALID_MODES = new Set<ProductMode>\(\[([^\]]*)\]\)/.exec(src);
-  assert.ok(valid, 'VALID_MODES is no longer declared the way this guard reads it');
+  // RESTATED 2026-10-01: the worker's runtime allowlist went with Plan (c839d7af); the modes that exist are the
+  // shared ProductMode type, which every worker signature takes.
+  const shared = readFileSync(resolve(WORKER_SRC, '..', '..', '..', 'packages', 'shared', 'src', 'index.ts'), 'utf8');
+  const valid = /export type ProductMode = ([^;]+);/.exec(shared);
+  assert.ok(valid, 'ProductMode is no longer declared the way this guard reads it');
   const allowed = [...valid[1].matchAll(/'([^']+)'/g)].map(([, k]) => k);
   assert.deepEqual([...PRODUCT_MODES].sort(), [...allowed].sort(),
     'the modes this package resolves and the modes the worker accepts have diverged');
@@ -105,7 +108,8 @@ test('the retired mode names are refused by name, and the refusal names the repl
   }
   // The message has to be actionable, so the replacement is named where one exists.
   assert.throws(() => resolveMode('stone'), /now "agent"/);
-  assert.throws(() => resolveMode('clay'), /now "plan"/);
+  assert.throws(() => resolveMode('clay'), /now "agent"/);
+  assert.throws(() => resolveMode('plan'), /now "agent"/, 'Plan was removed from the product (c839d7af)');
   // A name that was never ours is a typo, and says so differently.
   assert.throws(() => resolveMode('stoned'), /unknown mode/);
   assert.throws(() => resolveMode(undefined), /non-empty string/);
@@ -128,12 +132,10 @@ test('the effort multipliers and entitlement floor match apps/worker/src/reasoni
   );
   assert.deepEqual(baselineFound, { ...BASELINE_EFFORT }, 'the per-mode baseline effort moved');
 
-  const floor = /const ENTITLEMENT_FLOOR: Record<ProductModel, Effort> = \{([^}]*)\}/.exec(src);
-  assert.ok(floor, 'ENTITLEMENT_FLOOR is no longer declared the way this guard reads it');
-  const floorFound = Object.fromEntries(
-    [...floor[1].matchAll(/(?:'([^']+)'|(\w+)):\s*'(\w+)'/g)].map(([, q, w, v]) => [q ?? w, v]),
-  );
-  assert.deepEqual(floorFound, { ...ENTITLEMENT_FLOOR }, 'the per-lane entitlement floor moved');
+  // RESTATED 2026-10-01: production removed the entitlement floor with the tiers (38efea2e). The mirror must then
+  // lift no lane; if a floor comes back to reasoning.ts, this goes red and the mirror is re-copied from it.
+  assert.doesNotMatch(src, /ENTITLEMENT_FLOOR/, 'production has an entitlement floor again: copy it into the mirror');
+  for (const [lane, floor] of Object.entries(ENTITLEMENT_FLOOR)) assert.equal(floor, 'low', `${lane} still lifts the effort`);
 
   // tokensForEffort scales with a ternary, not a table, so the ternary itself is what is pinned.
   const scale = /const scale = effort === 'high' \? ([\d.]+) : effort === 'medium' \? ([\d.]+) : ([\d.]+);/.exec(src);
@@ -192,19 +194,13 @@ test('the clamp flag is derived from the two numbers, and the run reports both',
   assert.equal(clamped.effectiveTokens, 6500);
   assert.equal(clamped.clampedByCeiling, true);
 
-  const roomy = resolveSettings({ lane: 'apple', mode: 'plan' });
-  assert.equal(roomy.gateway, 'plan');
+  // RESTATED 2026-10-01: Plan, the unclamped mode, was removed (c839d7af). A low-effort Agent step asks for the
+  // same 4400 Plan did, so it is the unclamped case now; the paid-Plan comparison has no mode left to compare.
+  const roomy = resolveSettings({ lane: 'apple', mode: 'agent', effort: 'low' });
+  assert.equal(roomy.gateway, 'agent');
   assert.equal(roomy.requestedTokens, 4400);
   assert.equal(roomy.effectiveTokens, 4400);
   assert.equal(roomy.clampedByCeiling, false, 'the flag must be derived from the numbers, not assumed');
-
-  // The entitlement floor is now the ONLY thing separating the lanes: apple-max raises Plan from its
-  // `low` baseline to `high`, so the paid Plan lane asks for more room than the free one while both
-  // land on the same model and the same ceiling.
-  const paidPlan = resolveSettings({ lane: 'apple-max', mode: 'plan' });
-  assert.equal(paidPlan.effort, 'high');
-  assert.ok(paidPlan.requestedTokens > roomy.requestedTokens, 'MAX no longer buys more room in Plan');
-  assert.equal(paidPlan.clampedByCeiling, true);
 });
 
 test('an explicit effort is no longer a floor, and an explicit budget overrides the arithmetic', () => {
@@ -227,8 +223,9 @@ test('an explicit effort is no longer a floor, and an explicit budget overrides 
 //   THE PROPERTY, and it is the one that matters rather than the arithmetic: for n > 1 the value
 //   sent must be a value the PROVIDER sees as different from what sample 1 produces.
 test('a cache-busting budget is one the provider actually sees as different', () => {
-  for (const [lane, mode] of [['apple', 'agent'], ['apple-max', 'agent'], ['apple', 'plan'], ['apple-max', 'plan']]) {
-    const s = resolveSettings({ lane, mode });
+  // RESTATED 2026-10-01: Plan is gone (c839d7af); the unclamped budgets it covered are low-effort Agent steps.
+  for (const [lane, mode, effort] of [['apple', 'agent'], ['apple-max', 'agent'], ['apple', 'agent', 'low'], ['apple-max', 'agent', 'low']]) {
+    const s = resolveSettings({ lane, mode, ...(effort ? { effort } : {}) });
     const seen = (n) => (s.gatewayCeiling === null ? n : Math.min(n, s.gatewayCeiling));
 
     assert.equal(cacheBustTokens(s, 1), s.requestedTokens,
@@ -274,8 +271,8 @@ test('a budget too small to shave refuses instead of returning a replay', () => 
 //   deleted. This asserts the arithmetic fact it was defending against, so nobody re-adds it as
 //   reassurance and nobody removes the real `sent < 1` refusal thinking it is the same thing.
 test('a shaved budget is always strictly under the ceiling, which is why no re-clamp guard is needed', () => {
-  for (const [lane, mode] of [['apple', 'agent'], ['apple-max', 'plan'], ['apple', 'plan']]) {
-    const s = resolveSettings({ lane, mode });
+  for (const [lane, mode, effort] of [['apple', 'agent'], ['apple-max', 'agent', 'low'], ['apple', 'agent', 'low']]) {
+    const s = resolveSettings({ lane, mode, ...(effort ? { effort } : {}) });
     for (const n of [2, 3, 10]) {
       const sent = cacheBustTokens(s, n);
       assert.ok(sent < s.effectiveTokens, `${lane}/${mode} n=${n}: ${sent} is not below ${s.effectiveTokens}`);

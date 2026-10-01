@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Standalone game components with contracts (what each needs, what it gives) that Apple composes into new games. Runtime Luau that ships inside the built game.",
   "scripts": {
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "proof:compose": "node proof/compose-proof.mjs"
   }
 }

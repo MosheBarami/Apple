@@ -8,8 +8,9 @@ description: How to make a change in this repository without breaking a peer, sh
 > **START HERE — `docs/autonomy/`.** The most important artifact in this repository is the owner's
 > autonomy research (`docs/autonomy/RESEARCH-REPORT.md`) and the mission it ends in
 > (`docs/autonomy/OWNER_PROMPT.md`). Read `docs/autonomy/README.md`, `MISSION.md`, `CURRENT_STATE.md`
-> and `NEXT_ACTION.md` before anything below. The hard safety envelope is enforced by
-> `.claude/hooks/autonomy_guard.py`; `touch .autonomy/STOP` freezes every mutating tool.
+> and `NEXT_ACTION.md` before anything below. The owner removed the autonomy hooks on 2026-09-29
+> (89bf8fa9): no guard enforces the safety envelope any more, so ask the owner for consent before any
+> destructive, paid or external action.
 
 Every rule below cost something. Where a rule has a date beside it, that is the day it was
 learned and there is a commit you can read.

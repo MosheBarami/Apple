@@ -302,6 +302,17 @@ function resolveSpecifier(fromRel, spec, { virtualBase = false } = {}) {
   //
   //   Node resolves a deep path only when `exports` permits it; this checker is measuring what the
   //   bundler follows, and the bundler follows it. ]]
+  //[[ THE WEB APP'S `@/` ALIAS IS ITS OWN src/ (apps/web/tsconfig.json paths "@/*": ["./src/*"]).
+  //
+  //   The genuine AI Elements components, vendored verbatim from upstream on 2026-10-01, import their
+  //   shadcn building blocks as `@/components/ui/button` and `@/lib/utils`. Unresolved, every one of
+  //   those shadcn files looked imported by nothing and the gate demanded a dead-end decision for
+  //   code the chat renders on every turn. ]]
+  if (spec.startsWith('@/') && fromRel.startsWith('apps/web/')) {
+    const hit = tryCandidates(resolve(ROOT, 'apps/web/src', spec.slice(2)));
+    if (hit) return hit;
+  }
+
   if (spec.startsWith('@')) {
     for (const [name, dir] of WORKSPACE_DIRS) {
       if (!spec.startsWith(`${name}/`)) continue;

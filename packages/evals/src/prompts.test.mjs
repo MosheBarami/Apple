@@ -75,7 +75,7 @@ test('collapsing removes the brief, keeps the instruction, and leaves no sentine
 test('collapsing twice is a no-op, so calling it every step is safe', () => {
   const once = P.collapseArtDirection(visual);
   assert.equal(P.collapseArtDirection(once), once);
-  const plain = P.systemPrompt({ mode: 'plan', projectName: 'T', studioConnected: false, memoryFacts: [], fenceId: 'ev4lf3nc' });
+  const plain = P.systemPrompt({ mode: 'agent', projectName: 'T', studioConnected: false, memoryFacts: [], fenceId: 'ev4lf3nc' });
   assert.equal(P.collapseArtDirection(plain), plain);
 });
 

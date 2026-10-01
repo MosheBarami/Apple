@@ -177,6 +177,13 @@ test('inactive LaunchAgent renderer validates root/flags and uses absolute execu
     '--mission', join(f.root, 'mission.json'), '--model', 'opus', '--goal-condition', 'Full product acceptance gate passes on real independent evidence with a persistent strategic Opus owner and canonical mission state.', '--python', PYTHON,
     '--claude', join(f.root, 'fake-claude'), '--output-dir', output], { encoding: 'utf8' });
   assert.equal(run(f.root).status, 1, 'non-repository root is refused');
+  // RESTATED 2026-10-01: the owner removed the STOP guard (89bf8fa9). The renderer must then refuse to set up an
+  // unattended owner at all — that refusal is the property while the guard is gone.
+  if (!existsSync(join(REPO, '.claude', 'hooks', 'autonomy_guard.py'))) {
+    const refused = run(REPO);
+    assert.equal(refused.status, 1, 'an unattended owner was rendered without the STOP guard');
+    return;
+  }
   const r = run(REPO); assert.equal(r.status, 0, r.stderr);
   const cfg = read(join(output, 'owner-config.json'));
   assert.equal(cfg.python, PYTHON); assert.equal(cfg.claude, join(f.root, 'fake-claude'));

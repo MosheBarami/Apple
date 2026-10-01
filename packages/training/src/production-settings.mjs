@@ -47,11 +47,15 @@
 //]]
 
 /** apps/worker/src/do/session.ts — MODE_BASE_TOKENS. */
-export const MODE_BASE_TOKENS = Object.freeze({ plan: 4400, agent: 4400 });
+//   2026-10-01: the worker has one mode, agent (c839d7af removed Plan); `plan` is a retired name below. The gateway
+//   still carries a `plan` model key, which GATEWAY_CEILING and GATEWAY_MODEL_ID keep mirroring.
+export const MODE_BASE_TOKENS = Object.freeze({ agent: 4400 });
 
 /** apps/worker/src/reasoning.ts — BASELINE, ENTITLEMENT_FLOOR, and the effort multipliers. */
-export const BASELINE_EFFORT = Object.freeze({ plan: 'low', agent: 'high' });
-export const ENTITLEMENT_FLOOR = Object.freeze({ apple: 'low', 'apple-max': 'high' });
+export const BASELINE_EFFORT = Object.freeze({ agent: 'high' });
+//   2026-10-01: production has no entitlement floor any more — one engine, no tiers (38efea2e). The lanes are kept
+//   as names so old runs still resolve, and neither lifts the effort: every lane sends the same request.
+export const ENTITLEMENT_FLOOR = Object.freeze({ apple: 'low', 'apple-max': 'low' });
 
 //   2026-09-20: high moved from 1.25 to 2, and the Agent ceiling from 5600 to 6500. The worker's
 //   `high` tier was asking for LESS room than `medium` — 4400 x 1.25 = 5500 on the tier chosen for
@@ -84,7 +88,8 @@ export const PRODUCT_MODES = Object.freeze(Object.keys(MODE_BASE_TOKENS));
  * a hunt through git history.
  */
 export const RETIRED_MODES = Object.freeze({
-  clay: 'plan',
+  plan: 'agent',
+  clay: 'agent',
   stone: 'agent',
   rune: 'agent',
   'super-agent': 'agent',

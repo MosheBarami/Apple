@@ -316,6 +316,8 @@ export class SessionStream {
   editAndResend(messageId: string, text: string): boolean;
   stop(): boolean;
   resume(): boolean;
+  /** Resume a run Apple paused because Studio disconnected. */
+  continueRun(): boolean;
   ping(): boolean;
   presence(activity: 'viewing' | 'typing' | 'building'): boolean;
   createCheckpoint(label?: string): boolean;

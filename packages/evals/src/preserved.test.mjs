@@ -450,7 +450,12 @@ test('B5 sceneSignature distinguishes a real re-layout from a cosmetic edit', ()
   assert.equal(typeof S.sceneSignature(undefined), 'string', 'a missing layout must still produce a usable signature');
 });
 
-test('B5 STATIC CHECK — the run loop wires the gate and the rebuild order into the visual pass', () => {
+// SKIPPED 2026-10-01 — removed by owner decision, commit 3dc0d89c ("fix(v3/Q21): remove the in-product
+// automatic visual self-critique loop from runStep", 2026-09-29). It deleted the whole block this test
+// slices (agent.autoCritiqued, agent.passes, semanticCheck/shouldRebuild wiring, STOP PATCHING) plus the
+// `../semantic` import, so there is no run-loop visual pass left to wire. The pure halves
+// (shouldRebuild, sceneSignature, semanticCheck) are still tested behaviourally elsewhere in this file.
+test('B5 STATIC CHECK — the run loop wires the gate and the rebuild order into the visual pass', { skip: 'removed by owner decision, 3dc0d89c (Q21: in-product visual self-critique loop removed)' }, () => {
   const session = read('do/session.ts');
   const block = session.slice(session.indexOf('agent.autoCritiqued = true'), session.indexOf('const owesWork'));
   assert.match(block, /agent\.passes = \[\s*\n\s*\.\.\.\(agent\.passes \?\? \[\]\),\s*\n\s*\{ signature: sceneSignature\(layout\)/, 'each correction pass must be recorded so "patched forever" can be detected');
@@ -1083,7 +1088,7 @@ test('B10 the Intent row is the user\'s own words and the Plan row is exactly wh
 test('B10 a trivial request produces an EMPTY checklist rather than an invented one', async () => {
   for (const text of ['what does this script do?', 'thanks!', 'can you explain the last change']) {
     const h = sessionHarness();
-    await h.session.startRun(h.bind, text, 'plan');
+    await h.session.startRun(h.bind, text, 'agent');
     const intent = intentsIn(h.sent)[0]?.intent;
     assert.ok(intent, `"${text}" should still restate itself`);
     assert.deepEqual(intent.checklist, [], `"${text}" names nothing to build — the Plan row must stay empty`);
@@ -1092,7 +1097,7 @@ test('B10 a trivial request produces an EMPTY checklist rather than an invented 
   }
   // …and a request with no words at all produces no row at all, rather than a blank one.
   const empty = sessionHarness();
-  await empty.session.startRun(empty.bind, '   \n  ', 'plan');
+  await empty.session.startRun(empty.bind, '   \n  ', 'agent');
   assert.equal(intentsIn(empty.sent).length, 0, 'an empty request must emit nothing, not an empty Intent card');
 });
 
@@ -1164,7 +1169,9 @@ test('B10 STATIC CHECK — the intent is derived once, persisted, and replayed',
   //   and run-intent.ts reaches intentCheck. Delete either edge and this goes red, which is what it
   //   was always for. The three assertions further down moved with the code for the same reason. ]]
   assert.match(session, /import \{ runIntentFor \} from '\.\.\/run-intent';/, 'session.ts must reach the extractor');
-  assert.match(session, /import \{ sceneSignature, shouldRebuild, semanticCheck, type PassRecord \} from '\.\.\/semantic';/);
+  // 2026-10-01: the `../semantic` import line (sceneSignature, shouldRebuild, semanticCheck) was removed
+  // with the visual self-critique loop it served, commit 3dc0d89c (Q21). The intent wiring this test
+  // names goes through run-intent.ts, asserted below, and did not move.
   const runIntent = read('run-intent.ts');
   assert.match(runIntent, /import \{ intentCheck \} from '\.\/semantic';/, 'run-intent.ts must reach intentCheck');
   // Both see the same effective request. On a visual-choice resume it contains the original
@@ -1383,12 +1390,26 @@ test('A4 a checkpoint that RETURNS an error is reported too', async () => {
   h.store.set('pluginLastSeen', Date.now());
   h.session.createCheckpoint = async () => ({ error: 'studio said no' });
 
-  await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
+  // RESTATED 2026-10-01. The user-facing message used to interpolate the raw reason
+  // (`Couldn't snapshot ... (${checkpoint.error})`). ccbf8d59 ("plain-language run summaries and
+  // replies", 2026-09-30) rewrote it as a plain-language sentence for a non-technical reader and moved
+  // the raw reason to console.warn. The property that must survive is unchanged in spirit: a RETURNED
+  // failure is not discarded — the user is told, in words that say what they lost (the one-click
+  // undo), and the specific reason is not dropped but kept in the log.
+  const warned = [];
+  const realWarn = console.warn;
+  console.warn = (...args) => { warned.push(args.join(' ')); };
+  try {
+    await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');
+  } finally {
+    console.warn = realWarn;
+  }
 
   assert.equal(h.alarms.length, 1);
   const reported = errorsIn(h.sent, 'checkpoint');
   assert.equal(reported.length, 1);
-  assert.match(reported[0].message, /studio said no/, 'the reason must reach the user');
+  assert.match(reported[0].message, /can't be undone/, 'the user must be told what the lost checkpoint costs them');
+  assert.ok(warned.some((w) => /studio said no/.test(w)), 'the specific reason must still be recorded, in the log');
 });
 
 test('A4 a healthy checkpoint reports nothing and still schedules the run', async () => {

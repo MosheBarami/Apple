@@ -1,7 +1,8 @@
 // The owner-autonomy hooks (.claude/skills/apple-owner-autonomy) are the enforcement, so they are tested
 // against fixture repositories rather than trusted: each behaviour below has a case that must go the
 // other way, so a hook that always allows (or always blocks) fails here.
-import { test } from 'node:test';
+import { test as base } from 'node:test';
+import { existsSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readFileSync, unlinkSync } from 'node:fs';
@@ -11,6 +12,10 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HOOKS = join(ROOT, '.claude', 'hooks');
+//[[ The owner removed these hooks (89bf8fa9, 2026-09-29). Every test here exercises one of them, so they skip while the
+//   hooks are absent and run again unchanged if the hooks come back. ]]
+const HOOKS_REMOVED = existsSync(HOOKS) ? false : 'the owner-autonomy hooks were removed at owner instruction (89bf8fa9)';
+const test = (name, fn) => base(name, { skip: HOOKS_REMOVED }, fn);
 const PASSING = {
   schema: 1, deterministic_gates_green: true, production_deployed: true, production_bytes_verified: true,
   signed_in_browser_qa: true, mobile_qa: true, real_studio_end_to_end: true, studio_readback_verified: true,

@@ -90,7 +90,8 @@ test('THE PREMISE: a paused or capacity-stopped run is a refundable ending', () 
  * reachable is what keeps the next test from passing because the ambiguity quietly went away.
  */
 const QUOTA_ENDINGS = [
-  { owner: 'service', phrase: "shared building capacity" },
+  // RESTATED 2026-10-01: ccbf8d59 reworded "today's shared building capacity" into plain language; same ending.
+  { owner: 'service', phrase: 'has reached its building limit' },
   { owner: 'service', phrase: 'An administrator paused generation' },
   { owner: 'reader', phrase: 'your daily Credits ran out' },
   { owner: 'reader', phrase: 'the last of your Credits for today' },

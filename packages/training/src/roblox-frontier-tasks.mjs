@@ -828,9 +828,11 @@ export const HOUSE_RULES_SYSTEM =
  */
 /** The control's UI line, and the rule production's IDENTITY replaced it with on 2026-09-23 (D-UIONLY-1). */
 export const UI_RULE_BEFORE = '- UI: build with Frames/UIListLayout/UICorner/UIPadding, scale-based sizing for cross-device support.';
+//[[ RE-COPIED 2026-10-01 from production (prompts.ts), which reworded this rule on 2026-09-27 (0c9bd9b3: owner UI
+//   first, the stored library when it is unavailable). The name is kept so the history that cites it still reads. ]]
 export const UI_RULE_D_UIONLY_1 =
-  '- UI comes ONLY from the stored UI library: insert_ui_component(component, parent, props, position, colour, genre)\n'
-  + '  places each HUD piece, button and window. Never create ScreenGui/Frame/TextLabel/ImageLabel/UIStroke/UICorner\n'
+  '- When owner UI is unavailable, insert_ui_component(component, parent, props, position, colour, genre)\n'
+  + '  places a stored HUD piece, button or window. Never create Frame/TextLabel/ImageLabel/UIStroke/UICorner\n'
   + '  by hand or Instance.new them in a script; those calls are refused. Edit an inserted piece\'s Text, Position and\n'
   + '  Visible freely, and have scripts find it by path (player.PlayerGui:WaitForChild("<name>")).';
 

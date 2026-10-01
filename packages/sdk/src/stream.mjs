@@ -280,6 +280,11 @@ export class SessionStream {
     return this.send({ type: 'resume' });
   }
 
+  /** Resume a run Apple paused because Studio disconnected (the worker's `continue`; a reconnect alone never does). */
+  continueRun() {
+    return this.send({ type: 'continue' });
+  }
+
   ping() {
     return this.send({ type: 'ping' });
   }

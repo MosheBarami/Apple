@@ -16,6 +16,10 @@
 //    the suite for the wrong reason. Cost arithmetic is asserted separately, against an explicit
 //    model, and the current frontier defaults are asserted in their own tests below.
 //
+// NOTE 2026-10-01: outside models and BYOK were removed by owner decision (38efea2e, c839d7af);
+// the paragraph below describes the D-VISION-1 state and the tests that covered it are restated or
+// skipped where they are marked.
+//
 // 2. THE LAYER IS HONEST. The Workers AI binding is the only transport. The direct-HTTP OpenAI,
 //    Google and DeepSeek adapters, which never had a credential, were removed by D-VISION-1: the
 //    outside models (Gemini, GPT-5.6) now run on the same binding through AI Gateway, and their
@@ -55,6 +59,9 @@ const modelsFile = bundle(join(ROOT, 'packages', 'shared', 'src', 'models.ts'), 
 const { MODEL_REGISTRY } = await import(`file://${modelsFile}`);
 rmSync(modelsFile, { force: true });
 const OUTSIDE = MODEL_REGISTRY.filter((m) => m.route === 'unified-billing');
+// The housekeeping (memory) lane's model. Internal and not exported by the provider layer, so it is
+// named here; 'gateway defaults' asserts G.DEFAULT_MODELS.memory.id equals it, so it cannot drift.
+const MEMORY_MODEL_ID = '@cf/qwen/qwen3-30b-a3b-fp8';
 
 const gatewayFile = bundle(join(WORKER, 'src', 'gateway.ts'), 'gateway');
 const G = await import(`file://${gatewayFile}`);
@@ -318,8 +325,21 @@ test('REFACTOR PROOF: provider refactor preserves transport outside model-specif
     assert.equal(a.seen.reserved.length, b.seen.reserved.length, `${name}: same number of reservations`);
     assert.equal(a.seen.settled.length, b.seen.settled.length, `${name}: same number of settlements`);
 
+    // RESTATED 2026-10-01: GatewayResponse gained an OPTIONAL `reasoning` field (live reasoning
+    // streaming, gateway.ts + providers/workers-ai.ts: `...(decoded.reasoning ? { reasoning } : {})`).
+    // The frozen baseline predates it, so it is the one key allowed to differ, and the property is
+    // that it is purely additive: present only as a string the model actually produced, never
+    // mixed into `text`, and every OTHER key of the response still matches the baseline exactly.
     const ignoreModelDependent = (r) => ({ ...stable(r), model: undefined, neurons: undefined, credits: undefined });
-    assert.deepEqual(ignoreModelDependent(after), ignoreModelDependent(before), `${name}: same GatewayResponse shape`);
+    const { reasoning: afterReasoning, ...afterRest } = ignoreModelDependent(after);
+    const { reasoning: beforeReasoning, ...beforeRest } = ignoreModelDependent(before);
+    assert.equal(beforeReasoning, undefined, `${name}: the frozen baseline has no reasoning field`);
+    assert.ok(afterReasoning === undefined || typeof afterReasoning === 'string', `${name}: reasoning, when present, is a string`);
+    if (afterReasoning !== undefined) {
+      assert.equal(afterReasoning, CANNED.choices[0].message.reasoning_content, `${name}: reasoning is the model's own reasoning_content`);
+      assert.ok(!after.text.includes(afterReasoning), `${name}: reasoning never leaks into the answer text`);
+    }
+    assert.deepEqual(afterRest, beforeRest, `${name}: same GatewayResponse shape`);
   }
 });
 
@@ -331,77 +351,74 @@ test('every Apple product route still uses the Workers AI adapter', () => {
   assert.equal(P.adapterForModelId('@cf/some/future-model').id, 'workers-ai');
 });
 
-test('gateway defaults: the run modes share one foundation, and memory and vision stay independent', () => {
-  // RE-AIMED 2026-09-22. This asserted a "product-model SPLIT" — clay on Qwen3, stone and rune on
-  // GLM — where the ENTITLEMENT picked the foundation model. That split was retired deliberately:
-  // entitlement now controls paid capabilities and the reasoning policy, the run mode controls the
-  // toolset, and `gatewayModelFor(mode, productModel)` voids its second argument and returns the
-  // mode. The old assertions therefore named a mechanism that no longer exists, and the property
-  // is restated as what replaced it. The two lanes that genuinely ARE independent — housekeeping
-  // and vision — are still pinned, on their own terms.
-  for (const mode of ['plan', 'agent']) {
-    assert.equal(G.DEFAULT_MODELS[mode].id, P.APPLE_MAX_MODEL_ID, `${mode} runs on the measured GLM-5.3 Flash foundation`);
-    assert.equal(G.DEFAULT_MODELS[mode].ctx, P.APPLE_MAX_CONTEXT_WINDOW, `${mode} gets the full context window`);
+test('gateway defaults: one engine for every run key, and memory and vision stay independent', () => {
+  // RESTATED 2026-10-01 (38efea2e single engine; c839d7af one mode). There is ONE product mode,
+  // 'agent', and ONE engine, Apple (GLM 5.3 Flash). There is no Apple MAX tier and no outside
+  // model. `plan` survives only as a gateway key for a legacy persisted run, and it must resolve to
+  // the same engine, never to a second foundation. The two lanes that are not run modes —
+  // housekeeping and vision — are still independent and pinned on their own terms.
+  for (const mode of ['agent', 'plan']) {
+    assert.equal(G.DEFAULT_MODELS[mode].id, P.APPLE_MODEL_ID, `${mode} runs on the one Apple engine (GLM 5.3 Flash)`);
+    assert.equal(G.DEFAULT_MODELS[mode].ctx, P.APPLE_CONTEXT_WINDOW, `${mode} gets the full context window`);
     assert.equal(G.DEFAULT_MODELS[mode].nativeTools, true, `${mode} must be able to call tools natively`);
   }
-  // The lane that is NOT a run mode, and stays on the cheap foundation for housekeeping.
-  assert.equal(G.DEFAULT_MODELS.memory.id, P.APPLE_MODEL_ID, 'housekeeping stays on the cheap Qwen3 foundation');
-  assert.equal(G.DEFAULT_MODELS.memory.ctx, P.APPLE_CONTEXT_WINDOW);
+  assert.equal(MODEL_REGISTRY.length, 1, 'one customer engine in the registry');
+  assert.equal(MODEL_REGISTRY[0].providerModelId, P.APPLE_MODEL_ID, 'the registry and the provider layer name the same engine');
+  // The lane that is NOT a run mode and stays on the cheap Qwen3 foundation for housekeeping. The
+  // Qwen id is named explicitly: it is internal, no longer a customer engine, and no longer exported.
+  assert.equal(G.DEFAULT_MODELS.memory.id, MEMORY_MODEL_ID, 'housekeeping stays on the cheap Qwen3 foundation');
+  assert.notEqual(G.DEFAULT_MODELS.memory.id, P.APPLE_MODEL_ID);
+  assert.equal(G.DEFAULT_MODELS.memory.ctx, 32_768);
   assert.equal(G.DEFAULT_MODELS.memory.nativeTools, false, 'housekeeping is not given a toolset');
-  // Vision shares the MAX model id and is still a separate lane: smaller ceiling, no tools.
+  // Vision shares the Apple model id and is still a separate lane: smaller ceiling, no tools.
   assert.equal(G.DEFAULT_MODELS.vision.id, P.VISION_MODEL_ID, 'vision remains the separate multimodal specialist');
   assert.equal(G.DEFAULT_MODELS.vision.ctx, P.VISION_CONTEXT_WINDOW);
   assert.equal(G.DEFAULT_MODELS.vision.nativeTools, false);
-  // THE KEY SET IS THE CONTRACT, so it is asserted rather than assumed: two run modes, the two
-  // lanes that are not run modes, and — since D-VISION-1 — one key per outside model, named by its
-  // registry id and read from the registry rather than listed here. A third run-mode key would
-  // mean Autonomous crept back in as a mode.
-  const outside = MODEL_REGISTRY.filter((m) => m.route === 'unified-billing').map((m) => m.id);
-  assert.ok(outside.length >= 1, 'the registry lists no outside model — the subtraction below checks nothing');
+  // THE KEY SET IS THE CONTRACT. No outside-model keys exist any more (the registry has no
+  // 'unified-billing' route), so the only non-lab keys are the run keys and the two lanes. A new
+  // run-mode key would mean a mode crept back in.
+  assert.equal(OUTSIDE.length, 0, 'no outside model in the registry (removed by owner decision, 38efea2e)');
   //
   // TRAINING LAB KEYS, reviewed 2026-09-23 (15b5a04, `lab-llama-3b` / `lab-qwen-coder-32b`): the two
   // Workers AI bases that accept LoRA adapters, for /api/admin/model-test (ADMIN_KEY) to score an
-  // adapter against its base. They are not run modes: no product path can select one, because the
-  // run's key comes from `gatewayModelFor(mode, productModel)`, which returns the mode or a
-  // registry id routed 'unified-billing' — and a lab key is in neither. Both ids are priced in
-  // pricing.ts MODEL_PRICES, so the spend gate meters them like any other call.
+  // adapter against its base. No product path can select one, because the run's key comes from
+  // `gatewayModelFor(mode)` and a lab key is never a mode. Both ids are priced in pricing.ts
+  // MODEL_PRICES, so the spend gate meters them like any other call.
   const lab = Object.keys(G.DEFAULT_MODELS).filter((k) => k.startsWith('lab-'));
   for (const k of lab) {
     assert.equal(MODEL_REGISTRY.some((m) => m.id === k), false, `${k} is in the product registry — a customer could select it`);
   }
-  assert.deepEqual(Object.keys(G.DEFAULT_MODELS).filter((k) => !outside.includes(k) && !lab.includes(k)).sort(), ['agent', 'memory', 'plan', 'vision']);
-  for (const id of outside) assert.ok(G.DEFAULT_MODELS[id], `no model key for ${id}`);
+  assert.deepEqual(Object.keys(G.DEFAULT_MODELS).filter((k) => !lab.includes(k)).sort(), ['agent', 'memory', 'plan', 'vision']);
 });
 
-test('the chosen Apple, Apple MAX and vision catalogue rows carry the verified facts', () => {
+test('the Apple engine, housekeeping and vision catalogue rows carry the verified facts', () => {
+  // RESTATED 2026-10-01 (38efea2e): there is no Apple MAX row. Apple IS the GLM-5.3 Flash row; the
+  // visual critic is the same row; the Qwen3 row is the housekeeping (memory) lane's model.
   const apple = P.WORKERS_AI_MODELS.find((model) => model.id === P.APPLE_MODEL_ID);
-  const max = P.WORKERS_AI_MODELS.find((model) => model.id === P.APPLE_MAX_MODEL_ID);
+  const memory = P.WORKERS_AI_MODELS.find((model) => model.id === MEMORY_MODEL_ID);
   const vision = P.WORKERS_AI_MODELS.find((model) => model.id === P.VISION_MODEL_ID);
-  assert.ok(apple && max && vision, 'all three selected routes must be catalogued');
+  assert.ok(apple && memory && vision, 'the three routes the gateway can run must be catalogued');
 
   assert.deepEqual(
-    [apple.displayName, apple.supportsTools, apple.supportsVision, apple.contextWindow, apple.inputCostPer1M, apple.outputCostPer1M],
+    [memory.displayName, memory.supportsTools, memory.supportsVision, memory.contextWindow, memory.inputCostPer1M, memory.outputCostPer1M],
     ['Qwen3 30B A3B FP8', true, false, 32_768, 0.0509, 0.335],
   );
-  assert.ok(apple.unverifiedFields.includes('maxOutput'), 'Qwen max output must stay labelled unverified');
+  assert.ok(memory.unverifiedFields.includes('maxOutput'), 'Qwen max output must stay labelled unverified');
 
-  // APPLE MAX AND VISION ARE THE SAME ROW SINCE 2026-09-19, and this test now says so rather than
-  // asserting the same object twice under two names as if it had checked two things.
-  assert.equal(max.id, vision.id, 'the MAX lane and the visual critic resolve to one model');
+  // APPLE AND VISION ARE THE SAME ROW, and this test says so rather than asserting the same object
+  // twice under two names as if it had checked two things.
+  assert.equal(apple.id, vision.id, 'Apple and the visual critic resolve to one model');
   assert.deepEqual(
-    [max.displayName, max.supportsTools, max.supportsVision, max.contextWindow, max.inputCostPer1M, max.outputCostPer1M],
+    [apple.displayName, apple.supportsTools, apple.supportsVision, apple.contextWindow, apple.inputCostPer1M, apple.outputCostPer1M],
     ['GLM-5.3 Flash', true, true, 1_310_720, 0.15, 0.5],
   );
-  // The MAX lane became MULTIMODAL as a side effect of the move — nobody asked for that, it simply
-  // follows from the weights, and a reader of this file should learn it here rather than from a
-  // support ticket. The lanes stay separate in DEFAULT_MODELS; only the model behind them merged.
-  // (`stone` here until 2026-09-22; the gateway key is now the product mode, `agent`.)
+  // The lanes stay separate in DEFAULT_MODELS; only the model behind them merged.
   assert.equal(G.DEFAULT_MODELS.agent.id, G.DEFAULT_MODELS.vision.id);
   assert.notEqual(G.DEFAULT_MODELS.agent.maxTokens, G.DEFAULT_MODELS.vision.maxTokens);
 
   // Exactly one catalogue row for that id. Two rows would make `modelById` answer with whichever
   // came first and hide the other's prices — which is how a billing figure goes wrong silently.
-  assert.equal(P.WORKERS_AI_MODELS.filter((m) => m.id === P.APPLE_MAX_MODEL_ID).length, 1);
+  assert.equal(P.WORKERS_AI_MODELS.filter((m) => m.id === P.APPLE_MODEL_ID).length, 1);
 });
 
 test('a stale free-tier KV map cannot restore legacy models for user-facing keys', async () => {
@@ -421,11 +438,11 @@ test('a stale free-tier KV map cannot restore legacy models for user-facing keys
   };
   const { env } = fakeEnv({ KV: { get: async () => JSON.stringify(stale) } });
   const models = await G.getModels(env);
-  // The two run modes: absent from the stale row, so the compiled defaults hold.
-  assert.equal(models.plan.id, P.APPLE_MAX_MODEL_ID, 'Plan must not be routed by a stale KV row');
-  assert.equal(models.agent.id, P.APPLE_MAX_MODEL_ID, 'Agent must not be routed by a stale KV row');
+  // The run keys: absent from the stale row, so the compiled defaults hold (Apple is the one engine).
+  assert.equal(models.plan.id, P.APPLE_MODEL_ID, 'the legacy plan key must not be routed by a stale KV row');
+  assert.equal(models.agent.id, P.APPLE_MODEL_ID, 'Agent must not be routed by a stale KV row');
   // Present in the stale row with a RETIRED model id — the override must be refused, not applied.
-  assert.equal(models.memory.id, P.APPLE_MODEL_ID, 'a stale row must not put housekeeping back on gpt-oss');
+  assert.equal(models.memory.id, MEMORY_MODEL_ID, 'a stale row must not put housekeeping back on gpt-oss');
   assert.equal(models.vision.id, P.VISION_MODEL_ID, 'a stale row must not put vision back on llama-3.2-11b');
   // …while a custom diagnostic key is still the operator's to configure. The refusal is scoped to
   // the user-facing keys, not to the KV override itself.
@@ -433,9 +450,10 @@ test('a stale free-tier KV map cannot restore legacy models for user-facing keys
   G.resetModelCache();
 });
 
-test('GLM-4.7 native tool calls stay structured and use its documented reasoning control', () => {
+test('Apple (GLM-5.3 Flash) native tool calls stay structured and use its documented reasoning control', () => {
+  // RESTATED 2026-10-01 (38efea2e): Apple IS GLM-5.3 Flash now; there is no separate MAX/GLM-4.7 id.
   const { payload } = P.workersAiAdapter.encode({
-    modelId: P.APPLE_MAX_MODEL_ID,
+    modelId: P.APPLE_MODEL_ID,
     messages: [{ role: 'user', content: 'Call echo_probe.' }],
     tools: [{ name: 'echo_probe', description: 'Return a message.', parameters: { type: 'object' } }],
     maxTokens: 256,
@@ -452,16 +470,18 @@ test('GLM-4.7 native tool calls stay structured and use its documented reasoning
       usage: { prompt_tokens: 166, completion_tokens: 12 },
     },
     500,
-    P.APPLE_MAX_MODEL_ID,
+    P.APPLE_MODEL_ID,
   );
   assert.equal(decoded.finishReason, 'tool_calls');
   assert.deepEqual(decoded.toolCalls, [{ id: 'call_1', name: 'echo_probe', arguments: '{"message":"ok"}' }]);
   assert.equal(decoded.text, '');
 });
 
-test('Qwen Apple requests do not receive an undocumented reasoning-effort field', () => {
+test('Qwen (housekeeping lane) requests do not receive an undocumented reasoning-effort field', () => {
+  // RESTATED 2026-10-01 (38efea2e): Qwen3 is no longer Apple; it is the memory lane's model, and the
+  // property (no invented reasoning knob for a non-GLM route) is unchanged.
   const { payload } = P.workersAiAdapter.encode({
-    modelId: P.APPLE_MODEL_ID,
+    modelId: MEMORY_MODEL_ID,
     messages: [{ role: 'user', content: 'Inspect this project.' }],
     maxTokens: 256,
     temperature: 0.2,
@@ -469,6 +489,8 @@ test('Qwen Apple requests do not receive an undocumented reasoning-effort field'
   });
   assert.equal(Object.hasOwn(payload, 'reasoning_effort'), false);
   assert.equal(Object.hasOwn(payload, 'reasoning'), false);
+  assert.equal(P.acceptsReasoningEffort(MEMORY_MODEL_ID), false);
+  assert.equal(P.acceptsReasoningEffort(P.APPLE_MODEL_ID), true, 'the GLM engine does accept it');
 });
 
 test('the response still reports provider "workers-ai" and settles on reported neurons', async () => {
@@ -556,31 +578,21 @@ test('the capability table carries every required field and computes availabilit
   }
 });
 
-test('the outside models are not in the platform catalogue, so no capability row claims them', () => {
-  // RESTATED (D-VISION-1). This pinned the prices of the retired direct-HTTP catalogue rows. The
-  // outside models' prices now live in pricing.ts MODEL_PRICES, pinned by
-  // apps/worker/tests/model-step-caps.test.mjs. What this file owns is availability: an outside
-  // model is not "available" until a live call through the gateway has been observed (Q-006), so it
-  // must not appear as a row the capability table would report available.
-  assert.ok(OUTSIDE.length >= 1, 'the registry lists no outside model — this checks nothing');
+test('there are no outside models, and every registry engine is in the platform catalogue', () => {
+  // RESTATED 2026-10-01 (38efea2e, owner: single engine). This asserted that the registry's outside
+  // models (Gemini, GPT-5.6; route 'unified-billing') were NOT in the platform catalogue. The
+  // owner removed outside models and BYOK, so the registry has none. The property that remains is
+  // the other half of the same availability rule: nothing the registry offers is missing from the
+  // catalogue the capability table reads, and nothing outside-routed has crept back in.
+  assert.ok(MODEL_REGISTRY.length >= 1, 'the registry is empty — this checks nothing');
+  assert.equal(OUTSIDE.length, 0, 'an outside (unified-billing) model is back in the registry');
   const catalogued = new Set(P.allModels().map((m) => m.id));
-  for (const m of OUTSIDE) assert.equal(catalogued.has(m.providerModelId), false, `${m.id} is in the platform catalogue`);
+  for (const m of MODEL_REGISTRY) assert.ok(catalogued.has(m.providerModelId), `${m.id} is not in the platform catalogue`);
 });
 
-test('an outside model without AI_GATEWAY_ID refuses BEFORE it can reach the binding', async () => {
-  // RESTATED (D-VISION-1). The disabled HTTP adapters this covered are gone. The same property now
-  // belongs to the outside models: only a call that names the gateway is billed to its credits.
-  for (const m of OUTSIDE) {
-    G.resetModelCache();
-    const { env, seen } = fakeEnv({ AI_GATEWAY_ID: undefined });
-    await assert.rejects(() => G.chat(env, { model: m.id, messages: [{ role: 'user', content: 'hi' }] }, { kind: 'probe' }), /AI_GATEWAY_ID/);
-    assert.equal(seen.runs.length, 0, `${m.id} reached the binding without a gateway`);
-    assert.equal(seen.released.length, seen.reserved.length, `${m.id}: the hold was not handed back`);
-  }
-  G.resetModelCache();
-  // The refusals above are real failures in the gateway's health ring; later tests read that ring
-  // as if it started clean.
-  G.resetProviderHealth();
+test('an outside model without AI_GATEWAY_ID refuses BEFORE it can reach the binding', { skip: 'removed by owner decision: outside models and BYOK no longer exist (38efea2e); the registry has no outside model to refuse' }, () => {
+  // Was RESTATED (D-VISION-1) to loop over the registry's outside models. With none left that loop
+  // would pass vacuously, so it is skipped rather than left reading as coverage.
 });
 
 // ---------------------------------------------------------------------------
@@ -678,33 +690,32 @@ test('Workers AI cost still goes through the existing neuron price table', () =>
   assert.equal(cached, Math.ceil(0.03 / 0.000011));
 });
 
-test('Apple and Apple MAX reservations use the conservative selected-model price rows', () => {
+test('Apple and housekeeping reservations use the conservative selected-model price rows', () => {
+  // RESTATED 2026-10-01 (38efea2e): there is no Apple MAX. Apple is GLM-5.3 Flash; Qwen3 is the
+  // housekeeping lane. The "Apple MAX" arithmetic below is Apple's now, unchanged in value.
   const apple = P.allModels().find((m) => m.id === P.APPLE_MODEL_ID);
-  const max = P.allModels().find((m) => m.id === P.APPLE_MAX_MODEL_ID);
-  assert.ok(apple && max);
+  const memory = P.allModels().find((m) => m.id === MEMORY_MODEL_ID);
+  assert.ok(apple && memory);
   // Qwen's model page currently prints $0.0509/M input while Cloudflare's pricing table rounds it
   // to $0.051/M. The reservation boundary intentionally uses the larger figure.
-  assert.equal(P.neuronsForModelTokens(apple, 1_000_000, 1_000_000), Math.ceil((0.051 + 0.335) / 0.000011));
+  assert.equal(P.neuronsForModelTokens(memory, 1_000_000, 1_000_000), Math.ceil((0.051 + 0.335) / 0.000011));
 
-  // THE PAID LANE GOT DEARER ON 2026-09-19 and this is the assertion that noticed. GLM-4.7 cost
-  // $0.0605/$0.40 and reserved 41,864 neurons for 1M in + 1M out; GLM-5.3 costs $0.15/$0.50 and
-  // reserves 59,091 — a 41% increase on the mode customers pay for, and the price of putting the
-  // MAX lane on the only MAX model this product has ever measured.
-  assert.equal(P.neuronsForModelTokens(max, 1_000_000, 1_000_000), Math.ceil((0.15 + 0.5) / 0.000011));
-  assert.equal(P.neuronsForModelTokens(max, 1_000_000, 1_000_000), 59_091);
+  // GLM-5.3 costs $0.15/$0.50 and reserves 59,091 neurons for 1M in + 1M out. (GLM-4.7 cost
+  // $0.0605/$0.40 and reserved 41,864; the engine moved to the dearer measured model on 2026-09-19.)
+  assert.equal(P.neuronsForModelTokens(apple, 1_000_000, 1_000_000), Math.ceil((0.15 + 0.5) / 0.000011));
+  assert.equal(P.neuronsForModelTokens(apple, 1_000_000, 1_000_000), 59_091);
   const glm47 = Math.ceil((0.0605 + 0.4) / 0.000011);
   assert.ok(
-    P.neuronsForModelTokens(max, 1_000_000, 1_000_000) > glm47,
-    'if this ever stops being true the lane moved again and the credit model needs re-checking',
+    P.neuronsForModelTokens(apple, 1_000_000, 1_000_000) > glm47,
+    'if this ever stops being true the engine moved again and the credit model needs re-checking',
   );
 
-  // What takes the sting out: GLM-5.3 is the one Workers AI row that publishes a cached-input rate,
-  // and a builder lane re-sends a large fixed prompt every turn. Cached input is $0.03/M against
-  // $0.15 — so the tokens that repeat are billed at a FIFTH of the new headline rate, and below the
-  // old lane's uncached rate. The reservation above stays pessimistic and assumes none of it.
-  const cached = P.neuronsForModelTokens(max, 1_000_000, 0, 1_000_000);
+  // GLM-5.3 is the one Workers AI row that publishes a cached-input rate, and a builder re-sends a
+  // large fixed prompt every turn. Cached input is $0.03/M against $0.15 — a FIFTH of the headline
+  // rate. The reservation above stays pessimistic and assumes none of it.
+  const cached = P.neuronsForModelTokens(apple, 1_000_000, 0, 1_000_000);
   assert.equal(cached, Math.ceil(0.03 / 0.000011));
-  assert.ok(cached < P.neuronsForModelTokens(max, 1_000_000, 0, 0), 'the cached discount is not reaching the MAX lane');
+  assert.ok(cached < P.neuronsForModelTokens(apple, 1_000_000, 0, 0), 'the cached discount is not reaching Apple');
 });
 
 // RESTATED (D-VISION-1). These three used the retired OpenAI and DeepSeek catalogue rows. The

@@ -73,8 +73,13 @@ const DAILY_NEURON_CEILING = _DAILY_NEURON_CEILING;
 /** MEASURED — Workers Paid flat fee. Fixed cost, excluded from gross margin. */
 export const WORKERS_PAID_USD_PER_MONTH = 5.0;
 
-/** MEASURED — the hard monthly ceiling:
- *  1,800,000 neurons x $0.000011 = $19.80 of AI, plus $5.00 Workers Paid = $24.80.
+/** MEASURED — the hard monthly ceiling, derived from pricing.ts (never typed here):
+ *  BILLABLE_NEURONS_PER_MONTH x $0.000011 of AI, plus $5.00 Workers Paid.
+ *
+ *  RESTATED 2026-10-01: on 2026-09-29 the owner lifted Apple's daily/monthly neuron cap ("no Apple
+ *  cap", de1117b8). The constants are now 1,000,000,000/day and 30,000,000,000/month, so this is
+ *  $330,000.00 of AI + $5.00 = $330,005.00. It is an arithmetic bound that does not bind in
+ *  practice, not a forecast. The history below is why the figure was once $24.80 and $10.06.
  *
  *  IT MOVED ONCE, DELIBERATELY, AND THE OLD WORDING SAID IT NEVER COULD. Until 2026-09-20 this
  *  read "the hard monthly ceiling that must never move" at $10.06 / 460,000. That ceiling was not
@@ -87,15 +92,13 @@ export const HARD_MAX_USD_PER_MONTH =
 
 /**
  * Two independent gates cap the month, and the tighter one wins:
- *   daily gate   90,000/day x SIM_DAYS_PER_MONTH days = 2,700,000 neurons
- *   monthly gate                                        1,800,000 neurons
+ *   daily gate   BILLABLE_NEURONS_PER_DAY x days
+ *   monthly gate BILLABLE_NEURONS_PER_MONTH
  *
- * WHICH ONE BINDS IS NOW THE OTHER ONE. Under the old 15,000/day the daily gate was tighter for
- * any ordinary month and the monthly backstop was nearly unreachable; at 90,000/day the two cross
- * at 1,800,000 / 90,000 = 20 days, so for any month of 20 days or more the MONTHLY backstop is
- * what actually holds. A 30-day month reaches exactly $24.80 — the documented maximum, not a
- * little under it. The daily gate still does its own job, which was never the monthly total: it
- * stops one day burning the month.
+ * The two cross at BILLABLE_NEURONS_PER_MONTH / BILLABLE_NEURONS_PER_DAY days. With the cap lifted
+ * (1,000,000,000/day, 30,000,000,000/month, 2026-09-29) that is exactly 30 days: under 30 days the
+ * daily gate binds, at 30 days or more the monthly backstop does. A 30-day month reaches exactly
+ * the documented maximum, not a little under it.
  */
 export function maxBillableNeuronsPerMonth(days = SIM_DAYS_PER_MONTH) {
   return Math.min(BILLABLE_NEURONS_PER_DAY * days, BILLABLE_NEURONS_PER_MONTH);
@@ -105,7 +108,7 @@ export function maxUsdPerMonth(days = SIM_DAYS_PER_MONTH) {
   return maxBillableNeuronsPerMonth(days) * USD_PER_NEURON + WORKERS_PAID_USD_PER_MONTH;
 }
 
-/** ASSUMED — simulation grain. The $24.80 ceiling is derived elsewhere with a
+/** ASSUMED — simulation grain. The hard-max ceiling is derived elsewhere with a
  *  30.4-day month; the monthly caps applied here are absolute neuron counts, so
  *  the day count only affects how demand is spread, not the ceiling. */
 export const SIM_DAYS_PER_MONTH = 30;
@@ -641,7 +644,7 @@ export function report() {
     `Free = the published plan (${PLANS.free.creditsPerDay} Credits/day, ${num(PLANS.free.creditsPerMonth)}/month). Pro and Max are hypothetical.`,
   );
   out.push(
-    `Billing: $0.011/1,000 neurons · 1 Credit = ${NEURONS_PER_CREDIT} neurons · hard ceiling ${money(HARD_MAX_USD_PER_MONTH)}/month (unchanged).`,
+    `Billing: $0.011/1,000 neurons · 1 Credit = ${NEURONS_PER_CREDIT} neurons · hard ceiling ${money(HARD_MAX_USD_PER_MONTH)}/month (Apple cap lifted by the owner 2026-09-29).`,
   );
 
   // --- task mix ---
@@ -813,16 +816,16 @@ export function report() {
   );
   out.push('');
   out.push(
-    `  So the ceiling — not the plan allowances and not the provider rate limit — is the first thing to bind.`,
+    `  The owner lifted Apple's spend cap on 2026-09-29, so this ceiling is an arithmetic bound, not a throttle: the plan allowances and the provider rate limit bind first.`,
   );
   out.push(
-    `  Every scenario at 100+ users is capacity-limited, and the bill stays pinned at the ceiling by construction.`,
+    `  A scenario only reaches the ceiling if its demand exceeds ${num(DAILY_NEURON_CEILING)} neurons/day; below that the bill is the demand, not the ceiling.`,
   );
   out.push(
     `  Worst case in a ${SIM_DAYS_PER_MONTH}-day month: min(${num(BILLABLE_NEURONS_PER_DAY)}/day x ${SIM_DAYS_PER_MONTH}, ${num(BILLABLE_NEURONS_PER_MONTH)}/month) = ${num(maxBillableNeuronsPerMonth())} billable neurons`,
   );
   out.push(
-    `  = ${money(maxBillableNeuronsPerMonth() * USD_PER_NEURON)} of AI + ${money(WORKERS_PAID_USD_PER_MONTH)} Workers Paid = ${money(maxUsdPerMonth())}. Under the documented ${money(HARD_MAX_USD_PER_MONTH)} maximum, never over.`,
+    `  = ${money(maxBillableNeuronsPerMonth() * USD_PER_NEURON)} of AI + ${money(WORKERS_PAID_USD_PER_MONTH)} Workers Paid = ${money(maxUsdPerMonth())}. Never over the documented ${money(HARD_MAX_USD_PER_MONTH)} maximum.`,
   );
   out.push(
     `  Per-request gate is never the binding one: the largest single call in the mix is ~${num(largestSingleRequestNeurons(), 0)} neurons against a ${num(MAX_NEURONS_PER_REQUEST)} cap.`,
@@ -878,7 +881,7 @@ export function report() {
     `  which is ${pct(cappedQ.utilization, 1)} of the provider ceiling — added queue wait ${cappedQ.saturated ? 'SATURATED' : `${num(cappedQ.meanQueueWaitSec, 2)}s`}.`,
   );
   out.push(
-    `  The provider limit only binds on UNCAPPED demand (column 9 above). Under the spend gates it never does.`,
+    `  With the spend cap lifted (2026-09-29) the provider limit is what binds first wherever demand is high: the SATURATED rows above are real, not hypothetical.`,
   );
 
   // --- break-even summary ---

@@ -136,18 +136,22 @@ test('creditsFor() rounds up and has a floor of 1', () => {
 //   because admission ran out mid-run. The caps became 90,000/day and 1,800,000/month. Nothing was
 //   relaxed here to make a test pass; the hand-worked numbers were recomputed from the new
 //   constants and the old ones are named above so the move stays visible. ]]
-test('the hard monthly ceiling is $24.80 and is not moved by this file', () => {
-  // 1,800,000 billable neurons * $0.000011 = $19.80, plus $5.00 Workers Paid.
-  near(BILLABLE_NEURONS_PER_MONTH * USD_PER_NEURON, 19.80, 1e-9, 'AI portion');
-  near(HARD_MAX_USD_PER_MONTH, 24.80, 1e-9, 'hard max');
+// RESTATED 2026-10-01: the owner lifted Apple's cap on 2026-09-29 (de1117b8, owner: no Apple cap), so
+// the hand-worked figures below are recomputed from 30,000,000,000 billable neurons/month. The
+// property is unchanged: this file does not move the ceiling, it derives it from the constants.
+test('the hard monthly ceiling is $330,005.00 and is not moved by this file', () => {
+  // 30,000,000,000 billable neurons * $0.000011 = $330,000.00, plus $5.00 Workers Paid.
+  near(BILLABLE_NEURONS_PER_MONTH * USD_PER_NEURON, 330_000, 1e-6, 'AI portion');
+  near(HARD_MAX_USD_PER_MONTH, 330_005, 1e-6, 'hard max');
   assert.equal(WORKERS_PAID_USD_PER_MONTH, 5.0);
 });
 
 test('service gate constants match apps/worker/src/pricing.ts', () => {
   assert.equal(FREE_NEURONS_PER_DAY_ACCOUNT_WIDE, 10_000);
-  assert.equal(BILLABLE_NEURONS_PER_DAY, 90_000);
-  assert.equal(BILLABLE_NEURONS_PER_MONTH, 1_800_000);
-  assert.equal(DAILY_NEURON_CEILING, 100_000);   // 10,000 free + 90,000 billable
+  // RESTATED 2026-10-01: Apple's cap lifted (de1117b8, owner: no Apple cap; was 90,000 / 1,800,000).
+  assert.equal(BILLABLE_NEURONS_PER_DAY, 1_000_000_000);
+  assert.equal(BILLABLE_NEURONS_PER_MONTH, 30_000_000_000);
+  assert.equal(DAILY_NEURON_CEILING, 1_000_010_000);   // 10,000 free + 1,000,000,000 billable
   assert.equal(MAX_NEURONS_PER_REQUEST, 1_200);
 });
 
@@ -428,33 +432,46 @@ test('the shipped spend gates cap the bill at the hard maximum, always', () => {
   }
 });
 
+// RESTATED 2026-10-01 (de1117b8, owner: no Apple cap): the gates now cross at exactly
+// 30,000,000,000 / 1,000,000,000 = 30 days (they crossed at 20 days under 90,000 / 1,800,000). The
+// property is unchanged and both directions are still shown, derived from the constants.
 test('the two spend gates compose, and the tighter one wins', () => {
-  // The two gates cross at 1,800,000 / 90,000 = 20 days, so BOTH directions still have to be
-  // shown or this test stops proving that the tighter one wins — it would only prove that one
-  // particular gate is reachable. Under 20 days the daily gate binds; at or over it, the monthly.
-  //   10-day month: 90,000 * 10 = 900,000 < 1,800,000  -> daily binds
-  assert.equal(maxBillableNeuronsPerMonth(10), 900_000);
-  near(maxUsdPerMonth(10), 14.90, 1e-9, '900,000 * $0.000011 + $5.00');
-  //   30-day month: 90,000 * 30 = 2,700,000 > 1,800,000 -> the monthly backstop binds
+  const cross = BILLABLE_NEURONS_PER_MONTH / BILLABLE_NEURONS_PER_DAY;
+  assert.equal(cross, 30, 'the gates cross at 30 days; if this moves, re-derive the cases below');
+  //   10-day month: daily gate x 10 < monthly -> daily binds
+  assert.equal(maxBillableNeuronsPerMonth(10), BILLABLE_NEURONS_PER_DAY * 10);
+  assert.ok(maxBillableNeuronsPerMonth(10) < BILLABLE_NEURONS_PER_MONTH);
+  near(maxUsdPerMonth(10), BILLABLE_NEURONS_PER_DAY * 10 * USD_PER_NEURON + 5, 1e-6, '10 days of the daily gate + $5.00');
+  //   30-day month: the two coincide at the monthly backstop = the documented maximum
   assert.equal(maxBillableNeuronsPerMonth(30), BILLABLE_NEURONS_PER_MONTH);
-  near(maxUsdPerMonth(30), HARD_MAX_USD_PER_MONTH, 1e-9, 'monthly backstop = the documented $24.80');
+  near(maxUsdPerMonth(30), HARD_MAX_USD_PER_MONTH, 1e-6, 'monthly backstop = the documented maximum');
+  //   Past the crossover the monthly backstop binds and nothing exceeds it.
+  assert.equal(maxBillableNeuronsPerMonth(60), BILLABLE_NEURONS_PER_MONTH);
   // Whatever the month length, the documented maximum is never exceeded.
   for (const days of [1, 28, 30, 30.4, 31, 60, 365]) {
     assert.ok(
-      maxUsdPerMonth(days) <= HARD_MAX_USD_PER_MONTH + 1e-9,
+      maxUsdPerMonth(days) <= HARD_MAX_USD_PER_MONTH + 1e-6,
       `${days} days reaches ${maxUsdPerMonth(days)}, above the ${HARD_MAX_USD_PER_MONTH} ceiling`,
     );
   }
 });
 
+// RESTATED 2026-10-01 (de1117b8, owner: no Apple cap): no built-in scenario reaches a 1,000,010,000
+// neuron/day ceiling any more (the largest, Max/heavy at 10,000 users, is ~35M). The property —
+// demand past the ceiling is unserved, not billed — is exercised with a population large enough to
+// cross it.
 test('demand beyond the ceiling shows up as unserved, not as spend', () => {
-  const s = simulateScenario({ plan: 'max', activity: 'heavy', users: 10_000, sample: 60 });
-  assert.ok(s.serviceNeuronsPerDay > DAILY_NEURON_CEILING * 100, 'this scenario is wildly over the ceiling');
-  assert.ok(s.demandServedFraction < 0.05, 'so almost none of it is served');
+  const s = simulateScenario({ plan: 'max', activity: 'heavy', users: 1_000_000, sample: 60 });
+  assert.ok(s.serviceNeuronsPerDay > DAILY_NEURON_CEILING, 'this scenario is over the ceiling');
+  assert.ok(s.demandServedFraction < 1, 'so part of it is not served');
+  near(s.cappedNeuronsPerDay, DAILY_NEURON_CEILING, 1e-6, 'served demand is pinned at the daily ceiling');
   // The bill is pinned at what the gates permit in a 30-day month, not at the
   // demand, and not above the documented hard maximum.
-  near(s.totalCappedUsdPerMonth, maxUsdPerMonth(), 1e-9, 'bill pinned at the gate');
-  assert.ok(s.totalCappedUsdPerMonth <= HARD_MAX_USD_PER_MONTH);
+  near(s.totalCappedUsdPerMonth, maxUsdPerMonth(), 1e-6, 'bill pinned at the gate');
+  assert.ok(s.totalCappedUsdPerMonth <= HARD_MAX_USD_PER_MONTH + 1e-6);
+  // And the shipped scenario grid is under the ceiling: the cap no longer throttles it.
+  const grid = simulateScenario({ plan: 'max', activity: 'heavy', users: 10_000, sample: 60 });
+  assert.equal(grid.demandServedFraction, 1, 'the largest shipped scenario is fully served');
 });
 
 // ---------------------------------------------------------------------------
@@ -466,7 +483,7 @@ test('report() renders and is labelled an internal model', () => {
   assert.match(text, /INTERNAL MODEL ONLY/);
   assert.match(text, /Not public pricing/);
   assert.match(text, /PUBLISHED PLAN/);
-  assert.match(text, /\$24\.80/, 'the hard ceiling must appear verbatim');
+  assert.ok(text.includes(`$${HARD_MAX_USD_PER_MONTH.toFixed(2)}`), 'the hard ceiling must appear verbatim');
   for (const k of TASK_KINDS) assert.ok(text.includes(TASK_MIX[k].label), `${k} appears in the report`);
   for (const u of ['100', '1,000', '10,000']) assert.ok(text.includes(u), `${u} users appears`);
   for (const a of Object.keys(ACTIVITY_LEVELS)) assert.ok(text.includes(a), `${a} activity appears`);
@@ -544,7 +561,7 @@ const HARD_MAX_DOC_EXEMPTIONS = new Set([]);
 
 /** Any sentence claiming a hard monthly maximum or ceiling in dollars. */
 const HARD_MAX_CLAIM =
-  /hard\s+(?:monthly\s+)?(?:max(?:imum)?|ceiling)[^.\n]{0,40}?\$([0-9]+(?:\.[0-9]{1,2})?)/gi;
+  /hard\s+(?:monthly\s+)?(?:max(?:imum)?|ceiling)[^.\n]{0,40}?\$([0-9][0-9,]*(?:\.[0-9]{1,2})?)/gi;
 
 function markdownDocs(dir, repoRoot, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -572,7 +589,7 @@ test('the documented hard maximum is the one the safeguards actually allow', () 
         // Monthly claims only. "hard cap ... $0.01/million" is a vendor price, not our ceiling.
         if (!/month/i.test(line.slice(m.index, m.index + m[0].length + 22))) continue;
         claims += 1;
-        if (Number(m[1]).toFixed(2) !== expected) wrong.push(`${rel}: "${line.trim().slice(0, 100)}"`);
+        if (Number(m[1].replace(/,/g, '')).toFixed(2) !== expected) wrong.push(`${rel}: "${line.trim().slice(0, 100)}"`);
       }
     }
   }
@@ -588,7 +605,10 @@ test('COST-MODEL.md is the document that states it, and states it in full', () =
   // Named on its own because every other document points HERE for the figure. If the scan above
   // ever passes because nothing states a maximum anywhere, this is what still fails.
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-  const text = readFileSync(join(repoRoot, 'docs/COST-MODEL.md'), 'utf8').replace(/<!--[\s\S]*?-->/g, ' ');
+  // Thousands separators are removed so "$330,005.00" and "$330005.00" are the same figure.
+  const text = readFileSync(join(repoRoot, 'docs/COST-MODEL.md'), 'utf8')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/(?<=\d),(?=\d)/g, '');
   assert.ok(text.includes(`$${HARD_MAX_USD_PER_MONTH.toFixed(2)}`),
     `docs/COST-MODEL.md does not state the $${HARD_MAX_USD_PER_MONTH.toFixed(2)} hard maximum anywhere`);
   // The AI half and the platform half both have to be visible: a total with no derivation is a
@@ -693,10 +713,9 @@ test('the three usage rows are the bill those constants actually produce', () =>
 });
 
 test('the day the monthly backstop overtakes the daily one is stated, and is the day it does', () => {
-  // The heavy row's $19.80 only makes sense with this sentence beside it: thirty days at the daily
-  // cap is $29.70 and the month stops at $19.80, so the cap bites part-way through. That crossover
-  // moved from "nearly unreachable" to day 20 when the caps were raised, and the paragraph
-  // explaining the heavy row is where a reader goes to understand why it is not $29.70.
+  // RESTATED 2026-10-01 (de1117b8, owner: no Apple cap): the crossover moved from day 20 to day 30,
+  // where the daily and monthly gates coincide. The paragraph explaining the heavy row is where a
+  // reader goes to understand which gate the figure comes from.
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
   const text = readFileSync(join(repoRoot, 'docs/COST-MODEL.md'), 'utf8').replace(/<!--[\s\S]*?-->/g, ' ');
   const day = Math.floor(BILLABLE_NEURONS_PER_MONTH / BILLABLE_NEURONS_PER_DAY);

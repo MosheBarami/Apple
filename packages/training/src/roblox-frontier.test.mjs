@@ -253,25 +253,12 @@ test('the MAX Agent lane and the Apple Agent lane send a byte-identical request,
       `${mode}: the lane still changes the gateway, so §10 must be re-derived`);
   }
 
-  // The difference that survives, located precisely. Plan is where it is visible, and it is the
-  // requested budget alone.
-  const freePlan = resolveSettings({ lane: 'apple', mode: 'plan' });
-  const paidPlan = resolveSettings({ lane: 'apple-max', mode: 'plan' });
-  assert.equal(freePlan.gateway, paidPlan.gateway, 'the gateway is no longer what differs');
-  assert.equal(freePlan.modelId, paidPlan.modelId, 'and neither is the model');
-  assert.equal(freePlan.gatewayCeiling, paidPlan.gatewayCeiling, 'and neither is the ceiling');
-  assert.equal(freePlan.effort, 'low');
-  assert.equal(paidPlan.effort, 'high');
-  assert.notEqual(freePlan.requestedTokens, paidPlan.requestedTokens,
-    'the entitlement floor no longer reaches the request in Plan mode. If the lanes are truly '
-    + 'interchangeable in every mode, docs/frontier-for-roblox.md §10 should say that about Plan too '
-    + '— it currently says it only about Agent, and this guard is what keeps that honest.');
-  assert.notEqual(body('apple', 'plan'), body('apple-max', 'plan'),
-    'Plan is the mode where the two lanes are NOT the same request');
-
-  // Non-vacuity for the re-aim: the mode that used to carry the exception is gone, so a reader
-  // cannot find the old difference by looking for it.
-  assert.deepEqual([...PRODUCT_MODES], ['plan', 'agent'], 'the product offers exactly two modes');
+  // RESTATED 2026-10-01: Plan, the one mode where the lanes differed, was removed (c839d7af), and with it the
+  // entitlement floor (38efea2e). The lanes are now the same request in every mode the product has.
+  for (const mode of PRODUCT_MODES) {
+    assert.equal(body('apple', mode), body('apple-max', mode), `${mode}: the two lanes are not the same request`);
+  }
+  assert.deepEqual([...PRODUCT_MODES], ['agent'], 'the product offers exactly one mode');
   assert.throws(() => resolveMode('super-agent'), /is retired/,
     'Super Agent is back — §10 and the mode contract both need re-reading');
 });
@@ -336,8 +323,14 @@ test('the arm that claims to be production is a verbatim block of the system pro
   // claims to be production's, so only the first part is compared — and it is compared whole.
   const [rules] = house.split('\n\nAnswer with ONE fenced luau code block');
   assert.ok(rules.length > 400, 'the block being compared is too short to be the rules block');
+  // RESTATED 2026-10-01: production now puts its game-building paragraphs between the opening code rules and the
+  // UI/sound/data rules (0c9bd9b3 and after). The arm is those two production blocks, so each block is compared
+  // whole: any edit to a rule still fails here, and only the paragraphs between them are not the arm's.
+  const at = rules.indexOf('\n' + UI_RULE_D_UIONLY_1.split('\n')[0]);
+  assert.ok(at > 0, 'the arm no longer carries the UI rule where it splits');
+  const blocks = [rules.slice(0, at), rules.slice(at + 1)];
   assert.ok(
-    identity.includes(rules),
+    blocks.every((block) => identity.includes(block)),
     'the house-rules-plus arm is no longer a verbatim substring of apps/worker/src/prompts.ts. Either '
     + 'production\'s IDENTITY changed and the arm must be re-copied, or the arm was edited. Until '
     + 'they match, the arm measures a prompt no customer receives and the neutral-vs-house gap is '

@@ -11,6 +11,10 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const GUARD = join(ROOT, '.claude', 'hooks', 'autonomy_guard.py');
+//[[ The owner removed the autonomy hooks (89bf8fa9, 2026-09-29: "ask the owner for consent instead of relying on a
+//   guard"). The tests of the guard itself skip while it is absent and run again if it comes back; the supervisor and
+//   the acceptance gate below do not depend on it and keep running. ]]
+const GUARD_REMOVED = existsSync(GUARD) ? false : 'the guard was removed at owner instruction (89bf8fa9)';
 const SUPERVISOR = join(ROOT, 'scripts', 'autonomy-supervisor.py');
 const REVIEW_GATE = join(ROOT, 'scripts', 'autonomy-review-gate.py');
 
@@ -64,19 +68,19 @@ const ALLOWED_BASH = [
   'grep -c GOLEM_ADMIN_KEY .env',
 ];
 
-test('the guard denies every forbidden command it names', () => {
+test('the guard denies every forbidden command it names', { skip: GUARD_REMOVED }, () => {
   for (const command of DENIED_BASH) {
     assert.ok(guard('Bash', { command }), `NOT denied: ${command}`);
   }
 });
 
-test('the guard lets ordinary engineering commands through with no decision', () => {
+test('the guard lets ordinary engineering commands through with no decision', { skip: GUARD_REMOVED }, () => {
   for (const command of ALLOWED_BASH) {
     assert.equal(guard('Bash', { command }), null, `wrongly denied: ${command}`);
   }
 });
 
-test('credential stores are protected for reads and writes alike', () => {
+test('credential stores are protected for reads and writes alike', { skip: GUARD_REMOVED }, () => {
   for (const [tool, input] of [
     ['Read', { file_path: '/Users/moshe/.ssh/id_ed25519' }],
     ['Read', { file_path: '/Users/moshe/Library/Keychains/login.keychain-db' }],
@@ -86,7 +90,7 @@ test('credential stores are protected for reads and writes alike', () => {
   assert.equal(guard('Read', { file_path: join(ROOT, 'AGENTS.md') }), null);
 });
 
-test('the STOP switch freezes every mutating tool and nothing else', () => {
+test('the STOP switch freezes every mutating tool and nothing else', { skip: GUARD_REMOVED }, () => {
   const root = mkdtempSync(join(tmpdir(), 'autonomy-stop-'));
   mkdirSync(join(root, '.autonomy'));
   assert.equal(guard('Edit', { file_path: join(root, 'a.txt') }, root), null, 'control: no STOP, no denial');
@@ -97,7 +101,7 @@ test('the STOP switch freezes every mutating tool and nothing else', () => {
   assert.equal(guard('Read', { file_path: join(root, 'a.txt') }, root), null, 'reads stay possible while stopped');
 });
 
-test('the project settings actually wire the guard as a PreToolUse hook over the mutating tools', () => {
+test('the project settings actually wire the guard as a PreToolUse hook over the mutating tools', { skip: GUARD_REMOVED }, () => {
   const settings = JSON.parse(readFileSync(join(ROOT, '.claude', 'settings.json'), 'utf8'));
   const entries = settings.hooks?.PreToolUse ?? [];
   const wired = entries.filter((e) => (e.hooks ?? []).some((h) => /autonomy_guard\.py/.test(h.command)));

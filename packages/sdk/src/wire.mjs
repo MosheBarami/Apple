@@ -48,6 +48,7 @@ export const CLIENT_MSG_TYPES = Object.freeze([
   'chat',
   'edit_resend',
   'stop',
+  'continue',
   'resume',
   'checkpoint_create',
   'checkpoint_restore',

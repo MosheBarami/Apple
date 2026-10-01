@@ -15,7 +15,7 @@ Ground truth this design is built on, unchanged:
 |---|---|
 | Neurons bill at $0.011/1,000 | `apps/worker/src/pricing.ts` |
 | Gates: 1,200/request, 25,000/day (10k free + 15k billable), 460,000/month, kill switch | `pricing.ts`, `do/budget.ts` |
-| Hard maximum $24.80/month (was $10.06 until the caps were raised on 2026-09-20) | `docs/COST-MODEL.md` |
+| Hard maximum $330,005.00/month (the owner lifted Apple's cap on 2026-09-29; it was $24.80 from 2026-09-20 and $10.06 before) | `docs/COST-MODEL.md` |
 | Quality-gated build ≈ 16 steps × ~145 neurons + 1–2 critiques ≈ 2,300 neurons ($0.025) | task brief, **measured** |
 | Stone full build+verify 511 neurons; Rune 297; Clay question 37–43; critique 63–72; memory ~21; embed 1 | **measured** |
 | Free = 60 Credits/day, 1 Credit = 30 neurons = 1,800 neurons/day | `pricing.ts` |

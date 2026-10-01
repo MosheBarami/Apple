@@ -864,3 +864,44 @@ writes `ui-store/index.json`, which the worker search module `ui-store-search.ts
 50,000+ Creator Store UI images** (D-UISTORE-1), a pure module built for `find_ui_asset`.
 **Caller being added:** `find_ui_asset` in `apps/worker/src/tools.ts`, wired by the lead engineer, who
 held tools.ts while this module was written.
+
+---
+
+## Operator commands without a declared entry point — WIRE, 2026-10-01
+
+- `apps/web/scripts/vendor-ai-elements.mjs` — WIRE; `pnpm --filter web vendor:ai-elements` copies the
+  genuine Vercel AI Elements from an upstream checkout (how the chat's components were installed on
+  2026-10-01). Operator-run; CI does not execute it.
+- `packages/components/proof/compose-proof.mjs` — WIRE; `pnpm --filter @golem/components proof:compose`
+  writes the Studio proof of the composer (the run-steps harness served on 127.0.0.1:8765). Operator-run;
+  CI does not execute it.
+- `apps/worker/src/proof-entry.ts` — WIRE; the bundle entry compose-proof.mjs builds, reached through it.
+
+---
+
+## Surfaces the owner replaced with AI Elements — DELETE, owner direction 2026-10-01
+
+The owner asked that the turn show the genuine Vercel AI Elements only ("replace the vercel ones
+with these, not both"), and the home-made status pill went with them (commit 4620f6e8). These lost
+their last product caller then; they remain only for their own tests and go with those tests in a
+separate cleanup. Wiring any of them back would put a second, home-made surface beside AI Elements.
+
+- `apps/web/src/components/ws/evidence/context-checkpoint.tsx` — DELETE; the per-turn Details disclosure is gone.
+- `apps/web/src/components/ws/evidence/files-code-media-table.tsx` — DELETE; same.
+- `apps/web/src/components/ws/evidence/plan-task-cot.tsx` — DELETE; same (AI Elements Task replaces it).
+- `apps/web/src/components/ws/evidence/sources-citation-suggest-agent.tsx` — DELETE; AI Elements Sources and InlineCitation replace it.
+- `apps/web/src/components/ws/evidence/tool-reasoning-stream.tsx` — DELETE; AI Elements Reasoning and Shimmer replace it.
+- `apps/web/src/lib/gates.ts` — DELETE; its planned-steps reader fed the removed status pill.
+- `apps/web/src/components/picks/tech/luau-trace.ts` — DELETE; it parsed traces for the stack-trace pick, already DELETE above.
+- `apps/web/src/components/ai-elements/logos/marks.ts` — DELETE; the model-picker logos it drew have no picker left in the app.
+
+## apps/site/src/lib/billing-probe.ts — DELETE, 2026-10-01
+
+The public site's redesign (6662c41b) moved this probe into `pages/pricing.astro`, which asks
+`/api/billing/config` itself at build time. The module is a duplicate with no importer.
+
+## Correction, 2026-10-01
+
+`apps/web/src/components/ai-elements/reasoning.tsx` is listed above as DELETE (D-THINK-1). The owner
+reversed that on 2026-10-01: it is the turn's reasoning surface again (ws/run-steps.tsx), reached on
+every turn. The entry above is history, not a current disposition.

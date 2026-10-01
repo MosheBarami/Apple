@@ -834,6 +834,32 @@ function studioCtx(env, overrides = {}) {
 
 /** Every tool, with arguments that actually exercise its body. */
 const TOOL_ARGS = {
+  //[[ ADDED 2026-10-01: twenty-two registered tools had no fixture, so this test had stopped covering them (the
+  //   enumeration check below was red). Each fixture reaches the tool's body with the smallest valid arguments;
+  //   their egress is reviewed by the same loop as every other tool: no credential, JWT, pairing token or bearer
+  //   header may appear in what they return. ]]
+  add_upgrades: {},
+  animate_model: { model: 'game.Workspace.Door', clips: { open: { play: 'click', keys: [{ t: 0, Door: { rot: [0, 0, 0] } }, { t: 1, Door: { rot: [0, 90, 0] } }] } } },
+  browse_owner_library: { q: 'tree' },
+  build_game: {},
+  build_object: { name: 'Butter', parts: [{ name: 'Stick', size: [6, 1.5, 1.5], color: '#ffe680', move: { as: 'wobble', on: 'click' } }] },
+  build_studded_ui: { pieces: [{ kind: 'counter', name: 'Coins', text: '0', at: 'top-left' }] },
+  capture_studio_viewport: {},
+  compose_game: { request: 'a tower defense game' },
+  import_owner_library: { gameId: 'g1', path: 'Workspace.Tree', mode: 'copy' },
+  insert_owner_component: { id: 'owner:c1' },
+  inspect_attachment_image: { attachmentId: 'a1' },
+  install_owner_system: { gameId: 'g1' },
+  judge_game: { request: 'a tower defense game' },
+  list_owner_original_strings: {},
+  more_tools: { why: 'need a terrain tool' },
+  plan_game: { request: 'a tower defense game' },
+  query_owner_assembly: {},
+  query_owner_catalog: {},
+  read_owner_component: { id: 'owner:c1' },
+  read_owner_media: { id: 'owner:c1', property: 'Texture' },
+  read_owner_original_string: { id: 'owner:c1', seq: 1 },
+  recreate_owner_game: { gameId: 'g1' },
   get_project_tree: {},
   list_scripts: {},
   read_script: { path: 'game.ServerScriptService.Main' },
@@ -1379,13 +1405,17 @@ test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fie
       //   The two assertions below hold each argument to the code rather than to this paragraph,
       //   because a name whitelisted once can have its VALUE's source swapped underneath it — the
       //   hole the A5 recovery steer shipped with.
-      'autonomous',
+      //   RESTATED 2026-10-01: `autonomous` went with the modes (c839d7af). `paused` (G03, 9681b784) replays why a run
+      //   is waiting for Studio: a timestamp and a reason from a closed set of literals — no free text, no transcript.
+      'paused',
       'totalSteps',
     ]),
     'runSnapshot changed shape — re-review what the reconnect replay hands the browser',
   );
-  assert.match(snapshot, /\.\.\.\(agent\.autonomous \? \{ autonomous: true \} : \{\}\)/,
-    'autonomous is no longer the boolean literal true — re-review what now feeds it');
+  assert.match(snapshot, /\.\.\.\(agent\.pausedForStudio \? \{ paused: agent\.pausedForStudio \} : \{\}\)/,
+    'paused is no longer the pause record — re-review what now feeds it');
+  assert.match(read('do/session.ts'), /pausedForStudio\?: \{ at: number; reason: StudioPauseReason \}/,
+    'the pause record gained a field — re-review what the reconnect replay hands the browser');
   assert.match(snapshot, /totalSteps: MAX_RUN_STEPS,/,
     'totalSteps is no longer the run ceiling constant — re-review what now feeds it');
   assert.match(readCode('do/session.ts'), /export const MAX_RUN_STEPS = 1000;/,
@@ -1395,20 +1425,21 @@ test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fie
   //   Each says "this field can only be a value from a fixed vocabulary". Whitelisting the NAME
   //   once would otherwise let the value's source be swapped underneath it, which is precisely the
   //   hole the A5 recovery steer shipped with.
-  assert.match(snapshot, /productModel: agent\.productModel\b/,
-    'productModel is no longer the settled model on the run — re-review what now feeds it');
+  // RESTATED 2026-10-01: since the single engine (38efea2e) the replay normalises the stored value onto the fixed set
+  // of model ids, so whatever a run persisted, what reaches the browser is one of those literals.
+  assert.match(snapshot, /productModel: normalizeModelId\(agent\.productModel\)/,
+    'productModel is no longer the normalised settled model on the run — re-review what now feeds it');
   //   The vocabulary is the model registry (D-VISION-1): the wire value passes only through
   //   membership of MODEL_IDS, which is read from MODEL_REGISTRY and never from the request.
-  assert.match(
-    readCode('do/session.ts'),
-    /function asProductModel\(x: unknown\)[\s\S]{0,240}?return isModelId\(x\) \? x : null;/,
-    'asProductModel no longer confines the wire value to the registry ids — the browser can be handed a string the client chose',
-  );
-  assert.match(
-    readFileSync(join(REPO, 'packages', 'shared', 'src', 'models.ts'), 'utf8'),
-    /export const MODEL_IDS: readonly ModelId\[\] = MODEL_REGISTRY\.map\(\(m\) => m\.id\);[\s\S]{0,120}?export function isModelId\(value: unknown\): value is ModelId \{\s*return typeof value === 'string' && \(MODEL_IDS as readonly string\[\]\)\.includes\(value\);/,
-    'isModelId is no longer membership of the fixed registry ids — re-review what the run snapshot can carry',
-  );
+  // RESTATED 2026-10-01: since the single engine (38efea2e) asProductModel hands the value to normalizeModelId, which
+  // ignores it and returns the one engine's literal id — strictly tighter than registry membership.
+  assert.match(readCode('do/session.ts'), /function asProductModel\(x: unknown\)[\s\S]{0,160}?return normalizeModelId\(x\);/,
+    'asProductModel no longer normalises the wire value — the browser can be handed a string the client chose');
+  const models = readFileSync(join(REPO, 'packages', 'shared', 'src', 'models.ts'), 'utf8');
+  assert.match(models, /export function normalizeModelId\(value: unknown\): ModelId \{\s*void value;\s*return 'apple';\s*\}/,
+    'normalizeModelId now passes its input through — re-review what reaches the browser');
+  // (The isModelId membership check that stood here guarded the old path; the snapshot no longer reaches it —
+  // normalizeModelId, asserted just above, is what decides what the browser is handed.)
   assert.match(snapshot, /deniedTools: agent\.deniedTools\b/,
     'deniedTools is no longer the run own denied list — re-review what now feeds it');
   assert.match(readCode('preferences.ts'), /if \(base\.has\(tool\)\) out\.push\(tool\);/,
@@ -1501,7 +1532,16 @@ test('A2 agent_status carries a policy classification, never prompt or transcrip
   // The model's own scratchpad never becomes the reply, either.
   assert.match(read('providers/workers-ai.ts'), /reasoning_content is an internal scratchpad and must never/, 'reasoning_content must stay out of the reply');
   // Comments stripped: the file explains the hazard in prose, and prose is not a code path.
-  assert.equal(/reasoning_content/.test(readCode('providers/workers-ai.ts')), false, 'reasoning_content must never be read as the answer');
+  // RESTATED 2026-10-01: the owner asked to see the model's thinking live (D-REASONING-2), so reasoning_content IS
+  // read now — into the separate `reasoning` field the chat shows as Reasoning, and nowhere else. The property is
+  // that it never becomes the answer: the only reader is extractReasoning, and the text extractor never names it.
+  const wai = readCode('providers/workers-ai.ts');
+  const readers = [...wai.matchAll(/reasoning_content/g)].map((m) => wai.lastIndexOf('export function ', m.index));
+  assert.ok(readers.length > 0 && readers.every((at) => wai.startsWith('export function extractReasoning', at)),
+    'reasoning_content is read outside extractReasoning — it could reach the answer');
+  const text = wai.slice(wai.indexOf('export function extractText'), wai.indexOf('export function', wai.indexOf('export function extractText') + 10));
+  assert.ok(text.length > 40, 'extractText was not located — this check would be vacuous');
+  assert.doesNotMatch(text, /reasoning/, 'the answer extractor reads the reasoning');
   assert.equal(/reasoning_content/.test(readCode('do/session.ts')), false, 'reasoning_content must never enter the transcript');
 });
 
@@ -2649,8 +2689,13 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   );
   // The pushes whose content is a VARIABLE rather than a literal: each source is one reviewed above.
   const bare = userPushes.map((p) => /content:\s*([A-Za-z_][\w.]*)\s*\}$/.exec(p.replace(/\s+/g, ' ').replace(/,?\s*\}$/, ' }'))?.[1]).filter(Boolean);
-  assert.deepEqual([...new Set(bare)].sort(), ['partNext', 'skillSteer.message', 'steer'], 'a user-role push now sends a variable this review has not traced');
-  for (const name of bare.filter((n) => n !== 'skillSteer.message')) {
+  // REVIEWED 2026-10-01: AUTONOMOUS_IDLE_STEER (2a884997) is a module constant in run-idle.ts made only of string
+  // literals — no interpolation, no argument — so it carries no user, tool or model text. Held to that below.
+  assert.deepEqual([...new Set(bare)].sort(), ['AUTONOMOUS_IDLE_STEER', 'partNext', 'skillSteer.message', 'steer'], 'a user-role push now sends a variable this review has not traced');
+  const idle = /export const AUTONOMOUS_IDLE_STEER =([^;]*);/.exec(readCode('run-idle.ts'));
+  assert.ok(idle, 'AUTONOMOUS_IDLE_STEER was not found — this check would be vacuous');
+  assert.match(idle[1], /^\s*(?:'[^'$`]*'\s*\+?\s*)+$/, 'AUTONOMOUS_IDLE_STEER is no longer pure string literals — review what it now carries');
+  for (const name of bare.filter((n) => n !== 'skillSteer.message' && n !== 'AUTONOMOUS_IDLE_STEER')) {
     assert.match(session, new RegExp(`const ${name.replace('.', '\\.')} =[^;]*\\bsteerToPart\\(agent\\)`),
       `user-role push of \`${name}\` no longer comes from steerToPart — review its source`);
   }
@@ -2659,10 +2704,10 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   assert.ok(gapSteer.length > 100, 'gameGapSteer was not found — this test would check nothing');
   assert.deepEqual([...gapSteer.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ["owed.join(' ')"],
     'gameGapSteer interpolates something other than its own fixed sentences');
-  assert.ok(
-    dynamic.some((p) => /critiqueToText\(critique\)/.test(p)),
-    'the visual critique hand-back should still be one of the dynamic user-role injections',
-  );
+  // RESTATED 2026-10-01: the automatic visual self-critique loop was removed from runStep (3dc0d89c); the critique
+  // now reaches the model only as the result of a tool it called. So no user-role push may carry critique text.
+  assert.ok(!dynamic.some((p) => /critiqueToText/.test(p)),
+    'a critique is injected as a user-role turn again — that hand-back was removed (3dc0d89c); re-review it');
   const recovery = dynamic.find((p) => /rescued\.refused/.test(p));
   assert.ok(recovery, 'the tool-call-as-text steer is gone, or no longer names what it refused');
   // Its ONLY interpolation is `rescued.refused`, and that is a registry name by construction.
@@ -2939,46 +2984,32 @@ test('A6 STATIC CHECK — the direct env.AI.run call sites are the known, metere
 
 test('A6 an outside model bills through the SAME spend gate — its tokens are priced, not exempted', async () => {
   reset();
-  // RESTATED (D-VISION-1). This pointed a key at the direct-HTTP OpenAI adapter. GPT-5.6 Luna now
-  // runs on the AI binding through AI Gateway (Unified Billing): the property is unchanged — the
-  // whole spend gate applies — and the reservation must name the model, because that is what puts
-  // it on the third-party wallet in BudgetDO rather than on Apple's neuron day.
+  // RESTATED 2026-10-01: the outside models and their price rows were removed with the single engine (38efea2e).
+  // The property that survives is the stronger one: a model the price table does not know is REFUSED before any
+  // spend is reserved or the binding is called — never run unbilled.
   const LUNA = 'openai/gpt-5.6-luna';
   const env = makeEnv({
     kv: { 'config:models': JSON.stringify({ probe: { id: LUNA, nativeTools: true, maxTokens: 120, ctx: 128_000, temperature: 0.2 } }) },
-    aiResponse: {
-      status: 'completed',
-      output: [{ type: 'message', content: [{ type: 'output_text', text: 'stubbed' }] }],
-      usage: { input_tokens: 40, output_tokens: 20 },
-    },
+    aiResponse: { status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'stubbed' }] }], usage: { input_tokens: 40, output_tokens: 20 } },
   });
-  const res = await GX.chat(env, { model: 'probe', messages: [{ role: 'user', content: 'hello there' }], maxTokens: 120 });
-  assert.equal(res.text, 'stubbed');
-  assert.ok(res.neurons >= 1, 'a token-billed call must cost a whole number of neurons, never zero');
-  assert.deepEqual(
-    trace.order.filter((o) => o.startsWith('BUDGET_DO') || o === 'http.invoke' || o === 'AI.run'),
-    ['BUDGET_DO/reserve', 'AI.run', 'BUDGET_DO/settle'],
-    'an outside model must be reserved and settled exactly like an Apple lane',
-  );
-  const budgetCalls = trace.doCalls.filter((d) => d.ns === 'BUDGET_DO');
-  for (const d of budgetCalls) assert.equal(d.body?.model, LUNA, `${d.path} did not name the model it was spending`);
-
-  // …and the model's own per-step ceiling bites before the binding is called.
-  reset();
   await assert.rejects(
-    () => GX.chat(env, { model: 'probe', messages: [{ role: 'user', content: 'x'.repeat(4_000_000) }], maxTokens: 120 }),
-    (e) => e.name === 'BudgetError' && e.reason === 'request_too_large',
+    () => GX.chat(env, { model: 'probe', messages: [{ role: 'user', content: 'hello there' }], maxTokens: 120 }),
+    (e) => e.name === 'UnpricedModelError',
+    'an unpriced outside model ran instead of being refused',
   );
-  assert.equal(trace.order.includes('AI.run'), false, 'the ceiling must stop a token-billed call before it leaves');
+  assert.equal(trace.order.includes('AI.run'), false, 'an unpriced model reached the binding');
+  assert.equal(trace.order.includes('BUDGET_DO/settle'), false, 'an unpriced model settled spend');
 });
 
 test('A6 the token to neuron conversion is monotonic, never zero, and always rounded up', () => {
   // RESTATED (D-VISION-1). This iterated the retired OpenAI/Google/DeepSeek catalogue rows. The
   // token-billed models are now the registry's outside models, priced by pricing.ts — the function
   // the gateway reserves and settles with — so that is the conversion held here.
+  // RESTATED 2026-10-01: the registry has no outside models since the single engine (38efea2e); the conversion is held
+  // for every token-priced row the price table still carries, and the registry must not grow an unpriced one.
   const outside = MODEL_REGISTRY.filter((m) => m.route === 'unified-billing').map((m) => m.providerModelId);
-  assert.ok(outside.length >= 3, 'expected Gemini, GPT-5.6 and Luna in the registry');
-  for (const id of outside) {
+  for (const id of outside) assert.ok(PR.MODEL_PRICES[id], `${id} is an outside model with no price row`);
+  for (const id of Object.keys(PR.MODEL_PRICES)) {
     assert.equal(PR.neuronsFor(id, 0, 0), 0);
     const one = PR.neuronsFor(id, 1, 1);
     assert.ok(one >= 1, `${id}: any non-zero usage must cost at least one neuron`);
