@@ -109,6 +109,19 @@ spec("creatures: a costume fills the torso-and-head space and stands its long si
   z, x = Creatures.uprightTurns({ sx = 1, sy = 2, sz = 1 }); eq(z, 0); eq(x, 0)
 end)
 
+spec("animate: keys ease between poses, hold at the ends, and name their joints", function()
+  local keys = { { t = 0, Key = { move = { 0, 0, 0 } } }, { t = 1, Key = { move = { 0, -1, 0 }, rot = { 90, 0, 0 } }, ease = "Quad" }, { t = 2, Lid = { rot = { 0, 0, 45 } } } }
+  local r, m = Anim.sample(keys, "Key", 0.5); eq(m[2] < -0.5, true, "Quad is past halfway at half time"); eq(r[1] > 45, true)
+  r, m = Anim.sample(keys, "Key", 5); eq(m[2], -1, "holds the last pose"); eq(r[1], 90)
+  r, m = Anim.sample(keys, "Key", -1); eq(m[2], 0, "holds the first pose")
+  r = Anim.sample(keys, "Lid", 0); eq(r[3], 45, "a joint with one key holds it")
+  r, m = Anim.sample(keys, "Nope", 1); eq(r[1] + m[2], 0, "an unnamed joint stays at rest")
+  local j = Anim.jointsOf(keys); eq(#j, 2); eq(j[1], "Key"); eq(j[2], "Lid")
+  for _, style in { "Linear", "Sine", "Quad", "Back", "Bounce", "Elastic" } do
+    eq(math.abs(Anim.ease(style, 0)) < 1e-9, true, style .. " starts at 0"); eq(math.abs(Anim.ease(style, 1) - 1) < 1e-6, true, style .. " ends at 1")
+  end
+end)
+
 print(("systems: %d passed%s"):format(passed, if #failures > 0 then ", " .. #failures .. " FAILED" else ""))
 for _, f in failures do print(f) end
 if #failures > 0 then error("system specs failed") end
@@ -129,6 +142,7 @@ test('the game components pass their luau specs', { skip: available() ? false : 
     `local UI = (function()\n${src('gameui/AppleGameUI.luau')}\nend)()`,
     `local Fx = (function()\n${src('fx/AppleFx.luau')}\nend)()`,
     `local Sounds = (function()\n${src('fx/AppleSounds.luau')}\nend)()`,
+    `local Anim = (function()\n${src('animate/AppleAnimate.luau')}\nend)()`,
     SPEC,
   ].join('\n'));
   let out;

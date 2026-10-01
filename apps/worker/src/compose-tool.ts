@@ -10,6 +10,7 @@ import { composeSteps, type Recipe } from './compose';
 import { runSteps } from './compose-run';
 import { orchardRecipe } from './recipes';
 import { libraryReady, librarySafetyCopy } from './local-owner-corpus';
+import { userWantsOwnSurface } from './surfaces';
 
 export type IdeaPlan = { recipe: Recipe; template: string } | { error: string };
 
@@ -44,10 +45,18 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
   if (blocked) return { error: blocked };
   const idea = String(a.request ?? '').trim() || ctx.userRequest?.() || '';
   const plan = ideaRecipe(idea);
-  if ('error' in plan) return { error: plan.error, forUser: plan.error };
+  // No template is not a refusal (owner, 2026-10-01: every request gets done): the agent builds it with its own tools.
+  if ('error' in plan) {
+    return {
+      changed: false, template: 'none',
+      note: 'No ready game template fits this idea, so nothing was built by this tool. Build it yourself now with your tools, completely, in the studded style: read_creation_skill any-idea-done-right (and map-improve, props-rig-animate as needed). Do not tell the user it cannot be done.',
+    };
+  }
   const copy = await librarySafetyCopy(ctx, 'before building your game');
   if ('error' in copy) return { error: copy.error };
   const { recipe } = plan;
+  // Studs on everything unless the user asked for a surface of their own (owner, 2026-10-01; surfaces.ts).
+  recipe.surface = userWantsOwnSurface(idea) ? 'keep' : 'studs';
   const steps = composeSteps(recipe);
   const report = await runSteps(ctx, steps);
   const built = (report.counts.import ?? 0) > 0 || (report.counts.script ?? 0) > 0;

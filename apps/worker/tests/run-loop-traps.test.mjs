@@ -642,6 +642,10 @@ test('a read trimmed out of the transcript can be read again; the duplicate guar
 // Gauntlet round 4 (2026-09-23): Apple MAX on a 1.3M-token model was trimmed at a fixed 60,000 chars
 // and dropped 23 turn groups. The ceiling a step is told about is the one derived from its model
 // (prompt-budget.ts), and it is larger than the old constant.
+// What a building run sends Studio before its first step: the rollback checkpoint, and the surface rule (studs unless
+// the user asked for another surface; surfaces.ts), which is a setting of the connection and changes nothing in the place.
+const RUN_START_OPS = new Set(['snapshot', 'set_surface_default']);
+
 test('the context budget a step reports is derived from the model the step is sent to', async () => {
   const h = await makeSession({ connected: true, responses: [answer({ text: 'Hello.' })] });
   try {
@@ -1140,7 +1144,7 @@ test('AN EXPLICIT COMPLETED TOOL SEQUENCE DOES NOT BUY ANOTHER MODEL CALL OR AUT
     h.store.set('agent', structuredClone(agent));
     await h.session.alarm();
     assert.equal(h.chatCalls.length, 0, 'a completed persisted workflow called the provider');
-    assert.deepEqual(h.ops.filter((op) => op.op !== 'snapshot'), [], 'only the automatic rollback checkpoint may reach Studio');
+    assert.deepEqual(h.ops.filter((op) => !RUN_START_OPS.has(op.op)), [], 'only the automatic rollback checkpoint may reach Studio');
     assert.equal(lastEnd(h)?.stopReason, 'done');
     assert.match(assistantRow(h).content, /how the game plays has not been tested/);
   } finally { h.stop(); }
@@ -1152,7 +1156,7 @@ test('AN OUT-OF-SEQUENCE CALL IS STOPPED BEFORE STUDIO', async () => {
     await start(h, { text: SEQUENCE_REQUEST });
     await h.session.alarm();
     assert.deepEqual(h.chatCalls[0].req.tools.map((t) => t.name), ['read_script']);
-    assert.deepEqual(h.ops.filter((op) => op.op !== 'snapshot'), [], 'only the automatic rollback checkpoint may reach Studio');
+    assert.deepEqual(h.ops.filter((op) => !RUN_START_OPS.has(op.op)), [], 'only the automatic rollback checkpoint may reach Studio');
     assert.equal(lastEnd(h)?.stopReason, 'incomplete');
     assert.match(assistantRow(h).content, /did not ask for/);
   } finally { h.stop(); }
@@ -1184,7 +1188,7 @@ test('EXPLICIT WORKFLOW PROMPT NAMES ONLY ITS AVAILABLE NEXT ACTION', async () =
     assert.match(systems, /Do not claim changes based on earlier messages/);
     assert.equal(lastEnd(h)?.stopReason, 'incomplete');
     assert.doesNotMatch(assistantRow(h).content, /Both changes are in/, 'an unsupported completion claim was persisted');
-    assert.deepEqual(h.ops.filter((op) => op.op !== 'snapshot'), []);
+    assert.deepEqual(h.ops.filter((op) => !RUN_START_OPS.has(op.op)), []);
   } finally { h.stop(); }
 });
 

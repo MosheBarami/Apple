@@ -79,6 +79,7 @@ import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
 import { planGame, buildGame, planSummary, buildSummary, plannedLoop } from './game-plan';
+import { animateModel } from './animate-tool';
 import { buildStuddedUi } from './studded-ui-tool';
 import { composeGame, composeSummary } from './compose-tool';
 import { judgeComposed } from './composed-judge';
@@ -3675,7 +3676,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'install_module',
       description:
-        'Install a vetted, self-contained ModuleScript for a system whose failures are silent and expensive. Prefer this to writing one of these yourself — they encode the specific Roblox behaviour that is easy to get subtly wrong. Each is one file with no dependencies on the others, and the user can read it. Installing over a script that already exists and differs is REFUSED unless you pass replace: true — re-installing would destroy whatever the user had changed.\n\n' +
+        'Install a vetted, self-contained ModuleScript for a system whose failures are silent and expensive. Prefer this to writing one yourself: each encodes Roblox behaviour that is easy to get subtly wrong. Installing over a script that already exists and differs is REFUSED unless you pass replace: true — re-installing would destroy whatever the user had changed.\n\n' +
         prefabCatalogue()
           .map((p) => `  ${p.id} — ${p.summary}\n      prevents: ${p.prevents.join('; ')}`)
           .join('\n'),
@@ -4925,26 +4926,32 @@ export const TOOLS: Record<string, ToolImpl> = {
   compose_game: {
     def: {
       name: 'compose_game',
-      description: "Builds a NEW game for the user's idea from components (systems, a UI kit, props, the idea's creatures) on a map made for it; never copies a saved game. Then judge_game {request}, fix what it lists, answer from forUser.",
+      description: "Builds a NEW game for the idea from components on a map made for it; never copies a saved game. Then judge_game {request}, fix what it lists, answer from forUser.",
       parameters: S({ request: { type: 'string', description: "The user's idea, in their words." } }, ['request']),
     },
     studio: true,
-    studioOps: ['snapshot', 'import_owner_library', 'create_instances', 'edit_script', 'delete_instances', 'set_visible', 'place_copies', 'strip_descendants', 'set_props'],
+    studioOps: ['snapshot', 'import_owner_library', 'create_instances', 'edit_script', 'delete_instances', 'set_visible', 'place_copies', 'strip_descendants', 'set_props', 'apply_surface', 'set_surface_default'],
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: composeSummary,
     run: composeGame,
   },
+  animate_model: {
+    def: {
+      name: 'animate_model',
+      description: "Make a model move: rig it, then keyframe clips. Read creation skill props-rig-animate first.",
+      parameters: S({ model: { type: 'string' }, rig: { type: 'object' }, clips: { type: 'object' } }, ['model', 'clips']),
+    },
+    studio: true,
+    studioOps: ['rig_model', 'set_joint_pivot', 'edit_script', 'delete_instances'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
+    plainSummary: (_a, _r, failed) => failed ? 'Could not animate it' : 'Made it move',
+    run: animateModel,
+  },
   build_studded_ui: {
     def: {
       name: 'build_studded_ui',
-      description: "Studded game GUI (creation skill ui-studded-gui). Then script every value and button.",
-      parameters: S({
-        screen: { type: 'string' },
-        pieces: { type: 'array', items: { type: 'object', properties: {
-          kind: { type: 'string', enum: ['counter', 'button', 'bar', 'panel'] }, name: { type: 'string' }, text: { type: 'string' },
-          at: { type: 'string' }, colour: { type: 'string' }, cards: { type: 'array' },
-        }, required: ['kind', 'name'] } },
-      }, ['pieces']),
+      description: "Studded game GUI: pieces [{kind counter|button|bar|panel, name, text, at, colour, cards}] (creation skill ui-studded-gui). Then script every value and button.",
+      parameters: S({ screen: { type: 'string' }, pieces: { type: 'array', items: { type: 'object' } } }, ['pieces']),
     },
     studio: true,
     studioOps: ['create_instances', 'delete_instances'],

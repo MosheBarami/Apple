@@ -5,6 +5,7 @@ local Encoding = game:GetService("EncodingService")
 local Serialization = game:GetService("SerializationService")
 local HOST = "http://127.0.0.1:8765/"
 local steps = HttpService:JSONDecode(HttpService:GetAsync(HOST .. "steps.json"))
+local SURFACES = HttpService:JSONDecode(HttpService:GetAsync(HOST .. "surfaces.json")) -- surfaces.ts, Resurface's maps
 
 local function resolve(path: string, create: boolean?): Instance?
 	local at: Instance? = game
@@ -141,6 +142,35 @@ for i, s in steps do
 				if classes[d.ClassName] and d.Parent then d:Destroy(); gone += 1 end
 			end
 			print(("COMPOSE stripped %d from %s"):format(gone, s.root))
+		elseif s.kind == "surface" then
+			-- What the plugin's Surface family does (ops/Surface.luau, after Resurface): one MaterialVariant, every face.
+			local m = SURFACES[s.surface]
+			local variant
+			for _, v in game.MaterialService:GetDescendants() do
+				if v:IsA("MaterialVariant") and v.ColorMap == m.colorMap and v.NormalMap == m.normalMap then variant = v end
+			end
+			if not variant then
+				variant = Instance.new("MaterialVariant")
+				variant.Name = "Studs"
+				variant.BaseMaterial = Enum.Material.Plastic
+				variant.ColorMap = m.colorMap
+				variant.NormalMap = m.normalMap
+				variant.StudsPerTile = m.studsPerTile
+				variant.Parent = game.MaterialService
+			end
+			local n = 0
+			for _, path in s.paths do
+				local root = resolve(path)
+				for _, p in (if root then root:GetDescendants() else {}) do
+					if p:IsA("BasePart") then
+						p.Material = variant.BaseMaterial
+						p.MaterialVariant = variant.Name
+						for _, f in { "TopSurface", "BottomSurface", "LeftSurface", "RightSurface", "FrontSurface", "BackSurface" } do (p :: any)[f] = Enum.SurfaceType.Smooth end
+						n += 1
+					end
+				end
+			end
+			print(("COMPOSE studded %d parts"):format(n))
 		elseif s.kind == "set" then
 			local target = resolve(s.path)
 			if not target then error("nothing at " .. s.path) end

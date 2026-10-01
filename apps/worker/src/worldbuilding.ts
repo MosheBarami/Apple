@@ -89,6 +89,23 @@ const MANUAL_LIGHTING_STEPS = [
 
 /** Ready-to-apply lighting + atmosphere moods. Pick exactly one per scene. */
 export const MOODS: Record<string, LightingPreset> = {
+  // From the owner's lighting tutorial ("Make Your Roblox Game Look 10x Better With Lighting", values read frame by frame
+  // 2026-10-01): sky-tinted blue ambient instead of grey, bright key, soft shadows, Atmosphere haze with no offset so the
+  // horizon melts into the sky, light bloom and a hint of sun rays, a cool grade. Saturation is lifted 0.3 here, not
+  // the video's 0.5: the video starts from a grey baseplate, a studded game's colours are saturated already.
+  studded: {
+    manualStudioSteps: MANUAL_LIGHTING_STEPS,
+    use: 'the default for bright studded / cartoony games: blue-tinted shadows, hazy horizon, soft glow',
+    scriptable: {
+      ClockTime: 13.5, Brightness: 3, ExposureCompensation: 0, ShadowSoftness: 0.2,
+      GlobalShadows: true, GeographicLatitude: 7, EnvironmentDiffuseScale: 1, EnvironmentSpecularScale: 1,
+      Ambient: [84, 107, 156], OutdoorAmbient: [117, 120, 145], ColorShift_Top: [0, 0, 0], ColorShift_Bottom: [0, 0, 0],
+    },
+    atmosphere: { Density: 0.34, Offset: 0, Haze: 1.27, Glare: 0, Color: [208, 208, 208], Decay: [119, 126, 141] },
+    bloom: { Intensity: 1, Size: 56, Threshold: 2 },
+    colorCorrection: { Brightness: 0, Contrast: 0.1, Saturation: 0.3, TintColor: [226, 238, 255] },
+    sunRays: { Intensity: 0.01, Spread: 0.1 },
+  },
   day: {
     manualStudioSteps: MANUAL_LIGHTING_STEPS,
     use: 'safe default when the prompt gives no mood — cheerful, readable, hard to get wrong',

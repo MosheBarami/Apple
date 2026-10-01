@@ -5017,11 +5017,12 @@ local CONSENT_ONLY = {
 	that is not installed reports none of its operations, which the worker reads as "not offered"
 	because every family op is opt-in there (OPT_IN_OPERATIONS).
 ]]
-local OP_FAMILIES = { installed = false, errors = {}, names = {} }
+local OP_FAMILIES = { installed = false, errors = {}, names = {}, watchers = {} }
 
 function OP_FAMILIES.install(list: any, api: any)
 	OP_FAMILIES.installed = true
 	OP_FAMILIES.errors = {}
+	OP_FAMILIES.watchers = {}
 	if type(list) ~= "table" then
 		table.insert(OP_FAMILIES.errors, "the op families are not bundled in this build")
 		return
@@ -5062,6 +5063,8 @@ function OP_FAMILIES.install(list: any, api: any)
 			for property in spec.propertyAllow or {} do PROPERTY_ALLOW[property] = true end
 			for property in spec.readProperties or {} do READ_PROPERTIES[property] = true end
 			for enumName in spec.enumAllow or {} do ENUM_ALLOW[enumName] = true end
+			-- A family may watch every Apple write (ops/Surface.luau studs the parts a write adds).
+			if type(spec.watch) == "function" then table.insert(OP_FAMILIES.watchers, spec.watch) end
 			table.insert(OP_FAMILIES.names, label)
 		end
 	end
@@ -5263,7 +5266,15 @@ function Commands.new(options: any?): any
 					end
 					return result, resultKind, resultMessage
 				end
-				local result, resultKind, resultMessage, resultRemedy = handler(self, op, stillCurrent)
+				-- Family watchers see the write from inside its undo recording, so one Ctrl+Z takes back both.
+				local finishers = {}
+				for _, watcher in OP_FAMILIES.watchers do
+					local started, finish = pcall(watcher, self, name)
+					if started and type(finish) == "function" then table.insert(finishers, finish) end
+				end
+				local handled, result, resultKind, resultMessage, resultRemedy = pcall(handler, self, op, stillCurrent)
+				for _, finish in finishers do pcall(finish) end -- always: a finisher also disconnects its watch
+				if not handled then error(result, 0) end
 			return result, resultKind, resultMessage, resultRemedy
 		end)
 		if not ok then

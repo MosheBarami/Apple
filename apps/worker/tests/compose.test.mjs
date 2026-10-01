@@ -196,7 +196,7 @@ test('compose: every class and enum the build creates is one the plugin will cre
   for (const e of usedEnums) assert.ok(enums.has(e), `Enum.${e} is not an enum the plugin writes`);
 });
 
-test('compose: the map is studded: every visible brick carries the stud texture', () => {
+test('compose: everything is studded: the map\'s bricks are plain Plastic and one surface step gives studs to the map and every library piece', () => {
   const map = steps.find((s) => s.kind === 'create' && s.parent === 'game.Workspace').items[0];
   const parts = [];
   const walk = (i) => { if (i.className === 'Part' || i.className === 'SpawnLocation') parts.push(i); (i.children ?? []).forEach(walk); };
@@ -204,14 +204,21 @@ test('compose: the map is studded: every visible brick carries the stud texture'
   const visible = parts.filter((p) => p.props.Transparency !== 1);
   assert.ok(visible.length > 40, `a real map (${visible.length} bricks)`);
   for (const p of visible) {
-    const tex = (p.children ?? []).find((c) => c.className === 'Texture');
-    assert.ok(tex, `${p.name} has no studs`);
-    assert.match(tex.props.Texture, /^rbxassetid:\/\/\d+$/, 'the studs are an image id the plugin accepts');
+    assert.equal(p.props.Material, 'Plastic', `${p.name} is Plastic, the base of the stud surface`);
+    assert.equal(p.props.MaterialVariant, undefined, `${p.name} brings no surface of its own`);
+    assert.ok(!(p.children ?? []).some((c) => c.className === 'Texture' || c.className === 'Decal'), `${p.name} has no flat image studs`);
   }
+  const surface = steps.findIndex((s) => s.kind === 'surface');
+  assert.ok(surface > 0, 'there is a surface step');
+  assert.deepEqual(steps[surface].paths.sort(), ['game.ServerStorage.AppleParts', 'game.Workspace.AppleMap']);
+  const lastImport = steps.map((s) => s.kind).lastIndexOf('import');
+  assert.ok(surface > lastImport, 'the studs go on after every library piece is in');
   const names = new Set(parts.map((p) => p.name));
   for (const n of ['Grass', 'Cliff1', 'Cliff2', 'Cliff3', 'Water', 'Plaza', 'Spawn']) assert.ok(names.has(n), `the map has ${n}`);
   // Props come from the library, never from parts (owner, D-MODELLIB-2): no brick is named like a prop.
   for (const p of parts) assert.doesNotMatch(p.name, /tree|bush|fence|rock|flower|lamp|chest|barrel/i, `${p.name} is a prop made of parts`);
+  const kept = C.composeSteps({ ...recipe, surface: 'keep' });
+  assert.ok(!kept.some((s) => s.kind === 'surface'), 'a user who asked for their own surfaces gets no studs');
 });
 
 test('compose: the HUD is the game\'s own: a card and an upgrade row for every item, no placeholder text, every panel closable', () => {
@@ -247,4 +254,28 @@ test('compose: the game has progression: later items unlock with waves, upgrades
   assert.match(cfg, /clearBonus = \d+/);
   const scripts = steps.filter((s) => s.kind === 'script').map((s) => s.name);
   for (const n of ['AppleGameUI', 'AppleFx', 'AppleSounds']) assert.ok(scripts.includes(n), `${n} is installed`);
+});
+
+const outM = join(mkdtempSync(join(tmpdir(), 'studded-map-')), 'm.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'studded-map.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + outM], { cwd: WORKER, stdio: 'pipe' });
+const M = await import(`file://${outM}`);
+
+test('compose: the road never overlaps itself and no curb crosses it (owner\'s circled corners, 2026-10-01)', () => {
+  const box = (p) => { const [sx, , sz] = p.props.Size, [x, , z] = p.props.Position; return { x0: x - sx / 2, x1: x + sx / 2, z0: z - sz / 2, z1: z + sz / 2 }; };
+  const inside = (a, b) => Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 0.01 && Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0) > 0.01;
+  for (const seed of [1, 2, 3, 20260930, 99]) {
+    const pieces = M.roadPieces(C.laneLayout(seed).lane, C.LANE_WIDTH, { path: '#e0a45c', curb: '#8e5b32' });
+    const road = pieces.filter((p) => !/Curb/.test(p.name)), curbs = pieces.filter((p) => /Curb/.test(p.name));
+    assert.ok(road.length >= 10 && curbs.length >= 10, 'a real road');
+    for (let i = 0; i < road.length; i++) for (let j = i + 1; j < road.length; j++) {
+      assert.ok(!inside(box(road[i]), box(road[j])), `seed ${seed}: ${road[i].name} overlaps ${road[j].name}`);
+    }
+    for (const c of curbs) for (const r of road) assert.ok(!inside(box(c), box(r)), `seed ${seed}: ${c.name} crosses ${r.name}`);
+    // The whole lane is paved: every point along it lies on some road piece.
+    const lane = C.laneLayout(seed).lane;
+    for (let i = 0; i < lane.length - 1; i++) for (let k = 0; k <= 20; k++) {
+      const x = lane[i][0] + (lane[i + 1][0] - lane[i][0]) * k / 20, z = lane[i][1] + (lane[i + 1][1] - lane[i][1]) * k / 20;
+      assert.ok(road.some((r) => { const b = box(r); return x >= b.x0 - 1e-6 && x <= b.x1 + 1e-6 && z >= b.z0 - 1e-6 && z <= b.z1 + 1e-6; }), `seed ${seed}: a gap in the road at ${x},${z}`);
+    }
+  }
 });

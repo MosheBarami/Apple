@@ -7,6 +7,7 @@ import type { InstanceSpec, PropValue, StudioOp } from '@golem/shared';
 import type { AgentCtx } from './tools';
 import type { InstanceSpecLite, Step } from './compose';
 import { LIBRARY_IMPORT_MS } from './local-owner-corpus';
+import { applySurfaceOp } from './surfaces';
 
 const ENUMS: Record<string, string> = { Material: 'Material', TopSurface: 'SurfaceType', BottomSurface: 'SurfaceType' };
 
@@ -80,6 +81,9 @@ export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done:
       await op({ op: 'delete_instances', paths: [path] }).catch(() => undefined);
       const out = await op({ op: 'edit_script', path, source: s.source, create: { className: s.className, parent: s.parent } }, 60_000);
       if (out.ok) count('script'); else report.problems.push(`script ${s.name}: ${clip(out.error)}`);
+    } else if (s.kind === 'surface') {
+      const out = await op(applySurfaceOp(s.paths, s.surface), 120_000);
+      if (out.ok) count('surface'); else report.problems.push(`studs: ${clip(out.error)}`);
     } else if (s.kind === 'set') {
       const props: Record<string, PropValue> = {};
       for (const [k, v] of Object.entries(s.props)) { const pv = propValue(k, v); if (pv) props[k] = pv; }

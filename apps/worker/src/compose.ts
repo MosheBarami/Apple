@@ -45,6 +45,8 @@ export interface Recipe {
   props: PropSpec[];
   base: LibRef;
   waves: { first: number; between: number; baseHealth: number; clearBonus?: number; list: { enemy: string; count: number; every: number }[][] };
+  /** 'studs' (the default) gives everything the game is made of classic studs; 'keep' when the user asked for their own surfaces. */
+  surface?: 'studs' | 'keep';
   seed: number;
 }
 
@@ -64,6 +66,8 @@ export type Step =
   | { kind: 'hide'; paths: string[] }
   /** Set properties of one existing instance (Lighting). */
   | { kind: 'set'; path: string; props: Record<string, unknown> }
+  /** Give every part under these places a classic surface on every face (surfaces.ts, after Resurface). */
+  | { kind: 'surface'; paths: string[]; surface: 'studs' }
   | { kind: 'delete'; paths: string[] };
 
 export interface InstanceSpecLite {
@@ -321,7 +325,13 @@ export function composeSteps(recipe: Recipe): Step[] {
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage.AppleComponents', name: 'AppleClientConfig',
     source: `-- ${recipe.title}: what the screens show. Written by Apple's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, words: recipe.words })}\n` });
 
-  // 7. The game's own studded HUD (stud-ui.ts), real editable instances in StarterGui that AppleGameUI makes work.
+  // 7. Studs on everything the game is made of: the map, the props, every library piece (bodies, costumes, trees,
+  //    projectiles) before the boot script copies them into creatures and defenders, so all of it shares one surface.
+  if ((recipe.surface ?? 'studs') === 'studs') {
+    steps.push({ kind: 'surface', surface: 'studs', paths: ['game.Workspace.AppleMap', 'game.ServerStorage.AppleParts'] });
+  }
+
+  // 8. The game's own studded HUD (stud-ui.ts), real editable instances in StarterGui that AppleGameUI makes work.
   steps.push({ kind: 'create', parent: 'game.StarterGui', items: [waveDefenseHud(
     recipe.defenders.map((d) => ({ id: d.id, name: d.name, price: d.price, blurb: d.blurb })), recipe.words,
   )] });

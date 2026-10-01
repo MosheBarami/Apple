@@ -1,6 +1,7 @@
 // SessionDO — one per project. Store of record for chat history, checkpoints and op logs.
 // Bridges: browser (WebSocket, hibernatable) <-> agent loop (alarm-driven steps) <-> Studio
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
+import { surfaceDefaultOp } from '../surfaces';
 import { lastUserText } from '../user-request';
 import { afterReady, continueGameLine, refuseRebuild, saysReady, type BuiltGameRecord } from '../run-flow';
 import { ideaRecipe } from '../compose-tool';
@@ -3567,6 +3568,9 @@ export class SessionDO extends DurableObject<Env> {
           message: "Apple couldn't save a copy of your place before starting, so this change can't be undone in one click. It is carrying on anyway.",
         });
       }
+      // STUDS BY DEFAULT (surfaces.ts): every part this run adds is studded unless the user asked for another
+      // surface. A plugin without the Surface family answers "unknown operation"; the run goes on either way.
+      try { await this.execStudioOp(surfaceDefaultOp(text), 10_000); } catch { /* a missed default is not a failed run */ }
     }
     await this.ctx.storage.setAlarm(Date.now() + 10);
   }

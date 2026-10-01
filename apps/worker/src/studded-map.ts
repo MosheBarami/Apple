@@ -2,7 +2,8 @@
  * A STUDDED map for a lane-defense idea, in the look of the owner's reference worlds (docs/ROBLOX-STYLE-SPEC.md and the
  * reference images of 2026-10-01): a raised grass island whose edge drops in BANDED rust cliffs into bright water, a
  * wide warm path with wooden curbs, dark soil plots in wooden frames with a sign, a gate the enemies come through, a sand
- * plaza at the base, a blue spawn pad, and the stud texture on every surface (the same public tile the studded GUI uses).
+ * plaza at the base, a blue spawn pad. Every brick is Plastic; the composer's surface step then gives everything the
+ * game is made of Resurface's classic studs on every face (surfaces.ts), so map, props and creatures share one surface.
  *
  * Built from parts on purpose: a studded world IS parts with studs (that is the style, not a stand-in for a model).
  * The props that would look poor as boxes (trees, barn, bushes, fences) come from the library (compose.ts).
@@ -10,7 +11,7 @@
  * AppleTile, OwnerName labels, Spawn) are kept exactly.
  */
 import type { InstanceSpecLite, Layout, P2 } from './compose';
-import { STUD_IMAGE } from './stud-ui';
+import { MOODS } from './worldbuilding';
 
 export interface StudPalette {
   grass: string; grassLight: string; path: string; curb: string; soil: string; soilDark: string; frame: string;
@@ -25,28 +26,17 @@ export const STUD_PALETTE: StudPalette = {
 
 const enumOf = (kind: string, item: string) => ({ t: 'EnumItem', v: `Enum.${kind}.${item}` });
 
-/** How many studs one stud image covers (the tile is a 4 x 4 grid of studs, so a stud is one stud wide, like a classic brick). */
-export const STUDS_PER_TILE = 4;
-
-type V3 = [number, number, number];
-
-/** The stud texture on the faces of a part, tinted by the part's colour so the studs read as part of the brick. */
-export function studs(colour: string, faces: string[] = ['Top']): InstanceSpecLite[] {
-  return faces.map((face) => ({
-    className: 'Texture', name: `Studs${face}`,
-    props: { Texture: STUD_IMAGE, Face: enumOf('NormalId', face), StudsPerTileU: STUDS_PER_TILE, StudsPerTileV: STUDS_PER_TILE, Color3: colour, Transparency: 0 },
-  }));
-}
-
-/** A studded brick: plastic, anchored, studs on the faces given. */
+/** A brick: Plastic and anchored (studded with everything else by the composer's surface step). */
 export function brick(name: string, size: V3, at: V3, colour: string, opts: { faces?: string[]; collide?: boolean; extra?: Record<string, unknown>; attributes?: Record<string, string | number | boolean>; children?: InstanceSpecLite[] } = {}): InstanceSpecLite {
   return {
     className: 'Part', name,
     props: { Size: size, Position: at, Anchored: true, Color: colour, Material: 'Plastic', TopSurface: 'Smooth', BottomSurface: 'Smooth', ...(opts.collide === false ? { CanCollide: false } : {}), ...opts.extra },
     ...(opts.attributes ? { attributes: opts.attributes } : {}),
-    children: [...studs(colour, opts.faces ?? ['Top']), ...(opts.children ?? [])],
+    ...(opts.children?.length ? { children: opts.children } : {}),
   };
 }
+
+type V3 = [number, number, number];
 
 const SIDES = ['Top', 'Front', 'Back', 'Left', 'Right'];
 
@@ -109,23 +99,9 @@ export function studdedMap(input: MapInput, pal: StudPalette = STUD_PALETTE): In
     island.push(brick(`Terrace${terraces}`, [w, h, d], [p[0], h / 2, p[1]], pal.grassLight, { faces: SIDES }));
   }
   items.push({ className: 'Model', name: 'Island', children: island });
-  items.push(brick('Water', [900, 2, 900], [gcx, -12, gcz], pal.water, { extra: { Material: 'SmoothPlastic', Transparency: 0.15, CanCollide: false } }));
+  items.push(brick('Water', [900, 2, 900], [gcx, -12, gcz], pal.water, { extra: { Transparency: 0.15, CanCollide: false } }));
 
-  // The path: warm studded road with wooden curbs both sides.
-  const road: InstanceSpecLite[] = [];
-  for (let i = 0; i < layout.lane.length - 1; i++) {
-    const [ax, az] = layout.lane[i]!, [bx, bz] = layout.lane[i + 1]!;
-    const len = Math.hypot(bx - ax, bz - az) + laneWidth;
-    const along = Math.abs(bx - ax) > Math.abs(bz - az);
-    const [cx, cz] = [(ax + bx) / 2, (az + bz) / 2];
-    road.push(brick(`Road${i + 1}`, along ? [len, 0.4, laneWidth] : [laneWidth, 0.4, len], [cx, 0.2, cz], pal.path, { collide: false }));
-    for (const side of [-1, 1]) {
-      const off = side * (laneWidth / 2 + 0.5);
-      road.push(brick(`Curb${i + 1}${side < 0 ? 'a' : 'b'}`, along ? [len - laneWidth + 1, 0.8, 1] : [1, 0.8, len - laneWidth + 1],
-        along ? [cx, 0.4, cz + off] : [cx + off, 0.4, cz], pal.curb, { faces: ['Top', 'Front', 'Back', 'Left', 'Right'] }));
-    }
-  }
-  items.push({ className: 'Model', name: 'Road', children: road });
+  items.push({ className: 'Model', name: 'Road', children: roadPieces(layout.lane, laneWidth, pal) });
   items.push({ className: 'Folder', name: 'Lanes', children: [{ className: 'Folder', name: 'Lane1', children: layout.lane.map(([x, z], i) => ({
     className: 'Part', name: String(i + 1), props: { Size: [2, 1, 2], Position: [x, 1.5, z], Anchored: true, Transparency: 1, CanCollide: false, CanQuery: false },
   })) }] });
@@ -163,7 +139,7 @@ export function studdedMap(input: MapInput, pal: StudPalette = STUD_PALETTE): In
   }) });
 
   // The spawn: a bright studded pad.
-  items.push({ className: 'SpawnLocation', name: 'Spawn', props: { Size: [10, 1, 10], Position: [layout.spawn[0], 0.5, layout.spawn[1]], Anchored: true, Color: pal.spawn, Material: 'Plastic', TopSurface: 'Smooth' }, children: studs(pal.spawn) });
+  items.push({ className: 'SpawnLocation', name: 'Spawn', props: { Size: [10, 1, 10], Position: [layout.spawn[0], 0.5, layout.spawn[1]], Anchored: true, Color: pal.spawn, Material: 'Plastic', TopSurface: 'Smooth' } });
 
   // Painted guidance (never floating arrows): yellow chevrons on the grass from the spawn to the nearest plot, so the
   // first thing to do is obvious from the first second (docs/research/roblox-games/2026-09-25-direct-play.md).
@@ -188,6 +164,42 @@ export function studdedMap(input: MapInput, pal: StudPalette = STUD_PALETTE): In
   return items;
 }
 
+/**
+ * The path, as pieces that never overlap (overlapping bricks flicker and show doubled studs): a square at every
+ * waypoint, a straight stretch between neighbours, and wooden curbs along the stretches and on the closed sides of each
+ * corner square, so no curb ever crosses the road. Exported for its tests.
+ */
+export function roadPieces(lane: P2[], laneWidth: number, pal: Pick<StudPalette, 'path' | 'curb'>): InstanceSpecLite[] {
+  const half = laneWidth / 2;
+  const out: InstanceSpecLite[] = [];
+  const unit = (a: P2, b: P2): P2 => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [Math.round((b[0] - a[0]) / d), Math.round((b[1] - a[1]) / d)]; };
+  lane.forEach(([x, z], i) => {
+    out.push(brick(`Corner${i + 1}`, [laneWidth, 0.4, laneWidth], [x, 0.2, z], pal.path, { collide: false }));
+    // The square's open sides face its neighbours; the others get a curb.
+    const open = [i > 0 ? unit(lane[i]!, lane[i - 1]!) : null, i < lane.length - 1 ? unit(lane[i]!, lane[i + 1]!) : null].filter(Boolean) as P2[];
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as P2[]) {
+      if (open.some(([ox, oz]) => ox === dx && oz === dz)) continue;
+      // The first and last squares stay open at their far end too (the gate and the base).
+      if ((i === 0 || i === lane.length - 1) && open.length === 1 && open[0]![0] === -dx && open[0]![1] === -dz) continue;
+      out.push(brick(`Corner${i + 1}Curb${dx}${dz}`, dx !== 0 ? [1, 0.8, laneWidth + 2] : [laneWidth + 2, 0.8, 1],
+        [x + dx * (half + 0.5), 0.4, z + dz * (half + 0.5)], pal.curb));
+    }
+  });
+  for (let i = 0; i < lane.length - 1; i++) {
+    const [ax, az] = lane[i]!, [bx, bz] = lane[i + 1]!;
+    const span = Math.hypot(bx - ax, bz - az) - laneWidth; // between the two squares
+    if (span <= 0.01) continue;
+    const along = Math.abs(bx - ax) > Math.abs(bz - az);
+    const [cx, cz] = [(ax + bx) / 2, (az + bz) / 2];
+    out.push(brick(`Road${i + 1}`, along ? [span, 0.4, laneWidth] : [laneWidth, 0.4, span], [cx, 0.2, cz], pal.path, { collide: false }));
+    for (const side of [-1, 1]) {
+      const off = side * (half + 0.5);
+      out.push(brick(`Curb${i + 1}${side < 0 ? 'a' : 'b'}`, along ? [span, 0.8, 1] : [1, 0.8, span], along ? [cx, 0.4, cz + off] : [cx + off, 0.4, cz], pal.curb));
+    }
+  }
+  return out;
+}
+
 /** Which axis a plot's nearest lane stretch runs along, so its sign faces the road. */
 function nearestLaneSide(p: P2, lane: P2[]): 'x' | 'z' {
   let best = Infinity, axis: 'x' | 'z' = 'x';
@@ -200,15 +212,17 @@ function nearestLaneSide(p: P2, lane: P2[]): 'x' | 'z' {
   return axis;
 }
 
-/** Bright, saturated, soft-shadowed daylight (the style spec's lighting): Lighting properties and its effects. */
+/** The lighting of a studded game: worldbuilding.ts MOODS.studded (the owner's lighting tutorial), as composer steps. */
 export function studLighting(): { props: Record<string, unknown>; effects: InstanceSpecLite[] } {
-  return {
-    props: { ClockTime: 14.5, Brightness: 2.4, Ambient: '#8c8c8c', OutdoorAmbient: '#9fb3c8', GlobalShadows: true, ShadowSoftness: 0.4, EnvironmentDiffuseScale: 1, EnvironmentSpecularScale: 0.4, ExposureCompensation: 0.15 },
-    effects: [
-      { className: 'Atmosphere', name: 'AppleAtmosphere', props: { Density: 0.22, Offset: 0.1, Color: '#d6ecff', Decay: '#9ccaf0', Glare: 0.2, Haze: 0.6 } },
-      { className: 'ColorCorrectionEffect', name: 'AppleColour', props: { Saturation: 0.22, Contrast: 0.08, Brightness: 0.03, TintColor: '#fffaf0' } },
-      { className: 'BloomEffect', name: 'AppleBloom', props: { Intensity: 0.35, Size: 24, Threshold: 1.4 } },
-      { className: 'SunRaysEffect', name: 'AppleSunRays', props: { Intensity: 0.04, Spread: 0.6 } },
-    ],
-  };
+  const m = MOODS.studded!;
+  const hex = (c: readonly number[]) => '#' + c.map((n) => Math.round(n).toString(16).padStart(2, '0')).join('');
+  const props: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(m.scriptable)) props[k] = Array.isArray(v) ? hex(v) : v;
+  const effects: InstanceSpecLite[] = [
+    { className: 'Atmosphere', name: 'AppleAtmosphere', props: { ...m.atmosphere, Color: hex(m.atmosphere.Color), Decay: hex(m.atmosphere.Decay) } },
+    { className: 'ColorCorrectionEffect', name: 'AppleColour', props: { ...m.colorCorrection, TintColor: hex(m.colorCorrection.TintColor) } },
+    { className: 'BloomEffect', name: 'AppleBloom', props: { ...m.bloom } },
+  ];
+  if (m.sunRays) effects.push({ className: 'SunRaysEffect', name: 'AppleSunRays', props: { ...m.sunRays } });
+  return { props, effects };
 }

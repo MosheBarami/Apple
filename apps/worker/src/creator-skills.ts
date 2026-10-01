@@ -343,6 +343,83 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
     'Grey default frames or thin text: they read as unfinished next to studded surfaces.',
     'Text with no outline on a bright stud surface becomes unreadable.',
   ] },
+  // From the owner's tutorial "How to Animate Models in Roblox Studio!" (RigEdit Lite on a cannon, read frame by frame 2026-10-01).
+  { id: 'props-rig-animate', title: 'Rig and animate a prop: doors, machines, keyboards, creatures, collectibles', domain: 'gameplay', summary: 'Make any model move the way builders do with RigEdit: a still root, Motor6Ds from the root outwards with each pivot on its hinge, then short keyframe clips started by a click, a prompt, a touch or a loop, with a sound. Played from code, so nothing is uploaded.', refs: ['uiAnimation'], keywords: ['animate', 'animation', 'rig', 'rigedit', 'motor6d', 'joint', 'hinge', 'door', 'keyboard', 'asmr', 'press', 'spin', 'bob', 'machine', 'cannon', 'move', 'moving'], implementation: { kind: 'existing_tool', id: 'animate_model', executableVerified: false, note: 'animate_model rigs (plugin Joints family, after RigEdit Lite) and writes clips played by the animate component; Studio-proven pieces: Motor6D rigging and C0 keyframes.' }, steps: [
+    'Choose the root: the part that never moves (a base, a frame, a body). It stays anchored and becomes the PrimaryPart.',
+    'Join the moving parts from the root outwards: rig.parts lists each part, with {part, to} when it hangs from another moving part (base -> barrel -> cap, body -> arm -> hand, keyboard -> key). Each joint is named after its part. Parts that must never move join with joint "weld".',
+    'Put every pivot on its hinge with rig.pivots [{joint, at = world point}]: a door at its hinge edge, a key at the middle of its bottom face, a lid at its back edge, a wheel at its centre. turn [x, y, z] degrees turns the pivot when the hinge axis is not the part\'s own.',
+    'Write short clips with a rest pose at both ends so nothing pops: a press 0.2-0.3 s (down in 0.08 with Quad, back with Back), a door 0.6 s with Sine, a recoil 0.25 s, a spin as a loop from rot 0 to 360, a bob as a loop up and back. Name a clip Part.name (Key_A.press) so 60 keys share one rig and each plays from its own key.',
+    'Give interactive clips a trigger (click for small things, prompt with an action text for doors and machines, touch for pads) and a sound from find_sound (a click for keys, a creak for doors); a little pitch variety is added for you.',
+    'Play-check it: the parts must move and come back to rest, and nothing may fall (only the root is anchored, the rest hang on joints).',
+  ], verification: [
+    'Play: trigger every clip; the part moves about its hinge (not its centre) and returns exactly to rest.',
+    'Play: nothing falls or drifts when the game starts (every unanchored part is joined).',
+    'Repeated clicks restart the clip cleanly; a looping clip never jumps at its seam.',
+  ], failureModes: [
+    'A pivot left at the part centre: a door spins in place instead of swinging.',
+    'A moving part left anchored, or never joined, so it falls or never moves.',
+    'Joints built in the wrong order (child first): the parent ends up hanging from the child.',
+    'Tweening the part CFrame while a joint drives it: the two fight and the part jitters.',
+  ] },
+  // From the owner's tutorial "Make Your Roblox Game Look 10x Better With Lighting" (values read frame by frame 2026-10-01).
+  { id: 'lighting-10x-better', title: 'Make a game look 10x better with lighting', domain: 'worldbuilding', summary: 'The lighting pass that turns a flat default place into a finished-looking one: sky-tinted ambient, bright key with soft shadows, Atmosphere haze that melts the horizon, a little bloom and sun rays, a cool colour grade, and surface detail on big flat areas.', refs: ['perfDesign'], keywords: ['lighting', 'light', 'atmosphere', 'bloom', 'sky', 'better', 'cooler', 'pretty', 'beautiful', 'look', 'graphics', '10x', '100x'], implementation: { kind: 'existing_tool', id: 'set_mood', executableVerified: true, note: 'set_mood "studded" applies the video\'s recipe (worldbuilding.ts MOODS.studded).' }, steps: [
+    'Apply set_mood "studded" for a bright cartoony or studded game (blue-tinted Ambient 84,107,156 and OutdoorAmbient 117,120,145, Brightness 3, ShadowSoftness 0.2, Atmosphere Density 0.34 Offset 0 Haze 1.27, Bloom 1/56/2, SunRays 0.01, a cool tint); pick another mood only when the idea asks for one (night, horror, golden).',
+    'Choose the sun with ClockTime and GeographicLatitude together: a lower sun gives long shadows and a warm glow; keep the play area readable.',
+    'Keep bloom and sun rays subtle: the tutorial turns Glare back to 0 and warns "not that much". Judge on the picture, change one thing at a time.',
+    'Never leave big flat areas blank: studs on every surface (the default) and slight colour variation between neighbouring blocks so repeats do not look copied.',
+    'Tell the user the two settings Apple cannot script, once: Lighting.LightingStyle Realistic and PrioritizeLightingQuality (Properties pane).',
+  ], verification: [
+    'A screenshot before and after: shadows tinted, horizon hazy, no blown-out white surfaces.',
+    'The play area stays readable: the player and the important objects are not lost in haze or glare.',
+  ], failureModes: [
+    'Bloom or glare so strong that bright parts turn into white blobs.',
+    'Haze so dense the far side of the map disappears.',
+    'Neutral grey ambient: shadows look dead and the scene looks unfinished.',
+  ] },
+  { id: 'make-it-cooler', title: 'Make it look 10x / 100x cooler', domain: 'worldbuilding', summary: 'What "make it cooler", "make it pretty", "make it pop" means in a Roblox place: lighting, surfaces, a landmark, clustered detail, motion and feedback, all in the place\'s own style, never by deleting what the user built.', refs: ['perfDesign'], keywords: ['cooler', 'cool', '10x', '100x', 'better', 'pretty', 'awesome', 'epic', 'pop', 'polish', 'juice', 'improve', 'upgrade'], steps: [
+    'Inspect first (what the place is, what the player does, what already looks good) and keep everything the user made; then set_mood (studded for a bright game), the biggest change for the least work (lighting-10x-better).',
+    'Surfaces: everything Apple adds is studded by default; flat blank floors get height variation (terraces, steps, borders) and colour variation.',
+    'One landmark: the tallest, most colourful thing, visible from the spawn (a tree, a tower, a statue from find_library_model), at least 1.25x the next tallest.',
+    'Detail in clusters, not sprinkles: 3-6 library props around each area (bushes, flowers, rocks, crates, lamps), scaled to the 5-stud player, turned a little each.',
+    'Motion: make 2-4 things move (animate_model): a spinning sign, a bobbing coin, a swinging door, a windmill; effects from insert_vfx (sparkles on the reward, dust on the path).',
+    'Feedback: every action the player takes gets a sound (find_sound) and a visible reaction, the UI gets the studded look (build_studded_ui) if it is plain; then look at it in play from the player\'s eyes before saying it is done.',
+  ], verification: [
+    'Before and after screenshots from the spawn: the after has a landmark, lighting, motion and no empty flat areas.',
+    'Nothing the user built was removed or broken.',
+  ], failureModes: [
+    'Replacing the user\'s build with a template.',
+    'Props scattered evenly like confetti, all the same size and facing.',
+    'Effects and bloom piled on until the game is unreadable.',
+  ] },
+  { id: 'map-improve', title: 'Improve a map: paths, height, landmarks, life', domain: 'worldbuilding', summary: 'Turn a flat or broken map into a finished one: clean paths, raised areas and borders, a landmark, props from the library in clusters, moving things and ambient effects, in one consistent style.', refs: ['perfDesign'], keywords: ['map', 'world', 'terrain', 'island', 'level', 'environment', 'improve', 'better', 'broken', 'ugly', 'empty'], steps: [
+    'Read the map (get_tree, render_view) and list what is wrong: overlapping or z-fighting parts, paths that cross themselves, floating props, empty stretches, props at the wrong scale.',
+    'Fix structure first with plain parts: paths as non-overlapping pieces (one square per corner, straight runs between), curbs only on closed sides, borders around play areas, 2-3 height levels (terraces, cliffs in bands, ramps).',
+    'Place library models for everything that is not a plain shape (find_library_model / insert_library_model): trees, bushes, rocks, fences, lamps, buildings. Cluster them by area, scale them to the player, vary rotation.',
+    'Add one landmark and signposting: big signs with real words, painted arrows on the ground toward the first goal.',
+    'Bring it to life: animate_model for windmills, gates, fans, signs; insert_vfx for sparkles, leaves, dust; ambient sound (find_sound) for the place.',
+    'Finish with lighting (set_mood) and check from the spawn at player height.',
+  ], verification: [
+    'No two path pieces overlap and no curb crosses a path (look at the corners).',
+    'From the spawn: a landmark, a clear route, nothing floating, nothing flickering.',
+  ], failureModes: [
+    'Overlapping bricks: flickering colours and doubled studs.',
+    'Hand-built props from parts (trees, rocks, lamps): they read as a blockout. Use the library.',
+    'A flat map with props sprinkled on it.',
+  ] },
+  { id: 'any-idea-done-right', title: 'Do any request completely, however small or silly', domain: 'genre_pattern', summary: 'People ask for anything: "make me a stick of butter", "an asmr keyboard", "make it 100x cooler". Every one gets a complete, good-looking, working result in the studded style, never a refusal and never a bare part.', refs: ['perfDesign'], keywords: ['butter', 'keyboard', 'asmr', 'object', 'thing', 'make me', 'build me', 'silly', 'random', 'item', 'prop', 'toy'], steps: [
+    'Read the idea for what would delight the person: an object should look right, sit somewhere nice, and DO something (be clicked, picked up, spun, squished, make a sound).',
+    'Look in the library first (find_library_model) for the object itself; when there is none and the object is a simple shape (a stick of butter, a box, a sign, a keyboard of keys), build it from parts in the studded style with correct real-world proportions and colours (butter: a pale yellow block 2 x 0.6 x 0.6 per stick with a paper wrapper half on it).',
+    'Give it a stage: a small studded platform or table in good lighting (set_mood studded), the camera can see it from the spawn.',
+    'Give it life: animate_model (a key that presses, a lid that opens, a stick that wobbles when clicked), a sound from find_sound on every interaction (an ASMR keyboard needs a satisfying click on every key), and a small effect.',
+    'Make interactions work in play and say in one friendly sentence what the person can do with it.',
+  ], verification: [
+    'Play: the object is visible from the spawn and looks like the thing asked for (proportions, colours, studs).',
+    'Play: every interaction works, moves and makes its sound.',
+  ], failureModes: [
+    'Answering a small request with "I can only build games".',
+    'A single grey part named after the object.',
+    'A beautiful object that does nothing when the player touches it.',
+  ] },
   { id: 'ui-responsive-hud-anchors', title: 'Anchor a responsive gameplay HUD', domain: 'ui', summary: 'Place persistent HUD regions with scale-first sizing, bounded offsets and no overlap at phone aspect ratios.', refs: ['uiPosition', 'uiSize'], keywords: ['hud', 'responsive', 'anchor'], steps: ['List the always-visible HUD regions and their priority.', 'Use anchors and scale for placement; reserve offsets for minimum padding and icon sizes.', 'Add constraints only where distortion would break meaning.', 'Collapse or move secondary regions at the narrow breakpoint.'], verification: ['Capture the smallest phone, a tall phone and 16:9 desktop.', 'Confirm no region covers the thumb input area or another required control.'], failureModes: ['Pixel-only placement drifts off-screen on tall or narrow devices.', 'Every region keeps desktop size and leaves no gameplay viewport.'] },
   { id: 'ui-safe-area-and-topbar', title: 'Keep UI out of device and Core UI insets', domain: 'ui', summary: 'Respect screen insets so controls are not hidden by notches, the top bar or device corners.', refs: ['uiScreen', 'uiPosition'], keywords: ['safe area', 'inset', 'topbar'], steps: ['Identify which containers should respect versus intentionally ignore insets.', 'Apply the inset policy at the root container instead of compensating every child.', 'Keep critical actions inside an additional touch-safe margin.'], verification: ['Inspect a notched phone and desktop with Core UI visible.', 'Confirm dismiss, purchase and pause actions remain reachable.'], failureModes: ['Manual offsets double-apply an inset on some devices.', 'Fullscreen art is treated like interactive content and shrinks unnecessarily.'] },
   { id: 'ui-text-hierarchy-scaling', title: 'Build a scalable text hierarchy', domain: 'ui', summary: 'Define title, body, label and numeric emphasis that remain legible without uncontrolled TextScaled distortion.', refs: ['uiSize', 'uiAppearance'], keywords: ['text', 'typography', 'legibility'], steps: ['Assign each text role a size range and line limit.', 'Use constraints to bound scaling and keep body copy from becoming headline-sized.', 'Reserve stroke or shadow for contrast, not decoration on every label.'], verification: ['Check longest supported localized string and smallest viewport.', 'Read the hierarchy at gameplay distance without opening Studio properties.'], failureModes: ['Unlimited TextScaled produces inconsistent hierarchy.', 'Rich effects reduce contrast on moving backgrounds.'] },

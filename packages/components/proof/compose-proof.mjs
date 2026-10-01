@@ -20,6 +20,7 @@ execFileSync(join(ROOT, 'apps/worker/node_modules/.bin/esbuild'), [join(ROOT, 'a
 const M = await import(bundle);
 const steps = M.composeSteps(M[recipeName]());
 writeFileSync(join(out, 'steps.json'), JSON.stringify(steps));
+writeFileSync(join(out, 'surfaces.json'), JSON.stringify(M.SURFACE_MAPS));
 const LIB = join(homedir(), 'Library/Application Support/Apple/owner-library/sources');
 const sources = readdirSync(LIB);
 const lune = join(homedir(), '.rokit/tool-storage/lune-org/lune/0.10.5/lune');

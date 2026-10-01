@@ -1,0 +1,89 @@
+# Third-party notices — Apple Studio plugin
+
+## Resurface
+
+- Original work: **Resurface** by **cxmeel** — https://github.com/cxmeel/resurface-plugin
+  (Creator Store asset 5070921519). Copyright (c) 2024 cxmeel. Provided under the Resurface License (Modified
+  File-Level License); its full text is reproduced below.
+- Used for: Apple's classic surfaces. Every part Apple makes is studded unless the user asks for another surface.
+- Credit in the product: the Apple Studio panel shows "Classic studs by Resurface (cxmeel) ·
+  github.com/cxmeel/resurface-plugin".
+- File derived from Resurface (kept open source, as the licence requires): `src/ops/Surface.luau`, from
+  Resurface's `src/ResurfaceApi.luau`, `src/Assets/MaterialVariants.luau` and `src/Lib/createUniqueKey.luau`
+  (commit 334997a2645e9794288e50fea3dc9188903b9294, 2026-04-28).
+- Apple is distributed free of charge.
+
+### Changes and additions (Resurface License §3)
+
+1. The surface logic runs as an Apple plugin operation family (`apply_surface`, `set_surface_default`) instead of
+   Resurface's own UI. There is no surface picker, no hotkeys, no classic menu and no preferences store.
+2. Surfaces always go on every face as a MaterialVariant on Plastic. Resurface's per-face legacy `*Surface` mode and its
+   "Use MaterialVariants" toggles are not carried over. Smooth and SmoothNoOutlines reset the part as Resurface does.
+3. The surface maps (Resurface's public image ids) are not stored in the plugin. Apple's server sends them with each
+   operation (`apps/worker/src/surfaces.ts`), and the plugin checks each one is an image id.
+4. New: a watcher around every Apple write studs the parts that write adds, inside the same undo recording. It skips
+   invisible parts, Neon/Glass/ForceField parts, parts that already have a MaterialVariant, meshes with a
+   SurfaceAppearance, and Terrain. It can be turned off for a connection (`set_surface_default keep`).
+5. A variant already in the place with the same maps is reused (as Resurface does). New ones are named with
+   Resurface's unique-name rule (`Studs`, `Studs_2`, …).
+6. Undo recording is the Apple command engine's own, not a separate recording per apply.
+
+### Resurface License
+
+```
+RESURFACE LICENSE
+Copyright (c) 2024 cxmeel
+
+This software is provided under a Modified File-Level License. By using,
+modifying, or distributing "Resurface," you agree to the following terms:
+
+1. ATTRIBUTION
+Any distribution of this software—including modified versions—must include
+prominent credit to the original creator (cxmeels) and a link to the
+original source.
+
+2. COMMERCIAL USE & "SUBSTANTIAL CHANGE" RULE
+You are strictly prohibited from selling or charging for this software if it
+is distributed in its original or "minimally changed" form.
+
+- Prohibited: Selling the plugin with only cosmetic or trivial changes
+  (e.g., UI color swaps, icon changes, or name changes).
+- Permitted: You may only charge for this software if you have added
+  SUBSTANTIAL new functionality or significant features that do not
+  exist in the original version.
+
+3. DISCLOSURE OF CHANGES
+If you distribute a modified version of this software (whether for free or
+for a fee), you must provide a clear and public list of all changes and
+additions made. This summary must be provided even if the new code files
+themselves remain private under Section 4.
+
+4. SOURCE DISCLOSURE (FILE-LEVEL)
+- Original & Modified Files: Any scripts or files originally authored
+  by cxmeels (or modifications made to those specific files) must remain
+  open-source and be provided to the recipient for free upon request.
+- Private Additions: Any entirely new, separate scripts or modules
+  created by a third party may remain private and proprietary at the
+  distributor's discretion.
+
+5. DISCLAIMER
+This software is provided "as is", without warranty of any kind, express or
+implied. The author shall not be liable for any claim, damages, or other
+liability arising from the use of this software.
+```
+
+## RigEdit Lite
+
+- Original work: **RigEdit Lite**, the free version of the RigEdit Roblox Studio plugin (the owner supplied
+  `rigedit plugin.rbxm` on 2026-10-01; its devforum guide is "rigedit-create-and-edit-animation-rigs"). The file names
+  no author and carries no licence text. Ask before shipping anything beyond the credit and the method below.
+- Used for: the joint method Apple's agent rigs models with. `src/ops/Joints.luau` re-implements, in new code,
+  RigEdit's Create Joints, Create Welds, Reset Joints and the pivot move/rotate maths of its edit handles. No RigEdit UI,
+  handle adornments, settings or assets are included.
+- Changes and additions:
+  1. Operations driven by Apple's server (`rig_model`, `set_joint_pivot`, `reset_joints`) instead of a selection-driven panel.
+  2. `rig_model` joins every other part of a model to the root by default, or follows `{part, to}` pairs for chains.
+     It reuses a joint that already joins the same pair, keeps the root anchored and sets it as PrimaryPart.
+  3. `set_joint_pivot` takes a world point and turn angles instead of mouse drags, with the same C0/C1 maths.
+  4. Joints are animated by Apple's own player (`packages/components/animate`), which keyframes Motor6D C0 from code,
+     instead of the Animation Editor and an uploaded animation asset.

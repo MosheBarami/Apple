@@ -1,0 +1,188 @@
+--!strict
+--[[
+	AppleAnimate: plays animations on rigged models from code, so nothing is uploaded and the game runs without Apple.
+	A model is rigged the RigEdit way (every moving part joined to an anchored root by a Motor6D named after the part,
+	the joint's pivot on the hinge: apps/apple-plugin/src/ops/Joints.luau). Its animations are a ModuleScript named
+	AppleAnimations inside the model:
+
+	  return {
+	    spin  = { play = "loop", length = 4, keys = { { t = 0, Fan = { rot = {0,0,0} } }, { t = 4, Fan = { rot = {0,360,0} } } } },
+	    press = { play = "click", length = 0.25, sound = "rbxassetid://...", keys = {
+	              { t = 0, Key = { move = {0,0,0} } }, { t = 0.08, Key = { move = {0,-0.3,0} }, ease = "Quad" },
+	              { t = 0.25, Key = { move = {0,0,0} }, ease = "Back" } } },
+	  }
+
+	Each key gives, per joint name, `rot` (degrees about the pivot's axes) and/or `move` (studs along them), and the
+	`ease` (Linear, Sine, Quad, Back, Bounce, Elastic) of the stretch that ends at it. `play` is "loop", "click"
+	(a ClickDetector), "prompt" (a ProximityPrompt; `prompt` gives its text), "touch", or "once" (at start). A clip
+	whose name starts with a joint's part name ("Key_A.press") plays from that part only, so 60 keys share one rig.
+	Joints move by their C0 (it replicates), offset from where they rest.
+	The model is found by its child AppleAnimations; anything added later is found too.
+]]
+local AppleAnimate = {}
+
+export type Pose = { rot: { number }?, move: { number }? }
+
+--[[ Pure: the eased share of a stretch done at u (0..1). ]]
+function AppleAnimate.ease(style: string?, u: number): number
+	u = math.clamp(u, 0, 1)
+	if style == "Sine" then return 1 - math.cos(u * math.pi / 2) end
+	if style == "Quad" then return 1 - (1 - u) * (1 - u) end
+	if style == "Back" then local c = 1.70158; local v = u - 1; return 1 + (c + 1) * v * v * v + c * v * v end
+	if style == "Bounce" then
+		local n, d = 7.5625, 2.75
+		if u < 1 / d then return n * u * u
+		elseif u < 2 / d then u -= 1.5 / d; return n * u * u + 0.75
+		elseif u < 2.5 / d then u -= 2.25 / d; return n * u * u + 0.9375 end
+		u -= 2.625 / d
+		return n * u * u + 0.984375
+	end
+	if style == "Elastic" then
+		if u == 0 or u == 1 then return u end
+		return 2 ^ (-10 * u) * math.sin((u * 10 - 0.75) * (2 * math.pi) / 3) + 1
+	end
+	return u
+end
+
+--[[ Pure: one joint's pose (rot and move as numbers) at time t of a clip, from the keys that name it. Before the first
+	key and after the last, the nearest key holds. Missing fields are zero. ]]
+function AppleAnimate.sample(keys: { any }, joint: string, t: number): ({ number }, { number })
+	local before, after = nil, nil
+	for _, k in keys do
+		if k[joint] ~= nil then
+			if k.t <= t and (before == nil or k.t >= before.t) then before = k end
+			if k.t >= t and (after == nil or k.t < after.t) then after = k end
+		end
+	end
+	local function parts(k: any): ({ number }, { number })
+		local p = k and k[joint] or {}
+		return p.rot or { 0, 0, 0 }, p.move or { 0, 0, 0 }
+	end
+	if not before and not after then return { 0, 0, 0 }, { 0, 0, 0 } end
+	if not before then return parts(after) end
+	if not after or after.t == before.t then return parts(before) end
+	local u = AppleAnimate.ease(after.ease, (t - before.t) / (after.t - before.t))
+	local r0, m0 = parts(before)
+	local r1, m1 = parts(after)
+	local r, m = {}, {}
+	for i = 1, 3 do
+		r[i] = r0[i] + (r1[i] - r0[i]) * u
+		m[i] = m0[i] + (m1[i] - m0[i]) * u
+	end
+	return r, m
+end
+
+--[[ Pure: the joints a clip moves. ]]
+function AppleAnimate.jointsOf(keys: { any }): { string }
+	local seen, out = {}, {}
+	for _, k in keys do
+		for name, v in k do
+			if name ~= "t" and name ~= "ease" and type(v) == "table" and not seen[name] then seen[name] = true; table.insert(out, name) end
+		end
+	end
+	table.sort(out)
+	return out
+end
+
+function AppleAnimate.start()
+	local RunService = game:GetService("RunService")
+	local active: { { model: Model, joints: { [string]: Motor6D }, rest: { [Motor6D]: CFrame }, clip: any, t: number, loop: boolean } } = {}
+
+	local function jointsIn(model: Model): ({ [string]: Motor6D }, { [Motor6D]: CFrame })
+		local byName, rest = {}, {}
+		for _, d in model:GetDescendants() do
+			if d:IsA("Motor6D") then byName[d.Name] = d; rest[d] = d.C0 end
+		end
+		return byName, rest
+	end
+
+	local function play(model: Model, joints: { [string]: Motor6D }, rest: { [Motor6D]: CFrame }, clip: any, loop: boolean)
+		for _, a in active do
+			if a.model == model and a.clip == clip then a.t = 0; return end -- pressing again restarts it
+		end
+		table.insert(active, { model = model, joints = joints, rest = rest, clip = clip, t = 0, loop = loop })
+		if type(clip.sound) == "string" and clip.sound ~= "" then
+			local root = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+			if root then
+				local s = Instance.new("Sound")
+				s.SoundId = clip.sound
+				s.Volume = clip.volume or 0.6
+				s.PlaybackSpeed = (clip.pitch or 1) * (1 + (math.random() - 0.5) * 0.08) -- a little variety, like real keys
+				s.Parent = root
+				s:Play()
+				s.Ended:Connect(function() s:Destroy() end)
+			end
+		end
+	end
+
+	local function wire(model: Model, module: ModuleScript)
+		local ok, clips = pcall(require, module)
+		if not ok or type(clips) ~= "table" then warn("AppleAnimate: " .. model:GetFullName() .. " has unreadable animations"); return end
+		local joints, rest = jointsIn(model)
+		for name, clip in clips do
+			if type(clip) ~= "table" or type(clip.keys) ~= "table" then continue end
+			clip.length = clip.length or 1
+			-- "Key_A.press" plays only from the part Key_A; "press" from the whole model.
+			local partName = string.match(name, "^(.-)%.")
+			local target: Instance = model
+			if partName then target = model:FindFirstChild(partName, true) or model end
+			local how = clip.play or "once"
+			if how == "loop" or how == "once" then
+				play(model, joints, rest, clip, how == "loop")
+			elseif how == "click" then
+				local cd = target:FindFirstChildWhichIsA("ClickDetector") or Instance.new("ClickDetector")
+				cd.MaxActivationDistance = clip.reach or 32
+				cd.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
+				cd.MouseClick:Connect(function() play(model, joints, rest, clip, false) end)
+			elseif how == "prompt" then
+				local pp = Instance.new("ProximityPrompt")
+				pp.ActionText = clip.prompt or "Use"
+				pp.ObjectText = model.Name
+				pp.MaxActivationDistance = clip.reach or 10
+				pp.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
+				pp.Triggered:Connect(function() play(model, joints, rest, clip, false) end)
+			elseif how == "touch" then
+				local part = if target:IsA("BasePart") then target else model.PrimaryPart
+				local last = 0
+				if part then
+					part.Touched:Connect(function(hit)
+						if hit.Parent and hit.Parent:FindFirstChildOfClass("Humanoid") and os.clock() - last > (clip.length + 0.1) then
+							last = os.clock()
+							play(model, joints, rest, clip, false)
+						end
+					end)
+				end
+			end
+		end
+	end
+
+	local function consider(d: Instance)
+		if d:IsA("ModuleScript") and d.Name == "AppleAnimations" and d.Parent and d.Parent:IsA("Model") then
+			task.defer(wire, d.Parent :: Model, d)
+		end
+	end
+	for _, d in workspace:GetDescendants() do consider(d) end
+	workspace.DescendantAdded:Connect(consider)
+
+	RunService.Heartbeat:Connect(function(dt)
+		for i = #active, 1, -1 do
+			local a = active[i]
+			if not a.model.Parent then table.remove(active, i); continue end
+			a.t += dt
+			local finished = a.t >= a.clip.length
+			if finished and a.loop then a.t %= a.clip.length; finished = false end
+			local t = math.min(a.t, a.clip.length)
+			for _, name in AppleAnimate.jointsOf(a.clip.keys) do
+				local j = a.joints[name]
+				if j and a.rest[j] then
+					local r, m = AppleAnimate.sample(a.clip.keys, name, t)
+					j.C0 = a.rest[j] * CFrame.new(m[1], m[2], m[3]) * CFrame.Angles(math.rad(r[1]), math.rad(r[2]), math.rad(r[3]))
+				end
+			end
+			if finished then table.remove(active, i) end
+		end
+	end)
+end
+
+if script and script:IsA("Script") then AppleAnimate.start() end
+return AppleAnimate
