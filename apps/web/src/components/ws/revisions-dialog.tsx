@@ -26,12 +26,18 @@ import {
   MessageBranchPrevious,
   MessageBranchSelector,
 } from '../ai-elements/message';
-import './revisions-dialog.css';
+import { cn } from '../../lib/utils';
 
 // PAGED, WITH THE CURRENT TEXT AS THE ANCHOR (AI Elements MessageBranch). The versions are pages —
 // "2 of 3", Previous and Next — in the order they were written, opening on the one in force. While an
 // older page is showing, what the message says now stays under it, because the point of this
 // dialog is comparing the two. Still read-only: paging chooses what to READ, never what to run.
+
+// A prompt's line breaks are part of what was typed (`whitespace-pre-wrap`), and a pasted id or URL has
+// no break opportunity (`wrap-anywhere`), so neither may widen the dialog or be collapsed.
+const ITEM = 'grid min-w-0 gap-1.5 py-3.5';
+const WHEN = 'm-0 min-w-0 text-[11px] leading-normal tabular-nums text-muted-foreground';
+const TEXT = 'm-0 min-w-0 whitespace-pre-wrap text-sm leading-relaxed wrap-anywhere';
 
 export function RevisionsDialog({
   projectId,
@@ -75,39 +81,39 @@ export function RevisionsDialog({
       {!failed && revisions === null && <p className="page-note">Reading…</p>}
 
       {!failed && revisions !== null && (
-        <MessageBranch className="gx-revs" defaultBranch={revisions.length} onBranchChange={setPage}>
-          <MessageBranchContent>
+        <MessageBranch className={cn('aie gx-revs grid min-w-0 gap-3')} defaultBranch={revisions.length} onBranchChange={setPage}>
+          <MessageBranchContent className="border-b border-border motion-safe:animate-in motion-safe:fade-in-0">
             {[
               ...revisions.map((r) => (
-                <div key={r.seq} className="gx-revs__item">
-                  <p className="gx-revs__when">
+                <div key={r.seq} className={ITEM}>
+                  <p className={WHEN}>
                     {/* The stamp is the time the version was WRITTEN, carried across with the text, so
                         a draft from last week does not claim to be from the moment it was replaced. */}
                     Version {r.seq + 1}
                     {clockTime(new Date(r.createdAt).getTime()) ? ` · ${clockTime(new Date(r.createdAt).getTime())}` : ''}
                   </p>
-                  <p className="gx-revs__text" dir="auto">
+                  <p className={cn(TEXT, 'text-muted-foreground')} dir="auto">
                     {r.content}
                   </p>
                 </div>
               )),
-              <div key="current" className="gx-revs__item is-current">
-                <p className="gx-revs__when">Current</p>
-                <p className="gx-revs__text" dir="auto">
+              <div key="current" className={cn(ITEM, 'is-current')}>
+                <p className={WHEN}>Current</p>
+                <p className={cn(TEXT, 'text-foreground')} dir="auto">
                   {current}
                 </p>
               </div>,
             ]}
           </MessageBranchContent>
-          <MessageBranchSelector className="gx-revs__pager">
+          <MessageBranchSelector className="justify-center gap-1">
             <MessageBranchPrevious aria-label="Earlier version" />
-            <MessageBranchPage aria-live="polite" />
+            <MessageBranchPage aria-live="polite" className="min-w-16 justify-center tabular-nums" />
             <MessageBranchNext aria-label="Later version" />
           </MessageBranchSelector>
           {page !== null && page < revisions.length && (
-            <div className="gx-revs__anchor">
-              <p className="gx-revs__when">Now</p>
-              <p className="gx-revs__text" dir="auto">
+            <div className="grid gap-1.5 rounded-md border border-border px-3.5 py-3">
+              <p className={WHEN}>Now</p>
+              <p className={cn(TEXT, 'text-foreground')} dir="auto">
                 {current}
               </p>
             </div>

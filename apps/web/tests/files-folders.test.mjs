@@ -88,5 +88,8 @@ test('A FOLDER ROW IS NOT A BUTTON INSIDE A BUTTON', () => {
   const opens = (row.match(/<button/g) ?? []).length;
   const closes = (row.match(/<\/button>/g) ?? []).length;
   assert.equal(opens, closes, 'every button in the folder row must be closed before the next one opens');
-  assert.ok(opens >= 3, 'the row has a name control and two actions');
+  // RESTATED: the folder's name control is now upstream's own FileTreeFolder button (it is not in
+  // this source), so what this branch itself owns is the two actions — Rename and Delete.
+  assert.ok(opens >= 2, 'the folder row carries its two actions, Rename and Delete');
+  assert.match(row, /<FileTreeFolder\b/, 'and the name control is upstream FileTreeFolder, not a hand-made button around the row');
 });

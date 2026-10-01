@@ -10,8 +10,7 @@
 // with the arrow keys, Home/End, Enter/Space to choose, Escape or Tab to close, focus handed back to
 // whatever opened it. The same menu opens from a visible "More" button, because a right-click is
 // invisible to a keyboard, a screen reader and most phones.
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { useIsomorphicLayoutEffect } from '../../ai-elements/lib/use-isomorphic-layout-effect';
+import { useLayoutEffect, useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import './context-menu.css';
 
@@ -74,7 +73,7 @@ function MenuPanel({ at, items, label, onClose }: { at: MenuAnchor; items: reado
 
   // Placed after measuring, flipped to the other side of the pointer where it would leave the
   // window. The transform origin is the corner nearest the pointer, so it grows out of the click.
-  useIsomorphicLayoutEffect(() => {
+  useLayoutEffect(() => {
     const el = panel.current;
     if (!el) return;
     const w = el.offsetWidth;
@@ -91,7 +90,7 @@ function MenuPanel({ at, items, label, onClose }: { at: MenuAnchor; items: reado
   const rows = () => Array.from(panel.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
 
   // The one highlight follows the active row.
-  useIsomorphicLayoutEffect(() => {
+  useLayoutEffect(() => {
     const row = rows()[active];
     if (!row) return;
     setBed({ top: row.offsetTop, height: row.offsetHeight });

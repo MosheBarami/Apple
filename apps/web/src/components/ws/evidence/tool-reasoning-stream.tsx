@@ -38,11 +38,8 @@ export function ReasoningSummary({ status, running, defaultOpen = false }: { sta
   return (
     <Reasoning isStreaming={running} defaultOpen={defaultOpen}>
       <ReasoningTrigger getThinkingMessage={(streaming) => (streaming ? <Shimmer as="span" duration={1.6}>{v.phase}</Shimmer> : <span>How this run was planned</span>)} />
-      <ReasoningContent>
-        <p>{v.phase}</p>
-        {v.effort && <p>Effort: {v.effort}</p>}
-        {v.reason && <p>{v.reason}</p>}
-      </ReasoningContent>
+      {/* Upstream's ReasoningContent renders markdown from a string: one paragraph per fact. */}
+      <ReasoningContent>{[v.phase, v.effort ? `Effort: ${v.effort}` : '', v.reason ?? ''].filter(Boolean).join('\n\n')}</ReasoningContent>
     </Reasoning>
   );
 }

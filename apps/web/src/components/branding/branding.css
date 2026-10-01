@@ -4,7 +4,7 @@
 .brand__gallery { display:grid; grid-template-columns:minmax(160px,240px) 1fr; gap:20px; align-items:start; }
 .brand__art { margin:0; display:grid; gap:8px; }
 .brand__art--thumbnail ~ .brand__art--thumbnail { grid-column:2; }
-.brand__art .ai-elements-image { width:100%; height:auto; border:1px solid var(--line); border-radius:var(--r-md); }
+.brand__art img { width:100%; height:auto; border:1px solid var(--line); border-radius:var(--r-md); }
 .brand__art figcaption { display:grid; gap:6px; font-size:13px; }
 .brand__prov { color:var(--muted); font-size:12px; }
 .brand__dl { justify-self:start; }

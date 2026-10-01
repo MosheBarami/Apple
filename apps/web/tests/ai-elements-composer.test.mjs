@@ -41,7 +41,7 @@ const ui = await bundle(
   } from './src/components/ai-elements/prompt-input';
   import {
     DropdownMenuCheckboxItem, DropdownMenuRadioGroup, DropdownMenuRadioItem,
-  } from './src/components/ai-elements/ui/dropdown-menu';
+  } from './src/components/ui/dropdown-menu';
   export { h, renderToStaticMarkup, Composer, PromptInputActionMenu, PromptInputActionMenuContent,
     PromptInputActionMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuRadioGroup, DropdownMenuRadioItem };
 `,
@@ -83,9 +83,13 @@ test('there is one textarea, and it is the one the product addresses', () => {
   assert.equal(attr(area, 'data-tour'), 'composer');
   assert.equal(attr(area, 'dir'), 'auto');
   assert.equal(attr(area, 'maxLength'), '8000');
-  assert.ok(classes(area).includes('ai-prompt-input__textarea'), 'the textarea is not the vendored PromptInputTextarea');
+  // RESTATED 2026-10-01: the home-made `ai-prompt-input__textarea` class is gone with the home-made
+  // component. Upstream's PromptInputTextarea is the InputGroup's control and carries the form field
+  // name upstream's form reads the message from.
+  assert.equal(attr(area, 'data-slot'), 'input-group-control', 'the textarea is not upstream\'s PromptInputTextarea');
+  assert.equal(attr(area, 'name'), 'message');
   // It is named by the visible-to-AT label, not by the placeholder.
-  assert.match(html, /<label class="gx-sr" for="gx-composer-input">/);
+  assert.match(html, /<label class="sr-only" for="gx-composer-input">/);
 });
 
 test('the file input is PromptInput’s: one, hidden, outside the form, with the shared allowlist', () => {
@@ -93,9 +97,18 @@ test('the file input is PromptInput’s: one, hidden, outside the form, with the
   const inputs = tags(html, 'input').filter((t) => attr(t, 'type') === 'file');
   assert.equal(inputs.length, 1, `expected one file input, found ${inputs.length}`);
   const [input] = inputs;
-  assert.equal(attr(input, 'accept'), ATTACHMENT_ACCEPT, 'the dialog must offer exactly what the server takes');
   assert.ok(has(input, 'multiple'));
-  assert.ok(classes(input).includes('ai-prompt-input__file'), 'hidden by the class this app styles, not by Tailwind');
+  assert.equal(attr(input, 'aria-label'), 'Upload files', 'upstream PromptInput\'s own input');
+  assert.ok(classes(input).includes('hidden'), 'hidden by upstream\'s class');
+  // RESTATED 2026-10-01. THE DIALOG STILL OFFERS EXACTLY WHAT THE SERVER TAKES, but the attribute is
+  // set after mount: PromptInput is deliberately NOT given `accept`, because upstream's own filter
+  // matches MIME types only and would refuse a .luau or .md file whose browser type is empty before
+  // the product's admitFiles ever saw it. The bridge writes the shared allowlist onto upstream's input.
+  assert.equal(attr(input, 'accept'), null, 'PromptInput was handed `accept`, so its MIME-only filter is back');
+  const src = decomment(readFileSync(join(WEB, 'src', 'components', 'ws', 'composer.tsx'), 'utf8'));
+  assert.match(src, /attachments\.fileInputRef\.current\?\.setAttribute\('accept', ATTACHMENT_ACCEPT\)/);
+  assert.doesNotMatch(src.slice(src.indexOf('<PromptInput\n')), /^\s*accept=/m, 'PromptInput must not filter by accept');
+  assert.ok(ATTACHMENT_ACCEPT.includes('.luau'), 'the allowlist names Luau by extension — the case upstream\'s filter drops');
   // Before the form, as upstream renders it: a reset of the form can never touch it.
   assert.ok(html.indexOf(input) < html.search(/<form\b/), 'the file input moved inside the form');
 });
@@ -104,8 +117,8 @@ test('the measured outer panel wraps the form, so the published height includes 
   const html = composer();
   const panel = element(html, /<div class="gx-composer(?:\s[^"]*)?"/);
   assert.ok(panel, 'no outer .gx-composer panel');
-  assert.match(panel, /<form\b[^>]*class="[^"]*gx-composer__inner/);
-  assert.match(panel, /class="gx-composer__note"/);
+  assert.match(panel, /<form\b[^>]*class="[^"]*gx-composer__form/);
+  assert.match(panel, /class="gx-composer__note\b/);
 });
 
 // ------------------------------------------------------------- no modes ---
@@ -128,7 +141,9 @@ test('Send is the form’s submit, named, and off while there is nothing to send
   assert.equal(submits.length, 1, `expected one submit, found ${submits.length}`);
   assert.equal(attr(submits[0], 'aria-label'), 'Send');
   assert.ok(has(submits[0], 'disabled'), 'an empty box must not offer a send');
-  assert.ok(classes(submits[0]).includes('ai-prompt-input__submit'), 'Send is not the vendored PromptInputSubmit');
+  // Upstream PromptInputSubmit is an InputGroupButton: the shadcn Button inside the input group.
+  assert.equal(attr(submits[0], 'data-slot'), 'button', 'Send is not upstream\'s PromptInputSubmit');
+  assert.ok(html.indexOf(submits[0]) > html.indexOf('data-slot="input-group-addon"'), 'Send sits in the PromptInputFooter');
 });
 
 test('while a run is live the same slot is Stop — a plain button, and nothing submits', () => {
@@ -169,36 +184,31 @@ test('Create is named by what it holds, and there is no mode or model control', 
   assert.doesNotMatch(html, /gx-chip--model/);
 });
 
-test('an open menu: radio rows checked from the group value, and a row can be aria-disabled yet reachable', () => {
+// RESTATED 2026-10-01. This rendered an OPEN menu inline, which the home-made dropdown did. The menus
+// are now upstream's — shadcn's DropdownMenu over Radix — and Radix portals an open menu's content
+// into <body> after mount, so react-dom/server cannot show it. What the server CAN show, and what a
+// reader meets first, is the trigger: Radix's menu button, closed, with nothing of the menu in the
+// page until it is opened. The roving focus and aria-disabled semantics are Radix's own (radix-ui is
+// a declared dependency; tests/ai-elements-provenance.test.mjs proves the shadcn file is upstream's).
+test('a menu trigger is Radix’s menu button, closed, and its menu is not in the page until opened', () => {
   const html = render(
-    h(ui.PromptInputActionMenu, { defaultOpen: true }, [
-      h(ui.PromptInputActionMenuTrigger, { key: 't' }, 'Model'),
-      h(ui.PromptInputActionMenuContent, { key: 'c', 'aria-label': 'Model' }, [
-        h(ui.DropdownMenuRadioGroup, { key: 'g', value: 'apple' }, [
-          h(ui.DropdownMenuRadioItem, { key: 'a', value: 'apple' }, 'Apple'),
-          h(ui.DropdownMenuRadioItem, { key: 'm', value: 'apple-max', 'aria-disabled': true }, 'Apple MAX'),
+    h(ui.PromptInputActionMenu, null, [
+      h(ui.PromptInputActionMenuTrigger, { key: 't', 'aria-label': 'Create' }, 'Create'),
+      h(ui.PromptInputActionMenuContent, { key: 'c', 'aria-label': 'Create' }, [
+        h(ui.DropdownMenuRadioGroup, { key: 'g', value: 'a' }, [
+          h(ui.DropdownMenuRadioItem, { key: 'a', value: 'a' }, 'A'),
         ]),
         h(ui.DropdownMenuCheckboxItem, { key: 'x', checked: false, disabled: true }, '3D'),
       ]),
     ]),
   );
-  const menu = tags(html, 'div').find((t) => attr(t, 'role') === 'menu');
-  assert.ok(menu, 'the open menu did not render');
-  assert.equal(attr(menu, 'aria-label'), 'Model');
-  const radios = tags(html, 'div').filter((t) => attr(t, 'role') === 'menuitemradio');
-  assert.equal(radios.length, 2);
-  assert.deepEqual(radios.map((r) => attr(r, 'aria-checked')), ['true', 'false']);
-  // The MAX row: says it cannot be had, and is still in the roving order (tabindex -1, no data-disabled).
-  assert.equal(attr(radios[1], 'aria-disabled'), 'true');
-  assert.equal(attr(radios[1], 'tabindex'), '-1');
-  assert.equal(has(radios[1], 'data-disabled'), false, 'an aria-disabled row became a hard-disabled one');
-  // A hard-disabled item is out of it.
-  const box = tags(html, 'div').find((t) => attr(t, 'role') === 'menuitemcheckbox');
-  assert.equal(attr(box, 'aria-disabled'), 'true');
-  assert.ok(has(box, 'data-disabled'));
-  assert.equal(attr(box, 'tabindex'), null);
-  // The chosen row's indicator renders; the others' do not.
-  assert.equal(count(html, 'lucide-circle'), 1);
+  const [trigger] = tags(html, 'button');
+  assert.ok(trigger, 'no trigger');
+  assert.equal(attr(trigger, 'aria-haspopup'), 'menu');
+  assert.equal(attr(trigger, 'aria-expanded'), 'false');
+  assert.equal(attr(trigger, 'data-slot'), 'dropdown-menu-trigger');
+  assert.equal(tags(html, 'div').some((t) => attr(t, 'role') === 'menu'), false, 'a closed menu is in the page');
+  assert.doesNotMatch(html, /menuitemradio|menuitemcheckbox/);
 });
 
 // ------------------------------------------------------------------ sheets ---
@@ -234,36 +244,44 @@ test('NO VIOLET: the Autonomous tokens left with the Autonomous switch, and noth
   assert.deepEqual(offenders, [], 'a violet token is declared or spent');
 });
 
-test('the composer’s and the vendored components’ sheets carry no raw colour', () => {
-  const files = [
-    join(SRC, 'components', 'ws', 'composer.css'),
-    ...readdirSync(join(SRC, 'components', 'ai-elements')).filter((f) => f.endsWith('.css')).map((f) => join(SRC, 'components', 'ai-elements', f)),
-    join(SRC, 'components', 'ai-elements', 'ui', 'ui.css'),
-  ];
-  assert.ok(files.length >= 8, `only ${files.length} sheets found`);
+// RESTATED 2026-10-01. The vendored components have no sheets any more — their look is upstream's
+// Tailwind classes — so the colour rule now holds the sheets that DO carry colour for them: the
+// composer's own sheet and styles/ai-elements.css, where upstream's theme tokens are mapped onto the
+// app's. Both must take colour from the app's tokens.
+test('the composer’s sheet and the AI Elements theme carry no raw colour', () => {
+  const files = [join(SRC, 'components', 'ws', 'composer.css'), join(SRC, 'styles', 'ai-elements.css')];
   const offenders = [];
+  let checked = 0;
   for (const file of files) {
     for (const r of rules(readFileSync(file, 'utf8'))) {
+      checked++;
       const hex = r.body.match(/#[0-9a-fA-F]{3,8}\b/g);
-      const fn = r.body.match(/\b(?:rgba?|hsla?)\(/g);
+      const fn = r.body.match(/\b(?:rgba?|hsla?|oklch)\(/g);
       if (hex || fn) offenders.push(`${relative(SRC, file)}: ${r.selector} -> ${[...(hex ?? []), ...(fn ?? [])].join(' ')}`);
     }
   }
+  assert.ok(checked >= 10, `only ${checked} rules read`);
   assert.deepEqual(offenders, [], 'colour must come from the app tokens');
 });
 
-test('every transition in composer.css stops under prefers-reduced-motion', () => {
-  const css = decss(readFileSync(join(SRC, 'components', 'ws', 'composer.css'), 'utf8'));
-  const at = css.indexOf('@media (prefers-reduced-motion:reduce)');
-  assert.ok(at !== -1, 'composer.css has no reduced-motion block');
-  const reduced = css.slice(at);
-  const optedOut = new Set(
-    rules(reduced).filter((r) => /transition:\s*none/.test(r.body)).flatMap((r) => r.selector.split(',').map((s) => s.trim())),
-  );
-  const moving = rules(css.slice(0, at))
-    .filter((r) => /transition:(?!\s*none)/.test(r.body))
-    .flatMap((r) => r.selector.split(',').map((s) => s.trim()));
-  assert.ok(moving.length >= 5, `only ${moving.length} transitioned selectors found`);
-  const missing = moving.filter((s) => !optedOut.has(s));
+// RESTATED 2026-10-01: composer.css lost the chips, Send and the card to upstream's classes (whose
+// motion stops under `motion-reduce:`), so the sheets with transitions are read together with the
+// composer's picks. Every transition in them still has its reduced-motion opt-out.
+test('every transition in the composer’s sheets stops under prefers-reduced-motion', () => {
+  const files = [join(SRC, 'components', 'ws', 'composer.css'), ...readdirSync(join(SRC, 'components', 'picks', 'composer')).filter((f) => f.endsWith('.css')).map((f) => join(SRC, 'components', 'picks', 'composer', f))];
+  let moving = 0;
+  const missing = [];
+  for (const file of files) {
+    const css = decss(readFileSync(file, 'utf8'));
+    const at = css.search(/@media \(prefers-reduced-motion:\s?reduce\)/);
+    const before = at === -1 ? css : css.slice(0, at);
+    const transitioned = rules(before).filter((r) => /transition:(?!\s*none)/.test(r.body)).flatMap((r) => r.selector.split(',').map((x) => x.trim()));
+    moving += transitioned.length;
+    if (transitioned.length === 0) continue;
+    if (at === -1) { missing.push(`${relative(SRC, file)}: no reduced-motion block`); continue; }
+    const optedOut = new Set(rules(css.slice(at)).filter((r) => /transition:\s*none|animation:\s*none/.test(r.body)).flatMap((r) => r.selector.split(',').map((x) => x.trim())));
+    for (const sel of transitioned) if (!optedOut.has(sel)) missing.push(`${relative(SRC, file)}: ${sel}`);
+  }
+  assert.ok(moving >= 5, `only ${moving} transitioned selectors found — the reader is not reading`);
   assert.deepEqual(missing, [], 'a transition with no reduced-motion opt-out');
 });

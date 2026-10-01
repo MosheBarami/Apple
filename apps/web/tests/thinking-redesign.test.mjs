@@ -106,6 +106,9 @@ test('honesty: observed facts only, no denied-tools note, failures stay with the
   // RESTATED 2026-09-23 (F-045): the reply is now a third argument; the property is the source of copy.
   assert.match(TURN, /const outcome = outcomeLine\(item\.stopReason, item\.error\b/,
     'the turn outcome model must remain the source of terminal failure copy');
-  assert.match(TURN, /className=\{`gx-outcome\$\{outcome\.tone === 'bad' \? ' is-bad' : ''\}`\}/,
-    'terminal failures must remain in the answer-level outcome row');
+  // RESTATED 2026-10-01: the outcome row is drawn with Tailwind classes in the AI Elements turn; a bad
+  // outcome's sentence takes the destructive colour there.
+  assert.match(TURN, /data-outcome=\{outcome\.tone\}/, 'terminal failures must remain in the answer-level outcome row');
+  assert.match(TURN, /outcome\.tone === 'bad' \? 'text-destructive' : 'text-muted-foreground'/,
+    'a bad outcome is said in the destructive colour, in that row');
 });

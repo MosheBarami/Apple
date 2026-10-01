@@ -123,13 +123,18 @@ function fakeWorker(initial) {
 const details = (view, draft = ui.draftFrom(view), extra = {}) =>
   render(h(BrandingDetails, { view, draft, onDraft() {}, onSave() {}, onRegenerate() {}, onDownload() {}, ...extra }));
 
+// PROPERTY: the <input> named `name` carries `value`. Not "name is the first attribute": React 19
+// serialises attributes in its own order (maxLength ahead of name), and the order protects nothing.
+const inputHolds = (name, value) =>
+  new RegExp(`<input(?=[^>]*\\sname="${name}")(?=[^>]*\\svalue="${value}")[^>]*>`);
+
 test('saved branding renders: the fields hold it and every picture is its own bytes, labelled Branding', () => {
   const view = savedView();
   const html = details(view);
 
   for (const [name, value] of Object.entries(ui.draftFrom(view))) {
     if (name === 'longDescription' || name === 'shortDescription') assert.ok(html.includes(`name="${name}"`) && html.includes(`>${value}</textarea>`), `${name} is not shown`);
-    else assert.match(html, new RegExp(`<input name="${name}"[^>]* value="${value}"`), `${name} is not shown`);
+    else assert.match(html, inputHolds(name, value), `${name} is not shown`);
   }
   for (const n of view.branding.names) assert.ok(html.includes(`>${n}</button>`), `suggestion ${n} is not offered`);
 
@@ -169,8 +174,8 @@ test('an edit is one authenticated PUT of exactly the edited fields, and a reloa
   assert.deepEqual(ui.draftFrom(reloaded), edit, 'the reload does not hold the edit');
   assert.equal(ui.isDirty(reloaded, ui.draftFrom(reloaded)), false);
   const html = details(reloaded);
-  assert.match(html, /<input name="selectedName"[^>]* value="Magma Dash"/);
-  assert.match(html, /<input name="tagline"[^>]* value="Keep climbing"/);
+  assert.match(html, inputHolds('selectedName', 'Magma Dash'));
+  assert.match(html, inputHolds('tagline', 'Keep climbing'));
   assert.match(html, /aria-pressed="true"[^>]*>Magma Dash</);
   assert.equal(requests.filter((r) => r.method === 'POST').length, 0, 'saving never asks the worker to generate');
 });

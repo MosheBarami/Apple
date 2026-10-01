@@ -106,6 +106,11 @@ export function mergeHistoryWithLive(history: ChatItem[], live: ChatItem[]): Cha
       ...(observed.intent !== undefined ? { intent: observed.intent } : {}),
       ...(observed.deniedTools !== undefined ? { deniedTools: observed.deniedTools } : {}),
       ...(observed.context !== undefined ? { context: observed.context } : {}),
+      // Live-only: history does not store the streamed reasoning or the run's sources, so a turn
+      // watched live keeps its Reasoning blocks, step order and Sources when history catches up.
+      ...(observed.reasoning !== undefined ? { reasoning: observed.reasoning } : {}),
+      ...(observed.trace !== undefined ? { trace: observed.trace } : {}),
+      ...(observed.sources !== undefined ? { sources: observed.sources } : {}),
     } satisfies ChatItem;
   });
 

@@ -1,0 +1,142 @@
+/*
+ * VERCEL AI ELEMENTS, STYLED THE WAY UPSTREAM STYLES THEM: TAILWIND CSS v4 AND THE SHADCN TOKENS.
+ *
+ * The chat surfaces are the genuine AI Elements components (components/ai-elements/, see NOTICE) and
+ * the shadcn/ui primitives they import (components/ui/). Their look is their Tailwind classes, which
+ * this sheet compiles. The rest of the app is NOT Tailwind and must not change, so three things are
+ * scoped:
+ *
+ *   1. NO GLOBAL PREFLIGHT. Tailwind's reset would restyle every page of the app. The reset below
+ *      is Tailwind's preflight applied only inside an AI Elements surface: an element marked `.aie`
+ *      (the conversation, the composer, each panel built from AI Elements) or any shadcn primitive
+ *      (`[data-slot]`, which is also how portalled menus, tooltips and dialogs are reached).
+ *   2. THE APP'S OWN ELEMENT RULES STAY OUT OF THAT SCOPE. design/system.css styles bare `button`,
+ *      `input`, `h1`… unlayered, which would beat every layered utility. Those rules now carry
+ *      `:where(:not(.aie, .aie *, [data-slot], [data-slot] *))` — zero specificity, so nothing
+ *      outside the scope moves.
+ *   3. ONLY THE FILES THAT USE TAILWIND ARE SCANNED (`source(none)` + the @source lines), so a class
+ *      name the app happens to use elsewhere (`hidden`, `block`…) never becomes a utility.
+ *
+ * THE THEME IS THE APP'S PALETTE. Upstream's shadcn tokens (background, muted, accent, border…) are
+ * mapped onto the app's own tokens — near-black workspace, the app's blue as primary — so the
+ * components follow the app's dark and light themes. They are named `--color-*` only, because the
+ * app already uses `--muted` and `--accent` for different jobs.
+ */
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@import "tw-animate-css";
+@import "katex/dist/katex.min.css";
+@import "streamdown/styles.css";
+
+@source "../components/ai-elements";
+@source "../components/ui";
+@source "../components/ws";
+@source "../components/picks";
+@source "../components/roadmap";
+@source "../components/branding";
+@source "../components/loading.tsx";
+@source "../lib/generative-ui";
+@source "../routes/workspace.tsx";
+@source "../routes/studio-preview.tsx";
+@source "../../node_modules/streamdown/dist/*.js";
+@source "../../node_modules/@streamdown/code/dist/*.js";
+@source "../../node_modules/@streamdown/math/dist/*.js";
+@source "../../node_modules/@streamdown/mermaid/dist/*.js";
+@source "../../node_modules/@streamdown/cjk/dist/*.js";
+
+/* The app is dark unless it says light (lib/theme.tsx writes data-theme on <html>). */
+@custom-variant dark (&:where(:root:not([data-theme='light']) *));
+
+@theme {
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--surface-2);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--accent);
+  --color-primary-foreground: white;
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--surface-3);
+  --color-muted-foreground: var(--muted);
+  --color-accent: color-mix(in srgb, var(--ink) 8%, transparent);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--bad);
+  --color-border: var(--line);
+  --color-input: var(--control-line);
+  --color-ring: var(--accent-ring);
+  --color-sidebar: var(--surface);
+  --color-sidebar-foreground: var(--ink);
+  --color-sidebar-border: var(--line);
+}
+
+/*
+ * Tailwind v4's preflight (MIT, Copyright (c) Tailwind Labs, Inc.), applied only inside an AI
+ * Elements surface. Same declarations; every selector is wrapped in `:where(S)` so it adds no
+ * specificity, exactly like upstream's.
+ */
+@layer base {
+  :where(.aie, .aie *, [data-slot], [data-slot] *),
+  :where(.aie, .aie *, [data-slot], [data-slot] *)::after,
+  :where(.aie, .aie *, [data-slot], [data-slot] *)::before,
+  :where(.aie, .aie *, [data-slot], [data-slot] *)::backdrop,
+  :where(.aie, .aie *, [data-slot], [data-slot] *)::file-selector-button {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;
+    border-color: var(--color-border);
+    outline-color: color-mix(in oklab, var(--color-ring) 50%, transparent);
+  }
+  :where(.aie, [data-slot]) {
+    line-height: 1.5;
+    font-family: var(--font-body);
+    -webkit-tap-highlight-color: transparent;
+  }
+  :where(.aie, [data-slot]) :where(hr) { height: 0; color: inherit; border-top-width: 1px; }
+  :where(.aie, [data-slot]) :where(abbr[title]) { text-decoration: underline dotted; }
+  :where(.aie, [data-slot]) :where(h1, h2, h3, h4, h5, h6) { font-size: inherit; font-weight: inherit; }
+  :where(.aie, [data-slot]) :where(a) { color: inherit; text-decoration: inherit; }
+  :where(.aie, [data-slot]) :where(b, strong) { font-weight: bolder; }
+  :where(.aie, [data-slot]) :where(code, kbd, samp, pre) { font-family: var(--font-mono); font-size: 1em; }
+  :where(.aie, [data-slot]) :where(small) { font-size: 80%; }
+  :where(.aie, [data-slot]) :where(sub, sup) { font-size: 75%; line-height: 0; position: relative; vertical-align: baseline; }
+  :where(.aie, [data-slot]) :where(sub) { bottom: -0.25em; }
+  :where(.aie, [data-slot]) :where(sup) { top: -0.5em; }
+  :where(.aie, [data-slot]) :where(table) { text-indent: 0; border-color: inherit; border-collapse: collapse; }
+  :where(.aie, [data-slot]) :where(progress) { vertical-align: baseline; }
+  :where(.aie, [data-slot]) :where(summary) { display: list-item; }
+  :where(.aie, [data-slot]) :where(ol, ul, menu) { list-style: none; }
+  :where(.aie, .aie *, [data-slot], [data-slot] *):where(img, svg, video, canvas, audio, iframe, embed, object) { display: block; vertical-align: middle; }
+  :where(.aie, .aie *, [data-slot], [data-slot] *):where(img, video) { max-width: 100%; height: auto; }
+  :where(.aie, .aie *, [data-slot], [data-slot] *):where(button, input, select, optgroup, textarea),
+  :where(.aie, .aie *, [data-slot], [data-slot] *)::file-selector-button {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    border-radius: 0;
+    background-color: transparent;
+    opacity: 1;
+  }
+  :where(.aie, .aie *, [data-slot], [data-slot] *)::placeholder { opacity: 1; color: var(--color-muted-foreground); }
+  :where(.aie, [data-slot]) :where(textarea) { resize: vertical; }
+  :where(.aie, .aie *, [data-slot], [data-slot] *):where(button, input:where([type='button'], [type='reset'], [type='submit'])),
+  :where(.aie, .aie *, [data-slot], [data-slot] *)::file-selector-button { appearance: button; }
+  :where(.aie, .aie *, [data-slot], [data-slot] *):where(button:not(:disabled), [role='button']:not(:disabled)) { cursor: pointer; }
+  :where(.aie, .aie *, [data-slot], [data-slot] *)::-webkit-inner-spin-button,
+  :where(.aie, .aie *, [data-slot], [data-slot] *)::-webkit-outer-spin-button { height: auto; }
+  :where(.aie, .aie *, [data-slot], [data-slot] *):where([hidden]:not([hidden='until-found'])) { display: none !important; }
+  /* The surface's own text colour, as upstream's `body { @apply bg-background text-foreground }`. */
+  :where(.aie) { color: var(--color-foreground); }
+}

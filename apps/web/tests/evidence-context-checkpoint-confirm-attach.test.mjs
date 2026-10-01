@@ -77,7 +77,8 @@ test('UI09 Message and UI11 Conversation render a persisted exchange once', () =
   assert.equal(count(text(html), 'Build a door'), 1);
   assert.match(html, /is-user/);
   assert.match(html, /is-assistant/);
-  assert.match(html, /<strong[^>]*>Door<\/strong>/);
+  // RESTATED 2026-10-01: upstream MessageResponse is Streamdown, which draws bold as its own strong span.
+  assert.match(html, /data-streamdown="strong"[^>]*>Door</);
   assert.match(html, /role="log"/);
 });
 

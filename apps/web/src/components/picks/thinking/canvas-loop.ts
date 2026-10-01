@@ -27,7 +27,7 @@ export interface CanvasPainter {
 }
 
 export function useCanvasLoop(
-  ref: RefObject<HTMLCanvasElement>,
+  ref: RefObject<HTMLCanvasElement | null>,
   make: () => CanvasPainter,
   { fps = 30, still = false }: { fps?: number; still?: boolean } = {},
 ) {

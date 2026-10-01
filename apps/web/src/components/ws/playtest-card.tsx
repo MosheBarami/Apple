@@ -23,10 +23,11 @@ import type { PlaytestRun, StudioFrame } from '@golem/shared';
 import { frameImageSrc, paintFrame } from '../../lib/frame-decode';
 import { framesForRun, playtestView, PLAYTEST_TICK_MS } from '../../lib/playtest-view';
 import { Icon, PATH } from './primitives';
-import { WebPreview, WebPreviewBody, WebPreviewNavigation, WebPreviewNavigationButton, WebPreviewUrl } from '../ai-elements/web-preview';
+import { WebPreview, WebPreviewNavigation, WebPreviewNavigationButton, WebPreviewUrl } from '../ai-elements/web-preview';
 import { Sandbox, SandboxContent, SandboxHeader, SandboxTabContent, SandboxTabs, SandboxTabsBar, SandboxTabsList, SandboxTabsTrigger } from '../ai-elements/sandbox';
-import { Test, TestResults, TestResultsDuration, TestResultsHeader, TestResultsProgress, TestResultsSummary, TestErrorMessage, TestResultsContent } from '../ai-elements/test-results';
-import { BackIcon, ExpandIcon, ForwardIcon } from '../picks/tech/icons';
+import { Test, TestName, TestResults, TestResultsContent, TestResultsDuration, TestResultsHeader, TestResultsProgress, TestResultsSummary, TestStatus } from '../ai-elements/test-results';
+import { ChevronLeftIcon, ChevronRightIcon, MaximizeIcon } from 'lucide-react';
+import { cn } from '../../lib/utils';
 import { playtestChecks, playtestSummary } from '../picks/tech/playtest-checks';
 import './playtest-card.css';
 
@@ -112,33 +113,44 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
         </span>
       </header>
 
-      <WebPreview className="gx-playtest__preview">
+      <WebPreview className="aie gx-playtest__preview mt-2.5 size-auto">
         <WebPreviewNavigation>
-          <WebPreviewNavigationButton tooltip="Earlier picture" disabled={at <= 0} onClick={() => setPicked(Math.max(0, at - 1))}>
-            <BackIcon />
+          <WebPreviewNavigationButton
+            tooltip="Earlier picture"
+            aria-label="Earlier picture"
+            disabled={at <= 0}
+            onClick={() => setPicked(Math.max(0, at - 1))}
+          >
+            <ChevronLeftIcon className="size-4" />
           </WebPreviewNavigationButton>
           <WebPreviewNavigationButton
             tooltip="Later picture"
+            aria-label="Later picture"
             disabled={!earlier}
             onClick={() => setPicked(at + 1 >= mine.length - 1 ? null : at + 1)}
           >
-            <ForwardIcon />
+            <ChevronRightIcon className="size-4" />
           </WebPreviewNavigationButton>
+          {/* Read-only: this is a caption for the picture, not an address to type into. */}
           <WebPreviewUrl
-            label="What the camera shows"
+            readOnly
+            aria-label="What the camera shows"
             value={frame ? `${frame.subject} · ${frame.view}` : 'No picture yet'}
-            hint={mine.length > 1 ? `${at + 1} of ${mine.length}` : undefined}
           />
+          {mine.length > 1 && (
+            <span className="shrink-0 text-muted-foreground text-xs tabular-nums">{at + 1} of {mine.length}</span>
+          )}
           <WebPreviewNavigationButton
             tooltip={expanded ? 'Make smaller' : 'Make bigger'}
-            pressed={expanded}
+            aria-label={expanded ? 'Make smaller' : 'Make bigger'}
+            aria-pressed={expanded}
             disabled={!frame}
             onClick={() => setExpanded((v) => !v)}
           >
-            <ExpandIcon />
+            <MaximizeIcon className="size-4" />
           </WebPreviewNavigationButton>
         </WebPreviewNavigation>
-        <WebPreviewBody>
+        {/* Not WebPreviewBody: that is an <iframe> for a web page, and this is a still picture. */}
       <div className="gx-playtest__stage">
         {frame ? (
           <button
@@ -193,7 +205,6 @@ export function PlaytestCard({ run, frames, onOpenStudio, studioConnected }: Pla
           </div>
         )}
       </div>
-        </WebPreviewBody>
       </WebPreview>
 
       <footer className="gx-playtest__foot">
@@ -262,40 +273,44 @@ function PlaytestResults({ run, checks }: { run: PlaytestRun; checks: ReturnType
   const summary = playtestSummary(run, checks);
   const data = { ...summary, duration: summary.durationMs ?? undefined };
   return (
-    <Sandbox className="gx-playtest__results" defaultOpen={summary.failed > 0}>
-      <SandboxHeader title="Playtest results" state={run.phase === 'failed' ? 'error' : 'done'} />
+    <Sandbox className="aie gx-playtest__results mt-3 mb-0" defaultOpen={summary.failed > 0}>
+      <SandboxHeader title="Playtest results" state={run.phase === 'failed' ? 'output-error' : 'output-available'} />
       <SandboxContent>
         <SandboxTabs defaultValue="checks">
           <SandboxTabsBar>
-            <SandboxTabsList label="Playtest results">
+            <SandboxTabsList aria-label="Playtest results">
               <SandboxTabsTrigger value="checks">Checks</SandboxTabsTrigger>
               <SandboxTabsTrigger value="details">Details</SandboxTabsTrigger>
             </SandboxTabsList>
           </SandboxTabsBar>
           <SandboxTabContent value="checks">
-            <TestResults>
+            <TestResults summary={data} className="rounded-none border-0">
               <TestResultsHeader>
-                <TestResultsSummary summary={data} />
-                {data.duration !== undefined && <TestResultsDuration ms={data.duration} />}
+                <TestResultsSummary />
+                <TestResultsDuration />
               </TestResultsHeader>
-              <TestResultsProgress summary={data} />
+              <TestResultsProgress className="px-4 pt-3" />
               <TestResultsContent>
                 {checks.map((c) => (
-                  <Test key={c.id} name={c.name} status={c.status}>
-                    <TestErrorMessage>{c.note}</TestErrorMessage>
+                  <Test key={c.id} name={c.name} status={c.status} className="flex-wrap px-0">
+                    <TestStatus />
+                    <TestName />
+                    <span className={cn('text-xs', c.status === 'failed' ? 'font-medium text-destructive' : 'text-muted-foreground')}>
+                      {c.note}
+                    </span>
                   </Test>
                 ))}
               </TestResultsContent>
             </TestResults>
           </SandboxTabContent>
           <SandboxTabContent value="details">
-            <dl className="gx-playtest__facts">
-              <dt>Asked for</dt><dd>{run.requestedSeconds}s</dd>
-              {summary.durationMs !== null && <><dt>Ran for</dt><dd>{clock(summary.durationMs)}</dd></>}
-              <dt>Pictures</dt><dd>{run.framesDelivered} arrived, {run.framesDropped} lost</dd>
-              <dt>Errors</dt><dd>{run.consoleErrors}</dd>
-              <dt>Warnings</dt><dd>{run.consoleWarnings}</dd>
-              <dt>Run</dt><dd className="tq-mono">{run.id}</dd>
+            <dl className="gx-playtest__facts m-0 grid grid-cols-[max-content_1fr] gap-x-3.5 gap-y-1 p-4 text-xs">
+              <dt className="text-muted-foreground">Asked for</dt><dd className="m-0">{run.requestedSeconds}s</dd>
+              {summary.durationMs !== null && <><dt className="text-muted-foreground">Ran for</dt><dd className="m-0">{clock(summary.durationMs)}</dd></>}
+              <dt className="text-muted-foreground">Pictures</dt><dd className="m-0">{run.framesDelivered} arrived, {run.framesDropped} lost</dd>
+              <dt className="text-muted-foreground">Errors</dt><dd className="m-0">{run.consoleErrors}</dd>
+              <dt className="text-muted-foreground">Warnings</dt><dd className="m-0">{run.consoleWarnings}</dd>
+              <dt className="text-muted-foreground">Run</dt><dd className="m-0 font-mono wrap-anywhere">{run.id}</dd>
             </dl>
           </SandboxTabContent>
         </SandboxTabs>

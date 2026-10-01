@@ -26,7 +26,7 @@ const { OP_LABEL } = await import(pathToFileURL(join(SRC, 'components/ws/op-voca
 const ui = await bundle(`
   export { createElement as h } from 'react';
   export { renderToStaticMarkup } from 'react-dom/server';
-  export { Tool, ToolHeader } from './src/components/ai-elements/tool';
+  export { RunSteps } from './src/components/ws/run-steps';
   export { TOOL } from './src/components/ws/tool-vocabulary';
 `, { name: 'studio-icons', resolveDir: WEB });
 
@@ -34,8 +34,13 @@ const CSS = decomment(readFileSync(join(SRC, 'components/studio-icon.css'), 'utf
 const ICONS = join(SRC, 'assets/studio-icons');
 const { STUDIO_ICON_CLASSES: CLASSES } = model;
 
+// RESTATED 2026-10-01: a run's steps are rows of the turn's AI Elements Task (ws/run-steps.tsx), not
+// the home-made Tool header the icons used to be drawn into. `state` keeps the old vocabulary:
+// output-available = finished, input-available = still running.
 const header = (tool, state) => renderWith(ui.renderToStaticMarkup,
-  ui.h(ui.Tool, null, ui.h(ui.ToolHeader, { title: tool, type: `tool-${tool}`, state })));
+  ui.h(ui.RunSteps, { item: {}, streaming: true, tools: [{
+    toolId: 't1', tool, summary: tool, startedAt: 0, done: state === 'output-available', ok: state === 'output-available' ? true : undefined,
+  }] }));
 
 /** Width and height from a PNG's IHDR chunk. */
 function pngSize(path) {
@@ -91,17 +96,18 @@ test('a step on an object wears that object’s icon; a step on no object keeps 
     assert.equal(model.classForTool(tool), null, `${tool} touches nothing in the place`);
     const html = header(tool, 'output-available');
     assert.doesNotMatch(html, /studio-icon/, `${tool} must not wear a Roblox object`);
-    assert.match(html, /<svg[^>]*ai-tool__icon/, `${tool} keeps a line icon`);
+    assert.match(html, /<svg[^>]*lucide-wrench/, `${tool} keeps a line icon`);
   }
 });
 
 test('a finished step draws its tick; a running one does not claim to be finished', () => {
   const done = header('edit_script', 'output-available');
   assert.match(done, /picks-step__tick/);
-  assert.match(done, /ai-tool__badge--output-available/);
+  assert.match(done, /data-outcome="done"/);
   const running = header('edit_script', 'input-available');
   assert.doesNotMatch(running, /picks-step__tick/);
-  assert.match(running, /ai-tool__badge--input-available/);
+  assert.match(running, /data-outcome="running"/);
+  assert.match(running, /picks-step__dot/, 'a running step breathes instead');
 });
 
 test('the sprite cell is chosen by the index, at the drawn size, per theme', () => {
@@ -119,7 +125,8 @@ test('motion reads its timing from :root tokens, and every animation is switched
   for (const token of used) assert.match(root, new RegExp(`${token}:`), `${token} is used but not declared on :root`);
 
   // The entrance plays when a step STARTS, not on every row: keyed to the running state.
-  assert.match(CSS, /\.ai-tool:has\(\.ai-tool__badge--input-available\) > \.ai-tool__header \{\s*animation:studio-row-in/);
+  // RESTATED 2026-10-01: the steps are the turn's Task rows (ws/run-steps.tsx), marked by outcome.
+  assert.match(CSS, /\[data-run-steps\] \[data-outcome='running'\] \{\s*animation:studio-row-in/);
 
   const reduced = /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/.exec(CSS)?.[1] ?? '';
   const animated = [...CSS.replace(/@media[\s\S]*$/, '').matchAll(/([^{}]+)\{[^}]*\banimation:/g)]

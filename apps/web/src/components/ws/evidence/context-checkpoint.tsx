@@ -1,7 +1,7 @@
 /** UI12 Context, UI14 Checkpoint, UI13 Confirmation, UI16 Attachments — drawn only from real run data. */
 import type { CheckpointMeta, ChatAttachment } from '@golem/shared';
 import { attachmentSizeLabel } from '@golem/shared';
-import { Button } from '../../ai-elements/ui/button';
+import { Button } from '../../ui/button';
 import { Attachment, AttachmentInfo, AttachmentPreview, Attachments } from '../../ai-elements/attachments';
 import type { ContextBudget } from '../context-model';
 import {
@@ -85,14 +85,14 @@ export function RestoreConfirmation({
 function AttachmentList({ title, rows }: { title: string; rows: AttachmentRow[] }) {
   if (rows.length === 0) return null;
   return (
-    <div className="ev-attachments">
+    <div className="ev-attachments aie">
       <span className="ev-attachments__title">{title}</span>
       <Attachments variant="list">
         {rows.map((r) => (
           <Attachment key={r.id} data={{ type: 'file', id: r.id, filename: r.filename, mediaType: r.mediaType, url: '' }}>
             <AttachmentPreview />
             <AttachmentInfo showMediaType />
-            {r.size != null && r.size >= 0 && <span className="ev-attachments__size">{attachmentSizeLabel(r.size)}</span>}
+            {r.size != null && r.size >= 0 && <span className="shrink-0 text-muted-foreground text-xs">{attachmentSizeLabel(r.size)}</span>}
           </Attachment>
         ))}
       </Attachments>

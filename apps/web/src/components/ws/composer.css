@@ -1,141 +1,17 @@
-/* THE COMPOSER — the object a customer looks at for an hour, drawn over AI Elements' PromptInput.
+/* THE COMPOSER — AI Elements' PromptInput, drawn by upstream's own Tailwind classes.
  *
- * The structure is the vendored component's (components/ai-elements/prompt-input.tsx): a form, an
- * InputGroup, the textarea, a footer with the tools on one side and Send on the other. Its neutral
- * shape is in ai-elements/prompt-input.css; THIS sheet is what makes it this product's:
- *
- *   * near-black matte, one hairline, a soft radius, a lot of room around the words;
- *   * small, precise controls — 28px chips, 32px round buttons — quiet until they are pointed at;
- *   * blue only for an ordinary active state: the focused edge, a chosen menu row, a creation intent;
- *   * VIOLET ONLY FOR AUTONOMOUS, and only while it is on.
+ * The card, the box, the bar, the chips, Send and the staged files are upstream's components and
+ * their look is their classes (composer.tsx passes the few this product adds as utilities). What is
+ * left here is only what is this product's and has no upstream counterpart: where the panel sits in
+ * the workspace, the @-mention picker, and the character count.
  *
  * TOKENS ONLY. No raw colour, no radius outside --r-*, no shadow but --shadow-pop
  * (docs/DESIGN-LOCK.md rules 1 and 3). Every transition stops under prefers-reduced-motion.
- *
- * WHY THE SELECTORS ARE AS LONG AS THEY ARE. This sheet is imported by composer.tsx, which the app
- * module graph reaches BEFORE main.tsx imports design/system.css, so the base rules there win every
- * tie. Each rule below is therefore one step more specific than the base rule it replaces
- * (`div.gx-composer` over `.gx-composer`, `.gx-composer .gx-composer__bar .gx-chip` over
- * `.gx-chip:has(.model-signature)`), and the conversation-height rule that system.css owns
- * (`.gx-ws:not(:has(.start-sheet)) .gx-composer textarea`, tests/result-space.test.mjs) is left to it.
  */
 
 /* ------------------------------------------------------------------ the panel --- */
 div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; padding:6px 0 18px; }
 .gx-ws:has(.start-sheet) div.gx-composer { width:min(832px,100%); padding-bottom:28px; }
-
-/* THE FORM IS THE CARD (it is the element that has always carried .gx-composer__inner); the
-   InputGroup inside it is only the column the parts are laid out in. */
-.gx-composer .gx-composer__inner {
-  position:relative; display:block; padding:0;
-  border:1px solid var(--control-line); border-radius:var(--r-xl);
-  background:color-mix(in srgb,var(--surface) 90%,transparent);
-  box-shadow:var(--shadow-pop);
-  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
-  transition:border-color var(--t-base) var(--ease-out),background-color var(--t-base) var(--ease-out),outline-color var(--t-base) var(--ease-out);
-}
-:root[data-theme='light'] .gx-composer .gx-composer__inner { background:var(--surface); border-color:var(--control-line); box-shadow:var(--shadow-pop); }
-/* THE FOCUSED EDGE HAS TO BE SEEN. --accent-ring is 32% and on the near-black card it measured as
-   the same grey as the resting edge, so a keyboard user landing in the box got no sign of it. At
-   80% of the accent the edge clears 3:1 against the page in both themes and is still one quiet
-   1px line of the ordinary blue. */
-.gx-composer .gx-composer__inner:focus-within { border-color:color-mix(in srgb,var(--accent) 80%,transparent); box-shadow:var(--shadow-pop); }
-/* Restated under the light theme's own rule, which is more specific and set the resting edge back. */
-:root[data-theme='light'] .gx-composer .gx-composer__inner:focus-within { border-color:color-mix(in srgb,var(--accent) 80%,transparent); }
-.gx-composer .gx-composer__inner:has(textarea:disabled) { background:var(--paper-2); border-color:var(--quiet-line); }
-.gx-composer .gx-composer__inner > .ai-input-group { border:0; border-radius:inherit; background:transparent; }
-
-/* A drop is coming: the edge says so in the accent, dashed, and nothing else moves. */
-.gx-composer .gx-composer__inner.is-dropping { border:1px dashed var(--accent); background:color-mix(in srgb,var(--accent) 6%,var(--surface)); animation:none; }
-
-/* ----------------------------------------------------------------- the words --- */
-.gx-composer .gx-composer__field {
-  min-height:88px; max-height:220px; padding:16px 20px 6px; border:0; background:transparent;
-  color:var(--ink); font-size:15px; line-height:24px; letter-spacing:-.01em; outline:none; scrollbar-width:thin;
-}
-.gx-ws:has(.start-sheet) .gx-composer .gx-composer__field { min-height:96px; padding-top:18px; }
-.gx-composer .gx-composer__field::placeholder { color:var(--faint); opacity:1; }
-.gx-composer .gx-composer__field:focus-visible { outline:none; box-shadow:none; animation:none; }
-.gx-composer .gx-composer__field:disabled { cursor:not-allowed; color:var(--quiet-ink); }
-
-.gx-composer .gx-composer__count { margin:0; padding:0 20px 2px; color:var(--faint); font:11px/16px var(--font-mono); text-align:end; font-variant-numeric:tabular-nums; }
-.gx-composer .gx-composer__count.is-full { color:var(--bad); }
-
-/* ------------------------------------------------------------------- the bar --- */
-.gx-composer .gx-composer__bar {
-  display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:48px;
-  padding:6px 10px 10px 12px; flex-wrap:nowrap; cursor:text;
-}
-.gx-composer .gx-composer__bar .gx-composer__options { flex:1; min-width:0; gap:2px; overflow-x:auto; scrollbar-width:none; }
-.gx-composer .gx-composer__bar .gx-composer__options::-webkit-scrollbar { display:none; }
-.gx-composer .gx-composer__bar .gx-composer__tools { display:flex; flex:none; align-items:center; gap:6px; margin:0; }
-
-/* A chip: 28px, no fill and no edge at rest, muted text. It earns a surface when pointed at or
-   open — the bar reads as a line of words, not a row of buttons. */
-.gx-composer .gx-composer__bar .gx-chip {
-  display:inline-flex; flex:none; align-items:center; gap:6px; min-height:var(--h-xs); height:var(--h-xs);
-  padding:0 8px; border:1px solid transparent; border-radius:var(--r-xs); background:transparent; box-shadow:none;
-  color:var(--muted); font-size:12.5px; line-height:1; letter-spacing:-.005em; text-transform:none; white-space:nowrap;
-  transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out);
-}
-.gx-composer .gx-composer__bar .gx-chip svg { flex:none; }
-.gx-composer .gx-composer__bar .gx-chip:hover:not(:disabled),
-.gx-composer .gx-composer__bar .gx-chip[aria-expanded='true'] { background:var(--control-fill); color:var(--ink); }
-.gx-composer .gx-composer__bar .gx-chip:active:not(:disabled) { background:var(--surface-3); }
-.gx-composer .gx-composer__bar .gx-chip .gx-chip__label { overflow:hidden; text-overflow:ellipsis; }
-.gx-composer .gx-composer__bar .gx-chip .gx-chip__caret { display:inline-flex; color:var(--faint); transition:transform var(--t-fast) var(--ease-out); }
-.gx-composer .gx-composer__bar .gx-chip[aria-expanded='true'] .gx-chip__caret { transform:rotate(180deg); }
-/* The model's mark takes the chip's ink, not the accent tile it once sat in. */
-.gx-composer .gx-composer__bar .gx-chip .model-signature { width:14px; height:14px; color:currentColor; }
-/* A creation intent is chosen: an ordinary active state, so the ordinary blue. */
-.gx-composer .gx-composer__bar .gx-chip.gx-chip--create[data-active] { color:var(--accent-light); background:var(--accent-soft); }
-.gx-composer .gx-composer__bar .gx-chip.gx-chip--selection { max-inline-size:min(220px,40vw); }
-
-
-/* ------------------------------------------------------------ attach, send --- */
-.gx-composer .gx-composer__tools .gx-composer__attach {
-  display:inline-grid; place-items:center; width:var(--h-sm); height:var(--h-sm); min-height:0; padding:0;
-  border:1px solid transparent; border-radius:var(--r-pill); background:transparent; color:var(--muted);
-  transition:color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out);
-}
-.gx-composer .gx-composer__tools .gx-composer__attach:hover:not(:disabled) { background:var(--control-fill); color:var(--ink); }
-.gx-composer .gx-composer__tools .gx-composer__attach:disabled { opacity:.48; cursor:not-allowed; }
-
-/* SEND: the one filled control, in ink — the highest contrast on the card and nothing louder. */
-.gx-composer .gx-composer__tools .gx-send {
-  display:inline-grid; place-items:center; width:var(--h-sm); height:var(--h-sm); min-height:0; padding:0;
-  border:1px solid var(--ink); border-radius:var(--r-pill); background:var(--ink); color:var(--paper); box-shadow:none;
-  transition:background-color var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out),color var(--t-fast) var(--ease-out);
-}
-.gx-composer .gx-composer__tools .gx-send svg.ai-icon { width:16px; height:16px; }
-.gx-composer .gx-composer__tools .gx-send:hover:not(:disabled) { background:color-mix(in srgb,var(--ink) 86%,var(--paper)); border-color:color-mix(in srgb,var(--ink) 86%,var(--paper)); color:var(--paper); }
-.gx-composer .gx-composer__tools .gx-send:active:not(:disabled) { background:color-mix(in srgb,var(--ink) 74%,var(--paper)); }
-/* Nothing to send yet: a quiet ring, not a grey button shouting that it is off. */
-.gx-composer .gx-composer__tools .gx-send:disabled { background:var(--control-fill); border-color:var(--control-line); color:var(--faint); opacity:1; cursor:not-allowed; }
-/* STOP, while a run is live: a raised neutral with a solid square — clear, and not an alarm. */
-.gx-composer .gx-composer__tools .gx-send.is-stop { background:var(--surface-3); border-color:var(--line); color:var(--ink); }
-.gx-composer .gx-composer__tools .gx-send.is-stop:hover:not(:disabled) { background:var(--surface-2); border-color:var(--line-strong); color:var(--ink); }
-.gx-composer .gx-composer__tools .gx-send.is-stop svg.ai-icon { width:12px; height:12px; fill:currentColor; stroke:none; }
-.gx-composer .gx-composer__tools .gx-send.is-stop:disabled { opacity:.48; }
-
-/* ---------------------------------------------------------- staged files --- */
-.gx-composer .gx-composer__inner .gx-attach { gap:6px; margin:0; padding:2px 16px 6px; list-style:none; }
-.gx-composer .gx-attach .gx-attach__row { flex:none; max-width:100%; min-height:var(--h-xs); padding:0 4px 0 7px; gap:6px; border-color:var(--control-line); background:var(--control-fill); font-size:12px; }
-.gx-composer .gx-attach .gx-attach__row .ai-attachment__info { max-width:220px; }
-.gx-composer .gx-attach .gx-attach__row.is-failed { border-color:color-mix(in srgb,var(--bad) 42%,transparent); background:color-mix(in srgb,var(--bad) 7%,transparent); }
-.gx-composer .gx-attach__bar { flex:none; inline-size:40px; block-size:3px; overflow:hidden; border-radius:var(--r-pill); background:var(--surface-3); }
-.gx-composer .gx-attach__fill { display:block; block-size:100%; border-radius:inherit; background:var(--accent); transition:inline-size var(--t-base) var(--ease-out); }
-.gx-composer .gx-attach__ok { display:inline-flex; flex:none; color:var(--muted); }
-.gx-composer .gx-attach__error { min-width:0; color:var(--bad); font-size:12px; line-height:16px; white-space:normal; animation:none; }
-/* A FAILED CHIP KEEPS ITS FILE NAME. The name is the flexible part of a chip and the error is long,
-   so at 390px the name shrank to nothing and the chip said "Upload failed" about no file at all.
-   The name keeps at least a short run of itself (then ellipsis); the sentence is what wraps. */
-.gx-composer .gx-attach .gx-attach__row.is-failed .ai-attachment__info { flex:0 1 auto; min-width:min(11ch,40%); }
-.gx-composer .gx-attach .gx-attach__row.is-failed .gx-attach__error { flex:1 1 12ch; }
-.gx-composer .gx-attach__act { flex:none; min-height:0; height:20px; padding:0 6px; border:0; border-radius:var(--r-xs); background:transparent; color:var(--ink); font-size:12px; text-decoration:underline; text-underline-offset:3px; }
-.gx-composer .gx-attach__act:hover:not(:disabled) { background:var(--control-fill); }
-.gx-composer .gx-attach__x { color:var(--faint); }
-.gx-composer .gx-attach__block { margin:0; padding:0 20px 6px; color:var(--muted); font-size:12px; line-height:18px; animation:none; }
 
 /* ---------------------------------------------------------- the @ picker --- */
 .gx-composer .gx-mention {
@@ -143,26 +19,12 @@ div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; 
   max-block-size:min(232px,40vh); margin:0; padding:4px; overflow-y:auto; overscroll-behavior:contain; list-style:none;
   border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); box-shadow:var(--shadow-pop);
 }
-.gx-composer .gx-mention__row { padding:7px 10px; overflow:hidden; border-radius:var(--r-xs); color:var(--muted); font:12px/1.5 var(--font-mono); text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
+.gx-composer .gx-mention__row { padding:7px 10px; overflow:hidden; border-radius:var(--r-xs); color:var(--muted); font:12px/1.5 var(--font-mono); text-overflow:ellipsis; white-space:nowrap; cursor:pointer; transition:background-color var(--t-fast) var(--ease-out); }
 .gx-composer .gx-mention__row.is-on { background:var(--surface-3); color:var(--ink); }
 
-/* ------------------------------------------------------------ the menus --- */
-/* Mode, Model and Create are AI Elements action menus, portalled to <body>, so these rules cannot
-   hang off .gx-composer; `.ai-menu.gx-menu` is specific enough on its own. */
-.ai-menu.gx-menu { width:min(300px,calc(100vw - 24px)); padding:5px; }
-.ai-menu.gx-menu--create { width:min(320px,calc(100vw - 24px)); }
-.ai-menu.gx-menu .gx-menu__item { align-items:flex-start; gap:10px; padding-block:8px; padding-inline-end:12px; }
-.ai-menu.gx-menu .gx-menu__item .model-signature { width:16px; height:16px; margin-top:1px; color:var(--muted); }
-.ai-menu.gx-menu .gx-menu__item .ai-menu__indicator { top:16px; }
-.gx-menu__main { display:grid; flex:1; min-width:0; gap:2px; }
-.gx-menu__name { color:var(--ink); font-size:13px; line-height:18px; }
-.gx-menu__sub { color:var(--muted); font-size:12px; line-height:17px; }
-.ai-menu.gx-menu .gx-menu__section { padding-top:6px; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; }
-/* A model row that cannot be had: said in the row's own ink, and still reachable. */
-
-/* ------------------------------------------------------------- the notes --- */
-.gx-composer .gx-composer__note { margin:10px 0 0; color:var(--faint); font-size:11px; line-height:16px; letter-spacing:0; text-align:center; text-wrap:pretty; }
-.gx-composer .gx-creation-note { margin:10px 4px 0; color:var(--muted); font-size:12px; line-height:18px; letter-spacing:-.005em; text-wrap:pretty; }
+/* ----------------------------------------------------------------- the count --- */
+.gx-composer .gx-composer__count { margin:0; padding:0 20px 2px; color:var(--faint); font:11px/16px var(--font-mono); text-align:end; font-variant-numeric:tabular-nums; align-self:stretch; }
+.gx-composer .gx-composer__count.is-full { color:var(--bad); }
 
 /* -------------------------------------------------------------- narrow --- */
 @media (max-width:680px) {
@@ -170,31 +32,9 @@ div.gx-composer { position:relative; width:min(832px,100%); margin-inline:auto; 
   div.gx-composer,.gx-ws:has(.start-sheet) div.gx-composer { padding-inline:8px; padding-bottom:12px; }
 }
 @media (max-width:520px) {
-  .gx-composer .gx-composer__inner { border-radius:var(--r-lg); }
-  /* 16px, so a phone does not zoom the page when the box takes focus. */
-  .gx-composer .gx-composer__field { min-height:72px; padding:14px 16px 4px; font-size:16px; }
-  .gx-composer .gx-composer__bar { align-items:flex-end; padding:4px 8px 8px; gap:4px; }
-  /* WRAP, NEVER HIDE. A row that scrolls sideways puts Create (or the Studio chip) off the edge with
-     nothing to say it is there; a second line is honest and still one gesture away. */
-  .gx-composer .gx-composer__bar .gx-composer__options { flex-wrap:wrap; row-gap:4px; overflow:visible; }
-  /* The Create chip keeps its mark and its menu; the name is in the menu and in the chip's
-     accessible label (and a chosen creation intent still tints the chip and has its note). */
-  .gx-composer .gx-composer__bar .gx-chip--create .gx-chip__label,
-  .gx-composer .gx-composer__bar .gx-chip--theme .gx-chip__label,
-  .gx-composer .gx-composer__bar .gx-chip .gx-chip__caret { display:none; }
-  .gx-composer .gx-composer__bar .gx-chip { padding-inline:7px; }
-  .gx-composer .gx-attach .gx-attach__row .ai-attachment__info { max-width:150px; }
-  /* A failed chip on a phone is two lines: the file, Retry and Remove on the first, the reason on
-     the second. Squeezed into one line the reason wrapped into a three-line column between them. */
-  .gx-composer .gx-attach .gx-attach__row.is-failed { flex-wrap:wrap; padding-block:4px; row-gap:0; }
-  .gx-composer .gx-attach .gx-attach__row.is-failed .ai-attachment__info { flex:1 1 0; max-width:none; }
-  .gx-composer .gx-attach .gx-attach__row.is-failed .gx-attach__error { order:9; flex:1 0 100%; padding-inline-start:22px; }
   .gx-composer .gx-mention { inset-inline:8px; max-block-size:min(190px,34vh); }
 }
 
 @media (prefers-reduced-motion:reduce) {
-  .gx-composer .gx-composer__inner,
-  .gx-composer .gx-composer__bar .gx-chip,.gx-composer .gx-composer__bar .gx-chip .gx-chip__caret,
-  .gx-composer .gx-composer__tools .gx-composer__attach,.gx-composer .gx-composer__tools .gx-send,
-  .gx-composer .gx-attach__fill { transition:none; }
+  .gx-composer .gx-mention__row { transition:none; }
 }

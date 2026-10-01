@@ -40,7 +40,9 @@ const MOUNTS = [
   //[[ RESTATED 2026-09-24 (owner decision D-THINK-1): the Lattice glyph, Skeleton and Reveal lived in
   //   the Thinking card's header and trace, which the owner replaced with one morphing status line.
   //   Their rows are gone from here; the line's own motion is held below and in thinking-surface. ]]
-  ['motion--to-do-list',                'components/ai-elements/chain-of-thought.tsx', 'StepMark',    'picks/thinking/step-mark'],
+  // RESTATED 2026-10-01: the home-made ChainOfThought it lived in is gone; the mark is on every step
+  // row of the turn's AI Elements Task now.
+  ['motion--to-do-list',                'components/ws/run-steps.tsx',                'StepMark',    'picks/thinking/step-mark'],
   ['motion--svg-loading-spinner',       'components/loading.tsx',                     'ArcSpinner',   'picks/thinking/arc-spinner'],
   ['eldora--hacker-background',         'components/loading.tsx',                     'CodeRain',     'picks/thinking/code-rain'],
   ['reactbits--hyperspeed',             'components/loading.tsx',                     'WarpField',    'picks/thinking/warp-field'],
@@ -60,16 +62,17 @@ for (const [id, file, name, from] of MOUNTS) {
   test(`${id} is mounted: ${file} renders <${name}>`, () => mounts(file, name, from));
 }
 
-test('the disclosure motion (Collapsible + Thought Line) drives Reasoning and ChainOfThought', () => {
-  for (const file of ['components/ai-elements/reasoning.tsx', 'components/ai-elements/chain-of-thought.tsx']) {
+// RESTATED 2026-10-01. The home-made Reasoning and ChainOfThought carried a hand-built disclosure
+// motion (picks/thinking/disclosure.ts). The genuine components bring upstream's own: their content
+// animates in and out with tw-animate's enter/exit classes, which styles/ai-elements.css compiles.
+// The property — a disclosure moves as it opens and closes, it does not snap — is held there.
+test('the disclosure motion: Reasoning, Task and ChainOfThought content animate in and out', () => {
+  for (const file of ['components/ai-elements/reasoning.tsx', 'components/ai-elements/task.tsx', 'components/ai-elements/chain-of-thought.tsx']) {
     const src = read(file);
-    assert.match(src, /import \{ useAnimatedClose, useExpandOnOpen \} from ["']\.\.\/picks\/thinking\/disclosure["']/, `${file} lost the disclosure motion`);
-    assert.match(src, /= useAnimatedClose\(contentIdRef, setOpenState\)/, `${file} no longer collapses before it hides`);
-    assert.match(src, /useExpandOnOpen\(id, isOpen\)/, `${file} no longer expands on open`);
+    assert.match(src, /data-\[state=open\]:animate-in/, `${file} has no opening motion`);
+    assert.match(src, /data-\[state=closed\]:animate-out/, `${file} has no closing motion`);
   }
-  const motion = read('components/picks/thinking/disclosure.ts');
-  assert.match(motion, /collapse\(/);
-  assert.match(motion, /expand\(/);
+  assert.match(readFileSync(join(SRC, 'styles/ai-elements.css'), 'utf8'), /@import "tw-animate-css";/, 'the classes are compiled');
 });
 
 test('Thought Line: the status line arrives, and its words morph in and out', () => {
@@ -84,13 +87,17 @@ test('Thought Line: the status line arrives, and its words morph in and out', ()
   }
 });
 
-test('the shimmer is one component with both qualities: the Shiny Text sweep and the per-glyph wave', () => {
+// RESTATED 2026-10-01. The home-made Shimmer merged Shiny Text's sweep with Shimmering Text's
+// per-glyph wave. The genuine AI Elements Shimmer is the sweep only: a light band (the background
+// colour) crossing muted text, clipped to the glyphs, moved by motion. The per-glyph wave is gone
+// with the home-made component — said here rather than hidden.
+test('the shimmer is AI Elements’ own: a band that sweeps across the words, clipped to them', () => {
   const src = read('components/ai-elements/shimmer.tsx');
-  assert.match(src, /variant === 'sweep'/);
-  assert.match(src, /ai-elements-shimmer__glyph/);
-  assert.match(src, /REST_PER_CHAR = 0\.05/, 'Shimmering Text\'s rest between passes is what keeps a long line from strobing');
-  assert.match(read('components/loading.tsx'), /<Shimmer as="span" variant="wave"/);
-  assert.match(readFileSync(join(SRC, 'components/ai-elements/reasoning.css'), 'utf8'), /linear-gradient\(\s*120deg/, 'the sweep is drawn with Shiny Text\'s 120deg band');
+  assert.match(src, /from "motion\/react"/);
+  assert.match(src, /bg-clip-text text-transparent/);
+  assert.match(src, /backgroundPosition: "0% center"/);
+  assert.match(read('components/loading.tsx'), /<Shimmer as="span"/);
+  assert.match(read('components/ws/thinking.tsx'), /<Shimmer\b/);
 });
 
 test('the surfaces the picks sit in are reached from the running app', () => {
@@ -169,12 +176,13 @@ test('Forge connecting: the ripple round the mark and the pairing-code rain behi
   assert.match(mark, /apple-pulse/, 'the brand mark stays at the centre of the rings');
 });
 
-test('Spinner: the arc spinner, and a caption that shimmers glyph by glyph but is read once', () => {
+// RESTATED 2026-10-01: the caption is the genuine AI Elements Shimmer (a sweep, not a per-glyph wave).
+// It is read ONCE because the words are one text node inside the status, not glyphs split apart.
+test('Spinner: the arc spinner, and a caption that shimmers but is read once', () => {
   const out = html(ui.h(ui.Spinner, { label: 'Opening your project…' }));
   assert.match(out, /class="picks-arc"/);
-  assert.match(out, /ai-elements-shimmer--wave/);
-  assert.match(out, /<span class="visually-hidden">Opening your project…<\/span><span aria-hidden="true">/);
-  assert.ok(count(out, 'ai-elements-shimmer__glyph') >= 10);
+  assert.match(out, /<span class="[^"]*\bbg-clip-text\b[^"]*\bloading-spinner__label\b[^"]*"[^>]*>Opening your project…<\/span>/);
+  assert.equal(count(out, 'Opening your project…'), 1, 'the caption is in the page once');
   assert.match(html(ui.h(ui.Spinner, {})), /class="picks-arc"/);
 });
 

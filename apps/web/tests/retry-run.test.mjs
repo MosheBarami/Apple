@@ -42,7 +42,8 @@ test('stop is reachable from the workspace, not only from the plugin', () => {
 // Stop control must not inherit that flag; permission is already checked in the workspace's onStop.
 test('Stop stays pressable while the socket is down (F-069)', () => {
   const src = stripComments(COMPOSER);
-  const at = src.indexOf('className="gx-send is-stop"');
+  // RESTATED 2026-10-01: found by its name rather than by the home-made class it used to carry.
+  const at = src.indexOf('aria-label="Stop this run"');
   assert.ok(at > 0, 'the Stop control moved; point this test at it');
   const stopEl = src.slice(src.lastIndexOf('<PromptInputSubmit', at), src.indexOf('/>', at));
   assert.doesNotMatch(stopEl, /disabled=\{[^}]*\bdisabled\b/, 'Stop is disabled whenever the socket is not open');
@@ -69,14 +70,17 @@ test('a reply that SUCCEEDED can be regenerated too', () => {
   //[[ RESTATED 2026-09-23 (F-045): the call gained the reply as a third argument so a line that only
   //   restates the reply's closing is not drawn. The property is that the turn asks the model. ]]
   assert.match(TURN, /const outcome = outcomeLine\(item\.stopReason, item\.error\b/);
+  //[[ RESTATED 2026-10-01: the turn is AI Elements' Message now. A failed or empty run renders the
+  //   control in its outcome row, beside the sentence; a clean run renders it with the reply's other
+  //   actions, in the MessageToolbar. Same control, built once, both cases. ]]
   const beforeOutcome = TURN.slice(0, TURN.indexOf('{outcome ? ('));
   assert.match(beforeOutcome, /const retryControl =/, 'the control is built before the outcome branch, not inside it');
-  assert.match(TURN, /\{outcome \? \(/, 'both branches render it — success as well as failure');
-  const branch = TURN.slice(TURN.indexOf('{outcome ? ('), TURN.indexOf('<Stamp at={item.createdAt} align="start"'));
-  const split = branch.indexOf(') : (');
+  const branch = TURN.slice(TURN.indexOf('{outcome ? ('), TURN.indexOf('<MessageToolbar'));
+  const split = branch.indexOf(') : silent ? (');
   assert.notEqual(split, -1, 'the branch has both halves');
-  assert.match(branch.slice(0, split), /retryControl/, 'the failed half renders it');
-  assert.match(branch.slice(split), /retryControl/, 'the clean half renders it too');
+  assert.match(branch.slice(0, split), /\{retryControl\}/, 'the failed half renders it');
+  const toolbar = TURN.slice(TURN.indexOf('<MessageToolbar'), TURN.indexOf('</MessageToolbar>'));
+  assert.match(toolbar, /\{!outcome && !silent && retryControl\}/, 'the clean case renders it too, with the reply\'s actions');
 });
 
 test('the two cases are not labelled the same thing', () => {
@@ -92,9 +96,12 @@ test('regenerating states the discard, because it throws away a reply the user m
   // control is described is the honest minimum; a confirmation dialog belongs here only once there
   // is something to restore FROM. The control is AI Elements' MessageAction now, and its
   // description is its `tooltip` — shown on hover and focus, and read as part of its name.
+  // RESTATED 2026-10-01: the control is the shadcn Button + Tooltip that AI Elements' MessageAction is
+  // built from (TextAction, named by its word alone); its description is the tooltip, `tip`.
   const control = TURN.slice(TURN.indexOf('const retryControl ='), TURN.indexOf('{outcome ? ('));
-  assert.match(control, /<MessageAction\b/);
-  assert.match(control, /tooltip=/);
+  assert.match(control, /<TextAction\b/);
+  assert.match(control, /tip=/);
+  assert.match(TURN, /<TooltipContent>\{tip\}<\/TooltipContent>/, 'the tip is shown as the tooltip');
   assert.match(control, /replaces this reply/);
   assert.match(control, /cannot be brought back/);
 });
@@ -156,14 +163,15 @@ test('a retry carries no mode and no Autonomous grant (V3 G01)', () => {
 test('the outcome line is a row, so the control sits with the sentence', () => {
   // It reads as a continuation of "Something went wrong partway through", not as a call to action
   // parked underneath it.
-  assert.match(TURN, /<div className=\{`gx-outcome\$\{/);
-  assert.match(TURN, /className="gx-outcome__text"/);
-  const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
-  const rule = CSS.slice(CSS.indexOf('.gx-outcome {'));
-  assert.match(rule, /align-items:\s*baseline/);
+  // RESTATED 2026-10-01: the row is drawn with Tailwind classes now, not the .gx-outcome rule.
+  assert.match(TURN, /<div className="flex flex-wrap items-baseline gap-3" data-outcome=\{outcome\.tone\}>/);
+  assert.match(TURN, /<p className=\{cn\('basis-full text-sm/, 'the sentence takes the row\'s first line');
 });
 
 test('the retry control has a visible focus state', () => {
-  const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
-  assert.match(CSS, /\.gx-outcome__retry:focus-visible/);
+  // RESTATED 2026-10-01: the control is the shadcn Button (TextAction), whose base classes draw a
+  // focus-visible ring; the .gx-outcome__retry rule no longer reaches it.
+  assert.match(TURN, /<Button type="button" variant="ghost" size="sm"/);
+  const BUTTON = readFileSync(join(WEB, 'src', 'components', 'ui', 'button.tsx'), 'utf8');
+  assert.match(BUTTON, /focus-visible:ring-\[3px\]/);
 });

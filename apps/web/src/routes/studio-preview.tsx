@@ -10,11 +10,11 @@
 // by this file with "SPECIMEN FRAME" painted into its pixels, so a screenshot of it cannot be
 // mistaken for a picture of somebody's place.
 //
-// WHAT THE FIXTURES MAY NOT DO is the same list the product obeys: no model reasoning text (there
-// is none on the wire), no invented sources (the doc pages ride on a `search_docs` result, the
-// credit source on the attribution report, exactly as the worker sends them), no tool payload drawn
-// as text (Tool rows read name, target, summary and duration only), and a retried failure that is
-// not drawn as a failure.
+// WHAT THE FIXTURES MAY NOT DO is the same list the product obeys: no tool payload drawn as text,
+// no invented sources (a reply's sources ride on a `sources` frame, the credit source on the
+// attribution report, exactly as the worker sends them), and a retried failure that is not drawn as a
+// failure. The reasoning scenarios replay SPECIMEN reasoning_delta / tool / sources / msg_end frames
+// through the same model the socket uses (lib/run-trace.ts); `?at=<ms>` freezes the replay.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { type PlaytestRun, type StudioFrame } from '@golem/shared';
@@ -25,6 +25,8 @@ import { CreditsPanel } from '../components/ws/credits-panel';
 import { Drawer } from '../components/ws/primitives';
 import { Conversation, ConversationContent } from '../components/ai-elements/conversation';
 import type { AgentStatus, ChatItem, ToolEvent } from '../lib/use-project-socket';
+import { withReasoning, withReasoningClosed, withSources, withToolStart } from '../lib/run-trace';
+import type { RunSource } from '@golem/shared';
 import type { StagedAttachment } from '../lib/attachments';
 import { mockAttribution, mockBuildPlanDetail, mockDiffDetail } from '../lib/mock';
 import { useTheme } from '../lib/theme';
@@ -36,6 +38,8 @@ const SCENARIOS = [
   { id: 'empty', label: 'Empty conversation' },
   { id: 'messages', label: 'User messages' },
   { id: 'streaming', label: 'Streaming run' },
+  { id: 'reasoning', label: 'Streaming reasoning (frames)' },
+  { id: 'sources', label: 'Reply with sources' },
   { id: 'completed', label: 'Completed run' },
   { id: 'asset-choice', label: 'Visual asset choice' },
   { id: 'history', label: 'Execution history' },
@@ -299,7 +303,7 @@ function Screen({ items, status = null, running = false, initialStaged, playtest
       <div className="gx-workbench-shell">
         <div className="gx-workbench">
           <section className="gx-conversation" aria-label="Conversation">
-            <Conversation role={undefined}>
+            <Conversation className="aie" role={undefined}>
               <ConversationContent scrollClassName="gx-scroll" className="gx-thread" role="log" aria-label="Conversation" aria-relevant="additions">
                 {empty && <ChatWelcome seeds={SEEDS} onSeed={setSeed} />}
                 {items.map((item) => (
@@ -340,6 +344,87 @@ function Screen({ items, status = null, running = false, initialStaged, playtest
   );
 }
 
+/* ---------------------------------------------- reasoning, frame by frame --- */
+
+/**
+ * The worker's frames for one run, replayed on a clock through the SAME model the socket uses
+ * (lib/run-trace.ts): reasoning_delta per step, tool_start / tool_end, sources, msg_end. Specimen
+ * words, specimen links — nothing here is a real run.
+ */
+type Frame =
+  | { at: number; type: 'reasoning_delta'; step: number; text: string }
+  | { at: number; type: 'tool_start'; toolId: string; tool: string; target?: string }
+  | { at: number; type: 'tool_end'; toolId: string; ok: boolean }
+  | { at: number; type: 'sources'; sources: RunSource[] }
+  | { at: number; type: 'msg_end'; content: string };
+
+const SPECIMEN_SOURCES: RunSource[] = [
+  { title: 'TeleportService', url: 'https://create.roblox.com/docs/reference/engine/classes/TeleportService', kind: 'docs' },
+  { title: 'Teleporting between places', url: 'https://create.roblox.com/docs/projects/teleport', kind: 'docs', note: 'Reserved servers and teleport data' },
+  { title: 'Portal ring (specimen)', url: 'https://create.roblox.com/store/asset/1', kind: 'creator_store' },
+];
+
+const REASONED_REPLY = 'Done. The portal ring spins above the plinth and teleports anyone who walks in [1]. It passes the arena its spawn point as teleport data [2], and the ring itself is the free store model [3].';
+
+function words(text: string, from: number, step: number, every = 90): Frame[] {
+  return text.split(/(?<= )/).map((w, i) => ({ at: from + i * every, type: 'reasoning_delta', step, text: w }));
+}
+
+const FRAMES: Frame[] = [
+  ...words('The person wants a lobby with a portal to the arena. First I should see what is already in Workspace, so the portal sits somewhere sensible. ', 300, 1),
+  { at: 2_900, type: 'tool_start', toolId: 'r1', tool: 'get_project_tree', target: 'game' },
+  { at: 3_700, type: 'tool_end', toolId: 'r1', ok: true },
+  { at: 3_800, type: 'tool_start', toolId: 'r2', tool: 'search_docs' },
+  { at: 4_600, type: 'tool_end', toolId: 'r2', ok: true },
+  ...words('There is an empty Lobby folder and a SpawnLocation. TeleportService needs the arena place id, and teleport data can carry the spawn point. I will build the ring, then write PortalService. ', 4_800, 2),
+  { at: 8_300, type: 'tool_start', toolId: 'r3', tool: 'create_instances', target: 'Workspace.Lobby.Portal' },
+  { at: 9_400, type: 'tool_end', toolId: 'r3', ok: true },
+  { at: 9_500, type: 'tool_start', toolId: 'r4', tool: 'edit_script', target: 'ServerScriptService.PortalService' },
+  { at: 11_000, type: 'tool_end', toolId: 'r4', ok: true },
+  ...words('The ring is in place and the script compiles. A quick play check, then I am done. ', 11_200, 3),
+  { at: 13_200, type: 'tool_start', toolId: 'r5', tool: 'run_and_check' },
+  { at: 15_800, type: 'tool_end', toolId: 'r5', ok: true },
+  { at: 16_000, type: 'sources', sources: SPECIMEN_SOURCES },
+  { at: 16_200, type: 'msg_end', content: REASONED_REPLY },
+];
+
+const RUN_PHASE: Record<string, AgentStatus['phase']> = { get_project_tree: 'inspecting', search_docs: 'planning', create_instances: 'building', edit_script: 'writing_luau', run_and_check: 'playtesting' };
+
+/** The run so far at `elapsed` ms, built frame by frame. `pausedAt` freezes it for a screenshot. */
+function replay(t0: number, elapsed: number): { item: ChatItem; status: AgentStatus | null } {
+  let item: ChatItem = { id: 'a1', role: 'assistant', mode: 'agent', content: '', tools: [], streaming: true, createdAt: t0 };
+  let status: AgentStatus | null = { phase: 'understanding' };
+  for (const f of FRAMES) {
+    if (f.at > elapsed) break;
+    const now = t0 + f.at;
+    if (f.type === 'reasoning_delta') item = withReasoning(item, f.step, f.text, now);
+    else if (f.type === 'tool_start') {
+      item = withToolStart({ ...item, tools: [...item.tools, { toolId: f.toolId, tool: f.tool, summary: f.tool, target: f.target, startedAt: now, startObserved: true, done: false }] }, f.toolId, now);
+      status = { phase: RUN_PHASE[f.tool] ?? 'building', tool: f.tool, creditsSpent: item.tools.length };
+    } else if (f.type === 'tool_end') item = { ...item, tools: item.tools.map((t) => (t.toolId === f.toolId ? { ...t, ok: f.ok, done: true, durationMs: now - t.startedAt } : t)) };
+    else if (f.type === 'sources') item = withSources(item, f.sources);
+    else {
+      item = { ...withReasoningClosed(item, now), content: f.content, streaming: false, stopReason: 'done', endedAt: now, creditsSpent: 5 };
+      status = null;
+    }
+  }
+  return { item, status };
+}
+
+function ReasoningRun({ ask, t0 }: { ask: ChatItem; t0: number }) {
+  // `?at=<ms>` freezes the replay at that moment (for screenshots); otherwise it plays and loops.
+  const frozen = Number(new URLSearchParams(window.location.search).get('at'));
+  const [elapsed, setElapsed] = useState(Number.isFinite(frozen) && frozen > 0 ? frozen : 0);
+  useEffect(() => {
+    if (Number.isFinite(frozen) && frozen > 0) return;
+    const started = Date.now();
+    const id = window.setInterval(() => setElapsed((Date.now() - started) % 22_000), 100);
+    return () => window.clearInterval(id);
+  }, [frozen]);
+  const { item, status } = replay(t0, elapsed);
+  return <Screen running={item.streaming} status={status} items={[ask, item]} />;
+}
+
 /* ------------------------------------------------------------- per state --- */
 
 function Scenario({ id }: { id: ScenarioId }) {
@@ -366,18 +451,6 @@ function Scenario({ id }: { id: ScenarioId }) {
     return () => { live = false; };
   }, [id, queryClient]);
 
-  // A settled Reasoning starts closed, so the history state opens it the way a person would: by
-  // pressing the trigger, then the "earlier steps" header.
-  useEffect(() => {
-    if (id !== 'history' && id !== 'playtest-done') return;
-    const timer = window.setTimeout(() => {
-      document.querySelector<HTMLButtonElement>('.apple-reasoning__trigger[aria-expanded="false"]')?.click();
-      window.setTimeout(() => {
-        document.querySelector<HTMLButtonElement>('.apple-reasoning__history[aria-expanded="false"]')?.click();
-      }, 60);
-    }, 60);
-    return () => window.clearTimeout(timer);
-  }, [id]);
 
   const settled = (extra: Partial<ChatItem> = {}): ChatItem => ({
     id: 'a1', role: 'assistant', mode: 'agent', content: SHORT_REPLY, tools: settledTools(t0 - 60_000),
@@ -411,6 +484,12 @@ function Scenario({ id }: { id: ScenarioId }) {
 
     case 'completed':
       return <Screen items={[ask, settled()]} />;
+
+    case 'reasoning':
+      return <ReasoningRun ask={ask} t0={t0} />;
+
+    case 'sources':
+      return <Screen items={[ask, replay(t0 - 60_000, 30_000).item]} />;
 
     case 'asset-choice': {
       const options = [

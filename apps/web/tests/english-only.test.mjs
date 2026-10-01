@@ -92,7 +92,18 @@ const BROWSER_LOCALE = /\.toLocale(?:Date|Time)?String\(\s*(?:undefined\s*)?[,)]
 
 const LOCALE_ALLOW = [
   { file: 'web/src/routes/admin.tsx', why: 'operator console, rendered only for is_admin profiles — not customer-facing' },
+  // Added 2026-10-01: the genuine upstream WebPreview (hash-checked against its NOTICE row, so it
+  // cannot be edited here) stamps its console lines with toLocaleTimeString. Only WebPreviewConsole
+  // draws that, and no surface of this app renders WebPreviewConsole — the test below holds that.
+  { file: 'web/src/components/ai-elements/web-preview.tsx', why: 'upstream WebPreviewConsole timestamps; the console is never rendered by this app' },
 ];
+
+test('no surface renders the upstream console whose timestamps are in the browser locale', () => {
+  const users = files
+    .filter((p) => relative(APPS, p).startsWith('web/src/') && !relative(APPS, p).startsWith('web/src/components/ai-elements/'))
+    .filter((p) => /\bWebPreviewConsole\b/.test(stripComments(readFileSync(p, 'utf8'), extname(p))));
+  assert.deepEqual(users.map((p) => relative(APPS, p)), []);
+});
 
 test('no web formatter prints in the browser\'s own locale', () => {
   const found = [];

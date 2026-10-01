@@ -60,5 +60,7 @@ test('the composer offers exactly the three themes, next to Create, and stores t
   assert.match(composer, /UI_THEMES\.map\(/);
   assert.match(composer, /UI: \{UI_THEME_LABEL\[uiTheme\]\}/);
   assert.match(composer, /writeUiTheme\(projectId \?\? '', next\)/);
-  assert.ok(composer.indexOf('gx-chip--create') < composer.indexOf('gx-chip--theme'));
+  // RESTATED 2026-10-01: the chips are upstream PromptInputActionMenuTriggers, found by their names.
+  assert.ok(composer.indexOf("aria-label={creation === 'build' ? 'Create'") !== -1, 'the Create trigger was not found');
+  assert.ok(composer.indexOf("aria-label={creation === 'build' ? 'Create'") < composer.indexOf('aria-label={`UI theme: ${UI_THEME_LABEL[uiTheme]}`}'), 'the theme sits next to Create, after it');
 });

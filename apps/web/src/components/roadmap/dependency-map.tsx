@@ -1,12 +1,17 @@
 // The roadmap as a map: the same plan as the list, laid out left to right so what unlocks what can
-// be seen at once. Built from the AI Elements canvas pieces (ai-elements/canvas, node, edge,
-// connection, panel, controls), re-implemented without React Flow.
+// be seen at once. Built from the genuine AI Elements canvas pieces (ai-elements/canvas, node, edge,
+// connection, panel, controls) on @xyflow/react.
 //
 // The list stays the default and the reading surface; spine.tsx explains why. The map adds the
-// one thing a list cannot show, the shape of the plan, and keeps the list's rules: every node is
-// a button in the tab order, every line is a prerequisite the worker declared, and nothing here
-// is invented.
+// one thing a list cannot show, the shape of the plan, and keeps the list's rules: every node holds
+// a button in the tab order that says whether it is the selected one, every line is a prerequisite
+// the worker declared, and nothing here is invented. Positions come from map-model.ts (one column
+// per stage), not from a layout engine, so the same plan always draws the same way.
 import { useMemo, useState } from 'react';
+import type { Edge as FlowEdge, Node as FlowNode, NodeProps as FlowNodeProps } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import { Button } from '../ui/button';
+import { cn } from '../../lib/utils';
 import { Canvas } from '../ai-elements/canvas';
 import { Connection } from '../ai-elements/connection';
 import { Controls } from '../ai-elements/controls';
@@ -15,10 +20,8 @@ import { Node, NodeDescription, NodeHeader, NodeTitle } from '../ai-elements/nod
 import { Panel } from '../ai-elements/panel';
 import { READINESS_LABEL, ReadinessNode } from './marks';
 import type { BriefIntent } from './milestone-card';
-import type { RoadmapStage } from './model';
+import type { PlacedMilestone, RoadmapStage } from './model';
 import { buildRoadmapMap, initialSelection, NODE_H, NODE_W } from './map-model';
-import '../picks/tech/tech-ui.css';
-import './dependency-map.css';
 
 interface Props {
   stages: RoadmapStage[];
@@ -29,10 +32,58 @@ interface Props {
   onShowInList: (milestoneId: string) => void;
 }
 
+interface MilestoneData extends Record<string, unknown> {
+  placed: PlacedMilestone;
+  selected: boolean;
+  /** Dimmed when something else is selected and this one is not connected to it. */
+  faded: boolean;
+  onSelect: () => void;
+}
+type MilestoneFlowNode = FlowNode<MilestoneData, 'milestone'>;
+
+function MilestoneNode({ data }: FlowNodeProps<MilestoneFlowNode>) {
+  const { placed, selected, faded, onSelect } = data;
+  const m = placed.milestone;
+  const active = placed.readiness === 'in-progress' || placed.readiness === 'ready';
+  return (
+    <Node
+      handles={{ target: placed.dependencies.length > 0, source: placed.unlocks.length > 0 }}
+      data-tone={placed.readiness}
+      className={cn(
+        'h-[88px] w-[208px] overflow-hidden transition-opacity',
+        selected && 'border-primary ring-2 ring-primary/60',
+        faded && 'opacity-40',
+      )}
+    >
+      {/* A real button over the whole card: in the tab order, chosen with Enter or Space, and it
+          says whether it is the selected one. The card around it is only presentation. */}
+      <button
+        type="button"
+        className="flex size-full flex-col items-stretch text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-pressed={selected}
+        aria-label={`${m.title}, ${READINESS_LABEL[placed.readiness]}`}
+        onClick={onSelect}
+      >
+        <NodeHeader className={cn('flex items-center gap-1.5 py-1.5 text-xs', active ? 'text-primary' : 'text-muted-foreground')}>
+          <ReadinessNode readiness={placed.readiness} size={14} />
+          {READINESS_LABEL[placed.readiness]}
+        </NodeHeader>
+        <div className="grid gap-1 px-3 py-2">
+          <NodeTitle className="line-clamp-1 text-sm">{m.title}</NodeTitle>
+          {m.why && <NodeDescription className="line-clamp-2 text-xs">{m.why}</NodeDescription>}
+        </div>
+      </button>
+    </Node>
+  );
+}
+
+const nodeTypes = { milestone: MilestoneNode };
+const edgeTypes = { active: Edge.Animated, waiting: Edge.Temporary };
+
 export function DependencyMap({ stages, currentId, onBrief, busy, onShowInList }: Props) {
   const map = useMemo(() => buildRoadmapMap(stages), [stages]);
   const [picked, setPicked] = useState<string | null>(null);
-  const selected = (picked && map.nodes.some((n) => n.id === picked) ? picked : initialSelection(map, currentId));
+  const selected = picked && map.nodes.some((n) => n.id === picked) ? picked : initialSelection(map, currentId);
   const node = map.nodes.find((n) => n.id === selected) ?? null;
   const linked = useMemo(() => {
     const ids = new Set<string>();
@@ -44,82 +95,100 @@ export function DependencyMap({ stages, currentId, onBrief, busy, onShowInList }
     }
     return ids;
   }, [map, selected]);
-  const byId = useMemo(() => new Map(map.nodes.map((n) => [n.id, n])), [map]);
 
-  const layer = (
-    <>
-      <svg className="ai-canvas__edges" width={map.width} height={map.height} aria-hidden="true" focusable="false">
-        {map.edges.map((e) => {
-          const faded = selected !== null && e.from !== selected && e.to !== selected;
-          if (e.kind === 'active') return <Edge.Animated key={e.id} d={e.d} faded={faded} />;
-          if (e.kind === 'waiting') return <Edge.Temporary key={e.id} d={e.d} faded={faded} />;
-          return <Edge.Solid key={e.id} d={e.d} faded={faded} />;
-        })}
-        {map.edges
-          .filter((e) => e.from === selected || e.to === selected)
-          .map((e) => {
-            const to = byId.get(e.to);
-            return to ? <Connection key={`c-${e.id}`} d={e.d} toX={to.x} toY={to.y + NODE_H / 2} /> : null;
-          })}
-      </svg>
-      {map.nodes.map((n) => {
-        const m = n.placed.milestone;
-        return (
-          <Node
-            key={n.id}
-            x={n.x}
-            y={n.y}
-            width={NODE_W}
-            height={NODE_H}
-            tone={n.placed.readiness}
-            selected={n.id === selected}
-            faded={selected !== null && !linked.has(n.id)}
-            handles={{ target: n.placed.dependencies.length > 0, source: n.placed.unlocks.length > 0 }}
-            label={`${m.title}, ${READINESS_LABEL[n.placed.readiness]}`}
-            onSelect={() => setPicked(n.id)}
-          >
-            <NodeHeader>
-              <span className={`rm-map__mark is-${n.placed.readiness}`}><ReadinessNode readiness={n.placed.readiness} size={14} /></span>
-              {READINESS_LABEL[n.placed.readiness]}
-            </NodeHeader>
-            <NodeTitle>{m.title}</NodeTitle>
-            {m.why && <NodeDescription>{m.why}</NodeDescription>}
-          </Node>
-        );
-      })}
-    </>
+  const nodes = useMemo<MilestoneFlowNode[]>(
+    () =>
+      map.nodes.map((n) => ({
+        id: n.id,
+        type: 'milestone',
+        position: { x: n.x, y: n.y },
+        width: NODE_W,
+        height: NODE_H,
+        // The button inside the card is the one tab stop; the wrapper React Flow draws is not a second.
+        focusable: false,
+        draggable: false,
+        data: {
+          placed: n.placed,
+          selected: n.id === selected,
+          faded: selected !== null && !linked.has(n.id),
+          onSelect: () => setPicked(n.id),
+        },
+      })),
+    [map, selected, linked],
   );
 
-  const focus = node ? { x: node.x, y: node.y, w: NODE_W, h: NODE_H } : null;
+  const edges = useMemo<FlowEdge[]>(
+    () =>
+      map.edges.map((e) => ({
+        id: e.id,
+        source: e.from,
+        target: e.to,
+        // landed: the prerequisite is in (a plain line). active: the next milestone is being built
+        // (a travelling dot). waiting: not yet (dashed).
+        type: e.kind === 'landed' ? 'default' : e.kind,
+        focusable: false,
+        style: { stroke: 'var(--color-muted-foreground)' },
+        className: selected !== null && e.from !== selected && e.to !== selected ? 'opacity-20' : undefined,
+      })),
+    [map, selected],
+  );
 
   return (
-    <Canvas className="rm-map" width={map.width} height={map.height} label="Roadmap map" layer={layer} focus={focus}>
-      <Panel position="top-left" className="rm-map__legend" aria-label="What the lines mean">
-        <span className="rm-map__key"><svg width="22" height="6" aria-hidden="true"><path className="ai-edge" d="M1,3 H21" /></svg>Landed first</span>
-        <span className="rm-map__key"><svg width="22" height="6" aria-hidden="true"><path className="ai-edge ai-edge--temporary" d="M1,3 H21" /></svg>Not yet</span>
-      </Panel>
-      <Controls />
-      {node && (
-        <Panel dock className="rm-map__detail" aria-live="polite">
-          <p className="rm-map__detail-state">{READINESS_LABEL[node.placed.readiness]}</p>
-          <p className="rm-map__detail-title">{node.placed.milestone.title}</p>
-          {node.placed.milestone.why && <p className="rm-map__detail-why">{node.placed.milestone.why}</p>}
-          {node.placed.waitingOn.length > 0 && (
-            <p className="rm-map__detail-line">Needs first: {node.placed.waitingOn.map((r) => r.title).join(', ')}</p>
-          )}
-          {node.placed.unlocks.length > 0 && (
-            <p className="rm-map__detail-line">Unlocks: {node.placed.unlocks.map((r) => r.title).join(', ')}</p>
-          )}
-          <div className="rm-map__detail-actions">
-            <button type="button" className="tq-btn" onClick={() => onShowInList(node.id)}>Show in list</button>
-            {node.placed.readiness !== 'landed' && (
-              <button type="button" className="tq-btn tq-btn--primary" disabled={busy !== null} onClick={() => onBrief(node.id, 'build')}>
-                {busy?.id === node.id && busy.intent === 'build' ? 'Reading…' : 'Build'}
-              </button>
-            )}
-          </div>
+    <div
+      role="group"
+      aria-label="Roadmap map"
+      className="aie rm-map relative mt-4 h-[clamp(360px,62vh,680px)] min-w-0 overflow-hidden rounded-md border border-border"
+    >
+      <Canvas
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        connectionLineComponent={Connection}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        edgesFocusable={false}
+        nodesFocusable={false}
+        elementsSelectable={false}
+        deleteKeyCode={null}
+        proOptions={{ hideAttribution: true }}
+        minZoom={0.4}
+      >
+        <Panel position="top-left" className="m-3 flex gap-3 px-3 py-1.5 text-xs text-muted-foreground" aria-label="What the lines mean">
+          <span className="inline-flex items-center gap-1.5">
+            <svg width="22" height="6" aria-hidden="true" className="overflow-visible"><path d="M1,3 H21" className="stroke-muted-foreground" fill="none" /></svg>
+            Landed first
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <svg width="22" height="6" aria-hidden="true" className="overflow-visible"><path d="M1,3 H21" className="stroke-ring" strokeDasharray="5 5" fill="none" /></svg>
+            Not yet
+          </span>
         </Panel>
-      )}
-    </Canvas>
+        <Controls />
+        {node && (
+          <Panel position="bottom-left" className="m-3 grid max-w-[min(72ch,calc(100%-24px))] gap-1 p-3" aria-live="polite">
+            <p className="m-0 text-[11px] text-muted-foreground">{READINESS_LABEL[node.placed.readiness]}</p>
+            <p className="m-0 font-semibold text-sm text-foreground">{node.placed.milestone.title}</p>
+            {node.placed.milestone.why && (
+              <p className="m-0 text-[12.5px] text-muted-foreground leading-snug">{node.placed.milestone.why}</p>
+            )}
+            {node.placed.waitingOn.length > 0 && (
+              <p className="m-0 text-[12.5px] text-muted-foreground leading-snug">Needs first: {node.placed.waitingOn.map((r) => r.title).join(', ')}</p>
+            )}
+            {node.placed.unlocks.length > 0 && (
+              <p className="m-0 text-[12.5px] text-muted-foreground leading-snug">Unlocks: {node.placed.unlocks.map((r) => r.title).join(', ')}</p>
+            )}
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <Button type="button" variant="outline" size="sm" onClick={() => onShowInList(node.id)}>Show in list</Button>
+              {node.placed.readiness !== 'landed' && (
+                <Button type="button" size="sm" disabled={busy !== null} onClick={() => onBrief(node.id, 'build')}>
+                  {busy?.id === node.id && busy.intent === 'build' ? 'Reading…' : 'Build'}
+                </Button>
+              )}
+            </div>
+          </Panel>
+        )}
+      </Canvas>
+    </div>
   );
 }

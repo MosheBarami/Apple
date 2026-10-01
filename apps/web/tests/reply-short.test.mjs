@@ -126,10 +126,11 @@ test('a wire-only assistant reply renders no payload or text sharing controls', 
 
 test('all assistant text sharing paths use the filtered reply', () => {
   const turn = decomment(readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8'));
-  const replyActions = turn.slice(turn.indexOf('<MessageToolbar'), turn.indexOf('className="gx-turn__foot"'));
+  // RESTATED 2026-10-01: the reply's actions are AI Elements' MessageActions (CopyAction, ShareAction).
+  const replyActions = turn.slice(turn.indexOf('<MessageToolbar'), turn.indexOf('data-turn-foot'));
   assert.ok(replyActions.length > 100, 'reply action section was not found');
   assert.doesNotMatch(replyActions, /\b(?:item\.content|parsed\.rest)\b/, 'a reply text action can read raw content');
-  assert.match(replyActions, /<CopyButton\b/);
-  assert.match(replyActions, /<ShareButton\b/);
+  assert.match(replyActions, /<CopyAction getText=\{\(\) => spilled\.prose\} \/>/);
+  assert.match(replyActions, /<ShareAction getText=\{\(\) => spilled\.prose\} \/>/);
   assert.match(replyActions, /label: 'Copy text'/, 'the context menu copy path is in this check');
 });

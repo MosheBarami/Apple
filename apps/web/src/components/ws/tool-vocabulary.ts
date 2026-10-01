@@ -158,6 +158,11 @@ export const TOOL = {
   insert_asset: { kind: 'building', label: 'Inserted an asset', live: 'Adding something to your game' },
   edit_terrain: { kind: 'building', label: 'Edited terrain', live: 'Shaping the ground' },
   build_scene: { kind: 'building', label: 'Built the scene', live: 'Building the scene' },
+  // Two tools the worker gained on 2026-10-01 (09e97ab7), caught by tool-vocabulary.test.mjs before
+  // the turn's Task rows could print their registry names. `build_object` makes one whole thing in a
+  // call, named by its own `name`; `more_tools` widens the run's toolset when nothing offered fits.
+  build_object: { kind: 'building', label: 'Built an object', live: 'Building it', on: 'Building the {}' },
+  more_tools: { kind: 'planning', label: 'Reached for more abilities', live: 'Reaching for more abilities' },
   // Arbitrary Luau against the place can do anything; `building` is the coarsest
   // honest answer rather than a specific claim about which.
   run_luau: { kind: 'building', label: 'Ran Luau', live: 'Making changes to your game' },

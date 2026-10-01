@@ -33,6 +33,8 @@ import {
 import { Failure } from '../failure';
 import { relativeTime } from '../../lib/format';
 import type { CodeLanguage } from '../../lib/generative-ui/schema';
+import { DownloadIcon, FileIcon } from 'lucide-react';
+import { cn } from '../../lib/utils';
 import {
   Artifact,
   ArtifactAction,
@@ -46,7 +48,6 @@ import {
 import {
   Commit,
   CommitActions,
-  CommitAuthorAvatar,
   CommitHash,
   CommitHeader,
   CommitInfo,
@@ -55,15 +56,20 @@ import {
   CommitSeparator,
   CommitTimestamp,
 } from '../ai-elements/commit';
-import { FileTree, FileTreeActions, FileTreeIcon, FileTreeMeta, FileTreeName, FileTreeRow, fileTreeMainProps } from '../ai-elements/file-tree';
+import { FileTree, FileTreeActions, FileTreeFile, FileTreeFolder, FileTreeIcon, FileTreeName } from '../ai-elements/file-tree';
 import { JSXPreview, JSXPreviewContent } from '../ai-elements/jsx-preview';
-import { SchemaDisplay } from '../ai-elements/schema-display';
-import { Snippet, SnippetCopyButton, SnippetInput, SnippetText } from '../ai-elements/snippet';
+import {
+  SchemaDisplay,
+  SchemaDisplayContent,
+  SchemaDisplayDescription,
+  SchemaDisplayProperty,
+} from '../ai-elements/schema-display';
+import { Snippet, SnippetAddon, SnippetCopyButton, SnippetInput, SnippetText } from '../ai-elements/snippet';
+import { Markdown } from '../../lib/markdown';
 import { CodeViewer } from '../picks/tech/code-viewer';
 import { diffLines } from '../picks/tech/diff-model';
-import { ancestorsOf, moveExpanded, treeRows } from '../picks/tech/file-tree-model';
-import { DownloadIcon } from '../picks/tech/icons';
-import { jsonShape } from '../picks/tech/json-shape';
+import { ancestorsOf, moveExpanded, treeRows, type TreeRow } from '../picks/tech/file-tree-model';
+import { jsonShape, type SchemaProperty } from '../picks/tech/json-shape';
 import { lineQuestion } from '../picks/tech/line-thread';
 import { VersionDiff } from '../picks/tech/version-diff';
 import '../picks/tech/tech-ui.css';
@@ -343,6 +349,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
     });
     setPrefix(path);
   };
+  const folderPaths = new Set(rows.filter((r) => r.kind === 'folder').map((r) => r.path));
   const crumbs = breadcrumbs(prefix);
   const now = Date.now();
 
@@ -456,81 +463,89 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
       )}
 
       {/* THE TREE (AI Elements file-tree + UI Layouts Tree Code Viewer). Folders open in place; a
-          file opens in the viewer below. One flat list of rows, each with its own level, so the
-          arrow keys walk it in reading order and every row keeps its own buttons. */}
+          file opens in the viewer below. The rows come back flat, in reading order, each with a
+          depth; they are nested here because upstream's FileTreeFolder draws its own children.
+          Pressing a folder's name opens or closes it and makes it the folder new files go into,
+          which is also what the chevron does. */}
       {rows.length > 0 && (
-        <FileTree aria-label="Project files" onToggle={(path, want) => toggleFolder(path, want)}>
-          {rows.map((row) =>
-            row.kind === 'folder' ? (
-              // NOT one <button> around the whole row: the folder actions cannot live inside another
-              // button — nested interactive elements are invalid HTML and the inner control is
-              // unreachable by keyboard in some engines. The name is its own control.
-              <FileTreeRow key={row.path} level={row.depth} kind="folder" open={row.expanded}>
-                <button
-                  type="button"
-                  className="ai-tree__main"
-                  {...fileTreeMainProps(row.path, row.depth, 'folder', row.expanded)}
-                  onClick={() => toggleFolder(row.path)}
-                >
-                  <FileTreeIcon kind="folder" open={row.expanded} />
-                  <FileTreeName>{row.name}</FileTreeName>
-                  <FileTreeMeta>
+        <FileTree
+          className="aie"
+          aria-label="Project files"
+          expanded={expanded}
+          selectedPath={open ?? undefined}
+          onExpandedChange={(next) => {
+            // The chevron toggles one folder; the one that changed is the folder to add files to.
+            const changed = [...next].find((p) => !expanded.has(p)) ?? [...expanded].find((p) => !next.has(p));
+            setExpanded(next);
+            if (changed !== undefined) setPrefix(changed);
+          }}
+          onSelect={(path) => {
+            if (folderPaths.has(path)) toggleFolder(path);
+            else choose(path);
+          }}
+        >
+          {nest(rows).map(function draw({ row, children }: TreeNode) {
+            return row.kind === 'folder' ? (
+              <FileTreeFolder key={row.path} path={row.path} name={row.name}>
+                {/* Upstream's folder row has no slot for its own actions, so they sit first inside
+                    it — a folder's count and size, and (behind the build permission) Rename and
+                    Delete. NOT inside another button: the folder's name is upstream's own control,
+                    and nested interactive elements are invalid HTML. */}
+                <div className="flex items-center gap-2 py-1 pl-2 text-xs text-muted-foreground">
+                  <span>
                     {row.fileCount} file{row.fileCount === 1 ? '' : 's'} · {formatFileBytes(row.bytes)}
-                  </FileTreeMeta>
-                </button>
-                {canEdit && (
-                  <FileTreeActions>
-                    <button
-                      type="button"
-                      className="tq-btn"
-                      disabled={busy}
-                      onClick={() => {
-                        const to = window.prompt(renameFolderPrompt(row.path), row.path);
-                        if (!to || to === row.path) return;
-                        void act({ op: 'move_folder', path: row.path, to }, (result) =>
-                          `Moved ${result.moved ?? ''} file${result.moved === 1 ? '' : 's'} to ${to}`.replace('  ', ' '),
-                        ).then((done) => { if (done) setExpanded((e) => moveExpanded(e, row.path, to)); });
-                      }}
-                    >
-                      Rename
-                    </button>
-                    <button
-                      type="button"
-                      className="tq-btn"
-                      disabled={busy}
-                      onClick={() => {
-                        // The count comes from the row, which is the worker's own count of the files
-                        // under the prefix — including the ones a level down that are not on screen.
-                        if (!window.confirm(deleteFolderConfirm(row.path, row.fileCount, data.trashRetentionDays))) return;
-                        void act({ op: 'delete_folder', path: row.path }, (result) =>
-                          `Moved ${result.deleted ?? ''} file${result.deleted === 1 ? '' : 's'} to the trash`.replace('  ', ' '),
-                        ).then((done) => { if (done) setExpanded((e) => moveExpanded(e, row.path, null)); });
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </FileTreeActions>
-                )}
-              </FileTreeRow>
+                  </span>
+                  {canEdit && (
+                    <FileTreeActions>
+                      <button
+                        type="button"
+                        className="tq-btn"
+                        disabled={busy}
+                        onClick={() => {
+                          const to = window.prompt(renameFolderPrompt(row.path), row.path);
+                          if (!to || to === row.path) return;
+                          void act({ op: 'move_folder', path: row.path, to }, (result) =>
+                            `Moved ${result.moved ?? ''} file${result.moved === 1 ? '' : 's'} to ${to}`.replace('  ', ' '),
+                          ).then((done) => { if (done) setExpanded((e) => moveExpanded(e, row.path, to)); });
+                        }}
+                      >
+                        Rename
+                      </button>
+                      <button
+                        type="button"
+                        className="tq-btn"
+                        disabled={busy}
+                        onClick={() => {
+                          // The count comes from the row, which is the worker's own count of the files
+                          // under the prefix — including the ones a level down that are not on screen.
+                          if (!window.confirm(deleteFolderConfirm(row.path, row.fileCount, data.trashRetentionDays))) return;
+                          void act({ op: 'delete_folder', path: row.path }, (result) =>
+                            `Moved ${result.deleted ?? ''} file${result.deleted === 1 ? '' : 's'} to the trash`.replace('  ', ' '),
+                          ).then((done) => { if (done) setExpanded((e) => moveExpanded(e, row.path, null)); });
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </FileTreeActions>
+                  )}
+                </div>
+                {children.map(draw)}
+              </FileTreeFolder>
             ) : (
-              <FileTreeRow key={row.path} level={row.depth} kind="file" selected={open === row.path}>
-                <button
-                  type="button"
-                  className="ai-tree__main"
-                  {...fileTreeMainProps(row.path, row.depth, 'file')}
-                  onClick={() => choose(row.path)}
-                >
-                  <FileTreeIcon kind="file" />
-                  <FileTreeName>{row.name}</FileTreeName>
-                  <FileTreeMeta>
-                    {/* A size that was never recorded says so. -1 must never render as "0 B". */}
-                    {row.bytes < 0 ? 'size not recorded' : formatFileBytes(row.bytes)}
-                    {row.updatedAt > 0 ? ` · ${relativeTime(row.updatedAt)}` : ''}
-                  </FileTreeMeta>
-                </button>
-              </FileTreeRow>
-            ),
-          )}
+              <FileTreeFile key={row.path} path={row.path} name={row.name}>
+                <span className="size-4 shrink-0" />
+                <FileTreeIcon>
+                  <FileIcon className="size-4 text-muted-foreground" />
+                </FileTreeIcon>
+                <FileTreeName>{row.name}</FileTreeName>
+                <span className="ml-auto shrink-0 pl-2 text-xs text-muted-foreground">
+                  {/* A size that was never recorded says so. -1 must never render as "0 B". */}
+                  {row.bytes < 0 ? 'size not recorded' : formatFileBytes(row.bytes)}
+                  {row.updatedAt > 0 ? ` · ${relativeTime(row.updatedAt)}` : ''}
+                </span>
+              </FileTreeFile>
+            );
+          })}
         </FileTree>
       )}
 
@@ -538,7 +553,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
       {/* AI Elements artifact: the file as one card — its name, what it is, the things you can do
           to it, and the file itself in the Tree Code Viewer pane. */}
       {open !== null && (
-        <Artifact aria-label={`Preview of ${open}`} className="ft-artifact">
+        <Artifact aria-label={`Preview of ${open}`} className="aie ft-artifact">
           <ArtifactHeader>
             <div>
               <ArtifactTitle>{open.split('/').pop()}</ArtifactTitle>
@@ -549,8 +564,8 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
               </ArtifactDescription>
             </div>
             <ArtifactActions>
-              <ArtifactAction iconOnly tooltip="Download" onClick={() => void downloadProjectFile(projectId, open)}>
-                <DownloadIcon />
+              <ArtifactAction tooltip="Download" onClick={() => void downloadProjectFile(projectId, open)}>
+                <DownloadIcon className="size-4" />
               </ArtifactAction>
               <ArtifactClose onClick={() => choose(open)} aria-label="Close the file" />
             </ArtifactActions>
@@ -559,9 +574,13 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
           <ArtifactContent className="ft-body">
             {/* AI Elements snippet: the path, ready to paste into a message to Apple. */}
             <Snippet code={open}>
-              <SnippetText>Path</SnippetText>
+              <SnippetAddon>
+                <SnippetText>Path</SnippetText>
+              </SnippetAddon>
               <SnippetInput aria-label="File path" />
-              <SnippetCopyButton label="Copy the path" />
+              <SnippetAddon align="inline-end">
+                <SnippetCopyButton aria-label="Copy the path" title="Copy the path" />
+              </SnippetAddon>
             </Snippet>
 
             {canEdit && (
@@ -631,9 +650,8 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
               <section aria-label="Earlier versions" className="ft-versions">
                 <h4 className="ft-h">Earlier versions</h4>
                 {history.data.versions.map((v: FileVersion) => (
-                  <Commit key={v.version} current={v.current}>
+                  <Commit key={v.version} className={cn('aie', v.current && 'border-primary')} data-current={v.current || undefined}>
                     <CommitHeader>
-                      <CommitAuthorAvatar />
                       <CommitInfo>
                         <CommitMessage>
                           Version {v.version}
@@ -745,6 +763,30 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
   );
 }
 
+type TreeNode = { row: TreeRow; children: TreeNode[] };
+
+/** The flat reading-order rows, nested by depth: a row's children are the deeper rows right after it. */
+function nest(rows: TreeRow[]): TreeNode[] {
+  const roots: TreeNode[] = [];
+  const stack: TreeNode[] = [];
+  for (const row of rows) {
+    const node: TreeNode = { row, children: [] };
+    while (stack.length >= row.depth) stack.pop();
+    (stack.length === 0 ? roots : stack[stack.length - 1]!.children).push(node);
+    stack.push(node);
+  }
+  return roots;
+}
+
+/** The app's shape of a data file, in the props upstream's SchemaDisplayProperty takes. */
+function schemaOf(prop: SchemaProperty): { name: string; type: string; properties?: ReturnType<typeof schemaOf>[] } {
+  return {
+    name: prop.name,
+    type: prop.type,
+    ...(prop.properties ? { properties: prop.properties.map(schemaOf) } : {}),
+  };
+}
+
 /** Which highlighter a file's extension asks for. Anything unlisted is plain text, never a guess. */
 function languageOf(path: string): CodeLanguage {
   const ext = extensionOf(path);
@@ -775,6 +817,13 @@ function FilePreview({
   const markdown = extensionOf(path) === '.md';
   const [page, setPage] = useState(true);
   const shape = useMemo(() => (extensionOf(path) === '.json' ? jsonShape(content) : null), [path, content]);
+  // The page view hands JSXPreview a one-tag document, `<Page />`, and the text through `components`.
+  // Upstream's JSXPreview parses its `jsx` as JSX; a project file is untrusted text, and the app has
+  // exactly one renderer allowed to turn text into markup (lib/markdown: marked then DOMPurify), so
+  // the file's text never goes through the JSX parser.
+  const pageText = preview.kind === 'table' ? '' : preview.text;
+  const Page = useMemo(() => function Page() { return <Markdown source={pageText} />; }, [pageText]);
+  const pageComponents = useMemo(() => ({ Page }), [Page]);
 
   if (preview.kind === 'table') {
     return (
@@ -807,7 +856,7 @@ function FilePreview({
         </div>
       )}
       {markdown && page ? (
-        <JSXPreview jsx={preview.text} isStreaming={preview.truncated} className="ft-page">
+        <JSXPreview jsx="<Page />" components={pageComponents} className="aie ft-page">
           <JSXPreviewContent />
         </JSXPreview>
       ) : (
@@ -822,13 +871,24 @@ function FilePreview({
         <details className="tq-details">
           <summary>Details</summary>
           <div className="tq-details__body">
+            {/* SchemaDisplay's header draws `path` as raw HTML (dangerouslySetInnerHTML), so the
+                header — and with it the file's own name — is not used; the root, description and
+                property rows are, and every name drawn here is JSON text rendered as a React child. */}
             <SchemaDisplay
-              title="Data shape"
+              className="aie"
+              method="GET"
+              path=""
               description={shape.count !== undefined
                 ? `A ${shape.type} (${shape.count}). Each item has these fields.`
                 : 'The fields in this file and what kind of value each holds.'}
-              properties={shape.properties}
-            />
+            >
+              <SchemaDisplayDescription />
+              <SchemaDisplayContent>
+                {shape.properties.map((prop) => (
+                  <SchemaDisplayProperty key={prop.name} {...schemaOf(prop)} />
+                ))}
+              </SchemaDisplayContent>
+            </SchemaDisplay>
           </div>
         </details>
       )}

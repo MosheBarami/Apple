@@ -10,7 +10,7 @@ import {
   ChainOfThoughtHeader,
   ChainOfThoughtStep,
 } from '../../ai-elements/chain-of-thought';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../ai-elements/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../ui/collapsible';
 import { cotSteps, planView, taskGroups } from './plan-task-cot-model';
 
 export function TaskEvidence({ activity }: { activity: ActivityRun | null | undefined }) {
@@ -33,7 +33,7 @@ export function TaskEvidence({ activity }: { activity: ActivityRun | null | unde
             {g.files.length > 0 && (
               <TaskItem>
                 {g.files.map((f) => (
-                  <TaskItemFile key={f}>{f}</TaskItemFile>
+                  <TaskItemFile key={f} data-file="">{f}</TaskItemFile>
                 ))}
               </TaskItem>
             )}

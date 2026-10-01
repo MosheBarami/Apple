@@ -27,7 +27,7 @@ function measure(dock: HTMLElement, row: Element | null): Bed {
 const style = (bed: Bed) =>
   bed ? { transform: `translate(${bed.left}px, ${bed.top}px)`, width: bed.width, height: bed.height } : undefined;
 
-export function DockHighlights({ dock, route }: { dock: RefObject<HTMLElement>; route: string }) {
+export function DockHighlights({ dock, route }: { dock: RefObject<HTMLElement | null>; route: string }) {
   const [current, setCurrent] = useState<Bed>(null);
   const [hover, setHover] = useState<Bed>(null);
   const hoverRow = useRef<Element | null>(null);

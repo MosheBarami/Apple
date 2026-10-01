@@ -14,7 +14,7 @@
 //   Hyperspeed              streaks rushing past the first screen, "Waking the apple" (recalling).
 //   Fill text               that first screen's headline, inked left to right — no percentage.
 //   SVG loading spinner     the Spinner: an arc growing and shrinking round a turning ring.
-//   Shimmering Text         the Spinner's caption, brightening glyph by glyph.
+//   Shimmering Text         the Spinner's caption, a light sweeping across it (AI Elements Shimmer).
 import { useEffect, useState } from 'react';
 import { OPERATION_STEPS, type OperationKind } from '../lib/tool-meta';
 // The OS query is no longer read here. It is still honoured — it is one of the two inputs to
@@ -123,7 +123,7 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
  * says less than it does.
  *
  * The mark is the owner's pick, Motion's SVG spinner (picks/thinking/arc-spinner.tsx), and the
- * caption shimmers glyph by glyph (Animate UI "Shimmering Text", merged into ai-elements Shimmer).
+ * caption shimmers (AI Elements' Shimmer: a light sweeping across the words).
  * Status marks elsewhere keep the shared StatusIcon; this is the wait, not a status.
  */
 export function Spinner({ label }: { label?: string }) {
@@ -131,7 +131,7 @@ export function Spinner({ label }: { label?: string }) {
     <span className="loading-spinner" role="status">
       <ArcSpinner size={label ? 18 : 14} />
       {label
-        ? <Shimmer as="span" variant="wave" duration={1} className="loading-spinner__label">{label}</Shimmer>
+        ? <Shimmer as="span" duration={1} className="loading-spinner__label">{label}</Shimmer>
         : <span className="visually-hidden">Loading</span>}
     </span>
   );

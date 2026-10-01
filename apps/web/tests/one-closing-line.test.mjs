@@ -67,7 +67,8 @@ test('CONTROL: a stop under the model\'s own prose, and a failure under any repl
 test('the turn hands the reply to the model and draws no empty sentence', () => {
   const TURN = readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8');
   assert.match(TURN, /outcomeLine\(item\.stopReason, item\.error, item\.content\)/, 'the turn does not pass its reply to the outcome model');
-  assert.match(TURN, /\{outcome\.text && <p className="gx-outcome__text">/, 'a null sentence would render as an empty paragraph');
+  // RESTATED 2026-10-01: the sentence's paragraph carries Tailwind classes now; still only when there is one.
+  assert.match(TURN, /\{outcome\.text && <p className=\{cn\(/, 'a null sentence would render as an empty paragraph');
 });
 
 test('the live turn settles on the stored reply msg_end carries, so live and reload read the same', () => {

@@ -12,9 +12,11 @@
 // A real multi-select listbox: the search field keeps focus and names the highlighted row through
 // aria-activedescendant; ↑/↓ move, Enter ticks, Escape closes. The file list is fetched
 // once per opening of a project, when the picker is first opened — never on mount.
+import { buttonVariants } from '../../ui/button';
+import { cn } from '../../../lib/utils';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { fetchProjectFiles } from '../../../lib/api';
-import { XIcon } from '../../ai-elements/icons';
+import { XIcon } from 'lucide-react';
 import './file-picker.css';
 
 const SHOW_CHIPS = 3;
@@ -123,7 +125,7 @@ export function FilePicker({
       <button
         ref={trigger}
         type="button"
-        className="gx-chip gx-chip--files"
+        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'rounded-full text-muted-foreground')}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={chosen.length ? `Files: ${chosen.length} chosen` : 'Files'}
@@ -135,7 +137,7 @@ export function FilePicker({
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z M14 3v5h5 M9 13h6 M9 17h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <span className="gx-chip__label">Files</span>
+        <span className="max-[520px]:sr-only">Files</span>
         {chosen.length > 0 && <span className="pk-files__count" aria-hidden="true">{chosen.length}</span>}
       </button>
       {open && (

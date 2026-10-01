@@ -13,10 +13,19 @@
 //      and the product has to say which. Checkpoints are the tool for reverting work, and keeping
 //      them separate is deliberate — a wording fix should never silently revert a working door.
 import { useState, type FormEvent } from 'react';
+import { TriangleAlertIcon } from 'lucide-react';
 import { Modal } from '../modal';
-// The warning and the two answers are one AI Elements Confirmation block (picks/chat/confirmation),
-// so the sentence that says what will be lost sits directly over the button that loses it.
-import { Confirmation, ConfirmationAction, ConfirmationActions, ConfirmationBody } from '../picks/chat/confirmation';
+// The warning and the two answers are one AI Elements Confirmation block (the genuine upstream
+// component, components/ai-elements/confirmation.tsx), so the sentence that says what will be lost
+// sits directly over the button that loses it. Upstream draws it for a tool awaiting approval; here
+// the approval being asked for is this edit, so it is always in the `approval-requested` state.
+import {
+  Confirmation,
+  ConfirmationAction,
+  ConfirmationActions,
+  ConfirmationRequest,
+  ConfirmationTitle,
+} from '../ai-elements/confirmation';
 
 export function EditMessageDialog({
   current,
@@ -59,31 +68,34 @@ export function EditMessageDialog({
         </label>
 
         <Confirmation
-          className="edit-warn"
-          tone={discards > 0 ? 'warn' : 'plain'}
-          title={
-            discards > 0 ? (
-              <p>
+          className="aie mt-4"
+          approval={{ id: 'edit-message' }}
+          state="approval-requested"
+          variant={discards > 0 ? 'destructive' : 'default'}
+        >
+          {discards > 0 && <TriangleAlertIcon aria-hidden="true" />}
+          <ConfirmationTitle>
+            {discards > 0 ? (
+              <>
                 This discards <strong>{discards}</strong> later {discards === 1 ? 'message' : 'messages'} and
                 runs again from here. That cannot be undone.
-              </p>
+              </>
             ) : (
-              <p>This runs again from here.</p>
-            )
-          }
-        >
-          <ConfirmationBody>
+              <>This runs again from here.</>
+            )}
+          </ConfirmationTitle>
+          <ConfirmationRequest>
             {/* The part people assume and would otherwise only discover afterwards. */}
-            <p className="edit-warn__quiet">
+            <p className="text-muted-foreground text-sm">
               Anything Apple already built in your place stays as it is — this rewinds the
               conversation, not the work. Use a checkpoint to revert what was built.
             </p>
-          </ConfirmationBody>
+          </ConfirmationRequest>
           <ConfirmationActions>
-            <ConfirmationAction onClick={onCancel} disabled={busy}>
+            <ConfirmationAction variant="outline" onClick={onCancel} disabled={busy}>
               Cancel
             </ConfirmationAction>
-            <ConfirmationAction type="submit" variant="primary" disabled={!changed || busy}>
+            <ConfirmationAction type="submit" variant={discards > 0 ? 'destructive' : 'default'} disabled={!changed || busy}>
               {busy ? 'Sending…' : 'Discard and run again'}
             </ConfirmationAction>
           </ConfirmationActions>

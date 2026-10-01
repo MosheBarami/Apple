@@ -1,21 +1,20 @@
 Vercel AI Elements — vendored components
 =========================================
 
-This directory contains modified vendored copies of components from Vercel AI Elements, and small
-local stand-ins for the npm packages those components import (none of which this app installs).
+The .tsx files in this directory are the genuine Vercel AI Elements components, copied from the
+upstream repository the way the AI Elements CLI installs them. The shadcn/ui primitives they import
+are in ../ui/, and shadcn's `cn` helper is ../../lib/utils.ts.
 
 Upstream project:
   https://github.com/vercel/ai-elements
-
-Upstream commit (every file below is taken from this one revision):
-  6a9d5b1822ffb10bba4bd97175f01edd7d8651cd
 
 Copyright 2023 Vercel, Inc.
 Licensed under the Apache License, Version 2.0. LICENSE in this directory is the upstream license
 notice, byte for byte; LICENSE-APACHE-2.0 is the full text of the License it refers to.
 
-The files under ui/ are adapted from the shadcn/ui primitives as copied into that repository at
-packages/shadcn-ui/components/ui/. shadcn/ui is distributed under the MIT License
+The files under ../ui/ are the shadcn/ui primitives as copied into that repository at
+packages/shadcn-ui/components/ui/ (and ../../lib/utils.ts is its packages/shadcn-ui/lib/utils.ts).
+shadcn/ui is distributed under the MIT License
 (Copyright (c) 2023 shadcn, https://github.com/shadcn-ui/ui):
 
   Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -33,518 +32,304 @@ packages/shadcn-ui/components/ui/. shadcn/ui is distributed under the MIT Licens
   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+HOW THE FILES ARE COPIED
+------------------------
 
-HOW TO READ THE ROWS BELOW
---------------------------
+scripts/vendor-ai-elements.mjs copies each file below from an ai-elements checkout. The bytes are
+upstream's; the one change is the import alias the CLI also rewrites:
 
-Each FILE row is one adapted file. `copy` is the verbatim upstream file, kept with a .txt suffix so
-neither TypeScript nor Vite ever compiles it; `sha256` is that copy's hash, and it is the hash of the
-upstream file at the commit above. Diff `copy` against the local file to see every change. The
-general rules, which apply to every row:
+  @repo/shadcn-ui/components/ui/<x>  ->  @/components/ui/<x>
+  @repo/shadcn-ui/lib/utils          ->  @/lib/utils
 
-  * Exports, prop types and state logic are upstream's. Import specifiers are swapped for the local
-    stand-ins listed in the row, and BEM classes (`ai-<component>__<part>`) are appended beside the
-    upstream Tailwind class strings, which are kept for traceability and are inert (this app has no
-    Tailwind). The BEM classes are styled with the app's tokens in the component's .css file.
-  * React 18: primitives that receive a ref through `asChild` or directly use forwardRef.
-  * Anything beyond that is named in the row.
+Each FILE row names the upstream path and the sha256 of the UPSTREAM bytes.
+tests/ai-elements-provenance.test.mjs reverses the alias on every local copy and checks the result
+hashes to its row, so no local edit to a vendored file goes unrecorded. Everything else the
+components import (radix-ui, lucide-react, streamdown, shiki, motion, use-stick-to-bottom, …) is an
+npm dependency in apps/web/package.json, not a stand-in.
 
-The local stand-ins, which have no upstream file of their own:
+The styling is upstream's Tailwind classes, compiled by Tailwind CSS v4 from src/styles/ai-elements.css,
+which also holds the theme tokens (the app's own palette) and the scoped preflight.
 
-  lib/utils.ts            cn (clsx semantics; no tailwind-merge — there is no Tailwind to merge)
-  lib/cva.ts              class-variance-authority's cva / VariantProps
-  lib/floating.ts         viewport placement for portalled tooltip and listbox panels
-  lib/use-isomorphic-layout-effect.ts
-  ui/slot.tsx             radix-ui Slot (asChild), with composed refs
-  icons.tsx               the lucide-react icons used, as inline SVG under the same names
-                          (the ones added for chain-of-thought, tool, task, sources and
-                          Reasoning's Brain take lucide-react 1.31.0's own icon geometry)
-  stick-to-bottom.tsx     use-stick-to-bottom (StickToBottom, StickToBottom.Content,
-                          useStickToBottomContext); "at the bottom" is lib/follow-latest.ts
-  streamdown.tsx          streamdown + @streamdown/{cjk,code,math,mermaid}; renders through the
-                          app's lib/markdown.tsx (marked + DOMPurify, fences to the code block)
-  highlight-compat.ts     the shiki types and tokenizer CodeBlock uses, over lib/highlight.ts,
-                          plus shiki's `diff` language (a line's colour from its first character)
-  ai-types.ts             the `ai` package types the components name (type-only upstream)
-  reasoning-compat.tsx    @radix-ui/react-use-controllable-state (Reasoning, ChainOfThought)
-  lib/nanoid.ts           nanoid (a 21-character URL-safe id from crypto.getRandomValues)
-  ui/dropdown-menu-primitive.tsx
-                          radix-ui's DropdownMenu primitive, which ui/dropdown-menu.tsx
-                          imports as a namespace (see that row)
-  lib/cmdk.tsx            cmdk's Command, Input, List, Empty, Group, Item and Separator (a
-                          substring filter where cmdk ranks fuzzily; no Command.Dialog)
+BEGIN FILES (upstream commit 6a9d5b1822ffb10bba4bd97175f01edd7d8651cd)
 
-The composer rows (prompt-input.tsx, attachments.tsx and the ui/ primitives added with them:
-input-group, input, textarea, spinner, hover-card, dropdown-menu, command, dialog) were added on
-2026-09-22. Their icons (CornerDownLeft, ArrowUp, Image, Monitor, Plus, Square, X, FileText, Globe,
-Music2, Paperclip, Video, Loader2) are in icons.tsx with lucide-react 1.31.0's geometry, and an icon
-is now aria-hidden unless it is given an aria-*, role or title prop — lucide's own rule, which the
-Spinner (role="status", named "Loading") depends on.
-
-
-FILE conversation.tsx
-  upstream: packages/elements/src/conversation.tsx
-  copy: upstream/conversation.tsx.txt
-  sha256: d7ac46f1e7bc8e46bc49f67c768fc93aebdf17d816397cb35a40deff7173e875
-  substitutions:
-    @repo/shadcn-ui/components/ui/button -> ./ui/button
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    ai -> ./ai-types (type-only)
-    lucide-react -> ./icons
-    use-stick-to-bottom -> ./stick-to-bottom
-    styles -> ./conversation.css
+FILE components/ai-elements/artifact.tsx
+  upstream: packages/elements/src/artifact.tsx
+  sha256: 6e5017f85105164b95861b1d10a78c956c312682c5ecd17e2619870ba5993aba
 END
 
-FILE message.tsx
-  upstream: packages/elements/src/message.tsx
-  copy: upstream/message.tsx.txt
-  sha256: 19c7755740e116f221e4247f7b6d4f20b57a44e4c4fcf66d2db5e1f111476509
-  substitutions:
-    @repo/shadcn-ui/components/ui/button -> ./ui/button
-    @repo/shadcn-ui/components/ui/button-group -> ./ui/button-group
-    @repo/shadcn-ui/components/ui/tooltip -> ./ui/tooltip
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    @streamdown/cjk, @streamdown/code, @streamdown/math, @streamdown/mermaid -> ./streamdown (inert plugin markers)
-    streamdown -> ./streamdown (renders through lib/markdown.tsx; no math, mermaid or CJK plugins)
-    ai -> ./ai-types (type-only)
-    lucide-react -> ./icons
-    styles -> ./message.css (including the `hidden` rule MessageBranchContent relies on)
-    MessageAction appends `ai-message__action` to the className it passes to Button
+FILE components/ai-elements/attachments.tsx
+  upstream: packages/elements/src/attachments.tsx
+  sha256: 91c42be9a592fe8ff2468352b8636f6bc364567779618ac3a075f1080b378fad
 END
 
-FILE code-block.tsx
+FILE components/ai-elements/canvas.tsx
+  upstream: packages/elements/src/canvas.tsx
+  sha256: 7bc92905e97c182c9a2f52b421a4d70414c8700a66039af9a4466587f74d2687
+END
+
+FILE components/ai-elements/chain-of-thought.tsx
+  upstream: packages/elements/src/chain-of-thought.tsx
+  sha256: ddc63b036299d636483b2041599248226e05ef01afd9c5e32724e3a849def8c4
+END
+
+FILE components/ai-elements/code-block.tsx
   upstream: packages/elements/src/code-block.tsx
-  copy: upstream/code-block.tsx.txt
   sha256: 5c7285171c5aa741749a1642a85f492a9b5e80dc4ccb704b5c3f58c45efebd04
-  substitutions:
-    @repo/shadcn-ui/components/ui/button -> ./ui/button
-    @repo/shadcn-ui/components/ui/select -> ./ui/select
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    lucide-react -> ./icons
-    shiki -> ./highlight-compat (lib/highlight.ts tokens, rendered as React children)
-    styles -> ./code-block.css
-    LOGIC: shiki's asynchronous highlighter, its per-language highlighter cache, its token cache
-      and its subscriber list are removed; highlightCode keeps its exported signature and returns
-      the tokens synchronously. The token cache is dropped rather than kept because its key
-      (language, length, first and last 100 characters) can collide for two different scripts.
-    TokenSpan adds `tok tok--<kind>` so colour comes from the app's --syntax-* tokens.
-    DIFF: AI Elements has no diff component. Upstream shows a unified diff as CodeBlock with
-      shiki's `diff` language; `BundledLanguage` therefore also names 'diff', and the local
-      tokenizer classifies each line by its first character (`tok--ins`, `tok--del`, `tok--hunk`),
-      which code-block.css colours with --good / --bad and tints per line in both themes. The
-      generative-UI `code_diff` block (lib/generative-ui/render.tsx) renders through this.
 END
 
-FILE shimmer.tsx
-  upstream: packages/elements/src/shimmer.tsx
-  copy: upstream/shimmer.tsx.txt
-  sha256: 89d2284ee165aa57fec960e17c6c71078d22ad3fb3798ca683d7e3d850919a46
-  substitutions:
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    motion/react -> CSS: the requested element carries `.ai-elements-shimmer`; the sweep is a CSS
-      animation (reasoning.css) driven by the same duration and spread props, with a
-      prefers-reduced-motion opt-out
-    CLASSES: unlike the other rows, upstream's Tailwind class strings on the animated element are
-      not kept; the element carries only `ai-elements-shimmer` (plus the caller's className), and
-      its gradient text is drawn by that class in ai-elements/reasoning.css.
+FILE components/ai-elements/commit.tsx
+  upstream: packages/elements/src/commit.tsx
+  sha256: 877708682428984f5776dafb774da222fbee837804f220ce699956e32938fa1b
 END
 
-FILE suggestion.tsx
-  upstream: packages/elements/src/suggestion.tsx
-  copy: upstream/suggestion.tsx.txt
-  sha256: 0703d777b4153ae20e93514acb9e8327eb03dd2ed2fd0230e03cf22271c7a249
-  substitutions:
-    @repo/shadcn-ui/components/ui/button -> ./ui/button
-    @repo/shadcn-ui/components/ui/scroll-area -> ./ui/scroll-area
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    styles -> ./suggestion.css
+FILE components/ai-elements/confirmation.tsx
+  upstream: packages/elements/src/confirmation.tsx
+  sha256: 7cc0befed99499ed9010643e7a90ec619180a3f6e79cba5668cfc84126b96a10
 END
 
-FILE reasoning.tsx
+FILE components/ai-elements/connection.tsx
+  upstream: packages/elements/src/connection.tsx
+  sha256: 3da80a551da8a7eb4949a0b64b5329af463037dc15e6945e60ae66dcd903e71f
+END
+
+FILE components/ai-elements/controls.tsx
+  upstream: packages/elements/src/controls.tsx
+  sha256: 3f851a1906a1a8e017899983507c4537b300849b098dc38c51a4a36dbf52d085
+END
+
+FILE components/ai-elements/conversation.tsx
+  upstream: packages/elements/src/conversation.tsx
+  sha256: d7ac46f1e7bc8e46bc49f67c768fc93aebdf17d816397cb35a40deff7173e875
+END
+
+FILE components/ai-elements/edge.tsx
+  upstream: packages/elements/src/edge.tsx
+  sha256: f7929c87f5f2828d9e5cf65b9dffd73dec0a0fc8c8c0dce8f7ef55e33b610049
+END
+
+FILE components/ai-elements/environment-variables.tsx
+  upstream: packages/elements/src/environment-variables.tsx
+  sha256: 6b685aacb47e7bcb62e15b74b4e0b0bd7beffb892f3769ad7fc3580e00aae88b
+END
+
+FILE components/ai-elements/file-tree.tsx
+  upstream: packages/elements/src/file-tree.tsx
+  sha256: 9b6946171369d224d5d10df686c3c18ce7608aa4a4792744fc5c313499cec0cb
+END
+
+FILE components/ai-elements/image.tsx
+  upstream: packages/elements/src/image.tsx
+  sha256: 91e305eda8139c5ee8024bec75576e0608d7fbf471e1c00395a2bdfda4a65747
+END
+
+FILE components/ai-elements/inline-citation.tsx
+  upstream: packages/elements/src/inline-citation.tsx
+  sha256: c7dc2a67386bc06d23fa42344f48f3b45e51f1f91b22e44801a2902acdf64018
+END
+
+FILE components/ai-elements/jsx-preview.tsx
+  upstream: packages/elements/src/jsx-preview.tsx
+  sha256: 0701c0610bd651fbe1d8f2cf35ec3598571381d2641b5da6daac9c677eac5d8d
+  patch: const [fullMatch, tagName, attributes, selfClosing] = match;
+      -> const [fullMatch, tagName = "", attributes = "", selfClosing] = match;
+END
+
+FILE components/ai-elements/message.tsx
+  upstream: packages/elements/src/message.tsx
+  sha256: 19c7755740e116f221e4247f7b6d4f20b57a44e4c4fcf66d2db5e1f111476509
+END
+
+FILE components/ai-elements/node.tsx
+  upstream: packages/elements/src/node.tsx
+  sha256: 67c30837d32aefcc1fc012f779a58465de86e2df8dd287f28da9a678d90ada61
+END
+
+FILE components/ai-elements/package-info.tsx
+  upstream: packages/elements/src/package-info.tsx
+  sha256: f6cb384a2f76acd7b305481e5a7b28a78c290e02fcda1867badf8801d29cf242
+END
+
+FILE components/ai-elements/panel.tsx
+  upstream: packages/elements/src/panel.tsx
+  sha256: ed0a5e6bf2f11b5b9654c073a67391a8fbeacfd262ad0cb91f962970c9bc8028
+END
+
+FILE components/ai-elements/prompt-input.tsx
+  upstream: packages/elements/src/prompt-input.tsx
+  sha256: cf43baf5baa444b4ae06d250643b3fb2efd329c85f9b31a43e3aaf481dd27305
+END
+
+FILE components/ai-elements/reasoning.tsx
   upstream: packages/elements/src/reasoning.tsx
-  copy: upstream/reasoning.tsx.txt
   sha256: f138cddde35854f73632ff51d48230f8d6e16e0a49a74b44a93b51993a65550e
-  substitutions:
-    @radix-ui/react-use-controllable-state -> ./reasoning-compat
-    @repo/shadcn-ui/components/ui/collapsible -> ./reasoning-compat (re-exports ./ui/collapsible)
-    @repo/shadcn-ui/lib/utils -> ./reasoning-compat (re-exports ./lib/utils)
-    lucide-react -> ./icons (Brain and ChevronDown, lucide's geometry, shared with ChainOfThought)
-    streamdown, @streamdown/cjk, @streamdown/code, @streamdown/math, @streamdown/mermaid -> ../../lib/markdown (a string child still renders as markdown)
-    ./shimmer -> ./shimmer (the local adaptation above)
-    styles -> ./reasoning.css
-    LOGIC: `isOpen` defaults to false when the controllable state has no value yet.
-    LOGIC: ReasoningContent's children are `ReactNode`, not `string`, and anything that is not a
-      string renders as it is. Upstream fills this disclosure with the model's reasoning text; this
-      product has none (no reasoning token crosses the wire, docs/THINKING-UX.md), so the workspace
-      fills it with components built from observed run activity. No caller passes a string.
-    FORMAT: this adaptation predates the other rows and was re-quoted (single quotes, trailing
-      commas, one-line type aliases) and its imports regrouped; those lines differ from the copy
-      in punctuation only.
 END
 
-FILE ui/button.tsx
+FILE components/ai-elements/sandbox.tsx
+  upstream: packages/elements/src/sandbox.tsx
+  sha256: 0a7ceffac784fdcfcf137f6532f33723a7e8c9e3c54c1bd45c594d1322d4ac3c
+END
+
+FILE components/ai-elements/schema-display.tsx
+  upstream: packages/elements/src/schema-display.tsx
+  sha256: 805ca0b043ff5beb21f15b616df19df995fd4ecd3c48f8a9bc2ce588c86adfe7
+END
+
+FILE components/ai-elements/shimmer.tsx
+  upstream: packages/elements/src/shimmer.tsx
+  sha256: 89d2284ee165aa57fec960e17c6c71078d22ad3fb3798ca683d7e3d850919a46
+END
+
+FILE components/ai-elements/snippet.tsx
+  upstream: packages/elements/src/snippet.tsx
+  sha256: 2b4f1b9ebc82eb2e188d8f71246540446dd89ef9a89bd9e3946cfc6a018a6849
+END
+
+FILE components/ai-elements/sources.tsx
+  upstream: packages/elements/src/sources.tsx
+  sha256: 1454af3ac2c58766a155a881d119d1f9321632a4922d3f74581ba37f52b4707a
+END
+
+FILE components/ai-elements/suggestion.tsx
+  upstream: packages/elements/src/suggestion.tsx
+  sha256: 0703d777b4153ae20e93514acb9e8327eb03dd2ed2fd0230e03cf22271c7a249
+END
+
+FILE components/ai-elements/task.tsx
+  upstream: packages/elements/src/task.tsx
+  sha256: cc9fb7138ded75f17c37c28a2b23425c98f4d06bead436531ad6e65ae553507e
+END
+
+FILE components/ai-elements/test-results.tsx
+  upstream: packages/elements/src/test-results.tsx
+  sha256: 71fb2b77cfa34e6d7d3b1cc06a765622f755bcec193d3d539f4bead0e937f346
+END
+
+FILE components/ai-elements/tool.tsx
+  upstream: packages/elements/src/tool.tsx
+  sha256: 5b520e0c33792cba0ceb04e1cb18c69b212cffacdb52d7297e292c7af568dda4
+END
+
+FILE components/ai-elements/web-preview.tsx
+  upstream: packages/elements/src/web-preview.tsx
+  sha256: 7ae44586766db67c5341b36a30340b202e6f45c205457ad98f0817968d162d2c
+END
+
+FILE components/ui/alert.tsx
+  upstream: packages/shadcn-ui/components/ui/alert.tsx
+  sha256: 3d1ebed4f4685ee7689db9f05c48389df00ec54b28061b7cea2795cf5189199f
+END
+
+FILE components/ui/avatar.tsx
+  upstream: packages/shadcn-ui/components/ui/avatar.tsx
+  sha256: de3d562080b8f4770ea7d33bc6c5dd2d9b7cf0d1a2f37725f4f6079c6ad036b7
+END
+
+FILE components/ui/badge.tsx
+  upstream: packages/shadcn-ui/components/ui/badge.tsx
+  sha256: 145cf69448e20e027dd99e8e013507279aaa0922c30f63dabb54b75ab15222aa
+END
+
+FILE components/ui/button.tsx
   upstream: packages/shadcn-ui/components/ui/button.tsx
-  copy: upstream/ui/button.tsx.txt
   sha256: 208d8cf515ccd73c1ca0030a11de1ba460a9fcd6c83faafeadc000833790d22e
-  substitutions:
-    radix-ui (Slot) -> ./slot
-    class-variance-authority -> ../lib/cva
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    react -> react (forwardRef)
-    styles -> ./ui.css (`ai-button--<variant>` / `ai-button--<size>`)
 END
 
-FILE ui/button-group.tsx
+FILE components/ui/button-group.tsx
   upstream: packages/shadcn-ui/components/ui/button-group.tsx
-  copy: upstream/ui/button-group.tsx.txt
   sha256: 1b0147f3d6ee8770524363f9bc9a57db83de8d2a0733c6e635e51034219e4c1e
-  substitutions:
-    radix-ui (Slot) -> ./slot
-    class-variance-authority -> ../lib/cva
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    @repo/shadcn-ui/components/ui/separator -> ./separator
-    styles -> ./ui.css
 END
 
-FILE ui/tooltip.tsx
-  upstream: packages/shadcn-ui/components/ui/tooltip.tsx
-  copy: upstream/ui/tooltip.tsx.txt
-  sha256: f459111a16d346aaa64d1bb6557cca986f7332b150ad3a29001e8fef3aea973a
-  substitutions:
-    radix-ui (Tooltip) -> local implementation: hover (not touch) after delayDuration, keyboard
-      focus, Escape / leave / blur / pointer-down close, aria-describedby while open, portal to
-      <body> with position:fixed placement (../lib/floating)
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    styles -> ./ui.css
+FILE components/ui/card.tsx
+  upstream: packages/shadcn-ui/components/ui/card.tsx
+  sha256: 1c0537a8fa6adb76a9a275b8c569a744b92fa70fd1edbdca05d3b7234923be1a
 END
 
-FILE ui/scroll-area.tsx
-  upstream: packages/shadcn-ui/components/ui/scroll-area.tsx
-  copy: upstream/ui/scroll-area.tsx.txt
-  sha256: e7d38bb90960e5cd95069bb0ced0177d4284a7d029a65171ac5772b6ab42ff46
-  substitutions:
-    radix-ui (ScrollArea) -> a native scrolling viewport; ScrollBar renders nothing (the platform
-      scrollbar is kept)
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    styles -> ./ui.css
+FILE components/ui/carousel.tsx
+  upstream: packages/shadcn-ui/components/ui/carousel.tsx
+  sha256: 200433be223d6fa69378ff6f0babb69e52fa04595394aadf0d3f4004938ec45b
 END
 
-FILE ui/select.tsx
-  upstream: packages/shadcn-ui/components/ui/select.tsx
-  copy: upstream/ui/select.tsx.txt
-  sha256: a0eefd67e05688a6318a3a86080a6951723c6b5d323e1fa92b9d1b7fee777995
-  substitutions:
-    radix-ui (Select) -> local listbox: combobox trigger, portalled role=listbox of role=option,
-      arrow/Home/End/Enter/Space/Escape/Tab keys, outside pointer-down closes; no typeahead; the
-      scroll buttons render nothing
-    lucide-react -> ../icons
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    styles -> ./ui.css
-END
-
-FILE ui/separator.tsx
-  upstream: packages/shadcn-ui/components/ui/separator.tsx
-  copy: upstream/ui/separator.tsx.txt
-  sha256: 47885bfbdf6468a740999cf934b5cb563ecddb709502c2c501cea524f78d5ce3
-  substitutions:
-    radix-ui (Separator) -> the div it renders (role none when decorative, separator otherwise)
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    styles -> ./ui.css
-END
-
-FILE ui/collapsible.tsx
+FILE components/ui/collapsible.tsx
   upstream: packages/shadcn-ui/components/ui/collapsible.tsx
-  copy: upstream/ui/collapsible.tsx.txt
   sha256: c6598e5584f4258b5d9fefadbc5ad6a66888ad58729f4b634a0bb2d9c513188b
-  substitutions:
-    radix-ui (Collapsible) -> local implementation (moved here from reasoning-compat.tsx):
-      data-state, asChild, forceMount; the trigger names its content in aria-controls only while
-      a CollapsibleContent is mounted, so it never points at an id that is not in the DOM
-    A caller's `aria-controls` (trigger) and `id` (content) win over the generated ones, which is
-      Radix's own spread order; ChainOfThought's header and content live in two Collapsibles and
-      can be linked no other way. A force-mounted, closed content keeps `hidden` in ./ui.css.
+END
+
+FILE components/ui/command.tsx
+  upstream: packages/shadcn-ui/components/ui/command.tsx
+  sha256: 53be7fe88f0ddbb2f6d97c64c07c1b4816050494880a582c92c0c3c62117b03c
+END
+
+FILE components/ui/dialog.tsx
+  upstream: packages/shadcn-ui/components/ui/dialog.tsx
+  sha256: c7d128632214c9c78706a91a0616659ecf3be5119492b2ca66607bd83901b802
+END
+
+FILE components/ui/dropdown-menu.tsx
+  upstream: packages/shadcn-ui/components/ui/dropdown-menu.tsx
+  sha256: 9384b044d08c59be883888a3dd66c3816156316f8debbcf107ef90b1e383d022
+END
+
+FILE components/ui/hover-card.tsx
+  upstream: packages/shadcn-ui/components/ui/hover-card.tsx
+  sha256: cf19544ba82d332ce2f882f9ae64d9e848c475f13e79fa0353492f2ce7afe1ef
+END
+
+FILE components/ui/input.tsx
+  upstream: packages/shadcn-ui/components/ui/input.tsx
+  sha256: 96207e020d2624fba7241b91a1f2e5a971510003b9c0becc9d0c02a535b15067
+END
+
+FILE components/ui/input-group.tsx
+  upstream: packages/shadcn-ui/components/ui/input-group.tsx
+  sha256: d347e89600f0750a438f31559c85bb91833eeef51a56e70c2af5ef5d8d2acdd2
+END
+
+FILE components/ui/scroll-area.tsx
+  upstream: packages/shadcn-ui/components/ui/scroll-area.tsx
+  sha256: e7d38bb90960e5cd95069bb0ced0177d4284a7d029a65171ac5772b6ab42ff46
+END
+
+FILE components/ui/select.tsx
+  upstream: packages/shadcn-ui/components/ui/select.tsx
+  sha256: a0eefd67e05688a6318a3a86080a6951723c6b5d323e1fa92b9d1b7fee777995
+END
+
+FILE components/ui/separator.tsx
+  upstream: packages/shadcn-ui/components/ui/separator.tsx
+  sha256: 47885bfbdf6468a740999cf934b5cb563ecddb709502c2c501cea524f78d5ce3
+END
+
+FILE components/ui/spinner.tsx
+  upstream: packages/shadcn-ui/components/ui/spinner.tsx
+  sha256: acf4f2aeb7fc29bd8aa22a6501b85dd4462d196e831dc5424be93ffdb49e21b4
+END
+
+FILE components/ui/switch.tsx
+  upstream: packages/shadcn-ui/components/ui/switch.tsx
+  sha256: 120f1ec71d5e55e73d88bbc3cbb1423ffc00761026c010c49e05a83a2cb369ab
+END
+
+FILE components/ui/tabs.tsx
+  upstream: packages/shadcn-ui/components/ui/tabs.tsx
+  sha256: bfb5cbe5c5b7809031844145f6744661882b9f32c7bf4c6b483d3d3d2b5d0f55
+END
+
+FILE components/ui/textarea.tsx
+  upstream: packages/shadcn-ui/components/ui/textarea.tsx
+  sha256: 0b7fc00f5a0fa6ace377c5f61ef14a30b3d190bc2761c2728ec6886809a1a0c8
+END
+
+FILE components/ui/tooltip.tsx
+  upstream: packages/shadcn-ui/components/ui/tooltip.tsx
+  sha256: f459111a16d346aaa64d1bb6557cca986f7332b150ad3a29001e8fef3aea973a
 END
 
 FILE lib/utils.ts
   upstream: packages/shadcn-ui/lib/utils.ts
-  copy: upstream/lib/utils.ts.txt
   sha256: 7c8c3dfc0cdd370d44932828eb067ef771c8fe7996693221d5d4b90af6d54f2d
-  substitutions:
-    clsx -> local flatten with clsx semantics
-    tailwind-merge -> removed (no Tailwind in this app, so no conflicting utilities to merge)
 END
 
-FILE chain-of-thought.tsx
-  upstream: packages/elements/src/chain-of-thought.tsx
-  copy: upstream/chain-of-thought.tsx.txt
-  sha256: ddc63b036299d636483b2041599248226e05ef01afd9c5e32724e3a849def8c4
-  substitutions:
-    @radix-ui/react-use-controllable-state -> ./reasoning-compat
-    @repo/shadcn-ui/components/ui/badge -> ./ui/badge
-    @repo/shadcn-ui/components/ui/collapsible -> ./ui/collapsible
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    lucide-react -> ./icons (Brain, ChevronDown, Dot; LucideIcon is ./icons' icon type)
-    styles -> ./chain-of-thought.css
-    LOGIC: `isOpen` defaults to false when the controllable state has no value yet, as in
-      reasoning.tsx, so the context's `isOpen` is a boolean.
-END
-
-FILE tool.tsx
-  upstream: packages/elements/src/tool.tsx
-  copy: upstream/tool.tsx.txt
-  sha256: 5b520e0c33792cba0ceb04e1cb18c69b212cffacdb52d7297e292c7af568dda4
-  substitutions:
-    @repo/shadcn-ui/components/ui/badge -> ./ui/badge
-    @repo/shadcn-ui/components/ui/collapsible -> ./ui/collapsible
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    ai -> ./ai-types (type-only: ToolUIPart, DynamicToolUIPart)
-    lucide-react -> ./icons (CheckCircle, ChevronDown, Circle, Clock, Wrench, XCircle)
-    ./code-block -> ./code-block (the local adaptation above)
-    styles -> ./tool.css; the status badge also carries `ai-tool__badge--<state>`, so the state's
-      colour is a token chosen in CSS rather than upstream's per-state Tailwind hue
-    ToolInput and ToolOutput are kept as upstream wrote them (they print JSON.stringify of a
-      call's arguments and result). The workspace renders neither; see tool.tsx's header.
-    LOCAL: a step that acts on an object in the place draws that object's Roblox Studio icon
-      (../studio-icon, ../studio-icon-model) in place of the line icon; the completed state's
-      CheckCircle is ../picks/thinking/step-mark's tick, which draws itself in.
-END
-
-FILE task.tsx
-  upstream: packages/elements/src/task.tsx
-  copy: upstream/task.tsx.txt
-  sha256: cc9fb7138ded75f17c37c28a2b23425c98f4d06bead436531ad6e65ae553507e
-  substitutions:
-    @repo/shadcn-ui/components/ui/collapsible -> ./ui/collapsible
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    lucide-react -> ./icons (ChevronDown, Search)
-    styles -> ./task.css
-    Upstream's default TaskTrigger child is a <div>, which is not keyboard-operable. It is kept; the
-      workspace passes a <button> as the trigger's children instead (components/ws/thinking.tsx).
-END
-
-FILE sources.tsx
-  upstream: packages/elements/src/sources.tsx
-  copy: upstream/sources.tsx.txt
-  sha256: 1454af3ac2c58766a155a881d119d1f9321632a4922d3f74581ba37f52b4707a
-  substitutions:
-    @repo/shadcn-ui/components/ui/collapsible -> ./ui/collapsible
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    lucide-react -> ./icons (Book, ChevronDown)
-    styles -> ./sources.css
-    TYPE: SourcesProps widens `ComponentProps<"div">` with the Collapsible's own `open`,
-      `defaultOpen` and `onOpenChange`, which Sources already spreads onto its Collapsible; upstream's
-      type made them unreachable. The credits drawer opens its list by default.
-END
-
-FILE ui/badge.tsx
-  upstream: packages/shadcn-ui/components/ui/badge.tsx
-  copy: upstream/ui/badge.tsx.txt
-  sha256: 145cf69448e20e027dd99e8e013507279aaa0922c30f63dabb54b75ab15222aa
-  substitutions:
-    radix-ui (Slot) -> ./slot
-    class-variance-authority -> ../lib/cva
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    react -> react (forwardRef)
-    styles -> ./ui.css (`ai-badge--<variant>`)
-END
-
-FILE prompt-input.tsx
-  upstream: packages/elements/src/prompt-input.tsx
-  copy: upstream/prompt-input.tsx.txt
-  sha256: cf43baf5baa444b4ae06d250643b3fb2efd329c85f9b31a43e3aaf481dd27305
-  substitutions:
-    @repo/shadcn-ui/components/ui/command -> ./ui/command
-    @repo/shadcn-ui/components/ui/dropdown-menu -> ./ui/dropdown-menu
-    @repo/shadcn-ui/components/ui/hover-card -> ./ui/hover-card
-    @repo/shadcn-ui/components/ui/input-group -> ./ui/input-group
-    @repo/shadcn-ui/components/ui/select -> ./ui/select
-    @repo/shadcn-ui/components/ui/spinner -> ./ui/spinner
-    @repo/shadcn-ui/components/ui/tooltip -> ./ui/tooltip
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    ai -> ./ai-types (type-only: ChatStatus, FileUIPart, SourceDocumentUIPart)
-    lucide-react -> ./icons (CornerDownLeftIcon, ImageIcon, Monitor, PlusIcon, SquareIcon, XIcon)
-    nanoid -> ./lib/nanoid
-    styles -> ./prompt-input.css; the hidden file input keeps upstream's `hidden` class and adds
-      `ai-prompt-input__file`, which that sheet hides (the app has no `.hidden` utility)
-    SEND KEY: PromptInputTextarea hard-codes Enter-to-submit (`e.key === "Enter"` and not Shift).
-      It takes `submitBinding` instead — a lib/shortcuts `Shortcut`, default lib/send-key
-      ENTER_SEND, which is upstream's behaviour — matched with the app's shared `matchesShortcut`
-      (../../lib/shortcuts), so the composer passes the person's `prefs.sendKey` binding and a
-      "⌘Enter sends" choice makes a bare Enter a new line here. The IME (isComposing) guard and the
-      disabled-submit check are upstream's. With the default binding a bare Enter with ⌘ or Ctrl
-      held no longer submits (the shared matcher is exact about modifiers).
-    FILES: `onAddFiles?: (files: File[]) => void` is added to PromptInputProps. When it is given,
-      every file the picker, a paste or a drop yields is handed to it as it arrived: no
-      accept / maxFileSize / maxFiles filter here, no blob: URL, nothing kept in the local
-      attachment list, and the submit passes `files: []` without running the blob-to-data-URL
-      conversion. The composer uploads each file as it is staged (lib/api.ts uploadAttachment,
-      with progress, abort and retry) and applies its own admission rules (lib/attachments.ts), so a
-      refused file gets the same sentence however it arrived. `add` keeps one identity through a
-      ref, so the drop listeners are not re-attached each render. Without `onAddFiles`, upstream's
-      model is unchanged. Backspace-in-an-empty-box removes the last attachment in upstream's list,
-      which is empty in that mode, so it does nothing there.
-    REFUSAL: onSubmit's type widens to `void | boolean | Promise<void | boolean>`, and a `false`
-      result (or a promise resolving to it) is a refusal: the form is not reset and neither the
-      attachments nor the referenced sources are cleared, as with a throw. Upstream reset the form
-      BEFORE the result was known; the reset now runs only after an accepted result. (Upstream's
-      comment gives the reason it ran first: text typed during an asynchronous blob conversion. That
-      conversion never runs for a caller with `onAddFiles`, and the composer's textarea is
-      controlled, so its reset changes nothing.)
-    REACT 18: PromptInputTextarea and PromptInputButton are forwardRef components (their prop types
-      keep upstream's names); PromptInputActionMenuTrigger and tooltips reach the button through
-      `asChild`, and the composer measures and focuses its textarea through the ref.
-    PromptInputSubmit keeps upstream's "Stop" / "Submit" names, which its props override; the
-      composer passes "Stop this run" and "Send".
-END
-
-FILE attachments.tsx
-  upstream: packages/elements/src/attachments.tsx
-  copy: upstream/attachments.tsx.txt
-  sha256: 91c42be9a592fe8ff2468352b8636f6bc364567779618ac3a075f1080b378fad
-  substitutions:
-    @repo/shadcn-ui/components/ui/button -> ./ui/button
-    @repo/shadcn-ui/components/ui/hover-card -> ./ui/hover-card
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    ai -> ./ai-types (type-only: FileUIPart, SourceDocumentUIPart)
-    lucide-react -> ./icons (FileTextIcon, GlobeIcon, ImageIcon, Music2Icon, PaperclipIcon, VideoIcon, XIcon)
-    styles -> ./attachments.css (`ai-attachments--<variant>`, `ai-attachment--<variant>` and one
-      class per part)
-    No logic change. The composer renders its staged uploads with Attachments / Attachment /
-      AttachmentPreview / AttachmentInfo / AttachmentRemove and passes each one as FileUIPart data
-      with `url: ""`: the bytes are on the server, not in a blob: or data: URL, so the preview is
-      the media-category icon rather than an image. The progress bar, the failure sentence and Retry
-      are the composer's own children of Attachment.
-END
-
-FILE ui/input-group.tsx
-  upstream: packages/shadcn-ui/components/ui/input-group.tsx
-  copy: upstream/ui/input-group.tsx.txt
-  sha256: d347e89600f0750a438f31559c85bb91833eeef51a56e70c2af5ef5d8d2acdd2
-  substitutions:
-    class-variance-authority -> ../lib/cva
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    @repo/shadcn-ui/components/ui/button -> ./button
-    @repo/shadcn-ui/components/ui/input -> ./input
-    @repo/shadcn-ui/components/ui/textarea -> ./textarea
-    react -> react (forwardRef on InputGroupButton, InputGroupInput and InputGroupTextarea)
-    styles -> ./ui.css (`ai-input-group`, `ai-input-group__addon|button|text|control`); upstream's
-      layout is in `has-[…]` Tailwind variants that nothing here generates
-END
-
-FILE ui/input.tsx
-  upstream: packages/shadcn-ui/components/ui/input.tsx
-  copy: upstream/ui/input.tsx.txt
-  sha256: 96207e020d2624fba7241b91a1f2e5a971510003b9c0becc9d0c02a535b15067
-  substitutions:
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    react -> react (forwardRef)
-    styles -> ./ui.css (`ai-input`)
-END
-
-FILE ui/textarea.tsx
-  upstream: packages/shadcn-ui/components/ui/textarea.tsx
-  copy: upstream/ui/textarea.tsx.txt
-  sha256: 0b7fc00f5a0fa6ace377c5f61ef14a30b3d190bc2761c2728ec6886809a1a0c8
-  substitutions:
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    react -> react (forwardRef)
-    styles -> ./ui.css (`ai-textarea`)
-END
-
-FILE ui/spinner.tsx
-  upstream: packages/shadcn-ui/components/ui/spinner.tsx
-  copy: upstream/ui/spinner.tsx.txt
-  sha256: acf4f2aeb7fc29bd8aa22a6501b85dd4462d196e831dc5424be93ffdb49e21b4
-  substitutions:
-    lucide-react -> ../icons (Loader2Icon)
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    styles -> ./ui.css (`ai-spinner`: the rotation, off under prefers-reduced-motion)
-END
-
-FILE ui/hover-card.tsx
-  upstream: packages/shadcn-ui/components/ui/hover-card.tsx
-  copy: upstream/ui/hover-card.tsx.txt
-  sha256: cf19544ba82d332ce2f882f9ae64d9e848c475f13e79fa0353492f2ce7afe1ef
-  substitutions:
-    radix-ui (HoverCard) -> local implementation: opens openDelay ms after a pointer (not touch)
-      enters the trigger or it is focused; closes closeDelay ms after the pointer has left both
-      trigger and card, at once on blur or Escape; the trigger is an <a> unless asChild and
-      forwards its ref; the card is portalled to <body> with position:fixed placement
-      (../lib/floating)
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    styles -> ./ui.css (`ai-hover-card`)
-END
-
-FILE ui/dropdown-menu.tsx
-  upstream: packages/shadcn-ui/components/ui/dropdown-menu.tsx
-  copy: upstream/ui/dropdown-menu.tsx.txt
-  sha256: 9384b044d08c59be883888a3dd66c3816156316f8debbcf107ef90b1e383d022
-  substitutions:
-    radix-ui (DropdownMenu) -> ./dropdown-menu-primitive, imported as `DropdownMenuPrimitive`, so the fifteen
-      shadcn wrappers read as upstream's: a trigger with aria-haspopup/aria-expanded/aria-controls
-      toggled by a left-button pointer-down (focus kept off it while opening), Enter, Space,
-      ArrowDown, or a click with no pointer-down before it (a screen reader's virtual click); a
-      role="menu" content labelled by its trigger unless it has its own aria-label, portalled to
-      <body>, placed with position:fixed on the requested side and flipped when there is no room,
-      height-capped to the room it has; menuitem / menuitemcheckbox / menuitemradio items with
-      ArrowUp/ArrowDown/Home/End (no wrap), pointer highlight, click / Enter / Space, `onSelect`
-      first with preventDefault keeping the menu open; disabled items skipped; Escape, Tab and a
-      chosen item close it and return focus to the trigger; a pointer-down outside closes it;
-      ItemIndicator only while checked; sub-menus beside their trigger (ArrowRight, click, hover in;
-      ArrowLeft, Escape out). Not implemented: typeahead, `modal` pointer blocking, `loop`.
-    lucide-react -> ../icons (CheckIcon, ChevronRightIcon, CircleIcon)
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    react -> react (DropdownMenuTrigger is forwardRef)
-    styles -> ./ui.css (`ai-menu`, `ai-menu__item|indicator|label|separator|shortcut|sub-trigger`)
-END
-
-FILE ui/command.tsx
-  upstream: packages/shadcn-ui/components/ui/command.tsx
-  copy: upstream/ui/command.tsx.txt
-  sha256: 53be7fe88f0ddbb2f6d97c64c07c1b4816050494880a582c92c0c3c62117b03c
-  substitutions:
-    cmdk -> ../lib/cmdk (see the stand-in list above)
-    lucide-react -> ../icons (SearchIcon)
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    @repo/shadcn-ui/components/ui/dialog -> ./dialog
-    styles -> ./ui.css (`ai-command…`)
-    Present for prompt-input's PromptInputCommand* re-exports; the composer renders none of it.
-END
-
-FILE ui/dialog.tsx
-  upstream: packages/shadcn-ui/components/ui/dialog.tsx
-  copy: upstream/ui/dialog.tsx.txt
-  sha256: c7d128632214c9c78706a91a0616659ecf3be5119492b2ca66607bd83901b802
-  substitutions:
-    radix-ui (Dialog) -> a local `DialogPrimitive` in the same file: role="dialog" aria-modal,
-      named by DialogTitle and described by DialogDescription; focus moves in on open and back on
-      close; Escape, the overlay and any Close close it; portalled to <body>. Not implemented: a Tab
-      trap and hiding the rest of the page from assistive technology.
-    lucide-react -> ../icons (XIcon)
-    @repo/shadcn-ui/lib/utils -> ../lib/utils
-    styles -> ./ui.css (`ai-dialog…`)
-    Present because ./command.tsx's CommandDialog is built on it; nothing in the app opens one.
-END
-
-FILE model-selector.tsx
-  upstream: packages/elements/src/model-selector.tsx
-  copy: upstream/model-selector.tsx.txt
-  sha256: a4d51f76ddf5197cb86b7f70ba62bd62327468a9acae1351a0b1adcb3710ec0a
-  substitutions:
-    @repo/shadcn-ui/components/ui/command -> ./ui/command (over ./lib/cmdk)
-    @repo/shadcn-ui/components/ui/dialog -> ./ui/dialog
-    @repo/shadcn-ui/lib/utils -> ./lib/utils
-    styles -> ./model-selector.css (`ai-model-selector…` beside each upstream class string)
-    LOGO: upstream's ModelSelectorLogo is an <img> whose src is `https://models.dev/logos/<provider>.svg`,
-      fetched from a third party on every render. This app loads no third-party image at run time, so
-      ModelSelectorLogo draws a vendored lobehub mark (./logos, the ASSET rows below) as a React <svg>
-      in currentColor, from ./logos/marks.ts, and a provider with no vendored mark gets its initial in
-      a neutral disc. Its props are therefore a <span>'s, not an <img>'s: `provider` names a mark in
-      LOGO_MARKS instead of a models.dev slug, and an optional `label` is the provider's name (the
-      accessible name, and the disc's initial). The element carries role="img" and "<name> logo".
-    Every other export, prop and default ("Model Selector" title, aria-describedby={undefined}) is
-      upstream's.
-END
+END FILES
 
 
 VENDOR MARKS (components/ai-elements/logos)

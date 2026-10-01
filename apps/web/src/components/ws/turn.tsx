@@ -1,14 +1,14 @@
-// One turn in the conversation.
+// One turn in the conversation, built from Vercel AI Elements (owner, 2026-10-01).
 //
-// The user's turn sits right-aligned on a restrained surface so it is findable
-// when scrolling back, with its timestamp beneath. The assistant's turn does
-// not get a card: a 22px hexagon mark in a rounded square on the left, prose
-// flowing on the canvas beside it, timestamp beneath. Wrapping every reply in a
-// bordered box turns a conversation into a wall of boxes. Cards are reserved
-// for content whose structure genuinely benefits — a render, a diff, a critique
-// — and those come from the typed component registry, never from free-form
-// model output.
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+// The user's turn is AI Elements' Message from "user": right-aligned on the secondary surface, with
+// its actions and time beneath. The assistant's turn is Message from "assistant", no card, in this
+// order: the one live status line while Apple works (thinking.tsx); what the run thought and did —
+// Reasoning blocks and Task rows, step by step (run-steps.tsx); the reply (MessageResponse, with
+// InlineCitation for `[n]`); the sources it used ("Used N sources"); media; the outcome; and the
+// reply's actions (MessageToolbar + MessageActions). Cards are reserved for content whose structure
+// genuinely benefits — a render, a sound — and those come from the typed component registry, never
+// from free-form model output.
+import { Suspense, lazy, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import type { PlaytestRun, StudioFrame } from '@golem/shared';
 import type { UIDocument } from '../../lib/generative-ui/schema';
 import { splitSpilledPayload } from '../../lib/spilled-payload';
@@ -17,28 +17,23 @@ import { panelFromTool } from '../../lib/panels';
 import { splitReplyDocs } from '../../lib/reply-docs';
 import { plannedStepsFromDocs, type ValidatedDoc } from '../../lib/gates';
 import { clockTime, formatSettings, isoStamp } from '../../lib/format';
-import { AppleGlyph } from '../glyphs';
 import type { AgentStatus, ChatItem } from '../../lib/use-project-socket';
 import { eventsFromTurn, reduceActivity, type PhaseMark } from './activity-model';
 import { outcomeLine } from './outcome-model';
 import { Thinking } from './thinking';
-import {
-  Message,
-  MessageAction,
-  MessageActions,
-  MessageContent,
-  MessageResponse,
-} from '../ai-elements/message';
-import { MessageToolbar } from '../ai-elements/message';
-import { CopyButton } from '../picks/chat/copy-button';
-import { ShareButton } from '../picks/chat/share-button';
+import { CheckIcon, CopyIcon, MoreHorizontalIcon, Share2Icon, XIcon } from 'lucide-react';
+import { Message, MessageAction, MessageActions, MessageContent, MessageToolbar } from '../ai-elements/message';
+import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { writeClipboard } from '../picks/chat/copy-button';
 import { ContextMenu, useContextMenu, type MenuItem } from '../picks/chat/context-menu';
 import { RollingNumber } from '../picks/chat/rolling-number';
-import { useWordReveal } from '../picks/chat/word-reveal';
 import { ExpandableImages } from '../picks/chat/expandable-images';
 import { AssetChoice } from './asset-choice';
 import { visualOptions } from './asset-choice-model';
-import './turn.css';
+import { Answer, RunSources } from './answer';
+import { RunSteps } from './run-steps';
+import { cn } from '../../lib/utils';
 
 function useNow(active: boolean): number {
   const [now, setNow] = useState(() => Date.now());
@@ -70,13 +65,94 @@ function ReplyMedia({ docs }: { docs: UIDocument[] }) {
   </ExpandableImages>;
 }
 
-function Stamp({ at, align }: { at: number; align: 'start' | 'end' }) {
+function Stamp({ at }: { at: number }) {
   const label = clockTime(at);
   if (!label) return null;
   return (
-    <time className={`gx-stamp gx-stamp--${align}`} dateTime={isoStamp(at)} title={new Date(at).toLocaleString(formatSettings().locale)}>
+    <time className="tabular-nums" dateTime={isoStamp(at)} title={new Date(at).toLocaleString(formatSettings().locale)}>
       {label}
     </time>
+  );
+}
+
+/**
+ * Whether a reply that just appeared should land word by word: true for a few seconds after a reply
+ * this client watched arrive first renders, then false. Streamdown animates the words while it is
+ * true (its own `animated` cascade) and enables the code blocks' controls once it is false; a reply
+ * that mounted settled — history — never animates.
+ */
+function useLanding(arrivedLive: boolean, shown: boolean): boolean {
+  const [landing, setLanding] = useState(false);
+  const [started, setStarted] = useState(false);
+  useEffect(() => {
+    if (!arrivedLive || !shown || started) return;
+    setStarted(true);
+    setLanding(true);
+    const id = window.setTimeout(() => setLanding(false), 2400);
+    return () => window.clearTimeout(id);
+  }, [arrivedLive, shown, started]);
+  return landing;
+}
+
+/**
+ * An action whose WORD is its name (Edit, Edited, Try again). Upstream's MessageAction adds its
+ * tooltip or label as hidden text, which beside a visible word makes the button's name say it twice;
+ * this is the same shadcn Button and Tooltip MessageAction is built from, named by its word alone.
+ */
+function TextAction({ tip, className, ...props }: ComponentProps<typeof Button> & { tip: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button type="button" variant="ghost" size="sm" className={cn('h-7 px-2 text-xs', className)} {...props} />
+      </TooltipTrigger>
+      <TooltipContent>{tip}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** The reply's Copy action: the icon turns into a tick (or a cross when the clipboard refused). */
+function CopyAction({ getText }: { getText: () => string }) {
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  useEffect(() => {
+    if (state === 'idle') return;
+    const id = window.setTimeout(() => setState('idle'), 2000);
+    return () => window.clearTimeout(id);
+  }, [state]);
+  const Icon = state === 'copied' ? CheckIcon : state === 'failed' ? XIcon : CopyIcon;
+  return (
+    <MessageAction
+      tooltip={state === 'copied' ? 'Copied' : state === 'failed' ? "Couldn't copy" : 'Copy this reply'}
+      label="Copy this reply"
+      data-state={state}
+      onClick={() => void writeClipboard(getText()).then((ok) => setState(ok ? 'copied' : 'failed'))}
+    >
+      <Icon className="size-4" />
+    </MessageAction>
+  );
+}
+
+/** Share: the system share sheet where the browser has one, else a link to this chat on the clipboard. */
+function ShareAction({ getText }: { getText: () => string }) {
+  const [said, setSaid] = useState('');
+  const canSheet = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  return (
+    <MessageAction
+      tooltip={said || (canSheet ? 'Share this reply' : 'Copy a link to this chat. It opens for people who can already see this project.')}
+      label={canSheet ? 'Share this reply' : 'Copy a link to this chat'}
+      onClick={() => {
+        if (canSheet) {
+          void navigator.share({ title: 'Apple', text: getText() }).catch(() => undefined);
+          return;
+        }
+        void writeClipboard(`${window.location.origin}${window.location.pathname}`).then((ok) => {
+          setSaid(ok ? 'Link copied' : 'Could not copy');
+          window.setTimeout(() => setSaid(''), 2000);
+        });
+      }}
+    >
+      <Share2Icon className="size-4" />
+      <span className="sr-only" role="status">{said}</span>
+    </MessageAction>
   );
 }
 
@@ -131,12 +207,8 @@ export function Turn({
 }) {
   // Right-click (or the reply's More button) opens this turn's menu — picks/chat/context-menu.
   const menu = useContextMenu();
-  // The streamed reply lands word by word (picks/chat/word-reveal). A turn that mounted settled —
-  // history — is never touched.
-  const replyRef = useRef<HTMLDivElement>(null);
-  useWordReveal(replyRef, item.content, item.streaming);
-  // Whether this turn was still arriving when it mounted, so a figure it settles at can roll in
-  // while a reloaded conversation's figures simply sit there.
+  // Whether this turn was still arriving when it mounted, so a figure it settles at can roll in and
+  // its reply can land word by word, while a reloaded conversation simply sits there.
   const [arrivedLive] = useState(item.streaming);
 
   const parsed = useMemo(() => {
@@ -203,29 +275,33 @@ export function Turn({
     [item.tools, item.stopReason, item.error, item.endedAt, item.streaming, phaseMarks, plannedSteps, now],
   );
 
+  // The reply's text lands word by word when this client watched it arrive (Streamdown's cascade).
+  const landing = useLanding(arrivedLive, item.role === 'assistant' && !item.streaming && Boolean(spilled.prose));
+
   if (item.role === 'user') {
     return (
       // role="article": each turn is one entry in the conversation log, which is how a screen
       // reader steps through it. AI Elements' Message is a div, so the role is said explicitly.
-      <Message from="user" role="article" className="gx-turn gx-turn--user gx-msg-in" onContextMenu={menu.onContextMenu}>
+      // `data-turn` is the hook the workspace and its tests key on; the look is upstream's classes.
+      <Message from="user" role="article" data-turn="user" className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300" onContextMenu={menu.onContextMenu}>
         {/* dir="auto" — the direction of a message belongs to the message. A Hebrew sentence
             typed in an English session (or the reverse) otherwise inherits the page and puts its
             own trailing punctuation at the wrong end. */}
-        <MessageContent className="gx-user" dir="auto">{item.content}</MessageContent>
-        <MessageActions className="gx-user__foot">
+        <MessageContent data-turn-text="user" className="whitespace-pre-wrap text-[15px] leading-relaxed" dir="auto">{item.content}</MessageContent>
+        <MessageActions className="justify-end text-muted-foreground text-xs">
           {/* Revealed on hover or focus rather than always drawn: a control on every one of your
               own messages competes with the messages themselves, and this is a repair tool, not
               something anyone reaches for on a normal turn. It stays keyboard-reachable because
-              `:focus-within` shows it too. */}
+              focus reveals it too. */}
           {editable && onEdit && (
-            <MessageAction
-              size="sm"
-              className="gx-user__edit"
+            <TextAction
+              className="text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+              data-action="edit"
               onClick={() => onEdit(item.id, item.content)}
-              tooltip="Edit this message and run again from here"
+              tip="Edit this message and run again from here"
             >
               Edit
-            </MessageAction>
+            </TextAction>
           )}
           {/* WHAT YOU WROTE BEFORE. Beside Edit because Edit is what made it, and always visible
               rather than revealed on hover: it is a fact about this message, not a tool.
@@ -234,16 +310,16 @@ export function Turn({
               different facts here — a worker that predates message_revisions sends no field at
               all, and drawing "no earlier versions" from that would be an answer nobody checked. */}
           {onShowRevisions && (item.revisions ?? 0) > 0 && (
-            <MessageAction
-              size="sm"
-              className="gx-user__edited"
+            <TextAction
+              className="text-muted-foreground"
+              data-action="revisions"
               onClick={() => onShowRevisions(item.id)}
-              tooltip={`You edited this message. See ${item.revisions === 1 ? 'the earlier version' : `all ${item.revisions} earlier versions`}.`}
+              tip={`You edited this message. See ${item.revisions === 1 ? 'the earlier version' : `all ${item.revisions} earlier versions`}.`}
             >
               Edited
-            </MessageAction>
+            </TextAction>
           )}
-          <Stamp at={item.createdAt} align="end" />
+          <Stamp at={item.createdAt} />
         </MessageActions>
         <ContextMenu
           at={menu.at}
@@ -290,40 +366,46 @@ export function Turn({
   const silent = !spilled.prose && replyDocs.media.length === 0 && !item.streaming && item.tools.length === 0 && !outcome;
   const hadDeniedTools = !item.streaming && (item.deniedTools ?? []).some((tool) => typeof tool === 'string' && tool.trim());
 
+  /* RUNNING IT AGAIN, AND WHY THIS IS NOT INSIDE THE OUTCOME BLOCK ANY MORE.
+     "That reply is fine and still not what I meant" is the ordinary case, and the only other re-run
+     path — the edit dialog — hard-refuses an unchanged message. So the control is built once here
+     and rendered by every branch below, so the failed case and the clean case cannot drift into two
+     behaviours. The quota suppression is unchanged: that run did not fail, the account ran out, and
+     a button that walks back into the same wall reads as a broken product rather than an empty
+     balance. */
   const retryControl =
     onRetry && item.stopReason !== 'quota' && assetOptions.length === 0 ? (
-      <MessageActions className="gx-outcome__actions">
-        <MessageAction
-          size="sm"
-          className="gx-outcome__retry"
-          onClick={onRetry}
-          // Stated rather than confirmed. A dialog here would guard a loss it cannot undo — there
-          // is no message-revision store to restore the old reply from — so it would collect a
-          // click and change nothing. When revisions exist, this becomes a real confirmation.
-          tooltip={
-            outcome
-              ? 'Run that prompt again'
-              : 'Run that prompt again. The new reply replaces this reply, which cannot be brought back.'
-          }
-        >
-          {outcome ? 'Try again' : 'Regenerate'}
-        </MessageAction>
-      </MessageActions>
+      <TextAction
+        variant="outline"
+        className="px-2.5"
+        data-action="retry"
+        onClick={onRetry}
+        // Stated rather than confirmed. A dialog here would guard a loss it cannot undo — there
+        // is no message-revision store to restore the old reply from — so it would collect a
+        // click and change nothing. When revisions exist, this becomes a real confirmation.
+        tip={
+          outcome
+            ? 'Run that prompt again'
+            : 'Run that prompt again. The new reply replaces this reply, which cannot be brought back.'
+        }
+      >
+        {outcome ? 'Try again' : 'Regenerate'}
+      </TextAction>
     ) : null;
 
   return (
     <Message
       from="assistant"
       role="article"
-      className="gx-turn gx-turn--agent gx-msg-in"
+      data-turn="assistant"
+      className="max-w-full animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
       data-run-state={item.streaming ? 'live' : outcome ? 'ended' : 'settled'}
       // Still being written: assistive technology waits for the settled reply, which the workspace
       // announces once, instead of reading each half-sentence as it lands.
       aria-busy={item.streaming || undefined}
       onContextMenu={menu.onContextMenu}
     >
-      <span className="gx-mark" aria-hidden="true"><AppleGlyph size={20} /></span>
-      <MessageContent className="gx-turn__body">
+      <MessageContent className="w-full gap-3">
         {/* ONE FRIENDLY LINE while Apple works, and at most one once it is done (D-THINK-1). */}
         <Thinking
           status={isLast ? status : null}
@@ -332,26 +414,28 @@ export function Turn({
           activity={activity}
         />
 
-        {/* WHILE APPLE WORKS, ONE LIVE LINE AND NOTHING ELSE (owner, 2026-09-30). The steps' in-between narration
-            ("Got it — every screen will be assembled…", "Now playing it as a player…") streamed in sections under a status
-            line that stayed on top, and read as tool talk. The status line above says what is happening; the reply
-            appears once, when the run ends and msg_end settles it to the stored answer. */}
-        {item.content && !item.streaming && (
-          // The reply answers in the user's language, so it takes its direction from itself too.
-          // MessageResponse renders through lib/markdown.tsx (marked + DOMPurify, fences to the code
-          // block) — the one renderer allowed to put model output on screen.
-          <>
-            {/* THE WIRE FORMAT IS NOT PROSE. When the model writes a build payload out as text (it does
-                when it runs out of output tokens mid-structure), only the prose around it is drawn.
-                The payload itself is technical detail and is not shown or openable (D-THINK-1). */}
-            {spilled.prose && (
-              // The wrapper is what the word reveal reads; it draws nothing (display:contents).
-              <div ref={replyRef} className="gx-turn__reply">
-                <MessageResponse className="gx-prose" dir="auto">{spilled.prose}</MessageResponse>
-              </div>
-            )}
-          </>
+        {/* WHAT IT THOUGHT AND DID (owner, 2026-10-01): each step's reasoning as an AI Elements
+            Reasoning — open and shimmering while it streams, "Thought for N seconds" once the step
+            ends or a tool starts — with that step's tools after it as one Task. */}
+        <RunSteps item={item} tools={item.tools} streaming={item.streaming} />
+
+        {/* THE REPLY APPEARS ONCE, when the run ends and msg_end settles it to the stored answer
+            (owner, 2026-09-30): the steps' in-between narration is not the reply. It answers in the
+            user's language, so it takes its direction from itself. THE WIRE FORMAT IS NOT PROSE: a
+            build payload the model wrote out as text is split off first and never drawn (D-THINK-1). */}
+        {item.content && !item.streaming && spilled.prose && (
+          <Answer
+            className="text-[15px] leading-relaxed"
+            text={spilled.prose}
+            sources={item.sources}
+            dir="auto"
+            animated={{ animation: 'blurIn', sep: 'word', stagger: 18 }}
+            isAnimating={landing}
+          />
         )}
+
+        {/* "Used N sources" — only what the worker sent for this message. */}
+        {!item.streaming && <RunSources sources={item.sources} />}
 
         <ReplyMedia docs={replyDocs.media} />
         {item.mode === 'agent' && assetOptions.length > 0 && <AssetChoice
@@ -361,24 +445,20 @@ export function Turn({
         />}
 
         {outcome ? (
-          <div className={`gx-outcome${outcome.tone === 'bad' ? ' is-bad' : ''}`}>
+          <div className="flex flex-wrap items-baseline gap-3" data-outcome={outcome.tone}>
             {/* The sentence comes from outcome-model.ts, NOT from `item.error`. That field is a
                 code the worker sends ('rate_limited', 'interrupted', and on two paths the raw
-                provider message); rendering it verbatim — which is what stood here — put one
-                server's note to another in front of the person whose build died. The model turns
-                a known code into a sentence and drops anything it does not recognise. */}
-            {outcome.text && <p className="gx-outcome__text">{outcome.text}</p>}
-            {/* `retryControl` is built above and is null on a quota stop, so a run that did not
-                fail but ran out of Credits still offers nothing to press. */}
+                provider message); the model turns a known code into a sentence and drops anything
+                it does not recognise. */}
+            {outcome.text && <p className={cn('basis-full text-sm leading-relaxed', outcome.tone === 'bad' ? 'text-destructive' : 'text-muted-foreground')}>{outcome.text}</p>}
+            {/* `retryControl` is null on a quota stop, so a run that did not fail but ran out of
+                Credits still offers nothing to press. */}
             {retryControl}
-            {/* A failed run had exactly one affordance — Try again — and pressing it is the right
-                first move only when the cause was transient. /docs/troubleshooting has a section
-                per cause (Studio closed, a place too large to read, Credits gone) and nothing in
-                the product pointed at it, so the second attempt was the user's only diagnostic.
+            {/* A failed run's second affordance: /docs/troubleshooting has a section per cause.
                 New tab: reading it must not discard the conversation it happened in. */}
             {item.stopReason === 'error' && (
               <a
-                className="gx-outcome__help"
+                className="text-muted-foreground text-xs underline underline-offset-4 hover:text-foreground"
                 href="/docs/troubleshooting#messages"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -388,45 +468,39 @@ export function Turn({
             )}
           </div>
         ) : silent ? (
-          // The same row the outcome uses, so an empty turn and a stopped one are one shape rather
-          // than two. The sentence says what happened and what to do next, and it names neither a
-          // cause nor a button label — the control beside it already carries its own word.
-          <div className="gx-outcome">
-            <p className="gx-outcome__text">Apple ended this turn without a reply. Run that prompt again, or rephrase it and send.</p>
+          // The same row the outcome uses, so an empty turn and a stopped one are one shape. The
+          // sentence says what happened and what to do next.
+          <div className="flex flex-wrap items-baseline gap-3" data-outcome="empty">
+            <p className="basis-full text-muted-foreground text-sm leading-relaxed">Apple ended this turn without a reply. Run that prompt again, or rephrase it and send.</p>
             {retryControl}
           </div>
-        ) : (
-          // Same row, no sentence: there is nothing to explain about a run that worked. It is the
-          // last thing under the reply and above the timestamp, where the eye already is.
-          retryControl && <div className="gx-outcome gx-outcome--bare">{retryControl}</div>
-        )}
+        ) : null}
 
         {hadDeniedTools && (
-          <p className="gx-outcome__text">Some of Apple’s abilities are turned off in your settings, so it worked without them.</p>
+          <p className="text-muted-foreground text-sm">Some of Apple’s abilities are turned off in your settings, so it worked without them.</p>
         )}
 
-        {/* THE REPLY'S TOOLBAR — Copy, Share, and the same menu a right-click opens. It is AI
-            Elements' MessageToolbar; on a pointer device it rises into view under the pointer or on
-            focus, like a node toolbar, and on the newest reply it is simply there. */}
-        {spilled.prose && !item.streaming && (
-          <MessageToolbar className={`gx-turn__tools${isLast ? ' is-last' : ''}`}>
-            <div className="gx-turn__tools-main">
-              <CopyButton getText={() => spilled.prose} title="Copy this reply" />
-              <ShareButton getText={() => spilled.prose} />
-            </div>
-            <button
-              type="button"
-              className="gx-turn__more"
-              aria-label="More options for this reply"
-              aria-haspopup="menu"
-              onClick={(e) => menu.openFrom(e.currentTarget)}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <circle cx="5" cy="12" r="1.6" />
-                <circle cx="12" cy="12" r="1.6" />
-                <circle cx="19" cy="12" r="1.6" />
-              </svg>
-            </button>
+        {/* THE REPLY'S TOOLBAR — AI Elements MessageToolbar and MessageActions: Copy, Share, Regenerate
+            and the same menu a right-click opens. On a pointer device it shows under the pointer or
+            on focus; on the newest reply it is simply there. */}
+        {(spilled.prose || (retryControl && !outcome && !silent)) && !item.streaming && (
+          <MessageToolbar
+            className={cn('mt-0 justify-start transition-opacity', !isLast && 'opacity-0 focus-within:opacity-100 group-hover:opacity-100')}
+            data-last={isLast || undefined}
+          >
+            <MessageActions>
+              {spilled.prose && <CopyAction getText={() => spilled.prose} />}
+              {spilled.prose && <ShareAction getText={() => spilled.prose} />}
+              {!outcome && !silent && retryControl}
+              <MessageAction
+                tooltip="More options for this reply"
+                label="More options for this reply"
+                aria-haspopup="menu"
+                onClick={(e) => menu.openFrom(e.currentTarget)}
+              >
+                <MoreHorizontalIcon className="size-4" />
+              </MessageAction>
+            </MessageActions>
           </MessageToolbar>
         )}
         <ContextMenu
@@ -443,19 +517,16 @@ export function Turn({
           ] satisfies MenuItem[]}
         />
 
-        {/* THE FOOTER ROW, AND WHY THE COST IS HERE RATHER THAN IN THE THINKING CARD.
-            The Thinking card shows a running cost WHILE a run is in flight, and `msg_end` clears
-            the status that feeds it — so the figure disappeared at the moment it finally became
-            correct, and the settled total was never shown at all. This is the one the user was
-            charged, sitting next to the time the turn happened. Rendered only when the worker
-            sent one and something was actually spent: an absent field means a conversation from
-            history or an older worker, and neither should be drawn as a confident zero. */}
-        <p className="gx-turn__foot">
-          <Stamp at={item.createdAt} align="start" />
+        {/* THE FOOTER ROW, AND WHY THE COST IS HERE. `msg_end` clears the status that feeds the live
+            figure, so the settled total lives on the message, next to the time the turn happened.
+            Rendered only when the worker sent one and something was actually spent: an absent field
+            means history or an older worker, and neither should be drawn as a confident zero. */}
+        <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-muted-foreground text-xs" data-turn-foot="">
+          <Stamp at={item.createdAt} />
           {item.creditsSpent != null && item.creditsSpent > 0 && (
-            <span className="gx-turn__cost">
+            <span className="border-border border-s ps-3 tabular-nums">
               {/* The settled figure rolls in on a turn that was watched arriving (picks/chat/rolling-number). */}
-              <strong><RollingNumber value={item.creditsSpent} rollIn={arrivedLive} /></strong> {item.creditsSpent === 1 ? 'Credit' : 'Credits'}
+              <strong className="font-normal text-foreground/80"><RollingNumber value={item.creditsSpent} rollIn={arrivedLive} /></strong> {item.creditsSpent === 1 ? 'Credit' : 'Credits'}
             </span>
           )}
         </p>

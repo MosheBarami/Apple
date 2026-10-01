@@ -381,8 +381,7 @@ export function unifiedDiff(block: CodeDiffBlock): string {
 }
 
 // AI Elements has no diff component. Upstream's way to show one is CodeBlock with shiki's `diff`
-// language, which colours each line by its sigil; the local stand-in does the same
-// (components/ai-elements/highlight-compat.ts). The sigil stays in the text, so an added line and
+// language, which colours each line by its sigil. The sigil stays in the text, so an added line and
 // a removed one differ by a character as well as by colour.
 function CodeDiffView({ block }: { block: CodeDiffBlock }) {
   const code = useMemo(() => unifiedDiff(block), [block]);
@@ -393,12 +392,12 @@ function CodeDiffView({ block }: { block: CodeDiffBlock }) {
   return (
     <section className="gu-code-diff">
       {block.summary && <p className="gu-panel-sub">{block.summary}</p>}
-      <CodeBlock className="gx-code gu-code-diff__block" code={code} language="diff">
+      <CodeBlock className="aie gx-code gu-code-diff__block" code={code} language="diff">
         <CodeBlockHeader className="gx-code__head">
-          <CodeBlockTitle>
+          <CodeBlockTitle className="min-w-0 flex-1">
             <CodeBlockFilename className="gx-code__lang" title={block.path}>{block.path}</CodeBlockFilename>
           </CodeBlockTitle>
-          <CodeBlockActions>
+          <CodeBlockActions className="flex-none">
             <span className="gu-diff-counts">
               <span className="gu-diff-added">+{added}</span>
               <span className="gu-diff-removed">-{removed}</span>

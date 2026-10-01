@@ -1,10 +1,11 @@
 // One engine, Apple (V3 gate G01): there is no model picker and no model-gated control here.
 // The workspace sends `productModel: 'apple'` on the wire; the server serves every value as Apple.
 //
-// BUILT FROM VERCEL AI ELEMENTS (components/ai-elements/prompt-input.tsx and attachments.tsx, vendored
-// at a pinned commit — see that directory's NOTICE). PromptInput is the form, the hidden file input
-// and the paste/drop plumbing; PromptInputTextarea is the box; PromptInputFooter, PromptInputTools,
-// PromptInputButton, PromptInputSubmit and PromptInputActionMenu are the bar. What stays HERE is what
+// BUILT FROM VERCEL AI ELEMENTS (components/ai-elements/prompt-input.tsx and attachments.tsx, the
+// genuine upstream files — see that directory's NOTICE). PromptInputProvider holds the box's text and
+// files; PromptInput is the form, the hidden file input and the paste/drop plumbing;
+// PromptInputTextarea is the box; PromptInputFooter, PromptInputTools, PromptInputButton,
+// PromptInputSubmit and PromptInputActionMenu are the bar. Their look is upstream's Tailwind classes. What stays HERE is what
 // this product decides: which key sends (the person's preference), what a file is allowed to be and
 // where it goes (uploaded to the project as it is staged), when a send is refused and that the
 // refusal keeps the draft and the @-mention picker. There is no mode switch (V3 G01): every message
@@ -29,10 +30,12 @@ import {
   PromptInputBody,
   PromptInputButton,
   PromptInputFooter,
+  PromptInputProvider,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
   usePromptInputAttachments,
+  usePromptInputController,
 } from '../ai-elements/prompt-input';
 import { Attachment, AttachmentInfo, AttachmentPreview, AttachmentRemove, Attachments, type AttachmentData } from '../ai-elements/attachments';
 import {
@@ -41,8 +44,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-} from '../ai-elements/ui/dropdown-menu';
-import { ArrowUpIcon, CheckIcon, PaperclipIcon } from '../ai-elements/icons';
+} from '../ui/dropdown-menu';
+import { ArrowUpIcon, CheckIcon, PaperclipIcon } from 'lucide-react';
+import { cn } from '../../lib/utils';
 import { dropAttachment, uploadAttachment, UploadAborted } from '../../lib/api';
 import {
   admitFiles,
@@ -55,6 +59,7 @@ import {
 } from '../../lib/attachments';
 import { observeComposerHeight } from '../../lib/composer-height';
 import { sendBinding, sendHint } from '../../lib/send-key';
+import { matchesShortcut } from '../../lib/shortcuts';
 import { readDraft, writeDraft, clearDraft } from '../../lib/draft';
 import { readUiTheme, writeUiTheme } from '../../lib/ui-theme';
 import { insertAtCursor, selectionChipLabel, selectionReference, type Insertion } from '../../lib/selection-reference';
@@ -188,7 +193,7 @@ function AttachButton({ projectId, disabled }: { projectId?: string; disabled?: 
   const attachments = usePromptInputAttachments();
   return (
     <PromptInputButton
-      className="gx-composer__attach"
+      className="rounded-full text-muted-foreground"
       size="icon-sm"
       onClick={() => attachments.openFileDialog()}
       disabled={!projectId || disabled}
@@ -200,9 +205,51 @@ function AttachButton({ projectId, disabled }: { projectId?: string; disabled?: 
       data-dock=""
       data-fx="press ripple lift"
     >
-      <PaperclipIcon size={16} />
+      <PaperclipIcon className="size-4" />
     </PromptInputButton>
   );
+}
+
+/**
+ * THE BRIDGE BETWEEN UPSTREAM'S PLUMBING AND THIS PRODUCT'S RULES. Rendered inside PromptInput, where
+ * its hooks reach the provider:
+ *
+ *   * TEXT. The product's `text` is the truth (drafts, mentions, inserted phrases all write it); the
+ *     provider's input follows it, so upstream's controlled textarea shows exactly what will be sent.
+ *   * FILES. Upstream gathers files from its file dialog, a drop on the form and a paste into the box,
+ *     and holds them as blob URLs. Each one is handed straight to the product's own staging (admitted,
+ *     uploaded to the project as it is staged) and removed from upstream's list, so the chips drawn are
+ *     the product's — with their progress, failure and Retry.
+ *   * THE DIALOG'S FILTER. The file input carries the shared allowlist. It is not given to PromptInput
+ *     as `accept`: upstream's own filter matches MIME types only, and would refuse a `.luau` or `.md`
+ *     file whose browser-reported type is empty before the product ever saw it.
+ */
+function PromptInputBridge({ text, onFiles }: { text: string; onFiles: (files: File[]) => void }) {
+  const controller = usePromptInputController();
+  const attachments = usePromptInputAttachments();
+  const setInput = controller.textInput.setInput;
+  useEffect(() => {
+    if (controller.textInput.value !== text) setInput(text);
+  }, [text, controller.textInput.value, setInput]);
+  useEffect(() => {
+    attachments.fileInputRef.current?.setAttribute('accept', ATTACHMENT_ACCEPT);
+  }, [attachments.fileInputRef]);
+  const handed = useRef(new Set<string>());
+  useEffect(() => {
+    const fresh = attachments.files.filter((file) => !handed.current.has(file.id));
+    if (fresh.length === 0) return;
+    for (const file of fresh) handed.current.add(file.id);
+    void Promise.all(
+      fresh.map(async (part) => {
+        const blob = await fetch(part.url).then((r) => r.blob());
+        return new File([blob], part.filename ?? 'file', { type: part.mediaType || blob.type });
+      }),
+    )
+      .then(onFiles)
+      .catch(() => undefined)
+      .finally(() => { for (const file of fresh) attachments.remove(file.id); });
+  }, [attachments, onFiles]);
+  return null;
 }
 
 export function Composer({
@@ -718,6 +765,24 @@ export function Composer({
         return;
       }
     }
+    //[[ THE SEND KEY IS THE PERSON'S. Upstream's PromptInputTextarea hand-matches a bare Enter to send
+    //   unless this handler has already claimed the key (it runs this first and yields to
+    //   preventDefault). So every Enter is claimed HERE and decided by the app's shared matcher:
+    //     * the person's send chord submits the form, as upstream would — unless Send is off;
+    //     * any other Enter (Shift+Enter, or a bare Enter when "⌘Enter sends") is the new line,
+    //       written at the caret, so upstream's own Enter test never decides a send. IME composition
+    //       is left alone: that Enter belongs to the input method. ]]
+    if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    if (matchesShortcut(e, sendKeyBinding)) {
+      const submitButton = e.currentTarget.form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+      if (!submitButton?.disabled) e.currentTarget.form?.requestSubmit();
+      return;
+    }
+    const el = e.currentTarget;
+    const start = el.selectionStart ?? text.length;
+    const end = el.selectionEnd ?? start;
+    applyInsertion({ text: `${text.slice(0, start)}\n${text.slice(end)}`, caret: start + 1 });
   };
 
   const selectionLabel = selectionChipLabel(selection);
@@ -734,31 +799,42 @@ export function Composer({
   const showCount = text.length >= MESSAGE_WARN_CHARS;
 
   return (
-    <div className={`gx-composer${running ? ' is-running' : ''}`} ref={panel}>
+    // `aie`: the AI Elements surface (styles/ai-elements.css). `gx-composer` is only the panel's place
+    // in the workspace layout — its width and padding — and what composer-height measures.
+    <div className={cn('gx-composer aie', running && 'is-running')} ref={panel}>
+      <PromptInputProvider>
       <PromptInput
-        className={`gx-composer__inner${dropping ? ' is-dropping' : ''}`}
-        accept={ATTACHMENT_ACCEPT}
+        className={cn(
+          'gx-composer__form relative rounded-2xl',
+          '[&>[data-slot=input-group]]:rounded-2xl [&>[data-slot=input-group]]:bg-card/90 [&>[data-slot=input-group]]:shadow-lg [&>[data-slot=input-group]]:backdrop-blur',
+          dropping && '[&>[data-slot=input-group]]:border-dashed [&>[data-slot=input-group]]:border-primary [&>[data-slot=input-group]]:bg-primary/10',
+        )}
+        data-dropping={dropping || undefined}
         multiple
-        onAddFiles={addFiles}
-        onSubmit={() => submit()}
+        // A send the product refuses THROWS, which is how upstream's form knows to keep the box and the
+        // files as they are ("don't clear on error — user may want to retry"). A refusal must leave the
+        // draft exactly where it was.
+        onSubmit={() => {
+          if (!submit()) throw new Error('send refused');
+        }}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
+        <PromptInputBridge text={text} onFiles={addFiles} />
         <PromptInputBody>
-          <label className="gx-sr" htmlFor="gx-composer-input">
+          <label className="sr-only" htmlFor="gx-composer-input">
             What should Apple build in your place?
           </label>
           <PromptInputTextarea
             id="gx-composer-input"
-            className={`gx-composer__field${typingShown ? ' pk-has-typing' : ''}`}
+            className={cn('gx-composer__field min-h-16 px-4 pt-4 text-[15px] leading-relaxed', typingShown && 'pk-has-typing')}
             onFocus={() => setBoxFocused(true)}
             onBlur={() => setBoxFocused(false)}
             ref={box}
             dir="auto"
             value={text}
-            // THE PERSON'S SEND KEY, not upstream's bare Enter: prefs.sendKey, through sendBinding.
-            submitBinding={sendKeyBinding}
+            // THE PERSON'S SEND KEY, not upstream's bare Enter: prefs.sendKey, matched in onKeyDown.
             // maxLength alone is not enough: browsers disagree about whether an over-long PASTE is
             // truncated or dropped, and the box must always hold exactly what will be sent.
             onChange={(e) => {
@@ -850,7 +926,7 @@ export function Composer({
               every one of them, including the ones that succeeded, because "I did not mean to attach
               that" arrives after the upload as often as during it. */}
           {staged.length > 0 && (
-            <Attachments variant="inline" className="gx-attach" role="list" aria-label="Files on this message">
+            <Attachments variant="inline" className="w-full px-3 pb-1" role="list" aria-label="Files on this message">
               {staged.map((row) => {
                 const pct = progressPercent(row);
                 return (
@@ -859,20 +935,22 @@ export function Composer({
                     role="listitem"
                     data={attachmentData(row)}
                     onRemove={() => removeRow(row.id)}
-                    className={`gx-attach__row is-${row.phase}`}
+                    data-phase={row.phase}
+                    // Each chip arrives (the owner's ae-attachments pick): it fades and grows in.
+                    className={cn('animate-in fade-in-0 zoom-in-95 duration-200 motion-reduce:animate-none', row.phase === 'failed' && 'border-destructive/60')}
                   >
                     <AttachmentPreview />
                     <AttachmentInfo />
                     {row.phase === 'uploading' && (
                       <span
-                        className="gx-attach__bar"
+                        className="relative h-1 w-12 overflow-hidden rounded-full bg-muted"
                         role="progressbar"
                         aria-label={`Uploading ${row.name}`}
                         aria-valuenow={pct}
                         aria-valuemin={0}
                         aria-valuemax={100}
                       >
-                        <span className="gx-attach__fill" style={{ inlineSize: `${pct}%` }} />
+                        <span className="absolute inset-y-0 start-0 bg-primary transition-[inline-size] motion-reduce:transition-none" style={{ inlineSize: `${pct}%` }} />
                       </span>
                     )}
                     {/* THE SUCCESS STATE, which was the one phase with no picture. A row that had
@@ -880,18 +958,18 @@ export function Composer({
                         know a file was actually on the message was to send it. The mark is drawn for
                         the eye; the word beside it is what a screen reader gets. */}
                     {row.phase === 'ready' && (
-                      <span className="gx-attach__ok">
-                        <CheckIcon size={12} />
-                        <span className="gx-sr">Attached</span>
+                      <span className="text-emerald-500">
+                        <CheckIcon className="size-3" aria-hidden="true" />
+                        <span className="sr-only">Attached</span>
                       </span>
                     )}
-                    {row.phase === 'failed' && <span className="gx-attach__error">{row.error}</span>}
+                    {row.phase === 'failed' && <span className="text-destructive">{row.error}</span>}
                     {row.phase === 'failed' && row.retryable && (
-                      <button type="button" className="gx-attach__act" onClick={() => retryRow(row.id)}>
+                      <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => retryRow(row.id)}>
                         Retry
                       </button>
                     )}
-                    <AttachmentRemove className="gx-attach__x" label={`Remove ${row.name}`} title="Remove" />
+                    <AttachmentRemove label={`Remove ${row.name}`} title="Remove" />
                   </Attachment>
                 );
               })}
@@ -902,21 +980,21 @@ export function Composer({
               present only while it is true — a disabled Send with no explanation beside it is the
               commonest way a product wastes somebody's afternoon. */}
           {blocked && (
-            <p className="gx-attach__block" aria-live="polite">
+            <p className="px-4 pb-1 text-muted-foreground text-xs" aria-live="polite">
               {blocked}
             </p>
           )}
         </PromptInputBody>
 
-        <PromptInputFooter className="gx-composer__bar">
-          <PromptInputTools className="gx-composer__options">
+        <PromptInputFooter className="flex-wrap gap-y-2 px-3 pb-3">
+          <PromptInputTools className="flex-wrap">
             {/* THE ASSET BROWSER IS GONE, on the owner's instruction of 2026-09-19, and what it means
                 is a change of who does the looking. The customer describes what the place needs and
                 Apple finds it; they do not shop in a catalogue. The agent's own path to the library
                 is untouched; only this door is closed. */}
             {selectionLabel && (
               <PromptInputButton
-                className="gx-chip gx-chip--selection"
+                className="rounded-full text-muted-foreground"
                 size="sm"
                 onClick={insertSelection}
                 disabled={disabled}
@@ -924,7 +1002,7 @@ export function Composer({
                 data-fx="press ripple"
               >
                 <Icon d={PATH.surface} size={11} />
-                <span className="gx-chip__label">{selectionLabel}</span>
+                <span>{selectionLabel}</span>
               </PromptInputButton>
             )}
 
@@ -933,7 +1011,7 @@ export function Composer({
                 describing what Apple should do is. The chip names the intent while one is chosen. */}
             <PromptInputActionMenu>
               <PromptInputActionMenuTrigger
-                className="gx-chip gx-chip--create"
+                className="rounded-full text-muted-foreground data-[active]:text-foreground"
                 size="sm"
                 data-active={creation === 'build' ? undefined : ''}
                 disabled={locked}
@@ -942,40 +1020,40 @@ export function Composer({
                 data-fx="press ripple"
               >
                 <Icon d={PATH.compose} size={11} />
-                <span className="gx-chip__label">{creation === 'build' ? 'Create' : CREATION_INTENTS[creation].label}</span>
-                <span className="gx-chip__caret" aria-hidden="true">
+                <span>{creation === 'build' ? 'Create' : CREATION_INTENTS[creation].label}</span>
+                <span className="opacity-60" aria-hidden="true">
                   <Icon d={PATH.chevronDown} size={11} />
                 </span>
               </PromptInputActionMenuTrigger>
-              <PromptInputActionMenuContent aria-label="Create" side="top" className="gx-menu gx-menu--create">
+              <PromptInputActionMenuContent aria-label="Create" side="top" className="w-64">
                 <DropdownMenuCheckboxItem
-                  className="gx-menu__item"
+                  className="items-start"
                   checked={creation === 'image'}
                   disabled={running}
                   onCheckedChange={() => chooseCreation('image')}
                 >
-                  <span className="gx-menu__main">
-                    <span className="gx-menu__name">Image</span>
-                    <span className="gx-menu__sub">Generate an image</span>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-sm">Image</span>
+                    <span className="text-muted-foreground text-xs">Generate an image</span>
                   </span>
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
-                  className="gx-menu__item"
+                  className="items-start"
                   checked={creation === 'model'} disabled={running || !studioConnected}
                   onCheckedChange={() => chooseCreation('model')}
                 >
-                  <span className="gx-menu__main">
-                    <span className="gx-menu__name">3D</span>
-                    <span className="gx-menu__sub">{studioConnected ? 'Generate directly in Studio' : 'Connect Studio first'}</span>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-sm">3D</span>
+                    <span className="text-muted-foreground text-xs">{studioConnected ? 'Generate directly in Studio' : 'Connect Studio first'}</span>
                   </span>
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel className="gx-menu__section">Starting points</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-muted-foreground text-xs">Starting points</DropdownMenuLabel>
                 {TEMPLATES.map((t) => (
-                  <PromptInputActionMenuItem key={t.id} className="gx-menu__item" onSelect={() => insertPhrase(t.prompt ?? '')}>
-                    <span className="gx-menu__main">
-                      <span className="gx-menu__name">{t.label}</span>
-                      <span className="gx-menu__sub">{t.blurb}</span>
+                  <PromptInputActionMenuItem key={t.id} className="items-start" onSelect={() => insertPhrase(t.prompt ?? '')}>
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-sm">{t.label}</span>
+                      <span className="text-muted-foreground text-xs">{t.blurb}</span>
                     </span>
                   </PromptInputActionMenuItem>
                 ))}
@@ -986,7 +1064,7 @@ export function Composer({
                 hands the choice to Apple; it never means "build no UI". Studded is the default. */}
             <PromptInputActionMenu>
               <PromptInputActionMenuTrigger
-                className="gx-chip gx-chip--theme"
+                className="rounded-full text-muted-foreground"
                 size="sm"
                 disabled={locked}
                 aria-label={`UI theme: ${UI_THEME_LABEL[uiTheme]}`}
@@ -994,12 +1072,12 @@ export function Composer({
                 data-fx="press ripple"
               >
                 <Icon d={PATH.layers} size={11} />
-                <span className="gx-chip__label">UI: {UI_THEME_LABEL[uiTheme]}</span>
-                <span className="gx-chip__caret" aria-hidden="true">
+                <span>UI: {UI_THEME_LABEL[uiTheme]}</span>
+                <span className="opacity-60" aria-hidden="true">
                   <Icon d={PATH.chevronDown} size={11} />
                 </span>
               </PromptInputActionMenuTrigger>
-              <PromptInputActionMenuContent aria-label="UI theme" side="top" className="gx-menu gx-menu--create">
+              <PromptInputActionMenuContent aria-label="UI theme" side="top" className="w-64">
                 <DropdownMenuRadioGroup
                   value={uiTheme}
                   onValueChange={(v) => {
@@ -1010,10 +1088,10 @@ export function Composer({
                   }}
                 >
                   {UI_THEMES.map((t) => (
-                    <DropdownMenuRadioItem key={t} value={t} className="gx-menu__item">
-                      <span className="gx-menu__main">
-                        <span className="gx-menu__name">{UI_THEME_LABEL[t]}</span>
-                        <span className="gx-menu__sub">{UI_THEME_BLURB[t]}</span>
+                    <DropdownMenuRadioItem key={t} value={t} className="items-start">
+                      <span className="flex flex-col gap-0.5">
+                        <span className="text-sm">{UI_THEME_LABEL[t]}</span>
+                        <span className="text-muted-foreground text-xs">{UI_THEME_BLURB[t]}</span>
                       </span>
                     </DropdownMenuRadioItem>
                   ))}
@@ -1028,7 +1106,7 @@ export function Composer({
             {projectId && <FilePicker projectId={projectId} onAdd={insertFiles} disabled={disabled} />}
           </PromptInputTools>
 
-          <div className="gx-composer__tools" ref={tools}>
+          <div className="ms-auto flex items-center gap-1" ref={tools}>
             {/* What is left to spend, beside the button that spends it (credits-ring.tsx). */}
             <CreditsRing />
 
@@ -1041,7 +1119,7 @@ export function Composer({
             <VoiceInput onText={insertPhrase} onNotice={onNotice} disabled={disabled || running} />
 
             {paused && onContinue && (
-              <PromptInputButton className="gx-chip gx-chip--continue" size="sm" onClick={onContinue} data-fx="press ripple">
+              <PromptInputButton className="rounded-full" variant="outline" size="sm" onClick={onContinue} data-fx="press ripple">
                 Continue
               </PromptInputButton>
             )}
@@ -1050,7 +1128,7 @@ export function Composer({
               // The title as well as the label: a pointer user gets no accessible name, and this
               // is the one control on the bar whose consequence is not obvious from its glyph.
               <PromptInputSubmit
-                className="gx-send is-stop"
+                className="rounded-full"
                 status="streaming"
                 onStop={onStop}
                 // Never `disabled`: that flag means the socket is down, and Stop also goes over HTTP
@@ -1062,7 +1140,9 @@ export function Composer({
               />
             ) : (
               <PromptInputSubmit
-                className="gx-send pk-send"
+                // UI Layouts "Button Hover Right (Expand)": with something to send, the round button
+                // widens on hover or keyboard focus and its word slides out beside the arrow.
+                className="group/send h-8 w-auto min-w-8 gap-0 rounded-full px-2 transition-[gap,padding] hover:enabled:gap-1.5 hover:enabled:px-3 focus-visible:enabled:gap-1.5 focus-visible:enabled:px-3 motion-reduce:transition-none"
                 status="ready"
                 disabled={!text.trim() || disabled || blocked !== null || creationUnavailable}
                 title={creationUnavailable ? 'Connect Roblox Studio to generate this 3D model' : (blocked ?? undefined)}
@@ -1073,34 +1153,35 @@ export function Composer({
                 data-fx="press squish ripple spotlight lift"
                 data-dock=""
               >
-                <span className="pk-send__label" aria-hidden="true">Send</span>
-                <ArrowUpIcon size={16} strokeWidth={2} />
+                <span className="max-w-0 overflow-hidden whitespace-nowrap text-[13px] opacity-0 transition-[max-width,opacity] group-enabled/send:group-hover/send:max-w-[4em] group-enabled/send:group-hover/send:opacity-100 group-enabled/send:group-focus-visible/send:max-w-[4em] group-enabled/send:group-focus-visible/send:opacity-100 motion-reduce:transition-none" aria-hidden="true">Send</span>
+                <ArrowUpIcon className="size-4" strokeWidth={2} />
               </PromptInputSubmit>
             )}
           </div>
         </PromptInputFooter>
       </PromptInput>
+      </PromptInputProvider>
 
       {/* The one tooltip every `data-tip` control in the panel shares (tip-group.tsx). */}
       <TipGroup rootRef={panel} />
 
       {locked && (
-        <p className="gx-creation-note" role="status">
+        <p className="mt-2 text-center text-muted-foreground text-xs" role="status">
           {paused
             ? 'Paused: Roblox Studio disconnected. Reopen the paired place with the Apple plugin running, then press Continue.'
             : 'Connect Roblox Studio with the paired place open to send a message. Your history stays here.'}
         </p>
       )}
       {!locked && paused && onContinue && (
-        <p className="gx-creation-note" role="status">Studio is back. Press Continue to resume the paused run.</p>
+        <p className="mt-2 text-center text-muted-foreground text-xs" role="status">Studio is back. Press Continue to resume the paused run.</p>
       )}
-      {creation !== 'build' && <p className="gx-creation-note" role="status">{creationUnavailable ? 'Studio disconnected. Reconnect using Studio above, or switch to Images or chat. Your draft is kept.' : CREATION_INTENTS[creation].note}</p>}
+      {creation !== 'build' && <p className="mt-2 text-center text-muted-foreground text-xs" role="status">{creationUnavailable ? 'Studio disconnected. Reconnect using Studio above, or switch to Images or chat. Your draft is kept.' : CREATION_INTENTS[creation].note}</p>}
       {/* TWO FACTS, AND THEY WERE RUNNING INTO EACH OTHER. JSX collapses the line break into a
           single space, so this line rendered "⇧↵ for a new line Apple can get things wrong" — one
           sentence with a keyboard shortcut welded onto the front of it. The separator is the same
           middot `sendHint` already uses between its own two halves, so the strip reads as a list of
           facts about this box rather than as prose. */}
-      <p className="gx-composer__note">
+      <p className="gx-composer__note mt-3 text-center text-[10px] text-muted-foreground">
         {sendHint(prefs.sendKey)}
         {' · '}
         Apple can get things wrong. Check what it changed before you publish.

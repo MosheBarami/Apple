@@ -81,9 +81,11 @@
   max-width:100%;
   overflow:hidden;
   text-overflow:ellipsis;
-  color:var(--ink);
 }
-.apple-status__phrase.ai-elements-shimmer { display:block; }
+/* The leaving words are plain text; the arriving ones are AI Elements' Shimmer, whose colour is its
+   own gradient clipped to the text — a colour set here would paint over it. */
+.apple-status__phrase.is-leaving { color:var(--ink); }
+.apple-status__phrase.is-entering { display:block; }
 
 .apple-status__phrase.is-entering { animation:apple-status-in 520ms cubic-bezier(.2,.8,.2,1) both; }
 .apple-status__phrase.is-leaving {

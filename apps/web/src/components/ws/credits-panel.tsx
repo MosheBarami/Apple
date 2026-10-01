@@ -12,7 +12,8 @@ import { fetchAttribution } from '../../lib/api';
 import { StatusIcon } from '../status-icon';
 import { EmptyState } from '../empty-state';
 import { Source, Sources, SourcesContent, SourcesTrigger } from '../ai-elements/sources';
-import { BookIcon, ChevronDownIcon } from '../ai-elements/icons';
+import { BookIcon, ChevronDownIcon } from 'lucide-react';
+import { cn } from '../../lib/utils';
 import {
   copyableCredits,
   creditLine,
@@ -23,6 +24,10 @@ import {
   type CreditEntry,
 } from './credits-model';
 import './credits-panel.css';
+
+// Upstream's Sources is a Radix Collapsible and forwards its props, so `defaultOpen` works at
+// runtime; its prop type is `ComponentProps<'div'>`, which omits it. Spread, rather than cast.
+const OPEN_BY_DEFAULT: object = { defaultOpen: true };
 
 function Credit({ entry }: { entry: CreditEntry }) {
   return (
@@ -171,19 +176,19 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
               has read it fold it away. The host is printed beside each line so where the link goes
               is on the page, not only in the status bar. */}
           {sourceCitations.refs.length > 0 && (
-            <Sources className="cr-sources" defaultOpen>
+            <Sources className={cn('aie cr-sources mb-0 text-xs text-foreground')} {...OPEN_BY_DEFAULT}>
               {/* Upstream's default reads "Used 1 sources"; the same words, with the plural right. */}
               <SourcesTrigger count={sourceCitations.refs.length}>
-                <p className="ai-sources__count">
+                <p className="font-medium">
                   Used {sourceCitations.refs.length} {sourceCitations.refs.length === 1 ? 'source' : 'sources'}
                 </p>
-                <ChevronDownIcon className="ai-sources__chevron" />
+                <ChevronDownIcon className="size-4" />
               </SourcesTrigger>
               <SourcesContent>
                 {sourceCitations.refs.map((ref) => (
                   <Source key={ref.url} href={ref.url} title={ref.label}>
-                    <BookIcon className="ai-sources__icon" />
-                    <span className="ai-sources__title">{ref.label}</span>
+                    <BookIcon className="size-4 shrink-0" />
+                    <span className="font-medium">{ref.label}</span>
                     <span className="cr-sources__host">{ref.host}</span>
                   </Source>
                 ))}

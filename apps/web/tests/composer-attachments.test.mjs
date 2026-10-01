@@ -52,12 +52,13 @@ const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
 /** Source with comments removed, so a negative assertion cannot be tripped by prose. */
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const CODE = stripComments(COMPOSER);
-// Since 2026-09-22 the file input, the paste and the drop plumbing are AI Elements' PromptInput
-// (vendored, components/ai-elements/prompt-input.tsx). The composer gives it `onAddFiles`, so every
-// file it collects comes to the composer's own admission door; the properties below are asserted
-// where each now lives.
+// Since 2026-09-22 the file input, the paste and the drop plumbing are AI Elements' PromptInput —
+// since 2026-10-01 the GENUINE upstream file (components/ai-elements/prompt-input.tsx, hash-checked).
+// Upstream has no `onAddFiles`; it gathers files into its provider, and the composer's
+// PromptInputBridge hands every one of them to the composer's own admission door and takes it back
+// out of upstream's list. The properties below are asserted where each now lives.
 const INPUT = stripComments(src('components', 'ai-elements', 'prompt-input.tsx'));
-const INPUT_CSS = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'prompt-input.css'), 'utf8');
+const BRIDGE = CODE.slice(CODE.indexOf('function PromptInputBridge'), CODE.indexOf('export function Composer'));
 
 /* ------------------------------------------------------------------ the control ---- */
 
@@ -67,16 +68,20 @@ test('the paperclip is no longer disabled, and no longer says attachments are un
   // The paperclip opens THAT input: PromptInput's openFileDialog, reached through its own hook.
   assert.match(CODE, /onClick=\{\(\) => attachments\.openFileDialog\(\)\}/);
   assert.match(INPUT, /const openFileDialogLocal = useCallback\(\(\) => \{\s*inputRef\.current\?\.click\(\);/);
-  // Hidden, not absent — and hidden by a rule this app actually has (it has no `.hidden` utility).
-  assert.match(INPUT, /className="hidden ai-prompt-input__file"/);
-  assert.match(INPUT_CSS.replace(/\/\*[\s\S]*?\*\//g, ''), /\.ai-prompt-input__file\s*\{\s*display:\s*none;?\s*\}/);
+  // Hidden, not absent — by upstream's `hidden` class, which Tailwind compiles from the scanned
+  // ai-elements directory (styles/ai-elements.css).
+  assert.match(INPUT, /className="hidden"\s+multiple=\{multiple\}/);
+  assert.match(readFileSync(join(WEB, 'src', 'styles', 'ai-elements.css'), 'utf8'), /@source "\.\.\/components\/ai-elements";/);
 });
 
 test('the picker offers exactly the types the server takes', () => {
   // A dialog that offers a type the worker refuses is a dialog that lies about what it takes. The
   // accept string is built from the shared allowlist, never written out beside it.
-  assert.match(CODE, /<PromptInput\b[^>]*?\baccept=\{ATTACHMENT_ACCEPT\}/, 'the composer must give PromptInput the shared list');
-  assert.match(INPUT, /<input\s+accept=\{accept\}/, 'and PromptInput must put it on the input the dialog opens from');
+  // RESTATED 2026-10-01: the bridge writes the shared list onto upstream's file input. PromptInput is
+  // not given `accept`, because its own filter is MIME-only and would drop a .luau file before the
+  // composer's admission ever saw it (ai-elements-composer.test.mjs holds that half).
+  assert.match(BRIDGE, /attachments\.fileInputRef\.current\?\.setAttribute\('accept', ATTACHMENT_ACCEPT\)/, 'the dialog must offer the shared list');
+  assert.match(INPUT, /<input\s+accept=\{accept\}[\s\S]*?ref=\{inputRef\}/, 'the input the dialog opens from is the one fileInputRef names');
   assert.ok(ATTACHMENT_ACCEPT.includes('text/markdown'));
 });
 
@@ -114,12 +119,14 @@ test('a pasted image is refused in words rather than silently ignored', () => {
   // same sentence a picked one does, or the person concludes the paste itself is broken.
   // Paste, pick and drop all call PromptInput's `add`, which — given onAddFiles — hands the files to
   // the caller untouched; the composer's onAddFiles IS its one admission door.
+  // RESTATED 2026-10-01: paste, pick and drop all reach upstream's `add`; with no accept, maxFiles or
+  // maxFileSize given, upstream filters nothing, and the bridge hands every file to `addFiles`.
   assert.match(INPUT, /attachments\.add\(files\)/, 'a pasted file must go to PromptInput\'s add');
-  assert.match(INPUT, /const add = onAddFiles\s*\?\s*addToCaller/, 'with onAddFiles, add must be the hand-over');
-  const handOver = INPUT.slice(INPUT.indexOf('const addToCaller'), INPUT.indexOf('const add = onAddFiles'));
-  assert.match(handOver, /onAddFilesRef\.current\?\.\(incoming\)/);
-  assert.equal(/createObjectURL|matchesAccept|maxFileSize/.test(handOver), false, 'the hand-over must not filter or copy the files itself');
-  assert.match(CODE, /onAddFiles=\{addFiles\}/, 'paste has to reach the same admission path as the picker');
+  const promptInputTag = CODE.slice(CODE.indexOf('<PromptInput\n'), CODE.indexOf('>', CODE.indexOf('onDrop={onDrop}')));
+  assert.equal(/\b(?:accept|maxFiles|maxFileSize)=/.test(promptInputTag), false, 'upstream must not filter files before the composer does');
+  assert.match(BRIDGE, /\.then\(onFiles\)/, 'the bridge hands the files over');
+  assert.match(BRIDGE, /attachments\.remove\(file\.id\)/, 'and takes them out of upstream\'s own list');
+  assert.match(CODE, /<PromptInputBridge text=\{text\} onFiles=\{addFiles\} \/>/, 'paste has to reach the same admission path as the picker');
   assert.match(CODE, /const addFiles = \(incoming: readonly File\[\]\) => \{[\s\S]*?admitFiles\(staged, incoming\)/);
 });
 
@@ -135,16 +142,19 @@ test('the composer is the drop target, and it lights up only for a dragged FILE'
 });
 
 test('the drop state has a style, so the promise the box makes is visible', () => {
-  assert.match(CODE, /is-dropping/);
-  assert.match(CSS, /\.gx-composer__inner\.is-dropping/);
+  // RESTATED 2026-10-01: the card is upstream's InputGroup; a coming drop dashes its edge in the
+  // primary colour and tints it, with Tailwind classes applied while `dropping`.
+  assert.match(CODE, /dropping && '[^']*border-dashed[^']*border-primary[^']*'/);
+  assert.match(CODE, /data-dropping=\{dropping \|\| undefined\}/);
 });
 
 /* ------------------------------------------------------------------ the rows ---- */
 
 test('a staged file is rendered with its name, a determinate bar and a way out', () => {
   assert.match(CODE, /progressPercent\(/, 'a bar drawn from anything but the real byte count is a decoration');
-  assert.match(CODE, /gx-attach/, 'the staged rows need their own class to be styled at all');
-  assert.match(CSS, /\.gx-attach/);
+  // RESTATED 2026-10-01: the rows are upstream's Attachments/Attachment, styled by their own classes.
+  assert.match(CODE, /<Attachments variant="inline"/);
+  assert.match(CODE, /<Attachment\b[\s\S]*?data-phase=\{row\.phase\}/);
   assert.match(CODE, /Remove/);
   assert.match(CODE, /Retry/);
 });

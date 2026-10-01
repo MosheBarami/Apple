@@ -188,7 +188,12 @@ test('Enter picks the highlighted file instead of sending the message', () => {
   const keydown = INPUT.slice(INPUT.indexOf('const handleKeyDown'), INPUT.indexOf('const handlePaste'));
   const external = keydown.indexOf('onKeyDown?.(e);');
   const yielded = keydown.indexOf('if (e.defaultPrevented) {');
-  const send = keydown.indexOf('matchesShortcut(e, submitBinding)');
+  // RESTATED 2026-10-01: the textarea is upstream's genuine PromptInputTextarea, which sends on its
+  // own Enter (`form?.requestSubmit()`); the person's send binding is matched in the composer's own
+  // handler, after the picker branch. The order that matters is unchanged: the caller's handler runs
+  // and can claim the key before anything sends.
+  const send = keydown.indexOf('form?.requestSubmit()');
   assert.ok(external !== -1 && yielded !== -1 && send !== -1, 'the textarea’s key handler was not found');
-  assert.ok(external < yielded && yielded < send, 'the caller’s handler must run, and be able to claim the key, before the send binding is matched');
+  assert.ok(external < yielded && yielded < send, 'the caller’s handler must run, and be able to claim the key, before the textarea sends');
+  assert.ok(handler.indexOf('if (mentionHits.length) {') < handler.indexOf('matchesShortcut(e, sendKeyBinding)'), 'the picker claims Enter before the send binding is matched');
 });

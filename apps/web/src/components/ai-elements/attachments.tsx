@@ -1,20 +1,13 @@
 "use client";
 
-// Adapted from AI Elements `packages/elements/src/attachments.tsx` at the pinned commit (see
-// ./NOTICE). Exports, prop types, contexts and the media-category logic are upstream's; imports are
-// swapped for the local stand-ins and each part appends an `ai-attachment…` class beside its inert
-// Tailwind string, for ./attachments.css. One behavioural note, and it is not a change: a
-// preview draws an image or video only when the attachment carries a `url`. The composer passes
-// none — its files are uploaded to the project as they are staged (lib/api.ts uploadAttachment),
-// never turned into blob: or data: URLs — so its chips show the media-category icon.
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "./ui/hover-card";
-import { cn } from "./lib/utils";
-import type { FileUIPart, SourceDocumentUIPart } from "./ai-types";
+} from "@/components/ui/hover-card";
+import { cn } from "@/lib/utils";
+import type { FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   FileTextIcon,
   GlobeIcon,
@@ -23,10 +16,9 @@ import {
   PaperclipIcon,
   VideoIcon,
   XIcon,
-} from "./icons";
+} from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
 import { createContext, useCallback, useContext, useMemo } from "react";
-import "./attachments.css";
 
 // ============================================================================
 // Types
@@ -101,7 +93,7 @@ const renderAttachmentImage = (
   isGrid ? (
     <img
       alt={filename || "Image"}
-      className="size-full object-cover ai-attachment__image"
+      className="size-full object-cover"
       height={96}
       src={url}
       width={96}
@@ -109,7 +101,7 @@ const renderAttachmentImage = (
   ) : (
     <img
       alt={filename || "Image"}
-      className="size-full rounded object-cover ai-attachment__image"
+      className="size-full rounded object-cover"
       height={20}
       src={url}
       width={20}
@@ -173,8 +165,6 @@ export const Attachments = ({
           "flex items-start",
           variant === "list" ? "flex-col gap-2" : "flex-wrap gap-2",
           variant === "grid" && "ml-auto w-fit",
-          "ai-attachments",
-          `ai-attachments--${variant}`,
           className
         )}
         {...props}
@@ -225,8 +215,6 @@ export const Attachment = ({
             "flex w-full items-center gap-3 rounded-lg border p-3",
             "hover:bg-accent/50",
           ],
-          "ai-attachment",
-          `ai-attachment--${variant}`,
           className
         )}
         {...props}
@@ -255,7 +243,7 @@ export const AttachmentPreview = ({
   const iconSize = variant === "inline" ? "size-3" : "size-4";
 
   const renderIcon = (Icon: typeof ImageIcon) => (
-    <Icon className={cn(iconSize, "text-muted-foreground", "ai-attachment__icon")} />
+    <Icon className={cn(iconSize, "text-muted-foreground")} />
   );
 
   const renderContent = () => {
@@ -264,7 +252,7 @@ export const AttachmentPreview = ({
     }
 
     if (mediaCategory === "video" && data.type === "file" && data.url) {
-      return <video className="size-full object-cover ai-attachment__video" muted src={data.url} />;
+      return <video className="size-full object-cover" muted src={data.url} />;
     }
 
     const Icon = mediaCategoryIcons[mediaCategory];
@@ -278,7 +266,6 @@ export const AttachmentPreview = ({
         variant === "grid" && "size-full bg-muted",
         variant === "inline" && "size-5 rounded bg-background",
         variant === "list" && "size-12 rounded bg-muted",
-        "ai-attachment__preview",
         className
       )}
       {...props}
@@ -309,10 +296,10 @@ export const AttachmentInfo = ({
   }
 
   return (
-    <div className={cn("min-w-0 flex-1", "ai-attachment__info", className)} {...props}>
-      <span className="block truncate ai-attachment__name">{label}</span>
+    <div className={cn("min-w-0 flex-1", className)} {...props}>
+      <span className="block truncate">{label}</span>
       {showMediaType && data.mediaType && (
-        <span className="block truncate text-muted-foreground text-xs ai-attachment__type">
+        <span className="block truncate text-muted-foreground text-xs">
           {data.mediaType}
         </span>
       )}
@@ -365,7 +352,6 @@ export const AttachmentRemove = ({
           "[&>svg]:size-2.5",
         ],
         variant === "list" && ["size-8 shrink-0 rounded p-0", "[&>svg]:size-4"],
-        "ai-attachment__remove",
         className
       )}
       onClick={handleClick}
@@ -412,7 +398,7 @@ export const AttachmentHoverCardContent = ({
 }: AttachmentHoverCardContentProps) => (
   <HoverCardContent
     align={align}
-    className={cn("w-auto p-2", "ai-attachment__hover", className)}
+    className={cn("w-auto p-2", className)}
     {...props}
   />
 );
@@ -431,7 +417,6 @@ export const AttachmentEmpty = ({
   <div
     className={cn(
       "flex items-center justify-center p-4 text-muted-foreground text-sm",
-      "ai-attachment__empty",
       className
     )}
     {...props}

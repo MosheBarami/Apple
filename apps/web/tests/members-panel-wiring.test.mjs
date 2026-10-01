@@ -113,8 +113,36 @@ function classesUsed(src) {
   return [...out];
 }
 
+// The genuine AI Elements components are styled by Tailwind, and the markup wrapped around them is
+// too, so a class can be "defined" by two things: a stylesheet rule, or a utility Tailwind compiles
+// from this very file. The second is DERIVED, not listed: the real ai-elements.css is compiled and
+// asked whether it generates a rule for the token. It is only allowed to count for a file Tailwind
+// is actually told to scan (an @source covering src/components/ws), and the compiler is proved able
+// to answer both ways before its answers are trusted.
+const { compile } = await import('tailwindcss');
+const { createRequire } = await import('node:module');
+const requireFromWeb = createRequire(join(WEB, 'package.json'));
+const TAILWIND_SHEET = read('src', 'styles', 'ai-elements.css');
+const tailwind = await compile(TAILWIND_SHEET, {
+  base: join(WEB, 'src', 'styles'),
+  async loadStylesheet(id, base) {
+    if (!id.startsWith('tailwindcss/')) return { path: id, base, content: '' };
+    const path = requireFromWeb.resolve(id);
+    return { path, base: '', content: readFileSync(path, 'utf8') };
+  },
+});
+const tailwindRule = (token) => tailwind.build([token]).includes(`.${token.replace(/[:/[\].%]/g, '\\$&')}`);
+
+test('Tailwind is told to scan the panel, and its compiler answers both ways', () => {
+  assert.match(TAILWIND_SHEET, /@source "\.\.\/components\/ws";/, 'the panel is not under a Tailwind @source');
+  assert.equal(tailwindRule('flex-wrap'), true, 'the compiler cannot see a real utility');
+  assert.equal(tailwindRule('mb__remove'), false, 'the compiler invents rules for the app own classes');
+});
+
 test('EVERY CLASS THE PANEL DRAWS WITH HAS A RULE — the whole mb__ block was missing', () => {
-  const missing = classesUsed(PANEL_CODE).filter((c) => !new RegExp(`\\.${c.replace(/[-]/g, '\\-')}\\b`).test(CSS));
+  const missing = classesUsed(PANEL_CODE)
+    .filter((c) => !new RegExp(`\\.${c.replace(/[-]/g, '\\-')}\\b`).test(CSS))
+    .filter((c) => !tailwindRule(c));
   assert.deepEqual(missing, [], 'these classes are used by members-panel.tsx and defined in no stylesheet');
 });
 

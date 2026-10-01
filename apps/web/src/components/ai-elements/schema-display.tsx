@@ -1,74 +1,471 @@
-// AI Elements `schema-display`, re-implemented for this app.
-//
-// Upstream (vercel/ai-elements, Apache-2.0, see ./NOTICE) shows an API's request/response bodies as
-// a tree of named, typed properties, nested ones behind a disclosure. Export names follow upstream;
-// written here with native <details> instead of Radix Collapsible.
-//
-// Where it is used: a JSON file opened in the Files drawer shows its "Data shape" — every field and
-// what kind of value it holds — behind the Details fold (files-panel.tsx, picks/tech/json-shape.ts).
-import type { HTMLAttributes } from 'react';
-import { cn } from './lib/utils';
-import type { SchemaProperty } from '../picks/tech/json-shape';
-import './schema-display.css';
+"use client";
 
-export type { SchemaProperty };
+import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import { ChevronRightIcon } from "lucide-react";
+import type { ComponentProps, HTMLAttributes } from "react";
+import { createContext, useContext, useMemo } from "react";
 
-export type SchemaDisplayProps = HTMLAttributes<HTMLDivElement> & {
-  title?: string;
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+interface SchemaParameter {
+  name: string;
+  type: string;
+  required?: boolean;
   description?: string;
-  properties: SchemaProperty[];
+  location?: "path" | "query" | "header";
+}
+
+interface SchemaProperty {
+  name: string;
+  type: string;
+  required?: boolean;
+  description?: string;
+  properties?: SchemaProperty[];
+  items?: SchemaProperty;
+}
+
+interface SchemaDisplayContextType {
+  method: HttpMethod;
+  path: string;
+  description?: string;
+  parameters?: SchemaParameter[];
+  requestBody?: SchemaProperty[];
+  responseBody?: SchemaProperty[];
+}
+
+const SchemaDisplayContext = createContext<SchemaDisplayContextType>({
+  method: "GET",
+  path: "",
+});
+
+const methodStyles: Record<HttpMethod, string> = {
+  DELETE: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  GET: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  PATCH:
+    "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  POST: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  PUT: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
 };
 
-export const SchemaDisplay = ({ title, description, properties, className, ...props }: SchemaDisplayProps) => (
-  <div className={cn('ai-schema', className)} {...props}>
-    {(title || description) && (
-      <SchemaDisplayHeader>
-        {title && <span className="ai-schema__title">{title}</span>}
-        {description && <SchemaDisplayDescription>{description}</SchemaDisplayDescription>}
-      </SchemaDisplayHeader>
-    )}
-    <SchemaDisplayContent>
-      {properties.length === 0 ? (
-        <p className="ai-schema__none">No fields.</p>
-      ) : (
-        <ul className="ai-schema__list" role="list">
-          {properties.map((p, i) => <SchemaDisplayProperty key={`${p.name}-${i}`} {...p} />)}
-        </ul>
-      )}
-    </SchemaDisplayContent>
+export type SchemaDisplayHeaderProps = HTMLAttributes<HTMLDivElement>;
+
+export const SchemaDisplayHeader = ({
+  className,
+  children,
+  ...props
+}: SchemaDisplayHeaderProps) => (
+  <div
+    className={cn("flex items-center gap-3 border-b px-4 py-3", className)}
+    {...props}
+  >
+    {children}
   </div>
 );
 
-export const SchemaDisplayHeader = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('ai-schema__header', className)} {...props} />
-);
+export type SchemaDisplayMethodProps = ComponentProps<typeof Badge>;
 
-export const SchemaDisplayDescription = ({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) => (
-  <p className={cn('ai-schema__description', className)} {...props} />
-);
+export const SchemaDisplayMethod = ({
+  className,
+  children,
+  ...props
+}: SchemaDisplayMethodProps) => {
+  const { method } = useContext(SchemaDisplayContext);
 
-export const SchemaDisplayContent = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('ai-schema__content', className)} {...props} />
-);
-
-export const SchemaDisplayProperty = ({ name, type, properties, count }: SchemaProperty) => {
-  const head = (
-    <>
-      <span className="ai-schema__name">{name}</span>
-      <span className="ai-schema__type">{type}{count !== undefined ? ` · ${count}` : ''}</span>
-    </>
-  );
-  if (!properties || properties.length === 0) {
-    return <li className="ai-schema__prop"><span className="ai-schema__row">{head}</span></li>;
-  }
   return (
-    <li className="ai-schema__prop">
-      <details className="ai-schema__nested">
-        <summary className="ai-schema__row ai-schema__row--toggle">{head}</summary>
-        <ul className="ai-schema__list ai-schema__list--nested" role="list">
-          {properties.map((p, i) => <SchemaDisplayProperty key={`${p.name}-${i}`} {...p} />)}
-        </ul>
-      </details>
-    </li>
+    <Badge
+      className={cn("font-mono text-xs", methodStyles[method], className)}
+      variant="secondary"
+      {...props}
+    >
+      {children ?? method}
+    </Badge>
   );
 };
+
+export type SchemaDisplayPathProps = HTMLAttributes<HTMLSpanElement>;
+
+export const SchemaDisplayPath = ({
+  className,
+  children,
+  ...props
+}: SchemaDisplayPathProps) => {
+  const { path } = useContext(SchemaDisplayContext);
+
+  // Highlight path parameters
+  const highlightedPath = path.replaceAll(
+    /\{([^}]+)\}/g,
+    '<span class="text-blue-600 dark:text-blue-400">{$1}</span>'
+  );
+
+  return (
+    <span
+      className={cn("font-mono text-sm", className)}
+      // oxlint-disable-next-line eslint-plugin-react(no-danger)
+      dangerouslySetInnerHTML={{ __html: children ?? highlightedPath }}
+      {...props}
+    />
+  );
+};
+
+export type SchemaDisplayDescriptionProps =
+  HTMLAttributes<HTMLParagraphElement>;
+
+export const SchemaDisplayDescription = ({
+  className,
+  children,
+  ...props
+}: SchemaDisplayDescriptionProps) => {
+  const { description } = useContext(SchemaDisplayContext);
+
+  return (
+    <p
+      className={cn(
+        "border-b px-4 py-3 text-muted-foreground text-sm",
+        className
+      )}
+      {...props}
+    >
+      {children ?? description}
+    </p>
+  );
+};
+
+export type SchemaDisplayContentProps = HTMLAttributes<HTMLDivElement>;
+
+export const SchemaDisplayContent = ({
+  className,
+  children,
+  ...props
+}: SchemaDisplayContentProps) => (
+  <div className={cn("divide-y", className)} {...props}>
+    {children}
+  </div>
+);
+
+export type SchemaDisplayParameterProps = HTMLAttributes<HTMLDivElement> &
+  SchemaParameter;
+
+export const SchemaDisplayParameter = ({
+  name,
+  type,
+  required,
+  description,
+  location,
+  className,
+  ...props
+}: SchemaDisplayParameterProps) => (
+  <div className={cn("px-4 py-3 pl-10", className)} {...props}>
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-sm">{name}</span>
+      <Badge className="text-xs" variant="outline">
+        {type}
+      </Badge>
+      {location && (
+        <Badge className="text-xs" variant="secondary">
+          {location}
+        </Badge>
+      )}
+      {required && (
+        <Badge
+          className="bg-red-100 text-red-700 text-xs dark:bg-red-900/30 dark:text-red-400"
+          variant="secondary"
+        >
+          required
+        </Badge>
+      )}
+    </div>
+    {description && (
+      <p className="mt-1 text-muted-foreground text-sm">{description}</p>
+    )}
+  </div>
+);
+
+export type SchemaDisplayParametersProps = ComponentProps<typeof Collapsible>;
+
+export const SchemaDisplayParameters = ({
+  className,
+  children,
+  ...props
+}: SchemaDisplayParametersProps) => {
+  const { parameters } = useContext(SchemaDisplayContext);
+
+  return (
+    <Collapsible className={cn(className)} defaultOpen {...props}>
+      <CollapsibleTrigger className="group flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50">
+        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+        <span className="font-medium text-sm">Parameters</span>
+        <Badge className="ml-auto text-xs" variant="secondary">
+          {parameters?.length}
+        </Badge>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="divide-y border-t">
+          {children ??
+            parameters?.map((param) => (
+              <SchemaDisplayParameter key={param.name} {...param} />
+            ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
+
+export type SchemaDisplayPropertyProps = HTMLAttributes<HTMLDivElement> &
+  SchemaProperty & {
+    depth?: number;
+  };
+
+export const SchemaDisplayProperty = ({
+  name,
+  type,
+  required,
+  description,
+  properties,
+  items,
+  depth = 0,
+  className,
+  ...props
+}: SchemaDisplayPropertyProps) => {
+  const hasChildren = properties || items;
+  const paddingLeft = 40 + depth * 16;
+
+  if (hasChildren) {
+    return (
+      <Collapsible defaultOpen={depth < 2}>
+        <CollapsibleTrigger
+          className={cn(
+            "group flex w-full items-center gap-2 py-3 text-left transition-colors hover:bg-muted/50",
+            className
+          )}
+          style={{ paddingLeft }}
+        >
+          <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+          <span className="font-mono text-sm">{name}</span>
+          <Badge className="text-xs" variant="outline">
+            {type}
+          </Badge>
+          {required && (
+            <Badge
+              className="bg-red-100 text-red-700 text-xs dark:bg-red-900/30 dark:text-red-400"
+              variant="secondary"
+            >
+              required
+            </Badge>
+          )}
+        </CollapsibleTrigger>
+        {description && (
+          <p
+            className="pb-2 text-muted-foreground text-sm"
+            style={{ paddingLeft: paddingLeft + 24 }}
+          >
+            {description}
+          </p>
+        )}
+        <CollapsibleContent>
+          <div className="divide-y border-t">
+            {properties?.map((prop) => (
+              <SchemaDisplayProperty
+                key={prop.name}
+                {...prop}
+                depth={depth + 1}
+              />
+            ))}
+            {items && (
+              <SchemaDisplayProperty
+                {...items}
+                depth={depth + 1}
+                name={`${name}[]`}
+              />
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  return (
+    <div
+      className={cn("py-3 pr-4", className)}
+      style={{ paddingLeft }}
+      {...props}
+    >
+      <div className="flex items-center gap-2">
+        {/* Spacer for alignment */}
+        <span className="size-4" />
+        <span className="font-mono text-sm">{name}</span>
+        <Badge className="text-xs" variant="outline">
+          {type}
+        </Badge>
+        {required && (
+          <Badge
+            className="bg-red-100 text-red-700 text-xs dark:bg-red-900/30 dark:text-red-400"
+            variant="secondary"
+          >
+            required
+          </Badge>
+        )}
+      </div>
+      {description && (
+        <p className="mt-1 pl-6 text-muted-foreground text-sm">{description}</p>
+      )}
+    </div>
+  );
+};
+
+export type SchemaDisplayRequestProps = ComponentProps<typeof Collapsible>;
+
+export const SchemaDisplayRequest = ({
+  className,
+  children,
+  ...props
+}: SchemaDisplayRequestProps) => {
+  const { requestBody } = useContext(SchemaDisplayContext);
+
+  return (
+    <Collapsible className={cn(className)} defaultOpen {...props}>
+      <CollapsibleTrigger className="group flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50">
+        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+        <span className="font-medium text-sm">Request Body</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="border-t">
+          {children ??
+            requestBody?.map((prop) => (
+              <SchemaDisplayProperty key={prop.name} {...prop} depth={0} />
+            ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
+
+export type SchemaDisplayResponseProps = ComponentProps<typeof Collapsible>;
+
+export const SchemaDisplayResponse = ({
+  className,
+  children,
+  ...props
+}: SchemaDisplayResponseProps) => {
+  const { responseBody } = useContext(SchemaDisplayContext);
+
+  return (
+    <Collapsible className={cn(className)} defaultOpen {...props}>
+      <CollapsibleTrigger className="group flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50">
+        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+        <span className="font-medium text-sm">Response</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="border-t">
+          {children ??
+            responseBody?.map((prop) => (
+              <SchemaDisplayProperty key={prop.name} {...prop} depth={0} />
+            ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
+
+export type SchemaDisplayProps = HTMLAttributes<HTMLDivElement> & {
+  method: HttpMethod;
+  path: string;
+  description?: string;
+  parameters?: SchemaParameter[];
+  requestBody?: SchemaProperty[];
+  responseBody?: SchemaProperty[];
+};
+
+export const SchemaDisplay = ({
+  method,
+  path,
+  description,
+  parameters,
+  requestBody,
+  responseBody,
+  className,
+  children,
+  ...props
+}: SchemaDisplayProps) => {
+  const contextValue = useMemo(
+    () => ({
+      description,
+      method,
+      parameters,
+      path,
+      requestBody,
+      responseBody,
+    }),
+    [description, method, parameters, path, requestBody, responseBody]
+  );
+
+  return (
+    <SchemaDisplayContext.Provider value={contextValue}>
+      <div
+        className={cn(
+          "overflow-hidden rounded-lg border bg-background",
+          className
+        )}
+        {...props}
+      >
+        {children ?? (
+          <>
+            <SchemaDisplayHeader>
+              <div className="flex items-center gap-3">
+                <SchemaDisplayMethod />
+                <SchemaDisplayPath />
+              </div>
+            </SchemaDisplayHeader>
+            {description && <SchemaDisplayDescription />}
+            <SchemaDisplayContent>
+              {parameters && parameters.length > 0 && (
+                <SchemaDisplayParameters />
+              )}
+              {requestBody && requestBody.length > 0 && (
+                <SchemaDisplayRequest />
+              )}
+              {responseBody && responseBody.length > 0 && (
+                <SchemaDisplayResponse />
+              )}
+            </SchemaDisplayContent>
+          </>
+        )}
+      </div>
+    </SchemaDisplayContext.Provider>
+  );
+};
+
+export type SchemaDisplayBodyProps = HTMLAttributes<HTMLDivElement>;
+
+export const SchemaDisplayBody = ({
+  className,
+  children,
+  ...props
+}: SchemaDisplayBodyProps) => (
+  <div className={cn("divide-y", className)} {...props}>
+    {children}
+  </div>
+);
+
+export type SchemaDisplayExampleProps = HTMLAttributes<HTMLPreElement>;
+
+export const SchemaDisplayExample = ({
+  className,
+  children,
+  ...props
+}: SchemaDisplayExampleProps) => (
+  <pre
+    className={cn(
+      "mx-4 mb-4 overflow-auto rounded-md bg-muted p-4 font-mono text-sm",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </pre>
+);

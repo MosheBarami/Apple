@@ -32,12 +32,12 @@ export function VersionDiff({
 
   return (
     <div className="vd">
-      <PackageInfo name={path} className="vd-head">
+      <PackageInfo name={path} currentVersion={from} newVersion={to} changeType={kind} className="aie vd-head">
         <PackageInfoHeader>
           <PackageInfoName>{path.split('/').pop()}</PackageInfoName>
-          <PackageInfoChangeType type={kind}>{changeWords(diff)}</PackageInfoChangeType>
+          <PackageInfoChangeType>{changeWords(diff)}</PackageInfoChangeType>
         </PackageInfoHeader>
-        <PackageInfoVersion current={from} next={to} />
+        <PackageInfoVersion />
       </PackageInfo>
       {diff.lines.length === 0 ? (
         <p className="vd-same">These two versions are the same.</p>

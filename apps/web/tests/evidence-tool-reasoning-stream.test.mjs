@@ -53,8 +53,10 @@ test('ReasoningSummary shows only public effort reason', () => {
 });
 
 test('RunShimmer and StreamingText follow real state', () => {
-  assert.match(render(h(RunShimmer, { active: true, children: 'Building' })), /ai-elements-shimmer/);
-  assert.doesNotMatch(render(h(RunShimmer, { active: false, children: 'Building' })), /ai-elements-shimmer/);
+  // RESTATED 2026-10-01: the genuine AI Elements Shimmer is known by its clipped gradient, not by the
+  // home-made class.
+  assert.match(render(h(RunShimmer, { active: true, children: 'Building' })), /bg-clip-text/);
+  assert.doesNotMatch(render(h(RunShimmer, { active: false, children: 'Building' })), /bg-clip-text/);
   assert.match(render(h(StreamingText, { text: 'Hello', streaming: true })), /caret/);
   const closed = render(h(StreamingText, { text: 'Hello', streaming: false }));
   assert.doesNotMatch(closed, /caret/);

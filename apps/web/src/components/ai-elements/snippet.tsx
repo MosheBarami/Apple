@@ -1,70 +1,145 @@
-// AI Elements `snippet`, re-implemented for this app.
-//
-// Upstream (vercel/ai-elements, Apache-2.0, see ./NOTICE) is a one-line, read-only input group — a
-// prefix, the text, a copy button — for handing a short string to the user. Export names follow
-// upstream; the code is written here with no InputGroup/Radix dependency.
-//
-// Where it is used: the Files drawer puts the open file's path in one, so it can be copied into a
-// message to Apple ("look at notes/plan.md") without retyping it (files-panel.tsx).
-import { createContext, useContext, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
-import { cn } from './lib/utils';
-import { useCopy } from '../picks/tech/use-copy';
-import { CheckIcon, CopyIcon } from '../picks/tech/icons';
-import '../picks/tech/tech-ui.css';
-import './snippet.css';
+"use client";
 
-const SnippetContext = createContext<{ code: string }>({ code: '' });
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+} from "@/components/ui/input-group";
+import { cn } from "@/lib/utils";
+import { CheckIcon, CopyIcon } from "lucide-react";
+import type { ComponentProps } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-export type SnippetProps = HTMLAttributes<HTMLDivElement> & { code: string };
-export const Snippet = ({ code, className, children, ...props }: SnippetProps) => (
-  <SnippetContext.Provider value={{ code }}>
-    <div className={cn('ai-snippet', className)} {...props}>{children}</div>
-  </SnippetContext.Provider>
+interface SnippetContextType {
+  code: string;
+}
+
+const SnippetContext = createContext<SnippetContextType>({
+  code: "",
+});
+
+export type SnippetProps = ComponentProps<typeof InputGroup> & {
+  code: string;
+};
+
+export const Snippet = ({
+  code,
+  className,
+  children,
+  ...props
+}: SnippetProps) => {
+  const contextValue = useMemo(() => ({ code }), [code]);
+
+  return (
+    <SnippetContext.Provider value={contextValue}>
+      <InputGroup className={cn("font-mono", className)} {...props}>
+        {children}
+      </InputGroup>
+    </SnippetContext.Provider>
+  );
+};
+
+export type SnippetAddonProps = ComponentProps<typeof InputGroupAddon>;
+
+export const SnippetAddon = (props: SnippetAddonProps) => (
+  <InputGroupAddon {...props} />
 );
 
-export const SnippetAddon = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn('ai-snippet__addon', className)} {...props} />
+export type SnippetTextProps = ComponentProps<typeof InputGroupText>;
+
+export const SnippetText = ({ className, ...props }: SnippetTextProps) => (
+  <InputGroupText
+    className={cn("pl-2 font-normal text-muted-foreground", className)}
+    {...props}
+  />
 );
 
-export const SnippetText = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn('ai-snippet__text', className)} {...props} />
-);
+export type SnippetInputProps = Omit<
+  ComponentProps<typeof InputGroupInput>,
+  "readOnly" | "value"
+>;
 
-export type SnippetInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'readOnly'>;
 export const SnippetInput = ({ className, ...props }: SnippetInputProps) => {
   const { code } = useContext(SnippetContext);
+
   return (
-    <input
-      className={cn('ai-snippet__input', className)}
-      value={code}
+    <InputGroupInput
+      className={cn("text-foreground", className)}
       readOnly
-      spellCheck={false}
-      onFocus={(e) => e.currentTarget.select()}
+      value={code}
       {...props}
     />
   );
 };
 
-export type SnippetCopyButtonProps = {
+export type SnippetCopyButtonProps = ComponentProps<typeof InputGroupButton> & {
   onCopy?: () => void;
-  onError?: (error: unknown) => void;
+  onError?: (error: Error) => void;
   timeout?: number;
-  label?: string;
-  children?: ReactNode;
-  className?: string;
 };
-export const SnippetCopyButton = ({ onCopy, onError, timeout = 2000, label = 'Copy', children, className }: SnippetCopyButtonProps) => {
+
+export const SnippetCopyButton = ({
+  onCopy,
+  onError,
+  timeout = 2000,
+  children,
+  className,
+  ...props
+}: SnippetCopyButtonProps) => {
+  const [isCopied, setIsCopied] = useState(false);
+  const timeoutRef = useRef<number>(0);
   const { code } = useContext(SnippetContext);
-  const { copied, copy } = useCopy(timeout, onError);
+
+  const copyToClipboard = useCallback(async () => {
+    if (typeof window === "undefined" || !navigator?.clipboard?.writeText) {
+      onError?.(new Error("Clipboard API not available"));
+      return;
+    }
+
+    try {
+      if (!isCopied) {
+        await navigator.clipboard.writeText(code);
+        setIsCopied(true);
+        onCopy?.();
+        timeoutRef.current = window.setTimeout(
+          () => setIsCopied(false),
+          timeout
+        );
+      }
+    } catch (error) {
+      onError?.(error as Error);
+    }
+  }, [code, onCopy, onError, timeout, isCopied]);
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(timeoutRef.current);
+    },
+    []
+  );
+
+  const Icon = isCopied ? CheckIcon : CopyIcon;
+
   return (
-    <button
-      type="button"
-      className={cn('tq-btn tq-btn--icon tq-btn--bare ai-snippet__copy', className)}
-      aria-label={copied ? 'Copied' : label}
-      title={label}
-      onClick={() => void copy(code).then((ok) => ok && onCopy?.())}
+    <InputGroupButton
+      aria-label="Copy"
+      className={className}
+      onClick={copyToClipboard}
+      size="icon-sm"
+      title="Copy"
+      {...props}
     >
-      {children ?? (copied ? <CheckIcon /> : <CopyIcon />)}
-    </button>
+      {children ?? <Icon className="size-3.5" size={14} />}
+    </InputGroupButton>
   );
 };

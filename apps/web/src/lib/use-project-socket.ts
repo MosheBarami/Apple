@@ -47,6 +47,8 @@ import {
 import { getAccessToken, supabase } from './supabase';
 import { NO_LINK_FACTS, linkFactsFrom, type StudioLinkFacts } from './studio-connection';
 import { chatItemFromMessageDto, createProjectRequestFence, mergeHistoryWithLive } from './project-socket-state';
+// Reasoning, the order of the run's steps, and its sources (AI Elements Reasoning, Task, Sources).
+import { withReasoning, withReasoningClosed, withSources, withToolStart, type TraceFields } from './run-trace.ts';
 
 export interface ToolEvent {
   toolId: string;
@@ -75,7 +77,12 @@ export interface ToolEvent {
   detail?: unknown;
 }
 
-export interface ChatItem {
+/**
+ * `reasoning`, `trace` and `sources` (TraceFields) are filled from `reasoning_delta`, the tool frames
+ * and `sources` by lib/run-trace.ts. Undefined until the worker sends any: a reloaded conversation
+ * and an older worker show no Reasoning or Sources rather than empty ones.
+ */
+export interface ChatItem extends TraceFields {
   id: string;
   role: 'user' | 'assistant' | 'system';
   mode: ProductMode | null;
@@ -624,7 +631,33 @@ export function useProjectSocket(
           }
           const item = list[idx]!;
           const next = [...list];
-          next[idx] = { ...item, content: item.content + msg.text };
+          // The reply's text started, so the step's thinking is over: its Reasoning collapses.
+          next[idx] = withReasoningClosed({ ...item, content: item.content + msg.text }, Date.now());
+          return next;
+        });
+        break;
+      case 'reasoning_delta':
+        // The model's reasoning for one step, streamed (AI Elements Reasoning). A frame for a message
+        // this client has no row for yet opens the row, as `delta` does.
+        setMessages((list) => {
+          const now = Date.now();
+          const idx = list.findIndex((m) => m.id === msg.msgId);
+          if (idx === -1) {
+            const shell: ChatItem = { id: msg.msgId, role: 'assistant', mode: null, content: '', tools: [], streaming: true, createdAt: now };
+            return [...list, withReasoning(shell, msg.step, msg.text, now)];
+          }
+          const next = [...list];
+          next[idx] = withReasoning(list[idx]!, msg.step, msg.text, now);
+          return next;
+        });
+        break;
+      case 'sources':
+        // Where the answer's facts came from (AI Elements Sources, and the `[n]` citations in it).
+        setMessages((list) => {
+          const idx = list.findIndex((m) => m.id === msg.msgId);
+          if (idx === -1) return list;
+          const next = [...list];
+          next[idx] = withSources(list[idx]!, msg.sources);
           return next;
         });
         break;
@@ -634,7 +667,8 @@ export function useProjectSocket(
           if (idx === -1) return list;
           const item = list[idx]!;
           const next = [...list];
-          next[idx] = {
+          // A tool started: the open thought collapses and the tool takes its place in the order.
+          next[idx] = withToolStart({
             ...item,
             tools: [
               ...item.tools,
@@ -651,7 +685,7 @@ export function useProjectSocket(
                 done: false,
               },
             ],
-          };
+          }, msg.toolId, Date.now());
           return next;
         });
         break;
@@ -696,7 +730,7 @@ export function useProjectSocket(
         setMessages((list) => {
           const idx = list.findIndex((m) => m.id === msg.msgId);
           if (idx === -1) return list;
-          const item = list[idx]!;
+          const item = withReasoningClosed(list[idx]!, Date.now());
           const next = [...list];
           next[idx] = {
             ...item,

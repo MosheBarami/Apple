@@ -42,7 +42,7 @@
   padding:0; border-color:transparent; border-radius:var(--r-xs); background:transparent; color:var(--muted);
   transition:color 140ms var(--ease-out),background 140ms var(--ease-out),border-color 140ms var(--ease-out);
 }
-.gx-code__copy svg.ai-icon { width:14px; height:14px; }
+.gx-code__copy svg { width:14px; height:14px; }
 /* An ink mix rather than a fixed surface: `--ink` is near-white in the dark theme and near-black in
    the light one, so the same declaration lifts the button off `--surface-2` in one and presses it
    into the other. A tint that only read on the dark theme would need a correction below; this one
@@ -67,11 +67,11 @@
    the browser's back gesture: the chat behind it must not navigate away because one line was wide.
    No height cap. A long script is long, and silently cropping it would hide the half a reader is
    about to paste. */
-.gx-code .ai-code-block__pre { padding:14px; line-height:1.6; tab-size:4; overscroll-behavior-inline:contain; }
+.gx-code pre { padding:14px; line-height:1.6; tab-size:4; overscroll-behavior-inline:contain; }
 /* A long line scrolls inside the block; the bar that says so is thin and in the theme's edge colour,
    not the platform's default black slab across the foot of a light code block. */
-.gx-code .ai-code-block__pre { scrollbar-width:thin; scrollbar-color:var(--line-strong) transparent; }
-.gx-code .ai-code-block__pre code { font-size:1em; }
+.gx-code pre { scrollbar-width:thin; scrollbar-color:var(--line-strong) transparent; }
+.gx-code pre code { font-size:1em; }
 
 /* --------------------------------------------------------------------- at 375px --- */
 
@@ -102,7 +102,7 @@
    blinks, so the reader can see the script is still being written and where. Drawn after the last
    line's text, so it sits exactly where the next character will land. */
 @keyframes gx-code-caret { 0%,45% { opacity:1; } 55%,100% { opacity:0; } }
-.gx-code[data-writing] .ai-code-block__line:last-child::after {
+.gx-code[data-writing] pre code > span:last-child::after {
   content:''; display:inline-block; width:2px; height:1.1em; margin-inline-start:1px;
   vertical-align:-.15em; background:var(--accent); border-radius:1px;
   animation:gx-code-caret 1s steps(1,end) infinite;
@@ -110,7 +110,7 @@
 
 /* THE PLACEHOLDER (UI Layouts "Code Block"). A fence that has opened with no code in it yet shows
    three lines of shimmer at the code's own inset and rhythm, and the empty <pre> is not drawn. */
-.gx-code[data-empty] .ai-code-block__content { display:none; }
+.gx-code[data-empty] pre { display:none; }
 .gx-code__skeleton { display:grid; gap:10px; padding:16px 14px; }
 .gx-code__skeleton span {
   display:block; height:10px; border-radius:var(--r-xs);
@@ -123,5 +123,5 @@
 @keyframes gx-code-shimmer { from { background-position:100% 0; } to { background-position:-100% 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .gx-code[data-writing] .ai-code-block__line:last-child::after,.gx-code__skeleton span { animation:none; }
+  .gx-code[data-writing] pre code > span:last-child::after,.gx-code__skeleton span { animation:none; }
 }

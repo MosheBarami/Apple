@@ -34,9 +34,13 @@ import { ANNOUNCE_MAX, replyAnnouncement, speakableBody } from '../src/lib/annou
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, '..');
 const WS = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
-// The follow state now lives in the AI Elements Conversation: the lock is the stick-to-bottom
-// stand-in's, the control is upstream's ConversationScrollButton. The workspace keeps the count.
-const STICK = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'stick-to-bottom.tsx'), 'utf8');
+// The follow state lives in the AI Elements Conversation. RESTATED 2026-10-01: the lock is the real
+// `use-stick-to-bottom` (the library upstream's Conversation is built on) instead of a local stand-in,
+// the control is upstream's ConversationScrollButton, and the workspace keeps the count. What the
+// library promises is read from its own published types and build.
+const STICK_DIR = join(WEB, 'node_modules', 'use-stick-to-bottom', 'dist');
+const STICK = readFileSync(join(STICK_DIR, 'useStickToBottom.d.ts'), 'utf8');
+const STICK_JS = readFileSync(join(STICK_DIR, 'useStickToBottom.js'), 'utf8');
 const CONVERSATION = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'conversation.tsx'), 'utf8');
 
 const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -106,10 +110,11 @@ const body = (src, start) => {
 test('following is state, so a control can exist at all', () => {
   // This is the defect in one line: it was a ref, and a ref does not re-render. RESTATED: the lock
   // is the Conversation's `isAtBottom`, which is React state, and the jump control reads it.
-  assert.match(STICK, /const \[isAtBottom, setIsAtBottom\] = useState\(/);
-  assert.match(STICK, /const setLock = useCallback\(\(next: boolean\) => \{[\s\S]*?setIsAtBottom\(next\)/);
+  assert.match(STICK, /isAtBottom: boolean;/, 'the library exposes following as a value in its context');
+  assert.match(STICK_JS, /useState\(/, 'held as React state, so reading it re-renders');
   const jump = body(WS, 'function LatestEdgeJump(');
   assert.match(jump, /const \{ isAtBottom \} = useStickToBottomContext\(\)/);
+  assert.match(WS, /import \{ useStickToBottomContext, type StickToBottomContext \} from 'use-stick-to-bottom';/);
 });
 
 test('the jump control appears only when the reader has left the live edge', () => {
@@ -133,14 +138,12 @@ test('the jump control appears only when the reader has left the live edge', () 
 
 test('jumping scrolls to the end AND re-arms following', () => {
   // Scrolling without re-arming leaves the reader at the bottom with the button still there and
-  // new turns still not followed — which looks like the button did not work.
-  const fn = STICK.slice(STICK.indexOf('const scrollToBottom = useCallback'), STICK.indexOf('const stopScroll'));
-  assert.ok(fn.length > 0, 'scrollToBottom was not found — this test checks nothing');
-  assert.match(fn, /setLock\(true\)/, 'the lock is re-armed');
-  assert.match(fn, /jump\(/, 'and the view moves');
-  const jump = STICK.slice(STICK.indexOf('const jump = useCallback'), STICK.indexOf('const scrollToBottom'));
-  assert.match(jump, /el\.scrollTop = el\.scrollHeight/);
-  assert.match(jump, /el\.scrollTo\(\{ top: el\.scrollHeight/);
+  // new turns still not followed — which looks like the button did not work. Upstream's button calls
+  // the library's scrollToBottom, which is documented to re-engage the lock.
+  const button = body(CONVERSATION, 'export const ConversationScrollButton = (');
+  assert.match(button, /scrollToBottom\(\)/);
+  assert.match(STICK, /scrollToBottom: ScrollToBottom;/);
+  assert.match(STICK_JS, /escapedFromLock/, 'the library tracks leaving and re-joining the lock');
   // And the count starts again from zero: while following, the watermark tracks the total.
   const edge = body(WS, 'function LatestEdgeJump(');
   assert.match(edge, /if \(isAtBottom\) seen\.current = total/);
@@ -162,18 +165,13 @@ test('a jump to an older message releases following before it scrolls there', ()
   assert.ok(stop !== -1 && scroll > stop, 'stopScroll must come before scrollIntoView');
 });
 
-test('the scroll handler decides with the shared predicate, not a copy of the arithmetic', () => {
-  const code = stripComments(STICK);
-  assert.match(code, /import \{ isNearBottom, type ScrollMetrics \} from '\.\.\/\.\.\/lib\/follow-latest'/);
-  assert.match(code, /if \(isNearBottom\(metrics\)\) return true/);
-  assert.match(code, /lockAfterScroll\(locked\.current, lastTop\.current, el\)/, 'the scroll listener asks the rule');
-  for (const [name, src] of [['stick-to-bottom.tsx', code], ['workspace.tsx', stripComments(WS)]]) {
-    assert.equal(
-      /scrollHeight - \w+\.scrollTop - \w+\.clientHeight < 90/.test(src),
-      false,
-      `${name}: the inline arithmetic must not survive beside the named predicate`,
-    );
-  }
+// RESTATED 2026-10-01. The scroll handler is the library's now, and so is its slack: "at the bottom"
+// within STICK_TO_BOTTOM_OFFSET_PX (70) rather than this app's NEAR_BOTTOM_PX (90). Still not zero —
+// the property this suite held — and still one rule, not a copy of the arithmetic in the workspace.
+test('the lock has one rule with a real slack, and the workspace keeps no copy of it', () => {
+  const slack = Number(/STICK_TO_BOTTOM_OFFSET_PX\s*=\s*(\d+)/.exec(STICK_JS)?.[1]);
+  assert.ok(slack >= 40, `the library's slack is ${slack}px — less than a line of prose`);
+  assert.equal(/scrollHeight - \w+\.scrollTop - \w+\.clientHeight < \d+/.test(stripComments(WS)), false, 'the workspace must not re-derive the lock');
 });
 
 // -------------------------------------------------------------- the live region ---

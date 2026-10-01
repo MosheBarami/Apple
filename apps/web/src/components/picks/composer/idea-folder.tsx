@@ -12,8 +12,9 @@
 //
 // A card is a button: Enter or a click puts the idea in the box at the caret, like every other
 // insertion. Escape, a click outside, or choosing closes the folder and gives focus back.
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
-import { useIsomorphicLayoutEffect } from '../../ai-elements/lib/use-isomorphic-layout-effect';
+import { buttonVariants } from '../../ui/button';
+import { cn } from '../../../lib/utils';
+import { useLayoutEffect, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import { makeDeck, random, reducedMotion, spring } from './motion';
 import { IDEAS } from './ideas';
 import './idea-folder.css';
@@ -56,7 +57,7 @@ export function IdeaFolder({
 
   // FLOAT OUT: every card starts inside the folder button and rises to its place in the fan,
   // one after another. Measured after layout so each card knows where the folder is from it.
-  useIsomorphicLayoutEffect(() => {
+  useLayoutEffect(() => {
     if (!open || !fan.current || !trigger.current) return;
     const from = trigger.current.getBoundingClientRect();
     const items = [...fan.current.querySelectorAll<HTMLElement>('.pk-idea')];
@@ -177,7 +178,7 @@ export function IdeaFolder({
       <button
         ref={trigger}
         type="button"
-        className="gx-chip gx-chip--ideas"
+        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'rounded-full text-muted-foreground')}
         aria-expanded={open}
         aria-controls={open ? 'pk-ideas' : undefined}
         aria-label="Ideas"
@@ -189,7 +190,7 @@ export function IdeaFolder({
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
         </svg>
-        <span className="gx-chip__label">Ideas</span>
+        <span className="max-[520px]:sr-only">Ideas</span>
       </button>
       {open && (
         <div

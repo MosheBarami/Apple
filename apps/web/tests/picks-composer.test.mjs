@@ -24,10 +24,13 @@ const PICKS = [
   ['motion--hover', 'picks/composer/press-fx.ts', /Motion "Hover"/, [[COMPOSER, /data-fx="[^"]*\blift\b[^"]*"/]]],
   ['motion--press', 'picks/composer/press-fx.ts', /Motion "Press"/, [[COMPOSER, /data-fx="[^"]*\bsquish\b[^"]*"/]]],
   ['ui-layouts--button-background-spotlight', 'picks/composer/press-fx.ts', /UI Layouts "Button Background Spotlight"/, [[COMPOSER, /data-fx="[^"]*\bspotlight\b[^"]*"/]]],
-  ['ui-layouts--button-hover-2', 'picks/composer/composer-fx.css', /UI Layouts "Button Hover Right \(Expand\)"/, [[COMPOSER, /className="gx-send pk-send"/], [COMPOSER, /className="pk-send__label"/]]],
+  // RESTATED 2026-10-01: Send is upstream's PromptInputSubmit; the expand is Tailwind utilities on it.
+  ['ui-layouts--button-hover-2', 'ws/composer.tsx', /UI Layouts "Button Hover Right \(Expand\)"/, [[COMPOSER, /className="group\/send\b/], [COMPOSER, /group-hover\/send:max-w-\[4em\]/], [COMPOSER, /aria-hidden="true">Send<\/span>/]]],
   ['componentry--magnetic-dock', 'picks/composer/magnetic-dock.ts', /Magnetic Dock/i, [[COMPOSER, /useMagneticDock\(tools\)/], [COMPOSER, /data-dock=""/]]],
   ['gsap--cssplugin', 'picks/composer/composer-fx.css', /GSAP "CSSPlugin"/, [[COMPOSER, /import '\.\.\/picks\/composer\/composer-fx\.css'/]]],
-  ['motion--create-button', 'picks/composer/composer-fx.css', /Motion "Create Button"/, [[COMPOSER, /className="gx-menu gx-menu--create"/]]],
+  // RESTATED 2026-10-01: the Create menu is upstream's DropdownMenuContent, which grows out of the
+  // chip it was opened from (zoom-in from the trigger's transform origin) — the pick's behaviour.
+  ['motion--create-button', 'ui/dropdown-menu.tsx', /zoom-in-95[^"]*origin-\(--radix-dropdown-menu-content-transform-origin\)/, [[COMPOSER, /<PromptInputActionMenuContent aria-label="Create"/]]],
   ['motion--radix-tooltip', 'picks/composer/tip-group.tsx', /Motion's "Radix/, [[COMPOSER, /<TipGroup rootRef=\{panel\} \/>/], [COMPOSER, /data-tip=/]]],
   ['reactbits--border-glow', 'picks/composer/border-glow.tsx', /React Bits/, [[COMPOSER, /<BorderGlow hostRef=\{panel\} \/>/]]],
   ['animate-ui--typing-text', 'picks/composer/typing-placeholder.tsx', /Animate UI "Typing Text"/, [[COMPOSER, /<TypingPlaceholder\b/]]],
@@ -73,7 +76,10 @@ test('every pick component the composer draws is imported from its own file', ()
 
 test('the sheet the composer imports holds the behaviours it claims', () => {
   const fx = raw('picks/composer/composer-fx.css');
-  assert.match(fx, /\.gx-menu--create[^{]*\{[^}]*animation:pk-create-in/);
+  // RESTATED 2026-10-01: Create's grow moved to upstream (above); the focus ring and hairline wipe now
+  // hang off upstream's InputGroup and its block-end addon.
+  assert.match(fx, /\[data-slot='input-group'\]:focus-within\s*\{[^}]*outline-color/);
+  assert.match(fx, /\[data-slot='input-group-addon'\]\[data-align='block-end'\]\s*\{[^}]*background-size:0% 1px/);
   assert.match(fx, /\[data-dock\]\s*\{[^}]*--pk-dock/);
   assert.match(fx, /@media \(prefers-reduced-motion: ?reduce\)/);
 });

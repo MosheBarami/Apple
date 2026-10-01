@@ -1,3 +1,4 @@
+import { cn } from '../../../lib/utils';
 import { Sources, SourcesContent, SourcesTrigger, Source } from '../../ai-elements/sources';
 import { Suggestions, Suggestion } from '../../ai-elements/suggestion';
 import {
@@ -10,12 +11,16 @@ import {
 import type { StudioPlace } from '@golem/shared';
 import './evidence.css';
 
+// Upstream's Sources is a Radix Collapsible that forwards its props, so `defaultOpen` works at runtime;
+// its prop type is `ComponentProps<'div'>`, which omits it. Spread, rather than cast.
+const OPEN_BY_DEFAULT: object = { defaultOpen: true };
+
 /** UI03. Collapsed list of the lookups this turn actually read from. */
 export function TurnSources({ tools, defaultOpen }: { tools: readonly ToolLike[] | undefined; defaultOpen?: boolean }) {
   const rows = sourcesFromTools(tools);
   if (rows.length === 0) return null;
   return (
-    <Sources defaultOpen={defaultOpen}>
+    <Sources className={cn('aie')} {...(defaultOpen ? OPEN_BY_DEFAULT : {})}>
       <SourcesTrigger count={rows.length} />
       <SourcesContent>
         {rows.map((r) => (
@@ -57,7 +62,7 @@ export function TurnSuggestions({
   const rows = suggestionsForTurn(turn);
   if (rows.length === 0) return null;
   return (
-    <Suggestions>
+    <Suggestions className="aie">
       {rows.map((r) => (
         <Suggestion key={r.label} suggestion={r.label} onClick={() => onPick(r.prompt)} />
       ))}

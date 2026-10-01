@@ -1,121 +1,304 @@
-// AI Elements `file-tree`, re-implemented for this app, merged with the UI Layouts "Tree Code
-// Viewer" pick (MIT) — both of which the owner picked for the same place.
-//
-// Upstream (vercel/ai-elements, Apache-2.0, see ./NOTICE) nests FileTreeFolder/FileTreeFile with a
-// chevron, folder/file icons, names and per-row actions. Tree Code Viewer adds the indent guide
-// (a hairline down each open folder) and the selected row. Here the tree is rendered FLAT — rows in
-// reading order, each with its `aria-level` — because every row of the Files drawer carries its own
-// buttons, and a flat treeitem list is how an ARIA tree with row actions stays keyboard-reachable:
-//
-//   ↑ / ↓      move between rows          → / ←   open / close a folder (or step in / out)
-//   Home / End first / last row           Enter    open the row (the row's own main control)
-//
-// The component owns the keyboard and the look; the drawer owns what a row does.
-import { useCallback, type HTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
-import { cn } from './lib/utils';
-import { ChevronIcon, FileIcon, FolderIcon, FolderOpenIcon } from '../picks/tech/icons';
-import './file-tree.css';
+"use client";
 
-const ROW = '[data-tree-main]';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import {
+  ChevronRightIcon,
+  FileIcon,
+  FolderIcon,
+  FolderOpenIcon,
+} from "lucide-react";
+import type { HTMLAttributes, ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
-export type FileTreeProps = HTMLAttributes<HTMLDivElement> & {
-  /** Called with a row's path when ← / → asks to close or open it. */
-  onToggle?: (path: string, open: boolean) => void;
+interface FileTreeContextType {
+  expandedPaths: Set<string>;
+  togglePath: (path: string) => void;
+  selectedPath?: string;
+  onSelect?: (path: string) => void;
+}
+
+// Default noop for context default value
+// oxlint-disable-next-line eslint(no-empty-function)
+const noop = () => {};
+
+const FileTreeContext = createContext<FileTreeContextType>({
+  // oxlint-disable-next-line eslint-plugin-unicorn(no-new-builtin)
+  expandedPaths: new Set(),
+  togglePath: noop,
+});
+
+export type FileTreeProps = Omit<HTMLAttributes<HTMLDivElement>, "onSelect"> & {
+  expanded?: Set<string>;
+  defaultExpanded?: Set<string>;
+  selectedPath?: string;
+  onSelect?: (path: string) => void;
+  onExpandedChange?: (expanded: Set<string>) => void;
 };
 
-export const FileTree = ({ className, onToggle, onKeyDown, children, ...props }: FileTreeProps) => {
-  const handleKey = useCallback(
-    (e: KeyboardEvent<HTMLDivElement>) => {
-      onKeyDown?.(e);
-      if (e.defaultPrevented) return;
-      const target = e.target as HTMLElement;
-      if (!target.matches(ROW)) return;
-      const rows = [...e.currentTarget.querySelectorAll<HTMLElement>(ROW)];
-      const at = rows.indexOf(target);
-      if (at < 0) return;
-      const focus = (i: number) => rows[Math.max(0, Math.min(rows.length - 1, i))]?.focus();
-      const path = target.dataset.treePath ?? '';
-      const level = Number(target.dataset.treeLevel ?? '1');
-      const folder = target.dataset.treeKind === 'folder';
-      const open = target.dataset.treeOpen === 'true';
-      switch (e.key) {
-        case 'ArrowDown': e.preventDefault(); focus(at + 1); break;
-        case 'ArrowUp': e.preventDefault(); focus(at - 1); break;
-        case 'Home': e.preventDefault(); focus(0); break;
-        case 'End': e.preventDefault(); focus(rows.length - 1); break;
-        case 'ArrowRight':
-          e.preventDefault();
-          if (folder && !open) onToggle?.(path, true);
-          else if (folder) focus(at + 1);
-          break;
-        case 'ArrowLeft': {
-          e.preventDefault();
-          if (folder && open) { onToggle?.(path, false); break; }
-          // Step out to the parent folder row.
-          for (let i = at - 1; i >= 0; i--) {
-            if (Number(rows[i]?.dataset.treeLevel ?? '1') < level) { focus(i); break; }
-          }
-          break;
-        }
+export const FileTree = ({
+  expanded: controlledExpanded,
+  defaultExpanded = new Set(),
+  selectedPath,
+  onSelect,
+  onExpandedChange,
+  className,
+  children,
+  ...props
+}: FileTreeProps) => {
+  const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
+  const expandedPaths = controlledExpanded ?? internalExpanded;
+
+  const togglePath = useCallback(
+    (path: string) => {
+      const newExpanded = new Set(expandedPaths);
+      if (newExpanded.has(path)) {
+        newExpanded.delete(path);
+      } else {
+        newExpanded.add(path);
+      }
+      setInternalExpanded(newExpanded);
+      onExpandedChange?.(newExpanded);
+    },
+    [expandedPaths, onExpandedChange]
+  );
+
+  const contextValue = useMemo(
+    () => ({ expandedPaths, onSelect, selectedPath, togglePath }),
+    [expandedPaths, onSelect, selectedPath, togglePath]
+  );
+
+  return (
+    <FileTreeContext.Provider value={contextValue}>
+      <div
+        className={cn(
+          "rounded-lg border bg-background font-mono text-sm",
+          className
+        )}
+        role="tree"
+        {...props}
+      >
+        <div className="p-2">{children}</div>
+      </div>
+    </FileTreeContext.Provider>
+  );
+};
+
+export type FileTreeIconProps = HTMLAttributes<HTMLSpanElement>;
+
+export const FileTreeIcon = ({
+  className,
+  children,
+  ...props
+}: FileTreeIconProps) => (
+  <span className={cn("shrink-0", className)} {...props}>
+    {children}
+  </span>
+);
+
+export type FileTreeNameProps = HTMLAttributes<HTMLSpanElement>;
+
+export const FileTreeName = ({
+  className,
+  children,
+  ...props
+}: FileTreeNameProps) => (
+  <span className={cn("truncate", className)} {...props}>
+    {children}
+  </span>
+);
+
+interface FileTreeFolderContextType {
+  path: string;
+  name: string;
+  isExpanded: boolean;
+}
+
+const FileTreeFolderContext = createContext<FileTreeFolderContextType>({
+  isExpanded: false,
+  name: "",
+  path: "",
+});
+
+export type FileTreeFolderProps = HTMLAttributes<HTMLDivElement> & {
+  path: string;
+  name: string;
+};
+
+export const FileTreeFolder = ({
+  path,
+  name,
+  className,
+  children,
+  ...props
+}: FileTreeFolderProps) => {
+  const { expandedPaths, togglePath, selectedPath, onSelect } =
+    useContext(FileTreeContext);
+  const isExpanded = expandedPaths.has(path);
+  const isSelected = selectedPath === path;
+
+  const handleOpenChange = useCallback(() => {
+    togglePath(path);
+  }, [togglePath, path]);
+
+  const handleSelect = useCallback(() => {
+    onSelect?.(path);
+  }, [onSelect, path]);
+
+  const folderContextValue = useMemo(
+    () => ({ isExpanded, name, path }),
+    [isExpanded, name, path]
+  );
+
+  return (
+    <FileTreeFolderContext.Provider value={folderContextValue}>
+      <Collapsible onOpenChange={handleOpenChange} open={isExpanded}>
+        <div
+          className={cn("", className)}
+          role="treeitem"
+          tabIndex={0}
+          {...props}
+        >
+          <div
+            className={cn(
+              "flex w-full items-center gap-1 rounded px-2 py-1 text-left transition-colors hover:bg-muted/50",
+              isSelected && "bg-muted"
+            )}
+          >
+            <CollapsibleTrigger asChild>
+              <button
+                className="flex shrink-0 cursor-pointer items-center border-none bg-transparent p-0"
+                type="button"
+              >
+                <ChevronRightIcon
+                  className={cn(
+                    "size-4 shrink-0 text-muted-foreground transition-transform",
+                    isExpanded && "rotate-90"
+                  )}
+                />
+              </button>
+            </CollapsibleTrigger>
+            <button
+              className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left"
+              onClick={handleSelect}
+              type="button"
+            >
+              <FileTreeIcon>
+                {isExpanded ? (
+                  <FolderOpenIcon className="size-4 text-blue-500" />
+                ) : (
+                  <FolderIcon className="size-4 text-blue-500" />
+                )}
+              </FileTreeIcon>
+              <FileTreeName>{name}</FileTreeName>
+            </button>
+          </div>
+          <CollapsibleContent>
+            <div className="ml-4 border-l pl-2">{children}</div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+    </FileTreeFolderContext.Provider>
+  );
+};
+
+interface FileTreeFileContextType {
+  path: string;
+  name: string;
+}
+
+const FileTreeFileContext = createContext<FileTreeFileContextType>({
+  name: "",
+  path: "",
+});
+
+export type FileTreeFileProps = HTMLAttributes<HTMLDivElement> & {
+  path: string;
+  name: string;
+  icon?: ReactNode;
+};
+
+export const FileTreeFile = ({
+  path,
+  name,
+  icon,
+  className,
+  children,
+  ...props
+}: FileTreeFileProps) => {
+  const { selectedPath, onSelect } = useContext(FileTreeContext);
+  const isSelected = selectedPath === path;
+
+  const handleClick = useCallback(() => {
+    onSelect?.(path);
+  }, [onSelect, path]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        onSelect?.(path);
       }
     },
-    [onKeyDown, onToggle],
+    [onSelect, path]
   );
+
+  const fileContextValue = useMemo(() => ({ name, path }), [name, path]);
+
   return (
-    <div role="tree" className={cn('ai-tree', className)} onKeyDown={handleKey} {...props}>
-      {children}
-    </div>
+    <FileTreeFileContext.Provider value={fileContextValue}>
+      <div
+        className={cn(
+          "flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
+          isSelected && "bg-muted",
+          className
+        )}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role="treeitem"
+        tabIndex={0}
+        {...props}
+      >
+        {children ?? (
+          <>
+            {/* Spacer for alignment */}
+            <span className="size-4 shrink-0" />
+            <FileTreeIcon>
+              {icon ?? <FileIcon className="size-4 text-muted-foreground" />}
+            </FileTreeIcon>
+            <FileTreeName>{name}</FileTreeName>
+          </>
+        )}
+      </div>
+    </FileTreeFileContext.Provider>
   );
 };
 
-export type FileTreeRowProps = HTMLAttributes<HTMLDivElement> & {
-  level: number;
-  kind: 'folder' | 'file';
-  open?: boolean;
-  selected?: boolean;
-};
+export type FileTreeActionsProps = HTMLAttributes<HTMLDivElement>;
 
-/** One treeitem. Its main control must carry `fileTreeMainProps(...)` so the keyboard can find it. */
-export const FileTreeRow = ({ level, kind, open = false, selected = false, className, style, children, ...props }: FileTreeRowProps) => (
+const stopPropagation = (e: React.SyntheticEvent) => e.stopPropagation();
+
+export const FileTreeActions = ({
+  className,
+  children,
+  ...props
+}: FileTreeActionsProps) => (
   <div
-    role="treeitem"
-    aria-level={level}
-    aria-expanded={kind === 'folder' ? open : undefined}
-    aria-selected={kind === 'file' ? selected : undefined}
-    className={cn('ai-tree__row', `ai-tree__row--${kind}`, selected && 'is-selected', className)}
-    style={{ ...style, ['--tree-level' as string]: level - 1 }}
+    className={cn("ml-auto flex items-center gap-1", className)}
+    onClick={stopPropagation}
+    onKeyDown={stopPropagation}
+    role="group"
     {...props}
   >
     {children}
   </div>
-);
-
-/** The data attributes the keyboard handler reads off a row's main control. */
-export const fileTreeMainProps = (path: string, level: number, kind: 'folder' | 'file', open = false) => ({
-  'data-tree-main': '',
-  'data-tree-path': path,
-  'data-tree-level': String(level),
-  'data-tree-kind': kind,
-  'data-tree-open': String(open),
-});
-
-export const FileTreeIcon = ({ kind, open = false }: { kind: 'folder' | 'file'; open?: boolean }) => (
-  <span className="ai-tree__icons" aria-hidden="true">
-    {kind === 'folder'
-      ? <span className={cn('ai-tree__chevron', open && 'is-open')}><ChevronIcon size={12} /></span>
-      : <span className="ai-tree__chevron" />}
-    {kind === 'folder' ? (open ? <FolderOpenIcon size={15} /> : <FolderIcon size={15} />) : <FileIcon size={15} />}
-  </span>
-);
-
-export const FileTreeName = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn('ai-tree__name', className)} {...props} />
-);
-
-export const FileTreeMeta = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn('ai-tree__meta', className)} {...props} />
-);
-
-export const FileTreeActions = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement> & { children?: ReactNode }) => (
-  <div className={cn('ai-tree__actions', className)} {...props}>{children}</div>
 );

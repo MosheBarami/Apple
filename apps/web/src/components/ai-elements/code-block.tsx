@@ -1,21 +1,15 @@
 "use client";
 
-// Vendored from Vercel AI Elements (Apache-2.0), packages/elements/src/code-block.tsx at
-// 6a9d5b1822ffb10bba4bd97175f01edd7d8651cd. The verbatim original is ./upstream/code-block.tsx.txt
-// and ./NOTICE lists every local substitution. Imports are swapped, `ai-code-block*` classes are
-// appended beside the inert Tailwind strings, and ONE block of logic is replaced: shiki's
-// asynchronous highlighter and its caches (marked below). Everything else — the components, the
-// context, the copy button and its timer, the language selector — is upstream's.
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-import { cn } from "./lib/utils";
-import { CheckIcon, CopyIcon } from "./icons";
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { CheckIcon, CopyIcon } from "lucide-react";
 import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
 import {
   createContext,
@@ -27,11 +21,13 @@ import {
   useRef,
   useState,
 } from "react";
-import type { BundledLanguage, ThemedToken } from "./highlight-compat";
-import { codeToTokens } from "./highlight-compat";
-import "./code-block.css";
-// The tick's entrance and the "Copied" tip are the copy picks' (components/picks/chat/copy-button).
-import "../picks/chat/copy-button.css";
+import type {
+  BundledLanguage,
+  BundledTheme,
+  HighlighterGeneric,
+  ThemedToken,
+} from "shiki";
+import { createHighlighter } from "shiki";
 
 // Shiki uses bitflags for font styles: 1=italic, 2=bold, 4=underline
 // oxlint-disable-next-line eslint(no-bitwise)
@@ -64,10 +60,7 @@ const addKeysToTokens = (lines: ThemedToken[][]): KeyedLine[] =>
 // Token rendering component
 const TokenSpan = ({ token }: { token: ThemedToken }) => (
   <span
-    className={cn(
-      "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] ai-code-block__token",
-      token.kind && token.kind !== "plain" && `tok tok--${token.kind}`
-    )}
+    className="dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)]"
     style={
       {
         backgroundColor: token.bgColor,
@@ -94,8 +87,7 @@ const LINE_NUMBER_CLASSES = cn(
   "before:text-right",
   "before:text-muted-foreground/50",
   "before:font-mono",
-  "before:select-none",
-  "ai-code-block__line ai-code-block__line--numbered"
+  "before:select-none"
 );
 
 // Line rendering component
@@ -106,7 +98,7 @@ const LineSpan = ({
   keyedLine: KeyedLine;
   showLineNumbers: boolean;
 }) => (
-  <span className={showLineNumbers ? LINE_NUMBER_CLASSES : "block ai-code-block__line"}>
+  <span className={showLineNumbers ? LINE_NUMBER_CLASSES : "block"}>
     {keyedLine.tokens.length === 0
       ? "\n"
       : keyedLine.tokens.map(({ token, key }) => (
@@ -137,13 +129,40 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
   code: "",
 });
 
-// LOCAL SUBSTITUTION. Upstream keeps a shiki highlighter per language, a token cache keyed on
-// `language:length:first 100 chars:last 100 chars`, and a subscriber list, because shiki loads
-// asynchronously; `highlightCode` returns null on a miss and reports through `callback` later.
-// The local tokenizer (./highlight-compat -> lib/highlight.ts) is synchronous and cheap, so the
-// result is returned at once and `callback` is never needed. The cache is dropped rather than kept:
-// two different scripts with the same length and the same first and last 100 characters would
-// share a key, and a code block must never show one script's tokens over another's text.
+// Highlighter cache (singleton per language)
+const highlighterCache = new Map<
+  string,
+  Promise<HighlighterGeneric<BundledLanguage, BundledTheme>>
+>();
+
+// Token cache
+const tokensCache = new Map<string, TokenizedCode>();
+
+// Subscribers for async token updates
+const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
+
+const getTokensCacheKey = (code: string, language: BundledLanguage) => {
+  const start = code.slice(0, 100);
+  const end = code.length > 100 ? code.slice(-100) : "";
+  return `${language}:${code.length}:${start}:${end}`;
+};
+
+const getHighlighter = (
+  language: BundledLanguage
+): Promise<HighlighterGeneric<BundledLanguage, BundledTheme>> => {
+  const cached = highlighterCache.get(language);
+  if (cached) {
+    return cached;
+  }
+
+  const highlighterPromise = createHighlighter({
+    langs: [language],
+    themes: ["github-light", "github-dark"],
+  });
+
+  highlighterCache.set(language, highlighterPromise);
+  return highlighterPromise;
+};
 
 // Create raw tokens for immediate display while highlighting loads
 const createRawTokens = (code: string): TokenizedCode => ({
@@ -161,19 +180,69 @@ const createRawTokens = (code: string): TokenizedCode => ({
   ),
 });
 
-// Synchronous highlight; the callback parameter is kept so the exported signature is upstream's
+// Synchronous highlight with callback for async results
 export const highlightCode = (
   code: string,
   language: BundledLanguage,
   // oxlint-disable-next-line eslint-plugin-promise(prefer-await-to-callbacks)
-  _callback?: (result: TokenizedCode) => void
+  callback?: (result: TokenizedCode) => void
 ): TokenizedCode | null => {
-  const result = codeToTokens(code, language);
-  return {
-    bg: result.bg ?? "transparent",
-    fg: result.fg ?? "inherit",
-    tokens: result.tokens,
-  };
+  const tokensCacheKey = getTokensCacheKey(code, language);
+
+  // Return cached result if available
+  const cached = tokensCache.get(tokensCacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Subscribe callback if provided
+  if (callback) {
+    if (!subscribers.has(tokensCacheKey)) {
+      subscribers.set(tokensCacheKey, new Set());
+    }
+    subscribers.get(tokensCacheKey)?.add(callback);
+  }
+
+  // Start highlighting in background - fire-and-forget async pattern
+  getHighlighter(language)
+    // oxlint-disable-next-line eslint-plugin-promise(prefer-await-to-then)
+    .then((highlighter) => {
+      const availableLangs = highlighter.getLoadedLanguages();
+      const langToUse = availableLangs.includes(language) ? language : "text";
+
+      const result = highlighter.codeToTokens(code, {
+        lang: langToUse,
+        themes: {
+          dark: "github-dark",
+          light: "github-light",
+        },
+      });
+
+      const tokenized: TokenizedCode = {
+        bg: result.bg ?? "transparent",
+        fg: result.fg ?? "inherit",
+        tokens: result.tokens,
+      };
+
+      // Cache the result
+      tokensCache.set(tokensCacheKey, tokenized);
+
+      // Notify all subscribers
+      const subs = subscribers.get(tokensCacheKey);
+      if (subs) {
+        for (const sub of subs) {
+          sub(tokenized);
+        }
+        subscribers.delete(tokensCacheKey);
+      }
+    })
+    // oxlint-disable-next-line eslint-plugin-promise(prefer-await-to-then), eslint-plugin-promise(prefer-await-to-callbacks)
+    .catch((error) => {
+      console.error("Failed to highlight code:", error);
+      subscribers.delete(tokensCacheKey);
+    });
+
+  return null;
 };
 
 const CodeBlockBody = memo(
@@ -202,14 +271,14 @@ const CodeBlockBody = memo(
     return (
       <pre
         className={cn(
-          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0 p-4 text-sm ai-code-block__pre",
+          "dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)] m-0 p-4 text-sm",
           className
         )}
         style={preStyle}
       >
         <code
           className={cn(
-            "font-mono text-sm ai-code-block__code",
+            "font-mono text-sm",
             showLineNumbers && "[counter-increment:line_0] [counter-reset:line]"
           )}
         >
@@ -240,7 +309,7 @@ export const CodeBlockContainer = ({
 }: HTMLAttributes<HTMLDivElement> & { language: string }) => (
   <div
     className={cn(
-      "group relative w-full overflow-hidden rounded-md border bg-background text-foreground ai-code-block",
+      "group relative w-full overflow-hidden rounded-md border bg-background text-foreground",
       className
     )}
     data-language={language}
@@ -260,7 +329,7 @@ export const CodeBlockHeader = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex items-center justify-between border-b bg-muted/80 px-3 py-2 text-muted-foreground text-xs ai-code-block__header",
+      "flex items-center justify-between border-b bg-muted/80 px-3 py-2 text-muted-foreground text-xs",
       className
     )}
     {...props}
@@ -274,7 +343,7 @@ export const CodeBlockTitle = ({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex items-center gap-2 ai-code-block__title", className)} {...props}>
+  <div className={cn("flex items-center gap-2", className)} {...props}>
     {children}
   </div>
 );
@@ -284,7 +353,7 @@ export const CodeBlockFilename = ({
   className,
   ...props
 }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn("font-mono ai-code-block__filename", className)} {...props}>
+  <span className={cn("font-mono", className)} {...props}>
     {children}
   </span>
 );
@@ -295,7 +364,7 @@ export const CodeBlockActions = ({
   ...props
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn("-my-1 -mr-1 flex items-center gap-2 ai-code-block__actions", className)}
+    className={cn("-my-1 -mr-1 flex items-center gap-2", className)}
     {...props}
   >
     {children}
@@ -350,7 +419,7 @@ export const CodeBlockContent = ({
   const tokenized = asyncTokens ?? syncTokens;
 
   return (
-    <div className="relative overflow-auto ai-code-block__content">
+    <div className="relative overflow-auto">
       <CodeBlockBody showLineNumbers={showLineNumbers} tokenized={tokenized} />
     </div>
   );
@@ -430,17 +499,13 @@ export const CodeBlockCopyButton = ({
 
   return (
     <Button
-      className={cn("shrink-0 ai-code-block__copy", className)}
+      className={cn("shrink-0", className)}
       onClick={copyToClipboard}
       size="icon"
       variant="ghost"
       {...props}
     >
-      {/* Keyed by state, so the tick (and the copy icon coming back) plays the Animate UI copy
-          entrance each time — scale from 0 through a 4px blur. The tip is Motion's "Copied" note,
-          re-implemented in CSS; the polite status line for screen readers is the caller's. */}
-      {children ?? <Icon key={String(isCopied)} size={14} className="pk-swap-in" />}
-      {isCopied && <span className="pk-copy-tip" aria-hidden="true">Copied</span>}
+      {children ?? <Icon size={14} />}
     </Button>
   );
 };
@@ -461,7 +526,7 @@ export const CodeBlockLanguageSelectorTrigger = ({
 }: CodeBlockLanguageSelectorTriggerProps) => (
   <SelectTrigger
     className={cn(
-      "h-7 border-none bg-transparent px-2 text-xs shadow-none ai-code-block__language",
+      "h-7 border-none bg-transparent px-2 text-xs shadow-none",
       className
     )}
     size="sm"

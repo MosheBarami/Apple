@@ -117,39 +117,49 @@ test('the unified diff keeps every line, marks each by its sigil, and separates 
 
 test('a code_diff renders as an AI Elements CodeBlock in the diff language', () => {
   const html = render(ui.h(ui.GenerativeUIPanel, { input: { v: 1, blocks: [DIFF] } }));
-  const block = element(html, /<div[^>]*class="[^"]*\bai-code-block\b/);
-  assert.ok(block, 'the diff is not an AI Elements CodeBlock');
-  assert.match(block, /data-language="diff"/);
+  const block = element(html, /<div[^>]*data-language="diff"/);
+  assert.ok(block, 'the diff is not an AI Elements CodeBlock in the diff language');
   assert.doesNotMatch(html, /aicss|FileDiff/i);
-  assert.match(text(element(block, /<div[^>]*ai-code-block__header/)), /ServerScriptService\/LobbyLighting\+2-2/);
+  assert.match(text(element(block, /<div[^>]*gx-code__head/)), /ServerScriptService\/LobbyLighting\+2-2/);
   assert.equal(count(block, '<button'), 1, 'one copy control');
   assert.match(block, /aria-label="Copy diff"/);
 
-  const lines = [...block.matchAll(/<span class="block ai-code-block__line">([\s\S]*?)<\/span><\/span>|<span class="block ai-code-block__line">\n<\/span>/g)];
-  const byKind = (kind) => [...block.matchAll(new RegExp(`tok tok--${kind}"[^>]*>([^<]*)<`, 'g'))].map((m) => text(m[1]));
-  assert.deepEqual(byKind('del'), ['-Lighting.Ambient = Color3.fromRGB(90, 90, 90)', '--- old note']);
-  assert.deepEqual(byKind('ins'), ['+Lighting.Ambient = Color3.fromRGB(58, 52, 44)', '+Lighting.OutdoorAmbient = Color3.fromRGB(70, 62, 52)']);
-  assert.deepEqual(byKind('hunk'), ['@@ -12,3 +12,4 @@', '@@']);
-  assert.ok(lines.length >= 8, 'every diff line is its own line');
+  // Every diff line is present, in order, as its own line of the genuine CodeBlock, sigil intact.
+  // (Static markup is the block's first paint — shiki's colours arrive after load, and are asserted
+  // on shiki's own output in the next test.)
   const code = element(block, /<code\b/);
-  assert.equal(text(code), ui.unifiedDiff(DIFF).replace(/\n/g, ''), 'the rendered diff is the diff, byte for byte (lines are blocks)');
+  const expected = ui.unifiedDiff(DIFF).split('\n');
+  const rendered = [...code.matchAll(/<span class="block">([\s\S]*?)<\/span><\/span>/g)].map((m) => text(m[1]));
+  assert.deepEqual(rendered, expected, 'every diff line is its own line, byte for byte');
+  assert.equal(text(code), expected.join(''), 'and nothing else is in the code');
 });
 
-test('added and removed lines differ by colour and tint in both themes, from tokens', () => {
-  const css = readFileSync(join(SRC, 'components', 'ai-elements', 'code-block.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.match(css, /\.tok--ins\s*\{[^}]*color:var\(--good\)/);
-  assert.match(css, /\.tok--del\s*\{[^}]*color:var\(--bad\)/);
-  assert.match(css, /\.ai-code-block__line:has\(> \.tok--ins\)\s*\{[^}]*var\(--good\)/);
-  assert.match(css, /\.ai-code-block__line:has\(> \.tok--del\)\s*\{[^}]*var\(--bad\)/);
-  assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i, 'a raw colour in the code block sheet');
-  // Both tokens exist in both themes, so the tint needs no per-theme correction.
-  const system = readFileSync(join(SRC, 'design', 'system.css'), 'utf8');
-  const light = system.slice(system.indexOf(":root[data-theme='light']"));
-  const dark = system.slice(system.indexOf(':root {'), system.indexOf(":root[data-theme='light']"));
-  for (const token of ['--good', '--bad']) {
-    assert.match(dark, new RegExp(`${token}:#`), `${token} is not defined for the dark theme`);
-    assert.match(light, new RegExp(`${token}:#`), `${token} is not defined for the light theme`);
+test('added and removed lines differ by sigil and by colour in both themes, from shiki\'s diff tokens', async () => {
+  // RESTATED: the old test pinned `.tok--ins` / `.ai-code-block__line:has(...)` rules in a home-made
+  // sheet. The property is that an added line, a removed line and a context line are told apart —
+  // by the sigil in the text (colour alone is not enough) and by colour in the light AND the dark
+  // theme — which is what the genuine CodeBlock draws, because it asks shiki for both themes.
+  const { codeToTokens } = await import('shiki');
+  const diff = ui.unifiedDiff(DIFF);
+  const { tokens } = await codeToTokens(diff, { lang: 'diff', themes: { dark: 'github-dark', light: 'github-light' } });
+  const lines = diff.split('\n');
+  const inks = (sigil) => {
+    const i = lines.findIndex((l) => l.startsWith(sigil) && !l.startsWith('@@'));
+    assert.ok(i >= 0, `no ${sigil} line in the diff`);
+    const t = tokens[i].find((tok) => tok.content.trim() !== '');
+    return { light: t.htmlStyle?.color, dark: t.htmlStyle?.['--shiki-dark'] };
+  };
+  const add = inks('+');
+  const del = inks('-');
+  const ctx = inks(' ');
+  for (const theme of ['light', 'dark']) {
+    assert.ok(add[theme] && del[theme], `${theme}: both lines are coloured`);
+    assert.notEqual(add[theme], del[theme], `${theme}: an added and a removed line share one colour`);
+    assert.notEqual(add[theme], ctx[theme], `${theme}: an added line reads as context`);
   }
+  // The genuine block asks for both themes, so the pair above is what reaches the page.
+  const upstream = readFileSync(join(SRC, 'components', 'ai-elements', 'code-block.tsx'), 'utf8');
+  assert.match(upstream, /themes: \{\s*dark: "github-dark",\s*light: "github-light"/);
 });
 
 // -------------------------------------------------------------- 3. credits ---
@@ -168,10 +178,14 @@ test('the credits drawer lists each source credit as an AI Elements Source, open
     commercialUse: { projectId: 'p1', checked: 0, findings: [] },
   });
   const html = render(ui.h(ui.QueryClientProvider, { client: qc }, ui.h(ui.CreditsPanel, { projectId: 'p1' })));
-  const sources = element(html, /<div[^>]*class="[^"]*\bai-sources\b/);
-  assert.ok(sources, 'the source credits are not an AI Elements Sources');
+  // The genuine Sources is a shadcn Collapsible; the property is "the disclosure that holds the
+  // source credits", found by its slot, not by a home-made class name.
+  const sources = element(html, /<div[^>]*data-slot="collapsible"/);
+  assert.ok(sources, 'the source credits are not an AI Elements Sources (a collapsible)');
+  assert.match(sources, /data-slot="collapsible-trigger"/);
+  assert.match(sources, /data-slot="collapsible-content"/);
   assert.match(sources, /data-state="open"/, 'an obligation must be on the page, not behind a click');
-  assert.match(text(element(sources, /<button/)), /^Used 1 source$/, 'the count, with the plural right');
+  assert.match(text(element(sources, /<button[^>]*data-slot="collapsible-trigger"/)), /^Used 1 source$/, 'the count, with the plural right');
   const link = element(sources, /<a\b/);
   assert.match(link, /href="https:\/\/polyhaven\.com\/"/);
   assert.match(text(link), /Powered by Poly Haven\s*polyhaven\.com/, 'the credit text and its host');

@@ -56,7 +56,8 @@ test('locked: the textarea cannot be focused or typed into, and nothing submits'
   assert.equal(submits.length, 1);
   assert.ok(has(submits[0], 'disabled'), 'a locked composer still offers Send');
   // The build controls: the Create menu trigger is off.
-  const create = buttons(html).filter((t) => (attr(t, 'class') ?? '').includes('gx-chip--create'));
+  // RESTATED 2026-10-01: the trigger is upstream's PromptInputActionMenuTrigger; found by its name.
+  const create = buttons(html).filter((t) => attr(t, 'aria-label') === 'Create');
   assert.equal(create.length, 1, 'no Create trigger found — this check would check nothing');
   assert.ok(has(create[0], 'disabled'), 'the Create menu opens on a locked composer');
   // And it says why, in English, where the person is looking.

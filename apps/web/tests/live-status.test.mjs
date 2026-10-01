@@ -1,5 +1,15 @@
 /**
- * ONE FRIENDLY LINE, NO TECHNICAL DETAIL (owner decision D-THINK-1, 2026-09-24).
+ * ONE FRIENDLY LINE, NO TECHNICAL DETAIL (owner decision D-THINK-1, 2026-09-24), WITH THE AI ELEMENTS
+ * THE OWNER ADDED ON 2026-10-01.
+ *
+ * RESTATED 2026-10-01. The owner then asked for the genuine AI Elements in the turn: the model's
+ * streamed Reasoning, and a Task per step with its rows and object chips ("Found project files").
+ * Those are disclosures, and they list the steps — so the two rules this suite pinned as "nothing can
+ * be opened" and "finished steps are not listed" are restated to what is still true:
+ *   * the ONE live status line names only the step running now — finished steps never pile up in it;
+ *   * the only things that open are AI Elements' own Reasoning / Task / Sources collapsibles;
+ *   * whatever is on the page, open or not, is still words a creator reads: no tool name, instance
+ *     path, JSON, error code, duration figure or a step's own technical report, and no <details>/<pre>.
  *
  * The owner: "you basically see what it is doing in steps, and the steps disappear so they do not pile
  * up ... and there must be no way at all to see technical details". Customers are young, non-technical
@@ -130,18 +140,32 @@ function assertNothingTechnical(html, where) {
   assert.doesNotMatch(seen, /\b\d+(?:\.\d+)?\s?(?:ms|s)\b|\b\d+m \d+s\b|Thought for/, `${where}: a duration reached the customer`);
   assert.doesNotMatch(seen, /E_PATH_NOT_FOUND|rate_limited|\b[a-z]+_[a-z_]+\b/, `${where}: an error code reached the customer`);
   assert.doesNotMatch(seen, /Read 41 instances|Found 3 pages|documentation page/, `${where}: a step's own report reached the customer`);
-  assert.doesNotMatch(html, /<details\b|aria-expanded=|aria-controls=|<pre\b/, `${where}: something can be opened to show detail`);
+  assert.doesNotMatch(html, /<details\b|<pre\b/, `${where}: something can be opened to show detail`);
+  // The only disclosures are AI Elements' collapsibles (Reasoning, Task, Sources): every element that
+  // says it expands is one of their triggers.
+  const expanding = [...html.matchAll(/<[a-z]+\b[^>]*\saria-expanded="[^"]*"[^>]*>/g)].map((m) => m[0]);
+  const foreign = expanding.filter((tag) => !/data-slot="collapsible-trigger"/.test(tag));
+  assert.deepEqual(foreign, [], `${where}: something other than an AI Elements collapsible opens`);
 }
+
+/** The one live status line (thinking.tsx), on its own. */
+const statusLine = (html) => {
+  const at = html.indexOf('class="apple-status__line"');
+  return at === -1 ? '' : html.slice(at, html.indexOf('</p>', at));
+};
 
 test('LIVE: one friendly line says what is happening now; finished steps are not listed', () => {
   const html = turn({ streaming: true, tools: [...busy, tool('t5', 'set_properties', { done: false, ok: undefined, target: 'game.Workspace.Market.Stall1' })] },
     { status: { phase: 'building', creditsSpent: 3 } });
   assertNothingTechnical(html, 'live turn');
   assert.equal(count(html, 'role="status"'), 1, 'exactly one status line');
-  assert.match(text(html), /Editing the stall/);
+  const line = text(statusLine(html));
+  assert.match(line, /Editing the stall/);
   for (const earlier of ['Looking around your game', 'Looking up how Roblox does it', 'Building']) {
-    assert.doesNotMatch(text(html), new RegExp(earlier), `"${earlier}" is a finished step and piled up under the line`);
+    assert.doesNotMatch(line, new RegExp(earlier), `"${earlier}" is a finished step and piled up in the live line`);
   }
+  // The steps themselves are the AI Elements Task the owner asked for, in words, with object chips.
+  assert.match(html, /data-slot="collapsible-trigger"/, 'the steps are not an AI Elements Task');
   assert.match(text(html), /3 Credits/, 'the running cost stays on screen');
 });
 

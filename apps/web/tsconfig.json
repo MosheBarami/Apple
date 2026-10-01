@@ -1,14 +1,17 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
     "types": ["vite/client"],
     "noEmit": true,
     // The generative-UI validator is imported with an explicit .ts extension so
     // `node --test` can load it directly (native type stripping) without a build
     // step. Legal because this project never emits from tsc.
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    // The AI Elements CLI's alias: the vendored components import `@/components/ui/*` and
+    // `@/lib/utils` (see src/components/ai-elements/NOTICE). vite.config.ts resolves the same alias.
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"],
   // AICSS is vendored byte-for-byte from its public MIT package. Its upstream

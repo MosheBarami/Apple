@@ -250,9 +250,10 @@ test('code is rendered as React children, never as an HTML string', () => {
   }
   assert.match(AI_BLOCK, /keyedLine\.tokens\.map\(/, 'the lines are rendered token by token');
   assert.match(AI_BLOCK, /\{token\.content\}/, "each token's text is a React child");
-  assert.match(AI_BLOCK, /import \{ codeToTokens \} from "\.\/highlight-compat"/, 'the tokens come from the local highlighter, not shiki');
-  const COMPAT = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'highlight-compat.ts'), 'utf8');
-  assert.match(COMPAT, /tokenize\(code, normaliseLanguage\(language\)\)/, 'the local highlighter is lib/highlight.ts');
+  // The tokens come from shiki, through the genuine component; the reply maps its six declared
+  // languages onto shiki's BundledLanguage names rather than passing the raw fence word through.
+  assert.match(AI_BLOCK, /from "shiki"/, 'the tokens come from shiki');
+  assert.match(stripComments(BLOCK), /language=\{SHIKI_LANG\[language\]\}/, 'the reply names a shiki language for the fence');
   assert.match(stripComments(BLOCK), /<AICodeBlock[^>]*code=\{code\}/, 'the reply passes its code to the AI Elements block');
 });
 
@@ -306,14 +307,24 @@ test('the copied tick clears itself, and clears on unmount too', () => {
   assert.match(AI_BLOCK, /useEffect\(\s*\(\) => \(\) => \{\s*window\.clearTimeout\(timeoutRef\.current\);\s*\}/);
 });
 
-test('the reply block is the AI Elements CodeBlock, and a closed fence keeps its highlighting', () => {
+test('the reply block is the AI Elements CodeBlock, and a closed fence keeps its highlighting', async () => {
   // The block this replaced sent a CLOSED fence to a copy-only component that drew plain lines, so
   // a script lost its colours the moment its closing fence arrived. One block now serves both.
   assert.match(BLOCK, /from '\.\.\/ai-elements\/code-block'/);
   const code = stripComments(BLOCK);
   assert.equal(/if \(closed\)/.test(code), false, 'closed and streaming fences render the same block');
   assert.equal(code.split('<AICodeBlock').length - 1, 1, 'one block for both states');
-  assert.match(AI_BLOCK, /`tok tok--\$\{token\.kind\}`/, 'each highlighted token carries its colour class');
+  // RESTATED: each token used to carry a `tok--kind` class from the local scanner. Now shiki
+  // colours it, so the property is stated of shiki's output: Luau is coloured (more than one ink),
+  // and the tokens still rejoin to the source byte for byte — a lens, not an editor.
+  assert.match(AI_BLOCK, /themes: \{\s*dark: "github-dark",\s*light: "github-light"/, 'both themes are asked for');
+  assert.match(AI_BLOCK, /color: token\.color/, "a token's colour reaches its span");
+  const { codeToTokens } = await import('shiki');
+  const src = 'local function f(n)\n\treturn n + 1 -- next\nend\n';
+  const { tokens } = await codeToTokens(src, { lang: 'luau', themes: { dark: 'github-dark', light: 'github-light' } });
+  assert.equal(tokens.map((line) => line.map((t) => t.content).join('')).join('\n'), src);
+  const inks = new Set(tokens.flat().map((t) => t.htmlStyle?.color ?? t.color));
+  assert.ok(inks.size > 1, 'Luau comes back coloured, not one ink');
 });
 
 test('every token kind the renderer can emit has a colour in BOTH themes', () => {

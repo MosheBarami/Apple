@@ -27,7 +27,7 @@ const code = (rel) => read(rel).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/
  * `module` is matched as the import specifier's tail.
  */
 const MOUNTS = [
-  ['ae-file-tree', 'components/ws/files-panel.tsx', 'ai-elements/file-tree', ['FileTree', 'FileTreeRow']],
+  ['ae-file-tree', 'components/ws/files-panel.tsx', 'ai-elements/file-tree', ['FileTree', 'FileTreeFolder', 'FileTreeFile']],
   ['ui-layouts--tree-code-viewer', 'components/ws/files-panel.tsx', 'picks/tech/code-viewer', ['CodeViewer']],
   ['eldora--github-inline-comments', 'components/picks/tech/code-viewer.tsx', './line-thread', ['LineThread']],
   ['eldora--github-inline-comments', 'components/picks/tech/version-diff.tsx', './line-thread', ['LineThread']],
@@ -38,16 +38,16 @@ const MOUNTS = [
   ['ae-package-info', 'components/picks/tech/version-diff.tsx', 'ai-elements/package-info', ['PackageInfo', 'PackageInfoChangeType']],
   ['ae-schema-display', 'components/ws/files-panel.tsx', 'ai-elements/schema-display', ['SchemaDisplay']],
   ['ae-jsx-preview', 'components/ws/files-panel.tsx', 'ai-elements/jsx-preview', ['JSXPreview', 'JSXPreviewContent']],
-  ['ae-web-preview', 'components/ws/playtest-card.tsx', 'ai-elements/web-preview', ['WebPreview', 'WebPreviewNavigation', 'WebPreviewNavigationButton', 'WebPreviewUrl', 'WebPreviewBody']],
+  ['ae-web-preview', 'components/ws/playtest-card.tsx', 'ai-elements/web-preview', ['WebPreview', 'WebPreviewNavigation', 'WebPreviewNavigationButton', 'WebPreviewUrl']],
   ['ae-sandbox', 'components/ws/playtest-card.tsx', 'ai-elements/sandbox', ['Sandbox', 'SandboxHeader', 'SandboxTabsTrigger', 'SandboxTabContent']],
   ['ae-test-results', 'components/ws/playtest-card.tsx', 'ai-elements/test-results', ['TestResults', 'TestResultsProgress', 'Test']],
   ['ae-environment-variables', 'components/ws/members-panel.tsx', 'ai-elements/environment-variables', ['EnvironmentVariables', 'EnvironmentVariable', 'EnvironmentVariableValue', 'EnvironmentVariableCopyButton']],
   ['ae-canvas', 'components/roadmap/dependency-map.tsx', 'ai-elements/canvas', ['Canvas']],
   ['ae-node', 'components/roadmap/dependency-map.tsx', 'ai-elements/node', ['Node', 'NodeTitle']],
-  ['ae-edge', 'components/roadmap/dependency-map.tsx', 'ai-elements/edge', ['Edge.Animated', 'Edge.Temporary', 'Edge.Solid']],
+  ['ae-edge', 'components/roadmap/dependency-map.tsx', 'ai-elements/edge', ['@Edge.Animated', '@Edge.Temporary']],
   ['ae-panel', 'components/roadmap/dependency-map.tsx', 'ai-elements/panel', ['Panel']],
   ['ae-controls', 'components/roadmap/dependency-map.tsx', 'ai-elements/controls', ['Controls']],
-  ['ae-connection', 'components/roadmap/dependency-map.tsx', 'ai-elements/connection', ['Connection']],
+  ['ae-connection', 'components/roadmap/dependency-map.tsx', 'ai-elements/connection', ['@Connection']],
   ['aicss-comparison-table', 'components/roadmap/suggestions.tsx', 'picks/tech/compare-table', ['CompareTable']],
 ];
 
@@ -74,7 +74,11 @@ for (const [id, file, mod, tags] of MOUNTS) {
     const src = code(file);
     assert.match(src, new RegExp(`from '[^']*${esc(mod.replace(/^\.\//, ''))}'`), `${file} does not import ${mod}`);
     for (const tag of tags) {
-      assert.match(src, new RegExp(`<${esc(tag)}[\\s>/]`), `${file} does not render <${tag}>`);
+      // A tag is rendered as JSX. A name starting `@` is a component React Flow mounts itself, from
+      // the `edgeTypes` / `connectionLineComponent` props, so the property is that the file hands
+      // that genuine component over, not that it writes the tag.
+      if (tag.startsWith('@')) assert.match(src, new RegExp(`[:={]\\s*${esc(tag.slice(1))}\\b`), `${file} does not hand React Flow ${tag.slice(1)}`);
+      else assert.match(src, new RegExp(`<${esc(tag)}[\\s>/]`), `${file} does not render <${tag}>`);
     }
   });
 }
@@ -103,8 +107,12 @@ test('the playtest results only appear for a playtest that ended', () => {
 
 test('a share link row is handed only the preview, never the token itself', () => {
   const src = code('components/ws/members-panel.tsx');
-  assert.match(src, /<EnvironmentVariableValue preview=\{tokenPreview\(l\.token\)\} \/>/);
+  // The genuine EnvironmentVariable takes the value it shows as a prop and shows it in its Value.
+  assert.match(src, /<EnvironmentVariable\b[^>]*\bvalue=\{tokenPreview\(l\.token\)\}/);
+  assert.doesNotMatch(src, /<EnvironmentVariable\b[^>]*\bvalue=\{l\.token\}/);
   assert.doesNotMatch(src, /<EnvironmentVariableValue[^>]*\{l\.token\}/);
+  // Its copy button copies what the row holds (the preview), so the click is ours and copies the link.
+  assert.match(src, /<EnvironmentVariableCopyButton[^>]*onClick=\{\(\) => void copy\(l\.token\)\}/);
 });
 
 // ------------------------------------------------------------- the models ---

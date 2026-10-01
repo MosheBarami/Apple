@@ -46,7 +46,8 @@ import { ACCESS_LOADING, allows, normaliseAccess, whyNot, type AccessState } fro
 import type { ChatAttachment } from '@golem/shared';
 import { jumpLabel, unseenCount } from '../lib/follow-latest';
 import { Conversation, ConversationContent, ConversationScrollButton } from '../components/ai-elements/conversation';
-import { useStickToBottomContext, type StickToBottomContext } from '../components/ai-elements/stick-to-bottom';
+import { useStickToBottomContext, type StickToBottomContext } from 'use-stick-to-bottom';
+import { RollingNumber } from '../components/picks/chat/rolling-number';
 import { replyAnnouncement } from '../lib/announce';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { fidelityLine, restoreInFlight, restoreSentence, restoreTone } from '../lib/restore-status';
@@ -123,8 +124,8 @@ const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members'
 //[[ BACK TO THE LIVE EDGE, AND HOW MUCH ARRIVED WHILE THE READER WAS AWAY.
 //
 //   Whether the reader is following is the conversation's own state now — `isAtBottom`, the lock
-//   the AI Elements Conversation keeps (components/ai-elements/stick-to-bottom.tsx), decided by the
-//   same `isNearBottom` slack this view has always used. What stays here is the COUNT, because
+//   the AI Elements Conversation keeps (use-stick-to-bottom, which upstream's Conversation is built
+//   on). What stays here is the COUNT, because
 //   only this view knows what a turn is.
 //
 //   `seen` is a WATERMARK, not a counter. The transcript can shrink — an edit-and-resend
@@ -143,11 +144,25 @@ function LatestEdgeJump({ total }: { total: number }) {
   }, [isAtBottom, total]);
   const unseen = isAtBottom ? 0 : unseenCount(total, seen.current);
   return (
-    <ConversationScrollButton
-      aria-label={jumpLabel(unseen)}
-      title={jumpLabel(unseen)}
-      data-unseen={unseen > 0 ? `${unseen} new` : undefined}
-    />
+    <>
+      <ConversationScrollButton
+        aria-label={jumpLabel(unseen)}
+        title={jumpLabel(unseen)}
+        data-unseen={unseen > 0 ? `${unseen} new` : undefined}
+      />
+      {/* The count beside upstream's arrow — a live badge (Eldora "Live Button": a ping while there
+          is something new) whose figure rolls as it changes (picks/chat/rolling-number). Drawn for
+          the eye only; the button's own name already says the count. */}
+      {!isAtBottom && unseen > 0 && (
+        <span aria-hidden="true" className="pointer-events-none absolute bottom-11 left-1/2 z-10 ml-2 inline-flex items-center gap-1 rounded-full bg-primary px-1.5 py-0.5 font-medium text-[10px] text-primary-foreground tabular-nums">
+          <span className="relative flex size-1.5">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary-foreground/70 motion-reduce:animate-none" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-primary-foreground" />
+          </span>
+          <RollingNumber value={unseen} />
+        </span>
+      )}
+    </>
   );
 }
 
@@ -1023,7 +1038,10 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           </div>
 
           {/* ------------------------------------------------ conversation */}
+          {/* `aie`: the AI Elements surface, where their Tailwind styling and scoped preflight apply
+              (styles/ai-elements.css). */}
           <Conversation
+            className="aie"
             contextRef={conversation}
             // The log is the CONTENT below, not this frame: the frame also holds the jump control,
             // and a control appearing inside a live region is announced as if it were a turn.

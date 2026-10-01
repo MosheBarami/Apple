@@ -6,6 +6,8 @@ import './design/system.css';
 import './design/apple-minimal.css';
 // The glass shell (D-GLASS-1): loaded last so it is the layer that paints.
 import './design/glass.css';
+// Vercel AI Elements' Tailwind styling, scoped to the AI surfaces (see the sheet's header).
+import './styles/ai-elements.css';
 
 // Before React mounts: a direction applied after first paint is a visible flip.
 initDirection();

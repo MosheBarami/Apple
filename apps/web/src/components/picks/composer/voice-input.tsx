@@ -22,7 +22,7 @@ import {
   PromptInputActionMenuContent,
   PromptInputActionMenuTrigger,
 } from '../../ai-elements/prompt-input';
-import { DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '../../ai-elements/ui/dropdown-menu';
+import { DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '../../ui/dropdown-menu';
 import { reducedMotion } from './motion';
 import { VOICE_MAX_SECONDS, recordingToWav, transcribeVoice } from '../../../lib/voice-transcribe';
 import './voice-input.css';
@@ -280,15 +280,15 @@ export function VoiceInput({ onText, onNotice, disabled }: VoiceInputProps) {
             <PromptInputActionMenuTrigger className="pk-voice__pick" size="icon-sm" aria-label="Choose a microphone">
               <Icon d={PATH.chevronDown} size={11} />
             </PromptInputActionMenuTrigger>
-            <PromptInputActionMenuContent aria-label="Microphone" side="top" className="gx-menu">
-              <DropdownMenuLabel className="gx-menu__section">Microphone</DropdownMenuLabel>
+            <PromptInputActionMenuContent aria-label="Microphone" side="top" className="w-56">
+              <DropdownMenuLabel className="text-muted-foreground text-xs">Microphone</DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={mic || (mics[0]?.deviceId ?? '')}
-                onValueChange={(id) => { setMic(id); writeMic(id); }}
+                onValueChange={(id: string) => { setMic(id); writeMic(id); }}
               >
                 {mics.map((d) => (
-                  <DropdownMenuRadioItem key={d.deviceId} value={d.deviceId} className="gx-menu__item">
-                    <span className="gx-menu__main"><span className="gx-menu__name">{d.label}</span></span>
+                  <DropdownMenuRadioItem key={d.deviceId} value={d.deviceId}>
+                    <span className="text-sm">{d.label}</span>
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>

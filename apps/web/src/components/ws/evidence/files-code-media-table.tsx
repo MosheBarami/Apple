@@ -5,7 +5,7 @@
 import { CodeBlock, CodeBlockActions, CodeBlockCopyButton, CodeBlockFilename, CodeBlockHeader, CodeBlockTitle } from '../../ai-elements/code-block';
 import { Snippet, SnippetAddon, SnippetCopyButton, SnippetInput } from '../../ai-elements/snippet';
 import { Image } from '../../ai-elements/image';
-import { FileTree, FileTreeIcon, FileTreeName, FileTreeRow, fileTreeMainProps } from '../../ai-elements/file-tree';
+import { FileTree, FileTreeFile, FileTreeFolder } from '../../ai-elements/file-tree';
 import {
   leafName, ORIGIN_LABEL, snippetOf, type ImageEvidence, type ScriptEvidence, type TableEvidence, type TreeRow,
 } from './files-code-media-table-model';
@@ -24,7 +24,7 @@ export function ScriptCodeBlock({ script }: { script: ScriptEvidence | null }) {
           {page ? ` · lines ${page.startLine}-${page.endLine} of ${page.totalLines}` : ''}
         </span>
       </summary>
-      <CodeBlock code={script.source} language="luau" showLineNumbers>
+      <CodeBlock className="aie" code={script.source} language="luau" showLineNumbers>
         <CodeBlockHeader>
           <CodeBlockTitle><CodeBlockFilename>{path}</CodeBlockFilename></CodeBlockTitle>
           <CodeBlockActions><CodeBlockCopyButton /></CodeBlockActions>
@@ -39,20 +39,25 @@ export function ReferenceSnippet({ text, label }: { text: unknown; label?: strin
   const code = snippetOf(text);
   if (!code) return null;
   return (
-    <Snippet code={code} data-testid="ev-snippet">
+    <Snippet className="aie" code={code} data-testid="ev-snippet">
       {label ? <SnippetAddon>{label}</SnippetAddon> : null}
       <SnippetInput aria-label={label ?? 'Reference'} />
-      <SnippetCopyButton label="Copy reference" />
+      <SnippetAddon align="inline-end">
+        <SnippetCopyButton aria-label="Copy reference" />
+      </SnippetAddon>
     </Snippet>
   );
 }
+
+/** AI Elements' Image takes the `ai` GeneratedFile shape but draws only `base64` + `mediaType`. */
+const NO_BYTES = new Uint8Array(0);
 
 /** UI20. Always labelled by origin; composed artwork says it is not test evidence. */
 export function EvidenceImage({ image }: { image: ImageEvidence | null }) {
   if (!image) return null;
   return (
     <figure className="ev-image" data-origin={image.origin} data-testid="ev-image">
-      <Image base64={image.base64} mediaType={image.mediaType} alt={image.alt} />
+      <Image base64={image.base64} uint8Array={NO_BYTES} mediaType={image.mediaType} alt={image.alt} />
       <figcaption className="ev-image__caption">
         <strong>{ORIGIN_LABEL[image.origin]}</strong>
         {image.provenance ? ` · ${image.provenance}` : ''}
@@ -84,17 +89,22 @@ export function EvidenceTable({ table }: { table: TableEvidence | null }) {
 /** UI23. The Studio hierarchy the run touched; touched rows are marked, ancestors are context. */
 export function AffectedTree({ rows }: { rows: TreeRow[] | null }) {
   if (!rows || rows.length === 0) return null;
+  // Every ancestor is drawn open: the point is to show where the changed object sits.
+  const open = new Set(rows.filter((r) => r.kind === 'folder').map((r) => r.path));
+  const childrenOf = (r: TreeRow) => rows.filter((c) => c.level === r.level + 1 && c.path.startsWith(`${r.path}.`));
+  // Upstream draws a row's name from `name` alone, so a touched row says "changed" in its name.
+  const nameOf = (r: TreeRow) => (r.affected ? `${r.name} (changed)` : r.name);
+  const draw = (r: TreeRow) =>
+    r.kind === 'folder' ? (
+      <FileTreeFolder key={r.path} path={r.path} name={nameOf(r)} data-affected={r.affected || undefined}>
+        {childrenOf(r).map(draw)}
+      </FileTreeFolder>
+    ) : (
+      <FileTreeFile key={r.path} path={r.path} name={nameOf(r)} data-affected={r.affected || undefined} />
+    );
   return (
-    <FileTree aria-label="Affected Studio objects" data-testid="ev-tree">
-      {rows.map((r) => (
-        <FileTreeRow key={r.path} level={r.level} kind={r.kind} open={r.kind === 'folder'} className={r.affected ? 'is-affected' : undefined}>
-          <span className="ev-tree__main" tabIndex={-1} {...fileTreeMainProps(r.path, r.level, r.kind, r.kind === 'folder')}>
-            <FileTreeIcon kind={r.kind} open={r.kind === 'folder'} />
-            <FileTreeName>{r.name}</FileTreeName>
-            {r.affected ? <span className="ev-tree__tag">changed</span> : null}
-          </span>
-        </FileTreeRow>
-      ))}
+    <FileTree className="aie" aria-label="Affected Studio objects" data-testid="ev-tree" defaultExpanded={open}>
+      {rows.filter((r) => r.level === 1).map(draw)}
     </FileTree>
   );
 }

@@ -221,6 +221,10 @@
   --shadow-primary:inset 0 0 0 1px rgba(0,0,0,.14),0 2px rgba(0,0,0,.16);
 }
 *,*::before,*::after { box-sizing:border-box; }
+/* THE BARE-ELEMENT RULES BELOW STOP AT THE AI ELEMENTS SURFACES. `:where(:not(.aie, .aie *, [data-slot],
+   [data-slot] *))` adds no specificity, so nothing outside those surfaces moves; inside them, the
+   genuine AI Elements are drawn by their own Tailwind classes over Tailwind's preflight, scoped to the
+   same selector (styles/ai-elements.css). Unlayered, these rules would otherwise beat every utility. */
 body { margin:0; min-width:320px; }
 button,input,select,textarea { font:inherit; color:inherit; }
 button,a,input,select,textarea { -webkit-tap-highlight-color:transparent; }
@@ -236,7 +240,7 @@ button,a,input,select,textarea { -webkit-tap-highlight-color:transparent; }
    satisfies it with the measured chrome fill now.
    THE TRANSITION IS THE SIGNATURE PAIR: colour-only properties on the hard ease-out at 0.26s,
    everything else at 0.15s. Nothing here exceeds the ceiling. */
-button { cursor:pointer; min-height:var(--h-md); padding:0 8px; border:1px solid var(--control-line); border-radius:var(--r-md); background:var(--control-fill); color:var(--muted); font-size:14px; line-height:20px; letter-spacing:-.01em; transition:color var(--t-color) var(--ease-hard),background-color var(--t-color) var(--ease-hard),border-color var(--t-color) var(--ease-hard),box-shadow var(--t-fast) var(--ease-out); }
+button:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { cursor:pointer; min-height:var(--h-md); padding:0 8px; border:1px solid var(--control-line); border-radius:var(--r-md); background:var(--control-fill); color:var(--muted); font-size:14px; line-height:20px; letter-spacing:-.01em; transition:color var(--t-color) var(--ease-hard),background-color var(--t-color) var(--ease-hard),border-color var(--t-color) var(--ease-hard),box-shadow var(--t-fast) var(--ease-out); }
 /* VARIANT 4 OF 5 — UNAVAILABLE. The same object, turned down: same height, same radius, same
    padding, same tracking as the live control beside it, with the border dropped from .18 to .12
    and the label to 38%. What this replaces is `opacity:.48`, which fades the border, the label and
@@ -244,32 +248,32 @@ button { cursor:pointer; min-height:var(--h-md); padding:0 8px; border:1px solid
    of the shape: a filled control that cannot be pressed is the one that looks broken.
    `box-shadow:none` takes the primary button's lift away with its fill, so an unavailable primary
    stops pretending to float. */
-button:disabled,[aria-disabled='true'] { cursor:not-allowed; background:transparent; border-color:var(--quiet-line); color:var(--quiet-ink); box-shadow:none; }
+button:disabled:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),[aria-disabled='true']:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { cursor:not-allowed; background:transparent; border-color:var(--quiet-line); color:var(--quiet-ink); box-shadow:none; }
 /* HOVER LIFTS THE LABEL, NOT THE OBJECT. A translucent step rather than --surface-2, so a control
    standing on a raised panel still lifts — an opaque hover fill is invisible on the surface whose
    colour it happens to be. */
-button:hover:not(:disabled):not([aria-disabled='true']) { background:color-mix(in srgb,var(--ink) 12%,transparent); color:var(--ink); }
-button:active:not(:disabled):not([aria-disabled='true']) { background:color-mix(in srgb,var(--ink) 18%,transparent); }
+button:hover:not(:disabled):not([aria-disabled='true']):where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { background:color-mix(in srgb,var(--ink) 12%,transparent); color:var(--ink); }
+button:active:not(:disabled):not([aria-disabled='true']):where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { background:color-mix(in srgb,var(--ink) 18%,transparent); }
 /* FOCUS IS A RING PLUS A WIDER HALO, which is how the bar draws it: `accent 0 0 0 1px` and a
    low-alpha glow behind it. The outline carries the ring; --glow carries the halo, and focus-halo
    opens it rather than snapping it on. */
-button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible { outline:2px solid var(--accent); outline-offset:4px; box-shadow:var(--glow); animation:focus-halo var(--t-fast) var(--ease-out); }
-a { color:inherit; text-underline-offset:4px; } img,video,canvas { max-width:100%; } svg { flex:none; vertical-align:middle; }
-h1,h2,h3,h4,p { margin-top:0; }
+button:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),a:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),input:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),textarea:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),summary:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { outline:2px solid var(--accent); outline-offset:4px; box-shadow:var(--glow); animation:focus-halo var(--t-fast) var(--ease-out); }
+a:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { color:inherit; text-underline-offset:4px; } img,video,canvas { max-width:100%; } svg:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { flex:none; vertical-align:middle; }
+h1:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h2:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h3:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h4:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),p:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { margin-top:0; }
 /* ONE WEIGHT, AND THIS IS THE LINE THAT WAS MISSING. The rule below sets family, line-height and
    tracking but never reset the user agent's font-weight:bold, so every heading in the app
    rendered bold against a design brief whose first rule is that nothing is. Hierarchy is size,
    colour and space — the same as the marketing site and the reference it was measured from. */
-h1,h2,h3,h4,h5,h6 { font-weight:400; }
-h1,h2,h3 { font-family:var(--font-display); line-height:1.25; letter-spacing:-.025em; }
-h1 { font-size:clamp(32px,5vw,54px); } h2 { font-size:30px; } h3 { font-size:22px; }
+h1:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h2:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h3:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h4:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h5:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h6:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { font-weight:400; }
+h1:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h2:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h3:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { font-family:var(--font-display); line-height:1.25; letter-spacing:-.025em; }
+h1:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { font-size:clamp(32px,5vw,54px); } h2:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { font-size:30px; } h3:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { font-size:22px; }
 /* A FIELD IS A CONTROL AND TAKES THE CONTROL RADIUS. This was `border-radius:4px` — a fifth
    radius, written nowhere else, on every input in the product. */
-input:not([type='checkbox']):not([type='radio']),select,textarea { border:1px solid var(--control-line); background:var(--surface); border-radius:var(--r-md); padding:12px; max-width:100%; }
-input:not([type='checkbox']):not([type='radio']),select { min-height:var(--h-md); padding:0 12px; }
-input:not([type='checkbox']):not([type='radio']):focus-visible,textarea:focus-visible,select:focus-visible { border-color:var(--accent-ring); }
-textarea { resize:vertical; } input[type='checkbox'],input[type='radio'] { accent-color:var(--accent); }
-button svg { width:17px; height:17px; } [hidden] { display:none !important; }
+input:not([type='checkbox']):not([type='radio']):where(:not(.aie, .aie *, [data-slot], [data-slot] *)),select:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),textarea:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { border:1px solid var(--control-line); background:var(--surface); border-radius:var(--r-md); padding:12px; max-width:100%; }
+input:not([type='checkbox']):not([type='radio']):where(:not(.aie, .aie *, [data-slot], [data-slot] *)),select:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { min-height:var(--h-md); padding:0 12px; }
+input:not([type='checkbox']):not([type='radio']):focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),textarea:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),select:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { border-color:var(--accent-ring); }
+textarea:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { resize:vertical; } input[type='checkbox'],input[type='radio'] { accent-color:var(--accent); }
+button:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) svg:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { width:17px; height:17px; } [hidden] { display:none !important; }
 .gx-sr,.visually-hidden,.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; height:auto; clip:auto; padding:12px; background:var(--surface); }
 .muted,.field-hint,.page-note { color:var(--muted); } .mono,code,kbd,pre { font-family:var(--font-mono); }

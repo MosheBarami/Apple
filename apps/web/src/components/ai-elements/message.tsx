@@ -1,27 +1,23 @@
 "use client";
 
-// Vendored from Vercel AI Elements (Apache-2.0), packages/elements/src/message.tsx at
-// 6a9d5b1822ffb10bba4bd97175f01edd7d8651cd. The verbatim original is ./upstream/message.tsx.txt
-// and ./NOTICE lists every local substitution. Only imports are swapped and `ai-message*` classes
-// appended beside the inert Tailwind strings; the components are otherwise upstream's.
-//
-// MessageResponse renders through ./streamdown, which is this app's own marked + DOMPurify
-// renderer (lib/markdown.tsx) and not Streamdown — see that file for why.
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 import {
   ButtonGroup,
   ButtonGroupText,
-} from "./ui/button-group";
+} from "@/components/ui/button-group";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "./ui/tooltip";
-import { cn } from "./lib/utils";
-import { cjk, code, math, mermaid } from "./streamdown";
-import type { UIMessage } from "./ai-types";
-import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { cjk } from "@streamdown/cjk";
+import { code } from "@streamdown/code";
+import { math } from "@streamdown/math";
+import { mermaid } from "@streamdown/mermaid";
+import type { UIMessage } from "ai";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import {
   createContext,
@@ -32,8 +28,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Streamdown } from "./streamdown";
-import "./message.css";
+import { Streamdown } from "streamdown";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -42,7 +37,7 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
 export const Message = ({ className, from, ...props }: MessageProps) => (
   <div
     className={cn(
-      "group flex w-full max-w-[95%] flex-col gap-2 ai-message",
+      "group flex w-full max-w-[95%] flex-col gap-2",
       from === "user" ? "is-user ml-auto justify-end" : "is-assistant",
       className
     )}
@@ -61,7 +56,7 @@ export const MessageContent = ({
     className={cn(
       "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
       "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
-      "group-[.is-assistant]:text-foreground ai-message__content",
+      "group-[.is-assistant]:text-foreground",
       className
     )}
     {...props}
@@ -77,7 +72,7 @@ export const MessageActions = ({
   children,
   ...props
 }: MessageActionsProps) => (
-  <div className={cn("flex items-center gap-1 ai-message__actions", className)} {...props}>
+  <div className={cn("flex items-center gap-1", className)} {...props}>
     {children}
   </div>
 );
@@ -96,7 +91,7 @@ export const MessageAction = ({
   ...props
 }: MessageActionProps) => {
   const button = (
-    <Button size={size} type="button" variant={variant} {...props} className={cn("ai-message__action", props.className)}>
+    <Button size={size} type="button" variant={variant} {...props}>
       {children}
       <span className="sr-only">{label || tooltip}</span>
     </Button>
@@ -107,7 +102,7 @@ export const MessageAction = ({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>{button}</TooltipTrigger>
-          <TooltipContent className="ai-message__tooltip">
+          <TooltipContent>
             <p>{tooltip}</p>
           </TooltipContent>
         </Tooltip>
@@ -192,7 +187,7 @@ export const MessageBranch = ({
   return (
     <MessageBranchContext.Provider value={contextValue}>
       <div
-        className={cn("grid w-full gap-2 [&>div]:pb-0 ai-message__branch", className)}
+        className={cn("grid w-full gap-2 [&>div]:pb-0", className)}
         {...props}
       />
     </MessageBranchContext.Provider>
@@ -221,7 +216,7 @@ export const MessageBranchContent = ({
   return childrenArray.map((branch, index) => (
     <div
       className={cn(
-        "grid gap-2 overflow-hidden [&>div]:pb-0 ai-message__branch-content",
+        "grid gap-2 overflow-hidden [&>div]:pb-0",
         index === currentBranch ? "block" : "hidden"
       )}
       key={branch.key}
@@ -248,7 +243,7 @@ export const MessageBranchSelector = ({
   return (
     <ButtonGroup
       className={cn(
-        "[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md ai-message__branch-selector",
+        "[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md",
         className
       )}
       orientation="horizontal"
@@ -314,7 +309,7 @@ export const MessageBranchPage = ({
   return (
     <ButtonGroupText
       className={cn(
-        "border-none bg-transparent text-muted-foreground shadow-none ai-message__branch-page",
+        "border-none bg-transparent text-muted-foreground shadow-none",
         className
       )}
       {...props}
@@ -332,7 +327,7 @@ export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
     <Streamdown
       className={cn(
-        "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ai-message__response",
+        "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
       )}
       plugins={streamdownPlugins}
@@ -355,7 +350,7 @@ export const MessageToolbar = ({
 }: MessageToolbarProps) => (
   <div
     className={cn(
-      "mt-4 flex w-full items-center justify-between gap-4 ai-message__toolbar",
+      "mt-4 flex w-full items-center justify-between gap-4",
       className
     )}
     {...props}

@@ -30,10 +30,11 @@
 
 /* --------------------------------------------------------------- tool rows --- */
 
-/* A NEW STEP ARRIVES. Rows are keyed by their state (ws/thinking.tsx), so a step that finishes is
-   remounted; the entrance is tied to the running state so it plays once, when the step starts, and
-   a finished step does not slide in a second time. A reloaded history, all finished, stays still. */
-.ai-tool:has(.ai-tool__badge--input-available) > .ai-tool__header {
+/* A NEW STEP ARRIVES. A step is a row of the turn's AI Elements Task (ws/run-steps.tsx), keyed by
+   its tool id; the entrance is tied to the running state, so it plays once, when the step starts
+   and mounts running, and a finished step does not slide in a second time. A reloaded history, all
+   finished, stays still. */
+[data-run-steps] [data-outcome='running'] {
   animation:studio-row-in var(--motion-row-in) var(--ease-out) both;
 }
 @keyframes studio-row-in {
@@ -43,7 +44,7 @@
 
 /* THE OBJECT BEING WORKED ON BREATHES. The running step's Studio icon rises a pixel and glows in
    the accent, the one colour the card spends; it stops the moment the step does. */
-.ai-tool:has(.ai-tool__badge--input-available) .studio-icon {
+[data-run-steps] [data-outcome='running'] .studio-icon {
   animation:studio-icon-work var(--motion-work) ease-in-out infinite;
 }
 @keyframes studio-icon-work {
@@ -78,8 +79,8 @@
 .pairing-record__what { display:flex; align-items:center; min-width:0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ai-tool:has(.ai-tool__badge--input-available) > .ai-tool__header,
-  .ai-tool:has(.ai-tool__badge--input-available) .studio-icon { animation:none; }
+  [data-run-steps] [data-outcome='running'],
+  [data-run-steps] [data-outcome='running'] .studio-icon { animation:none; }
   .start-sheet .start-sheet__ideas > button { transition:none; }
   .start-sheet .start-sheet__ideas > button:hover:not(:disabled),
   .start-sheet .start-sheet__ideas > button:focus-visible { translate:none; }

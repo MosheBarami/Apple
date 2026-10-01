@@ -7,6 +7,9 @@ import './branding.css';
 import { Image } from '../ai-elements/image';
 import type { BrandingArt, BrandingEdit, BrandingView } from '../../lib/branding-api';
 
+/** AI Elements' Image takes the `ai` GeneratedFile shape but draws only `base64` + `mediaType`. */
+const NO_BYTES = new Uint8Array(0);
+
 export const BRANDING_LABEL = 'Branding art - not gameplay evidence';
 
 export const EDIT_LIMITS = { selectedName: 50, tagline: 48, shortDescription: 160, longDescription: 1000 } as const;
@@ -84,10 +87,12 @@ export function BrandingDetails({ view, draft, onDraft, onSave, onRegenerate, on
             <figure key={art.id} className={`brand__art brand__art--${art.kind}`} data-branding="true">
               <Image
                 base64={art.base64}
+                uint8Array={NO_BYTES}
                 mediaType={art.mediaType}
                 alt={`Branding ${art.kind} for ${record.selectedName}, ${art.width}x${art.height}. Not a gameplay screenshot.`}
-                width={art.width}
-                height={art.height}
+                // Intrinsic size, so the gallery does not reflow when the image decodes. ImageProps does
+                // not name width/height, but the component spreads the rest onto the <img>.
+                {...{ width: art.width, height: art.height }}
               />
               <figcaption>
                 <span className="brand__badge">Branding</span> {title}, {art.width}x{art.height}

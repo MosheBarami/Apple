@@ -1,28 +1,5 @@
 "use client";
 
-// Adapted from AI Elements `packages/elements/src/prompt-input.tsx` at the pinned commit (see
-// ./NOTICE, which lists every change; diff against upstream/prompt-input.tsx.txt to see them).
-// Exports, prop types and state logic are upstream's. Imports are swapped for the local stand-ins,
-// and each part appends an `ai-prompt-input…` class for ./prompt-input.css. The changes beyond that,
-// each one required by how this app works:
-//
-//   * THE SEND KEY IS THE PERSON'S. Upstream's textarea submits on a hand-matched Enter. This one
-//     takes `submitBinding` (a lib/shortcuts `Shortcut`, default bare Enter — upstream's behaviour)
-//     and matches it with the app's shared `matchesShortcut`, so a person who chose "⌘Enter sends"
-//     in the shortcuts dialog gets a new line on Enter here too. The IME guard is upstream's.
-//   * THE CALLER CAN OWN THE FILES. With `onAddFiles`, every file the picker, a paste or a drop
-//     produces is handed to the caller untouched — no accept/size/count filter here, no blob: URL,
-//     and the submit passes `files: []` with no data: URL conversion. The composer uploads each file
-//     to the project as it is staged, with progress, abort and retry (lib/api.ts), and its admission
-//     rules give one refusal sentence however the file arrived.
-//   * A REFUSED SEND KEEPS THE DRAFT. Upstream clears the form and its attachments unless onSubmit
-//     throws. Here onSubmit may also return `false` (or a promise of it) to refuse, and nothing is
-//     cleared or reset; the reset that upstream ran first now follows an accepted result.
-//   * React 18: PromptInputTextarea and PromptInputButton forward their ref (menu and tooltip
-//     triggers reach the button through `asChild`; the composer measures its textarea).
-//   * The hidden file input keeps upstream's `hidden` class and adds `ai-prompt-input__file`, which
-//     ./prompt-input.css hides — this app has no `.hidden` utility.
-
 import {
   Command,
   CommandEmpty,
@@ -31,39 +8,39 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "./ui/command";
+} from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "./ui/hover-card";
+} from "@/components/ui/hover-card";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupTextarea,
-} from "./ui/input-group";
+} from "@/components/ui/input-group";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-import { Spinner } from "./ui/spinner";
+} from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "./ui/tooltip";
-import { cn } from "./lib/utils";
-import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "./ai-types";
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   CornerDownLeftIcon,
   ImageIcon,
@@ -71,10 +48,8 @@ import {
   PlusIcon,
   SquareIcon,
   XIcon,
-} from "./icons";
-import { nanoid } from "./lib/nanoid";
-import { matchesShortcut, type Shortcut } from "../../lib/shortcuts";
-import { ENTER_SEND } from "../../lib/send-key";
+} from "lucide-react";
+import { nanoid } from "nanoid";
 import type {
   ChangeEvent,
   ChangeEventHandler,
@@ -91,7 +66,6 @@ import type {
 import {
   Children,
   createContext,
-  forwardRef,
   useCallback,
   useContext,
   useEffect,
@@ -99,7 +73,6 @@ import {
   useRef,
   useState,
 } from "react";
-import "./prompt-input.css";
 
 // ============================================================================
 // Helpers
@@ -532,13 +505,10 @@ export type PromptInputProps = Omit<
     code: "max_files" | "max_file_size" | "accept";
     message: string;
   }) => void;
-  // LOCAL: return false (or a promise of false) to refuse the send; nothing is cleared.
   onSubmit: (
     message: PromptInputMessage,
     event: FormEvent<HTMLFormElement>
-  ) => void | boolean | Promise<void | boolean>;
-  // LOCAL: the caller owns the files. See the header.
-  onAddFiles?: (files: File[]) => void;
+  ) => void | Promise<void>;
 };
 
 export const PromptInput = ({
@@ -551,7 +521,6 @@ export const PromptInput = ({
   maxFileSize,
   onError,
   onSubmit,
-  onAddFiles,
   children,
   ...props
 }: PromptInputProps) => {
@@ -733,22 +702,7 @@ export const PromptInput = ({
     []
   );
 
-  // LOCAL: with `onAddFiles` the files go to the caller as they arrived — see the header. A ref, so
-  // `add` keeps one identity and the drop listeners below are not re-attached every render.
-  const onAddFilesRef = useRef(onAddFiles);
-  onAddFilesRef.current = onAddFiles;
-  const addToCaller = useCallback((fileList: File[] | FileList) => {
-    const incoming = [...fileList];
-    if (incoming.length > 0) {
-      onAddFilesRef.current?.(incoming);
-    }
-  }, []);
-
-  const add = onAddFiles
-    ? addToCaller
-    : usingProvider
-      ? addWithProviderValidation
-      : addLocal;
+  const add = usingProvider ? addWithProviderValidation : addLocal;
   const remove = usingProvider ? controller.attachments.remove : removeLocal;
   const openFileDialog = usingProvider
     ? controller.attachments.openFileDialog
@@ -899,22 +853,15 @@ export const PromptInput = ({
             return (formData.get("message") as string) || "";
           })();
 
-      // LOCAL: upstream reset the form here, before the result was known. The reset now runs
-      // only once the send is accepted, so a refused send leaves the text where it was.
-      const accept = () => {
-        if (!usingProvider) {
-          form.reset();
-        }
-        clear();
-        if (usingProvider) {
-          controller.textInput.clear();
-        }
-      };
+      // Reset form immediately after capturing text to avoid race condition
+      // where user input during async blob conversion would be lost
+      if (!usingProvider) {
+        form.reset();
+      }
 
       try {
         // Convert blob URLs to data URLs asynchronously
-        // LOCAL: never when the caller owns the files — there are none here to convert.
-        const convertedFiles: FileUIPart[] = onAddFiles ? [] : await Promise.all(
+        const convertedFiles: FileUIPart[] = await Promise.all(
           files.map(async ({ id: _id, ...item }) => {
             if (item.url?.startsWith("blob:")) {
               const dataUrl = await convertBlobUrlToDataUrl(item.url);
@@ -933,22 +880,26 @@ export const PromptInput = ({
         // Handle both sync and async onSubmit
         if (result instanceof Promise) {
           try {
-            // LOCAL: a resolved `false` is a refusal, like a rejection.
-            if ((await result) !== false) {
-              accept();
+            await result;
+            clear();
+            if (usingProvider) {
+              controller.textInput.clear();
             }
           } catch {
             // Don't clear on error - user may want to retry
           }
-        } else if (result !== false) {
+        } else {
           // Sync function completed without throwing, clear inputs
-          accept();
+          clear();
+          if (usingProvider) {
+            controller.textInput.clear();
+          }
         }
       } catch {
         // Don't clear on error - user may want to retry
       }
     },
-    [usingProvider, controller, files, onSubmit, clear, onAddFiles]
+    [usingProvider, controller, files, onSubmit, clear]
   );
 
   // Render with or without local provider
@@ -957,7 +908,7 @@ export const PromptInput = ({
       <input
         accept={accept}
         aria-label="Upload files"
-        className="hidden ai-prompt-input__file"
+        className="hidden"
         multiple={multiple}
         onChange={handleChange}
         ref={inputRef}
@@ -965,12 +916,12 @@ export const PromptInput = ({
         type="file"
       />
       <form
-        className={cn("w-full", "ai-prompt-input", className)}
+        className={cn("w-full", className)}
         onSubmit={handleSubmit}
         ref={formRef}
         {...props}
       >
-        <InputGroup className="overflow-hidden ai-prompt-input__group">{children}</InputGroup>
+        <InputGroup className="overflow-hidden">{children}</InputGroup>
       </form>
     </>
   );
@@ -995,27 +946,20 @@ export const PromptInputBody = ({
   className,
   ...props
 }: PromptInputBodyProps) => (
-  <div className={cn("contents", "ai-prompt-input__body", className)} {...props} />
+  <div className={cn("contents", className)} {...props} />
 );
 
 export type PromptInputTextareaProps = ComponentProps<
   typeof InputGroupTextarea
-> & {
-  // LOCAL: the chord that submits, matched by the app's shared matcher. Bare Enter by default.
-  submitBinding?: Shortcut;
-};
+>;
 
-export const PromptInputTextarea = forwardRef<
-  HTMLTextAreaElement,
-  Omit<PromptInputTextareaProps, "ref">
->(function PromptInputTextarea({
+export const PromptInputTextarea = ({
   onChange,
   onKeyDown,
   className,
   placeholder = "What would you like to know?",
-  submitBinding = ENTER_SEND,
   ...props
-}, ref) {
+}: PromptInputTextareaProps) => {
   const controller = useOptionalPromptInputController();
   const attachments = usePromptInputAttachments();
   const [isComposing, setIsComposing] = useState(false);
@@ -1030,10 +974,11 @@ export const PromptInputTextarea = forwardRef<
         return;
       }
 
-      // LOCAL: the person's binding, through the shared matcher, rather than a hand-matched key.
-      // With the default binding a Shift-modified chord does not match, as upstream's check was.
-      if (matchesShortcut(e, submitBinding)) {
+      if (e.key === "Enter") {
         if (isComposing || e.nativeEvent.isComposing) {
+          return;
+        }
+        if (e.shiftKey) {
           return;
         }
         e.preventDefault();
@@ -1063,7 +1008,7 @@ export const PromptInputTextarea = forwardRef<
         }
       }
     },
-    [onKeyDown, isComposing, attachments, submitBinding]
+    [onKeyDown, isComposing, attachments]
   );
 
   const handlePaste: ClipboardEventHandler<HTMLTextAreaElement> = useCallback(
@@ -1110,9 +1055,8 @@ export const PromptInputTextarea = forwardRef<
 
   return (
     <InputGroupTextarea
-      className={cn("field-sizing-content max-h-48 min-h-16", "ai-prompt-input__textarea", className)}
+      className={cn("field-sizing-content max-h-48 min-h-16", className)}
       name="message"
-      ref={ref}
       onCompositionEnd={handleCompositionEnd}
       onCompositionStart={handleCompositionStart}
       onKeyDown={handleKeyDown}
@@ -1122,7 +1066,7 @@ export const PromptInputTextarea = forwardRef<
       {...controlledProps}
     />
   );
-});
+};
 
 export type PromptInputHeaderProps = Omit<
   ComponentProps<typeof InputGroupAddon>,
@@ -1135,7 +1079,7 @@ export const PromptInputHeader = ({
 }: PromptInputHeaderProps) => (
   <InputGroupAddon
     align="block-end"
-    className={cn("order-first flex-wrap gap-1", "ai-prompt-input__header", className)}
+    className={cn("order-first flex-wrap gap-1", className)}
     {...props}
   />
 );
@@ -1151,7 +1095,7 @@ export const PromptInputFooter = ({
 }: PromptInputFooterProps) => (
   <InputGroupAddon
     align="block-end"
-    className={cn("justify-between gap-1", "ai-prompt-input__footer", className)}
+    className={cn("justify-between gap-1", className)}
     {...props}
   />
 );
@@ -1163,7 +1107,7 @@ export const PromptInputTools = ({
   ...props
 }: PromptInputToolsProps) => (
   <div
-    className={cn("flex min-w-0 items-center gap-1", "ai-prompt-input__tools", className)}
+    className={cn("flex min-w-0 items-center gap-1", className)}
     {...props}
   />
 );
@@ -1180,23 +1124,19 @@ export type PromptInputButtonProps = ComponentProps<typeof InputGroupButton> & {
   tooltip?: PromptInputButtonTooltip;
 };
 
-export const PromptInputButton = forwardRef<
-  HTMLButtonElement,
-  Omit<PromptInputButtonProps, "ref">
->(function PromptInputButton({
+export const PromptInputButton = ({
   variant = "ghost",
   className,
   size,
   tooltip,
   ...props
-}, ref) {
+}: PromptInputButtonProps) => {
   const newSize =
     size ?? (Children.count(props.children) > 1 ? "sm" : "icon-sm");
 
   const button = (
     <InputGroupButton
-      className={cn("ai-prompt-input__button", className)}
-      ref={ref}
+      className={cn(className)}
       size={newSize}
       type="button"
       variant={variant}
@@ -1219,12 +1159,12 @@ export const PromptInputButton = forwardRef<
       <TooltipContent side={side}>
         {tooltipContent}
         {shortcut && (
-          <span className="ml-2 text-muted-foreground ai-prompt-input__shortcut">{shortcut}</span>
+          <span className="ml-2 text-muted-foreground">{shortcut}</span>
         )}
       </TooltipContent>
     </Tooltip>
   );
-});
+};
 
 export type PromptInputActionMenuProps = ComponentProps<typeof DropdownMenu>;
 export const PromptInputActionMenu = (props: PromptInputActionMenuProps) => (
@@ -1252,7 +1192,7 @@ export const PromptInputActionMenuContent = ({
   className,
   ...props
 }: PromptInputActionMenuContentProps) => (
-  <DropdownMenuContent align="start" className={cn("ai-prompt-input__menu", className)} {...props} />
+  <DropdownMenuContent align="start" className={cn(className)} {...props} />
 );
 
 export type PromptInputActionMenuItemProps = ComponentProps<
@@ -1310,7 +1250,7 @@ export const PromptInputSubmit = ({
   return (
     <InputGroupButton
       aria-label={isGenerating ? "Stop" : "Submit"}
-      className={cn("ai-prompt-input__submit", className)}
+      className={cn(className)}
       onClick={handleClick}
       size={size}
       type={isGenerating && onStop ? "button" : "submit"}
@@ -1340,7 +1280,6 @@ export const PromptInputSelectTrigger = ({
     className={cn(
       "border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors",
       "hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground",
-      "ai-prompt-input__select-trigger",
       className
     )}
     {...props}

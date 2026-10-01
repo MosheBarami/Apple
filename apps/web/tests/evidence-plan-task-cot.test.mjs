@@ -32,7 +32,8 @@ test('Task groups work phases with their affected scripts, not read-only steps',
   const t = text(html);
   assert.match(t, /Writing Luau/);
   assert.match(t, /Edited a script/);
-  assert.equal(count(html, 'ai-task__file'), 2);
+  // RESTATED 2026-10-01: each script is an upstream TaskItemFile chip (marked data-file by the caller).
+  assert.equal(count(html, 'data-file=""'), 2);
   assert.match(t, /ServerScriptService\.Obby/);
   assert.match(t, /StarterGui\.Timer/);
   assert.doesNotMatch(t, /Inspecting project/);

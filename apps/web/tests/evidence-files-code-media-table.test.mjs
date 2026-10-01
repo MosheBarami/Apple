@@ -84,7 +84,15 @@ test('tree folds affected paths with ancestors and marks touched ones', () => {
   ]);
   const html = render(h(ui.AffectedTree, { rows }));
   assert.match(html, /role="tree"/);
-  assert.equal(html.split('>changed<').length - 1, 2);
+  // Property: exactly the touched rows (a folder and a file here) say "changed"; the ancestors that
+  // only hold them do not. Proved against the genuine FileTree's markup, where a row's label is its name.
+  assert.equal(html.split('(changed)').length - 1, 2);
+  assert.match(html, /Lobby \(changed\)/);
+  assert.match(html, /Door \(changed\)/);
+  assert.doesNotMatch(html, /Workspace \(changed\)/);
+  assert.doesNotMatch(html, /game \(changed\)/);
+  // Every ancestor is drawn open, so the touched file is in the markup, nested under its folder.
+  assert.equal(html.split('role="treeitem"').length - 1, 4);
 });
 
 test('every renderer draws nothing for empty or absent input', () => {

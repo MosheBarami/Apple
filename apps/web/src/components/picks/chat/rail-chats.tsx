@@ -17,17 +17,7 @@
 // dashboard's own menu writes, invalidate the same three caches (lib/archive.ts PROJECT_LIST_KEYS),
 // and a pinned chat is not offered Archive — the dashboard makes you unpin first, and two surfaces
 // disagreeing about what is allowed would be worse than either rule.
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
-} from 'react';
-import { useIsomorphicLayoutEffect } from '../../ai-elements/lib/use-isomorphic-layout-effect';
+import { useLayoutEffect, useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase, type ProjectRow } from '../../../lib/supabase';
@@ -123,7 +113,7 @@ export function RailChats({ chats }: { chats: readonly ProjectRow[] }) {
   };
 
   // FLIP: every row that moved plays from where it was.
-  useIsomorphicLayoutEffect(() => {
+  useLayoutEffect(() => {
     const was = before.current;
     before.current = null;
     if (!was || !list.current) return;

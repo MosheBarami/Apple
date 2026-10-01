@@ -118,7 +118,10 @@ test('the failed-run block in the workspace reaches the section written for it',
     docsPageExists('/docs/troubleshooting#messages'),
     'turn.tsx links to a troubleshooting page that is not on disk',
   );
-  const outcome = TURN_TSX.slice(TURN_TSX.indexOf('gx-outcome'), TURN_TSX.indexOf('gx-turn__foot'));
+  // RESTATED 2026-10-01: the outcome row is marked data-outcome in the AI Elements turn; it runs to
+  // the reply's toolbar.
+  const outcome = TURN_TSX.slice(TURN_TSX.indexOf('data-outcome={outcome.tone}'), TURN_TSX.indexOf('<MessageToolbar'));
+  assert.ok(outcome.length > 100, 'the outcome row was not found — this checks nothing');
   assert.match(outcome, /stopReason === 'error'/, 'the help link must be conditioned on the run having failed');
   assert.match(outcome, /target="_blank"/, 'a docs link out of the workspace must not replace the conversation');
 });

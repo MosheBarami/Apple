@@ -101,8 +101,11 @@ test('CONTROL: the sheets really do contain rules this parser can see', () => {
  * rather than which regex stopped matching.
  */
 const USER_CONTENT = [
-  ['components/ws/turn.tsx', 'gx-user', 'a message the user typed'],
-  ['components/ws/turn.tsx', 'gx-prose', "the assistant's reply, which answers in the user's language"],
+  // RESTATED 2026-10-01: the turn is AI Elements' Message now, so the hooks are the user text's own
+  // marker and the reply's <Answer> (MessageResponse — Streamdown, which with dir="auto" sets each
+  // block's direction from the block's own characters).
+  ['components/ws/turn.tsx', 'data-turn-text="user"', 'a message the user typed'],
+  ['components/ws/turn.tsx', '<Answer', "the assistant's reply, which answers in the user's language"],
   ['routes/dashboard.tsx', 'project-card-name', 'a project name on the dashboard'],
   ['components/editable-title.tsx', 'gx-title-edit', 'the project name in the workspace topbar'],
   ['components/editable-title.tsx', 'gx-title-input', 'the project name while it is being renamed'],

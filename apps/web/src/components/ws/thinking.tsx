@@ -16,9 +16,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { AgentStatus } from '../../lib/use-project-socket';
 import { doneSummary, livePhrase } from '../../lib/live-status';
 import type { ActivityRun } from './activity-model';
+// AI Elements' Shimmer: the moving words are upstream's motion gradient, styled by its Tailwind classes.
 import { Shimmer } from '../ai-elements/shimmer';
-// The Shimmer's own styles live beside the vendored Reasoning, which this surface no longer mounts.
-import '../ai-elements/reasoning.css';
 import './thinking.css';
 
 /** How long a phrase stays before the next may replace it, so fast steps read instead of flicker. */

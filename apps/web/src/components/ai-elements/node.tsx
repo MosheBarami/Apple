@@ -1,55 +1,71 @@
-// AI Elements `node`, re-implemented for this app.
-//
-// Upstream (vercel/ai-elements, Apache-2.0, see ./NOTICE) is a React Flow node drawn as a small
-// card — header, title, description, content, footer — with connection handles on its sides.
-// Export names follow upstream; the code is written here. A node here is a real <button> placed on
-// the Canvas, so it is in the tab order, says whether it is the selected one, and is chosen with
-// Enter or Space like any other button. The handles are drawn, not draggable: nobody edits the
-// plan's lines by hand.
-//
-// Where it is used: one per milestone on the roadmap's Map view (components/roadmap/dependency-map.tsx).
-import type { HTMLAttributes, ReactNode } from 'react';
-import { cn } from './lib/utils';
-import './node.css';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { Handle, Position } from "@xyflow/react";
+import type { ComponentProps } from "react";
 
-export interface NodeProps {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  selected?: boolean;
-  /** Dims the node when something else is selected and this one is not connected to it. */
-  faded?: boolean;
-  /** A state word for styling: e.g. landed, ready, waiting. */
-  tone?: string;
-  /** Which sides draw a handle. */
-  handles?: { target?: boolean; source?: boolean };
-  onSelect: () => void;
-  label?: string;
-  children: ReactNode;
-}
+export type NodeProps = ComponentProps<typeof Card> & {
+  handles: {
+    target: boolean;
+    source: boolean;
+  };
+};
 
-export const Node = ({ x, y, width, height, selected, faded, tone, handles, onSelect, label, children }: NodeProps) => (
-  <button
-    type="button"
-    className={cn('ai-node', tone && `ai-node--${tone}`, selected && 'is-selected', faded && 'is-faded')}
-    style={{ left: x, top: y, width, height }}
-    aria-pressed={selected}
-    aria-label={label}
-    onClick={onSelect}
+export const Node = ({ handles, className, ...props }: NodeProps) => (
+  <Card
+    className={cn(
+      "node-container relative size-full h-auto w-sm gap-0 rounded-md p-0",
+      className
+    )}
+    {...props}
   >
-    {handles?.target && <span className="ai-node__handle ai-node__handle--target" aria-hidden="true" />}
-    {children}
-    {handles?.source && <span className="ai-node__handle ai-node__handle--source" aria-hidden="true" />}
-  </button>
+    {handles.target && <Handle position={Position.Left} type="target" />}
+    {handles.source && <Handle position={Position.Right} type="source" />}
+    {props.children}
+  </Card>
 );
 
-export const NodeHeader = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn('ai-node__header', className)} {...props} />
+export type NodeHeaderProps = ComponentProps<typeof CardHeader>;
+
+export const NodeHeader = ({ className, ...props }: NodeHeaderProps) => (
+  <CardHeader
+    className={cn("gap-0.5 rounded-t-md border-b bg-secondary p-3!", className)}
+    {...props}
+  />
 );
-export const NodeTitle = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn('ai-node__title', className)} {...props} />
+
+export type NodeTitleProps = ComponentProps<typeof CardTitle>;
+
+export const NodeTitle = (props: NodeTitleProps) => <CardTitle {...props} />;
+
+export type NodeDescriptionProps = ComponentProps<typeof CardDescription>;
+
+export const NodeDescription = (props: NodeDescriptionProps) => (
+  <CardDescription {...props} />
 );
-export const NodeDescription = ({ className, ...props }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn('ai-node__desc', className)} {...props} />
+
+export type NodeActionProps = ComponentProps<typeof CardAction>;
+
+export const NodeAction = (props: NodeActionProps) => <CardAction {...props} />;
+
+export type NodeContentProps = ComponentProps<typeof CardContent>;
+
+export const NodeContent = ({ className, ...props }: NodeContentProps) => (
+  <CardContent className={cn("p-3", className)} {...props} />
+);
+
+export type NodeFooterProps = ComponentProps<typeof CardFooter>;
+
+export const NodeFooter = ({ className, ...props }: NodeFooterProps) => (
+  <CardFooter
+    className={cn("rounded-b-md border-t bg-secondary p-3!", className)}
+    {...props}
+  />
 );

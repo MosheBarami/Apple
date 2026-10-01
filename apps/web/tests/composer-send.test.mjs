@@ -122,28 +122,36 @@ test('bare Enter is NOT in the global shortcut map', () => {
 
 // ------------------------------------------------- the composer actually uses it ---
 
-test('the send key is the person’s binding, matched by the SHARED matcher inside the vendored textarea', () => {
+test('the send key is the person’s binding, matched by the SHARED matcher before the textarea can send', () => {
   // This is the regression. A hand-matched chord in one component is exactly what lib/shortcuts.ts
   // exists to prevent, and it survived here, in the most-used control in the product.
   //
-  // RESTATED 2026-09-22 when the composer moved onto AI Elements' PromptInput. The key handling now
-  // lives in the vendored PromptInputTextarea, whose upstream original hand-matches
-  // `e.key === "Enter"`. The property is unchanged and is held in both places: the composer hands
-  // the textarea the binding it resolved from the preference, and the textarea matches THAT binding
-  // with `matchesShortcut` — no Enter is hand-matched anywhere in it.
+  // RESTATED 2026-10-01 when the composer moved onto the GENUINE PromptInputTextarea, which
+  // hand-matches a bare Enter to send. The property is unchanged — what sends is the person's binding,
+  // matched with `matchesShortcut` — and is held by the order of two handlers:
+  //   * upstream's textarea runs the caller's onKeyDown first and does nothing for a key it claimed;
+  //   * the composer claims EVERY Enter (preventDefault), sends only on `matchesShortcut`, and writes
+  //     the new line itself otherwise — so upstream's own Enter test never decides a send.
   const code = stripComments(COMPOSER);
   const tag = code.slice(code.indexOf('<PromptInputTextarea'), code.indexOf('/>', code.indexOf('<PromptInputTextarea')));
   assert.ok(tag.length > 20, 'the composer no longer renders PromptInputTextarea');
-  assert.match(tag, /\bsubmitBinding=\{sendKeyBinding\}/, 'the composer must hand the textarea the resolved binding');
+  assert.match(tag, /\bonKeyDown=\{onKeyDown\}/, 'the composer\'s handler must be the textarea\'s');
   const input = stripComments(PROMPT_INPUT);
-  assert.match(input, /matchesShortcut\(e, submitBinding\)/, 'the vendored textarea must match the binding it was given');
-  assert.match(input, /submitBinding = ENTER_SEND/, 'the default binding is the named bare-Enter record, not an inline key test');
-  assert.equal(/\.key === ["']Enter["']/.test(input), false, 'the vendored textarea must not hand-match Enter');
+  const keydown = input.slice(input.indexOf('const handleKeyDown'), input.indexOf('const handlePaste'));
+  assert.ok(keydown.indexOf('onKeyDown?.(e);') < keydown.indexOf('if (e.defaultPrevented) {'), 'upstream runs the caller first');
+  assert.ok(keydown.indexOf('if (e.defaultPrevented) {') < keydown.indexOf('requestSubmit()'), 'and yields before it sends');
+
+  const handler = code.slice(code.indexOf('const onKeyDown'), code.indexOf('const selectionLabel'));
+  const claim = handler.indexOf("if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;\n    e.preventDefault();");
+  assert.ok(claim !== -1, 'every Enter outside IME composition must be claimed before upstream sees it');
+  const sendAt = handler.indexOf('if (matchesShortcut(e, sendKeyBinding)) {');
+  assert.ok(sendAt > claim, 'the send is decided by the shared matcher, on the person\'s binding');
+  assert.match(handler.slice(sendAt), /requestSubmit\(\)/);
+  assert.match(code, /const sendKeyBinding = sendBinding\(prefs\.sendKey\)/);
 
   // THE BAN IS ON HAND-MATCHING THE SEND, not on the word Enter. The @-mention picker claims
-  // Enter for itself while it is open — that is a different key doing a different job, and it is
-  // guarded by `mentionHits.length` so it can only fire when a list is on screen. So the branch is
-  // cut out (by balancing its braces) and the ban is applied to everything else in the composer.
+  // Enter for itself while it is open — guarded by `mentionHits.length`. Outside that branch the
+  // composer never tests `e.key === 'Enter'` to send.
   const guard = code.indexOf('if (mentionHits.length) {');
   assert.ok(guard !== -1, 'the mention branch must stay guarded, or it claims Enter with no list open');
   let depth = 0;
@@ -155,11 +163,7 @@ test('the send key is the person’s binding, matched by the SHARED matcher insi
   assert.ok(end > guard, 'the mention branch could not be bounded');
   const withoutPicker = code.slice(0, guard) + code.slice(end);
   assert.match(code.slice(guard, end), /e\.key === 'Enter'/, 'the cut must actually contain the picker’s own Enter, or it cut the wrong block');
-  assert.equal(
-    /e\.key === 'Enter'/.test(withoutPicker),
-    false,
-    'the composer must not hand-match Enter to send — that is how the help and the behaviour diverged',
-  );
+  assert.equal(/e\.key === 'Enter'/.test(withoutPicker), false, 'the composer must not hand-match Enter to send');
 });
 
 test('the binding comes from the stored preference, not from a constant in the component', () => {
@@ -210,20 +214,22 @@ test('a refused send returns before the box or the draft is cleared', () => {
   assert.ok(guard < submit.indexOf('clearDraft(draftKey)'), 'the guard must precede clearing the draft');
 });
 
-test('and the vendored PromptInput keeps everything when the send is refused', () => {
-  // Upstream clears the form and its attachments unless onSubmit THROWS. A `false` result must be
-  // a refusal too, and the form reset — which upstream ran before the result was known — must only
-  // follow an accepted one.
+test('and the genuine PromptInput keeps everything when the send is refused', () => {
+  // RESTATED 2026-10-01. Upstream's handleSubmit (genuine, unmodified) resets the form only when it
+  // holds its own state, and clears text and files only when onSubmit returns without throwing — "don't
+  // clear on error, the user may want to retry". So the composer holds the state in
+  // PromptInputProvider (no form reset at all) and its onSubmit THROWS on a refusal.
   const input = stripComments(PROMPT_INPUT);
   const submit = input.slice(input.indexOf('const handleSubmit'), input.indexOf('// Render with or without local provider'));
   assert.ok(submit.length > 200, 'handleSubmit was not found');
-  const accept = submit.slice(submit.indexOf('const accept = () => {'), submit.indexOf('try {'));
-  assert.match(accept, /form\.reset\(\)/, 'the reset belongs to the accepted path');
-  assert.equal((submit.match(/form\.reset\(\)/g) ?? []).length, 1, 'no reset may run outside the accepted path');
-  assert.match(submit, /\(await result\) !== false\) \{\s*accept\(\);/, 'an async false must not clear');
-  assert.match(submit, /else if \(result !== false\) \{[\s\S]*?accept\(\);/, 'a sync false must not clear');
-  // And the composer really is that onSubmit.
-  assert.match(stripComments(COMPOSER), /onSubmit=\{\(\) => submit\(\)\}/);
+  assert.match(submit, /if \(!usingProvider\) \{\s*form\.reset\(\);\s*\}/, 'the reset is only for a PromptInput without a provider');
+  assert.match(submit, /const result = onSubmit\(/);
+  assert.ok(submit.indexOf('const result = onSubmit(') < submit.lastIndexOf('clear();'), 'clearing follows a returned onSubmit');
+  // (Comments are stripped: the catch blocks are empty, which is what "keep everything" is.)
+  assert.ok((submit.match(/catch \{\s*\}/g) ?? []).length >= 1, 'a throw keeps everything');
+  const code = stripComments(COMPOSER);
+  assert.match(code, /<PromptInputProvider>[\s\S]*<PromptInput\b/, 'the composer\'s PromptInput holds its state in a provider');
+  assert.match(code, /onSubmit=\{\(\) => \{\s*if \(!submit\(\)\) throw new Error\('send refused'\);\s*\}\}/, 'a refused send throws');
 });
 
 test('the workspace returns false when the socket refused the message', () => {

@@ -55,11 +55,25 @@ for (const m of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
 // A global resting reset is a valid background contract for every button. It
 // prevents browser buttonface from leaking through when a semantic variant is
 // intentionally transparent.
-const globalButtonReset = /(?:^|})\s*button\s*\{([^{}]*)\}/.exec(css);
+//[[ RESTATED 2026-10-01. The base rule now reads `button:where(:not(.aie, .aie *, [data-slot], …))`:
+//   the app's bare-button look stops at the AI Elements surfaces (styles/ai-elements.css), and inside
+//   them Tailwind's preflight — scoped to the same selector — gives every button its resting
+//   background instead. Both halves are checked, so no button anywhere falls through to buttonface. ]]
+const globalButtonReset = /(?:^|})\s*button(?::where\(:not\([^{]*\)\))?\s*\{([^{}]*)\}/.exec(css);
+const SCOPE = ':where(.aie, .aie *, [data-slot], [data-slot] *)';
 
 test('the global button reset is visible to the source parser', () => {
   assert.ok(globalButtonReset, 'the stylesheet has no base button rule');
   assert.match(globalButtonReset[1], /background(?:-color)?\s*:/);
+  // The scope it stops at is exactly the scope the AI Elements preflight covers.
+  const scoped = /(?:^|})\s*button(:where\(:not\(([^{]*)\)\))\s*\{/.exec(css);
+  assert.ok(scoped, 'the base button rule is no longer scoped away from the AI Elements surfaces');
+  assert.equal(`:where(${scoped[2]})`, SCOPE);
+  const preflight = readFileSync(join(WEB, 'src', 'styles', 'ai-elements.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  const escape = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const inside = new RegExp(`${escape(`${SCOPE}:where(button, input, select, optgroup, textarea)`)}[^{]*\\{([^}]*)\\}`).exec(preflight);
+  assert.ok(inside, 'the AI Elements preflight has no button reset');
+  assert.match(inside[1], /background-color:\s*transparent/);
 });
 
 const buttons = [];
