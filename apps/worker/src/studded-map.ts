@@ -44,6 +44,17 @@ type V3 = [number, number, number];
 
 const SIDES = ['Top', 'Front', 'Back', 'Left', 'Right'];
 
+/** An invisible marker on a plot's hub side, turned to face the hub. Pure. */
+function plotSpawn([px, pz]: P2, [hx, hz]: P2, plotHalf: number): InstanceSpecLite {
+  const len = Math.hypot(hx - px, hz - pz) || 1;
+  const [ux, uz] = [(hx - px) / len, (hz - pz) / len];
+  const at: [number, number, number] = [Math.round((px + ux * (plotHalf - 2)) * 10) / 10, 1.5, Math.round((pz + uz * (plotHalf - 2)) * 10) / 10];
+  return { className: 'Part', name: 'Spawn', props: {
+    Size: [2, 1, 2], Position: at, Orientation: [0, Math.round(Math.atan2(-ux, -uz) * 1800 / Math.PI) / 10, 0], Anchored: true,
+    Transparency: 1, CanCollide: false, CanQuery: false, CanTouch: false,
+  } };
+}
+
 /** A sign: a post and a board with big white outlined words on both faces. `label` names the TextLabel (OwnerName on plots). */
 export function sign(name: string, at: P2, facing: 'x' | 'z', text: string, colour: string, label = 'Words'): InstanceSpecLite {
   const board: V3 = facing === 'z' ? [9, 3.6, 0.8] : [0.8, 3.6, 9];
@@ -158,6 +169,10 @@ export function studdedMap(input: MapInput, pal: StudPalette = STUD_PALETTE): In
         brick('Frame', [plotHalf * 2 + 2, 0.8, plotHalf * 2 + 2], [px, 0.4, pz], pal.frame, { faces: SIDES }),
         ...plotTilesOf([px, pz]).map(([tx, tz], i) => brick(`Tile${i + 1}`, [input.tile - 0.6, 1, input.tile - 0.6], [tx, 0.7, tz], i % 2 === 0 ? pal.soil : pal.soilDark, { attributes: { AppleTags: 'AppleTile' } })),
         sign('Sign', signAt, signFacing, input.words.plot ?? 'Free plot', pal.frame, 'OwnerName'),
+        // Where its owner appears (AppleShop sends a player to their plot's Spawn): on the hub side, facing the hub, so
+        // a player starts on their own base with the hub in view (live 2026-10-01: everyone spawned on the hub and no
+        // one could tell which plot was theirs).
+        ...(hub ? [plotSpawn([px, pz], hub.center, plotHalf)] : []),
       ],
     };
   }) });

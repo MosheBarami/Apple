@@ -149,3 +149,31 @@ test('a run that ends early after building a game ends on how to play it, and on
   assert.match(session, /if \(typeof said === 'string' && said\.trim\(\)\) agent\.composedForUser = said\.trim\(\)/);
   assert.match(session, /agent\.lastCheckProblem = /);
 });
+
+// Live play, 2026-10-01 (test 1 rerun): "+0/s" with a machine earning, Rebirth did nothing, the SHOP pad did nothing,
+// a SELL stand in a game that sells nothing, and every player spawned on the hub with no idea which plot was theirs.
+test('the simulator screen is driven, the pads open panels, and each player starts on their own plot', () => {
+  const recipe = P.plotSimRecipe(OWNER, 12345, { hero: 'ASMRKeyboard', library: LIB, hubProps: [], hasComponents: true });
+  const steps = P.plotSimSteps(recipe);
+  const client = steps.find((s) => s.kind === 'script' && s.name === 'AppleMachinesClient');
+  assert.ok(client, 'the machines client is installed');
+  assert.equal(client.className, 'LocalScript');
+  assert.match(client.source, /GetAttributeChangedSignal\("IncomePerSecond"\)/, '+N/s follows what the machines pay');
+  assert.match(client.source, /remote:InvokeServer\(\)/, 'Confirm rebirths');
+  assert.match(client.source, /ShopPad = "ShopPanel", SellPad = "RebirthPanel"/, 'the pads open their panels');
+  const map = JSON.stringify(steps.find((s) => s.kind === 'create' && s.parent === 'game.Workspace'));
+  assert.ok(map.includes('"REBIRTH"') && !map.includes('"SELL"'), 'the second pad says REBIRTH');
+  const plots = steps.find((s) => s.kind === 'create' && s.parent === 'game.Workspace').items[0].children.find((c) => c.name === 'Plots').children;
+  assert.equal(plots.length, 4);
+  for (const p of plots) {
+    const spawn = p.children.find((c) => c.name === 'Spawn');
+    assert.ok(spawn, `${p.name} has no spawn`);
+    assert.equal(spawn.props.Transparency, 1);
+    assert.equal(spawn.props.CanCollide, false);
+    const frame = p.children.find((c) => c.name === 'Frame');
+    const half = frame.props.Size[0] / 2;
+    assert.ok(Math.abs(spawn.props.Position[0] - frame.props.Position[0]) < half && Math.abs(spawn.props.Position[2] - frame.props.Position[2]) < half, 'the spawn is on its plot');
+  }
+  const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
+  assert.doesNotMatch(tool, /libraryModels\(ctx, 'sell'/, 'no sell stand is imported');
+});

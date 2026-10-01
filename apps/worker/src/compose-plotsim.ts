@@ -134,7 +134,7 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
   // 3. The hub map: plots in a ring, spoke roads, the shop and sell pads (studded-map.ts hub mode).
   const mapItems = studdedMap({
     layout, tile: TILE, plotTiles: (c) => plotTiles(c, layout.plotTiles), plotHalf: (TILE * (layout.plotTiles ?? 3)) / 2, laneWidth: LANE_WIDTH,
-    seed: rng(recipe.seed ^ 0x51ed), words: { plot: 'Plot', shop: 'SHOP', sell: 'SELL' },
+    seed: rng(recipe.seed ^ 0x51ed), words: { plot: 'Plot', shop: 'SHOP', sell: 'REBIRTH' }, // a plot simulator sells nothing: the second pad opens Rebirth (AppleMachinesClient)
   }, STUD_PALETTE);
   steps.push({ kind: 'create', parent: 'game.Workspace', items: [{ className: 'Folder', name: 'AppleMap', children: [...mapItems, { className: 'Folder', name: 'Props' }] }] });
   steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });

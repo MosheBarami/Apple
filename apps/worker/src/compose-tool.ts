@@ -129,22 +129,22 @@ async function composePlotSim(ctx: AgentCtx, idea: string) {
   const draft = plotSimRecipe(idea, ideaSeed(idea), { ...place, library: [], hubProps: [], hasComponents: place.hasComponents });
   // Library first (owner, 2026-10-01: "if you find assets it's better than generating one from parts"): up to four
   // other models of the subject, the hub's stands, and scenery for the island.
-  const [library, sell, shop, trees, rocks, stage] = await Promise.all([
+  const [library, shop, trees, rocks, stage] = await Promise.all([
     libraryModels(ctx, draft.subject, place.hero ? 4 : 6),
-    libraryModels(ctx, 'sell', 1, 5),
     libraryModels(ctx, 'shop', 1, 5),
-    libraryModels(ctx, 'tree', 1, 5),
+    libraryModels(ctx, 'tree', 2, 5),
     libraryModels(ctx, 'rock', 1, 2),
     place.hero ? ctx.execStudioOp({ op: 'get_instance', path: `game.Workspace.${place.hero}Stage.Stage` }, 20_000).catch(() => null) : Promise.resolve(null),
   ]);
   const stageSize = stage?.ok ? triple((stage.data as { props?: Record<string, unknown> }).props?.Size) : null;
   const hubProps: PlotSimRecipe['hubProps'] = [
-    ...(sell[0] ? [{ key: 'HubSell', ref: sell[0], at: 'sell' as const, height: 10 }] : []),
+    // No sell stand: a plot simulator sells nothing, and a SELL stand that does nothing is a fake (owner's critique).
     ...(shop[0] ? [{ key: 'HubShop', ref: shop[0], at: 'shop' as const, height: 12 }] : []),
   ];
   const recipe = plotSimRecipe(idea, ideaSeed(idea), { ...place, library, hubProps, hasComponents: place.hasComponents });
   recipe.decor = [
-    ...(trees[0] ? [{ key: 'DecorTree', ref: trees[0], height: 18, count: 16 }] : []),
+    // Two kinds of tree when the library has them: sixteen copies of one tree read as copies.
+    ...trees.map((ref, k) => ({ key: k ? `DecorTree${k + 1}` : 'DecorTree', ref, height: 18, count: trees.length > 1 ? 8 : 16 })),
     ...(rocks[0] ? [{ key: 'DecorRock', ref: rocks[0], height: 5, count: 10 }] : []),
   ];
   if (stageSize) recipe.heroSize = [stageSize[0], stageSize[2]];
