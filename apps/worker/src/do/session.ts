@@ -4049,6 +4049,17 @@ export class SessionDO extends DurableObject<Env> {
     const stepMessages = sequenceStep?.state === 'next'
       ? sequenceStepMessages(agent.llm, sequenceStep.tool)
       : agent.llm;
+    // LIVE REASONING: the step streams, and the model's reasoning reaches the browser as it is written, in small
+    // batches (every ~150 ms) so a long think is a steady stream rather than a frame per token.
+    let streamedReasoning = false;
+    let pending = '';
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const flushReasoning = () => {
+      flushTimer = null;
+      if (!pending) return;
+      this.broadcast({ type: 'reasoning_delta', msgId: agent.msgId, step: agent.step, text: pending });
+      pending = '';
+    };
     const raced = await this.untilStopped(llmChat(
       this.env,
       {
@@ -4076,6 +4087,11 @@ export class SessionDO extends DurableObject<Env> {
         actorId: agent.initiatedBy ?? agent.userId,
         ...(this.boundProjectId ? { projectId: this.boundProjectId } : {}),
         runId: agent.msgId,
+        onReasoning: (delta: string) => {
+          streamedReasoning = true;
+          pending += delta;
+          flushTimer ??= setTimeout(flushReasoning, 150);
+        },
       },
     ).catch((e: unknown) => {
       // THE BOUNDARY THE RESUME IS ALLOWED TO REACH. Everything above this line is idempotent —
@@ -4097,7 +4113,8 @@ export class SessionDO extends DurableObject<Env> {
     // THE MODEL'S OWN REASONING, as the provider returned it (D-REASONING-2: plain text, never the prompt, never fed
     // back). Sent per step in pieces, in order, for the web app's AI Elements Reasoning block. The gateway call is not
     // streamed yet, so a step's reasoning arrives when the step's answer does.
-    if (typeof res.reasoning === 'string' && res.reasoning.trim()) {
+    if (flushTimer) { clearTimeout(flushTimer); flushReasoning(); }
+    if (!streamedReasoning && typeof res.reasoning === 'string' && res.reasoning.trim()) {
       const text = res.reasoning.trim();
       for (let i = 0; i < text.length; i += 400) {
         this.broadcast({ type: 'reasoning_delta', msgId: agent.msgId, step: agent.step, text: text.slice(i, i + 400) });

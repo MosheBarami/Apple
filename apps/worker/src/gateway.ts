@@ -12,6 +12,7 @@
 // adapter owns one provider's wire format. Every model key resolves to the Workers AI adapter,
 // and every call is `env.AI.run(id, payload, gatewayOpts(...))`. The product has one customer
 // engine, Apple (GLM 5.3 Flash, V3 gate G01), under the `plan` and `agent` keys below.
+import { collectStream } from './stream-collect';
 import type { Env } from './env';
 import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@golem/shared';
 import { isCompleteToolCall } from './tool-call-integrity';
@@ -259,6 +260,11 @@ function parsePromptedToolCalls(text: string): { calls: GatewayToolCall[]; clean
 export interface ChatOptions {
   /** what this call is for, used for spend attribution in the admin report */
   kind?: string;
+  /**
+   * Live reasoning: the call is streamed and every reasoning delta is handed here as it arrives (stream-collect.ts).
+   * The returned response is the same as without it.
+   */
+  onReasoning?: (delta: string) => void;
   /** seconds; 0 disables caching for this call */
   cacheTtl?: number;
   /**
@@ -418,7 +424,12 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     for (let attempt = 0; attempt <= MAX_RATE_LIMIT_WAITS; attempt++) {
       const started = Date.now();
       try {
-        raw = await adapter.invoke(env, encoded.payload, invokeCtx);
+        if (opts.onReasoning && adapter.id === 'workers-ai' && encoded.payload && typeof encoded.payload === 'object') {
+          const streamed = await adapter.invoke(env, { ...(encoded.payload as Record<string, unknown>), stream: true, stream_options: { include_usage: true } }, invokeCtx);
+          raw = streamed instanceof ReadableStream ? await collectStream(streamed as ReadableStream<Uint8Array>, opts.onReasoning) : streamed;
+        } else {
+          raw = await adapter.invoke(env, encoded.payload, invokeCtx);
+        }
         lastErr = null;
         lastLatencyMs = Date.now() - started;
         recordProviderCall(adapter.id, { model: cfg.id, latencyMs: lastLatencyMs, ok: true });
