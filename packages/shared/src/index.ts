@@ -47,6 +47,9 @@ export type BulkAdjustOp = 'add' | 'mul';
 
 export interface SurfaceMaps { colorMap: string; normalMap: string; studsPerTile: number }
 
+/** One source a run used, shown with AI Elements' Sources and cited inline as [n]. */
+export interface RunSource { title: string; url: string; kind: 'docs' | 'creator_store' | 'library' | 'web'; note?: string }
+
 export type StudioOp =
   | { op: 'ping' }
   | { op: 'get_tree'; root?: string; maxDepth?: number; maxNodes?: number }
@@ -1367,6 +1370,14 @@ export type ServerMsg =
   //   describing a worker that may not be live yet. See web/src/lib/message-identity.ts. ]]
   | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: ProductMode; productModel?: ProductModel; userMsgId?: string }
   | { type: 'delta'; msgId: string; text: string }
+  /**
+   * The model's own reasoning as the provider returns it (D-REASONING-2: plain text, never the prompt), streamed while
+   * a step runs. `step` groups it: a new step starts a new reasoning block. The web app shows it in AI Elements'
+   * Reasoning (open while it streams, collapsed with its duration when the step ends).
+   */
+  | { type: 'reasoning_delta'; msgId: string; step: number; text: string }
+  /** Where an answer's facts came from: Roblox Creator Docs pages, Creator Store / library items, other links. */
+  | { type: 'sources'; msgId: string; sources: RunSource[] }
   //[[ `target` is WHICH THING this step is about — the script path, the instance paths, the URL —
   //   read from the call's arguments BEFORE it runs. `summary` at this point is only the tool's
   //   name; the sentence that names the resource used to arrive with `tool_end`, after the write.
