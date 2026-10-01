@@ -102,7 +102,7 @@ export function colourHex(raw: unknown): string | undefined {
 export interface Move { as: string; on: string; hinge?: string; amount?: number; sound?: string; prompt?: string }
 export interface ObjectPart {
   name: string; shape: string; size: V3; at: V3; rot?: V3; color: string; transparency?: number;
-  text?: { value: string; face: string; color: string; font?: string; glow?: boolean }; move?: Move; key?: string;
+  text?: { value: string; face: string; color: string; font?: string; glow?: boolean; inked?: boolean }; move?: Move; key?: string;
   /** Neon for a glow (a keyboard's underglow); everything else is Plastic. */
   material?: 'Neon';
   /** Made by the rows layout itself (its case and glow), not by the model. */
@@ -657,6 +657,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
       // a label standing on a butter's side reads from the spawn, not from the sky.
       value: String(value).slice(0, 24), face: typeof (textIn as Record<string, unknown>)?.face === 'string' ? String((textIn as Record<string, unknown>).face) : thinFace(size),
       color: HEX.test(String((textIn as Record<string, unknown>)?.color ?? '')) ? String((textIn as Record<string, unknown>).color) : '#ffffff',
+      ...(HEX.test(String((textIn as Record<string, unknown>)?.color ?? '')) ? { inked: true } : {}),
       ...(/^[A-Za-z]{3,30}$/.test(String((textIn as Record<string, unknown>)?.font ?? '')) ? { font: String((textIn as Record<string, unknown>).font) } : {}),
       ...((textIn as Record<string, unknown>)?.glow === true ? { glow: true } : {}),
     };
@@ -719,6 +720,9 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   if (!board) faceAcross(parts);
   const unburied = board ? [] : unbury(parts);
   if (!board) readableText(parts);
+  // Words with no colour of their own stand out from what they are printed on (round 9: white "BUTTER" on pale yellow):
+  // dark ink on a light part. A keyboard's legends keep their theme's colours.
+  if (!board) for (const p of parts) if (p.text && !p.text.inked && !isDark(p.color)) p.text = { ...p.text, color: '#2b2118' };
   const moves = board ? undefined : giveMotion(parts);
   // Ground it: the lowest point of the object sits on the stage.
   const bottom = Math.min(...parts.map((p) => p.at[1] - p.size[1] / 2));

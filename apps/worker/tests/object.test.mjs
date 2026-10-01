@@ -753,3 +753,15 @@ test('an object run answers with what was built, once the play check passed', ()
   const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
   assert.match(tool, /plan\.parts\.some\(\(p\) => p\.key\) \? \{\} : \{ forUser: objectForUser\(plan\) \}/, 'keyboards keep their own answer');
 });
+
+test('words with no colour of their own are dark ink on a light part; a colour given is kept (round 9)', () => {
+  const plan = O.expandObject({ name: 'StickOfButter', parts: [
+    { name: 'Butter', size: [30, 6, 8], at: [0, 3, 0], color: '#ffe066', text: 'BUTTER' },
+    { name: 'Sign', size: [6, 3, 1], at: [0, 7.5, 0], color: '#ffffff', text: { value: 'HI', color: '#ff0000' } },
+    { name: 'Plate', size: [30, 1, 8], at: [0, 0.5, 8], color: '#222222', text: 'YUM' },
+  ] });
+  const by = Object.fromEntries(plan.parts.map((p) => [p.name, p]));
+  assert.equal(by.Butter.text.color, '#2b2118');
+  assert.equal(by.Sign.text.color, '#ff0000', 'the model chose red');
+  assert.equal(by.Plate.text.color, '#ffffff', 'white on a dark part');
+});
