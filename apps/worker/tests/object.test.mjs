@@ -524,3 +524,15 @@ test('a space-bar row without modifiers becomes the real bottom row, its other k
   assert.equal(rows[rows.length - 2].at(-1), 'Enter', 'Enter joins the row above');
   assert.deepEqual(O.completeKeyboard([['Q'], ['Ctrl', 'Alt', 'Space', 'Alt']]).at(-1), ['Ctrl', 'Alt', 'Space', 'Alt'], 'a row with its modifiers is left alone');
 });
+
+// Test 2 round 1 (2026-10-01): a yellow stick of butter on the gamer keyboard's dark slate stage.
+test('only a keyboard wears its theme; another object stands on a stage that contrasts with it', () => {
+  assert.equal(O.contrastStage('#ffe680'), '#4f8cff', 'butter on blue');
+  assert.equal(O.contrastStage('#4fa3ff'), '#ffd23f', 'a blue thing on gold');
+  assert.equal(O.contrastStage('#ffffff'), '#4f8cff', 'white on blue');
+  assert.equal(O.mainColour([{ color: '#ffe680', size: [12, 6, 6] }, { color: '#ffffff', size: [12, 0.5, 6] }]), '#ffe680');
+  const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
+  assert.match(tool, /isBoard && plan\.theme === 'rgb' \? '#3a3d46'/);
+  const anim = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'animate', 'AppleAnimate.luau'), 'utf8');
+  assert.ok(!/MaxActivationDistance = clip\.reach or (32|40)\b/.test(anim), 'clicks reach from the spawn');
+});

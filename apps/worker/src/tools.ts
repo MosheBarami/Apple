@@ -4959,7 +4959,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   build_object: {
     def: {
       name: 'build_object',
-      description: "Build the ONE thing asked for in one call (no desk, monitor or room unless asked): every piece its own part, bright colours, motions with sounds. Keyboards, keypads, pianos: ONE part with rows (laid out for you). Studs, stage, rig, lighting and a counter screen are added.",
+      description: "Build the ONE thing asked for in one call (no desk, monitor or room unless asked): every piece its own part, bright colours, motions with sounds. Make it RECOGNISABLE at a glance: its real proportions (a stick of butter is about 4 long : 1 : 1, a donut a flat ring) and the 2-3 details that say what it is (butter: a pale-yellow block half out of a paper wrapper folded open, with a printed label on its side; a donut: icing on top with sprinkles). Size it 1.5-3 times a player's height (a player is 5 studs). Keyboards, keypads, pianos: ONE part with rows (laid out for you). Studs, stage, rig, lighting and a counter screen are added.",
       parameters: S({
         name: { type: 'string' },
         scale: { type: 'number', description: 'multiplies every size; 3-6 makes a toy-sized thing walkable' },

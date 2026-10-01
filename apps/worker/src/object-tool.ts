@@ -138,6 +138,22 @@ const KEY_WIDTH: [RegExp, number][] = [
 ];
 const PASTEL = ['#7be0ff', '#ff7bd1', '#ffe27a', '#9bff8a', '#b69bff'];
 
+/** The colour covering the most of an object (by part volume). Pure. */
+export function mainColour(parts: ObjectPart[]): string {
+  const by = new Map<string, number>();
+  for (const p of parts) by.set(p.color, (by.get(p.color) ?? 0) + p.size[0] * p.size[1] * p.size[2]);
+  return [...by.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '#ffffff';
+}
+
+/** A stage colour that stands apart from an object's main colour: blue under warm colours, gold under cool ones. Pure. */
+export function contrastStage(hex: string): string {
+  const n = parseInt(hex.slice(1), 16), [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  if (max - min < 30) return '#4f8cff';            // grey, white or black: a clear blue
+  const h = max === r ? ((g - b) / (max - min) + 6) % 6 : max === g ? (b - r) / (max - min) + 2 : (r - g) / (max - min) + 4;
+  return h < 2.2 || h > 5.2 ? '#4f8cff' : '#ffd23f'; // red, orange, yellow (and pink) stand on blue; green, cyan, blue on gold
+}
+
 /** A colour from hue, saturation and value (each 0..1) as "#rrggbb". Pure. */
 export function hsvHex(h: number, sat: number, val: number): string {
   const hh = ((h % 1) + 1) % 1 * 6, i = Math.floor(hh), f = hh - i;
@@ -701,7 +717,11 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   if (stageOn) {
     const pad = 6;
     // The stage wears the board's theme: a bright yellow slab under a dark gamer keyboard clashed (round 10).
-    const stageColor = HEX.test(String(a.stageColor ?? '')) ? String(a.stageColor) : plan.theme === 'rgb' ? '#3a3d46' : plan.theme === 'candy' ? '#6b3f22' : '#ffd23f';
+    // A keyboard's stage wears its theme; anything else gets a stage that stands apart from its own main colour (test 2:
+    // a yellow stick of butter sat on the gamer keyboard's dark slate, and a yellow stage would have hidden it).
+    const isBoard = plan.parts.some((p) => p.text && p.key && p.rides === undefined && plan.parts.some((q) => q.rides === p.name));
+    const stageColor = HEX.test(String(a.stageColor ?? '')) ? String(a.stageColor)
+      : isBoard && plan.theme === 'rgb' ? '#3a3d46' : isBoard && plan.theme === 'candy' ? '#6b3f22' : contrastStage(mainColour(plan.parts));
     items.push({ className: 'Model', name: `${plan.name}Stage`, children: [
       { className: 'Part', name: 'Stage', props: { Size: [width + pad * 2, stageH, depth + pad * 2], Position: [center[0], stageH / 2, center[2]], Anchored: true, Color: stageColor, Material: 'Plastic' } },
       { className: 'Part', name: 'Rim', props: { Size: [width + pad * 2 + 2, stageH * 0.5, depth + pad * 2 + 2], Position: [center[0], stageH * 0.25, center[2]], Anchored: true, Color: '#8e5b32', Material: 'Plastic' } },

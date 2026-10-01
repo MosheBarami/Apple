@@ -221,7 +221,8 @@ function AppleAnimate.start()
 				play(model, joints, rest, clip, how == "loop")
 			elseif how == "click" then
 				local cd = target:FindFirstChildWhichIsA("ClickDetector") or Instance.new("ClickDetector")
-				cd.MaxActivationDistance = clip.reach or 32
+				-- 120, not Roblox's 32: an object built in front of the spawn sits ~34 studs away (test 2, the butter, 2026-10-01).
+				cd.MaxActivationDistance = clip.reach or 120
 				cd.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
 				cd.MouseClick:Connect(function(player) play(model, joints, rest, clip, false, player) end)
 				if partName then stepOn(target, model, joints, rest, clip) end -- one part's own click clip: a key, a button
@@ -240,7 +241,7 @@ function AppleAnimate.start()
 				end
 				-- A key clip can also be clicked, so it works on a phone too.
 				local cd = target:FindFirstChildWhichIsA("ClickDetector") or Instance.new("ClickDetector")
-				cd.MaxActivationDistance = clip.reach or 40
+				cd.MaxActivationDistance = clip.reach or 120
 				cd.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
 				cd.MouseClick:Connect(function(player) play(model, joints, rest, clip, false, player) end)
 				stepOn(target, model, joints, rest, clip)
