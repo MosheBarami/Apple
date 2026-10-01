@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -28,15 +29,17 @@ const KEYBOARD = { name: 'AsmrKeyboard', scale: 4, parts: [
 test('the ASMR keyboard expands to a case and 37 labelled keys, each bound to its real key, scaled and grounded', () => {
   const plan = O.expandObject(KEYBOARD);
   assert.ok(!('error' in plan), JSON.stringify(plan));
-  assert.equal(plan.parts.length, 38);
+  // RESTATED 2026-10-01: each key is a keycap now, a top and the skirt that rides it (owner's reference keyboard).
+  assert.equal(plan.parts.length, 1 + 37 * 2);
   const keys = plan.parts.filter((p) => p.move);
   assert.equal(keys.length, 37);
-  assert.deepEqual(keys.find((p) => p.text?.value === 'Q').key, 'Q');
+  assert.equal(plan.parts.filter((p) => p.rides).length, 37, 'every key has its skirt');
+  assert.equal(keys.find((p) => p.key === 'Q').text.value, 'q', 'letters are printed lowercase, like the reference');
   assert.equal(keys.find((p) => p.text?.value === '1').key, 'One');
   assert.equal(plan.parts.find((p) => p.text?.value === 'SPACE').key, 'Space');
   // RESTATED 2026-10-01: a keyboard placed key by key is laid out again by code (relayKeyboard), so the case is the
   // tool's, not the spec's. The property: the spec's scale reaches the keys, and they sit on a case.
-  assert.equal(keys.find((p) => p.text?.value === 'Q').size[0], 1 * 4, 'scaled');
+  assert.equal(plan.parts.find((p) => p.rides === keys.find((k) => k.key === 'Q').name).size[0], 1 * 4, 'scaled');
   assert.ok(plan.parts.some((p) => /Case$/.test(p.name)), 'on a case');
   assert.ok(Math.abs(Math.min(...plan.parts.map((p) => p.at[1] - p.size[1] / 2))) < 1e-9, 'it stands on the ground');
   const names = new Set(plan.parts.map((p) => p.name));
@@ -45,7 +48,7 @@ test('the ASMR keyboard expands to a case and 37 labelled keys, each bound to it
 
 test('every key presses from its base on its own key, and the press comes back to rest', () => {
   const plan = O.expandObject(KEYBOARD);
-  const q = plan.parts.find((p) => p.text?.value === 'Q');
+  const q = plan.parts.find((p) => p.key === 'Q' && p.move);
   const clip = O.motionClip(q);
   assert.equal(clip.play, 'key');
   assert.equal(clip.key, 'Q');
@@ -132,19 +135,20 @@ test('a rows entry lays a keyboard out: no key overlaps another, every key answe
     move: { as: 'press', on: 'key', sound: 'keyboard click' },
   }] });
   assert.ok(!('error' in plan), plan.error);
-  const keys = plan.parts.filter((p) => p.name.startsWith('Key_'));
+  const keys = plan.parts.filter((p) => p.name.startsWith('Key_') && !p.rides);
   assert.equal(keys.length, 21);
   const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
   const pairs = keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`));
   assert.deepEqual(pairs, [], 'keys overlap');
-  const key = (label) => keys.find((p) => p.text.value === label);
+  const key = (label) => keys.find((p) => p.text.value.toLowerCase() === label.toLowerCase());
   assert.equal(key('BACK').key, 'Backspace'); assert.equal(key('ENTER').key, 'Return'); assert.equal(key('1').key, 'One');
   assert.equal(key('SPACE').key, 'Space'); assert.equal(key('Q').key, 'Q');
   assert.ok(key('SPACE').size[0] > key('Q').size[0] * 5, 'the space bar is a space bar');
   assert.ok(keys.every((p) => p.move?.as === 'press' && p.text?.value), 'every key presses and is labelled');
   const kase = plan.parts.find((p) => p.name === 'KeyCase');
   assert.ok(kase, 'no case');
-  assert.ok(keys.every((p) => Math.abs(p.at[1] - p.size[1] / 2 - (kase.at[1] + kase.size[1] / 2)) < 1e-6), 'keys sit on the case');
+  // RESTATED 2026-10-01: a key is a top on a skirt; the skirts sit on the case.
+  assert.ok(plan.parts.filter((p) => p.rides).every((p) => Math.abs(p.at[1] - p.size[1] / 2 - (kase.at[1] + kase.size[1] / 2)) < 1e-6), 'keys sit on the case');
   assert.ok(keys.every((p) => Math.abs(p.at[0]) + p.size[0] / 2 <= kase.size[0] / 2 + 1e-6), 'keys stay on the case');
   assert.ok(new Set(keys.map((p) => p.color)).size > 2, 'the keys are colourful');
 });
@@ -165,12 +169,12 @@ test('a keyboard placed key by key is laid out again by code; the screen wall an
   assert.ok(!('error' in plan), plan.error);
   const names = plan.parts.map((p) => p.name);
   for (const gone of ['KeyboardBase', 'CounterScreen']) assert.ok(!names.includes(gone), `${gone} is still there`);
-  const keys = plan.parts.filter((p) => p.name.startsWith('Key_'));
+  const keys = plan.parts.filter((p) => p.name.startsWith('Key_') && !p.rides);
   assert.equal(keys.length, 13);
   const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
   assert.deepEqual(keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`)), [], 'keys overlap');
   assert.equal(plan.parts.find((p) => p.text?.value === 'BACK').key, 'Backspace');
-  assert.equal(plan.parts.find((p) => p.text?.value === 'Q').move.sound, 'keyboard thock', 'a key keeps its sound');
+  assert.equal(plan.parts.find((p) => p.key === 'Q' && p.move).move.sound, 'keyboard thock', 'a key keeps its sound');
   assert.ok(plan.parts.some((p) => p.name === 'KeyCase'), 'the keys sit on a case');
   assert.ok(plan.footprint.top < 6, `the keyboard is ${plan.footprint.top} studs tall`);
 });
@@ -187,13 +191,13 @@ test('one rows entry per row is one keyboard; symbol keys and repeated names nev
     { name: 'Glow', size: [1, 1, 1], color: '#ffffff' }, { name: 'Glow', size: [1, 1, 1], at: [3, 0.5, 0], color: '#ffffff' },
   ] });
   assert.ok(!('error' in plan), plan.error);
-  const keys = plan.parts.filter((p) => p.name.startsWith('Key_'));
+  const keys = plan.parts.filter((p) => p.name.startsWith('Key_') && !p.rides);
   assert.equal(keys.length, 10);
   assert.equal(plan.parts.filter((p) => /Case$/.test(p.name)).length, 1, 'one keyboard, one case');
   assert.ok(keys.some((p) => p.name === 'Key_Minus' && p.key === 'Minus'));
   const overlap = (a, b) => [0, 2].every((i) => Math.abs(a.at[i] - b.at[i]) < (a.size[i] + b.size[i]) / 2 - 1e-6);
   assert.deepEqual(keys.flatMap((a, i) => keys.slice(i + 1).filter((b) => overlap(a, b)).map((b) => `${a.name}/${b.name}`)), []);
-  assert.ok(plan.parts.find((p) => p.text?.value === 'Q').at[2] > plan.parts.find((p) => p.text?.value === '1').at[2], 'rows stay front to back');
+  assert.ok(plan.parts.find((p) => p.key === 'Q' && p.move).at[2] > plan.parts.find((p) => p.text?.value === '1').at[2], 'rows stay front to back');
   assert.equal(new Set(plan.parts.map((p) => p.name)).size, plan.parts.length, 'every name is unique');
 });
 
@@ -215,7 +219,7 @@ test('with rows, the model\'s own plate and screen go and the tool\'s case stays
   assert.ok(!names.includes('KeyboardBase'), 'the model\'s plate stayed under the case');
   assert.ok(!names.includes('TapScreen'), 'the screen slab stayed');
   assert.ok(names.includes('KeyEscCase'), 'the tool\'s case went');
-  assert.equal(plan.parts.filter((p) => p.name.startsWith('Key_')).length, 13);
+  assert.equal(plan.parts.filter((p) => p.name.startsWith('Key_') && !p.rides).length, 13);
 });
 
 // Owner, 2026-10-01: the keys "sound like tiny bombs" — "mechanical keyboard" matched an explosion recording.
@@ -232,4 +236,36 @@ test('keyboard keys sound like real keys: short typing recordings, never an expl
 test('a rows keyboard is low enough to walk onto: case and key under half a key tall', () => {
   const plan = O.expandObject({ name: 'Kb', parts: [{ name: 'Key', rows: [['Q', 'W', 'E'], ['Space']], unit: 4, move: { as: 'press', on: 'click' } }] });
   assert.ok(plan.footprint.top <= 4 * 0.5, `the keyboard is ${plan.footprint.top} studs tall`);
+});
+
+test('rebuilding an object merges its screen: what was added to it since (upgrades) stays', () => {
+  const src = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
+  assert.match(src, /await writeScreen\(ctx, screen\)/);
+  assert.doesNotMatch(src, /delete_instances', paths: \[`game\.StarterGui\.\$\{plan\.name\}HUD`\]/, 'the object\'s screen is deleted and redrawn');
+});
+
+// Owner, 2026-10-01, with a reference picture: "the keyboard just dont look like this, it just a textured cube parts".
+test('a key is a real keycap: a lighter inset top with dark ink on a darker skirt, smooth, pressed as one', () => {
+  const plan = O.expandObject({ name: 'Kb', parts: [{ name: 'Key', rows: [['Q', 'W', 'E', 'R']], move: { as: 'press', on: 'key' } }] });
+  const top = plan.parts.find((p) => p.key === 'Q' && p.move);
+  const skirt = plan.parts.find((p) => p.rides === top.name);
+  assert.ok(skirt && !skirt.move && !skirt.text, 'a skirt under the top, carrying nothing of its own');
+  assert.ok(top.size[0] < skirt.size[0] && top.size[2] < skirt.size[2], 'the top is inset');
+  assert.ok(Math.abs(top.at[1] - top.size[1] / 2 - (skirt.at[1] + skirt.size[1] / 2)) < 1e-9, 'and sits on the skirt');
+  assert.ok(O.isDark(top.text.color) && !O.isDark(top.color), 'dark ink on a light top');
+  assert.ok(O.isDark(O.shade(skirt.color, 0)) === O.isDark(skirt.color));
+  const lum = (h) => { const n = parseInt(h.slice(1), 16); return ((n >> 16) & 255) + ((n >> 8) & 255) + (n & 255); };
+  assert.ok(lum(top.color) > lum(skirt.color), 'the top is lighter than the skirt');
+  assert.equal(top.surface, 'smooth'); assert.equal(skirt.surface, 'smooth');
+  const clip = O.withRiders(O.motionClip(top), top.name, [skirt.name]);
+  assert.deepEqual(clip.keys.map((k) => k[skirt.name]), clip.keys.map((k) => k[top.name]), 'the skirt moves with its top, pose for pose');
+});
+
+// Owner, 2026-10-01: the model asked for click-pressed keys and typing on the real keyboard stopped working.
+test('a keyboard key answers its real key whatever trigger the model asked for', () => {
+  const rows = O.expandObject({ name: 'Kb', parts: [{ name: 'Key', rows: [['Q', 'W', 'Space']], move: { as: 'press', on: 'click' } }] });
+  assert.deepEqual(rows.parts.filter((p) => p.move).map((p) => p.move.on), ['key', 'key', 'key']);
+  assert.equal(O.motionClip(rows.parts.find((p) => p.key === 'Q' && p.move)).play, 'key');
+  const kase = rows.parts.find((p) => /Case$/.test(p.name));
+  assert.ok(!O.isDark(kase.color), 'a light keyboard body, not a dark plane');
 });

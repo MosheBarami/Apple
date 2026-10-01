@@ -20,6 +20,7 @@ import { typed } from './compose-run';
 import { findSounds, soundAssetId } from './fx-library';
 import { applySurfaceOp, userWantsOwnSurface } from './surfaces';
 import { studdedScreen } from './stud-ui';
+import { writeScreen } from './studded-ui-tool';
 import { installAnimationPlayer } from './animate-tool';
 
 type V3 = [number, number, number];
@@ -102,6 +103,10 @@ export interface Move { as: string; on: string; hinge?: string; amount?: number;
 export interface ObjectPart {
   name: string; shape: string; size: V3; at: V3; rot?: V3; color: string; transparency?: number;
   text?: { value: string; face: string; color: string }; move?: Move; key?: string;
+  /** Moves with this other part (a keycap's skirt rides its cap): rigged with it, posed with it in its clip. */
+  rides?: string;
+  /** Smooth plastic instead of studs (a keycap, like the owner's reference keyboard). */
+  surface?: 'smooth';
 }
 export interface ObjectPlan { name: string; parts: ObjectPart[]; footprint: { x0: number; x1: number; z0: number; z1: number; top: number }; skipped?: string[] }
 
@@ -123,6 +128,13 @@ const KEY_WIDTH: [RegExp, number][] = [
 ];
 const PASTEL = ['#7be0ff', '#ff7bd1', '#ffe27a', '#9bff8a', '#b69bff'];
 
+/** A colour made lighter (amount > 0, toward white) or darker (toward black). Pure. */
+export function shade(hex: string, amount: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(amount >= 0 ? v + (255 - v) * amount : v * (1 + amount)));
+  return `#${c.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('')}`;
+}
+
 /**
  * A `rows` entry (a keyboard, a keypad, a piano, a calculator): rows of labels laid out by code, so keys never overlap
  * however many there are (owner, 2026-10-01: the hand-placed keyboard put ENTER on BACK). Keys are a `unit` wide (2
@@ -135,7 +147,8 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
   // Low enough to walk onto (owner's play test, 2026-10-01: he had to jump onto the keyboard): case and key together are
   // under half a key, so a player steps up onto it and runs across the keys.
   const unit = num(p.unit, 2, 0.5, 20), gap = num(p.gap, unit * 0.12, 0, unit), height = num(p.height ?? p.keyHeight, unit * 0.3, 0.2, 20);
-  const margin = num(p.margin, unit * 0.5, 0, 50);
+  // A slim keyboard body just around the keys, not a wide plane (owner, 2026-10-01: "a giant plane with cubes").
+  const margin = num(p.margin, unit * 0.3, 0, 50);
   const colours = (Array.isArray(p.colors ?? p.colours) ? (p.colors ?? p.colours) as unknown[] : PASTEL).map(colourHex).filter(Boolean) as string[];
   const widthOf = (label: string) => KEY_WIDTH.find(([re]) => re.test(label))?.[1] ?? num((p.widths as Record<string, unknown> | undefined)?.[label], 1, 0.5, 12);
   const rowWidth = (r: string[]) => r.reduce((w, l) => w + widthOf(l) * unit, 0) + gap * (r.length - 1);
@@ -145,7 +158,7 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
   const base = String(p.name ?? 'Key').replace(/[^A-Za-z0-9_]/g, '') || `Key${index + 1}`;
   const out: Record<string, unknown>[] = [];
   if (p.case !== false) {
-    out.push({ name: `${base}Case`, size: [width + 2 * margin, caseTop, depth + 2 * margin], at: [origin[0], origin[1] + caseTop / 2, origin[2]], color: colourHex(p.case) ?? '#2b2f45' });
+    out.push({ name: `${base}Case`, size: [width + 2 * margin, caseTop, depth + 2 * margin], at: [origin[0], origin[1] + caseTop / 2, origin[2]], color: colourHex(p.case) ?? '#eef0f6', surface: 'smooth' });
   }
   const used = new Set<string>();
   rows.forEach((row, ri) => {
@@ -156,10 +169,19 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
       let name = `Key_${keyCodeName(label) ?? (label.replace(/[^A-Za-z0-9]/g, '') || `${ri}_${ci}`)}`;
       while (used.has(name)) name += '_';
       used.add(name);
+      // A real keycap (owner's reference, 2026-10-01: "it just a textured cube"): a darker skirt with a lighter, inset
+      // top that carries the letter in dark ink, smooth plastic; the skirt rides the top, so they press as one.
+      const colour = colours[(ri + ci) % colours.length] ?? '#d7dde2';
+      const skirtH = height * 0.55, capH = height * 0.45, y0 = origin[1] + caseTop;
       out.push({
-        name, size: [w, height, unit], at: [x + w / 2, origin[1] + caseTop + height / 2, z], color: colours[(ri + ci) % colours.length] ?? '#d7dde2',
-        text: { value: label.length > 1 ? label.toUpperCase() : label, face: 'Top', color: '#ffffff' }, key: label,
-        ...(p.move ? { move: p.move } : {}),
+        name: `${name}Skirt`, size: [w, skirtH, unit], at: [x + w / 2, y0 + skirtH / 2, z], color: shade(colour, -0.12), rides: name, surface: 'smooth',
+      });
+      out.push({
+        name, size: [Math.max(0.4, w - unit * 0.16), capH, unit * 0.84], at: [x + w / 2, y0 + skirtH + capH / 2, z], color: shade(colour, 0.22),
+        text: { value: label.length > 1 ? label.toUpperCase() : label.toLowerCase(), face: 'Top', color: '#3a3a4a' }, key: label, surface: 'smooth',
+        // A keyboard key always answers its real key (owner, 2026-10-01: the model asked for "click" and typing on the
+        // real keyboard stopped working); a key clip is also clicked and stepped on (AppleAnimate).
+        ...(p.move ? { move: { ...(p.move as Record<string, unknown>), ...(keyCodeName(label) ? { on: 'key' } : {}) } } : {}),
       });
       x += w + gap;
     });
@@ -176,11 +198,14 @@ const NOT_A_KEYBOARD_PART = /screen|monitor|display|desk|table|wall|counter|sign
  * unrollRows at the model's own key size; the plates under them and any screen, monitor, desk or wall go (a counter
  * screen is already on the player's screen). Each key keeps the motion and sound it was given. Pure.
  */
-export function relayKeyboard(parts: ObjectPart[], laidOut = false): ObjectPart[] {
+export function relayKeyboard(all: ObjectPart[], laidOut = false): ObjectPart[] {
+  // A keycap's skirt rides its top and is part of the key, never a plate under the keyboard.
+  const riders = all.filter((p) => p.rides);
+  const parts = all.filter((p) => !p.rides);
   const labelOf = (p: ObjectPart) => (p.text?.value && keyCodeName(p.text.value.trim()) ? p.text.value.trim() : p.key && p.move ? p.key : undefined);
   const isKey = (p: ObjectPart) => labelOf(p) !== undefined;
   const keys = parts.filter(isKey);
-  if (keys.length < 8) return parts;
+  if (keys.length < 8) return all;
   const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 1;
   const single = keys.filter((k) => labelOf(k)!.length === 1);
   const unit = median((single.length ? single : keys).map((k) => Math.min(k.size[0], k.size[2])));
@@ -198,23 +223,24 @@ export function relayKeyboard(parts: ObjectPart[], laidOut = false): ObjectPart[
   const keyBottom = Math.min(...keys.map((k) => k.at[1] - k.size[1] / 2));
   const under = (p: ObjectPart) => !isKey(p) && p.at[1] + p.size[1] / 2 <= keyBottom + 0.05 &&
     p.at[0] - p.size[0] / 2 < x1 && p.at[0] + p.size[0] / 2 > x0 && p.at[2] - p.size[2] / 2 < z1 && p.at[2] + p.size[2] / 2 > z0;
-  const plates = parts.filter(under).sort((a, b) => b.size[0] * b.size[2] - a.size[0] * a.size[2]);
   const kept = parts.filter((p) => !isKey(p) && !under(p) && !NOT_A_KEYBOARD_PART.test(p.name));
   // Laid out by rows already: keep the tool's keys and case, and only drop the model's own plates and screens.
-  if (laidOut) return [...keys, ...parts.filter((p) => /Case$/.test(p.name) && !isKey(p)), ...kept.filter((p) => !/Case$/.test(p.name))];
+  if (laidOut) return [...keys, ...riders, ...parts.filter((p) => /Case$/.test(p.name) && !isKey(p)), ...kept.filter((p) => !/Case$/.test(p.name))];
   const moveOf = new Map(keys.map((k) => [labelOf(k)!.toLowerCase(), k.move]));
   const colours = [...new Set(keys.map((k) => k.color))].slice(0, 6);
   const laid = unrollRows({
     name: 'Key', rows: rows.map((r) => r.map((k) => labelOf(k)!)), unit, gap: unit * 0.12, height: Math.min(height, unit * 0.35),
-    colors: colours.length > 1 ? colours : undefined, case: plates[0]?.color ?? '#2b2f45', at: [(x0 + x1) / 2, 0, (z0 + z1) / 2],
+    colors: colours.length > 1 ? colours : undefined, case: '#eef0f6', at: [(x0 + x1) / 2, 0, (z0 + z1) / 2], move: keys.find((k) => k.move)?.move,
   }, 0);
   const made: ObjectPart[] = laid.map((r) => {
     const label = (r.text as { value: string } | undefined)?.value;
-    const move = label ? moveOf.get(label.trim().toLowerCase()) ?? moveOf.get(String(r.key ?? '').toLowerCase()) ?? keys.find((k) => k.move)?.move : undefined;
+    const given = label ? moveOf.get(label.trim().toLowerCase()) ?? moveOf.get(String(r.key ?? '').toLowerCase()) ?? keys.find((k) => k.move)?.move : undefined;
+    const move = given && label && keyCodeName(label) ? { ...given, on: 'key' } : given;
     const key = label ? keyCodeName(label) : undefined;
     return {
       name: String(r.name), shape: 'block', size: r.size as V3, at: r.at as V3, color: String(r.color),
       ...(r.text ? { text: r.text as ObjectPart['text'] } : {}), ...(move ? { move } : {}), ...(key ? { key } : {}),
+      ...(typeof r.rides === 'string' ? { rides: r.rides } : {}), ...(r.surface === 'smooth' ? { surface: 'smooth' as const } : {}),
     };
   });
   return [...made, ...kept];
@@ -303,6 +329,8 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
         ...(text ? { text } : {}),
         ...(move ? { move: { ...move, ...(move.amount ? { amount: move.amount * (move.as === 'spin' || move.as === 'open' || move.as === 'wobble' ? 1 : scale) } : {}) } } : {}),
         ...(key ? { key } : {}),
+        ...(count === 1 && typeof p.rides === 'string' && NAME.test(p.rides) ? { rides: p.rides } : {}),
+        ...(p.surface === 'smooth' ? { surface: 'smooth' as const } : {}),
       });
     }
   }
@@ -344,6 +372,23 @@ export function keySoundPool(): string[] {
 /** Whether a moving part is a key that should sound like one: pressed by a real key, or asked to sound like typing. */
 export function isKeystroke(p: ObjectPart, words: string | undefined): boolean {
   return p.move?.on === 'key' || /\b(key|keys|keyboard|typing|type|thock|clack|keycap|asmr)\b/i.test(words ?? '');
+}
+
+/** Whether a colour is dark enough to print without an outline. Pure. */
+export function isDark(hex: string): boolean {
+  const n = parseInt(hex.slice(1), 16);
+  return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 110;
+}
+
+/** A clip that also moves the parts riding this one (a keycap's skirt), pose for pose. Pure. */
+export function withRiders(clip: Record<string, unknown>, joint: string, riders: string[]): Record<string, unknown> {
+  if (!riders.length) return clip;
+  const keys = (clip.keys as Record<string, unknown>[]).map((k) => {
+    const pose = k[joint];
+    if (pose === undefined) return k;
+    return { ...k, ...Object.fromEntries(riders.map((r) => [r, pose])) };
+  });
+  return { ...clip, keys };
 }
 
 /** The keyframe clip for a preset motion of one part (AppleAnimate's format). Pure. */
@@ -423,7 +468,8 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
     className: 'SurfaceGui', name: 'Label',
     props: { Face: { t: 'EnumItem', v: `Enum.NormalId.${t.face}` }, SizingMode: { t: 'EnumItem', v: 'Enum.SurfaceGuiSizingMode.PixelsPerStud' }, PixelsPerStud: Math.max(10, Math.min(80, 120 / Math.max(1, Math.min(p.size[0], p.size[2])))), LightInfluence: 0 },
     children: [{ className: 'TextLabel', name: 'Text', props: { Size: { t: 'UDim2', v: [0.9, 0, 0.9, 0] }, Position: { t: 'UDim2', v: [0.05, 0, 0.05, 0] }, BackgroundTransparency: 1, Text: t.value, TextScaled: true, Font: { t: 'EnumItem', v: 'Enum.Font.FredokaOne' }, TextColor3: t.color },
-      children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 2 } }] }],
+      // Dark ink (a keycap's letter) is printed, not outlined; light text keeps its black outline.
+      children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: isDark(t.color) ? 0 : 2 } }] }],
   });
   const moving = plan.parts.filter((p) => p.move);
   const partSpec = (p: ObjectPart): InstanceSpecLite => ({
@@ -431,7 +477,7 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
     props: {
       ...uprightLabel(p),
       Position: [origin[0] + p.at[0], origin[1] + p.at[1], origin[2] + p.at[2]],
-      Anchored: !p.move, Color: p.color, Material: 'Plastic', TopSurface: 'Smooth', BottomSurface: 'Smooth',
+      Anchored: !p.move && !p.rides, Color: p.color, Material: 'Plastic', TopSurface: 'Smooth', BottomSurface: 'Smooth',
       ...(p.shape === 'ball' ? { Shape: { t: 'EnumItem', v: 'Enum.PartType.Ball' } } : p.shape === 'cylinder' ? { Shape: { t: 'EnumItem', v: 'Enum.PartType.Cylinder' } } : {}),
       ...(p.transparency ? { Transparency: p.transparency } : {}),
     },
@@ -468,11 +514,18 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
     await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'SpawnLocation', name: 'SpawnLocation', props: { Size: [8, 1, 8], Position: spawnAt, Anchored: true, Color: '#4fc3ff' } }), parent: 'game.Workspace' }] }, 20_000).catch(() => undefined);
   }
   if (wantsStuds) await ctx.execStudioOp(applySurfaceOp([model, `game.Workspace.${plan.name}Stage`, 'game.Workspace.Baseplate', 'game.Workspace.SpawnLocation']), 60_000).catch(() => undefined);
+  // Keycaps are smooth plastic like a real keyboard (the owner's reference); the case and the stage keep their studs.
+  const smooth = plan.parts.filter((p) => p.surface === 'smooth').map((p) => `${model}.${p.name}`);
+  for (let i = 0; i < smooth.length; i += 50) {
+    await ctx.execStudioOp({ op: 'apply_surface', paths: smooth.slice(i, i + 50), surface: 'smooth_no_outlines' }, 60_000).catch(() => undefined);
+  }
 
   // Motion: rig every moving part to the root with its pivot on its hinge, then one clip per part.
   const problems: string[] = [];
   if (moving.length) {
-    const rigged = await ctx.execStudioOp({ op: 'rig_model', root: `${model}.Root`, parts: moving.map((p) => `${model}.${p.name}`), joint: 'motor' }, 60_000);
+    const movingNames = new Set(moving.map((p) => p.name));
+    const riders = plan.parts.filter((p) => p.rides && movingNames.has(p.rides));
+    const rigged = await ctx.execStudioOp({ op: 'rig_model', root: `${model}.Root`, parts: [...moving, ...riders].map((p) => `${model}.${p.name}`), joint: 'motor' }, 60_000);
     if (!rigged.ok) problems.push(`rig: ${clipText(rigged.error)}`);
     else {
       for (const p of moving) {
@@ -486,7 +539,7 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
       const keystrokes = keySoundPool();
       let keyIndex = 0;
       for (const p of moving) {
-        const c = motionClip(p);
+        const c = withRiders(motionClip(p), p.name, riders.filter((r) => r.rides === p.name).map((r) => r.name));
         const q = p.move!.sound;
         const direct = q ? soundAssetId(q) : null;
         if (!direct && isKeystroke(p, q) && keystrokes.length) {
@@ -531,8 +584,9 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
       ...(hud.counter ? [{ kind: 'counter' as const, name: 'Counter', text: '0', icon: String(hud.icon ?? '#').slice(0, 2), colour: 'purple' as const, plus: false, at: 'top-left' as const, caption: String(hud.counter).slice(0, 24) }] : []),
       ...(hud.hint ? [{ kind: 'bar' as const, name: 'Hint', text: String(hud.hint).slice(0, 60), colour: 'yellow' as const, at: 'bottom' as const }] : []),
     ] });
-    await ctx.execStudioOp({ op: 'delete_instances', paths: [`game.StarterGui.${plan.name}HUD`] }, 20_000).catch(() => undefined);
-    const ui = await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed(screen), parent: 'game.StarterGui' }] }, 60_000);
+    // Merged, never redrawn: a rebuilt object keeps whatever was added to its screen since (the upgrades, a shop).
+    const failedUi = await writeScreen(ctx, screen);
+    const ui = failedUi ? { ok: false, error: failedUi } : { ok: true };
     if (!ui.ok) problems.push(`hud: ${clipText(ui.error)}`);
     else {
       const src = `-- ${plan.name}'s screen: counts every move (AppleAnimatePlayed) and pops the counter. Written by Apple; edit freely.
