@@ -269,3 +269,13 @@ test('a keyboard key answers its real key whatever trigger the model asked for',
   const kase = rows.parts.find((p) => /Case$/.test(p.name));
   assert.ok(!O.isDark(kase.color), 'a light keyboard body, not a dark plane');
 });
+
+// Re-test, 2026-10-01: the space bar sat at the left, and the keys came out 2 studs across (smaller than a player's feet).
+test('the space bar row is centred and keys are about 4 studs across', () => {
+  const plan = O.expandObject({ name: 'Kb', scale: 2, parts: [{ name: 'Key', rows: [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['Space']], move: { as: 'press', on: 'key' } }] });
+  const top = (k) => plan.parts.find((p) => p.key === k && p.move);
+  const skirt = (k) => plan.parts.find((p) => p.rides === top(k).name);
+  assert.ok(Math.abs(skirt('Q').size[0] - 4) < 1e-6, `a key is ${skirt('Q').size[0]} studs across`);
+  const middle = (top('Q').at[0] + top('P').at[0]) / 2;
+  assert.ok(Math.abs(top('Space').at[0] - middle) < 1e-6, 'the space bar is in the middle');
+});

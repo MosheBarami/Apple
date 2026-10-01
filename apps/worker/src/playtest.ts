@@ -204,7 +204,9 @@ interface PlayPress {
  * script) about loading an animation, or one from the character's Animate script, is not the game's. Pure.
  */
 export function avatarNoise(e: PlayLog): boolean {
-  if (!/Failed to load animation|Animation failed to load/i.test(e.message)) return false;
+  // Also Studio's other wording for the same avatar animation (re-test, 2026-10-01): "The experience doesn't have
+  // access permission to use asset id 114302219876492. Click to share access".
+  if (!/Failed to load animation|Animation failed to load|access permission to use asset id/i.test(e.message)) return false;
   return !e.source || /Character\.Animate|\.Animate$|^Animate$/.test(e.source);
 }
 

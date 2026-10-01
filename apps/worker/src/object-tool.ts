@@ -162,7 +162,8 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
   }
   const used = new Set<string>();
   rows.forEach((row, ri) => {
-    let x = origin[0] - width / 2;
+    // A row of one or two keys (the space bar row) sits in the middle, like a real keyboard; the rest start at the left.
+    let x = origin[0] - (row.length <= 2 ? rowWidth(row) / 2 : width / 2);
     const z = origin[2] - depth / 2 + ri * (unit + gap) + unit / 2;
     row.forEach((label, ci) => {
       const w = widthOf(label) * unit;
@@ -262,7 +263,9 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   const isRows = (r: unknown) => Boolean(r && typeof r === 'object' && Array.isArray((r as Record<string, unknown>).rows));
   const rowEntries = given.filter(isRows) as Record<string, unknown>[];
   const merged = rowEntries.length > 1 ? [{ ...rowEntries[0], at: undefined, rows: [...rowEntries].sort((x, y) => (v3(x.at)?.[2] ?? 0) - (v3(y.at)?.[2] ?? 0)).flatMap((e) => e.rows as unknown[]) }] : rowEntries;
-  const raw = [...given.filter((r) => !isRows(r)), ...merged.flatMap((r, i) => unrollRows(r, i))];
+  // Keys about 4 studs across once scaled, bigger than a player's feet like the owner's reference, unless the model
+  // gave a unit (the re-test's keyboard came out with 2-stud keys).
+  const raw = [...given.filter((r) => !isRows(r)), ...merged.flatMap((r, i) => unrollRows({ unit: 4 / scale, ...r }, i))];
   if (raw.length === 0) return { error: 'parts is empty: list what the object is made of' };
   const parts: ObjectPart[] = [];
   const skipped: string[] = [];

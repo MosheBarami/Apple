@@ -168,3 +168,9 @@ test("the test player's avatar animations failing to load are not the game's err
   assert.notEqual(only.verdict, 'client_errors', 'an avatar animation alone does not fail the check');
   assert.equal(P.avatarNoise({ message: 'Failed to load animation with sanitized ID rbxassetid://1', source: 'Workspace.Door.DoorScript:4' }), false, 'a game script loading an animation is the game');
 });
+
+test("Studio's other wording for the avatar's animation is not the game's error either", () => {
+  const s = P.summarisePlayCheck({ clientErrors: [{ message: "The experience doesn't have access permission to use asset id 114302219876492. Click to share access" }] });
+  assert.deepEqual(s.clientErrors, []);
+  assert.notEqual(s.verdict, 'client_errors');
+});
