@@ -7,7 +7,7 @@
  */
 import type { AgentCtx } from './tools';
 import { composeSteps, type Recipe } from './compose';
-import { runSteps } from './compose-run';
+import { PLAY_TEST_STOP, runSteps } from './compose-run';
 import { orchardRecipe } from './recipes';
 import { libraryReady, librarySafetyCopy } from './local-owner-corpus';
 import { userWantsOwnSurface } from './surfaces';
@@ -64,6 +64,8 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
   recipe.surface = userWantsOwnSurface(idea) ? 'keep' : 'studs';
   const steps = composeSteps(recipe);
   const report = await runSteps(ctx, steps);
+  // A build that could not write (a Play test, or Studio gone) says so and ends here; it is not "done".
+  if (report.stopped) return { changed: (report.counts.script ?? 0) > 0, error: stoppedText(report.stopped), forUser: stoppedText(report.stopped) };
   const built = (report.counts.import ?? 0) > 0 || (report.counts.script ?? 0) > 0;
   if (report.critical.length) {
     return {
@@ -139,6 +141,13 @@ async function streetLight(ctx: AgentCtx): Promise<LibRef | undefined> {
   return best ? { game: best.gameId!, path: best.path! } : undefined;
 }
 
+/** What the user is told when a build could not write to Studio. */
+function stoppedText(why: string): string {
+  return why === PLAY_TEST_STOP
+    ? 'Studio is in a Play test, so nothing could be built. Stop the test (the red square at the top of Studio), then ask again.'
+    : 'Studio disconnected while the game was being built, so it is only partly there. Reconnect and ask again to finish it.';
+}
+
 /** The top of the hub's plaza (studded-map.ts hubItems: an 0.8-stud plaza on the ground). */
 const HUB_PLAZA_TOP = 0.8;
 
@@ -192,6 +201,8 @@ async function composePlotSim(ctx: AgentCtx, idea: string) {
   if ('error' in copy) return { error: copy.error };
   recipe.surface = userWantsOwnSurface(idea) ? 'keep' : 'studs';
   const report = await runSteps(ctx, plotSimSteps(recipe));
+  // A build that could not write (a Play test, or Studio gone) says so and ends here; it is not "done".
+  if (report.stopped) return { changed: (report.counts.script ?? 0) > 0, error: stoppedText(report.stopped), forUser: stoppedText(report.stopped) };
   // The hero moves onto the hub's centre, with its stage: the game is built around what the player already made.
   if (recipe.hero) {
     const root = await ctx.execStudioOp({ op: 'get_instance', path: `game.Workspace.${recipe.hero}.Root` }, 20_000).catch(() => null);

@@ -52,6 +52,9 @@ export interface RunReport {
 
 const clip = (s: unknown) => String(s ?? '').slice(0, 300);
 
+/** Why a build stopped when Studio refused to write because a Play test was running. */
+export const PLAY_TEST_STOP = 'Studio is in a Play test';
+
 /** The plugin refuses a create_instances whose trees hold more than 400 instances; batches stay under this. */
 export const CREATE_LIMIT = 350;
 const nodes = (i: InstanceSpecLite): number => 1 + (i.children ?? []).reduce((n, c) => n + nodes(c), 0);
@@ -84,10 +87,17 @@ export function createBatches(parent: string, items: InstanceSpecLite[], limit =
 export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done: number, total: number, what: string) => void): Promise<RunReport> {
   const report: RunReport = { counts: {}, problems: [], missing: [], critical: [] };
   const count = (k: string) => { report.counts[k] = (report.counts[k] ?? 0) + 1; };
-  const op = async (o: StudioOp, ms = 60_000) => ctx.execStudioOp(o, ms);
+  // Studio in a Play test refuses every write; once it says so the build stops instead of retrying each of its ~200 ops
+  // (round 11 of the owner's test 1, 2026-10-01: a build ground on for 17 minutes while a test was running).
+  const op = async (o: StudioOp, ms = 60_000) => {
+    const out = await ctx.execStudioOp(o, ms);
+    if (!out.ok && /edit mode/i.test(out.error ?? '')) report.stopped = PLAY_TEST_STOP;
+    return out;
+  };
   const places = steps.filter((s): s is Extract<Step, { kind: 'place' }> => s.kind === 'place');
   let done = 0;
   for (const s of steps) {
+    if (report.stopped) return report;
     done += 1;
     if (s.kind === 'place') continue; // placed together below, once every piece is in
     onProgress?.(done, steps.length, s.kind);

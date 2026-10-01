@@ -293,7 +293,9 @@ interface AgentState {
   composedForUser?: string;
   /** What the last play_check found wrong, in its own words (undefined when it passed). */
   lastCheckProblem?: string;
-  /** What the last play_check measured, for the answer (its leaderstats line, and its error count). */
+  /** The run ends at the next step on composedForUser, without asking the model (a build Studio refused outright). */
+  endWithComposed?: boolean;
+    /** What the last play_check measured, for the answer (its leaderstats line, and its error count). */
   lastCheckSeen?: string;
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
   uiTheme?: UiTheme;
@@ -1600,7 +1602,10 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   private async hurryStop(agent: AgentState): Promise<void> {
-    if (agent.pausedForStudio || (typeof agent.resumeAt === 'number' && agent.resumeAt > Date.now())) {
+    // No step running in THIS instance means nothing will reach the stop signal by itself: a run whose step died with
+    // a deploy (or an eviction) has no alarm left (round 11 of the owner's test 1, 2026-10-01: Stop answered
+    // "stopping" and the run stayed "running"). The alarm finishes it as stopped.
+    if (agent.pausedForStudio || (typeof agent.resumeAt === 'number' && agent.resumeAt > Date.now()) || !this.stepInFlight) {
       await this.ctx.storage.setAlarm(Date.now());
     }
   }
@@ -1776,6 +1781,8 @@ export class SessionDO extends DurableObject<Env> {
    * once per instance to correct it is at worst redundant and is never wrong. What must not happen
    * is saying it on every ping, which is what this field — not the other one — now prevents.
    */
+  /** A step of the run is executing in this instance right now (false in a fresh instance, e.g. after a deploy). */
+  private stepInFlight = false;
   private studioSilenceAnnounced = false;
 
   /**
@@ -3652,8 +3659,9 @@ export class SessionDO extends DurableObject<Env> {
       await this.ctx.storage.setAlarm(agent.resumeAt);
       return;
     }
+    this.stepInFlight = true;
     try {
-      await this.runStep(agent);
+      try { await this.runStep(agent); } finally { this.stepInFlight = false; }
     } catch (e) {
       if (e instanceof BudgetError) {
         const resetsAt = new Date();
@@ -3973,6 +3981,11 @@ export class SessionDO extends DurableObject<Env> {
     // A composed plot simulator that passed its play check is answered with what the composer built and what the check
     // measured, not a model's retelling (round 7 of the owner's test 1, 2026-10-01: the answer kept saying "you spawn in a
     // hub" for a game where every player starts on their own plot). One model call fewer, too.
+    if (agent.endWithComposed && agent.composedForUser) {
+      agent.finalText = agent.composedForUser;
+      await this.finishRun(agent, 'incomplete');
+      return;
+    }
     if (agent.composedPlotSim && agent.composedForUser && agent.playChecked && !agent.lastCheckProblem) {
       // The reply reaches the browser on msg_end (finishRun), like every other ending: nothing is streamed here.
       agent.finalText = `${agent.composedForUser}\n\nI play-tested it: ${agent.lastCheckSeen ?? 'it ran'}.`;
@@ -4758,6 +4771,12 @@ export class SessionDO extends DurableObject<Env> {
       if (call.name === 'compose_game' && out.mutatedProject === true && out.ok && isPlotSimRequest(agent.request ?? '')) {
         agent.composedPlotSim = true;
         agent.objectBuilt = true;
+      }
+      // A build refused because Studio is in a Play test cannot be helped by any other tool (every write is refused the
+      // same way): the run ends on what to do (round 11 of the owner's test 1, 2026-10-01: 17 minutes of refused writes).
+      if (call.name === 'compose_game' && !out.ok && /Studio is in a Play test/.test(out.resultForLlm)) {
+        agent.composedForUser = 'Studio is in a Play test, so nothing could be built. Stop the test (the red square at the top of Studio), then ask again.';
+        agent.endWithComposed = true;
       }
       if (call.name === 'compose_game' && out.ok) {
         const said = (out.detail as { forUser?: unknown } | undefined)?.forUser;

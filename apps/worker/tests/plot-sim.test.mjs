@@ -251,3 +251,27 @@ test('lamps line every road off the road itself, and the hero comes down onto th
   assert.match(tool, /paths: \[`game\.Workspace\.\$\{recipe\.hero\}`\], move: \[hx - at\[0\], drop, hz - at\[2\]\]/, 'only the hero moves, down onto the plaza');
   assert.match(tool, /delete_instances', paths: \[`game\.Workspace\.\$\{recipe\.hero\}Stage`\]/, 'and its stage goes');
 });
+
+// Round 11 of test 1 (2026-10-01): with a Play test running every write was refused, each retried ~12 s, and the build
+// ground on for 17 minutes; Stop could not end it.
+test('a build Studio refuses because a Play test runs stops at once and tells the user what to do', async () => {
+  const runOut = join(mkdtempSync(join(tmpdir(), 'run-')), 'r.mjs');
+  execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'compose-run.ts'), '--bundle', '--format=esm', '--platform=node', '--outfile=' + runOut, '--external:cloudflare:*', '--log-level=error'], { cwd: WORKER, stdio: 'pipe' });
+  const R = await import(`file://${runOut}`);
+  let calls = 0;
+  const ctx = { execStudioOp: async () => { calls += 1; return { ok: false, error: 'writes require Studio edit mode' }; } };
+  const recipe = P.plotSimRecipe(OWNER, 12345, { hero: 'ASMRKeyboard', library: LIB, hubProps: [], hasComponents: true });
+  const report = await R.runSteps(ctx, P.plotSimSteps(recipe));
+  assert.equal(report.stopped, R.PLAY_TEST_STOP);
+  assert.ok(calls <= 2, `${calls} refused writes before it stopped`);
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  assert.match(session, /if \(agent\.endWithComposed && agent\.composedForUser\) \{\s*agent\.finalText = agent\.composedForUser;\s*await this\.finishRun\(agent, 'incomplete'\);/);
+});
+
+// Round 11 of test 1 (2026-10-01): a run whose step died with a deploy answered Stop with "stopping" and stayed running.
+test('Stop reaches a run that has no step executing in this instance', () => {
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  const hurry = session.slice(session.indexOf('private async hurryStop'), session.indexOf('private async hurryStop') + 900);
+  assert.match(hurry, /\|\| !this\.stepInFlight\) \{\s*await this\.ctx\.storage\.setAlarm\(Date\.now\(\)\);/);
+  assert.match(session, /this\.stepInFlight = true;\s*try \{\s*try \{ await this\.runStep\(agent\); \} finally \{ this\.stepInFlight = false; \}/);
+});
