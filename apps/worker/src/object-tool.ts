@@ -961,11 +961,14 @@ export function objectForUser(plan: ObjectPlan): string {
   // Many looping details are summed up, not listed again.
   if (by('loop').length > 3) acts.push('its other details move all the time');
   else if (by('loop').length) acts.push(`${who(by('loop'))} ${by('loop').length === 1 ? as(by('loop')[0]!) : 'move'} all the time`);
-  const bits = [...words, ...details];
+  // Many details get their own sentence, so the printed words and the details do not run together (test 3 round 8).
+  const many = decor.length > 4;
+  const bits = many ? words : [...words, ...details];
   const look = bits.length > 1 ? `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}` : bits[0] ?? '';
+  const has = many && details[0] ? `It has ${details[0]}.` : '';
   const kit = plan.cool ? 'Now it sparkles and glows, four neon orbs circle above it, and the rim of its stage lights up.' : '';
   const lines = [
-    `Your ${what} is in front of the spawn: ${big}${look ? `, with ${look}` : ''}.`,
+    `Your ${what} is in front of the spawn: ${big}${look ? `, with ${look}` : ''}.${has ? ` ${has}` : ''}`,
     kit,
     acts.length ? `${acts.join('; ').replace(/^./, (c) => c.toUpperCase())}. A counter on your screen counts every press.` : '',
   ];

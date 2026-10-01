@@ -953,4 +953,5 @@ test('a part named for a glow glows; many details are one short list', () => {
   assert.equal((said.match(/flame/g) ?? []).length, 1, said);
   assert.ok(!/and more\b|more on/.test(said), said);
   assert.match(said, /its other details move all the time/);
+  assert.match(said, /\. It has a crown, two flames/, 'many details are their own sentence (round 8)');
 });
