@@ -361,3 +361,14 @@ test('the build result names every extra that is there and every one that was le
   assert.match(built, /besides the keys only: VolumeKnob/);
   assert.match(built, /left out[^:]*: LightBar/);
 });
+
+// Live 2026-10-01: a complete build_object spec followed by one stray "}" was refused; the keyboard cost 22 credits.
+test('a whole argument object with stray closing brackets or trailing commas is read; anything else is still refused', async () => {
+  const out = join(mkdtempSync(join(tmpdir(), 'tools-')), 't.mjs');
+  execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'tools.ts'), '--bundle', '--format=esm', '--platform=node', '--outfile=' + out, '--external:cloudflare:*', '--log-level=error'], { cwd: WORKER, stdio: 'pipe' });
+  const T = await import(`file://${out}`);
+  assert.deepEqual(T.recoverJsonObject('{"name":"Kb","parts":[{"a":"}"}]}}'), { name: 'Kb', parts: [{ a: '}' }] });
+  assert.deepEqual(T.recoverJsonObject('{"a":1,"b":[1,2,],}'), { a: 1, b: [1, 2] });
+  assert.deepEqual(T.recoverJsonObject('{"a":"x \\" }"}]\n'), { a: 'x " }' });
+  for (const bad of ['{not json', '{"a":1} {"b":2}', '{"a":1} please', 'x {"a":1}', '[1,2]', '{"a":']) assert.equal(T.recoverJsonObject(bad), undefined, bad);
+});

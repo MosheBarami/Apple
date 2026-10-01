@@ -5702,6 +5702,32 @@ function detailForUi(result: unknown): unknown {
   return result;
 }
 
+/**
+ * Arguments that are one whole JSON object with nothing but stray closing brackets after it, or with trailing commas,
+ * read as that object; anything else is still refused. Live 2026-10-01: a complete build_object spec followed by one
+ * extra "}" was thrown away, and the keyboard cost 22 credits instead of 10. Pure.
+ */
+export function recoverJsonObject(text: string): Record<string, unknown> | undefined {
+  const tryParse = (t: string) => { try { const v = JSON.parse(t); return v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : undefined; } catch { return undefined; } };
+  const start = text.indexOf('{');
+  if (start < 0 || text.slice(0, start).trim()) return undefined;
+  // The end of the first top-level object, strings respected.
+  let depth = 0, inString = false, escaped = false, end = -1;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]!;
+    if (inString) { if (escaped) escaped = false; else if (ch === '\\') escaped = true; else if (ch === '"') inString = false; continue; }
+    if (ch === '"') inString = true;
+    else if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  const noTrailingCommas = (t: string) => t.replace(/,(\s*[}\]])/g, '$1');
+  if (end >= 0 && /^[\s}\]]*$/.test(text.slice(end + 1))) {
+    const body = text.slice(start, end + 1);
+    return tryParse(body) ?? tryParse(noTrailingCommas(body));
+  }
+  return undefined;
+}
+
 export async function runTool(
   ctx: AgentCtx,
   name: string,
@@ -5723,7 +5749,11 @@ export async function runTool(
     try {
       parsed = JSON.parse(argsJson);
     } catch (err) {
-      const why = err instanceof Error ? err.message : String(err);
+      parsed = recoverJsonObject(argsJson);
+    }
+    if (parsed === undefined) {
+      let why = 'unreadable';
+      try { JSON.parse(argsJson); } catch (err) { why = err instanceof Error ? err.message : String(err); }
       return {
         summary: `${name}: arguments are not valid JSON`,
         resultForLlm: JSON.stringify({
