@@ -424,12 +424,12 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     for (let attempt = 0; attempt <= MAX_RATE_LIMIT_WAITS; attempt++) {
       const started = Date.now();
       try {
-        if (opts.onReasoning && adapter.id === 'workers-ai' && encoded.payload && typeof encoded.payload === 'object') {
-          const streamed = await adapter.invoke(env, { ...(encoded.payload as Record<string, unknown>), stream: true, stream_options: { include_usage: true } }, invokeCtx);
-          raw = streamed instanceof ReadableStream ? await collectStream(streamed as ReadableStream<Uint8Array>, opts.onReasoning) : streamed;
-        } else {
-          raw = await adapter.invoke(env, encoded.payload, invokeCtx);
-        }
+        // Live reasoning streams the SAME call (stream: true): one invocation, inside the reservation above
+        // (evals A6 holds it to exactly one call site), folded back into the response shape by collectStream.
+        const streaming = Boolean(opts.onReasoning && adapter.id === 'workers-ai' && encoded.payload && typeof encoded.payload === 'object');
+        const payload = streaming ? { ...(encoded.payload as Record<string, unknown>), stream: true, stream_options: { include_usage: true } } : encoded.payload;
+        const result = await adapter.invoke(env, payload, invokeCtx);
+        raw = streaming && result instanceof ReadableStream ? await collectStream(result as ReadableStream<Uint8Array>, opts.onReasoning!) : result;
         lastErr = null;
         lastLatencyMs = Date.now() - started;
         recordProviderCall(adapter.id, { model: cfg.id, latencyMs: lastLatencyMs, ok: true });

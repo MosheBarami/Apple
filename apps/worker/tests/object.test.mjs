@@ -279,3 +279,13 @@ test('the space bar row is centred and keys are about 4 studs across', () => {
   const middle = (top('Q').at[0] + top('P').at[0]) / 2;
   assert.ok(Math.abs(top('Space').at[0] - middle) < 1e-6, 'the space bar is in the middle');
 });
+
+// Re-test, 2026-10-01: the reply called smooth keycaps "studded" and promised a "counter screen" in the world.
+test('the build result says what was built, so the answer cannot invent it', () => {
+  const plan = O.expandObject({ name: 'Kb', parts: [{ name: 'Key', rows: [['Q', 'W', 'E']], move: { as: 'press', on: 'key' } }] });
+  const said = O.builtSummary(plan, 3, 3, true);
+  assert.match(said, /3 keycaps \(smooth plastic/);
+  assert.match(said, /on a studded stage/);
+  assert.match(said, /real keyboard keys/);
+  assert.match(said, /on the player's screen \(not in the world\)/);
+});

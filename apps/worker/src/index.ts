@@ -4456,13 +4456,6 @@ app.get('/api/admin/session-info/:id', async (c) => {
   return c.json(await res.json());
 });
 
-/** A project's recent turns with their tool traces, for diagnosing a run the owner reports (read-only). */
-app.get('/api/admin/session-messages/:id', async (c) => {
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 10));
-  const res = await sessionStub(c.env, c.req.param('id')).fetch(`https://do/messages?limit=${limit}`);
-  return c.json(await res.json());
-});
-
 /**
  * Raw vision access for the eval harness: it brings its own 20-dimension rubric prompt and its own
  * PNGs, and only needs a model to look at them. Kept separate from /api/admin/critique, which is

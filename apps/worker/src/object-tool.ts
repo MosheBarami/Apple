@@ -377,6 +377,19 @@ export function isKeystroke(p: ObjectPart, words: string | undefined): boolean {
   return p.move?.on === 'key' || /\b(key|keys|keyboard|typing|type|thock|clack|keycap|asmr)\b/i.test(words ?? '');
 }
 
+/** What was built, in the words the answer may use. Pure. */
+export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number, studs: boolean): string {
+  const caps = plan.parts.filter((p) => p.rides).length;
+  const smooth = plan.parts.some((p) => p.surface === 'smooth');
+  const how = [
+    caps ? `${caps} keycaps (smooth plastic, a lighter top with its letter on a darker skirt)` : `${plan.parts.length} parts`,
+    studs ? (smooth ? 'on a studded stage' : 'studded') : '',
+    moving ? `${moving} of them move${keysBound ? `, ${keysBound} answer the real keyboard keys, and they are also pressed by clicking or walking on them` : ''}` : '',
+    moving ? 'each move has its sound; a counter and a hint are on the player\'s screen (not in the world)' : '',
+  ].filter(Boolean);
+  return how.join('; ');
+}
+
 /** Whether a colour is dark enough to print without an outline. Pure. */
 export function isDark(hex: string): boolean {
   const n = parseInt(hex.slice(1), 16);
@@ -633,6 +646,9 @@ end)
     size: [Math.round(width), Math.round(f.top), Math.round(depth)],
     ...(problems.length ? { problems } : {}),
     ...(plan.skipped ? { skipped: plan.skipped } : {}),
-    note: 'Built, studded, lit, rigged, animated, with its sounds and screen: add nothing else. Check it once in play (play_check); if something is wrong, call build_object again with the whole fixed spec; otherwise tell the user in one or two friendly sentences what they can do with it.',
+    // Said as it is, so the answer does not invent (owner's re-test, 2026-10-01: the reply called smooth keycaps
+    // "studded" and promised a "counter screen" that is a counter on the player's screen).
+    built: builtSummary(plan, moving.length, keys, wantsStuds),
+    note: 'Done: add nothing else. Check it once in play (play_check); if something is wrong, call build_object again with the whole fixed spec; otherwise tell the user in one or two friendly sentences what they can do with it, saying only what `built` says.',
   };
 }
