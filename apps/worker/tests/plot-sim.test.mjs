@@ -214,3 +214,15 @@ test('the composer tells the truth about plots, Rebirth shows what it gives, and
   assert.match(boot, /if measure\(after\) <= want \* 1\.05 then return end/, 'the fit is measured after ScaleTo');
   assert.match(boot, /d\.Size \*= k/, 'and done by hand when ScaleTo left it as it was');
 });
+
+// Round 6 of test 1 (2026-10-01): the answer promised a starter keyboard on every plot, and plots started empty.
+test('every plot starts with the cheapest machine, and the composer says so', () => {
+  const recipe = P.plotSimRecipe(OWNER, 12345, { hero: 'ASMRKeyboard', library: LIB, hubProps: [], hasComponents: true });
+  const cfg = P.plotSimSteps(recipe).find((s) => s.kind === 'script' && s.name === 'AppleGameConfig').source;
+  assert.match(cfg, new RegExp(`starter = "${recipe.machines[0].id}"`));
+  const shop = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'shop', 'AppleShop.luau'), 'utf8');
+  assert.match(shop, /task\.spawn\(giveStarter, player, plot\)/);
+  assert.match(shop, /local function giveStarter[\s\S]{0,700}put\(player, id, item, template, tile\)/);
+  const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
+  assert.match(tool, /starts on their own plot with a free/);
+});

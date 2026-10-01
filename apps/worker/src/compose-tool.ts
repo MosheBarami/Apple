@@ -199,7 +199,7 @@ async function composePlotSim(ctx: AgentCtx, idea: string) {
     ? `Studio disconnected while ${recipe.title} was being built, so it is only partly there. Reconnect and ask again to finish it.`
     : `I turned it into ${recipe.title}: a hub${recipe.hero ? ` with your ${recipe.subject} in the middle` : ''} and ${recipe.players} plots around it, one for each player. ` +
       // Each player is given a plot on joining and starts on it (AppleShop claim + the plot's Spawn): never "claim a plot".
-      `Every player starts on their own plot. Buy ${recipe.subject}s in the Shop (or step on the SHOP pad in the hub) (${recipe.machines.map((m) => m.name).join(', ')}${libNames ? `; ${libNames} of them come from your library` : ''}) and place them on your plot: each one earns Coins every second, and pressing your own pays extra. ` +
+      `Every player starts on their own plot with a free ${recipe.machines[0]?.name ?? recipe.subject} already earning. Buy more ${recipe.subject}s in the Shop (or step on the SHOP pad in the hub) (${recipe.machines.map((m) => m.name).join(', ')}${libNames ? `; ${libNames} of them come from your library` : ''}) and place them on your plot: each one earns Coins every second, and pressing your own pays extra. ` +
       `Upgrades make every press and every second worth more, and Rebirth starts you over with a permanent boost. Press Play to try it.`;
   return {
     changed: built, game: recipe.title, template: 'plot-sim', built: report.counts,

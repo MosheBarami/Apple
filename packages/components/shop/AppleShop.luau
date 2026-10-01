@@ -118,6 +118,43 @@ function AppleShop.start(config: any, economy: any)
 		model:SetAttribute("Level", level)
 	end
 
+	-- A copy of an item on a tile, owned by the player (a purchase, or the starter a new player is given).
+	local function put(player: Player, id: string, item: any, template: Instance, tile: BasePart)
+		local model = template:Clone() :: Model
+		local _, size = model:GetBoundingBox()
+		local lift = model:GetPivot().Position.Y - (model:GetBoundingBox().Position.Y - size.Y / 2)
+		local top = tile.Position + Vector3.new(0, tile.Size.Y / 2, 0)
+		local look = tile.CFrame.LookVector
+		model:PivotTo(CFrame.lookAt(top + Vector3.new(0, lift, 0), top + Vector3.new(look.X, lift, look.Z)))
+		model:SetAttribute("Owner", player.UserId)
+		model:SetAttribute("Item", id)
+		apply(model, item, levelOf(player, id))
+		if item.projectile then model:SetAttribute("Projectile", item.projectile) end
+		if item.color then model:SetAttribute("ShotColor", Color3.fromHex(item.color)) end
+		model:SetAttribute("Tile", tile:GetFullName())
+		CollectionService:AddTag(model, "AppleCreature")
+		CollectionService:AddTag(model, "AppleDefender")
+		model.Parent = placed
+		tile:SetAttribute("Occupied", true)
+		model.Destroying:Connect(function() tile:SetAttribute("Occupied", nil) end)
+	end
+
+	-- A new player's plot is not empty: shop.starter is placed free on its first tile (owner's critique, 2026-10-01: an
+	-- empty 4x4 plot and nothing to do until the first purchase; the agent's answer even promised a starter).
+	local function giveStarter(player: Player, plot: Instance)
+		local id = cfg.starter
+		local item = type(id) == "string" and items[id] or nil
+		if not item then return end
+		local template = templates:WaitForChild(id, 15)
+		if not template or plot:GetAttribute("Owner") ~= player.UserId then return end
+		for _, tile in plot:GetDescendants() do
+			if tile:IsA("BasePart") and CollectionService:HasTag(tile, "AppleTile") and not tile:GetAttribute("Occupied") then
+				put(player, id, item, template, tile)
+				return
+			end
+		end
+	end
+
 	local function plotOf(player: Player): Instance?
 		for _, plot in plots:GetChildren() do
 			if plot:GetAttribute("Owner") == player.UserId then return plot end
@@ -131,6 +168,7 @@ function AppleShop.start(config: any, economy: any)
 				plot:SetAttribute("Owner", player.UserId)
 				plot:SetAttribute("OwnerName", player.DisplayName)
 				player:SetAttribute("Plot", plot.Name)
+				task.spawn(giveStarter, player, plot)
 				for _, d in plot:GetDescendants() do
 					if d:IsA("TextLabel") and d.Name == "OwnerName" then d.Text = player.DisplayName end
 				end
@@ -181,23 +219,7 @@ function AppleShop.start(config: any, economy: any)
 		local template = templates:FindFirstChild(id)
 		if not template then return false, "That item is not sold here." end
 		if not economy.spend(player, item.price or 0, "buy " .. id) then return false, "Not enough money." end
-		local model = template:Clone() :: Model
-		local _, size = model:GetBoundingBox()
-		local lift = model:GetPivot().Position.Y - (model:GetBoundingBox().Position.Y - size.Y / 2)
-		local top = tile.Position + Vector3.new(0, tile.Size.Y / 2, 0)
-		local look = tile.CFrame.LookVector
-		model:PivotTo(CFrame.lookAt(top + Vector3.new(0, lift, 0), top + Vector3.new(look.X, lift, look.Z)))
-		model:SetAttribute("Owner", player.UserId)
-		model:SetAttribute("Item", id)
-		apply(model, item, levelOf(player, id))
-		if item.projectile then model:SetAttribute("Projectile", item.projectile) end
-		if item.color then model:SetAttribute("ShotColor", Color3.fromHex(item.color)) end
-		model:SetAttribute("Tile", tile:GetFullName())
-		CollectionService:AddTag(model, "AppleCreature")
-		CollectionService:AddTag(model, "AppleDefender")
-		model.Parent = placed
-		tile:SetAttribute("Occupied", true)
-		model.Destroying:Connect(function() tile:SetAttribute("Occupied", nil) end)
+		put(player, id, item, template, tile)
 		return true, (item.name or id) .. " placed!"
 	end
 

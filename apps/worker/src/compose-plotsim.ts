@@ -184,6 +184,8 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
     economy: { currency: recipe.currency, start: recipe.machines[0]?.price ?? 25 },
     shop: {
       refund: 0.5,
+      // Every player's plot starts with the cheapest machine already earning (AppleShop giveStarter).
+      ...(recipe.machines[0] ? { starter: recipe.machines[0].id } : {}),
       items: recipe.machines.map((m) => ({ id: m.id, name: m.name, price: m.price, range: 0, damage: 0, rate: 0, unlock: 0, blurb: `+${m.income}/s` })),
     },
     machines: Object.fromEntries(recipe.machines.map((m) => [m.id, { income: m.income, ...(m.perPress ? { perPress: m.perPress } : {}) }])),
