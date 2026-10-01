@@ -276,6 +276,8 @@ interface AgentState {
   focused?: boolean;
   /** A request for one thing: build_object is this run's first project change (object-tool.ts isObjectRequest). */
   objectFirst?: boolean;
+  /** This run answers a one-object request (it stays true after build_object); only such a run is fenced after it. */
+  objectRun?: boolean;
   /** build_object failures this run; the object fence lifts after three. */
   objectFails?: number;
   /** An upgrades request: add_upgrades is this run's first project change, then the run only checks and answers. */
@@ -3506,7 +3508,7 @@ export class SessionDO extends DurableObject<Env> {
       ...(continueLine ? { continuesGame: true } : {}),
       ...(mode === 'agent' && !continueLine && !('error' in ideaRecipe(text)) ? { composeFirst: true } : {}),
       focused: true,
-      ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isObjectRequest(text) ? { objectFirst: true } : {}),
+      ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isObjectRequest(text) ? { objectFirst: true, objectRun: true } : {}),
       ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isUpgradesRequest(text) ? { upgradesFirst: true, upgradesRun: true } : {}),
       uiTheme: asUiTheme(uiTheme),
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
@@ -4737,9 +4739,11 @@ export class SessionDO extends DurableObject<Env> {
         agent.objectFails = out.ok ? 0 : (agent.objectFails ?? 0) + 1;
         if (out.ok || agent.objectFails >= 3) agent.objectFirst = false;
       }
-      if (call.name === 'build_object' && out.ok) agent.objectBuilt = true;
+      // Only a run that IS one object ends at "check and answer" (owner's game request, 2026-10-01: a build_object
+      // inside a whole-game run locked out every other writer and the model built plots and screens as 1-part objects).
+      if (call.name === 'build_object' && out.ok && agent.objectRun) agent.objectBuilt = true;
       if (call.name === 'add_upgrades' && (out.ok || (agent.trace?.filter((t) => t.tool === 'add_upgrades' && !t.ok).length ?? 0) >= 3)) agent.upgradesFirst = false;
-      if (call.name === 'add_upgrades' && out.ok) agent.objectBuilt = true; // the same fence: check once, then answer
+      if (call.name === 'add_upgrades' && out.ok && agent.upgradesRun) agent.objectBuilt = true; // the same fence: check once, then answer
       if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {
         agent.builtGame = true;
         // One project is one game: the next run on this project continues it (run-flow.ts continueGameLine).

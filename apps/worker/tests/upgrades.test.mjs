@@ -69,7 +69,7 @@ test('the run calls add_upgrades first for an upgrades request, then only checks
   const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
   assert.match(src, /isUpgradesRequest\(text\) \? \{ upgradesFirst: true\b/);
   assert.match(src, /agent\.upgradesFirst && !talkOnly && offeredAllowed\.has\('add_upgrades'\) \? \{ requiredTool: 'add_upgrades' \}/);
-  assert.match(src, /call\.name === 'add_upgrades' && out\.ok\) agent\.objectBuilt = true/);
+  assert.match(src, /call\.name === 'add_upgrades' && out\.ok && agent\.upgradesRun\) agent\.objectBuilt = true/);
 });
 
 test('a failed build_object is retried, not swapped for hand-made instances (the fence lifts after three failures)', () => {
@@ -152,4 +152,13 @@ test('the GUI: one captioned counter pill, a glossy Upgrades button with a hidde
   // Play test: the model made the keys click-pressed and stepping did nothing; a part's own click clip steps too.
   assert.match(animate, /if partName then stepOn\(target, model, joints, rest, clip\) end/, 'a click-pressed key is pressed by stepping on it');
   assert.ok((animate.match(/stepOn\(target, model, joints, rest, clip\)/g) ?? []).length >= 2, 'key clips step too');
+});
+
+// Owner's game request, 2026-10-01: one build_object inside a whole-game run fenced the run to "check and answer";
+// create_instances and read_script were refused and plots, a HUD and "Maps" were built as one-part objects.
+test('only a one-object run is fenced after build_object; a game run keeps its tools', () => {
+  const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
+  assert.match(src, /isObjectRequest\(text\) \? \{ objectFirst: true, objectRun: true \}/);
+  assert.match(src, /call\.name === 'build_object' && out\.ok && agent\.objectRun\) agent\.objectBuilt = true/);
+  assert.doesNotMatch(src, /call\.name === 'build_object' && out\.ok\) agent\.objectBuilt = true/, 'any build_object fences the run again');
 });
