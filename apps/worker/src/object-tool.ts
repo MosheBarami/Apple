@@ -290,7 +290,11 @@ export function relayKeyboard(all: ObjectPart[], laidOut = false): ObjectPart[] 
   const kept = parts.filter((p) => !isKey(p) && !under(p) && !NOT_A_KEYBOARD_PART.test(p.name) && KEYBOARD_EXTRA.test(p.name))
     .map((p) => restBeside(p, keys, x0, x1, z1, floor)).filter((p) => !overKeys(p));
   // Laid out by rows already: keep the tool's keys and case, and only drop the model's own plates and screens.
-  if (laidOut) return [...keys, ...riders, ...parts.filter((p) => /Case$/.test(p.name) && !isKey(p)), ...kept.filter((p) => !/Case$/.test(p.name))];
+  // A part bound to a key a labelled keycap already answers is a second key: live 2026-10-01 a 36-stud unlabelled pink
+  // "Spacebar" bounced in front of the board beside the real SPACE key.
+  const labelled = new Set(keys.filter((k) => k.text).map((k) => keyCodeName(k.key ?? '') ?? k.key));
+  const realKeys = keys.filter((k) => k.text || !labelled.has(keyCodeName(k.key ?? '') ?? k.key));
+  if (laidOut) return [...realKeys, ...riders, ...parts.filter((p) => /Case$/.test(p.name) && !isKey(p)), ...kept.filter((p) => !/Case$/.test(p.name))];
   const moveOf = new Map(keys.map((k) => [labelOf(k)!.toLowerCase(), k.move]));
   const colours = [...new Set(keys.map((k) => k.color))].slice(0, 6);
   const laid = unrollRows({

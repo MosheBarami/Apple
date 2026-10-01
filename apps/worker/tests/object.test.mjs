@@ -385,3 +385,13 @@ test('a keyboard never has a row longer than a real one: one key per row is one 
   const width = plan.footprint.x1 - plan.footprint.x0;
   assert.ok(width < 80, `the board is ${width.toFixed(0)} studs wide`);
 });
+
+// Round 6 of test 1 (2026-10-01): a 36-stud unlabelled "Spacebar" bound to Space bounced beside the real SPACE key.
+test('a part bound to a key a keycap already has is not a second key', () => {
+  const plan = O.expandObject({ name: 'Kb', scale: 4, parts: [
+    { name: 'Key', rows: [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['Space']], move: { as: 'press', on: 'key' } },
+    { name: 'Spacebar', size: [9, 0.5, 1.5], at: [0, 1, 3], color: 'pink', key: 'Space', move: { as: 'press', on: 'key' } },
+  ] });
+  assert.ok(!plan.parts.some((p) => p.name === 'Spacebar'), 'no second space bar');
+  assert.equal(plan.parts.filter((p) => p.text?.value === 'SPACE').length, 1);
+});
