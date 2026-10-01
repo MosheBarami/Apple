@@ -107,6 +107,27 @@ async function readPlace(ctx: AgentCtx): Promise<{ hero?: string; hasComponents:
   return { ...(heroes[0]?.name ? { hero: heroes[0].name } : {}), hasComponents: Boolean(comps?.ok) };
 }
 
+/** Things that are the same kind of machine to a player: searched when the library has too few of the subject itself. */
+const KIN: Record<string, string[]> = {
+  keyboard: ['piano', 'typewriter', 'synth', 'keytar'], piano: ['keyboard', 'organ', 'synth'], car: ['truck', 'kart', 'bus'],
+  computer: ['laptop', 'monitor', 'console'], drill: ['excavator', 'digger', 'miner'], oven: ['stove', 'grill', 'fryer'],
+};
+
+/** Library models of the subject, then of its kin, one per source game: different looks for the machine ladder. */
+async function subjectModels(ctx: AgentCtx, subject: string, limit: number): Promise<LibRef[]> {
+  // Half the subject itself, half its kin, then the subject again for what is left: the library's keyboards are four
+  // flat desk props, its grand pianos are the machines a player wants to buy (owner's screenshots, 2026-10-01).
+  const own = await libraryModels(ctx, subject, limit);
+  const kin = KIN[subject] ?? [];
+  const out = own.slice(0, kin.length ? Math.ceil(limit / 2) : limit);
+  for (const k of kin) {
+    if (out.length >= limit) break;
+    for (const r of await libraryModels(ctx, k, limit - out.length, 20)) if (!out.some((o) => o.game === r.game)) out.push(r);
+  }
+  for (const r of own) if (out.length < limit && !out.includes(r)) out.push(r);
+  return out.slice(0, limit);
+}
+
 /** Library models of the subject (the owner library first): the machines beyond the hero's own tiers. */
 async function libraryModels(ctx: AgentCtx, q: string, limit: number, minParts = 15): Promise<LibRef[]> {
   const out = await ctx.execStudioOp({ op: 'query_owner_library', action: 'list', q, kind: 'model', limit: 20 }, 60_000).catch(() => null);
@@ -130,7 +151,7 @@ async function composePlotSim(ctx: AgentCtx, idea: string) {
   // Library first (owner, 2026-10-01: "if you find assets it's better than generating one from parts"): up to four
   // other models of the subject, the hub's stands, and scenery for the island.
   const [library, shop, trees, rocks, stage] = await Promise.all([
-    libraryModels(ctx, draft.subject, place.hero ? 4 : 6),
+    subjectModels(ctx, draft.subject, place.hero ? 4 : 6),
     libraryModels(ctx, 'shop', 1, 5),
     libraryModels(ctx, 'tree', 2, 5),
     libraryModels(ctx, 'rock', 1, 2),

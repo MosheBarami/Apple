@@ -34,8 +34,21 @@ local function onePanel(screen: ScreenGui)
 	for _, name in PANELS do
 		local panel = screen:FindFirstChild(name)
 		if panel and panel:IsA("GuiObject") then
+			-- A panel fits the window: on a small screen (or Studio's small view) the Shop's bottom row and its prices
+			-- were cut off (owner's screenshot, 2026-10-01).
+			local fit = panel:FindFirstChild("Fit") or Instance.new("UIScale")
+			fit.Name = "Fit"
+			fit.Parent = panel
+			local function size()
+				local view = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+				local h, w = panel.Size.Y.Offset + 60, panel.Size.X.Offset + 40
+				;(fit :: UIScale).Scale = math.min(1, if h > 0 then (view.Y - 40) / h else 1, if w > 0 then (view.X - 260) / w else 1)
+			end
+			size()
+			if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(size) end
 			panel:GetPropertyChangedSignal("Visible"):Connect(function()
 				if not panel.Visible then return end
+				size()
 				for _, other in PANELS do
 					local o = screen:FindFirstChild(other)
 					if o and o ~= panel and o:IsA("GuiObject") then o.Visible = false end
