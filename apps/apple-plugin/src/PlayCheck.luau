@@ -572,13 +572,24 @@ task.spawn(function()
 	end
 	probe.item = cheapest
 	probe.catalog = if catalog then #catalog:GetChildren() else -1
-	local map = workspace:FindFirstChild("AppleMap")
-	local plots = map and map:FindFirstChild("Plots")
-	local plot = plots and probe.plot and plots:FindFirstChild(probe.plot)
+	-- This script runs from ReplicatedFirst, before the world has arrived: wait for it, and look the plot up again until it is there.
+	if not game:IsLoaded() then game.Loaded:Wait() end
+	local map, plot
+	local function findPlot()
+		map = workspace:FindFirstChild("AppleMap")
+		local plots = map and map:FindFirstChild("Plots")
+		plot = plots and probe.plot and plots:FindFirstChild(probe.plot)
+	end
+	findPlot()
 	local lanePoints = {}
-	local lanes = map and map:FindFirstChild("Lanes")
-	for _, lane in (if lanes then lanes:GetChildren() else {}) do
-		for _, w in lane:GetChildren() do if w:IsA("BasePart") then table.insert(lanePoints, w.Position) end end
+	local function readLanes()
+		table.clear(lanePoints)
+		local lanes = map and map:FindFirstChild("Lanes")
+		for _, lane in (if lanes then lanes:GetChildren() else {}) do
+			local ordered = {}
+			for _, w in lane:GetChildren() do local n = tonumber(w.Name); if n and w:IsA("BasePart") then ordered[n] = w.Position end end
+			for i = 1, #ordered do if ordered[i] then table.insert(lanePoints, ordered[i]) end end
+		end
 	end
 	local function nearLane(t)
 		local best = math.huge
@@ -594,11 +605,13 @@ task.spawn(function()
 	local streamBy = os.clock() + 10 -- a streamed place sends the plot's tiles a moment later
 	repeat
 		table.clear(tiles)
+		findPlot()
 		if plot then
 			for _, t in CollectionService:GetTagged("AppleTile") do if t:IsA("BasePart") and t:IsDescendantOf(plot) then table.insert(tiles, t) end end
 		end
 		if #tiles == 0 then task.wait(0.5) end
 	until #tiles > 0 or os.clock() > streamBy
+	readLanes()
 	table.sort(tiles, function(a, b) return nearLane(a) < nearLane(b) end)
 	probe.tiles = #tiles
 	for i = 1, math.min(3, #tiles) do
