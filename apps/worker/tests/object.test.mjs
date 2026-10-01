@@ -491,3 +491,25 @@ test('a model part merely named Case never stands in for the layout\'s case', ()
     assert.ok(plan.parts.filter((p) => !p.text && !p.rides).every((p) => p.at[1] + p.size[1] / 2 < keyTop), 'nothing rises above the keys');
   }
 });
+
+// Round 13 of test 1 (2026-10-01): a bare "\" key broke the JSON twice (17 credits for a 10-credit keyboard). The schema
+// now asks for symbol keys by name; the layout prints the character and binds the real key.
+test('symbol keys written by name become their character and key', () => {
+  assert.equal(O.symbolOf('Backslash'), '\\');
+  assert.equal(O.symbolOf('Quote'), "'");
+  assert.equal(O.symbolOf('Left Bracket'), '[');
+  assert.equal(O.symbolOf('Q'), 'Q');
+  const plan = O.expandObject({ name: 'Kb', parts: [{ name: 'Key', rows: [['Q', 'W', 'Backslash', 'Quote']], move: { as: 'press', on: 'key' } }] });
+  const bs = plan.parts.find((p) => p.text?.value === '\\');
+  assert.ok(bs, 'a \\ cap'); assert.equal(bs.key, 'BackSlash', 'bound to Enum.KeyCode.BackSlash');
+  assert.equal(plan.parts.find((p) => p.text?.value === "'").key, 'Quote');
+});
+
+test('a bare backslash key in the arguments is read as the backslash it meant', async () => {
+  const out = join(mkdtempSync(join(tmpdir(), 'tools-')), 't.mjs');
+  execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'tools.ts'), '--bundle', '--format=esm', '--platform=node', '--outfile=' + out, '--external:cloudflare:*', '--log-level=error'], { cwd: WORKER, stdio: 'pipe' });
+  const T = await import(`file://${out}`);
+  const bad = '{"name":"Kb","parts":[{"name":"Key","rows":[["Q","W","\\", "]"],["A","\\"]]}]}';
+  assert.deepEqual(T.recoverJsonObject(bad).parts[0].rows, [['Q', 'W', '\\', ']'], ['A', '\\']]);
+  assert.deepEqual(T.recoverJsonObject('{"a":"x \\" }"}'), { a: 'x " }' }, 'an escaped quote is left alone');
+});

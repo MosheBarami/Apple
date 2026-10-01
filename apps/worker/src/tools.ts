@@ -4968,7 +4968,7 @@ export const TOOLS: Record<string, ToolImpl> = {
           size: { type: 'array', items: { type: 'number' } }, at: { type: 'array', items: { type: 'number' }, description: 'centre [x,y,z], y up from the ground' },
           color: { type: 'string', description: '#rrggbb' }, text: { type: 'string' }, key: { type: 'string' },
           repeat: { type: 'object', properties: { grid: { type: 'array', items: { type: 'number' } }, step: { type: 'array', items: { type: 'number' } }, texts: { type: 'array', items: { type: 'string' } }, keys: { type: 'array', items: { type: 'string' } } } },
-          rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'key labels row by row, e.g. [["Esc","1","2"],["Q","W"],["Space"]]' },
+          rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'key labels row by row, e.g. [["Esc","1","2"],["Q","W"],["Space"]]. Symbol keys by NAME, never the bare character: "Backslash", "Quote", "Backquote" (a bare \\ or " breaks the JSON). The F row and the modifiers are added for you.' },
           move: { type: 'object', properties: { as: { type: 'string', enum: ['press', 'spin', 'bob', 'open', 'wobble', 'pop'] }, on: { type: 'string', enum: ['key', 'click', 'touch', 'prompt', 'loop', 'once'] }, sound: { type: 'string', description: 'words, e.g. keyboard click' } } },
         } } },
         screen: { type: 'object' },
@@ -5721,11 +5721,17 @@ export function recoverJsonObject(text: string): Record<string, unknown> | undef
     else if (ch === '}' || ch === ']') { depth--; if (depth === 0) { end = i; break; } }
   }
   const noTrailingCommas = (t: string) => t.replace(/,(\s*[}\]])/g, '$1');
+  // A backslash key written bare, "\" inside a list, ends its string early (round 13 of the owner's test 1, 2026-10-01:
+  // two build_object specs refused, 17 credits for a 10-credit keyboard). Read as the one-backslash string it meant.
+  const bareBackslash = (t: string) => t.replace(/"\\"(\s*[,\]])/g, '"\\\\"$1');
   if (end >= 0 && /^[\s}\]]*$/.test(text.slice(end + 1))) {
     const body = text.slice(start, end + 1);
-    return tryParse(body) ?? tryParse(noTrailingCommas(body));
+    const parsed = tryParse(body) ?? tryParse(noTrailingCommas(body));
+    if (parsed) return parsed;
   }
-  return undefined;
+  // The bare backslash also unbalances the scan above (its string never closes), so it is tried on the whole text.
+  const fixed = bareBackslash(text.trim());
+  return fixed !== text.trim() ? recoverJsonObject(fixed) : undefined;
 }
 
 export async function runTool(

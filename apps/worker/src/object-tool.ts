@@ -177,6 +177,15 @@ const ROW_MAX = 16;
  * wrapped where real rows start (Tab, Caps, the first Shift, Ctrl), else in thirteens. Live 2026-10-01: an ENTER sat cut
  * off from the board, and then 53 keys came out in one 270-stud row. Pure.
  */
+/** A symbol key written by name ("Backslash", the build_object schema asks for it) as the character on its cap. */
+const SYMBOL_NAMES: Record<string, string> = {
+  backslash: '\\', quote: "'", apostrophe: "'", backquote: '`', grave: '`', tilde: '`', semicolon: ';', comma: ',', period: '.', dot: '.',
+  slash: '/', minus: '-', dash: '-', equals: '=', equal: '=', leftbracket: '[', rightbracket: ']', lbracket: '[', rbracket: ']',
+};
+export function symbolOf(label: string): string {
+  return SYMBOL_NAMES[label.trim().toLowerCase().replace(/[\s_-]+/g, '')] ?? label;
+}
+
 const BOTTOM_ROW = ['Ctrl', 'Win', 'Alt', 'Space', 'Alt', 'Fn', 'Ctrl'];
 const F_ROW = ['Esc', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'];
 
@@ -232,7 +241,7 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
   // The same label twice in a row is one wide key written as cells (live 2026-10-01: "Space" five times made a 176-stud
   // board with five space bars), so it is one key at its real width.
   const given = (p.rows as unknown[]).filter(Array.isArray)
-    .map((r) => (r as unknown[]).map((l) => String(l ?? '').slice(0, 12)).filter(Boolean)
+    .map((r) => (r as unknown[]).map((l) => symbolOf(String(l ?? '').slice(0, 12))).filter(Boolean)
       .filter((l, i, r) => i === 0 || l.trim().toLowerCase() !== r[i - 1]!.trim().toLowerCase()))
     .filter((r) => r.length > 0);
   const rows = completeKeyboard(keyboardRows(given));
