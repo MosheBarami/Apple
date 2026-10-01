@@ -912,3 +912,22 @@ test('a part with no name is named for how it looks, so the answer can say what 
   assert.match(said, /two cyan wedges/, said);
   assert.ok(!/\bparts? on|ten parts|\bpart\d/i.test(said), said);
 });
+
+// Test 3 round 6 (2026-10-01): "BUTTER", "SALTED" and "KING" counted as key names, so the upgraded butter's labelled
+// crown, wings and flames were laid out as nine keycaps on a keyboard case.
+test('only real key names are keys, and only a keyboard-like thing is laid out as a keyboard', () => {
+  for (const w of ['BUTTER', 'SALTED', 'KING', 'Crown', 'Royal']) assert.equal(O.keyCodeName(w), undefined, w);
+  for (const [w, k] of [['Q', 'Q'], ['Space', 'Space'], ['LeftShift', 'LeftShift'], ['F5', 'F5'], ['Win', 'LeftSuper'], ['1', 'One']]) assert.equal(O.keyCodeName(w), k, w);
+  const words = ['BUTTER', 'KING', 'ROYAL', 'SALTED', 'GOLD', 'WOW', 'EPIC', 'YUM', 'COOL'];
+  const plan = O.expandObject({ name: 'StickOfButter', request: 'make me a stick of butter', parts: [
+    { name: 'Butter', size: [20, 5, 5], at: [0, 2.5, 0], color: '#ffe066', move: { as: 'wobble', on: 'click' } },
+    ...words.map((t, i) => ({ name: `Badge${i}`, size: [1.5, 0.3, 1.5], at: [-8 + i * 2, 5.15, 0], color: '#ffd23f', text: t })),
+  ] });
+  assert.ok(!plan.parts.some((p) => p.name.startsWith('Key_') || p.rides && /Skirt/.test(p.name)), 'no keycaps');
+  assert.ok(plan.parts.some((p) => p.name === 'Butter'));
+});
+
+test('an object run builds at most twice (test 3 round 6: three builds in one run)', () => {
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  assert.match(session, /t\.tool === 'build_object' && t\.ok\)\.length \?\? 0\) >= 2 \? \[\] : \['build_object'\]/);
+});

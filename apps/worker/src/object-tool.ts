@@ -55,7 +55,18 @@ const KEY_WORDS: Record<string, string> = {
   caps: 'CapsLock', capslock: 'CapsLock', esc: 'Escape', escape: 'Escape', ',': 'Comma', '.': 'Period', ';': 'Semicolon',
   '/': 'Slash', '-': 'Minus', '=': 'Equals', '[': 'LeftBracket', ']': 'RightBracket', "'": 'Quote', '\\': 'BackSlash',
   '`': 'Backquote', up: 'Up', down: 'Down', left: 'Left', right: 'Right',
+  win: 'LeftSuper', cmd: 'LeftSuper', super: 'LeftSuper', menu: 'Menu', ins: 'Insert', pgup: 'PageUp', pgdn: 'PageDown',
 };
+const KEYCODE_NAMES = new Set([
+  ...DIGITS, ...Array.from({ length: 12 }, (_, i) => `F${i + 1}`),
+  'Space', 'Return', 'Backspace', 'Tab', 'Escape', 'Delete', 'Insert', 'Home', 'End', 'PageUp', 'PageDown', 'CapsLock',
+  'LeftShift', 'RightShift', 'LeftControl', 'RightControl', 'LeftAlt', 'RightAlt', 'LeftSuper', 'RightSuper', 'LeftMeta', 'RightMeta', 'Menu',
+  'Comma', 'Period', 'Semicolon', 'Slash', 'BackSlash', 'Minus', 'Equals', 'Plus', 'LeftBracket', 'RightBracket', 'Quote', 'Backquote',
+  'Up', 'Down', 'Left', 'Right', 'NumLock', 'ScrollLock', 'Print', 'Pause',
+  // Fn has no KeyCode: a keyboard's Fn cap is a key nobody's real keyboard sets off, clicked or stepped on only.
+  'Fn',
+  ...['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Period', 'Divide', 'Multiply', 'Minus', 'Plus', 'Enter', 'Equals'].map((k) => `Keypad${k}`),
+]);
 export function keyCodeName(raw: unknown): string | undefined {
   if (typeof raw !== 'string' || !raw) return undefined;
   const t = raw.trim();
@@ -63,7 +74,10 @@ export function keyCodeName(raw: unknown): string | undefined {
   if (/^[a-zA-Z]$/.test(t)) return t.toUpperCase();
   if (KEY_WORDS[t.toLowerCase()] ?? KEY_WORDS[t]) return KEY_WORDS[t.toLowerCase()] ?? KEY_WORDS[t];
   if (/^F([1-9]|1[0-2])$/i.test(t)) return t.toUpperCase();
-  if (/^[A-Z][A-Za-z]{1,19}$/.test(t)) return t; // already an Enum.KeyCode name (One, LeftShift, Space...)
+  // Already an Enum.KeyCode name (One, LeftShift, Space...) — a real one only: any capitalised word passed before, so
+  // "BUTTER", "SALTED" and "KING" printed on a butter's parts were keys and the butter was laid out as a keyboard (test 3
+  // round 6, 2026-10-01).
+  if (KEYCODE_NAMES.has(t)) return t;
   return undefined;
 }
 
@@ -767,7 +781,11 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   // A keyboard placed key by key is laid out by code (relayKeyboard), unless the model already used rows.
   const usedRows = (Array.isArray(a.parts) ? a.parts : []).some((r) => r && typeof r === 'object' && Array.isArray((r as Record<string, unknown>).rows));
   const extrasAsked = parts.filter((p) => !p.text && !p.key && !p.rides).map((p) => p.name);
-  parts.splice(0, parts.length, ...relayKeyboard(parts, usedRows, (['rgb', 'candy', 'pastel', 'given'] as const).find((t) => t === a.theme) ?? 'pastel'));
+  // Only a keyboard-like thing is laid out as a keyboard: rows given, or its name or the request says so (test 3 round 6:
+  // a butter's labelled crown, wings and flames became nine keycaps on a case).
+  const keyboardish = usedRows || parts.filter((p) => p.move?.on === 'key').length >= 8
+    || /key|piano|synth|typewriter|calculator|numpad|organ|accordion/i.test(`${String(a.name ?? '')} ${String(a.request ?? '')}`);
+  if (keyboardish) parts.splice(0, parts.length, ...relayKeyboard(parts, usedRows, (['rgb', 'candy', 'pastel', 'given'] as const).find((t) => t === a.theme) ?? 'pastel'));
   const kept = new Set(parts.map((p) => p.name));
   const dropped = extrasAsked.filter((n) => !kept.has(n));
   // A keyboard's own extras wear its theme (round 11: a hot-pink studded wrist rest and a cyan block on a dark gamer

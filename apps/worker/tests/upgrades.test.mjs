@@ -82,10 +82,15 @@ test('a failed build_object is retried, not swapped for hand-made instances (the
 
 test('after the object is built an object run cannot add upgrades, and an upgrades run cannot rebuild the object', () => {
   const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
-  const after = src.slice(src.indexOf('const AFTER_OBJECT'), src.indexOf('const AFTER_OBJECT') + 400);
+  // RESTATED 2026-10-01 (test 3 round 6): the object branch now drops build_object after two builds; the property is
+  // still that each branch offers only its own builder.
+  const after = src.slice(src.indexOf('const AFTER_OBJECT'), src.indexOf('const AFTER_OBJECT') + 700);
   assert.match(after, /agent\.upgradesRun\s*\?\s*\['add_upgrades'/);
-  assert.doesNotMatch(after.slice(after.indexOf(": ['build_object'")), /add_upgrades/, 'an object run may add upgrades');
-  assert.doesNotMatch(after.slice(0, after.indexOf(": ['build_object'")), /'build_object'/, 'an upgrades run may rebuild the object');
+  const upgradesBranch = after.slice(0, after.indexOf('agent.composedPlotSim ?'));
+  const objectBranch = after.slice(after.indexOf("agent.composedPlotSim ? ['play_check', 'get_output_logs']") + 60, after.indexOf('const focusedAllowed'));
+  assert.ok(objectBranch.includes("'build_object'"), 'the object branch was not found');
+  assert.doesNotMatch(objectBranch, /add_upgrades/, 'an object run may add upgrades');
+  assert.doesNotMatch(upgradesBranch, /'build_object'/, 'an upgrades run may rebuild the object');
 });
 
 // Play test, 2026-10-01: the model named the currency Taps, the economy kept Coins, and the counter sat at 0.

@@ -4018,7 +4018,8 @@ export class SessionDO extends DurableObject<Env> {
     const AFTER_OBJECT = new Set(agent.upgradesRun
       ? ['add_upgrades', 'play_check_ui', 'get_output_logs', 'get_project_tree']
       : agent.composedPlotSim ? ['play_check', 'get_output_logs']
-      : ['build_object', 'play_check', 'get_output_logs', 'get_project_tree']);
+      // One rebuild to fix what the check found, never a third build (test 3 round 6, 2026-10-01: three builds in a run).
+      : [...((agent.trace?.filter((t) => t.tool === 'build_object' && t.ok).length ?? 0) >= 2 ? [] : ['build_object']), 'play_check', 'get_output_logs', 'get_project_tree']);
     const focusedAllowed = new Set([...offeredCapabilityFilter.allowed].filter((tool) =>
       agent.objectBuilt ? AFTER_OBJECT.has(tool) : agent.focused ? offeredWhenFocused(tool) : tool !== 'more_tools'));
     const offeredAllowed = sequenceStep?.state === 'next'
