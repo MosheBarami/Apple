@@ -1,0 +1,17 @@
+{
+  "id": "fx",
+  "name": "AppleFx",
+  "role": "feedback",
+  "summary": "Loud cartoony feedback on every screen: health bars over enemies, hit flashes, sparks and floating damage, a smoke puff and floating coins on a defeat, a bounce and sparkles when something is placed or levelled up, a camera shake when the base is hit, and every sound by role (public, checked sound effects).",
+  "files": {
+    "AppleFx.luau": { "class": "LocalScript", "parent": "StarterPlayer.StarterPlayerScripts", "name": "AppleFx" },
+    "AppleSounds.luau": { "class": "ModuleScript", "parent": "ReplicatedStorage.AppleComponents", "name": "AppleSounds" }
+  },
+  "needs": {
+    "state": "Workspace.AppleEnemies (Health, MaxHealth, Reward, LastHitBy, Defeated), Workspace.AppleDefenders (Owner, Level), ReplicatedStorage.AppleShot, ReplicatedStorage.AppleState (BaseHealth)",
+    "config": "optional AppleClientConfig.sounds = { click, open, error, cash, place, upgrade, levelup, countdown, wave, cleared, shoot, hit, defeat, base } (asset ids)"
+  },
+  "gives": {
+    "sounds": "AppleSounds.play(role) for every client script"
+  }
+}

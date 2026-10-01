@@ -41,6 +41,8 @@ export const OP_LABEL: Record<string, string> = {
   rename_instance: 'Renamed an object',
   set_locked: 'Locked or unlocked objects',
   set_visible: 'Showed or hid objects',
+  place_copies: 'Placed props on the map',
+  strip_descendants: 'Removed scripts and sounds from imported pieces',
   insert_asset: 'Inserted an asset',
   import_owner_local: 'Added a piece from the game library',
   import_owner_library: 'Added parts from your game library',

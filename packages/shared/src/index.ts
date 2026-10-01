@@ -1032,6 +1032,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'create_rig':
     case 'build_ui':
     case 'insert_ui_component':
+    case 'build_studded_ui':
     case 'insert_sound':
     case 'insert_vfx':
       return 'building';
@@ -2889,6 +2890,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'build_ui',
     label: 'Build UI screens',
     why: 'Adds a whole on-screen menu, shop or HUD to StarterGui.',
+    group: 'changes',
+  },
+  {
+    name: 'build_studded_ui',
+    label: 'Draw studded game screens',
+    why: 'Adds the game\'s own studded HUD, buttons and shop panels to StarterGui.',
     group: 'changes',
   },
   {

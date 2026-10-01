@@ -1,45 +1,11 @@
 /**
  * Recipes: what a composed game is made of. Every piece is a real owner-library item (game hash prefix + path, as
- * the 2026-09-30 component survey found them); nothing is a whole world. The composer (compose.ts) builds a new map
- * and installs the components; the recipe only chooses pieces, words and numbers.
+ * the 2026-09-30 component survey found them); nothing is a whole world. The composer (compose.ts) builds a new studded
+ * map, the game's own studded HUD and installs the components; the recipe only chooses pieces, words and numbers.
  */
-import type { KitProfile, LibRef, Recipe } from './compose';
+import type { LibRef, Recipe } from './compose';
 
 const ref = (game: string, path: string): LibRef => ({ game, path });
-
-/** The Plants vs Brainrots kit: bright, glossy, image-skinned (survey rank 1). Its scripts go; its screens stay. */
-export const PVB_KIT: KitProfile = {
-  id: 'plants-vs-brainrots-005e26',
-  screens: [ref('321e74b79cd7', '/StarterGui/Main')],
-  card: { ref: ref('321e74b79cd7', '/ReplicatedStorage/Assets/SeedSlot'), into: 'Main.Seeds.Frame.ScrollingFrame' },
-  roles: {
-    money: 'Main.Bottom.Money',
-    timer: 'Main.Right.ImminentAttackTimer.Main.Time',
-    wave: 'Main.Right.ImminentAttackTimer.Main.Battle_Button.Main.Text',
-    base: 'Main.DefeatCounter.TextLabel',
-    message: 'Main.Bottom.Changes.MoneyChange',
-    shopButton: 'Main.Right.Seeds.TextButton',
-    shopLabel: 'Main.Right.Seeds.TextLabel',
-    shopPanel: 'Main.Seeds',
-    shopClose: 'Main.Seeds.Close.TextButton',
-    shopList: 'Main.Seeds.Frame.ScrollingFrame',
-    shopCard: 'Main.Seeds.Frame.ScrollingFrame.SeedSlot',
-  },
-  // A composed game carries only what it uses: every panel of the kit's game this game has no system for is deleted,
-  // not hidden (a hidden pet, egg or admin panel is still that other game's feature in this one).
-  remove: [
-    'Main.Left', 'Main.CrateOpening', 'Main.Gifting', 'Main.Settings', 'Main.Tutorial', 'Main.Index', 'Main.Effects',
-    'Main.Gears', 'Main.AutoSell', 'Main.Admin', 'Main.Rewards', 'Main.GroupReward', 'Main.BrainrotNoti',
-    'Main.Rebirth', 'Main.EggOpening', 'Main.Codes', 'Main.Stats', 'Main.Upgrade', 'Main.CashPerSecond',
-    'Main.PlaceVersion', 'Main.LowPerformance', 'Main.Boss', 'Main.Empty', 'Main.LuckIncreaseNotif',
-    'Main.Update_Timer', 'Main.FPSCounter', 'Main.WheelbarrowTokens', 'Main.DialogueFrame', 'Main.Brainrot_Invasion',
-    'Main.ImminentAttackSplash', 'Main.Victory_Screen', 'Main.Biome_OLD', 'Main.Biome', 'Main.Crates',
-    'Main.Event_Candy', 'Main.CratePreview', 'Main.Shop', 'Main.SpookyPlantCratePreview', 'Main.Right.Garden',
-    'Main.Right.Sell', 'Main.Right.Folder', 'Main.Right.PopupTemplate', 'Main.Seeds.InstantRestock',
-    'Main.Seeds.Restock',
-  ],
-  hide: [],
-};
 
 const BODY = {
   mythic: ref('f3ac50e43d68', '/ReplicatedStorage/Assets/Enemies/Normal/MythicNPC'),
@@ -53,10 +19,9 @@ export function orchardRecipe(seed = 20260930): Recipe {
     start: 60,
     words: {
       wave: 'Wave', nextWave: 'Veggies in', left: 'veggies left', base: 'Orchard', lost: 'The veggies took the orchard! Again...',
-      pick: 'Tap a glowing spot to plant', shop: 'Trees',
+      pick: 'Tap a glowing spot on your plot to plant', shop: 'Trees', gate: 'Veggie Gate', plot: 'Free plot',
+      cleared: 'Wave cleared! Bonus coins!', earn: 'Beat veggies and clear waves to earn coins!',
     },
-    palette: { grass: '#6fd14a', path: '#c89a5e', soil: '#8b5a2b', tile: '#7a4e25', border: '#a0703f' },
-    kit: PVB_KIT,
     // Every body is MythicNPC: plain parts, so it always renders. Costumes are pieces that render in a new place
     // (measured 2026-09-30): the tomato and pumpkin meshes, and the part-built vegetable plants of a Plants vs Brainrots
     // variant (no meshes, so nothing to fail).
@@ -70,23 +35,24 @@ export function orchardRecipe(seed = 20260930): Recipe {
       { id: 'AppleTree', name: 'Apple Tree', model: ref('b9ad059e0b42', '/SavedGameModules/Workspace/Trees/Apple Tree#3'), height: 9,
         projectile: ref('21394d8b357d', '/ReplicatedStorage/Fruit_Spawn/Apple'), price: 25, range: 24, damage: 10, rate: 1, color: '#e53935', blurb: 'Throws apples', rarity: 'Common' },
       { id: 'OrangeTree', name: 'Orange Tree', model: ref('b9ad059e0b42', '/SavedGameModules/Workspace/Trees/Orange Tree#9'), height: 10,
-        projectile: ref('21394d8b357d', '/ReplicatedStorage/Fruit_Spawn/Peach'), projectileColor: '#fb8c00', price: 70, range: 27, damage: 8, rate: 2.2, color: '#fb8c00', blurb: 'Fast oranges', rarity: 'Rare' },
+        projectile: ref('21394d8b357d', '/ReplicatedStorage/Fruit_Spawn/Peach'), projectileColor: '#fb8c00', price: 70, range: 27, damage: 8, rate: 2.2, color: '#fb8c00', blurb: 'Fast oranges', rarity: 'Rare', unlock: 2 },
       { id: 'Melon', name: 'Melon Cannon', model: ref('75a308cbb526', '/ReplicatedStorage/Assets/Plants/Watermelon'), height: 6,
-        projectile: ref('21394d8b357d', '/ServerStorage/Collectables/Watermelon'), price: 180, range: 24, damage: 55, rate: 0.6, color: '#43a047', blurb: 'Huge melon hits', rarity: 'Epic' },
+        projectile: ref('21394d8b357d', '/ServerStorage/Collectables/Watermelon'), price: 180, range: 24, damage: 55, rate: 0.6, color: '#43a047', blurb: 'Huge melon hits', rarity: 'Epic', unlock: 4 },
     ],
     props: [
       { ref: ref('21394d8b357d', '/Workspace/Farm/Farm/DecorationFence/Farm Fence'), count: 80, where: 'border' },
-      { ref: ref('b9ad059e0b42', '/SavedGameModules/Workspace/Trees/Apple Tree#3'), count: 14, where: 'rows', height: 13 },
+      { ref: ref('b9ad059e0b42', '/SavedGameModules/Workspace/Trees/Apple Tree#3'), count: 10, where: 'rows', height: 13 },
+      { ref: ref('b9ad059e0b42', '/SavedGameModules/Workspace/Trees/Apple Tree#3'), count: 10, where: 'scatter', height: 15 },
       { ref: ref('b9ad059e0b42', '/SavedGameModules/Workspace/Trees/Orange Tree#9'), count: 8, where: 'rows', height: 13 },
-      { ref: ref('10abe6a307f8', '/Workspace/Bush'), count: 10, where: 'scatter', height: 4 },
-      { ref: ref('6f4b7e336a28', '/Workspace/Flower'), count: 10, where: 'scatter', height: 2.5 },
+      { ref: ref('10abe6a307f8', '/Workspace/Bush'), count: 16, where: 'scatter', height: 4 },
+      { ref: ref('6f4b7e336a28', '/Workspace/Flower'), count: 22, where: 'scatter', height: 2.5 },
       { ref: ref('5da7109c71d4', '/GameModules/Workspace/Hay'), count: 4, where: 'scatter', height: 4 },
-      { ref: ref('aa62032f2430', '/Workspace/RegenScenery/PumpkinPatch/Scarecrow'), count: 2, where: 'scatter', height: 8 },
+      { ref: ref('aa62032f2430', '/Workspace/RegenScenery/PumpkinPatch/Scarecrow'), count: 3, where: 'scatter', height: 8 },
       { ref: ref('b9ad059e0b42', '/SavedGameModules/ReplicatedStorage/Buildings/Well'), count: 2, where: 'scatter', height: 8 },
     ],
     base: ref('6f4b7e336a28', '/Workspace/Barn#2'),
     waves: {
-      first: 15, between: 8, baseHealth: 20,
+      first: 15, between: 8, baseHealth: 20, clearBonus: 15,
       list: [
         [{ enemy: 'Tomato', count: 6, every: 1.4 }],
         [{ enemy: 'Tomato', count: 8, every: 1 }, { enemy: 'Carrot', count: 3, every: 2.5 }],

@@ -3,15 +3,16 @@
 	AppleWaves: enemies come in numbered waves along lanes to a base. No wave system exists in the owner
 	library (survey 2026-09-30), so this one is ours. The composer writes the settings into
 	ServerScriptService.AppleComponents.AppleGameConfig (a ModuleScript returning a table), section `waves`:
-	  { first = 12, between = 10, baseHealth = 20, rewardShare = "killer" | "everyone",
+	  { first = 12, between = 10, baseHealth = 20, rewardShare = "killer" | "everyone", clearBonus = 15,
 	    enemies = { Carrot = { health = 30, speed = 6, reward = 5, damage = 1 }, ... },
 	    list = { { { enemy = "Carrot", count = 6, every = 1.2 } }, ... } }       -- one entry per wave
 	After the last listed wave the game keeps going: each further wave repeats the last one with more
 	and tougher enemies (scaleWave), so a round never simply stops.
 	World: Workspace.AppleMap.Lanes.<lane> holds waypoint Parts named 1, 2, 3 ... (the last one is at the
 	base); enemy models live in ServerStorage.AppleEnemies.<name> (AppleMotion-prepared: anchored root).
-	State for any screen: ReplicatedStorage.AppleState attributes Wave, Phase (intermission|wave|lost),
-	NextWaveIn, EnemiesLeft, BaseHealth, BaseHealthMax. Live enemies are in Workspace.AppleEnemies with
+	State for any screen: ReplicatedStorage.AppleState attributes Wave, Phase (intermission|wave|cleared|lost),
+	NextWaveIn, EnemiesLeft, BaseHealth, BaseHealthMax. A cleared wave pays everyone clearBonus x the wave's number
+	and raises each player's best wave (saved with their money, shown as "Best Wave" on the leaderboard). Live enemies are in Workspace.AppleEnemies with
 	attributes Health, MaxHealth, Reward; a defender lowers Health and sets LastHitBy (a UserId).
 ]]
 local AppleWaves = {}
@@ -100,6 +101,29 @@ function AppleWaves.start(config: any, economy: any?)
 	local templates = ServerStorage:WaitForChild("AppleEnemies")
 
 	local function setState(k: string, v: any) state:SetAttribute(k, v) end
+
+	-- The best wave each player has cleared, on the leaderboard beside their money.
+	local function showBest(player: Player)
+		local stats = player:WaitForChild("leaderstats", 20)
+		if not stats then return end
+		local best = stats:FindFirstChild("Best Wave") or Instance.new("IntValue")
+		best.Name = "Best Wave"
+		best.Value = (economy and economy.getData(player, "BestWave")) or 0
+		best.Parent = stats
+	end
+	Players.PlayerAdded:Connect(showBest)
+	for _, p in Players:GetPlayers() do task.spawn(showBest, p) end
+	local function cleared(wave: number)
+		for _, p in Players:GetPlayers() do
+			if economy then
+				economy.grant(p, (cfg.clearBonus or 15) * wave, "wave cleared")
+				if wave > (economy.getData(p, "BestWave") or 0) then economy.setData(p, "BestWave", wave) end
+			end
+			local stats = p:FindFirstChild("leaderstats")
+			local best = stats and stats:FindFirstChild("Best Wave")
+			if best and best:IsA("IntValue") and wave > best.Value then best.Value = wave end
+		end
+	end
 	setState("BaseHealthMax", baseMax)
 	setState("BaseHealth", baseMax)
 
@@ -217,6 +241,10 @@ function AppleWaves.start(config: any, economy: any?)
 				wave = 0
 				setState("Wave", 0)
 				setState("BaseHealth", baseMax)
+			else
+				setState("Phase", "cleared")
+				cleared(wave)
+				task.wait(2)
 			end
 		end
 	end)

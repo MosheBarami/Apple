@@ -134,7 +134,7 @@ test('compose: every property the map writes is one the plugin will write (one r
   // Seen live 2026-09-30: SpawnLocation.Duration was refused, so create_instances refused the whole AppleMap.
   const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
   const block = plugin.slice(plugin.indexOf('local PROPERTY_ALLOW = {'), plugin.indexOf('\n}', plugin.indexOf('local PROPERTY_ALLOW = {')));
-  const allowed = new Set([...block.matchAll(/^\s*([A-Za-z_]+)\s*=\s*true/gm)].map((m) => m[1]));
+  const allowed = new Set([...block.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*true/gm)].map((m) => m[1])); // names may hold digits (Color3)
   assert.ok(allowed.has('Size') && allowed.has('Material'), 'read the allowlist');
   const used = new Set();
   const walk = (items) => { for (const i of items) { Object.keys(i.props ?? {}).forEach((k) => used.add(k)); walk(i.children ?? []); } };
@@ -171,4 +171,80 @@ test('composed judge: a game that plays as asked is ready; each of the owner\'s 
   assert.ok(fail(J.judgeFindings(IDEA, cfg, world, GOOD, { errors: [], loadFailures: ['Failed to load 111111', 'Failed to load 222222', 'Failed to load 333333'] })), 'assets that do not load fail');
   assert.ok(fail(J.judgeFindings(IDEA, cfg, world, { apple: { ...GOOD.apple, moneyEnd: 10 } }, { errors: [], loadFailures: [] })), 'a loop that pays nothing fails');
   assert.ok(fail(J.judgeFindings(IDEA, cfg, world, null, { errors: [], loadFailures: [] })), 'not played is never ready');
+});
+
+test('compose: every class and enum the build creates is one the plugin will create', () => {
+  const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+  const table = (name) => {
+    const at = plugin.indexOf(`local ${name} = {`);
+    const block = plugin.slice(at, plugin.indexOf('\n}', at));
+    return new Set([...block.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*true/gm)].map((m) => m[1]));
+  };
+  const classes = table('CREATE_CLASSES'), enums = table('ENUM_ALLOW');
+  assert.ok(classes.has('Part') && classes.has('ImageButton') && enums.has('Material'), 'read the plugin tables');
+  const usedClasses = new Set(), usedEnums = new Set();
+  const walk = (items) => {
+    for (const i of items) {
+      usedClasses.add(i.className);
+      for (const v of Object.values(i.props ?? {})) if (v && v.t === 'EnumItem') usedEnums.add(v.v.split('.')[1]);
+      walk(i.children ?? []);
+    }
+  };
+  for (const s of steps.filter((x) => x.kind === 'create')) walk(s.items);
+  assert.ok(usedClasses.size > 10);
+  for (const c of usedClasses) assert.ok(classes.has(c), `${c} is not a class the plugin creates`);
+  for (const e of usedEnums) assert.ok(enums.has(e), `Enum.${e} is not an enum the plugin writes`);
+});
+
+test('compose: the map is studded: every visible brick carries the stud texture', () => {
+  const map = steps.find((s) => s.kind === 'create' && s.parent === 'game.Workspace').items[0];
+  const parts = [];
+  const walk = (i) => { if (i.className === 'Part' || i.className === 'SpawnLocation') parts.push(i); (i.children ?? []).forEach(walk); };
+  walk(map);
+  const visible = parts.filter((p) => p.props.Transparency !== 1);
+  assert.ok(visible.length > 40, `a real map (${visible.length} bricks)`);
+  for (const p of visible) {
+    const tex = (p.children ?? []).find((c) => c.className === 'Texture');
+    assert.ok(tex, `${p.name} has no studs`);
+    assert.match(tex.props.Texture, /^rbxassetid:\/\/\d+$/, 'the studs are an image id the plugin accepts');
+  }
+  const names = new Set(parts.map((p) => p.name));
+  for (const n of ['Grass', 'Cliff1', 'Cliff2', 'Cliff3', 'Water', 'Plaza', 'Spawn']) assert.ok(names.has(n), `the map has ${n}`);
+  // Props come from the library, never from parts (owner, D-MODELLIB-2): no brick is named like a prop.
+  for (const p of parts) assert.doesNotMatch(p.name, /tree|bush|fence|rock|flower|lamp|chest|barrel/i, `${p.name} is a prop made of parts`);
+});
+
+test('compose: the HUD is the game\'s own: a card and an upgrade row for every item, no placeholder text, every panel closable', () => {
+  const create = steps.find((s) => s.kind === 'create' && s.parent === 'game.StarterGui');
+  assert.ok(create, 'the HUD is written into StarterGui');
+  const hud = create.items[0];
+  assert.equal(hud.name, 'AppleHUD');
+  const all = [];
+  const walk = (i, path) => { all.push({ ...i, path }); (i.children ?? []).forEach((c) => walk(c, `${path}.${c.name}`)); };
+  walk(hud, 'AppleHUD');
+  const has = (p) => all.some((i) => i.path === p);
+  for (const d of recipe.defenders) {
+    assert.ok(has(`AppleHUD.ShopPanel.Body.Grid.Item_${d.id}`), `a shop card for ${d.id}`);
+    assert.ok(has(`AppleHUD.ShopPanel.Body.Grid.Item_${d.id}.Buy`), `${d.id} can be bought`);
+    assert.ok(has(`AppleHUD.UpgradePanel.Body.List.Up_${d.id}.Buy`), `${d.id} can be upgraded`);
+  }
+  for (const p of ['Coins.Value', 'Coins.Plus', 'Wave.Title', 'Wave.Timer', 'Health.Fill', 'Menu.Shop', 'Menu.Upgrade', 'ShopPanel.Close', 'UpgradePanel.Close', 'Toast']) assert.ok(has(`AppleHUD.${p}`), `HUD has ${p}`);
+  for (const i of all) {
+    const t = i.props?.Text;
+    if (typeof t !== 'string') continue;
+    assert.doesNotMatch(t, /^(Label|TextLabel|TextButton|Button)$/, `${i.path} shows a placeholder`);
+    assert.doesNotMatch(t, /\d{5,}/, `${i.path} shows a made-up number (${t})`);
+  }
+  const studded = all.filter((i) => i.props?.Image === 'rbxassetid://6927295847');
+  assert.ok(studded.length >= 20, 'the HUD is studded');
+  assert.ok(studded.every((i) => (i.children ?? []).some((c) => c.className === 'UIStroke') && (i.children ?? []).some((c) => c.className === 'UIGradient')), 'every studded surface has its outline and colour');
+});
+
+test('compose: the game has progression: later items unlock with waves, upgrades and a wave bonus are configured', () => {
+  const cfg = steps.find((s) => s.name === 'AppleGameConfig').source;
+  assert.ok(recipe.defenders.some((d) => (d.unlock ?? 0) > 0), 'some items are earned');
+  assert.match(cfg, /unlock = [1-9]/);
+  assert.match(cfg, /clearBonus = \d+/);
+  const scripts = steps.filter((s) => s.kind === 'script').map((s) => s.name);
+  for (const n of ['AppleGameUI', 'AppleFx', 'AppleSounds']) assert.ok(scripts.includes(n), `${n} is installed`);
 });

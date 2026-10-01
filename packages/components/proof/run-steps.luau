@@ -20,6 +20,24 @@ local function resolve(path: string, create: boolean?): Instance?
 end
 
 local function value(v: any, prop: string): any
+	if type(v) == "table" and type(v.t) == "string" then
+		local x = v.v
+		if v.t == "UDim2" then return UDim2.new(x[1], x[2], x[3], x[4]) end
+		if v.t == "UDim" then return UDim.new(x[1], x[2]) end
+		if v.t == "Vector2" then return Vector2.new(x[1], x[2]) end
+		if v.t == "Vector3" then return Vector3.new(x[1], x[2], x[3]) end
+		if v.t == "Color3" then return Color3.new(x[1], x[2], x[3]) end
+		if v.t == "ColorSequence" then
+			local keys = {}
+			for _, k in x do table.insert(keys, ColorSequenceKeypoint.new(k[1], Color3.new(k[2][1], k[2][2], k[2][3]))) end
+			return ColorSequence.new(keys)
+		end
+		if v.t == "EnumItem" then
+			local _, kind, item = string.match(x, "^(Enum)%.([%w_]+)%.([%w_]+)$")
+			return Enum[kind][item]
+		end
+		return x
+	end
 	if type(v) == "table" and #v == 3 and type(v[1]) == "number" then return Vector3.new(v[1], v[2], v[3]) end
 	if type(v) == "string" and v:match("^#%x%x%x%x%x%x$") then return Color3.fromHex(v) end
 	if type(v) == "string" and prop == "Material" then return Enum.Material[v] end
@@ -123,6 +141,10 @@ for i, s in steps do
 				if classes[d.ClassName] and d.Parent then d:Destroy(); gone += 1 end
 			end
 			print(("COMPOSE stripped %d from %s"):format(gone, s.root))
+		elseif s.kind == "set" then
+			local target = resolve(s.path)
+			if not target then error("nothing at " .. s.path) end
+			for k, v in s.props do target[k] = value(v, k) end
 		elseif s.kind == "hide" then
 			for _, p in s.paths do local g = resolve(p); if g and g:IsA("GuiObject") then g.Visible = false end end
 		elseif s.kind == "delete" then

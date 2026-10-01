@@ -1,15 +1,17 @@
 /**
  * THE COMPOSER. A game is made from components, never by copying a whole world and cutting it down (owner, 2026-09-30).
  *
- * A Recipe says what the game is: its words, the library pieces it uses (a UI kit, bodies and costumes for its
+ * A Recipe says what the game is: its words, the library pieces it uses (bodies and costumes for its
  * creatures, the things players place, the props of its map) and the numbers of its systems. `composeSteps` turns a
  * Recipe into Steps: import these library pieces, lay out a NEW map made for the idea, install these components,
- * write the game's config, place these props, dress the kit. Steps are small and plain so two executors can run the
+ * write the game's config, place these props, write its studded HUD. Steps are small and plain so two executors can run the
  * same list: the worker (plugin ops, `runSteps`) and the Studio proof harness (packages/components/proof).
  *
  * Nothing here decides the idea; `recipes.ts` does. Everything here is pure and tested (tests/compose.test.mjs).
  */
 import { COMPONENTS } from './components.generated';
+import { studdedMap, studLighting, STUD_PALETTE, type StudPalette } from './studded-map';
+import { waveDefenseHud } from './stud-ui';
 
 /** A piece of the owner library: its game (a unique hash prefix) and path, as library_extract and import_owner_library take them. */
 export interface LibRef { game: string; path: string }
@@ -27,29 +29,22 @@ export interface EnemySpec {
 export interface DefenderSpec {
   id: string; name: string; model: LibRef; price: number; range: number; damage: number; rate: number;
   projectile?: LibRef; projectileColor?: string; color?: string; blurb?: string; rarity?: string; height?: number;
+  /** The wave a player must reach before it is sold (progression). */
+  unlock?: number;
 }
 export interface PropSpec { ref: LibRef; count: number; height?: number; where: 'scatter' | 'border' | 'rows' }
-export interface KitProfile {
-  id: string;
-  /** Screens to import into StarterGui, and the card template to put in the shop list. */
-  screens: LibRef[]; card?: { ref: LibRef; into: string };
-  /** Dotted paths under PlayerGui for AppleHud's roles. */
-  roles: Record<string, string>;
-  /** Paths under StarterGui to hide (panels this game does not use), and to delete (the kit's own scripts). */
-  hide: string[]; remove: string[];
-}
 export interface Recipe {
   title: string;
   currency: string;
   start: number;
   words: Record<string, string>;
-  palette: { grass: string; path: string; soil: string; tile: string; border: string };
-  kit: KitProfile;
+  /** The studded map's colours; the style spec's palette for any left out. */
+  palette?: Partial<StudPalette>;
   enemies: EnemySpec[];
   defenders: DefenderSpec[];
   props: PropSpec[];
   base: LibRef;
-  waves: { first: number; between: number; baseHealth: number; list: { enemy: string; count: number; every: number }[][] };
+  waves: { first: number; between: number; baseHealth: number; clearBonus?: number; list: { enemy: string; count: number; every: number }[][] };
   seed: number;
 }
 
@@ -64,9 +59,11 @@ export type Step =
    * stands with the bottom of its world-aligned box centred on `at`.
    */
   | { kind: 'place'; from: string; parent: string; name: string; at: [number, number, number]; yaw: number; height?: number; length?: number; along?: 'x' | 'z' }
-  /** Remove every instance of these classes under `root` (a kit's own sounds and scripts). */
+  /** Remove every instance of these classes under `root` (a library piece's own sounds and scripts). */
   | { kind: 'strip'; root: string; classes: string[] }
   | { kind: 'hide'; paths: string[] }
+  /** Set properties of one existing instance (Lighting). */
+  | { kind: 'set'; path: string; props: Record<string, unknown> }
   | { kind: 'delete'; paths: string[] };
 
 export interface InstanceSpecLite {
@@ -133,7 +130,7 @@ export function laneLayout(seed: number): Layout {
   const plotsRaw: P2[] = [[w - hug, -60 + hug], [-hug, -85], [-w + hug, hug], [hug, 50 + hug]];
   const plots = plotsRaw.map(([x, z]) => [x * flip, z] as P2);
   const spawn: P2 = [6 * flip, 25];
-  const ground = { center: [0, -8] as P2, size: [170, 240] as P2 };
+  const ground = { center: [0, 2] as P2, size: [176, 264] as P2 }; // the gate (z -110) and the base's plaza (to z 120) both inside
   const scatter: P2[] = [];
   const [gx, gz] = ground.center, [sx, sz] = ground.size;
   for (let tries = 0; scatter.length < 60 && tries < 4000; tries++) {
@@ -199,10 +196,6 @@ export function libName(ref: LibRef): string {
 
 // ------------------------------------------------------------------------------------------------ the steps
 
-const PART = (name: string, size: [number, number, number], at: [number, number, number], color: string, material: string, extra: Record<string, unknown> = {}): InstanceSpecLite => ({
-  className: 'Part', name,
-  props: { Size: size, Position: at, Anchored: true, Color: color, Material: material, TopSurface: 'Studs', BottomSurface: 'Inlet', ...extra },
-});
 
 /** The library pieces a recipe uses, each with the key it is staged under (ServerStorage.AppleParts.<key>). */
 export function pieces(recipe: Recipe): { key: string; ref: LibRef }[] {
@@ -243,29 +236,16 @@ export function composeSteps(recipe: Recipe): Step[] {
   // 2. The library pieces.
   for (const s of staged) steps.push({ kind: 'import', key: s.key, ref: s.ref, into: `game.ServerStorage.AppleParts.${s.key}` });
 
-  // 3. A new map, laid out for this idea.
-  const pal = recipe.palette;
-  const [gcx, gcz] = layout.ground.center, [gsx, gsz] = layout.ground.size;
-  const mapItems: InstanceSpecLite[] = [PART('Ground', [gsx, 2, gsz], [gcx, -1, gcz], pal.grass, 'Grass')];
-  const road: InstanceSpecLite[] = [];
-  for (let i = 0; i < layout.lane.length - 1; i++) {
-    const [ax, az] = layout.lane[i]!, [bx, bz] = layout.lane[i + 1]!;
-    const len = Math.hypot(bx - ax, bz - az) + LANE_WIDTH;
-    const horizontal = Math.abs(bx - ax) > Math.abs(bz - az);
-    road.push(PART(`Road${i + 1}`, horizontal ? [len, 0.4, LANE_WIDTH] : [LANE_WIDTH, 0.4, len], [(ax + bx) / 2, 0.2, (az + bz) / 2], pal.path, 'Ground', { TopSurface: 'Smooth', CanCollide: false }));
-  }
-  mapItems.push({ className: 'Model', name: 'Road', children: road });
-  mapItems.push({ className: 'Folder', name: 'Lanes', children: [{ className: 'Folder', name: 'Lane1', children: layout.lane.map(([x, z], i) => PART(String(i + 1), [2, 1, 2], [x, 1.5, z], '#ffffff', 'SmoothPlastic', { Transparency: 1, CanCollide: false, CanQuery: false })) }] });
-  mapItems.push({ className: 'Folder', name: 'Plots', children: layout.plots.map(([px, pz], n) => ({
-    className: 'Model', name: `Plot${n + 1}`,
-    children: [
-      PART('Border', [PLOT_HALF * 2 + 2, 0.6, PLOT_HALF * 2 + 2], [px, 0.3, pz], pal.border, 'Wood', { TopSurface: 'Smooth' }),
-      ...plotTiles([px, pz]).map(([tx, tz], i) => ({ ...PART(`Tile${i + 1}`, [TILE - 0.6, 1, TILE - 0.6], [tx, 0.5, tz], i % 2 === 0 ? pal.soil : pal.tile, 'Ground'), attributes: { AppleTags: 'AppleTile' } })),
-    ],
-  })) });
-  mapItems.push({ className: 'SpawnLocation', name: 'Spawn', props: { Size: [8, 1, 8], Position: [layout.spawn[0], 0.5, layout.spawn[1]], Anchored: true, Color: pal.border, Material: 'Wood' } }); // Neutral and a short spawn shield are SpawnLocation's defaults (the plugin writes only allowlisted properties)
+  // 3. A new studded map, laid out for this idea (studded-map.ts), and its daylight.
+  const mapItems = studdedMap({
+    layout, tile: TILE, plotTiles, plotHalf: PLOT_HALF, laneWidth: LANE_WIDTH, seed: rng(recipe.seed ^ 0x51ed),
+    words: { gate: recipe.words.gate, base: recipe.words.base, plot: recipe.words.plot },
+  }, { ...STUD_PALETTE, ...recipe.palette });
   steps.push({ kind: 'create', parent: 'game.Workspace', items: [{ className: 'Folder', name: 'AppleMap', children: [...mapItems, { className: 'Folder', name: 'Props' }] }] });
   steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
+  const light = studLighting();
+  steps.push({ kind: 'set', path: 'game.Lighting', props: light.props });
+  steps.push({ kind: 'create', parent: 'game.Lighting', items: light.effects });
 
   // 4. Props, placed on the new map (the base at the lane's end, the rest on free spots).
   const r = rng(recipe.seed ^ 0x9e3779b9);
@@ -300,7 +280,7 @@ export function composeSteps(recipe: Recipe): Step[] {
   }
 
   // 5. The components.
-  const want = ['motion', 'economy', 'creatures', 'waves', 'defenders', 'shop', 'hud', 'boot'];
+  const want = ['motion', 'economy', 'creatures', 'waves', 'defenders', 'shop', 'gameui', 'fx', 'boot'];
   for (const id of want) {
     const c = COMPONENTS[id];
     if (!c) throw new Error(`component ${id} is not bundled`);
@@ -326,35 +306,24 @@ export function composeSteps(recipe: Recipe): Step[] {
     prepare: ['ServerStorage.AppleEnemies', 'ServerStorage.AppleDefenders'],
     economy: { currency: recipe.currency, start: recipe.start, dataKey: `Apple_${recipe.seed}` },
     waves: {
-      first: recipe.waves.first, between: recipe.waves.between, baseHealth: recipe.waves.baseHealth, rewardShare: 'killer',
+      first: recipe.waves.first, between: recipe.waves.between, baseHealth: recipe.waves.baseHealth, rewardShare: 'killer', clearBonus: recipe.waves.clearBonus ?? 15,
       enemies: Object.fromEntries(recipe.enemies.map((e) => [e.name, { health: e.health, speed: e.speed, reward: e.reward, damage: e.damage }])),
       list: recipe.waves.list,
     },
     shop: {
       refund: 0.5,
-      items: recipe.defenders.map((d) => ({ id: d.id, name: d.name, price: d.price, range: d.range, damage: d.damage, rate: d.rate,
+      items: recipe.defenders.map((d) => ({ id: d.id, name: d.name, price: d.price, range: d.range, damage: d.damage, rate: d.rate, unlock: d.unlock ?? 0,
         ...(d.projectile ? { projectile: `${d.id}Shot` } : {}), ...(d.color ? { color: d.color } : {}), blurb: d.blurb, rarity: d.rarity })),
     },
   };
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ServerScriptService.AppleComponents', name: 'AppleGameConfig',
     source: `-- ${recipe.title}: what this game's systems read. Written by Apple's composer; edit freely.\nreturn ${luau(config)}\n` });
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage.AppleComponents', name: 'AppleClientConfig',
-    source: `-- ${recipe.title}: what the screens show. Written by Apple's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, ui: recipe.kit.roles, words: recipe.words })}\n` });
+    source: `-- ${recipe.title}: what the screens show. Written by Apple's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, words: recipe.words })}\n` });
 
-  // 7. The UI kit: its screens, its card in the shop list, its scripts out, the panels this game does not use hidden.
-  const kitKeys: string[] = [];
-  // A rebuild replaces the kit's screens instead of stacking a second copy of each.
-  steps.push({ kind: 'delete', paths: recipe.kit.screens.map((screen) => `game.StarterGui.${libName(screen)}`) });
-  for (const [i, screen] of recipe.kit.screens.entries()) {
-    const key = `Screen${i + 1}`;
-    kitKeys.push(key);
-    steps.push({ kind: 'import', key, ref: screen, into: 'game.StarterGui' });
-  }
-  if (recipe.kit.card) steps.push({ kind: 'import', key: 'Card', ref: recipe.kit.card.ref, into: `game.StarterGui.${recipe.kit.card.into}` });
-  // The kit's own scripts and sounds go (its game's code is not this game's; its sounds are its creator's).
-  for (const screen of recipe.kit.screens) steps.push({ kind: 'strip', root: `game.StarterGui.${libName(screen)}`, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] });
-  if (recipe.kit.card) steps.push({ kind: 'strip', root: `game.StarterGui.${recipe.kit.card.into}.${libName(recipe.kit.card.ref)}`, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] });
-  if (recipe.kit.remove.length) steps.push({ kind: 'delete', paths: recipe.kit.remove.map((p) => `game.StarterGui.${p}`) });
-  if (recipe.kit.hide.length) steps.push({ kind: 'hide', paths: recipe.kit.hide.map((p) => `game.StarterGui.${p}`) });
+  // 7. The game's own studded HUD (stud-ui.ts), real editable instances in StarterGui that AppleGameUI makes work.
+  steps.push({ kind: 'create', parent: 'game.StarterGui', items: [waveDefenseHud(
+    recipe.defenders.map((d) => ({ id: d.id, name: d.name, price: d.price, blurb: d.blurb })), recipe.words,
+  )] });
   return steps;
 }

@@ -114,7 +114,7 @@ const MADE: Record<string, string | [string, string]> = {
   insert_sound: ['sound', 'sounds'], design_sound: 'the sound mix', assign_sounds: 'the sound mix',
   insert_asset: ['model', 'models'], insert_library_model: ['model', 'models'], insert_owner_component: ['model', 'models'],
   generate_model: ['model', 'models'], generate_model_external: ['model', 'models'],
-  insert_ui_component: 'the on-screen parts', build_ui: 'the on-screen parts',
+  insert_ui_component: 'the on-screen parts', build_ui: 'the on-screen parts', build_studded_ui: 'the on-screen parts',
   collision_groups: 'what things can pass through',
   create_rig: ['character', 'characters'],
 };
@@ -240,7 +240,7 @@ export function gameGaps(
 
 /** A mutating call that puts a HUD on screen. An owner game's original UI counts: a recreate or a StarterGui import brings its own. */
 export function buildsHud(name: string, args: string | undefined): boolean {
-  return name === 'build_ui' || name === 'insert_ui_component' || name === 'recreate_owner_game' || name === 'build_game' || name === 'compose_game' ||
+  return name === 'build_ui' || name === 'insert_ui_component' || name === 'build_studded_ui' || name === 'recreate_owner_game' || name === 'build_game' || name === 'compose_game' ||
     /ScreenGui|ui_kit/.test(args ?? '') || (name === 'import_owner_library' && /StarterGui/.test(args ?? ''));
 }
 

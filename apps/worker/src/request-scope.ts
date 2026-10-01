@@ -60,7 +60,7 @@ export function isOwnerLibraryOnlyRequest(text: string): boolean {
 
 const NOT_FROM_LIBRARY = new Set(['create_instances', 'edit_terrain', 'build_scene', 'run_luau', 'add_effect', 'install_module',
   'insert_asset', 'generate_model', 'insert_owner_component', 'insert_library_model', 'find_library_model', 'generate_model_external',
-  'scatter_instances', 'shape_terrain', 'create_rig', 'build_ui', 'insert_vfx', 'insert_ui_component']);
+  'scatter_instances', 'shape_terrain', 'create_rig', 'build_ui', 'insert_vfx', 'insert_ui_component', 'build_studded_ui']);
 
 /**
  * Whether a library-only run may call this tool: it may import, arrange, fix scripts and read, never make content. Audio is the

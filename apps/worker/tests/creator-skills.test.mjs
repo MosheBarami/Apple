@@ -9,7 +9,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -33,6 +33,7 @@ function bundle(source, name) {
   return output;
 }
 
+const TOOLS_SRC = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
 const C = await import(pathToFileURL(bundle('creator-skills.ts', 'creator')).href);
 const M = await import(pathToFileURL(bundle('mechanics.ts', 'mechanics')).href);
 const P = await import(pathToFileURL(bundle('prefabs.ts', 'prefabs')).href);
@@ -184,6 +185,9 @@ test('implementation pointers distinguish reviewed source from non-executable me
       guidanceOnly++;
       assert.ok(patternIds.has(skill.implementation.id), `${skill.id} points at missing mechanic ${skill.implementation.id}`);
       assert.equal(skill.implementation.executableVerified, false);
+    } else if (skill.implementation.kind === 'existing_tool') {
+      // A tool the agent really has: named in the registry, or the pointer is a lie the model would follow.
+      assert.match(TOOLS_SRC, new RegExp(`\\n  ${skill.implementation.id}: \\{`), `${skill.id} points at missing tool ${skill.implementation.id}`);
     } else {
       assert.fail(`${skill.id} has unexpected implementation kind ${skill.implementation.kind}`);
     }

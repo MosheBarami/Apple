@@ -1,0 +1,18 @@
+{
+  "id": "gameui",
+  "name": "AppleGameUI",
+  "role": "ui",
+  "summary": "Makes the game's own studded HUD work: live money with a count-up and +N pop, the wave banner and countdown, the base's health bar, a shop with each item's 3D model, locks until an item's wave, upgrades with levels and prices, messages, button press feel and sounds.",
+  "files": {
+    "AppleGameUI.luau": { "class": "LocalScript", "parent": "StarterPlayer.StarterPlayerScripts", "name": "AppleGameUI" }
+  },
+  "needs": {
+    "screen": "StarterGui.AppleHUD as stud-ui.ts waveDefenseHud builds it (Coins, Wave, Health, Menu, Toast, ShopPanel with Item_<id> cards, UpgradePanel with Up_<id> rows). Pieces it cannot find are skipped.",
+    "config": "ReplicatedStorage.AppleComponents.AppleClientConfig: { currency, words = { wave, nextWave, left, base, cleared, lost, pick, earn, shop } }",
+    "state": "ReplicatedStorage.AppleState (AppleWaves); AppleCatalog, AppleItemModels and AppleUpgrade (AppleShop); AppleClientState; AppleSounds (fx)"
+  },
+  "gives": {
+    "screen": "every label shows the game's real value; every button acts",
+    "progress": "cards lock until their wave, upgrade rows show level and price and buy the next level"
+  }
+}

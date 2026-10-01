@@ -1,5 +1,5 @@
 /**
- * The pure parts of the game components (waves, defenders, shop, economy, hud), run in the luau CLI.
+ * The pure parts of the game components (waves, defenders, shop, economy, game ui, feedback), run in the luau CLI.
  * The Roblox halves are proven in Studio (docs/autonomy/evidence/20260930-components).
  */
 import test from 'node:test';
@@ -69,10 +69,32 @@ spec("economy: spending never goes below zero or takes odd amounts", function()
   eq(Economy.afterGrant(1e15, 10), 1e15, "capped")
 end)
 
-spec("hud: numbers read like a game's", function()
-  eq(Hud.short(5), "5"); eq(Hud.short(1234), "1.2K"); eq(Hud.short(1000), "1K"); eq(Hud.short(2500000), "2.5M"); eq(Hud.short(150000), "150K")
-  eq(Hud.money("$299,999", 50), "$50"); eq(Hud.money("299 Coins", 1500), "1.5K Coins"); eq(Hud.money("Herbert", 7), "7")
-  eq(Hud.clock(12), "0:12"); eq(Hud.clock(75), "1:15"); eq(Hud.clock(-3), "0:00")
+spec("game ui: numbers read like a game's", function()
+  eq(UI.short(5), "5"); eq(UI.short(1234), "1.2K"); eq(UI.short(1000), "1K"); eq(UI.short(2500000), "2.5M"); eq(UI.short(150000), "150K")
+  eq(UI.clock(12), "0:12"); eq(UI.clock(75), "1:15"); eq(UI.clock(-3), "0:00")
+  local words = { nextWave = "Veggies in", left = "veggies left" }
+  eq(UI.waveLine("intermission", 8, 0, words), "Veggies in 0:08"); eq(UI.waveLine("wave", 0, 7, words), "7 veggies left")
+  eq(UI.waveLine("cleared", 0, 0, {}), "Wave cleared!"); eq(UI.waveLine(nil, 0, 0, {}), "")
+  local g = UI.healthColours(0.9); local r = UI.healthColours(0.1); eq(g[2] > g[1], true, "full health is green"); eq(r[1] > r[2], true, "low health is red")
+end)
+
+spec("progress: upgrades cost more each level, stop at the top, and the screen agrees with the server", function()
+  local rules = Shop.upgradeRules({ max = 4 })
+  eq(rules.max, 4); eq(rules.growth, 1.8, "the rest keep their defaults")
+  local item = { price = 50, damage = 10, range = 16, rate = 1 }
+  local c1, c2 = Shop.upgradeCost(item, 1, rules), Shop.upgradeCost(item, 2, rules)
+  eq(c1, 40); eq(c2 > c1, true, "the next level costs more"); eq(Shop.upgradeCost(item, 4, rules), nil, "no level past the top")
+  for lv = 1, 3 do eq(UI.upgradeCost(50, lv, rules.max, rules.cost, rules.growth), Shop.upgradeCost(item, lv, rules), "screen price = server price at level " .. lv) end
+  local d1, r1, f1 = Shop.stats(item, 1, rules); eq(d1, 10); eq(r1, 16); eq(f1, 1)
+  local d3, r3, f3 = Shop.stats(item, 3, rules); eq(d3 > d1, true); eq(r3 > r1, true); eq(f3 > f1, true)
+  eq(Shop.locked({ unlock = 3 }, 2), true); eq(Shop.locked({ unlock = 3 }, 3), false); eq(Shop.locked({}, 0), false)
+end)
+
+spec("feedback: a pop overshoots and settles; a sound role waits its gap", function()
+  eq(math.abs(Fx.popScale(0)) < 1e-9, true); eq(math.abs(Fx.popScale(1) - 1) < 1e-9, true)
+  local peak = 0; for i = 0, 20 do peak = math.max(peak, Fx.popScale(i / 20)) end; eq(peak > 1.05, true, "it overshoots")
+  eq(Sounds.ready(nil, 5, 0.1), true); eq(Sounds.ready(4.95, 5, 0.1), false); eq(Sounds.ready(4.8, 5, 0.1), true)
+  for role, r in Sounds.roles do eq(type(r.id) == "string" and r.id:match("^rbxasset") ~= nil, true, role .. " has a sound") end
 end)
 
 spec("creatures: a costume fills the torso-and-head space and stands its long side up", function()
@@ -103,8 +125,10 @@ test('the game components pass their luau specs', { skip: available() ? false : 
     `local Shop = (function()\n${src('shop/AppleShop.luau')}\nend)()`,
     `local Economy = (function()\n${src('economy/AppleEconomy.luau')}\nend)()`,
     `local Creatures = (function()\n${src('creatures/AppleCreatures.luau')}\nend)()`,
-    'script = nil -- the HUD starts itself only as a real LocalScript',
-    `local Hud = (function()\n${src('hud/AppleHud.luau')}\nend)()`,
+    'script = nil -- client scripts start themselves only as real LocalScripts',
+    `local UI = (function()\n${src('gameui/AppleGameUI.luau')}\nend)()`,
+    `local Fx = (function()\n${src('fx/AppleFx.luau')}\nend)()`,
+    `local Sounds = (function()\n${src('fx/AppleSounds.luau')}\nend)()`,
     SPEC,
   ].join('\n'));
   let out;

@@ -29,6 +29,7 @@ local changed = Instance.new("BindableEvent")
 AppleEconomy.Changed = changed.Event -- (player, newAmount, delta, reason)
 
 local balances: { [Player]: number } = {}
+local saved: { [Player]: { [string]: any } } = {} -- other progress the game keeps (upgrade levels, best wave)
 local store: any = nil
 local storeWhy: string? = nil
 
@@ -74,25 +75,40 @@ function AppleEconomy.grant(player: Player, amount: number, reason: string?)
 	if delta > 0 then changed:Fire(player, after, delta, reason or "grant") end
 end
 
+--[[ Other progress, saved with the money: a level, a best wave. Mirrored as a player attribute for the screens. ]]
+function AppleEconomy.getData(player: Player, key: string): any
+	local data = saved[player]
+	return data and data[key]
+end
+
+function AppleEconomy.setData(player: Player, key: string, value: any)
+	local data = saved[player]
+	if not data then return end
+	data[key] = value
+	if type(value) == "number" or type(value) == "string" or type(value) == "boolean" then player:SetAttribute(key, value) end
+end
+
 local function openStore()
 	if store or storeWhy then return end
 	local ok, result = pcall(function() return game:GetService("DataStoreService"):GetDataStore(DATA_KEY) end)
 	if ok then store = result else storeWhy = tostring(result) end
 end
 
-local function load(player: Player): number
+local function load(player: Player): (number, { [string]: any })
 	openStore()
-	if not store then return START end
-	local ok, saved = pcall(function() return store:GetAsync("u" .. player.UserId) end)
-	if ok and type(saved) == "table" and type(saved.balance) == "number" then return saved.balance end
-	return START
+	if not store then return START, {} end
+	local ok, record = pcall(function() return store:GetAsync("u" .. player.UserId) end)
+	if ok and type(record) == "table" and type(record.balance) == "number" then
+		return record.balance, if type(record.data) == "table" then record.data else {}
+	end
+	return START, {}
 end
 
 local function save(player: Player)
 	if not store or balances[player] == nil then return end
-	local amount = balances[player]
+	local amount, data = balances[player], saved[player] or {}
 	pcall(function()
-		store:UpdateAsync("u" .. player.UserId, function() return { balance = amount, at = os.time() } end)
+		store:UpdateAsync("u" .. player.UserId, function() return { balance = amount, data = data, at = os.time() } end)
 	end)
 end
 
@@ -103,7 +119,12 @@ local function join(player: Player)
 	value.Name = CURRENCY
 	value.Parent = stats
 	stats.Parent = player
-	balances[player] = load(player)
+	local balance, data = load(player)
+	balances[player] = balance
+	saved[player] = data
+	for key, value in data do
+		if type(value) == "number" or type(value) == "string" or type(value) == "boolean" then player:SetAttribute(key, value) end
+	end
 	show(player)
 	changed:Fire(player, balances[player], 0, "join")
 end
@@ -113,6 +134,7 @@ for _, p in Players:GetPlayers() do task.spawn(join, p) end
 Players.PlayerRemoving:Connect(function(player)
 	save(player)
 	balances[player] = nil
+	saved[player] = nil
 end)
 game:BindToClose(function()
 	for player in balances do save(player) end

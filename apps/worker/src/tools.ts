@@ -79,6 +79,7 @@ import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
 import { planGame, buildGame, planSummary, buildSummary, plannedLoop } from './game-plan';
+import { buildStuddedUi } from './studded-ui-tool';
 import { composeGame, composeSummary } from './compose-tool';
 import { judgeComposed } from './composed-judge';
 import { JUDGE_GAME_DEF, judgeGame, judgeSummary } from './client-judge';
@@ -4901,7 +4902,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   plan_game: {
     def: {
       name: 'plan_game',
-      description: "Only when the user asks for one of their saved games by name: designs a copy of it. Changes nothing. Then build_game. A new idea goes to compose_game.",
+      description: "Only for a saved game the user names: designs its copy. Then build_game. A new idea: compose_game.",
       parameters: S({request:{type:'string'},theme:{type:'string'},features:{type:'array',items:{type:'string'}},seed:{type:'number'}},['request']),
     },
     studio: true,
@@ -4924,14 +4925,32 @@ export const TOOLS: Record<string, ToolImpl> = {
   compose_game: {
     def: {
       name: 'compose_game',
-      description: "Builds a NEW game for the user's idea from components (systems, a UI kit, props, the idea's creatures) on a map made for it; never copies a saved game. One checkpoint, a few minutes. Then judge_game {request}, fix what it lists, answer from forUser.",
+      description: "Builds a NEW game for the user's idea from components (systems, a UI kit, props, the idea's creatures) on a map made for it; never copies a saved game. Then judge_game {request}, fix what it lists, answer from forUser.",
       parameters: S({ request: { type: 'string', description: "The user's idea, in their words." } }, ['request']),
     },
     studio: true,
-    studioOps: ['snapshot', 'import_owner_library', 'create_instances', 'edit_script', 'delete_instances', 'set_visible', 'place_copies', 'strip_descendants'],
+    studioOps: ['snapshot', 'import_owner_library', 'create_instances', 'edit_script', 'delete_instances', 'set_visible', 'place_copies', 'strip_descendants', 'set_props'],
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: composeSummary,
     run: composeGame,
+  },
+  build_studded_ui: {
+    def: {
+      name: 'build_studded_ui',
+      description: "Studded game GUI (creation skill ui-studded-gui). Then script every value and button.",
+      parameters: S({
+        screen: { type: 'string' },
+        pieces: { type: 'array', items: { type: 'object', properties: {
+          kind: { type: 'string', enum: ['counter', 'button', 'bar', 'panel'] }, name: { type: 'string' }, text: { type: 'string' },
+          at: { type: 'string' }, colour: { type: 'string' }, cards: { type: 'array' },
+        }, required: ['kind', 'name'] } },
+      }, ['pieces']),
+    },
+    studio: true,
+    studioOps: ['create_instances', 'delete_instances'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
+    plainSummary: (_a, _r, failed) => failed ? 'Could not draw the screen' : 'Drew the studded screen',
+    run: buildStuddedUi,
   },
   insert_library_model: {
     def: {

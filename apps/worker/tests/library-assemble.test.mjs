@@ -494,7 +494,7 @@ test('the library tools are registered as project-changing Studio tools, offered
   }
   assert.equal(T.TOOLS.plan_game.mutatesProject, undefined, 'planning changes nothing');
   assert.deepEqual(T.TOOLS.plan_game.studioOps, ['query_owner_library']);
-  assert.match(T.TOOLS.plan_game.def.description, /saved games by name/);
+  assert.match(T.TOOLS.plan_game.def.description, /saved game[^.]*\bnames?\b/, "plan_game is only for a saved game the user names"); // the property, not one wording
   assert.deepEqual(T.TOOLS.plan_game.def.parameters.required, ['request']);
   assert.deepEqual(T.TOOLS.install_owner_system.def.parameters.required, ['gameId']);
   assert.equal(T.TOOLS.assemble_owner_game, undefined);

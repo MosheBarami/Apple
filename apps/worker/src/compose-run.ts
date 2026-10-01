@@ -12,6 +12,8 @@ const ENUMS: Record<string, string> = { Material: 'Material', TopSurface: 'Surfa
 
 /** A composer value as the plugin's typed PropValue. */
 export function propValue(key: string, v: unknown): PropValue | undefined {
+  // Already typed (stud-ui.ts writes UDim2, UDim, Vector2, ColorSequence and enums this way): passed through unchanged.
+  if (v && typeof v === 'object' && !Array.isArray(v) && typeof (v as { t?: unknown }).t === 'string') return v as PropValue;
   if (typeof v === 'boolean') return { t: 'bool', v };
   if (typeof v === 'number') return { t: 'number', v };
   if (Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === 'number')) return { t: 'Vector3', v: v as [number, number, number] };
@@ -24,7 +26,7 @@ export function propValue(key: string, v: unknown): PropValue | undefined {
   return undefined;
 }
 
-function typed(spec: InstanceSpecLite): Omit<InstanceSpec, 'parent'> {
+export function typed(spec: InstanceSpecLite): Omit<InstanceSpec, 'parent'> {
   const props: Record<string, PropValue> = {};
   for (const [k, v] of Object.entries(spec.props ?? {})) { const p = propValue(k, v); if (p) props[k] = p; }
   const attributes: Record<string, PropValue> = {};
@@ -78,6 +80,11 @@ export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done:
       await op({ op: 'delete_instances', paths: [path] }).catch(() => undefined);
       const out = await op({ op: 'edit_script', path, source: s.source, create: { className: s.className, parent: s.parent } }, 60_000);
       if (out.ok) count('script'); else report.problems.push(`script ${s.name}: ${clip(out.error)}`);
+    } else if (s.kind === 'set') {
+      const props: Record<string, PropValue> = {};
+      for (const [k, v] of Object.entries(s.props)) { const pv = propValue(k, v); if (pv) props[k] = pv; }
+      const out = await op({ op: 'set_props', path: s.path, props });
+      if (out.ok) count('set'); else report.problems.push(`set ${s.path}: ${clip(out.error)}`);
     } else if (s.kind === 'hide') {
       const out = await op({ op: 'set_visible', paths: s.paths, visible: false });
       if (out.ok) count('hide'); else report.problems.push(`hide: ${clip(out.error)}`);
