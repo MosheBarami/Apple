@@ -88,8 +88,16 @@ export interface ObjectPart {
 }
 export interface ObjectPlan { name: string; parts: ObjectPart[]; footprint: { x0: number; x1: number; z0: number; z1: number; top: number } }
 
-const v3 = (v: unknown): V3 | null =>
-  Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 2000) ? [v[0], v[1], v[2]] as V3 : null;
+/** [x, y, z] from an array, an {x, y, z} object or "x, y, z" text; null when it is none of those. */
+const v3 = (v: unknown): V3 | null => {
+  let a: unknown[] | null = null;
+  if (Array.isArray(v)) a = v;
+  else if (v && typeof v === 'object') { const o = v as Record<string, unknown>; a = [o.x ?? o.X, o.y ?? o.Y, o.z ?? o.Z]; }
+  else if (typeof v === 'string') a = v.split(/[\s,]+/).filter(Boolean);
+  if (!a || a.length !== 3) return null;
+  const n = a.map((x) => typeof x === 'string' ? Number(x) : x);
+  return n.every((x) => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 2000) ? n as V3 : null;
+};
 
 /**
  * The spec, checked and expanded: repeats unrolled, the scale applied, every part sitting on y = 0 or above. Pure.
@@ -111,11 +119,11 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
     const base = NAME.test(cleaned) ? cleaned : `Part${i + 1}`;
     const rawShape = String(p.shape ?? 'block').toLowerCase();
     const shape = SHAPES.has(rawShape) ? rawShape : rawShape === 'sphere' ? 'ball' : rawShape === 'cube' || rawShape === 'box' ? 'block' : rawShape === 'cyl' ? 'cylinder' : 'block';
-    const size = v3(p.size), at = v3(p.at);
+    const size = v3(p.size ?? p.dimensions);
     if (!size || size.some((n) => n <= 0)) return { error: `parts[${i}].size must be [x, y, z] above 0` };
-    if (!at) return { error: `parts[${i}].at must be [x, y, z]` };
-    const rot = p.rot === undefined ? undefined : v3(p.rot);
-    if (rot === null) return { error: `parts[${i}].rot must be [x, y, z] degrees` };
+    // Where it goes: `at`, or the names models also use; missing means standing on the ground at the middle.
+    const at = v3(p.at ?? p.position ?? p.pos ?? p.offset ?? p.center ?? p.centre) ?? [0, size[1] / 2, 0] as V3;
+    const rot = v3(p.rot ?? p.rotation ?? p.orientation) ?? undefined;
     const color = colourHex(p.color ?? p.colour) ?? '#d7dde2';
     let move: Move | undefined;
     if (p.move !== undefined) {
@@ -331,7 +339,14 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   if (mood && typeof mood === 'object' && 'error' in mood) problems.push(`lighting: ${clipText((mood as { error: unknown }).error)}`);
 
   // A studded HUD: a live counter of everything that moves, and a hint on join.
-  const hud = (a.screen ?? a.hud ?? null) as Record<string, unknown> | null;
+  // A thing that moves always gets its studded screen (a live counter and a hint), unless screen is false: the agent
+  // left it out on the live keyboard test (2026-10-01) and the game had no UI at all.
+  const given = a.screen ?? a.hud;
+  const keyed = moving.some((p) => p.move!.on === 'key');
+  const hud = (given === false ? null : given && typeof given === 'object' ? given : moving.length ? {
+    counter: keyed ? 'Keys pressed' : 'Presses',
+    hint: keyed ? 'Type on your keyboard or click the keys!' : moving.some((p) => p.move!.on === 'loop') ? 'Watch it go!' : 'Click it!',
+  } : null) as Record<string, unknown> | null;
   if (hud && (hud.counter || hud.hint)) {
     const screen = studdedScreen({ name: `${plan.name}HUD`, pieces: [
       ...(hud.counter ? [{ kind: 'counter' as const, name: 'Counter', text: '0', icon: String(hud.icon ?? '#').slice(0, 2), colour: 'purple' as const, plus: false, at: 'top-left' as const }] : []),
@@ -370,6 +385,10 @@ end)
     }
   }
   const keys = moving.filter((p) => p.move!.on === 'key' && p.key).length;
+  // Rigging is what makes it move: if that failed, the object stands but does nothing, which is not done.
+  if (moving.length && problems.some((p) => p.startsWith('rig') || p.startsWith('animations') || p.startsWith('player'))) {
+    return { changed: true, projectMutated: true, object: model, error: `Built, but it cannot move yet: ${problems.join('; ')}. If Studio says an operation is unknown, the Apple plugin in Studio is older than this tool: tell the user to restart Studio.` };
+  }
   return {
     changed: true,
     object: model,
