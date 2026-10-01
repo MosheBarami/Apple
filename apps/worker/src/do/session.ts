@@ -4789,7 +4789,8 @@ export class SessionDO extends DurableObject<Env> {
         const errors = (seen?.clientErrors?.length ?? 0) + (seen?.serverErrors?.length ?? 0);
         // "Coins 0 at the start → Coins 70 at the end" reads as "Coins went from 0 to 70".
         const ls = typeof seen?.leaderstats === 'string' ? /^(\w+) (-?[\d.,]+) at the start → \1 (-?[\d.,]+) at the end$/.exec(seen.leaderstats.trim()) : null;
-        const money = ls ? `${ls[1]} went from ${ls[2]} to ${ls[3]} on their own` : typeof seen?.leaderstats === 'string' ? seen.leaderstats : '';
+        // Not "on their own": presses on the player's own machines pay too (round 13's answer overstated it).
+        const money = ls ? `${ls[1]} went from ${ls[2]} to ${ls[3]} during the test` : typeof seen?.leaderstats === 'string' ? seen.leaderstats : '';
         agent.lastCheckSeen = `${money ? `${money}, and ` : ''}${errors ? `${errors} error${errors === 1 ? '' : 's'} came up` : 'nothing errored'}`;
       }
       // The fence holds until the object is built: a failed build_object is retried with the reason, never swapped

@@ -195,7 +195,21 @@ const F_ROW = ['Esc', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10
  * 2026-10-01; ours had a lone 6-key space bar and no F row). Pure.
  */
 export function completeKeyboard(rows: string[][]): string[][] {
-  const out = rows.map((r) => r.length === 1 && /^(space|spacebar)$/i.test(r[0]!.trim()) ? [...BOTTOM_ROW] : r);
+  // A space-bar row without its modifiers becomes the real bottom row; anything else on it (an Enter, a Shift) moves up to
+  // the end of the row above, where a real board has it (round 13: a bottom row of only SPACE and ENTER).
+  const out = rows.map((r) => [...r]);
+  for (let i = 0; i < out.length; i++) {
+    const r = out[i]!;
+    const hasSpace = r.some((l) => /^(space|spacebar)$/i.test(l.trim()));
+    const hasMods = r.some((l) => /^(ctrl|control|alt|win|cmd|fn|option)$/i.test(l.trim()));
+    if (!hasSpace || hasMods) continue;
+    const others = r.filter((l) => !/^(space|spacebar)$/i.test(l.trim()));
+    out[i] = [...BOTTOM_ROW];
+    if (!others.length) continue;
+    // No row above: the other keys become one, never lost.
+    if (i === 0) { out.splice(0, 0, others); i += 1; continue; }
+    for (const l of others) if (!out[i - 1]!.some((x) => x.toLowerCase() === l.toLowerCase())) out[i - 1]!.push(l);
+  }
   const numbers = out.findIndex((r) => r.includes('1') && r.includes('2'));
   const hasF = out.some((r) => r.some((l) => /^F([1-9]|1[0-2])$/i.test(l.trim())));
   // Only a typing keyboard: a calculator or a keypad has 1 and 2 on a row too.

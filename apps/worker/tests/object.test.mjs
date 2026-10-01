@@ -272,7 +272,10 @@ test('a key is a real keycap: a lighter inset top with dark ink on a darker skir
 // Owner, 2026-10-01: the model asked for click-pressed keys and typing on the real keyboard stopped working.
 test('a keyboard key answers its real key whatever trigger the model asked for', () => {
   const rows = O.expandObject({ name: 'Kb', parts: [{ name: 'Key', rows: [['Q', 'W', 'Space']], move: { as: 'press', on: 'click' } }] });
-  assert.deepEqual(rows.parts.filter((p) => p.move).map((p) => p.move.on), ['key', 'key', 'key']);
+  // RESTATED 2026-10-01: the space bar's row gets its modifiers (completeKeyboard); the property is every key, all of them.
+  const moving = rows.parts.filter((p) => p.move);
+  assert.ok(moving.length >= 3 && moving.every((p) => p.move.on === 'key'), moving.map((p) => p.move.on).join(','));
+  assert.ok(['Q', 'W', 'Space'].every((k) => moving.some((p) => p.key === k)), 'Q, W and Space are all there');
   assert.equal(O.motionClip(rows.parts.find((p) => p.key === 'Q' && p.move)).play, 'key');
   const kase = rows.parts.find((p) => /Case$/.test(p.name));
   assert.ok(!O.isDark(kase.color), 'a light keyboard body, not a dark plane');
@@ -512,4 +515,12 @@ test('a bare backslash key in the arguments is read as the backslash it meant', 
   const bad = '{"name":"Kb","parts":[{"name":"Key","rows":[["Q","W","\\", "]"],["A","\\"]]}]}';
   assert.deepEqual(T.recoverJsonObject(bad).parts[0].rows, [['Q', 'W', '\\', ']'], ['A', '\\']]);
   assert.deepEqual(T.recoverJsonObject('{"a":"x \\" }"}'), { a: 'x " }' }, 'an escaped quote is left alone');
+});
+
+// Round 13 of test 1 (2026-10-01): the hub keyboard's bottom row was only SPACE and ENTER.
+test('a space-bar row without modifiers becomes the real bottom row, its other keys moving up', () => {
+  const rows = O.completeKeyboard([['Q', 'W', 'E'], ['A', 'S', 'D'], ['Space', 'Enter']]);
+  assert.deepEqual(rows[rows.length - 1], ['Ctrl', 'Win', 'Alt', 'Space', 'Alt', 'Fn', 'Ctrl']);
+  assert.equal(rows[rows.length - 2].at(-1), 'Enter', 'Enter joins the row above');
+  assert.deepEqual(O.completeKeyboard([['Q'], ['Ctrl', 'Alt', 'Space', 'Alt']]).at(-1), ['Ctrl', 'Alt', 'Space', 'Alt'], 'a row with its modifiers is left alone');
 });
