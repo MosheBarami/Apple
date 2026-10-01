@@ -332,3 +332,19 @@ test('a wrist rest is a block, and a key legend is capped at about half the cap'
   const src = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
   assert.match(src, /p\.key \? \[\{ className: 'UITextSizeConstraint', name: 'Legend', props: \{ MaxTextSize: \d+ \} \}\]/);
 });
+
+// Owner's screenshots, 2026-10-01: an ENTER alone on its own row, cut off from the board; a cyan LED ball floating on
+// the stage; a pink bar along the keys.
+test('a lone key joins the row above, and only a keyboard\'s own extras stay', () => {
+  const plan = O.expandObject({ name: 'Kb', scale: 4, parts: [
+    { name: 'Key', rows: [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'], ['Enter'], ['Space']], move: { as: 'press', on: 'key' } },
+    { name: 'LEDBall', shape: 'ball', size: [0.5, 0.5, 0.5], at: [9, 1, 3], color: 'cyan' },
+    { name: 'GlowBar', size: [1, 0.3, 4], at: [9, 1, 0], color: 'pink' },
+    { name: 'WristRest', size: [15, 0.5, 1.7], at: [0, 1, 3], color: 'yellow' },
+  ] });
+  const z = (label) => plan.parts.find((p) => p.text?.value === label).at[2];
+  assert.equal(z('ENTER'), z('a'), 'ENTER is on the A row');
+  assert.notEqual(z('SPACE'), z('a'), 'the space bar keeps its own row');
+  assert.ok(!plan.parts.some((p) => p.name === 'LEDBall' || p.name === 'GlowBar'), 'no junk beside the keys');
+  assert.ok(plan.parts.some((p) => p.name === 'WristRest'));
+});

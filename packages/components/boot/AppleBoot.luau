@@ -59,15 +59,21 @@ for _, s in config.stage or {} do
 			end
 		end
 	end
-	-- A colour family, not a flat paint: every part's hue turns by s.hue (0..1) and keeps its own lightness, so a
-	-- two-tone keycap stays two-tone (the plot simulator's variants of the player's own object).
+	-- A colour family, not a flat paint: every part takes the hue s.hue (0..1) and keeps its own lightness, so a
+	-- two-tone keycap stays two-tone (the plot simulator's variants of the player's own object). Set, not turned: a
+	-- rainbow keyboard turned by a hue is still a rainbow, and the owner's Gold Keyboard looked like the Classic one.
 	if type(s.hue) == "number" then
 		for _, p in copy:GetDescendants() do
 			if p:IsA("BasePart") then
-				local h, sat, v = p.Color:ToHSV()
-				p.Color = Color3.fromHSV((h + s.hue) % 1, math.max(sat, 0.35), v)
+				local _, sat, v = p.Color:ToHSV()
+				p.Color = Color3.fromHSV(s.hue % 1, math.clamp(sat + 0.35, 0.45, 0.9), math.max(v, 0.35))
 			end
 		end
+	end
+	-- A copy is a still model: a part that moved under its own rig (a keycap) falls apart once copied and scaled
+	-- (live 2026-10-01: the placed Classic Keyboard was keycaps scattered over five tiles).
+	for _, p in copy:GetDescendants() do
+		if p:IsA("BasePart") then p.Anchored = true end
 	end
 	if s.height then
 		local _, size = (copy :: Model):GetBoundingBox()

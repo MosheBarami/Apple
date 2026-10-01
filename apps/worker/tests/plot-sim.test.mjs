@@ -177,3 +177,16 @@ test('the simulator screen is driven, the pads open panels, and each player star
   const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
   assert.doesNotMatch(tool, /libraryModels\(ctx, 'sell'/, 'no sell stand is imported');
 });
+
+// Owner's screenshots, 2026-10-01: the Gold Keyboard's icon was the same rainbow as the Classic one, placed keyboards
+// were keycaps scattered over five tiles, and the Upgrades panel opened over the Shop.
+test('a tier is one colour family, a shop copy is anchored, and one panel shows at a time', () => {
+  const boot = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'boot', 'AppleBoot.luau'), 'utf8');
+  assert.match(boot, /p\.Color = Color3\.fromHSV\(s\.hue % 1,/, 'the tier hue is set, not turned');
+  assert.doesNotMatch(boot, /\(h \+ s\.hue\) % 1/);
+  assert.match(boot, /if p:IsA\("BasePart"\) then p\.Anchored = true end/);
+  const client = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'machines', 'AppleMachinesClient.luau'), 'utf8');
+  assert.match(client, /GetPropertyChangedSignal\("Visible"\)[\s\S]{0,300}o\.Visible = false/);
+  const gen = readFileSync(join(WORKER, 'src', 'components.generated.ts'), 'utf8');
+  assert.ok(gen.includes('local function onePanel') && gen.includes('p.Anchored = true'), 'the bundle is regenerated');
+});

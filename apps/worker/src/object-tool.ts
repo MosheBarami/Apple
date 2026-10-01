@@ -147,7 +147,14 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
   const rows = (p.rows as unknown[]).filter(Array.isArray)
     .map((r) => (r as unknown[]).map((l) => String(l ?? '').slice(0, 12)).filter(Boolean)
       .filter((l, i, r) => i === 0 || l.trim().toLowerCase() !== r[i - 1]!.trim().toLowerCase()))
-    .filter((r) => r.length > 0);
+    .filter((r) => r.length > 0)
+    // A lone key on a row of its own (an ENTER the model put under its row) joins the row above: live 2026-10-01 it
+    // sat cut off from the board. The space bar keeps its own row.
+    .reduce<string[][]>((acc, r) => {
+      if (r.length === 1 && acc.length && !/^(space|spacebar)$/i.test(r[0]!.trim())) acc[acc.length - 1]!.push(r[0]!);
+      else acc.push(r);
+      return acc;
+    }, []);
   const num = (v: unknown, d: number, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   // Low enough to walk onto (owner's play test, 2026-10-01: he had to jump onto the keyboard): case and key together are
   // under half a key, so a player steps up onto it and runs across the keys.
@@ -196,6 +203,7 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
 }
 
 const NOT_A_KEYBOARD_PART = /screen|monitor|display|desk|table|wall|counter|sign|board(?!.*key)/i;
+const KEYBOARD_EXTRA = /wrist|palm|rest|knob|dial|cable|cord/i;
 
 /**
  * A wrist or palm rest lies on the ground just in front of the bottom row, no wider than the keys (live 2026-10-01: the
@@ -246,7 +254,9 @@ export function relayKeyboard(all: ObjectPart[], laidOut = false): ObjectPart[] 
   // big plane, and LED strips floated over the space bar), so only what is beside the keys stays.
   const overKeys = (p: ObjectPart) => !isKey(p) && !/Case$/.test(p.name) &&
     p.at[0] - p.size[0] / 2 < x1 && p.at[0] + p.size[0] / 2 > x0 && p.at[2] - p.size[2] / 2 < z1 && p.at[2] + p.size[2] / 2 > z0;
-  const kept = parts.filter((p) => !isKey(p) && !under(p) && !NOT_A_KEYBOARD_PART.test(p.name))
+  // Only what a keyboard has besides its keys stays: a wrist rest, a knob, a cable (live 2026-10-01: a cyan "LED" ball
+  // floated on the stage and a pink bar lay along the keys).
+  const kept = parts.filter((p) => !isKey(p) && !under(p) && !NOT_A_KEYBOARD_PART.test(p.name) && KEYBOARD_EXTRA.test(p.name))
     .map((p) => restBeside(p, keys, x0, x1, z1, floor)).filter((p) => !overKeys(p));
   // Laid out by rows already: keep the tool's keys and case, and only drop the model's own plates and screens.
   if (laidOut) return [...keys, ...riders, ...parts.filter((p) => /Case$/.test(p.name) && !isKey(p)), ...kept.filter((p) => !/Case$/.test(p.name))];
