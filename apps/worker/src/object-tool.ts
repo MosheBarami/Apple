@@ -186,6 +186,46 @@ export function unbury(parts: ObjectPart[]): string[] {
   return moved;
 }
 
+const AROUND_WORDS = /band|ring|belt|strap|sleeve|collar|wrap(?!per)|sash|ribbon/i;
+/**
+ * A band, ring or belt goes around the body's middle, not perched on it (round 10: a "WrapperBand" stood half above
+ * the butter). One whose two thin sides are both at least the body's is centred on the body's middle on them. Pure.
+ */
+export function wrapAround(parts: ObjectPart[]): string[] {
+  const body = [...parts].filter((o) => !o.own).sort((a, b) => vol(b) - vol(a))[0];
+  const moved: string[] = [];
+  if (!body) return moved;
+  const long = body.size.indexOf(Math.max(...body.size));
+  for (const p of parts) {
+    if (p === body || p.key || p.rides || p.own || !AROUND_WORDS.test(p.name)) continue;
+    const thin = [0, 1, 2].filter((i) => i !== long);
+    if (!thin.every((i) => p.size[i]! >= body.size[i]! - 0.05)) continue;
+    for (const i of thin) p.at[i] = body.at[i]!;
+    moved.push(p.name);
+  }
+  return moved;
+}
+
+/**
+ * A detail hovering a little over what is under it comes down onto it (round 10: the butter's TopSlab floated 1.9
+ * studs over the butter, held up only by a band). A gap under 3 studs is a slip, not a design: the part rests on the
+ * highest top beneath its footprint. Further up it is left (a halo, a balloon). Lowest first, so a stack settles. Pure.
+ */
+export function settle(parts: ObjectPart[]): string[] {
+  const moved: string[] = [];
+  const overlaps = (a: ObjectPart, b: ObjectPart) => [0, 2].every((i) => Math.abs(a.at[i]! - b.at[i]!) < (a.size[i]! + b.size[i]!) / 2 - 0.05);
+  for (const p of [...parts].sort((a, b) => (a.at[1] - a.size[1] / 2) - (b.at[1] - b.size[1] / 2))) {
+    if (p.key || p.rides || p.own) continue;
+    const bottom = p.at[1] - p.size[1] / 2;
+    const under = parts.filter((q) => q !== p && overlaps(p, q) && q.at[1] + q.size[1] / 2 <= bottom + 0.05);
+    if (!under.length) continue;
+    const rest = Math.max(...under.map((q) => q.at[1] + q.size[1] / 2));
+    const gap = bottom - rest;
+    if (gap > 0.05 && gap < 3) { p.at[1] -= gap; moved.push(p.name); }
+  }
+  return moved;
+}
+
 /**
  * A long thing lies across the player's view, not pointing at the spawn (round 4: a 6 x 6 x 30 stick of butter showed
  * the spawn only its square end). When the object is more than 1.5 times deeper (Z) than wide (X), every part is
@@ -282,7 +322,7 @@ export function placesOf(parts: ObjectPart[]): string[] {
 
 /** A player is 5 studs tall; a thing to walk up to is 2-4 player heights at its longest (owner: "a butter stick taller than the player"). */
 export const PLAYER_HEIGHT = 5;
-const FIT_MIN = 12, FIT_TO = 15;
+const FIT_MIN = 12, FIT_TO = 15, MIN_TALL = 4, FIT_MAX = 40;
 /**
  * The factor that makes a too-small object worth walking up to: its longest side becomes FIT_TO studs when it is under
  * FIT_MIN (test 2 round 2: the model sent an 8 x 2 x 2 stick of butter, under half a player tall, though the tool asks
@@ -290,8 +330,12 @@ const FIT_MIN = 12, FIT_TO = 15;
  */
 export function fitFactor(parts: ObjectPart[]): number {
   const span = (i: number) => Math.max(...parts.map((p) => p.at[i]! + p.size[i]! / 2)) - Math.min(...parts.map((p) => p.at[i]! - p.size[i]! / 2));
-  const longest = Math.max(span(0), span(1), span(2));
-  return longest > 0 && longest < FIT_MIN ? FIT_TO / longest : 1;
+  const longest = Math.max(span(0), span(1), span(2)), tall = span(1);
+  if (!(longest > 0)) return 1;
+  // And at least 4 studs tall, so it is not a curb at the player's feet (round 10: a 13.6 x 2 x 2.5 butter), while
+  // never more than FIT_MAX long.
+  const k = Math.max(longest < FIT_MIN ? FIT_TO / longest : 1, tall > 0 && tall < MIN_TALL ? MIN_TALL / tall : 1);
+  return k > 1 ? Math.max(1, Math.min(k, FIT_MAX / longest)) : 1;
 }
 
 /**
@@ -719,6 +763,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   if (!board) shapeTo(parts, shapeWord(`${String(a.request ?? '')} ${String(a.name ?? '')}`));
   if (!board) faceAcross(parts);
   const unburied = board ? [] : unbury(parts);
+  if (!board) { wrapAround(parts); settle(parts); }
   if (!board) readableText(parts);
   // Words with no colour of their own stand out from what they are printed on (round 9: white "BUTTER" on pale yellow):
   // dark ink on a light part. A keyboard's legends keep their theme's colours.
@@ -817,7 +862,9 @@ export function objectForUser(plan: ObjectPlan): string {
   const f = plan.footprint, longest = Math.max(f.x1 - f.x0, f.z1 - f.z0, f.top);
   const big = longest >= 2.5 * PLAYER_HEIGHT ? `about ${Math.round(longest)} studs, ${Math.round(longest / PLAYER_HEIGHT)} times as long as you are tall`
     : `about ${Math.round(longest)} studs`;
-  const words = plan.parts.filter((p) => p.text).map((p) => `"${p.text!.value}" printed on its ${p.text!.face === 'Top' ? 'top' : 'front'}`);
+  // Back is the side the spawn sees (+Z); Right and Left are its ends (round 10 said "front" for an end).
+  const side: Record<string, string> = { Top: 'top', Back: 'front', Front: 'back', Right: 'end', Left: 'end', Bottom: 'bottom' };
+  const words = plan.parts.filter((p) => p.text).map((p) => `"${p.text!.value}" printed on its ${side[p.text!.face] ?? 'side'}`);
   const body = [...plan.parts].filter((p) => !p.own).sort((a, b) => vol(b) - vol(a))[0];
   const humanName = (n: string) => n.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
   const details = body ? placesOf(plan.parts).map((line) => {

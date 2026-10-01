@@ -765,3 +765,36 @@ test('words with no colour of their own are dark ink on a light part; a colour g
   assert.equal(by.Sign.text.color, '#ff0000', 'the model chose red');
   assert.equal(by.Plate.text.color, '#ffffff', 'white on a dark part');
 });
+
+// Test 2 round 10 (2026-10-01): a TopSlab floating 1.9 studs over the butter on a band perched half above it, a
+// 13.6 x 2 x 2.5 butter under half a player tall, and "printed on its front" for words on its end.
+const ROUND10 = { name: 'StickOfButter', parts: [
+  { name: 'Butter', size: [13.6, 2, 2.5], at: [0, 1, 0], color: '#ffe066', text: { value: 'BUTTER', face: 'Back' } },
+  { name: 'TopSlab', size: [12.3, 0.4, 2], at: [0, 4.1, 0], color: '#fff3b0' },
+  { name: 'WrapperBand', size: [3.4, 2.6, 2.9], at: [0, 2.6, 0], color: '#ffd93d', text: { value: 'GOLDEN DAIRY', face: 'Right' } },
+] };
+
+test('a band goes around the body, and a detail hovering over it comes down onto it', () => {
+  const parts = JSON.parse(JSON.stringify(ROUND10.parts)).map((p) => ({ shape: 'block', ...p }));
+  O.wrapAround(parts); O.settle(parts);
+  const [butter, slab, band] = parts;
+  assert.equal(band.at[1], butter.at[1], 'the band is centred on the butter');
+  const top = Math.max(butter.at[1] + butter.size[1] / 2, band.at[1] + band.size[1] / 2);
+  assert.ok(Math.abs(slab.at[1] - slab.size[1] / 2 - top) < 1e-6, `the slab rests on what is under it (${slab.at[1]})`);
+  // A balloon far above stays.
+  const balloon = [{ name: 'Base', size: [4, 1, 4], at: [0, 0.5, 0] }, { name: 'Balloon', size: [3, 3, 3], at: [0, 10, 0] }];
+  assert.deepEqual(O.settle(balloon), []);
+});
+
+test('an object is grown to at least 4 studs tall, and never past 40 long', () => {
+  const plan = O.expandObject(ROUND10);
+  assert.ok(plan.footprint.top >= 4 - 1e-6, `top ${plan.footprint.top}`);
+  assert.ok(plan.footprint.x1 - plan.footprint.x0 <= 40 + 1e-6);
+  assert.equal(O.fitFactor([{ at: [0, 1, 0], size: [39, 2, 2] }]), 40 / 39, 'capped by the length');
+});
+
+test('the answer names the side the words are really on', () => {
+  const said = O.objectForUser(O.expandObject(ROUND10));
+  assert.match(said, /"BUTTER" printed on its front/);
+  assert.match(said, /"GOLDEN DAIRY" printed on its end/);
+});
