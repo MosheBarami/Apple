@@ -79,12 +79,21 @@ async function writeScript(ctx: AgentCtx, f: { parent: string; name: string; cla
   return out.ok ? null : clip(out.error);
 }
 
-/** The game's screen: the one named, else the only studded screen in StarterGui, else a new GameHUD. */
+/**
+ * The game's screen, pure: the one asked for when it exists (any case), else the screen already there, else the name
+ * asked, else GameHUD. A made-up name never starts a second screen over the first (owner's re-test, 2026-10-01: the
+ * model passed "hud", a new screen was made, and its money counter sat on top of the keyboard's key counter).
+ */
+export function pickScreen(asked: unknown, existing: string[]): string {
+  const want = typeof asked === 'string' && NAME.test(asked) ? asked : undefined;
+  const same = want ? existing.find((n) => n.toLowerCase() === want.toLowerCase()) : undefined;
+  return same ?? existing[0] ?? want ?? 'GameHUD';
+}
+
 async function screenName(ctx: AgentCtx, asked: unknown): Promise<string> {
-  if (typeof asked === 'string' && NAME.test(asked)) return asked;
   const got = await ctx.execStudioOp({ op: 'get_tree', root: 'game.StarterGui', maxDepth: 1, maxNodes: 60 }, 20_000).catch(() => null);
   const screens = ((got?.ok ? (got.data as { root?: TreeNode }).root?.children : undefined) ?? []).filter((c) => c.class === 'ScreenGui');
-  return screens[0]?.name ?? 'GameHUD';
+  return pickScreen(asked, screens.map((c) => c.name));
 }
 
 export async function addUpgrades(ctx: AgentCtx, a: Record<string, unknown>) {

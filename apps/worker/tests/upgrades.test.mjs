@@ -15,7 +15,7 @@ const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(mkdtempSync(join(tmpdir(), 'upg-')), 'u.mjs');
 const ENTRY = `export { screenWrites } from './src/studded-ui-tool';
 export { studdedScreen } from './src/stud-ui';
-export { readUpgrades, isUpgradesRequest, DEFAULT_UPGRADES, KIND_ICON, upgradeBlurb } from './src/upgrades-tool';`;
+export { readUpgrades, isUpgradesRequest, DEFAULT_UPGRADES, KIND_ICON, upgradeBlurb, pickScreen } from './src/upgrades-tool';`;
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), ['--bundle', '--format=esm', '--platform=neutral', '--main-fields=module,main', '--loader=ts', '--outfile=' + out], { cwd: WORKER, input: ENTRY, stdio: ['pipe', 'pipe', 'pipe'] });
 const U = await import(`file://${out}`);
 
@@ -116,4 +116,13 @@ test('a write refused because a Test session is still closing waits for edit mod
   assert.match(wrapper, /writes require Studio edit mode/);
   assert.match(wrapper, /setTimeout\(resolve, 2_000\)/);
   assert.match(wrapper, /i < 6/, 'it gives up after about 12 seconds');
+});
+
+// Re-test, 2026-10-01: the model asked for screen "hud"; a second screen was made over the keyboard's.
+test('upgrades go on the screen the game already has, whatever name the model gives', () => {
+  assert.equal(U.pickScreen('hud', ['ASMRKeyboardHUD']), 'ASMRKeyboardHUD');
+  assert.equal(U.pickScreen('asmrkeyboardhud', ['Other', 'ASMRKeyboardHUD']), 'ASMRKeyboardHUD', 'the one asked for, in any case');
+  assert.equal(U.pickScreen(undefined, ['ASMRKeyboardHUD']), 'ASMRKeyboardHUD');
+  assert.equal(U.pickScreen('ShopHUD', []), 'ShopHUD', 'a place with no screen gets the name asked');
+  assert.equal(U.pickScreen(undefined, []), 'GameHUD');
 });
