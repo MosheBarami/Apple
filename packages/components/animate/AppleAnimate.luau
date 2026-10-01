@@ -90,6 +90,20 @@ function AppleAnimate.jointsOf(keys: { any }): { string }
 end
 
 --[[ Pure: whether a player may set off something owned by `owner` (a UserId; nil means nobody owns it, so anyone may). ]]
+--[[ Pure: whether one more press in the last second still pays, given the times (os.clock) of the presses that paid.
+     Drops times older than a second from `recent`. A fast typist is about 10 a second; standing on a keyboard shrunk
+     onto a plot tile touched dozens of keys at once and paid each (the owner's session reached 673K coins). ]]
+AppleAnimate.PAID_PER_SECOND = 12
+function AppleAnimate.paysPress(recent: { number }, now: number, cap: number?): boolean
+	local limit = cap or AppleAnimate.PAID_PER_SECOND
+	for i = #recent, 1, -1 do
+		if now - recent[i] >= 1 then table.remove(recent, i) end
+	end
+	if #recent >= limit then return false end
+	table.insert(recent, now)
+	return true
+end
+
 function AppleAnimate.mayPress(owner: any, userId: number): boolean
 	return owner == nil or owner == userId
 end
@@ -123,6 +137,7 @@ function AppleAnimate.start()
 	local keyRemote = remote("AppleAnimateKey")
 	local byKey: { [string]: { { model: Model, clip: any, name: string } } } = {}
 	local lastKey: { [Player]: { [string]: number } } = {}
+	local paid: { [Player]: { number } } = {}
 	keyRemote.OnServerEvent:Connect(function(player: Player, key: any)
 		if type(key) ~= "string" or #key > 20 then return end
 		-- One key held down or flooded is not 30 presses a second; different keys pressed together all count.
@@ -138,7 +153,7 @@ function AppleAnimate.start()
 			end
 		end
 	end)
-	game:GetService("Players").PlayerRemoving:Connect(function(p) lastKey[p] = nil end)
+	game:GetService("Players").PlayerRemoving:Connect(function(p) lastKey[p] = nil; paid[p] = nil end)
 	local active: { { model: Model, joints: { [string]: Motor6D }, rest: { [Motor6D]: CFrame }, clip: any, t: number, loop: boolean } } = {}
 
 	local function jointsIn(model: Model): ({ [string]: Motor6D }, { [Motor6D]: CFrame })
@@ -151,7 +166,12 @@ function AppleAnimate.start()
 
 	local function play(model: Model, joints: { [string]: Motor6D }, rest: { [Motor6D]: CFrame }, clip: any, loop: boolean, player: Player?)
 		if clip._name then played:FireAllClients(model, clip._name) end
-		if player and clip._name then (pressed :: BindableEvent):Fire(player, model, clip._name) end
+		-- The clip always plays; only the presses that pay are capped per player.
+		if player and clip._name then
+			local recent = paid[player] or {}
+			paid[player] = recent
+			if AppleAnimate.paysPress(recent, os.clock()) then (pressed :: BindableEvent):Fire(player, model, clip._name) end
+		end
 		for _, a in active do
 			if a.model == model and a.clip == clip then a.t = 0; return end -- pressing again restarts it
 		end

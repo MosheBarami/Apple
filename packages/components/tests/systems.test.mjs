@@ -109,6 +109,18 @@ spec("creatures: a costume fills the torso-and-head space and stands its long si
   z, x = Creatures.uprightTurns({ sx = 1, sy = 2, sz = 1 }); eq(z, 0); eq(x, 0)
 end)
 
+spec("animate: at most 12 paid presses a second per player, then again after a second", function()
+  -- The owner's session reached 673K coins: standing on a keyboard shrunk onto a plot tile paid every key it touched.
+  local recent, paid = {}, 0
+  for i = 1, 40 do if Anim.paysPress(recent, 10 + i * 0.001) then paid += 1 end end
+  eq(paid, 12, "a burst of 40 presses in a moment pays 12")
+  eq(Anim.paysPress(recent, 10.5), false, "still within the second")
+  eq(Anim.paysPress(recent, 11.2), true, "a second later presses pay again")
+  local slow, n = {}, 0
+  for i = 1, 30 do if Anim.paysPress(slow, i * 0.1) then n += 1 end end
+  eq(n, 30, "ten a second, a fast typist, always pays")
+end)
+
 spec("animate: keys ease between poses, hold at the ends, and name their joints", function()
   local keys = { { t = 0, Key = { move = { 0, 0, 0 } } }, { t = 1, Key = { move = { 0, -1, 0 }, rot = { 90, 0, 0 } }, ease = "Quad" }, { t = 2, Lid = { rot = { 0, 0, 45 } } } }
   local r, m = Anim.sample(keys, "Key", 0.5); eq(m[2] < -0.5, true, "Quad is past halfway at half time"); eq(r[1] > 45, true)

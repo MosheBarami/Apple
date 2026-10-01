@@ -94,7 +94,9 @@ export function machineLadder(subject: string, hero: string | undefined, library
   const middle = heroTiers > 2 ? [1, 2].slice(0, heroTiers - 2) : [];
   if (hero) { heroTier(0); for (const i of middle) heroTier(i); }
   library.slice(0, 6 - heroTiers).forEach((ref, k) => {
-    out.push({ id: `${cap(subject)}Lib${k + 1}`, name: `${['Mega', 'Ultra', 'Royal', 'Mythic', 'Cosmic', 'Titan'][k]} ${cap(subject)}`, ...tier(out.length),
+    // Named for what it is (owner's play test, 2026-10-01: a grand piano was sold as "Royal Keyboard").
+    const own = (ref.path.split('/').pop() ?? '').replace(/[^A-Za-z ]+/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 3).map(cap).join(' ');
+    out.push({ id: `${cap(subject)}Lib${k + 1}`, name: `${['Mega', 'Ultra', 'Royal', 'Mythic', 'Cosmic', 'Titan'][k]} ${own.length >= 3 && own.length <= 20 ? own : cap(subject)}`, ...tier(out.length),
       ref, icon: '✨', colour: TIER_COLOURS[(out.length) % TIER_COLOURS.length] });
   });
   if (hero) heroTier(3);

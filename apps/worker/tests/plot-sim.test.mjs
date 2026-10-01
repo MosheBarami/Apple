@@ -196,3 +196,8 @@ test('the clips the server announces are always received (no "invocation queue e
   assert.match(client, /WaitForChild\("AppleAnimatePlayed", \d+\)[\s\S]{0,120}OnClientEvent:Connect/);
   assert.match(readFileSync(join(WORKER, 'src', 'components.generated.ts'), 'utf8'), /AppleAnimatePlayed\\*", 10\)/, 'the bundle is regenerated');
 });
+
+test('a library machine is named for what it is', () => {
+  const m = P.machineLadder('keyboard', 'ASMRKeyboard', [{ game: 'a', path: '/Workspace/Grand piano' }, { game: 'b', path: '/Workspace/Keyboard' }]);
+  assert.deepEqual(m.filter((x) => x.ref).map((x) => x.name), ['Mega Grand Piano', 'Ultra Keyboard']);
+});
