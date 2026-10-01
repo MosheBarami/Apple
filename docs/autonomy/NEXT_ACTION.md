@@ -1,5 +1,12 @@
 # NEXT ACTION (V3)
 
+**2026-10-01 late night — Frontier ≈67%: test 2 DONE (round 11), 2 of 5 silly tests green.** Test 2 ("make me a stick of butter"): 8 credits, 2 steps, ~20 s. Round 2 was an 8 x 2 x 2 box with its label buried inside, nothing to do and a reply that invented a wrapper; round 11 is a 15-stud stick lying across the view with dark "BUTTER" on top, its wrapper underneath, "Walk into it!" that works (the counter rose in the play test), and an answer said from what was built. Fixed on the way (all in apps/worker/src/object-tool.ts, deployed e1cfe032..caba7900): parts hidden inside others come out, small things grow, every object reacts to the player, long things lie across the view, shape words (stick, coin) set the shape, wrappers go under, bands wrap, hovering details settle, unreadable words are dropped, dark ink on light parts, and an object run ends on the tool's own description (one model call fewer).
+
+**Next, in order:**
+1. Test 3: "make it 100x cooler" on the butter project, the same loop.
+2. Open: Studio's edit view frames a new object off-centre (the plugin's camera_focus does not set Focus; a plugin change, offered as its own task); the web page stays "Studio disconnected" after a Studio restart (seen once); play_check does not press the game's own buttons.
+3. Studio refuses more than ~11 windows: reuse an old test window (Close Place → New Experience) instead of File → New.
+
 **2026-10-01 night — Frontier ≈57%: test 1 DONE (round 15), 1 of 5 silly tests green.** Test 1 ("make an asmr keyboard" → "make it a full game with plots for 4 players"): the keyboard is 9 credits and 2 steps (~1 min), the game 9 credits and 2 steps (~1.5 min; the first run was 274 credits and 93 steps). A dark gamer keyboard with an F row and real modifiers, rainbow legends, a purple underglow and a "+N" over every pressed key; a hub with the keyboard on the plaza, four 4x4 plots of 9-stud tiles, a free starter machine on a plinth beside each player's spawn, library pianos/keyboards in the shop, library lamps, trees and rocks, a HUD with Shop, Upgrades and Rebirth.
 
 **Next, in order:**
