@@ -8,13 +8,19 @@
  */
 
 const LIGHT_WORDS =
-  /\b(light|lights|lighting|lit|sun|sunny|sunset|sunrise|dusk|dawn|golden hour|dark|darker|bright|brighter|mood|moody|moodier|atmosphere|atmospheric|fog|foggy|haze|hazy|warm|warmer|cool|cooler|cold|colder|night|nighttime|daytime|time of day|glow|glowy|bloom|shadows?)\b/i;
+  /\b(light|lights|lighting|lit|sun|sunny|sunset|sunrise|dusk|dawn|golden hour|dark|darker|bright|brighter|mood|moody|moodier|atmosphere|atmospheric|fog|foggy|haze|hazy|night|nighttime|daytime|time of day|glow|glowy|bloom|shadows?)\b/i;
+/**
+ * Warm and cool are about light only beside a word for light or colour: "make it 100x cooler" asks for something more
+ * awesome, and was fenced to Lighting (test 3, 2026-10-01: 108 credits and only the lighting changed).
+ */
+const TEMPERATURE = /\b(warm|warmer|cool|cooler|cold|colder)\b/i;
+const OF_LIGHT = /\b(light|lights|lighting|tone|tones|tint|colou?rs?|sky|sun|atmosphere|mood|temperature|feel)\b/i;
 /** Anything that asks for objects, code or layout to change is not a lighting-only request. */
 const OTHER_WORK =
   /\b(add|adds|build|create|place|put|spawn|remove|delete|move|resize|scale|script|code|gui|ui|button|shop|coin|tree|trees|rock|rocks|house|part|parts|model|terrain|water|waterfall|island|crystal|crystals|npc|enemy|game|level|map|make (a|an|some|me)\b)/i;
 
 export function isLightingOnlyRequest(text: string): boolean {
-  return LIGHT_WORDS.test(text) && !OTHER_WORK.test(text);
+  return (LIGHT_WORDS.test(text) || (TEMPERATURE.test(text) && OF_LIGHT.test(text))) && !OTHER_WORK.test(text);
 }
 
 const LIGHTING_PATH = /^(game\.)?Lighting(\.|$)/;

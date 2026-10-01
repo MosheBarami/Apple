@@ -8,7 +8,9 @@ test('lighting-only requests are recognised, and anything that also asks for obj
   for (const t of ['make the lighting warmer, like the sun is going down', 'make it darker and moodier', 'too foggy, make it a clear golden hour', 'can you make it night time']) {
     assert.equal(isLightingOnlyRequest(t), true, t);
   }
-  for (const t of ['add a campfire with a warm glow', 'make a sunset island', 'make the trees brighter', 'build a dark castle', 'fix the coin script']) {
+  // Test 3 (2026-10-01): "make it 100x cooler" was fenced to Lighting; warm and cool need a word for light or colour.
+  for (const t of ['make the colours cooler', 'make the light a bit warmer', 'cooler tones please']) assert.equal(isLightingOnlyRequest(t), true, t);
+  for (const t of ['add a campfire with a warm glow', 'make a sunset island', 'make the trees brighter', 'build a dark castle', 'fix the coin script', 'make it 100x cooler', 'make it way cooler', 'make it cooler', 'that is cool, make it colder']) {
     assert.equal(isLightingOnlyRequest(t), false, t);
   }
 });
