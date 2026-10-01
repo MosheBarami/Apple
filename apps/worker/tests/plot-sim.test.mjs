@@ -201,3 +201,16 @@ test('a library machine is named for what it is', () => {
   const m = P.machineLadder('keyboard', 'ASMRKeyboard', [{ game: 'a', path: '/Workspace/Grand piano' }, { game: 'b', path: '/Workspace/Keyboard' }]);
   assert.deepEqual(m.filter((x) => x.ref).map((x) => x.name), ['Mega Grand Piano', 'Ultra Keyboard']);
 });
+
+// Round 4 of test 1 (2026-10-01): the answer said "you spawn in a hub... claim a plot" (each player starts on their own
+// plot); the Rebirth panel's bare "x1" read as "a rebirth gives nothing"; a placed keyboard covered three tiles.
+test('the composer tells the truth about plots, Rebirth shows what it gives, and staging checks its own fit', () => {
+  const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
+  assert.match(tool, /Every player starts on their own plot/);
+  assert.doesNotMatch(tool, /`Claim a plot/);
+  const client = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'machines', 'AppleMachinesClient.luau'), 'utf8');
+  assert.match(client, /x\(mult\) \.\. "  →  " \.\. x\(nextMult\)/);
+  const boot = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'boot', 'AppleBoot.luau'), 'utf8');
+  assert.match(boot, /if measure\(after\) <= want \* 1\.05 then return end/, 'the fit is measured after ScaleTo');
+  assert.match(boot, /d\.Size \*= k/, 'and done by hand when ScaleTo left it as it was');
+});

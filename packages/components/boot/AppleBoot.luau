@@ -75,14 +75,35 @@ for _, s in config.stage or {} do
 	for _, p in copy:GetDescendants() do
 		if p:IsA("BasePart") then p.Anchored = true end
 	end
-	if s.height then
+	-- Fit to a size, then measure: ScaleTo can fail inside its pcall and leave the copy as it was (the owner's placed
+	-- Classic Keyboard covered three plot tiles). When the measure says it did not fit, every part is scaled about the
+	-- pivot by hand, joints with it.
+	local function fit(measure: (Vector3) -> number, want: number)
 		local _, size = (copy :: Model):GetBoundingBox()
-		if size.Y > 0 then pcall(function() (copy :: Model):ScaleTo((copy :: Model):GetScale() * s.height / size.Y) end) end
+		local have = measure(size)
+		if have <= 0 then return end
+		local ok, err = pcall(function() (copy :: Model):ScaleTo((copy :: Model):GetScale() * want / have) end)
+		local _, after = (copy :: Model):GetBoundingBox()
+		if measure(after) <= want * 1.05 then return end
+		warn(("AppleBoot: %s did not scale (%s); scaling its parts"):format(s.name, if ok then "ScaleTo left it at " .. math.floor(measure(after)) else tostring(err)))
+		local k = want / measure(after)
+		local pivot = (copy :: Model):GetPivot()
+		for _, d in copy:GetDescendants() do
+			if d:IsA("BasePart") then
+				local rel = pivot:ToObjectSpace(d.CFrame)
+				d.Size *= k
+				d.CFrame = pivot * (rel - rel.Position + rel.Position * k)
+			elseif d:IsA("JointInstance") then
+				d.C0 = d.C0 - d.C0.Position + d.C0.Position * k
+				d.C1 = d.C1 - d.C1.Position + d.C1.Position * k
+			end
+		end
+	end
+	if s.height then
+		fit(function(v) return v.Y end, s.height)
 	elseif s.width then
 		-- Fit the widest side to s.width (a machine on a plot tile).
-		local _, size = (copy :: Model):GetBoundingBox()
-		local wide = math.max(size.X, size.Z)
-		if wide > 0 then pcall(function() (copy :: Model):ScaleTo((copy :: Model):GetScale() * s.width / wide) end) end
+		fit(function(v) return math.max(v.X, v.Z) end, s.width)
 	end
 	copy.Parent = to
 end

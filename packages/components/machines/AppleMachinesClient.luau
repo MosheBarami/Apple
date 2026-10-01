@@ -80,10 +80,13 @@ local function wire(screen: ScreenGui)
 		if info and info:IsA("TextLabel") then
 			info.Text = ("Rebirth for $%s: start over with every machine and upgrade gone, and earn more forever. Rebirths: %d"):format(short(cost), rebirths)
 		end
-		if bonus and bonus:IsA("TextLabel") then bonus.Text = "x" .. tostring(math.floor(mult * 100 + 0.5) / 100) end
+		-- What a rebirth gives, not only what you have (a bare "x1" read as "a rebirth gives nothing").
+		local nextMult = tonumber(player:GetAttribute("NextMultiplier")) or mult
+		local function x(n: number) return "x" .. tostring(math.floor(n * 100 + 0.5) / 100) end
+		if bonus and bonus:IsA("TextLabel") then bonus.Text = x(mult) .. "  →  " .. x(nextMult) end
 	end
 	refresh()
-	for _, a in { "RebirthCost", "Rebirths", "Multiplier" } do player:GetAttributeChangedSignal(a):Connect(refresh) end
+	for _, a in { "RebirthCost", "Rebirths", "Multiplier", "NextMultiplier" } do player:GetAttributeChangedSignal(a):Connect(refresh) end
 	open.Activated:Connect(function()
 		panel.Visible = not panel.Visible
 		if panel.Visible then refresh(); pop(panel) end

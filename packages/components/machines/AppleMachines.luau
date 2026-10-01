@@ -141,6 +141,8 @@ function AppleMachines.start(config: any, economy: any)
 		player:SetAttribute("Rebirths", rebirthsOf(player))
 		player:SetAttribute("RebirthCost", AppleMachines.rebirthCost(rules, rebirthsOf(player)))
 		player:SetAttribute("Multiplier", multiplierOf(player))
+		-- After a rebirth: one more rebirth, and upgrade levels back to 0.
+		player:SetAttribute("NextMultiplier", AppleMachines.multiplier(rebirthsOf(player) + 1, rules.multiplier, nil, nil))
 		if perSecond then player:SetAttribute("IncomePerSecond", perSecond) end
 	end
 	economy.Changed:Connect(function(player: Player, _amount: number, _delta: number, reason: string)
