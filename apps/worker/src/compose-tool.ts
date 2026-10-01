@@ -128,6 +128,20 @@ async function subjectModels(ctx: AgentCtx, subject: string, limit: number): Pro
   return out.slice(0, limit);
 }
 
+/** One street light from the library (one lamp, not a set of them): the roads between the hub and the plots were bare. */
+async function streetLight(ctx: AgentCtx): Promise<LibRef | undefined> {
+  const out = await ctx.execStudioOp({ op: 'query_owner_library', action: 'list', q: 'street light', kind: 'model', limit: 20 }, 60_000).catch(() => null);
+  if (!out?.ok) return undefined;
+  const items = ((out.data as { items?: { gameId?: string; path?: string; kind?: string; parts?: number }[] }).items ?? [])
+    .filter((i) => i.kind === 'model' && typeof i.gameId === 'string' && typeof i.path === 'string' && (i.parts ?? 0) >= 20 && (i.parts ?? 0) <= 150)
+    .filter((i) => /street ?light( \d+)?$/i.test(i.path!.split('/').pop() ?? ''));
+  const best = items.find((i) => /stud/i.test(i.path!)) ?? items[0];
+  return best ? { game: best.gameId!, path: best.path! } : undefined;
+}
+
+/** The top of the hub's plaza (studded-map.ts hubItems: an 0.8-stud plaza on the ground). */
+const HUB_PLAZA_TOP = 0.8;
+
 /** Library models of the subject (the owner library first): the machines beyond the hero's own tiers. */
 async function libraryModels(ctx: AgentCtx, q: string, limit: number, minParts = 15): Promise<LibRef[]> {
   const out = await ctx.execStudioOp({ op: 'query_owner_library', action: 'list', q, kind: 'model', limit: 20 }, 60_000).catch(() => null);
@@ -150,12 +164,13 @@ async function composePlotSim(ctx: AgentCtx, idea: string) {
   const draft = plotSimRecipe(idea, ideaSeed(idea), { ...place, library: [], hubProps: [], hasComponents: place.hasComponents });
   // Library first (owner, 2026-10-01: "if you find assets it's better than generating one from parts"): up to four
   // other models of the subject, the hub's stands, and scenery for the island.
-  const [library, shop, trees, rocks, stage] = await Promise.all([
+  const [library, shop, trees, rocks, stage, lamp] = await Promise.all([
     subjectModels(ctx, draft.subject, place.hero ? 4 : 6),
     libraryModels(ctx, 'shop', 1, 5),
     libraryModels(ctx, 'tree', 2, 5),
     libraryModels(ctx, 'rock', 1, 2),
     place.hero ? ctx.execStudioOp({ op: 'get_instance', path: `game.Workspace.${place.hero}Stage.Stage` }, 20_000).catch(() => null) : Promise.resolve(null),
+    streetLight(ctx),
   ]);
   const stageSize = stage?.ok ? triple((stage.data as { props?: Record<string, unknown> }).props?.Size) : null;
   const hubProps: PlotSimRecipe['hubProps'] = [
@@ -169,6 +184,7 @@ async function composePlotSim(ctx: AgentCtx, idea: string) {
     ...(rocks[0] ? [{ key: 'DecorRock', ref: rocks[0], height: 5, count: 10 }] : []),
   ];
   if (stageSize) recipe.heroSize = [stageSize[0], stageSize[2]];
+  if (lamp) recipe.roadside = { key: 'RoadLamp', ref: lamp, height: 12 };
   if (!recipe.machines.length) {
     return { changed: false, template: 'none', note: `No ${recipe.subject} is in the place and the owner library has no ${recipe.subject} model, so there is nothing to sell yet. Build the ${recipe.subject} first with build_object, then call compose_game again.` };
   }
@@ -182,8 +198,12 @@ async function composePlotSim(ctx: AgentCtx, idea: string) {
     const at = root?.ok ? triple((root.data as { props?: Record<string, unknown> }).props?.Position) : null;
     if (at) {
       const [hx, hz] = heroSpot(recipe);
-      const moved = await ctx.execStudioOp({ op: 'transform_instances', paths: [`game.Workspace.${recipe.hero}`, `game.Workspace.${recipe.hero}Stage`], move: [hx - at[0], 0, hz - at[2]] }, 30_000).catch(() => null);
+      // The hub's plaza is the stage now: the object's own stage goes and the object comes down onto the plaza, so the
+      // hub is not plates on plates (owner's critique, 2026-10-01: plaza, rim, yellow stage and case stacked).
+      const drop = stageSize ? -(stageSize[1] - HUB_PLAZA_TOP) : 0;
+      const moved = await ctx.execStudioOp({ op: 'transform_instances', paths: [`game.Workspace.${recipe.hero}`], move: [hx - at[0], drop, hz - at[2]] }, 30_000).catch(() => null);
       if (!moved?.ok) report.problems.push(`the ${recipe.subject} could not be moved onto the hub`);
+      else if (stageSize) await ctx.execStudioOp({ op: 'delete_instances', paths: [`game.Workspace.${recipe.hero}Stage`] }, 20_000).catch(() => undefined);
     } else report.problems.push(`the ${recipe.subject}'s position could not be read, so it stays where it was`);
   }
   // The screen is what makes it playable: read it back rather than trust the create (live 2026-10-01: refused, unnoticed).

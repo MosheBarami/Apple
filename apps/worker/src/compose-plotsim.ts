@@ -13,7 +13,7 @@
  * library pieces. Pure: plotSimSteps turns a recipe into composer steps (tests/plot-sim.test.mjs).
  */
 import { COMPONENTS } from './components.generated';
-import { luau, rng, TILE, LANE_WIDTH, plotTiles, type LibRef, type Step } from './compose';
+import { luau, rng, LANE_WIDTH, plotTiles, type LibRef, type Step } from './compose';
 import { hubLayout } from './hub-layout';
 import { studdedMap, studLighting, STUD_PALETTE } from './studded-map';
 import { plotSimHud, type StudColour } from './stud-ui';
@@ -36,6 +36,8 @@ export interface PlotSimRecipe {
   hubProps: { key: string; ref: LibRef; at: 'shop' | 'sell' | 'hub'; height: number }[];
   /** Library scenery (trees, rocks) scattered over the island off the roads and plots: a map, not a flat square. */
   decor?: { key: string; ref: LibRef; height: number; count: number }[];
+  /** A library street light set along both sides of every road, every ROAD_LAMP_STEP studs. */
+  roadside?: { key: string; ref: LibRef; height: number };
   /** The hero's footprint on its stage [width, depth]: the hub is made to hold it. */
   heroSize?: [number, number];
   upgrades: UpgradeSpec[];
@@ -109,15 +111,21 @@ export function plotSimPieces(recipe: PlotSimRecipe): { key: string; ref: LibRef
     ...recipe.machines.filter((m) => m.ref).map((m) => ({ key: `Machine_${m.id}`, ref: m.ref! })),
     ...recipe.hubProps.map((p) => ({ key: p.key, ref: p.ref })),
     ...(recipe.decor ?? []).map((d) => ({ key: d.key, ref: d.ref })),
+    ...(recipe.roadside ? [{ key: recipe.roadside.key, ref: recipe.roadside.ref }] : []),
   ];
 }
 
 /** Tiles on a side of a plot: 4x4 is a base with room for a ladder of machines, not a 3x3 doormat. */
 export const PLOT_TILES = 4;
+/** Studs between a plot's tile centres: a machine is a tile wide, and at the lane-defense 6 a 76-stud keyboard was a
+ *  5.4-stud mat (owner's critique, 2026-10-01). */
+export const PLOT_TILE = 9;
+/** Studs between two lamps on one side of a road. */
+export const ROAD_LAMP_STEP = 16;
 
 export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
   const steps: Step[] = [];
-  const layout = hubLayout(recipe.seed, recipe.players, { plotTiles: PLOT_TILES, ...(recipe.heroSize ? { hero: recipe.heroSize } : {}) });
+  const layout = hubLayout(recipe.seed, recipe.players, { plotTiles: PLOT_TILES, tile: PLOT_TILE, ...(recipe.heroSize ? { hero: recipe.heroSize } : {}) });
   const hub = layout.hub!;
   const staged = plotSimPieces(recipe);
 
@@ -135,7 +143,7 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
 
   // 3. The hub map: plots in a ring, spoke roads, the shop and sell pads (studded-map.ts hub mode).
   const mapItems = studdedMap({
-    layout, tile: TILE, plotTiles: (c) => plotTiles(c, layout.plotTiles), plotHalf: (TILE * (layout.plotTiles ?? 3)) / 2, laneWidth: LANE_WIDTH,
+    layout, tile: PLOT_TILE, plotTiles: (c) => plotTiles(c, layout.plotTiles, PLOT_TILE), plotHalf: (PLOT_TILE * (layout.plotTiles ?? 3)) / 2, laneWidth: LANE_WIDTH,
     seed: rng(recipe.seed ^ 0x51ed), words: { plot: 'Plot', shop: 'SHOP', sell: 'REBIRTH' }, // a plot simulator sells nothing: the second pad opens Rebirth (AppleMachinesClient)
   }, STUD_PALETTE);
   steps.push({ kind: 'create', parent: 'game.Workspace', items: [{ className: 'Folder', name: 'AppleMap', children: [...mapItems, { className: 'Folder', name: 'Props' }] }] });
@@ -151,6 +159,22 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
     const off = p.at === 'hub' ? [hub.radius * 0.6, 0] : [0, 0];
     steps.push({ kind: 'place', from: `ServerStorage.AppleParts.${p.key}`, parent: 'Workspace.AppleMap.Props', name: `HubProp${++n}`,
       at: [at[0] + off[0]!, 0, at[1] + off[1]!], yaw: Math.round((Math.atan2(-at[0], -at[1]) * 180) / Math.PI), height: p.height });
+  }
+  // Lamps along the roads, alternating sides, facing the road (owner's critique, 2026-10-01: the roads were bare).
+  if (recipe.roadside) {
+    let k = 0;
+    for (const spoke of hub.spokes) {
+      const a = spoke[0]!, b = spoke[spoke.length - 1]!;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 8) continue;
+      const [ux, uz] = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+      for (let d = ROAD_LAMP_STEP / 2, side = 1; d < len - 2; d += ROAD_LAMP_STEP, side = -side) {
+        const off = side * (LANE_WIDTH / 2 + 2);
+        const x = a[0] + ux * d - uz * off, z = a[1] + uz * d + ux * off;
+        steps.push({ kind: 'place', from: `ServerStorage.AppleParts.${recipe.roadside.key}`, parent: 'Workspace.AppleMap.Props', name: `RoadLamp${++k}`,
+          at: [Math.round(x * 10) / 10, 0, Math.round(z * 10) / 10], yaw: Math.round((Math.atan2(uz * side, -ux * side) * 180) / Math.PI), height: recipe.roadside.height });
+      }
+    }
   }
   // The island's scenery: each library piece copied over the free ground (layout.scatter is off roads, plots and hub).
   const turn = rng(recipe.seed ^ 0xdec0);
@@ -174,7 +198,7 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
   // 6. The config the systems read. Machines are staged by AppleBoot into ServerStorage.AppleDefenders, where the shop
   //    finds what it sells: the hero recoloured per tier and fitted to a plot tile, library models fitted the same way.
   const stage = recipe.machines.map((m) => ({
-    from: m.from ?? `ServerStorage.AppleParts.Machine_${m.id}`, to: 'ServerStorage.AppleDefenders', name: m.id, width: TILE - 0.6,
+    from: m.from ?? `ServerStorage.AppleParts.Machine_${m.id}`, to: 'ServerStorage.AppleDefenders', name: m.id, width: PLOT_TILE - 0.6,
     ...(m.hue !== undefined ? { hue: m.hue } : {}),
   }));
   const config = {
@@ -218,7 +242,7 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
 
 /** Where the hero goes: the centre of the hub. */
 export function heroSpot(recipe: PlotSimRecipe): [number, number] {
-  return hubLayout(recipe.seed, recipe.players, { plotTiles: PLOT_TILES, ...(recipe.heroSize ? { hero: recipe.heroSize } : {}) }).hub!.heroSpot;
+  return hubLayout(recipe.seed, recipe.players, { plotTiles: PLOT_TILES, tile: PLOT_TILE, ...(recipe.heroSize ? { hero: recipe.heroSize } : {}) }).hub!.heroSpot;
 }
 
 /** The recipe for an idea, given what the place and the library hold. Pure. */

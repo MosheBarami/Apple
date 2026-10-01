@@ -64,7 +64,8 @@ test('the steps build a hub with 4 plots, every simulator system, its config and
   assert.match(cfg, /start = \{\s*"AppleShop",\s*"AppleMachines",?\s*\}/);
   assert.match(cfg, /from = "Workspace\.ASMRKeyboard"/, 'the hero is staged as a machine');
   assert.match(cfg, /hue = /, 'recoloured tiers');
-  assert.match(cfg, /width = 5\.4/, 'fitted to a plot tile');
+  assert.match(cfg, new RegExp(`width = ${P.PLOT_TILE - 0.6}\\b`), 'fitted to a plot tile');
+  assert.ok(P.PLOT_TILE >= 9, 'a machine is big enough to read as one (a 5.4-stud mat was not)');
   assert.match(cfg, /machines = \{/);
   assert.match(cfg, /rebirth = \{/);
   const up = steps.find((s) => s.kind === 'script' && s.name === 'AppleUpgradesConfig').source;
@@ -235,4 +236,18 @@ test('a checked plot simulator is answered with what the composer built and what
   assert.match(end, /agent\.finalText = `\$\{agent\.composedForUser\}\\n\\nI play-tested it: \$\{agent\.lastCheckSeen/);
   assert.match(end, /await this\.finishRun\(agent, 'done'\);\s*return;/, 'no further model call');
   assert.ok(session.indexOf('if (agent.composedPlotSim && agent.composedForUser && agent.playChecked') < session.indexOf('const AFTER_OBJECT'), 'before the next model step is prepared');
+});
+
+// Round 9 of test 1 (2026-10-01): bare roads, and the hero's yellow stage stacked on the hub's plaza.
+test('lamps line every road off the road itself, and the hero comes down onto the plaza without its stage', () => {
+  const recipe = P.plotSimRecipe(OWNER, 12345, { hero: 'ASMRKeyboard', library: LIB, hubProps: [], hasComponents: true });
+  recipe.roadside = { key: 'RoadLamp', ref: { game: 'l', path: '/Workspace/Street Light 1' }, height: 12 };
+  recipe.heroSize = [82, 41];
+  const steps = P.plotSimSteps(recipe);
+  const lamps = steps.filter((s) => s.kind === 'place' && s.from === 'ServerStorage.AppleParts.RoadLamp');
+  assert.ok(lamps.length >= 8, `${lamps.length} lamps for 4 roads`);
+  assert.ok(steps.some((s) => s.kind === 'import' && s.key === 'RoadLamp'));
+  const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
+  assert.match(tool, /paths: \[`game\.Workspace\.\$\{recipe\.hero\}`\], move: \[hx - at\[0\], drop, hz - at\[2\]\]/, 'only the hero moves, down onto the plaza');
+  assert.match(tool, /delete_instances', paths: \[`game\.Workspace\.\$\{recipe\.hero\}Stage`\]/, 'and its stage goes');
 });

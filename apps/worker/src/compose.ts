@@ -170,10 +170,10 @@ export function laneLayout(seed: number): Layout {
 }
 
 /** Every tile centre of a plot. */
-export function plotTiles(center: P2, size: number = PLOT_TILES): P2[] {
+export function plotTiles(center: P2, size: number = PLOT_TILES, tile: number = TILE): P2[] {
   const out: P2[] = [];
   for (let i = 0; i < size; i++) for (let j = 0; j < size; j++) {
-    out.push([center[0] + (i - (size - 1) / 2) * TILE, center[1] + (j - (size - 1) / 2) * TILE]);
+    out.push([center[0] + (i - (size - 1) / 2) * tile, center[1] + (j - (size - 1) / 2) * tile]);
   }
   return out;
 }

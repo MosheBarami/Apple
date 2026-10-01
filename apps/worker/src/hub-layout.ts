@@ -36,11 +36,12 @@ export function clampPlayers(players: number): number {
  * hub grows to hold it with the pads and the spawn outside it (live 2026-10-01: a 75-stud hub under an 82-stud keyboard
  * stage put the shop, the sell stand and the spawn on the keys).
  */
-export function hubLayout(seed: number, players: number, opts: { plotTiles?: number; hero?: [number, number] } = {}): Layout {
+export function hubLayout(seed: number, players: number, opts: { plotTiles?: number; hero?: [number, number]; tile?: number } = {}): Layout {
   const n = clampPlayers(players);
   const tiles = Number.isFinite(opts.plotTiles) ? Math.max(1, Math.min(8, Math.round(opts.plotTiles!))) : 4;
   const r = rng(seed);
-  const frameHalf = (tiles * TILE) / 2 + 1; // the plot's wooden frame is one stud wider than its tiles
+  const tile = Number.isFinite(opts.tile) && opts.tile! > 0 ? opts.tile! : TILE;
+  const frameHalf = (tiles * tile) / 2 + 1; // the plot's wooden frame is one stud wider than its tiles
   const hero = opts.hero && opts.hero.every((v) => Number.isFinite(v) && v > 0) ? opts.hero : null;
   // A hero's pads go before and behind its short side and the spawn in a free corner, so the hub is only as big as the
   // hero's own rectangle needs (a circle round its diagonal left a 130-stud empty plaza round an 88x41 keyboard).
