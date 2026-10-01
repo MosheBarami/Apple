@@ -361,6 +361,8 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   install_owner_system: 'Writes one ready-made system from the owner\'s uploaded games into Studio; excluded for the same reason as query_owner_catalog.',
   plan_game: 'Reads the owner\'s private library to design a game; excluded for the same reason as query_owner_catalog.',
   build_game: 'Builds a whole game in Studio from the owner\'s uploaded games; excluded for the same reason as query_owner_catalog.',
+  build_object: 'Builds a whole object with scripts in the place; excluded until the MCP surface has a reviewed object-building scope.',
+  more_tools: 'Widens the agent\'s own tool list for a run; meaningless outside an agent run.',
   animate_model: 'Rigs a model and writes its animations as a script; excluded until the MCP surface has a reviewed rig-and-script scope.',
   build_studded_ui: 'Writes a whole studded ScreenGui into the place; excluded until the MCP surface has a reviewed UI-writing scope.',
   compose_game: 'Builds a new game in Studio from components and pieces of the owner\'s private library; excluded for the same reason as query_owner_catalog.',

@@ -2,6 +2,7 @@
 // Bridges: browser (WebSocket, hibernatable) <-> agent loop (alarm-driven steps) <-> Studio
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
 import { surfaceDefaultOp } from '../surfaces';
+import { addSources } from '../sources';
 import { lastUserText } from '../user-request';
 import { afterReady, continueGameLine, refuseRebuild, saysReady, type BuiltGameRecord } from '../run-flow';
 import { ideaRecipe } from '../compose-tool';
@@ -71,7 +72,7 @@ import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, reasoningEffortApplies, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
-import { TOOLS, toolDefs, toolNames, targetOf, runTool, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
+import { TOOLS, offeredWhenFocused, toolDefs, toolNames, targetOf, runTool, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
 import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
@@ -265,6 +266,16 @@ interface AgentState {
   continuesGame?: boolean;
   /** A new idea the composer can build: compose_game is the first project change of this run (seen live: the model built by hand instead). */
   composeFirst?: boolean;
+  /**
+   * The run is offered the focused toolset (tools.ts FOCUSED_TOOLS): about 30 tools instead of 115, so every step sends
+   * a fraction of the tool text and thinks faster (owner, 2026-10-01: "token efficient and really really fast").
+   * more_tools lifts it for the rest of the run.
+   */
+  focused?: boolean;
+  /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
+  uiTheme?: UiTheme;
+  /** What this run's tools cited (sources.ts), numbered; sent to the web app with the answer. */
+  sources?: import('@golem/shared').RunSource[];
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
   /**
    * Identical calls whose last attempt failed in a way op-failure.ts classified as SAFE TO REPEAT
@@ -3474,6 +3485,8 @@ export class SessionDO extends DurableObject<Env> {
       llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme)), continueLine].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
       ...(continueLine ? { continuesGame: true } : {}),
       ...(mode === 'agent' && !continueLine && !('error' in ideaRecipe(text)) ? { composeFirst: true } : {}),
+      focused: true,
+      uiTheme: asUiTheme(uiTheme),
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
       ...(rejectedChoice && pendingChoice?.anchor ? { assetChoiceAnchor: pendingChoice.anchor } : {}),
@@ -3928,9 +3941,10 @@ export class SessionDO extends DurableObject<Env> {
           : 'The steps you asked for stopped because one of them did not work. Look at what was changed before you carry on.');
       return;
     }
+    const focusedAllowed = new Set([...offeredCapabilityFilter.allowed].filter((tool) => agent.focused ? offeredWhenFocused(tool) : tool !== 'more_tools'));
     const offeredAllowed = sequenceStep?.state === 'next'
       ? new Set([...offeredCapabilityFilter.allowed].filter((tool) => tool === sequenceStep.tool))
-      : offeredCapabilityFilter.allowed;
+      : focusedAllowed;
 
     //[[ AND SAY WHAT WAS TAKEN.
     //
@@ -4065,6 +4079,15 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     const res = raced;
+    // THE MODEL'S OWN REASONING, as the provider returned it (D-REASONING-2: plain text, never the prompt, never fed
+    // back). Sent per step in pieces, in order, for the web app's AI Elements Reasoning block. The gateway call is not
+    // streamed yet, so a step's reasoning arrives when the step's answer does.
+    if (typeof res.reasoning === 'string' && res.reasoning.trim()) {
+      const text = res.reasoning.trim();
+      for (let i = 0; i < text.length; i += 400) {
+        this.broadcast({ type: 'reasoning_delta', msgId: agent.msgId, step: agent.step, text: text.slice(i, i + 400) });
+      }
+    }
     // The burst this step was waiting on has cleared, so the next one starts from a full set of
     // waits. Per STEP, not per run: what bounds the total is PROVIDER_OUTAGE_MAX_MS of continuous
     // unavailability (there is no run wall clock).
@@ -4516,7 +4539,9 @@ export class SessionDO extends DurableObject<Env> {
       }
       const readyRefusal = afterReady(agent.judgedReady, call.name, new Set(projectMutatingToolNames())) ?? refuseRebuild(agent.continuesGame, call.name)
         ?? (agent.composeFirst && call.name !== 'compose_game' && READ_ONLY_WITHHELD.has(call.name)
-          ? 'This idea is built with compose_game first (it makes the whole game from components); call compose_game {request} with the user\'s words.' : undefined);
+          ? 'This idea is built with compose_game first (it makes the whole game from components); call compose_game {request} with the user\'s words.' : undefined)
+        ?? ((agent.uiTheme ?? 'studded') === 'studded' && (call.name === 'insert_ui_component' || call.name === 'build_ui')
+          ? 'The UI theme is studded: every screen is the game\'s own studded GUI. Use build_studded_ui (or build_object\'s screen), then a LocalScript for the values and buttons.' : undefined);
       if (readyRefusal) {
         duplicatesThisStep += 1;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
@@ -5462,6 +5487,7 @@ export class SessionDO extends DurableObject<Env> {
     // The settled cost of the whole run. Read here, after the last `quotaSpend`, because every
     // earlier broadcast of this number was taken before that step's settlement and was therefore
     // an under-count of what the user had actually been charged.
+    if (agent.sources?.length) this.broadcast({ type: 'sources', msgId: agent.msgId, sources: agent.sources.slice(0, 30) });
     this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error, creditsSpent: agent.creditsSpent, content: withRemedy });
 
     // BUILD LOG. One event per run, written from the branch that actually ended it, so `outcome` is
@@ -5788,6 +5814,8 @@ export class SessionDO extends DurableObject<Env> {
       localOwnerGateway: this.pluginCapabilityReport?.operations.some(op => op.op === 'query_owner_local' && op.status === 'supported') === true,
       studioConnected: () => this.opQueue.length < 100 && this.pluginConnectedNow(),
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs, agent),
+      widenTools: () => { if (agent) agent.focused = false; },
+      addSources: (fresh) => { if (!agent) return []; agent.sources ??= []; return addSources(agent.sources, fresh); },
       // Read the run by reference: create_instances and delete_instances can arrive in one LLM
       // response, and a flag captured when the context was constructed would miss the conflict.
       blockDirectDeletion: () => agent?.blockDeletesAfterCreateConflict === true,

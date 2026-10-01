@@ -79,6 +79,8 @@ import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
 import { planGame, buildGame, planSummary, buildSummary, plannedLoop } from './game-plan';
+import { sourcesIn as runSourcesIn } from './sources';
+import { buildObject } from './object-tool';
 import { animateModel } from './animate-tool';
 import { buildStuddedUi } from './studded-ui-tool';
 import { composeGame, composeSummary } from './compose-tool';
@@ -284,6 +286,10 @@ export interface AgentCtx {
   plannedGame?: { load(): Promise<unknown>; save(stored: unknown): Promise<void> };
   /** The user's own words for this run (their last message), so a tool that must understand the request does not read the model's retelling of it. */
   userRequest?: () => string | undefined;
+  /** more_tools: lift the run's focused toolset for the rest of the run (session.ts AgentState.focused). */
+  widenTools?: () => void;
+  /** The run's sources (sources.ts): add some, get their [n] numbers back. */
+  addSources?: (fresh: import('@golem/shared').RunSource[]) => number[];
 }
 
 /**
@@ -3678,7 +3684,8 @@ export const TOOLS: Record<string, ToolImpl> = {
       description:
         'Install a vetted, self-contained ModuleScript for a system whose failures are silent and expensive. Prefer this to writing one yourself: each encodes Roblox behaviour that is easy to get subtly wrong. Installing over a script that already exists and differs is REFUSED unless you pass replace: true — re-installing would destroy whatever the user had changed.\n\n' +
         prefabCatalogue()
-          .map((p) => `  ${p.id} — ${p.summary}\n      prevents: ${p.prevents.join('; ')}`)
+          // What each one prevents comes back in its install result, where it is read when it matters, not on every step.
+          .map((p) => `  ${p.id} — ${p.summary}`)
           .join('\n'),
       parameters: S(
         {
@@ -3776,6 +3783,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         at: path,
         replaced: found || undefined,
         api: prefab.api,
+        prevents: prefab.prevents,
         // Wiring, not imports. A module installed without the one it is handed functions from
         // loads, configures and silently does nothing, which is the worst way for this to fail.
         needs: prefab.needs?.length ? prefab.needs : undefined,
@@ -4935,6 +4943,30 @@ export const TOOLS: Record<string, ToolImpl> = {
     plainSummary: composeSummary,
     run: composeGame,
   },
+  more_tools: {
+    def: {
+      name: 'more_tools',
+      description: 'Only when no offered tool can do a needed step: unlocks every tool (terrain, owner library, scripts search, images...) for the rest of the run.',
+      parameters: S({ why: { type: 'string' } }, ['why']),
+    },
+    studio: false,
+    run: async (ctx) => {
+      ctx.widenTools?.();
+      return { widened: true, note: 'Every tool is offered from the next step.' };
+    },
+  },
+  build_object: {
+    def: {
+      name: 'build_object',
+      description: "Build any object in ONE call: parts, repeats, labels, motions, sounds; studded, staged, lit, rigged. Spec: creation skill any-idea-done-right.",
+      parameters: S({ name: { type: 'string' }, parts: { type: 'array', items: { type: 'object' } }, scale: { type: 'number' }, screen: { type: 'object' }, stage: { type: 'string' } }, ['name', 'parts']),
+    },
+    studio: true,
+    studioOps: ['create_instances', 'delete_instances', 'set_props', 'apply_surface', 'rig_model', 'set_joint_pivot', 'edit_script', 'get_tree'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
+    plainSummary: (_a, _r, failed) => failed ? 'Could not build it' : 'Built it',
+    run: buildObject,
+  },
   animate_model: {
     def: {
       name: 'animate_model',
@@ -5572,6 +5604,21 @@ export function targetOf(tool: string, argsJson: unknown): string | undefined {
  * for "does this deployment have a library" would now have exactly one answer, and a caller
  * passing `true` would be asking for a tool that is not in `TOOLS` at all.
  */
+/**
+ * THE FOCUSED TOOLSET (owner, 2026-10-01: fast and token-cheap). Every tool definition rides on every step, so the
+ * heavy, rarely needed ones wait behind more_tools: sound synthesis and voice, image generation, terrain, saved-game copying,
+ * web research, the workspace store, and the UI builders the studded theme replaces.
+ * Everything a build needs stays offered. A run that needs a deferred tool calls more_tools once.
+ */
+export const DEFERRED_TOOLS: ReadonlySet<string> = new Set([
+  'generate_sound', 'design_sound', 'speak_line', 'assign_sounds', 'generate_image', 'generate_ui_image_hf', 'upload_ui_asset',
+  'edit_terrain', 'shape_terrain', 'read_terrain', 'generate_model', 'generate_model_external', 'compose_thumbnail',
+  'plan_game', 'build_game', 'web_fetch', 'browse_page', 'web_search', 'screenshot_page', 'ocr_image',
+  'github_lookup', 'git_history', 'workspace_list', 'workspace_read', 'workspace_write', 'review_scripts', 'format_script',
+  'find_symbol', 'collision_groups', 'build_ui', 'insert_ui_component', 'run_spec',
+]);
+export function offeredWhenFocused(tool: string): boolean { return !DEFERRED_TOOLS.has(tool); }
+
 export function toolDefs(studioConnected: boolean, allowed?: Set<string>): GatewayToolDef[] {
   return Object.entries(TOOLS)
     .filter(([name, t]) => (studioConnected || !t.studio) && (!allowed || allowed.has(name)))
@@ -5675,7 +5722,16 @@ export async function runTool(
   }
   try {
     ctx.uiDetail = undefined; // never let one tool's panel leak into the next tool's row
-    const result = await impl.run(ctx, args);
+    let result = await impl.run(ctx, args);
+    // Sources the result named, numbered for the whole run, so the answer can cite them as [n].
+    const fresh = ctx.addSources ? runSourcesIn(name, result) : [];
+    if (fresh.length && result && typeof result === 'object' && !Array.isArray(result) && !('error' in (result as Record<string, unknown>))) {
+      const ns = ctx.addSources!(fresh);
+      result = { ...(result as Record<string, unknown>), cite: fresh.map((s, i) => `[${ns[i]}] ${s.title} ${s.url}`) };
+    } else if (fresh.length && Array.isArray(result)) {
+      const ns = ctx.addSources!(fresh);
+      result = { results: result, cite: fresh.map((s, i) => `[${ns[i]}] ${s.title} ${s.url}`) };
+    }
     const failed = typeof result === 'object' && result !== null && 'error' in (result as Record<string, unknown>);
     const partialMutation = failed && (result as Record<string, unknown>).projectMutated === true;
     //[[ RETRYABLE ONLY WHEN NOTHING WAS APPLIED. `retryable` comes from op-failure.ts's verdict on

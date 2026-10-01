@@ -525,6 +525,7 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     neurons: actual,
     provider: adapter.id,
     model: cfg.id,
+    ...(decoded.reasoning ? { reasoning: decoded.reasoning } : {}),
     // The adapter is the provider-format boundary and already normalises `length`, `stop`, and
     // provider errors. Replacing those values with `stop` made an output-budget truncation look like
     // a complete answer to every caller, including the eval harness. A surviving native/prompted

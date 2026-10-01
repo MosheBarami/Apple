@@ -14,7 +14,10 @@
 
 	Each key gives, per joint name, `rot` (degrees about the pivot's axes) and/or `move` (studs along them), and the
 	`ease` (Linear, Sine, Quad, Back, Bounce, Elastic) of the stretch that ends at it. `play` is "loop", "click"
-	(a ClickDetector), "prompt" (a ProximityPrompt; `prompt` gives its text), "touch", or "once" (at start). A clip
+	(a ClickDetector), "prompt" (a ProximityPrompt; `prompt` gives its text), "touch", "once" (at start), or "key"
+	(the player presses the real keyboard key `key`, an Enum.KeyCode name such as "A" or "Space"; AppleAnimateClient
+	sends it). Every clip that plays is announced to every client on ReplicatedStorage.AppleAnimatePlayed (model,
+	clip name), so a screen can count presses or say something. A clip
 	whose name starts with a joint's part name ("Key_A.press") plays from that part only, so 60 keys share one rig.
 	Joints move by their C0 (it replicates), offset from where they rest.
 	The model is found by its child AppleAnimations; anything added later is found too.
@@ -86,6 +89,29 @@ end
 
 function AppleAnimate.start()
 	local RunService = game:GetService("RunService")
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local function remote(name: string): RemoteEvent
+		local r = ReplicatedStorage:FindFirstChild(name) or Instance.new("RemoteEvent")
+		r.Name = name
+		r.Parent = ReplicatedStorage
+		return r :: RemoteEvent
+	end
+	local played = remote("AppleAnimatePlayed")
+	local keyRemote = remote("AppleAnimateKey")
+	local byKey: { [string]: { { model: Model, clip: any, name: string } } } = {}
+	local lastKey: { [Player]: number } = {}
+	keyRemote.OnServerEvent:Connect(function(player: Player, key: any)
+		if type(key) ~= "string" or #key > 20 then return end
+		local now = os.clock()
+		if now - (lastKey[player] or 0) < 0.03 then return end -- a held key or a flood is not 30 presses a second
+		lastKey[player] = now
+		for _, entry in byKey[key] or {} do
+			if entry.model.Parent then
+				entry.clip._play()
+			end
+		end
+	end)
+	game:GetService("Players").PlayerRemoving:Connect(function(p) lastKey[p] = nil end)
 	local active: { { model: Model, joints: { [string]: Motor6D }, rest: { [Motor6D]: CFrame }, clip: any, t: number, loop: boolean } } = {}
 
 	local function jointsIn(model: Model): ({ [string]: Motor6D }, { [Motor6D]: CFrame })
@@ -97,6 +123,7 @@ function AppleAnimate.start()
 	end
 
 	local function play(model: Model, joints: { [string]: Motor6D }, rest: { [Motor6D]: CFrame }, clip: any, loop: boolean)
+		if clip._name then played:FireAllClients(model, clip._name) end
 		for _, a in active do
 			if a.model == model and a.clip == clip then a.t = 0; return end -- pressing again restarts it
 		end
@@ -122,6 +149,7 @@ function AppleAnimate.start()
 		for name, clip in clips do
 			if type(clip) ~= "table" or type(clip.keys) ~= "table" then continue end
 			clip.length = clip.length or 1
+			clip._name = name
 			-- "Key_A.press" plays only from the part Key_A; "press" from the whole model.
 			local partName = string.match(name, "^(.-)%.")
 			local target: Instance = model
@@ -141,6 +169,17 @@ function AppleAnimate.start()
 				pp.MaxActivationDistance = clip.reach or 10
 				pp.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
 				pp.Triggered:Connect(function() play(model, joints, rest, clip, false) end)
+			elseif how == "key" then
+				if type(clip.key) == "string" then
+					clip._play = function() play(model, joints, rest, clip, false) end
+					byKey[clip.key] = byKey[clip.key] or {}
+					table.insert(byKey[clip.key], { model = model, clip = clip, name = name })
+				end
+				-- A key clip can also be clicked, so it works on a phone too.
+				local cd = target:FindFirstChildWhichIsA("ClickDetector") or Instance.new("ClickDetector")
+				cd.MaxActivationDistance = clip.reach or 40
+				cd.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
+				cd.MouseClick:Connect(function() play(model, joints, rest, clip, false) end)
 			elseif how == "touch" then
 				local part = if target:IsA("BasePart") then target else model.PrimaryPart
 				local last = 0

@@ -207,6 +207,13 @@ export function extractText(r: any): string {
   return '';
 }
 
+/** GLM's reasoning_content: shown to the user as plain text (D-REASONING-2), never sent back to the model. */
+export function extractReasoning(r: any): string | undefined {
+  const m = r?.choices?.[0]?.message;
+  const t = typeof m?.reasoning_content === 'string' ? m.reasoning_content : typeof m?.reasoning === 'string' ? m.reasoning : undefined;
+  return t && t.trim() ? t.slice(0, 20_000) : undefined;
+}
+
 export function extractToolCalls(r: any): GatewayToolCall[] {
   const out: GatewayToolCall[] = [];
   const push = (name: unknown, args: unknown, id?: unknown) => {
@@ -370,6 +377,7 @@ export const workersAiAdapter: ProviderAdapter = {
       truncated: cut,
       provider: 'workers-ai',
       model: modelId,
+      ...(extractReasoning(raw) ? { reasoning: extractReasoning(raw) } : {}),
     };
   },
 

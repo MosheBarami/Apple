@@ -69,7 +69,8 @@ function session() {
 }
 
 const LINES = {
-  studded: 'UI theme for this request: studded — build every interface in the studded UI style.',
+  // Studded names its tools: the agent skipped the studded look while other UI tools were offered (owner, 2026-10-01).
+  studded: 'UI theme for this request: studded — build every interface in the studded UI style: build_studded_ui (or build_object\'s screen), never insert_ui_component or build_ui.',
   cartoony: 'UI theme for this request: cartoony — build every interface in the cartoony UI style.',
   none: 'UI theme: none — choose the UI style yourself; still build a full UI.',
 };

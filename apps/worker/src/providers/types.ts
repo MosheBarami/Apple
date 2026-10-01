@@ -182,6 +182,8 @@ export interface NormalizedResponse {
   truncated?: boolean;
   provider: ProviderId;
   model: string;
+  /** reasoning_content, for the UI only (D-REASONING-2). */
+  reasoning?: string;
 }
 
 export interface InvokeContext {

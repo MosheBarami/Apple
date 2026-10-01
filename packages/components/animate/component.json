@@ -2,9 +2,18 @@
   "id": "animate",
   "name": "AppleAnimate",
   "role": "system",
-  "summary": "Plays keyframe animations on rigged models from code (no uploads): loops, on click, on a prompt, on touch or once, with easing and an optional sound per clip. Models are rigged the RigEdit way (Motor6Ds to an anchored root, pivots on the hinges).",
+  "summary": "Plays keyframe animations on rigged models from code (no uploads): loops, on click, on a prompt, on touch, on a real key press or once, with easing and an optional sound per clip. Models are rigged the RigEdit way (Motor6Ds to an anchored root, pivots on the hinges).",
   "files": {
-    "AppleAnimate.luau": { "class": "Script", "parent": "ServerScriptService", "name": "AppleAnimate" }
+    "AppleAnimate.luau": {
+      "class": "Script",
+      "parent": "ServerScriptService",
+      "name": "AppleAnimate"
+    },
+    "AppleAnimateClient.luau": {
+      "class": "LocalScript",
+      "parent": "StarterPlayer.StarterPlayerScripts",
+      "name": "AppleAnimateClient"
+    }
   },
   "needs": {
     "model": "a Model in Workspace whose moving parts are joined to an anchored root by Motor6Ds named after the parts (rig_model), with pivots on the hinges (set_joint_pivot)",
@@ -12,6 +21,7 @@
   },
   "gives": {
     "motion": "the joints move by C0 from their rest, so every player sees the same motion",
-    "interaction": "ClickDetector, ProximityPrompt or Touched starts a clip; a clip named Part.clip starts from that part only"
+    "interaction": "ClickDetector, ProximityPrompt or Touched starts a clip; a clip named Part.clip starts from that part only",
+    "signal": "ReplicatedStorage.AppleAnimatePlayed (model, clip) to every client whenever a clip plays"
   }
 }

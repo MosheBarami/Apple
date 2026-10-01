@@ -18,6 +18,6 @@ export function uiThemeContextLine(theme: UiTheme): string {
     case 'none':
       return 'UI theme: none — choose the UI style yourself; still build a full UI.';
     default:
-      return 'UI theme for this request: studded — build every interface in the studded UI style.';
+      return 'UI theme for this request: studded — build every interface in the studded UI style: build_studded_ui (or build_object\'s screen), never insert_ui_component or build_ui.';
   }
 }

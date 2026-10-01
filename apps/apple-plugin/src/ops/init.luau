@@ -27,5 +27,6 @@ load(function() return require(script.LocalOwnerCorpus) end)
 load(function() return require(script.Compose) end)
 load(function() return require(script.Surface) end)
 load(function() return require(script.Joints) end)
+load(function() return require(script.Upright) end)
 
 return families

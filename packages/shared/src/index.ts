@@ -881,6 +881,9 @@ export type AgentPhase =
  */
 export function phaseForTool(tool: string): AgentPhase {
   switch (tool) {
+    // Lifting the run's focused toolset reads nothing and changes nothing: it is planning.
+    case 'more_tools':
+      return 'planning';
     case 'get_project_tree':
     case 'list_scripts':
     case 'read_script':
@@ -1048,6 +1051,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'insert_ui_component':
     case 'build_studded_ui':
     case 'animate_model':
+    case 'build_object':
     case 'insert_sound':
     case 'insert_vfx':
       return 'building';
@@ -1795,6 +1799,8 @@ export interface GatewayResponse {
   provider: string;
   model: string;
   finishReason: 'stop' | 'tool_calls' | 'length' | 'error';
+  /** The provider's own reasoning text (GLM reasoning_content), shown as-is (D-REASONING-2); never fed back to the model. */
+  reasoning?: string;
 }
 
 /** Credits are billed from measured neuron usage, so these are typical costs rather than fixed prices. */
@@ -2913,6 +2919,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'build_ui',
     label: 'Build UI screens',
     why: 'Adds a whole on-screen menu, shop or HUD to StarterGui.',
+    group: 'changes',
+  },
+  {
+    name: 'build_object',
+    label: 'Build objects',
+    why: 'Adds a whole object to Workspace: its parts, studs, a stage, motions, sounds and lighting.',
     group: 'changes',
   },
   {

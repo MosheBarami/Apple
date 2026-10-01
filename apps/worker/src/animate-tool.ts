@@ -43,7 +43,7 @@ export async function rigModel(ctx: AgentCtx, a: Record<string, unknown>) {
   };
 }
 
-const PLAYS = new Set(['loop', 'click', 'prompt', 'touch', 'once']);
+const PLAYS = new Set(['loop', 'click', 'prompt', 'touch', 'once', 'key']);
 const EASES = new Set(['Linear', 'Sine', 'Quad', 'Back', 'Bounce', 'Elastic']);
 const JOINT = /^[A-Za-z_][A-Za-z0-9_ ]{0,39}$/;
 
@@ -57,7 +57,8 @@ export function readClips(raw: unknown, discovered?: ReadonlySet<number>): { cli
     if (!/^([A-Za-z_][A-Za-z0-9_]{0,39}\.)?[A-Za-z_][A-Za-z0-9_]{0,39}$/.test(name)) return { error: `clip name "${name}" must be a plain name, or Part.name to start from one part` };
     const v = (c ?? {}) as Record<string, unknown>;
     const play = String(v.play ?? 'once');
-    if (!PLAYS.has(play)) return { error: `${name}.play must be loop, click, prompt, touch or once` };
+    if (!PLAYS.has(play)) return { error: `${name}.play must be loop, click, prompt, touch, key or once` };
+    if (play === 'key' && !(typeof v.key === 'string' && /^[A-Za-z][A-Za-z0-9]{0,19}$/.test(v.key))) return { error: `${name}.key must be a keyboard key name (Enum.KeyCode), e.g. "A", "Space", "Return"` };
     const keysIn = Array.isArray(v.keys) ? v.keys : [];
     if (keysIn.length < 2 || keysIn.length > 120) return { error: `${name}.keys needs 2 to 120 keys` };
     const keys: Record<string, unknown>[] = [];
@@ -96,6 +97,7 @@ export function readClips(raw: unknown, discovered?: ReadonlySet<number>): { cli
       for (const opt of ['volume', 'pitch'] as const) if (typeof v[opt] === 'number' && Number.isFinite(v[opt]) && (v[opt] as number) > 0 && (v[opt] as number) <= 4) out[opt] = v[opt];
     }
     if (typeof v.prompt === 'string') out.prompt = v.prompt.slice(0, 30);
+    if (play === 'key') out.key = v.key;
     if (typeof v.reach === 'number' && v.reach > 0 && v.reach <= 200) out.reach = v.reach;
     clips[name] = out;
   }
@@ -120,16 +122,23 @@ export async function animateModel(ctx: AgentCtx, a: Record<string, unknown>) {
   await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
   const wrote = await ctx.execStudioOp({ op: 'edit_script', path, source, create: { className: 'ModuleScript', parent: model } }, 60_000);
   if (!wrote.ok) return { error: `The animations were not written: ${clip(wrote.error)}` };
-  // The player: one script for every animated model in the place, always the current version.
-  const player = COMPONENTS.animate!.files[0]!;
-  const playerPath = `game.${player.parent}.${player.name}`;
-  await ctx.execStudioOp({ op: 'delete_instances', paths: [playerPath] }, 20_000).catch(() => undefined);
-  const installed = await ctx.execStudioOp({ op: 'edit_script', path: playerPath, source: player.source, create: { className: player.className, parent: `game.${player.parent}` } }, 60_000);
-  if (!installed.ok) return { changed: true, projectMutated: true, error: `The animations are written but the player was not installed: ${clip(installed.error)}` };
+  const installed = await installAnimationPlayer(ctx);
+  if (installed) return { changed: true, projectMutated: true, error: `The animations are written but the player was not installed: ${installed}` };
   return {
     changed: true,
     ...(rigged ? { joints: rigged.joints } : {}),
     clips: Object.keys(read.clips),
     note: 'Loops start when the game starts; click/prompt/touch clips start on that action. Check it in play (play_check or run_and_check) before saying it moves.',
   };
+}
+
+/** The animation player (server and client halves): one copy per place, always the current version. Null when done. */
+export async function installAnimationPlayer(ctx: AgentCtx): Promise<string | null> {
+  for (const f of COMPONENTS.animate!.files) {
+    const path = `game.${f.parent}.${f.name}`;
+    await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
+    const out = await ctx.execStudioOp({ op: 'edit_script', path, source: f.source, create: { className: f.className, parent: `game.${f.parent}` } }, 60_000);
+    if (!out.ok) return clip(out.error);
+  }
+  return null;
 }
