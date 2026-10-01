@@ -6129,7 +6129,22 @@ export class SessionDO extends DurableObject<Env> {
     return dropped.length;
   }
 
+  /**
+   * A write that reaches Studio while a Test session is still closing is refused ("writes require Studio edit mode")
+   * and provably did not run, so it waits for edit mode and goes again, up to about 12 seconds (owner's re-test,
+   * 2026-10-01: an upgrades request sent right after the keyboard's play check failed three times and told the user to
+   * press Stop, while Studio was already stopping on its own).
+   */
   private async execStudioOp(studioOp: StudioOp, timeoutMs = 30_000, run?: AgentState): Promise<OpResult> {
+    let out = await this.execStudioOpOnce(studioOp, timeoutMs, run);
+    for (let i = 0; i < 6 && !out.ok && /writes require Studio edit mode/.test(String(out.error ?? '')); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      out = await this.execStudioOpOnce(studioOp, timeoutMs, run);
+    }
+    return out;
+  }
+
+  private async execStudioOpOnce(studioOp: StudioOp, timeoutMs = 30_000, run?: AgentState): Promise<OpResult> {
     if (!(await this.pluginConnected())) {
       return { id: 'none', ok: false, error: 'Studio is not connected', failure: WORKER_FAILURES.notConnected };
     }

@@ -107,3 +107,13 @@ test('every upgrade card has an icon, a level badge, what it does and a priced b
   assert.deepEqual(U.DEFAULT_UPGRADES.map((u) => U.upgradeBlurb(u, 'Coins')), ['+1 per press', '+1 Coins a second', 'x2 everything']);
   assert.equal(new Set(Object.values(U.KIND_ICON)).size, 3, 'each kind has its own icon');
 });
+
+// Re-test, 2026-10-01: an upgrades request sent right after the keyboard's play check met a Studio still closing its
+// Test session; every write was refused and the user was told to press Stop.
+test('a write refused because a Test session is still closing waits for edit mode and goes again', () => {
+  const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
+  const wrapper = src.slice(src.indexOf('private async execStudioOp('), src.indexOf('private async execStudioOpOnce('));
+  assert.match(wrapper, /writes require Studio edit mode/);
+  assert.match(wrapper, /setTimeout\(resolve, 2_000\)/);
+  assert.match(wrapper, /i < 6/, 'it gives up after about 12 seconds');
+});
