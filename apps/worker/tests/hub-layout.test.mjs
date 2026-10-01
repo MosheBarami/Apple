@@ -197,15 +197,16 @@ test('hub map: no bare terrace slabs (the owner read them as junk; library scene
   assert.equal(island.filter((p) => /^Terrace/.test(p.name)).length, 0);
 });
 
-test('hub map: a big hero gets a hub that holds it, with the pads and the spawn off it', () => {
-  const hero = [82, 41];
+test('hub map: a big hero gets a hub that holds it, with the pads and the spawn off it, and no more plaza than it needs', () => {
+  const hero = [88, 41];
   const L = M.hubLayout(7, 4, { plotTiles: 4, hero });
-  const r = Math.hypot(hero[0], hero[1]) / 2;
-  for (const [name, p] of [['shop', L.hub.shopPad], ['sell', L.hub.sellPad], ['spawn', L.spawn]]) {
-    assert.ok(Math.hypot(p[0], p[1]) >= r + 4, `the ${name} pad is on the hero`);
+  for (const [name, p] of [['shop', L.hub.shopPad], ['rebirth', L.hub.sellPad], ['spawn', L.spawn]]) {
+    assert.ok(Math.abs(p[0]) > hero[0] / 2 + 5 || Math.abs(p[1]) > hero[1] / 2 + 5, `the ${name} pad is on the hero`);
     assert.ok(Math.max(Math.abs(p[0]), Math.abs(p[1])) + 5 <= L.hub.radius, `the ${name} pad hangs off the hub`);
   }
-  assert.ok(L.hub.radius >= r + 10, 'the hub is smaller than the hero');
+  for (const p of [L.hub.shopPad, L.hub.sellPad]) assert.ok(Math.abs(p[1]) - 12 >= hero[1] / 2 - 1 && Math.abs(p[1]) + 12 <= L.hub.radius + 1, 'a 20-stud stand on its pad clears the hero and stays on the hub');
+  assert.ok(L.hub.radius >= hero[0] / 2 + 4, 'the hub is smaller than the hero');
+  assert.ok(L.hub.radius * 2 <= 112, `the plaza is ${L.hub.radius * 2} studs: more than the hero needs`);
   assert.ok(M.hubLayout(7, 4, { plotTiles: 4 }).hub.radius < L.hub.radius, 'a small place keeps a small hub');
 });
 
