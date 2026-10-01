@@ -259,7 +259,8 @@ function gridTiles(size: number, tile: number): (c: P2) => P2[] {
 }
 
 /** The hub's own colours: a cool stone that no lane map uses, so the middle of the world reads at a glance. */
-export const HUB_COLOURS = { plaza: '#b9c6dc', inlay: '#e3ebf7', shop: '#3ddc5f', sell: '#ff9f1a' };
+// A warm sand plaza with the tan roads and the yellow stage (the cold blue-violet clashed with both: owner's screenshots).
+export const HUB_COLOURS = { plaza: '#f0dcae', inlay: '#fff1cf', shop: '#3ddc5f', sell: '#ff9f1a', rebirth: '#a46bff' };
 /** A pad is this many studs on a side (hub-layout.ts PAD). */
 const PAD_SIZE = 10;
 
@@ -296,7 +297,8 @@ function hubItems(hub: NonNullable<Layout['hub']>, laneWidth: number, words: Map
     },
     { className: 'Model', name: 'Road', children: spokePieces(hub.spokes, laneWidth, pal) },
     pad('ShopPad', hub.shopPad, HUB_COLOURS.shop, words.shop ?? 'Shop'),
-    pad('SellPad', hub.sellPad, HUB_COLOURS.sell, words.sell ?? 'Sell'),
+    // The REBIRTH pad wears the Rebirth button's purple.
+    pad('SellPad', hub.sellPad, /rebirth/i.test(words.sell ?? '') ? HUB_COLOURS.rebirth : HUB_COLOURS.sell, words.sell ?? 'Sell'),
   ];
 }
 
