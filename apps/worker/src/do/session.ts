@@ -3,6 +3,7 @@
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
 import { lastUserText } from '../user-request';
 import { afterReady, continueGameLine, refuseRebuild, saysReady, type BuiltGameRecord } from '../run-flow';
+import { ideaRecipe } from '../compose-tool';
 import { withoutToolTalk } from '../plain-reply';
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
@@ -261,6 +262,8 @@ interface AgentState {
   judgedReady?: boolean;
   /** An earlier run's build_game made this project's game: this run continues it and is refused a rebuild (run-flow.ts). */
   continuesGame?: boolean;
+  /** A new idea the composer can build: compose_game is the first project change of this run (seen live: the model built by hand instead). */
+  composeFirst?: boolean;
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
   /**
    * Identical calls whose last attempt failed in a way op-failure.ts classified as SAFE TO REPEAT
@@ -3469,6 +3472,7 @@ export class SessionDO extends DurableObject<Env> {
       // builder. UI-only: the world direction is unchanged by it.
       llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme)), continueLine].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
       ...(continueLine ? { continuesGame: true } : {}),
+      ...(mode === 'agent' && !continueLine && !('error' in ideaRecipe(text)) ? { composeFirst: true } : {}),
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
       ...(rejectedChoice && pendingChoice?.anchor ? { assetChoiceAnchor: pendingChoice.anchor } : {}),
@@ -4020,7 +4024,8 @@ export class SessionDO extends DurableObject<Env> {
         messages: stepMessages,
         tools: talkOnly ? [] : toolDefs(offerStudio, offeredAllowed),
         ...(sequenceStep?.state === 'next' && offeredAllowed.has(sequenceStep.tool)
-          ? { requiredTool: sequenceStep.tool } : {}),
+          ? { requiredTool: sequenceStep.tool }
+          : agent.composeFirst && !talkOnly && offeredAllowed.has('compose_game') ? { requiredTool: 'compose_game' } : {}),
         reasoningEffort: choice.effort,
         maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),
       },
@@ -4505,11 +4510,13 @@ export class SessionDO extends DurableObject<Env> {
         });
         continue;
       }
-      const readyRefusal = afterReady(agent.judgedReady, call.name, new Set(projectMutatingToolNames())) ?? refuseRebuild(agent.continuesGame, call.name);
+      const readyRefusal = afterReady(agent.judgedReady, call.name, new Set(projectMutatingToolNames())) ?? refuseRebuild(agent.continuesGame, call.name)
+        ?? (agent.composeFirst && call.name !== 'compose_game' && READ_ONLY_WITHHELD.has(call.name)
+          ? 'This idea is built with compose_game first (it makes the whole game from components); call compose_game {request} with the user\'s words.' : undefined);
       if (readyRefusal) {
         duplicatesThisStep += 1;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
-        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `✗ ${call.name} (${agent.judgedReady ? 'the game is ready' : 'this project already has its game'})` });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `✗ ${call.name} (${agent.judgedReady ? 'the game is ready' : agent.continuesGame ? 'this project already has its game' : 'the game is composed first'})` });
         agent.llm.push({ role: 'tool', content: `[${call.name}] ${readyRefusal}`, toolCallId: call.id, name: call.name });
         continue;
       }
@@ -4636,6 +4643,7 @@ export class SessionDO extends DurableObject<Env> {
       // A model file recreates without replacing a slot, so the import alone does not mark it.
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
       // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
+      if (call.name === 'compose_game') agent.composeFirst = false; // tried: the fence lifts whatever the outcome
       if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {
         agent.builtGame = true;
         // One project is one game: the next run on this project continues it (run-flow.ts continueGameLine).

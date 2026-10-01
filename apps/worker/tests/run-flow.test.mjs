@@ -44,3 +44,12 @@ test('run flow: build_game records the project\'s game and the next run reads it
   assert.match(src, /continueGameLine\(await this\.ctx\.storage\.get<BuiltGameRecord>\('builtGame'\), text\)/);
   assert.match(src, /\?\? refuseRebuild\(agent\.continuesGame, call\.name\)/);
 });
+
+test('run flow: a new idea the composer can build is composed first (seen live: the model shaped terrain by hand instead)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
+  assert.match(src, /mode === 'agent' && !continueLine && !\('error' in ideaRecipe\(text\)\) \? \{ composeFirst: true \}/);
+  assert.match(src, /agent\.composeFirst && !talkOnly && offeredAllowed\.has\('compose_game'\) \? \{ requiredTool: 'compose_game' \}/);
+  assert.match(src, /agent\.composeFirst && call\.name !== 'compose_game' && READ_ONLY_WITHHELD\.has\(call\.name\)/);
+  assert.match(src, /if \(call\.name === 'compose_game'\) agent\.composeFirst = false;/);
+});
