@@ -67,7 +67,7 @@ test('a bad spec is refused with a reason, before anything is built', () => {
   for (const [spec, why] of [
     [{ name: 'X', parts: [] }, /parts is empty/],
     [{ name: 'bad name', parts: [{ size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff' }] }, /plain name/],
-    [{ name: 'X', parts: [{ size: [1, 0, 1], at: [0, 0, 0], color: '#ffffff' }] }, /size/],
+    [{ name: 'X', parts: [{ at: [0, 0, 0], color: '#ffffff' }] }, /no part could be read/],
     [{ name: 'X', parts: [{ size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff', move: { as: 'dance' } }] }, /move.as/],
     [{ name: 'X', parts: [{ size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff', repeat: { grid: [30, 30, 1], step: [1, 0, 1] } }] }, /more than/],
   ]) {
@@ -93,4 +93,31 @@ test('slips a model makes are fixed, not fatal: number and word keys, colour nam
 test('a request for one thing is told apart from a game, an edit or a look', () => {
   for (const t of ['make an asmr keyboard', 'make me a stick of butter', 'build a giant spinning donut', 'create a lamp that glows', 'a rubber duck']) assert.ok(O.isObjectRequest(t), t);
   for (const t of ['make an obby with lava', 'make it 100x cooler', 'build a tycoon game', 'fix the shop', 'improve the map', 'make the lighting better', 'add a shop', 'add a grassy hill', 'build a small harbour with a lighthouse and a pier', '']) assert.ok(!O.isObjectRequest(t), t);
+});
+
+test('positions come however a model writes them, and a missing one stands on the ground', () => {
+  const plan = O.expandObject({ name: 'Thing', parts: [
+    { name: 'A', size: [2, 2, 2], position: { x: 4, y: 1, z: 0 }, color: '#ffffff' },
+    { name: 'B', size: [2, 2, 2], pos: '0, 1, 4', color: '#ffffff' },
+    { name: 'C', size: [2, 4, 2], color: '#ffffff' },
+  ] });
+  assert.ok(!('error' in plan), JSON.stringify(plan));
+  assert.deepEqual(plan.parts.map((p) => p.at), [[4, 1, 0], [0, 1, 4], [0, 2, 0]]);
+});
+
+test('a part with a flat or missing size does not sink the object', () => {
+  const plan = O.expandObject({ name: 'Y', parts: [{ name: 'A', size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff' }, { name: 'Sheet', size: [4, 0, 2], at: [0, 1, 0], color: '#ffffff' }, { name: 'Lost', at: [0, 0, 0] }] });
+  assert.ok(!('error' in plan), JSON.stringify(plan));
+  assert.equal(plan.parts.length, 2);
+  assert.equal(plan.parts[1].size[1], 0.2, 'a flat side is made thin, not refused');
+  assert.match(plan.skipped[0], /Lost/);
+});
+
+test('colours come in every way a model writes them', () => {
+  assert.equal(O.colourHex([255, 0, 128]), '#ff0080');
+  assert.equal(O.colourHex([1, 0.5, 0]), '#ff8000');
+  assert.equal(O.colourHex({ r: 0, g: 255, b: 0 }), '#00ff00');
+  assert.equal(O.colourHex('rgb(10, 20, 30)'), '#0a141e');
+  assert.equal(O.colourHex('Bright red'), '#c4281c');
+  assert.equal(O.colourHex('#ABCDEF'), '#abcdef');
 });

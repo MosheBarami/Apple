@@ -275,6 +275,8 @@ interface AgentState {
   focused?: boolean;
   /** A request for one thing: build_object is this run's first project change (object-tool.ts isObjectRequest). */
   objectFirst?: boolean;
+  /** build_object succeeded: the rest of the run checks and answers (live 2026-10-01: it kept adding its own sounds and scripts). */
+  objectBuilt?: boolean;
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
   uiTheme?: UiTheme;
   /** What this run's tools cited (sources.ts), numbered; sent to the web app with the answer. */
@@ -3945,7 +3947,9 @@ export class SessionDO extends DurableObject<Env> {
           : 'The steps you asked for stopped because one of them did not work. Look at what was changed before you carry on.');
       return;
     }
-    const focusedAllowed = new Set([...offeredCapabilityFilter.allowed].filter((tool) => agent.focused ? offeredWhenFocused(tool) : tool !== 'more_tools'));
+    const AFTER_OBJECT = new Set(['build_object', 'play_check', 'get_output_logs', 'get_project_tree']);
+    const focusedAllowed = new Set([...offeredCapabilityFilter.allowed].filter((tool) =>
+      agent.objectBuilt ? AFTER_OBJECT.has(tool) : agent.focused ? offeredWhenFocused(tool) : tool !== 'more_tools'));
     const offeredAllowed = sequenceStep?.state === 'next'
       ? new Set([...offeredCapabilityFilter.allowed].filter((tool) => tool === sequenceStep.tool))
       : focusedAllowed;
@@ -4687,6 +4691,7 @@ export class SessionDO extends DurableObject<Env> {
       // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
       if (call.name === 'compose_game') agent.composeFirst = false; // tried: the fence lifts whatever the outcome
       if (call.name === 'build_object') agent.objectFirst = false;
+      if (call.name === 'build_object' && out.ok) agent.objectBuilt = true;
       if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {
         agent.builtGame = true;
         // One project is one game: the next run on this project continues it (run-flow.ts continueGameLine).

@@ -4958,8 +4958,19 @@ export const TOOLS: Record<string, ToolImpl> = {
   build_object: {
     def: {
       name: 'build_object',
-      description: "Build any object in ONE call: parts, repeats, labels, motions, sounds; studded, staged, lit, rigged. Spec: creation skill any-idea-done-right.",
-      parameters: S({ name: { type: 'string' }, parts: { type: 'array', items: { type: 'object' } }, scale: { type: 'number' }, screen: { type: 'object' }, stage: { type: 'string' } }, ['name', 'parts']),
+      description: "Build the ONE thing asked for in one call (no desk, monitor or room unless asked): every key/button/piece its own part (use repeat for rows), bright colours, motions with sounds. Studs, stage, rig, lighting and a counter screen are added.",
+      parameters: S({
+        name: { type: 'string' },
+        scale: { type: 'number', description: 'multiplies every size; 3-6 makes a toy-sized thing walkable' },
+        parts: { type: 'array', items: { type: 'object', properties: {
+          name: { type: 'string' }, shape: { type: 'string', enum: ['block', 'ball', 'cylinder', 'wedge'] },
+          size: { type: 'array', items: { type: 'number' } }, at: { type: 'array', items: { type: 'number' }, description: 'centre [x,y,z], y up from the ground' },
+          color: { type: 'string', description: '#rrggbb' }, text: { type: 'string' }, key: { type: 'string' },
+          repeat: { type: 'object', properties: { grid: { type: 'array', items: { type: 'number' } }, step: { type: 'array', items: { type: 'number' } }, texts: { type: 'array', items: { type: 'string' } }, keys: { type: 'array', items: { type: 'string' } } } },
+          move: { type: 'object', properties: { as: { type: 'string', enum: ['press', 'spin', 'bob', 'open', 'wobble', 'pop'] }, on: { type: 'string', enum: ['key', 'click', 'touch', 'prompt', 'loop', 'once'] }, sound: { type: 'string', description: 'words, e.g. keyboard click' } } },
+        }, required: ['size', 'color'] } },
+        screen: { type: 'object' },
+      }, ['name', 'parts']),
     },
     studio: true,
     studioOps: ['create_instances', 'delete_instances', 'set_props', 'apply_surface', 'rig_model', 'set_joint_pivot', 'edit_script', 'get_tree'],

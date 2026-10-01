@@ -71,8 +71,25 @@ const COLOUR_NAMES: Record<string, string> = {
   purple: '#a46bff', pink: '#ff6fd8', brown: '#8e5b32', grey: '#9aa3ab', gray: '#9aa3ab', cyan: '#4fe0ff', gold: '#ffc83d',
   silver: '#c9d1d9', cream: '#fff3c4', butter: '#ffe680', beige: '#eedcb3',
 };
+const BRICK: Record<string, string> = {
+  'bright red': '#c4281c', 'really red': '#ff0000', 'bright blue': '#0d69ac', 'really blue': '#0000ff', 'bright green': '#4b974b',
+  'lime green': '#00ff00', 'bright yellow': '#f5cd30', 'new yeller': '#ffff00', 'bright orange': '#da8541', 'hot pink': '#ff00bf',
+  'magenta': '#aa00aa', 'royal purple': '#6225d1', 'toothpaste': '#00ffff', 'cyan': '#04afec', 'institutional white': '#f8f8f8',
+  'medium stone grey': '#a3a2a5', 'dark stone grey': '#635f62', 'really black': '#111111', 'reddish brown': '#694028', 'pastel blue': '#80bbdb',
+  'pink': '#ff66cc', 'electric blue': '#09137a', 'deep orange': '#ffb000', 'teal': '#12eed4', 'lavender': '#8c5b9f', 'sand green': '#789082',
+};
 export function colourHex(raw: unknown): string | undefined {
+  // [r, g, b] in 0-255 or 0-1, and {r, g, b}.
+  const arr = Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? [(raw as Record<string, unknown>).r ?? (raw as Record<string, unknown>).R, (raw as Record<string, unknown>).g ?? (raw as Record<string, unknown>).G, (raw as Record<string, unknown>).b ?? (raw as Record<string, unknown>).B] : null;
+  if (arr && arr.length === 3 && arr.every((n) => typeof n === 'number' && Number.isFinite(n))) {
+    const nums = arr as number[];
+    const k = nums.every((n) => n <= 1) ? 255 : 1;
+    return '#' + nums.map((n) => Math.max(0, Math.min(255, Math.round(n * k))).toString(16).padStart(2, '0')).join('');
+  }
   if (typeof raw !== 'string') return undefined;
+  const rgb = /^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i.exec(raw.trim());
+  if (rgb) return colourHex([Number(rgb[1]), Number(rgb[2]), Number(rgb[3])].map((n) => n === 0 ? 0 : n) as unknown);
+  if (BRICK[raw.trim().toLowerCase()]) return BRICK[raw.trim().toLowerCase()];
   const t = raw.trim().toLowerCase();
   if (/^#[0-9a-f]{6}$/.test(t)) return t;
   if (/^#[0-9a-f]{3}$/.test(t)) return '#' + t.slice(1).split('').map((c) => c + c).join('');
@@ -86,7 +103,7 @@ export interface ObjectPart {
   name: string; shape: string; size: V3; at: V3; rot?: V3; color: string; transparency?: number;
   text?: { value: string; face: string; color: string }; move?: Move; key?: string;
 }
-export interface ObjectPlan { name: string; parts: ObjectPart[]; footprint: { x0: number; x1: number; z0: number; z1: number; top: number } }
+export interface ObjectPlan { name: string; parts: ObjectPart[]; footprint: { x0: number; x1: number; z0: number; z1: number; top: number }; skipped?: string[] }
 
 /** [x, y, z] from an array, an {x, y, z} object or "x, y, z" text; null when it is none of those. */
 const v3 = (v: unknown): V3 | null => {
@@ -111,6 +128,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   const raw = Array.isArray(a.parts) ? a.parts : [];
   if (raw.length === 0) return { error: 'parts is empty: list what the object is made of' };
   const parts: ObjectPart[] = [];
+  const skipped: string[] = [];
   const seen = new Set<string>();
   for (const [i, r] of raw.entries()) {
     const p = (r ?? {}) as Record<string, unknown>;
@@ -119,8 +137,10 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
     const base = NAME.test(cleaned) ? cleaned : `Part${i + 1}`;
     const rawShape = String(p.shape ?? 'block').toLowerCase();
     const shape = SHAPES.has(rawShape) ? rawShape : rawShape === 'sphere' ? 'ball' : rawShape === 'cube' || rawShape === 'box' ? 'block' : rawShape === 'cyl' ? 'cylinder' : 'block';
-    const size = v3(p.size ?? p.dimensions);
-    if (!size || size.some((n) => n <= 0)) return { error: `parts[${i}].size must be [x, y, z] above 0` };
+    const sizeRaw = v3(p.size ?? p.dimensions);
+    // One unreadable part is skipped and reported, never the whole object; a flat side is made 0.2 thick.
+    if (!sizeRaw) { skipped.push(`parts[${i}] (${String(p.name ?? '?')}): no size [x, y, z]`); continue; }
+    const size = sizeRaw.map((n) => Math.max(0.2, Math.abs(n))) as V3;
     // Where it goes: `at`, or the names models also use; missing means standing on the ground at the middle.
     const at = v3(p.at ?? p.position ?? p.pos ?? p.offset ?? p.center ?? p.centre) ?? [0, size[1] / 2, 0] as V3;
     const rot = v3(p.rot ?? p.rotation ?? p.orientation) ?? undefined;
@@ -181,7 +201,8 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
     z0: Math.min(...parts.map((p) => p.at[2] - p.size[2] / 2)), z1: Math.max(...parts.map((p) => p.at[2] + p.size[2] / 2)),
     top: Math.max(...parts.map((p) => p.at[1] + p.size[1] / 2)),
   };
-  return { name, parts, footprint };
+  if (parts.length === 0) return { error: `no part could be read: ${skipped.slice(0, 3).join('; ')}` };
+  return { name, parts, footprint, ...(skipped.length ? { skipped } : {}) };
 }
 
 /** The keyframe clip for a preset motion of one part (AppleAnimate's format). Pure. */
@@ -397,6 +418,7 @@ end)
     ...(keys ? { keysBound: keys } : {}),
     size: [Math.round(width), Math.round(f.top), Math.round(depth)],
     ...(problems.length ? { problems } : {}),
-    note: 'Built, studded, lit, rigged and animated. Check it once in play (play_check), fix only what is wrong, then tell the user in one or two friendly sentences what they can do with it.',
+    ...(plan.skipped ? { skipped: plan.skipped } : {}),
+    note: 'Built, studded, lit, rigged, animated, with its sounds and screen: add nothing else. Check it once in play (play_check); if something is wrong, call build_object again with the whole fixed spec; otherwise tell the user in one or two friendly sentences what they can do with it.',
   };
 }
