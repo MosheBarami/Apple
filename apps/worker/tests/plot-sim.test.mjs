@@ -275,3 +275,12 @@ test('Stop reaches a run that has no step executing in this instance', () => {
   assert.match(hurry, /\|\| !this\.stepInFlight\) \{\s*await this\.ctx\.storage\.setAlarm\(Date\.now\(\)\);/);
   assert.match(session, /this\.stepInFlight = true;\s*try \{\s*try \{ await this\.runStep\(agent\); \} finally \{ this\.stepInFlight = false; \}/);
 });
+
+// Round 12 of test 1 (2026-10-01): the free starter went to the far corner of a 36-stud plot, a third of a stud thin.
+test('the starter goes on the tile nearest the spawn, and a flat machine stands on a plinth', () => {
+  const shop = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'shop', 'AppleShop.luau'), 'utf8');
+  assert.match(shop, /local d = if from then \(tile\.Position - from\)\.Magnitude else 0/);
+  const boot = readFileSync(join(WORKER, '..', '..', 'packages', 'components', 'boot', 'AppleBoot.luau'), 'utf8');
+  assert.match(boot, /if size\.Y < s\.width \* 0\.25 then[\s\S]{0,200}plinth\.Name = "Plinth"/);
+  assert.ok(readFileSync(join(WORKER, 'src', 'components.generated.ts'), 'utf8').includes('PlinthGlow'), 'the bundle is regenerated');
+});

@@ -477,3 +477,17 @@ test('a wrist rest is lower than the keytops', () => {
   const keyTop = Math.max(...plan.parts.filter((p) => p.text).map((p) => p.at[1] + p.size[1] / 2));
   assert.ok(rest.at[1] + rest.size[1] / 2 < keyTop, `the rest tops out at ${(rest.at[1] + rest.size[1] / 2).toFixed(2)}, the keys at ${keyTop.toFixed(2)}`);
 });
+
+// Round 12 of test 1 (2026-10-01): the model's own part named "Case" (90x3x36, its top above the keytops) was kept as
+// if it were the layout's case and swallowed every key on the hub.
+test('a model part merely named Case never stands in for the layout\'s case', () => {
+  for (const laid of [true, false]) {
+    const keyParts = laid
+      ? [{ name: 'EscKey', rows: [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L']], move: { as: 'press', on: 'key' } }]
+      : ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'].map((l, i) => ({ name: `K${i}`, size: [3, 1, 3], at: [-15 + i * 3.2, 1, 0], color: '#333333', text: l, move: { as: 'press', on: 'key' } }));
+    const plan = O.expandObject({ name: 'Kb', theme: 'rgb', parts: [{ name: 'Case', size: [90, 3, 36], at: [0, 2.5, 0], color: '#2b2b3d' }, ...keyParts] });
+    assert.ok(!plan.parts.some((p) => p.name === 'Case'), `laid out ${laid}: the model's Case stayed`);
+    const keyTop = Math.min(...plan.parts.filter((p) => p.text).map((p) => p.at[1] + p.size[1] / 2));
+    assert.ok(plan.parts.filter((p) => !p.text && !p.rides).every((p) => p.at[1] + p.size[1] / 2 < keyTop), 'nothing rises above the keys');
+  }
+});

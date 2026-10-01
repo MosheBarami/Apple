@@ -147,12 +147,18 @@ function AppleShop.start(config: any, economy: any)
 		if not item then return end
 		local template = templates:WaitForChild(id, 15)
 		if not template or plot:GetAttribute("Owner") ~= player.UserId then return end
+		-- On the free tile nearest where the player appears, so it is the first thing they see (round 12 of the owner's
+		-- test 1: it went to the far corner of a 36-stud plot).
+		local spawnPoint = plot:FindFirstChild("Spawn", true)
+		local from = if spawnPoint and spawnPoint:IsA("BasePart") then spawnPoint.Position else nil
+		local best, bestDist = nil, math.huge
 		for _, tile in plot:GetDescendants() do
 			if tile:IsA("BasePart") and CollectionService:HasTag(tile, "AppleTile") and not tile:GetAttribute("Occupied") then
-				put(player, id, item, template, tile)
-				return
+				local d = if from then (tile.Position - from).Magnitude else 0
+				if d < bestDist then best, bestDist = tile, d end
 			end
 		end
+		if best then put(player, id, item, template, best) end
 	end
 
 	local function plotOf(player: Player): Instance?

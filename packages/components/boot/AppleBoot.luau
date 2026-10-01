@@ -105,6 +105,31 @@ for _, s in config.stage or {} do
 		-- Fit the widest side to s.width (a machine on a plot tile).
 		fit(function(v) return math.max(v.X, v.Z) end, s.width)
 	end
+	-- A machine stands on a plinth: a keyboard fitted to a plot tile is a third of a stud thin and read as a sticker on
+	-- the tile (round 12 of the owner's test 1). The plinth is part of the copy, so it is placed and sold with it.
+	if s.width and copy:IsA("Model") then
+		local box, size = (copy :: Model):GetBoundingBox()
+		if size.Y < s.width * 0.25 then
+			local plinth = Instance.new("Part")
+			plinth.Name = "Plinth"
+			plinth.Anchored = true
+			plinth.Size = Vector3.new(size.X + 0.4, 1.2, size.Z + 0.4)
+			plinth.CFrame = box * CFrame.new(0, -size.Y / 2 - 0.6, 0)
+			plinth.Color = Color3.fromRGB(46, 48, 56)
+			plinth.Material = Enum.Material.SmoothPlastic
+			plinth.TopSurface = Enum.SurfaceType.Smooth
+			plinth.Parent = copy
+			local glow = Instance.new("Part")
+			glow.Name = "PlinthGlow"
+			glow.Anchored = true
+			glow.CanCollide = false
+			glow.Size = Vector3.new(size.X + 0.6, 0.15, size.Z + 0.6)
+			glow.CFrame = box * CFrame.new(0, -size.Y / 2 - 1.2 + 0.075, 0)
+			glow.Material = Enum.Material.Neon
+			glow.Color = if type(s.hue) == "number" then Color3.fromHSV(s.hue % 1, 0.8, 1) else Color3.fromRGB(180, 77, 255)
+			glow.Parent = copy
+		end
+	end
 	copy.Parent = to
 end
 

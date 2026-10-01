@@ -105,6 +105,8 @@ export interface ObjectPart {
   text?: { value: string; face: string; color: string; font?: string; glow?: boolean }; move?: Move; key?: string;
   /** Neon for a glow (a keyboard's underglow); everything else is Plastic. */
   material?: 'Neon';
+  /** Made by the rows layout itself (its case and glow), not by the model. */
+  own?: boolean;
   /** Moves with this other part (a keycap's skirt rides its cap): rigged with it, posed with it in its clip. */
   rides?: string;
   /** Smooth plastic instead of studs (a keycap, like the owner's reference keyboard). */
@@ -252,10 +254,10 @@ export function unrollRows(p: Record<string, unknown>, index: number): Record<st
   const out: Record<string, unknown>[] = [];
   if (p.case !== false) {
     const caseColour = theme === 'rgb' ? '#16171b' : theme === 'candy' ? '#4a2c1a' : colourHex(p.case) ?? '#eef0f6';
-    out.push({ name: `${base}Case`, size: [width + 2 * margin, caseTop, depth + 2 * margin], at: [origin[0], origin[1] + caseTop / 2, origin[2]], color: caseColour, surface: 'smooth' });
+    out.push({ name: `${base}Case`, size: [width + 2 * margin, caseTop, depth + 2 * margin], at: [origin[0], origin[1] + caseTop / 2, origin[2]], color: caseColour, surface: 'smooth', own: true });
     // A gamer board glows underneath: a thin neon band just inside the case's foot.
     if (theme === 'rgb') {
-      out.push({ name: `${base}GlowCase`, size: [width + 2 * margin + 0.3, Math.min(0.25, caseTop * 0.5), depth + 2 * margin + 0.3], at: [origin[0], origin[1] + Math.min(0.25, caseTop * 0.5) / 2, origin[2]], color: '#b44dff', surface: 'smooth', material: 'Neon' });
+      out.push({ name: `${base}GlowCase`, size: [width + 2 * margin + 0.3, Math.min(0.25, caseTop * 0.5), depth + 2 * margin + 0.3], at: [origin[0], origin[1] + Math.min(0.25, caseTop * 0.5) / 2, origin[2]], color: '#b44dff', surface: 'smooth', material: 'Neon', own: true });
     }
   }
   const used = new Set<string>();
@@ -339,12 +341,12 @@ export function relayKeyboard(all: ObjectPart[], laidOut = false, theme: Keyboar
   const x0 = Math.min(...keys.map((k) => k.at[0] - k.size[0] / 2)), x1 = Math.max(...keys.map((k) => k.at[0] + k.size[0] / 2));
   const z0 = Math.min(...keys.map((k) => k.at[2] - k.size[2] / 2)), z1 = Math.max(...keys.map((k) => k.at[2] + k.size[2] / 2));
   const keyBottom = Math.min(...keys.map((k) => k.at[1] - k.size[1] / 2));
-  const floor = Math.min(keyBottom, ...parts.filter((p) => /Case$/.test(p.name)).map((p) => p.at[1] - p.size[1] / 2));
+  const floor = Math.min(keyBottom, ...parts.filter((p) => p.own).map((p) => p.at[1] - p.size[1] / 2));
   const under = (p: ObjectPart) => !isKey(p) && p.at[1] + p.size[1] / 2 <= keyBottom + 0.05 &&
     p.at[0] - p.size[0] / 2 < x1 && p.at[0] + p.size[0] / 2 > x0 && p.at[2] - p.size[2] / 2 < z1 && p.at[2] + p.size[2] / 2 > z0;
   // Anything else lying over the keys hides them (live 2026-10-01: a lilac "DeckPlate" above the keycaps read as one
   // big plane, and LED strips floated over the space bar), so only what is beside the keys stays.
-  const overKeys = (p: ObjectPart) => !isKey(p) && !/Case$/.test(p.name) &&
+  const overKeys = (p: ObjectPart) => !isKey(p) && !p.own &&
     p.at[0] - p.size[0] / 2 < x1 && p.at[0] + p.size[0] / 2 > x0 && p.at[2] - p.size[2] / 2 < z1 && p.at[2] + p.size[2] / 2 > z0;
   // Only what a keyboard has besides its keys stays: a wrist rest, a knob, a cable (live 2026-10-01: a cyan "LED" ball
   // floated on the stage and a pink bar lay along the keys).
@@ -359,7 +361,9 @@ export function relayKeyboard(all: ObjectPart[], laidOut = false, theme: Keyboar
   // second copy (round 11: a cyan studded "CTRL" block beside the real Ctrl).
   const skirted = new Set(riders.map((r) => r.rides));
   const realKeys = laidOut ? keys.filter((k) => skirted.has(k.name)) : keys.filter((k) => k.text || !labelled.has(keyCodeName(k.key ?? '') ?? k.key));
-  if (laidOut) return [...realKeys, ...riders, ...parts.filter((p) => /Case$/.test(p.name) && !isKey(p)), ...kept.filter((p) => !/Case$/.test(p.name))];
+  // Only the layout's own case: a model's part merely NAMED "Case" (round 12: 90x3x36, its top above the keytops) swallowed
+  // every key on the hub.
+  if (laidOut) return [...realKeys, ...riders, ...parts.filter((p) => p.own && !isKey(p)), ...kept.filter((p) => !p.own && !/Case$/.test(p.name))];
   const moveOf = new Map(keys.map((k) => [labelOf(k)!.toLowerCase(), k.move]));
   const colours = [...new Set(keys.map((k) => k.color))].slice(0, 6);
   const laid = unrollRows({
@@ -374,7 +378,7 @@ export function relayKeyboard(all: ObjectPart[], laidOut = false, theme: Keyboar
     return {
       name: String(r.name), shape: 'block', size: r.size as V3, at: r.at as V3, color: String(r.color),
       ...(r.text ? { text: r.text as ObjectPart['text'] } : {}), ...(move ? { move } : {}), ...(key ? { key } : {}),
-      ...(typeof r.rides === 'string' ? { rides: r.rides } : {}), ...(r.surface === 'smooth' ? { surface: 'smooth' as const } : {}), ...(r.material === 'Neon' ? { material: 'Neon' as const } : {}),
+      ...(typeof r.rides === 'string' ? { rides: r.rides } : {}), ...(r.surface === 'smooth' ? { surface: 'smooth' as const } : {}), ...(r.material === 'Neon' ? { material: 'Neon' as const } : {}), ...(r.own === true ? { own: true } : {}),
     };
   });
   return [...made, ...kept];
@@ -470,6 +474,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
         ...(count === 1 && typeof p.rides === 'string' && NAME.test(p.rides) ? { rides: p.rides } : {}),
         ...(p.surface === 'smooth' ? { surface: 'smooth' as const } : {}),
         ...(p.material === 'Neon' ? { material: 'Neon' as const } : {}),
+        ...(p.own === true ? { own: true } : {}),
       });
     }
   }
@@ -484,7 +489,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   const boardTheme = (['rgb', 'candy'] as const).find((t) => t === a.theme);
   if (boardTheme && parts.some((p) => p.text && p.key)) {
     for (const p of parts) {
-      if (p.text || p.rides || p.key || /Case$/.test(p.name) || p.material === 'Neon') continue;
+      if (p.text || p.rides || p.key || p.own) continue;
       p.color = /knob|dial/i.test(p.name) ? (boardTheme === 'rgb' ? '#c9cdd6' : '#f0c48a') : boardTheme === 'rgb' ? '#22242a' : '#5a341d';
       p.surface = 'smooth';
     }
@@ -539,7 +544,7 @@ export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number
     // What else is there, by name, and what is not (live 2026-10-01: the answer promised "two spinning knobs and a
     // glowing light bar" for a keyboard with one knob and no light bar).
     caps ? (() => {
-      const extras = plan.parts.filter((p) => !p.text && !p.rides && !/Case$/.test(p.name)).map((p) => p.name);
+      const extras = plan.parts.filter((p) => !p.text && !p.rides && !p.own).map((p) => p.name);
       return extras.length ? `besides the keys only: ${extras.join(', ')}` : 'nothing besides the keys and their case';
     })() : '',
     plan.dropped?.length ? `left out, because a keyboard has no such part: ${plan.dropped.join(', ')} (do not mention them)` : '',
