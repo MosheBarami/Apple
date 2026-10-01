@@ -431,7 +431,7 @@ test('a keyboard looks like the user asked: rgb by default, candy for sweets, pa
   const candy = O.expandObject({ name: 'Kb', theme: 'candy', parts: [{ name: 'Key', rows, move: { as: 'press', on: 'key' } }] });
   assert.ok(candy.parts.filter((p) => p.text).every((p) => p.text.color === '#2a1a10'), 'black letters on caramel');
   const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
-  assert.match(tool, /expandObject\(\{ \.\.\.a, theme: keyboardTheme\(ctx\.userRequest\?\.\(\)\) \}\)/, 'the user\'s words choose it');
+  assert.match(tool, /expandObject\(\{ \.\.\.a, theme: keyboardTheme\(ctx\.userRequest\?\.\(\)\)[,}]/, 'the user\'s words choose it');
 });
 
 test('every key the player presses floats a "+N" over it', () => {
@@ -701,4 +701,34 @@ test('an object whose moves all play by themselves answers a click (round 6: a b
     { name: 'Button', size: [1, 1, 1], at: [3, 0.5, 0], move: { as: 'press', on: 'click' } },
   ] });
   assert.equal(fan.parts.find((p) => p.name === 'Blades').move.on, 'loop');
+});
+
+// Test 2 round 7 (2026-10-01): a "stick of butter" 12 x 9 x 6, and the reply put its wrapper "on top" (it was under).
+test('a thing named for its shape gets that shape: a stick is long, a coin is flat', () => {
+  assert.equal(O.shapeWord('make me a stick of butter'), 'long');
+  assert.equal(O.shapeWord('StickOfButter'), 'long', 'the name says it too');
+  assert.equal(O.shapeWord('a giant pizza'), 'flat');
+  assert.equal(O.shapeWord('an asmr keyboard'), undefined);
+  assert.equal(O.shapeWord('a bathtub'), undefined, 'a word inside another is not the word');
+  const plan = O.expandObject({ name: 'StickOfButter', request: 'make me a stick of butter', parts: [
+    { name: 'ButterBody', size: [12, 9, 6], at: [0, 4.5, 0], color: '#ffe066', text: { value: 'BUTTER', face: 'Back' } },
+    { name: 'Wrapper', size: [13.2, 1.2, 7.2], at: [0, 9.6, 0], color: '#fff3b0' },
+  ] });
+  const f = plan.footprint, long = f.x1 - f.x0, deep = f.z1 - f.z0;
+  assert.ok(long >= 3 * Math.max(deep, f.top) - 1e-6, `${long} x ${f.top} x ${deep} is a stick`);
+  const coin = O.expandObject({ name: 'Coin', request: 'make a giant coin', parts: [{ name: 'Face', size: [10, 10, 10], at: [0, 5, 0], color: '#ffd23f' }] });
+  assert.ok(coin.footprint.top <= 0.35 * (coin.footprint.x1 - coin.footprint.x0) + 1e-6, 'flat');
+  // Already the right shape: left alone.
+  assert.equal(O.shapeTo([{ size: [20, 4, 4], at: [0, 2, 0] }], 'long'), 1);
+});
+
+test('the summary says where each detail is on the body', () => {
+  const plan = O.expandObject({ name: 'StickOfButter', parts: [
+    { name: 'Butter', size: [30, 6, 6], at: [0, 4.2, 0], color: '#ffe066' },
+    { name: 'Wrapper', size: [31, 1.2, 7], at: [0, 0.6, 0], color: '#fff3b0' },
+    { name: 'Pat', size: [3, 1, 3], at: [0, 7.7, 0], color: '#ffd23f' },
+  ] });
+  const said = O.builtSummary(plan, 1, 0, true);
+  assert.match(said, /Wrapper is under Butter/);
+  assert.match(said, /Pat is on top of Butter/);
 });

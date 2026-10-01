@@ -236,6 +236,50 @@ export function thinFace(size: V3): string {
   return thin === 2 && size[2] < size[1] ? 'Back' : thin === 0 && size[0] < size[1] ? 'Right' : 'Top';
 }
 
+const LONG_WORDS = /\b(stick|bar|pencil|crayon|sword|baguette|log|rod|wand|pole|plank|ruler|candle|hotdog|hot dog|eclair|churro|noodle|chopstick|flute|spear|branch)s?\b/i;
+const FLAT_WORDS = /\b(coin|pizza|cookie|pancake|plate|disc|disk|frisbee|tortilla|waffle|biscuit|cracker|token|mat|rug|carpet|card|phone)s?\b/i;
+/** What shape the words name: a stick or bar is long, a coin or pizza is flat. Pure. */
+export function shapeWord(words: string): 'long' | 'flat' | undefined {
+  const spaced = words.replace(/([a-z])([A-Z])/g, '$1 $2');
+  return LONG_WORDS.test(spaced) ? 'long' : FLAT_WORDS.test(spaced) ? 'flat' : undefined;
+}
+
+/**
+ * A thing named for its shape gets that shape whatever proportions the model sent (rounds 3 and 7 of test 2: a "stick
+ * of butter" came out 20 x 6 x 10 and 12 x 9 x 6, a block). Long: the longer side across the ground is stretched to 3.5
+ * times the next one. Flat: the height is squashed to a quarter of the shorter side across. Positions stretch with
+ * the sizes, so details stay on the body. Pure; the factor used, 1 when it was already that shape.
+ */
+export function shapeTo(parts: ObjectPart[], shape: 'long' | 'flat' | undefined): number {
+  if (!shape || parts.length === 0) return 1;
+  const span = (i: number) => Math.max(...parts.map((p) => p.at[i]! + p.size[i]! / 2)) - Math.min(...parts.map((p) => p.at[i]! - p.size[i]! / 2));
+  const [x, y, z] = [span(0), span(1), span(2)];
+  if (shape === 'long') {
+    const axis = x >= z ? 0 : 2, along = Math.max(x, z), next = Math.max(Math.min(x, z), y);
+    if (along >= 3 * next) return 1;
+    const k = 3.5 * next / along;
+    for (const p of parts) { p.size[axis] *= k; p.at[axis] *= k; }
+    return k;
+  }
+  const lowest = Math.min(...parts.map((p) => p.at[1]! - p.size[1]! / 2));
+  if (y <= 0.35 * Math.min(x, z)) return 1;
+  const k = 0.25 * Math.min(x, z) / y;
+  for (const p of parts) { p.size[1] *= k; p.at[1] = lowest + (p.at[1] - lowest) * k; }
+  return k;
+}
+
+/** Where each detail sits on the body, said plainly (round 7: the reply put a wrapper "on top" that was under it). Pure. */
+export function placesOf(parts: ObjectPart[]): string[] {
+  const body = [...parts].filter((p) => !p.own).sort((a, b) => vol(b) - vol(a))[0];
+  if (!body) return [];
+  const top = body.at[1] + body.size[1] / 2, bottom = body.at[1] - body.size[1] / 2;
+  return parts.filter((p) => p !== body && !p.own).map((p) => {
+    const lo = p.at[1] - p.size[1] / 2, hi = p.at[1] + p.size[1] / 2;
+    const where = lo >= top - 0.05 ? 'on top of' : hi <= bottom + 0.05 ? 'under' : p.at[2] > body.at[2] + body.size[2] / 2 - 0.05 ? 'on the front of' : 'on';
+    return `${p.name} is ${where} ${body.name}`;
+  });
+}
+
 /** A player is 5 studs tall; a thing to walk up to is 2-4 player heights at its longest (owner: "a butter stick taller than the player"). */
 export const PLAYER_HEIGHT = 5;
 const FIT_MIN = 12, FIT_TO = 15;
@@ -671,6 +715,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   }
   // Anything that is not a keyboard: nothing hidden inside another part, something to do with it, and big enough.
   const board = parts.some((p) => p.key || p.rides);
+  if (!board) shapeTo(parts, shapeWord(`${String(a.request ?? '')} ${String(a.name ?? '')}`));
   if (!board) faceAcross(parts);
   const unburied = board ? [] : unbury(parts);
   if (!board) readableText(parts);
@@ -748,6 +793,7 @@ export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number
       const worded = plan.parts.filter((p) => p.text).map((p) => `${p.name} reads "${p.text!.value}"`);
       return `made of: ${plan.parts.map((p) => p.name).join(', ')}; ${worded.length ? worded.join(', ') : 'no words are printed on it'}`;
     })(),
+    caps ? '' : placesOf(plan.parts).join(', '),
     plan.gaveMotion ? (plan.parts.find((p) => p.name === plan.gaveMotion)?.move?.as === 'wobble' && plan.parts.some((p) => p.rides === plan.gaveMotion)
       ? 'clicking it makes the whole thing wobble with a squish' : `${plan.gaveMotion} moves when clicked`) : '',
     plan.grown ? `grown ${plan.grown}x so it stands bigger than a player` : '',
@@ -834,7 +880,7 @@ const clipText = (s: unknown) => String(s ?? '').slice(0, 300);
 
 export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   // The board's look comes from the user's words, not the model's palette (owner's references, 2026-10-01).
-  const plan = expandObject({ ...a, theme: keyboardTheme(ctx.userRequest?.()) });
+  const plan = expandObject({ ...a, theme: keyboardTheme(ctx.userRequest?.()), request: ctx.userRequest?.() ?? '' });
   if ('error' in plan) return { error: plan.error };
   const wantsStuds = !userWantsOwnSurface(ctx.userRequest?.());
   const { footprint: f } = plan;
