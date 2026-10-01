@@ -1,5 +1,11 @@
 # NEXT ACTION (V3)
 
+**2026-10-01 night — Frontier ≈57%: test 1 DONE (round 15), 1 of 5 silly tests green.** Test 1 ("make an asmr keyboard" → "make it a full game with plots for 4 players"): the keyboard is 9 credits and 2 steps (~1 min), the game 9 credits and 2 steps (~1.5 min; the first run was 274 credits and 93 steps). A dark gamer keyboard with an F row and real modifiers, rainbow legends, a purple underglow and a "+N" over every pressed key; a hub with the keyboard on the plaza, four 4x4 plots of 9-stud tiles, a free starter machine on a plinth beside each player's spawn, library pianos/keyboards in the shop, library lamps, trees and rocks, a HUD with Shop, Upgrades and Rebirth.
+
+**Next, in order:**
+1. Test 2: "make me a stick of butter" on a fresh baseplate, the same loop (critique → fix → re-run until nothing is left).
+2. Still open in general: the web page stays "Studio disconnected" after a Studio restart (seen once); play_check does not press the game's own buttons; tower-defence field names inside the shop config; the model sometimes says "rainbow keycaps" for rainbow legends.
+
 **2026-10-01 evening — Frontier ≈45%: test 1 (ASMR keyboard → "make it a full game with plots for 4 players") on round 8 of the critique loop, 0 of 5 silly tests green.** Every live test now ends in a harsh critique; it is fixed and re-run on a fresh baseplate until nothing is left, then marked done, and the next silly request starts. Five green tests means frontier. Meter: 50% × green tests/5 + 30% × critique fixed/found (48/57 at round 6) + 20% × cost/speed targets met (≤12 credits, ≤3 steps, ≤3 min, no failed call: met since round 5).
 
 **Where test 1 stands (production 65006872):** the keyboard costs 9–11 credits in 2 steps (~50 s); the game costs 10 credits in 2 steps (~80 s), was 274 credits and 93 steps on the first run. Fixed and deployed today: the HUD (batched creates), hub sized to the hero, library trees/rocks/pianos, one panel at a time, +N/s and Rebirth driven, a free starter machine, players start on their own plot, paid presses capped at 12 a second, shop copies anchored and gold that is gold, keyboards with real rows and no junk parts, and a composed game answered with the composer's own words.
