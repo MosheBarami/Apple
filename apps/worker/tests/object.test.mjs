@@ -886,3 +886,12 @@ test('a decoration that loops is quiet when the player has something to set off'
   assert.match(tool, /const q = quiet \? undefined : p\.move!\.sound/);
   assert.match(tool, /prev\.basis/, 'the first object stays the measure across upgrades');
 });
+
+test('what is meant to glow is Neon again after the object is studded (test 3 round 4)', () => {
+  const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
+  const studs = tool.indexOf('if (wantsStuds) await ctx.execStudioOp(applySurfaceOp(');
+  const glow = tool.indexOf("plan.parts.filter((p) => p.material === 'Neon')");
+  assert.ok(studs > 0 && glow > studs, 'Neon is put back after the studs, not before');
+  assert.match(tool.slice(glow, glow + 500), /Material: \{ t: 'EnumItem', v: 'Enum\.Material\.Neon' \}/);
+  assert.match(tool.slice(glow - 200, glow + 300), /plan\.cool && stageOn \? \[`game\.Workspace\.\$\{plan\.name\}Stage\.Rim`\]/);
+});

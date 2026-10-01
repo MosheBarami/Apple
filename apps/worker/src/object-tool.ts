@@ -890,12 +890,12 @@ export function objectForUser(plan: ObjectPlan): string {
   const side: Record<string, string> = { Top: 'top', Back: 'front', Front: 'back', Right: 'end', Left: 'end', Bottom: 'bottom' };
   const texts = plan.parts.filter((p) => p.text);
   // At most two printings are named; more read as clutter.
-  const words = texts.slice(0, 2).map((p) => `"${p.text!.value}" printed on its ${side[p.text!.face] ?? 'side'}`).concat(texts.length > 2 ? ['more words'] : []);
+  const words = texts.slice(0, 2).map((p) => `"${p.text!.value}" printed on its ${side[p.text!.face] ?? 'side'}`);
   const body = [...plan.parts].filter((p) => !p.own).sort((a, b) => vol(b) - vol(a))[0];
   const humanName = (n: string) => n.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
   const decor = plan.parts.filter((p) => p !== body && !p.own && !/^Cool(Halo|Orb\d)$/.test(p.name));
   const places = new Map(placesOf(plan.parts).map((line) => { const m = /^(\w+) is (on top of|under|on the front of|on) \w+$/.exec(line); return [m?.[1] ?? '', m?.[2] ?? 'on'] as const; }));
-  const where = (w: string) => w === 'on top of' ? 'on top' : w === 'under' ? 'underneath' : w === 'on the front of' ? 'on the front' : '';
+  const where = (w: string) => w === 'on top of' ? 'on top' : w === 'under' ? 'underneath' : w === 'on the front of' ? 'on the front' : 'on its sides';
   const details: string[] = [];
   for (const w of ['on top of', 'under', 'on the front of', 'on']) {
     const group = decor.filter((p) => (places.get(p.name) ?? 'on') === w).map((p) => p.name);
@@ -1133,6 +1133,13 @@ export async function buildObject(ctx: AgentCtx, sent: Record<string, unknown>) 
     await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'SpawnLocation', name: 'SpawnLocation', props: { Size: [8, 1, 8], Position: spawnAt, Anchored: true, Color: '#4fc3ff' } }), parent: 'game.Workspace' }] }, 20_000).catch(() => undefined);
   }
   if (wantsStuds) await ctx.execStudioOp(applySurfaceOp([model, `game.Workspace.${plan.name}Stage`, 'game.Workspace.Baseplate', 'game.Workspace.SpawnLocation']), 60_000).catch(() => undefined);
+  // Studding an object turns every part under it to studded Plastic, Neon too (the plugin's explicit apply_surface;
+  // test 3 round 4, 2026-10-01: the cool orbs and the lit rim came out Plastic, and so did the keyboard's glow case).
+  // What is meant to glow glows again.
+  if (wantsStuds) {
+    const glow = [...plan.parts.filter((p) => p.material === 'Neon').map((p) => `${model}.${p.name}`), ...(plan.cool && stageOn ? [`game.Workspace.${plan.name}Stage.Rim`] : [])];
+    for (const path of glow) await ctx.execStudioOp({ op: 'set_props', path, props: { Material: { t: 'EnumItem', v: 'Enum.Material.Neon' } } }, 20_000).catch(() => undefined);
+  }
   // Keycaps are smooth plastic like a real keyboard (the owner's reference); the case and the stage keep their studs.
   const smooth = plan.parts.filter((p) => p.surface === 'smooth').map((p) => `${model}.${p.name}`);
   for (let i = 0; i < smooth.length; i += 50) {
