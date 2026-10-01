@@ -226,3 +226,13 @@ test('every plot starts with the cheapest machine, and the composer says so', ()
   const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
   assert.match(tool, /starts on their own plot with a free/);
 });
+
+// Round 7 of test 1 (2026-10-01): the model's answer kept saying "you spawn in a hub"; every player starts on their plot.
+test('a checked plot simulator is answered with what the composer built and what the check measured', () => {
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  const end = session.slice(session.indexOf('if (agent.composedPlotSim && agent.composedForUser && agent.playChecked'), session.indexOf('if (agent.composedPlotSim && agent.composedForUser && agent.playChecked') + 600);
+  assert.match(end, /!agent\.lastCheckProblem\)/, 'only when the check passed');
+  assert.match(end, /agent\.finalText = `\$\{agent\.composedForUser\}\\n\\nI play-tested it: \$\{agent\.lastCheckSeen/);
+  assert.match(end, /await this\.finishRun\(agent, 'done'\);\s*return;/, 'no further model call');
+  assert.ok(session.indexOf('if (agent.composedPlotSim && agent.composedForUser && agent.playChecked') < session.indexOf('const AFTER_OBJECT'), 'before the next model step is prepared');
+});

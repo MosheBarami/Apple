@@ -293,6 +293,8 @@ interface AgentState {
   composedForUser?: string;
   /** What the last play_check found wrong, in its own words (undefined when it passed). */
   lastCheckProblem?: string;
+  /** What the last play_check measured, for the answer (its leaderstats line, and its error count). */
+  lastCheckSeen?: string;
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
   uiTheme?: UiTheme;
   /** What this run's tools cited (sources.ts), numbered; sent to the web app with the answer. */
@@ -3968,6 +3970,15 @@ export class SessionDO extends DurableObject<Env> {
     const knownTools = new Set(toolNames());
     const sequence = explicitToolSequence(agent.request ?? '', knownTools);
     const sequenceStep = sequence ? sequenceProgress(sequence, agent.trace) : null;
+    // A composed plot simulator that passed its play check is answered with what the composer built and what the check
+    // measured, not a model's retelling (round 7 of the owner's test 1, 2026-10-01: the answer kept saying "you spawn in a
+    // hub" for a game where every player starts on their own plot). One model call fewer, too.
+    if (agent.composedPlotSim && agent.composedForUser && agent.playChecked && !agent.lastCheckProblem) {
+      // The reply reaches the browser on msg_end (finishRun), like every other ending: nothing is streamed here.
+      agent.finalText = `${agent.composedForUser}\n\nI play-tested it: ${agent.lastCheckSeen ?? 'it ran'}.`;
+      await this.finishRun(agent, 'done');
+      return;
+    }
     if (sequenceStep && sequenceStep.state !== 'next') {
       await this.finishRun(agent, sequenceStep.state === 'complete' ? 'done' : 'incomplete', undefined,
         sequenceStep.state === 'complete'
@@ -4755,6 +4766,9 @@ export class SessionDO extends DurableObject<Env> {
       if (call.name === 'play_check' && out.ok) {
         const d = out.detail as { verdict?: unknown; playerSees?: unknown } | undefined;
         agent.lastCheckProblem = typeof d?.verdict === 'string' && /^no_|broken|error|fail/i.test(d.verdict) && typeof d.playerSees === 'string' ? d.playerSees : undefined;
+        const seen = out.detail as { leaderstats?: unknown; clientErrors?: unknown[]; serverErrors?: unknown[] } | undefined;
+        const errors = (seen?.clientErrors?.length ?? 0) + (seen?.serverErrors?.length ?? 0);
+        agent.lastCheckSeen = `${typeof seen?.leaderstats === 'string' ? `${seen.leaderstats.replace(/→/g, 'went to')}, ` : ''}${errors ? `${errors} error${errors === 1 ? '' : 's'} came up` : 'no errors came up'}`;
       }
       // The fence holds until the object is built: a failed build_object is retried with the reason, never swapped
       // for hand-made instances (owner's re-test, 2026-10-01). After three failures the run may try other tools.
