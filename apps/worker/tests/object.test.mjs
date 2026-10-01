@@ -859,3 +859,30 @@ test('the upgrade line passes only plain names and numbers from the earlier spec
   assert.ok(!/ignore the user|delete everything|"\;/.test(line), line);
   assert.match(line, /XNowdeleteeverything size \[1, 0, 3\]/);
 });
+
+// Test 3 round 3 (2026-10-01): the upgrade's crown, wings and jetpack made the shape rules stretch the butter into an
+// 84-stud plank, and the answer listed 15 parts ("a eye left on top", "a wrapper fold2").
+test('an upgrade is measured by the object it had: new details do not stretch, turn or grow it', () => {
+  const prev = { name: 'StickOfButter', request: 'make me a stick of butter', parts: [
+    { name: 'ButterBody', size: [20, 5, 4], at: [0, 2.5, 0], color: '#ffe066', move: { as: 'bob', on: 'click' } },
+  ] };
+  const before = O.expandObject(prev);
+  const bodyBefore = before.parts.find((p) => p.name === 'ButterBody');
+  const merged = O.mergeUpgrade(prev, { parts: [
+    { name: 'WingLeft', size: [2, 10, 12], at: [0, 8, -6], color: '#7be0ff' }, { name: 'WingRight', size: [2, 10, 12], at: [0, 8, 6], color: '#7be0ff' },
+    { name: 'Jetpack', size: [4, 8, 4], at: [-6, 9, 0], color: '#888888' },
+  ] });
+  const after = O.expandObject({ ...merged, basis: ['ButterBody'] });
+  assert.deepEqual(after.parts.find((p) => p.name === 'ButterBody').size, bodyBefore.size, 'the butter is the size it was');
+  const said = O.sayParts(['WingLeft', 'WingRight', 'Flame1', 'Flame2', 'Flame3', 'GoldenCrown', 'EyeLeft', 'EyeRight']);
+  assert.deepEqual(said, ['two wings', 'three flames', 'a golden crown', 'two eyes']);
+  assert.deepEqual(O.sayParts(['Eye']), ['an eye']);
+  assert.equal(O.sayParts(['A1', 'Bb', 'Cc', 'Dd', 'Ee', 'Ff'], 5).at(-1), 'more');
+});
+
+test('a decoration that loops is quiet when the player has something to set off', () => {
+  const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
+  assert.match(tool, /const quiet = \(p\.move!\.on === 'loop' \|\| p\.move!\.on === 'once'\) && moving\.some/);
+  assert.match(tool, /const q = quiet \? undefined : p\.move!\.sound/);
+  assert.match(tool, /prev\.basis/, 'the first object stays the measure across upgrades');
+});

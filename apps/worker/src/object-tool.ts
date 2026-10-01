@@ -235,8 +235,8 @@ export function settle(parts: ObjectPart[]): string[] {
  * turned a quarter about the vertical: X and Z swap, and words on a side go to the side the spawn sees. Parts with a
  * rotation of their own keep the object as it is. Pure; true when it turned.
  */
-export function faceAcross(parts: ObjectPart[]): boolean {
-  const span = (i: number) => Math.max(...parts.map((p) => p.at[i]! + p.size[i]! / 2)) - Math.min(...parts.map((p) => p.at[i]! - p.size[i]! / 2));
+export function faceAcross(parts: ObjectPart[], basis: ObjectPart[] = parts): boolean {
+  const span = (i: number) => Math.max(...basis.map((p) => p.at[i]! + p.size[i]! / 2)) - Math.min(...basis.map((p) => p.at[i]! - p.size[i]! / 2));
   if (parts.length === 0 || parts.some((p) => p.rot) || span(2) <= 1.5 * span(0)) return false;
   for (const p of parts) {
     p.size = [p.size[2], p.size[1], p.size[0]];
@@ -293,9 +293,9 @@ export function shapeWord(words: string): 'long' | 'flat' | undefined {
  * times the next one. Flat: the height is squashed to a quarter of the shorter side across. Positions stretch with
  * the sizes, so details stay on the body. Pure; the factor used, 1 when it was already that shape.
  */
-export function shapeTo(parts: ObjectPart[], shape: 'long' | 'flat' | undefined): number {
-  if (!shape || parts.length === 0) return 1;
-  const span = (i: number) => Math.max(...parts.map((p) => p.at[i]! + p.size[i]! / 2)) - Math.min(...parts.map((p) => p.at[i]! - p.size[i]! / 2));
+export function shapeTo(parts: ObjectPart[], shape: 'long' | 'flat' | undefined, basis: ObjectPart[] = parts): number {
+  if (!shape || parts.length === 0 || basis.length === 0) return 1;
+  const span = (i: number) => Math.max(...basis.map((p) => p.at[i]! + p.size[i]! / 2)) - Math.min(...basis.map((p) => p.at[i]! - p.size[i]! / 2));
   const [x, y, z] = [span(0), span(1), span(2)];
   if (shape === 'long') {
     const axis = x >= z ? 0 : 2, along = Math.max(x, z), next = Math.max(Math.min(x, z), y);
@@ -304,7 +304,7 @@ export function shapeTo(parts: ObjectPart[], shape: 'long' | 'flat' | undefined)
     for (const p of parts) { p.size[axis] *= k; p.at[axis] *= k; }
     return k;
   }
-  const lowest = Math.min(...parts.map((p) => p.at[1]! - p.size[1]! / 2));
+  const lowest = Math.min(...basis.map((p) => p.at[1]! - p.size[1]! / 2));
   if (y <= 0.35 * Math.min(x, z)) return 1;
   const k = 0.25 * Math.min(x, z) / y;
   for (const p of parts) { p.size[1] *= k; p.at[1] = lowest + (p.at[1] - lowest) * k; }
@@ -332,6 +332,7 @@ const FIT_MIN = 12, FIT_TO = 15, MIN_TALL = 4, FIT_MAX = 40;
  * for 1.5-3 player heights). 1 when it is big enough already. Pure.
  */
 export function fitFactor(parts: ObjectPart[]): number {
+  if (parts.length === 0) return 1;
   const span = (i: number) => Math.max(...parts.map((p) => p.at[i]! + p.size[i]! / 2)) - Math.min(...parts.map((p) => p.at[i]! - p.size[i]! / 2));
   const longest = Math.max(span(0), span(1), span(2)), tall = span(1);
   if (!(longest > 0)) return 1;
@@ -763,8 +764,12 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   }
   // Anything that is not a keyboard: nothing hidden inside another part, something to do with it, and big enough.
   const board = parts.some((p) => p.key || p.rides);
-  if (!board) shapeTo(parts, shapeWord(`${String(a.request ?? '')} ${String(a.name ?? '')}`));
-  if (!board) faceAcross(parts);
+  // An upgrade is measured by the object it had, so new details do not stretch, turn or grow it again (test 3 round 3,
+  // 2026-10-01: a crown, wings and a jetpack made the butter's shape rules stretch it into an 84-stud plank).
+  const basisNames = Array.isArray(a.basis) ? new Set((a.basis as unknown[]).map((n) => String(n).replace(/[^A-Za-z0-9_]/g, ''))) : null;
+  const basisOf = () => { const b = basisNames ? parts.filter((p) => basisNames.has(p.name)) : parts; return b.length ? b : parts; };
+  if (!board) shapeTo(parts, shapeWord(`${String(a.request ?? '')} ${String(a.name ?? '')}`), basisOf());
+  if (!board) faceAcross(parts, basisOf());
   const unburied = board ? [] : unbury(parts);
   if (!board) { wrapAround(parts); settle(parts); }
   if (!board) readableText(parts);
@@ -777,7 +782,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
   for (const p of parts) p.at[1] -= bottom;
   // Grown from the ground's centre, never shrunk; a scale the model chose is kept when it is big enough (round 5: the
   // model passed its own scale and the butter came out 10 x 2 x 2.5, smaller than a player).
-  const fit = board ? 1 : fitFactor(parts);
+  const fit = board ? 1 : fitFactor(basisOf());
   if (fit !== 1) for (const p of parts) {
     p.size = p.size.map((n) => n * fit) as V3;
     p.at = p.at.map((n) => n * fit) as V3;
@@ -860,6 +865,22 @@ export function builtSummary(plan: ObjectPlan, moving: number, keysBound: number
  * what was built: its size against a player, the words printed on it, where its details sit, and what a click, a
  * touch or a key does. Not for keyboards, whose builtSummary the model retells. Pure.
  */
+/**
+ * Part names said as a person would: "WingLeft", "WingRight" -> "two wings"; "Flame1".."Flame3" -> "three flames";
+ * "GoldenCrown" -> "a golden crown". At most `max` kinds, then "and more" (test 3 round 3: a 15-item list with "a eye
+ * left" and "wrapper fold2"). Pure.
+ */
+export function sayParts(names: string[], max = 5): string[] {
+  const COUNT = ['', 'a', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  const base = (n: string) => n.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase()
+    .replace(/\b(left|right|front|back|top|bottom|upper|lower|inner|outer)\b/g, '').replace(/\d+/g, '').replace(/\s+/g, ' ').trim() || 'part';
+  const kinds = new Map<string, number>();
+  for (const n of names) kinds.set(base(n), (kinds.get(base(n)) ?? 0) + 1);
+  const plural = (w: string) => /(s|x|ch|sh)$/.test(w) ? `${w}es` : /[^aeiou]y$/.test(w) ? `${w.slice(0, -1)}ies` : `${w}s`;
+  const said = [...kinds.entries()].map(([w, k]) => k === 1 ? `${/^[aeiou]/.test(w) ? 'an' : 'a'} ${w}` : `${COUNT[k] ?? k} ${plural(w)}`);
+  return said.length > max ? [...said.slice(0, max), 'more'] : said;
+}
+
 export function objectForUser(plan: ObjectPlan): string {
   const what = plan.name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
   const f = plan.footprint, longest = Math.max(f.x1 - f.x0, f.z1 - f.z0, f.top);
@@ -867,23 +888,32 @@ export function objectForUser(plan: ObjectPlan): string {
     : `about ${Math.round(longest)} studs`;
   // Back is the side the spawn sees (+Z); Right and Left are its ends (round 10 said "front" for an end).
   const side: Record<string, string> = { Top: 'top', Back: 'front', Front: 'back', Right: 'end', Left: 'end', Bottom: 'bottom' };
-  const words = plan.parts.filter((p) => p.text).map((p) => `"${p.text!.value}" printed on its ${side[p.text!.face] ?? 'side'}`);
+  const texts = plan.parts.filter((p) => p.text);
+  // At most two printings are named; more read as clutter.
+  const words = texts.slice(0, 2).map((p) => `"${p.text!.value}" printed on its ${side[p.text!.face] ?? 'side'}`).concat(texts.length > 2 ? ['more words'] : []);
   const body = [...plan.parts].filter((p) => !p.own).sort((a, b) => vol(b) - vol(a))[0];
   const humanName = (n: string) => n.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
-  const details = body ? placesOf(plan.parts.filter((p) => !/^Cool(Halo|Orb\d)$/.test(p.name))).map((line) => {
-    const m = /^(\w+) is (on top of|under|on the front of|on) \w+$/.exec(line);
-    return m ? `a ${humanName(m[1]!)} ${m[2] === 'on top of' ? 'on top' : m[2] === 'under' ? 'underneath' : m[2] === 'on the front of' ? 'on the front' : 'on it'}` : '';
-  }).filter(Boolean) : [];
+  const decor = plan.parts.filter((p) => p !== body && !p.own && !/^Cool(Halo|Orb\d)$/.test(p.name));
+  const places = new Map(placesOf(plan.parts).map((line) => { const m = /^(\w+) is (on top of|under|on the front of|on) \w+$/.exec(line); return [m?.[1] ?? '', m?.[2] ?? 'on'] as const; }));
+  const where = (w: string) => w === 'on top of' ? 'on top' : w === 'under' ? 'underneath' : w === 'on the front of' ? 'on the front' : '';
+  const details: string[] = [];
+  for (const w of ['on top of', 'under', 'on the front of', 'on']) {
+    const group = decor.filter((p) => (places.get(p.name) ?? 'on') === w).map((p) => p.name);
+    if (!group.length) continue;
+    const said = sayParts(group, 4);
+    details.push(`${said.length > 1 ? `${said.slice(0, -1).join(', ')} and ${said[said.length - 1]}` : said[0]}${where(w) ? ` ${where(w)}` : ''}`);
+  }
   const moving = plan.parts.filter((p) => p.move && p.name !== 'CoolHalo');
   const verb: Record<string, string> = { press: 'presses down', spin: 'spins', bob: 'bobs', open: 'swings open', wobble: 'wobbles', pop: 'pops' };
   const as = (p: ObjectPart) => verb[p.move!.as] ?? 'moves';
   const by = (on: string) => moving.filter((p) => p.move!.on === on);
   const acts: string[] = [];
   const whole = plan.gaveMotion && plan.parts.some((p) => p.rides === plan.gaveMotion);
-  if (by('click').length) acts.push(`Click it and ${whole ? 'the whole thing' : by('click').map((p) => `the ${humanName(p.name)}`).join(' and ')} ${by('click').length === 1 ? as(by('click')[0]!) : 'move'}${by('click').some((p) => p.move!.sound) ? ' with a sound' : ''}`);
-  if (by('touch').length) acts.push(`walk into it and ${by('touch').map((p) => `the ${humanName(p.name)}`).join(' and ')} ${by('touch').length === 1 ? as(by('touch')[0]!) : 'move'}`);
+  const who = (ps: ObjectPart[]) => ps.length === 1 ? `the ${humanName(ps[0]!.name)}` : (() => { const s = sayParts(ps.map((p) => p.name), 4).map((x) => x.replace(/^an? /, '')); return `its ${s.length > 1 ? `${s.slice(0, -1).join(', ')} and ${s[s.length - 1]}` : s[0]}`; })();
+  if (by('click').length) acts.push(`Click it and ${whole ? 'the whole thing' : who(by('click'))} ${by('click').length === 1 ? as(by('click')[0]!) : 'move'}${by('click').some((p) => p.move!.sound) ? ' with a sound' : ''}`);
+  if (by('touch').length) acts.push(`walk into it and ${who(by('touch'))} ${by('touch').length === 1 ? as(by('touch')[0]!) : 'move'}`);
   if (by('prompt').length) acts.push(`walk up and press E to use it`);
-  if (by('loop').length) acts.push(`the ${by('loop').map((p) => humanName(p.name)).join(' and ')} ${by('loop').length === 1 ? as(by('loop')[0]!) : 'move'} all the time`);
+  if (by('loop').length) acts.push(`${who(by('loop'))} ${by('loop').length === 1 ? as(by('loop')[0]!) : 'move'} all the time`);
   const bits = [...words, ...details];
   const look = bits.length > 1 ? `${bits.slice(0, -1).join(', ')} and ${bits[bits.length - 1]}` : bits[0] ?? '';
   const kit = plan.cool ? 'Now it sparkles and glows, four neon orbs circle above it, and the rim of its stage lights up.' : '';
@@ -1024,7 +1054,10 @@ export async function buildObject(ctx: AgentCtx, sent: Record<string, unknown>) 
   const a = prev && Array.isArray(prev.parts) ? mergeUpgrade(prev, sent) : sent;
   // The board's look comes from the user's words, not the model's palette (owner's references, 2026-10-01). An upgrade
   // keeps the shape words of the request that made the object.
-  const plan = expandObject({ ...a, theme: keyboardTheme(ctx.userRequest?.()), request: prev ? String(prev.request ?? '') : ctx.userRequest?.() ?? '' });
+  // The object as first made is the measure for every later upgrade, not the last upgrade.
+  const basis = prev && Array.isArray(prev.parts)
+    ? (Array.isArray(prev.basis) ? (prev.basis as unknown[]).map(String) : (prev.parts as Record<string, unknown>[]).map((p) => String(p.name ?? ''))) : undefined;
+  const plan = expandObject({ ...a, theme: keyboardTheme(ctx.userRequest?.()), request: prev ? String(prev.request ?? '') : ctx.userRequest?.() ?? '', ...(basis ? { basis } : {}) });
   if ('error' in plan) return { error: plan.error };
   if (prev) coolKit(plan);
   const wantsStuds = !userWantsOwnSurface(ctx.userRequest?.());
@@ -1134,7 +1167,10 @@ export async function buildObject(ctx: AgentCtx, sent: Record<string, unknown>) 
       let keyIndex = 0;
       for (const p of moving) {
         const c = withRiders(motionClip(p), p.name, riders.filter((r) => r.rides === p.name).map((r) => r.name));
-        const q = p.move!.sound;
+        // A decoration that moves by itself is quiet when the player has something to set off (test 3 round 3: nine
+        // looping parts would all have sounded at once when the game started).
+        const quiet = (p.move!.on === 'loop' || p.move!.on === 'once') && moving.some((m) => m.move!.on !== 'loop' && m.move!.on !== 'once');
+        const q = quiet ? undefined : p.move!.sound;
         const direct = q ? soundAssetId(q) : null;
         if (!direct && isKeystroke(p, q) && keystrokes.length) {
           // A keyboard key sounds like a real key, a different recording on each neighbour (ASMR wants variety).
@@ -1232,7 +1268,7 @@ end)
   }
   const keys = moving.filter((p) => p.move!.on === 'key' && p.key).length;
   // Kept for a later "make it cooler", with the words that made it (its shape words).
-  await memory?.save({ ...a, request: prev ? prev.request : ctx.userRequest?.() ?? '' }).catch(() => undefined);
+  await memory?.save({ ...a, request: prev ? prev.request : ctx.userRequest?.() ?? '', ...(basis ? { basis } : {}) }).catch(() => undefined);
   // Rigging is what makes it move: if that failed, the object stands but does nothing, which is not done.
   if (moving.length && problems.some((p) => p.startsWith('rig') || p.startsWith('animations') || p.startsWith('player'))) {
     return { changed: true, projectMutated: true, object: model, error: `Built, but it cannot move yet: ${problems.join('; ')}. If Studio says an operation is unknown, the Apple plugin in Studio is older than this tool: tell the user to restart Studio.` };
