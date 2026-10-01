@@ -372,3 +372,16 @@ test('a whole argument object with stray closing brackets or trailing commas is 
   assert.deepEqual(T.recoverJsonObject('{"a":"x \\" }"}]\n'), { a: 'x " }' });
   for (const bad of ['{not json', '{"a":1} {"b":2}', '{"a":1} please', 'x {"a":1}', '[1,2]', '{"a":']) assert.equal(T.recoverJsonObject(bad), undefined, bad);
 });
+
+// Round 5 of test 1 (2026-10-01): 53 keys came out in one row, 270 studs long.
+test('a keyboard never has a row longer than a real one: one key per row is one sequence, a long row wraps where real rows start', () => {
+  const seq = ['Esc', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Tab', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', 'Caps', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'", 'Shift', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 'Shift', 'Ctrl', 'Alt', 'Space', 'Enter'];
+  const want = [13, 13, 12, 12, 4];
+  assert.deepEqual(O.keyboardRows([seq]).map((r) => r.length), want, 'one flat row');
+  assert.deepEqual(O.keyboardRows(seq.map((k) => [k])).map((r) => r.length), want, 'one key per row');
+  assert.deepEqual(O.keyboardRows([['Q', 'W', 'E'], ['A', 'S'], ['Enter'], ['Space']]), [['Q', 'W', 'E'], ['A', 'S', 'Enter'], ['Space']], 'a lone ENTER still joins its row');
+  assert.ok(O.keyboardRows([Array.from({ length: 40 }, (_, i) => `k${i}`)]).every((r) => r.length <= 16), 'no starters: thirteens');
+  const plan = O.expandObject({ name: 'Kb', scale: 4, parts: [{ name: 'Key', rows: seq.map((k) => [k]), move: { as: 'press', on: 'key' } }] });
+  const width = plan.footprint.x1 - plan.footprint.x0;
+  assert.ok(width < 80, `the board is ${width.toFixed(0)} studs wide`);
+});

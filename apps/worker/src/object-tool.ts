@@ -139,6 +139,39 @@ export function shade(hex: string, amount: number): string {
   return `#${c.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('')}`;
 }
 
+const ROW_START = /^(tab|caps|capslock|caps lock|shift|lshift|ctrl|control|lctrl)$/i;
+const ROW_MAX = 16;
+
+/**
+ * Rows a keyboard can have. A lone key on a row of its own (an ENTER under its row) joins the row above; when most rows
+ * hold one key the model wrote one key per row, so they are one sequence; and a row longer than any real keyboard row is
+ * wrapped where real rows start (Tab, Caps, the first Shift, Ctrl), else in thirteens. Live 2026-10-01: an ENTER sat cut
+ * off from the board, and then 53 keys came out in one 270-stud row. Pure.
+ */
+export function keyboardRows(given: string[][]): string[][] {
+  const singles = given.filter((r) => r.length === 1).length;
+  const merged = given.length > 2 && singles > given.length / 2
+    ? [given.flat()]
+    : given.reduce<string[][]>((acc, r) => {
+      if (r.length === 1 && acc.length && !/^(space|spacebar)$/i.test(r[0]!.trim())) acc[acc.length - 1]!.push(r[0]!);
+      else acc.push([...r]);
+      return acc;
+    }, []);
+  return merged.flatMap((row) => {
+    if (row.length <= ROW_MAX) return [row];
+    const out: string[][] = [[]];
+    const seen = new Set<string>();
+    for (const label of row) {
+      const kind = label.trim().toLowerCase().replace(/^(l|left)\s*/, '').replace(/\s+/g, '');
+      const starts = ROW_START.test(label.trim()) && !seen.has(kind);
+      if (starts) seen.add(kind);
+      if (starts && out[out.length - 1]!.length) out.push([]);
+      out[out.length - 1]!.push(label);
+    }
+    return out.flatMap((r) => r.length <= ROW_MAX ? [r] : Array.from({ length: Math.ceil(r.length / 13) }, (_, i) => r.slice(i * 13, i * 13 + 13)));
+  });
+}
+
 /**
  * A `rows` entry (a keyboard, a keypad, a piano, a calculator): rows of labels laid out by code, so keys never overlap
  * however many there are (owner, 2026-10-01: the hand-placed keyboard put ENTER on BACK). Keys are a `unit` wide (2
@@ -148,17 +181,11 @@ export function shade(hex: string, amount: number): string {
 export function unrollRows(p: Record<string, unknown>, index: number): Record<string, unknown>[] {
   // The same label twice in a row is one wide key written as cells (live 2026-10-01: "Space" five times made a 176-stud
   // board with five space bars), so it is one key at its real width.
-  const rows = (p.rows as unknown[]).filter(Array.isArray)
+  const given = (p.rows as unknown[]).filter(Array.isArray)
     .map((r) => (r as unknown[]).map((l) => String(l ?? '').slice(0, 12)).filter(Boolean)
       .filter((l, i, r) => i === 0 || l.trim().toLowerCase() !== r[i - 1]!.trim().toLowerCase()))
-    .filter((r) => r.length > 0)
-    // A lone key on a row of its own (an ENTER the model put under its row) joins the row above: live 2026-10-01 it
-    // sat cut off from the board. The space bar keeps its own row.
-    .reduce<string[][]>((acc, r) => {
-      if (r.length === 1 && acc.length && !/^(space|spacebar)$/i.test(r[0]!.trim())) acc[acc.length - 1]!.push(r[0]!);
-      else acc.push(r);
-      return acc;
-    }, []);
+    .filter((r) => r.length > 0);
+  const rows = keyboardRows(given);
   const num = (v: unknown, d: number, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   // Low enough to walk onto (owner's play test, 2026-10-01: he had to jump onto the keyboard): case and key together are
   // under half a key, so a player steps up onto it and runs across the keys.
