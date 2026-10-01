@@ -591,9 +591,14 @@ task.spawn(function()
 		return best
 	end
 	local tiles = {}
-	if plot then
-		for _, t in CollectionService:GetTagged("AppleTile") do if t:IsA("BasePart") and t:IsDescendantOf(plot) then table.insert(tiles, t) end end
-	end
+	local streamBy = os.clock() + 10 -- a streamed place sends the plot's tiles a moment later
+	repeat
+		table.clear(tiles)
+		if plot then
+			for _, t in CollectionService:GetTagged("AppleTile") do if t:IsA("BasePart") and t:IsDescendantOf(plot) then table.insert(tiles, t) end end
+		end
+		if #tiles == 0 then task.wait(0.5) end
+	until #tiles > 0 or os.clock() > streamBy
 	table.sort(tiles, function(a, b) return nearLane(a) < nearLane(b) end)
 	probe.tiles = #tiles
 	for i = 1, math.min(3, #tiles) do

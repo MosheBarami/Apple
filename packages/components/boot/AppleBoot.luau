@@ -91,6 +91,13 @@ if motionModule then
 	end
 end
 
+-- Places stream their content: a player far from a plot would not have its tiles, so tiles could not glow or be
+-- picked (seen in a check 2026-10-01: plot found, 0 tiles). The plots are always sent to every player.
+local plots = workspace:FindFirstChild("AppleMap") and workspace.AppleMap:FindFirstChild("Plots")
+for _, plot in (if plots then plots:GetChildren() else {}) do
+	if plot:IsA("Model") then pcall(function() (plot :: any).ModelStreamingMode = Enum.ModelStreamingMode.Persistent end) end
+end
+
 for _, d in workspace:GetDescendants() do
 	local tags = d:GetAttribute("AppleTags")
 	if type(tags) == "string" then
