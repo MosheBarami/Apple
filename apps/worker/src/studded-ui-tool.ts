@@ -41,8 +41,9 @@ export function readStudSpec(a: Record<string, unknown>): { name: string; pieces
     }
     const at = p.at as StudAnchor;
     if (!ANCHORS.includes(at)) return { error: `pieces[${i}].at must be one of ${ANCHORS.join(', ')}.` };
-    if (kind === 'counter') pieces.push({ kind, name: pname, text: text(p.text ?? '0', 16), icon: text(p.icon ?? '$', 2), colour: colourOf(p.colour), plus: p.plus !== false, at });
-    else if (kind === 'button' || kind === 'bar') pieces.push({ kind, name: pname, text: text(p.text ?? pname, 24), colour: colourOf(p.colour), at });
+    if (kind === 'counter') pieces.push({ kind, name: pname, text: text(p.text ?? '0', 16), icon: text(p.icon ?? '$', 2), colour: colourOf(p.colour), plus: p.plus !== false, at, ...(typeof p.caption === 'string' ? { caption: text(p.caption, 20) } : {}) });
+    else if (kind === 'button') pieces.push({ kind, name: pname, text: text(p.text ?? pname, 24), colour: colourOf(p.colour), at, ...(typeof p.icon === 'string' ? { icon: text(p.icon, 4) } : {}), ...(p.badge === true ? { badge: true } : {}) });
+    else if (kind === 'bar') pieces.push({ kind, name: pname, text: text(p.text ?? pname, 24), colour: colourOf(p.colour), at });
     else return { error: `pieces[${i}].kind must be counter, button, bar or panel.` };
   }
   return { name, pieces };

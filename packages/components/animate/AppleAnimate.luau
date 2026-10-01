@@ -16,7 +16,7 @@
 	`ease` (Linear, Sine, Quad, Back, Bounce, Elastic) of the stretch that ends at it. `play` is "loop", "click"
 	(a ClickDetector), "prompt" (a ProximityPrompt; `prompt` gives its text), "touch", "once" (at start), or "key"
 	(the player presses the real keyboard key `key`, an Enum.KeyCode name such as "A" or "Space"; AppleAnimateClient
-	sends it). Every clip that plays is announced to every client on ReplicatedStorage.AppleAnimatePlayed (model,
+	sends it; the key can also be clicked, or stepped on, which presses it with the player riding it down). Every clip that plays is announced to every client on ReplicatedStorage.AppleAnimatePlayed (model,
 	clip name), so a screen can count presses or say something; a clip a player set off is also announced on the
 	server as ServerStorage.AppleAnimatePressed (player, model, clip), so a game can pay for presses. A clip
 	whose name starts with a joint's part name ("Key_A.press") plays from that part only, so 60 keys share one rig.
@@ -190,6 +190,17 @@ function AppleAnimate.start()
 				cd.MaxActivationDistance = clip.reach or 40
 				cd.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
 				cd.MouseClick:Connect(function(player) play(model, joints, rest, clip, false, player) end)
+				-- And stepped on (owner, 2026-10-01: "the keyboard is supposed to go down with the players on top of it"):
+				-- a player landing on a key presses it, and rides it down. Once per landing, not every physics frame.
+				if target:IsA("BasePart") then
+					local onIt: { [Player]: number } = {}
+					target.Touched:Connect(function(hit)
+						local who = hit.Parent and game:GetService("Players"):GetPlayerFromCharacter(hit.Parent)
+						if not who or os.clock() - (onIt[who] or 0) < (clip.length + 0.15) then return end
+						onIt[who] = os.clock()
+						play(model, joints, rest, clip, false, who)
+					end)
+				end
 			elseif how == "touch" then
 				local part = if target:IsA("BasePart") then target else model.PrimaryPart
 				local last = 0

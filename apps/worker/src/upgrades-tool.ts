@@ -145,8 +145,8 @@ export async function addUpgrades(ctx: AgentCtx, a: Record<string, unknown>) {
 
   // 4. The screen: added to what is there, never redrawn.
   const pieces: StudPiece[] = [
-    { kind: 'counter', name: currency, text: '0', icon: '$', colour: 'yellow', plus: false, at: 'top-left' },
-    { kind: 'button', name: 'Upgrades', text: 'Upgrades', colour: 'green', at: 'left' },
+    { kind: 'counter', name: currency, text: '0', icon: '$', colour: 'yellow', plus: false, at: 'top-left', caption: currency },
+    { kind: 'button', name: 'Upgrades', text: 'Upgrades', icon: '\u2B06', colour: 'green', at: 'left', badge: true },
     { kind: 'panel', name: 'UpgradesPanel', title: 'Upgrades', header: 'green', body: 'orange', cards: upgrades.map((u) => ({
       name: u.id, label: u.label, price: `$ ${u.cost}`, icon: u.icon ?? KIND_ICON[u.kind], blurb: upgradeBlurb(u, currency), level: 'Lv 0',
     })) },

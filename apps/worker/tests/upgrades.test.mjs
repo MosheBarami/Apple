@@ -127,3 +127,26 @@ test('upgrades go on the screen the game already has, whatever name the model gi
   assert.equal(U.pickScreen('ShopHUD', []), 'ShopHUD', 'a place with no screen gets the name asked');
   assert.equal(U.pickScreen(undefined, []), 'GameHUD');
 });
+
+// Owner, 2026-10-01: "the upgrades ui buttons are a bit offside", "more rich and better gui", and keys that go down
+// with the players on top of them.
+test('the GUI: one captioned counter pill, a glossy Upgrades button with a hidden "!" badge, a panel that fits its cards', () => {
+  const screen = U.studdedScreen({ name: 'HUD', pieces: [
+    { kind: 'counter', name: 'Counter', text: '0', icon: '#', at: 'top-left', caption: 'Keys pressed', plus: false },
+    { kind: 'button', name: 'Upgrades', text: 'Upgrades', icon: '⬆', at: 'left', badge: true },
+    { kind: 'panel', name: 'UpgradesPanel', title: 'Upgrades', cards: U.DEFAULT_UPGRADES.map((u) => ({ name: u.id, label: u.label, price: '$ 1' })) },
+  ] });
+  const json = JSON.stringify(screen);
+  const counter = JSON.stringify(screen.children[0].children.find((c) => c.name === 'Counter'));
+  assert.ok(counter.includes('"name":"Caption"') && counter.includes('KEYS PRESSED'), 'the caption sits inside the counter');
+  const badge = JSON.stringify(screen.children.flatMap((r) => r.children ?? []).find((c) => c.name === 'Upgrades').children.find((c) => c.name === 'Badge'));
+  assert.ok(badge && badge.includes('"Visible":false'), 'the badge waits until something can be bought');
+  assert.match(json, /"name":"Shine"/, 'buttons and counters are glossy');
+  const panel = screen.children.find((c) => c.name === 'UpgradesPanel');
+  const height = panel.props.Size.v[3];
+  assert.ok(height < 400 && height >= 236 + 70, `one row of cards in a ${height}px panel`);
+  const client = execFileSync('cat', [join(WORKER, '..', '..', 'packages', 'components', 'upgrades', 'AppleUpgradesClient.luau')], { encoding: 'utf8' });
+  assert.match(client, /badge\.Visible = affordable\(\)/);
+  const animate = execFileSync('cat', [join(WORKER, '..', '..', 'packages', 'components', 'animate', 'AppleAnimate.luau')], { encoding: 'utf8' });
+  assert.match(animate, /target\.Touched:Connect\(function\(hit\)[\s\S]{0,400}play\(model, joints, rest, clip, false, who\)/, 'a key is pressed by stepping on it');
+});

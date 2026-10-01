@@ -524,8 +524,9 @@ export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
   const hud = (given === false ? null : asked && (asked.counter || asked.hint) ? asked : defaults ? { ...defaults, ...(asked ?? {}) } : asked) as Record<string, unknown> | null;
   if (hud && (hud.counter || hud.hint)) {
     const screen = studdedScreen({ name: `${plan.name}HUD`, pieces: [
-      ...(hud.counter ? [{ kind: 'counter' as const, name: 'Counter', text: '0', icon: String(hud.icon ?? '#').slice(0, 2), colour: 'purple' as const, plus: false, at: 'top-left' as const }] : []),
-      ...(hud.counter ? [{ kind: 'button' as const, name: 'CounterLabel', text: String(hud.counter).slice(0, 24), colour: 'pink' as const, at: 'top-left' as const }] : []),
+      // One pill: the number with its caption inside (owner, 2026-10-01: a separate "Keys pressed" pill looked like a
+      // button that did nothing).
+      ...(hud.counter ? [{ kind: 'counter' as const, name: 'Counter', text: '0', icon: String(hud.icon ?? '#').slice(0, 2), colour: 'purple' as const, plus: false, at: 'top-left' as const, caption: String(hud.counter).slice(0, 24) }] : []),
       ...(hud.hint ? [{ kind: 'bar' as const, name: 'Hint', text: String(hud.hint).slice(0, 60), colour: 'yellow' as const, at: 'bottom' as const }] : []),
     ] });
     await ctx.execStudioOp({ op: 'delete_instances', paths: [`game.StarterGui.${plan.name}HUD`] }, 20_000).catch(() => undefined);

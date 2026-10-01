@@ -147,6 +147,29 @@ local function wire(screen: ScreenGui)
 		end
 	end
 
+	-- The red "!" on the Upgrades button: shown, and gently bouncing, while something can be bought.
+	local badge = open and open:FindFirstChild("Badge")
+	local function affordable(): boolean
+		local money = player:GetAttribute(currency) or 0
+		for _, u in config.upgrades or {} do
+			local level = player:GetAttribute("Upgrade_" .. u.id) or 0
+			if level < (u.max or 100) and cost(u, level) <= money then return true end
+		end
+		return false
+	end
+	if badge and badge:IsA("GuiObject") then
+		local function check() badge.Visible = affordable() end
+		check()
+		player:GetAttributeChangedSignal(currency):Connect(check)
+		for _, u in config.upgrades or {} do player:GetAttributeChangedSignal("Upgrade_" .. u.id):Connect(check) end
+		task.spawn(function()
+			while badge.Parent do
+				if badge.Visible then pop(badge, 1.25) end
+				task.wait(1.2)
+			end
+		end)
+	end
+
 	for _, u in config.upgrades or {} do
 		local card = panel and find(panel, u.id)
 		if not card then continue end

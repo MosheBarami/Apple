@@ -58,6 +58,8 @@ export function studText(name: string, text: string, box: Box, opts: { colour?: 
  */
 export function studSurface(name: string, box: Box, colour: StudColour | readonly [string, string], opts: {
   button?: boolean; tile?: number; corner?: number; stroke?: number; children?: InstanceSpecLite[]; visible?: boolean; z?: number; order?: number;
+  /** A soft white gloss over the top half, the "candy" look of popular simulator HUDs. */
+  shine?: boolean;
   /** See-through (0..1): a lock over a card lets the item show dimly. */
   see?: number;
 } = {}): InstanceSpecLite {
@@ -73,6 +75,10 @@ export function studSurface(name: string, box: Box, colour: StudColour | readonl
       { className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(0, opts.corner ?? 8) } },
       { className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: opts.stroke ?? 3 } },
       { className: 'UIGradient', name: 'Tint', props: { Color: gradient(top, bottom), Rotation: 90 } },
+      ...(opts.shine ? [{
+        className: 'Frame', name: 'Shine', props: { Size: udim2(1, -10, 0.42, 0), Position: udim2(0.5, 0, 0, 4), AnchorPoint: vec2(0.5, 0), BackgroundColor3: '#ffffff', BackgroundTransparency: 0.78, BorderSizePixel: 0, ZIndex: opts.z ?? 1 },
+        children: [{ className: 'UICorner', name: 'Corner', props: { CornerRadius: udim(0, Math.max(4, (opts.corner ?? 8) - 3)) } }],
+      }] : []),
       ...(opts.children ?? []),
     ],
   };
@@ -82,7 +88,7 @@ export function studSurface(name: string, box: Box, colour: StudColour | readonl
 export function studButton(name: string, label: string, box: Box, colour: StudColour, opts: { tile?: number; order?: number; textScale?: number } = {}): InstanceSpecLite {
   const k = opts.textScale ?? 0.72;
   return studSurface(name, box, colour, {
-    button: true, tile: opts.tile ?? 40, order: opts.order,
+    button: true, tile: opts.tile ?? 40, order: opts.order, shine: true,
     children: [studText('Label', label, { size: [0.88, 0, k, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] })],
   });
 }
@@ -212,8 +218,8 @@ export function waveDefenseHud(items: HudItem[], words: Record<string, string>):
 
 export type StudAnchor = 'top-left' | 'top' | 'top-right' | 'left' | 'right' | 'bottom-left' | 'bottom' | 'bottom-right';
 export type StudPiece =
-  | { kind: 'counter'; name: string; text: string; icon?: string; colour?: StudColour; plus?: boolean; at: StudAnchor }
-  | { kind: 'button'; name: string; text: string; colour?: StudColour; at: StudAnchor }
+  | { kind: 'counter'; name: string; text: string; icon?: string; colour?: StudColour; plus?: boolean; at: StudAnchor; caption?: string }
+  | { kind: 'button'; name: string; text: string; colour?: StudColour; at: StudAnchor; icon?: string; badge?: boolean }
   | { kind: 'bar'; name: string; text: string; colour?: StudColour; at: StudAnchor }
   | { kind: 'panel'; name: string; title: string; header?: StudColour; body?: StudColour; cards?: StudCard[] };
 /** A shop or upgrade card: an icon in a coloured bubble, a level badge, the name, what it does, and its price. */
@@ -257,9 +263,14 @@ export function studdedScreen(spec: StudScreenSpec): InstanceSpecLite {
           ...(c.price ? [studButton('Buy', c.price, { size: [1, -20, 0, 46], pos: [0.5, 0, 1, -10], anchor: [0.5, 1] }, c.colour ?? 'green', { tile: 32 })] : []),
         ],
       }));
-      panels.push(studPanel(p.name, p.title, { size: [0, 640, 0, 440], pos: [0.5, 0, 0.5, 20], anchor: [0.5, 0.5] }, p.header ?? 'green', p.body ?? 'orange', [{
-        className: 'Frame', name: 'Grid', props: { Size: udim2(1, -28, 1, -44), Position: udim2(0, 14, 0, 34), BackgroundTransparency: 1 },
-        children: [{ className: 'UIGridLayout', name: 'Layout', props: { CellSize: udim2(0, 160, 0, 236), CellPadding: udim2(0, 26, 0, 14), SortOrder: enumOf('SortOrder', 'LayoutOrder'), HorizontalAlignment: enumOf('HorizontalAlignment', 'Center') } }, ...cards],
+      // The panel fits its cards (owner, 2026-10-01: cards sat at the top of a half-empty panel and looked off-centre).
+      const perRow = Math.min(3, Math.max(1, cards.length));
+      const rows = Math.max(1, Math.ceil(cards.length / 3));
+      const width = Math.max(420, perRow * 160 + (perRow - 1) * 26 + 70);
+      const height = 40 + 30 + rows * 236 + (rows - 1) * 14 + 26;
+      panels.push(studPanel(p.name, p.title, { size: [0, width, 0, height], pos: [0.5, 0, 0.5, 20], anchor: [0.5, 0.5] }, p.header ?? 'green', p.body ?? 'orange', [{
+        className: 'Frame', name: 'Grid', props: { Size: udim2(1, -28, 1, -56), Position: udim2(0, 14, 0, 30), BackgroundTransparency: 1 },
+        children: [{ className: 'UIGridLayout', name: 'Layout', props: { CellSize: udim2(0, 160, 0, 236), CellPadding: udim2(0, 26, 0, 14), SortOrder: enumOf('SortOrder', 'LayoutOrder'), HorizontalAlignment: enumOf('HorizontalAlignment', 'Center'), VerticalAlignment: enumOf('VerticalAlignment', 'Center') } }, ...cards],
       }]));
       return;
     }
@@ -267,8 +278,8 @@ export function studdedScreen(spec: StudScreenSpec): InstanceSpecLite {
     const list = regions.get(p.at) ?? [];
     let piece: InstanceSpecLite;
     if (p.kind === 'counter') {
-      piece = studSurface(p.name, { size: [0, 240, 0, 62] }, p.colour ?? 'yellow', {
-        tile: 44, corner: 12, order: i, children: [
+      piece = studSurface(p.name, { size: [0, p.caption ? 270 : 240, 0, 62] }, p.colour ?? 'yellow', {
+        tile: 44, corner: 12, order: i, shine: true, children: [
           {
             className: 'Frame', name: 'Icon', props: { Size: udim2(0, 46, 0, 46), Position: udim2(0, 8, 0.5, 0), AnchorPoint: vec2(0, 0.5), BackgroundColor3: '#ffd23f', ZIndex: 2 },
             children: [
@@ -277,7 +288,10 @@ export function studdedScreen(spec: StudScreenSpec): InstanceSpecLite {
               studText('Sign', p.icon ?? '$', { size: [0.7, 0, 0.7, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3 }),
             ],
           },
-          studText('Value', p.text, { size: [1, p.plus === false ? -70 : -120, 0.78, 0], pos: [0, 60, 0.5, 0], anchor: [0, 0.5] }, { align: 'Left' }),
+          ...(p.caption
+            ? [studText('Value', p.text, { size: [1, p.plus === false ? -70 : -120, 0.62, 0], pos: [0, 60, 0, 3], anchor: [0, 0] }, { align: 'Left' }),
+              studText('Caption', p.caption.toUpperCase(), { size: [1, p.plus === false ? -70 : -120, 0.3, 0], pos: [0, 61, 1, -4], anchor: [0, 1] }, { align: 'Left', stroke: 1.5, colour: '#fff4c2' })]
+            : [studText('Value', p.text, { size: [1, p.plus === false ? -70 : -120, 0.78, 0], pos: [0, 60, 0.5, 0], anchor: [0, 0.5] }, { align: 'Left' })]),
           ...(p.plus === false ? [] : [studButton('Plus', '+', { size: [0, 44, 0, 44], pos: [1, -9, 0.5, 0], anchor: [1, 0.5] }, 'green', { tile: 30 })]),
         ],
       });
@@ -289,7 +303,11 @@ export function studdedScreen(spec: StudScreenSpec): InstanceSpecLite {
         ],
       });
     } else {
-      piece = studButton(p.name, p.text, { size: region.across ? [0, 170, 0, 60] : [1, 0, 0, 62] }, p.colour ?? 'blue', { order: i });
+      piece = studButton(p.name, p.icon ? `${p.icon} ${p.text}` : p.text, { size: region.across ? [0, 190, 0, 62] : [1, 0, 0, 64] }, p.colour ?? 'blue', { order: i });
+      // A red "!" that the game's script shows when something can be bought (hidden until then).
+      if (p.badge) piece.children!.push(studSurface('Badge', { size: [0, 30, 0, 30], pos: [1, 8, 0, -8], anchor: [1, 0] }, 'red', {
+        tile: 20, corner: 15, z: 6, visible: false, children: [studText('Text', '!', { size: [0.7, 0, 0.8, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 7 })],
+      }));
     }
     list.push(piece);
     regions.set(p.at, list);
