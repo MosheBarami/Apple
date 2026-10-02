@@ -1,6 +1,7 @@
 import type { AgentCtx } from './tools';
 import type { StudioOp } from '@golem/shared';
 import { plainName } from './run-idle';
+import { placeImportedOwner } from './model-library';
 import { screenRoots, wireScreens, type WireResult } from './menu-binder';
 
 export const LOCAL_OWNER_PREFIX = 'owner-local:';
@@ -49,7 +50,15 @@ export async function readLocalOwner(ctx: AgentCtx, a: Record<string,unknown>) {
 }
 export async function insertLocalOwner(ctx: AgentCtx, a: Record<string,unknown>) {
   const nodeId=localNodeId(String(a.id ?? ''));
-  if (a.position !== undefined || a.scale !== undefined || a.height !== undefined) return {error:'Local imports preserve authored transforms. Transform the returned Studio path after insertion.'};
+  const position=a.position===undefined ? undefined : Array.isArray(a.position) && a.position.length===3 && a.position.every((n)=>typeof n==='number' && Number.isFinite(n)) ? a.position as number[] : null;
+  if (position===null) return {error:'position must be [x, y, z] in studs'};
+  const scale=a.scale===undefined ? undefined : Number(a.scale);
+  if (scale!==undefined && !(scale>=0.001 && scale<=1000)) return {error:'scale must be between 0.001 and 1000'};
+  const height=a.height===undefined ? undefined : Number(a.height);
+  if (height!==undefined && !(height>0 && height<=2000)) return {error:'height must be between 0 and 2000 studs'};
+  const longest=a.size===undefined ? undefined : Number(a.size);
+  if (longest!==undefined && !(longest>0 && longest<=2000)) return {error:'size must be between 0 and 2000 studs'};
+  if ([scale,height,longest].filter((v)=>v!==undefined).length>1) return {error:'give one of size (longest side in studs), height or scale, not several'};
   const job=await localOwnerQuery(ctx,{action:'materialize',id:nodeId});
   if ('error' in job) return job;
   if (job.status === 'pending') return {pending:true,jobId:job.jobId,componentId:LOCAL_OWNER_PREFIX+nodeId,note:'Local native materialization is pending. Read section:plan or retry this exact insertion on a later step. Nothing inserted.'};
@@ -57,12 +66,16 @@ export async function insertLocalOwner(ctx: AgentCtx, a: Record<string,unknown>)
       !Number.isInteger(job.nativeBytes) || Number(job.nativeBytes)<1 || Number(job.nativeBytes)>4*1024*1024 || !Number.isInteger(job.nativeInstances) || Number(job.nativeInstances)<1 || Number(job.nativeInstances)>20000) {
     return {error:'Local native receipt is failed, mismatched or exceeds the import limits. Inspect section:plan and import fitting child subtrees; no library nodes are excluded.'};
   }
-  const checkpoint=await ctx.createCheckpoint('before local owner import','auto');
-  if ('error' in checkpoint) return {error:`Local owner import refused: checkpoint failed (${checkpoint.error}).`};
+  // An import only adds objects and Studio's undo takes them back, so an oversize place does not refuse it (librarySafetyCopy).
+  const copy=await librarySafetyCopy(ctx,'before local owner import');
+  if ('error' in copy) return {error:`Local owner import refused: ${copy.error}`};
   const out=await ctx.execStudioOp({op:'import_owner_local',nodeId,jobId:String(job.jobId),nativeSha256:String(job.nativeSha256),
     byteLength:Number(job.nativeBytes),nativeInstances:Number(job.nativeInstances),parent:String(a.parent ?? 'game.ServerStorage')},120_000);
-  return out.ok ? {...out.data as Record<string,unknown>,componentId:LOCAL_OWNER_PREFIX+nodeId,
-    note:'Script-free native chunk imported. Exact scripts remain inert in local records. External media, original service placement and cross-chunk references require review; gameplay and native pixels remain unverified.'} : {error:out.error ?? 'Local native import refused'};
+  if (!out.ok) return {error:out.error ?? 'Local native import refused'};
+  const landed=await placeImportedOwner((o,t)=>ctx.execStudioOp(o as StudioOp,t),out.data,{position:position ?? undefined,scale,height,longest});
+  ctx.noteCreated?.((Array.isArray(landed.inserted) ? landed.inserted as unknown[] : []).filter((p): p is string => typeof p==='string'));
+  return {...out.data as Record<string,unknown>,...landed,componentId:LOCAL_OWNER_PREFIX+nodeId,
+    note:'Script-free native chunk imported. Exact scripts remain inert in local records. External media, original service placement and cross-chunk references require review; gameplay and native pixels remain unverified.'};
 }
 
 const BINARY_ID = /^([a-f0-9]{64}):binary:(-?\d{1,11})$/;

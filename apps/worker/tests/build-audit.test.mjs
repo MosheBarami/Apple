@@ -243,7 +243,9 @@ test('a place WITH a lighting pass does not get the untouched-Lighting defect', 
 test('the audit finds the planted defects and costs ZERO model calls', async () => {
   const { ctx, ops } = stubCtx(FIXTURE);
   const res = await T.TOOLS.audit_build.run(ctx, {});
-  assert.deepEqual(ops.map((op) => op.op), ['get_tree', 'get_tree']);
+  // The two tree reads are what the audit judges. After them come the scene measurements (terrain, ground rays): reads only,
+  // numbers only, nothing judged from them. No code is run and no model is called.
+  assert.deepEqual(ops.map((op) => op.op), ['get_tree', 'get_tree', 'terrain_read', 'spatial_query']);
   assert.equal(ops.some((op) => op.op === 'run_code'), false);
 
   const subjects = (ctx.uiDetail.blocks.find((b) => b.type === 'table')?.rows ?? []).map((r) => r[1]);

@@ -300,13 +300,14 @@ functional connections, verified asset needs and a bounded build order. A scene 
 game. Reserve time for scripting, UI, testing and visual correction. Track each requested item until
 built and checked; do not spend the whole run polishing one terrain or prop category.
 
-ASSETS FIRST — use find_library_model then insert_library_model for detailed buildings, trees,
-foliage, rocks, machines, pets, characters, vehicles, furniture, fences, signs and decor. Use
-verified Roblox-specific assets for UI, SFX, VFX and animations. Confirm each item's appearance,
-rights and placement before insertion; wire existing scripts safely to the game's systems. Only
-simple unadorned floors, walls, ceilings, paths, platforms and structural trim may be made from
-Parts. Never turn missing asset consent or a failed search into hand-built detailed props. Ask or
-continue with independent work, then retry the verified source.
+ASSETS FIRST — for detailed buildings, trees, foliage, rocks, machines, pets, characters, vehicles,
+furniture, fences, signs and decor follow the asset order in the system prompt: find_library_model then
+insert_library_model, then the Creator Store, then adapt or combine, then build from Parts in full detail.
+Use verified Roblox-specific assets for UI, SFX, VFX and animations. Confirm each item's appearance,
+rights and placement before insertion; wire existing scripts safely to the game's systems. Floors,
+walls, ceilings, paths, platforms and structural trim are Parts from the start. A failed search, a
+failed insert or a source that is switched off moves you to the next step of the order; it does not leave
+the object out.
 
 SCALE — an avatar is about 5 studs tall and 2 wide. Main paths 12 wide; doorways players use 10H
 x 10W; ceilings 10-14; walls meant to block players at least 10 tall; floor slabs 1-2; railings
@@ -317,9 +318,10 @@ rim, an accessible entrance, a fence where enclosed, a sign and 3-6 clustered pr
 and props come from find_library_model + insert_library_model. Build one reusable area module and
 clone it with measured spacing; do not substitute a flat colored plate for a functioning zone.
 
-ORGANIC SHAPES — trees, foliage, bushes, fruit, rocks and crystals: find_library_model, then
-insert_library_model; never balls or blocks. Put them in varied clusters with open routes. Clouds
-are a Clouds object under Terrain; water is Terrain water. Keep the hero landmark visible from spawn.
+ORGANIC SHAPES — trees, foliage, bushes, fruit, rocks and crystals: the asset order, library first. Built
+from Parts they get real form (a tapering trunk, several offset canopy masses, rocks of different sizes and
+tilts), never a single ball or block. Put them in varied clusters with open routes. Water is Terrain
+water. Keep the hero landmark visible from spawn.
 
 COMPOSITION — one hero landmark roughly 3x nearby masses; 2-4 medium masses; the rest dressing.
 Keep the playable center clear, use 3 walkable elevations in a large scene, and frame important
@@ -329,10 +331,11 @@ DETAIL PASS — trim exposed structural edges, frame openings, light interactive
 and vary cloned assets in rotation and scale within a coherent style. Do not invent a large part
 count as a quality target: prefer complete verified models with fewer calls.
 
-LIGHTING — apply set_mood from the colorful cartoon presets, then render_view. Use a clear sunny or
-day mood by default; golden for warm outdoor scenes, interior for bright rooms, and night only for
-luminous playful arcade scenes with readable routes. Put a Clouds object under Terrain for open
-skies; never build sun, sky or clouds from Parts. Preserve the owner's preexisting light effects.
+LIGHTING — apply set_mood, then render_view. The mood follows the request, in either direction: a night
+village, a stormy canyon, a bright noon, a golden evening are all asked for by name. Pick the nearest preset,
+then set the exact hour and feel with its overrides (ClockTime, Brightness, Ambient, OutdoorAmbient, fog,
+atmosphere, colour grade). A request that names no mood gets a clear sunny day, and a dark mood keeps its
+routes readable. Never build sun, sky or clouds from Parts. Preserve the owner's preexisting light effects.
 
 GROUND — replace the default gray baseplate with color-zoned SmoothPlastic ground and contrasting
 paths. Sculpt broad landforms with bounded Terrain ops when requested; use library assets for all
@@ -342,7 +345,7 @@ PERFORMANCE — anchor authored structure, reuse assets, cap shadowed lights, an
 unique tiny parts where one verified model works. Keep the place responsive on a typical device.
 
 BANNED — default gray baseplate, blank slab as a finished map, two-part trees, generic greybox UI,
-detailed props assembled from Parts, mixed visual styles, unanchored structures, inaccessible zones,
+props built from a few plain blocks, mixed visual styles, unanchored structures, inaccessible zones,
 missing scripts for requested mechanics, or claiming completion before a player-facing check.
 
 FINISH ORDER — plan → verify sources → block out simple structure → insert the major asset set →
@@ -373,11 +376,11 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
     "sunny" for a bright day. Never build a sun, a sky or a sunset out of parts or flat planes.
   * Water is Terrain water. A waterfall is a tall, narrow column of it falling off an edge, with add_effect's
     waterfall mist preset where it lands.
-  * Trees, rocks and crystals: find_library_model + insert_library_model first (preview with preview_library_models), parts only when the library has
-    none that is it, never an AI generator (D-MODELLIB-2). A crystal cluster's biggest spike stands taller than a player.
+  * Trees, rocks and crystals: the asset order (library first, previewed with preview_library_models; from Parts only after the library
+    had nothing; never a generator). A crystal cluster's biggest spike stands taller than a player.
   * Floating scenes: the template Baseplate under the island breaks the illusion. Hide it (set_visible) and
     move the SpawnLocation onto the island, and say so in the reply. Clouds are never Parts: flat slabs read
-    as glass. Use a Clouds object under Terrain (Cover 0.5-0.6, Density 0.6) or leave them out.
+    as glass, and a Clouds object cannot be created (the plugin refuses it), so leave them out.
   * Real sizes: a big tree is 30-50 studs tall and a crystal 6-15, next to a 5-stud player. Scale a
     verified library model to that size ONCE and move on; resizing it again and again is the loop that ends a run.
   * A waterfall is edit_terrain recipe "waterfall": top = a point ON the island's edge at surfaceY, a
@@ -423,9 +426,9 @@ seating, banners and decorative structures as verified Roblox models. Suggested:
 or oceanPlay, mood day.`,
 
   natural: `SCENE: NATURAL — broad Terrain for hills and water, at least three readable elevations and
-one off-center hero landmark. Source trees, rocks, flowers and crystals as verified Roblox models;
-never assemble detailed nature from Parts. Keep paths and destinations visible from spawn. Add
-Clouds under Terrain and inspect the actual player camera. Suggested: palette brightPlay or
+one off-center hero landmark. Source trees, rocks, flowers and crystals by the asset order (library
+first); built from Parts they are detailed, never a ball or a block. Keep paths and destinations visible
+from spawn. Inspect the actual player camera. Suggested: palette brightPlay or
 oceanPlay, mood sunny or golden.`,
 
   simulator: `SCENE: PLOT GAME (simulator, tycoon, farming) — central colorful hub with spawn, working

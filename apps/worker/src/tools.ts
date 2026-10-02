@@ -11,7 +11,7 @@ import { generatedImageCapacity, saveGeneratedImage } from './generated-images';
 import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
 import { retryHint, remedyHint, retryEligibility } from './op-failure';
 import { VERIFIER_TOOLS, APPENDED_VERIFIER_PREFERENCE, PLANNER_TOOL } from './verifiers';
-import { normaliseItems, normaliseProps } from './studio-props';
+import { normaliseItems, normaliseProps, describeRefusals, createLimitIssues, planCreateBatches, normaliseStudioPaths } from './studio-props';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocsDetailed } from './rag';
@@ -23,6 +23,7 @@ import {
   findVerifiedAssets,
   scanInsertedHierarchy,
   summariseTree,
+  appendStudioPath,
   SCAN_LIMITS,
   type AssetNeed,
   type AssetProvenanceSource,
@@ -73,12 +74,16 @@ import { findUiAssets, uploadLibraryAsset } from './asset-library';
 import { findUiStoreImages, UI_STORE_COUNT, UI_STORE_GENRES } from './ui-store-search';
 import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
 import { refuseGameScript, sourcesIn } from './game-independence';
-import { refuseGeneratedModel } from './model-rule';
+import { orderApplies, refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, refuseNewHandMadeModelLuau, type LibraryOrder } from './model-rule';
+import { noteInsert, noteSearch, type LibraryRun } from './library-run';
+import { planCopies } from './placement';
+import { applyOrigin, readOrigin, sharedParent } from './local-space';
+import { expandTerrainPath, TERRAIN_PATH_OP_CAP } from './terrain-path';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScreenGuiHost } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
-import { findLibraryModels, libraryAdvice, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
+import { findLibraryModels, libraryAdvice, libraryModel, placeImportedOwner, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
-import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame, FIND_TYPES, FIND_SIZES } from './local-owner-corpus';
+import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, librarySafetyCopy, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame, FIND_TYPES, FIND_SIZES } from './local-owner-corpus';
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
 import { planGame, buildGame, planSummary, buildSummary, plannedLoop } from './game-plan';
 import { sourcesIn as runSourcesIn } from './sources';
@@ -94,7 +99,7 @@ import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
-import { auditCaptureFromTree, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
+import { auditCaptureFromTree, auditMetrics, lensCoverage, runnableLenses, sceneFromTree } from './build-audit';
 import { formatPanelReport, runCriticPanel } from './critic';
 import { criticInputFromRender } from './critic-input';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
@@ -148,6 +153,12 @@ export interface AgentCtx {
    * permissive one by omission.
    */
   assetSources?: AssetSourcePolicy;
+  /**
+   * What this run has done with the model library (library-run.ts): kept on the run and handed in by reference, so the
+   * order gate on hand-built Models (model-rule.ts) and the insert failure hints see the same record across steps.
+   * Absent outside a run; a tool then creates one on the context for its own duration.
+   */
+  libraryRun?: LibraryRun;
   /** The one library model the project owner selected from a visual preview for this run. */
   approvedLibraryAssetId?: number;
   rejectedLibraryAssetIds?: number[];
@@ -158,6 +169,8 @@ export interface AgentCtx {
    * harness, which then gets the unasked refusal.
    */
   askAssetSources?: () => boolean;
+  /** True when this project's asset settings could not be read (asset-policy.ts sourceRefusal): not the same as "nobody answered". */
+  assetSettingsUnread?: boolean;
   /**
    * The user the run acts for: the project owner (`bind.ownerId`, recorded on the run as `userId`).
    * `generate_model_external` creates its Model in this user's own Roblox account with their
@@ -170,7 +183,9 @@ export interface AgentCtx {
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   /** Live run fence: direct model deletion is refused after a create name conflict. */
-  blockDirectDeletion?: () => boolean;
+  blockDirectDeletion?: (paths?: readonly string[]) => boolean;
+  /** Tell the run which paths a tool just put in the place under their FINAL names (an insert renames after the plugin replies). */
+  noteCreated?(paths: readonly string[]): void;
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
   /** Roll the place back to a checkpoint. Optional so an older caller still satisfies this type. */
   restoreCheckpoint?(id: string): Promise<{ ok: boolean; error?: string }>;
@@ -807,6 +822,24 @@ function treeRoot(value: unknown): StudioTreeNode | null {
  */
 const MAX_TERRAIN_BATCH = 32;
 
+/**
+ * A long list of terrain operations (a path expands to many), run in order in chunks of MAX_TERRAIN_BATCH through the same
+ * batch the tool already has. A failure says which operation, how many ran before it, and that the ground has changed.
+ */
+async function runTerrainChunks(ctx: AgentCtx, operations: unknown[]): Promise<unknown> {
+  let completed = 0;
+  for (let start = 0; start < operations.length; start += MAX_TERRAIN_BATCH) {
+    const res = await runTerrainEdits(ctx, { operations: operations.slice(start, start + MAX_TERRAIN_BATCH) });
+    if (toolError(res)) {
+      const r = res as Record<string, unknown>;
+      const done = completed + (Number(r.completed) || 0);
+      return { ...r, failedAt: start + (Number(r.failedAt) || 0), completed: done, ...(done ? { projectMutated: true } : {}) };
+    }
+    completed += Number((res as Record<string, unknown>).completed) || 0;
+  }
+  return { completed };
+}
+
 async function runTerrainEdits(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
   if (typeof a.recipe === 'string') {
     const expanded = expandTerrainRecipe(a.recipe, a);
@@ -814,14 +847,35 @@ async function runTerrainEdits(ctx: AgentCtx, a: Record<string, unknown>): Promi
     const res = await runTerrainEdits(ctx, { operations: expanded.operations });
     return toolError(res) ? res : { ...(res as Record<string, unknown>), ...expanded.facts };
   }
-  const { operations, ...single } = a;
-  if (operations === undefined) {
+  const { operations: given, ...single } = a;
+  if (given === undefined && single.action === 'path') {
+    const path = expandTerrainPath(single, DIRECT_EDIT_LIMITS.translation);
+    if ('error' in path) return path;
+    const res = await runTerrainChunks(ctx, path.operations);
+    return toolError(res) ? res : { ...(res as Record<string, unknown>), ...path.facts };
+  }
+  if (given === undefined) {
     if (typeof single.action !== 'string') return { error: 'edit_terrain needs an action, or operations: [...]' };
     return op(ctx, { ...single, op: 'terrain_edit' } as StudioOp);
   }
-  if (!Array.isArray(operations) || operations.length === 0) return { error: 'operations must be a non-empty array of terrain actions' };
-  if (operations.length > MAX_TERRAIN_BATCH) {
-    return { error: `operations holds ${operations.length} actions; the limit is ${MAX_TERRAIN_BATCH} per call — split it` };
+  if (!Array.isArray(given) || given.length === 0) return { error: 'operations must be a non-empty array of terrain actions' };
+  if (given.length > MAX_TERRAIN_BATCH) {
+    return { error: `operations holds ${given.length} actions; the limit is ${MAX_TERRAIN_BATCH} per call — split it` };
+  }
+  // A `path` among the operations is expanded in place; the whole list is then run in chunks of MAX_TERRAIN_BATCH.
+  let operations: unknown[] = given;
+  if (given.some((raw) => raw && typeof raw === 'object' && (raw as { action?: unknown }).action === 'path')) {
+    const flat: unknown[] = [];
+    for (const [index, raw] of given.entries()) {
+      if (raw && typeof raw === 'object' && (raw as { action?: unknown }).action === 'path') {
+        const path = expandTerrainPath(raw as Record<string, unknown>, DIRECT_EDIT_LIMITS.translation);
+        if ('error' in path) return { error: `operations[${index}]: ${path.error}` };
+        flat.push(...path.operations);
+      } else flat.push(raw);
+    }
+    if (flat.length > TERRAIN_PATH_OP_CAP) return { error: `these operations expand to ${flat.length} blocks; the limit is ${TERRAIN_PATH_OP_CAP} per call — split them` };
+    if (flat.length > MAX_TERRAIN_BATCH) return runTerrainChunks(ctx, flat);
+    operations = flat;
   }
   const done: unknown[] = [];
   for (const [index, raw] of operations.entries()) {
@@ -1165,6 +1219,52 @@ function rec(v: unknown): Record<string, unknown> {
   return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
 }
 
+function libraryRunOf(ctx: AgentCtx): LibraryRun {
+  return (ctx.libraryRun ??= {});
+}
+
+/**
+ * Does the order gate (model-rule.ts) still hold a hand-built Model back in this run? Decided from the run alone:
+ * the library must be on offer and usable here, not yet tried, and the gate not spent.
+ */
+function libraryOrder(ctx: AgentCtx): LibraryOrder {
+  const run = libraryRunOf(ctx);
+  return orderApplies({
+    offered: !ctx.offeredTools || ctx.offeredTools.has('find_library_model'),
+    usable: allowedSources(ctx.assetSources).includes('creator_store') || ctx.localOwnerGateway === true,
+    outcome: run.outcome,
+    gated: run.gated,
+  });
+}
+
+function noteOrderRefusal(ctx: AgentCtx): void {
+  const run = libraryRunOf(ctx);
+  run.gated = (run.gated ?? 0) + 1;
+}
+
+/** Record what a find_library_model call answered. An error is not an attempt: nothing was searched. */
+function recordSearch(ctx: AgentCtx, result: unknown): unknown {
+  const r = rec(result);
+  if (typeof r.error === 'string') return result;
+  const rows = Array.isArray(r.results) ? (r.results as unknown[]) : [];
+  noteSearch(libraryRunOf(ctx), rows.map((row) => rec(row).id).filter((id): id is string => typeof id === 'string'));
+  return result;
+}
+
+/** Record how insert_library_model ended: a refusal before anything was tried (bad id, source off) is not an attempt. */
+function recordInsert(ctx: AgentCtx, a: Record<string, unknown>, result: unknown): unknown {
+  const r = rec(result);
+  const id = String(a.id ?? '');
+  const row = libraryModel(id);
+  if (!row || id.startsWith('owner:') || id.startsWith(LOCAL_OWNER_PREFIX)) return result;
+  const failed = typeof r.error === 'string';
+  // A policy or argument refusal reached neither Roblox nor Studio, so it says nothing about the library.
+  if (failed && r.stage === 'policy') return result;
+  // A timeout may be tried once more, so its id is not written off; a load or scan failure is.
+  noteInsert(libraryRunOf(ctx), id, row.assetId, !failed, { remember: r.retry !== true });
+  return result;
+}
+
 function strOrNull(v: unknown): string | null {
   return typeof v === 'string' && v.length ? v : null;
 }
@@ -1235,43 +1335,182 @@ export function strictDetailsFetch(seen: DetailsIntegrity, base?: FetchLike): Fe
   };
 }
 
+/** Where a library insert failed. `policy` means it was refused before Roblox or Studio was reached. */
+type InsertStage = 'policy' | 'roblox_load' | 'scan' | 'place' | 'timeout';
+
+const NO_MORE_CANDIDATES = 'no more candidates; continue per the asset order';
+
+/** The library ids worth trying next: the run's last search, minus the one that just failed and every id that failed here. */
+function nextLibraryIds(ctx: AgentCtx, exceptId?: string): string[] {
+  const run = libraryRunOf(ctx);
+  const failed = new Set(run.failedIds ?? []);
+  return (run.candidates ?? []).filter((id) => id !== exceptId && !failed.has(libraryModel(id)?.assetId ?? -1)).slice(0, 3);
+}
+
+/**
+ * EVERY insert error says where it failed, why, whether trying again can help, and what to try next. The live benchmark
+ * (2026-10-02) showed the model hearing "Did not work" and retrying the same insert; a failure that names its stage and the
+ * next candidate ids is something it can act on without another search.
+ */
+function insertFailure(
+  ctx: AgentCtx,
+  f: { stage: InsertStage; reason: string; retry: boolean; error?: string; libraryId?: string; extra?: Record<string, unknown> },
+): Record<string, unknown> {
+  const next = nextLibraryIds(ctx, f.libraryId);
+  return { error: f.error ?? f.reason, stage: f.stage, reason: f.reason, retry: f.retry, next: next.length ? next : NO_MORE_CANDIDATES, ...(f.extra ?? {}) };
+}
+
+/** What a failed insert_asset op means, from its failure KIND where the plugin sent one, and its own words for the rest. */
+function insertStage(res: { error?: string; failure?: string }): { stage: InsertStage; reason: string; retry: boolean } {
+  const err = res.error ?? 'insert_asset failed';
+  if (res.failure === 'timeout' || /timed out|did not answer/i.test(err)) {
+    return { stage: 'timeout', reason: 'Studio did not answer in time; the model may have landed: read the tree under the parent before retrying once', retry: true };
+  }
+  if (/would not load asset/i.test(err)) return { stage: 'roblox_load', reason: 'Roblox would not load this id (it is not loadable for this place); try the next id and do not retry this one', retry: false };
+  if (/carries \d+ script/i.test(err)) return { stage: 'scan', reason: 'this asset carries scripts and was not inserted; try the next id', retry: false };
+  if (/contained nothing|inserted nothing/i.test(err)) return { stage: 'roblox_load', reason: 'this asset held nothing to insert; try the next id', retry: false };
+  if (res.failure === 'invalid' || /outside Apple's place scope|allowlist|ambiguous|no such|not found|path/i.test(err)) return { stage: 'policy', reason: err, retry: false };
+  return { stage: 'roblox_load', reason: err, retry: false };
+}
+
+/** The parent as the plugin reads it: rooted at `game`. */
+function rootedPath(path: string): string {
+  return path === 'game' || path.startsWith('game.') || path.startsWith('game[') ? path : `game.${path.replace(/^workspace(?=$|[.[])/, 'Workspace')}`;
+}
+
+/** The last segment of a studio path, for either spelling (`.Name` or `["Odd Name"]`). */
+function lastSegment(path: string): string | null {
+  return /\["([^"\\]+)"\]$/.exec(path)?.[1] ?? /\.([A-Za-z_][A-Za-z0-9_]*)$/.exec(path)?.[1] ?? null;
+}
+
+/** The tree read the scan runs on: the plugin's own ceiling first, and the old one for a plugin that refuses the larger ask. */
+const SCAN_TREE_CAPS = [{ nodes: 1200, depth: 12 }, { nodes: 400, depth: 12 }] as const;
+
+/**
+ * Take the proven-clean roots out of their run-unique holder Folder: give each a name unique under the real parent, move it
+ * there, and delete the empty holder. Any step that fails leaves the model INSIDE the holder, where its path is still
+ * unambiguous, and says so; nothing here can lose the model.
+ */
+async function settleOutOfHolder(ctx: AgentCtx, holder: string, paths: string[], parentRoot: string): Promise<{ paths: string[]; warning?: string }> {
+  const siblings = await ctx.execStudioOp({ op: 'get_tree', root: parentRoot, maxDepth: 1, maxNodes: 1200 }, 20_000);
+  const used = new Set<string>();
+  let complete = false;
+  if (siblings.ok) {
+    const root = rec(rec(siblings.data).root);
+    for (const k of Array.isArray(root.children) ? root.children : []) {
+      const name = strOrNull(rec(k).name);
+      if (name) used.add(name);
+    }
+    // A child at the depth cap says `moreChildren` by design; only the node budget running out makes the sibling list incomplete.
+    complete = rec(siblings.data).truncated !== true && root.truncated !== true;
+  }
+  const moves: { path: string; newParent: string }[] = [];
+  const finals: string[] = [];
+  for (const p of paths) {
+    const base = lastSegment(p);
+    if (!base) return { paths, warning: `left inside ${holder}: could not read the name of ${p}` };
+    // An unread or cut sibling list cannot prove a name free, so it gets a suffix nothing else has.
+    let name = base;
+    if (!complete) name = `${base}_${Math.random().toString(36).slice(2, 6)}`;
+    else for (let n = 2; used.has(name); n++) name = `${base}_${n}`;
+    used.add(name);
+    let at = p;
+    if (name !== base) {
+      const renamed = await ctx.execStudioOp({ op: 'rename_instance', path: p, name }, 20_000);
+      at = appendStudioPath(holder, name) ?? p;
+      if (!renamed.ok) return { paths, warning: `left inside ${holder}: renaming ${base} to a unique name failed (${renamed.error ?? 'rename failed'})` };
+    }
+    moves.push({ path: at, newParent: parentRoot });
+    finals.push(appendStudioPath(parentRoot, name) ?? at);
+  }
+  const moved = await ctx.execStudioOp({ op: 'move_instances', moves }, 20_000);
+  if (!moved.ok) return { paths: moves.map((m) => m.path), warning: `left inside ${holder}: moving it under ${parentRoot} failed (${moved.error ?? 'move failed'})` };
+  const gone = await ctx.execStudioOp({ op: 'delete_instances', paths: [holder] }, 20_000);
+  return gone.ok ? { paths: finals } : { paths: finals, warning: `the empty folder ${holder} could not be removed (${gone.error ?? 'delete failed'}); delete it` };
+}
+
 /**
  * Insert one verified id and prove the place clean afterwards, or leave the place as it was found.
  *
  * Returns a tool result: small, and free of any line of the source it removed. An attacker's Luau
  * belongs in the audit trail, not in the model's transcript where it becomes an instruction.
+ *
+ * THE ASSET LANDS INSIDE A RUN-UNIQUE FOLDER, not directly under the parent. Roblox keeps the model's own name, so a
+ * second insert of the same id left two same-named siblings and every path-addressed op on either ("path is ambiguous")
+ * failed. Inside `Apple_Insert_<n>` the path is unambiguous for the whole scan; once the roots are proven clean they are
+ * given a name unique under the real parent and moved there. If the holder cannot be made the insert goes straight to the
+ * parent, as it always did.
  */
-async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: string): Promise<unknown> {
-  const inserted = await ctx.execStudioOp({ op: 'insert_asset', assetId, parent }, 45_000);
-  if (!inserted.ok) return { error: inserted.error ?? 'insert_asset failed' };
+async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: string, libraryId?: string): Promise<unknown> {
+  const run = libraryRunOf(ctx);
+  const seq = (run.inserts = (run.inserts ?? 0) + 1);
+  const parentRoot = rootedPath(parent);
+  const holderName = `Apple_Insert_${seq}_${Math.random().toString(36).slice(2, 6)}`;
+  let holder: string | null = null;
+  const holderPath = appendStudioPath(parentRoot, holderName);
+  if (holderPath) {
+    const made = await ctx.execStudioOp({ op: 'create_instances', items: [{ className: 'Folder', name: holderName, parent: parentRoot }] }, 20_000);
+    if (made.ok) holder = holderPath;
+  }
+
+  const inserted = await ctx.execStudioOp({ op: 'insert_asset', assetId, parent: holder ?? parent }, 45_000);
+  if (!inserted.ok) {
+    let leftover: Record<string, unknown> = {};
+    if (holder) {
+      const del = await ctx.execStudioOp({ op: 'delete_instances', paths: [holder] }, 20_000);
+      if (!del.ok) leftover = { projectMutated: true, manualCleanupRequired: [holder] };
+    }
+    const why = insertStage(inserted);
+    return insertFailure(ctx, { ...why, libraryId, error: inserted.error ?? 'insert_asset failed', extra: leftover });
+  }
   const raw = rec(inserted.data).inserted;
   const paths = (Array.isArray(raw) ? raw : []).filter((p): p is string => typeof p === 'string');
-  if (!paths.length) return { error: `asset ${assetId} inserted nothing — nothing was added to the place` };
+  if (!paths.length) {
+    if (holder) await ctx.execStudioOp({ op: 'delete_instances', paths: [holder] }, 20_000);
+    return insertFailure(ctx, { stage: 'roblox_load', reason: 'this asset held nothing to insert; try the next id', retry: false, libraryId, error: `asset ${assetId} inserted nothing — nothing was added to the place` });
+  }
 
-  /** Remove the whole asset and refuse. Never leaves the place in the state the scan objected to. */
+  /**
+   * Remove the whole asset and refuse. Never leaves the place in the state the scan objected to, and never says "removed" when
+   * it was not. The asset's own roots are deleted by path, exactly as before the holder existed; the holder Folder goes after
+   * them, and is the fallback that takes the roots with it when deleting them by path fails.
+   */
   const discard = async (why: string): Promise<unknown> => {
-    const del = await ctx.execStudioOp({ op: 'delete_instances', paths }, 20_000);
-    return {
-      error: `asset ${assetId} was inserted, refused and removed: ${why}`,
-      ...(del.ok
-        ? { removedWholeAsset: paths }
-        : { removeFailed: del.error ?? 'delete failed', manualCleanupRequired: paths, projectMutated: true }),
-    };
+    let del = await ctx.execStudioOp({ op: 'delete_instances', paths }, 20_000);
+    if (holder) {
+      const folder = await ctx.execStudioOp({ op: 'delete_instances', paths: [holder] }, 20_000);
+      // The holder holds whatever the first delete could not reach, so removing it can finish the job.
+      if (folder.ok) del = { ...del, ok: true };
+    }
+    if (del.ok) {
+      return insertFailure(ctx, { stage: 'scan', reason: why, retry: false, libraryId, error: `asset ${assetId} was inserted, refused and removed: ${why}`, extra: { removedWholeAsset: paths } });
+    }
+    return insertFailure(ctx, {
+      stage: 'scan', reason: why, retry: false, libraryId,
+      error: `asset ${assetId} was inserted at ${paths.join(', ')} and refused (${why}); removal also failed (${del.error ?? 'delete failed'}): delete ${paths.join(', ')} yourself`,
+      extra: { removeFailed: del.error ?? 'delete failed', manualCleanupRequired: paths, projectMutated: true },
+    });
   };
 
   // 1. Enumerate. A subtree that cannot be walked is a subtree whose contents are unknown, and
-  //    unknown is never scored as empty.
+  //    unknown is never scored as empty. A read that WORKED but was cut at its cap is a different fact and is reported as one.
   const classes: string[] = [];
   let enumerationFailed = false;
+  let treeTruncated = false;
+  let caps: { nodes: number; depth: number } = SCAN_TREE_CAPS[0];
   for (const p of paths) {
-    const tree = await ctx.execStudioOp({ op: 'get_tree', root: p, maxDepth: 12, maxNodes: 400 }, 20_000);
+    let tree = await ctx.execStudioOp({ op: 'get_tree', root: p, maxDepth: SCAN_TREE_CAPS[0].depth, maxNodes: SCAN_TREE_CAPS[0].nodes }, 20_000);
+    if (!tree.ok && tree.failure === 'invalid') {
+      caps = SCAN_TREE_CAPS[1];
+      tree = await ctx.execStudioOp({ op: 'get_tree', root: p, maxDepth: SCAN_TREE_CAPS[1].depth, maxNodes: SCAN_TREE_CAPS[1].nodes }, 20_000);
+    }
     if (!tree.ok) {
       enumerationFailed = true;
       continue;
     }
     const sum = summariseTree(tree.data);
     classes.push(...sum.classes);
-    if (sum.truncated) enumerationFailed = true;
+    if (sum.truncated) treeTruncated = true;
   }
 
   // 2. Read the Luau back OUT OF THE PLACE. This is the whole point: the metadata said there was
@@ -1296,7 +1535,7 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
   }
 
   // 3. Judge.
-  const scan = scanInsertedHierarchy({ rootPath: paths[0] as string, scripts, instanceClasses: classes, enumerationFailed });
+  const scan = scanInsertedHierarchy({ rootPath: paths[0] as string, scripts, instanceClasses: classes, enumerationFailed, treeTruncated, treeCaps: caps });
   if (scan.verdict === 'reject') return discard(scan.reasons[0] ?? 'the safety scan rejected this asset');
 
   // 4. Strip what the scan condemned. A failed delete is a discard, not a warning.
@@ -1315,9 +1554,19 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
   }
   if (leftover.length) return discard(`${leftover.length} script(s) survived removal: ${leftover.slice(0, 6).join(', ')}`);
 
+  // 6. Out of the holder, under names nobody else has.
+  let finalPaths = paths;
+  let warning: string | undefined;
+  if (holder) {
+    const settled = await settleOutOfHolder(ctx, holder, paths, parentRoot);
+    finalPaths = settled.paths;
+    warning = settled.warning;
+  }
+  ctx.noteCreated?.(finalPaths);
+
   return {
     assetId,
-    inserted: paths,
+    inserted: finalPaths,
     scan: scan.verdict,
     // Codes and one-line reasons only. An excerpt of the removed Luau would put the attacker's text
     // into the transcript, where the model reads it as prose.
@@ -1325,7 +1574,8 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
       .filter((s) => s.action === 'remove')
       .map((s) => ({ path: s.path, class: s.className, severity: s.severity, why: [...new Set(s.findings.map((f) => f.code))].join(', ') })),
     ...(scan.findings.length ? { notes: scan.findings.slice(0, 6).map((f) => `${f.severity} ${f.code}: ${f.message}`) } : {}),
-    proven: `re-listed after removal: zero scripts remain under ${paths.join(', ')}`,
+    proven: `re-listed after removal: zero scripts remain under ${finalPaths.join(', ')}`,
+    ...(warning ? { placementWarning: warning } : {}),
   };
 }
 
@@ -1763,6 +2013,431 @@ function webCtx(ctx: AgentCtx): WebToolCtx {
   };
 }
 
+/**
+ * find_library_model, as one function so the run records what the library answered (library-run.ts) around it,
+ * whichever of its several return paths answered.
+ */
+async function findLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
+  const query = a.query === undefined ? undefined : String(a.query);
+  if (a.sourceSHA !== undefined && !query?.trim()) return {error:'Source-scoped search requires plain query words; use query_owner_catalog for source pages.'};
+  if (a.sourceSHA !== undefined && !/^[a-f0-9]{64}$/.test(String(a.sourceSHA))) return {error:'Use an original source SHA from query_owner_catalog.'};
+  if (a.sourceSHA !== undefined && (!ctx.userId || !ctx.localOwnerGateway || !ctx.studioConnected())) return {error:'Source-scoped search needs the authenticated paired local owner gateway.'};
+  let localStatus: unknown;
+  if (ctx.localOwnerGateway && ctx.studioConnected() && query) {
+    const local=await localOwnerQuery(ctx,{action:'search',query,sourceSHA:a.sourceSHA === undefined ? undefined : String(a.sourceSHA),limit:Math.min(10,Math.max(1,Number(a.limit)||5)),
+      after:a.after === undefined ? undefined : localNodeId(String(a.after)),className:a.className === undefined ? undefined : String(a.className)});
+    localStatus=local;
+    if (Array.isArray(local.items) && local.items.length) return {source:'owner_local',
+      results:local.items.map((row) => ({...rec(row),id:LOCAL_OWNER_PREFIX+localNodeId(String(rec(row).id)),preview:{status:'native-pixels-required',visualApproved:false,gameplayVerified:false}})),
+      nextAfter:local.nextAfter ?? null,priority:'full local owner corpus first',
+      note:'Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair.'};
+    if (a.after !== undefined || a.sourceSHA !== undefined) return {...local,source:'owner_local',results:[],note:'This local page ended or was refused. No unrelated catalogue page substituted.'};
+  }
+  const owned = await findOwnerComponents(ctx.env, libraryNamespace(ctx.env, ctx.userId), query ?? '', Number(a.limit ?? 10));
+  if (owned.length) {
+    const results: Record<string,unknown>[] = [];
+    let chars = 0;
+    for (const c of owned) {
+      const row = {id:c.id,name:c.name.slice(0,128),className:c.className.slice(0,128),path:c.path.slice(0,256),
+        summary:c.summary.slice(0,512),usage:c.usage.slice(0,512),componentSha256:c.componentSha256,
+        byteLength:c.byteLength,dependencyCount:c.dependencyIds.length,unresolvedRefCount:c.unresolvedRefs.length,
+        descriptionAvailable:!!c.descriptionSha256,scriptsPreserved:c.scriptsPreserved,...(c.readiness ? {readiness:c.readiness} : {})};
+      const size = JSON.stringify(row).length;
+      if (chars + size > 18000) break;
+      results.push(row); chars += size;
+    }
+    return {source:'owner_corpus',results,total:owned.length,outputLimited:results.length < owned.length,
+      localGateway:localStatus ? ('error' in rec(localStatus) ? 'unavailable' : 'no matches') : 'not configured',
+      note:'Owner-attested cloud seed components are fallback after the full local corpus. Components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data; scriptsPreserved:false marks a script-free unit whose original scripts were excluded.'};
+  }
+  const found = findLibraryModels({
+    query,
+    genre: a.genre ? String(a.genre) : undefined,
+    kind: a.kind ? String(a.kind) : undefined,
+    limit: Math.max(10, a.limit === undefined ? 10 : Number(a.limit)),
+    creatorStoreOnly: true,
+    includeThirdParty: a.includeThirdParty === true,
+  });
+  const rejected = new Set(ctx.rejectedLibraryAssetIds ?? []);
+  const requestedObject = visualAssetAnchor(query ?? '', []);
+  const wanted = found.results.length;
+  const cap = a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10));
+  const kept = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId)
+    && matchesVisualAnchor(row.name, requestedObject ?? undefined)
+    && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor));
+  found.results = kept.slice(0, cap);
+  // Said, not silent: rows left out because their name lacks the last word of the agent's own query.
+  const leftOut = wanted - kept.length;
+  if (leftOut > 0 && requestedObject) found.note = `${leftOut} row(s) matching your words were left out because their name does not contain "${requestedObject}" (the last word of your query, or an anchor from the user's rejection); search other words to see them.${found.note ? ' ' + found.note : ''}`;
+  if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Try other words (several queries are fine), browse_owner_library, or take the next step of the asset order (Creator Store, adapt or combine, then Parts in full detail); do not pass off an unrelated preview as this object. If the request cannot work without it, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
+  return found;
+}
+
+/** insert_library_model, as one function so the run can record how the library insert ended (library-run.ts). */
+async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
+  const refuse = (reason: string, extra?: Record<string, unknown>) => insertFailure(ctx, { stage: 'policy', reason, retry: false, ...(extra ? { extra } : {}) });
+  if (a.gameId !== undefined || a.path !== undefined) {
+    const piece = candidateOf({ gameId: a.gameId, path: a.path, name: a.name });
+    if ('error' in piece) return piece;
+    const size = placeSizeOf(a);
+    if ('error' in size) return size;
+    return placeLibraryPiece(ctx, piece, { name: a.name, at: a.position, replace: a.replace, size });
+  }
+  if (a.id === undefined) return refuse('give { id } from find_library_model, or { gameId, path } from browse_owner_library');
+  if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return insertLocalOwner(ctx, { ...a, parent: a.parent ?? 'game.Workspace' });
+  if (String(a.id ?? '').startsWith('owner:')) {
+    if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return refuse('Native owner import is unavailable for this run: check permissions and update the paired plugin.');
+    if (!ctx.userId) return refuse('Owner corpus insertion requires the authenticated project owner.');
+    const library = libraryNamespace(ctx.env, ctx.userId);
+    const component = await ownerComponent(ctx.env, library, String(a.id));
+    if (!component) return refuse('This component has no verified bytes in this owner corpus. Ingest its complete native export first.');
+    const pos = a.position === undefined ? undefined : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
+    if (pos && !Array.isArray(pos)) return refuse(pos.error);
+    const scale = a.scale === undefined ? undefined : Number(a.scale);
+    if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return refuse(`scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}`);
+    const height = a.height === undefined ? undefined : Number(a.height);
+    if (height !== undefined && !(height > 0 && height <= 2000)) return refuse('height must be between 0 and 2000 studs');
+    const longestOwner = a.size === undefined ? undefined : Number(a.size);
+    if (longestOwner !== undefined && !(longestOwner > 0 && longestOwner <= 2000)) return refuse('size must be between 0 and 2000 studs');
+    if ([scale, height, longestOwner].filter((v) => v !== undefined).length > 1) return refuse('give one of size (longest side in studs), height or scale, not several');
+    // Imports only add objects and Studio's undo takes them back, so an oversize place does not refuse them (librarySafetyCopy).
+    const copy = await librarySafetyCopy(ctx, 'before owner component import');
+    if ('error' in copy) return refuse(`Owner import refused: ${copy.error}`);
+    const token = await ownerComponentGrant(ctx.env, library, component);
+    const imported = await ctx.execStudioOp({ op: 'import_owner_component', componentId: component.id,
+      componentSha256: component.componentSha256, byteLength: component.byteLength, contentToken: token,
+      parent: String(a.parent ?? 'game.Workspace'), name: component.name.slice(0,96) }, 120_000);
+    if (!imported.ok) return insertFailure(ctx, { ...insertStage(imported), error: imported.error ?? 'Native owner import failed', extra: { library: component.id } });
+    const landed = await placeImportedOwner((o, t) => ctx.execStudioOp(o as StudioOp, t), imported.data, { position: Array.isArray(pos) ? pos : undefined, scale, height, longest: longestOwner });
+    ctx.noteCreated?.(Array.isArray(landed.inserted) ? (landed.inserted as unknown[]).filter((p): p is string => typeof p === 'string') : []);
+    return { ...rec(imported.data), ...landed, library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
+      note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' };
+  }
+  const pick = libraryModel(String(a.id ?? ''));
+  if (!pick) return refuse(`${String(a.id ?? '')} is not a library id. Call find_library_model and pass one of its ids unchanged.`);
+  if (pick.assetId === undefined) return refuse('This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.');
+  const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources, ctx.assetSettingsUnread);
+  if (refused) return refuse(refused);
+  if ((libraryRunOf(ctx).failedIds ?? []).includes(pick.assetId)) {
+    return insertFailure(ctx, { stage: 'policy', reason: 'this id already failed in this run, so it was not sent to Studio again; take the next candidate', retry: false, libraryId: pick.id,
+      error: `${pick.id} (asset ${pick.assetId}) already failed earlier in this run and was not tried again. Nothing was sent to Studio.` });
+  }
+  const pos = a.position === undefined ? [0, 0, 0] : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
+  if (!Array.isArray(pos)) return refuse(pos.error);
+  const scale = a.scale === undefined ? undefined : Number(a.scale);
+  if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return refuse(`scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}`);
+  const height = a.height === undefined ? undefined : Number(a.height);
+  if (height !== undefined && !(height > 0 && height <= 2000)) return refuse('height must be between 0 and 2000 studs');
+  const longest = a.size === undefined ? undefined : Number(a.size);
+  if (longest !== undefined && !(longest > 0 && longest <= 2000)) return refuse('size must be between 0 and 2000 studs');
+  if ([scale, height, longest].filter((v) => v !== undefined).length > 1) return refuse('give one of size (longest side in studs), height or scale, not several');
+
+  const assetId = pick.assetId;
+  const placed = rec(await insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace'), pick.id));
+  if ('error' in placed) return { ...placed, library: pick.id };
+  let paths = (Array.isArray(placed.inserted) ? placed.inserted : []).filter((p): p is string => typeof p === 'string');
+  if (paths.length > 1) {
+    const grouped = await ctx.execStudioOp({ op: 'group_instances', paths, name: pick.name.replace(/[^A-Za-z0-9 _-]+/g, '').slice(0, 50) || 'LibraryModel' }, 20_000);
+    const path = grouped.ok ? strOrNull(rec(grouped.data).path) : null;
+    if (path) paths = [path];
+    ctx.noteCreated?.(paths);
+  }
+  const where = paths.length === 1
+    ? await placeInserted((o, t) => ctx.execStudioOp(o as StudioOp, t), paths[0]!, pick, { position: pos, scale, height, longest })
+    : { error: 'inserted as several pieces; left where Roblox put them' };
+  return {
+    ...placed,
+    inserted: paths,
+    library: { id: pick.id, name: pick.name, kind: pick.kind, licence: pick.licence, ...(pick.attribution ? { attribution: pick.attribution } : {}) },
+    ...('error' in where ? { placementWarning: where.error } : { placed: where }),
+  };
+}
+
+/**
+ * Send a create_instances list as one call, or as sequential calls when it is over the per-call limits (studio-props.ts
+ * CREATE_LIMITS). A call that fails after earlier ones landed says how many items DID land, so the model carries on from
+ * there instead of rebuilding what is already in the place; those calls changed Studio, so the result says so.
+ */
+async function createInBatches(ctx: AgentCtx, items: unknown[]): Promise<unknown> {
+  const batches = planCreateBatches(items);
+  if (batches.length <= 1) return op(ctx, { op: 'create_instances', items: items as never[] });
+  const merged: Record<string, unknown> = {};
+  let landed = 0;
+  for (let i = 0; i < batches.length; i++) {
+    const res = await op(ctx, { op: 'create_instances', items: batches[i] as never[] });
+    const r = rec(res);
+    if (typeof r.error === 'string') {
+      const where = `Batch ${i + 1} of ${batches.length} failed`;
+      return landed
+        ? { ...r, error: `${where} after ${landed} of ${items.length} items were created: ${r.error} The ${items.length - landed} items from index ${landed} on were not created; send those again once the cause is fixed.`, createdItems: landed, projectMutated: true }
+        : { ...r, error: `${where}: ${r.error}` };
+    }
+    landed += batches[i]!.length;
+    for (const [key, value] of Object.entries(r)) merged[key] = Array.isArray(value) && Array.isArray(merged[key]) ? [...(merged[key] as unknown[]), ...value] : value;
+  }
+  // Hundreds of created paths would push the result past the tool-result ceiling and cut it mid-JSON; the head is enough to
+  // address what was built, and the count says the rest exists.
+  const compact: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(merged)) {
+    if (Array.isArray(value) && value.length > 20) { compact[key] = value.slice(0, 20); compact[`${key}More`] = value.length - 20; } else compact[key] = value;
+  }
+  return { ...compact, batches: batches.length, createdItems: landed };
+}
+
+/** Copies the plugin's place_copies op handles per call (apps/apple-plugin/src/ops/Compose.luau MAX_PLACE). */
+const PLACE_COPIES_PER_CALL = 200;
+
+/**
+ * clone_instances with a placement: lay the copies out here (placement.ts), then send them as place_copies ops of at most
+ * 200. The plugin op copies the piece (a Folder wrapper is unwrapped to the model inside it), strips scripts, anchors parts
+ * and stands the copy with its bottom on `at`, scaled to a height when asked. Names are made unique against the parent's
+ * existing children, so a second call continues where the first stopped.
+ */
+async function placeCopiesCall(ctx: AgentCtx, a: Record<string, unknown>, sources: string[], parentArg: string | undefined): Promise<unknown> {
+  if (sources.length > 8) return { error: 'give at most 8 template paths to cycle through' };
+  const plan = planCopies(
+    { at: a.at, along: a.along, within: a.within, yaw: a.yaw, scale: a.scale, jitter: a.jitter, seed: a.seed },
+    DIRECT_EDIT_LIMITS.translation,
+  );
+  if ('error' in plan) return { error: plan.error };
+  const first = sources[0]!;
+  const parentOf = (path: string) => path.replace(/\.[^.\[\]]+$|\["[^"]+"\]$/, '');
+  const inWorkspace = (path: string) => path === 'game.Workspace' || path.startsWith('game.Workspace.') || path.startsWith('game.Workspace[');
+  const parent = parentArg ?? (inWorkspace(parentOf(first)) ? parentOf(first) : 'game.Workspace');
+  const notes: string[] = plan.note ? [plan.note] : [];
+
+  // Heights, for a scale: each template measured once.
+  const heights = new Map<string, number>();
+  if (plan.copies.some((c) => c.scale !== undefined)) {
+    for (const source of sources) {
+      const b = await ctx.execStudioOp({ op: 'spatial_query', action: 'bounds', path: source } as StudioOp, 15_000);
+      const size = rec(b.ok ? b.data : null).size;
+      const h = Array.isArray(size) ? Number(size[1]) : NaN;
+      if (!(h > 0)) return { error: `could not measure ${source} to scale it (${b.ok ? 'no size reported' : (b.error ?? 'spatial_query bounds failed')}). Check the path, or drop scale.` };
+      heights.set(source, h);
+    }
+  }
+
+  // `within` without a y: the ground under the area's centre, measured once.
+  let groundY: number | undefined;
+  if (plan.needsGround) {
+    const cx = plan.copies.reduce((n, c) => n + c.at[0], 0) / plan.copies.length;
+    const cz = plan.copies.reduce((n, c) => n + c.at[2], 0) / plan.copies.length;
+    const g = await ctx.execStudioOp({ op: 'spatial_query', action: 'find_ground', position: [cx, 500, cz] } as StudioOp, 15_000);
+    const hit = rec(rec(g.ok ? g.data : null).result);
+    const pos = hit.position;
+    if (hit.hit === true && Array.isArray(pos) && Number.isFinite(Number(pos[1]))) {
+      groundY = Number(pos[1]);
+      notes.push(`Ground height was measured once, at the centre of the area (y ${Math.round(groundY * 10) / 10}), and used for every copy. On rolling terrain use scatter_instances, which drops each copy onto the ground.`);
+    } else {
+      return { error: 'within has no y and there is no ground under its centre to measure. Give within.y, or build the ground first.' };
+    }
+  }
+
+  // Names that cannot collide with what the parent already holds.
+  const base = (lastSegment(first) ?? 'Copy').replace(/[^A-Za-z0-9_ -]/g, '').slice(0, 40) || 'Copy';
+  const tree = await ctx.execStudioOp({ op: 'get_tree', root: parent, maxDepth: 1, maxNodes: 1200 }, 20_000);
+  let next = 1;
+  if (tree.ok) {
+    const pattern = new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_(\\d+)$`);
+    for (const k of Array.isArray(rec(rec(tree.data).root).children) ? (rec(rec(tree.data).root).children as unknown[]) : []) {
+      const n = Number(pattern.exec(String(rec(k).name ?? ''))?.[1]);
+      if (Number.isFinite(n) && n >= next) next = n + 1;
+    }
+  }
+  const stem = typeof a.name === 'string' && a.name.trim() ? a.name.trim().replace(/[^A-Za-z0-9_ -]/g, '').slice(0, 40) || base : base;
+
+  const items = plan.copies.map((c, i) => {
+    const from = sources[i % sources.length]!;
+    const item: Record<string, unknown> = { from, parent, name: `${stem}_${next + i}`, at: [c.at[0], groundY ?? c.at[1], c.at[2]] };
+    if (c.yaw) item.yaw = Math.round(c.yaw * 100) / 100;
+    if (c.scale !== undefined) item.height = Math.round(heights.get(from)! * c.scale * 100) / 100;
+    return item;
+  });
+
+  const placed: string[] = [];
+  const failed: { index: number; error: string }[] = [];
+  for (let start = 0; start < items.length; start += PLACE_COPIES_PER_CALL) {
+    const res = await ctx.execStudioOp({ op: 'place_copies', items: items.slice(start, start + PLACE_COPIES_PER_CALL) } as unknown as StudioOp, 120_000);
+    if (!res.ok) {
+      const unsupported = /unknown Studio operation|unsupported|not supported/i.test(String(res.error ?? ''));
+      const where = start ? ` after ${placed.length} of ${items.length} copies were placed` : '';
+      const error = unsupported
+        ? 'This Studio plugin cannot place copies at positions yet (it does not know place_copies); update the Apple plugin. Until then use clone_instances with only `paths`, then transform_instances to move each copy.'
+        : `${res.error ?? 'place_copies failed'}${where}`;
+      return { error, ...(placed.length ? { placed: placed.slice(0, 20), placedCount: placed.length, projectMutated: true } : {}) };
+    }
+    const d = rec(res.data);
+    for (const p of Array.isArray(d.placed) ? d.placed : []) if (typeof p === 'string') placed.push(p);
+    for (const f of Array.isArray(d.failed) ? d.failed : []) {
+      const row = rec(f);
+      failed.push({ index: start + Number(row.index ?? 1) - 1, error: String(row.error ?? 'failed').slice(0, 160) });
+    }
+  }
+  ctx.noteCreated?.(placed);
+  if (!placed.length) return { error: `nothing was placed: ${failed[0]?.error ?? 'the plugin placed no copies'}` };
+  return {
+    placedCount: placed.length,
+    requested: items.length,
+    placed: placed.slice(0, 20),
+    ...(placed.length > 20 ? { placedMore: placed.length - 20 } : {}),
+    ...(failed.length ? { failed: failed.slice(0, 8), failedCount: failed.length } : {}),
+    parent,
+    seed: finiteOr(a.seed, 1),
+    ...(notes.length ? { notes } : {}),
+  };
+}
+
+function finiteOr(v: unknown, fallback: number): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+}
+
+/**
+ * create_instances with a `group`: create the items (in batches when there are many), then gather the top-level ones into one
+ * Model or Folder with group_instances (which, unlike nesting them as children, has no 40-children limit). A failed grouping
+ * leaves the created items in place and says so; the grouping is one more op, never a reason to refuse the build.
+ */
+async function createGrouped(ctx: AgentCtx, items: unknown[], rawGroup: unknown): Promise<unknown> {
+  const g = rec(rawGroup);
+  const className = String(g.className ?? 'Model');
+  const name = typeof g.name === 'string' ? g.name.trim() : '';
+  if (className !== 'Model' && className !== 'Folder') return { error: 'Nothing was created. group.className must be "Model" or "Folder".' };
+  if (!name || name.length > 96) return { error: 'Nothing was created. group.name must be 1-96 characters.' };
+  if (g.primaryPart !== undefined && (typeof g.primaryPart !== 'string' || className !== 'Model')) return { error: 'Nothing was created. group.primaryPart must name a part, and only a Model has one.' };
+  if (items.length > 120) return { error: `Nothing was created. A group holds at most 120 items per call (this has ${items.length}); build it in pieces and group them.` };
+  const home = sharedParent(items);
+  if (typeof home !== 'string') return { error: `Nothing was created. ${home.error}` };
+  const made = rec(await createInBatches(ctx, items));
+  if (typeof made.error === 'string') return made;
+  const top = items.map((i) => {
+    const it = rec(i);
+    return appendStudioPath(home, String(it.name ?? it.className ?? ''));
+  });
+  if (top.some((p) => p === null)) return { ...made, groupWarning: 'the items were created but one has a name that cannot be addressed, so they were not grouped' };
+  if (className === 'Folder') {
+    // group_instances only makes Models; a Folder is made first and the items are moved into it.
+    const folderPath = appendStudioPath(home, name);
+    const f = await ctx.execStudioOp({ op: 'create_instances', items: [{ className: 'Folder', name, parent: home }] }, 20_000);
+    const moved = f.ok && folderPath
+      ? await ctx.execStudioOp({ op: 'move_instances', moves: (top as string[]).map((path) => ({ path, newParent: folderPath })) }, 30_000)
+      : null;
+    if (!folderPath || !f.ok || !moved?.ok) {
+      return { ...made, groupWarning: `the items were created but could not be put in a Folder (${!f.ok ? (f.error ?? 'create failed') : !moved ? 'the name cannot be addressed' : (moved.error ?? 'move failed')}); use group_instances or move_instances` };
+    }
+    ctx.noteCreated?.([folderPath]);
+    return { ...made, group: folderPath, grouped: top.length };
+  }
+  const grouped = await ctx.execStudioOp({ op: 'group_instances', paths: top as string[], name }, 30_000);
+  const path = grouped.ok ? strOrNull(rec(grouped.data).path) : null;
+  if (!path) {
+    return { ...made, groupWarning: `the items were created but could not be grouped (${grouped.ok ? 'no path returned' : (grouped.error ?? 'group_instances failed')}); group them with group_instances` };
+  }
+  ctx.noteCreated?.([path]);
+  const out: Record<string, unknown> = { ...made, group: path, grouped: top.length };
+  if (typeof g.primaryPart === 'string') {
+    const part = appendStudioPath(path, g.primaryPart);
+    const set = part ? await ctx.execStudioOp({ op: 'set_props', path, props: { PrimaryPart: { t: 'Instance', v: part } } } as StudioOp, 20_000) : null;
+    if (!set || !set.ok) out.groupWarning = `the group was made but its PrimaryPart could not be set (${set && !set.ok ? (set.error ?? 'set_props failed') : 'the part name cannot be addressed'})`;
+  }
+  return out;
+}
+
+/**
+ * What set_mood's `overrides` may set, by group. A name is here only if the plugin's property allowlist carries it
+ * (apps/apple-plugin/src/Commands.luau PROPERTY_ALLOW); the value is the kind it takes, with a range where a wrong number
+ * is silently nonsense (ClockTime past 24, a colour channel past 255).
+ */
+const MOOD_OVERRIDES = {
+  lighting: {
+    ClockTime: { kind: 'number', min: 0, max: 24 }, Brightness: { kind: 'number', min: 0, max: 20 },
+    ExposureCompensation: { kind: 'number', min: -5, max: 5 }, ShadowSoftness: { kind: 'number', min: 0, max: 1 },
+    GlobalShadows: { kind: 'bool' }, GeographicLatitude: { kind: 'number', min: -90, max: 90 },
+    EnvironmentDiffuseScale: { kind: 'number', min: 0, max: 1 }, EnvironmentSpecularScale: { kind: 'number', min: 0, max: 1 },
+    Ambient: { kind: 'color' }, OutdoorAmbient: { kind: 'color' }, ColorShift_Top: { kind: 'color' }, ColorShift_Bottom: { kind: 'color' },
+    FogStart: { kind: 'number', min: 0, max: 100000 }, FogEnd: { kind: 'number', min: 0, max: 100000 }, FogColor: { kind: 'color' },
+  },
+  atmosphere: {
+    Density: { kind: 'number', min: 0, max: 1 }, Offset: { kind: 'number', min: 0, max: 1 }, Haze: { kind: 'number', min: 0, max: 10 },
+    Glare: { kind: 'number', min: 0, max: 10 }, Color: { kind: 'color' }, Decay: { kind: 'color' },
+  },
+  colorCorrection: {
+    Brightness: { kind: 'number', min: -1, max: 1 }, Contrast: { kind: 'number', min: -1, max: 1 },
+    Saturation: { kind: 'number', min: -1, max: 1 }, TintColor: { kind: 'color' },
+  },
+} as const;
+
+type MoodOverrideValues = Record<string, number | boolean | RGB>;
+
+function readMoodOverrides(raw: unknown): { values: Partial<Record<keyof typeof MOOD_OVERRIDES, MoodOverrideValues>> } | { error: string } {
+  if (raw === undefined) return { values: {} };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'overrides must be {lighting?, atmosphere?, colorCorrection?}, each an object of property values.' };
+  const values: Partial<Record<keyof typeof MOOD_OVERRIDES, MoodOverrideValues>> = {};
+  for (const [group, body] of Object.entries(raw as Record<string, unknown>)) {
+    const spec = (MOOD_OVERRIDES as Record<string, Record<string, { kind: string; min?: number; max?: number }>>)[group];
+    if (!spec) return { error: `overrides.${group} is not a group. Use ${Object.keys(MOOD_OVERRIDES).join(', ')}.` };
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return { error: `overrides.${group} must be an object of property values.` };
+    const out: MoodOverrideValues = {};
+    for (const [name, value] of Object.entries(body as Record<string, unknown>)) {
+      const rule = spec[name];
+      if (!rule) return { error: `overrides.${group}.${name} cannot be set here (the plugin does not write it). Allowed: ${Object.keys(spec).join(', ')}.` };
+      if (rule.kind === 'bool') {
+        if (typeof value !== 'boolean') return { error: `overrides.${group}.${name} must be true or false.` };
+        out[name] = value;
+      } else if (rule.kind === 'number') {
+        if (typeof value !== 'number' || !Number.isFinite(value) || value < rule.min! || value > rule.max!) return { error: `overrides.${group}.${name} must be a number from ${rule.min} to ${rule.max}.` };
+        out[name] = value;
+      } else {
+        if (!Array.isArray(value) || value.length !== 3 || !value.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 255)) return { error: `overrides.${group}.${name} must be a colour [r, g, b] with each channel 0-255.` };
+        out[name] = value as unknown as RGB;
+      }
+    }
+    values[group as keyof typeof MOOD_OVERRIDES] = out;
+  }
+  return { values };
+}
+
+/**
+ * Measured facts about the scene for audit_build: terrain, lighting and structure. Numbers only. Each read is best-effort and
+ * says why when it could not be made, so a missing measurement is never rendered as an empty scene.
+ *
+ * Terrain is one read of a 256 x 64 x 256 stud box centred on the parts' footprint (or the origin when there are none): the
+ * material histogram and how many voxels are solid. The ground heights come from one find_flat probe over the same footprint,
+ * which also counts how many of its rays hit anything. Both are samples of that box, and say so.
+ */
+async function measureScene(ctx: AgentCtx, workspaceTree: unknown, capture: ReturnType<typeof auditCaptureFromTree>): Promise<Record<string, unknown> & { terrain?: Record<string, unknown> }> {
+  const structure = sceneFromTree(workspaceTree);
+  const parts = capture?.parts ?? [];
+  const cx = parts.length ? Math.round((Math.min(...parts.map((p) => p.pos[0])) + Math.max(...parts.map((p) => p.pos[0]))) / 2) : 0;
+  const cz = parts.length ? Math.round((Math.min(...parts.map((p) => p.pos[2])) + Math.max(...parts.map((p) => p.pos[2]))) / 2) : 0;
+  const box = { min: [cx - 128, -16, cz - 128], max: [cx + 128, 48, cz + 128] };
+  const terrain: Record<string, unknown> = { sampledBox: box };
+  const read = await ctx.execStudioOp({ op: 'terrain_read', min: box.min, max: box.max } as StudioOp, 30_000);
+  if (read.ok) {
+    const d = rec(read.data);
+    const voxels = Number(d.voxels) || 0;
+    const solid = Number(d.solidVoxels) || 0;
+    Object.assign(terrain, {
+      voxels, solidVoxels: solid, fillRatio: voxels ? Math.round((solid / voxels) * 1000) / 1000 : 0,
+      materials: Array.isArray(d.materials) ? d.materials.slice(0, 12) : [],
+    });
+  } else terrain.terrainUnavailable = String(read.error ?? 'terrain_read failed').slice(0, 160);
+  const ground = await ctx.execStudioOp({ op: 'spatial_query', action: 'find_flat', region: { min: [cx - 128, -64, cz - 128], max: [cx + 128, 256, cz + 128] }, samples: 256, maxSlopeDeg: 60 } as StudioOp, 30_000);
+  if (ground.ok) {
+    const d = rec(ground.data);
+    const ys = (Array.isArray(d.flat) ? d.flat : []).map((p) => (Array.isArray(p) ? Number(p[1]) : NaN)).filter((y) => Number.isFinite(y));
+    terrain.groundProbe = {
+      raysCast: Number(d.sampled) || 0, raysHit: Number(d.hits) || 0,
+      ...(ys.length ? { sampledHeights: { min: Math.round(Math.min(...ys) * 10) / 10, max: Math.round(Math.max(...ys) * 10) / 10, count: ys.length } } : {}),
+    };
+  } else terrain.groundProbeUnavailable = String(ground.error ?? 'find_flat failed').slice(0, 160);
+  const lighting = capture?.lighting;
+  return {
+    terrain,
+    ...(lighting ? { lighting: { clockTime: lighting.clockTime, brightness: lighting.brightness, ambient: lighting.ambient, atmospherePresent: lighting.effects.includes('Atmosphere'), effects: lighting.effects, lightInstances: lighting.lightInstances } } : {}),
+    ...(structure ? { structure } : {}),
+  };
+}
+
 export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
@@ -1841,7 +2516,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       name: 'edit_script',
       description:
         'Create or edit a script. Provide exactly one of `source` (full new content), `edits` (find/replace list, exact match), or `source_file` (an exact saved .lua/.luau workspace version). For a single exact edit use edits:[{find:"exact old text",replace:"new text"}]; top-level find + replace is an equivalent shorthand, never combine it with another input. To create a new script set `create_class` + `create_parent`. ' +
-        'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. A script that newly builds detailed props from Parts is also refused: use a verified model, and leave it unbuilt when none is available. Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
+        'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. A script that newly assembles a Model from Parts waits until the library was tried (find_library_model). Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
       parameters: S(
         {
           path: { type: 'string', description: 'Full path, e.g. game.ServerScriptService.RoundManager' },
@@ -1849,7 +2524,7 @@ export const TOOLS: Record<string, ToolImpl> = {
           find: { type: 'string', description: 'Single-edit shorthand: non-empty exact old text. Requires replace; omit source, edits and source_file.' },
           replace: { type: 'string', description: 'Single-edit shorthand: replacement text, including an empty string for deletion. Requires find.' },
           all: { type: 'boolean', description: 'For the single-edit shorthand only: replace all exact occurrences.' },
-          baseHash: { type: 'string', description: 'Alias for base_hash returned by read_script. If both are provided they must match.' },
+          baseHash: { type: 'string', description: 'Alias for base_hash; both must match.' },
           edits: {
             type: 'array',
             items: S({ find: { type: 'string' }, replace: { type: 'string' }, all: { type: 'boolean' } }, ['find', 'replace']),
@@ -2014,6 +2689,15 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (sourceFile) {
         const ingress = refuseLuauIngress(after);
         if (ingress) return ingress;
+      }
+      // D-MODELLIB-2 also applies to scripts that create visual props at runtime: a Model assembled from Parts in a
+      // script is held to the same order as one made by create_instances.
+      const handMadeModel = refuseNewHandMadeModelLuau(
+        luauScanVariants(after), before === null ? undefined : luauScanVariants(before), libraryOrder(ctx),
+      );
+      if (handMadeModel) {
+        if (handMadeModel.ordered) noteOrderRefusal(ctx);
+        return handMadeModel;
       }
       // D-UIONLY-1: a script may use inserted UI but not make more UI than it already did.
       const handMadeUi = refuseLibraryLuau(luauScanVariants(after), UI_RULE, before === null ? undefined : luauScanVariants(before));
@@ -2232,8 +2916,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'create_instances',
       description:
-        'Create instances (parts, models, UI, folders...). Each item: {className, name, parent, props?, children?}. Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Anchored":{"t":"bool","v":true}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}, "Size":{"t":"UDim2","v":[0.5,0,0.1,0]}, "AnchorPoint":{"t":"Vector2","v":[0.5,0.5]}}. Supported prop types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Instance,nil. ParticleEmitter Transparency and Size are NumberSequence, not NumberRange: {"t":"NumberSequence","v":[[0,0.2,0],[1,1,0]]} (time 0..1, value, envelope); ParticleEmitter Color is {"t":"ColorSequence","v":[[0,[1,0.8,0.4]],[1,[1,0.4,0.1]]]}. If the result reports propIssues, the instances WERE created — fix the listed properties with set_properties.',
-      parameters: S({
+        'Create instances (parts, models, folders, lights...). Item: {className, name, parent, props?, children?}. Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Anchored":{"t":"bool","v":true}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}}. Types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Instance,nil. If propIssues comes back the instances WERE created: fix them with set_properties. Per call: 120 items, 400 instances, 40 children each, 12 levels, 48 props each (longer lists are split for you). origin {at:[x,y,z], yaw?} builds in local space around (0,0,0) and places the batch; group {className:"Model"|"Folder", name, primaryPart?} wraps it (up to 120 items); build once, repeat with clone_instances. Plain parts (Part, WedgePart, CornerWedgePart, TrussPart) are Anchored unless Anchored is false; bare Size/Position/Orientation/Color arrays and Material/Shape names on parts are typed for you.',      parameters: S({
         items: {
           type: 'array',
           minItems: 1,
@@ -2250,6 +2933,8 @@ export const TOOLS: Record<string, ToolImpl> = {
             required: ['className', 'name'],
           },
         },
+        origin: { type: 'object' },
+        group: { type: 'object' },
       }, ['items']),
     },
     studio: true,
@@ -2268,6 +2953,9 @@ export const TOOLS: Record<string, ToolImpl> = {
     //   position goes and call it a success. A refusal here is a tool error the model corrects in
     //   the same turn: no round trip, no failed op, nothing touched in the place. ]]
     run: (ctx, a) => {
+      // `items` missing used to go to the plugin as [] and come back "items must contain at least one instance", which reads
+      // as a problem with the list's length rather than with its absence.
+      if (!Array.isArray(a.items)) return Promise.resolve({ error: 'items was missing or not an array, so nothing was sent. Send items: [{className, name, parent, props?, children?}, ...].' });
       // D-UIONLY-1: UI classes come from insert_ui_component only.
       const handMadeUi = refuseLibraryItems(Array.isArray(a.items) ? a.items.filter(item => !isEmptyScreenGuiHost(item)) : a.items, UI_RULE);
       if (handMadeUi) return Promise.resolve(handMadeUi);
@@ -2281,14 +2969,31 @@ export const TOOLS: Record<string, ToolImpl> = {
       const pass = normaliseItems(a.items);
       if (pass.refusals.length > 0) {
         return Promise.resolve({
-          error: `Nothing was created. ${pass.refusals.length === 1 ? 'One property' : `${pass.refusals.length} properties`} could not be read, and the rest were left alone rather than half-building the set: ${pass.refusals.map((r) => r.message).join(' ')}`,
+          error: `Nothing was created. ${pass.refusals.length === 1 ? 'One property' : `${pass.refusals.length} properties`} could not be read, and the rest were left alone rather than half-building the set: ${describeRefusals(pass.refusals)}`,
         });
       }
-      // D-MODELLIB-2, restated (phase 1): the library is preferred, never forced. A Model of parts that is named like
-      // something the library already holds is created, and the result says what the library has, so the agent can look
-      // before it hand-builds. The agent decides; nothing is refused by a noun.
+      const issues = createLimitIssues((pass.items as unknown[]) ?? []);
+      if (issues.length) return Promise.resolve({ error: `Nothing was created. ${issues.join(' ')}` });
+      // D-MODELLIB-2 is an ORDER (model-rule.ts): a Model of Parts waits until the run has tried the library,
+      // at most twice, and never when the library is not on offer. A mesh cannot be created at all.
+      const order = libraryOrder(ctx);
+      const handMadeModel = refuseHandMadeModel(a.items, order);
+      if (handMadeModel) {
+        if (handMadeModel.ordered) noteOrderRefusal(ctx);
+        return Promise.resolve(handMadeModel);
+      }
+      let items = (pass.items as unknown[]) ?? [];
+      if (a.origin !== undefined) {
+        const origin = readOrigin(a.origin, DIRECT_EDIT_LIMITS.translation);
+        if ('error' in origin) return Promise.resolve({ error: `Nothing was created. ${origin.error}` });
+        const moved = applyOrigin(items, origin);
+        if ('error' in moved) return Promise.resolve(moved);
+        items = moved.items;
+      }
+      // D-MODELLIB-2, phase 1: a Model of parts named like something the library already holds is created, and the
+      // result says what the library has, so the agent can look before it hand-builds. Information, never a refusal.
       const advice = libraryAdvice(Array.isArray(a.items) ? a.items : []);
-      const made = op(ctx, { op: 'create_instances', items: (pass.items as never[]) ?? [] });
+      const made = Promise.resolve(a.group === undefined ? createInBatches(ctx, items) : createGrouped(ctx, items, a.group));
       return advice ? made.then((r) => (r && typeof r === 'object' && !('error' in r) ? { ...r, libraryAdvice: advice } : r)) : made;
     },
   },
@@ -2366,24 +3071,29 @@ export const TOOLS: Record<string, ToolImpl> = {
       description:
         'Create or edit Roblox smooth Terrain through bounded typed operations, without running arbitrary Luau. ' +
         'Actions: clear (no fields; empties ALL Terrain in one call — use it for "clear/remove the terrain", never Air fills), fill_block (center,size,material), fill_ball (center,radius,material), fill_region (min,max,material), ' +
-        'replace_material (min,max,sourceMaterial,targetMaterial), or write_voxels (4-stud-grid origin, integer dimensions, flat voxels [{material,occupancy}]). ' +
-        'Materials are Enum.Material names such as Enum.Material.Grass. At most 65,536 voxels are touched per call. ' +
-        'Requires Studio edit consent and is one undo-recorded change. Checkpoint restore preserves Terrain identity but does not serialize voxel contents, so use Studio Undo for terrain rollback. ' +
-        'RECIPES FIRST for these landforms: recipe "floating_island" (center, radius) builds a flat grassy top on a rock underside that tapers to a point and returns surfaceY to stand things on; recipe "waterfall" (top = the edge point it pours over, height, width, endsIn) hangs a thin sheet of water. ' +
-        `BUILD A WHOLE FEATURE IN ONE CALL: pass operations (up to ${MAX_TERRAIN_BATCH} of the actions above, each with its own fields) and they run in order — a hill is several overlapping fill_ball calls with decreasing radius, a pond is a fill_ball of Enum.Material.Air then a smaller one of Enum.Material.Water. One operation per call costs a step each.`,
+        'replace_material (min,max,sourceMaterial,targetMaterial), write_voxels (4-stud-grid origin, integer dimensions, flat voxels [{material,occupancy}]) or path. ' +
+        'Materials are Enum.Material names such as Enum.Material.Grass. At most 65,536 voxels per call. ' +
+        'Needs Studio edit consent; one undo-recorded change. Checkpoint restore does not serialize voxel contents: use Studio Undo for terrain rollback. ' +
+        'RECIPES FIRST for these landforms: recipe "floating_island" (center, radius) is a flat grassy top on a rock underside tapering to a point, and returns surfaceY to stand things on; recipe "waterfall" (top = the edge point it pours over, height, width, endsIn) hangs a thin sheet of water. ' +
+        'A CHANNEL OR LINE OF TERRAIN ALONG POINTS IS ONE CALL: action "path", points [[x,y,z],...] (2-32; y is the surface, or the ceiling of a covered cut), width, depth (studs down), fill "Air" (default), "Water" (waterLevel 0-1: share of the depth filled, default 0.75) or "material" (with `material`); run as blocks, at most ' + TERRAIN_PATH_OP_CAP + ' per call. ' +
+        `BUILD A WHOLE FEATURE IN ONE CALL: pass operations (up to ${MAX_TERRAIN_BATCH} of the actions above, each with its own fields) and they run in order: overlapping fill_ball calls of decreasing radius make a mound; Air then a smaller Water ball make a basin. One operation per call costs a step each.`,
       parameters: S(
         {
           operations: {
             type: 'array',
-            description: `Up to ${MAX_TERRAIN_BATCH} terrain actions run in order, each shaped like a single call ({action, center, radius, material, ...}). Stops at the first failure.`,
+            description: `Up to ${MAX_TERRAIN_BATCH} actions run in order, each shaped like a single call. Stops at the first failure.`,
             items: { type: 'object' },
           },
-          recipe: { type: 'string', enum: [...TERRAIN_RECIPES], description: 'A whole landform in one call. floating_island {center, radius 12-70}; waterfall {top, height, width, endsIn: "pool"|"mist"}.' },
+          recipe: { type: 'string', enum: [...TERRAIN_RECIPES], description: 'floating_island {center, radius 12-70}; waterfall {top, height, width, endsIn: "pool"|"mist"}.' },
           top: { type: 'array', items: { type: 'number' } },
           height: { type: 'number' },
           width: { type: 'number' },
           endsIn: { type: 'string', enum: ['pool', 'mist'] },
-          action: { type: 'string', enum: ['clear', 'fill_block', 'fill_ball', 'fill_region', 'replace_material', 'write_voxels'] },
+          action: { type: 'string', enum: ['clear', 'fill_block', 'fill_ball', 'fill_region', 'replace_material', 'write_voxels', 'path'] },
+          points: { type: 'array', items: { type: 'array', items: { type: 'number' } } },
+          depth: { type: 'number' },
+          fill: { type: 'string', enum: ['Air', 'Water', 'material'] },
+          waterLevel: { type: 'number', minimum: 0, maximum: 1 },
           center: { type: 'array', items: { type: 'number' } },
           size: { type: 'array', items: { type: 'number' } },
           radius: { type: 'number' },
@@ -2408,7 +3118,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'build_scene',
       description:
-        'Lay the PLAIN TERRAIN foundation for a floating island: grassy top, rock underside, stream and waterfall terrain, lighting and spawn. This is deliberately incomplete. Find and insert ready-made library models for trees, crystals and other detailed props, and use insert_vfx for mist. Never hand-build those from parts or call the scene finished from this terrain result. Returns surfaceY and usableRadius for placement.',
+        'Lay the PLAIN TERRAIN foundation for a floating island: grassy top, rock underside, stream and waterfall terrain, lighting and spawn. This is deliberately incomplete. Find and insert ready-made library models for trees, crystals and other detailed props, and use insert_vfx for mist. Props follow the asset order (library, Creator Store, then Parts). This is not a finished scene. Returns surfaceY and usableRadius for placement.',
       parameters: S({
         kit: { type: 'string', enum: ['floating_island'] },
         center: { type: 'array', items: { type: 'number' }, description: 'Island centre, default [0, 150, 0]' },
@@ -2438,7 +3148,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       return {
         built, ...terrainFacts, projectMutated: true, complete: false,
         pending: [`${trees} ready-made library trees`, `${crystals} ready-made library crystal props`, 'library waterfall mist VFX'],
-        next: 'The terrain is only a foundation. Use find_library_model and insert_library_model for detailed trees and crystals; use insert_vfx for mist. If a matching verified asset is unavailable, leave it unbuilt and report that gap. Never hand-build a substitute or call this a finished scene.',
+        next: 'The terrain is only a foundation. Use find_library_model and insert_library_model for detailed trees and crystals; use insert_vfx for mist. If no verified asset matches, take the next step of the asset order (Creator Store, then Parts in full detail). It is not a finished scene until the detail exists.',
       };
     },
   },
@@ -2447,8 +3157,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['delete_instances'],
     mutatesProject: true,
-    run: (ctx, a) => ctx.blockDirectDeletion?.()
-      ? Promise.resolve({ error: 'A create name conflict occurred in this run. Existing saved instances were not deleted. Inspect, edit or rename the existing path instead.' })
+    run: (ctx, a) => ctx.blockDirectDeletion?.((a.paths as string[]) ?? [])
+      ? Promise.resolve({ error: 'A create name conflict occurred in this run, so instances that were already in the place were not deleted (what this run created itself can still be removed). Inspect, edit or rename the existing path instead.' })
       : op(ctx, { op: 'delete_instances', paths: (a.paths as string[]) ?? [] }),
   },
   move_instances: {
@@ -2534,10 +3244,19 @@ export const TOOLS: Record<string, ToolImpl> = {
   clone_instances: {
     def: {
       name: 'clone_instances',
-      description: 'Clone existing instances through Studio. Clones receive collision-free names and may optionally be placed under a specific writable parent.',
+      description:
+        'Clone instances (collision-free names; optional parent). MANY COPIES IN ONE CALL: `paths` (a template, up to 8 cycled) plus exactly one of `at` [[x,y,z],...], `along` {points, spacing|count} or `within` {rect:{min:[x,z],max:[x,z]}|polygon, count, minSpacing?, y?}; optional yaw (number or [min,max]), scale, jitter, seed, name, parent. Up to 1000 copies; no scripts, parts anchored. `within` without y measures the ground once at its centre (scatter_instances drops each copy onto rolling terrain).',
       parameters: S({
         paths: { type: 'array', minItems: 1, maxItems: DIRECT_EDIT_LIMITS.items, items: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars } },
         parent: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars },
+        at: { type: 'array', items: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 }, maxItems: 1000 },
+        along: { type: 'object' },
+        within: { type: 'object' },
+        yaw: {},
+        scale: {},
+        jitter: { type: 'number', minimum: 0, maximum: 1000 },
+        seed: { type: 'integer' },
+        name: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.nameChars },
       }, ['paths']),
     },
     studio: true,
@@ -2552,6 +3271,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         if (typeof parsed !== 'string') return Promise.resolve(parsed);
         parent = parsed;
       }
+      if (a.at !== undefined || a.along !== undefined || a.within !== undefined) return placeCopiesCall(ctx, a, paths, parent);
       return op(ctx, { op: 'clone_instances', paths, ...(parent ? { parent } : {}) });
     },
   },
@@ -2811,6 +3531,12 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (handMadeUi) return handMadeUi;
       const handMadeFx = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), FX_RULE);
       if (handMadeFx) return handMadeFx;
+      // D-MODELLIB-2: run_luau does not assemble props either.
+      const handMadeModel = refuseHandMadeModelLuau(luauScanVariants(String(a.code ?? '')), libraryOrder(ctx));
+      if (handMadeModel) {
+        if (handMadeModel.ordered) noteOrderRefusal(ctx);
+        return handMadeModel;
+      }
       const gameRule = refuseGameScript(luauScanVariants(String(a.code ?? '')));
       if (gameRule) return gameRule;
       const job = admitProgram({
@@ -3142,7 +3868,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'compose_thumbnail',
       description:
-        "Frame and capture a store-page image of the place the user is actually building — the thumbnail shown on Roblox's home page and experience detail page, or the square experience icon. It renders the real place from every camera angle, measures each one, and proposes the best-framed shot at the aspect ratio Roblox requires. The image is SHOWN to the user and saved for an hour where they can download it. IT IS NOT AN UPLOAD-READY ASSET and you must not say it is: the Studio plugin's rasteriser caps far below the size Roblox wants and draws no lighting, shadows or materials, so this settles the COMPOSITION and the user takes the full-resolution shot in Studio themselves. There is no way to upload it — Roblox publishes no API for experience thumbnails — so never tell the user it has been set on their experience. Report the steps this returns instead. Never substitute generate_image for this: a store-page image must be the actual place.",
+        "Frame and capture a store-page image of the place the user is actually building — the thumbnail on Roblox's home and experience detail pages, or the square experience icon. It renders the real place from every camera angle, measures each, and proposes the best-framed shot at the aspect ratio Roblox requires. The image is SHOWN to the user and saved for an hour where they can download it. IT IS NOT AN UPLOAD-READY ASSET and you must not say it is: the plugin's rasteriser caps far below the size Roblox wants and draws no lighting, shadows or materials, so this settles the COMPOSITION and the user takes the full-resolution shot in Studio themselves. Roblox publishes no API for experience thumbnails, so never tell the user it has been set on their experience; report the steps this returns. Never substitute generate_image for this: a store-page image must be the actual place.",
       parameters: S({
         kind: { type: 'string', enum: ['thumbnail', 'icon'], description: 'thumbnail = the wide store-page image; icon = the square experience icon. Default thumbnail.' },
         target: { type: 'string', description: 'instance path to frame, e.g. game.Workspace.Plaza. Omit to frame the whole place, which is usually what a store-page image wants.' },
@@ -3259,13 +3985,17 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'set_mood',
       description:
-        'Apply a named lighting mood to the place: atmosphere, bloom, colour correction, sun rays and depth of field, plus the Lighting properties that carry it. This is how a scene stops looking like a grey blockout. Call it once the geometry is roughly in place and BEFORE render_view, then render to see it. Pick the mood the scene is meant to feel like, not the time of day it literally is.',
+        'Apply a named lighting mood: atmosphere, bloom, colour correction, sun rays and depth of field, plus the Lighting properties that carry it; how a scene stops looking like a grey blockout. Call it once the geometry is roughly in place, BEFORE render_view. Pick the nearest preset, then set the exact hour or feel with overrides.',
       parameters: S(
         {
           mood: {
             type: 'string',
             enum: Object.keys(MOODS),
-            description: 'One of the named moods. Each is a complete, art-directed lighting setup.',
+            description: 'A named mood: a complete lighting setup.',
+          },
+          overrides: {
+            type: 'object',
+            description: `Applied after the preset: {lighting?: {${Object.keys(MOOD_OVERRIDES.lighting).join(', ')}}, atmosphere?: {${Object.keys(MOOD_OVERRIDES.atmosphere).join(', ')}}, colorCorrection?: {${Object.keys(MOOD_OVERRIDES.colorCorrection).join(', ')}}}. Colours [r,g,b] 0-255; ClockTime 0-24.`,
           },
         },
         ['mood'],
@@ -3282,6 +4012,9 @@ export const TOOLS: Record<string, ToolImpl> = {
           error: `unknown mood "${mood}" for this lighting library. Choose one of: ${Object.keys(MOODS).join(', ')}.`,
         };
       }
+      // Overrides are read BEFORE anything changes: an unknown name or a bad value must not leave a half-applied mood.
+      const overrides = readMoodOverrides(a.overrides);
+      if ('error' in overrides) return overrides;
       const tree = await op(ctx, { op: 'get_tree', root: 'game.Lighting', maxDepth: 1, maxNodes: 200 });
       if (toolError(tree)) return tree;
       const root = treeRoot(tree);
@@ -3330,6 +4063,16 @@ export const TOOLS: Record<string, ToolImpl> = {
       const items = moodInstances(mood).filter((item) => !(userAtmosphere && item.className === 'Atmosphere'));
       const created = await op(ctx, { op: 'create_instances', items });
       if (toolError(created)) return { ...(created as Record<string, unknown>), projectMutated: true };
+      // The overrides, after the preset. Each group is its own write; a group that fails is reported and the mood stands.
+      const overridden: string[] = [];
+      const overrideFailures: string[] = [];
+      for (const [group, path] of [['lighting', 'game.Lighting'], ['atmosphere', userAtmosphere ?? 'game.Lighting.Atmosphere'], ['colorCorrection', 'game.Lighting.ColorCorrectionEffect']] as const) {
+        const values = overrides.values[group];
+        if (!values || !Object.keys(values).length) continue;
+        const res = await op(ctx, { op: 'set_props', path, props: typedPresetProps(values) });
+        if (toolError(res)) overrideFailures.push(`${group}: ${String((res as { error?: unknown }).error ?? 'failed').slice(0, 160)}`);
+        else overridden.push(...Object.keys(values).map((k) => `${group}.${k}`));
+      }
 
       // Hand back the palettes this mood was art-directed alongside. The lighting is half of a
       // look; the materials and colours are the other half, and the model has no other way to
@@ -3342,6 +4085,8 @@ export const TOOLS: Record<string, ToolImpl> = {
         : undefined;
       return {
         applied: mood,
+        ...(overridden.length ? { overrides: overridden } : {}),
+        ...(overrideFailures.length ? { overridesFailed: overrideFailures } : {}),
         // Only ever this mood's own previous instances; the user's are counted in `kept`.
         replacedOwn: owned.length || undefined,
         // Their Atmosphere was retuned rather than duplicated; say so, because its old values are gone.
@@ -3449,7 +4194,13 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (toolError(lighting)) return lighting;
       const capture = auditCaptureFromTree(workspace, lighting);
       if (!capture) return { error: 'the typed Studio tree returned something this worker could not read' };
+      // What the audit's parts-only view could not see: terrain, lighting as numbers, and how the place is grouped.
+      const scene = await measureScene(ctx, workspace, capture);
       if (capture.parts.length === 0) {
+        // Terrain is geometry: a map made of it is not "nothing to audit". The measurements are the answer.
+        if (scene.terrain && 'solidVoxels' in scene.terrain && Number(scene.terrain.solidVoxels) > 0) {
+          return { text: 'There are no parts to audit, but the place holds terrain (see scene). Nothing was judged.', confirmed: 0, blocking: 0, partsAudited: 0, scene };
+        }
         if (capture.importedRoots) return { text: 'Nothing to fix: everything in Workspace is imported original game content, which is the game\'s own design and is not audited.', confirmed: 0, blocking: 0, partsAudited: 0, importedRoots: capture.importedRoots };
         return { error: 'there is no geometry in Workspace to audit yet — build something first' };
       }
@@ -3551,6 +4302,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         rulesUnchecked: panel.unchecked.length || undefined,
         partsAudited: capture.parts.length,
         truncated: capture.truncated || undefined,
+        scene,
       };
     },
   },
@@ -4103,7 +4855,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const usable = chosen.filter((c) => allowed.includes(c.source));
       if (usable.length) return usable;
       return {
-        error: sourceRefusal(ctx.assetSources, chosen[0]?.source ?? 'procedural', ctx.askAssetSources)
+        error: sourceRefusal(ctx.assetSources, chosen[0]?.source ?? 'procedural', ctx.askAssetSources, ctx.assetSettingsUnread)
           ?? 'no asset source is available for this need',
         // The unusable list is returned too: a model told only "no" cannot explain to the person
         // what it would have done, and that explanation is what makes the setting make sense.
@@ -4324,7 +5076,7 @@ export const TOOLS: Record<string, ToolImpl> = {
                   ? 'find_vfx for a verified preset, then insert_vfx; never hand-build particle effects'
                   : s.need === 'texture'
                     ? 'use a rights-verified Roblox-specific library or Creator Store texture; do not invent an asset id'
-                    : 'find_library_model with the subject as a plain noun, then insert_library_model; never parts or a generator (D-MODELLIB-2)',
+                    : 'find_library_model with the subject as a plain noun, then insert_library_model; Parts only after the library had nothing (asset order)',
         })),
         sounds: admitted,
         // Present even when empty is wrong — an empty key reads as "we checked and all were fine",
@@ -4343,7 +5095,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
-      const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources);
+      const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources, ctx.assetSettingsUnread);
       // BEFORE the search, never after. An empty result would read as "the Creator Store has
       // nothing like that" — a claim about a catalogue this caller was never allowed to look in.
       if (refused) return { error: refused };
@@ -4370,7 +5122,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_asset',
       description:
-        'Insert an asset by numeric assetId. Use an id from find_verified_asset, or one the USER gave you — never one you produced yourself: a made-up id resolves to something random or to nothing. Where the id came from does not decide whether it is checked. EVERY id is resolved against the Creator Store and must pass the full gate (free, publicly visible, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget), and every insertion is then scanned INSIDE the place: Luau that arrived with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. Parts are for simple structure only; detailed props come from verified models, and an unavailable prop remains unbuilt.',
+        'Insert an asset by numeric assetId, from find_verified_asset or the USER (never one you produced yourself). EVERY id is resolved against the Creator Store and must pass the full gate (free, public, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget); every insertion is then scanned inside the place: scripts are removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. Models come from insert_library_model, which skips this gate.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,
@@ -4408,7 +5160,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       // avoids above. `user_supplied` is never refused here — see
       // `PROVENANCE_SOURCE` in asset-policy.ts for why a pasted id is the customer's own choice, not
       // Apple's, and still faces the full gate immediately below regardless.
-      const sourceRefused = provenanceRefusal(ctx.assetSources, provenance, ctx.askAssetSources);
+      const sourceRefused = provenanceRefusal(ctx.assetSources, provenance, ctx.askAssetSources, ctx.assetSettingsUnread);
       if (sourceRefused) return { error: sourceRefused };
 
       const integrity: DetailsIntegrity = { missing: [] };
@@ -4538,7 +5290,7 @@ export const TOOLS: Record<string, ToolImpl> = {
           target: { type: 'string', enum: ['ui_icon', 'decal', 'texture', 'thumbnail', 'concept'] },
           palette: {
             type: 'array',
-            description: 'Default palette roles only when the user has not specified colors. Preserve requested subject/background colors in subject; do not replace silver, grey or dark colors with a gold/saturated palette.',
+            description: 'Default palette roles, only when the user gave no colors; requested colors go in subject, never replaced by a saturated palette.',
             items: { type: 'string', enum: ['grass', 'dirt', 'stone', 'cliff', 'foliage', 'wood', 'sky', 'sand', 'accent', 'positive', 'danger', 'premium', 'currency_soft', 'currency_hard', 'locked'] },
           },
           outline: { type: 'string', enum: ['heavy', 'very_heavy'], description: 'default heavy; the style never uses a thin outline' },
@@ -4778,7 +5530,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_library_model',
       description:
-        "Search the owner corpus (through the paired plugin) first, then script-free Roblox Creator Store models, for a ready-made prop, building, plant, vehicle, character, pet, weapon or kit; call it before building a detailed object. Use your own plain words, as many queries as you need; genre and kind narrow it. Only Roblox-owned models by default; includeThirdParty=true adds free third-party ones (marked requiresThirdPartyLoading; Studio may refuse them). Whether one looks right or fits is unverified until you preview it (preview_library_models). In Agent mode Apple may show the owner up to three thumbnails to pick from. Nothing is inserted by this call.",
+        "Step 1 of the asset order, before building a detailed object: search for a ready-made prop, building, plant, vehicle, character, pet, weapon, kit, UI or map in the owner's local corpus (paired plugin), then ingested owner components, then script-free Roblox Creator Store models. Use your own plain words and as many queries as you need; genre and kind narrow it. Roblox-owned models only unless includeThirdParty=true (free third-party ones, marked requiresThirdPartyLoading; Studio may refuse them, never promise they load). Fit and looks are unverified until preview_library_models. In Agent mode Apple may show the owner up to three thumbnails to pick from. Inserts nothing: pass a result `id` unchanged to insert_library_model.",
       parameters: S(
         {
           sourceSHA: {type:'string',description:'Source SHA from query_owner_catalog; scopes the local index.'},
@@ -4794,61 +5546,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: false,
-    run: async (ctx, a) => {
-      const query = a.query === undefined ? undefined : String(a.query);
-      if (a.sourceSHA !== undefined && !query?.trim()) return {error:'Source-scoped search requires plain query words; use query_owner_catalog for source pages.'};
-      if (a.sourceSHA !== undefined && !/^[a-f0-9]{64}$/.test(String(a.sourceSHA))) return {error:'Use an original source SHA from query_owner_catalog.'};
-      if (a.sourceSHA !== undefined && (!ctx.userId || !ctx.localOwnerGateway || !ctx.studioConnected())) return {error:'Source-scoped search needs the authenticated paired local owner gateway.'};
-      let localStatus: unknown;
-      if (ctx.localOwnerGateway && ctx.studioConnected() && query) {
-        const local=await localOwnerQuery(ctx,{action:'search',query,sourceSHA:a.sourceSHA === undefined ? undefined : String(a.sourceSHA),limit:Math.min(10,Math.max(1,Number(a.limit)||5)),
-          after:a.after === undefined ? undefined : localNodeId(String(a.after)),className:a.className === undefined ? undefined : String(a.className)});
-        localStatus=local;
-        if (Array.isArray(local.items) && local.items.length) return {source:'owner_local',
-          results:local.items.map((row) => ({...rec(row),id:LOCAL_OWNER_PREFIX+localNodeId(String(rec(row).id)),preview:{status:'native-pixels-required',visualApproved:false,gameplayVerified:false}})),
-          nextAfter:local.nextAfter ?? null,priority:'full local owner corpus first',
-          note:'Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair.'};
-        if (a.after !== undefined || a.sourceSHA !== undefined) return {...local,source:'owner_local',results:[],note:'This local page ended or was refused. No unrelated catalogue page substituted.'};
-      }
-      const owned = await findOwnerComponents(ctx.env, libraryNamespace(ctx.env, ctx.userId), query ?? '', Number(a.limit ?? 10));
-      if (owned.length) {
-        const results: Record<string,unknown>[] = [];
-        let chars = 0;
-        for (const c of owned) {
-          const row = {id:c.id,name:c.name.slice(0,128),className:c.className.slice(0,128),path:c.path.slice(0,256),
-            summary:c.summary.slice(0,512),usage:c.usage.slice(0,512),componentSha256:c.componentSha256,
-            byteLength:c.byteLength,dependencyCount:c.dependencyIds.length,unresolvedRefCount:c.unresolvedRefs.length,
-            descriptionAvailable:!!c.descriptionSha256,scriptsPreserved:c.scriptsPreserved,...(c.readiness ? {readiness:c.readiness} : {})};
-          const size = JSON.stringify(row).length;
-          if (chars + size > 18000) break;
-          results.push(row); chars += size;
-        }
-        return {source:'owner_corpus',results,total:owned.length,outputLimited:results.length < owned.length,
-          localGateway:localStatus ? ('error' in rec(localStatus) ? 'unavailable' : 'no matches') : 'not configured',
-          note:'Owner-attested cloud seed components are fallback after the full local corpus. Components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data; scriptsPreserved:false marks a script-free unit whose original scripts were excluded.'};
-      }
-      const found = findLibraryModels({
-        query,
-        genre: a.genre ? String(a.genre) : undefined,
-        kind: a.kind ? String(a.kind) : undefined,
-        limit: Math.max(10, a.limit === undefined ? 10 : Number(a.limit)),
-        creatorStoreOnly: true,
-        includeThirdParty: a.includeThirdParty === true,
-      });
-      const rejected = new Set(ctx.rejectedLibraryAssetIds ?? []);
-      const requestedObject = visualAssetAnchor(query ?? '', []);
-      const wanted = found.results.length;
-      const cap = a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10));
-      const kept = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId)
-        && matchesVisualAnchor(row.name, requestedObject ?? undefined)
-        && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor));
-      found.results = kept.slice(0, cap);
-      // Said, not silent: rows left out because their name lacks the last word of the agent's own query.
-      const leftOut = wanted - kept.length;
-      if (leftOut > 0 && requestedObject) found.note = `${leftOut} row(s) matching your words were left out because their name does not contain "${requestedObject}" (the last word of your query, or an anchor from the user's rejection); search other words to see them.${found.note ? ' ' + found.note : ''}`;
-      if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Try other words (several queries are fine), browse_owner_library, or build it yourself with build_object; if the request cannot work without it, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
-      return found;
-    },
+    run: async (ctx, a) => recordSearch(ctx, await findLibraryModelCall(ctx, a)),
   },
   insert_owner_component: {
     def: {
@@ -4861,7 +5559,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component']],
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('error' in r || 'pending' in r)),
     run: async (ctx,a) => (String(a.id ?? '').startsWith('owner:') || String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX))
-      ? TOOLS.insert_library_model!.run(ctx,a)
+      ? TOOLS.insert_library_model!.run(ctx,{...a, parent: a.parent ?? 'game.ServerStorage'})
       : {error:'insert_owner_component requires an exact owner: component id'},
   },
   // THE OWNER'S UPLOADED GAMES, FIRST SOURCE FOR EVERY BUILD. Whole games with their original scripts, read from the
@@ -5082,7 +5780,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_library_model',
       description:
-        "Place ONE ready-made model you chose, as a script-free copy, and report its measured size against a player. Pass { id } from find_library_model (a verified Creator Store row) or { gameId, path } from browse_owner_library. It keeps its own size unless you pass size (longest side), height or scale; nothing else is added (dress_object adds extras). name = what it is called, any language; a taken name is an error (rename, or replace: true). Third-party rows need the experience's third-party loading; downloaded file rows are not insertable. Scripts are removed.",
+        "Place ONE ready-made model you chose as a script-free copy; reports its size against a player. Pass { id } from find_library_model (a verified Creator Store row) or { gameId, path } from browse_owner_library. It keeps its own size unless you pass size (longest side), height or scale; dress_object adds extras. name: any language; a taken name is an error (rename, or replace: true). Third-party rows need the experience's third-party loading; file rows are not insertable. Inserts are scanned in the place and scripts removed; this skips insert_asset's gate (which refuses every Model). A failure names its stage, whether to retry and the next candidate ids: take the next, then go on down the asset order. For many copies, insert one and clone_instances it.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },
@@ -5104,67 +5802,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component'],['insert_asset']],
     // A refusal changed nothing in the place.
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
-    run: async (ctx, a) => {
-      if (a.gameId !== undefined || a.path !== undefined) {
-        const piece = candidateOf({ gameId: a.gameId, path: a.path, name: a.name });
-        if ('error' in piece) return piece;
-        const size = placeSizeOf(a);
-        if ('error' in size) return size;
-        return placeLibraryPiece(ctx, piece, { name: a.name, at: a.position, replace: a.replace, size });
-      }
-      if (a.id === undefined) return { error: 'give { id } from find_library_model, or { gameId, path } from browse_owner_library' };
-      if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return insertLocalOwner(ctx,a);
-      if (String(a.id ?? '').startsWith('owner:')) {
-        if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return { error: 'Native owner import is unavailable for this run: check permissions and update the paired plugin.' };
-        if (!ctx.userId) return { error: 'Owner corpus insertion requires the authenticated project owner.' };
-        const library = libraryNamespace(ctx.env, ctx.userId);
-        const component = await ownerComponent(ctx.env, library, String(a.id));
-        if (!component) return { error: 'This component has no verified bytes in this owner corpus. Ingest its complete native export first.' };
-        if (a.position !== undefined || a.height !== undefined || a.scale !== undefined) return { error: 'Owner imports preserve authored transforms. Insert first, then use transform_instances on the returned path.' };
-        const checkpoint = await ctx.createCheckpoint('before owner component import', 'auto');
-        if ('error' in checkpoint) return { error: `Owner import refused: checkpoint failed (${checkpoint.error}).` };
-        const token = await ownerComponentGrant(ctx.env, library, component);
-        const imported = await ctx.execStudioOp({ op: 'import_owner_component', componentId: component.id,
-          componentSha256: component.componentSha256, byteLength: component.byteLength, contentToken: token,
-          parent: String(a.parent ?? 'game.ServerStorage'), name: component.name.slice(0,96) }, 120_000);
-        return imported.ok ? { ...rec(imported.data), library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
-          note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' }
-          : { error: imported.error ?? 'Native owner import failed', library: component.id };
-      }
-      const pick = libraryModel(String(a.id ?? ''));
-      if (!pick) return { error: `${String(a.id ?? '')} is not a library id. Call find_library_model and pass one of its ids unchanged.` };
-      if (pick.assetId === undefined) return { error: 'This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.' };
-      const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources);
-      if (refused) return { error: refused };
-      const pos = a.position === undefined ? [0, 0, 0] : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
-      if (!Array.isArray(pos)) return pos;
-      const scale = a.scale === undefined ? undefined : Number(a.scale);
-      if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return { error: `scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}` };
-      const height = a.height === undefined ? undefined : Number(a.height);
-      if (height !== undefined && !(height > 0 && height <= 2000)) return { error: 'height must be between 0 and 2000 studs' };
-      const longest = a.size === undefined ? undefined : Number(a.size);
-      if (longest !== undefined && !(longest > 0 && longest <= 2000)) return { error: 'size must be between 0 and 2000 studs' };
-      if ([scale, height, longest].filter((v) => v !== undefined).length > 1) return { error: 'give one of size (longest side in studs), height or scale, not several' };
-
-      const assetId = pick.assetId;
-      const placed = rec(await insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace')));
-      if ('error' in placed) return { ...placed, library: pick.id };
-      let paths = (Array.isArray(placed.inserted) ? placed.inserted : []).filter((p): p is string => typeof p === 'string');
-      if (paths.length > 1) {
-        const grouped = await ctx.execStudioOp({ op: 'group_instances', paths, name: pick.name.replace(/[^A-Za-z0-9 _-]+/g, '').slice(0, 50) || 'LibraryModel' }, 20_000);
-        const path = grouped.ok ? strOrNull(rec(grouped.data).path) : null;
-        if (path) paths = [path];
-      }
-      const where = paths.length === 1
-        ? await placeInserted((o, t) => ctx.execStudioOp(o as StudioOp, t), paths[0]!, pick, { position: pos, scale, height, longest })
-        : { error: 'inserted as several pieces; left where Roblox put them' };
-      return {
-        ...placed,
-        inserted: paths,
-        library: { id: pick.id, name: pick.name, kind: pick.kind, licence: pick.licence, ...(pick.attribution ? { attribution: pick.attribution } : {}) },
-        ...('error' in where ? { placementWarning: where.error } : { placed: where }),
-      };
-    },
+    run: async (ctx, a) => recordInsert(ctx, a, await insertLibraryModelCall(ctx, a)),
   },
   generate_model_external: {
     def: {
@@ -5881,6 +6519,8 @@ export async function runTool(
     }
     args = parsed as Record<string, unknown>;
   }
+  // ONE PATH SPELLING for every Studio tool: `Workspace.Lamp` means `game.Workspace.Lamp` here as it does in create_instances.
+  if (impl.studio) args = normaliseStudioPaths(args);
   try {
     ctx.uiDetail = undefined; // never let one tool's panel leak into the next tool's row
     let result = await impl.run(ctx, args);

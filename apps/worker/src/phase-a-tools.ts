@@ -174,7 +174,8 @@ export const setPropertiesBulk = {
       'Every target is checked before anything changes, so a refusal leaves the place untouched. Returns before/after for the first targets and a count.',
     parameters: S({
       targets: { type: 'array', items: { type: 'string' }, maxItems: 500 },
-      query: { type: 'object', properties: QUERY_FIELDS, description: 'a search_instances filter (no limit)' },
+      // The same filter as search_instances, whose own schema carries the field descriptions: repeating them here cost ~450 chars a step.
+      query: { type: 'object', properties: Object.fromEntries(Object.entries(QUERY_FIELDS).map(([k, v]) => [k, { ...v, description: undefined }])), description: 'a search_instances filter: the same fields (see it), no limit' },
       props: { type: 'object', description: 'typed props, e.g. {"Anchored":{"t":"bool","v":true}}' },
       attributes: { type: 'object' },
       adjust: {
@@ -306,10 +307,10 @@ export const scatterInstances = {
     name: 'scatter_instances',
     description:
       'Place up to 200 copies of an existing BasePart or Model (`template`, which must contain no scripts) on the ground inside `region`, deterministically by `seed`: each copy is dropped by a ray onto whatever is below. ' +
-      'Optional onMaterial (only land on these Enum.Material surfaces, e.g. ["Enum.Material.Grass"]), minSpacing (studs between copies), scale [min, max] (0.2-5), randomYaw (default true), parent (default the template\'s parent). ' +
+      'Optional onMaterial (only land on these Enum.Material surfaces, e.g. ["Enum.Material.Grass"]), minSpacing (studs between copies), scale [min, max] (0.2-5), randomYaw (default true), parent (default: the template\'s parent if inside Workspace, else Workspace). ' +
       'Returns how many were placed and why any were not (no ground, wrong material, too close). Use it for forests, rocks, coins, grass tufts.',
     parameters: S({
-      template: { type: 'string' },
+      template: { type: 'string', description: 'e.g. "game.Workspace.Hedge"' },
       count: { type: 'integer', minimum: 1, maximum: 200 },
       region: REGION,
       onMaterial: { type: 'array', items: { type: 'string' }, maxItems: 12 },
@@ -358,6 +359,12 @@ export const scatterInstances = {
       const p = text(a.parent, 'parent', PATH_CHARS);
       if (isRefusal(p)) return p;
       out.parent = p;
+    } else {
+      // The plugin's own default is game.Workspace; the description promised the template's parent. Say it explicitly so the
+      // description is true: the template's parent when that is inside Workspace (copies stand beside it), else Workspace.
+      const rooted = template.startsWith('game.') ? template : `game.${template}`;
+      const up = rooted.replace(/\.[^.\[\]]+$|\["[^"]+"\]$/, '');
+      out.parent = up === 'game.Workspace' || up.startsWith('game.Workspace.') || up.startsWith('game.Workspace[') ? up : 'game.Workspace';
     }
     const placed = await call(out as StudioOp, 60_000);
     return r.widened && placed && typeof placed === 'object' && !isRefusal(placed) ? { ...placed, note: r.widened } : placed;

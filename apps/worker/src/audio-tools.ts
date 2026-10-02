@@ -172,7 +172,7 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
     def: {
       name: 'design_sound',
       description:
-        'Give the place its acoustics and a working mixer: environment reverb, how fast sound falls away with distance, and five SoundGroups (Music, Ambience, SFX, UI, Voice) with sensible starting volumes and bus compression. This references NO assets — it is pure engine configuration, so it costs nothing and cannot fail a licence or moderation gate. Run it once per place, early; re-running retunes rather than duplicating. It does not add any audio: a place configured by this and containing no Sound instances is a very well-designed silence. Roblox\'s default sound falloff is 10 to 10,000 studs, which is why so many places sound like everything is happening next to the player\'s head — this is the fix for that.\n\nEnvironments:\n' +
+        'Give the place its acoustics and a working mixer: environment reverb, how fast sound falls away with distance, and five SoundGroups (Music, Ambience, SFX, UI, Voice) with sensible starting volumes and bus compression. This references NO assets — it is pure engine configuration, so it costs nothing and cannot fail a licence or moderation gate. Run it once per place, early; re-running retunes rather than duplicating. It adds no audio (with no Sound instances the place is a very well-designed silence). Roblox\'s default falloff, 10 to 10,000 studs, is why so many places sound like everything happens next to the player\'s head; this is the fix.\n\nEnvironments:\n' +
         environmentCatalogue().map((e) => `  ${e.name} — ${e.summary} ${e.use}`).join('\n'),
       parameters: S(
         {
@@ -280,7 +280,7 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
     def: {
       name: 'assign_sounds',
       description:
-        'Route Sound instances that ALREADY EXIST in the place onto the mixer buses and give them a believable 3D falloff. Roblox\'s defaults (audible from 10 to 10,000 studs) are why un-configured audio sounds like it is happening inside the player\'s head. The volume change is a TRIM in dB recorded against the Sound\'s original volume, so running this twice does not compound. It never writes a SoundId: this worker cannot upload audio to Roblox and will not guess an asset id, because an id that does not resolve plays silently instead of erroring — the place would sound broken and nothing would report it. Sounds that are not there come back in `missing` rather than being counted as done. Run design_sound first, or the buses will not exist yet.',
+        'Route Sound instances that ALREADY EXIST in the place onto the mixer buses and give them a believable 3D falloff. Roblox\'s defaults (audible from 10 to 10,000 studs) are why un-configured audio sounds like it is happening inside the player\'s head. The volume change is a TRIM in dB recorded against the Sound\'s original volume, so running this twice does not compound. It never writes a SoundId: this worker cannot upload audio and will not guess an id, because an unresolved id plays silently and nothing would report it. Sounds that are not there come back in `missing` rather than being counted as done. Run design_sound first, or the buses will not exist yet.',
       parameters: S(
         {
           assignments: {

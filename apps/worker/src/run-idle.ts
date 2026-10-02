@@ -8,6 +8,8 @@
 // A new change clears the check, so a run that is still fixing things is never counted: only a run
 // whose latest change has passed a verifier, and which has since only read, is idle.
 
+import { fenceForQuote } from './run-parts.ts';
+
 export const IDLE_AFTER_VERIFY_NUDGE = 4;
 export const IDLE_AFTER_VERIFY_LIMIT = 8;
 /**
@@ -30,6 +32,47 @@ export const ANSWER_ONLY_NUDGE = 5;
  */
 export const READ_STALL_NUDGE = 10;
 export const READ_STALL_LIMIT = 20;
+
+/**
+ * EVERY TURN THE HARNESS WRITES INTO THE TRANSCRIPT CARRIES THIS PREFIX. The transcript only has a `user`
+ * role, so a steer from the harness reads as the person speaking. Owner benchmark 2026-10-02: the model
+ * reasoned that the user had told it to build from Parts instead of looking for assets, while the person's
+ * only message was one line; the sentence was the harness's own nudge. A turn the person really sent
+ * ("New direction from the user …", session.ts applySteers) is the only one that goes without it.
+ */
+export const HARNESS_PREFIX = '[Harness note, not the user] ';
+
+/** The one place a harness turn is pushed, so the prefix cannot drift. */
+export function pushHarness(llm: { push(m: { role: 'user'; content: string }): unknown }, text: string): void {
+  llm.push({ role: 'user', content: HARNESS_PREFIX + text });
+}
+
+/**
+ * The note for a run that can build and has changed nothing, or null while it is too early to say. Fires after
+ * a real failure or three read-only steps (the caller latches it, once per run). It reports what happened and
+ * restates the asset order; it does not tell the model what to build or to skip the library.
+ *
+ * It is written into a user-role turn, so it carries nothing it could not safely carry: the tool must be one
+ * of the registry's own names (`isTool`), and a tool's error text, which can quote Studio or a web page, goes
+ * in only through fenceForQuote (one line, no quote or backtick, bounded) inside its own quotation.
+ */
+export function buildNudge(
+  trace: readonly { tool: string; ok: boolean; error?: string; summary?: string }[],
+  readOnlySteps: number,
+  isTool: (name: string) => boolean,
+): string | null {
+  const failed = trace.filter((t) => !t.ok);
+  if (!failed.length && readOnlySteps < 3) return null;
+  const head = (t: { tool: string; error?: string; summary?: string }) => {
+    const said = fenceForQuote(t.error ?? t.summary ?? '').slice(0, 160);
+    const tool = isTool(t.tool) ? t.tool : 'a tool';
+    return said ? `${tool}: "${said}"` : tool;
+  };
+  const last = [...new Set(failed.slice(-3).map(head))];
+  return 'Nothing has changed in the project yet. ' +
+    (last.length ? `Last failures: ${last.join(' | ')}. ` : `${readOnlySteps} read-only steps so far. `) +
+    'Asset order: library, Creator Store, adapt or combine, then build from Parts. Next pick the step that fits.';
+}
 
 export interface IdleState {
   /** A verifier passed after the latest change to the place. */
@@ -88,10 +131,50 @@ export const RETUNE_LIMIT = 12;
 
 export type RetuneAction = 'none' | 'nudge' | 'finish';
 
-export function afterChange(counts: Record<string, number> | undefined, key: string): { counts: Record<string, number>; action: RetuneAction } {
+export function afterChange(counts: Record<string, number> | undefined, key: string): { counts: Record<string, number>; action: RetuneAction; count: number } {
   const n = (counts?.[key] ?? 0) + 1;
   const action: RetuneAction = n >= RETUNE_LIMIT ? 'finish' : n === RETUNE_NUDGE ? 'nudge' : 'none';
-  return { counts: { [key]: n }, action };
+  return { counts: { [key]: n }, action, count: n };
+}
+
+/** What repeated: the change the loop guard counted, kept on the run so the nudge and the stop can name it. */
+export interface LastChange {
+  tool: string;
+  aim: string;
+  props: string[];
+  count: number;
+}
+
+/**
+ * Did checks sit between the repeated edits (an audit, a render, a check_*)? Looks back over the entries that cover the last
+ * `count` changes by `tool` and asks whether at least half of those gaps held a check. The measured shape (canyon map,
+ * 2026-10-02): ten alternating "Checking the build" and "Tweaking lots of things at once" steps ended by the loop guard.
+ */
+export function alternatesWithChecks(trace: readonly { tool: string }[], tool: string, count: number, isCheck: (name: string) => boolean): boolean {
+  if (count < 3) return false;
+  let seen = 0;
+  let checks = 0;
+  for (let i = trace.length - 1; i >= 0 && seen < count; i--) {
+    const t = trace[i]!.tool;
+    if (t === tool) seen += 1;
+    else if (isCheck(t)) checks += 1;
+  }
+  return seen >= count && checks >= Math.ceil((count - 1) / 2);
+}
+
+/**
+ * The note at the nudge: which tool, on what, setting what, how many times in a row, and what to do about it. It is written
+ * into a user-role turn, so the tool is held to the registry's own names and every word the model's arguments supplied goes
+ * through fenceForQuote, as in buildNudge.
+ */
+export function retuneNudge(c: LastChange, isTool: (name: string) => boolean, alternating: boolean): string {
+  const tool = isTool(c.tool) ? c.tool : 'a tool';
+  const target = fenceForQuote(c.aim).slice(0, 120);
+  const props = c.props.map((p) => fenceForQuote(p)).filter(Boolean).slice(0, 8);
+  return `You have applied ${tool}${target ? ` to "${target}"` : ''}${props.length ? ` (setting ${props.join(', ')})` : ''} ${c.count} times in a row, and it succeeded each time. ` +
+    'If the result still looks wrong, name what you see and switch tool, target or approach. ' +
+    (alternating ? 'Checking between edits did not change the outcome. ' : '') +
+    'If it looks right, keep the best version you have, finish anything else the request still needs, and then reply to the user.';
 }
 
 
@@ -276,7 +359,7 @@ export function leavesWorkOpen(text: string | null | undefined): boolean {
 }
 
 export const AUTONOMOUS_CONTINUE_STEER =
-  'The user already asked for this whole request to be finished, so do not ask them anything. ' +
+  'This run is autonomous: nobody is waiting to answer a question, so do not ask one. ' +
   'Your last reply names work that is still missing, broken or unverified. Do that work now with tool ' +
   'calls — fix the defects your checks reported, then playtest the game loop the request asked for. ' +
   'Reply to the user only when nothing the request needs is left, and end that reply with a statement, not a question.';

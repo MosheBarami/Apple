@@ -177,8 +177,13 @@ test('an unclassified refusal admits ignorance rather than claiming there is not
   // must not have its silence read as the second one — that is this module's own original sin,
   // committed one level up.
   const fix = remedyHint({ ok: false, failure: 'refused' });
-  assert.match(fix, /does not report/i);
+  assert.match(fix, /does not say a setting would lift it/i);
+  assert.match(fix, /do not invent a Studio setting/i, 'the one thing that must never happen');
   assert.doesNotMatch(fix, /no setting that enables this/i);
+  // 2026-10-02: "say that you do not know how to enable it" gave the model nothing to DO, and it retried the write.
+  assert.doesNotMatch(fix, /do not know/i);
+  assert.match(fix, /use another class, or leave that property out/i);
+  assert.match(fix, /Do not retry it/);
   assert.equal(remedyHint({ ok: false, failure: 'refused', remedy: 'not_a_real_code' }), fix,
     'an unknown code must be treated as absent, never guessed at');
 });

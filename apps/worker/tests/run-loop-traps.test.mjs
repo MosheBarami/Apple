@@ -491,7 +491,7 @@ test('PAIRED AGENT WITH A NARROWED PLUGIN: the verifiers the prompt names are th
 
 // ==================================================== 5. a run that cannot build, and text calls ===
 
-const RESEARCH_NUDGE = /spent several steps researching without changing the project/;
+const RESEARCH_NUDGE = /Nothing has changed in the project yet/;
 
 test('A RUN THAT CANNOT BUILD IS NOT TOLD TO BUILD', async () => {
   const offline = await makeSession({
@@ -506,6 +506,7 @@ test('A RUN THAT CANNOT BUILD IS NOT TOLD TO BUILD', async () => {
     responses: [
       calls(['get_ui_construction', { id: 'screen-shop' }]),
       calls(['get_ui_construction', { id: 'screen-inventory' }]),
+      calls(['get_verified_module', { id: 'cooldown-clock' }]),
     ],
   });
   try {
@@ -516,10 +517,273 @@ test('A RUN THAT CANNOT BUILD IS NOT TOLD TO BUILD', async () => {
 
     // CONTROL: the same research on a run that CAN build is still steered, so the check above can see the nudge.
     await start(paired);
-    for (let i = 0; i < 2; i++) await paired.session.alarm();
+    for (let i = 0; i < 3; i++) await paired.session.alarm();
     assert.equal(paired.store.get('agent').llm.some((m) => m.role === 'user' && RESEARCH_NUDGE.test(m.content)), true,
       'the control failed: a run that can build is no longer steered, so the assertion above proves nothing');
   } finally { offline.stop(); paired.stop(); }
+});
+
+// Owner benchmark 2026-10-02: the model said "the user said build geometry from Parts rather than looking for
+// assets" when the person had sent one line. The sentence was the harness's own nudge, pushed as a `user` turn.
+const stall = (n) => ['create_instances', { items: [{ className: 'Part', name: `Lantern post ${n}`, parent: 'game.Workspace', props: { Size: [1, 8, 1] } }] }];
+const refuseWrites = (op) => ({ ok: false, error: 'Nothing was created. Size could not be read as a Vector3 (lantern post).', failure: 'refused' });
+const NUDGE_TEXT = /Nothing has changed in the project yet/;
+
+test('THE "NOTHING CHANGED YET" NOTE IS SENT ONCE, NAMES THE LAST FAILURE, AND NEVER TELLS THE MODEL TO SKIP THE LIBRARY', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: refuseWrites,
+    responses: [
+      calls(['get_ui_construction', { id: 'screen-shop' }]),
+      calls(['get_ui_construction', { id: 'screen-inventory' }]),
+      calls(stall(1)),
+      calls(stall(2)),
+      calls(stall(3)),
+    ],
+  });
+  try {
+    await start(h, { text: 'put a row of lantern posts along the path' });
+    for (let i = 0; i < 5; i++) await h.session.alarm();
+    const turns = h.store.get('agent').llm.filter((m) => m.role === 'user');
+    const notes = turns.filter((m) => NUDGE_TEXT.test(m.content));
+    assert.equal(notes.length, 1, `the note must fire exactly once per run, got ${notes.length}`);
+    assert.doesNotMatch(notes[0].content, /Parts rather than|rather than looking for assets/i, 'the note steers the model away from the library');
+    assert.match(notes[0].content, /create_instances: .*Nothing was created/, 'the note does not name the last failure');
+    assert.match(notes[0].content, /library, Creator Store/, 'the note does not restate the asset order');
+  } finally { h.stop(); }
+});
+
+test('EVERY TURN THE HARNESS PUSHES AS "user" SAYS SO; only the person\'s own steer goes without', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: refuseWrites,
+    responses: [
+      calls(['get_ui_construction', { id: 'screen-shop' }]),
+      calls(['get_ui_construction', { id: 'screen-inventory' }]),
+      calls(stall(1)),
+      answer({ text: 'I will build the posts now.' }),
+      answer({ text: 'Done with the posts.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'put a row of lantern posts along the path' });
+    for (let i = 0; i < 5; i++) await h.session.alarm();
+    const turns = h.store.get('agent').llm.filter((m) => m.role === 'user' && !m.pinned);
+    assert.ok(turns.length >= 2, `the run pushed too few harness turns to prove anything (${turns.length})`);
+    for (const turn of turns) {
+      assert.ok(turn.content.startsWith('[Harness note, not the user]') || turn.content.startsWith('New direction from the user'),
+        `a harness turn speaks as the person: ${turn.content.slice(0, 80)}`);
+    }
+    assert.ok(turns.some((m) => /You have not changed the project yet/.test(m.content)), 'control: the owes-work steer was not exercised');
+  } finally { h.stop(); }
+});
+
+test('THE LIBRARY ORDER SURVIVES ACROSS STEPS: a search with no hit in one step opens the hand build in the next', async () => {
+  const stallBatch = { items: [{ className: 'Model', name: 'ProduceStall', parent: 'game.Workspace', children: [{ className: 'Part', name: 'Counter' }, { className: 'Part', name: 'Awning' }] }] };
+  const okOp = (op) => (op.op === 'create_instances' ? { ok: true, data: { created: ['game.Workspace.ProduceStall'] } } : { ok: false, error: 'not answered', failure: 'refused' });
+  const direct = await makeSession({ connected: true, answerOp: okOp, responses: [calls(['create_instances', stallBatch])] });
+  const searched = await makeSession({
+    connected: true, answerOp: okOp,
+    responses: [calls(['find_library_model', { query: 'qzxwvk' }]), calls(['create_instances', stallBatch])],
+  });
+  try {
+    await start(direct, { text: 'put a produce stall by the gate' });
+    await direct.session.alarm();
+    assert.equal(direct.ops.filter((o) => o.op === 'create_instances').length, 0, 'control: a Model of Parts reached Studio before any library step');
+    const refusal = direct.store.get('agent').llm.filter((m) => m.role === 'tool').at(-1).content;
+    assert.match(typeof refusal === 'string' ? refusal : JSON.stringify(refusal), /Order: library first/);
+
+    await start(searched, { text: 'put a produce stall by the gate' });
+    for (let i = 0; i < 2; i++) await searched.session.alarm();
+    assert.equal(searched.store.get('agent').libraryRun?.outcome, 'no_hit', 'the search outcome was not kept on the run');
+    assert.equal(searched.ops.filter((o) => o.op === 'create_instances').length, 1, 'the library had nothing and the build was still held back');
+  } finally { direct.stop(); searched.stop(); }
+});
+
+// ======================================= fewer failed build calls, and calls that explain themselves ===
+
+const toolResults = (h) => h.store.get('agent').llm.filter((m) => m.role === 'tool').map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
+const efforts = (h) => h.chatCalls.map((c) => c.req.reasoningEffort);
+// A value the worker cannot type without the class (a CFrame as a bare array) is refused HERE, before Studio is asked.
+const unreadable = (n) => ({ items: [{ className: 'Part', name: `Marker ${n}`, parent: 'game.Workspace', props: { CFrame: [0, 5, 0] } }] });
+const studioRefuses = () => ({ ok: false, error: 'the plugin said no', failure: 'refused', remedy: 'none' });
+
+test('A REFUSAL THE WORKER MADE BEFORE SENDING ANYTHING DOES NOT MARK THE STEP AS FAILED (the signal that buys careful thinking); one that reached Studio does', async () => {
+  const text = 'put a marker post by the gate';
+  const free = await makeSession({ connected: true, answerOp: studioRefuses, responses: [calls(['create_instances', unreadable(1)]), answer({ text: 'ok' })] });
+  const paid = await makeSession({ connected: true, answerOp: studioRefuses, responses: [calls(['create_instances', { items: [{ className: 'Part', name: 'Marker', parent: 'game.Workspace' }] }]), answer({ text: 'ok' })] });
+  try {
+    await start(free, { text });
+    await free.session.alarm();
+    assert.equal(free.ops.filter((o) => o.op === 'create_instances').length, 0, 'control: the refused batch reached Studio');
+    await start(paid, { text });
+    await paid.session.alarm();
+    assert.equal(paid.ops.filter((o) => o.op === 'create_instances').length, 1, 'control: the failing batch never reached Studio');
+    assert.equal(paid.store.get('agent').priorStepFailed, true, 'a failure that reached Studio no longer marks the step as failed');
+    assert.equal(free.store.get('agent').priorStepFailed, false, 'a free worker-side refusal marked the step as failed');
+    // MEASURED, and worth saying: in Agent mode the baseline effort is already `high` (reasoning.ts BASELINE, V3 G01), so this
+    // signal changes the effort only where something lowers it first (the object and upgrade lanes, a greeting). Counted per
+    // step in these two scripted runs the effort is the same before and after this change.
+    assert.deepEqual(efforts(free), efforts(paid));
+  } finally { free.stop(); paid.stop(); }
+});
+
+test('A CALL THE WORKER REFUSED IS NOT "ALREADY MADE": the same call sent again meets the same refusal, not a duplicate guard', async () => {
+  const h = await makeSession({ connected: true, answerOp: studioRefuses, responses: [calls(['create_instances', unreadable(1)]), calls(['create_instances', unreadable(1)]), answer({ text: 'ok' })] });
+  try {
+    await start(h, { text: 'put a marker post by the gate' });
+    for (let i = 0; i < 2; i++) await h.session.alarm();
+    const replies = toolResults(h);
+    assert.equal(replies.length, 2);
+    for (const reply of replies) {
+      assert.match(reply, /Nothing was created/, reply);
+      assert.match(reply, /items\[0\]\.props\.CFrame/, 'the refusal does not say where the bad value is');
+      assert.doesNotMatch(reply, /already made this exact call/, 'a refused call was counted as made');
+    }
+  } finally { h.stop(); }
+});
+
+test('A CALL THAT REACHED STUDIO AND FAILED IS A DUPLICATE ON THE SECOND TRY, AND THE REFUSAL NAMES THE LAST ERROR', async () => {
+  const same = { items: [{ className: 'Part', name: 'Marker', parent: 'game.Workspace' }] };
+  const h = await makeSession({ connected: true, answerOp: studioRefuses, responses: [calls(['create_instances', same]), calls(['create_instances', same]), answer({ text: 'ok' })] });
+  try {
+    await start(h, { text: 'put a marker post by the gate' });
+    for (let i = 0; i < 2; i++) await h.session.alarm();
+    assert.equal(h.ops.filter((o) => o.op === 'create_instances').length, 1, 'the identical call reached Studio twice');
+    const second = toolResults(h)[1];
+    assert.match(second, /already made this exact call/);
+    assert.match(second, /Its last error was: .*the plugin said no/, `the duplicate refusal does not say what went wrong: ${second}`);
+  } finally { h.stop(); }
+});
+
+test('A RESPONSE WITH FIVE CALLS GETS FIVE RESULTS: the fifth says it was not run and to resend', async () => {
+  const five = calls(...[1, 2, 3, 4, 5].map((n) => ['get_ui_construction', { id: `screen-${n}` }]));
+  const h = await makeSession({ connected: true, responses: [five, answer({ text: 'ok' })] });
+  try {
+    await start(h);
+    await h.session.alarm();
+    const llm = h.store.get('agent').llm;
+    const asked = llm.find((m) => m.role === 'assistant' && m.toolCalls?.length === 5);
+    assert.ok(asked, 'the fixture did not reach the transcript as one five-call turn');
+    for (const call of asked.toolCalls) assert.ok(llm.some((m) => m.role === 'tool' && m.toolCallId === call.id), `call ${call.id} was never answered`);
+    const fifth = llm.find((m) => m.role === 'tool' && m.toolCallId === asked.toolCalls[4].id);
+    assert.match(fifth.content, /not run: at most 4 calls per step; resend/);
+  } finally { h.stop(); }
+});
+
+test('THE CREATE-CONFLICT FENCE PROTECTS WHAT WAS THERE, NOT WHAT THIS RUN MADE; and a bare path is rooted for delete', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => {
+      if (op.op === 'create_instances' && op.items[0].name === 'Post') return { ok: true, data: { created: ['game.Workspace.Post'], count: 1 } };
+      if (op.op === 'create_instances') return { ok: false, error: 'game.Workspace already contains a child named Clash', failure: 'conflict' };
+      return { ok: true, data: { deleted: op.paths } };
+    },
+    responses: [
+      calls(['create_instances', { items: [{ className: 'Part', name: 'Post', parent: 'game.Workspace' }] }]),
+      calls(['create_instances', { items: [{ className: 'Part', name: 'Clash', parent: 'game.Workspace' }] }]),
+      calls(['delete_instances', { paths: ['Workspace.Post'] }]),
+      calls(['delete_instances', { paths: ['game.Workspace.OldHouse'] }]),
+      answer({ text: 'ok' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'put a post by the gate' });
+    for (let i = 0; i < 4; i++) await h.session.alarm();
+    const deletes = h.ops.filter((o) => o.op === 'delete_instances');
+    assert.deepEqual(deletes.map((o) => o.paths), [['game.Workspace.Post']], 'what the run made was fenced, or what was already there was not');
+    assert.equal(h.store.get('agent').blockDeletesAfterCreateConflict, true, 'control: the conflict did not set the fence');
+    assert.match(toolResults(h).at(-1), /already in the place were not deleted/);
+  } finally { h.stop(); }
+});
+
+test('A PROVIDER-CUT TOOL CALL SAYS WHY AND HOW MUCH TO SEND, instead of a bare JSON parse error', async () => {
+  const cut = answer({ finishReason: 'length', toolCalls: [{ id: 'cut-1', name: 'create_instances', arguments: '{"items":[{"className":"Part","name":"Po' }] });
+  const h = await makeSession({ connected: true, answerOp: studioRefuses, responses: [cut, answer({ text: 'ok' })] });
+  try {
+    await start(h, { text: 'put a row of posts by the gate' });
+    await h.session.alarm();
+    const reply = toolResults(h)[0];
+    assert.match(reply, /output was cut off/i, reply);
+    assert.match(reply, /batches of at most \d+ items/);
+    assert.doesNotMatch(reply, /Unexpected end of JSON|not valid JSON/);
+    assert.equal(h.ops.filter((o) => o.op === 'create_instances').length, 0);
+  } finally { h.stop(); }
+});
+
+// ================================================= the loop guard names what is repeating ===
+
+const bulk = (target, value) => ['set_properties_bulk', { targets: [`game.Workspace.${target}`], props: { Transparency: { t: 'number', v: value } } }];
+const bulkAnswer = (op) => (op.op === 'set_props_bulk' ? { ok: true, data: { count: 1 } } : { ok: true, data: {} });
+// A plugin that reports the ops these runs use (a plugin that reports nothing is not offered tools it cannot be shown to support).
+const loopCaps = { schema: 'golem.studio-ops.v1', operations: [...new Set(['set_props_bulk', 'get_tree', 'snapshot', 'list_scripts', ...(W.TOOLS.audit_build.studioOps ?? [])])].map((op) => ({ op, status: 'supported' })) };
+const userNotes = (h) => h.store.get('agent').llm.filter((m) => m.role === 'user' && !m.pinned).map((m) => m.content);
+
+test('TWELVE EDITS TO TWELVE DIFFERENT SETS ARE NOT "THE SAME THING TWELVE TIMES": the run is not ended by the guard', async () => {
+  const h = await makeSession({ connected: true, capabilities: loopCaps, answerOp: bulkAnswer, responses: [...Array.from({ length: 12 }, (_, i) => calls(bulk(`Wall${i}`, 0.5))), answer({ text: 'Done with the walls.' })] });
+  try {
+    await start(h, { text: 'make the garden walls see-through' });
+    for (let i = 0; i < 13 && !lastEnd(h); i++) await h.session.alarm();
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+    assert.doesNotMatch(text, /kept changing the same thing over and over/, 'the loop guard ended twelve different edits as one');
+    assert.equal(h.ops.filter((o) => o.op === 'set_props_bulk').length, 12, 'control: not every edit reached Studio');
+    assert.ok(!userNotes(h).some((n) => /times in a row/.test(n)), 'a retune nudge was sent for work on twelve different targets');
+  } finally { h.stop(); }
+});
+
+test('TWELVE EDITS TO ONE SET: the nudge at six names the tool, the target, the property and the count; the stop at twelve says so on the trace', async () => {
+  const h = await makeSession({ connected: true, capabilities: loopCaps, answerOp: bulkAnswer, responses: Array.from({ length: 12 }, (_, i) => calls(bulk('Wall1', (i + 1) / 20))) });
+  try {
+    await start(h, { text: 'make the garden wall see-through' });
+    for (let i = 0; i < 12 && !lastEnd(h); i++) await h.session.alarm();
+    const nudges = userNotes(h).filter((n) => /times in a row/.test(n));
+    assert.equal(nudges.length, 1, 'the retune nudge must be sent once, at the sixth change');
+    assert.match(nudges[0], /^\[Harness note, not the user\] You have applied set_properties_bulk to "1 target\(s\): game\.Workspace\.Wall1 set Transparency" \(setting Transparency\) 6 times in a row, and it succeeded each time/);
+    assert.match(nudges[0], /switch tool, target or approach/);
+    const end = lastEnd(h);
+    assert.equal(end?.stopReason, 'incomplete', 'twelve changes to one target did not end the run');
+    assert.match(assistantRow(h).content, /kept changing the same thing over and over/, 'the person\'s sentence changed');
+    const trace = JSON.parse(h.sql.messages.find((m) => m.role === 'assistant').tool_trace ?? '[]');
+    assert.match(trace.at(-1).summary, /set_properties_bulk on 1 target\(s\): game\.Workspace\.Wall1 set Transparency, 12 times in a row/, 'the owner\'s trace row does not say what repeated');
+  } finally { h.stop(); }
+});
+
+test('ALTERNATING CHECKS AND EDITS: the nudge adds that checking between edits did not change the outcome', async () => {
+  const h = await makeSession({
+    connected: true,
+    capabilities: loopCaps,
+    answerOp: (op) => (op.op === 'get_tree' ? emptyTree(op) : bulkAnswer(op)),
+    responses: Array.from({ length: 12 }, (_, i) => (i % 2 === 0 ? calls(bulk('Wall1', (i + 2) / 30)) : calls(['audit_build', {}]))),
+  });
+  try {
+    await start(h, { text: 'make the garden wall see-through' });
+    for (let i = 0; i < 12 && !lastEnd(h); i++) await h.session.alarm();
+    const nudge = userNotes(h).find((n) => /times in a row/.test(n));
+    assert.ok(nudge, 'six edits with checks between them never produced the nudge');
+    assert.match(nudge, /Checking between edits did not change the outcome\./);
+  } finally { h.stop(); }
+});
+
+test('A DUPLICATE-STREAK STOP AND A READ-STALL STOP NAME WHAT REPEATED ON THE OWNER\'S TRACE, and the person\'s sentence stays as it was', async () => {
+  const same = () => calls(['get_project_tree', { root: 'game.Workspace' }]);
+  const dup = await makeSession({ connected: true, answerOp: emptyTree, responses: [...Array.from({ length: 12 }, same), answer({ text: 'Done.' })] });
+  const stall = await makeSession({ connected: true, answerOp: emptyTree, responses: [...Array.from({ length: 24 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])), answer({ text: 'Done.' })] });
+  const traceOf = (h) => JSON.parse(h.sql.messages.find((m) => m.role === 'assistant').tool_trace ?? '[]');
+  try {
+    await start(dup, { text: 'make a coin game' });
+    for (let i = 0; i < 20 && !lastEnd(dup); i++) await dup.session.alarm();
+    assert.equal(lastEnd(dup)?.stopReason, 'incomplete', 'the fixture never reached the duplicate-streak bound');
+    assert.match(traceOf(dup).at(-1).summary, /stopped: 3 steps in a row repeated get_project_tree on game\.Workspace/);
+    assert.match(assistantRow(dup).content, /kept doing the same thing again and again/, 'the person\'s sentence changed');
+
+    await start(stall, { text: 'make a coin game' });
+    for (let i = 0; i < 30 && !lastEnd(stall); i++) await stall.session.alarm();
+    assert.equal(lastEnd(stall)?.stopReason, 'incomplete', 'the fixture never reached the read-stall bound');
+    const last = traceOf(stall).at(-1).summary;
+    assert.match(last, /stopped after 20 reads with no change; last reads: /);
+    assert.match(last, /Look\d+/, 'the last reads are not named');
+    assert.match(assistantRow(stall).content, /kept looking at your place instead of building/, 'the person\'s sentence changed');
+  } finally { dup.stop(); stall.stop(); }
 });
 
 const OWES_WORK_NUDGE = /You have not changed the project yet/;
@@ -673,7 +937,7 @@ test('a run that changed something and then only reads is ended at the read-stal
     connected: true,
     answerOp: (op) => (op.op === 'get_tree' ? { ok: true, data: { root: { path: op.root, name: 'x', class: 'Folder', children: [] } } } : { ok: true, data: {} }),
     responses: [
-      calls(['create_instances', { instances: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
+      calls(['create_instances', { items: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
       ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
       answer({ text: 'Done.' }),
     ],
@@ -708,7 +972,7 @@ test('a stopped run tells a young creator what they got, and names no tool', asy
     },
     responses: [
       calls(['import_owner_library', { gameId, path: '/StarterGui/ShopGui', mode: 'self' }], ['import_owner_library', { gameId, path: '/Workspace', mode: 'children' }]),
-      calls(['create_instances', { instances: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
+      calls(['create_instances', { items: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
       ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
       answer({ text: 'Done.' }),
     ],
@@ -885,7 +1149,7 @@ test('F-045: a refusal the product can explain, on a run that changed nothing, I
     connected: true,
     answerOp: (op) => (op.op === 'get_tree' ? emptyTree(op) : { ok: false, error: 'writes require explicit edit consent', failure: 'refused', remedy: 'edit_consent' }),
     responses: [
-      calls(['create_instances', { instances: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
+      calls(['create_instances', { items: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
       ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
       answer({ text: 'Done.' }),
     ],

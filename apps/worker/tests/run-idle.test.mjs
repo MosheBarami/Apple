@@ -57,9 +57,9 @@ test('a prose step resets the count; a check and a change in one step does not c
 test('the run loop feeds every step through afterStep and acts on its answer', () => {
   // The property: every step's facts reach afterStep. Further facts may be added (canBuild was, 2026-09-23).
   assert.match(SESSION, /const idle = afterStep\(agent, \{\s*mutated: mutatedThisStep,\s*verified: verifiedThisStep,\s*calls: executedThisStep \+ duplicatesThisStep,\s*answerOnly: agent\.readOnly === true,[^}]*\}\);/);
-  assert.match(SESSION, /if \(idle\.action === 'answer'\) \{\s*agent\.llm\.push\(/);
+  assert.match(SESSION, /if \(idle\.action === 'answer'\) \{\s*pushHarness\(agent\.llm, /);
   assert.match(SESSION, /if \(idle\.action === 'finish'\) \{[\s\S]{0,700}await this\.finishRun\(agent, 'done'\);/);
-  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(/);
+  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*pushHarness\(agent\.llm, /);
   // Both facts come from the tool loop itself, not from a name list kept beside it.
   assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;/);
   assert.match(SESSION, /if \(out\.ok && VERIFIERS\.has\(call\.name\) && agent\.mutated\) verifiedThisStep = true;/);
@@ -124,7 +124,7 @@ test('after a passing check the stricter after-verify bound decides, not this on
 test('the run loop passes canBuild, ends a stalled run as incomplete, and tells a reading run to build', () => {
   assert.match(SESSION, /answerOnly: agent\.readOnly === true,\s*canBuild,\s*\}\);/);
   assert.match(SESSION, /if \(idle\.action === 'stall'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'incomplete'\);/);
-  assert.match(SESSION, /if \(idle\.action === 'build'\) \{\s*agent\.llm\.push\(/);
+  assert.match(SESSION, /if \(idle\.action === 'build'\) \{\s*pushHarness\(agent\.llm, /);
   // The trim's budget is pinned behaviourally in run-loop-traps.test.mjs (derived from the model) and
   // prompt-budget.test.mjs, not by spelling here.
 });
@@ -151,9 +151,12 @@ test('the same target changed again and again is told to stop tuning, then ended
 
 test('the run loop counts each successful change by its target and acts on the answer', () => {
   assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;/);
+  // The key is the tool and what it was aimed at (a change with no aim still counts by its tool, run_luau aside); what the
+  // aim was is also kept (agent.lastChange) so the nudge can name it.
   assert.match(SESSION, /afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{target\}`\)/);
+  assert.match(SESSION, /agent\.lastChange = \{ tool: call\.name, aim: changeAim, props: changedProps\(call\.arguments\), count: retune\.count \};/);
   assert.match(SESSION, /if \(retuneThisStep === 'finish'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'incomplete'\);/);
-  assert.match(SESSION, /if \(retuneThisStep === 'nudge'\) \{\s*agent\.llm\.push\(/);
+  assert.match(SESSION, /if \(retuneThisStep === 'nudge'\) \{[\s\S]{0,600}pushHarness\(agent\.llm, /);
 });
 
 // 2026-09-23: bound endings said "What it built is in your place" and nothing about what that was.
@@ -263,7 +266,7 @@ test('the run loop hands every run its owed work back, bounded, instead of endin
   // idle bound: a run is steered, bounded, before the finish branch can end it
   assert.match(SESSION, /if \(idle\.action === 'finish' && \(agent\.autonomousContinues \?\? 0\) < AUTONOMOUS_CONTINUES\) \{[\s\S]{0,400}AUTONOMOUS_IDLE_STEER[\s\S]{0,40}\} else if \(idle\.action === 'finish'\)/);
   // the nudge must not tell a run to "reply to the user now"
-  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(\{\s*role: 'user',\s*content: AUTONOMOUS_IDLE_STEER/);
+  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*pushHarness\(agent\.llm, AUTONOMOUS_IDLE_STEER/);
 });
 
 test('a built game with nothing on screen or an unplayed loop is not finished: said from what the run BUILT, not from words of the request', async () => {

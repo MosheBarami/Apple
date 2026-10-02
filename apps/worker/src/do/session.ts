@@ -75,7 +75,7 @@ import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, reasoningEffortApplies, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
-import { TOOLS, offeredWhenFocused, toolDefs, toolNames, targetOf, runTool, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
+import { TOOLS, offeredWhenFocused, toolDefs, toolNames, targetOf, runTool, recoverJsonObject, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
 import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
@@ -89,10 +89,12 @@ import { dayKey } from '../quota-math';
 import { chooseEffort, classifyRequest, forbidsChanges, tokensAfterCuts, MAX_CONSECUTIVE_CUTS, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@golem/shared';
 import type { RunFailure } from '@golem/shared';
-import { aim, trimTranscriptReport } from '../transcript';
+import { aim, changedProps, trimTranscriptReport } from '../transcript';
+import type { LibraryRun } from '../library-run';
+import { addCreated, rememberCreated, coveredByCreated } from '../created-paths';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, afterChangeWindow, afterToolOutcome, failureSteer, FAIL_STEER_AT, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction, type FailureAction } from '../run-idle';
+import { afterStep, afterChange, afterChangeWindow, afterToolOutcome, failureSteer, FAIL_STEER_AT, pushHarness, buildNudge, retuneNudge, READ_STALL_LIMIT, alternatesWithChecks, type LastChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction, type FailureAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
@@ -165,6 +167,26 @@ import {
   type ToolStudioRequirements,
 } from '../plugin-capabilities';
 import { buildApproved } from '../owner-corpus.ts';
+
+/** Say, on the last persisted trace row, why the run was stopped (the owner reads the trace; the person reads the note). Bounded. */
+function annotateLastTrace(agent: { trace: ToolTraceEntry[] }, text: string): void {
+  const last = agent.trace[agent.trace.length - 1];
+  if (last) last.summary = `${last.summary} · ${text}`.slice(0, 400);
+}
+
+/** The last few trace rows, as the rows describe themselves, for the note that a read-only stall ended the run. */
+function lastReads(trace: readonly ToolTraceEntry[], n: number): string {
+  return trace.slice(-n).map((t) => t.summary.replace(/\s+/g, ' ').slice(0, 80)).join('; ') || 'none';
+}
+
+/** Tool calls run per step; the prompt tells the model the same number. */
+const MAX_CALLS_PER_STEP = 4;
+
+/** Are these tool-call arguments JSON (or JSON the worker can recover), rather than a payload cut off mid-way? */
+function argumentsReadable(json: string | undefined): boolean {
+  if (!json) return true;
+  try { JSON.parse(json); return true; } catch { return recoverJsonObject(json) !== undefined; }
+}
 
 const STOPPED_IN_FLIGHT = Symbol('stopped in flight');
 const STOP_POLL_MS = 250;
@@ -323,6 +345,18 @@ interface AgentState {
   readsSinceChange?: number;
   /** Times a run that was about to stop was handed its owed work back (run-idle). */
   autonomousContinues?: number;
+  /** The one "nothing has changed yet" harness note was sent this run (run-idle.ts buildNudge). */
+  buildNudged?: boolean;
+  /** What this run has done with the model library (library-run.ts); the order gate and the insert failure hints read it. */
+  libraryRun?: LibraryRun;
+  /**
+   * Studio ops this run has queued. A tool call that moved this counter REACHED Studio; one that did not was refused by the
+   * worker before anything was sent. That difference decides whether a repeat is a duplicate and whether a failure is worth
+   * a more expensive next step (both used to treat a free worker-side refusal like a failed build).
+   */
+  studioOps?: number;
+  /** Paths this run created (created-paths.ts): a delete of only these is let through the create-conflict fence. */
+  createdPaths?: string[];
   /** This run built something the player sees on screen (a ScreenGui, the ui_kit, build_ui). */
   hudBuilt?: boolean;
   /** play_check ran as a player in this run. */
@@ -333,6 +367,10 @@ interface AgentState {
   partSteers?: { missing: number; steers: number };
   /** Successful changes per target (tool + what it was aimed at) this run — run-idle.ts afterChange. */
   changesByTarget?: Record<string, number>;
+  /** The change the loop guard is counting right now, so its nudge and its stop can say WHAT repeated. */
+  lastChange?: LastChange;
+  /** The last call refused as a duplicate, so a duplicate-streak stop can name it. */
+  lastDuplicate?: { tool: string; aim: string };
   /** Set when build_scene has built a kit this run; its pieces and terrain are kept (scene-kits.ts). */
   kitZone?: KitZone;
   /** Consecutive terrain writes since the last other change (terrain-streak.ts; round 6 made 951). */
@@ -3934,7 +3972,7 @@ export class SessionDO extends DurableObject<Env> {
     if ((await this.ctx.storage.get<string>('assetSourcesAwaitingRun')) === agent.msgId) {
       const steer = assetSourceAnswerSteer(this.pinnedPrefs?.asset_sources);
       if (steer) {
-        agent.llm.push({ role: 'user', content: steer });
+        pushHarness(agent.llm, steer);
         await this.ctx.storage.delete('assetSourcesAwaitingRun');
       }
     }
@@ -4418,14 +4456,10 @@ export class SessionDO extends DurableObject<Env> {
           : cuts >= 2
             ? 'Split large instance/script work into small tool calls of at most four logical items.'
             : 'Split any large tool payload into smaller calls instead of trying to describe the whole build at once.';
-      agent.llm.push({
-        role: 'user',
-        content:
-          'Your previous provider response hit its output ceiling before it became a complete action. ' +
+      pushHarness(agent.llm, 'Your previous provider response hit its output ceiling before it became a complete action. ' +
           'It was not shown to the user and did not end the run. Continue the SAME task from the ' +
           'successful tools/results already in the transcript. Do not repeat completed work. ' +
-          batchHint,
-      });
+          batchHint);
       await this.persistAgent(agent);
       await this.ctx.storage.setAlarm(Date.now() + 10);
       return;
@@ -4501,15 +4535,11 @@ export class SessionDO extends DurableObject<Env> {
       if (rescued?.refused) {
         const steers = (agent.textCallSteers ?? 0) + 1;
         agent.textCallSteers = steers;
-        agent.llm.push({
-          role: 'user',
-          content:
-            `Your last message was the ARGUMENTS for \`${rescued.refused}\` written as text, not a tool call. ` +
+        pushHarness(agent.llm, `Your last message was the ARGUMENTS for \`${rescued.refused}\` written as text, not a tool call. ` +
             'It was not run and the user did not see it. ' +
             (allowed.has(rescued.refused)
               ? 'Call the tool.'
-              : 'That tool is not offered in this run, so do not try it again: carry on with the tools you were given.'),
-        });
+              : 'That tool is not offered in this run, so do not try it again: carry on with the tools you were given.'));
         if (steers <= MAX_TEXT_CALL_STEERS) {
           await this.persistAgent(agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
@@ -4521,7 +4551,7 @@ export class SessionDO extends DurableObject<Env> {
           .some((tool) => tool.name === artifact.tool);
         if (!artifact.attempted && available) {
           agent.nudges = Math.min(MAX_NUDGE_LEVEL, (agent.nudges ?? 0) + 1);
-          agent.llm.push({ role: 'user', content: `The requested artifact has not been created in this run. Call ${artifact.tool} now. Do not invent an artifact ID or describe work as completed without a successful tool result.` });
+          pushHarness(agent.llm, `The requested artifact has not been created in this run. Call ${artifact.tool} now. Do not invent an artifact ID or describe work as completed without a successful tool result.`);
           await this.persistAgent(agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
           return;
@@ -4553,12 +4583,8 @@ export class SessionDO extends DurableObject<Env> {
       const owesWork = askedForWork && canBuild;
       if (owesWork) {
         agent.nudges = Math.min(MAX_NUDGE_LEVEL, (agent.nudges ?? 0) + 1);
-        agent.llm.push({
-          role: 'user',
-          content:
-            'You have not changed the project yet. Do not describe what you are about to do — do it now ' +
-            'with a tool call, in this turn. If you were mid-sentence, carry out that action.',
-        });
+        pushHarness(agent.llm, 'You have not changed the project yet. Do not describe what you are about to do — do it now ' +
+            'with a tool call, in this turn. If you were mid-sentence, carry out that action.');
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
@@ -4598,7 +4624,7 @@ export class SessionDO extends DurableObject<Env> {
       // A game the client check called ready is finished: its answer ends the run (run-flow.ts).
       const partNext = agent.mutated && canBuild && !owesWork && !agent.judgedReady ? steerToPart(agent) : null;
       if (partNext) {
-        agent.llm.push({ role: 'user', content: partNext });
+        pushHarness(agent.llm, partNext);
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
@@ -4608,7 +4634,7 @@ export class SessionDO extends DurableObject<Env> {
         (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES && (gaps.length > 0 || leavesWorkOpen(res.text))
       ) {
         agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
-        agent.llm.push({ role: 'user', content: gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_CONTINUE_STEER });
+        pushHarness(agent.llm, gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_CONTINUE_STEER);
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
@@ -4645,7 +4671,7 @@ export class SessionDO extends DurableObject<Env> {
     const failCountedThisStep = new Set<string>();
     let verifiedThisStep = false;
     let pausedFor: StudioPauseReason | null = null;
-    for (const call of res.toolCalls.slice(0, 4)) {
+    for (const call of res.toolCalls.slice(0, MAX_CALLS_PER_STEP)) {
       if (await this.stopForAccess(agent)) return;
       if (sequence) {
         const next = sequenceProgress(sequence, agent.trace);
@@ -4689,6 +4715,7 @@ export class SessionDO extends DurableObject<Env> {
       if (repeated && !(retry && retry.retries < MAX_IDENTICAL_RETRIES && !failedAlike)) {
         // the model is looping — refuse the duplicate and steer it back to the work
         duplicatesThisStep += 1;
+        agent.lastDuplicate = { tool: call.name, aim: aim(call.arguments) };
         const planNext = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
         const planHint = planNext ? ` Your plan's next step is "${planNext.title}" (${planNext.tool}); do that now.` : '';
         const steer =
@@ -4703,6 +4730,8 @@ export class SessionDO extends DurableObject<Env> {
             (retry || failedAlike
               ? 'You have already retried this exact call and it failed every time, so it was not run again. Do not repeat it; change your approach.'
               : 'You already made this exact call earlier in this run and have the result above. Do not repeat it.') +
+            // When that earlier attempt failed, say how: "you already made this call" alone sends the model hunting for a result it never got.
+            (agent.failedCalls?.find((f) => f.sig === failSig)?.error ? ` Its last error was: ${agent.failedCalls.find((f) => f.sig === failSig)!.error}.` : '') +
             steer,
           toolCallId: call.id,
           name: call.name,
@@ -4756,14 +4785,16 @@ export class SessionDO extends DurableObject<Env> {
         continue;
       }
       if (repeated && retry) retry.retries += 1;
-      else if (call.name !== 'propose_plan') agent.seenCalls.push(sig);
+      //[[ THE SIGNATURE IS STORED AFTER THE CALL, and only when it actually ran (below, with the trace entry). It used to be
+      //   stored here, before the tool had run, so a call the worker refused for its own reasons (a bad property, a limit, an
+      //   order gate) counted as "already made" and the model's corrected resend was refused as a duplicate of the call that
+      //   never happened. ]]
       //[[ BOUNDED, like uiTools two lines below. `sig` is `name:arguments`, and arguments is
       //   the raw JSON — a full script body for edit_script. Unbounded, this array alone can
       //   carry the persisted AgentState past the Durable Object's 128 KiB value limit, and
       //   the failure mode is not a lost dedupe: the put rejects, the alarm dies, and the
       //   retry re-runs the step's paid LLM call and its mutating tools. 40 is far more than
       //   the duplicate-call guard needs — it only ever compares against the current run. ]]
-      if (agent.seenCalls.length > 40) agent.seenCalls.splice(0, agent.seenCalls.length - 40);
       // Announce the stage this tool actually represents, immediately before it
       // runs. The phase is derived from the tool, so the UI never claims a
       // stage the agent has not entered.
@@ -4783,7 +4814,22 @@ export class SessionDO extends DurableObject<Env> {
       // terrain and lighting tools "aren't offered in this mode". Say what actually happened.
       const studioDown = !studioConnected && TOOLS[call.name]?.studio === true;
       if (studioDown) agent.studioDropped = true;
-      const out = allowed.has(call.name)
+      const opsBefore = agent.studioOps ?? 0;
+      // A response the provider cut off mid-call has arguments that are not JSON. The bare parse error told the model nothing
+      // about WHY, and it resent the same oversize payload; say what happened and how much to send.
+      const cutOff = agent.lastFinishReason === 'length' && allowed.has(call.name) && !argumentsReadable(call.arguments);
+      const cuts = cutOff ? (agent.lengthRecoveries = (agent.lengthRecoveries ?? 0) + 1) : 0;
+      const out = cutOff
+        ? {
+            summary: `${safeToolName}: the output was cut off, so it was not run`,
+            resultForLlm: JSON.stringify({
+              error: `Your output was cut off at the provider's limit, so this call's arguments were incomplete and nothing ran. Resend it as batches of at most ${cuts >= 4 ? 4 : cuts >= 2 ? 10 : 20} items, one call per batch.`,
+              executed: false,
+            }),
+            ok: false,
+            detail: undefined,
+          }
+        : allowed.has(call.name)
         ? await runTool(ctx, call.name, call.arguments)
         : {
             summary: studioDown
@@ -4815,10 +4861,18 @@ export class SessionDO extends DurableObject<Env> {
       };
       agent.trace.push(entry);
       executedThisStep += 1;
+      // Did this call actually run? A Studio tool that sent no op was refused by the worker first: that is not "already made".
+      const reachedStudio = (agent.studioOps ?? 0) > opsBefore;
+      if (allowed.has(call.name) && !cutOff && (reachedStudio || TOOLS[call.name]?.studio !== true) && !(repeated && retry) && call.name !== 'propose_plan') {
+        agent.seenCalls.push(sig);
+        if (agent.seenCalls.length > 40) agent.seenCalls.splice(0, agent.seenCalls.length - 40);
+      }
       agent.terrainStreak = nextTerrainStreak(agent.terrainStreak ?? 0, call.name, out.ok, out.mutatedProject === true);
       // Feed the outcome back to the reasoning policy: a failed tool or a failed visual gate
       // means the next step should think harder rather than repeat the same cheap attempt.
-      if (!out.ok) agent.priorStepFailed = true;
+      // Only a failure that reached Studio buys the careful (and expensive) next step. A refusal the worker made before sending
+      // anything is free to correct, and forcing high effort on it was measured at 131 s and 155 s of thinking per step.
+      if (!out.ok && reachedStudio) agent.priorStepFailed = true;
       // A composite tool can fail after an earlier sub-operation already changed Studio. runTool
       // reports that residual mutation explicitly even when `ok` is false; losing it here would
       // make refund/delivery bookkeeping claim nothing changed when the place did.
@@ -4832,9 +4886,13 @@ export class SessionDO extends DurableObject<Env> {
         // exactly the loop this guard exists for (F-036; review of the credits branch, 2026-10-02).
         const target = aim(call.arguments) || (call.name === 'run_luau' ? '' : '(no target)');
         if (target) {
+          const changeAim = target === '(no target)' ? '' : target;
           const retune = afterChange(agent.changesByTarget, `${call.name} ${target}`);
           agent.changesByTarget = retune.counts;
+          agent.lastChange = { tool: call.name, aim: changeAim, props: changedProps(call.arguments), count: retune.count };
           if (retune.action === 'finish' || (retune.action === 'nudge' && retuneThisStep === 'none')) retuneThisStep = retune.action;
+          // The owner reads the persisted trace: say WHAT repeated on the row that tripped the guard, not only that something did.
+          if (retune.action !== 'none') entry.summary = `${entry.summary} · ${call.name} on ${changeAim || 'the same target'}, ${retune.count} times in a row`.slice(0, 300);
           // Back and forth between two things never repeats one target in a row (run-idle.ts afterChangeWindow).
           const window = afterChangeWindow(agent.changeWindow, `${call.name} ${target}`);
           agent.changeWindow = window.state;
@@ -5019,6 +5077,20 @@ export class SessionDO extends DurableObject<Env> {
       }
     }
 
+    // At most four calls run per step; the rest get a result too, so the transcript stays well formed and the model is
+    // told to resend them rather than waiting for results that will never come.
+    if (res.toolCalls.length > MAX_CALLS_PER_STEP) {
+      const answered = new Set(agent.llm.filter((m) => m.role === 'tool').map((m) => m.toolCallId));
+      for (const call of res.toolCalls.slice(MAX_CALLS_PER_STEP)) {
+        if (answered.has(call.id)) continue;
+        agent.llm.push({
+          role: 'tool',
+          content: `[${call.name}] not run: at most ${MAX_CALLS_PER_STEP} calls per step; resend this one in your next step.`,
+          toolCallId: call.id,
+          name: call.name,
+        });
+      }
+    }
     // Checked again here, not only inside the tool loop: a stop that arrives after the last
     // tool's check would otherwise be overwritten by this step's tail persist below, and the
     // next alarm would carry on as though the button had never been pressed.
@@ -5031,7 +5103,7 @@ export class SessionDO extends DurableObject<Env> {
       // Every call of the turn gets a result, so the transcript stays well formed and the model
       // knows these were never attempted.
       const answered = new Set(agent.llm.filter((m) => m.role === 'tool').map((m) => m.toolCallId));
-      for (const call of res.toolCalls.slice(0, 4)) {
+      for (const call of res.toolCalls.slice(0, MAX_CALLS_PER_STEP)) {
         if (answered.has(call.id)) continue;
         agent.llm.push({
           role: 'tool',
@@ -5082,10 +5154,7 @@ export class SessionDO extends DurableObject<Env> {
       agent.duplicateStreak = 0;
       agent.readsWithheldOnce = true;
       const next = planOpen ? ` Your plan's next step is "${fenceForQuote(planOpen.title)}" (${planOpen.tool}).` : '';
-      agent.llm.push({
-        role: 'user',
-        content: UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') + (streakParts.length ? ` ${partSteer(streakParts)}` : ''),
-      });
+      pushHarness(agent.llm, UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') + (streakParts.length ? ` ${partSteer(streakParts)}` : ''));
     } else if (streak === 'end') {
       const note = agent.lightingOnly && agent.mutated
         ? `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and Apple will do it.`
@@ -5099,6 +5168,9 @@ export class SessionDO extends DurableObject<Env> {
         ? `Apple stopped because it kept doing the same thing again and again. ${spaced(builtSummary(agent.made))}Everything it made is in your place.`
         : 'Apple stopped because it kept doing the same thing again and again, and nothing in your place was changed.';
       agent.terminalNote = note;
+      // What was repeated, on the row the owner reads (the sentence above is for the person, and stays as it was).
+      const dup = agent.lastDuplicate;
+      annotateLastTrace(agent, `stopped: ${agent.duplicateStreak ?? MAX_DUPLICATE_STREAK} steps in a row repeated${dup ? ` ${dup.tool}${dup.aim ? ` on ${dup.aim}` : ''}` : ' a call already made'}`);
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -5131,7 +5203,7 @@ export class SessionDO extends DurableObject<Env> {
           agent.readsSinceChange = 0;
           agent.readsWithheldOnce = true;
         }
-        agent.llm.push({ role: 'user', content: steer });
+        pushHarness(agent.llm, steer);
         idle.action = 'none';
       }
     }
@@ -5153,6 +5225,7 @@ export class SessionDO extends DurableObject<Env> {
         ? `Apple stopped because it kept looking at your place instead of building the rest. ${spaced(builtSummary(agent.made))}Send another message and it will carry on.`
         : 'Apple stopped because it kept looking at your place instead of building anything, so nothing was changed. Send your message again to try once more.';
       agent.terminalNote = note;
+      annotateLastTrace(agent, `stopped after ${agent.readsSinceChange ?? READ_STALL_LIMIT} reads with no change; last reads: ${lastReads(agent.trace, 3)}`);
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -5174,7 +5247,7 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     if (failThisStep?.action === 'steer') {
-      agent.llm.push({ role: 'user', content: failureSteer(failThisStep.tool, agent.failStreaks?.[failThisStep.tool] ?? FAIL_STEER_AT) });
+      pushHarness(agent.llm, failureSteer(failThisStep.tool, agent.failStreaks?.[failThisStep.tool] ?? FAIL_STEER_AT));
     }
     // Changing the same thing over and over — F-036: 101 steps re-tuning one Lighting value.
     if (retuneThisStep === 'finish') {
@@ -5188,35 +5261,27 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     if (retuneThisStep === 'nudge') {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have changed the same thing several times in a row. Stop tuning it: keep the best version you have, ' +
-          'finish anything else the request still needs, and then reply to the user.',
-      });
+      const last = agent.lastChange;
+      const isCheck = (name: string) => VERIFIERS.has(name) || name === 'render_view' || name.startsWith('check_');
+      pushHarness(agent.llm, last
+        ? retuneNudge(last, (name) => Object.prototype.hasOwnProperty.call(TOOLS, name), alternatesWithChecks(agent.trace, last.tool, last.count, isCheck))
+        : 'You have changed the same thing several times in a row. Switch tool, target or approach, or keep the best version you have and reply to the user.');
     }
     if (windowNudge && retuneThisStep !== 'nudge') {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'Over your last 24 changes, 12 or more went to the same thing, with other changes in between. If you are going back and forth ' +
-          'between versions of it, keep the best one, finish anything else the request still needs, and then reply to the user. ' +
-          'If each change really adds something new, carry on.',
-      });
+      pushHarness(agent.llm,
+        'Over your last 24 changes, 12 or more went to the same thing, with other changes in between. If you are going back and forth ' +
+        'between versions of it, keep the best one, finish anything else the request still needs, and then reply to the user. ' +
+        'If each change really adds something new, carry on.');
     }
     if (idle.action === 'build') {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have read the place enough. Stop reading and make the next change the request needs now, with what you ' +
-          'already know. If a detail is missing, choose a sensible default instead of reading again.',
-      });
+      pushHarness(agent.llm, 'You have read the place enough. Stop reading and make the next change the request needs now, with what you ' +
+          'already know. If a detail is missing, choose a sensible default instead of reading again.');
     }
     if (idle.action === 'finish' && (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES) {
       agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
       agent.idleAfterVerify = 0;
       const gaps = gameGaps(agent, allowed.has('play_check'));
-      agent.llm.push({ role: 'user', content: gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_IDLE_STEER });
+      pushHarness(agent.llm, gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_IDLE_STEER);
     } else if (idle.action === 'finish') {
       const note = 'Apple made the change and checked it, then had nothing left to do, so it stopped here.';
       const prior = agent.streamedText ?? '';
@@ -5227,18 +5292,11 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     if (idle.action === 'answer') {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have read enough to answer. Reply to the user now with what you found, in plain words. ' +
-          'Only call another tool if one specific fact you need is still missing.',
-      });
+      pushHarness(agent.llm, 'You have read enough to answer. Reply to the user now with what you found, in plain words. ' +
+          'Only call another tool if one specific fact you need is still missing.');
     }
     if (idle.action === 'nudge') {
-      agent.llm.push({
-        role: 'user',
-        content: AUTONOMOUS_IDLE_STEER,
-      });
+      pushHarness(agent.llm, AUTONOMOUS_IDLE_STEER);
     }
     // If the model has spent several steps without changing anything, steer it. Mutation truth
     // comes from the tool implementation's co-located metadata through runTool, rather than a
@@ -5248,17 +5306,20 @@ export class SessionDO extends DurableObject<Env> {
     // "create the instances" could only invite a call to a tool they do not have — refused as
     // unavailable, a paid step each time.
     const built = agent.mutated === true;
-    if (!built && agent.step >= 2 && canBuild && studioConnected) {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have spent several steps researching without changing the project. Stop investigating and build now with what you know: create the instances or edit the scripts the request needs. Build geometry from Parts rather than looking for assets.',
-      });
+    // ONCE per run, built from what happened (run-idle.ts buildNudge). It used to repeat every step and told the
+    // model, in the user's voice, to skip the asset search and build from Parts; the model quoted it back as
+    // something the user had said (owner benchmark 2026-10-02).
+    if (!built && !agent.buildNudged && agent.step >= 2 && canBuild && studioConnected) {
+      const text = buildNudge(agent.trace, agent.readsSinceChange ?? 0, (name) => Object.prototype.hasOwnProperty.call(TOOLS, name));
+      if (text) {
+        agent.buildNudged = true;
+        pushHarness(agent.llm, text);
+      }
     }
     // The plan's next step may call for a craft recipe the prompt did not carry (skill-cards.ts).
     const skillSteer = canBuild ? skillSteerForStep(agent.plan, agent.trace, agent.skillCardsShown ?? []) : null;
     if (skillSteer) {
-      agent.llm.push({ role: 'user', content: skillSteer.message });
+      pushHarness(agent.llm, skillSteer.message);
       agent.skillCardsShown = [...(agent.skillCardsShown ?? []), ...skillSteer.ids];
     }
     this.captureProvenance(agent, ctx);
@@ -6034,6 +6095,7 @@ export class SessionDO extends DurableObject<Env> {
       ...(agent ? { buildLedger: {
         find: async (id: string) => ((await this.ctx.storage.get<LedgerEntry[]>(LEDGER_KEY)) ?? []).find((e) => e.id === id),
       } } : {}),
+      ...(agent ? { libraryRun: (agent.libraryRun ??= {}) } : {}),
       onceInRun: (key) => {
         if (!agent) return true;
         const seen = agent.onceKeys ?? (agent.onceKeys = []);
@@ -6052,6 +6114,7 @@ export class SessionDO extends DurableObject<Env> {
       rejectedLibraryAssetIds: agent?.rejectedLibraryAssetIds,
       assetChoiceAnchor: agent?.assetChoiceAnchor,
       askAssetSources: () => this.askAssetSources(),
+      assetSettingsUnread: this.pinnedPrefs === null,
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
       // "can you build right now" is no. The connection half now comes from the same rule the
       // header and the status broadcast use.
@@ -6066,7 +6129,9 @@ export class SessionDO extends DurableObject<Env> {
       addSources: (fresh) => { if (!agent) return []; agent.sources ??= []; return addSources(agent.sources, fresh); },
       // Read the run by reference: create_instances and delete_instances can arrive in one LLM
       // response, and a flag captured when the context was constructed would miss the conflict.
-      blockDirectDeletion: () => agent?.blockDeletesAfterCreateConflict === true,
+      // The fence protects what was in the place BEFORE this run; what the run created itself can still be removed.
+      blockDirectDeletion: (paths) => agent?.blockDeletesAfterCreateConflict === true && !coveredByCreated(agent.createdPaths, paths),
+      noteCreated: (paths) => { if (agent) agent.createdPaths = addCreated(agent.createdPaths, paths); },
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind, {}, agent),
       restoreCheckpoint: (id: string) => this.restoreCheckpoint(id, agent),
       // Frames go to the browser and nowhere else. They are deliberately not
@@ -6372,6 +6437,8 @@ export class SessionDO extends DurableObject<Env> {
     // Queueing an op is activity: it un-parks the poll so the next one holds again rather than
     // sleeping through the work that is about to arrive.
     this.lastActivity = Date.now();
+    // Counted here, once the op is really queued: a tool call that moved this counter reached Studio (AgentState.studioOps).
+    if (run) run.studioOps = (run.studioOps ?? 0) + 1;
     await this.ctx.storage.put({ opQueue: this.opQueue, seq: this.seq });
     this.pollWaiter?.();
 
@@ -6392,6 +6459,7 @@ export class SessionDO extends DurableObject<Env> {
         resolve(r);
       });
     });
+    if (run && result.ok) run.createdPaths = rememberCreated(run.createdPaths, studioOp.op, result.data);
     if (run && studioOp.op === 'import_owner_library' && studioOp.replace === true && result.ok && !run.keepOwnerOriginal) {
       run.keepOwnerOriginal = true;
       await this.persistAgent(run);

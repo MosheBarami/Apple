@@ -231,6 +231,46 @@ function outcome(reply: GatewayMessage | undefined): string {
   }
 }
 
+/**
+ * The sorted names of what a change sets: `props`, `attributes` (as attr:name) and the properties of `adjust`. A bulk edit that
+ * changes Transparency on forty parts and one that changes Material on the same forty are different changes; without this
+ * they shared one aim, and twelve different edits read as "the same thing changed twelve times".
+ */
+export function changedProps(args: string | undefined): string[] {
+  let a: unknown;
+  try { a = JSON.parse(args || '{}'); } catch { return []; }
+  if (!a || typeof a !== 'object') return [];
+  const o = a as Record<string, unknown>;
+  const names = new Set<string>();
+  const keys = (v: unknown, prefix = '') => {
+    if (v && typeof v === 'object' && !Array.isArray(v)) for (const k of Object.keys(v)) names.add(plain(prefix + k));
+  };
+  keys(o.props);
+  keys(o.attributes, 'attr:');
+  if (Array.isArray(o.adjust)) for (const x of o.adjust) { const property = x && typeof x === 'object' ? (x as Record<string, unknown>).property : undefined; if (typeof property === 'string') names.add(plain(property)); }
+  return [...names].filter(Boolean).sort().slice(0, 8);
+}
+
+/** A search_instances-style filter in a few plain words: its class, name, root and tag, never its values' markup. */
+function filterWords(q: unknown): string {
+  if (!q || typeof q !== 'object' || Array.isArray(q)) return '';
+  const f = q as Record<string, unknown>;
+  const words: string[] = [];
+  for (const k of ['className', 'isA', 'name', 'root', 'tag']) if (typeof f[k] === 'string' && f[k]) words.push(`${k} ${plain(String(f[k]))}`);
+  if (f.property && typeof f.property === 'object' && typeof (f.property as Record<string, unknown>).name === 'string') words.push(`property ${plain(String((f.property as Record<string, unknown>).name))}`);
+  return words.slice(0, 4).join(' ');
+}
+
+/** A region as its two corners, rounded: two scatters into two different places are two different changes. */
+function regionWords(r: unknown): string {
+  if (!r || typeof r !== 'object' || Array.isArray(r)) return '';
+  const g = r as Record<string, unknown>;
+  const corner = (v: unknown) => (Array.isArray(v) ? v.map((n) => (typeof n === 'number' ? Math.round(n) : '')).join(' ') : '');
+  const lo = corner(g.min ?? g.center ?? g.origin);
+  const hi = corner(g.max ?? g.size);
+  return plain(`in ${lo}${hi ? ` to ${hi}` : ''}`.trim());
+}
+
 /** What a call was aimed at, from the argument fields that name a target. Empty when none parse. */
 export function aim(args: string | undefined): string {
   let a: unknown;
@@ -242,6 +282,9 @@ export function aim(args: string | undefined): string {
       .filter((n): n is string => typeof n === 'string').map(plain);
     return `${o.items.length} item(s)${names.length ? `: ${names.slice(0, 8).join(', ')}` : ''}`;
   }
+  // A COPY OF A TEMPLATE aims at what is copied and where to: twelve scatters of twelve templates (or into twelve regions)
+  // under one parent used to aim at that parent, and read as one thing scattered twelve times.
+  if (typeof o.template === 'string' && o.template) return plain(`${o.template} ${regionWords(o.region)}`.trim());
   for (const k of ['path', 'target', 'root', 'parent', 'name', 'query', 'title']) {
     if (typeof o[k] === 'string' && o[k]) return plain(String(o[k]));
   }
@@ -254,6 +297,14 @@ export function aim(args: string | undefined): string {
     const names = xs.map(pick).filter((n): n is string => typeof n === 'string' && n.length > 0).map(plain);
     return `${xs.length} ${label}${names.length ? `: ${names.slice(0, 8).join(', ')}` : ''}`;
   };
+  // A BULK EDIT is its targets (or filter) AND what it changes.
+  const changed = changedProps(args);
+  const sets = changed.length ? ` set ${changed.join(' ')}` : '';
+  if (Array.isArray(o.targets)) return `${list(o.targets, 'target(s)', (x) => (typeof x === 'string' ? x : undefined))}${sets}`;
+  if (o.query && typeof o.query === 'object' && !Array.isArray(o.query)) {
+    const words = filterWords(o.query);
+    return `query${words ? ` ${words}` : ''}${sets}`;
+  }
   if (Array.isArray(o.paths)) return list(o.paths, 'path(s)', (x) => (typeof x === 'string' ? x : undefined));
   if (Array.isArray(o.moves)) {
     return list(o.moves, 'move(s)', (x) => (x && typeof x === 'object' ? (x as Record<string, unknown>).path as string : undefined));
