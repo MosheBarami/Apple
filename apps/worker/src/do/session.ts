@@ -2654,6 +2654,22 @@ export class SessionDO extends DurableObject<Env> {
       return json(res, res.ok ? 200 : 409);
     }
 
+    // A fresh chat for the owner's benchmark (owner, 2026-10-02: "every request runs in a new clean chat"): the
+    // conversation, memory and everything a run remembers go; the Studio pairing and the checkpoints (the clean
+    // baseline the benchmark restores) stay. Reached only through the admin-key route.
+    if (path === '/bench-reset' && req.method === 'POST') {
+      const running = await this.ctx.storage.get<AgentState>('agent');
+      if (running && running.status === 'running') return json({ ok: false, error: 'a run is in progress' }, 409);
+      for (const key of ['agent', 'memory', 'memoryEditedAt', 'pendingObjectChoice', 'pendingAssetChoice', 'builtObject', 'builtGame',
+        'plannedGame', 'playtestRun', 'assetSourcesAwaitingRun', 'opQueue']) await this.ctx.storage.delete(key);
+      this.opQueue = [];
+      this.sql.exec('delete from message_models');
+      this.sql.exec('delete from message_revisions');
+      this.sql.exec('delete from messages');
+      this.sql.exec('delete from oplog');
+      return json({ ok: true, reset: true });
+    }
+
     if (path === '/purge' && req.method === 'POST') {
       for (const ws of this.ctx.getWebSockets()) {
         try {
