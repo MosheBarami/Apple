@@ -94,7 +94,7 @@ import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, EXTRA_CHECK_TOOLS, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
@@ -4991,7 +4991,7 @@ export class SessionDO extends DurableObject<Env> {
       }
       if (out.ok && VERIFIERS.has(call.name) && agent.mutated) verifiedThisStep = true;
       // A look at the work is a check too: reading after it is the idle the bound above already counts.
-      if (out.ok && call.name === LOOK_TOOL && agent.mutated) verifiedThisStep = true;
+      if (out.ok && EXTRA_CHECK_TOOLS.has(call.name) && agent.mutated) verifiedThisStep = true;
       if (out.mutatedProject === true && buildsHud(call.name, call.arguments)) agent.hudBuilt = true;
       // A model file recreates without replacing a slot, so the import alone does not mark it.
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
