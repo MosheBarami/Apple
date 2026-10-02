@@ -6,8 +6,11 @@
  * parts, not a style guide. It sits on top of luau-review.ts (the parser, the control-flow and Roblox semantic rules) and
  * sandbox.ts (the network rule) and adds the checks that only matter for scripts that make things in a place do something:
  *
- *   unyielding-loop        ENFORCED. A loop with no yield pins the server thread until the watchdog kills the script. The one
- *                          defect that is certain whatever the script is for, so it is refused with the fix, not just reported.
+ *   unyielding-loop        ENFORCED. A loop that PROVABLY never yields (always true, no way out, every call a builtin that cannot
+ *                          yield) pins the server thread until the watchdog kills the script: certain whatever the script is for,
+ *                          so it is refused with the fix. Deliberately narrower than luau-review's two loop rules, which were
+ *                          measured refusing fine scripts (a `break`, a helper that waits, coroutine.yield, a required module's
+ *                          function, a wait inside pcall); what they suspect but cannot prove is `loop-may-not-yield`, a warning.
  *   reference-missing      A `:WaitForChild("X")` with no timeout on a name the inserted tree does not have waits forever and
  *                          the script silently stops: exactly what happens when a script written for one name meets a library
  *                          model whose parts are named otherwise. Checked against the live tree, not against memory.
@@ -97,6 +100,73 @@ function rootName(n: N | undefined): string | null {
 }
 
 // ---------------------------------------------------------------------------------------------------------- rules
+
+/**
+ * A loop that PROVABLY never yields: its condition is the constant true (`while true`, `while 1`, `repeat … until false`), its body
+ * has no way out (no break, return or goto outside nested functions), and every call in it is to a function known not to yield
+ * (print, math.*, string.*, table.*, Vector3.new …). Anything else (a method call, a call to a function of the script's own or of
+ * a required module, task.*, pcall, coroutine.*) might yield, so it is not claimed.
+ *
+ * This is deliberately narrower than luau-review's `busy-wait-loop` and `no-yield-infinite-loop`. Measured on invented scripts:
+ * the first refuses a `while true` with a `break`, one that calls a local helper which waits, one that yields through
+ * coroutine.yield and one that returns; the second refuses a loop that calls a required module's function and one that waits
+ * inside pcall. Those are fine scripts, and a refusal that is wrong costs more than the rule is worth, so only the certain subset
+ * is enforced and the rest is reported as `loop-may-not-yield`.
+ */
+const PURE_GLOBALS = new Set(['print', 'warn', 'tostring', 'tonumber', 'type', 'typeof', 'ipairs', 'pairs', 'next', 'select', 'rawget', 'rawset', 'rawequal', 'rawlen', 'setmetatable', 'getmetatable', 'unpack', 'tick', 'time']);
+const PURE_NAMESPACES = new Set(['math', 'string', 'table', 'bit32', 'utf8', 'Vector3', 'Vector2', 'CFrame', 'Color3', 'UDim2', 'UDim', 'Random', 'Rect', 'Color3']);
+
+function constantTrue(cond: N | undefined): boolean {
+  if (!cond) return false;
+  if (cond.type === 'BooleanLiteral') return cond.value === true;
+  if (cond.type === 'NumericLiteral') return Number(cond.value) !== 0;
+  return cond.type === 'UnaryExpression' && cond.operator === 'not' && cond.argument?.type === 'BooleanLiteral' && cond.argument.value === false;
+}
+
+/** Every name the script itself declares or assigns (locals, functions, parameters, loop variables, globals): these shadow a builtin. */
+function ownNames(ast: N): Set<string> {
+  const names = new Set<string>();
+  visitAll(ast, (n) => {
+    if (n.type === 'LocalStatement') for (const x of n.names ?? []) names.add(String(x.name));
+    if (n.type === 'FunctionDeclaration') names.add(String(n.path?.[0] ?? n.name));
+    if (Array.isArray(n.params)) for (const x of n.params) names.add(String(x.name));
+    if (n.type === 'GenericForStatement') for (const x of n.variables ?? []) names.add(String(x.name));
+    if (n.type === 'NumericForStatement' && n.variable) names.add(String(n.variable.name));
+    if (n.type === 'AssignmentStatement') for (const t of n.targets ?? []) { const r = rootName(t); if (r) names.add(r); }
+  });
+  return names;
+}
+
+function pureCall(call: N, own: ReadonlySet<string>): boolean {
+  if (call.method) return false;
+  const base = call.base;
+  if (base?.type === 'Identifier') return PURE_GLOBALS.has(String(base.name)) && !own.has(String(base.name));
+  if (base?.type === 'MemberExpression' && base.indexer === '.' && base.base?.type === 'Identifier') {
+    const ns = String(base.base.name), fn = String(base.identifier?.name);
+    if (own.has(ns)) return false;
+    return PURE_NAMESPACES.has(ns) || (ns === 'os' && (fn === 'clock' || fn === 'time')) || (ns === 'Instance' && fn === 'new');
+  }
+  return false;
+}
+
+function provablyFrozenLoops(ast: N): number[] {
+  const lines: number[] = [];
+  const own = ownNames(ast);
+  visitAll(ast, (n) => {
+    const loop = (n.type === 'WhileStatement' && constantTrue(n.condition)) || (n.type === 'RepeatStatement' && n.condition?.type === 'BooleanLiteral' && n.condition.value === false);
+    if (!loop) return;
+    let frozen = true;
+    const inspect = (x: N): boolean | void => {
+      if (!frozen) return false;
+      if (x.type === 'FunctionExpression' || x.type === 'FunctionDeclaration' || x.type === 'LocalFunctionStatement') return false; // defined, not run
+      if (x.type === 'BreakStatement' || x.type === 'ReturnStatement' || x.type === 'GotoStatement') frozen = false;
+      if (x.type === 'CallExpression' && !pureCall(x, own)) frozen = false;
+    };
+    for (const c of children(n)) visitAll(c, inspect);
+    if (frozen) lines.push(n.line);
+  });
+  return lines;
+}
 
 const EFFECT_METHODS = new Set(['Play', 'Emit', 'Clone', 'Destroy', 'TakeDamage', 'FireClient', 'FireAllClients', 'ApplyImpulse', 'Create', 'SetAttribute', 'Fire']);
 const EFFECT_PROPS = new Set(['CFrame', 'Position', 'Transparency', 'Enabled', 'Health', 'Value', 'AssemblyLinearVelocity', 'Anchored', 'Color', 'Size', 'Material', 'Text', 'Visible']);
@@ -207,7 +277,7 @@ function referenceCheck(ast: N, tree: ModelTree): BehaviourFinding[] {
     // Any function form (expression, `function f()`, `local function f()`): its parameters shadow outer names.
     if (Array.isArray(n.params)) for (const p of n.params) decls.set(String(p.name), [...(decls.get(String(p.name)) ?? []), {}, {}]);
     if (n.type === 'NumericForStatement' || n.type === 'GenericForStatement') {
-      for (const v of n.variables ?? n.names ?? []) decls.set(String(v.name ?? v), [...(decls.get(String(v.name ?? v)) ?? []), {}, {}]);
+      for (const v of [...(n.variables ?? []), ...(n.variable ? [n.variable] : [])]) decls.set(String(v.name), [...(decls.get(String(v.name)) ?? []), {}, {}]);
     }
   });
   const findings: BehaviourFinding[] = [];
@@ -297,17 +367,22 @@ export function lintBehaviourScript(input: LintInput, tree?: ModelTree | null): 
   const ast = parsed.ast as N;
   const out: BehaviourFinding[] = [];
 
-  // From luau-review: the loop that never yields (enforced) and the run-context errors.
+  // The loop that provably never yields is enforced; luau-review's broader suspicion and its run-context errors are reported.
+  const frozen = new Set(provablyFrozenLoops(ast));
+  for (const line of frozen) {
+    out.push({
+      rule: 'unyielding-loop', severity: 'error', line, enforced: true,
+      detail: 'a loop that is always true, has no break or return, and calls nothing that could yield',
+      why: 'a loop that never yields pins the thread until Roblox\'s watchdog kills the script ("Script timeout: exhausted allowed execution time"): it seems to work in Studio and stops live. Put task.wait() in it, or drive it from an event (RunService.Heartbeat:Connect, a Touched or Changed signal)',
+    });
+  }
   const review = reviewScript(input.path, input.source, input.className);
-  const loops = new Set<number>();
   for (const f of review.findings) {
-    if (f.rule === 'busy-wait-loop' || f.rule === 'no-yield-infinite-loop') {
-      if (loops.has(f.line)) continue;
-      loops.add(f.line);
+    if (f.rule === 'no-yield-infinite-loop' && !frozen.has(f.line)) {
       out.push({
-        rule: 'unyielding-loop', severity: 'error', line: f.line, enforced: true,
-        detail: f.detail,
-        why: 'a loop that never yields pins the thread until Roblox\'s watchdog kills the script ("Script timeout: exhausted allowed execution time"): it seems to work in Studio and stops live. Put task.wait() in it, or drive it from an event (RunService.Heartbeat:Connect, a Touched or Changed signal)',
+        rule: 'loop-may-not-yield', severity: 'warn', line: f.line, enforced: false,
+        detail: 'a `while true` loop whose body has no call known to yield',
+        why: 'if nothing in it yields (task.wait, an event :Wait(), a yielding call) the thread is pinned until the watchdog kills the script; if a function it calls yields, ignore this',
       });
     } else if (f.severity === 'error' && (f.rule === 'localscript-in-server-container' || f.rule === 'server-script-in-client-container' || f.rule === 'client-requires-server-module')) {
       out.push({ rule: f.rule, severity: 'error', line: f.line, detail: f.detail, why: f.why ?? f.rule, enforced: false });

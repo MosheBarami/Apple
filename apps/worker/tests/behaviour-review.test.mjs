@@ -30,11 +30,15 @@ const treeOf = (root) => A.parseTree(JSON.parse(JSON.stringify({ root, nodeCount
 
 // ------------------------------------------------------------------------------------------------ the enforced rule
 
-test('a loop that never yields is an enforced error, in each shape it takes, and a yield or an event clears it', () => {
+test('a loop that PROVABLY never yields is an enforced error, in each shape it takes', () => {
   const frozen = [
     'local p = script.Parent\nwhile true do\n  p.Position = p.Position + Vector3.new(0, 1, 0)\nend',
     'local n = 0\nrepeat\n  n += 1\nuntil false',
     'while true do\n  local x = 1\nend',
+    'while 1 do\n  print("tick")\nend',
+    'while not false do\n  local y = math.floor(1.5)\nend',
+    'local t = {}\nwhile true do\n  table.insert(t, os.clock())\n  for i = 1, 3 do t[i] = i end\nend',
+    'while true do\n  local f = function()\n    task.wait(1)\n    return 1\n  end\nend',
   ];
   for (const src of frozen) {
     const f = lint(src).find((x) => x.rule === 'unyielding-loop');
@@ -43,13 +47,41 @@ test('a loop that never yields is an enforced error, in each shape it takes, and
     assert.equal(f.severity, 'error');
     assert.match(f.why, /watchdog.*task\.wait\(\).*Heartbeat/);
   }
+});
+
+test('a loop that might yield, or can end, is never refused: every one of these is a fine script', () => {
   const fine = [
     'while true do\n  task.wait(1)\nend',
     'while true do\n  game:GetService("RunService").Heartbeat:Wait()\nend',
-    'game:GetService("RunService").Heartbeat:Connect(function() end)',
-    'for i = 1, 10 do\n  local x = i\nend',
+    'while true do\n  local ok = pcall(function() end)\n  if ok then break end\nend',
+    'local co = coroutine.wrap(function()\n  while true do\n    coroutine.yield()\n  end\nend)',
+    'local function tick()\n  task.wait(1)\nend\nwhile true do\n  tick()\nend',
+    'local function print(...)\n  task.wait()\nend\nwhile true do\n  print("x")\nend',
+    'local M = require(script.Parent.Loop)\nwhile true do\n  M.step()\nend',
+    'local function f()\n  while true do\n    if x then return end\n  end\nend',
+    'while true do\n  pcall(task.wait, 1)\nend',
+    'while true do\n  error("stop")\nend',
+    'while true do\n  script.Parent.Touched:Wait()\nend',
+    'while true do\n  wait(0.1)\nend',
+    'repeat\n  task.wait()\nuntil done',
+    'local i = 0\nwhile i < 10 do\n  i += 1\nend',
+    'while true do\n  local x = part:GetChildren()\nend',
+    'while true do\n  goto out\nend\n::out::',
+    'local math = require(script.Parent.Slow)\nwhile true do\n  math.step()\nend',
   ];
-  for (const src of fine) assert.ok(!rules(lint(src)).includes('unyielding-loop'), `flagged: ${src}`);
+  for (const src of fine) {
+    const f = lint(src);
+    assert.ok(!f.some((x) => x.enforced), `refused: ${src}`);
+  }
+});
+
+test('a `while true` that luau-review suspects, but cannot prove frozen, is reported as a warning only', () => {
+  const f = lint('local M = require(script.Parent.Loop)\nwhile true do\n  M.step()\nend');
+  const w = f.find((x) => x.rule === 'loop-may-not-yield');
+  assert.ok(w);
+  assert.equal(w.severity, 'warn');
+  assert.equal(w.enforced, false);
+  assert.ok(!f.some((x) => x.rule === 'unyielding-loop'));
 });
 
 // ------------------------------------------------------------------------------------------------ references
