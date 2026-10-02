@@ -123,7 +123,7 @@ function planDeletes() {
   for (const d of all) {
     if (HARD_EXCLUDE(d.path)) { fail(`refusing to delete a hard-excluded path: ${d.path}`); continue; }
     const hits = expand(d.path);
-    if (hits.length === 0) { say(`  skip delete (already gone): ${d.path}`); continue; }
+    if (hits.length === 0) { if (d.redirect) activeRedirects.push({ from: d.path, to: d.redirect, dir: false }); say(`  skip delete (already gone): ${d.path}`); continue; }
     if (d.cached) { for (const h of hits) { files.delete(h); touched.cached.add(h); } touched.deleted.add(d.path); continue; }
     if (d.symlinkTo) continue; // handled in planSymlinks
     for (const h of hits) files.delete(h);
@@ -138,7 +138,10 @@ function planMoves() {
     if (HARD_EXCLUDE(m.from) || HARD_EXCLUDE(m.to)) { fail(`refusing a hard-excluded move: ${m.from} -> ${m.to}`); continue; }
     const srcFiles = expand(m.from);
     const dstFiles = expand(m.to);
-    if (srcFiles.length === 0 && dstFiles.length > 0) { say(`  skip move (already done): ${m.from} -> ${m.to}`); continue; }
+    if (srcFiles.length === 0 && dstFiles.length > 0) { // already done: no file operation, but references are still rewritten
+      activeMoves.push({ ...m, dir: !(dstFiles.length === 1 && dstFiles[0] === m.to), n: dstFiles.length, done: true });
+      say(`  skip move (already done): ${m.from} -> ${m.to}`); continue;
+    }
     if (srcFiles.length === 0) { fail(`move source missing and destination missing: ${m.from} -> ${m.to}`); continue; }
     if (dstFiles.length > 0) { fail(`CONFLICT: both ${m.from} and ${m.to} exist; will not overwrite`); continue; }
     const dir = !(srcFiles.length === 1 && srcFiles[0] === m.from);
@@ -193,6 +196,16 @@ function literalRewrite(text, from, to) {
   const re = new RegExp(esc(from) + '(?![\\w-]|\\.\\w)', 'g');
   let n = 0;
   const out = text.replace(re, (m, off) => { if (!okBefore(text, off)) return m; n++; return to; });
+  return [out, n];
+}
+// a path written inside a regex literal or an escaped string: docs\/PLUGIN-RELEASE\.md
+const escPath = (p) => p.replace(/[./]/g, (c) => '\\' + c);
+function escapedRewrite(text, from, to) {
+  const f = escPath(from);
+  if (!text.includes(f)) return [text, 0];
+  const re = new RegExp(esc(f) + '(?![\\w-])', 'g');
+  let n = 0;
+  const out = text.replace(re, (m, off) => { const c = text[off - 1]; if (c !== undefined && /[\w@~-]/.test(c)) return m; n++; return escPath(to); });
   return [out, n];
 }
 function segmentRewrite(text, from, to) {
@@ -280,6 +293,7 @@ function rewriteAll() {
     for (const m of moves) {
       let n; [t, n] = literalRewrite(t, m.from, m.to); if (n) bump(`literal ${m.from}`, n);
       [t, n] = segmentRewrite(t, m.from, m.to); if (n) bump(`segments ${m.from}`, n);
+      [t, n] = escapedRewrite(t, m.from, m.to); if (n) bump(`escaped ${m.from}`, n);
     }
     for (const r of redirects) { let n; [t, n] = literalRewrite(t, r.from, r.to); if (n) bump(`redirect ${r.from}`, n); }
     let n; [t, n] = relRewrite(t, f); if (n) bump('relative specs', n);
@@ -529,6 +543,20 @@ function check() {
     for (const top of topGone) {
       const m = new RegExp(`(['"])${esc(top)}\\1`).exec(t);
       if (m && !allowedMention(p, top)) complain(`  segment form: ${p}:${t.slice(0, m.index).split('\n').length} quotes the vanished top-level '${top}'`);
+    }
+  }
+  // 4b. bare directory mentions of a vanished top-level directory (`infra/**`, `rel.startsWith('infra/')`, "see infra/")
+  for (const [p, e] of lf) {
+    const t = readText(e); if (!t) continue;
+    for (const top of topGone) {
+      const re = new RegExp(`(?<![\\w./@-])${esc(top)}/(?![\\w])`, 'g');
+      let m; let hit = false;
+      while ((m = re.exec(t)) !== null) {
+        if (allowedMention(p, top)) break;
+        complain(`  directory mention: ${p}:${t.slice(0, m.index).split('\n').length} names the vanished directory ${top}/`);
+        hit = true; break;
+      }
+      if (hit) break;
     }
   }
   // 5. dashboard folders.json orphans

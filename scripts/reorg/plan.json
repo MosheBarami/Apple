@@ -1035,9 +1035,81 @@
       "file": "tests/rollback-static.test.mjs",
       "phase": "P3",
       "find": "join\\(ROOT, 'infra', script\\)",
-      "replace": "join(ROOT, 'platforms', 'cloudflare', 'deploy', script)",
+      "replace": "join(ROOT, 'platforms', 'cloudflare', script === 'healthcheck.mjs' ? 'verify' : 'deploy', script)",
       "expect": 1,
-      "why": "rollback-static.mjs moved",
+      "why": "rollback-static.mjs moved to deploy/, healthcheck.mjs to verify/",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/check-ci-references.mjs",
+      "phase": "P3",
+      "find": "`scripts/x\\.mjs`, `infra/x\\.mjs`",
+      "replace": "`scripts/x.mjs`, `platforms/x.mjs`",
+      "expect": 1,
+      "why": "wording follows the moved directory",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/check-ci-references.mjs",
+      "phase": "P3",
+      "find": "scripts/ or infra/ path in any",
+      "replace": "scripts/ or platforms/ path in any",
+      "expect": 1,
+      "why": "wording follows the moved directory",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/check-ci-references.mjs",
+      "phase": "P3",
+      "find": "\\$\\{seen\\} scripts/ and infra/ path\\(s\\)",
+      "replace": "${seen} scripts/ and platforms/ path(s)",
+      "expect": 1,
+      "why": "wording follows the moved directory",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/check-deadends.mjs",
+      "phase": "P3",
+      "find": "glob: 'infra/\\*\\*'",
+      "replace": "glob: 'platforms/**'",
+      "expect": 1,
+      "why": "infra/ moved to platforms/",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/check-deadends.mjs",
+      "phase": "P3",
+      "find": "rel\\.startsWith\\('infra/'\\)",
+      "replace": "rel.startsWith('platforms/')",
+      "expect": 1,
+      "why": "infra/ moved to platforms/",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/check-api-base.mjs",
+      "phase": "P3",
+      "find": "never applied to infra/ or\\n// packages/",
+      "replace": "never applied to platforms/ or\n// packages/",
+      "expect": 1,
+      "why": "infra/ moved to platforms/",
+      "rerunOk": true
+    },
+    {
+      "file": "tests/deploy-showcase.test.mjs",
+      "phase": "P3",
+      "find": "IN tests/ AND NOT infra/\\.",
+      "replace": "IN tests/ AND NOT platforms/cloudflare/deploy/.",
+      "expect": 1,
+      "why": "infra/ moved to platforms/",
+      "rerunOk": true
+    },
+    {
+      "file": "packages/evals/src/asset-safety.test.mjs",
+      "phase": "P3",
+      "find": "every op infra/ and packages/evals actually send",
+      "replace": "every op platforms/ and packages/evals actually send",
+      "expect": 1,
+      "why": "infra/ moved to platforms/",
       "rerunOk": true
     },
     {
@@ -1047,6 +1119,33 @@
       "replace": "(?:scripts|infra|platforms)\\/",
       "expect": 1,
       "why": "platforms/ holds scripts CI may name",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/checks/test_secret_scan.py",
+      "phase": "P4",
+      "find": "\\(self\\.root / \"scripts\"\\)\\.mkdir\\(\\)",
+      "replace": "(self.root / \"scripts\" / \"checks\").mkdir(parents=True)",
+      "expect": 1,
+      "why": "the scanner now lives in scripts/checks/",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/checks/test_secret_scan.py",
+      "phase": "P4",
+      "find": "self\\.root / \"scripts\" / \"(secret-scan\\.py|known-fixtures\\.json|known-exposures\\.json)\"",
+      "replace": "self.root / \"scripts\" / \"checks\" / \"$1\"",
+      "expect": 7,
+      "why": "the scanner and its registers now live in scripts/checks/",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/checks/secret-scan.py",
+      "phase": "P4",
+      "find": "\\(scripts/\\{FIXTURES_PATH\\.name\\}\\)",
+      "replace": "(scripts/checks/{FIXTURES_PATH.name})",
+      "expect": 1,
+      "why": "the registers now live in scripts/checks/",
       "rerunOk": true
     }
   ],
@@ -1130,6 +1229,12 @@
     }
   ],
   "allowedMentions": [
+    {
+      "file": "platforms/sentry/README.md"
+    },
+    {
+      "file": "platforms/supabase/README.md"
+    },
     {
       "file": "tests/reorg-repo.test.mjs"
     },

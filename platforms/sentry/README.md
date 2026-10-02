@@ -1,6 +1,6 @@
 # Sentry (error monitoring)
 
-Replaces `docs/MONITORING.md`. Until monitoring existed, a production failure was invisible unless somebody was
+Replaces the old `docs/MONITORING` page (removed 2026-10-02; the history has it). Until monitoring existed, a production failure was invisible unless somebody was
 watching `wrangler tail`; the request log in `apps/worker/src/analytics.ts` records that an error happened and
 drains it to AdminDO, where a person has to go and look.
 

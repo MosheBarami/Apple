@@ -78,7 +78,7 @@ const currentFiles = (...patterns) => [...new Set(git([
 
 const EXCEPTIONS = [
   { glob: 'scripts/**', why: 'invoked by a human or by CI, so having no importer is their normal state' },
-  { glob: 'infra/**', why: 'the same: deploy, smoke and load-test CLIs, run by a person' },
+  { glob: 'platforms/**', why: 'the same: deploy, smoke and load-test CLIs, run by a person' },
   { glob: '**/*.test.*', why: 'a test file is run by a runner, never imported' },
   { glob: '**/tests/**', why: 'test harnesses, for the same reason' },
   { glob: '**/*.d.ts', why: '§6.6 excludes type-only exports by construction — there is nothing to execute' },
@@ -126,7 +126,7 @@ const ENTRYPOINTS = new Set([
 
 const isExcepted = (rel) =>
   rel.startsWith('scripts/') ||
-  rel.startsWith('infra/') ||
+  rel.startsWith('platforms/') ||
   /\.test\./.test(rel) ||
   /(^|\/)tests?\//.test(rel) ||
   /\.d\.ts$/.test(rel) ||

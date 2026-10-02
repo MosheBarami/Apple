@@ -1,6 +1,6 @@
 // The showcase deploy, rehearsed against a throwaway origin — including the failure it prevents.
 //
-// WHY THIS IS IN tests/ AND NOT infra/. `scripts/gate-suite.mjs` globs root-level tests out of
+// WHY THIS IS IN tests/ AND NOT platforms/cloudflare/deploy/. `scripts/gate-suite.mjs` globs root-level tests out of
 // `tests/` only. A guard beside the script it guards would be run by nothing, which is the same
 // nothing that ran over thirty-six unshipped commits while every script printed success.
 //

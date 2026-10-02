@@ -300,7 +300,7 @@ test('the legacy plugin is marked as not-the-product and names the one that ship
   const text = readFileSync(legacy, 'utf8');
   assert.match(text, /NOT THE PRODUCT/, 'the legacy plugin no longer says it is not the product');
   assert.match(text, /apps\/apple-plugin/, 'the marker must name the plugin that does ship');
-  assert.match(text, /docs\/PLUGIN-RELEASE\.md/, 'the marker must point at the release runbook');
+  assert.match(text, /docs\/operations\/PLUGIN-RELEASE\.md/, 'the marker must point at the release runbook');
 });
 
 test('the shipped plugin refuses the pattern the removed Creator Store asset contained', () => {

@@ -38,7 +38,7 @@ if (files.length === 0) {
 }
 
 //[[ WHAT COUNTS AS A REFERENCE, and why it is deliberately narrow.
-//   Only paths this repository owns and can resolve: `scripts/x.mjs`, `infra/x.mjs`, and the same
+//   Only paths this repository owns and can resolve: `scripts/x.mjs`, `platforms/x.mjs`, and the same
 //   under node/bash. A workflow also names actions, images and shell builtins, and a checker that
 //   tried to resolve those would spend its life reporting things that are not defects — which is
 //   how a checker stops being read. ]]
@@ -85,7 +85,7 @@ for (const f of files) {
 
 if (seen === 0) {
   console.error(`CI REFERENCES UNREADABLE — read ${files.length} workflow file(s) and found no `
-    + 'scripts/ or infra/ path in any of them. Either CI stopped running this repository\'s own '
+    + 'scripts/ or platforms/ path in any of them. Either CI stopped running this repository\'s own '
     + 'scripts, or this pattern no longer matches how they are written. Both are worth looking at; '
     + 'neither is a pass.');
   process.exit(2);
@@ -105,5 +105,5 @@ if (untracked.length || missing.length) {
   process.exit(1);
 }
 
-console.log(`CI REFERENCES OK — ${seen} scripts/ and infra/ path(s) across ${files.length} workflow `
+console.log(`CI REFERENCES OK — ${seen} scripts/ and platforms/ path(s) across ${files.length} workflow `
   + 'file(s), and git tracks every one of them.');

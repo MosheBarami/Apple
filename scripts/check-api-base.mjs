@@ -14,7 +14,7 @@
 // /api/admin/quota-reset answered 500 `no such column: credits` on the legacy worker and 200 on the
 // product, from the same command, and the error was read as the product being broken.
 //
-// scripts/lib/product-origin.mjs solved this for five SCRIPTS. It was never applied to infra/ or
+// scripts/lib/product-origin.mjs solved this for five SCRIPTS. It was never applied to platforms/ or
 // packages/, which read the raw variable, and nothing anywhere refused a stale value. This does.
 //
 //   node scripts/check-api-base.mjs
