@@ -1,5 +1,5 @@
-// The 3D model library (D-MODELLIB-1): search it, get one row into the place, and refuse a prop
-// hand-built from parts when the library already holds one.
+// The 3D model library (D-MODELLIB-1): search it and get one row into the place. Whether a run has tried it
+// before building from Parts is the order gate in model-rule.ts, which reads the run, not names.
 //
 // WHAT IS BUNDLED. The worker cannot read the repository, so the compact index that
 // packages/asset-library/models/build.mjs derives from the files on disk and the Creator Store
@@ -125,51 +125,6 @@ export function findLibraryModels(input: { query?: string; genre?: string; kind?
     results: kept.slice(0, limit).map((s) => s.e.m),
     ...(kept.length ? {} : { note: 'Nothing in the library matched. Try one plain noun (tree, car, crate, house), or drop the genre filter.' }),
   };
-}
-
-// ---------------------------------------------------------------------------------------------
-// The guard: a prop that the library holds is inserted from it, not assembled from parts.
-// ---------------------------------------------------------------------------------------------
-
-/**
- * Names that are the world's surface, not a prop. A primitive part stays the right tool for these:
- * terrain, baseplates, paths, zones, spawns, walls, floors, platforms, obby stages and the like.
- */
-const STRUCTURAL = /\b(terrain|baseplate|base|ground|floor|path|road|street|sidewalk|lane|track|zone|area|region|spawn|spawnlocation|checkpoint|wall|walls|fence|barrier|border|platform|platforms|stage|stages|obby|course|level|map|arena|plot|lot|tile|tiles|ramp|stairs|step|steps|bridge|water|lava|kill|killbrick|boundary|invisible|hitbox|trigger|region|pad|button|conveyor|dropper|lighting|folder|ui|gui)\b/;
-
-interface PlannedItem { className?: unknown; name?: unknown; children?: unknown }
-
-function partCount(item: PlannedItem): number {
-  const kids = Array.isArray(item.children) ? (item.children as PlannedItem[]) : [];
-  let n = /Part$|^Part$|^WedgePart$|^CornerWedgePart$|^TrussPart$|^MeshPart$|^UnionOperation$/.test(String(item.className ?? '')) ? 1 : 0;
-  for (const k of kids) n += partCount(k);
-  return n;
-}
-
-/**
- * Why create_instances must not build this batch, or null when it may.
- *
- * Refused: a Model (or Folder) of two or more parts whose own name is a thing the library holds —
- * a tree, a car, a house, a crate — and is not a structural surface. Allowed: single parts and
- * structural names. An insertion failure never licenses a hand-built replacement.
- */
-export function handBuiltPropRefusal(items: readonly unknown[]): string | null {
-  for (const raw of items) {
-    if (!raw || typeof raw !== 'object') continue;
-    const item = raw as PlannedItem;
-    const cls = String(item.className ?? '');
-    if (cls !== 'Model' && cls !== 'Folder') continue;
-    const name = String(item.name ?? '');
-    const words = tokensOf(name);
-    if (!words.length || STRUCTURAL.test(words.join(' '))) continue;
-    if (partCount(item) < 2) continue;
-    const hit = findLibraryModels({ query: words.filter((w) => !/^\d+$/.test(w)).join(' '), limit: 3 });
-    // All the name's words, or all but one (a colour or an adjective the library has no tag for).
-    if (!hit.results.length || !('matchedWords' in hit) || hit.matchedWords < Math.max(1, hit.ofWords - 1)) continue;
-    const ids = hit.results.map((r) => r.id).join(', ');
-    return `"${name}" is a prop the model library already holds (${ids}). Insert it with insert_library_model instead of assembling it from parts. Parts stay the right tool for terrain, baseplates, paths, walls, platforms and zones. If insertion fails, search for another library model or leave this prop unbuilt; never substitute hand-built parts.`;
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------------------------------------

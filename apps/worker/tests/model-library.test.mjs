@@ -8,9 +8,9 @@
  *     row was scanned clean; every downloaded file carries an allowlisted licence;
  *   - the bundled index holds verified library rows, and each one is a manifest row;
  *   - find_library_model is a read-only lookup; insert_library_model mutates and needs Studio;
- *   - create_instances refuses a multi-part Model named after a thing the library holds, sends
- *     nothing, and still builds terrain/baseplate/path/zone parts; missing permission or a failed
- *     library insert never permits a hand-built prop;
+ *   - create_instances holds a multi-part Model back until the run has tried the library, sends
+ *     nothing, and still builds terrain/baseplate/path/zone parts; after an empty search or a failed
+ *     library insert the same batch is built from Parts (step 4 of the asset order);
  *   - insert_library_model inserts a Creator Store row by its id through the scan, then places it;
  *   - the agent offers only Creator Store rows; a downloaded file is refused because the
  *     current source choice does not authorise a permanent upload into the user's account.
@@ -144,7 +144,13 @@ test('third-party cartoon models are opt-in search candidates, never claimed uni
   assert.equal(M.findLibraryModels({ query: 'fountain' }).results.length, 0, 'a conditional-only prop became a default claim');
   assert.equal(M.findLibraryModels({ query: 'fountain', includeThirdParty: true }).results.some((r) => r.assetId === 3241261980), false,
     'the visually inspected gray realistic fountain was offered as a colorful cartoon candidate');
-  assert.equal(M.handBuiltPropRefusal([twoParts('Fountain')]), null, 'an optional model blocked a simple fallback before Studio proved it loadable');
+  // The search for a conditional-only prop came back empty, so the run has tried the library: a hand build goes ahead.
+  const { ctx: after, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }));
+  await run(after, 'find_library_model', { query: 'fountain' });
+  assert.equal(after.libraryRun?.outcome, 'no_hit');
+  const built = await run(after, 'create_instances', { items: [twoParts('Fountain')] });
+  assert.equal(built.error, undefined, 'an empty library search still blocked the hand build');
+  assert.equal(created(ops), 1);
 });
 
 /* ---------------------------------------------------------------- registration --- */
@@ -207,14 +213,15 @@ const twoParts = (name, cls = 'Model') => ({
 });
 const created = (ops) => ops.filter((o) => o.op === 'create_instances').length;
 
-test('create_instances refuses a part-built prop the library holds, and sends nothing', async () => {
+test('create_instances holds a part-built Model back until the library was tried, and sends nothing', async () => {
   const s = sample(() => true);
   const hit = indexed({ query: s.word, limit: 1 });
   assert.ok(hit.results.length, 'the sample word must be in the library');
   const { ctx, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }));
   const name = s.word[0].toUpperCase() + s.word.slice(1);
   const res = await run(ctx, 'create_instances', { items: [twoParts(name)] });
-  assert.ok(res.error, `a part-built "${name}" was accepted`);
+  assert.ok(res.error, `a part-built "${name}" was accepted before any library step`);
+  assert.match(res.error, /Order: library first/);
   assert.match(res.error, /insert_library_model/);
   assert.equal(created(ops), 0, 'nothing may reach Studio');
 });
@@ -233,33 +240,52 @@ test('parts stay allowed for terrain, baseplates, paths and zones, and for a sin
   }
 });
 
-test('a missing source or insert tool never permits a hand-built prop', async () => {
+test('a missing source or library tool opens the gate at once: there is nothing to try first', async () => {
   const s = sample(() => true);
   const name = s.word[0].toUpperCase() + s.word.slice(1);
   for (const over of [
     { assetSources: { allow: ['from_scratch'] } },
+    { assetSources: undefined },
     { ctx: { offeredTools: new Set(['create_instances']) } },
   ]) {
     const { ctx, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }), over);
     const res = await run(ctx, 'create_instances', { items: [twoParts(name)] });
-    assert.match(res.error, /D-MODELLIB-2/);
-    assert.equal(created(ops), 0);
+    assert.equal(res.error, undefined, `a library that cannot be used still held the build back: ${res.error}`);
+    assert.equal(created(ops), 1);
   }
 });
 
-test('a failed library insert never permits a hand-built replacement', async () => {
-  const s = INDEX.rows
-    .map((r) => M.tokensOf(r[1]).find((w) => w.length >= 4 && !/\d/.test(w)))
-    .find((w) => w && M.handBuiltPropRefusal([twoParts(w)]));
-  assert.ok(s, 'the bundled library has a prop for this guard');
-  const name = s[0].toUpperCase() + s.slice(1);
-  assert.match(M.handBuiltPropRefusal([twoParts(name)]), /prop the model library/);
-  assert.match(M.handBuiltPropRefusal([twoParts(name)], new Set([s])), /prop the model library/);
-  const { ctx, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }));
-  ctx.libraryMisses = new Set([s]);
-  const res = await run(ctx, 'create_instances', { items: [twoParts(name)] });
-  assert.match(res.error, /D-MODELLIB-2|prop the model library/);
-  assert.equal(created(ops), 0);
+test('the batch is held back, then built after a failed insert; an empty search does the same; a search with hits does not', async () => {
+  const row = sample((r) => typeof r[5] === 'number');
+  assert.ok(row, 'the index has a Creator Store row');
+  const name = row.word[0].toUpperCase() + row.word.slice(1);
+  const answer = (op) => (op.op === 'insert_asset' ? { ok: false, error: 'Roblox would not load asset 1' } : { ok: true, data: { created: [] } });
+
+  // 1. before any library step
+  const first = ctxWith(answer);
+  assert.match((await run(first.ctx, 'create_instances', { items: [twoParts(name)] })).error, /Order: library first/);
+
+  // 2. a search with hits is not the end of the library step
+  const hits = ctxWith(answer);
+  const found = await run(hits.ctx, 'find_library_model', { query: row.word });
+  assert.ok(found.results.length, 'the sample word found nothing');
+  assert.equal(hits.ctx.libraryRun.outcome, 'hits');
+  assert.match((await run(hits.ctx, 'create_instances', { items: [twoParts(name)] })).error, /already returned candidates/);
+
+  // 3. an insert that fails ends it: the same batch is now built
+  const failed = ctxWith(answer);
+  const refusedInsert = await run(failed.ctx, 'insert_library_model', { id: row.id });
+  assert.ok(refusedInsert.error, 'the scripted insert did not fail');
+  assert.equal(failed.ctx.libraryRun.outcome, 'insert_failed');
+  const built = await run(failed.ctx, 'create_instances', { items: [twoParts(name)] });
+  assert.equal(built.error, undefined, built.error);
+  assert.equal(created(failed.ops), 1);
+
+  // 4. a search that finds nothing ends it too
+  const empty = ctxWith(answer);
+  await run(empty.ctx, 'find_library_model', { query: 'qzxwv' });
+  assert.equal(empty.ctx.libraryRun.outcome, 'no_hit');
+  assert.equal((await run(empty.ctx, 'create_instances', { items: [twoParts(name)] })).error, undefined);
 });
 
 /* ---------------------------------------------------------------- insert --- */

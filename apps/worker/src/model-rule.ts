@@ -1,82 +1,75 @@
-// D-MODELLIB-2: Apple never makes a model from scratch.
+// D-MODELLIB-2, as revised 2026-10-02: an ORDER, not a ban.
 //
-// Owner order (2026-09-24): "NEVER generate from scratch models and 3d — only plain simple parts
-// like floor etc. Search the library for the perfect model/kit instead, same for everything."
+// Owner order, 2026-09-24: "NEVER generate from scratch models and 3d". Owner order, 2026-10-02: the asset
+// order is library, then Creator Store, then combine or adapt, then build from scratch, highly detailed.
+// The first order made the last step of the second unreachable: a prop assembled from Parts was refused
+// whatever the run had tried, and a failed library insert "never licensed a hand-built replacement". Live
+// (owner benchmark 2026-10-02) the library inserts failed, the hand build was refused, and the maps ended
+// as a white slab and paths.
 //
-// So the generic writers may still lay plain structure — a floor, a path, a wall, a pad, a plaza —
-// but a prop (a tree, a fence, a stall, a shop, a lamp, a chest, a pet, a coin...) comes from
-// find_library_model + insert_library_model, never from Parts assembled by hand and never from an
-// AI 3D generator. Three shapes are refused, each one a way the gauntlet saw a hand-made prop:
-//   1. a Model assembled from Parts in one create_instances batch (a prop is a group of parts);
-//   2. a part, Folder or Model NAMED as a prop, or inside one named as a prop;
-//   3. a ball-shaped part, a MeshPart or a SpecialMesh: none of them is floor, wall or path.
-// Luau is held to the same rule on its creations. run_luau is checked in full; edit_script is
-// checked for NEW hand-built props, so unrelated edits to a legacy script still work. Cloning a
-// verified template at runtime remains gameplay, not modelling.
+// So this module no longer decides what an object IS. It used to carry a list of prop nouns and refuse a
+// part by its name; a name list recognises subjects (which the owner forbids) and never prevented a
+// hand build anyway, since a renamed batch passed. What remains is what can be decided from the run:
+//   1. Hand-made meshes (MeshPart, SpecialMesh, UnionOperation, shape meshes) cannot be created by Apple's
+//      plugin at all, so they are refused with that reason, whatever the run has tried.
+//   2. A Model assembled from Parts, in one create_instances batch or in Luau, is held back until the run
+//      has TRIED the library (a search that found nothing, an insert that failed, or an insert that
+//      worked). Refused at most ORDER_GATE_LIMIT times per run, never after the library was tried, and
+//      never when the library is not offered or the project's source settings rule it out. It cannot
+//      become the deadlock it replaced.
+// Cloning a verified template at runtime remains gameplay, not modelling.
+
+import { libraryAttemptEnded, type LibraryOutcome } from './library-run';
 
 export const MODEL_DECISION = 'D-MODELLIB-2';
+/** The one statement of the asset order (prompts.ts quotes it; nothing else restates it in prose). */
+export const ASSET_ORDER = 'library, then Creator Store, then adapt or combine what was found, then build from Parts, in full detail';
+/** Order refusals per run. Past this the batch goes through: a gate that never opens is a deadlock. */
+export const ORDER_GATE_LIMIT = 2;
 
 const BASEPARTS = new Set(['Part', 'WedgePart', 'CornerWedgePart', 'TrussPart', 'MeshPart', 'UnionOperation', 'Seat', 'VehicleSeat', 'SpawnLocation']);
 const HAND_MESH = new Set(['MeshPart', 'SpecialMesh', 'BlockMesh', 'CylinderMesh', 'UnionOperation']);
 
-/** Things that are props, never plain structure. Singular; plurals are folded before the lookup. */
-const PROP_WORDS = new Set([
-  'tree', 'trunk', 'leaf', 'leave', 'foliage', 'canopy', 'branch', 'bush', 'shrub', 'hedge', 'flower', 'plant', 'mushroom', 'cactus',
-  'crop', 'carrot', 'tomato', 'pumpkin', 'vegetable', 'fruit',
-  'palm', 'pine', 'oak', 'rock', 'boulder', 'pebble', 'cliff', 'log', 'stump', 'cloud',
-  'fence', 'railing', 'gate', 'stall', 'booth', 'kiosk', 'shop', 'store', 'house', 'building', 'hut', 'cabin', 'tower', 'castle',
-  'roof', 'chimney', 'awning', 'canopy', 'door', 'window', 'lamp', 'lamppost', 'streetlight', 'lantern', 'torch', 'light', 'bench', 'chair',
-  'table', 'desk', 'sofa', 'bed', 'shelf', 'counter', 'sign', 'signpost', 'crate', 'barrel', 'chest', 'treasure', 'box', 'statue',
-  'fountain', 'well', 'cart', 'wagon', 'car', 'vehicle', 'wheel', 'tire', 'boat', 'ship', 'plane', 'pet', 'egg', 'coin', 'gem', 'crystal',
-  'orb', 'trophy', 'leaderboard', 'scoreboard', 'podium', 'umbrella', 'tent', 'flag', 'banner', 'vending', 'machine', 'dropper',
-  'portal', 'npc', 'character', 'dummy', 'weapon', 'sword', 'gun', 'tool', 'pickup', 'decoration', 'decor', 'prop',
-]);
-
-/** "PalmTree_3" -> ["palm", "tree"], "market-stalls" -> ["market", "stall"]. */
-function words(name: string): string[] {
-  return name
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .toLowerCase()
-    .split(/[^a-z]+/)
-    .filter(Boolean)
-    .map((w) => (w.length > 3 && w.endsWith('es') && PROP_WORDS.has(w.slice(0, -2)) ? w.slice(0, -2) : w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w));
+/** What the gate needs to know about this run (see tools.ts libraryOrder). */
+export interface LibraryOrder {
+  /** The gate still applies: the library is offered and usable, was not tried, and the limit is not spent. */
+  applies: boolean;
+  /** The latest library result, so the refusal can say what to do next. */
+  outcome?: LibraryOutcome;
 }
 
-/** A part named for what it does (ShopTrigger, CoinPad, EggHitbox) is gameplay structure, not a prop. */
-const FUNCTION_WORDS = new Set(['trigger', 'hitbox', 'zone', 'pad', 'button', 'touch', 'region', 'collider', 'spawn', 'checkpoint', 'kill', 'lava', 'floor', 'ground', 'baseplate', 'path', 'road', 'wall', 'platform', 'plaza', 'stage']);
-
-export function propWordIn(name: unknown): string | null {
-  if (typeof name !== 'string') return null;
-  const ws = words(name);
-  if (ws.some((w) => FUNCTION_WORDS.has(w))) return null;
-  return ws.find((w) => PROP_WORDS.has(w)) ?? null;
+/** Decide whether the order gate applies, from facts about the run only. */
+export function orderApplies(f: { offered: boolean; usable: boolean; outcome?: LibraryOutcome; gated?: number }): LibraryOrder {
+  const ended = libraryAttemptEnded({ outcome: f.outcome });
+  return { applies: f.offered && f.usable && !ended && (f.gated ?? 0) < ORDER_GATE_LIMIT, outcome: f.outcome };
 }
-
-const lastSegment = (path: unknown) => (typeof path === 'string' ? path.split('.').pop() : undefined);
-
-const SUGGEST =
-  'Instead: an object the user asked for (a keyboard, a stick of butter, a lamp) is ONE build_object call, which builds it studded, rigged and animated. ' +
-  'For a ready-made prop: find_library_model with the plain noun (e.g. "oak tree", "wooden fence", "market stall", "shop building"), then insert_library_model with the id it returns; set its position and scale afterwards. ' +
-  'Plain structure is still yours to build: floors, paths, walls, pads, plazas and baseplates as plain Block or Cylinder Parts, named for what they are (Floor, Path, Plaza, RebirthPad), grouped in a Folder rather than a Model.';
 
 export interface ModelRefusal {
   error: string;
   refused: string[];
+  /** The refusal is the order gate (the caller counts it against ORDER_GATE_LIMIT). */
+  ordered?: boolean;
 }
 
-function refusal(found: string[]): ModelRefusal {
-  const unique = [...new Set(found)].slice(0, 8);
+function orderRefusal(order: LibraryOrder, what: string, tool: 'create_instances' | 'run_luau'): ModelRefusal {
+  const next = order.outcome === 'hits'
+    ? 'find_library_model already returned candidates: call insert_library_model with one of them. If none fits, or the insert fails, '
+    : 'Call find_library_model with a plain description of this object, then insert_library_model with a hit. If it has nothing, or insert fails, ';
   return {
-    error: `Refused (${MODEL_DECISION}): Apple never builds a model from scratch. ${unique.join('; ')}. ${SUGGEST} Nothing was sent to Studio.`,
-    refused: unique,
+    error: `Order: library first (${MODEL_DECISION}). ${what} ${next}call ${tool} again with this same ${tool === 'run_luau' ? 'code' : 'batch'}. ` +
+      `The asset order is ${ASSET_ORDER}. Nothing was sent to Studio.`,
+    refused: [what],
+    ordered: true,
   };
 }
 
-function shapeIsBall(props: unknown): boolean {
-  if (!props || typeof props !== 'object') return false;
-  const shape = (props as Record<string, unknown>).Shape;
-  const v = shape && typeof shape === 'object' ? (shape as { v?: unknown }).v : shape;
-  return typeof v === 'string' ? /ball/i.test(v) : v === 0;
+function meshRefusal(found: string[]): ModelRefusal {
+  const unique = [...new Set(found)].slice(0, 8);
+  return {
+    error: `Refused (${MODEL_DECISION}): ${unique.join('; ')}. Apple's plugin cannot create meshes, so this class is not available in any batch: ` +
+      'build the shape from Part, WedgePart, CornerWedgePart or TrussPart (Shape Ball or Cylinder on a Part), or take a mesh model with find_library_model + insert_library_model. Nothing was sent to Studio.',
+    refused: unique,
+  };
 }
 
 /** Does this create_instances item hold a BasePart anywhere below it? */
@@ -85,80 +78,68 @@ function holdsParts(item: Record<string, unknown>): boolean {
   return kids.some((k) => !!k && typeof k === 'object' && (BASEPARTS.has(String((k as Record<string, unknown>).className)) || holdsParts(k as Record<string, unknown>)));
 }
 
-/** A create_instances payload that makes a prop by hand, or null. */
-export function refuseHandMadeModel(items: unknown): ModelRefusal | null {
-  const found: string[] = [];
-  const walk = (list: unknown, ancestorProp: string | null) => {
+/** A create_instances payload Apple cannot or should not build yet, or null. */
+export function refuseHandMadeModel(items: unknown, order?: LibraryOrder): ModelRefusal | null {
+  const meshes: string[] = [];
+  const assembled: string[] = [];
+  const walk = (list: unknown) => {
     if (!Array.isArray(list)) return;
     for (const raw of list) {
       if (!raw || typeof raw !== 'object') continue;
       const item = raw as Record<string, unknown>;
       const cls = String(item.className ?? '');
       const name = typeof item.name === 'string' ? item.name : cls;
-      const named = typeof item.name === 'string' ? item.name : '';
-      const functional = named !== '' && propWordIn(named) === null && words(named).some((w) => FUNCTION_WORDS.has(w));
-      const prop = functional ? null : (propWordIn(item.name) ?? propWordIn(lastSegment(item.parent)) ?? ancestorProp);
-      if (cls === 'Model' && holdsParts(item)) found.push(`a Model "${name}" assembled from Parts`);
-      else if (HAND_MESH.has(cls)) found.push(`a ${cls} "${name}" (a hand-made mesh)`);
-      else if (BASEPARTS.has(cls) && shapeIsBall(item.props)) found.push(`a ball-shaped ${cls} "${name}" (a ball is never floor, wall or path)`);
-      else if (prop && (BASEPARTS.has(cls) || ((cls === 'Model' || cls === 'Folder') && holdsParts(item)))) found.push(`a ${cls} "${name}" that makes a ${prop}`);
-      walk(item.children, prop);
+      if (HAND_MESH.has(cls)) meshes.push(`a ${cls} "${name}" (a hand-made mesh)`);
+      else if (cls === 'Model' && holdsParts(item)) assembled.push(`a Model "${name}" assembled from Parts.`);
+      walk(item.children);
     }
   };
-  walk(items, null);
-  return found.length ? refusal(found) : null;
-}
-
-const NEW_CLASS = /\bInstance\s*(?:\.\s*new|\[\s*(["'])new\1\s*\])\s*(?:\(\s*)?(?:(["'])([A-Za-z]\w*)\2|\[(=*)\[([A-Za-z]\w*)\]\4\])/g;
-const NAME_SET = /\.\s*Name\s*=\s*(["'])([^"'\n]{1,80})\1/g;
-const BALL = /Enum\s*\.\s*PartType\s*\.\s*Ball\b|\.\s*Shape\s*=\s*(["'])Ball\1/;
-
-/** Luau (comments already stripped by the caller) that builds a prop by hand, or null. */
-export function refuseHandMadeModelLuau(variants: readonly string[]): ModelRefusal | null {
-  for (const code of variants) {
-    const made = [...code.matchAll(NEW_CLASS)].map((m) => m[3] ?? m[5] ?? '');
-    const parts = made.filter((c) => BASEPARTS.has(c));
-    const found: string[] = [];
-    for (const c of made) if (HAND_MESH.has(c)) found.push(`Instance.new("${c}") (a hand-made mesh)`);
-    if (parts.length && made.includes('Model')) found.push('a Model assembled from Instance.new parts');
-    if (parts.length && BALL.test(code)) found.push('a ball-shaped part');
-    if (parts.length) {
-      for (const m of code.matchAll(NAME_SET)) {
-        const w = propWordIn(m[2]);
-        if (w) found.push(`a part named "${m[2]}" that makes a ${w}`);
-      }
-    }
-    if (found.length) return refusal(found);
-  }
+  walk(items);
+  if (meshes.length) return meshRefusal(meshes);
+  if (assembled.length && order?.applies) return orderRefusal(order, assembled[0]!, 'create_instances');
   return null;
 }
 
-/** Preserve legacy script edits, while refusing newly introduced procedural props. */
-export function refuseNewHandMadeModelLuau(after: readonly string[], before: readonly string[] = []): ModelRefusal | null {
-  const unsafe = refuseHandMadeModelLuau(after);
-  if (!unsafe) return null;
+const NEW_CLASS = /\bInstance\s*(?:\.\s*new|\[\s*(["'])new\1\s*\])\s*(?:\(\s*)?(?:(["'])([A-Za-z]\w*)\2|\[(=*)\[([A-Za-z]\w*)\]\4\])/g;
+
+function luauMade(code: string): { parts: number; models: number; meshes: string[] } {
+  const made = [...code.matchAll(NEW_CLASS)].map((m) => m[3] ?? m[5] ?? '');
+  return { parts: made.filter((c) => BASEPARTS.has(c)).length, models: made.filter((c) => c === 'Model').length, meshes: made.filter((c) => HAND_MESH.has(c)) };
+}
+
+/** Luau (comments already stripped by the caller) that builds a mesh or assembles a Model, or null. */
+export function refuseHandMadeModelLuau(variants: readonly string[], order?: LibraryOrder): ModelRefusal | null {
+  let assembled = false;
+  for (const code of variants) {
+    const made = luauMade(code);
+    if (made.meshes.length) return meshRefusal(made.meshes.map((c) => `Instance.new("${c}") (a hand-made mesh)`));
+    if (made.parts && made.models) assembled = true;
+  }
+  return assembled && order?.applies ? orderRefusal(order, 'This Luau assembles a Model from Instance.new parts.', 'run_luau') : null;
+}
+
+/** Preserve legacy script edits: only a mesh or a Model assembled from Parts that the edit ADDS is held to the rule. */
+export function refuseNewHandMadeModelLuau(after: readonly string[], before: readonly string[] = [], order?: LibraryOrder): ModelRefusal | null {
   const counts = (variants: readonly string[]) => {
-    const high = { assembled: 0, mesh: 0, ball: 0, namedProp: 0 };
+    const high = { assembled: 0, mesh: 0 };
     for (const code of variants) {
-      const made = [...code.matchAll(NEW_CLASS)].map((m) => m[3] ?? m[5] ?? '');
-      const parts = made.filter((c) => BASEPARTS.has(c)).length;
-      const models = made.filter((c) => c === 'Model').length;
-      const meshes = made.filter((c) => HAND_MESH.has(c)).length;
-      const balls = [...code.matchAll(new RegExp(BALL.source, 'g'))].length;
-      const propNames = [...code.matchAll(NAME_SET)].filter((m) => propWordIn(m[2]) !== null).length;
-      high.assembled = Math.max(high.assembled, Math.min(models, parts));
-      high.mesh = Math.max(high.mesh, meshes);
-      high.ball = Math.max(high.ball, Math.min(parts, balls));
-      high.namedProp = Math.max(high.namedProp, Math.min(parts, propNames));
+      const made = luauMade(code);
+      high.assembled = Math.max(high.assembled, Math.min(made.models, made.parts));
+      high.mesh = Math.max(high.mesh, made.meshes.length);
     }
     return high;
   };
   const next = counts(after);
   const had = counts(before);
-  return (Object.keys(next) as (keyof typeof next)[]).some((key) => next[key] > had[key]) ? unsafe : null;
+  if (next.assembled <= had.assembled && next.mesh <= had.mesh) return null;
+  return refuseHandMadeModelLuau(after, order);
 }
 
-/** The AI 3D generators are closed to the agent: 3D comes from the library. */
+/** The AI 3D generators are closed to the agent: 3D comes from the library, then the Creator Store, then Parts. */
 export function refuseGeneratedModel(tool: string): ModelRefusal {
-  return refusal([`${tool} generates a 3D model from scratch`]);
+  return {
+    error: `Refused (${MODEL_DECISION}): ${tool} generates a 3D model from scratch and is closed to the agent. ` +
+      `The asset order is ${ASSET_ORDER}: find_library_model + insert_library_model, then find_verified_asset, then Parts. Nothing was sent to Studio.`,
+    refused: [`${tool} generates a 3D model from scratch`],
+  };
 }

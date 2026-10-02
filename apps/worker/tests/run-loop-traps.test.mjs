@@ -573,6 +573,28 @@ test('EVERY TURN THE HARNESS PUSHES AS "user" SAYS SO; only the person\'s own st
   } finally { h.stop(); }
 });
 
+test('THE LIBRARY ORDER SURVIVES ACROSS STEPS: a search with no hit in one step opens the hand build in the next', async () => {
+  const stallBatch = { items: [{ className: 'Model', name: 'ProduceStall', parent: 'game.Workspace', children: [{ className: 'Part', name: 'Counter' }, { className: 'Part', name: 'Awning' }] }] };
+  const okOp = (op) => (op.op === 'create_instances' ? { ok: true, data: { created: ['game.Workspace.ProduceStall'] } } : { ok: false, error: 'not answered', failure: 'refused' });
+  const direct = await makeSession({ connected: true, answerOp: okOp, responses: [calls(['create_instances', stallBatch])] });
+  const searched = await makeSession({
+    connected: true, answerOp: okOp,
+    responses: [calls(['find_library_model', { query: 'qzxwvk' }]), calls(['create_instances', stallBatch])],
+  });
+  try {
+    await start(direct, { text: 'put a produce stall by the gate' });
+    await direct.session.alarm();
+    assert.equal(direct.ops.filter((o) => o.op === 'create_instances').length, 0, 'control: a Model of Parts reached Studio before any library step');
+    const refusal = direct.store.get('agent').llm.filter((m) => m.role === 'tool').at(-1).content;
+    assert.match(typeof refusal === 'string' ? refusal : JSON.stringify(refusal), /Order: library first/);
+
+    await start(searched, { text: 'put a produce stall by the gate' });
+    for (let i = 0; i < 2; i++) await searched.session.alarm();
+    assert.equal(searched.store.get('agent').libraryRun?.outcome, 'no_hit', 'the search outcome was not kept on the run');
+    assert.equal(searched.ops.filter((o) => o.op === 'create_instances').length, 1, 'the library had nothing and the build was still held back');
+  } finally { direct.stop(); searched.stop(); }
+});
+
 const OWES_WORK_NUDGE = /You have not changed the project yet/;
 
 test('A PAIRED RUN OFFERED NOTHING THAT CHANGES THE PROJECT IS NOT NUDGED TO CHANGE IT — it ends, and says why', async () => {

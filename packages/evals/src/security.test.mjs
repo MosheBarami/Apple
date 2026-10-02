@@ -85,6 +85,23 @@ function braceBlock(src, from) {
 }
 
 /**
+ * The argument text of a call whose `(` follows `from`, to its own closing paren, skipping strings, template
+ * literals and comments. The harness pushes are `pushHarness(agent.llm, <text>)`: one unit however it is wrapped.
+ */
+function parenBlock(src, from) {
+  let depth = 0;
+  for (let i = from - 1; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === '/' && src[i + 1] === '/') { i = src.indexOf('\n', i); if (i === -1) break; continue; }
+    if (ch === '/' && src[i + 1] === '*') { const end = src.indexOf('*/', i + 2); if (end === -1) break; i = end + 1; continue; }
+    if (ch === "'" || ch === '"' || ch === '`') { for (i++; i < src.length && src[i] !== ch; i++) if (src[i] === '\\') i++; continue; }
+    if (ch === '(') depth++;
+    else if (ch === ')') { depth--; if (depth === 0) return src.slice(from, i); }
+  }
+  return '';
+}
+
+/**
  * A FUNCTION'S BODY, past a TypeScript return-type annotation.
  *
  * `braceBlock` aimed at a signature reads the wrong braces whenever the return type is an object:
@@ -2591,7 +2608,29 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
     pushes.push(block);
   }
   assert.ok(pushes.length >= 8, 'the transcript pushes were not found — this test would check nothing');
-  const userPushes = pushes.filter((p) => /role:\s*'user'/.test(p));
+  //[[ SINCE 2026-10-02 EVERY HARNESS TURN IS PUSHED THROUGH ONE HELPER, `pushHarness(agent.llm, text)`, which marks
+  //   it "[Harness note, not the user]". The owner benchmark showed the model quoting a harness nudge back as
+  //   something the person had said. A harness push is still a user-role turn, so it is scanned exactly as the raw
+  //   ones were: each call site becomes `{ role: 'user', content: <argument> }`. The only raw user-role push left
+  //   is the person's own mid-run steer ("New direction from the user"); anything else raw would be a harness turn
+  //   speaking as the person, and is refused below. ]]
+  const harnessPushes = [];
+  for (let at = session.indexOf('pushHarness(agent.llm,'); at !== -1; at = session.indexOf('pushHarness(agent.llm,', at + 1)) {
+    const arg = parenBlock(session, at + 'pushHarness'.length).replace(/^\(\s*agent\.llm,\s*/, '');
+    assert.ok(arg.length > 3, `a harness push at ${at} could not be read — this test would check less than it claims`);
+    harnessPushes.push(`{ role: 'user', content: ${arg} }`);
+  }
+  const rawUserPushes = pushes.filter((p) => /role:\s*'user'/.test(p));
+  assert.equal(rawUserPushes.length, 1, 'a raw user-role push was added: a harness turn must go through pushHarness so it is marked as the harness');
+  assert.match(rawUserPushes[0], /New direction from the user/, 'the one raw user-role push is no longer the person\'s own steer');
+  assert.equal(harnessPushes.length, 17, 'a harness push was added or removed — review it for injection risk (do not just bump the number)');
+  const userPushes = [...rawUserPushes, ...harnessPushes];
+  {
+    const idleSrc = readCode('run-idle.ts');
+    assert.match(idleSrc, /export const HARNESS_PREFIX = '\[Harness note, not the user\] ';/, 'the harness prefix changed or went');
+    const helper = bodyBlock(idleSrc, idleSrc.indexOf('export function pushHarness('));
+    assert.match(helper, /content:\s*HARNESS_PREFIX\s*\+\s*text/, 'pushHarness no longer marks what it pushes');
+  }
   //[[ FOUR, AND THIS TRIPWIRE EARNED ITS PLACE THE DAY THE FOURTH WAS ADDED.
   //
   //   The reviewed set: the visual-gate hand-back, the "you have not changed anything" nudge, the
@@ -2675,7 +2714,7 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   const answerSteerSite = session.slice(session.indexOf("storage.get<string>('assetSourcesAwaitingRun')"), session.indexOf("storage.get<string>('assetSourcesAwaitingRun')") + 400);
   assert.match(answerSteerSite, /const steer = assetSourceAnswerSteer\(this\.pinnedPrefs\?\.asset_sources\)/,
     'the new user-role steer no longer comes from the reviewed source selector');
-  assert.match(answerSteerSite, /agent\.llm\.push\(\{ role: 'user', content: steer \}\)/,
+  assert.match(answerSteerSite, /pushHarness\(agent\.llm, steer\)/,
     'the source-answer steer moved; review its new transcript path');
   const policyCode = readCode('asset-policy.ts');
   const answerSteer = policyCode.slice(policyCode.indexOf('export function assetSourceAnswerSteer('), policyCode.indexOf('export function sourceRefusal('));
@@ -2695,11 +2734,21 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   const bare = userPushes.map((p) => /content:\s*([A-Za-z_][\w.]*)\s*\}$/.exec(p.replace(/\s+/g, ' ').replace(/,?\s*\}$/, ' }'))?.[1]).filter(Boolean);
   // REVIEWED 2026-10-01: AUTONOMOUS_IDLE_STEER (2a884997) is a module constant in run-idle.ts made only of string
   // literals — no interpolation, no argument — so it carries no user, tool or model text. Held to that below.
-  assert.deepEqual([...new Set(bare)].sort(), ['AUTONOMOUS_IDLE_STEER', 'partNext', 'skillSteer.message', 'steer'], 'a user-role push now sends a variable this review has not traced');
+  // REVIEWED 2026-10-02: `text` is the once-per-run "Nothing has changed yet" note, `buildNudge(agent.trace, …)` in
+  // run-idle.ts. It carries trace text, so it is held below to the same rule as a plan title: tool names only from
+  // the registry, error text only through fenceForQuote, inside its own quotation.
+  assert.deepEqual([...new Set(bare)].sort(), ['AUTONOMOUS_IDLE_STEER', 'partNext', 'skillSteer.message', 'steer', 'text'], 'a user-role push now sends a variable this review has not traced');
+  assert.match(session, /const text = buildNudge\(agent\.trace, [^;]*\);/, 'the build note no longer comes from buildNudge — review its new source');
+  {
+    const nudge = bodyBlock(readCode('run-idle.ts'), readCode('run-idle.ts').indexOf('export function buildNudge('));
+    assert.ok(nudge.length > 200, 'buildNudge was not found — this test would check nothing');
+    assert.match(nudge, /fenceForQuote\(t\.error \?\? t\.summary \?\? ''\)/, 'buildNudge puts raw trace text into a user-role turn');
+    assert.match(nudge, /isTool\(t\.tool\)/, 'buildNudge names a tool the registry does not know — the model chooses those names');
+  }
   const idle = /export const AUTONOMOUS_IDLE_STEER =([^;]*);/.exec(readCode('run-idle.ts'));
   assert.ok(idle, 'AUTONOMOUS_IDLE_STEER was not found — this check would be vacuous');
   assert.match(idle[1], /^\s*(?:'[^'$`]*'\s*\+?\s*)+$/, 'AUTONOMOUS_IDLE_STEER is no longer pure string literals — review what it now carries');
-  for (const name of bare.filter((n) => n !== 'skillSteer.message' && n !== 'AUTONOMOUS_IDLE_STEER')) {
+  for (const name of bare.filter((n) => n !== 'skillSteer.message' && n !== 'AUTONOMOUS_IDLE_STEER' && n !== 'text')) {
     assert.match(session, new RegExp(`const ${name.replace('.', '\\.')} =[^;]*\\bsteerToPart\\(agent\\)`),
       `user-role push of \`${name}\` no longer comes from steerToPart — review its source`);
   }
@@ -2729,7 +2778,7 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   assert.equal(/\$\{/.test(lengthRecovery), false,
     'output-limit recovery must not interpolate model, user or tool text into a user-role instruction');
   assert.match(lengthRecovery, /batchHint/, 'the recovery injection no longer uses the closed local hint selector');
-  const hintBlock = session.slice(session.indexOf('const batchHint ='), session.indexOf('agent.llm.push({', session.indexOf('const batchHint =')));
+  const hintBlock = session.slice(session.indexOf('const batchHint ='), session.indexOf('pushHarness(agent.llm,', session.indexOf('const batchHint =')));
   assert.match(hintBlock, /Use exactly one small mutating tool call/);
   assert.match(hintBlock, /at most four logical items/);
   assert.match(hintBlock, /Split any large tool payload/);

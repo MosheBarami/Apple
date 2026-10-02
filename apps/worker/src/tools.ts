@@ -72,10 +72,11 @@ import { findUiAssets, uploadLibraryAsset } from './asset-library';
 import { findUiStoreImages, UI_STORE_COUNT, UI_STORE_GENRES } from './ui-store-search';
 import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
 import { refuseGameScript, sourcesIn } from './game-independence';
-import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, refuseNewHandMadeModelLuau } from './model-rule';
+import { orderApplies, refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, refuseNewHandMadeModelLuau, type LibraryOrder } from './model-rule';
+import { noteInsert, noteSearch, type LibraryRun } from './library-run';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScreenGuiHost } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
-import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
+import { findLibraryModels, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
@@ -147,6 +148,12 @@ export interface AgentCtx {
    * permissive one by omission.
    */
   assetSources?: AssetSourcePolicy;
+  /**
+   * What this run has done with the model library (library-run.ts): kept on the run and handed in by reference, so the
+   * order gate on hand-built Models (model-rule.ts) and the insert failure hints see the same record across steps.
+   * Absent outside a run; a tool then creates one on the context for its own duration.
+   */
+  libraryRun?: LibraryRun;
   /** The one library model the project owner selected from a visual preview for this run. */
   approvedLibraryAssetId?: number;
   rejectedLibraryAssetIds?: number[];
@@ -157,6 +164,8 @@ export interface AgentCtx {
    * harness, which then gets the unasked refusal.
    */
   askAssetSources?: () => boolean;
+  /** True when this project's asset settings could not be read (asset-policy.ts sourceRefusal): not the same as "nobody answered". */
+  assetSettingsUnread?: boolean;
   /**
    * The user the run acts for: the project owner (`bind.ownerId`, recorded on the run as `userId`).
    * `generate_model_external` creates its Model in this user's own Roblox account with their
@@ -1165,6 +1174,51 @@ function rec(v: unknown): Record<string, unknown> {
   return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
 }
 
+function libraryRunOf(ctx: AgentCtx): LibraryRun {
+  return (ctx.libraryRun ??= {});
+}
+
+/**
+ * Does the order gate (model-rule.ts) still hold a hand-built Model back in this run? Decided from the run alone:
+ * the library must be on offer and usable here, not yet tried, and the gate not spent.
+ */
+function libraryOrder(ctx: AgentCtx): LibraryOrder {
+  const run = libraryRunOf(ctx);
+  return orderApplies({
+    offered: !ctx.offeredTools || ctx.offeredTools.has('find_library_model'),
+    usable: allowedSources(ctx.assetSources).includes('creator_store') || ctx.localOwnerGateway === true,
+    outcome: run.outcome,
+    gated: run.gated,
+  });
+}
+
+function noteOrderRefusal(ctx: AgentCtx): void {
+  const run = libraryRunOf(ctx);
+  run.gated = (run.gated ?? 0) + 1;
+}
+
+/** Record what a find_library_model call answered. An error is not an attempt: nothing was searched. */
+function recordSearch(ctx: AgentCtx, result: unknown): unknown {
+  const r = rec(result);
+  if (typeof r.error === 'string') return result;
+  const rows = Array.isArray(r.results) ? (r.results as unknown[]) : [];
+  noteSearch(libraryRunOf(ctx), rows.map((row) => rec(row).id).filter((id): id is string => typeof id === 'string'));
+  return result;
+}
+
+/** Record how insert_library_model ended: a refusal before anything was tried (bad id, source off) is not an attempt. */
+function recordInsert(ctx: AgentCtx, a: Record<string, unknown>, result: unknown): unknown {
+  const r = rec(result);
+  const id = String(a.id ?? '');
+  const row = libraryModel(id);
+  if (!row || id.startsWith('owner:') || id.startsWith(LOCAL_OWNER_PREFIX)) return result;
+  const failed = typeof r.error === 'string';
+  // A policy or argument refusal reached neither Roblox nor Studio, so it says nothing about the library.
+  if (failed && r.stage === 'policy') return result;
+  noteInsert(libraryRunOf(ctx), id, row.assetId, !failed);
+  return result;
+}
+
 function strOrNull(v: unknown): string | null {
   return typeof v === 'string' && v.length ? v : null;
 }
@@ -1763,6 +1817,112 @@ function webCtx(ctx: AgentCtx): WebToolCtx {
   };
 }
 
+/**
+ * find_library_model, as one function so the run records what the library answered (library-run.ts) around it,
+ * whichever of its several return paths answered.
+ */
+async function findLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
+  const query = a.query === undefined ? undefined : String(a.query);
+  if (a.sourceSHA !== undefined && !query?.trim()) return {error:'Source-scoped search requires plain query words; use query_owner_catalog for source pages.'};
+  if (a.sourceSHA !== undefined && !/^[a-f0-9]{64}$/.test(String(a.sourceSHA))) return {error:'Use an original source SHA from query_owner_catalog.'};
+  if (a.sourceSHA !== undefined && (!ctx.userId || !ctx.localOwnerGateway || !ctx.studioConnected())) return {error:'Source-scoped search needs the authenticated paired local owner gateway.'};
+  let localStatus: unknown;
+  if (ctx.localOwnerGateway && ctx.studioConnected() && query) {
+    const local=await localOwnerQuery(ctx,{action:'search',query,sourceSHA:a.sourceSHA === undefined ? undefined : String(a.sourceSHA),limit:Math.min(10,Math.max(1,Number(a.limit)||5)),
+      after:a.after === undefined ? undefined : localNodeId(String(a.after)),className:a.className === undefined ? undefined : String(a.className)});
+    localStatus=local;
+    if (Array.isArray(local.items) && local.items.length) return {source:'owner_local',
+      results:local.items.map((row) => ({...rec(row),id:LOCAL_OWNER_PREFIX+localNodeId(String(rec(row).id)),preview:{status:'native-pixels-required',visualApproved:false,gameplayVerified:false}})),
+      nextAfter:local.nextAfter ?? null,priority:'full local owner corpus first',
+      note:'Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair.'};
+    if (a.after !== undefined || a.sourceSHA !== undefined) return {...local,source:'owner_local',results:[],note:'This local page ended or was refused. No unrelated catalogue page substituted.'};
+  }
+  const owned = await findOwnerComponents(ctx.env, libraryNamespace(ctx.env, ctx.userId), query ?? '', Number(a.limit ?? 10));
+  if (owned.length) {
+    const results: Record<string,unknown>[] = [];
+    let chars = 0;
+    for (const c of owned) {
+      const row = {id:c.id,name:c.name.slice(0,128),className:c.className.slice(0,128),path:c.path.slice(0,256),
+        summary:c.summary.slice(0,512),usage:c.usage.slice(0,512),componentSha256:c.componentSha256,
+        byteLength:c.byteLength,dependencyCount:c.dependencyIds.length,unresolvedRefCount:c.unresolvedRefs.length,
+        descriptionAvailable:!!c.descriptionSha256,scriptsPreserved:c.scriptsPreserved,...(c.readiness ? {readiness:c.readiness} : {})};
+      const size = JSON.stringify(row).length;
+      if (chars + size > 18000) break;
+      results.push(row); chars += size;
+    }
+    return {source:'owner_corpus',results,total:owned.length,outputLimited:results.length < owned.length,
+      localGateway:localStatus ? ('error' in rec(localStatus) ? 'unavailable' : 'no matches') : 'not configured',
+      note:'Owner-attested cloud seed components are fallback after the full local corpus. Components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data; scriptsPreserved:false marks a script-free unit whose original scripts were excluded.'};
+  }
+  const found = findLibraryModels({
+    query,
+    genre: a.genre ? String(a.genre) : undefined,
+    kind: a.kind ? String(a.kind) : undefined,
+    limit: Math.max(10, a.limit === undefined ? 10 : Number(a.limit)),
+    creatorStoreOnly: true,
+    includeThirdParty: a.includeThirdParty === true,
+  });
+  const rejected = new Set(ctx.rejectedLibraryAssetIds ?? []);
+  const requestedObject = visualAssetAnchor(query ?? '', []);
+  found.results = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId)
+    && matchesVisualAnchor(row.name, requestedObject ?? undefined)
+    && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor)).slice(0, a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10)));
+  if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Search a different plain noun, or take the next step of the asset order (Creator Store, adapt or combine, then Parts in full detail); do not pass off an unrelated preview as this object.`;
+  return found;
+}
+
+/** insert_library_model, as one function so the run can record how the library insert ended (library-run.ts). */
+async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
+  if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return insertLocalOwner(ctx,a);
+  if (String(a.id ?? '').startsWith('owner:')) {
+    if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return { error: 'Native owner import is unavailable for this run: check permissions and update the paired plugin.' };
+    if (!ctx.userId) return { error: 'Owner corpus insertion requires the authenticated project owner.' };
+    const library = libraryNamespace(ctx.env, ctx.userId);
+    const component = await ownerComponent(ctx.env, library, String(a.id));
+    if (!component) return { error: 'This component has no verified bytes in this owner corpus. Ingest its complete native export first.' };
+    if (a.position !== undefined || a.height !== undefined || a.scale !== undefined) return { error: 'Owner imports preserve authored transforms. Insert first, then use transform_instances on the returned path.' };
+    const checkpoint = await ctx.createCheckpoint('before owner component import', 'auto');
+    if ('error' in checkpoint) return { error: `Owner import refused: checkpoint failed (${checkpoint.error}).` };
+    const token = await ownerComponentGrant(ctx.env, library, component);
+    const imported = await ctx.execStudioOp({ op: 'import_owner_component', componentId: component.id,
+      componentSha256: component.componentSha256, byteLength: component.byteLength, contentToken: token,
+      parent: String(a.parent ?? 'game.ServerStorage'), name: component.name.slice(0,96) }, 120_000);
+    return imported.ok ? { ...rec(imported.data), library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
+      note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' }
+      : { error: imported.error ?? 'Native owner import failed', library: component.id };
+  }
+  const pick = libraryModel(String(a.id ?? ''));
+  if (!pick) return { error: `${String(a.id ?? '')} is not a library id. Call find_library_model and pass one of its ids unchanged.` };
+  if (pick.assetId === undefined) return { error: 'This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.' };
+  const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources, ctx.assetSettingsUnread);
+  if (refused) return { error: refused };
+  const pos = a.position === undefined ? [0, 0, 0] : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
+  if (!Array.isArray(pos)) return pos;
+  const scale = a.scale === undefined ? undefined : Number(a.scale);
+  if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return { error: `scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}` };
+  const height = a.height === undefined ? undefined : Number(a.height);
+  if (height !== undefined && !(height > 0 && height <= 2000)) return { error: 'height must be between 0 and 2000 studs' };
+
+  const assetId = pick.assetId;
+  const placed = rec(await insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace')));
+  if ('error' in placed) return { ...placed, library: pick.id };
+  let paths = (Array.isArray(placed.inserted) ? placed.inserted : []).filter((p): p is string => typeof p === 'string');
+  if (paths.length > 1) {
+    const grouped = await ctx.execStudioOp({ op: 'group_instances', paths, name: pick.name.replace(/[^A-Za-z0-9 _-]+/g, '').slice(0, 50) || 'LibraryModel' }, 20_000);
+    const path = grouped.ok ? strOrNull(rec(grouped.data).path) : null;
+    if (path) paths = [path];
+  }
+  const where = paths.length === 1
+    ? await placeInserted((o, t) => ctx.execStudioOp(o as StudioOp, t), paths[0]!, pick, { position: pos, scale, height })
+    : { error: 'inserted as several pieces; left where Roblox put them' };
+  return {
+    ...placed,
+    inserted: paths,
+    library: { id: pick.id, name: pick.name, kind: pick.kind, licence: pick.licence, ...(pick.attribution ? { attribution: pick.attribution } : {}) },
+    ...('error' in where ? { placementWarning: where.error } : { placed: where }),
+  };
+}
+
 export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
@@ -1841,7 +2001,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       name: 'edit_script',
       description:
         'Create or edit a script. Provide exactly one of `source` (full new content), `edits` (find/replace list, exact match), or `source_file` (an exact saved .lua/.luau workspace version). For a single exact edit use edits:[{find:"exact old text",replace:"new text"}]; top-level find + replace is an equivalent shorthand, never combine it with another input. To create a new script set `create_class` + `create_parent`. ' +
-        'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. A script that newly builds detailed props from Parts is also refused: use a verified model, and leave it unbuilt when none is available. Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
+        'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. A script that newly assembles a Model from Parts is held back until the run has tried the library (find_library_model); after a search with no hit or a failed insert it goes through. Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
       parameters: S(
         {
           path: { type: 'string', description: 'Full path, e.g. game.ServerScriptService.RoundManager' },
@@ -2018,9 +2178,12 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-MODELLIB-2 also applies to scripts that create visual props at runtime. This caught a
       // garden crop assembled from Parts after a Creator Store search returned no model.
       const handMadeModel = refuseNewHandMadeModelLuau(
-        luauScanVariants(after), before === null ? undefined : luauScanVariants(before),
+        luauScanVariants(after), before === null ? undefined : luauScanVariants(before), libraryOrder(ctx),
       );
-      if (handMadeModel) return handMadeModel;
+      if (handMadeModel) {
+        if (handMadeModel.ordered) noteOrderRefusal(ctx);
+        return handMadeModel;
+      }
       // D-UIONLY-1: a script may use inserted UI but not make more UI than it already did.
       const handMadeUi = refuseLibraryLuau(luauScanVariants(after), UI_RULE, before === null ? undefined : luauScanVariants(before));
       if (handMadeUi) return handMadeUi;
@@ -2290,12 +2453,14 @@ export const TOOLS: Record<string, ToolImpl> = {
           error: `Nothing was created. ${pass.refusals.length === 1 ? 'One property' : `${pass.refusals.length} properties`} could not be read, and the rest were left alone rather than half-building the set: ${pass.refusals.map((r) => r.message).join(' ')}`,
         });
       }
-      // D-MODELLIB-2: a prop never becomes hand-built because consent is still owed or a plugin
-      // cannot insert from the library. Keep it unbuilt and report the missing capability instead.
-      const handMadeModel = refuseHandMadeModel(a.items);
-      if (handMadeModel) return Promise.resolve(handMadeModel);
-      const handBuilt = handBuiltPropRefusal(Array.isArray(a.items) ? a.items : []);
-      if (handBuilt) return Promise.resolve({ error: `Nothing was created. ${handBuilt}` });
+      // D-MODELLIB-2 is an ORDER (model-rule.ts): a Model of Parts waits until the run has tried the library,
+      // at most twice, and never when the library is not on offer. A mesh cannot be created at all.
+      const order = libraryOrder(ctx);
+      const handMadeModel = refuseHandMadeModel(a.items, order);
+      if (handMadeModel) {
+        if (handMadeModel.ordered) noteOrderRefusal(ctx);
+        return Promise.resolve(handMadeModel);
+      }
       return op(ctx, { op: 'create_instances', items: (pass.items as never[]) ?? [] });
     },
   },
@@ -2415,7 +2580,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'build_scene',
       description:
-        'Lay the PLAIN TERRAIN foundation for a floating island: grassy top, rock underside, stream and waterfall terrain, lighting and spawn. This is deliberately incomplete. Find and insert ready-made library models for trees, crystals and other detailed props, and use insert_vfx for mist. Never hand-build those from parts or call the scene finished from this terrain result. Returns surfaceY and usableRadius for placement.',
+        'Lay the PLAIN TERRAIN foundation for a floating island: grassy top, rock underside, stream and waterfall terrain, lighting and spawn. This is deliberately incomplete. Find and insert ready-made library models for trees, crystals and other detailed props, and use insert_vfx for mist. Library first; what it does not have follows the asset order (Creator Store, then Parts in full detail). This terrain result is not a finished scene. Returns surfaceY and usableRadius for placement.',
       parameters: S({
         kit: { type: 'string', enum: ['floating_island'] },
         center: { type: 'array', items: { type: 'number' }, description: 'Island centre, default [0, 150, 0]' },
@@ -2445,7 +2610,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       return {
         built, ...terrainFacts, projectMutated: true, complete: false,
         pending: [`${trees} ready-made library trees`, `${crystals} ready-made library crystal props`, 'library waterfall mist VFX'],
-        next: 'The terrain is only a foundation. Use find_library_model and insert_library_model for detailed trees and crystals; use insert_vfx for mist. If a matching verified asset is unavailable, leave it unbuilt and report that gap. Never hand-build a substitute or call this a finished scene.',
+        next: 'The terrain is only a foundation. Use find_library_model and insert_library_model for detailed trees and crystals; use insert_vfx for mist. If no verified asset matches, take the next step of the asset order (Creator Store, then Parts in full detail). It is not a finished scene until the detail exists.',
       };
     },
   },
@@ -2819,8 +2984,11 @@ export const TOOLS: Record<string, ToolImpl> = {
       const handMadeFx = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), FX_RULE);
       if (handMadeFx) return handMadeFx;
       // D-MODELLIB-2: run_luau does not assemble props either.
-      const handMadeModel = refuseHandMadeModelLuau(luauScanVariants(String(a.code ?? '')));
-      if (handMadeModel) return handMadeModel;
+      const handMadeModel = refuseHandMadeModelLuau(luauScanVariants(String(a.code ?? '')), libraryOrder(ctx));
+      if (handMadeModel) {
+        if (handMadeModel.ordered) noteOrderRefusal(ctx);
+        return handMadeModel;
+      }
       const gameRule = refuseGameScript(luauScanVariants(String(a.code ?? '')));
       if (gameRule) return gameRule;
       const job = admitProgram({
@@ -4112,7 +4280,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       const usable = chosen.filter((c) => allowed.includes(c.source));
       if (usable.length) return usable;
       return {
-        error: sourceRefusal(ctx.assetSources, chosen[0]?.source ?? 'procedural', ctx.askAssetSources)
+        error: sourceRefusal(ctx.assetSources, chosen[0]?.source ?? 'procedural', ctx.askAssetSources, ctx.assetSettingsUnread)
           ?? 'no asset source is available for this need',
         // The unusable list is returned too: a model told only "no" cannot explain to the person
         // what it would have done, and that explanation is what makes the setting make sense.
@@ -4333,7 +4501,7 @@ export const TOOLS: Record<string, ToolImpl> = {
                   ? 'find_vfx for a verified preset, then insert_vfx; never hand-build particle effects'
                   : s.need === 'texture'
                     ? 'use a rights-verified Roblox-specific library or Creator Store texture; do not invent an asset id'
-                    : 'find_library_model with the subject as a plain noun, then insert_library_model; never parts or a generator (D-MODELLIB-2)',
+                    : 'find_library_model with the subject as a plain noun, then insert_library_model; Parts only after the library had nothing (asset order)',
         })),
         sounds: admitted,
         // Present even when empty is wrong — an empty key reads as "we checked and all were fine",
@@ -4352,7 +4520,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
-      const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources);
+      const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources, ctx.assetSettingsUnread);
       // BEFORE the search, never after. An empty result would read as "the Creator Store has
       // nothing like that" — a claim about a catalogue this caller was never allowed to look in.
       if (refused) return { error: refused };
@@ -4379,7 +4547,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_asset',
       description:
-        'Insert an asset by numeric assetId. Use an id from find_verified_asset, or one the USER gave you — never one you produced yourself: a made-up id resolves to something random or to nothing. Where the id came from does not decide whether it is checked. EVERY id is resolved against the Creator Store and must pass the full gate (free, publicly visible, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget), and every insertion is then scanned INSIDE the place: Luau that arrived with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. Parts are for simple structure only; detailed props come from verified models, and an unavailable prop remains unbuilt.',
+        'Insert an asset by numeric assetId. Use an id from find_verified_asset, or one the USER gave you — never one you produced yourself: a made-up id resolves to something random or to nothing. Where the id came from does not decide whether it is checked. EVERY id is resolved against the Creator Store and must pass the full gate (free, publicly visible, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget), and every insertion is then scanned INSIDE the place: Luau that arrived with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. Parts are plain structure, and step 4 of the asset order for a prop that no verified model covers, built in full detail. Models come from insert_library_model, which skips this marketplace gate.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,
@@ -4417,7 +4585,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       // avoids above. `user_supplied` is never refused here — see
       // `PROVENANCE_SOURCE` in asset-policy.ts for why a pasted id is the customer's own choice, not
       // Apple's, and still faces the full gate immediately below regardless.
-      const sourceRefused = provenanceRefusal(ctx.assetSources, provenance, ctx.askAssetSources);
+      const sourceRefused = provenanceRefusal(ctx.assetSources, provenance, ctx.askAssetSources, ctx.assetSettingsUnread);
       if (sourceRefused) return { error: sourceRefused };
 
       const integrity: DetailsIntegrity = { missing: [] };
@@ -4803,55 +4971,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: false,
-    run: async (ctx, a) => {
-      const query = a.query === undefined ? undefined : String(a.query);
-      if (a.sourceSHA !== undefined && !query?.trim()) return {error:'Source-scoped search requires plain query words; use query_owner_catalog for source pages.'};
-      if (a.sourceSHA !== undefined && !/^[a-f0-9]{64}$/.test(String(a.sourceSHA))) return {error:'Use an original source SHA from query_owner_catalog.'};
-      if (a.sourceSHA !== undefined && (!ctx.userId || !ctx.localOwnerGateway || !ctx.studioConnected())) return {error:'Source-scoped search needs the authenticated paired local owner gateway.'};
-      let localStatus: unknown;
-      if (ctx.localOwnerGateway && ctx.studioConnected() && query) {
-        const local=await localOwnerQuery(ctx,{action:'search',query,sourceSHA:a.sourceSHA === undefined ? undefined : String(a.sourceSHA),limit:Math.min(10,Math.max(1,Number(a.limit)||5)),
-          after:a.after === undefined ? undefined : localNodeId(String(a.after)),className:a.className === undefined ? undefined : String(a.className)});
-        localStatus=local;
-        if (Array.isArray(local.items) && local.items.length) return {source:'owner_local',
-          results:local.items.map((row) => ({...rec(row),id:LOCAL_OWNER_PREFIX+localNodeId(String(rec(row).id)),preview:{status:'native-pixels-required',visualApproved:false,gameplayVerified:false}})),
-          nextAfter:local.nextAfter ?? null,priority:'full local owner corpus first',
-          note:'Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair.'};
-        if (a.after !== undefined || a.sourceSHA !== undefined) return {...local,source:'owner_local',results:[],note:'This local page ended or was refused. No unrelated catalogue page substituted.'};
-      }
-      const owned = await findOwnerComponents(ctx.env, libraryNamespace(ctx.env, ctx.userId), query ?? '', Number(a.limit ?? 10));
-      if (owned.length) {
-        const results: Record<string,unknown>[] = [];
-        let chars = 0;
-        for (const c of owned) {
-          const row = {id:c.id,name:c.name.slice(0,128),className:c.className.slice(0,128),path:c.path.slice(0,256),
-            summary:c.summary.slice(0,512),usage:c.usage.slice(0,512),componentSha256:c.componentSha256,
-            byteLength:c.byteLength,dependencyCount:c.dependencyIds.length,unresolvedRefCount:c.unresolvedRefs.length,
-            descriptionAvailable:!!c.descriptionSha256,scriptsPreserved:c.scriptsPreserved,...(c.readiness ? {readiness:c.readiness} : {})};
-          const size = JSON.stringify(row).length;
-          if (chars + size > 18000) break;
-          results.push(row); chars += size;
-        }
-        return {source:'owner_corpus',results,total:owned.length,outputLimited:results.length < owned.length,
-          localGateway:localStatus ? ('error' in rec(localStatus) ? 'unavailable' : 'no matches') : 'not configured',
-          note:'Owner-attested cloud seed components are fallback after the full local corpus. Components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data; scriptsPreserved:false marks a script-free unit whose original scripts were excluded.'};
-      }
-      const found = findLibraryModels({
-        query,
-        genre: a.genre ? String(a.genre) : undefined,
-        kind: a.kind ? String(a.kind) : undefined,
-        limit: Math.max(10, a.limit === undefined ? 10 : Number(a.limit)),
-        creatorStoreOnly: true,
-        includeThirdParty: a.includeThirdParty === true,
-      });
-      const rejected = new Set(ctx.rejectedLibraryAssetIds ?? []);
-      const requestedObject = visualAssetAnchor(query ?? '', []);
-      found.results = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId)
-        && matchesVisualAnchor(row.name, requestedObject ?? undefined)
-        && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor)).slice(0, a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10)));
-      if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Search a different plain noun or report the missing asset; do not substitute an unrelated preview or hand-built prop. If the asset is ESSENTIAL to the request, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
-      return found;
-    },
+    run: async (ctx, a) => recordSearch(ctx, await findLibraryModelCall(ctx, a)),
   },
   insert_owner_component: {
     def: {
@@ -5058,7 +5178,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_library_model',
       description:
-        "Insert ONE verified Creator Store model after the project owner chose its real preview. Pass the exact library `id` that the owner selected. A query cannot silently choose the best match. Third-party rows require the experience's Roblox third-party loading setting; a refusal leaves the place unchanged. Downloaded file rows are not insertable because uploading a new permanent Model needs separate authority. Every insertion is scanned inside the place; scripted assets are removed before they count. Use this for detailed props, buildings, nature, vehicles, pets and characters. If insertion fails, leave it unbuilt until another choice. To place many copies of the approved model, insert one and clone_instances it.",
+        "Insert ONE verified Creator Store model by the exact library `id` that find_library_model returned; a query cannot choose for you. Third-party rows require the experience's Roblox third-party loading setting; a refusal leaves the place unchanged. Downloaded file rows are not insertable because uploading a new permanent Model needs separate authority. Every insertion is scanned inside the place; scripted assets are removed before they count. This tool does not run insert_asset's marketplace gate (which refuses every Model): library rows were verified when they were admitted. Use it for detailed props, buildings, nature, vehicles, pets and characters. A failure names its stage, whether a retry can help and the next candidate ids from your last search: take the next id, and when none is left go on to the next step of the asset order. To place many copies of the model, insert one and clone_instances it.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },
@@ -5075,56 +5195,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component'],['insert_asset']],
     // A refusal changed nothing in the place.
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
-    run: async (ctx, a) => {
-      if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return insertLocalOwner(ctx,a);
-      if (String(a.id ?? '').startsWith('owner:')) {
-        if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return { error: 'Native owner import is unavailable for this run: check permissions and update the paired plugin.' };
-        if (!ctx.userId) return { error: 'Owner corpus insertion requires the authenticated project owner.' };
-        const library = libraryNamespace(ctx.env, ctx.userId);
-        const component = await ownerComponent(ctx.env, library, String(a.id));
-        if (!component) return { error: 'This component has no verified bytes in this owner corpus. Ingest its complete native export first.' };
-        if (a.position !== undefined || a.height !== undefined || a.scale !== undefined) return { error: 'Owner imports preserve authored transforms. Insert first, then use transform_instances on the returned path.' };
-        const checkpoint = await ctx.createCheckpoint('before owner component import', 'auto');
-        if ('error' in checkpoint) return { error: `Owner import refused: checkpoint failed (${checkpoint.error}).` };
-        const token = await ownerComponentGrant(ctx.env, library, component);
-        const imported = await ctx.execStudioOp({ op: 'import_owner_component', componentId: component.id,
-          componentSha256: component.componentSha256, byteLength: component.byteLength, contentToken: token,
-          parent: String(a.parent ?? 'game.ServerStorage'), name: component.name.slice(0,96) }, 120_000);
-        return imported.ok ? { ...rec(imported.data), library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
-          note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' }
-          : { error: imported.error ?? 'Native owner import failed', library: component.id };
-      }
-      const pick = libraryModel(String(a.id ?? ''));
-      if (!pick) return { error: `${String(a.id ?? '')} is not a library id. Call find_library_model and pass one of its ids unchanged.` };
-      if (pick.assetId === undefined) return { error: 'This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.' };
-      const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources);
-      if (refused) return { error: refused };
-      const pos = a.position === undefined ? [0, 0, 0] : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
-      if (!Array.isArray(pos)) return pos;
-      const scale = a.scale === undefined ? undefined : Number(a.scale);
-      if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return { error: `scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}` };
-      const height = a.height === undefined ? undefined : Number(a.height);
-      if (height !== undefined && !(height > 0 && height <= 2000)) return { error: 'height must be between 0 and 2000 studs' };
-
-      const assetId = pick.assetId;
-      const placed = rec(await insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace')));
-      if ('error' in placed) return { ...placed, library: pick.id };
-      let paths = (Array.isArray(placed.inserted) ? placed.inserted : []).filter((p): p is string => typeof p === 'string');
-      if (paths.length > 1) {
-        const grouped = await ctx.execStudioOp({ op: 'group_instances', paths, name: pick.name.replace(/[^A-Za-z0-9 _-]+/g, '').slice(0, 50) || 'LibraryModel' }, 20_000);
-        const path = grouped.ok ? strOrNull(rec(grouped.data).path) : null;
-        if (path) paths = [path];
-      }
-      const where = paths.length === 1
-        ? await placeInserted((o, t) => ctx.execStudioOp(o as StudioOp, t), paths[0]!, pick, { position: pos, scale, height })
-        : { error: 'inserted as several pieces; left where Roblox put them' };
-      return {
-        ...placed,
-        inserted: paths,
-        library: { id: pick.id, name: pick.name, kind: pick.kind, licence: pick.licence, ...(pick.attribution ? { attribution: pick.attribution } : {}) },
-        ...('error' in where ? { placementWarning: where.error } : { placed: where }),
-      };
-    },
+    run: async (ctx, a) => recordInsert(ctx, a, await insertLibraryModelCall(ctx, a)),
   },
   generate_model_external: {
     def: {

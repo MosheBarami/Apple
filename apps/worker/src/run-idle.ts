@@ -8,6 +8,8 @@
 // A new change clears the check, so a run that is still fixing things is never counted: only a run
 // whose latest change has passed a verifier, and which has since only read, is idle.
 
+import { fenceForQuote } from './run-parts.ts';
+
 export const IDLE_AFTER_VERIFY_NUDGE = 4;
 export const IDLE_AFTER_VERIFY_LIMIT = 8;
 /**
@@ -49,13 +51,22 @@ export function pushHarness(llm: { push(m: { role: 'user'; content: string }): u
  * The note for a run that can build and has changed nothing, or null while it is too early to say. Fires after
  * a real failure or three read-only steps (the caller latches it, once per run). It reports what happened and
  * restates the asset order; it does not tell the model what to build or to skip the library.
+ *
+ * It is written into a user-role turn, so it carries nothing it could not safely carry: the tool must be one
+ * of the registry's own names (`isTool`), and a tool's error text, which can quote Studio or a web page, goes
+ * in only through fenceForQuote (one line, no quote or backtick, bounded) inside its own quotation.
  */
-export function buildNudge(trace: readonly { tool: string; ok: boolean; error?: string; summary?: string }[], readOnlySteps: number): string | null {
+export function buildNudge(
+  trace: readonly { tool: string; ok: boolean; error?: string; summary?: string }[],
+  readOnlySteps: number,
+  isTool: (name: string) => boolean,
+): string | null {
   const failed = trace.filter((t) => !t.ok);
   if (!failed.length && readOnlySteps < 3) return null;
   const head = (t: { tool: string; error?: string; summary?: string }) => {
-    const said = (t.error ?? t.summary ?? '').replace(/\s+/g, ' ').trim().slice(0, 160);
-    return said ? `${t.tool}: ${said}` : t.tool;
+    const said = fenceForQuote(t.error ?? t.summary ?? '').slice(0, 160);
+    const tool = isTool(t.tool) ? t.tool : 'a tool';
+    return said ? `${tool}: "${said}"` : tool;
   };
   const last = [...new Set(failed.slice(-3).map(head))];
   return 'Nothing has changed in the project yet. ' +

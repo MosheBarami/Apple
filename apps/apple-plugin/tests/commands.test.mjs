@@ -62,6 +62,21 @@ spec("unknown operations are explicit refusals", function()
     c:destroy()
 end)
 
+spec("classes outside the create allowlist are refused by name, and nothing is created", function()
+    -- Measured 2026-10-02 by reading CREATE_CLASSES: Clouds is not creatable, yet the worker's prompts told
+    -- the agent to put a Clouds object under Terrain. A class the plugin cannot create must be refused
+    -- here with a reason the agent can act on, whatever the prompts say.
+    local c = newCommands()
+    local before = #services.Workspace:GetChildren()
+    for _, className in { "Clouds", "MeshPart", "SpecialMesh", "UnionOperation" } do
+        local r = run(c, "outside-" .. className, { op = "create_instances", items = {{ className = className, name = "Nope", parent = "game.Workspace" }} }, true)
+        eq(r.ok, false, className .. " ok"); eq(r.failure, "refused", className .. " failure")
+        has(r.error, "allowlist", className .. " reason")
+    end
+    eq(#services.Workspace:GetChildren(), before, "nothing was created")
+    c:destroy()
+end)
+
 spec("ping and all read operations use data and no recording", function()
     local scriptObject = Instance.new("Script"); scriptObject.Name = "Logic"; scriptObject.Source = "local answer = 42\\nprint(answer)\\n"; scriptObject.Parent = services.ServerScriptService
     local c = newCommands()

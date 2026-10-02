@@ -92,6 +92,7 @@ import { chooseEffort, classifyRequest, forbidsChanges, tokensForEffort, type Re
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@golem/shared';
 import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
+import type { LibraryRun } from '../library-run';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
 import { afterStep, afterChange, pushHarness, buildNudge, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
@@ -361,6 +362,8 @@ interface AgentState {
   autonomousContinues?: number;
   /** The one "nothing has changed yet" harness note was sent this run (run-idle.ts buildNudge). */
   buildNudged?: boolean;
+  /** What this run has done with the model library (library-run.ts); the order gate and the insert failure hints read it. */
+  libraryRun?: LibraryRun;
   /** This run built something the player sees on screen (a ScreenGui, the ui_kit, build_ui). */
   hudBuilt?: boolean;
   /** play_check ran as a player in this run. */
@@ -5324,7 +5327,7 @@ export class SessionDO extends DurableObject<Env> {
     // model to build "from Parts rather than looking for assets" in the user's voice; the model quoted it back as
     // something the user had said (owner benchmark 2026-10-02).
     if (!built && !agent.buildNudged && agent.step >= 2 && canBuild && studioConnected) {
-      const text = buildNudge(agent.trace, agent.readsSinceChange ?? 0);
+      const text = buildNudge(agent.trace, agent.readsSinceChange ?? 0, (name) => Object.prototype.hasOwnProperty.call(TOOLS, name));
       if (text) {
         agent.buildNudged = true;
         pushHarness(agent.llm, text);
@@ -6113,6 +6116,7 @@ export class SessionDO extends DurableObject<Env> {
         save: (spec: unknown) => this.ctx.storage.put('builtObject', { spec, at: Date.now() }),
         upgrading: agent.upgradingObject === true,
       } } : {}),
+      ...(agent ? { libraryRun: (agent.libraryRun ??= {}) } : {}),
       onceInRun: (key) => {
         if (!agent) return true;
         const seen = agent.onceKeys ?? (agent.onceKeys = []);
@@ -6131,6 +6135,7 @@ export class SessionDO extends DurableObject<Env> {
       rejectedLibraryAssetIds: agent?.rejectedLibraryAssetIds,
       assetChoiceAnchor: agent?.assetChoiceAnchor,
       askAssetSources: () => this.askAssetSources(),
+      assetSettingsUnread: this.pinnedPrefs === null,
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
       // "can you build right now" is no. The connection half now comes from the same rule the
       // header and the status broadcast use.
