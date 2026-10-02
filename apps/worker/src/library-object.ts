@@ -22,7 +22,7 @@ import type { InstanceSpecLite } from './compose';
 import { luau } from './compose';
 import { typed } from './compose-run';
 import { findLibraryModels } from './model-library';
-import { LIBRARY_IMPORT_MS, librarySafetyCopy } from './local-owner-corpus';
+import { LIBRARY_IMPORT_MS, libraryMaterials, librarySafetyCopy } from './local-owner-corpus';
 import { contrastStage, COOL_ORB_COLOURS, groundAndSpawn, motionClip, PLAYER_HEIGHT, withRiders, writeObjectHud, type ObjectPart } from './object-tool';
 import { findSounds, vfxPlan } from './fx-library';
 import { installAnimationPlayer } from './animate-tool';
@@ -70,6 +70,14 @@ export function objectNameOf(request: string): string {
   return /^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(name) ? name : 'MyObject';
 }
 
+/**
+ * A catalog name as it may be shown and repeated: no control characters, no markdown or markup, at most 60 characters
+ * (review 2026-10-02: library names went into the chat text, which is replayed to the model and drawn as markdown).
+ */
+export function cleanName(s: string): string {
+  return s.replace(/[\x00-\x1f\x7f]/g, ' ').replace(/[`*_[\]<>|#~\\{}]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Model';
+}
+
 /** One candidate: a piece of the owner library, or a Roblox-owned Creator Store row. */
 export interface LibraryCandidate {
   source: 'owner' | 'store';
@@ -104,11 +112,13 @@ export function rankCatalog(items: CatalogItem[], query: string, limit = 3): Lib
     const parts = Number(i.parts ?? 0), instances = Number(i.instances ?? 0);
     if (!(parts >= 1) || parts > 400 || instances > 1500) return;
     if (Array.isArray(i.contains) && i.contains.some((c) => c === 'Humanoid')) return;
-    const nameWords = words(i.name.replace(/#\d+$/, '')).map(singular);
+    // A diminutive is the same word ("Rubber Ducky" for a rubber duck, "Doggie"); a longer word is another thing
+    // ("Butterfly" is not butter).
+    const nameWords = words(i.name.replace(/#\d+$/, '')).map(singular).map((w) => [`${head}y`, `${head}ie`, `${head}${head.at(-1)}y`, `${head}${head.at(-1)}ie`].includes(w) ? head : w);
     if (!nameWords.includes(head)) return;
     const exact = nameWords.join(' ') === qWords.join(' ') || nameWords.join(' ') === head;
     const score = exact ? 3 : nameWords.at(-1) === head ? 2 : 1;
-    scored.push({ c: { source: 'owner', name: i.name.replace(/#\d+$/, ''), game: typeof i.game === 'string' ? i.game : undefined, gameId: i.gameId, path: i.path, parts }, score, order });
+    scored.push({ c: { source: 'owner', name: cleanName(i.name.replace(/#\d+$/, '')), game: typeof i.game === 'string' ? cleanName(i.game) : undefined, gameId: i.gameId, path: i.path, parts }, score, order });
   });
   scored.sort((a, b) => b.score - a.score || a.order - b.order);
   // A name where the word is not last ("Butter fly", "Donut Booth") is another thing, offered only when nothing is the
@@ -131,7 +141,7 @@ export function storeCandidates(query: string, limit = 3): LibraryCandidate[] {
   return (found.results ?? [])
     .filter((r) => typeof r.assetId === 'number' && words(r.name).map(singular).includes(head))
     .slice(0, limit)
-    .map((r) => ({ source: 'store' as const, name: r.name, id: r.id, assetId: r.assetId }));
+    .map((r) => ({ source: 'store' as const, name: cleanName(r.name), id: r.id, assetId: r.assetId }));
 }
 
 /** Where the numbered candidates stand: a row in front of the spawn. */
@@ -194,7 +204,11 @@ function numberTag(index: number, at: V3): InstanceSpecLite {
 
 /** Removes the numbered row and the imported pieces behind it. */
 export async function clearLineup(ctx: AgentCtx): Promise<void> {
-  await ctx.execStudioOp({ op: 'delete_instances', paths: [LINEUP, `${PARTS_FOLDER}.ApplePick1`, `${PARTS_FOLDER}.ApplePick2`, `${PARTS_FOLDER}.ApplePick3`] }, 20_000).catch(() => undefined);
+  // One path at a time: delete_instances refuses the whole list when one path is missing (review 2026-10-02: the row
+  // was never taken down because its pick folders were already gone).
+  for (const path of [LINEUP, `${PARTS_FOLDER}.ApplePick1`, `${PARTS_FOLDER}.ApplePick2`, `${PARTS_FOLDER}.ApplePick3`]) {
+    await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
+  }
 }
 
 /**
@@ -213,7 +227,9 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string): Promi
   ] }, 20_000);
   if (!made.ok) return null;
   const folder = await ctx.execStudioOp({ op: 'get_instance', path: PARTS_FOLDER }, 10_000).catch(() => null);
-  if (!folder?.ok) await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleParts' }), parent: 'game.ServerStorage' }] }, 20_000).catch(() => undefined);
+  // A folder made here is taken away again at the end: a later compose_game makes its own AppleParts.
+  const madeFolder = !folder?.ok;
+  if (madeFolder) await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleParts' }), parent: 'game.ServerStorage' }] }, 20_000).catch(() => undefined);
   const placed: (LibraryCandidate & { index: number })[] = [];
   const tags: InstanceSpecLite[] = [];
   for (const c of candidates) {
@@ -223,6 +239,8 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string): Promi
     await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: `ApplePick${index}` }), parent: PARTS_FOLDER }] }, 20_000).catch(() => undefined);
     let from = into;
     if (c.source === 'owner') {
+      // The game's own materials first, so a piece that names one does not draw as bare plastic (only missing ones).
+      await libraryMaterials(ctx, c.gameId!).catch(() => undefined);
       // ServerStorage: no script runs there; the strip and the copy below take every script and sound out.
       const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: c.gameId!, path: c.path!, mode: 'self', parent: into, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
       if (!imported?.ok) continue;
@@ -239,10 +257,20 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string): Promi
     const ok = copied?.ok && ((copied.data as { placed?: unknown[] })?.placed?.length ?? 1) > 0;
     await ctx.execStudioOp({ op: 'delete_instances', paths: [into] }, 20_000).catch(() => undefined);
     if (!ok) continue;
-    const b = await bounds(ctx.execStudioOp, `${LINEUP}.Pick${index}`);
+    let b = await bounds(ctx.execStudioOp, `${LINEUP}.Pick${index}`);
+    // A tall thin thing fitted by its length would tower over the row: fitted by its height instead.
+    if (b && b.size[1] > 2 * Math.max(b.size[0], b.size[2]) && b.size[1] > PICK_LENGTH) {
+      const again = await ctx.execStudioOp({ op: 'place_copies', items: [{ from: `${LINEUP}.Pick${index}`, parent: LINEUP, name: `Pick${index}Tall`, at: slot, height: PICK_LENGTH, along: 'x' }] }, 60_000).catch(() => null);
+      if (again?.ok) {
+        await ctx.execStudioOp({ op: 'delete_instances', paths: [`${LINEUP}.Pick${index}`] }, 20_000).catch(() => undefined);
+        await ctx.execStudioOp({ op: 'rename_instance', path: `${LINEUP}.Pick${index}Tall`, name: `Pick${index}` }, 20_000).catch(() => undefined);
+        b = await bounds(ctx.execStudioOp, `${LINEUP}.Pick${index}`);
+      }
+    }
     tags.push(numberTag(index, [slot[0], (b ? b.bottomY + b.size[1] : 8) + 3, slot[2]]));
     placed.push({ ...c, index });
   }
+  if (madeFolder) await ctx.execStudioOp({ op: 'delete_instances', paths: [PARTS_FOLDER] }, 20_000).catch(() => undefined);
   if (!placed.length) { await clearLineup(ctx); return null; }
   await ctx.execStudioOp({ op: 'create_instances', items: tags.map((t) => ({ ...typed(t), parent: LINEUP })) }, 20_000).catch(() => undefined);
   // The snapshot for the card: the active Studio camera on the row. No snapshot is still a choice (the row is in Studio).
@@ -282,6 +310,36 @@ function mainColourOf(tree: unknown): string {
   return [...by.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '#ffffff';
 }
 
+/**
+ * The world-aligned box of a tree's visible parts, from each part's Size and CFrame (the box place_copies fits by), or
+ * null when the tree carries none. Model:GetBoundingBox is oriented to the model's pivot, so for a turned piece it is
+ * not the box the stage and the click body must cover (review 2026-10-02). Pure.
+ */
+export function worldBox(tree: unknown): { center: V3; size: V3; bottomY: number } | null {
+  let lo: V3 | null = null, hi: V3 | null = null;
+  const walk = (n: { props?: Record<string, { v?: unknown }>; children?: unknown[] }) => {
+    const size = vec(n.props?.Size?.v), cf = n.props?.CFrame?.v;
+    if (size && Array.isArray(cf) && cf.length === 12 && cf.every((x) => Number.isFinite(Number(x))) && Number(n.props?.Transparency?.v ?? 0) < 1) {
+      const [x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22] = cf.map(Number) as number[];
+      // Half-extent of the rotated box along each world axis: |R| times the half size.
+      const h = [size[0] / 2, size[1] / 2, size[2] / 2];
+      const ext: V3 = [
+        Math.abs(r00!) * h[0]! + Math.abs(r01!) * h[1]! + Math.abs(r02!) * h[2]!,
+        Math.abs(r10!) * h[0]! + Math.abs(r11!) * h[1]! + Math.abs(r12!) * h[2]!,
+        Math.abs(r20!) * h[0]! + Math.abs(r21!) * h[1]! + Math.abs(r22!) * h[2]!,
+      ];
+      const a: V3 = [x! - ext[0], y! - ext[1], z! - ext[2]], b: V3 = [x! + ext[0], y! + ext[1], z! + ext[2]];
+      lo = lo ? lo.map((v, i) => Math.min(v, a[i]!)) as V3 : a;
+      hi = hi ? hi.map((v, i) => Math.max(v, b[i]!)) as V3 : b;
+    }
+    for (const c of n.children ?? []) walk(c as typeof n);
+  };
+  if (tree && typeof tree === 'object') walk(tree as Parameters<typeof walk>[0]);
+  if (!lo || !hi) return null;
+  const l = lo as V3, u = hi as V3;
+  return { center: [(l[0] + u[0]) / 2, (l[1] + u[1]) / 2, (l[2] + u[2]) / 2], size: [u[0] - l[0], u[1] - l[1], u[2] - l[2]], bottomY: l[1] };
+}
+
 /** The target size: about three player heights along its longest side, height first for a tall thing. Pure. */
 export function libraryFit(size: V3): { length?: number; height?: number } {
   const across = Math.max(size[0], size[2]);
@@ -303,26 +361,29 @@ export async function placeChosenObject(ctx: AgentCtx, pending: PendingObjectCho
   const name = /^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(pending.name) ? pending.name : 'MyObject';
   const model = `game.Workspace.${name}`;
   const stageName = `game.Workspace.${name}Stage`;
-  await ctx.execStudioOp({ op: 'delete_instances', paths: [model, stageName] }, 20_000).catch(() => undefined);
+  for (const path of [model, stageName]) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
   const fit = libraryFit(before.size);
   const at: V3 = [0, 2, -26];
   const copied = await ctx.execStudioOp({ op: 'place_copies', items: [{ from, parent: 'game.Workspace', name, at, ...fit, along: 'x' }] }, 60_000);
   if (!copied.ok) return { error: `The picked model could not be moved: ${String(copied.error ?? '').slice(0, 200)}` };
   await clearLineup(ctx);
-  const b = await bounds(ctx.execStudioOp, model);
+  // The world box of its visible parts (worldBox), or the model's own box when the tree is too big to read whole.
+  const tree = await ctx.execStudioOp({ op: 'get_tree', root: model, maxDepth: 12, maxNodes: 400 }, 30_000).catch(() => null);
+  const whole = tree?.ok && !(tree.data as { truncated?: unknown }).truncated;
+  const b = (whole ? worldBox((tree!.data as { root?: unknown }).root) : null) ?? await bounds(ctx.execStudioOp, model);
   if (!b) return { error: 'The placed model has no measurable size.', changed: true, projectMutated: true };
   const [sx, sy, sz] = b.size, [cx, , cz] = b.center;
   const problems: string[] = [];
 
   // The stage under it, a colour that stands apart from the model's own, then the ground, the spawn and the studs.
-  const tree = await ctx.execStudioOp({ op: 'get_tree', root: model, maxDepth: 12, maxNodes: 400 }, 30_000).catch(() => null);
   const stageColor = contrastStage(mainColourOf(tree?.ok ? (tree.data as { root?: unknown }).root : null));
   const pad = 6;
   await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Model', name: `${name}Stage`, children: [
     { className: 'Part', name: 'Stage', props: { Size: [sx + pad * 2, 2, sz + pad * 2], Position: [cx, 1, cz], Anchored: true, Color: stageColor, Material: 'Plastic' } },
     { className: 'Part', name: 'Rim', props: { Size: [sx + pad * 2 + 2, 1, sz + pad * 2 + 2], Position: [cx, 0.5, cz], Anchored: true, Color: '#8e5b32', Material: 'Plastic' } },
   ] }), parent: 'game.Workspace' }] }, 30_000).catch(() => undefined);
-  await groundAndSpawn(ctx, userWantsOwnSurface(ctx.userRequest?.()) ? null : [stageName]);
+  // The original request decides the surface, not the "Use visual option" message that picked it.
+  await groundAndSpawn(ctx, userWantsOwnSurface(pending.request) ? null : [stageName]);
 
   // The rig: an invisible body around the whole model that every part is welded to, turned by one Motor6D on a root.
   const body: ObjectPart = { name: 'AppleBody', shape: 'block', size: [sx + 0.2, sy + 0.2, sz + 0.2], at: [0, 0, 0], color: '#ffffff', move: { as: 'wobble', on: 'click', sound: 'squish' } };
@@ -394,7 +455,7 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   if (!b) return { error: `${name} is no longer in the place.` };
   const problems: string[] = [];
   const body = `${model}.AppleBody`;
-  await ctx.execStudioOp({ op: 'delete_instances', paths: [`${model}Cool`, `${body}.SparkleShimmerFX`, `${body}.CoolLight`] }, 20_000).catch(() => undefined);
+  for (const path of [`${model}Cool`, `${body}.SparkleShimmerFX`, `${body}.CoolLight`]) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
   const fx = vfxPlan('sparkle_shimmer', { path: body, className: 'Part' }, { scale: Math.max(1, Math.min(4, Math.max(...b.size) / 6)), rate: 2 });
   const light = { className: 'PointLight', name: 'CoolLight', parent: body, props: { Brightness: { t: 'number' as const, v: 2 }, Range: { t: 'number' as const, v: 20 }, Color: { t: 'Color3' as const, v: [1, 0.85, 0.5] as [number, number, number] } } };
   const sparkled = await ctx.execStudioOp({ op: 'create_instances', items: [...('error' in fx ? [] : fx.items), light] }, 60_000).catch(() => null);

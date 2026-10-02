@@ -47,5 +47,7 @@ test('every building run tells Studio the surface rule before it starts', () => 
   const at = session.indexOf("createCheckpoint('before Apple changes'");
   assert.ok(at > 0, 'found the pre-run checkpoint');
   const after = session.slice(at, at + 2500);
-  assert.match(after, /execStudioOp\(surfaceDefaultOp\(text\)/, 'the run sends the surface rule with the user\'s own words');
+  // RESTATED 2026-10-02: the request the run carries out (effectiveRequest: the user's words, or the original object
+  // request when the message only picked a ready-made model for it).
+  assert.match(after, /execStudioOp\(surfaceDefaultOp\((text|effectiveRequest)\)/, 'the run sends the surface rule with the user\'s own words');
 });

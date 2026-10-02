@@ -302,6 +302,8 @@ interface AgentState {
   objectPick?: { index: number | null; pending: PendingObjectChoice };
   /** The library step of an object run (offer or place) has run; it runs once, before any model call. */
   libraryStepDone?: boolean;
+  /** This run ended on an offer of ready-made models and waits for the owner's pick. */
+  objectOffered?: boolean;
   /** A row of offered models from an earlier run is still standing and this run did not pick from it: take it down. */
   staleLineup?: boolean;
   /** This run makes the project's last built object cooler (isUpgradeRequest + the stored builtObject). */
@@ -1602,6 +1604,10 @@ export class SessionDO extends DurableObject<Env> {
    */
   private async libraryObjectStep(agent: AgentState): Promise<boolean> {
     if (!(await this.pluginConnected())) return false;
+    // The user's tool permissions and the plugin's capabilities bind the harness too (review 2026-10-02): no library
+    // search or insert when either is switched off; the run then goes on to build_object, itself still filtered.
+    const allowed = this.pluginToolFilter(applyToolPermissions(toolsForMode(agent.mode, true, toolNames()), agent.toolPermissions)).allowed;
+    if (agent.readOnly || !allowed.has('find_library_model') || !allowed.has('insert_library_model')) return false;
     const ctx = this.agentCtx(agent);
     const row = (tool: string, ok: boolean, t0: number, summary: string, detail?: unknown) => {
       const toolId = crypto.randomUUID();
@@ -1610,15 +1616,18 @@ export class SessionDO extends DurableObject<Env> {
       agent.trace.push({ tool, summary, ok, durationMs: Date.now() - t0, ...(detail === undefined ? {} : { detail }) });
     };
     const pick = agent.objectPick;
-    if (!pick && agent.staleLineup) await clearLineup(ctx);
-    if (pick && pick.index === null) { await clearLineup(ctx); return false; }
+    if (!pick && agent.staleLineup) { await clearLineup(ctx); await this.ctx.storage.delete('pendingObjectChoice'); }
+    if (pick && pick.index === null) { await clearLineup(ctx); await this.ctx.storage.delete('pendingObjectChoice'); return false; }
     if (pick && pick.index !== null) {
       const t0 = Date.now();
       const placed = await placeChosenObject(ctx, pick.pending, pick.index) as Record<string, unknown>;
       const ok = !('error' in placed);
-      row('place_library_model', ok, t0, ok ? `✓ placed ${String((placed.library as { name?: unknown } | undefined)?.name ?? 'the model')}` : `✗ ${String(placed.error).slice(0, 120)}`, placed);
-      if (placed.changed === true || placed.projectMutated === true) { agent.mutated = true; agent.made = addMade(agent.made, 'place_library_model'); }
+      // Named for what it is, a library insert (a "make a 3D model of X" run owes one).
+      row('insert_library_model', ok, t0, ok ? `✓ placed ${String((placed.library as { name?: unknown } | undefined)?.name ?? 'the model')}` : `✗ ${String(placed.error).slice(0, 120)}`, placed);
+      if (placed.changed === true || placed.projectMutated === true) { agent.mutated = true; agent.made = addMade(agent.made, 'insert_library_model'); }
       if (!ok) return false;
+      await this.ctx.storage.delete('pendingObjectChoice');
+      if (await stopRequested(this.ctx.storage)) { await this.finishRun(agent, 'stopped'); return true; }
       agent.objectFirst = false;
       agent.objectBuilt = true;
       // Played once by the harness, not the model: no model call for the whole pick.
@@ -1662,6 +1671,7 @@ export class SessionDO extends DurableObject<Env> {
       });
       agent.mutated = true;
       agent.made = addMade(agent.made, 'find_library_model');
+      agent.objectOffered = true;
       agent.finalText = offer.text;
       await this.finishRun(agent, 'done');
       return true;
@@ -3152,7 +3162,11 @@ export class SessionDO extends DurableObject<Env> {
           // pasted a credential or was refused for flooding and cannot see who, so nothing can be
           // followed up and no account can be looked at. `me` is the socket's verified identity —
           // not the project owner, who is frequently not the person typing.
-          if (this.refuseAbusive(text, { actorId: me?.userId ?? null, projectId: bind.projectId })) return;
+          // A pick from a waiting offer is a fixed sentence, not a flood: someone making objects in a row picks
+          // "option 1" again and again (review 2026-10-02: the fourth in ten minutes was refused as a repeat).
+          const answersOffer = (ASSET_CHOICE_MESSAGE.test(text) || text === 'None of these look right. Find different visual options.')
+            && Boolean(await this.ctx.storage.get('pendingObjectChoice'));
+          if (!answersOffer && this.refuseAbusive(text, { actorId: me?.userId ?? null, projectId: bind.projectId })) return;
           //[[ THE FILES THE PERSON ATTACHED BECOME PART OF THE MESSAGE.
           //
           //   `attachments` has been on this frame since the protocol was written and this handler
@@ -3490,7 +3504,8 @@ export class SessionDO extends DurableObject<Env> {
     this.broadcast({ type: 'quota', quota: quota.state });
     // One approval is scoped to one admitted run. A new unrelated message invalidates old cards.
     await this.ctx.storage.delete('pendingAssetChoice');
-    await this.ctx.storage.delete('pendingObjectChoice');
+    // pendingObjectChoice is settled by the library step (placed, none, or not picked from), never here: a retried or
+    // edited pick must still find its offer, and a row nobody picked from must still be taken down (review 2026-10-02).
     // Mark the socket only after quota admission succeeded. A refused request must not leave a
     // collaborator's presence claiming that a build is in flight.
     if (origin) this.touch(origin, 'building');
@@ -3744,7 +3759,8 @@ export class SessionDO extends DurableObject<Env> {
       }
       // STUDS BY DEFAULT (surfaces.ts): every part this run adds is studded unless the user asked for another
       // surface. A plugin without the Surface family answers "unknown operation"; the run goes on either way.
-      try { await this.execStudioOp(surfaceDefaultOp(text), 10_000); } catch { /* a missed default is not a failed run */ }
+      // The request decides, not a "Use visual option N" message that only picked a model for it.
+      try { await this.execStudioOp(surfaceDefaultOp(effectiveRequest), 10_000); } catch { /* a missed default is not a failed run */ }
     }
     await this.ctx.storage.setAlarm(Date.now() + 10);
   }
@@ -5475,7 +5491,9 @@ export class SessionDO extends DurableObject<Env> {
     buildOutcome?: BuildOutcome,
   ) {
     const artifact = artifactCompletion(agent.request, agent.trace);
-    if (reason === 'done' && artifact.missing) reason = 'incomplete';
+    // An object offer waiting for the owner's pick has delivered what this run owes: the choice (review 2026-10-02:
+    // "make a 3D model of a keyboard" ended its offer as "No 3D model was made this time").
+    if (reason === 'done' && artifact.missing && !agent.objectOffered) reason = 'incomplete';
     agent.status = 'idle';
     // Clear the run attribution before the first await: any later out-of-run Studio op must not
     // inherit the finished run's id, even if this cleanup is interrupted midway through.

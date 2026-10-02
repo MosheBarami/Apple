@@ -51,6 +51,9 @@ test('only what IS the object: whole-word name, exact first, one per game, no ch
   assert.deepEqual(L.rankCatalog([item('Vanilla Donut', 'Candy Obby'), item('Donut Booth', 'Please Donate'), item('Donut', 'High School')], 'donut', 3).map((c) => c.name), ['Donut', 'Vanilla Donut']);
   assert.deepEqual(L.rankCatalog([item('Donut Booth', 'Please Donate')], 'donut', 3).map((c) => c.name), ['Donut Booth'], 'offered when nothing else is a donut');
   assert.deepEqual(L.rankCatalog(BUTTER, '', 3), []);
+  // Test 4 (2026-10-02): the library's only rubber duck is "Rubber Ducky".
+  assert.deepEqual(L.rankCatalog([item('Rubber Ducky', 'Tiny Town', { parts: 2 }), item('Duckling', 'Steal An Egg')], 'rubber duck', 3).map((c) => c.name), ['Rubber Ducky']);
+  assert.deepEqual(L.rankCatalog([item('Doggie', 'Pets'), item('Hotdog', 'Food')], 'dog', 3).map((c) => c.name), ['Doggie']);
 });
 
 test('a picked model is sized to about three player heights, by its height when it is tall', () => {
@@ -75,7 +78,12 @@ test('the session offers ready-made models before any model call, and places the
   assert.match(step, /kind: 'asset_choices'/, 'the chat gets its card');
   assert.match(step, /placeChosenObject\(ctx, pick\.pending, pick\.index\)/);
   assert.match(step, /runTool\(ctx, 'play_check'/, 'played once by the harness');
-  assert.match(step, /pick\.index === null\) \{ await clearLineup\(ctx\); return false; \}/, '"none of these" builds it');
+  assert.match(step, /pick\.index === null\) \{ await clearLineup\(ctx\); await this\.ctx\.storage\.delete\('pendingObjectChoice'\); return false; \}/, '"none of these" builds it');
+  // Review 2026-10-02: the user's permissions and a read-only request bind the harness; the offer is kept until settled.
+  assert.match(step, /agent\.readOnly \|\| !allowed\.has\('find_library_model'\) \|\| !allowed\.has\('insert_library_model'\)/);
+  assert.match(step, /row\('insert_library_model', ok/, 'a "3D model of X" run owes an insert_library_model row');
+  assert.match(session, /&& !agent\.objectOffered\) reason = 'incomplete'/, 'an offer awaiting the pick is not a missing model');
+  assert.ok(!/storage\.delete\('pendingObjectChoice'\);\n/.test(session.slice(session.indexOf("await this.ctx.storage.delete('pendingAssetChoice');"), session.indexOf("await this.ctx.storage.delete('pendingAssetChoice');") + 120)), 'not consumed at admission');
   assert.match(step, /coolLibraryObject\(ctx, spec\)/, 'a library object is made cooler around itself, never rebuilt');
   assert.ok(!/llmChat|this\.chat\(/.test(step), 'no model call in the library step');
   // Only the owner picks, and a pick names an option that was offered.
@@ -92,4 +100,16 @@ test('every candidate is script-free: ServerStorage import, strip, copy; Creator
   assert.match(src, /TOOLS\.insert_library_model!\.run\(ctx, \{ id: c\.id, parent: into \}\)/, 'store rows keep insertAndProveClean');
   assert.match(src, /creatorStoreOnly: true, includeThirdParty: false/, 'Roblox-owned rows only (owner, 2026-10-02)');
   assert.ok(!/libraryDependencies|importOwnerLibrary\(/.test(src), 'no dependency import: that brings live scripts into services');
+});
+
+// Review 2026-10-02: Model:GetBoundingBox is oriented to the pivot; the stage and the click body need the world box.
+test('the world box of a turned part covers it on the world axes', () => {
+  // A 10 x 2 x 2 bar turned 90 degrees about Y (its length now along Z), centred at (0, 1, 0).
+  const turned = { props: { Size: { v: [10, 2, 2] }, CFrame: { v: [0, 1, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0] } } };
+  const b = L.worldBox({ children: [turned, { props: { Size: { v: [1, 1, 1] }, CFrame: { v: [0, 50, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1] }, Transparency: { v: 1 } } }] });
+  assert.deepEqual(b.size.map((n) => Math.round(n * 1000) / 1000), [2, 2, 10], 'length on Z, and the invisible part left out');
+  assert.equal(b.bottomY, 0);
+  assert.equal(L.worldBox({}), null);
+  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8');
+  assert.ok(!/paths: \[model, stageName\]|paths: \[LINEUP, /.test(src), 'no multi-path delete: delete_instances is all-or-nothing');
 });

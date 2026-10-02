@@ -1,6 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { VisualOption } from './asset-choice-model';
+import { fetchImageObjectUrl } from '../../lib/api';
 import './asset-choice.css';
+
+/**
+ * The snapshot through the same authenticated read as every Apple image (lib/api.ts fetchImageObjectUrl): a bare
+ * <img src> carries no credential, so the project image route refused it (review 2026-10-02). Revoked on unmount.
+ */
+function useSnapshot(path: string | null | undefined): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const m = path ? /^\/api\/projects\/([^/]+)\/images\/([^/]+)$/.exec(path) : null;
+    if (!m) return;
+    let made: string | null = null;
+    let live = true;
+    fetchImageObjectUrl(m[1]!, m[2]!).then((u) => { if (live) { made = u; setUrl(u); } else URL.revokeObjectURL(u); }).catch(() => undefined);
+    return () => { live = false; if (made) URL.revokeObjectURL(made); };
+  }, [path]);
+  return url;
+}
 
 export function AssetChoice({ options, snapshot, disabled, onChoose }: {
   options: VisualOption[];
@@ -10,16 +28,18 @@ export function AssetChoice({ options, snapshot, disabled, onChoose }: {
   onChoose: (index: number | null) => void;
 }) {
   const [loaded, setLoaded] = useState<Record<number, boolean>>({});
+  const shot = useSnapshot(snapshot);
   if (!options.length) return null;
   const inPlace = options.some((option) => option.assetId === undefined);
   return <section className="gx-asset-choice" aria-label="Choose a model preview">
     <p className="gx-asset-choice__title">Which one looks right?</p>
     {inPlace && <p className="gx-asset-choice__hint">They are standing in your place in Studio, numbered.</p>}
-    {snapshot && <img className="gx-asset-choice__snapshot" src={snapshot} alt="The ready-made models standing in your place, numbered" loading="lazy" />}
+    {shot && <img className="gx-asset-choice__snapshot" src={shot} alt="The ready-made models standing in your place, numbered" />}
     <div className="gx-asset-choice__grid">
       {options.map((option, index) => {
         const number = option.index ?? index + 1;
-        const ready = option.assetId === undefined || loaded[index];
+        // A model already standing in the place, numbered, can be picked whether or not its thumbnail loads.
+        const ready = option.index !== undefined || option.assetId === undefined || loaded[index];
         return <button
           key={`${option.assetId ?? 'n'}-${number}`}
           type="button"
