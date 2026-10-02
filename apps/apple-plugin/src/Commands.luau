@@ -1222,7 +1222,47 @@ end
 -- Handed out only for a write, because that is the only case `choose_allowed_target` describes —
 -- its sentence names the targets Apple may WRITE to, and answering a refused read with it would be
 -- telling the truth about the wrong question.
-local function resolvePath(gameRef: any, services: any, path: any, write: boolean?): (any?, string?, string?, string?, string?)
+--
+-- A READ REFERENCE (`read-ref:...`, handed out by get_tree for a node that shares its name with a sibling)
+-- names an INSTANCE rather than a spelling, so it is the one address that survives duplicate names. It is
+-- accepted wherever a path is, for reads and for writes, and gets the SAME scope check a path gets: the
+-- instance must still be in the place under the real, allowlisted service. `holder` is the engine that
+-- issued it; another engine's reference, an expired one and a forged one are unknown, and nothing here
+-- can widen what Apple may write to.
+local function resolvePath(gameRef: any, services: any, path: any, write: boolean?, holder: any?): (any?, string?, string?, string?, string?)
+	if type(path) == "string" and string.sub(path, 1, 9) == "read-ref:" then
+		local refs = if holder then holder.readRefs else nil
+		local entry = if refs then refs[path] else nil
+		if not entry or nowSeconds() - entry.issued > 600 then
+			if refs then refs[path] = nil end
+			return nil, nil, "read reference expired or is unknown; read the tree again", "not_found"
+		end
+		local target = entry.instance
+		local okParent, parentNow = pcall(function() return target.Parent end)
+		if not okParent or parentNow == nil then
+			refs[path] = nil
+			return nil, nil, "the instance this read reference named no longer exists; read the tree again", "refused"
+		end
+		local canonicalRef = fullPath(gameRef, target)
+		local refParts = canonicalRef and parsePath(canonicalRef)
+		local refService = refParts and firstService(refParts)
+		local refRoot = refService and serviceFrom(gameRef, services, refService)
+		local ancestor = target
+		for _ = 1, 64 do
+			if ancestor == nil or ancestor == refRoot then break end
+			local okUp, up = pcall(function() return ancestor.Parent end)
+			ancestor = if okUp then up else nil
+		end
+		-- DUP-NAMES: a reference is only as good as the real service it still sits under.
+		if not refRoot or ancestor ~= refRoot then
+			refs[path] = nil
+			return nil, nil, "read reference target is outside the current place read scope", "refused", if write then "choose_allowed_target" else nil
+		end
+		if write and not WRITE_SERVICES[refService :: string] then
+			return nil, nil, "write target is outside Apple's place scope", "refused", "choose_allowed_target"
+		end
+		return target, canonicalRef
+	end
 	local parts, parseErr = parsePath(path)
 	if not parts then return nil, nil, parseErr, "invalid" end
 	if #parts == 1 then return gameRef, "game" end
@@ -1251,7 +1291,7 @@ local function resolvePath(gameRef: any, services: any, path: any, write: boolea
 			return nil, nil, ("instance not found at %s"):format(path), "not_found"
 		end
 		if matches > 1 then
-			return nil, nil, ("path is ambiguous at %s because %d siblings are named %s"):format(canonical, matches, valid), "conflict"
+			return nil, nil, ("path is ambiguous at %s because %d siblings are named %s; read the parent with get_tree and pass the readRef of the one you mean in place of the path"):format(canonical, matches, valid), "conflict"
 		end
 		current = child :: any
 		if identifier(valid) then canonical ..= "." .. valid else canonical ..= '["' .. escapePathSegment(valid) .. '"]' end
@@ -1908,7 +1948,7 @@ local function resolveTargets(self: any, paths: { string }, write: boolean, stru
 	local targets = {}
 	local seen = {}
 	for _, requested in paths do
-		local inst, canonical, err, pathKind, pathRemedy = resolvePath(self.game, self.options.services, requested, write)
+		local inst, canonical, err, pathKind, pathRemedy = resolvePath(self.game, self.options.services, requested, write, self)
 		if not inst then return nil, err, pathKind or "not_found", pathRemedy end
 		if seen[inst] then return nil, ("duplicate target: %s"):format(canonical :: string), "invalid" end
 		if structuralVerb then
@@ -2102,7 +2142,7 @@ local function setPartVisible(part: any, visible: boolean): (boolean, string?)
 	return true
 end
 
-local function buildSpec(options: any, gameRef: any, spec: any, parentOverride: any, state: any, depth: number): (any?, string?)
+local function buildSpec(options: any, gameRef: any, spec: any, parentOverride: any, state: any, depth: number, holder: any?): (any?, string?)
 	if type(spec) ~= "table" then return nil, "instance spec must be an object" end
 	if depth > MAX_SNAPSHOT_DEPTH then return nil, "instance spec is too deeply nested" end
 	local className, classErr = safeText(spec.className, 64, "className")
@@ -2112,7 +2152,7 @@ local function buildSpec(options: any, gameRef: any, spec: any, parentOverride: 
 	if not name then return nil, nameErr end
 	local parent = parentOverride
 	if not parent then
-		local resolved, _, resolveErr = resolvePath(gameRef, options.services, spec.parent, true)
+		local resolved, _, resolveErr = resolvePath(gameRef, options.services, spec.parent, true, holder)
 		if not resolved then return nil, resolveErr end
 		parent = resolved
 	end
@@ -2151,7 +2191,7 @@ local function buildSpec(options: any, gameRef: any, spec: any, parentOverride: 
 		for _, childSpec in children do
 			childCount += 1
 			if childCount > MAX_CHILDREN_PER_SPEC then return nil, "children exceed the per-instance limit" end
-			local child, childErr = buildSpec(options, gameRef, childSpec, inst, state, depth + 1)
+			local child, childErr = buildSpec(options, gameRef, childSpec, inst, state, depth + 1, holder)
 			if not child then return nil, childErr end
 		end
 	end
@@ -2205,7 +2245,7 @@ local function validateCreateSpec(options: any, gameRef: any, spec: any, depth: 
 	return nil
 end
 
-local function validateCreateItems(options: any, gameRef: any, items: any): (string?, string?, string?)
+local function validateCreateItems(options: any, gameRef: any, items: any, holder: any?): (string?, string?, string?)
 	if type(items) ~= "table" then return "items must be an array", "invalid" end
 	local count = #items
 	if count == 0 then return "items must contain at least one instance", "invalid" end
@@ -2221,7 +2261,7 @@ local function validateCreateItems(options: any, gameRef: any, items: any): (str
 		local specErr, specKind = validateCreateSpec(options, gameRef, spec, 0, state, false)
 		if specErr then return specErr, specKind end
 		local parentPath = spec.parent
-		local parent, canonicalParent, parentErr, parentKind, parentRemedy = resolvePath(gameRef, options.services, parentPath, true)
+		local parent, canonicalParent, parentErr, parentKind, parentRemedy = resolvePath(gameRef, options.services, parentPath, true, holder)
 		if not parent then return parentErr, parentKind or "not_found", parentRemedy end
 		local className = spec.className
 		local refused, refusedRemedy = destinationRefusal(gameRef, parent, canonicalParent :: string, className)
@@ -2891,8 +2931,9 @@ local function opPing(): any
 	return { pong = true }
 end
 
--- Read-only references retain actual object identity across duplicate names/reordering.
--- Never feed these to the general path resolver: writes still require normal unambiguous paths.
+-- References retain actual object identity across duplicate names and reordering. resolvePath accepts them
+-- wherever it accepts a path (reads and writes alike, with the same scope check), so an agent can fix or
+-- remove one of several same-named siblings that no path can select.
 local function readReference(self: any, inst: any): string
 	self.readRefCounter += 1
 	local key = ("read-ref:%s:%d"):format(self.readRefEpoch, self.readRefCounter)
@@ -2901,6 +2942,14 @@ local function readReference(self: any, inst: any): string
 		self.readRefs[("read-ref:%s:%d"):format(self.readRefEpoch, self.readRefCounter - 2048)] = nil
 	end
 	return key
+end
+
+-- When a path would not select exactly one instance (a sibling or an ancestor shares its name), the
+-- result of a write also carries the instance's reference, so the agent can address what it just made.
+local function noteAddress(self: any, refs: { any }, inst: any, path: string)
+	if self.readRefEpoch and siblingOrdinals(self.game, inst) ~= nil then
+		table.insert(refs, { path = path, ref = readReference(self, inst) })
+	end
 end
 
 local function makeNode(self: any, inst: any, path: string, depth: number, state: any, ambiguous: boolean?): any
@@ -2947,10 +2996,12 @@ local function handleTree(self: any, op: any): (any?, string?, string?)
 	if not maxNodes then return nil, "invalid", nodesErr end
 	local state = { count = 0, truncated = false, maxDepth = maxDepth, maxNodes = maxNodes }
 	if op.root ~= nil then
-		local root, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.root, false)
+		local root, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.root, false, self)
 		if not root then return nil, pathKind or "not_found", err end
-		local node = makeNode(self, root, canonical :: string, 0, state)
-		return { root = node, nodeCount = state.count, truncated = state.truncated }, nil
+		-- A root that is itself one of several same-named siblings (read by reference) hands its whole
+		-- subtree references, exactly as an ambiguous node found while walking does.
+		local node = makeNode(self, root, canonical :: string, 0, state, siblingOrdinals(self.game, root) ~= nil)
+		return { root = node, nodeCount = state.count, truncated = state.truncated, refsWritable = true }, nil
 	end
 	local synthetic: any = { path = "game", name = "game", class = "DataModel", children = {}, childCount = 0 }
 	-- READ_SERVICES is a SET: the service NAME is the key and the value is always `true`. Every
@@ -2966,41 +3017,17 @@ local function handleTree(self: any, op: any): (any?, string?, string?)
 		end
 	end
 	synthetic.childCount = #synthetic.children
-	return { root = synthetic, nodeCount = state.count, truncated = state.truncated }, nil
+	return { root = synthetic, nodeCount = state.count, truncated = state.truncated, refsWritable = true }, nil
 end
 
 local function handleInstance(self: any, op: any): (any?, string?, string?)
-	local inst, canonical, err, pathKind
-	if type(op.path) == "string" and string.sub(op.path, 1, 9) == "read-ref:" then
-		local entry = self.readRefs[op.path]
-		if not entry or nowSeconds() - entry.issued > 600 then
-			self.readRefs[op.path] = nil
-			return nil, "not_found", "read reference expired or is unknown; read the tree again"
-		end
-		canonical = fullPath(self.game, entry.instance)
-		local parts = canonical and parsePath(canonical)
-		local serviceName = parts and firstService(parts)
-		local service = serviceName and serviceFrom(self.game, self.options.services, serviceName)
-		local ancestor = entry.instance
-		local depth = 0
-		while ancestor and ancestor ~= service and depth < 64 do
-			ancestor = parentOf(ancestor)
-			depth += 1
-		end
-		if not service or ancestor ~= service then
-			self.readRefs[op.path] = nil
-			return nil, "refused", "read reference target is outside the current place read scope"
-		end
-		inst = entry.instance
-	else
-		inst, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.path, false)
-	end
+	local inst, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.path, false, self)
 	if not inst then return nil, pathKind or "not_found", err end
 	local count, countErr = childCount(inst)
 	if count == nil then return nil, "internal", countErr end
 	local props = captureProperties(self.game, inst, READ_PROPERTIES)
 	local attrs = captureAttributes(self.game, inst)
-	return { path = canonical, name = nameOf(inst), class = classNameOf(inst), childCount = count, props = props, attributes = attrs }, nil
+	return { path = canonical, name = nameOf(inst), class = classNameOf(inst), childCount = count, props = props, attributes = attrs, refsWritable = true }, nil
 end
 
 local function handleListScripts(self: any, op: any): (any?, string?, string?)
@@ -3025,7 +3052,7 @@ local function handleListScripts(self: any, op: any): (any?, string?, string?)
 end
 
 local function handleReadScript(self: any, op: any): (any?, string?, string?)
-	local inst, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.path, false)
+	local inst, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.path, false, self)
 	if not inst then return nil, pathKind or "not_found", err end
 	if not isScript(inst) then return nil, "invalid", "target is not a script" end
 	local source, sourceErr = scriptSourceWithin(self.editor, inst, "script source")
@@ -3150,7 +3177,7 @@ local function handleSelect(self: any, op: any): (any?, string?, string?, string
 end
 
 local function handleCameraFocus(self: any, op: any): (any?, string?, string?)
-	local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, op.path, false)
+	local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, op.path, false, self)
 	if not inst then return nil, pathKind or "not_found", resolveErr end
 	local cframe, size, boundsErr = boundsOf(inst)
 	if not cframe then return nil, "invalid", boundsErr end
@@ -3222,12 +3249,13 @@ local function handleViewportInfo(self: any): (any?, string?, string?)
 end
 
 local function handleCreate(self: any, op: any): (any?, string?, string?, string?)
-	local validationErr, validationKind, validationRemedy = validateCreateItems(self.options, self.game, op.items)
+	local validationErr, validationKind, validationRemedy = validateCreateItems(self.options, self.game, op.items, self)
 	if validationErr then return nil, validationKind or "invalid", validationErr, validationRemedy end
 	local state = { created = {} }
 	local paths = {}
+	local refs = {}
 	for _, spec in op.items do
-		local inst, err = buildSpec(self.options, self.game, spec, nil, state, 0)
+		local inst, err = buildSpec(self.options, self.game, spec, nil, state, 0, self)
 		if not inst then
 			for _, made in state.created do destroyInstance(made) end
 			return nil, "internal", err
@@ -3238,8 +3266,9 @@ local function handleCreate(self: any, op: any): (any?, string?, string?, string
 			return nil, "internal", "could not determine created instance path"
 		end
 		table.insert(paths, path)
+		noteAddress(self, refs, inst, path)
 	end
-	return { created = paths, count = #paths }, nil
+	return { created = paths, count = #paths, refs = if #refs > 0 then refs else nil }, nil
 end
 
 --[[ INSERT A ROBLOX-HOSTED ASSET, AND NEVER ITS CODE.
@@ -3275,7 +3304,7 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?, s
 
 	local parent
 	if op.parent ~= nil then
-		local resolved, _, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, op.parent, true)
+		local resolved, _, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, op.parent, true, self)
 		if not resolved then return nil, parentKind or "not_found", parentErr, parentRemedy end
 		parent = resolved
 	else
@@ -3332,17 +3361,40 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?, s
 		end
 	end
 
+	-- A name already taken in the destination (the same asset inserted twice, or a piece that repeats a
+	-- name) is made unique, the way a clone's is: two same-named siblings can be told apart by no path.
+	local reservations = {}
+	local renamed = {}
+	for _, child in children do
+		local original = nameOf(child)
+		local unique, uniqueErr = reserveUniqueName(parent, original, reservations)
+		if not unique then
+			destroyInstance(loaded)
+			return nil, "conflict", uniqueErr
+		end
+		if unique ~= original then
+			child.Name = unique
+			table.insert(renamed, original .. " -> " .. unique)
+		end
+	end
+
 	local inserted = {}
+	local refs = {}
 	for _, child in children do
 		child.Parent = parent
-		table.insert(inserted, fullPath(self.game, child) or nameOf(child))
+		local childPath = fullPath(self.game, child) or nameOf(child)
+		table.insert(inserted, childPath)
+		noteAddress(self, refs, child, childPath)
 	end
 	destroyInstance(loaded)
-	return { assetId = assetId, inserted = inserted, count = #inserted, parent = parentPath }, nil
+	return {
+		assetId = assetId, inserted = inserted, count = #inserted, parent = parentPath,
+		renamed = if #renamed > 0 then renamed else nil, refs = if #refs > 0 then refs else nil,
+	}, nil
 end
 
 local function handleSetProps(self: any, op: any): (any?, string?, string?, string?)
-	local inst, canonical, err, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.path, true)
+	local inst, canonical, err, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.path, true, self)
 	if not inst then return nil, pathKind or "not_found", err, pathRemedy end
 	if not writableTarget(self.game, inst) then return nil, "refused", "target is outside Apple's place scope", "choose_allowed_target" end
 	if op.props == nil and op.attributes == nil then return nil, "invalid", "set_props needs props or attributes" end
@@ -3537,12 +3589,12 @@ local function handleMove(self: any, op: any): (any?, string?, string?, string?)
 	for index = 1, count do
 		local move = op.moves[index]
 		if type(move) ~= "table" then return nil, "invalid", ("moves[%d] must be an object"):format(index) end
-		local source, canonical, sourceErr, sourceKind, sourceRemedy = resolvePath(self.game, self.options.services, move.path, true)
+		local source, canonical, sourceErr, sourceKind, sourceRemedy = resolvePath(self.game, self.options.services, move.path, true, self)
 		if not source then return nil, sourceKind or "not_found", sourceErr, sourceRemedy end
 		if seen[source] then return nil, "invalid", ("duplicate move target: %s"):format(canonical :: string) end
 		local refused = structuralRefusal(self.game, source, canonical :: string, "move")
 		if refused then return nil, "refused", refused end
-		local parent, parentPath, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, move.newParent, true)
+		local parent, parentPath, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, move.newParent, true, self)
 		if not parent then return nil, parentKind or "not_found", parentErr, parentRemedy end
 		if parent == source or isDescendantOf(parent, source) then
 			return nil, "invalid", ("move_instances refuses to parent %s inside itself or one of its descendants"):format(canonical :: string)
@@ -3686,7 +3738,7 @@ local function handleClone(self: any, op: any): (any?, string?, string?, string?
 	if overlap then return nil, "invalid", overlap end
 	local override = nil
 	if op.parent ~= nil then
-		local parent, _, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, op.parent, true)
+		local parent, _, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, op.parent, true, self)
 		if not parent then return nil, parentKind or "not_found", parentErr, parentRemedy end
 		override = parent
 	end
@@ -3718,14 +3770,16 @@ local function handleClone(self: any, op: any): (any?, string?, string?, string?
 		table.insert(detached, copy)
 	end
 	local created = {}
+	local refs = {}
 	for index, copy in detached do
 		local ok, parentErr = safeSetParent(copy, plans[index].parent)
 		if not ok then return nil, "internal", "could not parent clone: " .. tostring(parentErr) end
 		local path, pathErr = readablePath(self, copy)
 		if not path then return nil, "internal", pathErr end
 		table.insert(created, path)
+		noteAddress(self, refs, copy, path)
 	end
-	return { created = created, count = #created }, nil
+	return { created = created, count = #created, refs = if #refs > 0 then refs else nil }, nil
 end
 
 local function handleGroup(self: any, op: any): (any?, string?, string?, string?)
@@ -3818,7 +3872,7 @@ local function handleUngroup(self: any, op: any): (any?, string?, string?, strin
 end
 
 local function handleRename(self: any, op: any): (any?, string?, string?, string?)
-	local inst, canonical, resolveErr, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.path, true)
+	local inst, canonical, resolveErr, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.path, true, self)
 	if not inst then return nil, pathKind or "not_found", resolveErr, pathRemedy end
 	local refused = structuralRefusal(self.game, inst, canonical :: string, "rename")
 	if refused then return nil, "refused", refused end
@@ -3838,12 +3892,20 @@ local function handleRename(self: any, op: any): (any?, string?, string?, string
 		pcall(function() inst.Name = before end)
 		return nil, "internal", pathErr
 	end
-	local back = resolvePath(self.game, self.options.services, after, true)
-	if back ~= inst then
-		pcall(function() inst.Name = before end)
-		return nil, "conflict", "the renamed path did not resolve back to the same instance"
+	-- The new path must find this instance again. It cannot when an ANCESTOR shares its name with a
+	-- sibling (the instance was addressed by reference); then the collision check above is the guard,
+	-- and the result carries the reference.
+	local refs = {}
+	if siblingOrdinals(self.game, inst) == nil then
+		local back = resolvePath(self.game, self.options.services, after, true, self)
+		if back ~= inst then
+			pcall(function() inst.Name = before end)
+			return nil, "conflict", "the renamed path did not resolve back to the same instance"
+		end
+	else
+		noteAddress(self, refs, inst, after)
 	end
-	return { path = after, was = before, name = wanted }, nil
+	return { path = after, was = before, name = wanted, refs = if #refs > 0 then refs else nil }, nil
 end
 
 local function handleSetLocked(self: any, op: any): (any?, string?, string?, string?)
@@ -3923,7 +3985,7 @@ local function handleEditScript(self: any, op: any): (any?, string?, string?, st
 		if sourceErr then return nil, "invalid", sourceErr end
 	end
 	if hasEdits and type(op.edits) ~= "table" then return nil, "invalid", "edits must be an array" end
-	local inst, canonical, resolveErr, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.path, true)
+	local inst, canonical, resolveErr, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.path, true, self)
 	local created = false
 	local parent = nil
 	if not inst then
@@ -3935,7 +3997,7 @@ local function handleEditScript(self: any, op: any): (any?, string?, string?, st
 		local parentCanonical
 		local parentKind
 		local parentRemedy
-		parent, parentCanonical, resolveErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, create.parent, true)
+		parent, parentCanonical, resolveErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, create.parent, true, self)
 		if not parent then return nil, parentKind or "not_found", resolveErr, parentRemedy end
 		local parentRefused, parentRefusedRemedy = destinationRefusal(self.game, parent, parentCanonical :: string, createClass)
 		if parentRefused then return nil, "refused", parentRefused, parentRefusedRemedy end
@@ -3946,7 +4008,7 @@ local function handleEditScript(self: any, op: any): (any?, string?, string?, st
 		if not validName then return nil, "invalid", nameErr end
 		if validName ~= name then return nil, "invalid", "script path name is not canonical" end
 		local requestedParentPath = pathFromParts(canonicalPath, #canonicalPath - 1)
-		local requestedParent, requestedParentCanonical, requestedParentErr, requestedParentKind, requestedParentRemedy = resolvePath(self.game, self.options.services, requestedParentPath, true)
+		local requestedParent, requestedParentCanonical, requestedParentErr, requestedParentKind, requestedParentRemedy = resolvePath(self.game, self.options.services, requestedParentPath, true, self)
 		if not requestedParent then return nil, requestedParentKind or "not_found", requestedParentErr, requestedParentRemedy end
 		if requestedParent ~= parent then
 			return nil, "conflict", ("script path parent %s does not match create.parent %s"):format(requestedParentCanonical :: string, parentCanonical :: string)
@@ -3987,7 +4049,7 @@ local function handleEditScript(self: any, op: any): (any?, string?, string?, st
 end
 
 local function handleSnapshot(self: any, op: any): (any?, string?, string?)
-	local root, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.root, false)
+	local root, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.root, false, self)
 	if not root then return nil, pathKind or "not_found", err end
 	local checkpointId = nil
 	if op.checkpointId ~= nil or root == self.game then
@@ -4124,7 +4186,7 @@ local function validateProtectedManifest(self: any, root: any, manifest: any): (
 			end
 			local structureHash, structureHashErr = safeText(entry.structureHash, 8, "protected structureHash")
 			if not structureHash or string.match(structureHash, "^%x%x%x%x%x%x%x%x$") == nil then return nil, "invalid", structureHashErr or "protected structureHash must be eight hex characters" end
-			local current, _, resolveErr, resolveKind = resolvePath(self.game, self.options.services, path, false)
+			local current, _, resolveErr, resolveKind = resolvePath(self.game, self.options.services, path, false, self)
 			if not current then return nil, resolveKind or "conflict", resolveErr or "protected snapshot object is missing" end
 			if not insideRoot(root, current) then return nil, "invalid", "snapshot protected object is outside the restore root" end
 			if classNameOf(current) ~= className or nameOf(current) ~= name or not engineOwnedSnapshotPreserve(self, current) then return nil, "conflict", "protected Studio identity no longer matches the checkpoint" end
@@ -4140,7 +4202,7 @@ local function validateProtectedManifest(self: any, root: any, manifest: any): (
 end
 
 function prepareRestore(self: any, op: any): (any?, string?, string?, string?)
-	local root, canonical, err, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.root, true)
+	local root, canonical, err, pathKind, pathRemedy = resolvePath(self.game, self.options.services, op.root, true, self)
 	if not root then return nil, pathKind or "not_found", err, pathRemedy end
 	if root ~= self.game and not writableTarget(self.game, root) then return nil, "refused", "restore root is outside Apple's place scope", "choose_allowed_target" end
 	local checkpointId, identityErr = restoreCheckpointIdentity(op.checkpointId, "restore checkpointId")
@@ -4416,7 +4478,7 @@ function runGeneration(
 	editMode: () -> boolean,
 	started: number
 ): any
-	local parent, parentCanonical, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, op.parent, true)
+	local parent, parentCanonical, parentErr, parentKind, parentRemedy = resolvePath(self.game, self.options.services, op.parent, true, self)
 	if not parent then return failureResult(id, parentKind or "not_found", parentErr or "generation destination was not found", started, parentRemedy) end
 	local parentRefusal, parentRefusalRemedy = destinationRefusal(self.game, parent, parentCanonical :: string, "Model")
 	if parentRefusal then return failureResult(id, "refused", parentRefusal, started, parentRefusalRemedy) end
@@ -4584,7 +4646,7 @@ local function renderCapture(self: any, op: any, view: string, width: number, he
 	local root: any = scene
 	local subject = "game.Workspace"
 	if op.target ~= nil then
-		local resolved, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.target, false)
+		local resolved, canonical, err, pathKind = resolvePath(self.game, self.options.services, op.target, false, self)
 		if not resolved then return nil, pathKind or "not_found", err end
 		root = resolved
 		subject = canonical :: string
@@ -4744,7 +4806,7 @@ local function handleRunMode(self: any, op: any): (any?, string?, string?, strin
 end
 
 local function handleInspectModel(self: any, op: any): (any?, string?, string?)
-	local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, op.path, false)
+	local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, op.path, false, self)
 	if not inst then return nil, pathKind or "not_found", resolveErr end
 	if not isA(inst, "Model") and not isA(inst, "BasePart") then return nil, "invalid", "inspect_model target must be a Model or BasePart" end
 	local intent = nil
@@ -4828,7 +4890,7 @@ local function handlePlayCheck(self: any, op: any): (any?, string?, string?, str
 		if type(op.touch) ~= "table" or #op.touch > 5 then return nil, "invalid", "play_check.touch must be a list of at most 5 instance paths" end
 		for index, raw in op.touch do
 			if type(index) ~= "number" then return nil, "invalid", "play_check.touch must be a list" end
-			local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, raw, false)
+			local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, raw, false, self)
 			if not inst then return nil, pathKind or "not_found", resolveErr end
 			local parts = parsePath(canonical)
 			if not parts or parts[2] ~= "Workspace" or #parts < 3 then return nil, "invalid", "play_check.touch targets must be inside game.Workspace" end
@@ -4844,7 +4906,7 @@ local function handlePlayCheck(self: any, op: any): (any?, string?, string?, str
 		if type(op.press) ~= "table" or #op.press > 5 then return nil, "invalid", "play_check.press must be a list of at most 5 button paths" end
 		for index, raw in op.press do
 			if type(index) ~= "number" then return nil, "invalid", "play_check.press must be a list" end
-			local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, raw, false)
+			local inst, canonical, resolveErr, pathKind = resolvePath(self.game, self.options.services, raw, false, self)
 			-- A button a LocalScript builds at runtime is not in StarterGui at edit time: the player's
 			-- PlayerGui is searched for the same path instead, and the report says if it never appeared.
 			if not inst and pathKind ~= "not_found" then return nil, pathKind or "invalid", resolveErr end

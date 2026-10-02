@@ -38,7 +38,7 @@ function OwnerCorpus.build(api)
 		if not api.integer(op.byteLength) or op.byteLength < 1 or op.byteLength > MAX_BYTES then return nil, "invalid", "owner component byte limit exceeded" end
 		local name, nameErr = api.safeName(op.name, "owner component name")
 		if not name then return nil, "invalid", nameErr end
-		local parent, canonical, parentErr, parentKind, remedy = api.resolvePath(self.game, self.options.services, op.parent, true)
+		local parent, canonical, parentErr, parentKind, remedy = api.resolvePath(self.game, self.options.services, op.parent, true, self)
 		if not parent then return nil, parentKind or "not_found", parentErr, remedy end
 		local refused, refusedRemedy = api.destinationRefusal(self.game,parent,canonical,"Folder")
 		if refused then return nil, "refused", refused, refusedRemedy end
