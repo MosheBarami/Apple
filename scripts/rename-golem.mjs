@@ -106,6 +106,9 @@ const CLOUD = [ // released by C-repo: they name live resources until the owner-
 const STORED_FORMATS = [ // formats users already hold on disk (memory exports): readable for as long as such files exist
   /golem\.memory\.v1/g,
 ];
+const TOOL_NAMES = [ // the guard, its allowlist, the codemod and the runbook are named by file name wherever they are referenced
+  /check-no-golem/g, /golem-allowlist/g, /rename-golem/g, /no-golem-guard/g, /GOLEM-REMOVAL-RUNBOOK/g,
+];
 const THIRD_PARTY = [ // other people's names; never touched
   /IrritatingGolem/g, /ClockGolem/g, /fire-golem/g, /bloxlibs\/Golem/g,
 ];
@@ -278,7 +281,7 @@ function rewrite(rel, text) {
   const docs = /(^docs\/|\.md$)/.test(rel);
   const code = !docs && /\.(mjs|js|ts|tsx|cjs)$/.test(rel);
   // what survives this phase untouched
-  const patterns = [...THIRD_PARTY, ...HASH_DOMAINS, ...STORED_FORMATS];
+  const patterns = [...THIRD_PARTY, ...HASH_DOMAINS, ...STORED_FORMATS, ...TOOL_NAMES];
   if (PHASE !== 'C-repo') patterns.push(...CLOUD, ...HELD);
   if (PHASE === 'A') patterns.push(...WIRE);
   if (IDENTITY_FILES.has(rel) && PHASE !== 'C-repo') patterns.push(/\bgolem\b/g);

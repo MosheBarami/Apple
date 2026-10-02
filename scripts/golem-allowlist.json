@@ -16,8 +16,10 @@
       "id": "tools",
       "scope": "content",
       "paths": [
+        "docs/operations/GOLEM-REMOVAL-RUNBOOK.md",
         "scripts/check-no-golem.mjs",
         "scripts/check-rebrand.mjs",
+        "scripts/golem-allowlist.json",
         "scripts/inspect-plugin-build.py",
         "scripts/probe-s1.mjs",
         "scripts/rename-golem.mjs",
@@ -36,9 +38,16 @@
       "scope": "path",
       "paths": [
         "docs/evidence/deploy-golem-resume-2026-09-18.json",
+        "docs/operations/GOLEM-REMOVAL-RUNBOOK.md",
         "scripts/check-no-golem.mjs",
+        "scripts/check-rebrand.mjs",
+        "scripts/golem-allowlist.json",
+        "scripts/inspect-plugin-build.py",
+        "scripts/probe-s1.mjs",
         "scripts/rename-golem.mjs",
         "tests/no-golem-guard.test.mjs",
+        "tests/probe-s1.test.mjs",
+        "tests/rebrand-enforced.test.mjs",
         "tests/rename-golem.test.mjs"
       ],
       "token": "*",
@@ -115,6 +124,7 @@
       "scope": "content",
       "paths": [
         ".github/workflows/ci.yml",
+        "AGENTS.md",
         "FINISH-THE-PRODUCT.md",
         "apps/worker/src/public-api.ts",
         "docs/MISSION-PROMPT.md",
@@ -122,7 +132,7 @@
         "scripts/gate-suite.mjs"
       ],
       "token": "check\\-no\\-golem|docs/operations/GOLEM\\-REMOVAL\\-RUNBOOK\\.md|golem\\-chat|golem\\-plan|scripts/check\\-no\\-golem\\.mjs|scripts/golem\\-allowlist\\.json|scripts/rename\\-golem\\.mjs|tests/no\\-golem\\-guard\\.test\\.mjs",
-      "max": 15,
+      "max": 18,
       "reason": "prose and tests that NAME the guard, its allowlist, the codemod and the runbook by file name, or the retired public model aliases the API was renamed from",
       "removal": "the references go when the files they name go (phase D); the retired aliases are history and stay"
     },

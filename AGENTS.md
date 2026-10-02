@@ -29,9 +29,9 @@ reads Hebrew and reads neither `docs/` nor code.
 
 **One name.** The product and all its names are **Apple** (owner decision 2026-10-02: the old name is
 wiped out of every aspect). The word `golem` must not appear in tracked files except where
-`scripts/apple-allowlist.json` lists it, which is only compatibility shims that read old wire and storage
+`scripts/golem-allowlist.json` lists it, which is only compatibility shims that read old wire and storage
 values, history records and third-party data. Do not add entries without a removal condition.
-`node scripts/check-no-apple.mjs` is the guard (it runs in CI); `docs/operations/APPLE-REMOVAL-RUNBOOK.md`
+`node scripts/check-no-golem.mjs` is the guard (it runs in CI); `docs/operations/GOLEM-REMOVAL-RUNBOOK.md`
 says what is left in the cloud and in what order it is removed. Renaming never flips a name in one step: a
 binding, a storage key or a wire literal is renamed WITH backward compatibility (read both, write the new
 one), because the published Studio plugin and open browser tabs still speak the old spelling.
