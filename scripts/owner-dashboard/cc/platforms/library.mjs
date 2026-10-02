@@ -11,6 +11,7 @@ import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { REPO, cached, fetchJson } from '../http.mjs';
+import { envCompat } from '../../../lib/env-compat.mjs';
 
 const LIB_REL = 'packages/asset-library';
 const LIB = path.join(REPO, LIB_REL);
@@ -219,7 +220,7 @@ function localFact(rel, expectedBytes, expectedSha, verifyHash = true) {
 }
 
 async function storedPaths() {
-  const base = process.env.API_BASE; const key = process.env.GOLEM_ADMIN_KEY;
+  const base = process.env.API_BASE; const key = envCompat('APPLE_ADMIN_KEY');
   if (!base || !key) return null;
   try {
     const rows = await cached('library:stored-paths', () => fetchJson(`${base}/api/admin/static-list`,

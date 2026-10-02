@@ -16,6 +16,7 @@ import { ApiError } from '../src/errors.mjs';
 import { UsageError, helpText, parseArgs } from '../src/cli-args.mjs';
 import { DEFAULT_BASE_URL } from '../src/wire.mjs';
 import { SDK_VERSION } from '../src/index.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const EXIT_OK = 0;
 const EXIT_API = 1;
@@ -50,8 +51,8 @@ export async function run(argv, env = process.env) {
     return parsed.command === null ? EXIT_USAGE : EXIT_OK;
   }
 
-  const baseUrl = parsed.flags['base-url'] ?? env.APPLE_API_URL ?? env.GOLEM_API_URL ?? DEFAULT_BASE_URL;
-  const token = parsed.flags.token ?? env.APPLE_TOKEN ?? env.GOLEM_TOKEN ?? null;
+  const baseUrl = parsed.flags['base-url'] ?? env.APPLE_API_URL ?? envCompat('APPLE_API_URL', env) ?? DEFAULT_BASE_URL;
+  const token = parsed.flags.token ?? env.APPLE_TOKEN ?? envCompat('APPLE_TOKEN', env) ?? null;
   const adminKey = parsed.flags['admin-key'] ?? env.APPLE_ADMIN_KEY ?? null;
   const client = new AppleClient({ baseUrl, token, adminKey });
   const [a, b] = parsed.args;

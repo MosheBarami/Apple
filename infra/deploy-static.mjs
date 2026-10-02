@@ -21,6 +21,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, relative } from 'node:path';
+import { envCompat } from '../scripts/lib/env-compat.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 // .env IS A CONVENIENCE, NOT A REQUIREMENT. It is gitignored, so it does not exist in a fresh
@@ -36,7 +37,7 @@ try {
   }
 } catch { /* no .env: the environment is expected to carry API_BASE and GOLEM_ADMIN_KEY */ }
 const BASE = process.env.API_BASE;
-const KEY = process.env.GOLEM_ADMIN_KEY;
+const KEY = envCompat('APPLE_ADMIN_KEY');
 if (!BASE || !KEY) throw new Error('API_BASE / GOLEM_ADMIN_KEY missing');
 
 const CHUNK = 700_000; // bytes per request (D1 row limit headroom + request size)

@@ -13,6 +13,7 @@
 //
 //   node infra/store-validation.mjs
 import { readFileSync } from 'node:fs';
+import { envCompat } from '../scripts/lib/env-compat.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
@@ -21,9 +22,9 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
 }
 
 const BASE = process.env.API_BASE;
-const ADMIN = process.env.GOLEM_ADMIN_KEY;
-const E2E_EMAIL = process.env.GOLEM_E2E_EMAIL;
-const E2E_PASSWORD = process.env.GOLEM_E2E_PASSWORD;
+const ADMIN = envCompat('APPLE_ADMIN_KEY');
+const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
 const ANON = readFileSync(root + '/apps/worker/wrangler.jsonc', 'utf8').match(
   /"SUPABASE_ANON_KEY":\s*"([^"]+)"/,

@@ -11,6 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const LIB = join(HERE, '..');
@@ -22,7 +23,7 @@ try {
   }
 } catch { /* no .env: the environment must carry both values */ }
 const BASE = process.env.API_BASE;
-const KEY = process.env.GOLEM_ADMIN_KEY;
+const KEY = envCompat('APPLE_ADMIN_KEY');
 if (!BASE || !KEY) throw new Error('API_BASE / GOLEM_ADMIN_KEY missing');
 const force = process.argv.includes('--force');
 const onlyIdAt = process.argv.indexOf('--only-id');
