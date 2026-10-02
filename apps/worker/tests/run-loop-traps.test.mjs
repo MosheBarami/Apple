@@ -1242,7 +1242,9 @@ test('CREDITS: a tool failing again and again with DIFFERENT arguments is steere
     const seen = h.chatCalls.at(-1).req.messages;
     const steerAt = seen.findIndex((m) => m.role === 'user' && /failed the same way/.test(m.content));
     assert.ok(steerAt > 0, 'the third failure was not answered with a steer');
-    assert.match(seen[steerAt].content, /No instance at that path/, 'the steer must carry the error the calls shared');
+    assert.match(seen[steerAt].content, /set_properties/, 'the steer must name the tool that kept failing');
+    assert.doesNotMatch(seen[steerAt].content, /No instance at that path/, 'tool error text must not be quoted into a user-role turn');
+    assert.ok(seen.some((m) => m.role === 'tool' && /No instance at that path/.test(m.content)), 'the error stays in the fenced tool results');
     assert.equal(seen.slice(0, steerAt).filter((m) => m.role === 'tool').length, 3, 'the steer must come after exactly the third failure');
     // No capability is cut: the tool is still offered on the step after the steer.
     assert.ok(h.chatCalls.every((c) => c.req.tools.some((t) => t.name === 'set_properties')), 'the failing tool was withheld; that changes the offered set and the cached prefix');
@@ -1328,5 +1330,34 @@ test('CREDITS: propose_plan may share the first step with the first read, so the
     assert.equal(h.chatCalls.length, 1, 'the plan and the read took more than one model step');
     assert.ok(agent.plan, 'the plan was not stored when it shared a step with a read');
     assert.ok(h.ops.some((o) => o.op === 'get_tree'), 'the read sharing the step did not reach Studio');
+  } finally { h.stop(); }
+});
+
+const defChars = (names) => JSON.stringify(W.toolDefs(true, new Set(names))).length;
+
+test('CREDITS: more_tools {names} unlocks only what was asked for, and no argument still unlocks everything', async () => {
+  const tree = ['more_tools', { why: 'the river needs terrain', names: ['edit_terrain'] }];
+  const h = await makeSession({ connected: true, answerOp: () => ({ ok: true, data: {} }), responses: [calls(tree), calls(['more_tools', { why: 'anything' }]), answer({ text: 'ok' })] });
+  try {
+    await start(h, { text: 'build me a hilly map with a river' });
+    await h.session.alarm();
+    await h.session.alarm();
+    await h.session.alarm();
+    const offered = (i) => new Set(h.chatCalls[i].req.tools.map((t) => t.name));
+    const first = offered(0);
+    const second = offered(1);
+    assert.ok(!first.has('edit_terrain'), 'control: the terrain tool is deferred before more_tools');
+    assert.ok(second.has('edit_terrain'), 'the named tool was not unlocked');
+    assert.ok(!second.has('generate_sound') && !second.has('web_search'), 'asking for one tool unlocked every deferred tool');
+    // The size of what rides on every later step: the named tool, not all thirty.
+    const added = [...second].filter((n) => !first.has(n));
+    const grew = defChars([...second]) - defChars([...first]);
+    const full = defChars([...W.DEFERRED_TOOLS]);
+    assert.ok(added.every((n) => n === 'edit_terrain'), `unlocked more than asked: ${added.join(', ')}`);
+    assert.ok(grew < full / 4, `unlocking one tool grew the definitions by ${grew} chars of the ${full} the full lift costs`);
+    // Without a name the behaviour is today's: every deferred tool, so no capability is cut.
+    const third = offered(2);
+    // (Some deferred tools stay absent here for reasons of their own: this plugin reports no terrain-read op, and the studded UI theme withholds the old UI builders.)
+    for (const name of ['edit_terrain', 'generate_sound', 'web_search', 'workspace_write']) assert.ok(third.has(name), `${name} was not unlocked by the argument-less more_tools`);
   } finally { h.stop(); }
 });

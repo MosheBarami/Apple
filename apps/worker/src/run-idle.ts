@@ -110,6 +110,17 @@ export const FAIL_END_AT = 8;
 
 export type FailureAction = 'none' | 'steer' | 'finish';
 
+/**
+ * The steer for a tool that keeps failing. It carries a count and a REGISTERED tool name (the run loop only counts calls
+ * that were in the offered set) and nothing else: the error text stays in the tool results, where it is fenced as
+ * untrusted output, and is not quoted into a user-role turn (packages/evals security.test.mjs A5 reviews this push).
+ */
+export function failureSteer(tool: string, failures: number): string {
+  return `Your last ${failures} calls to ${tool} failed the same way, with different arguments each time (the errors are in the results above). ` +
+    'Another variation of the same call will most likely fail too: read the current state to see what is really there, or change your approach ' +
+    '(a different tool, or smaller steps), instead of retrying with new numbers.';
+}
+
 export function afterToolOutcome(streaks: Record<string, number> | undefined, tool: string, ok: boolean): { streaks: Record<string, number>; action: FailureAction } {
   const next = { ...streaks };
   if (ok) { delete next[tool]; return { streaks: next, action: 'none' }; }

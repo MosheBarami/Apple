@@ -294,8 +294,8 @@ export interface AgentCtx {
    * whole library place as an orbiting pat). `upgrading` is true on a run that asked for it to be made cooler.
    */
   objectMemory?: { load(): Promise<unknown>; save(spec: unknown): Promise<void>; upgrading: boolean };
-  /** more_tools: lift the run's focused toolset for the rest of the run (session.ts AgentState.focused). */
-  widenTools?: () => void;
+  /** more_tools: lift the run's focused toolset for the rest of the run (session.ts AgentState.focused), or only the named tools. */
+  widenTools?: (tools?: string[]) => void;
   /** The run's sources (sources.ts): add some, get their [n] numbers back. */
   addSources?: (fresh: import('@golem/shared').RunSource[]) => number[];
 }
@@ -4964,13 +4964,20 @@ export const TOOLS: Record<string, ToolImpl> = {
   more_tools: {
     def: {
       name: 'more_tools',
-      description: 'Only when no offered tool can do a needed step: unlocks every tool (terrain, owner library, scripts search, images...) for the rest of the run.',
-      parameters: S({ why: { type: 'string' } }, ['why']),
+      description: 'Only when no offered tool can do a needed step: unlocks tools for the rest of the run. names = tool names or groups (terrain, sound, image, models, web, code, workspace, ui); leave it out to unlock all of them.',
+      parameters: S({ why: { type: 'string' }, names: { type: 'array', items: { type: 'string' } } }, ['why']),
     },
     studio: false,
-    run: async (ctx) => {
-      ctx.widenTools?.();
-      return { widened: true, note: 'Every tool is offered from the next step.' };
+    run: async (ctx, a) => {
+      const asked = Array.isArray(a.names) ? a.names.filter((n): n is string => typeof n === 'string') : [];
+      const { tools, unknown } = resolveDeferred(asked);
+      // Nothing recognised (or nothing asked for) unlocks everything, as it always did: no capability is cut by a typo.
+      if (!tools.length) {
+        ctx.widenTools?.();
+        return { widened: true, note: 'Every tool is offered from the next step.' };
+      }
+      ctx.widenTools?.(tools);
+      return { widened: true, unlocked: tools, ...(unknown.length ? { unknown } : {}), note: 'These tools are offered from the next step; ask again for others.' };
     },
   },
   cool_library_model: {
@@ -5673,14 +5680,36 @@ export function targetOf(tool: string, argsJson: unknown): string | undefined {
  * web research, the workspace store, and the UI builders the studded theme replaces.
  * Everything a build needs stays offered. A run that needs a deferred tool calls more_tools once.
  */
-export const DEFERRED_TOOLS: ReadonlySet<string> = new Set([
-  'generate_sound', 'design_sound', 'speak_line', 'assign_sounds', 'generate_image', 'generate_ui_image_hf', 'upload_ui_asset',
-  'edit_terrain', 'shape_terrain', 'read_terrain', 'generate_model', 'generate_model_external', 'compose_thumbnail',
-  'web_fetch', 'browse_page', 'web_search', 'screenshot_page', 'ocr_image',
-  'github_lookup', 'git_history', 'workspace_list', 'workspace_read', 'workspace_write', 'review_scripts', 'format_script',
-  'find_symbol', 'collision_groups', 'build_ui', 'insert_ui_component', 'run_spec',
-]);
-export function offeredWhenFocused(tool: string): boolean { return !DEFERRED_TOOLS.has(tool); }
+/**
+ * The deferred tools by need, so a run that wants terrain pays for the terrain definitions and not for sound, web and
+ * the rest (more_tools {names}). Every deferred tool is in exactly one group (tests/more-tools-by-need.test.mjs).
+ */
+export const DEFERRED_GROUPS: Readonly<Record<string, readonly string[]>> = {
+  sound: ['generate_sound', 'design_sound', 'speak_line', 'assign_sounds'],
+  image: ['generate_image', 'generate_ui_image_hf', 'upload_ui_asset', 'compose_thumbnail', 'ocr_image'],
+  terrain: ['edit_terrain', 'shape_terrain', 'read_terrain'],
+  models: ['generate_model', 'generate_model_external'],
+  web: ['web_fetch', 'browse_page', 'web_search', 'screenshot_page', 'github_lookup'],
+  code: ['git_history', 'review_scripts', 'format_script', 'find_symbol', 'run_spec', 'collision_groups'],
+  workspace: ['workspace_list', 'workspace_read', 'workspace_write'],
+  ui: ['build_ui', 'insert_ui_component'],
+};
+export const DEFERRED_TOOLS: ReadonlySet<string> = new Set(Object.values(DEFERRED_GROUPS).flat());
+export function offeredWhenFocused(tool: string, unlocked?: readonly string[]): boolean { return !DEFERRED_TOOLS.has(tool) || unlocked?.includes(tool) === true; }
+
+/** The deferred tools a more_tools request names: a tool name, or a group name for all of its tools. Anything else is `unknown`. */
+export function resolveDeferred(names: readonly string[]): { tools: string[]; unknown: string[] } {
+  const tools = new Set<string>();
+  const unknown: string[] = [];
+  for (const raw of names.slice(0, 20)) {
+    const name = raw.trim().toLowerCase();
+    const group = Object.prototype.hasOwnProperty.call(DEFERRED_GROUPS, name) ? DEFERRED_GROUPS[name] : undefined;
+    if (group) for (const t of group) tools.add(t);
+    else if (DEFERRED_TOOLS.has(name)) tools.add(name);
+    else unknown.push(raw.slice(0, 40));
+  }
+  return { tools: [...tools], unknown };
+}
 
 export function toolDefs(studioConnected: boolean, allowed?: Set<string>): GatewayToolDef[] {
   return Object.entries(TOOLS)
