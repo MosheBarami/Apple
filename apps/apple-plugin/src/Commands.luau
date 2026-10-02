@@ -3167,8 +3167,12 @@ local function handleCameraFocus(self: any, op: any): (any?, string?, string?)
 	if not okValues then return nil, "internal", "could not calculate camera framing" end
 	local distance = math.max(radius * 1.6, 12)
 	local okSet, setErr = pcall(function()
-		local offset = Vector3.new(distance * 0.6, distance * 0.55, distance * 0.6)
+		-- From the spawn's side (+Z, where Apple puts the spawn, facing the object) and a little above, and the camera's
+		-- Focus on the target too: Studio's editor camera turns round its Focus, so without it the view drifted and new
+		-- objects showed cut off in a corner (live 2026-10-01/02, every build_object and library object).
+		local offset = Vector3.new(distance * 0.15, distance * 0.45, distance * 0.9)
 		camera.CFrame = CFrame.lookAt(target + offset, target)
+		camera.Focus = CFrame.new(target)
 	end)
 	if not okSet then return nil, "internal", "could not move the Studio camera: " .. tostring(setErr) end
 	return { focused = canonical }, nil
