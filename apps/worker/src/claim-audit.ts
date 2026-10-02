@@ -131,6 +131,10 @@ function unmask(text: string): string {
   return text.replace(/[\u0001-\u0005]/g, (c) => MASK[MASKED.indexOf(c)]!);
 }
 
+const CLAUSE_MAX_CHARS = 600;
+/** More colour words than this in one clause is a list, not claims about things. */
+const COLOURS_PER_CLAUSE = 8;
+
 const NEGATION = /\b(?:not|never|no longer|cannot|can't|couldn't|could not|didn't|did not|isn't|aren't|wasn't|weren't|won't|unable|failed|without|yet to|hasn't|haven't)\b|n't\b/i;
 const OFFER = /^(?:and |so |but |then )?(?:want me to|would you like|should i|do you want|if you(?:'d| would)? (?:like|want)|i can |i could |i'd |let me know|next,? i|you can ask|shall i|say the word)/i;
 
@@ -142,7 +146,8 @@ function clausesOf(reply: string): string[] {
     for (const sentence of plain.split(/(?<=[.!?])\s+/)) {
       if (/\?\s*$/.test(sentence)) continue;
       for (const clause of sentence.split(/\s*(?:[,;—]|\bbut\b)\s*/i)) {
-        const c = unmask(clause).trim().replace(/^(?:and|so|yes|ok|okay|also)\s+/i, '');
+        // A clause longer than this is not a claim, it is a wall of words; what matters is in its first lines.
+        const c = unmask(clause).trim().replace(/^(?:and|so|yes|ok|okay|also)\s+/i, '').slice(0, CLAUSE_MAX_CHARS);
         if (c.length >= 3) out.push(c);
       }
     }
@@ -162,13 +167,14 @@ const SUBJECT_STOP = new Set([...STOP, 'painted', 'made', 'turned', 'changed', '
  *   "painted the door red"       the phrase between a determiner and the colour
  */
 function subjectOfColour(clause: string, at: number, wordLen: number): string | undefined {
-  const right = clause.slice(at + wordLen);
+  // Only the words around the colour can name its subject: a bounded window keeps a long clause from costing quadratic time.
+  const right = clause.slice(at + wordLen, at + wordLen + 80);
   const next = /^\s+([a-z][a-z-]*)(?:\s+([a-z][a-z-]*))?/i.exec(right);
   if (next && !SUBJECT_STOP.has(next[1]!.toLowerCase()) && !colourWordsIn(next[1]!).length) {
     const second = next[2] && !SUBJECT_STOP.has(next[2].toLowerCase()) && !colourWordsIn(next[2]).length ? ` ${next[2]}` : '';
     return `${next[1]}${second}`;
   }
-  const left = clause.slice(0, at);
+  const left = clause.slice(Math.max(0, at - 120), at);
   const linking = /([a-z][a-z' -]{0,40}?)\s+(?:is|are|was|were|looks?|appears?|stays?|remains?|became|glows?|shines?|now looks?)\s+(?:now\s+|also\s+|still\s+)?(?:a\s+|an\s+)?$/i.exec(left);
   if (linking) {
     const tokens = subjectTokens(linking[1]);
@@ -183,7 +189,7 @@ function colourClaims(clause: string): Claim[] {
   if (NEGATION.test(clause) || OFFER.test(clause)) return [];
   const plain = blankQuotes(clause);
   const claims: Claim[] = [];
-  for (const m of colourWordsIn(plain)) {
+  for (const m of colourWordsIn(plain).slice(0, COLOURS_PER_CLAUSE)) {
     const subject = subjectOfColour(plain, m.index, m.word.length);
     // A colour with no thing attached ("it stays white", "everything is red") cannot be tied to any
     // evidence, and auditing it against "any colour anywhere in the run" would flag true replies. It is not a claim here.

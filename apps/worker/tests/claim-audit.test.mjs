@@ -396,3 +396,28 @@ test('a noun the audit has never seen is audited like any other', () => {
   assert.deepEqual(verdictOf('The zorblax is red.', l), ['colour:supported']);
   assert.deepEqual(verdictOf('The zorblax is green.', l), ['colour:contradicted']);
 });
+
+// ====================================================== a pathological reply cannot stall the run loop ===
+
+test('pathological replies are audited in bounded time: no backtracking blow-up on long clauses, quotes or colour lists', () => {
+  const l = newLedger();
+  set(l, 'game.Workspace.Door', { Color: red });
+  const nasty = [
+    'the '.repeat(6000) + 'door is red',
+    ('red '.repeat(3000)) + 'door',
+    '"' + 'a'.repeat(5000),
+    ('says "x" and ').repeat(2000),
+    'a'.repeat(20_000),
+    ('The door is red, ').repeat(1500),
+    ('when you click it opens, ').repeat(1500),
+    ('I placed 5 tokens ').repeat(1500),
+    '\n'.repeat(5000) + 'the door is red',
+  ];
+  for (const reply of nasty) {
+    const t0 = performance.now();
+    const r = auditReply(reply, l);
+    const ms = performance.now() - t0;
+    assert.ok(ms < 400, `${ms.toFixed(0)} ms for a ${reply.length}-char reply starting ${JSON.stringify(reply.slice(0, 24))}`);
+    assert.ok(r.claims.length <= 20, 'the number of claims is bounded');
+  }
+});
