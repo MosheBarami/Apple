@@ -310,7 +310,7 @@ export const scatterInstances = {
       'Optional onMaterial (only land on these Enum.Material surfaces, e.g. ["Enum.Material.Grass"]), minSpacing (studs between copies), scale [min, max] (0.2-5), randomYaw (default true), parent (default: the template\'s parent if inside Workspace, else Workspace). ' +
       'Returns how many were placed and why any were not (no ground, wrong material, too close). Use it for forests, rocks, coins, grass tufts.',
     parameters: S({
-      template: { type: 'string', description: 'e.g. "game.Workspace.Hedge"' },
+      template: { type: 'string', description: 'e.g. "game.Workspace.Template"' },
       count: { type: 'integer', minimum: 1, maximum: 200 },
       region: REGION,
       onMaterial: { type: 'array', items: { type: 'string' }, maxItems: 12 },

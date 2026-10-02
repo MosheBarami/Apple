@@ -1,6 +1,6 @@
 // Building a structure in its own local space, then putting it where it goes.
 //
-// Owner benchmark 2026-10-02 (a canyon map): ~75 parts hand-placed in absolute world coordinates took 131 s and 155 s of
+// Owner benchmark 2026-10-02: ~75 parts hand-placed in absolute world coordinates took 131 s and 155 s of
 // thinking per step, and a structure built twice meant computing every coordinate twice. With an `origin` the batch is
 // written around (0,0,0): this module rotates it about the vertical by `yaw` and moves it to `at`, so the structure is
 // described once and put anywhere (and repeated with clone_instances' at / along / within).

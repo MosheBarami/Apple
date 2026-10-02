@@ -94,13 +94,14 @@ test('functional areas are built with a base, a rim, a fence, a sign and props',
 });
 
 // D-MODELLIB-2 (revised 2026-10-02): organic shapes follow the asset order, library first; built from Parts
-// they get real form, never a single ball or block.
-test('organic shapes follow the asset order, library first, and are never a single primitive', () => {
+// they are judged by silhouette (a single ball or block is a placeholder). Restated after the leakage cleanup: the brief gives the
+// agent the criterion, not a recipe of parts, so the test pins the criterion and no longer a named shape.
+test('organic shapes follow the asset order, library first, and a single primitive is not enough', () => {
   const organic = section(worldBuildingBrief(PLOT_GAME), 'ORGANIC SHAPES');
   assert.match(organic, /asset order, library first/);
-  assert.match(organic, /never a single ball or block/);
-  assert.match(organic, /tree/i);
-  assert.match(organic, /fruit|foliage/i);
+  assert.match(organic, /single ball or block reads as a placeholder/);
+  assert.match(organic, /silhouette/);
+  assert.match(organic, /plants|fruit|rocks/i);
   assert.doesNotMatch(organic, /never (assemble|build)[^.]*from Parts/i, 'the brief forbids the last step of the order');
 });
 

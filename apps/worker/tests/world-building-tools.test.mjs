@@ -171,7 +171,8 @@ test('scatter_instances states its parent: the template\'s own when it is inside
   await run(given.ctx, 'scatter_instances', { template: 'game.Workspace.Hedge', count: 1, region, parent: 'game.Workspace.Row' });
   assert.equal(given.ops[0].parent, 'game.Workspace.Row');
   assert.match(T.TOOLS.scatter_instances.def.description, /default: the template's parent if inside Workspace, else Workspace/);
-  assert.match(T.TOOLS.scatter_instances.def.parameters.properties.template.description, /game\.Workspace\.Hedge/);
+  // The example path is a neutral placeholder (no subject); the property is that the template's description shows a Workspace path.
+  assert.match(T.TOOLS.scatter_instances.def.parameters.properties.template.description, /game\.Workspace\.Template/);
 });
 
 // ------------------------------------------------------------------------------------- create_instances origin / group

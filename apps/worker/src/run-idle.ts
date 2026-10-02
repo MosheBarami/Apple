@@ -147,7 +147,7 @@ export interface LastChange {
 
 /**
  * Did checks sit between the repeated edits (an audit, a render, a check_*)? Looks back over the entries that cover the last
- * `count` changes by `tool` and asks whether at least half of those gaps held a check. The measured shape (canyon map,
+ * `count` changes by `tool` and asks whether at least half of those gaps held a check. The measured shape (a terrain build,
  * 2026-10-02): ten alternating "Checking the build" and "Tweaking lots of things at once" steps ended by the loop guard.
  */
 export function alternatesWithChecks(trace: readonly { tool: string }[], tool: string, count: number, isCheck: (name: string) => boolean): boolean {

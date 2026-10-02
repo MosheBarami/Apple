@@ -60,7 +60,7 @@ test('the skill cards follow the order and teach build-once-then-repeat, not per
     assert.doesNotMatch(byId[id].title, /as the fallback/, `${id}'s title calls Parts a fallback`);
   }
   const map = text('map-layered-composition');
-  assert.match(map, /edit_terrain call, action path/, 'the map card does not teach a river as one path call');
+  assert.match(map, /edit_terrain call, action path/, 'the map card does not teach a line of terrain as one path call');
   assert.match(map, /clone_instances within an area/, 'the map card does not teach repeating an inserted model with clone_instances');
   assert.doesNotMatch(map, /scatter_instances trees\/rocks\/bushes/, 'the map card still says to scatter trees, rocks and bushes');
   assert.match(map, /overrides for the exact hour/, 'the map card does not hand the hour to set_mood overrides');

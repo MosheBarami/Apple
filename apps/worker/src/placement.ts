@@ -1,7 +1,7 @@
 // Where the copies of one piece go, decided by the harness from a few numbers the model gives it.
 //
-// Owner benchmark 2026-10-02 (a canyon map): the model spent 131 s and 155 s of thinking hand-computing coordinates for ~75
-// parts, and the forest map's scatter and clone calls failed repeatedly. Placement is arithmetic, not judgement: the model
+// Owner benchmark 2026-10-02: the model spent 131 s and 155 s of thinking hand-computing coordinates for ~75 parts, and its
+// scatter and clone calls failed repeatedly on a large build. Placement is arithmetic, not judgement: the model
 // says WHERE in the three shapes below (explicit points, a line, an area) and how the copies vary, and this module produces
 // the positions, deterministically for a given seed, with no knowledge of what is being placed.
 //

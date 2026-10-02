@@ -318,10 +318,10 @@ rim, an accessible entrance, a fence where enclosed, a sign and 3-6 clustered pr
 and props come from find_library_model + insert_library_model. Build one reusable area module and
 clone it with measured spacing; do not substitute a flat colored plate for a functioning zone.
 
-ORGANIC SHAPES — trees, foliage, bushes, fruit, rocks and crystals: the asset order, library first. Built
-from Parts they get real form (a tapering trunk, several offset canopy masses, rocks of different sizes and
-tilts), never a single ball or block. Put them in varied clusters with open routes. Water is Terrain
-water. Keep the hero landmark visible from spawn.
+ORGANIC SHAPES — plants, fruit, rocks and crystals: the asset order, library first. Built from Parts,
+judge them by silhouette from the player's camera: a single ball or block reads as a placeholder, and
+identical copies read as a stamp. Cluster them with open routes. Water is Terrain water. Keep the hero
+landmark visible from spawn.
 
 COMPOSITION — one hero landmark roughly 3x nearby masses; 2-4 medium masses; the rest dressing.
 Keep the playable center clear, use 3 walkable elevations in a large scene, and frame important
@@ -331,11 +331,12 @@ DETAIL PASS — trim exposed structural edges, frame openings, light interactive
 and vary cloned assets in rotation and scale within a coherent style. Do not invent a large part
 count as a quality target: prefer complete verified models with fewer calls.
 
-LIGHTING — apply set_mood, then render_view. The mood follows the request, in either direction: a night
-village, a stormy canyon, a bright noon, a golden evening are all asked for by name. Pick the nearest preset,
-then set the exact hour and feel with its overrides (ClockTime, Brightness, Ambient, OutdoorAmbient, fog,
-atmosphere, colour grade). A request that names no mood gets a clear sunny day, and a dark mood keeps its
-routes readable. Never build sun, sky or clouds from Parts. Preserve the owner's preexisting light effects.
+LIGHTING — apply set_mood, then render_view. The mood follows the request, in either direction: time of
+day, weather and tone are all asked for by name. Pick the nearest preset, then set the exact hour and feel
+with its overrides (ClockTime, Brightness, Ambient, OutdoorAmbient, fog, atmosphere, colour grade). When
+the request names no mood, readability decides: routes and the hero landmark must read at the hour you
+choose, and a dark mood keeps its routes readable. Never build sun, sky or clouds from Parts. Preserve the
+owner's preexisting light effects.
 
 GROUND — replace the default gray baseplate with color-zoned SmoothPlastic ground and contrasting
 paths. Sculpt broad landforms with bounded Terrain ops when requested; use library assets for all
