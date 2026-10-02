@@ -1,5 +1,22 @@
 # NEXT ACTION (V3)
 
+**2026-10-02 morning: Frontier ≈78%. Test 3 is DONE, so 3 of 5 silly tests are green. Test 4 ("make me a rubber duck") is mid-loop.**
+
+Test 3 ("make it 100x cooler" on the library butter) took 1 credit, 1 step and ~25 s. It adds a library crown welded to the body (it wobbles with it), sparkles, a glow outline, four neon orbs and a neon rim. Clicks count in Play (1 → 2). Fixed on the way:
+- A second "cooler" put the new crown on top of the old one, floating 3 studs up. It now clears the earlier pieces and measures the body (1d1f85f7).
+- A few seconds into Play the butter was a white blob: the level-up aura was left on, with heavy sparkles and two lights. The aura is gone, and the sparkles and light are lighter (a88fabdc).
+- In each Play session the first click only focuses the game window. That is Studio's behaviour, not a bug.
+
+Test 4, run in the same place with the butter there:
+- The numbered row stood in the butter's stage, and the pick would have landed in it. Fixed: the row and the pick both look for free ground. The second object's counter also gets its own spot on screen (521d2acd, deployed, row verified live).
+- Old-style file-mesh parts drew about half their box size, so the ducks looked tiny. Fixed: the plugin turns each one into a true-size MeshPart when copying (218463ab). It is built and installed, but Studio must restart to load it. The restart is waiting on the owner to click "Don't Save" in Studio's quit dialog, which the computer-use grant cannot reach.
+
+**Next, in order:**
+1. Reopen Studio (new Baseplate), check the plugin reconnects to "Library 2", and re-run "make me a rubber duck": candidates at true size, then pick one and Play it.
+2. Test 5, "make me a giant pizza", in the same place: it is a second object, so it checks placement beside the first and the second counter spot.
+3. Open: the library "GoldenCrown" (Fighters) reads silver and green rather than gold. play_check cannot click a ClickDetector.
+
+
 **2026-10-02 — owner direction: 3D objects come from the library first.** "For 3D models always search the Creator Store or the library, stud them if needed, procedural only rarely." Owner's answers: the user picks from 3 previews; keyboards from the library too; owner library + Roblox-owned Creator Store only (his linked ASMR Butter is a third-party Model with a script: the plugin refuses it and Roblox will not load it without third-party loading). Built (1dbfc4ce, not yet deployed): an object request stands up to three ready-made models in the place, numbered, with a Studio snapshot on a chat card; the pick is staged, studded, wobbles on a click with a sound, gets a counter, and is play-tested, all with no model call; "None of these" builds it procedurally. Also fixed: a run paused for Studio ends after 45 s when Studio is gone (62a6be5b; a run sat "running" 16 minutes).
 
 **Next, in order:**
