@@ -1433,3 +1433,23 @@ test('CREDITS: the tool definitions are byte-identical between ordinary steps, a
     for (const r of rows) assert.ok(r > 0.97, `a step repeated only ${(r * 100).toFixed(1)}% of the previous transcript`);
   } finally { h.stop(); }
 });
+
+test('CREDITS: a step of four failing calls is ONE failed attempt, so parallel batches get the same runway as single calls', async () => {
+  // Review of the credits branch (2026-10-02): counting per CALL ended a run after two 4-wide failing batches, i.e.
+  // after one step past the steer, although a shared, fixable cause had been reported only once.
+  const batch = (s) => calls(...Array.from({ length: 4 }, (_, j) => ['set_properties', { path: `game.Workspace.P${s}_${j}`, props: { Position: { t: 'Vector3', v: [s, j, 1] } } }]));
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => (op.op === 'set_props' ? { ok: false, error: 'No instance at that path', failure: 'refused' } : { ok: true, data: {} }),
+    responses: [...Array.from({ length: 40 }, (_, s) => batch(s)), answer({ text: 'Done.' })],
+  });
+  try {
+    await start(h, { text: 'line up a row of crates along the path' });
+    for (let i = 0; i < 60 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended');
+    const writes = h.ops.filter((op) => op.op === 'set_props').length;
+    assert.ok(writes > 8, `the run ended after ${writes} failed writes: two 4-wide batches were counted as eight attempts`);
+    assert.ok(writes <= 8 * 4, `${writes} failed writes ran: the per-step count never ended the run`);
+    assert.equal(lastEnd(h).stopReason, 'incomplete');
+  } finally { h.stop(); }
+});

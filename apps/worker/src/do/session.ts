@@ -4782,6 +4782,7 @@ export class SessionDO extends DurableObject<Env> {
     let retuneThisStep: RetuneAction = 'none';
     let windowNudge = false;
     let failThisStep: { action: FailureAction; tool: string } | undefined;
+    const failCountedThisStep = new Set<string>();
     let verifiedThisStep = false;
     let pausedFor: StudioPauseReason | null = null;
     for (const call of res.toolCalls.slice(0, 4)) {
@@ -5085,10 +5086,15 @@ export class SessionDO extends DurableObject<Env> {
         }
         agent.failedCalls = failed.slice(-8);
         // The same TOOL failing again with different arguments each time is invisible to the signature above.
-        const outcome = afterToolOutcome(agent.failStreaks, call.name, out.ok);
-        agent.failStreaks = outcome.streaks;
-        if (outcome.action === 'finish' || (outcome.action === 'steer' && failThisStep?.action !== 'finish')) {
-          failThisStep = { action: outcome.action, tool: call.name };
+        // Counted once per STEP: up to 4 calls run in one step, and a batch that fails for one shared cause is one
+        // attempt, not four (review of the credits branch: two failing batches ended a run after 8 failed calls).
+        if (out.ok || !failCountedThisStep.has(call.name)) {
+          if (!out.ok) failCountedThisStep.add(call.name);
+          const outcome = afterToolOutcome(agent.failStreaks, call.name, out.ok);
+          agent.failStreaks = outcome.streaks;
+          if (outcome.action === 'finish' || (outcome.action === 'steer' && failThisStep?.action !== 'finish')) {
+            failThisStep = { action: outcome.action, tool: call.name };
+          }
         }
       }
       if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
