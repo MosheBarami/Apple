@@ -1,0 +1,43 @@
+version: 2
+
+# Weekly, grouped, and never merged automatically: Dependabot only opens pull requests, and nothing
+# in this repository (no workflow, no ruleset) turns on auto-merge. A human reads each one, and the
+# usual CI gates decide whether it can land.
+#
+# Two grouped PRs per ecosystem at most (minor+patch together; majors one at a time so a breaking
+# bump is never hidden inside a batch). `cooldown` waits a week after a release before proposing it,
+# the same idea as `minimumReleaseAgeExclude` in pnpm-workspace.yaml: a freshly published (possibly
+# compromised) version is not the one to take on day one.
+updates:
+  - package-ecosystem: npm
+    # One root entry covers the pnpm workspace and its single pnpm-lock.yaml.
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Asia/Jerusalem
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    labels: [dependencies]
+    commit-message:
+      prefix: 'deps'
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Asia/Jerusalem
+    open-pull-requests-limit: 3
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: 'ci'
+    groups:
+      actions:
+        patterns: ['*']

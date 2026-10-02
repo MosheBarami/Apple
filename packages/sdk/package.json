@@ -1,7 +1,6 @@
 {
   "name": "@golem/sdk",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Clients for the Apple REST + streaming API \u2014 JavaScript/TypeScript, Python and Luau \u2014 plus the `apple` CLI.",
   "main": "src/index.mjs",
@@ -24,6 +23,9 @@
     "luau",
     "README.md"
   ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "test": "node --test",
     "check": "node --check src/index.mjs && node --check src/client.mjs && node --check src/http.mjs && node --check src/stream.mjs && node --check src/studio.mjs && node --check src/wire.mjs && node --check src/errors.mjs && node --check src/numbers.mjs && node --check src/cli-args.mjs && node --check bin/apple.mjs && python3 -m compileall -q python/apple_sdk"
