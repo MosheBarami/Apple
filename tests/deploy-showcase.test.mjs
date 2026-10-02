@@ -4,7 +4,7 @@
 // `tests/` only. A guard beside the script it guards would be run by nothing, which is the same
 // nothing that ran over thirty-six unshipped commits while every script printed success.
 //
-// WHAT IS BEING DEFENDED. `infra/deploy-showcase.mjs` puts the model's showcase — sixteen Roblox
+// WHAT IS BEING DEFENDED. `platforms/cloudflare/deploy/deploy-showcase.mjs` puts the model's showcase — sixteen Roblox
 // screens and six maps — at a URL the owner can open. Its only real assertion is the fetch-back:
 // every URL a reader would type is retrieved from the origin and its bytes compared. That check is
 // the whole value of the script, so it has to be watched coming out NEGATIVE, or it is decoration.
@@ -23,7 +23,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { verify } from '../infra/deploy-showcase.mjs';
+import { verify } from '../platforms/cloudflare/deploy/deploy-showcase.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const execFile = promisify(execFileCb);
@@ -169,7 +169,7 @@ function tinyShowcase() {
 }
 
 const runDeploy = (origin, src) => execFile(process.execPath, [
-  join(ROOT, 'infra/deploy-showcase.mjs'),
+  join(ROOT, 'platforms/cloudflare/deploy/deploy-showcase.mjs'),
   '--base', origin.url, '--prefix', '/showcase', '--ui', src.ui, '--maps', src.maps,
   // No worker cache sits in front of these origins, so the production wait window would add 45
   // seconds of sleeping to every suite run and buy nothing. See WAITS in the script.

@@ -972,7 +972,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 ### Safety and Security — 56 items  (done 16, partial 0)
 
 - [x] Authentication — Supabase ES256 JWKS verify, auth.ts
-- [~] Authorization — Postgres RLS, infra/supabase/migrations
+- [~] Authorization — Postgres RLS, platforms/supabase/migrations
 - [ ] RBAC
 - [ ] ABAC
 - [ ] SSO

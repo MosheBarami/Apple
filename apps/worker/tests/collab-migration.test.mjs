@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { GRANTABLE_ROLES, COLLAB_ROLES, roleRank } from '../src/collab.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const SQL = readFileSync(join(ROOT, 'infra', 'supabase', 'migrations', '0005_collaboration.sql'), 'utf8');
+const SQL = readFileSync(join(ROOT, 'platforms', 'supabase', 'migrations', '0005_collaboration.sql'), 'utf8');
 
 /** The single line that carries a claim, so a second occurrence elsewhere cannot satisfy it. */
 function line(pattern, what) {

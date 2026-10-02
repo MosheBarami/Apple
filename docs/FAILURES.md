@@ -37,7 +37,7 @@ before reading `conclusion`, and never report CI red without naming which step f
 ### F-70 · A link checker that walks `dist` reported on a route that is not in `dist`
 **Believed:** `check-site-links` exit 0 over "795 internal link(s) across 20 page(s), all
 resolve" covered the site, `/showcase` included.
-**True:** `/showcase` is uploaded by `infra/deploy-showcase.mjs` and never built into
+**True:** `/showcase` is uploaded by `platforms/cloudflare/deploy/deploy-showcase.mjs` and never built into
 `apps/site/dist`. The walker enumerated `dist`, so a link to `/showcase` resolved against
 a tree the route does not live in — and a broken `/showcase` link would have been reported
 identically to a working one, because the checker cannot reach either.
@@ -346,10 +346,10 @@ both `indexOf` searches, briefly concluding a guard did not exist. Two accidents
 a pattern, and it argues the control belongs in the harness rather than in anyone's habits.
 
 ### F-63 · A safety flag that was never parsed, in a command §10 tells us to run every pass
-**Believed:** `node infra/smoke.mjs --no-model` runs the deployed smoke checks without spending
+**Believed:** `node platforms/cloudflare/verify/smoke.mjs --no-model` runs the deployed smoke checks without spending
 neurons. It is written that way in FINISH-THE-PRODUCT.md:164, MISSION-PROMPT.md:164,
 CHECKPOINT.md:83 and OWNER-HANDOFF.md:195.
-**True:** `--no-model` appears ZERO times in `infra/smoke.mjs`. Its argument helper is
+**True:** `--no-model` appears ZERO times in `platforms/cloudflare/verify/smoke.mjs`. Its argument helper is
 `process.argv.indexOf(flag)` returning the next element, and it reads only `--mode` and `--text`,
 so an unrecognised flag is not an error — it is nothing. Line 168 is an unconditional
 `await runOnce()`. Every run of the documented command has sent a real chat turn and spent.
@@ -382,8 +382,8 @@ teaches every reader that the documentation is true. This is F-58's family — a
 nothing red — arriving through the command line instead of a test.
 
 ### F-62 · The documented rollback command uploaded nothing and printed `done`
-**Believed:** `infra/deploy-static.mjs` header, line 2 — the rollback for a bad static deploy is
-`node infra/deploy-static.mjs --only file <local> <remote>`.
+**Believed:** `platforms/cloudflare/deploy/deploy-static.mjs` header, line 2 — the rollback for a bad static deploy is
+`node platforms/cloudflare/deploy/deploy-static.mjs --only file <local> <remote>`.
 **True:** that form restores nothing and reports success. Line 58 branches on
 `args[0] === '--file'`; line 62 does `const only = args[0] === '--only' ? args[1] : null`. Typing
 the documented command makes `args[0]` be `'--only'`, so the single-file branch never fires;

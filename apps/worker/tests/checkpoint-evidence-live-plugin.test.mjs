@@ -9,7 +9,7 @@
  * so all three agree with the admission by construction and none of them has ever seen what the
  * plugin actually puts on the wire.
  *
- * `infra/e2e.mjs` does not close that gap either: its simulated Studio answers `snapshot` with
+ * `platforms/cloudflare/verify/e2e.mjs` does not close that gap either: its simulated Studio answers `snapshot` with
  * `{ v: 1, containers: [], scripts: [], scriptCount: 0, instanceCount: 3 }` — a payload with no
  * `format` field at all, which lands in the legacy branch of the admission and returns `{ ok: true }`
  * without reading a single one of the flags below. So a green E2E run says nothing about

@@ -149,8 +149,8 @@ const parts = [
   // while a comment above it named a test that had never been written.
   { label: 'check-proof-figures', ...run('node', ['scripts/check-proof-figures.mjs']) },
   //[[ TWENTY-THREE TOOLS WERE POINTED AT THE PRE-RENAME WORKER.
-  //   `.env` held API_BASE=golem.moshe-barami111.workers.dev, and infra/e2e.mjs, infra/smoke.mjs,
-  //   infra/checkpoint-test.mjs, packages/evals/src/run.mjs and eighteen others read it — so the
+  //   `.env` held API_BASE=golem.moshe-barami111.workers.dev, and platforms/cloudflare/verify/e2e.mjs, platforms/cloudflare/verify/smoke.mjs,
+  //   platforms/cloudflare/verify/checkpoint-test.mjs, packages/evals/src/run.mjs and eighteen others read it — so the
   //   E2E suite, the smoke test and the eval harness were all exercising the OLD deployment while
   //   reporting on "the product". It hides because the legacy host's page routes 308 to the
   //   canonical origin and /api/* deliberately does not: the site looks current and the admin calls

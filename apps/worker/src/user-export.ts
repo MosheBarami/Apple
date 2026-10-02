@@ -10,7 +10,7 @@
 // exists to prevent: the omission and the over-share both happen silently at schema-change time,
 // and neither shows up in a test that only checks the rows it already knows about.
 //
-// The completeness check lives in infra/supabase/tests/export-completeness.mjs and runs against a
+// The completeness check lives in platforms/supabase/tests/export-completeness.mjs and runs against a
 // REAL Postgres with the migrations applied, so "every column is accounted for" is measured against
 // the schema rather than against this file's own idea of the schema. A spec checked against itself
 // is a tautology — see the repository's notes on asserting against the runtime artefact.
@@ -30,7 +30,7 @@ export interface ExportTable {
    *   an export as exactly that. A failure to observe must not render as an observation, so the
    *   route reports this table as unread rather than as empty.
    *
-   * tests/export-inventory.test.mjs derives this from the policies in infra/supabase/migrations,
+   * tests/export-inventory.test.mjs derives this from the policies in platforms/supabase/migrations,
    * so a migration that grants a select policy and leaves this at `service_role` (or takes one
    * away and leaves it at `rls`) fails rather than quietly changing what the export claims.
    */
@@ -44,7 +44,7 @@ export interface ExportTable {
    * puts a row there, and nothing does: those three carry a select policy and NO insert policy,
    * the worker holds `SUPABASE_ANON_KEY` and no service-role credential (see erasure.ts), and the
    * product writes the transcript and its checkpoints into SESSION_DO and the credit ledger into
-   * QUOTA_DO. The only inserts anywhere in this repository are fixtures under infra/supabase/tests.
+   * QUOTA_DO. The only inserts anywhere in this repository are fixtures under platforms/supabase/tests.
    *
    * So a select on them returns `[]` for a person with thousands of messages, which is the SAME
    * SHAPE as `studio_pairings` reaching the same `[]` through the other door — and the export
@@ -254,7 +254,7 @@ export const NEVER_EXPORT: readonly string[] = ['key_hash', 'token_hash', 'token
  * Postgres tables that hold data about a person and are deliberately NOT exported.
  *
  * Empty today, and kept because empty is a FINDING rather than an omission: every table in
- * infra/supabase/migrations that carries an owner column must appear either in `USER_EXPORT` above
+ * platforms/supabase/migrations that carries an owner column must appear either in `USER_EXPORT` above
  * or here with a reason, and tests/export-inventory.test.mjs fails on any table that is in neither.
  * Without this slot the only way to record "we looked at it and decided no" would be to say nothing,
  * which is indistinguishable from never having looked.

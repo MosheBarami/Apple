@@ -1,7 +1,7 @@
 /**
  * THE INVENTORY, CHECKED AGAINST THE TREE — WITHOUT DOCKER.
  *
- * infra/supabase/tests/export-completeness.mjs already audits `user-export.ts` against a REAL
+ * platforms/supabase/tests/export-completeness.mjs already audits `user-export.ts` against a REAL
  * Postgres, and it is the better check: it reads the catalogue of a database that actually ran the
  * migrations. It also needs a docker daemon, so it is not part of `node --test tests/` and does not
  * run in CI. The consequence was measurable rather than theoretical: migrations 0007 and 0008 added
@@ -10,7 +10,7 @@
  * the tree stayed green for two migrations.
  *
  * So this is the same audit driven from the FILES rather than from a live catalogue: the column
- * lists are parsed out of infra/supabase/migrations (create table, then every add/drop column in
+ * lists are parsed out of platforms/supabase/migrations (create table, then every add/drop column in
  * order), and the D1 tables are parsed out of their own `create table if not exists` in
  * apps/worker/src. Weaker than the docker check — it trusts the migrations to describe the
  * database — and strictly stronger than nothing, which is what ran before.
@@ -39,7 +39,7 @@ import { tmpdir } from 'node:os';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const ROOT = join(WORKER, '..', '..');
-const MIGRATIONS = join(ROOT, 'infra', 'supabase', 'migrations');
+const MIGRATIONS = join(ROOT, 'platforms', 'supabase', 'migrations');
 
 const out = join(tmpdir(), `apple-inventory-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [

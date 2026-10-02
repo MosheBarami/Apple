@@ -1,6 +1,6 @@
 // The test of the harness that decides what a failed production run is CALLED.
 //
-// `infra/e2e.mjs` is the only end-to-end instrument pointed at the deployed product, and on
+// `platforms/cloudflare/verify/e2e.mjs` is the only end-to-end instrument pointed at the deployed product, and on
 // 2026-09-20 it answered a question nobody asked. A free account requesting Apple MAX is refused by
 // `refuseOne` in apps/worker/src/do/session.ts — one `error` frame, then `return`, with no
 // `msg_end`, no `run_state`, no terminal event at all. The harness logged that refusal, kept
@@ -17,20 +17,20 @@
 // docs/backlog/HANDOFF-SESSION-AGENT-LOOP.md). It does not pin the timeout path, the 150-second
 // figure, or anything about the live site. It pins only that the harness names what it saw.
 //
-// It drives the REAL bytes of infra/e2e.mjs rather than a copy: the function is extracted from the
+// It drives the REAL bytes of platforms/cloudflare/verify/e2e.mjs rather than a copy: the function is extracted from the
 // file at run time and evaluated against a stub socket. A copy of the handler would pass forever
 // after the original was edited, which is the same defect one level up.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const HARNESS = new URL('../infra/e2e.mjs', import.meta.url);
+const HARNESS = new URL('../platforms/cloudflare/verify/e2e.mjs', import.meta.url);
 const SOURCE = readFileSync(HARNESS, 'utf8');
 
 /**
  * Lift `wsChat` out of the harness and bind the handful of module-scope names it closes over.
  *
- * `infra/e2e.mjs` signs in to Supabase at module scope, so it cannot be imported: importing it
+ * `platforms/cloudflare/verify/e2e.mjs` signs in to Supabase at module scope, so it cannot be imported: importing it
  * would authenticate and then spend real inference. Extraction is what makes this testable at all
  * without touching the network.
  *
@@ -42,7 +42,7 @@ const SOURCE = readFileSync(HARNESS, 'utf8');
  */
 function loadWsChat(source, { socketSink }) {
   const match = /\nfunction wsChat\([\s\S]*?\n}\n/.exec(source);
-  assert.ok(match, 'wsChat was not found in infra/e2e.mjs — re-aim this test before trusting it');
+  assert.ok(match, 'wsChat was not found in platforms/cloudflare/verify/e2e.mjs — re-aim this test before trusting it');
   class StubSocket {
     constructor() { this.sent = []; this.closed = false; socketSink.push(this); }
     send(payload) { this.sent.push(payload); }

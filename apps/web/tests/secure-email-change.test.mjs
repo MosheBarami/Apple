@@ -9,13 +9,13 @@
  *
  * The settings page used to state the strong behaviour as fact: "Your current address gets one too —
  * the change only takes effect once both are confirmed." Nothing in this repository sets that
- * toggle, and nothing checks it. There is no config.toml anywhere in the tree, infra/supabase holds
+ * toggle, and nothing checks it. There is no config.toml anywhere in the tree, platforms/supabase holds
  * a migration runner and SQL, and neither can see an auth setting. So the sentence was a claim about
  * a dashboard checkbox nobody in this codebase has ever looked at — an observation nobody made,
  * printed as one, on the screen where being wrong costs the account.
  *
  * This test does not decide what the copy should say. It says: while nothing here can OBSERVE the
- * setting, the page may not assert it. Add a check under infra/supabase/tests/ that queries the
+ * setting, the page may not assert it. Add a check under platforms/supabase/tests/ that queries the
  * project's auth settings and fails when secure email change is off, and the sentence becomes
  * licensed and this test lets it back in.
  *
@@ -36,7 +36,7 @@ const RAW = readFileSync(join(HERE, '..', 'src', 'routes', 'settings.tsx'), 'utf
  * line break, which is how a guard quietly stops guarding.
  */
 const SETTINGS = RAW.replace(/\s+/g, ' ');
-const INFRA_TESTS = join(HERE, '..', '..', '..', 'infra', 'supabase', 'tests');
+const INFRA_TESTS = join(HERE, '..', '..', '..', 'platforms', 'supabase', 'tests');
 
 /**
  * Sentences that assert the provider is configured the strong way.
@@ -74,7 +74,7 @@ test('THE SETTINGS PAGE DOES NOT CLAIM DUAL CONFIRMATION WHILE NOTHING CAN CHECK
       SETTINGS,
       claim,
       'this asserts Supabase\'s "secure email change" is on. Nothing in this repository reads that ' +
-        'setting, so the page cannot know it. Either add a check under infra/supabase/tests/ that ' +
+        'setting, so the page cannot know it. Either add a check under platforms/supabase/tests/ that ' +
         'queries the project auth settings and fails when it is off, or do not promise it.',
     );
   }

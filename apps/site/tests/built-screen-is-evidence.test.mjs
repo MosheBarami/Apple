@@ -213,10 +213,10 @@ test('the landing renders this band, and the gallery it opens is a route somethi
 
   // /showcase is not an Astro route — it is an object in the worker's D1 static store. The claim
   // that it exists is only as good as the publisher, so the publisher has to be here.
-  const publisher = join(ROOT, 'infra', 'deploy-showcase.mjs');
+  const publisher = join(ROOT, 'platforms', 'cloudflare', 'deploy', 'deploy-showcase.mjs');
   assert.ok(existsSync(publisher),
     `the band links to ${BUILT_SCREEN.gallery}, which no page in this site builds. The script that`
     + ` publishes it (${publisher}) is not in the repository, so the link is a 404 waiting to happen.`);
   assert.match(readFileSync(publisher, 'utf8'), /showcase/,
-    'infra/deploy-showcase.mjs no longer mentions the showcase prefix it is cited for');
+    'platforms/cloudflare/deploy/deploy-showcase.mjs no longer mentions the showcase prefix it is cited for');
 });

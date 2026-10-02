@@ -20,7 +20,7 @@ const WEB = join(HERE, '..');
 const REPO = join(WEB, '..', '..');
 const DASH = readFileSync(join(WEB, 'src', 'routes', 'dashboard.tsx'), 'utf8');
 const LAYOUT = readFileSync(join(WEB, 'src', 'components', 'layout.tsx'), 'utf8');
-const MIGRATION = readFileSync(join(REPO, 'infra', 'supabase', 'migrations', '0004_project_archive.sql'), 'utf8');
+const MIGRATION = readFileSync(join(REPO, 'platforms', 'supabase', 'migrations', '0004_project_archive.sql'), 'utf8');
 /** Statements only. A negative assertion must run against the SQL, never against the prose that
  *  explains why the SQL is the way it is — the comment naturally names the thing being ruled out. */
 const SQL = MIGRATION.replace(/^\s*--.*$/gm, '');

@@ -301,7 +301,7 @@ rbxai-04, who ran the probe independently and declined to write the evidence lin
 that the run which records a gate should be the one that proves it.
 
 - [ ] G-SEC-1: Two tenants cannot read, write or plant rows in each other's data
-    CHECK: node infra/supabase/tests/rls-isolation.mjs
+    CHECK: node platforms/supabase/tests/rls-isolation.mjs
     EXPECT: RLS ISOLATION HOLDS
     UNTICKED AGAIN 2026-09-24. Commit 6812628 re-ticked this on an EVIDENCE line in the short
     shape (exit / shell / cwd / path / EXPECT / output-sha256 / output-bytes) with no git-sha=,
@@ -324,7 +324,7 @@ that the run which records a gate should be the one that proves it.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-SEC-1; path=6765c31f4f12/53 entries; git-sha=f062caf; tree-clean=yes; deps-clean=yes; break-sha=f062caf; EXPECT=unmatched; output-sha256=a730b6e9f70f56bd4c4237cba644804455b531bdfb2622be2d24a21d1a7fd831; output-bytes=3227; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=1b24f3adc6d69e02e0b72e13; at=2026-09-15T05:22:52.967Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=beb9e39b26a2/57 entries; EXPECT=matched; output-sha256=0d41bbd8a8efcd1a19a10cafe323309781ab76a0c8469ed73ebd002cfb059cf9; output-bytes=3600
 
-NEEDS DOCKER, and says so rather than skipping. The test applies infra/supabase/migrations/*.sql
+NEEDS DOCKER, and says so rather than skipping. The test applies platforms/supabase/migrations/*.sql
 in order to a real Postgres, so it proves the MIGRATIONS' policies — not the deployed database,
 which may have drifted from them. It exits 2 when no daemon is reachable instead of reporting a
 pass over nothing, which is why this row can be red for an environment reason and that is the

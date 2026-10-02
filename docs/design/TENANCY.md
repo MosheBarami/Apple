@@ -30,7 +30,7 @@ Neither. The schema is flat:
     public.projects          owner_id -> profiles
     public.messages, public.checkpoints, public.studio_pairings, public.usage_events
 
-`grep -rn "create table.*organizations" infra/supabase/migrations` returns nothing. Sharing exists
+`grep -rn "create table.*organizations" platforms/supabase/migrations` returns nothing. Sharing exists
 and is sound — `project_members` with viewer/commenter/editor/admin/owner, RLS-isolated, 43 database
 checks and 20 hostile application inputs — but it attaches people to a PROJECT, not to an org.
 
@@ -54,7 +54,7 @@ two will be confused in exactly the places where confusing them is a tenant-isol
 This is not a feature; it is a level in the data model. Every table that currently hangs off
 `owner_id` gains an ancestor, every RLS policy is rewritten, every route that resolves a project
 resolves it within a scope, and `project_members` becomes one of three membership tables rather than
-the only one. The 43 RLS checks in `infra/supabase/tests/rls-isolation.mjs` are written against the
+the only one. The 43 RLS checks in `platforms/supabase/tests/rls-isolation.mjs` are written against the
 flat schema and would all need to be re-derived — and that suite is the strongest evidence in the
 repository that tenants cannot read each other.
 
@@ -71,7 +71,7 @@ in his own words:
 docs/DECISIONS.md. There is no organization row, no workspace row and no seat. A person owns
 projects; a project is shared with named people through `project_members`
 (viewer / commenter / editor / admin / owner), isolated by RLS and proven by the 43 checks in
-`infra/supabase/tests/rls-isolation.mjs`. That is the whole tenancy model, and it is now the
+`platforms/supabase/tests/rls-isolation.mjs`. That is the whole tenancy model, and it is now the
 intended one rather than the interim one.
 
 **What the decision does NOT touch.** Nothing is deleted. `memory_org_members`,

@@ -1,11 +1,11 @@
 /**
  * What a migration run is allowed to do, as functions of their inputs.
  *
- * WHAT THIS REPOSITORY HAD. Five SQL files in infra/supabase/migrations and no runner. They were
+ * WHAT THIS REPOSITORY HAD. Five SQL files in platforms/supabase/migrations and no runner. They were
  * applied by hand, in a dashboard, by whoever was there: WORKLIST w18 is the row where
  * `0004_project_archive.sql` sat unapplied because the session that wrote it had no credentials,
  * and GATES.md records the gap in one sentence — "nothing compares the deployed schema against
- * the migrations". `infra/supabase/tests/rls-isolation.mjs` applies them all to a throwaway
+ * the migrations". `platforms/supabase/tests/rls-isolation.mjs` applies them all to a throwaway
  * Postgres to prove the POLICIES, and says so explicitly: it cannot prove the deployed database
  * matches them.
  *
@@ -247,7 +247,7 @@ export function schemaFromSql(sources) {
  * The schema the migrations describe against the schema that is actually deployed.
  *
  * `actual` is a snapshot in the same shape, taken from the live catalogue by
- * `infra/supabase/migrate.mjs --verify`.
+ * `platforms/supabase/migrate.mjs --verify`.
  *
  * ROW LEVEL SECURITY IS THE ONE THAT MATTERS MOST, so it is reported first and separately. A
  * table whose RLS is off in production while every migration says it is on is not drift, it is

@@ -4,7 +4,7 @@
 // the customer's own Roblox account (D-MODELLIB-1). Creator Store rows have no file and are skipped.
 //
 // Same shape as ../upload.mjs: it asks the store what it already holds and sends only what is
-// missing, so it is safe to re-run. Files are chunked with `append` like infra/deploy-static.mjs.
+// missing, so it is safe to re-run. Files are chunked with `append` like platforms/cloudflare/deploy/deploy-static.mjs.
 //
 //   node packages/asset-library/models/upload.mjs [--force] [--only-id <manifest-id>]
 // Env: API_BASE, GOLEM_ADMIN_KEY (read from the repo .env when present).

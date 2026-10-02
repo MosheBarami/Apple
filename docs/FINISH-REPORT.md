@@ -99,7 +99,7 @@ showcase content, four hours later.
 
 | Instruction | State | Single next action |
 |---|---|---|
-| Deploy what is written | 35 commits undeployed | `cd apps/site && npx astro build && cd ../.. && node infra/deploy-static.mjs --only site`, then `cd apps/worker && pnpm deploy:api`. Needs your Cloudflare login — see section 4. |
+| Deploy what is written | 35 commits undeployed | `cd apps/site && npx astro build && cd ../.. && node platforms/cloudflare/deploy/deploy-static.mjs --only site`, then `cd apps/worker && pnpm deploy:api`. Needs your Cloudflare login — see section 4. |
 | Rename: no Golem anywhere | Regressed | Re-generate or edit `docs/evidence/ui-showcase/screen-gacha--tycoon.luau` lines 101 and 244, then `node scripts/check-rebrand.mjs --offline`. |
 | Features as interactive demos | NOT-STARTED | Replace the `What it is good at` four-card grid with one live artefact per claim; the refusal log in the STUDIO·ACTIVITY block is the working precedent. |
 | Proof-first marketing | PARTIAL — the live landing has `<img>` 0, `<video>` 0, `<iframe>` 0 | Publish the 3 captures already in `docs/evidence/lumen-isles-2026-09-19/` as a before/after strip under the hero. |
@@ -130,7 +130,7 @@ do any of it, and I did not create an account or enter a password anywhere.
 1. Open Terminal.
 2. Type `cd ~/Desktop/RbxAI` and press Enter.
 3. Type `npx wrangler login` and press Enter. A browser window opens; approve it.
-4. Type `cd apps/site && npx astro build && cd ../.. && node infra/deploy-static.mjs --only site` and press Enter.
+4. Type `cd apps/site && npx astro build && cd ../.. && node platforms/cloudflare/deploy/deploy-static.mjs --only site` and press Enter.
 5. Type `cd apps/worker && pnpm deploy:api` and press Enter.
 6. Check it worked: open `https://apple.moshe-barami111.workers.dev/api/health`. `buildSha` should no
    longer say `600ab00`.

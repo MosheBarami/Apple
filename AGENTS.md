@@ -86,8 +86,10 @@ packages/
   training/   LoRA training on an M2 Pro via MLX. Not in the request path.
   design/     design tokens. NOT a UI library.
 
-infra/        deploy and operations. deploy-static.mjs and deploy-worker.mjs both verify
-              what they deployed — do not bypass them with bare wrangler.
+platforms/    one folder per external service (cloudflare, supabase, sentry, stripe, discord, roblox,
+              github): a README, the deploy and verify scripts, the migrations. Start at
+              platforms/README.md. deploy-static.mjs and deploy-worker.mjs (platforms/cloudflare/deploy/)
+              both verify what they deployed — do not bypass them with bare wrangler.
 scripts/      the checkers. check-copy, check-deadends, check-backlog, check-credit-figures,
               check-dispositions, gate-check, pick-asset-wall, and others.
 tests/        repository-level tests that cross app boundaries.
@@ -138,10 +140,10 @@ Apple-only and optional in `env.ts` (golem runs the older path without them): `P
 `model-upload.ts`), and `IMAGES` (display-sized WebP copies of generated images, `image-resize.ts`).
 
 **Auth and data:** Supabase Postgres with RLS on every table. The worker forwards the caller's own
-JWT to PostgREST, so **RLS is the thing deciding** — not the worker. `infra/supabase/tests/rls-isolation.mjs`
+JWT to PostgREST, so **RLS is the thing deciding** — not the worker. `platforms/supabase/tests/rls-isolation.mjs`
 is 43 checks proving tenants cannot read each other, and it is the strongest evidence in the repo.
 
-**Migrations are applied by hand.** `infra/supabase/migrations/` holds them; `migrate.mjs` runs
+**Migrations are applied by hand.** `platforms/supabase/migrations/` holds them; `migrate.mjs` runs
 them. Two sat unapplied while the code that needed them shipped, and the dashboard showed loading
 skeletons forever. **If a query 400s on a missing column, look here first.**
 
@@ -202,7 +204,7 @@ something really happened, it is here.
 | `docs/backlog/CHECKLIST-V2.md` | the owner's list of record — 1,200 items in 60 sections |
 | `docs/BLOCKERS.md` | what is known broken |
 | `docs/COST-MODEL.md` | every Credit figure on the site derives from this |
-| `docs/operations/SECURITY.md`, `docs/MONITORING.md` | trust boundaries; Sentry |
+| `docs/operations/SECURITY.md`, `platforms/sentry/README.md` | trust boundaries; Sentry |
 | `docs/architecture/THINKING-UX.md`, `docs/architecture/VISUAL-LOOP.md` | the run surface and the visual gate |
 
 `packages/evals/src/success-metrics.mjs` prints the current completion figure recomputed from the

@@ -177,7 +177,7 @@ Read the Roblox blocker below as the priority one. This section is the one that 
 6. Redeploy the site so the pricing page re-asks:
 
 ```bash
-cd apps/site && npx astro build && cd ../.. && node infra/deploy-static.mjs --only site
+cd apps/site && npx astro build && cd ../.. && node platforms/cloudflare/deploy/deploy-static.mjs --only site
 ```
 
 ### Probe

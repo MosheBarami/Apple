@@ -111,7 +111,7 @@ turns on it:
 |---|---|
 | `.github/workflows/ci.yml` | **no** — zero references in any workflow |
 | the deployed worker, web app, site, plugin | **no** — no shipped code reads either variable |
-| `infra/smoke.mjs`, `infra/pair-helper.mjs`, `infra/checkpoint-test.mjs`, `infra/store-validation.mjs` | yes — operator scripts run by hand |
+| `platforms/cloudflare/verify/smoke.mjs`, `platforms/cloudflare/verify/pair-helper.mjs`, `platforms/cloudflare/verify/checkpoint-test.mjs`, `platforms/cloudflare/verify/store-validation.mjs` | yes — operator scripts run by hand |
 
 So the exposure is two Supabase **test** accounts used by local operator tooling. It is
 still a live-credential exposure and still has to be fixed: anyone reading this public
@@ -156,7 +156,7 @@ Actions secret to change, and no deployed configuration reads either password.
 Afterwards, to confirm and to clear this blocker:
 
 ```bash
-node infra/e2e.mjs                      # must still pass with the NEW password
+node platforms/cloudflare/verify/e2e.mjs                      # must still pass with the NEW password
 python3 scripts/secret-scan.py          # must still exit 0
 ```
 
@@ -430,7 +430,7 @@ share an origin.
 That program already exists in the product. `apps/web/src/routes/settings.tsx:146` renders
 a toggle — *"Contribute anonymised snippets to improve Golem — optional, off by default,
 revocable any time"* — writing `profiles.training_opt_in`, a column in
-`infra/supabase/migrations/0001_init.sql:9`. The policy's own precondition has been
+`platforms/supabase/migrations/0001_init.sql:9`. The policy's own precondition has been
 passed: the mechanism shipped and the policy was not updated.
 
 `/docs/privacy-and-data` is separately inconsistent with the product, in stronger terms:

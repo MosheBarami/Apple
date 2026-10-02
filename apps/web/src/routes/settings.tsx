@@ -1778,7 +1778,7 @@ export function SettingsPage() {
       // email change" setting is on — the old one to authorise the move, the new one to prove it is
       // reachable — and that is the defence that stops someone at a borrowed screen moving an
       // account to their own inbox. Nothing in this repository sets that toggle or can read it:
-      // there is no config.toml in the tree, and infra/supabase can see SQL, not auth settings. So
+      // there is no config.toml in the tree, and platforms/supabase can see SQL, not auth settings. So
       // the page states only what is true either way — the address does not move until the new one
       // is confirmed — and tests/secure-email-change.test.mjs holds it to that until something here
       // can actually observe the setting.

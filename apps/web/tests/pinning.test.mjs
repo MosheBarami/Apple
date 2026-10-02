@@ -32,7 +32,7 @@ const LAYOUT = readFileSync(join(WEB, 'src', 'components', 'layout.tsx'), 'utf8'
 // The rail's conversation rows are drawn by picks/chat/rail-chats.tsx, which layout.tsx mounts.
 const RAIL_CHATS = readFileSync(join(WEB, 'src', 'components', 'picks', 'chat', 'rail-chats.tsx'), 'utf8');
 const ROW = readFileSync(join(WEB, 'src', 'lib', 'supabase.ts'), 'utf8');
-const MIGRATION = readFileSync(join(REPO, 'infra', 'supabase', 'migrations', '0007_project_pinning.sql'), 'utf8');
+const MIGRATION = readFileSync(join(REPO, 'platforms', 'supabase', 'migrations', '0007_project_pinning.sql'), 'utf8');
 /** Statements only — a negative assertion must never run against the prose that explains it. */
 const SQL = MIGRATION.replace(/^\s*--.*$/gm, '');
 

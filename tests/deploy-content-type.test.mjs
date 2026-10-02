@@ -25,7 +25,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = readFileSync(join(ROOT, 'infra', 'deploy-static.mjs'), 'utf8');
+const SRC = readFileSync(join(ROOT, 'platforms', 'cloudflare', 'deploy', 'deploy-static.mjs'), 'utf8');
 
 /**
  * The real `contentTypeOf`, lifted out of the script by name and evaluated.

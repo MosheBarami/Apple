@@ -42,7 +42,7 @@ if (files.length === 0) {
 //   under node/bash. A workflow also names actions, images and shell builtins, and a checker that
 //   tried to resolve those would spend its life reporting things that are not defects — which is
 //   how a checker stops being read. ]]
-const REF = /(?:^|[\s'"])((?:scripts|infra)\/[A-Za-z0-9_.\-/]+\.(?:mjs|js|sh|py))/g;
+const REF = /(?:^|[\s'"])((?:scripts|infra|platforms)\/[A-Za-z0-9_.\-/]+\.(?:mjs|js|sh|py))/g;
 
 //[[ TRACKED, not merely PRESENT — and the difference is the whole point of this checker.
 //

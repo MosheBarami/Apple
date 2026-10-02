@@ -39,7 +39,7 @@ export interface ProjectRow {
    * Null unless the user pinned this project to the top of both lists.
    *
    * A timestamp rather than a flag so several pins sort among themselves by when they were pinned
-   * — see infra/supabase/migrations/0007_project_pinning.sql.
+   * — see platforms/supabase/migrations/0007_project_pinning.sql.
    */
   pinned_at?: string | null;
   /**

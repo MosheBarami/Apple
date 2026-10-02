@@ -146,7 +146,7 @@ Each of these pairs looks like one thing and is two:
 | `getComputedStyle().color` | the **pixels** |
 | the test file's assertions | whether they can **fail** |
 
-`infra/deploy-static.mjs` and `infra/deploy-worker.mjs` now both end by fetching what they deployed
+`platforms/cloudflare/deploy/deploy-static.mjs` and `platforms/cloudflare/deploy/deploy-worker.mjs` now both end by fetching what they deployed
 and comparing it to what they sent. Do the same for anything you ship.
 
 **And look at the rendered page.** Three defects this week were invisible to every checker and

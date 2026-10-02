@@ -34,7 +34,7 @@ import { strayCanvases } from './owner-picks';
  *   - the proposition is one h1, and the whole offer is in the first frame at every size
  *   - no horizontal scroll at any supported size; every header control reachable on a phone
  *   - every nav destination resolves, and no link anywhere on the site is dead (/showcase is
- *     published by infra/deploy-showcase.mjs, not by Astro, so it is resolved against its
+ *     published by platforms/cloudflare/deploy/deploy-showcase.mjs, not by Astro, so it is resolved against its
  *     publisher rather than fetched from this preview — see WORKER_SERVED)
  *   - no 3D, and a canvas only where an owner pick draws one; no model maker the product does not
  *     offer, and never what Apple's own models run on; Credits capitalised (these two, and the
@@ -55,7 +55,7 @@ import { strayCanvases } from './owner-picks';
  */
 
 /** Routes this site links to that Astro does not build, and what publishes each. */
-const WORKER_SERVED = new Map([['/showcase', 'infra/deploy-showcase.mjs']]);
+const WORKER_SERVED = new Map([['/showcase', 'platforms/cloudflare/deploy/deploy-showcase.mjs']]);
 const ROOT = join(__dirname, '..', '..');
 
 test('renders the proposition', async ({ page }) => {

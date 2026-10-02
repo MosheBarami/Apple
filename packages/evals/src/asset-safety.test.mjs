@@ -1684,8 +1684,8 @@ test('run_code through the admin route carries the SAME filter as run_luau', asy
 });
 
 test('the harnesses still work: every op infra/ and packages/evals actually send is forwarded', async () => {
-  // ping/get_tree/list_scripts/viewport_info/create_instances/run_code from infra/store-validation.mjs
-  // and infra/smoke.mjs; render_view and run_code from packages/evals/src/visual-bench.mjs. If this
+  // ping/get_tree/list_scripts/viewport_info/create_instances/run_code from platforms/cloudflare/verify/store-validation.mjs
+  // and platforms/cloudflare/verify/smoke.mjs; render_view and run_code from packages/evals/src/visual-bench.mjs. If this
   // list has to shrink, a harness broke; if it has to grow, someone widened the route on purpose.
   const ops = [
     { op: 'ping' },

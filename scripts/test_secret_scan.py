@@ -224,14 +224,14 @@ class FixtureDeclarations(ScannerHarness):
         """The two registers must not overlap, and the first --with-history run proved they
         would. known-exposures.json holds a real account password that lived in five infra
         scripts. Sweeping history would have re-filed it as "fabricated" behind a hash."""
-        self.commit("infra/loadtest.mjs", f"const K = '{ANTHROPIC}';\n")
+        self.commit("platforms/cloudflare/verify/loadtest.mjs", f"const K = '{ANTHROPIC}';\n")
         blob = subprocess.run(
-            ["git", "rev-parse", "HEAD:infra/loadtest.mjs"],
+            ["git", "rev-parse", "HEAD:platforms/cloudflare/verify/loadtest.mjs"],
             cwd=self.root, capture_output=True, text=True, check=True).stdout.strip()
-        self.commit("infra/loadtest.mjs", "const K = process.env.K;\n", "remove")
+        self.commit("platforms/cloudflare/verify/loadtest.mjs", "const K = process.env.K;\n", "remove")
         (self.root / "scripts" / "known-exposures.json").write_text(json.dumps({
             "note": "test",
-            "accepted": [{"blob": blob, "pattern": "Anthropic key", "path": "infra/loadtest.mjs"}],
+            "accepted": [{"blob": blob, "pattern": "Anthropic key", "path": "platforms/cloudflare/verify/loadtest.mjs"}],
         }))
 
         r = self.scan("--record-fixtures", "--with-history")
@@ -245,15 +245,15 @@ class FixtureDeclarations(ScannerHarness):
         """Hand-written, inherited, or carried forward by --record-fixtures — however the line
         got there, a value on the exposure register cannot also be declared fabricated. The
         record-time guard alone could not fix a register that already held the bad line."""
-        self.commit("infra/loadtest.mjs", f"const K = '{ANTHROPIC}';\n")
+        self.commit("platforms/cloudflare/verify/loadtest.mjs", f"const K = '{ANTHROPIC}';\n")
         blob = subprocess.run(
-            ["git", "rev-parse", "HEAD:infra/loadtest.mjs"],
+            ["git", "rev-parse", "HEAD:platforms/cloudflare/verify/loadtest.mjs"],
             cwd=self.root, capture_output=True, text=True, check=True).stdout.strip()
         (self.root / "scripts" / "known-exposures.json").write_text(json.dumps({
             "note": "test",
-            "accepted": [{"blob": blob, "pattern": "Anthropic key", "path": "infra/loadtest.mjs"}],
+            "accepted": [{"blob": blob, "pattern": "Anthropic key", "path": "platforms/cloudflare/verify/loadtest.mjs"}],
         }))
-        self.declare([("infra/loadtest.mjs", "Anthropic key", ANTHROPIC)])
+        self.declare([("platforms/cloudflare/verify/loadtest.mjs", "Anthropic key", ANTHROPIC)])
 
         r = self.scan()
         self.assertEqual(r.returncode, 1, r.stdout)

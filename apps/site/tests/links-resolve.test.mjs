@@ -61,7 +61,7 @@ function fileFor(route, all) {
  * RE-AIMED 2026-09-21, and the history matters because the alternative was to weaken this file.
  * `/showcase` is a real, reachable page — sixteen Roblox screens and six playable maps the
  * deployed model built from the product's own library — but it is an object in the Worker's D1
- * static store, uploaded by `infra/deploy-showcase.mjs`, not a file under `apps/site/src/pages`.
+ * static store, uploaded by `platforms/cloudflare/deploy/deploy-showcase.mjs`, not a file under `apps/site/src/pages`.
  * So `fileFor` cannot see it, and the nav link to it would read as broken to the check below.
  *
  * The property this file defends is "every internal link goes somewhere a reader can reach", NOT
@@ -74,7 +74,7 @@ function fileFor(route, all) {
  * repository` below reads that file and fails if it does not actually ship the route. Adding
  * `/anything` here without a publisher does not buy silence.
  */
-const WORKER_SERVED = new Map([['/showcase', 'infra/deploy-showcase.mjs']]);
+const WORKER_SERVED = new Map([['/showcase', 'platforms/cloudflare/deploy/deploy-showcase.mjs']]);
 
 const built = existsSync(DIST) ? pages() : [];
 const html = new Map(built.map((f) => [f, readFileSync(join(DIST, f), 'utf8')]));

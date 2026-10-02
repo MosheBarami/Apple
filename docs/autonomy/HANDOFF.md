@@ -53,7 +53,7 @@ Why: D-STORE-1
 ## Validation
 
 Command: node --test tests/autonomy-harness.test.mjs — Exit: 0 — 17/17 — Evidence: evidence/20260922T184444Z-harness-setup/
-Command: node infra/supabase/tests/rls-isolation.mjs — Exit: 0 — 43/43 — Evidence: same dir
+Command: node platforms/supabase/tests/rls-isolation.mjs — Exit: 0 — 43/43 — Evidence: same dir
 
 ## Deployments
 

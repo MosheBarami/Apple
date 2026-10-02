@@ -272,7 +272,7 @@ export const SCENARIOS = [
     async guardSkipReason() {
       const migrations = execFileSync(
         'bash',
-        ['-c', `grep -rli "create table.*organizations" ${JSON.stringify(join(REPO, 'infra', 'supabase', 'migrations'))} || true`],
+        ['-c', `grep -rli "create table.*organizations" ${JSON.stringify(join(REPO, 'platforms', 'supabase', 'migrations'))} || true`],
         { encoding: 'utf8' },
       ).trim();
       must(
@@ -850,7 +850,7 @@ export const SCENARIOS = [
       const index = source('apps', 'worker', 'src', 'index.ts');
       must(/scheduled\s*:/.test(index), 'the worker exports no scheduled handler for the cron to call');
 
-      const rollback = source('infra', 'rollback-static.mjs');
+      const rollback = source('platforms', 'cloudflare', 'deploy', 'rollback-static.mjs');
       must(
         /readback|read back|verify|compare/i.test(rollback),
         'the static rollback no longer reads back what it wrote — a rollback that does not verify is a claim, not a recovery',

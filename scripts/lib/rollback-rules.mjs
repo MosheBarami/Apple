@@ -2,7 +2,7 @@
  * The undo's rules, as functions of their inputs.
  *
  * WHY THIS FILE EXISTS AT ALL — docs/FAILURES.md F-62. The documented rollback for a bad static
- * deploy was `node infra/deploy-static.mjs --only file <local> <remote>`. That form matched no
+ * deploy was `node platforms/cloudflare/deploy/deploy-static.mjs --only file <local> <remote>`. That form matched no
  * branch, uploaded nothing, and printed `done`. It is the sharpest instance of the house pattern
  * in the repository for three compounding reasons: it is in the UNDO, the thing you reach for
  * when something has already gone wrong; it reported SUCCESS, so the operator stops looking; and
@@ -24,7 +24,7 @@
  *   - Uploading is not restoring. Every restored path is re-read from the origin and compared to
  *     the captured bytes, and an unverified upload is counted as unverified rather than as done.
  *
- * Nothing here fetches, spawns, reads a file or prints; `infra/rollback-static.mjs` does all of
+ * Nothing here fetches, spawns, reads a file or prints; `platforms/cloudflare/deploy/rollback-static.mjs` does all of
  * that and asks these functions for the verdict. tests/rollback-rules.test.mjs hands them the
  * broken inputs a healthy tree never produces.
  */

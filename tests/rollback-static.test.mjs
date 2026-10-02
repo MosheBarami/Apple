@@ -3,8 +3,8 @@
 // docs/FAILURES.md F-62 ends with the rule: "rehearse the undo before you need it, on the same
 // standard as watching a gate go red. An undo you have not watched work is not an undo." These
 // tests are that rehearsal, run on every suite: a real HTTP origin on 127.0.0.1, the real
-// `infra/rollback-static.mjs`, the real `infra/deploy-static.mjs` doing the uploading, and a
-// capture directory in the same shape `infra/capture-rollback.mjs` writes.
+// `platforms/cloudflare/deploy/rollback-static.mjs`, the real `platforms/cloudflare/deploy/deploy-static.mjs` doing the uploading, and a
+// capture directory in the same shape `platforms/cloudflare/deploy/capture-rollback.mjs` writes.
 //
 // THE CENTRAL CASE IS AN UPLOADER THAT ACCEPTS EVERYTHING AND STORES NOTHING. That is exactly
 // what the documented rollback command did — it returned success having transferred zero bytes —
@@ -112,7 +112,7 @@ function capture(files, over = {}) {
 //   of this file used execFileSync and produced no output at all for two minutes. ]]
 async function run(script, args, env = {}) {
   try {
-    const { stdout, stderr } = await execFile(process.execPath, [join(ROOT, 'infra', script), ...args], {
+    const { stdout, stderr } = await execFile(process.execPath, [join(ROOT, 'platforms', 'cloudflare', 'deploy', script), ...args], {
       cwd: ROOT, encoding: 'utf8',
       env: { ...process.env, GOLEM_ADMIN_KEY: 'test-admin-key', ...env },
     });

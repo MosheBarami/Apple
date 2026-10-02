@@ -904,7 +904,7 @@
      "id": "v2-b0ba1fa7",
      "name": "Database-level tenant isolation",
      "status": "partial",
-     "evidence": "infra/supabase/tests/rls-isolation.mjs"
+     "evidence": "platforms/supabase/tests/rls-isolation.mjs"
     },
     {
      "id": "v2-e2de6f82",
@@ -2559,7 +2559,7 @@
      "id": "v2-04dc0f54",
      "name": "Memory viewer",
      "status": "partial",
-     "evidence": "infra/supabase/migrations/0006_membership_lifecycle.sql"
+     "evidence": "platforms/supabase/migrations/0006_membership_lifecycle.sql"
     },
     {
      "id": "v2-241bb88f",
@@ -2791,7 +2791,7 @@
      "id": "v2-b2b94fb1",
      "name": "Paused run state",
      "status": "partial",
-     "evidence": "infra/supabase/migrations/0006_membership_lifecycle.sql"
+     "evidence": "platforms/supabase/migrations/0006_membership_lifecycle.sql"
     },
     {
      "id": "v2-c06ffb8d",
@@ -7190,7 +7190,7 @@
      "id": "v2-3af37b02",
      "name": "Cross-tenant isolation tests",
      "status": "partial",
-     "evidence": "infra/supabase/tests/rls-isolation.mjs"
+     "evidence": "platforms/supabase/tests/rls-isolation.mjs"
     },
     {
      "id": "v2-80d4f07a",
@@ -7273,7 +7273,7 @@
      "id": "v2-a2a2c8ee",
      "name": "Separate production environments",
      "status": "partial",
-     "evidence": "infra/e2e.mjs"
+     "evidence": "platforms/cloudflare/verify/e2e.mjs"
     },
     {
      "id": "v2-a2c513e7",

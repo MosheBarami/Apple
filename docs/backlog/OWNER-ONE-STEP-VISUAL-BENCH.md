@@ -17,7 +17,7 @@ GET /api/admin/session-info/bfad1c53-…
 The repo's own smoke run says the same thing in its own words and refuses to paper over it:
 
 ```
-node infra/smoke.mjs → exit 0, 17 checks ok, 0 failed
+node platforms/cloudflare/verify/smoke.mjs → exit 0, 17 checks ok, 0 failed
   STUDIO: not paired to this project — build, checkpoint, restore and playtest
   were NOT exercised. This is reported, not worked around.
 ```

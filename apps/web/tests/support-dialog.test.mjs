@@ -48,7 +48,7 @@ function bundle(abs, name) {
 const M = await bundle(join(WEB, 'src', 'components', 'support-model.ts'), 'model');
 const W = await bundle(join(ROOT, 'apps', 'worker', 'src', 'support.ts'), 'worker');
 
-const INIT_SQL = readFileSync(join(ROOT, 'infra', 'supabase', 'migrations', '0001_init.sql'), 'utf8');
+const INIT_SQL = readFileSync(join(ROOT, 'platforms', 'supabase', 'migrations', '0001_init.sql'), 'utf8');
 const DIALOG_TSX = readFileSync(join(WEB, 'src', 'components', 'support-dialog.tsx'), 'utf8');
 const LAYOUT_TSX = readFileSync(join(WEB, 'src', 'components', 'layout.tsx'), 'utf8');
 const API_TS = readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8');

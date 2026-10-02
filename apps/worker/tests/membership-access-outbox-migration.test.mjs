@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { GRANTABLE_ROLES, MEMBERSHIP_ACCESS_CHANGES } from '../src/collab.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const SQL = readFileSync(join(ROOT, 'infra', 'supabase', 'migrations', '0009_membership_access_outbox.sql'), 'utf8');
+const SQL = readFileSync(join(ROOT, 'platforms', 'supabase', 'migrations', '0009_membership_access_outbox.sql'), 'utf8');
 const CODE = SQL.split('\n').filter((line) => !line.trim().startsWith('--')).join('\n');
 
 function quoted(list) {

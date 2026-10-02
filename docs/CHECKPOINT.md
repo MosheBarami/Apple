@@ -80,7 +80,7 @@ version unchanged across every deploy this project has made. Health now reports 
 |---|---|---|---|
 | **OH-9** | Raise `BILLABLE_NEURONS_PER_DAY`, or accept ~329 builds/month service-wide | `node scripts/check-offer.mjs` | **OPEN — the only one that costs money.** The ceiling supports roughly one paying Builder customer; ten needs 8.4× today's figure. Not raised by us: it is your bill, and with AI Gateway on Standard billing BudgetDO is the only guard there is. |
 | **OH-5** | Decide how long a generated image is retained | read `IMAGE_TTL_SECONDS` | OPEN — 3,600s today. Serving route and client both exist now. |
-| **OH-3** | Stripe **live** keys | `infra/smoke.mjs --no-model` | OPEN — everything on the paid path ships and is probed in test mode. |
+| **OH-3** | Stripe **live** keys | `platforms/cloudflare/verify/smoke.mjs --no-model` | OPEN — everything on the paid path ships and is probed in test mode. |
 | **OH-4** | Enable Creator Store distribution for the plugin | toolbox endpoint returns 200 with a listed control | OPEN — blocks S5's "installable by a stranger" clause only. |
 | OH-1 | Free plan could not finish one build | — | CLOSED — 231 Credits/day, 3 builds. |
 | OH-2 | Team and Enterprise promised more than the service could serve | — | CLOSED — every row under the 833 ceiling. |

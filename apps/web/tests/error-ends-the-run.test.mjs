@@ -1,7 +1,7 @@
 /**
  * A REFUSED RUN MUST STOP THE UI SAYING IT IS THINKING.
  *
- * Reproduced end to end against the deployed product on 2026-09-20 by infra/e2e.mjs. A free account
+ * Reproduced end to end against the deployed product on 2026-09-20 by platforms/cloudflare/verify/e2e.mjs. A free account
  * asking for Apple MAX gets `product_model_unavailable`. session.ts sends that through `refuseOne`,
  * which sends ONE message and returns — no msg_end, no run_state, no terminal event at all. The
  * harness waited 150 seconds for one and gave up:

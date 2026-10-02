@@ -51,7 +51,7 @@ execFileSync(
 );
 const S = await import(`file://${OUT}`);
 
-const INIT_SQL = readFileSync(join(ROOT, 'infra', 'supabase', 'migrations', '0001_init.sql'), 'utf8');
+const INIT_SQL = readFileSync(join(ROOT, 'platforms', 'supabase', 'migrations', '0001_init.sql'), 'utf8');
 
 /** The `kind in (...)` list on public.feedback, read out of the migration that creates it. */
 function kindsAllowedByTheColumn() {

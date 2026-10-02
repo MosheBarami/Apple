@@ -11,7 +11,7 @@ Every one of them looked like success from the inside. None of them threw. Most 
 
 ### 1. The report of an action that did not reach its target
 
-`infra/deploy-static.mjs` printed `done — 75 file(s)` on every run. It really did upload 75 files.
+`platforms/cloudflare/deploy/deploy-static.mjs` printed `done — 75 file(s)` on every run. It really did upload 75 files.
 `/pricing` had been serving the previous design — blue accents, 96px capitals, the word "Sparks"
 this product was renamed away from — **for a day**.
 
@@ -34,7 +34,7 @@ A health endpoint naming the wrong build is worse than one naming none: it is th
 anybody checks when production is behaving strangely, and a stale sha tells them the strangeness
 cannot be recent — the one conclusion that stops the search.
 
-**Fix:** `infra/deploy-worker.mjs` stamps it from git at deploy time and then asks `/api/health`
+**Fix:** `platforms/cloudflare/deploy/deploy-worker.mjs` stamps it from git at deploy time and then asks `/api/health`
 whether that is what it is serving.
 
 ### 3. The API that exists so your feature detect succeeds

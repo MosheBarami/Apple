@@ -3,7 +3,7 @@
 //
 // WHAT WAS HERE BEFORE. Five .sql files applied by hand in a dashboard, no record of which had
 // run, and GATES.md's own sentence about it: nothing compares the deployed schema against the
-// migrations. infra/supabase/tests/rls-isolation.mjs proves the POLICIES against a throwaway
+// migrations. platforms/supabase/tests/rls-isolation.mjs proves the POLICIES against a throwaway
 // Postgres and says explicitly that it cannot prove the deployed database matches them.
 //
 // The runner takes `exec(sql)` as a parameter, so the interesting states — a migration edited
@@ -30,7 +30,7 @@ import {
 
 const execFile = promisify(execFileCb);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const MIGRATIONS = join(ROOT, 'infra', 'supabase', 'migrations');
+const MIGRATIONS = join(ROOT, 'platforms', 'supabase', 'migrations');
 
 /**
  * A Postgres that records every statement and can be told to reject one.
@@ -340,7 +340,7 @@ test('a commented-out CREATE TABLE is not part of the schema', () => {
 
 async function migrate(args) {
   try {
-    const { stdout, stderr } = await execFile(process.execPath, [join(ROOT, 'infra', 'supabase', 'migrate.mjs'), ...args], { cwd: ROOT, encoding: 'utf8' });
+    const { stdout, stderr } = await execFile(process.execPath, [join(ROOT, 'platforms', 'supabase', 'migrate.mjs'), ...args], { cwd: ROOT, encoding: 'utf8' });
     return { exit: 0, out: `${stdout}${stderr}` };
   } catch (e) {
     return { exit: typeof e.code === 'number' ? e.code : 1, out: `${e.stdout ?? ''}${e.stderr ?? ''}` };

@@ -2461,7 +2461,7 @@ app.post('/api/studio/poll', async (c) => {
  *   - Deleting it would 404 every browser still running a cached bundle. A
  *     200 with an empty model list degrades to "there is nothing to pick",
  *     which is the correct end state anyway.
- *   - `infra/smoke.mjs` probes this path as a liveness check.
+ *   - `platforms/cloudflare/verify/smoke.mjs` probes this path as a liveness check.
  *   - The product genuinely needs ONE bit here that is not provider identity:
  *     whether this deployment can serve inference at all. That is `ready`.
  *
@@ -3614,7 +3614,7 @@ app.get('/api/admin/stats', async (c) => {
  * as a mistake. The id must be a user id before anything is touched.
  *
  * IT WILL NOT PRESENT A PARTIAL RECORD AS A WHOLE ONE. `public.profiles` has an own-row-only RLS
- * policy (infra/supabase/migrations/0001_init.sql) and this worker holds the ANON key, not a
+ * policy (platforms/supabase/migrations/0001_init.sql) and this worker holds the ANON key, not a
  * service key — so display name, admin flag and signup date genuinely cannot be read from here.
  * `profile: {known:false, why}` says that out loud rather than omitting the field, because a record
  * with the profile quietly missing reads as the whole account.
@@ -4596,7 +4596,7 @@ app.post('/api/admin/run-tool/:id', async (c) => {
  * place, and they are precisely the two an unvalidated bypass must not reach; both are still
  * available through /api/admin/run-tool, which goes through the gate.
  *
- * The list is what the harnesses in infra/ and packages/evals actually send, and no more, plus the two read-only
+ * The list is what the harnesses in platforms/cloudflare/verify/ and packages/evals actually send, and no more, plus the two read-only
  * ops the owner-library audit drives (capture_studio_viewport, preload_content): they look, they insert nothing.
  */
 const ADMIN_STUDIO_OPS = new Set<StudioOp['op']>([

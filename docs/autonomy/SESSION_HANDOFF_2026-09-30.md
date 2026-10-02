@@ -90,11 +90,11 @@ The first steps if the owner agrees: 1 and 4.
   kill $(lsof -ti tcp:63747 -sTCP:LISTEN); rm -f /private/tmp/apple-owner-gateway-ready.json; cd ~/Developer/RbxAI && nohup python3 packages/owner-corpus/gateway.py --cache "$HOME/Library/Application Support/Apple/owner-gateway-cache" --port 63747 --ready-file /private/tmp/apple-owner-gateway-ready.json > /tmp/gateway.log 2>&1 &
   ```
 - **Deploy the worker** from a scratch worktree of `main`:
-  1. `ln -sf ~/Developer/RbxAI/.env .env && node infra/deploy-worker.mjs apple`
+  1. `ln -sf ~/Developer/RbxAI/.env .env && node platforms/cloudflare/deploy/deploy-worker.mjs apple`
   2. then `unlink .env`, as a separate command.
 
   Never read or print `.env`.
-- **Deploy the web app:** `cd apps/web && npm run build`, then `node infra/deploy-static.mjs --only web` from the repo root.
+- **Deploy the web app:** `cd apps/web && npm run build`, then `node platforms/cloudflare/deploy/deploy-static.mjs --only web` from the repo root.
 - **Owner dashboard:** `node scripts/owner-dashboard/server.mjs 4777` (http://127.0.0.1:4777/#/library).
 
 ## 5. Safety and consent (unchanged)

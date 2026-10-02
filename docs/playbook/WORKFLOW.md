@@ -80,8 +80,8 @@ A peer's red test is not yours — check `git diff --name-only`, and say whose i
 ## Deploying
 
 ```bash
-node infra/deploy-static.mjs            # site + web; fetches each page back and compares sha256
-node infra/deploy-worker.mjs apple      # stamps BUILD_SHA from git, then asks /api/health
+node platforms/cloudflare/deploy/deploy-static.mjs            # site + web; fetches each page back and compares sha256
+node platforms/cloudflare/deploy/deploy-worker.mjs apple      # stamps BUILD_SHA from git, then asks /api/health
 ```
 
 Both end by checking what they deployed, because **uploading is not deploying**. Do not bypass them

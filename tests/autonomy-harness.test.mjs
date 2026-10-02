@@ -63,7 +63,7 @@ const ALLOWED_BASH = [
   'git log --oneline -5',
   'rm -rf /tmp/scratch-dir',
   'rm -rf ~/scratch-dir',
-  'node infra/deploy-worker.mjs apple',
+  'node platforms/cloudflare/deploy/deploy-worker.mjs apple',
   'curl -s https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=1',
   'grep -c GOLEM_ADMIN_KEY .env',
 ];

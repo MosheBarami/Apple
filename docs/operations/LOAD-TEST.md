@@ -1,7 +1,7 @@
 # Golem concurrency & isolation test — 2026-08-30
 
 Run against **production** (`https://golem.moshe-barami111.workers.dev`) with 30 real Supabase
-accounts. Reproduce: `node infra/loadtest.mjs 30 12`.
+accounts. Reproduce: `node platforms/cloudflare/verify/loadtest.mjs 30 12`.
 
 | phase | n | p50 | p95 | result |
 |---|---|---|---|---|

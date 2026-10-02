@@ -298,7 +298,7 @@ children per parent 400), and the worker answered all four with *"this project i
 checkpoint"*. A place of THIRTEEN objects with a deep folder chain got that sentence with its own
 *"(it reached 13 objects)"* printed beside it. Fixed in `03457b3`; guarded end to end, real plugin
 through real admission, in `apps/worker/tests/checkpoint-evidence-live-plugin.test.mjs`; and
-asserted against the deployed worker in `infra/e2e.mjs` steps 6b–6d (`8963208`).
+asserted against the deployed worker in `platforms/cloudflare/verify/e2e.mjs` steps 6b–6d (`8963208`).
 
 ---
 
@@ -345,7 +345,7 @@ refusal path.
 
 ### Measured
 
-`infra/e2e.mjs` waited the full 150 seconds on a `product_model_unavailable` and then reported
+`platforms/cloudflare/verify/e2e.mjs` waited the full 150 seconds on a `product_model_unavailable` and then reported
 `chat timeout after 150s`. That harness has since been fixed to reject at once and name the refusal
 (commit `ffc25b3`, guarded by `tests/e2e-refusal-diagnosis.test.mjs`) — **which is the harness half,
 not this one.** Its new rejection message, `refused with no terminal event: <code>`, is the standing
@@ -357,7 +357,7 @@ now clears `running` on any `error` frame, and its own comment says so explicitl
 should also emit a terminal event after refusing … a client that stays busy because a server forgot
 one message is a defect on its own, and this is the half that does not need the other half to be
 right."* What remains open is every consumer that is not that one browser build — the e2e harness,
-`infra/real-chat.mjs`, the Discord path, automations, and any future client — all of which are
+`platforms/cloudflare/verify/real-chat.mjs`, the Discord path, automations, and any future client — all of which are
 entitled to believe a run that started has not ended until the wire says so.
 
 ### The patch
@@ -389,7 +389,7 @@ site has to `await` it. That is the whole of the change:
     // running, which IS the terminal answer, and returns the live run for a `busy` refusal — which
     // also happens to tell the refused person what is actually running, which today nothing does.
     //
-    // MEASURED 2026-09-20: infra/e2e.mjs sat 150s on `product_model_unavailable` and then blamed a
+    // MEASURED 2026-09-20: platforms/cloudflare/verify/e2e.mjs sat 150s on `product_model_unavailable` and then blamed a
     // timeout. See docs/backlog/HANDOFF-SESSION-AGENT-LOOP.md section C.
     if (msg.type === 'error' && msg.code !== 'role_changed') {
       frames.push({ type: 'run_state', run: await this.runSnapshot() } satisfies ServerMsg);
@@ -453,7 +453,7 @@ written — `git status --porcelain` checked — so it was measured and not touc
 
 ### Measured against production
 
-`infra/e2e.mjs` against `https://apple.moshe-barami111.workers.dev`, free account, simulated Studio,
+`platforms/cloudflare/verify/e2e.mjs` against `https://apple.moshe-barami111.workers.dev`, free account, simulated Studio,
 2026-09-20T23:20:14Z. Full transcript in `docs/evidence/2026-09-21-live-agent-probe.md`.
 
 The request was *"Create a glowing neon blue anchored part named BeaconTower … **Then confirm what
@@ -511,7 +511,7 @@ Two reasons, and neither is uncertainty about the defect.
 
 The floor is not a matter of taste; it is measurable the same way the token floor was. Drive the
 free lane at 3, 4, 5, 6 steps against the same one-part build prompt and record how many finish with
-a confirmation rather than the step-limit sentence — `infra/e2e.mjs` step 6 now runs the free lane
+a confirmation rather than the step-limit sentence — `platforms/cloudflare/verify/e2e.mjs` step 6 now runs the free lane
 end to end and is the harness for it. Pick the first number that completes the product's simplest
 advertised action, and write the table into the comment beside it, as `session.ts:378` did for
 tokens.

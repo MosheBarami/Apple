@@ -138,7 +138,7 @@ export function errorLineOf(detail) {
  * empty box. An empty box is a failure to observe rendering as an observation.
  *
  * LINKED ONLY WHEN THE FILE IS ON DISK, the same rule `hasPng` keeps, and for the same reason:
- * `infra/deploy-showcase.mjs` ships exactly what the built page references, so a card may not
+ * `platforms/cloudflare/deploy/deploy-showcase.mjs` ships exactly what the built page references, so a card may not
  * reference something no upload will follow.
  */
 function sourceBlock(r, dir, prefix) {

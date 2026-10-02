@@ -161,7 +161,7 @@ export const BUILT_SCREEN = {
    * WHERE THE REST OF IT IS, and the two counts the door prints.
    *
    * `/showcase` is not an Astro route: it is an object in the worker's D1 static store, published
-   * by `infra/deploy-showcase.mjs`. `scripts/check-site-links.mjs` is told about that by name, the
+   * by `platforms/cloudflare/deploy/deploy-showcase.mjs`. `scripts/check-site-links.mjs` is told about that by name, the
    * same way it is told about `/app`. It was live for a day with nothing at all linking to it,
    * which is the failure this whole band is the second half of.
    *

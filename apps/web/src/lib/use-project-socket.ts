@@ -971,7 +971,7 @@ export function useProjectSocket(
         //   owner's own report of the product: "the agent always in the thinking fails at
         //   something".
         //
-        //   Reproduced end to end on 2026-09-20 by infra/e2e.mjs against the deployed product. A
+        //   Reproduced end to end on 2026-09-20 by platforms/cloudflare/verify/e2e.mjs against the deployed product. A
         //   free account asking for Apple MAX gets `product_model_unavailable`, which session.ts
         //   sends through `refuseOne` — one message, then return. No msg_end, no run_state, no
         //   terminal event of any kind. The harness waited 150 seconds and gave up; a person waits

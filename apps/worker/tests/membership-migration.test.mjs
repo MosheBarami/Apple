@@ -24,8 +24,8 @@ import { GRANTABLE_ROLES, classifyGrant } from '../src/collab.ts';
 import { MEMBERSHIP_EVENT_KINDS, EVENT_REASON_MAX } from '../src/membership.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const SQL = readFileSync(join(ROOT, 'infra', 'supabase', 'migrations', '0006_membership_lifecycle.sql'), 'utf8');
-const SQL_0005 = readFileSync(join(ROOT, 'infra', 'supabase', 'migrations', '0005_collaboration.sql'), 'utf8');
+const SQL = readFileSync(join(ROOT, 'platforms', 'supabase', 'migrations', '0006_membership_lifecycle.sql'), 'utf8');
+const SQL_0005 = readFileSync(join(ROOT, 'platforms', 'supabase', 'migrations', '0005_collaboration.sql'), 'utf8');
 
 /** The migration with comments stripped, so a claim can never be satisfied by prose about it. */
 const CODE = SQL.split('\n')

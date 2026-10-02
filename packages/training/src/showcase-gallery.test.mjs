@@ -278,7 +278,7 @@ test('with one genre there is no band at all, rather than an empty heading', () 
  *
  * FOUR PROPERTIES HELD HERE:
  *   1. A row whose script is on disk is linked; a row whose script is NOT is not — the same rule
- *      `hasPng` keeps, so that `infra/deploy-showcase.mjs` ships exactly what the page references.
+ *      `hasPng` keeps, so that `platforms/cloudflare/deploy/deploy-showcase.mjs` ships exactly what the page references.
  *   2. The marked line is read out of the row's own diagnostic, not typed.
  *   3. The page claims "the code is here" only when a card is actually carrying some.
  *   4. The link is a real `<a href>` outside the script, so no-JavaScript still reaches the file.

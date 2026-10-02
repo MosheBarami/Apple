@@ -277,20 +277,6 @@
       }
     ]
   },
-  "infra/supabase": {
-    "he": "מסד הנתונים ב-Supabase (Postgres): קבצי שינוי מבנה (migrations) ממוספרים, הסקריפט שמריץ אותם, ובדיקות שמוודאות שהמבנה מוקשח.",
-    "en": "The Supabase (Postgres) database: numbered schema migrations, the runner that applies them, and schema-hardening tests.",
-    "docs": [
-      {
-        "label": "Supabase database migrations",
-        "url": "https://supabase.com/docs/guides/deployment/database-migrations"
-      },
-      {
-        "label": "Supabase database",
-        "url": "https://supabase.com/docs/guides/database/overview"
-      }
-    ]
-  },
   "packages": {
     "he": "ספריות משותפות: אוסף נכסים גרפיים, מאגר הידע של הסוכן, כללי עיצוב, מדידות, ערכת פיתוח ללקוחות, טיפוסים משותפים ואימון המודל.",
     "en": "Shared libraries: asset library, the agent's knowledge corpus, design rules, evals, the customer SDK, shared types and model training.",
@@ -359,6 +345,35 @@
       }
     ]
   },
+  "platforms": {
+    "he": "כל מה שקשור לשירותים חיצוניים, תיקייה לכל שירות: Cloudflare, Supabase, Sentry, Stripe, Discord, Roblox ו-GitHub. סקריפטי פריסה ובדיקה, שינויי מסד נתונים והסבר קצר איך כל שירות מחובר.",
+    "en": "Everything about external services, one folder per service: Cloudflare, Supabase, Sentry, Stripe, Discord, Roblox and GitHub. Deploy and verify scripts, database migrations, and a short note on how each is wired.",
+    "docs": []
+  },
+  "platforms/cloudflare": {
+    "he": "השרת והאחסון ב-Cloudflare: סקריפטי הפריסה והחזרה לאחור (deploy), ובדיקות מול השרת החי (verify).",
+    "en": "The worker and its storage on Cloudflare: deploy and rollback scripts (deploy) and checks against the live worker (verify).",
+    "docs": [
+      {
+        "label": "Wrangler",
+        "url": "https://developers.cloudflare.com/workers/wrangler/"
+      }
+    ]
+  },
+  "platforms/supabase": {
+    "he": "מסד הנתונים ב-Supabase (Postgres): קבצי שינוי מבנה (migrations) ממוספרים, הסקריפט שמריץ אותם, ובדיקות שמוודאות שהמבנה מוקשח.",
+    "en": "The Supabase (Postgres) database: numbered schema migrations, the runner that applies them, and schema-hardening tests.",
+    "docs": [
+      {
+        "label": "Supabase database migrations",
+        "url": "https://supabase.com/docs/guides/deployment/database-migrations"
+      },
+      {
+        "label": "Supabase database",
+        "url": "https://supabase.com/docs/guides/database/overview"
+      }
+    ]
+  },
   "scripts": {
     "he": "סקריפטים של המאגר: בדיקות ושומרים שרצים לפני שינוי, שערי איכות, איסוף ידע מ-GitHub ומ-Hugging Face, שחרור גרסה, מפקח הסוכן האוטונומי ולוח הבקרה הזה.",
     "en": "Repository scripts: checks and guards, quality gates, harvesting from GitHub and Hugging Face, release, the autonomy supervisor and this dashboard.",
@@ -386,7 +401,7 @@
   },
   "supabase": {
     "he": "קבצים זמניים של כלי שורת הפקודה של Supabase (לאיזה פרויקט הוא מחובר ואיזו גרסה). קבצי מבנה מסד הנתונים עצמם נמצאים ב-infra/supabase.",
-    "en": "Supabase CLI scratch state (linked project, CLI version). The actual database migrations live in infra/supabase.",
+    "en": "Supabase CLI scratch state (linked project, CLI version). The actual database migrations live in platforms/supabase.",
     "docs": [
       {
         "label": "Supabase CLI",

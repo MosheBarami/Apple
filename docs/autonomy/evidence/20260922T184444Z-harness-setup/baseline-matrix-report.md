@@ -27,7 +27,7 @@ So every number below describes one tree.
 - **Nothing writes into the repo.**
   - The plugin, apple-plugin and crystal-canyon test and mutation scripts write only under `mkdtempSync(tmpdir())`, for example `apps/plugin/tests/mutation-check.mjs:436` and `apps/plugin/tests/run.mjs:845`.
   - `gate-check --lint` exits at `scripts/gate-check.mjs:726`, before any `writeFileSync`. Its header (line 29) says "parse only, execute nothing".
-- I did not run `infra/supabase/tests/rls-isolation.mjs`, any e2e/Playwright suite, any deploy, or any install.
+- I did not run `platforms/supabase/tests/rls-isolation.mjs`, any e2e/Playwright suite, any deploy, or any install.
 
 ### How the gate is built (read from `scripts/gate-suite.mjs`)
 - **Parts, in order** (lines 116-214):

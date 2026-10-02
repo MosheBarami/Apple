@@ -29,7 +29,7 @@ export const AREAS = [
   ['corpus', /^packages\/corpus\//],
   ['library', /^packages\/asset-library\//],
   ['packages', /^packages\//],
-  ['infra', /^(infra|\.github)\//],
+  ['infra', /^(infra|platforms|\.github)\//],
   ['graph', /^graphify-out\//],
   ['agents', /^(\.claude|\.planning|handoff)\//],
   ['docs', /^(docs\/|[^/]+\.md$)/],

@@ -50,7 +50,7 @@ querying live Cloudflare documentation. Everything else is carried from the audi
 | Tenancy decided by Postgres RLS — caller's own JWT reaches PostgREST | `apps/worker/src/supa.ts:10-16, 36-44` |
 | Forged JWT rejected by signature, not claims | `packages/evals/src/security.test.mjs:159-166, :900` — suite runs 54/54 pass |
 | DO addressed by canonical DB row id, not URL param (no casing fan-out) | `index.ts:139-147`; `security.test.mjs:877` |
-| DB triggers force server-generated ids + block self-escalation of `plan`/`is_admin` | `infra/supabase/migrations/0003_security_hardening.sql:3-12`; `0001_init.sql:120-130` |
+| DB triggers force server-generated ids + block self-escalation of `plan`/`is_admin` | `platforms/supabase/migrations/0003_security_hardening.sql:3-12`; `0001_init.sql:120-130` |
 | Admin key compared constant-time, fails closed when unset | `index.ts:86-92, 117-119`; `security.test.mjs:955` |
 | Pairing: single-use 10-min code, token `<uuid>.<48hex>`, only SHA-256 stored, timing-safe compare | `do/pairing.ts:33-39`; `index.ts:340-347`; `session.ts:388` |
 | Unauth plugin poll validates token SHAPE before any storage touch (cannot materialise arbitrary DOs) | `index.ts:364-371`; `security.test.mjs:1487` |
@@ -180,7 +180,7 @@ first-impression bug in the product.
 **D4. `search_asset_library` can never return a hit, and its honest error branch is unreachable dead code.**
 Missing link: `asset-library.ts:458` `ensureAssetTables` and `:562` `upsertAssets` have zero callers repo-wide
 (asserted by `apps/worker/tests/asset-library-availability.test.mjs:60-85`). No migration creates
-`asset_library` — `infra/supabase/migrations/*.sql` are Supabase-only and `/api/admin/corpus-init`
+`asset_library` — `platforms/supabase/migrations/*.sql` are Supabase-only and `/api/admin/corpus-init`
 (`index.ts:661-669`) creates only `chunks`/`chunks_fts`. All 20 `SEED_MANIFEST` rows carry
 `robloxAssetId: null`, so even after ingest none would be insertable (`asset-library.ts:775`). **Worse:**
 `asset-library.ts:729-732` wraps both retrievers in `.catch(() => [])`, so the `no such table` error never

@@ -34,7 +34,7 @@ export function testPrefixes(root = ROOT) {
       }
     }
   };
-  for (const d of ['apps', 'packages', 'scripts', 'infra']) { try { walk(join(root, d)); } catch { /* absent */ } }
+  for (const d of ['apps', 'packages', 'scripts', 'platforms']) { try { walk(join(root, d)); } catch { /* absent */ } }
   return out;
 }
 

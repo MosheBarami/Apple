@@ -3,8 +3,8 @@
 //
 // THE FAILURE THIS COMES FROM, measured 2026-09-20. `.env` held
 // `API_BASE=https://golem.moshe-barami111.workers.dev` — the pre-rename worker, still deployed and
-// still serving. Twenty-three tools read that variable, among them infra/e2e.mjs, infra/smoke.mjs,
-// infra/checkpoint-test.mjs, packages/evals/src/run.mjs and packages/training/src/eval-production.mjs.
+// still serving. Twenty-three tools read that variable, among them platforms/cloudflare/verify/e2e.mjs, platforms/cloudflare/verify/smoke.mjs,
+// platforms/cloudflare/verify/checkpoint-test.mjs, packages/evals/src/run.mjs and packages/training/src/eval-production.mjs.
 // Every one of them had been exercising the OLD deployment while reporting on "the product".
 //
 // It survives because it does not look like a failure. scripts/lib/product-origin.mjs already
@@ -30,7 +30,7 @@ const ENV = join(ROOT, '.env');
 /** Every tracked file that reads API_BASE, derived rather than listed, so the list cannot go stale. */
 function readers() {
   try {
-    const out = execFileSync('git', ['grep', '-l', 'API_BASE', '--', 'infra', 'packages', 'scripts', 'apps', 'tests'],
+    const out = execFileSync('git', ['grep', '-l', 'API_BASE', '--', 'platforms', 'packages', 'scripts', 'apps', 'tests'],
       { cwd: ROOT, encoding: 'utf8' });
     return out.split('\n').map((s) => s.trim()).filter(Boolean)
       // data files that merely contain the string are not readers of it

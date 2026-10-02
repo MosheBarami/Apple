@@ -10,7 +10,7 @@
 //   1. THE SPEC DRIVES THE QUERY. Every select names `spec.fields` — never `*` — so a column added
 //      by a migration cannot arrive in an export nobody decided about. The reverse (a column that
 //      should be here and is not) is caught by tests/export-inventory.test.mjs against the
-//      migrations, and by infra/supabase/tests/export-completeness.mjs against a real database.
+//      migrations, and by platforms/supabase/tests/export-completeness.mjs against a real database.
 //
 //   2. AN EMPTY ARRAY IS NOT AN EMPTY TABLE, and there are three doors to that same `[]`.
 //      `studio_pairings` has no select policy, so PostgREST answers a user's token with `[]`

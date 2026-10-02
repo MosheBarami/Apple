@@ -32,7 +32,7 @@ the schema is flat (`profiles` → `projects`) and there is no organizations tab
 organization to join. The equivalent capability the owner did build is per-project sharing, which
 scenario 15 checks.
 
-The skip carries a guard: `guardSkipReason()` greps `infra/supabase/migrations` for an
+The skip carries a guard: `guardSkipReason()` greps `platforms/supabase/migrations` for an
 organizations table and **fails the test** if one appears. The day the reason stops being true, the
 suite says so instead of carrying a stale excuse.
 

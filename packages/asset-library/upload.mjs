@@ -2,7 +2,7 @@
 // Puts the pack images into the worker's D1 static store at /asset-library/<pack>/<path>, where the
 // site gallery loads them and `upload_ui_asset` reads their bytes (D-UILIB-2).
 //
-// Separate from infra/deploy-static.mjs on purpose: that script re-sends every file on every web
+// Separate from platforms/cloudflare/deploy/deploy-static.mjs on purpose: that script re-sends every file on every web
 // deploy, and five thousand icons that never change do not belong in that loop. This one asks the
 // store what it already holds and sends only what is missing, so it is safe to re-run.
 //

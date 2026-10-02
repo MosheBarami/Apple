@@ -18,7 +18,7 @@ const tree = (() => {
       n('apps/site', 'אתר השיווק והתיעוד.', 'Marketing and docs site.', 18),
     ]),
     n('packages', 'ספריות משותפות.', 'Shared packages.', 0, [n('packages/sdk', 'ערכת פיתוח למפתחים חיצוניים.', 'SDK for external developers.', 14, [], { readme: '# @apple/sdk\n\nTiny client for the Apple API.' })]),
-    n('infra', 'תשתית: מסד הנתונים, בדיקות עומס ופריסה.', 'Infra: database, load tests, deploy.', 9, [n('infra/supabase', 'הגדרות מסד הנתונים והמיגרציות.', 'Database config and migrations.', 3, [n('infra/supabase/migrations', 'שינויי מבנה במסד הנתונים, לפי סדר.', 'Ordered schema migrations.', 22)])]),
+    n('platforms', 'תשתית: מסד הנתונים, בדיקות עומס ופריסה.', 'Platforms: database, load tests, deploy.', 9, [n('platforms/supabase', 'הגדרות מסד הנתונים והמיגרציות.', 'Database config and migrations.', 3, [n('platforms/supabase/migrations', 'שינויי מבנה במסד הנתונים, לפי סדר.', 'Ordered schema migrations.', 22)])]),
     n('docs', 'מסמכים: החלטות, מצב נוכחי ותוכניות.', 'Docs: decisions, state and plans.', 40, [n('docs/autonomy', 'ההוראות לסוכן האוטונומי.', 'Autonomous agent instructions.', 11)], { docs: [{ label: 'MISSION.md', url: 'https://github.com/example/rbxai/blob/main/docs/autonomy/MISSION.md' }] }),
     n('scripts', 'סקריפטים לבדיקות ולכלים.', 'Check and tooling scripts.', 72, [n('scripts/owner-dashboard', 'לוח הבקרה הזה.', 'This control center.', 6)]),
   ]);

@@ -448,6 +448,11 @@ function flush() {
   for (const [now, e] of files) {
     if (e.changed && e.text != null) { fs.writeFileSync(now, e.text); touched.edited.add(now); }
   }
+  // directories the moves and deletes emptied; rmdir only ever removes an EMPTY directory, so untracked content is safe
+  for (const p0 of [...touched.moved.map((m) => m.from), ...delPaths]) {
+    let d = p0;
+    while (d && d !== '.' && d !== '/') { try { fs.rmdirSync(d); } catch { break; } d = path.posix.dirname(d); }
+  }
   for (const s of touched.symlinks) {
     fs.rmSync(s.path, { force: true });
     fs.mkdirSync(path.dirname(s.path), { recursive: true });

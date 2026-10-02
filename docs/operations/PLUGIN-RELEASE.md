@@ -248,7 +248,7 @@ than the owner.
 4. Deploy, and check the bytes rather than the build:
 
 ```sh
-node infra/deploy-static.mjs     # site + app into the D1 static store
+node platforms/cloudflare/deploy/deploy-static.mjs     # site + app into the D1 static store
 cd apps/worker && pnpm exec wrangler deploy --var BUILD_SHA:$(git rev-parse --short HEAD)
 ```
 

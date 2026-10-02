@@ -192,7 +192,7 @@ composition.ts turns it red.
 secret. Test-mode keys are *not* this row — everything on the paid path ships and is probed in test
 mode, and only the live-key swap is yours.
 
-**Approve-by test.** `node infra/smoke.mjs --no-model` reports the billing route configured, and
+**Approve-by test.** `node platforms/cloudflare/verify/smoke.mjs --no-model` reports the billing route configured, and
 `GET /api/me` reflects an entitlement granted by a test-mode webhook.
 
 **Output that means done.** A checkout session URL returned by the deployed worker.

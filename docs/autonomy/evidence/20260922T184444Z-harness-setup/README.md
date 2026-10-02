@@ -11,8 +11,8 @@ measured. Nothing here is inferred unless it says so.
 | P0 | Guard/gate falsification | each of three mechanisms broken in turn → exactly its own test red → restored byte-identical → suite green | `harness-falsification.txt` |
 | P0 | Browser + Studio | owner's signed-in Chrome drove production; Studio Place1.rbxl paired to project 81b7c2f8… with edits allowed; two real Agent runs executed | see docs/autonomy/EXPERIMENTS.md E-1, E-2 |
 | P0 | Cloudflare | MCP read `workers_get_worker apple` | `apple  efccd9391e8d40318b5c476ca6717ce5` (read-only; no write test needed) |
-| P0 | Supabase | `node infra/supabase/tests/rls-isolation.mjs` (real postgres:16, 13 migrations, self-falsifying); live `pg_class.relrowsecurity` for every public table | 43/43 ok, falsification step saw the leak — `rls-isolation.txt`; RLS on for all 15 live tables |
-| P1 | Wrangler | repository scripts `infra/deploy-worker.mjs` / `infra/deploy-static.mjs` remain the only deploy path | used for every deploy from here on |
+| P0 | Supabase | `node platforms/supabase/tests/rls-isolation.mjs` (real postgres:16, 13 migrations, self-falsifying); live `pg_class.relrowsecurity` for every public table | 43/43 ok, falsification step saw the leak — `rls-isolation.txt`; RLS on for all 15 live tables |
+| P1 | Wrangler | repository scripts `platforms/cloudflare/deploy/deploy-worker.mjs` / `platforms/cloudflare/deploy/deploy-static.mjs` remain the only deploy path | used for every deploy from here on |
 | P1 | Sentry | `search_issues is:unresolved lastSeen:-7d` on org moshe-s6 (apple-web, apple-worker) | 9 unresolved; triaged in CUSTOMER_FINDINGS.md F-016 and the handoff |
 | P1 | Ralph | `ralph-loop@claude-plugins-official` installed at **project** scope (`.claude/settings.json` enabledPlugins); its installed Stop hook driven directly through 6 cases | 6/6 — `ralph-hook-verify.txt`. Silent when no loop is active (no per-turn notice) |
 | P2 | AI Elements provenance | in progress in the running implementation track | — |

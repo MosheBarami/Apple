@@ -18,9 +18,9 @@ place parsed with lune (`roblox.deserializePlace`) — not from the product's ow
 | 1fe40a80 | same, after batching + replay fix | done | 30 | 105 | one batched terrain call; set_mood collided with Atmosphere (F-035) |
 | c6251600 | too foggy → clear golden hour | done | 101 | ~262 | look right (Atmosphere Density 0, lamp/coins/hill visible); cost wrong (F-036) |
 
-Deploys in this window, each verified by `infra/deploy-worker.mjs` reading `/api/health` back:
+Deploys in this window, each verified by `platforms/cloudflare/deploy/deploy-worker.mjs` reading `/api/health` back:
 30d97330, 79704b0f, 863a30f9, 200134b0, 3f353ba2, 5a617e92, and the set_mood fix (buildSha a249574-dirty).
-Site: `infra/deploy-static.mjs --only site`, 79 files, "every page serves the bytes just uploaded"; production
+Site: `platforms/cloudflare/deploy/deploy-static.mjs --only site`, 79 files, "every page serves the bytes just uploaded"; production
 measured in Chrome: 0 canvas, --accent #5b7cfa, 0 elements in the old green, no horizontal scroll.
 
 Studio readback of the final place (lune, saved 00:06:36): Workspace = Camera, Baseplate, Terrain (10,068 bytes

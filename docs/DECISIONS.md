@@ -551,7 +551,7 @@ what it is today and what every test in the repository currently proves."*
 **WHAT THIS DECIDES.** There is no organization row, no workspace row, no seat. A person owns
 projects; a project is shared with named people through `project_members` (viewer / commenter /
 editor / admin / owner), isolated by RLS and proven by the 43 checks in
-`infra/supabase/tests/rls-isolation.mjs`. That is the whole tenancy model and it is now the intended
+`platforms/supabase/tests/rls-isolation.mjs`. That is the whole tenancy model and it is now the intended
 one rather than the interim one.
 
 **WHAT IT DOES NOT DECIDE.** Nothing is deleted. `memory_org_members` and `orgMembership()` keep

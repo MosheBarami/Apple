@@ -38,7 +38,7 @@ const SERVED_ELSEWHERE = {
  *
  *  `/app` has to be a prefix because it is a single-page app: the worker returns the same shell
  *  for any path beneath it. `/showcase` is the opposite — one object in the worker's D1 static
- *  store, uploaded by `infra/deploy-showcase.mjs`. Measured against the live origin on 2026-09-21:
+ *  store, uploaded by `platforms/cloudflare/deploy/deploy-showcase.mjs`. Measured against the live origin on 2026-09-21:
  *  `/showcase` and `/showcase/` are 200 and `/showcase/nope` is 404. So excusing it as a prefix
  *  would excuse twenty links that do not exist in order to excuse one that does, and the narrower
  *  rule is the true one.
@@ -52,7 +52,7 @@ const SERVED_ELSEWHERE = {
  *  Two checkers over one fact, and updating one of them is the same shape as the rename that
  *  missed `.github` and held CI red for five days. */
 const SERVED_ELSEWHERE_EXACT = {
-  '/showcase': 'the showcase page, an object in the worker D1 static store — see infra/deploy-showcase.mjs',
+  '/showcase': 'the showcase page, an object in the worker D1 static store — see platforms/cloudflare/deploy/deploy-showcase.mjs',
 };
 
 const servedElsewhere = (p) =>

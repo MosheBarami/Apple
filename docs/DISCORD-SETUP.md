@@ -6,7 +6,7 @@
 > `https://apple.moshe-barami111.workers.dev/api/discord/interactions` (Discord verified it);
 > `/link /unlink /build /status /credits` are registered. The server itself (Community, roles,
 > channels, forums, AutoMod, onboarding, webhooks, the permanent invite https://discord.gg/SjKr6dyG8X)
-> is built by `infra/discord-server.mjs` — idempotent, rerun it after editing its declaration.
+> is built by `platforms/discord/discord-server.mjs` — idempotent, rerun it after editing its declaration.
 > The steps below are kept for rebuilding from nothing.
 
 The code is already written and deployed. What is missing is a Discord application, which only

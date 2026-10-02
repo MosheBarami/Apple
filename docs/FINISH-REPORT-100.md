@@ -175,7 +175,7 @@ $ node -e "const m=require('./docs/evidence/ui-showcase/manifest.json');console.
 
 The caption also reads `20 September 2026`. This is the RED in §7.1 and it is visible to a reader right now.
 
-**Next:** update the two figures in `apps/site/src/data/showcase-proof.ts` (`galleryScreens.value` 16 → 21, and the day) from the manifest, rebuild, `node infra/deploy-static.mjs --only site`.
+**Next:** update the two figures in `apps/site/src/data/showcase-proof.ts` (`galleryScreens.value` 16 → 21, and the day) from the manifest, rebuild, `node platforms/cloudflare/deploy/deploy-static.mjs --only site`.
 
 ### 3.4 The landing's own header has no Showcase link, and its biggest button sends a new visitor to a sign-in form
 
@@ -250,7 +250,7 @@ ls .mcp.json → No such file or directory
 
 ### 3.11 Six commits are on no remote
 
-**Next:** `git push origin main`. The six are `4481fc6 33e1c09 8259339 c2d0182 c44d0db 118d577`. They are **deployed** — after normalising the upload-time `/showcase/` prefix that `infra/deploy-showcase.mjs` adds, the live page is byte-identical to HEAD's `docs/evidence/showcase.html` (`diff` exit 0) — so the live site currently cannot be rebuilt from anything on GitHub.
+**Next:** `git push origin main`. The six are `4481fc6 33e1c09 8259339 c2d0182 c44d0db 118d577`. They are **deployed** — after normalising the upload-time `/showcase/` prefix that `platforms/cloudflare/deploy/deploy-showcase.mjs` adds, the live page is byte-identical to HEAD's `docs/evidence/showcase.html` (`diff` exit 0) — so the live site currently cannot be rebuilt from anything on GitHub.
 
 ### 3.12 The live worker corresponds to no commit
 
@@ -467,7 +467,7 @@ The guard did its job. It is exactly the check that exists so a page cannot prin
 
 ### 7.3 `check-site-links` exit 0 walks `dist`, and `/showcase` is not in `dist`
 
-It reports `795 internal link(s) across 20 page(s), all resolve` and prints `served elsewhere: /app/*, /showcase`. The route is uploaded by `infra/deploy-showcase.mjs` outside the static build. The exception is now taught to the checker, which is correct — and it means a genuinely broken `/showcase` would still print all resolve. The only thing that can falsify that route is a request to the origin.
+It reports `795 internal link(s) across 20 page(s), all resolve` and prints `served elsewhere: /app/*, /showcase`. The route is uploaded by `platforms/cloudflare/deploy/deploy-showcase.mjs` outside the static build. The exception is now taught to the checker, which is correct — and it means a genuinely broken `/showcase` would still print all resolve. The only thing that can falsify that route is a request to the origin.
 
 ### 7.4 `check-pixels --deployed` exit 0 does not mean the pixels are right
 

@@ -976,6 +976,78 @@
       "expect": 1,
       "why": "the handoff was closed and removed",
       "rerunOk": true
+    },
+    {
+      "file": "apps/worker/src/index.ts",
+      "phase": "P3",
+      "find": "harnesses in infra/ and packages/evals",
+      "replace": "harnesses in platforms/cloudflare/verify/ and packages/evals",
+      "expect": 1,
+      "why": "infra/ moved to platforms/",
+      "rerunOk": true
+    },
+    {
+      "file": "AGENTS.md",
+      "phase": "P3",
+      "find": "infra/        deploy and operations\\. deploy-static\\.mjs and deploy-worker\\.mjs both verify\\n              what they deployed — do not bypass them with bare wrangler\\.",
+      "replace": "platforms/    one folder per external service (cloudflare, supabase, sentry, stripe, discord, roblox,\n              github): a README, the deploy and verify scripts, the migrations. Start at\n              platforms/README.md. deploy-static.mjs and deploy-worker.mjs (platforms/cloudflare/deploy/)\n              both verify what they deployed — do not bypass them with bare wrangler.",
+      "expect": 1,
+      "why": "infra/ became platforms/",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/owner-dashboard/cc/platforms/commits.mjs",
+      "phase": "P3",
+      "find": "\\['infra', /\\^\\(infra\\|\\\\\\.github\\)\\\\//\\]",
+      "replace": "['infra', /^(infra|platforms|\\.github)\\//]",
+      "expect": 1,
+      "why": "platforms/ is the new home of infra/",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/owner-dashboard/control/mock.js",
+      "phase": "P3",
+      "find": "n\\('infra', ('[^']*'), 'Infra: database, load tests, deploy\\.'",
+      "replace": "n('platforms', $1, 'Platforms: database, load tests, deploy.'",
+      "expect": 1,
+      "why": "mock tree follows the real one",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/check-api-base.mjs",
+      "phase": "P3",
+      "find": "'--', 'infra', 'packages'",
+      "replace": "'--', 'platforms', 'packages'",
+      "expect": 1,
+      "why": "infra/ moved to platforms/",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/clean-test-tmp.mjs",
+      "phase": "P3",
+      "find": "'scripts', 'infra'\\]",
+      "replace": "'scripts', 'platforms']",
+      "expect": 1,
+      "why": "infra/ moved to platforms/ (its tests make temp dirs too)",
+      "rerunOk": true
+    },
+    {
+      "file": "tests/rollback-static.test.mjs",
+      "phase": "P3",
+      "find": "join\\(ROOT, 'infra', script\\)",
+      "replace": "join(ROOT, 'platforms', 'cloudflare', 'deploy', script)",
+      "expect": 1,
+      "why": "rollback-static.mjs moved",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/check-ci-references.mjs",
+      "phase": "P3",
+      "find": "\\(\\?:scripts\\|infra\\)\\\\/",
+      "replace": "(?:scripts|infra|platforms)\\/",
+      "expect": 1,
+      "why": "platforms/ holds scripts CI may name",
+      "rerunOk": true
     }
   ],
   "jsonEdits": [
@@ -1058,6 +1130,15 @@
     }
   ],
   "allowedMentions": [
+    {
+      "file": "tests/reorg-repo.test.mjs"
+    },
+    {
+      "file": "scripts/check-ci-references.mjs"
+    },
+    {
+      "file": "scripts/owner-dashboard/cc/platforms/commits.mjs"
+    },
     {
       "file": ".gitignore"
     },

@@ -15,7 +15,7 @@
 // A migration file is not a migration. Committing one proves only that somebody wrote it down.
 //
 // WHAT THIS CHECKS, and what it deliberately does not. It is OFFLINE: it reads the SQL in
-// infra/supabase/migrations and the column names the client code asks for, and fails when the
+// platforms/supabase/migrations and the column names the client code asks for, and fails when the
 // second names something the first never creates. It cannot tell you whether a migration has been
 // APPLIED — that needs the live database — so it catches the half of this failure that is
 // reachable from a commit, and says plainly that it is only half.
@@ -24,7 +24,7 @@ import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const MIGRATIONS = join(ROOT, 'infra', 'supabase', 'migrations');
+const MIGRATIONS = join(ROOT, 'platforms', 'supabase', 'migrations');
 
 /* ------------------------------------------------------- what the migrations create --- */
 

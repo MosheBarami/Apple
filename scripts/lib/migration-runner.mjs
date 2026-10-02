@@ -8,8 +8,8 @@
  * a failure stops the run rather than skipping past it, a run that applied nothing cannot report
  * success — are EXECUTED rather than reasoned about.
  *
- * infra/supabase/migrate.mjs supplies the real `exec`: psql against DATABASE_URL, or docker exec
- * against the same throwaway image infra/supabase/tests/rls-isolation.mjs already uses, so the
+ * platforms/supabase/migrate.mjs supplies the real `exec`: psql against DATABASE_URL, or docker exec
+ * against the same throwaway image platforms/supabase/tests/rls-isolation.mjs already uses, so the
  * runner can be rehearsed on a disposable database before it is ever pointed at a real one.
  */
 import { createHash } from 'node:crypto';

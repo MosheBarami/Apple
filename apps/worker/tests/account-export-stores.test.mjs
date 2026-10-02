@@ -5,7 +5,7 @@
  * (0001_init.sql: "own messages read", "own checkpoints read", "own usage read") and no insert
  * policy, no writer in apps/worker/src, and no service-role credential anywhere in `Env` that could
  * get past the missing policy. The only inserts into them in this repository are fixtures under
- * infra/supabase/tests. The transcript is written to SESSION_DO and the credit ledger to QUOTA_DO.
+ * platforms/supabase/tests. The transcript is written to SESSION_DO and the credit ledger to QUOTA_DO.
  *
  * So a select on them answers `[]` to a person with thousands of messages, and the export printed
  * that as `{"status":"ok","rows":[],"count":0}` beside the word `messages` — which reads as "you

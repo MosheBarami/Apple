@@ -1,54 +1,56 @@
 # Apple
 
-**Describe it. Apple builds it.** — an AI SaaS that takes a Roblox game from idea to working
-experience, through one assistant that lives in a web workspace and inside Roblox Studio.
+Apple is an AI builder for Roblox Studio. You describe a game or a scene in a chat, and Apple builds it in
+Studio through a plugin. Behind it sits a Cloudflare Worker with a single model engine, a web app (the Studio
+chat) and a marketing and proof site.
 
-- **Live**: https://golem.moshe-barami111.workers.dev
-- App: `/app` · Docs: `/docs` · Status: `/status`
-- Studio plugin: installed from the Roblox Creator Store (see ADR-017). The legacy
-  `/plugin.rbxm` download is retired and is no longer a supported install path.
+Live: https://apple.moshe-barami111.workers.dev
 
-## How it works
+## Where things are
 
-A Cloudflare Worker is the entire backend: Hono API + Durable Objects
-(per-project agent sessions, quota ledgers, pairing) + Workers AI (open-weight models:
-gpt-oss-120b, Qwen3-30B) + Vectorize/D1 hybrid RAG over the Roblox creator docs.
-Supabase provides auth (ES256/JWKS — the worker holds no auth secrets) and the project
-registry behind RLS. The Studio plugin (Luau, built with Rojo) long-polls the project's
-Durable Object and executes typed ops with ChangeHistoryService undo around every change.
+| You want to... | Go to |
+|---|---|
+| Understand the product and scope | `docs/autonomy/v3/Apple_RbxAI_HANDOFF_V3.md`, then `docs/autonomy/MISSION.md` |
+| See what is happening now | `docs/autonomy/CURRENT_STATE.md`, `docs/autonomy/NEXT_ACTION.md` |
+| Read all docs | `docs/README.md` |
+| Change the worker (chat, billing, tools, Durable Objects) | `apps/worker` |
+| Change the Studio web app | `apps/web` |
+| Change the marketing and proof site | `apps/site` |
+| Change the Roblox Studio plugin | `apps/apple-plugin` |
+| Work with Cloudflare, Supabase, Sentry, Stripe, Discord, Roblox, GitHub | `platforms/README.md` |
+| Shared libraries, corpora, evals, SDK | `packages/` |
+| Run repo checks and generators | `scripts/` |
+| Rules for agents and contributors | `AGENTS.md`, `CLAUDE.md` |
 
+Also in the tree: `apps/plugin` (the legacy plugin, kept only as test fixtures), `apps/benchmark/crystal-canyon`
+(a frozen benchmark project) and `apps/experiences/lumen-isles`.
+
+## Run it
+
+```sh
+pnpm install                       # once
+pnpm -r typecheck
+pnpm test                          # workspace coverage check, then every package's tests
+node --test tests/*.test.mjs       # repo-level tests
+pnpm e2e                           # Playwright smoke (needs a built site and web app)
+pnpm --filter @golem/web dev       # local Studio chat
 ```
-browser ── WebSocket ──▶ SessionDO ◀── long-poll ── Studio plugin
-                           │  agent loop (alarm-driven steps)
-                           │  checkpoints (gzipped snapshots in DO SQLite)
-                           ▼
-                      Workers AI  +  Vectorize/D1 RAG
-```
 
-## Repo layout
+`@golem/*` is the workspace package scope, still the old name.
 
-| Path | What |
-| --- | --- |
-| `apps/worker` | The backend: API, DOs, gateway, RAG, static serving |
-| `apps/web` | App SPA (Vite + React) served at `/app` |
-| `apps/site` | Marketing site (Astro) served at `/` |
-| `apps/apple-plugin` | **The Studio plugin that ships** (Luau + Rojo). See `docs/operations/PLUGIN-RELEASE.md` |
-| `apps/plugin` | Legacy Studio plugin — **not the product**, kept as a reference. See `apps/plugin/README.md` |
-| `packages/shared` | Wire protocol + domain types |
-| `packages/corpus` | RAG corpus pipeline (creator-docs, CC-BY-4.0) |
-| `packages/evals` | Roblox-specific model eval harness + tasks |
-| `infra` | Migrations, deploy scripts, e2e tests |
-| `docs` | Decisions (ADRs), research, eval results |
+## Test
 
-## Develop & deploy
+CI runs `pnpm -r test`, the root `tests/*.test.mjs`, the `scripts/check-*.mjs` checks, `scripts/secret-scan.py` and
+the plugin build. `node scripts/ci-parity.mjs` runs what it can of the same steps against a clean clone of HEAD.
+After a test run, `node scripts/clean-test-tmp.mjs` removes leftover temp directories.
 
-Secrets live in `.env` (gitignored). See `docs/DECISIONS.md` for architecture rationale and
-the deploy runbook in memory/`infra`:
+## Deploy
 
-```
-pnpm install
-cd apps/worker && pnpm exec wrangler deploy     # API
-node infra/deploy-static.mjs                    # site + app -> D1 static store
-node apps/apple-plugin/scripts/build.mjs        # the Studio plugin; it does NOT publish
-node infra/e2e.mjs                              # production end-to-end test
-```
+Deploys are manual and owner-approved; GitHub Actions deploys nothing. See `platforms/cloudflare/README.md`
+(worker and static assets), `platforms/supabase/README.md` (migrations) and `docs/operations/PLUGIN-RELEASE.md`
+(the plugin).
+
+## Secrets
+
+Copy `.env.example` to `.env` (never commit it). Worker secrets live in Cloudflare; their names are listed in
+`platforms/cloudflare/README.md`.

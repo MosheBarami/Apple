@@ -6,7 +6,7 @@
 // the moment the product starts working.
 //
 // Archive is the reversible half of that. One nullable timestamp — see
-// infra/supabase/migrations/0004_project_archive.sql — because "archived" and "when" are the same
+// platforms/supabase/migrations/0004_project_archive.sql — because "archived" and "when" are the same
 // fact, and an `is_archived` beside an `archived_at` is two facts that can disagree.
 
 /** Selected columns, shared so the two list queries cannot drift apart. */

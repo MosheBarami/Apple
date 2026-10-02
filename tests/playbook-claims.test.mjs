@@ -174,10 +174,10 @@ test('every repository path the guidance names is in the clone, or is declared n
 test('THE CHECKABLE CLAIMS — each mechanism the prose points at is really in the code', () => {
   const claims = [
     // "Both end by fetching what they deployed and comparing it to what they sent."
-    ['infra/deploy-static.mjs', /async function verifyServed/, 'the static deploy no longer verifies what it served'],
-    ['infra/deploy-static.mjs', /DEPLOYED BYTES ARE NOT WHAT/, 'the static deploy no longer fails on a mismatch'],
-    ['infra/deploy-worker.mjs', /\/api\/health/, 'the worker deploy no longer asks what is running'],
-    ['infra/deploy-worker.mjs', /BUILD_SHA:\$\{stamp\}/, 'the worker deploy no longer stamps the sha from git'],
+    ['platforms/cloudflare/deploy/deploy-static.mjs', /async function verifyServed/, 'the static deploy no longer verifies what it served'],
+    ['platforms/cloudflare/deploy/deploy-static.mjs', /DEPLOYED BYTES ARE NOT WHAT/, 'the static deploy no longer fails on a mismatch'],
+    ['platforms/cloudflare/deploy/deploy-worker.mjs', /\/api\/health/, 'the worker deploy no longer asks what is running'],
+    ['platforms/cloudflare/deploy/deploy-worker.mjs', /BUILD_SHA:\$\{stamp\}/, 'the worker deploy no longer stamps the sha from git'],
     // "Three locators, in packages/evals/src/security.test.mjs"
     ['packages/evals/src/security.test.mjs', /function braceBlock\(/, 'braceBlock is gone'],
     ['packages/evals/src/security.test.mjs', /function bodyBlock\(/, 'bodyBlock is gone'],

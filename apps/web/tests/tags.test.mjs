@@ -30,7 +30,7 @@ const WEB = join(HERE, '..');
 const REPO = join(WEB, '..', '..');
 const DASH = readFileSync(join(WEB, 'src', 'routes', 'dashboard.tsx'), 'utf8');
 const ROW = readFileSync(join(WEB, 'src', 'lib', 'supabase.ts'), 'utf8');
-const MIGRATION = readFileSync(join(REPO, 'infra', 'supabase', 'migrations', '0008_project_tags.sql'), 'utf8');
+const MIGRATION = readFileSync(join(REPO, 'platforms', 'supabase', 'migrations', '0008_project_tags.sql'), 'utf8');
 const SQL = MIGRATION.replace(/^\s*--.*$/gm, '');
 
 // ------------------------------------------------------------- normalisation ---

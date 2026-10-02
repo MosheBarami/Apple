@@ -1327,7 +1327,7 @@ For this repository, first inspect its custom machinery:
 ```bash
 cd /Users/moshe/Desktop/RbxAI
 
-node infra/supabase/migrate.mjs --help || true
+node platforms/supabase/migrate.mjs --help || true
 npx supabase --version
 npx supabase migration list
 ```
@@ -1335,7 +1335,7 @@ npx supabase migration list
 Run the currently known security proof:
 
 ```bash
-node infra/supabase/tests/rls-isolation.mjs
+node platforms/supabase/tests/rls-isolation.mjs
 ```
 
 That matters because the previous handoff explicitly said those 43 isolation checks were **not rerun in that session**. fileciteturn0file0
@@ -1354,9 +1354,9 @@ pnpm exec wrangler --version
 Apple’s currently documented repository deploy flow is:
 
 ```bash
-node infra/deploy-worker.mjs apple
-node infra/deploy-static.mjs --only web
-node infra/deploy-static.mjs --only site
+node platforms/cloudflare/deploy/deploy-worker.mjs apple
+node platforms/cloudflare/deploy/deploy-static.mjs --only web
+node platforms/cloudflare/deploy/deploy-static.mjs --only site
 ```
 
 Those commands were used in the previous successful worker/web deployment, while the site was deliberately not deployed. fileciteturn0file4
