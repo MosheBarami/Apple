@@ -4942,10 +4942,20 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'compose_game',
       description: "Builds a NEW game for the idea from components on a map made for it; never copies a saved game. Then judge_game {request}, fix what it lists, answer from forUser.",
-      parameters: S({ request: { type: 'string', description: "The user's idea, in their words." } }, ['request']),
+      parameters: S({
+        request: { type: 'string', description: "The user's idea, in their words." },
+        // The agent reads the request; the template does not (owner, 2026-10-02: "he doesn't focus on what the user asks").
+        tycoon: { type: 'object', description: "For a tycoon: what THIS request's game is made of, in its own words. item = what drops (e.g. 'Dirty Laundry'), dropper = what drops it, machines = 2-4 steps in order on the belt, each { name, search (library words for its look), becomes (what the item is after it), color '#rrggbb' }, seller = { name, search } at the end, currency.", properties: {
+          item: { type: 'object', properties: { name: { type: 'string' }, color: { type: 'string' } } },
+          dropper: { type: 'string' },
+          machines: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, search: { type: 'string' }, becomes: { type: 'string' }, color: { type: 'string' } } } },
+          seller: { type: 'object', properties: { name: { type: 'string' }, search: { type: 'string' } } },
+          currency: { type: 'string' },
+        } },
+      }, ['request']),
     },
     studio: true,
-    studioOps: ['snapshot', 'import_owner_library', 'create_instances', 'edit_script', 'delete_instances', 'set_visible', 'place_copies', 'strip_descendants', 'set_props', 'apply_surface', 'set_surface_default'],
+    studioOps: ['snapshot', 'import_owner_library', 'get_instance', 'create_instances', 'edit_script', 'delete_instances', 'set_visible', 'place_copies', 'strip_descendants', 'set_props', 'apply_surface', 'set_surface_default'],
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: composeSummary,
     run: composeGame,

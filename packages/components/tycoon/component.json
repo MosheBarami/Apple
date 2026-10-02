@@ -1,0 +1,22 @@
+{
+  "id": "tycoon",
+  "name": "AppleTycoon",
+  "role": "system",
+  "summary": "A real tycoon: every player gets a base where droppers drop the game's item onto a conveyor, each machine over the belt turns it into the next thing and multiplies its worth, a seller pays the owner, and buy pads unlock the next dropper, machine or speed-up in order.",
+  "files": {
+    "AppleTycoon.luau": { "class": "ModuleScript", "parent": "ServerScriptService.AppleComponents", "name": "AppleTycoon" },
+    "AppleTycoonClient.luau": { "class": "LocalScript", "parent": "StarterPlayer.StarterPlayerScripts", "name": "AppleTycoonClient" }
+  },
+  "needs": {
+    "map": "Workspace.AppleMap.Tycoons.<n> (Model): Spawn, Conveyor (anchored; its RightVector is the belt's direction), Seller, Drops, Pads.<id> (parts with a BillboardGui whose TextLabel is Label); ServerStorage.AppleTycoonParts.<n>.<id> for every unlockable (a dropper Model holds a Spout part, a machine Model a Gate part on the belt)",
+    "config": "AppleGameConfig.tycoon = { item = {name, color, value}, belt = {speed}, droppers = {[id] = {every, value?}}, machines = {[id] = {times, color, becomes, material?}}, unlocks = {{id, label, price, after?}}, start = {ids}, speedUps = {[id] = speed} }",
+    "economy": "AppleEconomy (spend, grant) through start(config, economy)",
+    "screen": "StarterGui.TycoonHUD with a TextLabel named Value; ReplicatedStorage.AppleComponents.AppleClientConfig.currency"
+  },
+  "gives": {
+    "bases": "each joining player claims the first free base (attribute Owner) and spawns on its Spawn; leaving resets it",
+    "income": "items pay the base owner at the seller, worth item.value times every machine they passed under",
+    "progress": "a pad shows once what it needs is owned; stepping on it with the price buys it (AppleEconomy.spend) and the thing appears",
+    "limits": "at most 30 live items a base, each gone after 40 seconds"
+  }
+}

@@ -11,6 +11,7 @@ import { PLAY_TEST_STOP, runSteps } from './compose-run';
 import { orchardRecipe } from './recipes';
 import { libraryReady, librarySafetyCopy } from './local-owner-corpus';
 import { userWantsOwnSurface } from './surfaces';
+import { isTycoonRequest, tycoonForUser, tycoonRecipe, tycoonSteps, tycoonTheme, type TycoonRecipe } from './compose-tycoon';
 import { isPlotSimRequest, pieceName, plotSimRecipe, plotSimSteps, heroSpot, type PlotSimRecipe } from './compose-plotsim';
 import type { LibRef } from './compose';
 
@@ -49,6 +50,9 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
   const plan = ideaRecipe(idea);
   // A simulator / tycoon / "make it a full game" idea is the plot simulator (compose-plotsim.ts), unless it is the
   // orchard lane defense the first template already answers.
+  // A tycoon is a tycoon (owner, 2026-10-02: "a laundry tycoon" came out as the keyboard's plot simulator): droppers,
+  // a belt, machines that change the item, buy pads, all named from the request by the agent's own theme.
+  if ('error' in plan && isTycoonRequest(idea)) return composeTycoon(ctx, idea, a.tycoon);
   if ('error' in plan && isPlotSimRequest(idea)) return composePlotSim(ctx, idea);
   // No template is not a refusal (owner, 2026-10-01: every request gets done): the agent builds it with its own tools.
   if ('error' in plan) {
@@ -188,6 +192,46 @@ async function libraryModels(ctx: AgentCtx, q: string, limit: number, minParts =
     if (refs.length >= limit) break;
   }
   return refs;
+}
+
+/** One library look for a thing: the piece must be the thing itself ("Dryer Chair" is a chair), small pieces allowed. */
+async function lookFor(ctx: AgentCtx, search: string | undefined): Promise<LibRef | undefined> {
+  if (!search) return undefined;
+  const last = search.toLowerCase().split(' ').pop();
+  for (const r of await libraryModels(ctx, search, 6, 6)) if (pieceName(r.path).toLowerCase().split(' ').pop() === last) return r;
+  return undefined;
+}
+
+async function composeTycoon(ctx: AgentCtx, idea: string, given: unknown) {
+  const place = await readPlace(ctx);
+  const theme = tycoonTheme(idea, given);
+  const [machines, seller] = await Promise.all([
+    Promise.all(theme.machines.map((m) => lookFor(ctx, m.search))),
+    lookFor(ctx, theme.seller.search),
+  ]);
+  const recipe: TycoonRecipe = tycoonRecipe(idea, ideaSeed(idea), theme, { machines, ...(seller ? { seller } : {}) }, place.hasComponents);
+  const copy = await librarySafetyCopy(ctx, 'before building your game');
+  if ('error' in copy) return { error: copy.error };
+  recipe.surface = userWantsOwnSurface(idea) ? 'keep' : 'studs';
+  const report = await runSteps(ctx, tycoonSteps(recipe));
+  if (report.stopped) return { changed: (report.counts.script ?? 0) > 0, error: stoppedText(report.stopped), forUser: stoppedText(report.stopped) };
+  const hud = await ctx.execStudioOp({ op: 'get_instance', path: 'game.StarterGui.TycoonHUD' }, 20_000).catch(() => null);
+  if (!hud?.ok) report.critical.push("the game's screen is not in StarterGui");
+  const bases = await ctx.execStudioOp({ op: 'get_instance', path: 'game.Workspace.AppleMap.Tycoons.1.Conveyor' }, 20_000).catch(() => null);
+  if (!bases?.ok) report.critical.push('the bases were not built');
+  const built = (report.counts.script ?? 0) > 0;
+  if (report.critical.length) {
+    return { changed: built, error: `The game was not finished: ${report.critical.join('; ')}.`, problems: report.problems.slice(0, 12),
+      forUser: `I started building ${recipe.title}, but part of it did not come out (${report.critical[0]}), so it is not playable yet.` };
+  }
+  return {
+    changed: built, game: recipe.title, template: 'tycoon', built: report.counts,
+    chain: [theme.item.name, ...theme.machines.map((m) => m.becomes)],
+    ...(report.missing.length ? { missingPieces: report.missing } : {}),
+    ...(report.problems.length ? { problems: report.problems.slice(0, 12) } : {}),
+    forUser: tycoonForUser(recipe, report),
+    note: 'The tycoon is built from components; do not rebuild any of it by hand. Check it once in play (play_check), fix only what is broken, and answer from forUser in your own friendly words. Name no tools, paths or counts.',
+  };
 }
 
 async function composePlotSim(ctx: AgentCtx, idea: string) {
