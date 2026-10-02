@@ -210,7 +210,9 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
       refund: 0.5,
       // Every player's plot starts with the cheapest machine already earning (AppleShop giveStarter).
       ...(recipe.machines[0] ? { starter: recipe.machines[0].id } : {}),
-      items: recipe.machines.map((m) => ({ id: m.id, name: m.name, price: m.price, range: 0, damage: 0, rate: 0, unlock: 0, blurb: `+${m.income}/s` })),
+      // A machine is not a tower: no range, damage or rate in its shop row (critique, 2026-10-01: tower-defence names in a
+      // plot simulator's config). AppleShop's defaults stand in, and nothing here starts AppleDefenders to read them.
+      items: recipe.machines.map((m) => ({ id: m.id, name: m.name, price: m.price, unlock: 0, blurb: `+${m.income}/s` })),
     },
     machines: Object.fromEntries(recipe.machines.map((m) => [m.id, { income: m.income, ...(m.perPress ? { perPress: m.perPress } : {}) }])),
     rebirth: recipe.rebirth,
