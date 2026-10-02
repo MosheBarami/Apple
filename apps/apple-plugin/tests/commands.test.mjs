@@ -1397,7 +1397,7 @@ spec("capability report is operation-derived and reports live generation availab
 
     local unavailable = newCommands()
     local report = Commands.capabilities(unavailable)
-    eq(report.schema, "apple.studio-ops.v1")
+    eq(report.schema, "golem.studio-ops.v1")
     eq(byOp(report, "get_tree").status, "supported")
     eq(byOp(report, "snapshot").status, "supported")
     eq(byOp(report, "restore").status, "supported")

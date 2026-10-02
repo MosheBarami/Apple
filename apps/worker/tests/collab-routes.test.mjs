@@ -280,7 +280,7 @@ function sessionNamespace() {
         } catch {
           body = init?.body ?? null;
         }
-        doCalls.push({ path: u.pathname, body, role: headers.get('X-Apple-Role'), userId: headers.get('X-User-Id') });
+        doCalls.push({ path: u.pathname, body, role: headers.get('X-Golem-Role'), userId: headers.get('X-User-Id') });
         if (u.pathname === '/init') return new Response(JSON.stringify({ ok: true }), { status: 200 });
         if (u.pathname === '/collab') {
           return new Response(JSON.stringify(doCollabReply.body), { status: doCollabReply.status });
@@ -624,7 +624,7 @@ test('the websocket route sends the decided role and OVERWRITES a client-supplie
     jwt: MEMBER_JWT,
     // The browser writing its own permission slip. The route copies raw headers, so this is the
     // exact value that would be forwarded if `set` were ever changed to an append.
-    headers: { Upgrade: 'websocket', 'X-Apple-Role': 'owner' },
+    headers: { Upgrade: 'websocket', 'X-Golem-Role': 'owner' },
   });
   assert.equal(res.status, 200);
   const ws = doCalls.find((d) => d.path === '/ws');

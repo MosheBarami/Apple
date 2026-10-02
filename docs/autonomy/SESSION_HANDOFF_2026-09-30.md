@@ -124,6 +124,6 @@ runs, driving Studio, push to `main`, and keeping library games private.
 - **Web (Chrome).**
   - Token: `JSON.parse(localStorage['sb-npqvyijsvzkuwddyhtpm-auth-token']).access_token` (never print it).
   - Send a message: the textarea value setter + `form.requestSubmit()`.
-  - Live events: `wss://<host>/api/projects/<id>/ws` with protocols `apple.v1`, `apple.jwt.<token>`.
+  - Live events: `wss://<host>/api/projects/<id>/ws` with protocols `golem.v1`, `golem.jwt.<token>`.
   - Also: `GET …/studio/diagnostics`, `POST …/stop`, `POST …/pairing`.
   - Keep each JS evaluation under about 35 s.

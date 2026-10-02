@@ -163,7 +163,7 @@ const seen = { phases: [], tools: [], intent: null, studioConnected: null, frame
 let text = '';
 const stop = await new Promise((resolve) => {
   const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${PID}/ws`, [
-    'apple.v1', 'apple.jwt.' + jwt,
+    'golem.v1', 'golem.jwt.' + jwt,
   ]);
   const timer = setTimeout(() => { try { ws.close(); } catch {} resolve('timeout'); }, 240000);
   ws.onmessage = (ev) => {
@@ -194,7 +194,7 @@ check('user path: the assistant answered', text.trim().length > 0, text.trim().s
 // ------------------------------------------------------- 10. reconnect ----
 const replay = await new Promise((resolve) => {
   const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${PID}/ws`, [
-    'apple.v1', 'apple.jwt.' + jwt,
+    'golem.v1', 'golem.jwt.' + jwt,
   ]);
   const timer = setTimeout(() => { try { ws.close(); } catch {} resolve(undefined); }, 20000);
   ws.onmessage = (ev) => {

@@ -76,8 +76,8 @@ export function messageFromBody(body: unknown, status: number): string;
 
 // ---------------------------------------------------------------------- wire
 
-export const WS_SUBPROTOCOL: 'apple.v1';
-export const WS_JWT_PREFIX: 'apple.jwt.';
+export const WS_SUBPROTOCOL: 'golem.v1';
+export const WS_JWT_PREFIX: 'golem.jwt.';
 export const DEFAULT_BASE_URL: string;
 export const MODES: readonly ProductMode[];
 export const PRESENCE_ACTIVITIES: readonly ('viewing' | 'typing' | 'building')[];
@@ -85,9 +85,9 @@ export const CLIENT_MSG_TYPES: readonly ClientMsg['type'][];
 export const HEADERS: Readonly<{
   auth: 'Authorization';
   adminKey: 'X-Admin-Key';
-  studioToken: 'X-Apple-Token';
-  pluginVersion: 'X-Apple-Plugin-Version';
-  pluginProtocol: 'X-Apple-Plugin-Protocol';
+  studioToken: 'X-Golem-Token';
+  pluginVersion: 'X-Golem-Plugin-Version';
+  pluginProtocol: 'X-Golem-Plugin-Protocol';
 }>;
 export function isProjectId(value: unknown): value is string;
 export function projectPath(projectId: string, suffix?: string): string;

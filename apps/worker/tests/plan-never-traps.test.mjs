@@ -56,7 +56,7 @@ const REQUIREMENTS = Object.fromEntries(
 );
 
 const report = (...unsupported) => ({
-  schema: 'apple.studio-ops.v1',
+  schema: 'golem.studio-ops.v1',
   operations: unsupported.map((op) => ({ op, status: 'unsupported', reason: `${op} is not available in this plugin` })),
 });
 

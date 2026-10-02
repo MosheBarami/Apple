@@ -148,7 +148,7 @@ version:   1.1.0 (protocol 1) confirmed inside the artifact
   present  inspect_model target must be a Model or BasePart  x1
   present  project census exceeds the  x1
   present  GenerateModelAsync  x7
-  present  apple.studio-ops.v1  x1
+  present  golem.studio-ops.v1  x1
   present  /api/studio/poll  x1
   present  LuaSourceContainer  x4
   present  Apple inserts geometry, not code  x1

@@ -42,9 +42,9 @@ _UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F
 
 HEADER_AUTH = "Authorization"
 HEADER_ADMIN_KEY = "X-Admin-Key"
-HEADER_STUDIO_TOKEN = "X-Apple-Token"
-HEADER_PLUGIN_VERSION = "X-Apple-Plugin-Version"
-HEADER_PLUGIN_PROTOCOL = "X-Apple-Plugin-Protocol"
+HEADER_STUDIO_TOKEN = "X-Golem-Token"
+HEADER_PLUGIN_VERSION = "X-Golem-Plugin-Version"
+HEADER_PLUGIN_PROTOCOL = "X-Golem-Plugin-Protocol"
 
 
 def is_project_id(value: Any) -> bool:

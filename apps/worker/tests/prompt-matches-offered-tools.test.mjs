@@ -50,7 +50,7 @@ const REQUIREMENTS = Object.fromEntries(
   Object.entries(T.TOOLS).filter(([, t]) => t.studio).map(([name, t]) => [name, t.studioOps ?? []]),
 );
 const report = (...unsupported) => ({
-  schema: 'apple.studio-ops.v1',
+  schema: 'golem.studio-ops.v1',
   operations: unsupported.map((op) => ({ op, status: 'unsupported', reason: `${op} unavailable` })),
 });
 

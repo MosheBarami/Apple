@@ -133,7 +133,7 @@ test('reported version strings are treated as untrusted', () => {
 test('readPluginHeaders degrades to unknown rather than throwing', () => {
   const empty = V.readPluginHeaders(new Headers());
   assert.deepEqual(empty, { version: null, protocol: null });
-  const good = V.readPluginHeaders(new Headers({ 'X-Apple-Plugin-Version': '0.2.0', 'X-Apple-Plugin-Protocol': '1' }));
+  const good = V.readPluginHeaders(new Headers({ 'X-Golem-Plugin-Version': '0.2.0', 'X-Golem-Plugin-Protocol': '1' }));
   assert.deepEqual(good, { version: '0.2.0', protocol: 1 });
 });
 
@@ -178,8 +178,8 @@ test('the worker never announces a plugin version the shipped source does not ha
 test('the plugin reports its version on every request, and every copy of it agrees', () => {
   // The periodic `state` event carries pluginVersion too, but pairing and the first polls would
   // otherwise be anonymous, so the headers must carry it on every request.
-  assert.match(BRIDGE, /\["X-Apple-Plugin-Version"\]\s*=\s*PLUGIN_VERSION\b/);
-  assert.match(BRIDGE, /\["X-Apple-Plugin-Protocol"\]\s*=\s*PLUGIN_PROTOCOL\b/);
+  assert.match(BRIDGE, /\["X-Golem-Plugin-Version"\]\s*=\s*PLUGIN_VERSION\b/);
+  assert.match(BRIDGE, /\["X-Golem-Plugin-Protocol"\]\s*=\s*PLUGIN_PROTOCOL\b/);
   // There is no Version module in this plugin: the entry script repeats the literal in its state
   // event and in the label a user reads in the dock. The property is that every copy agrees with
   // the one the headers send, so a bump that misses one is a failure rather than a plugin that

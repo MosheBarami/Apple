@@ -153,7 +153,7 @@ the only reference in the repository was `collab-routes.test.mjs` doing `readFil
 TEXT, and that test now reads `index.ts`.
 
 **It is a duplicate of routes that ship inline in `index.ts`, and it made a test lie.** The
-verification pass broke FIVE security mechanisms inside it — `headers.set('X-Apple-Role')` changed
+verification pass broke FIVE security mechanisms inside it — `headers.set('X-Golem-Role')` changed
 to `append`, the `GRANTABLE_ROLES` invite allowlist deleted, the link-revoke `project_id` check
 deleted, `versions/restore` downgraded from its own action to `build`, and the exported entry point
 renamed away — and all 117 tests stayed green every time, because none of that code runs.

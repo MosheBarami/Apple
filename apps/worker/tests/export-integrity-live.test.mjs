@@ -10,7 +10,7 @@
  *
  *   Content-Length — the body's byte length is already known at the point the Response is built, so
  *   a client can divide by something real instead of reporting a spinner for an unknown quantity.
- *   X-Apple-Export-SHA256 — the digest of the bytes ACTUALLY SENT, which is the only thing that can
+ *   X-Golem-Export-SHA256 — the digest of the bytes ACTUALLY SENT, which is the only thing that can
  *   tell a short file from a short conversation.
  *
  * And for JSON, the same hex digest over `data.messages` travels INSIDE the file, so the transcript
@@ -102,7 +102,7 @@ for (const format of ['json', 'md']) {
   test(`the ${format} export carries the digest of the bytes it actually sent`, async () => {
     const res = await app.request(`${base}?format=${format}`, as(ALICE), env);
     const body = await res.text();
-    const declared = res.headers.get('X-Apple-Export-SHA256');
+    const declared = res.headers.get('X-Golem-Export-SHA256');
     assert.ok(declared, 'no digest: a truncated transfer is undetectable by the recipient');
     assert.equal(declared, await sha256Hex(body), 'the digest must be of THIS body, not of the payload behind it');
   });
@@ -131,5 +131,5 @@ test('the markdown export is still markdown, and still an attachment', async () 
 test('a stranger still gets 404 — headers are not a reason to widen a route', async () => {
   const res = await app.request(base, as(STRANGER), env);
   assert.equal(res.status, 404);
-  assert.equal(res.headers.get('X-Apple-Export-SHA256'), null, 'a refusal has no digest to give');
+  assert.equal(res.headers.get('X-Golem-Export-SHA256'), null, 'a refusal has no digest to give');
 });

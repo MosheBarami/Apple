@@ -237,9 +237,9 @@ local function post(url: string, body: any, token: string?): (boolean, number, a
 			Method = "POST",
 			Headers = {
 				["Content-Type"] = "application/json",
-				["X-Apple-Token"] = token or "",
-				["X-Apple-Plugin-Version"] = PLUGIN_VERSION,
-				["X-Apple-Plugin-Protocol"] = PLUGIN_PROTOCOL,
+				["X-Golem-Token"] = token or "",
+				["X-Golem-Plugin-Version"] = PLUGIN_VERSION,
+				["X-Golem-Plugin-Protocol"] = PLUGIN_PROTOCOL,
 			},
 			Body = encoded,
 		})

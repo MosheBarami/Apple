@@ -768,13 +768,13 @@ test('the deprecation policy is stated on the response, with a sunset in the fut
 
 test('usage headers omit headroom rather than inventing it', () => {
   const full = P.usageHeaders({ inputTokens: 10, outputTokens: 4, creditsSpent: 2, creditsRemaining: 88 });
-  assert.equal(full['X-Apple-Usage-Input-Tokens'], '10');
-  assert.equal(full['X-Apple-Usage-Output-Tokens'], '4');
-  assert.equal(full['X-Apple-Usage-Credits'], '2');
-  assert.equal(full['X-Apple-Credits-Remaining'], '88');
+  assert.equal(full['X-Golem-Usage-Input-Tokens'], '10');
+  assert.equal(full['X-Golem-Usage-Output-Tokens'], '4');
+  assert.equal(full['X-Golem-Usage-Credits'], '2');
+  assert.equal(full['X-Golem-Credits-Remaining'], '88');
   for (const unknown of [null, NaN, Infinity]) {
     const h = P.usageHeaders({ inputTokens: 1, outputTokens: 1, creditsSpent: 1, creditsRemaining: unknown });
-    assert.equal('X-Apple-Credits-Remaining' in h, false, `a headroom of ${unknown} was published as a number`);
+    assert.equal('X-Golem-Credits-Remaining' in h, false, `a headroom of ${unknown} was published as a number`);
   }
 });
 
@@ -867,9 +867,9 @@ test('a live key returns an OpenAI-shaped completion with usage and rate-limit h
   // The response must not name the provider or the foundation model anywhere.
   assert.equal(/gpt-oss|@cf\/|workers-ai/i.test(r.text), false, 'the completion leaked provider identity');
 
-  assert.ok(r.res.headers.get('X-Apple-Usage-Input-Tokens'));
-  assert.ok(r.res.headers.get('X-Apple-Usage-Output-Tokens'));
-  assert.ok(r.res.headers.get('X-Apple-Usage-Credits'));
+  assert.ok(r.res.headers.get('X-Golem-Usage-Input-Tokens'));
+  assert.ok(r.res.headers.get('X-Golem-Usage-Output-Tokens'));
+  assert.ok(r.res.headers.get('X-Golem-Usage-Credits'));
   // Rate-limit headers belong on the 200, not only on the 429.
   assert.equal(r.res.headers.get('X-RateLimit-Limit'), String(K.rateLimitFor('live')));
   assert.ok(Number(r.res.headers.get('X-RateLimit-Remaining')) < Number(r.res.headers.get('X-RateLimit-Limit')));
@@ -970,9 +970,9 @@ test('a test key is served by the sandbox: no model, no Credits, and it says so'
   });
   assert.equal(r.status, 200, r.text.slice(0, 200));
   assert.equal(r.json.system_fingerprint, P.SANDBOX_FINGERPRINT);
-  assert.equal(r.res.headers.get('X-Apple-Sandbox'), 'true');
+  assert.equal(r.res.headers.get('X-Golem-Sandbox'), 'true');
   assert.match(r.json.choices[0].message.content, /sandbox/i);
-  assert.equal(r.res.headers.get('X-Apple-Usage-Credits'), '0');
+  assert.equal(r.res.headers.get('X-Golem-Usage-Credits'), '0');
   assert.equal(bundle.trace.ai.length, 0, 'a TEST key ran the model');
   assert.equal(bundle.trace.calls.filter((c) => c.ns === 'QUOTA_DO').length, 0, 'a TEST key spent Credits');
   // Same request, same answer — that is what makes a test key assertable in somebody else's CI.
@@ -1077,7 +1077,7 @@ test('a test key cannot start a real run — the sandbox simulates it and says s
   assert.equal(r.status, 202);
   assert.equal(r.json.status, 'simulated');
   assert.equal(r.json.sandbox, true);
-  assert.equal(r.res.headers.get('X-Apple-Sandbox'), 'true');
+  assert.equal(r.res.headers.get('X-Golem-Sandbox'), 'true');
   assert.deepEqual(bundle.trace.calls.filter((c) => c.path === '/agent-run'), [], 'a TEST key started a real run');
 });
 

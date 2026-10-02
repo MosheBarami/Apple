@@ -378,7 +378,7 @@ test('CONTROL: an identical repeat of a failure that is NOT safe to repeat is st
 // ================================================ 3. propose_plan inside the real run loop ===
 
 const NO_RENDER = {
-  schema: 'apple.studio-ops.v1',
+  schema: 'golem.studio-ops.v1',
   operations: [
     { op: 'render_view', status: 'unsupported', reason: 'this plugin cannot render' },
     { op: 'run_code', status: 'unsupported', reason: 'no constrained plugin evaluator' },
@@ -529,7 +529,7 @@ test('A PAIRED RUN OFFERED NOTHING THAT CHANGES THE PROJECT IS NOT NUDGED TO CHA
   const ops = [...new Set(mutating.flatMap((name) => W.TOOLS[name].studioOps ?? []))];
   assert.ok(mutating.length > 10 && ops.length > 5, `the derived lists are too small to mean anything (${mutating.length} tools, ${ops.length} ops)`);
   const readOnly = {
-    schema: 'apple.studio-ops.v1',
+    schema: 'golem.studio-ops.v1',
     operations: ops.map((op) => ({ op, status: 'unsupported', reason: `${op} is not available in this plugin` })),
   };
   const h = await makeSession({
@@ -692,7 +692,7 @@ test('a run that changed something and then only reads is ended at the read-stal
 // 2026-09-30: the stop note listed tool names ("recreate owner game (1)"). It now says what the user got.
 test('a stopped run tells a young creator what they got, and names no tool', async () => {
   const gameId = 'abcdef012345';
-  const SUPPORTED = { schema: 'apple.studio-ops.v1', operations: ['import_owner_library', 'query_owner_library', 'snapshot'].map((op) => ({ op, status: 'supported' })) };
+  const SUPPORTED = { schema: 'golem.studio-ops.v1', operations: ['import_owner_library', 'query_owner_library', 'snapshot'].map((op) => ({ op, status: 'supported' })) };
   const h = await makeSession({
     connected: true,
     capabilities: SUPPORTED,
@@ -724,7 +724,7 @@ test('a stopped run tells a young creator what they got, and names no tool', asy
 // The dependencies of a library asset are added once per RUN. The memory is the run's own persisted state, not a test double.
 test('a library asset brings what it needs, once per run, even when the model asks for it again', async () => {
   const gameId = 'abcdef012345', shop = '/StarterGui/ShopGui';
-  const SUPPORTED = { schema: 'apple.studio-ops.v1', operations: ['import_owner_library', 'query_owner_library', 'snapshot'].map((op) => ({ op, status: 'supported' })) };
+  const SUPPORTED = { schema: 'golem.studio-ops.v1', operations: ['import_owner_library', 'query_owner_library', 'snapshot'].map((op) => ({ op, status: 'supported' })) };
   const h = await makeSession({
     connected: true,
     capabilities: SUPPORTED,

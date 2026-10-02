@@ -35,8 +35,8 @@ test('claim sends the plugin identity on HEADERS and stores the token it gets ba
     const req = s.requests.at(-1);
     // On headers, not in the body: `/api/studio/claim` has no body field for them, and the
     // worker reads them before it parses anything.
-    assert.equal(req.headers['x-apple-plugin-version'], '0.2.0');
-    assert.equal(req.headers['x-apple-plugin-protocol'], '1');
+    assert.equal(req.headers['x-golem-plugin-version'], '0.2.0');
+    assert.equal(req.headers['x-golem-plugin-protocol'], '1');
     assert.equal(req.headers.authorization, undefined, 'pairing is not a JWT call');
     assert.deepEqual(JSON.parse(req.body), { code: 'GLM-7F3K2Q' });
   } finally {
@@ -49,8 +49,8 @@ test('a client that reports no version simply omits the headers', async () => {
   try {
     await new StudioClient({ baseUrl: s.baseUrl }).claim('CODE');
     const req = s.requests.at(-1);
-    assert.equal(req.headers['x-apple-plugin-version'], undefined);
-    assert.equal(req.headers['x-apple-plugin-protocol'], undefined);
+    assert.equal(req.headers['x-golem-plugin-version'], undefined);
+    assert.equal(req.headers['x-golem-plugin-protocol'], undefined);
   } finally {
     await s.close();
   }
@@ -86,7 +86,7 @@ test('the poll carries the token header and returns the ops it was given', async
     const res = await c.poll({ results: [{ id: 'o0', ok: true }], events: [] });
     assert.equal(res.ops.length, 1);
     const req = s.requests.at(-1);
-    assert.equal(req.headers['x-apple-token'], TOKEN);
+    assert.equal(req.headers['x-golem-token'], TOKEN);
     assert.deepEqual(JSON.parse(req.body).results, [{ id: 'o0', ok: true }]);
   } finally {
     await s.close();

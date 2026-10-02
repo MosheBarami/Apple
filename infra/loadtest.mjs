@@ -82,7 +82,7 @@ console.log('[3] concurrent WebSocket connections (all users at once)');
 const wsTimes = [], wsFails = [];
 const sockets = await Promise.all(projects.map((u) => new Promise((resolve) => {
   const t0 = t();
-  const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${u.projectId}/ws`, ['apple.v1', 'apple.jwt.' + u.jwt]);
+  const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${u.projectId}/ws`, ['golem.v1', 'golem.jwt.' + u.jwt]);
   const timer = setTimeout(() => { wsFails.push(`user${u.i}: hello timeout`); try { ws.close(); } catch {} resolve(null); }, 25000);
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
@@ -126,7 +126,7 @@ if (a && b) {
   isolation.crossProjectRest = r1.status;
   // A tries B's project via WS
   isolation.crossProjectWs = await new Promise((res) => {
-    const ws = new WebSocket(`${BASE.replace('https','wss')}/api/projects/${b.projectId}/ws`, ['apple.v1', 'apple.jwt.' + a.jwt]);
+    const ws = new WebSocket(`${BASE.replace('https','wss')}/api/projects/${b.projectId}/ws`, ['golem.v1', 'golem.jwt.' + a.jwt]);
     const to = setTimeout(() => res('no-response(good)'), 8000);
     ws.onmessage = (ev) => { clearTimeout(to); res('LEAK: ' + JSON.parse(ev.data).type); try { ws.close(); } catch {} };
     ws.onerror = () => { clearTimeout(to); res('rejected(good)'); };

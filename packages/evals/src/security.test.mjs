@@ -2032,7 +2032,7 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
   // user JWT", and every one must authenticate some OTHER way or it is simply open.
   //   /api/health       — no data, no side effect
   //   /api/studio/claim — a short-lived pairing code IS the credential
-  //   /api/studio/poll  — the plugin's X-Apple-Token is the credential
+  //   /api/studio/poll  — the plugin's X-Golem-Token is the credential
   //   /api/waitlist     — REMOVED 2026-09-20, and the line above is the reason it had to be. It read
   //     "write-only, rate-limited, holds an email and nothing else", which is a review of a route
   //     that does not exist: there is no such handler in index.ts and no caller in apps/site or
@@ -3164,14 +3164,14 @@ test('A8 a malformed plugin token is refused before any Durable Object is materi
   for (const [token, why] of cases) {
     reset();
     const env = makeEnv();
-    const res = await call('/api/studio/poll', { method: 'POST', env, headers: { 'X-Apple-Token': token }, body: {} });
+    const res = await call('/api/studio/poll', { method: 'POST', env, headers: { 'X-Golem-Token': token }, body: {} });
     assert.equal(res.status, 401, `a token with ${why} must be refused`);
     assert.deepEqual(trace.addressed.filter((a) => a.ns === 'SESSION_DO'), [], `a token with ${why} must not materialise a Durable Object`);
   }
   // A well-formed token DOES reach the DO — otherwise the guard above proves nothing.
   reset();
   const env = makeEnv();
-  await call('/api/studio/poll', { method: 'POST', env, headers: { 'X-Apple-Token': `${PROJECT_ID}.${goodSecret}` }, body: {} });
+  await call('/api/studio/poll', { method: 'POST', env, headers: { 'X-Golem-Token': `${PROJECT_ID}.${goodSecret}` }, body: {} });
   assert.deepEqual(trace.addressed.filter((a) => a.ns === 'SESSION_DO').map((a) => a.name), [PROJECT_ID],
     'a well-formed token should reach exactly the DO its project id names');
 });
@@ -3322,7 +3322,7 @@ test('A8 one project pairing cannot address another project DO', async () => {
   // can only ever reach project A's DO — there is no caller-supplied path to widen.
   reset();
   const env = makeEnv();
-  await call('/api/studio/poll', { method: 'POST', env, headers: { 'X-Apple-Token': `${OTHER_PROJECT_ID}.${'b'.repeat(48)}` }, body: {} });
+  await call('/api/studio/poll', { method: 'POST', env, headers: { 'X-Golem-Token': `${OTHER_PROJECT_ID}.${'b'.repeat(48)}` }, body: {} });
   const names = trace.addressed.filter((a) => a.ns === 'SESSION_DO').map((a) => a.name);
   assert.deepEqual(names, [OTHER_PROJECT_ID]);
   assert.equal(names.includes(PROJECT_ID), false);

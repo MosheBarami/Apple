@@ -70,7 +70,7 @@ function connected(options = {}) {
 test('the socket opens on the documented URL with both subprotocols, in order', () => {
   const { sockets } = connected();
   assert.equal(sockets[0].url, `wss://api.test/api/projects/${PROJECT}/ws`);
-  // `apple.v1` FIRST: the worker echoes exactly that value back, and a browser aborts the
+  // `golem.v1` FIRST: the worker echoes exactly that value back, and a browser aborts the
   // handshake when the echoed protocol is not among the ones requested.
   assert.deepEqual(sockets[0].protocols, [WS_SUBPROTOCOL, `${WS_JWT_PREFIX}jwt-abc`]);
 });

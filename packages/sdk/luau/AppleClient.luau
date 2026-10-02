@@ -8,7 +8,7 @@
 	same conversation, extracted, hardened, and callable — a Studio plugin, a command bar
 	snippet or a test harness all get the same client.
 
-	IT IS THE SAME PROTOCOL, NOT A SECOND ONE. The routes, the `X-Apple-` header family and
+	IT IS THE SAME PROTOCOL, NOT A SECOND ONE. The routes, the `X-Golem-` header family and
 	the `<projectId>.<48 hex>` token shape come from apps/worker/src/index.ts. Nothing here
 	invents an endpoint.
 
@@ -29,9 +29,9 @@ Client.DEFAULT_API = "https://apple.moshe-barami111.workers.dev"
 
 -- Header names are wire identity. Never rename these; an already-installed plugin updates
 -- only when a user clicks Update, so a rename locks out every existing install indefinitely.
-Client.HEADER_TOKEN = "X-Apple-Token"
-Client.HEADER_PLUGIN_VERSION = "X-Apple-Plugin-Version"
-Client.HEADER_PLUGIN_PROTOCOL = "X-Apple-Plugin-Protocol"
+Client.HEADER_TOKEN = "X-Golem-Token"
+Client.HEADER_PLUGIN_VERSION = "X-Golem-Plugin-Version"
+Client.HEADER_PLUGIN_PROTOCOL = "X-Golem-Plugin-Protocol"
 
 export type Http = {
 	RequestAsync: (self: any, options: any) -> any,

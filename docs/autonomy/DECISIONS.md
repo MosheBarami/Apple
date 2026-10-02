@@ -34,7 +34,7 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
 
 - **Evidence:** commit f6ad60a; enforced by apps/apple-plugin/tests/worker-capability-contract.test.mjs;
   the published asset reports scriptCount 5, matching apple-plugin at 09-19 (legacy has 8); only
-  apple-plugin sends the apple.studio-ops.v1 capability schema.
+  apple-plugin sends the golem.studio-ops.v1 capability schema.
 - **Rejected:** deleting apps/plugin now — ~16 test files read its sources as fixtures.
 - **Falsified if:** a customer's installed store build reports the legacy VERSION 0.2.0.
 
