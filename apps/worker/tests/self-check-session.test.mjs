@@ -185,6 +185,8 @@ async function makeSession({ responses = [], studio = fakeStudio(), env: envExtr
   const queue = [...responses];
   const env = {
     QUOTA_DO: namespace('QUOTA_DO'), BUDGET_DO: namespace('BUDGET_DO'), ADMIN_DO: namespace('ADMIN_DO'),
+    // The look waits a third of a second per view for the viewport to draw (SELF_CHECK_SETTLE_MS); nothing here has a viewport.
+    SELF_CHECK_SETTLE_MS: '0',
     CORPUS: { async exec() {}, prepare() { return { bind() { return this; }, async first() { return null; }, async all() { return { results: [] }; }, async run() { return { success: true, meta: { changes: 0 } }; } }; } },
     ...envExtra,
     __testChat: async (req, opts) => {

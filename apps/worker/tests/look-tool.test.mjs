@@ -147,6 +147,22 @@ test('a look records itself in the ledger, counts its cost, shows the user the f
   assert.equal(visionCalls[0].opts.kind, 'visual:look');
 });
 
+test('SELF_CHECK_SETTLE_MS tunes the pause before each capture and ignores a value that makes no sense', async () => {
+  for (const [value, expected] of [['0', 0], ['120', 120], ['99999', 350], ['-5', 350], ['soon', 350], [undefined, 350]]) {
+    const waits = [];
+    const orig = globalThis.setTimeout;
+    globalThis.setTimeout = (fn, ms, ...rest) => { waits.push(ms); return orig(fn, 0, ...rest); };
+    try {
+      const { ctx, ledger } = lookCtx();
+      ctx.env = value === undefined ? {} : { SELF_CHECK_SETTLE_MS: value };
+      made(ledger);
+      const out = await T.runTool(ctx, 'look', '{}');
+      assert.equal(out.ok, true, out.resultForLlm);
+    } finally { globalThis.setTimeout = orig; }
+    assert.ok(waits.filter((ms) => ms === expected).length >= 3, `${value}: expected three waits of ${expected}, saw ${JSON.stringify(waits)}`);
+  }
+});
+
 test('the agent\'s own words reach the vision call: the request, what it expects, what it asks', async () => {
   visionCalls = [];
   const { ctx, ledger } = lookCtx();

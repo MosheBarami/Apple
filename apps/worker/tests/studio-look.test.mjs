@@ -225,6 +225,16 @@ test('no camera reading at all: the camera is not moved, and the current view is
   assert.equal(out.cameraRestored, null);
 });
 
+test('the pause between aiming the camera and capturing is a setting, defaults to a third of a second, and is waited once per view', async () => {
+  const waits = [];
+  const p = plugin();
+  await runLook(deps(p, { sleep: async (ms) => { waits.push(ms); } }), args());
+  assert.deepEqual(waits, [350, 350, 350]);
+  const quick = [];
+  await runLook(deps(plugin(), { sleep: async (ms) => { quick.push(ms); }, settleMs: 40 }), args());
+  assert.deepEqual(quick, [40, 40, 40]);
+});
+
 test('a Studio that does not answer at all is given up on at once, not waited on operation by operation', async () => {
   const p = plugin();
   const dead = async (op) => { p.ops.push(op); return { id: 'x', ok: false, error: 'Studio did not respond within 20s', failure: 'timeout' }; };

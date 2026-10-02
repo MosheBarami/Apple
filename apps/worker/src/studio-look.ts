@@ -31,7 +31,7 @@ export const CAMERA_PATH = 'game.Workspace.Camera';
 /** A player's eyes above the surface they stand on, in studs (a default R15 head is about here). */
 const EYE_HEIGHT = 4.7;
 /** Pause between aiming the camera and capturing, so the viewport has drawn the new pose. */
-const SETTLE_MS = 350;
+export const DEFAULT_SETTLE_MS = 350;
 
 export const LOOK_VIEWS = Object.freeze({
   default: ['front', 'high', 'eye'] as const,
@@ -122,6 +122,8 @@ export interface LookDeps {
   observe(input: ObserveInput): Promise<ObserveResult>;
   emitFrame?(frame: StudioFrame): void;
   sleep?(ms: number): Promise<void>;
+  /** How long the viewport gets to draw a new pose before it is captured. Default DEFAULT_SETTLE_MS. */
+  settleMs?: number;
 }
 
 export interface LookArgs {
@@ -208,6 +210,7 @@ async function toLookFrame(data: unknown, label: string): Promise<{ frame: LookF
 /** Look at the changed place. Never throws; the camera is put back on every path. */
 export async function runLook(d: LookDeps, a: LookArgs): Promise<LookOutcome> {
   const sleep = d.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const settleMs = d.settleMs ?? DEFAULT_SETTLE_MS;
   const call = async (op: StudioOp, timeoutMs = 20_000): Promise<OpResult> => {
     try {
       return await d.exec(op, timeoutMs);
@@ -269,7 +272,7 @@ export async function runLook(d: LookDeps, a: LookArgs): Promise<LookOutcome> {
         const set = await call({ op: 'set_props', path: CAMERA_PATH, props: { CFrame: { t: 'CFrame', v: p.cframe } } });
         if (!set.ok) { refused = frames.length === 0; break; }
         moved = true;
-        await sleep(SETTLE_MS);
+        await sleep(settleMs);
         if (!(await grab(p.label))) { nativeBroke = true; break; }
       }
       // Aiming the camera was refused: Studio's own single framing still gives one real picture of the change.
@@ -277,7 +280,7 @@ export async function runLook(d: LookDeps, a: LookArgs): Promise<LookOutcome> {
         const focus = await call({ op: 'camera_focus', path: subjects[0] });
         if (focus.ok) {
           moved = true;
-          await sleep(SETTLE_MS);
+          await sleep(settleMs);
           if (!(await grab('framed by Studio'))) nativeBroke = true;
         }
       }

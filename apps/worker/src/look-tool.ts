@@ -9,7 +9,7 @@
 import type { GatewayToolDef, StudioFrame } from '@golem/shared';
 import type { AgentCtx } from './tools';
 import { chat } from './gateway';
-import { runLook, type LookArgs } from './studio-look';
+import { runLook, DEFAULT_SETTLE_MS, type LookArgs } from './studio-look';
 import { observeFrames, LOOK_FRAME_MAX, type LookFrame, type ObserveInput } from './look-observe';
 import { recordLook } from './evidence-ledger';
 import { SELF_CHECK_LIMITS } from './self-check';
@@ -61,6 +61,12 @@ async function boxViews(ctx: AgentCtx, target: string | undefined): Promise<{ fr
   return frames.length ? { frames } : { error: 'the renderer returned no views' };
 }
 
+/** SELF_CHECK_SETTLE_MS: how long the viewport gets to draw a new camera pose before it is captured (0..2000). Anything else is the default. */
+function settleMsOf(env: unknown): number {
+  const raw = Number((env as { SELF_CHECK_SETTLE_MS?: unknown } | null)?.SELF_CHECK_SETTLE_MS);
+  return Number.isFinite(raw) && raw >= 0 && raw <= 2000 ? raw : DEFAULT_SETTLE_MS;
+}
+
 const brief = (s: string, n: number): string => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
 /** One look, end to end: frame, observe, record in the ledger, report compactly. */
@@ -83,6 +89,7 @@ export async function runLookTool(ctx: AgentCtx, a: Record<string, unknown>): Pr
       boxViews: (target) => boxViews(ctx, target),
       observe: (obs: ObserveInput) => observeFrames(obs, (req, opts) => chat(ctx.env, req as never, opts) as Promise<{ text: string; neurons: number }>),
       emitFrame: ctx.emitFrame ? (f) => ctx.emitFrame?.(f) : undefined,
+      settleMs: settleMsOf(ctx.env),
     },
     input,
   );
