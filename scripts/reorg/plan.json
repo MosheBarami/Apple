@@ -551,15 +551,15 @@
     },
     {
       "from": "scripts/build-lumen-isles.mjs",
-      "to": "apps/experiences/lumen-isles/scripts/build-lumen-isles.mjs",
+      "to": "scripts/lumen-isles/build-lumen-isles.mjs",
       "phase": "P4",
-      "why": "belongs to the Lumen Isles experience"
+      "why": "Lumen Isles place builder (kept under scripts/: check-deadends exempts scripts/** from its importer rule)"
     },
     {
       "from": "scripts/open-lumen-authoring.luau",
-      "to": "apps/experiences/lumen-isles/scripts/open-lumen-authoring.luau",
+      "to": "scripts/lumen-isles/open-lumen-authoring.luau",
       "phase": "P4",
-      "why": "belongs to the Lumen Isles experience"
+      "why": "Lumen Isles place builder (kept under scripts/: check-deadends exempts scripts/** from its importer rule)"
     },
     {
       "from": "scripts/check-api-base.mjs",
@@ -1122,6 +1122,24 @@
       "rerunOk": true
     },
     {
+      "file": "apps/worker/tests/owner-corpus.test.mjs",
+      "phase": "P4",
+      "find": "'\\.\\./\\.\\./scripts/ingest-owner-corpus\\.mjs'",
+      "replace": "'../../scripts/harvest/ingest-owner-corpus.mjs'",
+      "expect": 1,
+      "why": "a ../ path relative to the worker package, not to the file",
+      "rerunOk": true
+    },
+    {
+      "file": "tests/check-backlog.test.mjs",
+      "phase": "P4",
+      "find": "mkdirSync\\(join\\(dir, 'scripts'\\), \\{ recursive: true \\}\\);",
+      "replace": "mkdirSync(join(dir, 'scripts', 'checks'), { recursive: true });",
+      "expect": 1,
+      "why": "the scratch repo needs the new folder",
+      "rerunOk": true
+    },
+    {
       "file": "scripts/checks/test_secret_scan.py",
       "phase": "P4",
       "find": "\\(self\\.root / \"scripts\"\\)\\.mkdir\\(\\)",
@@ -1229,6 +1247,12 @@
     }
   ],
   "allowedMentions": [
+    {
+      "file": "scripts/checks/known-exposures.json"
+    },
+    {
+      "file": "scripts/checks/known-fixtures.json"
+    },
     {
       "file": "platforms/sentry/README.md"
     },

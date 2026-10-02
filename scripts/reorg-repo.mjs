@@ -310,7 +310,9 @@ function jstr(j, indent, orig) {
 }
 const dirty = (p) => git('status', '--porcelain', '--', p).trim().length > 0;
 function applyRefEdits() {
-  for (const ed of (plan.refEdits ?? []).filter(inPhase)) {
+  for (let ed of (plan.refEdits ?? []).filter(inPhase)) {
+    // an edit names the file where it was when the plan was written; a move in the same run may have relocated it
+    if (!files.has(ed.file) && files.has(mapOld(ed.file) ?? '')) ed = { ...ed, file: mapOld(ed.file) };
     const cur = [...files.entries()].find(([k]) => k === ed.file);
     if (!cur) { if (ed.optional) continue; fail(`refEdit: file not in tree: ${ed.file}`); continue; }
     if (ed.skipIfDirty && dirty(ed.file)) { warns.push(`refEdit skipped (file is dirty): ${ed.file}`); continue; }
@@ -521,7 +523,10 @@ function check() {
     const t = readText(files.get(f)); if (!t || !JSLIKE.test(f)) continue;
     const dir = path.posix.dirname(f);
     for (const m of t.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\(\s*|new URL\(\s*)(['"])(\.{1,2}\/[^'"\n]*|\.\.)\1/g)) {
+      const lineStart = t.lastIndexOf('\n', m.index) + 1;
+      if (/^\s*(\/\/|\*|#)/.test(t.slice(lineStart, m.index + 1))) continue; // a comment, not code
       const target = path.posix.normalize(path.posix.join(dir, m[2]));
+      if ((plan.workflowGenerated ?? []).some((g) => new RegExp(g).test(target))) continue; // build output
       if (!(exists(target) || exists(target.replace(/\/$/, '')) || fs.existsSync(target))) complain(`  unresolved relative path in moved file ${f}: ${m[2]}`);
     }
   }
