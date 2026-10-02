@@ -13,12 +13,15 @@ import { createHash } from 'node:crypto';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
 const out = process.argv[2] ?? '/private/tmp/claude-501/compose';
-const recipeName = process.argv[3] ?? 'orchardRecipe';
+// The agent's `laneDefense` argument as a JSON file (every piece a library { gameId, path }); a sample: apps/worker/tests/fixtures/lane-defense.json.
+const recipeFile = process.argv[3] ?? join(ROOT, 'apps/worker/tests/fixtures/lane-defense.json');
 mkdirSync(out, { recursive: true });
 const bundle = join(out, 'recipes.mjs');
 execFileSync(join(ROOT, 'apps/worker/node_modules/.bin/esbuild'), [join(ROOT, 'apps/worker/src/proof-entry.ts'), '--bundle', '--format=esm', '--outfile=' + bundle], { stdio: 'pipe' });
 const M = await import(bundle);
-const steps = M.composeSteps(M[recipeName]());
+const read = M.readLaneDefense(JSON.parse(readFileSync(recipeFile, 'utf8')), 20260930);
+if ('error' in read) { console.error(read.error); process.exit(1); }
+const steps = M.composeSteps(read.recipe);
 writeFileSync(join(out, 'steps.json'), JSON.stringify(steps));
 writeFileSync(join(out, 'surfaces.json'), JSON.stringify(M.SURFACE_MAPS));
 const LIB = join(homedir(), 'Library/Application Support/Apple/owner-library/sources');

@@ -946,6 +946,12 @@ const TOOL_ARGS = {
   // stays in user-credentials.ts.
   find_library_model: { query: 'oak tree' },
   insert_library_model: { id: 'cs-18717544', position: [0, 10, 0] },
+  // Phase 1 (2026-10-02). Egress reviewed: preview_library_models stages the chosen library rows in ServerStorage through
+  // the same op-sender and library path as insert_library_model (no new fetch, no key beyond the user's own upload key),
+  // strips scripts, measures, and removes what it staged; dress_object only creates and edits instances in the user's own
+  // place through the op-sender. Neither reaches the network on its own.
+  preview_library_models: { models: [{ id: 'cs-18717544' }] },
+  dress_object: { target: 'game.Workspace.Thing', counter: { label: 'Clicks' } },
   // D-UILIB-2 (b54e84d). Egress reviewed 2026-09-23 by the security lane: find_ui_asset searches
   // the index bundled from packages/asset-library/index.json — no fetch, no key. upload_ui_asset
   // resolves `asset` by EXACT lookup in that index (a made-up path is refused before any read),
@@ -2671,6 +2677,8 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //   nothing else."), sent once when a run answers a built object without playing it. REVIEWED: a fixed string
   //   literal, no interpolation, so it carries nothing the model or a place wrote. The same change's upgrade line
   //   (objectUpgradeLine) goes into the system prompt and passes part names only as [A-Za-z0-9_] identifiers.
+  // EIGHTEENTH REMOVED 2026-10-02 (phase 1): the object play-check steer is gone: whether to check a built object in play is the
+  //   agent's decision, informed by the build result, not a user-role turn the harness injects. A removal only shrinks the channel.
   //[[ NINETEEN SINCE 2026-10-02: the failing-tool steer (run-idle.ts failureSteer, "Your last N calls to <tool> failed the
   //   same way…"). REVIEWED: it carries an integer from the run's own counter and a tool name that the run loop only counts
   //   when the call was in this step's offered set (`allowed.has(call.name)`), so it is a registry name. The error text is
@@ -2679,7 +2687,7 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //[[ TWENTY SINCE 2026-10-02: the back-and-forth steer ("Over your last 24 changes, 12 or more went to the same thing…",
   //   run-idle.ts afterChangeWindow). REVIEWED: a fixed string literal with no interpolation, pushed once per 12 changes by the
   //   run's own counter; nothing the model, the user or a tool wrote reaches it (the keys it counts are never quoted back). ]]
-  assert.equal(userPushes.length, 20, 'a user-role transcript injection was added or removed — review it for injection risk');
+  assert.equal(userPushes.length, 19, 'a user-role transcript injection was added or removed — review it for injection risk');
   const failSteer = bodyBlock(readCode('run-idle.ts'), readCode('run-idle.ts').indexOf('export function failureSteer('));
   assert.ok(failSteer.length > 100, 'failureSteer was not found — this test would check nothing');
   assert.deepEqual([...failSteer.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['failures', 'tool'],

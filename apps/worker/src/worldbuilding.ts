@@ -373,8 +373,8 @@ const OUTDOOR = `NATURAL OUTDOOR SCENES (islands, hills, cliffs, forests, waterf
     "sunny" for a bright day. Never build a sun, a sky or a sunset out of parts or flat planes.
   * Water is Terrain water. A waterfall is a tall, narrow column of it falling off an edge, with add_effect's
     waterfall mist preset where it lands.
-  * Trees, rocks and crystals: find_library_model + insert_library_model, never parts and never a
-    generator (D-MODELLIB-2). A crystal cluster's biggest spike stands taller than a player.
+  * Trees, rocks and crystals: find_library_model + insert_library_model first (preview with preview_library_models), parts only when the library has
+    none that is it, never an AI generator (D-MODELLIB-2). A crystal cluster's biggest spike stands taller than a player.
   * Floating scenes: the template Baseplate under the island breaks the illusion. Hide it (set_visible) and
     move the SpawnLocation onto the island, and say so in the reply. Clouds are never Parts: flat slabs read
     as glass. Use a Clouds object under Terrain (Cover 0.5-0.6, Density 0.6) or leave them out.

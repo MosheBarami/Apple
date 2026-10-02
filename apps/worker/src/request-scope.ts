@@ -76,14 +76,3 @@ const NOT_FROM_LIBRARY = new Set(['create_instances', 'edit_terrain', 'build_sce
 export function staysInOwnerLibrary(tool: string): boolean {
   return !NOT_FROM_LIBRARY.has(tool);
 }
-
-/**
- * "make it 100x cooler", "make it better", "make it more epic": an upgrade of what is there, with nothing else named
- * (test 3, 2026-10-01). A request that also names other work (add a shop, fix the script, a game) is not one. Pure.
- */
-const UPGRADE = /\b(cooler|cool|better|epic(er)?|awesome|amazing|insane|crazier|fancier|prettier|nicer|sick(er)?|legendary|more fun|more exciting|upgrade|level (it )?up|pimp|juice (it )?up|spice (it )?up)\b/i;
-const NAMES_OTHER_WORK = /\b(add|adds|remove|delete|fix|script|code|game|map|shop|gui|ui|hud|button|lighting|light|lights|colou?rs?|make (a|an|some|me)\b)/i;
-export function isUpgradeRequest(text: string): boolean {
-  const t = text.trim();
-  return t.length > 0 && t.length <= 80 && UPGRADE.test(t) && !NAMES_OTHER_WORK.test(t);
-}

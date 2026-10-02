@@ -10,6 +10,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
+-- The money counter's name in the screen: the client config's `counter` (the composer names the counter for the currency, so a
+-- renamed currency is found by name), "Coins" for a config that names none.
+local counterName = "Coins"
+local cfgFolder = ReplicatedStorage:FindFirstChild("AppleComponents")
+local cfgModule = cfgFolder and cfgFolder:FindFirstChild("AppleClientConfig")
+if cfgModule and cfgModule:IsA("ModuleScript") then
+	local ok, cfg = pcall(require, cfgModule)
+	if ok and type(cfg) == "table" and type((cfg :: any).counter) == "string" then counterName = (cfg :: any).counter end
+end
+
 local function short(n: number): string
 	for _, s in { { 1e12, "T" }, { 1e9, "B" }, { 1e6, "M" }, { 1e3, "K" } } do
 		if n >= s[1] then return (string.format("%.1f", n / s[1]):gsub("%.0$", "")) .. s[2] end
@@ -60,7 +70,7 @@ end
 
 local function wire(screen: ScreenGui)
 	onePanel(screen)
-	local coins = screen:FindFirstChild("Coins")
+	local coins = screen:FindFirstChild(counterName)
 	local perSecond = coins and coins:FindFirstChild("PerSecond")
 	if perSecond and perSecond:IsA("TextLabel") then
 		local function draw() perSecond.Text = "+" .. short(tonumber(player:GetAttribute("IncomePerSecond")) or 0) .. "/s" end

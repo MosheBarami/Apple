@@ -923,6 +923,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'play_library_sound':
     // D-MODELLIB-1: a search over the bundled 3D model library index; touches nothing.
     case 'find_library_model':
+    // Looking at candidates off the place (staged in ServerStorage, measured, taken away again): a read, the agent's own look.
+    case 'preview_library_models':
     case 'find_verified_asset':
     case 'inspect_model':
     // The read-only Studio tools. Each one ASKS the place something and changes nothing, so
@@ -1053,7 +1055,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'add_upgrades':
     case 'animate_model':
     case 'build_object':
-    case 'cool_library_model':
+    // Opt-in presentation of an object already in the place (stage, click response, counter, attached piece).
+    case 'dress_object':
     case 'insert_sound':
     case 'insert_vfx':
       return 'building';
@@ -2854,6 +2857,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
+    name: 'preview_library_models',
+    label: 'Look at ready-made models',
+    why: 'Measures candidate models off your place (size, colour, parts) so the right one can be chosen. It briefly stages them in the place and takes them away again; nothing stays.',
+    group: 'changes',
+  },
+  {
     name: 'insert_library_model',
     label: 'Insert models from Apple\'s model library',
     why: 'Brings ready-made 3D models (props, buildings, trees, vehicles) into your place.',
@@ -2932,9 +2941,9 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
-    name: 'cool_library_model',
-    label: 'Make objects cooler',
-    why: 'Adds a library piece on top of a ready-made object, an effect, a glow and spinning orbs.',
+    name: 'dress_object',
+    label: 'Dress objects',
+    why: 'Adds what you ask for to an object already in the place: a stage under it, a click response, a counter, an attached piece, a light or an effect. Nothing is added unless asked.',
     group: 'changes',
   },
   {

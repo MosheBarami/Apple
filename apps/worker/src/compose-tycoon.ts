@@ -7,141 +7,122 @@
  * conveyor, machines over the belt turn it into the next thing and multiply what it is worth, a seller at the end pays
  * the owner, and buy pads on the floor unlock the next dropper, machine or speed-up in turn (AppleTycoon).
  *
- * WHAT the game is made of comes from the request, never from a template's own nouns: the agent fills `theme` from the
- * user's words (compose_game's tycoon argument: the item, the machines in order and what each makes, the seller), and
- * tycoonTheme only fills what it left out. The library supplies each machine's look when it has one; otherwise the
- * machine is built from parts and still named for what it is. Pure: tycoonSteps turns a recipe into composer steps.
+ * WHAT the game is made of is the AGENT's: compose_game's `tycoon` argument carries the item, the dropper, the machines
+ * in order and what each makes of the item, the seller and the currency, in the user's own words and language. The
+ * harness holds no trade of its own (it used to hold a laundry chain, a pizza chain and a generic "Cleaner, Polisher,
+ * Packer" fallback, and every tycoon came out as one of them): a missing field is reported by name and the agent fills
+ * it. A machine's look is a library piece the agent chose (`look: { gameId, path }`) or parts when it gave none. Pure:
+ * tycoonSteps turns a recipe into composer steps.
  */
 import { COMPONENTS } from './components.generated';
 import { luau, type LibRef, type Step, type InstanceSpecLite } from './compose';
-import { studLighting } from './studded-map';
 import { studdedScreen } from './stud-ui';
 
 type V3 = [number, number, number];
 
-/** One machine on the belt: what it is called, what to look for in the library, what the item becomes and its colour. */
-export interface TycoonMachine { name: string; search?: string; becomes: string; color: string; times: number }
-/** What the game is made of, from the request. */
+/** One machine on the belt: what it is called, what the item becomes, its colour, how much it multiplies, its library look. */
+export interface TycoonMachine { name: string; becomes: string; color: string; times: number; look?: LibRef }
+/** What the game is made of, from the agent. */
 export interface TycoonTheme {
-  subject: string;
-  item: { name: string; color: string };
+  title: string;
+  /** What drops: its name, colour and (optional) look: a shape, a size [x,y,z] and a material the agent chose. */
+  item: { name: string; color: string; shape?: 'Ball' | 'Block' | 'Cylinder'; size?: V3; material?: string };
   dropper: string;
   machines: TycoonMachine[];
-  seller: { name: string; search?: string };
+  seller: { name: string; look?: LibRef };
   currency: string;
+  /** Printed before a price on a pad; none unless the agent gave one. */
+  symbol: string;
+  players: number;
+  /** Pad prices the agent set; any it left out take the documented default (reported with a time-to-next-purchase check). */
+  prices?: { dropper2?: number; dropper3?: number; fastBelt?: number; machines?: number[] };
 }
 
 export interface TycoonRecipe {
   kind: 'tycoon';
   title: string; seed: number; players: number;
   theme: TycoonTheme;
-  /** The library piece each machine (by index) and the seller wear, when the library has one. */
-  looks: { machines: (LibRef | undefined)[]; seller?: LibRef };
   hasComponents?: boolean;
   surface?: 'studs' | 'keep';
+  /** The agent asked for the default Baseplate and SpawnLocation to go (the map has its own ground and spawn). */
+  clearDefaultGround?: boolean;
 }
 
-const cap = (s: string) => s.replace(/\b[a-z]/g, (c) => c.toUpperCase());
 const HEX = /^#[0-9a-f]{6}$/i;
 /**
- * A name a sign can hold: the thing itself, not a sentence about it, cut at a whole word (live 2026-10-02: the agent
- * wrote "Laundry Hamper that drops piles..." and the sign read "Laundry Hamper That Drops Pi"). Pure.
+ * A name a sign can hold, in any language: control characters and markup characters out, whitespace collapsed, cut at
+ * `max` characters (by code point, never mid-character). Nothing is cut at a word and no word is dropped. `cut` says
+ * whether it was shortened, so the result can tell the agent. Pure.
  */
-export function clean(v: unknown, max = 30): string {
-  const text = String(v ?? '').replace(/[^A-Za-z0-9 '\-]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const words = text.split(/\b(?:that|which|who|where|with|for|to|so)\b/i)[0]!.trim().split(' ').filter(Boolean).slice(0, 4);
-  while (words.length > 1 && words.join(' ').length > max) words.pop();
-  return words.join(' ').slice(0, max);
+export function cleanText(v: unknown, max = 30): { text: string; cut: boolean } {
+  const all = Array.from(String(v ?? '').replace(/[\u0000-\u001f\u007f<>"\\]+/g, ' ').replace(/\s+/g, ' ').trim());
+  return { text: all.slice(0, max).join('').trim(), cut: all.length > max };
 }
-const colourOr = (v: unknown, fallback: string) => (typeof v === 'string' && HEX.test(v) ? v : fallback);
-
-/**
- * Starting points for a few trades, used ONLY for what the agent's theme leaves out. Each is the trade's own chain:
- * what comes in, what each machine makes of it, who buys it.
- */
-const KNOWN: Record<string, Omit<TycoonTheme, 'subject' | 'currency'>> = {
-  laundry: {
-    item: { name: 'Dirty Laundry', color: '#8a6d52' }, dropper: 'Laundry Chute',
-    machines: [
-      { name: 'Washing Machine', search: 'washing machine', becomes: 'Clean Laundry', color: '#dff3ff', times: 2 },
-      { name: 'Dryer', search: 'dryer', becomes: 'Dry Laundry', color: '#ffffff', times: 2 },
-      { name: 'Folding Table', search: 'folding table', becomes: 'Folded Laundry', color: '#9fd8ff', times: 3 },
-    ],
-    seller: { name: 'Delivery Van', search: 'van' },
-  },
-  pizza: {
-    item: { name: 'Dough', color: '#f1dca7' }, dropper: 'Dough Maker',
-    machines: [
-      { name: 'Sauce Station', search: 'sauce', becomes: 'Sauced Pizza', color: '#d8432f', times: 2 },
-      { name: 'Cheese Grater', search: 'cheese', becomes: 'Cheesy Pizza', color: '#ffd34d', times: 2 },
-      { name: 'Pizza Oven', search: 'pizza oven', becomes: 'Hot Pizza', color: '#e8913a', times: 3 },
-    ],
-    seller: { name: 'Pizza Counter', search: 'counter' },
-  },
+export const clean = (v: unknown, max = 30): string => cleanText(v, max).text;
+const asLook = (v: unknown): LibRef | undefined => {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  return typeof o.gameId === 'string' && /^[0-9a-f]{8,64}$/.test(o.gameId) && typeof o.path === 'string' && o.path.startsWith('/') ? { game: o.gameId, path: o.path } : undefined;
 };
 
-/** The game's subject from the request: the noun before "tycoon" ("a laundry tycoon" -> "laundry"). Pure. */
-export function tycoonSubject(text: string | undefined): string {
-  const m = /\b([a-z]+(?:\s[a-z]+)?)\s+tycoon\b/i.exec(String(text ?? ''));
-  const words = (m?.[1] ?? '').toLowerCase().split(' ').filter((w) => !['a', 'an', 'the', 'me', 'my', 'make', 'build', 'create'].includes(w));
-  return words.join(' ') || 'factory';
-}
-
-export function isTycoonRequest(text: string | undefined): boolean {
-  return /\btycoon\b/i.test(String(text ?? ''));
-}
-
 /**
- * The theme: the agent's own reading of the request first, field by field, then the trade's known chain, then a
- * generic one named after the subject. Never empty, never more than four machines. Pure.
+ * The theme from the agent's `tycoon` argument, field by field, or what is missing. Nothing is filled from a template: a
+ * trade's chain, a generic chain and fixed colours are all gone. Names keep their language and are cut only by length
+ * (reported in `notes`). Pure.
  */
-export function tycoonTheme(request: string, given: unknown): TycoonTheme {
-  const subject = tycoonSubject(request);
+export function tycoonTheme(given: unknown): { theme: TycoonTheme; notes: string[] } | { error: string; missing: string[] } {
   const g = (given && typeof given === 'object' ? given : {}) as Record<string, unknown>;
-  const known = KNOWN[subject.split(' ').pop()!] ?? KNOWN[subject];
-  const generic: Omit<TycoonTheme, 'subject' | 'currency'> = {
-    item: { name: `Raw ${cap(subject)}`, color: '#9a8b7a' }, dropper: `${cap(subject)} Dropper`,
-    machines: [
-      { name: `${cap(subject)} Cleaner`, becomes: `Clean ${cap(subject)}`, color: '#dff3ff', times: 2 },
-      { name: `${cap(subject)} Polisher`, becomes: `Shiny ${cap(subject)}`, color: '#ffe27a', times: 2 },
-      { name: `${cap(subject)} Packer`, becomes: `Packed ${cap(subject)}`, color: '#b58cff', times: 3 },
-    ],
-    seller: { name: 'Seller' },
+  const missing: string[] = [];
+  const notes: string[] = [];
+  const text = (v: unknown, path: string, max = 30): string => {
+    const c = cleanText(v, max);
+    if (!c.text) missing.push(path); else if (c.cut) notes.push(`${path} was cut to ${max} characters`);
+    return c.text;
   };
-  const base = known ?? generic;
-  const gItem = (g.item && typeof g.item === 'object' ? g.item : { name: g.item }) as Record<string, unknown>;
-  const gMachines = Array.isArray(g.machines) ? g.machines : [];
-  const machines: TycoonMachine[] = (gMachines.length ? gMachines : base.machines).slice(0, 4).map((m, i) => {
-    const o = (m && typeof m === 'object' ? m : { name: m }) as Record<string, unknown>;
-    const fall = base.machines[i] ?? base.machines[base.machines.length - 1]!;
-    const name = clean(o.name) || fall.name;
+  const colour = (v: unknown, path: string): string => { if (typeof v === 'string' && HEX.test(v)) return v.toLowerCase(); missing.push(`${path} (#rrggbb)`); return '#ffffff'; };
+  const item = (g.item && typeof g.item === 'object' ? g.item : {}) as Record<string, unknown>;
+  const title = text(g.title, 'title', 40);
+  const currency = text(g.currency, 'currency', 12).replace(/[\s.\[\]]/g, '');
+  if (!currency && !missing.includes('currency')) missing.push('currency');
+  const itemName = text(item.name, 'item.name');
+  const itemColor = colour(item.color, 'item.color');
+  const dropper = text(g.dropper, 'dropper');
+  const rawMachines = Array.isArray(g.machines) ? g.machines : [];
+  if (rawMachines.length < 1) missing.push('machines (1 to 4, each { name, becomes, color })');
+  const machines: TycoonMachine[] = rawMachines.slice(0, 4).map((m, i) => {
+    const o = (m && typeof m === 'object' ? m : {}) as Record<string, unknown>;
+    const look = asLook(o.look);
     return {
-      name: cap(name),
-      search: clean(o.search, 40) || clean(o.name, 40).toLowerCase() || fall.search,
-      becomes: cap(clean(o.becomes) || fall.becomes),
-      color: colourOr(o.color, fall.color),
-      times: typeof o.times === 'number' && o.times >= 1.5 && o.times <= 5 ? Math.round(o.times * 2) / 2 : fall.times,
+      name: text(o.name, `machines[${i}].name`), becomes: text(o.becomes, `machines[${i}].becomes`), color: colour(o.color, `machines[${i}].color`),
+      times: typeof o.times === 'number' && o.times >= 1.5 && o.times <= 5 ? Math.round(o.times * 2) / 2 : 2,
+      ...(look ? { look } : {}),
     };
   });
-  const gSeller = (g.seller && typeof g.seller === 'object' ? g.seller : { name: g.seller }) as Record<string, unknown>;
+  const seller = (g.seller && typeof g.seller === 'object' ? g.seller : {}) as Record<string, unknown>;
+  const sellerName = text(seller.name, 'seller.name');
+  if (missing.length) return { error: `The tycoon is missing: ${missing.join('; ')}. Fill them from the user's request and call compose_game again.`, missing };
+  const shape = ['Ball', 'Block', 'Cylinder'].find((x) => x.toLowerCase() === String(item.shape ?? '').toLowerCase()) as 'Ball' | 'Block' | 'Cylinder' | undefined;
+  const size = Array.isArray(item.size) && item.size.length === 3 && item.size.every((n) => typeof n === 'number' && n > 0.2 && n < 12) ? item.size as V3 : undefined;
+  const material = typeof item.material === 'string' && /^[A-Za-z]{3,20}$/.test(item.material) ? item.material : undefined;
+  const itemLook = { name: itemName, color: itemColor, ...(shape ? { shape } : {}), ...(size ? { size } : {}), ...(material ? { material } : {}) };
+  const players = Math.max(2, Math.min(6, Math.round(Number(g.players) || 4)));
+  const pr = (g.prices && typeof g.prices === 'object' ? g.prices : {}) as Record<string, unknown>;
+  const price = (v: unknown) => (typeof v === 'number' && v >= 1 && v <= 1e12 ? Math.round(v) : undefined);
+  const prices = {
+    ...(price(pr.dropper2) ? { dropper2: price(pr.dropper2) } : {}), ...(price(pr.dropper3) ? { dropper3: price(pr.dropper3) } : {}), ...(price(pr.fastBelt) ? { fastBelt: price(pr.fastBelt) } : {}),
+    ...(Array.isArray(pr.machines) ? { machines: pr.machines.map(price).filter((n): n is number => n !== undefined) } : {}),
+  };
+  const sellerLook = asLook(seller.look);
   return {
-    subject,
-    item: { name: cap(clean(gItem.name) || base.item.name), color: colourOr(gItem.color, base.item.color) },
-    dropper: cap(clean(g.dropper) || base.dropper),
-    machines,
-    seller: { name: cap(clean(gSeller.name) || base.seller.name), search: clean(gSeller.search, 40) || clean(gSeller.name, 40).toLowerCase() || base.seller.search },
-    currency: clean(g.currency, 12).replace(/\s/g, '') || 'Cash',
+    theme: {
+      title, item: itemLook, dropper, machines, seller: { name: sellerName, ...(sellerLook ? { look: sellerLook } : {}) }, currency,
+      symbol: clean(g.symbol, 3), players, ...(Object.keys(prices).length ? { prices } : {}),
+    },
+    notes,
   };
 }
 
-/** "for 4 players"; 4 when unsaid, 2..6 (a base is 64 studs). Pure. */
-function playersIn(text: string): number {
-  const m = /\b(\d{1,2})\s*(players?|bases?|plots?)\b/i.exec(text);
-  return Math.max(2, Math.min(6, m ? Number(m[1]) : 4));
-}
-
-export function tycoonRecipe(request: string, seed: number, theme: TycoonTheme, looks: TycoonRecipe['looks'] = { machines: [] }, hasComponents = false): TycoonRecipe {
-  return { kind: 'tycoon', title: `${cap(theme.subject)} Tycoon`, seed, players: playersIn(request), theme, looks, hasComponents };
+export function tycoonRecipe(seed: number, theme: TycoonTheme, hasComponents = false): TycoonRecipe {
+  return { kind: 'tycoon', title: theme.title, seed, players: theme.players, theme, hasComponents };
 }
 
 /** A base's centre: two rows facing each other across the spawn street. Pure. */
@@ -161,17 +142,37 @@ const BASE_COLOURS = ['#4f8cff', '#ff5a7a', '#36c27a', '#ffb02e', '#a066ff', '#2
 
 export interface TycoonUnlock { id: string; label: string; price: number; after?: string }
 
-/** The pads in the order they unlock, priced so the next one is about a minute away. Pure. */
+/** The documented default pads' prices, used for any the agent did not set (and reported, with the time they imply). */
+export const DEFAULT_PRICES = { dropper2: 15, dropper3: 120, fastBelt: 500, machines: [40, 220, 900, 3200] };
+
+/** The pads in the order they unlock. The agent's prices win; the rest are the documented defaults. Pure. */
 export function tycoonUnlocks(theme: TycoonTheme): TycoonUnlock[] {
   const out: TycoonUnlock[] = [];
+  const pr = theme.prices ?? {};
   const add = (id: string, label: string, price: number) => { out.push({ id, label, price, ...(out.length ? { after: out[out.length - 1]!.id } : {}) }); };
-  add('Dropper2', `2nd ${theme.dropper}`, 15);
+  add('Dropper2', `2 ${theme.dropper}`, pr.dropper2 ?? DEFAULT_PRICES.dropper2);
   theme.machines.forEach((m, i) => {
-    add(`Machine${i + 1}`, m.name, [40, 220, 900, 3200][i]!);
-    if (i === 0) add('Dropper3', `3rd ${theme.dropper}`, 120);
-    if (i === 1) add('FastBelt', 'Faster Belt', 500);
+    add(`Machine${i + 1}`, m.name, pr.machines?.[i] ?? DEFAULT_PRICES.machines[i]!);
+    if (i === 0) add('Dropper3', `3 ${theme.dropper}`, pr.dropper3 ?? DEFAULT_PRICES.dropper3);
+    if (i === 1) add('FastBelt', `${theme.machines[1]?.name ?? ''} +`, pr.fastBelt ?? DEFAULT_PRICES.fastBelt);
   });
   return out;
+}
+
+/**
+ * Information, not a verdict: how long each pad takes to afford, in order, with one dropper every 1.6 s, the item worth 1 and
+ * every machine bought so far multiplying it. A pad minutes away is a slow game; seconds away, a fast one. The agent reads it and
+ * may pass its own `prices`. Pure.
+ */
+export function tycoonEconomy(theme: TycoonTheme, unlocks = tycoonUnlocks(theme)): { id: string; price: number; secondsToAfford: number }[] {
+  let droppers = 1, multiplier = 1;
+  return unlocks.map((u) => {
+    const secondsToAfford = Math.round(u.price / ((droppers / 1.6) * multiplier));
+    if (u.id === 'Dropper2' || u.id === 'Dropper3') droppers += 1;
+    const m = /^Machine(\d+)$/.exec(u.id);
+    if (m) multiplier *= theme.machines[Number(m[1]) - 1]?.times ?? 2;
+    return { id: u.id, price: u.price, secondsToAfford };
+  });
 }
 
 const part = (name: string, size: V3, at: V3, color: string, extra: Record<string, unknown> = {}): InstanceSpecLite =>
@@ -192,9 +193,9 @@ function dropperModel(id: string, theme: TycoonTheme, x: number, z: number, colo
   const y = BELT_Y + 0.5;
   return { className: 'Model', name: id, children: [
     part('Hopper', [4, 3, 8.4], [x, y + 7, z], colour, { Material: 'SmoothPlastic' }),
-    // Heaped with what it drops, so it reads as what it is (round 2: "an orange box on legs").
+    // Heaped with what it drops, in the item's own colour and material (plain plastic unless the agent chose another).
     ...[[-0.8, 8.9, -2], [0.7, 9.1, 0.2], [-0.3, 8.8, 2.2], [0.9, 8.7, -1.1]].map(([dx, dy, dz], k) =>
-      ({ className: 'Part', name: `Heap${k + 1}`, props: { Shape: 'Ball', Size: [2.2, 2.2, 2.2], Position: [x + dx!, y + dy!, z + dz!], Anchored: true, CanCollide: false, Color: theme.item.color, Material: 'Fabric' } })),
+      ({ className: 'Part', name: `Heap${k + 1}`, props: { Shape: 'Ball', Size: [2.2, 2.2, 2.2], Position: [x + dx!, y + dy!, z + dz!], Anchored: true, CanCollide: false, Color: theme.item.color, Material: theme.item.material ?? 'Plastic' } })),
     part('Funnel', [2.4, 1.2, 2.4], [x, y + 5, z], '#3b3f4a'),
     // The legs stand outside the rails, so nothing on the belt runs into them.
     ...[[-1.7, -3.9], [1.7, -3.9], [-1.7, 3.9], [1.7, 3.9]].map(([dx, dz], k) => part(`Leg${k + 1}`, [0.5, 8, 0.5], [x + dx!, y + 2.5, z + dz!], '#3b3f4a')),
@@ -219,14 +220,18 @@ function machineModel(id: string, m: TycoonMachine, x: number, z: number, hasLoo
 }
 
 /** A pad: a green square on the floor that says what it builds and for how much. */
-function padPart(u: TycoonUnlock, at: V3): InstanceSpecLite {
+function padPart(u: TycoonUnlock, at: V3, theme: TycoonTheme): InstanceSpecLite {
   return { ...part(u.id, [5, 0.4, 5], at, '#2fd66b', { Material: 'Neon', CanCollide: false, CanTouch: true }), attributes: { Id: u.id, Price: u.price },
-    children: [sign(`${u.label} - ${short(u.price)}`, 2.4, '#ffffff')] };
+    children: [sign(`${u.label} - ${short(u.price, theme)}`, 2.4, '#ffffff')] };
 }
 
-function short(n: number): string {
-  for (const [v, s] of [[1e6, 'M'], [1e3, 'K']] as const) if (n >= v) return `$${(n / v).toFixed(1).replace(/\.0$/, '')}${s}`;
-  return `$${n}`;
+/** A price as a pad shows it, in the game's own currency: 1500 -> "1.5K Cash", or "$1.5K" when the agent gave a symbol. Pure. */
+export function short(n: number, theme: Pick<TycoonTheme, 'currency' | 'symbol'>): string {
+  const num = (() => {
+    for (const [v, s] of [[1e6, 'M'], [1e3, 'K']] as const) if (n >= v) return `${(n / v).toFixed(1).replace(/\.0$/, '')}${s}`;
+    return String(n);
+  })();
+  return theme.symbol ? `${theme.symbol}${num}` : `${num} ${theme.currency}`;
 }
 
 /** The composer steps for a tycoon, from its recipe. Pure. */
@@ -234,7 +239,7 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
   const { theme } = recipe;
   const steps: Step[] = [];
   const unlocks = tycoonUnlocks(theme);
-  const looks = recipe.looks;
+  const looks = { machines: theme.machines.map((m) => m.look), seller: theme.seller.look };
   // Every library piece's import folder exists first (live 2026-10-02: "nothing at ...AppleParts.TycoonMachine1").
   const staged = [...looks.machines.flatMap((r, i) => (r ? [`TycoonMachine${i + 1}`] : [])), ...(looks.seller ? ['TycoonSeller'] : [])];
   steps.push({ kind: 'create', parent: 'game.ServerStorage', items: [{ className: 'Folder', name: 'AppleParts', children: staged.map((name) => ({ className: 'Folder', name })) }, { className: 'Folder', name: 'AppleTycoonParts', children:
@@ -258,8 +263,8 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
       part('Floor', [BASE, 1, BASE], [cx, 0.5, cz], colour),
       part('Spawn', [8, 1, 8], [cx, 1.1, z(17)], '#ffffff', { Material: 'SmoothPlastic' }),
       { ...part('Sign', [0.2, 0.2, 0.2], [cx, 1, z(BASE / 2)], '#000000', { Transparency: 1, CanCollide: false }), children: [sign(`Base ${i + 1}`, 6, colour)] },
-      part('Conveyor', [BELT_LEN, 1, 6], [cx + BELT_X, BELT_Y, z(BELT_Z)], '#2b2e36', { Material: 'Fabric' }),
-      // Low rails: the laundry riding the belt is the game, and 1.4-stud rails hid it (round 2).
+      part('Conveyor', [BELT_LEN, 1, 6], [cx + BELT_X, BELT_Y, z(BELT_Z)], '#2b2e36', { Material: 'SmoothPlastic' }),
+      // Low rails: what rides the belt is the game, and tall rails would hide it.
       part('RailBack', [BELT_LEN, 0.7, 0.5], [cx + BELT_X, BELT_Y + 0.85, z(BELT_Z) - 3.25], '#ffd34d'),
       part('RailFront', [BELT_LEN, 0.7, 0.5], [cx + BELT_X, BELT_Y + 0.85, z(BELT_Z) + 3.25], '#ffd34d'),
       // A low wall round the base with its door on the street side: a base, not a plate.
@@ -268,9 +273,9 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
       part('WallRight', [1, 3, BASE], [cx + BASE / 2 - 0.5, 2.5, cz], '#ffffff'),
       part('WallFrontLeft', [BASE / 2 - 6, 3, 1], [cx - BASE / 4 - 3, 2.5, z(BASE / 2 - 0.5)], '#ffffff'),
       part('WallFrontRight', [BASE / 2 - 6, 3, 1], [cx + BASE / 4 + 3, 2.5, z(BASE / 2 - 0.5)], '#ffffff'),
-      { ...part('Seller', [5, 3, 8], [cx + SELLER_X, 2, z(BELT_Z)], '#2fd66b', { Material: 'SmoothPlastic' }), children: [sign(`${theme.seller.name} - sells your ${theme.machines[theme.machines.length - 1]?.becomes ?? theme.item.name}`, 4)] },
+      { ...part('Seller', [5, 3, 8], [cx + SELLER_X, 2, z(BELT_Z)], '#2fd66b', { Material: 'SmoothPlastic' }), children: [sign(`${theme.seller.name} - ${theme.machines[theme.machines.length - 1]?.becomes ?? theme.item.name}`, 4)] },
       { className: 'Folder', name: 'Drops' },
-      { className: 'Folder', name: 'Pads', children: unlocks.map((u, k) => padPart(u, padSlots[k]!)) },
+      { className: 'Folder', name: 'Pads', children: unlocks.map((u, k) => padPart(u, padSlots[k]!, theme)) },
     ] });
   }
   steps.push({ kind: 'create', parent: 'game.Workspace', items: [{ className: 'Folder', name: 'AppleMap', children: [
@@ -280,10 +285,9 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
     { className: 'Folder', name: 'Tycoons', children: bases },
     { className: 'Folder', name: 'Props' },
   ] }] });
-  steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
-  const light = studLighting();
-  steps.push({ kind: 'set', path: 'game.Lighting', props: light.props });
-  steps.push({ kind: 'create', parent: 'game.Lighting', items: light.effects });
+  // The default Baseplate and SpawnLocation are the user's until the agent says the map replaces them (clearDefaultGround).
+  // Lighting is not touched: set_mood is the agent's own call.
+  if (recipe.clearDefaultGround) steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
 
   // The unlockables, held per base until bought (Dropper1 is every player's from the start).
   for (let i = 0; i < recipe.players; i++) {
@@ -315,8 +319,9 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
     title: recipe.title,
     start: ['AppleTycoon'],
     economy: { currency: theme.currency, start: 0 },
+    symbol: theme.symbol || undefined,
     tycoon: {
-      item: { name: theme.item.name, color: theme.item.color, value: 1 },
+      item: { name: theme.item.name, color: theme.item.color, value: 1, ...(theme.item.shape ? { shape: theme.item.shape } : {}), ...(theme.item.size ? { size: theme.item.size } : {}), ...(theme.item.material ? { material: theme.item.material } : {}) },
       belt: { speed: 7 },
       droppers: { Dropper1: { every: 1.6 }, Dropper2: { every: 1.6 }, Dropper3: { every: 1.2 } },
       machines: Object.fromEntries(theme.machines.map((m, k) => [`Machine${k + 1}`, { times: m.times, color: m.color, becomes: m.becomes }])),
@@ -328,11 +333,11 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ServerScriptService.AppleComponents', name: 'AppleGameConfig',
     source: `-- ${recipe.title}: what this game's systems read. Written by Apple's composer from the request; edit freely.\nreturn ${luau(config)}\n` });
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage.AppleComponents', name: 'AppleClientConfig',
-    source: `-- ${recipe.title}: what the screen shows.\nreturn ${luau({ currency: theme.currency })}\n` });
+    source: `-- ${recipe.title}: what the screen shows.\nreturn ${luau({ currency: theme.currency, ...(theme.symbol ? { symbol: theme.symbol } : {}) })}\n` });
   if ((recipe.surface ?? 'studs') === 'studs') steps.push({ kind: 'surface', surface: 'studs', paths: ['game.Workspace.AppleMap', 'game.ServerStorage.AppleTycoonParts'] });
   steps.push({ kind: 'create', parent: 'game.StarterGui', items: [studdedScreen({ name: 'TycoonHUD', pieces: [
-    { kind: 'counter', name: 'Money', text: '0', icon: '$', colour: 'green', plus: false, at: 'top-left', caption: theme.currency },
-    { kind: 'bar', name: 'Hint', text: `Step on the green pads to build your ${recipe.title}`.slice(0, 60), colour: 'yellow', at: 'bottom' },
+    { kind: 'counter', name: 'Money', text: '0', icon: theme.symbol || Array.from(theme.currency)[0]!.toUpperCase(), colour: 'green', plus: false, at: 'top-left', caption: theme.currency },
+    { kind: 'bar', name: 'Hint', text: Array.from(`${recipe.title}`).slice(0, 40).join(''), colour: 'yellow', at: 'bottom' },
   ] })] });
   return steps;
 }
@@ -341,12 +346,12 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
 export function tycoonForUser(recipe: TycoonRecipe, report: { missing: string[] }): string {
   const t = recipe.theme;
   const chain = [t.item.name, ...t.machines.map((m) => m.becomes)].join(' → ');
-  const fromLibrary = recipe.looks.machines.filter((r, k) => r && !report.missing.includes(`TycoonMachine${k + 1}`)).length;
+  const fromLibrary = t.machines.filter((m, k) => m.look && !report.missing.includes(`TycoonMachine${k + 1}`)).length;
   return [
     `**${recipe.title}** is built: ${recipe.players} bases on a street, one for each player.`,
     `- Your ${t.dropper} drops ${t.item.name} onto a conveyor. It goes ${chain}, and each machine makes it worth more.`,
     `- The ${t.seller.name} at the end of the belt pays you ${t.currency} for every one.`,
-    `- Step on the green pads to buy, in order: ${tycoonUnlocks(t).map((u) => `${u.label} (${short(u.price)})`).join(', ')}.`,
+    `- Step on the green pads to buy, in order: ${tycoonUnlocks(t).map((u) => `${u.label} (${short(u.price, t)})`).join(', ')}.`,
     fromLibrary ? `- ${fromLibrary === t.machines.length ? 'Every machine is a model' : fromLibrary === 1 ? 'One machine is a model' : `${fromLibrary} machines are models`} from your library${fromLibrary < t.machines.length ? '; the rest are built from parts' : ''}.` : '',
   ].filter(Boolean).join('\n');
 }

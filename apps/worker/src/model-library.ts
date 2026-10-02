@@ -128,14 +128,8 @@ export function findLibraryModels(input: { query?: string; genre?: string; kind?
 }
 
 // ---------------------------------------------------------------------------------------------
-// The guard: a prop that the library holds is inserted from it, not assembled from parts.
+// Advice (D-MODELLIB-2, restated in phase 1): the library is preferred, never forced.
 // ---------------------------------------------------------------------------------------------
-
-/**
- * Names that are the world's surface, not a prop. A primitive part stays the right tool for these:
- * terrain, baseplates, paths, zones, spawns, walls, floors, platforms, obby stages and the like.
- */
-const STRUCTURAL = /\b(terrain|baseplate|base|ground|floor|path|road|street|sidewalk|lane|track|zone|area|region|spawn|spawnlocation|checkpoint|wall|walls|fence|barrier|border|platform|platforms|stage|stages|obby|course|level|map|arena|plot|lot|tile|tiles|ramp|stairs|step|steps|bridge|water|lava|kill|killbrick|boundary|invisible|hitbox|trigger|region|pad|button|conveyor|dropper|lighting|folder|ui|gui)\b/;
 
 interface PlannedItem { className?: unknown; name?: unknown; children?: unknown }
 
@@ -147,29 +141,28 @@ function partCount(item: PlannedItem): number {
 }
 
 /**
- * Why create_instances must not build this batch, or null when it may.
- *
- * Refused: a Model (or Folder) of two or more parts whose own name is a thing the library holds —
- * a tree, a car, a house, a crate — and is not a structural surface. Allowed: single parts and
- * structural names. An insertion failure never licenses a hand-built replacement.
+ * What the library holds for a Model (or Folder) of two or more parts that create_instances is about to make, or null.
+ * Information, never a refusal: the item is created either way, and the agent decides whether a ready-made model is the
+ * better answer. A row is offered only when EVERY word of the item's name is a word of the row's own name, so a plain
+ * structural name is not matched to anything by accident.
  */
-export function handBuiltPropRefusal(items: readonly unknown[]): string | null {
+export function libraryAdvice(items: readonly unknown[]): { name: string; rows: { id: string; name: string }[]; note: string }[] | null {
+  const out: { name: string; rows: { id: string; name: string }[]; note: string }[] = [];
   for (const raw of items) {
     if (!raw || typeof raw !== 'object') continue;
     const item = raw as PlannedItem;
     const cls = String(item.className ?? '');
     if (cls !== 'Model' && cls !== 'Folder') continue;
-    const name = String(item.name ?? '');
-    const words = tokensOf(name);
-    if (!words.length || STRUCTURAL.test(words.join(' '))) continue;
     if (partCount(item) < 2) continue;
-    const hit = findLibraryModels({ query: words.filter((w) => !/^\d+$/.test(w)).join(' '), limit: 3 });
-    // All the name's words, or all but one (a colour or an adjective the library has no tag for).
-    if (!hit.results.length || !('matchedWords' in hit) || hit.matchedWords < Math.max(1, hit.ofWords - 1)) continue;
-    const ids = hit.results.map((r) => r.id).join(', ');
-    return `"${name}" is a prop the model library already holds (${ids}). Insert it with insert_library_model instead of assembling it from parts. Parts stay the right tool for terrain, baseplates, paths, walls, platforms and zones. If insertion fails, search for another library model or leave this prop unbuilt; never substitute hand-built parts.`;
+    const name = String(item.name ?? '');
+    const words = tokensOf(name).filter((w) => !/^\d+$/.test(w));
+    if (!words.length) continue;
+    const hit = findLibraryModels({ query: words.join(' '), limit: 3 });
+    if (!hit.results.length || !('matchedWords' in hit) || hit.matchedWords < hit.ofWords) continue;
+    out.push({ name, rows: hit.results.map((r) => ({ id: r.id, name: r.name })),
+      note: `The model library holds rows for "${name}". If this is a prop rather than structure, look first (find_library_model, preview_library_models) and decide; it was created as you asked.` });
   }
-  return null;
+  return out.length ? out.slice(0, 3) : null;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -268,8 +261,8 @@ export async function placeInserted(
   exec: Exec,
   path: string,
   m: LibraryModel,
-  want: { position?: number[]; scale?: number; height?: number },
-): Promise<{ position: number[]; size: number[] | null; scaledBy: number | null } | { error: string }> {
+  want: { position?: number[]; scale?: number; height?: number; longest?: number },
+): Promise<{ position: number[]; size: number[] | null; sizeNote?: string; scaledBy: number | null } | { error: string }> {
   const bounds = async () => {
     const b = await exec({ op: 'spatial_query', action: 'bounds', path }, 15_000);
     const d = (b.ok ? b.data : null) as { center?: unknown; size?: unknown; bottomY?: unknown } | null;
@@ -281,7 +274,10 @@ export async function placeInserted(
   if (!b) return { error: 'the inserted model has no measurable bounds' };
   let factor: number | null = null;
   if (want.scale !== undefined) factor = want.scale;
-  else {
+  else if (want.longest !== undefined) {
+    const side = Math.max(...b.size);
+    if (side > 0) factor = want.longest / side;
+  } else {
     const target = want.height ?? (m.file ? DEFAULT_HEIGHT[m.kind] ?? 4 : undefined);
     const h = b.size[1] ?? 0;
     if (target !== undefined && h > 0) factor = target / h;
@@ -299,5 +295,7 @@ export async function placeInserted(
     const mv = await exec({ op: 'transform_instances', paths: [path], move }, 20_000);
     if (!mv.ok) return { error: `moving failed: ${mv.error ?? 'transform_instances failed'}` };
   }
-  return { position: to, size: b.size.map((n) => Math.round(n * 100) / 100), scaledBy: factor === null ? null : Math.round(factor * 1000) / 1000 };
+  const side = Math.max(...b.size);
+  // Measured, said against the player: the agent judges whether that suits the thing, the harness does not resize it.
+  return { position: to, size: b.size.map((n) => Math.round(n * 100) / 100), sizeNote: `about ${Math.round(side)} studs at its longest (${Math.round(side / 5 * 10) / 10} player heights; a player is 5 studs tall)`, scaledBy: factor === null ? null : Math.round(factor * 1000) / 1000 };
 }

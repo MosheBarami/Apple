@@ -12,6 +12,6 @@
     "boot": "runs before AppleBoot prepares the containers, so the new creatures are animated too"
   },
   "gives": {
-    "creatures": "one model per entry in its `into` container, e.g. ServerStorage.AppleEnemies.Carrot, with the costume welded on and the limbs walking"
+    "creatures": "one model per entry in its `into` container, e.g. ServerStorage.AppleEnemies.Runner, with the costume welded on and the limbs walking"
   }
 }

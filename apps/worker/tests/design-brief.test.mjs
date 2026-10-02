@@ -17,6 +17,7 @@
  * Run with:  node --test           (from apps/worker)
  */
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { RULES } from '@golem/design';
 
@@ -56,6 +57,21 @@ test('a shop modal request retrieves modal grammar', () => {
   assert.ok(b.used.length > 0);
   assert.match(b.text, /Do not start from a blank ScreenGui/);
   assert.match(b.text, /prevents:/);
+});
+
+test('style families are OFFERED as a list, never picked by the first match in a table', () => {
+  const several = designBrief('a classic studs tycoon shop panel');
+  assert.ok(several);
+  assert.deepEqual(several.styleFamilies, ['tycoon', 'studs-classic'], 'every family the words match, in the table order');
+  assert.equal(several.styleFamily, undefined, 'no single family is chosen for the agent');
+  assert.match(several.text, /STYLE FAMILIES THE REQUEST'S WORDS MATCH: tycoon, studs-classic/);
+  assert.match(several.text, /apply the one that suits this request, or none/);
+  assert.ok(several.used.length > 0 && several.used.length <= 8);
+  assert.equal(designBrief('build a shop modal for my tycoon').styleFamilies?.length, 1, 'one match is one family, as before');
+  assert.equal(designBrief('a modal with a button')?.styleFamilies, undefined, 'no family words, no family offered');
+  const src = readFileSync(new URL('../src/design-brief.ts', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.equal(/firstHit\(text, FAMILY_HINTS/.test(src), false, 'the family is not a first-match pick');
+  assert.equal(/keyboard/.test(src), false);
 });
 
 test('the most specific component wins when several are named', () => {

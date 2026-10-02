@@ -70,7 +70,7 @@ const FAMILY_HINTS: ReadonlyArray<[RegExp, string]> = [
 
 const PLATFORM_HINTS: ReadonlyArray<[RegExp, string]> = [
   [/\b(mobile|phone|touch|tablet)\w*/i, 'mobile'],
-  [/\b(desktop|pc|keyboard)\w*/i, 'desktop'],
+  [/\b(desktop|pc|mouse)\w*/i, 'desktop'],
 ];
 
 function firstHit(text: string, table: ReadonlyArray<[RegExp, string]>, allowed?: ReadonlyArray<string>): string | undefined {
@@ -80,12 +80,28 @@ function firstHit(text: string, table: ReadonlyArray<[RegExp, string]>, allowed?
   return undefined;
 }
 
+/**
+ * EVERY style family whose words the request holds, in table order (a family once). The table is no longer a first-match
+ * decision: a request that says "a classic studs tycoon" matches two families and the brief offers both, because choosing
+ * one by the order of a regex list is the harness deciding the look. The agent applies the one that suits, or neither.
+ */
+function allHits(text: string, table: ReadonlyArray<[RegExp, string]>, allowed?: ReadonlyArray<string>): string[] {
+  const out: string[] = [];
+  for (const [re, value] of table) {
+    if (re.test(text) && (!allowed || allowed.includes(value)) && !out.includes(value)) out.push(value);
+  }
+  return out;
+}
+
 export interface DesignBrief {
   text: string;
   /** Rule ids, for the admin trace. Policy metadata, never user-facing. */
   used: string[];
   component?: string;
+  /** The family, when exactly one matched; with several (or none) it is undefined and `styleFamilies` lists what was offered. */
   styleFamily?: string;
+  /** Every style family the request's words match; the brief carries each one's grammar. */
+  styleFamilies?: string[];
 }
 
 /**
@@ -99,22 +115,30 @@ export interface DesignBrief {
  */
 export function designBrief(text: string, opts: { limit?: number } = {}): DesignBrief | null {
   const component = firstHit(text, COMPONENT_HINTS, COMPONENTS);
-  const styleFamily = firstHit(text, FAMILY_HINTS, STYLE_FAMILIES);
+  const families = allHits(text, FAMILY_HINTS, STYLE_FAMILIES);
   const platform = firstHit(text, PLATFORM_HINTS);
-  if (!component && !styleFamily) return null;
+  if (!component && !families.length) return null;
 
   // 8 rather than the library default of 12: this rides in a system prompt that is re-sent
   // on every step, and the marginal rule is worth less than the tokens it costs on step 14.
-  const brief = composeBrief(
-    { component, styleFamily, platform, need: text.slice(0, 240) },
-    { limit: opts.limit ?? 8 },
-  );
-  if (brief.count === 0) return null;
-  const visual = styleFamily ? styleVisualCueBlock(styleFamily) : null;
+  // With several families the same budget is shared between them (at least 3 rules each).
+  const limit = opts.limit ?? 8;
+  const shares = families.length > 1 ? Math.max(3, Math.floor(limit / families.length)) : limit;
+  const blocks = (families.length ? families : [undefined]).map((styleFamily) => {
+    const brief = composeBrief({ component, styleFamily, platform, need: text.slice(0, 240) }, { limit: shares });
+    if (brief.count === 0) return null;
+    const visual = styleFamily ? styleVisualCueBlock(styleFamily) : null;
+    return { text: visual ? brief.text + '\n\n' + visual : brief.text, used: brief.used };
+  }).filter((b): b is { text: string; used: string[] } => b !== null);
+  if (!blocks.length) return null;
+  const offered = families.length > 1
+    ? `STYLE FAMILIES THE REQUEST'S WORDS MATCH: ${families.join(', ')}. Each block below is one family's grammar; apply the one that suits this request, or none, and do not mix them.\n\n`
+    : '';
   return {
-    text: visual ? brief.text + '\n\n' + visual : brief.text,
-    used: brief.used,
+    text: offered + blocks.map((b) => b.text).join('\n\n'),
+    used: [...new Set(blocks.flatMap((b) => b.used))],
     component,
-    styleFamily,
+    ...(families.length === 1 ? { styleFamily: families[0] } : {}),
+    ...(families.length ? { styleFamilies: families } : {}),
   };
 }

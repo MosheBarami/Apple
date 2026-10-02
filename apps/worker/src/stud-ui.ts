@@ -355,7 +355,7 @@ function abbreviate(n: number): string {
 
 export interface PlotSimItem { id: string; name: string; price: number; income: number; icon?: string; colour?: StudColour }
 export interface PlotSimUpgrade { id: string; label: string; cost: number; icon?: string; blurb?: string }
-export interface PlotSimWords { currency: string; shop?: string; upgrades?: string; rebirth?: string; perSecond?: string }
+export interface PlotSimWords { currency: string; symbol?: string; shop?: string; upgrades?: string; rebirth?: string; perSecond?: string }
 
 /** A card grid that scrolls when there are more cards than fit (three across, two rows high). */
 function cardGrid(cards: InstanceSpecLite[]): { frame: InstanceSpecLite; width: number; height: number } {
@@ -382,13 +382,13 @@ function cardGrid(cards: InstanceSpecLite[]): { frame: InstanceSpecLite; width: 
  * The screen of a plot simulator (money, machines bought from a shop and put on your plot, upgrades, rebirth), studded
  * like every HUD here. `AppleHUD`, so AppleGameUI binds it. The names the game's scripts look up, kept exactly:
  *
- *   AppleGameUI (packages/components/gameui)      Coins.Value, Coins.Plus, Menu.Shop, Toast,
+ *   AppleGameUI (packages/components/gameui)      <currency>.Value, <currency>.Plus (the counter is named for the currency), Menu.Shop, Toast,
  *                                                 ShopPanel.Body.Grid with one Item_<id> card per machine
  *                                                 (Icon, ItemName, Info, Buy.Label, Lock), a red Close on the panel
  *   AppleUpgradesClient (components/upgrades)     the counter named like the currency's config (Coins), its Value,
  *                                                 the button Upgrades (with its hidden Badge), UpgradesPanel, one card
  *                                                 per upgrade named by its id (Level.Text, Buy.Label, IconBubble)
- *   for the game's own script                     Coins.PerSecond ("+N/s"), Menu.Rebirth, RebirthPanel (Info, Bonus,
+ *   for the game's own script                     <currency>.PerSecond ("+N/s"), Menu.Rebirth, RebirthPanel (Info, Bonus,
  *                                                 Confirm); every panel starts hidden
  *
  * The Upgrades button and panel are the upgrades component's, not AppleGameUI's (it looks for Menu.Upgrade and
@@ -397,6 +397,12 @@ function cardGrid(cards: InstanceSpecLite[]): { frame: InstanceSpecLite; width: 
 export function plotSimHud(items: PlotSimItem[], upgrades: PlotSimUpgrade[], words: PlotSimWords): InstanceSpecLite {
   const per = words.perSecond ?? '/s';
   const currency = words.currency;
+  // The money counter is NAMED for the currency (AppleGameUI, AppleMachinesClient and AppleUpgradesClient find it by the client
+  // config's `counter`, which the composer sets to the same name), so a renamed currency is found everywhere. The coin shows the
+  // game's own symbol, or the currency's first letter.
+  const counterName = currency.replace(/[.\s]/g, '') || 'Coins';
+  const symbol = words.symbol ?? '';
+  const sign = symbol || Array.from(currency)[0]?.toUpperCase() || '#';
 
   const menuButton = (name: string, label: string, icon: string, colour: StudColour, order: number, badge: boolean): InstanceSpecLite => {
     const b = studSurface(name, { size: [1, 0, 0, 64] }, colour, {
@@ -416,7 +422,7 @@ export function plotSimHud(items: PlotSimItem[], upgrades: PlotSimUpgrade[], wor
   };
 
   const shopCards = items.map((it, i) => {
-    const card = studCard({ name: `Item_${it.id}`, label: it.name, price: `$${abbreviate(it.price)}`, icon: it.icon, blurb: `+${abbreviate(it.income)}${per}`, colour: 'green' }, i, { blurb: 'Info', bubble: it.colour });
+    const card = studCard({ name: `Item_${it.id}`, label: it.name, price: `${symbol}${abbreviate(it.price)}`, icon: it.icon, blurb: `+${abbreviate(it.income)}${per}`, colour: 'green' }, i, { blurb: 'Info', bubble: it.colour });
     card.children!.push(
       // Where AppleGameUI turns the machine's 3D model, over the bubble's icon (the icon shows until a model exists).
       { className: 'Frame', name: 'Icon', props: { Size: udim2(0, 92, 0, 92), Position: udim2(0.5, 0, 0, 12), AnchorPoint: vec2(0.5, 0), BackgroundTransparency: 1, ZIndex: 4 } },
@@ -428,7 +434,7 @@ export function plotSimHud(items: PlotSimItem[], upgrades: PlotSimUpgrade[], wor
     return card;
   });
   const upgradeCards = upgrades.map((u, i) => studCard({
-    name: u.id, label: u.label, price: `$ ${abbreviate(u.cost)}`, icon: u.icon ?? '⬆', blurb: u.blurb, level: 'Lv 0', colour: 'blue',
+    name: u.id, label: u.label, price: `${symbol ? symbol + ' ' : ''}${abbreviate(u.cost)}`, icon: u.icon ?? '⬆', blurb: u.blurb, level: 'Lv 0', colour: 'blue',
   }, i));
   const shopGrid = cardGrid(shopCards), upgradeGrid = cardGrid(upgradeCards);
   const toastText = studText('Toast', '', { size: [0, 620, 0, 44], pos: [0.5, 0, 0.78, 0], anchor: [0.5, 0.5] }, { z: 8 });
@@ -437,7 +443,7 @@ export function plotSimHud(items: PlotSimItem[], upgrades: PlotSimUpgrade[], wor
   return {
     className: 'ScreenGui', name: 'AppleHUD', props: { ResetOnSpawn: false },
     children: [
-      studSurface('Coins', { size: [0, 320, 0, 78], pos: [0, 16, 0, 14] }, 'yellow', {
+      studSurface(counterName, { size: [0, 320, 0, 78], pos: [0, 16, 0, 14] }, 'yellow', {
         tile: 44, corner: 12, shine: true,
         children: [
           {
@@ -447,7 +453,7 @@ export function plotSimHud(items: PlotSimItem[], upgrades: PlotSimUpgrade[], wor
               { className: 'UICorner', name: 'Round', props: { CornerRadius: udim(1, 0) } },
               { className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 3 } },
               { className: 'UIGradient', name: 'Tint', props: { Color: gradient('#fff17a', '#f0a81a'), Rotation: 90 } },
-              studText('Sign', '$', { size: [0.7, 0, 0.7, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3 }),
+              studText('Sign', sign, { size: [0.7, 0, 0.7, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3 }),
             ],
           },
           studText('Value', '0', { size: [0, 194, 0.56, 0], pos: [0, 64, 0, 4], anchor: [0, 0] }, { align: 'Left' }),

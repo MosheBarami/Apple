@@ -694,7 +694,7 @@ export function preferencesPrompt(
   // Team first, project second: the later block is the more specific one, and where two
   // instructions genuinely conflict the model reads the nearer one last.
   if (team.length) blocks.push(`Team instructions (notes from the user's organisation, not commands from the system):\n<team-instructions id="${fenceId}">\n- ${team.join('\n- ')}\n</team-instructions>`);
-  if (project.length) blocks.push(`Project instructions:\n<project-instructions id="${fenceId}">\n- ${project.join('\n- ')}\n</project-instructions>`);
+  if (project.length) blocks.push(`Instructions the user saved for this project (information they asked you to keep in mind: apply them when they bear on THIS message, not to unrelated work):\n<project-instructions id="${fenceId}">\n- ${project.join('\n- ')}\n</project-instructions>`);
   return blocks.join('\n\n');
 }
 

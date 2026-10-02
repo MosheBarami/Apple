@@ -531,7 +531,7 @@ export function extractExclusions(normalised: string): { constraints: IntentCons
 
 const ENVIRONMENT_LEX: Record<string, readonly string[]> = {
   urban: ['city', 'downtown', 'street', 'sidewalk', 'pavement', 'alley', 'skyline', 'metropolis', 'district', 'city block', 'skyscraper', 'suburb'],
-  rural: ['village', 'farm', 'countryside', 'field', 'meadow', 'barn', 'orchard', 'hamlet', 'pasture'],
+  rural: ['village', 'farm', 'countryside', 'field', 'meadow', 'barn', 'hamlet', 'pasture'],
   wilderness: ['forest', 'woods', 'jungle', 'mountain', 'canyon', 'desert', 'swamp', 'wilderness', 'tundra', 'cliff', 'valley'],
   coastal: ['beach', 'shore', 'harbour', 'harbor', 'dock', 'pier', 'port', 'seaside', 'lagoon', 'island'],
   underground: ['cave', 'cavern', 'tunnel', 'mine', 'dungeon', 'crypt', 'catacomb', 'basement', 'cellar', 'sewer', 'bunker'],
@@ -646,7 +646,7 @@ const HEDGE =
 
 /** Building nouns that read equally well as a room or as a building seen from outside. */
 const BUILDING_NOUNS =
-  /\b(?:tavern|shop|store|castle|house|home|cottage|cabin|tower|temple|church|school|hospital|station|bank|museum|library|restaurant|cafe|club|barn|warehouse|factory|mansion|hut|fort|keep|base|lab|laboratory|garage|hotel|diner|bakery|saloon)\b/;
+  /\b(?:tavern|shop|store|castle|house|home|cottage|cabin|tower|temple|church|school|hospital|station|bank|museum|library|restaurant|cafe|club|barn|warehouse|factory|mansion|hut|fort|keep|base|lab|laboratory|garage|hotel|diner|saloon)\b/;
 
 /** Crude singular, only good enough to tell "wall" from "walls" for de-duplication. */
 function singular(s: string): string {

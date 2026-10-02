@@ -281,7 +281,7 @@ test('the tool is registered: studio-only, gated on the plugin operations it use
   assert.equal(tool.def.name, 'judge_game');
   assert.equal(tool.studio, true);
   assert.deepEqual(tool.def.parameters.required, ['request']);
-  assert.deepEqual(Object.keys(tool.def.parameters.properties).sort(), ['ownProductIds', 'request', 'sessions']);
+  assert.deepEqual(Object.keys(tool.def.parameters.properties).sort(), ['design', 'ownProductIds', 'planId', 'request', 'sessions'], 'design (what the agent meant to build) and planId (its plan) are the phase-1 additions');
   for (const id of ['placeholders', 'ui_coherence', 'buttons_work', 'progression', 'errors', 'construction', 'fit_uniqueness']) assert.match(tool.def.description, new RegExp(id), id);
   assert.match(tool.def.description, /Only "ready" means every question is a yes/);
   assert.match(tool.def.description, /take[s]? Studio over/i);
