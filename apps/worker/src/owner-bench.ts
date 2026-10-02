@@ -87,10 +87,16 @@ export function judgePrompt(request: string, census: BenchCensus, play: string, 
 
 /** The judge's JSON, clamped to the rubric, or null. Pure. */
 export function parseJudge(text: string): { scores: BenchScores; critique: string[] } | null {
-  const at = text.lastIndexOf('{"works"');
-  const raw = at >= 0 ? text.slice(at) : text.slice(text.indexOf('{'));
-  let o: Record<string, unknown>;
-  try { o = JSON.parse(raw.slice(0, raw.lastIndexOf('}') + 1)); } catch { return null; }
+  // The answer may come fenced, spaced, or after some thinking (live 2026-10-02: a ```json block was not read): the
+  // last object that parses and holds "works" is the answer.
+  const body = text.replace(/```(?:json)?/g, '');
+  let o: Record<string, unknown> | null = null;
+  const end = body.lastIndexOf('}');
+  for (let i = body.lastIndexOf('{', end); i >= 0 && !o; i = body.lastIndexOf('{', i - 1)) {
+    try { const v = JSON.parse(body.slice(i, end + 1)); if (v && typeof v === 'object' && 'works' in v) o = v; } catch { /* an inner brace: keep going out */ }
+    if (i === 0) break;
+  }
+  if (!o) return null;
   const scores = {} as BenchScores;
   for (const k of BENCH_CRITERIA) {
     const v = Number(o[k]);
@@ -165,7 +171,7 @@ export async function benchEvaluate(ctx: AgentCtx, env: Env, projectId: string, 
   return {
     census, frame: { center, size }, images: images.map((i) => ({ name: i.name, path: i.path })),
     play: { ok: played.ok, verdict: pd.verdict, errors: errors.slice(0, 10), summary: play },
-    ...(judged ? { scores: judged.scores, critique: judged.critique, total: Object.values(judged.scores).reduce((a, b) => a + b, 0) } : { judgeRaw: judgeText.slice(0, 1500) }),
+    ...(judged ? { scores: judged.scores, critique: judged.critique, total: Object.values(judged.scores).reduce((a, b) => a + b, 0) } : { judgeRaw: judgeText.slice(0, 8000) }),
     ...(problems.length ? { problems } : {}),
   };
 }

@@ -33,5 +33,8 @@ test('the judge is read strictly and clamped to the rubric', () => {
   assert.deepEqual(ok.scores, { works: 2, professional: 1, matches: 2, polished: 0, noErrors: 2, performance: 2, sound: 0, animation: 1, fx: 0 });
   assert.deepEqual(ok.critique, ['flat']);
   assert.equal(B.parseJudge('{"works":2}'), null, 'a missing criterion is no score, never a guess');
+  const fenced = B.parseJudge('Here you go:\n```json\n{\n  "works": 1, "professional": 0, "matches": 0, "polished": 0, "noErrors": 2, "performance": 1, "sound": 0, "animation": 1, "fx": 0,\n  "critique": ["it is a sword, not a chest {really}"]\n}\n```');
+  assert.equal(fenced.scores.works, 1, 'a fenced, spaced answer is read (live 2026-10-02)');
+  assert.deepEqual(fenced.critique, ['it is a sword, not a chest {really}']);
   assert.match(B.judgePrompt('make me a duck', { parts: 3, scripts: 0, sounds: 0, animations: 0, fx: 0, screens: 0, lights: 0, truncated: false }, 'ok', 'done'), /make me a duck/);
 });
