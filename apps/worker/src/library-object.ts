@@ -512,7 +512,8 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
     const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: crownPick.gameId, path: crownPick.path, mode: 'self', parent: folderPath, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
     if (imported?.ok) {
       await ctx.execStudioOp({ op: 'strip_descendants', root: folderPath, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] }, 30_000).catch(() => undefined);
-      const crownWidth = Math.max(3, Math.min(b.size[0], b.size[2]) * 0.6);
+      // Big enough to read from the spawn (a 60% crown on the 7-stud butter was a speck): most of the short side.
+      const crownWidth = Math.max(5, Math.min(b.size[0], b.size[2]) * 0.9);
       const top: V3 = [cx, b.bottomY + b.size[1] - 0.2, cz];
       const placed = await ctx.execStudioOp({ op: 'place_copies', items: [{ from: folderPath, parent: model, name: 'Crown', at: top, length: crownWidth }] }, 60_000).catch(() => null);
       const cb = placed?.ok ? await bounds(ctx.execStudioOp, `${model}.Crown`) : null;
@@ -534,6 +535,8 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   const aura = vfxPlan('level_up_aura', { path: body, className: 'Part' }, { scale: Math.max(1, Math.min(4, Math.max(...b.size) / 8)), rate: 0.6 });
   const glow = vfxPlan('egg_glow', { path: model, className: 'Model' });
   const shone = await ctx.execStudioOp({ op: 'create_instances', items: [...('error' in aura ? [] : aura.items), ...('error' in glow ? [] : glow.items)] }, 60_000).catch(() => null);
+  // An outline only: the preset's fill washed the model out and hid its own print (the butter's "BUTTER", live 2026-10-02).
+  if (shone?.ok) await ctx.execStudioOp({ op: 'set_props', path: `${model}.Glow`, props: { FillTransparency: { t: 'number', v: 1 } } }, 20_000).catch(() => undefined);
 
   await ctx.execStudioOp({ op: 'set_props', path: `game.Workspace.${name}Stage.Rim`, props: { Color: { t: 'Color3', v: [0.71, 0.3, 1] }, Material: { t: 'EnumItem', v: 'Enum.Material.Neon' } } }, 20_000).catch(() => undefined);
   await ctx.objectMemory?.save({ ...spec, cool: true }).catch(() => undefined);
