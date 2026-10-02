@@ -107,7 +107,14 @@ def lab(rgb):
     return (116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz))
 
 
+# Fully saturated screen colours (Roblox's "Really blue" is 0000ff) sit far from the mid-tone anchors above; they are extra
+# anchors for the plain names, so a pure blue is called blue and a request for blue matches it.
+BRIGHT = {'red': 'ff0000', 'orange': 'ff8000', 'yellow': 'ffff00', 'green': '00ff00', 'cyan': '00ffff', 'blue': '0000ff', 'magenta': 'ff00ff',
+          'pink': 'ff66cc', 'purple': '8000ff', 'lime': '80ff00'}
 COLOUR_LAB = {n: lab(hex_rgb(h)) for n, h in COLOURS.items()}
+ANCHORS = {n: [l] for n, l in COLOUR_LAB.items()}
+for _n, _h in BRIGHT.items():
+    ANCHORS[_n].append(lab(hex_rgb(_h)))
 
 
 def dist(a, b):
@@ -120,7 +127,7 @@ def colour_name(hexv):
         L = lab(hex_rgb(hexv))
     except (ValueError, TypeError):
         return None
-    return min(COLOUR_LAB, key=lambda n: dist(L, COLOUR_LAB[n]))
+    return min(ANCHORS, key=lambda n: min(dist(L, a) for a in ANCHORS[n]))
 
 
 FAMILY = {'dark red': 'red', 'maroon': 'red', 'crimson': 'red', 'lime': 'green', 'dark green': 'green', 'olive': 'green',

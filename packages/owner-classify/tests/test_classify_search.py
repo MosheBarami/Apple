@@ -89,6 +89,10 @@ class ClassifyAndSearch(unittest.TestCase):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.lib = make_library(cls.tmp.name)
         cls.out = os.path.join(cls.tmp.name, 'owner-classify')
+        os.makedirs(os.path.join(cls.out, 'pass'))
+        with open(os.path.join(cls.out, 'pass', G1 + '.json'), 'w') as f:  # what colour_pass.luau writes: measured colour by volume, size, boxes
+            json.dump(dict(game=G1, items=[dict(path='/Workspace/Thing', parts=3, colors=['ff0000'], colorsVol=[['ff0000', 0.8], ['0000ff', 0.2]], size=[4, 2, 4],
+                                                 boxes=[[0, 0, 0, 4, 1, 4, 'ff0000', 0, 0, 1], [1, 1, 1, 3, 2, 3, '0000ff', 0, 0, 1]])]), f)
         cls.items, cls.meta = classify.build(cls.lib, cls.out, progress=False)
         classify.write(cls.items, cls.out, cls.meta)
         index.build(cls.out, lsi=False)
@@ -130,6 +134,20 @@ class ClassifyAndSearch(unittest.TestCase):
         self.assertLess(generic['quality']['score'], named['quality']['score'])
         self.assertEqual(classify.size_block([10, 2000000, 10], 'bounds')['conf'], 'none')
         self.assertEqual(classify.size_block([10, 20, 10], 'pieces')['conf'], 'measured')
+
+    def test_pass_data_gives_measured_colour_shares_and_size(self):
+        thing = next(r for r in self.items if r['name'] == 'Model')
+        self.assertEqual(thing['colour']['share_kind'], 'volume')
+        self.assertEqual([t['name'] for t in thing['colour']['top']], ['red', 'blue'])
+        self.assertEqual(thing['size']['studs'], [4, 2, 4])
+        self.assertEqual(thing['size']['conf'], 'measured')
+        sofa = next(r for r in self.items if r['name'] == 'PinkSofa')
+        self.assertEqual(sofa['colour']['share_kind'], 'rank', 'without pass data the share is only the rank weight')
+
+    def test_applicable_coverage_counts_only_what_applies(self):
+        cov = classify.coverage(self.items)['applicable']
+        self.assertEqual(cov['base fields only (type, description, tags, quality, provenance)']['items'], 100.0)
+        self.assertLessEqual(cov['fully classified, with the picture']['items'], cov['fully classified, without the picture']['items'])
 
     def test_systems_kits_and_media_become_items(self):
         self.assertIn('system:' + G2[:12], self.by)
@@ -239,6 +257,20 @@ class ClassifyAndSearch(unittest.TestCase):
     def test_index_is_opened_read_only(self):
         with self.assertRaises(Exception):
             self.f.db.execute("INSERT INTO meta VALUES('x','y')")
+
+
+class Thumbs(unittest.TestCase):
+    def test_proxy_render_draws_boxes_and_flags_blank(self):
+        try:
+            import thumbs
+        except ImportError:
+            self.skipTest('Pillow is not installed')
+        img = thumbs.render([[0, 0, 0, 4, 1, 4, 'ff0000', 0, 0, 1], [1, 1, 1, 3, 2, 3, '0000ff', 0, 0, 1]], 64)
+        self.assertEqual(img.size, (64, 64))
+        self.assertFalse(thumbs.blank(img))
+        self.assertIsNone(thumbs.render([]))
+        from PIL import Image
+        self.assertTrue(thumbs.blank(Image.new('RGB', (16, 16), thumbs.BG)))
 
 
 class Lexicon(unittest.TestCase):

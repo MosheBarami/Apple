@@ -28,7 +28,7 @@ import lexicon as L
 DEFAULT_LIB = os.path.expanduser('~/Library/Application Support/Apple/owner-library')
 DEFAULT_OUT = os.path.expanduser('~/Library/Application Support/Apple/owner-classify')
 LICENCE = 'owner-attested-commercial-use'
-PROXY_BAND = {'A': 80, 'B': 60, 'C': 40}
+THUMBS_PRESENT = False  # set by build() when <out>/thumbs holds pictures
 
 
 def jload(path, default=None):
@@ -130,11 +130,15 @@ def kind_type(a, name_ws, segs):
             'script': 'script'}[k]
 
 
-def colour_block(hexes):
+def colour_block(hexes, shares=None):
+    """Top colours of an item. `shares` (measured, by volume) when the pass has them, else rank weights 0.5/0.3/0.2."""
     hexes = [h for h in (hexes or []) if h and len(h) == 6]
     if not hexes:
         return None
-    weights = [0.5, 0.3, 0.2][:len(hexes)] if len(hexes) > 1 else [1.0]
+    if shares and len(shares) == len(hexes) and sum(shares) > 0:
+        weights, kind = list(shares), 'volume'
+    else:
+        weights, kind = ([0.5, 0.3, 0.2][:len(hexes)] if len(hexes) > 1 else [1.0]), 'rank'
     scale = sum(weights)
     top = []
     for h, w in zip(hexes, weights):
@@ -143,7 +147,7 @@ def colour_block(hexes):
     rgb = L.hex_rgb(hexes[0])
     mx, mn = max(rgb), min(rgb)
     sat = 'neutral' if (mx - mn) < 24 else 'vivid' if (mx - mn) > 110 else 'muted'
-    return dict(top=top, hues=sorted({t['hue'] for t in top}), saturation=sat)
+    return dict(top=top, hues=sorted({t['hue'] for t in top}), saturation=sat, share_kind=kind)
 
 
 def size_block(dims, src):
@@ -216,9 +220,9 @@ def quality_block(rec):
             add(2, 10, 'junk or enormous bounds')
         else:
             add(5, 10, 'size unknown')
-    # no thumbnail exists yet: the visual-presence criterion (10 points) joins the denominator once images are rendered
-    if rec['image']['kind'] != 'none':
-        add(10 if rec['image']['status'] == 'ok' else 0, 10, 'blank thumbnail')
+    # the visual-presence criterion (10 points) exists once thumbnails have been rendered for the physical types at all
+    if THUMBS_PRESENT and t in ('model', 'tool', 'map', 'vfx'):
+        add(10 if rec['image']['status'] == 'ok' else 0, 10, 'no usable thumbnail')
     add(5 if r.get('primary', True) else 0, 5, 'copy of a version of another game')
     score = round(100 * pts / avail) if avail else 0
     band = 'A' if score >= 80 else 'B' if score >= 60 else 'C' if score >= 40 else 'D'
@@ -309,6 +313,8 @@ def knowledge_tags(card):
 
 
 def build(lib, out, max_games=None, progress=True):
+    global THUMBS_PRESENT
+    THUMBS_PRESENT = os.path.isdir(os.path.join(out, 'thumbs')) and bool(os.listdir(os.path.join(out, 'thumbs')))
     t0 = time.time()
     L_ = Library(lib)
     games_rows = collections.defaultdict(list)
@@ -326,6 +332,7 @@ def build(lib, out, max_games=None, progress=True):
         card = L_.knowledge.get(gid)
         ktags, ksum = knowledge_tags(card)
         niches = L_.catalog[gid].get('niches', [])
+        passed = {i['path']: i for i in (jload(os.path.join(out, 'pass', gid + '.json'), {}) or {}).get('items', [])}
         gworks = (L_.integrity.get(gid) or {}).get('works')
         for a in games_rows[gid]:
             v = entries.get(a['path']) or {}
@@ -346,7 +353,7 @@ def build(lib, out, max_games=None, progress=True):
                 cur['ktags'].update(ktags)
                 cur['niches'].update(niches)
             if cur['best'] is None or rank > cur['best']['rank']:
-                cur['best'] = dict(rank=rank, a=a, v=v, piece=piece, dims=dims, src=src, ui=ui, gid=gid, title=title, primary=primary,
+                cur['best'] = dict(rank=rank, a=a, v=v, piece=piece, dims=dims, src=src, ui=ui, gid=gid, title=title, primary=primary, passed=passed.get(a['path']), out=out,
                                    style=style, ksum=ksum, gworks=gworks)
         if progress and gi % 50 == 0:
             print('  games %d/%d  items %d  %.0fs' % (gi, len(gids), len(acc), time.time() - t0), file=sys.stderr)
@@ -355,6 +362,11 @@ def build(lib, out, max_games=None, progress=True):
     items.extend(kit_items(L_))
     items.extend(media_items(L_))
     return items, dict(rows=len(L_.assets), games=len(gids), seconds=round(time.time() - t0, 1))
+
+
+def thumb_for(out, iid):
+    p = os.path.join(out or '', 'thumbs', iid.replace(':', '_') + '.png')
+    return dict(kind='proxy-render', path='thumbs/' + iid.replace(':', '_') + '.png', status='ok') if out and os.path.exists(p) else dict(kind='none', path=None, status='none')
 
 
 def finish(cur):
@@ -381,8 +393,15 @@ def finish(cur):
         subtype = 'music'
     else:
         subtype = subtype_for('model' if type_ == 'tool' else type_, name, segs, has)
-    colour = colour_block(piece.get('colors') or (ui or {}).get('palette'))
-    size = size_block(cur['best']['dims'], b['src']) if type_ in ('model', 'tool', 'map', 'vfx') else dict(studs=None, cls=None, conf='none')
+    pas = b.get('passed') or {}
+    if pas.get('colorsVol'):  # measured by volume: real shares
+        colour = colour_block([c[0] for c in pas['colorsVol']], [c[1] for c in pas['colorsVol']])
+    else:
+        colour = colour_block(piece.get('colors') or pas.get('colors') or (ui or {}).get('palette'))
+    dims, dsrc = cur['best']['dims'], b['src']
+    if (not dims or dsrc == 'bounds') and pas.get('size'):  # the pass measures the visible parts, like pieces.json
+        dims, dsrc = pas['size'], 'pieces'
+    size = size_block(dims, dsrc) if type_ in ('model', 'tool', 'map', 'vfx') else dict(studs=None, cls=None, conf='none')
     rec = dict(
         id=cur['id'], refs=cur['refs'][:40], ref_count=len(cur['refs']), copies=max(cur['copies'], len(cur['refs'])),
         type=type_, subtype=subtype, name=name, name_clean=name_clean, kind=a['k'], className=a['class'],
@@ -392,7 +411,7 @@ def finish(cur):
                          humanoid='Humanoid' in has, animated=bool({'AnimationController', 'Animator'} & set(has)),
                          emitters=a.get('fx') or [], lines=a.get('lines'), buttons=(ui or {}).get('buttonCount'),
                          texts=((ui or {}).get('texts') or [])[:8], material=piece.get('material')),
-        image=dict(kind='none', path=None, status='none'),
+        image=thumb_for(b.get('out'), cur['id']),
         provenance=dict(game=b['title'], gameId=b['gid'][:12], path=a['path'], licence=LICENCE,
                         games=sorted(cur['games'].items())[:6], source_hash=cur['hash']),
         game_tags=sorted(cur['ktags'])[:8],
@@ -523,7 +542,22 @@ def coverage(items, ref_rows=None):
         out['colour (physical types only)'] = dict(items=round(100 * sum(1 for r in phys if r.get('colour')) / len(phys), 1), of=len(phys))
         out['size class (physical types only)'] = dict(items=round(100 * sum(1 for r in phys if r['size'].get('cls')) / len(phys), 1), of=len(phys))
     by = collections.Counter(r['type'] for r in items)
-    return dict(items=n_items, rows=n_rows, by_type=dict(by), fields=out)
+    # Applicability-aware: colour, size and a picture only mean something for a physical item that has parts.
+    def physical(r):
+        return r['type'] in ('model', 'tool', 'map', 'vfx') and (r['composition'].get('parts') or 0) >= 1
+    base = lambda r: bool(r['type'] and r.get('description') and r.get('tags') and r.get('quality') and r['provenance'].get('game') and r['provenance'].get('licence'))
+    phys = [r for r in items if physical(r)]
+    pf = {'colour': lambda r: bool(r.get('colour')), 'size class': lambda r: bool(r['size'].get('cls')), 'image': lambda r: r['image']['status'] == 'ok'}
+    pct = lambda n, d: round(100.0 * n / d, 1) if d else None
+    appl = dict(physical_items_with_parts=len(phys))
+    for k, fn in pf.items():
+        appl[k + ' (physical items with parts)'] = pct(sum(1 for r in phys if fn(r)), len(phys))
+    full_noimg = [r for r in items if base(r) and (not physical(r) or (pf['colour'](r) and pf['size class'](r)))]
+    full_img = [r for r in full_noimg if not physical(r) or pf['image'](r)]
+    appl['fully classified, without the picture'] = dict(items=pct(len(full_noimg), n_items), rows=pct(sum(max(1, r.get('ref_count', 1)) for r in full_noimg), n_rows))
+    appl['fully classified, with the picture'] = dict(items=pct(len(full_img), n_items), rows=pct(sum(max(1, r.get('ref_count', 1)) for r in full_img), n_rows))
+    appl['base fields only (type, description, tags, quality, provenance)'] = dict(items=pct(sum(1 for r in items if base(r)), n_items))
+    return dict(items=n_items, rows=n_rows, by_type=dict(by), fields=out, applicable=appl)
 
 
 def write(items, out_dir, meta):

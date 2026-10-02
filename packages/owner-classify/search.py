@@ -473,11 +473,12 @@ class Finder:
             return 0.0
         best = 0.0
         for name in wanted:
-            tgt = L.COLOUR_LAB.get(name)
+            tgt = L.ANCHORS.get(name)
             if not tgt:
                 continue
             for k, (hexv, share) in enumerate(labs):
-                d = L.dist(L.lab(L.hex_rgb(hexv)), tgt)
+                lv = L.lab(L.hex_rgb(hexv))
+                d = min(L.dist(lv, a) for a in tgt)
                 m = max(0.0, 1 - d / 45.0) * (1.0 if k == 0 else 0.7 if k == 1 else 0.5)
                 best = max(best, m)
         return best

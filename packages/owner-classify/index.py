@@ -1,10 +1,11 @@
 """Builds the search index (a SQLite file with FTS5) from items.jsonl. Offline; reads only the sidecar directory.
 
-    python3 index.py [--dir owner-classify] [--no-lsi]
+    python3 index.py [--dir owner-classify] [--lsi]
 
 Tiers (see README.md):
   T0  BM25 over fielded text (FTS5, porter stemming) + facets stored as columns.
-  T1  LSI term neighbours (scipy svds over the same documents): query expansion by corpus co-occurrence, no model.
+  T1  LSI term neighbours (scipy svds over the same documents): query expansion by corpus co-occurrence, no model. OFF by default:
+      on the 50 labelled queries it LOWERED top-3 (31 -> 29 without dense, 38 -> 37 with it), so it is built only with --lsi.
   T2  dense embeddings (embed.py), optional; built separately.
 """
 import argparse
@@ -55,7 +56,7 @@ def doc_fields(r):
     return name, tags, natural, ctx, game
 
 
-def build(d, lsi=True):
+def build(d, lsi=False):
     src = os.path.join(d, 'items.jsonl')
     dst = os.path.join(d, 'find.sqlite')
     tmp = dst + '.tmp'
@@ -159,9 +160,9 @@ def lsi_neighbours(docs, k=96, per_term=6, min_df=3, floor=0.55):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument('--dir', default=DEFAULT_DIR)
-    ap.add_argument('--no-lsi', action='store_true')
+    ap.add_argument('--lsi', action='store_true', help='also build the LSI term neighbours (off by default: measured to lower the hit rate)')
     a = ap.parse_args(argv)
-    n = build(a.dir, lsi=not a.no_lsi)
+    n = build(a.dir, lsi=a.lsi)
     print('built %s (%d items)' % (os.path.join(a.dir, 'find.sqlite'), n))
 
 
