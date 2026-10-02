@@ -2668,12 +2668,12 @@ export class SessionDO extends DurableObject<Env> {
       this.sql.exec('delete from message_revisions');
       this.sql.exec('delete from messages');
       this.sql.exec('delete from oplog');
+      // The place too, when Studio is there: a fresh chat on a used place is not a fresh request.
+      const left = (await this.pluginConnected()) ? await benchClean(this.agentCtx()) : ['Studio is not connected'];
       // The runs' own checkpoints go, so retention (newest N, by age) never ages the clean baseline out (live
       // 2026-10-02: after 13 items "checkpoint not found" and 16 items never ran). The baseline stays.
       this.sql.exec(`delete from checkpoint_chunks where checkpoint_id in (select id from checkpoints where label != 'bench-baseline')`);
       this.sql.exec(`delete from checkpoints where label != 'bench-baseline'`);
-      // The place too, when Studio is there: a fresh chat on a used place is not a fresh request.
-      const left = (await this.pluginConnected()) ? await benchClean(this.agentCtx()) : ['Studio is not connected'];
       return json({ ok: left.length === 0, reset: true, left: left.slice(0, 20) });
     }
 
