@@ -4827,8 +4827,10 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true) {
         agent.mutated = true;
         mutatedThisStep = true;
-        // A change aimed at nothing (a script's target is inside its code) is not "the same target" as the last one.
-        const target = aim(call.arguments);
+        // run_luau's target is inside its code, so two scripts in a row are not "the same target". Any other change
+        // that names no target (set_mood takes only a mood) still counts by its tool: re-tuning one Lighting look is
+        // exactly the loop this guard exists for (F-036; review of the credits branch, 2026-10-02).
+        const target = aim(call.arguments) || (call.name === 'run_luau' ? '' : '(no target)');
         if (target) {
           const retune = afterChange(agent.changesByTarget, `${call.name} ${target}`);
           agent.changesByTarget = retune.counts;

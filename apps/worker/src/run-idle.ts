@@ -114,8 +114,14 @@ export function afterChangeWindow(state: ChangeWindow | undefined, key: string):
   const keys = [...(state?.keys ?? []), key].slice(-CHANGE_WINDOW);
   const since = (state?.since ?? WINDOW_NUDGE) + 1; // changes since the last nudge
   const dominated = keys.filter((k) => k === key).length >= WINDOW_NUDGE;
-  if (!dominated || since < WINDOW_NUDGE) return { state: { keys, since, nudges: state?.nudges ?? 0 }, action: 'none' };
-  const nudges = (state?.nudges ?? 0) + 1;
+  // Once NO target holds WINDOW_NUDGE of the window, that bout is over: a later, unrelated one starts again with a nudge,
+  // not an end (review of the credits branch). A key that merely is not the dominant one (A, A, B) does not reset it.
+  const counts = new Map<string, number>();
+  for (const k of keys) counts.set(k, (counts.get(k) ?? 0) + 1);
+  const anyDominated = [...counts.values()].some((n) => n >= WINDOW_NUDGE);
+  const nudgesSoFar = anyDominated ? (state?.nudges ?? 0) : 0;
+  if (!dominated || since < WINDOW_NUDGE) return { state: { keys, since, nudges: nudgesSoFar }, action: 'none' };
+  const nudges = nudgesSoFar + 1;
   return { state: { keys, since: 0, nudges }, action: nudges >= WINDOW_FINISH_AT_NUDGES ? 'finish' : 'nudge' };
 }
 

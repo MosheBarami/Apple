@@ -348,8 +348,10 @@ test('CREDITS: a change window catches alternation between two targets, nudges f
   assert.ok(state.keys.length <= CHANGE_WINDOW, 'only the window is remembered');
 });
 
-test('CREDITS: the run loop does not count a change that was aimed at nothing', () => {
-  assert.match(SESSION, /const target = aim\(call\.arguments\);\s*if \(target\) \{[\s\S]{0,400}afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{target\}`\)/);
+// Restated 2026-10-02 after review: skipping EVERY targetless change also skipped set_mood (its only argument is a mood),
+// re-opening the F-036 loop of re-tuning one Lighting look. Only run_luau, whose target lives in its code, is skipped.
+test('CREDITS: the run loop skips only run_luau when a change names no target', () => {
+  assert.match(SESSION, /const target = aim\(call\.arguments\) \|\| \(call\.name === 'run_luau' \? '' : '\(no target\)'\);\s*if \(target\) \{[\s\S]{0,400}afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{target\}`\)/);
 });
 
 test('CREDITS: the visual inspection tool no longer says to repeat it "until it passes"', () => {
@@ -359,4 +361,29 @@ test('CREDITS: the visual inspection tool no longer says to repeat it "until it 
   const description = tools.slice(at, at + 1500);
   assert.doesNotMatch(description, /until it passes/, 'a repeat-until-pass instruction has no progress test, and each inspection renders and calls a vision model');
   assert.match(description, /do not score better, stop and say so/);
+});
+
+test('review 2026-10-02: a back-and-forth bout that ended does not turn a later, unrelated bout into an immediate end', async () => {
+  const R = await import('../src/run-idle.ts');
+  let st; const actions = [];
+  const feed = (k) => { const r = R.afterChangeWindow(st, k); st = r.state; actions.push(r.action); };
+  for (let i = 0; i < 30; i++) feed(i % 2 ? 'set_props A' : 'set_props B');   // first bout: nudged
+  assert.ok(actions.includes('nudge'));
+  assert.ok(!actions.includes('finish') || actions.indexOf('finish') > actions.indexOf('nudge'));
+  for (let i = 0; i < 30; i++) feed(`create_instances piece${i}`);           // ordinary spread-out work clears it
+  actions.length = 0;
+  for (let i = 0; i < 30; i++) feed(i % 2 ? 'set_props C' : 'set_props D');   // a second, unrelated bout
+  const firstAct = actions.find((a) => a !== 'none');
+  assert.equal(firstAct, 'nudge', 'the second bout must be warned first, not ended');
+});
+
+test('review 2026-10-02: an A, A, B loop still ends, and a changeless tool (set_mood) still counts as one target', async () => {
+  const R = await import('../src/run-idle.ts');
+  let st; const actions = [];
+  for (let i = 0; i < 80; i++) { const r = R.afterChangeWindow(st, i % 3 === 2 ? 'set_props B' : 'set_props A'); st = r.state; actions.push(r.action); }
+  assert.ok(actions.includes('finish'), 'the minority key reset the count, so an A, A, B loop never ended');
+  const { readFileSync } = await import('node:fs');
+  const session = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
+  assert.match(session, /aim\(call\.arguments\) \|\| \(call\.name === 'run_luau' \? '' : '\(no target\)'\)/, 'targetless changes other than run_luau must count');
+  assert.ok(session.includes(`Over your last ${R.CHANGE_WINDOW} changes, ${R.WINDOW_NUDGE} or more`), 'the steer states numbers other than the guard uses');
 });
