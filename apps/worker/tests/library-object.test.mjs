@@ -113,3 +113,17 @@ test('the world box of a turned part covers it on the world axes', () => {
   const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8');
   assert.ok(!/paths: \[model, stageName\]|paths: \[LINEUP, /.test(src), 'no multi-path delete: delete_instances is all-or-nothing');
 });
+
+// Test 3 on the library flow (2026-10-02): "100x cooler" was only orbs and a glow; the library's GoldenCrown never
+// matched "crown" because CamelCase names were one word.
+test('CamelCase names are words, and the cool kit crowns a library object without breaking its rig', () => {
+  assert.deepEqual(L.rankCatalog([item('GoldenCrown', 'Fighters', { parts: 24 }), item('Crownfire', 'Escape')], 'crown', 3).map((c) => c.name), ['GoldenCrown']);
+  assert.deepEqual(L.rankCatalog([item('PurpleTopHat', 'Meepcity', { parts: 2 })], 'top hat', 3).map((c) => c.name), ['PurpleTopHat']);
+  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8');
+  const kit = src.slice(src.indexOf('export async function coolLibraryObject'));
+  assert.match(kit, /rig_model', root: `\$\{model\}\.Crown\.CrownRoot`, joint: 'weld'/, 'the crown is welded to its own root');
+  assert.match(kit, /rig_model', root: `\$\{model\}\.AppleBody`, parts: \[`\$\{model\}\.Crown\.CrownRoot`\], joint: 'weld'/, 'its root to the body, listed');
+  assert.ok(!/rig_model', root: `\$\{model\}\.AppleBody`, joint: 'weld'/.test(kit), 'never a second whole-model weld pass (it would join the motor root)');
+  assert.match(kit, /path: `\$\{model\}\.AppleBody`, props: \{ Anchored: \{ t: 'bool', v: false \} \}/, 'the body is let go again');
+  assert.match(kit, /strip_descendants', root: folderPath, classes: \['LocalScript', 'Script', 'ModuleScript', 'Sound'\]/, 'the crown is script-free too');
+});

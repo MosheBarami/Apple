@@ -37,6 +37,8 @@ const STOP = new Set(['a', 'an', 'the', 'me', 'us', 'my', 'our', 'some', 'one', 
   'add', 'i', 'want', 'need', 'can', 'you', 'could', 'would', 'for', 'with', 'to', 'and', 'in', 'on', 'it', 'that', 'this', 'really', 'very',
   'super', 'giant', 'big', 'huge', 'small', 'tiny', 'little', 'cute', 'nice', 'new', 'just', 'like', 'pls', 'plz', 'thing']);
 const words = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean);
+/** A catalog name's words, CamelCase split: "GoldenCrown" -> golden, crown (test 3, 2026-10-02: no crown matched). */
+const nameWordsOf = (t: string) => words(t.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2'));
 /** "keyboards" -> keyboard, "boxes" -> box. Pure. */
 export function singular(w: string): string {
   return w.length > 4 && /(ch|sh|x|s)es$/.test(w) ? w.slice(0, -2) : w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w;
@@ -114,7 +116,7 @@ export function rankCatalog(items: CatalogItem[], query: string, limit = 3): Lib
     if (Array.isArray(i.contains) && i.contains.some((c) => c === 'Humanoid')) return;
     // A diminutive is the same word ("Rubber Ducky" for a rubber duck, "Doggie"); a longer word is another thing
     // ("Butterfly" is not butter).
-    const nameWords = words(i.name.replace(/#\d+$/, '')).map(singular).map((w) => [`${head}y`, `${head}ie`, `${head}${head.at(-1)}y`, `${head}${head.at(-1)}ie`].includes(w) ? head : w);
+    const nameWords = nameWordsOf(i.name.replace(/#\d+$/, '')).map(singular).map((w) => [`${head}y`, `${head}ie`, `${head}${head.at(-1)}y`, `${head}${head.at(-1)}ie`].includes(w) ? head : w);
     if (!nameWords.includes(head)) return;
     const exact = nameWords.join(' ') === qWords.join(' ') || nameWords.join(' ') === head;
     const score = exact ? 3 : nameWords.at(-1) === head ? 2 : 1;
@@ -488,10 +490,57 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
     }
   }
   if (!spins) problems.push('orbs');
+
+  // A real crown from the library on top (library first, owner 2026-10-02), welded to the body so it wobbles with it:
+  // the crown's parts to its own invisible root, that root to the body (a second weld pass over the whole object would
+  // also join the motor's root and break the rig). Scripts and sounds out, as for every library piece.
+  let crowned = false;
+  const crownPick = (await (async () => {
+    for (const q of ['golden crown', 'crown']) {
+      const hit = rankCatalog(await catalog(ctx, q), q, 1)[0];
+      if (hit) return hit;
+    }
+    return undefined;
+  })());
+  if (crownPick?.gameId && crownPick.path && b.size.every((n) => n > 0)) {
+    const folderPath = `${PARTS_FOLDER}.AppleCrown`;
+    for (const path of [`${model}.Crown`, folderPath]) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
+    const parts = await ctx.execStudioOp({ op: 'get_instance', path: PARTS_FOLDER }, 10_000).catch(() => null);
+    const madeFolder = !parts?.ok;
+    if (madeFolder) await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleParts' }), parent: 'game.ServerStorage' }] }, 20_000).catch(() => undefined);
+    await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleCrown' }), parent: PARTS_FOLDER }] }, 20_000).catch(() => undefined);
+    const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: crownPick.gameId, path: crownPick.path, mode: 'self', parent: folderPath, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
+    if (imported?.ok) {
+      await ctx.execStudioOp({ op: 'strip_descendants', root: folderPath, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] }, 30_000).catch(() => undefined);
+      const crownWidth = Math.max(3, Math.min(b.size[0], b.size[2]) * 0.6);
+      const top: V3 = [cx, b.bottomY + b.size[1] - 0.2, cz];
+      const placed = await ctx.execStudioOp({ op: 'place_copies', items: [{ from: folderPath, parent: model, name: 'Crown', at: top, length: crownWidth }] }, 60_000).catch(() => null);
+      const cb = placed?.ok ? await bounds(ctx.execStudioOp, `${model}.Crown`) : null;
+      if (cb) {
+        const root = await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Part', name: 'CrownRoot', props: { Size: [1, 1, 1], Position: cb.center, Anchored: true, CanCollide: false, CanQuery: false, CanTouch: false, Transparency: 1 } }), parent: `${model}.Crown` }] }, 20_000);
+        const inner = root.ok ? await ctx.execStudioOp({ op: 'rig_model', root: `${model}.Crown.CrownRoot`, joint: 'weld' }, 60_000) : root;
+        const outer = inner.ok ? await ctx.execStudioOp({ op: 'rig_model', root: `${model}.AppleBody`, parts: [`${model}.Crown.CrownRoot`], joint: 'weld' }, 60_000) : inner;
+        // rig_model anchors its root; the body is moved by its motor, so it is let go again.
+        await ctx.execStudioOp({ op: 'set_props', path: `${model}.AppleBody`, props: { Anchored: { t: 'bool', v: false } } }, 20_000).catch(() => undefined);
+        crowned = outer.ok;
+      }
+      if (!crowned) await ctx.execStudioOp({ op: 'delete_instances', paths: [`${model}.Crown`] }, 20_000).catch(() => undefined);
+    }
+    await ctx.execStudioOp({ op: 'delete_instances', paths: [madeFolder ? PARTS_FOLDER : folderPath] }, 20_000).catch(() => undefined);
+  }
+
+  // A golden aura rising round it and a glow outline on the whole model (the library's effect presets).
+  for (const path of [`${body}.LevelUpAuraFX`, `${model}.Glow`]) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
+  const aura = vfxPlan('level_up_aura', { path: body, className: 'Part' }, { scale: Math.max(1, Math.min(4, Math.max(...b.size) / 8)), rate: 0.6 });
+  const glow = vfxPlan('egg_glow', { path: model, className: 'Model' });
+  const shone = await ctx.execStudioOp({ op: 'create_instances', items: [...('error' in aura ? [] : aura.items), ...('error' in glow ? [] : glow.items)] }, 60_000).catch(() => null);
+
   await ctx.execStudioOp({ op: 'set_props', path: `game.Workspace.${name}Stage.Rim`, props: { Color: { t: 'Color3', v: [0.71, 0.3, 1] }, Material: { t: 'EnumItem', v: 'Enum.Material.Neon' } } }, 20_000).catch(() => undefined);
   await ctx.objectMemory?.save({ ...spec, cool: true }).catch(() => undefined);
   const what = objectWords(String(spec.request ?? '')).join(' ') || 'object';
-  const added = [sparkled?.ok ? 'it sparkles and glows' : '', spins ? 'four neon orbs circle above it' : '', 'the rim of its stage lights up'].filter(Boolean);
+  const added = [crowned ? `it wears a crown from your library ("${crownPick!.name}"${crownPick!.game ? ` from ${crownPick!.game}` : ''})` : '',
+    sparkled?.ok ? 'it sparkles' : '', shone?.ok ? 'a golden aura rises round it and it glows' : '',
+    spins ? 'four neon orbs circle above it' : '', 'the rim of its stage lights up'].filter(Boolean);
   return {
     changed: true, projectMutated: true, object: model, ...(problems.length ? { problems } : {}),
     forUser: `Your ${what} is cooler now: ${added.slice(0, -1).join(', ')}${added.length > 1 ? ' and ' : ''}${added.at(-1)}. The model itself is the same one you picked.`,
