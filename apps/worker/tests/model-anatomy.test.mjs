@@ -15,6 +15,10 @@ const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(mkdtempSync(join(tmpdir(), 'anatomy-')), 'a.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'model-anatomy.ts'), '--bundle', '--format=esm', '--target=es2022', '--platform=node', '--outfile=' + out, '--external:cloudflare:*'], { cwd: WORKER, stdio: 'pipe' });
 const A = await import(`file://${out}`);
+const effOut = join(mkdtempSync(join(tmpdir(), 'anatomy-eff-')), 'e.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'effects.ts'), '--bundle', '--format=esm', '--target=es2022', '--platform=node', '--outfile=' + effOut, '--external:cloudflare:*'], { cwd: WORKER, stdio: 'pipe' });
+// The real path parser (brackets, quotes), as the tool uses it; the simple splitter below only serves dotted paths.
+const parseInstancePathLike = (await import(`file://${effOut}`)).parseInstancePath;
 const parseSegments = (p) => { const m = p.split('.'); return m[0] === 'game' ? m.slice(1) : null; };
 
 const dataOf = (root) => JSON.parse(JSON.stringify({ root, nodeCount: 1, truncated: false }));
@@ -43,6 +47,23 @@ test('findNode: exact, #k, out-of-range, ambiguous without #k, missing with the 
   assert.match(at('game.Workspace.Piece.Mesh').error, /no child named Mesh \(it has: .*MeshPart/);
   assert.match(at('game.Workspace.Other.Part').error, /not inside game\.Workspace\.Piece/);
   assert.match(at('Piece.Part').error, /not a path/);
+});
+
+test('every address the reader writes resolves back to the node it names, including odd and repeated names', () => {
+  const odd = [
+    part('Smooth Block Model', { at: [0, 0.5, 0] }), part('Smooth Block Model', { at: [3, 0.5, 0] }), part('Smooth Block Model', { at: [6, 0.5, 0] }),
+    part('3-wheel', { at: [9, 0.5, 0] }), part('Part', { at: [12, 0.5, 0] }), part('Part', { at: [15, 0.5, 0] }),
+    inst('Group One', 'Model', {}, [part('Part', { at: [18, 0.5, 0] }), part('Part', { at: [21, 0.5, 0] })]),
+    inst('Group One', 'Model', {}, [part('Part', { at: [24, 0.5, 0] })]),
+  ];
+  const root = finalize(inst('Odd Set', 'Model', {}, odd), 'game.Workspace["Odd Set"]');
+  const t = treeOf(root);
+  assert.ok(t.nodes.length >= 10);
+  for (const n of t.nodes) {
+    const back = A.findNode(t, n.address, parseInstancePathLike);
+    assert.equal(back, n, `${n.address} did not come back to itself`);
+  }
+  assert.equal(new Set(t.nodes.map((n) => n.address)).size, t.nodes.length, 'no two nodes share an address');
 });
 
 test('analyse: parts, joints (with sibling ordinals for duplicates), the root part, and what hangs from what', () => {

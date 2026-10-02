@@ -109,6 +109,8 @@ test('a bad request is refused with the reason and what to do, before anything i
     [{ verb: 'slide', offset: [0, 0, 0] }, /offset must not be all 0/],
     [{ verb: 'slide' }, /slide needs offset/],
     [{ verb: 'fade', to: 3 }, /fade\.to must be 0\.\.1/],
+    [{ verb: 'light', color: [-0.5, 0.2, 0.2] }, /light\.color must not go below 0/],
+    [{ verb: 'light', color: [2, 0.2, 0.2] }, /light\.color must stay within 0\.\.1/],
     [{ verb: 'bounce', trigger: 'click' }, /a launcher listens for touch/],
     [{ verb: 'bounce', power: 5000 }, /bounce\.power must be 10\.\.400/],
     [{ verb: 'sound', soundId: 'rbxassetid://12345' }, /Refused \(D-FXLIB-1\)/],
@@ -349,6 +351,21 @@ test('nothing is written when any one behaviour is wrong', async () => {
   assert.match(r.error, /behaviours\[1\]: swing\.angle must not be 0\. Nothing was written/);
   assert.ok(!studio.ops.some((o) => o.op === 'edit_script' || o.op === 'delete_instances'));
   assert.equal(written(studio), undefined);
+});
+
+test('a sound written in an earlier run survives a merge in a later one, though that run never searched for it', async () => {
+  const { studio } = place();
+  studio.discoveredAssetIds = new Set([4242]);
+  const first = await call(studio, { behaviours: [{ verb: 'sound', soundId: 'rbxassetid://4242', target: `${MODEL}.Cover`, id: 'hum' }] });
+  assert.ok(!first.error, first.error);
+  // A new run: its own context, nothing discovered yet, the same place.
+  const later = Object.assign(fakeStudio(studio.root, { scripts: studio.scripts, hash }), { discoveredAssetIds: undefined });
+  const r = await call(later, { behaviours: [{ verb: 'fade', target: `${MODEL}.Knob`, id: 'gone' }] });
+  assert.ok(!r.error, r.error);
+  assert.deepEqual(r.behaviours.map((b) => b.id), ['hum', 'gone'], 'the earlier sound is still there');
+  assert.ok(!(r.notes ?? []).some((n) => /dropped/.test(n)), 'and was not dropped');
+  const stillRefused = await call(later, { behaviours: [{ verb: 'sound', soundId: 'rbxassetid://4242', target: `${MODEL}.Cover`, id: 'again' }] });
+  assert.match(stillRefused.error, /Refused \(D-FXLIB-1\)/, 'a NEW request for that id is still judged');
 });
 
 test('a sound by id needs an id from the library or one the search found; a Sound in the place is checked for its id', async () => {

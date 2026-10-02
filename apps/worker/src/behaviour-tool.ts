@@ -52,7 +52,7 @@ type Spec =
   | { t: 'num'; min: number; max: number; def: number; unit: string; nonzero?: boolean }
   | { t: 'enum'; values: readonly string[]; def: string }
   | { t: 'bool'; def: boolean }
-  | { t: 'vec'; limit: number; unit: string; def?: number[]; nonzero?: boolean };
+  | { t: 'vec'; limit: number; unit: string; def?: number[]; nonzero?: boolean; min?: number };
 
 const seconds = (def: number, max = 30, min = 0.05): Spec => ({ t: 'num', min, max, def, unit: 'seconds' });
 
@@ -69,7 +69,7 @@ export const PARAMS: Record<Verb, Record<string, Spec>> = {
   },
   fade: { to: { t: 'num', min: 0, max: 1, def: 1, unit: 'transparency' }, seconds: seconds(0.4), collide: { t: 'bool', def: true } },
   light: {
-    color: { t: 'vec', limit: 1, unit: 'r, g, b from 0 to 1', def: [1, 0.85, 0.6] },
+    color: { t: 'vec', limit: 1, min: 0, unit: 'r, g, b from 0 to 1', def: [1, 0.85, 0.6] },
     brightness: { t: 'num', min: 0, max: 20, def: 2, unit: '' },
     range: { t: 'num', min: 2, max: 120, def: 16, unit: 'studs' },
     seconds: seconds(0.25, 5, 0),
@@ -144,6 +144,12 @@ type Ref = { segs: Seg[]; abs?: true };
 interface Ctx {
   tree: ModelTree;
   ctx: AgentCtx;
+  /**
+   * The record is one this tool wrote earlier and is being re-read, not a new request. Its structure is checked again (every path
+   * must still resolve, every number be in range); its sound is NOT re-judged against Apple's library, because a sound found by
+   * search in an earlier run is no longer in this run's discovered set and re-judging would silently delete it on the next merge.
+   */
+  stored?: boolean;
 }
 
 function isModelLike(n: TNode): boolean {
@@ -174,7 +180,8 @@ function readSpec(name: string, spec: Spec, raw: unknown, verb: string): { value
       return { value: raw };
     case 'vec': {
       if (!Array.isArray(raw) || raw.length !== 3 || !raw.every(finite)) return { error: `${verb}.${name} must be three numbers [x, y, z]` };
-      if ((raw as number[]).some((n) => Math.abs(n) > spec.limit)) return { error: `${verb}.${name} must stay within ±${spec.limit} (${spec.unit})` };
+      if ((raw as number[]).some((n) => Math.abs(n) > spec.limit)) return { error: `${verb}.${name} must stay within ${spec.min === 0 ? '0..' : '±'}${spec.limit} (${spec.unit})` };
+      if (spec.min !== undefined && (raw as number[]).some((n) => n < spec.min!)) return { error: `${verb}.${name} must not go below ${spec.min} (${spec.unit})` };
       if (spec.nonzero && (raw as number[]).every((n) => n === 0)) return { error: `${verb}.${name} must not be all 0` };
       return { value: raw };
     }
@@ -303,7 +310,7 @@ export async function readBehaviour(c: Ctx, raw: unknown, index: number): Promis
     if (r.soundId !== undefined) {
       const id = String(r.soundId).trim().replace(/^rbxassetid:\/\//i, '');
       if (!/^\d{1,20}$/.test(id)) return { error: `${at}.soundId must be rbxassetid://<number>` };
-      const refused = refuseSoundId({ SoundId: `rbxassetid://${id}` }, c.ctx.discoveredAssetIds);
+      const refused = c.stored ? null : refuseSoundId({ SoundId: `rbxassetid://${id}` }, c.ctx.discoveredAssetIds);
       if (refused) return { error: `${at}: ${refused.error}` };
       record.soundId = `rbxassetid://${id}`;
     } else {
@@ -327,7 +334,7 @@ export async function readBehaviour(c: Ctx, raw: unknown, index: number): Promis
       }
       const value = obj(soundIdProp).v ?? soundIdProp;
       if (typeof value !== 'string' || !value) return { error: `${at}.sound: that Sound has no SoundId, so it would play nothing` };
-      const refused = refuseSoundId({ SoundId: value }, c.ctx.discoveredAssetIds);
+      const refused = c.stored ? null : refuseSoundId({ SoundId: value }, c.ctx.discoveredAssetIds);
       if (refused) return { error: `${at}.sound: its SoundId is not from Apple's library. ${refused.error}` };
     }
   }
@@ -442,7 +449,7 @@ export async function addBehaviour(ctx: AgentCtx, a: Record<string, unknown>) {
       if (parsed.edited) return { error: `${BEHAVIOUR_MODULE} in ${tree.root.address} was edited by hand since add_behaviour wrote it, so it cannot be merged into safely. Nothing was changed. Read it (read_script ${cfgNode.address}), then pass replace: true with the behaviours you want.` };
       // Re-validated, not trusted: the marker line is only a list the file claims.
       for (const [i, rec] of parsed.records.entries()) {
-        const again = await readBehaviour({ tree, ctx }, inputOf(tree, rec), i);
+        const again = await readBehaviour({ tree, ctx, stored: true }, inputOf(tree, rec), i);
         if ('error' in again) notes.push(`dropped an existing behaviour that no longer holds (${String(rec.id)}): ${again.error}`);
         else existing.push(again.record);
       }
