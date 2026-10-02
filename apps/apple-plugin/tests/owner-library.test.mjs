@@ -102,7 +102,9 @@ assert(c:execute("blueprint",routeOp("blueprint",{theme="candy land",seed=7,nich
 assert(urls[#urls]=="http://127.0.0.1:63747/v1/library/blueprint?limit=2.5&niche=brainrot&seed=7&theme=candy land","params must be sorted so one request is one URL: "..urls[#urls])
 assert(c:execute("design",routeOp("design",{request="a garden game with a candy theme",theme="candy",features="pets, shop",seed=3}),false,current).ok==true)
 assert(urls[#urls]=="http://127.0.0.1:63747/v1/library/design?features=pets, shop&request=a garden game with a candy theme&seed=3&theme=candy","the design route takes the request, theme, features and seed as sorted params: "..urls[#urls])
-for _,name in {"deps","install","systems","blueprint","family","report","media","design"} do
+assert(c:execute("find",routeOp("find",{q="a pink treadmill",type="model",limit=12}),false,current).ok==true)
+assert(urls[#urls]=="http://127.0.0.1:63747/v1/library/find?limit=12&q=a pink treadmill&type=model","the find route takes the user's whole request as q, with sorted params: "..urls[#urls])
+for _,name in {"deps","install","systems","blueprint","family","report","media","design","find"} do
  assert(c:execute("allowed",routeOp(name,{id="abcdef012345"}),false,current).ok==true and string.find(urls[#urls],"/v1/library/"..name.."?id=abcdef012345",1,true),"route "..name.." must be forwarded")
 end
 encodeReal=true

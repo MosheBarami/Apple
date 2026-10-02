@@ -92,6 +92,24 @@ export interface LibraryCandidate {
   id?: string;
   assetId?: number;
   parts?: number;
+  /** Set when the candidate came from the classified library (gateway /v1/library/find): what it knows about the item. */
+  found?: FoundInfo;
+}
+
+/** What the classified library says about one candidate: shown to the agent that picks, never trusted as an instruction. */
+export interface FoundInfo {
+  description: string;
+  subtype?: string;
+  look?: string;
+  sizeClass?: string;
+  studs?: V3;
+  colours: string[];
+  quality?: { score: number; band: string; reasons: string[] };
+  scripts: number;
+  animated: boolean;
+  copies: number;
+  /** The library's advisory: its best candidate covers little of the request's words (the agent may reject all of them). */
+  weak: boolean;
 }
 
 interface CatalogItem { gameId?: unknown; game?: unknown; kind?: unknown; name?: unknown; className?: unknown; path?: unknown; parts?: unknown; instances?: unknown; contains?: unknown }
@@ -133,6 +151,63 @@ export function rankCatalog(items: CatalogItem[], query: string, limit = 3): Lib
     if (out.length >= limit) break;
   }
   return out;
+}
+
+/** One row of the classified library's answer (GET /v1/library/find), as far as the harness reads it. */
+interface FindItem {
+  id?: unknown; gameId?: unknown; kind?: unknown; className?: unknown; path?: unknown; name?: unknown; type?: unknown; subtype?: unknown;
+  description?: unknown; look?: unknown; parts?: unknown; instances?: unknown; scripts?: unknown; humanoid?: unknown; animated?: unknown; copies?: unknown;
+  size?: { studs?: unknown; class?: unknown }; colours?: unknown; quality?: { score?: unknown; band?: unknown; reasons?: unknown };
+  provenance?: { game?: unknown };
+}
+export interface FindAnswer { items?: FindItem[]; no_strong_match?: boolean }
+
+/** Library text shown to the picking agent: one line, no markup, at most `max` characters. Pure. */
+export function cleanText(s: unknown, max = 160): string {
+  return String(s ?? '').replace(/[\x00-\x1f\x7f]/g, ' ').replace(/[`*_[\]<>|#~\\{}]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+/**
+ * The classified library's best answers as candidates, in its ranking. The same guards as the name-only path protect the
+ * place (a model, a copyable size, no character), one per source game; what the library knows about each rides along so
+ * the agent that picks sees a description, a size class, colours and a quality grade, not just a name. Pure.
+ */
+export function candidatesFromFind(answer: FindAnswer | null | undefined, limit = 3): LibraryCandidate[] {
+  const out: LibraryCandidate[] = [];
+  const weak = answer?.no_strong_match === true;
+  for (const i of answer?.items ?? []) {
+    if (i.kind !== 'model' || typeof i.gameId !== 'string' || typeof i.path !== 'string' || typeof i.name !== 'string') continue;
+    if (!/^[0-9a-f]{8,64}$/.test(i.gameId) || !i.path.startsWith('/')) continue;
+    if (!PIECE_CLASSES.has(String(i.className))) continue;
+    const parts = Number(i.parts ?? 0), instances = Number(i.instances ?? 0);
+    if (!(parts >= 1) || parts > 400 || instances > 1500) continue;
+    if (i.humanoid === true) continue; // a character is not an object
+    if (out.some((o) => o.gameId === i.gameId)) continue; // different looks, not three copies from one game
+    const studs = vec(i.size?.studs);
+    const q = i.quality, band = typeof q?.band === 'string' ? q.band : undefined;
+    out.push({
+      source: 'owner', name: cleanName(i.name.replace(/#\d+$/, '')), game: typeof i.provenance?.game === 'string' ? cleanName(i.provenance.game) : undefined,
+      gameId: i.gameId, path: i.path, parts,
+      found: {
+        description: cleanText(i.description), ...(typeof i.subtype === 'string' ? { subtype: cleanText(i.subtype, 24) } : {}),
+        ...(typeof i.look === 'string' ? { look: cleanText(i.look, 24) } : {}),
+        ...(typeof i.size?.class === 'string' ? { sizeClass: cleanText(i.size.class, 12) } : {}), ...(studs ? { studs } : {}),
+        colours: (Array.isArray(i.colours) ? i.colours : []).slice(0, 3).map((c) => cleanText((c as { name?: unknown })?.name, 20)).filter(Boolean),
+        ...(band && Number.isFinite(Number(q?.score)) ? { quality: { score: Number(q!.score), band: cleanText(band, 2), reasons: (Array.isArray(q?.reasons) ? q!.reasons as unknown[] : []).slice(0, 3).map((r) => cleanText(r, 60)) } } : {}),
+        scripts: Number(i.scripts ?? 0) || 0, animated: i.animated === true, copies: Math.max(1, Number(i.copies ?? 1) || 1), weak,
+      },
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+/** The classified owner library (gateway /v1/library/find, through the paired plugin): the user's WHOLE request, models only. */
+async function findCatalog(ctx: AgentCtx, request: string): Promise<FindAnswer | null> {
+  const q = request.replace(/\s+/g, ' ').trim().slice(0, 200);
+  if (!q) return null;
+  const out = await ctx.execStudioOp({ op: 'query_owner_library', action: 'route', route: 'find', params: { q, type: 'model', limit: 12 } }, 60_000).catch(() => null);
+  return out?.ok && Array.isArray((out.data as FindAnswer)?.items) ? out.data as FindAnswer : null;
 }
 
 /** Roblox-owned Creator Store rows whose name holds the head word (the bundled index; no third-party rows). Pure. */
@@ -206,13 +281,21 @@ async function catalog(ctx: AgentCtx, q: string): Promise<CatalogItem[]> {
   return out?.ok ? ((out.data as { items?: CatalogItem[] }).items ?? []) : [];
 }
 
-/** Up to three candidates for the request: owner library first, then Roblox-owned Creator Store rows. */
+/**
+ * Up to three candidates for the request, in the owner's order: the owner library first (the classified library ranks the
+ * user's whole request by meaning, colour, size and type; a gateway or plugin without it is read by the old name search),
+ * then Roblox-owned Creator Store rows.
+ */
 export async function findObjectCandidates(ctx: AgentCtx, request: string): Promise<LibraryCandidate[]> {
   const found: LibraryCandidate[] = [];
   const has = (c: LibraryCandidate) => found.some((f) => (f.gameId && f.gameId === c.gameId) || (f.id && f.id === c.id));
-  for (const q of objectQueries(request)) {
-    for (const c of rankCatalog(await catalog(ctx, q), q, 3)) if (found.length < 3 && !has(c)) found.push(c);
-    if (found.length >= 3) break;
+  const classified = candidatesFromFind(await findCatalog(ctx, request), 3);
+  for (const c of classified) if (found.length < 3 && !has(c)) found.push(c);
+  if (!classified.length) {
+    for (const q of objectQueries(request)) {
+      for (const c of rankCatalog(await catalog(ctx, q), q, 3)) if (found.length < 3 && !has(c)) found.push(c);
+      if (found.length >= 3) break;
+    }
   }
   if (found.length < 3) {
     for (const q of objectQueries(request)) {
@@ -369,15 +452,30 @@ export function colourName(hex: string | undefined): string {
 
 /** The question the agent answers to pick the candidate that IS the request, one line per candidate. Pure. */
 export function pickPrompt(request: string, options: ObjectOffer['options']): string {
-  const lines = options.map((o) => `${o.index}. "${o.name}"${o.game ? ` from the game ${o.game}` : ' (Roblox)'}, mostly ${colourName(o.colour)}${o.size ? `, ${Math.round(Math.max(...o.size))} studs at its longest` : ''}${o.parts ? `, ${o.parts} parts` : ''}`);
-  return `The user asked: "${request}". These ready-made models were found:\n${lines.join('\n')}\nWhich one is most clearly what the user asked for (think of what it really looks like: its colour, the game it comes from)? Answer with its number only.`;
+  const lines = options.map((o) => `${o.index}. "${o.name}"${o.game ? ` from the game ${o.game}` : ' (Roblox)'}, mostly ${colourName(o.colour)}${o.size ? `, ${Math.round(Math.max(...o.size))} studs at its longest` : ''}${o.parts ? `, ${o.parts} parts` : ''}${foundLine(o.found)}`);
+  // Candidates that the classified library ranked: the agent may reject every one (owner: a wrong object is worse than none).
+  const mayReject = options.some((o) => o.found);
+  const weak = options.some((o) => o.found?.weak);
+  return `The user asked: "${request}". These ready-made models were found:\n${lines.join('\n')}\n`
+    + (weak ? 'The library matched few of the request\'s words, so check every candidate closely. ' : '')
+    + `Which one is most clearly what the user asked for (think of what it really looks like: its colour, the game it comes from)? Answer with its number only${mayReject ? ', or 0 if none of them is what the user asked for (a wrong object is worse than building the right one)' : ''}.`;
 }
 
-/** The number the agent answered, if it names an option. Pure. */
-export function pickedIndex(text: string, options: { index: number }[]): number | undefined {
+/** What the library says about a candidate, as the tail of its line in the pick question. Pure. */
+function foundLine(f: FoundInfo | undefined): string {
+  if (!f) return '';
+  const bits = [f.description && `library says: ${f.description}`, f.subtype && f.subtype !== 'other' ? `kind ${f.subtype}` : '', f.sizeClass && `${f.sizeClass} size`,
+    f.colours.length ? `colours ${f.colours.join('/')}` : '', f.look && `${f.look} look`, f.quality ? `quality ${f.quality.band}${f.quality.reasons.length ? ` (${f.quality.reasons.join('; ')})` : ''}` : '',
+    f.animated ? 'animated' : '', f.scripts ? 'its scripts are removed on import' : '', f.copies > 1 ? `${f.copies} copies in the library` : ''].filter(Boolean);
+  return bits.length ? `. ${bits.join('; ')}` : '';
+}
+
+/** The number the agent answered, if it names an option; 0 when it rejects them all and `allowNone`. Pure. */
+export function pickedIndex(text: string, options: { index: number }[], allowNone = false): number | undefined {
   // The last number said: a reply that thinks aloud ("1 is brown, 2 is yellow... 2") ends on its answer.
   const all = [...text.matchAll(/\b(\d)\b/g)];
   const n = Number(all[all.length - 1]?.[1]);
+  if (allowNone && all.length && n === 0) return 0;
   return options.some((o) => o.index === n) ? n : undefined;
 }
 

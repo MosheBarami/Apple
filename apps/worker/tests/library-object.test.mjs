@@ -233,3 +233,70 @@ test('the agent picks the candidate that looks like the request', () => {
   assert.equal(L.pickedIndex('A rubber duck is yellow, so 1 is wrong. Answer: 2', opts), 2);
   assert.equal(L.pickedIndex('7', opts), undefined, 'a number that is not an option is not a pick');
 });
+
+// Phase 2 (owner, 2026-10-02): the library pick reads the user's WHOLE request through the classified library, not just its last word.
+const G1 = '0123456789ab', G2 = 'abcdef012345', G3 = 'fedcba987654';
+const hit = (name, gameId, extra = {}) => ({ id: 'h' + name, gameId, kind: 'model', className: 'Model', path: `/Workspace/${name}`, name, type: 'model', subtype: 'creature',
+  description: `${name} (yellow small creature), 15 parts`, look: 'studded', parts: 15, instances: 22, scripts: 0, humanoid: false, animated: false, copies: 1,
+  size: { studs: [2, 2.5, 5.1], class: 'small' }, colours: [{ name: 'yellow', hex: '#ffb000', share: 0.5 }, { name: 'black', hex: '#080809', share: 0.3 }],
+  quality: { score: 84, band: 'A', reasons: [] }, provenance: { game: 'Pet Park' }, ...extra });
+
+test('the classified library answers become candidates: same guards, one per game, what the library knows rides along', () => {
+  const answer = {
+    no_strong_match: false,
+    items: [hit('Toucan', G1), hit('Toucan #2', G1), hit('Pirate', G2, { humanoid: true }), hit('Statue', G2, { parts: 900 }), hit('Tool', G2, { kind: 'tool' }),
+      hit('Gate', G2, { className: 'Folder' }), hit('Bad', 'not-hex!'), hit('Macaw', G2, { provenance: { game: 'Jungle *Zoo*' }, description: 'a `big` bird <b>x</b>\nline two' }), hit('Parrot', G3)],
+  };
+  const out = L.candidatesFromFind(answer, 3);
+  assert.deepEqual(out.map((c) => `${c.name}/${c.gameId}`), [`Toucan/${G1}`, `Macaw/${G2}`, `Parrot/${G3}`], 'a character, a 900-part piece, a tool, a folder and junk are left out; one per game');
+  assert.equal(out[0].source, 'owner');
+  assert.equal(out[0].path, '/Workspace/Toucan');
+  assert.deepEqual(out[0].found.colours, ['yellow', 'black']);
+  assert.deepEqual([out[0].found.sizeClass, out[0].found.subtype, out[0].found.look, out[0].found.quality.band], ['small', 'creature', 'studded', 'A']);
+  assert.ok(!/[`<>*\n]/.test(out[1].found.description + out[1].game), 'library text is one plain line before the agent reads it');
+  assert.equal(L.candidatesFromFind(answer, 1).length, 1);
+  assert.deepEqual(L.candidatesFromFind(null), []);
+  assert.deepEqual(L.candidatesFromFind({ items: 'nope' }), []);
+  assert.equal(L.candidatesFromFind({ no_strong_match: true, items: [hit('Toucan', G1)] })[0].found.weak, true);
+});
+
+test('the pick question shows what the library knows and lets the agent say none of them is it', () => {
+  const [a, b] = L.candidatesFromFind({ no_strong_match: true, items: [hit('Toucan', G1, { scripts: 2, copies: 3 }), hit('Bird', G2, { subtype: 'other', quality: { score: 55, band: 'C', reasons: ['looks only'] } })] }, 3);
+  const opts = [{ ...a, index: 1, colour: '#ffb000', size: [2, 2.5, 5.1], parts: 23 }, { ...b, index: 2, colour: '#080809' }];
+  const q = L.pickPrompt('a tropical bird with a giant beak', opts);
+  assert.match(q, /1\. "Toucan" from the game Pet Park, mostly orange, 5 studs at its longest, 23 parts\. library says: Toucan \(yellow small creature\), 15 parts; kind creature; small size; colours yellow\/black; studded look; quality A; its scripts are removed on import; 3 copies in the library/);
+  assert.match(q, /2\. "Bird" from the game Pet Park, mostly black.*quality C \(looks only\)/);
+  assert.doesNotMatch(q, /kind other/);
+  assert.match(q, /The library matched few of the request's words/);
+  assert.match(q, /Answer with its number only, or 0 if none of them is what the user asked for/);
+  // Candidates that only the name search found are asked exactly as before: no 0, no library line.
+  const old = L.pickPrompt('make me a rubber duck', [{ index: 1, name: 'Duck', game: 'G', colour: '#f5cd30', size: [5, 5, 4], parts: 12 }]);
+  assert.match(old, /Answer with its number only\.$/);
+  assert.doesNotMatch(old, /library says/);
+  // 0 is a choice only when it is offered.
+  assert.equal(L.pickedIndex('0', opts, true), 0);
+  assert.equal(L.pickedIndex('None of them is a tropical bird. 0', opts, true), 0);
+  assert.equal(L.pickedIndex('0', opts), undefined, 'not offered, not taken');
+  assert.equal(L.pickedIndex('no digits here', opts, true), undefined);
+  assert.equal(L.pickedIndex('2', opts, true), 2);
+});
+
+test('the session puts classified candidates to the agent even when there is one, accepts 0 as "build it", and asks only once', () => {
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  const step = session.slice(session.indexOf('private async libraryObjectStep'), session.indexOf('private async pauseForStudio'));
+  assert.match(step, /const ranked = offer\.options\.some\(\(o\) => o\.found\)/);
+  assert.match(step, /if \(offer\.options\.length > 1 \|\| ranked\) \{/);
+  assert.match(step, /pickedIndex\(said\.text, offer\.options, ranked\)/);
+  assert.match(step, /if \(n === 0 \|\| \(!said && best\.found\?\.weak\)\) \{ await clearLineup\(ctx\); agent\.libraryRejected = true; return false; \}/, 'every candidate rejected: the lineup is cleared and the run builds it');
+  assert.match(step, /!agent\.libraryRejected\) \{/, 'a rejected library is not searched (and the agent not asked) again in the same run');
+  assert.equal((step.match(/llmChat\(/g) ?? []).length, 1, 'still one model call in the library step');
+});
+
+test('library first, then the Creator Store: the classified library is asked with the whole request, the name search is only the fallback', () => {
+  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8');
+  const find = src.slice(src.indexOf('export async function findObjectCandidates'), src.indexOf('/** A big number floating over a candidate'));
+  assert.match(src, /route: 'find', params: \{ q, type: 'model', limit: 12 \}/, 'the user\'s whole request, models only');
+  assert.ok(find.indexOf('candidatesFromFind(await findCatalog(ctx, request)') < find.indexOf('rankCatalog(await catalog(ctx, q)'), 'the classified library comes first');
+  assert.match(find, /if \(!classified\.length\) \{/, 'the name search only runs when the classified library gave nothing (older gateway or plugin, no index)');
+  assert.ok(find.indexOf('rankCatalog(') < find.indexOf('storeCandidates('), 'then the Creator Store');
+});

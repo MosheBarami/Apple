@@ -152,8 +152,32 @@ export function libraryReady(ctx: AgentCtx) {
   if (!ctx.studioConnected()) return 'Studio is not connected.';
   return null;
 }
+const FIND_TYPES = ['model','map','system','ui-kit','ui-screen','tool','animation','vfx','sfx','music','script','media-pack'];
+const FIND_SIZES = ['tiny','small','medium','large','huge'];
+/**
+ * mode find: the user's whole request matched over every classified library item by meaning, style, colour, size and type
+ * (gateway /v1/library/find). The answer is the gateway's, handed on as it is: at most 12 compact candidates, each with
+ * gameId/path/kind/className for import_owner_library, a description, size, colours, quality and why it matched, and
+ * no_strong_match (true: nothing covers the request well, so build or look elsewhere instead of forcing a pick).
+ */
+export async function findOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown>) {
+  const q = typeof a.q === 'string' ? a.q.replace(/\s+/g,' ').trim().slice(0,200) : '';
+  if (!q) return {error:'mode find needs q: the request in the user\'s own words (up to 200 characters).'};
+  const plain = (v: unknown, max: number) => v === undefined || v === '' ? undefined : String(v).slice(0,max);
+  const type = plain(a.type,20), subtype = plain(a.subtype,30), colour = plain(a.colour,30), size = plain(a.size,10), game = plain(a.game,60);
+  if (type !== undefined && !FIND_TYPES.includes(type)) return {error:`type must be one of ${FIND_TYPES.join(', ')}.`};
+  if (size !== undefined && !FIND_SIZES.includes(size)) return {error:`size must be one of ${FIND_SIZES.join(', ')}.`};
+  const minQuality = a.min_quality === undefined ? undefined : Number(a.min_quality);
+  if (minQuality !== undefined && (!Number.isInteger(minQuality) || minQuality < 0 || minQuality > 100)) return {error:'min_quality must be a whole number 0..100.'};
+  const limit = Math.min(12,Math.max(1,Number(a.limit)||12));
+  const out = await ctx.execStudioOp({op:'query_owner_library',action:'route',route:'find',params:{q,...(type ? {type} : {}),...(subtype ? {subtype} : {}),...(colour ? {colour} : {}),...(size ? {size} : {}),...(game ? {game} : {}),...(minQuality !== undefined ? {min_quality:minQuality} : {}),limit}},60_000);
+  if (!out.ok) return {error:out.error ?? 'Owner library refused the request'};
+  return {...out.data as Record<string,unknown>,untrustedData:true,note:'Candidates are ranked best first. Import one with import_owner_library {gameId, path, mode:"self"} (a map: path "/Workspace", mode "children"); its scripts come with it. no_strong_match true means nothing covers the request well: do not force a pick, build it or say so. Page nothing: ask again with other words or filters.'};
+}
 export async function browseOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown>) {
   const blocked = libraryReady(ctx); if (blocked) return {error:blocked};
+  if (a.mode !== undefined && a.mode !== 'find') return {error:'mode must be find (or omitted).'};
+  if (a.mode === 'find') return findOwnerLibrary(ctx,a);
   const id = a.id === undefined ? undefined : String(a.id);
   if (id !== undefined && !GAME_ID.test(id)) return {error:'id must be a library game id (8-64 hex characters) from a browse_owner_library list.'};
   const after = a.after === undefined ? undefined : Number(a.after);

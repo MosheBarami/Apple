@@ -282,6 +282,8 @@ interface AgentState {
   focused?: boolean;
   /** A request for one thing: build_object is this run's first project change (object-tool.ts isObjectRequest). */
   objectFirst?: boolean;
+  /** The agent rejected every library candidate for this request: the run builds it, and the library is not searched again. */
+  libraryRejected?: boolean;
   /** This run answers a one-object request (it stays true after build_object); only such a run is fenced after it. */
   objectRun?: boolean;
   /** build_object failures this run; the object fence lifts after three. */
@@ -1623,16 +1625,20 @@ export class SessionDO extends DurableObject<Env> {
     if (pick && pick.index === null) { await clearLineup(ctx); await this.ctx.storage.delete('pendingObjectChoice'); return false; }
     // Automatic (owner, 2026-10-02: no more three options): the best ready-made model is found and placed in one run.
     let chosen = pick && pick.index !== null ? { pending: pick.pending, index: pick.index } : null;
-    if (!chosen && agent.objectRun && agent.objectFirst && !agent.upgradingObject) {
+    if (!chosen && agent.objectRun && agent.objectFirst && !agent.upgradingObject && !agent.libraryRejected) {
       const t0 = Date.now();
       // Up to three candidates stand in a row out of sight of the answer; the AGENT picks the one that is the request
       // (live 2026-10-02: "a rubber duck" took the first hit, a brown hunting duck). One short model call.
       const offer = await offerLibraryObjects(ctx, agent.request ?? '', { quiet: true });
       if (!offer?.options[0]) return false;
       let best = offer.options[0];
-      if (offer.options.length > 1) {
+      // Candidates the classified library ranked are always put to the agent (even one), and it may answer 0: none of them is
+      // what the user asked for, and the run builds it (owner: a wrong object is worse than none).
+      const ranked = offer.options.some((o) => o.found);
+      if (offer.options.length > 1 || ranked) {
         const said = await llmChat(this.env, { model: gatewayModelFor(agent.mode), messages: [{ role: 'user', content: pickPrompt(agent.request ?? '', offer.options) }], maxTokens: 400 }, { kind: 'agent' }).catch(() => null);
-        const n = said ? pickedIndex(said.text, offer.options) : undefined;
+        const n = said ? pickedIndex(said.text, offer.options, ranked) : undefined;
+        if (n === 0 || (!said && best.found?.weak)) { await clearLineup(ctx); agent.libraryRejected = true; return false; }
         best = offer.options.find((o) => o.index === n) ?? best;
       }
       row('find_library_model', true, t0, `✓ found ${best.name}${best.game ? ` from ${best.game}` : ''}`, { name: best.name, ...(best.game ? { where: best.game } : {}), ...(best.assetId ? { assetId: best.assetId } : {}) });
