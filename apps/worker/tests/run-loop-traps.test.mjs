@@ -1361,3 +1361,39 @@ test('CREDITS: more_tools {names} unlocks only what was asked for, and no argume
     for (const name of ['edit_terrain', 'generate_sound', 'web_search', 'workspace_write']) assert.ok(third.has(name), `${name} was not unlocked by the argument-less more_tools`);
   } finally { h.stop(); }
 });
+
+test('CREDITS: twelve different run_luau scripts in a row are building, not retuning one target', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => ({ ok: true, data: op.op === 'run_code' ? { output: 'ok', returned: null } : {} }),
+    responses: [...Array.from({ length: 16 }, (_, i) => calls(['run_luau', { code: `for _, p in workspace:GetChildren() do if p:IsA("BasePart") then p.Transparency = ${i / 40} end end` }])), answer({ text: 'Built the map.' })],
+  });
+  try {
+    await start(h, { text: 'tune the map with a script' });
+    for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended');
+    const runs = h.ops.filter((op) => op.op === 'run_code').length;
+    assert.ok(runs >= 14, `only ${runs} run_luau calls reached Studio: the run was stopped, or the fixture checks nothing`);
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+    assert.doesNotMatch(text, /kept changing the same thing/, 'successful script-built work was ended as one target changed over and over');
+  } finally { h.stop(); }
+});
+
+test('CREDITS: alternating between two targets for dozens of changes is told once, then ended', async () => {
+  const set = (path, i) => calls(['set_properties', { path, props: { Transparency: i / 200 } }]);
+  const h = await makeSession({
+    connected: true,
+    answerOp: () => ({ ok: true, data: {} }),
+    responses: [...Array.from({ length: 100 }, (_, i) => set(i % 2 ? 'game.Workspace.WallA' : 'game.Workspace.WallB', i)), answer({ text: 'Done.' })],
+  });
+  try {
+    await start(h, { text: 'adjust the transparency of WallA and WallB until it looks right' });
+    for (let i = 0; i < 120 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended: alternating two targets is invisible to a count that resets on every other target');
+    const sets = h.ops.filter((op) => op.op === 'set_props').length;
+    assert.ok(sets <= 40, `${sets} changes were made before the alternation was stopped`);
+    const seen = h.chatCalls.at(-1).req.messages;
+    assert.ok(seen.some((m) => m.role === 'user' && /last 24 changes/.test(m.content)), 'the model was never told it was alternating before the run was ended');
+    assert.equal(lastEnd(h).stopReason, 'incomplete');
+  } finally { h.stop(); }
+});

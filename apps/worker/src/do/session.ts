@@ -94,7 +94,7 @@ import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, afterToolOutcome, failureSteer, FAIL_STEER_AT, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction, type FailureAction } from '../run-idle';
+import { afterStep, afterChange, afterChangeWindow, afterToolOutcome, failureSteer, FAIL_STEER_AT, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction, type FailureAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
@@ -393,6 +393,8 @@ interface AgentState {
   failedCalls?: { sig: string; error: string; count: number }[];
   /** Consecutive failures per tool whatever the arguments (run-idle.ts afterToolOutcome); one success of the tool clears it. */
   failStreaks?: Record<string, number>;
+  /** The last changes by target, for the back-and-forth guard (run-idle.ts afterChangeWindow). */
+  changeWindow?: { keys: string[]; since: number; nudges: number };
   /**
    * propose_plan's consecutive refusals and the kinds of the last one, carried across steps so the
    * tool can keep its promise that no run is refused more than twice in a row. See PlanState.
@@ -4778,6 +4780,7 @@ export class SessionDO extends DurableObject<Env> {
     let duplicatesThisStep = 0;
     let mutatedThisStep = false;
     let retuneThisStep: RetuneAction = 'none';
+    let windowNudge = false;
     let failThisStep: { action: FailureAction; tool: string } | undefined;
     let verifiedThisStep = false;
     let pausedFor: StudioPauseReason | null = null;
@@ -4969,10 +4972,19 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true) {
         agent.mutated = true;
         mutatedThisStep = true;
-        const retune = afterChange(agent.changesByTarget, `${call.name} ${aim(call.arguments)}`);
-        agent.changesByTarget = retune.counts;
+        // A change aimed at nothing (a script's target is inside its code) is not "the same target" as the last one.
+        const target = aim(call.arguments);
+        if (target) {
+          const retune = afterChange(agent.changesByTarget, `${call.name} ${target}`);
+          agent.changesByTarget = retune.counts;
+          if (retune.action === 'finish' || (retune.action === 'nudge' && retuneThisStep === 'none')) retuneThisStep = retune.action;
+          // Back and forth between two things never repeats one target in a row (run-idle.ts afterChangeWindow).
+          const window = afterChangeWindow(agent.changeWindow, `${call.name} ${target}`);
+          agent.changeWindow = window.state;
+          if (window.action === 'finish') retuneThisStep = 'finish';
+          else if (window.action === 'nudge') windowNudge = true;
+        }
         agent.builtWords = addEvidence(agent.builtWords, evidenceWords(call.name, call.arguments));
-        if (retune.action === 'finish' || (retune.action === 'nudge' && retuneThisStep === 'none')) retuneThisStep = retune.action;
       }
       if (out.ok && call.name === 'build_scene') {
         let kitArgs: Record<string, unknown> = {};
@@ -5340,6 +5352,15 @@ export class SessionDO extends DurableObject<Env> {
         content:
           'You have changed the same thing several times in a row. Stop tuning it: keep the best version you have, ' +
           'finish anything else the request still needs, and then reply to the user.',
+      });
+    }
+    if (windowNudge && retuneThisStep !== 'nudge') {
+      agent.llm.push({
+        role: 'user',
+        content:
+          'Over your last 24 changes, 12 or more went to the same thing, with other changes in between. If you are going back and forth ' +
+          'between versions of it, keep the best one, finish anything else the request still needs, and then reply to the user. ' +
+          'If each change really adds something new, carry on.',
       });
     }
     if (idle.action === 'build') {

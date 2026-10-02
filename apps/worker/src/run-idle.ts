@@ -96,6 +96,31 @@ export function afterChange(counts: Record<string, number> | undefined, key: str
 
 
 /**
+ * Changing two things back and forth. afterChange forgets everything when the target changes, so tweak A, read, tweak B,
+ * read never reaches its limit (scripted S3 and S3b: 400 steps, 1,107 Credits). This keeps the last CHANGE_WINDOW
+ * changes. When one target holds WINDOW_NUDGE of them the model is told, once per WINDOW_NUDGE changes; the second
+ * time the window is still dominated, the run ends on what it built. Work spread over many targets never counts, and a
+ * target that is one change in a few is building, not retuning. A change aimed at nothing (a script's own code names its
+ * target inside the code) is not counted at all: twelve different run_luau scripts in a row ended successful
+ * script-built maps through afterChange, which is the capability this window must not cut.
+ */
+export const CHANGE_WINDOW = 24;
+export const WINDOW_NUDGE = 12;
+export const WINDOW_FINISH_AT_NUDGES = 2;
+
+export interface ChangeWindow { keys: string[]; since: number; nudges: number }
+
+export function afterChangeWindow(state: ChangeWindow | undefined, key: string): { state: ChangeWindow; action: RetuneAction } {
+  const keys = [...(state?.keys ?? []), key].slice(-CHANGE_WINDOW);
+  const since = (state?.since ?? WINDOW_NUDGE) + 1; // changes since the last nudge
+  const dominated = keys.filter((k) => k === key).length >= WINDOW_NUDGE;
+  if (!dominated || since < WINDOW_NUDGE) return { state: { keys, since, nudges: state?.nudges ?? 0 }, action: 'none' };
+  const nudges = (state?.nudges ?? 0) + 1;
+  return { state: { keys, since: 0, nudges }, action: nudges >= WINDOW_FINISH_AT_NUDGES ? 'finish' : 'nudge' };
+}
+
+
+/**
  * A tool that keeps failing, whatever it is sent. Measured 2026-10-02 (owner benchmark, map runs of 434 and
  * 584 Credits): the model hand-computed coordinates for ~75 parts and retried failed calls dozens of times.
  * Each retry changed its numbers, so the identical-call guard (MAX_SAME_FAILURES, which is keyed on tool +

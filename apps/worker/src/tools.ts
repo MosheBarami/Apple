@@ -3963,7 +3963,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'inspect_visually',
       description:
-        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing, until it passes. It renders and calls a vision model, so it costs Credits — run audit_build FIRST, which is free, checks geometry and the Lighting configuration, and finds a different class of defect. Uses native PNG pixels when available and reports target visibility plus possible appearance/loading artifacts. The active viewport is not guaranteed to frame the target; this snapshot does not verify the whole map or gameplay. Use this for what only an image can show: whether the thing reads.',
+        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing; if two inspections in a row do not score better, stop and say so. It renders and calls a vision model, so it costs Credits — run audit_build FIRST, which is free, checks geometry and the Lighting configuration, and finds a different class of defect. Uses native PNG pixels when available and reports target visibility plus possible appearance/loading artifacts. The active viewport is not guaranteed to frame the target; this snapshot does not verify the whole map or gameplay. Use this for what only an image can show: whether the thing reads.',
       parameters: S(
         {
           target: { type: 'string', description: 'instance path to inspect. Omit for the whole workspace.' },

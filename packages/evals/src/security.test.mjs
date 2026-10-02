@@ -2676,7 +2676,10 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //   when the call was in this step's offered set (`allowed.has(call.name)`), so it is a registry name. The error text is
   //   deliberately NOT quoted into it: a Studio error can carry place content (an instance name), and it already reaches the
   //   model fenced as untrusted tool output. Held below: the helper's only interpolations are those two. ]]
-  assert.equal(userPushes.length, 19, 'a user-role transcript injection was added or removed — review it for injection risk');
+  //[[ TWENTY SINCE 2026-10-02: the back-and-forth steer ("Over your last 24 changes, 12 or more went to the same thing…",
+  //   run-idle.ts afterChangeWindow). REVIEWED: a fixed string literal with no interpolation, pushed once per 12 changes by the
+  //   run's own counter; nothing the model, the user or a tool wrote reaches it (the keys it counts are never quoted back). ]]
+  assert.equal(userPushes.length, 20, 'a user-role transcript injection was added or removed — review it for injection risk');
   const failSteer = bodyBlock(readCode('run-idle.ts'), readCode('run-idle.ts').indexOf('export function failureSteer('));
   assert.ok(failSteer.length > 100, 'failureSteer was not found — this test would check nothing');
   assert.deepEqual([...failSteer.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['failures', 'tool'],
