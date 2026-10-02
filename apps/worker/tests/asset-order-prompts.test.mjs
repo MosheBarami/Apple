@@ -46,6 +46,27 @@ test('no prompt, tool description, roadmap step or skill card forbids the last s
   for (const re of FORBIDDEN) assert.doesNotMatch(CARDS, re, `skill-cards.json still says: ${re}`);
 });
 
+test('the skill cards follow the order and teach build-once-then-repeat, not per-copy coordinates or scatter-everything', () => {
+  const cards = JSON.parse(CARDS).cards;
+  const byId = Object.fromEntries(cards.map((c) => [c.id, c]));
+  const text = (id) => byId[id].recipe.join('\n');
+  for (const id of ['props-low-poly-from-primitives', 'map-buildings-from-parts']) {
+    assert.ok(byId[id], `${id} is gone — re-aim this test`);
+    assert.match(text(id), /asset order of the system prompt applies/, `${id} does not point at the order`);
+    assert.match(text(id), /step 4/, `${id} does not say Parts is step 4, not a fallback to avoid`);
+    assert.match(text(id), /origin/, `${id} does not teach building once in local space`);
+    assert.match(text(id), /clone_instances (at|\(?at)|clone_instances at \/ along \/ within|at \/ along \/ within/, `${id} does not teach repeating with at / along / within`);
+    assert.doesNotMatch(text(id), /Library first \(D-MODELLIB-1\)/, `${id} still states the order in its own words`);
+    assert.doesNotMatch(byId[id].title, /as the fallback/, `${id}'s title calls Parts a fallback`);
+  }
+  const map = text('map-layered-composition');
+  assert.match(map, /edit_terrain call, action path/, 'the map card does not teach a river as one path call');
+  assert.match(map, /clone_instances within an area/, 'the map card does not teach repeating an inserted model with clone_instances');
+  assert.doesNotMatch(map, /scatter_instances trees\/rocks\/bushes/, 'the map card still says to scatter trees, rocks and bushes');
+  assert.match(map, /overrides for the exact hour/, 'the map card does not hand the hour to set_mood overrides');
+  assert.equal(CARDS.includes('never build from Parts'), false);
+});
+
 test('the order is stated once, in prompts.ts, and the other files point at it instead of restating it', () => {
   const prompts = code(SRC('prompts.ts'));
   assert.equal((prompts.match(/ASSET ORDER, for every prop/g) ?? []).length, 1, 'the order must be stated exactly once in prompts.ts');

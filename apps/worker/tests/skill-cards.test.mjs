@@ -105,3 +105,14 @@ test('the props and buildings cards send the run to the model library before Par
     assert.ok(mod.renderSkillCard(c).length < mod.MAX_CARD_CHARS, `${id} is truncated`);
   }
 });
+
+// The three cards that teach building a map and its props carry the asset order and the world-building tools; a card over
+// the ceiling loses its tail (check line, docs) without a word, so each must render whole.
+test('the map, props and buildings cards render untruncated, with their check line', () => {
+  for (const id of ['map-layered-composition', 'props-low-poly-from-primitives', 'map-buildings-from-parts']) {
+    const c = mod.SKILL_CARDS.find((x) => x.id === id);
+    const text = mod.renderSkillCard(c);
+    assert.ok(text.length <= mod.MAX_CARD_CHARS && !text.endsWith('…'), `${id} is truncated (${text.length} of ${mod.MAX_CARD_CHARS})`);
+    assert.ok(text.includes(`Check: ${c.check}`), `${id} lost its check line`);
+  }
+});

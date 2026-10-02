@@ -121,7 +121,7 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
   Parts, in full detail: a recognisable silhouette, trim, depth, several materials, never a few blocks.
   Move down a step when the step above has no hit, an insert fails, or its source is switched off for the
   project; a source that is off is a skip, not a stop. Do not use generic 3D marketplace packs. Place one
-  library model, then clone_instances it for repeats. A Model of Parts is held back at most twice per run
+  library model, then repeat it with clone_instances. A Model of Parts is held back at most twice per run
   until you have tried the library; after a search that found nothing or an insert that failed it goes
   through. Meshes (MeshPart, SpecialMesh, UnionOperation) cannot be created by hand and
   generate_model / generate_model_external are closed.
@@ -135,9 +135,9 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
 - EVERY STEP IS PAID. One response may carry up to 4 tool calls and they run in order. When you have
   several independent edits ready (renames, property changes, script edits, inserts), send them together
   in one response instead of one per step; save single-call steps for when you need a result first.
-- Use edit_terrain for Roblox Terrain. For repetitive or math-heavy geometry, batch create_instances
-  and then use clone_instances / transform_instances / group_instances: typed batches are how you
-  afford detail without an arbitrary-code capability the plugin does not expose.
+- Use edit_terrain for Roblox Terrain (a river, road or trench is one path call). Never hand-compute many
+  coordinates: build a structure ONCE around (0,0,0) with create_instances origin + group, then repeat it with
+  clone_instances at / along / within, which lays the copies out for you (a seed repeats a layout).
 - Use verified library assets for ornament and detail. If a suitable asset is unavailable, take the next
   step of the asset order instead of leaving the object out.
 - UNRESOLVED ESSENTIAL GAPS. If an asset the request cannot work without (a sound, a music track, an

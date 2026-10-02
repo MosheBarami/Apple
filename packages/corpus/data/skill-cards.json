@@ -177,10 +177,10 @@
       "recipe": [
         "1 Landform: terrain, not a flat baseplate. shape_terrain heightmap (amplitude 0.15-0.3, scale 64-128) over the play area, then hide/remove the Baseplate. Keep the central play space gently rolling so players can walk it.",
         "2 Frame: raise the edges — edit_terrain fill_ball/fill_block hills and rock cliffs (Enum.Material.Rock/Ground) around the perimeter, 30-80 studs tall, so the map has a skyline and a boundary instead of an endless plane.",
-        "3 Paths: connect spawn -> each landmark with 8-12 stud wide paths: edit_terrain replace_material strips (Grass -> Sand/Ground/Pavement) or flat Parts 0.5 tall. Paths should curve and meet at a central plaza.",
+        "3 Paths: 8-12 stud wide paths from spawn to each landmark (edit_terrain replace_material strips or flat Parts) curving to a central plaza. A river, trench or tunnel is ONE edit_terrain call, action path (points, width, depth, fill Air or Water); a road or bank is fill material.",
         "4 Landmarks: a centrepiece at the plaza (statue, fountain, big sign) and one distinct building/structure per zone, each visible from spawn.",
         "5 Props: from the model library or grouped into Models (see props card), place in clusters of 3-7 along paths and around landmarks, never evenly spread; fences follow path edges; lamps every 20-30 studs along paths.",
-        "6 Dressing: scatter_instances trees/rocks/bushes on Grass only (onMaterial, minSpacing 8-15, scale [0.8,1.3], randomYaw) in the gaps and along the edges; then set_mood and render_view from spawn and from above.",
+        "6 Dressing: insert ONE of each tree, rock or bush (library, else built once from Parts), then clone_instances within an area (count, minSpacing 8-15, scale [0.8,1.3], yaw [0,360], seed) or along a path edge; scatter_instances suits rolling terrain. Then set_mood (overrides for the exact hour asked), render_view.",
         "Budget by layer: a small hub is 150-250 studs across with 20-60 prop models, not one ground plane plus one template."
       ],
       "avoid": [
@@ -209,7 +209,7 @@
     },
     {
       "id": "props-low-poly-from-primitives",
-      "title": "Low-poly props: the model library first, Parts as the fallback (trees, rocks, fences, lamps)",
+      "title": "Low-poly props by the asset order: library first, then Parts in full detail (trees, rocks, fences, lamps)",
       "domain": "props",
       "tools": [
         "insert_library_model",
@@ -251,14 +251,14 @@
         "detail"
       ],
       "recipe": [
-        "Library first (D-MODELLIB-1): when the run offers find_library_model, search it with a plain noun (pine tree, rock, fence, lamp, crate) and place the best hit with insert_library_model (position = its bottom centre, height in studs), then clone_instances it for repeats. Build from Parts, as below, only when the library has nothing for it or insert_library_model failed.",
+        "The asset order of the system prompt applies: find_library_model (a plain noun: pine tree, rock, fence), insert_library_model (position = bottom centre, height in studs), then the Creator Store, then adapt or combine. With no hit or a failed insert, Parts is step 4, not a failure: build it in full detail as below.",
         "Materials: SmoothPlastic (or Plastic) with saturated flat colours reads as stylised low-poly; 2-3 tones per prop (base, shade, accent). Anchored true, CastShadow true.",
         "Round tree: trunk Part Shape Cylinder (rotate so its axis is vertical: Orientation [0,0,90]) 2x10x2, brown; canopy 2-3 overlapping Shape Ball parts 8-12 studs in two greens, offset so the silhouette is lumpy.",
         "Pine tree: trunk cylinder + 3 stacked WedgePart/Part tiers shrinking upward (12 -> 8 -> 4 wide), each rotated 45 degrees from the one below, dark green.",
         "Rock: 2-3 Parts with random Orientation, slightly different greys, partly sunk into the ground.",
         "Fence: posts every 6-8 studs (1x4x1) + two rails (0.5x0.5xlength) between them, light wood colour; follow path edges.",
         "Lamp: thin dark post, a small box/ball head with Material Neon warm yellow and a PointLight (Range 12-16, Brightness 1-2).",
-        "Always wrap each prop in a Model with a PrimaryPart, name it (e.g. 'PineTree'), then clone_instances/scatter_instances the Model instead of building each copy."
+        "Build a prop ONCE: write its parts around (0,0,0) in one create_instances call with origin {at, yaw} and group {className: Model, name, primaryPart}, then repeat it with clone_instances at / along / within (positions, a line, an area; a seed repeats a layout). Never compute copy coordinates by hand."
       ],
       "avoid": [
         "One giant Part as a 'tree'.",
@@ -291,7 +291,7 @@
     },
     {
       "id": "map-buildings-from-parts",
-      "title": "Readable small buildings and stalls: the model library first, Parts as the fallback",
+      "title": "Readable small buildings and stalls by the asset order: library first, then Parts in full detail",
       "domain": "props",
       "tools": [
         "insert_library_model",
@@ -322,7 +322,7 @@
         "structure"
       ],
       "recipe": [
-        "Library first (D-MODELLIB-1): when the run offers find_library_model, try a plain noun (house, shop, stall, hut) and place a fitting hit with insert_library_model. Build from Parts, as below, only when nothing fits or insert_library_model failed.",
+        "The asset order of the system prompt applies: find_library_model (house, shop, stall, hut), insert_library_model, then the Creator Store, then adapt or combine. With no fit or a failed insert, Parts is step 4: build it in full detail as below, once around (0,0,0) with create_instances origin and group, then repeat it with clone_instances at / along / within.",
         "Footprint 14-24 studs; floor slab 1 stud tall, slightly larger than the walls.",
         "Walls: 3 wall Parts + a front with an opening (two side pieces + a lintel) so players can see in; wall colour warm/light, trim darker.",
         "Roof: two WedgePart halves meeting at a ridge (or one wedge for a lean-to), overhanging the walls by 1-2 studs, contrasting colour.",
