@@ -174,7 +174,7 @@ const parts = [
   //   Its entry outlived them by a few hours and reported MODULE_NOT_FOUND under a label that read
   //   like a licence finding.
   //
-  //   It is NOT re-aimed at the remaining harvesters. harvest-hf, harvest-roblox-knowledge and
+  //   It is NOT re-aimed at the remaining harvesters. harvest-hf and
   //   harvest-templates feed the training corpus, not a D1 asset catalogue, and pointing a
   //   Creator-Store licence gate at them would be inventing coverage rather than keeping it. The
   //   asset library is not to be rebuilt; see the commit. ]]

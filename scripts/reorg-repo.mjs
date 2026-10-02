@@ -311,6 +311,7 @@ function applyRefEdits() {
       continue;
     }
     const out = t.replace(re, ed.replace);
+    if ([...out.matchAll(new RegExp(ed.find, (ed.flags ?? 'g').includes('g') ? ed.flags ?? 'g' : (ed.flags ?? '') + 'g'))].length > 0) { fail(`refEdit is not idempotent in ${ed.file}: /${ed.find}/ still matches after it was applied`); continue; }
     e.text = out; e.changed = e.changed || out !== t;
     report.edits.push(`${ed.file}  (${matches}x)  ${ed.why ?? ''}`);
   }
@@ -511,13 +512,13 @@ function check() {
     const t = readText(e);
     for (const m of t.matchAll(/(?:^|[\s'"=(])((?:scripts|infra|platforms|apps|packages|docs|tests)\/[A-Za-z0-9_.\-/]+)/gm)) {
       const q = m[1].replace(/[.,;:)]+$/, '');
-      if (q.includes('*') || q.includes('$')) continue;
+      if (q.includes('*') || q.includes('$') || (plan.workflowGenerated ?? []).some((g) => new RegExp(g).test(q))) continue;
       if (!exists(q) && !fs.existsSync(q)) complain(`  workflow ${p} names a path that does not exist: ${q}`);
     }
   }
   // 4. segment-form detector: quoted first segment of a dir that no longer exists
   const topGone = new Set();
-  for (const m of [...doneMoves, ...doneDeletes.map((d) => ({ from: d.path }))]) { const top = m.from.split('/')[0]; if (!exists(top) && !fs.existsSync(top)) topGone.add(top); }
+  for (const m of doneMoves) { const top = m.from.split('/')[0]; if (!exists(top) && !fs.existsSync(top)) topGone.add(top); }
   for (const [p, e] of lf) {
     const t = readText(e); if (!t || !(JSLIKE.test(p) || /\.(py|sh|yml|yaml)$/.test(p))) continue;
     for (const top of topGone) {

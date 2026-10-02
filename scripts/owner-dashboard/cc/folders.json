@@ -369,11 +369,6 @@
       }
     ]
   },
-  "scripts/fixtures": {
-    "he": "נתוני דוגמה לבדיקה: שורות לדוגמה מ-Hugging Face שבדיקה של סקריפט איסוף הידע קוראת.",
-    "en": "Test data: sample Hugging Face rows read by the knowledge-harvest script's test.",
-    "docs": []
-  },
   "scripts/lib": {
     "he": "כללים משותפים שהסקריפטים משתמשים בהם: הרצת שינויי מסד נתונים, כללי שחרור וחזרה לאחור, כללי הצעת מחיר ועוד.",
     "en": "Shared rule libraries used by the scripts: migration runner, release and rollback rules, offer rules and more.",
@@ -382,6 +377,11 @@
   "scripts/owner-dashboard": {
     "he": "לוח הבקרה שלך (הדף הזה): רץ מקומית על המחשב, מראה מה הסוכנים עושים, עלויות, מצב הקוד והמאגרים.",
     "en": "Your control dashboard (this page): runs locally and shows what the agents are doing, costs, the code and the repositories.",
+    "docs": []
+  },
+  "scripts/reorg": {
+    "he": "תוכנית ארגון המאגר כנתונים (plan.json) ורשימת העדויות למחיקה. הסקריפט scripts/reorg-repo.mjs קורא אותם, ואפשר להריץ אותו שוב.",
+    "en": "The repository reorganisation as data (plan.json) and the evidence delete list. scripts/reorg-repo.mjs reads them and can be re-run.",
     "docs": []
   },
   "supabase": {

@@ -17,8 +17,6 @@ const IMG = /\.(png|jpe?g|webp|gif|svg)$/i;
 
 // Where design screenshots live, each with the folder's meaning.
 const SHOT_DIRS = [
-  { dir: 'apps/site/.qa', app: 'site', title: 'בדיקות QA של האתר' },
-  { dir: 'apps/web/.qa', app: 'web', title: 'בדיקות QA של אפליקציית הווב' },
   { dir: 'docs/evidence/2026-09-22-browser-qa', app: 'both', title: 'סבב QA בדפדפן, 22.9' },
   { dir: 'apps/site/brand', app: 'site', title: 'קבצי המותג' },
   { dir: 'apps/site/public', app: 'site', title: 'נכסים ציבוריים של האתר', flat: true },

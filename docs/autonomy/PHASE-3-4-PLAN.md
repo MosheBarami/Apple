@@ -8,7 +8,7 @@ Status: design only. Nothing here has been built, measured, deployed or run in S
 - **No benchmark overfitting.** Any prompt a designer has seen is DEV material. That includes every prompt listed in the four studies' done-tests, which are illustrative shapes only. Held-out prompts are written fresh by someone who has not seen the knowledge stores. They are frozen into a new bank (`owner-30-v2-heldout`) before any run and kept out of prompts, skills, RAG and the worker bundle.
 - **Every milestone ships behind a kill-switch flag.** Each milestone is measured with its flag off (arm A) and on (arm B) on the same fresh prompts.
 - **Expected deltas are hypotheses, not measurements.** They are chosen to sum to the targets in the studies. If a milestone moves its primary criterion by less than half the expectation after two iterations on DEV prompts, stop and escalate. Do not add a subject patch.
-- **Docs-corpus caveat.** `packages/corpus/data/chunks.jsonl` is absent on this machine (only `chunks-witness.json`). Roblox API facts below come from fetched public docs and the repo's `apps/plugin/api-docs.json`. Before building on any of them, re-verify against the corpus or the live docs.
+- **Docs-corpus caveat.** `packages/corpus/data/chunks.jsonl` is absent on this machine (only `chunks-witness.json`). Roblox API facts below come from fetched public docs and the repo's `apps/plugin/globalTypes.d.luau`. Before building on any of them, re-verify against the corpus or the live docs.
 - **Doc paths cited:**
   - `docs/scripting/capabilities`
   - `docs/scripting/security/third-party-vulnerabilities`

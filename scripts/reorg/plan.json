@@ -878,7 +878,7 @@
     {
       "file": ".gitignore",
       "phase": "P1",
-      "find": "^secrets/\\n",
+      "find": "^secrets/\\n(?!# Supabase CLI)",
       "replace": "secrets/\n# Supabase CLI link scratch (project ref, CLI version); `supabase link` rewrites it.\nsupabase/.temp/\n",
       "expect": 1,
       "why": "supabase/.temp was tracked CLI scratch",
@@ -921,6 +921,15 @@
       "replace": "harvest-hf and\n  //   harvest-templates feed",
       "expect": 1,
       "why": "harvest-roblox-knowledge.mjs was removed",
+      "rerunOk": true
+    },
+    {
+      "file": "docs/autonomy/PHASE-3-4-PLAN.md",
+      "phase": "P1",
+      "find": "the repo's `apps/plugin/api-docs\\.json`",
+      "replace": "the repo's `apps/plugin/globalTypes.d.luau`",
+      "expect": 1,
+      "why": "the API dump was removed",
       "rerunOk": true
     },
     {
@@ -1014,6 +1023,9 @@
   ],
   "allowedMentions": [
     {
+      "file": ".gitignore"
+    },
+    {
       "glob": "^docs/(DECISIONS|FAILURES|CHECKPOINT-2026-09-20)\\.md$"
     },
     {
@@ -1037,6 +1049,11 @@
     {
       "glob": "^scripts/autonomy-supervisor\\.py$"
     }
+  ],
+  "workflowGenerated": [
+    "^apps/site/dist",
+    "^apps/web/dist",
+    "^apps/apple-plugin/release/apple-studio\\."
   ],
   "foldersOrphanOk": [
     "infra",

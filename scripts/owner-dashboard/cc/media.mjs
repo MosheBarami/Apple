@@ -22,11 +22,9 @@ export const ALLOW = [
   'packages/asset-library/',
   'packages/evals/tasks-visual/',
   'packages/training/runs/',
-  'apps/site/.qa/',
   'apps/site/public/',
   'apps/site/src/assets/',
   'apps/site/brand/',
-  'apps/web/.qa/',
   'apps/web/src/assets/',
 ];
 // Studio captures an agent left at the repo root (".tmp-studio-ui.png"): exactly one file name, no folder.

@@ -122,7 +122,7 @@ terminal exits stay stopped, including after login because runtime is sticky.
 Verification uses only isolated fake children:
 
 ```sh
-node --test tests/autonomy-owner-lifecycle.test.mjs tests/autonomy-harness.test.mjs tests/owner-autonomy-hooks.test.mjs
+node --test tests/autonomy-owner-lifecycle.test.mjs tests/autonomy-harness.test.mjs
 ```
 
 The 2026-09-26 explicit tool-free `claude-opus-5-5` probe exited 1 with a

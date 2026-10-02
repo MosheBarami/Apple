@@ -110,7 +110,7 @@ export interface SoundBus {
  *
  * The obvious design is a Master group with the others routed into it, so one fader moves
  * everything. It is not emitted because SoundGroup, in both of this repository's records of the
- * API — globalTypes.d.luau and apps/plugin/api-docs.json — has exactly ONE property: Volume. There
+ * API — globalTypes.d.luau and the API dump that used to sit beside it — has exactly ONE property: Volume. There
  * is no property on a SoundGroup that routes it into another SoundGroup. Emitting `music.SoundGroup
  * = master` would therefore throw in a live place while looking completely reasonable here.
  *
