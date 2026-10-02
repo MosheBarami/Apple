@@ -64,7 +64,10 @@ const WILDCARD_OK = [
   // The tools whose whole job is the old name: this guard and its allowlist, the codemod that
   // removed it, and their tests. They name the word on purpose, in the open.
   /^scripts\/(check-no-golem\.mjs|golem-allowlist\.json|rename-golem\.mjs)$/,
-  /^tests\/(no-golem-guard|rename-golem)\.test\.mjs$/,
+  /^tests\/(no-golem-guard|rename-golem|rebrand-enforced|probe-s1)\.test\.mjs$/,
+  // The detectors: programs whose whole job is to look for the old name in a deployed bundle, a built
+  // plugin or a string literal. They have to name what they look for.
+  /^scripts\/(check-rebrand\.mjs|probe-s1\.mjs|inspect-plugin-build\.py)$/,
 ];
 
 function die(msg) { console.error(`check-no-golem: ${msg}`); process.exit(2); }
