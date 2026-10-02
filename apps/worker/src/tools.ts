@@ -73,10 +73,10 @@ import { findUiAssets, uploadLibraryAsset } from './asset-library';
 import { findUiStoreImages, UI_STORE_COUNT, UI_STORE_GENRES } from './ui-store-search';
 import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
 import { refuseGameScript, sourcesIn } from './game-independence';
-import { refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, refuseNewHandMadeModelLuau } from './model-rule';
+import { refuseGeneratedModel } from './model-rule';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScreenGuiHost } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
-import { findLibraryModels, handBuiltPropRefusal, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
+import { findLibraryModels, libraryAdvice, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
@@ -2016,12 +2016,6 @@ export const TOOLS: Record<string, ToolImpl> = {
         const ingress = refuseLuauIngress(after);
         if (ingress) return ingress;
       }
-      // D-MODELLIB-2 also applies to scripts that create visual props at runtime. This caught a
-      // garden crop assembled from Parts after a Creator Store search returned no model.
-      const handMadeModel = refuseNewHandMadeModelLuau(
-        luauScanVariants(after), before === null ? undefined : luauScanVariants(before),
-      );
-      if (handMadeModel) return handMadeModel;
       // D-UIONLY-1: a script may use inserted UI but not make more UI than it already did.
       const handMadeUi = refuseLibraryLuau(luauScanVariants(after), UI_RULE, before === null ? undefined : luauScanVariants(before));
       if (handMadeUi) return handMadeUi;
@@ -2291,13 +2285,12 @@ export const TOOLS: Record<string, ToolImpl> = {
           error: `Nothing was created. ${pass.refusals.length === 1 ? 'One property' : `${pass.refusals.length} properties`} could not be read, and the rest were left alone rather than half-building the set: ${pass.refusals.map((r) => r.message).join(' ')}`,
         });
       }
-      // D-MODELLIB-2: a prop never becomes hand-built because consent is still owed or a plugin
-      // cannot insert from the library. Keep it unbuilt and report the missing capability instead.
-      const handMadeModel = refuseHandMadeModel(a.items);
-      if (handMadeModel) return Promise.resolve(handMadeModel);
-      const handBuilt = handBuiltPropRefusal(Array.isArray(a.items) ? a.items : []);
-      if (handBuilt) return Promise.resolve({ error: `Nothing was created. ${handBuilt}` });
-      return op(ctx, { op: 'create_instances', items: (pass.items as never[]) ?? [] });
+      // D-MODELLIB-2, restated (phase 1): the library is preferred, never forced. A Model of parts that is named like
+      // something the library already holds is created, and the result says what the library has, so the agent can look
+      // before it hand-builds. The agent decides; nothing is refused by a noun.
+      const advice = libraryAdvice(Array.isArray(a.items) ? a.items : []);
+      const made = op(ctx, { op: 'create_instances', items: (pass.items as never[]) ?? [] });
+      return advice ? made.then((r) => (r && typeof r === 'object' && !('error' in r) ? { ...r, libraryAdvice: advice } : r)) : made;
     },
   },
   /**
@@ -2819,9 +2812,6 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (handMadeUi) return handMadeUi;
       const handMadeFx = refuseLibraryLuau(luauScanVariants(String(a.code ?? '')), FX_RULE);
       if (handMadeFx) return handMadeFx;
-      // D-MODELLIB-2: run_luau does not assemble props either.
-      const handMadeModel = refuseHandMadeModelLuau(luauScanVariants(String(a.code ?? '')));
-      if (handMadeModel) return handMadeModel;
       const gameRule = refuseGameScript(luauScanVariants(String(a.code ?? '')));
       if (gameRule) return gameRule;
       const job = admitProgram({
@@ -4848,10 +4838,16 @@ export const TOOLS: Record<string, ToolImpl> = {
       });
       const rejected = new Set(ctx.rejectedLibraryAssetIds ?? []);
       const requestedObject = visualAssetAnchor(query ?? '', []);
-      found.results = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId)
+      const wanted = found.results.length;
+      const cap = a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10));
+      const kept = found.results.filter((row) => row.assetId !== undefined && !rejected.has(row.assetId)
         && matchesVisualAnchor(row.name, requestedObject ?? undefined)
-        && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor)).slice(0, a.limit === undefined ? 10 : Math.max(1, Math.min(40, Number(a.limit) || 10)));
-      if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Search a different plain noun or report the missing asset; do not substitute an unrelated preview or hand-built prop. If the asset is ESSENTIAL to the request, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
+        && matchesVisualAnchor(row.name, ctx.assetChoiceAnchor));
+      found.results = kept.slice(0, cap);
+      // Said, not silent: rows left out because their name lacks the last word of the agent's own query.
+      const leftOut = wanted - kept.length;
+      if (leftOut > 0 && requestedObject) found.note = `${leftOut} row(s) matching your words were left out because their name does not contain "${requestedObject}" (the last word of your query, or an anchor from the user's rejection); search other words to see them.${found.note ? ' ' + found.note : ''}`;
+      if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Try other words (several queries are fine), browse_owner_library, or build it yourself with build_object; if the request cannot work without it, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
       return found;
     },
   },

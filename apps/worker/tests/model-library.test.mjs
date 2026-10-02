@@ -8,9 +8,9 @@
  *     row was scanned clean; every downloaded file carries an allowlisted licence;
  *   - the bundled index holds verified library rows, and each one is a manifest row;
  *   - find_library_model is a read-only lookup; insert_library_model mutates and needs Studio;
- *   - create_instances refuses a multi-part Model named after a thing the library holds, sends
- *     nothing, and still builds terrain/baseplate/path/zone parts; missing permission or a failed
- *     library insert never permits a hand-built prop;
+ *   - create_instances (phase 1, D-MODELLIB-2 restated: the library is preferred, never forced) builds what it
+ *     is asked to build and, for a multi-part Model whose every name word is a library row's name, says what the
+ *     library holds in `libraryAdvice`: information the agent decides on, never a refusal;
  *   - insert_library_model inserts a Creator Store row by its id through the scan, then places it;
  *   - the agent offers only Creator Store rows; a downloaded file is refused because the
  *     current source choice does not authorise a permanent upload into the user's account.
@@ -144,7 +144,7 @@ test('third-party cartoon models are opt-in search candidates, never claimed uni
   assert.equal(M.findLibraryModels({ query: 'fountain' }).results.length, 0, 'a conditional-only prop became a default claim');
   assert.equal(M.findLibraryModels({ query: 'fountain', includeThirdParty: true }).results.some((r) => r.assetId === 3241261980), false,
     'the visually inspected gray realistic fountain was offered as a colorful cartoon candidate');
-  assert.equal(M.handBuiltPropRefusal([twoParts('Fountain')]), null, 'an optional model blocked a simple fallback before Studio proved it loadable');
+  assert.equal(M.libraryAdvice([twoParts('Fountain')]), null, 'an optional model never advised a simple fallback away');
 });
 
 /* ---------------------------------------------------------------- registration --- */
@@ -207,20 +207,22 @@ const twoParts = (name, cls = 'Model') => ({
 });
 const created = (ops) => ops.filter((o) => o.op === 'create_instances').length;
 
-test('create_instances refuses a part-built prop the library holds, and sends nothing', async () => {
+test('create_instances builds a part-built prop and says what the library holds for it; the agent decides', async () => {
   const s = sample(() => true);
   const hit = indexed({ query: s.word, limit: 1 });
   assert.ok(hit.results.length, 'the sample word must be in the library');
   const { ctx, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }));
   const name = s.word[0].toUpperCase() + s.word.slice(1);
   const res = await run(ctx, 'create_instances', { items: [twoParts(name)] });
-  assert.ok(res.error, `a part-built "${name}" was accepted`);
-  assert.match(res.error, /insert_library_model/);
-  assert.equal(created(ops), 0, 'nothing may reach Studio');
+  assert.equal(res.error, undefined, `a part-built "${name}" was refused: ${res.error}`);
+  assert.equal(created(ops), 1, 'it reached Studio: nothing is refused by a noun');
+  assert.ok(Array.isArray(res.libraryAdvice) && res.libraryAdvice[0].rows.length > 0, 'the result says the library has rows for it');
+  assert.equal(res.libraryAdvice[0].name, name);
+  assert.match(res.libraryAdvice[0].note, /look first.*decide; it was created as you asked/);
+  assert.ok(res.libraryAdvice[0].rows.every((r) => M.libraryModel(r.id)), 'every row named is a real library row');
 });
 
-// D-MODELLIB-2: structure grouped in a Folder, and a single plain part; a part named "Tree" is now a prop (model-only.test.mjs).
-test('parts stay allowed for terrain, baseplates, paths and zones, and for a single part', async () => {
+test('plain structure and single parts get no advice at all, and are built', async () => {
   const folder = (item) => ({ ...item, className: 'Folder' });
   for (const items of [
     [folder(twoParts('Baseplate'))], [folder(twoParts('SpawnArea'))], [folder(twoParts('ObbyStage3'))], [folder(twoParts('MainPath'))], [folder(twoParts('SafeZone'))],
@@ -233,33 +235,23 @@ test('parts stay allowed for terrain, baseplates, paths and zones, and for a sin
   }
 });
 
-test('a missing source or insert tool never permits a hand-built prop', async () => {
+test('the advice is information, not a permission: the same build goes through with or without sources, and a failed insert does not change that', async () => {
   const s = sample(() => true);
   const name = s.word[0].toUpperCase() + s.word.slice(1);
   for (const over of [
+    undefined,
     { assetSources: { allow: ['from_scratch'] } },
     { ctx: { offeredTools: new Set(['create_instances']) } },
   ]) {
     const { ctx, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }), over);
     const res = await run(ctx, 'create_instances', { items: [twoParts(name)] });
-    assert.match(res.error, /D-MODELLIB-2/);
-    assert.equal(created(ops), 0);
+    assert.equal(res.error, undefined);
+    assert.equal(created(ops), 1);
   }
-});
-
-test('a failed library insert never permits a hand-built replacement', async () => {
-  const s = INDEX.rows
-    .map((r) => M.tokensOf(r[1]).find((w) => w.length >= 4 && !/\d/.test(w)))
-    .find((w) => w && M.handBuiltPropRefusal([twoParts(w)]));
-  assert.ok(s, 'the bundled library has a prop for this guard');
-  const name = s[0].toUpperCase() + s.slice(1);
-  assert.match(M.handBuiltPropRefusal([twoParts(name)]), /prop the model library/);
-  assert.match(M.handBuiltPropRefusal([twoParts(name)], new Set([s])), /prop the model library/);
-  const { ctx, ops } = ctxWith(() => ({ ok: true, data: { created: [] } }));
-  ctx.libraryMisses = new Set([s]);
-  const res = await run(ctx, 'create_instances', { items: [twoParts(name)] });
-  assert.match(res.error, /D-MODELLIB-2|prop the model library/);
-  assert.equal(created(ops), 0);
+  assert.equal(M.handBuiltPropRefusal, undefined, 'the refusal function is gone');
+  assert.equal(M.libraryAdvice([twoParts('Fountain')]), null, 'a name the library has no row for gets no advice');
+  assert.equal(M.libraryAdvice([{ className: 'Part', name: s.word }]), null, 'a single part is never advised about');
+  assert.equal(M.libraryAdvice([twoParts('Xq Zzy Floor')]), null, 'every word of the name must be the row\'s: an accidental word gets no advice');
 });
 
 /* ---------------------------------------------------------------- insert --- */
