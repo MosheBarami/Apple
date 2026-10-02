@@ -54,7 +54,7 @@ export type AssetSourceSite = (typeof ASSET_SOURCE_SITES)[number];
  * GenerationService output is produced in the customer's own Studio session under their own
  * account, so it is neither Apple's to claim nor a third party's to be credited.
  */
-export const ASSET_ORIGINALITIES = ['golem_original', 'user_generated', 'third_party'] as const;
+export const ASSET_ORIGINALITIES = ['apple_original', 'user_generated', 'third_party'] as const;
 export type AssetOriginality = (typeof ASSET_ORIGINALITIES)[number];
 
 /**
@@ -77,7 +77,7 @@ export const ASSET_ORIGINALITY: Readonly<Record<AssetSourceSite, AssetOriginalit
   roblox_official: 'third_party',
   creator_store: 'third_party',
   generated_roblox: 'user_generated',
-  procedural: 'golem_original',
+  procedural: 'apple_original',
 };
 
 export function originalityOf(source: AssetSourceSite): AssetOriginality {

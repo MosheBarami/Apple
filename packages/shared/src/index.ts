@@ -695,7 +695,7 @@ export interface PluginOperationCapability {
   reason?: string;
 }
 export interface PluginCapabilityReportV1 {
-  schema: 'golem.studio-ops.v1';
+  schema: 'apple.studio-ops.v1';
   operations: PluginOperationCapability[];
 }
 export interface PluginPollRequest {
@@ -3133,6 +3133,7 @@ export function isRunFailure(v: unknown): v is RunFailure {
 // file the server refuses.
 // ---------------------------------------------------------------------------
 export * from './attachments.ts';
+export * from './legacy-wire.ts';
 export * from './models.ts';
 export * from './spilled-payload.ts';
 export * from './ui-theme.ts';

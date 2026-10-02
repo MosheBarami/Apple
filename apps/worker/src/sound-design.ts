@@ -25,6 +25,7 @@
 // nobody is watching. That is the same class of failure as a `rbxasset://` path that does not
 // exist, and it gets the same treatment.
 import { parseInstancePath } from './effects';
+import { BASE_VOLUME_ATTRIBUTE, LEGACY_BASE_VOLUME_ATTRIBUTE } from '@apple/shared';
 
 // ---------------------------------------------------------------------------------------------
 // Verified vocabulary
@@ -616,14 +617,16 @@ export function assignSoundsLuau(assignments: SoundAssignment[]): string | Sound
     // The original volume is recorded once and every later trim is computed from it, so running
     // this twice is not -12 dB.
     //
-    // THE ATTRIBUTE KEEPS THE OLD NAME while the comments above it were rebranded, and the
-    // difference is the whole rule: a comment is branding this chunk prints into someone's place,
-    // an attribute is a VALUE already sitting on Sounds in places that have been built. Rename it
-    // and the `== nil` below is true again on a place that was already trimmed, so the next pass
-    // re-baselines off the trimmed volume and -12 dB becomes -24 dB. Same reasoning as
-    // GolemPalette; both are on the rebrand checker's exempt list with that proof.
-    lines.push('\t\tif node:GetAttribute("GolemBaseVolume") == nil then node:SetAttribute("GolemBaseVolume", node.Volume) end');
-    lines.push(`\t\tnode.Volume = node:GetAttribute("GolemBaseVolume") * ${num(dbToScale(volumeDb))}`);
+    // THE ATTRIBUTE WAS RENAMED, AND THE READ HAS TO FOLLOW THE VALUE, NOT THE NAME. An attribute is a
+    // VALUE already sitting on Sounds in places that have been built. Read only the new name and the
+    // `== nil` below is true again on a place that was already trimmed, so the next pass re-baselines off
+    // the trimmed volume and -12 dB becomes -24 dB. So: the new attribute first, then the one built
+    // places carry; the result is written under the new name and the old one is cleared, so a place
+    // converges to one attribute and the trim is never applied to an already-trimmed volume.
+    lines.push(`\t\tlocal base = node:GetAttribute("${BASE_VOLUME_ATTRIBUTE}") or node:GetAttribute("${LEGACY_BASE_VOLUME_ATTRIBUTE}") or node.Volume`);
+    lines.push(`\t\tnode:SetAttribute("${BASE_VOLUME_ATTRIBUTE}", base)`);
+    lines.push(`\t\tnode:SetAttribute("${LEGACY_BASE_VOLUME_ATTRIBUTE}", nil)`);
+    lines.push(`\t\tnode.Volume = base * ${num(dbToScale(volumeDb))}`);
     lines.push('\t\tassigned += 1');
     lines.push('\telse');
     lines.push(`\t\ttable.insert(missing, ${q(a.path)})`);
