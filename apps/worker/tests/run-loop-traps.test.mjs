@@ -193,7 +193,8 @@ async function makeSession({ responses = [], connected = false, capabilities = n
       },
     },
     __testChat: async (req, opts) => {
-      chatCalls.push({ req, opts });
+      // `wire` is a snapshot: `req.messages` is the live transcript and keeps growing after the call.
+      chatCalls.push({ req, opts, wire: { tools: JSON.stringify(req.tools ?? []), messages: JSON.stringify(req.messages) } });
       assert.ok(queue.length > 0, 'the scripted provider was called more times than the fixture supplied');
       return structuredClone(queue.shift());
     },
@@ -1395,5 +1396,40 @@ test('CREDITS: alternating between two targets for dozens of changes is told onc
     const seen = h.chatCalls.at(-1).req.messages;
     assert.ok(seen.some((m) => m.role === 'user' && /last 24 changes/.test(m.content)), 'the model was never told it was alternating before the run was ended');
     assert.equal(lastEnd(h).stopReason, 'incomplete');
+  } finally { h.stop(); }
+});
+
+// PREFIX STABILITY. A provider caches the longest identical prefix of what it is sent, and the tool definitions come
+// before the conversation. Changing the offered set between steps voids all of it for that step. This measures the
+// part that is local and repeatable: how much of the previous step's request the next step repeats, and whether the
+// tool definitions are byte-identical.
+const sharedPrefix = (a, b) => { let i = 0; const n = Math.min(a.length, b.length); while (i < n && a.charCodeAt(i) === b.charCodeAt(i)) i++; return i; };
+
+test('CREDITS: the tool definitions are byte-identical between ordinary steps, and each step repeats the whole previous transcript', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => ({ ok: true, data: op.op === 'get_tree' ? { tree: 'Workspace' } : {} }),
+    responses: [
+      calls(['get_project_tree', {}]),
+      calls(['create_instances', { parent: 'game.Workspace', items: [{ className: 'Part', name: 'Floor', properties: {} }] }]),
+      calls(['get_output_logs', {}]),
+      answer({ text: 'Built a floor.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'add a floor to my place' });
+    for (let i = 0; i < 8 && !lastEnd(h); i++) await h.session.alarm();
+    // The run's own steps. (The run ends with a separate memory-summary call that sends no tools by design.)
+    const steps = h.chatCalls.filter((c) => !/You maintain long-term memory/.test(c.req.messages[0]?.content ?? ''));
+    assert.ok(steps.length >= 4, 'the fixture checks nothing');
+    const rows = [];
+    for (let i = 1; i < steps.length; i++) {
+      const prev = steps[i - 1].wire;
+      const cur = steps[i].wire;
+      assert.equal(cur.tools, prev.tools, `step ${i + 1} sent different tool definitions than step ${i}: the cached prefix is void`);
+      rows.push(sharedPrefix(prev.messages, cur.messages) / prev.messages.length);
+    }
+    console.log(`prefix kept per step (share of the previous request's transcript): ${rows.map((r) => `${(r * 100).toFixed(1)}%`).join(' ')}`);
+    for (const r of rows) assert.ok(r > 0.97, `a step repeated only ${(r * 100).toFixed(1)}% of the previous transcript`);
   } finally { h.stop(); }
 });
