@@ -4,8 +4,8 @@ import { initDirection } from './lib/direction.ts';
 import { installSentry } from './lib/sentry.ts';
 import './design/system.css';
 import './design/apple-minimal.css';
-// The glass shell (D-GLASS-1): loaded last so it is the layer that paints.
-import './design/glass.css';
+// The Ember shell (phase 6): loaded last so it is the layer that paints. It replaced the glass shell.
+import './design/ember.css';
 // Vercel AI Elements' Tailwind styling, scoped to the AI surfaces (see the sheet's header).
 import './styles/ai-elements.css';
 

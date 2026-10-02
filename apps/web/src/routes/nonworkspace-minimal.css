@@ -6,12 +6,15 @@
  */
 
 :is(.page.shelf,.page.usage-page,.page.settings-page,.auth-page) {
-  --nm-bg:#050505;
-  --nm-panel:#0a0a0a;
-  --nm-panel-hover:#0d0d0d;
-  --nm-panel-soft:#101010;
-  --nm-line:#2e2e2e;
-  --nm-line-soft:#202020;
+  /* EMBER RAIL (phase 6): these are the shared tokens' values, written as hex because
+     tests/contrast.test.mjs measures this block literally. design/ember.css re-points them to the
+     tokens themselves on the three product pages, so there is one palette in practice. */
+  --nm-bg:#0a0c10;
+  --nm-panel:#12151b;
+  --nm-panel-hover:#181c24;
+  --nm-panel-soft:#181c24;
+  --nm-line:#3a4150;
+  --nm-line-soft:#232833;
   /* MEASURED 2026-09-22, ON THE DEPLOYED BUILD, NOT ON THE STYLESHEET.
    *
    * `--nm-faint` was #6f6f6f, which is 3.94:1 on `--nm-panel` and 3.79:1 on `--nm-panel-soft` —
@@ -19,32 +22,32 @@
    * placeholders, counts. The colour it replaces is the same mistake the app's own tertiary ink
    * made, in a second token set, and it survived for the same reason: the contrast guard reads
    * design/system.css and the site's stylesheets, and never read this file. */
-  --nm-ink:#fafafa;
-  --nm-muted:#a6a6a6;
-  --nm-faint:#8a8a8a;
-  --nm-shadow:0 22px 58px rgba(0,0,0,.34),0 2px 10px rgba(0,0,0,.22);
-  --nm-shadow-hover:0 28px 72px rgba(0,0,0,.42),0 3px 14px rgba(0,0,0,.26);
-  --nm-r-panel:16px;
-  --nm-r-control:12px;
+  --nm-ink:#f3f5f8;
+  --nm-muted:#9aa3b2;
+  --nm-faint:#8791a1;
+  --nm-shadow:none;
+  --nm-shadow-hover:none;
+  --nm-r-panel:10px;
+  --nm-r-control:6px;
   color:var(--nm-ink);
 }
 
 :root[data-theme='light'] :is(.page.shelf,.page.usage-page,.page.settings-page,.auth-page) {
-  --nm-bg:#f6f6f5;
+  --nm-bg:#f7f8fa;
   --nm-panel:#ffffff;
-  --nm-panel-hover:#fbfbfa;
-  --nm-panel-soft:#f1f1ef;
-  --nm-line:#d9d9d6;
-  --nm-line-soft:#e7e7e4;
-  --nm-ink:#111111;
-  --nm-muted:#5f5f5c;
+  --nm-panel-hover:#f1f3f6;
+  --nm-panel-soft:#eef0f4;
+  --nm-line:#c8cdd8;
+  --nm-line-soft:#dfe3ea;
+  --nm-ink:#0d1017;
+  --nm-muted:#515b6e;
   /* 3.28:1 before this, and WORSE than the dark value — which is why nobody saw it: the app
    * serves dark to a first-time visitor regardless of the OS setting, so a production sweep of
    * `/app` never renders the light palette at all. The light failure was only visible by reading
    * the token, not by looking at the page. */
-  --nm-faint:#6b6b67;
-  --nm-shadow:0 18px 48px rgba(24,24,20,.08),0 2px 8px rgba(24,24,20,.04);
-  --nm-shadow-hover:0 24px 62px rgba(24,24,20,.11),0 3px 10px rgba(24,24,20,.06);
+  --nm-faint:#586275;
+  --nm-shadow:none;
+  --nm-shadow-hover:none;
 }
 
 /* Shared page rhythm ------------------------------------------------------- */
@@ -109,22 +112,15 @@
 
 :is(.shelf,.usage-page,.settings-page) .btn-primary,
 .auth-page .btn-primary {
-  border-color:#fafafa;
-  background:#fafafa;
-  color:#070707;
-  box-shadow:0 10px 28px rgba(0,0,0,.26);
-}
-
-:root[data-theme='light'] :is(.shelf,.usage-page,.settings-page) .btn-primary,
-:root[data-theme='light'] .auth-page .btn-primary {
-  border-color:#111;
-  background:#111;
-  color:#fff;
+  border-color:var(--accent);
+  background:var(--accent);
+  color:var(--on-accent);
+  box-shadow:0 2px 0 var(--plate);
 }
 
 :is(.shelf,.usage-page,.settings-page) :is(button,a,input,select,textarea,summary):focus-visible,
 .auth-page :is(button,a,input,select,textarea,summary):focus-visible {
-  outline:2px solid var(--nm-ink);
+  outline:2px solid var(--ring);
   outline-offset:3px;
 }
 
@@ -136,10 +132,10 @@
    button green, the cards #242c27 (F-041). One more class of specificity makes the quiet layer the
    one that paints, whatever the bundle order. The filled button is then ink on the page colour. */
 :root .page.shelf {
-  --sh-accent:var(--nm-ink);
-  --sh-accent-light:var(--nm-ink);
-  --sh-accent-deep:var(--nm-ink);
-  --sh-accent-on-deep:var(--nm-bg);
+  --sh-accent:var(--accent);
+  --sh-accent-light:var(--accent-hover);
+  --sh-accent-deep:var(--accent);
+  --sh-accent-on-deep:var(--on-accent);
   --sh-card:var(--nm-panel);
   --sh-card-hi:var(--nm-panel-hover);
   --sh-ink-1:var(--nm-ink);
@@ -156,15 +152,14 @@
 }
 
 .shelf .page-head { align-items:center; }
-.shelf .shelf__new { border-radius:12px; }
+.shelf .shelf__new { border-radius:var(--r-sm); }
 .shelf .btn.btn-primary {
-  border-color:#fafafa;
-  border-radius:12px;
-  background:#fafafa;
-  color:#070707;
-  box-shadow:0 10px 28px rgba(0,0,0,.26);
+  border-color:var(--accent);
+  border-radius:var(--r-sm);
+  background:var(--accent);
+  color:var(--on-accent);
+  box-shadow:0 2px 0 var(--plate);
 }
-:root[data-theme='light'] .shelf .btn.btn-primary { border-color:#111; background:#111; color:#fff; }
 
 .shelf .scope-tabs {
   display:inline-flex;
@@ -252,8 +247,7 @@
 .shelf .card-menu { inset-block-start:10px; inset-inline-end:10px; }
 .shelf .card-menu .icon-btn { border:0; background:transparent; color:var(--nm-faint); }
 .shelf .card-menu .icon-btn:hover { background:var(--nm-panel-soft); color:var(--nm-ink); }
-.shelf .menu-pop { border:1px solid var(--nm-line); border-radius:12px; background:rgba(10,10,10,.96); box-shadow:0 24px 68px rgba(0,0,0,.48); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); }
-:root[data-theme='light'] .shelf .menu-pop { background:rgba(255,255,255,.96); }
+.shelf .menu-pop { border:1px solid var(--line); border-radius:var(--r-lg); background:var(--surface-2); box-shadow:var(--shadow-pop); }
 .shelf .menu-item { color:var(--nm-muted); }
 .shelf .menu-item:hover { background:var(--nm-panel-soft); color:var(--nm-ink); }
 
@@ -397,7 +391,7 @@
 .settings-page .theme-toggle { border:1px solid var(--nm-line); border-radius:11px; background:var(--nm-panel-soft); }
 .settings-page .theme-btn { border-radius:8px; color:var(--nm-muted); }
 .settings-page .theme-btn-active { background:var(--nm-panel-hover); color:var(--nm-ink); box-shadow:inset 0 0 0 1px var(--nm-line); }
-.settings-page .settings-switch { accent-color:#fafafa; }
+.settings-page .settings-switch { accent-color:var(--accent); }
 .settings-page .settings-switchrow { border-color:var(--nm-line-soft); }
 .settings-page .settings-switchrow__name,.settings-page .settings-current,.settings-page .sec-event-title { color:var(--nm-ink); }
 .settings-page .settings-switchrow__does,.settings-page .sec-when { color:var(--nm-muted); }
@@ -457,12 +451,10 @@
   min-height:44px;
   border:1px solid var(--nm-line);
   border-radius:var(--nm-r-control);
-  background:#070707;
+  background:var(--nm-panel);
   color:var(--nm-ink);
   box-shadow:none;
 }
-:root[data-theme='light'] .auth-page .auth-form-col .field input,
-:root[data-theme='light'] .auth-page .auth-form-col .field textarea { background:#fbfbfa; }
 .auth-page .auth-form-col .field input:hover,
 .auth-page .auth-form-col .field textarea:hover,
 .auth-page .auth-form-col .field input:focus,
@@ -519,10 +511,7 @@
  * must yield here without changing the workspace that uses those defaults. The #main-content
  * anchor also keeps these corrections stable if stylesheet order changes again. */
 #main-content:has(> :is(.page.shelf,.page.usage-page,.page.settings-page)) {
-  background:#050505;
-}
-:root[data-theme='light'] #main-content:has(> :is(.page.shelf,.page.usage-page,.page.settings-page)) {
-  background:#f6f6f5;
+  background:var(--paper);
 }
 #main-content:has(> :is(.page.shelf,.page.usage-page,.page.settings-page)) > .studio-atmosphere {
   display:none;

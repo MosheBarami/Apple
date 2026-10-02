@@ -227,7 +227,7 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, upgradeA
   { name: string | null; email: string; isAdmin: boolean; quota: unknown; quotaPending: boolean; quotaFailed: boolean;
     upgradeAvailable: boolean | null;
     width: number; onWidth: (next: number, persist: boolean) => void }) {
-  const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, openCheckpoints } = useShell();
+  const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, openCheckpoints, studioLink } = useShell();
 
   //[[ THE DRAG, WHICH IS THE ONLY PART OF RESIZING THAT IS NOT ARITHMETIC.
   //
@@ -295,7 +295,7 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, upgradeA
     >
       <div className="gx-rail__head">
         <Link to="/" className="gx-wordmark" aria-label="Apple — home">
-          <AppleGlyph size={28} />
+          <AppleGlyph size={28} state={studioLink === 'disconnected' ? 'lifted' : 'seated'} />
           <span className="gx-wordmark__text">Apple</span>
         </Link>
 
@@ -458,7 +458,7 @@ function Shell() {
   const { session, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { railOpen, openRail, closeRail, railCollapsed, newProject } = useShell();
+  const { railOpen, openRail, closeRail, railCollapsed, newProject, studioLink } = useShell();
   const { theme, setTheme } = useTheme();
   const dockRef = useRef<HTMLElement>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -617,7 +617,7 @@ function Shell() {
           {/* Where you are, and where the pointer is: two beds that slide between the rows. */}
           <DockHighlights dock={dockRef} route={location.pathname} />
           <Link to="/" className="studio-dock__brand" aria-label="Apple — projects">
-            <ModelMark variant="apple" />
+            <ModelMark variant="apple" snap={studioLink === 'disconnected' ? 'lifted' : 'seated'} />
             <span className="studio-dock__wordmark">Apple</span>
           </Link>
 
