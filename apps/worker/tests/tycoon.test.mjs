@@ -53,3 +53,17 @@ test('the steps build bases with a belt, droppers, machines, a seller and pads t
   assert.ok(steps.some((s) => s.kind === 'place' && s.name === 'Look' && s.from.endsWith('TycoonMachine1')), 'the washing machine wears its library look');
   assert.match(T.tycoonForUser(recipe, { missing: [] }), /Dirty Laundry → Clean Laundry → Dry Laundry → Folded Laundry/);
 });
+
+test('every class and property the tycoon writes is one the plugin accepts', () => {
+  // Live 2026-10-02: the whole map was refused for Neutral, Duration and TextStrokeTransparency, and the run said only
+  // "did not work". The plugin's allowlists are the source of truth.
+  const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+  const allowed = new Set([...plugin.matchAll(/^\s*([A-Z][A-Za-z0-9]*) = true,/gm)].map((m) => m[1]));
+  assert.ok(allowed.size > 100, 'the allowlists were read');
+  const theme = T.tycoonTheme(REQ, undefined);
+  const steps = T.tycoonSteps(T.tycoonRecipe(REQ, 1, theme, { machines: [] }));
+  const bad = new Set();
+  const walk = (n) => { if (!allowed.has(n.className)) bad.add(`class ${n.className}`); for (const k of Object.keys(n.props ?? {})) if (!allowed.has(k)) bad.add(`${n.className}.${k}`); (n.children ?? []).forEach(walk); };
+  for (const s of steps) if (s.kind === 'create') s.items.forEach(walk);
+  assert.deepEqual([...bad], []);
+});

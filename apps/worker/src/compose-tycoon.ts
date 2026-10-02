@@ -173,7 +173,7 @@ const font = { t: 'EnumItem', v: 'Enum.Font.FredokaOne' };
 /** A sign: a billboard over a part with one line, readable from across the base. */
 function sign(text: string, height: number, colour = '#ffffff', name = 'Label'): InstanceSpecLite {
   return { className: 'BillboardGui', name: 'Sign', props: { Size: udim2(0, 220, 0, 54), StudsOffset: [0, height, 0], MaxDistance: 90, LightInfluence: 0 }, children: [
-    { className: 'TextLabel', name, props: { Size: udim2(1, 0, 1, 0), BackgroundTransparency: 1, Text: text, TextScaled: true, Font: font, TextColor3: colour, TextStrokeTransparency: 0.2 } },
+    { className: 'TextLabel', name, props: { Size: udim2(1, 0, 1, 0), BackgroundTransparency: 1, Text: text, TextScaled: true, Font: font, TextColor3: colour }, children: [{ className: 'UIStroke', name: 'Stroke', props: { Thickness: 2, Color: '#1b1b1b' } }] },
   ] };
 }
 
@@ -254,7 +254,7 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
   steps.push({ kind: 'create', parent: 'game.Workspace', items: [{ className: 'Folder', name: 'AppleMap', children: [
     part('Ground', [width, 2, 200], [0, -1, 0], '#5fbf4a'),
     part('Street', [width, 0.2, 20], [0, 0.1, 0], '#9aa3ad', { Material: 'SmoothPlastic' }),
-    { className: 'SpawnLocation', name: 'Spawn', props: { Size: [8, 1, 8], Position: [-width / 2 + 14, 0.6, 0], Anchored: true, Neutral: true, Color: '#ffffff', Duration: 0 } },
+    { className: 'SpawnLocation', name: 'Spawn', props: { Size: [8, 1, 8], Position: [-width / 2 + 14, 0.6, 0], Anchored: true, Color: '#ffffff' } },
     { className: 'Folder', name: 'Tycoons', children: bases },
     { className: 'Folder', name: 'Props' },
   ] }] });
