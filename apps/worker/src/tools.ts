@@ -75,6 +75,9 @@ import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
 import { refuseGameScript, sourcesIn } from './game-independence';
 import { orderApplies, refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, refuseNewHandMadeModelLuau, type LibraryOrder } from './model-rule';
 import { noteInsert, noteSearch, type LibraryRun } from './library-run';
+import { planCopies } from './placement';
+import { applyOrigin, readOrigin, sharedParent } from './local-space';
+import { expandTerrainPath, TERRAIN_PATH_OP_CAP } from './terrain-path';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScreenGuiHost } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
 import { findLibraryModels, libraryModel, placeImportedOwner, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
@@ -95,7 +98,7 @@ import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
-import { auditCaptureFromTree, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
+import { auditCaptureFromTree, auditMetrics, lensCoverage, runnableLenses, sceneFromTree } from './build-audit';
 import { formatPanelReport, runCriticPanel } from './critic';
 import { criticInputFromRender } from './critic-input';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
@@ -819,6 +822,24 @@ function treeRoot(value: unknown): StudioTreeNode | null {
  */
 const MAX_TERRAIN_BATCH = 32;
 
+/**
+ * A long list of terrain operations (a path expands to many), run in order in chunks of MAX_TERRAIN_BATCH through the same
+ * batch the tool already has. A failure says which operation, how many ran before it, and that the ground has changed.
+ */
+async function runTerrainChunks(ctx: AgentCtx, operations: unknown[]): Promise<unknown> {
+  let completed = 0;
+  for (let start = 0; start < operations.length; start += MAX_TERRAIN_BATCH) {
+    const res = await runTerrainEdits(ctx, { operations: operations.slice(start, start + MAX_TERRAIN_BATCH) });
+    if (toolError(res)) {
+      const r = res as Record<string, unknown>;
+      const done = completed + (Number(r.completed) || 0);
+      return { ...r, failedAt: start + (Number(r.failedAt) || 0), completed: done, ...(done ? { projectMutated: true } : {}) };
+    }
+    completed += Number((res as Record<string, unknown>).completed) || 0;
+  }
+  return { completed };
+}
+
 async function runTerrainEdits(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
   if (typeof a.recipe === 'string') {
     const expanded = expandTerrainRecipe(a.recipe, a);
@@ -826,14 +847,35 @@ async function runTerrainEdits(ctx: AgentCtx, a: Record<string, unknown>): Promi
     const res = await runTerrainEdits(ctx, { operations: expanded.operations });
     return toolError(res) ? res : { ...(res as Record<string, unknown>), ...expanded.facts };
   }
-  const { operations, ...single } = a;
-  if (operations === undefined) {
+  const { operations: given, ...single } = a;
+  if (given === undefined && single.action === 'path') {
+    const path = expandTerrainPath(single, DIRECT_EDIT_LIMITS.translation);
+    if ('error' in path) return path;
+    const res = await runTerrainChunks(ctx, path.operations);
+    return toolError(res) ? res : { ...(res as Record<string, unknown>), ...path.facts };
+  }
+  if (given === undefined) {
     if (typeof single.action !== 'string') return { error: 'edit_terrain needs an action, or operations: [...]' };
     return op(ctx, { ...single, op: 'terrain_edit' } as StudioOp);
   }
-  if (!Array.isArray(operations) || operations.length === 0) return { error: 'operations must be a non-empty array of terrain actions' };
-  if (operations.length > MAX_TERRAIN_BATCH) {
-    return { error: `operations holds ${operations.length} actions; the limit is ${MAX_TERRAIN_BATCH} per call — split it` };
+  if (!Array.isArray(given) || given.length === 0) return { error: 'operations must be a non-empty array of terrain actions' };
+  if (given.length > MAX_TERRAIN_BATCH) {
+    return { error: `operations holds ${given.length} actions; the limit is ${MAX_TERRAIN_BATCH} per call — split it` };
+  }
+  // A `path` among the operations is expanded in place; the whole list is then run in chunks of MAX_TERRAIN_BATCH.
+  let operations: unknown[] = given;
+  if (given.some((raw) => raw && typeof raw === 'object' && (raw as { action?: unknown }).action === 'path')) {
+    const flat: unknown[] = [];
+    for (const [index, raw] of given.entries()) {
+      if (raw && typeof raw === 'object' && (raw as { action?: unknown }).action === 'path') {
+        const path = expandTerrainPath(raw as Record<string, unknown>, DIRECT_EDIT_LIMITS.translation);
+        if ('error' in path) return { error: `operations[${index}]: ${path.error}` };
+        flat.push(...path.operations);
+      } else flat.push(raw);
+    }
+    if (flat.length > TERRAIN_PATH_OP_CAP) return { error: `these operations expand to ${flat.length} blocks; the limit is ${TERRAIN_PATH_OP_CAP} per call — split them` };
+    if (flat.length > MAX_TERRAIN_BATCH) return runTerrainChunks(ctx, flat);
+    operations = flat;
   }
   const done: unknown[] = [];
   for (const [index, raw] of operations.entries()) {
@@ -2122,6 +2164,260 @@ async function createInBatches(ctx: AgentCtx, items: unknown[]): Promise<unknown
   return { ...compact, batches: batches.length, createdItems: landed };
 }
 
+/** Copies the plugin's place_copies op handles per call (apps/apple-plugin/src/ops/Compose.luau MAX_PLACE). */
+const PLACE_COPIES_PER_CALL = 200;
+
+/**
+ * clone_instances with a placement: lay the copies out here (placement.ts), then send them as place_copies ops of at most
+ * 200. The plugin op copies the piece (a Folder wrapper is unwrapped to the model inside it), strips scripts, anchors parts
+ * and stands the copy with its bottom on `at`, scaled to a height when asked. Names are made unique against the parent's
+ * existing children, so a second call continues where the first stopped.
+ */
+async function placeCopiesCall(ctx: AgentCtx, a: Record<string, unknown>, sources: string[], parentArg: string | undefined): Promise<unknown> {
+  if (sources.length > 8) return { error: 'give at most 8 template paths to cycle through' };
+  const plan = planCopies(
+    { at: a.at, along: a.along, within: a.within, yaw: a.yaw, scale: a.scale, jitter: a.jitter, seed: a.seed },
+    DIRECT_EDIT_LIMITS.translation,
+  );
+  if ('error' in plan) return { error: plan.error };
+  const first = sources[0]!;
+  const parentOf = (path: string) => path.replace(/\.[^.\[\]]+$|\["[^"]+"\]$/, '');
+  const inWorkspace = (path: string) => path === 'game.Workspace' || path.startsWith('game.Workspace.') || path.startsWith('game.Workspace[');
+  const parent = parentArg ?? (inWorkspace(parentOf(first)) ? parentOf(first) : 'game.Workspace');
+  const notes: string[] = plan.note ? [plan.note] : [];
+
+  // Heights, for a scale: each template measured once.
+  const heights = new Map<string, number>();
+  if (plan.copies.some((c) => c.scale !== undefined)) {
+    for (const source of sources) {
+      const b = await ctx.execStudioOp({ op: 'spatial_query', action: 'bounds', path: source } as StudioOp, 15_000);
+      const size = rec(b.ok ? b.data : null).size;
+      const h = Array.isArray(size) ? Number(size[1]) : NaN;
+      if (!(h > 0)) return { error: `could not measure ${source} to scale it (${b.ok ? 'no size reported' : (b.error ?? 'spatial_query bounds failed')}). Check the path, or drop scale.` };
+      heights.set(source, h);
+    }
+  }
+
+  // `within` without a y: the ground under the area's centre, measured once.
+  let groundY: number | undefined;
+  if (plan.needsGround) {
+    const cx = plan.copies.reduce((n, c) => n + c.at[0], 0) / plan.copies.length;
+    const cz = plan.copies.reduce((n, c) => n + c.at[2], 0) / plan.copies.length;
+    const g = await ctx.execStudioOp({ op: 'spatial_query', action: 'find_ground', position: [cx, 500, cz] } as StudioOp, 15_000);
+    const hit = rec(rec(g.ok ? g.data : null).result);
+    const pos = hit.position;
+    if (hit.hit === true && Array.isArray(pos) && Number.isFinite(Number(pos[1]))) {
+      groundY = Number(pos[1]);
+      notes.push(`Ground height was measured once, at the centre of the area (y ${Math.round(groundY * 10) / 10}), and used for every copy. On rolling terrain use scatter_instances, which drops each copy onto the ground.`);
+    } else {
+      return { error: 'within has no y and there is no ground under its centre to measure. Give within.y, or build the ground first.' };
+    }
+  }
+
+  // Names that cannot collide with what the parent already holds.
+  const base = (lastSegment(first) ?? 'Copy').replace(/[^A-Za-z0-9_ -]/g, '').slice(0, 40) || 'Copy';
+  const tree = await ctx.execStudioOp({ op: 'get_tree', root: parent, maxDepth: 1, maxNodes: 1200 }, 20_000);
+  let next = 1;
+  if (tree.ok) {
+    const pattern = new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_(\\d+)$`);
+    for (const k of Array.isArray(rec(rec(tree.data).root).children) ? (rec(rec(tree.data).root).children as unknown[]) : []) {
+      const n = Number(pattern.exec(String(rec(k).name ?? ''))?.[1]);
+      if (Number.isFinite(n) && n >= next) next = n + 1;
+    }
+  }
+  const stem = typeof a.name === 'string' && a.name.trim() ? a.name.trim().replace(/[^A-Za-z0-9_ -]/g, '').slice(0, 40) || base : base;
+
+  const items = plan.copies.map((c, i) => {
+    const from = sources[i % sources.length]!;
+    const item: Record<string, unknown> = { from, parent, name: `${stem}_${next + i}`, at: [c.at[0], groundY ?? c.at[1], c.at[2]] };
+    if (c.yaw) item.yaw = Math.round(c.yaw * 100) / 100;
+    if (c.scale !== undefined) item.height = Math.round(heights.get(from)! * c.scale * 100) / 100;
+    return item;
+  });
+
+  const placed: string[] = [];
+  const failed: { index: number; error: string }[] = [];
+  for (let start = 0; start < items.length; start += PLACE_COPIES_PER_CALL) {
+    const res = await ctx.execStudioOp({ op: 'place_copies', items: items.slice(start, start + PLACE_COPIES_PER_CALL) } as unknown as StudioOp, 120_000);
+    if (!res.ok) {
+      const unsupported = /unknown Studio operation|unsupported|not supported/i.test(String(res.error ?? ''));
+      const where = start ? ` after ${placed.length} of ${items.length} copies were placed` : '';
+      const error = unsupported
+        ? 'This Studio plugin cannot place copies at positions yet (it does not know place_copies); update the Apple plugin. Until then use clone_instances with only `paths`, then transform_instances to move each copy.'
+        : `${res.error ?? 'place_copies failed'}${where}`;
+      return { error, ...(placed.length ? { placed: placed.slice(0, 20), placedCount: placed.length, projectMutated: true } : {}) };
+    }
+    const d = rec(res.data);
+    for (const p of Array.isArray(d.placed) ? d.placed : []) if (typeof p === 'string') placed.push(p);
+    for (const f of Array.isArray(d.failed) ? d.failed : []) {
+      const row = rec(f);
+      failed.push({ index: start + Number(row.index ?? 1) - 1, error: String(row.error ?? 'failed').slice(0, 160) });
+    }
+  }
+  ctx.noteCreated?.(placed);
+  if (!placed.length) return { error: `nothing was placed: ${failed[0]?.error ?? 'the plugin placed no copies'}` };
+  return {
+    placedCount: placed.length,
+    requested: items.length,
+    placed: placed.slice(0, 20),
+    ...(placed.length > 20 ? { placedMore: placed.length - 20 } : {}),
+    ...(failed.length ? { failed: failed.slice(0, 8), failedCount: failed.length } : {}),
+    parent,
+    seed: finiteOr(a.seed, 1),
+    ...(notes.length ? { notes } : {}),
+  };
+}
+
+function finiteOr(v: unknown, fallback: number): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+}
+
+/**
+ * create_instances with a `group`: create the items (in batches when there are many), then gather the top-level ones into one
+ * Model or Folder with group_instances (which, unlike nesting them as children, has no 40-children limit). A failed grouping
+ * leaves the created items in place and says so; the grouping is one more op, never a reason to refuse the build.
+ */
+async function createGrouped(ctx: AgentCtx, items: unknown[], rawGroup: unknown): Promise<unknown> {
+  const g = rec(rawGroup);
+  const className = String(g.className ?? 'Model');
+  const name = typeof g.name === 'string' ? g.name.trim() : '';
+  if (className !== 'Model' && className !== 'Folder') return { error: 'Nothing was created. group.className must be "Model" or "Folder".' };
+  if (!name || name.length > 96) return { error: 'Nothing was created. group.name must be 1-96 characters.' };
+  if (g.primaryPart !== undefined && (typeof g.primaryPart !== 'string' || className !== 'Model')) return { error: 'Nothing was created. group.primaryPart must name a part, and only a Model has one.' };
+  if (items.length > 120) return { error: `Nothing was created. A group holds at most 120 items per call (this has ${items.length}); build it in pieces and group them.` };
+  const home = sharedParent(items);
+  if (typeof home !== 'string') return { error: `Nothing was created. ${home.error}` };
+  const made = rec(await createInBatches(ctx, items));
+  if (typeof made.error === 'string') return made;
+  const top = items.map((i) => {
+    const it = rec(i);
+    return appendStudioPath(home, String(it.name ?? it.className ?? ''));
+  });
+  if (top.some((p) => p === null)) return { ...made, groupWarning: 'the items were created but one has a name that cannot be addressed, so they were not grouped' };
+  if (className === 'Folder') {
+    // group_instances only makes Models; a Folder is made first and the items are moved into it.
+    const folderPath = appendStudioPath(home, name);
+    const f = await ctx.execStudioOp({ op: 'create_instances', items: [{ className: 'Folder', name, parent: home }] }, 20_000);
+    const moved = f.ok && folderPath
+      ? await ctx.execStudioOp({ op: 'move_instances', moves: (top as string[]).map((path) => ({ path, newParent: folderPath })) }, 30_000)
+      : null;
+    if (!folderPath || !f.ok || !moved?.ok) {
+      return { ...made, groupWarning: `the items were created but could not be put in a Folder (${!f.ok ? (f.error ?? 'create failed') : !moved ? 'the name cannot be addressed' : (moved.error ?? 'move failed')}); use group_instances or move_instances` };
+    }
+    ctx.noteCreated?.([folderPath]);
+    return { ...made, group: folderPath, grouped: top.length };
+  }
+  const grouped = await ctx.execStudioOp({ op: 'group_instances', paths: top as string[], name }, 30_000);
+  const path = grouped.ok ? strOrNull(rec(grouped.data).path) : null;
+  if (!path) {
+    return { ...made, groupWarning: `the items were created but could not be grouped (${grouped.ok ? 'no path returned' : (grouped.error ?? 'group_instances failed')}); group them with group_instances` };
+  }
+  ctx.noteCreated?.([path]);
+  const out: Record<string, unknown> = { ...made, group: path, grouped: top.length };
+  if (typeof g.primaryPart === 'string') {
+    const part = appendStudioPath(path, g.primaryPart);
+    const set = part ? await ctx.execStudioOp({ op: 'set_props', path, props: { PrimaryPart: { t: 'Instance', v: part } } } as StudioOp, 20_000) : null;
+    if (!set || !set.ok) out.groupWarning = `the group was made but its PrimaryPart could not be set (${set && !set.ok ? (set.error ?? 'set_props failed') : 'the part name cannot be addressed'})`;
+  }
+  return out;
+}
+
+/**
+ * What set_mood's `overrides` may set, by group. A name is here only if the plugin's property allowlist carries it
+ * (apps/apple-plugin/src/Commands.luau PROPERTY_ALLOW); the value is the kind it takes, with a range where a wrong number
+ * is silently nonsense (ClockTime past 24, a colour channel past 255).
+ */
+const MOOD_OVERRIDES = {
+  lighting: {
+    ClockTime: { kind: 'number', min: 0, max: 24 }, Brightness: { kind: 'number', min: 0, max: 20 },
+    ExposureCompensation: { kind: 'number', min: -5, max: 5 }, ShadowSoftness: { kind: 'number', min: 0, max: 1 },
+    GlobalShadows: { kind: 'bool' }, GeographicLatitude: { kind: 'number', min: -90, max: 90 },
+    EnvironmentDiffuseScale: { kind: 'number', min: 0, max: 1 }, EnvironmentSpecularScale: { kind: 'number', min: 0, max: 1 },
+    Ambient: { kind: 'color' }, OutdoorAmbient: { kind: 'color' }, ColorShift_Top: { kind: 'color' }, ColorShift_Bottom: { kind: 'color' },
+    FogStart: { kind: 'number', min: 0, max: 100000 }, FogEnd: { kind: 'number', min: 0, max: 100000 }, FogColor: { kind: 'color' },
+  },
+  atmosphere: {
+    Density: { kind: 'number', min: 0, max: 1 }, Offset: { kind: 'number', min: 0, max: 1 }, Haze: { kind: 'number', min: 0, max: 10 },
+    Glare: { kind: 'number', min: 0, max: 10 }, Color: { kind: 'color' }, Decay: { kind: 'color' },
+  },
+  colorCorrection: {
+    Brightness: { kind: 'number', min: -1, max: 1 }, Contrast: { kind: 'number', min: -1, max: 1 },
+    Saturation: { kind: 'number', min: -1, max: 1 }, TintColor: { kind: 'color' },
+  },
+} as const;
+
+type MoodOverrideValues = Record<string, number | boolean | RGB>;
+
+function readMoodOverrides(raw: unknown): { values: Partial<Record<keyof typeof MOOD_OVERRIDES, MoodOverrideValues>> } | { error: string } {
+  if (raw === undefined) return { values: {} };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'overrides must be {lighting?, atmosphere?, colorCorrection?}, each an object of property values.' };
+  const values: Partial<Record<keyof typeof MOOD_OVERRIDES, MoodOverrideValues>> = {};
+  for (const [group, body] of Object.entries(raw as Record<string, unknown>)) {
+    const spec = (MOOD_OVERRIDES as Record<string, Record<string, { kind: string; min?: number; max?: number }>>)[group];
+    if (!spec) return { error: `overrides.${group} is not a group. Use ${Object.keys(MOOD_OVERRIDES).join(', ')}.` };
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return { error: `overrides.${group} must be an object of property values.` };
+    const out: MoodOverrideValues = {};
+    for (const [name, value] of Object.entries(body as Record<string, unknown>)) {
+      const rule = spec[name];
+      if (!rule) return { error: `overrides.${group}.${name} cannot be set here (the plugin does not write it). Allowed: ${Object.keys(spec).join(', ')}.` };
+      if (rule.kind === 'bool') {
+        if (typeof value !== 'boolean') return { error: `overrides.${group}.${name} must be true or false.` };
+        out[name] = value;
+      } else if (rule.kind === 'number') {
+        if (typeof value !== 'number' || !Number.isFinite(value) || value < rule.min! || value > rule.max!) return { error: `overrides.${group}.${name} must be a number from ${rule.min} to ${rule.max}.` };
+        out[name] = value;
+      } else {
+        if (!Array.isArray(value) || value.length !== 3 || !value.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 255)) return { error: `overrides.${group}.${name} must be a colour [r, g, b] with each channel 0-255.` };
+        out[name] = value as unknown as RGB;
+      }
+    }
+    values[group as keyof typeof MOOD_OVERRIDES] = out;
+  }
+  return { values };
+}
+
+/**
+ * Measured facts about the scene for audit_build: terrain, lighting and structure. Numbers only. Each read is best-effort and
+ * says why when it could not be made, so a missing measurement is never rendered as an empty scene.
+ *
+ * Terrain is one read of a 256 x 64 x 256 stud box centred on the parts' footprint (or the origin when there are none): the
+ * material histogram and how many voxels are solid. The ground heights come from one find_flat probe over the same footprint,
+ * which also counts how many of its rays hit anything. Both are samples of that box, and say so.
+ */
+async function measureScene(ctx: AgentCtx, workspaceTree: unknown, capture: ReturnType<typeof auditCaptureFromTree>): Promise<Record<string, unknown> & { terrain?: Record<string, unknown> }> {
+  const structure = sceneFromTree(workspaceTree);
+  const parts = capture?.parts ?? [];
+  const cx = parts.length ? Math.round((Math.min(...parts.map((p) => p.pos[0])) + Math.max(...parts.map((p) => p.pos[0]))) / 2) : 0;
+  const cz = parts.length ? Math.round((Math.min(...parts.map((p) => p.pos[2])) + Math.max(...parts.map((p) => p.pos[2]))) / 2) : 0;
+  const box = { min: [cx - 128, -16, cz - 128], max: [cx + 128, 48, cz + 128] };
+  const terrain: Record<string, unknown> = { sampledBox: box };
+  const read = await ctx.execStudioOp({ op: 'terrain_read', min: box.min, max: box.max } as StudioOp, 30_000);
+  if (read.ok) {
+    const d = rec(read.data);
+    const voxels = Number(d.voxels) || 0;
+    const solid = Number(d.solidVoxels) || 0;
+    Object.assign(terrain, {
+      voxels, solidVoxels: solid, fillRatio: voxels ? Math.round((solid / voxels) * 1000) / 1000 : 0,
+      materials: Array.isArray(d.materials) ? d.materials.slice(0, 12) : [],
+    });
+  } else terrain.terrainUnavailable = String(read.error ?? 'terrain_read failed').slice(0, 160);
+  const ground = await ctx.execStudioOp({ op: 'spatial_query', action: 'find_flat', region: { min: [cx - 128, -64, cz - 128], max: [cx + 128, 256, cz + 128] }, samples: 256, maxSlopeDeg: 60 } as StudioOp, 30_000);
+  if (ground.ok) {
+    const d = rec(ground.data);
+    const ys = (Array.isArray(d.flat) ? d.flat : []).map((p) => (Array.isArray(p) ? Number(p[1]) : NaN)).filter((y) => Number.isFinite(y));
+    terrain.groundProbe = {
+      raysCast: Number(d.sampled) || 0, raysHit: Number(d.hits) || 0,
+      ...(ys.length ? { sampledHeights: { min: Math.round(Math.min(...ys) * 10) / 10, max: Math.round(Math.max(...ys) * 10) / 10, count: ys.length } } : {}),
+    };
+  } else terrain.groundProbeUnavailable = String(ground.error ?? 'find_flat failed').slice(0, 160);
+  const lighting = capture?.lighting;
+  return {
+    terrain,
+    ...(lighting ? { lighting: { clockTime: lighting.clockTime, brightness: lighting.brightness, ambient: lighting.ambient, atmospherePresent: lighting.effects.includes('Atmosphere'), effects: lighting.effects, lightInstances: lighting.lightInstances } } : {}),
+    ...(structure ? { structure } : {}),
+  };
+}
+
 export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
@@ -2200,7 +2496,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       name: 'edit_script',
       description:
         'Create or edit a script. Provide exactly one of `source` (full new content), `edits` (find/replace list, exact match), or `source_file` (an exact saved .lua/.luau workspace version). For a single exact edit use edits:[{find:"exact old text",replace:"new text"}]; top-level find + replace is an equivalent shorthand, never combine it with another input. To create a new script set `create_class` + `create_parent`. ' +
-        'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. A script that newly assembles a Model from Parts is held back until the run has tried the library (find_library_model); after a search with no hit or a failed insert it goes through. Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
+        'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. A script that newly assembles a Model from Parts waits until the library was tried (find_library_model). Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
       parameters: S(
         {
           path: { type: 'string', description: 'Full path, e.g. game.ServerScriptService.RoundManager' },
@@ -2600,8 +2896,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'create_instances',
       description:
-        'Create instances (parts, models, UI, folders...). Each item: {className, name, parent, props?, children?}. Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Anchored":{"t":"bool","v":true}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}, "Size":{"t":"UDim2","v":[0.5,0,0.1,0]}, "AnchorPoint":{"t":"Vector2","v":[0.5,0.5]}}. Supported prop types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Instance,nil. ParticleEmitter Transparency and Size are NumberSequence, not NumberRange: {"t":"NumberSequence","v":[[0,0.2,0],[1,1,0]]} (time 0..1, value, envelope); ParticleEmitter Color is {"t":"ColorSequence","v":[[0,[1,0.8,0.4]],[1,[1,0.4,0.1]]]}. If the result reports propIssues, the instances WERE created — fix the listed properties with set_properties. Limits per call: at most 120 items, 400 instances in all, 40 children per instance, 12 levels deep and 48 properties per instance; a larger list of separate items is split into sequential calls for you. Plain parts (Part, WedgePart, CornerWedgePart, TrussPart) are Anchored unless you write Anchored false; on those classes a bare Size, Position, Orientation or Color array and a bare Material, Shape or surface name are read as what they can only be.',
-      parameters: S({
+        'Create instances (parts, models, folders, lights...). Each item: {className, name, parent, props?, children?}. Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Anchored":{"t":"bool","v":true}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}}. Types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Instance,nil. If propIssues comes back, the instances WERE created: fix them with set_properties. Per call: 120 items, 400 instances, 40 children each, 12 levels, 48 props each (longer lists are split for you). origin {at:[x,y,z], yaw?} builds in local space around (0,0,0) and places the batch; group {className:"Model"|"Folder", name, primaryPart?} wraps it (up to 120 items); build once, repeat with clone_instances. Plain parts (Part, WedgePart, CornerWedgePart, TrussPart) are Anchored unless Anchored is false; bare Size/Position/Orientation/Color arrays and Material/Shape names on parts are typed for you.',      parameters: S({
         items: {
           type: 'array',
           minItems: 1,
@@ -2618,6 +2913,8 @@ export const TOOLS: Record<string, ToolImpl> = {
             required: ['className', 'name'],
           },
         },
+        origin: { type: 'object' },
+        group: { type: 'object' },
       }, ['items']),
     },
     studio: true,
@@ -2665,7 +2962,16 @@ export const TOOLS: Record<string, ToolImpl> = {
         if (handMadeModel.ordered) noteOrderRefusal(ctx);
         return Promise.resolve(handMadeModel);
       }
-      return createInBatches(ctx, (pass.items as unknown[]) ?? []);
+      let items = (pass.items as unknown[]) ?? [];
+      if (a.origin !== undefined) {
+        const origin = readOrigin(a.origin, DIRECT_EDIT_LIMITS.translation);
+        if ('error' in origin) return Promise.resolve({ error: `Nothing was created. ${origin.error}` });
+        const moved = applyOrigin(items, origin);
+        if ('error' in moved) return Promise.resolve(moved);
+        items = moved.items;
+      }
+      if (a.group === undefined) return createInBatches(ctx, items);
+      return createGrouped(ctx, items, a.group);
     },
   },
   /**
@@ -2746,6 +3052,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         'Materials are Enum.Material names such as Enum.Material.Grass. At most 65,536 voxels are touched per call. ' +
         'Requires Studio edit consent and is one undo-recorded change. Checkpoint restore preserves Terrain identity but does not serialize voxel contents, so use Studio Undo for terrain rollback. ' +
         'RECIPES FIRST for these landforms: recipe "floating_island" (center, radius) builds a flat grassy top on a rock underside that tapers to a point and returns surfaceY to stand things on; recipe "waterfall" (top = the edge point it pours over, height, width, endsIn) hangs a thin sheet of water. ' +
+        'A RIVER, ROAD, TRENCH OR TUNNEL IS ONE CALL: action "path", points [[x,y,z],...] (2-32; y is the surface), width, depth (studs down), fill "Air" (default), "Water" or "material" (with `material`); run as blocks, at most ' + TERRAIN_PATH_OP_CAP + ' per call. ' +
         `BUILD A WHOLE FEATURE IN ONE CALL: pass operations (up to ${MAX_TERRAIN_BATCH} of the actions above, each with its own fields) and they run in order — a hill is several overlapping fill_ball calls with decreasing radius, a pond is a fill_ball of Enum.Material.Air then a smaller one of Enum.Material.Water. One operation per call costs a step each.`,
       parameters: S(
         {
@@ -2759,7 +3066,10 @@ export const TOOLS: Record<string, ToolImpl> = {
           height: { type: 'number' },
           width: { type: 'number' },
           endsIn: { type: 'string', enum: ['pool', 'mist'] },
-          action: { type: 'string', enum: ['clear', 'fill_block', 'fill_ball', 'fill_region', 'replace_material', 'write_voxels'] },
+          action: { type: 'string', enum: ['clear', 'fill_block', 'fill_ball', 'fill_region', 'replace_material', 'write_voxels', 'path'] },
+          points: { type: 'array', items: { type: 'array', items: { type: 'number' } } },
+          depth: { type: 'number' },
+          fill: { type: 'string', enum: ['Air', 'Water', 'material'] },
           center: { type: 'array', items: { type: 'number' } },
           size: { type: 'array', items: { type: 'number' } },
           radius: { type: 'number' },
@@ -2784,7 +3094,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'build_scene',
       description:
-        'Lay the PLAIN TERRAIN foundation for a floating island: grassy top, rock underside, stream and waterfall terrain, lighting and spawn. This is deliberately incomplete. Find and insert ready-made library models for trees, crystals and other detailed props, and use insert_vfx for mist. Library first; what it does not have follows the asset order (Creator Store, then Parts in full detail). This terrain result is not a finished scene. Returns surfaceY and usableRadius for placement.',
+        'Lay the PLAIN TERRAIN foundation for a floating island: grassy top, rock underside, stream and waterfall terrain, lighting and spawn. This is deliberately incomplete. Find and insert ready-made library models for trees, crystals and other detailed props, and use insert_vfx for mist. Props follow the asset order (library, Creator Store, then Parts). This is not a finished scene. Returns surfaceY and usableRadius for placement.',
       parameters: S({
         kit: { type: 'string', enum: ['floating_island'] },
         center: { type: 'array', items: { type: 'number' }, description: 'Island centre, default [0, 150, 0]' },
@@ -2910,10 +3220,19 @@ export const TOOLS: Record<string, ToolImpl> = {
   clone_instances: {
     def: {
       name: 'clone_instances',
-      description: 'Clone existing instances through Studio. Clones receive collision-free names and may optionally be placed under a specific writable parent.',
+      description:
+        'Clone instances (collision-free names; optional parent). MANY COPIES IN ONE CALL: `paths` (a template, up to 8 cycled) plus exactly one of `at` [[x,y,z],...], `along` {points, spacing|count} or `within` {rect:{min:[x,z],max:[x,z]}|polygon, count, minSpacing?, y?}; optional yaw (number or [min,max]), scale, jitter, seed, name, parent. Up to 1000 copies; no scripts, parts anchored. `within` without y measures the ground once at its centre (scatter_instances drops each copy onto rolling terrain).',
       parameters: S({
         paths: { type: 'array', minItems: 1, maxItems: DIRECT_EDIT_LIMITS.items, items: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars } },
         parent: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars },
+        at: { type: 'array', items: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 }, maxItems: 1000 },
+        along: { type: 'object' },
+        within: { type: 'object' },
+        yaw: {},
+        scale: {},
+        jitter: { type: 'number', minimum: 0, maximum: 1000 },
+        seed: { type: 'integer' },
+        name: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.nameChars },
       }, ['paths']),
     },
     studio: true,
@@ -2928,6 +3247,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         if (typeof parsed !== 'string') return Promise.resolve(parsed);
         parent = parsed;
       }
+      if (a.at !== undefined || a.along !== undefined || a.within !== undefined) return placeCopiesCall(ctx, a, paths, parent);
       return op(ctx, { op: 'clone_instances', paths, ...(parent ? { parent } : {}) });
     },
   },
@@ -3640,13 +3960,17 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'set_mood',
       description:
-        'Apply a named lighting mood to the place: atmosphere, bloom, colour correction, sun rays and depth of field, plus the Lighting properties that carry it. This is how a scene stops looking like a grey blockout. Call it once the geometry is roughly in place and BEFORE render_view, then render to see it. Pick the mood the scene is meant to feel like, not the time of day it literally is.',
+        'Apply a named lighting mood to the place: atmosphere, bloom, colour correction, sun rays and depth of field, plus the Lighting properties that carry it. This is how a scene stops looking like a grey blockout. Call it once the geometry is roughly in place and BEFORE render_view, then render to see it. Pick the nearest preset, then set the exact hour or feel with overrides.',
       parameters: S(
         {
           mood: {
             type: 'string',
             enum: Object.keys(MOODS),
             description: 'One of the named moods. Each is a complete, art-directed lighting setup.',
+          },
+          overrides: {
+            type: 'object',
+            description: `Exact values after the preset, any hour or feel: {lighting?: {${Object.keys(MOOD_OVERRIDES.lighting).join(', ')}}, atmosphere?: {${Object.keys(MOOD_OVERRIDES.atmosphere).join(', ')}}, colorCorrection?: {${Object.keys(MOOD_OVERRIDES.colorCorrection).join(', ')}}}. Colours [r,g,b] 0-255; ClockTime 0-24.`,
           },
         },
         ['mood'],
@@ -3663,6 +3987,9 @@ export const TOOLS: Record<string, ToolImpl> = {
           error: `unknown mood "${mood}" for this lighting library. Choose one of: ${Object.keys(MOODS).join(', ')}.`,
         };
       }
+      // Overrides are read BEFORE anything changes: an unknown name or a bad value must not leave a half-applied mood.
+      const overrides = readMoodOverrides(a.overrides);
+      if ('error' in overrides) return overrides;
       const tree = await op(ctx, { op: 'get_tree', root: 'game.Lighting', maxDepth: 1, maxNodes: 200 });
       if (toolError(tree)) return tree;
       const root = treeRoot(tree);
@@ -3711,6 +4038,16 @@ export const TOOLS: Record<string, ToolImpl> = {
       const items = moodInstances(mood).filter((item) => !(userAtmosphere && item.className === 'Atmosphere'));
       const created = await op(ctx, { op: 'create_instances', items });
       if (toolError(created)) return { ...(created as Record<string, unknown>), projectMutated: true };
+      // The overrides, after the preset. Each group is its own write; a group that fails is reported and the mood stands.
+      const overridden: string[] = [];
+      const overrideFailures: string[] = [];
+      for (const [group, path] of [['lighting', 'game.Lighting'], ['atmosphere', userAtmosphere ?? 'game.Lighting.Atmosphere'], ['colorCorrection', 'game.Lighting.ColorCorrectionEffect']] as const) {
+        const values = overrides.values[group];
+        if (!values || !Object.keys(values).length) continue;
+        const res = await op(ctx, { op: 'set_props', path, props: typedPresetProps(values) });
+        if (toolError(res)) overrideFailures.push(`${group}: ${String((res as { error?: unknown }).error ?? 'failed').slice(0, 160)}`);
+        else overridden.push(...Object.keys(values).map((k) => `${group}.${k}`));
+      }
 
       // Hand back the palettes this mood was art-directed alongside. The lighting is half of a
       // look; the materials and colours are the other half, and the model has no other way to
@@ -3723,6 +4060,8 @@ export const TOOLS: Record<string, ToolImpl> = {
         : undefined;
       return {
         applied: mood,
+        ...(overridden.length ? { overrides: overridden } : {}),
+        ...(overrideFailures.length ? { overridesFailed: overrideFailures } : {}),
         // Only ever this mood's own previous instances; the user's are counted in `kept`.
         replacedOwn: owned.length || undefined,
         // Their Atmosphere was retuned rather than duplicated; say so, because its old values are gone.
@@ -3830,7 +4169,13 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (toolError(lighting)) return lighting;
       const capture = auditCaptureFromTree(workspace, lighting);
       if (!capture) return { error: 'the typed Studio tree returned something this worker could not read' };
+      // What the audit's parts-only view could not see: terrain, lighting as numbers, and how the place is grouped.
+      const scene = await measureScene(ctx, workspace, capture);
       if (capture.parts.length === 0) {
+        // Terrain is geometry: a map made of it is not "nothing to audit". The measurements are the answer.
+        if (scene.terrain && 'solidVoxels' in scene.terrain && Number(scene.terrain.solidVoxels) > 0) {
+          return { text: 'There are no parts to audit, but the place holds terrain (see scene). Nothing was judged.', confirmed: 0, blocking: 0, partsAudited: 0, scene };
+        }
         if (capture.importedRoots) return { text: 'Nothing to fix: everything in Workspace is imported original game content, which is the game\'s own design and is not audited.', confirmed: 0, blocking: 0, partsAudited: 0, importedRoots: capture.importedRoots };
         return { error: 'there is no geometry in Workspace to audit yet — build something first' };
       }
@@ -3932,6 +4277,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         rulesUnchecked: panel.unchecked.length || undefined,
         partsAudited: capture.parts.length,
         truncated: capture.truncated || undefined,
+        scene,
       };
     },
   },
@@ -4751,7 +5097,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_asset',
       description:
-        'Insert an asset by numeric assetId. Use an id from find_verified_asset, or one the USER gave you — never one you produced yourself: a made-up id resolves to something random or to nothing. Where the id came from does not decide whether it is checked. EVERY id is resolved against the Creator Store and must pass the full gate (free, publicly visible, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget), and every insertion is then scanned INSIDE the place: Luau that arrived with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. Parts are plain structure, and step 4 of the asset order for a prop that no verified model covers, built in full detail. Models come from insert_library_model, which skips this marketplace gate.',
+        'Insert an asset by numeric assetId, from find_verified_asset or the USER (never one you produced yourself). EVERY id is resolved against the Creator Store and must pass the full gate (free, public, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget); every insertion is then scanned inside the place: scripts are removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. Models come from insert_library_model, which skips this gate.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,
@@ -5159,7 +5505,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_library_model',
       description:
-        "Search the full session-configured local owner SQLite corpus through the paired plugin FIRST, with ingested cloud owner seed components as fallback, for native components (including UI, maps and code), then script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any detailed object. Plain nouns work best; genre and kind narrow it. By default only Roblox-owned models are returned. If those cannot cover the requested object, retry with includeThirdParty=true; this adds free third-party models available in the existing catalog. They are marked requiresThirdPartyLoading and may be refused by Studio unless the experience already permits third-party asset loading. Never claim they are guaranteed to load or visually suitable without inspecting the preview. In Agent mode, Apple shows up to three real thumbnails and pauses for the project owner's visual choice. Nothing is inserted or uploaded by this call.",
+        "Search for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon, kit, UI or map: the owner's local corpus through the paired plugin first, then ingested owner components, then script-free Roblox Creator Store models. Step 1 of the asset order: call it BEFORE building a detailed object. Plain nouns work best; genre and kind narrow it. Only Roblox-owned models are returned unless includeThirdParty=true, which adds free third-party models (marked requiresThirdPartyLoading; Studio may refuse them unless the experience permits third-party loading, so never promise they load). Nothing is inserted by this call: pass a result `id` unchanged to insert_library_model.",
       parameters: S(
         {
           sourceSHA: {type:'string',description:'Optional original source SHA from query_owner_catalog; scopes the full local index.'},
@@ -5382,7 +5728,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_library_model',
       description:
-        "Insert ONE verified Creator Store model by the exact library `id` that find_library_model returned; a query cannot choose for you. Third-party rows require the experience's Roblox third-party loading setting; a refusal leaves the place unchanged. Downloaded file rows are not insertable because uploading a new permanent Model needs separate authority. Every insertion is scanned inside the place; scripted assets are removed before they count. This tool does not run insert_asset's marketplace gate (which refuses every Model): library rows were verified when they were admitted. Use it for detailed props, buildings, nature, vehicles, pets and characters. A failure names its stage, whether a retry can help and the next candidate ids from your last search: take the next id, and when none is left go on to the next step of the asset order. To place many copies of the model, insert one and clone_instances it.",
+        "Insert ONE verified Creator Store model by the exact library `id` from find_library_model. Third-party rows need the experience's third-party loading setting; a refusal leaves the place unchanged. File rows are not insertable. Every insertion is scanned in the place and scripted assets are removed. It skips insert_asset's marketplace gate (which refuses every Model). A failure names its stage, whether to retry and the next candidate ids: take the next, and when none is left go on down the asset order. For many copies, insert one and clone_instances it.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },

@@ -331,10 +331,11 @@ DETAIL PASS — trim exposed structural edges, frame openings, light interactive
 and vary cloned assets in rotation and scale within a coherent style. Do not invent a large part
 count as a quality target: prefer complete verified models with fewer calls.
 
-LIGHTING — apply set_mood from the colorful cartoon presets, then render_view. Use a clear sunny or
-day mood by default; golden for warm outdoor scenes, interior for bright rooms, and night only for
-luminous playful arcade scenes with readable routes. Never build sun, sky or clouds from Parts.
-Preserve the owner's preexisting light effects.
+LIGHTING — apply set_mood, then render_view. The mood follows the request, in either direction: a night
+village, a stormy canyon, a bright noon, a golden evening are all asked for by name. Pick the nearest preset,
+then set the exact hour and feel with its overrides (ClockTime, Brightness, Ambient, OutdoorAmbient, fog,
+atmosphere, colour grade). A request that names no mood gets a clear sunny day, and a dark mood keeps its
+routes readable. Never build sun, sky or clouds from Parts. Preserve the owner's preexisting light effects.
 
 GROUND — replace the default gray baseplate with color-zoned SmoothPlastic ground and contrasting
 paths. Sculpt broad landforms with bounded Terrain ops when requested; use library assets for all

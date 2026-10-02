@@ -246,6 +246,53 @@ export function auditCaptureFromTree(treeRaw: unknown, lightingRaw?: unknown): A
   return { parts, truncated, total: parts.length, totalKnown: !truncated, ...(importedRoots ? { importedRoots } : {}), lighting };
 }
 
+// --- the scene as it stands: counts and facts, no judgement -----------------------------------------
+
+export interface SceneGroup {
+  name: string;
+  className: string;
+  /** Direct children, as the plugin reported them. */
+  children: number;
+}
+
+export interface SceneFacts {
+  /** Direct children of Workspace, and the largest groups among them. */
+  topLevel: { count: number; groups: SceneGroup[] };
+  /** Models that hold a MeshPart: what an inserted library model looks like in the tree (a hand-built one holds none). */
+  modelsWithMeshes: number;
+  /** How much of the tree these counts come from: a truncated read undercounts. */
+  tree: { nodesRead: number; truncated: boolean };
+}
+
+/**
+ * Measured facts about the place's structure, from the Workspace tree the audit already read. Nothing here decides whether a
+ * scene is good: it is the numbers a judge (the model, the owner) needs and the audit's parts-only view never carried. A map
+ * made of terrain and ten inserted models used to read as "no geometry" or as a handful of parts.
+ */
+export function sceneFromTree(treeRaw: unknown): SceneFacts | null {
+  if (!treeRaw || typeof treeRaw !== 'object') return null;
+  const tree = treeRaw as Record<string, unknown>;
+  const root = tree.root as Record<string, unknown> | undefined;
+  if (!root || typeof root !== 'object') return null;
+  const kids = (n: Record<string, unknown>): Record<string, unknown>[] => (Array.isArray(n.children) ? (n.children as Record<string, unknown>[]).filter((c) => c && typeof c === 'object') : []);
+  let nodes = 0;
+  let meshModels = 0;
+  const holdsMesh = (n: Record<string, unknown>): boolean => kids(n).some((c) => c.class === 'MeshPart' || holdsMesh(c));
+  const walk = (n: Record<string, unknown>): void => {
+    nodes += 1;
+    if (n.class === 'Model' && holdsMesh(n)) { meshModels += 1; return; }
+    for (const c of kids(n)) walk(c);
+  };
+  walk(root);
+  const top = kids(root);
+  const groups: SceneGroup[] = top
+    .filter((c) => c.class === 'Model' || c.class === 'Folder')
+    .map((c) => ({ name: String(c.name ?? ''), className: String(c.class), children: Number(c.childCount ?? kids(c).length) || 0 }))
+    .sort((a, b) => b.children - a.children)
+    .slice(0, 20);
+  return { topLevel: { count: top.length, groups }, modelsWithMeshes: meshModels, tree: { nodesRead: nodes, truncated: tree.truncated === true } };
+}
+
 // --- metrics -------------------------------------------------------------------------------------
 
 /** Roblox's factory part: Plastic, and the grey every new Part is born with. */
