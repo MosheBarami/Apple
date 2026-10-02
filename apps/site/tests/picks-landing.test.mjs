@@ -129,11 +129,16 @@ test('nothing the front page, the layouts, the Nav or the Footer reaches mounts 
     const f = queue.pop();
     if (seen.has(f) || !existsSync(f)) continue;
     seen.add(f);
-    for (const m of readFileSync(f, 'utf8').matchAll(/from\s+['"](\.[^'"]+?\.(?:astro|ts))['"]|import\s+['"](\.[^'"]+?\.(?:astro|ts))['"]/g)) {
-      queue.push(join(dirname(f), m[1] ?? m[2]));
+    // Script modules are imported without an extension (`from './baseplate'`), so resolve those to .ts too;
+    // otherwise the walk never reaches any mounted script and the canvas check reads only markup (ultrareview, PR #12).
+    for (const m of readFileSync(f, 'utf8').matchAll(/from\s+['"](\.[^'"]+?)['"]|import\s+['"](\.[^'"]+?)['"]/g)) {
+      const spec = join(dirname(f), m[1] ?? m[2]);
+      if (/\.(astro|ts)$/.test(spec)) queue.push(spec);
+      else if (!/\.[a-z0-9]+$/i.test(spec)) queue.push(`${spec}.ts`);
     }
   }
   assert.ok(seen.size >= 10, `only ${seen.size} files reached from the front page; the walk has drifted`);
+  assert.ok([...seen].some((f) => f.endsWith(join('components', 'baseplate.ts'))), 'the walk never reached a script module the page mounts, so the canvas check reads only markup');
   const files = [...seen].filter((f) => /\.(astro|ts)$/.test(f));
   const bad = [];
   for (const f of files) {
@@ -165,3 +170,4 @@ test('the picks folder holds exactly what the page mounts, so nothing is a demo 
     'a file appeared in components/picks that this file does not account for: mount it and list it here, or remove it');
   assert.ok(existsSync(join(PICKS, 'motion.ts')));
 });
+

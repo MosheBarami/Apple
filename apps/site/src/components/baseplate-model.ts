@@ -1,7 +1,7 @@
 /**
  * THE BASEPLATE'S MODEL: plain data and plain functions, no DOM, no imports.
  *
- * Kept apart from the drawing (baseplate.ts) so apps/site/tests/baseplate.test.mjs can import it
+ * Kept apart from the drawing (baseplate.ts) so apps/site/tests/ember-landing.test.mjs can import it
  * under Node and exercise every rule: what a click places, where it stops, what a stack says about
  * itself, and what sentence the bridge writes. Node strips the types natively, so there is nothing
  * to build first.

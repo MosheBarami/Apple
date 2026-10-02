@@ -160,7 +160,7 @@ export function mountBaseplate(root: HTMLElement): void {
 
   /* ------------------------------------------------------------------ pointer */
 
-  let stroke: { row: number; col: number; dragged: boolean; seen: Set<string>; id: number } | null = null;
+  let stroke: { row: number; col: number; last: number; dragged: boolean; seen: Set<string>; id: number } | null = null;
   const keyOf = (r: number, c: number) => `${r}:${c}`;
   const cellFromEvent = (x: number, y: number) =>
     (document.elementFromPoint(x, y) as HTMLElement | null)?.closest<HTMLElement>('.cell') ?? null;
@@ -172,6 +172,7 @@ export function mountBaseplate(root: HTMLElement): void {
     stroke = {
       row: Number(cell.dataset.row),
       col: Number(cell.dataset.col),
+      last: Number(cell.dataset.col),
       dragged: false,
       seen: new Set(),
       id: e.pointerId,
@@ -180,6 +181,8 @@ export function mountBaseplate(root: HTMLElement): void {
 
   grid.addEventListener('pointermove', (e: PointerEvent) => {
     if (!stroke || e.pointerId !== stroke.id) return;
+    // A mouse released somewhere the grid never heard about: no button is held, so the stroke is over.
+    if (e.pointerType === 'mouse' && e.buttons === 0) { stroke = null; return; }
     const cell = cellFromEvent(e.clientX, e.clientY);
     if (!cell || Number(cell.dataset.row) !== stroke.row) return;
     const col = Number(cell.dataset.col);
@@ -189,10 +192,15 @@ export function mountBaseplate(root: HTMLElement): void {
       stroke.seen.add(keyOf(stroke.row, stroke.col));
       apply(stroke.row, stroke.col);
     }
-    if (!stroke.seen.has(keyOf(stroke.row, col))) {
-      stroke.seen.add(keyOf(stroke.row, col));
-      apply(stroke.row, col);
+    // Every stud between the last sampled one and this one: a fast swipe skips pointermove events.
+    const step = col > stroke.last ? 1 : -1;
+    for (let c = stroke.last + step; step > 0 ? c <= col : c >= col; c += step) {
+      if (!stroke.seen.has(keyOf(stroke.row, c))) {
+        stroke.seen.add(keyOf(stroke.row, c));
+        apply(stroke.row, c);
+      }
     }
+    stroke.last = col;
   });
 
   const finish = (e: PointerEvent, cancelled: boolean) => {
@@ -207,8 +215,9 @@ export function mountBaseplate(root: HTMLElement): void {
       apply(s.row, s.col);
     }
   };
-  grid.addEventListener('pointerup', (e: PointerEvent) => finish(e, false));
-  grid.addEventListener('pointercancel', (e: PointerEvent) => finish(e, true));
+  // On the window, not the grid: a drag released past the grid's edge must still end (ultrareview, PR #12).
+  window.addEventListener('pointerup', (e: PointerEvent) => finish(e, false));
+  window.addEventListener('pointercancel', (e: PointerEvent) => finish(e, true));
 
   /* ------------------------------------------------------------------ keyboard */
 
