@@ -12,7 +12,9 @@ Repository: `MosheBarami/Apple` (public).
 Rules the workflows hold themselves to (read the headers before editing):
 
 - No job is given repository secrets, and no workflow file references `secrets.*`. A workflow with no
-  credentials cannot leak or spend anything.
+  credentials cannot leak or spend anything. (Two Actions secrets, `CLOUDFLARE_ACCOUNT_ID` and
+  `CLOUDFLARE_API_TOKEN`, exist on the repository on 2026-10-02 and nothing uses them; see
+  `docs/operations/REPO-CLEANUP-PENDING.md`.)
 - Nothing in CI may call a paid model provider; every test that touches HTTP injects its own `fetchImpl`.
 - A deploy step does not belong in `ci.yml`. If one is ever needed it goes in a separate workflow on `push: [main]`.
 - `node scripts/checks/check-ci-references.mjs` fails when a workflow names a script that no longer exists.

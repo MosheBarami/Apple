@@ -34,24 +34,28 @@ Rename neither. `scripts/checks/check-rebrand.mjs` polices the user-visible half
 
 ---
 
-## 2. Where the 18 GB actually are
+## 2. Where the 10 GB actually are
+
+Measured 2026-10-02 on the main checkout (before the repo clean-up merged):
 
 ```
-du -sh .claude node_modules packages docs .git apps
+du -sh .claude/worktrees packages/training packages/asset-library packages/corpus node_modules .git docs apps
 ```
 
 | | Size | What it is |
 |---|---:|---|
-| `.claude/worktrees/` | **15 G** | **58 abandoned agent worktrees.** Not project data. |
-| `packages/training/` | 752 M | LoRA adapters (210 M) and MLX training data |
-| `packages/corpus/` | 770 M | the knowledge and asset corpus — see §5 |
-| `node_modules/` | 506 M | |
-| `.git/` | 211 M | |
-| `docs/` | 91 M | 88 M of it is `docs/evidence/` — 49 recorded runs |
-| `apps/` | 54 M | all five applications |
+| `.claude/worktrees/` | 3.9 G | agent worktrees (`git worktree list` names the live ones; 12 folders on disk). Not project data. |
+| `packages/training/` | 2.7 G | LoRA adapters, the training venv, run output and MLX data. Not a workspace member, not in the request path |
+| `packages/asset-library/` | 1.9 G | local model, sound and effect stores plus the third-party review packs (git-ignored) |
+| `node_modules/` | 920 M | |
+| `.git/` | 316 M | |
+| `docs/` | 172 M | 86 M tracked (measured in a clean worktree after the clean-up); the rest is untracked local captures, mostly under `docs/evidence/pixels/` |
+| `apps/` | 170 M | the applications plus their local `dist/` builds (25 M tracked) |
+| `packages/corpus/` | 13 M | the knowledge corpus (the big data files are git-ignored and re-fetchable) |
 
 **The source you will actually edit is about 2 MB of it.** If you are looking for something and
 finding gigabytes, you are in the corpus, the adapters, or the worktrees.
+`docs/operations/REPO-CLEANUP-PENDING.md` lists what could be deleted and is waiting for the owner.
 
 ---
 
@@ -59,7 +63,7 @@ finding gigabytes, you are in the corpus, the adapters, or the worktrees.
 
 ```
 apps/
-  worker/     the whole backend — Hono on Cloudflare Workers. 137 TypeScript files.
+  worker/     the whole backend — Hono on Cloudflare Workers. 225 TypeScript files (2026-10-02).
               index.ts is the router (~7k lines); do/ holds the Durable Objects;
               tools.ts is the agent's tool registry.
   web/        the app SPA — React + Vite. Routes in src/routes, the workspace in
@@ -75,7 +79,8 @@ apps/
   plugin/     LEGACY — test fixtures only. Not built, not shipped, not installable; ~16 test files
               elsewhere read its source, which is the only reason it exists (apps/plugin/README.md).
               Its release/apple-plugin.rbxm is stale, and its asset 132128477945417 was removed.
-  benchmark/  model comparison harness.
+  benchmark/crystal-canyon  the frozen general benchmark project (V3 §6): do not extend.
+  experiences/lumen-isles   the consent-proof experience.
 
 packages/
   shared/     the wire contract. Types, mode tables, plan limits. Both sides import it.
@@ -90,29 +95,32 @@ platforms/    one folder per external service (cloudflare, supabase, sentry, str
               github): a README, the deploy and verify scripts, the migrations. Start at
               platforms/README.md. deploy-static.mjs and deploy-worker.mjs (platforms/cloudflare/deploy/)
               both verify what they deployed — do not bypass them with bare wrangler.
-scripts/      the checkers. check-copy, check-deadends, check-backlog, check-credit-figures,
-              check-dispositions, gate-check, pick-asset-wall, and others.
+scripts/      repo tooling, in folders: checks/ (every check-*.mjs, secret-scan.py and its registers),
+              generate/ (generators of committed data), harvest/ (corpus harvesters), dev/ (worktree
+              tooling), studio-proof/, lumen-isles/, lib/ (shared rules), owner-dashboard/, autonomy/,
+              apple-os/, reorg/ (the clean-up plan; scripts/reorg-repo.mjs is its engine), plus the
+              loose gate-*, ci-parity, release, clean-test-tmp and pick-asset-wall scripts.
 tests/        repository-level tests that cross app boundaries.
 ```
 
-**Test files** (`ls <dir>/*.test.mjs | wc -l`, 2026-09-22): worker 266 · web 175 · evals 55 · root 39 ·
-site 46 · apple-plugin 12.
+**Test files** (`ls <dir>/*.test.mjs | wc -l`, 2026-10-02): worker 357 · web 221 · evals 56 (src/ only) ·
+root 43 · site 50 · apple-plugin 23.
 
-**Totals, measured 2026-09-22 between 21:19 and 21:33 IDT** by running each suite (`node --test` in
-apps/worker and apps/web; `node src/selftest.mjs && node --test src/*.test.mjs tasks-visual/*.test.mjs`
-in packages/evals; `node --test tests/*.test.mjs` in apps/site, apps/apple-plugin and at the root;
-`node tests/run.mjs` + `node tests/mutation-check.mjs` in apps/plugin). Other agents were editing the
-tree at the time, so these are a snapshot of that quarter-hour, not a baseline:
+**Totals, measured 2026-10-02** by running each suite in a dedicated clean worktree at commit
+`5f69d4d5` (no other agent editing it; no built site, so the site suite's `dist/` tests fail). Commands:
+`node --test` in apps/worker and apps/web; `node --test src/*.test.mjs tasks-visual/*.test.mjs
+frontier-studio/*.test.mjs owner-bench/*.test.mjs` in packages/evals; `node --test tests/*.test.mjs` in
+apps/site and apps/apple-plugin; `node --test tests/` at the root. Re-run them rather than quoting this table:
 
-| suite | tests | failing then, and whose |
+| suite | tests | failing at that commit |
 |---|---:|---|
-| worker | 3,706 | 0 |
-| web | 2,072 | 2 — `ai-elements-reasoning`, `contrast` (chat-UI migration in flight) |
-| evals | 1,416 | 0 |
-| site | 224 | 24 — the site redesign in flight, the store-flag flip (`onboarding-recovery`), and `build-from-source-target`, whose CI premise changed when CI moved to apps/apple-plugin |
-| root `tests/` | 526 | 2 — `known-issues` (the flag flipped, the issue is not yet resolved), `check-deadends` |
-| apple-plugin | 41 | 0 |
-| legacy plugin fixtures | 250 Luau specs, 56/56 mutations caught | 0 |
+| worker | 4,760 | 0 (6 skipped) |
+| web | 2,449 | 1: `every tool the worker can run has a written label` |
+| evals | 1,478 | 3: `ACCEPTANCE 16`, `A2 every registered tool has an argument fixture`, `A4 PRE-EXISTING FINDING` |
+| site | 308 | 35: every test that reads the built `apps/site/dist/` (not built in that worktree) |
+| root `tests/` | 596 | 0 (16 skipped) |
+| apple-plugin | 77 | 0 |
+| owner dashboard (`scripts/owner-dashboard/cc/*.test.mjs`, not in CI) | 267 | 10 (11 without a linked `node_modules`): owner-corpus and registry tests that need untracked data |
 
 Re-run them rather than quoting this table.
 
