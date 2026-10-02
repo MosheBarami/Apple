@@ -365,6 +365,8 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   cool_library_model: 'Adds library pieces, effects and an animation script to an object in the place; excluded with build_object until the MCP surface has a reviewed object-building scope.',
   more_tools: 'Widens the agent\'s own tool list for a run; meaningless outside an agent run.',
   animate_model: 'Rigs a model and writes its animations as a script; excluded until the MCP surface has a reviewed rig-and-script scope.',
+  add_behaviour: 'Writes a behaviours script into a model and installs a server script that plays it; excluded with animate_model until the MCP surface has a reviewed rig-and-script scope.',
+  model_anatomy: 'Read-only (get_tree and read_script), but it is the first half of add_behaviour and means nothing on a surface that cannot add behaviour, so it is excluded with it.',
   build_studded_ui: 'Writes a whole studded ScreenGui into the place; excluded until the MCP surface has a reviewed UI-writing scope.',
   add_upgrades: 'Installs server scripts and a studded screen into the place; excluded for the same reason as build_studded_ui.',
   compose_game: 'Builds a new game in Studio from components and pieces of the owner\'s private library; excluded for the same reason as query_owner_catalog.',

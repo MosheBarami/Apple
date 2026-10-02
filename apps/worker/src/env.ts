@@ -196,6 +196,11 @@ export interface Env {
   MODEL_UPLOAD_WORKFLOW?: Workflow<import('./model-upload').ModelUploadParams>;
   /** Images binding: display-sized WebP copies of generated images (image-resize.ts). */
   IMAGES?: ImagesBinding;
+  /**
+   * Kill switch for milestone M4 (re-adding behaviour to library models): "off", "0" or "false" makes add_behaviour refuse and
+   * turns off the behaviour lint refusals in edit_script (behaviour-tool.ts, behaviour-review.ts). Unset means on.
+   */
+  BEHAVIOUR_V2?: string;
 }
 
 export interface AuthedUser {

@@ -925,6 +925,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'find_library_model':
     case 'find_verified_asset':
     case 'inspect_model':
+    // model_anatomy asks the place about one model's parts, joints and hinges and changes nothing.
+    case 'model_anatomy':
     // The read-only Studio tools. Each one ASKS the place something and changes nothing, so
     // announcing "building" while they run tells the user work is happening that is not.
     case 'get_instance':
@@ -1052,6 +1054,8 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'build_studded_ui':
     case 'add_upgrades':
     case 'animate_model':
+    // add_behaviour writes a behaviours script into the model and installs the one script that plays it.
+    case 'add_behaviour':
     case 'build_object':
     case 'cool_library_model':
     case 'insert_sound':
@@ -2941,6 +2945,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'animate_model',
     label: 'Make models move',
     why: 'Joins a model\'s parts with joints and adds animations that play from a script.',
+    group: 'changes',
+  },
+  {
+    name: 'add_behaviour',
+    label: 'Give models behaviour',
+    why: 'Adds a behaviours script to a model, and the script that plays it, so parts can open, spin, bob, glow, play a sound or launch a player when clicked, touched or approached.',
     group: 'changes',
   },
   {
