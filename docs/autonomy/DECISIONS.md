@@ -225,7 +225,27 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
 - `cc/insights.mjs` derives the Hebrew one-liners (evidence plus one action, sorted red first) from what the platforms reported. It never hard-codes a finding. HQ shows them as the "מה קורה עכשיו ומה לעשות" feed, a top-bar ticker, and node colours on the live architecture map.
 - Reverse: point `index.html` back at `styles.css` alone, and remove `cc/stream.mjs`, `cc/insights.mjs` and the router's lazy block.
 
-## D-MODELLIB-2 — Apple never makes a model from scratch; every prop comes from the model library (2026-09-24)
+## D-MODELLIB-3 — the asset order is a capability, not a refusal by name (2026-10-02; supersedes D-MODELLIB-2)
+- Owner order (2026-10-02, memory `generalize-not-patch`): "library first, then the Creator Store (Roblox-owned and quality first),
+  then combining and adapting ready pieces, then building from scratch only as a last resort, and then highly detailed." The harness
+  never recognises a subject and never decides taste; the agent decides with information, tools and checks.
+- Why D-MODELLIB-2 went: its ~130-noun list (`PROP_WORDS`) refused any Parts build named like an object, and the prompt said "take
+  the closest hit". The baseline (`packages/evals/owner-bench/BASELINE.md`) shows the result: a knife for a treasure chest, a Doge
+  head for a robot pet, a village with no houses; objects matched the request 0.33/2.
+- What is merged (integration branch `integration/giant`, world-building + phase 1):
+  - No word lists and no name checks anywhere in `model-rule.ts`; a guard test forbids them coming back.
+  - A Model assembled from Parts is held back at most twice per run, and only until the run has tried the library; never when the
+    library is not offered or the project's asset sources rule it out. After that the agent may build — and build_object is the
+    detailed path.
+  - Hand-made meshes (MeshPart, SpecialMesh, Union) are refused because the plugin cannot create them, not as a matter of taste.
+  - The agent sees candidates with what the library knows (preview_library_models: size against a player, colour, parts,
+    blockers; browse_owner_library mode find: description, size, colours, quality) and may reject all of them.
+  - Asset sources switched off read as "skipped, continue to the next step", never "leave it unbuilt".
+- Rejected on the way: a variant that refused any 2–5-part Model and imposed a 6-part "detail floor" (a harness taste decision that
+  also refused gates, platforms and walls).
+- Not yet measured live: the next benchmark run (bank + `heldout-v1.json`) on the deployed integration is the evidence.
+
+## D-MODELLIB-2 (superseded by D-MODELLIB-3) — Apple never makes a model from scratch; every prop comes from the model library (2026-09-24)
 - Owner order: "NEVER generate from scratch models and 3d, only plain simple parts like floor etc. Search the library for the perfect model/kit instead."
 - `apps/worker/src/model-rule.ts` holds the rule. Parts remain for plain structure only: floors, paths, walls, pads, platforms, stages and zones, grouped in a Folder. Parts named for what they do (ShopTrigger, CoinPad) also pass.
 - create_instances refuses:
