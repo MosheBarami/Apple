@@ -190,3 +190,17 @@ test('the play check presses a picked object by walking into it and reads its co
   assert.match(pick, /runTool\(ctx, 'play_check', JSON\.stringify\(object \? \{ touch: \[`\$\{object\}\.AppleBody`\] \}/, 'the check walks into the body');
   assert.match(pick, /presses === 0\) reading\.problem =/, 'a counter left at 0 is said as a problem');
 });
+
+// Leftovers from a piece's own game (a price tag over the crown, a "Buy" prompt) go too, in their own call after the
+// script strip, so an older plugin that refuses the new classes still takes every script out (2026-10-02).
+test('library pieces lose their leftover tags and prompts, scripts first', () => {
+  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+  assert.match(src, /classes: \['BillboardGui', 'ProximityPrompt', 'ClickDetector'\]/);
+  for (const root of ['into', 'folderPath']) {
+    const scripts = src.indexOf(`op: 'strip_descendants', root: ${root}, classes: ['LocalScript'`);
+    const leftovers = src.indexOf(`await stripLeftovers(ctx, ${root})`);
+    assert.ok(scripts > 0 && leftovers > scripts, `${root}: scripts out, then the leftovers`);
+  }
+  const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'ops', 'Compose.luau'), 'utf8');
+  assert.match(plugin, /local STRIPPABLE = \{[^}]*BillboardGui = true, ProximityPrompt = true, ClickDetector = true/, 'the plugin takes them');
+});

@@ -8,11 +8,12 @@
 --   turns so its longer horizontal side runs along world X or Z. It is scaled uniformly so its world-aligned height
 --   is `height`, or its longer horizontal side is `length`, and stands with the bottom of its world-aligned box
 --   centred on `at`. Its scripts and sounds are not copied; its parts are anchored.
--- strip_descendants { root, classes = { "LocalScript" | "Script" | "ModuleScript" | "Sound" } }
---   Removes every instance of those classes under `root`.
+-- strip_descendants { root, classes = { "LocalScript" | "Script" | "ModuleScript" | "Sound" | "BillboardGui" | "ProximityPrompt" | "ClickDetector" } }
+--   Removes every instance of those classes under `root`. The last three are a library piece's leftovers from its own
+--   game (a price tag floating over a crown, a "Buy" prompt, a click that nothing answers once its script is out).
 local Compose = {}
 
-local STRIPPABLE = { LocalScript = true, Script = true, ModuleScript = true, Sound = true }
+local STRIPPABLE = { LocalScript = true, Script = true, ModuleScript = true, Sound = true, BillboardGui = true, ProximityPrompt = true, ClickDetector = true }
 local MAX_PLACE = 200
 
 function Compose.build(api)
@@ -179,7 +180,7 @@ function Compose.build(api)
 		if type(op.classes) ~= "table" or #op.classes == 0 then return nil, "invalid", "classes must be a non-empty list" end
 		local classes = {}
 		for _, c in op.classes do
-			if not STRIPPABLE[c] then return nil, "invalid", "classes may only be LocalScript, Script, ModuleScript or Sound" end
+			if not STRIPPABLE[c] then return nil, "invalid", "classes may only be LocalScript, Script, ModuleScript, Sound, BillboardGui, ProximityPrompt or ClickDetector" end
 			classes[c] = true
 		end
 		local root = api.resolvePath(self.game, self.options.services, op.root, false)

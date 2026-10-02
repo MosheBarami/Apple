@@ -234,6 +234,15 @@ function numberTag(index: number, at: V3): InstanceSpecLite {
   };
 }
 
+/**
+ * A library piece's leftovers from its own game: a price tag or icon floating over it, a "Buy" prompt, a click nothing
+ * answers once its script is out. Its own call after the script strip, so a plugin that does not know these classes
+ * refuses only this one (the scripts are out either way).
+ */
+async function stripLeftovers(ctx: AgentCtx, root: string): Promise<void> {
+  await ctx.execStudioOp({ op: 'strip_descendants', root, classes: ['BillboardGui', 'ProximityPrompt', 'ClickDetector'] }, 30_000).catch(() => undefined);
+}
+
 /** Removes the numbered row and the imported pieces behind it. */
 export async function clearLineup(ctx: AgentCtx): Promise<void> {
   // One path at a time: delete_instances refuses the whole list when one path is missing (review 2026-10-02: the row
@@ -281,6 +290,7 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string): Promi
       const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: c.gameId!, path: c.path!, mode: 'self', parent: into, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
       if (!imported?.ok) continue;
       await ctx.execStudioOp({ op: 'strip_descendants', root: into, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] }, 30_000).catch(() => undefined);
+      await stripLeftovers(ctx, into);
     } else {
       // A Creator Store row passes insert_library_model's own gate (source policy, in-place scan, zero scripts proved).
       const { TOOLS } = await import('./tools');
@@ -554,7 +564,8 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   // also join the motor's root and break the rig). Scripts and sounds out, as for every library piece.
   let crowned = false;
   const crownPick = (await (async () => {
-    for (const q of ['golden crown', 'crown']) {
+    // "crown" first: the library's GoldenCrown (Fighters) reads silver and green; the plain Crown is a modelled one.
+    for (const q of ['crown', 'golden crown']) {
       const hit = rankCatalog(await catalog(ctx, q), q, 1)[0];
       if (hit) return hit;
     }
@@ -570,6 +581,7 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
     const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: crownPick.gameId, path: crownPick.path, mode: 'self', parent: folderPath, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
     if (imported?.ok) {
       await ctx.execStudioOp({ op: 'strip_descendants', root: folderPath, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] }, 30_000).catch(() => undefined);
+      await stripLeftovers(ctx, folderPath);
       // Big enough to read from the spawn (a 60% crown on the 7-stud butter was a speck, 90% still a thin ring): a little
       // over the short side, never more than half the long one.
       const crownWidth = Math.max(5, Math.min(Math.max(b.size[0], b.size[2]) / 2, Math.min(b.size[0], b.size[2]) * 1.1));

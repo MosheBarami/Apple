@@ -126,7 +126,7 @@ export type StudioOp =
   /** The composer (apps/worker/src/compose.ts): copies of imported library pieces placed on a new map. */
   | { op: 'place_copies'; items: { from: string; parent: string; name: string; at: [number, number, number]; yaw?: number; height?: number; length?: number; along?: 'x' | 'z' }[] }
   /** The composer: a UI kit's own scripts and sounds taken out (only those classes). */
-  | { op: 'strip_descendants'; root: string; classes: ('LocalScript' | 'Script' | 'ModuleScript' | 'Sound')[] }
+  | { op: 'strip_descendants'; root: string; classes: ('LocalScript' | 'Script' | 'ModuleScript' | 'Sound' | 'BillboardGui' | 'ProximityPrompt' | 'ClickDetector')[] }
   /** Classic surfaces after Resurface (cxmeel): a MaterialVariant per surface on every face. Maps are image ids. */
   | { op: 'apply_surface'; paths: string[]; surface: 'studs' | 'inlet' | 'universal' | 'weld' | 'glue' | 'smooth' | 'smooth_no_outlines'; maps?: SurfaceMaps }
   /** Every part an Apple write adds gets studs ('studs', the default) or keeps what it was given ('keep'). */
